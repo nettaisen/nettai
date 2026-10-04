@@ -11,7 +11,7 @@ local back = {}
 
 local DAMAGE, HIT_PARAM, TICKS, COOLDOWN = 50, 0x94, 30, 50
 
-back.action = anti_damage.stance("bn5:shadowsoul/back/action")
+back.action = anti_damage.stance("shadowsoul/back/action")
 
 -- 0x0800FBEE (AIAttackVars +3 1, which the counter's start, 0x0800E340, carries as its variant).
 local function setup(navi: Object): Action
@@ -26,7 +26,7 @@ local function setup(navi: Object): Action
 end
 
 back.weapon = define.weapon {
-    id = "bn5:shadowsoul/back",
+    id = "shadowsoul/back",
     -- (A B+Back, which nothing charges: the charge table's row 0x45 (0x0801CD1E), Charge 5 reading on into row
     -- 0x46's first entry.)
     charge_ticks = { 60, 60, 60, 60, 60, 120 },

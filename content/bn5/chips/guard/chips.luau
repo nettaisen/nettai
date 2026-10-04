@@ -7,7 +7,7 @@ local guard = require("../../lib/guard/guard")
 -- Guard1 (BN5 chip 0x058): the navi holds up a shield for 60 ticks; the first hit it blocks from the front sends a
 -- shock wave back along the row with the chip's damage: BN5's guard (lib/guard, action 0x1F with subtype 0).
 local guard1 = define.chip {
-    id = "bn5:guard1",
+    id = "guard1",
     codes = { "A", "D", "K", "*" },
     element = "null",
     family = "null",
@@ -26,7 +26,7 @@ local guard1 = define.chip {
 -- Guard2 (BN5 chip 0x059): the navi holds up a shield for 60 ticks; the first hit it blocks from the front sends a
 -- shock wave back along the row with the chip's damage: BN5's guard (lib/guard, action 0x1F with subtype 1).
 local guard2 = define.chip {
-    id = "bn5:guard2",
+    id = "guard2",
     codes = { "B", "L", "Q", "*" },
     element = "null",
     family = "null",
@@ -45,7 +45,7 @@ local guard2 = define.chip {
 -- Guard3 (BN5 chip 0x05a): the navi holds up a shield for 60 ticks; the first hit it blocks from the front sends a
 -- shock wave back along the row with the chip's damage: BN5's guard (lib/guard, action 0x1F with subtype 2).
 local guard3 = define.chip {
-    id = "bn5:guard3",
+    id = "guard3",
     codes = { "C", "M", "S", "*" },
     element = "null",
     family = "null",

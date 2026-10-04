@@ -6,7 +6,7 @@ local charged_shot = require("../../navis/megaman/weapons/charged-shot")
 local variants = require("../../objects/projectile/variants")
 
 return define.patch_card {
-    id = "bn5:woodman",
+    id = "woodman",
     mb = 45,
     effects = {
         cards.hp_percent(25),

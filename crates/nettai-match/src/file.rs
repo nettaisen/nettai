@@ -40,12 +40,12 @@
 //! ]
 //!
 //! [left.tactics]                     # optional: BN5's computer-navi data, the save's (none: empty)
-//! entries = ["bn5:cannon", "pattern 1", "nothing", "empty"]   # up to 42: a chip, a pattern by its number, 0, 0xFFFF
-//! patterns = [{ dx = 1, dy = 0, chips = ["bn5:sword", "bn5:wideswrd"] }]   # up to 8, each up to 6 chips
+//! entries = ["cannon", "pattern 1", "nothing", "empty"]   # up to 42: a chip, a pattern by its number, 0, 0xFFFF
+//! patterns = [{ dx = 1, dy = 0, chips = ["sword", "wideswrd"] }]   # up to 8, each up to 6 chips
 //!
-//! # A BN5 side ([left] with ruleset = "bn5:stock", navi = "bn5:megaman") may say besides, in [left]:
+//! # A BN5 side ([left] with ruleset = "stock", navi = "megaman") may say besides, in [left]:
 //! karma = 100                        # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
-//! souls = ["bn5:protosoul"]          # optional: the souls it has, any game's, either version (none: every soul)
+//! souls = ["protosoul"]          # optional: the souls it has, any game's, either version (none: every soul)
 //! ```
 
 use crate::{Arena, Folder, Match, Place, Side, stats};

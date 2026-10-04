@@ -64,7 +64,7 @@ local function init(me: Object)
 end
 
 pull.kind = define.kind {
-    id = "bn5:magnetmn/pull",
+    id = "magnetmn/pull",
     pool = "attack",
     state = { dir = "i8" },
     -- 0x080D2BE8.

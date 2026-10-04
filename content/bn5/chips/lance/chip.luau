@@ -7,7 +7,7 @@ local bn5_lance = require("./lance")
 local lance = require("@exelib/lance/lance")
 
 return define.chip {
-    id = "bn5:lance",
+    id = "lance",
     codes = { "C", "L", "R", "*" },
     element = "wood",
     family = "wood",

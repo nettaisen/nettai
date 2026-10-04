@@ -144,16 +144,16 @@ fn a_game_loads_alone_under_its_names() {
     c.define().unwrap_or_else(|e| panic!("{e}"));
     let manifest = c.scripts.manifest("bn5").expect("BN5's manifest").clone();
     for path in &manifest.definitions.unported {
-        let key = format!("bn5:{}", path.trim_start_matches("chips/").trim_end_matches("/chip"));
+        let key = format!("{}", path.trim_start_matches("chips/").trim_end_matches("/chip"));
         assert!(c.defs.chip_by_key(&key).is_none(), "{key} is unported");
     }
     let d = &c.defs;
     assert_eq!((c.game(), d.game.as_str()), ("bn5", "bn5"));
-    assert!(d.chip_by_key("bn5:cannon").is_some());
+    assert!(d.chip_by_key("cannon").is_some());
     assert_eq!(d.chip_by_key("cannon"), None, "BN6's chips are another content's");
     assert_eq!(d.chip_by_key("cannon"), None, "an id is written in full");
-    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("bn5:stock"));
-    assert_eq!(c.strings.chip("bn5:cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));
+    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("stock"));
+    assert_eq!(c.strings.chip("cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));
     let mut both = read(&["bn6", "bn5"]);
     let e = both.define().unwrap_err().message;
     assert!(e.contains("content holds one game"), "{e}");
@@ -185,7 +185,7 @@ fn bn5s_rules_are_its_games() {
     let mut bn6 = read(&["bn6"]);
     bn6.define().unwrap_or_else(|e| panic!("{e}"));
     let d = &c.defs;
-    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("bn5:stock"), "BN5's stock ruleset");
+    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("stock"), "BN5's stock ruleset");
     let (six, five) = (bn6.rules(), c.rules());
     assert_eq!(five.pools.slots(), [16, 32, 32]);
     assert_eq!(six.pools.slots(), [32, 32, 32]);
@@ -196,7 +196,7 @@ fn bn5s_rules_are_its_games() {
     assert_eq!(five.hp_bug_periods, six.hp_bug_periods);
     // The ported chips: BN5's own, apart from BN6's of the same key.
     for key in ["cannon", "minibomb", "energbom", "panlgrab", "antiswrd", "holypanl", "fullcust"] {
-        assert!(d.chip_by_key(&format!("bn5:{key}")).is_some(), "bn5:{key}");
+        assert!(d.chip_by_key(&format!("{key}")).is_some(), "{key}");
     }
     // docs/design/bn5-map.md §15.3 items 10 and 11: BN5's chips leave
     // their action on the use frame, and AntiNavi's sparkle sits on the
@@ -212,5 +212,5 @@ fn bn5s_rules_are_its_games() {
                 return slash.chip { hits = collision.probe }";
     c.scripts.modules.insert("bn5:chips/probing/chip".into(), text.into());
     let found = nettai_content::lint::self_bit_targets(&c);
-    assert_eq!(found, vec![("bn5:probe".to_string(), "bn5:chips/probing/chip".to_string(), "exelib".to_string())]);
+    assert_eq!(found, vec![("probe".to_string(), "bn5:chips/probing/chip".to_string(), "exelib".to_string())]);
 }

@@ -19,33 +19,33 @@
 -- The steps a metal slide tries: forward, back, up, down.
 local F, B, U, D = { dx = 1, dy = 0 }, { dx = -1, dy = 0 }, { dx = 0, dy = -1 }, { dx = 0, dy = 1 }
 
-return define.rules("bn5:panels", {
+return define.rules("panels", {
     types = {
         missing = { flags = 0x00018000 },
         broken = { flags = 0x00014000 },
         normal = { flags = 0x00010010 },
         cracked = { flags = 0x00010050 },
-        poison = { flags = 0x00010110, trail_sound = asset.sound("bn5:panel-poison") },
+        poison = { flags = 0x00010110, trail_sound = asset.sound("panel-poison") },
         metal = {
             flags = 0x00010210,
-            trail_sound = asset.sound("bn5:immobilizer"),
+            trail_sound = asset.sound("immobilizer"),
             cleared_by = "wood",
             -- By the direction of the move: none, up, down, back, forward, other.
             slide = { {}, { F, U, B, D }, { B, D, F, U }, { U, B, D, F }, { D, F, U, B }, { D, F, U, B } },
         },
-        grass = { flags = 0x00010410, trail_sound = asset.sound("bn5:grass"), cleared_by = "fire" },
-        ice = { flags = 0x00010810, trail_sound = asset.sound("bn5:freeze") },
+        grass = { flags = 0x00010410, trail_sound = asset.sound("grass"), cleared_by = "fire" },
+        ice = { flags = 0x00010810, trail_sound = asset.sound("freeze") },
         lava = {
             flags = 0x00011010,
-            trail_sound = asset.sound("bn5:panel-volcano"),
+            trail_sound = asset.sound("panel-volcano"),
             expires = 960,
             burn = 50,
             cleared_by = "aqua",
         },
-        holy = { flags = 0x00012010, trail_sound = asset.sound("bn5:panel-change") },
+        holy = { flags = 0x00012010, trail_sound = asset.sound("panel-change") },
         sea = {
             flags = 0x00030010,
-            trail_sound = asset.sound("bn5:sand-worm"),
+            trail_sound = asset.sound("sand-worm"),
             expires = 960,
             drains = "fire",
             holds = 20,

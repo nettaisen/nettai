@@ -12,7 +12,7 @@ local regions = require("@exelib/regions")
 
 -- A streak (effect object #0x3A, BN6's `sub_80E4848`): sheet 0c-00's animation 0 (in palette 0), blown forward
 -- 16 pixels a tick, thrown up and falling, for 30 ticks.
-local STREAK_SPRITE = asset.sprite("bn5:sword")
+local STREAK_SPRITE = asset.sprite("sword")
 local STREAK_SPEED, STREAK_RISE, STREAK_GRAVITY, STREAK_TICKS = 0x10_0000, int.i32(0xFFF98000), 0x3C00, 0x1E
 
 local function streak_tick(me: Object)
@@ -28,7 +28,7 @@ local function streak_tick(me: Object)
 end
 
 local STREAK = define.kind {
-    id = "bn5:nrthwind/streak",
+    id = "nrthwind/streak",
     pool = "effect",
     update = function(me: Object)
         local l = me.lifecycle
@@ -74,7 +74,7 @@ end
 -- whole field for a tick, its holder told it is done.
 type WindState = { holder: Object? }
 local WIND_TICKS, STREAK_EVERY = 0x64, 8
-local WIND_SOUND = asset.sound("bn5:dustbrk")
+local WIND_SOUND = asset.sound("dustbrk")
 
 local function wind_tick(me: Object)
     local c = me.collision
@@ -99,7 +99,7 @@ local function wind_tick(me: Object)
 end
 
 local WIND = define.kind {
-    id = "bn5:nrthwind/wind",
+    id = "nrthwind/wind",
     pool = "attack",
     state = { holder = "object" },
     update = function(me: Object)
@@ -149,14 +149,14 @@ local function effect(me: Object)
 end
 
 local CONTROLLER = define.kind {
-    id = "bn5:nrthwind/controller",
+    id = "nrthwind/controller",
     pool = "effect",
     state = { busy = "bool" },
     update = dimming_chips.phases { name = "NrthWind", effect = effect },
 }
 
 return define.chip {
-    id = "bn5:nrthwind",
+    id = "nrthwind",
     codes = { "D", "Q", "V", "*" },
     element = "null",
     family = "wind",

@@ -15,7 +15,7 @@ local function column(me: Object): number
 end
 
 local made = common.make {
-    id = "bn5:bighook/hook",
+    id = "bighook/hook",
     columns = function(me: Object, _big: boolean): (number, number)
         local x = column(me)
         return x, x

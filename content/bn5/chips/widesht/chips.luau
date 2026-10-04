@@ -10,7 +10,7 @@ local widesht = require("./wave")
 -- shooter's attachment row, BN5's 0x11 for BN6's 0x23, and the wave's height and sprite) with BN5's shooter (0c-2a,
 -- the same place), its wave at the floor (BN6's at 16 pixels) and BN5's wide wave (chips/widesht).
 local widesht1 = define.chip {
-    id = "bn5:widesht1",
+    id = "widesht1",
     codes = { "L", "M", "N" },
     element = "aqua",
     family = "aqua",
@@ -30,7 +30,7 @@ local widesht1 = define.chip {
 -- shooter's attachment row, BN5's 0x11 for BN6's 0x23, and the wave's height and sprite) with BN5's shooter (0c-2a,
 -- the same place), its wave at the floor (BN6's at 16 pixels) and BN5's wide wave of kind 4 (chips/widesht).
 local widesht2 = define.chip {
-    id = "bn5:widesht2",
+    id = "widesht2",
     codes = { "E", "F", "G" },
     element = "aqua",
     family = "aqua",
@@ -50,7 +50,7 @@ local widesht2 = define.chip {
 -- shooter's attachment row, BN5's 0x11 for BN6's 0x23, and the wave's height and sprite) with BN5's shooter (0c-2a,
 -- the same place), its wave at the floor (BN6's at 16 pixels) and BN5's wide wave of kind 5 (chips/widesht).
 local widesht3 = define.chip {
-    id = "bn5:widesht3",
+    id = "widesht3",
     codes = { "S", "T", "U" },
     element = "aqua",
     family = "aqua",

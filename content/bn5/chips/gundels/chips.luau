@@ -8,7 +8,7 @@ local gundels = require("./gundels")
 -- at most 60 ticks: BN5's GunDelSol (chips/gundels/gundels; BN6's code but for holding A, its collision row and its firing
 -- ticks).
 local gundels1 = define.chip {
-    id = "bn5:gundels1",
+    id = "gundels1",
     codes = { "A", "S", "U", "*" },
     element = "null",
     family = "null",
@@ -22,7 +22,7 @@ local gundels1 = define.chip {
     slot_in_limit = 3,
     megaman = "light",
     action = gundels.action {
-        id = "bn5:gundels1/action",
+        id = "gundels1/action",
         gun = gundels.gun(0),
         firing_ticks = 60,
         beam = gundels.beams.plain,
@@ -34,7 +34,7 @@ local gundels1 = define.chip {
 -- at most 90 ticks: BN5's GunDelSol (chips/gundels/gundels; BN6's code but for holding A, its collision row and its firing
 -- ticks).
 local gundels2 = define.chip {
-    id = "bn5:gundels2",
+    id = "gundels2",
     codes = { "G", "U", "Y" },
     element = "null",
     family = "null",
@@ -48,7 +48,7 @@ local gundels2 = define.chip {
     slot_in_limit = 3,
     megaman = "light",
     action = gundels.action {
-        id = "bn5:gundels2/action",
+        id = "gundels2/action",
         gun = gundels.gun(3),
         firing_ticks = 90,
         beam = gundels.beams.plain,
@@ -60,7 +60,7 @@ local gundels2 = define.chip {
 -- at most 120 ticks: BN5's GunDelSol (chips/gundels/gundels; BN6's code but for holding A, its collision row and its firing
 -- ticks).
 local gundels3 = define.chip {
-    id = "bn5:gundels3",
+    id = "gundels3",
     codes = { "D", "M", "O" },
     element = "null",
     family = "null",
@@ -74,7 +74,7 @@ local gundels3 = define.chip {
     slot_in_limit = 3,
     megaman = "light",
     action = gundels.action {
-        id = "bn5:gundels3/action",
+        id = "gundels3/action",
         gun = gundels.gun(6),
         firing_ticks = 120,
         beam = gundels.beams.plain,
@@ -86,7 +86,7 @@ local gundels3 = define.chip {
 -- held, more in the sun, for at most 120 ticks: BN5's GunDelSol (chips/gundels/gundels, action 0x2F with subtype 3: the
 -- gun's attachment row 0x16, palette 9; the firing ticks' fourth, 120; the wide beams).
 local gundelex = define.chip {
-    id = "bn5:gundelex",
+    id = "gundelex",
     codes = { "G" },
     element = "null",
     family = "null",
@@ -101,7 +101,7 @@ local gundelex = define.chip {
     slot_in_limit = 1,
     megaman = "light",
     action = gundels.action {
-        id = "bn5:gundelex/action",
+        id = "gundelex/action",
         gun = gundels.gun(9),
         firing_ticks = 120,
         beam = gundels.beams.wide,

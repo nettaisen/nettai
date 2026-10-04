@@ -21,7 +21,7 @@ export type State = {
     timer: number,
 }
 
-local FADE = asset.sound("bn5:fade")
+local FADE = asset.sound("fade")
 
 -- The panels Dark MegaMan may come onto, by the user's side (`sub_80129F4`'s table, 0x0801025C): the other side's
 -- area, solid and with no body on it.
@@ -126,6 +126,6 @@ local function update(me: Object, s: State)
     end
 end
 
-chaos.failure = define.action { id = "bn5:souls/chaos-failure", state = { timer = "u16" }, update = update }
+chaos.failure = define.action { id = "souls/chaos-failure", state = { timer = "u16" }, update = update }
 
 return chaos

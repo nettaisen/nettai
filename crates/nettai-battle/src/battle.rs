@@ -37,9 +37,18 @@ pub mod battle_flags {
     /// TomahawkSoul's change sets it (0x08012138), every soul change's end
     /// clears it (0x080121B6); nothing in BN6 sets it.
     pub const SHAKE_THROUGH_PAUSE: u16 = 0x20;
-    /// Per-player custom gauges and chip counters (`sub_802E112`). Never set
-    /// in netbattles (battle mode 1) or random battles.
-    pub const PER_PLAYER_GAUGES: u16 = 0x40;
+    /// Each side its own custom gauge: battle flag 0x40, in each game a
+    /// mode of its own.
+    /// - BN5's operation battle (set at 0x0802D590 when the battle mode
+    ///   isn't 1 and the navi's stats' +0x2A is set): both navis
+    ///   computer-driven, the Tactics screen.
+    /// - BN6's chip gate battle (set once a battle by `sub_802E112` when a
+    ///   chip gate is on the link port, 0x0200AD04, or in a link battle,
+    ///   battle mode 0, whose consoles both have one, EVENT_1722): the
+    ///   gate's slotted chips paid from the side's gauge, SELECT's Program
+    ///   Advance window. `sub_800A8F8` tests it. A netbattle without gates
+    ///   never has it.
+    pub const OWN_GAUGES: u16 = 0x40;
 }
 
 /// Top-level battle states (the game's jump-table offsets).
@@ -1690,7 +1699,7 @@ impl Battle {
             self.sound(SoundRole::Pause);
             return;
         }
-        let open = if self.round.flags & battle_flags::PER_PLAYER_GAUGES != 0 {
+        let open = if self.round.flags & battle_flags::OWN_GAUGES != 0 {
             // sub_800A244: in the battle flag 0x40 mode a side opens it with
             // L or R and a gauge of 0x2900, which it pays.
             let sides = self.gauge_custom_requests();
@@ -1733,7 +1742,7 @@ impl Battle {
     /// 0x08007774 tests the flag alone).
     fn custom_request_transforms(&self) -> bool {
         let mode_5 = self.round.mode_copy == 5 && self.game_rules().flow.sequencer_before_custom;
-        mode_5 || self.round.flags & battle_flags::PER_PLAYER_GAUGES == 0
+        mode_5 || self.round.flags & battle_flags::OWN_GAUGES == 0
     }
 
     /// Fighting state 0x20 (`sub_8008452`): a custom screen was asked for:

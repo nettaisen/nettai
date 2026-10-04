@@ -10,13 +10,13 @@ local sonic_boom = require("@exelib/swords/sonic_boom")
 local stepsword = require("../../lib/stepsword")
 local swords = require("../../lib/swords")
 
-local SLASH_SPRITE = asset.sprite("bn5:sword-slash")
+local SLASH_SPRITE = asset.sprite("sword-slash")
 
 return {
     action = common.make {
-        id = "bn5:z-saver/action",
-        swing_sound = asset.sound("bn5:z-saver"),
-        command_sound = asset.sound("bn5:ok-8b"),
+        id = "z-saver/action",
+        swing_sound = asset.sound("z-saver"),
+        command_sound = asset.sound("ok-8b"),
         attachment = attachment.kind,
         blade = swords.blade,
         blade_anim = swords.blade_anim,

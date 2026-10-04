@@ -9,12 +9,12 @@ local common = require("@exelib/follow-effect/follow_effect")
 
 local follow_effect = {}
 
-follow_effect.kind = common.make_kind { id = "bn5:follow-effect", slide_sound = nil, copies_visibility = false }
+follow_effect.kind = common.make_kind { id = "follow-effect", slide_sound = nil, copies_visibility = false }
 
 -- Its looks by name.
 follow_effect.looks = {
     -- Look 4: DeltaRay's burst.
-    burst = common.look { sprite = asset.sprite("bn5:follow-effect"), anim = 0, palette = 0, behavior = "flash" },
+    burst = common.look { sprite = asset.sprite("follow-effect"), anim = 0, palette = 0, behavior = "flash" },
 }
 
 -- 0x080E405E: a follow effect of `look` for `owner` at `pos`, with the game's flip value `flip` and `palette_add`.

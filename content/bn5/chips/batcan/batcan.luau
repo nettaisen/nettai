@@ -11,10 +11,10 @@ local common = require("@exelib/batcan/batcan")
 local sparks = require("../../lib/sparks")
 
 return common.make {
-    shot_id = "bn5:batcan/shot",
-    bat = attachment.look { sprite = asset.sprite("bn5:bat-cannon"), palette = 0 },
+    shot_id = "batcan/shot",
+    bat = attachment.look { sprite = asset.sprite("bat-cannon"), palette = 0 },
     attachment = attachment.kind,
-    sound = asset.sound("bn5:cannon"),
+    sound = asset.sound("cannon"),
     shot = { is = collision.attack, hits = collision.hits_navis, spark = sparks.bat },
     restarts_overlay = false,
 }

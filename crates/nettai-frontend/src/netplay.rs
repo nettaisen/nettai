@@ -533,15 +533,15 @@ mod tests {
     fn offers_carry_karma_and_souls() {
         let content = nettai_match::testing::every_game();
         let mut o = offer(&content, 5);
-        o.side.ruleset = content.defs.ruleset_by_key("bn5:stock");
-        o.side.navi = content.defs.navi_by_key("bn5:megaman").unwrap();
+        o.side.ruleset = content.defs.ruleset_by_key("stock");
+        o.side.navi = content.defs.navi_by_key("megaman").unwrap();
         o.side.stats = Side::base_stats(&content, o.side.navi, o.side.game);
         o.side.crosses = None;
         o.side.navi_level = None;
         o.side.navicust = None;
         o.side.cards.clear();
         o.side.karma = 100;
-        o.side.souls = Some(vec![content.defs.form_by_key("bn5:protosoul").unwrap()]);
+        o.side.souls = Some(vec![content.defs.form_by_key("protosoul").unwrap()]);
         // (Its folder its rules take: a BN5 one.)
         let five = nettai_match::Match::empty(&content).unwrap();
         let mut b = nettai_match::check::start(&content, &nettai_match::Match { sides: [o.side.clone(), five.sides[1].clone()], ..five }).unwrap();

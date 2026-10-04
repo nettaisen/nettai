@@ -9,7 +9,7 @@
 -- reads of a console's own game): its custom screen's close starts the HUD's chip window (0x080230CC), and its
 -- intro fades in from black (0x080E0698 tests a byte the open bus gives).
 
-return define.rules("bn5:flow", {
+return define.rules("flow", {
     result_words = 49,
     sequencer_before_custom = false,
     escape_check = false,

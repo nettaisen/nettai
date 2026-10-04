@@ -13,12 +13,12 @@ local instrument = require("@exelib/instruments/instrument")
 
 local bn5_instrument = {}
 
-bn5_instrument.sprite = asset.sprite("bn5:instrument")
+bn5_instrument.sprite = asset.sprite("instrument")
 
-bn5_instrument.kind = instrument.make_kind("bn5:instrument", {
+bn5_instrument.kind = instrument.make_kind("instrument", {
     sprite = bn5_instrument.sprite,
     hp = 100,
-    sounds = { appear = asset.sound("bn5:appear"), broken = asset.sound("bn5:hit-bomb-1") },
+    sounds = { appear = asset.sound("appear"), broken = asset.sound("hit-bomb-1") },
     body = { is = collision.own_body, hits = collision.hit_by_other_side },
     removal_puffs = true,
     -- (Its explosion and puff BN6's.)
@@ -27,6 +27,6 @@ bn5_instrument.kind = instrument.make_kind("bn5:instrument", {
 })
 
 -- A chip's `dimming` hook for its instrument (BN5's 0x080E5E48, BN6's `sub_80E5EA8`).
-bn5_instrument.hook = controller.make("bn5:instruments/controller", bn5_instrument.kind)
+bn5_instrument.hook = controller.make("instruments/controller", bn5_instrument.kind)
 
 return bn5_instrument

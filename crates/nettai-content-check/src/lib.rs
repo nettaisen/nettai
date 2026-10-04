@@ -140,8 +140,13 @@ pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
                     Err(e) => problems.push(format!("{file}: {e}")),
                 }
             }
-            if p.kind == nettai_content_api::PackKind::Support && lints::names_assets(&source) {
-                problems.push(format!("{file}: support pack {} names an asset; a support pack has none (its makers take the game's looks)", p.id));
+            if p.kind == nettai_content_api::PackKind::Support {
+                for (line, what) in lints::game_context(&source) {
+                    problems.push(format!(
+                        "{file}:{line}: support pack {} reaches for the game's context by itself, {what}; a maker takes it from the game's caller",
+                        p.id
+                    ));
+                }
             }
         }
     }

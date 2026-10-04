@@ -42,7 +42,7 @@ local function effect(me: Object)
 end
 
 local kind = define.kind {
-    id = "bn5:holydrem/controller",
+    id = "holydrem/controller",
     pool = "effect",
     state = { bonus = "u16", busy = "bool" },
     -- 0x080E6DFC.

@@ -58,7 +58,7 @@ local function tick(me: Object)
 end
 
 follower.kind = define.kind {
-    id = "bn5:larkman/follower",
+    id = "larkman/follower",
     pool = "attack",
     -- 0x080DFB94.
     update = function(me: Object)

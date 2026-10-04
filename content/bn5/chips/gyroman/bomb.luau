@@ -17,8 +17,8 @@ export type State = {
 
 local bomb = {}
 
-local SPRITE = asset.sprite("bn5:gyro-bomb")
-local SOUND_BURST = asset.sound("bn5:hit-bomb-1")
+local SPRITE = asset.sprite("gyro-bomb")
+local SOUND_BURST = asset.sound("hit-bomb-1")
 -- By the variant (0x080C7D1C and 0x080C7D0C): its height, and how far it falls a tick.
 local HEIGHTS: { [number]: number } = { [0] = 0x40_0000, 0x28_0000, 0x28_0000 }
 local FALLS: { [number]: number } = { [0] = 0x4_0000, 0x6_0000, 0x6_0000 }
@@ -156,7 +156,7 @@ local function init(me: Object)
 end
 
 bomb.kind = define.kind {
-    id = "bn5:gyroman/bomb",
+    id = "gyroman/bomb",
     pool = "attack",
     state = { variant = "u8" },
     -- 0x080C7C6C.

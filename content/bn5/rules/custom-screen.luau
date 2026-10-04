@@ -3,7 +3,7 @@
 -- 0x08023E2C, 0x08023E84): BN6's values.
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
-return define.rules("bn5:custom-screen", {
+return define.rules("custom-screen", {
     slots = {
         { kind = "chip_position", vertical = 5, left = 10, right = 1 },
         { kind = "chip_position", vertical = 6, left = 0, right = 2 },

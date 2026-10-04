@@ -7,7 +7,7 @@
 local effects = require("../../lib/effects")
 local souls = require("../../navis/megaman/souls")
 
-local SOUND = asset.sound("bn5:hub")
+local SOUND = asset.sound("hub")
 
 local function raise(user: Object, _spec: InstantChipSpec)
     local stats = battle.navi(user.alliance)
@@ -25,7 +25,7 @@ local function raise(user: Object, _spec: InstantChipSpec)
 end
 
 return define.chip {
-    id = "bn5:busterup",
+    id = "busterup",
     codes = { "*" },
     element = "null",
     family = "plus",

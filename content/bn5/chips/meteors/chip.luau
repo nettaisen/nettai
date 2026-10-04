@@ -7,10 +7,10 @@
 local controller = require("@exelib/meteors/controller")
 local meteors = require("./meteors")
 
-local METEORS = controller.make("bn5:meteors/controller", meteors.kind)
+local METEORS = controller.make("meteors/controller", meteors.kind)
 
 return define.chip {
-    id = "bn5:meteors",
+    id = "meteors",
     codes = { "R" },
     element = "fire",
     family = "fire",

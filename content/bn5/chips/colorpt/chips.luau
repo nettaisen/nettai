@@ -7,7 +7,7 @@ local colorpt = require("./colorpt")
 -- ColorPt (BN5 chip 0x07f): the user's front column goes to the other side, panel by panel, for Atk+10 a panel on
 -- the chip at the hand's cursor: BN6's ColorPt with BN5's points (chips/colorpt/colorpt).
 local colorpt_chip = define.chip {
-    id = "bn5:colorpt",
+    id = "colorpt",
     codes = { "*" },
     element = "null",
     family = "plus",
@@ -26,7 +26,7 @@ local colorpt_chip = define.chip {
 -- DblPoint (BN5 chip 0x0cf): the user's front column goes to the other side, panel by panel, for Atk+20 a panel on
 -- the chip at the hand's cursor: BN6's DblPoint with BN5's points (chips/colorpt/colorpt).
 local dblpoint = define.chip {
-    id = "bn5:dblpoint",
+    id = "dblpoint",
     codes = { "*" },
     element = "null",
     family = "plus",

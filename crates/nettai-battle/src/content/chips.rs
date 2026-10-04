@@ -272,14 +272,14 @@ pub enum DamageFormula {
     /// An SP navi chip's: by how long its user took to delete that SP navi
     /// (`sub_8010AE4`; formulas 1 to 18). `slot`: the SP navi, one of the
     /// rules' `sp_slots`; `by_time`: the damage by deletion-time step
-    /// (`Rules::sp_deletion_times`). `per_player_gauges`: BN5's SP navi
+    /// (`Rules::sp_deletion_times`). `operation_battle`: BN5's SP navi
     /// chips' damage in the battle flag 0x40 mode instead (0x0800E8DE's
     /// table; BN6's has no such branch).
     SpNavi {
         slot: String,
         by_time: Vec<u16>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        per_player_gauges: Option<u16>,
+        operation_battle: Option<u16>,
     },
     /// By how full the custom gauge is (`sub_8010B78`; formula 19).
     Gauge,
@@ -303,7 +303,7 @@ pub enum DamageFormula {
     /// battle flag 0x40 mode.
     GaugeLevel { base: u16 },
     /// By a count of its user's side, `by_count[n]` (the last entry for
-    /// more), and `per_player_gauges` in the battle flag 0x40 mode: BN5's
+    /// more), and `operation_battle` in BN5's operation battle: BN5's
     /// DS navi chips (formulas 23 to 44, 0x0800E9B0: the side's statistic
     /// 3), Roll SP's (formula 1, 0x0800E8B4: the side's holy panels),
     /// Django SP's (formula 22, 0x0800E98A: the turns before this one).
@@ -311,7 +311,7 @@ pub enum DamageFormula {
         of: Counted,
         by_count: Vec<u16>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        per_player_gauges: Option<u16>,
+        operation_battle: Option<u16>,
     },
 }
 

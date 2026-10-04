@@ -8,7 +8,7 @@ local voltz = require("./voltz")
 -- going on over the other side's panels (./voltz, instant effect 16; the record's params: level 0, the
 -- shocks every 20 ticks).
 local voltz1 = define.chip {
-    id = "bn5:voltz1",
+    id = "voltz1",
     codes = { "K", "O", "Y" },
     element = "elec",
     family = "elec",
@@ -27,7 +27,7 @@ local voltz1 = define.chip {
 -- going on over the other side's panels (./voltz, instant effect 16; the record's params: level 1, the
 -- shocks every 20 ticks).
 local voltz2 = define.chip {
-    id = "bn5:voltz2",
+    id = "voltz2",
     codes = { "J", "U", "Z" },
     element = "elec",
     family = "elec",
@@ -46,7 +46,7 @@ local voltz2 = define.chip {
 -- going on over the other side's panels (./voltz, instant effect 16; the record's params: level 2, the
 -- shocks every 20 ticks).
 local voltz3 = define.chip {
-    id = "bn5:voltz3",
+    id = "voltz3",
     codes = { "A", "H", "V" },
     element = "elec",
     family = "elec",

@@ -19,7 +19,7 @@ local function cheer(me: Object)
 end
 
 return define.chip {
-    id = "bn5:fanfare",
+    id = "fanfare",
     codes = { "F", "P", "Z", "*" },
     element = "null",
     family = "summon",
@@ -34,7 +34,7 @@ return define.chip {
     -- BN5's row 0; its identity the actor record 0xDD (0x08014C94: version 4, AI index 0x21).
     dimming = bn5_instrument.hook(instrument.instrument {
         identity = define.identity {
-            id = "bn5:fanfare",
+            id = "fanfare",
             class = "field_object",
             version = 4,
             ai_index = 0x21,
@@ -43,7 +43,7 @@ return define.chip {
         palette = 0,
         play_ticks = 0x55 * 2,
         pause_ticks = 0x3C,
-        tune = asset.sound("bn5:fanfare"),
+        tune = asset.sound("fanfare"),
         effect = cheer,
     }),
 }

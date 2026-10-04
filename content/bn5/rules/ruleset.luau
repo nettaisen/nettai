@@ -13,7 +13,7 @@ local patch_cards = require("./patch-cards/system")
 local souls = require("./souls/system")
 
 return define.ruleset {
-    id = "bn5:stock",
+    id = "stock",
     stock = true,
     systems = {
         -- The NaviCust compiled into the navi's stats as the round is set up (BN6's compile, BN5's board and bugs).

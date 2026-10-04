@@ -1380,8 +1380,8 @@ impl Defs {
                         super::Recipe::Sequence(keys.iter().map(|k| chip_handle(k, &at)).collect::<Result<_, _>>()?)
                     }
                 };
-                let per_player_gauges_only = r.per_player_gauges_only;
-                advances.push((r.order, super::ProgramAdvance { result: ChipHandle(i as u16), recipe, per_player_gauges_only }));
+                let operation_battle_only = r.operation_battle_only;
+                advances.push((r.order, super::ProgramAdvance { result: ChipHandle(i as u16), recipe, operation_battle_only }));
             }
             if !c.record.program_advances.is_empty() {
                 // (A player's record of the round's formed ones is 64 bits:

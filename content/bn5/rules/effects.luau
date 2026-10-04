@@ -10,7 +10,7 @@
 -- `kinds.obstacle_soldier`). Its screen palette flash (effect object 0x0A, 0x080E1030) holds through a pause whatever its
 -- mode, and through dimming only with no mode (both variants: BN6's variant 1 tests the pause bit for dimming too).
 
-return define.rules("bn5:effects", {
+return define.rules("effects", {
     shake = "battle",
     spark_steps_at_start = false,
     retype = "bn5",

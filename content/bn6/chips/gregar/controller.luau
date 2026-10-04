@@ -11,6 +11,7 @@
 
 local dimming_chips = require("@exelib/dimming")
 local summon = require("./summon")
+local chip_gate_battle = require("../../lib/chip_gate_battle")
 
 local controller = {}
 
@@ -33,9 +34,9 @@ local PIECES = 2
 
 -- 0x080EDE5E: the custom gauge and the emotion window hide (`shown`
 -- false: `sub_801DACC`) or show (`sub_801DA48`): HUD draw tasks 4 and 14,
--- or with each side's own gauge (battle flag 0x40) 17 and 14.
+-- or with each side's own gauge (the chip gate battle) 17 and 14.
 local function hud(shown: boolean)
-    local parts: { HudPart } = if battle.per_player_gauges()
+    local parts: { HudPart } = if chip_gate_battle()
         then { "level_gauge", "emotion_window" }
         else { "gauge", "emotion_window" }
     battle.show_hud(parts, shown)

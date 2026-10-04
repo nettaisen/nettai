@@ -43,7 +43,7 @@ local function update(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "bn5:greatyo/controller",
+    id = "greatyo/controller",
     pool = "effect",
     state = { middle = "object", below = "object", above = "object", leader = "record:bn5-yoyo", follower = "record:bn5-yoyo" },
     -- 0x080E89C4.

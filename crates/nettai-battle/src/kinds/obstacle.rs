@@ -1186,7 +1186,7 @@ pub fn clear_wind(b: &mut Battle, o: ObjectRef) {
 /// tracked target (`sub_802EF74`) in the battle flag 0x40 mode, which
 /// netbattles don't use.
 pub fn release_tracking(b: &mut Battle, r: ObjectRef) {
-    if b.round.flags & battle_flags::PER_PLAYER_GAUGES == 0 {
+    if b.round.flags & battle_flags::OWN_GAUGES == 0 {
         return;
     }
     for side in 0..2 {

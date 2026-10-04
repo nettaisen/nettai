@@ -17,7 +17,7 @@ local SPRITE = bn5_instrument.sprite
 local EFFECT = effects.confuse(statuses.confuse_4, collision.guard_breaking, collision.nothing)
 
 return define.chip {
-    id = "bn5:discord",
+    id = "discord",
     codes = { "B", "J", "Q", "*" },
     element = "null",
     family = "summon",
@@ -32,7 +32,7 @@ return define.chip {
     -- BN5's row 1; its identity the actor record 0xDE (0x08014C94: version 5, AI index 0x21).
     dimming = bn5_instrument.hook(instrument.instrument {
         identity = define.identity {
-            id = "bn5:discord",
+            id = "discord",
             class = "field_object",
             version = 5,
             ai_index = 0x21,
@@ -41,7 +41,7 @@ return define.chip {
         palette = 2,
         play_ticks = 0x55 * 2,
         pause_ticks = 0x3C,
-        tune = asset.sound("bn5:discord"),
+        tune = asset.sound("discord"),
         effect = EFFECT,
     }),
 }

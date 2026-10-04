@@ -8,6 +8,7 @@
 
 local beast_out_chip = require("../../chips/beastout/chip")
 local kind = require("../forms/kind")
+local chip_gate_battle = require("../../lib/chip_gate_battle")
 
 local custom_beast = {}
 
@@ -92,7 +93,7 @@ custom_beast.button = {
     shown = function(side: number): boolean
         return megaman(side)
             and not sealed(side)
-            and not battle.per_player_gauges()
+            and not chip_gate_battle()
             and not custom.player(side).random_battle
             and (system.setup() :: Setup).beast_out
     end,

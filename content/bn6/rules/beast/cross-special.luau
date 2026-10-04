@@ -1,5 +1,5 @@
 --!strict
--- BN6's Cross special: DarkInvs' auto-battle in the battle flag 0x40 mode.
+-- BN6's Cross special: DarkInvs' auto-battle in the chip gate battle.
 -- DarkInvs asks for a takeover of its user (the request "takeover"); idle
 -- hands the request to the side's systems (`sub_802E4E4`), and the beast
 -- system starts it: 0x1E0 ticks (`battle.take_over`), the navi

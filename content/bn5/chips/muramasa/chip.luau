@@ -9,7 +9,7 @@ local regions = require("@exelib/regions")
 local swords = require("../../lib/swords")
 
 return define.chip {
-    id = "bn5:muramasa",
+    id = "muramasa",
     codes = { "M" },
     element = "null",
     family = "sword",
@@ -28,7 +28,7 @@ return define.chip {
         blade = swords.blade,
         blade_anim = swords.blade_anim,
         hit = { region = regions.long, collision = swords.slashes_navis, hit_mod = 3 },
-        effect = define.effect { sprite = asset.sprite("bn5:sword-slash"), anim = 1, palette = 8 },
+        effect = define.effect { sprite = asset.sprite("sword-slash"), anim = 1, palette = 8 },
         sound = swords.swing,
     },
 }

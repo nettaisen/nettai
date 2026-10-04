@@ -18,11 +18,11 @@ local darktorn = require("../../../../chips/darktorn/chip")
 local souls = require("../../../../rules/souls/system")
 
 return define.form {
-    id = "bn5:gyrosoul",
+    id = "gyrosoul",
     soul = { number = 2, family = "wind" },
     change = souls.action,
     revert = souls.revert,
-    sprite = asset.sprite("bn5:gyrosoul"),
+    sprite = asset.sprite("gyrosoul"),
     element = "null",
     buster_bonus = 0,
     weapons = {
@@ -30,20 +30,20 @@ return define.form {
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
         -- Routine 0x39 (0x0800FA8E): DarkTorn (chip 0xC5), the charge table's row 0x39.
-        chaos = chaos.weapon("bn5:gyrosoul/chaos", darktorn, { 40, 60, 90, 120, 150, 40 }),
+        chaos = chaos.weapon("gyrosoul/chaos", darktorn, { 40, 60, 90, 120, 150, 40 }),
     },
     status_reset = { "float_shoes", "floating_body", "air_shoes" },
     priming = {
         by = { family = "wind" },
-        sound = asset.sound("bn5:soul-primed"),
+        sound = asset.sound("soul-primed"),
         doubles = { { family = "wind" }, { family = "null" } },
     },
     palette = 0,
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 5-10, the version's souls'); in its
     -- Chaos Unison look while the chaos charge is armed (0x080125F6: the palette 11 on).
     mugshot = {
-        normal = asset.mugshot("bn5:gyrosoul"),
-        variant = { normal = asset.mugshot("bn5:gyrosoul-chaos") },
+        normal = asset.mugshot("gyrosoul"),
+        variant = { normal = asset.mugshot("gyrosoul-chaos") },
     },
     buster_arm = { anim = 0 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 2 of category 0), wearing the

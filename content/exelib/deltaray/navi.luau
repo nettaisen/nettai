@@ -162,7 +162,7 @@ function deltaray.make(spec: Spec): {
         end
         st(me).facing = bit32.bxor(me.alliance, me.flip)
         me:set_action(4)
-        if spec.tracks and battle.per_player_gauges() then
+        if spec.tracks and battle.own_gauges() then
             me.phase = 0x1C
         end
     end

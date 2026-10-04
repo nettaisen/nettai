@@ -1,6 +1,6 @@
 --!strict
 -- The plus chips used on their own (instant chip effect 3, `sub_8010488`,
--- run once by action 0x1C): from a special source (battle flag 0x40 mode)
+-- run once by action 0x1C): from a special source (the chip gate battle)
 -- the chip's damage, and an extra, go into the bonus its side stores for
 -- its special chip; otherwise a sparkle (@exelib/instant/sparkle, BN6's
 -- bubble) rises by the navi. On the custom screen a plus chip folds into the chip before it

@@ -15,14 +15,15 @@ local collision = require("../../rules/collision")
 local navi_chips = require("@exelib/navi-chips/navi")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
+local operation_battle = require("../../lib/operation_battle")
 
 local csmopris = {}
 
-local SPRITE = asset.sprite("bn5:cosmoman")
+local SPRITE = asset.sprite("cosmoman")
 
 -- ---- The comet ------------------------------------------------------------------------------------------------------
 
--- Its speed by its variant (Param1) and row (Param2): 0x080D491C's rows of five, or 0x080D4948 in battle flag 0x40
+-- Its speed by its variant (Param1) and row (Param2): 0x080D491C's rows of five, or 0x080D4948 in the operation battle
 -- mode; its turn's speed by its row (0x080D4B54); its HP by its variant (0x080D4820).
 local SPEEDS: { [number]: { [number]: number } } = {
     [0] = { [0] = 0x4_1999, 0x4_6666, 0x4_B333, 0x5_0000, 0x4_0000 },
@@ -34,7 +35,7 @@ local HP = 10
 local HIT_MOD = 3
 -- The enemy navis a comet turns toward (0x080D4B48).
 local TARGETS = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
-local SOUNDS = { [0] = asset.sound("bn5:sound-138"), [1] = asset.sound("bn5:sound-137") }
+local SOUNDS = { [0] = asset.sound("sound-138"), [1] = asset.sound("sound-137") }
 
 export type CometState = {
     -- Its variant (Param1: 0 to 3 the virus's, 4 the navi chip's) and row (Param2).
@@ -78,7 +79,7 @@ local function moved(me: Object, x: number)
     end
 end
 
--- Action 4 (0x080D4A16, the virus's): straight ahead. (In battle flag 0x40 mode it also marks the panel ahead,
+-- Action 4 (0x080D4A16, the virus's): straight ahead. (In the operation battle it also marks the panel ahead,
 -- 0x080E9FA4's effect object #0x83, not ported.)
 local function straight(me: Object)
     local x = me.panel_x
@@ -164,7 +165,7 @@ local function comet_init(me: Object)
     sprite:set_animation(16)
     local s = me.state :: CometState
     local speed
-    if battle.per_player_gauges() then
+    if operation_battle() then
         speed = SPECIAL_SPEEDS[s.row]
     else
         local row = SPEEDS[s.row]
@@ -190,7 +191,7 @@ local function comet_init(me: Object)
 end
 
 csmopris.comet = define.kind {
-    id = "bn5:csmopris/comet",
+    id = "csmopris/comet",
     pool = "attack",
     state = { variant = "u8", row = "u8" },
     -- 0x080D482C: by its lifecycle; its sprite steps (while dimmed too for the navi chip's).
@@ -241,7 +242,7 @@ export type State = {
     sent: number,
 }
 
-local SOUND_APPEAR, SOUND_POSE = asset.sound("bn5:appear"), asset.sound("bn5:sound-13a")
+local SOUND_APPEAR, SOUND_POSE = asset.sound("appear"), asset.sound("sound-13a")
 local COMETS, EVERY, AHEAD = 9, 20, 20
 local SOLID = 0x10
 
@@ -368,7 +369,7 @@ end
 local ACTIONS = { [0] = appear, [4] = pose, [8] = rise, [0xC] = comets, [0x10] = wait, [0x14] = leave }
 
 csmopris.kind = define.kind {
-    id = "bn5:csmopris/navi",
+    id = "csmopris/navi",
     pool = "actor",
     state = { controller = "object", sent = "u8" },
     -- 0x080BF814.

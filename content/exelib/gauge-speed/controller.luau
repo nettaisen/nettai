@@ -55,7 +55,7 @@ local function effect(me: Object, WARNING_SOUND: Sound)
         -- sub_801DF8C
         battle.set_gauge_rate(if fast then FAST_RATE else SLOW_RATE)
         set_timer(me.alliance, fast, OWN_TICKS)
-        if battle.per_player_gauges() and not battle.link() then
+        if battle.own_gauges() and not battle.link() then
             set_timer(bit32.bxor(me.alliance, 1), fast, OTHER_TICKS)
         end
         -- (The gauge's slow or fast look is loaded into VRAM.)
@@ -65,7 +65,7 @@ local function effect(me: Object, WARNING_SOUND: Sound)
     -- sub_800AE90: a blinking warning over the gauge, with its sound. With
     -- per-player gauges in a link battle, only the user's player sees and
     -- hears it.
-    if battle.per_player_gauges() and battle.link() then
+    if battle.own_gauges() and battle.link() then
         battle.warn(WARNING_SOUND, nil, me.alliance)
     else
         battle.warn(WARNING_SOUND)
