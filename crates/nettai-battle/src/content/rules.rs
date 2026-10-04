@@ -215,7 +215,11 @@ pub enum OverlayRestart {
     Reload,
 }
 
-/// How a navi's push (slide type 1) reads the hits it took.
+/// How a navi's push (slide type 1) reads the hits it took; and, of an
+/// obstacle's own game, how an obstacle's push does (`kinds::obstacle`:
+/// BN5's 0x0800D4B0 reads the hits by the hitters' flips, its slide
+/// keeps no bounds, 0x08014894, and its push on any hit goes by the
+/// hitters' flips, 0x08017AD8).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PushReading {
