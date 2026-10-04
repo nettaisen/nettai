@@ -1,5 +1,5 @@
 --!strict
--- Magnum's gunner (BN5's actor object #2, 0x080B8CA8; BN5's own): a stand-in for the user (@common/dimming/stand_in's
+-- Magnum's gunner (BN5's actor object #2, 0x080B8CA8; BN5's own): a stand-in for the user (@exelib/dimming/stand_in's
 -- drawing) that moves a sight over the enemy's area, a step every 7 ticks, until the user presses A or 180 ticks
 -- pass; then, half a second later, it shoots the sight's panels, breaking them. Its mode (the controller's Param1;
 -- Magnum's 0) picks how the sight moves and what it shoots: 0, column by column across the field to the next one
@@ -7,9 +7,9 @@
 -- row's three panels there; 2, as 0 but backward, every 5 ticks.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
-local stand_in = require("@common/dimming/stand_in")
+local stand_in = require("@exelib/dimming/stand_in")
 
 local gunner = {}
 

@@ -1,13 +1,13 @@
 --!strict
--- BN5's wide wave (attack object #0x3B, BN6's code: @common/widesht/wave), BN5's kind: its sprite BN5's (a variant's
+-- BN5's wide wave (attack object #0x3B, BN6's code: @exelib/widesht/wave), BN5's kind: its sprite BN5's (a variant's
 -- own, ./variants), its sound BN6's number, hitting navis (its afterimages copy its sheet; BN5's one trailing variant
 -- names its own); and BN5's wide shots
--- (@common/widesht/action, action 0x30) with BN5's attachment and wave: `wave.action { ... }`.
+-- (@exelib/widesht/action, action 0x30) with BN5's attachment and wave: `wave.action { ... }`.
 
-local action = require("@common/widesht/action")
+local action = require("@exelib/widesht/action")
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local common = require("@common/widesht/wave")
+local common = require("@exelib/widesht/wave")
 
 local wave = {}
 

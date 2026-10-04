@@ -8,7 +8,7 @@
 -- one pixel up and a panel further ahead, and ends its columns early
 -- (their timers to 1) once its user clears that slot.
 
-local slot = require("@common/slot")
+local slot = require("@exelib/slot")
 local thunder_column = require("./column")
 
 local doll = {}

@@ -80,14 +80,18 @@ impl Library for Content {
         Content::chip(self, id)
     }
 
-    // (Content read with no player, by tools: the first game that has
-    // what is asked; a player's screen reads its game's, `GameLibrary`.)
+    // (The game's: a match plays one, docs/design/content-model-v2.md
+    // §4.0.)
+    fn result_words(&self) -> u32 {
+        self.rules().flow.result_words as u32
+    }
+
     fn beast_out_chip(&self) -> Option<ChipHandle> {
-        self.defs.roles.iter().find_map(|r| r.try_chip(ChipRole::BeastOut))
+        self.defs.roles().try_chip(ChipRole::BeastOut)
     }
 
     fn invalid_chip(&self) -> ChipHandle {
-        self.defs.roles.iter().find_map(|r| r.try_chip(ChipRole::Invalid)).expect("no game fills the role chips.invalid")
+        self.defs.roles().try_chip(ChipRole::Invalid).expect("the game fills no role chips.invalid")
     }
 
     fn advance_index(&self, result: ChipHandle) -> u8 {
@@ -154,122 +158,16 @@ impl Library for Content {
     }
 
     fn layout(&self) -> &CustomScreenLayout {
-        let game = self.rules.iter().position(|r| r.custom_screen != CustomScreenLayout::default()).unwrap_or(0);
-        &self.rules_of(crate::content::RootId(game as u8)).custom_screen
+        &self.rules().custom_screen
     }
 
     fn banner_holds(&self, id: BannerId) -> bool {
-        self.rules.iter().any(|r| r.banner_holds(id))
+        self.rules().banner_holds(id)
     }
 
     fn program_advance_banner(&self, made: bool) -> BannerId {
         use crate::content::BannerRole;
-        let role = if made { BannerRole::ProgramAdvance } else { BannerRole::ProgramAdvanceEmpty };
-        self.defs.roles.iter().find_map(|r| r.banners.get(&role).copied()).expect("no game fills the program advance banners")
-    }
-}
-
-/// The content as a player's custom screen reads it: its game's data (its
-/// layout, its Beast Out and invalid chips, its banners; docs/design/
-/// rules-in-luau.md §2.3), the content's records for the rest.
-/// (`Library for Content`, tools' and tests' with no player, reads the first
-/// game that has it.)
-pub struct GameLibrary<'a> {
-    pub content: &'a Content,
-    pub game: crate::content::RootId,
-    /// The side's ruleset, whose own sections (a mix's) the screen reads
-    /// over its game's.
-    pub ruleset: Option<nettai_content_api::RulesetHandle>,
-}
-
-impl Library for GameLibrary<'_> {
-    fn result_words(&self) -> u32 {
-        self.content.rules_of(self.game).flow.result_words as u32
-    }
-
-    fn chip(&self, id: ChipHandle) -> &ChipData {
-        self.content.chip(id)
-    }
-
-    fn beast_out_chip(&self) -> Option<ChipHandle> {
-        self.content.defs.roles(self.game).try_chip(ChipRole::BeastOut)
-    }
-
-    fn invalid_chip(&self) -> ChipHandle {
-        self.content.defs.roles(self.game).chip(ChipRole::Invalid)
-    }
-
-    fn advance_index(&self, result: ChipHandle) -> u8 {
-        self.content.advance_index(result)
-    }
-
-    fn own_chip_of(&self, id: ChipHandle) -> Option<NaviHandle> {
-        self.content.own_chip_of(id)
-    }
-
-    fn changes_form(&self, navi: NaviHandle) -> bool {
-        self.content.changes_form(navi)
-    }
-
-    fn cross_form(&self, navi: NaviHandle, version: GameVersion, cross: u8) -> Option<FormHandle> {
-        self.content.cross_form(navi, version, cross)
-    }
-
-    fn beast_out_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle> {
-        self.content.beast_out_form(navi, version)
-    }
-
-    fn beast_over_form(&self, navi: NaviHandle, version: GameVersion) -> Option<FormHandle> {
-        self.content.beast_over_form(navi, version)
-    }
-
-    fn has_souls(&self, navi: NaviHandle) -> bool {
-        Library::has_souls(self.content, navi)
-    }
-
-    fn soul_for_family(&self, navi: NaviHandle, family: crate::content::ChipFamily) -> Option<(u8, FormHandle)> {
-        Library::soul_for_family(self.content, navi, family)
-    }
-
-    fn form_traits(&self, form: FormHandle) -> FormTraits {
-        self.content.form_traits(form)
-    }
-
-    fn form_is_soul(&self, form: FormHandle) -> bool {
-        self.content.form_is_soul(form)
-    }
-
-    fn program_advances(&self) -> &[ProgramAdvance] {
-        self.content.program_advances()
-    }
-
-    fn navi_chip(&self, navi: NaviHandle) -> Option<FolderChip> {
-        Library::navi_chip(self.content, navi)
-    }
-
-    fn run_message(&self, navi: NaviHandle) -> [u8; 3] {
-        self.content.run_message(navi)
-    }
-
-    fn run_message_talking(&self, navi: NaviHandle) -> [u32; 3] {
-        self.content.run_message_talking(navi)
-    }
-
-    fn form_description_lines(&self, form: FormHandle) -> u8 {
-        self.content.form_description_lines(form)
-    }
-
-    fn layout(&self) -> &CustomScreenLayout {
-        &self.content.side_rules(self.ruleset, self.game).custom_screen
-    }
-
-    fn banner_holds(&self, id: BannerId) -> bool {
-        self.content.side_rules(self.ruleset, self.game).banner_holds(id)
-    }
-
-    fn program_advance_banner(&self, made: bool) -> BannerId {
-        use crate::content::BannerRole;
-        self.content.defs.roles(self.game).banner(if made { BannerRole::ProgramAdvance } else { BannerRole::ProgramAdvanceEmpty })
+        self.defs.roles().banner(if made { BannerRole::ProgramAdvance } else { BannerRole::ProgramAdvanceEmpty })
     }
 }
 

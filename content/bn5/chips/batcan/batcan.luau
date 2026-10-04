@@ -1,5 +1,5 @@
 --!strict
--- BN5's BatCan1-4 (action 0x36, 0x080EE410) and their shot (attack object #1, 0x080C49FC): BN6's (@common/batcan)
+-- BN5's BatCan1-4 (action 0x36, 0x080EE410) and their shot (attack object #1, 0x080C49FC): BN6's (@exelib/batcan)
 -- with BN5's look: the bat cannon (BN5's attachment row 0x21, BN6's 0xF row for row, but on its holder itself: BN5's
 -- attachment, 0x080B9AB8, has no place by its holder's NameID for the bat as BN6's has, and the row names no attach
 -- point), BN5's shot collision types and bat spark, and no restart of the navi's form overlay as the cannon rises
@@ -7,7 +7,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local common = require("@common/batcan/batcan")
+local common = require("@exelib/batcan/batcan")
 local sparks = require("../../lib/sparks")
 
 return common.make {

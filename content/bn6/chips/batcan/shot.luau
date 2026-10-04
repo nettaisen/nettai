@@ -4,11 +4,11 @@
 -- panel every two ticks from where it appears and ends on its first hit,
 -- with the bat's spark; what differs between BatCan's shots is its hit
 -- modifier. See docs/engine/shot-chips.md §6.1. The behavior is BN5's too
--- (@common/batcan), made here with BN6's look.
+-- (@exelib/batcan), made here with BN6's look.
 
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local common = require("@common/batcan/batcan")
+local common = require("@exelib/batcan/batcan")
 local sparks = require("../../lib/sparks")
 
 return common.make {

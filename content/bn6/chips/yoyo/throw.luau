@@ -1,6 +1,6 @@
 --!strict
 -- YoYo's and GreatYo's throw (the original's action 0x18, `sub_80EC02A`):
--- the shared throw (@common/yoyo/throw) with BN6's yoyo arm and yoyos
+-- the shared throw (@exelib/yoyo/throw) with BN6's yoyo arm and yoyos
 -- (yoyo.luau). The navi holds out its yoyo arm and throws a yoyo from the
 -- panel ahead, 27 pixels up; GreatYo throws a controller that sends three,
 -- one on each row. The navi waits until the yoyo (or the controller)
@@ -8,7 +8,7 @@
 -- ticks.
 
 local attachment = require("../../objects/attachment/attachment")
-local common = require("@common/yoyo/throw")
+local common = require("@exelib/yoyo/throw")
 local yoyo = require("./yoyo")
 
 local throw = {}

@@ -1,13 +1,13 @@
 --!strict
 -- A BlkBomb (the original's attack object #0x4A, `sub_80CD4EC`): the shared
--- bomb (@common/blkbomb/bomb), BN6's kind and look: a neutral object whose
+-- bomb (@exelib/blkbomb/bomb), BN6's kind and look: a neutral object whose
 -- burst is an attack, pushed by a pushing hit with its damage kept, leaving
 -- the field as `sub_80CD700` does.
 
 local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local common = require("@common/blkbomb/bomb")
+local common = require("@exelib/blkbomb/bomb")
 local effects = require("../../lib/effects")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")

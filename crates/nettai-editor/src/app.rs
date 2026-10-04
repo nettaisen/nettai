@@ -136,8 +136,10 @@ pub struct Options {
     /// The content directory given (`--content`), which Play hands the
     /// frontend too; else the repository's.
     pub content: Option<PathBuf>,
-    /// The content folders loaded (their strings tables).
-    pub roots: Vec<PathBuf>,
+    /// The content directory loaded, and its games loaded (their strings
+    /// tables).
+    pub content_dir: PathBuf,
+    pub games: Vec<String>,
     /// The packs given by directory (`--pack`), each in place of the found
     /// one of its game, which Play hands the frontend too.
     pub packs: Vec<PathBuf>,
@@ -243,7 +245,7 @@ impl Editor {
         self.lang = lang;
         self.names.other = match lang {
             Lang::En => None,
-            Lang::Ja => match nettai_content::locale::load_many(&self.options.roots, lang.code()) {
+            Lang::Ja => match nettai_content::locale::load_for(&self.options.content_dir, &self.options.games, lang.code()) {
                 Ok(Some(s)) => Some(s),
                 _ => {
                     self.status = format!("the content has no {} names", lang.code());

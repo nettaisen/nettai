@@ -13,8 +13,8 @@
 
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
-local regions = require("@common/regions")
-local navi_chips = require("@common/navi-chips/navi")
+local regions = require("@exelib/regions")
+local navi_chips = require("@exelib/navi-chips/navi")
 local trajectory = require("../../lib/trajectory")
 local follower = require("./follower")
 

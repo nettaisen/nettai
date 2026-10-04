@@ -7,7 +7,7 @@
 -- navi's own side; the navi then waits 8 ticks (the instant chips' action's
 -- wait for this effect).
 
-local common = require("@common/gust/gust")
+local common = require("@exelib/gust/gust")
 local gust = require("../../../../objects/gust/gust")
 
 local tengu_wind = {}
@@ -24,7 +24,7 @@ local function setup(navi: Object)
 end
 
 -- `sub_80CD4AC` (instant effect 0x14; the patch card dustman's B+Back
--- too): a gust in each row, pulling (@common/gust/gust's `blow_rows`).
+-- too): a gust in each row, pulling (@exelib/gust/gust's `blow_rows`).
 function tengu_wind.blow(user: Object, _spec: InstantChipSpec)
     common.blow_rows(gust.kind, user, SOUND)
 end

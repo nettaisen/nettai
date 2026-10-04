@@ -1,9 +1,9 @@
 --!strict
 -- A grab shot (the original's attack object #0xF, `sub_80C6414`): the
--- shared shot (@common/grab/shot), BN6's kind and look.
+-- shared shot (@exelib/grab/shot), BN6's kind and look.
 
 local collision = require("../../rules/collision")
-local common = require("@common/grab/shot")
+local common = require("@exelib/grab/shot")
 
 local shot = {}
 

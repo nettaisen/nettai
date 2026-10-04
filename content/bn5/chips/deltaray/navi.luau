@@ -1,6 +1,6 @@
 --!strict
 -- DeltaRay, the navi of BN5's DeltaRay chip (BN5's actor object #0x3D, 0x080C2018): the shared DeltaRay
--- (@common/deltaray/navi), BN5's kind. BN5's code is BN6's but for its constants (ProtoMan's sprite 08-01, its
+-- (@exelib/deltaray/navi), BN5's kind. BN5's code is BN6's but for its constants (ProtoMan's sprite 08-01, its
 -- sounds, its mark (effect 0x35) and slash (effect 0x33), his sword's animation 1, his finish's animation 0x11, the
 -- follow effect's look 4 for his burst), its first candidate panel (the column past the enemy navi, 0x080C1C0C),
 -- no white flashes at the strike or the burst, and, in the battle flag 0x40 mode, its aim at the enemy navi his
@@ -8,7 +8,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local common = require("@common/deltaray/navi")
+local common = require("@exelib/deltaray/navi")
 local follow_effect = require("./follow_effect")
 
 return common.make {

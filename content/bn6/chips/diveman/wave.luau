@@ -7,7 +7,7 @@
 -- navi AI's waits a dimming out. See docs/engine/chips.md §3.6.27.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
 local wave = {}

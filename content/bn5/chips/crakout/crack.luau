@@ -11,7 +11,7 @@
 -- and the hit's element, which BN5's crack leaves to a register (r2, what the sound call left: 0 here).
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local crack = {}
 

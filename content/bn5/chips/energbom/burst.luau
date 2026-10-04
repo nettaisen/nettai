@@ -1,9 +1,9 @@
 --!strict
--- BN5's energy burst (attack object #0x11, BN6's code: @common/energbom/burst), BN5's kind; its look and collision
+-- BN5's energy burst (attack object #0x11, BN6's code: @exelib/energbom/burst), BN5's kind; its look and collision
 -- types BN6's: what EnergBom's and MegEnBom's bomb leaves where it lands (`burst.leave`).
 
 local collision = require("../../rules/collision")
-local common = require("@common/energbom/burst")
+local common = require("@exelib/energbom/burst")
 
 return common.make {
     id = "bn5:energbom/burst",
