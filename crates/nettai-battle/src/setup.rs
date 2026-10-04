@@ -196,9 +196,10 @@ pub struct NaviStats {
     pub number_open: bool,
     /// BN5's +0x4C: Hub Style, which BN5's patch card 111 (0x6F) sets when
     /// installed and on (0x08138214, the patch cards' application after the
-    /// NaviCust's compile): MegaMan's palettes and faces (BN5's light and
-    /// dark system). No BN6 navi has it.
-    pub hub_style: bool,
+    /// NaviCust's compile): 1 by Team ProtoMan's card, 2 by Team Colonel's
+    /// (0x081382FC); 0 none. MegaMan's buster, arm, shade, palettes and
+    /// faces read it. No BN6 navi has it.
+    pub hub_style: u8,
     pub weapons: NaviWeapons,
     pub bugs: NaviCustBugs,
 }

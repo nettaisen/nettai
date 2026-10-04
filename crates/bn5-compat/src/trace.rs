@@ -56,6 +56,17 @@ pub struct Setup {
     /// have none.
     #[serde(default)]
     pub ai_lists: Option<[String; 2]>,
+    /// Both consoles' emotion window glitches as their window's start reads
+    /// them (0x0813F650: with patch cards in the save's list the cards' flag
+    /// 0x10C4, else the NaviCust's 0x10C1). Older recordings have none.
+    #[serde(default)]
+    pub emotion_window_glitches: Option<[bool; 2]>,
+    /// Both consoles' RNG1 and Regular flags (BattleState+0x17), when the
+    /// other console's last capture was on the setup's frame.
+    #[serde(default)]
+    pub rng1s: Option<[u32; 2]>,
+    #[serde(default)]
+    pub regular_flags: Option<[u8; 2]>,
 }
 
 /// A player's computer-navi data block (0xE0 bytes, BN5's 0x02034C20 by
@@ -458,9 +469,6 @@ impl Round {
             if s.form != 0 {
                 out.push(format!("side {side}'s soul {:#04x} (BN5's forms)", s.form));
             }
-            if s.raw[0x4C] != 0 {
-                out.push(format!("side {side}'s spread program (NaviStats +0x4C = {:#04x})", s.raw[0x4C]));
-            }
             for (what, n) in [("buster", s.raw[0x04]), ("charged shot", s.raw[0x05]), ("B+Back", s.raw[0x07]), ("A charge", s.raw[0x39])] {
                 match compat.weapon(n) {
                     Ok(Some(k)) if content.defs.weapon_by_key(&k).is_none() => out.push(format!("side {side}'s {what} weapon {k}")),
@@ -568,9 +576,9 @@ impl Round {
                 navi_level: None,
                 sp_times: Default::default(),
                 console: ConsoleSetup {
-                    rng: if side == local { self.setup.rng1 } else { 0 },
+                    rng: if side == local { self.setup.rng1 } else { self.setup.rng1s.map_or(0, |r| r[side as usize & 1]) },
                     tag_pair: None,
-                    emotion_window_glitch: false,
+                    emotion_window_glitch: self.setup.emotion_window_glitches.is_some_and(|g| g[side as usize & 1]),
                     frames,
                 },
                 ruleset: Some(ruleset),
@@ -686,9 +694,11 @@ fn battle_folder(content: &Content, compat: &Compat, b: &[u8], regular_pending: 
 /// form (BN5's souls are its forms, to come); the NaviCust's bugs and what
 /// it does to drops and encounters at BN6's offsets, the ones BN5's bugs'
 /// routine writes (0x08140054's: +0x12, +0x13, +0x14, +0x15, +0x16, +0x1A,
-/// +0x24, +0x26, +0x28, +0x31, +0x54; the rest of BN6's bug bytes, which
-/// only a battle's hits write, none at the start); what BN5 has none of
-/// (BN6's Beast Out counter, the sun, the version) none.
+/// +0x24, +0x26, +0x28, +0x31, +0x54) and the patch cards' (0x081382B8's:
+/// the HP drains, +0x18 and +0x19, and the chip recovery, +0x50; the rest of
+/// BN6's bug bytes, which only a battle's hits write, none at the start);
+/// what BN5 has none of (BN6's Beast Out counter, the sun, the version)
+/// none.
 pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<EngineNaviStats, String> {
     let navi_key = navi_key(s.navi).ok_or_else(|| format!("navi {:#04x} has no key", s.navi))?;
     let navi = content.defs.navi_by_key(&navi_key).ok_or_else(|| format!("the content has no {navi_key}"))?;
@@ -739,11 +749,11 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         max_base_hp: s.max_base_hp,
         hp: s.hp,
         max_hp: s.max_hp,
-        chip_recovery: 0,
+        chip_recovery: u16::from_le_bytes([r[0x50], r[0x51]]),
         folder_tags: [[0xFF, 0xFF], [0xFF, 0xFF]],
         chip_shuffle: false,
         number_open: false,
-        hub_style: s.hub_style != 0,
+        hub_style: s.hub_style,
         weapons: NaviWeapons {
             buster: weapon(r[0x04])?,
             charge_shot: weapon(r[0x05])?,
@@ -760,6 +770,8 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
             buster_blanks: r[0x14],
             buster_charged: r[0x15],
             hit_status: r[0x16],
+            hp_drain: r[0x18],
+            custom_drain: r[0x19],
             battle_start: r[0x1A],
             emotion: r[0x24],
             processing: r[0x31],
@@ -791,6 +803,19 @@ pub fn navicust(content: &Content, compat: &Compat, list: &[u8], compressed: imp
     NaviCust::new(&parts, 0)
 }
 
+/// A save's patch cards (each card's number and whether it is switched on,
+/// in the list's order: [`crate::save::Save::patch_cards`]) in the engine's
+/// terms, by `version`'s numbers (compat's patch-cards.toml).
+pub fn patch_cards(content: &Content, compat: &Compat, version: crate::Version, list: &[(u8, bool)]) -> Result<nettai_battle::patch_cards::PatchCards, String> {
+    let mut cards = Vec::new();
+    for &(n, enabled) in list {
+        let key = compat.patch_card(n, version)?;
+        let card = content.defs.patch_card_by_key(key).ok_or_else(|| format!("the content has no patch card {key}"))?;
+        cards.push(nettai_battle::patch_cards::InstalledCard { card, enabled });
+    }
+    nettai_battle::patch_cards::PatchCards::new(&cards)
+}
+
 /// BN5's navi numbers' keys in its root (NaviStats +0x29): MegaMan's.
 /// (The Team Battle's navis come with their content.)
 pub fn navi_key(n: u8) -> Option<String> {
@@ -799,8 +824,11 @@ pub fn navi_key(n: u8) -> Option<String> {
 
 /// Differences between the engine and a BN5 frame: the state machine and
 /// its counters, the simulation RNG, the gauge, the panels (by BN5's
-/// numbers, through compat) and the objects (pool, panel, side, HP,
-/// position: BN5's kinds have no numbers in compat yet).
+/// numbers, through compat) and the objects, as BN6's comparison sees them:
+/// each object's pool and kind (BN5's numbers, through compat's
+/// kinds.toml), header flags, state, action (a navi's by BN5's numbers:
+/// `Compat::navi_action`), phase and its init byte, panel, side, HP,
+/// position, timer, animation and its collision's status flags.
 pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
     let mut d = Vec::new();
     let mut check = |what: &str, ours: String, theirs: String| {
@@ -851,6 +879,12 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
             _ => format!("{p:?}"),
         }
     };
+    let status_field = |i: usize, s: String| -> String {
+        match entries.get(i) {
+            Some(Some(k)) if k.scratch_status => "-".to_string(),
+            _ => s,
+        }
+    };
     let pos = |p: [i32; 3], garbage: bool, xy_unknown: bool, z_fraction: bool| {
         if garbage {
             "-".to_string()
@@ -862,7 +896,11 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
             format!("{},{},{}", p[0], p[1], p[2])
         }
     };
-    let ours: Vec<String> = b
+    // Each object's fields, by name: the list's shape (pool and kind, in
+    // update order) first, then each object's fields one by one, so that a
+    // difference names its field.
+    type Fields = Vec<(&'static str, String)>;
+    let ours: Vec<Fields> = b
         .objects
         .in_order()
         .enumerate()
@@ -870,44 +908,71 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
             let x = b.objects.get(o);
             let key = &b.content.defs.kind(x.kind).key;
             let kind = match entries[i] {
-                Some(k) => format!("#{:#04x}", k.index),
-                None => format!("{key} (no BN5 number)"),
+                Some(k) => format!("type {} #{:#04x}", pool_type(o.pool), k.index),
+                None => format!("type {} {key} (no BN5 number)", pool_type(o.pool)),
             };
             let (garbage, zf) = skip(i, x.flags);
             let xy = nettai_battle::kinds::effect::xy_unknown(b, o);
-            format!(
-                "type {} {kind} panel {} side {} hp {}/{} pos {}",
-                pool_type(o.pool),
-                panel(i, [x.panel.x, x.panel.y]),
-                x.alliance,
-                x.hp,
-                x.max_hp,
-                pos([x.pos.x, x.pos.y, x.pos.z], garbage, xy, zf)
-            )
+            let action = match compat.navi_action(b, o) {
+                Ok(n) => format!("{n:#04x}"),
+                Err(e) => format!("? ({e})"),
+            };
+            let status = x.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
+            vec![
+                ("kind", kind),
+                ("flags", format!("{:#04x}", x.flags)),
+                ("state", format!("{:#04x}", x.state)),
+                ("action", action),
+                ("phase", format!("{:#04x}", x.phase)),
+                ("phase init", format!("{:#04x}", x.phase_init)),
+                ("panel", panel(i, [x.panel.x, x.panel.y])),
+                ("side", x.alliance.to_string()),
+                ("hp", format!("{}/{}", x.hp, x.max_hp)),
+                ("pos", pos([x.pos.x, x.pos.y, x.pos.z], garbage, xy, zf)),
+                ("timer", x.timer.to_string()),
+                ("anim", x.anim.to_string()),
+                ("status", status_field(i, format!("{status:#x}"))),
+            ]
         })
         .collect();
     let order: Vec<_> = b.objects.in_order().collect();
-    let theirs: Vec<String> = f
+    let theirs: Vec<Fields> = f
         .objects
         .iter()
         .enumerate()
         .map(|(i, o)| {
             let (garbage, zf) = skip(i, o.flags);
             let xy = order.get(i).is_some_and(|&r| nettai_battle::kinds::effect::xy_unknown(b, r));
-            format!(
-                "type {} #{:#04x} panel {} side {} hp {}/{} pos {}",
-                o.kind,
-                o.index,
-                panel(i, o.panel),
-                o.alliance,
-                o.hp,
-                o.max_hp,
-                pos(o.pos, garbage, xy, zf)
-            )
+            vec![
+                ("kind", format!("type {} #{:#04x}", o.kind, o.index)),
+                ("flags", format!("{:#04x}", o.flags)),
+                ("state", format!("{:#04x}", o.state[0])),
+                ("action", format!("{:#04x}", o.state[1])),
+                ("phase", format!("{:#04x}", o.state[2])),
+                ("phase init", format!("{:#04x}", o.state[3])),
+                ("panel", panel(i, o.panel)),
+                ("side", o.alliance.to_string()),
+                ("hp", format!("{}/{}", o.hp, o.max_hp)),
+                ("pos", pos(o.pos, garbage, xy, zf)),
+                ("timer", o.timer.to_string()),
+                ("anim", o.anim.to_string()),
+                ("status", status_field(i, format!("{:#x}", o.status))),
+            ]
         })
         .collect();
-    if ours != theirs {
-        check("objects", format!("\n    ours   {}", ours.join("\n           ")), format!("\n    theirs {}", theirs.join("\n           ")));
+    let line = |o: &Fields| o.iter().map(|(k, v)| if *k == "kind" { v.clone() } else { format!("{k} {v}") }).collect::<Vec<_>>().join(", ");
+    let shape = |l: &[Fields]| l.iter().map(|o| o[0].1.clone()).collect::<Vec<_>>();
+    if shape(&ours) != shape(&theirs) {
+        let all = |l: &[Fields]| l.iter().map(line).collect::<Vec<_>>().join("\n           ");
+        check("objects", format!("\n    ours   {}", all(&ours)), format!("\n    theirs {}", all(&theirs)));
+    } else {
+        for (i, (a, t)) in ours.iter().zip(&theirs).enumerate() {
+            for ((name, x), (_, y)) in a.iter().zip(t).skip(1) {
+                if x != y {
+                    check(&format!("object {name}"), format!("{x} (object {i}, {})", a[0].1), y.clone());
+                }
+            }
+        }
     }
     d
 }
@@ -955,7 +1020,9 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
     // sample (an emotion window's flicker, a camera shake's) make the two
     // differ for a frame or a few, then agree again; a difference still
     // there at the round's end is the model's, and stops the round at the
-    // frame it began.
+    // frame it began; one that begins on the last frame compared (a flicker's
+    // draw as the recording ends) has no frame left to agree on, and is
+    // left.
     let local = b.setup.local_side as usize & 1;
     let mut rng1_since: Option<(u32, u32, u32)> = None;
     for i in 0..frames.len() {
@@ -979,7 +1046,8 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
         }
         replay.matched += 1;
     }
-    if let Some((frame, engine, trace)) = rng1_since {
+    let last_compared = frames.len().checked_sub(2).map(|i| frames[i].frame);
+    if let Some((frame, engine, trace)) = rng1_since.filter(|&(frame, _, _)| Some(frame) != last_compared) {
         let differences = vec![format!(
             "rng1: the recording console's RNG1 differs from frame {frame} to the round's end (engine {engine:#010x}, trace {trace:#010x} at frame {})",
             frame + 1
