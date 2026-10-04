@@ -183,16 +183,19 @@ pub fn chip_art<'a>(packs: &Packs<'a>, c: &Content, chip: ChipHandle, problems: 
 }
 
 /// Why a console draws the other version's chip otherwise than the frontend
-/// (`other_versions_art`).
+/// (`ChipArt::version`).
 pub const OTHER_VERSIONS_ART: &str = "another version's chip's art, its own ROM's (the console's ROM has its counterpart's there)";
 
-/// Whether a chip's art is another version's ROM's than the console's
-/// (`ChipArt::version`: a version's own chip, which the other version's ROM
-/// draws as its counterpart). The frontend shows the chip's own on either
-/// console: its picture and icon are known differences where they show.
-pub fn other_versions_art(packs: &Packs, b: &nettai_battle::battle::Battle, chip: ChipHandle) -> bool {
+/// Whether a chip's icon is another version's ROM's than the console's: a
+/// version's own chip (`ChipArt::version`), which the other version's ROM
+/// draws as its counterpart. The frontend shows the chip's own on either
+/// console: its icon is a known difference where it shows, as its picture
+/// is. (Not a chip the US release cut, whose picture alone is another
+/// ROM's: BN6's Gregar and Falzar chips' icons are the pack's own.)
+pub fn other_versions_icon(packs: &Packs, b: &nettai_battle::battle::Battle, chip: ChipHandle) -> bool {
     let console = packs.version().unwrap_or_else(|| crate::custom::version_name(b, b.setup.local_side));
-    packs.chip_art(&b.content, key(&b.content, chip)).and_then(|a| a.version.as_deref()).is_some_and(|v| v != console)
+    let art = packs.chip_art(&b.content, key(&b.content, chip)).filter(|a| a.region.is_none());
+    art.and_then(|a| a.version.as_deref()).is_some_and(|v| v != console)
 }
 
 /// A chip's name (`name`, its display text) in the 8x16 font's glyphs, all

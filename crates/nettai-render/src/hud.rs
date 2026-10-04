@@ -990,7 +990,7 @@ fn icon_parts<'a>(
     let count = o.chips_held.min(6) as i32;
     // (The other version's chip's icon is its own ROM's: the stack's reach
     // is a known difference.)
-    if crate::lookups::other_versions_art(packs, b, chip) {
+    if crate::lookups::other_versions_icon(packs, b, chip) {
         let back = 2 * (count - 1);
         let x = if a * f > 0 { x0 - back } else { x0 };
         problems.known(x, y0 - back, 16 + back, 16 + back, crate::lookups::OTHER_VERSIONS_ART);

@@ -910,7 +910,12 @@ impl Window {
                 Some(a) if a.region.as_deref().is_some_and(|r| r != v.region) => {
                     Some("the Japanese games' chip picture (a US console shows a placeholder)")
                 }
-                Some(a) if a.version.as_deref().is_some_and(|g| g != console_version) => Some(crate::lookups::OTHER_VERSIONS_ART),
+                Some(a) if a.version.as_deref().is_some_and(|g| g != console_version) => Some(match a.region {
+                    // (The Gregar and Falzar chips', which the US release
+                    // cut: each Japanese ROM has its own beast in both.)
+                    Some(_) => "the chip's own beast's picture (a console shows its own)",
+                    None => crate::lookups::OTHER_VERSIONS_ART,
+                }),
                 _ => None,
             };
         }
@@ -1057,11 +1062,11 @@ impl Window {
         self.known_tiles(place, self.layout.art..self.layout.art + PICTURE_TILES, why, problems);
     }
 
-    /// The icons of the other version's chips (`lookups::other_versions_art`)
+    /// The icons of the other version's chips (`lookups::other_versions_icon`)
     /// in the slots and the picked chips' column, where they show, as known
     /// differences.
     fn known_icons(&self, v: &View, place: Placement, problems: &mut Problems) {
-        let other = |c: FolderChip| crate::lookups::other_versions_art(&v.packs, v.b, c.id);
+        let other = |c: FolderChip| crate::lookups::other_versions_icon(&v.packs, v.b, c.id);
         for (s, slot) in v.screen.slots.iter().enumerate().take(10) {
             let shown = matches!(slot.kind, SlotKind::Chip { .. } | SlotKind::NaviChip(_)) && !v.screen.look.slot_picked[s];
             if shown && v.screen.look.slot_chips[s].is_some_and(other) {
