@@ -53,8 +53,37 @@ pub enum Action {
 impl Action {
     /// Switch to this action from its first phase.
     pub fn start(self, b: &mut Battle, r: ObjectRef) {
-        common::set_action(b, r, self as u8);
+        let byte = action_byte(b, r, self as u8).unwrap_or_else(|e| panic!("{e}"));
+        common::set_action(b, r, byte);
     }
+}
+
+/// Whether the obstacle `r`'s game numbers its action table as BN5's
+/// (`effects.obstacle_actions`, its kind's game's rules).
+fn bn5_actions(b: &Battle, r: ObjectRef) -> bool {
+    let game = b.game_of(b.kind_key(r));
+    b.content.rules_of(game).effects.obstacle_actions == crate::content::ObstacleActions::Bn5
+}
+
+/// The byte obstacle `r`'s game stores for action `a` of the framework's
+/// numbering ([`Action`], BN6's: the kind's own from 8). BN5's obstacles
+/// have no frozen or bubbled entries (6 and 7), so their own start at 6.
+pub fn action_byte(b: &Battle, r: ObjectRef, a: u8) -> Result<u8, String> {
+    if !bn5_actions(b, r) {
+        return Ok(a);
+    }
+    match a {
+        0..=5 => Ok(a),
+        6 | 7 => Err(format!("{}: BN5's obstacles have no action {a} (frozen, bubbled)", b.kind_key(r))),
+        _ => Ok(a - 2),
+    }
+}
+
+/// Obstacle `r`'s action in the framework's numbering (BN6's), from its
+/// game's byte.
+pub fn current_action(b: &Battle, r: ObjectRef) -> u8 {
+    let a = b.objects.get(r).action;
+    if bn5_actions(b, r) && a >= 6 { a + 2 } else { a }
 }
 
 /// The shared entries of an obstacle's action table.
@@ -411,7 +440,8 @@ pub fn tick_lifetime(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_801B394` and its variants (`crush`, `hold`): apply damage and
 /// removal requests, then either run a status routine (None) or leave the
-/// current action for the kind's action table to run (its number).
+/// current action for the kind's action table to run (its number, in the
+/// framework's numbering: [`current_action`]).
 /// (`sub_801B878`, LilBolr's, is `Crush::Breaks` or, while it erupts,
 /// `Crush::Ignores`, by the kind's own state.)
 pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u8> {
@@ -487,7 +517,7 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u
     // sprite_zeroColorShader
     b.objects.sprite_mut(r).look.color_shader = 0;
     update_visibility(b, r);
-    Some(b.objects.get(r).action)
+    Some(current_action(b, r))
 }
 
 /// Per side: BN5's ColonelSoul army (docs/design/bn5-map.md §15.11). Armed
