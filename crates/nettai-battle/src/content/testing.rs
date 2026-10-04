@@ -316,8 +316,8 @@ pub const GREGAR: &str = "gregar";
 pub const FALZAR: &str = "falzar";
 
 /// The test content's game: its own modules and the BN6 modules it borrows
-/// are one folder, `test`, whose ids are `test:...` (the borrowed modules'
-/// `bn6:` ids and asset names read as `test:` ones: `borrowed`).
+/// are one game, `test` (its modules are `test:...`; what they define is
+/// keyed by its own name, as in any game).
 pub const ROOT: &str = "test";
 
 /// The content model v2 test pack (crates/nettai-battle/testdata/pack):

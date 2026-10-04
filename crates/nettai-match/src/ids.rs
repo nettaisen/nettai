@@ -24,15 +24,18 @@ pub fn key<'n>(content: &Content, game: &str, name: &'n str) -> Option<&'n str> 
     (content.game() == game && keys::root_of(name).is_none()).then_some(name)
 }
 
-/// The name a match writes for the definition keyed `key` (its game's).
+/// The name a match writes for the definition keyed `key`: the key, for a
+/// definition of the game ([`in_game`]; its key is its name), and a
+/// support pack's anonymous one without its pack.
 pub fn local(key: &str) -> &str {
     keys::local(key)
 }
 
-/// Whether the definition keyed `key` is one of `game`'s, the game of the
-/// content it is in (not a support pack's anonymous one).
-pub fn in_game(_game: &str, key: &str) -> bool {
-    keys::root_of(key).is_none()
+/// Whether `content`'s definition keyed `key` is one a match of `game` can
+/// name: `content` is that game's, and the definition is the game's, keyed
+/// by its name (not a support pack's anonymous one, keyed by its module).
+pub fn in_game(content: &Content, game: &str, key: &str) -> bool {
+    content.game() == game && keys::root_of(key).is_none()
 }
 
 pub fn chip(content: &Content, game: &str, name: &str) -> Option<ChipHandle> {

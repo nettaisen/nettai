@@ -167,7 +167,7 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Resul
     let navi = *crate::navis(content, game).first().ok_or_else(|| format!("{game} has no navi with fresh stats"))?;
     let chip = (0..content.defs.chips.len() as u16)
         .map(nettai_content_api::ChipHandle)
-        .find(|&c| !content.chip(c).codes.is_empty() && ids::in_game(game, &content.defs.chip(c).key))
+        .find(|&c| !content.chip(c).codes.is_empty() && ids::in_game(content, game, &content.defs.chip(c).key))
         .ok_or_else(|| format!("{game} has no chip with a code"))?;
     let folder = SavedFolder { chips: [FolderChip::new(chip, content.chip(chip).codes[0]); 30], regular: None, tags: None };
     let version = GameVersion::Falzar;
@@ -318,6 +318,6 @@ mod tests {
         let m = live(&content, "bn5", 4, None).unwrap();
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
         assert_eq!(m.arena.game, "bn5");
-        assert!(m.sides.iter().flat_map(|s| s.folder.chips()).all(|c| ids::in_game("bn5", &content.defs.chip(c.id).key)));
+        assert!(m.sides.iter().flat_map(|s| s.folder.chips()).all(|c| ids::in_game(&content, "bn5", &content.defs.chip(c.id).key)));
     }
 }

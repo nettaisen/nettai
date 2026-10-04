@@ -64,9 +64,9 @@ finds at start-up
 says (`nettai_content::pack::find`); `bn5-extract content` writes BN5's into
 `data/content/bn5` beside it. `--pack <dir>` names a pack elsewhere, in
 place of the found one of its game, and can be given again for another
-game's; `$BN6_PACK`, the BN6 pack's directory, still works the same way
-(deprecated: the verification's tools set it). Two packs of one game in the
-directory are an error. Each pack loads straight from its files: its asset
+game's. Two packs of one game in the directory are an error. A pack is of
+the format's one version (each file says it): an older one is refused, with
+a note to extract it again. Each pack loads straight from its files: its asset
 index into the engine's `Content`, the graphics through nettai-content's
 importer, and, when a window opens, the sound. `NETTAI_LOAD_TIMES=1` prints
 how long each part took. Each sprite, banner, mugshot, background and sound
@@ -115,8 +115,7 @@ The graphics load into the types of the `nettai-assets` crate, decoded
   `art_palette` colors it) and the buttons',
   chip codes, element icons and their colors, damage digits, the slots'
   codes and buttons, the cursor, the navis' emblems, the Regular chip's
-  frame. A pack extracted before it loads without them (with a warning),
-  and the screen isn't drawn.
+  frame.
 - **The chatbox** (in `graphics/hud`, and its portraits as sprites): the
   dialogue font with its advances, the box's tiles and maps, the key-wait
   arrow, the text's palette; each run message's speaker's portrait, the
@@ -393,7 +392,7 @@ edges, the cycling panel palettes; the background's scroll and tile
 animations. The field is the match's game's pack's: a match is of one game,
 so its field draws its panels. `FieldArt` says, for each panel type and
 highlight, whether the field draws it (field.json's `panel_types`); one it
-doesn't (a pack extracted before it had it) is the owner's normal panel,
+doesn't is the owner's normal panel,
 tinted halfway to magenta, never a hole and never another pack's. A tinted
 panel is said in the audits, not counted.
 

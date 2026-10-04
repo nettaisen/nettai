@@ -85,7 +85,7 @@ mod tests {
         assert!(e.contains("a bn5 save, but the content is bn6's"), "{e}");
         let s = &m.sides[0];
         assert_eq!(crate::ids::local(&content.defs.navi(s.navi).key), "megaman");
-        assert!(crate::ids::in_game("bn5", &content.defs.navi(s.navi).key));
+        assert!(crate::ids::in_game(&content, "bn5", &content.defs.navi(s.navi).key));
         assert_eq!(s.karma, 100);
         let souls: Vec<&str> = s.souls.as_ref().unwrap().iter().map(|&f| crate::ids::local(&content.defs.form(f).key)).collect();
         assert!(souls.contains(&"protosoul") && !souls.contains(&"colonelsoul"), "{souls:?}");

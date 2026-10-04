@@ -15,7 +15,7 @@ use nettai_content_api::FormHandle;
 fn bn6_forms_agree_with_their_kinds() {
     let c = bn6_content();
     let mut problems = Vec::new();
-    for (i, d) in c.defs.forms.iter().enumerate().filter(|(_, d)| crate::ids::in_game("bn6", &d.key)) {
+    for (i, d) in c.defs.forms.iter().enumerate().filter(|(_, d)| crate::ids::in_game(&c, "bn6", &d.key)) {
         let f = FormHandle(i as u16);
         let (kind, form) = (forms::kind(&c, f), &d.record);
         let mut say = |what: &str| problems.push(format!("{}: {what}", d.key));
@@ -49,7 +49,7 @@ fn bn6_forms_agree_with_their_kinds() {
             }
         }
     }
-    for (i, n) in c.defs.navis.iter().enumerate().filter(|(_, n)| crate::ids::in_game("bn6", &n.key)) {
+    for (i, n) in c.defs.navis.iter().enumerate().filter(|(_, n)| crate::ids::in_game(&c, "bn6", &n.key)) {
         let navi = nettai_content_api::NaviHandle(i as u16);
         let sets = [GameVersion::Gregar, GameVersion::Falzar].map(|g| forms::set(&c, navi, g));
         if n.record.forms.is_some() != sets.iter().any(Option::is_some) {
@@ -75,7 +75,7 @@ fn bn6_crosses_have_their_strings() {
     let c = bn6_content();
     let crosses: Vec<FormHandle> = (0..c.defs.forms.len() as u16)
         .map(FormHandle)
-        .filter(|&f| crate::ids::in_game("bn6", &c.defs.form(f).key) && forms::kind(&c, f) == Some(Kind::Cross))
+        .filter(|&f| crate::ids::in_game(&c, "bn6", &c.defs.form(f).key) && forms::kind(&c, f) == Some(Kind::Cross))
         .collect();
     assert_eq!(crosses.len(), 10);
     for &f in &crosses {
