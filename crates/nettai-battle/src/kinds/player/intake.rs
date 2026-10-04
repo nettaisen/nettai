@@ -67,6 +67,28 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     hit_ends_submerged(b, r);
     pierce_ends_flash(b, r);
     guard_spark(b, r);
+    if b.rules_for(r).intake.no_charge_drive {
+        no_charge_timer(b, r);
+    }
+}
+
+/// BN5's 0x0800DBE0 (its intake's last step): with the no-charge state,
+/// unless the battle is dimmed or paused, the drive's ticks run down (from
+/// any count but 0 and 0xFFFF); their end asks for the stun strike (BN5's
+/// action 0x49: the drive's end).
+fn no_charge_timer(b: &mut Battle, r: ObjectRef) {
+    if ai(b, r).status & crate::actor::status::NO_CHARGE == 0 || b.is_dimmed() || b.paused {
+        return;
+    }
+    let a = ai_mut(b, r);
+    let t = a.no_charge_timer;
+    if t == 0xFFFF || t == 0 {
+        return;
+    }
+    a.no_charge_timer = t - 1;
+    if t - 1 == 0 {
+        a.requests |= crate::actor::request::STUN_STRIKE;
+    }
 }
 
 /// The navi type's intake (BN5's 0x08017688, BN6's `sub_801A9B8`): a navi
