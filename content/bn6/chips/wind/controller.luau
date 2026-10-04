@@ -1,55 +1,11 @@
 --!strict
--- Wind's and Fan's dimming controller (the original's effect object #0x25,
--- `sub_80E309C`; docs/engine/dimming-chip-effects.md §1): the usual
--- dimming phases, with an effect that places the chip's fan (./fan) on the
--- panel in front of the user if it is free solid ground, and waits 31
--- ticks.
+-- Wind's and Fan's dimming controller (the original's effect object #0x25, `sub_80E309C`;
+-- docs/engine/dimming-chip-effects.md §1): the shared one (@exelib/wind/controller) placing BN6's fan (./fan).
 
-local dimming_chips = require("@exelib/dimming")
+local common = require("@exelib/wind/controller")
 local fan = require("./fan")
 
-export type State = { variant: FanVariant }
+local made = common.make { id = "bn6:wind/controller", spawn_fan = fan.spawn }
 
-local WAIT = 0x1E
--- Where the fan goes: a solid panel with nothing on it.
-local SOLID, OCCUPIED = 0x10, 0x0F88_0080
-
--- `sub_80E30E0`: the fan, then 31 ticks.
-local function effect(me: Object)
-    if me.phase_init == 0 then
-        local x, y = me.panel_x + me.facing, me.panel_y
-        if field.check(x, y, SOLID, OCCUPIED) then
-            local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-            fan.spawn(me, (me.state :: State).variant, x, y, damage)
-        end
-        me.timer = WAIT
-        me.phase_init = 4
-    end
-    local t = me.timer - 1
-    me.timer = t
-    if t < 0 then
-        dimming_chips.done(me)
-    end
-end
-
-local kind = define.kind {
-    id = "bn6:wind/controller",
-    pool = "effect",
-    state = { variant = "record:fan-variant" },
-    -- `sub_80E309C`.
-    update = dimming_chips.phases { name = "Wind's controller", effect = effect },
-}
-
--- A chip's `dimming` hook (`sub_80E3128`): the controller placing a fan of
--- `variant`.
-local function hook(variant: FanVariant): (user: Object, spec: DimmingChipSpec) -> Object?
-    return function(user: Object, spec: DimmingChipSpec): Object?
-        local o = dimming_chips.spawn(kind, user, spec)
-        if o then
-            (o.state :: State).variant = variant
-        end
-        return o
-    end
-end
-
-return { hook = hook }
+-- A chip's `dimming` hook (`sub_80E3128`): the controller placing a fan of `variant`.
+return { hook = made.hook }

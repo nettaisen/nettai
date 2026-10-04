@@ -5,7 +5,7 @@
 
 local collision = require("../../rules/collision")
 local common = require("@exelib/metrknuk/fist")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")
 
 return common.make {

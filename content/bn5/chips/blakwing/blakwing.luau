@@ -45,7 +45,8 @@ local function perch_update(me: Object)
     elseif p == 8 then
         if bit32.btest(me.sprite.frame_flags, 0x80) then
             me.visible = false
-            me:set_lifecycle("destroy")
+            -- (0x080E6AAA: the state byte alone; its phase stays.)
+            me.lifecycle = "destroy"
         end
     else
         error(string.format("BlakWing's perch: phase %#x reads past 0x080E6A60", p))
