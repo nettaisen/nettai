@@ -489,6 +489,9 @@ declare class Object
     -- its level (AIData+0x6C: releases that succeeded, at most 4).
     chaos_armed: boolean
     chaos_level: number
+    -- Writable: BN5's priming (AIData+0x0D): a form's `priming` chip used,
+    -- its next doubling waiting.
+    primed: boolean
     -- Writable: BN5's no-charge drive (DarkInvs): its ticks left
     -- (AIData+0x36; counted down in the intake while the navi has the
     -- no-charge state, asking for the stun strike at 0; 0xFFFF holds), and
@@ -673,6 +676,10 @@ declare class Object
     -- dimming ("keep": its Param3 1, flags 0x14) or steps like any object
     -- ("normal"). Nothing without an overlay.
     function overlay_stepping(self, mode: "keep" | "normal"): ()
+    -- BN5's 0x080C451A: the navi's body overlay (related2) adds `offset` to
+    -- its owner's animation (its depth read by the sum). Nothing without
+    -- one.
+    function set_overlay_anim_offset(self, offset: number): ()
     -- `sub_8011384`, `sub_8011268`: take off what a form wore, put on what
     -- it wears (its `take_off`, `put_on`, or the defaults below).
     function take_off_form_overlay(self, form: FormDef): ()
@@ -2245,6 +2252,9 @@ export type FormDef = {
     -- routine).
     put_on: ((navi: Object) -> ())?,
     take_off: ((navi: Object) -> ())?,
+    -- Its own part of the per-form tick (BN5's MegaMan's, 0x080F04CE:
+    -- GyroSoul's propeller by the priming), each tick.
+    tick: ((navi: Object) -> ())?,
     traits: { FormTrait }?,
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.

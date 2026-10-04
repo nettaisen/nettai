@@ -31,6 +31,10 @@ pub struct Vars {
     /// ExtraVars[0] (`sub_80C4526`): drawn one pixel in front whatever
     /// the owner's animation.
     pub forced_front: bool,
+    /// BN5's ExtraVars word (0x080C451A, `set_overlay_anim_offset`), which
+    /// its overlay adds to its owner's animation, its depth read by the sum
+    /// (0x080C365C): GyroSoul's propeller while primed.
+    pub extra_offset: u8,
 }
 
 fn vars(b: &Battle, r: ObjectRef) -> &Vars {
@@ -125,7 +129,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
 /// `sub_80C43C4`: follow the owner, then step the sprite.
 fn tick(b: &mut Battle, r: ObjectRef) {
     let owner = owner(b, r);
-    let Vars { anim_offset, forced_front, always_step, .. } = *vars(b, r);
+    let Vars { anim_offset, forced_front, always_step, extra_offset, .. } = *vars(b, r);
     let (owner_anim, owner_pos, owner_flip) = {
         let o = b.objects.get(owner);
         (o.anim, o.pos, o.flip)
@@ -138,13 +142,13 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     };
     let nudge = if forced_front {
         0x1_0000
-    } else if !in_front(owner_anim) {
+    } else if !in_front(owner_anim.wrapping_add(extra_offset)) {
         -0x1_0000
     } else {
         0
     };
     let o = b.objects.get_mut(r);
-    o.anim = owner_anim.wrapping_add(anim_offset);
+    o.anim = owner_anim.wrapping_add(anim_offset).wrapping_add(extra_offset);
     o.pos = Vec3 { x: owner_pos.x, y: owner_pos.y.wrapping_add(nudge), z: owner_pos.z.wrapping_add(nudge) };
     // phase_init set (`sub_80C44E4` / `sub_80C44FA`) holds the visibility.
     let holds = o.phase_init != 0;
@@ -170,5 +174,13 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         common::step_sprite(b, r);
     } else if !b.is_dimmed() {
         common::update_sprite(b, r);
+    }
+}
+
+/// BN5's 0x080C451A on the overlay `r`: its animation offset (its ExtraVars
+/// word). Nothing for an overlay of another kind.
+pub(crate) fn set_extra_offset(b: &mut Battle, r: ObjectRef, offset: u8) {
+    if let crate::kinds::Vars::BodyOverlay(v) = &mut b.objects.get_mut(r).vars {
+        v.extra_offset = offset;
     }
 }
