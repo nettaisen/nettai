@@ -175,15 +175,18 @@ pub struct FormDef {
     /// `status_reset` (BN5's souls' routines, 0x08011B92: SearchSoul's
     /// reveal, ColonelSoul's, TomahawkSoul's grass).
     pub reset: Option<FnId>,
-    /// `wears(navi)`: what the navi puts on as it takes the form
-    /// (`sub_8011268`'s routine by the form, BN5's 0x0800F024), in place of
-    /// its identity's parts: BN5's base form's shade in Hub Style
-    /// (0x0800EE1C).
-    pub wears: Option<FnId>,
-    /// `put_on(navi)` and `take_off(navi)`: what else it wears and takes
-    /// off with its start and end hooks, after its identity's parts (BN5's
-    /// NumberSoul's layer, a content object: 0x0800F07C, 0x0800F0DE).
+    /// `put_on(navi)`: the form's put-on routine (`sub_8011268`'s by the
+    /// form; BN5's table 0x0800F038, by soul), in place of the default, its
+    /// identity's parts (`Navi:put_on_form_parts`). A base form's also runs
+    /// as a player's init ends, in place of its navi's init hook
+    /// (`sub_8010DD0`: BN5's MegaMan's record names the base form's
+    /// routine, 0x0800EE1C, Hub Style's shade). BN5's NumberSoul's puts on
+    /// its layer (0x0800F07C).
     pub put_on: Option<FnId>,
+    /// `take_off(navi)`: the form's take-off routine (`sub_8011384`'s; BN5's
+    /// table 0x0800F09C), in place of the default, taking down what its
+    /// identity's death hook does (`Navi:take_off_form_parts`). BN5's
+    /// NumberSoul's takes its layer off (0x0800F0DE).
     pub take_off: Option<FnId>,
 }
 
@@ -1597,8 +1600,8 @@ impl Defs {
                     _ => Some(functions.id(slot(d, field)?)),
                 })
             };
-            let (reset, wears, put_on, take_off) = (hook("reset")?, hook("wears")?, hook("put_on")?, hook("take_off")?);
-            forms.push(FormDef { key: d.key.clone(), record, reset, wears, put_on, take_off });
+            let (reset, put_on, take_off) = (hook("reset")?, hook("put_on")?, hook("take_off")?);
+            forms.push(FormDef { key: d.key.clone(), record, reset, put_on, take_off });
         }
         for (i, f) in forms.iter().enumerate() {
             if let Some(h) = f.record.identity {
