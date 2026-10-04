@@ -95,9 +95,6 @@ pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&
                 continue;
             }
         };
-        // (The marks one game's font lacks, another's lends it, as the
-        // frontend loads them.)
-        nettai_assets::lend_marks(&mut bundles);
         let packs = Packs::new(bundles.iter().collect(), own);
         let text = DisplayText::new(strings.as_deref());
         let mut problems = Problems::default();
