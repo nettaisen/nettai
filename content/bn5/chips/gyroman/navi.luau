@@ -109,7 +109,7 @@ local function appear(me: Object)
         battle.play_sound(SOUND_APPEAR)
         me.visible = true
     end
-    if navi_chips.wait(me, 4, true) then
+    if navi_chips.wait_on_init(me, 4, true) then
         me:set_action(4)
     end
 end
@@ -119,7 +119,7 @@ local function stand(me: Object)
     if me.phase_init == 0 then
         me.anim = 0
     end
-    if navi_chips.wait(me, 0x28, true) then
+    if navi_chips.wait_on_init(me, 0x28, true) then
         me:set_action(8)
     end
 end
@@ -129,7 +129,7 @@ local function rise(me: Object)
     if me.phase_init == 0 then
         me.anim = 4
     end
-    local left = navi_chips.countdown(me, 0x1E)
+    local left = navi_chips.countdown_on_init(me, 0x1E)
     if left == nil then
         return
     end
@@ -255,7 +255,7 @@ local function leave(me: Object)
         me.visible = false
         me:remove_parts(PROPELLER)
     end
-    local left = navi_chips.countdown(me, 0x1E, true)
+    local left = navi_chips.countdown_on_init(me, 0x1E, true)
     if left == nil or left >= 0 then
         return
     end
