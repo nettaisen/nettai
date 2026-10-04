@@ -78,11 +78,8 @@ pub struct FieldDoc {
     pub palette_rows: [u8; 2],
     pub palette_anims: Vec<PaletteAnimDoc>,
     /// The panel types the field draws, by the engine's names, in the
-    /// order of their blocks (docs/design/rules-in-luau.md §7.4). A field
-    /// without the list is an older pack's: 78 blocks are BN6's 13 types
-    /// in the engine's order, any other number types it can't tell.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub panel_types: Option<Vec<PanelType>>,
+    /// order of their blocks (docs/design/rules-in-luau.md §7.4).
+    pub panel_types: Vec<PanelType>,
     /// 5x3 blocks by 6 * the type's place in `panel_types` + 3 * owner +
     /// row - 1.
     pub panels: Vec<Vec<String>>,
@@ -90,10 +87,6 @@ pub struct FieldDoc {
     /// One or two: by highlight - 1.
     pub highlights: Vec<Vec<String>>,
 }
-
-/// The panel types of an older pack's field (no `panel_types`): BN6's 13,
-/// in the engine's order, the only layout it had.
-const LEGACY_PANEL_TYPES: usize = 13;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PaletteAnimDoc {
@@ -107,8 +100,6 @@ pub struct PaletteAnimDoc {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PaletteFrameDoc {
     pub ticks: u8,
-    /// (A pack extracted before the American spellings has the British key.)
-    #[serde(alias = "colours")]
     pub colors: Vec<String>,
 }
 
@@ -144,7 +135,7 @@ pub fn export_field(f: &Field) -> Vec<(String, Vec<u8>)> {
                 frames: a.frames.iter().map(|(p, t)| PaletteFrameDoc { ticks: *t, colors: tiles::palette_text(p) }).collect(),
             })
             .collect(),
-        panel_types: Some(f.panel_types.iter().filter_map(|&t| PanelType::ALL.get(t as usize).copied()).collect()),
+        panel_types: f.panel_types.iter().filter_map(|&t| PanelType::ALL.get(t as usize).copied()).collect(),
         panels: f.panels.iter().map(|b| texts(b)).collect(),
         front_edges: f.front_edges.iter().map(|b| texts(b)).collect(),
         highlights: f.highlights.iter().map(|b| texts(b)).collect(),
@@ -155,8 +146,8 @@ pub fn export_field(f: &Field) -> Vec<(String, Vec<u8>)> {
 pub fn import_field(dir: &Path, prefix: &str, report: &mut Report) -> Option<Field> {
     let name = format!("{prefix}/field.json");
     let doc: FieldDoc = read_json(&dir.join("field.json"), &name, report)?;
-    if doc.format != FIELD_FORMAT || doc.version > VERSION {
-        report.error(&name, format!("not a {FIELD_FORMAT} file of version {VERSION} or older"));
+    if doc.format != FIELD_FORMAT || doc.version != VERSION {
+        report.error(&name, format!("not a {FIELD_FORMAT} file of version {VERSION} (extract the pack again)"));
         return None;
     }
     let (all, palettes) = tiles::import_image(dir, prefix, &doc.tiles, report)?;
@@ -186,20 +177,11 @@ pub fn import_field(dir: &Path, prefix: &str, report: &mut Report) -> Option<Fie
         report.error(&name, "there are two front edges, and one highlight or two");
         return None;
     }
-    let panel_types: Vec<u8> = match &doc.panel_types {
-        Some(types) => {
-            if 6 * types.len() != panels.len() {
-                report.error(&name, format!("{} panel types need {} blocks, not {}", types.len(), 6 * types.len(), panels.len()));
-                return None;
-            }
-            types.iter().map(|&t| t as u8).collect()
-        }
-        None if panels.len() == 6 * LEGACY_PANEL_TYPES => (0..LEGACY_PANEL_TYPES as u8).collect(),
-        None => {
-            report.warn(&name, "the field doesn't say which panel types it draws, so it draws none (extract it again)");
-            Vec::new()
-        }
-    };
+    if 6 * doc.panel_types.len() != panels.len() {
+        report.error(&name, format!("{} panel types need {} blocks, not {}", doc.panel_types.len(), 6 * doc.panel_types.len(), panels.len()));
+        return None;
+    }
+    let panel_types: Vec<u8> = doc.panel_types.iter().map(|&t| t as u8).collect();
     let palette_anims = doc
         .palette_anims
         .iter()
@@ -377,8 +359,8 @@ pub fn export_background(bg: &Background, id: u8) -> Vec<(String, Vec<u8>)> {
 pub fn import_background(dir: &Path, prefix: &str, report: &mut Report) -> Option<(u8, Background)> {
     let name = format!("{prefix}/background.json");
     let doc: BackgroundDoc = read_json(&dir.join("background.json"), &name, report)?;
-    if doc.format != BACKGROUND_FORMAT || doc.version > VERSION {
-        report.error(&name, format!("not a {BACKGROUND_FORMAT} file of version {VERSION} or older"));
+    if doc.format != BACKGROUND_FORMAT || doc.version != VERSION {
+        report.error(&name, format!("not a {BACKGROUND_FORMAT} file of version {VERSION} (extract the pack again)"));
         return None;
     }
     let (all, palettes) = tiles::import_image(dir, prefix, &doc.tiles, report)?;

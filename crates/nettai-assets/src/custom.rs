@@ -287,8 +287,8 @@ impl CustomScreen {
         self.chip_art.iter().find(|a| a.key == key).filter(|a| !a.picture.tiles.is_empty())
     }
 
-    /// Whether the pack has the custom screen's graphics (an older pack
-    /// doesn't).
+    /// Whether the bundle has no custom screen graphics (a pack always
+    /// has them; a bundle made in a test may not).
     pub fn is_empty(&self) -> bool {
         self.window_tiles.is_empty()
     }
