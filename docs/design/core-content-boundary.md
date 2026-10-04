@@ -146,7 +146,7 @@ These are the game's, kept bit-exact; the API exposes them and must not smooth t
 - **RNG.** One simulation stream, drawn in object update order through `battle.rng`, `rng_positive`,
   `shuffle_order` and `jitter`. A content change that adds, removes or reorders a draw changes everything after it.
   Content shuffles through `battle.shuffle_order` (and `console_shuffle_order`, a console's RNG1), whose order
-  `@common/order` puts into a list.
+  `@exelib/order` puts into a list.
 - **Input.** The flow latches the pads before objects run; a navi's buttons are its record, and a second
   record is kept while dimmed.
 - **Integers.** Fixed widths, wrapping stores, truncating division; no floats.

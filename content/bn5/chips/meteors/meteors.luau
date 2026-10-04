@@ -1,6 +1,6 @@
 --!strict
 -- BN5's falling meteor (attack object #0x56) and meteor shower (effect object #0x46): the shared code
--- (@common/meteors: BN6's) but for
+-- (@exelib/meteors: BN6's) but for
 --
 -- - the meteor's look and rows (0x080D0B24: rows 0 to 2 BN6's, but row 2 hits with modifier 0, 0x080D0BE4; row 3
 --   cracks its panel; row 4, DarkMetr's, hits as BN5's row 0x2B with the bug 0x19 (argument 1), shakes the cameras
@@ -14,10 +14,10 @@
 -- for 20 ticks (0x080E9FA4, as FireHit's warning and the swords' swing).
 
 local collision = require("../../rules/collision")
-local effects = require("@bn6/lib/effects")
-local falling_meteor = require("@common/meteors/falling_meteor")
+local effects = require("../../lib/effects")
+local falling_meteor = require("@exelib/meteors/falling_meteor")
 local marker = require("./marker")
-local meteor_shower = require("@common/meteors/shower")
+local meteor_shower = require("@exelib/meteors/shower")
 local sparks = require("../../lib/sparks")
 
 local meteors = {}

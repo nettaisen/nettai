@@ -1,21 +1,21 @@
 --!strict
 -- Magnum's gunner (the original's actor object #0x14, `sub_80BB2A0`;
 -- docs/engine/dimming-chip-effects.md §11): a stand-in for the user
--- (@common/dimming/stand_in) that moves a sight over the enemy's area, a step
+-- (@exelib/dimming/stand_in) that moves a sight over the enemy's area, a step
 -- every 12 ticks (across the columns on the middle row, then down the far
 -- column's middle), until the user presses A or 300 ticks pass; then it
 -- shoots the sight's three panels, breaking them.
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
-local stand_in = require("@common/dimming/stand_in")
+local stand_in = require("@exelib/dimming/stand_in")
 
 local gunner = {}
 
 export type State = {
-    -- The chip's controller (@common/dimming/stand_in).
+    -- The chip's controller (@exelib/dimming/stand_in).
     controller: Object?,
     -- The far column (ExtraVars+0xC), the enemy's nearest (+0x10), the
     -- sight's panel (+0x14, +0x18), and its mode when it fired (+0x1C).

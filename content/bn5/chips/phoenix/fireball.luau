@@ -5,7 +5,7 @@
 -- over.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local blaze = require("./blaze")
 
 local fireball = {}

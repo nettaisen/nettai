@@ -319,7 +319,7 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
     // (BN5's lava burns first: 0x08017A18 and its variants.)
     common::panel_burn(b, r);
     if push == Push::AnyHit {
-        match game_rules(b, r).push_reading {
+        match b.game_rules().push_reading {
             PushReading::Bn6 => push_on_any_hit(b, c),
             PushReading::Bn5 => push_on_any_hit_by_flip(b, c),
         }
@@ -518,8 +518,7 @@ const PANEL_LOOKUP_REGISTER: u32 = 0x0800_BD1D;
 /// and max HP go to 0 (a word store), so the reaction breaks it (whether a
 /// soldier came or the pool was full).
 fn soldier_step(b: &mut Battle, r: ObjectRef) {
-    let game = b.game_of(b.kind_key(r));
-    if !b.content.rules_of(game).effects.obstacle_soldiers
+    if !b.content.rules().effects.obstacle_soldiers
         || b.is_dimmed()
         || b.objects.get(r).action == Action::Appear as u8
     {
@@ -533,7 +532,7 @@ fn soldier_step(b: &mut Battle, r: ObjectRef) {
     // 0 (r6), the obstacle's side and flip and the obstacle as its first
     // related; then the side, and a flip of Param1 ^ 1 (the sword's
     // soldier faces back toward the side's own area).
-    let kind = b.content.defs.roles(game).kind(crate::content::KindRole::ObstacleSoldier);
+    let kind = b.content.defs.roles().kind(crate::content::KindRole::ObstacleSoldier);
     let pos = Vec3 { x: y as i32, y: left as i32, z: side as i32 };
     if let Some(e) = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, pos, [gun, 0, 0, 0]) {
         crate::behavior::set_state_field(b, e, "gun", nettai_content_api::Value::Int(gun as i64));
@@ -763,7 +762,7 @@ fn thrown(b: &mut Battle, r: ObjectRef) {
             o.panel = o.future_panel;
             common::set_coordinates_from_panels(b, r);
             let o = b.objects.get(r);
-            let roles = b.arena_roles();
+            let roles = b.roles();
             let spec = crate::kinds::hitbox::HitboxSpec {
                 panel: o.panel,
                 element: o.element,
@@ -803,7 +802,7 @@ fn aim_throw(b: &mut Battle, r: ObjectRef) -> u8 {
     let dx = px.wrapping_sub(((o.pos.x as u32 >> 16) << 16) as i32);
     let dy = py.wrapping_sub(((o.pos.y as u32 >> 16) << 16) as i32);
     let angle = bios_arctan2(dx >> 16, dy >> 16) >> 8;
-    let sine = &b.arena_rules().sine;
+    let sine = &b.game_rules().sine;
     let (cos, sin) = (sine[angle as usize + 64] as i32, -(sine[angle as usize + 128] as i32));
     let (vx, vy) = (cos.wrapping_mul(THROW_SPEED) >> 8, sin.wrapping_mul(THROW_SPEED) >> 8);
     let (ax, ay) = (dx as u32 >> 8, dy as u32 >> 8);
@@ -892,7 +891,7 @@ fn encased(b: &mut Battle, r: ObjectRef) {
             if b.objects.get(r).shake_timer & 2 == 0 {
                 b.objects.get_mut(r).set_visible(false);
                 let pos = b.objects.get(r).pos;
-                let look = b.arena_roles().effect(EffectRole::Encased);
+                let look = b.roles().effect(EffectRole::Encased);
                 crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
             }
             let o = b.objects.get_mut(r);
@@ -908,7 +907,7 @@ fn encased(b: &mut Battle, r: ObjectRef) {
             let ice = f1_of(b, r) & obstacle_f1::ENCASED_ICE != 0;
             // (A game without the role has nothing for it to do: BN5,
             // docs/design/bn5-map.md §15.3 item 4.)
-            if let Some(hook) = b.arena_roles().try_hook(crate::content::HookRole::Encased) {
+            if let Some(hook) = b.roles().try_hook(crate::content::HookRole::Encased) {
                 crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::RoleEncased { obstacle: r, ice, class });
             }
             common::set_progress(b, r, Progress::DESTROY);
@@ -966,7 +965,7 @@ struct PushVector {
 /// obstacle held still in one (`object_updateSprite` leaves it): no pusher
 /// bits either way, so it's left out.
 fn push_vector(b: &Battle, r: ObjectRef) -> PushVector {
-    if game_rules(b, r).push_reading == PushReading::Bn5 {
+    if b.game_rules().push_reading == PushReading::Bn5 {
         return push_vector_bn5(b, r);
     }
     let d = b.collision.get(collision(b, r));
@@ -1016,12 +1015,6 @@ fn push_vector_bn5(b: &Battle, r: ObjectRef) -> PushVector {
     PushVector { pusher, dx: dx * sign, dy, panels }
 }
 
-/// The rules of `r`'s own game (its kind's): an obstacle runs as its game
-/// wrote it.
-fn game_rules(b: &Battle, r: ObjectRef) -> &crate::content::Rules {
-    b.content.rules_of(b.game_of(b.kind_key(r)))
-}
-
 /// The panel `(dx, dy)` from `p`, if it's on the field.
 fn step_from(p: PanelPos, dx: i8, dy: i8) -> Option<PanelPos> {
     let (x, y) = (p.x as i32 + dx as i32, p.y as i32 + dy as i32);
@@ -1057,7 +1050,7 @@ fn start_slide(b: &mut Battle, r: ObjectRef, kind: Slide) {
     b.unreserve_panel(r, fp.x, fp.y);
     let v = push_vector(b, r);
     let (bn5, speed) = {
-        let rules = game_rules(b, r);
+        let rules = b.game_rules();
         (rules.push_reading == PushReading::Bn5, rules.slide_speed)
     };
     let o = b.objects.get_mut(r);
@@ -1301,7 +1294,7 @@ pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, look: RecordHandle) {
     let o = b.objects.get(r);
     let (pos, anim, alliance, flip) = (o.pos, o.anim, o.alliance, o.flip);
     let sprite = b.objects.sprite(r).look;
-    let kind = b.arena_roles().kind(crate::content::KindRole::AbsorbedObstacle);
+    let kind = b.roles().kind(crate::content::KindRole::AbsorbedObstacle);
     let Some(e) = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, pos, [0; 4]) else { return };
     for (field, v) in [
         ("look", Value::Def(Registry::Record, look.0)),

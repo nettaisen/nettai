@@ -1,7 +1,7 @@
 --!strict
--- BN5's panel bursts (effect object #0x24, BN6's code: @common/panel-bursts/panel_bursts), BN5's kind.
+-- BN5's panel bursts (effect object #0x24, BN6's code: @exelib/panel-bursts/panel_bursts), BN5's kind.
 
-local common = require("@common/panel-bursts/panel_bursts")
+local common = require("@exelib/panel-bursts/panel_bursts")
 
 local panel_bursts = {}
 

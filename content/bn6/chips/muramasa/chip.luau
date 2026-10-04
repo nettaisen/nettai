@@ -2,7 +2,7 @@
 -- Muramasa: a slash on the two panels ahead, as strong as the HP its user lost.
 
 local parts = require("../../lib/swords/parts")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local slash = require("../../lib/swords/slash")
 local slashes = require("../../navis/megaman/forms/slashcross/slashes")
 local lockon = require("../../rules/lockon")

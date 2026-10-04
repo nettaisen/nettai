@@ -8,9 +8,9 @@
 -- doesn't ground the navi (the role `dust_beast_scatter`).
 
 local junk_shot = require("./junk_shot")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local weapon = require("../../../../lib/weapon")
-local order = require("@common/order")
+local order = require("@exelib/order")
 
 export type State = {
     -- AIAttackVars+0x10: ticks of the phase. (The throws to go are the

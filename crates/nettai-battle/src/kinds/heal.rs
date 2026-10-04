@@ -28,7 +28,7 @@ pub fn heal(b: &mut Battle, r: ObjectRef, amount: u16, anti_recovery: bool) -> b
     }
     add_hp(b, r, amount);
     let pos = b.objects.get(r).pos;
-    let look = b.roles_for(r).effect(EffectRole::Recovery);
+    let look = b.roles().effect(EffectRole::Recovery);
     effect::spawn(b, pos, look, 0, 0, 0);
     b.sound(SoundRole::Recovery);
     false
@@ -70,7 +70,7 @@ pub(crate) fn spawn_counterattack(b: &mut Battle, healer: ObjectRef, damage: u32
         (o.panel, o.alliance)
     };
     let pos = Vec3 { x: panel.y as i32, y: 0, z };
-    let kind = b.arena_roles().kind(crate::content::KindRole::AntiRecovery);
+    let kind = b.roles().kind(crate::content::KindRole::AntiRecovery);
     let c = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, pos, [0; 4])?;
     let o = b.objects.get_mut(c);
     o.panel = panel;
@@ -87,19 +87,16 @@ pub(crate) fn spawn_counterattack(b: &mut Battle, healer: ObjectRef, damage: u32
 }
 
 /// `sub_800ABC6`: the trap's mark over `r`'s panel (for the local side's
-/// look, Param2), with its sound, where the sprung trap's game puts it from
-/// the panel's center (the chip-use rules' `anti_navi_sparkle`: BN6's 16
-/// pixels down the field and 32 up, BN5's 16 up). Its height (which the
-/// routine leaves in r3).
+/// look, Param2), with its sound, where the game puts it from the panel's
+/// center (the chip-use rules' `anti_navi_sparkle`: BN6's 16 pixels down
+/// the field and 32 up, BN5's 16 up). Its height (which the routine leaves
+/// in r3).
 pub(crate) fn trap_mark(b: &mut Battle, r: ObjectRef) -> i32 {
-    let (panel, alliance) = {
-        let o = b.objects.get(r);
-        (o.panel, o.alliance)
-    };
+    let panel = b.objects.get(r).panel;
     let (x, y) = crate::kinds::player::panel_coordinates(panel.x, panel.y);
     let local = b.round.local_side;
-    let look = b.roles_for(r).effect(EffectRole::TrapMark);
-    let at = b.chip_rules(b.linked[(alliance ^ 1) as usize & 1].chip).chip_use.anti_navi_sparkle;
+    let look = b.roles().effect(EffectRole::TrapMark);
+    let at = b.game_rules().chip_use.anti_navi_sparkle;
     let z = (at.z as i32) << 16;
     effect::spawn(b, Vec3 { x, y: y.wrapping_add((at.dy as i32) << 16), z }, look, local, 0, 0);
     b.sound(SoundRole::CutIn);

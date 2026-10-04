@@ -127,7 +127,7 @@ fn main() {
     };
     let (bank, _) = nettai_content::pack::load_sound(Path::new(&o.pack)).unwrap_or_else(|r| fail(r));
     let bank = Arc::new(bank);
-    let (content, _) = nettai_content::pack::load_battle(&nettai_content::root::content(), Path::new(&o.pack)).unwrap_or_else(|r| fail(r));
+    let (content, _) = nettai_content::pack::load_battle(&nettai_content::index::content(), Path::new(&o.pack)).unwrap_or_else(|r| fail(r));
     let content = Arc::new(content);
     let rounds = trace::rounds(&o.trace).unwrap_or_else(|e| {
         eprintln!("{}: {e}", o.trace);

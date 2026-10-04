@@ -86,7 +86,7 @@ pub fn spawn_with(b: &mut Battle, owner: ObjectRef, spec: Vars) -> Option<Object
     let params = [hi, lo, spec.stepping as u8, spec.anim_offset];
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::FormOverlay, Vec3::default(), params)?;
     let alliance = b.objects.get(owner).alliance;
-    let paused = b.rules_for(owner).effects.overlays_run_while_paused;
+    let paused = b.game_rules().effects.overlays_run_while_paused;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.alliance = alliance;

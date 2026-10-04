@@ -1,12 +1,12 @@
 --!strict
 -- BlzrdBal's dimming controller (the original's effect object #0x58,
 -- `sub_80E6F88`; docs/engine/dimming-chip-effects.md §10): the usual
--- dimming phases (@common/dimming), with an effect that sends out the thrower
+-- dimming phases (@exelib/dimming), with an effect that sends out the thrower
 -- (./thrower) with the damage plus the bonus and lasts 121 ticks, whether
 -- or not it is done.
 
-local dimming_chips = require("@common/dimming")
-local stand_in = require("@common/dimming/stand_in")
+local dimming_chips = require("@exelib/dimming")
+local stand_in = require("@exelib/dimming/stand_in")
 local thrower = require("./thrower")
 
 export type State = {

@@ -23,8 +23,8 @@ local drive_end = require("../chips/darkinvs/drive-end")
 local dark_survival = require("./emotion/dark-survival")
 local invalid = require("../chips/invalid/chip")
 local collision = require("./collision")
-local effects = require("@bn6/lib/effects")
-local regions = require("@common/regions")
+local effects = require("../lib/effects")
+local regions = require("@exelib/regions")
 local sparks = require("../lib/sparks")
 local statuses = require("./status")
 local swords = require("../lib/swords")
@@ -33,7 +33,7 @@ return define.roles {
     id = "bn5:roles",
     actions = {
         -- The charged shot a navi's request starts from idle without its weapon's setup (BN5's 0x1E: the shared
-        -- action, @common/megaman/charged_shot, navis/megaman/weapons/charged-shot).
+        -- action, @exelib/megaman/charged_shot, navis/megaman/weapons/charged-shot).
         forced_charged_shot = charged_shot.action,
         -- The trap chips' counters, which a trap that caught a hit starts (the original's actions 0x47 and
         -- 0x48: AntiDmg's and AntiSwrd's, BN6's code; AntiSwrd's swinging BN5's blade and throwing BN5's sonic

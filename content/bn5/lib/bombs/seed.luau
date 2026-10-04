@@ -1,6 +1,6 @@
 --!strict
 -- BN5's seeds (attack object #0x4A, 0x080CEC04, thrown by action 0x12's subtypes 9, 12, 13 and 14, 0x080CEE02): the
--- shared seed (@common/bombs/seed, BN6's code) with BN5's look: the bomb's sprite in animation 9, BN5's rows 4 and 5,
+-- shared seed (@exelib/bombs/seed, BN6's code) with BN5's look: the bomb's sprite in animation 9, BN5's rows 4 and 5,
 -- hit modifier 0, no spark, null-element; a splash (effect 1) in a hole, a puff (effect 0x14) when the battle ends.
 -- What differs between them is the record's Param1, which indexes its tables (0x080CEDD0, 0x080CEDD4, 0x080CEDC8)
 -- and is its palette: IceSeed's ice (0), SeaSeed's sea (1), GrasSeed's grass (2) and LavaSeed's lava (3), with the
@@ -9,7 +9,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local common = require("@common/bombs/seed")
+local common = require("@exelib/bombs/seed")
 
 local seed = {}
 

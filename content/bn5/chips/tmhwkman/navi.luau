@@ -1,6 +1,6 @@
 --!strict
 -- TomahawkMan, the navi of BN5's TomahawkMan chips (BN5's actor object #0x13, 0x080BBED0; BN5's own, built on BN6's
--- navi template: BN6's TomahawkMan, @bn6/chips/tmhkman, swings later and harder), brought by their navi chip
+-- navi template: BN6's TomahawkMan, its chips/tmhkman, swings later and harder), brought by their navi chip
 -- controller. He appears (and goes at once off a panel that isn't solid), stands 20 ticks, raises his tomahawk for
 -- 30, and swings it: 10 ticks in it comes down on the panel ahead, a hit over that column and the next (no spark,
 -- hit modifier 3) with the earth splashing there. 50 ticks on he goes, and the controller moves on.
@@ -8,9 +8,9 @@
 -- Not reached: his other spawner (0x080BC0DA, which nothing calls), whose TomahawkMan keeps no controller waiting
 -- (his Param3 1).
 
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("@exelib/navi-chips/navi")
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).

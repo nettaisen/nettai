@@ -1,22 +1,22 @@
 --!strict
 -- BN5's barriers (the barrier chips' and FstBarr's): BN6's rows (BN5's 0x0801CF94 and its visuals' looks 0x080E0A1C
 -- are BN6's `byte_8020B2C` and `byte_80E0A14`, row for row; BN5 has no weak-element table, BN6's `byte_8020B8C`,
--- whose rows are all none), raised by BN5's code (0x080174DA) with BN5's visual (@common/barriers/visual: BN5's
+-- whose rows are all none), raised by BN5's code (0x080174DA) with BN5's visual (@exelib/barriers/visual: BN5's
 -- effect object #7, 0x080E0AA0, which is never blown away and comes back up whatever its navi's status: BN5 has no
--- bubble status). The barrier chips' dimming controller is BN6's code (@common/barriers/controller: BN5's effect
+-- bubble status). The barrier chips' dimming controller is BN6's code (@exelib/barriers/controller: BN5's effect
 -- object #0x2F, 0x080E3CCC).
 --
--- The sheets are BN6's names (0c-3d, 0c-20, 0c-07: the same archives, which BN5's pack doesn't name yet).
+-- The sheets are BN6's numbers (0c-3d, 0c-20, 0c-07: the same archives).
 
-local common_controller = require("@common/barriers/controller")
-local common_visual = require("@common/barriers/visual")
+local common_controller = require("@exelib/barriers/controller")
+local common_visual = require("@exelib/barriers/visual")
 
 local barriers = {}
 
 local visual = common_visual.make { id = "bn5:barrier-visual", blows = false }
 barriers.visual = visual
 
-local SPRITE, BUBBLE, AURA = asset.sprite("bn6:barrier"), asset.sprite("bn6:bubble"), asset.sprite("bn6:aura")
+local SPRITE, BUBBLE, AURA = asset.sprite("bn5:barrier"), asset.sprite("bn5:bubble"), asset.sprite("bn5:aura")
 local SOUND, BUBBLE_SOUND, BUBBLE_POP = asset.sound("bn5:barrier"), asset.sound("bn5:bubble"), asset.sound("bn5:bubble-pop")
 local NO_TIMER = 0xFFFF
 

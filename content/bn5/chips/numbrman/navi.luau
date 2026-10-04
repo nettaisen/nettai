@@ -5,7 +5,7 @@
 -- (0x080BB4D8: 1 and 2 two times in 16, 3 to 5 three, 6 two... as the table goes), times his damage is what it
 -- deals when it bursts there. Once it is gone he waits 30 ticks and leaves; the controller moves on.
 
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("@exelib/navi-chips/navi")
 local overlay = require("./overlay")
 local dice = require("./dice")
 

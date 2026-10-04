@@ -8,7 +8,7 @@
 -- enemy navi, stops over it and drops a bomb every 16 ticks, one for each enemy panel in his row, and 16 ticks on
 -- flies off the field.
 
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("@exelib/navi-chips/navi")
 local bomb = require("./bomb")
 
 export type State = {

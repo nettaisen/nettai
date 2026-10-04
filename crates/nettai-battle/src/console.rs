@@ -256,7 +256,7 @@ impl Battle {
     /// sets); the secondary otherwise. (The battle's subsystem is always in
     /// use.)
     pub(crate) fn update_cameras(&mut self) {
-        if self.arena_rules().effects.shake == crate::content::ShakeRule::Battle {
+        if self.game_rules().effects.shake == crate::content::ShakeRule::Battle {
             self.update_cameras_from_battle_rng();
             return;
         }
@@ -354,7 +354,8 @@ mod tests {
         use crate::content::{Content, testing};
         let mut c: Content = testing::build();
         c.define().unwrap_or_else(|e| panic!("{e}"));
-        for rules in &mut c.rules {
+        {
+            let rules = &mut c.rules;
             rules.effects.shake = crate::content::ShakeRule::Battle;
         }
         let c = std::sync::Arc::new(c);

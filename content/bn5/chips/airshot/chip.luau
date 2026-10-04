@@ -1,11 +1,11 @@
 --!strict
 -- AirShot (BN5 chip 0x004): a shot from the panel ahead that pushes what it hits: the shared AirShot
--- (@common/airshot, BN6's action 0x21, BN5's 0x1D; the same code but for the shooter's attachment row, BN5's 8,
+-- (@exelib/airshot, BN6's action 0x21, BN5's 0x1D; the same code but for the shooter's attachment row, BN5's 8,
 -- BN6's 0x13, the same look), with BN5's air shooter, attachment, projectile and shot (no wind element: BN5's variant
--- row 4); its sound BN6's.
+-- row 4); its sound BN6's number.
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local airshot = require("@common/airshot")
+local airshot = require("@exelib/airshot")
 local attachment = require("../../objects/attachment/attachment")
 local projectile = require("../../lib/projectile")
 local variants = require("../../objects/projectile/variants")
@@ -29,6 +29,6 @@ return define.chip {
     slot_in_limit = 3,
     action = airshot.action(
         { shooter = SHOOTER, shot = variants.air },
-        { sound = asset.sound("bn6:h-burst"), attachment = attachment.kind, projectiles = projectile }
+        { sound = asset.sound("bn5:h-burst"), attachment = attachment.kind, projectiles = projectile }
     ),
 }
