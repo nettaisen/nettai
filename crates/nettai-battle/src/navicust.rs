@@ -39,8 +39,8 @@ pub struct PlacedProgram {
 }
 
 /// A player's NaviCust: its programs in its list's order (the order a game's
-/// rules go through them), and the board's expansions (BN6's: none, one or
-/// two; key item 0x71).
+/// rules go through them), and the board's expansions (BN6's and BN5's:
+/// none, one or two; BN6's key item 0x71, BN5's 0x61).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NaviCust {
     parts: [Option<PlacedProgram>; MAX_PARTS],

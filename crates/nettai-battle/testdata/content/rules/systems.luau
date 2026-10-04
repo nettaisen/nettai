@@ -80,7 +80,7 @@ local forms = require("./forms")
 
 -- The systems the test content plays by (BN6's beast system first, then the
 -- counter, then BN6's forms, emotion and dark-chips systems).
-local SYSTEMS = { beast, counter, forms.system, emotion.system, dark_chips }
+local SYSTEMS: { System } = { beast, counter, forms.system, emotion.system, dark_chips }
 
 return {
     counter = counter,

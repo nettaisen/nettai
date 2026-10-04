@@ -20,7 +20,7 @@ use nettai_battle::transform::TransformRequest;
 use nettai_battle::{ContentHash, CustomResult, NaviStats};
 use nettai_battle::content::ChipCode;
 use nettai_battle::patch_cards::InstalledCard;
-use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, PatchCardHandle, RecordHandle, RulesetHandle, StageHandle, WeaponHandle};
+use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, PatchCardHandle, RecordHandle, StageHandle, WeaponHandle};
 
 use crate::protocol::invalid;
 
@@ -242,7 +242,6 @@ wire_newtype!(
     RecordHandle(u16),
     PatchCardHandle(u16),
     StageHandle(u16),
-    RulesetHandle(u16),
     ChipCode(u8),
 );
 

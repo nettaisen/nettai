@@ -18,7 +18,7 @@ use nettai_content_api::{FieldType, FieldValue, FormHandle, NaviHandle, Registry
 /// The Crosses a game's window holds (and a Cross list at most).
 pub const CROSSES: usize = 5;
 
-/// BN6's game root, whose stock ruleset a setup without one plays by.
+/// BN6's game root, whose ruleset a setup plays by.
 
 /// BN6's systems that take these facts.
 const CROSS_SYSTEM: &str = "cross";

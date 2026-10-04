@@ -16,7 +16,7 @@ use std::sync::Arc;
 use nettai_battle::content::Content;
 use bn6_compat::CrossList;
 use nettai_battle::custom::{FolderChip, GameVersion, SavedFolder};
-use nettai_content_api::{RulesetHandle, StageHandle};
+use nettai_content_api::StageHandle;
 
 /// The frontend's own random draws for a setup (splitmix64): not the
 /// game's RNG, which the battle keeps.
@@ -88,10 +88,11 @@ fn draws_live(game: &str) -> bool {
     game == bn6_compat::ROOT
 }
 
-/// A link battle's arena of `game` by `ruleset`, drawn from `draws`: its
-/// stage and background, then the later rounds'; `stage` forces the first
-/// round's stage.
-pub fn arena(content: &Content, game: &str, ruleset: RulesetHandle, draws: &mut Draws, stage: Option<StageHandle>) -> Result<Arena, String> {
+/// A link battle's arena of `game`, drawn from `draws`: its stage and
+/// background, then the later rounds'; `stage` forces the first round's
+/// stage.
+pub fn arena(content: &Content, game: &str, draws: &mut Draws, stage: Option<StageHandle>) -> Result<Arena, String> {
+    crate::playable(content, game)?;
     let stages = crate::link_battle_stages(content, game);
     if stages.is_empty() {
         return Err(format!("{game} has no link battle stage"));
@@ -107,7 +108,7 @@ pub fn arena(content: &Content, game: &str, ruleset: RulesetHandle, draws: &mut 
     if let Some(s) = stage {
         first.stage = s;
     }
-    Ok(Arena { game: game.to_string(), ruleset, first, later })
+    Ok(Arena { game: game.to_string(), first, later })
 }
 
 /// A version drawn at random, Gregar or Falzar.
@@ -139,13 +140,14 @@ impl Side {
         Ok(side)
     }
 
-    /// A player of a match of `game` by its stock rules, drawn from
+    /// A player of a match of `game` drawn from
     /// `draws` as netplay draws one: BN6's a random folder the rules accept,
     /// five Crosses of both versions, a version, no patch cards; another
     /// game's a plain side's ([`plain`]).
     pub fn drawn(content: &Arc<Content>, game: &str, draws: &mut Draws) -> Result<Side, String> {
         let stage = *crate::link_battle_stages(content, game).first().ok_or_else(|| format!("{game} has no link battle stage"))?;
-        let arena = Arena::on(game, crate::stock_ruleset(content, game)?, Place { stage, background: None });
+        crate::playable(content, game)?;
+        let arena = Arena::on(game, Place { stage, background: None });
         if !draws_live(game) {
             return plain_side(content, &arena, draws);
         }
@@ -196,13 +198,12 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Resul
     Ok(side)
 }
 
-/// A plain match of `game`, for a game live play draws none of (BN5's): its
-/// stock rules, an arena drawn from `seed` (`stage` forces the first
+/// A plain match of `game`, for a game live play draws none of (BN5's): an arena drawn from `seed` (`stage` forces the first
 /// round's stage), and on both sides a plain side (`plain_side`), each its
 /// own folder.
 pub fn plain(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageHandle>) -> Result<Match, String> {
     let mut draws = Draws::new(seed);
-    let arena = arena(content, game, crate::stock_ruleset(content, game)?, &mut draws, stage)?;
+    let arena = arena(content, game, &mut draws, stage)?;
     let sides = [plain_side(content, &arena, &mut draws)?, plain_side(content, &arena, &mut draws)?];
     Ok(Match { seed: Some(seed), arena, sides })
 }
@@ -215,7 +216,7 @@ fn rules_battle(content: &Arc<Content>, arena: &Arena) -> Result<Battle, String>
     crate::check::start(content, &Match { seed: None, arena: arena.clone(), sides: [side.clone(), side] })
 }
 
-/// Live play's match of `game`, by its stock rules, drawn from `seed`.
+/// Live play's match of `game`, drawn from `seed`.
 /// BN6's: a link battle's stage (`stage` forces one) and background, a
 /// random folder each player's rules accept (`crate::folders`), five of
 /// MegaMan's ten Crosses, of both versions, for each Cross window
@@ -227,7 +228,7 @@ pub fn live(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageHa
         return plain(content, game, seed, stage);
     }
     let mut draws = Draws::new(seed);
-    let arena = arena(content, game, crate::stock_ruleset(content, game)?, &mut draws, stage)?;
+    let arena = arena(content, game, &mut draws, stage)?;
     let mut rules = rules_battle(content, &arena)?;
     let folders =
         [folders::random_folder(content, game, &mut rules, 0, &mut draws), folders::random_folder(content, game, &mut rules, 1, &mut draws)];
