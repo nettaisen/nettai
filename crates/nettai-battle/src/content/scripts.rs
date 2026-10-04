@@ -247,7 +247,7 @@ mod tests {
 
     const GAME: &[(&str, &str)] = &[
         ("rules/turns", "return define.system { id = 'turns', state = { n = 'u8' } }"),
-        ("rules/ruleset", "return define.ruleset { id = 'stock', stock = true, systems = { require('./turns') } }"),
+        ("rules/ruleset", "return define.ruleset { systems = { require('./turns') } }"),
         ("cards", "return define.record('card', { power = 1 })"),
         ("chips/cannon", "return define.record('chip-ish', { power = 3 })"),
     ];
@@ -259,7 +259,7 @@ mod tests {
     fn content_holds_one_game() {
         let mix: &[(&str, &str)] = &[
             ("rules/extra", "return define.system { id = 'extra' }"),
-            ("rules/ruleset", "return define.ruleset { id = 'stock', stock = true, systems = { require('./extra') } }"),
+            ("rules/ruleset", "return define.ruleset { systems = { require('./extra') } }"),
             ("cards", "return define.record('card', { power = 2 })"),
         ];
         let c = content(vec![folder("game", GAME)]).unwrap();
@@ -267,9 +267,8 @@ mod tests {
         assert_eq!((c.game(), d.game.as_str()), ("game", "game"));
         let keys: Vec<&str> = d.systems.iter().map(|s| s.key.as_str()).collect();
         assert_eq!(keys, ["turns"]);
-        assert_eq!(d.stock_ruleset(), d.ruleset_by_key("stock"));
+        assert_eq!(d.ruleset().map(|r| r.systems.len()), Some(1), "the game's one ruleset");
         // Lookups are exact, of the one game's.
-        assert_eq!(d.ruleset_by_key("game:stock"), None);
         assert!(d.record("cards#1").is_some());
         assert_eq!(d.record("game:cards#1"), None);
         // Two game packs are two contents.
@@ -279,7 +278,7 @@ mod tests {
         let mut c = Content::default();
         c.scripts.add_dir("game", GAME.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect());
         c.scripts.set_manifest(PackManifest { id: "game".into(), kind: PackKind::Game, ..Default::default() });
-        c.scripts.add_game("mix", [("rules/ruleset".to_string(), "return define.ruleset { id = 'stock', stock = true, systems = { require('@game/rules/turns') } }".to_string())].into());
+        c.scripts.add_game("mix", [("rules/ruleset".to_string(), "return define.ruleset { systems = { require('@game/rules/turns') } }".to_string())].into());
         c.scripts.packs.retain(|p| p.id == "mix");
         let e = c.define().unwrap_err().message;
         assert!(e.contains("mix/rules/ruleset.luau: require(\"@game/rules/turns\"): game is no pack") || e.contains("game is a game pack"), "{e}");
@@ -289,76 +288,55 @@ mod tests {
     fn what_the_namespace_refuses() {
         let e = content(vec![folder("game", &[("rules/turns", "return define.system { id = 'game:turns' }")])]).unwrap_err();
         assert!(e.contains("\"game:turns\" is not a valid id"), "{e}");
-        // A section is a stock ruleset's field by the engine's name.
-        let e = content(vec![folder("game", &[("rules/x", "return define.ruleset { id = 'x', stock = true, Pools = { actor = 16 } }")])])
-            .unwrap_err();
+        // A section is the ruleset's field by the engine's name.
+        let e = content(vec![folder("game", &[("rules/x", "return define.ruleset { Pools = { actor = 16 } }")])]).unwrap_err();
         assert!(e.contains("`Pools` is no field of a ruleset"), "{e}");
-        let e = content(vec![folder("game", &[("rules/x", "return define.ruleset { id = 'x', stock = true, pools = { actor = 0, attack = 32, effect = 32 } }")])])
-            .unwrap_err();
-        assert!(e.contains("ruleset x: pools: a pool holds 1 to"), "{e}");
-        let e = content(vec![folder("game", &[("rules/x", "return define.ruleset { id = 'x', stock = true, pools = { actor = 'many', attack = 32, effect = 32 } }")])])
-            .unwrap_err();
-        assert!(e.contains("ruleset x: pools.actor: invalid type"), "{e}");
+        let e = content(vec![folder("game", &[("rules/x", "return define.ruleset { pools = { actor = 0, attack = 32, effect = 32 } }")])]).unwrap_err();
+        assert!(e.contains("game:rules/x.luau: ruleset: pools: a pool holds 1 to"), "{e}");
+        let e = content(vec![folder("game", &[("rules/x", "return define.ruleset { pools = { actor = 'many', attack = 32, effect = 32 } }")])]).unwrap_err();
+        assert!(e.contains("ruleset: pools.actor: invalid type"), "{e}");
         let e = content(vec![folder("Game", GAME)]).unwrap_err();
         assert!(e.contains("not lowercase words"), "{e}");
-        // Two stock rulesets in one game.
-        let two: &[(&str, &str)] = &[
-            ("a", "return define.ruleset { id = 'a', stock = true }"),
-            ("b", "return define.ruleset { id = 'b', stock = true }"),
-        ];
-        let e = content(vec![folder("game", two)]).unwrap_err();
-        assert!(e.contains("game game has 2 stock rulesets"), "{e}");
     }
 
-    /// docs/design/rules-in-luau.md §2.2: a variant is its base's systems,
-    /// less `remove`, with `add` after them.
+    /// The user: "there should only be one ruleset per game". A game
+    /// defines one, with no name and no variants: a second, an `id`, a
+    /// `stock` flag and a variant's `base`, `add` and `remove` are refused,
+    /// each by what it is.
     #[test]
-    fn a_mix_changes_its_base() {
-        let mix: &[(&str, &str)] = &[
-            ("rules/extra", "return define.system { id = 'extra' }"),
-            (
-                "rules/mixes",
-                "local game = require('./ruleset')\n\
-                 local turns = require('./turns')\n\
-                 local extra = require('./extra')\n\
-                 return {\n\
-                   define.ruleset { id = 'plus', base = game, add = { extra } },\n\
-                   define.ruleset { id = 'minus', base = game, remove = { turns } },\n\
-                 }",
-            ),
-        ];
+    fn a_game_has_one_ruleset() {
         let with = |more: &[(&str, &str)]| -> Result<Content, String> {
             let mut modules = GAME.to_vec();
+            modules.retain(|(p, _)| !more.iter().any(|(q, _)| q == p));
             modules.extend_from_slice(more);
             content(vec![folder("game", &modules)])
         };
-        let c = with(mix).unwrap();
+        let c = with(&[]).unwrap();
         let d = &c.defs;
-        let systems = |key: &str| -> Vec<&str> {
-            let r = d.ruleset(d.ruleset_by_key(key).unwrap());
-            r.systems.iter().map(|&h| d.system(h).key.as_str()).collect()
-        };
-        assert_eq!(systems("plus"), ["turns", "extra"]);
-        assert!(systems("minus").is_empty());
-        // What a ruleset refuses.
-        let bad = |source: &str| -> String { with(&[("rules/bad", source)]).unwrap_err() };
-        let base = "local game = require('./ruleset')\nlocal turns = require('./turns')\n";
+        let names: Vec<&str> = d.ruleset_systems().iter().map(|&h| d.system(h).key.as_str()).collect();
+        assert_eq!(names, ["turns"]);
+        assert_eq!(d.definitions.of(nettai_content_api::Registry::Ruleset)[0].key, nettai_content_api::RULESET_KEY);
+        // Content without one: its sides have no systems.
+        let none = content(vec![folder("game", &[("cards", "return define.record('card', {})")])]).unwrap();
+        assert!(none.defs.ruleset().is_none() && none.defs.ruleset_systems().is_empty());
+        // A second.
+        let e = with(&[("rules/other", "return define.ruleset { systems = {} }")]).unwrap_err();
+        assert!(e.contains("a game has one ruleset: game/rules/other.luau defines one, and game/rules/ruleset.luau another"), "{e}");
+        let bad = |source: &str| -> String { with(&[("rules/ruleset", source)]).unwrap_err() };
         let cases = [
-            ("return define.ruleset { id = 'x', stock = true, base = game }", "has no `base`"),
-            ("return define.ruleset { id = 'x', base = game, systems = { turns } }", "not `systems`"),
-            ("return define.ruleset { id = 'x', base = game, add = { turns } }", "which it has already"),
-            ("return define.ruleset { id = 'x', systems = {}, remove = { turns } }", "names none"),
-            ("return define.ruleset { id = 'x', systems = { turns }, game = 'game' }", "`game` is no field of a ruleset"),
-            // The game's rule sections and roles are its stock ruleset's.
-            ("return define.ruleset { id = 'x', base = game, pools = { actor = 16 } }", "`pools`: a game's rule sections and roles are its stock ruleset's"),
-            ("return define.ruleset { id = 'x', systems = { turns }, roles = {} }", "`roles`: a game's rule sections and roles are its stock ruleset's"),
+            ("return define.ruleset { id = 'stock', systems = {} }", "define.ruleset takes no `id`: a game has one ruleset"),
+            ("return define.ruleset { stock = true, systems = {} }", "`stock`: a game has one ruleset"),
+            ("return define.ruleset { base = {}, systems = {} }", "`base`: a game has one ruleset, and no variants of it"),
+            ("return define.ruleset { add = {} }", "`add`: a game has one ruleset, and no variants of it"),
+            ("return define.ruleset { remove = {} }", "`remove`: a game has one ruleset, and no variants of it"),
+            ("return define.ruleset { systems = {}, game = 'game' }", "`game` is no field of a ruleset"),
+            ("local t = require('./turns')\nreturn define.ruleset { systems = { t, t } }", "`systems` lists system turns twice"),
+            ("return define.ruleset { systems = { 3 } }", "`systems` lists system definitions"),
         ];
         for (source, want) in cases {
-            let e = bad(&format!("{base}{source}"));
+            let e = bad(source);
             assert!(e.contains(want), "{source}: {e}");
         }
-        let e = bad("return define.ruleset { id = 'x', base = require('./ruleset'), remove = { define.system { id = 'y' } } }");
-        assert!(e.contains("which its base doesn't have"), "{e}");
     }
 
     /// docs/design/content-model-v2.md §4.0: a game's top module (its
@@ -371,7 +349,7 @@ mod tests {
     fn a_games_init_requires_what_it_has() {
         let modules: BTreeMap<String, String> = [
             ("rules/turns", "return define.system { id = 'turns' }"),
-            ("rules/init", "return define.ruleset { id = 'stock', stock = true, systems = { require('@self/turns') } }"),
+            ("rules/init", "return define.ruleset { systems = { require('@self/turns') } }"),
             ("chips/cannon", "return define.record('card', { power = 3 })"),
             ("chips/sword/init", "return define.chip { id = 'sword', instant = function(u) end, parts = { define.record('part', {}), require('@self/edge') } }"),
             ("chips/sword/edge", "return define.record('part', { long = true })"),
@@ -392,7 +370,7 @@ mod tests {
             Ok(c)
         };
         let c = with_init(Some("return { rules = require('@self/rules') }")).unwrap();
-        assert!(c.defs.ruleset_by_key("stock").is_some());
+        assert!(c.defs.ruleset().is_some());
         assert_eq!(c.defs.record("chips/cannon#1"), None, "unreached, unloaded");
         // `also`: a module loaded for what it defines, which nothing else requires.
         let all = "return { rules = require('@self/rules'), chips = { require('@self/chips/sword') }, also = { require('@self/chips/cannon'), require('@self/lib/pa') } }";
@@ -417,9 +395,9 @@ mod tests {
         refused(None, "game/init.luau: game pack game has no top module");
         // A support pack defines nothing a game has.
         let mut c = Content::default();
-        c.scripts.add_support("lib", [("x".to_string(), "return define.ruleset { id = 'r' }".to_string())].into());
-        c.scripts.add_game("game", [("rules/ruleset".to_string(), "local _ = require('@lib/x')\nreturn define.ruleset { id = 'stock', stock = true }".to_string())].into());
+        c.scripts.add_support("lib", [("x".to_string(), "return define.ruleset {}".to_string())].into());
+        c.scripts.add_game("game", [("chips/y".to_string(), "local _ = require('@lib/x')\nreturn define.record('y', {})".to_string())].into());
         let e = c.define().unwrap_err().message;
-        assert!(e.contains("lib/x.luau: ruleset r: support pack lib defines nothing a game has"), "{e}");
+        assert!(e.contains("lib/x.luau: ruleset ruleset: support pack lib defines nothing a game has"), "{e}");
     }
 }

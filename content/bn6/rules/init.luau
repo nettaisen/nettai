@@ -1,6 +1,6 @@
 --!strict
--- BN6's stock rules (docs/design/rules-in-luau.md §2.2): the systems a BN6
--- player plays by, in the order the framework calls them. The framework
+-- BN6's rules, its one ruleset (docs/design/rules-in-luau.md §2.2): the
+-- systems a BN6 player plays by, in the order the framework calls them. The framework
 -- (Rust) still runs the BN6 rules no system has taken over yet; the systems
 -- take them slice by slice (§8).
 
@@ -14,8 +14,6 @@ local navicust = require("@self/navicust")
 local patch_cards = require("@self/patch-cards")
 
 return define.ruleset {
-    id = "stock",
-    stock = true,
     systems = {
         -- The Crosses on the custom screen: ChargeCross's chips and the
         -- hand size.

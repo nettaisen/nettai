@@ -96,7 +96,8 @@ pub fn stock_ruleset(content: &Content, game: &str) -> Result<RulesetHandle, Str
     if content.game() != game {
         return Err(format!("the content is {}'s, not {game}'s", content.game()));
     }
-    content.defs.stock_ruleset().ok_or_else(|| format!("{game} has no stock ruleset"))
+    // (A game has one ruleset; the handle is its, until the arena holds none.)
+    content.defs.ruleset().map(|_| RulesetHandle(0)).ok_or_else(|| format!("{game} has no ruleset"))
 }
 
 /// What a side's tactics' send draws from, with the seed and the side.
@@ -216,8 +217,8 @@ pub fn version_byte(game: GameVersion) -> u8 {
 }
 
 /// Whether `ruleset` lists a system named `system` in its game (`forms`).
-pub fn ruleset_has_system(content: &Content, ruleset: RulesetHandle, system: &str) -> bool {
-    content.defs.ruleset(ruleset).systems.iter().any(|&s| ids::local(&content.defs.system(s).key) == system)
+pub fn ruleset_has_system(content: &Content, _ruleset: RulesetHandle, system: &str) -> bool {
+    content.defs.ruleset_systems().iter().any(|&s| ids::local(&content.defs.system(s).key) == system)
 }
 
 /// The system that brings the Cross window and the form changes (BN6's).
@@ -380,7 +381,7 @@ impl Match {
             // Cross of the game (or the side's list) and Beast Out as the
             // side says.
             let unlocks = Unlocks { beast_out: s.beast_out, cross_list: s.crosses, ..Unlocks::everything(s.game) };
-            unlocks.write(content, Some(self.arena.ruleset), &mut player).expect("the match's ruleset takes BN6's setup as its systems declare it");
+            unlocks.write(content, &mut player).expect("the match's ruleset takes BN6's setup as its systems declare it");
             // Its karma and souls, into the systems that take them.
             facts::write(content, &self.arena, s, &mut player).expect("a side's karma and souls fit its rules (the match's checks)");
             player
@@ -388,8 +389,6 @@ impl Match {
         RoundSetup {
             content: content.hash(),
             settings,
-            // (The match's one ruleset.)
-            ruleset: Some(self.arena.ruleset),
             navi_stats: [self.sides[0].round_stats(content), self.sides[1].round_stats(content)],
             rng: seed,
             local_side: 0,
@@ -504,8 +503,7 @@ pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usi
             None => format!("stage {stage}"),
         }
     };
-    let ruleset = ids::local(&content.defs.ruleset(m.arena.ruleset).key);
-    let mut out = format!("match of {} ({ruleset} rules): seed {seed}, {}", m.arena.game, place(&m.arena.first));
+    let mut out = format!("match of {}: seed {seed}, {}", m.arena.game, place(&m.arena.first));
     for (side, s) in m.sides.iter().enumerate() {
         let who = match (side == you, side) {
             (true, _) => "you",

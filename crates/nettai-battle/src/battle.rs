@@ -711,8 +711,7 @@ impl Battle {
         let (field, mode) = (Field::new(panels, &stage.layout, stage.panel_pattern, stage.mode), stage.mode);
         let objects = Objects::with_capacity(content.rules().pools.slots());
         let hands = [ChipHand::empty(&content), ChipHand::empty(&content)];
-        let ruleset = setup.ruleset;
-        let rules = [0, 1].map(|p| crate::rules::SideRules::for_player(&content, &mut setup.players[p], ruleset));
+        let rules = [0, 1].map(|p| crate::rules::SideRules::for_player(&content, &mut setup.players[p]));
         let mut b = Battle {
             content,
             stats: setup.navi_stats,
