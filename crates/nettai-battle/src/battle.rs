@@ -438,9 +438,6 @@ pub struct Battle {
     pub transform_seq: TransformSequencer,
     /// What a mid-battle custom-screen request waits for first.
     pub custom_reversion: crate::transform::CustomReversion,
-    /// Per side: the bug frags the player brought (`dword_203F7E0`, from
-    /// the save through the init exchange); a dark chip spends one.
-    pub bug_frags: [u32; 2],
     /// Per side: the level of the navi code the save received
     /// (`dword_203CFA0`, from the save through the init exchange; 0xFF
     /// none: `PlayerSetup::navi_level`), which picks a link navi's chip
@@ -463,6 +460,8 @@ pub struct Battle {
     /// Per-side extra battle state (`sub_802E070`), used by the own-gauges
     /// mode (battle flag 0x40, `battle_flags::OWN_GAUGES`).
     pub sides: [SideState; 2],
+    /// Per side: the looks its rules set (presentation).
+    pub looks: [SideLooks; 2],
     /// Per-side statistics counters (`byte_203EAE0`, `sub_800AB46`).
     pub side_stats: [[u8; 16]; 2],
     /// Per side: BN5's ColonelSoul army, armed or not, and its soldiers'
@@ -568,11 +567,6 @@ pub struct SideState {
     /// +0x12: the swing a variable sword makes for a navi no buttons drive
     /// (BN5's computer navi draws it before VarSwrd or NeoVari, 0x0802A330).
     pub sword_pick: u8,
-    /// Presentation: the emotion window shows the second set of the base
-    /// form's faces (BN5's Hub Style, NaviStats +0x4C: 0x0801AF8E adds 11 to
-    /// the face), as the side's rules set it (`battle.set_face_variant`;
-    /// `kinds::player::shows_face_variant`).
-    pub face_variant: bool,
     /// +0x44: the target the side tracks (an actor of the other side), which
     /// an obstacle leaving hands on (`sub_802EF74`).
     pub tracked: Option<ObjectRef>,
@@ -584,6 +578,21 @@ pub struct SideState {
     /// (on a damaging chip, on a navi chip).
     pub special_attack_bonus: u16,
     pub special_navi_bonus: u16,
+}
+
+/// Presentation a side's rules set as the round is set up: no part of the
+/// original's side block (`SideState`), which the player's init clears
+/// (`sub_802DFC8`), nor of the simulation (the digest leaves it out).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct SideLooks {
+    /// The emotion window shows the second set of the base form's faces
+    /// (BN5's Hub Style, NaviStats +0x4C: 0x0801AF8E adds 11 to the face;
+    /// `battle.set_face_variant`, `kinds::player::shows_face_variant`).
+    pub face_variant: bool,
+    /// The custom screen's enemy names show the side's navi by its variant
+    /// name (BN5's Hub Style in a link battle: 0x0801AE3A's NameID 0xEA;
+    /// `battle.set_name_variant`).
+    pub name_variant: bool,
 }
 
 /// A side's defensive-chip record (0x10 bytes per side at 0x02036720):
@@ -739,7 +748,6 @@ impl Battle {
             turn_transforms: [TransformRequest::NONE; 2],
             transform_seq: TransformSequencer::default(),
             custom_reversion: Default::default(),
-            bug_frags: [setup.players[0].bug_frags, setup.players[1].bug_frags],
             navi_levels: setup.players.each_ref().map(|p| {
                 // (A setup's checks refuse a level past the navi codes:
                 // the tables a level reads stop there.)
@@ -761,6 +769,7 @@ impl Battle {
             custom: CustomScreens::new(&setup.players),
             link: Link::new(setup.link_delay),
             sides: [SideState::default(); 2],
+            looks: [SideLooks::default(); 2],
             side_stats: [[0; 16]; 2],
             obstacle_soldiers: Default::default(),
             navi_hit_counts: [[0; 4]; 2],
@@ -2273,6 +2282,22 @@ mod tests {
         let (bn5, bn5_state) = ticks(false);
         assert_eq!((bn5_state, bn6_state), (fight::CUSTOM_REVERT, fight::CUSTOM_SEQUENCE));
         assert!(bn5 < bn6, "BN5 {bn5} ticks, BN6 {bn6}");
+    }
+
+    /// The looks a side's rules set as the round is set up (BN5's Hub
+    /// Style's faces and enemy name) outlast the player's init, which clears
+    /// the side's block (`sub_802DFC8`).
+    #[test]
+    fn a_sides_looks_outlast_the_players_init() {
+        let c = testing::content();
+        let mut b = Battle::new(testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c)), c);
+        let looks = SideLooks { face_variant: true, name_variant: true };
+        b.looks = [looks; 2];
+        b.sides[1].sword_pick = 3;
+        b.spawn_actors();
+        b.run_objects();
+        assert_eq!(b.sides[1].sword_pick, 0, "the init clears the side's block");
+        assert_eq!(b.looks, [looks; 2]);
     }
 
     #[test]

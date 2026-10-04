@@ -424,7 +424,7 @@ chips' own weapons, beside the chip that gives them (`bugrswrd/charge`, `bgdthth
 arguments of its own (a sword's slash, Thunder's shot, AquaNdl1's volley, an electric pulse no chip has) or
 names a chip's instant effect (FireHit's fists, Boomer's boomerang: `instant`, without `instant_waits`, which
 only an effect no chip has sets: TenguCross's wind), and the two bug chips' spend a bug frag
-(`battle.bug_frags(side)`, `battle.spend_bug_frags(side, n)`). A form's `weapons` and a navi's are handles (`FormWeapons` of
+(BN6's API since rules-in-luau.md S8: `bn6.spend_bug_frags(side, n)`, the dark-chips system's state). A form's `weapons` and a navi's are handles (`FormWeapons` of
 `Option<WeaponHandle>`); a navi's definition also carries what a Cross change brings it with (`fresh`: HP, the
 body's programs, the first barrier, the Mega and Giga levels, the B+Back special's damage) and its HP after one
 (`cross_hp`, by side), which were tables in the engine (`byte_80210DD`, `byte_802DD88`). The content API's

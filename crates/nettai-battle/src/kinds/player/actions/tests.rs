@@ -2281,15 +2281,15 @@ fn the_chips_charged_shots_fire_and_roll_back() {
     ];
     for (weapon, frags, action, damage, element) in weapons {
         let (mut b, p0, _) = fight();
-        b.bug_frags[0] = frags;
+        testing::set_bug_frags(&mut b, 0, frags);
         assert_eq!(start_weapon(&mut b, p0, weapon), action, "{weapon}");
         let a = &ai_mut(&mut b, p0).attack;
         // Every one: the counter byte 0x14 and a chip lockout of 20 ticks.
         assert_eq!((a.damage, a.element, a.hit_param, a.lockout, a.charged, a.extra), (damage, element, 0x14, 0x14, 0, 0), "{weapon}");
         // A bug frag is spent where there was one.
-        assert_eq!(b.bug_frags[0], 0, "{weapon}");
+        assert_eq!(testing::bug_frags(&b, 0), 0, "{weapon}");
         let (mut b, p0, p1) = fight();
-        b.bug_frags[0] = frags;
+        testing::set_bug_frags(&mut b, 0, frags);
         let t = run_weapon(&mut b, [p0, p1], weapon, 400);
         assert!(t < 400, "{weapon} never ended");
     }
@@ -2304,7 +2304,7 @@ fn the_chips_charged_shots_fire_and_roll_back() {
     // BugRSwrd's slash with a bug frag covers the two columns ahead:
     // the opponent, two panels away, takes 200.
     let (mut b, p0, p1) = fight();
-    b.bug_frags[0] = 1;
+    testing::set_bug_frags(&mut b, 0, 1);
     stand_on(&mut b, p0, 3, 2);
     stand_on(&mut b, p1, 5, 2);
     let hp = b.objects.get(p1).hp;

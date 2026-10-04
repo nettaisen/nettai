@@ -75,9 +75,6 @@ pub struct PlayerSetup {
     /// The joypad's auto-repeat beat (0-4) on the round's first tick; each
     /// console counts its own.
     pub joypad_phase: u8,
-    /// The save's bug frags (a dark chip spends one), which the init
-    /// exchange shares.
-    pub bug_frags: u32,
     /// The level of the navi code the save received (0 to
     /// [`MAX_NAVI_LEVEL`]; event flag 0x163 set), which the init exchange
     /// shares (`sub_800B144`, `dword_203CFA0`): a link navi's chip bonus,
@@ -119,7 +116,6 @@ impl Default for PlayerSetup {
             folder: Some(BattleFolder::empty()),
             souls: SoulUnlocks::default(),
             joypad_phase: 0,
-            bug_frags: 0,
             navi_level: None,
             sp_times: Default::default(),
             console: ConsoleSetup::default(),
