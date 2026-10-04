@@ -10,7 +10,7 @@ local shooter = require("../../lib/cannon")
 local variants = require("../../objects/projectile/variants")
 
 -- GigaCan1 (BN5 chip 0x140): the Program Advance of three Cannons of one code (or Attck+10 and two of them): BN6's
--- cannon (@common/cannon, action 0x14 with subtype 4: the arm's row 0 of 0x080EC2AC, the shot's row 0x0C of 0x080EC2B3)
+-- cannon (@exelib/cannon, action 0x14 with subtype 4: the arm's row 0 of 0x080EC2AC, the shot's row 0x0C of 0x080EC2B3)
 -- firing BN5's GigaCan shot (objects/projectile: a blast, no burst), the cannon and the navi leaving
 -- afterimages as it charges (a third, Hub Style's shade, in Hub Style: lib/cannon).
 local gigacan1 = define.chip {
@@ -42,7 +42,7 @@ local gigacan1 = define.chip {
 }
 
 -- GigaCan2 (BN5 chip 0x141): the Program Advance of three HiCannons of one code (or Attck+10 and two of them): BN6's
--- cannon (@common/cannon, action 0x14 with subtype 5: the arm's row 1 of 0x080EC2AC, the shot's row 0x0C of 0x080EC2B3)
+-- cannon (@exelib/cannon, action 0x14 with subtype 5: the arm's row 1 of 0x080EC2AC, the shot's row 0x0C of 0x080EC2B3)
 -- firing BN5's GigaCan shot (objects/projectile: a blast, no burst), the cannon and the navi leaving
 -- afterimages as it charges (a third, Hub Style's shade, in Hub Style: lib/cannon).
 local gigacan2 = define.chip {
@@ -74,7 +74,7 @@ local gigacan2 = define.chip {
 }
 
 -- GigaCan3 (BN5 chip 0x142): the Program Advance of three M-Cannons of one code (or Attck+10 and two of them): BN6's
--- cannon (@common/cannon, action 0x14 with subtype 6: the arm's row 2 of 0x080EC2AC, the shot's row 0x0C of 0x080EC2B3)
+-- cannon (@exelib/cannon, action 0x14 with subtype 6: the arm's row 2 of 0x080EC2AC, the shot's row 0x0C of 0x080EC2B3)
 -- firing BN5's GigaCan shot (objects/projectile: a blast, no burst), the cannon and the navi leaving
 -- afterimages as it charges (a third, Hub Style's shade, in Hub Style: lib/cannon).
 local gigacan3 = define.chip {

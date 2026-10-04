@@ -1,11 +1,11 @@
 --!strict
 -- The projectile (the original's attack object #0, `sub_80C4E58`): the
--- shared projectile (@common/projectile/projectile), BN6's kind and burst.
+-- shared projectile (@exelib/projectile/projectile), BN6's kind and burst.
 -- What a shot does is its variant (a record: the shared ones in ./variants,
 -- a chip's own with the chip).
 
 local collision = require("../../rules/collision")
-local common = require("@common/projectile/projectile")
+local common = require("@exelib/projectile/projectile")
 local effects = require("../../lib/effects")
 
 local projectile = {}

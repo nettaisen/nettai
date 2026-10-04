@@ -1,10 +1,10 @@
 --!strict
--- BN5's cannons' action (the original's action 0x14, BN6's code: @common/cannon) with BN5's attachment and
+-- BN5's cannons' action (the original's action 0x14, BN6's code: @exelib/cannon) with BN5's attachment and
 -- projectile, its arms (the attachment table's rows 0 to 2: sprite 0c-01 in palettes 0 to 2), its sound (0xAE) and
 -- GigaCan's third afterimage in Hub Style.
 
 local attachment = require("../objects/attachment/attachment")
-local common = require("@common/cannon")
+local common = require("@exelib/cannon")
 local projectile = require("./projectile")
 
 local cannon = {}

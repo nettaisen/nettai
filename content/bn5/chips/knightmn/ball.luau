@@ -11,8 +11,8 @@
 
 local collision = require("../../rules/collision")
 local math5 = require("../../rules/math")
-local panels = require("@common/panels")
-local regions = require("@common/regions")
+local panels = require("@exelib/panels")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
 export type State = {

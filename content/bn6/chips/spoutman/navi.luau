@@ -15,7 +15,7 @@
 -- §3.6.11.
 
 local spoutman_navi = require("../../navis/spoutman/navi")
-local panels = require("@common/panels")
+local panels = require("@exelib/panels")
 local ball = require("./ball")
 local geyser = require("./geyser")
 local pillar = require("./pillar")

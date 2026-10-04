@@ -10,7 +10,7 @@
 
 local collision = require("../../rules/collision")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local trajectory = require("../../lib/trajectory")
 
 export type State = {

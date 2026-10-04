@@ -1,12 +1,12 @@
 --!strict
 -- A drill (the original's attack object #0x71, `sub_80D2A94`): the shared
--- drill (@common/drilarm/drill), BN6's kind: DrilArm's (./chip), which
+-- drill (@exelib/drilarm/drill), BN6's kind: DrilArm's (./chip), which
 -- GroundCross's charged shot (navis/megaman/forms/groundcross/drill) and
 -- MstrCros's GroundCross (chips/mstrcros/navi) use too.
 
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local common = require("@common/drilarm/drill")
+local common = require("@exelib/drilarm/drill")
 local sparks = require("../../lib/sparks")
 
 local drill = {}

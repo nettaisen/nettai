@@ -10,7 +10,7 @@
 -- (0x080EFBC4, 0x080EFBE0), the blade in the overlay slot, and no recovery ticks.
 
 local attachment = require("../../objects/attachment/attachment")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local stepsword = require("../../lib/stepsword")
 local swords = require("../../lib/swords")
 

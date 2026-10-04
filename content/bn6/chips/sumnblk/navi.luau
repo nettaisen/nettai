@@ -7,7 +7,7 @@
 -- it is gone.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local navi = {}
 

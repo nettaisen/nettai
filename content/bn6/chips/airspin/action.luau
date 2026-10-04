@@ -1,4 +1,4 @@
 --!strict
--- AirSpin's action: the one BN5 shares (@common/airspin/action).
+-- AirSpin's action: the one BN5 shares (@exelib/airspin/action).
 
-return require("@common/airspin/action")
+return require("@exelib/airspin/action")

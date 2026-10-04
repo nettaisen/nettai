@@ -8,7 +8,7 @@
 
 local attachment = require("../../../../objects/attachment/attachment")
 local collision = require("../../../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local swords = require("../../../../lib/swords")
 
 local charge = {}
