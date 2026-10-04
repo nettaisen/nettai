@@ -251,14 +251,14 @@ pub(crate) const SECTIONS: &[&str] = &[
 ];
 
 /// The game's rule sections into `rules` (which starts as the base): each
-/// its stock ruleset names.
+/// its ruleset names.
 fn sections(rules: &mut Rules, r: &SpecReader, definitions: &Definitions) -> Result<(), ContentError> {
-    let Some(d) = super::defs::stock_ruleset(definitions) else { return Ok(()) };
+    let Some(d) = super::defs::ruleset(definitions) else { return Ok(()) };
     let Data::Map(fields) = &d.spec else { return Ok(()) };
     for (field, spec) in fields {
         let DataKey::Str(name) = field else { continue };
         if SECTIONS.contains(&name.as_str()) {
-            section(rules, name, spec, &format!("{}.luau: ruleset {}: {name}", d.module, d.key), r)?;
+            section(rules, name, spec, &format!("{}.luau: ruleset: {name}", d.module), r)?;
         }
     }
     Ok(())

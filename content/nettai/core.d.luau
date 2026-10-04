@@ -1846,26 +1846,19 @@ export type SystemSpec = {
 }
 export type System = SystemSpec
 
--- A match's rules: a list of systems, which the framework calls in this
--- order. A game's own is its `stock` ruleset (one per game, its
--- rules/init.luau: a game's rules are one definition). A ruleset made from
--- another (`base`, a variant) has its base's systems less `remove`, with
--- `add` after them, and changes nothing else. A match plays one game by one
--- of its rulesets (docs/design/rules-in-luau.md §2.3).
+-- A game's rules, its one ruleset (its rules/init.luau; a second
+-- `define.ruleset` is a load error): the systems its players play by, which
+-- the framework calls in this order (docs/design/rules-in-luau.md §2.3). It
+-- has no `id` and no variants: every match of the game plays by it.
 --
--- The stock ruleset alone also holds the game's rule sections
--- (docs/design/content-model-v2.md §3.8: tables of rules no entity owns,
--- each a plain table its module returns, `panels = require("./panels")`),
--- which the engine reads against its schemas when the ruleset is defined,
--- and the game's roles (§7.4, `roles = require("./roles")`). A section the
--- stock ruleset doesn't name keeps the engine's table.
+-- It also holds the game's rule sections (docs/design/content-model-v2.md
+-- §3.8: tables of rules no entity owns, each a plain table its module
+-- returns, `panels = require("@self/panels")`), which the engine reads
+-- against its schemas when the ruleset is defined, and the game's roles
+-- (§7.4, `roles = require("@self/roles")`). A section the ruleset doesn't
+-- name keeps the engine's table.
 export type RulesetSpec = {
-    id: string,
-    stock: boolean?,
     systems: { System }?,
-    base: Ruleset?,
-    add: { System }?,
-    remove: { System }?,
     banners: any?,
     berserk: any?,
     buster: any?,

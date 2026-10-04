@@ -53,18 +53,17 @@ pub const MAX_KARMA: u16 = 1000;
 
 /// Whether a system of `ruleset` declares setup field `field` (a side
 /// under those rules takes that fact).
-pub fn takes(content: &Content, ruleset: RulesetHandle, field: &str) -> bool {
-    content.defs.ruleset(ruleset).systems.iter().any(|&h| content.defs.schema(content.defs.system(h).setup).index_of(field).is_some())
+pub fn takes(content: &Content, _ruleset: RulesetHandle, field: &str) -> bool {
+    content.defs.ruleset_systems().iter().any(|&h| content.defs.schema(content.defs.system(h).setup).index_of(field).is_some())
 }
 
 /// How many souls a side under `ruleset` has room for (the `souls`
 /// field's elements: BN5's souls system's 16), none when the rules take
 /// none.
-pub fn soul_capacity(content: &Content, ruleset: RulesetHandle) -> usize {
+pub fn soul_capacity(content: &Content, _ruleset: RulesetHandle) -> usize {
     content
         .defs
-        .ruleset(ruleset)
-        .systems
+        .ruleset_systems()
         .iter()
         .filter_map(|&h| {
             let schema = content.defs.schema(content.defs.system(h).setup);
@@ -138,10 +137,10 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
 /// the save's Soul Unison and Chaos Unison (a finished save's event flags
 /// 0 and 0x236).
 pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerSetup) -> Result<(), String> {
-    let (game, ruleset) = (arena.game.as_str(), Some(arena.ruleset));
-    player.set_fact(content, ruleset, KARMA_FIELD, &[Fact::Value(Value::Int(side.karma as i64))])?;
+    let game = arena.game.as_str();
+    player.set_fact(content, KARMA_FIELD, &[Fact::Value(Value::Int(side.karma as i64))])?;
     // (BN6's: the dark-chips system's.)
-    player.set_fact(content, ruleset, BUG_FRAGS_FIELD, &[Fact::Value(Value::Int(side.bug_frags as i64))])?;
+    player.set_fact(content, BUG_FRAGS_FIELD, &[Fact::Value(Value::Int(side.bug_frags as i64))])?;
     if takes(content, arena.ruleset, SOULS_FIELD) {
         // (Every soul, as many as the rules hold.)
         let souls: Vec<Fact> = owned_souls(content, game, side)
@@ -149,13 +148,13 @@ pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerS
             .take(soul_capacity(content, arena.ruleset))
             .map(|f| Fact::Value(Value::Def(Registry::Form, f.0)))
             .collect();
-        player.set_fact(content, ruleset, SOULS_FIELD, &souls)?;
+        player.set_fact(content, SOULS_FIELD, &souls)?;
     }
     // Soul Unison and Chaos Unison, where the rules take them (their
     // defaults: on, a finished save's).
     for (on, field) in [(side.soul_unison, SOUL_UNISON_FIELD), (side.chaos_unison, CHAOS_UNISON_FIELD)] {
         if takes(content, arena.ruleset, field) {
-            player.set_fact(content, ruleset, field, &[Fact::Value(Value::Bool(on))])?;
+            player.set_fact(content, field, &[Fact::Value(Value::Bool(on))])?;
         }
     }
     Ok(())

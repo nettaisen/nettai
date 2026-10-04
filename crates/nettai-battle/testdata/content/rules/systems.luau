@@ -1,8 +1,9 @@
 --!strict
--- The test content's rules (docs/design/rules-in-luau.md): two made-up
--- systems and two rulesets, for the framework's tests of per-side state,
--- player setups and hooks. Neither changes how a battle plays. A third
--- ruleset plays by BN6's patch-cards system, for its tests.
+-- The test content's rules (docs/design/rules-in-luau.md): its made-up
+-- systems and its one ruleset, for the framework's tests of per-side state,
+-- player setups and hooks. A test that plays by other systems (the marker,
+-- the watcher, BN6's patch-cards system) writes its list in place of
+-- `SYSTEMS` (testing.rs's `with_systems`).
 
 local patch_cards = require("./patch-cards")
 
@@ -77,25 +78,23 @@ local dark_chips = require("./dark-chips")
 local emotion = require("./emotion")
 local forms = require("./forms")
 
+-- The systems the test content plays by (BN6's beast system first, then the
+-- counter, then BN6's forms, emotion and dark-chips systems).
+local SYSTEMS = { beast, counter, forms.system, emotion.system, dark_chips }
+
 return {
     counter = counter,
     marker = marker,
-    -- The test content's own rules: its systems, its rule sections (BN6's
+    watcher = watcher,
+    patch_cards = patch_cards,
+    -- The test content's rules: its systems, its rule sections (BN6's
     -- berserk, buster and math; the others are its Rust tables) and its
     -- roles.
-    stock = define.ruleset {
-        id = "stock",
-        stock = true,
-        systems = { beast, counter, forms.system, emotion.system, dark_chips },
+    ruleset = define.ruleset {
+        systems = SYSTEMS,
         berserk = require("./berserk"),
         buster = require("./buster"),
         math = require("./math"),
         roles = require("./roles"),
     },
-    -- Another player's: the marker first, then the counter.
-    other = define.ruleset { id = "test-other", systems = { marker, counter } },
-    -- BN6's patch cards, then the counter.
-    cards = define.ruleset { id = "test-cards", systems = { patch_cards, counter } },
-    -- The watcher.
-    watch = define.ruleset { id = "test-watch", systems = { watcher } },
 }
