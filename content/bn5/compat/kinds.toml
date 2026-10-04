@@ -146,6 +146,9 @@
 "rockcube/cube" = { pool = "effect", index = 0x37 }
 "wind/fan" = { pool = "attack", index = 0x48 }
 "wind/controller" = { pool = "effect", index = 0x25 }
+"vdoll/doll" = { pool = "attack", index = 0x7A }
+"vdoll/curse" = { pool = "effect", index = 0x4E, scratch_position = true }
+"vdoll/sparkles" = { pool = "effect", index = 0x11, scratch_position = true }
 "voltz/sensor" = { pool = "attack", index = 0x90 }
 "voltz/shock" = { pool = "attack", index = 0x92 }
 "tornado" = { pool = "attack", index = 0x31 }
@@ -265,3 +268,8 @@
 "football/ball" = { pool = "attack", index = 0x95 }
 "bignoise/navi" = { pool = "actor", index = 0x1B }
 "bignoise/noise" = { pool = "attack", index = 0x04 }
+"support/controller" = { pool = "effect", index = 0x74 }
+"rush" = { pool = "actor", index = 0x4B }
+"beat" = { pool = "actor", index = 0x4C }
+"tango" = { pool = "actor", index = 0x4D }
+"tango/heal" = { pool = "attack", index = 0x9F }

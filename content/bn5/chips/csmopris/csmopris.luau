@@ -8,7 +8,7 @@
 -- spark) and goes off the field.
 --
 -- (The comet's variants 0 to 3 are CosmoMan the virus's: they wait out the dimming and fly straight. In the operation
--- battle (battle flag 0x40), never in a netbattle, a comet's speed is its own row's, 0x080D4948. Neither is met in a netbattle; both
+-- battle (the operation battle), never in a netbattle, a comet's speed is its own row's, 0x080D4948. Neither is met in a netbattle; both
 -- are ported as the code has them.)
 
 local collision = require("../../rules/collision")

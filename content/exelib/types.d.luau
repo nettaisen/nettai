@@ -1309,3 +1309,78 @@ export type InstrumentLook = {
     explosion: Effect,
     puff: Effect,
 }
+
+-- A game's Tango's heal (@exelib/supports/heal): its kind's key, sprite and sound, the sparkle as it lands, the game's
+-- trajectory it arcs by, and how it raises the game's 100-HP barrier (type 5) and its visual on the navi.
+export type TangoHealLook = {
+    id: string,
+    sprite: SpriteAsset,
+    sound: Sound,
+    sparkle: Effect,
+    trajectory: Trajectory,
+    raise_barrier: (navi: Object) -> (),
+}
+
+-- Tango's heal made for a game (@exelib/supports/heal): thrown by `tango` from `pos` onto the panel (x, y).
+export type TangoHeal = {
+    kind: Kind,
+    spawn: (tango: Object, pos: Vec3, x: number, y: number) -> Object?,
+}
+
+-- A game's Tango (@exelib/supports/tango): her kind's key and sprite, her arrival's, landing's and throw's sounds, the
+-- sparkle she appears in (effect 0x15), the puff she goes in (effect 0x14), and her heal.
+export type TangoLook = {
+    id: string,
+    sprite: SpriteAsset,
+    arrive_sound: Sound,
+    land_sound: Sound,
+    throw_sound: Sound,
+    arrive: Effect,
+    puff: Effect,
+    heal: TangoHeal,
+}
+
+-- A game's Beat (@exelib/supports/beat): his kind's key and sprite, his swoop's and snatch's sounds.
+export type BeatLook = {
+    id: string,
+    sprite: SpriteAsset,
+    swoop_sound: Sound,
+    snatch_sound: Sound,
+}
+
+-- A support made for a game (@exelib/supports/beat, tango): sent by the supports' controller, whose `out` flag it sets.
+export type SupportActor = {
+    kind: Kind,
+    spawn: (controller: Object) -> Object?,
+}
+
+-- A game's Rush (@exelib/supports/rush): his kind's key and sprite, his appearance's and bite's sounds, the dust he
+-- digs in and out of (effect 0x14), what his bite is, reaches and carries; the chip he leaves in the hand (BN6's second
+-- WhiCapsl; BN5's Rush has none), and what his bite does when the opponent's navi is gone (BN6's branch unbalances
+-- the stack, BN5's skips the hand).
+export type RushLook = {
+    id: string,
+    sprite: SpriteAsset,
+    appear_sound: Sound,
+    bite_sound: Sound,
+    dust: Effect,
+    is: CollisionType,
+    hits: CollisionType,
+    status: Status,
+    spared: Chip?,
+    lost_target: "unbalances" | "skips",
+}
+
+-- Rush made for a game (@exelib/supports/rush): sent by the supports' controller, eating `eaten`.
+export type Rush = {
+    kind: Kind,
+    spawn: (controller: Object, eaten: Chip?) -> Object?,
+}
+
+-- A game's supports' controller (@exelib/supports/controller): its kind's key, and the supports it sends.
+export type SupportsLook = {
+    id: string,
+    rush: Rush,
+    beat: SupportActor,
+    tango: SupportActor,
+}

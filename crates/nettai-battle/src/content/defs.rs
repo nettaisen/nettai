@@ -188,6 +188,9 @@ pub struct FormDef {
     /// identity's death hook does (`Navi:take_off_form_parts`). BN5's
     /// NumberSoul's takes its layer off (0x0800F0DE).
     pub take_off: Option<FnId>,
+    /// `tick(navi)`: the form's own part of the per-form tick (BN5's
+    /// MegaMan's, 0x080F04CE: GyroSoul's propeller by the priming).
+    pub tick: Option<FnId>,
 }
 
 /// A stage (`define.stage`).
@@ -1563,8 +1566,8 @@ impl Defs {
                     _ => Some(functions.id(slot(d, field)?)),
                 })
             };
-            let (reset, put_on, take_off) = (hook("reset")?, hook("put_on")?, hook("take_off")?);
-            forms.push(FormDef { key: d.key.clone(), record, reset, put_on, take_off });
+            let (reset, put_on, take_off, tick) = (hook("reset")?, hook("put_on")?, hook("take_off")?, hook("tick")?);
+            forms.push(FormDef { key: d.key.clone(), record, reset, put_on, take_off, tick });
         }
         for (i, f) in forms.iter().enumerate() {
             if let Some(h) = f.record.identity {

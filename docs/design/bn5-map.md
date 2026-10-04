@@ -1315,8 +1315,8 @@ timer raises) and its other console's chip name (`sub_801EB18`); lib/arm's NaviS
 0x080E9FA4: CrakBom's and Quake's bombs; never in a netbattle); Geyser's geyser (no recording throws it into a hole).
 (A computer-controlled navi's VarSwrd pick, the side's sword pick, is DarkInvs's drive's: 0x0802C110 sets AIData
 +0xF0 for the story navis and DarkInvs, never Chaos Unison's Dark MegaMan, who takes the joypad path; the lab's
-chips/0x0bd-darkinvs/tactics-varswrd shows it.) **Waiting:** VDoll (on BN5's field obstacles;
-Wind, Fan, RockCube, BoyBomb1 to 3, RedFrut1 to 3 and Voltz1 to 3 are in §15.11).
+chips/0x0bd-darkinvs/tactics-varswrd shows it.) BN5's field obstacles' chips (Wind, Fan, RockCube, BoyBomb1 to 3,
+RedFrut1 to 3, Voltz1 to 3 and VDoll) are in §15.11.
 
 ### 15.7 BN5's MegaMan, stages and roles (as built)
 
@@ -1337,7 +1337,11 @@ Wind, Fan, RockCube, BoyBomb1 to 3, RedFrut1 to 3 and Voltz1 to 3 are in §15.11
   settings (written to RAM by the Team Battle with its own background and effects) match the list's by layout,
   actor list, music, mode and panel pattern. Those with obstacles (actor types 3, 8, 9: BN5's boulder, rock and
   statue aren't ported) are listed as waiting; those with metal, sea or lava panels are stages since the rules
-  work's P1a (68 stages). The backgrounds are named by their look (no BN6 background has their tiles).
+  work's P1a (68 stages). The backgrounds are named by their look (no BN6 background has their tiles). The
+  actor lists' addresses are Team ProtoMan's US ROM's; the other three ROMs have the same list, each its actor
+  lists a constant away (compat/games.toml, as BN6's: Team Colonel +0xE8, the Japanese Team ProtoMan −0x3E4 and
+  Team Colonel −0x2FC), and a recording's settings record is its traced console's (the BattleState's local side's
+  version and region): jp-team-plain matches through it.
 - **Panels** are a registered section now: BN5's types, BN6's roads and either-side step rule (BN5 has neither;
   the section must name the engine's 13 types; nothing of BN5's reaches them).
 - **Roles** BN5 shares with BN6: the sparks (BN5's 0 to 0xD are BN6's rows), the deletion, recovery and cut-in
@@ -1460,6 +1464,13 @@ them.
     an action, is dragged, flinches or is paralyzed; under (0x80000004) it is hidden, a ripple over it (effect object
     0x3E, objects/dive-ripple, the role `kinds.dive_ripple`; a splash as it starts, row 0x5D). BN6's submerged
     state (`sub_8010162`, +0x28 in BN5) stays apart.
+  - **GyroSoul's propeller while primed:** MegaMan's per-form tick (0x080EB1E8's row 0, 0x080F04CE) in soul 2 sets
+    his body overlay's animation offset (its ExtraVars word, 0x080C451A, which BN5's overlay adds to its owner's
+    animation and reads its depth by: 0x080C365C) to 17 while primed, else 0: the form's `tick` hook and
+    `set_overlay_anim_offset`. **KnightSoul's ball** is KnightMan's spawned by 0x080C768A, not KnightMan's
+    0x080C76AC that also keeps it running while dimmed (chips/knightmn/ball's `spawn`). **ShadowSoul's Chaos
+    Unison** loads DarkInvs (routine 0x31); DarkInvs's stand-in and drive end know MegaMan by his key, his navi's
+    module reaching theirs through the soul.
   - **The hit kernel** (0x0801691C, BN6's IWRAM `sub_3007218`; the reactions section's `hit_test = "bn5"`): no
     FloatShoe test (BN5's collision types have no 0x80, so BN6's test would keep every hit off a floating
     ShadowSoul or GyroSoul), the Elec element reaching a submerged or bubbled side (0x80000004), a guard broken by
@@ -1800,6 +1811,22 @@ record's third parameter (20 ticks) and lasting 5 more; 30 ticks later it blinks
 panel as it comes and lands (effect 0x83, lib/navi-chips/marker). The chip lab's chips/0x04e-voltz1/chain (from the
 back column: a shock goes on to the back column) and evicted (a second Voltz evicts the first) record the rest.
 
+VDoll (action 0x12's subtype 8: BN5's throw, holding the bomb, the attachment table's row 4) lobs BN6's doll
+(attack object 0x7A, 0x080D5618; content/exelib/vdoll/doll, a maker taking a game's look) three panels ahead. BN5's
+differs: from the start a body of no side that anything reaches, hit modifier 3 (BN6's its side's object, hit
+modifier 1, until it sets down; BN5's setting down, its action 6, does nothing); a hit of types 0x0C800002 breaks it
+as damage 0 (0x080D56D4: a puff, no curse); its leaving (0x080D57F0) has no blinking out or absorbing, and its curse
+starts with a puff 12 pixels up if a chip removed it, else effect 0x24 16 up and sound 0x107 (BN6's code for that
+is unreachable); NameID 0xE2 (version 3, AI index 0x21). BN5's curse (effect object 0x4E, 0x080E6110, BN5's own:
+chips/vdoll/curse) marks one panel, at random (an RNG2 draw, 0x080E625E), of those the other side's combatants stand
+on, keeping the doll's aim when there is none (a column of 0 ends it), where BN6's marks every combatant; it hits
+that panel with BN5's row 0x17 (a thrown piercing break) and hit modifier 1 (BN6's the curse row and 3), and its
+occupant test (0x080E7356) reads BN6's table by the side unscaled (side 1: 0x00002000). Its telop names BN5's Curse
+(chip 0x174). The sparkles (effect object 0x11) are BN6's code (content/exelib/vdoll/sparkles). The chip lab's
+chips/0x067-vdoll/cursed records the curse (its user's buster hurts the landed doll). The doll's own actions store
+BN6's numbers until the obstacle framework's per-game numbering (bn5-obstacles-numbering's `obstacle.action_byte`)
+lands: BN5 stores its setting down as 6, so the recordings in which the doll lands differ at its action byte.
+
 **BN5's obstacle pushes** (the obstacle framework, by the obstacle's own game's `push_reading`): BN5 keeps a
 collision's hit flags only by the other collision's flip (+0x6C, +0x70: the hit registration 0x080169C8 to
 0x08016A68; the engine's `hit_flags_by_flip` beside the union it reads as BN5's +0x68); its push on any hit
@@ -2012,3 +2039,50 @@ The emotion window's glitch came with them: the navicust recordings line-g, bug-
 the counted bytes: supports, Hub) stopped on RNG1 at the first check, re-recorded with the glitches in their setups.
 bug-hp's stop was its last frame: a flicker's draw on the frame a recording ends has no frame left to agree, which
 bn5-compat's RNG1 comparison now leaves.
+
+The first barriers' visuals on a round's first tick: the other side's navi inits first (its first barrier's visual
+asking at once whether the local navi is blind, 0x0800CDF4), before the local navi has collision data, and the game
+reads its status word through the null pointer, from the BIOS. BN6's read gives the object spawn's CpuSet opcode,
+0xE3A02004, with the blind bit (the visual hidden for a tick); BN5's console gives an interrupt's, 0xE55EC002 (read
+at 0x0800CE18 with a scratch trap in the chip lab), without it: the visual shows at once. The status section's
+`missing_collision_status` (the engine's `Rules::missing_collision_status`, BN6's by default) says which; the
+replays' full object comparison caught it (navicust-compile/bug-colors, patch-cards-stats/bugstop, cards-02, cards-03,
+cards-08, clamps-hp: both sides with first barriers).
+
+### 15.15 BN5's supports (as built)
+
+The NaviCust supports, Rush, Beat and Tango, are BN6's code in BN5 (docs/engine/chips.md §2.10), so the two share
+them: content/exelib/supports (`controller`, `rush`, `beat`, `tango`, `heal`), each made of a game's look
+(`SupportsLook`, `RushLook`, `BeatLook`, `TangoLook`, `TangoHealLook`). BN6's lib/supports and BN5's
+content/bn5/lib/supports make them; BN5's roles name the controller (`kinds.support`) and the telops' chips
+(`chips.rush`, `beat`, `tango`).
+
+- **Where:** the triggers are BN6's routines at BN5's addresses (Tango 0x0800E3B6, from the idle state at
+  0x080F02C8; Beat 0x0800E418 and Rush 0x0800E498, from a chip's use at 0x080F0452: the engine's, as BN6's), each
+  passing its telop's chip in r7 (0x17B, 0x17A, 0x179, BN6's numbers: chips past the library, written by
+  gen_content.py's `SUPPORT_CHIPS`, their use the record's, the Cannon's, which nothing starts). The controller is
+  effect object #0x74 (0x080E8F50; BN6's #0x79), its spawner 0x080E906A, its phases BN6's (0x080E8FB8 to
+  0x080E903A) and its spawners' table 0x080E9010. Rush, Beat and Tango are actor objects #0x4B to #0x4D
+  (0x080C2214, 0x080C24C8, 0x080C2714; sprites 0c-48, 0c-4b, 0c-4c, named `rush`, `beat`, `tango` by place), the
+  heal attack object #0x9F (0x080DA6AC; BN6's #0xC7; sprite 0c-4d, `tango-heal`). The sounds and the effect rows
+  (0x14, 0x15, 6) are BN6's numbers.
+- **What differs:** BN5's Rush trigger hands the controller no chip (0x0800E498: `movs r4, #0`, where BN6 passes
+  the chip's number shifted into the third and fourth parameters), and the controller's phase 4 (0x080E8FE4)
+  doesn't load its parameters into r4 for the spawner; BN5's bite (0x080C23BE) has no check for the second
+  WhiCapsl (0x17E, which BN5 doesn't have): the opponent's hand always moves on, and without the opponent's navi
+  its branch pops what it pushed and moves no hand (BN6's skips the pop). So BN5's Rush keeps no chip (his look's
+  `spared` is nil, his kind no `eaten` state; the engine sets the controller's `eaten` for every game, which BN5's
+  never hands on). The inits load the sprites without BN6's `sprite_decompress`. The heal raises BN5's barrier type
+  5 (0x080174DA: BN5's barrier rows, lib/barriers) and BN5's barrier visual. BN5's chips Rush cancels: Invisibl
+  (0x085, its record's +0x16 bit 1) alone; BN5's Invis card weapon doesn't ask Rush (0x0800FC3A), where BN6's
+  patch card invisibility does.
+
+**Checked:** the BN5 lab's navicust/rush, beat and tango (a NaviCust part each, side 0 hosting: Rush bites the
+other side's Invisibl, Beat takes its SuprVulc, Tango heals at a quarter and her barrier takes the next Cannons;
+each support once, the second chip going through) and navicust/bug-support, and patch-cards/supports and
+supports-side1 (Tora's Tactics, all three supports from the card, on either side), replay on every frame. The
+earlier navicust/beat and tango recordings never brought their supports: their folders named chips with codes the
+chips don't have (Roll `*`, M-Cannon `*`), which BN5 makes the invalid chip; the scenarios now name legal codes,
+SuprVulc rather than Roll (Roll also wants a light MegaMan), and Tango's navi starts at 80 HP (side 1's M-Cannon
+takes only 60 from side 0's navi in these saves, where side 0's takes 120 from side 1's: not looked into). Not
+reached: a Giga chip for Beat, Rush without the opponent's navi, a failed spawn.

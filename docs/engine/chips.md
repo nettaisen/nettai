@@ -795,6 +795,15 @@ already set up (Beat first); Tango every idle frame before any request:
   the next Cannons wear), and `navicust/bug-support` (a bugged Rush never comes). Each support is hosted once by
   either side. Not reached: a Giga chip for Beat, WhiCapsl for Rush (its hand left alone), Rush with the victim's
   navi gone, a failed spawn.
+- **The content** is shared with BN5 (content/exelib/supports: `controller`, `rush`, `beat`, `tango`, `heal`, each
+  made of a game's look: its kinds' keys, sprites, sounds and effects, Rush's bite and spared chip, the heal's
+  trajectory and barrier); BN6's lib/supports and BN5's make them. BN5's are BN6's code (the controller effect
+  object #0x74, 0x080E8F50; Rush, Beat and Tango actors #0x4B to #0x4D, 0x080C2214, 0x080C24C8, 0x080C2714; the
+  heal attack #0x9F, 0x080DA6AC; the triggers 0x0800E3B6, 0x0800E418 and 0x0800E498 in the same places; the telop
+  chips 0x179 to 0x17B) but for Rush: BN5's ruleset hands him no chip (0x0800E498 passes 0, and its controller
+  doesn't load its parameters for the spawner), his bite (0x080C23BE) has no WhiCapsl check (the hand always moves
+  on), and its branch without a victim pops what it pushed (no hand moves on). The inits don't decompress the
+  sprites; the heal raises BN5's barrier 5 (0x080174DA) and BN5's barrier visual. See docs/design/bn5-map.md §15.15.
 
 ### 2.11 Cross / Beast Out differences (reachable in PvP; trace battle 2)
 
