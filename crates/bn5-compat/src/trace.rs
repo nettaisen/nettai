@@ -612,7 +612,7 @@ impl Round {
         let navicust_of = |side: usize| -> Result<Option<NaviCust>, String> {
             let Some(n) = self.setup.navicusts.as_ref().filter(|_| compiled(side)).map(|n| &n[side]) else { return Ok(None) };
             let (list, flags) = n.decode()?;
-            navicust(content, compat, &list, |part| flags[(part >> 3) as usize] & (0x80 >> (part & 7)) != 0).map(Some)
+            navicust(content, compat, &list, n.expansions, |part| flags[(part >> 3) as usize] & (0x80 >> (part & 7)) != 0).map(Some)
         };
         let cards_of = |side: usize| -> Result<nettai_battle::patch_cards::PatchCards, String> {
             let Some(lists) = self.setup.patch_cards.as_ref().filter(|_| compiled(side)) else { return Ok(Default::default()) };
