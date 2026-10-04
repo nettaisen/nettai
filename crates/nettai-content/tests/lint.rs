@@ -147,7 +147,7 @@ fn a_game_loads_alone_under_its_names() {
     assert!(d.chip_by_key("cannon").is_some(), "an id is local to its game");
     assert_eq!(d.chip_by_key("bn6:cannon"), None, "BN6's chips are another content's"); // (written in full)
     assert_eq!(d.chip_by_key("bn5:cannon"), None, "an id is written without its game"); // (written in full)
-    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("stock"));
+    assert!(d.ruleset().is_some_and(|r| !r.systems.is_empty()), "BN5's one ruleset");
     assert_eq!(c.strings.chip("cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));
     let mut both = read(&["bn6", "bn5"]);
     let e = both.define().unwrap_err().message;
@@ -198,7 +198,7 @@ fn a_load_reads_what_its_games_inits_reach() {
     }
 }
 
-/// docs/design/rules-in-luau.md R2: BN5's stock ruleset and rule sections
+/// docs/design/rules-in-luau.md R2: BN5's ruleset and rule sections
 /// (content/bn5/rules) are its game's, beside BN6's: its pools (16 actors),
 /// its banners, its element tables. With them, the BN5 chips the port has
 /// given uses (docs/design/bn5-map.md §15.6); one without a use yet isn't
@@ -210,7 +210,7 @@ fn bn5s_rules_are_its_games() {
     let mut bn6 = read(&["bn6"]);
     bn6.define().unwrap_or_else(|e| panic!("{e}"));
     let d = &c.defs;
-    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("stock"), "BN5's stock ruleset");
+    assert!(d.ruleset().is_some(), "BN5's ruleset");
     let (six, five) = (bn6.rules(), c.rules());
     assert_eq!(five.pools.slots(), [16, 32, 32]);
     assert_eq!(six.pools.slots(), [32, 32, 32]);

@@ -111,7 +111,7 @@ Every definition belongs to one registry. The engine knows the registries and th
 | patch_card | `define.patch_card` | required `id` | its MB and its effects' kinds and bug flags (a game's rules read the rest; §3.11) | the card's number, in compat/patch-cards.toml |
 | sprite, sound, banner, background, mugshot, chip icon | `asset.*` (§6.3) | the asset's name | names; sprites' animation timing | the ROM's numbers, in compat/assets.toml |
 
-A game's rules are one definition, its stock ruleset (`define.ruleset`, rules/init.luau), which holds its rule
+A game's rules are one definition, its ruleset (`define.ruleset`, rules/init.luau), which holds its rule
 sections (§3.8) and its roles (§7.4) as plain tables: neither is a definition of its own. **Identities** (the NameID records, §3.2) are `define.identity`,
 nested in the navi or form they belong to and keyed by it (`heatcross/identity`) or a field object's own (with
 an `id`), which compat maps to NameIDs through navis.toml, forms.toml and rules.toml. One more registry is
@@ -591,12 +591,12 @@ crates/nettai-battle/testdata/content/stages/test.luau, and tests name stages by
 
 ### 3.8 Rules
 
-A game's rules are one plain Luau library with a single definition: its stock ruleset, `rules/init.luau` (the
+A game's rules are one plain Luau library with a single definition: its ruleset, `rules/init.luau` (the
 game's top module requires it as `@self/rules`, the folder's name, as a require names a folder's `init`; it
 requires its own folder's modules as `@self/panels`). The ruleset names its
 systems and, as fields, each rule table, a **section**, and the game's roles (§7.4). A section is a plain table its
 module returns; the engine reads each against its schema when the ruleset is defined (sections.rs), and a message
-names the place (`rules/init.luau: ruleset stock: panels.types.grass.flags: invalid type`):
+names the place (`rules/init.luau: ruleset: panels.types.grass.flags: invalid type`):
 
 ```luau
 -- rules/elements.luau
@@ -613,24 +613,22 @@ return {
 
 -- rules/init.luau
 return define.ruleset {
-    id = "stock",
-    stock = true,
     systems = { cross, navicust, patch_cards, forms.system, beast, emotion.system, folder, dark_chips },
-    elements = require("./elements"),
-    panels = require("./panels"),
-    lockon = require("./lockon").rules,   -- a module whose table holds more than the section
+    elements = require("@self/elements"),
+    panels = require("@self/panels"),
+    lockon = require("@self/lockon").rules,   -- a module whose table holds more than the section
     -- ...
-    roles = require("./roles"),
+    roles = require("@self/roles"),
 }
 ```
 
 A field is a section by the engine's name (snake_case: `custom_screen`, `chip_use`, `sp_chips`);
-one the ruleset doesn't name keeps the engine's table. **Only the stock ruleset holds sections and roles**: another
-of the game's rulesets (a variant, `base`) changes only its systems (`add`, `remove`), and a section or `roles` on
-it is a load error saying so. The engine reads the sections and roles game-wide (the chips' links read the SP slots
-as the content is defined, the custom screen, the renderer and the tools read `Content::rules()`), so a ruleset of
-its own sections would mean the battle carrying its ruleset's tables into all of them; nothing needs one yet, and
-allowing it later is additive (each ruleset's tables, a variant's fields replacing its base's wholesale).
+one the ruleset doesn't name keeps the engine's table. **A game has one ruleset** (the user: "there should only be
+one ruleset per game"): `define.ruleset` takes no `id` and no `stock` flag, a second in a game is a load error, and
+there are no variants (`base`, `add`, `remove` are refused). The engine reads the sections and roles game-wide
+(the chips' links read the SP slots as the content is defined; the custom screen, the renderer and the tools read
+`Content::rules()`), and a round's setup names no ruleset: every match of the game plays by it
+(`Defs::ruleset_systems`).
 
 | Section | Module | Holds (v1 file) |
 |---|---|---|

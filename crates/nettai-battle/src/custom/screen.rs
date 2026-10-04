@@ -974,6 +974,7 @@ impl Screen {
             "cross_chosen" => ScreenSound::CrossChosen,
             "program_advance_part" => ScreenSound::ProgramAdvancePart,
             "program_advance" => ScreenSound::ProgramAdvance,
+            "redeal" => ScreenSound::Redeal,
             _ => return false,
         };
         self.look.play(sound);
@@ -1035,12 +1036,13 @@ impl Screen {
         self.phase = Phase::Scrapping { button, tick: 0, done: false, scrapped: [None; MAX_SELECTIONS], count: 0 };
     }
 
-    /// `custom.redeal` (BN6's ChpShufl, `sub_8028DD6`): the chips not
-    /// picked are dealt again, for the button `button`.
+    /// `custom.redeal` (BN6's ChpShufl, `sub_8028DD6`; BN5's SearchSoul's
+    /// Shuffle, 0x080249B0): the chips not picked are dealt again, for the
+    /// button `button`. (BN6's plays a sound as it starts, which its
+    /// button's content plays: BN5's plays none.)
     pub fn start_redeal(&mut self, button: u8) {
         let deal = Deal { chips: [None; FOLDER_SIZE], count: 0 };
         self.phase = Phase::Redealing { button, started: false, elapsed: 0, deal };
-        self.look.play(ScreenSound::Redeal);
     }
 
     /// Whether the last pick is a chip (`sub_8028F84`'s test).

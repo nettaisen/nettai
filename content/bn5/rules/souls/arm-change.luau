@@ -47,7 +47,11 @@ arm_change.button = {
     cells = 2,
     right = 11,
     left = 7,
-    shown = in_soul,
+    -- (By the soul the emotion routine leaves in r1, 0x08023C3C, which in battle mode 1 is something else,
+    -- 0x080127C0: no button there.)
+    shown = function(side: number): boolean
+        return in_soul(side) and battle.mode() ~= 1
+    end,
     -- 0x08024C00: on offer for a last pick that is a standard chip of no family, dealing damage, not dimming, not
     -- dark.
     state = function(side: number): "selectable" | "unavailable"
