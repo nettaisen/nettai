@@ -110,6 +110,7 @@ pub fn megaman(content: &Content, hp: u16) -> NaviStats {
         chip_shuffle: false,
         number_open: false,
         hub_style: 0,
+        soul_turn_bonus: 0,
         weapons: NaviWeapons {
             buster: own.buster,
             charge_shot: own.charge_shot,
@@ -133,7 +134,6 @@ pub fn megaman(content: &Content, hp: u16) -> NaviStats {
 pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [BattleFolder; 2]) -> RoundSetup {
     let player = |f: BattleFolder, side: u32| PlayerSetup {
         folder: Some(f),
-        souls: Default::default(),
         joypad_phase: 0,
         navi_level: None,
         sp_times: Default::default(),
