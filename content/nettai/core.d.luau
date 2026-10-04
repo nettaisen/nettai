@@ -108,6 +108,9 @@ export type StatusFlag =
     | "hit_while_dimmed"
     -- A field object being carried to be thrown.
     | "carried"
+    -- No hit reaches it and it hits nothing (Falzar Beast Over's form,
+    -- BN5's DarkInvs drive).
+    | "untouchable"
 -- Status timers of an object with collision data.
 export type StatusTimer =
     "paralyze" | "confuse" | "blind" | "immobilize" | "flash" | "submerged" | "invulnerable" | "freeze" | "bubble"
@@ -486,6 +489,13 @@ declare class Object
     -- its level (AIData+0x6C: releases that succeeded, at most 4).
     chaos_armed: boolean
     chaos_level: number
+    -- Writable: BN5's no-charge drive (DarkInvs): its ticks left
+    -- (AIData+0x36; counted down in the intake while the navi has the
+    -- no-charge state, asking for the stun strike at 0; 0xFFFF holds), and
+    -- the computer-navi AI driving it (AIData+0xF0, which VarSwrd's pick
+    -- reads).
+    no_charge_timer: number
+    computer_driven: boolean
 
     -- `sub_800F26C`: the look its NameID gives is `sprite` (an object's
     -- NameID look; a navi's or form's NameID gives its sprite). An error

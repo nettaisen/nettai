@@ -69,6 +69,7 @@ fn status_bit(flag: StatusFlag) -> u32 {
         StatusFlag::Bubbled => f1::BUBBLED,
         StatusFlag::HitWhileDimmed => f1::HIT_WHILE_DIMMED,
         StatusFlag::Carried => kinds::obstacle::obstacle_f1::CARRIED,
+        StatusFlag::Untouchable => f1::UNTOUCHABLE,
     }
 }
 
@@ -1797,6 +1798,8 @@ impl CoreApi for Battle {
             ActorField::PlusTint => i(a.plus_tint as i64),
             ActorField::ChaosArmed => Value::Bool(a.chaos.armed),
             ActorField::ChaosLevel => i(a.chaos.level as i64),
+            ActorField::NoChargeTimer => i(a.no_charge_timer as i64),
+            ActorField::ComputerDriven => Value::Bool(a.computer_driven),
         })
     }
 
@@ -1879,6 +1882,8 @@ impl CoreApi for Battle {
             (ActorField::PlusTint, FieldValue::U16(x)) => a.plus_tint = x,
             (ActorField::ChaosArmed, FieldValue::Bool(x)) => a.chaos.armed = x,
             (ActorField::ChaosLevel, FieldValue::U8(x)) => a.chaos.level = x.min(4),
+            (ActorField::NoChargeTimer, FieldValue::U16(x)) => a.no_charge_timer = x,
+            (ActorField::ComputerDriven, FieldValue::Bool(x)) => a.computer_driven = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
