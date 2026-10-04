@@ -614,7 +614,11 @@ impl Round {
         let navicust_of = |side: usize| -> Result<Option<NaviCust>, String> {
             let Some(n) = self.setup.navicusts.as_ref().filter(|_| compiled(side)).map(|n| &n[side]) else { return Ok(None) };
             let (list, flags) = n.decode()?;
-            navicust(content, compat, &list, n.expansions, |part| flags[(part >> 3) as usize] & (0x80 >> (part & 7)) != 0).map(Some)
+            // The board is the recorded ExpMemry's (the one the save's
+            // parts were placed on), or the game's largest when its rules
+            // have fewer sizes than that.
+            let largest = content.rules().navicust.boards.len().saturating_sub(1) as u8;
+            navicust(content, compat, &list, n.expansions.min(largest), |part| flags[(part >> 3) as usize] & (0x80 >> (part & 7)) != 0).map(Some)
         };
         let cards_of = |side: usize| -> Result<nettai_battle::patch_cards::PatchCards, String> {
             let Some(lists) = self.setup.patch_cards.as_ref().filter(|_| compiled(side)) else { return Ok(Default::default()) };
@@ -686,13 +690,9 @@ impl Round {
         // system's setup.
         for (side, p) in [&mut p0, &mut p1].into_iter().enumerate() {
             if let (Ok(p), Some(n), true) = (p, &self.setup.navicusts, compiled(side)) {
-                let took = p.set_fact(
-                    content,
-                    "cyberworld",
-                    &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Bool(n[side].cyberworld))],
-                )?;
+                let took = p.set_fact(content, "cyberworld", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Bool(n[side].cyberworld))])?;
                 if took == 0 {
-                    return Err("no system of BN5's stock rules takes `cyberworld`".into());
+                    return Err("no system of BN5's rules takes `cyberworld`".into());
                 }
             }
         }
@@ -1115,15 +1115,16 @@ pub struct Replay {
     pub known: Option<&'static str>,
 }
 
-/// A known difference: the recording's save had the emotion window's
-/// glitch (flag 0x10C1) and the stats it recorded have no NaviCust bug to
-/// make it from. The engine takes no glitch from a setup: BN5's rules make
-/// it, from a NaviCust's compile or, of stats given as compiled, from the
-/// bugs in them. HubBatc's bug halves the HP programs and writes no bug
-/// stat, and a recording carries no NaviCust to compile, so MegaMan's
-/// window doesn't flicker in the replay and the console's RNG1 draws
-/// differ (the recording console's a replay compares: `navicust/hubbatc`
-/// stops on it).
+/// A known difference of a recording without its consoles' NaviCusts
+/// ([`Setup::navicusts`]: one with them is compiled, and its compile's
+/// glitch checked): the save had the emotion window's glitch (flag 0x10C1)
+/// and the stats it recorded have no NaviCust bug to make it from. The
+/// engine takes no glitch from a setup: BN5's rules make it, from a
+/// NaviCust's compile or, of stats given as compiled, from the bugs in
+/// them. HubBatc's bug halves the HP programs and writes no bug stat, so
+/// without the NaviCust MegaMan's window doesn't flicker in the replay and
+/// the console's RNG1 draws differ (the recording console's a replay
+/// compares: `navicust/hubbatc` as first recorded stopped on it).
 pub const GLITCH_UNSEEN: &str = "the save's emotion window glitch with no bug in the stats (HubBatc's bug writes none; the recording carries no NaviCust)";
 
 #[derive(Clone, Debug)]
