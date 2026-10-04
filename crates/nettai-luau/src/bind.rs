@@ -1709,6 +1709,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, n) = (u8_arg(side, "side")? & 1, u16_arg(n, "gauge")?);
         with(|api, _| Ok(api.add_side_gauge(side, n)))
     });
+    lib_fn!(lua, t, "drain_side_gauge", |_, (side, n): (LuaValue, LuaValue)| {
+        let (side, n) = (u8_arg(side, "side")? & 1, u16_arg(n, "gauge")?);
+        with(|api, _| Ok(api.drain_side_gauge(side, n)))
+    });
     lib_fn!(lua, t, "add_special_bonus", |_, (side, index, n): (LuaValue, LuaValue, LuaValue)| {
         let (side, index, n) = (u8_arg(side, "side")? & 1, u8_arg(index, "bonus")?, u16_arg(n, "bonus")?);
         with(|api, _| api.add_special_bonus(side, index, n).map_err(api_error))
@@ -1902,6 +1906,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "hand_chip_damages", |_, (side, i): (LuaValue, LuaValue)| {
         let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?);
         with(|api, _| Ok(api.hand_chip_damages(side, i)))
+    });
+    lib_fn!(lua, t, "hand_left", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.hand_left(side)))
     });
     // Subtype 8 (Wind and Fan).
     lib_fn!(lua, t, "wind", |lua, side: LuaValue| {
