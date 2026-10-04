@@ -1,0 +1,33 @@
+# BN5's navi action numbers (a navi's CurAction, +9, which the traces compare) that chips.toml doesn't give: the
+# engine's own actions and content's actions of no chip, by key. A chip's action is its record's (chips.toml's
+# `action`). BN5's action table is at 0x080EB42C (action 0x10 its first entry).
+
+"engine/move" = 0x10
+"engine/dimming-chip" = 0x15
+"engine/instant-chip" = 0x1A
+"engine/form-change" = 0x1A
+"engine/navi-chip" = 0x41
+# Soul Unison's change (the instant chips' number, as BN6's form change is).
+"bn5:souls/change" = 0x1A
+# The buster's shot (BN5's table's entry 1, 0x080EB9B2).
+"bn5:megaman/buster/shot" = 0x11
+# Chaos Unison's failure (the dark MegaMan's turn).
+"bn5:souls/chaos-failure" = 0x39
+# MegaMan's charged shot (BN6's action 0x16; BN5's 0x1E).
+"bn5:megaman/charged-shot/action" = 0x1E
+# A computer navi's buster attack (the attack table's row 6, 0x080EC3BC: BN5's own).
+"bn5:computer-navi/buster" = 0x16
+# ProtoSoul's B+Back (the guard's action, as the Reflect program's).
+"bn5:protosoul/back/action" = 0x1F
+# The trap chips' counters, which a sprung trap starts.
+"bn5:antidmg/counter" = 0x2C
+"bn5:antiswrd/counter" = 0x2D
+# The souls' charged weapons (each soul's charge.luau) and NapalmSoul's charged Fire chips.
+"bn5:searchsoul/charge/action" = 0x3B
+"bn5:gyrosoul/charge/action" = 0x3C
+"bn5:magnetsoul/charge/action" = 0x42
+"bn5:colonelsoul/charge/action" = 0x43
+"bn5:napalmsoul/charge/action" = 0x44
+"bn5:napalmsoul/charged-chip" = 0x4B
+# A computer navi's leave (its state table's own entry 7, past BN5's idle).
+"bn5:computer-navi/leave" = 0x07
