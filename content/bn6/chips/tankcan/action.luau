@@ -6,7 +6,7 @@
 -- panel ahead on the 23rd, the screen shaking; it lowers the cannon on the
 -- 36th and is back to idle 4 ticks later.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local common = require("@exelib/tankcan/action")
 local shell = require("./shell")
 

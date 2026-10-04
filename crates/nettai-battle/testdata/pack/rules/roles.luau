@@ -5,15 +5,15 @@
 -- rest is the test content's (BN6's modules), which this pack's content
 -- comes with.
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
+local absorbed_obstacle = require("../../objects/absorbed-obstacle")
 local beast_rush = require("../../rules/beast/rush")
 local dust_beast_scatter = require("../../navis/megaman/forms/dustcross-beast/scatter")
 local encased_bubble = require("../../objects/encased-bubble/bubble")
-local falling_rock = require("../../objects/falling-rock/falling_rock")
+local falling_rock = require("../../objects/falling-rock")
 local ground_drill = require("../../navis/megaman/forms/groundcross/drill")
 local slash_beast_lunge = require("../../navis/megaman/forms/slashcross-beast/lunge")
 local stun_strike = require("../../lib/swords/stun_strike")
-local test_chips = require("../../chips/test/chips")
+local test_chips = require("../../chips/test")
 local turn = require("../../navis/megaman/turn")
 local ruleset = require("../../rules/ruleset")
 local statuses = require("../../rules/status")

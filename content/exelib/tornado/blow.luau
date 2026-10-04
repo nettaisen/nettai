@@ -11,8 +11,8 @@
 -- counter 3), spreading back toward the navi, with HP-bug tornadoes, and a
 -- fan of another palette. 42 ticks, then 21 to put the fan away.
 
-local attachment = require("../attachment/attachment")
-local tornado = require("./tornado")
+local attachment = require("../attachment")
+local tornado = require("../tornado")
 
 export type State = {
     -- Ticks left in the current phase (AIAttackVars+0x10).

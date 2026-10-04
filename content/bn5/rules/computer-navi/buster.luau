@@ -8,7 +8,7 @@
 -- third the arm and the flash go.
 
 local arm = require("../../lib/arm")
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local buster_parts = require("../../lib/buster")
 local projectile = require("../../lib/projectile")
 local variants = require("../../objects/projectile/variants")

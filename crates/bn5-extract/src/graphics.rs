@@ -349,51 +349,59 @@ fn chip_media(roms: &Roms, v: Version, id: u32) -> (Picture, Tiles) {
     (picture, icon)
 }
 
-/// The chips each version's ROM draws its own way (BN5's version navi
-/// chips: Team ProtoMan's and Team Colonel's at the same numbers), found by
-/// comparing the two US ROMs.
-pub fn versioned_chips(roms: &Roms) -> Vec<u32> {
-    (0..CHIP_COUNT).filter(|&id| chip_media(roms, Version::ProtoMan, id) != chip_media(roms, Version::Colonel, id)).collect()
-}
+/// The library flag of a chip's record (+0x09): set in the version whose
+/// library lists the chip.
+const LIBRARY: u8 = 0x40;
 
-/// The key of chip `id`'s art: its name, with the version's suffix for a
-/// chip each version draws its own way.
-fn chip_key(names: &AssetNames, id: u32, version: Option<Version>) -> String {
-    let key = names.chip_icon(id as u16);
-    match version {
-        Some(v) => format!("{key}-{}", v.name()),
-        None => key,
-    }
-}
-
-fn chip_art(roms: &Roms, names: &AssetNames) -> Vec<ChipArt> {
-    let versioned = versioned_chips(roms);
-    let mut out = Vec::new();
-    for id in chip_ids(names) {
-        if versioned.contains(&id) {
-            for v in [Version::ProtoMan, Version::Colonel] {
-                let (picture, _) = chip_media(roms, v, id);
-                out.push(ChipArt { key: chip_key(names, id, Some(v)), picture, region: None, version: Some(v.name().into()) });
+/// The version chips (12: each version's five Giga chips, 0x12D to 0x136,
+/// and DethPhnx and Phoenix, 0x13A and 0x139), each with the version it
+/// belongs to (the one whose library lists it: its record's library flag
+/// there). A version's ROM holds the art of its own, and has it again at
+/// the other version's counterparts (Team ProtoMan's ROM draws MetrKnuk
+/// and CrossDiv as HolyDrem, OmegaRkt and BugCharg as BigHook, Phoenix as
+/// DethPhnx), so these are the chips whose art differs between the two US
+/// ROMs.
+pub fn version_chips(roms: &Roms) -> Vec<(u32, Version)> {
+    (0..CHIP_COUNT)
+        .filter(|&id| chip_media(roms, Version::ProtoMan, id) != chip_media(roms, Version::Colonel, id))
+        .map(|id| {
+            let listed = |v: Version| roms.us(v).u8(record(v, id) + 9) & LIBRARY != 0;
+            match (listed(Version::ProtoMan), listed(Version::Colonel)) {
+                (true, false) => (id, Version::ProtoMan),
+                (false, true) => (id, Version::Colonel),
+                both => panic!("chip {id:#05x}'s art differs between the versions' ROMs, and their libraries list it {both:?}: one is its own"),
             }
-        } else {
-            let (picture, _) = chip_media(roms, Version::ProtoMan, id);
-            out.push(ChipArt { key: chip_key(names, id, None), picture, region: None, version: None });
-        }
-    }
-    out
+        })
+        .collect()
 }
 
-/// The chips' icons, each under its chip's key (a version's own under its
-/// key with the version's suffix).
+/// The version chip `id` belongs to; none for a chip of both.
+fn version_of(versions: &[(u32, Version)], id: u32) -> Option<Version> {
+    versions.iter().find(|(chip, _)| *chip == id).map(|&(_, v)| v)
+}
+
+/// The chips' pictures, each under its chip's key: a version chip's from
+/// its own version's ROM, marked with it (a console of the other version
+/// shows its counterpart's there); any other from Team ProtoMan's.
+fn chip_art(roms: &Roms, names: &AssetNames) -> Vec<ChipArt> {
+    let versions = version_chips(roms);
+    chip_ids(names)
+        .map(|id| {
+            let own = version_of(&versions, id);
+            let (picture, _) = chip_media(roms, own.unwrap_or(Version::ProtoMan), id);
+            ChipArt { key: names.chip_icon(id as u16), picture, region: None, version: own.map(|v| v.name().into()) }
+        })
+        .collect()
+}
+
+/// The chips' icons, each under its chip's key, from the ROM its picture
+/// is from.
 fn chip_icons(roms: &Roms, names: &AssetNames) -> Vec<ChipIcon> {
-    let versioned = versioned_chips(roms);
-    let mut out = Vec::new();
-    for id in chip_ids(names) {
-        let versions: &[Option<Version>] = if versioned.contains(&id) { &[Some(Version::ProtoMan), Some(Version::Colonel)] } else { &[None] };
-        for &v in versions {
-            let (_, icon) = chip_media(roms, v.unwrap_or(Version::ProtoMan), id);
-            out.push(ChipIcon { key: chip_key(names, id, v), tiles: icon });
-        }
-    }
-    out
+    let versions = version_chips(roms);
+    chip_ids(names)
+        .map(|id| {
+            let (_, icon) = chip_media(roms, version_of(&versions, id).unwrap_or(Version::ProtoMan), id);
+            ChipIcon { key: names.chip_icon(id as u16), tiles: icon }
+        })
+        .collect()
 }

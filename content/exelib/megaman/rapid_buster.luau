@@ -5,7 +5,7 @@
 -- of a game's `RapidBusterLook` (`rapid_buster.make`): nine charged shots, six ticks apart, each from the panel in
 -- front and a row up, down or level in an order one draw picks. See docs/engine/shot-chips.md §11.
 
-local attachment = require("../attachment/attachment")
+local attachment = require("../attachment")
 
 local rapid_buster = {}
 

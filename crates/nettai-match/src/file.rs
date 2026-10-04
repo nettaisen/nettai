@@ -6,7 +6,6 @@
 //!
 //! ```toml
 //! game = "bn6"                       # the match's game: everything below is its
-//! ruleset = "stock"                  # optional: both sides' rules (else the game's stock)
 //! seed = 42                          # optional: the setup's and battle's seed
 //!
 //! [arena]
@@ -51,6 +50,8 @@
 //! # In a BN5 match ([left] of game = "bn5") a side may say besides:
 //! karma = 100                        # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
 //! souls = ["protosoul"]              # optional: the souls it has, either version's (none: every soul)
+//! soul_unison = false                # optional: no soul button (the save's event flag 0; default true)
+//! chaos_unison = false               # optional: no Chaos Unison (the save's event flag 0x236; default true)
 //! ```
 
 use crate::{Arena, Folder, Match, Place, Side, ids, stats};
@@ -69,8 +70,6 @@ use std::collections::BTreeMap;
 #[serde(deny_unknown_fields)]
 pub struct MatchFile {
     pub game: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ruleset: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub seed: Option<u32>,
     pub arena: ArenaFile,
@@ -106,8 +105,6 @@ pub struct SideFile {
     pub level: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bug_frags: Option<u32>,
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub emotion_window_glitch: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub crosses: Option<Vec<String>>,
     #[serde(default = "yes", skip_serializing_if = "is_yes")]
@@ -118,6 +115,10 @@ pub struct SideFile {
     pub karma: Option<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub souls: Option<Vec<String>>,
+    #[serde(default = "yes", skip_serializing_if = "is_yes")]
+    pub soul_unison: bool,
+    #[serde(default = "yes", skip_serializing_if = "is_yes")]
+    pub chaos_unison: bool,
     /// The folder's entries, each `[chip, code]` (`[]` empty, while it is
     /// being made).
     pub folder: Vec<Vec<String>>,
@@ -242,10 +243,7 @@ pub fn resolve(content: &Content, f: &MatchFile) -> Result<Match, Vec<String>> {
     if !games.contains(&f.game) {
         return Err(vec![format!("no game {:?} (the content's are {})", f.game, games.join(", "))]);
     }
-    let Some(ruleset) = resolve_ruleset(content, &f.game, f.ruleset.as_deref(), &mut problems) else {
-        return Err(problems);
-    };
-    let arena = resolve_arena(content, &f.game, ruleset, &f.arena, &mut problems);
+    let arena = resolve_arena(content, &f.game, &f.arena, &mut problems);
     let Some(arena) = arena else { return Err(problems) };
     let left = resolve_side(content, &arena.game, &f.left, "left", &mut problems);
     let right = resolve_side(content, &arena.game, &f.right, "right", &mut problems);
@@ -253,18 +251,6 @@ pub fn resolve(content: &Content, f: &MatchFile) -> Result<Match, Vec<String>> {
         (Some(left), Some(right)) if problems.is_empty() => Ok(Match { seed: f.seed, arena, sides: [left, right] }),
         _ => Err(problems),
     }
-}
-
-/// `game`'s ruleset named `name` (none: its stock one).
-pub fn resolve_ruleset(content: &Content, game: &str, name: Option<&str>, problems: &mut Vec<String>) -> Option<nettai_content_api::RulesetHandle> {
-    let found = match name {
-        None => crate::stock_ruleset(content, game).map_err(|e| vec![e]),
-        Some(n) => ids::ruleset(content, game, n).ok_or_else(|| {
-            let have = names_in(game, content.defs.rulesets.iter().map(|r| r.key.as_str()));
-            vec![unknown("ruleset", n, game, &have)]
-        }),
-    };
-    found.map_err(|e| problems.extend(e)).ok()
 }
 
 fn resolve_place(content: &Content, game: &str, stage: &str, background: &Option<String>, at: &str, problems: &mut Vec<String>) -> Option<Place> {
@@ -283,8 +269,8 @@ fn resolve_place(content: &Content, game: &str, stage: &str, background: &Option
     Some(Place { stage: stage?, background: background.clone() })
 }
 
-/// A file's arena, of `game` by `ruleset`.
-pub fn resolve_arena(content: &Content, game: &str, ruleset: nettai_content_api::RulesetHandle, a: &ArenaFile, problems: &mut Vec<String>) -> Option<Arena> {
+/// A file's arena, of `game`.
+pub fn resolve_arena(content: &Content, game: &str, a: &ArenaFile, problems: &mut Vec<String>) -> Option<Arena> {
     let first = resolve_place(content, game, &a.stage, &a.background, "arena", problems);
     let later = match &a.later {
         None => first.clone().map(|p| [p.clone(), p]),
@@ -301,7 +287,7 @@ pub fn resolve_arena(content: &Content, game: &str, ruleset: nettai_content_api:
             None
         }
     };
-    Some(Arena { game: game.to_string(), ruleset, first: first?, later: later? })
+    Some(Arena { game: game.to_string(), first: first?, later: later? })
 }
 
 /// A file's side of a match of `game`, each name the game's.
@@ -415,7 +401,6 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
         navi,
         game: version,
         stats,
-        emotion_window_glitch: s.emotion_window_glitch,
         folder: folder?,
         crosses,
         beast_out: s.beast_out,
@@ -427,6 +412,8 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
         tactics,
         karma: s.karma.unwrap_or(crate::facts::DEFAULT_KARMA),
         souls,
+        soul_unison: s.soul_unison,
+        chaos_unison: s.chaos_unison,
     })
 }
 
@@ -512,7 +499,6 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
         // (The navi's default level is left out.)
         level: s.navi_level.filter(|_| s.navi_level != crate::default_navi_level(content, s.navi)),
         bug_frags: (s.bug_frags != 0).then_some(s.bug_frags),
-        emotion_window_glitch: s.emotion_window_glitch,
         crosses: s.crosses.map(|l| l.forms().map(|f| name(&content.defs.form(f).key)).collect()),
         beast_out: s.beast_out,
         sp_times: crate::sp_times::named(crate::sp_slots(content), &s.sp_times)
@@ -549,6 +535,8 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
         stats: s.stats_block(content),
         karma: (s.karma != crate::facts::DEFAULT_KARMA).then_some(s.karma),
         souls: s.souls.as_ref().map(|l| l.iter().map(|&f| name(&content.defs.form(f).key)).collect()),
+        soul_unison: s.soul_unison,
+        chaos_unison: s.chaos_unison,
         navicust: s.navicust.map(|n| NaviCustFile {
             expansions: Some(n.expansions),
             programs: n
@@ -569,8 +557,8 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
     }
 }
 
-/// A match's arena as a file writes it (its places; the game and the
-/// ruleset are the file's own keys).
+/// A match's arena as a file writes it (its places; the game is the
+/// file's own key).
 pub fn arena_file(content: &Content, a: &Arena) -> ArenaFile {
     let place = |p: &Place| PlaceFile { stage: ids::local(&content.defs.stage(p.stage).key).to_string(), background: p.background.clone() };
     let first = place(&a.first);
@@ -578,16 +566,10 @@ pub fn arena_file(content: &Content, a: &Arena) -> ArenaFile {
     ArenaFile { stage: first.stage, background: first.background, later }
 }
 
-/// The name a file gives `game`'s `ruleset`: none for the game's stock one.
-pub fn ruleset_name(content: &Content, game: &str, ruleset: nettai_content_api::RulesetHandle) -> Option<String> {
-    (crate::stock_ruleset(content, game).ok() != Some(ruleset)).then(|| ids::local(&content.defs.ruleset(ruleset).key).to_string())
-}
-
 /// A match as a file.
 pub fn to_file(content: &Content, m: &Match) -> MatchFile {
     MatchFile {
         game: m.arena.game.clone(),
-        ruleset: ruleset_name(content, &m.arena.game, m.arena.ruleset),
         seed: m.seed,
         arena: arena_file(content, &m.arena),
         left: side_file(content, &m.sides[0]),
@@ -663,9 +645,11 @@ mod tests {
             assert_eq!(format!("{:?}", back.round(&content, seed)), format!("{:?}", m.round(&content, seed)));
         }
         let text = write(&content, &crate::draw::live(&content, "bn6", 3, None).unwrap());
-        for line in ["game = \"bn6\"", "[arena]", "[left]", "folder = [\n    [\"", "\", \"", "[left.stats]", "hp = 1000", "regular_memory = 50"] {
+        for line in ["game = \"bn6\"", "[arena]", "[left]", "folder = [\n    [\"", "\", \"", "[left.navicust]", "expansions = 2", "programs = []"] {
             assert!(text.contains(line), "{line}:\n{text}");
         }
+        // (MegaMan at his fresh stats: no stats block.)
+        assert!(!text.contains("[left.stats]") && !text.contains("[right.stats]"), "{text}");
         // Every name is the game's own, written once with the game.
         assert!(!text.contains("bn6:") && !text.contains("ruleset"), "{text}");
         assert_eq!(game_of(&text).unwrap(), "bn6");
@@ -712,8 +696,12 @@ mod tests {
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
         has(bad("navi = \"megaman\"", "navi = \"nobody\""), "left: no navi \"nobody\" in bn6");
         has(bad("navi = \"megaman\"", "navi = \"bn6:megaman\""), "left: no navi \"bn6:megaman\" in bn6"); // (written in full)
-        has(bad("hp = 1000", "hp = 100000"), "stats: hp takes a whole number");
-        has(bad("hp = 1000", "hp = 1000\natack = 1"), "no stat \"atack\"");
+        // (A stats block, after the sides' tables.)
+        let stats = |block: &str| parse(&content, &format!("{good}\n[left.stats]\n{block}\n")).unwrap_err();
+        has(stats("hp = 100000"), "stats: hp takes a whole number");
+        has(stats("hp = 1000\natack = 1"), "no stat \"atack\"");
+        // No key takes the emotion window's glitch: the rules make it.
+        has(bad("navi = \"megaman\"", "navi = \"megaman\"\nemotion_window_glitch = true"), "unknown field `emotion_window_glitch`");
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
         has(bad(stage, "stage = \"moon\""), "arena: no stage \"moon\" in bn6");
         has(bad("game = \"bn6\"", "game = \"bn7\""), "no game \"bn7\"");
@@ -723,8 +711,10 @@ mod tests {
         m.sides[0].folder.chips = [m.sides[0].folder.chips[0]; 30];
         m.sides[0].folder.regular = None;
         has(crate::check_match(&content, &m), "left: folder: 30 copies of");
-        // A Mega chip past the navi's Mega level.
+        // A Mega chip past the navi's Mega level (its stats set directly:
+        // no NaviCust).
         let mut m = drawn.clone();
+        m.sides[1].navicust = None;
         m.sides[1].stats.mega_level = 0;
         let megas = m.sides[1].folder.chips().filter(|c| content.chip(c.id).class == nettai_battle::content::ChipClass::Mega).count();
         if megas > 0 {
@@ -741,15 +731,16 @@ mod tests {
         has(crate::check_match(&content, &m), "right: a Cross list, but ProtoMan doesn't change form");
     }
 
-    /// A ruleset without the forms system has no Crosses (the test
-    /// content's mix).
+    /// A game's rules have their systems, by name: BN6's the forms system
+    /// (its Crosses), and no key names another ruleset.
     #[test]
-    fn crosses_need_the_forms_system() {
-        let content = nettai_battle::content::testing::content();
-        let mix = content.defs.ruleset_by_key("test-mix").unwrap();
-        let stock = content.defs.stock_ruleset().unwrap();
-        assert!(crate::ruleset_has_system(&content, stock, crate::FORMS_SYSTEM));
-        assert!(!crate::ruleset_has_system(&content, mix, crate::FORMS_SYSTEM));
+    fn a_game_is_its_rules() {
+        let content = bn6_content();
+        assert!(crate::ruleset_has_system(&content, crate::FORMS_SYSTEM));
+        assert!(!crate::ruleset_has_system(&content, "souls"));
+        let good = write(&content, &crate::draw::live(&content, "bn6", 1, None).unwrap());
+        let e = parse(&content, &good.replacen("game = \"bn6\"\n", "game = \"bn6\"\nruleset = \"stock\"\n", 1)).unwrap_err();
+        assert!(e[0].contains("unknown field `ruleset`"), "{e:?}");
     }
 
     /// The SP deletion times, Beast Out locked and a level write and read
@@ -766,6 +757,7 @@ mod tests {
         let protoman = ids::navi(&content, "bn6", "protoman").unwrap();
         m.sides[1].navi = protoman;
         m.sides[1].crosses = None;
+        m.sides[1].navicust = None;
         m.sides[1].navi_level = Some(0);
         m.sides[1].stats = crate::Side::save_base(&content, protoman, m.sides[1].game, Some(0));
         m.sides[1].folder.regular = None;

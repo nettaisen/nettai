@@ -8,7 +8,7 @@
 -- recovers for 5 ticks. Each chip composes its own (`action { log = ...
 -- }`: the log, the original's parameters).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local log = require("./log")
 
 local action = {}

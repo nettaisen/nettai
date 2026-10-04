@@ -8,7 +8,7 @@
 -- table's first row is BN5's plain shot, which the port has yet to check.) Unlike BN6's it has no worn-out rule, and it always draws: on half the draws the shot is the one the
 -- navi's charged-shot program names (NaviStats +0x4F, the plain shot when 0), else the charged shot.
 
-local attachment = require("../../../objects/attachment/attachment")
+local attachment = require("../../../objects/attachment")
 local buster = require("../../../lib/buster")
 local common = require("@exelib/megaman/charged_shot")
 local marker = require("../../../lib/navi-chips/marker")

@@ -14,7 +14,7 @@
 -- Then he leaves, and the controller moves on. See docs/engine/chips.md
 -- §3.6.11.
 
-local spoutman_navi = require("../../navis/spoutman/navi")
+local spoutman_navi = require("../../navis/spoutman")
 local panels = require("@exelib/panels")
 local ball = require("./ball")
 local geyser = require("./geyser")

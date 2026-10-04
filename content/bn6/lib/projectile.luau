@@ -5,6 +5,6 @@
 
 local buster = require("./buster")
 local common = require("@exelib/projectile")
-local shot = require("../objects/projectile/projectile")
+local shot = require("../objects/projectile")
 
 return common.make(shot.kind, buster)

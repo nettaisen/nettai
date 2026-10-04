@@ -8,8 +8,8 @@
 -- both close in from either side and slash it, an X when both stand in
 -- place. See docs/engine/chips.md §3.6.31.
 
-local megaman = require("../../navis/megaman/navi")
-local attachment = require("../../objects/attachment/attachment")
+local megaman = require("../../navis/megaman")
+local attachment = require("../../objects/attachment")
 local buster = require("../../lib/buster")
 local collision = require("../../rules/collision")
 local navi_chips = require("../../lib/navi-chips/navi")
