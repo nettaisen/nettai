@@ -1,9 +1,25 @@
 --!strict
 -- BN5's MegaMan's base form (`bn5:base`, the engine's base form of BN5's game: rules-in-luau.md P1c): MegaMan in no
 -- soul (NaviStats +0x2C 0), his sprite by his soul (0x0800DA58[0]). His weapons in it are his navi's, from his stats.
+-- In Hub Style (NaviStats +0x4C, patch card 111's) he wears its shade.
 
+local body_overlays = require("../../../lib/body_overlays")
 local buster = require("../weapons/buster")
 local charged_shot = require("../weapons/charged-shot")
+
+-- Hub Style's shade (the body overlay's row 5), as an identity wears it.
+local HUB = define.identity { id = "bn5:megaman/hub-shade", class = "navi", parts = { body = body_overlays.hub } }
+
+-- 0x0800EE1C (the base form's routine of 0x0800F024): in his base form (+0x2C 0, read again) in Hub Style, what he
+-- wore down and the shade on (Param3 0).
+local function wears(navi: Object)
+    local stats = battle.navi(navi.alliance)
+    if stats.form.kind ~= "base" or stats.hub_style == 0 then
+        return
+    end
+    navi:take_off_form_overlay(stats.form)
+    navi:add_parts(HUB, 0)
+end
 
 return define.form {
     id = "bn5:base",
@@ -31,4 +47,5 @@ return define.form {
         },
     },
     buster_arm = { anim = 0 },
+    wears = wears,
 }

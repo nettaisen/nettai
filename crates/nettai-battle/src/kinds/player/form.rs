@@ -74,9 +74,14 @@ pub(crate) fn navi_init_hook(b: &mut Battle, r: ObjectRef, identity: Option<Iden
 }
 
 /// `sub_8011268(form)`: put on the overlay `form` wears, its identity's
-/// parts (r2, the overlay's Param3, is always 0 here). The base form,
-/// which has no identity of its own, wears nothing.
+/// parts (r2, the overlay's Param3, is always 0 here), or what its own
+/// routine puts on (its `wears`: BN5's base form's, 0x0800EE1C). A base
+/// form without one, which has no identity of its own, wears nothing.
 pub(crate) fn put_on_overlay(b: &mut Battle, r: ObjectRef, form: FormHandle) {
+    if let Some(f) = b.content.defs.form(form).wears {
+        crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
+        return;
+    }
     let identity = b.content.form(form).identity;
     put_on_parts(b, r, identity, 0);
 }

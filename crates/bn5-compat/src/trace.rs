@@ -458,9 +458,6 @@ impl Round {
             if s.form != 0 {
                 out.push(format!("side {side}'s soul {:#04x} (BN5's forms)", s.form));
             }
-            if s.raw[0x4C] != 0 {
-                out.push(format!("side {side}'s spread program (NaviStats +0x4C = {:#04x})", s.raw[0x4C]));
-            }
             for (what, n) in [("buster", s.raw[0x04]), ("charged shot", s.raw[0x05]), ("B+Back", s.raw[0x07]), ("A charge", s.raw[0x39])] {
                 match compat.weapon(n) {
                     Ok(Some(k)) if content.defs.weapon_by_key(&k).is_none() => out.push(format!("side {side}'s {what} weapon {k}")),
@@ -743,7 +740,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         folder_tags: [[0xFF, 0xFF], [0xFF, 0xFF]],
         chip_shuffle: false,
         number_open: false,
-        hub_style: s.hub_style != 0,
+        hub_style: s.hub_style,
         weapons: NaviWeapons {
             buster: weapon(r[0x04])?,
             charge_shot: weapon(r[0x05])?,
@@ -789,6 +786,19 @@ pub fn navicust(content: &Content, compat: &Compat, list: &[u8], compressed: imp
         parts.push(PlacedProgram { program, color, x: e[2] + 1, y: e[3] + 1, rotation: e[4], compressed: compressed(e[0]) });
     }
     NaviCust::new(&parts, 0)
+}
+
+/// A save's patch cards (each card's number and whether it is switched on,
+/// in the list's order: [`crate::save::Save::patch_cards`]) in the engine's
+/// terms, by `version`'s numbers (compat's patch-cards.toml).
+pub fn patch_cards(content: &Content, compat: &Compat, version: crate::Version, list: &[(u8, bool)]) -> Result<nettai_battle::patch_cards::PatchCards, String> {
+    let mut cards = Vec::new();
+    for &(n, enabled) in list {
+        let key = compat.patch_card(n, version)?;
+        let card = content.defs.patch_card_by_key(key).ok_or_else(|| format!("the content has no patch card {key}"))?;
+        cards.push(nettai_battle::patch_cards::InstalledCard { card, enabled });
+    }
+    nettai_battle::patch_cards::PatchCards::new(&cards)
 }
 
 /// BN5's navi numbers' keys in its root (NaviStats +0x29): MegaMan's.
