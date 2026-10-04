@@ -181,9 +181,14 @@ impl HudState {
         if self.early_window {
             // Through the screen's closing and the turn's banner, then the
             // fight's first ticks until a decision shows the window (or
-            // four went by: one that keeps it off).
+            // four went by: one that keeps it off). (A later turn's fight
+            // resumes in the state its screen was asked from: BN6's flow
+            // has moved it on to the sequence's, 0x24, by then; BN5's, which
+            // opens the screen from the reversions' state, 0x08007774, is
+            // still in that one, 0x20.)
             let closing = b.round.mode == mode::CUSTOM && icons;
-            let banner = fighting && matches!(b.fight.state, fight::CUSTOM_SEQUENCE | fight::SETUP | fight::START_BANNER);
+            let banner = fighting
+                && matches!(b.fight.state, fight::CUSTOM_REVERT | fight::CUSTOM_SEQUENCE | fight::SETUP | fight::START_BANNER);
             let undecided = fighting
                 && b.fight.state == fight::FIGHTING
                 && !b.chip_hud_for(b.setup.local_side).window
