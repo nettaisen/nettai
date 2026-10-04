@@ -7,7 +7,7 @@
 --
 -- An obstacle: its update runs the obstacle framework's steps (the `obstacle` service) around its own actions.
 
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local doll = {}
 

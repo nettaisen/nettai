@@ -1798,7 +1798,7 @@ panel as it comes and lands (effect 0x83, lib/navi-chips/marker). The chip lab's
 back column: a shock goes on to the back column) and evicted (a second Voltz evicts the first) record the rest.
 
 VDoll (action 0x12's subtype 8: BN5's throw, holding the bomb, the attachment table's row 4) lobs BN6's doll
-(attack object 0x7A, 0x080D5618; content/common/vdoll/doll, a maker taking a game's look) three panels ahead. BN5's
+(attack object 0x7A, 0x080D5618; content/exelib/vdoll/doll, a maker taking a game's look) three panels ahead. BN5's
 differs: from the start a body of no side that anything reaches, hit modifier 3 (BN6's its side's object, hit
 modifier 1, until it sets down; BN5's setting down, its action 6, does nothing); a hit of types 0x0C800002 breaks it
 as damage 0 (0x080D56D4: a puff, no curse); its leaving (0x080D57F0) has no blinking out or absorbing, and its curse
@@ -1808,7 +1808,7 @@ chips/vdoll/curse) marks one panel, at random (an RNG2 draw, 0x080E625E), of tho
 on, keeping the doll's aim when there is none (a column of 0 ends it), where BN6's marks every combatant; it hits
 that panel with BN5's row 0x17 (a thrown piercing break) and hit modifier 1 (BN6's the curse row and 3), and its
 occupant test (0x080E7356) reads BN6's table by the side unscaled (side 1: 0x00002000). Its telop names BN5's Curse
-(chip 0x174). The sparkles (effect object 0x11) are BN6's code (content/common/vdoll/sparkles). The chip lab's
+(chip 0x174). The sparkles (effect object 0x11) are BN6's code (content/exelib/vdoll/sparkles). The chip lab's
 chips/0x067-vdoll/cursed records the curse (its user's buster hurts the landed doll). The doll's own actions store
 BN6's numbers until the obstacle framework's per-game numbering (bn5-obstacles-numbering's `obstacle.action_byte`)
 lands: BN5 stores its setting down as 6, so the recordings in which the doll lands differ at its action byte.
