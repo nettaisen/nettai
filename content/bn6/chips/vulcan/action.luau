@@ -1,11 +1,11 @@
 --!strict
 -- The Vulcans' action (the original's action 0x17, `sub_80EBF10`;
 -- docs/engine/shot-chips.md §4): the shared action
--- (@common/vulcan/action) with BN6's sound, vulcan, attachment and bullet.
+-- (@exelib/vulcan/action) with BN6's sound, vulcan, attachment and bullet.
 
 local attachment = require("../../objects/attachment/attachment")
 local bullet = require("../../objects/bullet/bullet")
-local common = require("@common/vulcan/action")
+local common = require("@exelib/vulcan/action")
 
 local vulcan = {}
 

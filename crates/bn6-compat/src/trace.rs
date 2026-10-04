@@ -364,6 +364,9 @@ impl Round {
         RoundSetup {
             content: content.hash(),
             settings: codec::battle_settings_of(self.console_game(), &unhex(&self.setup.settings), &ids),
+            // BN6's stock rules; its systems' setups say what the save
+            // unlocks.
+            ruleset: None,
             navi_stats: [stats(0), stats(1)],
             rng: self.setup.rng2,
             local_side: bs[0x0D],
@@ -495,16 +498,13 @@ impl Round {
                 None => Default::default(),
             },
             console: self.console_setup(side),
-            // BN6's stock rules; its systems' setups say what the save
-            // unlocks.
-            ruleset: None,
             rules: Vec::new(),
             patch_cards: self.patch_cards(side, ids),
             // (A recording's stats are what its NaviCust made.)
             navicust: None,
             tactics: Default::default(),
         };
-        unlocks.write(ids.content, &mut player).unwrap_or_else(|e| panic!("the save's unlocks: {e}"));
+        unlocks.write(ids.content, None, &mut player).unwrap_or_else(|e| panic!("the save's unlocks: {e}"));
         player
     }
 

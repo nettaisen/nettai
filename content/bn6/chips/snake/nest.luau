@@ -5,9 +5,9 @@
 -- at the nearest enemy, 8 ticks apart in a column and 24 between columns;
 -- once the snakes are gone, it lets its holder go on. It has no sprite.
 -- (The holes' scan and the snakes' targets are the shared snake's,
--- @common/snake/snake.)
+-- @exelib/snake/snake.)
 
-local common = require("@common/snake/snake")
+local common = require("@exelib/snake/snake")
 local snake = require("./snake")
 
 local nest = {}

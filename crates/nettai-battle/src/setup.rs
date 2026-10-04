@@ -409,6 +409,10 @@ pub struct RoundSetup {
     /// setups agree run the same content.
     pub content: ContentHash,
     pub settings: BattleSettings,
+    /// The rules the match plays by (docs/design/rules-in-luau.md §2.3:
+    /// one ruleset a match, the arena configuration's); none: the game's
+    /// stock ruleset.
+    pub ruleset: Option<nettai_content_api::RulesetHandle>,
     /// Both navis' stats, by side.
     pub navi_stats: [NaviStats; 2],
     /// The simulation RNG's state (both consoles agree on it).

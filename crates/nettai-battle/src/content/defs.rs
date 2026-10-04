@@ -175,15 +175,18 @@ pub struct FormDef {
     /// `status_reset` (BN5's souls' routines, 0x08011B92: SearchSoul's
     /// reveal, ColonelSoul's, TomahawkSoul's grass).
     pub reset: Option<FnId>,
-    /// `wears(navi)`: what the navi puts on as it takes the form
-    /// (`sub_8011268`'s routine by the form, BN5's 0x0800F024), in place of
-    /// its identity's parts: BN5's base form's shade in Hub Style
-    /// (0x0800EE1C).
-    pub wears: Option<FnId>,
-    /// `put_on(navi)` and `take_off(navi)`: what else it wears and takes
-    /// off with its start and end hooks, after its identity's parts (BN5's
-    /// NumberSoul's layer, a content object: 0x0800F07C, 0x0800F0DE).
+    /// `put_on(navi)`: the form's put-on routine (`sub_8011268`'s by the
+    /// form; BN5's table 0x0800F038, by soul), in place of the default, its
+    /// identity's parts (`Navi:put_on_form_parts`). A base form's also runs
+    /// as a player's init ends, in place of its navi's init hook
+    /// (`sub_8010DD0`: BN5's MegaMan's record names the base form's
+    /// routine, 0x0800EE1C, Hub Style's shade). BN5's NumberSoul's puts on
+    /// its layer (0x0800F07C).
     pub put_on: Option<FnId>,
+    /// `take_off(navi)`: the form's take-off routine (`sub_8011384`'s; BN5's
+    /// table 0x0800F09C), in place of the default, taking down what its
+    /// identity's death hook does (`Navi:take_off_form_parts`). BN5's
+    /// NumberSoul's takes its layer off (0x0800F0DE).
     pub take_off: Option<FnId>,
 }
 
@@ -393,38 +396,19 @@ pub struct WindowHandle(pub u16);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ButtonHandle(pub u16);
 
-/// A player's rules (docs/design/rules-in-luau.md §2.2): its systems, in
-/// the order the framework calls them, and its game, whose data (roles,
-/// rule sections) is the side's.
+/// A match's rules (docs/design/rules-in-luau.md §2.2): its systems, in
+/// the order the framework calls them. A match plays one game by one of its
+/// rulesets (docs/design/content-model-v2.md §4.0: the arena configuration
+/// determines everything).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RulesetDef {
     pub key: String,
-    /// The game's own rules: what a player has unless their setup names
+    /// The game's own rules: what a match plays unless its setup names
     /// another.
     pub stock: bool,
     pub systems: Vec<SystemHandle>,
-    /// The ruleset it was made from (a mix's `base`), if any.
+    /// The ruleset it was made from (a variant's `base`), if any.
     pub base: Option<RulesetHandle>,
-    /// Its game (§2.3): the root its `game` names, else its base's game,
-    /// else its own root (which must then be a game's: one with a stock
-    /// ruleset).
-    pub game: RootId,
-    /// Its own rule sections (P1 item 8: a mix's, over its game's for the
-    /// sides that play by it; only the sections about a side), by id.
-    pub sections: Vec<String>,
-}
-
-/// A game, by its place among the content's games (`Defs::roots`, by
-/// name: a definition's game is its id's prefix, docs/design/
-/// rules-in-luau.md, the flat namespace). A game's data, its roles and rule
-/// sections, is its own (§2.3).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct RootId(pub u8);
-
-impl RootId {
-    pub fn index(self) -> usize {
-        self.0 as usize
-    }
 }
 
 /// Most systems a ruleset may list.
@@ -563,9 +547,9 @@ pub struct Defs {
     pub regions: Vec<super::Region>,
     /// Collision types (`define.collision`), by handle.
     pub collisions: Vec<CollisionTypeDef>,
-    /// What each root's game needs from content by role (`define.roles`),
-    /// by [`RootId`] (a root that defines none has none filled).
-    pub roles: Vec<Roles>,
+    /// What the game needs from content by role (`define.roles`; none
+    /// defined, none filled).
+    pub roles: Roles,
     /// The systems and rulesets (docs/design/rules-in-luau.md), by handle.
     pub systems: Vec<SystemDef>,
     /// The systems' custom-screen buttons and windows.
@@ -586,16 +570,16 @@ pub struct Defs {
     kind_keys: BTreeMap<String, KindHandle>,
     /// The engine's kinds, in [`ENGINE_KINDS`]' order.
     engine: Vec<KindHandle>,
-    /// Each game's base form, by `RootId`: what its navis are in before
-    /// they change form (rules-in-luau.md P1 item 12: BN5's MegaMan's is
-    /// BN5's own); None for a game that defines none.
-    pub base_forms: Vec<Option<FormHandle>>,
+    /// The game's base form: what its navis are in before they change form
+    /// (rules-in-luau.md P1 item 12: BN5's MegaMan's is BN5's own); None
+    /// for a game that defines none.
+    pub base_form: Option<FormHandle>,
     /// Keys by registry, for the codecs.
     chip_keys: BTreeMap<String, ChipHandle>,
     weapon_keys: BTreeMap<String, WeaponHandle>,
-    /// The roots the content came from, by name, its own first
-    /// (`Scripts::roots`): what an unqualified key is looked up in.
-    pub roots: Vec<String>,
+    /// The game the content is (its game pack's id, `Content::game`); ""
+    /// for content without packs (a test's modules alone).
+    pub game: String,
 }
 
 impl Defs {
@@ -634,36 +618,16 @@ impl Defs {
         &self.rulesets[h.index()]
     }
 
-    /// Game `root`'s stock ruleset, if it has one (docs/design/
-    /// rules-in-luau.md §2.3: what a player has unless their setup names
-    /// another, the stage's game's).
-    pub fn stock_ruleset_of(&self, root: &str) -> Option<RulesetHandle> {
-        self.rulesets
-            .iter()
-            .position(|r| r.stock && keys::root_of(&r.key) == Some(root))
-            .map(|i| RulesetHandle(i as u16))
+    /// The game's stock ruleset, if it has one (docs/design/
+    /// rules-in-luau.md §2.3: what a match plays unless its setup names
+    /// another).
+    pub fn stock_ruleset(&self) -> Option<RulesetHandle> {
+        self.rulesets.iter().position(|r| r.stock).map(|i| RulesetHandle(i as u16))
     }
 
-    /// The root named `name`.
-    pub fn root_id(&self, name: &str) -> Option<RootId> {
-        self.roots.iter().position(|r| r == name).map(|i| RootId(i as u8))
-    }
-
-    /// The game a definition's id is of: its prefix's (None for the
-    /// engine's own keys, `engine/...`).
-    pub fn root_of(&self, key: &str) -> Option<RootId> {
-        keys::root_of(key).and_then(|r| self.root_id(r))
-    }
-
-    /// Game `root`'s roles.
-    pub fn roles(&self, root: RootId) -> &Roles {
-        &self.roles[root.index()]
-    }
-
-    /// The game of the ruleset a setup names, or else `default`'s (the
-    /// stage's game): whose data the side reads.
-    pub fn ruleset_game(&self, ruleset: Option<RulesetHandle>, default: RootId) -> RootId {
-        ruleset.map_or(default, |r| self.ruleset(r).game)
+    /// The game's roles.
+    pub fn roles(&self) -> &Roles {
+        &self.roles
     }
 
     /// The ruleset with this key.
@@ -1174,13 +1138,8 @@ impl Defs {
     /// `definitions` (what its modules define) make.
     pub fn build(content: &Content, definitions: Definitions) -> Result<Defs, ContentError> {
         let reader = super::reader::SpecReader::new(&content.assets, &definitions);
-        // The games, by name (content without scripts is one game of no
-        // name).
-        let root_names = Content::game_names(&content.scripts, &definitions);
-        let root_of = |key: &str| -> RootId {
-            let name = keys::root_of(key).unwrap_or("");
-            RootId(root_names.iter().position(|r| r == name).unwrap_or(0) as u8)
-        };
+        // The game (content without packs is one game of no name).
+        let game = content.game().to_string();
         let mut functions = Functions::default();
 
         // Layouts: the definitions' and modules' state tables, and the
@@ -1407,8 +1366,7 @@ impl Defs {
             let whose = format!("chip {}", c.key);
             let mut l = ChipLinks::default();
             if let Some(super::DamageFormula::SpNavi { slot, .. }) = &c.record.formula {
-                // (The chip's own game's slots.)
-                let rules = content.rules_of(root_of(&c.key));
+                let rules = content.rules();
                 let n = rules.sp_slots.iter().position(|s| s == slot).ok_or_else(|| {
                     ContentError::new(format!("{whose}'s damage is by the SP navi {slot:?}, which the rules' sp_slots don't list"))
                 })?;
@@ -1597,31 +1555,26 @@ impl Defs {
                     _ => Some(functions.id(slot(d, field)?)),
                 })
             };
-            let (reset, wears, put_on, take_off) = (hook("reset")?, hook("wears")?, hook("put_on")?, hook("take_off")?);
-            forms.push(FormDef { key: d.key.clone(), record, reset, wears, put_on, take_off });
+            let (reset, put_on, take_off) = (hook("reset")?, hook("put_on")?, hook("take_off")?);
+            forms.push(FormDef { key: d.key.clone(), record, reset, put_on, take_off });
         }
         for (i, f) in forms.iter().enumerate() {
             if let Some(h) = f.record.identity {
                 claim_identity(&mut identities, h, super::IdentityOwner::Form(FormHandle(i as u16)), &f.key)?;
             }
         }
-        // Each game's base form: what its navis are in before they change
-        // form; one a game.
-        let game_of = |key: &str| keys::root_of(key).and_then(|g| root_names.iter().position(|r| r == g));
-        let mut base_forms: Vec<Option<FormHandle>> = vec![None; root_names.len()];
+        // The game's base form: what its navis are in before they change
+        // form; one.
+        let mut base_form: Option<FormHandle> = None;
         for (i, f) in forms.iter().enumerate().filter(|(_, f)| f.record.base) {
-            let Some(game) = game_of(&f.key) else {
-                return Err(ContentError::new(format!("base form {}'s id names no loaded game", f.key)));
-            };
-            if let Some(other) = base_forms[game] {
+            if let Some(other) = base_form {
                 return Err(ContentError::new(format!(
-                    "two forms of {} are base forms ({} and {})",
-                    root_names[game],
+                    "two forms of {game} are base forms ({} and {})",
                     forms[other.index()].key,
                     f.key
                 )));
             }
-            base_forms[game] = Some(FormHandle(i as u16));
+            base_form = Some(FormHandle(i as u16));
         }
         // (What a game's forms and its navis' sets say of each other is its
         // systems': BN6's are checked by bn6-compat's tests.)
@@ -1634,7 +1587,7 @@ impl Defs {
             if n.record.forms.is_none() {
                 continue;
             }
-            if game_of(&n.key).and_then(|g| base_forms[g]).is_none() {
+            if base_form.is_none() {
                 return Err(ContentError::new(format!("navi {} changes form, and no form of its game is the base form", n.key)));
             }
         }
@@ -1738,16 +1691,15 @@ impl Defs {
             collisions.push(CollisionTypeDef { flags: [word("side0")?, word("side1")?], row_offset });
         }
 
-        // The roles: each root's (a root defines at most one, `<root>:roles`).
-        let mut roles = Vec::with_capacity(root_names.len());
-        for name in &root_names {
-            let own: Vec<&Definition> =
-                definitions.of(Registry::Roles).iter().filter(|d| keys::root_of(&d.key).unwrap_or("") == name.as_str()).collect();
-            roles.push(match own[..] {
-                [d] => read_roles(d, &definitions, &content.assets, &actions, &kinds, &chips, &statuses, &mut functions)?,
-                _ => Roles::default(),
-            });
-        }
+        // The roles: the game's (it defines at most one).
+        let roles = match definitions.of(Registry::Roles) {
+            [] => Roles::default(),
+            [d] => read_roles(d, &definitions, &content.assets, &actions, &kinds, &chips, &statuses, &mut functions)?,
+            more => {
+                let keys: Vec<&str> = more.iter().map(|d| d.key.as_str()).collect();
+                return Err(ContentError::new(format!("{game} defines {} roles ({}); a game has one", more.len(), keys.join(", "))));
+            }
+        };
 
         // The systems and the rulesets.
         let mut systems = Vec::new();
@@ -2005,7 +1957,7 @@ impl Defs {
                 change_actions[a.index()] = true;
             }
         }
-        let rulesets = read_rulesets(&definitions, &root_names)?;
+        let rulesets = read_rulesets(&definitions, &game)?;
 
         let records: Vec<RecordDef> = definitions
             .of(Registry::Record)
@@ -2099,10 +2051,10 @@ impl Defs {
             handles,
             kind_keys,
             engine,
-            base_forms,
+            base_form,
             chip_keys: BTreeMap::new(),
             weapon_keys: BTreeMap::new(),
-            roots: root_names.clone(),
+            game: game.clone(),
             kinds: Vec::new(),
             actions,
             weapons,
@@ -2143,12 +2095,10 @@ impl Defs {
     }
 }
 
-/// The rulesets (docs/design/rules-in-luau.md §2.2): a game's own
-/// (`stock`) lists its systems; a ruleset made from another (`base`, a mix)
-/// has its base's systems less `remove`, with `add` after them. Each has a
-/// game (§2.3): the root its `game` names, else its base's game, else its
-/// own root, which must then be a game's (have a stock ruleset).
-fn read_rulesets(definitions: &Definitions, root_names: &[String]) -> Result<Vec<RulesetDef>, ContentError> {
+/// The rulesets (docs/design/rules-in-luau.md §2.2): a stock one lists its
+/// systems; one made from a `base` (a variant) has its base's systems less
+/// `remove`, with `add` after them. A game has at most one stock ruleset.
+fn read_rulesets(definitions: &Definitions, game: &str) -> Result<Vec<RulesetDef>, ContentError> {
     let defs = definitions.of(Registry::Ruleset);
     let systems = definitions.of(Registry::System);
     let handle = |key: &str| defs.iter().position(|r| r.key == key).map(|i| RulesetHandle(i as u16));
@@ -2158,13 +2108,11 @@ fn read_rulesets(definitions: &Definitions, root_names: &[String]) -> Result<Vec
         base: Option<RulesetHandle>,
         add: Vec<SystemHandle>,
         remove: Vec<SystemHandle>,
-        game: Option<RootId>,
-        sections: Vec<String>,
     }
     let mut read = Vec::with_capacity(defs.len());
     for d in defs {
         let what = |e: &str| ContentError::new(format!("{}.luau: ruleset {}: {e}", d.module, d.key));
-        const FIELDS: [&str; 8] = ["id", "stock", "systems", "base", "add", "remove", "game", "sections"];
+        const FIELDS: [&str; 6] = ["id", "stock", "systems", "base", "add", "remove"];
         if let Data::Map(entries) = &d.spec {
             for (k, _) in entries {
                 if !matches!(k, nettai_content_api::DataKey::Str(f) if FIELDS.contains(&f.as_str())) {
@@ -2202,37 +2150,7 @@ fn read_rulesets(definitions: &Definitions, root_names: &[String]) -> Result<Vec
             Data::Ref(Registry::Ruleset, key) => Some(handle(key).expect("a defined ruleset")),
             _ => return Err(what("`base` is a ruleset (define.ruleset { ... })")),
         };
-        let game = match d.spec.field("game") {
-            Data::Nil => None,
-            Data::Str(name) => Some(RootId(
-                root_names.iter().position(|r| r == name).ok_or_else(|| what(&format!("`game` names {name:?}, which is no loaded root")))? as u8,
-            )),
-            _ => return Err(what("`game` is a root's name (\"bn6\")")),
-        };
-        let sections: Vec<String> = match d.spec.field("sections") {
-            Data::Nil => Vec::new(),
-            Data::List(items) => items
-                .iter()
-                .map(|v| match v {
-                    Data::Ref(Registry::Rules, key) => Ok(key.clone()),
-                    _ => Err(what("`sections` lists rule sections (define.rules(...))")),
-                })
-                .collect::<Result<_, _>>()?,
-            Data::Map(m) if m.is_empty() => Vec::new(),
-            _ => return Err(what("`sections` is a list of rule sections (define.rules(...))")),
-        };
-        if stock && !sections.is_empty() {
-            return Err(what("a stock ruleset's sections are its game's (define.rules in its folder), not its own"));
-        }
-        let r = Read {
-            stock,
-            systems: list("systems")?,
-            base,
-            add: list("add")?.unwrap_or_default(),
-            remove: list("remove")?.unwrap_or_default(),
-            game,
-            sections,
-        };
+        let r = Read { stock, systems: list("systems")?, base, add: list("add")?.unwrap_or_default(), remove: list("remove")?.unwrap_or_default() };
         match (r.stock, r.base, &r.systems) {
             (true, Some(_), _) => return Err(what("a stock ruleset is a game's own: it has no `base`")),
             (_, Some(_), Some(_)) => return Err(what("a ruleset made from a `base` lists what it changes (`add`, `remove`), not `systems`")),
@@ -2248,7 +2166,6 @@ fn read_rulesets(definitions: &Definitions, root_names: &[String]) -> Result<Vec
         i: usize,
         read: &[Read],
         defs: &[Definition],
-        root_names: &[String],
         systems_of: &[Definition],
         out: &mut Vec<Option<RulesetDef>>,
         visiting: &mut Vec<usize>,
@@ -2263,11 +2180,9 @@ fn read_rulesets(definitions: &Definitions, root_names: &[String]) -> Result<Vec
         }
         visiting.push(i);
         let r = &read[i];
-        let own_root = keys::root_of(&d.key).unwrap_or("");
-        let own = RootId(root_names.iter().position(|n| n == own_root).unwrap_or(0) as u8);
-        let (systems, base_game) = match r.base {
+        let systems = match r.base {
             Some(b) => {
-                resolve(b.index(), read, defs, root_names, systems_of, out, visiting)?;
+                resolve(b.index(), read, defs, systems_of, out, visiting)?;
                 let base = out[b.index()].as_ref().expect("resolved");
                 let mut list: Vec<SystemHandle> = base.systems.clone();
                 for h in &r.remove {
@@ -2282,47 +2197,25 @@ fn read_rulesets(definitions: &Definitions, root_names: &[String]) -> Result<Vec
                     }
                     list.push(*h);
                 }
-                (list, Some(base.game))
+                list
             }
-            None => (r.systems.clone().unwrap_or_default(), None),
+            None => r.systems.clone().unwrap_or_default(),
         };
         if systems.len() > MAX_SYSTEMS {
             return Err(what(&format!("{} systems; a ruleset has at most {MAX_SYSTEMS}", systems.len())));
         }
-        let own_is_game = read.iter().zip(defs).any(|(o, od)| o.stock && keys::root_of(&od.key).unwrap_or("") == own_root);
-        let game = match (r.game, base_game) {
-            (Some(g), _) => g,
-            (None, Some(g)) => g,
-            (None, None) if own_is_game => own,
-            (None, None) => {
-                return Err(what(&format!("its root ({own_root}) is no game's (it has no stock ruleset): name a `base` or a `game`")));
-            }
-        };
         visiting.pop();
-        out[i] = Some(RulesetDef { key: d.key.clone(), stock: r.stock, systems, base: r.base, game, sections: r.sections.clone() });
+        out[i] = Some(RulesetDef { key: d.key.clone(), stock: r.stock, systems, base: r.base });
         Ok(())
     }
     let mut out: Vec<Option<RulesetDef>> = vec![None; defs.len()];
     for i in 0..defs.len() {
-        resolve(i, &read, defs, root_names, systems, &mut out, &mut Vec::new())?;
+        resolve(i, &read, defs, systems, &mut out, &mut Vec::new())?;
     }
     let rulesets: Vec<RulesetDef> = out.into_iter().map(|r| r.expect("every ruleset resolved")).collect();
-    // A game names a root with a stock ruleset; a root has at most one.
-    for (i, name) in root_names.iter().enumerate() {
-        let stocks: Vec<&str> =
-            rulesets.iter().filter(|r| r.stock && keys::root_of(&r.key).unwrap_or("") == name.as_str()).map(|r| r.key.as_str()).collect();
-        if stocks.len() > 1 {
-            return Err(ContentError::new(format!(
-                "root {name} has {} stock rulesets ({}); a game has one",
-                stocks.len(),
-                stocks.join(", ")
-            )));
-        }
-        if stocks.is_empty() {
-            if let Some(r) = rulesets.iter().find(|r| r.game == RootId(i as u8)) {
-                return Err(ContentError::new(format!("ruleset {}'s game is root {name}, which is no game's (no stock ruleset)", r.key)));
-            }
-        }
+    let stocks: Vec<&str> = rulesets.iter().filter(|r| r.stock).map(|r| r.key.as_str()).collect();
+    if stocks.len() > 1 {
+        return Err(ContentError::new(format!("game {game} has {} stock rulesets ({}); a game has one", stocks.len(), stocks.join(", "))));
     }
     Ok(rulesets)
 }
@@ -2338,9 +2231,11 @@ mod tests {
     fn every_bn6_module_loads_in_the_define_phase() {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
         let mut c = Content::default();
-        c.scripts = crate::content::Scripts::root(crate::content::RootManifest::named("bn6"), crate::content::testing::modules_under(dir));
-        // (With the shared folder its modules require, content/common.)
+        c.scripts = crate::content::Scripts::dir("bn6", crate::content::testing::modules_under(dir));
+        // (With a manifest for BN6 and the support pack its modules
+        // require, content/exelib.)
         crate::content::testing::add_shared(&mut c.scripts);
+        crate::content::testing::add_index(&mut c.scripts, "bn6");
         c.assets = crate::content::testing::asset_names_for(&c.scripts);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));

@@ -1,5 +1,5 @@
 --!strict
--- SloGauge (BN5 chip 0x078): the other side's custom gauge fills slowly: BN6's (@common/gauge-speed; BN5's the
+-- SloGauge (BN5 chip 0x078): the other side's custom gauge fills slowly: BN6's (@exelib/gauge-speed; BN5's the
 -- same code).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 

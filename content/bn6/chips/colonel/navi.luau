@@ -13,7 +13,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 -- What a chip summons him with: his palette (the chips' first parameter
 -- picks it), and whether he strikes CrossDiv's cross (their third).

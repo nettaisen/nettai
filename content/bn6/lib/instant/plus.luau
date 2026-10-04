@@ -2,7 +2,7 @@
 -- The plus chips used on their own (instant chip effect 3, `sub_8010488`,
 -- run once by action 0x1C): from a special source (battle flag 0x40 mode)
 -- the chip's damage, and an extra, go into the bonus its side stores for
--- its special chip; otherwise a sparkle (@common/instant/sparkle, BN6's
+-- its special chip; otherwise a sparkle (@exelib/instant/sparkle, BN6's
 -- bubble) rises by the navi. On the custom screen a plus chip folds into the chip before it
 -- (its `modifier`); this is its use alone.
 --
@@ -13,7 +13,7 @@
 -- invalid chip's are the sparkle alone (`plus.sparkle_alone`).
 
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
-local sparkle = require("@common/instant/sparkle")
+local sparkle = require("@exelib/instant/sparkle")
 
 local plus = {}
 

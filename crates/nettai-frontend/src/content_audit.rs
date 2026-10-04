@@ -31,7 +31,7 @@
 
 use nettai_assets::Bundle;
 use nettai_battle::Content;
-use nettai_battle::content::{BackgroundId, BannerId, BannerRole, ChipCode, ChipRole, MugshotId, PackId, RootId, SpriteId};
+use nettai_battle::content::{BackgroundId, BannerId, BannerRole, ChipCode, ChipRole, MugshotId, PackId, SpriteId};
 use nettai_battle::custom::GameVersion;
 use nettai_battle::field::PanelType;
 use nettai_battle::kinds::player::Emotion;
@@ -169,8 +169,7 @@ fn other_packs(c: &Content, packs: &Packs, lang: &str, text: &DisplayText) -> Ve
             lookups::text_line(hud, line, &mut p);
         }
         let lettered = hud.languages().contains(&lang);
-        let root = c.defs.roots.iter().position(|g| g == game).map(|r| RootId(r as u8));
-        let of_game = |key: &str| root.is_some() && c.defs.root_of(key) == root;
+        let of_game = |key: &str| nettai_content_api::keys::root_of(key).is_some_and(|g| g == game.as_str());
         for (k, d) in c.defs.chips.iter().enumerate().filter(|(_, d)| of_game(&d.key)) {
             let chip = ChipHandle(k as u16);
             if lettered {
@@ -220,7 +219,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
 
     // The chips: the Beast Out chip's picture is the Beast's (the custom
     // screen's), not its own.
-    let beast_out: BTreeSet<ChipHandle> = c.defs.roles.iter().filter_map(|r| r.try_chip(ChipRole::BeastOut)).collect();
+    let beast_out: BTreeSet<ChipHandle> = std::iter::once(c.defs.roles()).filter_map(|r| r.try_chip(ChipRole::BeastOut)).collect();
     let font = &hud.dialogue_font;
     for (i, d) in c.defs.chips.iter().enumerate() {
         let chip = ChipHandle(i as u16);
@@ -283,13 +282,10 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     // Every asset of the loaded packs, by its qualified name (a superset of
     // what the content names: a match file names a background of its own,
     // for one).
-    let telops: HashSet<BannerId> = c
-        .defs
-        .roles
-        .iter()
+    let telops: HashSet<BannerId> = std::iter::once(c.defs.roles())
         .flat_map(|r| [BannerRole::Telop, BannerRole::TelopRemote].into_iter().filter_map(|role| r.banners.get(&role).copied()))
         .collect();
-    let judges: HashSet<BannerId> = c.defs.roles.iter().filter_map(|r| r.banners.get(&BannerRole::Judge).copied()).collect();
+    let judges: HashSet<BannerId> = std::iter::once(c.defs.roles()).filter_map(|r| r.banners.get(&BannerRole::Judge).copied()).collect();
     let handles = |kind: AssetKind| 0..c.assets.names(kind).len() as u16;
     for h in handles(AssetKind::Sprite) {
         sprite(c, packs, SpriteId(h), p);
@@ -302,7 +298,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
     }
     // (A banner no loaded game's roles name is checked as its pack lays it
     // out: a telop's layout, which has no glyphs of its own, as a telop.)
-    let named: HashSet<BannerId> = c.defs.roles.iter().flat_map(|r| r.banners.values().copied()).collect();
+    let named: HashSet<BannerId> = c.defs.roles().banners.values().copied().collect();
     for id in handles(AssetKind::Banner).map(BannerId) {
         if telops.contains(&id) || (!named.contains(&id) && lookups::is_telop(packs, c, id)) {
             lookups::telop(packs, c, id, p);
@@ -329,12 +325,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
 /// arena's field, another pack's, or as a tinted normal panel, which is
 /// said, not counted.
 fn field(c: &Content, packs: &Packs, p: &mut Problems) {
-    // (The shared folder, content/common, is no game: it has no field.)
-    let roots: Vec<RootId> = (0..c.rules.len())
-        .map(|i| RootId(i as u8))
-        .filter(|r| c.defs.roots.get(r.index()).is_none_or(|name| name != nettai_content_api::keys::SHARED))
-        .collect();
-    let names = |root: RootId, t: PanelType| c.rules_of(root).panels.types.get(t as usize).is_some_and(|r| r.named);
+    let names = |t: PanelType| c.rules().panels.types.get(t as usize).is_some_and(|r| r.named);
     let blocks = |pack: PackId, t: PanelType, p: &mut Problems| {
         for owner in 0..2 {
             for y in 1..=3 {
@@ -342,32 +333,28 @@ fn field(c: &Content, packs: &Packs, p: &mut Problems) {
             }
         }
     };
-    for &root in &roots {
-        let pack = packs.id_of_root(c, root);
-        for t in PanelType::ALL.into_iter().filter(|&t| names(root, t)) {
-            if packs.bundle(pack).field.draws(t as u8) {
-                blocks(pack, t, p);
-            } else {
-                p.note(format!(
-                    "{}'s field doesn't draw panel type {} ({t:?}), which its game names (extract the pack again)",
-                    lookups::pack_name(c, pack),
-                    t as u8
-                ));
-            }
+    let pack = packs.game_id(c);
+    for t in PanelType::ALL.into_iter().filter(|&t| names(t)) {
+        if packs.bundle(pack).field.draws(t as u8) {
+            blocks(pack, t, p);
+        } else {
+            p.note(format!(
+                "{}'s field doesn't draw panel type {} ({t:?}), which its game names (extract the pack again)",
+                lookups::pack_name(c, pack),
+                t as u8
+            ));
         }
     }
-    for &arena in &roots {
-        let art = FieldArt::of(c, packs, arena);
-        for t in PanelType::ALL.into_iter().filter(|&t| roots.iter().any(|&r| names(r, t))) {
-            match art.panel(t) {
-                Art::Field(from) => blocks(from, t, p),
-                Art::Tint => lookups::panel_tint(c, art.arena, t as u8, p),
-            }
+    let art = FieldArt::of(c, packs);
+    for t in PanelType::ALL.into_iter().filter(|&t| names(t)) {
+        match art.panel(t) {
+            Art::Field(from) => blocks(from, t, p),
+            Art::Tint => lookups::panel_tint(c, art.arena, t as u8, p),
         }
-        for h in 1..=2 {
-            if art.highlight(h) == Art::Tint {
-                lookups::panel_tint(c, art.arena, lookups::HIGHLIGHT_TINT + h, p);
-            }
+    }
+    for h in 1..=2 {
+        if art.highlight(h) == Art::Tint {
+            lookups::panel_tint(c, art.arena, lookups::HIGHLIGHT_TINT + h, p);
         }
     }
 }
@@ -429,8 +416,7 @@ mod tests {
         };
         assert_eq!(missing(&c), PanelType::ALL.len());
         for t in [PanelType::Metal, PanelType::Lava, PanelType::Sea] {
-            let test = c.defs.root_id(testing::ROOT).expect("the test game");
-            c.rules[test.index()].panels.types[t as usize].named = false;
+            c.rules.panels.types[t as usize].named = false;
         }
         assert_eq!(missing(&c), PanelType::ALL.len() - 3);
     }
