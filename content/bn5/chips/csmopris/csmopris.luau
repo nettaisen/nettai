@@ -64,7 +64,8 @@ end
 local function off_field(me: Object)
     if not field.valid(me.panel_x, me.panel_y) then
         me.collision:set_region(nil)
-        me:set_lifecycle("destroy")
+        -- (The state byte alone, as every destroy of the comet's: 0x080D4A5C, 0x080D4AB8.)
+        me.lifecycle = "destroy"
     end
 end
 
@@ -126,7 +127,8 @@ local function comet_tick(me: Object)
     me:hit_spark()
     if battle.over() then
         c:set_region(nil)
-        me:set_lifecycle("destroy")
+        -- (0x080D49A6: the state byte alone.)
+        me.lifecycle = "destroy"
         return
     end
     local s = me.state :: CometState

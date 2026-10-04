@@ -31,6 +31,11 @@ export type Spec = {
     -- The blade's animation by its holder (none: the shared one's,
     -- @common/swords/parts; BN6's gives its Beast forms' arms).
     blade_anim: ((Object) -> number)?,
+    -- BN6's counter makes the navi invulnerable from its start to its end
+    -- (`sub_80EEA5C`, `sub_800EB08` in `sub_80EEB18`) and restarts what his
+    -- form wears at each swing (`sub_8011450`); BN5's (action 0x2D,
+    -- 0x080EDAF4, 0x080EDB0A, 0x080EDBA8) does neither (`plain = true`).
+    plain: boolean?,
 }
 
 local SWINGS = 3
@@ -53,8 +58,10 @@ local function start(me: Object, s: State, spec: Spec)
     me.attack_count = SWINGS
     battle.play_sound(spec.start_sound)
     me:open_counter_window()
-    me:set_status_timer("invulnerable", 0xFFFF)
-    me:set_status("invulnerable", true)
+    if not spec.plain then
+        me:set_status_timer("invulnerable", 0xFFFF)
+        me:set_status("invulnerable", true)
+    end
     set_step(me, 4)
 end
 
@@ -64,7 +71,9 @@ end
 local function swing(me: Object, s: State, spec: Spec)
     if me.step_init == 0 then
         me:set_animation(SWING_ANIM)
-        me:refresh_form_overlay()
+        if not spec.plain then
+            me:refresh_form_overlay()
+        end
         battle.clear_linked(me.alliance)
         battle.play_sound(spec.swing_sound)
         local blade_anim = spec.blade_anim
@@ -98,12 +107,14 @@ end
 
 -- `sub_80EEB18`: its trap request done, vulnerable again; 6 ticks, then
 -- idle without the blade.
-local function finish(me: Object, s: State)
+local function finish(me: Object, s: State, spec: Spec)
     if me.step_init == 0 then
         me:set_request("anti_sword_triggered", false)
         -- sub_800EB08
-        me:set_status_timer("invulnerable", 0)
-        me:set_status("invulnerable", false)
+        if not spec.plain then
+            me:set_status_timer("invulnerable", 0)
+            me:set_status("invulnerable", false)
+        end
         s.timer = 5
         me.step_init = 4
     end
@@ -132,7 +143,7 @@ function counter.action_with(spec: Spec): Action
             elseif step == 4 then
                 swing(me, s, spec)
             elseif step == 8 then
-                finish(me, s)
+                finish(me, s, spec)
             else
                 error(string.format("AntiSwrd's counter: phase %#x reads past off_80EEA50", step))
             end

@@ -16,4 +16,6 @@ return define.rules("bn5:effects", {
     retype = "bn5",
     obstacle_soldiers = true,
     palette_flash = "bn5",
+    -- Its afterimages (0x080E35F4) and form overlays don't run while paused (no header flag 0x04).
+    overlays_run_while_paused = false,
 })
