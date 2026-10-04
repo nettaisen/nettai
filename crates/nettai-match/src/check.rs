@@ -411,6 +411,24 @@ mod tests {
         assert!(problems.iter().any(|p| p.contains("off the board")), "{problems:?}");
     }
 
+    /// A side with no NaviCust has its stats as a compile left them: no
+    /// match key or setup field gives the emotion window's glitch, and the
+    /// rules make it from the stats' NaviCust bugs (here the support bug,
+    /// which the window's own count of bugs doesn't see).
+    #[test]
+    fn stats_set_directly_glitch_as_their_bugs_say() {
+        let content = crate::testing::bn6_content();
+        let mut m = crate::draw::live(&content, "bn6", 3, None).unwrap();
+        for s in &mut m.sides {
+            s.navicust = None;
+        }
+        m.sides[0].stats.support = None;
+        assert_eq!(check_match(&content, &m), Vec::<String>::new());
+        let b = Battle::new(m.round(&content, 3), content.clone());
+        assert!(b.consoles[0].emotion_window_glitch, "the support bug");
+        assert!(!b.consoles[1].emotion_window_glitch, "no bug");
+    }
+
     /// MegaMan from a navi code gets his level's gains over what his
     /// NaviCust made (`reloadCurNaviStatBoosts`: `sub_8121154` after
     /// `sub_813C458`): its HP to the maximum and the HP the maximum, the

@@ -17,13 +17,18 @@
 --    only (`exclusive`); the plus parts off it, in the list's order; the plus parts on it, left to right. The HP
 --    programs add up, and the maximum is the base and them.
 -- 4. The bugs (`sub_813CBCC`), unless a program stopped them (BugStop): each bug at its count's level, 1 to 3, as the
---    game's table says. In BN6 any bug sets the save's flag 0x1720, the emotion window's glitch.
+--    game's table says. Any bug sets the save's flag (BN6's 0x1720, BN5's 0x10C1), the emotion window's glitch.
 -- 5. The HP (`sub_803CE44`): the maximum again, and the HP the round starts with (in the real world, the maximum;
 --    BN5's leaves both in the cyberworld: `keeps_hp`).
 --
 -- A program's color, shape and whether it is a plus part are the engine's (its definition's); its `bug`, its
 -- `exclusive` and its `effects` the rules' (./effects). A program `anywhere` (no BN5 or BN6 program is one) works on
 -- the command line or off it and is never bugged by where it is.
+--
+-- A side without a NaviCust has its stats as a compile left them (a recording's, a match's set directly, a link
+-- navi's): no setup gives the glitch, so its flag is what those stats say, set when they carry a bug (`stats_bugged`:
+-- any stat a bug's routine writes). Every recorded MegaMan with the flag has such a stat but BN5's HubBatc alone,
+-- whose bug halves the HP programs and writes none.
 
 local compile = {}
 
@@ -150,11 +155,33 @@ local function apply(stats: Navi, e: NaviCustEffect, work: Work)
     end
 end
 
+-- Whether `stats` carry a NaviCust bug: any stat a bug's routine writes (the games' `bug_work`), or the patch cards'
+-- (the custom screen's damage and drain).
+local function stats_bugged(stats: Navi): boolean
+    return stats.step_bug == 1
+        or stats.emotion_bug ~= 0
+        or stats.panel_trail_level ~= 0
+        or stats.hand_shrink_turn ~= 0
+        or stats.custom_damage ~= 0
+        or stats.custom_drain ~= 0
+        or stats.encounters == 1
+        or stats.chip_drops == 1
+        or stats.buster_blanks ~= 0
+        or stats.support_bug
+        or stats.hp_drain ~= 0
+        or stats.hit_status ~= 0
+        or stats.battle_start_bug ~= 0
+end
+
 -- `round_setup`: `side`'s NaviCust compiled into its stats by `game`'s rules, if the setup gives one and the navi is
--- MegaMan (the navi that changes form: the original compiles the PET's own navi's, navi 0's). Whether it was.
+-- MegaMan (the navi that changes form: the original compiles the PET's own navi's, navi 0's). Whether it was. Without
+-- one, the stats are as a compile left them, and the glitch is as their bugs say.
 function compile.run(side: number, game: NaviCustGame): boolean
     local nc = battle.navicust(side)
     if nc == nil then
+        if game.glitch then
+            battle.set_emotion_window_glitch(side, stats_bugged(battle.navi(side)))
+        end
         return false
     end
     local stats = battle.navi(side)
