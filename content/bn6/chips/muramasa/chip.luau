@@ -19,6 +19,9 @@ return define.chip {
     hit_param = 50,
     lockout = 0,
     flags = { "has_damage", "standard_library", "damage_shown_variable", "library", "variable_damage" },
+    -- (The custom screen shows its damage as "???" only on an A, which it
+    -- never comes as.)
+    traits = { "hides_damage_as_a" },
     beast = { lockon = lockon.firebrn1 },
     library = { number = 84, index = 84, sort = 320 },
     slot_in_limit = 1,
