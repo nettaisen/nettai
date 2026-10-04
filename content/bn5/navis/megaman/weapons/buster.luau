@@ -37,7 +37,7 @@ local buster = {
         shot_sound = asset.sound("buster-shot"),
         plain = variants.plain,
         throw_sound = asset.sound("junk-shot"),
-        spread_flash = attachment.look { sprite = asset.sprite("sprite-0c-59"), palette = 0, attach_point = 0 },
+        spread_flash = attachment.look { sprite = asset.sprite("spread-flash"), palette = 0, attach_point = 0 },
     },
 }
 
