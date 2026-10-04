@@ -30,7 +30,7 @@ export type State = {
 }
 
 -- The souls system's state (./system).
-type Souls = { turns: number, chaos: boolean }
+type Souls = { turns: number, chaos: boolean, arm_chip: Chip? }
 
 local FLASH_SOUND = asset.sound("log-in")
 local UNISON_SOUND = asset.sound("cross-change")
@@ -104,6 +104,8 @@ local function emerge(me: Object, s: State, target: FormDef, soul: number, chaos
         local turns, is_chaos = me:form_change_soul()
         local souls = system.state() :: Souls
         souls.turns, souls.chaos = turns, is_chaos
+        -- (0x08012102: the record's arm chip, +6, into AIData +0x32: Arm Change's, ./arm-change.)
+        me.weapon_chip = souls.arm_chip
         stats.form = target
         hooks.identity(me, target)
         hooks.start(me, target)

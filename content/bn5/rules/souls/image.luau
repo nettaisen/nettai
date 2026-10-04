@@ -180,8 +180,9 @@ image.kind = define.kind {
 -- 0x080C0524: the image of soul `soul` for `owner`, on its side and facing.
 --
 -- (It is spawned at the registers 0x0801201E's read of the side's transform record leaves (0x08012402): Chaos Unison
--- (+1), the navi switch's navi (+6, 0xFFFF: none in a soul's change) and the turns (+3), which its first tick
--- overwrites but NumberMan's face, spawned before it, copies.)
+-- (+1), the turn's arm chip by number (+6: 0xFFFF without one, which is what this has whatever the chip; a replay's
+-- comparison knows the number, bn5-compat) and the turns (+3), which its first tick overwrites but NumberMan's face,
+-- spawned before it, copies.)
 function image.spawn(owner: Object, soul: number): Object?
     local turns, chaos = owner:form_change_soul()
     local o = battle.spawn(image.kind, Vec3.new(if chaos then 1 else 0, 0xFFFF, turns))

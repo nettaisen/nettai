@@ -90,6 +90,8 @@ pub struct ButtonPlace {
     /// the layout's.
     pub right: Option<u8>,
     pub left: Option<u8>,
+    /// The chip it shows (its `chip`: BN5's capsules), if it has one.
+    pub chip: Option<ChipHandle>,
 }
 
 /// Whether a slot can be picked.
@@ -115,6 +117,15 @@ pub struct Slot {
     pub state: SlotState,
     /// Buttons: uses left this screen.
     pub uses_left: u8,
+    /// A picked chip: the hand's modifier bits a button mixed into it
+    /// (`custom.attach_to_last_pick`: BN5's capsules, the slot's +4's bits
+    /// 0x3E), and that button's slot (its +5). B on the chip clears them and
+    /// frees the button.
+    pub marks: u8,
+    pub attached: Option<u8>,
+    /// A button: the chip it shows (BN5's capsules, the chip its slot's +8
+    /// points at), which the chip window shows and R describes.
+    pub face: Option<ChipHandle>,
 }
 
 /// Where a player's screen is. Tick counts start at 1 on the tick after
@@ -272,6 +283,10 @@ pub struct Screen {
     /// (BN5's soul button, 0x080233E0): B on it puts the chip back, and at
     /// OK the chip leaves the folder where the button stands.
     pub trade: Option<Trade>,
+    /// A system's button holding a chip taken out of the picks
+    /// (`custom.hold_last_pick`: BN5's Arm Change, 0x080236C0): B, with the
+    /// picks as they were, puts it back; at OK the chip leaves the folder.
+    pub hold: Option<Hold>,
     /// A Program Advance formed at OK: its animation runs after the
     /// window slides out.
     pub program_advance: Option<FormedAdvance>,
@@ -292,15 +307,26 @@ pub struct Trade {
     pub chip: u8,
 }
 
+/// A chip a button holds (`custom.hold_last_pick`): the button's slot, the
+/// chip's slot (which stays picked), and how many picks there were without
+/// it (BN5's Arm Change: slot 8's +4 and +5).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Hold {
+    pub button: u8,
+    pub chip: u8,
+    pub at: u8,
+}
+
 /// The last pick, as `custom.last_pick` gives it: its slot, its chip as the
-/// screen checked it, and whether it is the folder's Regular chip or a link
-/// navi's own chip.
+/// screen checked it, whether it is the folder's Regular chip or a link
+/// navi's own chip, and whether a button is attached to it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct LastPick {
     pub slot: u8,
     pub chip: FolderChip,
     pub regular: bool,
     pub navi_chip: bool,
+    pub attached: bool,
 }
 
 /// What the screen reads of its player when it opens and while it runs.
@@ -353,6 +379,9 @@ impl Screen {
                 right: None,
                 state: SlotState::Selectable,
                 uses_left: 0,
+                marks: 0,
+                attached: None,
+                face: None,
             }; SLOTS],
             cursor: 0,
             selection: [0; MAX_SELECTIONS],
@@ -365,6 +394,7 @@ impl Screen {
             form_turns: 0,
             form_chaos: false,
             trade: None,
+            hold: None,
             program_advance: None,
             hud: Banner::default(),
             look: ScreenLook::new(view.late_turns, false, None),
@@ -372,7 +402,9 @@ impl Screen {
         // The side's systems as the screen deals, on the folder as the last
         // screen left it and the framework's hand size (BN5's opening,
         // 0x08022C5C: its dark chip offered, 0x08025114, after the hand
-        // size, 0x08025BE4, before the folder closes up, 0x080250E6).
+        // size, 0x08025BE4, before the folder closes up, 0x080250E6; the
+        // hand size its rules give, NumberSoul's ten, comes after here,
+        // which no deal sees: a MegaMan in a soul is dealt no dark chip).
         extras.dealing(&mut screen, folder, console);
         folder.compact();
         screen.chips_left = folder.count() as u8;
@@ -412,6 +444,9 @@ impl Screen {
                 right: Some(t.right),
                 state: SlotState::Selectable,
                 uses_left: 0,
+                marks: 0,
+                attached: None,
+                face: None,
             };
         }
         let dealt = self.chips_left.min(self.hand_size);
@@ -438,6 +473,7 @@ impl Screen {
                     left: place.left.or(d.left),
                     state,
                     uses_left: place.uses,
+                    face: place.chip,
                     ..d
                 };
             } else {
@@ -447,6 +483,7 @@ impl Screen {
                     right: place.right.or(d.right),
                     state,
                     uses_left: place.uses,
+                    face: place.chip,
                     ..d
                 };
                 let d = self.slots[first + 1];
@@ -849,6 +886,12 @@ impl Screen {
                 let lines = view.library.chip(checked(c, view).id).description_lines;
                 self.describe(joy, lines, None, None);
                 self.look.play(ScreenSound::Description);
+            } else if let Some(c) = self.slots[self.cursor as usize].face {
+                // A button that shows a chip (BN5's capsules, 0x0802487C: the
+                // slot's kinds 6 and 7): the chip's description.
+                let lines = view.library.chip(c).description_lines;
+                self.describe(joy, lines, None, None);
+                self.look.play(ScreenSound::Description);
             }
         } else if p & keys::L != 0 {
             self.phase = Phase::RunMessage { chatbox: None };
@@ -1015,7 +1058,51 @@ impl Screen {
             _ => return None,
         };
         let chip = checked(self.chip_in(slot, folder)?, view);
-        Some(LastPick { slot, chip, regular, navi_chip })
+        Some(LastPick { slot, chip, regular, navi_chip, attached: self.slots[slot as usize].attached.is_some() })
+    }
+
+    /// `custom.attach_to_last_pick` (BN5's capsules, 0x080237B4): the button
+    /// in slot `button` is used on the last pick, a chip with no button
+    /// attached yet: the chip's pick carries `modifiers` (the hand's
+    /// modifier bits, past the Regular chip's) into the hand, and the button
+    /// is picked until B takes the chip back. False when the last pick
+    /// isn't such a chip.
+    pub fn attach_to_last_pick(&mut self, button: u8, modifiers: u8, folder: &BattleFolder, view: &PlayerView) -> bool {
+        let Some(last) = self.last_pick(folder, view).filter(|l| !l.attached) else { return false };
+        let slot = &mut self.slots[last.slot as usize];
+        slot.marks |= modifiers & !super::builder::modifier_bits::REGULAR;
+        slot.attached = Some(button);
+        self.slots[button as usize].state = SlotState::Selected;
+        true
+    }
+
+    /// `custom.hold_last_pick` (BN5's Arm Change, 0x080236C0): the last
+    /// pick, a chip dealt from the folder, leaves the picks for the button
+    /// in slot `button`, which is picked; its slot stays picked. False when
+    /// the last pick isn't such a chip, or the button holds one already.
+    pub fn hold_last_pick(&mut self, button: u8, folder: &BattleFolder, view: &PlayerView) -> bool {
+        if self.hold.is_some() {
+            return false;
+        }
+        let Some(last) = self.last_pick(folder, view).filter(|l| !l.navi_chip) else { return false };
+        self.selected -= 1;
+        self.hold = Some(Hold { button, chip: last.slot, at: self.selected });
+        self.slots[button as usize].state = SlotState::Selected;
+        true
+    }
+
+    /// The chip the button in slot `button` holds, as the screen checked it.
+    pub fn held_pick(&self, button: u8, folder: &BattleFolder, view: &PlayerView) -> Option<FolderChip> {
+        let h = self.hold.filter(|h| h.button == button)?;
+        self.chip_in(h.chip, folder).map(|c| checked(c, view))
+    }
+
+    /// `custom.set_held_icon` (BN5's Arm Change's blink, 0x080236EC): the
+    /// held chip's icon in the column cell it left, shown or not.
+    pub fn set_held_icon(&mut self, button: u8, shown: bool, folder: &BattleFolder, view: &PlayerView) -> bool {
+        let Some(h) = self.hold.filter(|h| h.button == button) else { return false };
+        self.look.column[h.at as usize] = if shown { self.chip_in(h.chip, folder).map(|c| checked(c, view)) } else { None };
+        true
     }
 
     /// `custom.trade_last_pick` (BN5's soul, 0x080233E0): the button in slot
@@ -1072,7 +1159,20 @@ impl Screen {
     /// B (`sub_8029032`): take back the last pick; with none, what a
     /// system takes back (BN6's Cross).
     fn deselect(&mut self, view: &PlayerView, folder: &BattleFolder, extras: &mut dyn super::Extras) {
-        if self.selected == 0 {
+        if let Some(h) = self.hold.filter(|h| h.at == self.selected) {
+            // A button's held chip, with the picks as they were when it
+            // took it (BN5's Arm Change, 0x08024CFC: before anything else,
+            // with no picks too): the chip is the last pick again, and the
+            // button selectable.
+            self.selection[h.at as usize] = h.chip;
+            self.selected += 1;
+            self.look.column[h.at as usize] = self.chip_in(h.chip, folder).map(|c| checked(c, view));
+            self.slots[h.button as usize].state = SlotState::Selectable;
+            self.hold = None;
+            if let SlotKind::Button { button, .. } = self.slots[h.button as usize].kind {
+                extras.button_taken_back(self, button);
+            }
+        } else if self.selected == 0 {
             if !extras.take_back(self, folder) {
                 self.look.play(ScreenSound::Refused);
                 return;
@@ -1094,6 +1194,12 @@ impl Screen {
             self.selected -= 1;
             self.slots[last as usize].state = SlotState::Selectable;
             self.look.column[self.selected as usize] = None;
+            // A button attached to the chip (BN5's capsule, 0x08024D78): the
+            // chip's marks go, and the button is selectable again.
+            if let Some(button) = self.slots[last as usize].attached.take() {
+                self.slots[last as usize].marks = 0;
+                self.slots[button as usize].state = SlotState::Selectable;
+            }
             // sub_802A0EC: the side's systems (taking Beast Out, or the
             // BeastOut chip, back takes its face back).
             if let SlotKind::Button { button, .. } = self.slots[last as usize].kind {

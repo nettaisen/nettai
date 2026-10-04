@@ -191,6 +191,12 @@ pub enum SystemHook {
     /// `round_start(side)`: once per side, after the navis spawn. Its result
     /// is unused.
     RoundStart,
+    /// `turn_opened(side)`: the turn-start sequencer's check begins
+    /// (`sub_801486C`'s entry; BN5's 0x08011DDC), each side in turn, before
+    /// either side's `turn_check` or change of form: a side's request for
+    /// the turn is read (BN5's ColonelSoul takes its arm chip, 0x080124AE).
+    /// Its result is unused.
+    TurnOpened,
     /// `turn_check(side)`: the turn-start sequencer's check of a side that
     /// isn't changing form (`sub_801486C`), or that asks for a navi switch:
     /// a form whose time ran out asks to revert.
@@ -340,6 +346,10 @@ pub enum SystemHook {
     ButtonState,
     /// A button's `pressed(side)`: A on it.
     ButtonPressed,
+    /// A button's `chip(side)`, as the screen lays it out: the chip it
+    /// shows, if any (BN5's capsules: the chip window shows it, R describes
+    /// it).
+    ButtonChip,
     /// `form_reverted(side, navi)`: the framework reverts the navi to its
     /// base form, its form not yet changed (`sub_80158CC`): BN6's spends a
     /// Beast Out and exhausts a Beast Over. Its result is unused.
@@ -357,6 +367,7 @@ impl SystemHook {
         match self {
             SystemHook::RoundSetup => "round_setup",
             SystemHook::RoundStart => "round_start",
+            SystemHook::TurnOpened => "turn_opened",
             SystemHook::TurnCheck => "turn_check",
             SystemHook::TurnStarted => "turn_started",
             SystemHook::CustomRequested => "custom_requested",
@@ -389,13 +400,15 @@ impl SystemHook {
             SystemHook::ButtonShown => "button.shown",
             SystemHook::ButtonState => "button.state",
             SystemHook::ButtonPressed => "button.pressed",
+            SystemHook::ButtonChip => "button.chip",
             SystemHook::Takeover => "takeover",
         }
     }
 
-    pub const ALL: [SystemHook; 35] = [
+    pub const ALL: [SystemHook; 37] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
+        SystemHook::TurnOpened,
         SystemHook::TurnCheck,
         SystemHook::TurnStarted,
         SystemHook::CustomRequested,
@@ -420,6 +433,7 @@ impl SystemHook {
         SystemHook::ButtonShown,
         SystemHook::ButtonState,
         SystemHook::ButtonPressed,
+        SystemHook::ButtonChip,
         SystemHook::CustomOpen,
         SystemHook::CustomDeal,
         SystemHook::CustomConfirmed,
