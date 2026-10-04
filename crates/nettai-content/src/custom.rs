@@ -58,8 +58,6 @@ pub struct CustomDoc {
     pub cross_patches: PatchListDoc,
     /// Background palettes 11 (the slot icons), 12 (grayed out) and 14.
     pub icon_palette: Vec<String>,
-    /// (A pack extracted before the American spellings has the British key.)
-    #[serde(alias = "grey_palette")]
     pub gray_palette: Vec<String>,
     pub other_palette: Vec<String>,
     /// Chips' pictures by chip key, in the game's order, each with its
@@ -93,9 +91,7 @@ pub struct CustomDoc {
     pub emblem_palette_of: Vec<u8>,
     pub regular: TileImage,
     /// The Program Advance animation's names' first four colors, the sets
-    /// it steps through. (A pack extracted before the American spellings has
-    /// the British key.)
-    #[serde(alias = "advance_name_colours")]
+    /// it steps through.
     pub advance_name_colors: Vec<Vec<String>>,
     /// The other languages' pictures with words, by language (the HUD's
     /// `language` is the pack's own).
@@ -476,14 +472,9 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     files
 }
 
-/// Read the custom screen's graphics. A pack without them (extracted before
-/// the custom screen was drawn) gets none, with a warning.
+/// Read the custom screen's graphics.
 pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScreen> {
     let name = format!("{prefix}/custom.json");
-    if !dir.join("custom.json").is_file() {
-        report.warn(&name, "the pack has no custom screen graphics (extract it again to see the custom screen)");
-        return Some(CustomScreen::default());
-    }
     let doc: CustomDoc = read_json(&dir.join("custom.json"), &name, report)?;
     if doc.format != FORMAT || doc.version != VERSION {
         report.error(&name, format!("not a {FORMAT} file of version {VERSION} (extract the pack again)"));

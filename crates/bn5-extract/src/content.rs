@@ -32,8 +32,7 @@ fn asset_names() -> nettai_content::names::AssetNames {
     }
 }
 
-/// The game a BN5 pack is (its manifest's `game`): the namespace its names
-/// take when it loads beside another game's pack.
+/// The game a BN5 pack is (its manifest's `game`).
 pub const GAME: &str = "bn5";
 
 pub fn main(args: &[String]) {
@@ -130,24 +129,9 @@ pub fn main(args: &[String]) {
     );
 }
 
-/// The pack's manifest: nettai-content's, with the game it is. (The loader
-/// reads `game` once packs of several games load together; until then it is
-/// a line the manifest's reader passes over.)
+/// The pack's manifest: nettai-content's, with the game it is.
 fn manifest(bundle: &nettai_assets::Bundle) -> (String, Vec<u8>) {
-    let (path, bytes) = nettai_content::pack::manifest("BN5 (US Team ProtoMan and Team Colonel) battle assets", Some(bundle), true);
-    let text = String::from_utf8(bytes).expect("the manifest is text");
-    let mut out = String::new();
-    let mut placed = false;
-    for line in text.lines() {
-        out.push_str(line);
-        out.push('\n');
-        if !placed && line.starts_with("name = ") {
-            out.push_str(&format!("game = \"{GAME}\"\n"));
-            placed = true;
-        }
-    }
-    assert!(placed, "the manifest has a name");
-    (path, out.into_bytes())
+    nettai_content::pack::manifest("BN5 (US Team ProtoMan and Team Colonel) battle assets", GAME, Some(bundle), true)
 }
 
 /// Where two graphics bundles differ, roughly.
