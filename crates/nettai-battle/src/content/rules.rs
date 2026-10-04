@@ -138,6 +138,25 @@ pub struct EffectsRules {
     /// rules.
     #[serde(default = "yes")]
     pub overlays_run_while_paused: bool,
+    /// How the game's obstacles number their action tables. Read of the
+    /// obstacle's own game's rules (its kind's).
+    #[serde(default)]
+    pub obstacle_actions: ObstacleActions,
+}
+
+/// How a game's obstacles number their action tables (`kinds::obstacle`):
+/// the framework's entries first, then the kind's own (its idle, then the
+/// rest).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ObstacleActions {
+    /// BN6's: the actors' frozen and bubbled entries at 6 and 7, the
+    /// kind's own from 8.
+    #[default]
+    Bn6,
+    /// BN5's: neither frozen nor bubbled (as its navis' state table,
+    /// 0x080EAE08), the kind's own from 6.
+    Bn5,
 }
 
 impl Default for EffectsRules {
@@ -150,6 +169,7 @@ impl Default for EffectsRules {
             obstacle_soldiers: false,
             palette_flash: PaletteFlashRule::default(),
             overlays_run_while_paused: true,
+            obstacle_actions: ObstacleActions::Bn6,
         }
     }
 }
