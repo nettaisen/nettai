@@ -6,7 +6,7 @@
 //! its action, AntiDmg's, AntiSwrd's or BodyGrd's (the original's 0x47,
 //! 0x48 and 0x4B), which are the chips' content: the roles
 //! `actions.anti_damage_counter`, `anti_sword_counter` and
-//! `body_guard_counter` (the stock ruleset's roles). See docs/engine/chips.md §3.6.10.
+//! `body_guard_counter` (the ruleset's roles). See docs/engine/chips.md §3.6.10.
 
 use crate::actor::{request, status};
 use crate::battle::Battle;

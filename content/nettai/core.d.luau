@@ -2540,7 +2540,7 @@ export type CollisionTypeSpec = { id: string, side0: number, side1: number, row_
 export type CollisionType = CollisionTypeSpec
 
 -- What the ruleset needs from content by role (rules/roles.luau, once per
--- game: a plain table, the stock ruleset's `roles`): each role names the
+-- game: a plain table, the ruleset's `roles`): each role names the
 -- definition that fills it.
 export type RolesSpec = {
     actions: {
@@ -2762,7 +2762,7 @@ declare define: {
     patch_card: (spec: PatchCardSpec) -> PatchCard,
     navicust_program: (spec: NaviCustProgramSpec) -> NaviCustProgram,
     -- A system of a game's rules, and a player's ruleset
-    -- (docs/design/rules-in-luau.md §2.2; a game's stock ruleset also
+    -- (docs/design/rules-in-luau.md §2.2; a game's ruleset also
     -- holds its rule sections and roles).
     system: (spec: SystemSpec) -> System,
     ruleset: (spec: RulesetSpec) -> Ruleset,
