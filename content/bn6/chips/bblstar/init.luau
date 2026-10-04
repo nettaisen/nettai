@@ -82,7 +82,7 @@ local function blow(spec: Blow): Action
 end
 
 return {
-    define.chip {
+    bblstar1 = define.chip {
         id = "bblstar1",
         codes = { "B", "E", "T" },
         element = "aqua", family = "aqua", class = "standard",
@@ -94,7 +94,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = blow { speed = 0x1_8000, palette = 0 },
     },
-    define.chip {
+    bblstar2 = define.chip {
         id = "bblstar2",
         codes = { "C", "L", "V" },
         element = "aqua", family = "aqua", class = "standard",
@@ -106,7 +106,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = blow { speed = 0x2_4000, palette = 1 },
     },
-    define.chip {
+    bblstar3 = define.chip {
         id = "bblstar3",
         codes = { "G", "R", "S" },
         element = "aqua", family = "aqua", class = "standard",

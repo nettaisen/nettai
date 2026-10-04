@@ -14,7 +14,7 @@ local function boiler_throw(level: number): Action
 end
 
 return {
-    define.chip {
+    lilbolr1 = define.chip {
         id = "lilbolr1",
         codes = { "F", "K", "L" },
         element = "null", family = "summon", class = "standard",
@@ -24,7 +24,7 @@ return {
         slot_in_limit = 3,
         action = boiler_throw(0),
     },
-    define.chip {
+    lilbolr2 = define.chip {
         id = "lilbolr2",
         codes = { "E", "M", "V" },
         element = "null", family = "summon", class = "standard",
@@ -34,7 +34,7 @@ return {
         slot_in_limit = 3,
         action = boiler_throw(2),
     },
-    define.chip {
+    lilbolr3 = define.chip {
         id = "lilbolr3",
         codes = { "G", "S", "Z" },
         element = "null", family = "summon", class = "standard",

@@ -131,7 +131,7 @@ local function shoot(): Action
     return define.action { state = chips.STATE, update = update }
 end
 
-chips[1] = define.chip {
+chips.trnarrw1 = define.chip {
     id = "trnarrw1",
     codes = { "A", "F", "K" },
     element = "aqua", family = "aqua", class = "standard",
@@ -143,7 +143,7 @@ chips[1] = define.chip {
     beast = { lockon = lockon.trnarrw1 },
     action = shoot(),
 }
-chips[2] = define.chip {
+chips.trnarrw2 = define.chip {
     id = "trnarrw2",
     codes = { "G", "M", "Z" },
     element = "aqua", family = "aqua", class = "standard",
@@ -155,7 +155,7 @@ chips[2] = define.chip {
     beast = { lockon = lockon.trnarrw1 },
     action = shoot(),
 }
-chips[3] = define.chip {
+chips.trnarrw3 = define.chip {
     id = "trnarrw3",
     codes = { "M", "S", "Y" },
     element = "aqua", family = "aqua", class = "standard",

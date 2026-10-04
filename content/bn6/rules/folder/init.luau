@@ -29,7 +29,7 @@
 --   system's) only when the side's ruleset has the system (a variant may
 --   leave it out; BeastOut, the beast system's, is past the pack anyway).
 
-local batcan = require("../chips/batcan")
+local batcan_chips = require("../chips/batcan")
 local beastout = require("../chips/beastout")
 local cross = require("./cross")
 local mstrcros = require("../chips/mstrcros")
@@ -38,7 +38,7 @@ local SIZE = 30
 local DARK_CHIPS = 3
 local TAG_MB = 60
 -- The chip pack's last chip is 0x13A: these come after it.
-local PAST_THE_PACK: { Chip } = { batcan[1], batcan[2], batcan[3], batcan[4], beastout }
+local PAST_THE_PACK: { Chip } = { batcan_chips.batcan1, batcan_chips.batcan2, batcan_chips.batcan3, batcan_chips.batcan4, beastout }
 -- The chips a system plays, and the system.
 local PLAYED_BY: { [Chip]: System } = { [mstrcros] = cross }
 

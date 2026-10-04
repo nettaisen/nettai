@@ -85,7 +85,7 @@ local function dig(region: Region): Action
 end
 
 return {
-    define.chip {
+    crakshot = define.chip {
         id = "crakshot",
         codes = { "A", "G", "T", "*" },
         element = "null", family = "null", class = "standard",
@@ -97,7 +97,7 @@ return {
         beast = { lockon = lockon.crakshot },
         action = dig(regions.single),
     },
-    define.chip {
+    dublshot = define.chip {
         id = "dublshot",
         codes = { "C", "R", "U", "*" },
         element = "null", family = "null", class = "standard",
@@ -109,7 +109,7 @@ return {
         beast = { lockon = lockon.dublshot },
         action = dig(regions.long),
     },
-    define.chip {
+    trplshot = define.chip {
         id = "trplshot",
         codes = { "J", "L", "V", "*" },
         element = "null", family = "null", class = "standard",

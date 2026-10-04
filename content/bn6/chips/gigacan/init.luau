@@ -8,7 +8,7 @@
 
 local cannon = require("../lib/cannon")
 local variants = require("../objects/projectile/variants")
-local cannons = require("./cannon")
+local cannon_chips = require("./cannon")
 local lockon = require("../rules/lockon")
 
 local function giga(id: string, arm: AttachmentLook): Action
@@ -30,7 +30,7 @@ local gigacan1 = define.chip {
     beast = { lockon = lockon.cannon },
     library = { number = 320, index = 1, sort = 0 },
     slot_in_limit = 1,
-    program_advances = { { order = 13, code_run = { chip = cannons.cannon, count = 3 } } },
+    program_advances = { { order = 13, code_run = { chip = cannon_chips.cannon, count = 3 } } },
     action = giga("gigacan1/action", cannon.arms.cannon),
 }
 
@@ -49,7 +49,7 @@ local gigacan2 = define.chip {
     beast = { lockon = lockon.cannon },
     library = { number = 321, index = 2, sort = 0 },
     slot_in_limit = 1,
-    program_advances = { { order = 14, code_run = { chip = cannons.hicannon, count = 3 } } },
+    program_advances = { { order = 14, code_run = { chip = cannon_chips.hicannon, count = 3 } } },
     action = giga("gigacan2/action", cannon.arms.hicannon),
 }
 
@@ -68,7 +68,7 @@ local gigacan3 = define.chip {
     beast = { lockon = lockon.cannon },
     library = { number = 322, index = 3, sort = 0 },
     slot_in_limit = 1,
-    program_advances = { { order = 15, code_run = { chip = cannons.m_cannon, count = 3 } } },
+    program_advances = { { order = 15, code_run = { chip = cannon_chips.m_cannon, count = 3 } } },
     action = giga("gigacan3/action", cannon.arms.m_cannon),
 }
 

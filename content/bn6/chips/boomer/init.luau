@@ -7,7 +7,7 @@
 local boomerang = require("@self/boomerang")
 
 return {
-    define.chip {
+    boomer = define.chip {
         id = "boomer",
         codes = { "J", "K", "T" },
         element = "wood", family = "wood", class = "standard",
@@ -17,7 +17,7 @@ return {
         slot_in_limit = 3,
         instant = boomerang.instant(boomerang.variant { speed = 0x8_0000, turn_speed = 314573, grass = true }),
     },
-    define.chip {
+    hiboomer = define.chip {
         id = "hiboomer",
         codes = { "B", "L", "V" },
         element = "wood", family = "wood", class = "standard",
@@ -27,7 +27,7 @@ return {
         slot_in_limit = 3,
         instant = boomerang.instant(boomerang.variant { speed = 0x9_0000, turn_speed = 353894, grass = true }),
     },
-    define.chip {
+    m_boomer = define.chip {
         id = "m-boomer",
         codes = { "I", "M", "W" },
         element = "wood", family = "wood", class = "standard",

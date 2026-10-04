@@ -7,7 +7,7 @@ local guard = require("@self/guard")
 local shield = require("@self/shield")
 
 return {
-    define.chip {
+    rflectr1 = define.chip {
         id = "rflectr1",
         codes = { "A", "C", "P", "*" },
         element = "null", family = "null", class = "standard",
@@ -17,7 +17,7 @@ return {
         slot_in_limit = 3,
         action = guard.action { ticks = 60, look = shield.looks.rflectr1, counter = "wave" },
     },
-    define.chip {
+    rflectr2 = define.chip {
         id = "rflectr2",
         codes = { "B", "G", "Y", "*" },
         element = "null", family = "null", class = "standard",
@@ -27,7 +27,7 @@ return {
         slot_in_limit = 3,
         action = guard.action { ticks = 60, look = shield.looks.rflectr2, counter = "wave" },
     },
-    define.chip {
+    rflectr3 = define.chip {
         id = "rflectr3",
         codes = { "E", "F", "O", "*" },
         element = "null", family = "null", class = "standard",

@@ -20,7 +20,7 @@ local function level(palette: number, variant: FlashBombVariant): Action
 end
 
 return {
-    define.chip {
+    flshbom1 = define.chip {
         id = "flshbom1",
         codes = { "J", "L", "Q", "*" },
         element = "null", family = "null", class = "standard",
@@ -32,7 +32,7 @@ return {
         beast = { lockon = lockon.stay },
         action = level(0, { ticks = 0x3C, hp = 0x0A, status = statuses.paralyze_90, final_status = nil, palette = 0x0 }),
     },
-    define.chip {
+    flshbom2 = define.chip {
         id = "flshbom2",
         codes = { "G", "K", "R" },
         element = "null", family = "null", class = "standard",
@@ -44,7 +44,7 @@ return {
         beast = { lockon = lockon.stay },
         action = level(3, { ticks = 0x3C, hp = 0x0F, status = statuses.paralyze_150, final_status = nil, palette = 0x3 }),
     },
-    define.chip {
+    flshbom3 = define.chip {
         id = "flshbom3",
         codes = { "H", "P", "S" },
         element = "null", family = "null", class = "standard",

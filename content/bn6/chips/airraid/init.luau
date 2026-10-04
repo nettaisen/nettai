@@ -8,7 +8,7 @@ local controller = require("@self/controller")
 local plane = require("@self/plane")
 
 return {
-    define.chip {
+    airraid1 = define.chip {
         id = "airraid1",
         codes = { "G", "K", "R" },
         element = "null", family = "summon", class = "standard",
@@ -19,7 +19,7 @@ return {
         -- `byte_80D34C0` row 0.
         dimming = controller.hook(plane.plane { lifetime = 150, bombs = 10, palette = 0, hp = 30 }),
     },
-    define.chip {
+    airraid2 = define.chip {
         id = "airraid2",
         codes = { "O", "T", "Y" },
         element = "null", family = "summon", class = "standard",
@@ -30,7 +30,7 @@ return {
         -- `byte_80D34C0` row 1.
         dimming = controller.hook(plane.plane { lifetime = 190, bombs = 14, palette = 1, hp = 40 }),
     },
-    define.chip {
+    airraid3 = define.chip {
         id = "airraid3",
         codes = { "N", "U", "Z" },
         element = "null", family = "summon", class = "standard",

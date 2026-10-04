@@ -5,7 +5,7 @@
 local action = require("@self/action")
 
 return {
-    define.chip {
+    aquandl1 = define.chip {
         id = "aquandl1",
         codes = { "C", "J", "P" },
         element = "aqua", family = "aqua", class = "standard",
@@ -15,7 +15,7 @@ return {
         slot_in_limit = 3,
         action = action.action { palette = 0 },
     },
-    define.chip {
+    aquandl2 = define.chip {
         id = "aquandl2",
         codes = { "F", "K", "T" },
         element = "aqua", family = "aqua", class = "standard",
@@ -25,7 +25,7 @@ return {
         slot_in_limit = 3,
         action = action.action { palette = 1 },
     },
-    define.chip {
+    aquandl3 = define.chip {
         id = "aquandl3",
         codes = { "A", "L", "U" },
         element = "aqua",

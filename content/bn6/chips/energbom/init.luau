@@ -24,7 +24,7 @@ local function energy_throw(): Action
 end
 
 return {
-    define.chip {
+    energbom = define.chip {
         id = "energbom",
         codes = { "C", "K", "V", "*" },
         element = "null", family = "null", class = "standard",
@@ -36,7 +36,7 @@ return {
         beast = { lockon = lockon.yoyo },
         action = energy_throw(),
     },
-    define.chip {
+    megenbom = define.chip {
         id = "megenbom",
         codes = { "G", "M", "O", "*" },
         element = "null", family = "null", class = "standard",

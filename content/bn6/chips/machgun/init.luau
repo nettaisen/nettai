@@ -141,7 +141,7 @@ local function mach_gun(): Action
 end
 
 return {
-    define.chip {
+    machgun1 = define.chip {
         id = "machgun1",
         codes = { "A", "R", "T", "*" },
         element = "null", family = "cursor", class = "standard",
@@ -151,7 +151,7 @@ return {
         slot_in_limit = 3,
         action = mach_gun(),
     },
-    define.chip {
+    machgun2 = define.chip {
         id = "machgun2",
         codes = { "E", "G", "S" },
         element = "null", family = "cursor", class = "standard",
@@ -161,7 +161,7 @@ return {
         slot_in_limit = 3,
         action = mach_gun(),
     },
-    define.chip {
+    machgun3 = define.chip {
         id = "machgun3",
         codes = { "B", "F", "M" },
         element = "null", family = "cursor", class = "standard",

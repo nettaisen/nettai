@@ -4,7 +4,7 @@
 -- corn among the enemies (docs/engine/dimming-chip-effects.md §16).
 
 local controller = require("@self/controller")
-local cornsht = require("./cornsht")
+local cornsht_chips = require("./cornsht")
 
 return define.chip {
     id = "cornfsta",
@@ -21,9 +21,9 @@ return define.chip {
     library = { number = 332, index = 13, sort = 0 },
     slot_in_limit = 1,
     program_advances = {
-        { order = 34, code_run = { chip = cornsht.cornsht1, count = 3 } },
-        { order = 35, code_run = { chip = cornsht.cornsht2, count = 3 } },
-        { order = 36, code_run = { chip = cornsht.cornsht3, count = 3 } },
+        { order = 34, code_run = { chip = cornsht_chips.cornsht1, count = 3 } },
+        { order = 35, code_run = { chip = cornsht_chips.cornsht2, count = 3 } },
+        { order = 36, code_run = { chip = cornsht_chips.cornsht3, count = 3 } },
     },
     dimming = controller.hook,
 }

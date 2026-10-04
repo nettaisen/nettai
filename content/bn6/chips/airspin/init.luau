@@ -7,7 +7,7 @@ local action = require("@self/action")
 local top = require("@self/top")
 
 return {
-    define.chip {
+    airspin1 = define.chip {
         id = "airspin1",
         codes = { "F", "G", "R" },
         element = "null", family = "wind", class = "standard",
@@ -17,7 +17,7 @@ return {
         slot_in_limit = 3,
         action = action.action { whirlwind = top.sender(0, 2) },
     },
-    define.chip {
+    airspin2 = define.chip {
         id = "airspin2",
         codes = { "A", "L", "T" },
         element = "null", family = "wind", class = "standard",
@@ -27,7 +27,7 @@ return {
         slot_in_limit = 3,
         action = action.action { whirlwind = top.sender(1, 3) },
     },
-    define.chip {
+    airspin3 = define.chip {
         id = "airspin3",
         codes = { "N", "O", "T" },
         element = "null", family = "wind", class = "standard",
