@@ -94,6 +94,8 @@ struct ReactionsSection {
     push: [SlideVector; 10],
     #[serde(default)]
     push_reading: super::rules::PushReading,
+    #[serde(default)]
+    hit_test: super::rules::HitTest,
     ice: [SlideVector; 6],
     bubble_bob: [i8; 32],
     #[serde(default)]
@@ -362,6 +364,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                 let s: ReactionsSection = r.read(spec, &at).map_err(e)?;
                 (rules.push_vectors, rules.ice_vectors, rules.bubble_bob) = (s.push, s.ice, s.bubble_bob);
                 rules.push_reading = s.push_reading;
+                rules.hit_test = s.hit_test;
                 rules.slide_speed = s.slide_speed;
                 rules.overlay_restart = s.overlay_restart;
             }

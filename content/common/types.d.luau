@@ -19,6 +19,14 @@ export type SonicBoomLook = {
     hits: CollisionType,
 }
 
+-- What a game's sword slash (@common/swords/slash) asks of the user's form: the blade's animation where a chip doesn't
+-- say, and whether the user's side is in a form where a step sword neither steps nor steps back (BN6's Beast forms:
+-- its lib/swords/slash).
+export type SlashGame = {
+    blade_anim: ((Object) -> number)?,
+    stays: ((side: number) -> boolean)?,
+}
+
 -- A game's buster parts (@common/buster): the muzzle flash a shot leaves, the buster arm, an enemy navi's arm, the
 -- recovery after a shot (by Rapid, then the open panels ahead), and its attachment kind.
 export type BusterLook = {
@@ -182,6 +190,9 @@ export type MegaManShotLook = {
     attachment: Kind,
     shot_sound: Sound,
     plain: ProjectileVariant,
+    -- Whether the charged shot waits before the buster comes up, asked on its first tick (none: always, BN6's; BN5's
+    -- in the battle flag 0x40 mode alone, marking the panel in front).
+    waits: ((me: Object) -> boolean)?,
 }
 
 -- A game's buster shot (@common/megaman/buster): its shot's look, and a throw's sound and its throw of the obstacle
@@ -359,6 +370,40 @@ export type DarkBall = {
     homing: DarkBallHoming,
 }
 
+-- A NaviCust program's effect (@common/navicust/effects' constructors make them; @common/navicust/compile applies
+-- them): its kind, and the kind's fields.
+export type NaviCustEffect = {
+    kind: string,
+    amount: number?,
+    weapon: Weapon?,
+    barrier: Barrier?,
+    what: string?,
+}
+
+-- A game's NaviCust board (its rules/navicust/board.luau): the grid's size, its command line, the board by expansions
+-- (`o` a cell, `f` its frame, `.` none), and where a neighbor counts (`x` a cell where it doesn't).
+export type NaviCustBoard = {
+    SIZE: number,
+    COMMAND_LINE: number,
+    boards: { { string } },
+    NEIGHBORS: { string },
+}
+
+-- What a game's NaviCust compile (@common/navicust/compile) is made of besides the shared routines: its name (for
+-- errors), its board, its bugs in the order the bugs' routine runs them and what each writes by its level (1 to 3;
+-- `hp`, what the HP programs add), what a placed program counts besides (BN5's HubBatc), whether any bug sets the
+-- emotion window's glitch, and whether the side's HP is left as it is (`keeps_hp`: BN5's in the cyberworld; none,
+-- never).
+export type NaviCustGame = {
+    name: string,
+    board: NaviCustBoard,
+    bugs: { string },
+    bug_work: { [string]: (stats: Navi, level: number, hp: number) -> () },
+    extra: ((part: PlacedProgram, count: (bug: string?, n: number?) -> ()) -> ())?,
+    glitch: boolean,
+    keeps_hp: ((side: number) -> boolean)?,
+}
+
 -- What AirSpin sends from the panel ahead (@common/airspin/action): the
 -- whirlwind top that rolls and spins there (its palette, its spins), BN6's
 -- seeking whirlwind no chip sends, or BN5's AqWhirl whirlpool.
@@ -458,4 +503,35 @@ export type NumberBallLook = {
 export type NumberBall = {
     kind: Kind,
     spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
+}
+
+-- CopyDmg's action for a game (@common/copydmg/action): its id, the shot's
+-- sound, how the navi raises its buster, and what it fires (the game's
+-- mark).
+export type CopyDamageSpec = {
+    id: string?,
+    sound: Sound,
+    raise_arm: (me: Object) -> (),
+    shot: (owner: Object, x: number, y: number, element: number, damage: number) -> Object?,
+}
+
+-- A game's CopyDmg mark (@common/copydmg/mark): its kind's id, sprite and
+-- animation, its hit's sound and types; BN5's reloads its animation at its
+-- init and hits its panel each tick it marks in the battle flag 0x40 mode
+-- (the hit's spark and types).
+export type CopyDamageMarkLook = {
+    id: string,
+    sprite: SpriteAsset,
+    anim: number,
+    sound: Sound,
+    is: CollisionType,
+    hits: CollisionType,
+    reload_anim: boolean,
+    per_player_hit: { spark: Spark, is: CollisionType, hits: CollisionType }?,
+}
+
+-- A CopyDmg mark made for a game (@common/copydmg/mark).
+export type CopyDamageMark = {
+    kind: Kind,
+    spawn: (owner: Object, x: number, y: number, element: number, damage: number) -> Object?,
 }

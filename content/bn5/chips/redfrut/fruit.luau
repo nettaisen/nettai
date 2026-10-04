@@ -262,7 +262,7 @@ local function synchro(navi: Object)
     local stats = battle.navi(navi.alliance)
     -- BN5's emotion (bn5-map.md §15.10): in battle mode 1 Full Synchro (2) or normal (0); else a soul's 4 first (the
     -- engine's emotion says normal for it), then anger's 3, a mood of 0's 5 (worn out), and 0 to 2 by the mood.
-    if battle.mode() ~= 1 and stats.form.kind ~= "base" then
+    if battle.mode() ~= 1 and not stats.form.base then
         return
     end
     if battle.emotion(navi.alliance) == "worn_out" then

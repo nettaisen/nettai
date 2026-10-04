@@ -144,8 +144,6 @@ pub struct ChipDef {
 /// these.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ChipLinks {
-    /// A dark chip's substitute (`ChipData::dark_substitute`).
-    pub dark_substitute: Option<ChipHandle>,
     /// An SP navi chip's slot among the setup's SP deletion times
     /// (`DamageFormula::SpNavi::slot`, by the rules' `sp_slots`).
     pub sp_slot: Option<u8>,
@@ -215,6 +213,95 @@ pub struct CollisionTypeDef {
 }
 
 
+/// A system's extension of a registry's definitions
+/// (docs/design/rules-in-luau.md §7.5, S7): a field its game's definitions
+/// may carry for it (BN6's dark-chips system's `hp_bug` on a chip), of a
+/// type. The engine checks it as the content is defined and reads none of
+/// it: Luau reads it on the definition, tools through [`Defs::extension`].
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Extension {
+    pub registry: Registry,
+    pub field: String,
+    pub ty: ExtensionType,
+}
+
+/// An extension field's type: a state field's (`"u8"`, `"chip"`, a list of
+/// variants), or a table of such fields.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum ExtensionType {
+    Value(nettai_content_api::FieldType),
+    Table(Vec<(String, ExtensionType)>),
+}
+
+impl ExtensionType {
+    /// The type `v` declares (`at`: where, for errors).
+    fn read(v: &Data, at: &str) -> Result<ExtensionType, String> {
+        use nettai_content_api::FieldType;
+        match v {
+            Data::Str(name) => FieldType::scalar(name).map(ExtensionType::Value).ok_or_else(|| format!("{at}: no type is named {name:?}")),
+            Data::List(variants) if !variants.is_empty() => {
+                let names = variants
+                    .iter()
+                    .map(|v| v.str().map(str::to_string).ok_or_else(|| format!("{at}: variants are names")))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(ExtensionType::Value(FieldType::Enum(names)))
+            }
+            Data::Map(fields) => Ok(ExtensionType::Table(
+                fields.iter().map(|(k, v)| Ok((k.to_string(), ExtensionType::read(v, &format!("{at}.{k}"))?))).collect::<Result<_, String>>()?,
+            )),
+            _ => Err(format!("{at}: a type name, a list of variants or a table of fields")),
+        }
+    }
+
+    /// Whether `v` (a definition's, none allowed) is of this type.
+    fn check(&self, v: &Data, at: &str) -> Result<(), String> {
+        use nettai_content_api::FieldType as T;
+        let int = |n: i64, lo: i64, hi: i64| (lo..=hi).contains(&n);
+        let ok = match (self, v) {
+            (_, Data::Nil) => true,
+            (ExtensionType::Table(fields), Data::Map(entries)) => {
+                for (k, x) in entries {
+                    let k = k.to_string();
+                    let Some((_, t)) = fields.iter().find(|(f, _)| *f == k) else {
+                        let known: Vec<&str> = fields.iter().map(|(f, _)| f.as_str()).collect();
+                        return Err(format!("{at}: `{k}` is none of its fields ({})", known.join(", ")));
+                    };
+                    t.check(x, &format!("{at}.{k}"))?;
+                }
+                true
+            }
+            (ExtensionType::Value(T::Bool), Data::Bool(_)) => true,
+            (ExtensionType::Value(T::U8), Data::Int(n)) => int(*n, 0, 0xFF),
+            (ExtensionType::Value(T::U16), Data::Int(n)) => int(*n, 0, 0xFFFF),
+            (ExtensionType::Value(T::U32), Data::Int(n)) => int(*n, 0, 0xFFFF_FFFF),
+            (ExtensionType::Value(T::I8), Data::Int(n)) => int(*n, -0x80, 0x7F),
+            (ExtensionType::Value(T::I16), Data::Int(n)) => int(*n, -0x8000, 0x7FFF),
+            (ExtensionType::Value(T::I32), Data::Int(n)) => int(*n, -0x8000_0000, 0x7FFF_FFFF),
+            (ExtensionType::Value(T::Enum(names)), Data::Str(name)) => names.contains(name),
+            (ExtensionType::Value(T::Ref(r, _)), Data::Ref(r2, _)) => r == r2,
+            (ExtensionType::Value(T::Asset(k)), Data::Asset(k2, _)) => k == k2,
+            (ExtensionType::Value(T::Array(elem, n)), Data::List(items)) => {
+                for (i, x) in items.iter().enumerate() {
+                    ExtensionType::Value((**elem).clone()).check(x, &format!("{at}[{}]", i + 1))?;
+                }
+                items.len() <= *n as usize
+            }
+            _ => false,
+        };
+        if ok { Ok(()) } else { Err(format!("{at} is {v:?}, not {}", self.describe())) }
+    }
+
+    fn describe(&self) -> String {
+        match self {
+            ExtensionType::Value(t) => t.to_string(),
+            ExtensionType::Table(fields) => {
+                let f: Vec<String> = fields.iter().map(|(k, t)| format!("{k}: {}", t.describe())).collect();
+                format!("{{ {} }}", f.join(", "))
+            }
+        }
+    }
+}
+
 /// A system of a game's rules (docs/design/rules-in-luau.md §2.2): its state
 /// per side, its player setup, its hooks.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -238,6 +325,8 @@ pub struct SystemDef {
     /// Its custom-screen buttons and windows.
     pub buttons: Vec<ButtonHandle>,
     pub windows: Vec<WindowHandle>,
+    /// Its extensions of its game's definitions (`extends`).
+    pub extends: Vec<Extension>,
 }
 
 impl SystemDef {
@@ -500,6 +589,14 @@ pub struct Defs {
 }
 
 impl Defs {
+    /// Definition `key` of `registry`'s value of extension field `field`
+    /// (its system's, `SystemDef::extends`), if it carries it: for tools
+    /// (the engine reads none).
+    pub fn extension(&self, registry: Registry, key: &str, field: &str) -> Option<&Data> {
+        let d = self.definitions.get(registry, key)?;
+        Some(d.spec.field(field)).filter(|v| !matches!(v, Data::Nil))
+    }
+
     pub fn system(&self, h: SystemHandle) -> &SystemDef {
         &self.systems[h.index()]
     }
@@ -796,6 +893,20 @@ pub(crate) fn no_display_text(d: &Definition) -> Result<(), ContentError> {
     Ok(())
 }
 
+/// The fields the systems of game `game` extend its definitions of
+/// `registry` with (`extends`), read off the systems' definitions before
+/// they are built: what a record's reader leaves to them. (Building the
+/// systems checks them.)
+fn extended_fields(definitions: &Definitions, registry: Registry, game: &str) -> Vec<String> {
+    let mut fields = Vec::new();
+    for s in definitions.of(Registry::System).iter().filter(|s| keys::root_of(&s.key) == Some(game)) {
+        if let Data::Map(own) = s.spec.field("extends").field(registry.name()) {
+            fields.extend(own.iter().map(|(k, _)| k.to_string()));
+        }
+    }
+    fields
+}
+
 /// A chip definition's record (docs/design/content-model-v2.md §3.1): the
 /// fields the engine reads, with the lock-on mode by the handle `r` gives
 /// it, and the chips it names (its Program Advance recipes' ingredients, a
@@ -846,9 +957,10 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
         }
         other => return Err(what(format!("`damage` is {other}: a number below 1000, or a formula"))),
     }
-    // What the ruleset asks of this chip: its traits, the trap it is, a
-    // dark chip's cost and its substitute (a chip, by key here).
-    for field in ["traits", "trap", "hp_bug", "dark_substitute"] {
+    // What the ruleset asks of this chip: its traits and the trap it is.
+    // (A system's own fields, BN6's dark chips' cost and substitute and its
+    // Beast rush's lock-on, are its extension: SystemDef::extends.)
+    for field in ["traits", "trap"] {
         let v = json(field)?;
         if !v.is_null() {
             o.insert(field.into(), v);
@@ -858,15 +970,6 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
     for (field, from) in [("library_number", "number"), ("library_index", "index"), ("sort_key", "sort")] {
         o.insert(field.into(), library.field(from).int().unwrap_or(0).into());
     }
-    let beast = spec.field("beast");
-    o.insert("beast_lockon".into(), Json::Bool(!beast.is_nil() && !matches!(beast.field("rush"), Data::Bool(false))));
-    // (A lock-on mode reads as its handle: `SpecReader::new`.)
-    let mode = match beast.field("lockon") {
-        Data::Nil => Json::Null,
-        v @ Data::Ref(Registry::Lockon, _) => r.json(v, &format!("chip {}.beast.lockon", d.key)).map_err(what)?,
-        _ => return Err(what("`beast.lockon` is a lock-on mode (rules/lockon)".into())),
-    };
-    o.insert("lockon_mode".into(), mode);
     o.insert("program_advance".into(), json("program_advances")?);
     if o["program_advance"].is_null() {
         o.insert("program_advance".into(), Json::Array(Vec::new()));
@@ -1293,9 +1396,6 @@ impl Defs {
         for (i, c) in chips.iter().enumerate() {
             let whose = format!("chip {}", c.key);
             let mut l = ChipLinks::default();
-            if let Some(sub) = &c.record.dark_substitute {
-                l.dark_substitute = Some(chip_handle(sub, &format!("{whose}'s dark_substitute"))?);
-            }
             if let Some(super::DamageFormula::SpNavi { slot, .. }) = &c.record.formula {
                 // (The chip's own game's slots.)
                 let rules = content.rules_of(root_of(&c.key));
@@ -1449,15 +1549,10 @@ impl Defs {
         }
         let mut forms = Vec::new();
         for d in definitions.of(Registry::Form) {
-            let mut record = super::navis::read_form(d, &reader)?;
+            let extended = extended_fields(&definitions, Registry::Form, keys::root_of(&d.key).unwrap_or(""));
+            let mut record = super::navis::read_form(d, &reader, &extended.iter().map(String::as_str).collect::<Vec<_>>())?;
             record.weapons = read_weapons(d)?;
             record.identity = identity_of(d, &identities)?;
-            record.cross_of = match d.spec.field("cross_of") {
-                Data::Nil => None,
-                Data::Ref(Registry::Navi, key) => Some(NaviHandle(handle_of(Registry::Navi, key))),
-                other => return Err(what(d, format!("`cross_of` is {other:?}, not a navi"))),
-            };
-            record.beast = form_ref(d, d.spec.field("beast"), "beast")?;
             record.breaks_to = form_ref(d, d.spec.field("breaks_to"), "breaks_to")?;
             record.change = match d.spec.field("change") {
                 Data::Nil => None,
@@ -1480,17 +1575,11 @@ impl Defs {
                 }
                 other => return Err(what(d, format!("`charged_action` is {other:?}, not an action"))),
             };
-            if record.kind == super::FormKind::Base && record.revert.is_some() {
+            if record.base && record.revert.is_some() {
                 return Err(what(d, "a base form names no action that reverts a navi out of it (`revert`)".into()));
             }
-            if record.kind != super::FormKind::Base && record.change.is_none() {
+            if !record.base && record.change.is_none() {
                 return Err(what(d, "a form other than the base form names the action that changes a navi into it (`change`)".into()));
-            }
-            if record.kind.has_cross() != record.cross_of.is_some() {
-                return Err(what(d, "a Cross (and one in Beast Out) names the navi it is made with (`cross_of`), and no other form does".into()));
-            }
-            if (record.kind == super::FormKind::Cross) != record.beast.is_some() {
-                return Err(what(d, "a Cross names its form in Beast Out (`beast`), and no other form does".into()));
             }
             let reset = match d.spec.field("reset") {
                 Data::Nil => None,
@@ -1507,7 +1596,7 @@ impl Defs {
         // form; one a game.
         let game_of = |key: &str| keys::root_of(key).and_then(|g| root_names.iter().position(|r| r == g));
         let mut base_forms: Vec<Option<FormHandle>> = vec![None; root_names.len()];
-        for (i, f) in forms.iter().enumerate().filter(|(_, f)| f.record.kind == super::FormKind::Base) {
+        for (i, f) in forms.iter().enumerate().filter(|(_, f)| f.record.base) {
             let Some(game) = game_of(&f.key) else {
                 return Err(ContentError::new(format!("base form {}'s id names no loaded game", f.key)));
             };
@@ -1521,29 +1610,16 @@ impl Defs {
             }
             base_forms[game] = Some(FormHandle(i as u16));
         }
-        // What the forms and the navis' sets name is the kind of form they
-        // say.
-        let kind_of = |h: FormHandle| forms[h.index()].record.kind;
+        // (What a game's forms and its navis' sets say of each other is its
+        // systems': BN6's are checked by bn6-compat's tests.)
         for f in &forms {
-            if f.record.beast.is_some_and(|b| kind_of(b) != super::FormKind::CrossBeast) {
-                return Err(ContentError::new(format!("form {}'s `beast` is not a Cross in Beast Out", f.key)));
-            }
             if f.record.glow.as_ref().is_some_and(|g| g.is_empty()) {
                 return Err(ContentError::new(format!("form {}'s `glow` has no shaders", f.key)));
             }
         }
         for n in &navis {
-            let Some(sets) = &n.record.forms else { continue };
-            for set in [&sets.gregar, &sets.falzar] {
-                let ok = set.crosses.iter().all(|&c| kind_of(c) == super::FormKind::Cross)
-                    && set.beast_out.is_none_or(|f| kind_of(f) == super::FormKind::Beast)
-                    && set.beast_over.is_none_or(|f| kind_of(f) == super::FormKind::BeastOver);
-                if !ok {
-                    return Err(ContentError::new(format!(
-                        "navi {}'s forms: `crosses` are Crosses, `beast_out` a Beast and `beast_over` a Beast Over",
-                        n.key
-                    )));
-                }
+            if n.record.forms.is_none() {
+                continue;
             }
             if game_of(&n.key).and_then(|g| base_forms[g]).is_none() {
                 return Err(ContentError::new(format!("navi {} changes form, and no form of its game is the base form", n.key)));
@@ -1668,8 +1744,8 @@ impl Defs {
             let what = |e: &str| ContentError::new(format!("{}.luau: system {}: {e}", d.module, d.key));
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
-                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions"].contains(&f.as_str())) {
-                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, setup_defaults, navi_state, hooks, custom, buttons, windows, actions)")));
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions", "extends"].contains(&f.as_str())) {
+                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, setup_defaults, navi_state, hooks, custom, buttons, windows, actions, extends)")));
                     }
                 }
             }
@@ -1808,6 +1884,27 @@ impl Defs {
                 }
                 _ => return Err(what("`windows` is a table of windows by name")),
             }
+            // Its extensions of definitions: by registry, each field's type.
+            let mut extends = Vec::new();
+            match d.spec.field("extends") {
+                Data::Nil => {}
+                Data::Map(registries) => {
+                    for (k, fields) in registries {
+                        let name = k.to_string();
+                        let Some(registry) = Registry::from_name(&name).filter(|r| matches!(r, Registry::Chip | Registry::Form | Registry::Navi))
+                        else {
+                            return Err(what(&format!("`extends.{name}`: a system extends chip, form or navi definitions")));
+                        };
+                        let Data::Map(fields) = fields else { return Err(what(&format!("`extends.{name}` is a table of fields")) ) };
+                        for (f, ty) in fields {
+                            let field = f.to_string();
+                            let ty = ExtensionType::read(ty, &format!("extends.{name}.{field}")).map_err(|e| what(&e))?;
+                            extends.push(Extension { registry, field, ty });
+                        }
+                    }
+                }
+                _ => return Err(what("`extends` is a table of fields by registry (chip, form, navi)")),
+            }
             // Its setup's defaults: a value of a field of its setup each
             // (an enum's by name), which it must hold as given.
             let setup = layout("setup")?;
@@ -1846,7 +1943,30 @@ impl Defs {
                 actions: system_actions,
                 buttons: own_buttons,
                 windows: own_windows,
+                extends,
             });
+        }
+        // The extensions: one system of a game owns a field of a registry,
+        // and its game's definitions that carry it carry it of its type.
+        for (i, s) in systems.iter().enumerate() {
+            let game = nettai_content_api::keys::root_of(&s.key);
+            for e in &s.extends {
+                if let Some(other) = systems[..i].iter().find(|o| {
+                    nettai_content_api::keys::root_of(&o.key) == game && o.extends.iter().any(|x| x.registry == e.registry && x.field == e.field)
+                }) {
+                    return Err(ContentError::new(format!(
+                        "systems {} and {} both extend {} definitions with `{}`",
+                        other.key,
+                        s.key,
+                        e.registry,
+                        e.field
+                    )));
+                }
+                for d in definitions.of(e.registry).iter().filter(|d| nettai_content_api::keys::root_of(&d.key) == game) {
+                    e.ty.check(d.spec.field(&e.field), &format!("{} {}.{}", e.registry, d.key, e.field))
+                        .map_err(|m| ContentError::new(format!("{}.luau: {m} (system {}'s extension)", d.module, s.key)))?;
+                }
+            }
         }
         // Each action's system, if it is one's.
         let mut action_owner: Vec<Option<SystemHandle>> = vec![None; actions.len()];

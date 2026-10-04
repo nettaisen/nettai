@@ -9,11 +9,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FlowRules {
-    /// The custom screen closes on the tick both results are in (BN5's
-    /// Team Battle screen, 0x08025EF2), not on the next (BN6's
-    /// `sub_8026A28`: `CustomScreens::committed`).
-    #[serde(default)]
-    pub custom_closes_with_results: bool,
+    /// The words a custom screen's result takes on the link, one a tick
+    /// (`sub_800B3A2`'s count: BN6's 50; BN5's 49, its NaviStats 0x60
+    /// bytes to BN6's 0x64), read of the sending side's game: the screens
+    /// close on the tick after both results are in (`sub_8026A28`; BN5's
+    /// Team Battle screen's state 8, 0x08025FEC, after 0x080266FA).
+    #[serde(default = "result_words")]
+    pub result_words: u8,
     /// Before the custom screen opens, the transformation sequencer runs
     /// once more after the reversions (BN6's state 0x24, `sub_8008492`);
     /// BN5 opens it straight after them.
@@ -55,11 +57,16 @@ pub struct ResultWait {
     pub special: u16,
 }
 
+/// BN6's result words (`FlowRules::result_words`).
+fn result_words() -> u8 {
+    50
+}
+
 impl Default for FlowRules {
     /// BN6's flow.
     fn default() -> FlowRules {
         FlowRules {
-            custom_closes_with_results: false,
+            result_words: 50,
             sequencer_before_custom: true,
             escape_check: true,
             result_wait: ResultWait { normal: 0x66, special: 0x5E },
@@ -111,25 +118,10 @@ pub struct EffectsRules {
     /// (its kind's), not the arena's.
     #[serde(default)]
     pub obstacle_soldiers: bool,
-    /// How a guard takes a hit (`sub_3007218`'s guard step).
+    /// What holds a screen palette flash (effect object #0x0A,
+    /// `kinds::palette_flash`) by its mode.
     #[serde(default)]
-    pub guard: GuardRule,
-}
-
-/// How a guarding receiver takes a hit in the hit kernel (the arena's).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum GuardRule {
-    /// BN6's `sub_3007218`: a hit of type 0x2 breaks through, or of 0x1000
-    /// when it is also 0x4000; a guarded hit marks its direction unless it
-    /// has 0x0C005000.
-    #[default]
-    Bn6,
-    /// BN5's (0x080169B8): a hit of 0x1002 breaks through, whatever its
-    /// 0x4000; a guarded hit marks its direction unless it has 0x0C004000.
-    /// (BN5's own collision types with 0x1000 all have 0x4000: they differ
-    /// only with another game's attacks.)
-    Bn5,
+    pub palette_flash: PaletteFlashRule,
 }
 
 impl Default for EffectsRules {
@@ -140,9 +132,25 @@ impl Default for EffectsRules {
             spark_steps_at_start: true,
             retype: RetypeRule::default(),
             obstacle_soldiers: false,
-            guard: GuardRule::default(),
+            palette_flash: PaletteFlashRule::default(),
         }
     }
+}
+
+/// What holds a screen palette flash (effect object #0x0A) while the battle
+/// is paused or dimmed, by its mode (Param3: bit 0 keeps it flashing while
+/// dimmed, bit 1 while paused).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PaletteFlashRule {
+    /// BN6's (`sub_80E10C0`, `sub_80E114C`): bit 1 keeps it going through
+    /// both; else a pause holds it, and dimming does unless the variant's
+    /// bit is set (variant 0 tests bit 0, variant 1 bit 1).
+    #[default]
+    Bn6,
+    /// BN5's (0x080E104C, 0x080E10D0): a pause holds either variant
+    /// whatever its mode; dimming holds it only with a mode of 0.
+    Bn5,
 }
 
 /// How `sub_801A082` (an object's damage, hit modifier and collision types
@@ -229,6 +237,25 @@ pub enum PushReading {
     /// BN5's 0x0800C9D8: the first of bits 2 to 5 of the unflipped
     /// hitters' modifier, else of the flipped ones' with the direction
     /// reversed.
+    Bn5,
+}
+
+/// Which pairs of collisions a hit can't join (the hit test, BN6's
+/// `sub_3007218`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HitTest {
+    /// BN6's: a submerged body (flag 0x4) meets only collision types with
+    /// bit 0x8 or 0x1000; a FloatShoe body (flag 0x20) only those with the
+    /// 0x80 self bit; a guard breaks to types with 0x2 (0x1002 with 0x4000)
+    /// and turns aside those without 0x0C005000.
+    #[default]
+    Bn6,
+    /// BN5's (0x0801691C): a submerged or bubbled body (flags 0x80000004)
+    /// meets only types with 0x8 or 0x1000 unless the other is elec; a
+    /// FloatShoe body meets all (BN5's types have no 0x80 self bit); a
+    /// guard breaks to types with 0x1002 always and turns aside those
+    /// without 0x0C004000.
     Bn5,
 }
 
@@ -335,6 +362,8 @@ pub struct Rules {
     /// How a push reads the hit modifiers (docs/design/bn5-map.md §15.3
     /// item 2).
     pub push_reading: PushReading,
+    /// Which pairs a hit can't join (docs/design/bn5-map.md §15.3 item 12).
+    pub hit_test: HitTest,
     /// Ice slides by the direction the navi last moved.
     pub ice_vectors: [SlideVector; 6],
     /// How fast a navi slides and is dragged (the reactions section's).

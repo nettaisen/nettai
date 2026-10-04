@@ -363,8 +363,8 @@ of them by number, they say:
   `beast_head` and `idle_overlay` (the parts name those sprites), `me:add_navi_parts(actor_type, ai_index, arg)`
   and `remove_navi_parts` (now `me:add_parts(identity, arg)`, `me:remove_parts(identity)`: the navi chips' navis
   define identities for their parts, which compat's `[identities]` numbers), and the generator's body-overlay
-  rows. Content reads a side's navi and form as definitions (`battle.navi(side).form.kind`, `.navi.forms`,
-  `.beast`, `.beast_over`).
+  rows. Content reads a side's navi and form as definitions (`battle.navi(side).form.base`, `.navi.forms`;
+  BN6's kinds are its forms system's extension, which rules/forms/kind.luau reads: S7b).
 - **Compat** keeps navis.toml and forms.toml: the trace harness and the save codecs map numbers to handles
   through their keys (`bn6_compat::codec::Ids`; a bug code may write the base form, 0, to a form byte and
   nothing to the navi byte), and the frontend's emotion window draws the pack's faces by the original's form
