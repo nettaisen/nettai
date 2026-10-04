@@ -3,6 +3,6 @@
 -- without BN6's forms system, with the marker after them.
 
 local systems = require("./systems")
-local forms = require("./forms/system")
+local forms = require("./forms")
 
 return define.ruleset { id = "test-mix", base = systems.stock, remove = { forms.system }, add = { systems.marker } }

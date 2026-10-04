@@ -5,7 +5,7 @@
 -- sounds themselves are each game's (BN6's lib/swords/parts, BN5's
 -- lib/swords).
 
-local attachment = require("../attachment/attachment")
+local attachment = require("../attachment")
 
 local parts = {}
 

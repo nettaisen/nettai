@@ -7,7 +7,7 @@
 -- staggering harder (the original's action 0x30, `sub_80ED55C`;
 -- docs/engine/shot-chips.md §10).
 --
-local attachment = require("../attachment/attachment")
+local attachment = require("../attachment")
 local wave = require("./wave")
 
 local widesht = {}

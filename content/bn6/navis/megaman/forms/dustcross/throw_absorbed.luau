@@ -4,7 +4,7 @@
 -- obstacles. It throws the last obstacle absorbed (the buster's shot as a
 -- throw, 200 damage), or fires the plain buster when there is none.
 
-local buster = require("../../weapons/buster/weapon")
+local buster = require("../../weapons/buster")
 
 local throw_absorbed = {}
 

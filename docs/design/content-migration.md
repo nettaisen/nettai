@@ -192,7 +192,7 @@ plus content/bn6's modules, which it reads from the repository at test time, on 
   resolve to made-up assets unless `numbered_assets()` gives one the number a test looks at; the sprites they
   load get short animations in `animations()`;
 - a chip is in the test content by its key: BN6's own by its module (`testing::chip_handle(testing::AREA_GRAB)`),
-  or a test chip of made-up data composing BN6's builders (testdata/content/chips/test/chips.luau). Folders hold
+  or a test chip of made-up data composing BN6's builders (testdata/content/chips/test/init.luau). Folders hold
   it by handle (`scenario::setup_with`); a test uses it with `use_chip` or `use_instant_chip`;
 - test it: `behavior/tests.rs` plays duels (`duel_with`, `scenario::record_on`) and checks the kinds appear and
   roll back (`scripted_chips_roll_back`); `kinds/player/actions/tests.rs` runs one navi's action tick by tick

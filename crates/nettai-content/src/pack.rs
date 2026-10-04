@@ -236,8 +236,8 @@ pub fn import_sound_versions(root: &Path, report: &mut Report) -> Option<(SoundB
 /// The battle content, for the engine (docs/design/content-model-v2.md
 /// §4.0: one game a match): the game whose assets the asset pack `assets`
 /// holds, of the content directory `content` (`crate::index::content()`:
-/// the game pack's listed modules and what they require, with the support
-/// packs it uses), with the asset pack's asset index (`Content::assets`)
+/// the game's top module and what it requires, with the support packs it
+/// depends on), with the asset pack's asset index (`Content::assets`)
 /// and its sprites' animation timing, defined (`Content::define`).
 pub fn load_battle(content: &Path, assets: &Path) -> Result<(nettai_battle::Content, Report), Report> {
     let (mut c, mut report) = battle_content(content, assets)?;
@@ -442,7 +442,7 @@ fn no_pack(game: &str, found: &[Found]) -> String {
 /// Load game `game` of the content directory `content` (`--content`, else
 /// [`crate::index::content`]) for a frontend to play (docs/frontend.md
 /// §1; docs/design/content-model-v2.md §4.0: a match plays one game): its
-/// game pack, the support packs it uses and its asset pack among `found`
+/// game pack, the support packs it depends on and its asset pack among `found`
 /// ([`find`]), defined. A game whose asset pack isn't found is an error
 /// with the command that writes it.
 pub fn load_game(content: Option<&Path>, game: &str, found: &[Found]) -> Result<Loaded, Report> {

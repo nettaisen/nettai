@@ -4,7 +4,7 @@
 -- docs/design/bn5-map.md §15.1).
 
 local collision = require("../../rules/collision")
-local projectile = require("./projectile")
+local projectile = require("../projectile")
 local sparks = require("../../lib/sparks")
 local statuses = require("../../rules/status")
 

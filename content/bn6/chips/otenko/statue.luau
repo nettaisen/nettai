@@ -7,9 +7,9 @@
 -- if it deals damage, up to 50 for each hand entry. The behavior is BN5's
 -- too (@exelib/otenko/otenko), made here with BN6's look.
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
+local absorbed_obstacle = require("../../objects/absorbed-obstacle")
 local collision = require("../../rules/collision")
-local common = require("@exelib/otenko/otenko")
+local common = require("@exelib/otenko")
 local effects = require("../../lib/effects")
 
 -- Its sprite (`sub_80DB108`'s, in `sub_80DB2C6`'s pool), with a shadow,

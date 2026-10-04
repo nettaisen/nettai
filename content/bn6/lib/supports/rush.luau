@@ -8,7 +8,7 @@ local collision = require("../../rules/collision")
 local common = require("@exelib/supports/rush")
 local effects = require("../effects")
 local statuses = require("../../rules/status")
-local whicapsl_invisible = require("../../chips/whicapsl-invisible/chip")
+local whicapsl_invisible = require("../../chips/whicapsl-invisible")
 
 return common.make {
     id = "rush",

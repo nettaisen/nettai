@@ -4,13 +4,13 @@
 -- folder rules so far; its Team Battle is still to come as a system (docs/design/bn5-map.md §15).
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
-local computer_navi = require("./computer-navi/system")
-local emotion = require("./emotion/system")
-local folder = require("./folder/system")
-local light_dark = require("./light-dark/system")
-local navicust = require("./navicust/system")
-local patch_cards = require("./patch-cards/system")
-local souls = require("./souls/system")
+local computer_navi = require("@self/computer-navi")
+local emotion = require("@self/emotion")
+local folder = require("@self/folder")
+local light_dark = require("@self/light-dark")
+local navicust = require("@self/navicust")
+local patch_cards = require("@self/patch-cards")
+local souls = require("@self/souls")
 
 return define.ruleset {
     id = "stock",
@@ -33,19 +33,19 @@ return define.ruleset {
         folder,
     },
     -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
-    banners = require("./banners"),
-    buster = require("./buster"),
-    chip_use = require("./chip-use"),
-    custom_screen = require("./custom-screen"),
-    effects = require("./effects"),
-    elements = require("./elements"),
-    flow = require("./flow"),
-    math = require("./math"),
-    navicust = require("./navicust/section"),
-    panels = require("./panels"),
-    pools = require("./pools"),
-    reactions = require("./reactions"),
-    roles = require("./roles"),
-    sp_chips = require("./sp-chips"),
-    status = require("./status").rules,
+    banners = require("@self/banners"),
+    buster = require("@self/buster"),
+    chip_use = require("@self/chip-use"),
+    custom_screen = require("@self/custom-screen"),
+    effects = require("@self/effects"),
+    elements = require("@self/elements"),
+    flow = require("@self/flow"),
+    math = require("@self/math"),
+    navicust = require("@self/navicust/section"),
+    panels = require("@self/panels"),
+    pools = require("@self/pools"),
+    reactions = require("@self/reactions"),
+    roles = require("@self/roles"),
+    sp_chips = require("@self/sp-chips"),
+    status = require("@self/status").rules,
 }

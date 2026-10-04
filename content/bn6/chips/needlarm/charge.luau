@@ -6,7 +6,7 @@
 -- Sticky: a form's own charged shot doesn't replace it, and while the navi
 -- has it a Beast buster gives way to the plain one.
 
-local aquandl = require("../aquandl/chips")
+local aquandl_chips = require("../aquandl")
 local charge = require("../../lib/navi-boost/charge")
 
 -- The attack's element byte: Aqua.
@@ -16,7 +16,7 @@ local DAMAGE = 0x28
 -- `sub_8011ED0`.
 local function setup(navi: Object): Action
     charge.prepare(navi, ELEMENT, DAMAGE)
-    return aquandl[1].action
+    return aquandl_chips.aquandl1.action
 end
 
 return define.weapon {

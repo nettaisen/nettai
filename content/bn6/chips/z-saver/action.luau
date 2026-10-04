@@ -5,7 +5,7 @@
 -- the twelve ticks after the third slash's hit give a fourth, a piercing
 -- sonic boom. (The original's weapon routine 0x6E starts the same action.)
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/zsaver/action")
 local parts = require("../../lib/swords/parts")

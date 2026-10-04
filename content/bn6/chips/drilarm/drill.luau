@@ -4,7 +4,7 @@
 -- GroundCross's charged shot (navis/megaman/forms/groundcross/drill) and
 -- MstrCros's GroundCross (chips/mstrcros/navi) use too.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/drilarm/drill")
 local sparks = require("../../lib/sparks")
