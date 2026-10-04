@@ -186,6 +186,46 @@ local function use_dark_chip(side: number, navi: Object): boolean
     return true
 end
 
+-- DrkRecov, which a dark chip offer to MegaMan at low HP prefers (0x08025192: chip 0xC2).
+local DRKRECOV = "bn5:drkrecov"
+
+-- 0x08025114, from the custom screen's opening (0x08022C5C) after its hand size and before the folder closes up: a
+-- worried or dark MegaMan (BN5's emotions 1 and 5: a mood under 65, or 0) is offered a dark chip of his folder. Its
+-- dark chips are taken in order, the first at once and each later one in its place on an RNG1 draw's low bit; under
+-- a quarter of his HP, DrkRecov is taken without a draw and, once taken, kept. Unless the folder's first dark chip
+-- is among those the screen deals, the one taken trades places with the place after them. (Its other way in, battle
+-- effect 1 with a setting of 0x101 that leaves 2 or 3 over by 6, never holds: 0x101 - 0x101 leaves 0.)
+local function offer_dark_chip(side: number)
+    local emotion = custom.player(side).emotion
+    if emotion ~= "worried" and emotion ~= "worn_out" then
+        return
+    end
+    local navi = battle.player(side)
+    if navi == nil then
+        return
+    end
+    local low = navi.hp < bit32.rshift(navi.max_hp, 2)
+    local folder = custom.folder(side)
+    local first, taken = nil, nil
+    for place, chip in ipairs(folder) do
+        if chip and table.find(chip.flags or {}, "dark") then
+            if taken == nil then
+                first, taken = place, place
+            elseif low and chip.id == DRKRECOV then
+                taken = place
+            elseif low and (folder[taken] :: Chip).id == DRKRECOV then
+                -- (Kept, without a draw.)
+            elseif bit32.band(battle.console_rng_positive(side), 1) ~= 0 then
+                taken = place
+            end
+        end
+    end
+    if taken == nil or first <= custom.hand_size(side) then
+        return
+    end
+    custom.swap_folder(side, custom.hand_size(side) + 1, taken)
+end
+
 -- 0x0802C934: the chip's cost, if it has one.
 local function cost(side: number, chip: Chip)
     local f = COSTS[chip.id]
@@ -227,6 +267,10 @@ return define.system {
     -- A fresh save's value (0x08010C00 writes 500 to NaviStats +0x44): light for the chips, no holy panels cleared,
     -- the starting mood 0x80.
     setup_defaults = { karma = 500 },
+    custom = {
+        -- 0x08025114: a worried or dark MegaMan's dark chip offer.
+        deal = offer_dark_chip,
+    },
     hooks = {
         -- Hub Style shows the base form's second set of faces (0x0801AF8E).
         round_setup = function(side: number)

@@ -1341,9 +1341,19 @@ More for §15.3:
 
 12. **A base form per game**: the engine refuses two base forms in one content; BN5's MegaMan, whose souls are
    forms, needs his own (or the base form to be a navi's).
-13. **The custom screen's end**: BN5's Team Battle custom screen (0x08025EF2) closes the screen on the tick both
-   results are in, BN6's on the next, and BN5's sets no AIData +0x0F on the navis (BN6's `sub_8009338` does): a
-   choice of the side's game's custom screen (`custom::GameLibrary`) or of the arena's flow.
+13. **The custom screen's end**: BN5's result is 49 words on the link (0x08009A5E: its NaviStats are 0x60 bytes,
+   BN6's 0x64; `sub_800B3A2` sends 50), so it is in a tick sooner than BN6's would be; BN5's Team Battle screen
+   (0x08025EF2) takes the results as BN6's does (0x080266FA: the hands installed, the HUD's wait task off and its
+   icons and chip window on) and closes the tick after (its state 8, 0x08025FEC). Built as the flow section's
+   `result_words` (BN6 50, BN5 49, of the sending side's game); an earlier `custom_closes_with_results` (the screen
+   closing on the tick both results are in) had the close on the right tick but the results a tick late. BN5's
+   screen sets no AIData +0x0F on the navis (BN6's `sub_8009338` does): BN6's beast system's `custom_closed`.
+   **The dark chip offer** (0x08025114, from the screen's opening 0x08022C5C, after its hand size 0x08025BE4 and
+   before the folder closes up 0x080250E6): a worried or dark MegaMan (emotions 1 and 5) gets one of his folder's
+   dark chips (0xBB-0xC6) moved to the place after the hand unless the first is dealt: the first taken, each later
+   one on an RNG1 draw's low bit, DrkRecov first under a quarter of his HP. Built in BN5's light and dark system's
+   `custom.deal` (the custom screen's deal hook, with `custom.folder`, `custom.swap_folder`, `custom.hand_size`);
+   its RNG1 draws were what the dark chip recordings' consoles were ahead by.
 Items 14 to 18 are built (rules-in-luau.md, "P1b"); 19 and the dark chips' costs wait for a replay that needs
 them.
 

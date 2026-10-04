@@ -656,6 +656,25 @@ impl CoreApi for Battle {
         *frags = frags.wrapping_sub(n);
     }
 
+    fn custom_folder(&self, side: u8) -> ApiResult<Vec<Option<ChipHandle>>> {
+        let folder = self.custom.sides[side as usize & 1].folder.ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        Ok(folder.chips.iter().map(|c| c.map(|c| c.id)).collect())
+    }
+
+    fn custom_swap_folder(&mut self, side: u8, a: u8, b: u8) -> ApiResult<()> {
+        let folder = self.custom.sides[side as usize & 1].folder.as_mut().ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        let n = folder.chips.len();
+        if a as usize >= n || b as usize >= n {
+            return Err(ApiError::Other(format!("custom.swap_folder: the folder has {n} places")));
+        }
+        folder.chips.swap(a as usize, b as usize);
+        Ok(())
+    }
+
+    fn custom_hand_size(&self, side: u8) -> ApiResult<u8> {
+        Ok(self.custom_screen(side)?.hand_size)
+    }
+
     fn custom_refuse(&mut self, side: u8) -> ApiResult<()> {
         self.custom_screen_mut(side)?.refuse();
         Ok(())
