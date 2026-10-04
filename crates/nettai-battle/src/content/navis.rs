@@ -5,7 +5,7 @@ use super::flags::serde_flags;
 use super::{BannerId, ChipFamily, CodedChip, Element, SecondaryElements, SpriteId};
 use crate::actor::ActorType;
 use crate::custom::GameVersion;
-use nettai_content_api::{FormHandle, IdentityHandle, NaviHandle, WeaponHandle};
+use nettai_content_api::{FormHandle, IdentityHandle, WeaponHandle};
 use serde::{Deserialize, Serialize};
 
 /// A navi: MegaMan or a link navi.
@@ -213,47 +213,6 @@ pub enum ChipMatch {
     Family(ChipFamily),
 }
 
-/// What kind of form one of MegaMan's is.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum FormKind {
-    /// His own.
-    #[default]
-    Base,
-    /// A Cross: merged with a link navi.
-    Cross,
-    /// Beast Out.
-    Beast,
-    /// A Cross in Beast Out.
-    CrossBeast,
-    /// Beast Over: the navi acts on its own.
-    BeastOver,
-    /// A soul (BN5's Soul Unison): united with a navi for some turns.
-    Soul,
-}
-
-impl FormKind {
-    /// Beast Out, with or without a Cross, or Beast Over.
-    pub fn is_beast(self) -> bool {
-        matches!(self, FormKind::Beast | FormKind::CrossBeast | FormKind::BeastOver)
-    }
-
-    /// Beast Out, with or without a Cross.
-    pub fn is_beast_out(self) -> bool {
-        matches!(self, FormKind::Beast | FormKind::CrossBeast)
-    }
-
-    /// Beast Over.
-    pub fn is_beast_over(self) -> bool {
-        self == FormKind::BeastOver
-    }
-
-    /// A Cross is on (a Cross, or one in Beast Out).
-    pub fn has_cross(self) -> bool {
-        matches!(self, FormKind::Cross | FormKind::CrossBeast)
-    }
-}
-
 /// A soul's place on BN5's custom screen: its number (NaviStats +0x2C,
 /// the soul-used bits' and the save's soul flags' order) and the family
 /// of the chip given up for it (0x08024BE0's table).
@@ -269,11 +228,17 @@ pub struct SoulData {
     pub chaos_cycle: Option<u8>,
 }
 
-/// One of MegaMan's forms.
+/// One of MegaMan's forms. (What a game's systems say of their game's
+/// forms, BN6's kinds of form among it, is their extension:
+/// `SystemDef::extends`.)
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FormData {
-    /// A soul's number and family (`kind = "soul"`).
+    /// Its game's base form: what the game's navis are in before they
+    /// change form, and what a revert takes them back to (one a game).
+    #[serde(default)]
+    pub base: bool,
+    /// A soul's number and family (BN5's Soul Unison: the form is a soul).
     #[serde(default)]
     pub soul: Option<SoulData>,
     pub sprite: SpriteId,
@@ -282,12 +247,9 @@ pub struct FormData {
     pub weakness: SecondaryElements,
     /// Added to the buster's damage.
     pub buster_bonus: u8,
-    pub kind: FormKind,
-    /// Whose game's form it is: the Beast's roar.
-    #[serde(default)]
-    pub game: Option<GameVersion>,
     /// MegaMan's palette in it (`byte_80203EA`: a Cross's; the base form's
-    /// and Beast Out's follow the mood).
+    /// follows the mood and the style, a form's with `mood_palette` the
+    /// mood).
     #[serde(default)]
     pub palette: u8,
     /// Its faces in the emotion window (`sub_801E6A8`), by emotion.
@@ -340,10 +302,6 @@ pub struct FormData {
     /// (`sub_80100EC`) and no invulnerable glow (`sub_8016860`).
     #[serde(default)]
     pub glow: Option<Vec<u16>>,
-    /// The shots of the buster volley the Cross special's controller
-    /// fires in it (`sub_802D4F0`).
-    #[serde(default)]
-    pub special_volley: u16,
     /// The lag at the end of a move in it, in place of MegaMan's 4 (BN5's
     /// ShadowSoul's 0: 0x0800E0D2).
     #[serde(default)]
@@ -361,17 +319,10 @@ pub struct FormData {
     /// 0x08010392).
     #[serde(default)]
     pub front_guard: Option<u16>,
-    /// A change into a Cross that finds the navi in this animation lets go of it
-    /// and of what it holds (`sub_8014B18`: GroundCross's drill).
-    #[serde(default)]
-    pub cross_release_anim: Option<u8>,
     #[serde(default)]
     pub traits: FormTraits,
-    /// The navi a Cross is made with: its image merges with MegaMan.
     /// (This and what follows are read from the definition by handle, not
     /// with the rest of the record.)
-    #[serde(skip)]
-    pub cross_of: Option<NaviHandle>,
     /// The action that changes a navi into it (a game's form change: BN6's
     /// forms', content/bn6/rules/forms), which the pause handler runs at a
     /// turn's start.
@@ -386,9 +337,6 @@ pub struct FormData {
     /// NapalmSoul's, action 0x4B: 0x08010442).
     #[serde(skip)]
     pub charged_action: Option<nettai_content_api::ActionHandle>,
-    /// A Cross's form in Beast Out.
-    #[serde(skip)]
-    pub beast: Option<FormHandle>,
     /// What a weakness hit drops it to (`sub_8015766`); none: it stays.
     #[serde(skip)]
     pub breaks_to: Option<FormHandle>,
@@ -632,49 +580,58 @@ serde_flags!(FormEffects, u16);
 /// What the ruleset asks of particular forms. In a content file, a list of
 /// names.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct FormTraits(pub u8);
+pub struct FormTraits(pub u16);
 
 impl FormTraits {
     /// A hit's status doesn't take (TomahawkCross).
-    pub const STATUS_IMMUNE: u8 = 0x01;
+    pub const STATUS_IMMUNE: u16 = 0x001;
     /// Its damaging Null chips delete at once what has a 4 in its HP
     /// (`sub_8012C4A`: EraseCross).
-    pub const ERASES: u8 = 0x02;
-    /// Its charged sword runs inside the Beast Out rush (`sub_800FB54`:
-    /// SlashCross in Beast Out).
-    pub const CHARGED_SWORD_RUSH: u8 = 0x04;
-    /// The custom screen deals one more chip for each screen spent in it,
-    /// up to three (`sub_802A49C`: ChargeCross).
-    pub const EXTRA_CHIPS: u8 = 0x08;
-    /// The custom screen has the scrap button (`sub_8027F10`: DustCross).
-    pub const SCRAP_BUTTON: u8 = 0x10;
+    pub const ERASES: u16 = 0x002;
     /// Its held buster doesn't fire while its B+Back special is asked for
     /// (TenguCross and DustCross in Beast Out).
-    pub const SPECIAL_HOLDS_BUSTER: u8 = 0x20;
+    pub const SPECIAL_HOLDS_BUSTER: u16 = 0x004;
     /// A metal panel doesn't slide the navi (BN5's soul 5, NaviStats
     /// +0x2C: 0x08017216).
-    pub const STANDS_ON_METAL: u8 = 0x40;
+    pub const STANDS_ON_METAL: u16 = 0x008;
     /// The side's systems' controller decides the navi's idle (Beast Over's
     /// berserk, `sub_802D322`): the player's buttons don't reach it
     /// (`apply_actor_inputs`), and a full gauge opens the custom screen.
-    pub const CONTROLLED: u8 = 0x80;
+    pub const CONTROLLED: u16 = 0x010;
+    /// The navi's target marker shows (`sub_80E1566`: BN6's Beast forms,
+    /// 0x0B to 0x18).
+    pub const SHOWS_TARGET_MARKER: u16 = 0x020;
+    /// An afterimage of the navi lasts while it stays in a form with this
+    /// trait, not until its attack ends (`sub_80E341E`: BN6's Beast forms).
+    pub const AFTERIMAGES_STAY: u16 = 0x040;
+    /// With a Null chip next, its A charge's time is the alternative
+    /// A-charge routine's (`sub_8012F62`: BN6's Beast forms).
+    pub const ALT_CHARGE_TIME: u16 = 0x080;
+    /// Its damaging Null chips deal double, outside battle mode 1
+    /// (`sub_8012ABC`: Beast Over).
+    pub const DOUBLES_NULL: u16 = 0x100;
+    /// Its palette follows the mood: 4 in Full Synchro (mood 0xFF), else
+    /// 0, in place of its `palette` (`sub_80100EC`: Beast Out's).
+    pub const MOOD_PALETTE: u16 = 0x200;
     pub(crate) const NAMES: &[(u32, &str)] = &[
-        (0x01, "status_immune"),
-        (0x02, "erases"),
-        (0x04, "charged_sword_rush"),
-        (0x08, "extra_chips"),
-        (0x10, "scrap_button"),
-        (0x20, "special_holds_buster"),
-        (0x40, "stands_on_metal"),
-        (0x80, "controlled"),
+        (0x001, "status_immune"),
+        (0x002, "erases"),
+        (0x004, "special_holds_buster"),
+        (0x008, "stands_on_metal"),
+        (0x010, "controlled"),
+        (0x020, "shows_target_marker"),
+        (0x040, "afterimages_stay"),
+        (0x080, "alt_charge_time"),
+        (0x100, "doubles_null"),
+        (0x200, "mood_palette"),
     ];
 
-    pub fn has(self, bit: u8) -> bool {
+    pub fn has(self, bit: u16) -> bool {
         self.0 & bit != 0
     }
 }
 
-serde_flags!(FormTraits, u8);
+serde_flags!(FormTraits, u16);
 
 /// A form's or navi's weapons, by the button that uses each (none: the
 /// original's 0xFF).
@@ -772,25 +729,21 @@ pub(crate) fn read_navi(
     serde_json::from_value(Json::Object(o)).map_err(|m| err(m.to_string()))
 }
 
-/// A form definition's record, likewise.
+/// A form definition's record, likewise, past `extended`: the fields its
+/// game's systems extend forms with (theirs to check, `SystemDef::extends`).
 pub(crate) fn read_form(
     d: &nettai_content_api::Definition,
     r: &super::reader::SpecReader,
+    extended: &[&str],
 ) -> Result<FormData, nettai_content_api::ContentError> {
     use serde_json::Value as Json;
     // (`buster_arm` is the content's own: the arm a navi raises.)
-    let o = super::reader::fields(
-        d,
-        r,
-        &["id", "identity", "cross_of", "beast", "breaks_to", "change", "revert", "charged_action", "weapons", "buster_arm", "reset"],
-    )?;
+    let own = ["id", "identity", "breaks_to", "change", "revert", "charged_action", "weapons", "buster_arm", "reset"];
+    let skip: Vec<&str> = own.iter().chain(extended).copied().collect();
+    let o = super::reader::fields(d, r, &skip)?;
     let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::reader::err(d, m))?;
-    // (BN5's souls are of no BN6 version.)
-    if !matches!(form.kind, FormKind::Base | FormKind::Soul) && form.game.is_none() {
-        return Err(super::reader::err(d, "a form that is not the base form or a soul says whose `game` it is (gregar, falzar)"));
-    }
-    if (form.kind == FormKind::Soul) != form.soul.is_some() {
-        return Err(super::reader::err(d, "a soul (`kind = \"soul\"`) and only a soul names its `soul`"));
+    if form.base && form.soul.is_some() {
+        return Err(super::reader::err(d, "a base form is no soul"));
     }
     Ok(form)
 }
