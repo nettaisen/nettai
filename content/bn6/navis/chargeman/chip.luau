@@ -7,7 +7,7 @@
 -- docs/engine/standard-chips.md, "Action 0x0A".
 
 local link = require("../../lib/link_chips")
-local panels = require("@common/panels")
+local panels = require("@exelib/panels")
 local volcano_rock = require("./volcano_rock")
 
 export type State = { timer: number }

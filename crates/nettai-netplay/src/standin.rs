@@ -139,7 +139,6 @@ pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [B
         navi_level: None,
         sp_times: Default::default(),
         console: ConsoleSetup { rng: seed.rotate_left(16) ^ side.wrapping_mul(0x9E37_79B9), ..ConsoleSetup::default() },
-        ruleset: None,
         rules: Vec::new(),
         patch_cards: Default::default(),
         navicust: None,
@@ -149,6 +148,7 @@ pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [B
     RoundSetup {
         content: content.hash(),
         settings: BattleSettings::on(content, content.stage_by_key(stage)),
+        ruleset: None,
         navi_stats: [megaman(content, hp), megaman(content, hp)],
         rng: seed,
         local_side: 0,

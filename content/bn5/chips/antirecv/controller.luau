@@ -1,9 +1,9 @@
 --!strict
--- BN5's AntiRecv's counterattack (effect object #0x2C, BN6's code: @common/antirecv/controller), BN5's kind with
+-- BN5's AntiRecv's counterattack (effect object #0x2C, BN6's code: @exelib/antirecv/controller), BN5's kind with
 -- BN5's panel changer and bubble; the change's sounds BN6's. The ruleset spawns it by role (`kinds.anti_recovery`,
 -- rules/roles.luau).
 
-local common = require("@common/antirecv/controller")
+local common = require("@exelib/antirecv/controller")
 local panel_changer = require("../../objects/panel-changer/panel_changer")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 

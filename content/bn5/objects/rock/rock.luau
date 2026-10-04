@@ -1,6 +1,6 @@
 --!strict
 -- BN5's rocks (attack object #0x59, 0x080D0FA0) and their debris (effect object #0x38, 0x080E46F4): BN6's
--- (@common/rock) but for
+-- (@exelib/rock) but for
 --
 -- - its rows (0x080D0F80, 8 bytes: animation, HP in twos, debris palette, break sound, NameID): the ice block has
 --   100 HP (BN6's 200), its break sound BN5's 0xD9;
@@ -13,8 +13,8 @@
 -- thrown for 200).
 
 local collision = require("../../rules/collision")
-local common = require("@common/rock/rock")
-local common_debris = require("@common/rock/debris")
+local common = require("@exelib/rock/rock")
+local common_debris = require("@exelib/rock/debris")
 local sparks = require("../../lib/sparks")
 
 local rock = {}

@@ -1,12 +1,12 @@
 --!strict
 -- A snake (the original's attack object #0x73, `sub_80D2EBC`;
 -- docs/engine/dimming-chip-effects.md §13): the shared snake
--- (@common/snake/snake) with BN6's look. It rises out of its hole, waits,
+-- (@exelib/snake/snake) with BN6's look. It rises out of its hole, waits,
 -- then leaps at its target panel and strikes it, or flies on off the field
 -- when it has none. Snake's nest (./nest) sends them out and counts them.
 
 local collision = require("../../rules/collision")
-local common = require("@common/snake/snake")
+local common = require("@exelib/snake/snake")
 local trajectory = require("../../lib/trajectory")
 
 local snake = {}

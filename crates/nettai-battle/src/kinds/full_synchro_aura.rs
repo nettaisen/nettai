@@ -76,8 +76,8 @@ fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
 
 /// Whether `r`'s side has BN5's emotions, and with them BN5's aura (actor
 /// object #0x5E, 0x080C45E0: docs/design/bn5-map.md §15.11).
-fn bn5(b: &Battle, r: ObjectRef) -> bool {
-    b.rules_for(r).emotions == Emotions::Bn5
+fn bn5(b: &Battle) -> bool {
+    b.game_rules().emotions == Emotions::Bn5
 }
 
 /// `sub_80C4B18`: the state's routine, then the sprite unless dimmed or
@@ -89,7 +89,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         _ => return b.objects.free(r),
     }
     if b.objects.is_allocated(r) && !b.is_dimmed() {
-        if bn5(b, r) {
+        if bn5(b) {
             common::update_sprite_even_paused(b, r);
         } else if !b.paused {
             common::update_sprite(b, r);
@@ -110,7 +110,7 @@ fn animation(b: &Battle, r: ObjectRef) -> u8 {
 /// `sub_80C4B48`: the sprite, visible, on its animation.
 fn init(b: &mut Battle, r: ObjectRef) {
     let anim = animation(b, r);
-    let sprite = b.roles_for(r).sprite(crate::content::SpriteRole::FullSynchroAura);
+    let sprite = b.roles().sprite(crate::content::SpriteRole::FullSynchroAura);
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
     s.look.shadow = Shadow::WithSprite;
@@ -132,7 +132,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
 /// navi is bubbled too, and once the fight is on stops running while
 /// paused.
 fn tick(b: &mut Battle, r: ObjectRef) {
-    let bn5 = bn5(b, r);
+    let bn5 = bn5(b);
     let navi = owner(b, r);
     if !bn5 {
         let anim = animation(b, r);

@@ -7,7 +7,7 @@
 -- chips.md §3.3.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local shot = {}
 

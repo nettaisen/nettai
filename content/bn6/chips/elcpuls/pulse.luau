@@ -9,7 +9,7 @@
 -- gives the palette, `dword_80D6B24`, and from the third look a bug).
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local pulse = {}
 

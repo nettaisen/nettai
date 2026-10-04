@@ -337,7 +337,7 @@ impl CoreApi for Battle {
             let hand = &self.hands[o.alliance as usize & 1];
             match hand.ids.get(hand.cursor as usize).copied().flatten() {
                 Some(h) => self.content.chip(h).flags,
-                None => self.rules_for(user).empty_hand.flags,
+                None => self.game_rules().empty_hand.flags,
             }
         } else {
             // Another object's chip word: zeroed, the zeroed chip.
@@ -1321,7 +1321,7 @@ impl CoreApi for Battle {
         let ob = self.objects.get(o);
         let airshoe = ob.collision.is_some_and(|c| self.collision.get(c).f1 & f1::AIRSHOE != 0);
         let floor_free = airshoe || !self.field.is_solid(ob.panel.x, ob.panel.y);
-        let rule = self.arena_rules().panels.any_side_step.get(floor_free, ob.alliance);
+        let rule = self.game_rules().panels.any_side_step.get(floor_free, ob.alliance);
         self.field.meets(p.x, p.y, rule)
     }
 

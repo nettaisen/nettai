@@ -61,7 +61,7 @@ end
 
 stepsword.behind_enemy = behind_enemy
 
--- The swords' slash's step (action 0x13, 0x080EBD04: @common/swords/slash with BN5's `steps`): none uncharged; else,
+-- The swords' slash's step (action 0x13, 0x080EBD04: @exelib/swords/slash with BN5's `steps`): none uncharged; else,
 -- once `set_off` lets it (not while moving or sliding), behind the enemy in ShadowSoul or by a charge of 2, two
 -- panels ahead by 1, none by any other charge (set off all the same).
 function stepsword.kind(me: Object, set_off: (Object) -> boolean): ("step" | "warp")?

@@ -9,7 +9,7 @@
 local clouds = require("./clouds")
 local collision = require("../../rules/collision")
 local link = require("../../lib/link_chips")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
 export type State = {

@@ -1,11 +1,11 @@
 --!strict
--- BN5's hockey puck (attack object #0x2E, 0x080CA3D4): the shared puck (@common/airhocky/puck, BN6's code) with BN5's
+-- BN5's hockey puck (attack object #0x2E, 0x080CA3D4): the shared puck (@exelib/airhocky/puck, BN6's code) with BN5's
 -- look: BN6's collision types, spark and sounds, BN5's sprite (10-12), its burst a puff (effect 0x14). AirHoc's and
 -- PitHoky's. Its rows (0x080CA3A4) are BN6's: the steps it lasts, how it bounces and its ticks per step; row 3
 -- (PitHoky's) leaves a trail.
 
 local collision = require("../../rules/collision")
-local common = require("@common/airhocky/puck")
+local common = require("@exelib/airhocky/puck")
 local sparks = require("../../lib/sparks")
 
 local puck = {}

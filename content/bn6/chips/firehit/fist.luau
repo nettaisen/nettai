@@ -1,11 +1,11 @@
 --!strict
 -- FireHit's fist (the original's attack object #0x5B, `sub_80CFCF8`) and
 -- the chips' effect (instant chip effect 8, `sub_80CFE08`): the shared fist
--- (@common/firehit/fist), BN6's kind and look. The chips are ./chips
+-- (@exelib/firehit/fist), BN6's kind and look. The chips are ./chips
 -- (FireHit1-3 are the ingredients of FlmHook's Program Advances).
 
 local collision = require("../../rules/collision")
-local common = require("@common/firehit/fist")
+local common = require("@exelib/firehit/fist")
 local sparks = require("../../lib/sparks")
 
 local fist = {}

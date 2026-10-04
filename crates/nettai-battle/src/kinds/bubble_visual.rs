@@ -55,7 +55,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80E4A6E`: the floating bubble.
 fn init(b: &mut Battle, r: ObjectRef) {
-    let sprite = b.roles_for(r).sprite(crate::content::SpriteRole::Bubble);
+    let sprite = b.roles().sprite(crate::content::SpriteRole::Bubble);
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
     s.set_animation(0, &b.content);

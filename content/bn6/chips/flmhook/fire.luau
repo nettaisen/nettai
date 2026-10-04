@@ -1,6 +1,6 @@
 --!strict
 -- A flame of FlmHook's hook (the original's attack object #0xCA,
--- `sub_80DE7F4`): the shared flame (@common/flmhook/fire), BN6's kind. It
+-- `sub_80DE7F4`): the shared flame (@exelib/flmhook/fire), BN6's kind. It
 -- swings along an arc of 160 pixels' radius around a point 120 pixels
 -- behind its column and 48 down, starting at an angle and lasting as long
 -- as its table says (`byte_80DE894`, `byte_80DE89C`, by kind, facing and
@@ -10,7 +10,7 @@
 -- they run while dimmed. See docs/engine/chips.md §3.6.35.
 
 local collision = require("../../rules/collision")
-local common = require("@common/flmhook/fire")
+local common = require("@exelib/flmhook/fire")
 local trajectory = require("../../lib/trajectory")
 
 -- Where the arc's center is behind, 16.16; a column's width.

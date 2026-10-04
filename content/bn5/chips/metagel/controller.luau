@@ -1,12 +1,12 @@
 --!strict
 -- MetaGel's dimming controller (BN5's effect object #0x21, 0x080E2D98; the dimming handler's subtype 6, 0x080E2E9C):
--- the usual dimming phases (@common/dimming), with an effect (0x080E2DDC) that drops a gel (./gel) on each row's
+-- the usual dimming phases (@exelib/dimming), with an effect (0x080E2DDC) that drops a gel (./gel) on each row's
 -- front panel of the other side's area, one every 13 ticks in a shuffled order of the rows, then waits until they
 -- are all gone.
 
-local dimming_chips = require("@common/dimming")
+local dimming_chips = require("@exelib/dimming")
 local gel = require("./gel")
-local panels = require("@common/panels")
+local panels = require("@exelib/panels")
 
 local controller = {}
 
