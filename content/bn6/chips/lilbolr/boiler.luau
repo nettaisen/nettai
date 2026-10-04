@@ -11,12 +11,12 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
+local absorbed_obstacle = require("../../objects/absorbed-obstacle")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local layer = require("./layer")
 local regions = require("@exelib/regions")
-local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
+local rising_bubble = require("../../objects/rising-bubble")
 local sparks = require("../../lib/sparks")
 local trajectory = require("../../lib/trajectory")
 

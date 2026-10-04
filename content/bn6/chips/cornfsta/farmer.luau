@@ -7,7 +7,7 @@
 -- shown: no blind-viewer step.)
 
 local stand_in = require("@exelib/dimming/stand_in")
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local cornsht = require("../cornsht/action")
 local sower = require("./sower")
 

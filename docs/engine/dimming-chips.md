@@ -706,7 +706,7 @@ navi, `sub_800D53C` running off the field.
 ## 11. The port (data and framework)
 
 Content (model v2): the tables are the chips' records: the barriers (§3.2) are `barriers.barrier_10` and the
-rest (lib/barriers/barriers.luau), the panel changes (§4.2) `panel_changer.change` records, `byte_80D4078`'s rows
+rest (lib/barriers/init.luau), the panel changes (§4.2) `panel_changer.change` records, `byte_80D4078`'s rows
 (§6.2) `instrument.instrument` records with each chip's effect, `byte_80D34C0`'s rows (§7.2) `plane.plane`
 records, the turrets' look and HP (§8.1) and SumnBlk's and the points' parameters the hooks' arguments; the
 small per-aim tables of §8 and §7 are the kinds' constants. Collision types: rules/collision.luau (`nothing`

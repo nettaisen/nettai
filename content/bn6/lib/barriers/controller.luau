@@ -9,7 +9,7 @@
 --
 -- A chip's `dimming` hook is `barrier_chips.hook(barrier)`.
 
-local barriers = require("./barriers")
+local barriers = require("../barriers")
 local common = require("@exelib/barriers/controller")
 
 return common.make {

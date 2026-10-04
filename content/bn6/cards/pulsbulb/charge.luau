@@ -5,7 +5,7 @@
 -- (`loc_80126EA`, lib/weapon's `chip`) and starts what its use starts.
 
 local weapon = require("../../lib/weapon")
-local chips = require("../../chips/elcpuls/chips")
+local chips = require("../../chips/elcpuls")
 
 return define.weapon {
     id = "patch-cards/pulsbulb/charge",

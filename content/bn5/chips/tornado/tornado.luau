@@ -10,9 +10,9 @@
 -- - It is BN5's row 0x20 (BN6's 0x12), the HP-bug variant's row 0x4B, reaching row 5; its spark BN5's of its element.
 -- - The fan is BN5's attachment rows 0xC and 0x17 (BN6's 0x21 and 0x22: the same look in BN5's sprite).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local blows = require("@exelib/tornado/blow")
-local common = require("@exelib/tornado/tornado")
+local common = require("@exelib/tornado")
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
 local status = require("../../rules/status")

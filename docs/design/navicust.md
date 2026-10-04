@@ -64,13 +64,13 @@ return define.navicust_program {
   every part, and nothing reads it.
 - **The effects** are rules/navicust/programs.luau's constructors, one per handler of `navicust_jt_NCPs` (by
   `id >> 2`). A handler that calls others (BustPack, BodyPack, FldrPak1, FldrPak2) lists their effects in its
-  order. Weapons and barriers are named by definition: Shield's is `require("navis/megaman/weapons/shield/weapon")`,
+  order. Weapons and barriers are named by definition: Shield's is `require("navis/megaman/weapons/shield/init")`,
   FstBarr's is lib/barriers' `barrier_10`. A program whose handler writes a stat no netbattle reads (SneakRun,
   OilBody, Fish, Battery, Jungle, Millions, Humor, Poem, SlipRunr, AutoHeal) has `programs.outside(...)`, which
   the system does nothing for, because the engine doesn't keep the stat.
 - **Compressed shapes** are given where they differ from the shape. Every BN6 program has one.
 
-## 3. BN6's compile (rules/navicust/system.luau)
+## 3. BN6's compile (rules/navicust/init.luau)
 
 The original's `reloadCurNaviStatBoosts` calls `sub_813C458` when the PET's navi is navi 0. The system's
 `round_setup` hook is that routine. The stock ruleset runs it before the patch cards, which apply to what it made

@@ -5,9 +5,9 @@
 -- point), BN5's shot collision types and bat spark, and no restart of the navi's form overlay as the cannon rises
 -- (0x080EE448; BN6's restarts it). The shots (0x080EE444's counts, 0x080EE4DC's BatCan4 rows) are BN6's.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
-local common = require("@exelib/batcan/batcan")
+local common = require("@exelib/batcan")
 local sparks = require("../../lib/sparks")
 
 return common.make {

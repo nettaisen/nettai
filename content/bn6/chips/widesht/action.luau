@@ -6,7 +6,7 @@
 -- These are their actions; the chips are ./chip and chips/suprspr
 -- (WideSht is SuprSpr's Program Advance ingredient).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local common = require("@exelib/widesht/action")
 local wave = require("./wave")
 

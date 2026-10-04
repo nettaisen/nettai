@@ -15,8 +15,8 @@
 -- undim. See docs/engine/chips.md §3.6.7.
 
 local dimming_chips = require("../dimming")
-local panel_changer = require("@exelib/panel-changer/panel_changer")
-local rising_bubble = require("@exelib/rising-bubble/rising_bubble")
+local panel_changer = require("@exelib/panel-changer")
+local rising_bubble = require("@exelib/rising-bubble")
 
 export type State = {
     -- The panel changer runs (the original's Param2, which the changer

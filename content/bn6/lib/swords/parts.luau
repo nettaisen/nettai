@@ -4,7 +4,7 @@
 -- sounds, and the blade the user holds while it swings (the shared parts,
 -- @exelib/swords/parts, with BN6's attachment).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/swords/parts")
 local kind = require("../../rules/forms/kind")

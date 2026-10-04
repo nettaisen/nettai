@@ -799,7 +799,7 @@ mod tests {
             let e = patched(module, from, to).expect_err(said);
             assert!(e.contains(said), "{said}: {e}");
         };
-        let chips = "chips/test/chips";
+        let chips = "chips/test/init";
         refused(chips, "test_weight = 3,", "test_weight = 300,", "chip test/veil.test_weight is Int(300), not u8");
         refused(chips, "kind = \"b\" }", "kind = \"c\" }", "chip test/veil.test_tag.kind");
         refused(chips, "kind = \"b\" }", "kind = \"b\", hue = 1 }", "`hue` is none of its fields (kind, level)");

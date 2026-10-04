@@ -15,7 +15,7 @@
 -- sword, the slash's effect, his spawner's address) is a chip's
 -- (`summon_with(look)`).
 
-local attachment = require("../attachment/attachment")
+local attachment = require("../attachment")
 local regions = require("../regions")
 
 export type State = {

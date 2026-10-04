@@ -12,10 +12,10 @@ local collision = require("../../rules/collision")
 local common_strike = require("@exelib/elemtrap/strike")
 local common_trap = require("@exelib/elemtrap/trap")
 local effects = require("../effects")
-local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
+local panel_bursts = require("../../objects/panel-bursts")
 local sparks = require("../sparks")
 local statuses = require("../../rules/status")
-local traps = require("./traps")
+local traps = require("../traps")
 
 local trap = {}
 

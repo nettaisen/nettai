@@ -5,7 +5,7 @@
 -- starts.
 
 local weapon = require("../../lib/weapon")
-local sword = require("../../chips/sword/chip")
+local sword = require("../../chips/sword")
 
 return define.weapon {
     id = "patch-cards/b-sword",
