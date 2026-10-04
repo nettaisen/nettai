@@ -347,7 +347,7 @@ language = "en"
 "z-saver" = { name = "Z Saver", description = "Repliroid\nswrd cuts\n3 times" }
 
 [navis]
-"megaman" = { name = "MegaMan" }
+"megaman" = { name = "MegaMan", variant_name = "BCMegaMn" }
 
 [forms]
 "colonelsoul" = { name = "ColSoul" }
