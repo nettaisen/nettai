@@ -154,7 +154,12 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         b.set_visible_by_viewer(r, owner_shown);
     }
     // The owner's palette (unless it has its own), color shader, white
-    // flash, alpha and facing.
+    // flash (`sprite_getFinalPalette`), mosaic (`sub_8002F3E`, then
+    // `loc_8002F02`: the sprite's mosaic flag, the size being the screen's),
+    // alpha and facing. (The routine copies no alpha, yet the original
+    // draws the overlay's parts in its owner's blend: BN5's Hub Style shade
+    // fades in semi-transparent and mosaicked with its navi, the OAM of
+    // verification's library-bn5 custom/hub-name shows, frames 159 to 190.)
     let own_palette = vars(b, r).own_palette;
     let owner_look = b.objects.sprite(owner).look;
     let look = &mut b.objects.sprite_mut(r).look;
@@ -163,6 +168,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     }
     look.color_shader = owner_look.color_shader;
     look.white = owner_look.white;
+    look.mosaic = owner_look.mosaic;
     look.alpha = owner_look.alpha;
     look.set_flip(alliance ^ owner_flip);
     // Action 0, `sub_80C4484`.
