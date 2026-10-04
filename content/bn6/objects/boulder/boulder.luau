@@ -8,14 +8,14 @@
 -- it. It is one of the field's two stage objects (the field-object
 -- registry's stage slots, which it leaves when it goes). See
 -- docs/engine/field-objects.md §3.1. The behavior is BN5's too
--- (@common/boulder/boulder), made here with BN6's look.
+-- (@exelib/boulder/boulder), made here with BN6's look.
 --
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
 local absorbed_obstacle = require("../absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
-local common = require("@common/boulder/boulder")
+local common = require("@exelib/boulder/boulder")
 local debris = require("../../chips/rockcube/debris")
 local effects = require("../../lib/effects")
 

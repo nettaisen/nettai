@@ -1,13 +1,13 @@
 --!strict
 -- The TankCans' action (the original's action 0x24, `sub_80ECACA`;
 -- docs/engine/shot-chips.md §7): the shared action
--- (@common/tankcan/action) with BN6's tank cannon and shell (shell.luau).
+-- (@exelib/tankcan/action) with BN6's tank cannon and shell (shell.luau).
 -- The navi aims its tank cannon for 16 ticks, then fires a shell from the
 -- panel ahead on the 23rd, the screen shaking; it lowers the cannon on the
 -- 36th and is back to idle 4 ticks later.
 
 local attachment = require("../../objects/attachment/attachment")
-local common = require("@common/tankcan/action")
+local common = require("@exelib/tankcan/action")
 local shell = require("./shell")
 
 local tankcan = {}

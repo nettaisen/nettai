@@ -1,6 +1,6 @@
 --!strict
 -- Otenko (BN5 chip 0x0d7): a statue in front of the user that, for 600 ticks, raises the Atk+ bonus of the user's
--- next damaging chip by 1 every 5 ticks, up to 50: BN6's Otenko (@common/otenko, the dimming handler's subtype 60)
+-- next damaging chip by 1 every 5 ticks, up to 50: BN6's Otenko (@exelib/otenko, the dimming handler's subtype 60)
 -- but for its lifetime (600, BN6's 1800: 0x080DBBC2), its place in the field-object registry (class 1, one a side:
 -- 0x080DBD8A), how it leaves (with a puff with HP left, else bubbles, silent; BN5 neither absorbs nor blinks
 -- obstacles out: 0x080DBD1A), its blessing (with each side keeping its own gauge, the side's special bonus:
@@ -8,7 +8,7 @@
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local collision = require("../../rules/collision")
-local common = require("@common/otenko/otenko")
+local common = require("@exelib/otenko/otenko")
 local effects = require("@bn6/lib/effects")
 
 -- Its sheet, 0c-49 (BN6's JP ROMs' Otenko, the US ROMs' placeholder; BN5's pack doesn't name it yet).

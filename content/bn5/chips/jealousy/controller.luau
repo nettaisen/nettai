@@ -1,6 +1,6 @@
 --!strict
 -- Jealousy's dimming controller (BN5's effect object #0x36, 0x080E443C; BN6's code, `sub_80E440C`, which no BN6 chip
--- uses): the usual dimming phases (@common/dimming), with an effect (0x080E4480) that counts the chips the other
+-- uses): the usual dimming phases (@exelib/dimming), with an effect (0x080E4480) that counts the chips the other
 -- side holds (the most any of its actors holds: a player's hand from its cursor, another actor's own count, 0x080E4562)
 -- and, once for each, every 10 ticks, hits every panel the other side stands on (0x080E45CC: region 1, the heavy
 -- spark, hit modifier 3, the chip's damage); with none held, or once no panel had one of them, it waits 90 ticks. In
@@ -8,8 +8,8 @@
 -- and then empties that side's custom gauge (0x080E4628).
 
 local collision = require("../../rules/collision")
-local dimming_chips = require("@common/dimming")
-local regions = require("@common/regions")
+local dimming_chips = require("@exelib/dimming")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
 local controller = {}

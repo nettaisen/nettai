@@ -5,7 +5,7 @@
 local bomb = require("../../lib/bombs/bomb")
 local collision = require("../../rules/collision")
 local lockon = require("../../rules/lockon")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local throw = require("../../lib/bombs/throw")
 
 return define.chip {

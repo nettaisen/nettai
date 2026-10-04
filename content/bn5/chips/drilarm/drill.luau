@@ -1,6 +1,6 @@
 --!strict
 -- BN5's drills (attack object #0x71) and DrilArm's action (BN5's 0x4F, 0x080EF490; BN6's 0x2E): the shared drill
--- (@common/drilarm/drill, BN6's code) but for
+-- (@exelib/drilarm/drill, BN6's code) but for
 --
 -- - the action's start: no 10-tick wait outside battle flag 0x40 mode (0x080EF4B8; with it, 10 ticks and effect
 --   object 0x83 on the panel ahead, which isn't ported: never in a netbattle), so the arm and drills come at once;
@@ -12,7 +12,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local drill = require("@common/drilarm/drill")
+local drill = require("@exelib/drilarm/drill")
 local sparks = require("../../lib/sparks")
 
 local bn5_drill = {}

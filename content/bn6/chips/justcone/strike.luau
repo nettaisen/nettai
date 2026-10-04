@@ -7,10 +7,10 @@
 -- burst, the panels around it crack, two wide hits of 100 (beside it, then
 -- diagonally) that land while dimmed too, and nine puffs of dust. Then it
 -- stays, blinking, for 30 ticks (unless its panel is gone). The behavior
--- is BN5's too (@common/justcone/strike), made here with BN6's look.
+-- is BN5's too (@exelib/justcone/strike), made here with BN6's look.
 
 local collision = require("../../rules/collision")
-local common = require("@common/justcone/strike")
+local common = require("@exelib/justcone/strike")
 local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")
 

@@ -1,7 +1,7 @@
 --!strict
 -- BN5's guard (action 0x1F, 0x080ECAE6): the Guard chips (subtypes 0 to 2), the NaviCust's Shield (3) and Reflect (4)
 -- programs and the CrsShld chips (5 to 7). BN6's Reflectors' guard (`sub_80ED13E`, action 0x2B) is its nearest code
--- (@bn6/chips/rflectr/guard); BN5's differs in its counters. The navi holds up a shield (@common/rflectr/shield, BN5's
+-- (@bn6/chips/rflectr/guard); BN5's differs in its counters. The navi holds up a shield (@exelib/rflectr/shield, BN5's
 -- looks below) for the chip's ticks (its first parameter) and guards. The first hit the guard blocks from the front
 -- sends the counterattack:
 --
@@ -16,7 +16,7 @@
 
 local collision = require("../../rules/collision")
 local projectile = require("../../objects/projectile/projectile")
-local shield = require("@common/rflectr/shield")
+local shield = require("@exelib/rflectr/shield")
 local sparks = require("../sparks")
 local variants = require("../../objects/projectile/variants")
 local wave = require("./wave")

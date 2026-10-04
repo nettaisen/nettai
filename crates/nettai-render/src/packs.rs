@@ -165,7 +165,7 @@ pub fn name(c: &Content, kind: AssetKind, h: u16) -> Option<&str> {
 mod tests {
     use super::*;
     use nettai_assets::{ChipIcon, Tiles};
-    use nettai_battle::content::{RootManifest, testing};
+    use nettai_battle::content::testing;
     use nettai_content_api::keys;
 
     /// The test content with a `twin` root and pack beside it: twin's
@@ -178,8 +178,7 @@ mod tests {
         index.mugshots.insert("face".into(), 3);
         let frame = nettai_battle::content::AnimFrame { duration: 4, flags: nettai_battle::object::sprite::FRAME_LAST };
         testing::add_pack(&mut c, "twin", index, [(testing::NAVI_SPRITE, vec![vec![frame]])].into_iter().collect());
-        let manifest = RootManifest::named("twin");
-        c.scripts.add_root(manifest, Default::default());
+        c.scripts.add_game("twin", Default::default());
         c.define().unwrap_or_else(|e| panic!("{e}"));
         c
     }

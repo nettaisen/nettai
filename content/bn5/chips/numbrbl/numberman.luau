@@ -1,11 +1,11 @@
 --!strict
 -- NumbrBl's NumberMan (BN5's actor object #0x45, 0x080C2018; BN5's own: BN6's #0x45 draws the user): the navi himself,
 -- on the panel the user warped out of. He appears (a sound) and, on a solid panel, stands 21 ticks; then sets balls
--- (@common/numbrbl/ball: the chip's first parameter and three) down in front of him, 24 ticks apart, waits 31 ticks
+-- (@exelib/numbrbl/ball: the chip's first parameter and three) down in front of him, 24 ticks apart, waits 31 ticks
 -- and leaves; off a solid panel he leaves at once. Leaving, he lets his controller go on. His sprite steps while
 -- dimmed.
 
-local common_ball = require("@common/numbrbl/ball")
+local common_ball = require("@exelib/numbrbl/ball")
 local collision = require("../../rules/collision")
 local effects = require("@bn6/lib/effects")
 

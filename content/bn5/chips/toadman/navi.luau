@@ -5,7 +5,7 @@
 -- combatant in his cone ahead (a row nearer it each step; none: straight ahead), paralyzing. 30 ticks of playing, 30
 -- standing, and he leaves; the controller moves on.
 
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("@exelib/navi-chips/navi")
 local note = require("./note")
 
 export type State = {

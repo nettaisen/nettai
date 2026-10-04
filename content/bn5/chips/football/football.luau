@@ -14,8 +14,8 @@
 -- netbattle, the balls also mark their panels with 0x080E9FA4's effect object #0x83, which isn't ported.)
 
 local collision = require("../../rules/collision")
-local navi_chips = require("@common/navi-chips/navi")
-local regions = require("@common/regions")
+local navi_chips = require("@exelib/navi-chips/navi")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
 local football = {}

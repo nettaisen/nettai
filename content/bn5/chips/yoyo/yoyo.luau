@@ -1,6 +1,6 @@
 --!strict
 -- BN5's yoyo (attack object #0x52, 0x080D00A8: BN6's number, an earlier form of its code) and the YoYo chips'
--- throw (BN6's, the shared @common/yoyo/throw, with BN5's yoyo arm: the attachment table's row 0x26).
+-- throw (BN6's, the shared @exelib/yoyo/throw, with BN5's yoyo arm: the attachment table's row 0x26).
 --
 -- A yoyo rolls out a panel per 8 ticks for its panels (5 pixels a tick), spins there for its 8-tick rounds and
 -- rolls back as far as it went; on each new panel and each round its region is re-armed (YoYo's: the panel; a
@@ -13,8 +13,8 @@
 -- skipped spin tick.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
-local throw = require("@common/yoyo/throw")
+local regions = require("@exelib/regions")
+local throw = require("@exelib/yoyo/throw")
 local attachment = require("../../objects/attachment/attachment")
 
 local yoyo = {}

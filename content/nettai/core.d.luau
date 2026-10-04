@@ -1168,7 +1168,7 @@ declare battle: {
     -- `sub_8000C72`: `n` entries shuffled over `rounds` rounds of two `rng_positive` draws (entry i swapped
     -- with entry draw % (i + 1), for i from n - 1 down to 1, on the first n - 1 draws; the rest drawn and
     -- dropped: docs/engine/battle-flow.md §3.1): the new order, each place's entry by its index (from 1)
-    -- before; `@common/order` puts it into a list. An error when 2 * rounds < n - 1.
+    -- before; `@exelib/order` puts it into a list. An error when 2 * rounds < n - 1.
     -- `console_shuffle_order`: the same on a side's console's RNG1 (`sub_8000D12`).
     shuffle_order: (n: number, rounds: number) -> { number },
     console_shuffle_order: (side: number, n: number, rounds: number) -> { number },
@@ -2279,12 +2279,13 @@ export type Status = StatusDef
 -- the installed cards' limit counts) and its effects in the card's order:
 -- each a table with its `kind` and whether the card shows it as a `bug`,
 -- with the kind's own fields. What an effect does is a game's rules' (BN6's
--- patch-cards system, rules/patch-cards: `PatchCardEffect`). Its name is
--- the locales' (locales/<lang>.toml's `patch-cards`).
+-- patch-cards system, rules/patch-cards), and its type is the game's (BN6's
+-- `PatchCardEffect`, which its cards' constructors make). Its name is the
+-- locales' (locales/<lang>.toml's `patch-cards`).
 export type PatchCardSpec = {
     id: string,
     mb: number,
-    effects: { PatchCardEffect },
+    effects: { any },
 }
 export type PatchCard = PatchCardSpec
 

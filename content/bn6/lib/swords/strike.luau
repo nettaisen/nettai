@@ -7,7 +7,7 @@
 
 local collision = require("../../rules/collision")
 local parts = require("./parts")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local strike = {}
 

@@ -5,7 +5,7 @@
 -- 16 ticks apart (0x080D9E6C), and goes. Its sound every 16 ticks; it runs while dimmed.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
 export type State = {
