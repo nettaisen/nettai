@@ -55,7 +55,7 @@ local function changes_form(side: number): boolean
 end
 
 return define.system {
-    id = "bn6:beast",
+    id = "beast",
     state = {
         check_delay = "u8",
         rush_phase = "u8",

@@ -15,14 +15,14 @@ local beam = {}
 
 -- The looks (`dword_80E5C28`): GunDelSol's, and GunDelEX's wider one.
 beam.sprites = {
-    plain = asset.sprite("bn6:sun-beam"),
-    wide = asset.sprite("bn6:sun-beam-ex"),
+    plain = asset.sprite("sun-beam"),
+    wide = asset.sprite("sun-beam-ex"),
 }
 
 -- `sub_80E5D3E`: end the beam (its next update frees it).
 beam.stop = common.stop
 
-beam.kind = common.make_kind("bn6:gundels/beam", asset.sound("bn6:sun-beam"))
+beam.kind = common.make_kind("gundels/beam", asset.sound("sun-beam"))
 
 -- `sub_80E5D12`: a beam of `look` at `offset` from `owner`, stored in
 -- `which`; shown while dimmed too when `while_dimmed`.

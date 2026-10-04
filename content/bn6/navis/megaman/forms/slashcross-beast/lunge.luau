@@ -30,10 +30,10 @@ local SWORD, HIT_PARAM = 0x80, 0x9E
 -- navi's row otherwise.
 local SAME_ROW, OWN_ROW = lockon.thunder, lockon.beast_lunge
 
-local SOUND = asset.sound("bn6:flame-hook-fire")
+local SOUND = asset.sound("flame-hook-fire")
 
 -- The slash's effect and its height, 16.16.
-local SLASH_EFFECT = define.effect { sprite = asset.sprite("bn6:cross-slash"), anim = 0, palette = 0 }
+local SLASH_EFFECT = define.effect { sprite = asset.sprite("cross-slash"), anim = 0, palette = 0 }
 local SLASH_Z = 0x10_0000
 
 -- `sub_8011D9C`: 50 damage and 30 more per point of buster Attack (up to
@@ -169,7 +169,7 @@ local function recover(me: Object, s: State)
 end
 
 lunge.action = define.action {
-    id = "bn6:slashcross-beast/lunge/action",
+    id = "slashcross-beast/lunge/action",
     state = { timer = "u16" },
     -- `sub_80EEE60`.
     update = function(me: Object, s: State)
@@ -191,7 +191,7 @@ lunge.action = define.action {
 }
 
 lunge.weapon = define.weapon {
-    id = "bn6:slashcross-beast/lunge",
+    id = "slashcross-beast/lunge",
     -- The charge table's row 0x1A, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 50, 50, 50, 50, 50, 40, 40, 40 },

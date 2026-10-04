@@ -31,8 +31,8 @@ local ball = {}
 -- By the variant: its sprite, its height and its radius.
 type Look = { sprite: SpriteAsset, z: number, radius: number }
 local LOOKS: { [number]: Look } = {
-    [0] = { sprite = asset.sprite("bn5:knightman-ball"), z = 0x10_0000, radius = 0x1E },
-    [1] = { sprite = asset.sprite("bn5:sprite-0c-05"), z = 0, radius = 0x23 },
+    [0] = { sprite = asset.sprite("knightman-ball"), z = 0x10_0000, radius = 0x1E },
+    [1] = { sprite = asset.sprite("sprite-0c-05"), z = 0, radius = 0x23 },
 }
 
 local function look_of(me: Object): Look
@@ -125,7 +125,7 @@ local function init(me: Object)
 end
 
 ball.kind = define.kind {
-    id = "bn5:knightmn/ball",
+    id = "knightmn/ball",
     pool = "attack",
     state = { speed = "u8", turns = "u8", status = "status", variant = "u8", radius = "u32" },
     -- 0x080C7568.

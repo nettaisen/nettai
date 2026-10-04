@@ -5,43 +5,43 @@
 -- bubbling ones survive a counter hit, as BN6's do.
 
 local PLAIN: { string } = {
-    "test:paralyze-90", "test:paralyze-120", "test:paralyze-150", "test:paralyze-4", "test:paralyze-300", "test:paralyze-600",
-    "test:confuse-480-past-paralyze", "test:confuse-720-past-paralyze", "test:confuse-960-past-paralyze",
-    "test:confuse-4-past-paralyze", "test:confuse-300-past-paralyze", "test:confuse-600-past-paralyze",
-    "test:blind-480-past-paralyze", "test:blind-720-past-paralyze", "test:blind-1200-past-paralyze",
-    "test:blind-4-past-paralyze", "test:confuse-480", "test:confuse-720", "test:confuse-960", "test:confuse-4",
-    "test:confuse-300", "test:confuse-600", "test:blind-480-past-confuse", "test:blind-720-past-confuse",
-    "test:blind-1200-past-confuse", "test:blind-4-past-confuse", "test:blind-300-past-confuse",
-    "test:blind-600-past-confuse", "test:immobilize-2-past-confuse", "test:immobilize-60-past-confuse",
-    "test:immobilize-120-past-confuse", "test:immobilize-4-past-confuse", "test:blind-480", "test:blind-720",
-    "test:blind-1200", "test:blind-4", "test:blind-300", "test:blind-600", "test:immobilize-2-past-blind",
-    "test:immobilize-60-past-blind", "test:immobilize-120-past-blind", "test:immobilize-4-past-blind",
-    "test:immobilize-300-past-blind", "test:immobilize-600-past-blind", "test:immobilize-30-past-blind",
-    "test:freeze-150-past-blind", "test:freeze-150-2-past-blind", "test:freeze-150-3-past-blind", "test:immobilize-2",
-    "test:immobilize-60", "test:immobilize-120", "test:immobilize-4", "test:immobilize-300", "test:immobilize-600",
-    "test:immobilize-30", "test:freeze-150-past-immobilize", "test:freeze-150-2-past-immobilize",
-    "test:freeze-150-3-past-immobilize", "test:freeze-4-past-immobilize", "test:freeze-300-past-immobilize",
-    "test:freeze-600-past-immobilize", "test:bubble-150-past-immobilize", "test:bubble-150-2-past-immobilize",
-    "test:bubble-150-3-past-immobilize", "test:bubble-150-past-freeze", "test:bubble-150-2-past-freeze",
-    "test:bubble-150-3-past-freeze", "test:bubble-4-past-freeze", "test:bubble-300-past-freeze",
-    "test:bubble-600-past-freeze", "test:after-table-1-past-freeze", "test:after-table-2-past-freeze", "test:after-table-3-past-freeze",
-    "test:after-table-4-past-freeze", "test:after-table-1-past-bubble", "test:after-table-2-past-bubble", "test:after-table-3-past-bubble",
-    "test:after-table-4-past-bubble", "test:after-table-5-past-bubble", "test:after-table-6-past-bubble", "test:after-table-7-past-bubble", "test:after-table-8-past-bubble",
-    "test:after-table-9-past-bubble", "test:after-table-10-past-bubble",
+    "paralyze-90", "paralyze-120", "paralyze-150", "paralyze-4", "paralyze-300", "paralyze-600",
+    "confuse-480-past-paralyze", "confuse-720-past-paralyze", "confuse-960-past-paralyze",
+    "confuse-4-past-paralyze", "confuse-300-past-paralyze", "confuse-600-past-paralyze",
+    "blind-480-past-paralyze", "blind-720-past-paralyze", "blind-1200-past-paralyze",
+    "blind-4-past-paralyze", "confuse-480", "confuse-720", "confuse-960", "confuse-4",
+    "confuse-300", "confuse-600", "blind-480-past-confuse", "blind-720-past-confuse",
+    "blind-1200-past-confuse", "blind-4-past-confuse", "blind-300-past-confuse",
+    "blind-600-past-confuse", "immobilize-2-past-confuse", "immobilize-60-past-confuse",
+    "immobilize-120-past-confuse", "immobilize-4-past-confuse", "blind-480", "blind-720",
+    "blind-1200", "blind-4", "blind-300", "blind-600", "immobilize-2-past-blind",
+    "immobilize-60-past-blind", "immobilize-120-past-blind", "immobilize-4-past-blind",
+    "immobilize-300-past-blind", "immobilize-600-past-blind", "immobilize-30-past-blind",
+    "freeze-150-past-blind", "freeze-150-2-past-blind", "freeze-150-3-past-blind", "immobilize-2",
+    "immobilize-60", "immobilize-120", "immobilize-4", "immobilize-300", "immobilize-600",
+    "immobilize-30", "freeze-150-past-immobilize", "freeze-150-2-past-immobilize",
+    "freeze-150-3-past-immobilize", "freeze-4-past-immobilize", "freeze-300-past-immobilize",
+    "freeze-600-past-immobilize", "bubble-150-past-immobilize", "bubble-150-2-past-immobilize",
+    "bubble-150-3-past-immobilize", "bubble-150-past-freeze", "bubble-150-2-past-freeze",
+    "bubble-150-3-past-freeze", "bubble-4-past-freeze", "bubble-300-past-freeze",
+    "bubble-600-past-freeze", "after-table-1-past-freeze", "after-table-2-past-freeze", "after-table-3-past-freeze",
+    "after-table-4-past-freeze", "after-table-1-past-bubble", "after-table-2-past-bubble", "after-table-3-past-bubble",
+    "after-table-4-past-bubble", "after-table-5-past-bubble", "after-table-6-past-bubble", "after-table-7-past-bubble", "after-table-8-past-bubble",
+    "after-table-9-past-bubble", "after-table-10-past-bubble",
 }
 local FREEZING: { string } = {
-    "test:freeze-150", "test:freeze-150-2", "test:freeze-150-3", "test:freeze-4", "test:freeze-300", "test:freeze-600",
+    "freeze-150", "freeze-150-2", "freeze-150-3", "freeze-4", "freeze-300", "freeze-600",
 }
 local BUBBLING: { string } = {
-    "test:bubble-150", "test:bubble-150-2", "test:bubble-150-3", "test:bubble-4", "test:bubble-300", "test:bubble-600",
+    "bubble-150", "bubble-150-2", "bubble-150-3", "bubble-4", "bubble-300", "bubble-600",
 }
 
 local status: { [string]: Status } = {}
 
 local function define_all(keys: { string }, cancels_flinch: boolean, survives_counter: boolean)
     for _, key in keys do
-        -- (By the id's own part: `paralyze_150` for `test:paralyze-150`.)
-        local name = string.gsub(string.sub(key, #"test:" + 1), "-", "_")
+        -- (By the id: `paralyze_150` for `paralyze-150`.)
+        local name = string.gsub(key, "-", "_")
         status[name] = define.status {
             id = key,
             requests = 0,

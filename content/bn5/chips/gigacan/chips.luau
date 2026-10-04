@@ -14,7 +14,7 @@ local variants = require("../../objects/projectile/variants")
 -- firing BN5's GigaCan shot (objects/projectile: a blast, no burst), the cannon and the navi leaving
 -- afterimages as it charges (a third, Hub Style's shade, in Hub Style: lib/cannon).
 local gigacan1 = define.chip {
-    id = "bn5:gigacan1",
+    id = "gigacan1",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -30,11 +30,11 @@ local gigacan1 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 0, sequence = { recipe_attck_10, recipe_cannon, recipe_cannon }, per_player_gauges_only = true },
+        { order = 0, sequence = { recipe_attck_10, recipe_cannon, recipe_cannon }, operation_battle_only = true },
         { order = 36, code_run = { chip = recipe_cannon, count = 3 } },
     },
     action = shooter.action {
-        id = "bn5:gigacan1/action",
+        id = "gigacan1/action",
         arm = shooter.arms.cannon,
         shot = variants.gigacan,
         afterimages = true,
@@ -46,7 +46,7 @@ local gigacan1 = define.chip {
 -- firing BN5's GigaCan shot (objects/projectile: a blast, no burst), the cannon and the navi leaving
 -- afterimages as it charges (a third, Hub Style's shade, in Hub Style: lib/cannon).
 local gigacan2 = define.chip {
-    id = "bn5:gigacan2",
+    id = "gigacan2",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -62,11 +62,11 @@ local gigacan2 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 1, sequence = { recipe_attck_10, recipe_hicannon, recipe_hicannon }, per_player_gauges_only = true },
+        { order = 1, sequence = { recipe_attck_10, recipe_hicannon, recipe_hicannon }, operation_battle_only = true },
         { order = 37, code_run = { chip = recipe_hicannon, count = 3 } },
     },
     action = shooter.action {
-        id = "bn5:gigacan2/action",
+        id = "gigacan2/action",
         arm = shooter.arms.hicannon,
         shot = variants.gigacan,
         afterimages = true,
@@ -78,7 +78,7 @@ local gigacan2 = define.chip {
 -- firing BN5's GigaCan shot (objects/projectile: a blast, no burst), the cannon and the navi leaving
 -- afterimages as it charges (a third, Hub Style's shade, in Hub Style: lib/cannon).
 local gigacan3 = define.chip {
-    id = "bn5:gigacan3",
+    id = "gigacan3",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -94,11 +94,11 @@ local gigacan3 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 2, sequence = { recipe_attck_10, recipe_m_cannon, recipe_m_cannon }, per_player_gauges_only = true },
+        { order = 2, sequence = { recipe_attck_10, recipe_m_cannon, recipe_m_cannon }, operation_battle_only = true },
         { order = 38, code_run = { chip = recipe_m_cannon, count = 3 } },
     },
     action = shooter.action {
-        id = "bn5:gigacan3/action",
+        id = "gigacan3/action",
         arm = shooter.arms.m_cannon,
         shot = variants.gigacan,
         afterimages = true,

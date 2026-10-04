@@ -33,10 +33,10 @@ local OFF_FIELD_X = 0xDC_0000
 -- How high the dash's first hit rides, 16.16.
 local HIT_Z = 0x18_0000
 
-local SOUND_DASH, SOUND_RUMBLE = asset.sound("bn6:ground-beast-dash"), asset.sound("bn6:ground-beast-dash-2")
+local SOUND_DASH, SOUND_RUMBLE = asset.sound("ground-beast-dash"), asset.sound("ground-beast-dash-2")
 
 -- The dust it lands in, 16.16 up.
-local LANDING_DUST = define.effect { sprite = asset.sprite("bn6:puff"), anim = 1, palette = 0 }
+local LANDING_DUST = define.effect { sprite = asset.sprite("puff"), anim = 1, palette = 0 }
 local LANDING_Z = 0x1E_0000
 
 -- `sub_8011D54`: 90 damage and 20 more per point of buster Attack (up to
@@ -146,7 +146,7 @@ local function land(me: Object, s: State)
 end
 
 dash_weapon.action = define.action {
-    id = "bn6:groundcross-beast/dash/action",
+    id = "groundcross-beast/dash/action",
     state = { timer = "u16" },
     -- `sub_80EC1F0`.
     update = function(me: Object, s: State)
@@ -164,7 +164,7 @@ dash_weapon.action = define.action {
 }
 
 dash_weapon.weapon = define.weapon {
-    id = "bn6:groundcross-beast/dash",
+    id = "groundcross-beast/dash",
     -- The charge table's row 0x17; Charge 5 reads on into row 0x18's first
     -- entry, as the original's table does.
     charge_ticks = { 50, 50, 50, 50, 50, 60 },

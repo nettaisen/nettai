@@ -7,7 +7,7 @@ local navi = require("./navi")
 -- KnightMn (BN5 chip 0x0fe): KnightMan cuts in and swings his wrecking ball around himself, confusing what it hits
 -- (./navi).
 local knightmn = define.chip {
-    id = "bn5:knightmn",
+    id = "knightmn",
     codes = { "K" },
     element = "wood",
     family = "break",
@@ -28,14 +28,14 @@ local knightmn = define.chip {
 -- (../knightmn/navi); its damage by how fast its user deleted KnightMan SP (rules/sp-chips: formula 12, its table's row
 -- 11).
 local knigtmn_sp = define.chip {
-    id = "bn5:knigtmn-sp",
+    id = "knigtmn-sp",
     codes = { "K" },
     element = "null",
     family = "break",
     class = "mega",
     rarity = 3,
     mb = 90,
-    damage = { formula = "sp_navi", slot = "sp/knightmn", by_time = { 320, 310, 300, 290, 280, 270, 260, 250, 240, 230, 220 }, per_player_gauges = 300 },
+    damage = { formula = "sp_navi", slot = "sp/knightmn", by_time = { 320, 310, 300, 290, 280, 270, 260, 250, 240, 230, 220 }, operation_battle = 300 },
     hit_param = 178,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
@@ -48,14 +48,14 @@ local knigtmn_sp = define.chip {
 -- KnigtMnDS (BN5 chip 0x100): KnightMan, dark, cuts in and swings his wrecking ball around himself, confusing what it
 -- hits (../knightmn/navi); its damage by its user's side's statistic 3 (formula 34, its table's row 11).
 local knigtmn_ds = define.chip {
-    id = "bn5:knigtmn-ds",
+    id = "knigtmn-ds",
     codes = { "K" },
     element = "null",
     family = "break",
     class = "mega",
     rarity = 3,
     mb = 90,
-    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 220, 230, 240, 250, 260, 270, 280, 290, 300, 310, 320 }, per_player_gauges = 250 },
+    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 220, 230, 240, 250, 260, 270, 280, 290, 300, 310, 320 }, operation_battle = 250 },
     hit_param = 178,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },

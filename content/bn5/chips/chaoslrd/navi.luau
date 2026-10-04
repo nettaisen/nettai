@@ -25,13 +25,13 @@ export type State = {
 
 local chaoslrd = {}
 
-local SPRITE = asset.sprite("bn5:bass")
-local GLOW = asset.sprite("bn5:chaos-charge-glow")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_GATHER = asset.sound("bn5:trap-vanish")
-local SOUND_SHAPE = asset.sound("bn5:point-rise")
-local SOUND_RAISE = asset.sound("bn5:chaos-lord")
-local PUFF = define.effect { sprite = asset.sprite("bn5:puff"), anim = 0, palette = 0 }
+local SPRITE = asset.sprite("bass")
+local GLOW = asset.sprite("chaos-charge-glow")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_GATHER = asset.sound("trap-vanish")
+local SOUND_SHAPE = asset.sound("point-rise")
+local SOUND_RAISE = asset.sound("chaos-lord")
+local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
 -- His cape (0x080C38B6's word 0x10011308: a form overlay of his sprite, animations + 0x10, stepping while dimmed).
 local CAPE: FormOverlaySpec = { sprite = SPRITE, stepping = "while_dimmed", anim_offset = 0x10 }
 -- The navi chip controller calls his spawner (0x080C327E) through r3, which his position's Z takes; his init keeps
@@ -266,7 +266,7 @@ local function leave(me: Object)
 end
 
 chaoslrd.kind = define.kind {
-    id = "bn5:chaoslrd/navi",
+    id = "chaoslrd/navi",
     pool = "actor",
     state = { controller = "object", red = "u8", green = "u8", blue = "u8" },
     -- 0x080C2EB8.

@@ -19,9 +19,9 @@ export type State = {
     hit_at: number,
 }
 
-local SPRITE = asset.sprite("bn5:pulsar")
-local SOUND, BURST_SOUND = asset.sound("bn5:pulsar"), asset.sound("bn5:elec-pulse")
-local BURST = define.effect { sprite = asset.sprite("bn5:pulsar-burst"), anim = 0, palette = 0 }
+local SPRITE = asset.sprite("pulsar")
+local SOUND, BURST_SOUND = asset.sound("pulsar"), asset.sound("elec-pulse")
+local BURST = define.effect { sprite = asset.sprite("pulsar-burst"), anim = 0, palette = 0 }
 local HEIGHT, SPEED = 0x18_0000, 0x8_0000
 -- What it may touch and go on bursting: bodies.
 local BODIES = 0x03800000
@@ -137,7 +137,7 @@ local function init(me: Object)
 end
 
 pulsar.kind = define.kind {
-    id = "bn5:pulsar/pulse",
+    id = "pulsar/pulse",
     pool = "attack",
     state = { hit_at = "u32" },
     -- 0x080D32D0: by its lifecycle, then a sprite step.
@@ -173,7 +173,7 @@ end
 
 -- The Pulsars' action.
 pulsar.action = armshot.action {
-    id = "bn5:pulsar/action",
+    id = "pulsar/action",
     fire = function(me: Object, x: number, y: number, damage: number)
         spawn(me, x, y, me.attack_element, damage)
     end,

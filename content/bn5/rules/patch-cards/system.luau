@@ -161,7 +161,7 @@ local function apply(side: number)
 end
 
 return define.system {
-    id = "bn5:patch-cards",
+    id = "patch-cards",
     setup = { cyberworld = "bool" },
     hooks = { round_setup = apply },
 }

@@ -19,7 +19,7 @@ local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local sparks = require("../../lib/sparks")
 local trajectory = require("../../lib/trajectory")
 
-local SOUND_HIT_BOMB = asset.sound("bn5:hit-bomb-1")
+local SOUND_HIT_BOMB = asset.sound("hit-bomb-1")
 
 -- 0x080CE594: leaving. Hidden at once; a chip's removal (BN5 has no absorbing and no blinking out: only the
 -- removal) leaves a puff, and then, as when broken, an explosion if its HP is 0, with the bomb's sound unless a
@@ -50,16 +50,16 @@ local function destroyed(me: Object)
     black_bomb.finish(me)
 end
 
-local KIND = black_bomb.make_kind("bn5:blkbomb/bomb", {
+local KIND = black_bomb.make_kind("blkbomb/bomb", {
     destroyed = destroyed,
     identity = define.identity {
-        id = "bn5:blkbomb",
+        id = "blkbomb",
         class = "field_object",
         version = 2,
         ai_index = 1,
-        look = { sprite = asset.sprite("bn5:black-bomb"), anim = 0, palette = 0, shadow = true },
+        look = { sprite = asset.sprite("black-bomb"), anim = 0, palette = 0, shadow = true },
     },
-    sprite = asset.sprite("bn5:black-bomb"),
+    sprite = asset.sprite("black-bomb"),
     spark = sparks.breaking,
     is = collision.neutral_object,
     target = collision.everything,
@@ -67,8 +67,8 @@ local KIND = black_bomb.make_kind("bn5:blkbomb/bomb", {
     burst_target = collision.hits_navis,
     -- 0x08017984: any hit from the other side pushes it.
     push = "any_hit",
-    land_sound = asset.sound("bn5:land"),
-    burst_sound = asset.sound("bn5:burst"),
+    land_sound = asset.sound("land"),
+    burst_sound = asset.sound("burst"),
     burst_effect = effects.explosion,
     bubble = rising_bubble.kind,
     bursts = panel_bursts.kind,
@@ -76,10 +76,10 @@ local KIND = black_bomb.make_kind("bn5:blkbomb/bomb", {
 })
 
 -- What the navi holds while throwing one: the bomb's sprite, palette 4 (BN5's attachment row 0x1A).
-local HELD = attachment.look { sprite = asset.sprite("bn5:bomb"), palette = 4 }
+local HELD = attachment.look { sprite = asset.sprite("bomb"), palette = 4 }
 
 return define.chip {
-    id = "bn5:blkbomb",
+    id = "blkbomb",
     codes = { "L", "R", "Z" },
     element = "fire",
     family = "fire",

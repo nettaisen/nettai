@@ -38,9 +38,9 @@ export type State = {
     controller: Object?,
 }
 
-local SPRITE = asset.sprite("bn6:judgeman")
-local SOUND_APPEAR = asset.sound("bn6:appear")
-local SOUND_LASH = asset.sound("bn6:erase-man-2")
+local SPRITE = asset.sprite("judgeman")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_LASH = asset.sound("erase-man-2")
 
 -- The controller calls his spawner through r3, which his position takes:
 -- its address with the Thumb bit, whose fraction his Z keeps.
@@ -243,7 +243,7 @@ local ACTIONS =
     { [APPEAR] = appear, [STAND] = stand, [RAISE] = raise, [LASH] = lash, [BOOKS] = books, [WAIT_BOOKS] = wait_books, [LEAVE] = leave }
 
 judgeman.kind = define.kind {
-    id = "bn6:judgeman/navi",
+    id = "judgeman/navi",
     pool = "actor",
     state = {
         whip = "object",

@@ -32,7 +32,7 @@ local PILLARS: ElementPillar = { lightning = true, ticks = 0x5A, after = 9 }
 local REGION = regions.deep_fan
 local TICKS = 0x5A
 
-local CRACKLE = asset.sound("bn6:beast-over")
+local CRACKLE = asset.sound("beast-over")
 
 -- `sub_8011C00`: 40 damage and 30 more per point of buster Attack (up to
 -- 5), Elec.
@@ -81,7 +81,7 @@ local function strike(me: Object, s: State)
 end
 
 elec_beast_charge.action = define.action {
-    id = "bn6:eleccross-beast/charge/action",
+    id = "eleccross-beast/charge/action",
     state = { timer = "u16" },
     -- `sub_80EDF5C`.
     update = function(me: Object, s: State)
@@ -97,7 +97,7 @@ elec_beast_charge.action = define.action {
 }
 
 elec_beast_charge.weapon = define.weapon {
-    id = "bn6:eleccross-beast/charge",
+    id = "eleccross-beast/charge",
     -- The charge table's row 9, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 110, 110, 110, 110, 110, 60, 60, 60 },

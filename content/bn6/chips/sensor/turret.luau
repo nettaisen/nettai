@@ -34,23 +34,23 @@ export type State = {
     restart: boolean,
 }
 
-local SPRITE = asset.sprite("bn6:sensor")
+local SPRITE = asset.sprite("sensor")
 -- Its identity: a field object, with the look something that takes its
 -- place shows (DustMan's junk).
 local IDENTITY = define.identity {
-    id = "bn6:sensor",
+    id = "sensor",
     class = "field_object",
     version = 5,
     ai_index = 1,
-    look = { sprite = asset.sprite("bn6:sensor"), anim = 0, palette = 0, shadow = true },
+    look = { sprite = asset.sprite("sensor"), anim = 0, palette = 0, shadow = true },
 }
 local LIFETIME = 0x2D0
 -- Its collision: another body of its side, reached by the other side.
 local HIT_MOD = 3
 -- How it looks absorbed (the original's obstacle kind's sprite: its own).
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
-local APPEAR_SOUND, BREAK_SOUND = asset.sound("bn6:appear"), asset.sound("bn6:hit-bomb-1")
-local FIRE_SOUND = asset.sound("bn6:beast-over")
+local APPEAR_SOUND, BREAK_SOUND = asset.sound("appear"), asset.sound("hit-bomb-1")
+local FIRE_SOUND = asset.sound("beast-over")
 -- The aim by row (`dword_80DA104`), the aim's row step (`dword_80DA3E8`).
 local AIM_BY_ROW: { [number]: number } = { [0] = 0, [1] = 2, [2] = 1, [3] = 0 }
 local ROW_STEP: { [number]: number } = { [0] = -1, [1] = 0, [2] = 1 }
@@ -320,7 +320,7 @@ local function init(me: Object)
 end
 
 turret.kind = define.kind {
-    id = "bn6:sensor/turret",
+    id = "sensor/turret",
     pool = "attack",
     state = {
         palette = "u8",

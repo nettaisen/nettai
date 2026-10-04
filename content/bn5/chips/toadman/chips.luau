@@ -7,7 +7,7 @@ local navi = require("./navi")
 -- ToadMan (BN5 chip 0x101): ToadMan cuts in and plays a chain of paralyzing notes toward the nearest enemy ahead
 -- (./navi).
 local toadman = define.chip {
-    id = "bn5:toadman",
+    id = "toadman",
     codes = { "T" },
     element = "elec",
     family = "elec",
@@ -28,14 +28,14 @@ local toadman = define.chip {
 -- (../toadman/navi); its damage by how fast its user deleted ToadMan SP (rules/sp-chips: formula 13, its table's row
 -- 12).
 local toadman_sp = define.chip {
-    id = "bn5:toadman-sp",
+    id = "toadman-sp",
     codes = { "T" },
     element = "elec",
     family = "elec",
     class = "mega",
     rarity = 3,
     mb = 69,
-    damage = { formula = "sp_navi", slot = "sp/toadman", by_time = { 220, 210, 200, 190, 180, 170, 160, 150, 140, 130, 120 }, per_player_gauges = 140 },
+    damage = { formula = "sp_navi", slot = "sp/toadman", by_time = { 220, 210, 200, 190, 180, 170, 160, 150, 140, 130, 120 }, operation_battle = 140 },
     hit_param = 148,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
@@ -48,14 +48,14 @@ local toadman_sp = define.chip {
 -- ToadManDS (BN5 chip 0x103): ToadMan, dark, cuts in and plays a chain of paralyzing notes toward the nearest enemy
 -- ahead (../toadman/navi); its damage by its user's side's statistic 3 (formula 35, its table's row 12).
 local toadman_ds = define.chip {
-    id = "bn5:toadman-ds",
+    id = "toadman-ds",
     codes = { "T" },
     element = "elec",
     family = "elec",
     class = "mega",
     rarity = 3,
     mb = 69,
-    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220 }, per_player_gauges = 120 },
+    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220 }, operation_battle = 120 },
     hit_param = 148,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },

@@ -7,7 +7,7 @@ local pulsar = require("./pulsar")
 -- Pulsar1 (BN5 chip 0x015): a pulse along the row that bursts around the first body it hits, paralyzing (BN5's
 -- Pulsar, chips/pulsar/pulsar: action 0x52).
 local pulsar1 = define.chip {
-    id = "bn5:pulsar1",
+    id = "pulsar1",
     codes = { "F", "P", "T" },
     element = "null",
     family = "null",
@@ -25,7 +25,7 @@ local pulsar1 = define.chip {
 -- Pulsar2 (BN5 chip 0x016): a pulse along the row that bursts around the first body it hits, paralyzing (BN5's
 -- Pulsar, chips/pulsar/pulsar: action 0x52).
 local pulsar2 = define.chip {
-    id = "bn5:pulsar2",
+    id = "pulsar2",
     codes = { "E", "G", "M" },
     element = "null",
     family = "null",
@@ -43,7 +43,7 @@ local pulsar2 = define.chip {
 -- Pulsar3 (BN5 chip 0x017): a pulse along the row that bursts around the first body it hits, paralyzing (BN5's
 -- Pulsar, chips/pulsar/pulsar: action 0x52).
 local pulsar3 = define.chip {
-    id = "bn5:pulsar3",
+    id = "pulsar3",
     codes = { "C", "R", "S" },
     element = "null",
     family = "null",

@@ -26,7 +26,7 @@ local RAISE, PULSE, LOWER = 0x0, 0x4, 0x8
 
 local ANIM_RAISE = 0x0A
 -- The coil the navi holds (the original's attachment row 0x2B).
-local COIL = attachment.look { sprite = asset.sprite("bn6:elec-coil"), palette = 0, attach_point = 0x0E }
+local COIL = attachment.look { sprite = asset.sprite("elec-coil"), palette = 0, attach_point = 0x0E }
 local LOWER_TICKS = 6
 
 -- The coil's animation steps (out, firing, away). Without a coil (its pool

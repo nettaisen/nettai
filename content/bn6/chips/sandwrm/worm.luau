@@ -38,8 +38,8 @@ export type State = {
     end_timer: number,
 }
 
-local SPRITE = asset.sprite("bn6:sand-worm")
-local EMERGE_SOUND, DIVE_SOUND = asset.sound("bn6:sand-worm"), asset.sound("bn6:sand-worm-2")
+local SPRITE = asset.sprite("sand-worm")
+local EMERGE_SOUND, DIVE_SOUND = asset.sound("sand-worm"), asset.sound("sand-worm-2")
 -- Where it can come out (`byte_80DEE44`, by side: required and forbidden
 -- flags): an open panel, not the other side's body or object's.
 local REQUIRE = 0x10000
@@ -241,7 +241,7 @@ local function tick(me: Object)
 end
 
 worm.kind = define.kind {
-    id = "bn6:sandwrm/worm",
+    id = "sandwrm/worm",
     pool = "attack",
     state = {
         target_x = "u8",

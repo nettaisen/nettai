@@ -15,21 +15,21 @@ local darkthnd = require("../../../../chips/darkthnd/chip")
 local souls = require("../../../../rules/souls/system")
 
 return define.form {
-    id = "bn5:magnetsoul",
+    id = "magnetsoul",
     soul = { number = 5, family = "elec" },
     change = souls.action,
     revert = souls.revert,
-    sprite = asset.sprite("bn5:magnetsoul"),
+    sprite = asset.sprite("magnetsoul"),
     element = "elec",
     buster_bonus = 0,
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         -- Routine 0x16 (0x0800F520, empty: the charged chip is the chip with the bonus), the charge table's row 0x16.
-        a_charge = charged_chips.routine("bn5:magnetsoul/a-charge", { 80, 80, 80, 80, 80, 70 }),
+        a_charge = charged_chips.routine("magnetsoul/a-charge", { 80, 80, 80, 80, 80, 70 }),
         back_special = back.weapon,
         -- Routine 0x35 (0x0800FA66): DarkThnd (chip 0xC1), the charge table's row 0x35.
-        chaos = chaos.weapon("bn5:magnetsoul/chaos", darkthnd, { 40, 60, 90, 120, 150, 70 }),
+        chaos = chaos.weapon("magnetsoul/chaos", darkthnd, { 40, 60, 90, 120, 150, 70 }),
     },
     charged_chips = { { family = "elec", damaging = false, plain = true } },
     charged_bonus = { damage = 0xFF },
@@ -37,8 +37,8 @@ return define.form {
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 5-10, the version's souls'); in its
     -- Chaos Unison look while the chaos charge is armed (0x080125F6: the palette 11 on).
     mugshot = {
-        normal = asset.mugshot("bn5:magnetsoul"),
-        variant = { normal = asset.mugshot("bn5:magnetsoul-chaos") },
+        normal = asset.mugshot("magnetsoul"),
+        variant = { normal = asset.mugshot("magnetsoul-chaos") },
     },
     buster_arm = { anim = 0 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 5 of category 0).

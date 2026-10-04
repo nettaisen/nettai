@@ -6,7 +6,7 @@ local barrier_chips = require("../../lib/barriers/controller")
 local barriers = require("../../lib/barriers/barriers")
 
 return define.chip {
-    id = "bn6:bblwrap",
+    id = "bblwrap",
     codes = { "I", "Q", "Z" },
     element = "null", family = "aqua", class = "standard",
     rarity = 2, mb = 58, damage = 0, hit_param = 0, lockout = 0,

@@ -25,7 +25,7 @@ local RAISE_TICKS, PULL_TICKS, RECOVER_TICKS = 6, 30, 10
 local HUM_EVERY = 16
 -- The pull's hit modifier: the push of bit 2 (its first row: toward the puller, over the panels).
 local PULL_MOD = 4
-local SOUND_MAGNET, SOUND_HUM = asset.sound("bn5:magnet-pull"), asset.sound("bn5:erase-man-2")
+local SOUND_MAGNET, SOUND_HUM = asset.sound("magnet-pull"), asset.sound("erase-man-2")
 
 -- 0x080EEBBC: the magnet raised; seven ticks on, its field and the pull.
 local function raise(me: Object, s: State)
@@ -94,7 +94,7 @@ local function recover(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "bn5:magnetsoul/charge/action",
+    id = "magnetsoul/charge/action",
     state = { timer = "u16", hum = "u16" },
     -- 0x080EEB9E
     update = function(me: Object, s: State)
@@ -120,7 +120,7 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "bn5:magnetsoul/charge",
+    id = "magnetsoul/charge",
     -- The charge table's row 0x15 (0x0801CB3E); Charge 5 reads on into row 0x16's first entry.
     charge_ticks = { 90, 85, 80, 75, 70, 80 },
     setup = setup,

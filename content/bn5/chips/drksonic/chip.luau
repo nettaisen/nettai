@@ -37,7 +37,7 @@ local function stun(me: Object)
 end
 
 return define.chip {
-    id = "bn5:drksonic",
+    id = "drksonic",
     codes = { "E", "*" },
     element = "null",
     family = "summon",
@@ -52,7 +52,7 @@ return define.chip {
     -- BN5's row 4; its identity the actor record 0xE1 (0x08014C94: version 2, AI index 0x21).
     dimming = bn5_instrument.hook(instrument.instrument {
         identity = define.identity {
-            id = "bn5:drksonic",
+            id = "drksonic",
             class = "field_object",
             version = 2,
             ai_index = 0x21,
@@ -62,7 +62,7 @@ return define.chip {
         play_ticks = 0x3C * 2,
         pause_ticks = 0x78,
         effect_period = 0x78,
-        tune = asset.sound("bn5:dark-sonic"),
+        tune = asset.sound("dark-sonic"),
         effect = stun,
     }),
 }

@@ -16,7 +16,7 @@ use nettai_battle::field::PanelType;
 use nettai_battle::kinds::player::Emotion;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
 
-/// A sprite's name for a problem's text (`sprite "bn6:bomb"`).
+/// A sprite's name for a problem's text (`sprite "bomb"`).
 pub fn sprite_name(c: &Content, id: SpriteId) -> String {
     match crate::packs::name(c, AssetKind::Sprite, id.0) {
         Some(name) => format!("sprite {name:?}"),
@@ -25,7 +25,7 @@ pub fn sprite_name(c: &Content, id: SpriteId) -> String {
 }
 
 /// Sprite `id`'s sheet, from its pack; `who` says who asks (`of kind
-/// "bn6:bomb"`, `(a portrait)`).
+/// "bomb"`, `(a portrait)`).
 pub fn sprite<'a>(packs: &Packs<'a>, c: &Content, id: SpriteId, who: &dyn Fn() -> String, problems: &mut Problems) -> Option<&'a SpriteSheet> {
     let sheet = packs.sprite(c, id);
     if problems.lookup(Lookup::Sprite(id)) && sheet.is_none() {

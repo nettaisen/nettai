@@ -16,9 +16,9 @@ local trajectory = require("../../lib/trajectory")
 local cactbal = {}
 
 -- The ball's look: sheet 10-30, animation 4, no shadow (0x080D1AB2, `sub_8011504`'s word 0x00041030).
-local SPRITE = asset.sprite("bn5:sprite-10-30")
+local SPRITE = asset.sprite("sprite-10-30")
 local ANIM = 4
-local THROW_SOUND, LAND_SOUND = asset.sound("bn5:sound-0f5"), asset.sound("bn5:sound-0f6")
+local THROW_SOUND, LAND_SOUND = asset.sound("sound-0f5"), asset.sound("sound-0f6")
 -- Its collision (0x04050100): an attack that hits navis, hit modifier 1.
 local HIT_MOD = 1
 -- Falling 0.25 pixels a tick faster each tick.
@@ -183,7 +183,7 @@ local function init(me: Object)
 end
 
 cactbal.ball = define.kind {
-    id = "bn5:cactbal/ball",
+    id = "cactbal/ball",
     pool = "attack",
     state = { hops = "u32", palette = "u8" },
     -- 0x080D1A88.

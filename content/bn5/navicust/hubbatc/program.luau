@@ -6,7 +6,7 @@ local barriers = require("../../lib/barriers")
 local guards = require("../../navis/megaman/weapons/guards")
 
 return define.navicust_program {
-    id = "bn5:hubbatc",
+    id = "hubbatc",
     colors = { "white" },
     shape = {
         ".......",

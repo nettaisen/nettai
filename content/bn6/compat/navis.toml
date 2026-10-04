@@ -3,15 +3,15 @@
 #
 # Navis: the navi number (NaviStats+0x29) and the navi's NameID.
 
-"bn6:megaman" = { navi = 0x00, name_id = 0x1A0 }
-"bn6:heatman" = { navi = 0x01, name_id = 0x1A1 }
-"bn6:elecman" = { navi = 0x02, name_id = 0x1A2 }
-"bn6:slashman" = { navi = 0x03, name_id = 0x1A3 }
-"bn6:eraseman" = { navi = 0x04, name_id = 0x1A4 }
-"bn6:chargeman" = { navi = 0x05, name_id = 0x1A5 }
-"bn6:spoutman" = { navi = 0x06, name_id = 0x1A6 }
-"bn6:tomahawkman" = { navi = 0x07, name_id = 0x1A7 }
-"bn6:tenguman" = { navi = 0x08, name_id = 0x1A8 }
-"bn6:groundman" = { navi = 0x09, name_id = 0x1A9 }
-"bn6:dustman" = { navi = 0x0A, name_id = 0x1AA }
-"bn6:protoman" = { navi = 0x0B, name_id = 0x1AB }
+"megaman" = { navi = 0x00, name_id = 0x1A0 }
+"heatman" = { navi = 0x01, name_id = 0x1A1 }
+"elecman" = { navi = 0x02, name_id = 0x1A2 }
+"slashman" = { navi = 0x03, name_id = 0x1A3 }
+"eraseman" = { navi = 0x04, name_id = 0x1A4 }
+"chargeman" = { navi = 0x05, name_id = 0x1A5 }
+"spoutman" = { navi = 0x06, name_id = 0x1A6 }
+"tomahawkman" = { navi = 0x07, name_id = 0x1A7 }
+"tenguman" = { navi = 0x08, name_id = 0x1A8 }
+"groundman" = { navi = 0x09, name_id = 0x1A9 }
+"dustman" = { navi = 0x0A, name_id = 0x1AA }
+"protoman" = { navi = 0x0B, name_id = 0x1AB }

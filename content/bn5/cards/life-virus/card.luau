@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local barriers = require("../../lib/barriers")
 
 return define.patch_card {
-    id = "bn5:life-virus",
+    id = "life-virus",
     mb = 55,
     effects = {
         cards.hp_percent(10),

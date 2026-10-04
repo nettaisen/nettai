@@ -17,8 +17,8 @@ export type State = {
     hits: number,
 }
 
-local SPRITE = asset.sprite("bn5:gyrosoul-tornado")
-local SOUND = asset.sound("bn5:gyrosoul-tornado")
+local SPRITE = asset.sprite("gyrosoul-tornado")
+local SOUND = asset.sound("gyrosoul-tornado")
 -- Its sprite sits this far ahead of its panel, and this far down unless it lies on the ground (16.16).
 local AHEAD, BELOW = 38 * 0x1_0000, 15 * 0x1_0000
 -- The ticks between hits, and a hit's.
@@ -97,7 +97,7 @@ local function init(me: Object)
 end
 
 tornado.kind = define.kind {
-    id = "bn5:gyrosoul/tornado",
+    id = "gyrosoul/tornado",
     pool = "attack",
     state = { grounded = "bool", hits = "u16" },
     -- 0x080C8194: its state; then its sprite steps unless the battle is dimmed.

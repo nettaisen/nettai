@@ -3,9 +3,9 @@
 -- but for her sprite, her ribbon, BN5's attachment row 6, 0c-0f, and these) with her heart (./heart), and BN5's
 -- additions:
 --
--- - RollSP's, as she appears (0x080C0794): outside the battle flag 0x40 mode, a panel changer on her panel turning
+-- - RollSP's, as she appears (0x080C0794): outside the operation battle, a panel changer on her panel turning
 --   her side's holy panels Normal (BN5's change 14: all panels, flickering, 30 ticks, no tick sound).
--- - Her target in the battle flag 0x40 mode (0x080C0CA4): the panel in front of the enemy her side tracks, from her
+-- - Her target in the operation battle (0x080C0CA4): the panel in front of the enemy her side tracks, from her
 --   side, if it holds no body or object; none otherwise.
 -- - As her heart drops (0x080C0B66): her side's navi's mood rises by 50 (0 for a level 5, which no chip has).
 --
@@ -17,6 +17,7 @@ local panel_changer = require("../../objects/panel-changer/panel_changer")
 local heart = require("./heart")
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
+local operation_battle = require("../../lib/operation_battle")
 
 -- The SP's change: its side's holy panels Normal (BN5's `byte_80E272C` row 14, 0x080E2A04).
 local HOLY_TO_NORMAL = panel_changer.change {
@@ -25,7 +26,7 @@ local HOLY_TO_NORMAL = panel_changer.change {
     flicker = true,
     ticks = 0x1E,
     sides = { [0] = { require = 0x2000, forbid = 0x8020 }, [1] = { require = 0x2020, forbid = 0x8000 } },
-    change_sound = asset.sound("bn5:panel-change"),
+    change_sound = asset.sound("panel-change"),
 }
 
 -- What her level's heart adds to the mood (0x080C0B90).
@@ -34,10 +35,10 @@ local MOOD: { [number]: number } = { [0] = 50, 50, 50, 50, 50, 0 }
 -- What a panel in front of the tracked enemy must be free of (0x080C0CE4): the bodies and objects of a side.
 local OCCUPIED = { [0] = 0x0780_0000, 0x0B80_0000 }
 
--- 0x080C0794: RollSP's change, outside the battle flag 0x40 mode.
+-- 0x080C0794: RollSP's change, outside the operation battle.
 local function appeared(me: Object)
     local s = me.state :: any
-    if s.level == 3 and not battle.per_player_gauges() then
+    if s.level == 3 and not operation_battle() then
         panel_changer.spawn(me, me.panel_x, me.panel_y, HOLY_TO_NORMAL, nil)
     end
 end
@@ -66,13 +67,13 @@ local function heart_dropped(me: Object)
 end
 
 return common.make {
-    id = "bn5:roll/navi",
-    sprite = asset.sprite("bn5:roll-heart"),
-    appear = asset.sound("bn5:appear"),
-    warp = asset.sound("bn5:roll"),
-    swish = asset.sound("bn5:roll-2"),
+    id = "roll/navi",
+    sprite = asset.sprite("roll-heart"),
+    appear = asset.sound("appear"),
+    warp = asset.sound("roll"),
+    swish = asset.sound("roll-2"),
     sparkle = heart.sparkle,
-    ribbon = attachment.look { sprite = asset.sprite("bn5:roll-ribbon"), palette = 0 },
+    ribbon = attachment.look { sprite = asset.sprite("roll-ribbon"), palette = 0 },
     ribbon_anim = 0,
     attach = attachment.attach,
     heart = heart.spawn,

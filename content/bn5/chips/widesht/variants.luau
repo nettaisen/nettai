@@ -10,7 +10,7 @@ local wave = require("@exelib/widesht/wave")
 
 local variants = {}
 
-local SPRITE = asset.sprite("bn5:wide-wave")
+local SPRITE = asset.sprite("wide-wave")
 
 -- A wave of `speed` (16.16 pixels a tick) that ends on its first hit, or goes through (`pierces`).
 local function wide(speed: number, pierces: boolean?): WaveVariant

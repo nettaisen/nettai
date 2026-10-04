@@ -26,7 +26,7 @@ local SHOTS = 3
 local SHOT_Z = 0x18_0000
 -- The rest after each shot, in ticks.
 local REST = 2
-local SOUND = asset.sound("bn5:buster-shot")
+local SOUND = asset.sound("buster-shot")
 
 -- The phases, on the attack's step.
 local START, SHOOT, RECOVER = 0x0, 0x4, 0x8
@@ -100,7 +100,7 @@ local function update(me: Object, s: State)
     end
 end
 
-buster.action = define.action { id = "bn5:computer-navi/buster", state = { timer = "u16" }, update = update }
+buster.action = define.action { id = "computer-navi/buster", state = { timer = "u16" }, update = update }
 
 -- 0x0800FB06: Attack plus one, no counter byte.
 function buster.setup(navi: Object): Action
@@ -110,7 +110,7 @@ function buster.setup(navi: Object): Action
 end
 
 buster.weapon = define.weapon {
-    id = "bn5:computer-navi/buster",
+    id = "computer-navi/buster",
     -- The charge table's row 0x3E (0x0801CCD8); Charge 5 reads on into row 0x3F's first entry.
     charge_ticks = { 60, 60, 60, 60, 60, 110 },
     setup = buster.setup,

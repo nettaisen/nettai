@@ -19,8 +19,8 @@ local lockon = require("../../rules/lockon")
 local tornado = require("./tornado")
 
 -- The fan (the original's attachment rows 0x21 and 0x22).
-local FAN = attachment.look { sprite = asset.sprite("bn6:hand-fan"), palette = 0, attach_point = 9 }
-local CHARGED_FAN = attachment.look { sprite = asset.sprite("bn6:hand-fan"), palette = 1, attach_point = 9 }
+local FAN = attachment.look { sprite = asset.sprite("hand-fan"), palette = 0, attach_point = 9 }
+local CHARGED_FAN = attachment.look { sprite = asset.sprite("hand-fan"), palette = 1, attach_point = 9 }
 
 local LOOK: TornadoBlowLook = { attachment = attachment.kind, tornado = tornado.kind }
 
@@ -33,7 +33,7 @@ local STATIC_SPREAD, BACK_SPREAD = common.STATIC_SPREAD, common.BACK_SPREAD
 
 local chips = {
     define.chip {
-        id = "bn6:tornado",
+        id = "tornado",
         codes = { "L", "R", "T" },
         element = "null", family = "wind", class = "standard",
         rarity = 2, mb = 16, damage = 20, hit_param = 4, lockout = 0,
@@ -48,7 +48,7 @@ local chips = {
         },
     },
     define.chip {
-        id = "bn6:static",
+        id = "static",
         codes = { "G", "S", "V" },
         element = "null", family = "wind", class = "standard",
         rarity = 2, mb = 30, damage = 20, hit_param = 4, lockout = 0,
@@ -71,7 +71,7 @@ local chips = {
 -- The action's third form, which no chip has (the original's subtype 3,
 -- with `byte_80CA208`'s tornadoes).
 chips.back_spread = blow {
-    id = "bn6:tornado/back-spread",
+    id = "tornado/back-spread",
     fan = CHARGED_FAN,
     fan_palette = 1,
     spread = {

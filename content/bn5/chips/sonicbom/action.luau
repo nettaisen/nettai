@@ -118,6 +118,6 @@ function action.make(id: string, hit_mod: number, pierces: boolean): Action
 end
 
 -- SonicBom's: hit modifier 3, not going through.
-action.action = action.make("bn5:sonicbom/action", 3, false)
+action.action = action.make("sonicbom/action", 3, false)
 
 return action

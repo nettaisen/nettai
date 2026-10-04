@@ -18,7 +18,7 @@ export type State = {
 
 local HIT_PARAM = 0x9E
 local SWING_ANIM, AFTER_ANIM = 16, 17
-local SOUND = asset.sound("bn5:knight-swing")
+local SOUND = asset.sound("knight-swing")
 local SWING_AT, SWING_TICKS, HOLD_TICKS = 4, 15, 15
 -- The routine's parameters (0x0120010C): 12 a tick, one turn, status 0x20, variant 1.
 local SWING: { speed: number, turns: number, status: Status?, variant: number } =
@@ -65,7 +65,7 @@ local function hold(me: Object, s: State, anim: number?, after: number?)
 end
 
 charge.action = define.action {
-    id = "bn5:knightsoul/charge/action",
+    id = "knightsoul/charge/action",
     state = { timer = "u16" },
     -- 0x080EEAF6
     update = function(me: Object, s: State)
@@ -91,7 +91,7 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "bn5:knightsoul/charge",
+    id = "knightsoul/charge",
     -- The charge table's row 0x11 (0x0801CB16); Charge 5 reads on into row 0x12's first entry.
     charge_ticks = { 100, 95, 90, 85, 60, 80 },
     setup = setup,

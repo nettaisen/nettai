@@ -17,7 +17,7 @@ local SPRITE = bn5_instrument.sprite
 local EFFECT = effects.hush(statuses.blind_4, collision.guard_breaking, collision.hits_navis)
 
 return define.chip {
-    id = "bn5:silence",
+    id = "silence",
     codes = { "C", "J", "N", "*" },
     element = "null",
     family = "summon",
@@ -32,7 +32,7 @@ return define.chip {
     -- BN5's row 3; its identity the actor record 0xE0 (0x08014C94: version 1, AI index 0x21).
     dimming = bn5_instrument.hook(instrument.instrument {
         identity = define.identity {
-            id = "bn5:silence",
+            id = "silence",
             class = "field_object",
             version = 1,
             ai_index = 0x21,
@@ -41,7 +41,7 @@ return define.chip {
         palette = 6,
         play_ticks = 0x55 * 2,
         pause_ticks = 0x3C,
-        tune = asset.sound("bn5:silence"),
+        tune = asset.sound("silence"),
         effect = EFFECT,
     }),
 }

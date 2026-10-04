@@ -7,7 +7,7 @@
 local poltergeist = require("./poltergeist")
 
 return define.chip {
-    id = "bn5:poltrgst",
+    id = "poltrgst",
     codes = { "P" },
     element = "null",
     family = "null",

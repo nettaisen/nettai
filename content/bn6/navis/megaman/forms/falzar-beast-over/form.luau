@@ -7,7 +7,7 @@ local beast_claw = require("../../weapons/beast-claw/weapon")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "bn6:falzar-beast-over",
+    id = "falzar-beast-over",
     kind = "beast_over",
     -- The target marker shows, its afterimages stay, a Null chip's A charge times by the claw,
     -- and its damaging Null chips deal double (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`,
@@ -25,11 +25,11 @@ return define.form {
     -- (No hit breaks Beast Over; the original's routine, by the form's number, would drop
     -- either to the Falzar beast.)
     breaks_to = falzar_beast,
-    sprite = asset.sprite("bn6:falzar-beast"),
+    sprite = asset.sprite("falzar-beast"),
     element = "null",
     buster_bonus = 0,
     weapons = { buster = falzar_beast_buster.weapon, alt_a_charge = beast_claw.weapon },
-    mugshot = asset.mugshot("bn6:falzar-beast-over"),
+    mugshot = asset.mugshot("falzar-beast-over"),
     -- What its status reset gives the navi (`sub_8014536`): untouchable, with AirShoe and FloatShoe (one
     -- literal, 0x08000030), so no hit reaches it.
     status_reset = { "untouchable", "air_shoes", "float_shoes", "floating_body", "target_marker", "berserk" },
@@ -50,7 +50,7 @@ return define.form {
         aura_anim = 13,
         ice = "medium",
         -- The beast's head, whose palette follows the mood.
-        parts = { beast_head = { sprite = asset.sprite("bn6:beast-head") } },
+        parts = { beast_head = { sprite = asset.sprite("beast-head") } },
         attach_points = {
             { 4, 16 },
             { 4, 24 },

@@ -18,10 +18,10 @@ export type State = {
 
 local rocket = {}
 
-local SPRITE = asset.sprite("bn5:omega-rocket")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_LAUNCH = asset.sound("bn5:set-down")
-local SOUND_BLAST = asset.sound("bn5:burst")
+local SPRITE = asset.sprite("omega-rocket")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_LAUNCH = asset.sound("set-down")
+local SOUND_BLAST = asset.sound("burst")
 local SPEED = 0x4_0000
 -- The screen's edge: past 155 pixels either side.
 local EDGE = 0x9B
@@ -187,7 +187,7 @@ local function init(me: Object)
 end
 
 rocket.kind = define.kind {
-    id = "bn5:omegarkt/rocket",
+    id = "omegarkt/rocket",
     pool = "attack",
     state = { controller = "object" },
     -- 0x080DD4CC.
