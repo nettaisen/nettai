@@ -1154,6 +1154,35 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_sacrifice(side).map_err(api_error))
     });
+    lib_fn!(lua, t, "folder", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let chips = with(|api, _| api.custom_folder(side).map_err(api_error))?;
+        let list = lua.create_table()?;
+        for (i, chip) in chips.into_iter().enumerate() {
+            let v = match chip {
+                Some(_) => bound(|b| chip_value(b, chip))?,
+                None => LuaValue::Boolean(false),
+            };
+            list.raw_set(i + 1, v)?;
+        }
+        Ok(list)
+    });
+    lib_fn!(lua, t, "swap_folder", |_, (side, a, b): (LuaValue, LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let place = |v: &LuaValue, what: &str| -> mlua::Result<u8> {
+            let n = int(v, what)?;
+            if !(1..=30).contains(&n) {
+                return Err(mlua::Error::runtime(format!("custom.swap_folder: {what} is a place of the folder, 1 to 30, not {n}")));
+            }
+            Ok((n - 1) as u8)
+        };
+        let (a, b) = (place(&a, "a")?, place(&b, "b")?);
+        with(|api, _| api.custom_swap_folder(side, a, b).map_err(api_error))
+    });
+    lib_fn!(lua, t, "hand_size", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_hand_size(side).map_err(api_error))
+    });
     lib_fn!(lua, t, "redeal", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_redeal(side).map_err(api_error))
@@ -1907,7 +1936,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             let tether: Option<mlua::LuaString> = spec.raw_get("tether")?;
             let tether = match tether {
                 Some(s) => named(&s, "afterimage tether", |n| match n {
-                    "beast_form" => Some(1),
+                    "form" => Some(1),
                     "attack" => Some(2),
                     _ => None,
                 })?,

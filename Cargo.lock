@@ -2256,6 +2256,7 @@ dependencies = [
 name = "nettai-editor"
 version = "0.1.0"
 dependencies = [
+ "bn6-compat",
  "iced",
  "nettai-assets",
  "nettai-battle",
