@@ -1,11 +1,11 @@
 --!strict
 -- AntiSwrd's counter (the original's navi action 0x48, `sub_80EEA3C`): the
--- shared counter (@common/antiswrd/counter) with BN6's sounds, sonic boom
+-- shared counter (@exelib/antiswrd/counter) with BN6's sounds, sonic boom
 -- and attachment. The ruleset starts it by role
 -- (`actions.anti_sword_counter`, rules/roles.luau).
 
 local attachment = require("../../objects/attachment/attachment")
-local common = require("@common/antiswrd/counter")
+local common = require("@exelib/antiswrd/counter")
 local parts = require("../../lib/swords/parts")
 local sonic_boom = require("../../lib/swords/sonic_boom")
 

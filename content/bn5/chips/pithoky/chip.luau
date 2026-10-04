@@ -4,7 +4,7 @@
 -- record's Param1 3 and Param2 1).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local flick = require("@common/airhocky/flick")
+local flick = require("@exelib/airhocky/flick")
 local puck = require("../airhoc/puck")
 local recipe_airhoc = require("../airhoc/chip")
 local recipe_cannball = require("../cannball/chip")

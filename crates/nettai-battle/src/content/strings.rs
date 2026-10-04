@@ -89,23 +89,6 @@ impl std::hash::Hash for Strings {
 }
 
 impl Strings {
-    /// Game `root`'s strings (its definitions', ids in full), from loaded
-    /// content's.
-    pub fn of_root(&self, root: &str) -> Strings {
-        use nettai_content_api::keys::root_of;
-        fn of<V: Clone>(root: &str, m: &BTreeMap<String, V>) -> BTreeMap<String, V> {
-            m.iter().filter(|(k, _)| root_of(k) == Some(root)).map(|(k, v)| (k.clone(), v.clone())).collect()
-        }
-        Strings {
-            language: self.language.clone(),
-            chips: of(root, &self.chips),
-            navis: of(root, &self.navis),
-            forms: of(root, &self.forms),
-            patch_cards: of(root, &self.patch_cards),
-            navicust_programs: of(root, &self.navicust_programs),
-        }
-    }
-
     /// Add another root's table (qualified: no key meets another root's).
     pub fn merge(&mut self, other: Strings) {
         if self.language.is_empty() {

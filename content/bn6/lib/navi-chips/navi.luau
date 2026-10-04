@@ -1,5 +1,5 @@
 --!strict
--- What the navi chips' navis share: the shared helpers (@common/navi-chips/navi, BN6's and BN5's), which take each
+-- What the navi chips' navis share: the shared helpers (@exelib/navi-chips/navi, BN6's and BN5's), which take each
 -- game's sprites.
 
-return require("@common/navi-chips/navi")
+return require("@exelib/navi-chips/navi")

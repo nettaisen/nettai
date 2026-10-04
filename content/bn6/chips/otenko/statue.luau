@@ -5,11 +5,11 @@
 -- 100 HP that stands for 1800 ticks in front of the user and, every 5
 -- ticks, adds 1 to the Atk+ bonus of the chip at the user's hand's cursor
 -- if it deals damage, up to 50 for each hand entry. The behavior is BN5's
--- too (@common/otenko/otenko), made here with BN6's look.
+-- too (@exelib/otenko/otenko), made here with BN6's look.
 
 local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
-local common = require("@common/otenko/otenko")
+local common = require("@exelib/otenko/otenko")
 local effects = require("../../lib/effects")
 
 -- Its sprite (`sub_80DB108`'s, in `sub_80DB2C6`'s pool), with a shadow,

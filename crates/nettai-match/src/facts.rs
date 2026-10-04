@@ -117,9 +117,9 @@ pub fn check(content: &Content, side: &Side) -> Vec<String> {
 /// systems that take it (none: nothing); with souls, the save's Soul
 /// Unison and Chaos Unison (a finished save's event flags 0 and 0x236).
 pub fn write(content: &Content, side: &Side, player: &mut PlayerSetup) -> Result<(), String> {
-    // (A side without a ruleset plays by the default game's stock rules.)
-    let game = crate::DEFAULT_GAME;
-    player.set_fact(content, game, KARMA_FIELD, &[Fact::Value(Value::Int(side.karma as i64))])?;
+    // (A side without a ruleset plays by the game's stock rules.)
+    let ruleset = side.ruleset;
+    player.set_fact(content, ruleset, KARMA_FIELD, &[Fact::Value(Value::Int(side.karma as i64))])?;
     if takes(content, side, SOULS_FIELD) {
         // (Every soul, as many as the rules hold.)
         let souls: Vec<Fact> = owned_souls(content, side)
@@ -127,7 +127,7 @@ pub fn write(content: &Content, side: &Side, player: &mut PlayerSetup) -> Result
             .take(soul_capacity(content, side))
             .map(|f| Fact::Value(Value::Def(Registry::Form, f.0)))
             .collect();
-        player.set_fact(content, game, SOULS_FIELD, &souls)?;
+        player.set_fact(content, ruleset, SOULS_FIELD, &souls)?;
         player.souls.button = true;
         player.souls.chaos = true;
     }
@@ -191,10 +191,8 @@ impl Side {
 /// chip of the rules' game), if the content has it: the slot's name in a
 /// tool.
 pub fn sp_chip(content: &Content, side: &Side, slot: usize) -> Option<nettai_content_api::ChipHandle> {
-    let game = crate::ruleset_game(content, side.ruleset_or_stock(content));
-    let game = content.defs.roots.get(game.index())?;
-    (0..content.defs.chips.len() as u16).map(nettai_content_api::ChipHandle).find(|&h| {
-        content.chip_links(h).sp_slot == Some(slot as u8)
-            && nettai_content_api::keys::root_of(&content.defs.chip(h).key) == Some(game.as_str())
-    })
+    let _ = side;
+    (0..content.defs.chips.len() as u16)
+        .map(nettai_content_api::ChipHandle)
+        .find(|&h| content.chip_links(h).sp_slot == Some(slot as u8))
 }

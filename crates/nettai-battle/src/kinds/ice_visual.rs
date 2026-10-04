@@ -56,7 +56,7 @@ fn size(b: &Battle, owner: ObjectRef) -> u8 {
 fn init(b: &mut Battle, r: ObjectRef) {
     let owner = b.objects.get(r).related[0].expect("an ice block without its owner");
     let anim = size(b, owner);
-    let sprite = b.roles_for(r).sprite(crate::content::SpriteRole::Ice);
+    let sprite = b.roles().sprite(crate::content::SpriteRole::Ice);
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
     s.set_animation(0, &b.content);

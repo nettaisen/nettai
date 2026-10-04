@@ -3,7 +3,7 @@
 -- WideBlde, LongBlde).
 
 local parts = require("../../lib/swords/parts")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local slash = require("../../lib/swords/slash")
 local slashes = require("../../navis/megaman/forms/slashcross/slashes")
 local lockon = require("../../rules/lockon")

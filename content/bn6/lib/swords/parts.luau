@@ -2,11 +2,11 @@
 -- What BN6's swords share (docs/design/content-model-v2.md §5.2): their
 -- blades, the slashes drawn over the panels they hit, their swings'
 -- sounds, and the blade the user holds while it swings (the shared parts,
--- @common/swords/parts, with BN6's attachment).
+-- @exelib/swords/parts, with BN6's attachment).
 
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local common = require("@common/swords/parts")
+local common = require("@exelib/swords/parts")
 local kind = require("../../rules/forms/kind")
 
 local parts = {}

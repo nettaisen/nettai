@@ -2,9 +2,9 @@
 -- Recov10, Recov30, Recov50, Recov80, Recov120, Recov150, Recov200 and Recov300: the recov series (each chip's own comment above its definition).
 -- Their records are written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local heal = require("@common/recov/heal")
+local heal = require("@exelib/recov/heal")
 
--- Recov10 (BN5 chip 0x06b): the navi heals 10 HP in the tick after it uses it: BN6's heal (@common/recov/heal,
+-- Recov10 (BN5 chip 0x06b): the navi heals 10 HP in the tick after it uses it: BN6's heal (@exelib/recov/heal,
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (30).
 local recov10 = define.chip {
@@ -23,7 +23,7 @@ local recov10 = define.chip {
     action = heal.action { hp = 10, mood = 30 },
 }
 
--- Recov30 (BN5 chip 0x06c): the navi heals 30 HP in the tick after it uses it: BN6's heal (@common/recov/heal,
+-- Recov30 (BN5 chip 0x06c): the navi heals 30 HP in the tick after it uses it: BN6's heal (@exelib/recov/heal,
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (30).
 local recov30 = define.chip {
@@ -42,7 +42,7 @@ local recov30 = define.chip {
     action = heal.action { hp = 30, mood = 30 },
 }
 
--- Recov50 (BN5 chip 0x06d): the navi heals 50 HP in the tick after it uses it: BN6's heal (@common/recov/heal,
+-- Recov50 (BN5 chip 0x06d): the navi heals 50 HP in the tick after it uses it: BN6's heal (@exelib/recov/heal,
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (40).
 local recov50 = define.chip {
@@ -61,7 +61,7 @@ local recov50 = define.chip {
     action = heal.action { hp = 50, mood = 40 },
 }
 
--- Recov80 (BN5 chip 0x06e): the navi heals 80 HP in the tick after it uses it: BN6's heal (@common/recov/heal,
+-- Recov80 (BN5 chip 0x06e): the navi heals 80 HP in the tick after it uses it: BN6's heal (@exelib/recov/heal,
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (40).
 local recov80 = define.chip {
@@ -80,7 +80,7 @@ local recov80 = define.chip {
     action = heal.action { hp = 80, mood = 40 },
 }
 
--- Recov120 (BN5 chip 0x06f): the navi heals 120 HP in the tick after it uses it: BN6's heal (@common/recov/heal,
+-- Recov120 (BN5 chip 0x06f): the navi heals 120 HP in the tick after it uses it: BN6's heal (@exelib/recov/heal,
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (50).
 local recov120 = define.chip {
@@ -99,7 +99,7 @@ local recov120 = define.chip {
     action = heal.action { hp = 120, mood = 50 },
 }
 
--- Recov150 (BN5 chip 0x070): the navi heals 150 HP in the tick after it uses it: BN6's heal (@common/recov/heal,
+-- Recov150 (BN5 chip 0x070): the navi heals 150 HP in the tick after it uses it: BN6's heal (@exelib/recov/heal,
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (50).
 local recov150 = define.chip {
@@ -118,7 +118,7 @@ local recov150 = define.chip {
     action = heal.action { hp = 150, mood = 50 },
 }
 
--- Recov200 (BN5 chip 0x071): the navi heals 200 HP in the tick after it uses it: BN6's heal (@common/recov/heal,
+-- Recov200 (BN5 chip 0x071): the navi heals 200 HP in the tick after it uses it: BN6's heal (@exelib/recov/heal,
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (50).
 local recov200 = define.chip {
@@ -137,7 +137,7 @@ local recov200 = define.chip {
     action = heal.action { hp = 200, mood = 50 },
 }
 
--- Recov300 (BN5 chip 0x072): the navi heals 300 HP in the tick after it uses it: BN6's heal (@common/recov/heal,
+-- Recov300 (BN5 chip 0x072): the navi heals 300 HP in the tick after it uses it: BN6's heal (@exelib/recov/heal,
 -- the original's action 0x17, BN6's 0x20; BN5's 0x080EC484 the same heal and table, 0x080EC4B8) and, unless an
 -- AntiRecv turned it, the side's mood gains the use's +0x0A, the record's parameter (50).
 local recov300 = define.chip {

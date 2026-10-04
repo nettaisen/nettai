@@ -2,12 +2,12 @@
 -- BlizzardMan, the navi of BN5's BlizMan chips (BN5's actor object #0x14, 0x080BC100; BN5's own, built on BN6's navi
 -- template), brought by their navi chip controller. He appears (and goes at once off a panel that isn't solid),
 -- stands 20 ticks, and winds up (animation 9): 6 ticks in, with its sound, he rolls a snowball (BlzrdBal's,
--- @common/blzrdbal, as BN5 has it: his sprite's animation 18, 19 grown, 100 more damage a swallow, silent) from 20
+-- @exelib/blzrdbal, as BN5 has it: his sprite's animation 18, 19 grown, 100 more damage a swallow, silent) from 20
 -- pixels ahead of him; 70 ticks on he leaves, and the controller moves on.
 
-local navi_chips = require("@common/navi-chips/navi")
-local balls = require("@common/blzrdbal/ball")
-local rollers = require("@common/blzrdbal/roller")
+local navi_chips = require("@exelib/navi-chips/navi")
+local balls = require("@exelib/blzrdbal/ball")
+local rollers = require("@exelib/blzrdbal/roller")
 local collision = require("../../rules/collision")
 
 export type State = {

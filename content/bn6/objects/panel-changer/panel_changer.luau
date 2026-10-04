@@ -1,11 +1,11 @@
 --!strict
 -- The panel changer (the original's effect object #0x1F, `sub_80E28A8`):
--- the shared changer (@common/panel-changer/panel_changer), BN6's kind and
+-- the shared changer (@exelib/panel-changer/panel_changer), BN6's kind and
 -- sounds. What changes is a record (`panel_changer.change { ... }`, a row
 -- of the original's `byte_80E272C`), defined by its users: the panel chips
 -- (lib/panel-chips) and AntiRecv's counterattack (chips/antirecv).
 
-local common = require("@common/panel-changer/panel_changer")
+local common = require("@exelib/panel-changer/panel_changer")
 
 local panel_changer = {}
 

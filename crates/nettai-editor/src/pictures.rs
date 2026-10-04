@@ -36,12 +36,12 @@ fn handle(i: Image) -> Handle {
 }
 
 impl Pictures {
-    /// The pictures of `content`'s chips from `packs` (the packs the content
-    /// loaded with; each chip's from its game's), or why not.
+    /// The pictures of `content`'s chips from `packs` (the asset pack the
+    /// content loaded with), or why not.
     pub fn load(content: &Content, packs: &[PathBuf]) -> Result<Pictures, String> {
         // Each pack's graphics, by the content's pack order.
         let mut bundles: Vec<Bundle> = Vec::new();
-        for path in nettai_content::pack::pack_paths(content, packs) {
+        for path in packs {
             let (b, _) = nettai_content::pack::load_graphics(&path)
                 .map_err(|r| format!("can't load the graphics of {}: {} problems", path.display(), r.issues.len()))?;
             bundles.push(b);

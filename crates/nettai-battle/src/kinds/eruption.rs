@@ -30,7 +30,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     if !field::is_valid(p.x, p.y) {
         return b.objects.free(r);
     }
-    let sprite = b.arena_roles().sprite(crate::content::SpriteRole::Eruption);
+    let sprite = b.roles().sprite(crate::content::SpriteRole::Eruption);
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
     s.look.shadow = Shadow::WithSprite;
@@ -50,7 +50,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let Some(c) = b.create_collision(r) else {
         return b.objects.free(r);
     };
-    let roles = b.arena_roles();
+    let roles = b.roles();
     let (is, hits, spark) =
         (roles.collision(CollisionRole::Eruption), roles.collision(CollisionRole::EruptionTarget), roles.spark(SparkRole::Eruption));
     b.setup_collision(r, is, hits, 1);

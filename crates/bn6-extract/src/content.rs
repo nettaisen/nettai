@@ -40,7 +40,7 @@ pub fn main(args: &[String]) {
         std::process::exit(2);
     };
     let content_dir = match &args[n..] {
-        [] => nettai_content::root::content(),
+        [] => nettai_content::index::content(),
         [_, dir] => dir.into(),
         _ => {
             eprintln!("{usage}");

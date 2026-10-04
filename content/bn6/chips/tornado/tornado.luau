@@ -1,12 +1,12 @@
 --!strict
 -- A tornado (the original's attack object #0x31, `sub_80C9F78`): the
--- shared tornado (@common/tornado/tornado), BN6's kind, look and variants:
+-- shared tornado (@exelib/tornado/tornado), BN6's kind, look and variants:
 -- Tornado's and Static's. A plain tornado on a volcano, grass or ice panel
 -- takes the panel's variant instead, turns the panel normal and doubles its
 -- damage.
 
 local collision = require("../../rules/collision")
-local common = require("@common/tornado/tornado")
+local common = require("@exelib/tornado/tornado")
 local sparks = require("../../lib/sparks")
 
 local tornado = {}

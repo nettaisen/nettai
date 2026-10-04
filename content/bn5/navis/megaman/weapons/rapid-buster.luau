@@ -1,13 +1,13 @@
 --!strict
 -- The patch cards' Sbustr (`megaman/rapid-buster`, B↓Sbustr, Team ProtoMan's card 111): weapon routine 0x68
 -- (0x0800FE2E, calling 0x0800FB32, BN6's `sub_8012124`: the same code but for the action's number) and action 0x2E
--- (0x080ED9B8): the shared rapid buster (@common/megaman/rapid_buster) with BN5's buster parts, projectile,
+-- (0x080ED9B8): the shared rapid buster (@exelib/megaman/rapid_buster) with BN5's buster parts, projectile,
 -- attachment and charged shot (row 6), its form overlay reloading its animation at its next step as it restarts
 -- (0x080C374E). Nine charged shots, 5 damage for each point of Attack plus one.
 
 local attachment = require("../../../objects/attachment/attachment")
 local buster = require("../../../lib/buster")
-local common = require("@common/megaman/rapid_buster")
+local common = require("@exelib/megaman/rapid_buster")
 local projectile = require("../../../lib/projectile")
 local variants = require("../../../objects/projectile/variants")
 
