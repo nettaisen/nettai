@@ -2,18 +2,17 @@
 //! it loads, a netplay offer when it arrives (`check_side`), and the editor
 //! shows as they fail. Each problem is said, with where it is.
 //!
-//! - **The arena**: a game of the content's, one of its rulesets, its link
-//!   battle stages (`crate::link_battle_stages`), and backgrounds its pack
-//!   has.
+//! - **The arena**: the content's game, its link battle stages
+//!   (`crate::link_battle_stages`), and backgrounds its pack has.
 //! - **A side**: its navi, chips, patch cards, NaviCust programs and souls
 //!   are the match's game's, its stats' forms the content's; a Cross list
-//!   only with a ruleset that has the forms system,
+//!   only with rules that have the forms system,
 //!   each a Cross of the navi's, at most five, none twice; patch cards only
-//!   with a ruleset that has the patch-cards system, each installed once, at
+//!   with rules that have the patch-cards system, each installed once, at
 //!   most [`MAX_CARDS`], their MB together at most [`CARD_MB`] (BN6's menu
 //!   adds no card past 80 MB, `0x08141868`); a NaviCust only for MegaMan
 //!   under rules with the navicust system, on its board (`check_navicust`);
-//!   the folder by its own game's rules (the side's ruleset's
+//!   the folder by its own game's rules (the game's rules'
 //!   `folder_check`, `crate::folders`: BN6's folder editor's), on the stats
 //!   the round set up (the NaviCust's and the patch cards' folder limits:
 //!   the original's folder editor and its link battle check read the stats
@@ -51,10 +50,6 @@ pub fn check_arena(content: &Content, a: &Arena) -> Vec<String> {
     let games = ids::games(content);
     if !games.contains(&a.game) {
         return vec![format!("no game {:?} (the content's are {})", a.game, games.join(", "))];
-    }
-    if a.ruleset.index() >= content.defs.rulesets.len() || !ids::in_game(&a.game, &content.defs.ruleset(a.ruleset).key) {
-        out.push(format!("a ruleset {} hasn't", a.game));
-        return out;
     }
     check_place(content, &a.game, &a.first, "arena", &mut out);
     for (i, p) in a.later.iter().enumerate() {
@@ -140,8 +135,8 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
     }
     // The Crosses.
     if let Some(list) = &s.crosses {
-        if !arena.has_system(content, crate::FORMS_SYSTEM) {
-            out.push("a Cross list, but the ruleset has no Crosses (no forms system)".into());
+        if !crate::ruleset_has_system(content, crate::FORMS_SYSTEM) {
+            out.push(format!("a Cross list, but {game} has no Crosses (no forms system)"));
         }
         let forms: Vec<_> = list.forms().collect();
         if forms.iter().any(|f| f.index() >= defs.forms.len()) {
@@ -164,8 +159,8 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
     }
     // The patch cards.
     if !s.cards.is_empty() {
-        if !arena.has_system(content, crate::PATCH_CARDS_SYSTEM) {
-            out.push("patch cards, but the ruleset has no patch-cards system".into());
+        if !crate::ruleset_has_system(content, crate::PATCH_CARDS_SYSTEM) {
+            out.push(format!("patch cards, but {game} has no patch-cards system"));
         }
         if s.cards.len() > MAX_CARDS {
             out.push(format!("{} patch cards installed: a list holds {MAX_CARDS}", s.cards.len()));
@@ -209,8 +204,8 @@ pub fn check_navicust(content: &Content, arena: &Arena, s: &Side, n: &nettai_bat
     use nettai_battle::navicust::{SIZE, cells};
     let mut out = Vec::new();
     let defs = &content.defs;
-    if !arena.has_system(content, crate::NAVICUST_SYSTEM) {
-        out.push("a NaviCust, but the ruleset has no navicust system".into());
+    if !crate::ruleset_has_system(content, crate::NAVICUST_SYSTEM) {
+        out.push(format!("a NaviCust, but {} has no navicust system", arena.game));
     }
     if content.navi(s.navi).forms.is_none() {
         out.push(format!("a NaviCust, but {}'s stats aren't a NaviCust's (only MegaMan's compiles)", crate::names::navi(content, s.navi)));
@@ -409,6 +404,66 @@ mod tests {
         assert!(problems.iter().any(|p| p.contains("is over program 1")), "{problems:?}");
         let (_, _, problems) = compiled(&[("undersht", "white", 0, 1)]);
         assert!(problems.iter().any(|p| p.contains("off the board")), "{problems:?}");
+    }
+
+    /// BN5's board grows with its ExpMemry (4x4, 5x4, 5x5, no frame): a
+    /// program in the fifth column fits from one expansion, one in the fifth
+    /// row from two; off the board it is said, as the original's placing
+    /// refuses it (0x0813F250). A new side's board is the largest, and the
+    /// compile is the same on every board the programs fit.
+    #[test]
+    fn bn5s_board_grows_with_its_expansions() {
+        let content = crate::testing::bn5_content();
+        assert_eq!(crate::navicust_rules(&content).boards.len(), 3);
+        let m = crate::draw::live(&content, "bn5", 3, None).unwrap();
+        assert_eq!(crate::Match::empty(&content, "bn5").unwrap().sides[0].navicust.map(|n| n.expansions), Some(2));
+        let undersht = ids::navicust_program(&content, "bn5", "undersht").unwrap();
+        // (UnderSht covers its center and the cell above it.)
+        let with = |x: u8, y: u8, expansions: u8| {
+            let mut m = m.clone();
+            let part = PlacedProgram { program: undersht, color: 0, x, y, rotation: 0, compressed: false };
+            m.sides[0].navicust = Some(NaviCust::new(&[part], expansions).unwrap());
+            m
+        };
+        let said = |x: u8, y: u8, expansions: u8| -> Vec<String> {
+            check_match(&content, &with(x, y, expansions)).into_iter().filter(|p| p.contains("navicust") || p.contains("NaviCust")).collect()
+        };
+        let works = |x: u8, y: u8, expansions: u8| Battle::new(with(x, y, expansions).round(&content, 3), content.clone()).stats[0].undershirt;
+        // On the command line (the engine's row 3) inside the 4x4: every board.
+        for expansions in 0..3 {
+            assert_eq!((said(1, 3, expansions), works(1, 3, expansions)), (Vec::new(), true), "{expansions} expansions");
+        }
+        // The fifth column (the engine's 5): from one expansion.
+        assert!(said(5, 3, 0).iter().any(|p| p.contains("off the board")));
+        for expansions in 1..3 {
+            assert_eq!((said(5, 3, expansions), works(5, 3, expansions)), (Vec::new(), true), "{expansions} expansions");
+        }
+        // The fifth row (the engine's 5): from two (off the command line there).
+        for expansions in 0..2 {
+            assert!(said(1, 5, expansions).iter().any(|p| p.contains("off the board")), "{expansions} expansions");
+        }
+        assert_eq!((said(1, 5, 2), works(1, 5, 2)), (Vec::new(), false));
+        // No frame: off the 5x5 is off every board; and a fourth size is none.
+        assert!(said(6, 3, 2).iter().any(|p| p.contains("off the board")));
+        assert!(said(1, 3, 3).iter().any(|p| p.contains("3 expansions")));
+    }
+
+    /// A side with no NaviCust has its stats as a compile left them: no
+    /// match key or setup field gives the emotion window's glitch, and the
+    /// rules make it from the stats' NaviCust bugs (here the support bug,
+    /// which the window's own count of bugs doesn't see).
+    #[test]
+    fn stats_set_directly_glitch_as_their_bugs_say() {
+        let content = crate::testing::bn6_content();
+        let mut m = crate::draw::live(&content, "bn6", 3, None).unwrap();
+        for s in &mut m.sides {
+            s.navicust = None;
+        }
+        m.sides[0].stats.support = None;
+        assert_eq!(check_match(&content, &m), Vec::<String>::new());
+        let b = Battle::new(m.round(&content, 3), content.clone());
+        assert!(b.consoles[0].emotion_window_glitch, "the support bug");
+        assert!(!b.consoles[1].emotion_window_glitch, "no bug");
     }
 
     /// MegaMan from a navi code gets his level's gains over what his

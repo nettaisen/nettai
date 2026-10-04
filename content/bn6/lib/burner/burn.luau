@@ -7,7 +7,7 @@
 -- roaring every 16 ticks, then recovers for 6. Each user composes its own
 -- (`burn.action { burner = ..., flame = ... }`).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local flame = require("./flame")
 
 local burn = {}

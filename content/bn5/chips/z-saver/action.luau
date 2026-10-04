@@ -4,7 +4,7 @@
 -- sixth tick; and the command's window (B and back) shuts once A isn't held. Its blade is BN5's sword (lib/swords),
 -- its slashes' effects the effect table's rows 0x39 to 0x3B, its boom BN5's sonic boom.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local common = require("@exelib/zsaver/action")
 local sonic_boom = require("@exelib/swords/sonic_boom")
 local stepsword = require("../../lib/stepsword")

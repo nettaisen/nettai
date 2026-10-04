@@ -12,7 +12,7 @@
 -- change.
 
 local dimming_chips = require("../dimming")
-local panel_changer = require("@exelib/panel-changer/panel_changer")
+local panel_changer = require("@exelib/panel-changer")
 
 local panel_chips = {}
 

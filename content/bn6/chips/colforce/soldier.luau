@@ -5,7 +5,7 @@
 -- vulcan's hit, at a random height) at the panel in front of it, 10 ticks
 -- apart; then it salutes and leaves. It stands still while dimmed.
 
-local bullet = require("../../objects/bullet/bullet")
+local bullet = require("../../objects/bullet")
 
 local soldier = {}
 

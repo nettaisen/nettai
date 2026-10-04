@@ -4,7 +4,7 @@
 -- Each chip composes its own (`slash.action { blade = ..., hit = ...,
 -- effect = ..., sound = ... }`, docs/design/content-model-v2.md §5.2).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/swords/slash")
 local kind = require("../../rules/forms/kind")

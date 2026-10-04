@@ -8,7 +8,7 @@
 -- Each game makes its kind with `bomb.make_kind(id, look)` (BN6's chips/bugbomb, BN5's chips/bugbomb).
 
 local regions = require("../regions")
-local rising_bubble = require("../rising-bubble/rising_bubble")
+local rising_bubble = require("../rising-bubble")
 local trajectory = require("../trajectory")
 
 local bomb = {}

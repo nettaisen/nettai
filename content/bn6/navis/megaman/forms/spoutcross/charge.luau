@@ -6,7 +6,7 @@
 -- attack of 20 damage and 10 more per point of buster Attack (up to 5). It
 -- leaves the charge and the lockout as they were.
 
-local bullet = require("../../../../objects/bullet/bullet")
+local bullet = require("../../../../objects/bullet")
 local spreader = require("../../../../chips/spreadr/action")
 local weapon = require("../../../../lib/weapon")
 

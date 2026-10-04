@@ -3,7 +3,7 @@
 -- slash (BN5's action 0x13 as its subtype 1: the chip's own action, chips/wideswrd), not loaded as a chip, with 80
 -- damage and 10 more per point of buster Attack plus one (0x0800FE5E), and its own counter byte.
 
-local wideswrd = require("../../../../chips/wideswrd/chip")
+local wideswrd = require("../../../../chips/wideswrd")
 
 local charge = {}
 

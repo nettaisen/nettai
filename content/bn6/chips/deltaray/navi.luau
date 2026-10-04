@@ -11,10 +11,10 @@
 -- enemy navi ahead, he only marks the air. See docs/engine/chip-table.md
 -- (navi chip subtype 28).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/deltaray/navi")
-local follow_effect = require("../../objects/follow-effect/follow_effect")
+local follow_effect = require("../../objects/follow-effect")
 local parts = require("../../lib/swords/parts")
 
 -- What a chip summons him with: his palette (the chip's first parameter

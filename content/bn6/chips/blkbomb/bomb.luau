@@ -4,13 +4,13 @@
 -- burst is an attack, pushed by a pushing hit with its damage kept, leaving
 -- the field as `sub_80CD700` does.
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
-local attachment = require("../../objects/attachment/attachment")
+local absorbed_obstacle = require("../../objects/absorbed-obstacle")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/blkbomb/bomb")
 local effects = require("../../lib/effects")
-local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
-local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
+local panel_bursts = require("../../objects/panel-bursts")
+local rising_bubble = require("../../objects/rising-bubble")
 local trajectory = require("../../lib/trajectory")
 
 local black_bomb = {}

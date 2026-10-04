@@ -255,7 +255,7 @@ pub struct ActorData {
     /// NaviCust emotion-swing bug, `sub_8013DA0`).
     pub ticked: bool,
     // (AIData+0x0F, the turn-start Beast Out check's delay, is BN6's beast
-    // system's state: content/bn6/rules/beast/system.luau.)
+    // system's state: content/bn6/rules/beast/init.luau.)
     /// AIData+0x10: drain hits this navi landed on the opponent, turned
     /// into healing (MaxHP/10 each) on its own next hit collection
     /// (`sub_801A308`, `sub_801A324`).

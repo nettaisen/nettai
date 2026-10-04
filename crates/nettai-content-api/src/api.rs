@@ -834,7 +834,8 @@ named_flags! {
         /// The own-gauges mode's gauge, drawn by its levels (draw
         /// task 17).
         LevelGauge = "level_gauge",
-        /// The HP box and its low-HP alarm (draw task 7).
+        /// The HP box (draw task 7; its drawing only: the low-HP alarm
+        /// sounds on).
         HpBox = "hp_box",
     }
 }

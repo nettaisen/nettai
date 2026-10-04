@@ -22,7 +22,7 @@ use crate::field::{PanelType, pflags};
 
 use std::sync::Arc;
 
-// The test chips (testdata/content/chips/test/chips.luau), by key: made-up
+// The test chips (testdata/content/chips/test/init.luau), by key: made-up
 // records whose uses are BN6's builders and actions.
 /// Three GunDelSol levels and an EX (two columns).
 pub const SUN_GUN_1: &str = "test/sun-gun-1";
@@ -313,15 +313,18 @@ pub fn add_shared(scripts: &mut Scripts) {
 }
 
 /// A manifest for game `game`, whose modules `scripts` holds under its
-/// name, that loads every one of them (`Scripts::add_game`'s) and uses the
-/// support packs `scripts` holds: for tests that load a game's directory as
-/// it is.
+/// name, that depends on the support packs `scripts` holds; and a top
+/// module that loads every one of them (`Scripts::init_for`, in place of
+/// its own): for tests that load a game's directory as it is, or add
+/// modules to a game.
 pub fn add_index(scripts: &mut Scripts, game: &str) {
+    use nettai_content_api::{PackKind, PackManifest, packs};
     let prefix = format!("{game}{}", nettai_content_api::keys::SEPARATOR);
     let own: std::collections::BTreeMap<String, String> =
         scripts.modules.iter().filter_map(|(name, source)| Some((name.strip_prefix(&prefix)?.to_string(), source.clone()))).collect();
-    let uses = scripts.packs.iter().filter(|p| p.kind == nettai_content_api::PackKind::Support).map(|p| p.id.clone()).collect();
-    scripts.set_manifest(Scripts::manifest_of(game, &own, uses));
+    scripts.modules.insert(packs::top_module(game), Scripts::init_for(&own));
+    let depends = scripts.packs.iter().filter(|p| p.kind == PackKind::Support).map(|p| p.id.clone()).collect();
+    scripts.set_manifest(PackManifest { id: game.to_string(), kind: PackKind::Game, depends });
 }
 
 /// Every `.luau` module under `dir`, by path without `.luau`.
@@ -959,48 +962,48 @@ pub fn scripts() -> Scripts {
                 std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}"))
             };
             let modules = [
-                ("objects/attachment/attachment", "objects/attachment/attachment"),
+                ("objects/attachment/init", "objects/attachment/init"),
                 // GunDelSol: the chips, whose actions the SunGuns run.
                 ("chips/gundels/beam", "chips/gundels/beam"),
                 ("chips/gundels/action", "chips/gundels/action"),
-                ("chips/gundels/chips", "chips/gundels/chips"),
+                ("chips/gundels/init", "chips/gundels/init"),
                 ("chips/eraseman/mark", "chips/eraseman/mark"),
                 ("chips/eraseman/beam", "chips/eraseman/beam"),
                 ("chips/eraseman/navi", "chips/eraseman/navi"),
                 ("lib/grab/shot", "lib/grab/shot"),
                 ("lib/grab/controller", "lib/grab/controller"),
-                ("chips/areagrab/chip", "chips/areagrab/chip"),
-                ("chips/panlgrab/chip", "chips/panlgrab/chip"),
-                ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
+                ("chips/areagrab/init", "chips/areagrab/init"),
+                ("chips/panlgrab/init", "chips/panlgrab/init"),
+                ("objects/falling-rock/init", "objects/falling-rock/init"),
                 ("objects/falling-rock/chip", "objects/falling-rock/chip"),
-                ("objects/projectile/projectile", "objects/projectile/projectile"),
+                ("objects/projectile/init", "objects/projectile/init"),
                 ("objects/projectile/variants", "objects/projectile/variants"),
-                ("objects/flying-shot/flying_shot", "objects/flying-shot/flying_shot"),
+                ("objects/flying-shot/init", "objects/flying-shot/init"),
                 ("lib/buster", "lib/buster"),
                 // MegaMan's buster, charged and blank shots and HeatCross's
                 // charged shot are weapon definitions. (BN6's rules/roles
                 // isn't here: the test pack fills the roles.)
-                ("navis/megaman/weapons/blank-shot/weapon", "navis/megaman/weapons/blank-shot/weapon"),
-                ("navis/megaman/weapons/charged-shot/weapon", "navis/megaman/weapons/charged-shot/weapon"),
-                ("navis/megaman/weapons/buster/weapon", "navis/megaman/weapons/buster/weapon"),
+                ("navis/megaman/weapons/blank-shot/init", "navis/megaman/weapons/blank-shot/init"),
+                ("navis/megaman/weapons/charged-shot/init", "navis/megaman/weapons/charged-shot/init"),
+                ("navis/megaman/weapons/buster/init", "navis/megaman/weapons/buster/init"),
                 // Two of the buster's alias routines (its setup, their own
                 // charge rows).
-                ("navis/megaman/weapons/buster-2e/weapon", "navis/megaman/weapons/buster-2e/weapon"),
-                ("navis/megaman/weapons/buster-82/weapon", "navis/megaman/weapons/buster-82/weapon"),
+                ("navis/megaman/weapons/buster-2e/init", "navis/megaman/weapons/buster-2e/init"),
+                ("navis/megaman/weapons/buster-82/init", "navis/megaman/weapons/buster-82/init"),
                 ("navis/megaman/forms/heatcross/charge", "navis/megaman/forms/heatcross/charge"),
                 ("lib/weapon", "lib/weapon"),
-                ("objects/element-pillar/element_pillar", "objects/element-pillar/element_pillar"),
+                ("objects/element-pillar/init", "objects/element-pillar/init"),
                 // The form weapons content defines, with the kinds only they
                 // spawn.
                 (
-                    "navis/megaman/weapons/falzar-beast-buster/weapon",
-                    "navis/megaman/weapons/falzar-beast-buster/weapon",
+                    "navis/megaman/weapons/falzar-beast-buster/init",
+                    "navis/megaman/weapons/falzar-beast-buster/init",
                 ),
                 (
-                    "navis/megaman/weapons/gregar-beast-buster/weapon",
-                    "navis/megaman/weapons/gregar-beast-buster/weapon",
+                    "navis/megaman/weapons/gregar-beast-buster/init",
+                    "navis/megaman/weapons/gregar-beast-buster/init",
                 ),
-                ("navis/megaman/weapons/tengu-wind/weapon", "navis/megaman/weapons/tengu-wind/weapon"),
+                ("navis/megaman/weapons/tengu-wind/init", "navis/megaman/weapons/tengu-wind/init"),
                 ("navis/megaman/forms/spoutcross-beast/surge", "navis/megaman/forms/spoutcross-beast/surge"),
                 ("navis/megaman/forms/spoutcross-beast/charge", "navis/megaman/forms/spoutcross-beast/charge"),
                 ("navis/megaman/forms/tengucross-beast/whirlwind", "navis/megaman/forms/tengucross-beast/whirlwind"),
@@ -1046,43 +1049,43 @@ pub fn scripts() -> Scripts {
                 ("navis/megaman/forms/dustcross-beast/scatter", "navis/megaman/forms/dustcross-beast/scatter"),
                 ("navis/megaman/forms/dustcross/junk_ball", "navis/megaman/forms/dustcross/junk_ball"),
                 ("navis/megaman/forms/dustcross/charge", "navis/megaman/forms/dustcross/charge"),
-                ("navis/megaman/weapons/beast-claw/weapon", "navis/megaman/weapons/beast-claw/weapon"),
-                ("navis/megaman/weapons/absorb/weapon", "navis/megaman/weapons/absorb/weapon"),
+                ("navis/megaman/weapons/beast-claw/init", "navis/megaman/weapons/beast-claw/init"),
+                ("navis/megaman/weapons/absorb/init", "navis/megaman/weapons/absorb/init"),
                 (
                     "navis/megaman/forms/slashcross-beast/hit_flash",
                     "navis/megaman/forms/slashcross-beast/hit_flash",
                 ),
-                ("objects/absorbed-obstacle/absorbed_obstacle", "objects/absorbed-obstacle/absorbed_obstacle"),
+                ("objects/absorbed-obstacle/init", "objects/absorbed-obstacle/init"),
                 // The instant chips: BN6's definitions, and the effects
                 // the test chips compose (the plus chips', FireHit's fist,
                 // FlmHook's hook).
                 ("lib/instant/plus", "lib/instant/plus"),
                 // The chips the ruleset names: the custom screen's Beast Out
                 // button, and what a selection it can't allow becomes.
-                ("chips/beastout/chip", "chips/beastout/chip"),
-                ("chips/invalid/chip", "chips/invalid/chip"),
-                ("chips/atk-10/chip", "chips/atk-10/chip"),
-                ("chips/navi-20/chip", "chips/navi-20/chip"),
-                ("chips/busterup/chip", "chips/busterup/chip"),
-                ("chips/fullcust/chip", "chips/fullcust/chip"),
-                ("chips/synctrgr/chip", "chips/synctrgr/chip"),
+                ("chips/beastout/init", "chips/beastout/init"),
+                ("chips/invalid/init", "chips/invalid/init"),
+                ("chips/atk-10/init", "chips/atk-10/init"),
+                ("chips/navi-20/init", "chips/navi-20/init"),
+                ("chips/busterup/init", "chips/busterup/init"),
+                ("chips/fullcust/init", "chips/fullcust/init"),
+                ("chips/synctrgr/init", "chips/synctrgr/init"),
                 ("chips/boomer/boomerang", "chips/boomer/boomerang"),
-                ("chips/boomer/chips", "chips/boomer/chips"),
+                ("chips/boomer/init", "chips/boomer/init"),
                 ("chips/lance/lance", "chips/lance/lance"),
-                ("chips/lance/chip", "chips/lance/chip"),
+                ("chips/lance/init", "chips/lance/init"),
                 ("chips/firehit/fist", "chips/firehit/fist"),
                 ("chips/sandwrm/worm", "chips/sandwrm/worm"),
                 ("chips/sandwrm/hole", "chips/sandwrm/hole"),
                 ("chips/sandwrm/spray", "chips/sandwrm/spray"),
-                ("chips/sandwrm/chips", "chips/sandwrm/chips"),
+                ("chips/sandwrm/init", "chips/sandwrm/init"),
                 ("chips/flmhook/fire", "chips/flmhook/fire"),
                 ("chips/flmhook/hook", "chips/flmhook/hook"),
                 ("chips/justcone/strike", "chips/justcone/strike"),
-                ("chips/justcone/chip", "chips/justcone/chip"),
+                ("chips/justcone/init", "chips/justcone/init"),
                 ("chips/golmhit/golem", "chips/golmhit/golem"),
-                ("chips/golmhit/chips", "chips/golmhit/chips"),
+                ("chips/golmhit/init", "chips/golmhit/init"),
                 ("lib/projectile", "lib/projectile"),
-                ("objects/gust/gust", "objects/gust/gust"),
+                ("objects/gust/init", "objects/gust/init"),
                 // WindRack's action, which TenguCross's charged shot swings
                 // with its fan, and DolThdr's, which ElecCross's strikes
                 // with (content model v2).
@@ -1100,8 +1103,8 @@ pub fn scripts() -> Scripts {
                 ("navis/megaman/forms/slashcross/slashes", "navis/megaman/forms/slashcross/slashes"),
                 ("navis/megaman/forms/slashcross/charge", "navis/megaman/forms/slashcross/charge"),
                 (
-                    "navis/megaman/weapons/slash-a-charge/weapon",
-                    "navis/megaman/weapons/slash-a-charge/weapon",
+                    "navis/megaman/weapons/slash-a-charge/init",
+                    "navis/megaman/weapons/slash-a-charge/init",
                 ),
                 ("navis/megaman/forms/heatcross-beast/charge", "navis/megaman/forms/heatcross-beast/charge"),
                 ("navis/megaman/forms/eleccross-beast/charge", "navis/megaman/forms/eleccross-beast/charge"),
@@ -1110,16 +1113,16 @@ pub fn scripts() -> Scripts {
                 ("chips/rflectr/shield", "chips/rflectr/shield"),
                 ("chips/rflectr/shot", "chips/rflectr/shot"),
                 ("chips/rflectr/guard", "chips/rflectr/guard"),
-                ("chips/rflectr/chips", "chips/rflectr/chips"),
-                ("chips/recov/chips", "chips/recov/chips"),
+                ("chips/rflectr/init", "chips/rflectr/init"),
+                ("chips/recov/init", "chips/recov/init"),
                 ("lib/burner/burn", "lib/burner/burn"),
                 ("lib/burner/flame", "lib/burner/flame"),
                 ("lib/effects", "lib/effects"),
                 ("lib/sparks", "lib/sparks"),
                 ("rules/collision", "rules/collision"),
                 // BN6's Beast Out turns, a system of the test rules.
-                ("rules/beast/system", "rules/beast/system"),
-                ("rules/emotion/system", "rules/emotion/system"),
+                ("rules/beast/init", "rules/beast/init"),
+                ("rules/emotion/init", "rules/emotion/init"),
                 ("rules/beast/rush", "rules/beast/rush"),
                 ("rules/beast/berserk", "rules/beast/berserk"),
                 // (Its chips are the test content's own: testdata's
@@ -1138,76 +1141,76 @@ pub fn scripts() -> Scripts {
                 ("lib/bombs/bomb", "lib/bombs/bomb"),
                 ("lib/bombs/slash", "lib/bombs/slash"),
                 ("lib/bombs/seed", "lib/bombs/seed"),
-                ("chips/minibomb/chip", "chips/minibomb/chip"),
-                ("chips/bigbomb/chip", "chips/bigbomb/chip"),
-                ("chips/energbom/chips", "chips/energbom/chips"),
+                ("chips/minibomb/init", "chips/minibomb/init"),
+                ("chips/bigbomb/init", "chips/bigbomb/init"),
+                ("chips/energbom/init", "chips/energbom/init"),
                 ("chips/energbom/burst", "chips/energbom/burst"),
-                ("chips/flshbom/chips", "chips/flshbom/chips"),
+                ("chips/flshbom/init", "chips/flshbom/init"),
                 ("chips/flshbom/bomb", "chips/flshbom/bomb"),
-                ("chips/blkbomb/chip", "chips/blkbomb/chip"),
+                ("chips/blkbomb/init", "chips/blkbomb/init"),
                 ("chips/blkbomb/bomb", "chips/blkbomb/bomb"),
-                ("chips/bugbomb/chip", "chips/bugbomb/chip"),
+                ("chips/bugbomb/init", "chips/bugbomb/init"),
                 ("chips/bugbomb/bomb", "chips/bugbomb/bomb"),
-                ("chips/grasseed/chip", "chips/grasseed/chip"),
-                ("chips/iceseed/chip", "chips/iceseed/chip"),
-                ("chips/poisseed/chip", "chips/poisseed/chip"),
-                ("chips/lilbolr/chips", "chips/lilbolr/chips"),
+                ("chips/grasseed/init", "chips/grasseed/init"),
+                ("chips/iceseed/init", "chips/iceseed/init"),
+                ("chips/poisseed/init", "chips/poisseed/init"),
+                ("chips/lilbolr/init", "chips/lilbolr/init"),
                 ("chips/lilbolr/boiler", "chips/lilbolr/boiler"),
                 ("chips/lilbolr/layer", "chips/lilbolr/layer"),
-                ("chips/vdoll/chip", "chips/vdoll/chip"),
+                ("chips/vdoll/init", "chips/vdoll/init"),
                 ("chips/vdoll/doll", "chips/vdoll/doll"),
                 ("chips/vdoll/curse", "chips/vdoll/curse"),
                 ("chips/vdoll/sparkles", "chips/vdoll/sparkles"),
                 // RskyHny and the dragons (content model v2): definitions.
                 ("chips/rskyhny/bee", "chips/rskyhny/bee"),
                 ("chips/rskyhny/action", "chips/rskyhny/action"),
-                ("chips/rskyhny/chips", "chips/rskyhny/chips"),
+                ("chips/rskyhny/init", "chips/rskyhny/init"),
                 ("lib/dragons/dragon", "lib/dragons/dragon"),
                 ("lib/dragons/body", "lib/dragons/body"),
                 ("lib/dragons/head", "lib/dragons/head"),
                 ("lib/dragons/action", "lib/dragons/action"),
-                ("chips/elecdrgn/chip", "chips/elecdrgn/chip"),
+                ("chips/elecdrgn/init", "chips/elecdrgn/init"),
                 // The swords: the chips, whose slashes and strikes the
                 // test chips run.
                 ("lib/swords/parts", "lib/swords/parts"),
                 ("lib/swords/slash", "lib/swords/slash"),
                 ("lib/swords/strike", "lib/swords/strike"),
-                ("chips/sword/chip", "chips/sword/chip"),
-                ("chips/wideswrd/chip", "chips/wideswrd/chip"),
-                ("chips/longswrd/chip", "chips/longswrd/chip"),
-                ("chips/wideblde/chip", "chips/wideblde/chip"),
-                ("chips/longblde/chip", "chips/longblde/chip"),
-                ("chips/lifesrd/chip", "chips/lifesrd/chip"),
-                ("chips/drksword/chip", "chips/drksword/chip"),
-                ("chips/muramasa/chip", "chips/muramasa/chip"),
-                ("chips/ftrsword/chip", "chips/ftrsword/chip"),
-                ("chips/crosswrd/chip", "chips/crosswrd/chip"),
-                ("chips/dbldream/chip", "chips/dbldream/chip"),
-                ("chips/fireswrd/chip", "chips/fireswrd/chip"),
-                ("chips/aquaswrd/chip", "chips/aquaswrd/chip"),
-                ("chips/elecswrd/chip", "chips/elecswrd/chip"),
-                ("chips/bambswrd/chip", "chips/bambswrd/chip"),
-                ("chips/stepswrd/chip", "chips/stepswrd/chip"),
-                ("chips/mchnswrd/chip", "chips/mchnswrd/chip"),
-                ("chips/elemswrd/chip", "chips/elemswrd/chip"),
-                ("chips/assnswrd/chip", "chips/assnswrd/chip"),
+                ("chips/sword/init", "chips/sword/init"),
+                ("chips/wideswrd/init", "chips/wideswrd/init"),
+                ("chips/longswrd/init", "chips/longswrd/init"),
+                ("chips/wideblde/init", "chips/wideblde/init"),
+                ("chips/longblde/init", "chips/longblde/init"),
+                ("chips/lifesrd/init", "chips/lifesrd/init"),
+                ("chips/drksword/init", "chips/drksword/init"),
+                ("chips/muramasa/init", "chips/muramasa/init"),
+                ("chips/ftrsword/init", "chips/ftrsword/init"),
+                ("chips/crosswrd/init", "chips/crosswrd/init"),
+                ("chips/dbldream/init", "chips/dbldream/init"),
+                ("chips/fireswrd/init", "chips/fireswrd/init"),
+                ("chips/aquaswrd/init", "chips/aquaswrd/init"),
+                ("chips/elecswrd/init", "chips/elecswrd/init"),
+                ("chips/bambswrd/init", "chips/bambswrd/init"),
+                ("chips/stepswrd/init", "chips/stepswrd/init"),
+                ("chips/mchnswrd/init", "chips/mchnswrd/init"),
+                ("chips/elemswrd/init", "chips/elemswrd/init"),
+                ("chips/assnswrd/init", "chips/assnswrd/init"),
                 // Invisibl's hook, which the veil composes.
                 ("chips/invisibl/controller", "chips/invisibl/controller"),
-                ("chips/invisibl/chip", "chips/invisibl/chip"),
-                ("chips/whicapsl-invisible/chip", "chips/whicapsl-invisible/chip"),
+                ("chips/invisibl/init", "chips/invisibl/init"),
+                ("chips/whicapsl-invisible/init", "chips/whicapsl-invisible/init"),
                 // The field objects (content model v2): the rock with its
                 // debris, RockCube and IceCube, and the stages' boulder.
                 ("chips/rockcube/rock", "chips/rockcube/rock"),
                 ("chips/rockcube/debris", "chips/rockcube/debris"),
                 ("chips/rockcube/cube", "chips/rockcube/cube"),
-                ("chips/rockcube/chips", "chips/rockcube/chips"),
-                ("objects/boulder/boulder", "objects/boulder/boulder"),
+                ("chips/rockcube/init", "chips/rockcube/init"),
+                ("objects/boulder/init", "objects/boulder/init"),
                 ("objects/encased-bubble/bubble", "objects/encased-bubble/bubble"),
                 // The NaviCust supports (content model v2): the controller the
                 // ruleset spawns by role, Rush, Beat, Tango and her heal, with
                 // the barrier it raises.
                 ("lib/barriers/visual", "lib/barriers/visual"),
-                ("lib/barriers/barriers", "lib/barriers/barriers"),
+                ("lib/barriers/init", "lib/barriers/init"),
                 ("lib/supports/heal", "lib/supports/heal"),
                 ("lib/supports/tango", "lib/supports/tango"),
                 ("lib/supports/beat", "lib/supports/beat"),
@@ -1217,60 +1220,60 @@ pub fn scripts() -> Scripts {
                 // chips: the test trap and boosts compose their hooks;
                 // SloGauge is BN6's.
                 ("lib/traps/controller", "lib/traps/controller"),
-                ("chips/antinavi/chip", "chips/antinavi/chip"),
-                ("chips/antidmg/chip", "chips/antidmg/chip"),
-                ("chips/antiswrd/chip", "chips/antiswrd/chip"),
-                ("chips/antirecv/chip", "chips/antirecv/chip"),
-                ("chips/bodygrd/chip", "chips/bodygrd/chip"),
+                ("chips/antinavi/init", "chips/antinavi/init"),
+                ("chips/antidmg/init", "chips/antidmg/init"),
+                ("chips/antiswrd/init", "chips/antiswrd/init"),
+                ("chips/antirecv/init", "chips/antirecv/init"),
+                ("chips/bodygrd/init", "chips/bodygrd/init"),
                 // (HubBatc gives the NaviCust Shield as a B+Back special.)
-                ("navis/megaman/weapons/shield/weapon", "navis/megaman/weapons/shield/weapon"),
+                ("navis/megaman/weapons/shield/init", "navis/megaman/weapons/shield/init"),
                 ("lib/navi-boost/controller", "lib/navi-boost/controller"),
-                ("chips/darkinvs/chip", "chips/darkinvs/chip"),
+                ("chips/darkinvs/init", "chips/darkinvs/init"),
                 // HubBatc, and an arm chip with the weapon it makes the
                 // charged shot.
-                ("chips/hubbatc/chip", "chips/hubbatc/chip"),
+                ("chips/hubbatc/init", "chips/hubbatc/init"),
                 // (The chips that make their own weapon the charged shot,
                 // with the chips' parts those weapons fire.)
                 ("lib/navi-boost/charge", "lib/navi-boost/charge"),
                 ("chips/puncharm/charge", "chips/puncharm/charge"),
-                ("chips/puncharm/chip", "chips/puncharm/chip"),
+                ("chips/puncharm/init", "chips/puncharm/init"),
                 ("chips/bugrswrd/charge", "chips/bugrswrd/charge"),
-                ("chips/bugrswrd/chip", "chips/bugrswrd/chip"),
+                ("chips/bugrswrd/init", "chips/bugrswrd/init"),
                 ("chips/thunder/ball", "chips/thunder/ball"),
                 ("chips/thunder/shoot", "chips/thunder/shoot"),
-                ("chips/thunder/chip", "chips/thunder/chip"),
+                ("chips/thunder/init", "chips/thunder/init"),
                 ("chips/bgdththd/charge", "chips/bgdththd/charge"),
-                ("chips/bgdththd/chip", "chips/bgdththd/chip"),
+                ("chips/bgdththd/init", "chips/bgdththd/init"),
                 ("chips/aquandl/needle", "chips/aquandl/needle"),
                 ("chips/aquandl/volley", "chips/aquandl/volley"),
                 ("chips/aquandl/action", "chips/aquandl/action"),
-                ("chips/aquandl/chips", "chips/aquandl/chips"),
+                ("chips/aquandl/init", "chips/aquandl/init"),
                 ("chips/needlarm/charge", "chips/needlarm/charge"),
-                ("chips/needlarm/chip", "chips/needlarm/chip"),
+                ("chips/needlarm/init", "chips/needlarm/init"),
                 ("chips/elcpuls/pulse", "chips/elcpuls/pulse"),
                 ("chips/elcpuls/action", "chips/elcpuls/action"),
                 ("chips/puzzlarm/charge", "chips/puzzlarm/charge"),
-                ("chips/puzzlarm/chip", "chips/puzzlarm/chip"),
+                ("chips/puzzlarm/init", "chips/puzzlarm/init"),
                 ("chips/boomrarm/charge", "chips/boomrarm/charge"),
-                ("chips/boomrarm/chip", "chips/boomrarm/chip"),
+                ("chips/boomrarm/init", "chips/boomrarm/init"),
                 ("lib/gauge-speed/controller", "lib/gauge-speed/controller"),
-                ("chips/slogauge/chip", "chips/slogauge/chip"),
+                ("chips/slogauge/init", "chips/slogauge/init"),
                 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
-                ("objects/rising-bubble/rising_bubble", "objects/rising-bubble/rising_bubble"),
+                ("objects/rising-bubble/init", "objects/rising-bubble/init"),
                 // ElemTrap, the time bombs and Mine: BN6's definitions,
                 // whose hooks the test traps and time bombs run.
                 ("chips/elemtrap/trap", "chips/elemtrap/trap"),
                 ("chips/elemtrap/strike", "chips/elemtrap/strike"),
-                ("chips/elemtrap/chip", "chips/elemtrap/chip"),
-                ("objects/panel-bursts/panel_bursts", "objects/panel-bursts/panel_bursts"),
+                ("chips/elemtrap/init", "chips/elemtrap/init"),
+                ("objects/panel-bursts/init", "objects/panel-bursts/init"),
                 ("chips/timebom/controller", "chips/timebom/controller"),
                 ("chips/timebom/countdown", "chips/timebom/countdown"),
-                ("chips/timebom/chips", "chips/timebom/chips"),
+                ("chips/timebom/init", "chips/timebom/init"),
                 ("chips/mine/controller", "chips/mine/controller"),
                 ("chips/mine/land_mine", "chips/mine/land_mine"),
-                ("chips/mine/chip", "chips/mine/chip"),
+                ("chips/mine/init", "chips/mine/init"),
                 ("chips/crakshot/shot", "chips/crakshot/shot"),
-                ("chips/crakshot/chips", "chips/crakshot/chips"),
+                ("chips/crakshot/init", "chips/crakshot/init"),
                 // The navi chips' navis: each navi and his kinds, which
                 // the test navi chips summon.
                 ("lib/navi-chips/navi", "lib/navi-chips/navi"),
@@ -1303,12 +1306,12 @@ pub fn scripts() -> Scripts {
                 ("chips/sunmoon/moon_beam", "chips/sunmoon/moon_beam"),
                 // The Japanese games' Count and Django chips, with their
                 // navis, Count's lance and his rain (a dust storm).
-                ("chips/count/chips", "chips/count/chips"),
-                ("chips/django/chips", "chips/django/chips"),
+                ("chips/count/init", "chips/count/init"),
+                ("chips/django/init", "chips/django/init"),
                 // The link navis' own chips (whose actions the test link
                 // chips run) and their kinds.
                 ("lib/link_chips", "lib/link_chips"),
-                ("objects/follow-effect/follow_effect", "objects/follow-effect/follow_effect"),
+                ("objects/follow-effect/init", "objects/follow-effect/init"),
                 ("navis/heatman/chip", "navis/heatman/chip"),
                 ("navis/elecman/chip", "navis/elecman/chip"),
                 ("navis/slashman/chip", "navis/slashman/chip"),
@@ -1341,50 +1344,50 @@ pub fn scripts() -> Scripts {
                 ("navis/groundman/chip", "navis/groundman/chip"),
                 ("chips/grndman/drill", "chips/grndman/drill"),
                 ("chips/grndman/rock", "chips/grndman/rock"),
-                ("objects/panel-strike/panel_strike", "objects/panel-strike/panel_strike"),
+                ("objects/panel-strike/init", "objects/panel-strike/init"),
                 ("chips/drilarm/drill", "chips/drilarm/drill"),
                 ("chips/dolthdr/column", "chips/dolthdr/column"),
                 // The dimming chips of subtypes 4, 5, 9, 13, 26, 27, 28 and 36
                 // (content model v2): the barriers, the panel chips, the
                 // instruments, AirRaid, BugFix, ColorPt, Sensor and SumnBlk.
                 ("lib/barriers/controller", "lib/barriers/controller"),
-                ("chips/barrier/chips", "chips/barrier/chips"),
-                ("chips/bblwrap/chip", "chips/bblwrap/chip"),
-                ("chips/lifeaur/chip", "chips/lifeaur/chip"),
-                ("chips/bugfix/chip", "chips/bugfix/chip"),
+                ("chips/barrier/init", "chips/barrier/init"),
+                ("chips/bblwrap/init", "chips/bblwrap/init"),
+                ("chips/lifeaur/init", "chips/lifeaur/init"),
+                ("chips/bugfix/init", "chips/bugfix/init"),
                 ("chips/bugfix/controller", "chips/bugfix/controller"),
                 ("chips/bugfix/glow", "chips/bugfix/glow"),
-                ("objects/panel-changer/panel_changer", "objects/panel-changer/panel_changer"),
+                ("objects/panel-changer/init", "objects/panel-changer/init"),
                 ("lib/panel-chips/controller", "lib/panel-chips/controller"),
-                ("chips/pnlretrn/chip", "chips/pnlretrn/chip"),
-                ("chips/holypanl/chip", "chips/holypanl/chip"),
-                ("chips/snctuary/chip", "chips/snctuary/chip"),
-                ("chips/comingrd/chip", "chips/comingrd/chip"),
-                ("chips/goingrd/chip", "chips/goingrd/chip"),
+                ("chips/pnlretrn/init", "chips/pnlretrn/init"),
+                ("chips/holypanl/init", "chips/holypanl/init"),
+                ("chips/snctuary/init", "chips/snctuary/init"),
+                ("chips/comingrd/init", "chips/comingrd/init"),
+                ("chips/goingrd/init", "chips/goingrd/init"),
                 ("lib/instruments/instrument", "lib/instruments/instrument"),
                 ("lib/instruments/controller", "lib/instruments/controller"),
-                ("chips/fanfare/chip", "chips/fanfare/chip"),
-                ("chips/discord/chip", "chips/discord/chip"),
-                ("chips/timpani/chip", "chips/timpani/chip"),
-                ("chips/silence/chip", "chips/silence/chip"),
-                ("chips/sensor/chips", "chips/sensor/chips"),
+                ("chips/fanfare/init", "chips/fanfare/init"),
+                ("chips/discord/init", "chips/discord/init"),
+                ("chips/timpani/init", "chips/timpani/init"),
+                ("chips/silence/init", "chips/silence/init"),
+                ("chips/sensor/init", "chips/sensor/init"),
                 ("chips/sensor/controller", "chips/sensor/controller"),
                 ("chips/sensor/turret", "chips/sensor/turret"),
                 ("chips/sensor/scanner", "chips/sensor/scanner"),
                 ("chips/sensor/laser", "chips/sensor/laser"),
-                ("chips/airraid/chips", "chips/airraid/chips"),
+                ("chips/airraid/init", "chips/airraid/init"),
                 ("chips/airraid/controller", "chips/airraid/controller"),
                 ("chips/airraid/plane", "chips/airraid/plane"),
                 ("chips/airraid/propeller", "chips/airraid/propeller"),
-                ("chips/sumnblk/chips", "chips/sumnblk/chips"),
+                ("chips/sumnblk/init", "chips/sumnblk/init"),
                 ("chips/sumnblk/controller", "chips/sumnblk/controller"),
                 ("chips/sumnblk/navi", "chips/sumnblk/navi"),
-                ("chips/colorpt/chips", "chips/colorpt/chips"),
+                ("chips/colorpt/init", "chips/colorpt/init"),
                 ("chips/colorpt/controller", "chips/colorpt/controller"),
                 ("chips/colorpt/point", "chips/colorpt/point"),
                 // The Gregar and Falzar chips (the Japanese ROMs' routines).
-                ("chips/gregar/chip", "chips/gregar/chip"),
-                ("chips/falzar/chip", "chips/falzar/chip"),
+                ("chips/gregar/init", "chips/gregar/init"),
+                ("chips/falzar/init", "chips/falzar/init"),
             ];
             let modules = modules.iter().map(|&(to, from)| (to.to_string(), from.to_string()));
             let own = modules_under(TEST_CONTENT);
@@ -1395,10 +1398,14 @@ pub fn scripts() -> Scripts {
             let mut pending: Vec<String> = all.keys().cloned().collect();
             while let Some(module) = pending.pop() {
                 for required in requires(&module, &all[&module]) {
-                    if !all.contains_key(&required) {
-                        all.insert(required.clone(), read(&required));
-                        pending.push(required);
+                    // (A folder names its init.)
+                    let init = nettai_content_api::keys::init_of(&required);
+                    if all.contains_key(&required) || all.contains_key(&init) {
+                        continue;
                     }
+                    let required = if std::path::Path::new(&format!("{OVERLAY}/{required}.luau")).is_file() { required } else { init };
+                    all.insert(required.clone(), read(&required));
+                    pending.push(required);
                 }
             }
             let mut scripts = Scripts::default();
@@ -1409,30 +1416,18 @@ pub fn scripts() -> Scripts {
         .clone()
 }
 
-/// The modules `source` (the module `module`) requires: each
-/// `require("<relative path>")`, as a module path. (A require of another
-/// pack, `@exelib/...`, is that pack's.)
+/// The modules of the test content `source` (its module `module`)
+/// requires, as module paths (a folder's name for its init: Luau's rule,
+/// `keys::resolve`). (A require of another pack, `@exelib/...`, is that
+/// pack's.)
 fn requires(module: &str, source: &str) -> Vec<String> {
-    let dir: Vec<&str> = module.split('/').collect();
-    let dir = &dir[..dir.len() - 1];
-    source
-        .split("require(\"")
-        .skip(1)
-        .filter_map(|rest| rest.split_once("\")").map(|(path, _)| path))
-        .filter(|path| !path.starts_with('@'))
-        .map(|path| {
-            let mut parts: Vec<&str> = dir.to_vec();
-            for part in path.split('/') {
-                match part {
-                    "." => {}
-                    ".." => {
-                        parts.pop();
-                    }
-                    name => parts.push(name),
-                }
-            }
-            parts.join("/")
-        })
+    use nettai_content_api::{keys, packs};
+    let name = Scripts::name(ROOT, module);
+    packs::requires(source)
+        .iter()
+        .map(|written| keys::resolve(&name, written).unwrap_or_else(|e| panic!("{module}.luau: {e}")))
+        .filter(|target| keys::root_of(target) == Some(ROOT))
+        .map(|target| keys::local(&target).to_string())
         .collect()
 }
 

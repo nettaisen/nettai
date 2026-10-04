@@ -14,7 +14,7 @@
 --
 -- (NaviStats +0x4C is Hub Style, the navi's `hub_style`: Team ProtoMan's patch card 111 sets 1, Team Colonel's 2.)
 
-local attachment = require("../objects/attachment/attachment")
+local attachment = require("../objects/attachment")
 
 local arm = {}
 

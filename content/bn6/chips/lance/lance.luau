@@ -4,7 +4,7 @@
 -- (chip.luau).
 
 local collision = require("../../rules/collision")
-local common = require("@exelib/lance/lance")
+local common = require("@exelib/lance")
 local sparks = require("../../lib/sparks")
 
 local lance = {}

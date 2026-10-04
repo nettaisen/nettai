@@ -9,7 +9,7 @@
 -- row. Then both go, and the controller moves on. See docs/engine/chips.md
 -- §3.6.30.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local navi_chips = require("../../lib/navi-chips/navi")
 local parts = require("../../lib/swords/parts")
