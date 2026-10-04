@@ -86,6 +86,8 @@ struct PanelsSection {
     step: StepSection,
     dash_step: StepSection,
     any_side_step: StepSection,
+    #[serde(default)]
+    reservations: super::rules::Reservations,
 }
 
 #[derive(Deserialize)]
@@ -358,6 +360,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                     any_side_step: s.any_side_step.rules(),
                     mend: s.mend.normal,
                     mend_in_battle_mode_1: s.mend.battle_mode_1,
+                    reservations: s.reservations,
                 };
             }
             "reactions" => {
