@@ -371,7 +371,7 @@ pub struct Priming {
 pub struct Faces {
     pub own: FaceSet,
     /// The second set, which the side's rules may show instead
-    /// (`SideState::face_variant`).
+    /// (`SideLooks::face_variant`).
     pub variant: Option<FaceSet>,
 }
 

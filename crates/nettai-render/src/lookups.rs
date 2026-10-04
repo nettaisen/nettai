@@ -355,11 +355,12 @@ pub fn emblem(a: &CustomScreen, c: &Content, navi: NaviHandle, version: GameVers
     t
 }
 
-/// A navi's name (`name`, its display text) in the 8x16 font's glyphs (the
-/// custom screen's enemy names).
-pub fn navi_name(hud: &Hud, navi: NaviHandle, name: &str, problems: &mut Problems) -> Vec<u16> {
+/// A navi's name (`name`, its display text: its variant name if
+/// `variant`) in the 8x16 font's glyphs (the custom screen's enemy names).
+pub fn navi_name(hud: &Hud, navi: NaviHandle, variant: bool, name: &str, problems: &mut Problems) -> Vec<u16> {
     let (glyphs, missing) = crate::fonts::cell_glyphs(hud, name);
-    if problems.lookup(Lookup::NaviName(navi)) && !missing.is_empty() {
+    let lookup = if variant { Lookup::NaviVariantName(navi) } else { Lookup::NaviName(navi) };
+    if problems.lookup(lookup) && !missing.is_empty() {
         problems.note(format!("the navi named {name:?}: the pack's font has no glyph for {missing:?}"));
     }
     glyphs

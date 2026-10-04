@@ -248,7 +248,10 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
         for version in [GameVersion::Falzar, GameVersion::Gregar] {
             lookups::emblem(a, c, navi, version, None, p);
         }
-        lookups::navi_name(hud, navi, text.navi_name(c, navi), p);
+        lookups::navi_name(hud, navi, false, text.navi_name(c, navi), p);
+        if let Some(name) = text.navi_variant_name(c, navi) {
+            lookups::navi_name(hud, navi, true, name, p);
+        }
         if let Some(said) = text.run_message(c, navi) {
             lookups::dialogue(font, Lookup::RunMessage(navi), said.text, p);
         }
