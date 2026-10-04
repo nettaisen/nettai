@@ -2,8 +2,9 @@
 //! ([`Match::import_save`]): from a BN6 save (bn6-compat's `save`) what
 //! S6c's setup takes of it, the version, what it unlocks on the custom
 //! screen, the navi code's level and the SP navi deletion times; from a BN5
-//! one, its karma and souls (`import_bn5`). (The folder, NaviCust, patch
-//! cards and stats are a later import's.)
+//! one, its karma, its souls and its NaviCust board's expansions
+//! (`import_bn5`). (The folder, the NaviCust's programs, patch cards and
+//! stats are a later import's.)
 
 use crate::{CrossList, Match, Side};
 use bn6_compat::save::Save;

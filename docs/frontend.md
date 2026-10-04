@@ -861,7 +861,7 @@ regular_memory = 50
 sun = true
 
 [left.navicust]                            # optional: MegaMan's NaviCust, compiled into his stats
-expansions = 2                             # optional: the board, 0 (4x4) to 2 (5x5, the default)
+expansions = 2                             # optional: the board, 0 (4x4) to 2 (5x5, the default), in BN6 and BN5
 programs = [                               # in the save's order; x, y the center on the 7x7 grid
     { program = "suprarmr", color = "red", x = 2, y = 3 },
     { program = "undersht", color = "white", x = 5, y = 3, rotation = 1 },   # quarter turns
@@ -980,8 +980,9 @@ elsewhere, and a form that is no soul).
 **A BN5 save** (the editor's "Import from save…", `Match::import_save`,
 which reads a save that isn't BN6's as BN5's: a .sav, or a raw save image as
 Tango's netplay templates hold, read by `bn5_compat::save`) makes the match
-BN5's and gives its karma and the souls its version's flags give (BN5's
-souls of those numbers).
+BN5's and gives its karma, the souls its version's flags give (BN5's
+souls of those numbers) and, to a side with a NaviCust, the board of its
+ExpMemry (`expansions`: the NaviCust's programs aren't the import's yet).
 
 **The tactics** (`[left.tactics]`, nettai_battle::tactics, docs/design/bn5-map.md
 §15.9) are BN5's computer-navi data, the block a BN5 save keeps for its

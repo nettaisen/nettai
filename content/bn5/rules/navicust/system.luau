@@ -7,7 +7,8 @@
 -- +0x22, the base HP, the soul, the folder and its three Regular chips, the Regular memory and the HP), the programs'
 -- effects, the bugs, the HP. BN5's own:
 --
--- - its 5x5 board (./board.luau): no expansions, no frame, any cell of it a neighbor's;
+-- - its board (./board.luau): 4x4, 5x4 or 5x5 by the save's ExpMemry (which the compile doesn't read: only placing a
+--   program does), no frame, any cell of the grid a neighbor's;
 -- - HubBatc (program 27) counts its own bug once more (0x0813F5A8);
 -- - its bugs' table (0x08140054; ./programs.luau's BUGS);
 -- - the emotion window's glitch: its flag, 0x10C1 (set when a bug applies, 0x08140040), which the window's start
