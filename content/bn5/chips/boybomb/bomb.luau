@@ -5,8 +5,8 @@
 -- ticks. The bomb (attack object #0x3E, 0x080CCDF4) fades in over 16 ticks, then, on a panel it may stand on, counts
 -- down 60 ticks blinking and blows up over the 3x3 around it (no spark, against navis, hit modifier 3); on a panel it
 -- may not, it breaks. An obstacle of 150 HP, it takes hits (any one side's hit pushes it a panel away: BN5's
--- reaction by the hitters' flips, 0x08017A78), is pushed and breaks as one (the obstacle framework: BN5's actions are
--- BN6's numbers here, its standing BN5's 6 at BN6's 8, the same action).
+-- reaction by the hitters' flips, 0x08017A78), is pushed and breaks as one (the obstacle framework, in its numbering:
+-- its standing the framework's 8, which BN5 stores as 6: `obstacle.action_byte`).
 --
 -- The bomb's Param1 0 (HP 50, a body against the other side's, exploding over the whole enemy area, kept on a
 -- holder's record: 0x08108274's, an AI's) is no chip's: this module spawns its Param1 1 alone.
@@ -97,7 +97,7 @@ local function appear(me: Object)
     end
     me.sprite.alpha = nil
     -- (The action byte alone: a store meant for the phase goes to address 0x0A.)
-    me.action = IDLE
+    me.action = obstacle.action_byte(me, IDLE)
     if may_stand(me) then
         me.collision:set_region(regions.single)
         me:unreserve_panel(me.future_panel_x, me.future_panel_y)

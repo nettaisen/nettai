@@ -161,7 +161,7 @@ function statue.make(look: Look): Statue
             local hits = me.collision.hit_flags
             s.attackers = hits
             if hits ~= 0 and avenging_side(hits) then
-                me.action, me.phase, me.phase_init = STRIKE_BACK, 0, 0
+                me.action, me.phase, me.phase_init = obstacle.action_byte(me, STRIKE_BACK), 0, 0
                 return
             end
         end
@@ -181,7 +181,7 @@ function statue.make(look: Look): Statue
         end
         me.collision:set_region(regions.single)
         battle.play_sound(look.sounds.place)
-        me.action, me.phase, me.phase_init = STANDING, 0, 0
+        me.action, me.phase, me.phase_init = obstacle.action_byte(me, STANDING), 0, 0
     end
 
     -- `sub_80D4DC8`.
