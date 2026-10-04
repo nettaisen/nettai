@@ -133,11 +133,15 @@ setup gives both (nettai-match's `starting`).
 ## 4. Other games
 
 A game brings its own programs (its root's `define.navicust_program`s, with its own names in its own colors), its
-own board section and its own compile system. BN5's NaviCust works as BN6's does: a board with a command line, plus
-parts and color bugs (bn5-map.md has its NaviStats bytes). Its board, its program table and its bug table would be
-its own data, and its compile a BN5 system. None of that is ported yet. The engine's model, the
-match file and the editor take it as they are. The editor draws whichever board the side's game's section gives, and
-lists the content's programs. BN4's NaviCust has two command lines and no plus parts. `NaviCustRules::command_line` is
+own board section and its own compile system. **BN5's is built** (bn5-map.md §15.13): its compile is BN6's routine
+for routine, so the routines are shared (content/common/navicust/compile.luau, `compile.run(side, game)`), and each
+game's navicust system passes what is its own (`NaviCustGame`, content/common/types.d.luau): its board, its bugs in
+the order its bugs' routine runs them and what each writes by level, what a placed program counts besides (BN5's
+HubBatc counts its own bug once more), whether any bug sets the emotion window's glitch (BN6's flag 0x1720; BN5's
+flag is read outside battle only), and whether the HP is left as it is (BN5's compile in the cyberworld, the
+system's setup `cyberworld`). The programs' effects are shared constructors (@common/navicust/effects). BN5's board
+is 5x5 with no frame, the middle of the engine's 7x7 grid. The engine's model, the match file and the editor take it
+as they are. The editor draws whichever board the side's game's section gives, and lists the content's programs. BN4's NaviCust has two command lines and no plus parts. `NaviCustRules::command_line` is
 one row, so BN4 would widen it to a set of rows. That is a change to the section, not to the model.
 
 ## 5. Verification
@@ -158,6 +162,11 @@ result with the original's:
 A scenario's program is compressed only if the save's flag says so, and the lab's base saves set every flag. So a
 scenario places the compressed shape (`chiplab info` prints the flags). A program placed uncompressed on such a save
 is compiled compressed by the original.
+
+BN5's: `trace-tests --test bn5_navicust` compiles Tango's BN5 saves and the BN5 lab's scenarios the same way, in
+every byte the engine's compile can write (bn5-map.md §15.13): 59 NaviCusts of 164 programs, all 47 programs, every
+bug and level that changes a byte, uncompressed shapes (a scenario clearing the save's flags), turned ones, the
+cyberworld's HP, and the finished saves' own NaviCusts. Every one matches.
 
 ## 6. Unverified (ported)
 
