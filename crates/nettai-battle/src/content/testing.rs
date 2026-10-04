@@ -1792,3 +1792,25 @@ fn pack_animations() -> std::collections::BTreeMap<PackSprite, Vec<Vec<AnimFrame
     sprites.insert(PackSprite { category: 0x0C, index: 0x35 }, vec![vec![f(20, LAST | LOOP)], vec![f(4, 0), f(8, LAST)]]);
     sprites
 }
+
+/// Side `side`'s bug frags in battle `b`: BN6's dark-chips system's state
+/// (the test content's stock ruleset plays it).
+pub fn bug_frags(b: &crate::Battle, side: u8) -> u32 {
+    let (schema, state) = b.system_state(side, "dark-chips").expect("the test content's stock ruleset plays BN6's dark-chips system");
+    match state.get(schema, schema.index_of("bug_frags").expect("its bug frags")) {
+        nettai_content_api::FieldValue::U32(n) => n,
+        other => panic!("bug frags {other:?}"),
+    }
+}
+
+/// Give side `side` `n` bug frags in battle `b` (the dark-chips system's
+/// state).
+pub fn set_bug_frags(b: &mut crate::Battle, side: u8, n: u32) {
+    let r = b.rules[side as usize].ruleset.expect("a ruleset");
+    let systems = &b.content.defs.ruleset(r).systems;
+    let slot = systems.iter().position(|&h| b.content.defs.system(h).key == "dark-chips").expect("the dark-chips system");
+    let def = b.content.defs.system(systems[slot]);
+    let schema = b.content.defs.schema(def.state).clone();
+    let i = schema.index_of("bug_frags").expect("its bug frags");
+    b.rules[side as usize].states[slot].set(&schema, i, nettai_content_api::Value::Int(n as i64)).expect("a count of bug frags");
+}
