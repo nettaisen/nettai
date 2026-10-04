@@ -1,14 +1,14 @@
 --!strict
 -- BN5's fan for Wind and Fan (attack object #0x48, 0x080CE734): the shared one (@common/wind/fan, BN6's code) in
--- BN5's look (sprite 04-0A), with BN5's gust (./gust) and BN5's differences: leaving (0x080CE90E), any removal
--- (BN5's flag word's 0x10000) leaves a puff, with no blinking out and no absorbing; Fan's gust (0x080CE96C) starts on
--- the far column alone, none when another obstacle stands there. It takes hits as BN6's (0x08017984: a push keeps the
--- damage, after BN5's lava burn). Its actions are BN6's numbers (BN5's table, 0x080CE810, has six shared entries,
--- its rising and blowing BN5's 6 and 7 at BN6's 8 and 9, the same actions).
+-- BN5's look (sprite 04-0A), with BN5's gust (navis/megaman/gust) and BN5's differences: leaving (0x080CE90E), any
+-- removal (BN5's flag word's 0x10000) leaves a puff, with no blinking out and no absorbing; Fan's gust (0x080CE96C)
+-- starts on the far column alone, none when another obstacle stands there. It takes hits as BN6's (0x08017984: a
+-- push keeps the damage, after BN5's lava burn). Its actions are BN6's numbers (BN5's table, 0x080CE810, has six
+-- shared entries, its rising and blowing BN5's 6 and 7 at BN6's 8 and 9, the same actions).
 
 local collision = require("../../rules/collision")
 local common = require("@common/wind/fan")
-local gust = require("./gust")
+local gust = require("../../navis/megaman/gust")
 
 local fan = {}
 
