@@ -175,6 +175,11 @@ pub struct FormDef {
     /// `status_reset` (BN5's souls' routines, 0x08011B92: SearchSoul's
     /// reveal, ColonelSoul's, TomahawkSoul's grass).
     pub reset: Option<FnId>,
+    /// `wears(navi)`: what the navi puts on as it takes the form
+    /// (`sub_8011268`'s routine by the form, BN5's 0x0800F024), in place of
+    /// its identity's parts: BN5's base form's shade in Hub Style
+    /// (0x0800EE1C).
+    pub wears: Option<FnId>,
 }
 
 /// A stage (`define.stage`).
@@ -1585,7 +1590,11 @@ impl Defs {
                 Data::Nil => None,
                 _ => Some(functions.id(slot(d, "reset")?)),
             };
-            forms.push(FormDef { key: d.key.clone(), record, reset });
+            let wears = match d.spec.field("wears") {
+                Data::Nil => None,
+                _ => Some(functions.id(slot(d, "wears")?)),
+            };
+            forms.push(FormDef { key: d.key.clone(), record, reset, wears });
         }
         for (i, f) in forms.iter().enumerate() {
             if let Some(h) = f.record.identity {
