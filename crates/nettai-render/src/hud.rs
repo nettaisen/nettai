@@ -936,7 +936,7 @@ fn beast_count_shown(b: &Battle, side: u8) -> bool {
         _ => {
             bn6_compat::Unlocks::of_side(b, side).beast_out
                 && b.setup.players[side as usize & 1].navi_level.is_none()
-                && b.round.flags & battle_flags::PER_PLAYER_GAUGES == 0
+                && b.round.flags & battle_flags::OWN_GAUGES == 0
                 && b.setup.settings.effects & effects::RANDOM == 0
         }
     }

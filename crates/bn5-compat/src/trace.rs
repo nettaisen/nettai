@@ -459,7 +459,7 @@ impl Round {
     }
 
     /// What the round needs that `content` doesn't define: its chips
-    /// (`chip bn5:cannon (0x001)`), BN5's navis, forms and stage (none of
+    /// (`chip cannon (0x001)`), BN5's navis, forms and stage (none of
     /// which content/bn5 defines yet).
     pub fn needs(&self, content: &Content, compat: &Compat) -> Result<Vec<String>, String> {
         let d = decode_setup(&self.setup)?;
@@ -539,7 +539,7 @@ impl Round {
     /// both players on BN5's stock rules.
     pub fn round_setup(&self, content: &Content, compat: &Compat) -> Result<RoundSetup, String> {
         // BN5's light and dark system (content/bn5/rules/light-dark).
-        const LIGHT_DARK: &str = "bn5:light-dark";
+        const LIGHT_DARK: &str = "light-dark";
         let needs = self.needs(content, compat)?;
         if !needs.is_empty() {
             return Err(format!("content lacks {}", needs.join(", ")));
@@ -609,7 +609,6 @@ impl Round {
                 let version = d.versions[side];
                 let souls: Vec<nettai_battle::rules::Fact> = (0..content.defs.forms.len() as u16)
                     .map(nettai_content_api::FormHandle)
-                    .filter(|&f| nettai_content_api::keys::root_of(&content.defs.form(f).key) == Some(crate::ROOT))
                     .filter(|&f| content.form(f).soul.as_ref().is_some_and(|s| version.soul_flag(s.number).is_some()))
                     .map(|f| nettai_battle::rules::Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, f.0)))
                     .collect();
@@ -818,10 +817,10 @@ pub fn patch_cards(content: &Content, compat: &Compat, version: crate::Version, 
     nettai_battle::patch_cards::PatchCards::new(&cards)
 }
 
-/// BN5's navi numbers' keys in its root (NaviStats +0x29): MegaMan's.
-/// (The Team Battle's navis come with their content.)
+/// BN5's navi numbers' keys (NaviStats +0x29): MegaMan's. (The Team
+/// Battle's navis come with their content.)
 pub fn navi_key(n: u8) -> Option<String> {
-    (n == 0).then(|| format!("{}:megaman", crate::ROOT))
+    (n == 0).then(|| "megaman".to_string())
 }
 
 /// Differences between the engine and a BN5 frame: the state machine and

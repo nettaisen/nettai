@@ -20,8 +20,8 @@ type Waiting = { first_busy: boolean, second_busy: boolean }
 
 local pile = {}
 
-local SPRITE = asset.sprite("bn5:pile-driver")
-local SOUND = asset.sound("bn5:pile-driver")
+local SPRITE = asset.sprite("pile-driver")
+local SOUND = asset.sound("pile-driver")
 local NONE = 0xFF
 -- How long it stands, works, and winds down (each one tick more: to -1).
 local SET_DOWN, STAND, WORK, WIND_DOWN = 6, 0x3C, 0x96, 6
@@ -132,7 +132,7 @@ local function init(me: Object)
 end
 
 pile.kind = define.kind {
-    id = "bn5:piledrvr/pile",
+    id = "piledrvr/pile",
     pool = "attack",
     state = { controller = "object", slot = "u8", distance = "u8" },
     -- 0x080D9C1C.

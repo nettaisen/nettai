@@ -22,30 +22,30 @@ local trap = {}
 -- The bursts' looks (the panel bursts' rows 0, 2 and 4; fire and the null element row 3's fiery burst): BN5's
 -- sheets, whose animations last as BN5's do (its hit sparks a tick longer than BN6's). (Elec's is sheet 14-14,
 -- `lightning`.)
-local SPLASH = define.effect { sprite = asset.sprite("bn5:spout-splash"), anim = 0, palette = 0 }
-local LIGHTNING = define.effect { sprite = asset.sprite("bn5:lightning"), anim = 0, palette = 0 }
-local LEAVES = define.effect { sprite = asset.sprite("bn5:hit-sparks"), anim = 5, palette = 0 }
+local SPLASH = define.effect { sprite = asset.sprite("spout-splash"), anim = 0, palette = 0 }
+local LIGHTNING = define.effect { sprite = asset.sprite("lightning"), anim = 0, palette = 0 }
+local LEAVES = define.effect { sprite = asset.sprite("hit-sparks"), anim = 5, palette = 0 }
 
-trap.strike_kind = common_strike.make_kind("bn5:anti-trap/strike", {
+trap.strike_kind = common_strike.make_kind("anti-trap/strike", {
     strikes = {
         [0] = { sound = nil, spark = sparks.breaking, hit_mod = 3, status = nil, burst = effects.shell_burst },
         [1] = {
-            sound = asset.sound("bn5:target-move"),
+            sound = asset.sound("target-move"),
             spark = sparks.fire,
             hit_mod = 3,
             status = nil,
             burst = effects.shell_burst,
         },
-        [2] = { sound = asset.sound("bn5:spout-ball"), spark = sparks.aqua, hit_mod = 3, status = nil, burst = SPLASH },
+        [2] = { sound = asset.sound("spout-ball"), spark = sparks.aqua, hit_mod = 3, status = nil, burst = SPLASH },
         [3] = {
-            sound = asset.sound("bn5:beast-over-burst"),
+            sound = asset.sound("beast-over-burst"),
             spark = sparks.elec,
             hit_mod = 3,
             status = statuses.paralyze_90,
             burst = LIGHTNING,
         },
         [4] = {
-            sound = asset.sound("bn5:junk-shot"),
+            sound = asset.sound("junk-shot"),
             spark = sparks.wood,
             hit_mod = 3,
             status = statuses.confuse_480,
@@ -58,9 +58,9 @@ trap.strike_kind = common_strike.make_kind("bn5:anti-trap/strike", {
 })
 
 -- (Its sparkle and the sparkle's sound BN6's numbers.)
-trap.kind = common_trap.make_kind("bn5:anti-trap/trap", {
-    sparkle = define.effect { sprite = asset.sprite("bn5:hit-sparks"), anim = 7, palette = 0 },
-    sparkle_sound = asset.sound("bn5:dimming-sparkle"),
+trap.kind = common_trap.make_kind("anti-trap/trap", {
+    sparkle = define.effect { sprite = asset.sprite("hit-sparks"), anim = 7, palette = 0 },
+    sparkle_sound = asset.sound("dimming-sparkle"),
     watches = "one",
     self_type = collision.nothing,
     target = collision.hit_by_other_attacks,

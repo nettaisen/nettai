@@ -57,8 +57,8 @@ export type ControllerState = {
     above: Object?,
 }
 
-local SPRITE = asset.sprite("bn6:yoyo")
-local SOUND = asset.sound("bn6:set-down")
+local SPRITE = asset.sprite("yoyo")
+local SOUND = asset.sound("set-down")
 local HIT_MOD = 1
 -- Its speed, 16.16 per tick, and the ticks per panel or round.
 local SPEED, ROUND = 0x5_0000, 8
@@ -339,7 +339,7 @@ local function gone(me: Object)
 end
 
 yoyo.kind = define.kind {
-    id = "bn6:yoyo/yoyo",
+    id = "yoyo/yoyo",
     pool = "attack",
     state = {
         great = "bool",
@@ -421,7 +421,7 @@ local function control(me: Object)
 end
 
 yoyo.controller = define.kind {
-    id = "bn6:yoyo/great-yoyo",
+    id = "yoyo/great-yoyo",
     pool = "effect",
     state = {
         great = "bool",

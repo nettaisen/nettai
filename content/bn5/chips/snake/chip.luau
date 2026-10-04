@@ -6,7 +6,7 @@
 local snake = require("./snake")
 
 return define.chip {
-    id = "bn5:snake",
+    id = "snake",
     codes = { "C", "M", "Z" },
     element = "wood",
     family = "wood",

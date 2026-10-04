@@ -396,7 +396,7 @@ pub struct SoulOffer {
 }
 
 /// The system BN5's soul button and its window are (`SoulOffer`).
-const SOULS_SYSTEM: &str = "bn5:souls";
+const SOULS_SYSTEM: &str = "souls";
 /// The soul's choice's window (the screen's state 9, 0x080232D0).
 const SOUL_WINDOW: &str = "soul_unison";
 
@@ -596,7 +596,7 @@ fn state_number(s: SlotState) -> usize {
 
 /// BN6's cross system (content/bn6/rules/cross), whose state and windows
 /// the Cross window's look reads.
-const CROSS_SYSTEM: &str = "bn6:cross";
+const CROSS_SYSTEM: &str = "cross";
 
 /// The tick of a Cross's choice the white fade is over and the Cross put
 /// on (`sub_8027AAE`; the cross system's `PUT_ON_TICK`): the window's map

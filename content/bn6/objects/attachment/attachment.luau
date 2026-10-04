@@ -12,7 +12,7 @@ local attachment = {}
 -- An attachment's look (see AttachmentLook in types.d.luau).
 attachment.look = common.look
 
-attachment.kind = common.make_kind("bn6:attachment")
+attachment.kind = common.make_kind("attachment")
 
 -- `sub_80B8E30`: attach `look` to `owner`, stored in `which`.
 function attachment.attach(owner: Object, look: AttachmentLook, which: Slot, options: AttachmentOptions?): Object?

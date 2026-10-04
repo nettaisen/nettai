@@ -11,9 +11,9 @@ local sparks = require("../../lib/sparks")
 
 -- The fist (attack object #0xAE, 0x080DBDA4).
 local STRIKE = common.make {
-    id = "bn5:justcone/strike",
-    sprite = asset.sprite("bn5:justice-one"),
-    sounds = { fall = asset.sound("bn5:justice-one"), land = asset.sound("bn5:hit-bomb-1") },
+    id = "justcone/strike",
+    sprite = asset.sprite("justice-one"),
+    sounds = { fall = asset.sound("justice-one"), land = asset.sound("hit-bomb-1") },
     is = collision.thrown_break,
     hits = collision.hits_navis,
     spark = sparks.breaking,
@@ -24,7 +24,7 @@ local STRIKE = common.make {
 }
 
 return define.chip {
-    id = "bn5:justcone",
+    id = "justcone",
     codes = { "J" },
     element = "null",
     family = "break",

@@ -16,11 +16,11 @@ export type State = {
     look: Identity?,
 }
 
-local SPRITE = asset.sprite("bn5:cosmoman")
-local SOUND_FALL = asset.sound("bn5:justice-one")
-local SOUND_HIT = asset.sound("bn5:hit-bomb-1")
+local SPRITE = asset.sprite("cosmoman")
+local SOUND_FALL = asset.sound("justice-one")
+local SOUND_HIT = asset.sound("hit-bomb-1")
 -- The explosion where it lands (effect 0).
-local EXPLOSION = define.effect { sprite = asset.sprite("bn5:explosion"), anim = 0, palette = 0 }
+local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
 -- What a panel must hold to take it (solid, or something on it).
 local TAKES = 0x0F80_0010
 
@@ -115,7 +115,7 @@ end
 local ACTIONS = { [0] = fall, [4] = land }
 
 meteor.kind = define.kind {
-    id = "bn5:cosmoman/meteor",
+    id = "cosmoman/meteor",
     pool = "attack",
     state = { look = "identity" },
     -- 0x080DE708.

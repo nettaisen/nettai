@@ -324,7 +324,7 @@ mod tests {
         assert_eq!(forced.sides, live(&content, "bn6", 3, None).unwrap().sides);
         assert!(crate::link_stage(&content, "bn6", "netbattle-100").is_err());
         // Another game's name is none of this game's.
-        assert!(crate::link_stage(&content, "bn6", "bn6:netbattle-43").is_err());
+        assert!(crate::link_stage(&content, "bn6", "bn6:netbattle-43").is_err()); // (written in full)
     }
 
     /// A plain match is one the checks accept (its folder the rules' draw),

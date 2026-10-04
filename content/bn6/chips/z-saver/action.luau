@@ -13,13 +13,13 @@ local sonic_boom = require("../../lib/swords/sonic_boom")
 
 -- The slashes' effects over the panel ahead (effects 0x65 to 0x67,
 -- `dword_80F0064`).
-local SLASH_SPRITE = asset.sprite("bn6:sword-slash")
+local SLASH_SPRITE = asset.sprite("sword-slash")
 
 return {
     action = common.make {
-        id = "bn6:z-saver/action",
-        swing_sound = asset.sound("bn6:z-saver"),
-        command_sound = asset.sound("bn6:ok-8b"),
+        id = "z-saver/action",
+        swing_sound = asset.sound("z-saver"),
+        command_sound = asset.sound("ok-8b"),
         attachment = attachment.kind,
         blade = parts.blades.sword,
         blade_anim = parts.blade_anim,

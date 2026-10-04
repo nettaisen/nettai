@@ -8,7 +8,7 @@
 -- field object of class 1, with 1 HP: evicted (its HP 0) it leaves a puff and goes; anything its collision meets
 -- ends it at once. Its palette is its level's (the record's first parameter, 4 palettes apart).
 --
--- In battle flag 0x40's mode (never in a netbattle) it marks its panel as it comes and as it lands (BN5's effect
+-- In the operation battle's mode (never in a netbattle) it marks its panel as it comes and as it lands (BN5's effect
 -- object 0x83: lib/navi-chips/marker).
 
 local collision = require("../../rules/collision")
@@ -30,14 +30,14 @@ export type ShockState = {
 
 -- 0x080D8732: sprite 04-17 with a ground shadow (`sub_8011504`'s 0x01000417), animation 0; a thrown body (row 0x0A)
 -- reaching the navis (row 5), hit modifier 3 (0x0A050300).
-local SPRITE = asset.sprite("bn5:voltz")
+local SPRITE = asset.sprite("voltz")
 local HIT_MOD = 3
 -- 0x080D8B22: the shock's sprite 10-11 without a shadow (0x00001011), animation 0; the same collision.
-local SHOCK_SPRITE = asset.sprite("bn5:thunder-ball")
+local SHOCK_SPRITE = asset.sprite("thunder-ball")
 -- NameID 0xE4: actor record 0xE4 (0x08014C94: version 5, AI index 0x21); its look (0x0801D6B0's row 0x17: the
 -- sensor, a ground shadow); BN5's swallowing and Poltergeist leave it (0x0800D372, 0x080E8CA0).
 local IDENTITY = define.identity {
-    id = "bn5:voltz",
+    id = "voltz",
     class = "field_object",
     version = 5,
     ai_index = 0x21,
@@ -48,12 +48,12 @@ local IDENTITY = define.identity {
 local HP = 1
 -- It drops from 160 pixels, 4 a tick; its collision is on from 16 pixels up.
 local DROP_HEIGHT, DROP_SPEED, LOW = 0xA0_0000, 0x4_0000, 16
-local DROP_SOUND, SHOCK_SOUND = asset.sound("bn5:voltz-drop"), asset.sound("bn5:erase-man-2")
+local DROP_SOUND, SHOCK_SOUND = asset.sound("voltz-drop"), asset.sound("erase-man-2")
 -- The effects (BN5's table, 0x080DFC94): row 0x14 (14-0D, animation 2) when evicted.
-local PUFF = define.effect { sprite = asset.sprite("bn5:puff"), anim = 2, palette = 0 }
+local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 -- Landed, shocking, blinking out.
 local LANDED_TICKS, SHOCK_TICKS, BLINK_TICKS = 10, 30, 30
--- The marker (battle flag 0x40's): 30 ticks, style 9 as it lands.
+-- The marker (the operation battle's): 30 ticks, style 9 as it lands.
 local MARK_TICKS, LANDED_STYLE = 30, 9
 -- The shocks' ways (0x080D8944, and 0x080D8BE0 the same: x by the facing, y): up, down, back, ahead.
 local WAYS = { [0] = { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }
@@ -180,7 +180,7 @@ local function shock_init(me: Object)
 end
 
 shock_kind = define.kind {
-    id = "bn5:voltz/shock",
+    id = "voltz/shock",
     pool = "attack",
     state = { params = "u32" },
     -- 0x080D8AF0.
@@ -231,7 +231,7 @@ local function drop(me: Object)
     end
 end
 
--- 0x080D8804: landed (battle flag 0x40's marker), 10 ticks.
+-- 0x080D8804: landed (the operation battle's marker), 10 ticks.
 local function land(me: Object)
     if me.phase_init == 0 then
         marker.spawn(me, me.panel_x, me.panel_y, MARK_TICKS, LANDED_STYLE, true)
@@ -310,7 +310,7 @@ local function tick(me: Object)
 end
 
 -- 0x080D870C: on its panel (off the field it goes at once), 160 pixels up, its sprite and collision (its region
--- off), name, level's palette, 1 HP and its element's spark; the sound and battle flag 0x40's marker.
+-- off), name, level's palette, 1 HP and its element's spark; the sound and the operation battle's marker.
 local function init(me: Object)
     if not field.valid(me.panel_x, me.panel_y) then
         obstacle.release_tracking(me)
@@ -341,7 +341,7 @@ local function init(me: Object)
 end
 
 voltz.kind = define.kind {
-    id = "bn5:voltz/sensor",
+    id = "voltz/sensor",
     pool = "attack",
     state = { params = "u32" },
     -- 0x080D86E8.

@@ -10,7 +10,7 @@
 -- hit starts (ShadowSoul's B+Back) runs its first step at once (0x0800E340), where BN6's waits for the next tick.
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
-return define.rules("bn5:reactions", {
+return {
     push_reading = "bn5",
     -- The hit test (0x0801691C): a bubbled body counts as submerged, elec reaching either; a FloatShoe body is hit by
     -- all (BN5's collision types have no 0x80 self bit); a guard breaks to 0x1002 and turns aside what lacks
@@ -40,4 +40,4 @@ return define.rules("bn5:reactions", {
     slide_speed = { x = 0xA_0000, y = 0x8_0000 },
     overlay_restart = "reload",
     stance_counter = "at_once",
-})
+}

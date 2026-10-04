@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local instants = require("../../navis/megaman/weapons/instants")
 
 return define.patch_card {
-    id = "bn5:snowblow",
+    id = "snowblow",
     mb = 17,
     effects = {
         cards.hp(120),

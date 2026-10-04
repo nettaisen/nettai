@@ -11,8 +11,8 @@ local statuses = require("../../rules/status")
 
 local immobilizer = {}
 
-immobilizer.kind = common.make_kind("bn6:immobilizer", {
-    sound = asset.sound("bn6:immobilizer"),
+immobilizer.kind = common.make_kind("immobilizer", {
+    sound = asset.sound("immobilizer"),
     status = statuses.immobilize_120,
     target = collision.hits_navis,
     self_type = collision.guard_breaking,

@@ -20,20 +20,20 @@ export type State = {
 
 -- The soul change, as the pause handler runs it.
 souls.action = define.action {
-    id = "bn5:souls/change",
+    id = "souls/change",
     state = { timer = "u16" },
     update = change.update,
 }
 
 -- The revert out of a soul (./revert), as the pause handler runs it.
 souls.revert = define.action {
-    id = "bn5:souls/revert",
+    id = "souls/revert",
     state = { timer = "u16" },
     update = revert.update,
 }
 
 souls.system = define.system {
-    id = "bn5:souls",
+    id = "souls",
     state = {
         turns = "u8",
         chaos = "bool",
@@ -75,7 +75,7 @@ souls.system = define.system {
         -- MegaMan (NaviStats +0x29).
         custom_requested = function(side: number)
             local s = system.state() :: State
-            if battle.navi(side).navi.id == "bn5:megaman" and s.turns ~= 0xFF and s.turns ~= 0 then
+            if battle.navi(side).navi.id == "megaman" and s.turns ~= 0xFF and s.turns ~= 0 then
                 s.turns -= 1
             end
         end,

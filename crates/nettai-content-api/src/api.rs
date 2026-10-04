@@ -589,7 +589,7 @@ named_fields! {
         Turn = "turn", U8, ro;
         /// Battle flag 0x40: each player has a custom gauge (`sub_800A8F8`;
         /// not in netbattles).
-        PerPlayerGauges = "per_player_gauges", Bool, ro;
+        OwnGauges = "own_gauges", Bool, ro;
         /// Battle flag 1: the fight is on (collision is live).
         Fighting = "fighting", Bool, ro;
         /// Battle flag 2: the custom gauge is full.
@@ -827,7 +827,7 @@ named_flags! {
         Gauge = "gauge",
         /// The emotion window (draw task 14).
         EmotionWindow = "emotion_window",
-        /// The battle flag 0x40 mode's gauge, drawn by its levels (draw
+        /// The own-gauges mode's gauge, drawn by its levels (draw
         /// task 17).
         LevelGauge = "level_gauge",
         /// The HP box and its low-HP alarm (draw task 7).
@@ -867,7 +867,7 @@ pub struct CustomPlayer {
 }
 
 named_flags! {
-    /// A side's special in progress (battle flag 0x40 mode;
+    /// A side's special in progress (the own-gauges mode;
     /// `sub_802E4B8`): the SELECT special, or a system's takeover of the
     /// side's navi (BN6's Cross special).
     pub enum SideSpecial {
@@ -1404,7 +1404,7 @@ pub trait CoreApi {
     fn player(&self, side: u8) -> Option<ObjectRef>;
     /// A side's combatants still in, in slot order.
     fn alive_actors(&self, side: u8) -> Vec<ObjectRef>;
-    /// `sub_802EFEE`: the actor `side` tracks in the battle flag 0x40
+    /// `sub_802EFEE`: the actor `side` tracks in the own-gauges mode
     /// mode (its side state's +0x44), if any.
     fn tracked(&self, side: u8) -> Option<ObjectRef>;
     /// Slot `i` (from 0, of four) of a side's list of alive actors.
@@ -1472,7 +1472,7 @@ pub trait CoreApi {
     /// A side's slow and fast gauge timers (`sub_802E070`+0x3C, +0x3A).
     fn set_gauge_speed_ticks(&mut self, side: u8, slow: u16, fast: u16);
     /// `sub_8010B78`: the damage a side's custom gauge gives (its own gauge
-    /// in the battle flag 0x40 mode, else the shared one).
+    /// in the own-gauges mode, else the shared one).
     fn gauge_damage(&self, side: u8) -> u16;
     /// A side's sword pick (`sub_802E070`+0x12): the swing a variable sword
     /// makes for a navi no buttons drive (BN5's computer navi draws it,

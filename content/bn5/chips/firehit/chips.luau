@@ -7,7 +7,7 @@ local fist = require("./fist")
 -- FireHit1 (BN5 chip 0x097): action 0x1A's effect 9, BN6's FireHit (chips/firehit/fist: a fist on each row where
 -- the first column ahead with one of the other side's has one, at most three panels ahead).
 local firehit1 = define.chip {
-    id = "bn5:firehit1",
+    id = "firehit1",
     codes = { "O", "P", "Q" },
     element = "fire",
     family = "fire",
@@ -25,7 +25,7 @@ local firehit1 = define.chip {
 -- FireHit2 (BN5 chip 0x098): action 0x1A's effect 9, BN6's FireHit (chips/firehit/fist: a fist on each row where
 -- the first column ahead with one of the other side's has one, at most three panels ahead).
 local firehit2 = define.chip {
-    id = "bn5:firehit2",
+    id = "firehit2",
     codes = { "H", "I", "J" },
     element = "fire",
     family = "fire",
@@ -43,7 +43,7 @@ local firehit2 = define.chip {
 -- FireHit3 (BN5 chip 0x099): action 0x1A's effect 9, BN6's FireHit (chips/firehit/fist: a fist on each row where
 -- the first column ahead with one of the other side's has one, at most three panels ahead).
 local firehit3 = define.chip {
-    id = "bn5:firehit3",
+    id = "firehit3",
     codes = { "E", "F", "G" },
     element = "fire",
     family = "fire",

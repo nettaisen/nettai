@@ -4,4 +4,4 @@
 
 local common = require("@exelib/gauge-speed/controller")
 
-return common.make { id = "bn5:gauge-speed", warning = asset.sound("bn5:err-select-91") }
+return common.make { id = "gauge-speed", warning = asset.sound("err-select-91") }

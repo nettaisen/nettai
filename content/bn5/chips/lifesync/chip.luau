@@ -7,7 +7,7 @@
 local lifesync = require("./controller")
 
 return define.chip {
-    id = "bn5:lifesync",
+    id = "lifesync",
     codes = { "B", "R", "S", "*" },
     element = "null",
     family = "cursor",

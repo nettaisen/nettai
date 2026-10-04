@@ -8,7 +8,7 @@ local bombs = require("../../lib/bombs/bombs")
 local geyser = require("./geyser")
 
 return define.chip {
-    id = "bn5:geyser",
+    id = "geyser",
     codes = { "G", "M", "S" },
     element = "aqua",
     family = "aqua",

@@ -6,14 +6,14 @@
 local common = require("@exelib/supports/tango")
 local heal = require("./heal")
 
-local PUFF = asset.sprite("bn5:puff")
+local PUFF = asset.sprite("puff")
 
 return common.make {
-    id = "bn5:tango",
-    sprite = asset.sprite("bn5:tango"),
-    arrive_sound = asset.sound("bn5:arrive"),
-    land_sound = asset.sound("bn5:tango-land"),
-    throw_sound = asset.sound("bn5:minibomb-throw"),
+    id = "tango",
+    sprite = asset.sprite("tango"),
+    arrive_sound = asset.sound("arrive"),
+    land_sound = asset.sound("tango-land"),
+    throw_sound = asset.sound("minibomb-throw"),
     -- Her arrival sparkle (BN5's effect 0x15); she leaves in a puff (effect 0x14: the rows of BN5's 0x080DFC94 are
     -- BN6's).
     arrive = define.effect { sprite = PUFF, anim = 3, palette = 0 },

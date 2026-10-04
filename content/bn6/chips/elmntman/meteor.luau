@@ -19,8 +19,8 @@ export type State = {
     while_dimmed: boolean,
 }
 
-local SPRITE = asset.sprite("bn6:meteor")
-local SOUND_JUSTICE_ONE = asset.sound("bn6:justice-one")
+local SPRITE = asset.sprite("meteor")
+local SOUND_JUSTICE_ONE = asset.sound("justice-one")
 
 -- Where it starts, this far behind and above its panel; its speed forward
 -- and down; ticks to fall (16.16).
@@ -116,7 +116,7 @@ local function tick(me: Object)
 end
 
 meteor.kind = define.kind {
-    id = "bn6:elmntman/meteor",
+    id = "elmntman/meteor",
     pool = "attack",
     state = { while_dimmed = "bool" },
     -- `sub_80D6BD4`.

@@ -4,7 +4,7 @@
 local cards = require("../../rules/patch-cards/cards")
 
 return define.patch_card {
-    id = "bn5:yahoots-bug-repair",
+    id = "yahoots-bug-repair",
     mb = 17,
     effects = {
         cards.step_bug(0),

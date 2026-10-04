@@ -6,7 +6,7 @@ local buster = require("../../navis/megaman/weapons/buster")
 local charged_shot = require("../../navis/megaman/weapons/charged-shot")
 
 return define.patch_card {
-    id = "bn5:lans-custom",
+    id = "lans-custom",
     mb = 25,
     effects = {
         cards.body("null"),

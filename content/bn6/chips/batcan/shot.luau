@@ -12,12 +12,12 @@ local common = require("@exelib/batcan/batcan")
 local sparks = require("../../lib/sparks")
 
 return common.make {
-    shot_id = "bn6:batcan/shot",
+    shot_id = "batcan/shot",
     -- The bat cannon (the original's attachment row 0xF: it sits at a fixed
     -- offset by its holder, not at an attach point).
-    bat = attachment.look { sprite = asset.sprite("bn6:bat-cannon"), palette = 0, by_owner = true },
+    bat = attachment.look { sprite = asset.sprite("bat-cannon"), palette = 0, by_owner = true },
     attachment = attachment.kind,
-    sound = asset.sound("bn6:cannon"),
+    sound = asset.sound("cannon"),
     shot = { is = collision.attack, hits = collision.hits_navis, spark = sparks.bat },
     restarts_overlay = true,
 }

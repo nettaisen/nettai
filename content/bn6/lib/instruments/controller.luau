@@ -10,6 +10,6 @@ local instruments = {}
 
 instruments.make = common.make
 
-instruments.hook = common.make("bn6:instruments/controller", instrument.kind)
+instruments.hook = common.make("instruments/controller", instrument.kind)
 
 return instruments

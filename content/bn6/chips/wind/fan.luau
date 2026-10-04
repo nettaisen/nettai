@@ -10,18 +10,18 @@ local gust = require("../../objects/gust/gust")
 
 local fan = {}
 
-local SPRITE = asset.sprite("bn6:fan")
+local SPRITE = asset.sprite("fan")
 -- How a fan looks absorbed (both variants' obstacle kind 0: its own sprite).
 fan.absorbed = absorbed_obstacle.look { sprite = SPRITE }
 
 fan.variant = common.variant
 
 local made = common.make {
-    id = "bn6:wind/fan",
+    id = "wind/fan",
     sprite = SPRITE,
-    appear_sound = asset.sound("bn6:appear"),
-    blow_sound = asset.sound("bn6:dustbrk"),
-    break_sound = asset.sound("bn6:hit-bomb-1"),
+    appear_sound = asset.sound("appear"),
+    blow_sound = asset.sound("dustbrk"),
+    break_sound = asset.sound("hit-bomb-1"),
     puff = effects.puff,
     explosion = effects.explosion,
     is = collision.own_body,

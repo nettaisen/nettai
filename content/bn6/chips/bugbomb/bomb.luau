@@ -17,8 +17,8 @@ local trajectory = require("../../lib/trajectory")
 local bug_bomb = {}
 
 -- The explosion (effect 0x4A).
-local EXPLOSION = define.effect { sprite = asset.sprite("bn6:explosion"), anim = 0, palette = 2 }
-local SOUND_HIT_BOMB = asset.sound("bn6:hit-bomb-1")
+local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 2 }
+local SOUND_HIT_BOMB = asset.sound("hit-bomb-1")
 
 -- The bugs (`byte_80DA034`): the code and its argument, by what the target
 -- lacks: HP drain, custom-screen HP drain, a panel trail, buster blanks.
@@ -52,8 +52,8 @@ local function pick_bug(me: Object)
     me.collision.bugs = b.arg * 0x100 + b.bug
 end
 
-bug_bomb.kind = common.make_kind("bn6:bugbomb/bomb", {
-    sprite = asset.sprite("bn6:bomb"),
+bug_bomb.kind = common.make_kind("bugbomb/bomb", {
+    sprite = asset.sprite("bomb"),
     anim = 5,
     -- Its status 0x20.
     is = collision.own_thrown_body,
@@ -63,7 +63,7 @@ bug_bomb.kind = common.make_kind("bn6:bugbomb/bomb", {
     burst_hits = collision.hits_navis,
     crushed = EXPLOSION,
     burst = EXPLOSION,
-    land_sound = asset.sound("bn6:bug-bomb-land"),
+    land_sound = asset.sound("bug-bomb-land"),
     crushed_sound = SOUND_HIT_BOMB,
     burst_sound = SOUND_HIT_BOMB,
     pick_bug = pick_bug,

@@ -1418,7 +1418,7 @@ lib/traps/controller (a chip's `dimming` hook is `traps.hook(trap?)`; the port's
 record no longer names it, where the original tells it through Param2).
 
 **The traps' counters.** A trap that caught a hit sets its request on the navi, and the ruleset (`sub_801056A`,
-`sub_80105F2`; kinds/player/actions/reactive.rs) starts the counter by role (`define.roles`, rules/roles.luau).
+`sub_80105F2`; kinds/player/actions/reactive.rs) starts the counter by role (the stock ruleset's `roles`, rules/roles.luau).
 The counters are content:
 
 - AntiDmg's (action 0x47, `sub_80EE90C`; chips/antidmg/counter): the navi vanishes and throws a shuriken (attack
@@ -1457,7 +1457,7 @@ subtype:
   (chips/rockcube/rock, field-objects.md).
 - 25 (SloGauge, FstGauge; T4 0x1C, `sub_80E23E8`): the shared custom gauge's rate becomes 0x10 or 0x40 for the rest
   of the round (`sub_801DF8C`; the round start sets it from the navi stats, `sub_8014178`); the user's side's slow
-  (+0x3C) or fast (+0x3A) gauge timer in `sub_802E070` gets 480 ticks, and, with per-player gauges (battle flag
+  (+0x3C) or fast (+0x3A) gauge timer in `sub_802E070` gets 480 ticks, and, in the chip gate battle (battle flag
   0x40) outside a link battle, the other side's 1080 (`sub_80107D4` counts them down; nothing else PvP reaches
   reads them); a warning blinks over the gauge (`sub_800AE90`, with sound 0x91 every 16 frames of the game's frame
   counter, which the port approximates with the effect's own ticks), 70 ticks. lib/gauge-speed/controller
@@ -1505,7 +1505,7 @@ Ported too, and specified elsewhere (the chip lab's scenarios for all of them ma
   their lab coverage: docs/engine/dimming-chip-effects.md.
 
 Unverified branches: IceCube and WhiCapsl (not folder chips: no lab scenario uses chips 0x17C and 0x17E), BodyGrd
-(program advance 0x157: only as its recipe), per-player gauges (not in netbattles).
+(program advance 0x157: only as its recipe), the chip gate battle's own gauges (not in a netbattle without gates).
 
 **ElemTrap's trap** (T3 0x4D, `sub_80CDF84`; the pack's `chips/elemtrap/trap`) is a collision over whole-field region
 0x80 with ObjectFlags1 0x01000000 (hit even while dimmed), self type 0, target 0x18. Each tick it resolves its hits

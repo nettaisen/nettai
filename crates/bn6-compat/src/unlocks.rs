@@ -21,8 +21,8 @@ pub const CROSSES: usize = 5;
 /// BN6's game root, whose stock ruleset a setup without one plays by.
 
 /// BN6's systems that take these facts.
-const CROSS_SYSTEM: &str = "bn6:cross";
-const BEAST_SYSTEM: &str = "bn6:beast";
+const CROSS_SYSTEM: &str = "cross";
+const BEAST_SYSTEM: &str = "beast";
 
 /// The Crosses a setup names for a player's Cross window
 /// ([`Unlocks::cross_list`]): up to five forms, each a Cross, which the

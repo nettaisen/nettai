@@ -17,8 +17,8 @@ local function stage(id: string, actors: { StageActor }): StageDef
         id = id,
         layout = PLAIN,
         panel_pattern = 0x38,
-        music = asset.sound("test:test-stage-music"),
-        background = asset.background("test:test-background"),
+        music = asset.sound("test-stage-music"),
+        background = asset.background("test-background"),
         mode = 0,
         battle_number = 0,
         -- A link battle.
@@ -40,8 +40,8 @@ local function stone(x: number, y: number): StageActor
 end
 
 return {
-    link_battle = stage("test:test/link-battle", { navi(1, 5), navi(0, 2) }),
-    link_battle_side0_first = stage("test:test/link-battle-side0-first", { navi(0, 2), navi(1, 5) }),
-    rock_battle = stage("test:test/rock-battle", { navi(0, 1), navi(1, 6), cube(3, 3), cube(4, 1) }),
-    boulder_battle = stage("test:test/boulder-battle", { navi(0, 1), navi(1, 6), stone(2, 2), stone(5, 2), stone(3, 1) }),
+    link_battle = stage("test/link-battle", { navi(1, 5), navi(0, 2) }),
+    link_battle_side0_first = stage("test/link-battle-side0-first", { navi(0, 2), navi(1, 5) }),
+    rock_battle = stage("test/rock-battle", { navi(0, 1), navi(1, 6), cube(3, 3), cube(4, 1) }),
+    boulder_battle = stage("test/boulder-battle", { navi(0, 1), navi(1, 6), stone(2, 2), stone(5, 2), stone(3, 1) }),
 }

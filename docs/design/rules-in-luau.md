@@ -43,7 +43,8 @@ cut-in", "telop" and "supports" are used as in the rest of the project.
   their emotions, their navi's special controls, their per-player setup. The shared systems (objects, collision
   and hits, the field, chips, the flow) are framework Rust and common to both. Nothing battle-wide is a ruleset's:
   what the whole battle runs by (the field's panels, the flow's timings and banners, the music, the object pools'
-  sizes) comes from the stage's game's stock ruleset.
+  sizes) comes from the game's stock ruleset (rules/init.luau, the game's one rules definition: its systems, its
+  rule sections and its roles).
 - **A ruleset is a list of systems** (`define.system`, `define.ruleset`). BN6's stock ruleset is its Crosses, Beast
   Out and Beast Over, the Cross special, its emotions, its custom-screen buttons and BN6's own setup; BN5's will be
   Soul Unison, Chaos Unison, its emotions, its Team Battle. A mix (Crosses and Beast Out with Soul Unison) is a
@@ -51,7 +52,8 @@ cut-in", "telop" and "supports" are used as in the rest of the project.
 - **Rust keeps what runs for every object every tick, and the services**, and the framework where the games share
   it. The BN5 map (bn5-map.md) shows more is shared than the survey assumed: the turn-start sequencer and its
   transform record, the navi switch (BN6's unused "Cross change"), the reversion before a custom screen, the
-  per-player gauges and SELECT special (the battle flag 0x40 mode, BN5's Team Battle), the lock-on marker,
+  each side's own gauge and SELECT special (battle flag 0x40, the engine's `OWN_GAUGES`: BN5's operation battle,
+  BN6's chip gate battle), the lock-on marker,
   afterimage and Beast Over burst kinds, the custom screen's sacrifice and re-deal machinery are BN5's code too.
   They stay framework, under generic names. What moves into Luau is what only BN6 has.
 - **State is per side and per system**, engine-owned and typed: each system declares its fields (up to 64 bytes,
@@ -100,7 +102,7 @@ The BN5 column is the map's status of the routines (Team ProtoMan), "same" meani
 | The revert (`sub_8015614`) | actions/transform.rs | same | framework |
 | The Cross merge (actor #0x1B, `sub_80BC650` and its states) | kinds/cross_merge.rs | the entry similar, the rest absent | BN6's Cross system |
 | The "Cross change" and its knockout (`sub_802D714`, `sub_802D738`, `sub_802D7A0`, `sub_802D8F0`, `sub_802DD2A`, `sub_802D926`, `sub_802D9B0`), the reversion before a custom screen (`sub_802D6A0`, `sub_802D6C4`) | actions/cross_change.rs, transform.rs, battle.rs `cross_stats` | same or 0.97–1.00 | framework: **the navi switch** (BN5's Team Battle) |
-| The battle flag 0x40 mode: per-player gauges, the SELECT special (`sub_802E070`, `sub_802E4E4`, `sub_802F068`) | battle.rs `sides`, idle.rs | same, similar 0.70, 0.67 | framework (BN5's Team Battle mode) |
+| The own-gauges mode (battle flag 0x40: BN5's operation battle, BN6's chip gate battle): each side's own gauge, the SELECT special (`sub_802E070`, `sub_802E4E4`, `sub_802F068`) | battle.rs `sides`, idle.rs | same, similar 0.70, 0.67 | framework (`OWN_GAUGES`) |
 | The Cross special (`sub_802D4F0`, `sub_802D588`, `sub_80EFDB2`) | berserk.rs, actions/cross_special.rs | absent; differs 0.45 | BN6's Cross special system |
 | Beast Over's berserk (`sub_802D322` to `sub_802D5A8`) | berserk.rs | absent | BN6's Beast system |
 | The Beast rush (`sub_80EAD9C` to `sub_80EAF36`) | actions/beast_rush.rs | absent | BN6's Beast system |
@@ -191,26 +193,29 @@ return define.system {
 }
 ```
 
-A ruleset is a list of systems with the data the framework reads for its player:
+A ruleset is a list of systems; the game's stock one is also the game's one rules definition, holding the data the
+framework reads (content-model-v2.md §3.8, §7.4):
 
 ```luau
--- content/bn6/rules/ruleset.luau
+-- content/bn6/rules/init.luau
 return define.ruleset {
-    id = "bn6:stock",
+    id = "stock",
     stock = true,                  -- the game's own rules
-    systems = { cross, beast, cross_special, emotion, navicust, dark_chips, link_navis },
-    sections = require("./sections"),   -- rule sections: elements, panels, the custom screen's layout, ...
-    roles = require("./roles"),         -- what the framework starts, spawns, shows and plays
+    systems = { cross, navicust, patch_cards, forms.system, beast, emotion.system, folder, dark_chips },
+    panels = require("./panels"),  -- its rule sections: plain tables, each read against the engine's schema
+    elements = require("./elements"),
+    -- ...
+    roles = require("./roles"),    -- what the framework starts, spawns, shows and plays
 }
 ```
 
-- **Stock rulesets**: each game defines exactly one ruleset with `stock = true`, its game's own rules
-  (`bn6:stock`).
-- **Mixes**: a ruleset may start from another and change its systems: `define.ruleset { id = "mix:bn6-souls", base =
-  bn6, add = { bn5_soul_unison }, sections = { define.rules("mix:souls/custom-screen", SOULS_AND_CROSSES) } }`. A
-  mix's own `sections` are what its sides read over its game's (built: P1 item 8); a mix needs the layout and roles
-  its systems use; the define phase checks every button a system offers has a slot. Mixes are content (a mod's
-  folder, §7.2); a setup chooses a ruleset by id.
+- **Stock rulesets**: each game defines exactly one ruleset with `stock = true`, its game's own rules (`stock`), in
+  rules/init.luau (the manifest's `rules = ["rules"]`).
+- **Variants**: a ruleset may start from another and change its systems: `define.ruleset { id = "souls", base =
+  stock, add = { soul_unison }, remove = { cross } }`. A variant changes only the systems: the game's rule sections and
+  roles are its stock ruleset's, and a section or `roles` on another ruleset is a load error saying so (P2); the
+  define phase checks every button a system offers has a slot. A setup chooses a ruleset by id (`RoundSetup::ruleset`,
+  the arena's).
 - **Dependencies**: a system may name systems it needs (`requires = { beast }` on Beast Over) or can't run with
   (`excludes`); the define phase checks every ruleset.
 - **Order**: the framework calls a ruleset's systems in its `systems` order. Notification hooks call every system;
@@ -278,7 +283,7 @@ These stay Rust and lose their BN6 names (and their BN6 assumptions, where the m
 |---|---|
 | `TransformRequest { form, cross_change }`, `TransformSequencer`, the sequencer's check | the transform record `{ form, navi_switch }`; the sequencer asks each side's systems (`turn_check`) instead of checking Beast Out itself |
 | The "Cross change", `cross_stats`, the Cross knockout and protect | **the navi switch**: a side's reserve navis (`reserves`), the switch and the knockout that falls back to the reserve (BN5's Team Battle switch) |
-| `SideState`, `SideSpecial::{Select, Cross}`, battle flag 0x40 named "per-player gauges" | the Team Battle mode's per-player gauges and SELECT special; the Cross special leaves it for BN6's system |
+| `SideState`, `SideSpecial::{Select, Cross}`, battle flag 0x40 named `OWN_GAUGES` | the own-gauges mode's gauges and SELECT special (BN5's operation battle, BN6's chip gate battle); the Cross special leaves it for BN6's system |
 | `engine/lockon-marker`, `engine/afterimage`, `engine/beast-over-burst` | shared kinds under generic names (`engine/target-marker`, `engine/afterimage`, `engine/burst`), with the BN6-only target and freeze as the Beast system's calls |
 | The scrap and re-deal phases | the chip window's sacrifice and re-deal machinery, which buttons of any system start |
 
@@ -355,8 +360,8 @@ sacrifice machinery, `custom.chip_check` and the buttons' `available` for light 
 can't use dark chips or DS navi chips; a dark one can't use other navi chips and has no Soul Unison button), and
 `chip_used` for Chaos Unison's held dark chip. None of it needs Rust per game once these exist, which is the test of
 the seam. (Tango's BN5 matches are Team Battles that leave battle flag 0x40 off, use the normal custom screen and never
-switch navis, since the switch needs a navi chip from the Battle Chip Gate: the flag-0x40 mode and the navi switch stay
-shared framework code, but don't drive the BN5 plan.)
+switch navis, since the switch needs a navi chip from the Battle Chip Gate: the own-gauges mode (BN5's operation
+battle) and the navi switch stay shared framework code, but don't drive the BN5 plan.)
 
 ### 4.2 Frequency and cost
 
@@ -2032,6 +2037,85 @@ is the only namespace its lookups see.
      one its pack lacks as a tinted normal panel.
   4. The content lint's self-bit check stays, for a game using exelib's makers (BN6's code), with exelib as the
      pack it names.
+
+### P2, local ids, flag 0x40's modes, support packs without the game's context, a game's rules in one table (2026-10-04)
+
+Packs' third step (content-model-v2.md §4.0, §3.8, §7.4; P1 and P3 above). The user: "no i don't want qualified ids
+since you can't cross between games anymore"; "you shouldn't have to refuse names with :, since it is impossible to
+load cross game anyway"; "flag 0x40 indicates "operation battle" mode"; "for support libraries they must not be able
+to use implicit game context, they can only use game context if they've been passed in"; and a game's rules are one
+plain Luau library with a single definition.
+
+- **Ids are local to their game.**
+  - Content, compat, the locales, the test content and match files write `cannon`, `megaman`,
+    `heatcross/charge/action`; an asset is its asset pack's name (`asset.sprite("bomb")`). The engine's keys are
+    local: `define` takes an id as it is (`valid_key`), and an asset resolves by the pack's own name ("no sprite is
+    named ... in the game's asset pack").
+  - A game module's anonymous definition is keyed by its path (`chips/cannon/chips#2`), a support pack's by its
+    module's name (`exelib:regions#57`); compat's `compat_key` is none for those.
+  - `nettai_match::ids` looks a name up only in its game's content (`key(content, game, name)`); `in_game` is a key
+    of the game's own.
+  - BN5's patch-cards.toml keeps each team's card 111 under `[by-version.protoman]` and `[by-version.colonel]`: a
+    card's key may now be a team's name (`protoman`).
+- **Flag 0x40's names.** The engine's bit is `battle_flags::OWN_GAUGES` (each side its own custom gauge), whose doc
+  comment names both games' modes and setters; the content API is `battle.own_gauges()`; the damage formulas'
+  field is `operation_battle` and a recipe's `operation_battle_only`. BN5's modules ask `operation_battle()`
+  (content/bn5/lib/operation_battle.luau), BN6's `chip_gate_battle()` (content/bn6/lib/chip_gate_battle.luau),
+  exelib's `battle.own_gauges()`. The engine's comments say "the own-gauges mode", BN5's content and bn5-map.md
+  "the operation battle", BN6's content and the engine docs "the chip gate battle" (the gate's slotted chips, paid
+  from the side's gauge; SELECT's Program Advance window). Fixed on the way: a non-link battle sets the flag only
+  with a chip gate on the link port (the gate byte, 0x0200AD04); the link packet's +0xC is the gate's slotted chip;
+  BN5's setter tests NaviStats +0x2A; "Cross change mode" was never the flag's name. The chip lab's
+  `bn5-team-gauges` base is `bn5-operation-battle` (`operation_battle = true`).
+- **A support pack has no game context** (`nettai_luau::define::environments`).
+  - Each module is loaded with its pack's environment: a read-only, safeenv copy of the globals. A support pack's
+    lacks `asset` and `system`; reaching for either fails naming the support module ("exelib:x: a support pack
+    has no `asset`: ..."), and a function keeps its module's environment, so an exelib maker a game's module calls
+    still has none.
+  - `asset`, `system` and `define` are in no global table: Luau resolves a module's globals against the VM's
+    globals when it loads (lvmload.cpp's `resolveImportSafe`), so a support module would otherwise see a global
+    `asset` through its import cache. Every module gets its pack's environment, the game's with them.
+  - `define` stays whole in a support pack: its makers define what the game's caller names (107 of exelib's
+    definitions take their ids as arguments). The content check's lint warns early of a support module naming
+    `asset.` or `system.`, or writing an id of its own (`id = "..."`).
+  - Stays, as generic engine API: `battle`, `field`, `obstacle`, `dimming`, `navi_chip`, `custom`, `int`, `Vec3`
+    and the objects' methods, whose definitions and assets are arguments (never names); the battle's own state
+    they read (`battle.navi(side).form`, `custom.folder(side)`); the rules the engine applies behind them (a
+    hit's spark, `me:run_wrapped()`'s wrapper role). exelib used none of what went, so no maker changed.
+- **A game's rules are one definition.**
+  - content/<game>/rules/init.luau is the stock ruleset (`id = "stock"`), and the manifest lists it as `rules`: a
+    module name resolves to the folder's `init` when no module has the name (the loader, `index::follow`, the
+    manifests' checks, index.py).
+  - The ruleset names each rule section as a field by the engine's name (`panels`, `sp_chips`, `custom_screen`,
+    `chip_use`, `cross_special`, ...; `sections::SECTIONS`) and the roles (`roles`). A section module returns a
+    plain table (status.luau and lockon.luau keep their module tables, whose `.rules` the ruleset names), and
+    roles.luau too.
+  - `define.rules`, `define.roles`, `Registry::Rules` and `Registry::Roles` are gone. The engine reads the
+    sections and roles from the stock ruleset (`defs::stock_ruleset`), each section against its schema, a message
+    naming the place (`rules/init.luau: ruleset stock: pools.actor: invalid type`; `SpecReader::read` reports the
+    path through serde_path_to_error). A role hook's function is the ruleset's slot (`roles.hooks.<name>`).
+  - Only the stock ruleset holds sections and roles: a variant (`base`) changes only its systems, and a section or
+    `roles` on another ruleset is a load error saying so. `Content::rules()` and `Defs::roles()` stay the game's.
+  - The test content's stock ruleset (testdata/content/rules/systems.luau) names BN6's berserk, buster and math
+    sections, its own Cross special and its roles; the test pack's roles stand in for the content's
+    (`with_test_pack`).
+- **Tools** (the verification workspace).
+  - packs.py: step 6 writes ids local (another pack's prefix refuses the run), step 7 the engine's Rust (P3's calls,
+    and the ids literals write, at a quote or in a list: `"canodumb,-bn6:shadow"`; a line marked `(written in
+    full)` is a test's deliberate name and stays), step 8 the flag's names, step 9 the rules in one table (a
+    section's `define.rules("x", T)` is T, wired into rules/init.luau by its name; the roles plain; the manifests
+    rewritten).
+  - index.py lists a game's rules as `rules`. gen_rules.py writes plain sections and rules/init.luau. gen_content.py
+    and the other generators write ids local (the in-full rewrite is gone); layout.py and recipes.py read either.
+    gen-content checks compat's keys as local ids.
+- **Decisions** (for review):
+  1. Variants keep the game's sections and roles (approved): per-ruleset tables would mean the battle carrying its
+     ruleset's tables into the chips' links, the custom screen, the renderer and the tools. Additive later.
+  2. A section field is snake_case (`sp_chips`), the module keeps its file name (rules/sp-chips.luau).
+  3. The deliberate qualified names in tests (a name the content must refuse, a test pack's module name) are marked
+     `// (written in full)` so packs.py's step 7 leaves them.
+  4. The content check's placeholder lint now sees BN5's 45 placeholder asset names (`sprite-0c-42`), which the
+     `bn5:` prefix used to hide from it; they are content/bn5's to name (compat/assets.toml).
 
 ### BN5's soul button, a system's (2026-10-04, branch bn5-port-6)
 
