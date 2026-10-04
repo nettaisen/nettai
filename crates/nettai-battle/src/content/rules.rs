@@ -243,6 +243,14 @@ pub struct IntakeRules {
     /// level to them (no lower level changes, and nothing is reloaded).
     /// BN6's adds the argument (to at most 7).
     pub drain_bug_flags: bool,
+    /// BN5's no-charge drive (DarkInvs, 0x080E2318): a navi with the
+    /// no-charge state counts its drive's ticks down at the intake's end
+    /// (0x0800DBE0) and asks for the stun strike when they run out (BN5's
+    /// action 0x49 ends the drive); its idle hands the step it would take
+    /// to the side's systems' `controller` (0x080F03E4: the computer-navi
+    /// AI, 0x0802B4AC, or the reset of its state); and its last 180 ticks
+    /// it flickers gray (0x080136E0). BN6 has none of it.
+    pub no_charge_drive: bool,
 }
 
 /// How the weakness request breaks a form (`Rules::form_break`).
