@@ -79,15 +79,14 @@ return {
     counter = counter,
     marker = marker,
     -- The test content's own rules: its systems, its rule sections (BN6's
-    -- berserk, buster and math, its own Cross special; the others are its
-    -- Rust tables) and its roles.
+    -- berserk, buster and math; the others are its Rust tables) and its
+    -- roles.
     stock = define.ruleset {
         id = "stock",
         stock = true,
         systems = { beast, counter, forms.system, emotion.system },
         berserk = require("./berserk"),
         buster = require("./buster"),
-        cross_special = require("./cross-special"),
         math = require("./math"),
         roles = require("./roles"),
     },

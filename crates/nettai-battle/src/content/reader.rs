@@ -3,7 +3,6 @@
 //! (`sections`). Assets read as the engine identifies them, a lock-on mode
 //! by its handle, a chip by its key (the registry resolves it to a handle).
 
-use std::collections::HashMap;
 
 use nettai_content_api::{AssetNames, ContentError, Data, DataKey, Definition, Definitions, Registry};
 use serde::de::DeserializeOwned;
@@ -15,30 +14,15 @@ pub(crate) fn err(d: &Definition, e: impl std::fmt::Display) -> ContentError {
 }
 
 /// How the definitions' values read as typed data: assets as the engine
-/// identifies them, a reference to a lock-on mode as its handle, a chip as
-/// its key.
+/// identifies them, a chip as its key.
 pub struct SpecReader<'a> {
     assets: &'a AssetNames,
-    handles: HashMap<(Registry, String), u16>,
 }
 
 impl<'a> SpecReader<'a> {
-    /// A reader for the values of `definitions`: the lock-on modes' handles
-    /// are their places among the definitions, which are in key order.
-    pub fn new(assets: &'a AssetNames, definitions: &Definitions) -> SpecReader<'a> {
-        let handles = definitions
-            .of(Registry::Lockon)
-            .iter()
-            .enumerate()
-            .map(|(i, d)| ((d.registry, d.key.clone()), i as u16))
-            .collect();
-        SpecReader { assets, handles }
-    }
-
-    /// The handle of the definition `key` of `registry`, if a value can
-    /// hold one.
-    fn handle(&self, registry: Registry, key: &str) -> Option<u16> {
-        self.handles.get(&(registry, key.to_string())).copied()
+    /// A reader for the values of `definitions`.
+    pub fn new(assets: &'a AssetNames, _definitions: &Definitions) -> SpecReader<'a> {
+        SpecReader { assets }
     }
 
     /// `d` as the data a record reads (serde's form).
@@ -67,10 +51,7 @@ impl<'a> SpecReader<'a> {
             // A chip by its key: the registry resolves it to a handle
             // (no chip has a number the tables hold).
             Data::Ref(Registry::Chip, key) => Json::String(key.clone()),
-            Data::Ref(registry, key) => match self.handle(*registry, key) {
-                Some(h) => Json::from(h),
-                None => return Err(format!("{at}: a {registry} ({key:?}) is no value a record holds")),
-            },
+            Data::Ref(registry, key) => return Err(format!("{at}: a {registry} ({key:?}) is no value a record holds")),
             // An asset by its handle (every kind's id is one).
             Data::Asset(kind, name) => {
                 Json::from(self.assets.handle(*kind, name).ok_or_else(|| format!("{at}: the packs have no {kind} {name:?}"))?)
