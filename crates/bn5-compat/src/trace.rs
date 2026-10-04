@@ -1012,7 +1012,8 @@ pub struct Replay {
 /// bugs in them. HubBatc's bug halves the HP programs and writes no bug
 /// stat, and a recording carries no NaviCust to compile, so MegaMan's
 /// window doesn't flicker in the replay and the console's RNG1 draws
-/// differ.
+/// differ (the recording console's a replay compares: `navicust/hubbatc`
+/// stops on it).
 pub const GLITCH_UNSEEN: &str = "the save's emotion window glitch with no bug in the stats (HubBatc's bug writes none; the recording carries no NaviCust)";
 
 #[derive(Clone, Debug)]
