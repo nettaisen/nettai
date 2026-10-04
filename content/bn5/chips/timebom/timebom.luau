@@ -16,7 +16,7 @@ local collision = require("../../rules/collision")
 local controller = require("@exelib/timebom/controller")
 local countdown = require("@exelib/timebom/countdown")
 local dimming_chips = require("@exelib/dimming")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
 
 local timebom = {}

@@ -14,7 +14,7 @@
 -- for 20 ticks (0x080E9FA4, as FireHit's warning and the swords' swing).
 
 local collision = require("../../rules/collision")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local falling_meteor = require("@exelib/meteors/falling_meteor")
 local marker = require("./marker")
 local meteor_shower = require("@exelib/meteors/shower")

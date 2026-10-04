@@ -131,6 +131,8 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
         .filter_map(|n| n.record.forms.as_ref())
         .flat_map(|f| f.gregar.crosses.iter().chain(&f.falzar.crosses))
         .copied()
+        // (And the souls: BN5's soul window shows their names.)
+        .chain(defs.forms.iter().enumerate().filter(|(_, f)| f.record.soul.is_some()).map(|(i, _)| FormHandle(i as u16)))
         .collect();
     let mut out = Vec::new();
     let mut text = |what: String, v: &Option<String>| {
