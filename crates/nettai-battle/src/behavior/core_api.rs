@@ -441,8 +441,6 @@ impl CoreApi for Battle {
             NaviStat::HpDrain => i(s.bugs.hp_drain as i64),
             NaviStat::CustomDrain => i(s.bugs.custom_drain as i64),
             NaviStat::PanelTrail => i(s.bugs.panel_trail_kind as i64),
-            NaviStat::Beast => Value::Bool(self.content.form(s.form).kind.is_beast()),
-            NaviStat::BeastOver => Value::Bool(self.content.form(s.form).kind.is_beast_over()),
             NaviStat::CustomLevel => i(s.custom_level as i64),
             NaviStat::HandShrinkTurn => i(s.bugs.hand_shrink_turn as i64),
             NaviStat::ChargeShotWeapon => weapon(s.weapons.charge_shot),
@@ -1706,7 +1704,7 @@ impl CoreApi for Battle {
             steady: spec.steady,
         };
         let tether = match spec.tether {
-            1 => Tether::BeastForm,
+            1 => Tether::Form,
             2 => Tether::Attack,
             _ => Tether::None,
         };

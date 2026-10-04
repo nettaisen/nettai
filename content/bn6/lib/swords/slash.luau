@@ -7,6 +7,8 @@
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local common = require("@common/swords/slash")
+local kind = require("../../rules/forms/kind")
+local parts = require("./parts")
 local regions = require("@common/regions")
 
 local slash = {}
@@ -21,9 +23,12 @@ slash.CROSS_HIT = {
     hit_mod = 3,
 }
 
+-- BN6's: the blade by its Beast forms' arms, and no step in a Beast form.
+local GAME: SlashGame = { blade_anim = parts.blade_anim, stays = kind.beast }
+
 -- A chip's slash.
 function slash.action(spec: SlashSpec): Action
-    return common.action(spec, attachment.kind)
+    return common.action(spec, attachment.kind, GAME)
 end
 
 return slash

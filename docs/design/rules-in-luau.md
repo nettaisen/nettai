@@ -1811,3 +1811,75 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   ROM's rush byte and lock-on mode into its own `RomChip`.
 - **Tests:** rules' `a_system_extends_its_games_definitions`, on a made-up extension of the test content's counter
   system: the value kept, and a type, a range, a variant, a table field and a second owner refused.
+
+### S7b, `FormKind` and the forms' BN6 fields (2026-10-03)
+
+- **`FormKind` is gone from the engine.** A form says in common terms what the framework needs of it:
+  - `base = true`: its game's base form, what the game's navis are in before they change form (`base` replaces
+    every `kind == Base` read: the turn-start sequencer's target, BN5's emotion, the hub face, the warp's overlay,
+    the HUD's face, the palette's style row, each game's base form at define). A soul is a form with its `soul`.
+  - Behavior traits, for what the framework did by BN6's kinds (§6.4; S3's decision 5 and S4's two leftovers):
+    `shows_target_marker` (`sub_80E1566`), `afterimages_stay` (`sub_80E341E`; the afterimage's tether
+    `"beast_form"` is `"form"`), `alt_charge_time` (`sub_8012F62`), `doubles_null` (`sub_8012ABC`) and
+    `mood_palette` (`sub_80100EC`'s Beast row; the shared buster's arm palette follows it too). `FormTraits` is
+    16 bits wide now.
+- **BN6's kinds and the forms' BN6 fields are its systems' extensions** (§7.5):
+  - the forms system's `kind` (`cross`, `beast`, `cross_beast`, `beast_over`; the base form has none), `game`,
+    `cross_of` and `cross_release_anim`;
+  - the beast system's `beast` (a Cross's form in Beast Out), `special_volley` and `charged_sword_rush`;
+  - the cross system's `extra_chips` and `scrap_button`.
+
+  The last three were form traits the engine never read. BN6's forms keep their keys, so its Luau reads them
+  as before. A form's reader skips its game's systems' extension fields (`extended_fields`, read off the
+  systems' definitions before they are built).
+- **Luau.**
+  - The navi stats `beast` and `beast_over` are gone. BN6's rules/forms/kind.luau has `kind.beast(side)`,
+    `kind.beast_over(side)` and `kind.is_beast(k)` over the extension.
+  - The shared modules that asked BN6's question get it from BN6's wrappers. The slash takes a `SlashGame`
+    (common/types.d.luau: BN6's blade by its Beast arms, and no step in a Beast form). The AntiSword counter
+    takes a `blade_anim`. `parts.arm_anim(me, base)` gives a navi AI's arm, and BN6's lib/swords/parts adds its
+    Beast forms'.
+  - BN5's soul reads are `form.soul ~= nil` and its base reads `form.base`.
+- **Tools** read the extensions through bn6-compat's new `forms` module (`kind`, `game`, `cross_of`,
+  `in_beast_out`, `special_volley`, `cross_release_anim`, `says`).
+  - Its users: `Unlocks::beast_form` and `beast_game` (which take the content now), the trace's screen emotion,
+    the renderer's chatbox and Cross pictures, the editor, the match draw and the rollback test.
+  - The custom screen's `Library` loses `form_kind`, `form_game` and `form_in_beast_out`, and gains
+    `form_is_soul`.
+  - The locale check finds Crosses by the navis' form sets.
+- **What the define phase no longer checks:** the BN6 rules that tie kinds to fields (a Cross names its navi and
+  its Beast, a Beast's kind, the navis' sets' kinds, a game on every form but the base one). They are BN6's, so
+  nettai-match's `bn6_forms_agree_with_their_kinds` checks them on content/bn6, and with them the behavior
+  traits each kind carries.
+- **Decisions** (for review):
+  1. `base` is a common field rather than a trait: the define phase picks each game's base form by it, and a
+     revert goes there.
+  2. Five behavior traits rather than one `beast` trait. Each is a test the framework makes, named for what it
+     does. BN5's same routines test their own form ranges, which a port gives by trait.
+  3. chips-a's soul fields (`priming`, `grass_doubles`, `front_guard`, `charged_action`, the `reset` hook) stay
+     common. They are per-form mechanisms the framework runs by data on the use's hot path, and any game's form
+     may fill them (§6.4).
+  4. The navis' form sets (`forms.gregar`/`falzar`: Crosses, Beast Out, Beast Over) stay common for now.
+     `changes_form` is `forms.is_some()`, and BN5's `souls` share the table. They go with S7c's BN6 records.
+- **Porter impact:** verify's `tools/rules/s7.py <checkout>` (idempotent) rewrites:
+  - `kind = "base"` to `base = true` and drops `kind = "soul"` in forms;
+  - Luau reads of `<form>.kind == "base"` / `"soul"`;
+  - the tether `"beast_form"`.
+
+  It lists by hand what it can't rewrite: Rust `FormKind`, the navi stats `beast`/`beast_over`, the moved traits,
+  and kind reads through other names.
+- **Verify:** gen-content's `RomForm` carries the BN6 fields beside the record, and the check compares them through
+  `Defs::extension`.
+- **Fixed after the gates:** the shared buster's `table.find` over a form's traits doesn't type-check (the content
+  check's; the gate doesn't run it), so it is a loop now (`has_trait`), the same test.
+- **Merging main** (d3a547f7: BN5's RedFrut, BoyBomb, CopyDmg, Jealousy and more): s7.py rewrote one new read,
+  RedFrut's fruit's `stats.form.kind ~= "base"`, as a porter's run would.
+- **Gates** (on 1ac9231a, main 670f9c77 merged):
+  - the full gate: the 189 legacy rounds (0 differ), the lab 6548 (all to the end or a known deviation), 0 sound
+    rounds differing;
+  - identity.sh against main's frontend on main's content: the custom-screen and sample lists identical in both text
+    modes (174 scenarios, 200,712 frames each): the palettes, the HUD face and the warp's overlay draw as before;
+  - BN5's replays as main's on a fresh BN5 pack: 1,486 recordings, 1,373 matched, 951,715 of 1,045,902 frames;
+  - the audit 0 problems (49 traces and the static audit); gen-content check 0 errors and its tests;
+  - after main d3a547f7: the workspace's tests, the content check (1,529 modules), us-spelling 0 on both
+    repositories.
