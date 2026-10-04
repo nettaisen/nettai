@@ -2061,6 +2061,14 @@ impl CoreApi for Battle {
         kinds::player::form::put_on_overlay(self, o, form);
     }
 
+    fn take_off_form_parts(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) {
+        kinds::player::form::take_off_form_parts(self, o, form);
+    }
+
+    fn put_on_form_parts(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) {
+        kinds::player::form::put_on_form_parts(self, o, form);
+    }
+
     fn load_form_sprite(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) -> ApiResult<()> {
         self.actor_of(o)?;
         let side = self.objects.get(o).alliance as usize & 1;

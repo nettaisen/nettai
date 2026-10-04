@@ -1417,8 +1417,12 @@ them.
     body and AirShoes and ShadowSoul's FloatShoes and floating body are the form's `status_reset`; the rest is the
     form's `reset` hook (`FormDef::reset`, called after the flags): SearchSoul's reveal of the other side's
     invisible navis (effect 0x8F), TomahawkSoul's grass (effect 0x16), ToadSoul's dives (the navi state "dives"),
-    ColonelSoul's arming of its side's soldiers (`obstacle.arm_soldiers`, 0x08011C44; §15.11). The forms' `put_on`
-    and `take_off` hooks run with the start and end hooks (0x0800F024, 0x0800F088): NumberSoul's layer (actor 0x54).
+    ColonelSoul's arming of its side's soldiers (`obstacle.arm_soldiers`, 0x08011C44; §15.11). BN5's put-on and
+    take-off routines are one table each, by soul (0x0800F024's 0x0800F038, 0x0800F088's 0x0800F09C): the base form's
+    Hub Style shade (row 0), GyroSoul's propeller (row 2, the default: its identity's parts), NumberSoul's layer
+    (row 9, actor 0x54), the rest nothing. A form's `put_on` and `take_off` replace the defaults (its identity's
+    parts; what its identity's death hook takes down), which a hook may call (`put_on_form_parts`,
+    `take_off_form_parts`).
   - **The chip use by soul** (0x0800FF48), by form data: `priming` (GyroSoul: a Wind chip primes it, AIData +0x0D,
     0x080102D2; primed, the next damaging Wind or Null chip is doubled, and neither Full Synchro nor anger doubles
     meanwhile, 0x0801026C), `grass_doubles` (TomahawkSoul's Wood chips on grass, which the use turns normal,
@@ -1935,7 +1939,7 @@ rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   own flash, the attachment table's row 0x39), his arm by the value (0x080EBABE: 1 animation 13, 2 the chaos arm),
   his attachments sit a pixel off (0x080B9AB8: the BN5 attachment kind's `lifted`; BN5's follow adds the unsigned
   byte where BN6's subtracts the signed one), his base form wears its shade (body overlay row 5, 0c-58: 0x0800EE1C,
-  the form's `wears`, which also runs as a player's init ends, MegaMan's record's init hook being that routine;
+  the form's `put_on`, which also runs as a player's init ends, MegaMan's record's init hook being that routine;
   BN5's init has no starting form's overlay), GigaCan leaves a third afterimage (0x080EC224), the palette is
   `hub_style * 5 + 20` and the faces move (§15.10). Not yet: the HUD's opponent entry (0x0801AE3A, presentation:
   with battle effect 8, the other side's NameID 0x180 when its +0x53 is set, else 0xEA in Hub Style).
