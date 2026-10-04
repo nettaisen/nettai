@@ -491,8 +491,9 @@ pub fn all_crosses(content: &Content, game: &str) -> Result<Vec<nettai_content_a
 
 /// `navi`'s Crosses of both games (none: it doesn't change form).
 pub fn navi_crosses(content: &Content, navi: NaviHandle) -> Option<Vec<nettai_content_api::FormHandle>> {
-    let forms = content.navi(navi).forms.as_ref()?;
-    Some([GameVersion::Gregar, GameVersion::Falzar].iter().flat_map(|&g| forms.of(g).crosses.iter().copied()).collect())
+    content.navi(navi).forms.as_ref()?;
+    let crosses = |g| bn6_compat::forms::set(content, navi, g).map(|s| s.crosses).unwrap_or_default();
+    Some([GameVersion::Gregar, GameVersion::Falzar].into_iter().flat_map(crosses).collect())
 }
 
 /// What a match is, for the terminal: its game and rules, the seed, the

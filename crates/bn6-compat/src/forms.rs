@@ -1,11 +1,14 @@
-//! What BN6's systems say of its forms (docs/design/rules-in-luau.md, S7b):
+//! What BN6's systems say of its forms (docs/design/rules-in-luau.md, S7b
+//! and S7c):
 //! their extensions of BN6's form definitions, which the engine checks and
 //! never reads. The forms system's: a form's kind, whose game's form it is,
 //! the navi a Cross is made with, the animation a change into a Cross lets
 //! the navi go of. The beast system's: a Cross's form in Beast Out, the
 //! Cross special's buster volley. The cross system's: ChargeCross's extra
-//! chips, DustCross's scrap button. Tools read them here, by the fields'
-//! names in content/bn6/rules.
+//! chips, DustCross's scrap button. And a navi's sets by game (its `forms`
+//! table's `gregar` and `falzar`: its Crosses, Beast Out and Beast Over),
+//! which the engine leaves to BN6 too. Tools read them here, by the
+//! fields' names in content/bn6.
 
 use nettai_battle::content::Content;
 use nettai_battle::custom::GameVersion;
@@ -104,4 +107,52 @@ pub fn cross_release_anim(content: &Content, form: FormHandle) -> Option<u8> {
 /// `charged_sword_rush`): whether the form says it.
 pub fn says(content: &Content, form: FormHandle, name: &str) -> bool {
     matches!(field(content, form, name), Some(Data::Bool(true)))
+}
+
+/// A navi's forms in one of BN6's games (its `forms.gregar` or
+/// `forms.falzar`): its Crosses by their number on the custom screen (the
+/// save's unlock flags' order), Beast Out and Beast Over.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Set {
+    pub crosses: Vec<FormHandle>,
+    pub beast_out: Option<FormHandle>,
+    pub beast_over: Option<FormHandle>,
+}
+
+/// Navi `navi`'s set in `game` (none: it has no forms there).
+pub fn set(content: &Content, navi: NaviHandle, game: GameVersion) -> Option<Set> {
+    let key = &content.defs.navi(navi).key;
+    let d = content.defs.definitions.get(Registry::Navi, key)?;
+    let name = match game {
+        GameVersion::Gregar => "gregar",
+        GameVersion::Falzar => "falzar",
+    };
+    let g = d.spec.field("forms").field(name);
+    if matches!(g, Data::Nil) {
+        return None;
+    }
+    let form = |v: &Data| match v {
+        Data::Ref(Registry::Form, k) => content.defs.form_by_key(k),
+        _ => None,
+    };
+    let crosses = match g.field("crosses") {
+        Data::List(items) => items.iter().filter_map(form).collect(),
+        _ => Vec::new(),
+    };
+    Some(Set { crosses, beast_out: form(g.field("beast_out")), beast_over: form(g.field("beast_over")) })
+}
+
+/// Navi `navi`'s Cross with number `cross` in `game` (none: no such Cross).
+pub fn cross(content: &Content, navi: NaviHandle, game: GameVersion, cross: u8) -> Option<FormHandle> {
+    set(content, navi, game)?.crosses.get(cross as usize).copied()
+}
+
+/// Navi `navi`'s Beast Out form in `game`.
+pub fn beast_out(content: &Content, navi: NaviHandle, game: GameVersion) -> Option<FormHandle> {
+    set(content, navi, game)?.beast_out
+}
+
+/// Navi `navi`'s Beast Over form in `game`.
+pub fn beast_over(content: &Content, navi: NaviHandle, game: GameVersion) -> Option<FormHandle> {
+    set(content, navi, game)?.beast_over
 }

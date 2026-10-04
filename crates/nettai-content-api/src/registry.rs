@@ -25,7 +25,6 @@ pub enum Registry {
     Region,
     Collision,
     Status,
-    Lockon,
     /// What an object is taken for (docs/design/content-model-v2.md §3.2):
     /// the original's NameID record. A navi's and a form's are nested in
     /// their definitions; a field object's is its kind's.
@@ -59,7 +58,7 @@ pub enum Registry {
 }
 
 impl Registry {
-    pub const ALL: [Registry; 20] = [
+    pub const ALL: [Registry; 19] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -72,7 +71,6 @@ impl Registry {
         Registry::Region,
         Registry::Collision,
         Registry::Status,
-        Registry::Lockon,
         Registry::Identity,
         Registry::System,
         Registry::Ruleset,
@@ -84,7 +82,7 @@ impl Registry {
 
     /// The registries content defines with `define.<name>` (schemas come
     /// from the `state` tables of kinds, actions and modules).
-    pub const DEFINED: [Registry; 19] = [
+    pub const DEFINED: [Registry; 18] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -97,7 +95,6 @@ impl Registry {
         Registry::Region,
         Registry::Collision,
         Registry::Status,
-        Registry::Lockon,
         Registry::Identity,
         Registry::System,
         Registry::Ruleset,
@@ -122,7 +119,6 @@ impl Registry {
             Registry::Region => "region",
             Registry::Collision => "collision",
             Registry::Status => "status",
-            Registry::Lockon => "lockon",
             Registry::Identity => "identity",
             Registry::System => "system",
             Registry::Ruleset => "ruleset",
@@ -150,7 +146,6 @@ impl Registry {
                 | Registry::Stage
                 | Registry::Collision
                 | Registry::Status
-                | Registry::Lockon
                 | Registry::System
                 | Registry::Ruleset
                 | Registry::PatchCard
@@ -220,8 +215,6 @@ handles! {
     CollisionHandle => Collision,
     /// A status effect.
     StatusHandle => Status,
-    /// A Beast Out lock-on mode.
-    LockonHandle => Lockon,
     /// An identity: what an object is taken for.
     IdentityHandle => Identity,
     /// A record only content reads.

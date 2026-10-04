@@ -294,7 +294,7 @@ named_fields! {
         FaceTarget = "face_target", Object, ro;
         /// The lock-on mode the attack's own action asks the Beast Out rush
         /// for (the charged sword's, by its slash); none: the chip's.
-        RushLockon = "rush_lockon", Ref(Registry::Lockon, None), rw;
+        RushLockon = "rush_lockon", Ref(Registry::Record, Some("lockon".into())), rw;
         /// A per-action word some actions keep (a move's direction change,
         /// a thrown obstacle).
         Marker = "marker", U32, rw;
@@ -1870,7 +1870,7 @@ pub trait CoreApi {
     /// `ho_8026554`: the panel the navi would attack `target` from in
     /// Beast Out lock-on mode `mode` (its own panel for mode 0 or a
     /// target off the field; (0, 0x7F) when no panel fits).
-    fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: Option<crate::LockonHandle>) -> PanelPos;
+    fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: Option<crate::RecordHandle>) -> PanelPos;
     /// `object_canMove`: not immobilized, sliding or moving.
     fn can_move(&self, o: ObjectRef) -> bool;
     /// `sub_800E2FC`: heal `amount` HP with the recovery sparkle and

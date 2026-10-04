@@ -8,13 +8,14 @@
 use crate::testing::bn6_content;
 use bn6_compat::forms::{self, Kind};
 use nettai_battle::content::FormTraits;
+use nettai_battle::custom::GameVersion;
 use nettai_content_api::FormHandle;
 
 #[test]
 fn bn6_forms_agree_with_their_kinds() {
     let c = bn6_content();
     let mut problems = Vec::new();
-    for (i, d) in c.defs.forms.iter().enumerate().filter(|(_, d)| d.key.starts_with("bn6:")) {
+    for (i, d) in c.defs.forms.iter().enumerate().filter(|(_, d)| crate::ids::in_game("bn6", &d.key)) {
         let f = FormHandle(i as u16);
         let (kind, form) = (forms::kind(&c, f), &d.record);
         let mut say = |what: &str| problems.push(format!("{}: {what}", d.key));
@@ -48,9 +49,13 @@ fn bn6_forms_agree_with_their_kinds() {
             }
         }
     }
-    for n in c.defs.navis.iter().filter(|n| n.key.starts_with("bn6:")) {
-        let Some(sets) = &n.record.forms else { continue };
-        for set in [&sets.gregar, &sets.falzar] {
+    for (i, n) in c.defs.navis.iter().enumerate().filter(|(_, n)| crate::ids::in_game("bn6", &n.key)) {
+        let navi = nettai_content_api::NaviHandle(i as u16);
+        let sets = [GameVersion::Gregar, GameVersion::Falzar].map(|g| forms::set(&c, navi, g));
+        if n.record.forms.is_some() != sets.iter().any(Option::is_some) {
+            problems.push(format!("{}: a navi with forms has BN6's sets (`forms.gregar`, `forms.falzar`), and only one", n.key));
+        }
+        for set in sets.iter().flatten() {
             let ok = set.crosses.iter().all(|&f| forms::kind(&c, f) == Some(Kind::Cross))
                 && set.beast_out.is_none_or(|f| forms::kind(&c, f) == Some(Kind::Beast))
                 && set.beast_over.is_none_or(|f| forms::kind(&c, f) == Some(Kind::BeastOver));
@@ -60,4 +65,26 @@ fn bn6_forms_agree_with_their_kinds() {
         }
     }
     assert!(problems.is_empty(), "{problems:#?}");
+}
+
+/// The Crosses' strings: what the Cross window shows (their names and
+/// descriptions) the own language's table has for every BN6 Cross, and the
+/// table names no other BN6 form (nothing shows another form's).
+#[test]
+fn bn6_crosses_have_their_strings() {
+    let c = bn6_content();
+    let crosses: Vec<FormHandle> = (0..c.defs.forms.len() as u16)
+        .map(FormHandle)
+        .filter(|&f| crate::ids::in_game("bn6", &c.defs.form(f).key) && forms::kind(&c, f) == Some(Kind::Cross))
+        .collect();
+    assert_eq!(crosses.len(), 10);
+    for &f in &crosses {
+        let key = &c.defs.form(f).key;
+        let s = c.strings.form(key).unwrap_or_else(|| panic!("{key} has no strings"));
+        assert!(s.name.is_some() && s.description.is_some(), "{key}'s name and description");
+    }
+    for key in c.strings.forms.keys() {
+        let f = c.defs.form_by_key(key).unwrap_or_else(|| panic!("{key}: no form has this key"));
+        assert!(crosses.contains(&f), "{key}: not a Cross (nothing shows another form's strings)");
+    }
 }
