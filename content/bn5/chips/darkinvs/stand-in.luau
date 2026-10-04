@@ -5,8 +5,10 @@
 -- its controller (./controller) goes on. A user that isn't a player (no chip reaches one) has none: the controller
 -- goes on at once.
 
-local megaman = require("../../navis/megaman/navi")
 local stand_in = require("@common/dimming/stand_in")
+
+-- MegaMan, by key (his navi's module reaches this one through his souls' Chaos Unison weapons).
+local MEGAMAN = "bn5:megaman"
 
 export type State = {
     -- The controller waiting for it (the flag it was given, +0x60: the controller's +0x0C).
@@ -31,7 +33,7 @@ end
 
 -- 0x0800DE82: the dark palette of the user's navi (MegaMan's 1; any other navi's dark chip fizzles before it).
 local function dark_palette(me: Object): number
-    if battle.navi(me.alliance).navi ~= megaman then
+    if battle.navi(me.alliance).navi.id ~= MEGAMAN then
         error("DarkInvs's stand-in: only MegaMan's DarkInvs gets this far (0x0800DE82's link navi palette)")
     end
     return DARK

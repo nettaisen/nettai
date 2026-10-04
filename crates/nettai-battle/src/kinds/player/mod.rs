@@ -1275,7 +1275,12 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
 /// level, `byte_802136D`: the navi's `fire_charge`; ChargeCross's 100:
 /// the form's), and the height clamp of a navi that changes form.
 fn per_form_tick(b: &mut Battle, r: ObjectRef) {
-    // (BN5's table runs none of it: the status rules' `form_tick`.)
+    // The form's own part (BN5's MegaMan's routine, 0x080F04CE: by soul).
+    let form = stats(b, r).form;
+    if let Some(f) = b.content.defs.form(form).tick {
+        crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
+    }
+    // (BN5's runs none of the rest: the status rules' `form_tick`.)
     if !b.rules_for(r).form_tick {
         return;
     }
