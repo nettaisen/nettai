@@ -12,7 +12,7 @@
 --   arm (palette 14 with the charge disabled, else 0x1B plus his element); 1, the arm in animation 13; more, row
 --   0x33 in animation 13 (palette 1 with the charge disabled).
 --
--- (NaviStats +0x4C isn't modeled: no setup or rule of the engine's sets it, so it reads 0.)
+-- (NaviStats +0x4C is Hub Style, the navi's `hub_style`: Team ProtoMan's patch card 111 sets 1, Team Colonel's 2.)
 
 local attachment = require("../objects/attachment/attachment")
 
@@ -27,9 +27,9 @@ arm.looks = {
     chaos = attachment.look { sprite = ARM, palette = 14 },
 }
 
--- NaviStats +0x4C (not modeled: 0), and AIData+0x12, the Chaos Unison charge armed.
-local function dark_arm(_navi: Object): number
-    return 0
+-- NaviStats +0x4C (Hub Style: 0, 1 or 2), and AIData+0x12, the Chaos Unison charge armed.
+local function dark_arm(navi: Object): number
+    return battle.navi(navi.alliance).hub_style
 end
 local function chaos_charge(navi: Object): number
     return if navi.chaos_armed then 1 else 0

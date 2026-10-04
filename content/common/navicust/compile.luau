@@ -319,9 +319,16 @@ function compile.run(side: number, game: NaviCustGame): boolean
     end
     stats.max_hp = stats.max_base_hp + work.hp
 
-    -- 4. The bugs, unless stopped (`sub_813CBCC`).
+    -- 4. The bugs, unless stopped (`sub_813CBCC`; BN5's 0x0813FA48 asks its patch cards first).
     local bugged = false
-    if not work.bug_stop then
+    local stopped = work.bug_stop
+    if game.bug_stop ~= nil then
+        local o = game.bug_stop(side)
+        if o ~= nil then
+            stopped = o
+        end
+    end
+    if not stopped then
         for _, bug in game.bugs do
             local level = math.min(counts[bug] or 0, 3)
             if level > 0 then

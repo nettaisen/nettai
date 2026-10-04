@@ -8,6 +8,9 @@
 "engine/intro" = { pool = "effect", index = 0x02, scratch_position = true }
 "engine/charge-glow" = { pool = "effect", index = 0x08, scratch_position_without_sprite = true }
 "bn5:blkbomb/bomb" = { pool = "attack", index = 0x47 }
+"bn5:gust" = { pool = "attack", index = 0x49 }
+"bn5:megaman/hells-rolling/whirl" = { pool = "attack", index = 0xC0 }
+"bn5:megaman/zap-ring/ring" = { pool = "attack", index = 0xC4 }
 "bn5:thunder/ball" = { pool = "attack", index = 0x2A }
 "engine/effect" = { pool = "effect", index = 0x00 }
 "engine/hitbox" = { pool = "attack", index = 0x03 }

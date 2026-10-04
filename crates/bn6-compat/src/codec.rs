@@ -339,7 +339,7 @@ pub fn navi_stats(b: &[u8; 0x64], ids: &Ids) -> NaviStats {
         folder_tags: [[b[0x56], b[0x57]], [b[0x58], b[0x59]]],
         chip_shuffle: flag(0x60),
         number_open: b[0x61] == 1,
-        hub_style: false,
+        hub_style: 0,
         weapons: NaviWeapons {
             buster: ids.weapon(b[0x04]),
             charge_shot: ids.weapon(b[0x05]),
