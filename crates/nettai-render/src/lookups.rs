@@ -399,27 +399,29 @@ pub fn dialogue(font: &DialogueFont, lookup: Lookup, string: &str, problems: &mu
         .collect()
 }
 
-/// The chatbox's graphics and the dialogue font, if the pack has them.
+/// The chatbox's graphics and the dialogue font, if the bundle has them
+/// (a pack always does).
 pub fn chatbox_graphics(hud: &Hud, problems: &mut Problems) -> bool {
     let there = !hud.chatbox.is_empty() && !hud.dialogue_font.is_empty();
     if problems.lookup(Lookup::Graphics(Graphics::Chatbox)) && !there {
-        problems.note("the pack has no chatbox graphics or dialogue font (extract it again)".into());
+        problems.note("the bundle has no chatbox graphics or dialogue font".into());
     }
     there
 }
 
-/// The custom screen's graphics, if the pack has them.
+/// The custom screen's graphics, if the bundle has them (a pack always
+/// does).
 pub fn custom_graphics(a: &CustomScreen, problems: &mut Problems) -> bool {
     if problems.lookup(Lookup::Graphics(Graphics::CustomScreen)) && a.is_empty() {
-        problems.note("the pack has no custom screen graphics (extract it again)".into());
+        problems.note("the bundle has no custom screen graphics".into());
     }
     !a.is_empty()
 }
 
-/// The warning marker, if the pack has it.
+/// The warning marker, if the bundle has it (a pack always does).
 pub fn warning(hud: &Hud, problems: &mut Problems) -> bool {
     if problems.lookup(Lookup::Graphics(Graphics::Warning)) && hud.warning.is_empty() {
-        problems.note("the pack has no warning marker (extract it again)".into());
+        problems.note("the bundle has no warning marker".into());
     }
     !hud.warning.is_empty()
 }

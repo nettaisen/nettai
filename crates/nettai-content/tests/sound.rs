@@ -178,7 +178,7 @@ fn temp(name: &str) -> PathBuf {
 fn write_pack(dir: &Path, b: &SoundBank) {
     let (files, failures) = pack::export_sound(b, &nettai_content::names::AssetNames::default());
     assert!(failures.is_empty(), "{failures:?}");
-    let mut all = vec![pack::manifest("test", None, true)];
+    let mut all = vec![pack::manifest("test", "test", None, true)];
     all.extend(files);
     pack::write_files(dir, &all).unwrap();
 }
@@ -365,7 +365,7 @@ fn version_songs_round_trip() {
     for n in ["sound/songs/sound-000.toml", "sound/songs/sound-001-protoman.toml", "sound/songs/sound-001-colonel.toml"] {
         assert!(names.contains(&n), "{n} in {names:?}");
     }
-    let mut all = vec![pack::manifest("test", None, true)];
+    let mut all = vec![pack::manifest("test", "test", None, true)];
     all.extend(files);
     pack::write_files(&dir, &all).unwrap();
     let mut r = Report::default();

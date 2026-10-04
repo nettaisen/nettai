@@ -36,11 +36,8 @@ pub struct Manifest {
     pub format: String,
     pub version: u32,
     pub name: String,
-    /// The game whose assets it holds (`bn6`): the name a content root's
-    /// `assets` gives it (docs/design/rules-in-luau.md §7.2). A pack
-    /// written before packs said their game has none.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub game: Option<String>,
+    /// The game whose assets it holds (`bn6`).
+    pub game: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub graphics: Option<GraphicsManifest>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -72,17 +69,13 @@ pub fn write_files(root: &Path, files: &Files) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn manifest(name: &str, graphics: Option<&Bundle>, sound: bool) -> (String, Vec<u8>) {
-    manifest_of(name, None, graphics, sound)
-}
-
-/// A pack's manifest that says its game.
-pub fn manifest_of(name: &str, game: Option<&str>, graphics: Option<&Bundle>, sound: bool) -> (String, Vec<u8>) {
+/// The manifest of `game`'s pack.
+pub fn manifest(name: &str, game: &str, graphics: Option<&Bundle>, sound: bool) -> (String, Vec<u8>) {
     let m = Manifest {
         format: FORMAT.into(),
         version: VERSION,
         name: name.into(),
-        game: game.map(str::to_string),
+        game: game.to_string(),
         graphics: graphics.map(|b| GraphicsManifest { background_slots: b.backgrounds.len() }),
         sound: sound.then_some(SoundManifest {}),
     };
@@ -108,8 +101,8 @@ pub fn read_manifest(root: &Path, report: &mut Report) -> Option<Manifest> {
             return None;
         }
     };
-    if m.format != FORMAT || m.version > VERSION {
-        report.error(MANIFEST, format!("not a {FORMAT} pack of version {VERSION} or older"));
+    if m.format != FORMAT || m.version != VERSION {
+        report.error(MANIFEST, format!("not a {FORMAT} pack of version {VERSION} (extract the pack again)"));
         return None;
     }
     Some(m)
@@ -251,12 +244,11 @@ pub fn load_battle(content: &Path, assets: &Path) -> Result<(nettai_battle::Cont
 }
 
 /// [`load_battle`]'s content before the define phase: the game's modules,
-/// the asset index and the sprite timing. The game is the asset pack's (a
-/// pack that says none is taken as BN6's, with a warning: packs extracted
-/// before they said it). Asset names are the pack's own (`bomb`).
+/// the asset index and the sprite timing. The game is the asset pack's
+/// (its manifest's). Asset names are the pack's own (`bomb`).
 pub fn battle_content(content: &Path, assets: &Path) -> Result<(nettai_battle::Content, Report), Report> {
     let mut report = Report::default();
-    let Some(game) = pack_game(assets, &mut report) else { return Err(report) };
+    let Some(game) = read_manifest(assets, &mut report).map(|m| m.game) else { return Err(report) };
     let Some(read) = crate::index::read(content, std::slice::from_ref(&game), &mut report) else { return Err(report) };
     battle_content_of(read, &game, assets, report)
 }
@@ -281,24 +273,6 @@ fn battle_content_of(
     Ok((c, report))
 }
 
-/// The game of a pack whose manifest says none: BN6's (packs extracted
-/// before they said it).
-pub const UNSAID_GAME: &str = "bn6";
-
-/// Asset pack `pack`'s game (a pack that says none is taken as
-/// [`UNSAID_GAME`]'s, with a warning); none when its manifest can't be
-/// read.
-fn pack_game(pack: &Path, report: &mut Report) -> Option<String> {
-    let m = read_manifest(pack, report)?;
-    Some(m.game.unwrap_or_else(|| {
-        report.warn(
-            MANIFEST,
-            format!("{}: the pack says no game; it is taken as {UNSAID_GAME}'s (extract it again to record its game)", pack.display()),
-        );
-        UNSAID_GAME.to_string()
-    }))
-}
-
 // ---- Finding packs -------------------------------------------------------------
 
 /// Where the extractors write their packs (`data/content/bn6`,
@@ -318,19 +292,15 @@ pub struct Found {
 }
 
 /// Every pack in `dir`: each folder with a pack manifest, by the game it
-/// says (a pack that says none, written before packs said their game, by
-/// its folder's name, with a warning). None in a missing `dir`.
+/// says. None in a missing `dir`.
 pub fn discover(dir: &Path, report: &mut Report) -> Vec<Found> {
     let mut out: Vec<Found> = Vec::new();
-    for (folder, path) in subdirs(dir) {
+    for (_, path) in subdirs(dir) {
         if !path.join(MANIFEST).is_file() {
             continue;
         }
         let Some(m) = read_manifest(&path, report) else { continue };
-        let game = m.game.unwrap_or_else(|| {
-            report.warn(MANIFEST, format!("{}: the pack says no game; it is taken as {folder}'s (extract it again to record its game)", path.display()));
-            folder.clone()
-        });
+        let game = m.game;
         if let Some(other) = out.iter().find(|f| f.game == game) {
             report.error(MANIFEST, format!("two packs of {game}: {} and {} (keep one, or name one with --pack)", other.dir.display(), path.display()));
             continue;
@@ -342,26 +312,12 @@ pub fn discover(dir: &Path, report: &mut Report) -> Vec<Found> {
 
 /// The packs a frontend loads from: those in `dir` (the packs directory,
 /// [`packs_dir`]), with each of `overrides` (`--pack`, given again for
-/// another) in place of the one of its game, or beside them. `$BN6_PACK`,
-/// a BN6 pack's directory, is the first override, kept for the tools that
-/// still set it (deprecated: `--pack`, or `$NETTAI_PACKS` for the
-/// directory). None when an override isn't a pack.
+/// another) in place of the one of its game, or beside them. None when an
+/// override isn't a pack.
 pub fn find(dir: &Path, overrides: &[PathBuf], report: &mut Report) -> Option<Vec<Found>> {
-    let env = std::env::var_os("BN6_PACK").map(PathBuf::from);
-    let overrides: Vec<PathBuf> = env.into_iter().chain(overrides.iter().cloned()).collect();
-    find_with(dir, &overrides, report)
-}
-
-/// [`find`] with these overrides alone.
-fn find_with(dir: &Path, overrides: &[PathBuf], report: &mut Report) -> Option<Vec<Found>> {
     let mut found = discover(dir, report);
     for path in overrides {
-        let m = read_manifest(path, report)?;
-        let game = m.game.unwrap_or_else(|| {
-            let folder = path.file_name().map_or("bn6".into(), |f| f.to_string_lossy().into_owned());
-            report.warn(MANIFEST, format!("{}: the pack says no game; it is taken as {folder}'s (extract it again to record its game)", path.display()));
-            folder
-        });
+        let game = read_manifest(path, report)?.game;
         found.retain(|f| f.game != game);
         found.push(Found { game, dir: path.clone() });
     }
@@ -523,11 +479,11 @@ mod tests {
 
     /// A packs directory under the system's temporary one, with a pack of
     /// each `(folder, game)` (a manifest alone).
-    fn packs(test: &str, packs: &[(&str, Option<&str>)]) -> PathBuf {
+    fn packs(test: &str, packs: &[(&str, &str)]) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("nettai-content-{test}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         for (folder, game) in packs {
-            let (name, text) = manifest_of(folder, *game, None, false);
+            let (name, text) = manifest(folder, game, None, false);
             std::fs::create_dir_all(dir.join(folder)).unwrap();
             std::fs::write(dir.join(folder).join(name), text).unwrap();
         }
@@ -540,22 +496,27 @@ mod tests {
     /// directory stands in for the found one of its game.
     #[test]
     fn every_pack_is_found_by_its_game() {
-        let dir = packs("found", &[("bn6", Some("bn6")), ("five", Some("bn5")), ("old", None)]);
+        let dir = packs("found", &[("bn6", "bn6"), ("five", "bn5")]);
         let mut r = Report::default();
         let found = discover(&dir, &mut r);
         let games: Vec<(&str, &str)> =
             found.iter().map(|f| (f.game.as_str(), f.dir.file_name().unwrap().to_str().unwrap())).collect();
-        assert_eq!(games, [("bn6", "bn6"), ("bn5", "five"), ("old", "old")]);
-        assert!(!r.has_errors() && r.issues.len() == 1, "a pack that says no game is its folder's, with a warning: {:?}", r.issues);
-        let other = packs("override", &[("mine", Some("bn6"))]);
-        let found = find_with(&dir, &[other.join("mine")], &mut Report::default()).unwrap();
+        assert_eq!(games, [("bn6", "bn6"), ("bn5", "five")]);
+        assert!(r.issues.is_empty(), "{:?}", r.issues);
+        let other = packs("override", &[("mine", "bn6")]);
+        let found = find(&dir, &[other.join("mine")], &mut Report::default()).unwrap();
         let bn6 = found.iter().find(|f| f.game == "bn6").unwrap();
         assert_eq!(bn6.dir, other.join("mine"));
-        assert_eq!(found.len(), 3);
+        assert_eq!(found.len(), 2);
+        // A manifest that says no game is no pack's.
+        std::fs::write(dir.join("five").join(MANIFEST), "format = \"nettai-content\"\nversion = 1\nname = \"x\"\n").unwrap();
+        let mut r = Report::default();
+        assert_eq!(discover(&dir, &mut r).len(), 1);
+        assert!(r.has_errors(), "{:?}", r.issues);
         // None in a directory that isn't there.
         assert!(discover(&dir.join("missing"), &mut Report::default()).is_empty());
         // Two packs of one game: an error.
-        let two = packs("two", &[("a", Some("bn6")), ("b", Some("bn6"))]);
+        let two = packs("two", &[("a", "bn6"), ("b", "bn6")]);
         let mut r = Report::default();
         assert_eq!(discover(&two, &mut r).len(), 1);
         assert!(r.has_errors());

@@ -425,12 +425,12 @@ pub fn import(dir: &Path, name: &str, report: &mut Report) -> Option<SpriteSheet
     let file = |f: &str| format!("{name}/{f}");
     let doc: SpriteDoc = read_json(&dir.join("sprite.json"), &file("sprite.json"), report)?;
     let anims: AnimationsDoc = read_json(&dir.join("animations.json"), &file("animations.json"), report)?;
-    if doc.format != FORMAT || doc.version > VERSION {
-        report.error(file("sprite.json"), format!("not a {FORMAT} file of version {VERSION} or older"));
+    if doc.format != FORMAT || doc.version != VERSION {
+        report.error(file("sprite.json"), format!("not a {FORMAT} file of version {VERSION} (extract the pack again)"));
         return None;
     }
-    if anims.format != ANIMATIONS_FORMAT || anims.version > VERSION {
-        report.error(file("animations.json"), format!("not a {ANIMATIONS_FORMAT} file of version {VERSION} or older"));
+    if anims.format != ANIMATIONS_FORMAT || anims.version != VERSION {
+        report.error(file("animations.json"), format!("not a {ANIMATIONS_FORMAT} file of version {VERSION} (extract the pack again)"));
         return None;
     }
     if anims.sprite != doc.sprite {

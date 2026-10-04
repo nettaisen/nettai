@@ -78,7 +78,6 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
   --game GAME      the game played without a match file: bn6 (default) or
                    bn5 (a match file's game is its own)
   --pack DIR       a pack's directory, in place of the found pack of its game
-                   ($BN6_PACK, deprecated, is one)
   --content DIR    the content directory (default: $NETTAI_CONTENT, else
                    this repository's content/)
   --mute           no sound (headless rendering never plays any)
@@ -559,7 +558,7 @@ fn main() {
     let packs_dir = nettai_content::pack::packs_dir();
     let found = nettai_content::pack::find(&packs_dir, &args.packs, &mut found_report);
     show(&found_report);
-    let found = found.unwrap_or_else(|| fail("can't read the packs given (--pack, $BN6_PACK)"));
+    let found = found.unwrap_or_else(|| fail("can't read the packs given (--pack)"));
     let loaded = nettai_content::pack::load_game(args.content.as_deref(), &game, &found).unwrap_or_else(|r| {
         show(&r);
         fail(format!("can't load {game}'s battle content (--content, --pack, --game)"))
