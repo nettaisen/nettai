@@ -138,7 +138,7 @@
 "bn5:boybomb/controller" = { pool = "effect", index = 0x67 }
 "bn5:rockcube/cube" = { pool = "effect", index = 0x37 }
 "bn5:wind/fan" = { pool = "attack", index = 0x48 }
-"bn5:gust" = { pool = "attack", index = 0x49 }
+"bn5:wind/gust" = { pool = "attack", index = 0x49 }
 "bn5:wind/controller" = { pool = "effect", index = 0x25 }
 "bn5:tornado" = { pool = "attack", index = 0x31 }
 "bn5:anti-trap/trap" = { pool = "attack", index = 0x4D, scratch_position = true }

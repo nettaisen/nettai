@@ -2,13 +2,13 @@
 -- BN5's gust (attack object #0x49, 0x080CEA0C): the shared one (@common/gust/gust, BN6's code) with BN5's sprite
 -- (0C-2E) and collision types, and BN5's differences: any first parameter (one that pulls or is unseen) pushes
 -- weaker (hit modifier 4, 0x080CEAA2), and no hit stops it (0x080CEB30 tests its hit flags against 0). Wind's and
--- Fan's fans blow it.
+-- Fan's fans blow it (BN5's only gust: their kind, keyed under the series).
 
 local collision = require("../../rules/collision")
 local common = require("@common/gust/gust")
 
 local made = common.make {
-    id = "bn5:gust",
+    id = "bn5:wind/gust",
     sprite = asset.sprite("bn5:gust"),
     self_type = collision.pull,
     target = collision.hits_navis,
