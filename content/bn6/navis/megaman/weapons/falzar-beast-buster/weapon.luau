@@ -34,9 +34,9 @@ export type Volleys = { repeats: number, cycle: number }
 local SHOOT, RECOVER = 0x0, 0x4
 
 -- Falzar Beast Over.
-local BEAST_OVER = "bn6:falzar-beast-over"
+local BEAST_OVER = "falzar-beast-over"
 
-local SOUND = asset.sound("bn6:aqua-needle-2")
+local SOUND = asset.sound("aqua-needle-2")
 
 -- The first shot's height (`dword_80EC70C`'s first byte), pixels.
 local HEIGHT = 0x16
@@ -48,20 +48,20 @@ local VOLLEY_BACK, VOLLEY_SIDE, VOLLEY_DROP = 0x1E_0000, 0x18_0000, 0xC_0000
 -- The shots' palette by Beast form (`byte_80EC784`): the Falzar Crosses'
 -- own in Beast Out, else 0.
 local PALETTES: { [string]: number } = {
-    ["bn6:gregar-beast"] = 0,
-    ["bn6:falzar-beast"] = 0,
-    ["bn6:heatcross-beast"] = 0,
-    ["bn6:eleccross-beast"] = 0,
-    ["bn6:slashcross-beast"] = 0,
-    ["bn6:erasecross-beast"] = 0,
-    ["bn6:chargecross-beast"] = 0,
-    ["bn6:spoutcross-beast"] = 1,
-    ["bn6:tomahawkcross-beast"] = 2,
-    ["bn6:tengucross-beast"] = 3,
-    ["bn6:groundcross-beast"] = 4,
-    ["bn6:dustcross-beast"] = 5,
-    ["bn6:gregar-beast-over"] = 0,
-    ["bn6:falzar-beast-over"] = 0,
+    ["gregar-beast"] = 0,
+    ["falzar-beast"] = 0,
+    ["heatcross-beast"] = 0,
+    ["eleccross-beast"] = 0,
+    ["slashcross-beast"] = 0,
+    ["erasecross-beast"] = 0,
+    ["chargecross-beast"] = 0,
+    ["spoutcross-beast"] = 1,
+    ["tomahawkcross-beast"] = 2,
+    ["tengucross-beast"] = 3,
+    ["groundcross-beast"] = 4,
+    ["dustcross-beast"] = 5,
+    ["gregar-beast-over"] = 0,
+    ["falzar-beast-over"] = 0,
 }
 
 -- The repeats a Beast Over's buster (or a Cross special's) fires.
@@ -221,13 +221,13 @@ local function update(me: Object, s: State)
 end
 
 falzar_beast_buster.action = define.action {
-    id = "bn6:megaman/falzar-beast-buster/action",
+    id = "megaman/falzar-beast-buster/action",
     state = { timer = "u16", repeats = "u8", cycle = "u8" },
     update = update,
 }
 
 falzar_beast_buster.weapon = define.weapon {
-    id = "bn6:megaman/falzar-beast-buster",
+    id = "megaman/falzar-beast-buster",
     -- The charge table's row 3, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 40, 60, 90, 120, 150, 80, 75, 70 },

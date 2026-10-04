@@ -14,9 +14,9 @@ action.STATE = common.STATE
 
 local LOOK: HyperBurstLook = {
     -- The spreader the navi holds (the original's attachment row 0x15).
-    spreader = attachment.look { sprite = asset.sprite("bn6:spreader"), palette = 0, attach_point = 0x0B },
+    spreader = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 0x0B },
     attachment = attachment.kind,
-    sound = asset.sound("bn6:h-burst"),
+    sound = asset.sound("h-burst"),
     burst = burst.kind,
 }
 

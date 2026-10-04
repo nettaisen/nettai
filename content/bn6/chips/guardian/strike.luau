@@ -37,7 +37,7 @@ local function effect(me: Object)
 end
 
 local kind = define.kind {
-    id = "bn6:guardian/strike",
+    id = "guardian/strike",
     pool = "effect",
     -- `sub_80E680C`.
     update = dimming_chips.phases { name = "the Guardian strike", effect = effect },

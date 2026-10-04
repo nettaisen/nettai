@@ -10,7 +10,7 @@ local gun = {}
 gun.make_kind = common.make_kind
 gun.spawn_kind = common.spawn_kind
 
-gun.kind = common.make_kind("bn6:circgun/gun", shot.look, shot.kind)
+gun.kind = common.make_kind("circgun/gun", shot.look, shot.kind)
 
 -- BN6's gun.
 function gun.spawn(controller: Object, variant: CircGunVariant, x: number, y: number, element: number, damage: number): Object?

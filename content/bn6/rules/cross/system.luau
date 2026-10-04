@@ -78,7 +78,7 @@ local scrap: ButtonSpec = {
 }
 
 return define.system {
-    id = "bn6:cross",
+    id = "cross",
     state = {
         charge_cross_screens = "u8",
         -- The Cross window's (window.luau).

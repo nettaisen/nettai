@@ -23,7 +23,7 @@
 //! those modules; a module requires only its own pack's and those of the
 //! support packs its pack uses (`packs::check_require`). [`read_all`]
 //! loads every game. The assets the definitions name
-//! (`asset.sprite("bn6:bomb")`) come from the extracted packs' asset
+//! (`asset.sprite("bomb")`) come from the extracted packs' asset
 //! indices; `crate::pack::load_battle` puts the two together.
 
 use std::collections::{BTreeMap, BTreeSet};

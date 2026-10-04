@@ -10,7 +10,7 @@
 local navi = require("./navi")
 
 local count = define.chip {
-    id = "bn6:count",
+    id = "count",
     codes = { "H", "*" },
     element = "null",
     family = "null",
@@ -27,7 +27,7 @@ local count = define.chip {
 }
 
 local count_ex = define.chip {
-    id = "bn6:count-ex",
+    id = "count-ex",
     codes = { "H" },
     element = "null",
     family = "null",
@@ -44,7 +44,7 @@ local count_ex = define.chip {
 }
 
 local count_sp = define.chip {
-    id = "bn6:count-sp",
+    id = "count-sp",
     codes = { "H" },
     element = "null",
     family = "null",

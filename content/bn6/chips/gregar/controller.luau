@@ -114,7 +114,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "bn6:gregar/controller",
+    id = "gregar/controller",
     pool = "effect",
     state = { bonus = "u16", rock_damage = "u8", gregar_out = "bool" },
     -- 0x080EDCC8: the dimming's phases (0x080EDCE8, by action:

@@ -77,8 +77,9 @@ pub struct PackIndex {
 }
 
 impl AssetNames {
-    /// The assets of `packs` (each its game and its index), their names
-    /// qualified with the game.
+    /// The assets of `packs` (each its game and its index), by their names
+    /// in their packs (a match plays one game: one pack, whose names meet no
+    /// other's).
     pub fn of_packs(packs: Vec<(String, PackIndex)>) -> AssetNames {
         let mut packs = packs;
         packs.sort_by(|a, b| a.0.cmp(&b.0));
@@ -87,7 +88,8 @@ impl AssetNames {
             let pack = PackId(i as u8);
             fn add<T>(game: &str, pack: PackId, from: BTreeMap<String, T>, to: &mut BTreeMap<String, InPack<T>>) {
                 for (name, id) in from {
-                    to.insert(keys::qualify(game, &name), InPack { pack, id });
+                    let _ = game;
+                    to.insert(name, InPack { pack, id });
                 }
             }
             add(&game, pack, index.sprites, &mut a.sprites);

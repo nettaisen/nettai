@@ -37,8 +37,8 @@ tornado.variants = {
 -- of these types (`byte_80CA25C`), the doubling, what it is (row 0x12,
 -- whatever its variant) and reaches, and the element's spark.
 local BN6: TornadoLook = {
-    sprite = asset.sprite("bn6:tornado"),
-    sound = asset.sound("bn6:aqua-surge"),
+    sprite = asset.sprite("tornado"),
+    sound = asset.sound("aqua-surge"),
     panel_variants = {
         volcano = tornado.variants.volcano,
         grass = tornado.variants.grass,
@@ -50,7 +50,7 @@ local BN6: TornadoLook = {
     spark = sparks.of_element,
 }
 
-tornado.kind = common.make_kind("bn6:tornado/tornado", BN6)
+tornado.kind = common.make_kind("tornado/tornado", BN6)
 
 -- `sub_80CA0E2`: a tornado for `owner`'s side on (x, y) with the damage
 -- word `damage`, of `kind` (BN6's by default).

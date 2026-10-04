@@ -169,7 +169,7 @@ fn other_packs(c: &Content, packs: &Packs, lang: &str, text: &DisplayText) -> Ve
             lookups::text_line(hud, line, &mut p);
         }
         let lettered = hud.languages().contains(&lang);
-        let of_game = |key: &str| nettai_content_api::keys::root_of(key).is_some_and(|g| g == game.as_str());
+        let of_game = |_key: &str| c.game() == game.as_str();
         for (k, d) in c.defs.chips.iter().enumerate().filter(|(_, d)| of_game(&d.key)) {
             let chip = ChipHandle(k as u16);
             if lettered {

@@ -4,8 +4,8 @@
 //! kinds, actions and modules become schemas, and everything is read back as
 //! plain data (the canonical tree, [`Definitions`]).
 //!
-//! Keys (§2.2), each qualified with the root of the module that made the
-//! definition (`bn6:minibomb`; docs/design/rules-in-luau.md §7.2):
+//! Keys (§2.2), local to the game (docs/design/content-model-v2.md §4.0:
+//! a match plays one game, so nothing needs a prefix to tell games apart):
 //!
 //! - an explicit `id` (required for the registries named from outside
 //!   content, [`Registry::keyed`]);
@@ -13,7 +13,10 @@
 //!   definition that holds it, the owner's key and the field path
 //!   (`minibomb/action`, `minibomb/action/args/thrown`); owners are walked in
 //!   registry and key order, their fields in key order;
-//! - else `<module>#<n>`, its place among the module's definitions.
+//! - else `<module>#<n>`, its place among the module's definitions: a game
+//!   pack's module by its path in the pack (`chips/cannon/chips#2`), a
+//!   support pack's by its name (`exelib:regions#57`, the loader's own key,
+//!   which content never writes).
 //!
 //! Definers work only while modules load; afterwards every definition is
 //! frozen and the definers fail.
@@ -134,11 +137,12 @@ pub(crate) fn install_assets(
                 return Err(mlua::Error::runtime(format!("{at}: {what} takes a name, not {}", name.type_name())));
             };
             let name = name.to_str()?.to_string();
-            // (Written in full: `bn6:bomb`.)
-            let qualified = crate::Pack::asset_name(&name).map_err(|e| mlua::Error::runtime(format!("{at}: {what}: {e}")))?;
-            let h = tables.borrow().names.handle(kind, &qualified).ok_or_else(|| {
-                mlua::Error::runtime(format!("{at}: no {kind} is named {name:?} (the pack {})", keys::root_of(&qualified).unwrap_or("")))
-            })?;
+            // (The game's asset pack's name: `bomb`.)
+            let h = tables
+                .borrow()
+                .names
+                .handle(kind, &name)
+                .ok_or_else(|| mlua::Error::runtime(format!("{at}: no {kind} is named {name:?} in the game's asset pack")))?;
             tables.borrow_mut().value(lua, kind, h)
         })?;
         asset.raw_set(kind.name(), f)?;
@@ -241,6 +245,7 @@ pub(crate) fn finish(
     lua: &Lua,
     collector: &RefCell<Collector>,
     assets: &AssetTables,
+    games: &HashSet<String>,
 ) -> Result<Defined, String> {
     let mut c = collector.borrow_mut();
     c.open = false;
@@ -250,28 +255,22 @@ pub(crate) fn finish(
     let index: HashMap<Ptr, usize> = made.iter().enumerate().map(|(i, m)| (m.table.to_pointer(), i)).collect();
     let mut keys: Vec<Option<String>> = vec![None; made.len()];
 
-    // Explicit ids, written in full (docs/design/rules-in-luau.md, the
-    // flat namespace: "in the chip ids directly have bn6:cannon"): the
-    // game, then the key (`bn6:cannon`, `bn6:eraseman/mark`); a section's
-    // name too (`bn6:panels`), and a game's roles' (`bn6:roles`).
-    let full = |what: &str, id: &str, kind: &str, folder: &str| -> Result<String, String> {
-        let local = match keys::root_of(id) {
-            Some(game) if keys::valid_root_name(game) => keys::local(id),
-            _ => return Err(format!("{what}: {kind} {id:?} names no game: write it in full (\"{folder}:{id}\")")),
-        };
-        if !valid_key(local) {
-            return Err(format!("{what}: {id:?} is not a valid {kind} (a game, then lowercase words in -, qualified with /: \"bn6:eraseman/mark\")"));
+    // Explicit ids, local to the game (`cannon`, `eraseman/mark`; the user:
+    // "no i don't want qualified ids since you can't cross between games
+    // anymore"); a section's name too (`panels`), and the roles' (`roles`).
+    let full = |what: &str, id: &str, kind: &str| -> Result<String, String> {
+        if !valid_key(id) {
+            return Err(format!("{what}: {id:?} is not a valid {kind} (lowercase words in -, joined with /: \"eraseman/mark\")"));
         }
         Ok(id.to_string())
     };
-    // (Every id not in full is reported at once.)
+    // (Every bad id is reported at once.)
     let mut unwritten = Vec::new();
     for (i, m) in made.iter().enumerate() {
         let what = format!("{}: define.{}", m.module, m.registry.name());
-        let folder = keys::root_of(&m.module).unwrap_or("bn6");
         if m.registry == Registry::Rules {
             let name = m.record_type.clone().unwrap_or_default();
-            match full(&what, &name, "section name", folder) {
+            match full(&what, &name, "section name") {
                 Ok(k) => keys[i] = Some(k),
                 Err(e) => unwritten.push(e),
             }
@@ -282,7 +281,7 @@ pub(crate) fn finish(
             LuaValue::Nil => {}
             LuaValue::String(s) => {
                 let id = s.to_str().map_err(|e| format!("{what}: {e}"))?.to_string();
-                match full(&what, &id, "id", folder) {
+                match full(&what, &id, "id") {
                     Ok(k) => keys[i] = Some(k),
                     Err(e) => unwritten.push(e),
                 }
@@ -333,7 +332,7 @@ pub(crate) fn finish(
     let keys: Vec<String> = keys
         .into_iter()
         .zip(&made)
-        .map(|(k, m)| k.unwrap_or_else(|| format!("{}#{}", m.module, m.ordinal)))
+        .map(|(k, m)| k.unwrap_or_else(|| format!("{}#{}", anonymous_base(&m.module, games), m.ordinal)))
         .collect();
     let mut by_key: BTreeMap<(Registry, &str), usize> = BTreeMap::new();
     for (i, m) in made.iter().enumerate() {
@@ -412,6 +411,17 @@ pub(crate) fn finish(
         crate::sandbox::deep_freeze(lua, &LuaValue::Table(t.clone())).map_err(|e| e.to_string())?;
     }
     Ok(Defined { definitions: Definitions { defs }, tables })
+}
+
+/// What an anonymous definition's key starts with: a game pack's module's
+/// path in the pack (`chips/cannon/chips`), a support pack's module's name
+/// (`exelib:regions`). `games`, the game packs (none: every module is a
+/// game's, a test's modules alone).
+fn anonymous_base<'m>(module: &'m str, games: &HashSet<String>) -> &'m str {
+    match keys::root_of(module) {
+        Some(pack) if games.is_empty() || games.contains(pack) => keys::local(module),
+        _ => module,
+    }
 }
 
 /// How definitions and schemas appear inside other definitions.

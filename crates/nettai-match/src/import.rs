@@ -83,7 +83,7 @@ mod tests {
         let s = &m.sides[0];
         assert_eq!((s.game, s.beast_out, s.navi_level, s.stats.version), (GameVersion::Falzar, false, Some(5), 1));
         let list: Vec<&str> = s.crosses.unwrap().forms().map(|f| content.defs.form(f).key.as_str()).collect();
-        assert_eq!(list, ["bn6:tomahawkcross", "bn6:groundcross"]);
+        assert_eq!(list, ["tomahawkcross", "groundcross"]);
         assert_eq!((s.sp_times.0[0], s.sp_times.0[17], s.sp_times.0[18], s.sp_times.0[19]), (600, 617, 0, 0));
         assert_eq!(notes, ["the save operates a link navi: its level is MegaMan's here"]);
         assert!(crate::check_match(&content, &m).is_empty(), "{:?}", crate::check_match(&content, &m));
@@ -98,7 +98,7 @@ mod tests {
     #[test]
     fn a_link_navi_keeps_its_level_without_a_code() {
         let content = bn6_content();
-        let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
+        let protoman = content.defs.navi_by_key("protoman").unwrap();
         let mut m = crate::draw::live(&content, 1, None).unwrap();
         let s = &mut m.sides[1];
         s.navi = protoman;

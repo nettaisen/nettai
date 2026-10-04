@@ -18,7 +18,7 @@ export type State = {
     entrance: RockEntrance,
 }
 
-local PLACE_SOUND = asset.sound("bn6:place")
+local PLACE_SOUND = asset.sound("place")
 local WAIT = 0x3C
 
 -- `sub_80E4678`: a rock in front of the user, hitting when thrown with the
@@ -40,7 +40,7 @@ local function effect(me: Object)
 end
 
 local KIND = define.kind {
-    id = "bn6:rockcube/cube",
+    id = "rockcube/cube",
     pool = "effect",
     state = {
         variant = "record:rock-variant",

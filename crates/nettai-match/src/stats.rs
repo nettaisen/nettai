@@ -390,7 +390,7 @@ mod tests {
         let mut bad = BTreeMap::new();
         bad.insert("atack".to_string(), toml::Value::Integer(1));
         bad.insert("rapid".to_string(), toml::Value::Integer(-1));
-        bad.insert("buster".to_string(), toml::Value::String("bn6:nothing".into()));
+        bad.insert("buster".to_string(), toml::Value::String("nothing".into()));
         let problems = apply(&content, &bad, &mut back);
         assert_eq!(problems.len(), 3, "{problems:?}");
     }

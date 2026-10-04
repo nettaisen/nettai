@@ -26,10 +26,10 @@ action.STATE = { timer = "u16" }
 local RAISE, STRIKE, LOWER = 0x0, 0x4, 0x8
 
 local ANIM_RAISE = 0x0A
-local SOUND = asset.sound("bn6:beast-over")
+local SOUND = asset.sound("beast-over")
 -- What the navi holds: the doll (the original's attachment row 0x29), or
 -- the buster arm (`dword_80EE29C`: row 6, animation 0x19).
-local DOLL = attachment.look { sprite = asset.sprite("bn6:thunder-doll-hand"), palette = 0, attach_point = 0x0E }
+local DOLL = attachment.look { sprite = asset.sprite("thunder-doll-hand"), palette = 0, attach_point = 0x0E }
 local ARM_ANIM = 0x19
 local RAISE_TICKS, HOLD_TICKS, LOWER_TICKS = 0x0A, 0x0F, 6
 

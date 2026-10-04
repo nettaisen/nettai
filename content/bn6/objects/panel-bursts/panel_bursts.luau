@@ -8,7 +8,7 @@ local common = require("@exelib/panel-bursts/panel_bursts")
 
 local panel_bursts = {}
 
-panel_bursts.kind = common.make_kind("bn6:panel-bursts")
+panel_bursts.kind = common.make_kind("panel-bursts")
 
 -- `sub_80E2FE8`: bursts of `effect` (with `sound`, if any) over the panels
 -- of `region`, one every `interval` ticks at height `z`.

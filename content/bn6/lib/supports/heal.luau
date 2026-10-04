@@ -16,14 +16,14 @@ export type State = {
 
 local heal = {}
 
-local SPRITE = asset.sprite("bn6:tango-heal")
+local SPRITE = asset.sprite("tango-heal")
 local FLIGHT_TICKS = 0x14
 -- The arc's gravity (Z velocity, 16.16 a tick: 0xFFFF7778).
 local GRAVITY = -0x8888
 local HEAL = 300
-local HEAL_SOUND = asset.sound("bn6:heal")
+local HEAL_SOUND = asset.sound("heal")
 -- The sparkle as it lands (the original's effect 6: a recovery's).
-local SPARKLE = define.effect { sprite = asset.sprite("bn6:heal"), anim = 0, palette = 0 }
+local SPARKLE = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 }
 
 -- `sub_80DE024`: its look, and the arc onto the panel.
 local function init(me: Object)
@@ -88,7 +88,7 @@ local function update(me: Object)
 end
 
 heal.kind = define.kind {
-    id = "bn6:tango/heal",
+    id = "tango/heal",
     pool = "attack",
     state = { target_x = "u8", target_y = "u8" },
     update = update,

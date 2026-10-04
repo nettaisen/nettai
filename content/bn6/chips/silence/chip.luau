@@ -12,7 +12,7 @@ local statuses = require("../../rules/status")
 local hush = effects.hush(statuses.blind_4, collision.guard_breaking, collision.hits_navis)
 
 return define.chip {
-    id = "bn6:silence",
+    id = "silence",
     codes = { "B", "R", "W", "*" },
     element = "null", family = "summon", class = "standard",
     rarity = 1, mb = 20, damage = 0, hit_param = 0, lockout = 0,
@@ -22,16 +22,16 @@ return define.chip {
     -- `byte_80D4078` row 3.
     dimming = instruments.hook(instrument.instrument {
         identity = define.identity {
-            id = "bn6:silence",
+            id = "silence",
             class = "field_object",
             version = 1,
             ai_index = 1,
-            look = { sprite = asset.sprite("bn6:instrument"), anim = 0, palette = 6, shadow = true },
+            look = { sprite = asset.sprite("instrument"), anim = 0, palette = 6, shadow = true },
         },
         palette = 6,
         play_ticks = 0x78 * 2,
         pause_ticks = 0x1E,
-        tune = asset.sound("bn6:silence"),
+        tune = asset.sound("silence"),
         effect = hush,
     }),
 }

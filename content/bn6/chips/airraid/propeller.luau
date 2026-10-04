@@ -11,7 +11,7 @@ export type State = {
     keeps_flip: boolean,
 }
 
-local SPRITE = asset.sprite("bn6:propeller")
+local SPRITE = asset.sprite("propeller")
 -- Where it sits on the owner: on the owner's sprite part 1, and 32 pixels
 -- nearer (Y) and 31 higher (Z) than the owner.
 local PART = 1
@@ -65,7 +65,7 @@ local function init(me: Object)
 end
 
 propeller.kind = define.kind {
-    id = "bn6:airraid/propeller",
+    id = "airraid/propeller",
     pool = "actor",
     state = { keeps_flip = "bool" },
     -- `sub_80B88D0`.

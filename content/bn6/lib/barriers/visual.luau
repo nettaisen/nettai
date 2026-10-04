@@ -12,7 +12,7 @@ local common = require("@exelib/barriers/visual")
 
 local visual = {}
 
-local made = common.make { id = "bn6:barrier-visual", blows = true }
+local made = common.make { id = "barrier-visual", blows = true }
 visual.kind = made.kind
 
 -- `sub_80E0D98`: `b`'s visual on `navi`, which links it; it runs while

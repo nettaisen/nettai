@@ -162,7 +162,7 @@ local function update(me: Object)
 end
 
 sword_wave.kind = define.kind {
-    id = "bn6:slashcross/sword-wave",
+    id = "slashcross/sword-wave",
     pool = "attack",
     state = { variant = "record:sword-wave-variant", started = "bool", reach = "u8", hidden = "bool" },
     update = update,
@@ -220,7 +220,7 @@ end
 -- ---- The waves of the swords SlashCross charges ----------------------------
 
 local SLASH = { is = collision.slash, hits = collision.hits_navis }
-local SWORD_SLASH, BIG_SLASH = asset.sprite("bn6:sword-slash"), asset.sprite("bn6:big-slash")
+local SWORD_SLASH, BIG_SLASH = asset.sprite("sword-slash"), asset.sprite("big-slash")
 
 -- A wave of the rows' usual make: a slash that reaches navis, 8 pixels a
 -- tick, over 8 panel centers.
@@ -270,17 +270,17 @@ sword_wave.waves = {
     unused = wave { region = regions.wide_long, sprite = BIG_SLASH, anim = 0 },
     muramasa = wave { region = regions.long, sprite = SWORD_SLASH, anim = 1, palette = 6 },
     fighter = wave { region = regions.line, sprite = SWORD_SLASH, anim = 3 },
-    cross = wave { region = regions.x, sprite = asset.sprite("bn6:cross-slash"), anim = 0, animates = true },
+    cross = wave { region = regions.x, sprite = asset.sprite("cross-slash"), anim = 0, animates = true },
     double_dream = wave { region = regions.wide_long, sprite = BIG_SLASH, anim = 0, hit_mod = 1 },
     fire = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0, palette = 1 },
     aqua = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0, palette = 2 },
     -- (It paralyzes.)
     elec = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0, palette = 3, hit_mod = 1, status = statuses.paralyze_90 },
     bamboo = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0, palette = 4, hit_mod = 1 },
-    charge = wave { region = regions.wide, sprite = asset.sprite("bn6:charged-slash"), anim = 0, reach = 1, steps = true },
+    charge = wave { region = regions.wide, sprite = asset.sprite("charged-slash"), anim = 0, reach = 1, steps = true },
     moon = wave {
         region = regions.ring,
-        sprite = asset.sprite("bn6:moon-blade"),
+        sprite = asset.sprite("moon-blade"),
         anim = 0,
         animates = true,
         bug = 0x18,

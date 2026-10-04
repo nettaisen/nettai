@@ -10,7 +10,7 @@ local lockon = require("../../rules/lockon")
 local SPEEDS = { 0x6_0000, 0x7_0000, 0x8_0000 }
 
 local ironshl1 = define.chip {
-    id = "bn6:ironshl1",
+    id = "ironshl1",
     codes = { "J", "K", "L" },
     element = "null",
     family = "break",
@@ -24,11 +24,11 @@ local ironshl1 = define.chip {
     beast = { lockon = lockon.cannon },
     library = { number = 45, index = 45, sort = 245 },
     slot_in_limit = 3,
-    action = throw.action { id = "bn6:ironshl1/action", shell = { palette = 0, speed = SPEEDS[1], bumps = 1 } },
+    action = throw.action { id = "ironshl1/action", shell = { palette = 0, speed = SPEEDS[1], bumps = 1 } },
 }
 
 local ironshl2 = define.chip {
-    id = "bn6:ironshl2",
+    id = "ironshl2",
     codes = { "C", "D", "E" },
     element = "null",
     family = "break",
@@ -42,11 +42,11 @@ local ironshl2 = define.chip {
     beast = { lockon = lockon.cannon },
     library = { number = 46, index = 46, sort = 246 },
     slot_in_limit = 3,
-    action = throw.action { id = "bn6:ironshl2/action", shell = { palette = 1, speed = SPEEDS[2], bumps = 1 } },
+    action = throw.action { id = "ironshl2/action", shell = { palette = 1, speed = SPEEDS[2], bumps = 1 } },
 }
 
 local ironshl3 = define.chip {
-    id = "bn6:ironshl3",
+    id = "ironshl3",
     codes = { "L", "M", "N" },
     element = "null",
     family = "break",
@@ -60,7 +60,7 @@ local ironshl3 = define.chip {
     beast = { lockon = lockon.cannon },
     library = { number = 47, index = 47, sort = 247 },
     slot_in_limit = 3,
-    action = throw.action { id = "bn6:ironshl3/action", shell = { palette = 2, speed = SPEEDS[3], bumps = 1 } },
+    action = throw.action { id = "ironshl3/action", shell = { palette = 2, speed = SPEEDS[3], bumps = 1 } },
 }
 
 return { ironshl1 = ironshl1, ironshl2 = ironshl2, ironshl3 = ironshl3 }
