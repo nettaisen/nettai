@@ -33,6 +33,11 @@ pub mod battle_flags {
     pub const DIMMED: u16 = 0x04;
     /// A player asked to open the custom screen.
     pub const CUSTOM_REQUESTED: u16 = 0x10;
+    /// The cameras shake even while the battle is paused
+    /// (`battle_isTimeStopPauseOrBattleFlags0x20_800a0a4`): BN5's
+    /// TomahawkSoul's change sets it (0x08012138), every soul change's end
+    /// clears it (0x080121B6); nothing in BN6 sets it.
+    pub const SHAKE_THROUGH_PAUSE: u16 = 0x20;
     /// Per-player custom gauges and chip counters (`sub_802E112`). Never set
     /// in netbattles (battle mode 1) or random battles.
     pub const PER_PLAYER_GAUGES: u16 = 0x40;
@@ -2241,9 +2246,10 @@ impl Battle {
 
     /// `sub_8009158`: the low-HP music switch (sound only, but it keeps a
     /// latch in the round state). Each console switches for its own navi;
-    /// the engine keeps both sides' latches.
+    /// the engine keeps both sides' latches. (Where the arena's flow rules
+    /// have it: BN5 has none.)
     fn low_hp_music(&mut self) {
-        if self.setup.settings.effects & effects::LINK == 0 {
+        if self.setup.settings.effects & effects::LINK == 0 || !self.content.rules_of(self.games.arena).flow.low_hp_music {
             return;
         }
         for side in 0..2 {

@@ -31,7 +31,8 @@ local ball = common_ball.make {
     id = "bn5:numbrbl/ball",
     sprite = asset.sprite("bn5:number-ball"),
     sit_ticks = 0x1D,
-    set_sound = asset.sound("bn5:hop"),
+    -- (0x112: 0x080D8A40 loads it as 19 + 255.)
+    set_sound = asset.sound("bn5:place"),
     hit_sound = asset.sound("bn5:damage"),
     explosion = effects.explosion,
     is = collision.attack,
@@ -147,7 +148,8 @@ local function leave(me: Object)
         local cs = c.state :: any
         cs.busy = false
     end
-    me:set_lifecycle("destroy")
+    -- (0x080C21E8: the state byte alone; his action and phase stay.)
+    me.lifecycle = "destroy"
 end
 
 local ACTIONS: { [number]: (Object) -> () } = { [0] = appear, [4] = stand, [8] = throws, [0xC] = leave }

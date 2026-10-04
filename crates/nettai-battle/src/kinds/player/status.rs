@@ -73,6 +73,9 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     if let Some(flow) = action_requests(b, r) {
         return flow;
     }
+    if b.rules_for(r).reactions == crate::content::Reactions::Bn5 {
+        return bn5_reactions(b, r);
+    }
     if flag2(b, r) & 0x100 != 0 {
         start_drag(b, r);
         return Flow::Tail;
@@ -96,11 +99,61 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     tick_flash(b, r);
     tick_statuses(b, r);
     tick_submerged(b, r);
+    tick_dive(b, r);
     tick_anger(b, r);
     drain_hp(b, r);
     // sub_802E1D8: the side's takeover (BN6's Cross special) runs down.
     let side = &mut b.sides[b.objects.get(r).alliance as usize];
     side.takeover_ticks = side.takeover_ticks.saturating_sub(1);
+    Flow::Tail
+}
+
+/// BN5's reactions (0x08017CC8 to 0x08017D88): the flash's timer, the
+/// slides, a drag, a flinch, then the status timers.
+fn bn5_reactions(b: &mut Battle, r: ObjectRef) -> Flow {
+    tick_flash(b, r);
+    if flag2(b, r) & 0x10 != 0 {
+        clear_flag2(b, r, 0x10);
+        slide(b, r);
+    } else if flag1(b, r) & f1::SLIDING != 0 {
+        slide(b, r);
+    } else {
+        b.objects.get_mut(r).slide_state = 0;
+    }
+    if flag2(b, r) & 0x100 != 0 {
+        // 0x08017D04: the state word kept, a paralysis ended unless a
+        // counter just made it; the drag from its start.
+        clear_flag2(b, r, 0x100);
+        save_state_word(b, r);
+        if flag2(b, r) & 0x4000 == 0 {
+            clear_paralysis(b, r);
+        }
+        clear_flag2(b, r, 0x4000);
+        let o = b.objects.get_mut(r);
+        o.phase = 0;
+        o.drag_step = DragStep::Start;
+        set_navi_action(b, r, NaviAction::Drag);
+        return Flow::Tail;
+    }
+    if flag1(b, r) & f1::DRAG != 0 {
+        set_navi_action(b, r, NaviAction::Drag);
+        return Flow::Tail;
+    }
+    b.objects.get_mut(r).drag_step = DragStep::Start;
+    if flag2(b, r) & 4 != 0 {
+        // 0x08017D58: a paralysis ended unless a counter just made it;
+        // the flinch.
+        clear_flag2(b, r, 4);
+        if flag2(b, r) & 0x4000 == 0 {
+            clear_paralysis(b, r);
+        }
+        clear_flag2(b, r, 0x4000);
+        set_attack(b, r, NaviAction::Flinch, 0);
+    }
+    tick_statuses(b, r);
+    tick_submerged(b, r);
+    tick_anger(b, r);
+    drain_hp(b, r);
     Flow::Tail
 }
 
@@ -111,6 +164,7 @@ fn tail(b: &mut Battle, r: ObjectRef) {
     status_shader(b, r);
     update_visibility(b, r);
     counter_shader(b, r);
+    dive_ripple(b, r);
     if flag1(b, r) & f1::DEAD != 0 {
         return dispatch(b, r);
     }
@@ -566,9 +620,10 @@ fn flinch_request(b: &mut Battle, r: ObjectRef) {
 // ---- Timers ------------------------------------------------------------------------
 
 /// `sub_801A5EE`: mercy invincibility: a flash request starts 120 ticks
-/// of FLASHING (not extended by new requests).
+/// of FLASHING (not extended by new requests). Only while fighting in
+/// BN6's reactions (BN5's 0x080173C4 runs regardless).
 fn tick_flash(b: &mut Battle, r: ObjectRef) {
-    if b.round.flags & battle_flags::FIGHTING == 0 {
+    if b.round.flags & battle_flags::FIGHTING == 0 && b.rules_for(r).reactions == crate::content::Reactions::Bn6 {
         return;
     }
     if coll(b, r).status_timers[timer::FLASH] == 0 && flag2(b, r) & 2 != 0 {
@@ -754,17 +809,8 @@ fn tick_minor_statuses(b: &mut Battle, r: ObjectRef, f2: u32) {
 }
 
 /// `sub_8010162`: the timed submerged state (0xFFFF = indefinite);
-/// the flag is off while an action runs. In an arena with a panel that
-/// submerges (BN5's sea, 0x08017030), the state is that panel's: a body
-/// that dives is submerged on it, and none is off it.
+/// the flag is off while an action runs.
 fn tick_submerged(b: &mut Battle, r: ObjectRef) {
-    let rules = &b.arena_rules().panels;
-    if rules.types.iter().any(|t| t.submerges) {
-        let p = coll(b, r).panel;
-        let on = b.field.panel(p.x, p.y).is_some_and(|p| rules.types[p.kind as usize].submerges);
-        let dives = b.objects.get(r).actor.is_some_and(|a| b.actors.get(a).status & crate::actor::status::DIVES != 0);
-        coll_mut(b, r).status_timers[timer::SUBMERGED] = if on && dives { 0xFFFF } else { 0 };
-    }
     let t = coll(b, r).status_timers[timer::SUBMERGED];
     if t != 0xFFFF {
         let t = t as i32 - 1;
@@ -781,6 +827,78 @@ fn tick_submerged(b: &mut Battle, r: ObjectRef) {
         clear_flag1(b, r, f1::SUBMERGED);
     } else {
         set_flag1(b, r, f1::SUBMERGED);
+    }
+}
+
+/// Whether the arena has a panel that submerges (BN5's sea).
+fn arena_submerges(b: &Battle) -> bool {
+    b.arena_rules().panels.types.iter().any(|t| t.submerges)
+}
+
+/// BN5's 0x0800DF5A, in an arena with a panel that submerges (its sea): a
+/// body that dives is under the surface while on it (0x08017030: its dive
+/// timer held at 0xFFFF there, else 0), its flag 0x80000000 on (the bit
+/// BN6's bubble has) unless it is using an action, dragged, flinching or
+/// paralyzed (0x00500C00).
+fn tick_dive(b: &mut Battle, r: ObjectRef) {
+    if !arena_submerges(b) {
+        return;
+    }
+    let rules = &b.arena_rules().panels;
+    let p = coll(b, r).panel;
+    let on = b.field.panel(p.x, p.y).is_some_and(|p| rules.types[p.kind as usize].submerges);
+    let dives = b.objects.get(r).actor.is_some_and(|a| b.actors.get(a).status & crate::actor::status::DIVES != 0);
+    coll_mut(b, r).dive_timer = if on && dives { 0xFFFF } else { 0 };
+    let t = coll(b, r).dive_timer;
+    if t != 0xFFFF {
+        let t = t as i32 - 1;
+        if t < 0 {
+            clear_flag1(b, r, f1::BUBBLED);
+            return;
+        }
+        coll_mut(b, r).dive_timer = t as u16;
+        if t == 0 {
+            b.sound(crate::content::SoundRole::Appear);
+        }
+    }
+    if flag1(b, r) & (f1::USING_ACTION | f1::DRAG | f1::FLINCHING | f1::PARALYZED) != 0 {
+        clear_flag1(b, r, f1::BUBBLED);
+    } else {
+        set_flag1(b, r, f1::BUBBLED);
+    }
+}
+
+/// BN5's 0x0800DEB2, in an arena with a panel that submerges: a body under
+/// a surface (flags 0x80000004) is hidden, a ripple over it (the role
+/// `kinds.dive_ripple`, BN5's effect object #0x3E, kept in its collision's
+/// link); out of it, the ripple ends.
+fn dive_ripple(b: &mut Battle, r: ObjectRef) {
+    if !arena_submerges(b) {
+        return;
+    }
+    if flag1(b, r) & (f1::BUBBLED | f1::SUBMERGED) != 0 {
+        b.objects.get_mut(r).set_visible(false);
+        if coll(b, r).links[link::RIPPLE].is_some() {
+            return;
+        }
+        let kind = b.arena_roles().kind(crate::content::KindRole::DiveRipple);
+        let (pos, alliance) = {
+            let o = b.objects.get(r);
+            (Vec3 { z: 0, ..o.pos }, o.alliance)
+        };
+        let e = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, pos, [0; 4]);
+        if let Some(e) = e {
+            let o = b.objects.get_mut(e);
+            o.alliance = alliance;
+            o.related[0] = Some(r);
+        }
+        coll_mut(b, r).links[link::RIPPLE] = e;
+    } else if let Some(e) = coll_mut(b, r).links[link::RIPPLE].take() {
+        let o = b.objects.get_mut(e);
+        o.state = crate::object::state::DESTROY;
+        o.action = 0;
+        o.phase = 0;
+        o.phase_init = 0;
     }
 }
 
