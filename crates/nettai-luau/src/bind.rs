@@ -1199,9 +1199,20 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_hand_size(side).map_err(api_error))
     });
-    lib_fn!(lua, t, "redeal", |_, side: LuaValue| {
+    lib_fn!(lua, t, "redeal", |_, (side, keeps): (LuaValue, Option<mlua::Table>)| {
         let side = u8_arg(side, "side")? & 1;
-        with(|api, _| api.custom_redeal(side).map_err(api_error))
+        // How many of the hand's chips stay, by how many of it are dealt
+        // again: the list's entry n + 1 for n (none: 0).
+        let mut table = [0u8; 12];
+        if let Some(keeps) = keeps {
+            if keeps.raw_len() > table.len() {
+                return Err(mlua::Error::runtime(format!("custom.redeal: keeps has at most {} entries", table.len())));
+            }
+            for (n, k) in keeps.sequence_values::<LuaValue>().enumerate() {
+                table[n] = u8_arg(k?, "a kept count")?;
+            }
+        }
+        with(|api, _| api.custom_redeal(side, table).map_err(api_error))
     });
     lib_fn!(lua, t, "last_pick_is_chip", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
