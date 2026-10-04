@@ -393,7 +393,7 @@ impl SystemHook {
         }
     }
 
-    pub const ALL: [SystemHook; 34] = [
+    pub const ALL: [SystemHook; 35] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
