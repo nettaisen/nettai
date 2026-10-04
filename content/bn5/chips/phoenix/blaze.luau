@@ -4,7 +4,7 @@
 
 local blaze = {}
 
-local SPRITE = asset.sprite("bn5:heat-flame")
+local SPRITE = asset.sprite("heat-flame")
 
 -- 0x080EA554: each phase's animation and its ticks less one.
 local PHASES = { [0] = { 0, 5 }, [4] = { 1, 0x14 }, [8] = { 2, 2 } }
@@ -50,7 +50,7 @@ local function init(me: Object)
 end
 
 blaze.kind = define.kind {
-    id = "bn5:phoenix/blaze",
+    id = "phoenix/blaze",
     pool = "effect",
     -- 0x080EA4FC.
     update = function(me: Object)

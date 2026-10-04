@@ -11,7 +11,7 @@ local antinavi = require("../antinavi/chip")
 local antiswrd = require("../antiswrd/chip")
 
 return define.chip {
-    id = "bn6:bodygrd",
+    id = "bodygrd",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

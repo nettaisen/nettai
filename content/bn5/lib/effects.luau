@@ -6,9 +6,9 @@
 
 local effects = {}
 
-local EXPLOSION = asset.sprite("bn5:explosion")
-local SMALL_PUFF = asset.sprite("bn5:small-puff")
-local PUFF = asset.sprite("bn5:puff")
+local EXPLOSION = asset.sprite("explosion")
+local SMALL_PUFF = asset.sprite("small-puff")
+local PUFF = asset.sprite("puff")
 
 -- Row 0: an explosion: a blast landing, something breaking.
 effects.explosion = define.effect { sprite = EXPLOSION, anim = 0, palette = 0 }
@@ -23,13 +23,13 @@ effects.bubbles = define.effect { sprite = SMALL_PUFF, anim = 1, palette = 0 }
 effects.ripple = define.effect { sprite = SMALL_PUFF, anim = 1, palette = 0 }
 
 -- Row 3: a navi deleted (and a soul's change and revert).
-effects.deletion = define.effect { sprite = asset.sprite("bn5:deletion"), anim = 0, palette = 0 }
+effects.deletion = define.effect { sprite = asset.sprite("deletion"), anim = 0, palette = 0 }
 
 -- Row 5: a burst: a meteor or a fist landing.
-effects.burst = define.effect { sprite = asset.sprite("bn5:burst"), anim = 0, palette = 0 }
+effects.burst = define.effect { sprite = asset.sprite("burst"), anim = 0, palette = 0 }
 
 -- Row 6: HP recovered.
-effects.heal = define.effect { sprite = asset.sprite("bn5:heal"), anim = 0, palette = 0 }
+effects.heal = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 }
 
 -- Row 0x12: a burst of smoke: a navi coming or going in a puff.
 effects.smoke = define.effect { sprite = PUFF, anim = 0, palette = 0 }
@@ -38,15 +38,15 @@ effects.smoke = define.effect { sprite = PUFF, anim = 0, palette = 0 }
 effects.puff = define.effect { sprite = PUFF, anim = 2, palette = 0 }
 
 -- Row 0x1E: the flash where a side cut in.
-effects.cut_in_flash = define.effect { sprite = asset.sprite("bn5:hit-marker"), anim = 0, palette = 0 }
+effects.cut_in_flash = define.effect { sprite = asset.sprite("hit-marker"), anim = 0, palette = 0 }
 
 -- Row 0x21: a flash: a gun's shot landing.
-effects.flash = define.effect { sprite = asset.sprite("bn5:pink-flash"), anim = 0, palette = 0 }
+effects.flash = define.effect { sprite = asset.sprite("pink-flash"), anim = 0, palette = 0 }
 
 -- Row 0x22: a fiery burst: a bullet's hit, a sprung trap's counterattack.
-effects.shell_burst = define.effect { sprite = asset.sprite("bn5:shell-burst"), anim = 0, palette = 0 }
+effects.shell_burst = define.effect { sprite = asset.sprite("shell-burst"), anim = 0, palette = 0 }
 
 -- Row 0x2B (BN6's 0x46): the mark over a navi whose trap sprang (AntiNavi, AntiRecv).
-effects.trap_mark = define.effect { sprite = asset.sprite("bn5:hit-sparks"), anim = 7, palette = 0 }
+effects.trap_mark = define.effect { sprite = asset.sprite("hit-sparks"), anim = 7, palette = 0 }
 
 return effects

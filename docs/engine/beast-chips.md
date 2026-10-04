@@ -52,7 +52,7 @@ The port: `dimming.fade_to_black`, `dimming.fade_from_black` (crates/nettai-batt
 
 The HUD helper (0x080EDE5E / 0x080EE1EC, r0 = hide): the word `{0x4010, 0x24000}[battle flag 0x40]` to
 `sub_801DACC` (hide) or `sub_801DA48` (show): draw tasks 4 (the custom gauge) and 14 (the emotion window), or
-17 (the flag 0x40 mode's gauge) and 14. Only the draw mask changes (presentation): `battle.show_hud`.
+17 (the chip gate battle's gauge) and 14. Only the draw mask changes (presentation): `battle.show_hud`.
 
 The field cleaner (0x080C4244 / 0x080EE21C): for each of BattleState+0xA0's eight slots that holds an object,
 its HP (halfword) = 0, which breaks it (field-objects.md §2).

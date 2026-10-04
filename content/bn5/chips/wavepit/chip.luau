@@ -7,7 +7,7 @@
 local wavepit = require("./wavepit")
 
 return define.chip {
-    id = "bn5:wavepit",
+    id = "wavepit",
     codes = { "B", "E", "Z" },
     element = "aqua",
     family = "aqua",

@@ -39,15 +39,15 @@ export type State = {
     steam: Object?,
 }
 
-local SPRITE = asset.sprite("bn6:lil-boiler")
+local SPRITE = asset.sprite("lil-boiler")
 -- Its identity: a field object, with the look something that takes its
 -- place shows (DustMan's junk).
 local IDENTITY = define.identity {
-    id = "bn6:lilbolr",
+    id = "lilbolr",
     class = "field_object",
     version = 0,
     ai_index = 1,
-    look = { sprite = asset.sprite("bn6:lil-boiler"), anim = 0, palette = 0, shadow = true },
+    look = { sprite = asset.sprite("lil-boiler"), anim = 0, palette = 0, shadow = true },
 }
 local MAX_HP, LIFETIME = 4000, 0xB4
 -- Its HP never goes below this: it deals 999 at most.
@@ -58,8 +58,8 @@ local SPEED, GRAVITY = 0x2C000, -0x2800
 -- modifier.
 local BODY_DAMAGE: { [number]: number } = { [0] = 50, [1] = 50, [2] = 70, [3] = 90 }
 local COUNTER, HIT_MOD = 0x1E, 3
-local SOUND_LAND, SOUND_HIT_BOMB = asset.sound("bn6:land"), asset.sound("bn6:hit-bomb-1")
-local SOUND_ERUPT, SOUND_STEAM = asset.sound("bn6:boiler-erupt"), asset.sound("bn6:boiler-steam")
+local SOUND_LAND, SOUND_HIT_BOMB = asset.sound("land"), asset.sound("hit-bomb-1")
+local SOUND_ERUPT, SOUND_STEAM = asset.sound("boiler-erupt"), asset.sound("boiler-steam")
 -- The eruption: its animation and the steam's; the ticks to the hit; the
 -- hit (on this tick of the count, aqua, hit modifier 3) and its sound's
 -- tick; its effect over the panels (effect 0x32).
@@ -408,7 +408,7 @@ local function init(me: Object)
 end
 
 boiler.kind = define.kind {
-    id = "bn6:lilbolr/boiler",
+    id = "lilbolr/boiler",
     pool = "attack",
     state = {
         level = "u8",

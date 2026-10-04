@@ -20,32 +20,32 @@ export type State = {
 
 -- The souls' navis' sprites, by soul number.
 local SPRITES: { [number]: SpriteAsset } = {
-    [1] = asset.sprite("bn5:protoman"),
-    [2] = asset.sprite("bn5:gyroman"),
-    [3] = asset.sprite("bn5:searchman"),
-    [4] = asset.sprite("bn5:napalmman"),
-    [5] = asset.sprite("bn5:magnetman"),
-    [6] = asset.sprite("bn5:meddy"),
-    [7] = asset.sprite("bn5:colonel"),
-    [8] = asset.sprite("bn5:shadowman"),
-    [9] = asset.sprite("bn5:numberman"),
-    [10] = asset.sprite("bn5:tomahawkman"),
-    [11] = asset.sprite("bn5:knightman"),
-    [12] = asset.sprite("bn5:toadman"),
+    [1] = asset.sprite("protoman"),
+    [2] = asset.sprite("gyroman"),
+    [3] = asset.sprite("searchman"),
+    [4] = asset.sprite("napalmman"),
+    [5] = asset.sprite("magnetman"),
+    [6] = asset.sprite("meddy"),
+    [7] = asset.sprite("colonel"),
+    [8] = asset.sprite("shadowman"),
+    [9] = asset.sprite("numberman"),
+    [10] = asset.sprite("tomahawkman"),
+    [11] = asset.sprite("knightman"),
+    [12] = asset.sprite("toadman"),
 }
 -- What the souls' navis wear, by soul number (0x0800EDBC's routines; the others' wear nothing).
 local function wears(id: string, part: BodyPart): Identity
     return define.identity { id = id, class = "navi", parts = { body = part } }
 end
 local PARTS: { [number]: Identity } = {
-    [2] = wears("bn5:soul-image/gyroman", body_overlays.gyroman),
-    [4] = wears("bn5:soul-image/napalmman", body_overlays.napalmman),
-    [7] = wears("bn5:soul-image/colonel", body_overlays.colonel),
-    [11] = wears("bn5:soul-image/knightman", body_overlays.knightman),
+    [2] = wears("soul-image/gyroman", body_overlays.gyroman),
+    [4] = wears("soul-image/napalmman", body_overlays.napalmman),
+    [7] = wears("soul-image/colonel", body_overlays.colonel),
+    [11] = wears("soul-image/knightman", body_overlays.knightman),
 }
 -- NumberMan's (soul 9): his face, a layer (row 0) in its second related slot.
 local NUMBER_SOUL, NUMBERMAN_FACE = 9, 0
-local SOUND = asset.sound("bn5:cross-merge")
+local SOUND = asset.sound("cross-merge")
 -- The tint while it spirals in.
 local TINT = 0x2108
 
@@ -161,7 +161,7 @@ local function init(me: Object)
 end
 
 image.kind = define.kind {
-    id = "bn5:soul-image",
+    id = "soul-image",
     pool = "actor",
     state = { soul = "u8" },
     -- 0x080C0394

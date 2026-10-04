@@ -6,4 +6,4 @@
 
 local common = require("@exelib/gauge-speed/controller")
 
-return common.make { id = "bn6:gauge-speed", warning = asset.sound("bn6:err-select-91") }
+return common.make { id = "gauge-speed", warning = asset.sound("err-select-91") }

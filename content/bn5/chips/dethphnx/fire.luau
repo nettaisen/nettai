@@ -16,9 +16,9 @@ export type State = {
     far: boolean,
 }
 
-local SPRITE = asset.sprite("bn5:phoenix-flame")
-local SOUND_RISE = asset.sound("bn5:col-army")
-local SOUND_BURN = asset.sound("bn5:phoenix-burn")
+local SPRITE = asset.sprite("phoenix-flame")
+local SOUND_RISE = asset.sound("col-army")
+local SOUND_BURN = asset.sound("phoenix-burn")
 local RISE = 0xA
 -- The flames: one every 4 ticks, ten of them.
 local FLAME_EVERY, FLAMES = 4, 10
@@ -133,7 +133,7 @@ local function init(me: Object)
 end
 
 fire.kind = define.kind {
-    id = "bn5:dethphnx/fire",
+    id = "dethphnx/fire",
     pool = "effect",
     state = { far = "bool" },
     -- 0x080EA5E4.

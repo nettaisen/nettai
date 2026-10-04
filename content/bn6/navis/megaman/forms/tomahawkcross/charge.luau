@@ -22,12 +22,12 @@ local WIND_UP, SWING, END = 0x0, 0x4, 0x8
 -- The hit parameter the setup gives the attack.
 local HIT_PARAM = 0x9E
 
-local SOUND = asset.sound("bn6:tomahawk-man")
+local SOUND = asset.sound("tomahawk-man")
 
 -- The swing's hit: Wood, a slash at navis over two columns, no spark; the
 -- swipe effect.
 local WOOD, HIT_MOD = 4, 1
-local SWIPE = define.effect { sprite = asset.sprite("bn6:big-slash"), anim = 1, palette = 0 }
+local SWIPE = define.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
 
 -- The swing's tick (of its count down from 21) the hit lands on.
 local HIT_TICK = 12
@@ -113,7 +113,7 @@ local function finish(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "bn6:tomahawkcross/charge/action",
+    id = "tomahawkcross/charge/action",
     state = { timer = "u16" },
     -- `sub_80EEC70`.
     update = function(me: Object, s: State)
@@ -131,7 +131,7 @@ charge.action = define.action {
 }
 
 charge.weapon = define.weapon {
-    id = "bn6:tomahawkcross/charge",
+    id = "tomahawkcross/charge",
     -- The charge table's row 0x16, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 120, 110, 100, 95, 90, 50, 50, 50 },

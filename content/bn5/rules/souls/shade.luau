@@ -29,7 +29,7 @@ export type Spec = {
 }
 
 -- MegaMan's base sprite (00-00, 0x0801BE2A with 0x01000000: animation 0, with a ground shadow).
-local SPRITE = asset.sprite("bn5:megaman")
+local SPRITE = asset.sprite("megaman")
 -- His dark palette.
 local PALETTE = 1
 
@@ -176,7 +176,7 @@ end
 
 -- Chaos Unison's: two pixels up and on, its shadow dropped (0x08002CBE), wearing nothing.
 local chaos = shade.make {
-    id = "bn5:chaos-shade",
+    id = "chaos-shade",
     name = "the chaos shade",
     phases = 0x080C05B8,
     lift = 0x2_0000,

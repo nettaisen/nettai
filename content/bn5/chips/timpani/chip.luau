@@ -17,7 +17,7 @@ local SPRITE = bn5_instrument.sprite
 local EFFECT = effects.drum(statuses.immobilize_4, collision.guard_breaking, collision.hits_navis)
 
 return define.chip {
-    id = "bn5:timpani",
+    id = "timpani",
     codes = { "A", "L", "V", "*" },
     element = "null",
     family = "summon",
@@ -32,7 +32,7 @@ return define.chip {
     -- BN5's row 2; its identity the actor record 0xDF (0x08014C94: version 0, AI index 0x21).
     dimming = bn5_instrument.hook(instrument.instrument {
         identity = define.identity {
-            id = "bn5:timpani",
+            id = "timpani",
             class = "field_object",
             version = 0,
             ai_index = 0x21,
@@ -41,7 +41,7 @@ return define.chip {
         palette = 4,
         play_ticks = 0x55 * 2,
         pause_ticks = 0x3C,
-        tune = asset.sound("bn5:timpani"),
+        tune = asset.sound("timpani"),
         effect = EFFECT,
     }),
 }

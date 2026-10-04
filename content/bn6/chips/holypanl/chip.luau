@@ -6,7 +6,7 @@ local panel_changer = require("../../objects/panel-changer/panel_changer")
 local panel_chips = require("../../lib/panel-chips/controller")
 
 return define.chip {
-    id = "bn6:holypanl",
+    id = "holypanl",
     codes = { "A", "B", "S", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 1, mb = 24, damage = 0, hit_param = 0, lockout = 0,

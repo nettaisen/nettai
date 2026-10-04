@@ -9,14 +9,14 @@ local common = require("@exelib/megaman/blank_shot")
 
 local blank_shot = {}
 
-local made = common.make { id = "bn6:megaman/blank-shot/action", buster = buster, click = asset.sound("bn6:gundels1") }
+local made = common.make { id = "megaman/blank-shot/action", buster = buster, click = asset.sound("gundels1") }
 
 -- `sub_8011ADA`: nothing to fire.
 blank_shot.setup = made.setup
 blank_shot.action = made.action
 
 blank_shot.weapon = define.weapon {
-    id = "bn6:megaman/blank-shot",
+    id = "megaman/blank-shot",
     -- The charge table's row 2; Charge 5 reads on into row 3's first
     -- entry, as the original's table does.
     charge_ticks = { 180, 180, 180, 180, 180, 40 },

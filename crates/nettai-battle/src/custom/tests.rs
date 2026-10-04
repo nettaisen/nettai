@@ -130,7 +130,7 @@ impl Player {
             stats: self.stats,
             emotion: Emotion::Normal,
             turn: 1,
-            per_player_gauges: false,
+            own_gauges: false,
             random_battle: false,
             late_turns: false,
             now: self.tick,

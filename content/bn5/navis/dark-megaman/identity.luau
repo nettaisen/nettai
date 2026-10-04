@@ -11,14 +11,14 @@ local attach_points = require("../megaman/attach_points")
 local collision = require("../../rules/collision")
 
 return define.identity {
-    id = "bn5:dark-megaman",
+    id = "dark-megaman",
     class = "navi",
     version = 0,
     actor_type = "navi",
     ai_index = 0x16,
     attach_points = attach_points[0],
     body = {
-        sprite = asset.sprite("bn5:megaman"),
+        sprite = asset.sprite("megaman"),
         shadow = true,
         palette_scale = 1,
         palette = 1,

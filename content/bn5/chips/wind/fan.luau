@@ -12,19 +12,19 @@ local gust = require("../../navis/megaman/gust")
 
 local fan = {}
 
-fan.SPRITE = asset.sprite("bn5:fan")
+fan.SPRITE = asset.sprite("fan")
 
 fan.variant = common.variant
 
 -- The effects (BN5's table, 0x080DFC94): row 0x14 (14-0D, animation 2) when removed, row 0 (14-00) when broken.
 local made = common.make {
-    id = "bn5:wind/fan",
+    id = "wind/fan",
     sprite = fan.SPRITE,
-    appear_sound = asset.sound("bn5:appear"),
-    blow_sound = asset.sound("bn5:dustbrk"),
-    break_sound = asset.sound("bn5:hit-bomb-1"),
-    puff = define.effect { sprite = asset.sprite("bn5:puff"), anim = 2, palette = 0 },
-    explosion = define.effect { sprite = asset.sprite("bn5:explosion"), anim = 0, palette = 0 },
+    appear_sound = asset.sound("appear"),
+    blow_sound = asset.sound("dustbrk"),
+    break_sound = asset.sound("hit-bomb-1"),
+    puff = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 },
+    explosion = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 },
     is = collision.own_body,
     hits = collision.hit_by_other_side,
     spawn_gust = gust.spawn,

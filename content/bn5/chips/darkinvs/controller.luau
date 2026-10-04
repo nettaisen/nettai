@@ -49,7 +49,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "bn5:darkinvs/controller",
+    id = "darkinvs/controller",
     pool = "effect",
     state = { busy = "bool" },
     -- 0x080E22A8.

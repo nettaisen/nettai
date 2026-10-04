@@ -14,7 +14,7 @@ local statuses = require("../../rules/status")
 local drum = effects.drum(statuses.immobilize_4, collision.guard_breaking, collision.hits_navis)
 
 return define.chip {
-    id = "bn6:timpani",
+    id = "timpani",
     codes = { "I", "O", "T", "*" },
     element = "null", family = "summon", class = "standard",
     rarity = 1, mb = 20, damage = 0, hit_param = 0, lockout = 0,
@@ -24,16 +24,16 @@ return define.chip {
     -- `byte_80D4078` row 2.
     dimming = instruments.hook(instrument.instrument {
         identity = define.identity {
-            id = "bn6:timpani",
+            id = "timpani",
             class = "field_object",
             version = 0,
             ai_index = 1,
-            look = { sprite = asset.sprite("bn6:instrument"), anim = 0, palette = 4, shadow = true },
+            look = { sprite = asset.sprite("instrument"), anim = 0, palette = 4, shadow = true },
         },
         palette = 4,
         play_ticks = 0x3C * 2,
         pause_ticks = 0xAA,
-        tune = asset.sound("bn6:timpani"),
+        tune = asset.sound("timpani"),
         effect = drum,
     }),
 }

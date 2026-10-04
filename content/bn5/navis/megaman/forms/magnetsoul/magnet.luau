@@ -80,7 +80,7 @@ local function init(me: Object)
 end
 
 magnet.kind = define.kind {
-    id = "bn5:magnetsoul/magnet",
+    id = "magnetsoul/magnet",
     pool = "attack",
     state = { paralyzes = "bool", dx = "i32", dy = "i32" },
     update = function(me: Object)

@@ -5,7 +5,7 @@
 local navi = require("./navi")
 
 local dustman = define.chip {
-    id = "bn6:dustman",
+    id = "dustman",
     codes = { "D", "*" },
     element = "null",
     family = "null",
@@ -22,7 +22,7 @@ local dustman = define.chip {
 }
 
 local dustman_ex = define.chip {
-    id = "bn6:dustman-ex",
+    id = "dustman-ex",
     codes = { "D" },
     element = "null",
     family = "null",
@@ -39,7 +39,7 @@ local dustman_ex = define.chip {
 }
 
 local dustman_sp = define.chip {
-    id = "bn6:dustman-sp",
+    id = "dustman-sp",
     codes = { "D" },
     element = "null",
     family = "null",

@@ -23,11 +23,11 @@ local glow = {}
 glow.BUG_FIX, glow.SUBMERGE, glow.LOG_IN = common.BUG_FIX, common.SUBMERGE, common.LOG_IN
 
 local made = common.make {
-    id = "bn6:bugfix/glow",
+    id = "bugfix/glow",
     sounds = {
-        flash = asset.sound("bn6:bugfix-flash"),
-        log_in = asset.sound("bn6:log-in"),
-        submerge = asset.sound("bn6:invisible"),
+        flash = asset.sound("bugfix-flash"),
+        log_in = asset.sound("log-in"),
+        submerge = asset.sound("invisible"),
     },
     offset = 1,
     bn5_parts = false,

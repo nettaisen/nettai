@@ -13,10 +13,10 @@ local drill = {}
 
 -- The drill arm the navi wears while it drills (the original's attachment
 -- row 0x20), in its drilling animation (1) or drawn back (0).
-drill.arm = attachment.look { sprite = asset.sprite("bn6:drill-arm"), palette = 0, attach_point = 0x13 }
+drill.arm = attachment.look { sprite = asset.sprite("drill-arm"), palette = 0, attach_point = 0x13 }
 drill.ARM_DRILLING = 1
 
-local bn6_kind, bn6_spawn = common.make_kind("bn6:drilarm/drill", {
+local bn6_kind, bn6_spawn = common.make_kind("drilarm/drill", {
     spark = sparks.breaking,
     first = collision.breaking,
     second = collision.second_drill,

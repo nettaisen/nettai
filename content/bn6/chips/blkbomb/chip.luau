@@ -6,7 +6,7 @@ local black_bomb = require("./bomb")
 local throw = require("../../lib/bombs/throw")
 
 return define.chip {
-    id = "bn6:blkbomb",
+    id = "blkbomb",
     codes = { "B", "F", "O" },
     element = "fire", family = "fire", class = "standard",
     rarity = 3, mb = 32, damage = 250, hit_param = 18, lockout = 0,

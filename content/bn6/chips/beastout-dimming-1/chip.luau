@@ -7,7 +7,7 @@
 local controller = require("../geddon/controller")
 
 return define.chip {
-    id = "bn6:beastout-dimming-1",
+    id = "beastout-dimming-1",
     element = "null", family = "special", class = "special",
     rarity = 0, mb = 99, damage = 0, hit_param = 0, lockout = 0,
     flags = { "dimming" },

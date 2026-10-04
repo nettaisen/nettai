@@ -183,7 +183,7 @@ condition that keeps a netbattle out; `excl.py` has all 50.
 | The actor lists' entry types 1, 2, 6, 7, 0xA, and T4 0x41 that type 6 spawns | 31 | no link stage's list has them (battle-flow.md §3.2) |
 | Battle mode 9's own code: T1 0x28, T3 0xD2, DustMan's actions 0xB and 0xC (weapon routines 0x4B, 0x4C), its stats (`sub_80135E8`); modes 1 and 7's stats | 30 | mode 0 |
 | The virus actor and the navi the game plays (`sub_8108F50`, `sub_80F2330`: T1 kind 0 with ActorType 0 and 1), actions 0x5C and 0x5E | 28 | a netbattle's navis are ActorType 2; no form's or navi's row names weapon routines 0x52, 0x53, 0x6D |
-| The per-player gauge mode (battle flag 0x40: `sub_802E2C4`, its structs and HUD) | 17 | only `sub_802E112` sets the flag |
+| The chip gate battle (battle flag 0x40: `sub_802E2C4`, its structs and HUD) | 17 | only `sub_802E112` sets the flag |
 | Dimming effects 31, 33 and 41 of `off_802CCB4` | 12 | no chip record names them |
 | The end exchange and results (mode state 0x10), and the rewards (`sub_802CAA6`) | 9 | battle effects 2, which no link settings record has (they are 0x8C, 0x88C or 0x20088C) |
 | The battle's end for link types 4 and 8 (`sub_8007C50`) | 1 | a cable netbattle is type 0 |
@@ -233,7 +233,7 @@ netbattle can run them where that has been read:
 | `content/bn6/lib/instant` | 26 | instant effects 2, 6, 9, 11, 16 and 17: the invisibility, repair, the immobilizer, the side special, the meteor shower, the dust storm and its motes | can't: no chip has them, and the weapon routines that name two of them (0x71, 0x83) are named by no form's or navi's row and no NaviStats byte |
 | `crates/nettai-battle/src/kinds/obstacle.rs`, `content/bn6/objects/encased-bubble`, and the two requests' citations | 22 | an obstacle thrown (`sub_8018002`'s steps) or encased in ice or a bubble (`sub_801813A`'s, and the bubble it becomes); the actors' hit reactions on an obstacle | can't: the two requests are made only by routines nothing calls (field-objects.md §4.5), and nothing starts those reactions on an obstacle |
 | `content/bn6/chips/airspin` | 13 | the seeking whirlwind (T3 0xD4): AirSpin's variant 1 | can't: no chip record sends it |
-| `crates/nettai-battle/src/battle.rs` | 13 | the communication error (`sub_8007EB8`) and escape (`sub_800AAD6`) results, the set's second init entry, the per-player gauge mode's routines | not the simulation's (the link is the port's netplay), or battle flag 0x40 |
+| `crates/nettai-battle/src/battle.rs` | 13 | the communication error (`sub_8007EB8`) and escape (`sub_800AAD6`) results, the set's second init entry, the chip gate battle's routines | not the simulation's (the link is the port's netplay), or battle flag 0x40 |
 | `kinds/player/actions/navi_switch.rs`, `entry.rs`, `hand.rs` | 17 | the navi switch (the Cross change) and knockout while paused, the navi that appears mid-battle, the link navis' chips leaving the hand | can't: no live writer of the Cross change (unverified.md) |
 | `content/bn6/lib/rapid_buster.luau`, `lib/dimming/blinding_flash.luau`, `chips/bugfix/glow.luau`, `navis/megaman/weapons/shield`, `navis/tomahawkman`, `chips/tornado`, `chips/mstrcros`, `chips/rskyhny` | 22 | weapon routines 0x39, 0x3C, 0x8C and 0x46; dimming effect 2; the glow's two other variants; the Tornado action's subtype 3; a sword phase and a bee action nothing sets | can't: nothing names the routine, effect, variant or phase (the NaviCust writes weapon routines 0x3B, 0x8B and 0x3D only; the link navis' level tables 0x30 and 0x34) |
 | `crates/nettai-battle/src/collision.rs`, `field.rs`, `crates/nettai-render/src/objects.rs`, `chips/elecman` | 15 | IWRAM routines | run, not counted: the lab's coverage doesn't instrument IWRAM |
@@ -394,7 +394,7 @@ damage and status areas (and the first of the others), 130:
 | Routines | Branches | Why |
 |---|---|---|
 | `sub_8012FC8`, `sub_80158CC`, `sub_80159C6`, `sub_8016860`, `sub_80F22F8`, `sub_80142DC`, `sub_8028B74` | 10 | battle mode 1 or 9; a netbattle is mode 0 |
-| `sub_80107D4`, `sub_8012FC8`, `sub_801728E`, `sub_801A45C`, `sub_802EF5C` | 5 | battle flag 0x40 (per-player gauges): only `sub_802E112` sets it |
+| `sub_80107D4`, `sub_8012FC8`, `sub_801728E`, `sub_801A45C`, `sub_802EF5C` | 5 | battle flag 0x40 (the chip gate battle): only `sub_802E112` sets it |
 | `applyDamageToPlayer_801ba12`, `sub_80139C4`, `sub_8014326`, `sub_8016934`, `sub_8017AB4` | 5 | the actor type is 2 for both navis |
 | `sub_8009338`, `sub_80102AC`, `sub_8015994`, `sub_80159C6`, `sub_8015A16`, `sub_8015BEC`, `sub_8016934` | 8 | a null player object: both navis exist all battle |
 | object spawns, `object_createCollisionData` and the collision region | 9 | the pools never fill |
@@ -1027,8 +1027,8 @@ with the dragons' fifth fix), every frame (5,692) and sound call (166).
 | `chips/0x0b0-bugfix/blind-viewer`, `beast-spent` | the glow hidden from a blind viewer (side 1's Silence on the recording console's player); BugFix with the Beast Out counter run out |
 
 The unreachable ones: BugFix's glow over a navi that isn't a player's (1: it copies its user's side's navi),
-LifeSync's sync (3: every netbattle is a link battle, where its effect skips to the end), FullCust's per-player
-gauge (1: battle flag 0x40) and the gauge set past full (1: its callers pass 0 or 0x4000, the limit). The 2
+LifeSync's sync (3: every netbattle is a link battle, where its effect skips to the end), FullCust's own gauge
+(1: the chip gate battle, battle flag 0x40) and the gauge set past full (1: its callers pass 0 or 0x4000, the limit). The 2
 recordings match the engine (this branch on main 2a35e451), every frame (4,797) and sound call (91).
 
 **Second pass, batch 11: the last five (the panel strike, the attachment, the boulder, the absorbed obstacle; 5

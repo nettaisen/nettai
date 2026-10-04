@@ -21,13 +21,13 @@ local strike = require("./strike")
 
 local guardian = {}
 
-local SPRITE = asset.sprite("bn5:guardian-statue")
+local SPRITE = asset.sprite("guardian-statue")
 
 guardian.statue = statue.make {
-    id = "bn5:guardian/statue",
+    id = "guardian/statue",
     sprite = SPRITE,
     identity = define.identity {
-        id = "bn5:guardian",
+        id = "guardian",
         class = "field_object",
         version = 4,
         ai_index = 0x21,
@@ -36,13 +36,13 @@ guardian.statue = statue.make {
     hp = 10,
     stage_damage = 0x00A8_00C8,
     sounds = {
-        place = asset.sound("bn5:appear"),
-        crumble = asset.sound("bn5:panel-poison"),
-        strike = asset.sound("bn5:beast-over-burst"),
+        place = asset.sound("appear"),
+        crumble = asset.sound("panel-poison"),
+        strike = asset.sound("beast-over-burst"),
     },
     -- Effects 0x15 and 0x36 (BN5's table, 0x080DFC94): sheet 14-0d's animation 3, and 14-14.
-    arrival = define.effect { sprite = asset.sprite("bn5:puff"), anim = 3, palette = 0 },
-    burst = define.effect { sprite = asset.sprite("bn5:lightning"), anim = 0, palette = 0 },
+    arrival = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 },
+    burst = define.effect { sprite = asset.sprite("lightning"), anim = 0, palette = 0 },
     is = collision.neutral_body,
     hits = collision.everything,
     strike_is = collision.thrown_piercing_break,
@@ -52,6 +52,6 @@ guardian.statue = statue.make {
     bubble = rising_bubble.kind,
 }
 
-guardian.controller = controller.make { id = "bn5:guardian/controller", statue = guardian.statue.spawn }
+guardian.controller = controller.make { id = "guardian/controller", statue = guardian.statue.spawn }
 
 return guardian

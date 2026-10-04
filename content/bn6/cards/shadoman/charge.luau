@@ -8,7 +8,7 @@ local weapon = require("../../lib/weapon")
 local longswrd = require("../../chips/longswrd/chip")
 
 return define.weapon {
-    id = "bn6:patch-cards/shadoman/charge",
+    id = "patch-cards/shadoman/charge",
     -- The charge table's row 0x72, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 90, 80, 70, 65, 60, 130, 120, 110 },

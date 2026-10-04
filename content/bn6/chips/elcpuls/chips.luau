@@ -13,7 +13,7 @@ local TICKS = 0x3C
 local HOLD, SHORT_HOLD = TICKS - 5, 5
 
 local elcpuls1 = define.chip {
-    id = "bn6:elcpuls1",
+    id = "elcpuls1",
     codes = { "J", "L", "S" },
     element = "elec",
     family = "elec",
@@ -28,14 +28,14 @@ local elcpuls1 = define.chip {
     library = { number = 33, index = 33, sort = 136 },
     slot_in_limit = 3,
     action = action.action {
-        id = "bn6:elcpuls1/action",
+        id = "elcpuls1/action",
         pulse = pulse.variant { hit_mod = 1, status = statuses.paralyze_90, ticks = TICKS, palette = 1 },
         hold = HOLD,
     },
 }
 
 local elcpuls2 = define.chip {
-    id = "bn6:elcpuls2",
+    id = "elcpuls2",
     codes = { "A", "E", "J" },
     element = "elec",
     family = "elec",
@@ -50,14 +50,14 @@ local elcpuls2 = define.chip {
     library = { number = 34, index = 34, sort = 137 },
     slot_in_limit = 3,
     action = action.action {
-        id = "bn6:elcpuls2/action",
+        id = "elcpuls2/action",
         pulse = pulse.variant { hit_mod = 0x51, status = nil, ticks = TICKS, palette = 2 },
         hold = SHORT_HOLD,
     },
 }
 
 local elcpuls3 = define.chip {
-    id = "bn6:elcpuls3",
+    id = "elcpuls3",
     codes = { "A", "J", "S" },
     element = "elec",
     family = "elec",
@@ -72,7 +72,7 @@ local elcpuls3 = define.chip {
     library = { number = 35, index = 35, sort = 138 },
     slot_in_limit = 3,
     action = action.action {
-        id = "bn6:elcpuls3/action",
+        id = "elcpuls3/action",
         -- Its hits carry bug 0x18 with argument 1.
         pulse = pulse.variant { hit_mod = 3, status = nil, ticks = TICKS, palette = 0, bug = 0x18, bug_arg = 1 },
         hold = HOLD,
@@ -80,7 +80,7 @@ local elcpuls3 = define.chip {
 }
 
 local destpuls = define.chip {
-    id = "bn6:destpuls",
+    id = "destpuls",
     codes = { "A", "B", "C", "*" },
     element = "elec",
     family = "program_advance",
@@ -101,7 +101,7 @@ local destpuls = define.chip {
         },
     },
     action = action.action {
-        id = "bn6:destpuls/action",
+        id = "destpuls/action",
         -- Its hits carry the HP bug 0xF6.
         pulse = pulse.variant { hit_mod = 0, status = statuses.paralyze_150, ticks = TICKS, palette = 3, bug = 0xF6 },
         hold = HOLD,

@@ -24,7 +24,7 @@ local function setup(navi: Object)
 end
 
 return define.weapon {
-    id = "bn6:puncharm/charge",
+    id = "puncharm/charge",
     charge_ticks = { 80, 80, 80, 80, 80, 100, 100, 100 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,
     instant = fist.instant(HIT_MOD),

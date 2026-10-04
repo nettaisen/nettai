@@ -28,10 +28,10 @@ export type State = {
 
 local shademan = {}
 
-local SPRITE = asset.sprite("bn5:shademan")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_CALL = asset.sound("bn5:shademan-call")
-local SOUND_COMMAND = asset.sound("bn5:ok-8b")
+local SPRITE = asset.sprite("shademan")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_CALL = asset.sound("shademan-call")
+local SOUND_COMMAND = asset.sound("ok-8b")
 
 -- The commands (0x080BD194, 0x080BD1A0): a step is any of its keys.
 local COMMANDS: { { effect: Effect, steps: { { Key } } } } = {
@@ -157,7 +157,7 @@ local function init(me: Object)
 end
 
 shademan.kind = define.kind {
-    id = "bn5:shademan/navi",
+    id = "shademan/navi",
     pool = "actor",
     state = {
         controller = "object",

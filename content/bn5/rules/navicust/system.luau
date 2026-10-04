@@ -72,7 +72,7 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
 }
 
 -- HubBatc (program 27), which bugs itself.
-local HUBBATC = "bn5:hubbatc"
+local HUBBATC = "hubbatc"
 
 -- What the player's save brings (nettai-match from a match's side, the tools from a save): whether it is in the
 -- cyberworld (its area, 0x02002944, from 0x80, or event flag 0x10B2), where the compile leaves the HP.
@@ -116,7 +116,7 @@ local BN5: NaviCustGame = {
 }
 
 return define.system {
-    id = "bn5:navicust",
+    id = "navicust",
     setup = { cyberworld = "bool" },
     hooks = {
         round_setup = function(side: number)

@@ -13,6 +13,8 @@
 --   request, the mood not consulted), any other sets its mood (0x0801148C) through BN5's setter. A curse (BugCurse) can
 --   set the bug mid-round, so every navi of the player's kind is ticked.
 
+local operation_battle = require("../../lib/operation_battle")
+
 local emotion = {}
 
 -- AIData +0x3A (ticks toward the next swing) and +0x0B (the emotion last swung to) of each navi of the player's kind,
@@ -44,7 +46,7 @@ local function swing(side: number, navi: Object)
     if navi.actor_type ~= "player" then
         return
     end
-    if battle.per_player_gauges() then
+    if operation_battle() then
         return
     end
     local stats = battle.navi(side)
@@ -77,7 +79,7 @@ local function swing(side: number, navi: Object)
 end
 
 emotion.system = define.system {
-    id = "bn5:emotion",
+    id = "emotion",
     state = { swing_ticks = "u16[4]", swung = "u8[4]" },
     hooks = {
         -- The swing runs from the navi's tick, whose bug a curse may set at any time.

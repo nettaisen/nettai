@@ -7,7 +7,7 @@ local barriers = require("../../lib/barriers")
 -- Barrier (BN5 chip 0x087): a barrier of 10 HP on the user: BN6's barrier chips (the dimming handler's subtype 14)
 -- with BN5's barriers (lib/barriers).
 local barrier = define.chip {
-    id = "bn5:barrier",
+    id = "barrier",
     codes = { "B", "L", "S", "*" },
     element = "null",
     family = "null",
@@ -27,7 +27,7 @@ local barrier = define.chip {
 -- Barr100 (BN5 chip 0x088): a barrier of 100 HP on the user: BN6's barrier chips (the dimming handler's subtype 14)
 -- with BN5's barriers (lib/barriers).
 local barr100 = define.chip {
-    id = "bn5:barr100",
+    id = "barr100",
     codes = { "P" },
     element = "null",
     family = "null",
@@ -46,7 +46,7 @@ local barr100 = define.chip {
 -- Barr200 (BN5 chip 0x089): a barrier of 200 HP on the user: BN6's barrier chips (the dimming handler's subtype 14)
 -- with BN5's barriers (lib/barriers).
 local barr200 = define.chip {
-    id = "bn5:barr200",
+    id = "barr200",
     codes = { "W" },
     element = "null",
     family = "null",

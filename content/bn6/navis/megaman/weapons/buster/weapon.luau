@@ -115,18 +115,18 @@ end
 -- The shot; a thrown obstacle (`throw_absorbed`'s) is one too. (The
 -- sounds: the shot, and a throw's besides, the junk shot's.)
 buster.shot = common.shot_action {
-    id = "bn6:megaman/buster/shot",
+    id = "megaman/buster/shot",
     buster = lib,
     projectiles = projectile,
     attachment = attachment.kind,
-    shot_sound = asset.sound("bn6:buster-shot"),
+    shot_sound = asset.sound("buster-shot"),
     plain = variants.plain,
-    throw_sound = asset.sound("bn6:junk-shot"),
+    throw_sound = asset.sound("junk-shot"),
     throw = throw,
 }
 
 buster.weapon = define.weapon {
-    id = "bn6:megaman/buster",
+    id = "megaman/buster",
     -- The buster isn't charged (the charge table's row 0).
     charge_ticks = { 0, 0, 0, 0, 0 },
     setup = buster.setup,

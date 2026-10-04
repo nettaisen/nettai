@@ -21,7 +21,7 @@ export type Flames = { big: boolean, spark: Spark }
 local SPAWNER_ADDRESS = 0x080EA11D
 
 local made = common.make {
-    id = "bn6:flmhook/hook",
+    id = "flmhook/hook",
     columns = function(me: Object, big: boolean): (number, number)
         if big then
             return 4 - me.alliance, 5 - me.alliance * 3

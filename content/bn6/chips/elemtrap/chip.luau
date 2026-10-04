@@ -8,7 +8,7 @@ local trap = require("./trap")
 local traps = require("../../lib/traps/controller")
 
 return define.chip {
-    id = "bn6:elemtrap",
+    id = "elemtrap",
     codes = { "G", "S", "U", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 2, mb = 42, damage = 240, hit_param = 158, lockout = 0,

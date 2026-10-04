@@ -5,7 +5,7 @@ local common = require("@exelib/traps/controller")
 
 local traps = {}
 
-traps.kind = common.make_kind("bn5:trap-chip")
+traps.kind = common.make_kind("trap-chip")
 
 -- A trap's object, as a record a controller can keep.
 traps.trap = common.trap
