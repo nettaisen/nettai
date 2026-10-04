@@ -78,6 +78,12 @@ pub struct Accumulators {
     /// What hit us (filtered), plus: 0x1 we were guarded, 0x40 counter
     /// hit, 0x20000 we blocked a hit.
     pub hit_flags: u32,
+    /// The same by the other collision's flip (BN5's +0x6C and +0x70: the
+    /// hit registration, 0x080169C8 to 0x08016A68, keeps them only so; an
+    /// unflipped hitter's, of either side, and a flipped one's), which
+    /// BN5's obstacle push on any hit reads (0x08017AD8); BN6 keeps them
+    /// unread.
+    pub hit_flags_by_flip: [u32; 2],
     pub exclamation: u8,
     pub damage_multiplier: u8,
     pub damage_elements: u8,
@@ -477,13 +483,17 @@ impl Battle {
         if rd.f1 & f1::GUARD != 0 {
             let brk = if bn5 || hs & 0x4000 != 0 { 0x1002 } else { 0x0002 };
             if hs & brk == 0 {
-                self.collision.get_mut(h).acc.hit_flags |= 1;
+                let hm = self.collision.get_mut(h);
+                hm.acc.hit_flags |= 1;
+                hm.acc.hit_flags_by_flip[rd.flip as usize & 1] |= 1;
                 let mut flags = hs & !0x10;
                 if flags & (if bn5 { 0x0C00_4000 } else { 0x0C00_5000 }) == 0 {
                     self.collision.get_mut(r).guard_dirs |= 1 << hd.flip;
                     flags |= 0x2_0000;
                 }
-                self.collision.get_mut(r).acc.hit_flags |= flags;
+                let rm = self.collision.get_mut(r);
+                rm.acc.hit_flags |= flags;
+                rm.acc.hit_flags_by_flip[hd.flip as usize & 1] |= flags;
                 return;
             }
         }
@@ -497,6 +507,7 @@ impl Battle {
         let rm = self.collision.get_mut(r);
         rm.acc.hit_by |= hd.bit;
         rm.acc.hit_flags |= hs;
+        rm.acc.hit_flags_by_flip[hd.flip as usize & 1] |= hs;
         rm.acc.damage_elements |= hd.secondary_element;
         if hd.status_base.is_some() {
             rm.status_final = hd.status_base;
@@ -519,6 +530,7 @@ impl Battle {
         let rm = self.collision.get_mut(r);
         if rm.counter_timer != 0 && c & 0x7F != 0 && c & 0x80 == 0 {
             rm.acc.hit_flags |= 0x40;
+            rm.acc.hit_flags_by_flip[hd.flip as usize & 1] |= 0x40;
         }
         // What the hit wears off the mood: the byte's low seven bits, but
         // none on a counter hit (the original reads them from the register

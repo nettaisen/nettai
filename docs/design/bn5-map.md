@@ -1342,9 +1342,19 @@ More for §15.3:
 
 12. **A base form per game**: the engine refuses two base forms in one content; BN5's MegaMan, whose souls are
    forms, needs his own (or the base form to be a navi's).
-13. **The custom screen's end**: BN5's Team Battle custom screen (0x08025EF2) closes the screen on the tick both
-   results are in, BN6's on the next, and BN5's sets no AIData +0x0F on the navis (BN6's `sub_8009338` does): a
-   choice of the side's game's custom screen (`custom::GameLibrary`) or of the arena's flow.
+13. **The custom screen's end**: BN5's result is 49 words on the link (0x08009A5E: its NaviStats are 0x60 bytes,
+   BN6's 0x64; `sub_800B3A2` sends 50), so it is in a tick sooner than BN6's would be; BN5's Team Battle screen
+   (0x08025EF2) takes the results as BN6's does (0x080266FA: the hands installed, the HUD's wait task off and its
+   icons and chip window on) and closes the tick after (its state 8, 0x08025FEC). Built as the flow section's
+   `result_words` (BN6 50, BN5 49, of the sending side's game); an earlier `custom_closes_with_results` (the screen
+   closing on the tick both results are in) had the close on the right tick but the results a tick late. BN5's
+   screen sets no AIData +0x0F on the navis (BN6's `sub_8009338` does): BN6's beast system's `custom_closed`.
+   **The dark chip offer** (0x08025114, from the screen's opening 0x08022C5C, after its hand size 0x08025BE4 and
+   before the folder closes up 0x080250E6): a worried or dark MegaMan (emotions 1 and 5) gets one of his folder's
+   dark chips (0xBB-0xC6) moved to the place after the hand unless the first is dealt: the first taken, each later
+   one on an RNG1 draw's low bit, DrkRecov first under a quarter of his HP. Built in BN5's light and dark system's
+   `custom.deal` (the custom screen's deal hook, with `custom.folder`, `custom.swap_folder`, `custom.hand_size`);
+   its RNG1 draws were what the dark chip recordings' consoles were ahead by.
 Items 14 to 18 are built (rules-in-luau.md, "P1b"); 19 and the dark chips' costs wait for a replay that needs
 them.
 
@@ -1375,8 +1385,8 @@ them.
 ### 15.8 Soul Unison (as built, in progress)
 
 - **The soul button** (the engine's custom screen, BN5's layout: slot 11, `SlotKind::Soul`, 0x08023C54,
-  0x08024B28, 0x08024972): lit for the last pick's family when the navi has a soul of it (a form of
-  `kind = "soul"` naming its `soul = { number, family }`), the save has the soul (`SoulUnlocks`: bn5-compat gives
+  0x08024B28, 0x08024972): lit for the last pick's family when the navi has a soul of it (a form naming its
+  `soul = { number, family }`), the save has the soul (`SoulUnlocks`: bn5-compat gives
   a finished save's six of the version and Chaos Unison) and it isn't used this round (Soul Unison and Chaos Unison
   apart; a dark chip's is Chaos Unison). Pressed: BN5's state 9 (`Phase::SoulChosen`: fades 0x34 and 0x30), the
   soul first in the selection in place of the chip given up. At OK the transform record asks for the soul's form,
@@ -1703,6 +1713,39 @@ Found on the way, not ported (no chip of these needs it): a player MegaMan (AI i
 takes to 0 keeps 1 HP and starts action 0x30 (0x0802C16C from 0x080185A2 and 0x0800C6E0, unless NaviStats +0x2A or
 the battle setting 0x0800931C(side, 1)); a DarkInvs drive playing NeoVari's pick shows it (the opponent of the
 bn5-team-dark base). tools/bn5/recipes.py finds chips wherever layout.py put them (`--check`).
+
+**The obstacle chips** (from chips-a's range, 2026-10-03). RedFrut1–3 (action 0x1A's instant effect 15,
+0x080D818C, BN5's own: chips/redfrut/fruit): a fruit (attack object 0x8D, NameID 0xE7) drops on a random free panel
+but the back columns (they are reserved while it looks, 0x080D8280) and hops: 4 ticks coming, 40 shown, 4 going,
+then onto a random free panel of the other rows (or its own, with none), as many times as the record's second
+parameter (5), and gone after the last going. A hit breaks it (1 HP); the side whose attacks, objects or bodies broke
+it, alone, gets its gift (the record's first parameter, also its palette) on a random alive navi of its side
+(0x080D82BA; while it has none, the fruit waits): 300 HP back (AntiRecv turning it) and 50 more mood (0x080127E8: to
+254, a mood of 0 left), invulnerability for 420 ticks, or Full Synchro (a player's navi out of battle flag 0x40's mode
+whose BN5 emotion is one of the first four; 0x080127D6's setter). BoyBomb1–3 (the dimming handler's subtype 58:
+BN6's leftover controller, effect object 0x67, and bomb, attack object 0x3E, which no BN6 chip spawns, with BN5's
+numbers: chips/boybomb/bomb): the bomb (NameID 0xD4, 150 HP) on the free panel ahead fades in for 16 ticks, then on a
+panel it may stand on (0x080CD2BC, by its side) counts down 60 ticks blinking and blows up over the 3x3 around it
+(no spark, against navis, hit modifier 3); anywhere else it breaks. Its Param1 0 (50 HP, the enemy area's blast, a
+holder's record) is an AI's (0x08108274), no chip's. The controller's position is the dimming handler's registers
+(the user's row, the element and the hook's own address).
+
+**BN5's obstacle pushes** (the obstacle framework, by the obstacle's own game's `push_reading`): BN5 keeps a
+collision's hit flags only by the other collision's flip (+0x6C, +0x70: the hit registration 0x080169C8 to
+0x08016A68; the engine's `hit_flags_by_flip` beside the union it reads as BN5's +0x68); its push on any hit
+(0x08017AD8, from 0x08017A78) reads them: one side's hits by unflipped hitters alone mark the unflipped hitters'
+modifier byte (+0x18), by flipped ones the other (+0x19), and the final modifier. Its push vector (0x0800D4B0) takes
+the pusher as side 0 when side 0's hits alone pushed (none when both did), else side 1, and the first of bits 2 to 5
+of +0x18, else of +0x19 reversed, with a fifth row of nothing (BN6's reads past its table there). Its slide
+(0x08014894) keeps no bounds, and both its pushes go 8 pixels a tick in depth (0x08014730: the reactions section's
+`slide_speed`). The chip lab's chips/0x055-boybomb1/pushed and airshot record a buster's and an AirShot's
+knockback; RedFrut's broken and eaten recordings (side 0's buster, side 1's after side 0's Cannon) its gifts.
+
+Found on the way, left to their owners: RedFrut3's Full Synchro on a light MegaMan needs BN5's Full Synchro aura
+(actor object 0x5E, 0x080C45E0: sprite 14-16, the engine's role `sprites.full_synchro_aura`, unfilled for BN5; it
+frees itself rather than going to destroy, and its spawner allows AI indexes to 12), so its recording isn't in the
+lab; BN5's guard (0x080169B8) breaks on a hit of types 0x1002 always (BN6's on 0x0002, 0x1002 with 0x4000) and marks
+a guarded direction unless the hit has 0x0C004000 (BN6's 0x0C005000).
 
 ### 15.12 The content's layout (as built)
 

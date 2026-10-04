@@ -487,9 +487,6 @@ named_fields! {
         HpDrain = "hp_drain", U8, rw;
         CustomDrain = "custom_drain", U8, rw;
         PanelTrail = "panel_trail", U8, rw;
-        /// The form is a Beast form, Beast Over.
-        Beast = "beast", Bool, ro;
-        BeastOver = "beast_over", Bool, ro;
         // Written by the navi-changing dimming chips (off_802CCB4[38]).
         /// The custom screen's size.
         CustomLevel = "custom_level", U8, rw;
@@ -1053,8 +1050,9 @@ pub struct AfterimageSpec {
     pub palette: u8,
     pub shadow: Shadow,
     pub steady: bool,
-    /// It ends early: 1 when its side leaves the Beast forms, 2 when its
-    /// owner's action drops below 0x10 (0 never).
+    /// It ends early: 1 when its side leaves the forms whose afterimages
+    /// stay (BN6's Beast forms), 2 when its owner's action drops below
+    /// 0x10 (0 never).
     pub tether: u8,
 }
 
@@ -1272,6 +1270,14 @@ pub trait CoreApi {
     /// BN6's ChpShufl); whether the last pick is a chip; the state of the
     /// button under the cursor ("selectable", "unavailable", "selected").
     fn custom_refuse(&mut self, side: u8) -> ApiResult<()>;
+    /// `custom.folder(side)`: the side's battle folder as its screen has
+    /// it, its 30 places in order (a used chip's place empty until the
+    /// screen deals); `custom.swap_folder(side, a, b)`: two of its places
+    /// swapped (0-based here); `custom.hand_size(side)`: how many chips the
+    /// screen deals (as it deals, the framework's).
+    fn custom_folder(&self, side: u8) -> ApiResult<Vec<Option<crate::ChipHandle>>>;
+    fn custom_swap_folder(&mut self, side: u8, a: u8, b: u8) -> ApiResult<()>;
+    fn custom_hand_size(&self, side: u8) -> ApiResult<u8>;
     fn custom_sacrifice(&mut self, side: u8) -> ApiResult<()>;
     fn custom_redeal(&mut self, side: u8) -> ApiResult<()>;
     fn custom_last_pick_is_chip(&self, side: u8) -> ApiResult<bool>;
