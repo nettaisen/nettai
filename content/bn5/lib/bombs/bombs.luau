@@ -1,13 +1,13 @@
 --!strict
--- BN5's throw (action 0x12) and thrown bomb (attack object #8): BN6's code (@common/bombs), BN5's attachment and bomb
+-- BN5's throw (action 0x12) and thrown bomb (attack object #8): BN6's code (@exelib/bombs), BN5's attachment and bomb
 -- kind; the throw's sound, the bomb's sprite and sound BN6's numbers, its effects BN5's rows (lib/effects). A chip's
 -- throw is `bombs.throw { held = ..., thrower = ... }`; MiniBomb's, EnergBom's and MegEnBom's thrower
 -- `bombs.thrower(variant)`.
 
 local attachment = require("../../objects/attachment/attachment")
-local bomb = require("@common/bombs/bomb")
+local bomb = require("@exelib/bombs/bomb")
 local effects = require("../effects")
-local throw = require("@common/bombs/throw")
+local throw = require("@exelib/bombs/throw")
 
 local bombs = {}
 

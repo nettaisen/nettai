@@ -65,7 +65,7 @@ fn search_near(b: &Battle, r: ObjectRef, target: PanelPos, m: &crate::content::L
         Some(far) if target.x == far_column => far,
         _ => &m.offsets,
     };
-    let shifts: &[i8] = if m.column_shifts { &b.rules_for(r).lockon.column_shifts } else { &[] };
+    let shifts: &[i8] = if m.column_shifts { &b.game_rules().lockon.column_shifts } else { &[] };
     std::iter::once(0).chain(shifts.iter().copied()).find_map(|shift| {
         let x = target.x as i32 + front * shift as i32;
         search_from(b, r, target, x, target.y as i32, offsets, m.clear_path)
@@ -106,7 +106,7 @@ fn search_from(
 fn path_clear(b: &Battle, r: ObjectRef, from: PanelPos, target: PanelPos) -> bool {
     let o = b.objects.get(r);
     let front = facing(o.alliance, o.flip);
-    let rule = b.rules_for(r).lockon.clear_path[o.alliance as usize & 1];
+    let rule = b.game_rules().lockon.clear_path[o.alliance as usize & 1];
     let mut x = from.x as i32;
     loop {
         if !(0..=0xFF).contains(&x) || !b.field.meets(x as u8, from.y, rule) {
@@ -126,6 +126,6 @@ fn can_stand(b: &Battle, r: ObjectRef, x: u8, y: u8) -> bool {
     }
     let o = b.objects.get(r);
     let floor_free = flag1(b, r) & f1::AIRSHOE != 0 || !b.field.is_solid(o.panel.x, o.panel.y);
-    let rule = b.arena_rules().panels.any_side_step.get(floor_free, o.alliance);
+    let rule = b.game_rules().panels.any_side_step.get(floor_free, o.alliance);
     b.field.meets(x, y, rule)
 }

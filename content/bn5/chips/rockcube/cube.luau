@@ -1,9 +1,9 @@
 --!strict
--- BN5's RockCube controller (effect object #0x37, 0x080E4664): the shared one (@common/rockcube/cube, BN6's code)
+-- BN5's RockCube controller (effect object #0x37, 0x080E4664): the shared one (@exelib/rockcube/cube, BN6's code)
 -- with BN5's rock (objects/rock: the cube, rising) and place sound. Its position is the dimming handler's registers:
 -- the user's row, the element and the hook's own address (0x080E46E6, the handler's `bx r3`, Thumb).
 
-local common = require("@common/rockcube/cube")
+local common = require("@exelib/rockcube/cube")
 local rock = require("../../objects/rock/rock")
 
 local HOOK_ADDRESS = 0x080E46E7

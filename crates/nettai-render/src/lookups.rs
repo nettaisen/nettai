@@ -168,7 +168,7 @@ pub fn chip_icon<'a>(packs: &Packs<'a>, c: &Content, chip: ChipHandle, problems:
     if problems.lookup(Lookup::ChipIcon(chip)) && icon.is_none() {
         problems.note(format!("chip {key:?} has no icon in the pack"));
     }
-    Some((icon?, &packs.of_key(c, key).hud.icon_palette))
+    Some((icon?, &packs.game(c).hud.icon_palette))
 }
 
 /// A chip's picture in the chip window: its game's pack's, under its key

@@ -186,6 +186,13 @@ pub fn untyped_constants(s: &Scanned) -> Vec<(usize, String, usize)> {
     out
 }
 
+/// Whether module source `source` names an asset (`asset.<kind>(`,
+/// outside its comments and strings).
+pub fn names_assets(source: &str) -> bool {
+    let s = Scanned::new(source);
+    ["sprite", "sound", "banner", "background", "mugshot"].iter().any(|kind| s.find(&format!("asset.{kind}(")).next().is_some())
+}
+
 /// The lints for module `path` (relative to the pack root, with `.luau`).
 pub fn lints(path: &str, source: &str) -> Vec<Problem> {
     let mut out = Vec::new();

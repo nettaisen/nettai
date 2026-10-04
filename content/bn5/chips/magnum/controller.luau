@@ -1,10 +1,10 @@
 --!strict
 -- Magnum's dimming controller (BN5's effect object #0x30, 0x080E3D84; the dimming handler's subtype 15, 0x080E3E04):
--- the usual dimming phases (@common/dimming), with an effect (0x080E3DC8) that sends out the gunner (./gunner) with
+-- the usual dimming phases (@exelib/dimming), with an effect (0x080E3DC8) that sends out the gunner (./gunner) with
 -- the damage plus the bonus and the chip's mode (Param1), and lasts until the gunner has fired and gone (its stage,
 -- Param2, at 2).
 
-local dimming_chips = require("@common/dimming")
+local dimming_chips = require("@exelib/dimming")
 local gunner = require("./gunner")
 
 local controller = {}

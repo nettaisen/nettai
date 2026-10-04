@@ -11,8 +11,8 @@
 
 local collision = require("../../rules/collision")
 local navi_chips = require("../../lib/navi-chips/navi")
-local panels = require("@common/panels")
-local regions = require("@common/regions")
+local panels = require("@exelib/panels")
+local regions = require("@exelib/regions")
 local wave = require("./wave")
 
 local slashman = {}

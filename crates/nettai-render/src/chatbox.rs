@@ -500,13 +500,13 @@ mod tests {
     /// frame.
     #[test]
     fn every_chatbox_line_fits_its_box() {
-        let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6"));
+        let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content"));
         let g = bn6_like_boxes();
         let rooms = [text_room(&g, MESSAGE_BOX), text_room(&g, DESCRIPTION_BOX)];
         let mut r = crate::vfont::TextRenderer::new(std::sync::Arc::new(crate::vfont::VectorFont::bundled()));
         let (mut lines, mut fitted) = (0, Vec::new());
         for lang in ["en", "ja"] {
-            let table = nettai_content::locale::load(dir, lang).unwrap().expect("a table");
+            let table = nettai_content::locale::load(&dir.join("bn6"), lang).unwrap().expect("a table");
             let mut strings: Vec<(String, usize, &str)> = Vec::new();
             for (key, c) in &table.chips {
                 strings.extend(c.description.as_deref().map(|d| (format!("chips.{key}"), DESCRIPTION_BOX, d)));
@@ -541,16 +541,15 @@ mod tests {
     /// Falzar's Cross in its place.
     #[test]
     fn a_cross_shows_its_own_description() {
-        let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6"));
+        let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content"));
         let mut report = nettai_content::report::Report::default();
-        let root = nettai_content::root::read(dir, &mut report).expect("content/bn6 reads");
+        let read = nettai_content::index::read(dir, &["bn6".to_string()], &mut report).expect("content/bn6 reads");
         let mut c = Content::default();
-        c.strings = root.strings;
-        c.scripts = nettai_battle::content::Scripts::root(root.manifest, root.modules);
-        nettai_battle::content::testing::add_shared(&mut c.scripts);
+        c.scripts = read.scripts();
+        c.strings = read.strings;
         c.assets = nettai_battle::content::testing::asset_names_for(&c.scripts);
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
-        let ja = nettai_content::locale::load(dir, "ja").unwrap().expect("ja.toml");
+        let ja = nettai_content::locale::load(&dir.join("bn6"), "ja").unwrap().expect("ja.toml");
         let form = |key: &str| c.defs.form_by_key(key).unwrap_or_else(|| panic!("no form {key}"));
         for (language, table) in [(None, &c.strings), (Some(&ja), &ja)] {
             let strings = DisplayText::new(language);

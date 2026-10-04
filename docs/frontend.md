@@ -39,9 +39,10 @@ Two crates make it up:
 
 ## 1. The content pack
 
-The battle content the engine runs on is this repository's content/ (every
-folder of it, one namespace: content/bn6's definitions, content/bn5's...;
-`--content <dir>` or `$NETTAI_CONTENT` for another content directory). What the
+The battle content the engine runs on is this repository's content/ (its
+packs: the game packs content/bn6 and content/bn5 and the support pack
+content/exelib, docs/design/content-model-v2.md §4.0; `--content <dir>` or
+`$NETTAI_CONTENT` for another content directory). What the
 frontend shows and plays comes from a content pack made from your own ROMs
 (the US Falzar and Gregar, `MEGAMAN6_FXXBR6E` and `MEGAMAN6_GXXBR5E`, and the
 Japanese Falzar and Gregar, `ROCKEXE6_RXXBR6J` and `ROCKEXE6_GXXBR5J`, which
@@ -69,28 +70,21 @@ custom screen from the local player's game's (docs/design/rules-in-luau.md,
 As built R3b), and the field from the arena's game's (§7.4; see "Field and
 background" below).
 
-The content roots go with the packs (`nettai_content::pack::load_found`):
-`--content <dir>` loads that root and the roots it requires (so does
-`$BN6_CONTENT`); without it, BN6's root (this repository's content/bn6) and
-every other root beside it (content/bn5, ...), each when its game's pack is
-found and the content loads with it. A root that doesn't is left out, and
-the frontend says why at start-up ("the content root bn5 is left out: ...":
-no pack of its game, with the command that writes one, or the define
-phase's error), so BN6's play never fails for another game's root. A
-root's chips whose module names no use yet (a port's unwritten chips: BN5's)
-are left out of it first, and so are the chip folders that require one of
-theirs (`Root::leave_out_unported`: the unported-chip rule,
-docs/design/content-model-v2.md §7.3), so the rest of the root loads: the
-frontend says so at start-up with one warning listing every chip left out
-("75 of bn5's chips have no use yet (or need one's module) and are left
-out: bn5:airspin1, ..."). Every loader does the same (the editor, the tools'
-`load_battle`, the BN5 replays, the static audit), and the content then is
-what loaded: its hash, which netplay's handshake compares, covers exactly
-that. A root
-the content must load whose game's pack isn't found is an error naming the
-extract command. (Netplay's handshake compares the content, the packs'
-asset names among it: two players play with the same packs, or give
-`--content content/bn6` and `--pack` alike.)
+The content goes with the packs (`nettai_content::pack::load_game`;
+docs/design/content-model-v2.md §4.0): `--content <dir>` names the content
+directory (so does `$NETTAI_CONTENT`); without it, this repository's
+content/. A match plays one game: the frontend loads that game's pack (its
+manifest's listed modules and what they require, with the support packs it
+uses, exelib) and its asset pack, nothing else; `nettai_content::pack::games`
+lists the games it can offer, each with its asset pack or the command that
+writes one. A game's chips without a use yet (a port's unwritten chips:
+BN5's) are its manifest's `unported`, which don't load. Every loader does the same (the
+editor, the tools' `load_battle`, the BN5 replays, the static audit), and
+the content then is what loaded: its hash, which netplay's handshake
+compares, covers exactly that. A game the content must load whose pack
+isn't found is an error naming the extract command. (Netplay's handshake
+compares the content, the packs' asset names among it: two players play
+with the same packs, or give `--content` and `--pack` alike.)
 
 The graphics load into the types of the `nettai-assets` crate, decoded
 (tiles as palette indices, colors as BGR555):
@@ -582,8 +576,8 @@ pack's Japanese lettering (the Japanese ROMs' 8x16 and dialogue fonts in
 their encoding, the HUD's lines in their glyphs, the banners whose words
 differ, カスタム中…, the gauge's "L or R", the chip window's pictures for
 OK, the re-deal and scrap, the Cross window's names) swapped in for the
-English (`Bundle::in_language`), and the content's strings from the
-content root's `locales/ja.toml` (chip names and descriptions, the
+English (`Bundle::in_language`), and the content's strings from
+each game pack's `locales/ja.toml` (chip names and descriptions, the
 Crosses' descriptions, the navis' names and no-running messages;
 `strings.rs`, `DisplayText`: a string the table lacks is the content's
 own, `locales/en.toml`'s, which `--audit` lists). Only what is shown

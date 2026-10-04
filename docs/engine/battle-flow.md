@@ -272,7 +272,7 @@ sub_8000D12(base, cnt, sw):                  // custom::folder::shuffle(base[..c
     draw PosRNG1() for the rest of the 2·sw draws
 ```
 
-`sub_8000C72` (RNG2: the panel lists chips and navis shuffle, `panels.shuffle` in content/common/panels.luau) and
+`sub_8000C72` (RNG2: the panel lists chips and navis shuffle, `panels.shuffle` in content/exelib/panels.luau) and
 `sub_8000CA6` (its RNG1 twin) are the same shuffle on their streams. Content reaches it through
 `battle.shuffle_order` and `battle.console_shuffle_order` (content/nettai/core.d.luau).
 

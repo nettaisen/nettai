@@ -3,11 +3,11 @@
 -- effect 10, no damage and a 120-tick wait before the next B+Back, and starts the instant chips' action (BN5's 0x1A).
 -- Effect 10 (0x080124D0) does nothing outside MagnetSoul; in it MegaMan glows (effect 0x26: sprite 14-1B on him for
 -- 20 ticks) and every panel from his forward to the field's edge with an enemy body on it gets an immobilizing hit
--- (BN5's attack object 0x3F, BN6's code: @common/instant/immobilizer, with the immobilized mark).
+-- (BN5's attack object 0x3F, BN6's code: @exelib/instant/immobilizer, with the immobilized mark).
 
 local collision = require("../../../../rules/collision")
 local glow = require("../../weapons/glow")
-local immobilizer = require("@common/instant/immobilizer")
+local immobilizer = require("@exelib/instant/immobilizer")
 local status = require("../../../../rules/status")
 
 local back = {}
