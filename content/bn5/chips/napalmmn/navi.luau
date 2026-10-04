@@ -43,7 +43,8 @@ local function leave(me: Object)
         navi_chip.navi_left(controller)
     end
     me:remove_parts(CANNON)
-    me:set_lifecycle("destroy")
+    -- (0x080BB320: the state byte alone; his action and phase stay.)
+    me.lifecycle = "destroy"
 end
 
 -- Action 0 (0x080BB1A8): shown; on a solid panel 31 ticks, then his attack; else he sinks (animation 4, 3 ticks

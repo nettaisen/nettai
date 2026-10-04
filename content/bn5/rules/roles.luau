@@ -20,6 +20,7 @@ local anti_recovery = require("../chips/antirecv/controller")
 local dive_ripple = require("../objects/dive-ripple/ripple")
 local soldier = require("../objects/soldier/soldier")
 local chaos = require("./souls/chaos")
+local drive_end = require("../chips/darkinvs/drive-end")
 local invalid = require("../chips/invalid/chip")
 local collision = require("./collision")
 local effects = require("@bn6/lib/effects")
@@ -44,6 +45,9 @@ return define.roles {
         anti_sword_counter = swords.anti_sword_counter,
         -- A Chaos Unison charge released out of its window (BN5's action 0x39: ./souls/chaos): Dark MegaMan comes.
         chaos_failure = chaos.failure,
+        -- The request 0x80000's action (BN5's 0x49): the end of DarkInvs's no-charge drive, which its timer's end asks
+        -- for (rules/status's `no_charge_drive`; chips/darkinvs/drive-end). BN6's is its stun strike.
+        stun_strike = drive_end.action,
     },
     chips = {
         -- What a selection the custom screen can't allow becomes, and what a chip use the light and dark rule refuses

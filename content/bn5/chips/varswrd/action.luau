@@ -94,9 +94,10 @@ local function become(me: Object, chip: Chip)
     me:set_attack(a, 0)
 end
 
--- `sub_802C106`: AIData +0xF0, which only DarkInvs's drive sets in a battle (chips/darkinvs).
+-- `sub_802C106`: AIData +0xF0 (the navi's `computer_driven`), which only DarkInvs's drive sets in a battle
+-- (chips/darkinvs, rules/computer-navi). (NaviStats +0x2A, which the pick reads first, no Team Battle sets.)
 local function computer_driven(me: Object): boolean
-    return false
+    return me.computer_driven
 end
 
 -- 0x080ED570 (NeoVari's 0x080EDF7C): a tick of waiting for the pick.
