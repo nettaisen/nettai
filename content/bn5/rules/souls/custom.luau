@@ -4,6 +4,8 @@
 -- `soul_unison` (the screen's state 9, 0x080232D0), the soul given at OK (0x08024FF6) and the round's souls used
 -- (0x02034E10). Its state is the souls system's (./system).
 
+local operation_battle = require("../../lib/operation_battle")
+
 local custom_souls = {}
 
 -- The souls system's state fields the screen keeps (./system declares them).
@@ -105,8 +107,8 @@ end
 -- The soul button (0x08023C54), in the special slot.
 custom_souls.button = {
     slot = 11,
-    -- MegaMan with souls, outside battle flag 0x40, with the save's Soul Unison, unless his emotion is worried or dark
-    -- (0x08012740: in a soul or angry he may; at mood 0 he is dark, below 65 worried, at 0xFF Full Synchro).
+    -- MegaMan with souls, outside the operation battle, with the save's Soul Unison, unless his emotion is worried or
+    -- dark (0x08012740: in a soul or angry he may; at mood 0 he is dark, below 65 worried, at 0xFF Full Synchro).
     shown = function(side: number): boolean
         local stats = battle.navi(side)
         local in_soul = stats.form.soul ~= nil
@@ -114,7 +116,7 @@ custom_souls.button = {
         local hidden = not in_soul
             and custom.player(side).emotion ~= "angry"
             and (mood == 0 or (mood ~= 0xFF and mood < 65))
-        return #souls_of(side) > 0 and (system.setup() :: Setup).soul_unison and not battle.per_player_gauges()
+        return #souls_of(side) > 0 and (system.setup() :: Setup).soul_unison and not operation_battle()
             and not hidden
     end,
     -- 0x08024B28: unavailable until the last pick offers a soul, which the button keeps.

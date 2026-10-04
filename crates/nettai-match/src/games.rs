@@ -371,7 +371,7 @@ fn the_soul_takes_the_chips_place() {
     let screen = |b: &nettai_battle::Battle| b.custom.sides[0].screen.expect("a screen");
     // A tick with `key` pressed, then ticks without until the screen is
     // back to choosing.
-    let mut press = |b: &mut nettai_battle::Battle, key: u16| {
+    let press = |b: &mut nettai_battle::Battle, key: u16| {
         b.tick(&[PlayerTick { held: key }, Default::default()], Default::default());
         for _ in 0..200 {
             b.tick(&[PlayerTick { held: 0 }, Default::default()], Default::default());
@@ -431,7 +431,7 @@ fn karma_and_souls_reach_the_round() {
     let b = started(&content, &m, 1);
     let (schema, block) = b.system_setup(0, "light-dark").unwrap();
     assert_eq!(block.get(schema, schema.index_of("karma").unwrap()), nettai_content_api::FieldValue::U16(300));
-    let (schema, block) = b.system_setup(0, "bn5:souls").unwrap();
+    let (schema, block) = b.system_setup(0, "souls").unwrap();
     let field = |name: &str| block.get(schema, schema.index_of(name).unwrap());
     let soul = |k: usize| block.get_elem(schema, schema.index_of("souls").unwrap(), k);
     use nettai_content_api::{FieldValue, Registry};
@@ -442,7 +442,7 @@ fn karma_and_souls_reach_the_round() {
     let six_content = bn6_content();
     let six = crate::draw::live(&six_content, "bn6", 1, None).unwrap();
     let b = started(&six_content, &six, 1);
-    assert!(b.system_setup(1, "bn5:souls").is_none());
+    assert!(b.system_setup(1, "souls").is_none());
 }
 
 /// What the match's rules and a side's navi take decide the side's own
