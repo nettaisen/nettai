@@ -7,7 +7,7 @@ local navi = require("./navi")
 -- NapalmMn (BN5 chip 0x0e3): NapalmMan cuts in and lobs a napalm bomb four panels ahead, its fire spreading around an
 -- empty panel (./navi).
 local napalmmn = define.chip {
-    id = "bn5:napalmmn",
+    id = "napalmmn",
     codes = { "N" },
     element = "fire",
     family = "fire",
@@ -27,14 +27,14 @@ local napalmmn = define.chip {
 -- empty panel (../napalmmn/navi); its damage by how fast its user deleted NapalmMan SP (rules/sp-chips: formula 5, its
 -- table's row 4).
 local naplmmn_sp = define.chip {
-    id = "bn5:naplmmn-sp",
+    id = "naplmmn-sp",
     codes = { "N" },
     element = "fire",
     family = "fire",
     class = "mega",
     rarity = 3,
     mb = 72,
-    damage = { formula = "sp_navi", slot = "sp/napalmmn", by_time = { 250, 240, 230, 220, 210, 200, 190, 180, 170, 160, 150 }, per_player_gauges = 200 },
+    damage = { formula = "sp_navi", slot = "sp/napalmmn", by_time = { 250, 240, 230, 220, 210, 200, 190, 180, 170, 160, 150 }, operation_battle = 200 },
     hit_param = 168,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
@@ -47,14 +47,14 @@ local naplmmn_sp = define.chip {
 -- around an empty panel (../napalmmn/navi); its damage by its user's side's statistic 3 (formula 27, its table's row
 -- 4).
 local naplmmn_ds = define.chip {
-    id = "bn5:naplmmn-ds",
+    id = "naplmmn-ds",
     codes = { "N" },
     element = "fire",
     family = "fire",
     class = "mega",
     rarity = 3,
     mb = 72,
-    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250 }, per_player_gauges = 180 },
+    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250 }, operation_battle = 180 },
     hit_param = 168,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },

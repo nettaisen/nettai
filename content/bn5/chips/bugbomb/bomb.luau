@@ -4,7 +4,7 @@
 --
 -- Its bugs (0x080D50CA, BN6's `sub_80D9FC2`): of HP drain, custom-screen HP drain and emotion swings (NaviStats
 -- +0x18, +0x19, +0x24; BN6 has a panel trail and buster blanks for the last), one its target's side lacks, at
--- random, or any of the three; with battle flag 0x40, always HP drain. Its codes (0x080D5148) add 2 to either drain,
+-- random, or any of the three; in the operation battle, always HP drain. Its codes (0x080D5148) add 2 to either drain,
 -- to at most 7 (argument 0x12: BN5's intake, 0x0801103E, adds with bit 4, rules/status's `drain_bug_flags`), or set
 -- the emotion swings to 1.
 
@@ -13,10 +13,11 @@ local common = require("@exelib/bugbomb/bomb")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local statuses = require("../../rules/status")
 local trajectory = require("../../lib/trajectory")
+local operation_battle = require("../../lib/operation_battle")
 
 local bug_bomb = {}
 
-local EXPLOSION = define.effect { sprite = asset.sprite("bn5:explosion"), anim = 0, palette = 2 }
+local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 2 }
 
 -- The bugs (0x080D5148): HP drain +2, custom-screen HP drain +2, emotion swings 1.
 local BUGS = {
@@ -28,7 +29,7 @@ local BUGS = {
 -- 0x080D50CA.
 local function pick_bug(me: Object)
     local choice = 0
-    if not battle.per_player_gauges() then
+    if not operation_battle() then
         local target = battle.navi(bit32.bxor(me.alliance, 1))
         local choices = {}
         if target.hp_drain == 0 then
@@ -46,8 +47,8 @@ local function pick_bug(me: Object)
     me.collision.bugs = b.arg * 0x100 + b.bug
 end
 
-bug_bomb.kind = common.make_kind("bn5:bugbomb/bomb", {
-    sprite = asset.sprite("bn5:bomb"),
+bug_bomb.kind = common.make_kind("bugbomb/bomb", {
+    sprite = asset.sprite("bomb"),
     anim = 5,
     -- Its status 0x20.
     is = collision.own_thrown_body,
@@ -57,9 +58,9 @@ bug_bomb.kind = common.make_kind("bn5:bugbomb/bomb", {
     burst_hits = collision.hits_navis,
     crushed = EXPLOSION,
     burst = EXPLOSION,
-    land_sound = asset.sound("bn5:bug-bomb-land"),
-    crushed_sound = asset.sound("bn5:hit-bomb-0"),
-    burst_sound = asset.sound("bn5:hit-bomb-1"),
+    land_sound = asset.sound("bug-bomb-land"),
+    crushed_sound = asset.sound("hit-bomb-0"),
+    burst_sound = asset.sound("hit-bomb-1"),
     pick_bug = pick_bug,
     bubble = rising_bubble.kind,
     trajectory = trajectory,

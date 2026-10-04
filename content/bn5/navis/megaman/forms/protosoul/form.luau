@@ -15,11 +15,11 @@ local charged_chip = require("../../weapons/charged-chip")
 local souls = require("../../../../rules/souls/system")
 
 return define.form {
-    id = "bn5:protosoul",
+    id = "protosoul",
     soul = { number = 1, family = "sword" },
     change = souls.action,
     revert = souls.revert,
-    sprite = asset.sprite("bn5:protosoul"),
+    sprite = asset.sprite("protosoul"),
     element = "null",
     buster_bonus = 0,
     weapons = {
@@ -35,8 +35,8 @@ return define.form {
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 5-10, the version's souls'); in its
     -- Chaos Unison look while the chaos charge is armed (0x080125F6: the palette 11 on, the pack's picture 0x10).
     mugshot = {
-        normal = asset.mugshot("bn5:protosoul"),
-        variant = { normal = asset.mugshot("bn5:protosoul-chaos") },
+        normal = asset.mugshot("protosoul"),
+        variant = { normal = asset.mugshot("protosoul-chaos") },
     },
     buster_arm = { anim = 0 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 1 of category 0: what a chip's icon

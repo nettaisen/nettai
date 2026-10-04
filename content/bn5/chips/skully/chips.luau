@@ -7,7 +7,7 @@ local skully = require("./skully")
 -- Skully1 (BN5 chip 0x045): skulls that hop toward the nearest enemy, confusing what they hit (BN5's Skully,
 -- chips/skully/skully: action 0x55).
 local skully1 = define.chip {
-    id = "bn5:skully1",
+    id = "skully1",
     codes = { "C", "K", "S" },
     element = "null",
     family = "null",
@@ -19,13 +19,13 @@ local skully1 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = skully.action("bn5:skully1/action", skully.skulls(0)),
+    action = skully.action("skully1/action", skully.skulls(0)),
 }
 
 -- Skully2 (BN5 chip 0x046): skulls that hop toward the nearest enemy, confusing what they hit (BN5's Skully,
 -- chips/skully/skully: action 0x55).
 local skully2 = define.chip {
-    id = "bn5:skully2",
+    id = "skully2",
     codes = { "A", "H", "V" },
     element = "null",
     family = "null",
@@ -37,13 +37,13 @@ local skully2 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = skully.action("bn5:skully2/action", skully.skulls(1)),
+    action = skully.action("skully2/action", skully.skulls(1)),
 }
 
 -- Skully3 (BN5 chip 0x047): skulls that hop toward the nearest enemy, confusing what they hit (BN5's Skully,
 -- chips/skully/skully: action 0x55).
 local skully3 = define.chip {
-    id = "bn5:skully3",
+    id = "skully3",
     codes = { "G", "N", "U" },
     element = "null",
     family = "null",
@@ -55,7 +55,7 @@ local skully3 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = skully.action("bn5:skully3/action", skully.skulls(2)),
+    action = skully.action("skully3/action", skully.skulls(2)),
 }
 
 return { skully1 = skully1, skully2 = skully2, skully3 = skully3 }

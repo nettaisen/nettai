@@ -17,9 +17,9 @@ local sparks = require("../../lib/sparks")
 
 local blakwing = {}
 
-local SPRITE = asset.sprite("bn5:sprite-0c-42")
-local PUFF = define.effect { sprite = asset.sprite("bn5:puff"), anim = 2, palette = 0 }
-local SOUND_START, SOUND_FLAP = asset.sound("bn5:place"), asset.sound("bn5:sound-130")
+local SPRITE = asset.sprite("sprite-0c-42")
+local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local SOUND_START, SOUND_FLAP = asset.sound("place"), asset.sound("sound-130")
 
 -- ---- The perch ------------------------------------------------------------------------------------------------------
 
@@ -54,7 +54,7 @@ local function perch_update(me: Object)
 end
 
 blakwing.perch = define.kind {
-    id = "bn5:blakwing/perch",
+    id = "blakwing/perch",
     pool = "effect",
     state = { going = "bool" },
     -- 0x080E69F0.
@@ -131,7 +131,7 @@ local function wing_tick(me: Object)
 end
 
 blakwing.wing = define.kind {
-    id = "bn5:blakwing/wing",
+    id = "blakwing/wing",
     pool = "attack",
     -- 0x080D63EC.
     update = function(me: Object)
@@ -302,7 +302,7 @@ local function flock_end(me: Object)
 end
 
 blakwing.flock = define.kind {
-    id = "bn5:blakwing/flock",
+    id = "blakwing/flock",
     pool = "attack",
     state = {
         every = "u16",
@@ -394,7 +394,7 @@ local function effect(me: Object)
 end
 
 blakwing.controller = define.kind {
-    id = "bn5:blakwing/controller",
+    id = "blakwing/controller",
     pool = "effect",
     state = { bonus = "u16", busy = "bool" },
     -- 0x080E6920.

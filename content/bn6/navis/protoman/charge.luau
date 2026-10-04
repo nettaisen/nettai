@@ -28,7 +28,7 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "bn6:protoman/charge",
+    id = "protoman/charge",
     -- The charge table's row 0x32, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 40, 35, 30, 25, 20, 50, 50, 50 },

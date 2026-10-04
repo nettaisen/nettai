@@ -13,9 +13,9 @@ local sparks = require("../../lib/sparks")
 -- Its hit (`sub_80DBEBA`, 0x15050001): a breaking thrown attack hitting
 -- navis on its panel, with the null spark.
 return common.make {
-    id = "bn6:metrknuk/fist",
-    sprite = asset.sprite("bn6:justice-one"),
-    sound = asset.sound("bn6:justice-one"),
+    id = "metrknuk/fist",
+    sprite = asset.sprite("justice-one"),
+    sound = asset.sound("justice-one"),
     burst = effects.burst,
     self_type = collision.thrown_break,
     target = collision.hits_navis,

@@ -26,9 +26,9 @@ export type State = {
 
 local meddy = {}
 
-local SPRITE = asset.sprite("bn5:meddy")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_THROW = asset.sound("bn5:minibomb-throw")
+local SPRITE = asset.sprite("meddy")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_THROW = asset.sound("minibomb-throw")
 -- By the level (0x0800DA8A: navi 6's count, 2, by 0x0800DAE8's row): DS's 6 (SP's level is 0).
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 4, 6 }
 local SOLID = 0x10
@@ -226,7 +226,7 @@ local function init(me: Object)
 end
 
 meddy.kind = define.kind {
-    id = "bn5:meddy/navi",
+    id = "meddy/navi",
     pool = "actor",
     state = {
         controller = "object",

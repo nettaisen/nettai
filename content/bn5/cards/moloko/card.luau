@@ -6,7 +6,7 @@ local barriers = require("../../lib/barriers")
 local variants = require("../../objects/projectile/variants")
 
 return define.patch_card {
-    id = "bn5:moloko",
+    id = "moloko",
     mb = 5,
     effects = {
         cards.first_barrier(barriers.barrier_10),

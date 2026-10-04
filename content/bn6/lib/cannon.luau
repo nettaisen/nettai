@@ -15,14 +15,14 @@ cannon.STATE = common.STATE
 
 -- The cannons' looks: the arm the navi holds (the original's attachment
 -- rows 0 to 2, by `byte_80EBD2C`), at its attach point 7.
-local CANNON = asset.sprite("bn6:cannon")
+local CANNON = asset.sprite("cannon")
 cannon.arms = {
     cannon = attachment.look { sprite = CANNON, palette = 0, attach_point = 7 },
     hicannon = attachment.look { sprite = CANNON, palette = 1, attach_point = 7 },
     m_cannon = attachment.look { sprite = CANNON, palette = 2, attach_point = 7 },
 }
 
-local LOOK: ShooterLook = { sound = asset.sound("bn6:cannon"), attachment = attachment.kind, projectiles = projectile }
+local LOOK: ShooterLook = { sound = asset.sound("cannon"), attachment = attachment.kind, projectiles = projectile }
 
 -- A chip's cannon.
 function cannon.action(spec: CannonSpec): Action

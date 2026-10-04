@@ -20,7 +20,7 @@ local SHOOT, RECOVER = 0x0, 0x4
 -- Break (secondary element 0x10), and the hit's counter byte.
 local BREAK, HIT_PARAM = 0x10, 0x94
 
-local SOUND = asset.sound("bn6:junk-shot")
+local SOUND = asset.sound("junk-shot")
 
 -- `sub_8011F64`: 50 damage and 10 more per point of buster Attack (up to 5)
 -- (`sub_8012642`), Break.
@@ -73,7 +73,7 @@ local function recover(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "bn6:dustcross/charge/action",
+    id = "dustcross/charge/action",
     state = { timer = "u16" },
     -- `sub_80EFC1C`.
     update = function(me: Object, s: State)
@@ -89,7 +89,7 @@ charge.action = define.action {
 }
 
 charge.weapon = define.weapon {
-    id = "bn6:dustcross/charge",
+    id = "dustcross/charge",
     -- The charge table's row 0x28, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 80, 70, 60, 55, 50, 17, 17, 17 },

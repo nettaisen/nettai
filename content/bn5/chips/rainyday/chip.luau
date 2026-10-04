@@ -6,7 +6,7 @@
 local rainyday = require("./rainyday")
 
 return define.chip {
-    id = "bn5:rainyday",
+    id = "rainyday",
     codes = { "B", "G", "L" },
     element = "aqua",
     family = "aqua",

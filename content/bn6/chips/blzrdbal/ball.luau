@@ -14,15 +14,15 @@ local roller = require("./roller")
 local ball = {}
 
 ball.kind = common.make_kind {
-    id = "bn6:blzrdbal/ball",
-    sprite = asset.sprite("bn6:blizzard-ball"),
+    id = "blzrdbal/ball",
+    sprite = asset.sprite("blizzard-ball"),
     anim = 0,
     grown = { 1, 1 },
     roller = roller.kind,
     self_type = collision.attack,
     target = collision.hits_navis,
     growth = "damage",
-    grow_sound = asset.sound("bn6:blizzard-grow"),
+    grow_sound = asset.sound("blizzard-grow"),
 }
 
 -- `sub_80DBB0C`: a ball at (x, y) on the ground with `element` and the

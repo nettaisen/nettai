@@ -26,9 +26,9 @@ local HIT_PARAM = 0x8A
 -- Panels holding the other side's navi, by side (0x08012F58).
 local ENEMY_NAVI = { [0] = 0x0020_0000, [1] = 0x0040_0000 }
 -- The scope's mark (effect 0x68: sprite 10-23), 20 pixels up.
-local MARK = define.effect { sprite = asset.sprite("bn5:search-scope"), anim = 0, palette = 0 }
+local MARK = define.effect { sprite = asset.sprite("search-scope"), anim = 0, palette = 0 }
 local MARK_Z = 20 * 0x1_0000
-local SOUND_MARK, SOUND_SHOT = asset.sound("bn5:mark"), asset.sound("bn5:col-army-2")
+local SOUND_MARK, SOUND_SHOT = asset.sound("mark"), asset.sound("col-army-2")
 local ANIM = 17
 local SHOTS, AIM_TICKS, SHOT_TICKS, RECOVER_TICKS = 5, 4, 5, 5
 -- A shot's hit modifier: the last one's flinches (3), the others' don't (1).
@@ -144,7 +144,7 @@ local function recover(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "bn5:searchsoul/charge/action",
+    id = "searchsoul/charge/action",
     state = { timer = "u16", shots = "u16", target_x = "u8", target_y = "u8" },
     -- 0x080EE854
     update = function(me: Object, s: State)
@@ -170,7 +170,7 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "bn5:searchsoul/charge",
+    id = "searchsoul/charge",
     -- The charge table's row 8 (0x0801CABC); Charge 5 reads on into row 9's first entry.
     charge_ticks = { 110, 105, 100, 95, 90, 80 },
     setup = setup,

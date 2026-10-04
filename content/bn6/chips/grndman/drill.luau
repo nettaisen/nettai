@@ -16,7 +16,7 @@ export type State = {
     action: Action?,
 }
 
-local SPRITE = asset.sprite("bn6:ground-drill")
+local SPRITE = asset.sprite("ground-drill")
 
 -- `sub_80E77B8`: on its owner, as visible as he is.
 local function init(me: Object)
@@ -61,7 +61,7 @@ local function tick(me: Object)
 end
 
 drill.kind = define.kind {
-    id = "bn6:grndman/drill",
+    id = "grndman/drill",
     pool = "effect",
     state = { follows_action = "bool", action = "action" },
     -- `sub_80E7788`.

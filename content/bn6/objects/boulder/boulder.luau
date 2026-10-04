@@ -21,15 +21,15 @@ local effects = require("../../lib/effects")
 
 local boulder = {}
 
-local SPRITE = asset.sprite("bn6:boulder")
+local SPRITE = asset.sprite("boulder")
 
 boulder.kind = common.make {
-    id = "bn6:boulder",
+    id = "boulder",
     sprite = SPRITE,
     -- A field object, with the look something that takes its place shows
     -- (DustMan's junk).
     identity = define.identity {
-        id = "bn6:boulder",
+        id = "boulder",
         class = "field_object",
         version = 1,
         ai_index = 1,

@@ -4,7 +4,7 @@
 local cards = require("../../rules/patch-cards/cards")
 
 return define.patch_card {
-    id = "bn5:volgear",
+    id = "volgear",
     mb = 12,
     effects = {
         cards.hp(60),

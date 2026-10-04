@@ -239,7 +239,7 @@ local function update(navi: Object, _: any)
 end
 
 rush.action = define.action {
-    id = "bn6:beast/rush",
+    id = "beast/rush",
     update = update,
 }
 

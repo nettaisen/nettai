@@ -6,7 +6,7 @@
 -- break, or turn them to another type); such a wave is thrown (row 0x0A), the others plain attacks (row 4); either
 -- hits navis with hit modifier 3 and no spark. The Guard chips' counterattack is variant 0xC.
 --
--- (With battle flag 0x40, never set in a netbattle, each segment also marks the panel ahead, 0x080E9FA4's effect
+-- (In the operation battle, never set in a netbattle, each segment also marks the panel ahead, 0x080E9FA4's effect
 -- object #0x83, which isn't ported.)
 
 local collision = require("../../rules/collision")
@@ -41,8 +41,8 @@ local ROWS: { [number]: Variant } = {
 }
 
 -- Its sheet, 10-04 (BN5's pack doesn't name it yet), and sound.
-local SPRITE = asset.sprite("bn5:sprite-10-04")
-local SOUND = asset.sound("bn5:sound-0a6")
+local SPRITE = asset.sprite("sprite-10-04")
+local SOUND = asset.sound("sound-0a6")
 local SOLID = 0x10
 local HIT_MOD = 3
 -- Out of sight: 240 pixels to the right.
@@ -156,7 +156,7 @@ local function init(me: Object)
 end
 
 wave.kind = define.kind {
-    id = "bn5:shock-wave",
+    id = "shock-wave",
     pool = "attack",
     state = { row = "u8" },
     -- 0x080C739C.

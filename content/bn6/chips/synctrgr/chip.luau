@@ -4,7 +4,7 @@
 -- action 0x1C). (Its record's menu classification bits, 0x10 and 0x20,
 -- which no battle routine reads, stay out: §3.1.)
 
-local SOUND = asset.sound("bn6:cross-change")
+local SOUND = asset.sound("cross-change")
 
 -- The mood Full Synchro starts from.
 local FULL_SYNCHRO = 0xFF
@@ -17,7 +17,7 @@ local function sync(user: Object, _spec: InstantChipSpec)
 end
 
 return define.chip {
-    id = "bn6:synctrgr",
+    id = "synctrgr",
     codes = { "A", "B", "C", "*" },
     element = "null", family = "null", class = "mega",
     rarity = 4, mb = 80, damage = 0, hit_param = 10, lockout = 20,

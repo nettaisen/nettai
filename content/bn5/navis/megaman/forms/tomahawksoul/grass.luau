@@ -38,7 +38,7 @@ local function change(me: Object)
 end
 
 grass.kind = define.kind {
-    id = "bn5:tomahawksoul/grass",
+    id = "tomahawksoul/grass",
     pool = "effect",
     -- 0x080E1FC0 (by Param2: 0, the whole field).
     update = change,

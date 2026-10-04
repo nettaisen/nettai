@@ -10,7 +10,7 @@ local recipe_cosmomn_ds = require("../cosmoman/chips").cosmomn_ds
 local recipe_cosmomn_sp = require("../cosmoman/chips").cosmomn_sp
 
 return define.chip {
-    id = "bn5:csmopris",
+    id = "csmopris",
     codes = {},
     element = "null",
     family = "program_advance",

@@ -9,7 +9,7 @@ local plane = require("./plane")
 
 return {
     define.chip {
-        id = "bn6:airraid1",
+        id = "airraid1",
         codes = { "G", "K", "R" },
         element = "null", family = "summon", class = "standard",
         rarity = 0, mb = 26, damage = 10, hit_param = 158, lockout = 0,
@@ -20,7 +20,7 @@ return {
         dimming = controller.hook(plane.plane { lifetime = 150, bombs = 10, palette = 0, hp = 30 }),
     },
     define.chip {
-        id = "bn6:airraid2",
+        id = "airraid2",
         codes = { "O", "T", "Y" },
         element = "null", family = "summon", class = "standard",
         rarity = 1, mb = 32, damage = 10, hit_param = 158, lockout = 0,
@@ -31,7 +31,7 @@ return {
         dimming = controller.hook(plane.plane { lifetime = 190, bombs = 14, palette = 1, hp = 40 }),
     },
     define.chip {
-        id = "bn6:airraid3",
+        id = "airraid3",
         codes = { "N", "U", "Z" },
         element = "null", family = "summon", class = "standard",
         rarity = 2, mb = 39, damage = 10, hit_param = 158, lockout = 0,

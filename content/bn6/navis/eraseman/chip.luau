@@ -15,7 +15,7 @@ local STATE = { timer = "u16" }
 
 local RAISE, SLASH, RECOVER = 0x0, 0x4, 0x8
 local ANIM_RAISE, ANIM_SLASH = 0x11, 0x12
-local SOUND = asset.sound("bn6:erase-man-2")
+local SOUND = asset.sound("erase-man-2")
 
 -- The beams: aimed straight, 60 ticks, his own (they go when his action
 -- does, and stand still while dimmed); five at most.
@@ -75,7 +75,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [RAISE] = raise, [SLASH] = slash, [RECOVER] = recover }
 
 return define.chip {
-    id = "bn6:edeletbm",
+    id = "edeletbm",
     codes = { "K" },
     element = "null",
     family = "cursor",
@@ -90,7 +90,7 @@ return define.chip {
     slot_in_limit = 1,
     -- `sub_80F1056` (`off_80F1068`).
     action = define.action {
-        id = "bn6:edeletbm/action",
+        id = "edeletbm/action",
         state = STATE,
         update = function(me: Object, s: State)
             link.run(me, s, PHASES, "EDeletBm (sub_80F1056)")

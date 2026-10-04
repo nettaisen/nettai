@@ -31,11 +31,11 @@ export type State = {
     column: number,
 }
 
-local SPRITE = asset.sprite("bn6:slashman")
-local SOUND_APPEAR = asset.sound("bn6:appear")
-local SOUND_FLAME_HOOK_FIRE = asset.sound("bn6:flame-hook-fire")
+local SPRITE = asset.sprite("slashman")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_FLAME_HOOK_FIRE = asset.sound("flame-hook-fire")
 -- His slash, drawn over the panel ahead (effect 0x39).
-local SLASH = define.effect { sprite = asset.sprite("bn6:slash-man-effect"), anim = 0, palette = 0 }
+local SLASH = define.effect { sprite = asset.sprite("slash-man-effect"), anim = 0, palette = 0 }
 
 -- His actions.
 local APPEAR, STAND, AIM, WAVES, REST, LEAP, STRIKE, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10, 0x14, 0x18, 0x1C
@@ -299,7 +299,7 @@ local ACTIONS = {
 }
 
 slashman.kind = define.kind {
-    id = "bn6:slashman/navi",
+    id = "slashman/navi",
     pool = "actor",
     state = { controller = "object", wave_damage = "u8", column = "u8" },
     -- `sub_80B9F44`.

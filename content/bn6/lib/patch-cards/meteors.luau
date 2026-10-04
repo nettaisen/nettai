@@ -73,7 +73,7 @@ local function update(me: Object, s: State)
 end
 
 meteors.action = define.action {
-    id = "bn6:patch-cards/meteors",
+    id = "patch-cards/meteors",
     state = { timer = "u16", drops = "u8" },
     update = update,
 }

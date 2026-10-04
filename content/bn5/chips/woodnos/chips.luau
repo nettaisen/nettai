@@ -7,7 +7,7 @@ local woodnos = require("./woodnos")
 -- WoodNos1 (BN5 chip 0x0b2): the navi sends a wooden wave along its row; past the field it raises geysers under the
 -- other side's navis: BN5's own (chips/woodnos/woodnos).
 local woodnos1 = define.chip {
-    id = "bn5:woodnos1",
+    id = "woodnos1",
     codes = { "F", "R", "W" },
     element = "wood",
     family = "wood",
@@ -25,7 +25,7 @@ local woodnos1 = define.chip {
 -- WoodNos2 (BN5 chip 0x0b3): the navi sends a wooden wave along its row; past the field it raises geysers under the
 -- other side's navis: BN5's own (chips/woodnos/woodnos).
 local woodnos2 = define.chip {
-    id = "bn5:woodnos2",
+    id = "woodnos2",
     codes = { "J", "T", "Z" },
     element = "wood",
     family = "wood",
@@ -43,7 +43,7 @@ local woodnos2 = define.chip {
 -- WoodNos3 (BN5 chip 0x0b4): the navi sends a wooden wave along its row; past the field it raises geysers under the
 -- other side's navis: BN5's own (chips/woodnos/woodnos).
 local woodnos3 = define.chip {
-    id = "bn5:woodnos3",
+    id = "woodnos3",
     codes = { "I", "S", "V" },
     element = "wood",
     family = "wood",

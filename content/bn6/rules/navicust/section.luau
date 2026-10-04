@@ -4,4 +4,4 @@
 
 local board = require("./board")
 
-return define.rules("bn6:navicust", { boards = board.boards, command_line = board.COMMAND_LINE })
+return { boards = board.boards, command_line = board.COMMAND_LINE }

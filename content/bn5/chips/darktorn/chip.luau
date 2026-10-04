@@ -6,7 +6,7 @@
 local tornado = require("../tornado/tornado")
 
 return define.chip {
-    id = "bn5:darktorn",
+    id = "darktorn",
     codes = { "T" },
     element = "null",
     family = "wind",

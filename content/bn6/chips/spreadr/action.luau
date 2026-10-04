@@ -15,11 +15,11 @@ local spreader = {}
 spreader.STATE = common.STATE
 
 spreader.guns = {
-    spreader = attachment.look { sprite = asset.sprite("bn6:spreader"), palette = 0, attach_point = 11 },
-    water_cannon = attachment.look { sprite = asset.sprite("bn6:water-cannon"), palette = 0, attach_point = 25 },
+    spreader = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 11 },
+    water_cannon = attachment.look { sprite = asset.sprite("water-cannon"), palette = 0, attach_point = 25 },
 }
 
-local LOOK: SpreaderLook = { sound = asset.sound("bn6:h-burst"), attachment = attachment.kind, bullet_kind = bullet.kind }
+local LOOK: SpreaderLook = { sound = asset.sound("h-burst"), attachment = attachment.kind, bullet_kind = bullet.kind }
 
 -- A chip's spreader.
 function spreader.action(spec: SpreaderSpec): Action

@@ -10,7 +10,7 @@ local effects = require("../effects")
 
 local bomb = {}
 
-local SPRITE = asset.sprite("bn6:bomb")
+local SPRITE = asset.sprite("bomb")
 
 -- What the navi holds while throwing a bomb (the original's attachment row
 -- 0x04; BigBomb's throw adds 3 to its palette).
@@ -20,9 +20,9 @@ bomb.held = attachment.look { sprite = SPRITE, palette = 0 }
 bomb.variant = common.variant
 
 local made = common.make {
-    id = "bn6:bomb",
+    id = "bomb",
     sprite = SPRITE,
-    hit_sound = asset.sound("bn6:hit-bomb-1"),
+    hit_sound = asset.sound("hit-bomb-1"),
     splash = effects.splash,
     explosion = effects.explosion,
     puff = effects.puff,

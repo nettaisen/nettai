@@ -15,7 +15,7 @@ export type State = {
     step: number,
 }
 
-local SPRITE = asset.sprite("bn5:phoenix-flame")
+local SPRITE = asset.sprite("phoenix-flame")
 local ANIM = 2
 -- Its height before it leaps (the spawn's Z, which its init keeps).
 local Z = 0x4_0000
@@ -67,7 +67,7 @@ local function leap(me: Object)
 end
 
 flame.kind = define.kind {
-    id = "bn5:dethphnx/flame",
+    id = "dethphnx/flame",
     pool = "effect",
     state = { angle = "u16", step = "u16" },
     -- 0x080E8ACC.

@@ -22,9 +22,9 @@ export type State = {
 
 local numbrman = {}
 
-local SPRITE = asset.sprite("bn5:numberman")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_THROW = asset.sound("bn5:minibomb-throw")
+local SPRITE = asset.sprite("numberman")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_THROW = asset.sound("minibomb-throw")
 -- By the level (0x0800DA8A: navi 9's count, 1, by 0x0800DAE8's row): SP's 2, DS's 3.
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 2, 3 }
 -- The die's faces by a draw's low 4 bits (0x080BB4D8).
@@ -164,7 +164,7 @@ local function init(me: Object)
 end
 
 numbrman.kind = define.kind {
-    id = "bn5:numbrman/navi",
+    id = "numbrman/navi",
     pool = "actor",
     state = { controller = "object", level = "u8", face = "object", busy = "bool" },
     -- 0x080BB34C.
