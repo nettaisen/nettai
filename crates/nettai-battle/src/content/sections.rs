@@ -1,8 +1,8 @@
 //! The rule sections as the game's typed tables (`Rules`): the fields of
-//! its stock ruleset (rules/init.luau: `panels = require("./panels")`,
+//! its ruleset (rules/init.luau: `panels = require("@self/panels")`,
 //! each a plain table its module returns; docs/design/content-model-v2.md
 //! §3.8), each read against its schema when the content is defined (a
-//! message names the place: `ruleset stock: panels.types.grass.flags`).
+//! message names the place: `ruleset: panels.types.grass.flags`).
 //! Content without them (the engine's test content, whose tables are
 //! Rust) keeps its tables: each section is built only when the ruleset
 //! names it.
@@ -141,6 +141,8 @@ struct CustomScreenSection {
     right_scan_bottom: Vec<u8>,
     left_scan_start: [u8; 12],
     right_scan_start: [u8; 12],
+    #[serde(default)]
+    redeal_kept: Vec<u8>,
 }
 
 #[derive(Deserialize)]
@@ -229,7 +231,7 @@ fn serde_name<T: serde::Serialize>(v: &T) -> String {
     }
 }
 
-/// The rule sections a stock ruleset may name, by field (the engine's
+/// The rule sections a ruleset may name, by field (the engine's
 /// schemas).
 pub(crate) const SECTIONS: &[&str] = &[
     "banners",
@@ -251,14 +253,14 @@ pub(crate) const SECTIONS: &[&str] = &[
 ];
 
 /// The game's rule sections into `rules` (which starts as the base): each
-/// its stock ruleset names.
+/// its ruleset names.
 fn sections(rules: &mut Rules, r: &SpecReader, definitions: &Definitions) -> Result<(), ContentError> {
-    let Some(d) = super::defs::stock_ruleset(definitions) else { return Ok(()) };
+    let Some(d) = super::defs::ruleset(definitions) else { return Ok(()) };
     let Data::Map(fields) = &d.spec else { return Ok(()) };
     for (field, spec) in fields {
         let DataKey::Str(name) = field else { continue };
         if SECTIONS.contains(&name.as_str()) {
-            section(rules, name, spec, &format!("{}.luau: ruleset {}: {name}", d.module, d.key), r)?;
+            section(rules, name, spec, &format!("{}.luau: ruleset: {name}", d.module), r)?;
         }
     }
     Ok(())
@@ -408,6 +410,7 @@ fn section(rules: &mut Rules, name: &str, spec: &Data, at: &str, r: &SpecReader)
                     right_scan_bottom: s.right_scan_bottom,
                     left_scan_start: s.left_scan_start,
                     right_scan_start: s.right_scan_start,
+                    redeal_kept: s.redeal_kept,
                 };
             }
             "buster" => {
