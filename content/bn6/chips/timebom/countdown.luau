@@ -3,11 +3,11 @@
 -- the TimeBom chips set (./controller): the shared bomb
 -- (@exelib/timebom/countdown), BN6's kind and look.
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
+local absorbed_obstacle = require("../../objects/absorbed-obstacle")
 local collision = require("../../rules/collision")
 local common = require("@exelib/timebom/countdown")
 local effects = require("../../lib/effects")
-local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
+local panel_bursts = require("../../objects/panel-bursts")
 
 local countdown = {}
 

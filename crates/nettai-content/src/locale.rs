@@ -190,20 +190,18 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
 }
 
 /// Check the tables of each game `c` loaded from content `dir` against
-/// `c`: each language's table of the game's pack (a chip its manifest
-/// leaves unported, `chips/<key>/chip`, may have its strings before its
-/// use), and the own language's present.
+/// `c`: each language's table of the game's pack (a chip the game's
+/// init.luau doesn't require yet, its folder `chips/<key>/` there without
+/// a use, may have its strings before it loads), and the own language's
+/// present.
 pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report::Report) {
     for game in c.scripts.games() {
         let pack = dir.join(&game);
-        let unported: std::collections::BTreeSet<String> = c
-            .scripts
-            .manifest(&game)
-            .map(|m| m.definitions.unported.iter())
-            .into_iter()
-            .flatten()
-            .filter_map(|p| Some(p.strip_prefix("chips/")?.strip_suffix("/chip")?.to_string()))
-            .collect();
+        // (A chip folder whose main module didn't load.)
+        let unported = |key: &str| {
+            let module = format!("chips/{key}/init");
+            pack.join(format!("{module}.luau")).is_file() && !c.scripts.modules.contains_key(&nettai_battle::content::Scripts::name(&game, &module))
+        };
         let langs = languages_of(&pack);
         if !langs.iter().any(|l| l == OWN) {
             r.error(format!("{game}/{DIR}/{OWN}.toml"), "the game's own words are missing");
@@ -212,7 +210,7 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
             let at = format!("{game}/{DIR}/{lang}.toml");
             match load(&pack, &lang) {
                 Ok(Some(mut s)) => {
-                    s.chips.retain(|k, _| !unported.contains(k));
+                    s.chips.retain(|k, _| !unported(k));
                     for problem in check(&s, &c.defs, lang == OWN) {
                         r.error(&at, problem);
                     }

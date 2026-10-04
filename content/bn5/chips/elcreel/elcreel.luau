@@ -6,7 +6,7 @@
 -- a hit on each with a spark of its own, and a hook over each; then it shocks its panel once every 5 ticks, as many
 -- times as it hooked navis, and is gone. The three differ in their records alone.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")

@@ -16,7 +16,7 @@ export type State = {
     projectile: ProjectileVariant?,
 }
 
-local attachment = require("../attachment/attachment")
+local attachment = require("../attachment")
 
 local charged_shot = {}
 

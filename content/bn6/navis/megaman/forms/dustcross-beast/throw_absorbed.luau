@@ -5,8 +5,8 @@
 -- DustCross's does, or fires the Falzar Beast forms' buster when there is
 -- none.
 
-local buster = require("../../weapons/buster/weapon")
-local falzar_beast_buster = require("../../weapons/falzar-beast-buster/weapon")
+local buster = require("../../weapons/buster")
+local falzar_beast_buster = require("../../weapons/falzar-beast-buster")
 local throw_absorbed = require("../dustcross/throw_absorbed")
 
 local beast_throw_absorbed = {}

@@ -19,7 +19,7 @@
 -- 80, 120); the ride's hits deal the chip's damage.
 
 local collision = require("../../rules/collision")
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local effects = require("../../lib/effects")
 local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")

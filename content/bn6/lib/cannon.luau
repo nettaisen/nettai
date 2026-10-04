@@ -4,7 +4,7 @@
 -- projectile. Each chip composes its own (`cannon.action { arm = ...,
 -- shot = ... }`): what it holds and what it fires.
 
-local attachment = require("../objects/attachment/attachment")
+local attachment = require("../objects/attachment")
 local common = require("@exelib/cannon")
 local projectile = require("./projectile")
 

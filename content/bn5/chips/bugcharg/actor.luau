@@ -7,8 +7,8 @@
 -- 20 pixels up, each with a sound and the camera shaken. 31 ticks after the last it gives the user back, and its
 -- controller (./controller) moves on.
 
-local attachment = require("../../objects/attachment/attachment")
-local flying_shot = require("../../objects/flying-shot/flying_shot")
+local attachment = require("../../objects/attachment")
+local flying_shot = require("../../objects/flying-shot")
 local stand_in = require("@exelib/dimming/stand_in")
 local operation_battle = require("../../lib/operation_battle")
 

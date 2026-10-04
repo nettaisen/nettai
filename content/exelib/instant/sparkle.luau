@@ -3,7 +3,7 @@
 -- 0x0800E198's): a rising bubble (@exelib/rising-bubble, the game's kind) by the navi's panel, on the enemy's side of
 -- it, 4 pixels toward the enemy's side and 48 up; and its sound.
 
-local rising_bubble = require("../rising-bubble/rising_bubble")
+local rising_bubble = require("../rising-bubble")
 
 local sparkle = {}
 

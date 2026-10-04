@@ -422,7 +422,7 @@ Japanese consoles; each also checks the stats after the cards and the emotion wi
 
 ## The NaviCust's compile (docs/design/navicust.md)
 
-BN6's NaviCust is compiled by the ruleset's `navicust` system (rules/navicust/system.luau) from a setup's placed
+BN6's NaviCust is compiled by the ruleset's `navicust` system (rules/navicust/init.luau) from a setup's placed
 programs. The verification workspace's `trace-tests --test navicust` compiles every chip lab side that sets a
 NaviCust, and Tango's four raw saves, and compares the stats and the emotion window's glitch flag with the
 recording's setup.

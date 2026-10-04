@@ -6,11 +6,11 @@
 -- flames ahead of him, and vanishes; then Bass swoops in, charges and
 -- slashes, and fades out. See docs/engine/chips.md §3.6.36.
 
-local base_form = require("../../navis/megaman/forms/base/form")
-local megaman = require("../../navis/megaman/navi")
-local attachment = require("../../objects/attachment/attachment")
+local base_form = require("../../navis/megaman/forms/base")
+local megaman = require("../../navis/megaman")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
-local element_pillar = require("../../objects/element-pillar/element_pillar")
+local element_pillar = require("../../objects/element-pillar")
 local navi_chips = require("../../lib/navi-chips/navi")
 local parts = require("../../lib/swords/parts")
 local regions = require("@exelib/regions")

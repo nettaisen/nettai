@@ -50,10 +50,12 @@ pub struct ChipArt {
     /// own (BN6: `"jp"`, a chip the US release cut and left a placeholder
     /// picture for). A console of another region shows something else.
     pub region: Option<String>,
-    /// The game version whose ROM the picture is from, for a chip each
-    /// version's ROM has its own picture of (BN6's Gregar and Falzar chips:
-    /// a console shows its own beast in both). A console of the other
-    /// version shows its own.
+    /// The game version whose ROM the chip's picture and icon are from,
+    /// for a chip only its own version's ROM draws: a version's own chip
+    /// (BN6's and BN5's version Giga chips, BN5's Phoenix and DethPhnx),
+    /// which the other version's ROM draws as its counterpart, and BN6's
+    /// Gregar and Falzar chips (each ROM has its own beast in both). A
+    /// console of the other version shows another picture there.
     pub version: Option<String>,
 }
 
