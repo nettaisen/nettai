@@ -88,7 +88,7 @@ function fan.make(look: FanLook): Fan
         local v = (me.state :: State).variant
         battle.play_sound(look.appear_sound)
         me.timer2 = v.wait
-        me:set_action(8)
+        me:set_action(obstacle.action_byte(me, 8))
     end
 
     -- `sub_80CD0F8`: become the side's wind, then wait for the first gust.
@@ -103,7 +103,7 @@ function fan.make(look: FanLook): Fan
         me.timer2 = t
         if t == 0 then
             (me.state :: State).row_counter = 3
-            me:set_action(9)
+            me:set_action(obstacle.action_byte(me, 9))
         end
     end
 

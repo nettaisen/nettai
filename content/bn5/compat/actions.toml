@@ -53,3 +53,5 @@
 "knightsoul/charge/action" = 0x40
 # DarkInvs's drive's end (its computer-navi drive on the user's own tactics).
 "darkinvs/drive-end" = 0x49
+# A dark MegaMan's last stand (the request 0x40000000's: the roles' volley).
+"dark-survival" = 0x30

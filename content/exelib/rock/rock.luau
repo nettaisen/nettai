@@ -87,7 +87,7 @@ function rock.make(look: Look): Rock
         me.anim = (me.state :: State).variant.anim
         me.collision:set_region(regions.single)
         me.run_while_paused = false
-        me:set_action(STANDING)
+        me:set_action(obstacle.action_byte(me, STANDING))
     end
 
     -- `sub_80CFAC0`: fall from 160 pixels up; break if the panel below is gone.
@@ -110,7 +110,7 @@ function rock.make(look: Look): Rock
                 me.pos = Vec3.new(me.pos.x, me.pos.y, 0)
                 me.collision:set_region(regions.single)
                 battle.play_sound(look.land_sound)
-                me:set_action(STANDING)
+                me:set_action(obstacle.action_byte(me, STANDING))
             end
         end
         field.highlight(me.panel_x, me.panel_y)

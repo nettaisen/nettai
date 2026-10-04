@@ -85,7 +85,7 @@ function statue.make(look: Look): Statue
                 me.collision:set_region(regions.single)
                 battle.play_sound(look.sounds.land)
                 -- (BN5's action table has no frozen or bubbled rows: its drain is its action 6.)
-                me:set_action(8)
+                me:set_action(obstacle.action_byte(me, 8))
                 return
             end
         end

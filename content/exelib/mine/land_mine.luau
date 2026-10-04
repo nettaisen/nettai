@@ -94,7 +94,7 @@ local function hopping(me: Object, look: Look)
     end
     me.collision:set_region(regions.single)
     me.visible = false
-    me.action, me.phase, me.phase_init = ARMED, 0, 0
+    me.action, me.phase, me.phase_init = obstacle.action_byte(me, ARMED), 0, 0
 end
 
 -- `sub_80CDEC8`: armed, until it touched something (or something it),
@@ -130,7 +130,7 @@ end
 local function tick(me: Object, look: Look)
     me.sprite.white = false
     obstacle.take_hits(me, "keeps_damage")
-    local a = me.action
+    local a = obstacle.current(me)
     if a == 0 then
         hopping(me, look)
     elseif a == 1 then

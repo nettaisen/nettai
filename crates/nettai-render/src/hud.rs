@@ -365,7 +365,7 @@ pub fn draw<'a>(
     let (hide_mugshot, hide_boxes) = transform_hides(b, state);
     // HP box, top left (moved right with the custom screen's window).
     let shift = crate::custom::hud_shift(b);
-    if let Some(r) = player.filter(|_| !hide_boxes) {
+    if let Some(r) = player.filter(|_| !hide_boxes && !b.hud_hidden.hp_box) {
         let shown = state.hp.map(|h| h.shown).unwrap_or(b.objects.get(r).hp);
         let pal = &hud.hp_palettes[color.min(2)];
         for (i, &e) in hud.hp_box.iter().enumerate() {
