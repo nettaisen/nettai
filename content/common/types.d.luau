@@ -647,35 +647,6 @@ export type CopyDamageMark = {
     spawn: (owner: Object, x: number, y: number, element: number, damage: number) -> Object?,
 }
 
--- How a gust blows (@common/gust/gust, the original's first parameter):
--- `pulls` turns it back toward its side, a weaker push; `unseen` hides it
--- and lets it blow through any panel.
-export type GustHow = { pulls: boolean?, unseen: boolean? }
-
--- A game's gust (@common/gust/gust): its kind's id, sprite and collision types, and BN5's differences.
-export type GustLook = {
-    id: string,
-    sprite: SpriteAsset,
-    -- What it is (row 0x1E, a pull of no side) and what it reaches (row 5, the navis).
-    self_type: CollisionType,
-    target: CollisionType,
-    -- The two words past the panels' table (`byte_80CD478`'s code), which a side of 2 reads.
-    past_table: { number },
-    -- BN5's (0x080CEA30): any first parameter (one that pulls or is unseen) pushes weaker; BN6's only one that pulls.
-    weak_by_any_parameter: boolean?,
-    -- BN5's (0x080CEB30) tests its hit flags against 0: no wind stopper stops it.
-    no_stopper: boolean?,
-}
-
-export type Gust = {
-    kind: Kind,
-    -- `sub_80CD488`: a gust on (x, y) for side `alliance` and flip `flip` (the spawner's halfword), blowing as `how`
-    -- says, with the damage word `damage`, and the spawner that tracks it by `holder.state.gusts[slot]` (which
-    -- becomes 1), if any. Its position is the spawner's registers, which its init overwrites.
-    spawn: (x: number, y: number, alliance: number, flip: number, how: GustHow, damage: number, holder: Object?,
-        slot: number) -> Object?,
-}
-
 -- A Wind's or Fan's fan (@common/wind/fan): its palette; `pulls`: it blows
 -- Fan's pulling gust from the far column rather than Wind's pushing one
 -- from the enemy's front column; ticks from becoming its side's wind to
