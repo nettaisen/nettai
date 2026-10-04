@@ -536,7 +536,7 @@ impl Round {
     /// round needs is defined ([`Round::needs`]), then BN5's records go
     /// into the engine's: the settings record's stage and background, both
     /// NaviStats ([`navi_stats`]), the folders, the RNGs, the set's score,
-    /// both players on BN5's stock rules.
+    /// both players on BN5's rules.
     pub fn round_setup(&self, content: &Content, compat: &Compat) -> Result<RoundSetup, String> {
         // BN5's light and dark system (content/bn5/rules/light-dark).
         const LIGHT_DARK: &str = "light-dark";
@@ -558,7 +558,9 @@ impl Round {
                 .ok_or_else(|| format!("BN5's pack has no background {:#04x}", st[4]))?,
         );
         let settings = nettai_battle::BattleSettings { stage, background, effects: u32::from_le_bytes([st[8], st[9], st[10], st[11]]) };
-        let ruleset = content.defs.stock_ruleset().ok_or("the content has no BN5 stock ruleset")?;
+        if content.defs.ruleset().is_none() {
+            return Err("the content has no ruleset (BN5's)".into());
+        }
         let local = bs[0x0D] & 1;
         let players = [0u8, 1].map(|side| -> Result<PlayerSetup, String> {
             let folder = match (&self.setup.folders, side == local) {
@@ -601,7 +603,7 @@ impl Round {
         // is the stats': `navi_stats`.)
         for (p, stats) in [(&mut p0, &d.navi_stats[0]), (&mut p1, &d.navi_stats[1])] {
             if let Ok(p) = p {
-                p.set_rule(content, Some(ruleset), LIGHT_DARK, "karma", nettai_content_api::Value::Int(stats.light_dark.0 as i64))?;
+                p.set_rule(content, LIGHT_DARK, "karma", nettai_content_api::Value::Int(stats.light_dark.0 as i64))?;
             }
         }
         // Each side's souls: its version's six (Team ProtoMan's 1 to 6,
@@ -615,13 +617,12 @@ impl Round {
                     .filter(|&f| content.form(f).soul.as_ref().is_some_and(|s| version.soul_flag(s.number).is_some()))
                     .map(|f| nettai_battle::rules::Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, f.0)))
                     .collect();
-                p.set_fact(content, Some(ruleset), "souls", &souls)?;
+                p.set_fact(content, "souls", &souls)?;
             }
         }
         Ok(RoundSetup {
             content: content.hash(),
             settings,
-            ruleset: Some(ruleset),
             navi_stats: [navi_stats(content, compat, &d.navi_stats[0])?, navi_stats(content, compat, &d.navi_stats[1])?],
             rng: self.setup.rng2,
             local_side: bs[0x0D],

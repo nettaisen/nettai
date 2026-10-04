@@ -33,12 +33,13 @@ pub enum Registry {
     /// rules-in-luau.md §2.2): its state per side, its player setup, its
     /// hooks into the framework, `define.system { id = "beast", ... }`.
     System,
-    /// A player's rules: a list of systems, `define.ruleset { id = "stock",
-    /// stock = true, systems = { ... } }` (rules-in-luau.md §2.2). A game's
-    /// stock ruleset (its rules/init.luau) also holds the game's rule
-    /// sections (plain tables, `panels = require("./panels")`) and its
-    /// roles (`roles = require("./roles")`; docs/design/content-model-v2.md
-    /// §3.8, §7.4).
+    /// A game's rules, its one ruleset: `define.ruleset { systems = { ... },
+    /// ... }` (rules-in-luau.md §2.2), its rules/init.luau. It lists the
+    /// systems its players play by, and holds the game's rule sections
+    /// (plain tables, `panels = require("@self/panels")`) and its roles
+    /// (`roles = require("@self/roles")`; docs/design/content-model-v2.md
+    /// §3.8, §7.4). It takes no `id`: a game has one, keyed
+    /// [`RULESET_KEY`].
     Ruleset,
     /// Data only content reads (a bomb variant, a projectile variant): the
     /// engine keeps its handle and its type name.
@@ -134,7 +135,8 @@ impl Registry {
     }
 
     /// Definitions of this registry are named from outside content
-    /// (setups, compat, tools), so each needs an explicit `id`.
+    /// (setups, compat, tools), so each needs an explicit `id`. (A game's
+    /// ruleset is one, with no name to give: [`RULESET_KEY`].)
     pub fn keyed(self) -> bool {
         matches!(
             self,
@@ -147,12 +149,15 @@ impl Registry {
                 | Registry::Collision
                 | Registry::Status
                 | Registry::System
-                | Registry::Ruleset
                 | Registry::PatchCard
                 | Registry::NaviCustProgram
         )
     }
 }
+
+/// The key of a game's ruleset, its one [`Registry::Ruleset`] definition
+/// (`define.ruleset { ... }` takes no `id`).
+pub const RULESET_KEY: &str = "ruleset";
 
 impl fmt::Display for Registry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -221,8 +226,6 @@ handles! {
     RecordHandle => Record,
     /// A system of a game's rules.
     SystemHandle => System,
-    /// A player's rules.
-    RulesetHandle => Ruleset,
     /// A patch card.
     PatchCardHandle => PatchCard,
     /// A NaviCust program.
