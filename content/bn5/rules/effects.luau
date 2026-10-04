@@ -21,4 +21,6 @@ return define.rules("bn5:effects", {
     -- Its sprites' frame load (0x03006898) leaves the palette offset of a frame's first part to the next step
     -- (0x03006948): its hit spark, which doesn't step as it starts, shows its first frame in palette 0.
     load_sets_part_palette = false,
+    -- Its obstacles' action tables have no frozen or bubbled entries: a kind's own actions from 6 (BN6's from 8).
+    obstacle_actions = "bn5",
 })

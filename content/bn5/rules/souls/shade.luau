@@ -2,7 +2,9 @@
 -- Chaos Unison's dark shade (actor object 0x2B, 0x080C0544; spawned by 0x080C0678 as the soul's image comes in, ../
 -- soul-image): MegaMan's own sprite in its dark palette leaves him forward for 20 ticks, waits 30, and spirals back
 -- into him over 20; then it goes. (BN6 has the same object, actor 0x2A's neighbor `sub_80C065C`, which nothing
--- spawns.) It runs while the battle is paused, as the change does.
+-- spawns.) It runs while the battle is paused, as the change does. BN5's dark MegaMan's last stand has its own
+-- (actor object 0x2E, 0x080C0EA0: ../emotion/dark-survival), the same code but for its height, its shadow and the
+-- parts it wears (`shade.make`).
 
 local SINE: { number } = require("../math").sine
 
@@ -13,7 +15,20 @@ export type State = {
     speed: number,
 }
 
--- MegaMan's base sprite (00-00, 0x0801BE2A with 0x01000000: animation 0, with a shadow it then drops).
+-- A shade: its kind's key, its name in errors and its phase table's address, how far up and on from where it
+-- stands it is drawn, its shadow (the ground shadow its sprite comes with, kept or dropped), and whether it wears
+-- what MegaMan's record puts on while it is out (0x0800ED0E and 0x0800EEBE with 2, 0, 1: their sprites stepping
+-- even while paused).
+export type Spec = {
+    id: string,
+    name: string,
+    phases: number,
+    lift: number,
+    shadow: "ground" | "hidden",
+    wears: boolean,
+}
+
+-- MegaMan's base sprite (00-00, 0x0801BE2A with 0x01000000: animation 0, with a ground shadow).
 local SPRITE = asset.sprite("bn5:megaman")
 -- His dark palette.
 local PALETTE = 1
@@ -21,9 +36,6 @@ local PALETTE = 1
 local function sine(i: number): number
     return SINE[i + 1]
 end
-
--- Two pixels up and on from where it stands.
-local LIFT = 0x2_0000
 
 -- Its phases, on the object's phase.
 local LEAVE, WAIT, RETURN = 0, 4, 8
@@ -37,7 +49,7 @@ local function front_direction(me: Object): number
     return if bit32.bxor(me.alliance, me.flip) == 0 then 1 else -1
 end
 
--- 0x080C05C4: 20 ticks forward, two pixels a tick.
+-- 20 ticks forward, two pixels a tick (0x080C05C4).
 local function leave(me: Object)
     local s = me.state :: State
     if me.phase_init == 0 then
@@ -53,7 +65,7 @@ local function leave(me: Object)
     me.pos = Vec3.new(me.pos.x + s.speed, me.pos.y, me.pos.z)
 end
 
--- 0x080C05F8: 30 ticks.
+-- 30 ticks (0x080C05F8).
 local function wait(me: Object)
     if me.phase_init == 0 then
         me.timer = 30
@@ -65,88 +77,113 @@ local function wait(me: Object)
     end
 end
 
--- 0x080C0646: around its owner at `radius` pixels and angle `angle` (256 steps a turn) across and in height, two
--- pixels up and on.
-local function place(me: Object, radius: number, angle: number)
-    local owner = me.related1 :: Object
-    local dx = int.shl(sine(angle + 64) * radius, 8)
-    local dz = int.shl(sine(angle) * radius, 8)
-    local p = owner.pos
-    me.pos = Vec3.new(p.x + dx, p.y + LIFT, p.z + dz + LIFT)
-end
-
--- 0x080C0616: 20 ticks spiraling back in; then it goes.
-local function come_back(me: Object)
-    if me.phase_init == 0 then
-        me.timer = 20
-        me.phase_init = 4
+-- A shade of `spec`'s.
+function shade.make(spec: Spec): { kind: Kind, spawn: (owner: Object) -> Object? }
+    -- Around its owner at `radius` pixels and angle `angle` (256 steps a turn) across and in height, lifted
+    -- (0x080C0646).
+    local function place(me: Object, radius: number, angle: number)
+        local owner = me.related1 :: Object
+        local dx = int.shl(sine(angle + 64) * radius, 8)
+        local dz = int.shl(sine(angle) * radius, 8)
+        local p = owner.pos
+        me.pos = Vec3.new(p.x + dx, p.y + spec.lift, p.z + dz + spec.lift)
     end
-    me.timer -= 1
-    if int.i16(me.timer) < 0 then
-        me:set_lifecycle("destroy")
-        return
-    end
-    local t = me.timer
-    place(me, t * 2, bit32.band(t * 112, 0xFF))
-end
 
--- 0x080C05A4
-local function tick(me: Object)
-    local p = me.phase
-    if p == LEAVE then
-        leave(me)
-    elseif p == WAIT then
-        wait(me)
-    elseif p == RETURN then
-        come_back(me)
-    else
-        error(string.format("the chaos shade's phase %#x reads past its table (0x080C05B8)", p))
-    end
-end
-
--- 0x080C0568
-local function init(me: Object)
-    local sprite = me.sprite
-    sprite:load(SPRITE)
-    sprite.shadow = "hidden"
-    me.anim, me.anim_loaded = 0, 0xFF
-    me.visible = true
-    sprite.palette = PALETTE
-    local p = (me.related1 :: Object).pos
-    me.pos = Vec3.new(p.x, p.y + LIFT, p.z + LIFT)
-    me:set_lifecycle("update")
-    tick(me)
-end
-
-shade.kind = define.kind {
-    id = "bn5:chaos-shade",
-    pool = "actor",
-    state = { speed = "i32" },
-    -- 0x080C0544: the state, then its sprite steps.
-    update = function(me: Object)
-        local l = me.lifecycle
-        if l == "init" then
-            init(me)
-        elseif l == "update" then
-            tick(me)
-        else
-            me:destroy()
+    -- 20 ticks spiraling back in; then what it wears comes off and it goes (0x080C0616).
+    local function come_back(me: Object)
+        if me.phase_init == 0 then
+            me.timer = 20
+            me.phase_init = 4
+        end
+        me.timer -= 1
+        if int.i16(me.timer) < 0 then
+            if spec.wears then
+                me:remove_parts_of(me.related1 :: Object)
+            end
+            me:set_lifecycle("destroy")
             return
         end
-        me:update_sprite()
-    end,
-}
-
--- 0x080C0678: the shade for `owner`, on its side and facing, running while paused.
-function shade.spawn(owner: Object): Object?
-    local o = battle.spawn(shade.kind, owner.pos)
-    if o then
-        o.related1 = owner
-        o.alliance, o.flip = owner.alliance, owner.flip
-        o.run_while_paused = true
-        o.sprite:set_flip(bit32.bxor(owner.alliance, owner.flip))
+        local t = me.timer
+        place(me, t * 2, bit32.band(t * 112, 0xFF))
     end
-    return o
+
+    -- 0x080C05A4
+    local function tick(me: Object)
+        local p = me.phase
+        if p == LEAVE then
+            leave(me)
+        elseif p == WAIT then
+            wait(me)
+        elseif p == RETURN then
+            come_back(me)
+        else
+            error(string.format("%s's phase %#x reads past its table (0x%08X)", spec.name, p, spec.phases))
+        end
+    end
+
+    -- 0x080C0568: what it wears is its owner's MegaMan's (the record of AI index 0, which only a player MegaMan
+    -- spawns a shade for).
+    local function init(me: Object)
+        local sprite = me.sprite
+        sprite:load(SPRITE)
+        sprite.shadow = spec.shadow
+        me.anim, me.anim_loaded = 0, 0xFF
+        me.visible = true
+        sprite.palette = PALETTE
+        local owner = me.related1 :: Object
+        local p = owner.pos
+        me.pos = Vec3.new(p.x, p.y + spec.lift, p.z + spec.lift)
+        if spec.wears then
+            me:add_parts_of(owner, false, true)
+        end
+        me:set_lifecycle("update")
+        tick(me)
+    end
+
+    local kind = define.kind {
+        id = spec.id,
+        pool = "actor",
+        state = { speed = "i32" },
+        -- 0x080C0544: the state, then its sprite steps.
+        update = function(me: Object)
+            local l = me.lifecycle
+            if l == "init" then
+                init(me)
+            elseif l == "update" then
+                tick(me)
+            else
+                me:destroy()
+                return
+            end
+            me:update_sprite()
+        end,
+    }
+
+    -- 0x080C0678: the shade for `owner`, on its side and facing, running while paused.
+    local function spawn(owner: Object): Object?
+        local o = battle.spawn(kind, owner.pos)
+        if o then
+            o.related1 = owner
+            o.alliance, o.flip = owner.alliance, owner.flip
+            o.run_while_paused = true
+            o.sprite:set_flip(bit32.bxor(owner.alliance, owner.flip))
+        end
+        return o
+    end
+
+    return { kind = kind, spawn = spawn }
 end
+
+-- Chaos Unison's: two pixels up and on, its shadow dropped (0x08002CBE), wearing nothing.
+local chaos = shade.make {
+    id = "bn5:chaos-shade",
+    name = "the chaos shade",
+    phases = 0x080C05B8,
+    lift = 0x2_0000,
+    shadow = "hidden",
+    wears = false,
+}
+shade.kind = chaos.kind
+shade.spawn = chaos.spawn
 
 return shade
