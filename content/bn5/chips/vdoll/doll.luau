@@ -13,7 +13,8 @@
 -- - NameID 0xE2: actor record 0xE2 (0x08014C94: version 3, AI index 0x21), its look 0x0801D6B0's row 0x15 (the
 --   doll, animation 1, a ground shadow).
 --
--- Its actions are BN6's numbers (BN5's table, 0x080D5704, has six shared entries: its setting down is BN5's 6).
+-- Its actions are the framework's numbers; BN5's table (0x080D5704) has six shared entries, so its setting down is
+-- stored as BN5's 6 (`obstacle.action_byte`, the rules' obstacle_actions).
 
 local collision = require("../../rules/collision")
 local common = require("@exelib/vdoll/doll")

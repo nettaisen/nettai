@@ -38,7 +38,8 @@ local function update(me: Object)
         if thrower then
             thrower.related1 = nil
         end
-        me.lifecycle = "destroy"
+        -- (0x080E8A3E: a word store, its action and phase cleared with it.)
+        me:set_lifecycle("destroy")
     end
 end
 
@@ -50,7 +51,8 @@ controller.kind = define.kind {
     update = function(me: Object)
         local l = me.lifecycle
         if l == "init" then
-            me.lifecycle = "update"
+            -- (0x080E89E8: a word store.)
+            me:set_lifecycle("update")
             update(me)
         elseif l == "update" then
             update(me)

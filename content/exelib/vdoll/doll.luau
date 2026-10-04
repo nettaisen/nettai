@@ -59,7 +59,7 @@ local CURSE_HIT_PARAM = 0xB2_0000
 -- A puff 16 pixels up; the curse's own puff 12 up.
 local PUFF_UP, CURSE_PUFF_UP = 0x10_0000, 0xC_0000
 
--- The actions (the object's action byte).
+-- The actions, in the framework's numbering (`obstacle.action_byte` gives the game's byte).
 local DESTROYED, SET = 2, 8
 
 function doll.make(look: DollLook): Doll
@@ -112,7 +112,7 @@ function doll.make(look: DollLook): Doll
         field.set_type(me.panel_x, me.panel_y, "poison")
         battle.play_sound(look.poison_sound)
         s.flying = false
-        me.action = SET
+        me.action = obstacle.action_byte(me, SET)
         me.phase, me.phase_init = 0, 0
     end
 

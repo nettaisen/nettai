@@ -35,6 +35,7 @@
 "panel-chips/controller" = { pool = "effect", index = 0x20, scratch_position = true }
 "grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
 "trap-chip" = { pool = "effect", index = 0x2A, scratch_position = true }
+"antirecv/controller" = { pool = "effect", index = 0x2C, scratch_position = true }
 "protoman/navi" = { pool = "actor", index = 0x3C }
 "engine/body-overlay" = { pool = "actor", index = 0x56 }
 "engine/form-overlay" = { pool = "actor", index = 0x57 }
@@ -158,6 +159,7 @@
 "crakout/crack" = { pool = "attack", index = 0x18 }
 "soul-image" = { pool = "actor", index = 0x2A }
 "chaos-shade" = { pool = "actor", index = 0x2B }
+"dark-survival/shade" = { pool = "actor", index = 0x2E }
 "gyrosoul/tornado" = { pool = "attack", index = 0x1E }
 "searchsoul/reveal" = { pool = "effect", index = 0x8F, scratch_position = true }
 "megaman/glow" = { pool = "effect", index = 0x26 }

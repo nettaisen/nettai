@@ -41,8 +41,10 @@ pub enum ActionRole {
     /// it replaced.
     SwitchKnockout,
     /// What the navi's volley request starts (the original's action 0x30,
-    /// on whatever the attack's parameter bytes hold). No routine raises
-    /// the request, and BN6's content leaves the role unfilled.
+    /// on whatever the attack's parameter bytes hold). No BN6 routine
+    /// raises the request, and BN6's content leaves the role unfilled;
+    /// BN5's loss of HP raises it for a dark MegaMan's last stand
+    /// (0x0802C16C), BN5's action 0x30.
     Volley,
     /// DustCross Beast's scatter (0x50), during which the ruleset doesn't
     /// ground a MegaMan navi.

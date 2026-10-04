@@ -7,8 +7,8 @@
 -- it; it and the ones above and below), then 5 ticks to recover. A crack hits its panel once with the chip's
 -- damage (no spark), breaks it (cracks it when something stands on it), and shows its dust for 19 ticks.
 --
--- Not as BN5's: the break's sound (`object_breakPanelLoud`'s 0xDA; `field.break_panel` plays the panel crack's),
--- and the hit's element, which BN5's crack leaves to a register (r2, what the sound call left: 0 here).
+-- Its break is `object_breakPanelLoud` (BN5's 0x0800B204): the panel break with its own sound (0xDA). Not as BN5's:
+-- the hit's element, which BN5's crack leaves to a register (r2, what the sound call left: 0 here).
 
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
@@ -22,6 +22,7 @@ export type State = {
 
 local SPRITE = asset.sprite("dust")
 local SOUND = asset.sound("bblstar1")
+local BREAK_SOUND = asset.sound("crack-shot")
 
 -- The patterns (0x080C7818's rows, by the chip's subtype): { dx, dy } from the panel ahead, dx toward the navi's
 -- front.
@@ -47,7 +48,7 @@ local function tick(me: Object)
             stamina = me.stamina,
             hit_mod = 0,
         })
-        field.break_panel(me.panel_x, me.panel_y)
+        field.break_panel(me.panel_x, me.panel_y, BREAK_SOUND)
         me.timer = 18
         me.phase_init = 4
     end

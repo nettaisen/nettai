@@ -105,6 +105,9 @@ pub struct HudHidden {
     /// The own-gauges mode's gauge, drawn by its levels (draw task
     /// 17, `sub_801C640`).
     pub level_gauge: bool,
+    /// The HP box and its low-HP alarm (draw task 7, `sub_801C840`: BN5's
+    /// dark MegaMan's last stand hides it).
+    pub hp_box: bool,
 }
 
 /// A warning marker on a console's HUD for one tick (`sub_800AE90`: a

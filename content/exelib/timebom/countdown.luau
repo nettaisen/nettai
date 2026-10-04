@@ -121,7 +121,7 @@ function countdown.make_kind(id: string, look: CountdownLook): Kind
         me.anim = v.idle_anim
         me.timer = STEP_TICKS
         me.collision:set_region(regions.single)
-        me.action, me.phase, me.phase_init = COUNTDOWN, 0, 0
+        me.action, me.phase, me.phase_init = obstacle.action_byte(me, COUNTDOWN), 0, 0
         if v.linked then
             me:reserve_panel(me.future_panel_x, me.future_panel_y)
         end
@@ -166,7 +166,7 @@ function countdown.make_kind(id: string, look: CountdownLook): Kind
                 return
             end
             if v.bursts_when_broken then
-                me.action, me.phase, me.phase_init = BLINK_AWAY, 0, 0
+                me.action, me.phase, me.phase_init = obstacle.action_byte(me, BLINK_AWAY), 0, 0
             else
                 explode(me)
                 me.action, me.phase, me.phase_init = DESTROYED, 0, 0
