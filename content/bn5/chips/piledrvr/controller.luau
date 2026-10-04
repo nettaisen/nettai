@@ -109,7 +109,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "bn5:piledrvr/controller",
+    id = "piledrvr/controller",
     pool = "effect",
     state = { first_busy = "bool", second_busy = "bool", bonus = "u16" },
     -- 0x080E8800.

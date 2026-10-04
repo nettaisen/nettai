@@ -5,8 +5,8 @@
 local common = require("@exelib/supports/beat")
 
 return common.make {
-    id = "bn5:beat",
-    sprite = asset.sprite("bn5:beat"),
-    swoop_sound = asset.sound("bn5:set-down"),
-    snatch_sound = asset.sound("bn5:snatch"),
+    id = "beat",
+    sprite = asset.sprite("beat"),
+    swoop_sound = asset.sound("set-down"),
+    snatch_sound = asset.sound("snatch"),
 }

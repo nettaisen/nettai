@@ -21,7 +21,7 @@ local function cheer(me: Object)
 end
 
 return define.chip {
-    id = "bn6:fanfare",
+    id = "fanfare",
     codes = { "P", "S", "Z", "*" },
     element = "null", family = "summon", class = "standard",
     rarity = 1, mb = 20, damage = 0, hit_param = 0, lockout = 0,
@@ -31,16 +31,16 @@ return define.chip {
     -- `byte_80D4078` row 0.
     dimming = instruments.hook(instrument.instrument {
         identity = define.identity {
-            id = "bn6:fanfare",
+            id = "fanfare",
             class = "field_object",
             version = 4,
             ai_index = 1,
-            look = { sprite = asset.sprite("bn6:instrument"), anim = 0, palette = 0, shadow = true },
+            look = { sprite = asset.sprite("instrument"), anim = 0, palette = 0, shadow = true },
         },
         palette = 0,
         play_ticks = 0x55 * 2,
         pause_ticks = 0xAA,
-        tune = asset.sound("bn6:fanfare"),
+        tune = asset.sound("fanfare"),
         effect = cheer,
     }),
 }

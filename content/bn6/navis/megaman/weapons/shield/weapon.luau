@@ -21,13 +21,13 @@ local TICKS = 0x14
 -- The guards (the original's action 0x2B with the params words 0x214 and
 -- 0x114).
 local SHIELD = guard.action {
-    id = "bn6:megaman/shield/action",
+    id = "megaman/shield/action",
     ticks = TICKS,
     look = reflector_shield.looks.navicust_shield,
     heedless = true,
 }
 local REFLECT = guard.action {
-    id = "bn6:megaman/reflect/action",
+    id = "megaman/reflect/action",
     ticks = TICKS,
     look = reflector_shield.looks.navicust_reflect,
     counter = "shot",
@@ -63,22 +63,22 @@ end
 -- to 7, reading on into the next routine's row as the original's table
 -- does.)
 shield.shield = define.weapon {
-    id = "bn6:megaman/shield",
+    id = "megaman/shield",
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },
     setup = setup,
 }
 shield.shield_2 = define.weapon {
-    id = "bn6:megaman/shield-2",
+    id = "megaman/shield-2",
     charge_ticks = { 0, 0, 0, 0, 0, 100, 90, 80 },
     setup = setup,
 }
 shield.reflect = define.weapon {
-    id = "bn6:megaman/reflect",
+    id = "megaman/reflect",
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },
     setup = setup_counter,
 }
 shield.reflect_2 = define.weapon {
-    id = "bn6:megaman/reflect-2",
+    id = "megaman/reflect-2",
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },
     setup = setup_counter,
 }

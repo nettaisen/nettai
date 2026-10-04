@@ -26,12 +26,12 @@ local toadsoul = require("./forms/toadsoul/form")
 local tomahawksoul = require("./forms/tomahawksoul/form")
 
 return define.navi {
-    id = "bn5:megaman",
-    sprite = asset.sprite("bn5:megaman-navi"),
+    id = "megaman",
+    sprite = asset.sprite("megaman-navi"),
     element = "null",
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("bn5:megaman-win"), lose = asset.banner("bn5:megaman-deleted") },
+    banners = { win = asset.banner("megaman-win"), lose = asset.banner("megaman-deleted") },
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
     panel_bonus = { panel = "sea", family = "aqua", damage = 30 },
     -- His fresh stats, as a navi's stats start (0x080111BA from the table 0x0801D55F: his row, BN6's):

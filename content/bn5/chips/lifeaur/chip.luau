@@ -6,7 +6,7 @@
 local barriers = require("../../lib/barriers")
 
 return define.chip {
-    id = "bn5:lifeaur",
+    id = "lifeaur",
     codes = { "D" },
     element = "null",
     family = "null",

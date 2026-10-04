@@ -13,9 +13,9 @@ local ARC = { 0x16, 0xD2, 0x1E, 0x1E, 0x6A, 0x8A, 0x1E, 0x1E }
 local BACK: { [number]: number } = { [0] = 0x78_0000, 0x50_0000 }
 
 return common.make({
-    id = "bn5:bighook/fire",
-    sprite = asset.sprite("bn5:flame-hook-fire"),
-    sound = asset.sound("bn5:flame-hook-fire"),
+    id = "bighook/fire",
+    sprite = asset.sprite("flame-hook-fire"),
+    sound = asset.sound("flame-hook-fire"),
     self_type = collision.breaking,
     target = collision.hits_navis,
     arcs = function(_big: boolean): { number }

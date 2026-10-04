@@ -13,17 +13,17 @@ local sparks = require("../../lib/sparks")
 
 local thunder = {}
 
-thunder.kind = ball.make_kind("bn5:thunder/ball", {
-    sprite = asset.sprite("bn5:thunder-ball"),
+thunder.kind = ball.make_kind("thunder/ball", {
+    sprite = asset.sprite("thunder-ball"),
     small_anim = 0,
-    big_sprite = asset.sprite("bn5:big-thunder-ball"),
+    big_sprite = asset.sprite("big-thunder-ball"),
     big_anim = 0,
     is = collision.thrown,
     dark_is = collision.collision_2b,
     target = collision.hits_navis,
     hit_mod = 0,
     spark = sparks.elec,
-    sound = asset.sound("bn5:erase-man-2"),
+    sound = asset.sound("erase-man-2"),
 })
 
 local LOOK: ThunderShotLook = { buster = buster, ball = thunder.kind }

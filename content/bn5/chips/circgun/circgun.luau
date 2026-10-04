@@ -15,11 +15,11 @@ local sparks = require("../../lib/sparks")
 local circgun = {}
 
 local LOOK: CircGunLook = {
-    sprite = asset.sprite("bn5:sight"),
+    sprite = asset.sprite("sight"),
     sounds = {
-        step = asset.sound("bn5:erase-man"),
-        mark = asset.sound("bn5:mark"),
-        hit = asset.sound("bn5:col-army-2"),
+        step = asset.sound("erase-man"),
+        mark = asset.sound("mark"),
+        hit = asset.sound("col-army-2"),
     },
     hits = { [0] = collision.thrown, [1] = collision.collision_2b },
     -- (What the hit reaches and its flash BN6's.)
@@ -29,9 +29,9 @@ local LOOK: CircGunLook = {
     on_floor = true,
 }
 
-local SHOT = shot.make_kind("bn5:circgun/shot", LOOK)
-local GUN = gun.make_kind("bn5:circgun/gun", LOOK, SHOT)
-local CONTROLLER = controller.make("bn5:circgun/controller", GUN)
+local SHOT = shot.make_kind("circgun/shot", LOOK)
+local GUN = gun.make_kind("circgun/gun", LOOK, SHOT)
+local CONTROLLER = controller.make("circgun/controller", GUN)
 
 -- A controller variant.
 circgun.variant = controller.variant

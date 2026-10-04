@@ -410,9 +410,8 @@ pub struct Compat {
     pub navicust: NaviCustNumbers,
     /// The kinds by the slot they fill.
     slots: BTreeMap<(Pool, u8), String>,
-    /// The game whose ids it numbers (`bn6`): its keys are those ids, in
-    /// full (`bn6:minibomb`; docs/design/rules-in-luau.md, the flat
-    /// namespace).
+    /// The game whose ids it numbers (`bn6`): its keys are those ids, local
+    /// to the game (`minibomb`; docs/design/content-model-v2.md §4.0).
     pub root: String,
 }
 
@@ -464,32 +463,11 @@ impl Compat {
         })
     }
 
-    /// BN6's compat for `content`: BN6's own, unless the content stands in
-    /// for BN6 under another name, one game that isn't BN6's (the engine's
-    /// test content, `test`, which borrows BN6's modules): then BN6's
-    /// tables with that game's ids ([`Compat::bn6_as`]).
-    pub fn bn6_for(content: &nettai_battle::Content) -> &'static Compat {
-        match content.defs.game.as_str() {
-            game if game != ROOT && !game.is_empty() => Compat::bn6_as(game),
-            _ => Compat::bn6(),
-        }
-    }
-
-    /// BN6's compat with game `game`'s ids in place of BN6's
-    /// (`test:minibomb` for `bn6:minibomb`), once per game.
-    pub fn bn6_as(game: &str) -> &'static Compat {
-        static AS: std::sync::Mutex<BTreeMap<String, &'static Compat>> = std::sync::Mutex::new(BTreeMap::new());
-        let mut done = AS.lock().unwrap_or_else(|e| e.into_inner());
-        done.entry(game.to_string()).or_insert_with(|| {
-            let from = format!("\"{ROOT}:");
-            let to = format!("\"{game}:");
-            let mut c = Compat::parse(|file| {
-                Ok(BN6.iter().find(|(f, _)| *f == file).map(|(_, t)| t.replace(&from, &to)).unwrap_or_default())
-            })
-            .unwrap_or_else(|e| panic!("content/bn6/compat as {game}: {e}"));
-            c.root = game.to_string();
-            Box::leak(Box::new(c))
-        })
+    /// BN6's compat for `content`: BN6's own (the engine's test content,
+    /// which borrows BN6's modules, writes BN6's ids: a match plays one
+    /// game, docs/design/content-model-v2.md §4.0).
+    pub fn bn6_for(_content: &nettai_battle::Content) -> &'static Compat {
+        Compat::bn6()
     }
 
     /// Read a compat folder.
@@ -582,19 +560,15 @@ impl Compat {
         })
     }
 
-    /// A definition's id if compat has numbers for it (one of its game's,
-    /// or an engine key), else None (another game's: it has no BN6
-    /// number).
+    /// A definition's id if compat has numbers for it (the game's, or an
+    /// engine key), else None (a support pack's anonymous definition,
+    /// `exelib:regions#57`: it has no BN6 number).
     pub fn compat_key<'k>(&self, _content: &nettai_battle::Content, key: &'k str) -> Option<&'k str> {
-        use nettai_content_api::keys;
-        if key.starts_with(keys::ENGINE) {
-            return Some(key);
-        }
-        (keys::root_of(key) == Some(self.root.as_str())).then_some(key)
+        nettai_content_api::keys::root_of(key).is_none().then_some(key)
     }
 
     /// [`Compat::compat_key`] for messages and lookups that need one: the
-    /// key itself (qualified) when it is another root's.
+    /// key itself when it is a support pack's.
     fn compat_key_or_own<'k>(&self, content: &nettai_battle::Content, key: &'k str) -> &'k str {
         self.compat_key(content, key).unwrap_or(key)
     }

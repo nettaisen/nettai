@@ -17,12 +17,12 @@ local statue = require("@exelib/anubis/statue")
 
 local anubis = {}
 
-local SPRITE = asset.sprite("bn5:anubis")
+local SPRITE = asset.sprite("anubis")
 
 local made = statue.make {
-    id = "bn5:anubis/statue",
+    id = "anubis/statue",
     sprite = SPRITE,
-    sounds = { land = asset.sound("bn5:land"), ["break"] = asset.sound("bn5:hit-bomb-1") },
+    sounds = { land = asset.sound("land"), ["break"] = asset.sound("hit-bomb-1") },
     is = collision.own_body,
     hits = collision.hit_by_other_side,
     drain = collision.collision_31,
@@ -42,7 +42,7 @@ anubis.variants = {
         hp = 100,
         lifetime = LIFETIME,
         identity = define.identity {
-            id = "bn5:anubis",
+            id = "anubis",
             class = "field_object",
             version = 2,
             ai_index = 0x21,
@@ -55,7 +55,7 @@ anubis.variants = {
         hp = 300,
         lifetime = LIFETIME,
         identity = define.identity {
-            id = "bn5:poisphar",
+            id = "poisphar",
             class = "field_object",
             version = 3,
             ai_index = 0x21,
@@ -64,6 +64,6 @@ anubis.variants = {
     },
 }
 
-anubis.controller = controller.make { id = "bn5:anubis/controller", statue = made.spawn }
+anubis.controller = controller.make { id = "anubis/controller", statue = made.spawn }
 
 return anubis

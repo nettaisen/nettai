@@ -9,7 +9,7 @@ local rskyhny = require("../rskyhny/chips")
 local navi = require("./navi")
 
 return define.chip {
-    id = "bn6:mstrcros",
+    id = "mstrcros",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

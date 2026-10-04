@@ -5,7 +5,7 @@
 -- dimming phases (@exelib/dimming),
 -- with an effect (`sub_80E23E8`) that makes the custom gauge fill slowly
 -- or fast for the rest of the round, and sets the user's side's slow or
--- fast gauge timer (and, with per-player gauges outside a link battle,
+-- fast gauge timer (and, in the own-gauges mode outside a link battle,
 -- the other side's), then shows a warning for 70 ticks.
 --
 -- The chips' `dimming` hooks (`sub_80E24B8`, `off_802CCB4[25]`) are the
@@ -55,7 +55,7 @@ local function effect(me: Object, WARNING_SOUND: Sound)
         -- sub_801DF8C
         battle.set_gauge_rate(if fast then FAST_RATE else SLOW_RATE)
         set_timer(me.alliance, fast, OWN_TICKS)
-        if battle.per_player_gauges() and not battle.link() then
+        if battle.own_gauges() and not battle.link() then
             set_timer(bit32.bxor(me.alliance, 1), fast, OTHER_TICKS)
         end
         -- (The gauge's slow or fast look is loaded into VRAM.)
@@ -63,9 +63,9 @@ local function effect(me: Object, WARNING_SOUND: Sound)
         me.phase_init = 4
     end
     -- sub_800AE90: a blinking warning over the gauge, with its sound. With
-    -- per-player gauges in a link battle, only the user's player sees and
+    -- each side its own gauge in a link battle, only the user's player sees and
     -- hears it.
-    if battle.per_player_gauges() and battle.link() then
+    if battle.own_gauges() and battle.link() then
         battle.warn(WARNING_SOUND, nil, me.alliance)
     else
         battle.warn(WARNING_SOUND)

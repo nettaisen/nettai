@@ -21,7 +21,7 @@ end
 
 return {
     define.chip {
-        id = "bn6:flshbom1",
+        id = "flshbom1",
         codes = { "J", "L", "Q", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 30, damage = 40, hit_param = 30, lockout = 0,
@@ -33,7 +33,7 @@ return {
         action = level(0, { ticks = 0x3C, hp = 0x0A, status = statuses.paralyze_90, final_status = nil, palette = 0x0 }),
     },
     define.chip {
-        id = "bn6:flshbom2",
+        id = "flshbom2",
         codes = { "G", "K", "R" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 34, damage = 70, hit_param = 30, lockout = 0,
@@ -45,7 +45,7 @@ return {
         action = level(3, { ticks = 0x3C, hp = 0x0F, status = statuses.paralyze_150, final_status = nil, palette = 0x3 }),
     },
     define.chip {
-        id = "bn6:flshbom3",
+        id = "flshbom3",
         codes = { "H", "P", "S" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 38, damage = 100, hit_param = 30, lockout = 0,

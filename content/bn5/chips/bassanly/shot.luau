@@ -8,9 +8,9 @@ local common = require("@exelib/bassanly/shot")
 local shot = {}
 
 shot.kind = common.make_kind {
-    id = "bn5:bassanly/shot",
-    sprite = asset.sprite("bn5:bass-anly-shot"),
-    sound = asset.sound("bn5:bass-anly-shot"),
+    id = "bassanly/shot",
+    sprite = asset.sprite("bass-anly-shot"),
+    sound = asset.sound("bass-anly-shot"),
     self_type = collision.thrown,
     target = collision.hits_navis,
 }

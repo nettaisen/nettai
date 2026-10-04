@@ -30,20 +30,16 @@ pub enum Registry {
     /// the original's NameID record. A navi's and a form's are nested in
     /// their definitions; a field object's is its kind's.
     Identity,
-    /// A rule section (docs/design/content-model-v2.md §3.8): one table of
-    /// rules no entity owns, `define.rules("elements", { ... })`, keyed by
-    /// its section name.
-    Rules,
-    /// What the ruleset needs from content by role (docs/design/
-    /// content-model-v2.md §7.4): one definition, `define.roles { ... }`,
-    /// keyed `roles`.
-    Roles,
     /// One self-contained piece of a game's rules (docs/design/
     /// rules-in-luau.md §2.2): its state per side, its player setup, its
     /// hooks into the framework, `define.system { id = "beast", ... }`.
     System,
-    /// A player's rules: a list of systems, `define.ruleset { id = "bn6",
-    /// stock = true, systems = { ... } }` (rules-in-luau.md §2.2).
+    /// A player's rules: a list of systems, `define.ruleset { id = "stock",
+    /// stock = true, systems = { ... } }` (rules-in-luau.md §2.2). A game's
+    /// stock ruleset (its rules/init.luau) also holds the game's rule
+    /// sections (plain tables, `panels = require("./panels")`) and its
+    /// roles (`roles = require("./roles")`; docs/design/content-model-v2.md
+    /// §3.8, §7.4).
     Ruleset,
     /// Data only content reads (a bomb variant, a projectile variant): the
     /// engine keeps its handle and its type name.
@@ -63,7 +59,7 @@ pub enum Registry {
 }
 
 impl Registry {
-    pub const ALL: [Registry; 22] = [
+    pub const ALL: [Registry; 20] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -78,8 +74,6 @@ impl Registry {
         Registry::Status,
         Registry::Lockon,
         Registry::Identity,
-        Registry::Rules,
-        Registry::Roles,
         Registry::System,
         Registry::Ruleset,
         Registry::Record,
@@ -90,7 +84,7 @@ impl Registry {
 
     /// The registries content defines with `define.<name>` (schemas come
     /// from the `state` tables of kinds, actions and modules).
-    pub const DEFINED: [Registry; 21] = [
+    pub const DEFINED: [Registry; 19] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -105,8 +99,6 @@ impl Registry {
         Registry::Status,
         Registry::Lockon,
         Registry::Identity,
-        Registry::Rules,
-        Registry::Roles,
         Registry::System,
         Registry::Ruleset,
         Registry::Record,
@@ -132,8 +124,6 @@ impl Registry {
             Registry::Status => "status",
             Registry::Lockon => "lockon",
             Registry::Identity => "identity",
-            Registry::Rules => "rules",
-            Registry::Roles => "roles",
             Registry::System => "system",
             Registry::Ruleset => "ruleset",
             Registry::Record => "record",

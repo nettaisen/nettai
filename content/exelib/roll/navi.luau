@@ -9,7 +9,7 @@
 --
 -- Each game makes its own kind (`roll.make`): her sprite and sounds, her warp's sparkle, her ribbon, her heart, and
 -- the controller's address her position takes; and BN5's additions: what more she does as she appears, how she
--- finds her target in the battle flag 0x40 mode, and what more she does as her heart drops.
+-- finds her target in the own-gauges mode, and what more she does as her heart drops.
 
 local panels = require("../panels")
 local regions = require("../regions")
@@ -44,7 +44,7 @@ export type Spec = {
     hit_type: CollisionType,
     -- Her hits' spark.
     spark: Spark,
-    -- BN5's: as she appears, after her sound (0x080C0794); her target in the battle flag 0x40 mode (0x080C0832; 0
+    -- BN5's: as she appears, after her sound (0x080C0794); her target in the own-gauges mode (0x080C0832; 0
     -- if none); as her heart drops (0x080C0B66).
     appeared: ((me: Object) -> ())?,
     tracked_target: ((me: Object) -> (number, number))?,
@@ -228,7 +228,7 @@ function roll.make(spec: Spec): Roll
     -- `sub_80C0938`: find it, or leave.
     local function aim(me: Object)
         local x, y
-        if spec.tracked_target and battle.per_player_gauges() then
+        if spec.tracked_target and battle.own_gauges() then
             x, y = spec.tracked_target(me)
         else
             x, y = target(me)

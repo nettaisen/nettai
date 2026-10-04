@@ -17,20 +17,20 @@ local darkmetr = require("../../../../chips/darkmetr/chip")
 local souls = require("../../../../rules/souls/system")
 
 return define.form {
-    id = "bn5:napalmsoul",
+    id = "napalmsoul",
     soul = { number = 4, family = "fire" },
     change = souls.action,
     revert = souls.revert,
-    sprite = asset.sprite("bn5:napalmsoul"),
+    sprite = asset.sprite("napalmsoul"),
     element = "fire",
     buster_bonus = 0,
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         -- Routine 0x27 (0x0800F520, empty: the charged chip is the chip with the bonus), the charge table's row 0x27.
-        a_charge = charged_chips.routine("bn5:napalmsoul/a-charge", { 120, 120, 120, 120, 120, 80 }),
+        a_charge = charged_chips.routine("napalmsoul/a-charge", { 120, 120, 120, 120, 120, 80 }),
         -- Routine 0x37 (0x0800FA7A): DarkMetr (chip 0xC3), the charge table's row 0x37.
-        chaos = chaos.weapon("bn5:napalmsoul/chaos", darkmetr, { 70, 90, 110, 130, 150, 40 }),
+        chaos = chaos.weapon("napalmsoul/chaos", darkmetr, { 70, 90, 110, 130, 150, 40 }),
     },
     chip_bonus = { family = "fire", damage = 40, dimming_chips = true, uncharged = true },
     charged_chips = { { family = "fire", damaging = false, plain = true } },
@@ -40,8 +40,8 @@ return define.form {
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 5-10, the version's souls'); in its
     -- Chaos Unison look while the chaos charge is armed (0x080125F6: the palette 11 on).
     mugshot = {
-        normal = asset.mugshot("bn5:napalmsoul"),
-        variant = { normal = asset.mugshot("bn5:napalmsoul-chaos") },
+        normal = asset.mugshot("napalmsoul"),
+        variant = { normal = asset.mugshot("napalmsoul-chaos") },
     },
     buster_arm = { anim = 0 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 4 of category 0).

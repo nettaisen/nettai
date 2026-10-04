@@ -509,9 +509,9 @@ mod tests {
         bad.side.folder.regular = None;
         assert!(Offer::from_bytes(&content, "bn6", &bad.to_bytes(&content)).unwrap_err().contains("breaks the rules"));
         // A name the game hasn't: the ordinary unknown name.
-        let bad = text.replacen("navi = \"megaman\"", "navi = \"bn5:megaman\"", 1);
+        let bad = text.replacen("navi = \"megaman\"", "navi = \"bn5:megaman\"", 1); // (written in full)
         let e = Offer::from_bytes(&content, "bn6", bad.as_bytes()).unwrap_err();
-        assert!(e.contains("side: no navi \"bn5:megaman\" in bn6"), "{e}");
+        assert!(e.contains("side: no navi \"bn5:megaman\" in bn6"), "{e}"); // (written in full)
         // Another game's offer, and bytes that aren't one.
         assert!(Offer::from_bytes(&content, "bn5", &bytes).unwrap_err().contains("is of bn6, this match bn5's"));
         assert!(Offer::from_bytes(&content, "bn6", &bytes[..10]).is_err());

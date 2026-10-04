@@ -90,7 +90,7 @@ local function navi_tick(side: number, navi: Object)
 end
 
 emotion.system = define.system {
-    id = "bn6:emotion",
+    id = "emotion",
     state = { swing_ticks = "u16", swung = "u8" },
     hooks = { round_start = round_start, countered = countered, navi_tick = navi_tick },
 }

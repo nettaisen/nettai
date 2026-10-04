@@ -3,8 +3,8 @@
 -- `sub_80E7260` reworked) with BN6's marker (@exelib/lifesync/marker, effect object #0x60, BN5's look). The usual
 -- dimming phases, with an effect that marks the enemy two panels ahead and, after a warning over each, sets the HP
 -- of the other combatants (side 1's, whoever uses it) to that enemy's, at most their own max HP (0x080E72C4; BN6's
--- not capped). A link or boss-ranked battle (unless battle flag 0x40) turns it into a wait, as do finding no enemy
--- there and no one to sync (81 ticks: BN6's waits otherwise). With battle flag 0x40 (never in a netbattle) the
+-- not capped). A link or boss-ranked battle (unless in the operation battle) turns it into a wait, as do finding no enemy
+-- there and no one to sync (81 ticks: BN6's waits otherwise). In the operation battle (never in a netbattle) the
 -- enemy two panels ahead takes a hit of 50 instead (0x080E739C), then the wait.
 
 local collision = require("../../rules/collision")
@@ -12,6 +12,7 @@ local dimming_chips = require("@exelib/dimming")
 local marker = require("@exelib/lifesync/marker")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
+local operation_battle = require("../../lib/operation_battle")
 
 local lifesync = {}
 
@@ -27,11 +28,11 @@ export type State = {
 local MARKER_TICKS = 0x50
 -- The wait before the warning, the warning, after the sync, and the wait instead of it all.
 local AIM, WARNING, AFTER, NOTHING = 0x14, 0x3C, 0x1E, 0x50
-local SOUND_AIM = asset.sound("bn5:mark")
+local SOUND_AIM = asset.sound("mark")
 -- The sync's sound: the combatant's HP went up, or not.
-local SOUND_UP = asset.sound("bn5:hub")
-local SOUND_DOWN = asset.sound("bn5:lifesync")
-local SOUND_WARNING = asset.sound("bn5:err-select-91")
+local SOUND_UP = asset.sound("hub")
+local SOUND_DOWN = asset.sound("lifesync")
+local SOUND_WARNING = asset.sound("err-select-91")
 -- The other side's player navi stands there (0x080E7394).
 local ENEMY_NAVI = { [0] = 0x00200000, [1] = 0x00400000 }
 -- The marker's attach point on its target's sprite.
@@ -39,7 +40,7 @@ local MARK_POINT = 0x1B
 -- (The battle effects that make it only wait: 1, a boss rank; 8, a link battle.)
 
 
-lifesync.marker = marker.make_kind("bn5:lifesync/marker", asset.sprite("bn5:hit-sparks"))
+lifesync.marker = marker.make_kind("lifesync/marker", asset.sprite("hit-sparks"))
 
 -- 0x080E7356 (BN6's `sub_80E7486`): if the panel shows the other side's player navi, the first combatant (both
 -- sides' slots) whose collision is on it.
@@ -66,7 +67,7 @@ end
 
 -- 0x080E7174: the marker on the panel two ahead, the enemy there, the combatants to sync.
 local function aim(me: Object)
-    if not battle.per_player_gauges() and (battle.boss_rank() or battle.link()) then
+    if not operation_battle() and (battle.boss_rank() or battle.link()) then
         return nothing(me)
     end
     local s = me.state :: State
@@ -75,7 +76,7 @@ local function aim(me: Object)
     local m = marker.spawn(lifesync.marker, Vec3.new(cx, cy, 0), MARKER_TICKS)
     s.marker = m
     battle.play_sound(SOUND_AIM)
-    if battle.per_player_gauges() then
+    if operation_battle() then
         -- 0x080E739C: a hit of 50 on the enemy there (0x04050001: an attack reaching navis, the plain spark).
         if combatant_on(x, y, me.alliance) then
             -- (`sub_80C53A6`'s counterpart: it runs while the battle is dimmed.)
@@ -196,7 +197,7 @@ local function effect(me: Object)
 end
 
 lifesync.controller = define.kind {
-    id = "bn5:lifesync/controller",
+    id = "lifesync/controller",
     pool = "effect",
     state = { target = "object", synced = "object[4]", marker = "object" },
     update = dimming_chips.phases { name = "LifeSync", effect = effect },

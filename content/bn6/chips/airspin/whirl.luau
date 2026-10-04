@@ -7,9 +7,9 @@ local collision = require("../../rules/collision")
 local common = require("@exelib/airspin/whirl")
 
 return common.make {
-    id = "bn6:airspin/whirl",
-    sprite = asset.sprite("bn6:bass-anly-shot"),
-    sound = asset.sound("bn6:bass-anly-shot"),
+    id = "airspin/whirl",
+    sprite = asset.sprite("bass-anly-shot"),
+    sound = asset.sound("bass-anly-shot"),
     attack = collision.attack,
     hits = collision.hits_navis,
     hidden = { "invisible", "submerged" },

@@ -9,7 +9,7 @@ local recipe_gridman_sp = require("../gridman/chips").gridman_sp
 local recipe_mrkcan2 = require("../mrkcan/chips").mrkcan2
 
 return define.chip {
-    id = "bn5:football",
+    id = "football",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

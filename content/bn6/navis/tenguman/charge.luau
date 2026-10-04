@@ -19,7 +19,7 @@ local THRUST, RECOVER = 0x0, 0x4
 local ANIM_THRUST, ANIM_RECOVER = 0x16, 7
 local THRUST_TICKS, RECOVER_TICKS = 0x1E, 0x14
 
-local SOUND = asset.sound("bn6:tenguman-nose")
+local SOUND = asset.sound("tenguman-nose")
 
 -- The hits' counter byte, and their element: Null (the attack's element
 -- byte).
@@ -87,7 +87,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [THRUST] = thrust, [RECOVER] = recover }
 
 charge.action = define.action {
-    id = "bn6:tenguman/charge/action",
+    id = "tenguman/charge/action",
     state = { timer = "u16" },
     -- `sub_80F19D4` (`off_80F19E8`).
     update = function(me: Object, s: State)
@@ -96,7 +96,7 @@ charge.action = define.action {
 }
 
 charge.weapon = define.weapon {
-    id = "bn6:tenguman/charge",
+    id = "tenguman/charge",
     -- The charge table's row 0x42, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 60, 55, 50, 45, 40, 40, 35, 30 },

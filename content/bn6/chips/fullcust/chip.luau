@@ -4,11 +4,13 @@
 -- flag 0x40), the user's gains a third instead.
 
 -- What a side's own gauge gains (of 0x4000).
+local chip_gate_battle = require("../../lib/chip_gate_battle")
+
 local SIDE_GAUGE = 0x1555
 
 -- `sub_800AF34`.
 local function fill(user: Object, _spec: InstantChipSpec)
-    if battle.per_player_gauges() then
+    if chip_gate_battle() then
         -- sub_802E032
         battle.add_side_gauge(user.alliance, SIDE_GAUGE)
         return
@@ -18,7 +20,7 @@ local function fill(user: Object, _spec: InstantChipSpec)
 end
 
 return define.chip {
-    id = "bn6:fullcust",
+    id = "fullcust",
     codes = { "*" },
     element = "null", family = "null", class = "standard",
     rarity = 3, mb = 50, damage = 0, hit_param = 0, lockout = 20,

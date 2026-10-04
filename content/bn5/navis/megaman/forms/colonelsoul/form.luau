@@ -16,11 +16,11 @@ local drksonic = require("../../../../chips/drksonic/chip")
 local souls = require("../../../../rules/souls/system")
 
 return define.form {
-    id = "bn5:colonelsoul",
+    id = "colonelsoul",
     soul = { number = 7, family = "summon" },
     change = souls.action,
     revert = souls.revert,
-    sprite = asset.sprite("bn5:colonelsoul"),
+    sprite = asset.sprite("colonelsoul"),
     element = "null",
     buster_bonus = 0,
     weapons = {
@@ -28,7 +28,7 @@ return define.form {
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
         -- Routine 0x3A (0x0800FA98): DrkSonic (chip 0xC6), the charge table's row 0x3A.
-        chaos = chaos.weapon("bn5:colonelsoul/chaos", drksonic, { 40, 60, 90, 120, 150, 60 }),
+        chaos = chaos.weapon("colonelsoul/chaos", drksonic, { 40, 60, 90, 120, 150, 60 }),
     },
     -- 0x08011C44: the damage words (0x08011C50: 40 and 10 more per point of buster Attack plus one for the sword's
     -- soldier, 10 and 2 more for the gun's, each paralyzing with counter byte 0x94; 0x080CABF8), then the side armed
@@ -41,8 +41,8 @@ return define.form {
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 0x16-0x1B, Team Colonel's
     -- souls'); in its Chaos Unison look while the chaos charge is armed (0x080125F6: the palette 11 on).
     mugshot = {
-        normal = asset.mugshot("bn5:colonelsoul"),
-        variant = { normal = asset.mugshot("bn5:colonelsoul-chaos") },
+        normal = asset.mugshot("colonelsoul"),
+        variant = { normal = asset.mugshot("colonelsoul-chaos") },
     },
     buster_arm = { anim = 0 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 7 of category 0).

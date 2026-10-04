@@ -5,7 +5,7 @@
 -- is sent; a wind hit doesn't spin it more and no chip removes it; its gust
 -- (effect 0x4F, not turned to its side) hits without pushing. As it stands,
 -- and after each spin, it draws RNG2 (bit 2) for the style, 9 or 11, of a
--- marker over its panel (lib/navi-chips/marker: battle flag 0x40's), for 20
+-- marker over its panel (lib/navi-chips/marker: the operation battle's), for 20
 -- ticks, then its interval and 3; its spins count down on Timer 2.
 --
 -- Not reached: 0x080DA194, after the gust's routine, which would turn its
@@ -17,13 +17,13 @@ local effects = require("../../lib/effects")
 local marker = require("../../lib/navi-chips/marker")
 
 -- Its sprite: animation 0 standing, 1 spinning.
-local SPRITE = asset.sprite("bn5:air-spin")
+local SPRITE = asset.sprite("air-spin")
 
 return common.make {
-    id = "bn5:airspin/top",
+    id = "airspin/top",
     sprite = SPRITE,
     identity = define.identity {
-        id = "bn5:airspin-top",
+        id = "airspin-top",
         class = "field_object",
         version = 0,
         ai_index = 1,
@@ -33,7 +33,7 @@ return common.make {
     body = collision.own_body,
     hit_by = collision.hit_by_other_side,
     -- The spin's gust (the effect table's row 0x4F), and its palette offset.
-    gust = define.effect { sprite = asset.sprite("bn5:moon-blade"), anim = 0, palette = 0 },
+    gust = define.effect { sprite = asset.sprite("moon-blade"), anim = 0, palette = 0 },
     gust_palette = 2,
     gust_side = false,
     gust_self = collision.attack,
@@ -41,9 +41,9 @@ return common.make {
     puff = effects.puff,
     explosion = effects.explosion,
     sounds = {
-        set_down = asset.sound("bn5:set-down"),
-        spin = asset.sound("bn5:spin"),
-        hit_bomb = asset.sound("bn5:hit-bomb-1"),
+        set_down = asset.sound("set-down"),
+        spin = asset.sound("spin"),
+        hit_bomb = asset.sound("hit-bomb-1"),
     },
     set_down_check = false,
     extra_spins = false,

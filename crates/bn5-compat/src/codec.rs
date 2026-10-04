@@ -167,7 +167,7 @@ pub fn panel(compat: &Compat, number: u8, alliance: u8) -> Result<Panel, String>
 }
 
 /// A chip in a hand or a selection: its id and, where compat has it, its
-/// qualified key (`bn5:cannon`).
+/// key (`cannon`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Chip {
     pub id: u16,

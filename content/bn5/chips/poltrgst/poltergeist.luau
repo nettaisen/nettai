@@ -203,7 +203,7 @@ local function linger(me: Object)
 end
 
 local POLTERGEIST = define.kind {
-    id = "bn5:poltrgst/poltergeist",
+    id = "poltrgst/poltergeist",
     pool = "effect",
     state = { holder = "object", taken = "object[8]", count = "u8", nearest = "bool" },
     -- 0x080E8CFC.
@@ -296,7 +296,7 @@ local function stand_in_init(me: Object)
 end
 
 local STAND_IN = define.kind {
-    id = "bn5:poltrgst/stand-in",
+    id = "poltrgst/stand-in",
     pool = "actor",
     state = { busy = "bool", controller = "object", nearest = "bool" },
     -- 0x080C38E8.
@@ -360,7 +360,7 @@ local function effect(me: Object)
 end
 
 poltergeist.controller = define.kind {
-    id = "bn5:poltrgst/controller",
+    id = "poltrgst/controller",
     pool = "effect",
     state = { bonus = "u16", busy = "bool", nearest = "bool" },
     -- 0x080E8C1C.

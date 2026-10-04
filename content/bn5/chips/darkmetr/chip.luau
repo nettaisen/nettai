@@ -8,7 +8,7 @@
 local meteors = require("../meteors/meteors")
 
 return define.chip {
-    id = "bn5:darkmetr",
+    id = "darkmetr",
     codes = { "F" },
     element = "fire",
     family = "fire",

@@ -19,8 +19,8 @@ export type State = {
 
 local cosmoman = {}
 
-local SPRITE = asset.sprite("bn5:cosmoman")
-local SOUND_APPEAR = asset.sound("bn5:appear")
+local SPRITE = asset.sprite("cosmoman")
+local SOUND_APPEAR = asset.sound("appear")
 
 -- By the level (0x080BDA20): the dark palette for DS's 4.
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 0xB }
@@ -134,7 +134,7 @@ end
 local ACTIONS = { [0] = appear, [4] = gather, [8] = launch, [0xC] = wait, [0x10] = leave }
 
 cosmoman.kind = define.kind {
-    id = "bn5:cosmoman/navi",
+    id = "cosmoman/navi",
     pool = "actor",
     state = { controller = "object", level = "u8", taken = "identity[8]", count = "u8" },
     -- 0x080BD9AC.

@@ -5,7 +5,7 @@
 local navi = require("./navi")
 
 local diveman = define.chip {
-    id = "bn6:diveman",
+    id = "diveman",
     codes = { "D", "*" },
     element = "aqua",
     family = "aqua",
@@ -22,7 +22,7 @@ local diveman = define.chip {
 }
 
 local diveman_ex = define.chip {
-    id = "bn6:diveman-ex",
+    id = "diveman-ex",
     codes = { "D" },
     element = "aqua",
     family = "aqua",
@@ -39,7 +39,7 @@ local diveman_ex = define.chip {
 }
 
 local diveman_sp = define.chip {
-    id = "bn6:diveman-sp",
+    id = "diveman-sp",
     codes = { "D" },
     element = "aqua",
     family = "aqua",

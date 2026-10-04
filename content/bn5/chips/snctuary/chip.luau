@@ -7,7 +7,7 @@ local panel_changer = require("../../objects/panel-changer/panel_changer")
 local panel_chips = require("../../lib/panel_chips")
 
 return define.chip {
-    id = "bn5:snctuary",
+    id = "snctuary",
     codes = { "S" },
     element = "null",
     family = "null",

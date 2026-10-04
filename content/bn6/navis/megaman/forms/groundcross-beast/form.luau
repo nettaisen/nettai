@@ -9,7 +9,7 @@ local dash = require("./dash")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "bn6:groundcross-beast",
+    id = "groundcross-beast",
     kind = "cross_beast",
     -- The target marker shows, its afterimages stay, and a Null chip's A charge times by the
     -- alternative routine (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`).
@@ -20,12 +20,12 @@ return define.form {
     cross_of = groundman,
     -- A weakness hit breaks the Cross: back to the Beast.
     breaks_to = falzar_beast,
-    sprite = asset.sprite("bn6:groundcross-beast"),
+    sprite = asset.sprite("groundcross-beast"),
     element = "null",
     weakness = { "cursor" },
     buster_bonus = 0,
     weapons = { buster = falzar_beast_buster.weapon, a_charge = rock_barrage, alt_a_charge = dash.weapon },
-    mugshot = asset.mugshot("bn6:groundcross-beast"),
+    mugshot = asset.mugshot("groundcross-beast"),
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "break", damage = 10 },
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
@@ -47,7 +47,7 @@ return define.form {
         aura_anim = 13,
         ice = "medium",
         -- The beast's head, in the Cross's palette.
-        parts = { beast_head = { sprite = asset.sprite("bn6:beast-head"), palette = 8 } },
+        parts = { beast_head = { sprite = asset.sprite("beast-head"), palette = 8 } },
         attach_points = {
             { 4, 16 },
             { 4, 24 },

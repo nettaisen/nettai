@@ -384,7 +384,7 @@ fn dark_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> Op
     Some(HandEntry { chip, damage, extra, modifiers: 0, spends })
 }
 
-/// `sub_800EE26`: the battle flag 0x40 mode's special chip (the side
+/// `sub_800EE26`: the own-gauges mode's special chip (the side
 /// state's), paid for from the side's gauge (`sub_800EE98`), with the
 /// side's stored bonuses spent.
 fn slot_in_entry(b: &mut Battle, r: ObjectRef) -> HandEntry {
@@ -433,7 +433,7 @@ fn pay_for_special_chip(b: &mut Battle, side: usize, chip: Option<ChipHandle>) {
 
 /// `sub_80126E4`: the attack variables from the chip data (its action is
 /// [`chip_action`]'s). (The game also counts the use per side, for a
-/// report only the battle-flag 0x40 mode reads.)
+/// report only the own-gauges mode reads.)
 pub(crate) fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let content = b.content.clone();
     let cd = entry_record(&content, chip);
