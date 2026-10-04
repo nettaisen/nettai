@@ -529,9 +529,11 @@ What a BN5 console does otherwise, by data, not by game:
 - the custom screen: the special slot's button is the one the pack names
   for the system's button (`soul`: Soul Unison's, its picture in the chip
   window in Chaos Unison's palette for Chaos), the cursor over OK and over
-  the button where the pack's layout puts them; the soul choice
-  (`Phase::SoulChosen`, BN5's state 9) flies the soul's icon up onto the
-  column's first cell under its flash, and the cell keeps it;
+  the button where the pack's layout puts them; the soul choice (the
+  souls system's window `soul_unison`, BN5's state 9) flies the soul's icon
+  up onto the column's first cell under its flash, and the cell keeps it
+  (nettai-render's `SoulOffer`: the offer and the window's step, read of the
+  system's state by name);
 - its game's flow (rules `flow`, read of the console's own game): the
   custom screen's close starts the chip window as a Japanese BN6 console's
   does (`chip_window_at_close`), the intro fades in from black
@@ -962,7 +964,7 @@ game).
 **The souls** (`souls`, `nettai_match::facts`) are the souls the side has,
 BN5's Soul Unison, by name: those the custom screen's soul button may
 offer. Without `souls`, every soul of the game (both versions'); with a
-list, those; an empty list, none (no soul button). The original's soul
+list, those; an empty list, none (the button never lit). The original's soul
 button (0x08024B28) offers the soul of the last chip's family when the save
 has it: each version's table (0x08024BF0) gives Team ProtoMan's souls 1 to 6
 the event flags 2 to 7 and Team Colonel's 7 to 12 the flags 8 to 0x0D, the
@@ -972,17 +974,24 @@ the side's into the souls system's setup field `souls` (`set_fact`), and the
 battle reads them as the save's flags, by each soul's number. A side may have
 any of the game's souls, of either version (nettai's extension, as a Cross
 list may name either version's), and a soul whose family the folder never
-holds never comes up. With
-souls, the save has Soul Unison and Chaos Unison (flags 0 and 0x236). Only a
-ruleset whose systems take `souls` takes a list (the checks refuse one
-elsewhere, and a form that is no soul).
+holds never comes up. Only a ruleset whose systems take `souls` takes a list
+(the checks refuse one elsewhere, and a form that is no soul).
+
+**Soul Unison and Chaos Unison** (`soul_unison`, `chaos_unison`) are the
+save's event flags 0 and 0x236: the soul button at all, and a dark chip's
+Chaos Unison. Both are on unless a side says (`soul_unison = false`), as a
+finished save has them; the round's setup writes them into the souls
+system's setup (its defaults, on, for a setup that says nothing). A ruleset
+that takes neither refuses one off. The netplay offer carries them
+(protocol version 7).
 
 **A BN5 save** (the editor's "Import from save…", `Match::import_save`,
 which reads a save that isn't BN6's as BN5's: a .sav, or a raw save image as
 Tango's netplay templates hold, read by `bn5_compat::save`) makes the match
 BN5's and gives its karma, the souls its version's flags give (BN5's
-souls of those numbers) and, to a side with a NaviCust, the board of its
-ExpMemry (`expansions`: the NaviCust's programs aren't the import's yet).
+souls of those numbers), its Soul Unison and Chaos Unison and, to a side
+with a NaviCust, the board of its ExpMemry (`expansions`: the NaviCust's
+programs aren't the import's yet).
 
 **The tactics** (`[left.tactics]`, nettai_battle::tactics, docs/design/bn5-map.md
 §15.9) are BN5's computer-navi data, the block a BN5 save keeps for its

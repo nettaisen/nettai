@@ -1,11 +1,11 @@
 //! What a side's save brings that its ruleset's systems take by a field's
 //! name (S6c's facts, `PlayerSetup::set_fact`), besides BN6's (the game,
-//! the Crosses, Beast Out: bn6-compat's `Unlocks`): BN5's karma and souls.
-//! A match file and a netplay offer carry them as the side's own keys
-//! (`karma`, `souls`); the round's setup writes each into whichever of the
-//! side's systems declares the field (BN5's light and dark system's
-//! `karma`, its souls system's `souls`), and a ruleset with none takes
-//! none.
+//! the Crosses, Beast Out: bn6-compat's `Unlocks`): BN5's karma, souls,
+//! Soul Unison and Chaos Unison. A match file and a netplay offer carry them
+//! as the side's own keys (`karma`, `souls`, `soul_unison`, `chaos_unison`);
+//! the round's setup writes each into whichever of the side's systems
+//! declares the field (BN5's light and dark system's `karma`, its souls
+//! system's the rest), and a ruleset with none takes none.
 //!
 //! **Karma** is BN5's light/dark value (NaviStats +0x44), 0 to 1000: a
 //! fresh save's 500 (0x08010C00) is the default. Under 470 a dark MegaMan
@@ -24,6 +24,11 @@
 //! souls system's setup, as the save's flags). A side may have any soul of
 //! the match's game, of either version: none listed, every soul. A real
 //! save holds its own version's six; the save import reads them.
+//!
+//! **Soul Unison and Chaos Unison** are the save's event flags 0 and 0x236:
+//! the soul button at all (the souls system's, content/bn5/rules/souls), and
+//! a dark chip's Chaos Unison. A finished save has both (the default; the
+//! souls system's `setup_defaults` too); the save import reads them.
 
 use crate::{Arena, Side, ids};
 use nettai_battle::content::Content;
@@ -35,6 +40,9 @@ use nettai_content_api::{ChipHandle, FormHandle, Registry, RulesetHandle, Value}
 /// bn6-compat's `Unlocks::write`, its cross and beast systems').
 pub const KARMA_FIELD: &str = "karma";
 pub const SOULS_FIELD: &str = "souls";
+/// BN5's Soul Unison and Chaos Unison (the save's event flags 0 and 0x236).
+pub const SOUL_UNISON_FIELD: &str = "soul_unison";
+pub const CHAOS_UNISON_FIELD: &str = "chaos_unison";
 pub const VERSION_FIELD: &str = "version";
 /// BN6's bug frags: its dark-chips system's setup (a dark chip spends one).
 pub const BUG_FRAGS_FIELD: &str = "bug_frags";
@@ -96,6 +104,14 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
     if side.karma != DEFAULT_KARMA && !takes(content, ruleset, KARMA_FIELD) {
         out.push("karma, but the ruleset has no light and dark MegaMan (no system takes `karma`)".into());
     }
+    for (on, field, what) in [
+        (side.soul_unison, SOUL_UNISON_FIELD, "Soul Unison"),
+        (side.chaos_unison, CHAOS_UNISON_FIELD, "Chaos Unison"),
+    ] {
+        if !on && !takes(content, ruleset, field) {
+            out.push(format!("no {what}, but the ruleset has none (no system takes `{field}`)"));
+        }
+    }
     let Some(list) = &side.souls else { return out };
     if !takes(content, ruleset, SOULS_FIELD) {
         out.push("a soul list, but the ruleset has no Soul Unison (no system takes `souls`)".into());
@@ -134,8 +150,13 @@ pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerS
             .map(|f| Fact::Value(Value::Def(Registry::Form, f.0)))
             .collect();
         player.set_fact(content, ruleset, SOULS_FIELD, &souls)?;
-        player.souls.button = true;
-        player.souls.chaos = true;
+    }
+    // Soul Unison and Chaos Unison, where the rules take them (their
+    // defaults: on, a finished save's).
+    for (on, field) in [(side.soul_unison, SOUL_UNISON_FIELD), (side.chaos_unison, CHAOS_UNISON_FIELD)] {
+        if takes(content, arena.ruleset, field) {
+            player.set_fact(content, ruleset, field, &[Fact::Value(Value::Bool(on))])?;
+        }
     }
     Ok(())
 }
@@ -162,7 +183,8 @@ impl Side {
 
     /// The side, on rules `new` (of its game's, whose SP navis are the
     /// game's), without what they don't take: the Crosses, patch cards and
-    /// NaviCust without their systems, the karma and souls without theirs,
+    /// NaviCust without their systems, the karma, souls, Soul Unison and
+    /// Chaos Unison without theirs,
     /// and the version (back to Falzar) without `version`.
     pub fn fit_rules(&mut self, content: &Content, new: RulesetHandle) {
         let has = |system| crate::ruleset_has_system(content, new, system);
@@ -177,6 +199,12 @@ impl Side {
         }
         if !takes(content, new, SOULS_FIELD) {
             self.souls = None;
+        }
+        if !takes(content, new, SOUL_UNISON_FIELD) {
+            self.soul_unison = true;
+        }
+        if !takes(content, new, CHAOS_UNISON_FIELD) {
+            self.chaos_unison = true;
         }
         if !takes(content, new, KARMA_FIELD) {
             self.karma = DEFAULT_KARMA;
