@@ -2,10 +2,9 @@
 -- BN5's projectile (attack object #0, BN6's code: @exelib/projectile/projectile), BN5's kind; a bursting variant's
 -- burst BN6's (its sound, effect and collision types). Its variants are BN5's (./variants).
 
-local bn6_collision = require("@bn6/rules/collision")
 local collision = require("../../rules/collision")
 local common = require("@exelib/projectile/projectile")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 
 local projectile = {}
 
@@ -14,10 +13,10 @@ projectile.variant = common.variant
 
 projectile.kind = common.make_kind {
     id = "bn5:projectile",
-    burst_sound = asset.sound("bn6:burst"),
+    burst_sound = asset.sound("bn5:burst"),
     burst_effect = effects.explosion,
     burst_target = collision.hits_navis,
-    burst_self_type = bn6_collision.attack,
+    burst_self_type = collision.attack,
 }
 
 -- A projectile of `shot.variant` from `owner` on panel (x, y), with the owner's side and flip.

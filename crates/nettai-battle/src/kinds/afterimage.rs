@@ -98,10 +98,13 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, anim: u8, lifetime: u1
     // Param1 0xFF: copy the owner's sprite; Param4 its facing
     // (`object_getFlip`).
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Afterimage, pos, [0xFF, 0, anim, alliance ^ flip])?;
+    let paused = b.game_rules().effects.overlays_run_while_paused;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.alliance = alliance;
-    o.flags |= flags::RUN_WHILE_PAUSED;
+    if paused {
+        o.flags |= flags::RUN_WHILE_PAUSED;
+    }
     // sub_80E341E: tied to the form (BN6's Beast forms), or to the attack.
     let stays = b.form(alliance as usize).traits.has(crate::content::FormTraits::AFTERIMAGES_STAY);
     let tether = if stays { Tether::Form } else { Tether::Attack };
@@ -127,10 +130,13 @@ pub fn spawn_copy(
 ) -> Option<ObjectRef> {
     let alliance = b.objects.get(owner).alliance;
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Afterimage, pos, [0xFF, 0, anim, flip])?;
+    let paused = b.game_rules().effects.overlays_run_while_paused;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.alliance = alliance;
-    o.flags |= flags::RUN_WHILE_PAUSED;
+    if paused {
+        o.flags |= flags::RUN_WHILE_PAUSED;
+    }
     *vars(b, r) = Vars { lifetime, tether, anim, plain: look };
     Some(r)
 }
@@ -154,10 +160,13 @@ pub fn spawn_plain(
     // (The sprite's handle in the first two parameters.)
     let [hi, lo] = sprite.0.to_be_bytes();
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Afterimage, pos, [hi, lo, anim, flip])?;
+    let paused = b.game_rules().effects.overlays_run_while_paused;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.alliance = alliance;
-    o.flags |= flags::RUN_WHILE_PAUSED;
+    if paused {
+        o.flags |= flags::RUN_WHILE_PAUSED;
+    }
     *vars(b, r) = Vars { lifetime, tether, anim, plain: look };
     Some(r)
 }
