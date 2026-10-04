@@ -799,8 +799,11 @@ pub fn navi_key(n: u8) -> Option<String> {
 
 /// Differences between the engine and a BN5 frame: the state machine and
 /// its counters, the simulation RNG, the gauge, the panels (by BN5's
-/// numbers, through compat) and the objects (pool, panel, side, HP,
-/// position: BN5's kinds have no numbers in compat yet).
+/// numbers, through compat) and the objects, as BN6's comparison sees them:
+/// each object's pool and kind (BN5's numbers, through compat's
+/// kinds.toml), header flags, state, action (a navi's by BN5's numbers:
+/// `Compat::navi_action`), phase and its init byte, panel, side, HP,
+/// position, timer, animation and its collision's status flags.
 pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
     let mut d = Vec::new();
     let mut check = |what: &str, ours: String, theirs: String| {
@@ -862,7 +865,11 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
             format!("{},{},{}", p[0], p[1], p[2])
         }
     };
-    let ours: Vec<String> = b
+    // Each object's fields, by name: the list's shape (pool and kind, in
+    // update order) first, then each object's fields one by one, so that a
+    // difference names its field.
+    type Fields = Vec<(&'static str, String)>;
+    let ours: Vec<Fields> = b
         .objects
         .in_order()
         .enumerate()
@@ -870,44 +877,71 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
             let x = b.objects.get(o);
             let key = &b.content.defs.kind(x.kind).key;
             let kind = match entries[i] {
-                Some(k) => format!("#{:#04x}", k.index),
-                None => format!("{key} (no BN5 number)"),
+                Some(k) => format!("type {} #{:#04x}", pool_type(o.pool), k.index),
+                None => format!("type {} {key} (no BN5 number)", pool_type(o.pool)),
             };
             let (garbage, zf) = skip(i, x.flags);
             let xy = nettai_battle::kinds::effect::xy_unknown(b, o);
-            format!(
-                "type {} {kind} panel {} side {} hp {}/{} pos {}",
-                pool_type(o.pool),
-                panel(i, [x.panel.x, x.panel.y]),
-                x.alliance,
-                x.hp,
-                x.max_hp,
-                pos([x.pos.x, x.pos.y, x.pos.z], garbage, xy, zf)
-            )
+            let action = match compat.navi_action(b, o) {
+                Ok(n) => format!("{n:#04x}"),
+                Err(e) => format!("? ({e})"),
+            };
+            let status = x.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
+            vec![
+                ("kind", kind),
+                ("flags", format!("{:#04x}", x.flags)),
+                ("state", format!("{:#04x}", x.state)),
+                ("action", action),
+                ("phase", format!("{:#04x}", x.phase)),
+                ("phase init", format!("{:#04x}", x.phase_init)),
+                ("panel", panel(i, [x.panel.x, x.panel.y])),
+                ("side", x.alliance.to_string()),
+                ("hp", format!("{}/{}", x.hp, x.max_hp)),
+                ("pos", pos([x.pos.x, x.pos.y, x.pos.z], garbage, xy, zf)),
+                ("timer", x.timer.to_string()),
+                ("anim", x.anim.to_string()),
+                ("status", format!("{status:#x}")),
+            ]
         })
         .collect();
     let order: Vec<_> = b.objects.in_order().collect();
-    let theirs: Vec<String> = f
+    let theirs: Vec<Fields> = f
         .objects
         .iter()
         .enumerate()
         .map(|(i, o)| {
             let (garbage, zf) = skip(i, o.flags);
             let xy = order.get(i).is_some_and(|&r| nettai_battle::kinds::effect::xy_unknown(b, r));
-            format!(
-                "type {} #{:#04x} panel {} side {} hp {}/{} pos {}",
-                o.kind,
-                o.index,
-                panel(i, o.panel),
-                o.alliance,
-                o.hp,
-                o.max_hp,
-                pos(o.pos, garbage, xy, zf)
-            )
+            vec![
+                ("kind", format!("type {} #{:#04x}", o.kind, o.index)),
+                ("flags", format!("{:#04x}", o.flags)),
+                ("state", format!("{:#04x}", o.state[0])),
+                ("action", format!("{:#04x}", o.state[1])),
+                ("phase", format!("{:#04x}", o.state[2])),
+                ("phase init", format!("{:#04x}", o.state[3])),
+                ("panel", panel(i, o.panel)),
+                ("side", o.alliance.to_string()),
+                ("hp", format!("{}/{}", o.hp, o.max_hp)),
+                ("pos", pos(o.pos, garbage, xy, zf)),
+                ("timer", o.timer.to_string()),
+                ("anim", o.anim.to_string()),
+                ("status", format!("{:#x}", o.status)),
+            ]
         })
         .collect();
-    if ours != theirs {
-        check("objects", format!("\n    ours   {}", ours.join("\n           ")), format!("\n    theirs {}", theirs.join("\n           ")));
+    let line = |o: &Fields| o.iter().map(|(k, v)| if *k == "kind" { v.clone() } else { format!("{k} {v}") }).collect::<Vec<_>>().join(", ");
+    let shape = |l: &[Fields]| l.iter().map(|o| o[0].1.clone()).collect::<Vec<_>>();
+    if shape(&ours) != shape(&theirs) {
+        let all = |l: &[Fields]| l.iter().map(line).collect::<Vec<_>>().join("\n           ");
+        check("objects", format!("\n    ours   {}", all(&ours)), format!("\n    theirs {}", all(&theirs)));
+    } else {
+        for (i, (a, t)) in ours.iter().zip(&theirs).enumerate() {
+            for ((name, x), (_, y)) in a.iter().zip(t).skip(1) {
+                if x != y {
+                    check(&format!("object {name}"), format!("{x} (object {i}, {})", a[0].1), y.clone());
+                }
+            }
+        }
     }
     d
 }
