@@ -65,7 +65,7 @@ function instrument.make_kind(id: string, look: InstrumentLook): Kind
         me.anim = ANIM_STAND
         me.timer2 = 0xA
         battle.play_sound(look.sounds.appear)
-        me:set_action(REST)
+        me:set_action(obstacle.action_byte(me, REST))
     end
 
     -- `sub_80D41B6` (`sub_80D41D8`, `sub_80D41E8`): rest 30 ticks, then play;
@@ -83,7 +83,7 @@ function instrument.make_kind(id: string, look: InstrumentLook): Kind
         local t = me.timer2 - 1
         me.timer2 = t
         if t == 0 then
-            me:set_action(PLAY)
+            me:set_action(obstacle.action_byte(me, PLAY))
         end
     end
 
@@ -133,7 +133,7 @@ function instrument.make_kind(id: string, look: InstrumentLook): Kind
             local t = me.timer2 - 1
             me.timer2 = t
             if t == 0 then
-                me:set_action(REST)
+                me:set_action(obstacle.action_byte(me, REST))
             end
         else
             error(string.format("an instrument's playing phase %#x reads past off_80D4218", phase))
