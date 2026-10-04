@@ -79,7 +79,7 @@ mod tests {
         let mut b = battle(Some(SoundId(0x16)), true);
         // The navi has no HP until its own init runs, later in the tick:
         // the low-HP switch fires for one tick, as in the game.
-        let link_battle = b.arena_roles().music(crate::content::MusicRole::LinkBattle);
+        let link_battle = b.roles().music(crate::content::MusicRole::LinkBattle);
         assert_eq!(tick(&mut b), [SoundCue::Music(link_battle), SoundCue::Pinch(true)]);
         // The other side's player hears the same: its navi's latch too.
         assert_eq!(b.sound_cues_for(1), [SoundCue::Music(link_battle), SoundCue::Pinch(true)]);

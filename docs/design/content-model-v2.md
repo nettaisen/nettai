@@ -734,6 +734,9 @@ unported = ["chips/x/chip", ...]
 - **The manifest is the whole truth.** The define phase refuses a definition of these registries whose module its
   game pack's manifest doesn't list in its registry's list, a listed module that defines none of its list's, a
   listed module that isn't there, and a support pack's definition of any of them.
+- **One game a match** (P3). A content is one game pack and the support packs it uses: `Content::define` refuses two
+  game packs, and every lookup sees only the loaded game's definitions. `nettai_content::pack::games` lists the game
+  packs, each with its asset pack, and `load_game` loads one.
 - **Loading** (`nettai_content::index::read`). The loader reads the manifests of the games it loads and the support
   packs they use. The load order is the support packs, each after those it uses, then the games. It reads each
   listed module (not the unported) and what those require, and scans nothing. The games are the packs whose

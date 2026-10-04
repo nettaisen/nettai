@@ -1799,11 +1799,10 @@ export type SystemSpec = {
 }
 export type System = SystemSpec
 
--- A player's rules: a list of systems, which the framework calls in this
+-- A match's rules: a list of systems, which the framework calls in this
 -- order. A game's own is its `stock` ruleset (one per game). A ruleset made
--- from another (`base`, a mix) has its base's systems less `remove`, with
--- `add` after them. Its game, whose data (roles, rule sections) the side
--- reads, is the root `game` names, else its base's, else its own root
+-- from another (`base`, a variant) has its base's systems less `remove`,
+-- with `add` after them. A match plays one game by one of its rulesets
 -- (docs/design/rules-in-luau.md §2.3).
 export type RulesetSpec = {
     id: string,
@@ -1812,12 +1811,6 @@ export type RulesetSpec = {
     base: Ruleset?,
     add: { System }?,
     remove: { System }?,
-    game: string?,
-    -- Its own rule sections (`define.rules(...)`, ids of its folder): a
-    -- mix's, over its game's for the sides that play by it; only the
-    -- sections about a side (custom-screen, berserk, navicust, status,
-    -- lockon, cross-special).
-    sections: { any }?,
 }
 export type Ruleset = RulesetSpec
 

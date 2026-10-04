@@ -184,7 +184,7 @@ impl Side {
 
     /// The ruleset the side plays by: its own, else the content's stock.
     pub fn ruleset_or_stock(&self, content: &Content) -> Option<RulesetHandle> {
-        self.ruleset.or_else(|| content.defs.stock_ruleset_of(crate::DEFAULT_GAME))
+        self.ruleset.or_else(|| content.defs.stock_ruleset())
     }
 
     /// Whether the side's ruleset has the system with this key (unqualified,
@@ -218,20 +218,14 @@ pub const NAVICUST_SYSTEM: &str = "navicust";
 
 /// The NaviCust board of the side's game (its ruleset's game's rule
 /// section `navicust`).
-pub fn navicust_rules<'c>(content: &'c Content, s: &Side) -> &'c nettai_battle::content::NaviCustRules {
-    &content.side_rules(s.ruleset, ruleset_game(content, s.ruleset)).navicust
+pub fn navicust_rules<'c>(content: &'c Content, _s: &Side) -> &'c nettai_battle::content::NaviCustRules {
+    &content.rules().navicust
 }
 
-/// The game of a side playing by `ruleset` (none: BN6's stock rules,
-/// [`DEFAULT_GAME`]).
 /// The SP navis whose deletion times a side's setup carries, by slot
 /// (its ruleset's rules' `sp_slots`: BN6's `sp/heatman` ...).
-pub fn sp_slots(content: &Content, ruleset: Option<RulesetHandle>) -> &[String] {
-    &content.side_rules(ruleset, ruleset_game(content, ruleset)).sp_slots
-}
-
-pub fn ruleset_game(content: &Content, ruleset: Option<RulesetHandle>) -> nettai_battle::content::RootId {
-    content.defs.ruleset_game(ruleset, content.defs.root_id(DEFAULT_GAME).unwrap_or_default())
+pub fn sp_slots(content: &Content, _ruleset: Option<RulesetHandle>) -> &[String] {
+    &content.rules().sp_slots
 }
 
 /// A whole match: the arena and both sides (the left, side 0, then the
@@ -294,7 +288,7 @@ impl Match {
             .ok_or("the content has no navi with fresh stats")?;
         let game = GameVersion::Falzar;
         let mut side = Side {
-            ruleset: content.defs.stock_ruleset_of(DEFAULT_GAME),
+            ruleset: content.defs.stock_ruleset(),
             navi,
             game,
             stats: Side::base_stats(content, navi, game),
@@ -349,7 +343,6 @@ impl Match {
                     emotion_window_glitch: s.emotion_window_glitch,
                     ..ConsoleSetup::default()
                 },
-                ruleset: s.ruleset,
                 rules: Vec::new(),
                 patch_cards: PatchCards::new(&s.cards).unwrap_or_default(),
                 navicust: s.navicust,
@@ -363,7 +356,7 @@ impl Match {
             // Cross of the game (or the side's list) and Beast Out as the
             // side says.
             let unlocks = Unlocks { beast_out: s.beast_out, cross_list: s.crosses, ..Unlocks::everything(s.game) };
-            unlocks.write(content, &mut player).expect("a side's ruleset takes BN6's setup as its systems declare it");
+            unlocks.write(content, s.ruleset, &mut player).expect("a side's ruleset takes BN6's setup as its systems declare it");
             // Its karma and souls, into the systems that take them.
             facts::write(content, s, &mut player).expect("a side's karma and souls fit its rules (the match's checks)");
             player
@@ -371,6 +364,9 @@ impl Match {
         RoundSetup {
             content: content.hash(),
             settings,
+            // (One ruleset a match: P3 of rules-in-luau.md's packs work. The
+            // editor's one-game branch moves it to the arena.)
+            ruleset: self.sides[0].ruleset,
             navi_stats: [self.sides[0].round_stats(content), self.sides[1].round_stats(content)],
             rng: seed,
             local_side: 0,

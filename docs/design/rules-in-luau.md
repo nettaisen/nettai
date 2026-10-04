@@ -216,31 +216,21 @@ return define.ruleset {
 - **Order**: the framework calls a ruleset's systems in its `systems` order. Notification hooks call every system;
   deciding hooks (a deletion kept, a key handled, a chip use wrapped) stop at the first system that decides.
 
-### 2.3 One ruleset per player
+### 2.3 One ruleset per match
 
-`PlayerSetup::ruleset` names each player's ruleset; by default the stage's game's stock ruleset. What each side's
-ruleset governs, and what is the battle's:
+A match plays one game, by one of its rulesets (the user: "you are either playing bn5 or bn6, the arena
+configuration determines everything"; content-model-v2.md §4.0). `RoundSetup::ruleset` names it; none means the
+game's stock ruleset. Both sides play by it, each with its own state of its systems (`SideRules`) and its own setup
+blocks (`PlayerSetup::rules`). Everything a battle reads is the game's:
+- its rule sections (`Content::rules`);
+- its roles (`Defs::roles`);
+- its pools;
+- its base form;
+- its zeroed chip;
+- its pack's field.
 
-| Whose | What |
-|---|---|
-| **The side's ruleset** | the side's systems' hooks, controllers and wrappers for its navi; its custom screen's extras (buttons, windows, keys, hand size, chip checks, its result); its transformations; its emotions; its player setup; the roles the framework uses for that side's navi and objects (the sounds its player hears for its hits, the actions its requests start); the rule sections about one navi (buster recovery, charge rules) and its screen's layout |
-| **The battle** (framework, with the stage's game's stock ruleset's data) | the flow (intro, banners, the gauge, turns, the turn-start sequencer, the reversion, judge, sets); the field (panel types, their flags and steps, volcano eruptions); the hit kernel's tables (element weakness); the battle's music and the flow's banners |
-| **Both players' games, the larger** (the user's decision) | the capacity-only limits: the object pools' sizes (BN5's actor pool has 16 slots, BN6's 32; the attack and effect pools 32 in both) and any other cap that only bounds how many of something fit |
-
-The stage's game decides the battle's data because the stage is the arena: in a BN6 battle on a BN6 stage, every
-table is BN6's and the traces match; in a mixed battle the host picks the arena. Both players' rulesets must agree
-on nothing else.
-
-**Capacity takes the larger of the two players' games** (the user, 2026-10-02): a limit that only bounds how many
-of something fit, and changes nothing else, is each pool's or table's larger size of the two players' games, so a
-BN6 player's chips in a BN5 arena never fail to spawn on BN5's smaller actor pool. Everything else battle-wide
-stays the arena's. A same-game battle is unchanged: both sides have one game's sizes, so the traces and the lab are
-the same.
-
-**A player's game** is their ruleset's game: a stock ruleset's is its root (a game root: `bn6:bn6` is BN6's); a
-mix's is its `base`'s, followed to a stock ruleset; a mix without a base says its `game` (a root name). It is
-known when content loads (`RulesetDef::game`), so a setup's two rulesets give the battle's capacities before the
-battle starts.
+The design this replaced, one ruleset per player, let sides of different games meet, with the battle's data the
+stage's game's and the pools the larger of the two. It held until P3 (As built). R2 below built it.
 
 ### 2.4 Where it lives
 
@@ -581,6 +571,11 @@ battle change nothing: each side's systems run for their own side.
   tools/rollback-cost.sh, the branch and main alternating so the machine's load hits both.
 
 ## 7. Composable with BN6 content
+
+> **Superseded** by packs (content-model-v2.md §4.0; As built P1 and P3). The user: "i also don't want to be able to
+> load things cross-game, bn5 stays in bn5 and bn6 stays in bn6 and no mixing and matching is allowed". A content is
+> one game pack and the support packs it uses, and a match plays one game. What follows is the design the engine
+> was built to before that, kept as history.
 
 ### 7.1 What it means
 
@@ -1966,3 +1961,73 @@ explicit indices; this slice keeps its lists and drops the namespace. What follo
   5. Module names keep the `<pack>:<path>` spelling, so no anonymous key, compat entry or coverage map moves.
 - **Porter re-run:** merge main, run `tools/content/packs.py <checkout>` (verify), then build and test. It prints a
   line per step for the report. layout.py and gen_content.py run index.py after writing.
+
+### P3, one game a match (2026-10-03)
+
+Packs' second step (content-model-v2.md §4.0; P1 above). The user: "you are either playing bn5 or bn6, the arena
+configuration determines everything", and "once a game is selected for the match, the rest of the configuration
+becomes completely namespaced for that side. so it's not possible to name another game's stuff". What a match loads
+is the only namespace its lookups see.
+
+- **Content is one game.**
+  - `Content::define` refuses scripts with two game packs ("content holds one game, and these are ...").
+  - `Content::game()` is the game pack's id. `Content::rules` is one `Rules`, read through `Content::rules()`.
+    `rules_of(RootId)`, `side_rules`, `ruleset_rules` (a mix's own sections) and `sections::build_rulesets` are
+    gone.
+  - The rule sections are the game's, all of them. `fill_panel_types` (a panel type another loaded game names) is
+    gone: a type the game doesn't name keeps an empty rule.
+- **Defs.**
+  - `RootId`, `Defs::roots`, `Defs::games`, `root_of`, `root_id`, `is_game` and `ruleset_game` are gone.
+  - `Defs::game` (the game's id) is in.
+  - `Defs::roles` is one `Roles`, read through `roles()`; a game defining two is refused.
+  - `Defs::base_form` is one, with `Content::base_form()`.
+  - `stock_ruleset()` takes no game, and a game has at most one stock ruleset.
+  - `RulesetDef` loses `game` and `sections`, and the ruleset spec loses those two fields (core.d.luau too), so
+    `game = ...` is now "no field of a ruleset". The test content's souls mix (a ruleset with its own section) is
+    gone.
+- **A battle.**
+  - `BattleGames` (`Battle::games`), the pools as the larger of two games, and `Battle::game_of` are gone.
+  - `Battle::game_rules()` and `Battle::roles()` replace `arena_rules`, `arena_roles`, `side_game_rules`,
+    `side_roles`, `roles_for`, `rules_for` and `chip_rules` (194 call sites, rewritten mechanically).
+  - Helpers that took an object only to find its side's game lost it: `role_action`, `body_types`, `null_family`,
+    `restart_overlay`, BN5's aura's `bn5`, `counter_action`, obstacles' `game_rules`.
+  - `chip_or_zeroed`, `chip_field`, `zeroed_chip` and `ChipHand::empty` take no game.
+  - `GameLibrary` is gone: `Content` is the custom screen's library, its layout, banners, result words and role
+    chips the game's.
+- **One ruleset a match.**
+  - `RoundSetup::ruleset` replaces `PlayerSetup::ruleset`. `SideRules::for_player` takes it.
+  - `PlayerSetup::set_rule`, `set_rule_elem`, `rule_block` and `set_fact` take the match's ruleset (none: the
+    stock one) where they took a game.
+  - bn6-compat's `Unlocks::write` takes the ruleset too.
+- **Loading** (`nettai_content::pack`).
+  - New: `games(content, found)` gives the game packs by id, each a `GameChoice` with its asset pack, or why not.
+    `load_game(content, game, found)` gives a `Loaded` with one `content`, `game`, `pack` and `dir`.
+  - `load_battle` loads the asset pack's game.
+  - Gone: `load_found`, `load_battle_packs`, `battle_content_packs`, `pack_paths`, `needs_pack` and `Loaded`'s
+    `games`, `packs` and `left_out`.
+- **Render.**
+  - `Packs::game`/`game_id` (the game's pack) replace `of_root`, `id_of_root` and `of_key`.
+  - `FieldArt` is the game's pack's field: a panel type or highlight it doesn't draw is tinted.
+  - Borrowing another pack's field (`FieldArt::borrowed`, `Stage::borrowed`) is gone, and `Stage::new` takes no
+    arena.
+- **The editor agent's crates.** nettai-match, nettai-frontend, nettai-editor and nettai-netplay only got what they
+  need to compile. The frontend and the editor load `nettai_match::DEFAULT_GAME` with `load_game`. A match's
+  `RoundSetup::ruleset` is side 0's ruleset (the one-game branch moves it to the arena). `facts::write` and
+  `Unlocks::write` take the side's ruleset. The content audit reads the one game's roles and field.
+- **Tests.**
+  - Gone, because they tested mixing: the twin tests (a second game borrowing the test content's modules), the
+    mixed field's art, the cross-game panel type fill, and the test of a mix bringing its own sections.
+  - Rewritten for one game: scripts' `content_holds_one_game` and the mix test (a variant within the game), rules'
+    `a_match_plays_by_the_ruleset_its_setup_names` (both sides, each its own state), the hooks test's stock side,
+    lint's `a_game_loads_alone_under_its_names`, `a_load_reads_what_its_manifests_reach` and `bn5s_rules_are_its_games`
+    (each game its own content), the strings test (each game's tables checked against its content), render's
+    packs and stage tests (one pack), and the audit's field test.
+- **Decisions** (for review):
+  1. `Battle::game_rules()` and `roles()` replace the per-side and per-object accessors outright rather than
+     forwarding, so nothing keeps asking whose game.
+  2. Ruleset variants (`base`, `add`, `remove`) stay: a game may offer more than its stock ruleset. A ruleset's own
+     sections went with mixing.
+  3. A panel type the game doesn't name keeps an empty rule (no other game to borrow from), and the field draws
+     one its pack lacks as a tinted normal panel.
+  4. The content lint's self-bit check stays, for a game using exelib's makers (BN6's code), with exelib as the
+     pack it names.

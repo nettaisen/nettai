@@ -165,17 +165,13 @@ impl std::fmt::Display for ContentHash {
 /// the module docs.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Content {
-    /// The tables every root's rule sections start from: the engine's
+    /// The tables the game's rule sections start from: the engine's
     /// defaults (the test content's made-up tables).
     pub base_rules: Rules,
-    /// Each root's game's tables (the base with the root's rule sections),
-    /// by `RootId`: made by [`Content::define`]. A battle reads its arena's
-    /// and each side's game's (docs/design/rules-in-luau.md §2.3).
-    pub rules: Vec<Rules>,
-    /// Each ruleset's own tables, by `RulesetHandle`: a mix's game's with its
-    /// own sections (P1 item 8); None for a ruleset without sections of its
-    /// own. Made by [`Content::define`].
-    pub ruleset_rules: Vec<Option<Rules>>,
+    /// The game's tables (the base with its rule sections), made by
+    /// [`Content::define`]: what a battle reads (docs/design/rules-in-luau.md
+    /// §2.3; a match plays one game, docs/design/content-model-v2.md §4.0).
+    pub rules: Rules,
     /// Every sprite's animation timing.
     pub animations: Animations,
     /// The assets content can name (`asset.sprite("bomb")`): the loader
@@ -264,17 +260,21 @@ impl Content {
             let definitions = Default::default();
             sections::build(self, &definitions)?;
             self.defs = Defs::build(self, definitions)?;
-            sections::build_rulesets(self)?;
             return Ok(());
         }
         self.scripts.check_packs().map_err(nettai_content_api::ContentError::new)?;
+        if let [_, _, ..] = self.scripts.games()[..] {
+            return Err(nettai_content_api::ContentError::new(format!(
+                "content holds one game, and these are {} (docs/design/content-model-v2.md §4.0: a match plays one game)",
+                self.scripts.games().join(" and ")
+            )));
+        }
         let (definitions, compiled) = nettai_luau::define(&self.scripts.pack(), &self.assets, nettai_luau::Options::default())?;
         self.scripts.compiled = CompiledModules(compiled);
         check_lists(&self.scripts, &definitions)?;
         // The rule sections into the ruleset's typed tables.
         sections::build(self, &definitions)?;
         self.defs = Defs::build(self, definitions)?;
-        sections::build_rulesets(self)?;
         self.count_strings();
         Ok(())
     }
@@ -313,33 +313,15 @@ impl Content {
         ContentHash(crate::digest::stable_hash(self))
     }
 
-    /// Game `root`'s tables.
-    pub fn rules_of(&self, root: RootId) -> &Rules {
-        &self.rules[root.index()]
+    /// The game's tables.
+    pub fn rules(&self) -> &Rules {
+        &self.rules
     }
 
-    /// The tables a side playing by `ruleset` reads about itself: the
-    /// ruleset's own (a mix's, with its sections: P1 item 8), else its game's
-    /// (`game`, the ruleset's or, with none, the stage's game).
-    pub fn side_rules(&self, ruleset: Option<nettai_content_api::RulesetHandle>, game: RootId) -> &Rules {
-        ruleset.and_then(|r| self.ruleset_rules.get(r.index())?.as_ref()).unwrap_or_else(|| self.rules_of(game))
-    }
-
-    /// The games of content: its game packs and every prefix an id has, by
-    /// name (`RootId` is the place here; docs/design/rules-in-luau.md, the
-    /// flat namespace: a definition's game is its id's prefix; the support
-    /// pack's anonymous definitions are `exelib`'s). Content without
-    /// scripts is one game of no name.
-    pub(crate) fn game_names(scripts: &Scripts, definitions: &nettai_content_api::Definitions) -> Vec<String> {
-        let mut games: std::collections::BTreeSet<String> = scripts.games().into_iter().collect();
-        // (A state schema's key names what it is the state of:
-        // `system:bn6:beast/state`.)
-        for d in definitions.defs.iter().filter(|d| d.registry != nettai_content_api::Registry::Schema) {
-            if let Some(game) = nettai_content_api::keys::root_of(&d.key) {
-                games.insert(game.to_string());
-            }
-        }
-        if games.is_empty() { vec![String::new()] } else { games.into_iter().collect() }
+    /// The game the content is: its game pack's id (`bn6`); "" for content
+    /// without packs (a test's modules alone).
+    pub fn game(&self) -> &str {
+        self.scripts.packs.iter().find(|p| p.kind == nettai_content_api::PackKind::Game).map_or("", |p| p.id.as_str())
     }
 
     /// A chip's record.
@@ -361,22 +343,21 @@ impl Content {
         &self.defs.chip(h).links
     }
 
-    /// The chip a zeroed chip field reads in game `game`
-    /// (`roles.chips.zeroed`: the chip the original's chip 0 is), if it has
-    /// one.
-    pub fn zeroed_chip(&self, game: RootId) -> Option<ChipHandle> {
-        self.defs.roles(game).try_chip(ChipRole::Zeroed)
+    /// The chip a zeroed chip field reads (`roles.chips.zeroed`: the chip
+    /// the original's chip 0 is), if the game has one.
+    pub fn zeroed_chip(&self) -> Option<ChipHandle> {
+        self.defs.roles().try_chip(ChipRole::Zeroed)
     }
 
     /// The chip a chip field names: itself, or for none (a zeroed field)
-    /// game `game`'s zeroed chip, which is what the game reads.
-    pub fn chip_or_zeroed(&self, game: RootId, h: Option<ChipHandle>) -> ChipHandle {
-        h.unwrap_or_else(|| self.defs.roles(game).chip(ChipRole::Zeroed))
+    /// the game's zeroed chip, which is what the game reads.
+    pub fn chip_or_zeroed(&self, h: Option<ChipHandle>) -> ChipHandle {
+        h.unwrap_or_else(|| self.defs.roles().chip(ChipRole::Zeroed))
     }
 
     /// The record a chip field names (see [`Content::chip_or_zeroed`]).
-    pub fn chip_field(&self, game: RootId, h: Option<ChipHandle>) -> &ChipData {
-        self.chip(self.chip_or_zeroed(game, h))
+    pub fn chip_field(&self, h: Option<ChipHandle>) -> &ChipData {
+        self.chip(self.chip_or_zeroed(h))
     }
 
     /// A navi's data.
@@ -405,19 +386,15 @@ impl Content {
         self.defs.form_by_key(key).unwrap_or_else(|| panic!("form {key:?} is not in the content"))
     }
 
-    /// Game `game`'s base form: what its navis are in before they change
-    /// form (a link navi always). A game that defines none of its own (BN5,
-    /// until its port defines MegaMan's) takes the first game's, by name,
-    /// that has one.
-    pub fn base_form_of(&self, game: RootId) -> FormHandle {
-        let own = self.defs.base_forms.get(game.index()).copied().flatten();
-        own.or_else(|| self.defs.base_forms.iter().flatten().next().copied())
-            .unwrap_or_else(|| panic!("the content has no base form"))
+    /// The game's base form: what its navis are in before they change form
+    /// (a link navi always).
+    pub fn base_form(&self) -> FormHandle {
+        self.defs.base_form.unwrap_or_else(|| panic!("the content has no base form"))
     }
 
-    /// The base form of navi `navi`: its game's (its id's prefix).
-    pub fn base_form_for(&self, navi: NaviHandle) -> FormHandle {
-        self.base_form_of(self.defs.root_of(&self.defs.navi(navi).key).unwrap_or_default())
+    /// The base form of navi `navi`: the game's.
+    pub fn base_form_for(&self, _navi: NaviHandle) -> FormHandle {
+        self.base_form()
     }
 
     /// The identity of a navi in a form: the form's, or in the base form
