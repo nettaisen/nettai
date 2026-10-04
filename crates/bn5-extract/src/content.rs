@@ -55,7 +55,7 @@ pub fn main(args: &[String]) {
     // the rest under their placeholders.
     let names = asset_names();
     let bundle = crate::graphics::bundle(&roms, &names);
-    let versioned = crate::graphics::versioned_chips(&roms);
+    let version_chips = crate::graphics::version_chips(&roms);
     let (mut bank, failures) = m4a::rom::extract(&roms.protoman.0).unwrap_or_else(|e| panic!("reading the sound data: {e}"));
     for (song, e) in &failures {
         eprintln!("song {:#05x} left out (it uses a command the driver port doesn't play): {e}", song.0);
@@ -113,13 +113,13 @@ pub fn main(args: &[String]) {
     eprintln!("Team Colonel's own songs: {}", colonel_own.join(", "));
     let bytes: usize = files.iter().map(|f| f.1.len()).sum();
     eprintln!(
-        "wrote {out} (game {GAME}): {} sprites, {} backgrounds, {} songs, {} samples, {} chips' pictures ({} each version's own), {} files, {} KiB in {:.1?}",
+        "wrote {out} (game {GAME}): {} sprites, {} backgrounds, {} songs, {} samples, {} chips' pictures ({} version chips' from their own version's ROM), {} files, {} KiB in {:.1?}",
         bundle.sprites.len(),
         bundle.backgrounds.iter().flatten().count(),
         bank.songs.iter().flatten().count() - left_out.len(),
         bank.samples.len(),
-        bundle.custom.chip_art.len() - versioned.len(),
-        versioned.len(),
+        bundle.custom.chip_art.len(),
+        version_chips.len(),
         files.len(),
         bytes / 1024,
         t.elapsed(),
