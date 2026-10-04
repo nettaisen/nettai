@@ -16,9 +16,10 @@ blade.kind = common.make_kind("bn6:moonbld/blade", {
 })
 
 -- `sub_80D5D34`: a blade on `owner` (`plain`: a plain blade's hits), its
--- panel the spawner's registers (see @common/moonbld/blade).
-function blade.spawn(owner: Object, panel_x: number, panel_y: number, damage: number, plain: boolean): Object?
-    return common.spawn(blade.kind, owner, panel_x, panel_y, damage, plain)
+-- panel and position the spawner's registers (`routine`: the address of the
+-- phase routine spawning it; see @common/moonbld/blade).
+function blade.spawn(owner: Object, panel_x: number, routine: number, damage: number, plain: boolean): Object?
+    return common.spawn(blade.kind, owner, panel_x, routine, damage, plain)
 end
 
 return blade
