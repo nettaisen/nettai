@@ -1429,6 +1429,43 @@ them.
   one) or Chaos Unison's 1 (0x08024FF6; `custom.set_form`'s turns and Chaos flag, `TransformRequest::turns`,
   `chaos`); the chip given up leaves the folder in the soul's place. B on the soul puts the chip back. (Until
   2026-10-04 this was the custom screen's Rust: `SlotKind::Soul`, `Phase::SoulChosen`, `SoulUnlocks`.)
+- **What a soul adds to the screen** (0x08023CF8, by the soul MegaMan is in, when the side's navi is MegaMan, the
+  screen's +0x10): its slots 8 and 9, over the hand's last two chips. SearchSoul's Shuffle (kinds 4 and 5) and
+  NumberSoul's hand of ten (0x08025BE4) are rules/souls/shuffle.luau and hand.luau; the two that change a chip are:
+  - **MeddySoul's capsules** (soul 6, kinds 6 and 7; rules/souls/capsules.luau): two of five capsule chips a screen
+    (0x17C YelCapsl, 0x17D BlkCapsl, 0x17E WhiCapsl, 0x17F PrpCapsl, 0x180 PnkCapsl: chips/capsules), one draw of
+    the console's RNG1 as the slots are laid out (0x08023D30: bits 1 to 4 and 17 to 20 into a table of sixteen,
+    0x08025E60, or 0x08025E80 while MegaMan's HP is under a quarter of its maximum; the system's deal hook, after
+    the dark chip's). A capsule is on offer while the last pick is a chip that deals damage with none mixed in
+    (0x08024C74); a chip with one offers no soul (0x08024B54). A on it (0x08024A02) runs the screen's state 0x3C
+    (0x0802373A: the window `capsule`, the soul's choice's steps with the capsule's icon), whose white step marks
+    the pick (`custom.attach_to_last_pick`: the slot's +4 and +5, by 0x08023824) and uses the capsule; B on the
+    chip frees it (0x08024D78). The mark goes into the hand's flag byte (+68, `ChipHand::modifiers`), and the
+    chip's use reads it (0x08010368, 0x0800FFF6; the chip-use rule `mixed_modifiers`): 0x04 the damage word's
+    0x2000 (YelCapsl: confusion), 0x08 its 0x1000 (BlkCapsl: blindness), 0x02 its 0x4000 (WhiCapsl: paralysis),
+    0x20 its 0x0800 (PrpCapsl: the HP bug), 0x10 a tenth of the user's maximum HP healed, rounded up (PnkCapsl).
+    The capsule chips never reach a hand; a slot shows its capsule as a chip (icon, and in the chip window the name
+    and picture alone, 0x08024422), and R describes it. Their records' uses are leftovers (the cannon's action,
+    Poltrgst's and RockCube's dimming routines, the supports' controller, routine 50: lib/supports/dimming).
+  - **ColonelSoul's Arm Change** (soul 7, kinds 8 and 9; rules/souls/arm-change.luau): on offer while the last pick
+    is a standard chip of no family that deals damage and neither dims nor is dark (0x08024C00). A on it
+    (0x080249D6) runs the screen's state 0x38 (0x08023694: the window `arm_change`): the chip leaves the picks for
+    the button (`custom.hold_last_pick`; five more can be picked) and its icon blinks in the column for 30 ticks.
+    B, with the picks as they were then, puts it back (0x08024CFC). At OK it is the turn's arm chip (the transform
+    record's +6, 0x080123FC; the system's `arm_chip`) and leaves the folder (0x080250C8, the Regular chip's flag
+    untouched). At the turn's start, before either side changes form (0x08011DDC, 0x080124AE: the hook
+    `turn_opened`), a MegaMan in ColonelSoul takes it (AIData +0x32, the navi's `weapon_chip`) and his charged
+    shot is the weapon routine 0x13 (0x0800F7D8: the chip loaded as the attack and used, the charge table's row
+    0x13, 120 ticks at every Charge; forms/colonelsoul/arm) for that turn; without one, the soul's own (0x14). A
+    weapons' reload (a change of form, a status reset) puts the soul's own back. The soul change copies the
+    record's +6 into AIData +0x32 too (0x08012102), and NumberSoul's image's face copies it for a tick as register
+    garbage in its position, where the engine has 0xFFFF whatever the chip (a replay's comparison translates it).
+  - The lab's scenarios (souls/06-recovery/capsule-*, ten; souls/07-obstacle/arm-change*, five) match on every
+    frame and every sound call: each capsule's effect, the low-HP table, the refusals, B, a soul after a capsule,
+    the arm chip fired twice and gone the turn after, B's order through later picks, Arm Change with a soul.
+  - Not built: the Liberation Missions' team navis' part of the same routine (the screen's +0x10 nonzero: a chip
+    pair by navi from 0x08025EA0 in slot 9, 0x08023EFE; the navi switch, state 0x40; battle mode 1's button in
+    slot 11). A netbattle's navi is MegaMan.
 - **The change** (rules/souls/change.luau, the souls' `change`, BN5's 0x08011F74, run by the shared turn-start
   sequencer): onto the future panel, a flash, his moves stopped (`stop_moving`); the soul's image (objects/
   soul-image, actor 0x2A, its navi's sprite 08-xx) spirals in, blinks and fades; MegaMan emerges in the soul (the
