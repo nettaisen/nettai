@@ -56,12 +56,12 @@ mod tests {
         image[0x52A8 + 0x44..0x52A8 + 0x46].copy_from_slice(&100u16.to_le_bytes());
         let mut m = crate::Match::empty(&content).unwrap();
         let s = &mut m.sides[0];
-        s.ruleset = content.defs.ruleset_by_key("bn5:stock");
-        s.navi = content.defs.navi_by_key("bn5:megaman").unwrap();
+        s.ruleset = content.defs.ruleset_by_key("stock");
+        s.navi = content.defs.navi_by_key("megaman").unwrap();
         let notes = s.import_save(&content, &image).unwrap();
         assert_eq!(s.karma, 100);
         let souls: Vec<&str> = s.souls.as_ref().unwrap().iter().map(|&f| content.defs.form(f).key.as_str()).collect();
-        assert!(souls.contains(&"bn5:protosoul") && !souls.contains(&"bn5:colonelsoul"), "{souls:?}");
+        assert!(souls.contains(&"protosoul") && !souls.contains(&"colonelsoul"), "{souls:?}");
         // (Its six souls: those the content hasn't yet are said.)
         assert_eq!(notes.len() + souls.len(), 6, "{notes:?}");
         let e = s.import_save(&content, b"not a save").unwrap_err();

@@ -260,8 +260,8 @@ fn is_link(b: &Battle) -> bool {
 }
 
 /// `sub_800A8F8`: battle flag 0x40 (not set in PvP).
-fn per_player_gauges(b: &Battle) -> bool {
-    b.round.flags & battle_flags::PER_PLAYER_GAUGES != 0
+fn own_gauges(b: &Battle) -> bool {
+    b.round.flags & battle_flags::OWN_GAUGES != 0
 }
 
 /// `GetBattleMode`.
@@ -1154,10 +1154,10 @@ fn enable_turning(b: &mut Battle, r: ObjectRef) {
 fn reset_side_state(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get(r);
     let (side, panel_x) = (o.alliance as usize, o.panel.x);
-    let own_gauges = per_player_gauges(b);
+    let own = own_gauges(b);
     let s = &mut b.sides[side];
     *s = Default::default();
-    if own_gauges {
+    if own {
         // The game also sets bytes nothing ported reads (see
         // docs/engine/field-names.md, SideState).
         s.active = 1;

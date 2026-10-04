@@ -9,8 +9,8 @@ local common = require("@exelib/gust/gust")
 
 local gust = {}
 
-gust.kind = common.make_kind("bn5:gust", {
-    sprite = asset.sprite("bn5:gust"),
+gust.kind = common.make_kind("gust", {
+    sprite = asset.sprite("gust"),
     is = collision.pull,
     hits = collision.hits_navis,
     stopped_by = 0,

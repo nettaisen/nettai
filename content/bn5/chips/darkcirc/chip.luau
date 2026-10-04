@@ -8,7 +8,7 @@
 local circgun = require("../circgun/circgun")
 
 return define.chip {
-    id = "bn5:darkcirc",
+    id = "darkcirc",
     codes = { "R" },
     element = "null",
     family = "cursor",

@@ -18,18 +18,18 @@ local charged_chips = require("../../weapons/charged-chip")
 local souls = require("../../../../rules/souls/system")
 
 return define.form {
-    id = "bn5:shadowsoul",
+    id = "shadowsoul",
     soul = { number = 8, family = "invisible" },
     change = souls.action,
     revert = souls.revert,
-    sprite = asset.sprite("bn5:shadowsoul"),
+    sprite = asset.sprite("shadowsoul"),
     element = "null",
     buster_bonus = 0,
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         -- Routine 0x18 (0x0800F520, empty: the charged chip is the chip with its charge), the charge table's row 0x18.
-        a_charge = charged_chips.routine("bn5:shadowsoul/a-charge", { 30, 30, 30, 30, 30, 70 }),
+        a_charge = charged_chips.routine("shadowsoul/a-charge", { 30, 30, 30, 30, 30, 70 }),
         back_special = back.weapon,
     },
     charged_chips = { { family = "sword", damaging = false, plain = true } },
@@ -39,8 +39,8 @@ return define.form {
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 0x16-0x1B, Team Colonel's
     -- souls'); in its Chaos Unison look while the chaos charge is armed (0x080125F6: the palette 11 on).
     mugshot = {
-        normal = asset.mugshot("bn5:shadowsoul"),
-        variant = { normal = asset.mugshot("bn5:shadowsoul-chaos") },
+        normal = asset.mugshot("shadowsoul"),
+        variant = { normal = asset.mugshot("shadowsoul-chaos") },
     },
     buster_arm = { anim = 0 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 8 of category 0).

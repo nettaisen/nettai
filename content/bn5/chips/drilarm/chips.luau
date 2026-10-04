@@ -7,7 +7,7 @@ local drill = require("./drill")
 -- DrilArm1 (BN5 chip 0x048): the navi's arm becomes a drill and two drills grind the two panels ahead for 24
 -- ticks plus 10: BN6's DrilArm (action 0x4F, BN6's 0x2E) as BN5's (chips/drilarm/drill).
 local drilarm1 = define.chip {
-    id = "bn5:drilarm1",
+    id = "drilarm1",
     codes = { "A", "J", "W" },
     element = "null",
     family = "break",
@@ -25,7 +25,7 @@ local drilarm1 = define.chip {
 -- DrilArm2 (BN5 chip 0x049): the navi's arm becomes a drill and two drills grind the two panels ahead for 24
 -- ticks plus 10: BN6's DrilArm (action 0x4F, BN6's 0x2E) as BN5's (chips/drilarm/drill).
 local drilarm2 = define.chip {
-    id = "bn5:drilarm2",
+    id = "drilarm2",
     codes = { "D", "L", "S" },
     element = "null",
     family = "break",
@@ -43,7 +43,7 @@ local drilarm2 = define.chip {
 -- DrilArm3 (BN5 chip 0x04a): the navi's arm becomes a drill and two drills grind the two panels ahead for 24
 -- ticks plus 10: BN6's DrilArm (action 0x4F, BN6's 0x2E) as BN5's (chips/drilarm/drill).
 local drilarm3 = define.chip {
-    id = "bn5:drilarm3",
+    id = "drilarm3",
     codes = { "I", "P", "Z" },
     element = "null",
     family = "break",

@@ -14,7 +14,7 @@ export type State = {
     timer: number,
 }
 
-local SOUND = asset.sound("bn5:fade")
+local SOUND = asset.sound("fade")
 -- How long it stands (to 0), when the image leaves (ticks left), and the flash after.
 local STAND, IMAGE_AT, FLASH = 0x17, 9, 0x78
 -- MegaMan's dark palette (0x0800DE82), and how far ahead the image slides a tick (pixels).
@@ -102,7 +102,7 @@ local function image_init(me: Object)
 end
 
 drive_end.image = define.kind {
-    id = "bn5:darkinvs/image",
+    id = "darkinvs/image",
     pool = "actor",
     -- 0x080BA71C.
     update = function(me: Object)
@@ -164,6 +164,6 @@ local function update(me: Object, s: State)
     me:exit_attack()
 end
 
-drive_end.action = define.action { id = "bn5:darkinvs/drive-end", state = { timer = "u16" }, update = update }
+drive_end.action = define.action { id = "darkinvs/drive-end", state = { timer = "u16" }, update = update }
 
 return drive_end

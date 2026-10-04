@@ -29,9 +29,9 @@
 //! "canodumb" = { name = "..." }
 //! ```
 //!
-//! A table writes every id in full, as the modules do (docs/design/
-//! rules-in-luau.md, the flat namespace), each of its pack's; a load merges
-//! its games' tables ([`load_for`]).
+//! A table names its game's definitions by their ids, as the game's
+//! modules do (local to the game: `cannon`; docs/design/rules-in-luau.md,
+//! the namespace).
 //!
 //! A line break in a description or a message is `\n`. A translated
 //! description may have another number of lines than the own language's:
@@ -112,17 +112,15 @@ pub fn languages(dir: &Path) -> Vec<String> {
     out
 }
 
-/// What is wrong with game `root`'s table against the definitions: an id
-/// no definition has, a form's strings for a
+/// What is wrong with a game's table against its definitions: an id no
+/// definition has, a form's strings for a
 /// form that isn't a Cross (nothing shows them), a string with a combining
 /// mark (write the composed character); and in the own language's (`own`),
-/// a chip, navi or Cross of the folder's game without a name, which a
-/// frontend would show by its id. (A string may be empty: the invalid
+/// a chip, navi or Cross without a name, which a frontend would show by
+/// its id. (A string may be empty: the invalid
 /// chip's name is, and the Japanese games print no description for some
 /// chips.)
-pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
-    let _ = root;
-    let ours = |_key: &str| true;
+pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
     // The Crosses: the forms the navis' Cross windows offer (their form
     // sets' `crosses`), whose strings the window shows.
     let crosses: std::collections::BTreeSet<FormHandle> = defs
@@ -182,27 +180,27 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
     }
     if own {
         let named = |n: Option<&Option<String>>| n.is_some_and(|n| n.is_some());
-        for d in defs.chips.iter().filter(|d| ours(&d.key)) {
+        for d in &defs.chips {
             if !named(s.chip(&d.key).map(|c| &c.name)) {
                 unknown.push(format!("chips.{}: the content's own language names every chip", d.key));
             }
         }
-        for d in defs.navis.iter().filter(|d| ours(&d.key)) {
+        for d in &defs.navis {
             if !named(s.navi(&d.key).map(|n| &n.name)) {
                 unknown.push(format!("navis.{}: the content's own language names every navi", d.key));
             }
         }
-        for (_, d) in defs.forms.iter().enumerate().filter(|(i, d)| ours(&d.key) && crosses.contains(&FormHandle(*i as u16))) {
+        for (_, d) in defs.forms.iter().enumerate().filter(|(i, _)| crosses.contains(&FormHandle(*i as u16))) {
             if !named(s.form(&d.key).map(|f| &f.name)) {
                 unknown.push(format!("forms.{}: the content's own language names every Cross", d.key));
             }
         }
-        for d in defs.patch_cards.iter().filter(|d| ours(&d.key)) {
+        for d in &defs.patch_cards {
             if !named(s.patch_card(&d.key).map(|c| &c.name)) {
                 unknown.push(format!("patch-cards.{}: the content's own language names every patch card", d.key));
             }
         }
-        for d in defs.navicust_programs.iter().filter(|d| ours(&d.key)) {
+        for d in &defs.navicust_programs {
             if !named(s.navicust_program(&d.key).map(|c| &c.name)) {
                 unknown.push(format!("navicust-programs.{}: the content's own language names every NaviCust program", d.key));
             }
@@ -236,7 +234,7 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
             match load(&pack, &lang) {
                 Ok(Some(mut s)) => {
                     s.chips.retain(|k, _| !unported.contains(k));
-                    for problem in check(&s, &game, &c.defs, lang == OWN) {
+                    for problem in check(&s, &c.defs, lang == OWN) {
                         r.error(&at, problem);
                     }
                 }

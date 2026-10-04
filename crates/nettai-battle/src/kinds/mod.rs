@@ -257,8 +257,8 @@ pub fn shift_damage_carry(b: &mut Battle) {
 pub fn chip_damage_formula(b: &Battle, id: nettai_content_api::ChipHandle, side: u8, formula: &crate::content::DamageFormula) -> u16 {
     use crate::content::DamageFormula as F;
     // BN5's: a fixed damage in the battle flag 0x40 mode.
-    if let F::SpNavi { per_player_gauges: Some(d), .. } | F::Count { per_player_gauges: Some(d), .. } = formula
-        && b.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0
+    if let F::SpNavi { operation_battle: Some(d), .. } | F::Count { operation_battle: Some(d), .. } = formula
+        && b.round.flags & crate::battle::battle_flags::OWN_GAUGES != 0
     {
         return *d;
     }
@@ -307,7 +307,7 @@ fn opponent_hp(b: &Battle, side: u8) -> u16 {
 /// half, to 128 by seven eighths, to 255 short of full; a full gauge (or
 /// more) gives 10.
 pub(crate) fn gauge_damage(b: &Battle, side: u8) -> u16 {
-    let gauge = if b.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0 {
+    let gauge = if b.round.flags & crate::battle::battle_flags::OWN_GAUGES != 0 {
         b.sides[side as usize & 1].gauge as u32 + 0x1500
     } else {
         b.gauge.value as u32
@@ -329,7 +329,7 @@ pub(crate) fn gauge_damage(b: &Battle, side: u8) -> u16 {
 /// none of `sub_8010B78`'s 0x1500): 100 × level / 95 below level 96, 100 to
 /// level 126, nothing from 127.
 fn gauge_level_damage(b: &Battle, side: u8, base: u16) -> u16 {
-    let gauge = if b.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0 {
+    let gauge = if b.round.flags & crate::battle::battle_flags::OWN_GAUGES != 0 {
         b.sides[side as usize & 1].gauge as u32
     } else {
         b.gauge.value as u32

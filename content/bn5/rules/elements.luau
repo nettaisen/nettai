@@ -5,7 +5,7 @@
 -- as its record has it (0x0800FE72, BN6's `sub_80126E4` without `byte_80129E4`).
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
-return define.rules("bn5:elements", {
+return define.rules("elements", {
     weakness = {
         null = { 0, 0, 0, 0, 0, 0 },
         fire = { 0, 0, 1, 0, 0, 0 },

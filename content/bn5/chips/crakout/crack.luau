@@ -20,8 +20,8 @@ export type State = {
     timer: number,
 }
 
-local SPRITE = asset.sprite("bn5:dust")
-local SOUND = asset.sound("bn5:bblstar1")
+local SPRITE = asset.sprite("dust")
+local SOUND = asset.sound("bblstar1")
 
 -- The patterns (0x080C7818's rows, by the chip's subtype): { dx, dy } from the panel ahead, dx toward the navi's
 -- front.
@@ -74,7 +74,7 @@ local function init(me: Object)
 end
 
 crack.kind = define.kind {
-    id = "bn5:crakout/crack",
+    id = "crakout/crack",
     pool = "attack",
     -- 0x080C7704.
     update = function(me: Object)

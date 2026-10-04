@@ -9,6 +9,7 @@
 
 local data = require("./data")
 local panels = require("./panels")
+local operation_battle = require("../../lib/operation_battle")
 
 local place = {}
 
@@ -377,7 +378,7 @@ local SWING_REACH: { number } = { 8, 3, 7, 10, 22, 6, 15, 22, 10, 6, 0, 0, 0, 0x
 
 -- Class 8's chip: NeoVari (chip 0xD9, which 0x0802A342 and 0x0802A360 test), or any other (VarSwrd's row).
 local function neovari(chip: Chip): boolean
-    return chip.id == "bn5:neovari"
+    return chip.id == "neovari"
 end
 
 -- 0x0802A330 (class 8, VarSwrd's and NeoVari's): the side's sword pick (`sub_802E070` +0x12, which the sword reads)
@@ -633,10 +634,10 @@ end
 
 -- The element traps (chips 0x8C to 0x8F), which class 23 may set over one another.
 local ELEMENT_TRAPS: { [string]: boolean } = {
-    ["bn5:antifire"] = true,
-    ["bn5:antiwatr"] = true,
-    ["bn5:antielec"] = true,
-    ["bn5:antiwood"] = true,
+    ["antifire"] = true,
+    ["antiwatr"] = true,
+    ["antielec"] = true,
+    ["antiwood"] = true,
 }
 
 -- 0x0802A9B4 (class 23, the traps): the navi's side holds no defensive chip (`sub_802CE78`), or an element trap.
@@ -849,7 +850,7 @@ function place.step(navi: Object, s: State): boolean
     s.place_busy = true
     local class = record(chip_of(s)).class
     if class == 7 then
-        if battle.per_player_gauges() then
+        if operation_battle() then
             run(0, navi, s)
         else
             local step = CLASS_7[s.place_step]

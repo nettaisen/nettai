@@ -9,13 +9,13 @@ local common = require("@exelib/bassanly/navi")
 local effects = require("../../lib/effects")
 local shot = require("./shot")
 
-local SPRITE = asset.sprite("bn5:bass")
+local SPRITE = asset.sprite("bass")
 
 return common.make {
-    id = "bn5:bassanly/navi",
+    id = "bassanly/navi",
     sprite = SPRITE,
     cloak = { sprite = SPRITE, stepping = "while_dimmed", anim_offset = 0x10 },
-    sounds = { appear = asset.sound("bn5:appear"), raise = asset.sound("bn5:bass-anly") },
+    sounds = { appear = asset.sound("appear"), raise = asset.sound("bass-anly") },
     anims = { raise = 9, stance = 0xA, fire = 0xB, fire_loop = 0xC, rest = 0xD },
     arm = { attach = attachment.attach, look = attachment.look { sprite = SPRITE, palette = 0 }, anim = 0x24 },
     smoke = effects.smoke,

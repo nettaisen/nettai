@@ -3,10 +3,10 @@
 -- `pt_801EF84`).
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
-return define.rules("bn5:banners", {
+return define.rules("banners", {
     holding = {
-        asset.banner("bn5:program-advance"),
-        asset.banner("bn5:hit-damage-judge"),
-        asset.banner("bn5:program-advance-empty"),
+        asset.banner("program-advance"),
+        asset.banner("hit-damage-judge"),
+        asset.banner("program-advance-empty"),
     },
 })

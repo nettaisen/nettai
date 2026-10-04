@@ -1,11 +1,12 @@
 --!strict
 -- BugCurse's curse (BN5's attack object #0x80, 0x080D6534; BN5's own): on the enemy navi's panel, shown (sprite 0C-3F,
--- a sound), it waits 59 ticks, then over 5 ticks (3 in the battle flag 0x40 mode) hits the panel once a tick with
+-- a sound), it waits 59 ticks, then over 5 ticks (3 in the operation battle) hits the panel once a tick with
 -- a bug each (0x080D6644; 0x080D664E in that mode): a one-tick hit (breaking, hitting navis, no spark, running while
 -- dimmed) carrying the bug code and its argument. Then its controller (./controller), which waits on it, moves on.
 
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
+local operation_battle = require("../../lib/operation_battle")
 
 export type State = {
     -- The controller waiting on it (its flag, +0x4C: the controller's +0x0C).
@@ -14,11 +15,11 @@ export type State = {
 
 local curse = {}
 
-local SPRITE = asset.sprite("bn5:bug-curse")
-local SOUND = asset.sound("bn5:trap-vanish")
+local SPRITE = asset.sprite("bug-curse")
+local SOUND = asset.sound("trap-vanish")
 -- Its wait before the bugs.
 local WAIT = 0x3A
--- The bugs it hits with, a tick each (the code in the low byte, its argument in the high), and in the battle flag 0x40
+-- The bugs it hits with, a tick each (the code in the low byte, its argument in the high), and in the operation battle
 -- mode.
 local BUGS: { number } = { 0x0124, 0x1418, 0x1419, 0x04FF, 0x04FE }
 local BUGS_PER_PLAYER: { number } = { 0x1218, 0x04F9, 0x0814 }
@@ -66,10 +67,10 @@ local function wait(me: Object)
     end
 end
 
--- Action 4 (0x080D65E8): a bug a tick, 5 of them (3 in the battle flag 0x40 mode); then the controller moves on, and
+-- Action 4 (0x080D65E8): a bug a tick, 5 of them (3 in the operation battle); then the controller moves on, and
 -- it goes.
 local function bugs(me: Object)
-    local per_player = battle.per_player_gauges()
+    local per_player = operation_battle()
     if me.phase_init == 0 then
         me.timer = if per_player then 3 else 5
         me.timer2 = 0
@@ -121,7 +122,7 @@ local function init(me: Object)
 end
 
 curse.kind = define.kind {
-    id = "bn5:bugcurse/curse",
+    id = "bugcurse/curse",
     pool = "attack",
     state = { controller = "object" },
     -- 0x080D6534.

@@ -417,6 +417,10 @@ struct Loader {
     /// Modules being loaded, innermost last (for relative paths and
     /// cycles).
     stack: Vec<String>,
+    /// The modules' environments (none until the globals are installed).
+    envs: Option<define::Environments>,
+    /// The support packs: their modules run in the support environment.
+    support: std::collections::HashSet<String>,
 }
 
 fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Result<LuaValue> {
@@ -441,8 +445,17 @@ fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Res
     };
     verify::check(path, &bytecode).map_err(|v| mlua::Error::runtime(v.to_string()))?;
     loader.borrow_mut().compiled.modules.insert(path.to_string(), (source.as_str().into(), bytecode.clone()));
-    let chunk =
-        lua.load(&bytecode[..]).set_name(format!("@{path}.luau")).set_mode(ChunkMode::Binary).into_function()?;
+    // (Its pack's environment: a support pack's lacks the game's context.)
+    let env = {
+        let l = loader.borrow();
+        let support = keys::root_of(path).is_some_and(|p| l.support.contains(p));
+        l.envs.as_ref().map(|e| if support { e.support.clone() } else { e.game.clone() })
+    };
+    let mut chunk = lua.load(&bytecode[..]).set_name(format!("@{path}.luau")).set_mode(ChunkMode::Binary);
+    if let Some(env) = env {
+        chunk = chunk.set_environment(env);
+    }
+    let chunk = chunk.into_function()?;
     loader.borrow_mut().stack.push(path.to_string());
     let result = chunk.call::<LuaValue>(());
     loader.borrow_mut().stack.pop();
@@ -471,6 +484,13 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
         loaded: BTreeMap::new(),
         compiled: Compiled::default(),
         stack: Vec::new(),
+        envs: None,
+        support: pack
+            .packs
+            .values()
+            .filter(|p| p.kind == nettai_content_api::PackKind::Support)
+            .map(|p| p.id.clone())
+            .collect(),
     }));
     let collector = Rc::new(RefCell::new(define::Collector::open()));
     let module = {
@@ -498,6 +518,10 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
         .map_err(err)?
     };
     lua.globals().set("require", require).map_err(err)?;
+    // Each pack's environment (a support pack's without the game's
+    // context), every global in place.
+    let envs = define::environments(&lua).map_err(err)?;
+    loader.borrow_mut().envs = Some(envs);
     // Libraries and globals become read-only; the budget stops runaway
     // loops (also while loading).
     lua.sandbox(true).map_err(err)?;

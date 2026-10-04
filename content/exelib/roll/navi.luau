@@ -228,7 +228,7 @@ function roll.make(spec: Spec): Roll
     -- `sub_80C0938`: find it, or leave.
     local function aim(me: Object)
         local x, y
-        if spec.tracked_target and battle.per_player_gauges() then
+        if spec.tracked_target and battle.own_gauges() then
             x, y = spec.tracked_target(me)
         else
             x, y = target(me)

@@ -26,11 +26,11 @@ export type State = {
 
 local shadoman = {}
 
-local SPRITE = asset.sprite("bn5:shadowman")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_THROW = asset.sound("bn5:boomerang")
+local SPRITE = asset.sprite("shadowman")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_THROW = asset.sound("boomerang")
 -- The effect table's row 2: the puff he vanishes in, 32 pixels up.
-local PUFF = define.effect { sprite = asset.sprite("bn5:small-puff"), anim = 1, palette = 0 }
+local PUFF = define.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 }
 -- By the level (0x0800DA8A: navi 8's count, 1, by 0x0800DAE8's row): SP's 2, DS's 3.
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 2, 3 }
 -- Where the three appear (0x080BA158): the first panel of his user's side, by side, as { require, forbid }.
@@ -312,7 +312,7 @@ local function init(me: Object)
 end
 
 shadoman.kind = define.kind {
-    id = "bn5:shadoman/navi",
+    id = "shadoman/navi",
     pool = "actor",
     state = {
         controller = "object",

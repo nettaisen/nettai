@@ -52,13 +52,14 @@ export type Lifecycle = "init" | "update" | "destroy" | "finish"
 export type Shadow = "hidden" | "ground" | "with_sprite"
 export type ActorType = "virus" | "navi" | "player"
 export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out" | "worried"
--- A side's SELECT or Cross special in progress (battle flag 0x40 mode).
+-- A side's SELECT or Cross special in progress (each side its own gauge:
+-- `battle.own_gauges`).
 -- A side's special in progress: the SELECT special, or a system's takeover
 -- of the side's navi (BN6's Cross special).
 export type SideSpecial = "none" | "select" | "takeover"
 -- A HUD part a chip's effect hides and shows: the custom gauge (draw task
--- 4), the emotion window (14), the battle flag 0x40 mode's gauge drawn by
--- its levels (17).
+-- 4), the emotion window (14), a side's own gauge drawn by its levels (17,
+-- `battle.own_gauges`).
 export type HudPart = "gauge" | "emotion_window" | "level_gauge"
 export type PanelType =
     "missing"
@@ -1091,8 +1092,12 @@ declare battle: {
     local_side: () -> number,
     -- Custom screens opened so far.
     turn: () -> number,
-    -- Battle flag 0x40: each player has a custom gauge (not in netbattles).
-    per_player_gauges: () -> boolean,
+    -- Battle flag 0x40 (the engine's `OWN_GAUGES`): each side has its own
+    -- custom gauge. Each game's mode of its own: BN5's operation battle
+    -- (content/bn5/lib/operation_battle), BN6's chip gate battle
+    -- (content/bn6/lib/chip_gate_battle). Never in a netbattle without
+    -- chip gates.
+    own_gauges: () -> boolean,
     -- Battle flag 1: the fight is on (collision is live).
     fighting: () -> boolean,
     -- Battle flag 2: the custom gauge is full.
@@ -1176,8 +1181,8 @@ declare battle: {
     player: (side: number) -> Object?,
     -- A side's combatants still in, in slot order.
     alive_actors: (side: number) -> { Object },
-    -- `sub_802EFEE`: the actor `side` tracks in the battle flag 0x40 mode
-    -- (`per_player_gauges`), if any.
+    -- `sub_802EFEE`: the actor `side` tracks when each side has its own
+    -- gauge (`own_gauges`), if any.
     tracked: (side: number) -> Object?,
     -- The objects of a kind in the update list, in update order, whatever
     -- their lifecycle state (the game's walks of the list).
@@ -1215,7 +1220,7 @@ declare battle: {
     -- A side's slow and fast gauge timers (`sub_802E070`+0x3C, +0x3A).
     set_gauge_speed_ticks: (side: number, slow: number, fast: number) -> (),
     -- `sub_8010B78`: the damage a side's custom gauge gives (its own gauge
-    -- in the battle flag 0x40 mode, else the shared one).
+    -- when each side has one, `own_gauges`, else the shared one).
     gauge_damage: (side: number) -> number,
     -- A side's sword pick (`sub_802E070`+0x12): the swing a variable sword
     -- makes for a navi no buttons drive (BN5's computer navi draws it).
@@ -1877,17 +1882,17 @@ export type Weapon = WeaponSpec
 -- of the user's HP; half the opponent's max HP; a link navi's own chip's,
 -- by its level; by a count of the user's side (BN5's DS navi chips, Roll
 -- SP's, Django SP's: `by_count[n]`, the last for more). BN5's SP and count
--- formulas give `per_player_gauges` in the battle flag 0x40 mode.
+-- formulas give `operation_battle` in its operation battle.
 export type DamageFormula =
     { formula: "opponent_hp" }
-    | { formula: "sp_navi", slot: string, by_time: { number }, per_player_gauges: number? }
+    | { formula: "sp_navi", slot: string, by_time: { number }, operation_battle: number? }
     | { formula: "gauge" }
     | { formula: "gauge_level", base: number }
     | { formula: "hp_lost", cap: number? }
     | { formula: "hp_last_digits" }
     | { formula: "half_opponent_max_hp" }
     | { formula: "navi_level", base: number, per_level: number }
-    | { formula: "count", of: DamageCount, by_count: { number }, per_player_gauges: number? }
+    | { formula: "count", of: DamageCount, by_count: { number }, operation_battle: number? }
 
 -- What a count formula counts: a side statistic, the side's panels of a
 -- type, the turns before this one.

@@ -13,7 +13,7 @@ export type State = {
     stays: boolean,
 }
 
-local SPRITE = asset.sprite("bn5:gridman")
+local SPRITE = asset.sprite("gridman")
 
 -- 0x080E6D60: on its panel's center, 32 pixels up the field and 32 down, drawn with its sprite.
 local function init(me: Object)
@@ -47,7 +47,7 @@ local function tick(me: Object)
 end
 
 grid.kind = define.kind {
-    id = "bn5:gridman/grid",
+    id = "gridman/grid",
     pool = "effect",
     state = { stays = "bool" },
     -- 0x080E6D3C.

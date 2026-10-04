@@ -8,7 +8,7 @@ local bombs = require("../../lib/bombs/bombs")
 local seed = require("../../lib/bombs/seed")
 
 return define.chip {
-    id = "bn5:lavaseed",
+    id = "lavaseed",
     codes = { "H", "K", "P" },
     element = "null",
     family = "null",

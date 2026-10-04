@@ -8,7 +8,7 @@ local common = require("@exelib/metrknuk/controller")
 local fist = require("./fist")
 
 return common.make {
-    id = "bn5:metrknuk/controller",
+    id = "metrknuk/controller",
     fist = fist.spawn,
     first_on_body = false,
     area_fallback = false,

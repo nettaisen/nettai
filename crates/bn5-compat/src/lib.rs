@@ -175,8 +175,7 @@ pub struct StageEntry {
 }
 
 /// What BN5's NaviStats name by number (records.toml): weapons by routine
-/// number, projectile variants by row, barriers by type. A key without a
-/// root is BN5's; a qualified one another root's (`bn6:barrier/10`).
+/// number, projectile variants by row, barriers by type, each by its key.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RecordNumbers {
@@ -212,7 +211,8 @@ pub struct PatchCardNumbers {
 
 impl PatchCardNumbers {
     /// patch-cards.toml: the cards by key at the top, the versions' own in
-    /// their tables (`[protoman]`, `[colonel]`). (An empty file: none.)
+    /// their tables (`[by-version.protoman]`, `[by-version.colonel]`). (An
+    /// empty file: none.)
     fn parse(text: &str) -> Result<PatchCardNumbers, String> {
         let table: toml::Table = toml::from_str(text).map_err(|e| e.to_string())?;
         let mut out = PatchCardNumbers::default();
@@ -221,10 +221,19 @@ impl PatchCardNumbers {
         };
         for (k, v) in &table {
             match (k.as_str(), v) {
-                ("protoman" | "colonel", toml::Value::Table(t)) => {
-                    let map = if k == "protoman" { &mut out.protoman } else { &mut out.colonel };
-                    for (k, v) in t {
-                        map.insert(k.clone(), number(k, v)?);
+                ("by-version", toml::Value::Table(versions)) => {
+                    for (version, t) in versions {
+                        let map = match version.as_str() {
+                            "protoman" => &mut out.protoman,
+                            "colonel" => &mut out.colonel,
+                            _ => return Err(format!("by-version.{version}: BN5's versions are protoman and colonel")),
+                        };
+                        let toml::Value::Table(t) = t else {
+                            return Err(format!("by-version.{version} is {t}, not a table of cards"));
+                        };
+                        for (k, v) in t {
+                            map.insert(k.clone(), number(k, v)?);
+                        }
                     }
                 }
                 _ => {
@@ -296,7 +305,7 @@ pub struct Compat {
     pub stages: BTreeMap<String, StageEntry>,
     /// records.toml: what NaviStats name by number.
     pub records: RecordNumbers,
-    /// kinds.toml: the object kinds' numbers, by qualified key.
+    /// kinds.toml: the object kinds' numbers, by key.
     pub kinds: BTreeMap<String, KindEntry>,
     /// text.toml: the text encodings.
     pub text: Text,

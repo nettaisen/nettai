@@ -311,7 +311,7 @@ pub struct PlayerView<'a> {
     /// The folder's Regular chip hasn't been used yet.
     pub regular_pending: bool,
     /// Battle flag 0x40 (per-player gauges; never set in netbattles).
-    pub per_player_gauges: bool,
+    pub own_gauges: bool,
     /// Battle effects 0x200000 (random battles).
     pub random_battle: bool,
     /// A netbattle's last turns (presentation: the window's block).
@@ -1561,7 +1561,7 @@ impl PlayerView<'_> {
         let in_soul = self.library.form_is_soul(self.stats.form);
         let mood = self.stats.mood;
         let hidden = !in_soul && self.emotion != Emotion::Angry && (mood == 0 || (mood != 0xFF && mood < 65));
-        self.library.has_souls(self.stats.navi) && self.souls.button && !self.per_player_gauges && !hidden
+        self.library.has_souls(self.stats.navi) && self.souls.button && !self.own_gauges && !hidden
     }
 
 }

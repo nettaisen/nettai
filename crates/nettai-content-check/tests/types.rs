@@ -18,8 +18,9 @@ fn the_content_type_checks_against_the_core_api() {
 
 /// docs/design/content-model-v2.md §4.0: a listed module or a require of
 /// no module, a folder that is no pack, a require of another game's module
-/// (game to game, support to game) and a cycle of support packs fail the
-/// check with their paths.
+/// (game to game, support to game), a support pack reaching for the game's
+/// context by itself and a cycle of support packs fail the check with
+/// their paths.
 #[test]
 fn what_the_packs_refuse() {
     let dir = std::env::temp_dir().join(format!("nettai-check-{}", std::process::id()));
@@ -33,7 +34,10 @@ fn what_the_packs_refuse() {
     write("h/manifest.toml", "id = \"h\"\nkind = \"game\"\n");
     write("h/x.luau", "return {}\n");
     write("lib/manifest.toml", "id = \"lib\"\nkind = \"support\"\nuses = [\"base\"]\n");
-    write("lib/x.luau", "local g = require(\"@g/there\")\nlocal _ = asset.sprite(\"g:x\")\nreturn {}\n");
+    write(
+        "lib/x.luau",
+        "local g = require(\"@g/there\")\nlocal _ = asset.sprite(\"x\")\nlocal s = system.state\nreturn define.kind { id = \"x\" }\n",
+    );
     write("base/manifest.toml", "id = \"base\"\nkind = \"support\"\nuses = [\"lib\"]\n");
     write("stray/x.luau", "return {}\n");
     let problems = nettai_content_check::reach(&dir).unwrap();
@@ -42,7 +46,9 @@ fn what_the_packs_refuse() {
     has("g/there.luau: require(\"./nowhere\"): no module g/nowhere.luau");
     has("g/there.luau: require(\"@h/x\"): h is a game pack, which no other pack requires");
     has("lib/x.luau: require(\"@g/there\"): g is a game pack, which no other pack requires");
-    has("lib/x.luau: support pack lib names an asset");
+    has("lib/x.luau:2: support pack lib reaches for the game's context by itself, `asset`");
+    has("lib/x.luau:3: support pack lib reaches for the game's context by itself, `system`");
+    has("lib/x.luau:4: support pack lib reaches for the game's context by itself, `id = \"x\"`");
     has("its uses make a cycle: base uses lib uses base");
     has("stray/: no manifest.toml; a folder of content/ is a pack");
     std::fs::remove_dir_all(&dir).ok();

@@ -1,5 +1,5 @@
 --!strict
--- The Cross special's chips (`sub_802D5A8`, the battle flag 0x40 mode's
+-- The Cross special's chips (`sub_802D5A8`, the chip gate battle's
 -- berserk controller): a row by the hundreds of the navi's base max HP
 -- (the first up to 199, the last from 1000), and a chip of it at random.
 -- LifeSrd, in the last two rows, strikes with VarSwrd's damage

@@ -17,7 +17,7 @@ export type State = {
 
 local HIT_PARAM = 0x94
 local THROW_ANIM = 6
-local SOUND = asset.sound("bn5:minibomb-throw")
+local SOUND = asset.sound("minibomb-throw")
 local THROW_AT, THROW_TICKS, STAND_TICKS = 9, 21, 30
 -- The die leaves this high (16.16), for the panel this far ahead.
 local UP, REACH = 24 * 0x1_0000, 3
@@ -73,7 +73,7 @@ local function stand(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "bn5:numbersoul/charge/action",
+    id = "numbersoul/charge/action",
     state = { timer = "u16" },
     -- 0x080EE77C
     update = function(me: Object, s: State)
@@ -96,7 +96,7 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "bn5:numbersoul/charge",
+    id = "numbersoul/charge",
     -- The charge table's row 7 (0x0801CAB2); Charge 5 reads on into row 8's first entry.
     charge_ticks = { 130, 125, 120, 115, 110, 110 },
     setup = setup,

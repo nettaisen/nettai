@@ -13,6 +13,7 @@ local buster = require("../../../../lib/buster")
 local plain_buster = require("../buster/weapon")
 local flying_shot = require("../../../../objects/flying-shot/flying_shot")
 local weapon = require("../../../../lib/weapon")
+local chip_gate_battle = require("../../../../lib/chip_gate_battle")
 
 export type State = {
     -- Ticks into the shot, then ticks of recovery (AIAttackVars+0x10).
@@ -80,7 +81,7 @@ function falzar_beast_buster.beast_setup(navi: Object, over: string, volleys: Vo
     navi.extra = 0
     navi.attack_lockout = 0
     navi.marker = 0
-    local cross_special = battle.per_player_gauges() and battle.side_special(navi.alliance) == "takeover"
+    local cross_special = chip_gate_battle() and battle.side_special(navi.alliance) == "takeover"
     if cross_special or battle.navi(navi.alliance).form.id == over then
         volleys.cycle = 1
         volleys.repeats = REPEATS

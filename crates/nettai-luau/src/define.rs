@@ -152,6 +152,90 @@ pub(crate) fn install_assets(
     Ok(())
 }
 
+/// What a game's modules have and a support pack's don't: the playing
+/// game's context, which reaches a support pack only as its callers'
+/// arguments (docs/design/content-model-v2.md §4.0). `asset` names the
+/// game's asset pack; `system` is the running system of the game's
+/// ruleset.
+pub(crate) const GAME_CONTEXT: [&str; 2] = ["asset", "system"];
+
+/// The environments modules run in: a game pack's modules', and a support
+/// pack's, which lacks [`GAME_CONTEXT`] (a module's closures keep its
+/// environment, so a support pack's function lacks it whoever calls it).
+/// Both are read-only copies of the globals, which hold neither `define`
+/// nor the game's context: Luau resolves a module's globals against the
+/// VM's globals when it loads, so what one environment lacks must be
+/// missing there too.
+pub(crate) struct Environments {
+    pub game: Table,
+    pub support: Table,
+}
+
+/// The module of the content function calling (stack level 1), for
+/// messages.
+fn caller(lua: &Lua) -> String {
+    lua.inspect_stack(1, |d| d.source().source.map(|s| s.trim_start_matches('@').trim_end_matches(".luau").to_string()))
+        .flatten()
+        .unwrap_or_else(|| "a support pack's module".to_string())
+}
+
+/// Take `define` and the game's context out of the globals, into the
+/// game's and the support packs' environments.
+pub(crate) fn environments(lua: &Lua) -> mlua::Result<Environments> {
+    let globals = lua.globals();
+    let mut own = Vec::new();
+    for name in ["define"].into_iter().chain(GAME_CONTEXT) {
+        let v: LuaValue = globals.raw_get(name)?;
+        if let LuaValue::Table(t) = &v {
+            t.set_readonly(true);
+        }
+        own.push((name, v));
+        globals.raw_set(name, LuaValue::Nil)?;
+    }
+    let copy = || -> mlua::Result<Table> {
+        let env = lua.create_table()?;
+        for pair in globals.pairs::<LuaValue, LuaValue>() {
+            let (k, v) = pair?;
+            env.raw_set(k, v)?;
+        }
+        Ok(env)
+    };
+    let game = copy()?;
+    let support = copy()?;
+    for (name, v) in own {
+        game.raw_set(name, v.clone())?;
+        if !GAME_CONTEXT.contains(&name) {
+            support.raw_set(name, v)?;
+        }
+    }
+    // (A support pack's module reaching for the game's context fails,
+    // naming itself.)
+    let meta = lua.create_table()?;
+    meta.raw_set(
+        "__index",
+        lua.create_function(|lua, (_, k): (LuaValue, LuaValue)| -> mlua::Result<LuaValue> {
+            if let LuaValue::String(s) = &k
+                && let Ok(name) = s.to_str()
+                && GAME_CONTEXT.contains(&&*name)
+            {
+                return Err(mlua::Error::runtime(format!(
+                    "{}: a support pack has no `{}`: the game's context reaches a support pack only as its callers' arguments (a maker takes its look from the game's module)",
+                    caller(lua),
+                    &*name
+                )));
+            }
+            Ok(LuaValue::Nil)
+        })?,
+    )?;
+    meta.set_readonly(true);
+    support.set_metatable(Some(meta))?;
+    for env in [&game, &support] {
+        env.set_readonly(true);
+        env.set_safeenv(true);
+    }
+    Ok(Environments { game, support })
+}
+
 /// Install `define`: a definer per registry, recording into `collector`.
 /// `module` names the module loading at the moment of a call (None outside
 /// loading).
