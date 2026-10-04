@@ -9,8 +9,8 @@
 
 local collision = require("../../rules/collision")
 local magnet = require("./magnet")
-local navi_chips = require("@common/navi-chips/navi")
-local regions = require("@common/regions")
+local navi_chips = require("@exelib/navi-chips/navi")
+local regions = require("@exelib/regions")
 
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x60).

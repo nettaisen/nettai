@@ -10,3 +10,6 @@ description = "Type-checks a Luau content pack against the content API definitio
 # the two copies' C++ symbols collide.
 [dependencies]
 luau-analyze = "0.0.1"
+# The content's packs (their manifests, their declarations, what a pack may
+# require) and its requires' paths (`keys::resolve`): no mlua there.
+nettai-content-api = { path = "../nettai-content-api" }

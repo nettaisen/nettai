@@ -6,7 +6,7 @@
 -- HP), and waits for them; then the controller moves on. Each appears, stands 20 ticks (and its delay), vanishes in
 -- a puff, rises 32 pixels, throws a shuriken (chips/shadoman/shuriken) at its target, waits 20 ticks and blinks out.
 
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("@exelib/navi-chips/navi")
 local shuriken = require("./shuriken")
 
 export type State = {

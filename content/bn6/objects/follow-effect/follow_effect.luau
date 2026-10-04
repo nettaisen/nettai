@@ -1,6 +1,6 @@
 --!strict
 -- A follow effect (the original's effect object #0x31, `sub_80E3D68`): the
--- shared follow effect (@common/follow-effect), BN6's kind: shown as its
+-- shared follow effect (@exelib/follow-effect), BN6's kind: shown as its
 -- owner is, and its looks (the original's Param1, `off_80E3E10`):
 --
 -- - "none" (looks 0 to 2): nothing more;
@@ -19,7 +19,7 @@
 -- the action its owner was in when it came. Its flip and a palette to add
 -- are its spawner's (Param2, Param3). See docs/engine/chips.md §3.6.36.
 
-local common = require("@common/follow-effect/follow_effect")
+local common = require("@exelib/follow-effect/follow_effect")
 
 local follow_effect = {}
 

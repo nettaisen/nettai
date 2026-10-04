@@ -1,10 +1,10 @@
 --!strict
 -- BN6's trap chips' dimming controller (the original's effect object #0x2A,
--- `sub_80E34C0`): the shared controller (@common/traps/controller), BN6's
+-- `sub_80E34C0`): the shared controller (@exelib/traps/controller), BN6's
 -- kind. A chip's `dimming` hook is `traps.hook(trap?)` (`sub_80E353E`,
 -- `off_802CCB4[20]`): the trap the chip sets, if any.
 
-local common = require("@common/traps/controller")
+local common = require("@exelib/traps/controller")
 
 local traps = {}
 

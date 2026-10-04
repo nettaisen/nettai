@@ -1,11 +1,11 @@
 --!strict
 -- The blank shot (`megaman/blank-shot`): the original's weapon routine 2
 -- (`sub_8011ADA`) and action 0x33 (`sub_80ED748`): the shared blank shot
--- (@common/megaman/blank_shot) with BN6's buster parts and click
+-- (@exelib/megaman/blank_shot) with BN6's buster parts and click
 -- (GunDelSol's sound). See docs/engine/objects-and-player.md §B6.
 
 local buster = require("../../../../lib/buster")
-local common = require("@common/megaman/blank_shot")
+local common = require("@exelib/megaman/blank_shot")
 
 local blank_shot = {}
 

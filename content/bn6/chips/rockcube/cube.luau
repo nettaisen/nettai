@@ -1,8 +1,8 @@
 --!strict
 -- RockCube's and IceCube's dimming controller (the original's effect object #0x37, `sub_80E4634`): the shared one
--- (@common/rockcube/cube) with BN6's rock (./rock) and place sound.
+-- (@exelib/rockcube/cube) with BN6's rock (./rock) and place sound.
 
-local common = require("@common/rockcube/cube")
+local common = require("@exelib/rockcube/cube")
 local rock = require("./rock")
 
 local cube = {}

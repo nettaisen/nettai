@@ -2,7 +2,7 @@
 -- Recov10 to Recov300: the navi heals the chip's HP in the tick after it
 -- uses it (heal.luau).
 
-local heal = require("@common/recov/heal")
+local heal = require("@exelib/recov/heal")
 
 local chips = {
     define.chip {

@@ -1,11 +1,11 @@
 --!strict
 -- BN6's sonic boom (the original's attack object #0x58, `sub_80CF7F0`):
--- the shared boom (@common/swords/sonic_boom), BN6's kind and look: 16
+-- the shared boom (@exelib/swords/sonic_boom), BN6's kind and look: 16
 -- pixels up; its primary element's palette (`byte_80CF8A8`); a slash that
 -- hits navis.
 
 local collision = require("../../rules/collision")
-local common = require("@common/swords/sonic_boom")
+local common = require("@exelib/swords/sonic_boom")
 
 local sonic_boom = {}
 
