@@ -3,11 +3,10 @@
 -- in it is 00-05 (0x0800DA58[5]), his element Elec (0x0800E634 by soul); he wears nothing over it. Its weapons
 -- (0x0801CA1C's row 5, loaded by 0x0800DCA0): the buster (routine 0), the magnet's pull (0x15, ./charge), Elec chips
 -- charged with A (0x16: any Elec chip but a dimming or dark one, 0x0801090A; their damage doubled, 0x080103D0),
--- Chaos Unison's (0x35: DarkThnd).
---
--- Not yet: its B+Back (0x25: BN5's instant effect 10, immobilizing the enemies ahead).
+-- its B+Back (0x25, ./back: a glow and immobilizers on the enemies ahead), Chaos Unison's (0x35: DarkThnd).
 
 local attach_points = require("../../attach_points")
+local back = require("./back")
 local buster = require("../../weapons/buster")
 local chaos = require("../../weapons/chaos")
 local charge = require("./charge")
@@ -28,6 +27,7 @@ return define.form {
         charge_shot = charge.weapon,
         -- Routine 0x16 (0x0800F520, empty: the charged chip is the chip with the bonus), the charge table's row 0x16.
         a_charge = charged_chips.routine("bn5:magnetsoul/a-charge", { 80, 80, 80, 80, 80, 70 }),
+        back_special = back.weapon,
         -- Routine 0x35 (0x0800FA66): DarkThnd (chip 0xC1), the charge table's row 0x35.
         chaos = chaos.weapon("bn5:magnetsoul/chaos", darkthnd, { 40, 60, 90, 120, 150, 70 }),
     },

@@ -17,6 +17,7 @@ local barriers = require("../lib/barriers")
 local beat = require("../chips/beat/chip")
 local charged_shot = require("../navis/megaman/weapons/charged-shot")
 local anti_recovery = require("../chips/antirecv/controller")
+local dive_ripple = require("../objects/dive-ripple/ripple")
 local soldier = require("../objects/soldier/soldier")
 local chaos = require("./souls/chaos")
 local invalid = require("../chips/invalid/chip")
@@ -62,6 +63,8 @@ return define.roles {
         -- The NaviCust supports' controller (Rush's, Beat's and Tango's: BN5's effect object 0x74, BN6's code,
         -- lib/supports).
         support = supports.kind,
+        -- The ripple over a body under the sea's surface (effect object 0x3E: objects/dive-ripple).
+        dive_ripple = dive_ripple.kind,
     },
     statuses = {
         -- What a damage word's paralysis bit makes its hits carry, and what a counter hit lands instead of a
