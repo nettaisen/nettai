@@ -167,7 +167,9 @@ local function shoot(me: Object, s: State)
         end
     else
         for y = 3, 1, -1 do
-            shot(me, s.x, y, field.break_panel)
+            shot(me, s.x, y, function(px, py)
+                return field.break_panel(px, py)
+            end)
         end
     end
     battle.shake_camera(1, 30)
