@@ -10,7 +10,7 @@
 -- requests and the reverting state are dropped and he idles.
 
 local base = require("../../navis/megaman/forms/base")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local hooks = require("./hooks")
 
 local revert = {}

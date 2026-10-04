@@ -7,7 +7,7 @@
 -- hitting navis, hit modifier 3, no spark.
 
 local collision = require("../../rules/collision")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local regions = require("@common/regions")
 
 export type State = {
