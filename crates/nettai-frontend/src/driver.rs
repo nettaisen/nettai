@@ -583,7 +583,7 @@ mod tests {
     fn a_saved_match_plays_the_same_battle() {
         let content = nettai_match::testing::bn6_content();
         for seed in [5, 77] {
-            let drawn = nettai_match::draw::live(&content, seed, None).unwrap();
+            let drawn = nettai_match::draw::live(&content, "bn6", seed, None).unwrap();
             let text = nettai_match::write(&content, &drawn);
             let read = nettai_match::parse(&content, &text).unwrap();
             let mut a = LivePlayer::new(drawn.round(&content, seed), content.clone());
@@ -643,7 +643,7 @@ mod tests {
         let content = nettai_match::testing::bn6_content();
         let heat = content.defs.form_by_key("heatcross").unwrap();
         let heat_beast = content.defs.form_by_key("heatcross-beast").unwrap();
-        let stage = nettai_match::link_battle_stages(&content)[0];
+        let stage = nettai_match::link_battle_stages(&content, "bn6")[0];
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], 5);
@@ -749,7 +749,7 @@ mod tests {
         tweak: impl FnOnce(&Content, &mut nettai_battle::setup::NaviStats),
     ) -> (Arc<Content>, LivePlayer, Battle) {
         let content = nettai_match::testing::bn6_content();
-        let stage = nettai_match::link_battle_stages(&content)[0];
+        let stage = nettai_match::link_battle_stages(&content, "bn6")[0];
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], 5);
@@ -924,7 +924,7 @@ mod tests {
     fn a_navi_code_seals_beast_out() {
         for level in [None, Some(3)] {
             let content = nettai_match::testing::bn6_content();
-            let stage = nettai_match::link_battle_stages(&content)[0];
+            let stage = nettai_match::link_battle_stages(&content, "bn6")[0];
             let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
             let folder = folder_of(&content, &[("cannon", 0)]);
             let mut setup = live_setup(&content, settings, [folder, folder], 5);

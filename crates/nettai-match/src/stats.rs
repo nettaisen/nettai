@@ -6,8 +6,8 @@
 //!
 //! The fields, in the order they apply: `hp` sets the base HP, the maximum
 //! and the HP the round starts with together; `max_hp` and `current_hp`
-//! set those apart. Weapons, barriers, shot programs and forms are content
-//! keys (`none` for no weapon, barrier or program); `gauge` is `normal`,
+//! set those apart. Weapons, barriers, shot programs and forms are names in
+//! the match's game (`none` for no weapon, barrier or program); `gauge` is `normal`,
 //! `fast` or `slow`; `supports` lists `rush`, `beat` and `tango`, or is
 //! `bug` (the NaviCust's support bug: none, and none can be set).
 
@@ -256,9 +256,9 @@ pub fn to_toml(content: &Content, v: Value) -> toml::Value {
     match v {
         Value::Int(x) => toml::Value::Integer(x as i64),
         Value::Bool(x) => toml::Value::Boolean(x),
-        Value::Weapon(w) => toml::Value::String(w.map_or("none".into(), |h| content.defs.weapon(h).key.clone())),
-        Value::Record(r) => toml::Value::String(r.map_or("none".into(), |h| content.defs.records[h.index()].key.clone())),
-        Value::Form(f) => toml::Value::String(content.defs.form(f).key.clone()),
+        Value::Weapon(w) => toml::Value::String(w.map_or("none".into(), |h| crate::ids::local(&content.defs.weapon(h).key).into())),
+        Value::Record(r) => toml::Value::String(r.map_or("none".into(), |h| crate::ids::local(&content.defs.records[h.index()].key).into())),
+        Value::Form(f) => toml::Value::String(crate::ids::local(&content.defs.form(f).key).into()),
         Value::Gauge(g) => toml::Value::String(gauge_name(g).into()),
         Value::Supports(None) => toml::Value::String("bug".into()),
         Value::Supports(Some(n)) => toml::Value::Array(
@@ -279,9 +279,9 @@ pub fn gauge_name(g: GaugeSpeed) -> &'static str {
     }
 }
 
-/// A value of `f` from a match file.
-pub fn from_toml(content: &Content, f: &Field, v: &toml::Value) -> Result<Value, String> {
-    let key = |v: &toml::Value| v.as_str().map(str::to_string).ok_or_else(|| format!("{} takes a key, not {v}", f.name));
+/// A value of `f` from a match file of `game`.
+pub fn from_toml(content: &Content, game: &str, f: &Field, v: &toml::Value) -> Result<Value, String> {
+    let key = |v: &toml::Value| v.as_str().map(str::to_string).ok_or_else(|| format!("{} takes a name, not {v}", f.name));
     match f.kind {
         Kind::Int(max) => match v.as_integer() {
             Some(x) if (0..=max as i64).contains(&x) => Ok(Value::Int(x as u32)),
@@ -293,22 +293,22 @@ pub fn from_toml(content: &Content, f: &Field, v: &toml::Value) -> Result<Value,
             if k == "none" {
                 return Ok(Value::Weapon(None));
             }
-            content.defs.weapon_by_key(&k).map(|h| Value::Weapon(Some(h))).ok_or_else(|| format!("{}: no weapon {k:?}", f.name))
+            crate::ids::weapon(content, game, &k).map(|h| Value::Weapon(Some(h))).ok_or_else(|| format!("{}: no weapon {k:?} in {game}", f.name))
         }
         Kind::Record(ty) => {
             let k = key(v)?;
             if k == "none" {
                 return Ok(Value::Record(None));
             }
-            match content.defs.record(&k) {
+            match crate::ids::record(content, game, &k) {
                 Some(h) if content.defs.records[h.index()].record_type == ty => Ok(Value::Record(Some(h))),
                 Some(_) => Err(format!("{}: {k:?} is no {ty}", f.name)),
-                None => Err(format!("{}: no {ty} {k:?}", f.name)),
+                None => Err(format!("{}: no {ty} {k:?} in {game}", f.name)),
             }
         }
         Kind::Form => {
             let k = key(v)?;
-            content.defs.form_by_key(&k).map(Value::Form).ok_or_else(|| format!("{}: no form {k:?}", f.name))
+            crate::ids::form(content, game, &k).map(Value::Form).ok_or_else(|| format!("{}: no form {k:?} in {game}", f.name))
         }
         Kind::Gauge => match v.as_str() {
             Some("normal") => Ok(Value::Gauge(GaugeSpeed::Normal)),
@@ -335,9 +335,9 @@ pub fn from_toml(content: &Content, f: &Field, v: &toml::Value) -> Result<Value,
     }
 }
 
-/// `block` applied over `stats`, in the fields' order; the problems with
-/// it, each said.
-pub fn apply(content: &Content, block: &BTreeMap<String, toml::Value>, stats: &mut NaviStats) -> Vec<String> {
+/// `block`, of a match of `game`, applied over `stats`, in the fields'
+/// order; the problems with it, each said.
+pub fn apply(content: &Content, game: &str, block: &BTreeMap<String, toml::Value>, stats: &mut NaviStats) -> Vec<String> {
     let mut problems = Vec::new();
     for name in block.keys() {
         if field(name).is_none() {
@@ -346,7 +346,7 @@ pub fn apply(content: &Content, block: &BTreeMap<String, toml::Value>, stats: &m
     }
     for f in FIELDS {
         if let Some(v) = block.get(f.name) {
-            match from_toml(content, f, v) {
+            match from_toml(content, game, f, v) {
                 Ok(v) => (f.set)(stats, v),
                 Err(e) => problems.push(e),
             }
@@ -384,14 +384,14 @@ mod tests {
         let block = diff(&content, &base, &live);
         assert!(block.contains_key("hp"), "{block:?}");
         let mut back = base;
-        assert_eq!(apply(&content, &block, &mut back), Vec::<String>::new());
+        assert_eq!(apply(&content, "bn6", &block, &mut back), Vec::<String>::new());
         assert_eq!(back, live);
         // A name no stat has, a value out of range, a key of nothing.
         let mut bad = BTreeMap::new();
         bad.insert("atack".to_string(), toml::Value::Integer(1));
         bad.insert("rapid".to_string(), toml::Value::Integer(-1));
         bad.insert("buster".to_string(), toml::Value::String("nothing".into()));
-        let problems = apply(&content, &bad, &mut back);
+        let problems = apply(&content, "bn6", &bad, &mut back);
         assert_eq!(problems.len(), 3, "{problems:?}");
     }
 }
