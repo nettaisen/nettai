@@ -1,10 +1,10 @@
 --!strict
 -- Panel bursts (the original's effect object #0x24, `sub_80E2F56`): the
--- shared bursts (@common/panel-bursts/panel_bursts), BN6's kind. Its
+-- shared bursts (@exelib/panel-bursts/panel_bursts), BN6's kind. Its
 -- spawner (`sub_80E2FE8`) is `panel_bursts.spawn(spawner, region,
 -- interval, z, effect)`.
 
-local common = require("@common/panel-bursts/panel_bursts")
+local common = require("@exelib/panel-bursts/panel_bursts")
 
 local panel_bursts = {}
 

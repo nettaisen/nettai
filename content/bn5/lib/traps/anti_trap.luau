@@ -1,6 +1,6 @@
 --!strict
 -- BN5's Anti traps (AntiFire, AntiWatr, AntiElec, AntiWood: action 0x15, subtype 12): the trap chips' controller
--- (lib/traps) sets the shared ElemTrap trap (@common/elemtrap, attack object 0x4D, 0x080CF590) as BN5's code does
+-- (lib/traps) sets the shared ElemTrap trap (@exelib/elemtrap, attack object 0x4D, 0x080CF590) as BN5's code does
 -- (0x080E3778,
 -- which BN6 stubs), with the chip's first parameter. BN5's trap watches only that parameter's element (fire,
 -- aqua, elec, wood: 0x080CF644, BN6's `sub_80CE034` the first of the four), is BN5's nothing reaching BN5's row
@@ -9,8 +9,8 @@
 -- its hits (BN6's row 4), hit modifier 3 for every element (BN6's 1 for elec and wood) and BN5's statuses.
 
 local collision = require("../../rules/collision")
-local common_strike = require("@common/elemtrap/strike")
-local common_trap = require("@common/elemtrap/trap")
+local common_strike = require("@exelib/elemtrap/strike")
+local common_trap = require("@exelib/elemtrap/trap")
 local effects = require("../effects")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
 local sparks = require("../sparks")

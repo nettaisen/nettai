@@ -1,11 +1,11 @@
 --!strict
 -- DblBeast's dimming controller (the original's effect object #0x7F,
 -- `sub_80E9310`; docs/engine/dimming-chip-effects.md §19): the usual
--- dimming phases (@common/dimming), with an effect that warps the user out,
+-- dimming phases (@exelib/dimming), with an effect that warps the user out,
 -- sends both beasts (./gregar, ./falzar), waits until both are done, and
 -- warps the user back in.
 
-local dimming_chips = require("@common/dimming")
+local dimming_chips = require("@exelib/dimming")
 local gregar = require("./gregar")
 local falzar = require("./falzar")
 

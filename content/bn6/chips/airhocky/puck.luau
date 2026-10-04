@@ -1,12 +1,12 @@
 --!strict
 -- A hockey puck (the original's attack object #0x2E, `sub_80C9824`):
--- AirHocky's and PitHocky's, the shared puck (@common/airhocky/puck) with
+-- AirHocky's and PitHocky's, the shared puck (@exelib/airhocky/puck) with
 -- BN6's look. It slides diagonally from panel center to panel center,
 -- bouncing off the field's sides, for its variant's number of steps;
 -- PitHocky's leaves an afterimage trail.
 
 local collision = require("../../rules/collision")
-local common = require("@common/airhocky/puck")
+local common = require("@exelib/airhocky/puck")
 local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")
 

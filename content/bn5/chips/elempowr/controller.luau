@@ -1,11 +1,11 @@
 --!strict
--- ElemPowr's controller (effect object #0x7F, 0x080E9B68): BN5's own, the panel chips' (@common/panel-chips, BN6's
+-- ElemPowr's controller (effect object #0x7F, 0x080E9B68): BN5's own, the panel chips' (@exelib/panel-chips, BN6's
 -- `sub_80E2AE8`) reworked. The usual dimming phases; its effect (0x080E9BAC), when the user stands on lava, sea, ice,
 -- metal or grass, adds 10 for each panel of that type on the field (at most 9) to the side's Atk+ bonus, and has a
 -- panel changer (objects/panel-changer: BN5's rows 15 to 19, 0x080E2A78) turn every such panel back to normal over 30
 -- ticks, then waits for it; on any other panel it is done at once.
 
-local dimming_chips = require("@common/dimming")
+local dimming_chips = require("@exelib/dimming")
 local panel_changer = require("../../objects/panel-changer/panel_changer")
 
 local controller = {}

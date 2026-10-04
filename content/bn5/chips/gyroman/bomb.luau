@@ -8,7 +8,7 @@
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 export type State = {
     -- Its variant (its first parameter: 0, 1 or 2).

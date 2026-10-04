@@ -9,7 +9,7 @@
 -- chip's: 0 to 2) is its palette.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local trajectory = require("../../lib/trajectory")
 local hole = require("./hole")
 local spray = require("./spray")
