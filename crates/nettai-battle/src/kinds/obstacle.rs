@@ -58,18 +58,18 @@ impl Action {
     }
 }
 
-/// Whether the obstacle `r`'s game numbers its action table as BN5's
-/// (`effects.obstacle_actions`, its kind's game's rules).
-fn bn5_actions(b: &Battle, r: ObjectRef) -> bool {
-    let game = b.game_of(b.kind_key(r));
-    b.content.rules_of(game).effects.obstacle_actions == crate::content::ObstacleActions::Bn5
+/// Whether the game numbers its obstacles' action tables as BN5's
+/// (`effects.obstacle_actions`, the game's rules).
+fn bn5_actions(b: &Battle) -> bool {
+    b.game_rules().effects.obstacle_actions == crate::content::ObstacleActions::Bn5
 }
 
-/// The byte obstacle `r`'s game stores for action `a` of the framework's
-/// numbering ([`Action`], BN6's: the kind's own from 8). BN5's obstacles
-/// have no frozen or bubbled entries (6 and 7), so their own start at 6.
+/// The byte the game stores in obstacle `r` for action `a` of the
+/// framework's numbering ([`Action`], BN6's: the kind's own from 8). BN5's
+/// obstacles have no frozen or bubbled entries (6 and 7), so their own start
+/// at 6.
 pub fn action_byte(b: &Battle, r: ObjectRef, a: u8) -> Result<u8, String> {
-    if !bn5_actions(b, r) {
+    if !bn5_actions(b) {
         return Ok(a);
     }
     match a {
@@ -79,11 +79,11 @@ pub fn action_byte(b: &Battle, r: ObjectRef, a: u8) -> Result<u8, String> {
     }
 }
 
-/// Obstacle `r`'s action in the framework's numbering (BN6's), from its
+/// Obstacle `r`'s action in the framework's numbering (BN6's), from the
 /// game's byte.
 pub fn current_action(b: &Battle, r: ObjectRef) -> u8 {
     let a = b.objects.get(r).action;
-    if bn5_actions(b, r) && a >= 6 { a + 2 } else { a }
+    if bn5_actions(b) && a >= 6 { a + 2 } else { a }
 }
 
 /// The shared entries of an obstacle's action table.

@@ -134,12 +134,10 @@ pub struct EffectsRules {
     /// An afterimage (`sub_80E33FA`) and a form overlay (`sub_80C4530`'s
     /// spawner) run while the battle is paused: BN6's spawners set their
     /// header flag 0x04; BN5's (0x080E35F4, and its overlays', whose flags
-    /// its lab records without it) don't. Read of the owner's game's
-    /// rules.
+    /// its lab records without it) don't.
     #[serde(default = "yes")]
     pub overlays_run_while_paused: bool,
-    /// How the game's obstacles number their action tables. Read of the
-    /// obstacle's own game's rules (its kind's).
+    /// How the game's obstacles number their action tables.
     #[serde(default)]
     pub obstacle_actions: ObstacleActions,
 }
