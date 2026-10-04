@@ -489,7 +489,6 @@ impl Round {
         };
         let mut player = PlayerSetup {
             folder,
-            souls: Default::default(),
             joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
             navi_level,
             sp_times: match &self.setup.sp_times {
