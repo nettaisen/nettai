@@ -2331,6 +2331,7 @@ dependencies = [
 name = "nettai-render"
 version = "0.1.0"
 dependencies = [
+ "bn5-compat",
  "bn6-compat",
  "nettai-assets",
  "nettai-battle",
