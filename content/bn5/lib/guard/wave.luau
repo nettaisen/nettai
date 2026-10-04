@@ -40,9 +40,9 @@ local ROWS: { [number]: Variant } = {
     [0xE] = { anim = 2, ticks = 0x04 },
 }
 
--- Its sheet, 10-04 (BN5's pack doesn't name it yet), and sound.
-local SPRITE = asset.sprite("sprite-10-04")
-local SOUND = asset.sound("sound-0a6")
+-- Its sheet (10-04) and sound (0x0A6).
+local SPRITE = asset.sprite("shock-wave")
+local SOUND = asset.sound("shock-wave")
 local SOLID = 0x10
 local HIT_MOD = 3
 -- Out of sight: 240 pixels to the right.
