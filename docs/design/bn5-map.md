@@ -528,17 +528,24 @@ as bn6-extract takes BN6's) writes a pack whose manifest says `game = "bn5"`:
   0x086FBB64, its picture
   0x087322E8 with Soul Unison's and Chaos Unison's palettes, the souls' 2x2 icons 0x08749FB8, 14 with Chaos's, in
   sprite palette 13, 0x0874AAB8); the emblems by version (13, with 8 palettes).
-- **Versions:** 12 chips (0x12D–0x136, 0x139, 0x13A: the version navi chips) are drawn differently by each
-  version's ROM; their pictures and icons are in the pack twice, `CHIP-protoman` and `CHIP-colonel`, with their
-  `version`, and a console shows its own version's (the frontend's `Packs::chip_art`).
-- **Version songs:** Team Colonel has 11 songs of its own at Team ProtoMan's numbers (0x13C–0x142, 0x145, 0x146,
-  0x170, 0x171: its navi chips' sounds). They are in the pack beside Team ProtoMan's, each a song file named with
-  its version (`sound-13c-protoman`, `sound-13c-colonel`, with `version` in its header and `base_version =
-  "protoman"` in sound.toml); the asset index keeps one name a number. They play with the bank's voicegroups:
-  Team Colonel's are matched to equal ones of Team ProtoMan's bank (samples, waves and key maps by content,
-  drum kits and splits in turn) or added. nettai-content's `sound::SongVersions` holds them; a pack without
-  versions (BN6's) names no version anywhere and is byte-identical to before. Which version a console plays is the
-  audio's choice by the viewer's console, not built yet.
+- **Versions:** 12 chips (0x12D–0x136, 0x139, 0x13A: each version's five Giga chips, and DethPhnx and Phoenix)
+  are drawn differently by each version's ROM: a ROM holds the art of its own (the ones its library lists, the
+  record's flag 0x40: Team ProtoMan's Bass, DeltaRay, BugCurse, HolyDrem, BigHook, DethPhnx; Team Colonel's
+  MetrKnuk, OmegaRkt, BassAnly, CrossDiv, BugCharg, Phoenix) and has it again at the other's counterparts. The
+  pack has each chip's picture and icon once, from its own version's ROM, under the chip's key, the picture with
+  its `version`: either console shows it, and a console of the other version's is a known difference there
+  (docs/frontend.md §5).
+- **Version songs:** none. The two US ROMs play every song alike: the same header and commands, and voices
+  that play alike on the keys of each track's notes (bn5-extract's `plays_alike`). Eleven songs (0x13C–0x142,
+  0x145, 0x146, 0x170, 0x171: among them Football's, ChaosLrd's and DethPhnx's sounds) had been taken for Team
+  Colonel's own: their MIDI is the same, and their voicegroups differ only in voices no note of theirs plays (a
+  voicegroup is read 128 voices long, past the voices the game defines for it into the tables and data after
+  them, where the two ROMs' bytes, pointers at other addresses in each, read as other silent or noise voices).
+  The mechanism stays for a game that has some: a version's own song would be a song file named with
+  its version (`sound-13c-colonel`, with `version` in its header and `base_version` in sound.toml), playing
+  with the bank's voicegroups (the version's matched to equal ones of the bank, samples, waves and key maps by
+  content, or added); nettai-content's `sound::SongVersions` holds them, and a pack without versions names no
+  version anywhere.
 - **Left out, for now:**
   - The Japanese ROMs' one different sprite (14-17, which has text on it): the US release localized it rather than
     cut it, so the pack keeps the US's, as BN6's does.
