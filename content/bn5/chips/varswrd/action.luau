@@ -6,11 +6,11 @@
 -- that chip's, with its subtype and parameters and the original damage. In ProtoSoul or ShadowSoul (souls 1 and 8)
 -- the navi waits while A is up.
 --
--- A computer-controlled navi (NaviStats +0x2A, never set in a Team Battle, or AIData +0xF0: a navi its side's computer
--- drives, BN5's 0x08006AAE) takes the side's sword pick instead (0x0802D4E2's +0x12, which its AI draws: the picks
--- by their place, one past the last a Sword). In a battle no navi takes it: only the story navis' routines set +0xF0
--- (0x0802C110), not Chaos Unison's Dark MegaMan's, so he too takes the joypad path. NeoVari's action is this one
--- with its own sequences and picks.
+-- A computer-controlled navi (NaviStats +0x2A, never set in a Team Battle, or AIData +0xF0) takes the side's sword
+-- pick instead (0x0802D4E2's +0x12, which its AI draws: the picks by their place, one past the last a Sword). +0xF0
+-- is set by 0x0802C110 alone: the story navis' routines and DarkInvs (0x080E231A, its user driven by the computer for
+-- 600 ticks), not Chaos Unison's Dark MegaMan's (AI index 0x16: 0x08104234), who takes the joypad path. NeoVari's
+-- action is this one with its own sequences and picks.
 
 local action = {}
 
@@ -94,9 +94,14 @@ local function become(me: Object, chip: Chip)
     me:set_attack(a, 0)
 end
 
+-- `sub_802C106`: AIData +0xF0, which only DarkInvs's drive sets in a battle (chips/darkinvs).
+local function computer_driven(me: Object): boolean
+    return false
+end
+
 -- 0x080ED570 (NeoVari's 0x080EDF7C): a tick of waiting for the pick.
 local function pick(me: Object, s: State, spec: Spec)
-    if me.actor_type == "navi" then
+    if computer_driven(me) then
         local chosen = battle.sword_pick(me.alliance)
         if chosen == #spec.picks then
             return become(me, spec.sword)
