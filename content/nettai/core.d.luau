@@ -1903,7 +1903,8 @@ export type ChipSpec = {
     -- navi chip whose user isn't warped off the field), "navi_returns_user"
     -- (a navi chip whose navi brings the user back itself), "goes_with_any"
     -- (it goes with any selection on the custom screen, and leaves the
-    -- selection's rules alone: BN6's BeastOut chip).
+    -- selection's rules alone: BN6's BeastOut chip), "hides_damage_as_a"
+    -- (the custom screen shows its damage as "???" on a copy of code A).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",

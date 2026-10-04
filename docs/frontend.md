@@ -457,7 +457,8 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
 - the chip window: the chip's name (8 cells of the 8x16 font, in the
   window's colors), its picture and palette, the window's colors by its
   class (a dark chip's dark: no BN6 chip is one), its code, its element's icon and colors, its damage ("???" for
-  Muramasa); for OK, Beast Out and the buttons their pictures;
+  a chip with the trait `hides_damage_as_a` as an A: the original compares the whole chip word, number and code,
+  with Muramasa's number, so a Muramasa M shows its damage); for OK, Beast Out and the buttons their pictures;
 - the slots (each dealt chip's icon and code, grayed or picked by its
   palette; the empty slots; the Beast Out, re-deal and scrap buttons) and
   the picked column's icons and cells;
