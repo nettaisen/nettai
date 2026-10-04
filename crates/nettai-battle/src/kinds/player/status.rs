@@ -269,6 +269,9 @@ fn weakness_request(b: &mut Battle, r: ObjectRef) {
 /// keeps 1 HP), then the element-5 damage; at 0 HP request deletion
 /// (§4.5). Runs every tick, even once dead or after the battle ends.
 fn apply_damage(b: &mut Battle, r: ObjectRef) {
+    if b.game_rules().intake.hp_loss == crate::content::HpLoss::Bn5 {
+        return bn5_apply_damage(b, r);
+    }
     let mut d = coll(b, r).acc.final_damage;
     let mut dead = false;
     if d != 0 {
@@ -297,6 +300,52 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
     }
     if dead {
         if switch_protected(b, r) {
+            ai_mut(b, r).requests |= request::SWITCH_KNOCKOUT;
+        } else {
+            set_flag2(b, r, 1);
+        }
+    }
+    counter_and_mood(b, r);
+}
+
+/// BN5's `applyDamageToPlayer` (0x080185A2): BN6's, but the hit shows
+/// (white, then its sounds) only when the loss leaves r1 non-zero (the HP
+/// left, or what the last stand's check leaves: `kinds::subtract_hp`), a
+/// hit that doesn't goes straight to the deletion's test (no element-5
+/// damage), and that test first tries the last stand (0x0802C16C). (Where
+/// a hit landed is learned for the computer navis' tactics too, 0x0802C3E2:
+/// for the battles after, which nothing of a battle reads.)
+fn bn5_apply_damage(b: &mut Battle, r: ObjectRef) {
+    let mut d = coll(b, r).acc.final_damage;
+    let mut fell = false;
+    if d != 0 {
+        let a = ai_mut(b, r);
+        a.total_damage_taken = (a.total_damage_taken as u32 + d as u32).min(0xFFFF) as u16;
+        let hp = b.objects.get(r).hp;
+        if hp > 1 && flag1(b, r) & f1::UNDERSHIRT != 0 && hp <= d {
+            d = hp - 1;
+        }
+        if crate::kinds::subtract_hp(b, r, d) {
+            b.objects.sprite_mut(r).look.white = true;
+            let player = navi_record(b, r).actor_type == ActorType::Player;
+            let alliance = b.objects.get(r).alliance;
+            for side in 0..2 {
+                let own = player && side == alliance;
+                b.sound_for(side, if own { crate::content::SoundRole::OwnHit } else { crate::content::SoundRole::Hit });
+            }
+        } else {
+            fell = true;
+        }
+    }
+    if !fell {
+        let d5 = coll(b, r).acc.element_damage[5];
+        crate::kinds::subtract_hp(b, r, d5);
+        fell = b.objects.get(r).hp == 0;
+    }
+    if fell {
+        if super::last_stand(b, r) == super::LastStand::Holds {
+            super::hold_last_stand(b, r);
+        } else if switch_protected(b, r) {
             ai_mut(b, r).requests |= request::SWITCH_KNOCKOUT;
         } else {
             set_flag2(b, r, 1);
