@@ -8,7 +8,7 @@
 -- docs/engine/standard-chips.md, "Action 0x0A".
 
 local collision = require("../../rules/collision")
-local follow_effect = require("../../objects/follow-effect/follow_effect")
+local follow_effect = require("../../objects/follow-effect")
 local link = require("../../lib/link_chips")
 local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")

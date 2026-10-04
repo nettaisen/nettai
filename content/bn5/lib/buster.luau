@@ -5,7 +5,7 @@
 -- table (rules/buster: BN6's values) and BN5's attachment.
 
 local arm = require("./arm")
-local attachment = require("../objects/attachment/attachment")
+local attachment = require("../objects/attachment")
 local common = require("@exelib/buster")
 
 local buster = common.make {

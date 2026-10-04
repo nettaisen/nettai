@@ -6,7 +6,7 @@
 -- bee, once a window. Each chip composes its own (`action { bee = ... }`:
 -- its level's bees).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local bee = require("./bee")
 
 local action = {}

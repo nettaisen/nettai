@@ -5,8 +5,8 @@
 -- SpoutCross's charged shot fires its own bullet from its water cannon the
 -- same way.
 
-local attachment = require("../../objects/attachment/attachment")
-local bullet = require("../../objects/bullet/bullet")
+local attachment = require("../../objects/attachment")
+local bullet = require("../../objects/bullet")
 local common = require("@exelib/spreadr/action")
 
 local spreader = {}

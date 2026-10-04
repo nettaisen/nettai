@@ -6,8 +6,8 @@
 -- the panel ahead, one every 11 ticks, each at a height the RNG picks. A
 -- bullet hits the first thing in its row and the panel behind it.
 
-local attachment = require("../attachment/attachment")
-local bullet = require("../bullet/bullet")
+local attachment = require("../attachment")
+local bullet = require("../bullet")
 
 local vulcan = {}
 

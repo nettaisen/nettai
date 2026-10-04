@@ -6,9 +6,9 @@
 -- places in the list, its layout's number and its actor list's address) are compat's.
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
-local boulder = require("../objects/boulder/boulder")
+local boulder = require("../objects/boulder")
 local guardian = require("../chips/guardian/guardian")
-local rock = require("../objects/rock/rock")
+local rock = require("../objects/rock")
 
 return {
     netbattle_1 = define.stage {

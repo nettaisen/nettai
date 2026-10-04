@@ -1,10 +1,11 @@
 //! Type-check the content (docs/design/scripting.md §3.3;
 //! docs/design/content-model-v2.md §4.0), each pack against its
-//! declarations (the engine's core.d.luau, the support packs' it uses, its
-//! own; `packs::declarations`), with Luau's own analysis (strict mode, the
-//! new solver), in process; and check that the packs' manifests and
-//! requires name only modules that are there, each require one its pack may
-//! make (a pack requires only itself and the support packs it uses).
+//! declarations (the engine's core.d.luau, the support packs' it depends
+//! on, its own; `packs::declarations`), with Luau's own analysis (strict
+//! mode, the new solver), in process; and check that each game has its top
+//! module (init.luau) and that the packs' requires name only modules that
+//! are there, each require one its pack may make (a pack requires only
+//! itself and the support packs it depends on).
 //!
 //! Each module is checked on its own and `require` is typed `any`; an
 //! editor running luau-lsp with a `--definitions=` for each declaration
@@ -69,7 +70,7 @@ pub fn modules(dir: &Path) -> std::io::Result<Vec<(String, String)>> {
 }
 
 /// The declarations pack `pack` of content `dir` checks against: the
-/// engine's, then the support packs it uses', then its own
+/// engine's, then the support packs' it depends on, then its own
 /// (`packs::declarations`).
 pub fn definitions(dir: &Path, pack: &str) -> Result<String, String> {
     use nettai_content_api::packs;
@@ -84,10 +85,10 @@ pub fn definitions(dir: &Path, pack: &str) -> Result<String, String> {
 
 /// What the packs of content `dir` refuse or can't find: a folder of
 /// content/ that is no pack (no manifest), a module outside the packs, a
-/// manifest's bad uses, a listed or unported module that isn't there, and
-/// in every module (listed or not) a require of no module and a require
-/// across packs that the packs refuse (`packs::check_require`); each with
-/// the path that names it.
+/// manifest that depends on what it can't, a game without its top module
+/// (init.luau), and in every module (loaded or not) a require of no module
+/// and a require across packs that the packs refuse
+/// (`packs::check_require`); each with the path that names it.
 pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
     use nettai_content_api::{keys, packs};
     let mut problems = Vec::new();
@@ -116,15 +117,13 @@ pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
         }
     }
     for p in all.values() {
-        if let Err(e) = packs::with_uses(&all, &p.id) {
+        if let Err(e) = packs::with_depends(&all, &p.id) {
             problems.push(e);
         }
-        for m in p.entries().iter().chain(p.unported().iter()) {
-            let file = format!("{}.luau", keys::module_path(m));
-            // (A folder names its `init` module.)
-            let init = format!("{}.luau", keys::module_path(&keys::init_of(m)));
-            if !dir.join(&file).is_file() && !dir.join(&init).is_file() {
-                problems.push(format!("{}/{}: lists {}, and no module {file} is there", p.id, packs::MANIFEST, keys::local(m)));
+        if let Some(m) = p.entry() {
+            let file = format!("{}.luau", keys::module_path(&m));
+            if !dir.join(&file).is_file() {
+                problems.push(format!("{file}: game pack {} has no top module: its {}.luau requires what the game has", p.id, packs::INIT));
             }
         }
         for (path, source) in modules(&dir.join(&p.id)).map_err(|e| e.to_string())? {

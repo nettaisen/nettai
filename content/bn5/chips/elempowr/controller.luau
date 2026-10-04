@@ -6,7 +6,7 @@
 -- ticks, then waits for it; on any other panel it is done at once.
 
 local dimming_chips = require("@exelib/dimming")
-local panel_changer = require("../../objects/panel-changer/panel_changer")
+local panel_changer = require("../../objects/panel-changer")
 
 local controller = {}
 

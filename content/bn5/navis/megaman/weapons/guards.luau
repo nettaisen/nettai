@@ -16,7 +16,7 @@
 -- Reflect program's (row 1); the navi's chips wait 40 ticks after them, 70 after AntiDmg's stance.
 
 local anti_damage = require("@exelib/navicust/anti-damage")
-local guard = require("../../../lib/guard/guard")
+local guard = require("../../../lib/guard")
 
 local guards = {}
 

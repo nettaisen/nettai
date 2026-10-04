@@ -77,11 +77,11 @@ The content goes with the packs (`nettai_content::pack::load_game`;
 docs/design/content-model-v2.md §4.0): `--content <dir>` names the content
 directory (so does `$NETTAI_CONTENT`); without it, this repository's
 content/. A match plays one game: the frontend loads that game's pack (its
-manifest's listed modules and what they require, with the support packs it
-uses, exelib) and its asset pack, nothing else; `nettai_content::pack::games`
+top module, init.luau, and what it requires, with the support packs it
+depends on, exelib) and its asset pack, nothing else; `nettai_content::pack::games`
 lists the games it can offer, each with its asset pack or the command that
-writes one. A game's chips without a use yet (a port's unwritten chips:
-BN5's) are its manifest's `unported`, which don't load. Every loader does the same (the
+writes one. A game's chips without a use yet (a port's unwritten chips)
+aren't required by its init.luau, so they don't load. Every loader does the same (the
 editor, the tools' `load_battle`, the BN5 replays, the static audit), and
 the content then is what loaded: its hash, which netplay's handshake
 compares, covers exactly that. A game the content must load whose pack
@@ -539,10 +539,10 @@ What a BN5 console does otherwise, by data, not by game:
   custom screen's close starts the chip window as a Japanese BN6 console's
   does (`chip_window_at_close`), the intro fades in from black
   (`intro_from_black`);
-- a chip each version draws its own way shows the console's version's
-  icon and picture, and the emblem is the console's version's
-  (`Renderer::console_version`, which a BN5 recording names; live play,
-  the pack's first version).
+- a version's own chip (its five Giga chips, DethPhnx or Phoenix) shows
+  its own version's ROM's icon and picture on either console (§5), and the
+  emblem is the console's version's (`Renderer::console_version`, which a
+  BN5 recording names; live play, the pack's first version).
 
 The frame comparison against BN5's consoles (verification's
 tools/frontend-compare/bn5.txt, chiplab's library-bn5) and what still
@@ -774,6 +774,22 @@ them).
   region's ROMs, 48 pixels around it (`objects::OTHER_REGION_MARGIN`: the
   US's sprite there may reach past the Japanese one). The console's region is
   the trace's (`game_regions`; US without it).
+- **Deliberate: a version's own chips on the other version's console.**
+  Each ROM draws its own version's chips and has their art again at the
+  other version's counterparts: BN6's five Giga chips a version (Bass and
+  BassAnly, BigHook and MetrKnuk, DeltaRay and CrossDiv, ColForce and
+  HubBatc, BugRSwrd and BgDthThd share one picture, palette and icon in a
+  ROM); BN5's five a version and its phoenix (Team ProtoMan's ROM draws
+  MetrKnuk and CrossDiv as HolyDrem, OmegaRkt and BugCharg as BigHook,
+  BassAnly as Bass, Phoenix as DethPhnx; Team Colonel's the other way).
+  The pack has each chip's picture and icon once, from its own version's
+  ROM (the one whose library lists it), marked with that version
+  (`ChipArt::version`), and the frontend and the editor show it on either
+  console (the user's choice: a version's chips show that version's art
+  always). A console of the other version shows the counterpart's there:
+  the chip window's picture, the icons in the custom screen's slots and
+  column, and the icons over the navi are listed as known
+  (`lookups::other_versions_icon`).
 - **Deliberate: the Gregar and Falzar chips' pictures.** Each Japanese ROM
   has one picture for both chips, its own beast; the pack has each chip's
   own (Gregar's from the Japanese Gregar ROM, Falzar's from the Japanese
@@ -1025,7 +1041,7 @@ is said with where it is:
   ("right: a navi bn5 hasn't");
 - the arena's stages are the game's link battle stages (`link_battle_stages`);
 - the folder keeps the game's rules, which the match's ruleset checks: the
-  ruleset's systems' `folder_check` hooks (BN6's are rules/folder/system.luau:
+  ruleset's systems' `folder_check` hooks (BN6's are rules/folder/init.luau:
   30 chips, so a folder being made, with empty entries, is no folder yet;
   copies by MB, each chip in one of its codes, at most three dark
   chips, chips the chip pack lists, the Regular chip within the Regular
@@ -1035,7 +1051,7 @@ is said with where it is:
   limits, as the original's folder editor and link battle check read the
   reloaded stats). Rust only asks (`Battle::check_folder`) and reports what
   the hooks say, so another game's folder rules are its own Luau: BN5's
-  (content/bn5/rules/folder/system.luau, its folder editor's) are four copies
+  (content/bn5/rules/folder/init.luau, its folder editor's) are four copies
   of a Standard chip and one of a Mega, Giga or dark chip, the Mega and Giga
   levels, at most three dark chips, the chips its pack lists, the Regular
   chip within the Regular memory, and no tag chips. A folder holds the

@@ -7,7 +7,7 @@
 -- arm (DrilArm's drill, chips/drilarm/drill) for 24 ticks and waits 10 more, then burrows back to
 -- the panel it left.
 
-local attachment = require("../../../../objects/attachment/attachment")
+local attachment = require("../../../../objects/attachment")
 local drill_object = require("../../../../chips/drilarm/drill")
 local lockon = require("../../../../rules/lockon")
 local regions = require("@exelib/regions")

@@ -15,7 +15,7 @@
 -- Not modeled: at the slash, the other player's console shows Slasher's name again (sub_801EB18's counterpart,
 -- presentation only).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local regions = require("@exelib/regions")
 local roles = require("../../rules/roles")
 local swords = require("../../lib/swords")

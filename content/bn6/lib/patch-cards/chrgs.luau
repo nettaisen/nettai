@@ -6,7 +6,7 @@
 -- (the plain charged shot without one), where the plain charged shot's
 -- program comes on a lucky draw.
 
-local charged_shot = require("../../navis/megaman/weapons/charged-shot/weapon")
+local charged_shot = require("../../navis/megaman/weapons/charged-shot")
 local variants = require("../../objects/projectile/variants")
 
 -- `sub_80125D0`.
