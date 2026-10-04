@@ -519,6 +519,25 @@ pub struct PanelRules {
     /// and 0x1E0, `sub_800C4BC`; BN5: 600 in both, 0x0800A998).
     pub mend: u16,
     pub mend_in_battle_mode_1: u16,
+    /// Whether a reservation marks its holder (`Reservations`).
+    pub reservations: Reservations,
+}
+
+/// What reserving a panel does to its holder (the panels section's
+/// `reservations`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Reservations {
+    /// BN6's: the holder's header flag 0x20 is set (`object_reservePanel`),
+    /// and its destroy releases what it holds (`sub_801BB78`, from
+    /// `object_genericDestroy` and the navis' end).
+    #[default]
+    Marked,
+    /// BN5's: the holder isn't marked (its reserve, 0x0801865C, sets only
+    /// the panel's), and nothing releases a destroyed holder's (its
+    /// destroys, 0x080138B6 and 0x080138F2, free the collision and the
+    /// object alone).
+    Unmarked,
 }
 
 impl PanelRules {

@@ -97,4 +97,7 @@ return define.rules("bn5:panels", {
         },
     },
     mend = { normal = 600, battle_mode_1 = 600 },
+    -- A reservation doesn't mark its holder (0x0801865C sets the panel's alone), and a destroyed holder's stay
+    -- (BN5's destroys, 0x080138B6 and 0x080138F2, release none).
+    reservations = "unmarked",
 })
