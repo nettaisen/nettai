@@ -198,7 +198,7 @@ address as its Z (compared by whole pixels, kinds.toml `scratch_z_fraction`).
 
 **The cards are the engine's; their effects are BN6's rules'.** Patch cards are in BN4, BN5 (JP) and BN6 (JP), so a
 card and a player's cards are engine concepts (the user's decision, 2026-10-02); what an effect does is each game's
-rule, BN6's patch-cards system (content/bn6/rules/patch-cards/system.luau, in content/bn6/rules/ruleset.luau).
+rule, BN6's patch-cards system (content/bn6/rules/patch-cards/init.luau, in content/bn6/rules/ruleset.luau).
 
 - **The cards** are definitions of their own (`define.patch_card`, `Registry::PatchCard`, `PatchCardHandle`,
   `Content::patch_card`): content/bn6/cards/<name>/card.luau, keyed by name (`canodumb`) as chips are, compat

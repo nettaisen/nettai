@@ -94,7 +94,7 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    canodumb,-shadow)
   --their-cards NAMES  the right navi's patch cards, likewise
   --match FILE     play the match this file sets up (docs/frontend.md §6: its
-                   game and ruleset, the arena, each side's navi, version,
+                   game, the arena, each side's navi, version,
                    folder, Crosses, patch cards and stats, by name in the
                    game; nettai-editor makes them), instead of a random one;
                    you are its left side. With --host or --join the left side
@@ -149,11 +149,11 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    player to join; you are the left navi
   --join ADDR:PORT netplay: join the match hosted there; you are the right
                    navi, seen from your side. Both players need the same
-                   engine, game and content (the handshake checks), and the
-                   same ruleset; each brings their own folder, version and
-                   Crosses (drawn from their --seed) and patch cards
-                   (--cards); the host's --stage picks the stage; the field
-                   and the battle's RNG come from both players' seeds
+                   engine, game and content (the handshake checks); each
+                   brings their own folder, version and Crosses (drawn from
+                   their --seed) and patch cards (--cards); the host's
+                   --stage picks the stage; the field and the battle's RNG
+                   come from both players' seeds
   --delay N        netplay's input delay in frames (default 2): more delay,
                    fewer rollbacks
   --wait SECONDS   how long the host waits for a player, or the joiner for
@@ -387,7 +387,7 @@ fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, game: &str, seed:
                 side.cards = patch_cards(content, game, list).unwrap_or_else(|e| fail(e));
             }
             let stage = args.stage.as_deref().map(|name| link_stage(content, game, name).unwrap_or_else(|e| fail(e)));
-            Offer::stock(content, game, side, stage).unwrap_or_else(|e| fail(e))
+            Offer::of_side(game, side, stage)
         }
     };
     let wait = |default: u64| std::time::Duration::from_secs(if args.wait > 0 { args.wait } else { default });

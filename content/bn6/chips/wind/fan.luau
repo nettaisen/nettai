@@ -2,11 +2,11 @@
 -- The fan Wind and Fan place (the original's attack object #0x48, `sub_80CCFDC`; docs/engine/dimming-chip-effects.md
 -- §1): the shared one (@exelib/wind/fan) with BN6's look and gust (objects/gust).
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
+local absorbed_obstacle = require("../../objects/absorbed-obstacle")
 local collision = require("../../rules/collision")
 local common = require("@exelib/wind/fan")
 local effects = require("../../lib/effects")
-local gust = require("../../objects/gust/gust")
+local gust = require("../../objects/gust")
 
 local fan = {}
 

@@ -10,7 +10,7 @@
 -- draw) or it stands on the other side's back column. It holds its panel
 -- and stands still while dimmed.
 
-local bullet = require("../../objects/bullet/bullet")
+local bullet = require("../../objects/bullet")
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
 

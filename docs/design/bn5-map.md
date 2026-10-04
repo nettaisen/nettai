@@ -528,17 +528,24 @@ as bn6-extract takes BN6's) writes a pack whose manifest says `game = "bn5"`:
   0x086FBB64, its picture
   0x087322E8 with Soul Unison's and Chaos Unison's palettes, the souls' 2x2 icons 0x08749FB8, 14 with Chaos's, in
   sprite palette 13, 0x0874AAB8); the emblems by version (13, with 8 palettes).
-- **Versions:** 12 chips (0x12D–0x136, 0x139, 0x13A: the version navi chips) are drawn differently by each
-  version's ROM; their pictures and icons are in the pack twice, `CHIP-protoman` and `CHIP-colonel`, with their
-  `version`, and a console shows its own version's (the frontend's `Packs::chip_art`).
-- **Version songs:** Team Colonel has 11 songs of its own at Team ProtoMan's numbers (0x13C–0x142, 0x145, 0x146,
-  0x170, 0x171: its navi chips' sounds). They are in the pack beside Team ProtoMan's, each a song file named with
-  its version (`sound-13c-protoman`, `sound-13c-colonel`, with `version` in its header and `base_version =
-  "protoman"` in sound.toml); the asset index keeps one name a number. They play with the bank's voicegroups:
-  Team Colonel's are matched to equal ones of Team ProtoMan's bank (samples, waves and key maps by content,
-  drum kits and splits in turn) or added. nettai-content's `sound::SongVersions` holds them; a pack without
-  versions (BN6's) names no version anywhere and is byte-identical to before. Which version a console plays is the
-  audio's choice by the viewer's console, not built yet.
+- **Versions:** 12 chips (0x12D–0x136, 0x139, 0x13A: each version's five Giga chips, and DethPhnx and Phoenix)
+  are drawn differently by each version's ROM: a ROM holds the art of its own (the ones its library lists, the
+  record's flag 0x40: Team ProtoMan's Bass, DeltaRay, BugCurse, HolyDrem, BigHook, DethPhnx; Team Colonel's
+  MetrKnuk, OmegaRkt, BassAnly, CrossDiv, BugCharg, Phoenix) and has it again at the other's counterparts. The
+  pack has each chip's picture and icon once, from its own version's ROM, under the chip's key, the picture with
+  its `version`: either console shows it, and a console of the other version's is a known difference there
+  (docs/frontend.md §5).
+- **Version songs:** none. The two US ROMs play every song alike: the same header and commands, and voices
+  that play alike on the keys of each track's notes (bn5-extract's `plays_alike`). Eleven songs (0x13C–0x142,
+  0x145, 0x146, 0x170, 0x171: among them Football's, ChaosLrd's and DethPhnx's sounds) had been taken for Team
+  Colonel's own: their MIDI is the same, and their voicegroups differ only in voices no note of theirs plays (a
+  voicegroup is read 128 voices long, past the voices the game defines for it into the tables and data after
+  them, where the two ROMs' bytes, pointers at other addresses in each, read as other silent or noise voices).
+  The mechanism stays for a game that has some: a version's own song would be a song file named with
+  its version (`sound-13c-colonel`, with `version` in its header and `base_version` in sound.toml), playing
+  with the bank's voicegroups (the version's matched to equal ones of the bank, samples, waves and key maps by
+  content, or added); nettai-content's `sound::SongVersions` holds them, and a pack without versions names no
+  version anywhere.
 - **Left out, for now:**
   - The Japanese ROMs' one different sprite (14-17, which has text on it): the US release localized it rather than
     cut it, so the pack keeps the US's, as BN6's does.
@@ -1207,7 +1214,7 @@ its full set run on the batch):
   `protoman.bn6`. BN5's ProtoMan has its own sprite, sword animation, slash effect and spawner address, which
   were constants.
 - chips/boomer/boomerang.luau: a variant's optional `sprite`. BN5's boomerang is its own sprite.
-- navis/megaman/weapons/buster/weapon.luau: `buster.pick` exported (was local). BN5's buster picks blank and
+- navis/megaman/weapons/buster/init.luau: `buster.pick` exported (was local). BN5's buster picks blank and
   charged shots by BN6's code but sets up its own shot.
 
 Third batch:
@@ -1297,7 +1304,7 @@ panels) and SonicBom (0x173: BN5's action 0x2B, the sonic boom swing with the Ka
 gen_content.py writes (its USED_CHIPS). The chip lab has VarSwrd's five commands and Magnum's A press besides the
 generated scenarios (chiplab's library-bn5, by hand). Each matches every frame of its lab recordings. The batch's
 shared modules
-(content/exelib, as above): airhocky/puck and flick, gundels/beam, bugbomb/bomb, snake/snake, yoyo/throw,
+(content/exelib, as above): airhocky/puck and flick, gundels/beam, bugbomb/bomb, snake/init, yoyo/throw,
 tankcan/action and shell, lifesync/marker, moonbld/blade and bombs/seed, each BN6's at its old path its BN6 wrapper
 (BN6 the same). BN5's Cannon, HiCannon and M-Cannon draw BN5's cannon (0c-01) and sound; CircGun and DarkCirc share
 one set of kinds (chips/circgun/circgun).
@@ -1433,7 +1440,7 @@ them.
   soul-image, actor 0x2A, its navi's sprite 08-xx) spirals in, blinks and fades; MegaMan emerges in the soul (the
   old form's end hook and the new one's start hook, `put_on/take_off_form_overlay`; TomahawkSoul's shake), the
   status reset; Chaos Unison's 11 ticks arm the chaos charge (AIData +0x12, not yet modeled). The souls system
-  (rules/souls/system.luau) keeps the soul's turns (AIData +0x0F), counts them down at a turn's start (0x0801248C)
+  (rules/souls/init.luau) keeps the soul's turns (AIData +0x0F), counts them down at a turn's start (0x0801248C)
   and asks for the revert when they run out (0x0801246C); the revert is the souls' own (`FormData::revert`, the
   pause handler's: rules/souls/revert.luau, 0x080121D8: back to `bn5:base` with no state saved).
 - **ProtoSoul** (soul 1, sword): sprite 00-01, weapons from 0x0801CA1C's row 1: the buster, the charged slash
@@ -1579,7 +1586,7 @@ chips walked up to, patterns, traps; 10,225 frames, each through Dark MegaMan's 
   the dismissal of the Dark MegaMen across (0x08104284) and the new one on a random solid empty panel of the other
   side's area, then the revert to the base form.
 - *Dark MegaMan* (navis/dark-megaman: NameID 0x18D's record, enemy structs, collision and post-init hook) and the
-  system that drives him (rules/computer-navi/system: BN5's computer navis, a system of BN5's stock ruleset): his
+  system that drives him (rules/computer-navi/init: BN5's computer navis, a system of BN5's stock ruleset): his
   idle (twelve seconds from his first, then his leave, the navi type's action 7), his tick (the time running down
   outside pauses and dimming, his last three seconds blinking, the battle's end ending it).
 - *The AI* (rules/computer-navi/ai, 0x0802BA14): its decisions, the buster runs (his buster, weapon routine 0x3E,
@@ -1826,7 +1833,7 @@ holder's record) is an AI's (0x08108274), no chip's. The controller's position i
 RockCube (subtype 20: effect object 0x37, 0x080E4664, BN6's code) and Wind and Fan (subtype 9: effect object 0x25,
 0x080E329C; the fan, attack object 0x48, 0x080CE734; its gust, attack object 0x49, 0x080CEA0C) share BN6's modules
 through content/exelib (rockcube/cube, wind/controller, wind/fan: makers taking a game's look, BN6's wrappers
-keeping their APIs; the gust is the patch cards' shared one, gust/gust); their controllers stand at the dimming handler's registers as BoyBomb's does. BN5's
+keeping their APIs; the gust is the patch cards' shared one, gust/init); their controllers stand at the dimming handler's registers as BoyBomb's does. BN5's
 fan: sprite 04-0A (`fan`), NameIDs 0xD6 and 0xD7 (actor records: versions 3 and 4, AI index 0x21; their field-object
 looks, 0x0801D6B0, the fan in palettes 0 and 1); it takes hits as BN6's (0x08017984: the push keeps the damage, after
 BN5's lava burn); leaving (0x080CE90E), any removal (the flag word's 0x10000) is a puff and anything else breaks it,
@@ -1903,7 +1910,7 @@ recording).
 
 - **Series files.** A series' chips are one module, chips/<series>/chips.luau: each chip a `local` with its own
   comment above it, the requires once at the top, the module returning the chips by key
-  (`require("../cannon/chips").hicannon`), as BN6's chips/cannon/chips.luau. The series are BN6's where BN6 has the
+  (`require("../cannon/chips").hicannon`), as BN6's chips/cannon/init.luau. The series are BN6's where BN6 has the
   same chips (barrier, batcan, cannon, colorpt with DblPoint, energbom with MegEnBom, firehit, grabbnsh with
   GrabRvng, gundels, recov, tankcan, timebom with TimeBom+, tornado with Static, vulcan with SuprVulc; wind with
   Fan and gigacan once they have uses); each navi chip with its SP and DS (blizman, cloudman, colonel, cosmoman,
@@ -1957,9 +1964,21 @@ two share it: content/exelib/navicust/compile.luau, each game's navicust system 
 quirks (`NaviCustGame`). BN6's compile is unchanged (trace-tests' navicust: Tango's four saves and the lab's 1274
 NaviCusts). BN5's, content/bn5/rules/navicust:
 
-- **The board** (rules/navicust/board.luau, the section `bn5:navicust`): 5x5 cells, no expansions and no frame, any
-  cell of it a neighbor's; the engine's 7x7 grid with BN5's board in its middle, the command line BN5's row 2 (the
-  engine's 3). A part's 5x5 shapes (the part table's +8, +0xC) sit in the middle of the definition's 7x7.
+- **The board** (rules/navicust/board.luau, the section `navicust`): BN5's 5x5 grid is the middle of the engine's
+  7x7, the command line BN5's row 2 (the engine's 3), no frame, any cell of it a neighbor's. A part's 5x5 shapes (the
+  part table's +8, +0xC) sit in the middle of the definition's 7x7. The board on the grid is the save's ExpMemry's
+  (key item 0x61's count, a byte at the save image's 0x3DB0 + 0x61: the toolkit's +0x50, which 0x0803C120 reads):
+  4x4 with none, 5x4 with one, 5x5 with two, from the grid's top left, the command line the third row of each. Only
+  the NaviCust screen reads the count, as it opens (0x08132928, into its +0x0F): it picks the board's mask (0x0813F138:
+  three 15x15 masks, 0x0813EA34, 0x0813EB15 and 0x0813EBF6, a cell at (x + 5, y + 5); the same bytes in the four
+  ROMs, their tables at BRBE 0x0813F148, BRKE 0x0813F230, BRBJ 0x0813ECD4 and BRKJ 0x0813EDBC), its background
+  (0x08132FB4) and the cursor's bounds (0x0813324C and 0x081333B0: 4 by 4, 5 by 4, 5 by 5). Placing a part asks the
+  mask (0x0813F250: every cell the part covers is one of the board's, so nothing juts off it), then the grid
+  (0x0813F2A4: over no other part). The compile (0x0813FA10) reads neither the count nor a mask. As built: the
+  section's three `boards` by `NaviCust::expansions`, as BN6's (the match file's `[side.navicust] expansions`, the
+  largest when it says none; nettai-match's check of each program against the board; the editor's board picker);
+  bn5-compat reads the count (`Save::expansions`) and the BN5 save import sets it on the side's NaviCust. Every save
+  on hand has both ExpMemry.
 - **The programs** (content/bn5/navicust/, 47; compat/navicust.toml by number and colored variant), written by the
   verification workspace's tools/bn5/gen_navicust.py from the part table (BRBE 0x0813D540, BRKE 0x0813D628, BRBJ
   0x0813D0CC, BRKJ 0x0813D1B4; 16 bytes a part id, program n's four variants at 4n..4n+3: +0 the exclusive group,

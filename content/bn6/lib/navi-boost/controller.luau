@@ -20,7 +20,7 @@
 
 local collision = require("../../rules/collision")
 local dimming_chips = require("@exelib/dimming")
-local shield = require("../../navis/megaman/weapons/shield/weapon")
+local shield = require("../../navis/megaman/weapons/shield")
 
 local navi_boost = {}
 

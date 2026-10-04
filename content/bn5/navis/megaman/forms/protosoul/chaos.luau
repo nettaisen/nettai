@@ -4,7 +4,7 @@
 -- record's damage, hit parameter, lockout and element) and the chip's use. An armed full B charge released in the
 -- chaos cycle's window fires it; the charge's time is its row's by the chaos level.
 
-local drksword = require("../../../../chips/drksword/chip")
+local drksword = require("../../../../chips/drksword")
 
 local chaos = {}
 

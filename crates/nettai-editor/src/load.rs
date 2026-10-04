@@ -1,6 +1,6 @@
 //! The content the editor makes matches of: one game's, loaded as the
 //! frontend loads it (`nettai_content::pack::load_game`: the game pack, the
-//! support packs it uses, its asset pack), and the games there are to
+//! support packs it depends on, its asset pack), and the games there are to
 //! choose from (`nettai_content::pack::games`).
 
 use crate::pictures::Pictures;

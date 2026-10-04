@@ -67,8 +67,8 @@ fn a_collision_type_defined_twice_is_an_error() {
 /// The repository's content directory.
 const CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content");
 
-/// content/'s games `games` (each pack's listed modules and what they
-/// require) on made-up asset indices, with their strings: not defined.
+/// content/'s games `games` (each game's top module and what it requires)
+/// on made-up asset indices, with their strings: not defined.
 fn read(games: &[&str]) -> nettai_battle::Content {
     let mut r = Report::default();
     let games: Vec<String> = games.iter().map(|g| g.to_string()).collect();
@@ -136,18 +136,12 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
 
 /// docs/design/content-model-v2.md §4.0: content is one game, its ids
 /// local: BN5's content has `cannon`, BN5's own, and a name written with a
-/// game (`bn6:cannon`, `bn5:cannon`) names nothing. BN5's chips
-/// that have no use yet (the port writes them) are its manifest's
-/// `unported`, which don't load. Two games are two contents.
+/// game (`bn6:cannon`, `bn5:cannon`) names nothing. Two games are two
+/// contents.
 #[test]
 fn a_game_loads_alone_under_its_names() {
     let mut c = read(&["bn5"]);
     c.define().unwrap_or_else(|e| panic!("{e}"));
-    let manifest = c.scripts.manifest("bn5").expect("BN5's manifest").clone();
-    for path in &manifest.definitions.unported {
-        let key = format!("{}", path.trim_start_matches("chips/").trim_end_matches("/chip"));
-        assert!(c.defs.chip_by_key(&key).is_none(), "{key} is unported");
-    }
     let d = &c.defs;
     assert_eq!((c.game(), d.game.as_str()), ("bn5", "bn5"));
     assert!(d.chip_by_key("cannon").is_some(), "an id is local to its game");
@@ -160,11 +154,41 @@ fn a_game_loads_alone_under_its_names() {
     assert!(e.contains("content holds one game"), "{e}");
 }
 
-/// docs/design/content-model-v2.md §4.0: what loads is what the manifests
-/// list and their requires reach. Each game reads none of the other's, and
-/// both read the support pack's modules their requires reach, no other.
+/// docs/design/content-model-v2.md §4.0: the order of a game's init.luau's
+/// requires is the order its modules load in, and nothing more. Each
+/// game's requires turned round (its rules last, its chips from the last
+/// to the first) define the same definitions under the same keys, in the
+/// same places: no handle moves. (An anonymous key counts its own module's
+/// definitions, whenever the module loads.)
 #[test]
-fn a_load_reads_what_its_manifests_reach() {
+fn the_order_of_a_games_requires_moves_no_key_and_no_handle() {
+    for game in ["bn6", "bn5"] {
+        let mut c = read(&[game]);
+        let mut turned = c.clone();
+        c.define().unwrap_or_else(|e| panic!("content/{game}: {e}"));
+        let top = nettai_content_api::packs::top_module(game);
+        let mut requires = nettai_content_api::packs::requires(&turned.scripts.modules[&top]);
+        assert!(requires.len() > 300 && requires[0] == "@self/rules", "{game}/init.luau: {} requires", requires.len());
+        requires.reverse();
+        let lines: Vec<String> = requires.iter().map(|r| format!("    require(\"{r}\"),\n")).collect();
+        turned.scripts.modules.insert(top, format!("return {{\n{}}}\n", lines.concat()));
+        turned.define().unwrap_or_else(|e| panic!("content/{game}, turned round: {e}"));
+        assert!(c.defs.definitions.defs.len() > 2000, "{game}: {} definitions", c.defs.definitions.defs.len());
+        assert_eq!(c.defs.definitions, turned.defs.definitions, "{game}");
+        assert_eq!(c.defs.chips.len(), turned.defs.chips.len());
+        for key in ["cannon", "minibomb"] {
+            assert_eq!(c.defs.chip_by_key(key), turned.defs.chip_by_key(key), "{game}: {key}'s handle");
+        }
+        assert_ne!(c.hash(), turned.hash(), "the hash covers the modules' text, init.luau's too");
+    }
+}
+
+/// docs/design/content-model-v2.md §4.0: what loads is what the games'
+/// top modules (their init.luau) require, in turn. Each game reads none of
+/// the other's, and both read the support pack's modules their requires
+/// reach, no other.
+#[test]
+fn a_load_reads_what_its_games_inits_reach() {
     let (six, five) = (read(&["bn6"]), read(&["bn5"]));
     assert!(six.scripts.modules.keys().all(|m| !m.starts_with("bn5")), "BN6 reads none of BN5's");
     assert!(five.scripts.modules.keys().all(|m| !m.starts_with("bn6")), "BN5 reads none of BN6's");
@@ -177,8 +201,8 @@ fn a_load_reads_what_its_manifests_reach() {
 /// docs/design/rules-in-luau.md R2: BN5's stock ruleset and rule sections
 /// (content/bn5/rules) are its game's, beside BN6's: its pools (16 actors),
 /// its banners, its element tables. With them, the BN5 chips the port has
-/// given uses (docs/design/bn5-map.md §15.6); the rest, without a use yet,
-/// are its index's unported chips.
+/// given uses (docs/design/bn5-map.md §15.6); one without a use yet isn't
+/// required by its init.luau.
 #[test]
 fn bn5s_rules_are_its_games() {
     let mut c = read(&["bn5"]);
