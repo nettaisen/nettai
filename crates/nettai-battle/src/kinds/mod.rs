@@ -209,10 +209,18 @@ pub fn generic_destroy(b: &mut Battle, r: ObjectRef) {
     b.objects.free(r);
 }
 
-/// `object_subtractHP`.
-pub fn subtract_hp(b: &mut Battle, r: ObjectRef, amount: u16) {
+/// `object_subtractHP`: the HP down by `amount`, to 0; by BN5's rules
+/// also its side's gauge and its last stand (`player::bn5_lose_hp`).
+/// Whether the register its callers read next (r1) is left non-zero: the
+/// HP left, or at 0 what BN5's check leaves there (BN5's
+/// `applyDamageToPlayer` shows the hit by it).
+pub fn subtract_hp(b: &mut Battle, r: ObjectRef, amount: u16) -> bool {
+    if b.rules_for(r).intake.hp_loss == crate::content::HpLoss::Bn5 {
+        return player::bn5_lose_hp(b, r, amount);
+    }
     let o = b.objects.get_mut(r);
     o.hp = o.hp.saturating_sub(amount);
+    o.hp != 0
 }
 
 /// `sub_801A29A`: thaw a frozen object.
