@@ -674,9 +674,15 @@ declare class Object
     -- ("normal"). Nothing without an overlay.
     function overlay_stepping(self, mode: "keep" | "normal"): ()
     -- `sub_8011384`, `sub_8011268`: take off what a form wore, put on what
-    -- it wears.
+    -- it wears (its `take_off`, `put_on`, or the defaults below).
     function take_off_form_overlay(self, form: FormDef): ()
     function put_on_form_overlay(self, form: FormDef): ()
+    -- The default take-off and put-on routines of a form, which its own
+    -- replace: what its identity's death hook takes down (the base form:
+    -- what is there), and its identity's parts. A form's hook that wants
+    -- the default and more calls these.
+    function take_off_form_parts(self, form: FormDef): ()
+    function put_on_form_parts(self, form: FormDef): ()
     -- `sub_800FC9E` and a form change's load: the navi's sprite in `form`,
     -- its animation 0 from the start, shadow on the ground, facing, white.
     function load_form_sprite(self, form: FormDef): ()
@@ -2247,14 +2253,13 @@ export type FormDef = {
     -- (BN5's souls' own routines: SearchSoul's reveal of invisible
     -- navis, TomahawkSoul's grass).
     reset: ((navi: Object) -> ())?,
-    -- What the navi puts on as it takes the form (`sub_8011268`'s routine by
-    -- the form), in place of its identity's parts: BN5's base form's shade
-    -- in Hub Style (0x0800EE1C), which `add_parts` puts on. A base form's
-    -- also runs as a player's init ends, as its navi's init hook
-    -- (`sub_8010DD0`: BN5's MegaMan's record names the same routine).
-    wears: ((navi: Object) -> ())?,
-    -- What else it puts on and takes off with its start and end hooks,
-    -- after its identity's parts (BN5's NumberSoul's layer).
+    -- Its put-on and take-off routines (`sub_8011268`, `sub_8011384` by the
+    -- form; BN5's tables by soul), in place of the defaults
+    -- (`put_on_form_parts`, `take_off_form_parts`): BN5's base form's
+    -- shade in Hub Style (0x0800EE1C), NumberSoul's layer. A base form's
+    -- `put_on` also runs as a player's init ends, in place of its navi's
+    -- init hook (`sub_8010DD0`: BN5's MegaMan's record names the same
+    -- routine).
     put_on: ((navi: Object) -> ())?,
     take_off: ((navi: Object) -> ())?,
     traits: { FormTrait }?,

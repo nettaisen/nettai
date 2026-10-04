@@ -567,7 +567,8 @@ impl Battle {
         }
     }
 
-    /// `object_reservePanel`: reserve a panel for `obj`.
+    /// `object_reservePanel`: reserve a panel for `obj` (marking it as a
+    /// holder where the arena's rules say: `Reservations`).
     pub fn reserve_panel(&mut self, obj: ObjectRef, x: u8, y: u8) -> bool {
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         if p.reserver.is_some() {
@@ -575,7 +576,9 @@ impl Battle {
         }
         p.reserver = Some(obj);
         p.flags |= pflags::RESERVED;
-        self.objects.get_mut(obj).flags |= crate::object::flags::HOLDS_RESERVATION;
+        if self.content.rules_of(self.games.arena).panels.reservations == crate::content::Reservations::Marked {
+            self.objects.get_mut(obj).flags |= crate::object::flags::HOLDS_RESERVATION;
+        }
         true
     }
 
@@ -590,7 +593,8 @@ impl Battle {
         true
     }
 
-    /// `sub_801BB78`: release every reservation `obj` holds.
+    /// `sub_801BB78`: release every reservation `obj` holds (none where
+    /// reservations don't mark their holder: BN5's destroys release none).
     pub fn release_reservations(&mut self, obj: ObjectRef) {
         if self.objects.get(obj).flags & crate::object::flags::HOLDS_RESERVATION == 0 {
             return;

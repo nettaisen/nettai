@@ -16,4 +16,6 @@ return define.rules("bn5:flow", {
     result_wait = { normal = 0x66, special = 65 },
     chip_window_at_close = true,
     intro_from_black = true,
+    -- No low-HP music: BN5's ROM has no tempo or pitch control (BN6's `sub_8009158` switch is absent).
+    low_hp_music = false,
 })

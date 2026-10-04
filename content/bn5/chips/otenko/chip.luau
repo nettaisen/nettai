@@ -9,10 +9,10 @@
 
 local collision = require("../../rules/collision")
 local common = require("@common/otenko/otenko")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 
--- Its sheet, 0c-49 (BN6's JP ROMs' Otenko, the US ROMs' placeholder; BN5's pack doesn't name it yet).
-local SPRITE = asset.sprite("bn6:otenko")
+-- Its sheet, 0c-49 (`otenko`: BN6's JP ROMs' Otenko, the US ROMs' placeholder).
+local SPRITE = asset.sprite("bn5:otenko")
 
 local OTENKO = common.make {
     statue_id = "bn5:otenko/statue",
