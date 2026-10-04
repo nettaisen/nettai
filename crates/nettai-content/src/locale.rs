@@ -168,6 +168,7 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
             unknown.push(format!("navis.{key}: no navi has this key"));
         }
         text(format!("navis.{key}.name"), &n.name);
+        text(format!("navis.{key}.variant_name"), &n.variant_name);
         text(format!("navis.{key}.run_message"), &n.run_message);
     }
     for (key, f) in &s.forms {

@@ -342,7 +342,7 @@ language = "ja"
 "bn5:z-saver" = { name = "Zセイバー", description = "でんせつの あかい\nレプリロイドの\n3だんぎりソード" }
 
 [navis]
-"bn5:megaman" = { name = "ロックマン" }
+"bn5:megaman" = { name = "ロックマン", variant_name = "FCロックマン" }
 
 [navicust-programs]
 "bn5:airshoes" = { name = "エアシューズ" }
