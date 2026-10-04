@@ -188,9 +188,9 @@ pub fn with_systems(systems: &str) -> Arc<Content> {
     }
     let mut c = make();
     let module = c.scripts.module_mut(ROOT, "rules/systems").expect("the test content's rules");
-    let stock = "local SYSTEMS = { beast, counter, forms.system, emotion.system, dark_chips }";
+    let stock = "local SYSTEMS: { System } = { beast, counter, forms.system, emotion.system, dark_chips }";
     assert!(module.contains(stock), "rules/systems.luau lists its systems as `{stock}`");
-    *module = module.replace(stock, &format!("local SYSTEMS = {{ {systems} }}"));
+    *module = module.replace(stock, &format!("local SYSTEMS: {{ System }} = {{ {systems} }}"));
     let c = Arc::new(c.defined());
     made.push((systems.to_string(), c.clone()));
     c
