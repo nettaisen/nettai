@@ -1552,9 +1552,10 @@ which the engine runs for a side whose rules say so (the status section's `emoti
   `hub_style * 5 + 20`, else the element's `* 5` (none in a soul). A link navi's (0x0800DA98, by BN5's navi numbers)
   is left to the framework: BN5's content has no link navi.
 - **Hub Style** (NaviStats +0x4C): set out of battle by the patch cards' routine (0x08138214, which follows the
-  NaviCust's compile) when patch card 111 is installed and on (0x08137A58); 0 in every recording. It adds 11 to the face (0x0801AF8E: pictures 11-15, the base
-  form's second set of faces, `mugshot.variant`, shown by `battle.set_face_variant`) and moves the palette. The
-  light and dark system's setup carries it (`hub_style`, bn5-compat from +0x4C).
+  NaviCust's compile) when patch card 111 is installed and on (0x08137A58): 1 by Team ProtoMan's, 2 by Team
+  Colonel's (§15.14). It adds 11 to the face (0x0801AF8E: pictures 11-15, the base form's second set of faces,
+  `mugshot.variant`, shown by `battle.set_face_variant`) and moves the palette (`hub_style * 5 + 20`). The stat
+  `hub_style` carries it (bn5-compat from +0x4C); what else it does is §15.14's.
 - The faces' names follow: `megaman-worried` (2), `megaman-dark` (4), `megaman-hub*` (11-15; they were named as
   dark faces).
 - **The emotion-swing bug** (0x080113F8, BN6's `sub_8013DA0`; rules/emotion): while the side's NaviStats +0x24 is
@@ -1822,8 +1823,8 @@ NaviCusts). BN5's, content/bn5/rules/navicust:
   (+0x24), the panel trail (+0x12 = 3, +0x13 = 2, 4 or 8), the custom screen's damage (+0x54: 20, 40, 80), encounters
   (+0x28), drops (+0x26), the buster (+0x14 = 4, +0x15 = 2), no supports (+0x0D = 0xFF), the HP bug (+0x16 = 3), Hub's
   (0x08140248: the maximum the base and half the HP programs, the HP no more than it), the statuses (+0x1A = 9, 10).
-  BugStop (+0x1F) stops them (0x0813FA48; the patch cards can stop or keep them, 0x08137A30, which come with BN5's
-  patch cards). No emotion window glitch: its flag, 0x10C1, is read outside battle only.
+  BugStop (+0x1F) stops them (0x0813FA48; the patch cards can stop or keep them, 0x08137A30: §15.14). A bug sets
+  flag 0x10C1, the emotion window's glitch when the save has no patch cards (§15.14).
 - **The HP** (0x0803C13C): in the real world the maximum again and the HP with it; in the cyberworld (the save's
   area, 0x02002944, from 0x80, or event flag 0x10B2) nothing, so the HP is the save's and the maximum the effects'
   (0x0803C1CC), Hub's halving standing. The navicust system's setup `cyberworld` says which; Tango's finished Team
@@ -1837,7 +1838,7 @@ bn5-compat now reads the bug bytes the compile writes (+0x12 to +0x16, +0x1A, +0
 BN6's offsets into the engine's stats, which a replay's setup carries.
 
 **Checked:** trace-tests' bn5_navicust compiles Tango's BN5 saves (the finished ones in ~/Documents/Tango/saves and
-the netplay templates; the three with patch cards wait for BN5's patch cards) and every side of the BN5 lab's
+the netplay templates; with their patch cards since §15.14) and every side of the BN5 lab's
 scenarios against its recording's setup, in every byte the engine's compile can write (59 NaviCusts of 164 programs:
 library-bn5/navicust-compile, the finished saves' own NaviCusts with their cards taken off, both sides of each). The
 programs in battle (library-bn5/navicust, 31 scenarios) replay on every frame but Rush's, which waits for BN5's
@@ -1850,3 +1851,77 @@ What the programs in battle brought into the engine:
 - BN5's hit test (0x0801691C, §15.3 item 12): a FloatShoe body is hit (BN6's needs the hitter's 0x80 self bit, which
   BN5's collision types lack), and its raw channel (0x08017494) has no FloatShoe test either, so a barrier under
   FloatShoe wears.
+
+### 15.14 BN5's patch cards (as built)
+
+BN5's patch cards (its Modification Cards, 改造カード) work as BN6's: after the NaviCust's compile, 0x0813F97C runs
+the cards' routine (0x08138214) and then the HP rule. The application is BN6's, so the two share it
+(content/common/patch-cards/apply.luau and the effects' constructors, effects.luau; each game's
+rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `PatchCardsGame`). BN6's is unchanged
+(the JP lab's card traces). BN5's, content/bn5/rules/patch-cards:
+
+- **The cards** (content/bn5/cards/, 112; compat/patch-cards.toml by number, card 111 by version), written by the
+  verification workspace's tools/bn5/gen_patch_cards.py (gen_content.py) from the card table (BRBE 0x08138874,
+  BRKE 0x0813895C, BRBJ 0x0813842C, BRKJ 0x08138514: u16 offsets by card number, 111 cards, three-byte entries: the
+  effect's number, its value and whether the card shows it as a bug; the first the MB, number 0x8B), their names
+  from the name archive (LZ77, a four-byte header; the locales' `[patch-cards]`). The four tables are the same but
+  for card 111, Bass-Cross MegaMan, each team's own: Team ProtoMan's HP+20, SprArmr, TriBustr, B↓Sbustr; Team
+  Colonel's HP+20%, FlotShoe, TriBustr, B↓HelzR; both NormBody and a MegFld-2 bug. Its definitions are
+  `bass-cross-megaman-protoman` and `bass-cross-megaman-colonel`; bn5-compat's `trace::patch_cards` reads a save's
+  list (0x79A0 the count, 0x79D0 the list: a card a byte, bit 7 switched off) by the save's version.
+- **The effects** (the handlers at 0x08137BC8, 0x00 HP+ to 0x89 BugStop: the kinds' order): BN6's kinds and BN5's
+  own: SoulTm+ and SoulTm- (+0x32, signed, clamped to -2..6: the stat `soul_turn_bonus`), the random encounters'
+  element (+0x27, OilBody to Search), SneakRun, Millions, AutoHeal and MegVirus (bytes no battle reads), and Hub
+  Style, which card 111 gives switched on (0x08137A58 finds it in the list: no effect number names it). The slots
+  are seeded from the stats (0x08137B56); the copy is 0x081382B8's 39 routines, some through tables: the B buttons'
+  weapons (0x1D to 0x23: routines 0x62, 0x64, 0x53, 0x57, 0x61, 0x00, 0x65), the buster-shot programs' rows (7,
+  0x14, 0xE, 0xD, 8, 0), the charged shots' weapons (0x2A to 0x49, 32 routines), the charged-shot programs' rows
+  (0x15, 0x16, 9, 5, 0x17 to 0x1E, 6), the first barriers (types 1, 5, 7, 8, 9, none), the B+Back specials (0x1F,
+  0x6A, 0x6B, 0x61, 0x21, none), the gauges, the panel trail's bytes (BN5's panel numbers: the panels section's
+  `numbers`), the hit statuses. BugStop (a card's, at 1) holds back the bug slots and, asked first by the
+  NaviCust's compile (0x0813FA48 asks 0x08137A30), stops or keeps the NaviCust's bugs (`NaviCustGame.bug_stop`).
+- **The HP** (0x0813F97C, after the cards): in the real world the maximum; in the cyberworld (the setup's
+  `cyberworld`, a fact the navicust system takes too) no more than it.
+- **The emotion window's glitch** (0x0801AF14 through 0x0813F650, as the window starts; not in battle modes 1 to
+  4): with cards in the save's list (its count, switched on or not) the cards' flag 0x10C4, which the routine sets
+  when the stats after the cards have a bug (0x081384D8: the NaviCust's bug bytes, the encounters' and drops' bugs,
+  no supports); without, the NaviCust's flag 0x10C1, which its bugs' routine sets when a bug applies (0x08140040).
+  Each console reads its own save's. The navicust system's `glitch`, and the patch-cards system with cards; a
+  recording's setup carries both consoles' (`emotion_window_glitches`, oracle-trace's `bn5_emotion_window_glitch`).
+- **The weapons** (navis/megaman/weapons): the routines that load a chip (0x0800FE78: chips.luau, MettGuard's and
+  CrsShld's B+Back waiting 40 ticks, Ccann's TankCan1 not cracking), the card Shield (0x62, guards.luau), TriBustr
+  (0x65, the buster's routine), ChrgS (0x63, the charged shot without the draw, the program always: its 0, the
+  table's plain row, is none), HeatS and BubSht (0x4A, 0x56: the Spreaders' action in its variants 1 and 2, the
+  bullet leaving after the count's 10, 0x080EC57C; the bullet's rows 8 and 4), Invis and Vacuum (0x47, 0x4C: the
+  instant chips' action with effects 2 and 25, the second TenguCross's wind; BN5's gust, attack object #0x49, is
+  BN6's code, shared in content/common/gust: nothing stops it, an unseen one pushes weaker), FireAm (0x4E, action
+  0x57: ElemRage's flames, BN5's own action; BN6's 0x57 is another), ZapRng (0x42, action 0x32: a paralyzing ring,
+  attack object #0xC4, BN6's `sub_80C51CC` code, which no BN6 content spawns), Sbustr (0x68: the rapid buster,
+  shared in content/common/megaman) and HelzR (0x69: AirSpin's action in its variant 2, the seeking whirlwind,
+  shared in content/common/airspin/whirl; BN6's patch card bass-cross-megaman fires it too). Invis's timer takes
+  its high byte from the attack parameters' second byte, which the routine leaves as the last attack left it: the
+  engine keeps no attack parameters, so 0.
+- **Hub Style** (NaviStats +0x4C, the stat `hub_style`: a byte, 1 from Team ProtoMan's card, 2 from Team Colonel's,
+  0x081382FC): MegaMan's buster in his base form fires the spread (0x0800F522: the shot's variant 1, row 0x12, its
+  own flash, the attachment table's row 0x39), his arm by the value (0x080EBABE: 1 animation 13, 2 the chaos arm),
+  his attachments sit a pixel off (0x080B9AB8: the BN5 attachment kind's `lifted`; BN5's follow adds the unsigned
+  byte where BN6's subtracts the signed one), his base form wears its shade (body overlay row 5, 0c-58: 0x0800EE1C,
+  the form's `wears`, which also runs as a player's init ends, MegaMan's record's init hook being that routine;
+  BN5's init has no starting form's overlay), GigaCan leaves a third afterimage (0x080EC224), the palette is
+  `hub_style * 5 + 20` and the faces move (§15.10). Not yet: the HUD's opponent entry (0x0801AE3A, presentation:
+  with battle effect 8, the other side's NameID 0x180 when its +0x53 is set, else 0xEA in Hub Style).
+- The emotion window's start keeps the glitch outside BN5's battle modes 1 to 4; the engine's start keeps BN6's rule
+  (no random battles, not modes 1 to 5 and 8), the same for a netbattle.
+
+**Checked:** trace-tests' bn5_navicust applies the cards with the compile: Tango's saves (the three with cards; the
+finished Team ProtoMan Light 2's stats are from before its cards: written before a reload applied them, its stats
+the NaviCust's alone) and the BN5 lab's sides with their cards (library-bn5/patch-cards-stats, 18 scenarios: every
+card on some side, a later card's choice over an earlier one's, amounts adding up and clamped, BugStop, cards
+switched off, Hub Style; 34 sides, 181 cards), in every byte the engine's rules write. The cards in battle
+(library-bn5/patch-cards, 61 scenarios: every charged shot, B button and B+Back special a card gives, the programs,
+the first barriers, Hub Style on both teams) and the stats scenarios replay on every frame, with RNG1.
+
+The emotion window's glitch came with them: the navicust recordings line-g, bug-support and hubbatc (a bug outside
+the counted bytes: supports, Hub) stopped on RNG1 at the first check, re-recorded with the glitches in their setups.
+bug-hp's stop was its last frame: a flicker's draw on the frame a recording ends has no frame left to agree, which
+bn5-compat's RNG1 comparison now leaves.
