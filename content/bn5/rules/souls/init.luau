@@ -54,9 +54,10 @@ souls.system = define.system {
     setup_defaults = { soul_unison = true, chaos_unison = true },
     actions = { souls.action, souls.revert },
     -- Soul Unison on the custom screen (./custom).
-    buttons = { soul = custom_souls.button },
+    buttons = custom_souls.buttons,
     windows = { soul_unison = custom_souls.window },
     custom = {
+        hand_size = custom_souls.hand_size,
         open = custom_souls.open,
         confirmed = custom_souls.confirmed,
     },
