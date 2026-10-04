@@ -1495,7 +1495,7 @@ declare obstacle: {
     -- ("after_appearing", the default) or always ("always", `sub_801B750`).
     react: (me: Object, crush: ObstacleCrush?, hold: ObstacleHold?) -> number?,
     -- The framework's action numbers are BN6's (the kind's own from 8: its
-    -- idle, then the rest); its game may store others (BN5's obstacles
+    -- idle, then the rest); the game may store others (BN5's obstacles
     -- have no frozen or bubbled entries: their own from 6). `react` returns
     -- the framework's number; `action_byte` gives the byte to store for
     -- one (as `me.action`, or to `me:set_action`), `current` the object's
