@@ -4,6 +4,7 @@
 use crate::battle::Battle;
 use crate::collision::Collision;
 use crate::content::{PanelCondition, SoundRole};
+use crate::sound::SoundId;
 use crate::object::{ObjectRef, PanelPos, Vec3};
 
 /// Panel types. The type is also the low nibble of a panel's flags word.
@@ -698,6 +699,13 @@ impl Battle {
     /// `object_breakPanel_dup2` (and `object_breakPanel_dup3`, the same):
     /// break a solid panel, or crack it while something stands on it.
     pub fn break_panel(&mut self, x: u8, y: u8) -> bool {
+        self.break_panel_sounding(x, y, None)
+    }
+
+    /// The same with `sound` in place of the panel crack's (the role
+    /// `panel_crack`): `object_breakPanelLoud` (BN6's 0xDA; BN5's crack's,
+    /// 0x080C7768).
+    pub fn break_panel_sounding(&mut self, x: u8, y: u8, sound: Option<SoundId>) -> bool {
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         let f = p.flags;
         if f & pflags::SOLID == 0 {
@@ -712,7 +720,10 @@ impl Battle {
             p.kind = PanelType::Cracked;
             p.display_kind = PanelType::Cracked;
         }
-        self.sound(SoundRole::PanelCrack);
+        match sound {
+            Some(s) => self.play_sound(s),
+            None => self.sound(SoundRole::PanelCrack),
+        }
         true
     }
 

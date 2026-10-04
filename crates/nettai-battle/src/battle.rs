@@ -2143,7 +2143,8 @@ impl Battle {
     /// or less, while the battle is neither over nor paused, that console
     /// sounds 0x84. The count stops where the HP recovers.
     fn low_hp_sound(&mut self) {
-        if self.is_battle_over() || self.paused {
+        // (Its task doesn't run while the HP box is hidden.)
+        if self.is_battle_over() || self.paused || self.hud_hidden.hp_box {
             return;
         }
         for side in 0..2u8 {

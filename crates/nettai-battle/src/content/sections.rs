@@ -184,6 +184,9 @@ struct StatusSection {
     no_charge_drive: bool,
     /// "bn6" (the default) or "bn5".
     #[serde(default)]
+    hp_loss: Option<String>,
+    /// "bn6" (the default) or "bn5".
+    #[serde(default)]
     emotions: Option<String>,
     /// "bn6" (the default) or "bn5".
     #[serde(default)]
@@ -451,10 +454,16 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                     Some("bn5") => super::FormBreak::Bn5,
                     Some(other) => return Err(e(format!("{at}: form_break is \"bn6\" or \"bn5\", not {other:?}"))),
                 };
+                let hp_loss = match s.hp_loss.as_deref() {
+                    None | Some("bn6") => super::rules::HpLoss::Bn6,
+                    Some("bn5") => super::rules::HpLoss::Bn5,
+                    Some(other) => return Err(e(format!("{at}: hp_loss is \"bn6\" or \"bn5\", not {other:?}"))),
+                };
                 rules.intake = super::rules::IntakeRules {
                     bugs_before_drain: s.bugs_before_drain,
                     drain_bug_flags: s.drain_bug_flags,
                     no_charge_drive: s.no_charge_drive,
+                    hp_loss,
                 };
             }
             "lockon" => {

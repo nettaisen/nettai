@@ -84,11 +84,11 @@ pub fn spawn(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
 /// (`kinds::heal`), nothing starts one here.
 fn spring_anti_recovery(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
     let side = b.objects.get(user).alliance;
-    heal::trap_mark(b, user);
+    // Its Z is the mark's, which `sub_800ABC6` left in r3.
+    let z = heal::trap_mark(b, user);
     b.clear_linked(side ^ 1);
     let damage = counterattack_damage(s.damage) + (heal::TRAP_HIT_PARAM << 16);
-    // Its Z is the mark's, which `sub_800ABC6` left in r3.
-    heal::spawn_counterattack(b, user, damage, heal::TRAP_MARK_Z)
+    heal::spawn_counterattack(b, user, damage, z)
 }
 
 /// `sub_80E199A`: three times the damage word's damage (its low 11 bits),
