@@ -79,15 +79,7 @@ impl PackManifest {
     /// Parse a manifest (`at` names it in messages) and check it alone: its
     /// name and what it depends on.
     pub fn parse(text: &str, at: &str) -> Result<PackManifest, String> {
-        let m: PackManifest = toml::from_str(text).map_err(|e| {
-            let e = e.to_string();
-            // (The lists a manifest held before a game's init.luau did.)
-            if e.contains("unknown field `definitions`") || e.contains("unknown field `uses`") {
-                format!("{at}: a manifest says the pack's `id`, `kind` and `depends`; what a game has is what its {INIT}.luau requires: {e}")
-            } else {
-                format!("{at}: {e}")
-            }
-        })?;
+        let m: PackManifest = toml::from_str(text).map_err(|e| format!("{at}: {e}"))?;
         if !keys::valid_root_name(&m.id) {
             return Err(format!("{at}: id {:?} is no pack's name (lowercase words in -)", m.id));
         }
@@ -317,7 +309,7 @@ mod tests {
         assert_eq!((m.kind, m.entry()), (PackKind::Support, None));
         // What it holds isn't the manifest's.
         let e = PackManifest::parse("id = \"x\"\nkind = \"game\"\n[definitions]\nchips = [\"a\"]\n", "x/manifest.toml").unwrap_err();
-        assert!(e.contains("what a game has is what its init.luau requires"), "{e}");
+        assert!(e.starts_with("x/manifest.toml: ") && e.contains("unknown field `definitions`"), "{e}");
         assert!(PackManifest::parse("id = \"x\"\nkind = \"game\"\nweapons = []\n", "x").is_err(), "no other field");
         assert!(PackManifest::parse("id = \"x\"\nkind = \"game\"\ndepends = [\"x\"]\n", "x").unwrap_err().contains("depends on itself"));
     }

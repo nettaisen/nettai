@@ -5,9 +5,8 @@
 //!
 //!     bn5-extract content <protoman-us> <colonel-us> <protoman-jp> <colonel-jp> <pack-dir>
 //!
-//! The pack is BN5's own (its manifest says `game = "bn5"`): when it loads
-//! beside a BN6 pack, its names are qualified by the game (`bn5:...`), so
-//! the two never collide and BN5's assets are named for BN5 alone
+//! The pack is BN5's own (its manifest says `game = "bn5"`): a battle
+//! loads one game's pack, so BN5's assets are named for BN5 alone
 //! (docs/design/bn5-map.md §9). Most of it is the US Team ProtoMan ROM's.
 //! A version chip's picture and icon are its own version's ROM's (the other
 //! version's ROM has its counterpart's there), under the chip's key; a

@@ -46,10 +46,9 @@ fn main() {
     let frames: Vec<&trace::Frame> = round.battle_frames().collect();
     let compat = bn6_compat::Compat::bn6();
     let (limit, _) = trace::run_round(round, &content, compat);
-    let ids = bn6_compat::codec::Ids::new(&content, compat);
     let inputs: Vec<[PlayerInput; 2]> = (0..limit)
         .map(|i| {
-            let (players, events) = round.tick_inputs(i, &frames, &ids);
+            let (players, events) = round.tick_inputs(i, &frames);
             [PlayerInput { tick: players[0], events }, PlayerInput { tick: players[1], events: Default::default() }]
         })
         .collect();

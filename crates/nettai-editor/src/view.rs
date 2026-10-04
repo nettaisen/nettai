@@ -605,7 +605,7 @@ fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
     // (The match's game's.)
     let mut all: Vec<(String, nettai_content_api::PatchCardHandle)> = (0..c.defs.patch_cards.len() as u16)
         .map(nettai_content_api::PatchCardHandle)
-        .filter(|&h| nettai_match::ids::in_game(e.m.game(), &c.defs.patch_card(h).key))
+        .filter(|&h| nettai_match::ids::in_game(c, e.m.game(), &c.defs.patch_card(h).key))
         .filter(|h| !side.cards.iter().any(|x| x.card == *h))
         .map(|h| (e.names.patch_card(c, h), h))
         .filter(|(n, _)| needle.is_empty() || n.to_lowercase().contains(&needle))
@@ -664,7 +664,7 @@ fn stats_pane<'a>(e: &'a Editor, s: usize, only: Option<&'static [&'static str]>
     // (Weapons, records and forms by their names in the match's game.)
     let game = e.m.game();
     let local = |key: &str| nettai_match::ids::local(key).to_string();
-    let ours = move |key: &str| nettai_match::ids::in_game(game, key);
+    let ours = move |key: &str| nettai_match::ids::in_game(c, game, key);
     let base = crate::levels::reset(c, side);
     let leveled = crate::levels::has_levels(c, side);
     let (title, about) = match only {

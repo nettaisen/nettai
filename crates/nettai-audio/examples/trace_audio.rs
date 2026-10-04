@@ -153,7 +153,6 @@ fn main() {
         }
         let frames: Vec<&trace::Frame> = round.battle_frames().collect();
         let compat = bn6_compat::Compat::bn6();
-        let ids = bn6_compat::codec::Ids::new(&content, compat);
         let mut b = round.start(content.clone(), compat);
         eprintln!("round {}: {} frames from frame {}", n + 1, frames.len(), round.setup.frame);
         for i in 0..frames.len() {
@@ -162,7 +161,7 @@ fn main() {
             }
             budget -= 1;
             let frame = frames[i].frame;
-            let (input, events) = round.tick_inputs(i, &frames, &ids);
+            let (input, events) = round.tick_inputs(i, &frames);
             let ticked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.tick(&input, events)));
             if let Err(e) = ticked {
                 let msg =
