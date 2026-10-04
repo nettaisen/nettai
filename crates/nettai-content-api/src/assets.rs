@@ -84,19 +84,18 @@ impl AssetNames {
         let mut packs = packs;
         packs.sort_by(|a, b| a.0.cmp(&b.0));
         let mut a = AssetNames { packs: packs.iter().map(|(g, _)| g.clone()).collect(), ..Default::default() };
-        for (i, (game, index)) in packs.into_iter().enumerate() {
+        for (i, (_, index)) in packs.into_iter().enumerate() {
             let pack = PackId(i as u8);
-            fn add<T>(game: &str, pack: PackId, from: BTreeMap<String, T>, to: &mut BTreeMap<String, InPack<T>>) {
+            fn add<T>(pack: PackId, from: BTreeMap<String, T>, to: &mut BTreeMap<String, InPack<T>>) {
                 for (name, id) in from {
-                    let _ = game;
                     to.insert(name, InPack { pack, id });
                 }
             }
-            add(&game, pack, index.sprites, &mut a.sprites);
-            add(&game, pack, index.sounds, &mut a.sounds);
-            add(&game, pack, index.banners, &mut a.banners);
-            add(&game, pack, index.backgrounds, &mut a.backgrounds);
-            add(&game, pack, index.mugshots, &mut a.mugshots);
+            add(pack, index.sprites, &mut a.sprites);
+            add(pack, index.sounds, &mut a.sounds);
+            add(pack, index.banners, &mut a.banners);
+            add(pack, index.backgrounds, &mut a.backgrounds);
+            add(pack, index.mugshots, &mut a.mugshots);
         }
         a
     }

@@ -4,7 +4,7 @@
 local cards = require("../../rules/patch-cards/cards")
 
 return define.patch_card {
-    id = "bn5:toras-tactics",
+    id = "toras-tactics",
     mb = 64,
     effects = {
         cards.rush(true),

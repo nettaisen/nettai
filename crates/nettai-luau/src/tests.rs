@@ -43,6 +43,63 @@ fn a_require_reaches_only_its_pack_and_the_support_packs_it_uses() {
     assert!(e.contains("lib/y.luau: require(\"@a/x\"): a is a game pack"), "support to game: {e}");
 }
 
+/// docs/design/content-model-v2.md §4.0: a support pack's modules run
+/// without the playing game's context (`asset`, `system`), which reaches
+/// them only as their callers' arguments; a game's modules have it.
+#[test]
+fn a_support_pack_has_no_game_context() {
+    use nettai_content_api::{PackKind, PackManifest};
+    let manifest = |id: &str, kind: PackKind, uses: &[&str]| PackManifest {
+        id: id.into(),
+        kind,
+        uses: uses.iter().map(|u| u.to_string()).collect(),
+        ..Default::default()
+    };
+    let packs = [manifest("lib", PackKind::Support, &[]), manifest("test", PackKind::Game, &["lib"])];
+    let load = |modules: &[(&str, &str)]| {
+        let pack = Pack::new(modules.iter().map(|(n, s)| (n.to_string(), s.to_string())))
+            .with_entries(vec![modules[0].0.to_string()])
+            .with_packs(packs.clone());
+        define(&pack, &names(), Options::default()).map(|_| ()).map_err(|e| e.message)
+    };
+    // A game's module names its assets, defines, and reaches its systems'
+    // library; and passes a look to the support pack's maker.
+    let maker = "return function(look: any) return define.effect { sprite = look.sprite, anim = 0 } end";
+    load(&[
+        (
+            "test:x",
+            "local make = require('@lib/m')\nlocal _ = system.state\nreturn make({ sprite = asset.sprite('bomb') })",
+        ),
+        ("lib:m", maker),
+    ])
+    .unwrap();
+    let refused = |e: &str, name: &str, module: &str| {
+        assert!(e.contains(&format!("{module}: a support pack has no `{name}`")), "{module} naming `{name}`: {e}");
+    };
+    // At a support module's top.
+    let e = load(&[("test:x", "return require('@lib/m')"), ("lib:m", "return asset.sprite('bomb')")]).unwrap_err();
+    refused(&e, "asset", "lib:m");
+    let e = load(&[("test:x", "return require('@lib/m')"), ("lib:m", "return system.side")]).unwrap_err();
+    refused(&e, "system", "lib:m");
+    // After a game's module has named the asset: Luau resolves a module's
+    // globals against the VM's when it loads, so the support pack's must
+    // be missing there too, not only in its environment.
+    let e = load(&[
+        ("test:x", "local s = asset.sprite('bomb')\nreturn require('@lib/m')"),
+        ("lib:m", "return asset.sprite('bomb')"),
+    ])
+    .unwrap_err();
+    refused(&e, "asset", "lib:m");
+    // In a support pack's function, though a game's module calls it while
+    // it loads: a function keeps its module's environment.
+    let e = load(&[
+        ("test:x", "local make = require('@lib/m')\nreturn make()"),
+        ("lib:m", "return function() return define.effect { sprite = asset.sprite('bomb'), anim = 0 } end"),
+    ])
+    .unwrap_err();
+    refused(&e, "asset", "lib:m");
+}
+
 fn pack(modules: &[(&str, &str)]) -> Pack {
     Pack::root("test", modules.iter().map(|(p, s)| (p.to_string(), s.to_string())))
 }
@@ -226,7 +283,7 @@ fn definitions_are_frozen_and_definers_close_after_loading() {
     )]);
     let (lua, defined, modules, _, _) = open(&p, &AssetNames::default(), Options::default()).unwrap();
     assert!(defined.tables.iter().all(|t| t.is_readonly()));
-    let LuaValue::Table(m) = &modules["m"] else { panic!("a table") };
+    let LuaValue::Table(m) = &modules["test:m"] else { panic!("a table") };
     let late: Function = m.get("late").unwrap();
     BUDGET.with(|b| b.set(1000));
     let e = late.call::<LuaValue>(()).unwrap_err().to_string();
@@ -244,7 +301,7 @@ fn coverage_records_the_modules_that_ran() {
         ("other", "return { g = function() return 1 end }"),
     ]);
     let (lua, _, modules, _, _) = open(&p, &AssetNames::default(), Options::default()).unwrap();
-    let LuaValue::Table(m) = &modules["m"] else { panic!("a table") };
+    let LuaValue::Table(m) = &modules["test:m"] else { panic!("a table") };
     let f: Function = m.get("f").unwrap();
     BUDGET.with(|b| b.set(1000));
     assert_eq!(f.call::<i64>(3).unwrap(), 12);
@@ -252,7 +309,7 @@ fn coverage_records_the_modules_that_ran() {
     coverage::start();
     assert_eq!(f.call::<i64>(3).unwrap(), 12);
     let ran = coverage::take();
-    assert_eq!(ran.modules.into_iter().collect::<Vec<_>>(), ["test:lib/twice", "m"]);
+    assert_eq!(ran.modules.into_iter().collect::<Vec<_>>(), ["test:lib/twice", "test:m"]);
     // Stopped: the next call isn't recorded.
     assert_eq!(f.call::<i64>(3).unwrap(), 12);
     assert_eq!(coverage::take(), coverage::Ran::default());

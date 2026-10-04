@@ -14,14 +14,14 @@ local recipe_megenbom = require("../energbom/chips").megenbom
 local recipe_spreader = require("../spreader/chip")
 
 local LOOK: HyperBurstLook = {
-    spreader = attachment.look { sprite = asset.sprite("bn5:spreader"), palette = 0, attach_point = 11 },
+    spreader = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 11 },
     attachment = attachment.kind,
-    sound = asset.sound("bn5:h-burst"),
+    sound = asset.sound("h-burst"),
     burst = burst.kind,
 }
 
 return define.chip {
-    id = "bn5:h-burst",
+    id = "h-burst",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -37,8 +37,8 @@ return define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 18, sequence = { recipe_energbom, recipe_megenbom, recipe_spreader }, per_player_gauges_only = true },
+        { order = 18, sequence = { recipe_energbom, recipe_megenbom, recipe_spreader }, operation_battle_only = true },
         { order = 54, code_run = { chip = recipe_spreader, count = 3 } },
     },
-    action = action.action({ id = "bn5:h-burst/action", bursts = 8 }, LOOK),
+    action = action.action({ id = "h-burst/action", bursts = 8 }, LOOK),
 }

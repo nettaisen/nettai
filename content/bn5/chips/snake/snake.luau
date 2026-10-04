@@ -28,11 +28,11 @@ export type NestState = {
     holder: Object?,
 }
 
-snake.kind = common.make_kind("bn5:snake/snake", {
+snake.kind = common.make_kind("snake/snake", {
     trajectory = trajectory,
-    sprite = asset.sprite("bn5:snake"),
-    rise_sound = asset.sound("bn5:appear"),
-    leap_sound = asset.sound("bn5:aqua-needle-2"),
+    sprite = asset.sprite("snake"),
+    rise_sound = asset.sound("appear"),
+    leap_sound = asset.sound("aqua-needle-2"),
     wait = 0x30,
     strike_element = 4,
     strike_spark = sparks.wood,
@@ -96,7 +96,7 @@ local function nest_tick(me: Object)
 end
 
 snake.nest = define.kind {
-    id = "bn5:snake/nest",
+    id = "snake/nest",
     pool = "attack",
     state = { scan_x = "u8", scan_y = "u8", flags = "u32", holder = "object" },
     -- 0x080D0380 (BN6's `sub_80D2BDC`).
@@ -168,7 +168,7 @@ local function effect(me: Object)
 end
 
 snake.controller = define.kind {
-    id = "bn5:snake/controller",
+    id = "snake/controller",
     pool = "effect",
     state = { bonus = "u16", busy = "bool" },
     update = dimming_chips.phases { name = "Snake", effect = effect },

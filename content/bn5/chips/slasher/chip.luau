@@ -6,7 +6,7 @@
 local slasher = require("./action")
 
 return define.chip {
-    id = "bn5:slasher",
+    id = "slasher",
     codes = { "B", "I", "R" },
     element = "null",
     family = "sword",

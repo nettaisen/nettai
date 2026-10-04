@@ -8,9 +8,9 @@ local panel_changer = require("../../objects/panel-changer/panel_changer")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 
 return common.make {
-    id = "bn5:antirecv/controller",
+    id = "antirecv/controller",
     changer = panel_changer.kind,
     bubble = rising_bubble.kind,
-    tick_sound = asset.sound("bn5:panel-change-tick"),
-    poison_sound = asset.sound("bn5:panel-poison"),
+    tick_sound = asset.sound("panel-change-tick"),
+    poison_sound = asset.sound("panel-poison"),
 }

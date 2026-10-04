@@ -1130,6 +1130,9 @@ pub fn scripts() -> Scripts {
                 ("rules/berserk", "rules/berserk"),
                 ("lib/trajectory", "lib/trajectory"),
                 ("lib/hp", "lib/hp"),
+                // BN6's chip gate battle (battle flag 0x40), which the
+                // Beast Out button and the beast buster test.
+                ("lib/chip_gate_battle", "lib/chip_gate_battle"),
                 // The bombs and seeds: the chips, whose actions the test
                 // chips run.
                 ("lib/bombs/throw", "lib/bombs/throw"),

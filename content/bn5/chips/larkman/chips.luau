@@ -6,7 +6,7 @@ local navi = require("./navi")
 
 -- LarkMan (BN5 chip 0x110): LarkMan cuts in and sends his swoop round the field (./navi).
 local larkman = define.chip {
-    id = "bn5:larkman",
+    id = "larkman",
     codes = { "S" },
     element = "null",
     family = "null",
@@ -25,14 +25,14 @@ local larkman = define.chip {
 -- LarkManSP (BN5 chip 0x111): LarkMan cuts in and sends his swoop round the field (../larkman/navi); its damage by how
 -- fast its user deleted LarkMan SP (rules/sp-chips: formula 18, its table's row 17).
 local larkman_sp = define.chip {
-    id = "bn5:larkman-sp",
+    id = "larkman-sp",
     codes = { "S" },
     element = "null",
     family = "null",
     class = "mega",
     rarity = 3,
     mb = 77,
-    damage = { formula = "sp_navi", slot = "sp/larkman", by_time = { 270, 260, 250, 240, 230, 220, 210, 200, 190, 180, 170 }, per_player_gauges = 220 },
+    damage = { formula = "sp_navi", slot = "sp/larkman", by_time = { 270, 260, 250, 240, 230, 220, 210, 200, 190, 180, 170 }, operation_battle = 220 },
     hit_param = 158,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
@@ -44,14 +44,14 @@ local larkman_sp = define.chip {
 -- LarkManDS (BN5 chip 0x112): LarkMan, dark, cuts in and sends his swoop round the field (../larkman/navi); its damage
 -- by its user's side's statistic 3 (formula 40, its table's row 17).
 local larkman_ds = define.chip {
-    id = "bn5:larkman-ds",
+    id = "larkman-ds",
     codes = { "S" },
     element = "null",
     family = "null",
     class = "mega",
     rarity = 3,
     mb = 77,
-    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270 }, per_player_gauges = 180 },
+    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270 }, operation_battle = 180 },
     hit_param = 158,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },

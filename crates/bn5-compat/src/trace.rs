@@ -528,7 +528,7 @@ impl Round {
     /// both players on BN5's stock rules.
     pub fn round_setup(&self, content: &Content, compat: &Compat) -> Result<RoundSetup, String> {
         // BN5's light and dark system (content/bn5/rules/light-dark).
-        const LIGHT_DARK: &str = "bn5:light-dark";
+        const LIGHT_DARK: &str = "light-dark";
         let needs = self.needs(content, compat)?;
         if !needs.is_empty() {
             return Err(format!("content lacks {}", needs.join(", ")));
@@ -815,10 +815,10 @@ pub fn patch_cards(content: &Content, compat: &Compat, version: crate::Version, 
     nettai_battle::patch_cards::PatchCards::new(&cards)
 }
 
-/// BN5's navi numbers' keys in its root (NaviStats +0x29): MegaMan's.
-/// (The Team Battle's navis come with their content.)
+/// BN5's navi numbers' keys (NaviStats +0x29): MegaMan's. (The Team
+/// Battle's navis come with their content.)
 pub fn navi_key(n: u8) -> Option<String> {
-    (n == 0).then(|| format!("{}:megaman", crate::ROOT))
+    (n == 0).then(|| "megaman".to_string())
 }
 
 /// Differences between the engine and a BN5 frame: the state machine and

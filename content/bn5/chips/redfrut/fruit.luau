@@ -4,12 +4,13 @@
 -- (a puff), then onto a random free panel of the other rows (or of its own, with none), five times; after the sixth
 -- going it is gone. A hit breaks it (one HP); the side whose attack, object or body broke it gets its gift on one of
 -- its alive navis at random (0x080D82BA): RedFrut1's 300 HP back (AntiRecv turning it) and 50 more mood, RedFrut2's
--- invulnerability for 420 ticks, RedFrut3's Full Synchro (0x080D813C: a player's navi out of battle flag 0x40's mode
+-- invulnerability for 420 ticks, RedFrut3's Full Synchro (0x080D813C: a player's navi out of the operation battle
 -- whose emotion is one of the first four, a mood of 0 left as it is). A hit by both sides at once, or by neither's,
 -- gives nothing. Its params are the chip's (+0x10: the gift and its palette, +0x11: its hops).
 
 local collision = require("../../rules/collision")
 local panels = require("@exelib/panels")
+local operation_battle = require("../../lib/operation_battle")
 
 local fruit = {}
 
@@ -23,7 +24,7 @@ export type State = {
 }
 
 -- 0x080D7F50: sprite 0C-4E without a shadow (`sub_8011504`'s 0x00000C4E), animation 0.
-local SPRITE = asset.sprite("bn5:red-fruit")
+local SPRITE = asset.sprite("red-fruit")
 local HP = 1
 -- Its collision (0x0E0F0003): a neutral body (row 0x0E) that everything reaches (row 0x0F), hit modifier 0 (the
 -- word's third byte; `sub_8011504` reads no fourth).
@@ -31,7 +32,7 @@ local HIT_MOD = 0
 -- NameID 0xE7: actor record 0xE7 (0x08014C94: version 2, AI index 0x21); BN5's swallowing and Poltergeist leave it
 -- (0x0800D372, 0x080E8CA0).
 local IDENTITY = define.identity {
-    id = "bn5:red-fruit",
+    id = "red-fruit",
     class = "field_object",
     version = 2,
     ai_index = 0x21,
@@ -40,10 +41,10 @@ local IDENTITY = define.identity {
 }
 -- The effects (BN5's table, 0x080DFC94): row 0x15 (14-0D, animation 3) as it comes, row 0x14 (14-0D, animation 2) as
 -- it goes, row 0x0E (14-01) when broken.
-local COMES = define.effect { sprite = asset.sprite("bn5:puff"), anim = 3, palette = 0 }
-local GOES = define.effect { sprite = asset.sprite("bn5:puff"), anim = 2, palette = 0 }
-local BROKEN = define.effect { sprite = asset.sprite("bn5:impact"), anim = 0, palette = 0 }
-local APPEAR_SOUND, BREAK_SOUND = asset.sound("bn5:appear"), asset.sound("bn5:hit-bomb-1")
+local COMES = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 }
+local GOES = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local BROKEN = define.effect { sprite = asset.sprite("impact"), anim = 0, palette = 0 }
+local APPEAR_SOUND, BREAK_SOUND = asset.sound("appear"), asset.sound("hit-bomb-1")
 local SHOWN_TICKS, PUFF_TICKS = 40, 4
 -- Where it neither drops nor hops (0x080D8280): the back columns, reserved while it looks.
 local BACK_COLUMNS = { { 1, 1 }, { 1, 2 }, { 1, 3 }, { 6, 1 }, { 6, 2 }, { 6, 3 } }
@@ -254,10 +255,10 @@ local function shield(navi: Object)
     navi:set_status("invulnerable", true)
 end
 
--- 0x080D813C: RedFrut3's: a player's navi, out of battle flag 0x40's mode, whose emotion (0x0801270C) is one of the
+-- 0x080D813C: RedFrut3's: a player's navi, out of the operation battle, whose emotion (0x0801270C) is one of the
 -- first four, to Full Synchro (0x080127D6: a mood of 0 left as it is).
 local function synchro(navi: Object)
-    if navi.actor_type ~= "player" or battle.per_player_gauges() then
+    if navi.actor_type ~= "player" or operation_battle() then
         return
     end
     local stats = battle.navi(navi.alliance)
@@ -342,7 +343,7 @@ local function init(me: Object)
 end
 
 fruit.kind = define.kind {
-    id = "bn5:redfrut/fruit",
+    id = "redfrut/fruit",
     pool = "attack",
     state = { gift = "u8", hops = "u8", breaker = "u8" },
     -- 0x080D7F2C.

@@ -31,9 +31,9 @@ tornado.variants = {
     row7 = variant { palette = 0, rearm = 0 },
 }
 
-tornado.kind = common.make_kind("bn5:tornado", {
-    sprite = asset.sprite("bn5:tornado"),
-    sound = asset.sound("bn5:aqua-surge"),
+tornado.kind = common.make_kind("tornado", {
+    sprite = asset.sprite("tornado"),
+    sound = asset.sound("aqua-surge"),
     panel_variants = {
         lava = tornado.variants.lava,
         sea = tornado.variants.sea,
@@ -48,14 +48,14 @@ tornado.kind = common.make_kind("bn5:tornado", {
     spark = sparks.of_element,
 })
 
-local FAN = attachment.look { sprite = asset.sprite("bn5:hand-fan"), palette = 0, attach_point = 9 }
-local CHARGED_FAN = attachment.look { sprite = asset.sprite("bn5:hand-fan"), palette = 1, attach_point = 9 }
+local FAN = attachment.look { sprite = asset.sprite("hand-fan"), palette = 0, attach_point = 9 }
+local CHARGED_FAN = attachment.look { sprite = asset.sprite("hand-fan"), palette = 1, attach_point = 9 }
 
 local LOOK: TornadoBlowLook = { attachment = attachment.kind, tornado = tornado.kind }
 
 -- Tornado's blow (subtype 1): one plain tornado two panels ahead, for 0x20 ticks (the record's parameters).
 tornado.single = blows.blow({
-    id = "bn5:tornado/action",
+    id = "tornado/action",
     fan = FAN,
     single = { variant = tornado.variants.plain, status = nil, ticks = 0x20 },
 }, LOOK)
@@ -65,7 +65,7 @@ tornado.single = blows.blow({
 -- (0x080CADE4, BN6's `sub_80CA104`: the same panels), the charged fan; BN5's tornadoes paralyze by level
 -- (0x080CAE50: none, 90, 120, 150 ticks; BN6's none at every level).
 tornado.static = blows.blow({
-    id = "bn5:static/action",
+    id = "static/action",
     fan = CHARGED_FAN,
     spread = {
         by = "bug_kinds",
@@ -83,7 +83,7 @@ tornado.static = blows.blow({
 -- DarkTorn's blow (subtype 3, BN6's action's third form): HP-bug tornadoes spreading back toward the navi by its
 -- side's statistic 3 (0x080CAE7E, BN6's `sub_80CA19E`: the same tables), the charged fan one palette on.
 tornado.back_spread = blows.blow({
-    id = "bn5:darktorn/action",
+    id = "darktorn/action",
     fan = CHARGED_FAN,
     fan_palette = 1,
     spread = {

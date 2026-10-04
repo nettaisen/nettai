@@ -23,7 +23,7 @@ export type State = {
 
 local HIT_PARAM = 0x94
 local ANIM = 5
-local SOUND = asset.sound("bn5:spin")
+local SOUND = asset.sound("spin")
 local DRAW_TICKS, SLASH_AT, RECOVER_TICKS = 21, 9, 5
 local HIT_MOD = 3
 -- An enemy body, by side (0x080BA5B0).
@@ -31,10 +31,10 @@ local ENEMY_BODY = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
 -- The slash: AIAttackVars +3's row of 0x080EED64 and its effect (0x48 on: sprite 10-1F), row 0, the routine's (the
 -- only one that starts the action): the target and the two panels diagonally behind it.
 local REGION = regions.vee
-local SLASH = define.effect { sprite = asset.sprite("bn5:screen-divide"), anim = 0, palette = 0 }
+local SLASH = define.effect { sprite = asset.sprite("screen-divide"), anim = 0, palette = 0 }
 -- The sword: attachment row 3 (the swords' blade), row 0x32 (the same in palette 6) while Chaos Unison's charge is
 -- armed (0x080EC082).
-local CHAOS_BLADE = attachment.look { sprite = asset.sprite("bn5:sword"), palette = 6 }
+local CHAOS_BLADE = attachment.look { sprite = asset.sprite("sword"), palette = 6 }
 
 -- 0x080BA54C
 local function target(me: Object): (number, number)
@@ -106,7 +106,7 @@ local function recover(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "bn5:colonelsoul/charge/action",
+    id = "colonelsoul/charge/action",
     state = { timer = "u16", target_x = "u8", target_y = "u8" },
     -- 0x080EECAA
     update = function(me: Object, s: State)
@@ -131,7 +131,7 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "bn5:colonelsoul/charge",
+    id = "colonelsoul/charge",
     -- The charge table's row 0x14 (0x0801CB34); Charge 5 reads on into row 0x15's first entry.
     charge_ticks = { 70, 65, 60, 55, 50, 90 },
     setup = setup,

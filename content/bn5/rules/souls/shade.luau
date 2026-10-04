@@ -14,7 +14,7 @@ export type State = {
 }
 
 -- MegaMan's base sprite (00-00, 0x0801BE2A with 0x01000000: animation 0, with a shadow it then drops).
-local SPRITE = asset.sprite("bn5:megaman")
+local SPRITE = asset.sprite("megaman")
 -- His dark palette.
 local PALETTE = 1
 
@@ -119,7 +119,7 @@ local function init(me: Object)
 end
 
 shade.kind = define.kind {
-    id = "bn5:chaos-shade",
+    id = "chaos-shade",
     pool = "actor",
     state = { speed = "i32" },
     -- 0x080C0544: the state, then its sprite steps.

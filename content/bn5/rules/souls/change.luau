@@ -32,9 +32,9 @@ export type State = {
 -- The souls system's state (./system).
 type Souls = { turns: number, chaos: boolean }
 
-local FLASH_SOUND = asset.sound("bn5:log-in")
-local UNISON_SOUND = asset.sound("bn5:cross-change")
-local CHAOS_SOUND = asset.sound("bn5:bug")
+local FLASH_SOUND = asset.sound("log-in")
+local UNISON_SOUND = asset.sound("cross-change")
+local CHAOS_SOUND = asset.sound("bug")
 
 -- The souls whose change shakes the cameras (0x0801212C: TomahawkSoul's), with battle flag 0x20 set (0x08012138), which
 -- has the cameras shake while the battle is paused, until the change's end clears it (0x080121B6).

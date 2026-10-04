@@ -11,6 +11,7 @@
 -- frontend draws the window from (by these fields' names).
 
 local kind = require("../forms/kind")
+local chip_gate_battle = require("../../lib/chip_gate_battle")
 
 local window = {}
 
@@ -32,7 +33,7 @@ end
 
 -- Event flag 0x163, a navi code received (`sub_800B144` sends its level
 -- only then): no Beast Out button, and the Cross window then needs the
--- navi to be MegaMan (instead of battle flag 0x40 clear).
+-- navi to be MegaMan (instead of the chip gate battle).
 local function sealed(side: number): boolean
     return battle.navi_level(side) ~= nil
 end
@@ -100,7 +101,7 @@ end
 
 -- `sub_8029F70` (battle modes 0, 0xA and 0xB): not in a random battle; with
 -- the link navi seal (event flag 0x163) only MegaMan, else not with
--- per-player gauges (battle flag 0x40).
+-- each side's own gauge (the chip gate battle).
 local function crosses_allowed(side: number): boolean
     if custom.player(side).random_battle then
         return false
@@ -108,7 +109,7 @@ local function crosses_allowed(side: number): boolean
     if sealed(side) then
         return megaman(side)
     end
-    return not battle.per_player_gauges()
+    return not chip_gate_battle()
 end
 
 -- `sub_8029EC8`: how many Crosses the navi owns and hasn't used this round.

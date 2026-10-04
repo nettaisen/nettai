@@ -15,7 +15,7 @@ local widesht = require("../widesht/wave")
 -- staggering harder: the shared WideSht's (@exelib/widesht, BN5's action 0x25 with subtype 1) three waves, at the
 -- floor, of BN5's wave kind 6 (chips/widesht: the record's parameters).
 local suprspr1 = define.chip {
-    id = "bn5:suprspr1",
+    id = "suprspr1",
     codes = { "A", "B", "C", "*" },
     element = "aqua",
     family = "program_advance",
@@ -31,7 +31,7 @@ local suprspr1 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 3, sequence = { recipe_wideswrd, recipe_wideblde, recipe_widesht1 }, per_player_gauges_only = true },
+        { order = 3, sequence = { recipe_wideswrd, recipe_wideblde, recipe_widesht1 }, operation_battle_only = true },
         { order = 39, code_run = { chip = recipe_widesht1, count = 3 } },
     },
     action = widesht.action { wave = wave.super, waves = 3, z = 0 },
@@ -42,7 +42,7 @@ local suprspr1 = define.chip {
 -- staggering harder: the shared WideSht's (@exelib/widesht, BN5's action 0x25 with subtype 1) three waves, at the
 -- floor, of BN5's wave kind 7 (chips/widesht: the record's parameters).
 local suprspr2 = define.chip {
-    id = "bn5:suprspr2",
+    id = "suprspr2",
     codes = { "A", "B", "C", "*" },
     element = "aqua",
     family = "program_advance",
@@ -58,7 +58,7 @@ local suprspr2 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 4, sequence = { recipe_wideswrd, recipe_wideblde, recipe_widesht2 }, per_player_gauges_only = true },
+        { order = 4, sequence = { recipe_wideswrd, recipe_wideblde, recipe_widesht2 }, operation_battle_only = true },
         { order = 40, code_run = { chip = recipe_widesht2, count = 3 } },
     },
     action = widesht.action { wave = wave.super2, waves = 3, z = 0 },
@@ -69,7 +69,7 @@ local suprspr2 = define.chip {
 -- staggering harder: the shared WideSht's (@exelib/widesht, BN5's action 0x25 with subtype 1) three waves, at the
 -- floor, of BN5's wave kind 8 (chips/widesht: the record's parameters).
 local suprspr3 = define.chip {
-    id = "bn5:suprspr3",
+    id = "suprspr3",
     codes = { "A", "B", "C", "*" },
     element = "aqua",
     family = "program_advance",
@@ -85,7 +85,7 @@ local suprspr3 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 5, sequence = { recipe_wideswrd, recipe_wideblde, recipe_widesht3 }, per_player_gauges_only = true },
+        { order = 5, sequence = { recipe_wideswrd, recipe_wideblde, recipe_widesht3 }, operation_battle_only = true },
         { order = 41, code_run = { chip = recipe_widesht3, count = 3 } },
     },
     action = widesht.action { wave = wave.super3, waves = 3, z = 0 },

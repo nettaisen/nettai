@@ -12,19 +12,19 @@ local shuriken = require("@exelib/antidmg/shuriken")
 local counter = {}
 
 local shuriken_kind = shuriken.make_kind {
-    id = "bn5:antidmg/shuriken",
-    sprite = asset.sprite("bn5:shuriken"),
-    land_sound = asset.sound("bn5:panel-crack"),
+    id = "antidmg/shuriken",
+    sprite = asset.sprite("shuriken"),
+    land_sound = asset.sound("panel-crack"),
     puff = effects.bubbles,
     self_type = collision.thrown_slash,
     target = collision.hits_navis,
 }
 
 counter.action = common.action_at {
-    id = "bn5:antidmg/counter",
+    id = "antidmg/counter",
     shuriken = shuriken_kind,
-    vanish_sound = asset.sound("bn5:trap-vanish"),
-    throw_sound = asset.sound("bn5:boomerang"),
+    vanish_sound = asset.sound("trap-vanish"),
+    throw_sound = asset.sound("boomerang"),
     puff = effects.bubbles,
 }
 

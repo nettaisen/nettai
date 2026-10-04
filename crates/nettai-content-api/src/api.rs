@@ -586,7 +586,7 @@ named_fields! {
         Turn = "turn", U8, ro;
         /// Battle flag 0x40: each player has a custom gauge (`sub_800A8F8`;
         /// not in netbattles).
-        PerPlayerGauges = "per_player_gauges", Bool, ro;
+        OwnGauges = "own_gauges", Bool, ro;
         /// Battle flag 1: the fight is on (collision is live).
         Fighting = "fighting", Bool, ro;
         /// Battle flag 2: the custom gauge is full.

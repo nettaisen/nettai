@@ -121,7 +121,7 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
             local dx = int.mul32(ax * 0x10000, -me.facing)
             me.pos = target.pos + Vec3.new(dx, 0, ay * 0x10000)
             local hit = look.per_player_hit
-            if hit and battle.per_player_gauges() then
+            if hit and battle.own_gauges() then
                 battle.hitbox(me, {
                     panel_x = me.panel_x,
                     panel_y = me.panel_y,

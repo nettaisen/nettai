@@ -19,11 +19,11 @@ local souls = require("../../../../rules/souls/system")
 local ROW = 1
 
 return define.form {
-    id = "bn5:numbersoul",
+    id = "numbersoul",
     soul = { number = 9, family = "plus" },
     change = souls.action,
     revert = souls.revert,
-    sprite = asset.sprite("bn5:numbersoul"),
+    sprite = asset.sprite("numbersoul"),
     element = "null",
     buster_bonus = 0,
     weapons = {
@@ -31,7 +31,7 @@ return define.form {
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
         -- Routine 0x32 (0x0800FA48): DarkPlus (chip 0xBE), the charge table's row 0x32.
-        chaos = chaos.weapon("bn5:numbersoul/chaos", darkplus, { 40, 60, 90, 120, 150, 40 }),
+        chaos = chaos.weapon("numbersoul/chaos", darkplus, { 40, 60, 90, 120, 150, 40 }),
     },
     chip_bonus = { family = "null", damage = 10, dimming_chips = true },
     -- His put-on and take-off routines (0x0800F038's and 0x0800F09C's row 9): his layer, in his second related slot
@@ -47,8 +47,8 @@ return define.form {
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 0x16-0x1B, Team Colonel's
     -- souls'); in its Chaos Unison look while the chaos charge is armed (0x080125F6: the palette 11 on).
     mugshot = {
-        normal = asset.mugshot("bn5:numbersoul"),
-        variant = { normal = asset.mugshot("bn5:numbersoul-chaos") },
+        normal = asset.mugshot("numbersoul"),
+        variant = { normal = asset.mugshot("numbersoul-chaos") },
     },
     buster_arm = { anim = 0 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 9 of category 0).

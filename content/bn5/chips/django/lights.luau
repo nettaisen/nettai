@@ -22,7 +22,7 @@ export type State = {
     children: { Object? },
 }
 
-local SPRITE = asset.sprite("bn5:django-sun")
+local SPRITE = asset.sprite("django-sun")
 -- The lights' start angles (0x080E9A60).
 local STARTS = { 0x00, 0x55, 0xAA }
 local sine = trajectory.sine
@@ -99,7 +99,7 @@ local function init(me: Object)
 end
 
 lights.kind = define.kind {
-    id = "bn5:django/lights",
+    id = "django/lights",
     pool = "effect",
     state = { light = "bool", blessed = "bool", done = "bool", children = "object[8]" },
     -- 0x080E9968.

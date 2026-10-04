@@ -8,7 +8,7 @@ local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 
 return define.chip {
-    id = "bn5:minibomb",
+    id = "minibomb",
     codes = { "B", "G", "L", "*" },
     element = "null",
     family = "null",
