@@ -671,16 +671,6 @@ impl CoreApi for Battle {
         }
     }
 
-    fn bug_frags(&self, side: u8) -> u32 {
-        self.bug_frags[side as usize & 1]
-    }
-
-    fn spend_bug_frags(&mut self, side: u8, n: u32) {
-        // (The local player's save loses them too, which no battle reads.)
-        let frags = &mut self.bug_frags[side as usize & 1];
-        *frags = frags.wrapping_sub(n);
-    }
-
     fn custom_folder(&self, side: u8) -> ApiResult<Vec<Option<ChipHandle>>> {
         let folder = self.custom.sides[side as usize & 1].folder.ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
         Ok(folder.chips.iter().map(|c| c.map(|c| c.id)).collect())
@@ -1655,6 +1645,10 @@ impl CoreApi for Battle {
             .get_mut(side as usize)
             .and_then(|r| r.states.get_mut(slot as usize))
             .ok_or_else(|| ApiError::Other(format!("side {side}'s ruleset has no system in place {slot}")))
+    }
+
+    fn system_slot_of(&self, side: u8, system: nettai_content_api::SystemHandle) -> Option<u8> {
+        self.system_slot(side & 1, system).map(|(_, slot)| slot)
     }
 
     fn system_setup(&self, side: u8, slot: u8) -> ApiResult<&ContentState> {
