@@ -8,7 +8,7 @@
 -- explosions. Its controller (./controller), which waits on it, then moves on.
 
 local collision = require("../../rules/collision")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local regions = require("@common/regions")
 
 export type State = {
