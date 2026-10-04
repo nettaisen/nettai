@@ -70,17 +70,15 @@ custom screen from the local player's game's (docs/design/rules-in-luau.md,
 As built R3b), and the field from the arena's game's (§7.4; see "Field and
 background" below).
 
-The content goes with the packs (`nettai_content::pack::load_found`;
-docs/design/content-model-v2.md §4.0): `--content <dir>` loads that
-content directory's game packs (so does `$NETTAI_CONTENT`); without it, this
-repository's content/. The frontend loads each game pack whose asset pack is
-found: its manifest's listed modules and what they require, with the support
-packs it uses (exelib), nothing else. A game that doesn't load is left out,
-and the frontend says why at start-up ("the game bn5 is left out: ...": no
-pack of its game, with the command that writes one, or the define phase's
-error), so BN6's play never fails for another game's. A game's chips without
-a use yet (a port's unwritten chips: BN5's) are its manifest's `unported`,
-which don't load. Every loader does the same (the
+The content goes with the packs (`nettai_content::pack::load_game`;
+docs/design/content-model-v2.md §4.0): `--content <dir>` names the content
+directory (so does `$NETTAI_CONTENT`); without it, this repository's
+content/. A match plays one game: the frontend loads that game's pack (its
+manifest's listed modules and what they require, with the support packs it
+uses, exelib) and its asset pack, nothing else; `nettai_content::pack::games`
+lists the games it can offer, each with its asset pack or the command that
+writes one. A game's chips without a use yet (a port's unwritten chips:
+BN5's) are its manifest's `unported`, which don't load. Every loader does the same (the
 editor, the tools' `load_battle`, the BN5 replays, the static audit), and
 the content then is what loaded: its hash, which netplay's handshake
 compares, covers exactly that. A game the content must load whose pack

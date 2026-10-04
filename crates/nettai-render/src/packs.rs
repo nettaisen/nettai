@@ -4,7 +4,7 @@
 //! pack's own id for it, from that pack's graphics ([`Packs`]).
 
 use nettai_assets::{Bundle, Hud, SpriteSheet};
-use nettai_battle::content::{BackgroundId, BannerId, Content, InPack, MugshotId, PackId, PackSprite, RootId, SpriteId};
+use nettai_battle::content::{BackgroundId, BannerId, Content, InPack, MugshotId, PackId, PackSprite, SpriteId};
 use nettai_content_api::AssetKind;
 
 /// The loaded packs' graphics, by `PackId` (the content's `AssetNames::packs`
@@ -49,21 +49,16 @@ impl<'a> Packs<'a> {
         self.own
     }
 
-    /// The graphics of game `root`'s pack (the arena's, a side's).
-    pub fn of_root(&self, c: &Content, root: RootId) -> &'a Bundle {
-        self.bundle(self.id_of_root(c, root))
+    /// The graphics of the game's pack (a match plays one game,
+    /// docs/design/content-model-v2.md §4.0): its field, its custom screen,
+    /// its chips' icons and pictures.
+    pub fn game(&self, c: &Content) -> &'a Bundle {
+        self.bundle(self.game_id(c))
     }
 
-    /// Game `root`'s pack (the own pack for a game without one loaded).
-    pub fn id_of_root(&self, c: &Content, root: RootId) -> PackId {
-        let game = c.defs.roots.get(root.index());
-        game.and_then(|g| c.assets.pack(g)).filter(|p| p.index() < self.bundles.len()).unwrap_or(self.own)
-    }
-
-    /// The graphics of the pack of a definition's game, its id's prefix (a
-    /// chip's icon and picture are its game's, under its id's own part).
-    pub fn of_key(&self, c: &Content, key: &str) -> &'a Bundle {
-        c.defs.root_of(key).map_or(self.own(), |r| self.of_root(c, r))
+    /// The game's pack (the own pack when it isn't loaded).
+    pub fn game_id(&self, c: &Content) -> PackId {
+        c.assets.pack(c.game()).filter(|p| p.index() < self.bundles.len()).unwrap_or(self.own)
     }
 
     /// Draw a console of `version` (`Renderer::console_version`; None: the
@@ -75,7 +70,7 @@ impl<'a> Packs<'a> {
     /// A chip's icon: its game's pack's, under its key there, else its
     /// version's (`version_key`).
     pub fn chip_icon(&self, c: &Content, key: &str) -> Option<&'a nettai_assets::Tiles> {
-        let pack = self.of_key(c, key);
+        let pack = self.game(c);
         let local = nettai_content_api::keys::local(key);
         pack.hud.chip_icon(local).or_else(|| pack.hud.chip_icon(&self.version_key(pack, local)?))
     }
@@ -83,7 +78,7 @@ impl<'a> Packs<'a> {
     /// A chip's picture: its game's pack's, under its key there, else its
     /// version's (`version_key`).
     pub fn chip_art(&self, c: &Content, key: &str) -> Option<&'a nettai_assets::ChipArt> {
-        let pack = self.of_key(c, key);
+        let pack = self.game(c);
         let local = nettai_content_api::keys::local(key);
         pack.custom.chip_art(local).or_else(|| pack.custom.chip_art(&self.version_key(pack, local)?))
     }
@@ -168,17 +163,9 @@ mod tests {
     use nettai_battle::content::testing;
     use nettai_content_api::keys;
 
-    /// The test content with a `twin` root and pack beside it: twin's
-    /// sprite `navi` is its pack's 0-0, the same number as the test pack's
-    /// navi's.
+    /// The test content, defined.
     fn content() -> Content {
         let mut c = testing::build();
-        let mut index = nettai_content_api::PackIndex::default();
-        index.sprites.insert("navi".into(), testing::NAVI_SPRITE);
-        index.mugshots.insert("face".into(), 3);
-        let frame = nettai_battle::content::AnimFrame { duration: 4, flags: nettai_battle::object::sprite::FRAME_LAST };
-        testing::add_pack(&mut c, "twin", index, [(testing::NAVI_SPRITE, vec![vec![frame]])].into_iter().collect());
-        c.scripts.add_game("twin", Default::default());
         c.define().unwrap_or_else(|e| panic!("{e}"));
         c
     }
@@ -197,35 +184,21 @@ mod tests {
         b
     }
 
-    /// docs/design/rules-in-luau.md §7.4: an asset draws from its own
-    /// pack's graphics, a root's game from its pack's, and a chip's icon
-    /// is its game's pack's under its key there.
+    /// docs/design/rules-in-luau.md §7.4: an asset draws from its pack's
+    /// graphics, the game's from the game's pack, and a chip's icon is
+    /// the game's pack's under its key there.
     #[test]
     fn each_asset_draws_from_its_own_pack() {
         let c = content();
-        let (test, twin) = (c.assets.pack(testing::ROOT).unwrap(), c.assets.pack("twin").unwrap());
         let chip = c.defs.chip(c.defs.chip_by_key("test:gundels3").expect("a test chip")).key.clone();
-        let (a, b) = (bundle(1, keys::local(&chip)), bundle(2, keys::local(&chip)));
-        let mut by_pack = vec![&a, &a];
-        by_pack[twin.index()] = &b;
-        let packs = Packs::new(by_pack, test);
+        let a = bundle(1, keys::local(&chip));
+        let packs = Packs::one(&a);
         let tiles = |s: Option<&SpriteSheet>| s.expect("a sheet").tilesets[0].pixels.len() / Tiles::TILE;
         assert_eq!(tiles(packs.sprite(&c, testing::sprite_named(&c, "test:test-navi"))), 1);
-        assert_eq!(tiles(packs.sprite(&c, testing::sprite_named(&c, "twin:navi"))), 2, "twin's sprite is twin's pack's");
-        let root = |name: &str| c.defs.root_id(name).expect("a root");
-        assert!(std::ptr::eq(packs.of_root(&c, root("twin")), &b));
-        assert!(std::ptr::eq(packs.of_root(&c, root(testing::ROOT)), &a));
+        assert!(std::ptr::eq(packs.game(&c), &a));
         assert!(std::ptr::eq(packs.own(), &a));
         // A chip's icon by its key in its pack ("gundels3", not
         // "test:gundels3").
         assert_eq!(packs.chip_icon(&c, &chip).map(|t| t.pixels[0]), Some(1));
-        // A mugshot is its pack's number in its pack's HUD.
-        let face = c.assets.handle(AssetKind::Mugshot, "twin:face").expect("twin's mugshot");
-        let m = mugshot(&c, MugshotId(face)).expect("a mugshot");
-        assert_eq!((m.pack, m.id), (twin, 3));
-        assert!(std::ptr::eq(packs.mugshot(m).0, &b.hud));
-        // One pack's frontend draws everything from it.
-        let one = Packs::one(&a);
-        assert_eq!(tiles(one.sprite(&c, testing::sprite_named(&c, "twin:navi"))), 1);
     }
 }

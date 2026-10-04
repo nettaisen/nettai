@@ -18,7 +18,7 @@ pub mod look;
 pub mod screen;
 
 pub use folder::{BattleFolder, FolderChip, SavedFolder};
-pub use library::{GameLibrary, Library};
+pub use library::Library;
 pub use look::{DarkHover, Drawn, ScreenLook};
 pub use screen::{ButtonCell, ButtonPlace, Phase, PlayerView, Request, RoundMemory, Screen, Slot, SlotKind, SlotState};
 
@@ -94,10 +94,7 @@ pub struct PlayerSetup {
     /// ChpShufl's re-deal draws from (`crate::console`). In netplay it is
     /// part of the setup the peers exchange.
     pub console: ConsoleSetup,
-    /// The rules the player plays by (docs/design/rules-in-luau.md §2.3);
-    /// none: the content's stock ruleset.
-    pub ruleset: Option<nettai_content_api::RulesetHandle>,
-    /// What the player brings for each system of their ruleset (its
+    /// What the player brings for each system of the match's ruleset (its
     /// `setup` fields), in the ruleset's order; none given: each system's
     /// defaults (`setup_defaults`, the rest zero; `PlayerSetup::set_rule`
     /// writes one by name).
@@ -126,7 +123,6 @@ impl Default for PlayerSetup {
             navi_level: None,
             sp_times: Default::default(),
             console: ConsoleSetup::default(),
-            ruleset: None,
             rules: Vec::new(),
             patch_cards: Default::default(),
             navicust: None,
@@ -550,8 +546,8 @@ impl Battle {
         self.custom.committed = false;
         let content = self.content.clone();
         for side in 0..2u8 {
-            let library = library::GameLibrary { content: &content, game: self.games.sides[side as usize], ruleset: self.games.rulesets[side as usize] };
-            let ctx = self.custom_context(side, &library);
+            let library: &crate::content::Content = &content;
+            let ctx = self.custom_context(side, library);
             let mut s = self.custom.sides[side as usize].clone();
             let mut console = self.consoles[side as usize];
             s.open_with(&ctx, &mut console, &mut SideExtras { b: self, side, emotion: ctx.emotion });
@@ -581,8 +577,8 @@ impl Battle {
                 continue;
             }
             let content = self.content.clone();
-            let library = library::GameLibrary { content: &content, game: self.games.sides[side as usize], ruleset: self.games.rulesets[side as usize] };
-            let ctx = self.custom_context(side, &library);
+            let library: &crate::content::Content = &content;
+            let ctx = self.custom_context(side, library);
             let mut s = self.custom.sides[side as usize].clone();
             let mut console = self.consoles[side as usize];
             // (A chip's damage now, for the hand built at OK: a formula's
@@ -820,11 +816,11 @@ impl Battle {
         let (Some(mut screen), Some(mut folder)) = (self.custom.sides[i].screen, self.custom.sides[i].folder) else { return None };
         let copy = self.custom.sides[i].clone();
         let content = self.content.clone();
-        let library = library::GameLibrary { content: &content, game: self.games.sides[i], ruleset: self.games.rulesets[i] };
+        let library: &crate::content::Content = &content;
         // (The emotion the screen reads, its own: a battle that checks the
         // traces' screens alone has no navi to ask.)
         let emotion = copy.emotion;
-        let ctx = Context { emotion, ..self.custom_context_without_emotion(side, &library) };
+        let ctx = Context { emotion, ..self.custom_context_without_emotion(side, library) };
         let view = copy.view(&ctx, folder.regular_pending);
         let mut console = self.consoles[i];
         let r = f(&mut screen, &view, &mut folder, &mut console, &mut SideExtras { b: self, side, emotion });

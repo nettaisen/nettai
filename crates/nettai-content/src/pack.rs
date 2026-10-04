@@ -233,20 +233,14 @@ pub fn import_sound_versions(root: &Path, report: &mut Report) -> Option<(SoundB
 
 // ---- Loading -------------------------------------------------------------------
 
-/// The battle content, for the engine: the games of the content directory
-/// `content` (`crate::index::content()`: its game packs, each by its
-/// manifest's listed modules and what they require, with the support packs
-/// they use), with the assets of the pack `assets` (its
-/// asset index, `Content::assets`, and its sprites' animation timing),
-/// defined (`Content::define`). [`load_battle_packs`] loads several packs.
+/// The battle content, for the engine (docs/design/content-model-v2.md
+/// §4.0: one game a match): the game whose assets the asset pack `assets`
+/// holds, of the content directory `content` (`crate::index::content()`:
+/// the game pack's listed modules and what they require, with the support
+/// packs it uses), with the asset pack's asset index (`Content::assets`)
+/// and its sprites' animation timing, defined (`Content::define`).
 pub fn load_battle(content: &Path, assets: &Path) -> Result<(nettai_battle::Content, Report), Report> {
-    load_battle_packs(content, &[assets.to_path_buf()])
-}
-
-/// [`load_battle`] with the assets of several packs (docs/design/
-/// rules-in-luau.md §7.4): one a game.
-pub fn load_battle_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai_battle::Content, Report), Report> {
-    let (mut c, mut report) = battle_content_packs(content, packs)?;
+    let (mut c, mut report) = battle_content(content, assets)?;
     // The define phase: what the modules define, the tables registration
     // by number reads, and the registries.
     if let Err(e) = c.define() {
@@ -256,77 +250,33 @@ pub fn load_battle_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai_ba
     Ok((c, report))
 }
 
-/// [`load_battle`]'s content before the define phase: the modules of the
-/// content directory `content`'s games, the asset index and the sprite
-/// timing.
+/// [`load_battle`]'s content before the define phase: the game's modules,
+/// the asset index and the sprite timing. The game is the asset pack's (a
+/// pack that says none is taken as BN6's, with a warning: packs extracted
+/// before they said it). Asset names are in full, their pack's game first
+/// (`bn6:bomb`).
 pub fn battle_content(content: &Path, assets: &Path) -> Result<(nettai_battle::Content, Report), Report> {
-    battle_content_packs(content, &[assets.to_path_buf()])
-}
-
-/// [`battle_content`] with several packs: each says its game (a pack that
-/// says none is taken as BN6's, with a warning: packs extracted before they
-/// said it); two packs of one game are refused. A game whose modules name
-/// its assets loads only with its game's pack (BN5 with BN5's), else it is
-/// left out, with a warning. Asset names are in full, their pack's game
-/// first (`bn6:bomb`).
-pub fn battle_content_packs(content: &Path, packs: &[PathBuf]) -> Result<(nettai_battle::Content, Report), Report> {
     let mut report = Report::default();
-    let all = match crate::index::games(content) {
-        Ok(g) => g,
-        Err(e) => {
-            report.error(content.display().to_string(), e);
-            return Err(report);
-        }
-    };
-    let Some(games) = pack_games(packs, &mut report) else { return Err(report) };
-    let mut loadable = Vec::new();
-    for g in &all {
-        if games.iter().any(|(p, _)| p == g) || !needs_pack(content, g, &mut report)? {
-            loadable.push(g.clone());
-        } else {
-            report.warn(
-                content.join(g).join(nettai_content_api::packs::MANIFEST).display().to_string(),
-                format!("no {g} pack is loaded: {g}'s content is left out (extract its pack to play it)"),
-            );
-        }
-    }
-    let Some(read) = crate::index::read(content, &loadable, &mut report) else { return Err(report) };
-    battle_content_of(read, &games, report)
+    let Some(game) = pack_game(assets, &mut report) else { return Err(report) };
+    let Some(read) = crate::index::read(content, std::slice::from_ref(&game), &mut report) else { return Err(report) };
+    battle_content_of(read, &game, assets, report)
 }
 
-/// Whether game `game` of content `dir` names assets of its own game's pack
-/// (`bn5:...` in BN5's modules): a game does, and loads only with that
-/// pack; one that names none needs none.
-fn needs_pack(dir: &Path, game: &str, report: &mut Report) -> Result<bool, Report> {
-    let mut r = Report::default();
-    let Some(read) = crate::index::read(dir, &[game.to_string()], &mut r) else {
-        report.issues.extend(r.issues);
-        return Err(std::mem::take(report));
-    };
-    let own_assets = format!("(\"{game}{}", nettai_content_api::keys::SEPARATOR);
-    Ok(read.modules.values().any(|m| m.contains("asset.") && m.contains(&own_assets)))
-}
-
-/// The battle content of what `read` read, with the packs `games` (each
-/// pack's game and directory), before the define phase.
+/// The battle content of what `read` read (one game), with game `game`'s
+/// asset pack `pack`, before the define phase.
 fn battle_content_of(
     read: crate::index::Read,
-    games: &[(String, PathBuf)],
+    game: &str,
+    pack: &Path,
     mut report: Report,
 ) -> Result<(nettai_battle::Content, Report), Report> {
     if report.has_errors() {
         return Err(report);
     }
-    let mut indices = Vec::new();
-    let mut timings = Vec::new();
-    for (game, path) in games {
-        let Some(index) = crate::names::read_index(path, &mut report) else { return Err(report) };
-        let Some(timing) = crate::timing::load(path, &mut report) else { return Err(report) };
-        indices.push((game.clone(), index));
-        timings.push((game.clone(), timing));
-    }
-    let assets = nettai_content_api::AssetNames::of_packs(indices);
-    let animations = animations(&assets, timings);
+    let Some(index) = crate::names::read_index(pack, &mut report) else { return Err(report) };
+    let Some(timing) = crate::timing::load(pack, &mut report) else { return Err(report) };
+    let assets = nettai_content_api::AssetNames::of_packs(vec![(game.to_string(), index)]);
+    let animations = animations(&assets, vec![(game.to_string(), timing)]);
     let scripts = read.scripts();
     let c = nettai_battle::Content { assets, animations, scripts, strings: read.strings, ..Default::default() };
     Ok((c, report))
@@ -336,37 +286,18 @@ fn battle_content_of(
 /// before they said it).
 pub const UNSAID_GAME: &str = "bn6";
 
-/// Each pack's game (a pack that says none is taken as [`UNSAID_GAME`]'s,
-/// with a warning), refusing two packs of one game; none when a manifest
-/// can't be read.
-fn pack_games(packs: &[PathBuf], report: &mut Report) -> Option<Vec<(String, PathBuf)>> {
-    let mut games: Vec<(String, PathBuf)> = Vec::new();
-    for path in packs {
-        let m = read_manifest(path, report)?;
-        let game = match m.game {
-            Some(g) => g,
-            None => {
-                report.warn(
-                    MANIFEST,
-                    format!("{}: the pack says no game; it is taken as {UNSAID_GAME}'s (extract it again to record its game)", path.display()),
-                );
-                UNSAID_GAME.to_string()
-            }
-        };
-        if games.iter().any(|(g, _)| *g == game) {
-            report.error(MANIFEST, format!("two packs of {game} are loaded"));
-        }
-        games.push((game, path.clone()));
-    }
-    Some(games)
-}
-
-/// The directories of the packs `c` was loaded from (`packs`, as given to
-/// [`load_battle_packs`]) in its pack order, by `PackId`: the frontend's
-/// graphics and sound of each.
-pub fn pack_paths(c: &nettai_battle::Content, packs: &[PathBuf]) -> Vec<PathBuf> {
-    let games = pack_games(packs, &mut Report::default()).unwrap_or_default();
-    c.assets.packs.iter().filter_map(|g| games.iter().find(|(game, _)| game == g).map(|(_, p)| p.clone())).collect()
+/// Asset pack `pack`'s game (a pack that says none is taken as
+/// [`UNSAID_GAME`]'s, with a warning); none when its manifest can't be
+/// read.
+fn pack_game(pack: &Path, report: &mut Report) -> Option<String> {
+    let m = read_manifest(pack, report)?;
+    Some(m.game.unwrap_or_else(|| {
+        report.warn(
+            MANIFEST,
+            format!("{}: the pack says no game; it is taken as {UNSAID_GAME}'s (extract it again to record its game)", pack.display()),
+        );
+        UNSAID_GAME.to_string()
+    }))
 }
 
 // ---- Finding packs -------------------------------------------------------------
@@ -449,20 +380,52 @@ pub fn extract_command(game: &str, dir: &Path) -> String {
     }
 }
 
-/// The battle content a frontend plays, and the packs it loaded
-/// ([`load_found`]).
+/// A game of the content a frontend can offer (docs/frontend.md §1): a
+/// game pack, and its asset pack if one is found.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GameChoice {
+    /// The game pack's id (`bn6`).
+    pub game: String,
+    /// Its asset pack's directory, if found.
+    pub pack: Option<PathBuf>,
+    /// Why it can't be played, when its asset pack isn't found: the
+    /// command that writes one.
+    pub why_not: Option<String>,
+}
+
+/// The games of the content directory `content` (`--content`, else
+/// [`crate::index::content`]) by id, each with its asset pack among
+/// `found` ([`find`]), if there is one.
+pub fn games(content: Option<&Path>, found: &[Found]) -> Result<Vec<GameChoice>, Report> {
+    let dir = content.map(Path::to_path_buf).unwrap_or_else(crate::index::content);
+    let mut report = Report::default();
+    let ids = match crate::index::games(&dir) {
+        Ok(g) => g,
+        Err(e) => {
+            report.error(dir.display().to_string(), e);
+            return Err(report);
+        }
+    };
+    Ok(ids
+        .into_iter()
+        .map(|game| {
+            let pack = found.iter().find(|f| f.game == game).map(|f| f.dir.clone());
+            let why_not = pack.is_none().then(|| no_pack(&game, found));
+            GameChoice { game, pack, why_not }
+        })
+        .collect())
+}
+
+/// The battle content a frontend plays ([`load_game`]): one game.
 pub struct Loaded {
     pub content: nettai_battle::Content,
-    /// The loaded packs' directories, by `PackId`.
-    pub packs: Vec<PathBuf>,
-    /// The content directory it came from (its strings tables are a
-    /// frontend's other languages: `crate::locale::load`).
+    /// The game (`bn6`).
+    pub game: String,
+    /// Its asset pack's directory: the frontend's graphics and sound.
+    pub pack: PathBuf,
+    /// The content directory it came from (its game pack's strings tables
+    /// are a frontend's other languages: `crate::locale::load_for`).
     pub dir: PathBuf,
-    /// The games it loaded.
-    pub games: Vec<String>,
-    /// The content's games that aren't loaded, each with why: their game's
-    /// pack isn't found, or the content doesn't load with them.
-    pub left_out: Vec<(String, String)>,
     pub report: Report,
 }
 
@@ -477,84 +440,37 @@ fn no_pack(game: &str, found: &[Found]) -> String {
     )
 }
 
-/// Load the battle content a frontend plays (docs/frontend.md §1) with
-/// every pack found ([`find`]): every game of the content directory
-/// `content` (`--content`, else [`crate::index::content`]: the games its
-/// root requires, docs/design/content-model-v2.md, R5) whose pack is found (a game
-/// whose modules name no asset of its own needs none). A game whose pack
-/// isn't found is left out, and said why with the command that writes the
-/// pack; so is a game the content doesn't define with when the rest define
-/// without it (one game's play never fails for another game's).
-pub fn load_found(content: Option<&Path>, found: &[Found]) -> Result<Loaded, Report> {
+/// Load game `game` of the content directory `content` (`--content`, else
+/// [`crate::index::content`]) for a frontend to play (docs/frontend.md
+/// §1; docs/design/content-model-v2.md §4.0: a match plays one game): its
+/// game pack, the support packs it uses and its asset pack among `found`
+/// ([`find`]), defined. A game whose asset pack isn't found is an error
+/// with the command that writes it.
+pub fn load_game(content: Option<&Path>, game: &str, found: &[Found]) -> Result<Loaded, Report> {
     let dir = content.map(Path::to_path_buf).unwrap_or_else(crate::index::content);
     let mut report = Report::default();
-    let all = match crate::index::games(&dir) {
-        Ok(g) => g,
+    match crate::index::games(&dir) {
+        Ok(g) if g.iter().any(|x| x == game) => {}
+        Ok(g) => {
+            report.error(dir.display().to_string(), format!("no game {game} in the content (its games: {})", g.join(", ")));
+            return Err(report);
+        }
         Err(e) => {
             report.error(dir.display().to_string(), e);
             return Err(report);
         }
-    };
-    let games: Vec<(String, PathBuf)> = found.iter().map(|f| (f.game.clone(), f.dir.clone())).collect();
-    let mut left_out: Vec<(String, String)> = Vec::new();
-    // Each game, and whether it draws on a pack of its own.
-    let mut loadable: Vec<(String, bool)> = Vec::new();
-    for g in &all {
-        let needs = needs_pack(&dir, g, &mut report)?;
-        if needs && !games.iter().any(|(p, _)| p == g) {
-            left_out.push((g.clone(), no_pack(g, found)));
-        } else {
-            loadable.push((g.clone(), needs));
-        }
     }
-    if !loadable.iter().any(|(_, needs)| *needs) {
-        for (_, why) in &left_out {
-            report.error(dir.display().to_string(), why.clone());
-        }
-        if !report.has_errors() {
-            report.error(dir.display().to_string(), "no game of the content names any asset: there is nothing to play");
-        }
+    let Some(pack) = found.iter().find(|f| f.game == game).map(|f| f.dir.clone()) else {
+        report.error(dir.display().to_string(), no_pack(game, found));
+        return Err(report);
+    };
+    let Some(read) = crate::index::read(&dir, &[game.to_string()], &mut report) else { return Err(report) };
+    let (mut content, mut report) = battle_content_of(read, game, &pack, report)?;
+    if let Err(e) = content.define() {
+        report.error(dir.display().to_string(), e.message);
         return Err(report);
     }
-    let load = |names: Vec<String>| -> Result<(nettai_battle::Content, Report, Vec<PathBuf>), Report> {
-        let mut report = Report::default();
-        let Some(read) = crate::index::read(&dir, &names, &mut report) else { return Err(report) };
-        let (mut c, mut report) = battle_content_of(read, &games, report)?;
-        if let Err(e) = c.define() {
-            report.error(dir.display().to_string(), e.message);
-            return Err(report);
-        }
-        let packs = c.assets.packs.iter().filter_map(|g| games.iter().find(|(game, _)| game == g).map(|(_, p)| p.clone())).collect();
-        Ok((c, report, packs))
-    };
-    let names: Vec<String> = loadable.iter().map(|(g, _)| g.clone()).collect();
-    let (loaded, names) = match load(names.clone()) {
-        Ok(l) => (l, names),
-        Err(r) => {
-            // A game without which the rest define is left out, said why.
-            let mut out = None;
-            for (i, (g, _)) in loadable.iter().enumerate().filter(|(_, (_, needs))| *needs) {
-                let rest: Vec<String> = loadable.iter().enumerate().filter(|&(j, _)| j != i).map(|(_, (g, _))| g.clone()).collect();
-                if !loadable.iter().enumerate().any(|(j, (_, needs))| j != i && *needs) {
-                    continue;
-                }
-                if let Ok(l) = load(rest.clone()) {
-                    let why = r.issues.iter().find(|i| i.level == crate::report::Level::Error).map_or("it doesn't load".to_string(), |i| i.to_string());
-                    left_out.push((g.clone(), why));
-                    out = Some((l, rest));
-                    break;
-                }
-            }
-            match out {
-                Some(l) => l,
-                None => return Err(r),
-            }
-        }
-    };
-    let (content, loaded_report, packs) = loaded;
-    // (What reading the index said, then loading.)
-    report.issues.extend(loaded_report.issues);
-    Ok(Loaded { content, packs, dir, games: names, left_out, report })
+    Ok(Loaded { content, game: game.to_string(), pack, dir, report })
 }
 
 /// Every sprite's animation timing, from its pack's `animations.json`s, and

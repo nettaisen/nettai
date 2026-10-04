@@ -103,7 +103,7 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
     let dir = std::path::Path::new(CONTENT);
     let langs = nettai_content::locale::languages(dir);
     assert!(langs.contains(&"en".to_string()) && langs.contains(&"ja".to_string()), "{langs:?}");
-    let base = read(&["bn6", "bn5"]);
+    let base = read(&["bn6"]);
     assert!(base.scripts.modules.keys().all(|m| !m.contains("locales/")), "a strings table read as a module");
     let define = |strings: nettai_content::locale::Strings| {
         let mut c = base.clone();
@@ -114,6 +114,9 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
     let c = define(base.strings.clone());
     let mut r = Report::default();
     nettai_content::locale::check_games(dir, &c, &mut r);
+    let mut five = read(&["bn5"]);
+    five.define().unwrap_or_else(|e| panic!("content/bn5: {e}"));
+    nettai_content::locale::check_games(dir, &five, &mut r);
     let errors: Vec<String> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| format!("{}: {}", i.file, i.message)).collect();
     assert!(errors.is_empty(), "{}", errors.join("\n"));
     // The own strings' shape is in the records: MagPanel's one line.
@@ -131,14 +134,13 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
     assert_ne!(define(reshaped).hash(), c.hash());
 }
 
-/// docs/design/rules-in-luau.md, the flat namespace, and
-/// content-model-v2.md §4.0: BN5 loads beside BN6, every id in full:
-/// `bn5:cannon` and `bn6:cannon` are two chips. BN5's chips that have no
-/// use yet (the port writes them) are its manifest's `unported`, which
-/// don't load.
+/// docs/design/content-model-v2.md §4.0: content is one game, every id in
+/// full: BN5's content has `bn5:cannon` and no `bn6:cannon`. BN5's chips
+/// that have no use yet (the port writes them) are its manifest's
+/// `unported`, which don't load. Two games are two contents.
 #[test]
-fn bn5_and_bn6_load_together_under_their_names() {
-    let mut c = read(&["bn6", "bn5"]);
+fn a_game_loads_alone_under_its_names() {
+    let mut c = read(&["bn5"]);
     c.define().unwrap_or_else(|e| panic!("{e}"));
     let manifest = c.scripts.manifest("bn5").expect("BN5's manifest").clone();
     for path in &manifest.definitions.unported {
@@ -146,27 +148,29 @@ fn bn5_and_bn6_load_together_under_their_names() {
         assert!(c.defs.chip_by_key(&key).is_none(), "{key} is unported");
     }
     let d = &c.defs;
-    assert_eq!(d.roots, ["bn5", "bn6", "exelib"]);
-    assert_eq!(d.games, ["bn6", "bn5"]);
-    let (six, five) = (d.chip_by_key("bn6:cannon").expect("bn6:cannon"), d.chip_by_key("bn5:cannon").expect("bn5:cannon"));
-    assert_ne!(six, five);
+    assert_eq!((c.game(), d.game.as_str()), ("bn5", "bn5"));
+    assert!(d.chip_by_key("bn5:cannon").is_some());
+    assert_eq!(d.chip_by_key("bn6:cannon"), None, "BN6's chips are another content's");
     assert_eq!(d.chip_by_key("cannon"), None, "an id is written in full");
-    assert_eq!(d.stock_ruleset_of("bn6"), d.ruleset_by_key("bn6:stock"));
+    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("bn5:stock"));
     assert_eq!(c.strings.chip("bn5:cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));
+    let mut both = read(&["bn6", "bn5"]);
+    let e = both.define().unwrap_err().message;
+    assert!(e.contains("content holds one game"), "{e}");
 }
 
 /// docs/design/content-model-v2.md §4.0: what loads is what the manifests
-/// list and their requires reach. BN6 alone reads no BN5 module, and both
-/// read the support pack's modules their requires reach, no other.
+/// list and their requires reach. Each game reads none of the other's, and
+/// both read the support pack's modules their requires reach, no other.
 #[test]
 fn a_load_reads_what_its_manifests_reach() {
-    let six = read(&["bn6"]);
-    assert!(six.scripts.modules.keys().all(|m| !m.starts_with("bn5")), "BN6 alone reads none of BN5's");
-    assert!(six.scripts.modules.keys().any(|m| m.starts_with("exelib:")), "the shared scripts its modules require");
-    let both = read(&["bn6", "bn5"]);
-    assert!(both.scripts.modules.len() > six.scripts.modules.len());
-    assert_eq!(both.scripts.games(), ["bn6", "bn5"]);
-    assert_eq!(both.scripts.packs[0].id, "exelib", "the support pack first");
+    let (six, five) = (read(&["bn6"]), read(&["bn5"]));
+    assert!(six.scripts.modules.keys().all(|m| !m.starts_with("bn5")), "BN6 reads none of BN5's");
+    assert!(five.scripts.modules.keys().all(|m| !m.starts_with("bn6")), "BN5 reads none of BN6's");
+    for c in [&six, &five] {
+        assert!(c.scripts.modules.keys().any(|m| m.starts_with("exelib:")), "the support pack's modules its modules require");
+        assert_eq!(c.scripts.packs[0].id, "exelib", "the support pack first");
+    }
 }
 
 /// docs/design/rules-in-luau.md R2: BN5's stock ruleset and rule sections
@@ -176,13 +180,13 @@ fn a_load_reads_what_its_manifests_reach() {
 /// are its index's unported chips.
 #[test]
 fn bn5s_rules_are_its_games() {
-    let mut c = read(&["bn6", "bn5"]);
+    let mut c = read(&["bn5"]);
     c.define().unwrap_or_else(|e| panic!("{e}"));
+    let mut bn6 = read(&["bn6"]);
+    bn6.define().unwrap_or_else(|e| panic!("{e}"));
     let d = &c.defs;
-    let five = d.root_id("bn5").expect("the bn5 root");
-    assert!(d.stock_ruleset_of("bn5").is_some(), "BN5's stock ruleset");
-    assert_eq!(d.stock_ruleset_of("bn6"), d.ruleset_by_key("bn6:stock"));
-    let (six, five) = (c.rules_of(d.root_id("bn6").expect("the bn6 game")), c.rules_of(five));
+    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("bn5:stock"), "BN5's stock ruleset");
+    let (six, five) = (bn6.rules(), c.rules());
     assert_eq!(five.pools.slots(), [16, 32, 32]);
     assert_eq!(six.pools.slots(), [32, 32, 32]);
     // BN5's tables where they are BN6's, and where they aren't.
@@ -192,8 +196,7 @@ fn bn5s_rules_are_its_games() {
     assert_eq!(five.hp_bug_periods, six.hp_bug_periods);
     // The ported chips: BN5's own, apart from BN6's of the same key.
     for key in ["cannon", "minibomb", "energbom", "panlgrab", "antiswrd", "holypanl", "fullcust"] {
-        let (six, five) = (d.chip_by_key(&format!("bn6:{key}")), d.chip_by_key(&format!("bn5:{key}")));
-        assert!(five.is_some() && six != five, "bn5:{key}");
+        assert!(d.chip_by_key(&format!("bn5:{key}")).is_some(), "bn5:{key}");
     }
     // docs/design/bn5-map.md §15.3 items 10 and 11: BN5's chips leave
     // their action on the use frame, and AntiNavi's sparkle sits on the
@@ -201,12 +204,13 @@ fn bn5s_rules_are_its_games() {
     assert!(five.chip_use.leave_on_use && !six.chip_use.leave_on_use);
     assert_eq!((five.chip_use.anti_navi_sparkle.dy, five.chip_use.anti_navi_sparkle.z), (0, 16));
     assert_eq!((six.chip_use.anti_navi_sparkle.dy, six.chip_use.anti_navi_sparkle.z), (16, 32));
-    // Item 9: no BN5 module that uses BN6's names a BN5 collision type
-    // that tests BN6's 0x80 self bit (BN5's own row 0x3D, `probe`, does).
+    // Item 9: no BN5 module that uses exelib's makers names a BN5 collision
+    // type that tests BN6's 0x80 self bit (BN5's own row 0x3D, `probe`,
+    // does).
     assert_eq!(nettai_content::lint::self_bit_targets(&c), vec![]);
-    let text = "local shot = require(\"@bn6/lib/shot\")\nlocal collision = require(\"../../rules/collision\")\n\
-                return shot.chip { hits = collision.probe }";
+    let text = "local slash = require(\"@exelib/swords/slash\")\nlocal collision = require(\"../../rules/collision\")\n\
+                return slash.chip { hits = collision.probe }";
     c.scripts.modules.insert("bn5:chips/probing/chip".into(), text.into());
     let found = nettai_content::lint::self_bit_targets(&c);
-    assert_eq!(found, vec![("bn5:probe".to_string(), "bn5:chips/probing/chip".to_string(), "bn6".to_string())]);
+    assert_eq!(found, vec![("bn5:probe".to_string(), "bn5:chips/probing/chip".to_string(), "exelib".to_string())]);
 }

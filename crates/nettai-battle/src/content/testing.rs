@@ -192,6 +192,7 @@ pub fn round_setup(stage: &str, stats: crate::setup::NaviStats) -> crate::setup:
     crate::setup::RoundSetup {
         content: *hash,
         settings: crate::setup::BattleSettings::on(content, content.stage_by_key(stage)),
+        ruleset: None,
         navi_stats: [stats; 2],
         rng: 1,
         local_side: 0,
@@ -389,8 +390,7 @@ fn make() -> Content {
         // (The navis and the base form are definitions:
         // testdata/content/navis/test.luau.)
         base_rules: rules(),
-        rules: Vec::new(),
-        ruleset_rules: Vec::new(),
+        rules: Default::default(),
         animations: animations(&assets),
         scripts: scripts(),
         assets,

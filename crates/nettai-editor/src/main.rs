@@ -95,23 +95,22 @@ fn main() -> iced::Result {
         }
     };
     let mut options = options;
-    // Every pack found, and the content's folders that draw on them (as the
-    // frontend loads them: nettai_content::pack::load_found).
+    // Every pack found, and the game the editor loads with its pack (as the
+    // frontend does: nettai_content::pack::load_game).
     let mut report = nettai_content::report::Report::default();
     let found = nettai_content::pack::find(&nettai_content::pack::packs_dir(), &options.packs, &mut report);
     show(&report);
     let found = found.unwrap_or_else(|| fail("can't read the packs given (--pack, $BN6_PACK)"));
-    let loaded = nettai_content::pack::load_found(options.content.as_deref(), &found).unwrap_or_else(|r| {
+    // (One game a match, docs/design/content-model-v2.md §4.0: the
+    // editor's is BN6 until it chooses one.)
+    let loaded = nettai_content::pack::load_game(options.content.as_deref(), nettai_match::DEFAULT_GAME, &found).unwrap_or_else(|r| {
         show(&r);
         fail("can't load the battle content (--content, --pack)")
     });
     show(&loaded.report);
-    for (game, why) in &loaded.left_out {
-        eprintln!("the game {game} is left out: {why}");
-    }
-    (options.content_dir, options.games) = (loaded.dir.clone(), loaded.games.clone());
+    (options.content_dir, options.games) = (loaded.dir.clone(), vec![loaded.game.clone()]);
     let content = Arc::new(loaded.content);
-    let pictures = pictures::Pictures::load(&content, &loaded.packs).unwrap_or_else(|e| {
+    let pictures = pictures::Pictures::load(&content, std::slice::from_ref(&loaded.pack)).unwrap_or_else(|e| {
         eprintln!("{e}: the chips have no pictures");
         pictures::Pictures::default()
     });
