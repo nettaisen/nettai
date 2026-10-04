@@ -106,6 +106,8 @@ struct ReactionsSection {
     slide_speed: super::rules::SlideSpeed,
     #[serde(default)]
     overlay_restart: super::rules::OverlayRestart,
+    #[serde(default)]
+    stance_counter: super::rules::StanceCounter,
 }
 
 #[derive(Deserialize)]
@@ -170,6 +172,8 @@ struct StatusSection {
     bugs_before_drain: bool,
     #[serde(default)]
     drain_bug_flags: bool,
+    #[serde(default)]
+    no_charge_drive: bool,
     /// "bn6" (the default) or "bn5".
     #[serde(default)]
     emotions: Option<String>,
@@ -383,6 +387,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                 rules.hit_test = s.hit_test;
                 rules.slide_speed = s.slide_speed;
                 rules.overlay_restart = s.overlay_restart;
+                rules.stance_counter = s.stance_counter;
             }
             "berserk" => {
                 let s: BerserkSection = r.read(spec, &at).map_err(e)?;
@@ -465,6 +470,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                 rules.intake = super::rules::IntakeRules {
                     bugs_before_drain: s.bugs_before_drain,
                     drain_bug_flags: s.drain_bug_flags,
+                    no_charge_drive: s.no_charge_drive,
                 };
             }
             "lockon" => {

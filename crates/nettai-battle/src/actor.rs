@@ -146,6 +146,12 @@ pub struct AttackVars {
     pub step_init: u8,
     /// Attack element byte (primary | secondary bits).
     pub element: u8,
+    /// +3: the attack's variant, as the anti-damage counters read it (the
+    /// shuriken's target, `sub_80EE996`): what a stance's weapon sets
+    /// (BN6's AntiDmg program 0, BN5's ShadowSoul 1) and a trap's catch
+    /// (`sub_801056A`: 0). The chips' variants are their definitions'.
+    pub variant: u8,
+    /// +4: the attack is charged (`sub_80127C0`'s argument).
     pub charged: u8,
     /// Input lockout to apply when the attack ends.
     pub lockout: u8,
@@ -293,6 +299,17 @@ pub struct ActorData {
     /// mood changes blocked, and 1 HP lost per tick, never the last one
     /// (`sub_8014498`).
     pub exhausted: bool,
+    /// BN5's AIData+0x36 (where BN6 keeps `exhausted`): the no-charge
+    /// drive's ticks left (DarkInvs sets 600, 0x080E2318), counted down in
+    /// the intake while the navi has the no-charge state and the battle is
+    /// neither paused nor dimmed (0x0800DBE0); its end asks for the stun
+    /// strike (BN5's action 0x49, the drive's end). 0xFFFF holds.
+    pub no_charge_timer: u16,
+    /// BN5's AIData+0xF0: the computer-navi AI drives it (0x0802C110:
+    /// DarkInvs); the AI's breath clears it one time in two (0x0802B5B8)
+    /// and the idle's reset of its state when the drive is off
+    /// (0x0802C03A). VarSwrd's pick reads it.
+    pub computer_driven: bool,
     /// The controller's state starts over (a form's `berserk` effect,
     /// `sub_802D310`); the controller clears it once it has.
     pub controller_fresh: bool,

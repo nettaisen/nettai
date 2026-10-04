@@ -122,16 +122,16 @@ note.kind = define.kind {
     end,
 }
 
--- 0x080D67A6: a note of `owner`'s on (x, y), elec, with its damage word, its chain heading for `target`, of its side
--- and facing; running while dimmed for a chain that does.
-function note.spawn(owner: Object, x: number, y: number, chain: Chain, target: Object?): Object?
+-- 0x080D67A6: a note of `owner`'s on (x, y), elec, with its damage word (`damage`, else the owner's: the spawner's
+-- r6), its chain heading for `target`, of its side and facing; running while dimmed for a chain that does.
+function note.spawn(owner: Object, x: number, y: number, chain: Chain, target: Object?, damage: number?): Object?
     local o = battle.spawn(note.kind, Vec3.zero)
     if not o then
         return nil
     end
     o.panel_x, o.panel_y = x, y
     o.element = ELEC
-    o:set_damage_word(bit32.bor(owner.damage, bit32.lshift(owner.stamina, 16)))
+    o:set_damage_word(damage or bit32.bor(owner.damage, bit32.lshift(owner.stamina, 16)))
     o.alliance, o.flip = owner.alliance, owner.flip
     o.related1 = owner
     local s = o.state :: State

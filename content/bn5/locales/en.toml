@@ -344,6 +344,20 @@ language = "en"
 [navis]
 "bn5:megaman" = { name = "MegaMan", variant_name = "BCMegaMn" }
 
+[forms]
+"bn5:colonelsoul" = { name = "ColSoul" }
+"bn5:gyrosoul" = { name = "GyroSoul" }
+"bn5:knightsoul" = { name = "KngtSoul" }
+"bn5:magnetsoul" = { name = "MagnSoul" }
+"bn5:meddysoul" = { name = "MedySoul" }
+"bn5:napalmsoul" = { name = "NplmSoul" }
+"bn5:numbersoul" = { name = "NumSoul" }
+"bn5:protosoul" = { name = "ProtSoul" }
+"bn5:searchsoul" = { name = "SrchSoul" }
+"bn5:shadowsoul" = { name = "ShdoSoul" }
+"bn5:toadsoul" = { name = "ToadSoul" }
+"bn5:tomahawksoul" = { name = "TmhkSoul" }
+
 [navicust-programs]
 "bn5:airshoes" = { name = "AirShoes" }
 "bn5:antidmg" = { name = "AntiDmg" }

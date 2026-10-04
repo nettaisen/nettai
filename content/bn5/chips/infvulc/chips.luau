@@ -2,6 +2,9 @@
 -- InfVulc1, InfVulc2 and InfVulc3: the infvulc series (each chip's own comment above its definition).
 -- Their records are written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
+local recipe_airspin1 = require("../airspin/chips").airspin1
+local recipe_airspin2 = require("../airspin/chips").airspin2
+local recipe_airspin3 = require("../airspin/chips").airspin3
 local recipe_vulcan1 = require("../vulcan/chips").vulcan1
 local recipe_vulcan2 = require("../vulcan/chips").vulcan2
 local recipe_vulcan3 = require("../vulcan/chips").vulcan3
@@ -26,6 +29,7 @@ local infvulc1 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
+        { order = 6, sequence = { recipe_airspin1, recipe_airspin1, recipe_vulcan1 }, per_player_gauges_only = true },
         { order = 42, code_run = { chip = recipe_vulcan1, count = 3 } },
     },
     action = vulcan.infinite(20),
@@ -50,6 +54,7 @@ local infvulc2 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
+        { order = 7, sequence = { recipe_airspin2, recipe_airspin2, recipe_vulcan2 }, per_player_gauges_only = true },
         { order = 43, code_run = { chip = recipe_vulcan2, count = 3 } },
     },
     action = vulcan.infinite(24),
@@ -74,6 +79,7 @@ local infvulc3 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
+        { order = 8, sequence = { recipe_airspin3, recipe_airspin3, recipe_vulcan3 }, per_player_gauges_only = true },
         { order = 44, code_run = { chip = recipe_vulcan3, count = 3 } },
     },
     action = vulcan.infinite(28),
