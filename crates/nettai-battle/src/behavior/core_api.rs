@@ -697,10 +697,10 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn custom_redeal(&mut self, side: u8, keeps: [u8; 12]) -> ApiResult<()> {
+    fn custom_redeal(&mut self, side: u8) -> ApiResult<()> {
         let s = self.custom_screen_mut(side)?;
         let slot = s.cursor_button_slot().ok_or_else(|| ApiError::Other("custom.redeal: no button under the cursor".into()))?;
-        s.start_redeal(slot, keeps);
+        s.start_redeal(slot);
         Ok(())
     }
 
