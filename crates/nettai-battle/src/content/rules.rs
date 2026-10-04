@@ -111,6 +111,10 @@ pub struct EffectsRules {
     /// (its kind's), not the arena's.
     #[serde(default)]
     pub obstacle_soldiers: bool,
+    /// What holds a screen palette flash (effect object #0x0A,
+    /// `kinds::palette_flash`) by its mode.
+    #[serde(default)]
+    pub palette_flash: PaletteFlashRule,
 }
 
 impl Default for EffectsRules {
@@ -121,8 +125,25 @@ impl Default for EffectsRules {
             spark_steps_at_start: true,
             retype: RetypeRule::default(),
             obstacle_soldiers: false,
+            palette_flash: PaletteFlashRule::default(),
         }
     }
+}
+
+/// What holds a screen palette flash (effect object #0x0A) while the battle
+/// is paused or dimmed, by its mode (Param3: bit 0 keeps it flashing while
+/// dimmed, bit 1 while paused).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PaletteFlashRule {
+    /// BN6's (`sub_80E10C0`, `sub_80E114C`): bit 1 keeps it going through
+    /// both; else a pause holds it, and dimming does unless the variant's
+    /// bit is set (variant 0 tests bit 0, variant 1 bit 1).
+    #[default]
+    Bn6,
+    /// BN5's (0x080E104C, 0x080E10D0): a pause holds either variant
+    /// whatever its mode; dimming holds it only with a mode of 0.
+    Bn5,
 }
 
 /// How `sub_801A082` (an object's damage, hit modifier and collision types
@@ -205,6 +226,25 @@ pub enum PushReading {
     /// BN5's 0x0800C9D8: the first of bits 2 to 5 of the unflipped
     /// hitters' modifier, else of the flipped ones' with the direction
     /// reversed.
+    Bn5,
+}
+
+/// Which pairs of collisions a hit can't join (the hit test, BN6's
+/// `sub_3007218`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HitTest {
+    /// BN6's: a submerged body (flag 0x4) meets only collision types with
+    /// bit 0x8 or 0x1000; a FloatShoe body (flag 0x20) only those with the
+    /// 0x80 self bit; a guard breaks to types with 0x2 (0x1002 with 0x4000)
+    /// and turns aside those without 0x0C005000.
+    #[default]
+    Bn6,
+    /// BN5's (0x0801691C): a submerged or bubbled body (flags 0x80000004)
+    /// meets only types with 0x8 or 0x1000 unless the other is elec; a
+    /// FloatShoe body meets all (BN5's types have no 0x80 self bit); a
+    /// guard breaks to types with 0x1002 always and turns aside those
+    /// without 0x0C004000.
     Bn5,
 }
 
@@ -311,6 +351,8 @@ pub struct Rules {
     /// How a push reads the hit modifiers (docs/design/bn5-map.md §15.3
     /// item 2).
     pub push_reading: PushReading,
+    /// Which pairs a hit can't join (docs/design/bn5-map.md §15.3 item 12).
+    pub hit_test: HitTest,
     /// Ice slides by the direction the navi last moved.
     pub ice_vectors: [SlideVector; 6],
     /// How fast a navi slides and is dragged (the reactions section's).
