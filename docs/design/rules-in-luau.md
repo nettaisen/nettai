@@ -2224,6 +2224,36 @@ The last custom-screen piece in Rust that was one game's: BN5's soul button and 
   bn5_navicust 0 differ; nettai-match's `an_unowned_soul_cant_be_chosen` (now also: no Soul Unison, no button) and
   the new `the_soul_takes_the_chips_place` (the trade, B, OK's form, turns and folder).
 
+
+### BN5's capsules and Arm Change, the souls system's (2026-10-04, branch bn5-port-6)
+
+MeddySoul's capsules and ColonelSoul's Arm Change are two more buttons and windows of BN5's souls system
+(rules/souls/capsules.luau, arm-change.luau; bn5-map.md §15.8), each a module rules/souls/custom.luau gathers (its
+`buttons`, `windows` and `states`, which the system's definition takes whole). What the framework gained for them is
+generic:
+
+- **A button attached to a pick** (`custom.attach_to_last_pick(side, button, modifiers)`): the last pick, a chip with
+  no button attached (`custom.last_pick`'s `attached`), carries modifier bits into the hand (`Slot::marks`, the
+  builder's `Pick::marks`, `ChipHand::modifiers`), and the button is picked until B takes the chip back, which the
+  screen does itself (the marks cleared, the button selectable).
+- **A button holding a pick** (`custom.hold_last_pick(side, button)`, `custom.held_pick`, `custom.set_held_icon`): the
+  last pick leaves the picks for the button (`Screen::hold`); B, with as many picks as there were then, puts it back
+  before anything else; at OK the chip leaves the folder.
+- **A button's chip** (`ButtonSpec.chip`, the hook `button.chip`): the chip a button shows (`Slot::face`), which R
+  describes and the frontend draws as a chip's slot.
+- **The hand's modifier bits at a chip's use**: beside BN6's two (0x02, 0x04: the damage word's 0x4000 and 0x2000),
+  0x08 and 0x20 (its 0x1000 and 0x0800) and 0x10 (a tenth of the user's HP healed), where the game's chip-use rules
+  say so (`mixed_modifiers`: a navi no hand feeds passes its request bits there, as the original's register does, so
+  BN6 must not read them).
+- **`turn_opened(side)`**, a system hook: the turn-start sequencer's check begins, each side in turn, before either
+  side's `turn_check` or change.
+- **`weapon_chip`**, a navi's field (BN5's AIData +0x32): the chip a weapon of its loads, for a weapon whose setup
+  reads it.
+
+A capsule's draw needs the console's RNG, which a button's `shown` hasn't (the screen lays its slots out on a copy):
+the system draws them in its `custom.deal`, which runs just before, in the systems' order (BN5's dark chip's first,
+as the original draws).
+
 ### R6, init.luau, a game's top module, a series' chips by name (2026-10-04)
 
 The user, on the content's shape: "instead of [chipname]/chip.luau and [rulename]/rule.luau it should all be
