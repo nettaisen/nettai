@@ -25,7 +25,7 @@ use nettai_content_api::{
     ActorField, ApiError, BattleInfo, CollisionField, ContentState, CoreApi, DimmingStep, FieldType,
     HitboxSpec, HookCall, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction,
     AssetKind, SpawnAt,
-    ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Registry, RequestFlag, SpriteField, SpriteId,
+    ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Registry, RequestFlag, ScreenFade, SpriteField, SpriteId,
     StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
 use nettai_content_api::{ObjectRef, SystemHook};
@@ -717,6 +717,10 @@ impl UserData for Object {
                 None => Err(mlua::Error::runtime(format!("wear_junk_look: expected an identity, got {}", look.type_name()))),
             })?;
             with(|api, _| api.wear_junk_look(this.0, look).map_err(api_error))
+        });
+        methods.add_method("subtract_hp", |_, this, amount: LuaValue| {
+            let amount = u16_arg(amount, "HP")?;
+            with(|api, _| Ok(api.subtract_hp(this.0, amount)))
         });
         methods.add_method("heal", |_, this, (amount, anti_recovery): (LuaValue, bool)| {
             let amount = u16_arg(amount, "HP")?;
@@ -1441,6 +1445,11 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "burst", |_, navi: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.spawn_burst(navi.0).map(Object)))
+    });
+    lib_fn!(lua, t, "screen_fade", |_, (fade, speed): (mlua::LuaString, LuaValue)| {
+        let fade = named(&fade, "screen fade", ScreenFade::from_name)?;
+        let speed = u8_arg(speed, "fade speed")?;
+        with(|api, _| Ok(api.screen_fade(fade, speed)))
     });
     lib_fn!(lua, t, "show_hud", |_, (parts, shown): (mlua::Table, bool)| {
         let parts = parts
