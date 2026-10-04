@@ -63,6 +63,8 @@ pub(crate) fn leave(b: &mut Battle, r: ObjectRef) {
     o.action = 0;
     o.phase = 0;
     o.phase_init = 0;
+    // (The word store clears the navi's CurAction too: its first state's.)
+    ai_mut(b, r).navi_action = NaviAction::Entry;
 }
 
 /// `sub_80117BA`: weapon `weapon`'s setup, and its action started in

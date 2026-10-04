@@ -73,6 +73,9 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     if let Some(flow) = action_requests(b, r) {
         return flow;
     }
+    if b.rules_for(r).reactions == crate::content::Reactions::Bn5 {
+        return bn5_reactions(b, r);
+    }
     if flag2(b, r) & 0x100 != 0 {
         start_drag(b, r);
         return Flow::Tail;
@@ -102,6 +105,55 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     // sub_802E1D8: the side's takeover (BN6's Cross special) runs down.
     let side = &mut b.sides[b.objects.get(r).alliance as usize];
     side.takeover_ticks = side.takeover_ticks.saturating_sub(1);
+    Flow::Tail
+}
+
+/// BN5's reactions (0x08017CC8 to 0x08017D88): the flash's timer, the
+/// slides, a drag, a flinch, then the status timers.
+fn bn5_reactions(b: &mut Battle, r: ObjectRef) -> Flow {
+    tick_flash(b, r);
+    if flag2(b, r) & 0x10 != 0 {
+        clear_flag2(b, r, 0x10);
+        slide(b, r);
+    } else if flag1(b, r) & f1::SLIDING != 0 {
+        slide(b, r);
+    } else {
+        b.objects.get_mut(r).slide_state = 0;
+    }
+    if flag2(b, r) & 0x100 != 0 {
+        // 0x08017D04: the state word kept, a paralysis ended unless a
+        // counter just made it; the drag from its start.
+        clear_flag2(b, r, 0x100);
+        save_state_word(b, r);
+        if flag2(b, r) & 0x4000 == 0 {
+            clear_paralysis(b, r);
+        }
+        clear_flag2(b, r, 0x4000);
+        let o = b.objects.get_mut(r);
+        o.phase = 0;
+        o.drag_step = DragStep::Start;
+        set_navi_action(b, r, NaviAction::Drag);
+        return Flow::Tail;
+    }
+    if flag1(b, r) & f1::DRAG != 0 {
+        set_navi_action(b, r, NaviAction::Drag);
+        return Flow::Tail;
+    }
+    b.objects.get_mut(r).drag_step = DragStep::Start;
+    if flag2(b, r) & 4 != 0 {
+        // 0x08017D58: a paralysis ended unless a counter just made it;
+        // the flinch.
+        clear_flag2(b, r, 4);
+        if flag2(b, r) & 0x4000 == 0 {
+            clear_paralysis(b, r);
+        }
+        clear_flag2(b, r, 0x4000);
+        set_attack(b, r, NaviAction::Flinch, 0);
+    }
+    tick_statuses(b, r);
+    tick_submerged(b, r);
+    tick_anger(b, r);
+    drain_hp(b, r);
     Flow::Tail
 }
 
@@ -519,9 +571,10 @@ fn flinch_request(b: &mut Battle, r: ObjectRef) {
 // ---- Timers ------------------------------------------------------------------------
 
 /// `sub_801A5EE`: mercy invincibility: a flash request starts 120 ticks
-/// of FLASHING (not extended by new requests).
+/// of FLASHING (not extended by new requests). Only while fighting in
+/// BN6's reactions (BN5's 0x080173C4 runs regardless).
 fn tick_flash(b: &mut Battle, r: ObjectRef) {
-    if b.round.flags & battle_flags::FIGHTING == 0 {
+    if b.round.flags & battle_flags::FIGHTING == 0 && b.rules_for(r).reactions == crate::content::Reactions::Bn6 {
         return;
     }
     if coll(b, r).status_timers[timer::FLASH] == 0 && flag2(b, r) & 2 != 0 {
@@ -918,8 +971,10 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
 
 /// The shaders after the visibility (presentation only; `sub_8016CA4`,
 /// `sub_801728E`): the other player's navi blinks blue while it can be
-/// countered, to a local player in Full Synchro; in the per-player gauges'
-/// mode a navi glows yellow while its SELECT special runs.
+/// countered, to a local player in Full Synchro; BN5's no-charge drive
+/// flickers gray its last 180 ticks (0x080136E0, between the two); in the
+/// per-player gauges' mode a navi glows yellow while its SELECT special
+/// runs.
 fn counter_shader(b: &mut Battle, r: ObjectRef) {
     let t = b.round.battle_time;
     let alliance = b.objects.get(r).alliance;
@@ -930,6 +985,16 @@ fn counter_shader(b: &mut Battle, r: ObjectRef) {
         && coll(b, r).counter_timer != 0
     {
         b.objects.sprite_mut(r).look.color_shader = if t & 2 != 0 { 0x7C00 } else { 0 };
+    }
+    // BN5's 0x080136E0: the no-charge drive's last 180 ticks, the navi
+    // flickers gray by its ticks left.
+    if b.rules_for(r).intake.no_charge_drive && navi_action(b, r) != NaviAction::Entry {
+        let a = ai(b, r);
+        let left = a.no_charge_timer;
+        if a.status & crate::actor::status::NO_CHARGE != 0 && left != 0 && left <= 180 {
+            let v = GLOW[(left & 0x1F) as usize];
+            b.objects.sprite_mut(r).look.color_shader = v | v << 5 | v << 10;
+        }
     }
     if per_player_gauges(b)
         && navi_action(b, r) != NaviAction::Entry

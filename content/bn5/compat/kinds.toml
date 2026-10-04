@@ -1,5 +1,6 @@
 # BN5's object kinds: the original's pool and index (the traces compare them), and the positions the comparison
-# skips (register garbage the spawner leaves until the kind's init places it): bn5-compat's comparison reads them.
+# skips (register garbage the spawner leaves until the kind's init places it), and the statuses it skips
+# (`scratch_status`: no collision behind the object's +0x54): bn5-compat's comparison reads them.
 # Written by hand from the BN5 recordings and code, as kinds come up in the replays: edit it when content is renamed
 # or added. A key without a root is BN5's own (most made with content/common's shared code); `engine/...` the
 # engine's; a qualified one (`bn6:...`) BN6's, which BN5's code shares (its flags here are BN6's compat's).
@@ -71,7 +72,7 @@
 "bn5:numbrman/navi" = { pool = "actor", index = 0x0F }
 "bn5:numbrman/face" = { pool = "actor", index = 0x5C }
 "bn5:colonel/navi" = { pool = "actor", index = 0x08 }
-"bn5:shadoman/navi" = { pool = "actor", index = 0x07 }
+"bn5:shadoman/navi" = { pool = "actor", index = 0x07, scratch_status = true }
 "bn5:toadman/navi" = { pool = "actor", index = 0x17 }
 "bn5:toadman/note" = { pool = "attack", index = 0x81 }
 "bn5:blizman/navi" = { pool = "actor", index = 0x14 }
@@ -111,12 +112,15 @@
 "bn5:piledrvr/pile" = { pool = "attack", index = 0x99 }
 "bn5:piledrvr/beam" = { pool = "attack", index = 0x9A }
 "bn5:leadraid/protoman" = { pool = "actor", index = 0x20 }
-"bn5:leadraid/colonel" = { pool = "actor", index = 0x22 }
+"bn5:leadraid/colonel" = { pool = "actor", index = 0x22, scratch_status = true }
 "bn5:leadraid/glow" = { pool = "effect", index = 0x85 }
 "bn5:chaoslrd/navi" = { pool = "actor", index = 0x51 }
 "bn5:chaoslrd/aura" = { pool = "effect", index = 0x47 }
 "bn5:chaoslrd/gather" = { pool = "effect", index = 0x4B }
 "bn5:chaoslrd/strike" = { pool = "attack", index = 0x82 }
+"bn5:darkinvs/controller" = { pool = "effect", index = 0x18, scratch_position = true }
+"bn5:darkinvs/stand-in" = { pool = "actor", index = 0x09 }
+"bn5:darkinvs/image" = { pool = "actor", index = 0x0A }
 "bn5:follow-effect" = { pool = "effect", index = 0x31 }
 "bn5:meddy/capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "bn5:napalmmn/bomb" = { pool = "attack", index = 0x3A }
@@ -139,6 +143,11 @@
 "bn5:redfrut/fruit" = { pool = "attack", index = 0x8D }
 "bn5:boybomb/bomb" = { pool = "attack", index = 0x3E }
 "bn5:boybomb/controller" = { pool = "effect", index = 0x67 }
+"bn5:rockcube/cube" = { pool = "effect", index = 0x37 }
+"bn5:wind/fan" = { pool = "attack", index = 0x48 }
+"bn5:wind/controller" = { pool = "effect", index = 0x25 }
+"bn5:voltz/sensor" = { pool = "attack", index = 0x90 }
+"bn5:voltz/shock" = { pool = "attack", index = 0x92 }
 "bn5:tornado" = { pool = "attack", index = 0x31 }
 "bn5:anti-trap/trap" = { pool = "attack", index = 0x4D, scratch_position = true }
 "bn5:anti-trap/strike" = { pool = "effect", index = 0x2B, scratch_position = true }

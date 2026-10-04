@@ -210,7 +210,7 @@ local function leave(me: Object)
     end
     if countdown(me, 4) then
         me:remove_parts(CAPE)
-        navi_chips.leave(me, (me.state :: State).controller)
+        navi_chips.leave_keeping_action(me, (me.state :: State).controller)
     end
 end
 

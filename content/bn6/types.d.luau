@@ -366,20 +366,6 @@ export type RockSpec = {
 
 -- ---- The dimming chips (chips/wind, chips/guardian, ...) -------------------
 
--- A Wind's or Fan's fan (chips/wind/fan): its palette; `pulls`: it blows
--- Fan's pulling gust from the far column rather than Wind's pushing one
--- from the enemy's front column; ticks from becoming its side's wind to
--- the first gust; HP; its identity (what it is taken for) and how it looks
--- absorbed (objects/absorbed-obstacle's `look`).
-export type FanVariant = {
-    palette: number,
-    pulls: boolean,
-    wait: number,
-    hp: number,
-    identity: Identity,
-    absorbed: AbsorbedLook,
-}
-
 -- CircGun's gun (chips/circgun/gun; the original's chip parameters): the
 -- ticks between its steps less one, its shots, and its look (the palette;
 -- look 1's shots hit as another attacker with a bug).
