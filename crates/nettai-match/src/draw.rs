@@ -163,6 +163,8 @@ impl Side {
             tactics: Default::default(),
             karma: crate::facts::DEFAULT_KARMA,
             souls: None,
+            soul_unison: true,
+            chaos_unison: true,
         }
     }
 
@@ -212,6 +214,8 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Resul
         tactics: Default::default(),
         karma: crate::facts::DEFAULT_KARMA,
         souls: None,
+        soul_unison: true,
+        chaos_unison: true,
     };
     let m = Match { seed: None, arena: arena.clone(), sides: [side.clone(), side.clone()] };
     if let Ok(mut b) = crate::check::start(content, &m)

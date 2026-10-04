@@ -1281,11 +1281,34 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let x = int(&x, "x")? as u32;
         with(|api, _| api.custom_draw_emblem(side, x).map_err(api_error))
     });
-    lib_fn!(lua, t, "set_form", move |_, (side, form): (LuaValue, LuaValue)| {
+    lib_fn!(lua, t, "set_form", move |_, (side, form, turns, chaos): (LuaValue, LuaValue, Option<LuaValue>, Option<bool>)| {
         let side = u8_arg(side, "side")? & 1;
         let system = own("custom.set_form")?;
         let form = form_or_nil(&form, "custom.set_form")?;
-        with(|api, _| api.custom_set_form(side, system, form).map_err(api_error))
+        let turns = match turns {
+            Some(v) if !v.is_nil() => int(&v, "turns")? as u8,
+            _ => 0,
+        };
+        with(|api, _| api.custom_set_form(side, system, form, turns, chaos.unwrap_or(false)).map_err(api_error))
+    });
+    lib_fn!(lua, t, "last_pick", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let Some(p) = with(|api, _| api.custom_last_pick(side).map_err(api_error))? else { return Ok(LuaValue::Nil) };
+        let t = lua.create_table()?;
+        t.raw_set("slot", p.slot)?;
+        t.raw_set("chip", bound(|b| chip_value(b, Some(p.chip)))?)?;
+        t.raw_set("regular", p.regular)?;
+        t.raw_set("navi_chip", p.navi_chip)?;
+        Ok(LuaValue::Table(t))
+    });
+    lib_fn!(lua, t, "trade_last_pick", move |_, (side, button): (LuaValue, String)| {
+        let side = u8_arg(side, "side")? & 1;
+        let system = own("custom.trade_last_pick")?;
+        with(|api, _| api.custom_trade_last_pick(side, system, &button).map_err(api_error))
+    });
+    lib_fn!(lua, t, "fading", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_fading(side).map_err(api_error))
     });
     lib_fn!(lua, t, "form_taken", move |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;

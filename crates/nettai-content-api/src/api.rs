@@ -823,6 +823,18 @@ named_flags! {
     }
 }
 
+/// A custom screen's last pick (`custom.last_pick`): its slot (0-based),
+/// its chip as the screen checked it (the invalid chip for one with a code
+/// it hasn't), and whether it is the folder's Regular chip or a link navi's
+/// own chip.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CustomPick {
+    pub slot: u8,
+    pub chip: crate::ChipHandle,
+    pub regular: bool,
+    pub navi_chip: bool,
+}
+
 /// What a side's custom screen reads of its player (`custom.player`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CustomPlayer {
@@ -1314,10 +1326,22 @@ pub trait CoreApi {
     fn custom_set_button_state(&mut self, side: u8, system: u8, button: &str, state: &str) -> ApiResult<()>;
     fn custom_update_availability(&mut self, side: u8) -> ApiResult<()>;
     fn custom_draw_emblem(&mut self, side: u8, x: u32) -> ApiResult<()>;
-    fn custom_set_form(&mut self, side: u8, system: u8, form: Option<crate::FormHandle>) -> ApiResult<()>;
+    /// The form the system's pick holds for the turn's start, with the
+    /// transform record's turns and Chaos flag (BN5's Soul Unison; 0 and
+    /// false elsewhere).
+    fn custom_set_form(&mut self, side: u8, system: u8, form: Option<crate::FormHandle>, turns: u8, chaos: bool) -> ApiResult<()>;
     fn custom_form_taken(&self, side: u8, system: u8) -> ApiResult<bool>;
     fn custom_full(&self, side: u8) -> ApiResult<bool>;
     fn custom_button_picked(&self, side: u8, system: u8, button: &str) -> ApiResult<bool>;
+    /// The last pick, if it is a chip (dealt, or a link navi's own), as the
+    /// screen checked it (`custom.last_pick`).
+    fn custom_last_pick(&mut self, side: u8) -> ApiResult<Option<CustomPick>>;
+    /// The system's button `button` takes the last pick's place, first in
+    /// the selection (BN5's soul given for a chip, 0x080233E0); false when
+    /// the last pick isn't a chip (`custom.trade_last_pick`).
+    fn custom_trade_last_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<bool>;
+    /// The screen's fade is still running (`custom.fading`).
+    fn custom_fading(&self, side: u8) -> ApiResult<bool>;
     /// The screen's cursor (its slot), and moving it; whether a key (its
     /// name: "a", "b", "select", "start", "right", "left", "up", "down",
     /// "r", "l") is pressed this tick, or repeats (`Joypad::repeat`).

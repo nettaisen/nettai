@@ -2754,11 +2754,13 @@ declare custom: {
     -- a screen sound ("pick", "refused", "back", "cancel", "cursor",
     -- "description", "beast_out_gregar", "beast_out_falzar",
     -- "beast_out_flash", "cross_window_open", "cross_window_close",
-    -- "cross_chosen"); the last pick's column cell; one of the system's
+    -- "cross_chosen", "program_advance_part", "program_advance"); the last
+    -- pick's column cell; one of the system's
     -- windows opened (`ticks`: the ticks it has had already), and its ticks
     -- so far; this console's camera shake; the window's frame counter; the
     -- emblem's spin; a screen fade ("beast_out", "beast_out_back",
-    -- "end_to_white", "intro_from_white"); the emotion window's face; the
+    -- "end_to_white", "intro_from_white", "soul_flash", "soul_flash_back");
+    -- the emotion window's face; the
     -- last pick moved first (its column icon `icon`, else its chip's); one
     -- of the system's buttons' state; the availability redone; the emblem
     -- drawn; the form the system's pick holds for the turn's start, and
@@ -2766,6 +2768,12 @@ declare custom: {
     -- whether one of the system's buttons is picked; what the screen reads
     -- of its player that isn't a system's setup (the emotion it reads, a
     -- random battle).
+    -- The form takes, beside it, the transform record's turns and Chaos flag
+    -- (BN5's Soul Unison). The last pick, if it is a chip (dealt, or a link
+    -- navi's own), as the screen checked it; the system's button in the last
+    -- pick's place, first in the selection (B puts the chip back; at OK the
+    -- chip leaves the folder where the button stands): false when the last
+    -- pick isn't a chip; whether the screen's fade is still running.
     pick: (side: number) -> (),
     play: (side: number, sound: string) -> (),
     set_column_icon: (side: number, chip: Chip?) -> (),
@@ -2781,7 +2789,10 @@ declare custom: {
     set_button_state: (side: number, button: string, state: "selectable" | "unavailable" | "selected") -> (),
     update_availability: (side: number) -> (),
     draw_emblem: (side: number, x: number) -> (),
-    set_form: (side: number, form: FormDef?) -> (),
+    set_form: (side: number, form: FormDef?, turns: number?, chaos: boolean?) -> (),
+    last_pick: (side: number) -> { slot: number, chip: Chip, regular: boolean, navi_chip: boolean }?,
+    trade_last_pick: (side: number, button: string) -> boolean,
+    fading: (side: number) -> boolean,
     form_taken: (side: number) -> boolean,
     full: (side: number) -> boolean,
     button_picked: (side: number, button: string) -> boolean,
