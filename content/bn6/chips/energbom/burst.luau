@@ -1,10 +1,10 @@
 --!strict
 -- The energy burst (the original's attack object #0x11, `sub_80C67F8`):
--- the shared burst (@common/energbom/burst), BN6's kind and look: what
+-- the shared burst (@exelib/energbom/burst), BN6's kind and look: what
 -- EnergBom's and MegEnBom's bomb leaves where it lands (`burst.leave`).
 
 local collision = require("../../rules/collision")
-local common = require("@common/energbom/burst")
+local common = require("@exelib/energbom/burst")
 
 return common.make {
     id = "bn6:energbom/burst",

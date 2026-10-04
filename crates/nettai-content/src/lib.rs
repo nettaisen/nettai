@@ -1,10 +1,11 @@
 //! Content packs: a game's graphics and sound in open formats that ordinary
 //! tools edit, loaded exactly into the data the engine, the frontend and the
-//! audio use; and the battle content, a content root's definitions
-//! ([`root`]: content/bn6), which name the pack's assets.
+//! audio use; and the battle content, the content directory's packs
+//! ([`index`]: content/'s game packs and the support packs they use), which
+//! name the asset packs' assets.
 //!
 //! - Battle content: the Luau modules that define the chips, navis, forms,
-//!   weapons, stages and rules, and the code that runs them ([`root`]),
+//!   weapons, stages and rules, and the code that runs them ([`index`]),
 //!   loaded with a pack's asset index into the engine's
 //!   `nettai_battle::Content` ([`pack::load_battle`]).
 //! - Sprites: an indexed-PNG part atlas, part layouts (`sprite.json`) and
@@ -15,7 +16,7 @@
 //!   ([`song`]), voicegroups, key maps and PSG waves as TOML, samples as
 //!   WAV ([`sound`]).
 //!
-//! - Display text: a content root's `locales/<language>.toml`, by
+//! - Display text: the content's `locales/<language>/*.toml`, by
 //!   definition key; the own language's is the content's strings, which the
 //!   battle counts the chatbox's timing from, the others a frontend's alone
 //!   ([`locale`]).
@@ -38,7 +39,7 @@ pub mod midi;
 pub mod names;
 pub mod pack;
 pub mod report;
-pub mod root;
+pub mod index;
 pub mod song;
 pub mod sound;
 pub mod sprite;

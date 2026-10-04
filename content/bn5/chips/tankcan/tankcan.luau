@@ -1,13 +1,13 @@
 --!strict
--- BN5's TankCans (action 0x46, 0x080EEF4A): BN6's tank cannon and shell (@common/tankcan: the same code) with BN5's
+-- BN5's TankCans (action 0x46, 0x080EEF4A): BN6's tank cannon and shell (@exelib/tankcan: the same code) with BN5's
 -- look: the cannon (the attachment table's row 0x25, BN6's 0x14: the same look), the shell (attack object #0x3C,
 -- 0x080CC9EC: its collision row 0, BN6's), its edge blast BN5's effect 0x47 hitting as an attack (BN6's thrown,
 -- 0x080CCB40) and unshifted, its sounds and effects.
 
 local attachment = require("../../objects/attachment/attachment")
-local action = require("@common/tankcan/action")
+local action = require("@exelib/tankcan/action")
 local collision = require("../../rules/collision")
-local shell = require("@common/tankcan/shell")
+local shell = require("@exelib/tankcan/shell")
 
 local tankcan = {}
 

@@ -1,10 +1,10 @@
 --!strict
 -- AntiDmg's counter (the original's navi action 0x47, `sub_80EE90C`): the
--- shared counter (@common/antidmg/counter) with BN6's shuriken (./shuriken),
+-- shared counter (@exelib/antidmg/counter) with BN6's shuriken (./shuriken),
 -- sounds and puff. The ruleset starts it by role
 -- (`actions.anti_damage_counter`, rules/roles.luau).
 
-local common = require("@common/antidmg/counter")
+local common = require("@exelib/antidmg/counter")
 local effects = require("../../lib/effects")
 local shuriken = require("./shuriken")
 

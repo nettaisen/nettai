@@ -8,7 +8,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local panel_strike = require("../../objects/panel-strike/panel_strike")
-local panels = require("@common/panels")
+local panels = require("@exelib/panels")
 
 export type State = {
     -- The countdown to the next strike (AIAttackVars+0x10).
@@ -45,7 +45,7 @@ local GUN_FIRE = 1
 -- The machine gun (the original's attachment row 0x1D).
 local GUN = attachment.look { sprite = asset.sprite("bn6:machine-gun"), palette = 0, attach_point = 26 }
 
--- `sub_80ED040` (@common/panels, the dragons' too): from the column ahead
+-- `sub_80ED040` (@exelib/panels, the dragons' too): from the column ahead
 -- forward, the first with an enemy in some row; none, the last column
 -- ahead.
 local function target_column(me: Object): number

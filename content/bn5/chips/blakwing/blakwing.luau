@@ -11,8 +11,8 @@
 -- field's bottom, where it goes in a puff.
 
 local collision = require("../../rules/collision")
-local dimming_chips = require("@common/dimming")
-local panels = require("@common/panels")
+local dimming_chips = require("@exelib/dimming")
+local panels = require("@exelib/panels")
 local sparks = require("../../lib/sparks")
 
 local blakwing = {}

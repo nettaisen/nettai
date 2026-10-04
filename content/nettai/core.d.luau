@@ -2272,12 +2272,13 @@ export type Status = StatusDef
 -- the installed cards' limit counts) and its effects in the card's order:
 -- each a table with its `kind` and whether the card shows it as a `bug`,
 -- with the kind's own fields. What an effect does is a game's rules' (BN6's
--- patch-cards system, rules/patch-cards: `PatchCardEffect`). Its name is
--- the locales' (locales/<lang>.toml's `patch-cards`).
+-- patch-cards system, rules/patch-cards), and its type is the game's (BN6's
+-- `PatchCardEffect`, which its cards' constructors make). Its name is the
+-- locales' (locales/<lang>.toml's `patch-cards`).
 export type PatchCardSpec = {
     id: string,
     mb: number,
-    effects: { PatchCardEffect },
+    effects: { any },
 }
 export type PatchCard = PatchCardSpec
 

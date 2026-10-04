@@ -4,17 +4,43 @@ use super::*;
 use nettai_content_api::Data;
 
 #[test]
-fn relative_paths_resolve_within_the_folder() {
-    let r = resolve;
+fn relative_paths_resolve_within_the_pack() {
+    let r = keys::resolve;
     assert_eq!(r("bn6:chips/gundels/chips", "../../objects/sun-beam/sun_beam").unwrap(), "bn6:objects/sun-beam/sun_beam");
     assert_eq!(r("bn6:(pack)", "./lib/slot").unwrap(), "bn6:lib/slot");
     assert!(r("bn6:lib/slot", "../../x").is_err());
     assert!(r("bn6:lib/slot", "objects/x").is_err());
-    // A folder's top: its own, or any other (one namespace).
+    // A pack's top: its own, or another's (which `packs::check_require` may refuse).
     assert_eq!(r("bn6:chips/x/chip", "@bn6/lib/slot").unwrap(), "bn6:lib/slot");
-    assert_eq!(r("bn5:rules/ruleset", "@bn6/rules/beast/system").unwrap(), "bn6:rules/beast/system");
-    assert_eq!(r("bn6:rules/ruleset", "@bn5/rules/ruleset").unwrap(), "bn5:rules/ruleset");
+    assert_eq!(r("bn6:chips/x/chip", "@exelib/swords/slash").unwrap(), "exelib:swords/slash");
     assert!(r("bn5:rules/ruleset", "@bn6/../x").is_err());
+}
+
+/// docs/design/content-model-v2.md §4.0: a game requires itself and the
+/// support packs it uses; a support pack itself and the support packs it
+/// uses; no pack another game's.
+#[test]
+fn a_require_reaches_only_its_pack_and_the_support_packs_it_uses() {
+    use nettai_content_api::{PackKind, PackManifest};
+    let manifest = |id: &str, kind: PackKind, uses: &[&str]| PackManifest {
+        id: id.into(),
+        kind,
+        uses: uses.iter().map(|u| u.to_string()).collect(),
+        ..Default::default()
+    };
+    let packs = [manifest("lib", PackKind::Support, &[]), manifest("a", PackKind::Game, &["lib"]), manifest("b", PackKind::Game, &["lib"])];
+    let load = |entry: &str, modules: &[(&str, &str)]| {
+        let pack = Pack::new(modules.iter().map(|(n, s)| (n.to_string(), s.to_string())))
+            .with_entries(vec![entry.to_string()])
+            .with_packs(packs.clone());
+        define(&pack, &AssetNames::default(), Options::default()).map(|_| ()).map_err(|e| e.message)
+    };
+    let lib = ("lib:y", "return {}");
+    load("a:x", &[("a:x", "local _ = require('@lib/y')\nreturn {}"), lib]).unwrap();
+    let e = load("a:x", &[("a:x", "local _ = require('@b/y')\nreturn {}"), ("b:y", "return {}")]).unwrap_err();
+    assert!(e.contains("a/x.luau: require(\"@b/y\"): b is a game pack"), "game to game: {e}");
+    let e = load("lib:y", &[("lib:y", "local _ = require('@a/x')\nreturn {}"), ("a:x", "return {}")]).unwrap_err();
+    assert!(e.contains("lib/y.luau: require(\"@a/x\"): a is a game pack"), "support to game: {e}");
 }
 
 fn pack(modules: &[(&str, &str)]) -> Pack {

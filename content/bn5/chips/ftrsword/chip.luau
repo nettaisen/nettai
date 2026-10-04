@@ -1,10 +1,10 @@
 --!strict
 -- FtrSword (BN5 chip 0x172): a slash over the three panels ahead (VarSwrd's pick: no library chip): the shared slash
--- (@common/swords/slash, BN5's action 0x13 subtype 9) with BN5's parts (lib/swords), region 6 and its slash effect
+-- (@exelib/swords/slash, BN5's action 0x13 subtype 9) with BN5's parts (lib/swords), region 6 and its slash effect
 -- 0x2E.
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local swords = require("../../lib/swords")
 
 return define.chip {

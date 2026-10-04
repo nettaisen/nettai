@@ -173,7 +173,7 @@ impl Side {
 pub fn plain(content: &Arc<Content>, seed: u32) -> Result<Match, String> {
     let stage = *crate::link_battle_stages(content).first().ok_or("the content has no link battle stage")?;
     let arena = Arena::on(Place { stage, background: None });
-    let home = content.scripts.roots.first().map(|r| r.name.clone()).unwrap_or_default();
+    let home = content.scripts.games().first().cloned().unwrap_or_default();
     let navi = (0..content.defs.navis.len() as u16)
         .map(nettai_content_api::NaviHandle)
         .filter(|&n| content.navi(n).fresh.is_some())

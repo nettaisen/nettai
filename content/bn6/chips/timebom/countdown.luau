@@ -1,11 +1,11 @@
 --!strict
 -- The countdown bomb (the original's attack object #0x4B, `sub_80CD8EC`)
 -- the TimeBom chips set (./controller): the shared bomb
--- (@common/timebom/countdown), BN6's kind and look.
+-- (@exelib/timebom/countdown), BN6's kind and look.
 
 local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
-local common = require("@common/timebom/countdown")
+local common = require("@exelib/timebom/countdown")
 local effects = require("../../lib/effects")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
 

@@ -468,7 +468,7 @@ fn anim_frame(anim: &GfxAnim, calls: u32) -> Option<usize> {
 mod tests {
     use super::*;
     use nettai_assets::{GfxAnimFrame, Tiles};
-    use nettai_battle::content::{RootManifest, testing};
+    use nettai_battle::content::testing;
 
     const RED: u16 = 0x001F;
     const BLUE: u16 = 0x7C00;
@@ -500,7 +500,7 @@ mod tests {
     fn battle(types: [PanelType; 3]) -> Battle {
         let mut c = testing::build();
         testing::add_pack(&mut c, "twin", Default::default(), Default::default());
-        c.scripts.add_root(RootManifest::named("twin"), Default::default());
+        c.scripts.add_game("twin", Default::default());
         c.define().unwrap_or_else(|e| panic!("{e}"));
         let (home, twin) = (c.defs.root_id(testing::ROOT).expect("the test game"), c.defs.root_id("twin").expect("twin"));
         for t in PanelType::ALL {

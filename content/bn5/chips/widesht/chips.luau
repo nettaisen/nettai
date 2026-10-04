@@ -6,7 +6,7 @@ local wave = require("./variants")
 local widesht = require("./wave")
 
 -- WideSht1 (BN5 chip 0x009): the navi raises its wide shooter and sends a wave from the panel ahead over a column
--- of three: the shared WideSht (@common/widesht, the original's action 0x30, BN5's 0x25; the same code but for the
+-- of three: the shared WideSht (@exelib/widesht, the original's action 0x30, BN5's 0x25; the same code but for the
 -- shooter's attachment row, BN5's 0x11 for BN6's 0x23, and the wave's height and sprite) with BN5's shooter (0c-2a,
 -- the same place), its wave at the floor (BN6's at 16 pixels) and BN5's wide wave (chips/widesht).
 local widesht1 = define.chip {
@@ -26,7 +26,7 @@ local widesht1 = define.chip {
 }
 
 -- WideSht2 (BN5 chip 0x00a): the navi raises its wide shooter and sends a wave from the panel ahead over a column
--- of three: the shared WideSht (@common/widesht, the original's action 0x30, BN5's 0x25; the same code but for the
+-- of three: the shared WideSht (@exelib/widesht, the original's action 0x30, BN5's 0x25; the same code but for the
 -- shooter's attachment row, BN5's 0x11 for BN6's 0x23, and the wave's height and sprite) with BN5's shooter (0c-2a,
 -- the same place), its wave at the floor (BN6's at 16 pixels) and BN5's wide wave of kind 4 (chips/widesht).
 local widesht2 = define.chip {
@@ -46,7 +46,7 @@ local widesht2 = define.chip {
 }
 
 -- WideSht3 (BN5 chip 0x00b): the navi raises its wide shooter and sends a wave from the panel ahead over a column
--- of three: the shared WideSht (@common/widesht, the original's action 0x30, BN5's 0x25; the same code but for the
+-- of three: the shared WideSht (@exelib/widesht, the original's action 0x30, BN5's 0x25; the same code but for the
 -- shooter's attachment row, BN5's 0x11 for BN6's 0x23, and the wave's height and sprite) with BN5's shooter (0c-2a,
 -- the same place), its wave at the floor (BN6's at 16 pixels) and BN5's wide wave of kind 5 (chips/widesht).
 local widesht3 = define.chip {

@@ -10,7 +10,7 @@
 -- Its markers over its target (./marker) show in the battle flag 0x40 mode only.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local trajectory = require("../../lib/trajectory")
 local marker = require("../../lib/navi-chips/marker")
 

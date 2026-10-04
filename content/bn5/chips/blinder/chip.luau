@@ -6,8 +6,8 @@
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
 local collision = require("../../rules/collision")
-local dimming_chips = require("@common/dimming")
-local regions = require("@common/regions")
+local dimming_chips = require("@exelib/dimming")
+local regions = require("@exelib/regions")
 local statuses = require("../../rules/status")
 
 -- The phases of its effect.

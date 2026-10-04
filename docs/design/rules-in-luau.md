@@ -619,14 +619,14 @@ also be fully qualified as well".
 - **No home.** What a battle reads is the arena's (the stage's game's) or a side's (its ruleset's, §2.3); a tool
   with no battle takes the game that has the thing. A frontend's and the match tool's default game is BN6's, by name
   (`nettai_match::DEFAULT_GAME`).
-- **content/common** is a folder of behavior only: modules the games' folders share by path
-  (`require("@common/...")`), with no assets of their own, so it needs no pack, and no compat or locales. A common
+- **content/exelib** is a folder of behavior only: modules the games' folders share by path
+  (`require("@exelib/...")`), with no assets of their own, so it needs no pack, and no compat or locales. A common
   module holds no game's ids or asset names and requires only common modules: it exports the behavior as makers
   that take a game's look and constants (`traps.make_kind(id)`, `bomb.make(look)`, `cannon.action(spec, look)`;
-  the looks' types in content/common/types.d.luau). Each game's folder defines its own kinds, actions and records
+  the looks' types in content/exelib/types.d.luau). Each game's folder defines its own kinds, actions and records
   with them and keeps its looks: BN6's modules at their old paths are thin wrappers that pass BN6's (so BN6's
   callers are unchanged), BN5's folder makes its own (`bn5:trap-chip`, `bn5:attachment`, ...). A helper with no
-  game data moves whole (`@common/regions`, `@common/panels`, `@common/dimming`). Where BN5 still uses a BN6
+  game data moves whole (`@exelib/regions`, `@exelib/panels`, `@exelib/dimming`). Where BN5 still uses a BN6
   definition as its own (BN6's effects, a few BN6 collision rows), it requires it from `@bn6/...` and says so
   (docs/design/bn5-map.md §15.6, "Shared code"). It loads as a root of no game (`keys::SHARED`): no roles, no
   rules, no field, no compat ids; what defines a game's folder alone (a test, gen-content's check) loads it beside
@@ -641,7 +641,7 @@ also be fully qualified as well".
 There is no shared content library (the user's decision). Each game's folder defines its own chips, kinds, builders,
 forms and systems, even where they overlap with another game's: `bn6:cannon`, `bn5:cannon`, `bn4:cannon` are three
 definitions, each verified against its own game. When BN5's routine is the same as BN6's (bn5-map.md says which),
-BN5's module may start as a copy of BN6's, and then belongs to BN5 (or the two share it from content/common, §7.2).
+BN5's module may start as a copy of BN6's, and then belongs to BN5 (or the two share it from content/exelib, §7.2).
 
 A folder that composes games (a mix of rules, a mod) requires their modules by path
 (`require("@bn6/rules/cross/system")`) and names their definitions by id. The in-repo tests use such a folder for
@@ -1242,7 +1242,7 @@ are gone.
   with that pack, else it is left out with a warning (`pack::battle_content_packs`); the frontend's and the
   editor's `pack::load_found` reads every folder, leaves out one whose pack isn't found (saying how to write it)
   or without which the rest define, and loads the rest (`Loaded::roots` the folders loaded). A folder of behavior
-  only (content/common: no assets of its own) needs no pack and no locales.
+  only (content/exelib: no assets of its own) needs no pack and no locales.
 - **Every id is written in full** (`nettai_luau::define`): `bn6:minibomb`; a section's name (`bn6:panels`), the
   roles' id (`bn6:roles`, `RolesSpec::id`), the stock rulesets' (`bn6:stock`, `bn5:stock`, `test:stock`). An id
   without its game is refused, every one at once, each naming its folder's game as the fix. Derived keys follow
@@ -1884,3 +1884,78 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   - the audit 0 problems (49 traces and the static audit); gen-content check 0 errors and its tests;
   - after main d3a547f7: the workspace's tests, the content check (1,529 modules), us-spelling 0 on both
     repositories.
+
+### P1, packs and exelib (2026-10-03)
+
+The user, after R5 (below): "okay actually i do want packs again. i also don't want to be able to load things
+cross-game, bn5 stays in bn5 and bn6 stays in bn6 and no mixing and matching is allowed. common should be renamed exelib
+(to align with the bn->exe change) and be a support pack as opposed to a game pack. you are either playing bn5 or bn6,
+the arena configuration determines everything"; on what a pack imports, "don't allow games to import from other game
+packs, games can only import from support and support can import from support, but support and games can't import from
+games"; and on the declaration, "okay instead of init.luau it should be manifest.toml".
+
+The model is content-model-v2.md §4.0. R5, built first and never merged, had made content/ one namespace with
+explicit indices; this slice keeps its lists and drops the namespace. What follows is how it was built.
+
+- **Packs** (`nettai_content_api::packs`):
+  - `PackManifest`, `PackKind` and `PackDefinitions` are read from content/<pack>/manifest.toml with serde and toml.
+    `parse` refuses a bad name, a pack that uses itself or one pack twice, and a support pack with definitions.
+  - `packs` and `games` find the packs and the game packs.
+  - `with_uses` and `load_order` give the load order (support packs first, each after what it uses, then the
+    games). They refuse a use of a game pack, a cycle (the chain named), and a support pack loaded as a game.
+  - `check_require` holds the import rule (the table in §4.0).
+  - `declarations` holds the per-pack declarations.
+  - `requires` is the textual require reader.
+- **Keys.** `keys::resolve` keeps a relative path in its pack (main's rule, which R5 had lifted). `@<pack>/<path>`
+  names another pack, and `check_require` says whether that's allowed. `keys::SHARED` stays gone, since exelib is a
+  pack like any other.
+- **The define phase.**
+  - `Scripts` holds the packs' manifests (`Scripts::packs`, in load order; `games()`, `manifest()`).
+    `add_game`/`add_support`/`set_manifest`/`manifest_of` make manifests for modules held in memory.
+  - `check_packs` refuses a bad manifest, a pack loaded twice, bad uses, and a listed module that isn't there.
+  - `check_lists` (R5's `check_indices`) holds a game pack's lists to the whole truth and refuses a support pack's
+    definition of what a game lists. It finds a definition's pack by its module, not its key.
+  - The runtime starts from each pack's listed modules (`Pack::with_entries`) and refuses a require the packs
+    refuse (`Pack::with_packs`). R5's `define.game`, `GameIndex` and `Definitions::games` are gone.
+- **Loading.**
+  - `nettai_content::index::read` reads the manifests, the load order and each pack's listed modules, then follows
+    their requires (`follow`, which refuses a cross-pack require). The unported modules must be there.
+  - `Read::scripts` gives the engine's `Scripts`.
+  - The strings are back in the game packs (content/<game>/locales/<lang>.toml): `locale::load(pack, lang)`,
+    `load_for(dir, packs, lang)`, `languages_of`/`languages`, and `check_games` per game.
+- **The content check.**
+  - It checks each pack against its own declarations (`definitions(dir, pack)`).
+  - `reach` refuses a folder of content/ without a manifest, a module outside the packs, bad uses or a cycle, a
+    listed or unported module that isn't there, and in every module, listed or not, a require of no module and a
+    require the packs refuse.
+  - A new lint flags a support pack that names an asset (`lints::names_assets`).
+  - It no longer needs toml directly (nettai-content-api reads the manifests).
+- **The content.**
+  - common is exelib.
+  - Each pack has its manifest (exelib's: `kind = "support"`).
+  - 51 of bn6/types.d.luau's types moved to exelib/types.d.luau: those exelib's or BN5's code names, with the types
+    they name.
+  - core.d.luau's patch card spec takes `effects: { any }`.
+- **Tests.**
+  - New tests: packs' `a_manifest_reads` and `a_pack_requires_itself_and_the_support_packs_it_uses` (game to game,
+    support to game, an unused support pack, a game used, a support pack's game use, a cycle); nettai-luau's
+    `a_require_reaches_only_its_pack_and_the_support_packs_it_uses`; index's `what_a_read_refuses`; the check's
+    `what_the_packs_refuse`; scripts' `a_game_packs_manifest_lists_its_definitions`.
+  - The scripts tests that had one game require another's modules now keep each game's modules to itself. The mix
+    tests' rulesets are the base's pack's.
+- **Verify:**
+  - tools/content/index.py writes the manifests.
+  - tools/content/packs.py is the porters' re-run script, with steps 1 (exelib), 2 (R5's layout), 3 (manifests), 4
+    (shared types) and 5 (cross-game requires, listed and left alone).
+  - gen-content's sources read the manifest and exelib.
+  - The BN5 tools, impact.py and the tests follow.
+- **Decisions** (for review):
+  1. A manifest's lists are module paths within the pack, as the user's example has them, and `also` and
+     `unported` sit under `[definitions]`.
+  2. A support pack has no `[definitions]` at all. Its definitions are anonymous or the game's (made through its
+     makers, so their module is the game's).
+  3. The game packs are found by listing content/*/manifest.toml, in name order (main's order: bn5, then bn6).
+  4. The declarations are found by folder, per pack, rather than listed.
+  5. Module names keep the `<pack>:<path>` spelling, so no anonymous key, compat entry or coverage map moves.
+- **Porter re-run:** merge main, run `tools/content/packs.py <checkout>` (verify), then build and test. It prints a
+  line per step for the report. layout.py and gen_content.py run index.py after writing.

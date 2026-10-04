@@ -39,7 +39,8 @@ fn fail(msg: impl std::fmt::Display) -> ! {
 fn parse() -> Result<Options, String> {
     let mut o = Options {
         content: None,
-        roots: Vec::new(),
+        content_dir: std::path::PathBuf::new(),
+        games: Vec::new(),
         packs: Vec::new(),
         frontend: None,
         file: None,
@@ -105,10 +106,10 @@ fn main() -> iced::Result {
         fail("can't load the battle content (--content, --pack)")
     });
     show(&loaded.report);
-    for (root, why) in &loaded.left_out {
-        eprintln!("the content folder {root} is left out: {why}");
+    for (game, why) in &loaded.left_out {
+        eprintln!("the game {game} is left out: {why}");
     }
-    options.roots = loaded.roots;
+    (options.content_dir, options.games) = (loaded.dir.clone(), loaded.games.clone());
     let content = Arc::new(loaded.content);
     let pictures = pictures::Pictures::load(&content, &loaded.packs).unwrap_or_else(|e| {
         eprintln!("{e}: the chips have no pictures");
