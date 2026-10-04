@@ -1603,15 +1603,14 @@ fn bugfix_ends_the_emotion_window_glitch() {
     // sub_801E658: BugFix clears the save's emotion window glitch on every
     // console, so their windows stop flickering (and drawing RNG1).
     let chips = defined(BUGFIX_CHIPS);
-    let setup = || {
-        let mut s = scenario::setup_with_handles(&chips);
-        for p in &mut s.players {
-            p.console.emotion_window_glitch = true;
-        }
-        s
-    };
+    let setup = || scenario::setup_with_handles(&chips);
     let tape = scenario::record_on_content(setup(), scenario::content(), 2400, 11);
     let mut b = Battle::new(setup(), scenario::content());
+    // (The glitch as a game's rules make it when the round is set up, before
+    // the intro starts the windows: the test content has no NaviCust.)
+    for c in &mut b.consoles {
+        c.emotion_window_glitch = true;
+    }
     let mut glitched = false;
     let mut fixed = false;
     for t in &tape {

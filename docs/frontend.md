@@ -183,11 +183,11 @@ stops, shows the reason on screen and prints it; the first difference from
 the trace's recorded state is printed too. Frame numbers are the trace's.
 
 **Live play**: you are the left navi; the right one stands still. The round
-is a netbattle on BN6's content between two 1000-HP MegaMen with
-no NaviCust programs (so roads carry them and holes stop them;
-`nettai_match::draw::live_navi`), set up at random from the seed
-(`nettai_match::draw::live`, which prints what it drew), unless a match file
-sets it up (`--match`, §6). (`--game bn5` draws a plain BN5 match instead:
+is a netbattle on BN6's content between two MegaMen at their fresh stats
+(100 HP, as a new match's in the editor: `nettai_match::Side::fresh`) with
+no NaviCust programs (so roads carry them and holes stop them), set up at
+random from the seed (`nettai_match::draw::live`, which prints what it
+drew), unless a match file sets it up (`--match`, §6). (`--game bn5` draws a plain BN5 match instead:
 BN5's stock rules, a stage of its link battles, and on each side BN5's
 MegaMan at his fresh stats with a folder its rules accept.)
 
@@ -199,8 +199,9 @@ MegaMan at his fresh stats with a folder its rules accept.)
 - **A folder for each player**: 30 chips that keep BN6's folder rules
   (`nettai_match::folders`: the folder editor's, `sub_8135080` with `sub_8135500`: copies
   of a chip by its MB, five up to 19 MB down to one from 50; Mega and Giga
-  chips within the navi's levels, 5 and 1; a code each chip comes in; a
-  Regular chip within the navi's Regular memory, 50 MB; no tag chips in a draw), from
+  chips within the fresh navi's levels; a code each chip comes in; a
+  Regular chip within the fresh navi's Regular memory, if a chip fits it; no
+  tag chips in a draw), from
   the chips the chip pack lists (Standard, Mega and Giga, not the dark
   chips, and not the five the US game has no routine for). The codes lean to
   two the folder favors, and `*`. Each console shuffles its folder from
@@ -843,7 +844,6 @@ beast_out = false                          # optional: else Beast Out is unlocke
 cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
 level = 0                                  # optional: the navi code's level, 0-14 (see below)
 bug_frags = 0                              # optional
-emotion_window_glitch = false              # optional: the save's NaviCust bug flag (0x1720)
 folder = [                                 # 30 entries, [chip, code] ([] empty: a folder being made)
     ["cannon", "A"],
     ["cannon", "A"],
@@ -903,6 +903,15 @@ NaviCust's bugs (`step_bug`, `panel_trail`, `panel_trail_level`,
 `custom_damage`, `hand_shrink_turn`, ...): every stat a round starts from,
 so a written block gives back the same stats. Writing a match, only the
 fields that differ are written.
+
+**The emotion window's glitch** (the save's event flag 0x1720, 0x1723
+with patch cards; BN5's 0x10C1 and 0x10C4: MegaMan's window flickers) is
+no key of a match and no field of a setup: the game's rules make it as the
+round is set up. The NaviCust's compile sets it when a bug applies, the
+patch cards' routine from the stats they leave, and for a side with no
+NaviCust (its stats set directly, or a recording's, which are as a compile
+left them) it is set when the stats carry a NaviCust bug
+(content/exelib/navicust/compile.luau). BugFix clears it.
 
 **The navi code's level** (`level`) is the level of the navi code the
 save received (docs/engine/link-navis.md), 0 to 14. A link navi exists only
