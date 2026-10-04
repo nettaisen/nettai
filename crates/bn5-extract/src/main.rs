@@ -10,11 +10,11 @@
 //! the two never collide and BN5's assets are named for BN5 alone
 //! (docs/design/bn5-map.md §9). Most of it is the US Team ProtoMan ROM's.
 //! A version chip's picture and icon are its own version's ROM's (the other
-//! version's ROM has its counterpart's there), under the chip's key; the
-//! sounds each version has its own of are in it twice, named `-protoman`
-//! and `-colonel`. The Japanese ROMs are checked against the US ones: their
-//! battle graphics differ only where text is drawn, so the pack has none of
-//! theirs yet.
+//! version's ROM has its counterpart's there), under the chip's key; a
+//! song a version played otherwise would be in it twice, named `-protoman`
+//! and `-colonel` (the two ROMs play every song alike). The Japanese ROMs
+//! are checked against the US ones: their battle graphics differ only where
+//! text is drawn, so the pack has none of theirs yet.
 //!
 //! The assets are named as BN5's content names them (content/bn5/compat/
 //! assets.toml, through bn5-compat: BN6's names where the asset or its place
