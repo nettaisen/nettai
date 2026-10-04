@@ -31,7 +31,8 @@ local ball = common_ball.make {
     id = "bn5:numbrbl/ball",
     sprite = asset.sprite("bn5:number-ball"),
     sit_ticks = 0x1D,
-    set_sound = asset.sound("bn5:hop"),
+    -- (0x112: 0x080D8A40 loads it as 19 + 255.)
+    set_sound = asset.sound("bn5:place"),
     hit_sound = asset.sound("bn5:damage"),
     explosion = effects.explosion,
     is = collision.attack,
