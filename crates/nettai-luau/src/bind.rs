@@ -587,6 +587,14 @@ impl UserData for Object {
             let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "put_on_form_overlay"))?);
             with(|api, _| Ok(api.put_on_form_overlay(this.0, form)))
         });
+        methods.add_method("take_off_form_parts", |_, this, form: LuaValue| {
+            let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "take_off_form_parts"))?);
+            with(|api, _| Ok(api.take_off_form_parts(this.0, form)))
+        });
+        methods.add_method("put_on_form_parts", |_, this, form: LuaValue| {
+            let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "put_on_form_parts"))?);
+            with(|api, _| Ok(api.put_on_form_parts(this.0, form)))
+        });
         methods.add_method("load_form_sprite", |_, this, form: LuaValue| {
             let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "load_form_sprite"))?);
             with(|api, _| api.load_form_sprite(this.0, form).map_err(api_error))
