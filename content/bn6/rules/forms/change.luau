@@ -33,13 +33,13 @@ export type Sequence = "cross" | "beast_out" | "cross_beast" | "beast_cross" | "
 type Record = { beast_out_used: boolean, crossed: boolean }
 
 -- The sounds it plays.
-local FORM_CHANGE = asset.sound("bn6:form-change")
-local GREGAR_ROAR = asset.sound("bn6:gregar-roar")
-local FALZAR_ROAR = asset.sound("bn6:falzar-roar")
-local BEAST_OVER_RUMBLE = asset.sound("bn6:beast-over")
-local BEAST_OUT = asset.sound("bn6:beast-out")
-local CROSS_CHANGE = asset.sound("bn6:cross-change")
-local CROSS_CHANGE_CHIME = asset.sound("bn6:log-in")
+local FORM_CHANGE = asset.sound("form-change")
+local GREGAR_ROAR = asset.sound("gregar-roar")
+local FALZAR_ROAR = asset.sound("falzar-roar")
+local BEAST_OVER_RUMBLE = asset.sound("beast-over")
+local BEAST_OUT = asset.sound("beast-out")
+local CROSS_CHANGE = asset.sound("cross-change")
+local CROSS_CHANGE_CHIME = asset.sound("log-in")
 
 -- The steps, in the attack's step.
 local PREPARE = 0

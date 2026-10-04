@@ -19,7 +19,7 @@ throw.release_point = common.release_point
 -- The damage word a thrown thing carries.
 throw.damage_word = common.damage_word
 
-local LOOK: ThrowLook = { sound = asset.sound("bn6:minibomb-throw"), attachment = attachment.kind }
+local LOOK: ThrowLook = { sound = asset.sound("minibomb-throw"), attachment = attachment.kind }
 
 -- A chip's throw.
 function throw.action(spec: ThrowSpec): Action

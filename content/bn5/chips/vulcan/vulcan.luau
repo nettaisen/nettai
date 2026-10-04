@@ -13,14 +13,14 @@ local vulcan = {}
 
 -- BN5's gun, attachment and bullet; the shot's sound BN6's number.
 local LOOK: VulcanLook = {
-    sound = asset.sound("bn5:col-army-2"),
-    arm = attachment.look { sprite = asset.sprite("bn5:vulcan"), palette = 0, attach_point = 14 },
+    sound = asset.sound("col-army-2"),
+    arm = attachment.look { sprite = asset.sprite("vulcan"), palette = 0, attach_point = 14 },
     attachment = attachment.kind,
     bullet_kind = bullet.kind,
 }
 
 -- The InfVulcs' gun (row 0x1F).
-local INFINITE_GUN = attachment.look { sprite = asset.sprite("bn5:vulcan"), palette = 3, attach_point = 14 }
+local INFINITE_GUN = attachment.look { sprite = asset.sprite("vulcan"), palette = 3, attach_point = 14 }
 
 -- The vulcan of a chip that fires `shots` bullets (0x080EC6B4 by subtype: SuprVulc's 12), of `variant` (the
 -- Vulcans' when none; SuprVulc's row 0x10).

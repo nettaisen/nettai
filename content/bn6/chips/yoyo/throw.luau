@@ -17,7 +17,7 @@ local throw = {}
 throw.STATE = common.STATE
 
 -- The yoyo arm (the original's attachment row 0x0E).
-local ARM = attachment.look { sprite = asset.sprite("bn6:yoyo-arm"), palette = 0, attach_point = 0x0F }
+local ARM = attachment.look { sprite = asset.sprite("yoyo-arm"), palette = 0, attach_point = 0x0F }
 
 -- A chip's throw: how its yoyos fly (a GreatYo's throws the controller);
 -- `id`, the action's key (its compat key: both chips are records).

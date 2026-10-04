@@ -95,7 +95,7 @@ function otenko.make(look: Look): Otenko
     -- `sub_80DB1E0`: every 5 ticks (from the first), +1 to the Atk+ bonus of the user's next chip if it deals damage,
     -- up to 50 an entry; (BN5's) with each side keeping its own gauge, +1 to the side's special bonus, up to 50.
     local function bless(me: Object)
-        local special = look.special_bonus and battle.per_player_gauges()
+        local special = look.special_bonus and battle.own_gauges()
         if me.phase_init == 0 then
             me.anim = BLESSING_ANIM
             me.timer2 = 0

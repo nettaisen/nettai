@@ -20,18 +20,18 @@ local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local statue = {}
 
 -- The drain's self type (`byte_80CF31C`'s row 0x52).
-local DRAIN_IS = define.collision { id = "bn6:anubis/drain", side0 = 0x80001080, side1 = 0x40001080, row_offset = 0x290 }
+local DRAIN_IS = define.collision { id = "anubis/drain", side0 = 0x80001080, side1 = 0x40001080, row_offset = 0x290 }
 
 local made = common.make {
-    id = "bn6:anubis/statue",
-    sprite = asset.sprite("bn6:anubis"),
-    sounds = { land = asset.sound("bn6:land"), ["break"] = asset.sound("bn6:hit-bomb-1") },
+    id = "anubis/statue",
+    sprite = asset.sprite("anubis"),
+    sounds = { land = asset.sound("land"), ["break"] = asset.sound("hit-bomb-1") },
     -- A field obstacle of its side, hit by the other side.
     is = collision.own_body,
     hits = collision.hit_by_other_side,
     drain = DRAIN_IS,
     nothing = collision.nothing,
-    absorbed = absorbed_obstacle.look { sprite = asset.sprite("bn6:anubis") },
+    absorbed = absorbed_obstacle.look { sprite = asset.sprite("anubis") },
     effects = { puff = effects.puff, explosion = effects.explosion },
     bubble = rising_bubble.kind,
 }
@@ -48,11 +48,11 @@ statue.anubis = statue.variant {
     hp = 100,
     lifetime = 3000,
     identity = define.identity {
-        id = "bn6:anubis",
+        id = "anubis",
         class = "field_object",
         version = 2,
         ai_index = 1,
-        look = { sprite = asset.sprite("bn6:anubis"), anim = 0, palette = 0, shadow = true },
+        look = { sprite = asset.sprite("anubis"), anim = 0, palette = 0, shadow = true },
     },
 }
 statue.poisphar = statue.variant {
@@ -61,11 +61,11 @@ statue.poisphar = statue.variant {
     hp = 100,
     lifetime = 1441,
     identity = define.identity {
-        id = "bn6:poisphar",
+        id = "poisphar",
         class = "field_object",
         version = 3,
         ai_index = 1,
-        look = { sprite = asset.sprite("bn6:anubis"), anim = 1, palette = 0, shadow = true },
+        look = { sprite = asset.sprite("anubis"), anim = 1, palette = 0, shadow = true },
     },
 }
 

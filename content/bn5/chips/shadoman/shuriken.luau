@@ -2,7 +2,7 @@
 -- BN5's diving shuriken (attack object #0x5C, 0x080D14F0: BN6's BodyGrd shuriken, @exelib/bodygrd/shuriken, the same
 -- code but for its sprite and its dive's start), ShadowMan's throw (../../chips/shadoman/navi): BN5's shuriken
 -- sprite (0c-2f, BN6's place), a thrown slash (row 0x1C) that hits navis, the effect table's row 2 as it shows, and,
--- as its dive starts, its marker over its panel for 15 ticks in the battle flag 0x40 mode (0x080D15E6).
+-- as its dive starts, its marker over its panel for 15 ticks in the operation battle (0x080D15E6).
 
 local collision = require("../../rules/collision")
 local common = require("@exelib/bodygrd/shuriken")
@@ -11,10 +11,10 @@ local marker = require("../../lib/navi-chips/marker")
 local shuriken = {}
 
 shuriken.kind = common.make_kind {
-    id = "bn5:shuriken",
-    sprite = asset.sprite("bn5:shuriken"),
-    land_sound = asset.sound("bn5:panel-crack"),
-    puff = define.effect { sprite = asset.sprite("bn5:small-puff"), anim = 1, palette = 0 },
+    id = "shuriken",
+    sprite = asset.sprite("shuriken"),
+    land_sound = asset.sound("panel-crack"),
+    puff = define.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 },
     self_type = collision.thrown_slash,
     target = collision.hits_navis,
     started = function(me: Object)

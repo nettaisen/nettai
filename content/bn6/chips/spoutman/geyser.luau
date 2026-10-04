@@ -27,7 +27,7 @@ export type State = {
     column: number,
 }
 
-local SPRITE = asset.sprite("bn6:spout-geyser")
+local SPRITE = asset.sprite("spout-geyser")
 
 -- The owner's action a navi AI's geyser lasts through.
 local OWNER_ACTION = 0xB
@@ -194,7 +194,7 @@ local function init(me: Object)
 end
 
 geyser.kind = define.kind {
-    id = "bn6:spoutman/geyser",
+    id = "spoutman/geyser",
     pool = "attack",
     state = { while_dimmed = "bool", ticks = "u8", target = "u8", column = "u8" },
     -- `sub_80C6DCC`.

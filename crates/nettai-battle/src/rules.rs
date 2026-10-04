@@ -633,7 +633,7 @@ mod tests {
         let b = started(scenario::setup());
         let content = &b.content;
         let stock = content.defs.stock_ruleset().expect("the test content's stock rules");
-        assert_eq!(content.defs.ruleset(stock).key, "test:stock");
+        assert_eq!(content.defs.ruleset(stock).key, "stock");
         for side in 0..2u8 {
             assert_eq!(b.side_rules(side).ruleset, Some(stock));
             // (BN6's beast system first, then the counter, then BN6's forms
@@ -651,7 +651,7 @@ mod tests {
     fn a_match_plays_by_the_ruleset_its_setup_names() {
         let content = scenario::content();
         let mut setup = scenario::setup();
-        setup.ruleset = content.defs.ruleset_by_key("test:test-other");
+        setup.ruleset = content.defs.ruleset_by_key("test-other");
         let b = started(setup);
         for side in 0..2u8 {
             assert_eq!(b.side_rules(side).states.len(), 2, "side {side} plays by the match's");
@@ -664,8 +664,8 @@ mod tests {
     fn a_systems_player_setup_reaches_it_and_no_other() {
         let content = scenario::content();
         let mut setup = scenario::setup();
-        setup.players[0].set_rule(&content, None, "test:test/counter", "bonus", Value::Int(7)).unwrap();
-        assert!(setup.players[0].set_rule(&content, None, "test:test/marker", "mark", Value::Int(1)).is_err(), "not the stock rules'");
+        setup.players[0].set_rule(&content, None, "test/counter", "bonus", Value::Int(7)).unwrap();
+        assert!(setup.players[0].set_rule(&content, None, "test/marker", "mark", Value::Int(1)).is_err(), "not the stock rules'");
         let b = started(setup);
         assert_eq!(field(&b, 0, 1, "bonus"), FieldValue::U16(14));
         assert_eq!(field(&b, 1, 1, "bonus"), FieldValue::U16(0), "the other player's setup is its own");
@@ -678,7 +678,7 @@ mod tests {
     #[test]
     fn a_systems_intake_and_chip_check_hooks() {
         let content = scenario::content();
-        let watch = content.defs.ruleset_by_key("test:test-watch").expect("the watcher's ruleset");
+        let watch = content.defs.ruleset_by_key("test-watch").expect("the watcher's ruleset");
         let mut setup = scenario::setup();
         setup.ruleset = Some(watch);
         let mut b = started(setup);
@@ -688,8 +688,8 @@ mod tests {
         let p = b.objects.get(navi).panel;
         assert_eq!(field(&b, 1, 0, "intakes"), FieldValue::U16(2));
         assert_eq!((field(&b, 1, 0, "x"), field(&b, 1, 0, "y")), (FieldValue::U8(p.x), FieldValue::U8(p.y)));
-        let bomb = testing::chip_in(&content, "test:test/bomb");
-        let seed = testing::chip_in(&content, "test:test/seed");
+        let bomb = testing::chip_in(&content, "test/bomb");
+        let seed = testing::chip_in(&content, "test/seed");
         assert_eq!(b.systems_chip_check(1, navi, Some(bomb)), Some(seed));
         assert_eq!(b.systems_chip_check(1, navi, Some(seed)), None);
         assert_eq!(b.systems_chip_check(1, navi, None), None);
@@ -718,9 +718,9 @@ mod tests {
     fn a_mix_is_its_bases_systems_changed() {
         let content = scenario::content();
         let defs = &content.defs;
-        let mix = defs.ruleset_by_key("test:test-mix").expect("the mix");
+        let mix = defs.ruleset_by_key("test-mix").expect("the mix");
         let names: Vec<&str> = defs.ruleset(mix).systems.iter().map(|&h| defs.system(h).key.as_str()).collect();
-        assert_eq!(names, ["test:beast", "test:test/counter", "test:emotion", "test:test/marker"]);
+        assert_eq!(names, ["beast", "test/counter", "emotion", "test/marker"]);
         assert_eq!(defs.ruleset(mix).base, defs.stock_ruleset());
         let mut setup = scenario::setup();
         setup.ruleset = Some(mix);
@@ -741,7 +741,7 @@ mod tests {
     fn a_system_extends_its_games_definitions() {
         use nettai_content_api::{Data, Registry};
         let content = scenario::content();
-        let veil = "test:test/veil";
+        let veil = "test/veil";
         assert_eq!(content.defs.extension(Registry::Chip, veil, "test_weight"), Some(&Data::Int(3)));
         let tag = content.defs.extension(Registry::Chip, veil, "test_tag").expect("veil's tag");
         assert_eq!((tag.field("level"), tag.field("kind")), (&Data::Int(2), &Data::Str("b".into())));
@@ -758,16 +758,16 @@ mod tests {
             assert!(e.contains(said), "{said}: {e}");
         };
         let chips = "chips/test/chips";
-        refused(chips, "test_weight = 3,", "test_weight = 300,", "chip test:test/veil.test_weight is Int(300), not u8");
-        refused(chips, "kind = \"b\" }", "kind = \"c\" }", "chip test:test/veil.test_tag.kind");
+        refused(chips, "test_weight = 3,", "test_weight = 300,", "chip test/veil.test_weight is Int(300), not u8");
+        refused(chips, "kind = \"b\" }", "kind = \"c\" }", "chip test/veil.test_tag.kind");
         refused(chips, "kind = \"b\" }", "kind = \"b\", hue = 1 }", "`hue` is none of its fields (kind, level)");
         let systems = "rules/systems";
         refused(systems, "            test_weight = \"u8\",", "            test_weight = \"u9\",", "no type is named \"u9\"");
         refused(systems, "        chip = {\n            test_weight", "        stage = {},\n        chip = {\n            test_weight", "a system extends chip, form or navi");
         refused(
             systems,
-            "    id = \"test:test/marker\",",
-            "    id = \"test:test/marker\",\n    extends = { chip = { test_weight = \"u8\" } },",
+            "    id = \"test/marker\",",
+            "    id = \"test/marker\",\n    extends = { chip = { test_weight = \"u8\" } },",
             "both extend chip definitions with `test_weight`",
         );
     }
@@ -783,7 +783,7 @@ mod tests {
         fn with_cards(cards: &[(&str, bool)], tweak: impl FnOnce(&mut NaviStats)) -> Battle {
             let content = scenario::content();
             let mut s = scenario::setup();
-            s.ruleset = content.defs.ruleset_by_key("test:test-cards");
+            s.ruleset = content.defs.ruleset_by_key("test-cards");
             let p = &mut s.players[0];
             let list: Vec<InstalledCard> = cards
                 .iter()
@@ -800,21 +800,21 @@ mod tests {
         #[test]
         fn the_cards_are_definitions_and_the_setups_part() {
             let content = scenario::content();
-            let h = content.defs.patch_card_by_key("test:test-stats").expect("the test card");
+            let h = content.defs.patch_card_by_key("test-stats").expect("the test card");
             let card = content.patch_card(h);
             assert_eq!(card.mb, 20);
             let kinds: Vec<(&str, bool)> = card.effects.iter().map(|e| (e.kind.as_str(), e.bug)).collect();
             assert_eq!(kinds, [("hp_add", false), ("hp_percent_add", false), ("attack_add", false), ("body", false), ("hp_drain", true)]);
             // The cards are in the setup, which the digest covers.
-            let a = with_cards(&[("test:test-stats", true)], |_| {});
-            let b = with_cards(&[("test:test-stats", false)], |_| {});
+            let a = with_cards(&[("test-stats", true)], |_| {});
+            let b = with_cards(&[("test-stats", false)], |_| {});
             assert_ne!(a.setup.players[0].patch_cards, b.setup.players[0].patch_cards);
             assert_ne!(a.digest(), b.digest());
         }
 
         #[test]
         fn a_card_changes_the_stats_by_its_kinds_order() {
-            let b = with_cards(&[("test:test-stats", true)], |_| {});
+            let b = with_cards(&[("test-stats", true)], |_| {});
             let s = &b.stats[0];
             // HP 1000: +30 first, then +10% (the card lists them the other way).
             assert_eq!((s.max_hp, s.hp), (1133, 1133));
@@ -826,7 +826,7 @@ mod tests {
 
         #[test]
         fn a_later_card_writes_over_an_earlier_one() {
-            let b = with_cards(&[("test:test-stats", true), ("test:test-later", true)], |_| {});
+            let b = with_cards(&[("test-stats", true), ("test-later", true)], |_| {});
             let s = &b.stats[0];
             assert_eq!(s.attack, 2, "Attack 0 + 3 - 1");
             assert_eq!(s.giga_level, 0xFF, "GigaFolder- doesn't clamp");
@@ -834,7 +834,7 @@ mod tests {
 
         #[test]
         fn abilities_choices_and_chip_shuffle() {
-            let b = with_cards(&[("test:test-abilities", true)], |s| {
+            let b = with_cards(&[("test-abilities", true)], |s| {
                 s.support = Some(Supports::default());
                 s.float_shoes = true;
                 s.number_open = true;
@@ -842,8 +842,8 @@ mod tests {
             let s = &b.stats[0];
             let content = &b.content;
             assert!(s.super_armor && !s.float_shoes);
-            assert_eq!(s.first_barrier, content.defs.record("test:barrier/200"));
-            assert_eq!(s.weapons.charge_shot_kind, content.defs.record("test:shot/charged-confusing"));
+            assert_eq!(s.first_barrier, content.defs.record("barrier/200"));
+            assert_eq!(s.weapons.charge_shot_kind, content.defs.record("shot/charged-confusing"));
             assert_eq!(s.support, Some(Supports { rush: true, ..Supports::default() }));
             assert_eq!(s.gauge_speed, GaugeSpeed::Fast);
             assert!(s.chip_shuffle && !s.number_open, "ChpShufl turns NumbrOpn off");
@@ -852,14 +852,14 @@ mod tests {
 
         #[test]
         fn a_switched_off_card_does_nothing_but_the_glitch_follows_the_stats() {
-            let b = with_cards(&[("test:test-stats", false)], |s| s.support = Some(Supports::default()));
+            let b = with_cards(&[("test-stats", false)], |s| s.support = Some(Supports::default()));
             let mut want = scenario::setup().navi_stats[0];
             want.support = Some(Supports::default());
             // The HP is set to its maximum (the reload's, in the real world).
             want.hp = want.max_hp;
             assert_eq!(b.stats[0], want);
             assert!(!b.consoles[0].emotion_window_glitch);
-            let bugged = with_cards(&[("test:test-stats", false)], |s| {
+            let bugged = with_cards(&[("test-stats", false)], |s| {
                 s.support = Some(Supports::default());
                 s.bugs.emotion = 1;
             });
@@ -877,7 +877,7 @@ mod tests {
 
         #[test]
         fn the_support_bug_keeps_supports_off() {
-            let b = with_cards(&[("test:test-abilities", true)], |s| s.support = None);
+            let b = with_cards(&[("test-abilities", true)], |s| s.support = None);
             assert_eq!(b.stats[0].support, None, "the byte 0xFF stays 0xFF when a bit is set");
         }
     }

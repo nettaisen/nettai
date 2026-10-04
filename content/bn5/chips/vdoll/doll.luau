@@ -23,13 +23,13 @@ local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")
 local trajectory = require("../../lib/trajectory")
 
-local SPRITE = asset.sprite("bn5:voodoo-doll")
+local SPRITE = asset.sprite("voodoo-doll")
 
 return common.make {
-    id = "bn5:vdoll/doll",
+    id = "vdoll/doll",
     sprite = SPRITE,
     identity = define.identity {
-        id = "bn5:vdoll",
+        id = "vdoll",
         class = "field_object",
         version = 3,
         ai_index = 0x21,
@@ -41,13 +41,13 @@ return common.make {
     -- 0x08016C3C(0): hit effect 0.
     spark = sparks.plain,
     breaking_hits = 0x0C80_0002,
-    poison_sound = asset.sound("bn5:panel-poison"),
+    poison_sound = asset.sound("panel-poison"),
     puff = effects.puff,
     trajectory = trajectory,
     curse = curse,
     bn5_leaving = {
         -- Effect 0x24 (BN5's table, 0x080DFC94): sheet 14-00 in palette 1.
-        flash = define.effect { sprite = asset.sprite("bn5:explosion"), anim = 0, palette = 1 },
-        sound = asset.sound("bn5:trap-vanish"),
+        flash = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 },
+        sound = asset.sound("trap-vanish"),
     },
 }

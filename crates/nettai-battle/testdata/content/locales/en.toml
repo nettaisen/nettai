@@ -3,59 +3,59 @@
 language = "en"
 
 [chips]
-"test:test/anti-navi" = { name = "AntiNavi" }
-"test:test/blade" = { name = "Blade" }
-"test:test/blank" = { name = "Blank" }
-"test:test/blast" = { name = "Blast" }
-"test:test/bomb" = { name = "Bomb" }
-"test:test/bug" = { name = "Bug" }
-"test:test/charge" = { name = "Charge" }
-"test:test/delecswd" = { name = "DElecSwd" }
-"test:test/dripshwr" = { name = "DripShwr" }
-"test:test/dustbrk" = { name = "DustBrk" }
-"test:test/edeletbm" = { name = "EDeletBm" }
-"test:test/elec" = { name = "Elec" }
-"test:test/elem-trap" = { name = "ElemTrap" }
-"test:test/elements" = { name = "Elements" }
-"test:test/eraser" = { name = "Eraser" }
-"test:test/etomahwk" = { name = "ETomahwk" }
-"test:test/fist" = { name = "Fist" }
-"test:test/flame-hook" = { name = "FlmHook" }
-"test:test/flash" = { name = "Flash" }
-"test:test/ftornado" = { name = "FTornado" }
-"test:test/heat" = { name = "Heat" }
-"test:test/heatpres" = { name = "HeatPres" }
-"test:test/plus" = { name = "Plus" }
-"test:test/rc-brakr" = { name = "RCBrakr" }
-"test:test/rslash" = { name = "RSlash" }
-"test:test/seed" = { name = "Seed" }
-"test:test/shooter" = { name = "Shooter" }
-"test:test/slash" = { name = "Slash" }
-"test:test/spout" = { name = "Spout" }
-"test:test/step-blade" = { name = "StepBld" }
-"test:test/stun-blade" = { name = "StunBld" }
-"test:test/sun-gun-1" = { name = "SunGun1" }
-"test:test/sun-gun-2" = { name = "SunGun2" }
-"test:test/sun-gun-3" = { name = "SunGun3" }
-"test:test/sun-gun-ex" = { name = "SunGunX" }
-"test:test/sun-moon" = { name = "SunMoon" }
-"test:test/tengu" = { name = "Tengu" }
-"test:test/ticker1" = { name = "Ticker1" }
-"test:test/ticker2" = { name = "Ticker2" }
-"test:test/ticker3" = { name = "Ticker3" }
-"test:test/time-bomb" = { name = "TimeBomb" }
-"test:test/time-bomb-plus" = { name = "TimeBomb+" }
-"test:test/tomahawk" = { name = "Tomahawk" }
-"test:test/trap" = { name = "Trap" }
-"test:test/veil" = { name = "Veil" }
-"test:test/volcchrg" = { name = "VolcChrg" }
+"test/anti-navi" = { name = "AntiNavi" }
+"test/blade" = { name = "Blade" }
+"test/blank" = { name = "Blank" }
+"test/blast" = { name = "Blast" }
+"test/bomb" = { name = "Bomb" }
+"test/bug" = { name = "Bug" }
+"test/charge" = { name = "Charge" }
+"test/delecswd" = { name = "DElecSwd" }
+"test/dripshwr" = { name = "DripShwr" }
+"test/dustbrk" = { name = "DustBrk" }
+"test/edeletbm" = { name = "EDeletBm" }
+"test/elec" = { name = "Elec" }
+"test/elem-trap" = { name = "ElemTrap" }
+"test/elements" = { name = "Elements" }
+"test/eraser" = { name = "Eraser" }
+"test/etomahwk" = { name = "ETomahwk" }
+"test/fist" = { name = "Fist" }
+"test/flame-hook" = { name = "FlmHook" }
+"test/flash" = { name = "Flash" }
+"test/ftornado" = { name = "FTornado" }
+"test/heat" = { name = "Heat" }
+"test/heatpres" = { name = "HeatPres" }
+"test/plus" = { name = "Plus" }
+"test/rc-brakr" = { name = "RCBrakr" }
+"test/rslash" = { name = "RSlash" }
+"test/seed" = { name = "Seed" }
+"test/shooter" = { name = "Shooter" }
+"test/slash" = { name = "Slash" }
+"test/spout" = { name = "Spout" }
+"test/step-blade" = { name = "StepBld" }
+"test/stun-blade" = { name = "StunBld" }
+"test/sun-gun-1" = { name = "SunGun1" }
+"test/sun-gun-2" = { name = "SunGun2" }
+"test/sun-gun-3" = { name = "SunGun3" }
+"test/sun-gun-ex" = { name = "SunGunX" }
+"test/sun-moon" = { name = "SunMoon" }
+"test/tengu" = { name = "Tengu" }
+"test/ticker1" = { name = "Ticker1" }
+"test/ticker2" = { name = "Ticker2" }
+"test/ticker3" = { name = "Ticker3" }
+"test/time-bomb" = { name = "TimeBomb" }
+"test/time-bomb-plus" = { name = "TimeBomb+" }
+"test/tomahawk" = { name = "Tomahawk" }
+"test/trap" = { name = "Trap" }
+"test/veil" = { name = "Veil" }
+"test/volcchrg" = { name = "VolcChrg" }
 
 [navis]
-"test:megaman" = { name = "MegaMan", run_message = "Lan,this is no time\nto run away!" }
-"test:test/link-navi" = { name = "LinkNavi", run_message = "Lan,this is no time\nto run away!" }
+"megaman" = { name = "MegaMan", run_message = "Lan,this is no time\nto run away!" }
+"test/link-navi" = { name = "LinkNavi", run_message = "Lan,this is no time\nto run away!" }
 
 
 [patch-cards]
-"test:test-abilities" = { name = "Abilities" }
-"test:test-later" = { name = "Later" }
-"test:test-stats" = { name = "Stats" }
+"test-abilities" = { name = "Abilities" }
+"test-later" = { name = "Later" }
+"test-stats" = { name = "Stats" }

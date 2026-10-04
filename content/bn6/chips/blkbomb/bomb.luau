@@ -15,25 +15,25 @@ local trajectory = require("../../lib/trajectory")
 
 local black_bomb = {}
 
-local SPRITE = asset.sprite("bn6:black-bomb")
+local SPRITE = asset.sprite("black-bomb")
 -- Its identity: a field object, with the look something that takes its
 -- place shows (DustMan's junk).
 local IDENTITY = define.identity {
-    id = "bn6:blkbomb",
+    id = "blkbomb",
     class = "field_object",
     version = 2,
     ai_index = 1,
-    look = { sprite = asset.sprite("bn6:black-bomb"), anim = 0, palette = 0, shadow = true },
+    look = { sprite = asset.sprite("black-bomb"), anim = 0, palette = 0, shadow = true },
 }
 -- Its hit spark (0x0A).
-local HIT_SPARK = define.spark { sprite = asset.sprite("bn6:hit-sparks"), anim = 1, palette = 0 }
+local HIT_SPARK = define.spark { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 0 }
 -- How it looks absorbed (the original's obstacle kind's sprite: its own).
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
-local SOUND_HIT_BOMB = asset.sound("bn6:hit-bomb-1")
+local SOUND_HIT_BOMB = asset.sound("hit-bomb-1")
 
 -- What the navi holds while throwing one: the bomb's sprite, palette 4
 -- (the original's attachment row 0x2D).
-black_bomb.held = attachment.look { sprite = asset.sprite("bn6:bomb"), palette = 4 }
+black_bomb.held = attachment.look { sprite = asset.sprite("bomb"), palette = 4 }
 
 -- Gone from the field's bookkeeping, and freed at the next update.
 black_bomb.finish = common.finish
@@ -77,7 +77,7 @@ local function destroyed(me: Object)
     black_bomb.finish(me)
 end
 
-black_bomb.kind = common.make_kind("bn6:blkbomb/bomb", {
+black_bomb.kind = common.make_kind("blkbomb/bomb", {
     destroyed = destroyed,
     identity = IDENTITY,
     sprite = SPRITE,
@@ -87,8 +87,8 @@ black_bomb.kind = common.make_kind("bn6:blkbomb/bomb", {
     burst_is = collision.attack,
     burst_target = collision.hits_navis,
     push = "keeps_damage",
-    land_sound = asset.sound("bn6:land"),
-    burst_sound = asset.sound("bn6:burst"),
+    land_sound = asset.sound("land"),
+    burst_sound = asset.sound("burst"),
     burst_effect = effects.explosion,
     bubble = rising_bubble.kind,
     bursts = panel_bursts.kind,

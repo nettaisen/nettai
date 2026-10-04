@@ -14,7 +14,7 @@ local recipe_woodnos3 = require("../woodnos/chips").woodnos3
 -- unseen dancer drops twelve cactuses on the other side's navis (chips/cacdanc/cacdanc, instant effect 23; the cactuses'
 -- palette the record's first parameter, 0, times 2).
 local cacdanc1 = define.chip {
-    id = "bn5:cacdanc1",
+    id = "cacdanc1",
     codes = {},
     element = "wood",
     family = "program_advance",
@@ -30,7 +30,7 @@ local cacdanc1 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 15, sequence = { recipe_woodnos1, recipe_woodnos1, recipe_cactbal1 }, per_player_gauges_only = true },
+        { order = 15, sequence = { recipe_woodnos1, recipe_woodnos1, recipe_cactbal1 }, operation_battle_only = true },
         { order = 51, code_run = { chip = recipe_cactbal1, count = 3 } },
     },
     instant = cacdanc.instant(0),
@@ -40,7 +40,7 @@ local cacdanc1 = define.chip {
 -- unseen dancer drops twelve cactuses on the other side's navis (chips/cacdanc/cacdanc, instant effect 23; the cactuses'
 -- palette the record's first parameter, 1, times 2).
 local cacdanc2 = define.chip {
-    id = "bn5:cacdanc2",
+    id = "cacdanc2",
     codes = {},
     element = "wood",
     family = "program_advance",
@@ -56,7 +56,7 @@ local cacdanc2 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 16, sequence = { recipe_woodnos2, recipe_woodnos2, recipe_cactbal2 }, per_player_gauges_only = true },
+        { order = 16, sequence = { recipe_woodnos2, recipe_woodnos2, recipe_cactbal2 }, operation_battle_only = true },
         { order = 52, code_run = { chip = recipe_cactbal2, count = 3 } },
     },
     instant = cacdanc.instant(1),
@@ -66,7 +66,7 @@ local cacdanc2 = define.chip {
 -- unseen dancer drops twelve cactuses on the other side's navis (chips/cacdanc/cacdanc, instant effect 23; the cactuses'
 -- palette the record's first parameter, 2, times 2).
 local cacdanc3 = define.chip {
-    id = "bn5:cacdanc3",
+    id = "cacdanc3",
     codes = {},
     element = "wood",
     family = "program_advance",
@@ -82,7 +82,7 @@ local cacdanc3 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 17, sequence = { recipe_woodnos3, recipe_woodnos3, recipe_cactbal3 }, per_player_gauges_only = true },
+        { order = 17, sequence = { recipe_woodnos3, recipe_woodnos3, recipe_cactbal3 }, operation_battle_only = true },
         { order = 53, code_run = { chip = recipe_cactbal3, count = 3 } },
     },
     instant = cacdanc.instant(2),

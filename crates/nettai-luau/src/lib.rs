@@ -47,10 +47,10 @@ use mlua::chunk::ChunkMode;
 use mlua::{Function, Lua, Table, Value as LuaValue, VmState};
 
 /// Content's scripts: module name to source text, and bytecode already
-/// compiled from them. A module's name is its root's and its path in the
-/// root without `.luau` (`bn6:chips/minibomb/chip`, docs/design/
-/// rules-in-luau.md §7.2); the definitions a module makes are its root's
-/// (`bn6:minibomb`).
+/// compiled from them. A module's name is its pack's and its path in the
+/// pack without `.luau` (`bn6:chips/minibomb/chip`; docs/design/
+/// content-model-v2.md §4.0); the definitions a module makes are keyed
+/// local to the game (`minibomb`).
 #[derive(Clone, Debug, Default)]
 pub struct Pack {
     modules: BTreeMap<String, String>,
@@ -120,17 +120,6 @@ impl Pack {
     /// One folder's modules, by path in the folder (`chips/minibomb/chip`).
     pub fn root(name: &str, modules: impl IntoIterator<Item = (String, String)>) -> Pack {
         Pack::new(modules.into_iter().map(|(path, source)| (format!("{name}{}{path}", keys::SEPARATOR), source)))
-    }
-
-    /// Asset name `name` as content writes it: in full, its pack's game
-    /// first (`bn6:bomb`; docs/design/rules-in-luau.md, the flat namespace:
-    /// "so loading assets must also be fully qualified as well").
-    pub fn asset_name(name: &str) -> Result<String, String> {
-        if keys::is_qualified(name) {
-            Ok(name.to_string())
-        } else {
-            Err(format!("{name:?} names no pack: write an asset's name in full (\"bn6:{name}\")"))
-        }
     }
 
     /// The same pack, with bytecode compiled before (see [`Compiled`]).
@@ -428,9 +417,21 @@ struct Loader {
     /// Modules being loaded, innermost last (for relative paths and
     /// cycles).
     stack: Vec<String>,
+    /// The modules' environments (none until the globals are installed).
+    envs: Option<define::Environments>,
+    /// The support packs: their modules run in the support environment.
+    support: std::collections::HashSet<String>,
 }
 
 fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Result<LuaValue> {
+    // (A folder names its `init` module, as a require does: `bn6:rules` is
+    // rules/init.luau.)
+    let folder = keys::init_of(path);
+    let path = if !loader.borrow().pack.modules.contains_key(path) && loader.borrow().pack.modules.contains_key(&folder) {
+        folder.as_str()
+    } else {
+        path
+    };
     let source = {
         let l = loader.borrow();
         if let Some(v) = l.loaded.get(path) {
@@ -452,8 +453,17 @@ fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Res
     };
     verify::check(path, &bytecode).map_err(|v| mlua::Error::runtime(v.to_string()))?;
     loader.borrow_mut().compiled.modules.insert(path.to_string(), (source.as_str().into(), bytecode.clone()));
-    let chunk =
-        lua.load(&bytecode[..]).set_name(format!("@{path}.luau")).set_mode(ChunkMode::Binary).into_function()?;
+    // (Its pack's environment: a support pack's lacks the game's context.)
+    let env = {
+        let l = loader.borrow();
+        let support = keys::root_of(path).is_some_and(|p| l.support.contains(p));
+        l.envs.as_ref().map(|e| if support { e.support.clone() } else { e.game.clone() })
+    };
+    let mut chunk = lua.load(&bytecode[..]).set_name(format!("@{path}.luau")).set_mode(ChunkMode::Binary);
+    if let Some(env) = env {
+        chunk = chunk.set_environment(env);
+    }
+    let chunk = chunk.into_function()?;
     loader.borrow_mut().stack.push(path.to_string());
     let result = chunk.call::<LuaValue>(());
     loader.borrow_mut().stack.pop();
@@ -482,6 +492,13 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
         loaded: BTreeMap::new(),
         compiled: Compiled::default(),
         stack: Vec::new(),
+        envs: None,
+        support: pack
+            .packs
+            .values()
+            .filter(|p| p.kind == nettai_content_api::PackKind::Support)
+            .map(|p| p.id.clone())
+            .collect(),
     }));
     let collector = Rc::new(RefCell::new(define::Collector::open()));
     let module = {
@@ -509,6 +526,10 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
         .map_err(err)?
     };
     lua.globals().set("require", require).map_err(err)?;
+    // Each pack's environment (a support pack's without the game's
+    // context), every global in place.
+    let envs = define::environments(&lua).map_err(err)?;
+    loader.borrow_mut().envs = Some(envs);
     // Libraries and globals become read-only; the budget stops runaway
     // loops (also while loading).
     lua.sandbox(true).map_err(err)?;
@@ -537,7 +558,9 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
     let compiled = std::mem::take(&mut loader.borrow_mut().compiled);
     drop(loader);
     let assets = Rc::try_unwrap(assets).ok().expect("the resolvers hold the asset tables weakly").into_inner();
-    let defined = define::finish(&lua, &collector, &assets)
+    let games: std::collections::HashSet<String> =
+        pack.packs.values().filter(|p| p.kind == nettai_content_api::PackKind::Game).map(|p| p.id.clone()).collect();
+    let defined = define::finish(&lua, &collector, &assets, &games)
         .map_err(|e| ContentError::new(format!("loading Luau content: {e}")))?;
     // Nothing a script can reach may change after loading.
     lua.globals().set_readonly(true);

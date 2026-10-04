@@ -79,10 +79,14 @@ impl<'a> SpecReader<'a> {
         })
     }
 
-    /// `d` read as `T`.
+    /// `d` read as `T`. A message names the place in `d` that is wrong
+    /// after `at` (`...: panels.types.grass.flags: invalid type`).
     pub fn read<T: DeserializeOwned>(&self, d: &Data, at: &str) -> Result<T, String> {
         let j = self.json(d, at)?;
-        serde_json::from_value(j).map_err(|e| format!("{at}: {e}"))
+        serde_path_to_error::deserialize(j).map_err(|e| {
+            let path = e.path().to_string();
+            if path == "." { format!("{at}: {}", e.inner()) } else { format!("{at}.{path}: {}", e.inner()) }
+        })
     }
 }
 

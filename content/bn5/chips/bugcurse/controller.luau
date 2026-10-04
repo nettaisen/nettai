@@ -45,7 +45,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "bn5:bugcurse/controller",
+    id = "bugcurse/controller",
     pool = "effect",
     state = { waiting = "bool" },
     -- 0x080E6AC8.

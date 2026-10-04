@@ -19,8 +19,8 @@ export type State = {
     pulse: ElecPulse,
 }
 
-local SPRITE = asset.sprite("bn6:elec-pulse")
-local SOUND = asset.sound("bn6:elec-pulse")
+local SPRITE = asset.sprite("elec-pulse")
+local SOUND = asset.sound("elec-pulse")
 -- How far back from its panel it starts (whole pixels), before the hand's
 -- offset.
 local BACK = 0x28
@@ -106,7 +106,7 @@ local function init(me: Object)
 end
 
 pulse.kind = define.kind {
-    id = "bn6:elcpuls/pulse",
+    id = "elcpuls/pulse",
     pool = "attack",
     state = { linked = "object[3]", pulse = "record:elec-pulse" },
     -- `sub_80D6A20`.

@@ -8,12 +8,12 @@ local controller = require("@exelib/grab/controller")
 local shot = require("@exelib/grab/shot")
 
 local shot_kind = shot.make_kind {
-    id = "bn5:grab/shot",
-    sprite = asset.sprite("bn5:grab-shot"),
-    fall_sound = asset.sound("bn5:grab-shot-2"),
-    land_sound = asset.sound("bn5:grab-shot"),
+    id = "grab/shot",
+    sprite = asset.sprite("grab-shot"),
+    fall_sound = asset.sound("grab-shot-2"),
+    land_sound = asset.sound("grab-shot"),
     target = collision.hits_navis,
     self_type = collision.thrown,
 }
 
-return controller.make { id = "bn5:grab/controller", shot = shot_kind }
+return controller.make { id = "grab/controller", shot = shot_kind }

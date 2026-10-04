@@ -14,17 +14,17 @@ local back = {}
 
 -- BN5's immobilizer: the mark (10-2D, its animation 1), a guard-breaking attack against navis that immobilizes for
 -- 120 ticks (status 0x42), its sound.
-back.immobilizer = immobilizer.make_kind("bn5:immobilizer", {
-    sprite = asset.sprite("bn5:immobilized"),
+back.immobilizer = immobilizer.make_kind("immobilizer", {
+    sprite = asset.sprite("immobilized"),
     anim = 1,
-    sound = asset.sound("bn5:immobilizer"),
+    sound = asset.sound("immobilizer"),
     status = status.immobilize_120,
     target = collision.hits_navis,
     self_type = collision.guard_breaking,
 })
 
 -- The glow (effect 0x26's parameters 0x141B: 14-1B, animation 0, no shadow).
-local GLOW = asset.sprite("bn5:magnetsoul-glow")
+local GLOW = asset.sprite("magnetsoul-glow")
 -- MagnetSoul.
 local MAGNET_SOUL = 5
 -- The wait before the next B+Back (the attack's lockout).
@@ -49,7 +49,7 @@ local function setup(navi: Object)
 end
 
 back.weapon = define.weapon {
-    id = "bn5:magnetsoul/back",
+    id = "magnetsoul/back",
     -- (A B+Back, which nothing charges: the charge table's row 0x25 (0x0801CBDE), Charge 5 reading on into row
     -- 0x26's first entry.)
     charge_ticks = { 60, 60, 60, 60, 60, 70 },

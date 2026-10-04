@@ -8,7 +8,7 @@ local vulcan = require("./action")
 
 return {
     define.chip {
-        id = "bn6:vulcan1",
+        id = "vulcan1",
         codes = { "B", "D", "S", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 10, hit_param = 10, lockout = 0,
@@ -20,7 +20,7 @@ return {
         action = vulcan.action { shots = 3, bullet = vulcan.bullets.plain },
     },
     define.chip {
-        id = "bn6:vulcan2",
+        id = "vulcan2",
         codes = { "D", "F", "L" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 18, damage = 15, hit_param = 10, lockout = 0,
@@ -32,7 +32,7 @@ return {
         action = vulcan.action { shots = 4, bullet = vulcan.bullets.plain },
     },
     define.chip {
-        id = "bn6:vulcan3",
+        id = "vulcan3",
         codes = { "A", "G", "R" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 30, damage = 20, hit_param = 10, lockout = 0,
@@ -44,7 +44,7 @@ return {
         action = vulcan.action { shots = 5, bullet = vulcan.bullets.plain },
     },
     define.chip {
-        id = "bn6:suprvulc",
+        id = "suprvulc",
         codes = { "V" },
         element = "null", family = "null", class = "standard",
         rarity = 3, mb = 75, damage = 20, hit_param = 4, lockout = 0,

@@ -94,8 +94,8 @@ pub struct ProgramAdvance {
     pub result: ChipHandle,
     pub recipe: Recipe,
     /// Tried only with battle flag 0x40 (see
-    /// [`ProgramAdvanceRecipe::per_player_gauges_only`]).
-    pub per_player_gauges_only: bool,
+    /// [`ProgramAdvanceRecipe::operation_battle_only`]).
+    pub operation_battle_only: bool,
 }
 
 /// A recipe by chip handles (see [`PaRecipe`]).
@@ -133,7 +133,7 @@ pub struct ProgramAdvanceRecipe {
     /// table (0x08027FC8) has before the netbattles' (0x0802801C, the rest
     /// of it; 0x080251DC picks the table by `sub_800A8F8`).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub per_player_gauges_only: bool,
+    pub operation_battle_only: bool,
     #[serde(flatten)]
     pub recipe: PaRecipe,
 }

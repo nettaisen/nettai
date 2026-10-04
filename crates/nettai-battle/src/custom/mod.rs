@@ -206,8 +206,8 @@ pub struct Context<'a> {
     pub emotion: Emotion,
     /// The screen's number in the round (1 = first).
     pub turn: u8,
-    /// Battle flag 0x40 (per-player gauges; never set in netbattles).
-    pub per_player_gauges: bool,
+    /// Battle flag 0x40 (the own-gauges mode; never in a netbattle without chip gates).
+    pub own_gauges: bool,
     /// Battle effects 0x200000 (random battles).
     pub random_battle: bool,
     /// A netbattle's last turns (`sub_800A97A`; presentation).
@@ -319,7 +319,7 @@ impl Side {
             class_uses: &self.class_uses,
             round: &self.round,
             regular_pending,
-            per_player_gauges: ctx.per_player_gauges,
+            own_gauges: ctx.own_gauges,
             random_battle: ctx.random_battle,
             late_turns: ctx.late_turns,
         }
@@ -426,7 +426,7 @@ impl Side {
             })
             .collect();
         let mut pa_used = self.program_advances;
-        let built = builder::build(&picks, ctx.turn, &mut pa_used, ctx.library, ctx.per_player_gauges, damage);
+        let built = builder::build(&picks, ctx.turn, &mut pa_used, ctx.library, ctx.own_gauges, damage);
         self.program_advances = pa_used;
         for p in &picks {
             // A link navi's own chip is spent for the round (the bit of
@@ -487,7 +487,7 @@ impl Battle {
             stats: self.stats[side as usize],
             emotion: Emotion::Normal,
             turn: self.round.turn,
-            per_player_gauges: self.round.flags & battle_flags::PER_PLAYER_GAUGES != 0,
+            own_gauges: self.round.flags & battle_flags::OWN_GAUGES != 0,
             random_battle: self.setup.settings.effects & effects::RANDOM != 0,
             late_turns: self.late_turns(),
             now: self.round.ticks,

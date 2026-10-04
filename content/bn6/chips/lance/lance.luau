@@ -15,9 +15,9 @@ lance.instant_of = common.instant_of
 
 -- BN6's: the hit (`dword_80D25C8`): one panel, the wood spark, an attack
 -- against attacks, hit modifier 0x51.
-lance.kind = common.make_kind("bn6:lance/lance", {
-    sprite = asset.sprite("bn6:lance"),
-    sound = asset.sound("bn6:sword-swing"),
+lance.kind = common.make_kind("lance/lance", {
+    sprite = asset.sprite("lance"),
+    sound = asset.sound("sword-swing"),
     hits = { [0] = { is = collision.attack, hits = collision.attack, spark = sparks.wood, hit_mod = 0x51 } },
 })
 

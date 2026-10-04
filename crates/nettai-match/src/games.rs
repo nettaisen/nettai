@@ -105,13 +105,13 @@ fn bn5s_rules_refuse() {
     let says = |e: &[String], what: &str| assert!(e.iter().any(|p| p.contains(what)), "{what:?} not in {e:?}");
     // A fifth copy of a Standard chip (BN6 would take five 8 MB Cannons).
     let five = with(&TANGO_BN5, 4, &["cannon C"]);
-    says(&refused(&five, ""), "5 copies of bn5:cannon (a standard chip), past 4");
+    says(&refused(&five, ""), "5 copies of cannon (a standard chip), past 4");
     // Two copies of a Mega chip, of a Giga chip, of a dark chip.
     let two = with(&TANGO_BN5, 0, &["colonel C", "colonel C", "bass F", "bass F", "drksword Z", "drksword Z"]);
     let e = refused(&two, "");
-    says(&e, "2 copies of bn5:colonel (a mega chip), past 1");
-    says(&e, "2 copies of bn5:bass (a giga chip), past 1");
-    says(&e, "2 copies of bn5:drksword (a dark chip), past 1");
+    says(&e, "2 copies of colonel (a mega chip), past 1");
+    says(&e, "2 copies of bass (a giga chip), past 1");
+    says(&e, "2 copies of drksword (a dark chip), past 1");
     says(&e, "2 Giga chips, past the navi's 1");
     // Six Mega chips; four dark chips.
     let six = with(&TANGO_BN5, 0, &["colonel C", "meddy M", "gyroman G", "knightmn K", "larkman S", "gridman F"]);
@@ -122,20 +122,20 @@ fn bn5s_rules_refuse() {
     // doesn't come in.
     let pack = with(&TANGO_BN5, 0, &["batcan1 *", "lifesrd *"]);
     let e = refused(&pack, "");
-    says(&e, "entry 0: bn5:batcan1 is no chip a folder can hold");
-    says(&e, "entry 1: bn5:lifesrd is no chip a folder can hold");
+    says(&e, "entry 0: batcan1 is no chip a folder can hold");
+    says(&e, "entry 1: lifesrd is no chip a folder can hold");
     let code = with(&TANGO_BN5, 0, &["cannon Z"]);
-    says(&refused(&code, ""), "entry 0: bn5:cannon doesn't come in code Z");
+    says(&refused(&code, ""), "entry 0: cannon doesn't come in code Z");
     // A Regular chip past the Regular memory (Cannon is 8 MB; a fresh
     // navi's memory is 4); tag chips, which BN5's folders haven't.
-    says(&refused(&with(&TANGO_BN5, 0, &[]), "regular = 0"), "the Regular chip bn5:cannon is 8 MB, past the navi's 4");
+    says(&refused(&with(&TANGO_BN5, 0, &[]), "regular = 0"), "the Regular chip cannon is 8 MB, past the navi's 4");
     says(&refused(&with(&TANGO_BN5, 0, &[]), "tags = [4, 5]"), "tag chips, but BN5's folders have none");
 }
 
 /// A name the match's game hasn't is refused as any unknown name is, the
 /// same whether another game has it or nothing does: a BN6 Cross, navi
-/// or chip in a BN5 match, a BN5 chip in a BN6 match, a qualified name
-/// (`bn6:cannon`: no game's name is written so) and a misspelling alike.
+/// or chip in a BN5 match, a BN5 chip in a BN6 match, a name written with
+/// a game (`bn6:cannon`: no name is written so) and a misspelling alike.
 #[test]
 fn an_unknown_name_is_refused() {
     let content = bn5_content();
@@ -149,7 +149,7 @@ fn an_unknown_name_is_refused() {
     // one error.
     let six = bn6_content();
     assert!(crate::ids::chip(&six, "bn6", "heatman").is_some() && crate::ids::chip(&content, "bn5", "heatman").is_none());
-    for name in ["heatman", "bn6:cannon", "bn5:cannon", "canon"] {
+    for name in ["heatman", "bn6:cannon", "bn5:cannon", "canon"] { // (written in full)
         let chips = with(&TANGO_BN5, 0, &[]);
         let mut chips = refs(&chips);
         let entry = format!("{name} A");
@@ -169,8 +169,8 @@ fn an_unknown_name_is_refused() {
     says(e, "no game \"bn7\" (the content's are bn5)");
     let e = crate::parse(&six, &text).unwrap_err();
     says(e, "no game \"bn5\" (the content's are bn6)");
-    let e = crate::parse(&content, &text.replacen("game = \"bn5\"\n", "game = \"bn5\"\nruleset = \"bn6:stock\"\n", 1)).unwrap_err();
-    assert!(e[0].starts_with("no ruleset \"bn6:stock\" in bn5"), "{e:?}");
+    let e = crate::parse(&content, &text.replacen("game = \"bn5\"\n", "game = \"bn5\"\nruleset = \"bn6:stock\"\n", 1)).unwrap_err(); // (written in full)
+    assert!(e[0].starts_with("no ruleset \"bn6:stock\" in bn5"), "{e:?}"); // (written in full)
 }
 
 /// A match's lookups see only its game: its stages, navis, chips (the
@@ -237,7 +237,7 @@ fn a_bn5_match_plays() {
     let content = bn5_content();
     let m = parse(&content, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
     let used = play(&content, &m, 900);
-    assert!(used.iter().all(|u| !u.is_empty() && u.iter().all(|k| k.starts_with("bn5:"))), "{used:?}");
+    assert!(used.iter().all(|u| !u.is_empty() && u.iter().all(|k| crate::ids::in_game("bn5", k))), "{used:?}");
 }
 
 /// A BN5 side's karma and souls write to a match file and read back; the
@@ -288,7 +288,7 @@ fn started(content: &Arc<Content>, m: &Match, ticks: usize) -> nettai_battle::Ba
 }
 
 /// A dark MegaMan (light/dark value 100) starts with mood 0 and the dark
-/// face (the worn-out one: `bn5:megaman-dark`); a fresh save's (500)
+/// face (the worn-out one: `megaman-dark`); a fresh save's (500)
 /// with mood 128 and his plain face; a light one (1000) at 190.
 #[test]
 fn a_dark_side_starts_dark() {
@@ -308,7 +308,7 @@ fn a_dark_side_starts_dark() {
     // The face a mood of 0 shows: the base form's dark one.
     let base = content.base_form_for(crate::ids::navi(&content, "bn5", "megaman").unwrap());
     let face = content.form(base).mugshot.unwrap().of(Emotion::WornOut);
-    assert_eq!(content.assets.handle(nettai_content_api::AssetKind::Mugshot, "bn5:megaman-dark"), Some(face.0));
+    assert_eq!(content.assets.handle(nettai_content_api::AssetKind::Mugshot, "megaman-dark"), Some(face.0));
 }
 
 /// The soul button (BN5's souls system's) offers only a soul the side has:
@@ -429,7 +429,7 @@ fn karma_and_souls_reach_the_round() {
     m.sides[0].souls = Some(vec![colonel]);
     m.sides[0].chaos_unison = false;
     let b = started(&content, &m, 1);
-    let (schema, block) = b.system_setup(0, "bn5:light-dark").unwrap();
+    let (schema, block) = b.system_setup(0, "light-dark").unwrap();
     assert_eq!(block.get(schema, schema.index_of("karma").unwrap()), nettai_content_api::FieldValue::U16(300));
     let (schema, block) = b.system_setup(0, "bn5:souls").unwrap();
     let field = |name: &str| block.get(schema, schema.index_of(name).unwrap());
@@ -459,8 +459,8 @@ fn a_sides_fields_are_its_rules() {
     assert!(!crate::Side::takes_game(&c5, r5) && !five.sides[0].takes_level(&c5) && crate::Side::takes_sp_times(&c5));
     // Each slot's chip is of the match's game.
     let chip = |c: &nettai_battle::Content, m: &Match, slot| crate::facts::sp_chip(c, &m.arena, slot).map(|h| c.defs.chip(h).key.clone());
-    assert!(chip(&c6, &six, 0).is_some_and(|k| k.starts_with("bn6:")), "{:?}", chip(&c6, &six, 0));
-    assert!(chip(&c5, &five, 1).is_some_and(|k| k.starts_with("bn5:")), "{:?}", chip(&c5, &five, 1));
+    assert!(chip(&c6, &six, 0).is_some_and(|k| crate::ids::in_game("bn6", &k)), "{:?}", chip(&c6, &six, 0));
+    assert!(chip(&c5, &five, 1).is_some_and(|k| crate::ids::in_game("bn5", &k)), "{:?}", chip(&c5, &five, 1));
 }
 
 /// A ruleset change drops what the new rules don't take (the test
@@ -470,7 +470,7 @@ fn a_sides_fields_are_its_rules() {
 fn a_ruleset_change_drops_what_the_rules_dont_take() {
     let content = nettai_battle::content::testing::content();
     let stock = content.defs.stock_ruleset().unwrap();
-    let mix = content.defs.ruleset_by_key("test:test-mix").unwrap();
+    let mix = content.defs.ruleset_by_key("test-mix").unwrap();
     let navi = content.form_changing_navi().unwrap();
     let mut s = crate::Side {
         navi,

@@ -27,27 +27,27 @@ fn compat_numbers_what_the_engine_runs_by_handle() {
     let mut b = nettai_battle::Battle::new(setup, content);
     b.spawn_actors();
     let player = b.player(0).unwrap();
-    let ticker = nettai_battle::behavior::spawn_kind(&mut b, "test:test/ticker", Default::default()).unwrap();
-    let shot = b.content.defs.actions.iter().position(|a| a.key == "test:test/tick-shot/shot").unwrap() as u16;
+    let ticker = nettai_battle::behavior::spawn_kind(&mut b, "test/ticker", Default::default()).unwrap();
+    let shot = b.content.defs.actions.iter().position(|a| a.key == "test/tick-shot/shot").unwrap() as u16;
     b.set_content_attack(player, shot, 1).unwrap();
     assert_eq!(navi_action(&b, player), NaviAction::Content(nettai_content_api::ActionHandle(shot)));
 
     let mut compat = Compat::default();
     // Without entries, compat says what it lacks.
-    assert_eq!(compat.object_slot(&b, ticker), Err("kinds.toml has no \"test:test/ticker\"".into()));
-    assert_eq!(compat.navi_action(&b, player), Err("actions.toml has no \"test:test/tick-shot/shot\"".into()));
+    assert_eq!(compat.object_slot(&b, ticker), Err("kinds.toml has no \"test/ticker\"".into()));
+    assert_eq!(compat.navi_action(&b, player), Err("actions.toml has no \"test/tick-shot/shot\"".into()));
     compat.kinds.insert(
-        "test:test/ticker".into(),
+        "test/ticker".into(),
         bn6_compat::KindEntry { pool: "effect".into(), index: 0xF0, ..Default::default() },
     );
-    compat.actions.insert("test:test/tick-shot/shot".into(), 0x11);
+    compat.actions.insert("test/tick-shot/shot".into(), 0x11);
     assert_eq!(compat.object_slot(&b, ticker), Ok((Pool::Effect, 0xF0)));
     assert_eq!(compat.navi_action(&b, player), Ok(0x11));
     // The engine's own kinds have their slots in compat too.
     assert_eq!(compat.object_slot(&b, player), Err("kinds.toml has no \"engine/player\"".into()));
     assert_eq!(Compat::bn6().object_slot(&b, player), Ok((Pool::Actor, 0)));
     // A kind in the wrong pool is compat's mistake.
-    compat.kinds.get_mut("test:test/ticker").unwrap().pool = "attack".into();
+    compat.kinds.get_mut("test/ticker").unwrap().pool = "attack".into();
     assert!(compat.object_slot(&b, ticker).is_err());
 }
 
@@ -57,14 +57,14 @@ fn bn6_compat_reads() {
     let built_in = Compat::bn6();
     let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6/compat"));
     assert_eq!(&Compat::read(dir).unwrap(), built_in);
-    assert_eq!(built_in.chips["bn6:minibomb"].id, 0x36);
-    assert_eq!(built_in.chip_key(0x36), Some("bn6:minibomb"));
-    assert_eq!(built_in.kind_at(Pool::Attack, 0x08).map(|(k, _)| k), Some("bn6:bomb"));
+    assert_eq!(built_in.chips["minibomb"].id, 0x36);
+    assert_eq!(built_in.chip_key(0x36), Some("minibomb"));
+    assert_eq!(built_in.kind_at(Pool::Attack, 0x08).map(|(k, _)| k), Some("bomb"));
     assert!(built_in.kind_at(Pool::Effect, 0x0A).is_some_and(|(_, e)| e.scratch_position));
     // The buster's alias routines with charge times of their own are
     // weapons of their own.
-    assert_eq!(built_in.weapon_key(0x00), Some("bn6:megaman/buster"));
-    assert_eq!(built_in.weapon_key(0x2F), Some("bn6:megaman/buster-2e"));
+    assert_eq!(built_in.weapon_key(0x00), Some("megaman/buster"));
+    assert_eq!(built_in.weapon_key(0x2F), Some("megaman/buster-2e"));
     assert_eq!(built_in.actions["engine/move"], 0x10);
 }
 
@@ -74,10 +74,10 @@ fn bn6_compat_reads() {
 fn a_number_belongs_to_one_definition() {
     let file = |name: &str| std::fs::read_to_string(format!("{}/../../content/bn6/compat/{name}", env!("CARGO_MANIFEST_DIR"))).unwrap();
     for (name, extra, both) in [
-        ("chips.toml", "\n[\"bn6:cannon-twin\"]\nid = 0x001\naction = 0\nsubtype = 0\n", "are both"),
-        ("navis.toml", "\n[\"bn6:megaman-twin\"]\nnavi = 0x00\nname_id = 0x7FF\n", "are both"),
-        ("kinds.toml", "\n[\"bn6:rock-twin\"]\npool = \"attack\"\nindex = 0x59\n", "both fill"),
-        ("weapons.toml", "\n\"bn6:buster-twin\" = [0x00]\n", "are both"),
+        ("chips.toml", "\n[\"cannon-twin\"]\nid = 0x001\naction = 0\nsubtype = 0\n", "are both"),
+        ("navis.toml", "\n[\"megaman-twin\"]\nnavi = 0x00\nname_id = 0x7FF\n", "are both"),
+        ("kinds.toml", "\n[\"rock-twin\"]\npool = \"attack\"\nindex = 0x59\n", "both fill"),
+        ("weapons.toml", "\n\"buster-twin\" = [0x00]\n", "are both"),
     ] {
         let text = file(name) + extra;
         match Compat::bn6_with(name, &text) {
@@ -88,5 +88,5 @@ fn a_number_belongs_to_one_definition() {
     // (Several actions on one number are the original's own: the chips of
     // one action handler.)
     let c = Compat::bn6();
-    assert!(c.actions.values().filter(|&&n| n == c.actions["bn6:widesht/action"]).count() > 1);
+    assert!(c.actions.values().filter(|&&n| n == c.actions["widesht/action"]).count() > 1);
 }

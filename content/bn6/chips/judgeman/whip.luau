@@ -14,7 +14,7 @@ export type State = {
     action: Action?,
 }
 
-local SPRITE = asset.sprite("bn6:judgeman")
+local SPRITE = asset.sprite("judgeman")
 local ANIM_RAISE, ANIM_HOLD = 8, 9
 
 -- `sub_80E70F8`: on its owner.
@@ -74,7 +74,7 @@ local function tick(me: Object)
 end
 
 whip.kind = define.kind {
-    id = "bn6:judgeman/whip",
+    id = "judgeman/whip",
     pool = "effect",
     state = { follows_action = "bool", action = "action" },
     -- `sub_80E70C8`.

@@ -43,11 +43,11 @@ local OFF_FIELD_X = 0xB4_0000
 -- How high the hit rides, and the effects' height, 16.16.
 local HIT_Z, EFFECT_Z = 0x18_0000, 0x10_0000
 
-local SOUND = asset.sound("bn6:iron-shell")
+local SOUND = asset.sound("iron-shell")
 
 -- The puff where it stops, and the dust it lands in.
-local PUFF = define.effect { sprite = asset.sprite("bn6:puff"), anim = 0, palette = 0 }
-local LANDING_DUST = define.effect { sprite = asset.sprite("bn6:puff"), anim = 1, palette = 0 }
+local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
+local LANDING_DUST = define.effect { sprite = asset.sprite("puff"), anim = 1, palette = 0 }
 
 -- `sub_8011F44`: 30 damage and 20 more per point of buster Attack (up to
 -- 5), Fire.
@@ -183,7 +183,7 @@ local function land(me: Object, s: State)
 end
 
 tackle.action = define.action {
-    id = "bn6:chargecross/tackle/action",
+    id = "chargecross/tackle/action",
     state = { timer = "u16" },
     -- `sub_80EFA56`.
     update = function(me: Object, s: State)
@@ -201,7 +201,7 @@ tackle.action = define.action {
 }
 
 tackle.weapon = define.weapon {
-    id = "bn6:chargecross/tackle",
+    id = "chargecross/tackle",
     -- The charge table's row 0x27, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 90, 80, 70, 65, 60, 80, 70, 60 },

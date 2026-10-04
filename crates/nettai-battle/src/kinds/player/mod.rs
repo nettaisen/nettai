@@ -260,8 +260,8 @@ fn is_link(b: &Battle) -> bool {
 }
 
 /// `sub_800A8F8`: battle flag 0x40 (not set in PvP).
-fn per_player_gauges(b: &Battle) -> bool {
-    b.round.flags & battle_flags::PER_PLAYER_GAUGES != 0
+fn own_gauges(b: &Battle) -> bool {
+    b.round.flags & battle_flags::OWN_GAUGES != 0
 }
 
 /// `GetBattleMode`.
@@ -435,7 +435,7 @@ pub(crate) enum LastStand {
 }
 
 /// BN5's 0x0802C16C: a player MegaMan (AIData +0, +1: actor type 2, AI
-/// index 0), NaviStats +0x2A clear (which the battle flag 0x40 mode's init
+/// index 0), NaviStats +0x2A clear (which the own-gauges mode's init
 /// reads, 0x0802D590: the engine has it as that mode), his side not stood
 /// yet (0x0800931C(side, 1)), of BN5's emotion 5 (0x0801270C: a mood of 0,
 /// out of a soul and unangry, never in battle mode 1). What it leaves in r1
@@ -448,7 +448,7 @@ pub(crate) fn last_stand(b: &Battle, r: ObjectRef) -> LastStand {
         return LastStand::Falls { shows: a.actor_type != ActorType::Virus };
     }
     let side = b.objects.get(r).alliance;
-    if a.ai_index != 0 || per_player_gauges(b) || b.side_stats[side as usize & 1][STOOD] != 0 || battle_mode(b) == 1 {
+    if a.ai_index != 0 || own_gauges(b) || b.side_stats[side as usize & 1][STOOD] != 0 || battle_mode(b) == 1 {
         return LastStand::Falls { shows: true };
     }
     if emotion(b, side) == Emotion::WornOut {
@@ -465,7 +465,7 @@ pub(crate) fn hold_last_stand(b: &mut Battle, r: ObjectRef) {
 }
 
 /// BN5's 0x0800C734: what a player's loss drains of its side's gauge in
-/// the battle flag 0x40 mode, by its size.
+/// the own-gauges mode, by its size.
 fn gauge_loss(amount: u16) -> u32 {
     match amount {
         0..=9 => 0,
@@ -476,13 +476,13 @@ fn gauge_loss(amount: u16) -> u32 {
 }
 
 /// BN5's `object_subtractHP` (0x0800C6E0): a player's loss first drains
-/// its side's gauge (0x0802D4C0: by the loss ×128, in the battle flag 0x40
+/// its side's gauge (0x0802D4C0: by the loss ×128, in the own-gauges mode
 /// mode by `gauge_loss`), then the HP goes down, to 0, where the last
 /// stand may hold. Whether r1 is left non-zero (`kinds::subtract_hp`).
 pub(crate) fn bn5_lose_hp(b: &mut Battle, r: ObjectRef, amount: u16) -> bool {
     let player = b.objects.get(r).actor.is_some_and(|id| b.actors.get(id).actor_type == ActorType::Player);
     if player {
-        let drain = if per_player_gauges(b) { gauge_loss(amount) } else { (amount as u32) << 7 };
+        let drain = if own_gauges(b) { gauge_loss(amount) } else { (amount as u32) << 7 };
         let side = b.objects.get(r).alliance as usize & 1;
         let s = &mut b.sides[side];
         s.gauge = (s.gauge as u32).saturating_sub(drain) as u16;
@@ -1233,14 +1233,14 @@ fn enable_turning(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_802DFC8`: reset the side's extra state (set up only in the battle
-/// flag 0x40 mode).
+/// the own-gauges mode).
 fn reset_side_state(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get(r);
     let (side, panel_x) = (o.alliance as usize, o.panel.x);
-    let own_gauges = per_player_gauges(b);
+    let own = own_gauges(b);
     let s = &mut b.sides[side];
     *s = Default::default();
-    if own_gauges {
+    if own {
         // The game also sets bytes nothing ported reads (see
         // docs/engine/field-names.md, SideState).
         s.active = 1;

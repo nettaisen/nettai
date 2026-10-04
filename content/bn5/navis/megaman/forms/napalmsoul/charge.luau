@@ -21,7 +21,7 @@ local HIT_PARAM = 0x8A
 local SHOTS = 3
 -- The bullets' heights, by a draw's low two bits (pixels).
 local HEIGHTS = { [0] = 8, 16, 24, 32 }
-local SOUND = asset.sound("bn5:col-army-2")
+local SOUND = asset.sound("col-army-2")
 local RAISE_ANIM, FIRE_ANIM = 16, 17
 local RAISE_TICKS, BETWEEN, RECOVER_TICKS = 1, 10, 10
 
@@ -81,7 +81,7 @@ local function recover(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "bn5:napalmsoul/charge/action",
+    id = "napalmsoul/charge/action",
     state = { timer = "u16", shots = "u16" },
     -- 0x080EED9A
     update = function(me: Object, s: State)
@@ -110,7 +110,7 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "bn5:napalmsoul/charge",
+    id = "napalmsoul/charge",
     -- The charge table's row 0x19 (0x0801CB66); Charge 5 reads on into row 0x1A's first entry.
     charge_ticks = { 70, 65, 60, 55, 50, 160 },
     setup = setup,

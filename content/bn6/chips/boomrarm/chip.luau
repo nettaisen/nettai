@@ -14,7 +14,7 @@ local PALETTE = 3
 -- dimming: it can't cut in on the other side's dimming, and the Beast rush
 -- chains it.)
 return define.chip {
-    id = "bn6:boomrarm",
+    id = "boomrarm",
     codes = { "A", "B", "C", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 4, mb = 50, damage = 0, hit_param = 10, lockout = 20,

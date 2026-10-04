@@ -6,7 +6,7 @@ local b_sword = require("../../lib/patch-cards/b-sword")
 local charge = require("./charge")
 
 return define.patch_card {
-    id = "bn6:megaman-zero",
+    id = "megaman-zero",
     mb = 45,
     effects = {
         cards.b_button(b_sword),

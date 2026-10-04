@@ -30,7 +30,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "bn5:magnum/controller",
+    id = "magnum/controller",
     pool = "effect",
     state = { bonus = "u16", mode = "u8", stage = "u8" },
     update = dimming_chips.phases { name = "Magnum", effect = effect },

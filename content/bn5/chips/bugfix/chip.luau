@@ -6,7 +6,7 @@
 local bugfix = require("../../objects/bugfix/bugfix")
 
 return define.chip {
-    id = "bn5:bugfix",
+    id = "bugfix",
     codes = { "H", "*" },
     element = "null",
     family = "null",

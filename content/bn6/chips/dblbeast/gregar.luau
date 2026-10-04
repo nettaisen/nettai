@@ -16,7 +16,7 @@ local parts = require("../../lib/swords/parts")
 
 local gregar = {}
 
-local SPRITE = asset.sprite("bn6:gregar-beast")
+local SPRITE = asset.sprite("gregar-beast")
 -- Its identity: Gregar Beast Out's (the attach points its attachments
 -- take).
 local IDENTITY = gregar_beast.identity
@@ -34,7 +34,7 @@ local SLAM: DblBeastPattern = { { 0, -1, 0 }, { 1, 1, 0 } }
 
 -- The hits (`byte_80C202C`, `byte_80C2048`): the claw's, the bite's, and
 -- the slam's two, on the panel in front. (Hit 2's row is zeros, unused.)
-local BITE_SPARK = define.spark { sprite = asset.sprite("bn6:hit-sparks"), anim = 1, palette = 0 }
+local BITE_SPARK = define.spark { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 0 }
 local HITS: { [string]: DblBeastHit } = {
     claw = { ahead = 1, region = regions.wide, spark = sparks.heavy, is = collision.attack, damage = 50 },
     bite = { ahead = 1, region = regions.long, spark = BITE_SPARK, is = collision.breaking, damage = 20 },
@@ -43,22 +43,22 @@ local HITS: { [string]: DblBeastHit } = {
 }
 -- The gun's shot (`sub_80C20B4`, 0x04050501): on the first panel down the
 -- row with an enemy body or a neutral object on it, 16 pixels up.
-local SHOT_SPARK = define.spark { sprite = asset.sprite("bn6:pink-flash"), anim = 0, palette = 0 }
+local SHOT_SPARK = define.spark { sprite = asset.sprite("pink-flash"), anim = 0, palette = 0 }
 local SHOT: DblBeastHit = { ahead = 0, region = regions.single, spark = SHOT_SPARK, is = collision.attack, damage = 5, z = 0x10_0000 }
 local SHOT_TARGET = { [0] = 0x05800000, [1] = 0x0A800000 }
 
 -- The bite's drill (attachment row 0x20: GroundCross's drill arm).
-local MOUTH = attachment.look { sprite = asset.sprite("bn6:drill-arm"), palette = 0, attach_point = 19 }
+local MOUTH = attachment.look { sprite = asset.sprite("drill-arm"), palette = 0, attach_point = 19 }
 -- The claw's swipe and the slam's two blows (effects 0x16, 0x3A, 0x39),
 -- 16 pixels up on the panel in front.
-local SLAM_FX = define.effect { sprite = asset.sprite("bn6:slash-man-effect"), anim = 1, palette = 0 }
-local SLAM_FX_2 = define.effect { sprite = asset.sprite("bn6:slash-man-effect"), anim = 0, palette = 0 }
+local SLAM_FX = define.effect { sprite = asset.sprite("slash-man-effect"), anim = 1, palette = 0 }
+local SLAM_FX_2 = define.effect { sprite = asset.sprite("slash-man-effect"), anim = 0, palette = 0 }
 
-local SOUND_CLAW = asset.sound("bn6:sword-swing")
-local SOUND_BITE = asset.sound("bn6:drilarm")
-local SOUND_GUN = asset.sound("bn6:col-army-2")
-local SOUND_SLAM = asset.sound("bn6:spin")
-local SOUND_SLAM_2 = asset.sound("bn6:flame-hook-fire")
+local SOUND_CLAW = asset.sound("sword-swing")
+local SOUND_BITE = asset.sound("drilarm")
+local SOUND_GUN = asset.sound("col-army-2")
+local SOUND_SLAM = asset.sound("spin")
+local SOUND_SLAM_2 = asset.sound("flame-hook-fire")
 
 local ANIM_IDLE, ANIM_CLAW, ANIM_BITE, ANIM_SLAM, ANIM_GUN, ANIM_LEAVE = 0, 5, 0xA, 0xC, 0xE, 4
 -- When the claw lands; the bite's and the gun's periods; when the slam's
@@ -329,7 +329,7 @@ local function tick(me: Object)
 end
 
 gregar.kind = define.kind {
-    id = "bn6:dblbeast/gregar",
+    id = "dblbeast/gregar",
     pool = "actor",
     state = beast.STATE,
     -- `sub_80C1A10`: by state, then the sprite (stepping while dimmed).

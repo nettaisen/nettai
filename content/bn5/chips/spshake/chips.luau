@@ -7,7 +7,7 @@ local spshake = require("./spshake")
 -- SpShake1 (BN5 chip 0x018): an electric wave that snakes along the field from the panel ahead (BN5's SpShake,
 -- chips/spshake/spshake: action 0x51).
 local spshake1 = define.chip {
-    id = "bn5:spshake1",
+    id = "spshake1",
     codes = { "G", "H", "I" },
     element = "elec",
     family = "elec",
@@ -19,13 +19,13 @@ local spshake1 = define.chip {
     lockout = 20,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = spshake.action("bn5:spshake1/action", spshake.waves[1]),
+    action = spshake.action("spshake1/action", spshake.waves[1]),
 }
 
 -- SpShake2 (BN5 chip 0x019): an electric wave that snakes along the field from the panel ahead (BN5's SpShake,
 -- chips/spshake/spshake: action 0x51).
 local spshake2 = define.chip {
-    id = "bn5:spshake2",
+    id = "spshake2",
     codes = { "B", "C", "D" },
     element = "elec",
     family = "elec",
@@ -37,13 +37,13 @@ local spshake2 = define.chip {
     lockout = 20,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = spshake.action("bn5:spshake2/action", spshake.waves[2]),
+    action = spshake.action("spshake2/action", spshake.waves[2]),
 }
 
 -- SpShake3 (BN5 chip 0x01a): an electric wave that snakes along the field from the panel ahead (BN5's SpShake,
 -- chips/spshake/spshake: action 0x51).
 local spshake3 = define.chip {
-    id = "bn5:spshake3",
+    id = "spshake3",
     codes = { "S", "T", "U" },
     element = "elec",
     family = "elec",
@@ -55,7 +55,7 @@ local spshake3 = define.chip {
     lockout = 20,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = spshake.action("bn5:spshake3/action", spshake.waves[3]),
+    action = spshake.action("spshake3/action", spshake.waves[3]),
 }
 
 return { spshake1 = spshake1, spshake2 = spshake2, spshake3 = spshake3 }

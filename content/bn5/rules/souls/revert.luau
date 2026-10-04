@@ -20,7 +20,7 @@ export type State = {
     timer: number,
 }
 
-local FADE = asset.sound("bn5:fade")
+local FADE = asset.sound("fade")
 
 -- 0x080121D8
 function revert.update(me: Object, s: State)

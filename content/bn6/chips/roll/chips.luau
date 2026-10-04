@@ -5,7 +5,7 @@
 local navi = require("./navi")
 
 local roll = define.chip {
-    id = "bn6:roll",
+    id = "roll",
     codes = { "R", "*" },
     element = "null",
     family = "null",
@@ -24,7 +24,7 @@ local roll = define.chip {
 }
 
 local roll2 = define.chip {
-    id = "bn6:roll2",
+    id = "roll2",
     codes = { "R" },
     element = "null",
     family = "null",
@@ -43,7 +43,7 @@ local roll2 = define.chip {
 }
 
 local roll3 = define.chip {
-    id = "bn6:roll3",
+    id = "roll3",
     codes = { "R" },
     element = "null",
     family = "null",

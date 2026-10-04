@@ -17,8 +17,8 @@ export type State = {
 
 local beam = {}
 
-local SPRITE = asset.sprite("bn5:pile-beam")
-local SOUND = asset.sound("bn5:django-charge")
+local SPRITE = asset.sprite("pile-beam")
+local SOUND = asset.sound("django-charge")
 -- Where it is drawn, ahead of its panel (in pixels), and the height it is spawned at (16.16; it keeps it).
 local DRAWN_AHEAD, HEIGHT = 0x3C, 0x1C_0000
 -- Its hits: ten, 16 ticks apart (the timer to -1), the first at once.
@@ -113,7 +113,7 @@ local function init(me: Object)
 end
 
 beam.kind = define.kind {
-    id = "bn5:piledrvr/beam",
+    id = "piledrvr/beam",
     pool = "attack",
     state = { distance = "u8", ticks = "u8" },
     -- 0x080D9DA0.

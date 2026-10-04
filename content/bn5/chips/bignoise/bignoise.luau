@@ -19,7 +19,7 @@ local statuses = require("../../rules/status")
 
 local bignoise = {}
 
-local SPRITE = asset.sprite("bn5:shademan")
+local SPRITE = asset.sprite("shademan")
 
 -- ---- The noise ------------------------------------------------------------------------------------------------------
 
@@ -51,7 +51,7 @@ local GROWTH: { { any } } = {
     { 6, THREE_COLUMNS },
     { 8, FOUR_COLUMNS },
 }
-local SOUND = asset.sound("bn5:elec-pulse")
+local SOUND = asset.sound("elec-pulse")
 local TICKS, AHEAD = 60, 40
 
 export type NoiseState = {
@@ -138,7 +138,7 @@ local function noise_init(me: Object)
 end
 
 bignoise.noise = define.kind {
-    id = "bn5:bignoise/noise",
+    id = "bignoise/noise",
     pool = "attack",
     state = { navi = "bool", region = "region" },
     -- 0x080C4DE0: by its lifecycle, then a sprite step.
@@ -166,7 +166,7 @@ export type State = {
     controller: Object?,
 }
 
-local SOUND_APPEAR = asset.sound("bn5:appear")
+local SOUND_APPEAR = asset.sound("appear")
 
 -- Enter the phase with a timer, then count down (the same tick); true once it has run out.
 local function countdown(me: Object, anim: number?, ticks: number): boolean
@@ -267,7 +267,7 @@ local function update(me: Object)
 end
 
 bignoise.kind = define.kind {
-    id = "bn5:bignoise/navi",
+    id = "bignoise/navi",
     pool = "actor",
     state = { controller = "object" },
     -- 0x080BD510.
