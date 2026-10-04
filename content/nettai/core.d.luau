@@ -839,8 +839,8 @@ declare class Navi
     float_shoes: boolean
     air_shoes: boolean
     undershirt: boolean
-    -- BN5's Hub Style (NaviStats +0x4C), which its patch card 111 sets.
-    hub_style: boolean
+    -- BN5's Hub Style (NaviStats +0x4C), which its patch card 111 sets: 1 Team ProtoMan's, 2 Team Colonel's; 0 none.
+    hub_style: number
     -- HP when the round starts, and its maximum.
     hp: number
     max_hp: number
@@ -2208,6 +2208,12 @@ export type FormDef = {
     -- (BN5's souls' own routines: SearchSoul's reveal of invisible
     -- navis, TomahawkSoul's grass).
     reset: ((navi: Object) -> ())?,
+    -- What the navi puts on as it takes the form (`sub_8011268`'s routine by
+    -- the form), in place of its identity's parts: BN5's base form's shade
+    -- in Hub Style (0x0800EE1C), which `add_parts` puts on. A base form's
+    -- also runs as a player's init ends, as its navi's init hook
+    -- (`sub_8010DD0`: BN5's MegaMan's record names the same routine).
+    wears: ((navi: Object) -> ())?,
     traits: { FormTrait }?,
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.

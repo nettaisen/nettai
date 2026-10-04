@@ -95,6 +95,8 @@ local function shoot(me: Object, s: State, look: MegaManBusterLook)
             if s.mode == "spread" then
                 projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z, row = 1 })
                 projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z, row = -1 })
+                -- (BN5's spread has its own flash: 0x080EBA30.)
+                flash = look.spread_flash or flash
             end
         end
         attachment.attach(look.attachment, me, flash, "related")

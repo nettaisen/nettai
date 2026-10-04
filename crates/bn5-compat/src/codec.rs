@@ -90,7 +90,8 @@ pub struct NaviStats {
     /// BN5's own: the light/dark value.
     pub light_dark: LightDark,
     /// BN5's own (+0x4C): Hub Style, which patch card 111 (0x6F) sets when
-    /// installed and on (0x08138214): 1, else 0.
+    /// installed and on (0x08138214): 1 Team ProtoMan's, 2 Team Colonel's
+    /// (0x081382FC), else 0.
     pub hub_style: u8,
     /// The whole block.
     pub raw: [u8; NAVI_STATS],

@@ -738,7 +738,7 @@ pub(crate) fn read_form(
 ) -> Result<FormData, nettai_content_api::ContentError> {
     use serde_json::Value as Json;
     // (`buster_arm` is the content's own: the arm a navi raises.)
-    let own = ["id", "identity", "breaks_to", "change", "revert", "charged_action", "weapons", "buster_arm", "reset"];
+    let own = ["id", "identity", "breaks_to", "change", "revert", "charged_action", "weapons", "buster_arm", "reset", "wears"];
     let skip: Vec<&str> = own.iter().chain(extended).copied().collect();
     let o = super::reader::fields(d, r, &skip)?;
     let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::reader::err(d, m))?;
