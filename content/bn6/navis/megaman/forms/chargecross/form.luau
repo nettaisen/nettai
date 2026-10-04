@@ -35,7 +35,9 @@ return define.form {
     fire_charge = 100,
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 5,
-    traits = { "extra_chips" },
+    -- The custom screen deals one more chip for each screen spent in it, up to three (the
+    -- cross system's, `sub_802A49C`).
+    extra_chips = true,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 5 },
     identity = define.identity {
