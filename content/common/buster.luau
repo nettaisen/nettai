@@ -34,6 +34,16 @@ local function arm_options(
     }
 end
 
+-- Whether `form` has trait `trait`.
+local function has_trait(form: FormDef, trait: FormTrait): boolean
+    for _, t in form.traits or {} do
+        if t == trait then
+            return true
+        end
+    end
+    return false
+end
+
 -- `sub_80EB572`: the buster arm `navi`'s actor and side call for, held by
 -- `holder` in its slot `which`, animating while dimmed too when
 -- `while_dimmed`. A player's second actor gets none, and its overlay slot
@@ -67,7 +77,7 @@ local function raise_arm_for(look: BusterLook, navi: Object, holder: Object, whi
         elseif stats.element ~= 0 then
             palette_add = 0x14 + stats.element
         end
-    elseif table.find(form.traits or {}, "mood_palette") then
+    elseif has_trait(form, "mood_palette") then
         -- A form whose palette follows the mood (BN6's Gregar and Falzar
         -- Beast).
         if battle.emotion(side) == "full_synchro" then
