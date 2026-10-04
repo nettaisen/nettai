@@ -178,12 +178,19 @@ mod tests {
         for key in ["drksword", "beastout", "gigacan1", "batcan1"] {
             assert!(!keys.contains(&key), "{key}");
         }
+        // (The Regular chip: one within the fresh navi's Regular memory,
+        // when the folder drew one.)
+        let memory = b.stats[0].reg_up;
+        let mut regulars = 0;
         for seed in 0..20 {
             let f = random_folder(&content, "bn6", &mut b, 0, &mut Draws::new(seed));
             assert_eq!(problems(&mut b, 0, &f.into()), Vec::new(), "seed {seed}: {}", describe(&content, &f.into()));
-            let r = f.regular.expect("a Regular chip");
-            assert!(content.chip(f.chips[r as usize].id).mb <= 50);
+            if let Some(r) = f.regular {
+                assert!(content.chip(f.chips[r as usize].id).mb <= memory);
+                regulars += 1;
+            }
         }
+        assert!(regulars > 0, "no folder of twenty has a chip within the Regular memory ({memory} MB)");
         // Another seed, another folder; the same seed, the same.
         let mut one = |seed| random_folder(&content, "bn6", &mut b, 0, &mut Draws::new(seed));
         assert_ne!(one(1).chips, one(2).chips);
