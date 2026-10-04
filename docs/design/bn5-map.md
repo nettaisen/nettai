@@ -1334,7 +1334,11 @@ RedFrut1 to 3, Voltz1 to 3 and VDoll) are in §15.11.
   settings (written to RAM by the Team Battle with its own background and effects) match the list's by layout,
   actor list, music, mode and panel pattern. Those with obstacles (actor types 3, 8, 9: BN5's boulder, rock and
   statue aren't ported) are listed as waiting; those with metal, sea or lava panels are stages since the rules
-  work's P1a (68 stages). The backgrounds are named by their look (no BN6 background has their tiles).
+  work's P1a (68 stages). The backgrounds are named by their look (no BN6 background has their tiles). The
+  actor lists' addresses are Team ProtoMan's US ROM's; the other three ROMs have the same list, each its actor
+  lists a constant away (compat/games.toml, as BN6's: Team Colonel +0xE8, the Japanese Team ProtoMan −0x3E4 and
+  Team Colonel −0x2FC), and a recording's settings record is its traced console's (the BattleState's local side's
+  version and region): jp-team-plain matches through it.
 - **Panels** are a registered section now: BN5's types, BN6's roads and either-side step rule (BN5 has neither;
   the section must name the engine's 13 types; nothing of BN5's reaches them).
 - **Roles** BN5 shares with BN6: the sparks (BN5's 0 to 0xD are BN6's rows), the deletion, recovery and cut-in
