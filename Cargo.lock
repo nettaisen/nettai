@@ -2288,6 +2288,8 @@ dependencies = [
  "nettai-netplay",
  "nettai-render",
  "png",
+ "serde",
+ "toml",
 ]
 
 [[package]]
@@ -2309,6 +2311,7 @@ dependencies = [
  "nettai-content-api",
  "serde",
  "toml",
+ "toml_edit 0.22.27",
 ]
 
 [[package]]

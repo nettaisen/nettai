@@ -28,7 +28,7 @@ fn content() -> Arc<nettai_battle::Content> {
 /// something. Returns the peer's report line.
 fn play(udp: Udp, role: Role, frame: Duration, mut settled: impl FnMut(u32, u64)) -> String {
     let c = content();
-    let hello = Hello::new(role, c.hash(), Vec::new(), role.side() as u64 ^ 0xC0FFEE);
+    let hello = Hello::new(role, "test", c.hash(), Vec::new(), role.side() as u64 ^ 0xC0FFEE);
     let mut conn = match role {
         Role::Host => Connection::host(udp, hello, Duration::from_secs(30)),
         Role::Join => Connection::join(udp, hello, Duration::from_secs(30)),
