@@ -2,15 +2,12 @@
 //! field's panels (priority 2), which share one set of tiles and the first
 //! nine background palettes.
 //!
-//! The field is the arena's game's pack's (docs/design/rules-in-luau.md
-//! §7.4, as built): its tiles, palettes and their cycles, highlights and
-//! front edges. A panel type that field doesn't draw (a BN5 sea panel in a
-//! BN6 arena) comes from the field of the pack of the first loaded game
-//! whose `panels` section names the type, the simulation's own fallback,
-//! with that field's own tiles, palettes and cycles; a type no loaded
-//! pack's field draws is a normal panel of its owner's, tinted, never a
-//! hole. A highlight the arena's field lacks is borrowed, or falls back,
-//! the same way ([`FieldArt`]).
+//! The field is the match's game's pack's: its tiles, palettes and their
+//! cycles, highlights and front edges. A match is of one game, so its
+//! field draws what its panels are; a panel type or highlight the field
+//! doesn't draw (a pack extracted before it had it) is a normal panel of
+//! its owner's, tinted, never a hole, and never another pack's
+//! ([`FieldArt`]).
 
 use crate::audit::Problems;
 use crate::compose::{Layer, HEIGHT, WIDTH};
@@ -32,14 +29,13 @@ const TINT: [u16; 3] = [31, 0, 31];
 /// Where a panel type's or a highlight's art comes from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Art {
-    /// This pack's field draws it.
+    /// This pack's field (the arena's) draws it.
     Field(PackId),
-    /// No loaded pack's field draws it: a normal panel, tinted.
+    /// The arena's field doesn't draw it: a normal panel, tinted.
     Tint,
 }
 
-/// Which pack's field draws each panel type and each highlight in an
-/// arena (docs/design/rules-in-luau.md §7.4).
+/// Whether the arena's field draws each panel type and each highlight.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldArt {
     /// The arena's game's pack: the field's own art.
@@ -49,36 +45,13 @@ pub struct FieldArt {
 }
 
 impl FieldArt {
-    /// The art of an arena of game `arena` (its root). A panel type is the
-    /// arena's pack's field's if it draws the type; else the field of the
-    /// pack of the first loaded game, in root order, whose `panels` section
-    /// names the type (the order the simulation takes a type's rule in,
-    /// `sections::fill_panel_types`) and whose field draws it (a pack
-    /// extracted before `panel_types` draws none: the next game's); else
-    /// tinted. A
-    /// highlight is the arena's field's if it has it; else the first loaded
-    /// game's field's, in root order, that has it; else tinted.
+    /// The art of an arena of game `arena` (its root): a panel type or a
+    /// highlight is its pack's field's if it draws it, else tinted.
     pub fn of(c: &Content, packs: &Packs, arena: RootId) -> FieldArt {
         let pack = packs.id_of_root(c, arena);
-        let field = |p: PackId| &packs.bundle(p).field;
-        let roots = || (0..c.rules.len()).map(|i| RootId(i as u8));
-        let panels = PanelType::ALL.map(|t| {
-            if field(pack).draws(t as u8) {
-                return Art::Field(pack);
-            }
-            roots()
-                .filter(|r| c.rules_of(*r).panels.types.get(t as usize).is_some_and(|rule| rule.named))
-                .map(|r| packs.id_of_root(c, r))
-                .find(|&p| field(p).draws(t as u8))
-                .map_or(Art::Tint, Art::Field)
-        });
-        let highlights = [1, 2].map(|h| {
-            let has = |p: PackId| field(p).highlights.len() >= h;
-            if has(pack) {
-                return Art::Field(pack);
-            }
-            roots().map(|r| packs.id_of_root(c, r)).find(|&p| has(p)).map_or(Art::Tint, Art::Field)
-        });
+        let field = &packs.bundle(pack).field;
+        let panels = PanelType::ALL.map(|t| if field.draws(t as u8) { Art::Field(pack) } else { Art::Tint });
+        let highlights = [1, 2].map(|h| if field.highlights.len() >= h { Art::Field(pack) } else { Art::Tint });
         FieldArt { arena: pack, panels, highlights }
     }
 
@@ -91,20 +64,6 @@ impl FieldArt {
     /// original reads it).
     pub fn highlight(&self, h: u8) -> Art {
         self.highlights[highlight_index(h)]
-    }
-
-    /// The packs other than the arena's whose fields it borrows from.
-    fn borrowed(&self) -> Vec<PackId> {
-        let mut out = Vec::new();
-        for a in self.panels.iter().chain(&self.highlights) {
-            if let Art::Field(p) = *a
-                && p != self.arena
-                && !out.contains(&p)
-            {
-                out.push(p);
-            }
-        }
-        out
     }
 }
 
@@ -126,12 +85,8 @@ pub struct Stage<'a> {
     tile_anims: Vec<(u16, &'a nettai_assets::Tiles)>,
     /// Background scroll in pixels.
     scroll: (i32, i32),
-    /// Which pack's field draws each panel type and highlight.
+    /// Which panel types and highlights the field draws.
     art: FieldArt,
-    /// The other packs' fields the art borrows from, each with its own
-    /// palettes and their cycles at this moment (a palette set of its own:
-    /// the arena's are left as they are).
-    borrowed: Vec<(PackId, &'a Field, [Palette; 16])>,
 }
 
 /// Frame counters that drive the stage's animations.
@@ -177,13 +132,12 @@ fn tint(c: u16) -> u16 {
     ch(0, TINT[0]) | ch(5, TINT[1]) << 5 | ch(10, TINT[2]) << 10
 }
 
-/// What a panel shows: a pack's block, drawn from that pack's field, and
-/// whether tinted.
-type Shown<'f> = (PackId, &'f [MapEntry], bool);
+/// What a panel shows: a block of the arena's field, and whether tinted.
+type Shown<'f> = (&'f [MapEntry], bool);
 
 impl<'a> Stage<'a> {
-    /// The field of the arena's game (`arena`, its root) and the fields it
-    /// borrows from, of `packs`, behind `background` (none: the backdrop).
+    /// The field of the arena's game (`arena`, its root), of `packs`,
+    /// behind `background` (none: the backdrop).
     pub fn new(packs: &Packs<'a>, c: &Content, arena: RootId, background: Option<&'a Background>, clock: StageClock) -> Stage<'a> {
         let art = FieldArt::of(c, packs, arena);
         let assets = packs.bundle(art.arena);
@@ -213,15 +167,7 @@ impl<'a> Stage<'a> {
                 }
             }
         }
-        let borrowed = art
-            .borrowed()
-            .into_iter()
-            .map(|p| {
-                let f = &packs.bundle(p).field;
-                (p, f, field_palettes(f, clock))
-            })
-            .collect();
-        Stage { assets, background, palettes, tile_anims, scroll, art, borrowed }
+        Stage { assets, background, palettes, tile_anims, scroll, art }
     }
 
     /// A tile of the shared tile block by number.
@@ -250,30 +196,14 @@ impl<'a> Stage<'a> {
         }
     }
 
-    /// Pack `p`'s field: the arena's, or one the art borrows from.
-    fn field_of(&self, p: PackId) -> &'a Field {
-        match self.borrowed.iter().find(|(q, ..)| *q == p) {
-            Some((_, f, _)) => f,
-            None => &self.assets.field,
+    /// A map entry of the field, with the stage's tiles and palettes;
+    /// `tinted`, its colors tinted ([`tint`]).
+    fn put_field(&self, layer: &mut Layer, e: MapEntry, x: i32, y: i32, tinted: bool) {
+        if !tinted {
+            return self.put(layer, e, x, y);
         }
-    }
-
-    /// A map entry of pack `from`'s field: the arena's with the stage's
-    /// tiles and palettes, a borrowed field's with its own; `tinted`, its
-    /// colors tinted ([`tint`]).
-    fn put_from(&self, layer: &mut Layer, from: PackId, e: MapEntry, x: i32, y: i32, tinted: bool) {
-        let (tile, palette) = match self.borrowed.iter().find(|(q, ..)| *q == from) {
-            Some((_, f, palettes)) => {
-                (e.tile.checked_sub(f.first_tile).and_then(|i| f.tiles.get(i as usize)), &palettes[e.palette as usize & 15])
-            }
-            None if !tinted => return self.put(layer, e, x, y),
-            None => (self.tile(e.tile), &self.palettes[e.palette as usize & 15]),
-        };
-        let Some(tile) = tile else { return };
-        match tinted {
-            true => layer.draw_tile(tile, &palette.map(tint), x, y, e.hflip, e.vflip),
-            false => layer.draw_tile(tile, palette, x, y, e.hflip, e.vflip),
-        }
+        let Some(tile) = self.tile(e.tile) else { return };
+        layer.draw_tile(tile, &self.palettes[e.palette as usize & 15].map(tint), x, y, e.hflip, e.vflip);
     }
 
     /// The background layer.
@@ -308,10 +238,10 @@ impl<'a> Stage<'a> {
             return;
         }
         let mirror = (local_side & 1) as usize;
-        let block = |layer: &mut Layer, from: PackId, entries: &[MapEntry], col: i32, row: i32, w: i32, tinted: bool| {
+        let block = |layer: &mut Layer, entries: &[MapEntry], col: i32, row: i32, w: i32, tinted: bool| {
             for (i, &e) in entries.iter().enumerate() {
                 let (dx, dy) = (i as i32 % w, i as i32 / w);
-                self.put_from(layer, from, e, (col + dx) * 8 - cx, (row + dy) * 8 - cy, tinted);
+                self.put_field(layer, e, (col + dx) * 8 - cx, (row + dy) * 8 - cy, tinted);
             }
         };
         let blank = |layer: &mut Layer, col: i32, row: i32, w: i32, h: i32| {
@@ -323,7 +253,6 @@ impl<'a> Stage<'a> {
                 }
             }
         };
-        let field_of = |p: PackId| self.field_of(p);
         for y in 0..5u8 {
             for x in 0..8u8 {
                 if !field::is_valid(x, y) {
@@ -338,12 +267,12 @@ impl<'a> Stage<'a> {
                     blank(layer, col, edge_row, 5, 1);
                     continue;
                 }
-                if let Some((from, entries, tinted)) = shown(&b.content, &self.art, &field_of, p, local_side, y, problems) {
-                    block(layer, from, entries, col, row, 5, tinted);
+                if let Some((entries, tinted)) = shown(&b.content, &self.art, f, p, local_side, y, problems) {
+                    block(layer, entries, col, row, 5, tinted);
                 }
                 if p.front_edge {
                     let owner = (p.display_alliance ^ local_side) as usize & 1;
-                    block(layer, self.art.arena, &f.front_edges[owner], col, edge_row, 5, false);
+                    block(layer, &f.front_edges[owner], col, edge_row, 5, false);
                 }
             }
         }
@@ -354,11 +283,12 @@ impl<'a> Stage<'a> {
 /// highlight (a blink, `object_setPanelTypeBlink`, shows before one), else
 /// its block by its displayed type (or its blink's) and owner, from the
 /// viewer's side (a road's direction mirrored on the right-hand console),
-/// each from the field `art` says, or a normal panel tinted.
+/// from the arena's `field` where `art` says it draws it, else a normal
+/// panel tinted.
 fn shown<'f>(
     c: &Content,
     art: &FieldArt,
-    field_of: &dyn Fn(PackId) -> &'f Field,
+    field: &'f Field,
     p: &field::Panel,
     local_side: u8,
     y: u8,
@@ -371,15 +301,13 @@ fn shown<'f>(
     let tinted = |what: u8, problems: &mut Problems| {
         lookups::panel_tint(c, art.arena, what, problems);
         match art.panel(PanelType::Normal) {
-            Art::Field(from) => {
-                lookups::panel_block(c, field_of(from), from, PanelType::Normal as u8, owner, y, problems).map(|e| (from, e, true))
-            }
+            Art::Field(from) => lookups::panel_block(c, field, from, PanelType::Normal as u8, owner, y, problems).map(|e| (e, true)),
             Art::Tint => None,
         }
     };
     if p.highlight != 0 && p.blink.is_none() {
         return match art.highlight(p.highlight) {
-            Art::Field(from) => Some((from, &field_of(from).highlights[highlight_index(p.highlight)][..], false)),
+            Art::Field(_) => Some((&field.highlights[highlight_index(p.highlight)][..], false)),
             Art::Tint => tinted(lookups::HIGHLIGHT_TINT + highlight_index(p.highlight) as u8 + 1, problems),
         };
     }
@@ -391,7 +319,7 @@ fn shown<'f>(
         };
     }
     match art.panel(kind) {
-        Art::Field(from) => lookups::panel_block(c, field_of(from), from, kind as u8, owner, y, problems).map(|e| (from, e, false)),
+        Art::Field(from) => lookups::panel_block(c, field, from, kind as u8, owner, y, problems).map(|e| (e, false)),
         Art::Tint => tinted(kind as u8, problems),
     }
 }
@@ -400,15 +328,15 @@ fn shown<'f>(
 /// each shown panel shows.
 pub fn field_lookups(b: &Battle, packs: &Packs, local_side: u8, problems: &mut Problems) {
     let art = FieldArt::of(&b.content, packs, b.games.arena);
-    if packs.bundle(art.arena).field.panels.is_empty() {
+    let field = &packs.bundle(art.arena).field;
+    if field.panels.is_empty() {
         return;
     }
-    let field_of = |p: PackId| &packs.bundle(p).field;
     for y in 0..5u8 {
         for x in 0..8u8 {
             let p = &b.field.panels[y as usize][x as usize];
             if field::is_valid(x, y) && p.visible {
-                shown(&b.content, &art, &field_of, p, local_side, y, problems);
+                shown(&b.content, &art, field, p, local_side, y, problems);
             }
         }
     }
@@ -523,12 +451,11 @@ mod tests {
         b
     }
 
-    /// docs/design/rules-in-luau.md §7.4: a panel type the arena's field
-    /// doesn't draw comes from the field of the game that names it, in its
-    /// own palettes; one no loaded field draws is a normal panel, tinted; a
-    /// highlight the arena's field lacks is another's.
+    /// A panel type or highlight the arena's field doesn't draw is a normal
+    /// panel, tinted: never another pack's, even one loaded whose game
+    /// names it (a match is of one game).
     #[test]
-    fn a_mixed_field_borrows_the_art_it_lacks_or_tints_a_normal_panel() {
+    fn a_panel_the_field_doesnt_draw_is_tinted() {
         let b = battle([PanelType::Sea, PanelType::Lava, PanelType::Normal]);
         let c = &b.content;
         // The arena's field draws every type but the sea and lava, and one
@@ -543,15 +470,8 @@ mod tests {
 
         let art = FieldArt::of(c, &packs, b.games.arena);
         assert_eq!(art.panel(PanelType::Normal), Art::Field(test_pack));
-        assert_eq!(art.panel(PanelType::Sea), Art::Field(twin_pack), "the sea is twin's, whose game names it");
-        assert_eq!(art.panel(PanelType::Lava), Art::Tint, "no loaded field draws lava");
-        assert_eq!((art.highlight(1), art.highlight(2)), (Art::Field(test_pack), Art::Field(twin_pack)));
-        // A game that names the sea and whose field doesn't draw it (a pack
-        // extracted before `panel_types`) passes it to the next game that
-        // names it.
-        let mut both = (**c).clone();
-        both.rules[b.games.arena.index()].panels.types[PanelType::Sea as usize].named = true;
-        assert_eq!(FieldArt::of(&both, &packs, b.games.arena).panel(PanelType::Sea), Art::Field(twin_pack));
+        assert_eq!((art.panel(PanelType::Sea), art.panel(PanelType::Lava)), (Art::Tint, Art::Tint), "not twin's sea");
+        assert_eq!((art.highlight(1), art.highlight(2)), (Art::Field(test_pack), Art::Tint));
 
         let stage = Stage::new(&packs, c, b.games.arena, None, StageClock::default());
         let mut layer = Layer::new(2, 2);
@@ -561,23 +481,13 @@ mod tests {
         // Row 1's panels are 24 pixels from y 72, columns 40 wide from
         // x -40 (column 0 is off screen).
         let at = |layer: &Layer, x: usize, y: usize| layer.pixels[y * WIDTH + x];
-        assert_eq!(at(&layer, 20, 84), BLUE, "the sea, in twin's colors");
+        assert_eq!(at(&layer, 20, 84), tint(RED), "the sea: a normal panel, tinted");
         assert_eq!(at(&layer, 60, 84), tint(RED), "lava: a normal panel, tinted");
         assert_ne!(tint(RED), RED);
         assert_eq!(at(&layer, 100, 84), RED, "a normal panel");
-        assert_eq!(at(&layer, 20, 108), GREEN, "highlight 2, twin's");
+        assert_eq!(at(&layer, 20, 108), tint(RED), "highlight 2: tinted");
         assert!(problems.is_empty(), "{:?}", problems.lines());
         assert!(problems.said_lines().iter().any(|l| l.contains("panel type 14")), "{:?}", problems.said_lines());
-
-        // Without twin's pack loaded, the sea is tinted too, and so is
-        // highlight 2.
-        let one = Packs::one(&a);
-        let art = FieldArt::of(c, &one, b.games.arena);
-        assert_eq!((art.panel(PanelType::Sea), art.highlight(2)), (Art::Tint, Art::Tint));
-        let stage = Stage::new(&one, c, b.games.arena, None, StageClock::default());
-        layer.clear();
-        stage.draw_field(&b, &mut layer, 0, &view, &mut problems);
-        assert_eq!((at(&layer, 20, 84), at(&layer, 20, 108)), (tint(RED), tint(RED)));
     }
 
     #[test]

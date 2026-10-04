@@ -4,13 +4,15 @@
 //! Each player's frontend runs the whole battle on nettai-netplay's
 //! [`Peer`]: a getgud rollback session whose inputs go to the other peer
 //! over rennet, in UDP datagrams. Before the match, the handshake
-//! (`nettai_netplay::transport`) checks that both run the same engine and
-//! the same content, and swaps what each player brings (an [`Offer`]: their
-//! folder, game, Crosses and patch cards; the language is each player's
-//! own) and their halves of the seed. Both then build the same round
-//! ([`netplay_setup`]): the host's arena (a match file's, else drawn from
-//! the seed on the host's stage, if it names one), each player's side on
-//! their side (the host's is side 0, the left navi).
+//! (`nettai_netplay::transport`) checks that both run the same engine, play
+//! the same game (a match is of one) and the same content, and swaps what
+//! each player brings (an [`Offer`]: the match's ruleset, and their navi,
+//! folder, version, Crosses and patch cards, each by its name in the game;
+//! the language is each player's own) and their halves of the seed. Both
+//! then build the same round ([`netplay_setup`]): the host's arena (a match
+//! file's, else drawn from the seed on the host's stage, if it names one),
+//! each player's side on their side (the host's is side 0, the left navi),
+//! by the ruleset both bring.
 //!
 //! Every frame the driver takes what arrived, decides the player's buttons
 //! for the next tick (unless clock sync or the stall guard holds it), sends
@@ -31,168 +33,136 @@ use std::time::{Duration, Instant};
 
 use nettai_battle::content::Content;
 use nettai_battle::cues::{CueAction, CueTracker};
-use bn6_compat::CrossList;
 use nettai_battle::custom::SavedFolder;
 use nettai_battle::setup::RoundSetup;
 use nettai_battle::{Battle, BattleResult, RoundEnd};
-use nettai_battle::patch_cards::InstalledCard;
-use nettai_content_api::StageHandle;
-use nettai_match::{Arena, Draws, Match, Place, Side};
+use nettai_content_api::{RulesetHandle, StageHandle};
+use nettai_match::file::{ArenaFile, SideFile};
+use nettai_match::{Arena, Draws, Match, Place, Side, ids};
 use nettai_netplay::protocol::BUTTONS;
 use nettai_netplay::standin::StandInBattle;
 use nettai_netplay::transport::{Connection, Datagram, Hello, Role};
-use nettai_netplay::wire::{Reader, Writer};
 use nettai_netplay::{BattleWorld, Game, Observer, Peer, PeerConfig};
 
 use crate::driver::{Driver, Ran, Step};
 
-/// What a player brings to a netbattle: their side of the match (a match
-/// file's left side, or one drawn from their seed), and from the host the
-/// arena (a match file's) or a stage the round must be fought on
-/// (`--stage`).
+/// What a player brings to a netbattle: the match's game and ruleset (a
+/// match file's, else the game's stock rules), their side of the match (a
+/// match file's left side, or one drawn from their seed), and from the host
+/// the arena (a match file's, of the offer's game and ruleset) or a stage
+/// the round must be fought on (`--stage`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Offer {
+    pub game: String,
+    pub ruleset: RulesetHandle,
     pub side: Side,
     pub stage: Option<StageHandle>,
     pub arena: Option<Arena>,
 }
 
+/// An offer as the handshake carries it: a match file's names, in the
+/// offer's game (`nettai_match::file`).
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OfferFile {
+    game: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    ruleset: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    stage: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    arena: Option<ArenaFile>,
+    side: SideFile,
+}
+
 impl Offer {
-    /// The offer as the handshake carries it.
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut out = Vec::new();
-        let mut w = Writer(&mut out);
-        let Offer { side, stage, arena } = self;
-        let Side {
-            ruleset,
-            navi,
-            game,
-            stats,
-            emotion_window_glitch,
-            folder,
-            crosses,
-            beast_out,
-            cards,
-            navi_level,
-            bug_frags,
-            sp_times,
-            navicust,
-            tactics,
-            karma,
-            souls,
-        } = side;
-        w.put(ruleset);
-        w.put(navi);
-        w.put(game);
-        w.put(stats);
-        w.put(emotion_window_glitch);
-        // An offer's side is one the match's checks accepted, whose folder
-        // is whole.
-        w.put(&folder.saved().expect("an offer's folder is whole (the checks refuse one being made)"));
-        // (BN6's Cross list by its forms: netplay's codecs know no game.)
-        w.put(&crosses.map(|l| l.forms().collect::<Vec<_>>()));
-        w.put(beast_out);
-        w.put(cards);
-        w.put(navi_level);
-        w.put(bug_frags);
-        w.put(sp_times);
-        w.put(&navicust.is_some());
-        if let Some(n) = navicust {
-            w.put(&n.expansions);
-            w.put(&(n.len() as u16));
-            for p in n.iter() {
-                w.put(&p.program.0);
-                w.put(&[p.color, p.x, p.y, p.rotation]);
-                w.put(&p.compressed);
-            }
-        }
-        w.put(tactics);
-        // BN5's karma and souls.
-        w.put(karma);
-        w.put(souls);
-        w.put(stage);
-        w.put(&arena.is_some());
-        if let Some(a) = arena {
-            for p in std::iter::once(&a.first).chain(&a.later) {
-                w.put(&p.stage);
-                w.put(&p.background);
-            }
-        }
-        out
+    /// An offer of `side` for a match of `game` by its stock rules (and the
+    /// host's `stage`, if it names one).
+    pub fn stock(content: &Content, game: &str, side: Side, stage: Option<StageHandle>) -> Result<Offer, String> {
+        Ok(Offer { game: game.to_string(), ruleset: nettai_match::stock_ruleset(content, game)?, side, stage, arena: None })
     }
 
-    /// An offer from the other side, checked against `content` as a match
-    /// file's side is (`nettai_match::check_side`), its arena or stage a
-    /// link battle's.
-    pub fn from_bytes(content: &Arc<Content>, bytes: &[u8]) -> Result<Offer, String> {
-        let mut r = Reader::new(bytes);
-        let decoded = (|| -> std::io::Result<Offer> {
-            let side = Side {
-                ruleset: r.get()?,
-                navi: r.get()?,
-                game: r.get()?,
-                stats: r.get()?,
-                emotion_window_glitch: r.get()?,
-                folder: r.get::<SavedFolder>()?.into(),
-                crosses: match r.get::<Option<Vec<nettai_content_api::FormHandle>>>()? {
-                    Some(forms) if forms.len() > bn6_compat::unlocks::CROSSES => {
-                        return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "too many Crosses"));
-                    }
-                    forms => forms.map(|f| CrossList::new(&f)),
-                },
-                beast_out: r.get()?,
-                cards: r.get::<Vec<InstalledCard>>()?,
-                navi_level: r.get()?,
-                bug_frags: r.get()?,
-                sp_times: r.get()?,
-                navicust: if r.get::<bool>()? {
-                    let expansions: u8 = r.get()?;
-                    let n: u16 = r.get()?;
-                    let mut parts = Vec::with_capacity(n.min(64) as usize);
-                    for _ in 0..n {
-                        let program = nettai_content_api::NaviCustProgramHandle(r.get()?);
-                        let [color, x, y, rotation]: [u8; 4] = r.get()?;
-                        parts.push(nettai_battle::navicust::PlacedProgram { program, color, x, y, rotation, compressed: r.get()? });
-                    }
-                    let bad = |e: String| std::io::Error::new(std::io::ErrorKind::InvalidData, e);
-                    Some(nettai_battle::navicust::NaviCust::new(&parts, expansions).map_err(bad)?)
-                } else {
-                    None
-                },
-                tactics: r.get()?,
-                karma: r.get()?,
-                souls: r.get()?,
-            };
-            let stage: Option<StageHandle> = r.get()?;
-            let arena = if r.get::<bool>()? {
-                let mut place = || -> std::io::Result<Place> { Ok(Place { stage: r.get()?, background: r.get()? }) };
-                let first = place()?;
-                let later = [place()?, place()?];
-                Some(Arena { first, later })
-            } else {
+    /// An offer of a match file's: its left side, and its arena if this
+    /// player hosts.
+    pub fn of_match(m: Match, host: bool) -> Offer {
+        let [side, _] = m.sides;
+        Offer { game: m.arena.game.clone(), ruleset: m.arena.ruleset, side, stage: None, arena: host.then_some(m.arena) }
+    }
+
+    /// The offer as the handshake carries it: each thing by its name in
+    /// the offer's game.
+    pub fn to_bytes(&self, content: &Content) -> Vec<u8> {
+        let place = |s: StageHandle| ids::local(&content.defs.stage(s).key).to_string();
+        let file = OfferFile {
+            game: self.game.clone(),
+            ruleset: nettai_match::file::ruleset_name(content, &self.game, self.ruleset),
+            stage: self.stage.map(place),
+            arena: self.arena.as_ref().map(|a| nettai_match::file::arena_file(content, a)),
+            side: nettai_match::file::side_file(content, self.ruleset, &self.side),
+        };
+        toml::to_string(&file).expect("an offer serializes").into_bytes()
+    }
+
+    /// An offer from the other side for a match of `game`, its names
+    /// resolved in the game and checked against `content` as a match file's
+    /// side is (`nettai_match::check_side`), its arena or stage a link
+    /// battle's.
+    pub fn from_bytes(content: &Arc<Content>, game: &str, bytes: &[u8]) -> Result<Offer, String> {
+        let undecoded = |e: String| format!("the other player's setup doesn't decode ({e})");
+        let text = std::str::from_utf8(bytes).map_err(|e| undecoded(e.to_string()))?;
+        let f: OfferFile = toml::from_str(text).map_err(|e| undecoded(e.to_string()))?;
+        if f.game != game {
+            return Err(format!("the other player's setup is of {}, this match {game}'s", f.game));
+        }
+        let mut problems = Vec::new();
+        let ruleset = nettai_match::file::resolve_ruleset(content, game, f.ruleset.as_deref(), &mut problems);
+        let side = ruleset.and_then(|r| nettai_match::file::resolve_side(content, game, r, &f.side, "side", &mut problems));
+        let stage = match f.stage.as_deref().map(|name| nettai_match::link_stage(content, game, name)) {
+            Some(Err(e)) => {
+                problems.push(e);
                 None
-            };
-            Ok(Offer { side, stage, arena })
-        })();
-        let offer = decoded.map_err(|e| format!("the other player's setup doesn't decode ({e})"))?;
-        r.finish().map_err(|e| format!("the other player's setup doesn't decode ({e})"))?;
+            }
+            s => s.and_then(Result::ok),
+        };
+        let arena = match (&f.arena, ruleset) {
+            (Some(a), Some(r)) => nettai_match::file::resolve_arena(content, game, r, a, &mut problems),
+            _ => None,
+        };
+        let (Some(ruleset), Some(side)) = (ruleset, side) else {
+            return Err(format!("the other player's setup breaks the rules: {}", problems.join("; ")));
+        };
+        if !problems.is_empty() || f.arena.is_some() && arena.is_none() {
+            return Err(format!("the other player's setup breaks the rules: {}", problems.join("; ")));
+        }
+        let offer = Offer { game: game.to_string(), ruleset, side, stage, arena };
         offer.check(content)?;
         Ok(offer)
     }
 
     /// The offer is one this content can play.
     pub fn check(&self, content: &Arc<Content>) -> Result<(), String> {
-        let broken = nettai_match::check_side(content, &self.side);
+        let arena = match &self.arena {
+            Some(a) => a.clone(),
+            None => {
+                let first = *nettai_match::link_battle_stages(content, &self.game).first().ok_or_else(|| format!("{} has no link battle stage", self.game))?;
+                Arena::on(&self.game, self.ruleset, Place { stage: first, background: None })
+            }
+        };
+        if arena.game != self.game || arena.ruleset != self.ruleset {
+            return Err("the other player's arena is of another game or ruleset than their setup".into());
+        }
+        let broken = nettai_match::check::check_arena(content, &arena);
+        if !broken.is_empty() {
+            return Err(format!("the other player's arena breaks the rules: {}", broken.join("; ")));
+        }
+        let broken = nettai_match::check_side(content, &arena, &self.side);
         if !broken.is_empty() {
             return Err(format!("the other player's setup breaks the rules: {}", broken.join("; ")));
         }
-        if let Some(a) = &self.arena {
-            let broken = nettai_match::check::check_arena(content, a);
-            if !broken.is_empty() {
-                return Err(format!("the other player's arena breaks the rules: {}", broken.join("; ")));
-            }
+        if self.side.folder.saved().is_none() {
+            return Err("the other player's folder isn't whole".into());
         }
-        if self.stage.is_some_and(|s| !nettai_match::link_battle_stages(content).contains(&s)) {
+        if self.stage.is_some_and(|s| !nettai_match::link_battle_stages(content, &self.game).contains(&s)) {
             return Err("the other player's stage isn't a link battle stage".into());
         }
         Ok(())
@@ -202,13 +172,25 @@ impl Offer {
 /// The round both players of a match play, and the match: the host's arena
 /// (else one drawn from the match's seed, on the host's stage if it names
 /// one), each player's side on their side (`offers` by side: the host's,
-/// then the joiner's).
+/// then the joiner's), by the ruleset both bring.
 pub fn netplay_setup(content: &Content, seed: u32, offers: &[Offer; 2]) -> Result<(RoundSetup, Match), String> {
-    let arena = match &offers[0].arena {
+    let [host, join] = offers;
+    if host.game != join.game {
+        return Err(format!("the host plays {}, the joiner {}: a match is of one game", host.game, join.game));
+    }
+    if host.ruleset != join.ruleset {
+        let name = |r: RulesetHandle| ids::local(&content.defs.ruleset(r).key).to_string();
+        return Err(format!(
+            "the host plays by the {} rules, the joiner by the {}: a match has one ruleset (each player's match file names it)",
+            name(host.ruleset),
+            name(join.ruleset)
+        ));
+    }
+    let arena = match &host.arena {
         Some(a) => a.clone(),
-        None => nettai_match::draw::arena(content, &mut Draws::new(seed), offers[0].stage)?,
+        None => nettai_match::draw::arena(content, &host.game, host.ruleset, &mut Draws::new(seed), host.stage)?,
     };
-    let m = Match { seed: Some(seed), arena, sides: [offers[0].side.clone(), offers[1].side.clone()] };
+    let m = Match { seed: Some(seed), arena, sides: [host.side.clone(), join.side.clone()] };
     Ok((m.round(content, seed), m))
 }
 
@@ -475,16 +457,17 @@ impl<D: Datagram> Drop for NetPlayer<D> {
     }
 }
 
-/// This side's Hello for a match on `content`, offering `offer`.
+/// This side's Hello for a match of the offer's game on `content`,
+/// offering `offer`.
 pub fn hello(role: Role, content: &Content, offer: &Offer) -> Hello {
     let entropy = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(0) ^ std::process::id() as u64;
-    Hello::new(role, content.hash(), offer.to_bytes(), entropy)
+    Hello::new(role, &offer.game, content.hash(), offer.to_bytes(content), entropy)
 }
 
-/// After the handshake: both offers by side (the other's checked), and the
-/// round they play.
+/// After the handshake (which refused another game): both offers by side
+/// (the other's checked), and the round they play.
 pub fn agree<D: Datagram>(content: &Arc<Content>, conn: &Connection<D>, mine: &Offer) -> Result<([Offer; 2], RoundSetup, Match), String> {
-    let theirs = Offer::from_bytes(content, &conn.theirs().setup)?;
+    let theirs = Offer::from_bytes(content, &mine.game, &conn.theirs().setup)?;
     let offers = if conn.side() == 0 { [mine.clone(), theirs] } else { [theirs, mine.clone()] };
     let (setup, m) = netplay_setup(content, conn.seed(), &offers)?;
     Ok((offers, setup, m))
@@ -497,33 +480,41 @@ mod tests {
     use nettai_netplay::standin::Masher;
     use nettai_netplay::transport::Udp;
 
-    fn offer(content: &Arc<Content>, seed: u32) -> Offer {
-        Offer { side: Side::drawn(content, &mut Draws::new(seed)).unwrap(), stage: None, arena: None }
+    fn offer_of(content: &Arc<Content>, game: &str, seed: u32) -> Offer {
+        Offer::stock(content, game, Side::drawn(content, game, &mut Draws::new(seed)).unwrap(), None).unwrap()
     }
 
-    /// An offer goes over the wire as it is; one the content can't play is
-    /// refused with a reason.
+    fn offer(content: &Arc<Content>, seed: u32) -> Offer {
+        offer_of(content, "bn6", seed)
+    }
+
+    /// An offer goes over the wire as it is, every name the game's; one
+    /// the content can't play is refused with a reason.
     #[test]
     fn offers_roundtrip_and_bad_ones_are_refused() {
         let content = bn6_test_content();
         let mut o = offer(&content, 5);
-        o.stage = Some(nettai_match::link_battle_stages(&content)[3]);
-        o.side.cards = nettai_match::patch_cards(&content, "bn6:canodumb,-bn6:shadow").unwrap_or_default();
-        assert_eq!(Offer::from_bytes(&content, &o.to_bytes()).unwrap(), o);
+        o.stage = Some(nettai_match::link_battle_stages(&content, "bn6")[3]);
+        o.side.cards = nettai_match::patch_cards(&content, "bn6", "canodumb,-shadow").unwrap_or_default();
+        let bytes = o.to_bytes(&content);
+        let text = String::from_utf8(bytes.clone()).unwrap();
+        assert!(text.starts_with("game = \"bn6\"") && !text.contains("bn6:"), "{text}");
+        assert_eq!(Offer::from_bytes(&content, "bn6", &bytes).unwrap(), o);
         // A match file's arena goes too.
         let mut a = o.clone();
-        a.arena = Some(nettai_match::draw::live(&content, 9, None).unwrap().arena);
-        assert_eq!(Offer::from_bytes(&content, &a.to_bytes()).unwrap(), a);
+        a.arena = Some(nettai_match::draw::live(&content, "bn6", 9, None).unwrap().arena);
+        assert_eq!(Offer::from_bytes(&content, "bn6", &a.to_bytes(&content)).unwrap(), a);
         let mut bad = o.clone();
         bad.side.folder.chips = [bad.side.folder.chips[0]; 30];
         bad.side.folder.regular = None;
-        assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("breaks the rules"));
-        let mut bad = o.clone();
-        if let Some(c) = &mut bad.side.folder.chips[0] {
-            c.id = nettai_content_api::ChipHandle(60_000);
-        }
-        assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("hasn't"));
-        assert!(Offer::from_bytes(&content, &o.to_bytes()[..10]).is_err());
+        assert!(Offer::from_bytes(&content, "bn6", &bad.to_bytes(&content)).unwrap_err().contains("breaks the rules"));
+        // A name the game hasn't: the ordinary unknown name.
+        let bad = text.replacen("navi = \"megaman\"", "navi = \"bn5:megaman\"", 1);
+        let e = Offer::from_bytes(&content, "bn6", bad.as_bytes()).unwrap_err();
+        assert!(e.contains("side: no navi \"bn5:megaman\" in bn6"), "{e}");
+        // Another game's offer, and bytes that aren't one.
+        assert!(Offer::from_bytes(&content, "bn5", &bytes).unwrap_err().contains("is of bn6, this match bn5's"));
+        assert!(Offer::from_bytes(&content, "bn6", &bytes[..10]).is_err());
     }
 
     /// A BN5 side's offer carries its karma and souls; both peers' rounds
@@ -532,31 +523,23 @@ mod tests {
     #[test]
     fn offers_carry_karma_and_souls() {
         let content = nettai_match::testing::every_game();
-        let mut o = offer(&content, 5);
-        o.side.ruleset = content.defs.ruleset_by_key("bn5:stock");
-        o.side.navi = content.defs.navi_by_key("bn5:megaman").unwrap();
-        o.side.stats = Side::base_stats(&content, o.side.navi, o.side.game);
-        o.side.crosses = None;
-        o.side.navi_level = None;
-        o.side.navicust = None;
-        o.side.cards.clear();
+        let mut o = offer_of(&content, "bn5", 5);
         o.side.karma = 100;
-        o.side.souls = Some(vec![content.defs.form_by_key("bn5:protosoul").unwrap()]);
-        // (Its folder its rules take: a BN5 one.)
-        let five = nettai_match::Match::empty(&content).unwrap();
-        let mut b = nettai_match::check::start(&content, &nettai_match::Match { sides: [o.side.clone(), five.sides[1].clone()], ..five }).unwrap();
-        o.side.folder = nettai_match::folders::random_folder(&content, &mut b, 0, &mut Draws::new(3)).into();
-        let back = Offer::from_bytes(&content, &o.to_bytes()).unwrap_or_else(|e| panic!("{e}"));
+        o.side.souls = Some(vec![ids::form(&content, "bn5", "protosoul").unwrap()]);
+        let back = Offer::from_bytes(&content, "bn5", &o.to_bytes(&content)).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back, o);
-        let (one, _) = netplay_setup(&content, 9, &[o.clone(), offer(&content, 6)]).unwrap();
-        let (two, _) = netplay_setup(&content, 9, &[back, offer(&content, 6)]).unwrap();
+        let (one, _) = netplay_setup(&content, 9, &[o.clone(), offer_of(&content, "bn5", 6)]).unwrap();
+        let (two, _) = netplay_setup(&content, 9, &[back, offer_of(&content, "bn5", 6)]).unwrap();
         assert_eq!(format!("{one:?}"), format!("{two:?}"));
         let mut bad = o.clone();
         bad.side.karma = 1200;
-        assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("karma 1200"));
+        assert!(Offer::from_bytes(&content, "bn5", &bad.to_bytes(&content)).unwrap_err().contains("karma 1200"));
         let mut bad = offer(&content, 6);
         bad.side.souls = Some(Vec::new());
-        assert!(Offer::from_bytes(&content, &bad.to_bytes()).unwrap_err().contains("no Soul Unison"));
+        assert!(Offer::from_bytes(&content, "bn6", &bad.to_bytes(&content)).unwrap_err().contains("no Soul Unison"));
+        // Offers of two games, or two rulesets, make no match.
+        let e = netplay_setup(&content, 9, &[o.clone(), offer(&content, 6)]).unwrap_err();
+        assert_eq!(e, "the host plays bn5, the joiner bn6: a match is of one game");
     }
 
     /// What one player of [`pair`] saw: the round, the match, the settled
@@ -664,13 +647,10 @@ mod tests {
     fn two_players_over_loopback_with_match_files() {
         // Each player's file, as the editor or --save-match writes one.
         fn file(content: &Arc<Content>, seed: u32) -> Match {
-            let text = nettai_match::write(content, &nettai_match::draw::live(content, seed, None).unwrap());
+            let text = nettai_match::write(content, &nettai_match::draw::live(content, "bn6", seed, None).unwrap());
             nettai_match::parse(content, &text).unwrap()
         }
-        let offers = |content: &Arc<Content>, role: usize| {
-            let [side, _] = file(content, 40 + role as u32).sides;
-            Offer { side, stage: None, arena: (role == 0).then(|| file(content, 40).arena) }
-        };
+        let offers = |content: &Arc<Content>, role: usize| Offer::of_match(file(content, 40 + role as u32), role == 0);
         let [hosted, _] = pair(600, offers);
         let content = bn6_test_content();
         let m = &hosted.1;
