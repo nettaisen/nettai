@@ -156,6 +156,12 @@ pub struct KindEntry {
     /// register): the comparison skips them.
     #[serde(default)]
     pub scratch_panel: bool,
+    /// What the recordings show as its collision's status is garbage: its
+    /// +0x54 holds no collision but a RAM address of its own (ShadowMan's
+    /// three, LeadRaid's Colonel), which the recorder reads through as
+    /// one. The comparison skips it.
+    #[serde(default)]
+    pub scratch_status: bool,
 }
 
 /// A netbattle stage (stages.toml): the settings records that are it, its

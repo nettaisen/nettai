@@ -854,6 +854,12 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
             _ => format!("{p:?}"),
         }
     };
+    let status_field = |i: usize, s: String| -> String {
+        match entries.get(i) {
+            Some(Some(k)) if k.scratch_status => "-".to_string(),
+            _ => s,
+        }
+    };
     let pos = |p: [i32; 3], garbage: bool, xy_unknown: bool, z_fraction: bool| {
         if garbage {
             "-".to_string()
@@ -900,7 +906,7 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
                 ("pos", pos([x.pos.x, x.pos.y, x.pos.z], garbage, xy, zf)),
                 ("timer", x.timer.to_string()),
                 ("anim", x.anim.to_string()),
-                ("status", format!("{status:#x}")),
+                ("status", status_field(i, format!("{status:#x}"))),
             ]
         })
         .collect();
@@ -925,7 +931,7 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
                 ("pos", pos(o.pos, garbage, xy, zf)),
                 ("timer", o.timer.to_string()),
                 ("anim", o.anim.to_string()),
-                ("status", format!("{:#x}", o.status)),
+                ("status", status_field(i, format!("{:#x}", o.status))),
             ]
         })
         .collect();
