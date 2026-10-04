@@ -1,30 +1,35 @@
-//! The match file: a [`Match`] as TOML, by content key (docs/frontend.md
-//! §6).
+//! The match file: a [`Match`] as TOML (docs/frontend.md §6). It names its
+//! game once, at the top; everything else is a name in that game's
+//! namespace (`cannon`, `megaman`: `crate::ids`), and a name the game
+//! hasn't is said as such ("no chip "x" in bn6"). There is no way to name
+//! another game's.
 //!
 //! ```toml
+//! game = "bn6"                       # the match's game: everything below is its
+//! ruleset = "stock"                  # optional: both sides' rules (else the game's stock)
 //! seed = 42                          # optional: the setup's and battle's seed
 //!
-//! [arena]                            # the stage's game decides the battle's data
-//! stage = "bn6:netbattle-43"
-//! background = "bn6:honeycomb"       # optional: else the stage's own
+//! [arena]
+//! stage = "netbattle-43"
+//! background = "honeycomb"           # optional: else the stage's own
 //! later = [                          # optional: the set's later rounds (else the first's)
-//!     { stage = "bn6:netbattle-12", background = "bn6:code" },
-//!     { stage = "bn6:netbattle-7" },
+//!     { stage = "netbattle-12", background = "code" },
+//!     { stage = "netbattle-7" },
 //! ]
 //!
 //! [left]                             # you, side 0; then [right]
-//! ruleset = "bn6:stock"              # optional: else BN6's (crate::DEFAULT_GAME)
-//! navi = "bn6:megaman"
-//! game = "falzar"                    # or "gregar"
+//! navi = "megaman"
+//! version = "falzar"                 # optional: or "gregar" (else falzar)
 //! level = 7                          # optional: the navi code's level, 0-14 (else a link navi's 0, MegaMan none)
-//! crosses = ["bn6:heatcross", "bn6:spoutcross"]   # optional: else the game's own five
+//! crosses = ["heatcross", "spoutcross"]   # optional: else the version's own five
 //! beast_out = false                  # optional: else Beast Out is unlocked
-//! cards = [{ card = "bn6:canodumb" }, { card = "bn6:shadow", on = false }]
-//!
-//! [left.folder]
-//! chips = ["bn6:cannon A", "bn6:cannon A", ...]   # 30, each "key code" ("" empty, while it's being made)
-//! regular = 4                        # optional: an entry, counting from 0
-//! tags = [5, 6]                      # optional
+//! cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
+//! folder = [                         # 30 [chip, code] pairs ([] an empty entry, while it's being made)
+//!     ["cannon", "A"],
+//!     ["cannon", "A"],
+//! ]
+//! regular = 4                        # optional: the Regular chip's entry, counting from 0
+//! tags = [5, 6]                      # optional: the tag chips' entries
 //!
 //! [left.sp_times]                    # optional: SP navi deletion times, mm:ss.cc (else the fastest)
 //! "sp/heatman" = "00:12.34"
@@ -36,19 +41,19 @@
 //! [left.navicust]                    # optional: the NaviCust, which the rules compile
 //! expansions = 2                     # optional: the board's (else the largest)
 //! programs = [                       # in the list's order; x, y the center on the 7x7 grid
-//!     { program = "bn6:suprarmr", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
+//!     { program = "suprarmr", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
 //! ]
 //!
 //! [left.tactics]                     # optional: BN5's computer-navi data, the save's (none: empty)
-//! entries = ["bn5:cannon", "pattern 1", "nothing", "empty"]   # up to 42: a chip, a pattern by its number, 0, 0xFFFF
-//! patterns = [{ dx = 1, dy = 0, chips = ["bn5:sword", "bn5:wideswrd"] }]   # up to 8, each up to 6 chips
+//! entries = ["cannon", "pattern 1", "nothing", "empty"]   # up to 42: a chip, a pattern by its number, 0, 0xFFFF
+//! patterns = [{ dx = 1, dy = 0, chips = ["sword", "wideswrd"] }]   # up to 8, each up to 6 chips
 //!
-//! # A BN5 side ([left] with ruleset = "bn5:stock", navi = "bn5:megaman") may say besides, in [left]:
+//! # In a BN5 match ([left] of game = "bn5") a side may say besides:
 //! karma = 100                        # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
-//! souls = ["bn5:protosoul"]          # optional: the souls it has, any game's, either version (none: every soul)
+//! souls = ["protosoul"]              # optional: the souls it has, either version's (none: every soul)
 //! ```
 
-use crate::{Arena, Folder, Match, Place, Side, stats};
+use crate::{Arena, Folder, Match, Place, Side, ids, stats};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
 use crate::CrossList;
@@ -63,6 +68,9 @@ use std::collections::BTreeMap;
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MatchFile {
+    pub game: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ruleset: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub seed: Option<u32>,
     pub arena: ArenaFile,
@@ -91,11 +99,9 @@ pub struct PlaceFile {
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SideFile {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ruleset: Option<String>,
     pub navi: String,
     #[serde(default = "falzar", skip_serializing_if = "is_falzar")]
-    pub game: String,
+    pub version: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub level: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -106,25 +112,31 @@ pub struct SideFile {
     pub crosses: Option<Vec<String>>,
     #[serde(default = "yes", skip_serializing_if = "is_yes")]
     pub beast_out: bool,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub sp_times: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cards: Vec<CardFile>,
-    pub folder: FolderFile,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub karma: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub souls: Option<Vec<String>>,
+    /// The folder's entries, each `[chip, code]` (`[]` empty, while it is
+    /// being made).
+    pub folder: Vec<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub regular: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<[u8; 2]>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub sp_times: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub stats: BTreeMap<String, toml::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub navicust: Option<NaviCustFile>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tactics: Option<TacticsFile>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub karma: Option<u16>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub souls: Option<Vec<String>>,
 }
 
 /// A player's tactics (`nettai_battle::tactics`): the entries, each a chip's
-/// key, `pattern N` (from 1), `nothing` (a save's 0) or `empty` (0xFFFF), and
+/// name, `pattern N` (from 1), `nothing` (a save's 0) or `empty` (0xFFFF), and
 /// the patterns.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -194,66 +206,93 @@ fn is_yes(b: &bool) -> bool {
     *b
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct FolderFile {
-    pub chips: Vec<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub regular: Option<u8>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tags: Option<[u8; 2]>,
-}
-
-/// The game's name in a file.
-pub fn game_name(g: GameVersion) -> &'static str {
+/// The version's name in a file.
+pub fn version_name(g: GameVersion) -> &'static str {
     match g {
         GameVersion::Gregar => "gregar",
         GameVersion::Falzar => "falzar",
     }
 }
 
-/// A folder entry as a file writes it: the chip's key and its code.
-pub fn chip_entry(content: &Content, c: FolderChip) -> String {
-    format!("{} {}", content.defs.chip(c.id).key, c.code.letter())
+/// A folder entry as a file writes it: the chip's name and its code.
+pub fn chip_entry(content: &Content, c: FolderChip) -> [String; 2] {
+    [ids::local(&content.defs.chip(c.id).key).to_string(), c.code.letter().to_string()]
 }
 
-/// Each key a file names, resolved: the match, or every problem with it.
+/// What names nothing in `game`: "no chip "x" in bn6", and the game's
+/// names of that kind when they are few enough to read.
+fn unknown(what: &str, name: &str, game: &str, have: &[&str]) -> String {
+    if have.is_empty() || have.len() > 40 {
+        format!("no {what} {name:?} in {game}")
+    } else {
+        format!("no {what} {name:?} in {game} ({game}'s are {})", have.join(", "))
+    }
+}
+
+/// The local names of `game`'s definitions among `keys`.
+fn names_in<'k>(game: &str, keys: impl Iterator<Item = &'k str>) -> Vec<&'k str> {
+    keys.filter(|k| ids::in_game(game, k)).map(ids::local).collect()
+}
+
+/// Each name a file says, resolved in its game: the match, or every
+/// problem with it.
 pub fn resolve(content: &Content, f: &MatchFile) -> Result<Match, Vec<String>> {
     let mut problems = Vec::new();
-    let arena = resolve_arena(content, &f.arena, &mut problems);
-    let left = resolve_side(content, &f.left, "left", &mut problems);
-    let right = resolve_side(content, &f.right, "right", &mut problems);
-    match (arena, left, right) {
-        (Some(arena), Some(left), Some(right)) if problems.is_empty() => Ok(Match { seed: f.seed, arena, sides: [left, right] }),
+    let games = ids::games(content);
+    if !games.contains(&f.game) {
+        return Err(vec![format!("no game {:?} (the content's are {})", f.game, games.join(", "))]);
+    }
+    let Some(ruleset) = resolve_ruleset(content, &f.game, f.ruleset.as_deref(), &mut problems) else {
+        return Err(problems);
+    };
+    let arena = resolve_arena(content, &f.game, ruleset, &f.arena, &mut problems);
+    let Some(arena) = arena else { return Err(problems) };
+    let left = resolve_side(content, &arena.game, &f.left, "left", &mut problems);
+    let right = resolve_side(content, &arena.game, &f.right, "right", &mut problems);
+    match (left, right) {
+        (Some(left), Some(right)) if problems.is_empty() => Ok(Match { seed: f.seed, arena, sides: [left, right] }),
         _ => Err(problems),
     }
 }
 
-fn resolve_place(content: &Content, stage: &str, background: &Option<String>, at: &str, problems: &mut Vec<String>) -> Option<Place> {
-    let stage = match content.defs.stage_by_key(stage) {
+/// `game`'s ruleset named `name` (none: its stock one).
+pub fn resolve_ruleset(content: &Content, game: &str, name: Option<&str>, problems: &mut Vec<String>) -> Option<nettai_content_api::RulesetHandle> {
+    let found = match name {
+        None => crate::stock_ruleset(content, game).map_err(|e| vec![e]),
+        Some(n) => ids::ruleset(content, game, n).ok_or_else(|| {
+            let have = names_in(game, content.defs.rulesets.iter().map(|r| r.key.as_str()));
+            vec![unknown("ruleset", n, game, &have)]
+        }),
+    };
+    found.map_err(|e| problems.extend(e)).ok()
+}
+
+fn resolve_place(content: &Content, game: &str, stage: &str, background: &Option<String>, at: &str, problems: &mut Vec<String>) -> Option<Place> {
+    let stage = match ids::stage(content, game, stage) {
         Some(s) => Some(s),
         None => {
-            problems.push(format!("{at}: no stage {stage:?}"));
+            problems.push(format!("{at}: {}", unknown("stage", stage, game, &[])));
             None
         }
     };
     if let Some(b) = background
-        && crate::background(content, b).is_none()
+        && crate::background(content, game, b).is_none()
     {
-        problems.push(crate::no_background(at, b));
+        problems.push(crate::no_background(at, game, b));
     }
     Some(Place { stage: stage?, background: background.clone() })
 }
 
-fn resolve_arena(content: &Content, a: &ArenaFile, problems: &mut Vec<String>) -> Option<Arena> {
-    let first = resolve_place(content, &a.stage, &a.background, "arena", problems);
+/// A file's arena, of `game` by `ruleset`.
+pub fn resolve_arena(content: &Content, game: &str, ruleset: nettai_content_api::RulesetHandle, a: &ArenaFile, problems: &mut Vec<String>) -> Option<Arena> {
+    let first = resolve_place(content, game, &a.stage, &a.background, "arena", problems);
     let later = match &a.later {
         None => first.clone().map(|p| [p.clone(), p]),
         Some(list) if list.len() == 2 => {
             let l: Vec<Option<Place>> = list
                 .iter()
                 .enumerate()
-                .map(|(i, p)| resolve_place(content, &p.stage, &p.background, &format!("arena: later round {}", i + 2), problems))
+                .map(|(i, p)| resolve_place(content, game, &p.stage, &p.background, &format!("arena: later round {}", i + 2), problems))
                 .collect();
             Some([l[0].clone()?, l[1].clone()?])
         }
@@ -262,43 +301,33 @@ fn resolve_arena(content: &Content, a: &ArenaFile, problems: &mut Vec<String>) -
             None
         }
     };
-    Some(Arena { first: first?, later: later? })
+    Some(Arena { game: game.to_string(), ruleset, first: first?, later: later? })
 }
 
-fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<String>) -> Option<Side> {
+/// A file's side of a match of `game`, each name the game's.
+pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, problems: &mut Vec<String>) -> Option<Side> {
     let start = problems.len();
     let mut say = |p: String| problems.push(format!("{at}: {p}"));
-    let ruleset = match &s.ruleset {
-        None => None,
-        Some(k) => match content.defs.ruleset_by_key(k) {
-            Some(r) => Some(r),
-            None => {
-                let have: Vec<&str> = content.defs.rulesets.iter().map(|r| r.key.as_str()).collect();
-                say(format!("no ruleset {k:?} (the content's are {})", have.join(", ")));
-                None
-            }
-        },
-    };
-    let navi = content.defs.navi_by_key(&s.navi);
+    let navi = ids::navi(content, game, &s.navi);
     if navi.is_none() {
-        let have: Vec<&str> = content.defs.navis.iter().map(|n| n.key.as_str()).collect();
-        say(format!("no navi {:?} (the content's are {})", s.navi, have.join(", ")));
+        let have = names_in(game, content.defs.navis.iter().map(|n| n.key.as_str()));
+        say(unknown("navi", &s.navi, game, &have));
     }
-    let game = match s.game.as_str() {
+    let version = match s.version.as_str() {
         "falzar" => GameVersion::Falzar,
         "gregar" => GameVersion::Gregar,
         g => {
-            say(format!("no game {g:?} (falzar or gregar)"));
+            say(format!("no version {g:?} (falzar or gregar)"));
             GameVersion::Falzar
         }
     };
     let crosses = s.crosses.as_ref().map(|list| {
         let forms: Vec<_> = list
             .iter()
-            .filter_map(|k| {
-                let f = content.defs.form_by_key(k);
+            .filter_map(|n| {
+                let f = ids::form(content, game, n);
                 if f.is_none() {
-                    say(format!("no Cross {k:?}"));
+                    say(unknown("Cross", n, game, &[]));
                 }
                 f
             })
@@ -312,32 +341,29 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
     });
     let mut cards = Vec::new();
     for c in &s.cards {
-        match content.defs.patch_card_by_key(&c.card) {
+        match ids::patch_card(content, game, &c.card) {
             Some(card) => cards.push(InstalledCard { card, enabled: c.on }),
-            None => say(format!("no patch card {:?}", c.card)),
+            None => say(unknown("patch card", &c.card, game, &[])),
         }
     }
-    let folder = resolve_folder(content, &s.folder, &mut say);
+    let folder = resolve_folder(content, game, s, &mut say);
     let navicust = match &s.navicust {
         None => None,
         Some(n) => {
             let mut parts = Vec::with_capacity(n.programs.len());
             for (i, p) in n.programs.iter().enumerate() {
-                let Some(program) = content.defs.navicust_program_by_key(&p.program) else {
-                    say(format!("navicust program {}: no NaviCust program {:?}", i + 1, p.program));
+                let Some(program) = ids::navicust_program(content, game, &p.program) else {
+                    say(format!("navicust program {}: {}", i + 1, unknown("NaviCust program", &p.program, game, &[])));
                     continue;
                 };
                 let def = content.defs.navicust_program(program);
                 let Some(color) = def.colors.iter().position(|c| *c == p.color) else {
-                    say(format!("navicust program {}: {} comes in {}, not {:?}", i + 1, def.key, def.colors.join(", "), p.color));
+                    say(format!("navicust program {}: {} comes in {}, not {:?}", i + 1, p.program, def.colors.join(", "), p.color));
                     continue;
                 };
                 parts.push(PlacedProgram { program, color: color as u8, x: p.x, y: p.y, rotation: p.rotation, compressed: p.compressed });
             }
-            let expansions = n.expansions.unwrap_or_else(|| {
-                let rules = &content.rules().navicust;
-                rules.boards.len().saturating_sub(1) as u8
-            });
+            let expansions = n.expansions.unwrap_or_else(|| crate::navicust_rules(content).boards.len().saturating_sub(1) as u8);
             match NaviCust::new(&parts, expansions) {
                 Ok(n) => Some(n),
                 Err(e) => {
@@ -348,7 +374,7 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
         }
     };
     // The SP navis' deletion times, by the rules' slot names.
-    let slots = crate::sp_slots(content, ruleset);
+    let slots = crate::sp_slots(content);
     let mut sp_times = SpTimes::default();
     for (name, time) in &s.sp_times {
         let Some(i) = slots.iter().position(|x| x == name) else {
@@ -360,14 +386,15 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
             Err(e) => say(format!("sp_times: {name}: {e}")),
         }
     }
-    let tactics = s.tactics.as_ref().map(|t| resolve_tactics(content, t, &mut say)).unwrap_or_default();
-    // The souls, by key.
-    let souls = s.souls.as_ref().map(|keys| {
-        keys.iter()
-            .filter_map(|k| {
-                let f = content.defs.form_by_key(k);
+    let tactics = s.tactics.as_ref().map(|t| resolve_tactics(content, game, t, &mut say)).unwrap_or_default();
+    // The souls, by name.
+    let souls = s.souls.as_ref().map(|names| {
+        names
+            .iter()
+            .filter_map(|n| {
+                let f = ids::form(content, game, n);
                 if f.is_none() {
-                    say(format!("souls: no form {k:?}"));
+                    say(format!("souls: {}", unknown("soul", n, game, &[])));
                 }
                 f
             })
@@ -376,18 +403,17 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
     let navi = navi?;
     // (No level: a link navi's 0, MegaMan's none; the checks hold it.)
     let navi_level = s.level.or_else(|| crate::default_navi_level(content, navi));
-    let mut stats = Side::save_base(content, navi, game, navi_level);
-    for p in stats::apply(content, &s.stats, &mut stats) {
+    let mut stats = Side::save_base(content, navi, version, navi_level);
+    for p in stats::apply(content, game, &s.stats, &mut stats) {
         say(format!("stats: {p}"));
     }
-    let stats = crate::starting(content, stats, game);
+    let stats = crate::starting(content, stats, version);
     if problems.len() > start {
         return None;
     }
     Some(Side {
-        ruleset,
         navi,
-        game,
+        game: version,
         stats,
         emotion_window_glitch: s.emotion_window_glitch,
         folder: folder?,
@@ -404,12 +430,12 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
     })
 }
 
-/// A file's tactics: what names nothing is said, and left out.
-fn resolve_tactics(content: &Content, t: &TacticsFile, say: &mut impl FnMut(String)) -> Tactics {
-    let chip = |key: &str, say: &mut dyn FnMut(String)| {
-        let c = content.defs.chip_by_key(key);
+/// A file's tactics: what names nothing in `game` is said, and left out.
+fn resolve_tactics(content: &Content, game: &str, t: &TacticsFile, say: &mut impl FnMut(String)) -> Tactics {
+    let chip = |name: &str, say: &mut dyn FnMut(String)| {
+        let c = ids::chip(content, game, name);
         if c.is_none() {
-            say(format!("tactics: no chip {key:?}"));
+            say(format!("tactics: {}", unknown("chip", name, game, &[])));
         }
         c
     };
@@ -440,33 +466,36 @@ fn resolve_tactics(content: &Content, t: &TacticsFile, say: &mut impl FnMut(Stri
     Tactics { entries, patterns }
 }
 
-/// A file's folder: up to 30 entries, an empty one `""` and those past the
-/// last given empty (a folder being made; the checks say it isn't whole).
-fn resolve_folder(content: &Content, f: &FolderFile, say: &mut impl FnMut(String)) -> Option<Folder> {
-    if f.chips.len() > FOLDER_SIZE {
-        say(format!("the folder has {} entries; a folder is {FOLDER_SIZE}", f.chips.len()));
+/// A file side's folder: up to 30 entries, an empty one `[]` and those past
+/// the last given empty (a folder being made; the checks say it isn't
+/// whole), and its Regular and tag chips.
+fn resolve_folder(content: &Content, game: &str, s: &SideFile, say: &mut impl FnMut(String)) -> Option<Folder> {
+    if s.folder.len() > FOLDER_SIZE {
+        say(format!("the folder has {} entries; a folder is {FOLDER_SIZE}", s.folder.len()));
         return None;
     }
-    let mut folder = Folder { regular: f.regular, tags: f.tags.map(|[a, b]| (a, b)), ..Folder::EMPTY };
+    let mut folder = Folder { regular: s.regular, tags: s.tags.map(|[a, b]| (a, b)), ..Folder::EMPTY };
     let mut ok = true;
-    for (i, entry) in f.chips.iter().enumerate() {
-        if entry.trim().is_empty() {
-            continue;
-        }
-        let parsed = entry.rsplit_once(' ').and_then(|(key, code)| {
-            let mut letters = code.chars();
-            let code = letters.next().and_then(ChipCode::from_letter).filter(|_| letters.next().is_none())?;
-            Some((key.trim(), code))
-        });
-        let Some((key, code)) = parsed else {
-            say(format!("folder entry {i}: {entry:?} is not \"<chip> <code>\" (a code is A-Z or *; \"\" an empty entry)"));
+    for (i, entry) in s.folder.iter().enumerate() {
+        let (name, code) = match entry.as_slice() {
+            [] => continue,
+            [name, code] => (name, code),
+            _ => {
+                say(format!("folder entry {i}: {entry:?} is not [chip, code] ([] an empty entry)"));
+                ok = false;
+                continue;
+            }
+        };
+        let mut letters = code.chars();
+        let Some(code) = letters.next().and_then(ChipCode::from_letter).filter(|_| letters.next().is_none()) else {
+            say(format!("folder entry {i}: {code:?} is no code (A-Z or *)"));
             ok = false;
             continue;
         };
-        match content.defs.chip_by_key(key) {
+        match ids::chip(content, game, name) {
             Some(id) => folder.chips[i] = Some(FolderChip::new(id, code)),
             None => {
-                say(format!("folder entry {i}: no chip {key:?}"));
+                say(format!("folder entry {i}: {}", unknown("chip", name, game, &[])));
                 ok = false;
             }
         }
@@ -474,42 +503,37 @@ fn resolve_folder(content: &Content, f: &FolderFile, say: &mut impl FnMut(String
     ok.then_some(folder)
 }
 
-/// A match as a file.
-pub fn to_file(content: &Content, m: &Match) -> MatchFile {
-    let place = |p: &Place| PlaceFile { stage: content.defs.stage(p.stage).key.clone(), background: p.background.clone() };
-    let first = place(&m.arena.first);
-    let later = (m.arena.later != [m.arena.first.clone(), m.arena.first.clone()]).then(|| m.arena.later.iter().map(place).collect());
-    let side = |s: &Side| SideFile {
-        ruleset: s.ruleset.map(|r| content.defs.ruleset(r).key.clone()),
-        navi: content.defs.navi(s.navi).key.clone(),
-        game: game_name(s.game).into(),
+/// A side as a file writes it, each name its game's.
+pub fn side_file(content: &Content, s: &Side) -> SideFile {
+    let name = |key: &str| ids::local(key).to_string();
+    SideFile {
+        navi: name(&content.defs.navi(s.navi).key),
+        version: version_name(s.game).into(),
         // (The navi's default level is left out.)
         level: s.navi_level.filter(|_| s.navi_level != crate::default_navi_level(content, s.navi)),
         bug_frags: (s.bug_frags != 0).then_some(s.bug_frags),
         emotion_window_glitch: s.emotion_window_glitch,
-        crosses: s.crosses.map(|l| l.forms().map(|f| content.defs.form(f).key.clone()).collect()),
+        crosses: s.crosses.map(|l| l.forms().map(|f| name(&content.defs.form(f).key)).collect()),
         beast_out: s.beast_out,
-        sp_times: crate::sp_times::named(crate::sp_slots(content, s.ruleset), &s.sp_times)
+        sp_times: crate::sp_times::named(crate::sp_slots(content), &s.sp_times)
             .into_iter()
             .map(|(name, frames)| (name, crate::sp_times::format(frames)))
             .collect(),
-        cards: s.cards.iter().map(|c| CardFile { card: content.defs.patch_card(c.card).key.clone(), on: c.enabled }).collect(),
-        folder: FolderFile {
-            // An empty entry is "", and those after the last chip are left off.
-            chips: {
-                let last = s.folder.chips.iter().rposition(|c| c.is_some()).map_or(0, |i| i + 1);
-                s.folder.chips[..last].iter().map(|c| c.map_or(String::new(), |c| chip_entry(content, c))).collect()
-            },
-            regular: s.folder.regular,
-            tags: s.folder.tags.map(|(a, b)| [a, b]),
+        cards: s.cards.iter().map(|c| CardFile { card: name(&content.defs.patch_card(c.card).key), on: c.enabled }).collect(),
+        // An empty entry is [], and those after the last chip are left off.
+        folder: {
+            let last = s.folder.chips.iter().rposition(|c| c.is_some()).map_or(0, |i| i + 1);
+            s.folder.chips[..last].iter().map(|c| c.map_or(Vec::new(), |c| chip_entry(content, c).to_vec())).collect()
         },
+        regular: s.folder.regular,
+        tags: s.folder.tags.map(|(a, b)| [a, b]),
         tactics: (s.tactics != Tactics::default()).then(|| TacticsFile {
             entries: s
                 .tactics
                 .entries
                 .iter()
                 .map(|e| match *e {
-                    Tactic::Chip(c) => content.defs.chip(c).key.clone(),
+                    Tactic::Chip(c) => name(&content.defs.chip(c).key),
                     Tactic::Pattern(i) => format!("pattern {}", i as u16 + 1),
                     Tactic::Nothing => "nothing".into(),
                     Tactic::Empty => "empty".into(),
@@ -519,12 +543,12 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
                 .tactics
                 .patterns
                 .iter()
-                .map(|p| PatternFile { dx: p.dx, dy: p.dy, chips: p.chips.iter().map(|&c| content.defs.chip(c).key.clone()).collect() })
+                .map(|p| PatternFile { dx: p.dx, dy: p.dy, chips: p.chips.iter().map(|&c| name(&content.defs.chip(c).key)).collect() })
                 .collect(),
         }),
         stats: s.stats_block(content),
         karma: (s.karma != crate::facts::DEFAULT_KARMA).then_some(s.karma),
-        souls: s.souls.as_ref().map(|l| l.iter().map(|&f| content.defs.form(f).key.clone()).collect()),
+        souls: s.souls.as_ref().map(|l| l.iter().map(|&f| name(&content.defs.form(f).key)).collect()),
         navicust: s.navicust.map(|n| NaviCustFile {
             expansions: Some(n.expansions),
             programs: n
@@ -532,7 +556,7 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
                 .map(|p| {
                     let def = content.defs.navicust_program(p.program);
                     ProgramFile {
-                        program: def.key.clone(),
+                        program: name(&def.key),
                         color: def.colors.get(p.color as usize).cloned().unwrap_or_default(),
                         x: p.x,
                         y: p.y,
@@ -542,12 +566,32 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
                 })
                 .collect(),
         }),
-    };
+    }
+}
+
+/// A match's arena as a file writes it (its places; the game and the
+/// ruleset are the file's own keys).
+pub fn arena_file(content: &Content, a: &Arena) -> ArenaFile {
+    let place = |p: &Place| PlaceFile { stage: ids::local(&content.defs.stage(p.stage).key).to_string(), background: p.background.clone() };
+    let first = place(&a.first);
+    let later = (a.later != [a.first.clone(), a.first.clone()]).then(|| a.later.iter().map(place).collect());
+    ArenaFile { stage: first.stage, background: first.background, later }
+}
+
+/// The name a file gives `game`'s `ruleset`: none for the game's stock one.
+pub fn ruleset_name(content: &Content, game: &str, ruleset: nettai_content_api::RulesetHandle) -> Option<String> {
+    (crate::stock_ruleset(content, game).ok() != Some(ruleset)).then(|| ids::local(&content.defs.ruleset(ruleset).key).to_string())
+}
+
+/// A match as a file.
+pub fn to_file(content: &Content, m: &Match) -> MatchFile {
     MatchFile {
+        game: m.arena.game.clone(),
+        ruleset: ruleset_name(content, &m.arena.game, m.arena.ruleset),
         seed: m.seed,
-        arena: ArenaFile { stage: first.stage, background: first.background, later },
-        left: side(&m.sides[0]),
-        right: side(&m.sides[1]),
+        arena: arena_file(content, &m.arena),
+        left: side_file(content, &m.sides[0]),
+        right: side_file(content, &m.sides[1]),
     }
 }
 
@@ -560,10 +604,45 @@ pub fn parse(content: &std::sync::Arc<Content>, text: &str) -> Result<Match, Vec
     if problems.is_empty() { Ok(m) } else { Err(problems) }
 }
 
+/// The game a match file's text names (`game = "bn6"`), read before the
+/// content it needs is loaded: or why it names none.
+pub fn game_of(text: &str) -> Result<String, String> {
+    #[derive(Deserialize)]
+    struct Game {
+        game: Option<String>,
+    }
+    let g: Game = toml::from_str(text).map_err(|e| e.to_string())?;
+    g.game.ok_or_else(|| "the match file names no game (game = \"bn6\" at its top)".into())
+}
+
 /// A match file's text.
 pub fn write(content: &Content, m: &Match) -> String {
     let body = toml::to_string_pretty(&to_file(content, m)).expect("a match file serializes");
-    format!("# A nettai match (docs/frontend.md §6): play it with `nettai-frontend --match FILE`.\n\n{body}")
+    format!("# A nettai match (docs/frontend.md §6): play it with `nettai-frontend --match FILE`.\n\n{}", folders_inline(&body))
+}
+
+/// `body` with each folder entry (`["cannon", "A"]`) on a line of its
+/// own: the pretty printer spreads every element of a nested array over
+/// lines.
+fn folders_inline(body: &str) -> String {
+    let mut doc: toml_edit::DocumentMut = body.parse().expect("a match file parses");
+    for side in ["left", "right"] {
+        let Some(folder) = doc.get_mut(side).and_then(|s| s.get_mut("folder")).and_then(|f| f.as_array_mut()) else { continue };
+        for entry in folder.iter_mut() {
+            if let Some(pair) = entry.as_array_mut() {
+                pair.set_trailing_comma(false);
+                pair.set_trailing("");
+                for (i, v) in pair.iter_mut().enumerate() {
+                    v.decor_mut().set_prefix(if i == 0 { "" } else { " " });
+                    v.decor_mut().set_suffix("");
+                }
+            }
+            entry.decor_mut().set_prefix("\n    ");
+        }
+        folder.set_trailing_comma(true);
+        folder.set_trailing("\n");
+    }
+    doc.to_string()
 }
 
 #[cfg(test)]
@@ -577,16 +656,20 @@ mod tests {
     fn a_drawn_match_writes_and_reads_back() {
         let content = bn6_content();
         for seed in 0..6 {
-            let m = crate::draw::live(&content, seed, None).unwrap();
+            let m = crate::draw::live(&content, "bn6", seed, None).unwrap();
             let text = write(&content, &m);
             let back = parse(&content, &text).unwrap_or_else(|e| panic!("seed {seed}: {e:?}\n{text}"));
             assert_eq!(back, m, "seed {seed}:\n{text}");
             assert_eq!(format!("{:?}", back.round(&content, seed)), format!("{:?}", m.round(&content, seed)));
         }
-        let text = write(&content, &crate::draw::live(&content, 3, None).unwrap());
-        for line in ["[arena]", "[left]", "[right.folder]", "[left.stats]", "hp = 1000", "regular_memory = 50", "bn6:"] {
+        let text = write(&content, &crate::draw::live(&content, "bn6", 3, None).unwrap());
+        for line in ["game = \"bn6\"", "[arena]", "[left]", "folder = [\n    [\"", "\", \"", "[left.stats]", "hp = 1000", "regular_memory = 50"] {
             assert!(text.contains(line), "{line}:\n{text}");
         }
+        // Every name is the game's own, written once with the game.
+        assert!(!text.contains("bn6:") && !text.contains("ruleset"), "{text}");
+        assert_eq!(game_of(&text).unwrap(), "bn6");
+        assert!(game_of("[arena]\nstage = \"x\"\n").is_err());
     }
 
     /// A side's tactics (BN5's computer-navi data) write and read back, and
@@ -594,11 +677,11 @@ mod tests {
     #[test]
     fn tactics_write_and_read_back() {
         let content = bn6_content();
-        let mut m = crate::draw::live(&content, 2, None).unwrap();
-        let chip = |key: &str| content.defs.chip_by_key(key).unwrap();
+        let mut m = crate::draw::live(&content, "bn6", 2, None).unwrap();
+        let chip = |name: &str| ids::chip(&content, "bn6", name).unwrap();
         m.sides[0].tactics = Tactics {
-            entries: vec![Tactic::Chip(chip("bn6:cannon")), Tactic::Pattern(0), Tactic::Nothing, Tactic::Empty],
-            patterns: vec![TacticPattern { dx: 1, dy: -1, chips: vec![chip("bn6:sword"), chip("bn6:cannon")] }],
+            entries: vec![Tactic::Chip(chip("cannon")), Tactic::Pattern(0), Tactic::Nothing, Tactic::Empty],
+            patterns: vec![TacticPattern { dx: 1, dy: -1, chips: vec![chip("sword"), chip("cannon")] }],
         };
         let text = write(&content, &m);
         assert!(text.contains("[left.tactics]") && text.contains("\"pattern 1\"") && !text.contains("[right.tactics]"), "{text}");
@@ -611,27 +694,30 @@ mod tests {
         let bad = text.replacen("\"pattern 1\"", "\"pattern 2\"", 1);
         let problems = parse(&content, &bad).unwrap_err();
         assert!(problems.iter().any(|p| p.contains("the tactics name pattern 2")), "{problems:?}");
-        let bad = text.replacen("\"bn6:cannon\"", "\"bn6:nothing-at-all\"", 1);
+        let bad = text.replacen("entries = [\n    \"cannon\"", "entries = [\n    \"nothing-at-all\"", 1);
         let problems = parse(&content, &bad).unwrap_err();
-        assert!(problems.iter().any(|p| p.contains("tactics: no chip")), "{problems:?}");
+        assert!(problems.iter().any(|p| p.contains("tactics: no chip \"nothing-at-all\" in bn6")), "{problems:?}\n{text}");
     }
 
     /// What a file can get wrong is said, with where it is.
     #[test]
     fn problems_are_said() {
         let content = bn6_content();
-        let drawn = crate::draw::live(&content, 1, None).unwrap();
+        let drawn = crate::draw::live(&content, "bn6", 1, None).unwrap();
         let good = write(&content, &drawn);
         let bad = |from: &str, to: &str| -> Vec<String> {
             assert!(good.contains(from), "{from}");
             parse(&content, &good.replacen(from, to, 1)).unwrap_err()
         };
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
-        has(bad("navi = \"bn6:megaman\"", "navi = \"bn6:nobody\""), "left: no navi \"bn6:nobody\"");
+        has(bad("navi = \"megaman\"", "navi = \"nobody\""), "left: no navi \"nobody\" in bn6");
+        has(bad("navi = \"megaman\"", "navi = \"bn6:megaman\""), "left: no navi \"bn6:megaman\" in bn6");
         has(bad("hp = 1000", "hp = 100000"), "stats: hp takes a whole number");
         has(bad("hp = 1000", "hp = 1000\natack = 1"), "no stat \"atack\"");
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
-        has(bad(stage, "stage = \"bn6:moon\""), "arena: no stage");
+        has(bad(stage, "stage = \"moon\""), "arena: no stage \"moon\" in bn6");
+        has(bad("game = \"bn6\"", "game = \"bn7\""), "no game \"bn7\"");
+        has(bad("navi = \"megaman\"", "navi = \"megaman\"\nversion = \"azure\""), "no version \"azure\"");
         // Thirty copies of a chip.
         let mut m = drawn.clone();
         m.sides[0].folder.chips = [m.sides[0].folder.chips[0]; 30];
@@ -646,10 +732,10 @@ mod tests {
         }
         // Patch cards past 80 MB; a Cross list for a navi without Crosses.
         let mut m = drawn.clone();
-        m.sides[0].cards = crate::patch_cards(&content, "bn6:canodumb,bn6:amonicul,bn6:coldbear,bn6:megalian,bn6:mettfire,bn6:kilplant").unwrap();
+        m.sides[0].cards = crate::patch_cards(&content, "bn6", "canodumb,amonicul,coldbear,megalian,mettfire,kilplant").unwrap();
         has(crate::check_match(&content, &m), "left: the patch cards are");
         let mut m = drawn.clone();
-        let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
+        let protoman = ids::navi(&content, "bn6", "protoman").unwrap();
         m.sides[1].navi = protoman;
         m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].game);
         has(crate::check_match(&content, &m), "right: a Cross list, but ProtoMan doesn't change form");
@@ -661,9 +747,9 @@ mod tests {
     fn crosses_need_the_forms_system() {
         let content = nettai_battle::content::testing::content();
         let mix = content.defs.ruleset_by_key("test:test-mix").unwrap();
-        let stock = content.defs.stock_ruleset();
+        let stock = content.defs.stock_ruleset().unwrap();
         assert!(crate::ruleset_has_system(&content, stock, crate::FORMS_SYSTEM));
-        assert!(!crate::ruleset_has_system(&content, Some(mix), crate::FORMS_SYSTEM));
+        assert!(!crate::ruleset_has_system(&content, mix, crate::FORMS_SYSTEM));
     }
 
     /// The SP deletion times, Beast Out locked and a level write and read
@@ -672,12 +758,12 @@ mod tests {
     #[test]
     fn sp_times_beast_out_and_levels_write_and_read_back() {
         let content = bn6_content();
-        let mut m = crate::draw::live(&content, 2, None).unwrap();
+        let mut m = crate::draw::live(&content, "bn6", 2, None).unwrap();
         m.sides[0].beast_out = false;
         m.sides[0].navi_level = Some(3);
         m.sides[0].sp_times.0[0] = 721;
         m.sides[0].sp_times.0[11] = 1500;
-        let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
+        let protoman = ids::navi(&content, "bn6", "protoman").unwrap();
         m.sides[1].navi = protoman;
         m.sides[1].crosses = None;
         m.sides[1].navi_level = Some(0);
@@ -705,11 +791,11 @@ mod tests {
     #[test]
     fn the_level_is_checked() {
         let content = bn6_content();
-        let mut m = crate::draw::live(&content, 2, None).unwrap();
+        let mut m = crate::draw::live(&content, "bn6", 2, None).unwrap();
         m.sides[0].navi_level = Some(15);
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
         has(crate::check_match(&content, &m), "left: level 15: a navi code's level is 0 to 14");
-        let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
+        let protoman = ids::navi(&content, "bn6", "protoman").unwrap();
         m.sides[0].navi_level = None;
         m.sides[1].navi = protoman;
         m.sides[1].crosses = None;
