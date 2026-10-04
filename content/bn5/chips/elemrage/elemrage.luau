@@ -17,7 +17,7 @@ local elemrage = {}
 
 -- ---- The flame ------------------------------------------------------------------------------------------------------
 
-local SPRITE = asset.sprite("sprite-0c-0e")
+local SPRITE = asset.sprite("rage-flame")
 -- BN5's panel types by number (compat/panels.toml, 0x0800BCF0), for the type a flame leaves.
 local PANEL_TYPES: { [number]: PanelType } = {
     [0] = "missing",
@@ -259,11 +259,11 @@ local RAGES: { [string]: { element: number, palette: number } } = {
     metal = { element = 3, palette = 3 },
 }
 local NONE = { element = 0, palette = 4 }
-local CLAW = attachment.look { sprite = asset.sprite("sprite-0c-33"), palette = 0, attach_point = 0x16 }
+local CLAW = attachment.look { sprite = asset.sprite("rage-claw"), palette = 0, attach_point = 0x16 }
 -- (The flame and the claw MegaMan's B↓FireAm fires too: navis/megaman/weapons/fire-arm.)
 elemrage.spawn_flame = spawn_flame
 elemrage.claw = CLAW
-local ROAR, RAGE_ROAR = asset.sound("roar"), asset.sound("sound-12c")
+local ROAR, RAGE_ROAR = asset.sound("roar"), asset.sound("rage-roar")
 -- The user's panel back to normal (the panel changer's row 11: its own panel, 30 ticks, flickering).
 local RESTORE = panel_changer.change {
     panel = "normal",

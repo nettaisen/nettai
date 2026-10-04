@@ -35,7 +35,7 @@ local HP = 10
 local HIT_MOD = 3
 -- The enemy navis a comet turns toward (0x080D4B48).
 local TARGETS = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
-local SOUNDS = { [0] = asset.sound("sound-138"), [1] = asset.sound("sound-137") }
+local SOUNDS = { [0] = asset.sound("comet"), [1] = asset.sound("cosmo-comet") }
 
 export type CometState = {
     -- Its variant (Param1: 0 to 3 the virus's, 4 the navi chip's) and row (Param2).
@@ -242,7 +242,7 @@ export type State = {
     sent: number,
 }
 
-local SOUND_APPEAR, SOUND_POSE = asset.sound("appear"), asset.sound("sound-13a")
+local SOUND_APPEAR, SOUND_POSE = asset.sound("appear"), asset.sound("cosmo-pose")
 local COMETS, EVERY, AHEAD = 9, 20, 20
 local SOLID = 0x10
 
