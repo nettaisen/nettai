@@ -610,6 +610,8 @@ impl Screen {
                 self.look.draw_cursor();
                 self.look.draw_emblem(0);
                 self.look.draw_regular(folder.regular_pending && !regular_taken);
+                // (BN5's 0x08023012: the chip a button holds, over it.)
+                self.look.draw_held(self.hold.is_some());
                 self.look.draw_turn_limit();
                 self.look.frame += 1;
                 request
@@ -1145,11 +1147,22 @@ impl Screen {
     /// `sub_8028476`: the chip window shows the slot under the cursor.
     pub(crate) fn show_chip_window(&mut self, folder: &BattleFolder, view: &PlayerView) {
         let chip = self.chip_in(self.cursor, folder).map(|c| checked(c, view));
+        let here = self.slots[self.cursor as usize];
         let w = &mut self.look.chip_window;
         w.slot = self.cursor;
         w.picks = self.selected;
         if chip.is_some() {
             w.last_chip = chip;
+        }
+        // The frame's colors: a chip's by its class (`sub_80284E2`), the
+        // standard ones for OK and a button's picture (`sub_80287D2`); a
+        // button that shows a chip sets none (BN5's 0x08024422), and an
+        // empty or hidden slot draws nothing.
+        match here.kind {
+            SlotKind::Chip { .. } | SlotKind::NaviChip(_) if chip.is_some() => w.framed = chip,
+            SlotKind::Ok => w.framed = None,
+            SlotKind::Button { .. } if here.face.is_none() => w.framed = None,
+            _ => {}
         }
     }
 

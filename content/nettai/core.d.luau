@@ -2872,10 +2872,12 @@ declare custom: {
     repeated: (side: number, key: Key) -> boolean,
     -- The screen's drawing, for a window: the window's sprites (the
     -- emblem, the Regular chip's frame, the last turns' block), the Regular
-    -- chip's frame alone, the Cross window's cursor, the chip window
+    -- chip's frame alone, the icon of the chip a button holds over that
+    -- button (`hold_last_pick`), the Cross window's cursor, the chip window
     -- showing the slot under the cursor, and the window's Cross tab.
     draw_window: (side: number) -> (),
     draw_regular: (side: number) -> (),
+    draw_held: (side: number) -> (),
     draw_cross_cursor: (side: number) -> (),
     show_chip_window: (side: number) -> (),
     set_cross_tab: (side: number, on: boolean) -> (),
