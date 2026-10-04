@@ -99,6 +99,8 @@ swords.anti_sword_counter = antiswrd.action_with {
     start_sound = asset.sound("bn6:log-in"),
     swing_sound = asset.sound("bn6:sword-swing"),
     attachment = attachment.kind,
+    -- (BN5's: no invulnerability, nothing restarted at its swings.)
+    plain = true,
 }
 
 return swords

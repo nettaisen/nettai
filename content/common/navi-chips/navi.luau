@@ -120,4 +120,13 @@ function navi_chips.leave(me: Object, controller: Object?)
     me:set_lifecycle("destroy")
 end
 
+-- The same, with the original's byte store of the state alone: his action and phase stay as they were (BN5's
+-- Colonel, 0x080BA504, and ToadMan, 0x080BC902).
+function navi_chips.leave_keeping_action(me: Object, controller: Object?)
+    if controller then
+        navi_chip.navi_left(controller)
+    end
+    me.lifecycle = "destroy"
+end
+
 return navi_chips

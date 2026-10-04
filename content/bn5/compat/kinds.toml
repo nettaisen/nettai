@@ -1,5 +1,6 @@
 # BN5's object kinds: the original's pool and index (the traces compare them), and the positions the comparison
-# skips (register garbage the spawner leaves until the kind's init places it): bn5-compat's comparison reads them.
+# skips (register garbage the spawner leaves until the kind's init places it), and the statuses it skips
+# (`scratch_status`: no collision behind the object's +0x54): bn5-compat's comparison reads them.
 # Written by hand from the BN5 recordings and code, as kinds come up in the replays: edit it when content is renamed
 # or added. A key without a root is BN5's own (most made with content/common's shared code); `engine/...` the
 # engine's; a qualified one (`bn6:...`) BN6's, which BN5's code shares (its flags here are BN6's compat's).
@@ -71,7 +72,7 @@
 "bn5:numbrman/navi" = { pool = "actor", index = 0x0F }
 "bn5:numbrman/face" = { pool = "actor", index = 0x5C }
 "bn5:colonel/navi" = { pool = "actor", index = 0x08 }
-"bn5:shadoman/navi" = { pool = "actor", index = 0x07 }
+"bn5:shadoman/navi" = { pool = "actor", index = 0x07, scratch_status = true }
 "bn5:toadman/navi" = { pool = "actor", index = 0x17 }
 "bn5:toadman/note" = { pool = "attack", index = 0x81 }
 "bn5:blizman/navi" = { pool = "actor", index = 0x14 }
@@ -111,7 +112,7 @@
 "bn5:piledrvr/pile" = { pool = "attack", index = 0x99 }
 "bn5:piledrvr/beam" = { pool = "attack", index = 0x9A }
 "bn5:leadraid/protoman" = { pool = "actor", index = 0x20 }
-"bn5:leadraid/colonel" = { pool = "actor", index = 0x22 }
+"bn5:leadraid/colonel" = { pool = "actor", index = 0x22, scratch_status = true }
 "bn5:leadraid/glow" = { pool = "effect", index = 0x85 }
 "bn5:chaoslrd/navi" = { pool = "actor", index = 0x51 }
 "bn5:chaoslrd/aura" = { pool = "effect", index = 0x47 }
