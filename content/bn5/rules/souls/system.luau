@@ -1,7 +1,7 @@
 --!strict
 -- BN5's Soul Unison (docs/design/bn5-map.md §5): MegaMan unites with a soul for some turns. The custom screen's soul
 -- button (the framework's, BN5's screen: it gives up the last chip picked for the soul of its family, a soul a form
--- of `kind = "soul"` naming its `soul.family`) asks for it in the turn's transform record; at the turn's start the
+-- with a `soul` naming its `family`) asks for it in the turn's transform record; at the turn's start the
 -- sequencer runs the soul's change (./change). The system keeps the side's soul turns (AIData +0x0F) and whether it
 -- is Chaos Unison, counts the turns down as each later custom screen is asked for and asks for the revert when they
 -- run out.
@@ -45,7 +45,7 @@ souls.system = define.system {
         turn_check = function(side: number)
             local navi = battle.player(side) :: Object
             local s = system.state() :: State
-            if battle.navi(side).form.kind == "soul" and s.turns == 0 then
+            if battle.navi(side).form.soul ~= nil and s.turns == 0 then
                 navi:set_request("revert_form", true)
             end
         end,

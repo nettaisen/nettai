@@ -334,10 +334,14 @@ impl Screen {
     /// The screen a player gets when the custom screen opens (`sub_8026840`):
     /// compact the folder, deal, and lay out the slots. `turn`: the
     /// screen's number in the round (1 = first).
-    pub fn open(folder: &mut BattleFolder, view: &PlayerView, turn: u8, extras: &mut dyn super::Extras) -> Screen {
+    pub fn open(
+        folder: &mut BattleFolder,
+        view: &PlayerView,
+        turn: u8,
+        console: &mut crate::console::Console,
+        extras: &mut dyn super::Extras,
+    ) -> Screen {
         let megaman = view.megaman();
-        folder.compact();
-        let chips_left = folder.count() as u8;
         let mut screen = Screen {
             phase: Phase::Opening { tick: 0 },
             slots: [Slot {
@@ -351,8 +355,8 @@ impl Screen {
             cursor: 0,
             selection: [0; MAX_SELECTIONS],
             selected: 0,
-            chips_left,
-            hand_size: 0,
+            chips_left: 0,
+            hand_size: hand_size(view, turn),
             megaman,
             form: None,
             form_owner: None,
@@ -361,6 +365,13 @@ impl Screen {
             hud: Banner::default(),
             look: ScreenLook::new(view.late_turns, false, None),
         };
+        // The side's systems as the screen deals, on the folder as the last
+        // screen left it and the framework's hand size (BN5's opening,
+        // 0x08022C5C: its dark chip offered, 0x08025114, after the hand
+        // size, 0x08025BE4, before the folder closes up, 0x080250E6).
+        extras.dealing(&mut screen, folder, console);
+        folder.compact();
+        screen.chips_left = folder.count() as u8;
         // The side's systems as the screen opens (BN6's: the round's
         // Beast Out and Crosses forgotten on its first screen, ChargeCross's
         // screens, the Crosses offered and the window's Cross tab).
@@ -1547,7 +1558,7 @@ impl PlayerView<'_> {
     /// BN5 emotion is worried or dark (0x08012740: in a soul or angry he
     /// may; at mood 0 he is dark, below 65 worried, at 0xFF Full Synchro).
     fn soul_button(&self) -> bool {
-        let in_soul = self.library.form_kind(self.stats.form) == crate::content::FormKind::Soul;
+        let in_soul = self.library.form_is_soul(self.stats.form);
         let mood = self.stats.mood;
         let hidden = !in_soul && self.emotion != Emotion::Angry && (mood == 0 || (mood != 0xFF && mood < 65));
         self.library.has_souls(self.stats.navi) && self.souls.button && !self.per_player_gauges && !hidden

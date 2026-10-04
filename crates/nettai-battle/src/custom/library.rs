@@ -5,7 +5,7 @@
 
 use super::folder::FolderChip;
 use super::GameVersion;
-use crate::content::{BannerId, ChipData, ChipRole, Content, CustomScreenLayout, FormKind, FormTraits, ProgramAdvance};
+use crate::content::{BannerId, ChipData, ChipRole, Content, CustomScreenLayout, FormTraits, ProgramAdvance};
 use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
 
 /// Game data for the custom screen.
@@ -33,19 +33,22 @@ pub trait Library {
     /// BN5's Soul Unison: the navi has souls (the custom screen's soul
     /// button), and the soul a chip of `family` given up gives (its number
     /// and form).
+    /// The words a custom screen's result takes on the link, a tick each
+    /// (the sending side's game's flow: `FlowRules::result_words`).
+    fn result_words(&self) -> u32 {
+        super::SEND_TICKS
+    }
     fn has_souls(&self, _navi: NaviHandle) -> bool {
         false
     }
     fn soul_for_family(&self, _navi: NaviHandle, _family: crate::content::ChipFamily) -> Option<(u8, FormHandle)> {
         None
     }
-    /// What kind of form one is, what the screen asks of it, and a Cross's
-    /// form in Beast Out.
-    fn form_kind(&self, form: FormHandle) -> FormKind;
-    /// Whose game's form it is (none: the base form).
-    fn form_game(&self, form: FormHandle) -> Option<GameVersion>;
+    /// What the screen asks of a form, and whether it is a soul (BN5's).
     fn form_traits(&self, form: FormHandle) -> FormTraits;
-    fn form_in_beast_out(&self, form: FormHandle) -> Option<FormHandle>;
+    fn form_is_soul(&self, _form: FormHandle) -> bool {
+        false
+    }
     /// The Program Advances, in the order they are tried.
     fn program_advances(&self) -> &[ProgramAdvance];
     /// A link navi's own chip, offered once a round (none for MegaMan).
@@ -120,20 +123,12 @@ impl Library for Content {
         forms.souls.iter().find_map(|&f| self.form(f).soul.filter(|s| s.family == family).map(|s| (s.number, f)))
     }
 
-    fn form_kind(&self, form: FormHandle) -> FormKind {
-        self.form(form).kind
-    }
-
-    fn form_game(&self, form: FormHandle) -> Option<GameVersion> {
-        self.form(form).game
-    }
-
     fn form_traits(&self, form: FormHandle) -> FormTraits {
         self.form(form).traits
     }
 
-    fn form_in_beast_out(&self, form: FormHandle) -> Option<FormHandle> {
-        self.form(form).beast
+    fn form_is_soul(&self, form: FormHandle) -> bool {
+        self.form(form).soul.is_some()
     }
 
     fn program_advances(&self) -> &[ProgramAdvance] {
@@ -188,6 +183,10 @@ pub struct GameLibrary<'a> {
 }
 
 impl Library for GameLibrary<'_> {
+    fn result_words(&self) -> u32 {
+        self.content.rules_of(self.game).flow.result_words as u32
+    }
+
     fn chip(&self, id: ChipHandle) -> &ChipData {
         self.content.chip(id)
     }
@@ -232,20 +231,12 @@ impl Library for GameLibrary<'_> {
         Library::soul_for_family(self.content, navi, family)
     }
 
-    fn form_kind(&self, form: FormHandle) -> FormKind {
-        self.content.form_kind(form)
-    }
-
-    fn form_game(&self, form: FormHandle) -> Option<GameVersion> {
-        self.content.form_game(form)
-    }
-
     fn form_traits(&self, form: FormHandle) -> FormTraits {
         self.content.form_traits(form)
     }
 
-    fn form_in_beast_out(&self, form: FormHandle) -> Option<FormHandle> {
-        self.content.form_in_beast_out(form)
+    fn form_is_soul(&self, form: FormHandle) -> bool {
+        self.content.form_is_soul(form)
     }
 
     fn program_advances(&self) -> &[ProgramAdvance] {
@@ -393,33 +384,8 @@ pub(crate) mod testing {
         fn beast_over_form(&self, _navi: NaviHandle, version: GameVersion) -> Option<FormHandle> {
             Some(FormHandle(if version == GameVersion::Gregar { 0x17 } else { 0x18 }))
         }
-        fn form_kind(&self, form: FormHandle) -> FormKind {
-            match form.0 {
-                0 => FormKind::Base,
-                1..=10 => FormKind::Cross,
-                0x0B | 0x0C => FormKind::Beast,
-                0x0D..=0x16 => FormKind::CrossBeast,
-                _ => FormKind::BeastOver,
-            }
-        }
-        fn form_game(&self, form: FormHandle) -> Option<GameVersion> {
-            // Gregar's Crosses 1-5, Beast 0x0B, Crosses in Beast Out
-            // 0x0D-0x11 and Beast Over 0x17; Falzar's the others.
-            match form.0 {
-                0 => None,
-                1..=5 | 0x0B | 0x0D..=0x11 | 0x17 => Some(GameVersion::Gregar),
-                _ => Some(GameVersion::Falzar),
-            }
-        }
-        fn form_traits(&self, form: FormHandle) -> FormTraits {
-            FormTraits(match form.0 {
-                5 | 0x11 => FormTraits::EXTRA_CHIPS,
-                0x0A | 0x16 => FormTraits::SCRAP_BUTTON,
-                _ => 0,
-            })
-        }
-        fn form_in_beast_out(&self, form: FormHandle) -> Option<FormHandle> {
-            (1..=10).contains(&form.0).then(|| FormHandle(form.0 + 0x0C))
+        fn form_traits(&self, _form: FormHandle) -> FormTraits {
+            FormTraits::default()
         }
         fn program_advances(&self) -> &[ProgramAdvance] {
             &self.program_advances
