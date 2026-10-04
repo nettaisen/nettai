@@ -222,6 +222,17 @@ pub enum OverlayRestart {
     Reload,
 }
 
+/// When the counter a stance's caught hit starts (`sub_80105F2`) runs.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StanceCounter {
+    /// BN6's `sub_80105F2`: from the next tick.
+    #[default]
+    NextTick,
+    /// BN5's 0x0800E340: its first step at once, as after a trap's catch.
+    AtOnce,
+}
+
 /// How a navi's push (slide type 1) reads the hits it took; and, of an
 /// obstacle's own game, how an obstacle's push does (`kinds::obstacle`:
 /// BN5's 0x0800D4B0 reads the hits by the hitters' flips, its slide
@@ -370,6 +381,8 @@ pub struct Rules {
     pub slide_speed: SlideSpeed,
     /// How a navi's hooks restart what it wears (the reactions section's).
     pub overlay_restart: OverlayRestart,
+    /// When a stance's counter runs (the reactions section's).
+    pub stance_counter: StanceCounter,
     /// A bubbled navi's height, by bubble timer.
     pub bubble_bob: [i8; 32],
     pub lockon: Lockon,
