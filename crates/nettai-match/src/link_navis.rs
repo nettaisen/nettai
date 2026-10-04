@@ -256,8 +256,11 @@ mod tests {
         let heatman = navi(&content, "heatman");
         let s = &mut m.sides[1];
         s.navi_level = Some(14);
+        // (MegaMan's Regular memory, which the switch carries over.)
+        s.stats.reg_up = 50;
         s.stats = s.reloaded_as(&content, heatman).unwrap();
-        (s.navi, s.crosses) = (heatman, None);
+        (s.navi, s.crosses, s.navicust) = (heatman, None, None);
+        s.folder.regular = None;
         let text = crate::write(&content, &m);
         assert!(text.contains("level = 14") && text.ends_with("[right.stats]\nregular_memory = 50\n"), "{text}");
         let back = crate::parse(&content, &text).unwrap();
