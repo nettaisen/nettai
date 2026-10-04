@@ -1,7 +1,9 @@
 --!strict
--- The NaviCust programs' B+Back specials, BN5's weapon routines NaviStats +0x07 names:
+-- The NaviCust programs' B+Back specials, BN5's weapon routines NaviStats +0x07 names (the patch cards' too, and as
+-- their B buttons and charged shots):
 --
--- - Shield (`megaman/shield`, routine 0x1F, 0x0800F8EA): BN5's guard (action 0x1F, lib/guard) as the Shield program's
+-- - Shield (`megaman/shield`, routine 0x1F, 0x0800F8EA; the patch cards' `megaman/card-shield`, routine 0x62,
+--   0x0800FDAC, the same code with its own charge row): BN5's guard (action 0x1F, lib/guard) as the Shield program's
 --   (subtype 3: it heeds nothing outside battle flag 0x40's mode, where a guarded hit puts 0x580 into the side's
 --   gauge), no damage;
 -- - Reflect (`megaman/reflect`, routine 0x61, 0x0800FD84; routine 0x20, 0x0800F910, is the same): BN5's guard as the
@@ -48,6 +50,17 @@ guards.shield = define.weapon {
     id = "bn5:megaman/shield",
     -- The charge table's row 0x1F (0x0801CB02), by Charge 0 to 5: past 4 it reads on into row 0x20's first entry.
     charge_ticks = { 40, 40, 40, 40, 40, 40 },
+    setup = function(navi: Object): Action
+        raise(navi, 0)
+        return SHIELD
+    end,
+}
+
+-- 0x0800FDAC: the patch cards' Shield (B-Shield, B↓Shield), the same code as the program's, its own charge row.
+guards.card_shield = define.weapon {
+    id = "bn5:megaman/card-shield",
+    -- The charge table's row 0x62, by Charge 0 to 5: past 4 it reads on into row 0x63's first entry.
+    charge_ticks = { 40, 40, 40, 40, 40, 100 },
     setup = function(navi: Object): Action
         raise(navi, 0)
         return SHIELD

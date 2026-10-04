@@ -1177,6 +1177,13 @@ with the new hooks, and its sections keep BN6's numbers by default.
   change, a flinch and a drag restart what a navi wears (`sub_8011450`, `sub_80F06CE`). BN6's restart
   (`sub_80C44D2`) reloads the overlay's animation and steps its sprite at once (`"step"`, the default); BN5's
   (0x080C374E) only has it reload at its next step (`"reload"`).
+- **The souls' engine items (bn5-map.md §15.8).** The `reactions` section's `stance_counter`, the navi's game's:
+  the counter a stance's caught hit starts runs from the next tick in BN6 (`sub_80105F2`, `"next_tick"`), its
+  first step at once in BN5 (0x0800E340, `"at_once"`). (BN5's hit kernel is the `reactions` section's
+  `hit_test`.) The system hook `chip_cost(side, navi, chip)` answers as `chip_check` does, earlier in
+  the preparation (BN5's 0x08010030, before the hand bonus's panel is spent); the light-dark system's dark-chip
+  use and cost moved there. The navi's `panel_bonus` and the form `chip_bonus`'s `uncharged` are BN5's hand bonus
+  (0x0800D0A6); the attack's `attack_variant` (AIAttackVars +3) is what the anti-damage counters aim by.
 - **The custom request (item 18).** BN5's state 0x20 (0x08007774) opens the custom screen itself once the
   reversions are done. BN6 first goes through state 0x24, which takes a tick. The flow without
   `sequencer_before_custom` now does BN5's. BN5's test of the request skips BN6's battle mode 5 too.

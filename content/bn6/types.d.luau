@@ -113,27 +113,6 @@ export type FanVariant = {
     absorbed: AbsorbedLook,
 }
 
--- A BN6 patch card's effect (rules/patch-cards/cards.luau's constructors
--- make them; the patch-cards system applies them): its kind, and the kind's
--- fields.
-export type PatchCardEffect = {
-    kind: string,
-    amount: number?,
-    element: ElementName?,
-    weapon: Weapon?,
-    variant: ProjectileVariant?,
-    barrier: Barrier?,
-    gauge: string?,
-    on: boolean?,
-    trail: string?,
-    level: number?,
-    blanks: number?,
-    charged: number?,
-    status: string?,
-    -- The card shows it as a bug.
-    bug: boolean?,
-}
-
 -- What an element pillar is spawned with (objects/element-pillar; the
 -- original's four parameters): lightning (it paralyzes and cracks its
 -- panel) rather than flames; how long it stands; the ticks it is left once
@@ -460,11 +439,6 @@ export type HeatFlame = {
     -- What it is: an attack, or (Param3 set) a thrown attack.
     is: CollisionType,
 }
-
--- How a gust blows (objects/gust, the original's first parameter):
--- `pulls` turns it back toward its side, a weaker push; `unseen` hides it
--- and lets it blow through any panel.
-export type GustHow = { pulls: boolean?, unseen: boolean? }
 
 -- What a riding hit is spawned with (navis/slashman/riding_hit): its
 -- collision types, hit modifier and spark, and whether it goes on after

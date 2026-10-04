@@ -2,8 +2,7 @@
 -- BN5's body overlays (actor object 0x56, 0x080C35E8, BN6's `sub_80C4348`: the same code, but it always wears its
 -- wearer's palette and starts at animation 0): a second sprite layered on a navi, by row (Param1): its sprite
 -- (0x080C35DC) and its depth table (0x080C35C4: a byte by the wearer's animation, 0 drawn a pixel behind it). An
--- identity wears one as its `parts` (`parts = { body = body_overlays.gyroman }`). Row 5 (12-58, the shade of
--- MegaMan's base form with NaviStats +0x4C, 0x0800EE1C) waits for that state, which bn5-compat refuses.
+-- identity wears one as its `parts` (`parts = { body = body_overlays.gyroman }`).
 
 local body_overlays = {}
 
@@ -34,6 +33,16 @@ body_overlays.napalmman = {
     sprite = asset.sprite("bn5:napalm-cannon"),
     anims = 23,
     behind = { { 20, 22 } },
+}
+
+-- Row 5: Hub Style's shade (0c-58), which MegaMan's base form puts on in Hub Style (NaviStats +0x4C, 0x0800EE1C:
+-- navis/megaman/forms/base): in front. Its depth table is 16 bytes long; past it his animations read on into the
+-- tables' pointers and the sprite table (none 0: in front) and the code after them (its first byte 0: behind, his
+-- animation 52).
+body_overlays.hub = {
+    sprite = asset.sprite("bn5:sprite-0c-58"),
+    anims = 53,
+    behind = { { 52, 52 } },
 }
 
 return body_overlays

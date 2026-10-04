@@ -222,6 +222,17 @@ pub enum OverlayRestart {
     Reload,
 }
 
+/// When the counter a stance's caught hit starts (`sub_80105F2`) runs.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StanceCounter {
+    /// BN6's `sub_80105F2`: from the next tick.
+    #[default]
+    NextTick,
+    /// BN5's 0x0800E340: its first step at once, as after a trap's catch.
+    AtOnce,
+}
+
 /// How a navi's push (slide type 1) reads the hits it took; and, of an
 /// obstacle's own game, how an obstacle's push does (`kinds::obstacle`:
 /// BN5's 0x0800D4B0 reads the hits by the hitters' flips, its slide
@@ -273,6 +284,14 @@ pub struct IntakeRules {
     /// level to them (no lower level changes, and nothing is reloaded).
     /// BN6's adds the argument (to at most 7).
     pub drain_bug_flags: bool,
+    /// BN5's no-charge drive (DarkInvs, 0x080E2318): a navi with the
+    /// no-charge state counts its drive's ticks down at the intake's end
+    /// (0x0800DBE0) and asks for the stun strike when they run out (BN5's
+    /// action 0x49 ends the drive); its idle hands the step it would take
+    /// to the side's systems' `controller` (0x080F03E4: the computer-navi
+    /// AI, 0x0802B4AC, or the reset of its state); and its last 180 ticks
+    /// it flickers gray (0x080136E0). BN6 has none of it.
+    pub no_charge_drive: bool,
 }
 
 /// How the weakness request breaks a form (`Rules::form_break`).
@@ -370,6 +389,8 @@ pub struct Rules {
     pub slide_speed: SlideSpeed,
     /// How a navi's hooks restart what it wears (the reactions section's).
     pub overlay_restart: OverlayRestart,
+    /// When a stance's counter runs (the reactions section's).
+    pub stance_counter: StanceCounter,
     /// A bubbled navi's height, by bubble timer.
     pub bubble_bob: [i8; 32],
     pub lockon: Lockon,
@@ -519,9 +540,20 @@ pub struct PanelRules {
     /// and 0x1E0, `sub_800C4BC`; BN5: 600 in both, 0x0800A998).
     pub mend: u16,
     pub mend_in_battle_mode_1: u16,
+    /// The game's panel types by its own numbers, where they aren't the
+    /// engine's order (`PanelType::ALL`, BN6's): BN5's 11 (5 its metal, 8
+    /// its lava, 9 its holy, 10 its sea), which a panel trail's byte
+    /// (NaviStats+0x12) names. Empty: BN6's.
+    pub numbers: Vec<PanelType>,
 }
 
 impl PanelRules {
+    /// The panel type the game numbers `n` (a panel trail's byte): its
+    /// `numbers`, else the engine's order.
+    pub fn numbered(&self, n: u8) -> Option<PanelType> {
+        if self.numbers.is_empty() { PanelType::ALL.get(n as usize).copied() } else { self.numbers.get(n as usize).copied() }
+    }
+
     /// The flag bits a panel type contributes to a panel's flags word
     /// (with the type itself in the low nibble).
     pub fn type_flags(&self, t: PanelType) -> u32 {

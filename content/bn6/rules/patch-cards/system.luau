@@ -11,11 +11,11 @@
 -- in the order of their kinds (cards.ORDER, not the card's order), each
 -- writing its slot (a later card's write wins); then the slots a card wrote
 -- are copied into the stats, some of them through tables; then the bugs are
--- counted. A card that lists one effect twice applies the first only. (Two
--- effects of one kind with different choices, say two charged shots, apply
--- in the card's order here; the original orders them by its effect numbers.
--- No card has two.)
+-- counted. A card that lists one effect twice applies the first only. The
+-- cards' run over the block is the one BN5's shares
+-- (@exelib/patch-cards/apply); BN6's are its seed, its copy and its count.
 
+local apply_cards = require("@exelib/patch-cards/apply")
 local cards = require("./cards")
 
 -- The bug slots BugStop holds back.
@@ -30,57 +30,6 @@ local BUG_KINDS: { [string]: boolean } = {
     custom_hp_drain = true,
     status_bug = true,
 }
-
-local function clamp(v: number, lo: number, hi: number): number
-    return if v < lo then lo elseif v > hi then hi else v
-end
-
--- A byte read as the original's `ldrsb` reads it.
-local function signed_byte(v: number): number
-    v = bit32.band(v, 0xFF)
-    return if v >= 0x80 then v - 0x100 else v
-end
-
--- Division toward zero (`Div`, the BIOS's).
-local function div(n: number, d: number): number
-    local q = n / d
-    return if q >= 0 then math.floor(q) else math.ceil(q)
-end
-
--- A card's effects in the order they apply: by kind; of two that are the
--- same effect, the first.
-local function in_order(effects: { PatchCardEffect }): { PatchCardEffect }
-    local seen: { [any]: boolean } = {}
-    type Entry = { e: PatchCardEffect, i: number }
-    local list: { Entry } = {}
-    for i, e in effects do
-        local rank = cards.RANK[e.kind]
-        if rank == nil then
-            error(string.format("patch card effect %q is no kind of effect", tostring(e.kind)))
-        end
-        local choice = cards.CHOICE[e.kind]
-        local key: any = e.kind
-        if choice then
-            key = e.kind .. "/" .. tostring((e :: any)[choice])
-        end
-        if not seen[key] then
-            seen[key] = true
-            table.insert(list, { e = e, i = i })
-        end
-    end
-    table.sort(list, function(a: Entry, b: Entry): boolean
-        local ra, rb = cards.RANK[a.e.kind], cards.RANK[b.e.kind]
-        if ra ~= rb then
-            return ra < rb
-        end
-        return a.i < b.i
-    end)
-    local out = {}
-    for _, x in list do
-        table.insert(out, x.e)
-    end
-    return out
-end
 
 -- `sub_8142578`'s count: whether the stats have a NaviCust bug (event flag
 -- 0x1723, which the emotion window reads with cards installed).
@@ -127,79 +76,8 @@ local function apply(side: number)
         giga = stats.giga_level,
         body = bit32.band(stats.element + 4, 0xFF),
     }
-    local written: { [string]: boolean } = {}
-    local function put(name: string, v: any)
-        slot[name] = v
-        written[name] = true
-    end
-    local function stat(name: string, d: number, lo: number, hi: number)
-        put(name, bit32.band(clamp(signed_byte(slot[name]) + d, lo, hi), 0xFF))
-    end
-    for _, c in installed do
-        if c.enabled then
-            for _, e in in_order(c.card.effects) do
-                local k, n = e.kind, e.amount or 0
-                if k == "hp_add" then
-                    hp = clamp(hp + n * 10, 1, 9999)
-                elseif k == "hp_sub" then
-                    hp = clamp(hp - n * 10, 1, 9999)
-                elseif k == "hp_percent_add" then
-                    hp = clamp(div(hp * n + hp * 100, 100), 1, 9999)
-                elseif k == "hp_percent_sub" then
-                    hp = clamp(div(hp * 100 - hp * n, 100), 1, 9999)
-                elseif k == "body" then
-                    put("body", cards.BODY[e.element :: string] + 4)
-                elseif k == "attack_add" then
-                    stat("attack", n, 0, 9)
-                elseif k == "attack_sub" then
-                    stat("attack", -n, 0, 9)
-                elseif k == "attack_times" then
-                    put("attack", bit32.band(clamp((signed_byte(slot.attack) + 1) * n - 1, 0, 9), 0xFF))
-                elseif k == "rapid_add" then
-                    stat("rapid", n, 0, 4)
-                elseif k == "rapid_sub" then
-                    stat("rapid", -n, 0, 4)
-                elseif k == "charge_add" then
-                    stat("charge", n, 0, 4)
-                elseif k == "charge_sub" then
-                    stat("charge", -n, 0, 4)
-                elseif k == "custom_add" then
-                    stat("custom", n, 2, 8)
-                elseif k == "custom_sub" then
-                    stat("custom", -n, 2, 8)
-                elseif k == "mega_add" then
-                    stat("mega", n, 1, 10)
-                elseif k == "mega_sub" then
-                    stat("mega", -n, 1, 10)
-                elseif k == "giga_add" then
-                    stat("giga", n, 1, 10)
-                elseif k == "giga_sub" then
-                    -- (Its handler stores without the clamp.)
-                    put("giga", bit32.band(signed_byte(slot.giga) - n, 0xFF))
-                elseif k == "b_button" or k == "charged_shot" or k == "back_special" then
-                    put(k, e.weapon or false)
-                elseif k == "buster_shot" or k == "charge_shot_kind" then
-                    put(k, e.variant or false)
-                elseif k == "first_barrier" then
-                    put(k, e.barrier or false)
-                elseif k == "gauge" then
-                    put(k, e.gauge)
-                elseif k == "panel_trail" then
-                    put(k, e)
-                elseif k == "buster_blanks" then
-                    put(k, e)
-                elseif k == "charge_blanks" then
-                    put(k, e.charged)
-                elseif k == "hit_status" then
-                    put(k, cards.HIT_STATUS[e.status :: string])
-                elseif e.on ~= nil then
-                    put(k, e.on)
-                else
-                    put(k, n)
-                end
-            end
-        end
-    end
+    local written: { [string]: boolean }
+    hp, written = apply_cards.run(installed, cards.GAME, hp, slot)
 
     -- The copy (`sub_8142230`): the HP, then each slot a card wrote.
     stats.max_hp = hp
