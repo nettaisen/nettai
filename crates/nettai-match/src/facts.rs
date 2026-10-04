@@ -44,6 +44,8 @@ pub const SOULS_FIELD: &str = "souls";
 pub const SOUL_UNISON_FIELD: &str = "soul_unison";
 pub const CHAOS_UNISON_FIELD: &str = "chaos_unison";
 pub const VERSION_FIELD: &str = "version";
+/// BN6's bug frags: its dark-chips system's setup (a dark chip spends one).
+pub const BUG_FRAGS_FIELD: &str = "bug_frags";
 
 /// A fresh save's karma (0x08010C00), and the most there is.
 pub const DEFAULT_KARMA: u16 = 500;
@@ -138,6 +140,8 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
 pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerSetup) -> Result<(), String> {
     let (game, ruleset) = (arena.game.as_str(), Some(arena.ruleset));
     player.set_fact(content, ruleset, KARMA_FIELD, &[Fact::Value(Value::Int(side.karma as i64))])?;
+    // (BN6's: the dark-chips system's.)
+    player.set_fact(content, ruleset, BUG_FRAGS_FIELD, &[Fact::Value(Value::Int(side.bug_frags as i64))])?;
     if takes(content, arena.ruleset, SOULS_FIELD) {
         // (Every soul, as many as the rules hold.)
         let souls: Vec<Fact> = owned_souls(content, game, side)

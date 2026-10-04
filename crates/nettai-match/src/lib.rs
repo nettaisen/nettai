@@ -368,7 +368,6 @@ impl Match {
             let mut player = PlayerSetup {
                 folder: Some(folder),
                 joypad_phase: 0,
-                bug_frags: s.bug_frags,
                 navi_level: s.navi_level,
                 sp_times: s.sp_times,
                 console: ConsoleSetup {
