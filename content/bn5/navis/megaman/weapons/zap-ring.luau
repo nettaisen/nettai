@@ -9,7 +9,7 @@
 -- pixels a tick, the status its hits give, its sound: 10, paralysis for 90 ticks, 0xB3); an attack hitting navis,
 -- hit modifier 0, its element's spark. It flies ahead until it hits something, leaves the field or the battle ends.
 
-local attachment = require("../../../objects/attachment/attachment")
+local attachment = require("../../../objects/attachment")
 local collision = require("../../../rules/collision")
 local sparks = require("../../../lib/sparks")
 local statuses = require("../../../rules/status")

@@ -5,8 +5,8 @@
 -- from the panel ahead, eleven ticks apart, each at a random height (0x080EEE5C); the last flinches. Then 11 ticks of
 -- recovery.
 
-local bullet = require("../../../../objects/bullet/bullet")
-local bullets = require("@exelib/bullet/bullet")
+local bullet = require("../../../../objects/bullet")
+local bullets = require("@exelib/bullet")
 
 local charge = {}
 

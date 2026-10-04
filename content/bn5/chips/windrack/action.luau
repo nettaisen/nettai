@@ -5,7 +5,7 @@
 -- the chip's, no gusts blow down the rows, and the rack's animation is BN5's (0x080ED17A: a navi's or a player's AI
 -- index, but 0x16's and 0x17's 0).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 

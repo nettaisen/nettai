@@ -6,7 +6,7 @@
 -- `panel_chips.hook(change)`, with its change.
 
 local common = require("@exelib/panel-chips/controller")
-local panel_changer = require("../../objects/panel-changer/panel_changer")
+local panel_changer = require("../../objects/panel-changer")
 
 local panel_chips = {}
 

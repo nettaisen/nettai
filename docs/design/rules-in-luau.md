@@ -164,7 +164,7 @@ A system is a definition. It declares what it keeps and what it does, and nothin
 state:
 
 ```luau
--- content/bn6/rules/beast/system.luau
+-- content/bn6/rules/beast/init.luau
 --!strict
 -- Beast Out and Beast Over: the count of Beast Out turns, the Beast forms, the rush, berserk.
 
@@ -864,7 +864,7 @@ right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only 
   `custom_requested(side)` (`sub_8008452`, before the reversions) and `custom_closed(side)` (`sub_8009338`, the
   fight resumes). The flow calls each for a side whose navi is there, side 0 first. The sequencer and the transform
   record stay the framework's; BN5 has them too.
-- **BN6's beast system** (content/bn6/rules/beast/system.luau, in the stock ruleset after the patch cards) fills
+- **BN6's beast system** (content/bn6/rules/beast/init.luau, in the stock ruleset after the patch cards) fills
   them with what was Rust: Beast Out running out (`sub_80159C6`: the navi's Beast Out is spent, a Beast form asks
   to revert), a turn in Beast Out spent (`sub_8015A38`), and the check's delay (AIData+0x0F), now the system's
   state: `ActorData::beast_out_check_delay`, `check_beast_out_end` and `count_down_beast_out` are gone.
@@ -924,7 +924,7 @@ art if the user approves §7.4's proposal).
   content/bn6/root.toml names `bn6`, content/bn5/root.toml (the BN5 work's) `bn5`, the engine's test content
   (crates/nettai-battle/testdata/content/root.toml) `test`. `nettai_content::root::read_all` reads a root and the
   roots it requires (each the sibling directory of its name), its own first; `pack::load_battle` loads them all.
-  `Scripts` holds the modules by name (`bn6:chips/minibomb/chip`) and the roots (`Scripts::roots`, the content's
+  `Scripts` holds the modules by name (`bn6:chips/minibomb/init`) and the roots (`Scripts::roots`, the content's
   own first: its home); `Content::define` checks them (a valid name, not `engine`; no root named twice; every root
   required is loaded; every module in a loaded root).
 - **Qualified keys.** The define phase qualifies every definition's key with its module's root (`bn6:minibomb`,
@@ -1211,7 +1211,7 @@ content.
   (`define.rules("navicust", ...)`, `Rules::navicust`) and the compile as the `navicust` system's `round_setup`,
   which the stock ruleset runs before the patch cards'. Rust keeps only the geometry: shapes, quarter turns,
   boards and whether a shape fits (`NaviCustRules::fits`). Luau reads the setup with `battle.navicust(side)`.
-- **The folder rules** (rules/folder/system.luau): a new hook, `folder_check(side)`, which a tool calls through
+- **The folder rules** (rules/folder/init.luau): a new hook, `folder_check(side)`, which a tool calls through
   `Battle::check_folder(side, chips, regular, tags, complete)` and never a simulation. The hook reads the folder
   with `battle.checked_folder()` and names each rule it breaks with `battle.folder_problem(rule, text)`. Rust
   only calls it and returns the problems (`FolderProblem {rule, text}`); the state it uses (`Battle::folder_check`)
@@ -1461,7 +1461,7 @@ P1's items 12 and 8 (bn5-map.md §15.3), on R4.
 
 ### S5, emotions (2026-10-02)
 
-- **BN6's emotion system** (content/bn6/rules/emotion/system.luau, in the stock ruleset after the beast system) holds
+- **BN6's emotion system** (content/bn6/rules/emotion/init.luau, in the stock ruleset after the beast system) holds
   BN6's rules for when:
   - **a navi starts the round tired.** At `round_start`, a navi whose Beast Out counter is spent starts tired
     (`sub_8013892`'s part, the original's init).
@@ -1737,7 +1737,8 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
 - **`Unlocks` and `CrossList` moved to bn6-compat** (`unlocks.rs`): `Unlocks::write` writes the facts,
   `Unlocks::of`/`of_side` reads them back for the renderer's pictures, names and Beast count, and `cross_at`,
   `beast_form`, `beast_game` stay as the BN6 look's helpers. `PlayerSetup` and the custom screen's `Side` keep
-  BN5's `souls` alone (until BN5's soul button is a system's). netplay's codecs know no game: the offer carries a
+  BN5's `souls` alone (until BN5's soul button is a system's: since 2026-10-04 it is, and both went). netplay's
+  codecs know no game: the offer carries a
   Cross list as its forms.
 - **The version can't be NaviStats'**: its +0x20 byte differs from the console's version in 2,883 of the 17,942
   recorded sides, so the version stays setup.
@@ -1803,7 +1804,7 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   - `beast_lockon` and `lockon_mode` are the beast system's `beast = { lockon, rush }`. The Rust write of the
     attack's `wrapped` from `beast_lockon` (the Team Battle special chip's) was dead: `set_attack` clears it, and
     the system's `chip_used` writes it.
-  - `dark_substitute` and `hp_bug` are a new system's, `bn6:dark-chips` (rules/dark-chips/system.luau), last in
+  - `dark_substitute` and `hp_bug` are a new system's, `bn6:dark-chips` (rules/dark-chips/init.luau), last in
     BN6's stock ruleset. Its new hook `chip_substitute(side, navi, chip)` spends a bug frag or gives the substitute
     as the use is prepared (`sub_8010D58`), where Rust then loads the substitute's record, damage and bonus as
     before. Its `chip_prepared(side, navi, chip)`, another new hook, worsens the HP bug (`sub_800B79A`) once the
@@ -2051,7 +2052,7 @@ plain Luau library with a single definition.
     `heatcross/charge/action`; an asset is its asset pack's name (`asset.sprite("bomb")`). The engine's keys are
     local: `define` takes an id as it is (`valid_key`), and an asset resolves by the pack's own name ("no sprite is
     named ... in the game's asset pack").
-  - A game module's anonymous definition is keyed by its path (`chips/cannon/chips#2`), a support pack's by its
+  - A game module's anonymous definition is keyed by its path (`chips/cannon/init#2`), a support pack's by its
     module's name (`exelib:regions#57`); compat's `compat_key` is none for those.
   - `nettai_match::ids` looks a name up only in its game's content (`key(content, game, name)`); `in_game` is a key
     of the game's own.
@@ -2149,7 +2150,7 @@ plain Luau library with a single definition.
 The plan as approved: "use `system.state_of(side, key)`, and move bug frags out of the engine into the dark-chips
 system. The point of S7/S8 is an engine with no BN6 resources, and a guarded accessor keeps that honest."
 
-- **Bug frags are the dark-chips system's** (content/bn6/rules/dark-chips/system.luau): its setup's `bug_frags`
+- **Bug frags are the dark-chips system's** (content/bn6/rules/dark-chips/init.luau): its setup's `bug_frags`
   (u32, what the player brings: a tool writes it as a fact, `set_fact("bug_frags", ...)`, nettai-match's
   `facts::BUG_FRAGS_FIELD`, bn6-compat's trace setup), its state's `bug_frags`, which `round_setup` fills from
   the setup, and its `chip_substitute` spends. `Battle::bug_frags`, `PlayerSetup::bug_frags`, the digest's
@@ -2171,7 +2172,7 @@ system. The point of S7/S8 is an engine with no BN6 resources, and a guarded acc
   engine's `ChipSpec`, `FormDef` and a navi's `forms` take the systems' extension fields untyped (`[string]: any`);
   a BN6 module that wants them typed casts (`(chip :: any) :: Bn6ChipFields`, the Beast rush's lock-on mode).
   `LockonDef` stays the engine's: its search reads it.
-- **A system's chips in a folder**: BN6's folder rules (rules/folder/system.luau) list the chips a system plays
+- **A system's chips in a folder**: BN6's folder rules (rules/folder/init.luau) list the chips a system plays
   (MstrCros, the cross system's) and refuse one in a folder whose side's ruleset lacks the system (rule `system`).
   BeastOut, the beast system's, is past the chip pack already.
 - **The test content** plays BN6's dark-chips system in its stock ruleset (testdata's rules/systems.luau), so the
@@ -2184,3 +2185,92 @@ system. The point of S7/S8 is an engine with no BN6 resources, and a guarded acc
      chip requiring its system's module makes a require cycle (the systems require their chips).
   4. The runtime guard on `system.state_of` reads the calling function's module (the stack's chunk), so it holds
      for a function that runs after loading too, where the lint only sees the text.
+
+### BN5's soul button, a system's (2026-10-04, branch bn5-port-6)
+
+The last custom-screen piece in Rust that was one game's: BN5's soul button and its sequence are the souls system's
+(content/bn5/rules/souls/custom.luau), as S6 made BN6's Beast Out and Cross window their systems'.
+
+- **The souls system** gains the button `soul` (slot 11: `shown`, `state`, `pressed`), the window `soul_unison`
+  (BN5's state 9), and the `open` and `confirmed` hooks. Its state holds the round's souls given, the button's
+  offer (the soul's form, number and whether Chaos) and the window's step; its setup gains `soul_unison` and
+  `chaos_unison` (event flags 0 and 0x236), on by `setup_defaults`, beside `souls`.
+- **The framework** (all of it game-free):
+  - `custom.last_pick(side)`: the last pick if it is a chip (`slot`, `chip` as the screen checked it, `regular`,
+    `navi_chip`);
+  - `custom.trade_last_pick(side, button)`: the system's button takes the last pick's place, first in the
+    selection (`Screen::trade`: the chip's slot stays picked; B on the button puts the chip back; at OK the chip
+    leaves the folder where the button stands);
+  - `custom.fading(side)`; `custom.fade`'s `soul_flash` and `soul_flash_back`; `custom.play`'s
+    `program_advance_part` and `program_advance`;
+  - `custom.set_form(side, form, turns?, chaos?)`: the transform record's turns and Chaos flag beside the form
+    (`Screen::form_turns`, `form_chaos`). The confirm runs the systems' `confirmed` before it reads the form, so a
+    system may set the form there (BN5's soul is set at OK, as 0x08024FF6 does).
+- **Gone from Rust:** `SlotKind::Soul`, `Phase::SoulChosen`, `Screen::soul` (`SoulButton`), `update_soul`,
+  `soul_chosen`, `PlayerView::soul_button` and `souls`, `SoulUnlocks` and `PlayerSetup::souls` with
+  `souls_from_setup`, `RoundMemory::souls_used`, the confirm's soul block, `Library::has_souls`,
+  `soul_for_family` and `form_is_soul`. The soul turns' bonus is NaviStats' (`soul_turn_bonus`, +0x32: the stats
+  API's `soul_turn_bonus`, bn5-compat's from the recording's byte), where `SoulUnlocks` kept it.
+- **Matches and netplay.** A side says `soul_unison` and `chaos_unison` (match-file keys written only when off;
+  `facts::write` puts them into the souls system's setup; a ruleset without them refuses one off); the BN5 save
+  import fills them from the save's flags (and the souls from their flags whatever Soul Unison says). The offer
+  carries them and NaviStats' new byte goes on the wire: protocol version 7.
+- **The frontend.** nettai-render draws the soul button as the system's button named `soul` (the pack's look, its
+  details picture in Chaos Unison's palette by the offer, its two states' tiles), reading the offer and the
+  window's step from the souls system's state by name (`SoulOffer::of`, as `CrossWindow::of` reads the cross
+  system's); the driver titles the window by name.
+- **Checks.** The BN5 lab replays exactly as main's (1,590 of 1,592 recordings, the same two stops); BN5's frame
+  comparison keeps 7,962 of 7,964 frames pixel-exact (every custom-screen frame, Soul and Chaos Unison's included);
+  bn5_navicust 0 differ; nettai-match's `an_unowned_soul_cant_be_chosen` (now also: no Soul Unison, no button) and
+  the new `the_soul_takes_the_chips_place` (the trade, B, OK's form, turns and folder).
+
+### R6, init.luau, a game's top module, a series' chips by name (2026-10-04)
+
+The user, on the content's shape: "instead of [chipname]/chip.luau and [rulename]/rule.luau it should all be
+init.luau and import should resolve it"; "instead of manifest.toml containing imports etc, there should really be a
+top-level init.luau file that imports everything, and then manifest.toml just declares id/kind/depends"; "instead of
+stuff like aquandl[3] it should really be aquandl_chips.aquandl3 like the rest of the things". Renames: every
+definition is what it was, under the id it had (content-model-v2.md §4.0, §4.1 hold the rules).
+
+- **A folder's main module is its init.luau** (866 modules: 455 of BN6's, 396 of BN5's, 14 of exelib's, the test
+  content's one), and a require names the folder. `keys::resolve` follows Luau's own rule, as the bundled Luau's
+  require navigator does: a folder's init is the folder as a module, so what it requires is relative to the
+  folder's place and its own folder's modules are `@self/...`; any other module's requires are relative to its
+  directory. P2's folder-to-init resolution in the loaders is the general rule. A module's name stays its file's
+  (`bn6:chips/cannon/init`), so an anonymous definition's key follows its module's new name
+  (`chips/cannon/chips#2` is `chips/cannon/init#2`), and the handles of anonymous definitions, which follow the
+  keys' order, may be numbered otherwise within their registry. Nothing outside content names one: compat, the
+  locales and match files write ids.
+  - What keeps its name, and why (§4.1): a navi chip's navi object (chips/<navi>/navi.luau, 52 folders: the
+    folder is the chip's); a link navi's own chip (navis/<navi>/chip.luau, 11: the folder is the navi's); a chip
+    folder's object named for the folder (47); exelib's projectile/projectile.luau (projectile.luau is beside the
+    folder); a main module's name out of its place.
+- **A game's top module** (`<game>/init.luau`, `bn6:init`) requires what the game has, where the manifest's
+  `[definitions]` listed it; the manifest says `id`, `kind` and `depends` (which was `uses`).
+  - `PackManifest { id, kind, depends }`; `PackManifest::entry()`, `packs::INIT`, `packs::top_module`,
+    `packs::required_by_init`; `PackDefinitions` is gone.
+  - A load of a game is a require of its top module (`Scripts::pack`'s entries, `index::read`'s start). A game
+    without one is refused (`check_packs`, the content check). A support pack has none.
+  - The whole-truth check (`check_init`) is on the init's own requires, since everything that loads is reached by
+    it: a definition of what a game has in a module the init doesn't require itself is refused. The engine doesn't
+    read the returned table; the reverse check ("`chips` lists X, which defines no chip") went with the lists.
+  - Unported chips are commented requires in the chips group, which index.py keeps; nothing lists them for the
+    engine (the strings check asks the disk for a chip folder that didn't load). Neither game has one today.
+  - In-memory games (`Scripts::add_game`, `testing::add_index`) get a top module made the same way
+    (`Scripts::init_for`).
+  - The order of the requires is the load order and moves no key and no handle (nettai-content's
+    `the_order_of_a_games_requires_moves_no_key_and_no_handle` turns both games' round and compares the
+    definitions).
+  - content/.luaurc names the packs for an editor.
+- **A series' module returns its chips by name**, each by its id, and the local that holds it is `<series>_chips`
+  (86 chips named in 27 of BN6's series modules, which listed them by place; 36 uses by number named; 61 locals
+  renamed across BN6, BN5 and the test content). BN5's recipes, which take one chip at the require
+  (`local recipe_hicannon = require("./cannon").hicannon`), keep their names.
+- **Tools** (the verification workspace): tools/content/packs.py steps 10 (inits.py) and 11 (series.py), which run
+  over main's content as it was and give this tree exactly; index.py writes the top modules, the manifests and
+  .luaurc; layout.py, gen_content.py and its generators, navicust/gen.py and gen-content read and write the new
+  names.
+- **Porter impact:** after merging main, run `tools/content/packs.py <checkout>`: it names a branch's chip.luau,
+  chips.luau and the like init.luau, rewrites the requires, names a series' chips and writes the game's
+  init.luau. New modules: a folder's main module is `init.luau`; inside it `./x` is beside the folder and
+  `@self/x` inside it.

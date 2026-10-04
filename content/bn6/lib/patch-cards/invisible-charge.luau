@@ -7,7 +7,7 @@
 -- WhiCapsl (`sub_8010740` with chip 0x17E): then the navi stays idle.
 
 local invisible = require("../instant/invisible")
-local whicapsl_invisible = require("../../chips/whicapsl-invisible/chip")
+local whicapsl_invisible = require("../../chips/whicapsl-invisible")
 
 -- The ticks (the attack's parameter, 0x78).
 local TICKS = 0x78

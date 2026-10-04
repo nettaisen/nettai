@@ -7,7 +7,7 @@
 -- sprout of their panels (effects 0x29, 0x54, 0x55) and their sounds. The navi holds the bomb in the seed's palette
 -- (the attachment table's rows 0x27 to 0x2A), in animation 8.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/bombs/seed")
 

@@ -14,7 +14,7 @@
 -- - the reactive-defense abort takes requests 0x200 and 0x400 (BN6's also 0x8000);
 -- - the recovery steps the gun's animation without a null check (BN6 checks; a missing gun's write goes nowhere).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local beam = require("@exelib/gundels/beam")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")

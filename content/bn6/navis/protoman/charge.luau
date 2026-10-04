@@ -5,7 +5,7 @@
 -- gives it the charge's damage and counter byte.
 
 local weapon = require("../../lib/weapon")
-local wideswrd = require("../../chips/wideswrd/chip")
+local wideswrd = require("../../chips/wideswrd")
 
 local charge = {}
 

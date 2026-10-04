@@ -340,6 +340,7 @@ pub fn navi_stats(b: &[u8; 0x64], ids: &Ids) -> NaviStats {
         chip_shuffle: flag(0x60),
         number_open: b[0x61] == 1,
         hub_style: 0,
+        soul_turn_bonus: 0,
         weapons: NaviWeapons {
             buster: ids.weapon(b[0x04]),
             charge_shot: ids.weapon(b[0x05]),

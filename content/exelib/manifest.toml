@@ -1,6 +1,7 @@
-# exelib's manifest (docs/design/content-model-v2.md §4.0): a support pack: behavior the games that use it share,
-# defining nothing a game lists (its makers take the game's ids and looks). It uses only support packs.
-# tools/content/index.py (the verification workspace) keeps it.
+# exelib's manifest (docs/design/content-model-v2.md §4.0): a support pack: behavior the games that depend on it
+# share, defining nothing a game has (its makers take the game's ids and looks). It depends only on support packs, and
+# has no top module: its modules load when a game requires them. tools/content/index.py (the verification workspace)
+# keeps it.
 id = "exelib"
 kind = "support"
-uses = []
+depends = []

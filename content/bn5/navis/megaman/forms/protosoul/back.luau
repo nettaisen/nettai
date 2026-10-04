@@ -5,7 +5,7 @@
 -- the Reflect program's look (the word's second byte: row 1), or row 9's with the Chaos Unison charge armed (0x914);
 -- his chips wait 40 ticks after it.
 
-local guard = require("../../../../lib/guard/guard")
+local guard = require("../../../../lib/guard")
 
 local back = {}
 

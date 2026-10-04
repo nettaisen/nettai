@@ -3,7 +3,7 @@
 -- too) in BN6's look: it arcs onto Tango's navi's panel, heals it 300 HP and gives it Barr100's barrier (lib/barriers)
 -- with the barrier's visual. See docs/engine/chips.md §2.10.
 
-local barriers = require("../barriers/barriers")
+local barriers = require("../barriers")
 local common = require("@exelib/supports/heal")
 local trajectory = require("../trajectory")
 
