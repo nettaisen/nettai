@@ -73,34 +73,38 @@ pub(crate) fn navi_init_hook(b: &mut Battle, r: ObjectRef, identity: Option<Iden
     put_on_parts(b, r, identity, 0);
 }
 
-/// `sub_8010DD0` in the base form, at a player's init: its navi's init hook,
-/// or the base form's own routine (`wears`), which BN5's MegaMan's actor
-/// record names as its hook (0x0800ED90's row 11 and 0x0800F038's row 0
-/// are one routine, 0x0800EE1C: Hub Style's shade).
+/// `sub_8010DD0` in the base form, at a player's init: the base form's
+/// put-on routine (its `put_on`), which BN5's MegaMan's actor record names
+/// as his init hook (0x0800ED90's row 11 and 0x0800F038's row 0 are one
+/// routine, 0x0800EE1C: Hub Style's shade); else its navi's init hook.
 pub(crate) fn base_init_hook(b: &mut Battle, r: ObjectRef, identity: Option<IdentityHandle>) {
     let form = super::stats(b, r).form;
-    if let Some(f) = b.content.defs.form(form).wears {
+    if let Some(f) = b.content.defs.form(form).put_on {
         crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
         return;
     }
     navi_init_hook(b, r, identity);
 }
 
-/// `sub_8011268(form)`: put on the overlay `form` wears, its identity's
-/// parts (r2, the overlay's Param3, is always 0 here), or what its own
-/// routine puts on (its `wears`: BN5's base form's, 0x0800EE1C). A base
-/// form without one, which has no identity of its own, wears nothing.
+/// `sub_8011268(form)`: the form's put-on routine (BN6's by form, BN5's
+/// 0x0800F024 by soul): its `put_on`, else the default (`put_on_form_parts`).
 pub(crate) fn put_on_overlay(b: &mut Battle, r: ObjectRef, form: FormHandle) {
-    if let Some(f) = b.content.defs.form(form).wears {
+    if let Some(f) = b.content.defs.form(form).put_on {
         crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
         return;
     }
-    let identity = b.content.form(form).identity;
-    put_on_parts(b, r, identity, 0);
-    form_hook(b, r, b.content.defs.form(form).put_on);
+    put_on_form_parts(b, r, form);
 }
 
-/// A form's own hook on its navi (`put_on`, `take_off`, `reset`).
+/// The default put-on routine: the overlay `form`'s identity wears, its
+/// parts (r2, the overlay's Param3, is always 0 here). A base form, which
+/// has no identity of its own, puts on nothing.
+pub(crate) fn put_on_form_parts(b: &mut Battle, r: ObjectRef, form: FormHandle) {
+    let identity = b.content.form(form).identity;
+    put_on_parts(b, r, identity, 0);
+}
+
+/// A form's own hook on its navi (`reset`).
 fn form_hook(b: &mut Battle, r: ObjectRef, hook: Option<nettai_content_api::FnId>) {
     if let Some(f) = hook {
         crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
@@ -184,12 +188,22 @@ pub(crate) fn navi_death_hook(b: &mut Battle, r: ObjectRef, identity: Option<Ide
     }
 }
 
-/// `sub_8011384(form)`: take off the overlay `form` wore, if that form
+/// `sub_8011384(form)`: the form's take-off routine (BN5's 0x0800F088 by
+/// soul): its `take_off`, else the default (`take_off_form_parts`).
+pub(crate) fn take_off_overlay(b: &mut Battle, r: ObjectRef, form: FormHandle) {
+    if let Some(f) = b.content.defs.form(form).take_off {
+        crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
+        return;
+    }
+    take_off_form_parts(b, r, form);
+}
+
+/// The default take-off routine: the overlay `form` wore, if that form
 /// wears one: its identity's death hook (`sub_80113FC`, `sub_801140E`; a
 /// form that wears nothing leaves `related[1]` alone, `nullsub_43`). The
 /// base form, which has no identity of its own, takes off whatever is
-/// there (`sub_80111B8`).
-pub(crate) fn take_off_overlay(b: &mut Battle, r: ObjectRef, form: FormHandle) {
+/// there (`sub_80111B8`; BN5's 0x0800EFCC).
+pub(crate) fn take_off_form_parts(b: &mut Battle, r: ObjectRef, form: FormHandle) {
     let takes = match b.content.form(form).identity {
         None => true,
         identity => b.content.identity(identity).overlay_hooks.death,
@@ -198,7 +212,6 @@ pub(crate) fn take_off_overlay(b: &mut Battle, r: ObjectRef, form: FormHandle) {
         let o = b.objects.get_mut(r).related[1].take();
         take_down(b, o);
     }
-    form_hook(b, r, b.content.defs.form(form).take_off);
 }
 
 /// `sub_8014536`: the flags and helper objects the current form adds
