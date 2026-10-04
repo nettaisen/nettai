@@ -61,11 +61,12 @@ local OFFERED_LOW = {
     pnkcapsl, whicapsl, yelcapsl, pnkcapsl, pnkcapsl, pnkcapsl, blkcapsl, pnkcapsl,
 }
 
--- MegaMan is in MeddySoul (the screen's +0x10: the side's navi is MegaMan; NaviStats +0x2C).
+-- MegaMan is in MeddySoul (the screen's +0x10: the side's navi is MegaMan), by the soul the emotion routine leaves
+-- in r1 (0x08023C3C: NaviStats +0x2C), which in battle mode 1 is something else (0x080127C0): no capsules there.
 local function in_soul(side: number): boolean
     local stats = battle.navi(side)
     local soul = stats.form.soul
-    return stats.navi.id == "megaman" and soul ~= nil and soul.number == MEDDY
+    return stats.navi.id == "megaman" and soul ~= nil and soul.number == MEDDY and battle.mode() ~= 1
 end
 
 -- 0x08023D30, as the screen lays its slots out (after its deal, 0x08025114: the systems' deal hooks in turn, which

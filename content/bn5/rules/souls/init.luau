@@ -66,6 +66,7 @@ souls.system = define.system {
     buttons = custom_souls.buttons,
     windows = custom_souls.windows,
     custom = {
+        hand_size = custom_souls.hand_size,
         open = custom_souls.open,
         deal = custom_souls.deal,
         confirmed = custom_souls.confirmed,

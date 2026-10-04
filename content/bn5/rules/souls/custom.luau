@@ -7,7 +7,9 @@
 
 local arm_change = require("./arm-change")
 local capsules = require("./capsules")
+local hand = require("./hand")
 local operation_battle = require("../../lib/operation_battle")
+local shuffle = require("./shuffle")
 
 local custom_souls = {}
 
@@ -251,9 +253,12 @@ function custom_souls.turn_opened(side: number)
 end
 
 -- The system's buttons and windows, by name (what the frontend draws them by), and the state fields they keep,
--- beside the soul button's (./init declares those).
+-- beside the soul button's (./init declares those): the soul button, and what a soul adds to the screen, each in
+-- its own module.
 custom_souls.buttons = {
     soul = custom_souls.button,
+    -- SearchSoul's Shuffle (./shuffle), by the name the frontend draws the pack's re-deal button for.
+    redeal = shuffle.button,
     capsule_1 = capsules.buttons[1],
     capsule_2 = capsules.buttons[2],
     arm_change = arm_change.button,
@@ -264,5 +269,8 @@ custom_souls.windows = {
     arm_change = arm_change.window,
 }
 custom_souls.states = { capsules.state, arm_change.state }
+
+-- The screen's hand: NumberSoul's ten chips (./hand).
+custom_souls.hand_size = hand.size
 
 return custom_souls

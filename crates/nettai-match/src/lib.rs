@@ -95,14 +95,10 @@ pub fn playable(content: &Content, game: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// The systems of the game's rules (a game has one ruleset). The one
-/// place this crate reads the engine's ruleset, so its one-ruleset form
-/// (`Defs::ruleset_systems`) is a small switch.
+/// The systems of the game's rules (a game has one ruleset): the one
+/// place this crate reads the engine's ruleset.
 pub fn systems(content: &Content) -> &[SystemHandle] {
-    match content.defs.stock_ruleset() {
-        Some(r) => &content.defs.ruleset(r).systems,
-        None => &[],
-    }
+    content.defs.ruleset_systems()
 }
 
 /// What a side's tactics' send draws from, with the seed and the side.
@@ -378,7 +374,7 @@ impl Match {
             // Cross of the game (or the side's list) and Beast Out as the
             // side says.
             let unlocks = Unlocks { beast_out: s.beast_out, cross_list: s.crosses, ..Unlocks::everything(s.game) };
-            unlocks.write(content, None, &mut player).expect("the game's rules take BN6's setup as their systems declare it");
+            unlocks.write(content, &mut player).expect("the game's rules take BN6's setup as their systems declare it");
             // Its karma and souls, into the systems that take them.
             facts::write(content, &self.arena, s, &mut player).expect("a side's karma and souls fit its rules (the match's checks)");
             player
@@ -387,7 +383,6 @@ impl Match {
             content: content.hash(),
             settings,
             // (The game's rules.)
-            ruleset: None,
             navi_stats: [self.sides[0].round_stats(content), self.sides[1].round_stats(content)],
             rng: seed,
             local_side: 0,
