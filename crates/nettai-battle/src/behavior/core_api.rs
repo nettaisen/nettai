@@ -450,7 +450,7 @@ impl CoreApi for Battle {
             NaviStat::FloatShoes => Value::Bool(s.float_shoes),
             NaviStat::AirShoes => Value::Bool(s.air_shoes),
             NaviStat::Undershirt => Value::Bool(s.undershirt),
-            NaviStat::HubStyle => Value::Bool(s.hub_style),
+            NaviStat::HubStyle => i(s.hub_style as i64),
             NaviStat::Hp => i(s.hp as i64),
             NaviStat::MaxHp => i(s.max_hp as i64),
             NaviStat::MegaLevel => i(s.mega_level as i64),
@@ -576,7 +576,7 @@ impl CoreApi for Battle {
             (NaviStat::FloatShoes, FieldValue::Bool(x)) => s.float_shoes = x,
             (NaviStat::AirShoes, FieldValue::Bool(x)) => s.air_shoes = x,
             (NaviStat::Undershirt, FieldValue::Bool(x)) => s.undershirt = x,
-            (NaviStat::HubStyle, FieldValue::Bool(x)) => s.hub_style = x,
+            (NaviStat::HubStyle, FieldValue::U8(x)) => s.hub_style = x,
             // The support bug: none (the byte 0xFF); cleared, none set.
             (NaviStat::SupportBug, FieldValue::Bool(true)) => s.support = None,
             (NaviStat::SupportBug, FieldValue::Bool(false)) => {

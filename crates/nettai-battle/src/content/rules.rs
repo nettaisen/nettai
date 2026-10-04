@@ -487,9 +487,20 @@ pub struct PanelRules {
     /// and 0x1E0, `sub_800C4BC`; BN5: 600 in both, 0x0800A998).
     pub mend: u16,
     pub mend_in_battle_mode_1: u16,
+    /// The game's panel types by its own numbers, where they aren't the
+    /// engine's order (`PanelType::ALL`, BN6's): BN5's 11 (5 its metal, 8
+    /// its lava, 9 its holy, 10 its sea), which a panel trail's byte
+    /// (NaviStats+0x12) names. Empty: BN6's.
+    pub numbers: Vec<PanelType>,
 }
 
 impl PanelRules {
+    /// The panel type the game numbers `n` (a panel trail's byte): its
+    /// `numbers`, else the engine's order.
+    pub fn numbered(&self, n: u8) -> Option<PanelType> {
+        if self.numbers.is_empty() { PanelType::ALL.get(n as usize).copied() } else { self.numbers.get(n as usize).copied() }
+    }
+
     /// The flag bits a panel type contributes to a panel's flags word
     /// (with the type itself in the low nibble).
     pub fn type_flags(&self, t: PanelType) -> u32 {
