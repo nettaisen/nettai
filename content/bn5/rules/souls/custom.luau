@@ -4,7 +4,9 @@
 -- `soul_unison` (the screen's state 9, 0x080232D0), the soul given at OK (0x08024FF6) and the round's souls used
 -- (0x02034E10). Its state is the souls system's (./system).
 
+local hand = require("./hand")
 local operation_battle = require("../../lib/operation_battle")
+local shuffle = require("./shuffle")
 
 local custom_souls = {}
 
@@ -233,5 +235,15 @@ function custom_souls.confirmed(side: number)
     custom.set_form(side, s.offer, turns, s.offer_chaos)
     s.souls_used = bit32.bor(s.souls_used, used_bit(s.offer_number, s.offer_chaos))
 end
+
+-- The system's buttons: the soul button, and what a soul adds to the screen, each in its own module.
+custom_souls.buttons = {
+    soul = custom_souls.button,
+    -- SearchSoul's Shuffle (./shuffle), by the name the frontend draws the pack's re-deal button for.
+    redeal = shuffle.button,
+}
+
+-- The screen's hand: NumberSoul's ten chips (./hand).
+custom_souls.hand_size = hand.size
 
 return custom_souls
