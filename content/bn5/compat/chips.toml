@@ -340,3 +340,6 @@
 "bn5:crosswrd" = { id = 0x176, action = 0x13, subtype = 10 }
 "bn5:sprsonic" = { id = 0x177, action = 0x2b, subtype = 1 }
 "bn5:dbldream" = { id = 0x178, action = 0x13, subtype = 11 }
+"bn5:rush" = { id = 0x179, action = 0x14, subtype = 0 }
+"bn5:beat" = { id = 0x17a, action = 0x14, subtype = 0 }
+"bn5:tango" = { id = 0x17b, action = 0x14, subtype = 0 }
