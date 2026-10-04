@@ -31,25 +31,25 @@ export type ControllerState = {
 }
 
 -- 0x080CCE26: sprite 10-36 without a shadow, animation 0.
-local SPRITE = asset.sprite("bn5:boy-bomb")
+local SPRITE = asset.sprite("boy-bomb")
 local HP = 150
 -- Its collision (Param1 1): a neutral body (row 0x0E) that everything reaches (row 0x0F), hit modifier 3, no spark.
 local HIT_MOD = 3
 -- NameID 0xD4: actor record 0xD4 (0x08014C94: version 1, AI index 0x21).
 local IDENTITY = define.identity {
-    id = "bn5:boy-bomb",
+    id = "boy-bomb",
     class = "field_object",
     version = 1,
     ai_index = 0x21,
 }
 -- The effects (BN5's table, 0x080DFC94): row 6 (0C-12) as it comes, row 0 (14-00) over the blast, row 0x14 (14-0D,
 -- animation 2) when removed, row 0x0E (14-01) when broken.
-local COMES = define.effect { sprite = asset.sprite("bn5:heal"), anim = 0, palette = 0 }
-local BLAST = define.effect { sprite = asset.sprite("bn5:explosion"), anim = 0, palette = 0 }
-local REMOVED = define.effect { sprite = asset.sprite("bn5:puff"), anim = 2, palette = 0 }
-local BROKEN = define.effect { sprite = asset.sprite("bn5:impact"), anim = 0, palette = 0 }
-local PLACE_SOUND, BLAST_SOUND = asset.sound("bn5:place"), asset.sound("bn5:target-move")
-local BREAK_SOUND = asset.sound("bn5:hit-bomb-1")
+local COMES = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 }
+local BLAST = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
+local REMOVED = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local BROKEN = define.effect { sprite = asset.sprite("impact"), anim = 0, palette = 0 }
+local PLACE_SOUND, BLAST_SOUND = asset.sound("place"), asset.sound("target-move")
+local BREAK_SOUND = asset.sound("hit-bomb-1")
 local FADE_TICKS, COUNTDOWN, HIT_TICKS, WAIT = 15, 60, 20, 30
 -- Its countdown's blink (0x080CD08C): the color shader by the timer's bit 2.
 local BLINK = { [0] = 0x00, 0x12 }
@@ -250,7 +250,7 @@ local function init(me: Object)
 end
 
 bomb.kind = define.kind {
-    id = "bn5:boybomb/bomb",
+    id = "boybomb/bomb",
     pool = "attack",
     state = { doomed = "bool", hit = "bool", last_hp = "u16" },
     -- 0x080CCDF4.
@@ -300,7 +300,7 @@ local function effect(me: Object)
 end
 
 bomb.controller = define.kind {
-    id = "bn5:boybomb/controller",
+    id = "boybomb/controller",
     pool = "effect",
     state = { bonus = "u16" },
     -- 0x080E8008.

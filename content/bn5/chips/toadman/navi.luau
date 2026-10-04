@@ -17,9 +17,9 @@ export type State = {
 
 local toadman = {}
 
-local SPRITE = asset.sprite("bn5:toadman")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_PLAY = asset.sound("bn5:toad-melody")
+local SPRITE = asset.sprite("toadman")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_PLAY = asset.sound("toad-melody")
 -- By the level (0x0800DA8A: navi 12's count, 1, by 0x0800DAE8's row): DS's 3 (SP's level is 0).
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 2, 3 }
 -- His notes (0x080BC9D8): 10 ticks each, the next 6 ticks in, running while dimmed.
@@ -163,7 +163,7 @@ local function init(me: Object)
 end
 
 toadman.kind = define.kind {
-    id = "bn5:toadman/navi",
+    id = "toadman/navi",
     pool = "actor",
     state = { controller = "object", level = "u8" },
     -- 0x080BC748.

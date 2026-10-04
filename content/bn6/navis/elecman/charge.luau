@@ -76,7 +76,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [CALL] = call, [RECOVER] = recover }
 
 charge.action = define.action {
-    id = "bn6:elecman/charge/action",
+    id = "elecman/charge/action",
     state = { timer = "u16" },
     -- `sub_80F094C` (`off_80F0960`).
     update = function(me: Object, s: State)
@@ -85,7 +85,7 @@ charge.action = define.action {
 }
 
 charge.weapon = define.weapon {
-    id = "bn6:elecman/charge",
+    id = "elecman/charge",
     -- The charge table's row 0x44, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 110, 100, 90, 85, 80, 140, 130, 120 },

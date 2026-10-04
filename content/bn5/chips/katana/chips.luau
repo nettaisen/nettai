@@ -7,7 +7,7 @@ local katana = require("./katana")
 -- Katana1 (BN5 chip 0x03c): two slashes, a wide one and then a long one (BN5's Katana, chips/katana/katana: action 0x54,
 -- its own action on the swords' slash; a charged one steps first).
 local katana1 = define.chip {
-    id = "bn5:katana1",
+    id = "katana1",
     codes = { "D", "H", "S" },
     element = "null",
     family = "sword",
@@ -25,7 +25,7 @@ local katana1 = define.chip {
 -- Katana2 (BN5 chip 0x03d): two slashes, a wide one and then a long one (BN5's Katana, chips/katana/katana: action 0x54,
 -- its own action on the swords' slash; a charged one steps first).
 local katana2 = define.chip {
-    id = "bn5:katana2",
+    id = "katana2",
     codes = { "B", "R", "W" },
     element = "null",
     family = "sword",
@@ -43,7 +43,7 @@ local katana2 = define.chip {
 -- Katana3 (BN5 chip 0x03e): two slashes, a wide one and then a long one (BN5's Katana, chips/katana/katana: action 0x54,
 -- its own action on the swords' slash; a charged one steps first).
 local katana3 = define.chip {
-    id = "bn5:katana3",
+    id = "katana3",
     codes = { "A", "J", "Z" },
     element = "null",
     family = "sword",

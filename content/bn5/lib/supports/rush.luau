@@ -10,12 +10,12 @@ local common = require("@exelib/supports/rush")
 local statuses = require("../../rules/status")
 
 return common.make {
-    id = "bn5:rush",
-    sprite = asset.sprite("bn5:rush"),
-    appear_sound = asset.sound("bn5:place"),
-    bite_sound = asset.sound("bn5:bite"),
+    id = "rush",
+    sprite = asset.sprite("rush"),
+    appear_sound = asset.sound("place"),
+    bite_sound = asset.sound("bite"),
     -- Digging in and out (BN5's effect 0x14).
-    dust = define.effect { sprite = asset.sprite("bn5:puff"), anim = 2, palette = 0 },
+    dust = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 },
     is = collision.thrown_piercing_break,
     hits = collision.hits_navis,
     status = statuses.paralyze_150,

@@ -8,10 +8,10 @@ local common = require("@exelib/grab/shot")
 local shot = {}
 
 shot.kind = common.make_kind {
-    id = "bn6:grab/shot",
-    sprite = asset.sprite("bn6:grab-shot"),
-    fall_sound = asset.sound("bn6:grab-shot-2"),
-    land_sound = asset.sound("bn6:grab-shot"),
+    id = "grab/shot",
+    sprite = asset.sprite("grab-shot"),
+    fall_sound = asset.sound("grab-shot-2"),
+    land_sound = asset.sound("grab-shot"),
     target = collision.hits_navis,
     self_type = collision.thrown,
 }

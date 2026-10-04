@@ -5,7 +5,7 @@
 -- (`sub_80EC5BC`). The navi raises the buster and fires the flying shot
 -- (objects/flying-shot) from the panel in front. The shots of one attack
 -- cycle single, volley of three, volley of three; in Beast Over (or with a
--- Cross special in the per-player gauge mode) the cycle starts at a volley
+-- Cross special in the chip gate battle) the cycle starts at a volley
 -- and eight more shots follow. Holding B keeps it firing. See
 -- docs/engine/chips.md §4.6.
 
@@ -13,6 +13,7 @@ local buster = require("../../../../lib/buster")
 local plain_buster = require("../buster/weapon")
 local flying_shot = require("../../../../objects/flying-shot/flying_shot")
 local weapon = require("../../../../lib/weapon")
+local chip_gate_battle = require("../../../../lib/chip_gate_battle")
 
 export type State = {
     -- Ticks into the shot, then ticks of recovery (AIAttackVars+0x10).
@@ -34,9 +35,9 @@ export type Volleys = { repeats: number, cycle: number }
 local SHOOT, RECOVER = 0x0, 0x4
 
 -- Falzar Beast Over.
-local BEAST_OVER = "bn6:falzar-beast-over"
+local BEAST_OVER = "falzar-beast-over"
 
-local SOUND = asset.sound("bn6:aqua-needle-2")
+local SOUND = asset.sound("aqua-needle-2")
 
 -- The first shot's height (`dword_80EC70C`'s first byte), pixels.
 local HEIGHT = 0x16
@@ -48,20 +49,20 @@ local VOLLEY_BACK, VOLLEY_SIDE, VOLLEY_DROP = 0x1E_0000, 0x18_0000, 0xC_0000
 -- The shots' palette by Beast form (`byte_80EC784`): the Falzar Crosses'
 -- own in Beast Out, else 0.
 local PALETTES: { [string]: number } = {
-    ["bn6:gregar-beast"] = 0,
-    ["bn6:falzar-beast"] = 0,
-    ["bn6:heatcross-beast"] = 0,
-    ["bn6:eleccross-beast"] = 0,
-    ["bn6:slashcross-beast"] = 0,
-    ["bn6:erasecross-beast"] = 0,
-    ["bn6:chargecross-beast"] = 0,
-    ["bn6:spoutcross-beast"] = 1,
-    ["bn6:tomahawkcross-beast"] = 2,
-    ["bn6:tengucross-beast"] = 3,
-    ["bn6:groundcross-beast"] = 4,
-    ["bn6:dustcross-beast"] = 5,
-    ["bn6:gregar-beast-over"] = 0,
-    ["bn6:falzar-beast-over"] = 0,
+    ["gregar-beast"] = 0,
+    ["falzar-beast"] = 0,
+    ["heatcross-beast"] = 0,
+    ["eleccross-beast"] = 0,
+    ["slashcross-beast"] = 0,
+    ["erasecross-beast"] = 0,
+    ["chargecross-beast"] = 0,
+    ["spoutcross-beast"] = 1,
+    ["tomahawkcross-beast"] = 2,
+    ["tengucross-beast"] = 3,
+    ["groundcross-beast"] = 4,
+    ["dustcross-beast"] = 5,
+    ["gregar-beast-over"] = 0,
+    ["falzar-beast-over"] = 0,
 }
 
 -- The repeats a Beast Over's buster (or a Cross special's) fires.
@@ -80,7 +81,7 @@ function falzar_beast_buster.beast_setup(navi: Object, over: string, volleys: Vo
     navi.extra = 0
     navi.attack_lockout = 0
     navi.marker = 0
-    local cross_special = battle.per_player_gauges() and battle.side_special(navi.alliance) == "takeover"
+    local cross_special = chip_gate_battle() and battle.side_special(navi.alliance) == "takeover"
     if cross_special or battle.navi(navi.alliance).form.id == over then
         volleys.cycle = 1
         volleys.repeats = REPEATS
@@ -221,13 +222,13 @@ local function update(me: Object, s: State)
 end
 
 falzar_beast_buster.action = define.action {
-    id = "bn6:megaman/falzar-beast-buster/action",
+    id = "megaman/falzar-beast-buster/action",
     state = { timer = "u16", repeats = "u8", cycle = "u8" },
     update = update,
 }
 
 falzar_beast_buster.weapon = define.weapon {
-    id = "bn6:megaman/falzar-beast-buster",
+    id = "megaman/falzar-beast-buster",
     -- The charge table's row 3, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 40, 60, 90, 120, 150, 80, 75, 70 },

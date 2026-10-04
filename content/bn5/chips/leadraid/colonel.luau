@@ -24,17 +24,17 @@ export type State = {
 
 local colonel = {}
 
-local SPRITE = asset.sprite("bn5:colonel")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_SWING = asset.sound("bn5:spin")
+local SPRITE = asset.sprite("colonel")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_SWING = asset.sound("spin")
 -- His sword (the attachment row 3), its animation 7, animating while dimmed.
-local SWORD = attachment.look { sprite = asset.sprite("bn5:sword"), palette = 0 }
+local SWORD = attachment.look { sprite = asset.sprite("sword"), palette = 0 }
 local SWORD_ANIM = 7
 -- His X (0x080BECC4 rows 1 and 2: the diagonals and the panel, no spark, hitting navis, a slash, hit modifier 3),
 -- and its effects (the effect table's rows 0x49 and 0x4A).
 local X: { { region: Region, effect: Effect } } = {
-    { region = regions.diagonals, effect = define.effect { sprite = asset.sprite("bn5:screen-divide"), anim = 1, palette = 0 } },
-    { region = regions.single, effect = define.effect { sprite = asset.sprite("bn5:screen-divide"), anim = 2, palette = 0 } },
+    { region = regions.diagonals, effect = define.effect { sprite = asset.sprite("screen-divide"), anim = 1, palette = 0 } },
+    { region = regions.single, effect = define.effect { sprite = asset.sprite("screen-divide"), anim = 2, palette = 0 } },
 }
 -- The panels his target holds (0x080BEDE0): an enemy navi's body, by side.
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
@@ -236,7 +236,7 @@ local function init(me: Object)
 end
 
 colonel.kind = define.kind {
-    id = "bn5:leadraid/colonel",
+    id = "leadraid/colonel",
     pool = "actor",
     state = { protoman = "object", go = "bool", glow = "object" },
     -- 0x080BEAF0.

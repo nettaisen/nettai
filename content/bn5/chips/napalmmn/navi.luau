@@ -18,16 +18,16 @@ export type State = {
 
 local napalmman = {}
 
-local SPRITE = asset.sprite("bn5:napalmman")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_FIRE = asset.sound("bn5:cannon")
+local SPRITE = asset.sprite("napalmman")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_FIRE = asset.sound("cannon")
 -- What he wears (0x0800EE8A: BN5's body overlay row 4, its sprite 10-18, behind him in his animations 20 to 22),
 -- stepping even while paused.
 local CANNON = define.identity {
-    id = "bn5:napalmman-navi",
+    id = "napalmman-navi",
     class = "navi",
     parts = {
-        body = { sprite = asset.sprite("bn5:napalm-cannon"), anims = 23, behind = { { 20, 22 } } },
+        body = { sprite = asset.sprite("napalm-cannon"), anims = 23, behind = { { 20, 22 } } },
     },
 }
 -- By the level (0x0800DA8A: navi 4's count, 3, by 0x0800DAE8's row): SP's 6, DS's 9.
@@ -179,7 +179,7 @@ local function init(me: Object)
 end
 
 napalmman.kind = define.kind {
-    id = "bn5:napalmmn/navi",
+    id = "napalmmn/navi",
     pool = "actor",
     state = { controller = "object", level = "u8" },
     -- 0x080BB10C.

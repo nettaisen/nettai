@@ -7,7 +7,7 @@ local controller = require("./controller")
 
 return {
     define.chip {
-        id = "bn6:colorpt",
+        id = "colorpt",
         codes = { "*" },
         element = "null", family = "plus", class = "standard",
         rarity = 1, mb = 31, damage = 0, hit_param = 0, lockout = 0,
@@ -17,7 +17,7 @@ return {
         dimming = controller.hook { palette = 0, bonus = 10 },
     },
     define.chip {
-        id = "bn6:dblpoint",
+        id = "dblpoint",
         codes = { "*" },
         element = "null", family = "plus", class = "standard",
         rarity = 3, mb = 50, damage = 0, hit_param = 0, lockout = 0,

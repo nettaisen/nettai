@@ -24,13 +24,13 @@ export type State = {
 }
 
 -- 0x080C91C8: sprite 0c-02 with a ground shadow, animation 7.
-local SPRITE = asset.sprite("bn5:bomb")
+local SPRITE = asset.sprite("bomb")
 local ANIM = 7
 local FLIGHT_TICKS, GRAVITY = 35, -0x3000
 -- Effect 0x14: a puff of smoke.
-local PUFF = define.effect { sprite = asset.sprite("bn5:puff"), anim = 2, palette = 0 }
+local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 -- Effects 0x50 to 0x53 (0x080C93E8, by the kind's low two bits): the burst in palettes 0 to 3.
-local BURST = asset.sprite("bn5:bomb-burst")
+local BURST = asset.sprite("bomb-burst")
 local BURSTS = {
     [0] = define.effect { sprite = BURST, anim = 0, palette = 0 },
     [1] = define.effect { sprite = BURST, anim = 0, palette = 1 },
@@ -39,10 +39,10 @@ local BURSTS = {
 }
 -- Its landing's sound (0x080C932C, by the kind's low two bits).
 local SOUNDS = {
-    [0] = asset.sound("bn5:hit-bomb-1"),
-    [1] = asset.sound("bn5:panel-crack"),
-    [2] = asset.sound("bn5:panel-poison"),
-    [3] = asset.sound("bn5:panel-poison"),
+    [0] = asset.sound("hit-bomb-1"),
+    [1] = asset.sound("panel-crack"),
+    [2] = asset.sound("panel-poison"),
+    [3] = asset.sound("panel-poison"),
 }
 -- Its hit by kind (0x080C93C8: hit modifier, status, bug and argument bytes): 0x3, 0x3, 0x1000 (paralysis, status
 -- 0x10), 0xFB0003, then the same again.
@@ -156,7 +156,7 @@ local function tick(me: Object)
 end
 
 crakbom.kind = define.kind {
-    id = "bn5:crakbom/bomb",
+    id = "crakbom/bomb",
     pool = "attack",
     state = { which = "u8", ticks = "u8", target_x = "u8", target_y = "u8" },
     -- 0x080C91A4.

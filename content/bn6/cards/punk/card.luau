@@ -6,7 +6,7 @@ local shield = require("../../navis/megaman/weapons/shield/weapon")
 local variants = require("../../objects/projectile/variants")
 
 return define.patch_card {
-    id = "bn6:punk",
+    id = "punk",
     mb = 50,
     effects = {
         cards.hp(400),

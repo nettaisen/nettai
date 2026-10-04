@@ -9,7 +9,7 @@ local lockon = require("../../rules/lockon")
 local sword = require("../sword/chip")
 
 return define.chip {
-    id = "bn6:drksword",
+    id = "drksword",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "sword",
@@ -27,7 +27,7 @@ return define.chip {
     dark_substitute = sword,
     hp_bug = 2,
     action = slash.action {
-        id = "bn6:drksword/action",
+        id = "drksword/action",
         blade = parts.blades.sword,
         hit = { region = regions.wide_long, collision = parts.slashes_navis, hit_mod = 3 },
         effect = parts.effects.dark,

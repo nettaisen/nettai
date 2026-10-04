@@ -24,20 +24,20 @@ export type State = {
 
 local gyroman = {}
 
-local SPRITE = asset.sprite("bn5:gyroman")
-local SOUND_APPEAR = asset.sound("bn5:appear")
+local SPRITE = asset.sprite("gyroman")
+local SOUND_APPEAR = asset.sound("appear")
 -- (0x104 and 0x105: 0x080BAC56 and 0x080BACBE load them as 5 + 255 and 6 + 255.)
-local SOUND_TAKEOFF = asset.sound("bn5:sound-104")
-local SOUND_DROP = asset.sound("bn5:drop")
-local SOUND_RUN = asset.sound("bn5:ok-8b")
+local SOUND_TAKEOFF = asset.sound("sound-104")
+local SOUND_DROP = asset.sound("drop")
+local SOUND_RUN = asset.sound("ok-8b")
 -- What he wears (0x0800EE4E: BN5's body overlay row 0, its sprite 10-0A, behind him in his animations 0 to 5, 7,
 -- 16 and 17), stepping even while paused.
 local PROPELLER = define.identity {
-    id = "bn5:gyroman-navi",
+    id = "gyroman-navi",
     class = "navi",
     parts = {
         body = {
-            sprite = asset.sprite("bn5:gyro-propeller"),
+            sprite = asset.sprite("gyro-propeller"),
             anims = 22,
             behind = { { 0, 5 }, { 7, 7 }, { 16, 17 } },
         },
@@ -285,7 +285,7 @@ local function init(me: Object)
 end
 
 gyroman.kind = define.kind {
-    id = "bn5:gyroman/navi",
+    id = "gyroman/navi",
     pool = "actor",
     state = { controller = "object", level = "u8", run = "bool", bombs = "u8" },
     -- 0x080BAA80.

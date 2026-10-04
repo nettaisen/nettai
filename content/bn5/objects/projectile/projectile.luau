@@ -12,8 +12,8 @@ local projectile = {}
 projectile.variant = common.variant
 
 projectile.kind = common.make_kind {
-    id = "bn5:projectile",
-    burst_sound = asset.sound("bn5:burst"),
+    id = "projectile",
+    burst_sound = asset.sound("burst"),
     burst_effect = effects.explosion,
     burst_target = collision.hits_navis,
     burst_self_type = collision.attack,

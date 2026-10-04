@@ -14,7 +14,7 @@ local PALETTE = 0
 -- dimming: it can't cut in on the other side's dimming, and the Beast rush
 -- chains it.)
 return define.chip {
-    id = "bn6:puncharm",
+    id = "puncharm",
     codes = { "A", "B", "C", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 4, mb = 10, damage = 0, hit_param = 20, lockout = 20,

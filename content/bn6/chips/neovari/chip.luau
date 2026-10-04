@@ -11,7 +11,7 @@ local sword = require("../sword/chip")
 local vari = require("../../lib/swords/vari")
 
 return define.chip {
-    id = "bn6:neovari",
+    id = "neovari",
     codes = { "N" },
     element = "null",
     family = "sword",
@@ -26,7 +26,7 @@ return define.chip {
     slot_in_limit = 1,
     traits = { "no_chain" },
     action = vari.action {
-        id = "bn6:neovari/action",
+        id = "neovari/action",
         -- The sequences (`off_80EF824`), facing right (flip 0) and mirrored
         -- (the up-down one is the same both ways), as joypad words with A
         -- held.

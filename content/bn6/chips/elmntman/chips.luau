@@ -5,7 +5,7 @@
 local navi = require("./navi")
 
 local elmntman = define.chip {
-    id = "bn6:elmntman",
+    id = "elmntman",
     codes = { "E", "*" },
     element = "null",
     family = "null",
@@ -22,7 +22,7 @@ local elmntman = define.chip {
 }
 
 local elmntmn_ex = define.chip {
-    id = "bn6:elmntmn-ex",
+    id = "elmntmn-ex",
     codes = { "E" },
     element = "null",
     family = "null",
@@ -39,7 +39,7 @@ local elmntmn_ex = define.chip {
 }
 
 local elmntmn_sp = define.chip {
-    id = "bn6:elmntmn-sp",
+    id = "elmntmn-sp",
     codes = { "E" },
     element = "null",
     family = "null",

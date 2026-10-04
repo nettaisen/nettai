@@ -51,8 +51,8 @@ local ROWS: { [number]: Variant } = {
 -- The chips' waves.
 wave.variants = { wavearm1 = ROWS[0xC], wavearm2 = ROWS[0xD], wavearm3 = ROWS[0xE], pwrwave = ROWS[0xF] }
 
-local SPRITE = asset.sprite("bn6:shock-wave")
-local SOUND = asset.sound("bn6:shock-wave")
+local SPRITE = asset.sprite("shock-wave")
+local SOUND = asset.sound("shock-wave")
 local SOLID = 0x10
 -- The rows ahead it looks for enemies in (`byte_80C6DB8`), by facing
 -- (right, left) and panel column: the panels from the next one to the
@@ -254,7 +254,7 @@ local function init(me: Object)
 end
 
 wave.kind = define.kind {
-    id = "bn6:wavearm/wave",
+    id = "wavearm/wave",
     pool = "attack",
     state = { variant = "record:shock-wave-variant", turned = "u8" },
     -- `sub_80C6B40`.

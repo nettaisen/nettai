@@ -8,7 +8,7 @@ local sidebub = require("./sidebub")
 -- drifting forward and bouncing between the top and bottom rows; a popped bubble bursts into an aqua shot: BN5's
 -- own (chips/sidebub/sidebub).
 local sidebub1 = define.chip {
-    id = "bn5:sidebub1",
+    id = "sidebub1",
     codes = { "D", "Q", "S" },
     element = "aqua",
     family = "aqua",
@@ -27,7 +27,7 @@ local sidebub1 = define.chip {
 -- drifting forward and bouncing between the top and bottom rows; a popped bubble bursts into an aqua shot: BN5's
 -- own (chips/sidebub/sidebub).
 local sidebub2 = define.chip {
-    id = "bn5:sidebub2",
+    id = "sidebub2",
     codes = { "H", "L", "W" },
     element = "aqua",
     family = "aqua",
@@ -46,7 +46,7 @@ local sidebub2 = define.chip {
 -- drifting forward and bouncing between the top and bottom rows; a popped bubble bursts into an aqua shot: BN5's
 -- own (chips/sidebub/sidebub).
 local sidebub3 = define.chip {
-    id = "bn5:sidebub3",
+    id = "sidebub3",
     codes = { "E", "N", "P" },
     element = "aqua",
     family = "aqua",

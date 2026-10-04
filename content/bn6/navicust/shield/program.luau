@@ -5,7 +5,7 @@ local programs = require("../../rules/navicust/programs")
 local shield = require("../../navis/megaman/weapons/shield/weapon")
 
 return define.navicust_program {
-    id = "bn6:shield",
+    id = "shield",
     colors = { "blue" },
     shape = {
         ".......",

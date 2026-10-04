@@ -5,7 +5,7 @@
 local gauge_speed = require("../../lib/gauge_speed")
 
 return define.chip {
-    id = "bn5:fstgauge",
+    id = "fstgauge",
     codes = { "H", "Q", "W", "*" },
     element = "null",
     family = "null",

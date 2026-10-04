@@ -8,9 +8,9 @@ local lance = require("@exelib/lance/lance")
 local sparks = require("../../lib/sparks")
 
 return {
-    kind = lance.make_kind("bn5:lance", {
-        sprite = asset.sprite("bn5:lance"),
-        sound = asset.sound("bn5:sword-swing"),
+    kind = lance.make_kind("lance", {
+        sprite = asset.sprite("lance"),
+        sound = asset.sound("sword-swing"),
         hits = {
             [0] = { is = collision.attack, hits = collision.attack, spark = sparks.wood, hit_mod = 0x10 },
             [1] = {

@@ -21,7 +21,7 @@ export type State = {
 
 export type Chain = { life: number, delay: number, dimmed: boolean }
 
-local SPRITE = asset.sprite("bn5:toad-note")
+local SPRITE = asset.sprite("toad-note")
 local ELEC = 3
 
 -- Action 0 (0x080D6764): its timers.
@@ -105,7 +105,7 @@ local function init(me: Object)
 end
 
 note.kind = define.kind {
-    id = "bn5:toadman/note",
+    id = "toadman/note",
     pool = "attack",
     state = { target = "object", next_y = "u8", life = "u8", delay = "u8", dimmed = "bool" },
     -- 0x080D66A0.

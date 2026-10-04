@@ -13,10 +13,10 @@ local wave = {}
 wave.variant = common.variant
 
 wave.kind = common.make_kind {
-    id = "bn6:widesht/wave",
-    sprite = asset.sprite("bn6:wide-wave"),
-    sound = asset.sound("bn6:wide-shot"),
-    trail_sprite = asset.sprite("bn6:rock-cubes"),
+    id = "widesht/wave",
+    sprite = asset.sprite("wide-wave"),
+    sound = asset.sound("wide-shot"),
+    trail_sprite = asset.sprite("rock-cubes"),
     target = collision.hits_navis,
 }
 

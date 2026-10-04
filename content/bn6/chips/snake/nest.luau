@@ -72,7 +72,7 @@ local function tick(me: Object)
 end
 
 nest.kind = define.kind {
-    id = "bn6:snake/nest",
+    id = "snake/nest",
     pool = "attack",
     state = { scan_x = "u8", scan_y = "u8", snakes = "u8", holder = "object" },
     -- `sub_80D2BDC`.

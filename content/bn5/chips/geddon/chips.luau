@@ -7,7 +7,7 @@ local controller = require("./controller")
 -- Geddon1 (BN5 chip 0x07b): a quake cracks every solid panel of the field, one every 8 ticks in a random order:
 -- BN6's Geddon (its quake's first row) without holding the user's panel (chips/geddon/controller).
 local geddon1 = define.chip {
-    id = "bn5:geddon1",
+    id = "geddon1",
     codes = { "M", "P", "Z", "*" },
     element = "null",
     family = "null",
@@ -25,7 +25,7 @@ local geddon1 = define.chip {
 -- Geddon2 (BN5 chip 0x07c): a quake breaks every solid panel of the field (cracking those something stands on), one
 -- every 8 ticks in a random order: BN6's Geddon without holding the user's panel (chips/geddon/controller).
 local geddon2 = define.chip {
-    id = "bn5:geddon2",
+    id = "geddon2",
     codes = { "H", "T", "W" },
     element = "null",
     family = "null",
@@ -44,7 +44,7 @@ local geddon2 = define.chip {
 -- order: BN6's Geddon (its quake's third row, which no BN6 chip uses) without holding the user's panel
 -- (chips/geddon/controller).
 local geddon3 = define.chip {
-    id = "bn5:geddon3",
+    id = "geddon3",
     codes = { "A", "O", "V" },
     element = "null",
     family = "null",

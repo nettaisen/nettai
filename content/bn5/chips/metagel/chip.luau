@@ -8,7 +8,7 @@
 local controller = require("./controller")
 
 return define.chip {
-    id = "bn5:metagel",
+    id = "metagel",
     codes = { "F", "N", "T" },
     element = "aqua",
     family = "aqua",

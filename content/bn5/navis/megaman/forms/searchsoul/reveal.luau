@@ -12,7 +12,7 @@ export type State = {
 }
 
 -- The scope's mark (effect 0x68: sprite 10-23), 20 pixels up.
-local MARK = define.effect { sprite = asset.sprite("bn5:search-scope"), anim = 0, palette = 0 }
+local MARK = define.effect { sprite = asset.sprite("search-scope"), anim = 0, palette = 0 }
 local MARK_Z = 20 * 0x1_0000
 
 -- 0x080EAC18: the other side's hidden navis marked.
@@ -49,7 +49,7 @@ local function show(me: Object)
 end
 
 reveal.kind = define.kind {
-    id = "bn5:searchsoul/reveal",
+    id = "searchsoul/reveal",
     pool = "effect",
     state = { marked = "object[4]" },
     update = function(me: Object)

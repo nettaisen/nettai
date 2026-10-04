@@ -1,8 +1,10 @@
 --!strict
--- A die's marker over its panel (BN5's effect object #0x83, 0x080E9F38; BN5's own), in the battle flag 0x40 mode
+-- A die's marker over its panel (BN5's effect object #0x83, 0x080E9F38; BN5's own), in the operation battle
 -- only: an entry of the 32 the battle's panel numbers draw from (0x0203C51C's bits, their records at 0x02035760),
 -- showing its style (1: where the die lands, 15: its countdown) for `ticks` ticks and one more; it goes at once when
 -- all 32 are taken. The engine draws none of them: the marker only holds its place in the effects' list.
+
+local operation_battle = require("../operation_battle")
 
 local marker = {}
 
@@ -26,7 +28,7 @@ local function tick(me: Object)
 end
 
 marker.kind = define.kind {
-    id = "bn5:dice-marker",
+    id = "dice-marker",
     pool = "effect",
     state = { style = "u8" },
     -- 0x080E9F38.
@@ -43,10 +45,10 @@ marker.kind = define.kind {
 }
 
 -- 0x080E9FA4 (`flip` false: of `owner`'s side alone) and 0x080E9FD2 (its facing too): a marker on (x, y) of
--- `style` for `ticks`, in the battle flag 0x40 mode. (Its position is the spawner's registers: the row, the ticks
+-- `style` for `ticks`, in the operation battle. (Its position is the spawner's registers: the row, the ticks
 -- and r3, which nothing sets.)
 function marker.spawn(owner: Object, x: number, y: number, ticks: number, style: number, flip: boolean): Object?
-    if not battle.per_player_gauges() then
+    if not operation_battle() then
         return nil
     end
     local o = battle.spawn(marker.kind, Vec3.new(y, ticks, 0))

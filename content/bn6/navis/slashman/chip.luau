@@ -31,7 +31,7 @@ local STATE = { timer = "u16", hit = "object", speed = "i32", leg = "u32" }
 local CURL, LAUNCH, ROLL, LAND = 0x0, 0x4, 0x8, 0xC
 local ANIM_CURL, ANIM_ROLL, ANIM_LAND = 0x12, 0x13, 7
 local SPEED = 0x4_0000
-local SOUND = asset.sound("bn6:rslash")
+local SOUND = asset.sound("rslash")
 
 local CURL_TICKS, LAUNCH_TICKS, LAND_TICKS = 0x14, 0x0A, 0x14
 
@@ -215,7 +215,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [CURL] = curl, [LAUNCH] = launch, [ROLL] = roll, [LAND] = land }
 
 return define.chip {
-    id = "bn6:rslash",
+    id = "rslash",
     codes = { "S" },
     element = "null",
     family = "sword",
@@ -230,7 +230,7 @@ return define.chip {
     slot_in_limit = 1,
     -- `sub_80F0CB0` (`off_80F0CC4`).
     action = define.action {
-        id = "bn6:rslash/action",
+        id = "rslash/action",
         state = STATE,
         update = function(me: Object, s: State)
             link.run(me, s, PHASES, "RSlash (sub_80F0CB0)")

@@ -10,8 +10,9 @@
 -- and goes when its time is up or the record is no longer its. A probe
 -- that hits nothing, or leaves the field, or finds time up, just goes.
 --
--- BN5's also hits its panel for 50 each tick it marks, in the battle flag
--- 0x40 mode (0x080C9B90), and reloads its animation at its init.
+-- BN5's also hits its panel for 50 each tick it marks, in the own-gauges
+-- mode (battle flag 0x40, BN5's operation battle: 0x080C9B90), and reloads
+-- its animation at its init.
 --
 -- Four states: init, flying (update), marking (destroy) and gone
 -- (finish).
@@ -28,8 +29,8 @@ local MARK_POINT = 0x1B
 local PLAYERS = 0x60_0000
 -- The probe's element: the sixth slot, which no hit's element names.
 local SIXTH_ELEMENT = 5
--- BN5's hit in the battle flag 0x40 mode: 50, hit modifier 3.
-local PER_PLAYER_DAMAGE, PER_PLAYER_HIT_MOD = 50, 3
+-- BN5's hit in the own-gauges mode: 50, hit modifier 3.
+local OWN_GAUGES_DAMAGE, OWN_GAUGES_HIT_MOD = 50, 3
 
 -- The damage-carry record the probe's side sets: the other side's (the
 -- one that takes the damage).
@@ -104,7 +105,7 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
 
     -- `sub_80C90DC` (BN5's 0x080C9B50): over the marked navi while the
     -- record is the probe's, for its time (BN5's hitting its panel each
-    -- tick in the battle flag 0x40 mode); then the record forgets it
+    -- tick in the own-gauges mode); then the record forgets it
     -- (`sub_802CDE6`) and it goes.
     local function marking(me: Object)
         local target = me.related1 :: Object
@@ -120,8 +121,8 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
             ax *= target.facing
             local dx = int.mul32(ax * 0x10000, -me.facing)
             me.pos = target.pos + Vec3.new(dx, 0, ay * 0x10000)
-            local hit = look.per_player_hit
-            if hit and battle.per_player_gauges() then
+            local hit = look.own_gauges_hit
+            if hit and battle.own_gauges() then
                 battle.hitbox(me, {
                     panel_x = me.panel_x,
                     panel_y = me.panel_y,
@@ -131,9 +132,9 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
                     hit_effect = hit.spark,
                     target = hit.hits,
                     self_type = hit.is,
-                    damage = PER_PLAYER_DAMAGE,
+                    damage = OWN_GAUGES_DAMAGE,
                     stamina = 0,
-                    hit_mod = PER_PLAYER_HIT_MOD,
+                    hit_mod = OWN_GAUGES_HIT_MOD,
                 })
             end
             local t = me.timer - 1

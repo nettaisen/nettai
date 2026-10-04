@@ -4,7 +4,7 @@
 local cards = require("../../rules/patch-cards/cards")
 
 return define.patch_card {
-    id = "bn5:anettas-custom",
+    id = "anettas-custom",
     mb = 47,
     effects = {
         cards.hp_percent(30),

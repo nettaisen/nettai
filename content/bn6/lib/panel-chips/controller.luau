@@ -10,7 +10,7 @@ local panel_changer = require("../../objects/panel-changer/panel_changer")
 
 local panel_chips = {}
 
-local made = common.make { id = "bn6:panel-chips/controller", changer = panel_changer.kind }
+local made = common.make { id = "panel-chips/controller", changer = panel_changer.kind }
 panel_chips.kind = made.kind
 panel_chips.hook = made.hook
 

@@ -15,7 +15,7 @@ local spshake = require("../spshake/spshake")
 -- SpShake waves along the rows from the back column, 15 ticks apart (chips/shakpar/shakpar, instant effect 22; the record's
 -- parameters: speed row 2, hits that paralyze, palette 0).
 local shakpar1 = define.chip {
-    id = "bn5:shakpar1",
+    id = "shakpar1",
     codes = { "A", "B", "C", "*" },
     element = "elec",
     family = "program_advance",
@@ -41,7 +41,7 @@ local shakpar1 = define.chip {
 -- SpShake waves along the rows from the back column, 15 ticks apart (chips/shakpar/shakpar, instant effect 22; the record's
 -- parameters: speed row 2, hits that paralyze, palette 6).
 local shakpar2 = define.chip {
-    id = "bn5:shakpar2",
+    id = "shakpar2",
     codes = { "A", "B", "C", "*" },
     element = "elec",
     family = "program_advance",
@@ -67,7 +67,7 @@ local shakpar2 = define.chip {
 -- SpShake waves along the rows from the back column, 15 ticks apart (chips/shakpar/shakpar, instant effect 22; the record's
 -- parameters: speed row 2, hits that paralyze, palette 12).
 local shakpar3 = define.chip {
-    id = "bn5:shakpar3",
+    id = "shakpar3",
     codes = { "A", "B", "C", "*" },
     element = "elec",
     family = "program_advance",

@@ -37,9 +37,18 @@ pub mod battle_flags {
     /// TomahawkSoul's change sets it (0x08012138), every soul change's end
     /// clears it (0x080121B6); nothing in BN6 sets it.
     pub const SHAKE_THROUGH_PAUSE: u16 = 0x20;
-    /// Per-player custom gauges and chip counters (`sub_802E112`). Never set
-    /// in netbattles (battle mode 1) or random battles.
-    pub const PER_PLAYER_GAUGES: u16 = 0x40;
+    /// Each side its own custom gauge: battle flag 0x40, in each game a
+    /// mode of its own.
+    /// - BN5's operation battle (set at 0x0802D590 when the battle mode
+    ///   isn't 1 and the navi's stats' +0x2A is set): both navis
+    ///   computer-driven, the Tactics screen.
+    /// - BN6's chip gate battle (set once a battle by `sub_802E112` when a
+    ///   chip gate is on the link port, 0x0200AD04, or in a link battle,
+    ///   battle mode 0, whose consoles both have one, EVENT_1722): the
+    ///   gate's slotted chips paid from the side's gauge, SELECT's Program
+    ///   Advance window. `sub_800A8F8` tests it. A netbattle without gates
+    ///   never has it.
+    pub const OWN_GAUGES: u16 = 0x40;
 }
 
 /// Top-level battle states (the game's jump-table offsets).
@@ -150,7 +159,7 @@ pub struct FightMachine {
 /// The ticks between a console's low-HP sounds.
 const LOW_HP_SOUND_TICKS: u8 = 0x2D;
 
-/// What opening the custom screen costs a side in the battle flag 0x40
+/// What opening the custom screen costs a side in the own-gauges mode
 /// mode (`sub_800A29A`).
 const GAUGE_CUSTOM_COST: u16 = 0x2900;
 
@@ -451,8 +460,8 @@ pub struct Battle {
     /// The link: what each player sends reaches the fight `delay` ticks
     /// later.
     pub link: Link,
-    /// Per-side extra battle state (`sub_802E070`), used by the battle-flag
-    /// 0x40 mode.
+    /// Per-side extra battle state (`sub_802E070`), used by the own-gauges
+    /// mode (battle flag 0x40, `battle_flags::OWN_GAUGES`).
     pub sides: [SideState; 2],
     /// Per-side statistics counters (`byte_203EAE0`, `sub_800AB46`).
     pub side_stats: [[u8; 16]; 2],
@@ -532,7 +541,7 @@ enum SetStanding {
 
 /// A side's extra battle state (0x1D0 bytes at `sub_802E070(side)`); only
 /// the fields the engine reads or writes are modeled (the rest are listed
-/// in docs/engine/field-names.md). The per-player gauges' mode (battle
+/// in docs/engine/field-names.md). The own-gauges mode (battle
 /// flag 0x40) uses it; outside it, only SloGauge and FstGauge write it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SideState {
@@ -843,7 +852,7 @@ impl Battle {
         self.round.time_up != 0 && self.round.alive[0] != 0 && self.round.alive[1] != 0
     }
 
-    /// The key of `r`'s kind (`"bn6:bomb"`, `"engine/effect"`): how tools
+    /// The key of `r`'s kind (`"bomb"`, `"engine/effect"`): how tools
     /// name what an object is.
     pub fn kind_key(&self, r: ObjectRef) -> &str {
         &self.content.defs.kind(self.objects.get(r).kind).key
@@ -1690,8 +1699,8 @@ impl Battle {
             self.sound(SoundRole::Pause);
             return;
         }
-        let open = if self.round.flags & battle_flags::PER_PLAYER_GAUGES != 0 {
-            // sub_800A244: in the battle flag 0x40 mode a side opens it with
+        let open = if self.round.flags & battle_flags::OWN_GAUGES != 0 {
+            // sub_800A244: in the own-gauges mode a side opens it with
             // L or R and a gauge of 0x2900, which it pays.
             let sides = self.gauge_custom_requests();
             for side in 0..2 {
@@ -1729,11 +1738,11 @@ impl Battle {
     }
 
     /// Whether a custom-screen request goes through the reversions and the
-    /// sequencer (battle mode 5, or not the battle flag 0x40 mode; BN5's
+    /// sequencer (battle mode 5, or not the own-gauges mode; BN5's
     /// 0x08007774 tests the flag alone).
     fn custom_request_transforms(&self) -> bool {
         let mode_5 = self.round.mode_copy == 5 && self.game_rules().flow.sequencer_before_custom;
-        mode_5 || self.round.flags & battle_flags::PER_PLAYER_GAUGES == 0
+        mode_5 || self.round.flags & battle_flags::OWN_GAUGES == 0
     }
 
     /// Fighting state 0x20 (`sub_8008452`): a custom screen was asked for:

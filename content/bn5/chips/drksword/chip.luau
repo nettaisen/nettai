@@ -10,7 +10,7 @@ local regions = require("@exelib/regions")
 local swords = require("../../lib/swords")
 
 return define.chip {
-    id = "bn5:drksword",
+    id = "drksword",
     codes = { "Z" },
     element = "null",
     family = "sword",
@@ -23,7 +23,7 @@ return define.chip {
     flags = { "has_damage", "dark", "variable_damage" },
     slot_in_limit = 1,
     action = swords.slash {
-        id = "bn5:drksword/action",
+        id = "drksword/action",
         blade = swords.blade,
         blade_anim = swords.blade_anim,
         hit = {

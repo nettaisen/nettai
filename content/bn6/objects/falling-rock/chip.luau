@@ -12,7 +12,7 @@ export type State = {
     priority: number,
 }
 
-local SPRITE = asset.sprite("bn6:falling-rock")
+local SPRITE = asset.sprite("falling-rock")
 
 -- The fall's acceleration (16.16, down).
 local GRAVITY = 0x3000
@@ -74,7 +74,7 @@ local function tick(me: Object)
 end
 
 chip.kind = define.kind {
-    id = "bn6:falling-rock/chip",
+    id = "falling-rock/chip",
     pool = "effect",
     state = { priority = "u8" },
     update = function(me: Object)

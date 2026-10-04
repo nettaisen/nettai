@@ -8,7 +8,7 @@ local variants = require("../../objects/projectile/variants")
 local lockon = require("../../rules/lockon")
 
 local cannon = define.chip {
-    id = "bn6:cannon",
+    id = "cannon",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -22,11 +22,11 @@ local cannon = define.chip {
     beast = { lockon = lockon.cannon },
     library = { number = 1, index = 1, sort = 52 },
     slot_in_limit = 3,
-    action = shooter.action { id = "bn6:cannon/action", arm = shooter.arms.cannon, shot = variants.cannon },
+    action = shooter.action { id = "cannon/action", arm = shooter.arms.cannon, shot = variants.cannon },
 }
 
 local hicannon = define.chip {
-    id = "bn6:hicannon",
+    id = "hicannon",
     codes = { "L", "M", "N", "*" },
     element = "null",
     family = "null",
@@ -40,11 +40,11 @@ local hicannon = define.chip {
     beast = { lockon = lockon.cannon },
     library = { number = 2, index = 2, sort = 240 },
     slot_in_limit = 3,
-    action = shooter.action { id = "bn6:hicannon/action", arm = shooter.arms.hicannon, shot = variants.cannon },
+    action = shooter.action { id = "hicannon/action", arm = shooter.arms.hicannon, shot = variants.cannon },
 }
 
 local m_cannon = define.chip {
-    id = "bn6:m-cannon",
+    id = "m-cannon",
     codes = { "R", "S", "T", "*" },
     element = "null",
     family = "null",
@@ -58,7 +58,7 @@ local m_cannon = define.chip {
     beast = { lockon = lockon.cannon },
     library = { number = 3, index = 3, sort = 311 },
     slot_in_limit = 3,
-    action = shooter.action { id = "bn6:m-cannon/action", arm = shooter.arms.m_cannon, shot = variants.cannon },
+    action = shooter.action { id = "m-cannon/action", arm = shooter.arms.m_cannon, shot = variants.cannon },
 }
 
 return { cannon = cannon, hicannon = hicannon, m_cannon = m_cannon }

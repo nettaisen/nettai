@@ -12,7 +12,7 @@ export type State = {
     done: boolean,
 }
 
-local SPRITE = asset.sprite("bn5:django-sun")
+local SPRITE = asset.sprite("django-sun")
 
 -- 0x080E9840: its phase, then over him (he moves it).
 local function tick(me: Object)
@@ -54,7 +54,7 @@ local function init(me: Object)
 end
 
 sun.kind = define.kind {
-    id = "bn5:django/sun",
+    id = "django/sun",
     pool = "effect",
     state = { blessed = "bool", done = "bool" },
     -- 0x080E97F8.

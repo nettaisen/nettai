@@ -27,7 +27,7 @@ export type State = {
 
 local gather = {}
 
-local SPRITE = asset.sprite("bn5:chaos-beast")
+local SPRITE = asset.sprite("chaos-beast")
 local ANIM = 21
 -- How long it circles in, and the ticks its turning changes at (ticks left).
 local TICKS = 0x1E
@@ -114,7 +114,7 @@ local function init(me: Object)
 end
 
 gather.kind = define.kind {
-    id = "bn5:chaoslrd/gather",
+    id = "chaoslrd/gather",
     pool = "effect",
     state = {
         cx = "i32",

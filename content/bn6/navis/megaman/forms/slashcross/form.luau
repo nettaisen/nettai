@@ -11,7 +11,7 @@ local slash_a_charge = require("../../weapons/slash-a-charge/weapon")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "bn6:slashcross",
+    id = "slashcross",
     kind = "cross",
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
@@ -20,7 +20,7 @@ return define.form {
     beast = slashcross_beast,
     -- A weakness hit breaks the Cross: back to the base form.
     breaks_to = base,
-    sprite = asset.sprite("bn6:megaman"),
+    sprite = asset.sprite("megaman"),
     element = "null",
     weakness = { "break" },
     buster_bonus = 0,
@@ -28,7 +28,7 @@ return define.form {
     palette = 9,
     -- Its faces in the emotion window, and once Beast Out is spent
     -- (`byte_801E700`): the Falzar ROM has no SlashCross face, and shows TenguCross's.
-    mugshot = { normal = asset.mugshot("bn6:slashcross"), tired = asset.mugshot("bn6:slashcross-tired") },
+    mugshot = { normal = asset.mugshot("slashcross"), tired = asset.mugshot("slashcross-tired") },
     -- What R shows in the Cross window.
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "sword", damage = 50 },
@@ -49,7 +49,7 @@ return define.form {
         aura_anim = 27,
         ice = "medium",
         -- What it wears over MegaMan's body.
-        parts = cross_overlay(asset.sprite("bn6:slashcross-overlay")),
+        parts = cross_overlay(asset.sprite("slashcross-overlay")),
         attach_points = {
             { 2, 0 },
             { 2, 0 },
