@@ -11,11 +11,11 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
+local absorbed_obstacle = require("../../objects/absorbed-obstacle")
 local collision = require("../../rules/collision")
 local common = require("@exelib/anubis/statue")
 local effects = require("../../lib/effects")
-local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
+local rising_bubble = require("../../objects/rising-bubble")
 
 local statue = {}
 

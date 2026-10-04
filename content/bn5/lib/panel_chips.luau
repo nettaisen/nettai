@@ -3,7 +3,7 @@
 -- kind with BN5's panel changer (objects/panel-changer).
 
 local common = require("@exelib/panel-chips/controller")
-local panel_changer = require("../objects/panel-changer/panel_changer")
+local panel_changer = require("../objects/panel-changer")
 
 local panel_chips = {}
 

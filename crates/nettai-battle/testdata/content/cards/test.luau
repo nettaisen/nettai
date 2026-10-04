@@ -3,7 +3,7 @@
 -- (rules/patch-cards; BN6's cards are content/bn6/cards).
 
 local cards = require("../rules/patch-cards/cards")
-local barriers = require("../lib/barriers/barriers")
+local barriers = require("../lib/barriers")
 local variants = require("../objects/projectile/variants")
 
 local test = {}

@@ -5,7 +5,7 @@
 -- attachment and charged shot (row 6), its form overlay reloading its animation at its next step as it restarts
 -- (0x080C374E). Nine charged shots, 5 damage for each point of Attack plus one.
 
-local attachment = require("../../../objects/attachment/attachment")
+local attachment = require("../../../objects/attachment")
 local buster = require("../../../lib/buster")
 local common = require("@exelib/megaman/rapid_buster")
 local projectile = require("../../../lib/projectile")

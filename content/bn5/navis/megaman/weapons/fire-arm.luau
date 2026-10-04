@@ -6,7 +6,7 @@
 -- standing 30 ticks (the attack's parameters 0x1E05), Fire, 50 damage, in the flames' palette 0, none spreading or
 -- paralyzing. 30 ticks in, 6 more, and it is back to idle.
 
-local attachment = require("../../../objects/attachment/attachment")
+local attachment = require("../../../objects/attachment")
 local elemrage = require("../../../chips/elemrage/elemrage")
 
 -- The attack: 50 damage, hit parameter 20, Fire; its parameters: 5 flames (Param1), 30 ticks (Param2).

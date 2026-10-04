@@ -6,7 +6,7 @@
 -- 13th tick divides the screen on the target: a slash over it and the two panels diagonally behind it (no spark, a
 -- slash against navis) and its effect there. 21 ticks, then 5 of recovery, the sword put away.
 
-local attachment = require("../../../../objects/attachment/attachment")
+local attachment = require("../../../../objects/attachment")
 local collision = require("../../../../rules/collision")
 local regions = require("@exelib/regions")
 local swords = require("../../../../lib/swords")

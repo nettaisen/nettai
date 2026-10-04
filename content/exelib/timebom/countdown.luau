@@ -21,7 +21,7 @@
 -- collision, how it looks absorbed, whether any removal just puffs (no
 -- absorbing, no blinking out), its effects and its panel bursts' kind.
 
-local panel_bursts = require("../panel-bursts/panel_bursts")
+local panel_bursts = require("../panel-bursts")
 local regions = require("../regions")
 
 export type State = { variant: CountdownVariant }

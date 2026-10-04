@@ -11,7 +11,7 @@
 -- shake. Then he goes, and the controller moves on. See
 -- docs/engine/chips.md §3.6.22.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 

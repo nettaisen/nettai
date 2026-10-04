@@ -10,7 +10,7 @@
 -- twin 0x92 (the same routine, its own charge row) is the patch card Bass
 -- BX's charged shot (cards/bassbx/charge), which composes `rapid_buster.setup`.
 
-local attachment = require("../objects/attachment/attachment")
+local attachment = require("../objects/attachment")
 local buster = require("./buster")
 local common = require("@exelib/megaman/rapid_buster")
 local projectile = require("./projectile")

@@ -4,7 +4,7 @@
 -- 0x080CC9EC: its collision row 0, BN6's), its edge blast BN5's effect 0x47 hitting as an attack (BN6's thrown,
 -- 0x080CCB40) and unshifted, its sounds and effects.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local action = require("@exelib/tankcan/action")
 local collision = require("../../rules/collision")
 local shell = require("@exelib/tankcan/shell")

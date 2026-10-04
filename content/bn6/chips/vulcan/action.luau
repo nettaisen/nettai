@@ -3,8 +3,8 @@
 -- docs/engine/shot-chips.md §4): the shared action
 -- (@exelib/vulcan/action) with BN6's sound, vulcan, attachment and bullet.
 
-local attachment = require("../../objects/attachment/attachment")
-local bullet = require("../../objects/bullet/bullet")
+local attachment = require("../../objects/attachment")
+local bullet = require("../../objects/bullet")
 local common = require("@exelib/vulcan/action")
 
 local vulcan = {}

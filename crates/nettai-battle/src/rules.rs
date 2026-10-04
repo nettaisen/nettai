@@ -42,7 +42,6 @@ impl SideRules {
         }
         let fits = player.rules.len() == systems.len() && player.rules.iter().zip(&systems).all(|(b, s)| b.id() == s.setup);
         assert!(fits, "a player's setup gives system setups that aren't ruleset {}'s", def.key);
-        player.souls_from_setup(content);
         SideRules { ruleset, states: systems.iter().map(|s| ContentState::new(s.state)).collect() }
     }
 }
@@ -54,31 +53,6 @@ impl PlayerSetup {
     pub fn set_rule(&mut self, content: &Content, ruleset: Option<RulesetHandle>, system: &str, field: &str, v: Value) -> Result<(), String> {
         let (block, schema, i) = self.rule_field(content, ruleset, system, field)?;
         block.set(schema, i, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
-    }
-
-    /// The souls the player has, as the soul button checks them (the save's
-    /// soul flags, 0x08024BF0, by each soul's number): the forms a system
-    /// of their ruleset declares in its setup's `souls` (BN5's souls
-    /// system), when one does; else the setup's own.
-    fn souls_from_setup(&mut self, content: &Content) {
-        let mut found = false;
-        let mut owned = 0u16;
-        for block in &self.rules {
-            let schema = content.defs.schema(block.id());
-            let Some(i) = schema.index_of("souls") else { continue };
-            let FieldType::Array(_, n) = schema.field(i).ty else { continue };
-            found = true;
-            for k in 0..n as usize {
-                if let Some(nettai_content_api::FieldValue::Ref(Some((nettai_content_api::Registry::Form, h)))) = block.get_elem(schema, i, k)
-                    && let Some(soul) = &content.form(nettai_content_api::FormHandle(h)).soul
-                {
-                    owned |= 1 << (soul.number & 15);
-                }
-            }
-        }
-        if found {
-            self.souls.owned = owned;
-        }
     }
 
     /// [`PlayerSetup::set_rule`] for an array field: element `k` of it.
@@ -799,7 +773,7 @@ mod tests {
             let e = patched(module, from, to).expect_err(said);
             assert!(e.contains(said), "{said}: {e}");
         };
-        let chips = "chips/test/chips";
+        let chips = "chips/test/init";
         refused(chips, "test_weight = 3,", "test_weight = 300,", "chip test/veil.test_weight is Int(300), not u8");
         refused(chips, "kind = \"b\" }", "kind = \"c\" }", "chip test/veil.test_tag.kind");
         refused(chips, "kind = \"b\" }", "kind = \"b\", hue = 1 }", "`hue` is none of its fields (kind, level)");

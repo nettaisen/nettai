@@ -3,8 +3,8 @@
 -- with an actor record of its own (AI index 4), each with the BN6
 -- overlay's buster and charged shot.
 
-local buster = require("./megaman/weapons/buster/weapon")
-local charged_shot = require("./megaman/weapons/charged-shot/weapon")
+local buster = require("./megaman/weapons/buster")
+local charged_shot = require("./megaman/weapons/charged-shot")
 
 -- A sprite's attach points: the blade's point and the gun's (BN6's gun
 -- sits at point 0x0D) ahead of the rest.

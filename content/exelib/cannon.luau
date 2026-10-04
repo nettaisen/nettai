@@ -11,7 +11,7 @@
 -- it holds and what it fires (docs/design/content-model-v2.md §5.3,
 -- docs/engine/shot-chips.md §2).
 
-local attachment = require("./attachment/attachment")
+local attachment = require("./attachment")
 
 local cannon = {}
 

@@ -1,7 +1,7 @@
 //! Matches of each game (docs/frontend.md §6), each on its game's content
 //! alone (`testing::bn5_content`, `bn6_content`): a match is of one game,
 //! its arena's, and names nothing of another's. BN5's folder rules on
-//! BN5's sides (its stock ruleset's folder system,
+//! BN5's sides (its rules' folder system,
 //! content/bn5/rules/folder), a BN5 match played a few hundred ticks,
 //! BN5's karma and souls, and a name another game has but the match's
 //! hasn't refused as any unknown name is.
@@ -78,7 +78,7 @@ fn refs(v: &[String]) -> Vec<&str> {
     v.iter().map(String::as_str).collect()
 }
 
-/// BN5's MegaMan, on BN5's stock rules, with Tango's BN5 folder: the
+/// BN5's MegaMan, by BN5's rules, with Tango's BN5 folder: the
 /// rules accept it (the Regular chip too).
 #[test]
 fn a_bn5_folder_keeps_bn5s_rules() {
@@ -163,14 +163,12 @@ fn an_unknown_name_is_refused() {
     let e = parse_in(&six, "bn6", &side("megaman", &chips, ""), &side("megaman", &BN6, "")).unwrap_err();
     says(e, "left: folder entry 0: no chip \"gyroman\" in bn6");
     // A game the content hasn't (BN6's file on BN5's content, a game no
-    // content has); a ruleset the game hasn't.
+    // content has).
     let text = match_text(&content, "bn5", &ok, &ok);
     let e = crate::parse(&content, &text.replacen("game = \"bn5\"", "game = \"bn7\"", 1)).unwrap_err();
     says(e, "no game \"bn7\" (the content's are bn5)");
     let e = crate::parse(&six, &text).unwrap_err();
     says(e, "no game \"bn5\" (the content's are bn6)");
-    let e = crate::parse(&content, &text.replacen("game = \"bn5\"\n", "game = \"bn5\"\nruleset = \"bn6:stock\"\n", 1)).unwrap_err(); // (written in full)
-    assert!(e[0].starts_with("no ruleset \"bn6:stock\" in bn5"), "{e:?}"); // (written in full)
 }
 
 /// A match's lookups see only its game: its stages, navis, chips (the
@@ -191,7 +189,6 @@ fn a_matchs_lookups_only_see_its_game() {
         for s in &m.sides {
             assert!(of(&content.defs.navi(s.navi).key) && s.folder.chips().all(|c| of(&content.defs.chip(c.id).key)));
         }
-        assert!(of(&content.defs.ruleset(m.arena.ruleset).key));
         // Written, it names its game once, and nothing else qualified.
         let text = crate::write(&content, &m);
         assert!(text.contains(&format!("game = \"{game}\"")) && !text.contains("bn5:") && !text.contains("bn6:"), "{text}");
@@ -267,8 +264,8 @@ fn karma_and_souls_write_and_read_back() {
     let e = parse_in(&six, "bn6", &side("megaman", &BN6, ""), &bad).unwrap_err();
     for p in [
         "right: karma 1200: the light/dark value is 0 to 1000",
-        "right: karma, but the ruleset has no light and dark MegaMan (no system takes `karma`)",
-        "right: a soul list, but the ruleset has no Soul Unison (no system takes `souls`)",
+        "right: karma, but bn6 has no light and dark MegaMan (no system takes `karma`)",
+        "right: a soul list, but bn6 has no Soul Unison (no system takes `souls`)",
         "right: HeatCross is no soul",
     ] {
         assert!(e.iter().any(|x| x == p), "{p:?} not in {e:?}");
@@ -311,10 +308,10 @@ fn a_dark_side_starts_dark() {
     assert_eq!(content.assets.handle(nettai_content_api::AssetKind::Mugshot, "megaman-dark"), Some(face.0));
 }
 
-/// The soul button offers only a soul the side has: with every soul
-/// (ProtoSoul among them), a Sword picked offers ProtoSoul; with none, or
-/// with GyroSoul alone, the button is there but the sword's soul isn't
-/// offered.
+/// The soul button (BN5's souls system's) offers only a soul the side has:
+/// with every soul (ProtoSoul among them), a Sword picked offers ProtoSoul;
+/// with none, or with GyroSoul alone, the button is there but the sword's
+/// soul isn't offered. Without Soul Unison there is no button.
 #[test]
 fn an_unowned_soul_cant_be_chosen() {
     use nettai_battle::custom::screen::{Phase, SPECIAL_SLOT, SlotKind, SlotState};
@@ -322,10 +319,11 @@ fn an_unowned_soul_cant_be_chosen() {
     // Swords alone, so the first chip dealt is one (no folder the rules
     // take: the round is played as set up).
     let sword = crate::ids::chip(&content, "bn5", "sword").unwrap();
-    let offered = |souls: Option<Vec<nettai_content_api::FormHandle>>| {
+    let offered_with = |souls: Option<Vec<nettai_content_api::FormHandle>>, soul_unison: bool| {
         let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
         m.sides[0].folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30];
         m.sides[0].souls = souls;
+        m.sides[0].soul_unison = soul_unison;
         let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
         let mut last = 0u16;
         for _ in 0..400 {
@@ -334,7 +332,7 @@ fn an_unowned_soul_cant_be_chosen() {
                 && s.selected == 1
             {
                 let slot = s.slots[SPECIAL_SLOT as usize];
-                let soul = slot.kind == SlotKind::Soul;
+                let soul = matches!(slot.kind, SlotKind::Button { button, .. } if content.defs.button(button).name == "soul");
                 return (soul, soul && slot.state == SlotState::Selectable);
             }
             let a = if screen.is_some() && last == 0 { nettai_battle::input::keys::A } else { 0 };
@@ -343,7 +341,9 @@ fn an_unowned_soul_cant_be_chosen() {
         }
         panic!("no chip picked");
     };
+    let offered = |souls| offered_with(souls, true);
     assert_eq!(offered(None), (true, true));
+    assert_eq!(offered_with(None, false), (false, false), "no Soul Unison, no button");
     assert_eq!(offered(Some(Vec::new())), (true, false));
     assert_eq!(offered(Some(vec![crate::ids::form(&content, "bn5", "gyrosoul").unwrap()])), (true, false));
     // ProtoSoul alone, or with Team Colonel's ColonelSoul: offered.
@@ -351,25 +351,95 @@ fn an_unowned_soul_cant_be_chosen() {
     assert_eq!(offered(Some(vec![proto, crate::ids::form(&content, "bn5", "colonelsoul").unwrap()])), (true, true));
 }
 
+/// The soul given for a chip (the souls system's button and window): the
+/// soul takes the Sword's place, first in the selection; B puts the Sword
+/// back and offers the soul again; given again and OK, the turn's form is
+/// ProtoSoul for 3 turns and the Sword leaves the folder in its place.
+#[test]
+fn the_soul_takes_the_chips_place() {
+    use nettai_battle::custom::screen::{Phase, SPECIAL_SLOT, SlotKind, SlotState};
+    use nettai_battle::input::{PlayerTick, keys};
+    let content = bn5_content();
+    let sword = crate::ids::chip(&content, "bn5", "sword").unwrap();
+    let proto = crate::ids::form(&content, "bn5", "protosoul").unwrap();
+    let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
+    m.sides[0].folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30];
+    let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
+    let screen = |b: &nettai_battle::Battle| b.custom.sides[0].screen.expect("a screen");
+    // A tick with `key` pressed, then ticks without until the screen is
+    // back to choosing.
+    let press = |b: &mut nettai_battle::Battle, key: u16| {
+        b.tick(&[PlayerTick { held: key }, Default::default()], Default::default());
+        for _ in 0..200 {
+            b.tick(&[PlayerTick { held: 0 }, Default::default()], Default::default());
+            if b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing) {
+                return;
+            }
+        }
+        panic!("the screen stays out of choosing");
+    };
+    for _ in 0..400 {
+        if b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing) {
+            break;
+        }
+        b.tick(&[PlayerTick { held: 0 }, Default::default()], Default::default());
+    }
+    // The first Sword picked: the soul is on offer.
+    press(&mut b, keys::A);
+    let s = screen(&b);
+    assert_eq!((s.selection(), s.slots[SPECIAL_SLOT as usize].state), (&[0u8][..], SlotState::Selectable));
+    assert!(matches!(s.slots[SPECIAL_SLOT as usize].kind, SlotKind::Button { .. }));
+    // Given: the soul first in the selection, the Sword's slot still picked.
+    b.custom.sides[0].screen.as_mut().unwrap().cursor = SPECIAL_SLOT;
+    press(&mut b, keys::A);
+    let s = screen(&b);
+    assert_eq!(s.selection(), &[SPECIAL_SLOT][..]);
+    assert_eq!((s.slots[0].state, s.slots[SPECIAL_SLOT as usize].state), (SlotState::Selected, SlotState::Selected));
+    assert_eq!(s.trade.map(|t| (t.button, t.chip)), Some((SPECIAL_SLOT, 0)));
+    // B: the Sword back in its place, the soul on offer again.
+    press(&mut b, keys::B);
+    let s = screen(&b);
+    assert_eq!((s.selection(), s.trade), (&[0u8][..], None));
+    assert_eq!(s.slots[SPECIAL_SLOT as usize].state, SlotState::Selectable);
+    // Given again, and OK: the turn's form, its turns, the Sword gone.
+    press(&mut b, keys::A);
+    b.custom.sides[0].screen.as_mut().unwrap().cursor = nettai_battle::custom::screen::OK_SLOT;
+    b.tick(&[PlayerTick { held: keys::A }, Default::default()], Default::default());
+    let (hand, transform) = b.custom.sides[0].built.clone().expect("OK built the hand");
+    assert_eq!((transform.form, transform.turns, transform.chaos), (Some(proto), 3, false));
+    assert!(hand.is_some(), "the soul is a pick");
+    let folder = b.custom.sides[0].folder.expect("a folder");
+    assert_eq!(folder.chips[0], None, "the Sword given up left the folder");
+    assert_eq!(folder.count(), 29);
+}
+
 /// A side's karma and souls go into its round's setup: the light and dark
-/// system's block holds the karma, the souls system's the souls, which
-/// are the soul button's (by their numbers).
+/// system's block holds the karma, the souls system's the souls (which the
+/// soul button offers, by their numbers), Soul Unison and Chaos Unison
+/// (on unless the side says).
 #[test]
 fn karma_and_souls_reach_the_round() {
     let content = bn5_content();
     let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
     m.sides[0].karma = 300;
-    m.sides[0].souls = Some(vec![crate::ids::form(&content, "bn5", "colonelsoul").unwrap()]);
+    let colonel = crate::ids::form(&content, "bn5", "colonelsoul").unwrap();
+    m.sides[0].souls = Some(vec![colonel]);
+    m.sides[0].chaos_unison = false;
     let b = started(&content, &m, 1);
     let (schema, block) = b.system_setup(0, "light-dark").unwrap();
     assert_eq!(block.get(schema, schema.index_of("karma").unwrap()), nettai_content_api::FieldValue::U16(300));
-    let souls = b.setup.players[0].souls;
-    assert!(souls.button && souls.chaos && souls.owned == 1 << 7, "{souls:?}");
+    let (schema, block) = b.system_setup(0, "souls").unwrap();
+    let field = |name: &str| block.get(schema, schema.index_of(name).unwrap());
+    let soul = |k: usize| block.get_elem(schema, schema.index_of("souls").unwrap(), k);
+    use nettai_content_api::{FieldValue, Registry};
+    assert_eq!(soul(0), Some(FieldValue::Ref(Some((Registry::Form, colonel.0)))));
+    assert_eq!(soul(1), Some(FieldValue::Ref(None)));
+    assert_eq!((field("soul_unison"), field("chaos_unison")), (FieldValue::Bool(true), FieldValue::Bool(false)));
     // A BN6 match's sides have no souls.
     let six_content = bn6_content();
     let six = crate::draw::live(&six_content, "bn6", 1, None).unwrap();
     let b = started(&six_content, &six, 1);
-    assert_eq!(b.setup.players[1].souls, nettai_battle::custom::SoulUnlocks::default());
+    assert!(b.system_setup(1, "souls").is_none());
 }
 
 /// What the match's rules and a side's navi take decide the side's own
@@ -381,45 +451,10 @@ fn a_sides_fields_are_its_rules() {
     let (c5, c6) = (bn5_content(), bn6_content());
     let six = crate::draw::live(&c6, "bn6", 3, None).unwrap();
     let five = parse(&c5, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
-    let (r6, r5) = (six.arena.ruleset, five.arena.ruleset);
-    assert!(crate::Side::takes_game(&c6, r6) && six.sides[0].takes_level(&c6) && crate::Side::takes_sp_times(&c6));
-    assert!(!crate::Side::takes_game(&c5, r5) && !five.sides[0].takes_level(&c5) && crate::Side::takes_sp_times(&c5));
+    assert!(crate::Side::takes_game(&c6) && six.sides[0].takes_level(&c6) && crate::Side::takes_sp_times(&c6));
+    assert!(!crate::Side::takes_game(&c5) && !five.sides[0].takes_level(&c5) && crate::Side::takes_sp_times(&c5));
     // Each slot's chip is of the match's game.
     let chip = |c: &nettai_battle::Content, m: &Match, slot| crate::facts::sp_chip(c, &m.arena, slot).map(|h| c.defs.chip(h).key.clone());
     assert!(chip(&c6, &six, 0).is_some_and(|k| crate::ids::in_game("bn6", &k)), "{:?}", chip(&c6, &six, 0));
     assert!(chip(&c5, &five, 1).is_some_and(|k| crate::ids::in_game("bn5", &k)), "{:?}", chip(&c5, &five, 1));
-}
-
-/// A ruleset change drops what the new rules don't take (the test
-/// content's mix has no forms system: the Crosses go), and the same rules
-/// keep everything.
-#[test]
-fn a_ruleset_change_drops_what_the_rules_dont_take() {
-    let content = nettai_battle::content::testing::content();
-    let stock = content.defs.stock_ruleset().unwrap();
-    let mix = content.defs.ruleset_by_key("test-mix").unwrap();
-    let navi = content.form_changing_navi().unwrap();
-    let mut s = crate::Side {
-        navi,
-        game: nettai_battle::custom::GameVersion::Gregar,
-        stats: crate::Side::base_stats(&content, navi, nettai_battle::custom::GameVersion::Gregar),
-        emotion_window_glitch: false,
-        folder: crate::Folder::EMPTY,
-        crosses: crate::navi_crosses(&content, navi).map(|c| crate::CrossList::new(&c[..c.len().min(2)])),
-        beast_out: true,
-        cards: Vec::new(),
-        navi_level: None,
-        bug_frags: 0,
-        sp_times: Default::default(),
-        navicust: None,
-        tactics: Default::default(),
-        karma: crate::facts::DEFAULT_KARMA,
-        souls: None,
-    };
-    let kept = s.clone();
-    s.fit_rules(&content, stock);
-    assert_eq!(s, kept, "the same rules keep everything");
-    assert!(crate::ruleset_has_system(&content, stock, crate::FORMS_SYSTEM) && !crate::ruleset_has_system(&content, mix, crate::FORMS_SYSTEM));
-    s.fit_rules(&content, mix);
-    assert_eq!(s.crosses, None);
 }

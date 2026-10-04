@@ -6,13 +6,13 @@
 //! over rennet, in UDP datagrams. Before the match, the handshake
 //! (`nettai_netplay::transport`) checks that both run the same engine, play
 //! the same game (a match is of one) and the same content, and swaps what
-//! each player brings (an [`Offer`]: the match's ruleset, and their navi,
+//! each player brings (an [`Offer`]: their navi,
 //! folder, version, Crosses and patch cards, each by its name in the game;
 //! the language is each player's own) and their halves of the seed. Both
 //! then build the same round ([`netplay_setup`]): the host's arena (a match
 //! file's, else drawn from the seed on the host's stage, if it names one),
 //! each player's side on their side (the host's is side 0, the left navi),
-//! by the ruleset both bring.
+//! by the game's rules.
 //!
 //! Every frame the driver takes what arrived, decides the player's buttons
 //! for the next tick (unless clock sync or the stall guard holds it), sends
@@ -36,7 +36,7 @@ use nettai_battle::cues::{CueAction, CueTracker};
 use nettai_battle::custom::SavedFolder;
 use nettai_battle::setup::RoundSetup;
 use nettai_battle::{Battle, BattleResult, RoundEnd};
-use nettai_content_api::{RulesetHandle, StageHandle};
+use nettai_content_api::StageHandle;
 use nettai_match::file::{ArenaFile, SideFile};
 use nettai_match::{Arena, Draws, Match, Place, Side, ids};
 use nettai_netplay::protocol::BUTTONS;
@@ -46,15 +46,13 @@ use nettai_netplay::{BattleWorld, Game, Observer, Peer, PeerConfig};
 
 use crate::driver::{Driver, Ran, Step};
 
-/// What a player brings to a netbattle: the match's game and ruleset (a
-/// match file's, else the game's stock rules), their side of the match (a
-/// match file's left side, or one drawn from their seed), and from the host
-/// the arena (a match file's, of the offer's game and ruleset) or a stage
-/// the round must be fought on (`--stage`).
+/// What a player brings to a netbattle: the match's game (a game is its
+/// rules), their side of the match (a match file's left side, or one drawn
+/// from their seed), and from the host the arena (a match file's, of the
+/// offer's game) or a stage the round must be fought on (`--stage`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Offer {
     pub game: String,
-    pub ruleset: RulesetHandle,
     pub side: Side,
     pub stage: Option<StageHandle>,
     pub arena: Option<Arena>,
@@ -67,8 +65,6 @@ pub struct Offer {
 struct OfferFile {
     game: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    ruleset: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     stage: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     arena: Option<ArenaFile>,
@@ -76,17 +72,17 @@ struct OfferFile {
 }
 
 impl Offer {
-    /// An offer of `side` for a match of `game` by its stock rules (and the
-    /// host's `stage`, if it names one).
-    pub fn stock(content: &Content, game: &str, side: Side, stage: Option<StageHandle>) -> Result<Offer, String> {
-        Ok(Offer { game: game.to_string(), ruleset: nettai_match::stock_ruleset(content, game)?, side, stage, arena: None })
+    /// An offer of `side` for a match of `game` (and the host's `stage`,
+    /// if it names one).
+    pub fn of_side(game: &str, side: Side, stage: Option<StageHandle>) -> Offer {
+        Offer { game: game.to_string(), side, stage, arena: None }
     }
 
     /// An offer of a match file's: its left side, and its arena if this
     /// player hosts.
     pub fn of_match(m: Match, host: bool) -> Offer {
         let [side, _] = m.sides;
-        Offer { game: m.arena.game.clone(), ruleset: m.arena.ruleset, side, stage: None, arena: host.then_some(m.arena) }
+        Offer { game: m.arena.game.clone(), side, stage: None, arena: host.then_some(m.arena) }
     }
 
     /// The offer as the handshake carries it: each thing by its name in
@@ -95,7 +91,6 @@ impl Offer {
         let place = |s: StageHandle| ids::local(&content.defs.stage(s).key).to_string();
         let file = OfferFile {
             game: self.game.clone(),
-            ruleset: nettai_match::file::ruleset_name(content, &self.game, self.ruleset),
             stage: self.stage.map(place),
             arena: self.arena.as_ref().map(|a| nettai_match::file::arena_file(content, a)),
             side: nettai_match::file::side_file(content, &self.side),
@@ -115,7 +110,6 @@ impl Offer {
             return Err(format!("the other player's setup is of {}, this match {game}'s", f.game));
         }
         let mut problems = Vec::new();
-        let ruleset = nettai_match::file::resolve_ruleset(content, game, f.ruleset.as_deref(), &mut problems);
         let side = nettai_match::file::resolve_side(content, game, &f.side, "side", &mut problems);
         let stage = match f.stage.as_deref().map(|name| nettai_match::link_stage(content, game, name)) {
             Some(Err(e)) => {
@@ -124,17 +118,14 @@ impl Offer {
             }
             s => s.and_then(Result::ok),
         };
-        let arena = match (&f.arena, ruleset) {
-            (Some(a), Some(r)) => nettai_match::file::resolve_arena(content, game, r, a, &mut problems),
-            _ => None,
-        };
-        let (Some(ruleset), Some(side)) = (ruleset, side) else {
+        let arena = f.arena.as_ref().and_then(|a| nettai_match::file::resolve_arena(content, game, a, &mut problems));
+        let Some(side) = side else {
             return Err(format!("the other player's setup breaks the rules: {}", problems.join("; ")));
         };
         if !problems.is_empty() || f.arena.is_some() && arena.is_none() {
             return Err(format!("the other player's setup breaks the rules: {}", problems.join("; ")));
         }
-        let offer = Offer { game: game.to_string(), ruleset, side, stage, arena };
+        let offer = Offer { game: game.to_string(), side, stage, arena };
         offer.check(content)?;
         Ok(offer)
     }
@@ -145,11 +136,11 @@ impl Offer {
             Some(a) => a.clone(),
             None => {
                 let first = *nettai_match::link_battle_stages(content, &self.game).first().ok_or_else(|| format!("{} has no link battle stage", self.game))?;
-                Arena::on(&self.game, self.ruleset, Place { stage: first, background: None })
+                Arena::on(&self.game, Place { stage: first, background: None })
             }
         };
-        if arena.game != self.game || arena.ruleset != self.ruleset {
-            return Err("the other player's arena is of another game or ruleset than their setup".into());
+        if arena.game != self.game {
+            return Err("the other player's arena is of another game than their setup".into());
         }
         let broken = nettai_match::check::check_arena(content, &arena);
         if !broken.is_empty() {
@@ -172,23 +163,15 @@ impl Offer {
 /// The round both players of a match play, and the match: the host's arena
 /// (else one drawn from the match's seed, on the host's stage if it names
 /// one), each player's side on their side (`offers` by side: the host's,
-/// then the joiner's), by the ruleset both bring.
+/// then the joiner's).
 pub fn netplay_setup(content: &Content, seed: u32, offers: &[Offer; 2]) -> Result<(RoundSetup, Match), String> {
     let [host, join] = offers;
     if host.game != join.game {
         return Err(format!("the host plays {}, the joiner {}: a match is of one game", host.game, join.game));
     }
-    if host.ruleset != join.ruleset {
-        let name = |r: RulesetHandle| ids::local(&content.defs.ruleset(r).key).to_string();
-        return Err(format!(
-            "the host plays by the {} rules, the joiner by the {}: a match has one ruleset (each player's match file names it)",
-            name(host.ruleset),
-            name(join.ruleset)
-        ));
-    }
     let arena = match &host.arena {
         Some(a) => a.clone(),
-        None => nettai_match::draw::arena(content, &host.game, host.ruleset, &mut Draws::new(seed), host.stage)?,
+        None => nettai_match::draw::arena(content, &host.game, &mut Draws::new(seed), host.stage)?,
     };
     let m = Match { seed: Some(seed), arena, sides: [host.side.clone(), join.side.clone()] };
     Ok((m.round(content, seed), m))
@@ -481,7 +464,7 @@ mod tests {
     use nettai_netplay::transport::Udp;
 
     fn offer_of(content: &Arc<Content>, game: &str, seed: u32) -> Offer {
-        Offer::stock(content, game, Side::drawn(content, game, &mut Draws::new(seed)).unwrap(), None).unwrap()
+        Offer::of_side(game, Side::drawn(content, game, &mut Draws::new(seed)).unwrap(), None)
     }
 
     fn offer(content: &Arc<Content>, seed: u32) -> Offer {

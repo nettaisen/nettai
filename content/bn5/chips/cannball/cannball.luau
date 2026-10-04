@@ -5,7 +5,7 @@
 -- sound; off solid ground it ends in a puff, and a hit ends it at once. Its kind (Param1) 2 is another's: a plain
 -- attack that bursts over the column with explosions and the bomb's sound (no chip throws it).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 local trajectory = require("../../lib/trajectory")
