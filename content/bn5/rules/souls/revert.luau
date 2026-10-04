@@ -1,5 +1,5 @@
 --!strict
--- BN5's revert out of a soul (0x080121D8, BN6's `sub_801562C`'s place): when the soul's turns run out (./system),
+-- BN5's revert out of a soul (0x080121D8, BN6's `sub_801562C`'s place): when the soul's turns run out (./init),
 -- MegaMan's side asks for it; while the battle is paused he is back in his base form. Every soul names this action
 -- as its `revert`. Unlike BN6's revert it saves no state to resume, spends nothing and leaves the mood to the status
 -- reset.

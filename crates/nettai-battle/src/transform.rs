@@ -140,6 +140,13 @@ impl Battle {
     /// side without a transformation has its rules check whether its form's
     /// time ran out (BN6's beast system: Beast Out, `sub_80159C6`).
     fn sequencer_check(&mut self) {
+        // BN5's 0x08011DDC: each side's request for the turn is read first
+        // (its ColonelSoul's arm chip, 0x080124AE: the souls system's).
+        for side in 0..2u8 {
+            if self.player(side).is_some() {
+                self.notify_side(side, nettai_content_api::SystemHook::TurnOpened);
+            }
+        }
         let mut transforming = false;
         for side in 0..2u8 {
             let req = self.transform_seq.requests[side as usize];
