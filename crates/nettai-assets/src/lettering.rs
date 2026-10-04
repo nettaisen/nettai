@@ -132,52 +132,6 @@ impl Bundle {
     }
 }
 
-/// Whether a font's glyph name is one of the games' marks: a character of
-/// the Private Use Area (the stacked SP, EX, DS..., text-rendering.md
-/// §10.5).
-fn is_mark(name: &str) -> bool {
-    let mut chars = name.chars();
-    matches!((chars.next(), chars.next()), (Some(c), None) if ('\u{E000}'..='\u{F8FF}').contains(&c))
-}
-
-/// Lend the games' marks between loaded packs' 8x16 fonts: a mark one
-/// pack's font has no glyph for, which another's draws, is drawn with that
-/// one's glyph, appended to the font (BN5's stacked DS in BN6's font, so a
-/// BN6 console names a BN5 DS navi chip as a BN5 console does). Only the
-/// marks: each game's letters and kana stay its own. Lend after swapping
-/// the languages in (a language's font is its own). What each pack took,
-/// by its place in `bundles`.
-pub fn lend_marks(bundles: &mut [Bundle]) -> Vec<Vec<String>> {
-    let mut taken = vec![Vec::new(); bundles.len()];
-    for i in 0..bundles.len() {
-        for j in (0..bundles.len()).filter(|&j| j != i) {
-            let (to, from) = if i < j {
-                let (a, b) = bundles.split_at_mut(j);
-                (&mut a[i].hud, &b[0].hud)
-            } else {
-                let (a, b) = bundles.split_at_mut(i);
-                (&mut b[0].hud, &a[j].hud)
-            };
-            // (The font's glyph n is its tiles 2n and 2n + 1: a glyph lent
-            // goes after the last one named.)
-            if to.font.len() != 2 * to.font_chars.len() {
-                continue;
-            }
-            for (k, name) in from.font_chars.iter().enumerate().filter(|(_, n)| is_mark(n)) {
-                if to.font_chars.contains(name) {
-                    continue;
-                }
-                let (Some(top), Some(bottom)) = (from.font.get(2 * k), from.font.get(2 * k + 1)) else { continue };
-                to.font.push(top);
-                to.font.push(bottom);
-                to.font_chars.push(name.clone());
-                taken[i].push(name.clone());
-            }
-        }
-    }
-    taken
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,27 +197,5 @@ mod tests {
         assert_eq!(back.custom.versioned, en.custom.versioned);
         assert!(en.clone().in_language("en").is_ok());
         assert!(en.in_language("fr").unwrap_err().contains("en, ja"));
-    }
-
-    /// A mark one pack's font lacks is lent by another's, its glyph and
-    /// all; a letter isn't, nor a mark the font has.
-    #[test]
-    fn a_mark_one_font_lacks_is_lent_by_another() {
-        let font = |chars: &[&str], v: u8| {
-            let mut b = Bundle::default();
-            b.hud.font = tiles(v, 2 * chars.len());
-            b.hud.font_chars = chars.iter().map(|c| c.to_string()).collect();
-            b
-        };
-        let mut bundles = vec![font(&["A", "\u{E003}"], 1), font(&["A", "B", "\u{E003}", "\u{E008}"], 2)];
-        let taken = lend_marks(&mut bundles);
-        assert_eq!(taken, vec![vec!["\u{E008}".to_string()], vec![]]);
-        let hud = &bundles[0].hud;
-        assert_eq!(hud.font_chars, ["A", "\u{E003}", "\u{E008}"]);
-        assert_eq!(hud.font.len(), 6);
-        assert_eq!(hud.font.get(4), Some(&[2u8; Tiles::TILE][..]));
-        assert_eq!(hud.glyphs("Colonel\u{E008}").1, ['C', 'o', 'l', 'o', 'n', 'e', 'l']);
-        // (Lent once: lending again takes nothing.)
-        assert_eq!(lend_marks(&mut bundles), vec![Vec::<String>::new(); 2]);
     }
 }
