@@ -1730,11 +1730,12 @@ stops running while paused (it clears its header's run-while-paused bit, 0x080C4
 started with (the navi's actor record's AI index, 0x0800D1C0), and it hides while its navi is bubbled too
 (0x80000004); like BN6's it frees itself as Full Synchro ends. Its spawner (0x0801100C) allows AI indexes to 12. The
 chip lab's chips/0x044-redfrut3/broken, chips/0x004-airshot/counter (a counter hit's Full Synchro, 0x08016FDC) and
-counter-paused (a pause through it) record it. BN5's guard (0x080169B8, the arena's rule `effects.guard`) breaks on
-a hit of types 0x1002 whatever its 0x4000 (BN6's: 0x0002, or 0x1002 with 0x4000) and marks a guarded direction
-unless the hit has 0x0C004000 (BN6's 0x0C005000). No recording can show it: BN5's own types with 0x1000 all have
-0x4000, so only another game's attack in a BN5 arena breaks a guard that BN6's would hold; and the direction mask
-differs only for 0x1000, which BN5's guard never holds. A unit test (`collision::tests`) shows the first.
+counter-paused (a pause through it) record it. BN5's guard (0x080169B8, part of BN5's hit test, 0x0801691C: the
+reactions section's `hit_test`, which bn5-port-6 made meanwhile) breaks on a hit of types 0x1002 whatever its 0x4000
+(BN6's: 0x0002, or 0x1002 with 0x4000) and marks a guarded direction unless the hit has 0x0C004000 (BN6's
+0x0C005000). No recording can show it: BN5's own types with 0x1000 all have 0x4000, so only another game's attack in
+a BN5 arena breaks a guard that BN6's would hold; and the direction mask differs only for 0x1000, which BN5's guard
+never holds. A unit test (`collision::tests`) shows the first under that rule.
 
 ### 15.12 The content's layout (as built)
 
