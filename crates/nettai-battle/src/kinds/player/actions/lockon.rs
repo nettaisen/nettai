@@ -1,5 +1,5 @@
 //! `ho_8026554`: the panel a navi attacks a target from in a lock-on mode
-//! (rules/lockon's definitions): what the game's wrapper, BN6's Beast Out
+//! (BN6's rules/lockon: records of type "lockon"): what the game's wrapper, BN6's Beast Out
 //! rush (rules/beast/rush.luau), and the Beast claw's, the lunge's and
 //! GroundCross's drill's setups ask (`CoreApi::lockon_panel`).
 
@@ -10,24 +10,24 @@ use crate::field;
 use crate::kinds::common::facing;
 use crate::kinds::player::flag1;
 use crate::object::{ObjectRef, PanelPos};
-use nettai_content_api::LockonHandle;
+use nettai_content_api::RecordHandle;
 
 /// `ho_8026554` as content sees it: the panel, or (0, 0x7F) when no panel
 /// fits (`sub_80265D0`'s registers then; the rush stays on its own panel).
-pub(crate) fn lockon_panel(b: &Battle, r: ObjectRef, target: PanelPos, mode: Option<LockonHandle>) -> PanelPos {
+pub(crate) fn lockon_panel(b: &Battle, r: ObjectRef, target: PanelPos, mode: Option<RecordHandle>) -> PanelPos {
     destination(b, r, target, mode).unwrap_or(PanelPos { x: 0, y: 0x7F })
 }
 
 /// `ho_8026554`: the panel to attack `target` from in lock-on `mode`;
 /// None to stay. No mode (the original's mode 0), or a target off the
 /// field's playable panels, is the navi's own panel.
-fn destination(b: &Battle, r: ObjectRef, target: PanelPos, mode: Option<LockonHandle>) -> Option<PanelPos> {
+fn destination(b: &Battle, r: ObjectRef, target: PanelPos, mode: Option<RecordHandle>) -> Option<PanelPos> {
     use crate::content::LockonRule;
     let Some(mode) = mode.filter(|_| field::is_valid(target.x, target.y)) else {
         // sub_802661C: the navi's own panel.
         return Some(b.objects.get(r).panel);
     };
-    let m = b.content.lockon(mode);
+    let m = b.content.lockon(mode).unwrap_or_else(|| panic!("record {mode:?} is no lock-on mode (the API checks)"));
     let found = match m.rule {
         LockonRule::Stay => return Some(b.objects.get(r).panel),
         LockonRule::Row => search_row(b, r, target, m),
