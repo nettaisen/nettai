@@ -8,7 +8,8 @@ use nettai_content_api::api::ObstacleFlag;
 use nettai_content_api::{
     ActorField, ApiError, BattleInfo, BlinkOut, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep,
     Emotion, FieldType, FieldValue, HitboxSpec, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState,
-    ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
+    ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag,
+    ScreenFade, Shadow,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
 use nettai_content_api::{
@@ -90,7 +91,7 @@ fn timer_index(t: StatusTimer) -> usize {
 fn request_bit(f: RequestFlag) -> u32 {
     match f {
         // (Not action requests: `request` and `set_request` read flag2.)
-        RequestFlag::Slide | RequestFlag::Anger => 0,
+        RequestFlag::Slide | RequestFlag::Anger | RequestFlag::Drag => 0,
         RequestFlag::Buster => request::BUSTER,
         RequestFlag::ChargedShot => request::CHARGED_SHOT,
         RequestFlag::Chip => request::CHIP,
@@ -119,15 +120,17 @@ fn request_bit(f: RequestFlag) -> u32 {
     }
 }
 
-/// The collision's flag2 bits of the slide and anger requests
-/// (`RequestFlag::Slide`, `RequestFlag::Anger`).
+/// The collision's flag2 bits of the slide, drag and anger requests
+/// (`RequestFlag::Slide`, `RequestFlag::Drag`, `RequestFlag::Anger`).
 const SLIDE_REQUEST: u32 = 0x10;
+const DRAG_REQUEST: u32 = 0x100;
 const ANGER_REQUEST: u32 = 0x200;
 
 /// The flag2 bit a request that isn't an action request reads.
 fn flag2_request(f: RequestFlag) -> Option<u32> {
     match f {
         RequestFlag::Slide => Some(SLIDE_REQUEST),
+        RequestFlag::Drag => Some(DRAG_REQUEST),
         RequestFlag::Anger => Some(ANGER_REQUEST),
         _ => None,
     }
@@ -369,6 +372,8 @@ impl CoreApi for Battle {
             }
             BattleInfo::Fighting => Value::Bool(self.round.flags & crate::battle::battle_flags::FIGHTING != 0),
             BattleInfo::GaugeFull => Value::Bool(self.round.flags & crate::battle::battle_flags::GAUGE_FULL != 0),
+            BattleInfo::LateTurns => Value::Bool(self.late_turns()),
+            BattleInfo::ScreenFading => Value::Bool(self.fade.active()),
         }
     }
 
@@ -399,8 +404,17 @@ impl CoreApi for Battle {
             HudPart::Gauge => &mut h.gauge,
             HudPart::EmotionWindow => &mut h.emotion_window,
             HudPart::LevelGauge => &mut h.level_gauge,
+            HudPart::HpBox => &mut h.hp_box,
         };
         *hidden = !shown;
+    }
+
+    fn screen_fade(&mut self, fade: ScreenFade, speed: u8) {
+        let mode = match fade {
+            ScreenFade::TransformOut => crate::battle::FadeMode::TransformOut,
+            ScreenFade::TransformIn => crate::battle::FadeMode::TransformIn,
+        };
+        self.fade.start(mode, speed);
     }
 
     fn play_sound(&mut self, sound: u16) {
@@ -1275,8 +1289,8 @@ impl CoreApi for Battle {
         Battle::crack_panel(self, p.x, p.y)
     }
 
-    fn break_panel(&mut self, p: PanelPos) -> bool {
-        Battle::break_panel(self, p.x, p.y)
+    fn break_panel(&mut self, p: PanelPos, sound: Option<u16>) -> bool {
+        Battle::break_panel_sounding(self, p.x, p.y, sound.map(SoundId))
     }
 
     fn panel_solid(&self, p: PanelPos) -> bool {
@@ -1818,6 +1832,7 @@ impl CoreApi for Battle {
             ActorField::BarrierVisual => a.barrier_visual.into(),
             ActorField::PlusTint => i(a.plus_tint as i64),
             ActorField::ChaosArmed => Value::Bool(a.chaos.armed),
+            ActorField::Primed => Value::Bool(a.primed),
             ActorField::ChaosLevel => i(a.chaos.level as i64),
             ActorField::NoChargeTimer => i(a.no_charge_timer as i64),
             ActorField::ComputerDriven => Value::Bool(a.computer_driven),
@@ -1902,6 +1917,7 @@ impl CoreApi for Battle {
             (ActorField::BarrierVisual, FieldValue::Object(r)) => a.barrier_visual = r,
             (ActorField::PlusTint, FieldValue::U16(x)) => a.plus_tint = x,
             (ActorField::ChaosArmed, FieldValue::Bool(x)) => a.chaos.armed = x,
+            (ActorField::Primed, FieldValue::Bool(x)) => a.primed = x,
             (ActorField::ChaosLevel, FieldValue::U8(x)) => a.chaos.level = x.min(4),
             (ActorField::NoChargeTimer, FieldValue::U16(x)) => a.no_charge_timer = x,
             (ActorField::ComputerDriven, FieldValue::Bool(x)) => a.computer_driven = x,
@@ -2079,6 +2095,12 @@ impl CoreApi for Battle {
         }
     }
 
+    fn set_overlay_anim_offset(&mut self, o: ObjectRef, offset: u8) {
+        if let Some(overlay) = self.objects.get(o).related[1] {
+            kinds::body_overlay::set_extra_offset(self, overlay, offset);
+        }
+    }
+
     fn take_off_form_overlay(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) {
         kinds::player::form::take_off_overlay(self, o, form);
     }
@@ -2253,6 +2275,10 @@ impl CoreApi for Battle {
 
     fn heal(&mut self, o: ObjectRef, amount: u16, anti_recovery: bool) -> bool {
         kinds::heal::heal(self, o, amount, anti_recovery)
+    }
+
+    fn subtract_hp(&mut self, o: ObjectRef, amount: u16) {
+        kinds::subtract_hp(self, o, amount);
     }
 
     fn buster_damage(&self, o: ObjectRef) -> u16 {
@@ -2717,6 +2743,14 @@ impl CoreApi for Battle {
             ObstacleHold::Always => Hold::Always,
         };
         Ok(kinds::obstacle::react(self, o, crush, hold))
+    }
+
+    fn obstacle_action_byte(&self, o: ObjectRef, a: u8) -> ApiResult<u8> {
+        kinds::obstacle::action_byte(self, o, a).map_err(ApiError::Other)
+    }
+
+    fn obstacle_current_action(&self, o: ObjectRef) -> u8 {
+        kinds::obstacle::current_action(self, o)
     }
 
     fn obstacle_action(&mut self, o: ObjectRef, a: ObstacleAction) -> ApiResult<()> {

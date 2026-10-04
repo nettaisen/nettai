@@ -347,6 +347,9 @@ named_fields! {
         /// it) and its level (AIData+0x6C: releases that succeeded, at
         /// most 4).
         ChaosArmed = "chaos_armed", Bool, rw;
+        /// BN5's priming (AIData+0x0D): a form's `priming` chip used, its
+        /// next doubling waiting.
+        Primed = "primed", Bool, rw;
         ChaosLevel = "chaos_level", U8, rw;
         /// BN5's no-charge drive (DarkInvs): its ticks left (AIData+0x36;
         /// counted down in the intake while the navi has the no-charge
@@ -591,6 +594,11 @@ named_fields! {
         Fighting = "fighting", Bool, ro;
         /// Battle flag 2: the custom gauge is full.
         GaugeFull = "gauge_full", Bool, ro;
+        /// A link battle's last turns, from its 15th custom screen
+        /// (`sub_800A97A`).
+        LateTurns = "late_turns", Bool, ro;
+        /// A screen fade runs (`IsScreenFadeActive`).
+        ScreenFading = "screen_fading", Bool, ro;
     }
 }
 
@@ -706,6 +714,8 @@ named_flags! {
         /// angry at its next status update, unless its mood is held
         /// (`sub_8014326`).
         Anger = "anger",
+        /// The drag request (the collision's flag2 0x100: a knockback's).
+        Drag = "drag",
     }
 }
 
@@ -820,6 +830,19 @@ named_flags! {
         /// The battle flag 0x40 mode's gauge, drawn by its levels (draw
         /// task 17).
         LevelGauge = "level_gauge",
+        /// The HP box and its low-HP alarm (draw task 7).
+        HpBox = "hp_box",
+    }
+}
+
+named_flags! {
+    /// A screen fade content starts (`SetScreenFade`'s modes).
+    pub enum ScreenFade {
+        /// 0x44: the transformation sequencer's fade out (BN5's dark
+        /// MegaMan's last stand's too), to full.
+        TransformOut = "transform_out",
+        /// 0x40: ... and its fade back in, to clear.
+        TransformIn = "transform_in",
     }
 }
 
@@ -1243,6 +1266,8 @@ pub trait CoreApi {
     /// `sub_801DA48` (`shown`) or `sub_801DACC` with a HUD part's draw
     /// task: every console shows or hides it (output only).
     fn show_hud(&mut self, part: HudPart, shown: bool);
+    /// `SetScreenFade(mode, speed)`: the screen fades from where it is.
+    fn screen_fade(&mut self, fade: ScreenFade, speed: u8);
     fn navi_stat(&self, side: u8, stat: NaviStat) -> Value;
     /// Change one of a side's navi stats (the writable ones).
     fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()>;
@@ -1521,8 +1546,9 @@ pub trait CoreApi {
     /// unoccupied one.
     fn crack_panel(&mut self, p: PanelPos) -> bool;
     /// `object_breakPanel_dup2`: break a solid panel, or crack it while
-    /// something stands on it.
-    fn break_panel(&mut self, p: PanelPos) -> bool;
+    /// something stands on it; with `sound` in place of the panel crack's
+    /// (`object_breakPanelLoud`).
+    fn break_panel(&mut self, p: PanelPos, sound: Option<u16>) -> bool;
     /// `object_breakPanel`: break a solid panel nothing stands on (true);
     /// leave any other alone.
     fn break_empty_panel(&mut self, p: PanelPos) -> bool;
@@ -1780,6 +1806,9 @@ pub trait CoreApi {
     /// dimming (`keep`: its Param3 1 and flags 0x14), or steps like any
     /// object again (its Param3 0). Nothing without an overlay.
     fn overlay_stepping(&mut self, o: ObjectRef, keep: bool);
+    /// BN5's 0x080C451A: the navi's body overlay (`related2`) adds `offset`
+    /// to its owner's animation. Nothing without one.
+    fn set_overlay_anim_offset(&mut self, o: ObjectRef, offset: u8);
     /// `sub_8011384(form)`: take off what `form` wore (its `take_off`, or the
     /// default: `take_off_form_parts`).
     fn take_off_form_overlay(&mut self, o: ObjectRef, form: crate::FormHandle);
@@ -1872,6 +1901,10 @@ pub trait CoreApi {
     /// sound; with `anti_recovery`, an opponent's armed AntiRecv turns it
     /// into damage instead (true when it did).
     fn heal(&mut self, o: ObjectRef, amount: u16, anti_recovery: bool) -> bool;
+    /// `object_subtractHP`: the HP down by `amount`, to 0, by the
+    /// object's side's rules (BN5's drains a player's side's gauge too, and
+    /// may hold a dark MegaMan at 1 HP: its last stand).
+    fn subtract_hp(&mut self, o: ObjectRef, amount: u16);
     /// `sub_801265A`: the buster's damage (the attack level, with the
     /// navi's and form's bonus, at most 10; 1 when worn out).
     fn buster_damage(&self, o: ObjectRef) -> u16;
@@ -2026,6 +2059,12 @@ pub trait CoreApi {
     fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush, hold: ObstacleHold) -> ApiResult<Option<u8>>;
     /// Run a shared entry of the obstacle's action table.
     fn obstacle_action(&mut self, o: ObjectRef, a: ObstacleAction) -> ApiResult<()>;
+    /// The byte the obstacle's game stores for action `a` of the
+    /// framework's numbering (BN6's: the kind's own from 8; BN5's own from
+    /// 6, with no frozen or bubbled entries).
+    fn obstacle_action_byte(&self, o: ObjectRef, a: u8) -> ApiResult<u8>;
+    /// The obstacle's action in the framework's numbering.
+    fn obstacle_current_action(&self, o: ObjectRef) -> u8;
     /// How the obstacle is leaving.
     fn obstacle_removal(&self, o: ObjectRef) -> ApiResult<ObstacleRemoval>;
     /// `sub_800F8CE`: blink out for 20 ticks when it vanishes.
