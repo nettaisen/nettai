@@ -4,15 +4,15 @@
 -- RNG1. A capsule is mixed into the last pick, a chip that deals damage and has none yet (0x08024C74): the screen's
 -- state 0x3C (0x0802373A: the capsule's icon flies to the column, the soul's choice's flashes), then the chip's pick
 -- carries the capsule's effect into the hand (the hand's flag byte, +68: 0x08023824) and the capsule is used. B on
--- the chip frees it (0x08024D78, the screen's). Their state is the souls system's (./system).
+-- the chip frees it (0x08024D78, the screen's). Their state is the souls system's (./init).
 
-local chips = require("../../chips/yelcapsl/chips")
+local capsules_chips = require("../../chips/capsules")
 
 local capsules = {}
 
--- The five capsules (chips/yelcapsl).
-local yelcapsl, blkcapsl, whicapsl, prpcapsl, pnkcapsl =
-    chips.yelcapsl, chips.blkcapsl, chips.whicapsl, chips.prpcapsl, chips.pnkcapsl
+-- The five capsules (chips/capsules).
+local yelcapsl, blkcapsl, whicapsl = capsules_chips.yelcapsl, capsules_chips.blkcapsl, capsules_chips.whicapsl
+local prpcapsl, pnkcapsl = capsules_chips.prpcapsl, capsules_chips.pnkcapsl
 
 -- The souls system's state fields the capsules keep.
 capsules.state = {

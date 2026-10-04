@@ -5,10 +5,10 @@
 -- so nothing starts the use its record names (each chip's own comment above its definition).
 -- Their records are written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local cannons = require("../cannon/chips")
-local cube = require("../rockcube/cube")
-local poltergeist = require("../poltrgst/poltergeist")
-local supports = require("../../lib/supports/dimming")
+local cannon_chips = require("./cannon")
+local cube = require("./rockcube/cube")
+local poltergeist = require("./poltrgst/poltergeist")
+local supports = require("../lib/supports/dimming")
 
 -- YelCapsl (BN5 chip 0x17c): the chip it is mixed into confuses (the hand's modifier 0x04). Its record's use is
 -- the cannon's (action 0x14, subtype 0).
@@ -25,7 +25,7 @@ local yelcapsl = define.chip {
     lockout = 0,
     flags = {},
     slot_in_limit = 1,
-    action = cannons.cannon.action,
+    action = cannon_chips.cannon.action,
 }
 
 -- BlkCapsl (BN5 chip 0x17d): the chip it is mixed into blinds (the hand's modifier 0x08). Its record's use is

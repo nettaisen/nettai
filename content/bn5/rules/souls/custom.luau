@@ -2,7 +2,7 @@
 -- Soul Unison on BN5's custom screen (docs/design/rules-in-luau.md §4.4, docs/design/bn5-map.md §15.8): the soul
 -- button in the special slot (0x08023C54, its offer 0x08024B28, A on it 0x08024972), the soul's choice as the window
 -- `soul_unison` (the screen's state 9, 0x080232D0), the soul given at OK (0x08024FF6) and the round's souls used
--- (0x02034E10). Its state is the souls system's (./system). What a soul adds to the screen (its per-soul slots,
+-- (0x02034E10). Its state is the souls system's (./init). What a soul adds to the screen (its per-soul slots,
 -- 0x08023CF8) is a module each, gathered at this module's end for the system.
 
 local arm_change = require("./arm-change")
@@ -11,7 +11,7 @@ local operation_battle = require("../../lib/operation_battle")
 
 local custom_souls = {}
 
--- The souls system's state fields the screen keeps (./system declares them).
+-- The souls system's state fields the screen keeps (./init declares them).
 type State = {
     -- 0x02034E10: the souls given this round: bit n Soul Unison with soul n, bit 16 + n its Chaos Unison (the
     -- round's first screen forgets them).
@@ -26,7 +26,7 @@ type State = {
     unite_count: number,
 }
 
--- What the player's save brings (./system declares it): the souls it has (their flags, 0x08024BF0's, by each soul's
+-- What the player's save brings (./init declares it): the souls it has (their flags, 0x08024BF0's, by each soul's
 -- number), Soul Unison (event flag 0: the button) and Chaos Unison (event flag 0x236).
 type Setup = {
     souls: { FormDef? },
@@ -59,7 +59,7 @@ local function soul_for(side: number, family: string): FormDef?
     return nil
 end
 
--- The setup's souls' places (./system's `form[16]`).
+-- The setup's souls' places (./init's `form[16]`).
 local SOUL_PLACES = 16
 
 -- The save has soul `number` (its flag: one of the setup's souls of that number).
@@ -251,7 +251,7 @@ function custom_souls.turn_opened(side: number)
 end
 
 -- The system's buttons and windows, by name (what the frontend draws them by), and the state fields they keep,
--- beside the soul button's (./system declares those).
+-- beside the soul button's (./init declares those).
 custom_souls.buttons = {
     soul = custom_souls.button,
     capsule_1 = capsules.buttons[1],
