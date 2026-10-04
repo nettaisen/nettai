@@ -1556,6 +1556,7 @@ fn rules() -> Rules {
             any_side_step: StepRuleSet { grounded: [solid(any_side); 2], floor_free: [any_side; 2] },
             mend: 0x258,
             mend_in_battle_mode_1: 0x1E0,
+            numbers: Vec::new(),
         },
         holding_banners: vec![BannerId(0x24)],
         // (The statuses are testdata/content/rules/status.luau's.)
@@ -1603,6 +1604,7 @@ fn rules() -> Rules {
         hit_test: Default::default(),
         slide_speed: Default::default(),
         overlay_restart: Default::default(),
+        stance_counter: Default::default(),
         // A triangle wave: 256 at a quarter turn, -256 at three quarters,
         // over a turn and a half.
         sine: (0..384)

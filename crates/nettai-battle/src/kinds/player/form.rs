@@ -73,12 +73,38 @@ pub(crate) fn navi_init_hook(b: &mut Battle, r: ObjectRef, identity: Option<Iden
     put_on_parts(b, r, identity, 0);
 }
 
+/// `sub_8010DD0` in the base form, at a player's init: its navi's init hook,
+/// or the base form's own routine (`wears`), which BN5's MegaMan's actor
+/// record names as its hook (0x0800ED90's row 11 and 0x0800F038's row 0
+/// are one routine, 0x0800EE1C: Hub Style's shade).
+pub(crate) fn base_init_hook(b: &mut Battle, r: ObjectRef, identity: Option<IdentityHandle>) {
+    let form = super::stats(b, r).form;
+    if let Some(f) = b.content.defs.form(form).wears {
+        crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
+        return;
+    }
+    navi_init_hook(b, r, identity);
+}
+
 /// `sub_8011268(form)`: put on the overlay `form` wears, its identity's
-/// parts (r2, the overlay's Param3, is always 0 here). The base form,
-/// which has no identity of its own, wears nothing.
+/// parts (r2, the overlay's Param3, is always 0 here), or what its own
+/// routine puts on (its `wears`: BN5's base form's, 0x0800EE1C). A base
+/// form without one, which has no identity of its own, wears nothing.
 pub(crate) fn put_on_overlay(b: &mut Battle, r: ObjectRef, form: FormHandle) {
+    if let Some(f) = b.content.defs.form(form).wears {
+        crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
+        return;
+    }
     let identity = b.content.form(form).identity;
     put_on_parts(b, r, identity, 0);
+    form_hook(b, r, b.content.defs.form(form).put_on);
+}
+
+/// A form's own hook on its navi (`put_on`, `take_off`, `reset`).
+fn form_hook(b: &mut Battle, r: ObjectRef, hook: Option<nettai_content_api::FnId>) {
+    if let Some(f) = hook {
+        crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
+    }
 }
 
 /// `sub_8011420(navi, form, param3)`: the image of a navi puts on its
@@ -172,6 +198,7 @@ pub(crate) fn take_off_overlay(b: &mut Battle, r: ObjectRef, form: FormHandle) {
         let o = b.objects.get_mut(r).related[1].take();
         take_down(b, o);
     }
+    form_hook(b, r, b.content.defs.form(form).take_off);
 }
 
 /// `sub_8014536`: the flags and helper objects the current form adds
@@ -181,9 +208,7 @@ pub(super) fn apply_form_flags(b: &mut Battle, r: ObjectRef) {
     apply_effects(b, r, effects);
     // The form's own (`reset`: BN5's souls' routines, 0x08011B92).
     let form = super::stats(b, r).form;
-    if let Some(f) = b.content.defs.form(form).reset {
-        crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
-    }
+    form_hook(b, r, b.content.defs.form(form).reset);
 }
 
 /// `sub_801469C`: after a NaviCust edit (a bug code, an uninstall) the
