@@ -149,7 +149,10 @@ pub struct CollisionData {
     /// This slot's bit (`0x80000000 >> slot`).
     pub bit: u32,
     /// Status visual objects and other links (0x48..0x67).
-    pub links: [Option<ObjectRef>; 4],
+    /// BN5's +0x2C: how long a body stays under the sea's surface (0xFFFF
+    /// while it dives on a panel that submerges: 0x08017030).
+    pub dive_timer: u16,
+    pub links: [Option<ObjectRef>; 5],
     pub acc: Accumulators,
 }
 
@@ -163,6 +166,9 @@ pub mod link {
     pub const FREEZE: usize = 2;
     /// +0x60: bubble.
     pub const BUBBLE: usize = 3;
+    /// BN5's +0x50: the ripple over a body under the sea's surface
+    /// (0x0800DEB2).
+    pub const RIPPLE: usize = 4;
 }
 
 /// Indices into `status_timers`.
@@ -561,7 +567,9 @@ impl Battle {
         if thaw {
             m += 1;
         }
-        if rd.f1 & f1::BUBBLED != 0 && hd.element == 3 {
+        // (BN6's bubble; BN5's kernel has none: its flag 0x80000000 is a
+        // body under the sea's surface, whose elec hits its panel doubles.)
+        if !bn5 && rd.f1 & f1::BUBBLED != 0 && hd.element == 3 {
             m += 1;
         }
         rm.acc.exclamation = m - 1;
