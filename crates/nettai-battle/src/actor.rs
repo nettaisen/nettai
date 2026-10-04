@@ -146,6 +146,12 @@ pub struct AttackVars {
     pub step_init: u8,
     /// Attack element byte (primary | secondary bits).
     pub element: u8,
+    /// +3: the attack's variant, as the anti-damage counters read it (the
+    /// shuriken's target, `sub_80EE996`): what a stance's weapon sets
+    /// (BN6's AntiDmg program 0, BN5's ShadowSoul 1) and a trap's catch
+    /// (`sub_801056A`: 0). The chips' variants are their definitions'.
+    pub variant: u8,
+    /// +4: the attack is charged (`sub_80127C0`'s argument).
     pub charged: u8,
     /// Input lockout to apply when the attack ends.
     pub lockout: u8,

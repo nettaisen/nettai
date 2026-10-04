@@ -1604,6 +1604,7 @@ fn rules() -> Rules {
         hit_test: Default::default(),
         slide_speed: Default::default(),
         overlay_restart: Default::default(),
+        stance_counter: Default::default(),
         // A triangle wave: 256 at a quarter turn, -256 at three quarters,
         // over a turn and a half.
         sine: (0..384)

@@ -54,7 +54,8 @@ fn drop_everything(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_801056A(requests, 0, 0)`: a trap chip caught a hit: the counter
 /// takes the side's defensive-chip record's chip, damage and bonus
-/// (`sub_802CE78`), and its action starts and runs its first step now.
+/// (`sub_802CE78`) and variant 0, and its action starts and runs its first
+/// step now.
 pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
     let requests = ai(b, r).requests;
     drop_everything(b, r);
@@ -67,6 +68,7 @@ pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
     a.chip = rec.chip;
     a.element = 0;
     a.lockout = 0;
+    a.variant = 0;
     let action = counter_action(b, r, requests, true);
     set_attack(b, r, action, 0);
     // The other player's console shows the trap chip's name (sub_801EB18).
@@ -78,10 +80,10 @@ pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80105F2(requests, lockout, variant, damage)`: the AntiDmg
 /// program's stance (action 0x5A) caught a hit: the counter keeps the
-/// stance's damage word and lockout (no chip), and its action starts at
-/// the next tick: AntiDmg's, or AntiSwrd's for a sword hit. (The variant
-/// the original passes on is the stance's, which its weapon zeroes, as a
-/// trap chip's catch does: the counters are their variant 0's.)
+/// stance's damage word, lockout and variant (which the counters read:
+/// BN6's AntiDmg program sets 0, BN5's ShadowSoul 1; no chip), and its
+/// action starts: AntiDmg's, or AntiSwrd's for a sword hit. It runs from
+/// the next tick, or at once by the navi's rules (BN5's 0x0800E340).
 pub(crate) fn stance_counter(b: &mut Battle, r: ObjectRef) {
     let requests = ai(b, r).requests;
     let (lockout, damage) = {
@@ -98,4 +100,7 @@ pub(crate) fn stance_counter(b: &mut Battle, r: ObjectRef) {
     a.lockout = lockout;
     let action = counter_action(b, r, requests, false);
     set_attack(b, r, action, 0);
+    if b.rules_for(r).stance_counter == crate::content::StanceCounter::AtOnce {
+        super::dispatch(b, r, action);
+    }
 }
