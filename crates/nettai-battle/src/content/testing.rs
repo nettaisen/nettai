@@ -1810,9 +1810,9 @@ fn pack_animations() -> std::collections::BTreeMap<PackSprite, Vec<Vec<AnimFrame
 }
 
 /// Side `side`'s bug frags in battle `b`: BN6's dark-chips system's state
-/// (the test content's stock ruleset plays it).
+/// (the test content's ruleset plays it).
 pub fn bug_frags(b: &crate::Battle, side: u8) -> u32 {
-    let (schema, state) = b.system_state(side, "dark-chips").expect("the test content's stock ruleset plays BN6's dark-chips system");
+    let (schema, state) = b.system_state(side, "dark-chips").expect("the test content's ruleset plays BN6's dark-chips system");
     match state.get(schema, schema.index_of("bug_frags").expect("its bug frags")) {
         nettai_content_api::FieldValue::U32(n) => n,
         other => panic!("bug frags {other:?}"),
