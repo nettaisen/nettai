@@ -90,6 +90,8 @@ struct PanelsSection {
     step: StepSection,
     dash_step: StepSection,
     any_side_step: StepSection,
+    #[serde(default)]
+    reservations: super::rules::Reservations,
 }
 
 #[derive(Deserialize)]
@@ -168,6 +170,8 @@ struct StatusSection {
     form_tick: bool,
     #[serde(default)]
     flash_hides_on_clear: bool,
+    #[serde(default)]
+    reactions: super::rules::Reactions,
     #[serde(default)]
     bugs_before_drain: bool,
     #[serde(default)]
@@ -378,6 +382,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                     mend: s.mend.normal,
                     mend_in_battle_mode_1: s.mend.battle_mode_1,
                     numbers,
+                    reservations: s.reservations,
                 };
             }
             "reactions" => {
@@ -457,6 +462,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                 let s: StatusSection = r.read(spec, &at).map_err(e)?;
                 (rules.hp_bug_periods, rules.form_tick) = (s.hp_bug_periods, s.form_tick);
                 rules.flash_hides_on_clear = s.flash_hides_on_clear;
+                rules.reactions = s.reactions;
                 rules.emotions = match s.emotions.as_deref() {
                     None | Some("bn6") => super::Emotions::Bn6,
                     Some("bn5") => super::Emotions::Bn5,
