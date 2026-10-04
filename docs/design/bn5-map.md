@@ -1306,8 +1306,8 @@ Slasher's request 0x80000 (`actions.stun_strike`, BN5's action 0x49, unfilled) a
 chip throws them); battle flag 0x40's effect object 0x83 (0x080E9FD2, 0x080E9FA4: CrakBom's and Quake's bombs; never
 in a netbattle); Geyser's geyser (no recording throws it into a hole); a computer-controlled navi's VarSwrd pick (its
 tactics' byte, 0x0802D4E2 +0x12: no battle has one; only the story navis' routines set AIData +0xF0, 0x0802C110, so
-Chaos Unison's Dark MegaMan takes the joypad path and gets a Sword). **Waiting:** Wind, Fan, RockCube, BoyBomb1 to 3,
-RedFrut1 to 3, Voltz1 to 3 and VDoll (on BN5's field obstacles).
+Chaos Unison's Dark MegaMan takes the joypad path and gets a Sword). **Waiting:** Voltz1 to 3 and VDoll (on BN5's
+field obstacles; Wind, Fan, RockCube, BoyBomb1 to 3 and RedFrut1 to 3 are in §15.11).
 
 ### 15.7 BN5's MegaMan, stages and roles (as built)
 
@@ -1711,6 +1711,21 @@ panel it may stand on (0x080CD2BC, by its side) counts down 60 ticks blinking an
 (no spark, against navis, hit modifier 3); anywhere else it breaks. Its Param1 0 (50 HP, the enemy area's blast, a
 holder's record) is an AI's (0x08108274), no chip's. The controller's position is the dimming handler's registers
 (the user's row, the element and the hook's own address).
+
+RockCube (subtype 20: effect object 0x37, 0x080E4664, BN6's code) and Wind and Fan (subtype 9: effect object 0x25,
+0x080E329C; the fan, attack object 0x48, 0x080CE734; its gust, attack object 0x49, 0x080CEA0C) share BN6's modules
+through content/common (rockcube/cube, wind/controller, wind/fan, gust/gust: makers taking a game's look, BN6's
+wrappers keeping their APIs); their controllers stand at the dimming handler's registers as BoyBomb's does. BN5's
+fan: sprite 04-0A (`fan`), NameIDs 0xD6 and 0xD7 (actor records: versions 3 and 4, AI index 0x21; their field-object
+looks, 0x0801D6B0, the fan in palettes 0 and 1); it takes hits as BN6's (0x08017984: the push keeps the damage, after
+BN5's lava burn); leaving (0x080CE90E), any removal (the flag word's 0x10000) is a puff and anything else breaks it,
+with no blinking out and no absorbing; Fan's gust (0x080CE96C) starts on the far column alone, none on a row whose
+far column has another obstacle (BN6's `sub_80CD236` walks toward the fan). Its actions are BN6's numbers (BN5's
+table, 0x080CE810, has six shared entries: rising and blowing are BN5's 6 and 7). BN5's gust: sprite 0C-2E, any first
+parameter pushes weaker (hit modifier 4, 0x080CEAA2; BN6's only a pull), no hit stops it (0x080CEB30 tests the hit
+flags against 0; BN6's against a wind stopper's 0x800000), and a side of 2 reads 0x080CEBA4's code. The chip lab's
+chips/0x054-fan/far-column (a RockCube pushed by AirShot to the far column), chips/0x054-fan/cosmoman (CosmoMan takes
+the fan: the puff) and chips/0x053-wind/broken (the opponent's Cannon breaks it) record the differences.
 
 **BN5's obstacle pushes** (the obstacle framework, by the obstacle's own game's `push_reading`): BN5 keeps a
 collision's hit flags only by the other collision's flip (+0x6C, +0x70: the hit registration 0x080169C8 to
