@@ -971,8 +971,10 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
 
 /// The shaders after the visibility (presentation only; `sub_8016CA4`,
 /// `sub_801728E`): the other player's navi blinks blue while it can be
-/// countered, to a local player in Full Synchro; in the per-player gauges'
-/// mode a navi glows yellow while its SELECT special runs.
+/// countered, to a local player in Full Synchro; BN5's no-charge drive
+/// flickers gray its last 180 ticks (0x080136E0, between the two); in the
+/// per-player gauges' mode a navi glows yellow while its SELECT special
+/// runs.
 fn counter_shader(b: &mut Battle, r: ObjectRef) {
     let t = b.round.battle_time;
     let alliance = b.objects.get(r).alliance;
@@ -983,6 +985,16 @@ fn counter_shader(b: &mut Battle, r: ObjectRef) {
         && coll(b, r).counter_timer != 0
     {
         b.objects.sprite_mut(r).look.color_shader = if t & 2 != 0 { 0x7C00 } else { 0 };
+    }
+    // BN5's 0x080136E0: the no-charge drive's last 180 ticks, the navi
+    // flickers gray by its ticks left.
+    if b.rules_for(r).intake.no_charge_drive && navi_action(b, r) != NaviAction::Entry {
+        let a = ai(b, r);
+        let left = a.no_charge_timer;
+        if a.status & crate::actor::status::NO_CHARGE != 0 && left != 0 && left <= 180 {
+            let v = GLOW[(left & 0x1F) as usize];
+            b.objects.sprite_mut(r).look.color_shader = v | v << 5 | v << 10;
+        }
     }
     if per_player_gauges(b)
         && navi_action(b, r) != NaviAction::Entry
