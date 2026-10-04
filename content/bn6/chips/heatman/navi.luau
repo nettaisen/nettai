@@ -7,7 +7,7 @@
 -- one. Then he leaves, and the controller moves on. See
 -- docs/engine/chips.md §3.6.15.
 
-local heatman_navi = require("../../navis/heatman/navi")
+local heatman_navi = require("../../navis/heatman")
 local collision = require("../../rules/collision")
 local flame = require("./flame")
 local navi_chips = require("../../lib/navi-chips/navi")

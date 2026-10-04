@@ -7,9 +7,9 @@
 -- then also spread to the rows beside and paralyze, and its own panel turns back to normal (the panel changer's row
 -- 11). Its roar sounds every 16 ticks; 31 ticks in, 6 more, and it is back to idle.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
-local panel_changer = require("../../objects/panel-changer/panel_changer")
+local panel_changer = require("../../objects/panel-changer")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 

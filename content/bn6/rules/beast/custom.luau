@@ -6,14 +6,14 @@
 -- the round's record of it (`dword_20349A0`). Its state is the beast
 -- system's.
 
-local beast_out_chip = require("../../chips/beastout/chip")
+local beast_out_chip = require("../../chips/beastout")
 local kind = require("../forms/kind")
 local chip_gate_battle = require("../../lib/chip_gate_battle")
 
 local custom_beast = {}
 
 -- The beast system's state fields Beast Out on the screen keeps
--- (rules/beast/system.luau declares them).
+-- (rules/beast/init.luau declares them).
 type State = {
     -- `dword_20349A0`: Beast Out was picked this round (the round's first
     -- screen forgets it).
@@ -29,7 +29,7 @@ local function megaman(side: number): boolean
     return battle.navi(side).navi.forms ~= nil
 end
 
--- The beast system's setup (rules/beast/system.luau declares it): the
+-- The beast system's setup (rules/beast/init.luau declares it): the
 -- player's game, Beast Out unlocked (event flag 0xE0), and nettai's Cross
 -- list (the cross system's too), whose Crosses can be the other game's.
 type Setup = {

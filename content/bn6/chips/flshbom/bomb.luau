@@ -8,7 +8,7 @@
 -- quietly. What differs between the chips is its variant
 -- (`byte_80D9A20`'s row, the chip's level).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local hp = require("../../lib/hp")

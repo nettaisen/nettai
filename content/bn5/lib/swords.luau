@@ -13,7 +13,7 @@
 -- slash.
 
 local antiswrd = require("@exelib/antiswrd/counter")
-local attachment = require("../objects/attachment/attachment")
+local attachment = require("../objects/attachment")
 local collision = require("../rules/collision")
 local slash = require("@exelib/swords/slash")
 local sonic_boom = require("@exelib/swords/sonic_boom")

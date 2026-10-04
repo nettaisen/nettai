@@ -15,9 +15,9 @@
 -- pushing hit treats it, and the objects and helpers it uses (the game's
 -- rising bubble, panel bursts and trajectory).
 
-local panel_bursts = require("../panel-bursts/panel_bursts")
+local panel_bursts = require("../panel-bursts")
 local regions = require("../regions")
-local rising_bubble = require("../rising-bubble/rising_bubble")
+local rising_bubble = require("../rising-bubble")
 
 local black_bomb = {}
 

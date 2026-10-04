@@ -290,8 +290,8 @@ pub struct ChipArtDoc {
     /// own (`ChipArt::region`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub region: Option<String>,
-    /// The game version whose ROM it is from, for a chip each version has
-    /// its own picture of (`ChipArt::version`).
+    /// The game version whose ROM the chip's picture and icon are from,
+    /// for a chip only its own version's ROM draws (`ChipArt::version`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
 }

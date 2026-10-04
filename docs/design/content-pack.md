@@ -42,7 +42,7 @@ record, with the reasons and the as-built notes, in [content-model-v2.md](conten
 chips/KEY/chip.luau, chips.luau           a chip or a series (`define.chip`), with its use
 chips/KEY/*.luau                          what only that chip or series uses (its action's builder, its kinds)
 navis/KEY/navi.luau, chip.luau, *.luau    a navi, its own chip, its weapons and what they spawn
-navis/megaman/navi.luau                   MegaMan
+navis/megaman/init.luau                   MegaMan
 navis/megaman/forms/KEY/form.luau         MegaMan's forms, with their weapons and kinds next to them
 navis/megaman/weapons/KEY/weapon.luau     the weapons several forms share (`define.weapon`)
 objects/KIND/*.luau                       object kinds several owners spawn (`define.kind`)

@@ -5,8 +5,8 @@
 -- from the ground (0x080EC580). HeatS fires the bullet's row 8, a Fire burst of 40 over the panel it finds and the
 -- one behind; BubSht its row 4, an Aqua splash of 50.
 
-local attachment = require("../../../objects/attachment/attachment")
-local bullet = require("../../../objects/bullet/bullet")
+local attachment = require("../../../objects/attachment")
+local bullet = require("../../../objects/bullet")
 local spreader = require("@exelib/spreadr/action")
 
 local spreads = {}

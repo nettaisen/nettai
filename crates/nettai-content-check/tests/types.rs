@@ -1,7 +1,6 @@
 //! The content (content/) type-checks, each pack against its
-//! declarations; its manifests and requires name only modules that are
-//! there, each require one its pack may make; and misuse of the API is a
-//! type error.
+//! declarations; its requires name only modules that are there, each
+//! require one its pack may make; and misuse of the API is a type error.
 
 use std::path::Path;
 
@@ -16,11 +15,11 @@ fn the_content_type_checks_against_the_core_api() {
     assert!(problems.is_empty(), "type errors:\n{}", problems.join("\n"));
 }
 
-/// docs/design/content-model-v2.md §4.0: a listed module or a require of
-/// no module, a folder that is no pack, a require of another game's module
-/// (game to game, support to game), a support pack reaching for the game's
-/// context by itself and a cycle of support packs fail the check with
-/// their paths.
+/// docs/design/content-model-v2.md §4.0: a game without its top module, a
+/// require of no module, a folder that is no pack, a require of another
+/// game's module (game to game, support to game), a support pack reaching
+/// for the game's context by itself and a cycle of support packs fail the
+/// check with their paths.
 #[test]
 fn what_the_packs_refuse() {
     let dir = std::env::temp_dir().join(format!("nettai-check-{}", std::process::id()));
@@ -29,27 +28,30 @@ fn what_the_packs_refuse() {
         std::fs::create_dir_all(p.parent().unwrap()).unwrap();
         std::fs::write(p, text).unwrap();
     };
-    write("g/manifest.toml", "id = \"g\"\nkind = \"game\"\nuses = [\"lib\"]\n[definitions]\nrules = [\"there\", \"gone\"]\n");
+    write("g/manifest.toml", "id = \"g\"\nkind = \"game\"\ndepends = [\"lib\"]\n");
+    write("g/init.luau", "return { rules = require(\"@self/there\"), also = { require(\"@self/gone\"), require(\"./there\") } }\n");
     write("g/there.luau", "local y = require(\"./nowhere\")\nlocal z = require(\"@h/x\")\nlocal w = require(\"@lib/x\")\nreturn {}\n");
     write("h/manifest.toml", "id = \"h\"\nkind = \"game\"\n");
     write("h/x.luau", "return {}\n");
-    write("lib/manifest.toml", "id = \"lib\"\nkind = \"support\"\nuses = [\"base\"]\n");
+    write("lib/manifest.toml", "id = \"lib\"\nkind = \"support\"\ndepends = [\"base\"]\n");
     write(
         "lib/x.luau",
         "local g = require(\"@g/there\")\nlocal _ = asset.sprite(\"x\")\nlocal s = system.state\nreturn define.kind { id = \"x\" }\n",
     );
-    write("base/manifest.toml", "id = \"base\"\nkind = \"support\"\nuses = [\"lib\"]\n");
+    write("base/manifest.toml", "id = \"base\"\nkind = \"support\"\ndepends = [\"lib\"]\n");
     write("stray/x.luau", "return {}\n");
     let problems = nettai_content_check::reach(&dir).unwrap();
     let has = |want: &str| assert!(problems.iter().any(|p| p.contains(want)), "{want}: {problems:#?}");
-    has("g/manifest.toml: lists gone, and no module g/gone.luau is there");
+    has("g/init.luau: require(\"@self/gone\"): no module g/gone.luau");
+    has("g/init.luau: require(\"./there\") from g:init: leaves pack g");
+    has("h/init.luau: game pack h has no top module: its init.luau requires what the game has");
     has("g/there.luau: require(\"./nowhere\"): no module g/nowhere.luau");
     has("g/there.luau: require(\"@h/x\"): h is a game pack, which no other pack requires");
     has("lib/x.luau: require(\"@g/there\"): g is a game pack, which no other pack requires");
     has("lib/x.luau:2: support pack lib reaches for the game's context by itself, `asset`");
     has("lib/x.luau:3: support pack lib reaches for the game's context by itself, `system`");
     has("lib/x.luau:4: support pack lib reaches for the game's context by itself, `id = \"x\"`");
-    has("its uses make a cycle: base uses lib uses base");
+    has("its `depends` make a cycle: base depends on lib depends on base");
     has("stray/: no manifest.toml; a folder of content/ is a pack");
     std::fs::remove_dir_all(&dir).ok();
 }
