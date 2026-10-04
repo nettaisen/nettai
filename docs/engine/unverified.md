@@ -485,7 +485,7 @@ for the fight's states and the custom screen. "Matches" means every frame of the
 |---|---|---|
 | The supports (chips.md §2.10): Rush's bite, Beat's theft of a Mega and of a Giga chip, Tango's heal and its barrier, each hosted by either side, once a battle | `navicust/rush`, `rush-side1`, `beat`, `beat-side1`, `beat-giga`, `tango`, `tango-side1` | match |
 | The support bug (NaviStats+0x0D = 0xFF): no support comes | `navicust/bug-support` | matches |
-| The save's event flag 0x1720 (a NaviCust bug ran: the emotion window flickers, a console RNG1 draw each time) | carried in the trace's setup (`emotion_window_glitches`); `navicust/bug-support`, `bug-hp` | the console's RNG1 keeps step |
+| The save's event flag 0x1720 (a NaviCust bug ran: the emotion window flickers, a console RNG1 draw each time) | recorded in the trace's setup (`emotion_window_glitches`) and made by the rules from the stats' bugs, checked against it; `navicust/bug-support`, `bug-hp` | the console's RNG1 keeps step |
 | Every NaviCust program without its bug (the earlier recordings had each part on the grid's outer ring, which bugs it) | all of `navicust/` recorded again, plus `poem`, `fldrpak1`, `fldrpak2`, `hp50`..`hp400`, `bugstop` | match |
 | The NaviCust bugs by level: panel 1-3, custom 1-3, HP 1-3, buster 1-3, movement, emotion, status, a part on the outer ring | `navicust/bug-*` | match |
 | Steps gone astray (the movement bug) toward every edge, with and without a panel to go to | `navicust/bug-movement-edges` | matches |
