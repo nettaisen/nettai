@@ -67,6 +67,49 @@ pub struct Setup {
     pub rng1s: Option<[u32; 2]>,
     #[serde(default)]
     pub regular_flags: Option<[u8; 2]>,
+    /// Both consoles' NaviCusts as their saves have them: what the battle's
+    /// start compiled into the recorded stats (the reload, 0x0813F97C). A
+    /// round with them is replayed by compiling them, as a match is set up
+    /// ([`Round::round_setup`]). Older recordings have none: their stats are
+    /// replayed as recorded.
+    #[serde(default)]
+    pub navicusts: Option<[NaviCustSetup; 2]>,
+    /// Both consoles' installed patch cards, each its save's list (the
+    /// card's number, bit 7 set when switched off); none when neither has
+    /// any, or in an older recording.
+    #[serde(default)]
+    pub patch_cards: Option<[Vec<u8>; 2]>,
+}
+
+/// A console's NaviCust in a setup line.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NaviCustSetup {
+    /// The save's list ([`crate::save::NAVICUST_PARTS`] parts of 8 bytes,
+    /// 0x02004D6C), hex.
+    pub list: String,
+    /// The event flag bytes of the compression flags (0x1EC0 to 0x1FBF: 32
+    /// bytes), hex: part `p` is compressed when bit `0x80 >> (p & 7)` of
+    /// byte `p >> 3` is set.
+    pub compressed: String,
+    /// The compile leaves the HP (the console is in the cyberworld, or has
+    /// event flag 0x10B2: the navicust system's setup `cyberworld`).
+    pub cyberworld: bool,
+    /// The board's memory expansions (key item 0x61's count, which the
+    /// editor sizes the board by, 0x081329B0; the compile reads none).
+    pub expansions: u8,
+}
+
+impl NaviCustSetup {
+    /// The list's bytes, and whether part `part` is compressed.
+    pub fn decode(&self) -> Result<(Vec<u8>, [u8; 32]), String> {
+        let list = unhex(&self.list)?;
+        if list.len() != crate::save::NAVICUST_PARTS * 8 {
+            return Err(format!("a NaviCust list of {:#x} bytes", list.len()));
+        }
+        let flags: [u8; 32] = unhex(&self.compressed)?.try_into().map_err(|b: Vec<u8>| format!("{:#x} bytes of compression flags", b.len()))?;
+        Ok((list, flags))
+    }
 }
 
 /// A player's computer-navi data block (0xE0 bytes, BN5's 0x02034C20 by
@@ -562,6 +605,26 @@ impl Round {
             return Err("the content has no ruleset (BN5's)".into());
         }
         let local = bs[0x0D] & 1;
+        // A side whose setup carries its console's NaviCust (MegaMan's): the
+        // engine compiles it and applies the console's patch cards over the
+        // stats BN5's reset leaves ([`codec::reset`]), as a match is set up.
+        // (The recorded stats are what the battle's start made of them: the
+        // reload, 0x0813F97C.)
+        let compiled = |side: usize| self.setup.navicusts.is_some() && d.navi_stats[side].navi == 0;
+        let navicust_of = |side: usize| -> Result<Option<NaviCust>, String> {
+            let Some(n) = self.setup.navicusts.as_ref().filter(|_| compiled(side)).map(|n| &n[side]) else { return Ok(None) };
+            let (list, flags) = n.decode()?;
+            // The board is the recorded ExpMemry's (the one the save's
+            // parts were placed on), or the game's largest when its rules
+            // have fewer sizes than that.
+            let largest = content.rules().navicust.boards.len().saturating_sub(1) as u8;
+            navicust(content, compat, &list, n.expansions.min(largest), |part| flags[(part >> 3) as usize] & (0x80 >> (part & 7)) != 0).map(Some)
+        };
+        let cards_of = |side: usize| -> Result<nettai_battle::patch_cards::PatchCards, String> {
+            let Some(lists) = self.setup.patch_cards.as_ref().filter(|_| compiled(side)) else { return Ok(Default::default()) };
+            let list: Vec<(u8, bool)> = lists[side].iter().map(|&b| (b & 0x7F, b & 0x80 == 0)).collect();
+            patch_cards(content, compat, d.versions[side], &list)
+        };
         let players = [0u8, 1].map(|side| -> Result<PlayerSetup, String> {
             let folder = match (&self.setup.folders, side == local) {
                 (Some(f), _) => Some(battle_folder(content, compat, &unhex(&f[side as usize])?, side == local && bs[0x17] != 0)?),
@@ -578,19 +641,22 @@ impl Round {
                 navi_level: None,
                 sp_times: Default::default(),
                 // (The save's emotion window glitch, which a recording
-                // has, is no setup's: BN5's rules make it from the stats'
-                // NaviCust bugs. A bug that writes no stat, HubBatc's,
-                // they can't see without the NaviCust, which no recording
-                // carries: `glitch_unseen`.)
+                // has, is no setup's: BN5's rules make it. A compiled
+                // side's is its compile's and its cards', which `start`
+                // checks against the console's. A side without a recorded
+                // NaviCust has it from the stats' NaviCust bugs; a bug
+                // that writes no stat, HubBatc's, the rules can't see
+                // there: `GLITCH_UNSEEN`.)
                 console: ConsoleSetup {
                     rng: if side == local { self.setup.rng1 } else { self.setup.rng1s.map_or(0, |r| r[side as usize & 1]) },
                     tag_pair: None,
                     frames,
                 },
                 rules: Vec::new(),
-                patch_cards: Default::default(),
-                // The stats are the save's (no NaviCust compiled over them).
-                navicust: None,
+                // (Without a recorded NaviCust, the stats are the battle's
+                // start's: nothing is compiled over them.)
+                patch_cards: cards_of(side as usize)?,
+                navicust: navicust_of(side as usize)?,
                 tactics: match &self.setup.ai_lists {
                     Some(lists) => tactics(content, compat, &unhex(&lists[side as usize])?)?,
                     None => Default::default(),
@@ -620,10 +686,27 @@ impl Round {
                 p.set_fact(content, "souls", &souls)?;
             }
         }
+        // Whether each compiled side's compile leaves the HP: the navicust
+        // system's setup.
+        for (side, p) in [&mut p0, &mut p1].into_iter().enumerate() {
+            if let (Ok(p), Some(n), true) = (p, &self.setup.navicusts, compiled(side)) {
+                let took = p.set_fact(content, "cyberworld", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Bool(n[side].cyberworld))])?;
+                if took == 0 {
+                    return Err("no system of BN5's rules takes `cyberworld`".into());
+                }
+            }
+        }
+        let stats = |side: usize| -> Result<EngineNaviStats, String> {
+            if compiled(side) {
+                navi_stats(content, compat, &codec::navi_stats(&codec::reset(&d.navi_stats[side].raw))?)
+            } else {
+                navi_stats(content, compat, &d.navi_stats[side])
+            }
+        };
         Ok(RoundSetup {
             content: content.hash(),
             settings,
-            navi_stats: [navi_stats(content, compat, &d.navi_stats[0])?, navi_stats(content, compat, &d.navi_stats[1])?],
+            navi_stats: [stats(0)?, stats(1)?],
             rng: self.setup.rng2,
             local_side: bs[0x0D],
             score: nettai_battle::SetScore { wins: bs[0x18], losses: bs[0x19], round: bs[0x1A], max_combo: bs[0x1B] },
@@ -638,8 +721,23 @@ impl Round {
     /// init carried in (BattleState +0x60, +0x64).
     pub fn start(&self, content: Arc<Content>, compat: &Compat) -> Result<Battle, String> {
         let setup = self.round_setup(&content, compat)?;
-        let bs = decode_setup(&self.setup)?.battle_state;
+        let d = decode_setup(&self.setup)?;
+        let bs = d.battle_state;
         let mut b = Battle::new(setup, content);
+        // A side whose NaviCust the engine compiled: its emotion window
+        // glitches as the console's does (the flag its window's start reads,
+        // 0x0813F650, which the reload set).
+        if let (Some(_), Some(glitches)) = (&self.setup.navicusts, self.setup.emotion_window_glitches) {
+            for side in 0..2usize {
+                if d.navi_stats[side].navi == 0 && b.consoles[side].emotion_window_glitch != glitches[side] {
+                    return Err(format!(
+                        "side {side}'s compile and cards leave the emotion window {}, the console's {}",
+                        if b.consoles[side].emotion_window_glitch { "glitching" } else { "steady" },
+                        if glitches[side] { "glitches" } else { "is steady" }
+                    ));
+                }
+            }
+        }
         b.round.frames = u32::from_le_bytes(bs[0x60..0x64].try_into().unwrap());
         b.round.ticks = u32::from_le_bytes(bs[0x64..0x68].try_into().unwrap());
         Ok(b)
@@ -923,6 +1021,16 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
                 Err(e) => format!("? ({e})"),
             };
             let status = x.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
+            // NumberMan's face on NumberSoul's image copies the image's
+            // spawn registers for a tick (0x0801201E's read of the transform
+            // record): its +6, the turn's arm chip by number, where the
+            // engine's image has 0xFFFF whatever the chip (rules/souls/image).
+            let mut at = [x.pos.x, x.pos.y, x.pos.z];
+            if key.as_str() == "numbersoul/layer" && at[1] == 0xFFFF {
+                if let Some(n) = arm_chip_number(b, compat, x.alliance) {
+                    at[1] = n as i32;
+                }
+            }
             vec![
                 ("kind", kind),
                 ("flags", format!("{:#04x}", x.flags)),
@@ -933,7 +1041,7 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
                 ("panel", panel(i, [x.panel.x, x.panel.y])),
                 ("side", x.alliance.to_string()),
                 ("hp", format!("{}/{}", x.hp, x.max_hp)),
-                ("pos", pos([x.pos.x, x.pos.y, x.pos.z], garbage, xy, zf)),
+                ("pos", pos(at, garbage, xy, zf)),
                 ("timer", x.timer.to_string()),
                 ("anim", x.anim.to_string()),
                 ("status", status_field(i, format!("{status:#x}"))),
@@ -982,6 +1090,17 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
     d
 }
 
+/// Side `side`'s arm chip for the turn (BN5's souls system's `arm_chip`:
+/// ColonelSoul's Arm Change, the transform record's +6), by BN5's number.
+fn arm_chip_number(b: &Battle, compat: &Compat, side: u8) -> Option<u16> {
+    let (schema, state) = b.system_state(side, "souls")?;
+    let nettai_content_api::FieldValue::Ref(Some((nettai_content_api::Registry::Chip, h))) = state.get(schema, schema.index_of("arm_chip")?) else {
+        return None;
+    };
+    let key = &b.content.defs.chips.get(h as usize)?.key;
+    compat.chips.get(key).map(|c| c.id)
+}
+
 /// How far a round's replay got.
 #[derive(Clone, Debug)]
 pub struct Replay {
@@ -996,15 +1115,16 @@ pub struct Replay {
     pub known: Option<&'static str>,
 }
 
-/// A known difference: the recording's save had the emotion window's
-/// glitch (flag 0x10C1) and the stats it recorded have no NaviCust bug to
-/// make it from. The engine takes no glitch from a setup: BN5's rules make
-/// it, from a NaviCust's compile or, of stats given as compiled, from the
-/// bugs in them. HubBatc's bug halves the HP programs and writes no bug
-/// stat, and a recording carries no NaviCust to compile, so MegaMan's
-/// window doesn't flicker in the replay and the console's RNG1 draws
-/// differ (the recording console's a replay compares: `navicust/hubbatc`
-/// stops on it).
+/// A known difference of a recording without its consoles' NaviCusts
+/// ([`Setup::navicusts`]: one with them is compiled, and its compile's
+/// glitch checked): the save had the emotion window's glitch (flag 0x10C1)
+/// and the stats it recorded have no NaviCust bug to make it from. The
+/// engine takes no glitch from a setup: BN5's rules make it, from a
+/// NaviCust's compile or, of stats given as compiled, from the bugs in
+/// them. HubBatc's bug halves the HP programs and writes no bug stat, so
+/// without the NaviCust MegaMan's window doesn't flicker in the replay and
+/// the console's RNG1 draws differ (the recording console's a replay
+/// compares: `navicust/hubbatc` as first recorded stopped on it).
 pub const GLITCH_UNSEEN: &str = "the save's emotion window glitch with no bug in the stats (HubBatc's bug writes none; the recording carries no NaviCust)";
 
 #[derive(Clone, Debug)]

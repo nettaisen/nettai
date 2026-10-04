@@ -499,6 +499,10 @@ declare class Object
     -- Writable: BN5's priming (AIData+0x0D): a form's `priming` chip used,
     -- its next doubling waiting.
     primed: boolean
+    -- Writable: the chip a weapon of the navi's loads (BN5's AIData+0x32:
+    -- ColonelSoul's arm chip, which its charged shot's routine 0x13 fires;
+    -- nil: none).
+    weapon_chip: Chip?
     -- Writable: BN5's no-charge drive (DarkInvs): its ticks left
     -- (AIData+0x36; counted down in the intake while the navi has the
     -- no-charge state, asking for the stun strike at 0; 0xFFFF holds), and
@@ -1705,6 +1709,9 @@ export type ButtonSpec = {
     pressed: (side: number) -> (),
     -- B took its pick back.
     taken_back: ((side: number) -> ())?,
+    -- As the screen lays it out: the chip it shows, if any (BN5's capsules:
+    -- the chip window shows the chip for it, and R describes it).
+    chip: ((side: number) -> Chip?)?,
 }
 -- A system's custom-screen window (§4.4): its update, each tick it is up
 -- (`custom.window_tick` counts them from 1): whether it stays up.
@@ -1764,6 +1771,11 @@ export type SystemSpec = {
         round_setup: ((side: number) -> ())?,
         -- Once per side, after the navis spawn.
         round_start: ((side: number) -> ())?,
+        -- The turn-start sequencer's check begins (`sub_801486C`'s entry;
+        -- BN5's 0x08011DDC), each side in turn, before either side's
+        -- `turn_check` or change of form: the side's request for the turn is
+        -- read (BN5's ColonelSoul takes its arm chip).
+        turn_opened: ((side: number) -> ())?,
         -- The turn-start sequencer's check of a side that isn't changing
         -- form or asks for a navi switch (`sub_801486C`): a form whose time
         -- ran out asks to revert.
@@ -2814,6 +2826,18 @@ declare custom: {
     -- pick's place, first in the selection (B puts the chip back; at OK the
     -- chip leaves the folder where the button stands): false when the last
     -- pick isn't a chip; whether the screen's fade is still running.
+    -- A button attached to the last pick (BN5's capsules): the last pick, a
+    -- chip with no button attached yet (`last_pick`'s `attached`), carries
+    -- `modifiers` into the hand (its modifier bits: 0x02, 0x04, 0x08 and
+    -- 0x20 the damage word's 0x4000, 0x2000, 0x1000 and 0x0800, 0x10 a tenth
+    -- of its user's HP healed at the use; the last three where the game's
+    -- chip-use rules count them, `mixed_modifiers`), and the button is
+    -- picked until B takes the chip back. A button holding the last pick
+    -- (BN5's Arm Change): the last pick, a chip dealt from the folder,
+    -- leaves the picks for the button, which is picked; B, with the picks as
+    -- they were then, puts it back; at OK the chip leaves the folder. The
+    -- chip a button holds, and its icon in the column cell it left, shown or
+    -- not.
     pick: (side: number) -> (),
     play: (side: number, sound: string) -> (),
     set_column_icon: (side: number, chip: Chip?) -> (),
@@ -2830,8 +2854,12 @@ declare custom: {
     update_availability: (side: number) -> (),
     draw_emblem: (side: number, x: number) -> (),
     set_form: (side: number, form: FormDef?, turns: number?, chaos: boolean?) -> (),
-    last_pick: (side: number) -> { slot: number, chip: Chip, regular: boolean, navi_chip: boolean }?,
+    last_pick: (side: number) -> { slot: number, chip: Chip, regular: boolean, navi_chip: boolean, attached: boolean }?,
     trade_last_pick: (side: number, button: string) -> boolean,
+    attach_to_last_pick: (side: number, button: string, modifiers: number) -> boolean,
+    hold_last_pick: (side: number, button: string) -> boolean,
+    held_pick: (side: number, button: string) -> Chip?,
+    set_held_icon: (side: number, button: string, shown: boolean) -> (),
     fading: (side: number) -> boolean,
     form_taken: (side: number) -> boolean,
     full: (side: number) -> boolean,

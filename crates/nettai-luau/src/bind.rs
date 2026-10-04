@@ -1307,7 +1307,30 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         t.raw_set("chip", bound(|b| chip_value(b, Some(p.chip)))?)?;
         t.raw_set("regular", p.regular)?;
         t.raw_set("navi_chip", p.navi_chip)?;
+        t.raw_set("attached", p.attached)?;
         Ok(LuaValue::Table(t))
+    });
+    lib_fn!(lua, t, "attach_to_last_pick", move |_, (side, button, modifiers): (LuaValue, String, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let system = own("custom.attach_to_last_pick")?;
+        let modifiers = u8_arg(modifiers, "modifiers")?;
+        with(|api, _| api.custom_attach_to_last_pick(side, system, &button, modifiers).map_err(api_error))
+    });
+    lib_fn!(lua, t, "hold_last_pick", move |_, (side, button): (LuaValue, String)| {
+        let side = u8_arg(side, "side")? & 1;
+        let system = own("custom.hold_last_pick")?;
+        with(|api, _| api.custom_hold_last_pick(side, system, &button).map_err(api_error))
+    });
+    lib_fn!(lua, t, "held_pick", move |_, (side, button): (LuaValue, String)| {
+        let side = u8_arg(side, "side")? & 1;
+        let system = own("custom.held_pick")?;
+        let chip = with(|api, _| api.custom_held_pick(side, system, &button).map_err(api_error))?;
+        bound(|b| chip_value(b, chip))
+    });
+    lib_fn!(lua, t, "set_held_icon", move |_, (side, button, shown): (LuaValue, String, bool)| {
+        let side = u8_arg(side, "side")? & 1;
+        let system = own("custom.set_held_icon")?;
+        with(|api, _| api.custom_set_held_icon(side, system, &button, shown).map_err(api_error))
     });
     lib_fn!(lua, t, "trade_last_pick", move |_, (side, button): (LuaValue, String)| {
         let side = u8_arg(side, "side")? & 1;
@@ -2483,6 +2506,12 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
                 | SystemHook::NaviBug,
             ..
         } => Ok(Value::Bool(v == LuaValue::Boolean(true))),
+        // A button's chip.
+        HookCall::System { hook: SystemHook::ButtonChip, .. } => match bound.def(&v) {
+            _ if v.is_nil() => Ok(Value::Nil),
+            Some((Registry::Chip, h)) => Ok(Value::Def(Registry::Chip, h)),
+            _ => Err(mlua::Error::runtime(format!("a button's chip is nil or a chip definition, not a {}", v.type_name()))),
+        },
         HookCall::System { hook: SystemHook::ButtonState, .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
             LuaValue::String(s) => match &*s.to_str()? {

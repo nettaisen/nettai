@@ -488,6 +488,15 @@ The verification workspace traces BN5 consoles as it does BN6's, with the same l
   `Layout` per game (§3.4; the Japanese ROMs' RAM is the US ROMs'). BN6's lines are byte-identical to before. A
   BN5 setup line says `"game":"bn5"`, has BN5's 0x60-byte NaviStats blocks, says the regions when a side is
   Japanese, and leaves out what is BN6's alone (SP times, link navi levels, bug frags, event flags, Tag chips).
+  It carries both consoles' NaviCusts (`navicusts`: each save's list, 0x02004D6C, the compression flags' bytes,
+  event flags 0x1EC0 to 0x1FBF, whether the compile leaves the HP, `cyberworld`, and the board's memory
+  `expansions`, key item 0x61's count) and, when a console has any, their patch cards (`patch_cards`, each list's
+  bytes). **bn5-compat replays such a round by compiling**: each MegaMan's recorded stats go back to what BN5's
+  reset leaves in the bytes the compile and the cards write (`codec::RESET`), and the round is set up with the
+  NaviCust (on the board of the recorded `expansions`, or the rules' largest when they have fewer sizes), the cards
+  and the `cyberworld` fact, as a match is; the emotion window's glitch is then the compile's and the cards', what
+  the rules made, checked against the console's recorded flag (`emotion_window_glitches`). Recordings made before
+  carry neither field and replay their stats as recorded, their glitch from the bugs in those stats.
   The hooks test checks every BN5 hook against BN6's code (masked for what moves, RAM included), Team Colonel's
   against Team ProtoMan's, and each Japanese ROM's against the US ROM of its version.
 - **chiplab** runs BN5 consoles from a base of BN5 ROMs and saves (Tango's primer walks into a Team Battle),
@@ -1421,6 +1430,43 @@ them.
   one) or Chaos Unison's 1 (0x08024FF6; `custom.set_form`'s turns and Chaos flag, `TransformRequest::turns`,
   `chaos`); the chip given up leaves the folder in the soul's place. B on the soul puts the chip back. (Until
   2026-10-04 this was the custom screen's Rust: `SlotKind::Soul`, `Phase::SoulChosen`, `SoulUnlocks`.)
+- **What a soul adds to the screen** (0x08023CF8, by the soul MegaMan is in, when the side's navi is MegaMan, the
+  screen's +0x10): its slots 8 and 9, over the hand's last two chips. SearchSoul's Shuffle (kinds 4 and 5) and
+  NumberSoul's hand of ten (0x08025BE4) are the two bullets after this one; the two that change a chip are:
+  - **MeddySoul's capsules** (soul 6, kinds 6 and 7; rules/souls/capsules.luau): two of five capsule chips a screen
+    (0x17C YelCapsl, 0x17D BlkCapsl, 0x17E WhiCapsl, 0x17F PrpCapsl, 0x180 PnkCapsl: chips/capsules), one draw of
+    the console's RNG1 as the slots are laid out (0x08023D30: bits 1 to 4 and 17 to 20 into a table of sixteen,
+    0x08025E60, or 0x08025E80 while MegaMan's HP is under a quarter of its maximum; the system's deal hook, after
+    the dark chip's). A capsule is on offer while the last pick is a chip that deals damage with none mixed in
+    (0x08024C74); a chip with one offers no soul (0x08024B54). A on it (0x08024A02) runs the screen's state 0x3C
+    (0x0802373A: the window `capsule`, the soul's choice's steps with the capsule's icon), whose white step marks
+    the pick (`custom.attach_to_last_pick`: the slot's +4 and +5, by 0x08023824) and uses the capsule; B on the
+    chip frees it (0x08024D78). The mark goes into the hand's flag byte (+68, `ChipHand::modifiers`), and the
+    chip's use reads it (0x08010368, 0x0800FFF6; the chip-use rule `mixed_modifiers`): 0x04 the damage word's
+    0x2000 (YelCapsl: confusion), 0x08 its 0x1000 (BlkCapsl: blindness), 0x02 its 0x4000 (WhiCapsl: paralysis),
+    0x20 its 0x0800 (PrpCapsl: the HP bug), 0x10 a tenth of the user's maximum HP healed, rounded up (PnkCapsl).
+    The capsule chips never reach a hand; a slot shows its capsule as a chip (icon, and in the chip window the name
+    and picture alone, 0x08024422), and R describes it. Their records' uses are leftovers (the cannon's action,
+    Poltrgst's and RockCube's dimming routines, the supports' controller, routine 50: lib/supports/dimming).
+  - **ColonelSoul's Arm Change** (soul 7, kinds 8 and 9; rules/souls/arm-change.luau): on offer while the last pick
+    is a standard chip of no family that deals damage and neither dims nor is dark (0x08024C00). A on it
+    (0x080249D6) runs the screen's state 0x38 (0x08023694: the window `arm_change`): the chip leaves the picks for
+    the button (`custom.hold_last_pick`; five more can be picked) and its icon blinks in the column for 30 ticks.
+    B, with the picks as they were then, puts it back (0x08024CFC). At OK it is the turn's arm chip (the transform
+    record's +6, 0x080123FC; the system's `arm_chip`) and leaves the folder (0x080250C8, the Regular chip's flag
+    untouched). At the turn's start, before either side changes form (0x08011DDC, 0x080124AE: the hook
+    `turn_opened`), a MegaMan in ColonelSoul takes it (AIData +0x32, the navi's `weapon_chip`) and his charged
+    shot is the weapon routine 0x13 (0x0800F7D8: the chip loaded as the attack and used, the charge table's row
+    0x13, 120 ticks at every Charge; forms/colonelsoul/arm) for that turn; without one, the soul's own (0x14). A
+    weapons' reload (a change of form, a status reset) puts the soul's own back. The soul change copies the
+    record's +6 into AIData +0x32 too (0x08012102), and NumberSoul's image's face copies it for a tick as register
+    garbage in its position, where the engine has 0xFFFF whatever the chip (a replay's comparison translates it).
+  - The lab's scenarios (souls/06-recovery/capsule-*, ten; souls/07-obstacle/arm-change*, five) match on every
+    frame and every sound call: each capsule's effect, the low-HP table, the refusals, B, a soul after a capsule,
+    the arm chip fired twice and gone the turn after, B's order through later picks, Arm Change with a soul.
+  - Not built: the Liberation Missions' team navis' part of the same routine (the screen's +0x10 nonzero: a chip
+    pair by navi from 0x08025EA0 in slot 9, 0x08023EFE; the navi switch, state 0x40; battle mode 1's button in
+    slot 11). A netbattle's navi is MegaMan.
 - **SearchSoul's Shuffle** (the souls system's button `redeal`, the name the frontend draws the pack's re-deal
   button's tiles and picture for; rules/souls/shuffle.luau; the per-soul slots,
   0x08023CF8, by the soul the emotion routine leaves in r1, so never in battle mode 1): slots 8 and 9 (types 4 and 5),
@@ -2061,14 +2107,14 @@ rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   no supports); without, the NaviCust's flag 0x10C1, which its bugs' routine sets when a bug applies (0x08140040).
   Each console reads its own save's. The navicust system's `glitch`, and the patch-cards system with cards; a
   recording's setup carries both consoles' (`emotion_window_glitches`, oracle-trace's `bn5_emotion_window_glitch`).
-  No setup gives the engine the flag: the rules make it, from a NaviCust's compile or, for a side without one (a
-  recording's, whose stats are as the compile left them), from the NaviCust bugs in the stats. Of the 308 recorded
-  sides with the flag, the 76 with it set have such a stat but two, `navicust/hubbatc` side 0 and
-  `navicust-compile/hubbatc` side 1: HubBatc's bug halves the HP programs and writes no bug stat, and a recording
-  carries no NaviCust to compile, so MegaMan's window doesn't flicker there. `navicust/hubbatc`, whose console is the
-  recording one, is a known difference (its RNG1 differs from the first flicker on: bn5-compat's `GLITCH_UNSEEN`,
-  listed in the replay report) until a recording carries its save's NaviCust; `navicust-compile/hubbatc`'s is the
-  other console, whose RNG1 a recording doesn't hold, and it matches.
+  No setup gives the engine the flag: the rules make it, from a NaviCust's compile or, for a side without one
+  (whose stats are as a compile left them), from the NaviCust bugs in the stats. A recording that carries its
+  consoles' NaviCusts and cards (§10's setup line) is replayed by compiling them, and the compile's flag is checked
+  against the console's: HubBatc's bug halves the HP programs and writes no bug stat, so only the compile knows it.
+  A recording without them has the flag from its stats alone; one whose save had the flag with no bug stat
+  (`navicust/hubbatc` as first recorded) differs from the first flicker on (its console's RNG1), which bn5-compat
+  names (`GLITCH_UNSEEN`, listed in the replay report). No recording of the lab is one since the NaviCust and
+  patch-card scenarios were recorded again with their NaviCusts.
 - **The weapons** (navis/megaman/weapons): the routines that load a chip (0x0800FE78: chips.luau, MettGuard's and
   CrsShld's B+Back waiting 40 ticks, Ccann's TankCan1 not cracking), the card Shield (0x62, guards.luau), TriBustr
   (0x65, the buster's routine), ChrgS (0x63, the charged shot without the draw, the program always: its 0, the
