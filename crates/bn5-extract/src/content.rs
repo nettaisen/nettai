@@ -60,7 +60,7 @@ pub fn main(args: &[String]) {
     for (song, e) in &failures {
         eprintln!("song {:#05x} left out (it uses a command the driver port doesn't play): {e}", song.0);
     }
-    // Team Colonel's own songs, with what they play with added to the bank.
+    // Team Colonel's own songs, if any, with what they play with added to the bank.
     let (colonel, _) = m4a::rom::extract(&roms.us(Version::Colonel).0).unwrap_or_else(|e| panic!("reading Team Colonel's sound: {e}"));
     let versions = crate::sound::colonel_songs(&mut bank, &colonel);
     let jp = crate::graphics::japanese_differences(&roms);
@@ -110,7 +110,11 @@ pub fn main(args: &[String]) {
         None => panic!("the pack's sound doesn't load:\n{report}"),
     }
     let colonel_own: Vec<String> = versions.versions.iter().flat_map(|(_, s)| s.keys().map(|id| format!("{id:#05x}"))).collect();
-    eprintln!("Team Colonel's own songs: {}", colonel_own.join(", "));
+    if colonel_own.is_empty() {
+        eprintln!("Team Colonel's ROM plays every song as Team ProtoMan's does: no version's own");
+    } else {
+        eprintln!("Team Colonel's own songs: {}", colonel_own.join(", "));
+    }
     let bytes: usize = files.iter().map(|f| f.1.len()).sum();
     eprintln!(
         "wrote {out} (game {GAME}): {} sprites, {} backgrounds, {} songs, {} samples, {} chips' pictures ({} version chips' from their own version's ROM), {} files, {} KiB in {:.1?}",
