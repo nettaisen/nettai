@@ -59,7 +59,8 @@ export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out"
 export type SideSpecial = "none" | "select" | "takeover"
 -- A HUD part a chip's effect hides and shows: the custom gauge (draw task
 -- 4), the emotion window (14), a side's own gauge drawn by its levels (17,
--- `battle.own_gauges`), the HP box and its low-HP alarm (7).
+-- `battle.own_gauges`), the HP box (7: its drawing only, the low-HP alarm
+-- sounds on).
 export type HudPart = "gauge" | "emotion_window" | "level_gauge" | "hp_box"
 -- A screen fade content starts (`SetScreenFade`'s modes): the
 -- transformation sequencer's fade out (0x44, to full) and back in (0x40).

@@ -1775,7 +1775,7 @@ side's statistic 1 marks it spent; NaviStats +0x2A, the operation battle's, rule
 0x40000000 (0x0802C16C, from object_subtractHP, 0x0800C6E0, and applyDamageToPlayer, 0x080185A2): the roles' `volley`,
 BN5's action 0x30 (rules/emotion/dark-survival). The battle dims and the screen fades out (the transformation's fade,
 `battle.screen_fade`; white, untouchable, his future panel, a flash), the HUD's gauge, HP box and emotion window go (the
-HUD part `hp_box`: draw task 7, the box and its low-HP alarm), his dark self comes out and spirals back (actor 0x2E:
+HUD part `hp_box`: draw task 7, the box's drawing only, its low-HP alarm sounding on), his dark self comes out and spirals back (actor 0x2E:
 rules/souls/shade's code, `shade.make`), the computer drives him for 720 ticks as DarkInvs's drive does (its end
 action 0x49), the HUD comes back (without the gauge in the last turns, `battle.late_turns`) and the screen fades in. The
 status section's `hp_loss = "bn5"` holds BN5's object_subtractHP (a player's loss drains its side's gauge too: ×128,
