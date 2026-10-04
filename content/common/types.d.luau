@@ -48,7 +48,13 @@ export type Projectiles = {
 
 -- A game's shooting chips (@common/cannon, @common/airshot): the shot's sound, the attachment kind (what the navi
 -- holds) and its projectiles.
-export type ShooterLook = { sound: Sound, attachment: Kind, projectiles: Projectiles }
+export type ShooterLook = {
+    sound: Sound,
+    attachment: Kind,
+    projectiles: Projectiles,
+    -- A cannon's afterimages after its two (@common/cannon; BN5's Hub Style shade), by the navi's flip.
+    more_afterimages: ((me: Object, flip: number) -> ())?,
+}
 
 -- A game's throw (@common/bombs/throw): the wind-up's sound, and its attachment kind (what the navi holds).
 export type ThrowLook = { sound: Sound, attachment: Kind }
@@ -187,13 +193,32 @@ export type MegaManShotLook = {
     waits: ((me: Object) -> boolean)?,
 }
 
--- A game's buster shot (@common/megaman/buster): its shot's look, and a throw's sound and its throw of the obstacle
--- the navi absorbed (none: the game throws none).
-export type MegaManBusterLook = MegaManShotLook & { throw_sound: Sound, throw: ((me: Object) -> ())? }
+-- A game's rapid buster (@common/megaman/rapid_buster): its action's key, its buster parts, projectiles, attachment
+-- kind and shot sound, the shot (the projectile table's row 6), and whether a restarted form overlay steps at once
+-- (BN6's `sub_80C44D2`; BN5's has it reload its animation at its next step).
+export type RapidBusterLook = {
+    id: string,
+    buster: Buster,
+    projectiles: Projectiles,
+    attachment: Kind,
+    shot_sound: Sound,
+    shot: ProjectileVariant,
+    overlay_steps: boolean,
+}
+
+-- A game's buster shot (@common/megaman/buster): its shot's look, a throw's sound and its throw of the obstacle the
+-- navi absorbed (none: the game throws none), and the spread's muzzle flash (none: the shot's; BN5's own, its
+-- attachment row 0x39).
+export type MegaManBusterLook = MegaManShotLook & {
+    throw_sound: Sound,
+    throw: ((me: Object) -> ())?,
+    spread_flash: AttachmentLook?,
+}
 
 -- What a spreader fires (@common/spreadr/action): its gun (BN6's attachment rows 0x15 and 0x2F, by `dword_80ECC54`),
 -- the bullet's height (16.16, by `dword_80ECC5C`), and the bullet; its own bullet kind and shot sound (none: the
--- game's; BN5's Spreader's).
+-- game's; BN5's Spreader's); the count the bullet leaves after (none: 1; BN5's by its variant, 0x080EC57C: its
+-- HeatS's and BubSht's 10).
 export type SpreaderSpec = {
     id: string?,
     gun: AttachmentLook,
@@ -201,6 +226,7 @@ export type SpreaderSpec = {
     bullet: BulletVariant,
     bullet_kind: Kind?,
     sound: Sound?,
+    fire_after: number?,
 }
 
 -- A game's spreaders (@common/spreadr/action): the shot's sound, the attachment kind (the gun's) and its bullets'
@@ -217,6 +243,22 @@ export type Trap = {
 -- lasts (0: no limit), how it bounces (1: off its own side too, once across), the ticks per step, and whether it
 -- leaves a trail.
 export type PuckVariant = { steps: number, own_side: number, ticks: number, trail: boolean? }
+
+-- How a gust blows (@common/gust/gust, the original's first parameter): `pulls` turns it back toward its side, a
+-- weaker push; `unseen` hides it and lets it blow through any panel.
+export type GustHow = { pulls: boolean?, unseen: boolean? }
+
+-- A game's gust (@common/gust/gust): its sprite, what it is and reaches, the hit flags that stop it (BN6's wind
+-- stoppers; BN5's none, 0), whether an unseen gust pushes weaker too (BN5's: any first parameter), and the panels it
+-- blows over by side (require, forbid; side 2 reads the code after the table).
+export type GustLook = {
+    sprite: SpriteAsset,
+    is: CollisionType,
+    hits: CollisionType,
+    stopped_by: number,
+    weak_when_unseen: boolean,
+    panels: { [number]: { number } },
+}
 
 -- A game's hockey puck: its sprite (the trail's too), its sound and the bounce's, what it is and reaches, its hits'
 -- spark, the effect it bursts in, and its trail's tint.
@@ -384,8 +426,8 @@ export type NaviCustBoard = {
 -- What a game's NaviCust compile (@common/navicust/compile) is made of besides the shared routines: its name (for
 -- errors), its board, its bugs in the order the bugs' routine runs them and what each writes by its level (1 to 3;
 -- `hp`, what the HP programs add), what a placed program counts besides (BN5's HubBatc), whether any bug sets the
--- emotion window's glitch, and whether the side's HP is left as it is (`keeps_hp`: BN5's in the cyberworld; none,
--- never).
+-- emotion window's glitch, whether the side's HP is left as it is (`keeps_hp`: BN5's in the cyberworld; none,
+-- never), and what stops the bugs or keeps them whatever BugStop says (`bug_stop`: BN5's patch cards; nil, nothing).
 export type NaviCustGame = {
     name: string,
     board: NaviCustBoard,
@@ -394,6 +436,7 @@ export type NaviCustGame = {
     extra: ((part: PlacedProgram, count: (bug: string?, n: number?) -> ()) -> ())?,
     glitch: boolean,
     keeps_hp: ((side: number) -> boolean)?,
+    bug_stop: ((side: number) -> boolean?)?,
 }
 
 -- What AirSpin sends from the panel ahead (@common/airspin/action): the
@@ -406,6 +449,17 @@ export type AirSpinSender = {
 }
 
 -- AirSpin (@common/airspin/action: BN6's action 0x38, BN5's 0x47).
+-- A game's seeking whirlwind (@common/airspin/whirl): its kind's id, its sheet, the sound it comes with, what it is
+-- and reaches, and the statuses that hide an enemy navi from it (BN6's invisible and submerged; BN5's bubbled too).
+export type SeekingWhirlLook = {
+    id: string,
+    sprite: SpriteAsset,
+    sound: Sound,
+    attack: CollisionType,
+    hits: CollisionType,
+    hidden: { StatusFlag },
+}
+
 export type AirSpinSpec = {
     id: string?,
     whirlwind: AirSpinSender,
@@ -495,4 +549,35 @@ export type NumberBallLook = {
 export type NumberBall = {
     kind: Kind,
     spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
+}
+
+-- A patch card's effect (@common/patch-cards/effects' constructors make them; a game's patch-cards system applies
+-- them, @common/patch-cards/apply): its kind, and the kind's fields.
+export type PatchCardEffect = {
+    kind: string,
+    amount: number?,
+    element: ElementName?,
+    weapon: Weapon?,
+    variant: ProjectileVariant?,
+    barrier: Barrier?,
+    gauge: string?,
+    on: boolean?,
+    trail: string?,
+    level: number?,
+    blanks: number?,
+    charged: number?,
+    status: string?,
+    what: string?,
+    -- The card shows it as a bug.
+    bug: boolean?,
+}
+
+-- What a game's patch cards' application (@common/patch-cards/apply) reads of the game: its kinds in the order they
+-- apply (the original's effect numbers), the kinds whose choice is part of what the effect is (and the choice's
+-- field), the element bytes of the bodies and the hit statuses' bytes.
+export type PatchCardsGame = {
+    rank: { [string]: number },
+    choice: { [string]: string },
+    bodies: { [string]: number },
+    hit_status: { [string]: number },
 }

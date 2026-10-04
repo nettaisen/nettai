@@ -57,6 +57,28 @@ function bn5.setup(navi: Object): Action
     return charged_shot.action
 end
 
+-- 0x0800FDD0: the patch cards' ChrgS (B↓ChrgS), the charged shot without the draw: (Attack + 1) * 10 damage, always
+-- the shot the navi's charged-shot program names (NaviStats +0x4F; the charged shot, row 6, when 0).
+function bn5.program_setup(navi: Object): Action
+    local stats = battle.navi(navi.alliance)
+    navi.attack_damage = (stats.attack + 1) * 10
+    navi.attack_element = 0
+    navi.charged = 0
+    navi.extra = 0
+    navi.hit_param = 0
+    navi.attack_lockout = 0
+    local s = navi:action_state(charged_shot.action) :: { projectile: ProjectileVariant? }
+    s.projectile = stats.charge_shot_kind or variants.charged
+    return charged_shot.action
+end
+
+bn5.program = define.weapon {
+    id = "bn5:megaman/program-charged-shot",
+    -- The charge table's row 0x63, by Charge 0 to 5: past 4 it reads on into row 0x64's first entry.
+    charge_ticks = { 100, 90, 80, 70, 60, 80 },
+    setup = bn5.program_setup,
+}
+
 bn5.weapon = define.weapon {
     id = "bn5:megaman/charged-shot",
     -- The charge table's row 1 (0x0801CA6C, BN6's values); Charge 5 reads on into row 2's first entry.

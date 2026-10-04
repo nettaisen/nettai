@@ -83,6 +83,10 @@ struct PanelsSection {
     mend: MendSection,
     start_visible: [[bool; 8]; 5],
     front_edges: [[bool; 8]; 5],
+    /// The game's panel types by its own numbers (names), where they aren't
+    /// the engine's order.
+    #[serde(default)]
+    numbers: Vec<String>,
     step: StepSection,
     dash_step: StepSection,
     any_side_step: StepSection,
@@ -349,6 +353,17 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                 if let Some(unknown) = s.types.keys().find(|k| !PanelType::ALL.iter().any(|t| serde_name(t) == **k)) {
                     return Err(e(format!("{at}: types names {unknown:?}, a panel type the engine doesn't have")));
                 }
+                let numbers = s
+                    .numbers
+                    .iter()
+                    .map(|n| {
+                        PanelType::ALL
+                            .iter()
+                            .copied()
+                            .find(|t| serde_name(t) == *n)
+                            .ok_or_else(|| e(format!("{at}: numbers names {n:?}, a panel type the engine doesn't have")))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
                 rules.panels = PanelRules {
                     types,
                     start_visible: s.start_visible,
@@ -358,6 +373,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                     any_side_step: s.any_side_step.rules(),
                     mend: s.mend.normal,
                     mend_in_battle_mode_1: s.mend.battle_mode_1,
+                    numbers,
                 };
             }
             "reactions" => {

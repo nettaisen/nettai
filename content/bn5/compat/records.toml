@@ -12,6 +12,44 @@
 "bn5:megaman/shield" = [0x1F]
 "bn5:megaman/reflect" = [0x61, 0x20]
 "bn5:megaman/anti-damage" = [0x21]
+# The patch cards' B buttons, charged shots and B+Back specials (navis/megaman/weapons: chips, guards, buster,
+# charged-shot, spreads, instants, fire-arm, zap-ring, rapid-buster, hells-rolling).
+"bn5:megaman/card-shield" = [0x62]
+"bn5:megaman/tri-buster" = [0x65]
+"bn5:megaman/program-charged-shot" = [0x63]
+"bn5:megaman/zap-ring" = [0x42]
+"bn5:megaman/invisible" = [0x47]
+"bn5:megaman/longswrd" = [0x48]
+"bn5:megaman/thunder" = [0x49]
+"bn5:megaman/heat-shot" = [0x4A]
+"bn5:megaman/yoyo" = [0x4B]
+"bn5:megaman/vacuum" = [0x4C]
+"bn5:megaman/katana1" = [0x4D]
+"bn5:megaman/fire-arm" = [0x4E]
+"bn5:megaman/pulsar1" = [0x50]
+"bn5:megaman/poltrgst" = [0x51]
+"bn5:megaman/wideswrd" = [0x52]
+"bn5:megaman/minibomb" = [0x53]
+"bn5:megaman/cannball" = [0x54]
+"bn5:megaman/tornado" = [0x55]
+"bn5:megaman/bubble-shot" = [0x56]
+"bn5:megaman/crakout" = [0x57]
+"bn5:megaman/moonbld1" = [0x58]
+"bn5:megaman/airhoc" = [0x59]
+"bn5:megaman/circgun" = [0x5A]
+"bn5:megaman/drilarm1" = [0x5B]
+"bn5:megaman/wideblde" = [0x5C]
+"bn5:megaman/blkbomb" = [0x5D]
+"bn5:megaman/seaseed" = [0x5E]
+"bn5:megaman/tankcan1" = [0x5F]
+"bn5:megaman/drksword" = [0x60]
+"bn5:megaman/sword" = [0x64]
+"bn5:megaman/boomer" = [0x66]
+"bn5:megaman/widesht1" = [0x67]
+"bn5:megaman/rapid-buster" = [0x68]
+"bn5:megaman/hells-rolling" = [0x69]
+"bn5:megaman/guard1" = [0x6A]
+"bn5:megaman/crsshld1" = [0x6B]
 
 # Projectile variants: the projectile table's rows (0x080C4718, BN6's `off_80C4C78`) the buster-shot and
 # charged-shot programs (NaviStats +0x4D, +0x4F) name; the buster's and the charged shot's own, and the chips'.
@@ -22,8 +60,31 @@
 "bn5:shot/air" = 0x04
 "bn5:shot/charged" = 0x06
 "bn5:shot/gigacan" = 0x0C
+# The patch cards' buster-shot and charged-shot programs (objects/projectile/variants), and Hub Style's spread.
+"bn5:shot/breaking" = 0x05
+"bn5:shot/cracking" = 0x07
+"bn5:shot/poisoning" = 0x08
+"bn5:shot/attack-90" = 0x09
+"bn5:shot/grass" = 0x0D
+"bn5:shot/ice" = 0x0E
+"bn5:shot/hub" = 0x12
+"bn5:shot/sea" = 0x14
+"bn5:shot/charged-confusing" = 0x15
+"bn5:shot/charged-paralyzing" = 0x16
+"bn5:shot/charged-blinding" = 0x17
+"bn5:shot/charged-cracking" = 0x18
+"bn5:shot/charged-panel-breaking" = 0x19
+"bn5:shot/charged-lava" = 0x1A
+"bn5:shot/charged-poisoning" = 0x1B
+"bn5:shot/charged-attack-a0" = 0x1C
+"bn5:shot/charged-uninstalling" = 0x1D
+"bn5:shot/charged-hp-bug" = 0x1E
 
 # The barriers NaviStats +0x06 names as the one a navi enters with (0 none): FstBarr's (1), the Barrier chip's
 # (lib/barriers: BN6's rows, BN5's visual).
 [barriers]
 "bn5:barrier/10" = 1
+"bn5:barrier/100" = 5
+"bn5:barrier/200" = 7
+"bn5:barrier/bubble" = 8
+"bn5:barrier/life-aura" = 9

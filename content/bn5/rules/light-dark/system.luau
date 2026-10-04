@@ -153,8 +153,8 @@ local function palette(side: number, navi: Object): number?
         p = tier(value())
     end
     -- Hub Style (NaviStats +0x4C: BN5's patch card 111, applied at 0x08138214).
-    if hub and stats.hub_style then
-        return p + 5 + 20
+    if hub and stats.hub_style ~= 0 then
+        return p + stats.hub_style * 5 + 20
     end
     return p + (if in_soul then 0 else stats.element) * 5
 end
@@ -230,7 +230,7 @@ return define.system {
     hooks = {
         -- Hub Style shows the base form's second set of faces (0x0801AF8E).
         round_setup = function(side: number)
-            battle.set_face_variant(side, battle.navi(side).hub_style)
+            battle.set_face_variant(side, battle.navi(side).hub_style ~= 0)
         end,
         -- 0x08010EC8: MegaMan's starting mood.
         starting_mood = function(_side: number): number?
