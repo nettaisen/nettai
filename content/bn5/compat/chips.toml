@@ -342,3 +342,6 @@
 "crosswrd" = { id = 0x176, action = 0x13, subtype = 10 }
 "sprsonic" = { id = 0x177, action = 0x2b, subtype = 1 }
 "dbldream" = { id = 0x178, action = 0x13, subtype = 11 }
+"rush" = { id = 0x179, action = 0x14, subtype = 0 }
+"beat" = { id = 0x17a, action = 0x14, subtype = 0 }
+"tango" = { id = 0x17b, action = 0x14, subtype = 0 }

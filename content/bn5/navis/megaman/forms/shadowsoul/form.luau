@@ -5,16 +5,16 @@
 -- without lag (0x0800E0D2). Its weapons (0x0801CA1C's row 8, loaded by 0x0800DCA0): the buster (routine 0),
 -- LongSwrd's slash (0x17, ./charge), Sword chips charged with A (0x18: any Sword chip but a dimming or dark one,
 -- 0x0801090A; no bonus, 0x080103D0, but a charged sword warps behind the enemy first, lib/swords), the anti-damage
--- stance on B+Back (0x45, ./back). His sword's arm is the blade's animation 15 (0x080EC038).
---
--- Not yet: Chaos Unison's weapon (routine 0x31, 0x0800FA3E: DarkInvs, chip 0xBD, the charge table's row 0x31:
--- 40, 60, 90, 120, 150 and 40), which waits for DarkInvs's port.
+-- stance on B+Back (0x45, ./back), Chaos Unison's (0x31: DarkInvs). His sword's arm is the blade's animation 15
+-- (0x080EC038).
 
 local attach_points = require("../../attach_points")
 local back = require("./back")
 local buster = require("../../weapons/buster")
 local charge = require("./charge")
+local chaos = require("../../weapons/chaos")
 local charged_chips = require("../../weapons/charged-chip")
+local darkinvs = require("../../../../chips/darkinvs/chip")
 local souls = require("../../../../rules/souls/system")
 
 return define.form {
@@ -31,6 +31,8 @@ return define.form {
         -- Routine 0x18 (0x0800F520, empty: the charged chip is the chip with its charge), the charge table's row 0x18.
         a_charge = charged_chips.routine("shadowsoul/a-charge", { 30, 30, 30, 30, 30, 70 }),
         back_special = back.weapon,
+        -- Routine 0x31 (0x0800FA3E): DarkInvs (chip 0xBD), the charge table's row 0x31.
+        chaos = chaos.weapon("shadowsoul/chaos", darkinvs, { 40, 60, 90, 120, 150, 40 }),
     },
     charged_chips = { { family = "sword", damaging = false, plain = true } },
     status_reset = { "float_shoes", "floating_body" },

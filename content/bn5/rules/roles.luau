@@ -14,6 +14,7 @@
 
 local antidmg_counter = require("../chips/antidmg/counter")
 local barriers = require("../lib/barriers")
+local beat = require("../chips/beat/chip")
 local charged_shot = require("../navis/megaman/weapons/charged-shot")
 local anti_recovery = require("../chips/antirecv/controller")
 local dive_ripple = require("../objects/dive-ripple/ripple")
@@ -24,9 +25,12 @@ local invalid = require("../chips/invalid/chip")
 local collision = require("./collision")
 local effects = require("../lib/effects")
 local regions = require("@exelib/regions")
+local rush = require("../chips/rush/chip")
 local sparks = require("../lib/sparks")
 local statuses = require("./status")
+local supports = require("../lib/supports/controller")
 local swords = require("../lib/swords")
+local tango = require("../chips/tango/chip")
 
 return {
     actions = {
@@ -48,6 +52,10 @@ return {
         -- What a selection the custom screen can't allow becomes, and what a chip use the light and dark rule refuses
         -- becomes (BN5's chip 0x185, past the named ones: chips/invalid).
         invalid = invalid,
+        -- The chips the NaviCust supports' telops name (BN5's 0x179 to 0x17B, past the library: BN6's numbers).
+        rush = rush,
+        beat = beat,
+        tango = tango,
     },
     kinds = {
         -- AntiRecv's counterattack, which a heal meets when the other side has AntiRecv armed (BN6's code).
@@ -55,6 +63,9 @@ return {
         -- What an obstacle turns into where an armed side's ColonelSoul can use it (attack object 0x30: BN5's own,
         -- objects/soldier).
         obstacle_soldier = soldier.kind,
+        -- The NaviCust supports' controller (Rush's, Beat's and Tango's: BN5's effect object 0x74, BN6's code,
+        -- lib/supports).
+        support = supports.kind,
         -- The ripple over a body under the sea's surface (effect object 0x3E: objects/dive-ripple).
         dive_ripple = dive_ripple.kind,
     },
