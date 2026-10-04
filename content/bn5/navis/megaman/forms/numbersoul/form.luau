@@ -34,7 +34,8 @@ return define.form {
         chaos = chaos.weapon("bn5:numbersoul/chaos", darkplus, { 40, 60, 90, 120, 150, 40 }),
     },
     chip_bonus = { family = "null", damage = 10, dimming_chips = true },
-    -- 0x0800F07C: his layer, in his second related slot; 0x0800F0DE: taken off.
+    -- His put-on and take-off routines (0x0800F038's and 0x0800F09C's row 9): his layer, in his second related slot
+    -- (0x0800F07C); taken off (0x0800F0DE).
     put_on = function(navi: Object)
         navi.related2 = layer.spawn(navi, ROW)
     end,
