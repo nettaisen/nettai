@@ -1,8 +1,8 @@
 //! A side from a BN5 save file (bn5-compat's `save`): its karma (the
-//! light/dark value), the souls it has and how far its NaviCust's board is
-//! expanded (its ExpMemry). (Its folder, the NaviCust's programs and its
-//! stats are a later import's.) `Match::import_save` comes here for a save
-//! that isn't BN6's.
+//! light/dark value), the souls it has, its Soul Unison and Chaos Unison,
+//! and how far its NaviCust's board is expanded (its ExpMemry). (Its folder,
+//! the NaviCust's programs and its stats are a later import's.)
+//! `Match::import_save` comes here for a save that isn't BN6's.
 
 use crate::{Arena, Side};
 use bn5_compat::save::Save;
@@ -15,20 +15,23 @@ pub(crate) fn read(file: &[u8]) -> Result<Save, String> {
 }
 
 impl Side {
-    /// Take the karma, the souls and the NaviCust board's expansions from a
-    /// BN5 save, the side of a match on `arena` (a BN5 one): the souls its
-    /// version's flags give (the game's souls of those numbers; none
-    /// without Soul Unison) as the side's soul list; the save's ExpMemry
-    /// (key item 0x61's count) as the expansions of the side's NaviCust, if
-    /// it has one (its programs stay: one off a smaller board is the
-    /// match's check's to say). What is worth saying about it.
+    /// Take the karma, the souls, Soul Unison and the NaviCust board's
+    /// expansions from a BN5 save, the side of a match on `arena` (a BN5
+    /// one): the souls its version's flags give (the game's souls of those
+    /// numbers) as the side's soul list, and its Soul Unison and Chaos
+    /// Unison (event flags 0 and 0x236); the save's ExpMemry (key item
+    /// 0x61's count) as the expansions of the side's NaviCust, if it has one
+    /// (its programs stay: one off a smaller board is the match's check's to
+    /// say). What is worth saying about it.
     pub fn import_bn5_save(&mut self, content: &Content, arena: &Arena, save: &Save) -> Vec<String> {
         let mut notes = Vec::new();
         self.karma = save.light_dark();
         if !crate::facts::takes(content, arena.ruleset, crate::facts::KARMA_FIELD) {
             notes.push("the match's ruleset has no light and dark MegaMan: the save's karma is kept, unused".into());
         }
-        let numbers = if save.soul_unison() { save.souls() } else { Vec::new() };
+        let numbers = save.souls();
+        self.soul_unison = save.soul_unison();
+        self.chaos_unison = save.chaos_unison();
         let all = crate::facts::all_souls(content, &arena.game);
         let mut souls = Vec::new();
         for n in numbers {
