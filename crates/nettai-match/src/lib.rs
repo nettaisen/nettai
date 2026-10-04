@@ -361,7 +361,6 @@ impl Match {
                 folder: Some(folder),
                 souls: Default::default(),
                 joypad_phase: 0,
-                bug_frags: s.bug_frags,
                 navi_level: s.navi_level,
                 sp_times: s.sp_times,
                 console: ConsoleSetup {

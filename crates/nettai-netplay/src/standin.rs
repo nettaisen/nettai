@@ -135,7 +135,6 @@ pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [B
         folder: Some(f),
         souls: Default::default(),
         joypad_phase: 0,
-        bug_frags: 0,
         navi_level: None,
         sp_times: Default::default(),
         console: ConsoleSetup { rng: seed.rotate_left(16) ^ side.wrapping_mul(0x9E37_79B9), ..ConsoleSetup::default() },

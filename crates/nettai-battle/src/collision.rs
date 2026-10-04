@@ -7,7 +7,7 @@
 //! read on their next update. See docs/engine/field-collision-damage.md §3.
 
 use crate::battle::Battle;
-use crate::content::{Content, HitTest, Region, RegionRole, SparkRole, StatusRole};
+use crate::content::{Content, DamageWordRule, HitTest, Region, RegionRole, SparkRole, StatusRole};
 use crate::field::{self, PanelType};
 use crate::object::{ObjectRef, PanelPos};
 use nettai_content_api::{CollisionHandle, RegionHandle, SparkHandle, StatusHandle};
@@ -318,6 +318,7 @@ impl Battle {
         let Some(id) = o.collision else { return };
         let dimmed = self.is_dimmed();
         let anchor = self.roles().region(RegionRole::Anchor);
+        let word = self.game_rules().effects.damage_word;
         let s = self.collision.get_mut(id);
         s.parent = Some(obj);
         s.hit_mod_base = hit_mod;
@@ -335,7 +336,7 @@ impl Battle {
         // The garbage high byte of any bug code: the table offset the
         // target lookup left in r1.
         let r1 = row_offset + o.alliance as u16 * 4;
-        decode_damage_word(s, r1, self.content.defs.roles());
+        decode_damage_word(s, r1, word, self.content.defs.roles());
     }
 
     /// `sub_801A082`: redo the damage and collision-type part of the setup
@@ -346,6 +347,7 @@ impl Battle {
         let (alliance, damage) = (o.alliance, o.damage);
         let dimmed = self.is_dimmed();
         let bn5 = self.game_rules().effects.retype == crate::content::RetypeRule::Bn5;
+        let word = self.game_rules().effects.damage_word;
         let (target_flags, row_offset) = self.content.collision_type(target_type, alliance);
         let s = self.collision.get_mut(id);
         s.hit_mod_base = hit_mod;
@@ -364,7 +366,7 @@ impl Battle {
         } else {
             4
         };
-        decode_damage_word(s, r1, self.content.defs.roles());
+        decode_damage_word(s, r1, word, self.content.defs.roles());
     }
 
     /// `object_presentCollisionData`: clear the accumulators and register.
@@ -687,12 +689,34 @@ pub fn move_direction(old: PanelPos, new: PanelPos, alliance: u8) -> u8 {
     }
 }
 
-/// `sub_8019F44`: decode the flag bits of a damage word.
-fn decode_damage_word(s: &mut CollisionData, r1: u16, roles: &crate::content::Roles) {
+/// `sub_8019F44`: decode the flag bits of a damage word (the rule
+/// `effects.damage_word`: BN6's, or BN5's 0x080165EC).
+fn decode_damage_word(s: &mut CollisionData, r1: u16, rule: DamageWordRule, roles: &crate::content::Roles) {
     let d = s.self_damage;
     s.self_damage = d & 0x7FF;
     if d & 0x8000 != 0 {
         s.self_damage = s.self_damage.wrapping_mul(2);
+    }
+    if rule == DamageWordRule::Bn5 {
+        // BN5's: a paralysis that doesn't flinch, a confusion, a blindness
+        // (status bytes 0x10, 0x20, 0x30), and bug code 0x18 (high byte
+        // 0x11: the two bytes at +0x12).
+        if d & 0x4000 != 0 {
+            s.status_base = Some(roles.status(StatusRole::DamageWordParalysis));
+            s.hit_mod_base = 0;
+            return;
+        }
+        if d & 0x2000 != 0 {
+            s.status_base = Some(roles.status(StatusRole::DamageWordConfusion));
+            return;
+        }
+        if d & 0x1000 != 0 {
+            s.status_base = Some(roles.status(StatusRole::DamageWordBlindness));
+        }
+        if d & 0x800 != 0 {
+            s.bugs = 0x1118;
+        }
+        return;
     }
     if d & 0x4000 != 0 {
         s.status_base = Some(roles.status(StatusRole::DamageWordParalysis));

@@ -106,7 +106,9 @@ local function lockon_mode(navi: Object): Lockon?
     end
     -- (The empty hand's chip, the zeroed one, has no lock-on mode.)
     local chip = navi.attack_chip
-    return if chip ~= nil and chip.beast ~= nil then chip.beast.lockon else nil
+    -- (The beast system's extension of chips, BN6's: types.d.luau.)
+    local beast = if chip ~= nil then ((chip :: any) :: Bn6ChipFields).beast else nil
+    return if beast ~= nil then beast.lockon else nil
 end
 
 -- The afterimage's animation: 0xF, or 0 for the link navis.

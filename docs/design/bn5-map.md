@@ -1380,7 +1380,11 @@ them.
    GetRNG2 draws each shaking tick where BN6 draws from GetRNG1, one channel (BN6's two), and no shake while the
    time is stopped; BN5's shakes change the simulation's RNG (a BlkBomb's landing: 15 ticks of draws).
 16. **The hit spark's first tick** (0x080E0870, BN6's `sub_80E0864`): BN5's spark doesn't step its sprite at its
-   init, so it lasts a tick longer (spark.rs).
+   init, so it lasts a tick longer (spark.rs). BN5's frame load (0x03006898, in IWRAM) also leaves the palette
+   offset of the frame's first part (the sprite's +5) to the sprite's next step (0x03006948), where BN6's
+   (`sub_3006730`) takes it: a spark's first frame shows in its palette 0 (an elec spark blue-white, not yellow),
+   as does any sprite drawn after a frame load and before its next step (the effects section's
+   `load_sets_part_palette`, `Look::part_palette`; presentation).
 17. **The metal slide's speed** (§15.2): a step up or down covers its 24 pixels in 3 ticks (8 a tick); the
    engine's slide moves 6. Its order by the move's direction is the tables', as recorded. A navi's slide and drag
    both go 8 a tick in depth in BN5 (0x0801361E, 0x080143A8). A slide arriving on metal goes on as on BN6's roads
