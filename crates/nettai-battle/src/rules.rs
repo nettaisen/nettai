@@ -628,6 +628,22 @@ mod tests {
         s.get(schema, schema.index_of(field).expect("a field"))
     }
 
+    /// BN6's bug frags are its dark-chips system's (docs/design/
+    /// rules-in-luau.md, As built S8): the player brings them in the
+    /// system's setup (a tool writes them as a fact), and the round starts
+    /// with them in its state, which the chips spend through BN6's API.
+    #[test]
+    fn the_bug_frags_are_the_dark_chips_systems() {
+        let content = scenario::content();
+        let mut setup = scenario::setup();
+        let took = setup.players[0]
+            .set_fact(&content, None, "bug_frags", &[Fact::Value(nettai_content_api::Value::Int(7))])
+            .expect("a count of bug frags");
+        assert_eq!(took, 1, "the dark-chips system alone takes them");
+        let b = started(setup);
+        assert_eq!((testing::bug_frags(&b, 0), testing::bug_frags(&b, 1)), (7, 0));
+    }
+
     #[test]
     fn each_side_runs_its_rulesets_systems_for_itself() {
         let b = started(scenario::setup());
@@ -636,9 +652,9 @@ mod tests {
         assert_eq!(content.defs.ruleset(stock).key, "stock");
         for side in 0..2u8 {
             assert_eq!(b.side_rules(side).ruleset, Some(stock));
-            // (BN6's beast system first, then the counter, then BN6's forms
-            // and emotion systems.)
-            assert_eq!(b.side_rules(side).states.len(), 4);
+            // (BN6's beast system first, then the counter, then BN6's forms,
+            // emotion and dark-chips systems.)
+            assert_eq!(b.side_rules(side).states.len(), 5);
             assert_eq!(field(&b, side, 1, "starts"), FieldValue::U8(1), "round_start ran once for side {side}");
             assert_eq!(field(&b, side, 1, "side"), FieldValue::U8(side), "it ran for its own side");
         }
@@ -720,13 +736,13 @@ mod tests {
         let defs = &content.defs;
         let mix = defs.ruleset_by_key("test-mix").expect("the mix");
         let names: Vec<&str> = defs.ruleset(mix).systems.iter().map(|&h| defs.system(h).key.as_str()).collect();
-        assert_eq!(names, ["beast", "test/counter", "emotion", "test/marker"]);
+        assert_eq!(names, ["beast", "test/counter", "emotion", "dark-chips", "test/marker"]);
         assert_eq!(defs.ruleset(mix).base, defs.stock_ruleset());
         let mut setup = scenario::setup();
         setup.ruleset = Some(mix);
         let b = started(setup);
-        assert_eq!(b.side_rules(1).states.len(), 4);
-        assert_eq!(field(&b, 1, 3, "mark"), FieldValue::U8(0x41), "the marker ran for its side");
+        assert_eq!(b.side_rules(1).states.len(), 5);
+        assert_eq!(field(&b, 1, 4, "mark"), FieldValue::U8(0x41), "the marker ran for its side");
         assert_eq!(field(&b, 1, 1, "starts"), FieldValue::U8(1));
     }
 

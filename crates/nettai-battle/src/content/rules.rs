@@ -140,6 +140,15 @@ pub struct EffectsRules {
     /// its lab records without it) don't.
     #[serde(default = "yes")]
     pub overlays_run_while_paused: bool,
+    /// Loading an animation's frame (`sprite_loadAnimationData`) takes the
+    /// palette offset of the frame's first part, which a sprite is drawn
+    /// with (BN6's `sub_3006730`); BN5's (0x03006898) leaves it to the
+    /// sprite's next step, so a sprite drawn before it steps again keeps
+    /// its last step's offset, or 0 when just loaded (BN5's hit spark,
+    /// which doesn't step as it starts, shows its first frame in its
+    /// palette 0). Presentation: `Look::part_palette`.
+    #[serde(default = "yes")]
+    pub load_sets_part_palette: bool,
     /// How the game's obstacles number their action tables.
     #[serde(default)]
     pub obstacle_actions: ObstacleActions,
@@ -192,6 +201,7 @@ impl Default for EffectsRules {
             obstacle_soldiers: false,
             palette_flash: PaletteFlashRule::default(),
             overlays_run_while_paused: true,
+            load_sets_part_palette: true,
             obstacle_actions: ObstacleActions::Bn6,
         }
     }
