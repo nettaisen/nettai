@@ -322,7 +322,18 @@ pub fn queue_objects<'a>(
             }
             mask &= !look.hidden_parts;
 
-            let first_palette = parts.first().map(|p| p.palette).unwrap_or(0);
+            // The palette offset the sprite holds: the first part's of the
+            // frame it last took one from (`Look::part_palette`; BN5's
+            // frame load leaves the last step's).
+            let first_palette = look.part_palette.map_or(0, |(anim, frame)| {
+                sheet
+                    .animations
+                    .get(anim as usize)
+                    .and_then(|frames| frames.get(frame as usize).or(frames.last()))
+                    .and_then(|f| sheet.part_lists.get(f.parts as usize))
+                    .and_then(|parts| parts.first())
+                    .map_or(0, |p| p.palette)
+            });
             let palette = if look.white {
                 WHITE
             } else {
