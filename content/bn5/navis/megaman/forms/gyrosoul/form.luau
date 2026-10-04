@@ -5,8 +5,9 @@
 -- (9, ./charge), routine 1 on A (the charged shot's: no chip charges in GyroSoul, 0x0801090A), Chaos Unison's (0x39:
 -- DarkTorn); no B+Back (0xFF). A Wind chip that isn't a dimming chip primes it (0x080102D2: AIData +0x0D, a sound),
 -- and primed, the next damaging Wind or Null chip that isn't a dimming chip deals double (0x08010302), spending it;
--- while it is primed nothing else doubles a chip (0x0801026C: not Full Synchro nor anger). Its status reset and a
--- NaviCust change give him FloatShoes, a floating body and AirShoes (0x08011BE4, 0x08011D0C).
+-- while it is primed nothing else doubles a chip (0x0801026C: not Full Synchro nor anger); primed, his propeller
+-- plays its spinning animations (MegaMan's per-form tick, 0x080F04CE: the overlay's animation 17 on, 0x080C451A).
+-- Its status reset and a NaviCust change give him FloatShoes, a floating body and AirShoes (0x08011BE4, 0x08011D0C).
 
 local attach_points = require("../../attach_points")
 local body_overlays = require("../../../../lib/body_overlays")
@@ -16,6 +17,9 @@ local charge = require("./charge")
 local charged_shot = require("../../weapons/charged-shot")
 local darktorn = require("../../../../chips/darktorn/chip")
 local souls = require("../../../../rules/souls/system")
+
+-- 0x080F04CE in soul 2: the propeller's animation offset by the priming.
+local PRIMED_ANIM = 17
 
 return define.form {
     id = "gyrosoul",
@@ -33,6 +37,9 @@ return define.form {
         chaos = chaos.weapon("gyrosoul/chaos", darktorn, { 40, 60, 90, 120, 150, 40 }),
     },
     status_reset = { "float_shoes", "floating_body", "air_shoes" },
+    tick = function(navi: Object)
+        navi:set_overlay_anim_offset(if navi.primed then PRIMED_ANIM else 0)
+    end,
     priming = {
         by = { family = "wind" },
         sound = asset.sound("soul-primed"),

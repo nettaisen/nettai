@@ -37,6 +37,7 @@ language = "ja"
 "batcan3" = { name = "バットキャノン3", description = "あてるとゾクタイの\nシェードマンHPを\nかいふくさせる!" }
 "batcan4" = { name = "バットキャノン4", description = "あてるとゾクタイに\n3しゅるいの\nオジャマ攻撃をする" }
 "bblwrap" = { name = "バブルラップ", description = "はがれても また\nふっかつするバリア\n電気攻撃にはよわい" }
+"beat" = { name = "ビートサポート", description = "" }
 "bighook" = { name = "ギガントフック", description = "よこ2マスぶんの\nコブシが2つ\nフックをはなつ!" }
 "bignoise" = { name = "ビッグノイズ", description = "4マス前方まで\nとどく きょだい\nちょうおんぱ!!" }
 "blakwing" = { name = "ブラックウイング", description = "てきエリアはしに\nどうくつがあらわれ\nくろいツバサ攻撃!" }
@@ -265,6 +266,7 @@ language = "ja"
 "roll" = { name = "ロール", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
 "roll-ds" = { name = "ロール\uE008", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
 "roll-sp" = { name = "ロール\uE003", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
+"rush" = { name = "ラッシュサポート", description = "" }
 "seaseed" = { name = "オーシャンシード", description = "3マス前にタネ!\n9マス分のパネルを\n水パネルにする!" }
 "serchman" = { name = "サーチマン", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
 "serchmn-ds" = { name = "サーチマン\uE008", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
@@ -302,6 +304,7 @@ language = "ja"
 "suprvulc" = { name = "スーパーバルカン", description = "きょういの\n12れんしゃ\nバルカンほう!" }
 "sword" = { name = "ソード", description = "目の前のてきを\nきりつける!\n攻撃はんいは1マス" }
 "swrdmode" = { name = "ソードモード", description = "ミテイ" }
+"tango" = { name = "タンゴサポート", description = "" }
 "tankcan1" = { name = "センシャホウ1", description = "前方にほうげき!\n画面はしにとどくと\nたて3マスばくふう" }
 "tankcan2" = { name = "センシャホウ2", description = "前方にほうげき!\n画面はしにとどくと\nたて3マスばくふう" }
 "tankcan3" = { name = "センシャホウ3", description = "前方にほうげき!\n画面はしにとどくと\nたて3マスばくふう" }

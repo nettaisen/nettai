@@ -163,8 +163,43 @@ pub struct KindEntry {
     pub scratch_status: bool,
 }
 
+/// Where a ROM other than Team ProtoMan's US one has what compat names by
+/// that ROM's addresses (games.toml, one section a ROM).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GameAddresses {
+    /// How far its stage actor lists (a battle settings record's bytes
+    /// 12..16) are from Team ProtoMan's US ROM's.
+    pub actor_lists: i32,
+}
+
+/// games.toml: the other three ROMs' [`GameAddresses`].
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Games {
+    pub colonel: GameAddresses,
+    #[serde(rename = "jp-protoman")]
+    pub jp_protoman: GameAddresses,
+    #[serde(rename = "jp-colonel")]
+    pub jp_colonel: GameAddresses,
+}
+
+impl Games {
+    /// The addresses of a version's ROM of a region (none: Team ProtoMan's
+    /// US one, compat's own).
+    pub fn of(&self, version: Version, japanese: bool) -> Option<&GameAddresses> {
+        match (version, japanese) {
+            (Version::Protoman, false) => None,
+            (Version::Colonel, false) => Some(&self.colonel),
+            (Version::Protoman, true) => Some(&self.jp_protoman),
+            (Version::Colonel, true) => Some(&self.jp_colonel),
+        }
+    }
+}
+
 /// A netbattle stage (stages.toml): the settings records that are it, its
-/// panel layout's number and its actor list's address.
+/// panel layout's number and its actor list's address (Team ProtoMan's US
+/// ROM's: games.toml has the others').
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StageEntry {
@@ -302,6 +337,8 @@ pub struct Compat {
     pub rules: RuleNumbers,
     /// stages.toml: the netbattle stages, by key.
     pub stages: BTreeMap<String, StageEntry>,
+    /// games.toml: where the other ROMs have what compat addresses.
+    pub games: Games,
     /// records.toml: what NaviStats name by number.
     pub records: RecordNumbers,
     /// kinds.toml: the object kinds' numbers, by key.
@@ -326,8 +363,9 @@ const BN5_STATES: [nettai_battle::kinds::player::NaviAction; 7] = {
 };
 
 /// The files of a compat folder.
-pub const FILES: [&str; 11] = [
+pub const FILES: [&str; 12] = [
     "actions.toml",
+    "games.toml",
     "chips.toml",
     "panels.toml",
     "assets.toml",
@@ -341,8 +379,9 @@ pub const FILES: [&str; 11] = [
 ];
 
 /// This repository's compat (content/bn5/compat), built in.
-const BN5: [(&str, &str); 11] = [
+const BN5: [(&str, &str); 12] = [
     ("actions.toml", include_str!("../../../content/bn5/compat/actions.toml")),
+    ("games.toml", include_str!("../../../content/bn5/compat/games.toml")),
     ("patch-cards.toml", include_str!("../../../content/bn5/compat/patch-cards.toml")),
     ("navicust.toml", include_str!("../../../content/bn5/compat/navicust.toml")),
     ("text.toml", include_str!("../../../content/bn5/compat/text.toml")),
@@ -428,6 +467,7 @@ impl Compat {
             }
         }
         let stages: BTreeMap<String, StageEntry> = toml::from_str(&text("stages.toml")?).map_err(|e| format!("stages.toml: {e}"))?;
+        let games: Games = toml::from_str(&text("games.toml")?).map_err(|e| format!("games.toml: {e}"))?;
         let records: RecordNumbers = toml::from_str(&text("records.toml")?).map_err(|e| format!("records.toml: {e}"))?;
         let kinds: BTreeMap<String, KindEntry> = toml::from_str(&text("kinds.toml")?).map_err(|e| format!("kinds.toml: {e}"))?;
         let navicust: NaviCustNumbers = toml::from_str(&text("navicust.toml")?).map_err(|e| format!("navicust.toml: {e}"))?;
@@ -445,7 +485,7 @@ impl Compat {
         // (A compat folder from before the encodings has none.)
         let text_file = text("text.toml").unwrap_or_default();
         let text: Text = if text_file.is_empty() { Text::default() } else { toml::from_str(&text_file).map_err(|e| format!("text.toml: {e}"))? };
-        Ok(Compat { chips, panels: by_number, chip_keys, assets, rules, stages, records, kinds, text, navicust, patch_cards, actions })
+        Ok(Compat { chips, panels: by_number, chip_keys, assets, rules, stages, games, records, kinds, text, navicust, patch_cards, actions })
     }
 
     /// The NaviCust program a part id names (its number, `id >> 2`) and its
@@ -501,7 +541,9 @@ impl Compat {
 
     /// The stage whose layout and actor list a settings record names: its
     /// id.
-    pub fn stage(&self, layout: u8, actor_list: u32) -> Option<String> {
+    pub fn stage(&self, layout: u8, actor_list: u32, version: Version, japanese: bool) -> Option<String> {
+        let shift = self.games.of(version, japanese).map_or(0, |g| g.actor_lists);
+        let actor_list = actor_list.wrapping_sub(shift as u32);
         self.stages.iter().find(|(_, e)| e.layout == layout && e.actor_list == actor_list).map(|(k, _)| k.clone())
     }
 

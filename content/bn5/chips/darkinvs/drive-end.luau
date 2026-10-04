@@ -5,7 +5,8 @@
 -- in the dark palette, sliding 40 pixels ahead, then fading); then a sound, the navi touchable again, the request
 -- dropped, the navi flashing for 120 ticks, and back to idle.
 
-local megaman = require("../../navis/megaman/navi")
+-- MegaMan, by key (his navi's module reaches this one through his souls' Chaos Unison weapons).
+local MEGAMAN = "megaman"
 
 local drive_end = {}
 
@@ -24,7 +25,7 @@ local DARK, SLIDE = 1, 10
 
 -- 0x0800DE82: the dark palette of the navi's (MegaMan's 1; any other navi's dark chip fizzles before the drive).
 local function dark_palette(me: Object): number
-    if battle.navi(me.alliance).navi ~= megaman then
+    if battle.navi(me.alliance).navi.id ~= MEGAMAN then
         error("DarkInvs's dark image: only MegaMan's DarkInvs gets this far (0x0800DE82's link navi palette)")
     end
     return DARK
