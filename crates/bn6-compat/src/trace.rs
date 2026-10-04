@@ -491,7 +491,6 @@ impl Round {
             folder,
             souls: Default::default(),
             joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
-            bug_frags: self.setup.bug_frags.map_or(RECORDED_BUG_FRAGS, |f| f[side as usize]),
             navi_level,
             sp_times: match &self.setup.sp_times {
                 Some(t) => codec::sp_times(&unhex(&t[side as usize])),
@@ -505,6 +504,11 @@ impl Round {
             tactics: Default::default(),
         };
         unlocks.write(ids.content, None, &mut player).unwrap_or_else(|e| panic!("the save's unlocks: {e}"));
+        // The bug frags: the dark-chips system's (its setup's `bug_frags`).
+        let frags = self.setup.bug_frags.map_or(RECORDED_BUG_FRAGS, |f| f[side as usize]);
+        player
+            .set_fact(ids.content, None, "bug_frags", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(frags as i64))])
+            .unwrap_or_else(|e| panic!("the save's bug frags: {e}"));
         player
     }
 
