@@ -1035,9 +1035,9 @@ The smallest engine additions BN5's data and rules need, for the rules agent (no
    handler leave the action on the frame they run; BN6's on the next update after the dimming, and 8 frames
    later for subtype 20. A choice per game in the engine's chip use (a rules section's flag), read by every
    dimming and instant chip.
-11. **AntiNavi's sparkle** (`sub_800ABC6`, BN5's 0x080093A2, dimming.rs's `SPARKLE_DY`, `SPARKLE_Z`): BN5's sits
-   on the panel's center 16 pixels up, BN6's 16 pixels down the field and 32 up. Numbers for a rules section (or
-   the trap mark role's offset).
+11. **AntiNavi's sparkle** (`sub_800ABC6`, BN5's 0x080093A2): BN5's sits on the panel's center 16 pixels up, BN6's
+   16 pixels down the field and 32 up (built: the chip-use rules' `anti_navi_sparkle`, by the trap's game, which
+   AntiRecv's mark reads too).
 12. **The hit test** (built: the reactions section's `hit_test = "bn5"`): BN5's (0x0801691C, ROM code where BN6's
    `sub_3007218` is IWRAM's) counts a bubbled body (flag1 0x80000000) as submerged, elec reaching either; has no
    FloatShoe test (BN6's: flag1 0x20 meets only the 0x80 self bit), nor its raw channel (0x08017494, BN6's
@@ -1709,10 +1709,26 @@ folder with the kinds it owns.
   timer at the intake's end, the idle's step asked of the systems' `controller`, the last 180 ticks' gray flicker; its
   end, BN5's action 0x49, the roles' `stun_strike`, with its dark image, actor 10).
 
-Found on the way, not ported (no chip of these needs it): a player MegaMan (AI index 0) of emotion 5 whose HP a hit
-takes to 0 keeps 1 HP and starts action 0x30 (0x0802C16C from 0x080185A2 and 0x0800C6E0, unless NaviStats +0x2A or
-the battle setting 0x0800931C(side, 1)); a DarkInvs drive playing NeoVari's pick shows it (the opponent of the
-bn5-team-dark base). tools/bn5/recipes.py finds chips wherever layout.py put them (`--check`).
+tools/bn5/recipes.py finds chips wherever layout.py put them (`--check`).
+
+**BN5's dark MegaMan's last stand** (bn5-navichips, 2026-10-03, as built; its scenarios library-bn5/dark-survival:
+holds, antirecv, antirecv-mood, soul, every frame matching). A player MegaMan (AI index 0) of BN5's emotion 5 (a mood
+of 0 out of a soul, unangry; never in battle mode 1) whom a loss of HP brings to 0 holds at 1 HP, once a battle (the
+side's statistic 1 marks it spent; NaviStats +0x2A, the battle flag 0x40 mode's, rules it out), and asks for the request
+0x40000000 (0x0802C16C, from object_subtractHP, 0x0800C6E0, and applyDamageToPlayer, 0x080185A2): the roles' `volley`,
+BN5's action 0x30 (rules/emotion/dark-survival). The battle dims and the screen fades out (the transformation's fade,
+`battle.screen_fade`; white, untouchable, his future panel, a flash), the HUD's gauge, HP box and emotion window go (the
+HUD part `hp_box`: draw task 7, the box and its low-HP alarm), his dark self comes out and spirals back (actor 0x2E:
+rules/souls/shade's code, `shade.make`), the computer drives him for 720 ticks as DarkInvs's drive does (its end
+action 0x49), the HUD comes back (without the gauge in the last turns, `battle.late_turns`) and the screen fades in. The
+status section's `hp_loss = "bn5"` holds BN5's object_subtractHP (a player's loss drains its side's gauge too: ×128,
+in the battle flag 0x40 mode 0, 0x555, 0xAAA or 0x2000 by its size, 0x0800C734) and BN5's applyDamageToPlayer (a hit
+shows, white then its sounds, only by the register r1 the check leaves at 0 HP, and one that doesn't show goes
+straight to the deletion test, which tries the stand first). AntiRecv's counterattack takes its HP through
+`Object:subtract_hp` (BN6's the same), BN5's its mood too (0x080E39DC: its damage word's high half, 0x08012820), and
+its mark sits where the trap's game puts it (`anti_navi_sparkle`). Also new: the request `drag` (flag2 0x100). Where a
+hit landed and which chips a side used are learned for the computer navis' tactics (0x0802C294, 0x0802C3C4, 0x0802C3E2:
+the battles after; nothing of a battle reads them), not ported.
 
 **The obstacle chips** (from chips-a's range, 2026-10-03). RedFrut1–3 (action 0x1A's instant effect 15,
 0x080D818C, BN5's own: chips/redfrut/fruit): a fruit (attack object 0x8D, NameID 0xE7) drops on a random free panel

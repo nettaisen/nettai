@@ -8,7 +8,8 @@ use nettai_content_api::api::ObstacleFlag;
 use nettai_content_api::{
     ActorField, ApiError, BattleInfo, BlinkOut, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep,
     Emotion, FieldType, FieldValue, HitboxSpec, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState,
-    ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
+    ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag,
+    ScreenFade, Shadow,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
 use nettai_content_api::{
@@ -90,7 +91,7 @@ fn timer_index(t: StatusTimer) -> usize {
 fn request_bit(f: RequestFlag) -> u32 {
     match f {
         // (Not action requests: `request` and `set_request` read flag2.)
-        RequestFlag::Slide | RequestFlag::Anger => 0,
+        RequestFlag::Slide | RequestFlag::Anger | RequestFlag::Drag => 0,
         RequestFlag::Buster => request::BUSTER,
         RequestFlag::ChargedShot => request::CHARGED_SHOT,
         RequestFlag::Chip => request::CHIP,
@@ -119,15 +120,17 @@ fn request_bit(f: RequestFlag) -> u32 {
     }
 }
 
-/// The collision's flag2 bits of the slide and anger requests
-/// (`RequestFlag::Slide`, `RequestFlag::Anger`).
+/// The collision's flag2 bits of the slide, drag and anger requests
+/// (`RequestFlag::Slide`, `RequestFlag::Drag`, `RequestFlag::Anger`).
 const SLIDE_REQUEST: u32 = 0x10;
+const DRAG_REQUEST: u32 = 0x100;
 const ANGER_REQUEST: u32 = 0x200;
 
 /// The flag2 bit a request that isn't an action request reads.
 fn flag2_request(f: RequestFlag) -> Option<u32> {
     match f {
         RequestFlag::Slide => Some(SLIDE_REQUEST),
+        RequestFlag::Drag => Some(DRAG_REQUEST),
         RequestFlag::Anger => Some(ANGER_REQUEST),
         _ => None,
     }
@@ -368,6 +371,8 @@ impl CoreApi for Battle {
             }
             BattleInfo::Fighting => Value::Bool(self.round.flags & crate::battle::battle_flags::FIGHTING != 0),
             BattleInfo::GaugeFull => Value::Bool(self.round.flags & crate::battle::battle_flags::GAUGE_FULL != 0),
+            BattleInfo::LateTurns => Value::Bool(self.late_turns()),
+            BattleInfo::ScreenFading => Value::Bool(self.fade.active()),
         }
     }
 
@@ -389,8 +394,17 @@ impl CoreApi for Battle {
             HudPart::Gauge => &mut h.gauge,
             HudPart::EmotionWindow => &mut h.emotion_window,
             HudPart::LevelGauge => &mut h.level_gauge,
+            HudPart::HpBox => &mut h.hp_box,
         };
         *hidden = !shown;
+    }
+
+    fn screen_fade(&mut self, fade: ScreenFade, speed: u8) {
+        let mode = match fade {
+            ScreenFade::TransformOut => crate::battle::FadeMode::TransformOut,
+            ScreenFade::TransformIn => crate::battle::FadeMode::TransformIn,
+        };
+        self.fade.start(mode, speed);
     }
 
     fn play_sound(&mut self, sound: u16) {
@@ -2212,6 +2226,10 @@ impl CoreApi for Battle {
 
     fn heal(&mut self, o: ObjectRef, amount: u16, anti_recovery: bool) -> bool {
         kinds::heal::heal(self, o, amount, anti_recovery)
+    }
+
+    fn subtract_hp(&mut self, o: ObjectRef, amount: u16) {
+        kinds::subtract_hp(self, o, amount);
     }
 
     fn buster_damage(&self, o: ObjectRef) -> u16 {

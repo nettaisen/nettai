@@ -31,8 +31,17 @@ local EFFECT_TICKS = 0x3C
 -- The bubbles: 16 pixels either side of the panel's center, palette 1.
 local BUBBLE_DX, BUBBLE_PALETTE = 0x10_0000, 1
 -- A game's counterattack: its kind's key, its panel changer's and bubble's
--- kinds, and the sounds of the change (its tick, and the poison).
-export type Spec = { id: string, changer: Kind, bubble: Kind, tick_sound: Sound, poison_sound: Sound }
+-- kinds, the sounds of the change (its tick, and the poison), and whether
+-- it takes the healer's mood too, by its damage word's high half (BN5's,
+-- 0x080E39DC: 0x08012820, to 1 at least; BN6's doesn't).
+export type Spec = {
+    id: string,
+    changer: Kind,
+    bubble: Kind,
+    tick_sound: Sound,
+    poison_sound: Sound,
+    takes_mood: boolean?,
+}
 
 -- `sub_80E376C`: the damage, the bubbles and the poison (`change`); then
 -- wait until the changer is done (it was handed Param2's address, and
@@ -41,12 +50,16 @@ local function effect(me: Object, spec: Spec, POISON_OWN_PANEL: PanelChange)
     local s = me.state :: State
     if me.phase_init == 0 then
         me.timer = EFFECT_TICKS
-        -- object_subtractHP on the healer (down to 0).
+        -- object_subtractHP on the healer (down to 0, by its side's rules:
+        -- BN5's may hold a dark MegaMan at 1 HP).
         local healer = me.related1
         if not healer then
             error("AntiRecv's counterattack has no healer (object_subtractHP writes through a null pointer)")
         end
-        healer.hp = math.max(healer.hp - me.damage, 0)
+        healer:subtract_hp(me.damage)
+        if spec.takes_mood then
+            battle.lose_mood(healer.alliance, me.stamina)
+        end
         local x, y = field.center(me.panel_x, me.panel_y)
         rising_bubble.spawn(spec.bubble, Vec3.new(x + BUBBLE_DX, y, 0), BUBBLE_PALETTE)
         rising_bubble.spawn(spec.bubble, Vec3.new(x - BUBBLE_DX, y, 0), BUBBLE_PALETTE)

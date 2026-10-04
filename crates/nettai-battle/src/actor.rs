@@ -77,8 +77,9 @@ pub mod request {
     /// special, which DarkInvs asks for): idle's `sub_802E4E4` hands it to
     /// the side's systems (`takeover_requested`).
     pub const TAKEOVER: u32 = 0x2000_0000;
-    /// Starts action 0x30 (`sub_80ED55C`, with `status::VOLLEY`): a
-    /// volley of shots, the count per variant. No setter was found.
+    /// Starts action 0x30 (the roles' `volley`, with `status::VOLLEY`). No
+    /// BN6 setter was found; BN5's loss of HP sets it for a dark MegaMan's
+    /// last stand (0x0802C16C).
     pub const VOLLEY: u32 = 0x4000_0000;
     /// Hit by an element this navi is weak to (ends crosses).
     pub const WEAKNESS_HIT: u32 = 0x8000_0000;
@@ -117,7 +118,8 @@ pub mod status {
     /// A navi switch took effect (set when `sub_802D714` ends). A link
     /// navi with it falls back instead of being deleted (`sub_802DD2A`).
     pub const SWITCHED: u32 = 0x4000;
-    /// The volley (action 0x30) runs. Takes over the action dispatch.
+    /// Action 0x30 runs (the roles' `volley`: BN5's last stand). Takes
+    /// over the action dispatch.
     pub const VOLLEY: u32 = 0x1_0000;
     /// Takes over the action dispatch like the two above; no setter was
     /// found.

@@ -31,6 +31,7 @@
 "bn5:panel-chips/controller" = { pool = "effect", index = 0x20, scratch_position = true }
 "bn5:grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
 "bn5:trap-chip" = { pool = "effect", index = 0x2A, scratch_position = true }
+"bn5:antirecv/controller" = { pool = "effect", index = 0x2C, scratch_position = true }
 "bn5:protoman/navi" = { pool = "actor", index = 0x3C }
 "engine/body-overlay" = { pool = "actor", index = 0x56 }
 "engine/form-overlay" = { pool = "actor", index = 0x57 }
@@ -146,6 +147,7 @@
 "bn5:crakout/crack" = { pool = "attack", index = 0x18 }
 "bn5:soul-image" = { pool = "actor", index = 0x2A }
 "bn5:chaos-shade" = { pool = "actor", index = 0x2B }
+"bn5:dark-survival/shade" = { pool = "actor", index = 0x2E }
 "bn5:gyrosoul/tornado" = { pool = "attack", index = 0x1E }
 "bn5:searchsoul/reveal" = { pool = "effect", index = 0x8F, scratch_position = true }
 "bn5:napalmsoul/flash" = { pool = "effect", index = 0x26 }
