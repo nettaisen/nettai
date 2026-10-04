@@ -10,6 +10,7 @@
 //! language), drawn in the dialogue font.
 //! docs/frontend.md §3.
 
+use nettai_content_api::FormHandle;
 use crate::audit::{Lookup, Problems};
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
@@ -215,7 +216,9 @@ fn text_tiles(assets: &Bundle, chatbox: &Chatbox, lines: &[Vec<u16>], translated
 /// placeholder for a portrait in this console's ROM, which the original
 /// shows; the frontend shows the true face (docs/frontend.md §5).
 fn note_true_face(b: &Battle, navi: nettai_content_api::NaviHandle, console: GameVersion, problems: &mut Problems) {
-    let game = b.content.defs.forms.iter().find(|f| f.record.cross_of == Some(navi)).and_then(|f| f.record.game);
+    let c = &b.content;
+    let cross = (0..c.defs.forms.len()).map(|i| FormHandle(i as u16)).find(|&f| bn6_compat::forms::cross_of(c, f) == Some(navi));
+    let game = cross.and_then(|f| bn6_compat::forms::game(c, f));
     if game.is_some_and(|g| g != console) {
         problems.known(5, 104, 40, 48, "another game's link navi's portrait (the true face)");
     }

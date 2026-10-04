@@ -21,6 +21,7 @@ function counter.action_with(id: string, blade: AttachmentLook, boom_kind: Kind?
         start_sound = asset.sound("bn6:log-in"),
         swing_sound = parts.sounds.swing,
         attachment = attachment.kind,
+        blade_anim = parts.blade_anim,
     }
 end
 

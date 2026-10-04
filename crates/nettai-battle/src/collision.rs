@@ -7,7 +7,7 @@
 //! read on their next update. See docs/engine/field-collision-damage.md §3.
 
 use crate::battle::Battle;
-use crate::content::{Content, Region, RegionRole, SparkRole, StatusRole};
+use crate::content::{Content, HitTest, Region, RegionRole, SparkRole, StatusRole};
 use crate::field::{self, PanelType};
 use crate::object::{ObjectRef, PanelPos};
 use nettai_content_api::{CollisionHandle, RegionHandle, SparkHandle, StatusHandle};
@@ -453,14 +453,18 @@ impl Battle {
         if self.is_dimmed() && !(rd.f1 & f1::HIT_WHILE_DIMMED != 0 || hd.self_flags & 0x1_0000 != 0) {
             return;
         }
+        // (BN5's test, 0x0801691C: a bubbled body counts as submerged, elec
+        // reaching either; no FloatShoe test; the guard's own masks.)
+        let bn5 = self.content.rules_of(self.games.arena).hit_test == HitTest::Bn5;
+        let submerged = if bn5 { f1::SUBMERGED | f1::BUBBLED } else { f1::SUBMERGED };
         // The hitter's state against the receiver's type.
         let f = hd.f1;
         let rs = rd.self_flags;
         if (f & 0x202 != 0 && rs & 0x4 == 0)
-            || (f & 0x4 != 0 && rs & 0x1008 == 0)
+            || (f & submerged != 0 && rs & 0x1008 == 0 && !(bn5 && rd.element == 3))
             || (f & 0x0080_0000 != 0 && rs & 0x0C00_3000 == 0)
             || f & f1::UNTOUCHABLE != 0
-            || (f & 0x20 != 0 && rs & 0x80 == 0)
+            || (!bn5 && f & 0x20 != 0 && rs & 0x80 == 0)
         {
             return;
         }
@@ -468,25 +472,22 @@ impl Battle {
         let f = rd.f1;
         let hs = hd.self_flags;
         if (f & 0x202 != 0 && hs & 0x4 == 0)
-            || (f & 0x4 != 0 && hs & 0x1008 == 0)
+            || (f & submerged != 0 && hs & 0x1008 == 0 && !(bn5 && hd.element == 3))
             || (f & 0x0080_0000 != 0 && hs & 0x3000 == 0)
             || f & f1::UNTOUCHABLE != 0
-            || (f & 0x20 != 0 && hs & 0x80 == 0)
+            || (!bn5 && f & 0x20 != 0 && hs & 0x80 == 0)
         {
             return;
         }
-        // Guard (the arena's rule: BN5's breaks on 0x1002 always and marks
-        // a direction unless 0x0C004000).
+        // Guard.
         if rd.f1 & f1::GUARD != 0 {
-            let bn5 = self.arena_rules().effects.guard == crate::content::GuardRule::Bn5;
             let brk = if bn5 || hs & 0x4000 != 0 { 0x1002 } else { 0x0002 };
             if hs & brk == 0 {
                 let hm = self.collision.get_mut(h);
                 hm.acc.hit_flags |= 1;
                 hm.acc.hit_flags_by_flip[rd.flip as usize & 1] |= 1;
                 let mut flags = hs & !0x10;
-                let unmarked = if bn5 { 0x0C00_4000 } else { 0x0C00_5000 };
-                if flags & unmarked == 0 {
+                if flags & (if bn5 { 0x0C00_4000 } else { 0x0C00_5000 }) == 0 {
                     self.collision.get_mut(r).guard_dirs |= 1 << hd.flip;
                     flags |= 0x2_0000;
                 }
@@ -581,10 +582,9 @@ impl Battle {
         }
         let e = (hd.element as usize).min(5);
         rm.acc.element_damage[e] = rm.acc.element_damage[e].wrapping_add(hd.self_damage.wrapping_mul(m as u16));
-        let rp = rd.panel;
-        let grass = self.field.panel(rp.x, rp.y).map(|p| p.kind) == Some(PanelType::Grass);
+        let bonus = self.panel_bonus(&rd, &hd, bn5);
         let rm = self.collision.get_mut(r);
-        if hd.element == 1 && grass {
+        if bonus {
             rm.acc.element_damage[0] = rm.acc.element_damage[0].wrapping_add(hd.self_damage);
         }
         if thaw {
@@ -594,23 +594,33 @@ impl Battle {
         }
     }
 
-    /// `sub_3007692`: the unfiltered channel barriers look at.
+    /// Whether a hit of `hd`'s counts once more as null damage on `rd`'s
+    /// panel: fire on grass (BN6's, and BN5's 0x08016AF6, which elec on its
+    /// sea does too).
+    fn panel_bonus(&self, rd: &CollisionData, hd: &CollisionData, bn5: bool) -> bool {
+        let kind = self.field.panel(rd.panel.x, rd.panel.y).map(|p| p.kind);
+        (hd.element == 1 && kind == Some(PanelType::Grass)) || (bn5 && hd.element == 3 && kind == Some(PanelType::Sea))
+    }
+
+    /// `sub_3007692`: the unfiltered channel barriers look at. (BN5's,
+    /// 0x08017494, has no FloatShoe test.)
     fn accumulate_raw(&mut self, r: CollisionId, h: CollisionId) {
         let hd = *self.collision.get(h);
         let rd = *self.collision.get(r);
         if self.is_dimmed() && !(rd.f1 & f1::HIT_WHILE_DIMMED != 0 || hd.self_flags & 0x1_0000 != 0) {
             return;
         }
-        if (hd.f1 & 0x20 != 0 && rd.self_flags & 0x80 == 0) || (rd.f1 & 0x20 != 0 && hd.self_flags & 0x80 == 0) {
+        let bn5 = self.content.rules_of(self.games.arena).hit_test == HitTest::Bn5;
+        if !bn5 && ((hd.f1 & 0x20 != 0 && rd.self_flags & 0x80 == 0) || (rd.f1 & 0x20 != 0 && hd.self_flags & 0x80 == 0)) {
             return;
         }
-        let grass = self.field.panel(rd.panel.x, rd.panel.y).map(|p| p.kind) == Some(PanelType::Grass);
+        let bonus = self.panel_bonus(&rd, &hd, bn5);
         let rm = self.collision.get_mut(r);
         rm.acc.raw_hit_flags |= hd.self_flags;
         rm.acc.raw_elements |= hd.secondary_element;
         let e = (hd.element as usize).min(5);
         rm.acc.raw_element_damage[e] = rm.acc.raw_element_damage[e].wrapping_add(hd.self_damage);
-        if hd.element == 1 && grass {
+        if bonus {
             rm.acc.raw_element_damage[0] = rm.acc.raw_element_damage[0].wrapping_add(hd.self_damage);
         }
     }
@@ -692,16 +702,16 @@ fn decode_damage_word(s: &mut CollisionData, r1: u16, roles: &crate::content::Ro
 mod tests {
     use super::*;
     use crate::battle::battle_flags;
-    use crate::content::{GuardRule, testing};
+    use crate::content::{HitTest, testing};
     use std::sync::Arc;
 
-    /// A fight on the test content whose arena guards by `guard`: the
+    /// A fight on the test content whose arena tests hits by `test`: the
     /// battle and its two navis' collisions (side 0's, side 1's).
-    fn fight(guard: GuardRule) -> (Battle, [CollisionId; 2]) {
+    fn fight(test: HitTest) -> (Battle, [CollisionId; 2]) {
         let mut c: Content = testing::build();
         c.define().unwrap_or_else(|e| panic!("{e}"));
         for rules in &mut c.rules {
-            rules.effects.guard = guard;
+            rules.hit_test = test;
         }
         let c = Arc::new(c);
         let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
@@ -719,8 +729,8 @@ mod tests {
 
     /// Side 1's guarding navi hit by side 0's navi as an attack of types
     /// `types`: whether the guard held (the hitter told it was guarded).
-    fn guarded(guard: GuardRule, types: u32) -> bool {
-        let (mut b, [h, r]) = fight(guard);
+    fn guarded(test: HitTest, types: u32) -> bool {
+        let (mut b, [h, r]) = fight(test);
         b.collision.get_mut(r).f1 |= f1::GUARD;
         b.collision.get_mut(h).self_flags = types;
         b.collision.get_mut(h).f1 = 0;
@@ -734,11 +744,11 @@ mod tests {
     /// differs only for a hit of 0x1000, which BN5's guard never holds.)
     #[test]
     fn bn5_guard_breaks_on_0x1000() {
-        assert!(guarded(GuardRule::Bn6, 0x8000_1000));
-        assert!(!guarded(GuardRule::Bn5, 0x8000_1000));
-        assert!(!guarded(GuardRule::Bn6, 0x8000_5000));
-        assert!(!guarded(GuardRule::Bn5, 0x8000_5000));
-        assert!(guarded(GuardRule::Bn6, 0x8000_0000));
-        assert!(guarded(GuardRule::Bn5, 0x8000_0000));
+        assert!(guarded(HitTest::Bn6, 0x8000_1000));
+        assert!(!guarded(HitTest::Bn5, 0x8000_1000));
+        assert!(!guarded(HitTest::Bn6, 0x8000_5000));
+        assert!(!guarded(HitTest::Bn5, 0x8000_5000));
+        assert!(guarded(HitTest::Bn6, 0x8000_0000));
+        assert!(guarded(HitTest::Bn5, 0x8000_0000));
     }
 }

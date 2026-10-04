@@ -1038,6 +1038,11 @@ The smallest engine additions BN5's data and rules need, for the rules agent (no
 11. **AntiNavi's sparkle** (`sub_800ABC6`, BN5's 0x080093A2, dimming.rs's `SPARKLE_DY`, `SPARKLE_Z`): BN5's sits
    on the panel's center 16 pixels up, BN6's 16 pixels down the field and 32 up. Numbers for a rules section (or
    the trap mark role's offset).
+12. **The hit test** (built: the reactions section's `hit_test = "bn5"`): BN5's (0x0801691C, ROM code where BN6's
+   `sub_3007218` is IWRAM's) counts a bubbled body (flag1 0x80000000) as submerged, elec reaching either; has no
+   FloatShoe test (BN6's: flag1 0x20 meets only the 0x80 self bit), nor its raw channel (0x08017494, BN6's
+   `sub_3007692`); breaks a guard with 0x1002 always (BN6's 0x0002 but with 0x4000) and turns aside what lacks
+   0x0C004000 (BN6's 0x0C005000); and counts elec on its sea once more, as fire on grass (0x08016AF6).
 
 ### 15.4 The flow and the assets' names
 
@@ -1336,9 +1341,19 @@ More for §15.3:
 
 12. **A base form per game**: the engine refuses two base forms in one content; BN5's MegaMan, whose souls are
    forms, needs his own (or the base form to be a navi's).
-13. **The custom screen's end**: BN5's Team Battle custom screen (0x08025EF2) closes the screen on the tick both
-   results are in, BN6's on the next, and BN5's sets no AIData +0x0F on the navis (BN6's `sub_8009338` does): a
-   choice of the side's game's custom screen (`custom::GameLibrary`) or of the arena's flow.
+13. **The custom screen's end**: BN5's result is 49 words on the link (0x08009A5E: its NaviStats are 0x60 bytes,
+   BN6's 0x64; `sub_800B3A2` sends 50), so it is in a tick sooner than BN6's would be; BN5's Team Battle screen
+   (0x08025EF2) takes the results as BN6's does (0x080266FA: the hands installed, the HUD's wait task off and its
+   icons and chip window on) and closes the tick after (its state 8, 0x08025FEC). Built as the flow section's
+   `result_words` (BN6 50, BN5 49, of the sending side's game); an earlier `custom_closes_with_results` (the screen
+   closing on the tick both results are in) had the close on the right tick but the results a tick late. BN5's
+   screen sets no AIData +0x0F on the navis (BN6's `sub_8009338` does): BN6's beast system's `custom_closed`.
+   **The dark chip offer** (0x08025114, from the screen's opening 0x08022C5C, after its hand size 0x08025BE4 and
+   before the folder closes up 0x080250E6): a worried or dark MegaMan (emotions 1 and 5) gets one of his folder's
+   dark chips (0xBB-0xC6) moved to the place after the hand unless the first is dealt: the first taken, each later
+   one on an RNG1 draw's low bit, DrkRecov first under a quarter of his HP. Built in BN5's light and dark system's
+   `custom.deal` (the custom screen's deal hook, with `custom.folder`, `custom.swap_folder`, `custom.hand_size`);
+   its RNG1 draws were what the dark chip recordings' consoles were ahead by.
 Items 14 to 18 are built (rules-in-luau.md, "P1b"); 19 and the dark chips' costs wait for a replay that needs
 them.
 
@@ -1369,8 +1384,8 @@ them.
 ### 15.8 Soul Unison (as built, in progress)
 
 - **The soul button** (the engine's custom screen, BN5's layout: slot 11, `SlotKind::Soul`, 0x08023C54,
-  0x08024B28, 0x08024972): lit for the last pick's family when the navi has a soul of it (a form of
-  `kind = "soul"` naming its `soul = { number, family }`), the save has the soul (`SoulUnlocks`: bn5-compat gives
+  0x08024B28, 0x08024972): lit for the last pick's family when the navi has a soul of it (a form naming its
+  `soul = { number, family }`), the save has the soul (`SoulUnlocks`: bn5-compat gives
   a finished save's six of the version and Chaos Unison) and it isn't used this round (Soul Unison and Chaos Unison
   apart; a dark chip's is Chaos Unison). Pressed: BN5's state 9 (`Phase::SoulChosen`: fades 0x34 and 0x30), the
   soul first in the selection in place of the chip given up. At OK the transform record asks for the soul's form,
@@ -1536,8 +1551,8 @@ which the engine runs for a side whose rules say so (the status section's `emoti
   or 3 (light), else the value's tier (0x0800DE5C: from 1000 4, from 500 0, from 470 3, else 2). Then Hub Style's
   `hub_style * 5 + 20`, else the element's `* 5` (none in a soul). A link navi's (0x0800DA98, by BN5's navi numbers)
   is left to the framework: BN5's content has no link navi.
-- **Hub Style** (NaviStats +0x4C): set out of battle by the NaviCust's compile (0x08138214) when HubBatc sits in its
-  fourth color (part 0x6F); 0 in every recording. It adds 11 to the face (0x0801AF8E: pictures 11-15, the base
+- **Hub Style** (NaviStats +0x4C): set out of battle by the patch cards' routine (0x08138214, which follows the
+  NaviCust's compile) when patch card 111 is installed and on (0x08137A58); 0 in every recording. It adds 11 to the face (0x0801AF8E: pictures 11-15, the base
   form's second set of faces, `mugshot.variant`, shown by `battle.set_face_variant`) and moves the palette. The
   light and dark system's setup carries it (`hub_style`, bn5-compat from +0x4C).
 - The faces' names follow: `megaman-worried` (2), `megaman-dark` (4), `megaman-hub*` (11-15; they were named as
@@ -1778,3 +1793,59 @@ under its folder (`bn5:<series>/...`), and a chip gets its series file's place b
 bn5-chips-b at 3c524c21: the merge stopped at four chip files and one block of requires, as above; the run then took
 26 chips into 10 series files, moved 7 new kinds and repointed 22 old requires, and the branch's §15.5 report
 stayed the same, recording by recording: 1,250 matching, 871,358 frames.)
+
+### 15.13 BN5's NaviCust (as built)
+
+BN5's compile (0x0813FA10; 0x0813F97C runs it, then the patch cards, 0x08138214) is BN6's routine for routine, so the
+two share it: content/common/navicust/compile.luau, each game's navicust system passing its board, its bugs and its
+quirks (`NaviCustGame`). BN6's compile is unchanged (trace-tests' navicust: Tango's four saves and the lab's 1274
+NaviCusts). BN5's, content/bn5/rules/navicust:
+
+- **The board** (rules/navicust/board.luau, the section `bn5:navicust`): 5x5 cells, no expansions and no frame, any
+  cell of it a neighbor's; the engine's 7x7 grid with BN5's board in its middle, the command line BN5's row 2 (the
+  engine's 3). A part's 5x5 shapes (the part table's +8, +0xC) sit in the middle of the definition's 7x7.
+- **The programs** (content/bn5/navicust/, 47; compat/navicust.toml by number and colored variant), written by the
+  verification workspace's tools/bn5/gen_navicust.py from the part table (BRBE 0x0813D540, BRKE 0x0813D628, BRBJ
+  0x0813D0CC, BRKJ 0x0813D1B4; 16 bytes a part id, program n's four variants at 4n..4n+3: +0 the exclusive group,
+  +1 a plus part, +3 the color, +4 the bug group). Unlike BN6's a program's colored variants needn't come first
+  (SprArmr is only its fourth), so compat lists each program's colored variants; the Japanese ROMs' MegFldr1 comes in
+  pink too (part 17). The effects are the handlers of 0x0813FB44 (the shared constructors, @common/navicust/effects;
+  Shield, Reflect and AntiDmg are MegaMan's B+Back weapons 0x1F, 0x61 and 0x21, navis/megaman/weapons/guards.luau;
+  SoulT+1 adds a soul turn, NaviStats +0x32, the stat `soul_turn_bonus`, at most 6).
+- **The counts** (0x0813F310): BN6's but for HubBatc (program 27), which counts its own bug once more (0x0813F5A8),
+  and no frame. Five colors bring the status bug, six the stronger one.
+- **The reset** (0x08133DBC) keeps the mood, the light/dark value, +0x21, +0x22, the base HP, the soul, the folder and
+  its Regular chips, the Regular memory and the HP; the rest is the navi's fresh stats (0x08010C00 under MegaMan's row
+  of 0x0801D55F).
+- **The bugs** (0x08140008, its table 0x08140054 by group and level): steps astray (+0x31), the emotion swing
+  (+0x24), the panel trail (+0x12 = 3, +0x13 = 2, 4 or 8), the custom screen's damage (+0x54: 20, 40, 80), encounters
+  (+0x28), drops (+0x26), the buster (+0x14 = 4, +0x15 = 2), no supports (+0x0D = 0xFF), the HP bug (+0x16 = 3), Hub's
+  (0x08140248: the maximum the base and half the HP programs, the HP no more than it), the statuses (+0x1A = 9, 10).
+  BugStop (+0x1F) stops them (0x0813FA48; the patch cards can stop or keep them, 0x08137A30, which come with BN5's
+  patch cards). No emotion window glitch: its flag, 0x10C1, is read outside battle only.
+- **The HP** (0x0803C13C): in the real world the maximum again and the HP with it; in the cyberworld (the save's
+  area, 0x02002944, from 0x80, or event flag 0x10B2) nothing, so the HP is the save's and the maximum the effects'
+  (0x0803C1CC), Hub's halving standing. The navicust system's setup `cyberworld` says which; Tango's finished Team
+  ProtoMan light save is in the cyberworld (area 0x8C, HP 850 of 1000).
+- **Compression** is an event flag (0x1EC0 + the part id, which 0x0813EEFC tests), not the list's +5 (the editor's
+  mark): every finished save on hand has the flags of every program that compresses set.
+- The save's list: 25 parts of 8 bytes at 0x02004D6C (+0 the part id, +2 the column, +3 the row, +4 the quarter
+  turns), the grid at 0x02004D48; bn5-compat's `trace::navicust` reads it.
+
+bn5-compat now reads the bug bytes the compile writes (+0x12 to +0x16, +0x1A, +0x24, +0x26, +0x28, +0x31, +0x54) at
+BN6's offsets into the engine's stats, which a replay's setup carries.
+
+**Checked:** trace-tests' bn5_navicust compiles Tango's BN5 saves (the finished ones in ~/Documents/Tango/saves and
+the netplay templates; the three with patch cards wait for BN5's patch cards) and every side of the BN5 lab's
+scenarios against its recording's setup, in every byte the engine's compile can write (59 NaviCusts of 164 programs:
+library-bn5/navicust-compile, the finished saves' own NaviCusts with their cards taken off, both sides of each). The
+programs in battle (library-bn5/navicust, 31 scenarios) replay on every frame but Rush's, which waits for BN5's
+supports (the role `kinds.support`).
+
+What the programs in battle brought into the engine:
+
+- BN5's charged shot (0x080EC9F0) waits only in the battle flag 0x40 mode, marking the panel in front; else it fires
+  on its first tick (the shared charged shot's `waits`).
+- BN5's hit test (0x0801691C, §15.3 item 12): a FloatShoe body is hit (BN6's needs the hitter's 0x80 self bit, which
+  BN5's collision types lack), and its raw channel (0x08017494) has no FloatShoe test either, so a barrier under
+  FloatShoe wears.

@@ -45,7 +45,7 @@ souls.system = define.system {
         turn_check = function(side: number)
             local navi = battle.player(side) :: Object
             local s = system.state() :: State
-            if battle.navi(side).form.kind == "soul" and s.turns == 0 then
+            if battle.navi(side).form.soul ~= nil and s.turns == 0 then
                 navi:set_request("revert_form", true)
             end
         end,
