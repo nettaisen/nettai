@@ -14,7 +14,7 @@ local hotbody = {}
 
 -- Its look (`sub_8011504`'s word 0x00001040: sheet 10-40, animation 0, no shadow) and collision (0x04050300: an attack
 -- that hits navis, hit modifier 3; its region its panel from the start); its sound.
-local SPRITE = asset.sprite("sprite-10-40")
+local SPRITE = asset.sprite("hot-body-flame")
 local SOUND = asset.sound("form-change")
 local HIT_MOD = 3
 -- Its actions: rising (4 ticks), burning (30 ticks, animation 1), dying down (9 ticks, animation 2).

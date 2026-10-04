@@ -22,10 +22,10 @@ local cacdanc = {}
 
 -- Its look (`sub_8011504`'s word 0x01041030: sheet 10-30, animation 4, a ground shadow) and collision (0x0A050100: a
 -- thrown thing that hits navis, hit modifier 1).
-local SPRITE = asset.sprite("sprite-10-30")
+local SPRITE = asset.sprite("cactus")
 local ANIM = 4
 local HIT_MOD = 1
-local FALL_SOUND, BOUNCE_SOUND = asset.sound("drop"), asset.sound("sound-0f6")
+local FALL_SOUND, BOUNCE_SOUND = asset.sound("drop"), asset.sound("cactus-hop")
 -- It starts 160 pixels up and falls 0.25 pixels a tick faster each tick; the bounce takes 10 ticks, falling a pixel a
 -- tick faster each.
 local START_Z, FALL_GRAVITY = 0xA0_0000, int.i32(0xFFFFC000)
