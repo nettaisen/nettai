@@ -174,6 +174,9 @@ pub struct Hello {
     /// The engine's version: peers must run the same engine (the state's
     /// digest covers its layout, and the simulation must be the same code).
     pub engine: String,
+    /// The game the side plays (`bn6`, `bn5`): a match is of one game, so
+    /// both sides must play the same.
+    pub game: String,
     /// The content the side plays ([`nettai_battle::Content::hash`]): both
     /// sides must play the same.
     pub content: ContentHash,
@@ -189,18 +192,27 @@ pub struct Hello {
 pub const ENGINE: &str = env!("CARGO_PKG_VERSION");
 
 impl Hello {
-    /// This side's Hello: this build's versions, `content`, a nonce from
-    /// `entropy`, and `setup`.
-    pub fn new(role: Role, content: ContentHash, setup: Vec<u8>, entropy: u64) -> Hello {
-        Hello { protocol: protocol::VERSION, engine: ENGINE.to_string(), content, role, nonce: SplitMix64::new(entropy).next_u64() as u32, setup }
+    /// This side's Hello: this build's versions, the `game` and the
+    /// `content` it plays, a nonce from `entropy`, and `setup`.
+    pub fn new(role: Role, game: &str, content: ContentHash, setup: Vec<u8>, entropy: u64) -> Hello {
+        Hello {
+            protocol: protocol::VERSION,
+            engine: ENGINE.to_string(),
+            game: game.to_string(),
+            content,
+            role,
+            nonce: SplitMix64::new(entropy).next_u64() as u32,
+            setup,
+        }
     }
 
     fn to_datagram(&self) -> Vec<u8> {
         let mut out = vec![Kind::Hello as u8];
-        let Hello { protocol, engine, content, role, nonce, setup } = self;
+        let Hello { protocol, engine, game, content, role, nonce, setup } = self;
         let mut w = Writer(&mut out);
         w.put(protocol);
         w.put(engine);
+        w.put(game);
         w.put(content);
         w.put(&(*role == Role::Join));
         w.put(nonce);
@@ -212,12 +224,13 @@ impl Hello {
         let mut r = Reader::new(body);
         let protocol = r.get()?;
         let engine = r.get()?;
+        let game = r.get()?;
         let content = r.get()?;
         let role = if r.get::<bool>()? { Role::Join } else { Role::Host };
         let nonce = r.get()?;
         let setup = r.bytes()?.to_vec();
         r.finish()?;
-        Ok(Hello { protocol, engine, content, role, nonce, setup })
+        Ok(Hello { protocol, engine, game, content, role, nonce, setup })
     }
 
     /// Why this side can't play with `other`, if it can't.
@@ -227,6 +240,9 @@ impl Hello {
         }
         if other.engine != self.engine {
             return Some(format!("the other side runs engine {}, this one {}", other.engine, self.engine));
+        }
+        if other.game != self.game {
+            return Some(format!("the other side plays {}, this one {}: a match is of one game, both sides playing it", other.game, self.game));
         }
         if other.content != self.content {
             return Some(format!(
@@ -437,7 +453,7 @@ mod tests {
     use super::*;
 
     fn hello(role: Role, content: u64, setup: &[u8]) -> Hello {
-        Hello::new(role, ContentHash(content), setup.to_vec(), content ^ role as u64)
+        Hello::new(role, "bn6", ContentHash(content), setup.to_vec(), content ^ role as u64)
     }
 
     fn both(a: Hello, b: Hello) -> (Result<Connection<Memory>, HandshakeError>, Result<Connection<Memory>, HandshakeError>) {
@@ -465,6 +481,18 @@ mod tests {
         let both = [h.to_string(), j.to_string()];
         assert!(both.iter().any(|e| e.starts_with("can't play: the other side plays other content")), "{both:?}");
         assert!(both.iter().any(|e| e.starts_with("the other side refused: the other side plays other content")), "{both:?}");
+    }
+
+    /// Another game: both sides stop, each saying which game the other
+    /// plays (before the content, which differs too).
+    #[test]
+    fn another_game_is_refused_on_both_sides() {
+        let mut joiner = hello(Role::Join, 8, b"");
+        joiner.game = "bn5".into();
+        let (h, j) = both(hello(Role::Host, 7, b""), joiner);
+        let (h, j) = (h.err().unwrap().to_string(), j.err().unwrap().to_string());
+        assert_eq!(h, "can't play: the other side plays bn5, this one bn6: a match is of one game, both sides playing it");
+        assert_eq!(j, "the other side refused: the other side plays bn5, this one bn6: a match is of one game, both sides playing it");
     }
 
     #[test]

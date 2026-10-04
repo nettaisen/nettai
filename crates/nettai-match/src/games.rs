@@ -1,56 +1,68 @@
-//! Matches across games (docs/frontend.md §6), on every game's content
-//! (`testing::every_game`): BN5's folder rules on a BN5 side (its stock
-//! ruleset's folder system, content/bn5/rules/folder), a BN6 side's folder
-//! holding BN5 chips under BN6's rules (a mixed folder), and a BN5 side
-//! against a BN6 side, each played a few hundred ticks.
+//! Matches of each game (docs/frontend.md §6), each on its game's content
+//! alone (`testing::bn5_content`, `bn6_content`): a match is of one game,
+//! its arena's, and names nothing of another's. BN5's folder rules on
+//! BN5's sides (its stock ruleset's folder system,
+//! content/bn5/rules/folder), a BN5 match played a few hundred ticks,
+//! BN5's karma and souls, and a name another game has but the match's
+//! hasn't refused as any unknown name is.
 
-use crate::testing::every_game;
+use crate::testing::{bn5_content, bn6_content};
 use crate::{Match, check_match};
 use nettai_battle::content::Content;
 use std::sync::Arc;
 
-/// A match file's text: the content's first link battle stage, and the
+/// A match file's text of `game`: its first link battle stage, and the
 /// sides `left` and `right` (each a side's table body).
-fn match_text(content: &Content, left: &str, right: &str) -> String {
-    let stage = &content.defs.stage(crate::link_battle_stages(content)[0]).key;
-    format!("[arena]\nstage = \"{stage}\"\n\n[left]\n{left}\n\n[right]\n{right}\n")
+fn match_text(content: &Content, game: &str, left: &str, right: &str) -> String {
+    let stage = crate::ids::local(&content.defs.stage(crate::link_battle_stages(content, game)[0]).key);
+    format!("game = \"{game}\"\n\n[arena]\nstage = \"{stage}\"\n\n[left]\n{left}\n\n[right]\n{right}\n")
 }
 
-/// A side's table body: its ruleset and navi, the folder's chips (each
-/// "key code"), and `more` lines in the folder's table (`regular = 3`).
-fn side(ruleset: &str, navi: &str, chips: &[&str], more: &str) -> String {
-    let chips: Vec<String> = chips.iter().map(|c| format!("\"{c}\"")).collect();
-    format!("ruleset = \"{ruleset}\"\nnavi = \"{navi}\"\n\n[{{side}}.folder]\nchips = [{}]\n{more}", chips.join(", "))
+/// A side's table body: its navi, the folder's chips (each "name code"),
+/// and `more` lines (`regular = 3`).
+fn side(navi: &str, chips: &[&str], more: &str) -> String {
+    let chips: Vec<String> = chips
+        .iter()
+        .map(|c| {
+            let (name, code) = c.rsplit_once(' ').unwrap();
+            format!("[\"{name}\", \"{code}\"]")
+        })
+        .collect();
+    format!("navi = \"{navi}\"\nfolder = [{}]\n{more}", chips.join(", "))
 }
 
-/// The match these sides make, or every problem its checks find.
+/// The match of `game` these sides make, or every problem its checks find.
+fn parse_in(content: &Arc<Content>, game: &str, left: &str, right: &str) -> Result<Match, Vec<String>> {
+    crate::parse(content, &match_text(content, game, left, right))
+}
+
+/// A BN5 match of these sides.
 fn parse(content: &Arc<Content>, left: &str, right: &str) -> Result<Match, Vec<String>> {
-    let text = match_text(content, &left.replace("{side}", "left"), &right.replace("{side}", "right"));
-    crate::parse(content, &text)
+    parse_in(content, "bn5", left, right)
 }
 
 /// A folder of Tango's BN5 saves (their first): Standard chips only, four
 /// copies at most.
 const TANGO_BN5: [&str; 30] = [
-    "bn5:cannon A", "bn5:cannon A", "bn5:cannon B", "bn5:cannon B", "bn5:airshot *", "bn5:airshot *", "bn5:airshot *",
-    "bn5:vulcan1 D", "bn5:vulcan1 D", "bn5:vulcan1 D", "bn5:minibomb B", "bn5:minibomb B", "bn5:minibomb L", "bn5:minibomb L",
-    "bn5:sword S", "bn5:sword S", "bn5:sword S", "bn5:sword S", "bn5:wideswrd S", "bn5:wideswrd S", "bn5:busterup *",
-    "bn5:crakout *", "bn5:crakout *", "bn5:recov10 A", "bn5:recov10 A", "bn5:recov10 L", "bn5:recov10 L", "bn5:areagrab S",
-    "bn5:attck-10 *", "bn5:attck-10 *",
+    "cannon A", "cannon A", "cannon B", "cannon B", "airshot *", "airshot *", "airshot *",
+    "vulcan1 D", "vulcan1 D", "vulcan1 D", "minibomb B", "minibomb B", "minibomb L", "minibomb L",
+    "sword S", "sword S", "sword S", "sword S", "wideswrd S", "wideswrd S", "busterup *",
+    "crakout *", "crakout *", "recov10 A", "recov10 A", "recov10 L", "recov10 L", "areagrab S",
+    "attck-10 *", "attck-10 *",
 ];
 
 /// A BN6 folder: the live navi's kind of folder, Standard chips.
 const BN6: [&str; 30] = [
-    "bn6:cannon A", "bn6:cannon A", "bn6:cannon B", "bn6:airshot *", "bn6:airshot *", "bn6:vulcan1 D", "bn6:vulcan1 D",
-    "bn6:minibomb B", "bn6:minibomb B", "bn6:minibomb L", "bn6:sword S", "bn6:sword S", "bn6:sword S", "bn6:wideswrd S",
-    "bn6:wideswrd S", "bn6:recov10 A", "bn6:recov10 A", "bn6:recov10 L", "bn6:areagrab S", "bn6:areagrab S", "bn6:spreadr1 L",
-    "bn6:spreadr1 L", "bn6:longswrd S", "bn6:longswrd S", "bn6:crakshot A", "bn6:crakshot A", "bn6:widesht P", "bn6:widesht P",
-    "bn6:cannon C", "bn6:recov30 L",
+    "cannon A", "cannon A", "cannon B", "airshot *", "airshot *", "vulcan1 D", "vulcan1 D",
+    "minibomb B", "minibomb B", "minibomb L", "sword S", "sword S", "sword S", "wideswrd S",
+    "wideswrd S", "recov10 A", "recov10 A", "recov10 L", "areagrab S", "areagrab S", "spreadr1 L",
+    "spreadr1 L", "longswrd S", "longswrd S", "crakshot A", "crakshot A", "widesht P", "widesht P",
+    "cannon C", "recov30 L",
 ];
 
-/// A BN5 side by BN5's stock rules, with this folder.
+/// A BN5 MegaMan with this folder.
 fn bn5(chips: &[&str], more: &str) -> String {
-    side("bn5:stock", "bn5:megaman", chips, more)
+    side("megaman", chips, more)
 }
 
 /// `chips` with entries `at` replaced by `with`.
@@ -67,28 +79,24 @@ fn refs(v: &[String]) -> Vec<&str> {
 }
 
 /// BN5's MegaMan, on BN5's stock rules, with Tango's BN5 folder: the
-/// rules accept it (the Regular chip too), against a BN6 side.
+/// rules accept it (the Regular chip too).
 #[test]
 fn a_bn5_folder_keeps_bn5s_rules() {
-    let content = every_game();
-    let right = side("bn6:stock", "bn6:megaman", &BN6, "");
+    let content = bn5_content();
+    let right = bn5(&TANGO_BN5, "");
     parse(&content, &bn5(&TANGO_BN5, ""), &right).unwrap_or_else(|p| panic!("{p:?}"));
     // A Regular chip within the fresh navi's Regular memory (4 MB: CrakOut).
     parse(&content, &bn5(&TANGO_BN5, "regular = 21"), &right).unwrap_or_else(|p| panic!("{p:?}"));
     // Three Mega chips, three dark chips (one of each), one Giga chip.
-    let mixed = with(
-        &TANGO_BN5,
-        0,
-        &["bn5:blizman-ds B", "bn5:cloudmn-ds C", "bn5:colonel C", "bn5:drksword Z", "bn5:darkthnd M", "bn5:darkwide T", "bn5:bass F"],
-    );
-    parse(&content, &bn5(&refs(&mixed), ""), &right).unwrap_or_else(|p| panic!("{p:?}"));
+    let megas = with(&TANGO_BN5, 0, &["blizman-ds B", "cloudmn-ds C", "colonel C", "drksword Z", "darkthnd M", "darkwide T", "bass F"]);
+    parse(&content, &bn5(&refs(&megas), ""), &right).unwrap_or_else(|p| panic!("{p:?}"));
 }
 
 /// What BN5's folder rules refuse, each said with its rule.
 #[test]
 fn bn5s_rules_refuse() {
-    let content = every_game();
-    let right = side("bn6:stock", "bn6:megaman", &BN6, "");
+    let content = bn5_content();
+    let right = bn5(&TANGO_BN5, "");
     let refused = |chips: &[String], more: &str| -> Vec<String> {
         let e = parse(&content, &bn5(&refs(chips), more), &right).expect_err("refused");
         assert!(e.iter().all(|p| p.starts_with("left: folder: ")), "{e:?}");
@@ -96,31 +104,27 @@ fn bn5s_rules_refuse() {
     };
     let says = |e: &[String], what: &str| assert!(e.iter().any(|p| p.contains(what)), "{what:?} not in {e:?}");
     // A fifth copy of a Standard chip (BN6 would take five 8 MB Cannons).
-    let five = with(&TANGO_BN5, 4, &["bn5:cannon C"]);
+    let five = with(&TANGO_BN5, 4, &["cannon C"]);
     says(&refused(&five, ""), "5 copies of bn5:cannon (a standard chip), past 4");
     // Two copies of a Mega chip, of a Giga chip, of a dark chip.
-    let two = with(&TANGO_BN5, 0, &["bn5:colonel C", "bn5:colonel C", "bn5:bass F", "bn5:bass F", "bn5:drksword Z", "bn5:drksword Z"]);
+    let two = with(&TANGO_BN5, 0, &["colonel C", "colonel C", "bass F", "bass F", "drksword Z", "drksword Z"]);
     let e = refused(&two, "");
     says(&e, "2 copies of bn5:colonel (a mega chip), past 1");
     says(&e, "2 copies of bn5:bass (a giga chip), past 1");
     says(&e, "2 copies of bn5:drksword (a dark chip), past 1");
     says(&e, "2 Giga chips, past the navi's 1");
     // Six Mega chips; four dark chips.
-    let six = with(
-        &TANGO_BN5,
-        0,
-        &["bn5:colonel C", "bn5:meddy M", "bn5:gyroman G", "bn5:knightmn K", "bn5:larkman S", "bn5:gridman F"],
-    );
+    let six = with(&TANGO_BN5, 0, &["colonel C", "meddy M", "gyroman G", "knightmn K", "larkman S", "gridman F"]);
     says(&refused(&six, ""), "6 Mega chips, past the navi's 5");
-    let four = with(&TANGO_BN5, 0, &["bn5:drksword Z", "bn5:darkthnd M", "bn5:darkwide T", "bn5:drklance W"]);
+    let four = with(&TANGO_BN5, 0, &["drksword Z", "darkthnd M", "darkwide T", "drklance W"]);
     says(&refused(&four, ""), "4 dark chips, past 3");
     // A chip past the pack (BatCan1), a Program Advance; a code the chip
     // doesn't come in.
-    let pack = with(&TANGO_BN5, 0, &["bn5:batcan1 *", "bn5:lifesrd *"]);
+    let pack = with(&TANGO_BN5, 0, &["batcan1 *", "lifesrd *"]);
     let e = refused(&pack, "");
     says(&e, "entry 0: bn5:batcan1 is no chip a folder can hold");
     says(&e, "entry 1: bn5:lifesrd is no chip a folder can hold");
-    let code = with(&TANGO_BN5, 0, &["bn5:cannon Z"]);
+    let code = with(&TANGO_BN5, 0, &["cannon Z"]);
     says(&refused(&code, ""), "entry 0: bn5:cannon doesn't come in code Z");
     // A Regular chip past the Regular memory (Cannon is 8 MB; a fresh
     // navi's memory is 4); tag chips, which BN5's folders haven't.
@@ -128,40 +132,79 @@ fn bn5s_rules_refuse() {
     says(&refused(&with(&TANGO_BN5, 0, &[]), "tags = [4, 5]"), "tag chips, but BN5's folders have none");
 }
 
-/// A BN6 side's folder of BN5 chips (a mixed folder) is held to BN6's
-/// rules, by the chips' records: five 8 MB Cannons of BN5's are BN6's
-/// five copies, which BN5's own rules refuse.
+/// A name the match's game hasn't is refused as any unknown name is, the
+/// same whether another game has it or nothing does: a BN6 Cross, navi
+/// or chip in a BN5 match, a BN5 chip in a BN6 match, a qualified name
+/// (`bn6:cannon`: no game's name is written so) and a misspelling alike.
 #[test]
-fn a_mixed_folder_keeps_its_sides_rules() {
-    let content = every_game();
-    let five = with(&TANGO_BN5, 4, &["bn5:cannon C"]);
-    let mixed: Vec<String> = refs(&five).iter().take(15).map(|s| s.to_string()).chain(BN6[15..].iter().map(|s| s.to_string())).collect();
-    let left = side("bn6:stock", "bn6:megaman", &refs(&mixed), "");
-    let right = bn5(&TANGO_BN5, "");
-    parse(&content, &left, &right).unwrap_or_else(|p| panic!("{p:?}"));
-    // And BN6's limits: a sixth copy is past BN6's five.
-    let six = with(&refs(&mixed), 5, &["bn5:cannon *"]);
-    let e = parse(&content, &side("bn6:stock", "bn6:megaman", &refs(&six), ""), &right).expect_err("refused");
-    assert!(e.iter().any(|p| p.contains("left: folder: 6 copies of bn5:cannon")), "{e:?}");
+fn an_unknown_name_is_refused() {
+    let content = bn5_content();
+    let says = |e: Vec<String>, what: &str| assert!(e.iter().any(|p| p.starts_with(what)), "{what:?} not in {e:?}");
+    let ok = bn5(&TANGO_BN5, "");
+    // A BN6 navi, Cross and NaviCust program: none of BN5's.
+    says(parse(&content, &side("protoman", &TANGO_BN5, ""), &ok).unwrap_err(), "left: no navi \"protoman\" in bn5");
+    let crosses = bn5(&TANGO_BN5, "crosses = [\"heatcross\"]");
+    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no Cross \"heatcross\" in bn5");
+    // A chip of BN6's alone (HeatMan), a qualified name, a misspelling:
+    // one error.
+    let six = bn6_content();
+    assert!(crate::ids::chip(&six, "bn6", "heatman").is_some() && crate::ids::chip(&content, "bn5", "heatman").is_none());
+    for name in ["heatman", "bn6:cannon", "bn5:cannon", "canon"] {
+        let chips = with(&TANGO_BN5, 0, &[]);
+        let mut chips = refs(&chips);
+        let entry = format!("{name} A");
+        chips[3] = &entry;
+        says(parse(&content, &bn5(&chips, ""), &ok).unwrap_err(), &format!("left: folder entry 3: no chip {name:?} in bn5"));
+    }
+    // A BN5 chip (GyroMan) in a BN6 match.
+    assert!(crate::ids::chip(&content, "bn5", "gyroman").is_some() && crate::ids::chip(&six, "bn6", "gyroman").is_none());
+    let mut chips = BN6.to_vec();
+    chips[0] = "gyroman G";
+    let e = parse_in(&six, "bn6", &side("megaman", &chips, ""), &side("megaman", &BN6, "")).unwrap_err();
+    says(e, "left: folder entry 0: no chip \"gyroman\" in bn6");
+    // A game the content hasn't (BN6's file on BN5's content, a game no
+    // content has); a ruleset the game hasn't.
+    let text = match_text(&content, "bn5", &ok, &ok);
+    let e = crate::parse(&content, &text.replacen("game = \"bn5\"", "game = \"bn7\"", 1)).unwrap_err();
+    says(e, "no game \"bn7\" (the content's are bn5)");
+    let e = crate::parse(&six, &text).unwrap_err();
+    says(e, "no game \"bn5\" (the content's are bn6)");
+    let e = crate::parse(&content, &text.replacen("game = \"bn5\"\n", "game = \"bn5\"\nruleset = \"bn6:stock\"\n", 1)).unwrap_err();
+    assert!(e[0].starts_with("no ruleset \"bn6:stock\" in bn5"), "{e:?}");
 }
 
-/// The chips a BN6 side's rules let a folder hold are every game's (a
-/// BN5 Cannon among them), and a BN5 side's BN5's own without its BatCans
-/// and Program Advances.
+/// A match's lookups see only its game: its stages, navis, chips (the
+/// rules' pool), souls and patch cards are its own, so a BN5 match's
+/// sides, made or drawn, hold BN5's alone and a BN6 match's BN6's.
 #[test]
-fn every_games_chips_are_in_the_pool() {
-    let content = every_game();
-    let m = parse(&content, &side("bn6:stock", "bn6:megaman", &BN6, ""), &bn5(&TANGO_BN5, "")).unwrap();
-    let mut b = crate::check::start(&content, &m).unwrap();
-    let key = |h: nettai_content_api::ChipHandle| content.defs.chip(h).key.clone();
-    let six: Vec<String> = crate::folders::pool(&content, &mut b, 0).into_iter().map(key).collect();
-    let five: Vec<String> = crate::folders::pool(&content, &mut b, 1).into_iter().map(key).collect();
-    for k in ["bn5:cannon", "bn6:cannon", "bn5:colonel", "bn5:bass"] {
-        assert!(six.contains(&k.to_string()) && five.contains(&k.to_string()), "{k}");
+fn a_matchs_lookups_only_see_its_game() {
+    for (game, content) in [("bn5", bn5_content()), ("bn6", bn6_content())] {
+        let of = |key: &str| crate::ids::in_game(game, key);
+        assert!(crate::link_battle_stages(&content, game).iter().all(|&s| of(&content.defs.stage(s).key)));
+        assert!(crate::navis(&content, game).iter().all(|&n| of(&content.defs.navi(n).key)));
+        assert!(crate::facts::all_souls(&content, game).iter().all(|&f| of(&content.defs.form(f).key)));
+        let m = crate::draw::live(&content, game, 5, None).unwrap();
+        assert_eq!(check_match(&content, &m), Vec::<String>::new(), "{game}");
+        let mut b = crate::check::start(&content, &m).unwrap();
+        let pool = crate::folders::pool(&content, game, &mut b, 0);
+        assert!(pool.len() > 100 && pool.iter().all(|&c| of(&content.defs.chip(c).key)), "{game}: {} chips", pool.len());
+        for s in &m.sides {
+            assert!(of(&content.defs.navi(s.navi).key) && s.folder.chips().all(|c| of(&content.defs.chip(c.id).key)));
+        }
+        assert!(of(&content.defs.ruleset(m.arena.ruleset).key));
+        // Written, it names its game once, and nothing else qualified.
+        let text = crate::write(&content, &m);
+        assert!(text.contains(&format!("game = \"{game}\"")) && !text.contains("bn5:") && !text.contains("bn6:"), "{text}");
+        assert_eq!(crate::parse(&content, &text).unwrap(), m);
     }
-    for k in ["bn5:batcan1", "bn5:lifesrd", "bn5:invalid"] {
-        assert!(!five.contains(&k.to_string()), "{k}");
-    }
+    // BN5's souls aren't BN6's (BN6 has none); BN6's names are none of
+    // BN5's content's.
+    assert!(crate::facts::all_souls(&bn6_content(), "bn6").is_empty());
+    assert!(!crate::facts::all_souls(&bn5_content(), "bn5").is_empty());
+    assert_eq!(crate::ids::form(&bn5_content(), "bn6", "heatcross"), None);
+    assert_eq!(crate::ids::games(&bn5_content()), ["bn5"]);
+    // A match of another game than the content's makes no match.
+    assert!(Match::empty(&bn5_content(), "bn6").is_err());
 }
 
 /// Play a match `ticks` ticks: the scenario's players (picking chips at
@@ -187,19 +230,14 @@ fn play(content: &Arc<Content>, m: &Match, ticks: usize) -> [Vec<String>; 2] {
     used
 }
 
-/// A BN6 side with BN5 chips, against BN6's own, and a BN5 side against
-/// a BN6 side: each plays 900 ticks (custom screens, chips used, a BN5
-/// chip among them) without the engine stopping.
+/// A BN5 match plays 900 ticks (custom screens, chips used) without the
+/// engine stopping, its sides using BN5's chips.
 #[test]
-fn mixed_and_cross_game_matches_play() {
-    let content = every_game();
-    let mixed: Vec<String> = TANGO_BN5.iter().take(15).map(|s| s.to_string()).chain(BN6[15..].iter().map(|s| s.to_string())).collect();
-    let m = parse(&content, &side("bn6:stock", "bn6:megaman", &refs(&mixed), ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+fn a_bn5_match_plays() {
+    let content = bn5_content();
+    let m = parse(&content, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
     let used = play(&content, &m, 900);
-    assert!(used[0].iter().any(|k| k.starts_with("bn5:")), "the mixed side used a BN5 chip: {used:?}");
-    let m = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
-    let used = play(&content, &m, 900);
-    assert!(used[0].iter().any(|k| k.starts_with("bn5:")) && used[1].iter().any(|k| k.starts_with("bn6:")), "{used:?}");
+    assert!(used.iter().all(|u| !u.is_empty() && u.iter().all(|k| k.starts_with("bn5:"))), "{used:?}");
 }
 
 /// A BN5 side's karma and souls write to a match file and read back; the
@@ -207,27 +245,26 @@ fn mixed_and_cross_game_matches_play() {
 /// soul) are left out, so old files load unchanged.
 #[test]
 fn karma_and_souls_write_and_read_back() {
-    let content = every_game();
-    let left = bn5(&TANGO_BN5, "")
-        .replacen("navi = \"bn5:megaman\"\n", "navi = \"bn5:megaman\"\nkarma = 100\nsouls = [\"bn5:protosoul\", \"bn5:colonelsoul\"]\n", 1);
-    let m = parse(&content, &left, &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap_or_else(|p| panic!("{p:?}"));
+    let content = bn5_content();
+    let left = bn5(&TANGO_BN5, "").replacen("navi = \"megaman\"\n", "navi = \"megaman\"\nkarma = 100\nsouls = [\"protosoul\", \"colonelsoul\"]\n", 1);
+    let m = parse(&content, &left, &bn5(&TANGO_BN5, "")).unwrap_or_else(|p| panic!("{p:?}"));
     let s = &m.sides[0];
     assert_eq!(s.karma, 100);
-    let souls = ["bn5:protosoul", "bn5:colonelsoul"].map(|k| content.defs.form_by_key(k).unwrap());
+    let souls = ["protosoul", "colonelsoul"].map(|n| crate::ids::form(&content, "bn5", n).unwrap());
     assert_eq!(s.souls, Some(souls.to_vec()), "either version's");
     let text = crate::write(&content, &m);
-    assert!(text.contains("karma = 100") && text.contains("souls = [") && text.contains("\"bn5:colonelsoul\""), "{text}");
+    assert!(text.contains("karma = 100") && text.contains("souls = [") && text.contains("\"colonelsoul\""), "{text}");
     assert_eq!(crate::parse(&content, &text).unwrap(), m);
     // A side that says nothing of them: the defaults, nothing written.
-    let plain = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+    let plain = parse(&content, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
     assert_eq!((plain.sides[0].karma, plain.sides[0].souls.clone()), (500, None));
     let text = crate::write(&content, &plain);
     assert!(!text.contains("karma") && !text.contains("souls"), "{text}");
-    // Karma past 1000; karma and a soul list under BN6's rules; a form that
-    // is no soul: said.
-    let bad = side("bn6:stock", "bn6:megaman", &BN6, "")
-        .replacen("navi = \"bn6:megaman\"\n", "navi = \"bn6:megaman\"\nkarma = 1200\nsouls = [\"bn6:heatcross\"]\n", 1);
-    let e = parse(&content, &bn5(&TANGO_BN5, ""), &bad).unwrap_err();
+    // Karma past 1000; karma and a soul list under BN6's rules; a BN6
+    // Cross, no soul of BN5's.
+    let bad = side("megaman", &BN6, "").replacen("navi = \"megaman\"\n", "navi = \"megaman\"\nkarma = 1200\nsouls = [\"heatcross\"]\n", 1);
+    let six = bn6_content();
+    let e = parse_in(&six, "bn6", &side("megaman", &BN6, ""), &bad).unwrap_err();
     for p in [
         "right: karma 1200: the light/dark value is 0 to 1000",
         "right: karma, but the ruleset has no light and dark MegaMan (no system takes `karma`)",
@@ -236,6 +273,9 @@ fn karma_and_souls_write_and_read_back() {
     ] {
         assert!(e.iter().any(|x| x == p), "{p:?} not in {e:?}");
     }
+    let bad = bn5(&TANGO_BN5, "souls = [\"heatcross\"]");
+    let e = parse(&content, &bad, &bn5(&TANGO_BN5, "")).unwrap_err();
+    assert!(e.contains(&"left: souls: no soul \"heatcross\" in bn5".to_string()), "{e:?}");
 }
 
 /// A round of `m` after `ticks` ticks of nothing pressed.
@@ -253,9 +293,9 @@ fn started(content: &Arc<Content>, m: &Match, ticks: usize) -> nettai_battle::Ba
 #[test]
 fn a_dark_side_starts_dark() {
     use nettai_battle::kinds::player::Emotion;
-    let content = every_game();
+    let content = bn5_content();
     let at = |value: Option<u16>| {
-        let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+        let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
         if let Some(v) = value {
             m.sides[0].karma = v;
         }
@@ -266,7 +306,7 @@ fn a_dark_side_starts_dark() {
     assert_eq!(at(None), ((500 / 20 + 103) as u8, Emotion::Normal));
     assert_eq!(at(Some(1000)), (190, Emotion::Normal));
     // The face a mood of 0 shows: the base form's dark one.
-    let base = content.base_form_for(content.defs.navi_by_key("bn5:megaman").unwrap());
+    let base = content.base_form_for(crate::ids::navi(&content, "bn5", "megaman").unwrap());
     let face = content.form(base).mugshot.unwrap().of(Emotion::WornOut);
     assert_eq!(content.assets.handle(nettai_content_api::AssetKind::Mugshot, "bn5:megaman-dark"), Some(face.0));
 }
@@ -278,12 +318,12 @@ fn a_dark_side_starts_dark() {
 #[test]
 fn an_unowned_soul_cant_be_chosen() {
     use nettai_battle::custom::screen::{Phase, SPECIAL_SLOT, SlotKind, SlotState};
-    let content = every_game();
+    let content = bn5_content();
     // Swords alone, so the first chip dealt is one (no folder the rules
     // take: the round is played as set up).
-    let sword = content.defs.chip_by_key("bn5:sword").unwrap();
+    let sword = crate::ids::chip(&content, "bn5", "sword").unwrap();
     let offered = |souls: Option<Vec<nettai_content_api::FormHandle>>| {
-        let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+        let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
         m.sides[0].folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30];
         m.sides[0].souls = souls;
         let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
@@ -305,10 +345,10 @@ fn an_unowned_soul_cant_be_chosen() {
     };
     assert_eq!(offered(None), (true, true));
     assert_eq!(offered(Some(Vec::new())), (true, false));
-    assert_eq!(offered(Some(vec![content.defs.form_by_key("bn5:gyrosoul").unwrap()])), (true, false));
+    assert_eq!(offered(Some(vec![crate::ids::form(&content, "bn5", "gyrosoul").unwrap()])), (true, false));
     // ProtoSoul alone, or with Team Colonel's ColonelSoul: offered.
-    let proto = content.defs.form_by_key("bn5:protosoul").unwrap();
-    assert_eq!(offered(Some(vec![proto, content.defs.form_by_key("bn5:colonelsoul").unwrap()])), (true, true));
+    let proto = crate::ids::form(&content, "bn5", "protosoul").unwrap();
+    assert_eq!(offered(Some(vec![proto, crate::ids::form(&content, "bn5", "colonelsoul").unwrap()])), (true, true));
 }
 
 /// A side's karma and souls go into its round's setup: the light and dark
@@ -316,60 +356,70 @@ fn an_unowned_soul_cant_be_chosen() {
 /// are the soul button's (by their numbers).
 #[test]
 fn karma_and_souls_reach_the_round() {
-    let content = every_game();
-    let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+    let content = bn5_content();
+    let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
     m.sides[0].karma = 300;
-    m.sides[0].souls = Some(vec![content.defs.form_by_key("bn5:colonelsoul").unwrap()]);
+    m.sides[0].souls = Some(vec![crate::ids::form(&content, "bn5", "colonelsoul").unwrap()]);
     let b = started(&content, &m, 1);
     let (schema, block) = b.system_setup(0, "bn5:light-dark").unwrap();
     assert_eq!(block.get(schema, schema.index_of("karma").unwrap()), nettai_content_api::FieldValue::U16(300));
     let souls = b.setup.players[0].souls;
     assert!(souls.button && souls.chaos && souls.owned == 1 << 7, "{souls:?}");
-    // A BN6 side has no souls.
+    // A BN6 match's sides have no souls.
+    let six_content = bn6_content();
+    let six = crate::draw::live(&six_content, "bn6", 1, None).unwrap();
+    let b = started(&six_content, &six, 1);
     assert_eq!(b.setup.players[1].souls, nettai_battle::custom::SoulUnlocks::default());
 }
 
-/// What a side's rules and navi take decides its own fields: a BN6 side
-/// (a mixed one too: BN6's rules, BN5 chips) takes its game, a navi code's
-/// level and BN6's SP times; a BN5 side takes no game and no level, and
-/// BN5's own SP times (its SP navi chips', not BN6's).
+/// What the match's rules and a side's navi take decide the side's own
+/// fields: a BN6 match's side takes its version, a navi code's level and
+/// BN6's SP times; a BN5 match's no version and no level, and BN5's own SP
+/// times (its SP navi chips', not BN6's).
 #[test]
 fn a_sides_fields_are_its_rules() {
-    let content = every_game();
-    let mixed: Vec<String> = TANGO_BN5.iter().take(15).map(|s| s.to_string()).chain(BN6[15..].iter().map(|s| s.to_string())).collect();
-    let m = parse(&content, &side("bn6:stock", "bn6:megaman", &refs(&mixed), ""), &bn5(&TANGO_BN5, "")).unwrap();
-    let (six, five) = (&m.sides[0], &m.sides[1]);
-    assert!(six.takes_game(&content) && six.takes_level(&content) && six.takes_sp_times(&content));
-    assert!(!five.takes_game(&content) && !five.takes_level(&content) && five.takes_sp_times(&content));
-    // Each slot's chip is of the side's rules' game.
-    let chip = |s: &crate::Side, slot| crate::facts::sp_chip(&content, s, slot).map(|h| content.defs.chip(h).key.clone());
-    assert!(chip(six, 0).is_some_and(|k| k.starts_with("bn6:")), "{:?}", chip(six, 0));
-    assert!(chip(five, 1).is_some_and(|k| k.starts_with("bn5:")), "{:?}", chip(five, 1));
+    let (c5, c6) = (bn5_content(), bn6_content());
+    let six = crate::draw::live(&c6, "bn6", 3, None).unwrap();
+    let five = parse(&c5, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
+    let (r6, r5) = (six.arena.ruleset, five.arena.ruleset);
+    assert!(crate::Side::takes_game(&c6, r6) && six.sides[0].takes_level(&c6) && crate::Side::takes_sp_times(&c6));
+    assert!(!crate::Side::takes_game(&c5, r5) && !five.sides[0].takes_level(&c5) && crate::Side::takes_sp_times(&c5));
+    // Each slot's chip is of the match's game.
+    let chip = |c: &nettai_battle::Content, m: &Match, slot| crate::facts::sp_chip(c, &m.arena, slot).map(|h| c.defs.chip(h).key.clone());
+    assert!(chip(&c6, &six, 0).is_some_and(|k| k.starts_with("bn6:")), "{:?}", chip(&c6, &six, 0));
+    assert!(chip(&c5, &five, 1).is_some_and(|k| k.starts_with("bn5:")), "{:?}", chip(&c5, &five, 1));
 }
 
-/// A ruleset change drops what the new rules don't take: BN6's game
-/// (back to Falzar), Crosses, patch cards and NaviCust going to BN5's
-/// rules, the SP times (another game's SP navis); BN5's karma and souls
-/// going to BN6's. A BN6 side that stays on BN6's rules keeps them.
+/// A ruleset change drops what the new rules don't take (the test
+/// content's mix has no forms system: the Crosses go), and the same rules
+/// keep everything.
 #[test]
 fn a_ruleset_change_drops_what_the_rules_dont_take() {
-    let content = every_game();
-    let bn6 = content.defs.ruleset_by_key("bn6:stock");
-    let bn5 = content.defs.ruleset_by_key("bn5:stock");
-    let mut m = crate::draw::live(&content, 3, None).unwrap();
-    let s = &mut m.sides[0];
-    s.ruleset = bn6;
-    s.game = nettai_battle::custom::GameVersion::Gregar;
-    s.crosses = crate::navi_crosses(&content, s.navi).map(|c| crate::CrossList::new(&c[..2]));
-    assert!(s.crosses.is_some(), "live play's navi changes form");
-    s.sp_times.0[0] = 600;
+    let content = nettai_battle::content::testing::content();
+    let stock = content.defs.stock_ruleset().unwrap();
+    let mix = content.defs.ruleset_by_key("test:test-mix").unwrap();
+    let navi = content.form_changing_navi().unwrap();
+    let mut s = crate::Side {
+        navi,
+        game: nettai_battle::custom::GameVersion::Gregar,
+        stats: crate::Side::base_stats(&content, navi, nettai_battle::custom::GameVersion::Gregar),
+        emotion_window_glitch: false,
+        folder: crate::Folder::EMPTY,
+        crosses: crate::navi_crosses(&content, navi).map(|c| crate::CrossList::new(&c[..c.len().min(2)])),
+        beast_out: true,
+        cards: Vec::new(),
+        navi_level: None,
+        bug_frags: 0,
+        sp_times: Default::default(),
+        navicust: None,
+        tactics: Default::default(),
+        karma: crate::facts::DEFAULT_KARMA,
+        souls: None,
+    };
     let kept = s.clone();
-    s.set_ruleset(&content, bn6);
-    assert_eq!(*s, kept, "the same rules keep everything");
-    s.set_ruleset(&content, bn5);
-    assert_eq!((s.game, s.crosses, s.navicust, s.cards.len(), s.sp_times.0[0]), (nettai_battle::custom::GameVersion::Falzar, None, None, 0, 0));
-    s.karma = 100;
-    s.souls = Some(Vec::new());
-    s.set_ruleset(&content, bn6);
-    assert_eq!((s.karma, s.souls.clone()), (crate::facts::DEFAULT_KARMA, None));
+    s.fit_rules(&content, stock);
+    assert_eq!(s, kept, "the same rules keep everything");
+    assert!(crate::ruleset_has_system(&content, stock, crate::FORMS_SYSTEM) && !crate::ruleset_has_system(&content, mix, crate::FORMS_SYSTEM));
+    s.fit_rules(&content, mix);
+    assert_eq!(s.crosses, None);
 }
