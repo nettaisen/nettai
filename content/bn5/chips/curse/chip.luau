@@ -7,7 +7,7 @@
 local sonicbom = require("../sonicbom/action")
 
 return define.chip {
-    id = "bn5:curse",
+    id = "curse",
     codes = { "E", "L", "S", "*" },
     element = "null",
     family = "sword",
@@ -19,5 +19,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
-    action = sonicbom.make("bn5:curse/action", 0, false),
+    action = sonicbom.make("curse/action", 0, false),
 }

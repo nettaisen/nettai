@@ -31,11 +31,11 @@ local WIND_UP, WAIT = 4, 8
 
 local ANIM_THROW = 0x0A
 -- The log thrower (the original's attachment row 0x27).
-local THROWER = attachment.look { sprite = asset.sprite("bn6:log-thrower"), palette = 0, attach_point = 0x0E }
+local THROWER = attachment.look { sprite = asset.sprite("log-thrower"), palette = 0, attach_point = 0x0E }
 -- The row each log lands on, by the navi's row and the logs left
 -- (`byte_80EDAB4`, at (row - 1) * 2 + logs - 1).
 local ROWS = { [0] = 2, 2, 3, 2, 3, 3 }
-local SOUND_THROW, SOUND_ROLL = asset.sound("bn6:throw"), asset.sound("bn6:rlnglog1-roll")
+local SOUND_THROW, SOUND_ROLL = asset.sound("throw"), asset.sound("rlnglog1-roll")
 
 -- A chip's RlngLog: the logs it throws.
 function action.action(spec: RollingLogSpec): Action

@@ -3,7 +3,7 @@
 -- the shared code (@exelib/firehit/fist, BN6's), the fist striking with BN5's fire spark and collision types (the
 -- strike's word 0x04050101, BN5's rows 5 and 4); its sprite and sound BN6's numbers.
 --
--- Not ported: in battle flag 0x40 mode (never in a netbattle), BN5's warning also spawns effect 0x83 on the fist's
+-- Not ported: in the operation battle (never in a netbattle), BN5's warning also spawns effect 0x83 on the fist's
 -- panel for 10 ticks (0x080E9FA4, from 0x080D13B2; BN6 stubs the call), whose object is unread.
 
 local common = require("@exelib/firehit/fist")
@@ -12,9 +12,9 @@ local sparks = require("../../lib/sparks")
 
 local fist = {}
 
-fist.kind = common.make_kind("bn5:firehit/fist", {
-    sprite = asset.sprite("bn5:fire-hit"),
-    sound = asset.sound("bn5:fire-hit"),
+fist.kind = common.make_kind("firehit/fist", {
+    sprite = asset.sprite("fire-hit"),
+    sound = asset.sound("fire-hit"),
     spark = sparks.fire,
     target = collision.hits_navis,
     self_type = collision.attack,

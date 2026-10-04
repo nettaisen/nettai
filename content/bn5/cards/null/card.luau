@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local charged_shot = require("../../navis/megaman/weapons/charged-shot")
 
 return define.patch_card {
-    id = "bn5:null",
+    id = "null",
     mb = 13,
     effects = {
         cards.hp(150),

@@ -6,20 +6,20 @@ local charge = require("./charge")
 local dustman = require("./chip")
 
 return define.navi {
-    id = "bn6:dustman",
-    sprite = asset.sprite("bn6:dustman"),
+    id = "dustman",
+    sprite = asset.sprite("dustman"),
     element = "null",
     weakness = { "cursor" },
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("bn6:dustman-win"), lose = asset.banner("bn6:dustman-deleted") },
+    banners = { win = asset.banner("dustman-win"), lose = asset.banner("dustman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`).
-    mugshot = asset.mugshot("bn6:dustman"),
+    mugshot = asset.mugshot("dustman"),
     merge_height = 0,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        portrait = asset.sprite("bn6:dustman-portrait"),
+        portrait = asset.sprite("dustman-portrait"),
     },
     own_chip = { chip = dustman, code = "D" },
     chip_bonus = {

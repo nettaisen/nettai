@@ -9,4 +9,4 @@
 local common = require("@exelib/anubis/controller")
 local statue = require("./statue")
 
-return common.make { id = "bn6:anubis/controller", statue = statue.spawn }
+return common.make { id = "anubis/controller", statue = statue.spawn }

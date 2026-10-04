@@ -9,7 +9,7 @@ local bug_bomb = require("./bomb")
 local common = require("@exelib/bugbomb/bomb")
 
 return define.chip {
-    id = "bn5:bugbomb",
+    id = "bugbomb",
     codes = { "A", "R", "T", "*" },
     element = "null",
     family = "null",

@@ -9,7 +9,7 @@ local recipe_shademn_ds = require("../shademan/chips").shademn_ds
 local recipe_shademn_sp = require("../shademan/chips").shademn_sp
 
 return define.chip {
-    id = "bn5:bignoise",
+    id = "bignoise",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

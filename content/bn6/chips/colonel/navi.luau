@@ -33,9 +33,9 @@ export type State = {
 
 local colonel = {}
 
-local SPRITE = asset.sprite("bn6:colonel")
-local SOUND_APPEAR = asset.sound("bn6:appear")
-local SOUND_SPIN = asset.sound("bn6:spin")
+local SPRITE = asset.sprite("colonel")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_SPIN = asset.sound("spin")
 
 -- His cape (`dword_80B85C4`): his own sprite, stepping while dimmed, his
 -- animation plus 0x0D, his palette.
@@ -44,7 +44,7 @@ local CAPE: FormOverlaySpec =
 
 -- His sword (`dword_80B85C8`: the original's attachment 0x1F, animation
 -- 0x1C, animating while dimmed).
-local SWORD = attachment.look { sprite = asset.sprite("bn6:colonel-sword"), palette = 0 }
+local SWORD = attachment.look { sprite = asset.sprite("colonel-sword"), palette = 0 }
 local SWORD_ANIM = 0x1C
 
 -- ScreenDivide's X (region 0x29: the diagonals of a column of three
@@ -53,10 +53,10 @@ local SWORD_ANIM = 0x1C
 local SCREEN_DIVIDE = define.region {
     panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 } },
 }
-local DIVIDE = define.effect { sprite = asset.sprite("bn6:colonel-effect"), anim = 3, palette = 0 }
+local DIVIDE = define.effect { sprite = asset.sprite("colonel-effect"), anim = 3, palette = 0 }
 local CROSS = {
-    define.effect { sprite = asset.sprite("bn6:colonel-effect"), anim = 1, palette = 0 },
-    define.effect { sprite = asset.sprite("bn6:colonel-effect"), anim = 2, palette = 0 },
+    define.effect { sprite = asset.sprite("colonel-effect"), anim = 1, palette = 0 },
+    define.effect { sprite = asset.sprite("colonel-effect"), anim = 2, palette = 0 },
 }
 
 -- His fade-in's starting gray.
@@ -341,7 +341,7 @@ local function finish(me: Object)
 end
 
 colonel.kind = define.kind {
-    id = "bn6:colonel/navi",
+    id = "colonel/navi",
     pool = "actor",
     state = {
         gray = "u8",

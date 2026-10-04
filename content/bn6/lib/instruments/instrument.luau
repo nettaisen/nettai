@@ -13,12 +13,12 @@ instrument.instrument = common.instrument
 instrument.make_kind = common.make_kind
 instrument.spawn_kind = common.spawn_kind
 
-local BN6_SPRITE = asset.sprite("bn6:instrument")
+local BN6_SPRITE = asset.sprite("instrument")
 
-instrument.kind = common.make_kind("bn6:instrument", {
+instrument.kind = common.make_kind("instrument", {
     sprite = BN6_SPRITE,
     hp = 60,
-    sounds = { appear = asset.sound("bn6:appear"), broken = asset.sound("bn6:hit-bomb-1") },
+    sounds = { appear = asset.sound("appear"), broken = asset.sound("hit-bomb-1") },
     -- Another body of its side, reached by the other side.
     body = { is = collision.own_body, hits = collision.hit_by_other_side },
     -- How it looks absorbed (the original's obstacle kind's sprite: its

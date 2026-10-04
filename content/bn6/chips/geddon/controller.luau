@@ -13,4 +13,4 @@
 local common = require("@exelib/geddon/controller")
 local quake = require("./quake")
 
-return common.make { id = "bn6:geddon/controller", name = "Geddon", quake = quake.spawn, hold_panel = true }
+return common.make { id = "geddon/controller", name = "Geddon", quake = quake.spawn, hold_panel = true }

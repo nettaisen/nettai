@@ -11,7 +11,7 @@ local a_charge = require("./a-charge")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "bn6:eleccross",
+    id = "eleccross",
     kind = "cross",
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
@@ -20,14 +20,14 @@ return define.form {
     beast = eleccross_beast,
     -- A weakness hit breaks the Cross: back to the base form.
     breaks_to = base,
-    sprite = asset.sprite("bn6:megaman"),
+    sprite = asset.sprite("megaman"),
     element = "elec",
     buster_bonus = 0,
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = a_charge, alt_a_charge = a_charge },
     palette = 7,
     -- Its faces in the emotion window, and once Beast Out is spent
     -- (`byte_801E700`): the Falzar ROM has no ElecCross face, and shows TomahawkCross's.
-    mugshot = { normal = asset.mugshot("bn6:eleccross"), tired = asset.mugshot("bn6:eleccross-tired") },
+    mugshot = { normal = asset.mugshot("eleccross"), tired = asset.mugshot("eleccross-tired") },
     -- What R shows in the Cross window.
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "elec", damage = 50 },
@@ -48,7 +48,7 @@ return define.form {
         aura_anim = 26,
         ice = "medium",
         -- What it wears over MegaMan's body.
-        parts = cross_overlay(asset.sprite("bn6:eleccross-overlay")),
+        parts = cross_overlay(asset.sprite("eleccross-overlay")),
         attach_points = {
             { 2, 0 },
             { 2, 0 },

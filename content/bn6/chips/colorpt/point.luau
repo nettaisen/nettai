@@ -12,12 +12,12 @@ local common = require("@exelib/colorpt/point")
 local trajectory = require("../../lib/trajectory")
 
 return common.make {
-    id = "bn6:colorpt/point",
-    sprite = asset.sprite("bn6:grab-shot"),
+    id = "colorpt/point",
+    sprite = asset.sprite("grab-shot"),
     sounds = {
-        appear = asset.sound("bn6:point-appear"),
-        rise = asset.sound("bn6:point-rise"),
-        arrive = asset.sound("bn6:cross-merge"),
+        appear = asset.sound("point-appear"),
+        rise = asset.sound("point-rise"),
+        arrive = asset.sound("cross-merge"),
     },
     -- While a special chip is in use (the player's AI+0xBB).
     special = function(_side: number, navi: Object): boolean

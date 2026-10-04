@@ -7,7 +7,7 @@
 --
 -- - a player's beam lasts only while A is held (0x080EDD30, 0x080EDDCE): at the wind-up's end and each firing
 --   tick, a player (not AI index 0x17) without the no-charge state who has let go of A stops firing (unless the
---   battle gives each player a gauge, battle flag 0x40); the beam also stops when the battle is over;
+--   battle gives each player a gauge, the operation battle); the beam also stops when the battle is over;
 -- - the hits are BN5's collision row 0x17 (BN6's drain, 0x2C);
 -- - the gun is the attachment table's rows 0x13 to 0x16 (BN6's 7 to 0xA), the same look;
 -- - the firing ticks are BN5's (0x080EDDC8: 60, 90, 120, 120), and nothing is left in the attack's count;
@@ -18,6 +18,7 @@ local attachment = require("../../objects/attachment/attachment")
 local beam = require("@exelib/gundels/beam")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
+local operation_battle = require("../../lib/operation_battle")
 
 local gundels = {}
 
@@ -40,10 +41,10 @@ export type Spec = {
     wide: boolean?,
 }
 
-gundels.beam_kind = beam.make_kind("bn5:gundels/beam", asset.sound("bn5:sun-beam"))
+gundels.beam_kind = beam.make_kind("gundels/beam", asset.sound("sun-beam"))
 
 -- The beams' looks (0x080EDDB8): GunDelSol's, and GunDelEX's wider one, in the shade and in the sun.
-local PLAIN, WIDE = asset.sprite("bn5:sun-beam"), asset.sprite("bn5:sun-beam-ex")
+local PLAIN, WIDE = asset.sprite("sun-beam"), asset.sprite("sun-beam-ex")
 gundels.beams = {
     plain = { sprite = PLAIN, palette = 0 },
     plain_in_sun = { sprite = PLAIN, palette = 2 },
@@ -55,7 +56,7 @@ gundels.beams = {
 local WIND_UP, FIRING, RECOVER = 0x0, 0x4, 0x8
 
 local ANIM_RAISE = 0x0A
-local SOUND = asset.sound("bn5:gundels1")
+local SOUND = asset.sound("gundels1")
 local WIND_UP_TICKS, RECOVER_TICKS = 6, 10
 -- The beam, 80 pixels ahead of the navi.
 local BEAM_AHEAD = 0x50
@@ -68,7 +69,7 @@ local HOLDLESS_AI = 0x17
 
 -- The gun (the attachment table's rows 0x13 to 0x16, by the chip), in its palette.
 function gundels.gun(palette: number): AttachmentLook
-    return attachment.look { sprite = asset.sprite("bn5:gun-del-sol"), palette = palette, attach_point = 0x0D }
+    return attachment.look { sprite = asset.sprite("gun-del-sol"), palette = palette, attach_point = 0x0D }
 end
 
 local function set_phase(me: Object, step: number)
@@ -86,7 +87,7 @@ end
 
 -- 0x080EDD30 / 0x080EDDCE: a player who must hold A to keep firing has let go of it.
 local function let_go(me: Object): boolean
-    if battle.per_player_gauges() then
+    if operation_battle() then
         return false
     end
     if me.actor_type ~= "player" or me.ai_index == HOLDLESS_AI then

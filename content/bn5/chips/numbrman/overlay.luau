@@ -15,7 +15,7 @@ export type State = {
     hidden: boolean,
 }
 
-local SPRITE = asset.sprite("bn5:numberman-face")
+local SPRITE = asset.sprite("numberman-face")
 
 -- 0x080C419C: on its owner, wearing his look; then its action.
 local function follow(me: Object)
@@ -68,7 +68,7 @@ local function init(me: Object)
 end
 
 overlay.kind = define.kind {
-    id = "bn5:numbrman/face",
+    id = "numbrman/face",
     pool = "actor",
     state = { hidden = "bool" },
     -- 0x080C412E.

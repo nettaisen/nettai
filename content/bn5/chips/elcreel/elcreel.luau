@@ -14,7 +14,7 @@ local sparks = require("../../lib/sparks")
 local elcreel = {}
 
 -- The reel's look: sheet 10-3e, animation 2, no shadow (0x080DABE6, `sub_8011504`'s word 0x0002103E).
-local SPRITE = asset.sprite("bn5:sprite-10-3e")
+local SPRITE = asset.sprite("sprite-10-3e")
 local ANIM = 2
 -- Its collision (0x0A050100): thrown, hitting navis, hit modifier 1.
 local HIT_MOD = 1
@@ -171,7 +171,7 @@ local function init(me: Object)
 end
 
 elcreel.reel = define.kind {
-    id = "bn5:elcreel/reel",
+    id = "elcreel/reel",
     pool = "attack",
     -- 0x080DABBC.
     update = function(me: Object)
@@ -208,8 +208,8 @@ export type ActionState = {
 }
 
 -- The reel launcher (attachment row 0x35: sheet 0c-38 at attach point 0x17), in animation 1.
-local LAUNCHER = attachment.look { sprite = asset.sprite("bn5:sprite-0c-38"), palette = 0, attach_point = 0x17 }
-local SOUND = asset.sound("bn5:erase-man-2")
+local LAUNCHER = attachment.look { sprite = asset.sprite("sprite-0c-38"), palette = 0, attach_point = 0x17 }
+local SOUND = asset.sound("erase-man-2")
 local THROW_ANIM = 10
 local LAUNCH_AT, LAUNCH_TICKS, RECOVER_TICKS = 1, 15, 5
 

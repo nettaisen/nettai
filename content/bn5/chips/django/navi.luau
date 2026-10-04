@@ -37,11 +37,11 @@ export type State = {
 
 local django = {}
 
-local SPRITE = asset.sprite("bn5:django")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_CHARGE = asset.sound("bn5:django-charge")
-local SOUND_LAND = asset.sound("bn5:rockfall")
-local SOUND_BEAM = asset.sound("bn5:sun-beam")
+local SPRITE = asset.sprite("django")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_CHARGE = asset.sound("django-charge")
+local SOUND_LAND = asset.sound("rockfall")
+local SOUND_BEAM = asset.sound("sun-beam")
 
 -- By the level (0x080BF290): the dark palette for DS's 4.
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 3 }
@@ -72,7 +72,7 @@ end
 local function blessed(me: Object): boolean
     for _, o in field.objects(me.alliance) do
         local identity = o.identity
-        if identity and identity.id == "bn5:otenko" then
+        if identity and identity.id == "otenko" then
             return true
         end
     end
@@ -368,7 +368,7 @@ local function init(me: Object)
 end
 
 django.kind = define.kind {
-    id = "bn5:django/navi",
+    id = "django/navi",
     pool = "actor",
     state = {
         controller = "object",

@@ -12,10 +12,10 @@ local striker = require("@exelib/bodygrd/striker")
 local bodygrd = {}
 
 bodygrd.striker = striker.make_kind {
-    id = "bn5:bodygrd/striker",
+    id = "bodygrd/striker",
     -- NameID 0xD3: a field object nothing swallows, leaves as junk or throws (Poltrgst's list).
     identity = define.identity {
-        id = "bn5:bodygrd-striker",
+        id = "bodygrd-striker",
         class = "field_object",
         version = 0,
         ai_index = 1,
@@ -24,7 +24,7 @@ bodygrd.striker = striker.make_kind {
         look = { anim = 0, palette = 0, shadow = false },
     },
     shuriken = shuriken.kind,
-    throw_sound = asset.sound("bn5:boomerang"),
+    throw_sound = asset.sound("boomerang"),
 }
 
 export type State = {
@@ -47,7 +47,7 @@ local function effect(me: Object)
 end
 
 bodygrd.controller = define.kind {
-    id = "bn5:bodygrd/controller",
+    id = "bodygrd/controller",
     pool = "effect",
     state = { bonus = "u16", wait = "u8" },
     -- 0x080E8620.

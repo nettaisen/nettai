@@ -5,7 +5,7 @@
 local navi = require("./navi")
 
 local blastman = define.chip {
-    id = "bn6:blastman",
+    id = "blastman",
     codes = { "B", "*" },
     element = "fire",
     family = "fire",
@@ -22,7 +22,7 @@ local blastman = define.chip {
 }
 
 local blastmn_ex = define.chip {
-    id = "bn6:blastmn-ex",
+    id = "blastmn-ex",
     codes = { "B" },
     element = "fire",
     family = "fire",
@@ -39,7 +39,7 @@ local blastmn_ex = define.chip {
 }
 
 local blastmn_sp = define.chip {
-    id = "bn6:blastmn-sp",
+    id = "blastmn-sp",
     codes = { "B" },
     element = "fire",
     family = "fire",

@@ -8,7 +8,7 @@
 local statue = require("./statue")
 
 return define.chip {
-    id = "bn6:otenko",
+    id = "otenko",
     codes = { "O" },
     element = "null",
     family = "summon",

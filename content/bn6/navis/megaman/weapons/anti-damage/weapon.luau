@@ -9,8 +9,8 @@
 local shared = require("@exelib/navicust/anti-damage")
 
 return shared.make {
-    weapon = "bn6:megaman/anti-damage",
-    action = "bn6:megaman/anti-damage/action",
+    weapon = "megaman/anti-damage",
+    action = "megaman/anti-damage/action",
     -- (A B+Back special, which nothing charges: the charge table's row
     -- 0x3D by Charge 0 to 7, reading on into the next routine's row.)
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },

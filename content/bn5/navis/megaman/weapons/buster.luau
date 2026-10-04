@@ -24,25 +24,25 @@ local variants = require("../../../objects/projectile/variants")
 local bn5 = {}
 
 -- BN5's MegaMan (navi 0): his navi requires this module, so by his key.
-local MEGAMAN = "bn5:megaman"
+local MEGAMAN = "megaman"
 
 -- The shot (BN5's action 0x11), which throws no absorbed obstacle (BN5 absorbs none).
 local buster = {
     pick = common.pick,
     shot = common.shot_action {
-        id = "bn5:megaman/buster/shot",
+        id = "megaman/buster/shot",
         buster = lib,
         projectiles = projectile,
         attachment = attachment.kind,
-        shot_sound = asset.sound("bn5:buster-shot"),
+        shot_sound = asset.sound("buster-shot"),
         plain = variants.plain,
-        throw_sound = asset.sound("bn5:junk-shot"),
-        spread_flash = attachment.look { sprite = asset.sprite("bn5:sprite-0c-59"), palette = 0, attach_point = 0 },
+        throw_sound = asset.sound("junk-shot"),
+        spread_flash = attachment.look { sprite = asset.sprite("sprite-0c-59"), palette = 0, attach_point = 0 },
     },
 }
 
 -- The blank shot (BN5's action 0x33).
-local blank_shot = blank.make { id = "bn5:megaman/blank-shot/action", buster = lib, click = asset.sound("bn5:gundels1") }
+local blank_shot = blank.make { id = "megaman/blank-shot/action", buster = lib, click = asset.sound("gundels1") }
 
 -- 0x0800F522.
 function bn5.setup(navi: Object): Action
@@ -75,7 +75,7 @@ function bn5.setup(navi: Object): Action
 end
 
 bn5.weapon = define.weapon {
-    id = "bn5:megaman/buster",
+    id = "megaman/buster",
     -- The buster isn't charged (the charge table's row 0).
     charge_ticks = { 0, 0, 0, 0, 0 },
     setup = bn5.setup,
@@ -83,7 +83,7 @@ bn5.weapon = define.weapon {
 
 -- 0x0800FE12: the patch cards' TriBustr (a B button), the buster's routine.
 bn5.tri_buster = define.weapon {
-    id = "bn5:megaman/tri-buster",
+    id = "megaman/tri-buster",
     -- The charge table's row 0x65, by Charge 0 to 5: past 4 it reads on into row 0x66's first entry.
     charge_ticks = { 60, 60, 60, 60, 60, 120 },
     setup = bn5.setup,

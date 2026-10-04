@@ -20,17 +20,17 @@ local function counter_add(me: Object, n: number)
     end
 end
 
-snake.kind = common.make_kind("bn6:snake/snake", {
+snake.kind = common.make_kind("snake/snake", {
     trajectory = trajectory,
-    sprite = asset.sprite("bn6:snake"),
-    rise_sound = asset.sound("bn6:appear"),
-    leap_sound = asset.sound("bn6:aqua-needle-2"),
+    sprite = asset.sprite("snake"),
+    rise_sound = asset.sound("appear"),
+    leap_sound = asset.sound("aqua-needle-2"),
     -- 20 ticks.
     wait = 0x14,
     -- Its strike (`sub_80C53A6`, 0x04050501): an attack hitting navis with
     -- hit modifier 3.
     strike_element = 0,
-    strike_spark = define.spark { sprite = asset.sprite("bn6:pink-flash"), anim = 0, palette = 0 },
+    strike_spark = define.spark { sprite = asset.sprite("pink-flash"), anim = 0, palette = 0 },
     strike_hit_mod = 3,
     is = collision.attack,
     hits = collision.hits_navis,

@@ -13,8 +13,8 @@ local trap = {}
 -- `sub_800ABC6`: the sparkle on each of the enemy navi's panels
 -- (`byte_80CE0DC`: the panels of the other side's player navi), 16 pixels
 -- down and 32 up from the panel's center, and its sound.
-local SPARKLE = define.effect { sprite = asset.sprite("bn6:hit-sparks"), anim = 7, palette = 0 }
-local SPARKLE_SOUND = asset.sound("bn6:dimming-sparkle")
+local SPARKLE = define.effect { sprite = asset.sprite("hit-sparks"), anim = 7, palette = 0 }
+local SPARKLE_SOUND = asset.sound("dimming-sparkle")
 local SPARKLE_DY, SPARKLE_Z = 0x10_0000, 0x20_0000
 
 -- BN6's look: it watches fire to wood, is nothing and reaches the other
@@ -35,7 +35,7 @@ local BN6: ElemTrapLook = {
 trap.make_kind = common.make_kind
 trap.spawn = common.spawn
 
-trap.kind = common.make_kind("bn6:elemtrap/trap", BN6)
+trap.kind = common.make_kind("elemtrap/trap", BN6)
 
 -- ElemTrap's (`sub_80E358C`): BN6's trap.
 function trap.set(controller: Object, user: Object, chip: Chip?, bonus: number): Object?

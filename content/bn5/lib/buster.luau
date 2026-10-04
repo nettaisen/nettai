@@ -9,9 +9,9 @@ local attachment = require("../objects/attachment/attachment")
 local common = require("@exelib/buster")
 
 local buster = common.make {
-    flash = attachment.look { sprite = asset.sprite("bn5:muzzle-flash"), palette = 0, attach_point = 0x10 },
-    arm = attachment.look { sprite = asset.sprite("bn5:buster-arm"), palette = 0 },
-    navi_arm = attachment.look { sprite = asset.sprite("bn5:navi-arm"), palette = 0 },
+    flash = attachment.look { sprite = asset.sprite("muzzle-flash"), palette = 0, attach_point = 0x10 },
+    arm = attachment.look { sprite = asset.sprite("buster-arm"), palette = 0 },
+    navi_arm = attachment.look { sprite = asset.sprite("navi-arm"), palette = 0 },
     recovery = require("../rules/buster").recovery,
     attachment = attachment.kind,
 }

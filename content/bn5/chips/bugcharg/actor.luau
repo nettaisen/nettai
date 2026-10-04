@@ -2,7 +2,7 @@
 -- BugCharg's stand-in (BN5's actor object #0x59, 0x080C3A40; BN5's own, on the dimming stand-ins' skeleton:
 -- @exelib/dimming/stand_in): drawn as the user (its animation 16), it raises its charger (an attachment: BN5's row
 -- 0x1C, sprite 0C-43, on attach point 0x18) with a sound, takes in its user's NaviCust bugs (each it clears is a shot
--- more, past the first; in the battle flag 0x40 mode only three of them, three shots each) and the save's emotion
+-- more, past the first; in the operation battle only three of them, three shots each) and the save's emotion
 -- window glitch, and 41 ticks on fires: a heavy shot (objects/flying-shot's row 1) every 16 ticks from the panel ahead,
 -- 20 pixels up, each with a sound and the camera shaken. 31 ticks after the last it gives the user back, and its
 -- controller (./controller) moves on.
@@ -10,6 +10,7 @@
 local attachment = require("../../objects/attachment/attachment")
 local flying_shot = require("../../objects/flying-shot/flying_shot")
 local stand_in = require("@exelib/dimming/stand_in")
+local operation_battle = require("../../lib/operation_battle")
 
 export type State = {
     -- The controller waiting on it (@exelib/dimming/stand_in).
@@ -20,21 +21,21 @@ export type State = {
 
 local actor = {}
 
-local CHARGER = attachment.look { sprite = asset.sprite("bn5:bug-charger"), palette = 0, attach_point = 0x18 }
-local SOUND_RAISE = asset.sound("bn5:appear")
-local SOUND_SHOT = asset.sound("bn5:junk-shot")
+local CHARGER = attachment.look { sprite = asset.sprite("bug-charger"), palette = 0, attach_point = 0x18 }
+local SOUND_RAISE = asset.sound("appear")
+local SOUND_SHOT = asset.sound("junk-shot")
 -- The heavy shot's row in the flying shots' table.
 local SHOT_ROW = 1
 local AIM, BETWEEN, AFTER = 0x28, 0xF, 0x1E
 
--- 0x080C3C6C: the bugs it takes in (each cleared), and so its shots: one, and in the battle flag 0x40 mode three more
+-- 0x080C3C6C: the bugs it takes in (each cleared), and so its shots: one, and in the operation battle three more
 -- for each of the panel trail, the buster's blanks and the HP drain; else one more for each of the step bug, the
 -- panel trail, the blanks, the hit status, the custom screen's damage, the emotion swings, the custom drain, the HP
 -- drain and the battle start's.
 local function take_bugs(me: Object): number
     local stats = battle.navi(me.alliance)
     local shots = 1
-    if battle.per_player_gauges() then
+    if operation_battle() then
         if stats.panel_trail_level ~= 0 then
             shots += 3
             stats.panel_trail_level = 0
@@ -176,7 +177,7 @@ local function init(me: Object)
 end
 
 actor.kind = define.kind {
-    id = "bn5:bugcharg/actor",
+    id = "bugcharg/actor",
     pool = "actor",
     state = { controller = "object", held = "object" },
     -- 0x080C3A40.

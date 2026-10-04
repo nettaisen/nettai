@@ -12,18 +12,18 @@ local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")
 local trajectory = require("../../lib/trajectory")
 
-local SPRITE = asset.sprite("bn6:voodoo-doll")
+local SPRITE = asset.sprite("voodoo-doll")
 
 return common.make {
-    id = "bn6:vdoll/doll",
+    id = "vdoll/doll",
     sprite = SPRITE,
     -- Its identity: a field object, with the look something that takes its place shows (DustMan's junk).
     identity = define.identity {
-        id = "bn6:vdoll",
+        id = "vdoll",
         class = "field_object",
         version = 3,
         ai_index = 1,
-        look = { sprite = asset.sprite("bn6:voodoo-doll"), anim = 1, palette = 0, shadow = true },
+        look = { sprite = asset.sprite("voodoo-doll"), anim = 1, palette = 0, shadow = true },
     },
     -- How it looks absorbed (the original's obstacle kind's sprite: its own).
     absorbed = absorbed_obstacle.look { sprite = SPRITE },
@@ -34,7 +34,7 @@ return common.make {
     hit_mod = 1,
     spark = sparks.plain,
     set_down = { is = collision.neutral_body, hits = collision.everything, hit_mod = 3 },
-    poison_sound = asset.sound("bn6:panel-poison"),
+    poison_sound = asset.sound("panel-poison"),
     puff = effects.puff,
     trajectory = trajectory,
     curse = curse,

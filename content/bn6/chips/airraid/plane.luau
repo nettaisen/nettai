@@ -34,23 +34,23 @@ export type State = {
     next_target: number,
 }
 
-local SPRITE = asset.sprite("bn6:air-raid-plane")
+local SPRITE = asset.sprite("air-raid-plane")
 -- Its identity: a field object, with the look something that takes its
 -- place shows (DustMan's junk).
 local IDENTITY = define.identity {
-    id = "bn6:airraid-plane",
+    id = "airraid-plane",
     class = "field_object",
     version = 2,
     ai_index = 1,
-    look = { sprite = asset.sprite("bn6:air-raid-plane"), anim = 0, palette = 0, shadow = true },
+    look = { sprite = asset.sprite("air-raid-plane"), anim = 0, palette = 0, shadow = true },
 }
-local FLAME = asset.sprite("bn6:jet-flame")
+local FLAME = asset.sprite("jet-flame")
 -- Its collision: another body of its side, reached by the other side.
 local HIT_MOD = 3
 -- How it looks absorbed (the original's obstacle kind 6: its own sprite).
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
-local APPEAR_SOUND, BREAK_SOUND = asset.sound("bn6:appear"), asset.sound("bn6:hit-bomb-1")
-local TAKE_OFF_SOUND = asset.sound("bn6:take-off")
+local APPEAR_SOUND, BREAK_SOUND = asset.sound("appear"), asset.sound("hit-bomb-1")
+local TAKE_OFF_SOUND = asset.sound("take-off")
 -- Taking off: 30 ticks, rising 0.625 pixels a tick.
 local TAKE_OFF_TICKS, CLIMB = 0x1E, 0xA000
 local BOMB_PERIOD = 10
@@ -297,7 +297,7 @@ local function init(me: Object)
 end
 
 plane.kind = define.kind {
-    id = "bn6:airraid/plane",
+    id = "airraid/plane",
     pool = "attack",
     state = {
         plane = "record:airraid-plane",

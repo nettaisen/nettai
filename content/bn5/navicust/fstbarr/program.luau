@@ -5,7 +5,7 @@ local programs = require("../../rules/navicust/programs")
 local barriers = require("../../lib/barriers")
 
 return define.navicust_program {
-    id = "bn5:fstbarr",
+    id = "fstbarr",
     colors = { "red", "green", "blue", "white" },
     shape = {
         ".......",

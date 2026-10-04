@@ -7,7 +7,7 @@ local batcan = require("./batcan")
 -- BatCan1 (BN5 chip 0x13b): the navi raises its bat cannon and fires an unseen shot from the panel ahead on the 7th
 -- tick: BN6's BatCan (chips/batcan/batcan).
 local batcan1 = define.chip {
-    id = "bn5:batcan1",
+    id = "batcan1",
     codes = { "*" },
     element = "null",
     family = "null",
@@ -25,7 +25,7 @@ local batcan1 = define.chip {
 -- BatCan2 (BN5 chip 0x13c): the navi raises its bat cannon and fires an unseen shot from the panel ahead on the 7th
 -- tick: BN6's BatCan (chips/batcan/batcan).
 local batcan2 = define.chip {
-    id = "bn5:batcan2",
+    id = "batcan2",
     codes = { "S" },
     element = "null",
     family = "null",
@@ -43,7 +43,7 @@ local batcan2 = define.chip {
 -- BatCan3 (BN5 chip 0x13d): the navi raises its bat cannon and fires an unseen shot from the panel ahead on the 7th
 -- tick: BN6's BatCan (chips/batcan/batcan).
 local batcan3 = define.chip {
-    id = "bn5:batcan3",
+    id = "batcan3",
     codes = { "R" },
     element = "null",
     family = "null",
@@ -61,7 +61,7 @@ local batcan3 = define.chip {
 -- BatCan4 (BN5 chip 0x13e): the navi raises its bat cannon and fires three unseen shots from the panel ahead, 16
 -- ticks apart, the last staggering harder: BN6's BatCan4 (chips/batcan/batcan).
 local batcan4 = define.chip {
-    id = "bn5:batcan4",
+    id = "batcan4",
     codes = { "Z" },
     element = "null",
     family = "null",

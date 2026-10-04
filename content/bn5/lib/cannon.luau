@@ -9,7 +9,7 @@ local projectile = require("./projectile")
 
 local cannon = {}
 
-local CANNON = asset.sprite("bn5:cannon")
+local CANNON = asset.sprite("cannon")
 cannon.arms = {
     cannon = attachment.look { sprite = CANNON, palette = 0, attach_point = 7 },
     hicannon = attachment.look { sprite = CANNON, palette = 1, attach_point = 7 },
@@ -18,7 +18,7 @@ cannon.arms = {
 
 -- GigaCan's third afterimage (0x080EC224): in Hub Style (NaviStats +0x4C of the user's side), its shade (0c-58) in the
 -- navi's animation 8, where the navi stands, without a shadow.
-local HUB_SHADE = asset.sprite("bn5:sprite-0c-58")
+local HUB_SHADE = asset.sprite("sprite-0c-58")
 local function hub_afterimage(me: Object, flip: number)
     if battle.navi(me.alliance).hub_style == 0 then
         return
@@ -27,7 +27,7 @@ local function hub_afterimage(me: Object, flip: number)
 end
 
 local LOOK: ShooterLook = {
-    sound = asset.sound("bn5:cannon"),
+    sound = asset.sound("cannon"),
     attachment = attachment.kind,
     projectiles = projectile,
     more_afterimages = hub_afterimage,

@@ -31,7 +31,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "bn5:omegarkt/controller",
+    id = "omegarkt/controller",
     pool = "effect",
     state = { bonus = "u16", rocket = "object" },
     -- 0x080E95BC.

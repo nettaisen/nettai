@@ -22,7 +22,7 @@ local function setup(navi: Object)
 end
 
 return define.weapon {
-    id = "bn6:boomrarm/charge",
+    id = "boomrarm/charge",
     charge_ticks = { 100, 100, 100, 100, 100, 90, 80, 70 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,
     instant = boomer[1].instant,

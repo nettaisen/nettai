@@ -84,7 +84,7 @@ impl FieldType {
                 let t = &name["record:".len()..];
                 return (!t.is_empty()).then(|| FieldType::Ref(Registry::Record, Some(t.to_string())));
             }
-            _ if Registry::from_name(name).is_some_and(|r| !matches!(r, Registry::Schema | Registry::Roles | Registry::Rules)) => {
+            _ if Registry::from_name(name).is_some_and(|r| !matches!(r, Registry::Schema)) => {
                 FieldType::Ref(Registry::from_name(name).expect("a registry"), None)
             }
             _ if AssetKind::from_name(name).is_some() => FieldType::Asset(AssetKind::from_name(name).expect("an asset kind")),
