@@ -347,6 +347,9 @@ named_fields! {
         /// it) and its level (AIData+0x6C: releases that succeeded, at
         /// most 4).
         ChaosArmed = "chaos_armed", Bool, rw;
+        /// BN5's priming (AIData+0x0D): a form's `priming` chip used, its
+        /// next doubling waiting.
+        Primed = "primed", Bool, rw;
         ChaosLevel = "chaos_level", U8, rw;
         /// BN5's no-charge drive (DarkInvs): its ticks left (AIData+0x36;
         /// counted down in the intake while the navi has the no-charge
@@ -1757,6 +1760,9 @@ pub trait CoreApi {
     /// dimming (`keep`: its Param3 1 and flags 0x14), or steps like any
     /// object again (its Param3 0). Nothing without an overlay.
     fn overlay_stepping(&mut self, o: ObjectRef, keep: bool);
+    /// BN5's 0x080C451A: the navi's body overlay (`related2`) adds `offset`
+    /// to its owner's animation. Nothing without one.
+    fn set_overlay_anim_offset(&mut self, o: ObjectRef, offset: u8);
     /// `sub_8011384(form)`: take off what `form` wore (its `take_off`, or the
     /// default: `take_off_form_parts`).
     fn take_off_form_overlay(&mut self, o: ObjectRef, form: crate::FormHandle);

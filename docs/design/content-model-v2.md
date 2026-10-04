@@ -1907,7 +1907,9 @@ entry reaches the rock's `actor_list_entry` by its type number, and the other ty
   spawn parameters; it sets the controller's state instead (`support`, an enum it sets by name:
   `set_state_variant`; `eaten`; `telop_chip`), and the support's out flag (the original's second parameter,
   which the support sets and clears) is the controller's `out`. Rush leaves the second WhiCapsl in the hand by
-  its chip number still (that chip is a record, §5.4): the one chip number left in these modules.
+  its chip number still (that chip is a record, §5.4): the one chip number left in these modules. (Since BN5's
+  supports, the code is content/exelib/supports, made of each game's look: BN6's lib/supports and BN5's make them,
+  Rush's spared chip BN6's look's; docs/design/bn5-map.md §15.15.)
 - **SlashCross's sword wave** (navis/megaman/forms/slashcross/sword_wave): its rows (`byte_80D7F4C`) are
   `SwordWaveVariant` records, `sword_wave.spawn(owner, variant, x, y, element, damage, hidden?)`, named by the
   sword each is of (`sword_wave.waves`; each charged slash's record names its own since step 8e, §5.7). The
