@@ -27,6 +27,20 @@ bullet.variants = {
         effect = define.effect { sprite = asset.sprite("bn6:vulcan-hit"), anim = 0, palette = 0 },
         single = true,
     },
+    -- The patch cards' HeatS's (row 8: BN6's, its effect 0x22 and sound BN6's): the panel found and the one behind it.
+    heat = common.variant {
+        region = regions.long,
+        hit_mod = 0,
+        effect = define.effect { sprite = asset.sprite("bn5:shell-burst"), anim = 0, palette = 0 },
+        sound = asset.sound("bn5:target-move"),
+    },
+    -- The patch cards' BubSht's (row 4: BN6's, its effect 0x1F and sound BN6's): the panel found and the one behind it.
+    bubble = common.variant {
+        region = regions.long,
+        hit_mod = 0,
+        effect = define.effect { sprite = asset.sprite("bn5:spout-splash"), anim = 0, palette = 0 },
+        sound = asset.sound("bn5:spout-ball"),
+    },
     -- The Spreader's (row 3: BN6's with BN5's flash, effect 0x21, and sound): the 3x3 around the panel found.
     spreader = common.variant {
         region = regions.square,

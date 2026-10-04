@@ -404,26 +404,6 @@ export type PanelChange = {
     change_sound: Sound?,
 }
 
--- A BN6 patch card's effect (rules/patch-cards/cards.luau's constructors
--- make them; the patch-cards system applies them): its kind, and the kind's
--- fields.
-export type PatchCardEffect = {
-    kind: string,
-    amount: number?,
-    element: ElementName?,
-    weapon: Weapon?,
-    variant: ProjectileVariant?,
-    barrier: Barrier?,
-    gauge: string?,
-    on: boolean?,
-    trail: string?,
-    level: number?,
-    blanks: number?,
-    charged: number?,
-    status: string?,
-    -- The card shows it as a bug.
-    bug: boolean?,
-}
 -- A barrier (lib/barriers): `sub_801A7CC`'s row (how it behaves, its HP,
 -- the damage a hit must reach to wear it, its timer (0xFFFF: none), the
 -- element that breaks it), and its visual (`byte_80E0A14`'s look: sprite,
