@@ -1431,6 +1431,12 @@ them.
     (0x45, action 0x3D: @common/navicust/anti-damage, the AntiDmg program's) with the attack's variant 1, so its
     counter throws at the nearest enemy ahead (`attack_variant`, AIAttackVars +3); BN5's stance counter runs its
     first step at once (0x0800E340: the reactions section's `stance_counter = "at_once"`).
+  - **ToadSoul under the sea** (0x0800DF5A, 0x08017030, 0x0800DEB2; by the arena's panel rules' `submerges`): a
+    diving body on sea is under the surface (its dive timer, BN5's CollisionData +0x2C, held), its flag 0x80000000
+    on (the bit BN6's bubble has; BN5's kernel doubles no elec hit by it, the panel's elec bonus does) unless it uses
+    an action, is dragged, flinches or is paralyzed; under (0x80000004) it is hidden, a ripple over it (effect object
+    0x3E, objects/dive-ripple, the role `kinds.dive_ripple`; a splash as it starts, row 0x5D). BN6's submerged
+    state (`sub_8010162`, +0x28 in BN5) stays apart.
   - **The hit kernel** (0x0801691C, BN6's IWRAM `sub_3007218`; the reactions section's `hit_test = "bn5"`): no
     FloatShoe test (BN5's collision types have no 0x80, so BN6's test would keep every hit off a floating
     ShadowSoul or GyroSoul), the Elec element reaching a submerged or bubbled side (0x80000004), a guard broken by

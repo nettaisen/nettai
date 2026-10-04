@@ -130,6 +130,7 @@
 "bn5:gyrosoul/tornado" = { pool = "attack", index = 0x1E }
 "bn5:searchsoul/reveal" = { pool = "effect", index = 0x8F, scratch_position = true }
 "bn5:megaman/glow" = { pool = "effect", index = 0x26 }
+"bn5:dive-ripple" = { pool = "effect", index = 0x3E }
 "bn5:tomahawksoul/grass" = { pool = "effect", index = 0x16, scratch_position = true }
 "bn5:numbersoul/layer" = { pool = "actor", index = 0x54 }
 "bn5:immobilizer" = { pool = "attack", index = 0x3F }
