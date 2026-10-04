@@ -39,7 +39,11 @@ return define.form {
     navicust_refresh = { "super_armor" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 15,
-    traits = { "charged_sword_rush" },
+    -- The target marker shows, its afterimages stay, and a Null chip's A charge times by the
+    -- alternative routine (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`).
+    traits = { "shows_target_marker", "afterimages_stay", "alt_charge_time" },
+    -- Its charged sword runs inside the Beast Out rush (the beast system's, `sub_800FB54`).
+    charged_sword_rush = true,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 15, palette_add = 7 },
     identity = define.identity {

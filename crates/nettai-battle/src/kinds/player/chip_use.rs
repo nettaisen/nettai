@@ -244,7 +244,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
             b.set_panel_type(p.x, p.y, crate::field::PanelType::Normal);
             b.sound(BONUS_SOUND);
         }
-        Some(Boost::Cross | Boost::BeastOver) | None => {}
+        Some(Boost::Cross | Boost::NullDoubled) | None => {}
     }
     prime(b, r, cd);
     let mut damage = ai(b, r).attack.damage;
@@ -264,7 +264,10 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     if cd.flags.has(ChipFlags::NAVI) {
         b.bump_side_stat(side, 6, 1);
     }
-    dark_chip_side_effect(b, r, e.chip);
+    // sub_800B79A: the side's systems' (BN6's dark chips worsen the HP
+    // bug).
+    let used = b.content.chip_or_zeroed(b.games.arena, e.chip);
+    b.systems_chip_prepared(side, r, used);
     // BN5's 0x080100E6: the side's rules may refuse the chip (its light and
     // dark system, 0x08010118). The navi then uses the chip they give
     // instead (BN5's 0x185, its variant 3 and no parameters, the rest of
@@ -340,21 +343,15 @@ fn deals_damage(flags: ChipFlags) -> bool {
     flags.has(ChipFlags::HAS_DAMAGE) && !flags.has(ChipFlags::DIMMING)
 }
 
-/// `sub_8010D58`: a dark chip (one with a substitute) costs a bug frag; with
-/// none left the player gets the substitute instead (the chip's own:
-/// `off_8010D84`, Sword, Thunder, Recov10, Invisibl and Atk+10 for the five
-/// dark chips), through `sub_800EF02`, with its own damage and bonus and no
-/// modifiers.
+/// `sub_8010D58`: the chip the side's systems put in the chip's place
+/// (`chip_substitute`: BN6's dark chips cost a bug frag, and with none
+/// left the player gets the chip's substitute, `off_8010D84`), through
+/// `sub_800EF02`, with its own damage and bonus and no modifiers.
 fn dark_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> Option<HandEntry> {
     // (The empty hand's chip reads past the chip table, as for the record.)
     entry_record(&b.content, chip);
-    let sub = b.content.chip_links(chip.expect("a chip")).dark_substitute?;
-    let side = b.objects.get(r).alliance as usize;
-    if b.bug_frags[side] >= 1 {
-        // sub_800F4B2 (the local player's save loses one too).
-        b.bug_frags[side] -= 1;
-        return None;
-    }
+    let side = b.objects.get(r).alliance;
+    let sub = b.systems_chip_substitute(side, r, chip.expect("a chip"))?;
     let chip = Some(sub);
     // sub_800EF02: anything but a player keeps the chip it carries.
     if navi_record(b, r).actor_type != ActorType::Player {
@@ -363,18 +360,6 @@ fn dark_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> Op
     let damage = crate::hand::chip_damage(b, chip, b.objects.get(r).alliance);
     let extra = chip_bonus(b, r, chip);
     Some(HandEntry { chip, damage, extra, modifiers: 0 })
-}
-
-/// `sub_800B79A`: the dark chips worsen the user's HP bug (NaviStats+0x18,
-/// at most 7) by their `hp_bug`: DrkSword +2, DarkThnd +1, DrkRecov to 7,
-/// DarkInvs nothing, DarkPlus +4.
-fn dark_chip_side_effect(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
-    let cost = chip.map_or(0, |h| b.content.chip(h).hp_bug);
-    if cost == 0 {
-        return;
-    }
-    let s = &mut super::stats_mut(b, r).bugs.hp_drain;
-    *s = s.saturating_add(cost).min(7);
 }
 
 /// `sub_800EE26`: the battle flag 0x40 mode's special chip (the side
@@ -391,7 +376,6 @@ fn slot_in_entry(b: &mut Battle, r: ObjectRef) -> HandEntry {
     let extra = chip_bonus(b, r, chip);
     let content = b.content.clone();
     let cd = entry_record(&content, chip);
-    ai_mut(b, r).attack.wrapped = cd.beast_lockon as u8;
     let damage = crate::hand::chip_damage(b, chip, side as u8);
     let mut extra = extra;
     let s = &mut b.sides[side];
@@ -531,8 +515,8 @@ enum Boost {
     Anger,
     /// A Cross's element on a charged (or fully A-charged) chip.
     Cross,
-    /// Beast Over's Null chips.
-    BeastOver,
+    /// A form's Null chips (`doubles_null`: Beast Over's).
+    NullDoubled,
     /// A primed form's (spent by the use: BN5's GyroSoul).
     Primed,
     /// A form's chips on grass (the use turns it normal: BN5's
@@ -556,7 +540,7 @@ fn double_damage(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, damage: u16
             Emotion::Angry => Some(Boost::Anger),
             _ if cross_doubles(b, r, chip, charge) => Some(Boost::Cross),
             _ if grass_doubles(b, r, cd) => Some(Boost::Grass),
-            _ if beast_over_doubles(b, r, chip) => Some(Boost::BeastOver),
+            _ if null_doubles(b, r, chip) => Some(Boost::NullDoubled),
             _ => None,
         }
     };
@@ -598,9 +582,10 @@ fn grass_doubles(b: &Battle, r: ObjectRef, cd: &ChipData) -> bool {
         && chip_matches(rule, cd)
 }
 
-/// `sub_8012ABC`: Beast Over doubles its Null chips (not in battle mode 1).
-fn beast_over_doubles(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
-    if super::battle_mode(b) == 1 || !form_of(b, r).kind.is_beast_over() {
+/// `sub_8012ABC`: a form with `doubles_null` (Beast Over) doubles its
+/// damaging Null chips (not in battle mode 1).
+fn null_doubles(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
+    if super::battle_mode(b) == 1 || !form_of(b, r).traits.has(crate::content::FormTraits::DOUBLES_NULL) {
         return false;
     }
     let cd = entry_record(&b.content, chip);

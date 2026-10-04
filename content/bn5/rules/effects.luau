@@ -7,11 +7,13 @@
 -- is alone, never marked as made while dimmed (its store of what it hits goes to a BIOS address). Its obstacles'
 -- reactions have the step for ColonelSoul's army (0x080CAB02 from 0x08018000, 0x08018168, 0x080182D4 and 0x08018404;
 -- bn5-map.md §15.11): an obstacle where an armed side can use it turns into its soldier (objects/soldier, the role
--- `kinds.obstacle_soldier`).
+-- `kinds.obstacle_soldier`). Its screen palette flash (effect object 0x0A, 0x080E1030) holds through a pause whatever its
+-- mode, and through dimming only with no mode (both variants: BN6's variant 1 tests the pause bit for dimming too).
 
 return define.rules("bn5:effects", {
     shake = "battle",
     spark_steps_at_start = false,
     retype = "bn5",
     obstacle_soldiers = true,
+    palette_flash = "bn5",
 })

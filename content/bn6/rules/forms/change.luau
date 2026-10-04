@@ -17,6 +17,7 @@
 -- | Beast Over             | any           | `off_8014AF0` |                                                    |
 
 local effects = require("../../lib/effects")
+local kind = require("./kind")
 local merge = require("./merge")
 
 local change = {}
@@ -46,17 +47,13 @@ local VANISH = 4
 local EMERGE = 8
 local SETTLE = 0xC
 
--- Beast Out, with or without a Cross, or Beast Over.
-local function is_beast(kind: string): boolean
-    return kind == "beast" or kind == "cross_beast" or kind == "beast_over"
-end
-
--- Which table a change takes, by the target's kind and the current form's.
-local function sequence(target: string, current: string): Sequence
+-- Which table a change takes, by the target's kind and the current form's
+-- (none: the base form).
+local function sequence(target: string?, current: string?): Sequence
     if target == "beast_over" then
         return "beast_over"
     elseif target == "cross_beast" then
-        return if is_beast(current) then "beast_cross" else "cross_beast"
+        return if kind.is_beast(current) then "beast_cross" else "cross_beast"
     elseif target == "beast" then
         return "beast_out"
     else

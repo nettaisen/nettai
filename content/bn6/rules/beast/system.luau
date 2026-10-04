@@ -13,6 +13,7 @@
 local beast_claw = require("../../navis/megaman/weapons/beast-claw/weapon")
 local berserk = require("./berserk")
 local cross_special = require("./cross-special")
+local kind = require("../forms/kind")
 local custom_beast = require("./custom")
 local rush = require("./rush")
 local slash_charge = require("../../navis/megaman/forms/slashcross/charge")
@@ -20,12 +21,7 @@ local slash_charge = require("../../navis/megaman/forms/slashcross/charge")
 -- The side's form runs its charged sword inside the rush (SlashCross
 -- Beast's `charged_sword_rush`).
 local function sword_rush(side: number): boolean
-    for _, t in battle.navi(side).form.traits or {} do
-        if t == "charged_sword_rush" then
-            return true
-        end
-    end
-    return false
+    return battle.navi(side).form.charged_sword_rush == true
 end
 
 export type State = {
@@ -85,6 +81,22 @@ return define.system {
         beast_out = "bool",
         cross_list = "form[5]",
     },
+    -- A chip's Beast rush (`beast`): the lock-on mode it runs by (none: where
+    -- the navi stands), and `rush = false` for a chip with a mode that
+    -- doesn't rush (docs/design/rules-in-luau.md §7.5).
+    -- A Cross's form in Beast Out (`beast`), the Cross special's buster
+    -- volley in a form (`special_volley`, `sub_802D4F0`), and a form whose
+    -- charged sword runs inside the rush.
+    extends = {
+        chip = {
+            beast = { lockon = "lockon", rush = "bool" },
+        },
+        form = {
+            beast = "form",
+            special_volley = "u16",
+            charged_sword_rush = "bool",
+        },
+    },
     actions = { rush.action, cross_special.action },
     -- Beast Out on the custom screen (custom.luau).
     buttons = { beast_out = custom_beast.button },
@@ -109,7 +121,7 @@ return define.system {
                 end
                 return
             end
-            if navi.special_source ~= 0 or battle.navi(side).beast then
+            if navi.special_source ~= 0 or kind.beast(side) then
                 local beast = chip.beast
                 navi.wrapped = if beast ~= nil and beast.rush ~= false then 1 else 0
             end
@@ -126,10 +138,10 @@ return define.system {
             if battle.mode() == 1 then
                 return
             end
-            local kind = battle.navi(side).form.kind
-            if kind == "beast" or kind == "cross_beast" then
+            local form_kind = battle.navi(side).form.kind
+            if form_kind == "beast" or form_kind == "cross_beast" then
                 navi.tired = true
-            elseif kind == "beast_over" then
+            elseif form_kind == "beast_over" then
                 -- `sub_8014466`: exhausted, then the mood 0 that exhaustion
                 -- itself blocks.
                 navi.exhausted = true
@@ -160,7 +172,7 @@ return define.system {
             local stats = battle.navi(side)
             local revert: boolean
             if battle.mode() == 1 then
-                revert = stats.beast
+                revert = kind.beast(side)
             else
                 local s = system.state() :: State
                 if s.check_delay ~= 0 then
@@ -171,7 +183,7 @@ return define.system {
                     return
                 end
                 navi.tired = true
-                revert = stats.beast
+                revert = kind.beast(side)
             end
             if revert then
                 navi:set_request("revert_form", true)
@@ -182,7 +194,7 @@ return define.system {
         turn_started = function(side: number)
             local stats = battle.navi(side)
             local started_beast = stats.starting_form.kind == "beast"
-            if changes_form(side) and not started_beast and stats.beast and stats.beast_out_counter ~= 0 then
+            if changes_form(side) and not started_beast and kind.beast(side) and stats.beast_out_counter ~= 0 then
                 stats.beast_out_counter -= 1
             end
         end,

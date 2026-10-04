@@ -10,7 +10,9 @@
 -- - its 5x5 board (./board.luau): no expansions, no frame, any cell of it a neighbor's;
 -- - HubBatc (program 27) counts its own bug once more (0x0813F5A8);
 -- - its bugs' table (0x08140054; ./programs.luau's BUGS);
--- - no emotion window glitch (its flag, 0x10C1, is read outside battle only);
+-- - the emotion window's glitch: its flag, 0x10C1 (set when a bug applies, 0x08140040), which the window's start
+--   (0x0801AF14, through 0x0813F650) reads when the save has no patch cards (with cards, the cards' own flag:
+--   ../patch-cards/system);
 -- - BugStop (+0x1F) stops the bugs unless the patch cards say (0x0813FA48 asks 0x08137A30 first): a switched-on
 --   card's BugStop effect (the last card's) stops them at 1 and keeps them else;
 -- - the HP (0x0803C13C): in the real world the maximum again and the HP with it, as BN6's; in the cyberworld (the
@@ -88,7 +90,7 @@ local BN5: NaviCustGame = {
             count(part.program.bug)
         end
     end,
-    glitch = false,
+    glitch = true,
     keeps_hp = function(_side: number): boolean
         return (system.setup() :: Setup).cyberworld
     end,

@@ -11,9 +11,9 @@ local parts = {}
 
 -- `sub_80EBAE8`: the blade's animation, which matches the user's arm: a
 -- navi AI's (under 0xD), a form's (AI index 0x13 has animation 0xE), or
--- for MegaMan's base AI, 0 or a Beast form's (0xC for Gregar's, 0xD for
--- Falzar's).
-function parts.blade_anim(me: Object): number
+-- for MegaMan's base AI, `base`'s by the user's side (none: 0; BN6's gives
+-- its Beast forms' arms, its lib/swords/parts).
+function parts.arm_anim(me: Object, base: ((side: number) -> number)?): number
     local kind, ai = me.actor_type, me.ai_index
     if kind == "navi" then
         return if ai < 0x0D then ai else 0
@@ -21,20 +21,14 @@ function parts.blade_anim(me: Object): number
         if ai ~= 0 then
             return if ai == 0x13 then 0x0E else ai
         end
-        return parts.base_blade_anim(me.alliance)
+        return if base ~= nil then base(me.alliance) else 0
     end
     return 0
 end
 
--- The same for MegaMan's base AI, by side `side`'s form: 0, or a Beast
--- form's (0xC for Gregar's, 0xD for Falzar's). (CrosOver's MegaMan, whose
--- user may be anyone, picks his blade as MegaMan's base AI.)
-function parts.base_blade_anim(side: number): number
-    local stats = battle.navi(side)
-    if not stats.beast then
-        return 0
-    end
-    return if stats.form.game == "gregar" then 0x0C else 0x0D
+-- The same, MegaMan's base AI's being 0.
+function parts.blade_anim(me: Object): number
+    return parts.arm_anim(me, nil)
 end
 
 -- `sub_80EBB78`: added to the blade's palette: 0xC for navi AI 0x12's

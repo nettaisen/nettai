@@ -570,7 +570,7 @@ fn crosses(e: &Editor, s: usize) -> Element<'_, Msg> {
         col = col.push(text(format!("{} of {} chosen; the window offers them in this order.", list.len(), nettai_battle::custom::screen::CROSSES)).size(13).color(DIM));
         for f in nettai_match::navi_crosses(c, side.navi).unwrap_or_default() {
             let on = list.contains(&f);
-            let game = match c.form(f).game {
+            let game = match bn6_compat::forms::game(c, f) {
                 Some(GameVersion::Gregar) => "Gregar",
                 Some(GameVersion::Falzar) => "Falzar",
                 None => "",

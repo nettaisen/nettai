@@ -104,6 +104,18 @@
 "bn5:numbrbl/controller" = { pool = "effect", index = 0x69, scratch_position = true }
 "bn5:numbrbl/numberman" = { pool = "actor", index = 0x45 }
 "bn5:numbrbl/ball" = { pool = "attack", index = 0x91 }
+"bn5:copydmg/mark" = { pool = "attack", index = 0x28 }
+"bn5:jealousy/controller" = { pool = "effect", index = 0x36, scratch_position = true }
+"bn5:piledrvr/controller" = { pool = "effect", index = 0x6F, scratch_position = true }
+"bn5:piledrvr/pile" = { pool = "attack", index = 0x99 }
+"bn5:piledrvr/beam" = { pool = "attack", index = 0x9A }
+"bn5:leadraid/protoman" = { pool = "actor", index = 0x20 }
+"bn5:leadraid/colonel" = { pool = "actor", index = 0x22 }
+"bn5:leadraid/glow" = { pool = "effect", index = 0x85 }
+"bn5:chaoslrd/navi" = { pool = "actor", index = 0x51 }
+"bn5:chaoslrd/aura" = { pool = "effect", index = 0x47 }
+"bn5:chaoslrd/gather" = { pool = "effect", index = 0x4B }
+"bn5:chaoslrd/strike" = { pool = "attack", index = 0x82 }
 "bn5:follow-effect" = { pool = "effect", index = 0x31 }
 "bn5:meddy/capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "bn5:napalmmn/bomb" = { pool = "attack", index = 0x3A }
@@ -123,6 +135,9 @@
 "bn5:firehit/fist" = { pool = "attack", index = 0x5B }
 "bn5:bullet" = { pool = "attack", index = 0x12 }
 "bn5:colonel-soldier" = { pool = "attack", index = 0x30 }
+"bn5:redfrut/fruit" = { pool = "attack", index = 0x8D }
+"bn5:boybomb/bomb" = { pool = "attack", index = 0x3E }
+"bn5:boybomb/controller" = { pool = "effect", index = 0x67 }
 "bn5:tornado" = { pool = "attack", index = 0x31 }
 "bn5:anti-trap/trap" = { pool = "attack", index = 0x4D, scratch_position = true }
 "bn5:anti-trap/strike" = { pool = "effect", index = 0x2B, scratch_position = true }
