@@ -876,10 +876,10 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usi
 /// raises AIData+0x32 has run: BN6's beast system's `turn_check`). Not seen: anger, and
 /// the NaviCust emotion bug's swings to tired, which need the fight.
 fn screen_emotion(stats: &NaviStats, content: &Content, beast_over_before: bool) -> Emotion {
-    let kind = content.form(stats.form).kind;
-    if stats.mood == 0 || (beast_over_before && !kind.is_beast_over()) {
+    let kind = crate::forms::kind(content, stats.form);
+    if stats.mood == 0 || (beast_over_before && kind != Some(crate::forms::Kind::BeastOver)) {
         Emotion::WornOut
-    } else if stats.beast_out_counter == 0 && !kind.is_beast() {
+    } else if stats.beast_out_counter == 0 && !kind.is_some_and(crate::forms::Kind::is_beast) {
         Emotion::Tired
     } else {
         Emotion::Normal
@@ -942,7 +942,7 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
                 .exchanges
                 .iter()
                 .take_while(|e| e.frame <= f.frame)
-                .any(|e| content.form(navi_stats(&e.navi_stats[p], &ids).form).kind.is_beast_over());
+                .any(|e| crate::forms::kind(content, navi_stats(&e.navi_stats[p], &ids).form) == Some(crate::forms::Kind::BeastOver));
             let emotion = screen_emotion(&stats, content, beast_over_before);
             Context {
                 library: &**content,

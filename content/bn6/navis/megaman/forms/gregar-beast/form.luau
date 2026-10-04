@@ -9,6 +9,10 @@ local forms = require("../../../../rules/forms/system")
 return define.form {
     id = "bn6:gregar-beast",
     kind = "beast",
+    -- The target marker shows, its afterimages stay, a Null chip's A charge times by the claw,
+    -- and its palette follows the mood (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`,
+    -- `sub_80100EC`).
+    traits = { "shows_target_marker", "afterimages_stay", "alt_charge_time", "mood_palette" },
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
     game = "gregar",

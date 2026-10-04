@@ -24,6 +24,7 @@ local slash_charge = require("../../navis/megaman/forms/slashcross/charge")
 local slashcross = require("../../navis/megaman/forms/slashcross/form")
 local slashcross_beast = require("../../navis/megaman/forms/slashcross-beast/form")
 local protoman = require("../../navis/protoman/navi")
+local kind = require("../../rules/forms/kind")
 
 local vari = {}
 
@@ -118,7 +119,7 @@ local function become(me: Object, spec: Spec, i: number)
     if chip ~= spec.no_charged and me.charged ~= 0 then
         me:set_attack(slash_charge.of_action(me, action), 0)
     end
-    if stats.beast then
+    if kind.beast(me.alliance) then
         me.wrapped = lockon
     end
 end
@@ -126,7 +127,7 @@ end
 -- `sub_80EF6FC` / `sub_80EF87C`: a tick of waiting for the pick.
 local function pick(me: Object, s: State, spec: Spec)
     local stats = battle.navi(me.alliance)
-    if stats.beast_over or me.special_source ~= 0 then
+    if kind.beast_over(me.alliance) or me.special_source ~= 0 then
         local r = battle.rng_positive() % spec.random
         -- (Past the picks, the random draw is a Sword.)
         return become(me, spec, if spec.picks[r + 1] then r + 1 else 0)

@@ -9,7 +9,8 @@
 //! BN6's rules read as the seal on Beast Out and the Cross window.
 
 use nettai_battle::Battle;
-use nettai_battle::content::{Content, FormKind};
+use crate::forms;
+use nettai_battle::content::Content;
 use nettai_battle::custom::{GameVersion, Library, PlayerSetup};
 use nettai_battle::rules::Fact;
 use nettai_content_api::{FieldType, FieldValue, FormHandle, NaviHandle, Registry, Value};
@@ -165,13 +166,13 @@ impl Unlocks {
     /// Out; from a Cross that Cross's form in Beast Out (with a setup's
     /// Cross list, whichever game the Cross is from: HeatCross's Beast for
     /// a Falzar player in HeatCross).
-    pub fn beast_form(&self, library: &dyn Library, navi: NaviHandle, form: FormHandle, tired: bool) -> Option<FormHandle> {
+    pub fn beast_form(&self, content: &Content, navi: NaviHandle, form: FormHandle, tired: bool) -> Option<FormHandle> {
         if tired {
-            library.beast_over_form(navi, self.beast_game(library, form))
-        } else if library.form_kind(form) == FormKind::Base {
-            library.beast_out_form(navi, self.version)
+            content.beast_over_form(navi, self.beast_game(content, form))
+        } else if content.form(form).base {
+            content.beast_out_form(navi, self.version)
         } else {
-            library.form_in_beast_out(form)
+            forms::in_beast_out(content, form)
         }
     }
 
@@ -181,9 +182,9 @@ impl Unlocks {
     /// a Beast form of one) is that game's. Beast Over and the custom
     /// screen's Beast Out roar follow it, and a frontend draws the Beast
     /// Out button and pictures of its game.
-    pub fn beast_game(&self, library: &dyn Library, form: FormHandle) -> GameVersion {
-        match library.form_game(form) {
-            Some(game) if self.cross_list.is_some() && library.form_kind(form) != FormKind::Base => game,
+    pub fn beast_game(&self, content: &Content, form: FormHandle) -> GameVersion {
+        match forms::game(content, form) {
+            Some(game) if self.cross_list.is_some() && !content.form(form).base => game,
             _ => self.version,
         }
     }

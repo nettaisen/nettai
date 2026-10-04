@@ -13,6 +13,8 @@
 /// the flat namespace: the default game is a frontend's, by name).
 pub const DEFAULT_GAME: &str = "bn6";
 
+#[cfg(test)]
+mod bn6_forms;
 pub mod check;
 pub mod draw;
 pub mod facts;
