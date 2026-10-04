@@ -31,7 +31,7 @@ local shakpar1 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 12, sequence = { recipe_voltz1, recipe_voltz1, recipe_spshake1 }, per_player_gauges_only = true },
+        { order = 12, sequence = { recipe_voltz1, recipe_voltz1, recipe_spshake1 }, operation_battle_only = true },
         { order = 48, code_run = { chip = recipe_spshake1, count = 3 } },
     },
     instant = shakpar.instant(spshake.wave(2, true, 0)),
@@ -57,7 +57,7 @@ local shakpar2 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 13, sequence = { recipe_voltz2, recipe_voltz2, recipe_spshake2 }, per_player_gauges_only = true },
+        { order = 13, sequence = { recipe_voltz2, recipe_voltz2, recipe_spshake2 }, operation_battle_only = true },
         { order = 49, code_run = { chip = recipe_spshake2, count = 3 } },
     },
     instant = shakpar.instant(spshake.wave(2, true, 6)),
@@ -83,7 +83,7 @@ local shakpar3 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 14, sequence = { recipe_voltz3, recipe_voltz3, recipe_spshake3 }, per_player_gauges_only = true },
+        { order = 14, sequence = { recipe_voltz3, recipe_voltz3, recipe_spshake3 }, operation_battle_only = true },
         { order = 50, code_run = { chip = recipe_spshake3, count = 3 } },
     },
     instant = shakpar.instant(spshake.wave(2, true, 12)),
