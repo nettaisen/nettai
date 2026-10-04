@@ -51,6 +51,8 @@
 //! # In a BN5 match ([left] of game = "bn5") a side may say besides:
 //! karma = 100                        # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
 //! souls = ["protosoul"]              # optional: the souls it has, either version's (none: every soul)
+//! soul_unison = false                # optional: no soul button (the save's event flag 0; default true)
+//! chaos_unison = false               # optional: no Chaos Unison (the save's event flag 0x236; default true)
 //! ```
 
 use crate::{Arena, Folder, Match, Place, Side, ids, stats};
@@ -118,6 +120,10 @@ pub struct SideFile {
     pub karma: Option<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub souls: Option<Vec<String>>,
+    #[serde(default = "yes", skip_serializing_if = "is_yes")]
+    pub soul_unison: bool,
+    #[serde(default = "yes", skip_serializing_if = "is_yes")]
+    pub chaos_unison: bool,
     /// The folder's entries, each `[chip, code]` (`[]` empty, while it is
     /// being made).
     pub folder: Vec<Vec<String>>,
@@ -427,6 +433,8 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
         tactics,
         karma: s.karma.unwrap_or(crate::facts::DEFAULT_KARMA),
         souls,
+        soul_unison: s.soul_unison,
+        chaos_unison: s.chaos_unison,
     })
 }
 
@@ -549,6 +557,8 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
         stats: s.stats_block(content),
         karma: (s.karma != crate::facts::DEFAULT_KARMA).then_some(s.karma),
         souls: s.souls.as_ref().map(|l| l.iter().map(|&f| name(&content.defs.form(f).key)).collect()),
+        soul_unison: s.soul_unison,
+        chaos_unison: s.chaos_unison,
         navicust: s.navicust.map(|n| NaviCustFile {
             expansions: Some(n.expansions),
             programs: n

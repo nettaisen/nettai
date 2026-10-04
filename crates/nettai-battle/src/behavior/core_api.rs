@@ -497,7 +497,7 @@ impl CoreApi for Battle {
             NaviStat::NumberOpen => Value::Bool(s.number_open),
             NaviStat::ChipDrops => i(s.chip_drops as i64),
             NaviStat::Encounters => i(s.encounters as i64),
-            NaviStat::SoulTurnBonus => i(self.custom.sides[side as usize & 1].souls.turn_bonus as i64),
+            NaviStat::SoulTurnBonus => i(s.soul_turn_bonus as i64),
             NaviStat::BugKinds => {
                 let b = &s.bugs;
                 let kinds = [
@@ -525,11 +525,6 @@ impl CoreApi for Battle {
             }
             _ => None,
         };
-        // (The soul turns' bonus is the custom screen's: its unlocks.)
-        if let (NaviStat::SoulTurnBonus, FieldValue::I8(x)) = (stat, v) {
-            self.custom.sides[side as usize & 1].souls.turn_bonus = x;
-            return Ok(());
-        }
         // A record field's value: a shot program or a barrier.
         let record = match v {
             FieldValue::Ref(Some((Registry::Record, h))) => Some(nettai_content_api::RecordHandle(h)),
@@ -607,7 +602,7 @@ impl CoreApi for Battle {
             }
             (NaviStat::ChipDrops, FieldValue::U8(x)) => s.chip_drops = x,
             (NaviStat::Encounters, FieldValue::U8(x)) => s.encounters = x,
-            (NaviStat::SoulTurnBonus, _) => unreachable!("the soul turns' bonus is written above"),
+            (NaviStat::SoulTurnBonus, FieldValue::I8(x)) => s.soul_turn_bonus = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -777,6 +772,8 @@ impl CoreApi for Battle {
             "beast_out_back" => FadeMode::BeastOutBack,
             "end_to_white" => FadeMode::EndToWhite,
             "intro_from_white" => FadeMode::IntroFromWhite,
+            "soul_flash" => FadeMode::SoulFlash,
+            "soul_flash_back" => FadeMode::SoulFlashBack,
             m => return Err(ApiError::Other(format!("custom.fade: no screen fade is named {m:?}"))),
         };
         self.custom_screen_mut(side)?.look.fade.start(mode, speed);
@@ -820,10 +817,12 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn custom_set_form(&mut self, side: u8, system: u8, form: Option<nettai_content_api::FormHandle>) -> ApiResult<()> {
+    fn custom_set_form(&mut self, side: u8, system: u8, form: Option<nettai_content_api::FormHandle>, turns: u8, chaos: bool) -> ApiResult<()> {
         let screen = self.custom_screen_mut(side)?;
         screen.form = form;
         screen.form_owner = form.map(|_| system);
+        screen.form_turns = if form.is_some() { turns } else { 0 };
+        screen.form_chaos = form.is_some() && chaos;
         Ok(())
     }
 
@@ -841,6 +840,28 @@ impl CoreApi for Battle {
         let h = self.own_button(side, system, button)?;
         let screen = self.custom_screen(side)?;
         Ok(screen.selection().iter().any(|&s| matches!(screen.slots[s as usize].kind, SlotKind::Button { button, .. } if button == h)))
+    }
+
+    fn custom_last_pick(&mut self, side: u8) -> ApiResult<Option<nettai_content_api::api::CustomPick>> {
+        let last = self
+            .with_custom_screen(side, |screen, view, folder, _, _| screen.last_pick(folder, view))
+            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        Ok(last.map(|p| nettai_content_api::api::CustomPick { slot: p.slot, chip: p.chip.id, regular: p.regular, navi_chip: p.navi_chip }))
+    }
+
+    fn custom_trade_last_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<bool> {
+        use crate::custom::screen::SlotKind;
+        let h = self.own_button(side, system, button)?;
+        let screen = self.custom_screen(side)?;
+        let slot = (0..crate::custom::screen::SLOTS as u8)
+            .find(|&s| matches!(screen.slots[s as usize].kind, SlotKind::Button { button, cell } if button == h && cell != crate::custom::ButtonCell::Right))
+            .ok_or_else(|| ApiError::Other(format!("custom.trade_last_pick: {button:?} isn't on the screen")))?;
+        self.with_custom_screen(side, |screen, view, folder, _, _| screen.trade_last_pick(slot, folder, view))
+            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
+    }
+
+    fn custom_fading(&self, side: u8) -> ApiResult<bool> {
+        Ok(self.custom_screen(side)?.look.fade.active())
     }
 
     fn custom_cursor(&self, side: u8) -> ApiResult<u8> {

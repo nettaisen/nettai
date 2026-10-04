@@ -49,10 +49,6 @@ pub enum SlotKind {
     NaviChip(FolderChip),
     /// The OK button.
     Ok,
-    /// BN5's soul button (Soul Unison: slot 11, kind 2 of BN5's screen,
-    /// 0x08023C54): it gives up the last chip picked for the soul of its
-    /// family (`Screen::soul`).
-    Soul,
     /// A cell of a system's button (docs/design/rules-in-luau.md §4.4:
     /// BN6's ChpShufl re-deal and DustCross scrap, two cells wide on slots
     /// 8 and 9).
@@ -144,10 +140,6 @@ pub enum Phase {
     /// Beast Out, `sub_802770C`, and the Cross window): its `update` runs
     /// each tick, `tick` from 1, until it says it is done.
     Window { window: WindowHandle, tick: u16 },
-    /// BN5's soul button was picked (its state 9, 0x080232D0): `sub` its
-    /// sub-state (0x080232F0's offsets 0 to 0x18), `counter` its count
-    /// (+0x40).
-    SoulChosen { sub: u8, counter: u8 },
     /// The selected chips are scrapped (DustCross's, `sub_8027406`), for
     /// the button in slot `button`. `done`: the last scrap is over; the
     /// next tick returns to choosing.
@@ -272,9 +264,14 @@ pub struct Screen {
     /// Beast Out, `+0x17`), and the system's place in the side's ruleset.
     pub form: Option<nettai_content_api::FormHandle>,
     pub form_owner: Option<u8>,
-    /// BN5's soul button: the soul it offers or gave (slot 11's +5 and +6)
-    /// and the slot of the chip given up for it (+4).
-    pub soul: SoulButton,
+    /// The transform record's turns and Chaos flag beside the form (BN5's
+    /// Soul Unison: +3 and +1), as the system that set the form says.
+    pub form_turns: u8,
+    pub form_chaos: bool,
+    /// A system's button picked in the place of the chip given up for it
+    /// (BN5's soul button, 0x080233E0): B on it puts the chip back, and at
+    /// OK the chip leaves the folder where the button stands.
+    pub trade: Option<Trade>,
     /// A Program Advance formed at OK: its animation runs after the
     /// window slides out.
     pub program_advance: Option<FormedAdvance>,
@@ -286,14 +283,24 @@ pub struct Screen {
     pub look: ScreenLook,
 }
 
-/// BN5's soul button's offer (slot 11's record): the soul's number (0:
-/// none), whether a dark chip makes it Chaos Unison, and the slot of the
-/// chip given up for it.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct SoulButton {
-    pub number: u8,
-    pub chaos: bool,
-    pub given_up: u8,
+/// A button picked in a chip's place (`custom.trade_last_pick`): the
+/// button's slot, and the slot of the chip given up for it (BN5's soul
+/// button: slot 11's +4).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Trade {
+    pub button: u8,
+    pub chip: u8,
+}
+
+/// The last pick, as `custom.last_pick` gives it: its slot, its chip as the
+/// screen checked it, and whether it is the folder's Regular chip or a link
+/// navi's own chip.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct LastPick {
+    pub slot: u8,
+    pub chip: FolderChip,
+    pub regular: bool,
+    pub navi_chip: bool,
 }
 
 /// What the screen reads of its player when it opens and while it runs.
@@ -302,8 +309,6 @@ pub struct PlayerView<'a> {
     pub library: &'a dyn Library,
     pub stats: &'a NaviStats,
     pub emotion: Emotion,
-    /// BN5's Soul Unison (the setup's).
-    pub souls: &'a super::SoulUnlocks,
     /// Chips sent this round, by class (`dword_20367E0`).
     pub class_uses: &'a ClassCounts,
     /// The round's Beast Out and Crosses so far.
@@ -322,9 +327,6 @@ pub struct PlayerView<'a> {
 /// cleared on the round's first screen).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RoundMemory {
-    /// BN5's souls given this round (0x02034E10): bit n Soul Unison with
-    /// soul n, bit 16 + n its Chaos Unison.
-    pub souls_used: u32,
     /// The link navis whose own chips were put in a hand this round (a bit
     /// each: the original's by the chip's place among them).
     pub navi_chips_used: u32,
@@ -360,7 +362,9 @@ impl Screen {
             megaman,
             form: None,
             form_owner: None,
-            soul: SoulButton::default(),
+            form_turns: 0,
+            form_chaos: false,
+            trade: None,
             program_advance: None,
             hud: Banner::default(),
             look: ScreenLook::new(view.late_turns, false, None),
@@ -409,13 +413,6 @@ impl Screen {
                 state: SlotState::Selectable,
                 uses_left: 0,
             };
-        }
-        if view.soul_button() {
-            // 0x08023C54: the soul button, unavailable until a pick
-            // offers a soul.
-            let s = &mut self.slots[SPECIAL_SLOT as usize];
-            s.kind = SlotKind::Soul;
-            s.state = SlotState::Unavailable;
         }
         let dealt = self.chips_left.min(self.hand_size);
         for i in 0..dealt {
@@ -654,11 +651,6 @@ impl Screen {
                 }
                 None
             }
-            Phase::SoulChosen { sub, counter } => {
-                self.soul_chosen(sub, counter, view, folder, extras);
-                self.look.draw_emblem(0);
-                None
-            }
             Phase::Scrapping { .. } => {
                 // sub_8027406: every tick also draws the emblem and the
                 // Regular chip's frame.
@@ -895,15 +887,6 @@ impl Screen {
                 self.look.play(ScreenSound::Ok);
                 return Some(Request::Confirm);
             }
-            SlotKind::Soul => {
-                // 0x08024972: a soul on offer starts its sequence.
-                if here.state != SlotState::Selectable {
-                    self.look.play(ScreenSound::Refused);
-                    return None;
-                }
-                self.look.play(ScreenSound::Pick);
-                self.phase = Phase::SoulChosen { sub: 0, counter: 0 };
-            }
             // A system's button (BN6's: the scrap, `sub_8028E04`; the
             // re-deal, `sub_8028DD6`): its `pressed`, which may start the
             // shared machinery (`custom.sacrifice`, `custom.redeal`).
@@ -946,6 +929,8 @@ impl Screen {
             "cross_window_open" => ScreenSound::CrossWindowOpen,
             "cross_window_close" => ScreenSound::CrossWindowClose,
             "cross_chosen" => ScreenSound::CrossChosen,
+            "program_advance_part" => ScreenSound::ProgramAdvancePart,
+            "program_advance" => ScreenSound::ProgramAdvance,
             _ => return false,
         };
         self.look.play(sound);
@@ -1020,6 +1005,37 @@ impl Screen {
         self.selected > 0 && matches!(self.slots[self.selection[self.selected as usize - 1] as usize].kind, SlotKind::Chip { .. })
     }
 
+    /// `custom.last_pick`: the last pick, if it is a chip (one dealt from
+    /// the folder or a link navi's own), as the screen checked it.
+    pub fn last_pick(&self, folder: &BattleFolder, view: &PlayerView) -> Option<LastPick> {
+        let slot = *self.selection().last()?;
+        let (regular, navi_chip) = match self.slots[slot as usize].kind {
+            SlotKind::Chip { regular, .. } => (regular, false),
+            SlotKind::NaviChip(_) => (false, true),
+            _ => return None,
+        };
+        let chip = checked(self.chip_in(slot, folder)?, view);
+        Some(LastPick { slot, chip, regular, navi_chip })
+    }
+
+    /// `custom.trade_last_pick` (BN5's soul, 0x080233E0): the button in slot
+    /// `button` takes the last pick's place, first in the selection (the
+    /// chip's slot stays picked); the column follows, the button's cell
+    /// first (drawn by the button's own look). False when the last pick
+    /// isn't a chip.
+    pub fn trade_last_pick(&mut self, button: u8, folder: &BattleFolder, view: &PlayerView) -> bool {
+        let Some(last) = self.last_pick(folder, view) else { return false };
+        let n = self.selected as usize;
+        self.selection[..n].rotate_right(1);
+        self.selection[0] = button;
+        for j in 1..n {
+            self.look.column[j] = self.chip_in(self.selection[j], folder).map(|c| checked(c, view));
+        }
+        self.look.column[0] = None;
+        self.trade = Some(Trade { button, chip: last.slot });
+        true
+    }
+
     /// `sub_8027796`, `sub_8027672`: the column's icons in the picks' new
     /// order, `first` first (the picks' chips as dealt, unchecked).
     fn reorder_column(&mut self, folder: &BattleFolder, first: Option<FolderChip>) {
@@ -1061,13 +1077,18 @@ impl Screen {
                 self.look.play(ScreenSound::Refused);
                 return;
             }
-        } else if self.slots[self.selection[self.selected as usize - 1] as usize].kind == SlotKind::Soul {
-            // 0x08024D44: taking the soul back puts the chip given up for
-            // it back in its place, and the button is on offer again.
+        } else if let Some(t) = self.trade.filter(|t| t.button == self.selection[self.selected as usize - 1]) {
+            // A button picked in a chip's place (BN5's soul, 0x08024D44):
+            // the chip given up for it goes back in its place, and the
+            // button is selectable again.
             let last = self.selected as usize - 1;
-            self.selection[last] = self.soul.given_up;
-            self.look.column[last] = self.chip_in(self.soul.given_up, folder).map(|c| checked(c, view));
-            self.slots[SPECIAL_SLOT as usize].state = SlotState::Selectable;
+            self.selection[last] = t.chip;
+            self.look.column[last] = self.chip_in(t.chip, folder).map(|c| checked(c, view));
+            self.slots[t.button as usize].state = SlotState::Selectable;
+            self.trade = None;
+            if let SlotKind::Button { button, .. } = self.slots[t.button as usize].kind {
+                extras.button_taken_back(self, button);
+            }
         } else {
             let last = self.selection[self.selected as usize - 1];
             self.selected -= 1;
@@ -1304,119 +1325,10 @@ impl Screen {
             };
             slot.state = if ok { SlotState::Selectable } else { SlotState::Unavailable };
         }
-        self.update_soul(view, folder);
         self.refresh_buttons(extras);
         // sub_8028250: the slots are drawn again.
         self.draw_slots(folder, view);
     }
-
-    /// 0x08024B28: BN5's soul button offers the soul of the last pick's
-    /// family: a chip (not the Regular chip) of a family one of the navi's
-    /// souls is for, a soul the player has (a dark chip's Chaos Unison
-    /// needs the save's Chaos Unison), not used yet this round (Soul Unison
-    /// and Chaos Unison apart).
-    fn update_soul(&mut self, view: &PlayerView, folder: &BattleFolder) {
-        let s = self.slots[SPECIAL_SLOT as usize];
-        if s.kind != SlotKind::Soul || s.state == SlotState::Selected {
-            return;
-        }
-        let offer = (|| {
-            let last = *self.selection().last()?;
-            let SlotKind::Chip { regular: false, .. } = self.slots[last as usize].kind else { return None };
-            let chip = checked(self.chip_in(last, folder)?, view);
-            let data = view.library.chip(chip.id);
-            let chaos = data.flags.has(crate::content::ChipFlags::DARK);
-            if chaos && !view.souls.chaos {
-                return None;
-            }
-            let (number, _) = view.library.soul_for_family(view.stats.navi, data.family)?;
-            if view.souls.owned & (1 << number) == 0 {
-                return None;
-            }
-            let bit = if chaos { 1u32 << (16 + number) } else { 1 << number };
-            if view.round.souls_used & bit != 0 {
-                return None;
-            }
-            Some(SoulButton { number, chaos, given_up: last })
-        })();
-        let slot = &mut self.slots[SPECIAL_SLOT as usize];
-        match offer {
-            Some(o) => {
-                self.soul = o;
-                slot.state = SlotState::Selectable;
-            }
-            None => {
-                self.soul.number = 0;
-                self.soul.chaos = false;
-                slot.state = SlotState::Unavailable;
-            }
-        }
-    }
-
-    /// BN5's state 9 (0x080232D0): the soul's icon flies to the column (16
-    /// ticks, then 8 sliding), the screen flashes (fades 0x34 and 0x30) and
-    /// whitens (fade 4); white, the soul goes first in the selection in
-    /// place of the chip given up for it, the button is used, and the
-    /// screen clears (fade 0); then the picking goes on.
-    fn soul_chosen(&mut self, sub: u8, counter: u8, view: &PlayerView, folder: &BattleFolder, extras: &mut dyn super::Extras) {
-        let fading = self.look.fade.active();
-        let (sub, counter) = match sub {
-            // 0x0802330C
-            0 => (4, 0),
-            // 0x08023360
-            4 => {
-                let c = counter + 1;
-                if c >= 16 { (8, 0) } else { (4, c) }
-            }
-            // 0x0802337A
-            8 => {
-                let c = counter + 1;
-                if c >= 8 {
-                    self.look.fade.start(FadeMode::SoulFlash, SOUL_FADE_SPEED);
-                    self.look.play(ScreenSound::ProgramAdvancePart);
-                    (12, 0)
-                } else {
-                    (8, c)
-                }
-            }
-            // 0x080233A8
-            12 if !fading => {
-                self.look.fade.start(FadeMode::SoulFlashBack, SOUL_FADE_SPEED);
-                (16, 0)
-            }
-            // 0x080233C4
-            16 if !fading => {
-                self.look.fade.start(FadeMode::EndToWhite, SOUL_FADE_SPEED);
-                (20, 0)
-            }
-            // 0x080233E0
-            20 if !fading => {
-                let n = self.selected as usize;
-                self.selection[..n].rotate_right(1);
-                self.selection[0] = SPECIAL_SLOT;
-                for j in 1..n {
-                    self.look.column[j] = self.chip_in(self.selection[j], folder).map(|c| checked(c, view));
-                }
-                self.look.column[0] = None;
-                self.slots[SPECIAL_SLOT as usize].state = SlotState::Selected;
-                self.update_availability(view, folder, extras);
-                self.look.fade.start(FadeMode::IntroFromWhite, SOUL_FADE_SPEED);
-                self.look.play(ScreenSound::ProgramAdvance);
-                (24, 0)
-            }
-            // 0x08023452
-            24 if !fading => {
-                self.phase = Phase::Choosing;
-                return;
-            }
-            _ => (sub, counter),
-        };
-        self.phase = Phase::SoulChosen { sub, counter };
-        // (The count is the screen's frame counter, +0x40: the cursor
-        // blinks on from where it leaves it.)
-        self.look.frame = counter as u32;
-    }
-
 }
 
 /// What picked chips share: nothing yet, one value, or differing values.
@@ -1437,8 +1349,6 @@ impl<T: PartialEq + Copy> Common<T> {
     }
 }
 
-/// The speed of BN5's soul sequence's fades (`SetScreenFade(m, 32)`).
-const SOUL_FADE_SPEED: u8 = 32;
 
 /// The scrap's timer starts at 24, so that its first chip goes on its
 /// second tick (`sub_8027434`).
@@ -1548,20 +1458,4 @@ impl PlayerView<'_> {
     pub fn form_traits(&self) -> FormTraits {
         self.library.form_traits(self.stats.form)
     }
-
-
-    /// `sub_802A57E`: the navi can Beast Out now: not worn out, not in a
-    /// Beast form. Tired, it can only once it has this round (and then
-    /// goes Beast Over).
-    /// 0x08023C54: BN5's soul button: a navi with souls, outside battle
-    /// flag 0x40, with the save's Soul Unison (event flag 0), unless his
-    /// BN5 emotion is worried or dark (0x08012740: in a soul or angry he
-    /// may; at mood 0 he is dark, below 65 worried, at 0xFF Full Synchro).
-    fn soul_button(&self) -> bool {
-        let in_soul = self.library.form_is_soul(self.stats.form);
-        let mood = self.stats.mood;
-        let hidden = !in_soul && self.emotion != Emotion::Angry && (mood == 0 || (mood != 0xFF && mood < 65));
-        self.library.has_souls(self.stats.navi) && self.souls.button && !self.own_gauges && !hidden
-    }
-
 }

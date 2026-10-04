@@ -1737,7 +1737,8 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
 - **`Unlocks` and `CrossList` moved to bn6-compat** (`unlocks.rs`): `Unlocks::write` writes the facts,
   `Unlocks::of`/`of_side` reads them back for the renderer's pictures, names and Beast count, and `cross_at`,
   `beast_form`, `beast_game` stay as the BN6 look's helpers. `PlayerSetup` and the custom screen's `Side` keep
-  BN5's `souls` alone (until BN5's soul button is a system's). netplay's codecs know no game: the offer carries a
+  BN5's `souls` alone (until BN5's soul button is a system's: since 2026-10-04 it is, and both went). netplay's
+  codecs know no game: the offer carries a
   Cross list as its forms.
 - **The version can't be NaviStats'**: its +0x20 byte differs from the console's version in 2,883 of the 17,942
   recorded sides, so the version stays setup.
@@ -2184,6 +2185,44 @@ system. The point of S7/S8 is an engine with no BN6 resources, and a guarded acc
      chip requiring its system's module makes a require cycle (the systems require their chips).
   4. The runtime guard on `system.state_of` reads the calling function's module (the stack's chunk), so it holds
      for a function that runs after loading too, where the lint only sees the text.
+
+### BN5's soul button, a system's (2026-10-04, branch bn5-port-6)
+
+The last custom-screen piece in Rust that was one game's: BN5's soul button and its sequence are the souls system's
+(content/bn5/rules/souls/custom.luau), as S6 made BN6's Beast Out and Cross window their systems'.
+
+- **The souls system** gains the button `soul` (slot 11: `shown`, `state`, `pressed`), the window `soul_unison`
+  (BN5's state 9), and the `open` and `confirmed` hooks. Its state holds the round's souls given, the button's
+  offer (the soul's form, number and whether Chaos) and the window's step; its setup gains `soul_unison` and
+  `chaos_unison` (event flags 0 and 0x236), on by `setup_defaults`, beside `souls`.
+- **The framework** (all of it game-free):
+  - `custom.last_pick(side)`: the last pick if it is a chip (`slot`, `chip` as the screen checked it, `regular`,
+    `navi_chip`);
+  - `custom.trade_last_pick(side, button)`: the system's button takes the last pick's place, first in the
+    selection (`Screen::trade`: the chip's slot stays picked; B on the button puts the chip back; at OK the chip
+    leaves the folder where the button stands);
+  - `custom.fading(side)`; `custom.fade`'s `soul_flash` and `soul_flash_back`; `custom.play`'s
+    `program_advance_part` and `program_advance`;
+  - `custom.set_form(side, form, turns?, chaos?)`: the transform record's turns and Chaos flag beside the form
+    (`Screen::form_turns`, `form_chaos`). The confirm runs the systems' `confirmed` before it reads the form, so a
+    system may set the form there (BN5's soul is set at OK, as 0x08024FF6 does).
+- **Gone from Rust:** `SlotKind::Soul`, `Phase::SoulChosen`, `Screen::soul` (`SoulButton`), `update_soul`,
+  `soul_chosen`, `PlayerView::soul_button` and `souls`, `SoulUnlocks` and `PlayerSetup::souls` with
+  `souls_from_setup`, `RoundMemory::souls_used`, the confirm's soul block, `Library::has_souls`,
+  `soul_for_family` and `form_is_soul`. The soul turns' bonus is NaviStats' (`soul_turn_bonus`, +0x32: the stats
+  API's `soul_turn_bonus`, bn5-compat's from the recording's byte), where `SoulUnlocks` kept it.
+- **Matches and netplay.** A side says `soul_unison` and `chaos_unison` (match-file keys written only when off;
+  `facts::write` puts them into the souls system's setup; a ruleset without them refuses one off); the BN5 save
+  import fills them from the save's flags (and the souls from their flags whatever Soul Unison says). The offer
+  carries them and NaviStats' new byte goes on the wire: protocol version 7.
+- **The frontend.** nettai-render draws the soul button as the system's button named `soul` (the pack's look, its
+  details picture in Chaos Unison's palette by the offer, its two states' tiles), reading the offer and the
+  window's step from the souls system's state by name (`SoulOffer::of`, as `CrossWindow::of` reads the cross
+  system's); the driver titles the window by name.
+- **Checks.** The BN5 lab replays exactly as main's (1,590 of 1,592 recordings, the same two stops); BN5's frame
+  comparison keeps 7,962 of 7,964 frames pixel-exact (every custom-screen frame, Soul and Chaos Unison's included);
+  bn5_navicust 0 differ; nettai-match's `an_unowned_soul_cant_be_chosen` (now also: no Soul Unison, no button) and
+  the new `the_soul_takes_the_chips_place` (the trade, B, OK's form, turns and folder).
 
 ### R6, init.luau, a game's top module, a series' chips by name (2026-10-04)
 
