@@ -13,7 +13,7 @@
 
 local collision = require("../../rules/collision")
 local common = require("@common/airspin/top")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local marker = require("../../lib/navi-chips/marker")
 
 -- Its sprite: animation 0 standing, 1 spinning.
