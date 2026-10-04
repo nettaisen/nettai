@@ -50,6 +50,80 @@ impl LightDark {
     }
 }
 
+/// What BN5's reset leaves in each byte of a NaviStats block that the
+/// NaviCust's compile and the patch cards write (the reload, 0x0813F97C: the
+/// reset, 0x08133DBC, lays the navi's fresh stats, 0x080111AA, the defaults
+/// 0x08010C00 under MegaMan's row of 0x0801D55F: HP 100, Mega 5, Giga 1, no
+/// first barrier, no B+Back special; then the compile, 0x0813FA10, and the
+/// cards, 0x08138214). The reset keeps the mood, the light/dark value,
+/// +0x21, +0x22, the base HP, the soul, the folder and its Regular chips,
+/// the Regular memory and the HP (+0x40), which the compile sets to the
+/// maximum in the real world.
+pub const RESET: &[(usize, u8)] = &[
+    // Attack, Rapid, Charge.
+    (0x01, 0),
+    (0x02, 0),
+    (0x03, 0),
+    // The B button's weapon (the buster), the charged shot's.
+    (0x04, 0),
+    (0x05, 1),
+    // The first barrier, the B+Back special.
+    (0x06, 0),
+    (0x07, 0xFF),
+    // The custom level, Mega, Giga, the supports.
+    (0x0A, 5),
+    (0x0B, 5),
+    (0x0C, 1),
+    (0x0D, 0),
+    // The bugs: the panel trail (+0x12 0xFF: none), the buster's, the hit's,
+    // the battle start's.
+    (0x11, 0),
+    (0x12, 0xFF),
+    (0x13, 0),
+    (0x14, 0),
+    (0x15, 0),
+    (0x16, 0),
+    (0x18, 0),
+    (0x19, 0),
+    (0x1A, 0),
+    // FloatShoes, AirShoes, UnderSht, SuperArmor.
+    (0x1B, 0),
+    (0x1C, 0),
+    (0x1D, 0),
+    (0x23, 0),
+    // The emotion bug, the chip drops, the encounters, the steps astray, the
+    // soul's turns.
+    (0x24, 0),
+    (0x26, 0),
+    (0x28, 0),
+    (0x31, 0),
+    (0x32, 0),
+    (0x3D, 0),
+    // The maximum HP (MegaMan's row: 100).
+    (0x42, 100),
+    (0x43, 0),
+    // Hub Style, the buster-shot program, the charged-shot program, the
+    // chip recovery.
+    (0x4C, 0),
+    (0x4D, 0),
+    (0x4F, 0),
+    (0x50, 0),
+    (0x51, 0),
+    // The custom screen's damage.
+    (0x54, 0),
+    (0x55, 0),
+];
+
+/// `block` with what the compile and the cards write set as BN5's reset
+/// leaves it ([`RESET`]): the stats a NaviCust is compiled over.
+pub fn reset(block: &[u8; NAVI_STATS]) -> [u8; NAVI_STATS] {
+    let mut b = *block;
+    for &(off, v) in RESET {
+        b[off] = v;
+    }
+    b
+}
+
 /// A side's in-battle stats from BN5's 0x60-byte NaviStats block. The
 /// fields named as the engine's `NaviStats` are at BN6's offsets, as the
 /// pairing of BN5's accessor calls with BN6's found them (bn5-map.md §3.3:

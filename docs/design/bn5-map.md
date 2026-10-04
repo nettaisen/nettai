@@ -488,6 +488,14 @@ The verification workspace traces BN5 consoles as it does BN6's, with the same l
   `Layout` per game (§3.4; the Japanese ROMs' RAM is the US ROMs'). BN6's lines are byte-identical to before. A
   BN5 setup line says `"game":"bn5"`, has BN5's 0x60-byte NaviStats blocks, says the regions when a side is
   Japanese, and leaves out what is BN6's alone (SP times, link navi levels, bug frags, event flags, Tag chips).
+  It carries both consoles' NaviCusts (`navicusts`: each save's list, 0x02004D6C, the compression flags' bytes,
+  event flags 0x1EC0 to 0x1FBF, whether the compile leaves the HP, `cyberworld`, and the board's memory
+  `expansions`, key item 0x61's count) and, when a console has any, their patch cards (`patch_cards`, each list's
+  bytes). **bn5-compat replays such a round by compiling**: each MegaMan's recorded stats go back to what BN5's
+  reset leaves in the bytes the compile and the cards write (`codec::RESET`), and the round is set up with the
+  NaviCust, the cards and the `cyberworld` fact, as a match is; the emotion window's glitch is then the compile's
+  and the cards', checked against the console's recorded flag (`emotion_window_glitches`). Recordings made before
+  carry neither field and replay their stats as recorded.
   The hooks test checks every BN5 hook against BN6's code (masked for what moves, RAM included), Team Colonel's
   against Team ProtoMan's, and each Japanese ROM's against the US ROM of its version.
 - **chiplab** runs BN5 consoles from a base of BN5 ROMs and saves (Tango's primer walks into a Team Battle),
@@ -2027,7 +2035,9 @@ rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   when the stats after the cards have a bug (0x081384D8: the NaviCust's bug bytes, the encounters' and drops' bugs,
   no supports); without, the NaviCust's flag 0x10C1, which its bugs' routine sets when a bug applies (0x08140040).
   Each console reads its own save's. The navicust system's `glitch`, and the patch-cards system with cards; a
-  recording's setup carries both consoles' (`emotion_window_glitches`, oracle-trace's `bn5_emotion_window_glitch`).
+  recording's setup carries both consoles' (`emotion_window_glitches`, oracle-trace's `bn5_emotion_window_glitch`),
+  which a replay that compiles the recorded NaviCust checks its compile's against (§10's setup line: HubBatc's bug
+  writes no bug byte, so only the compile knows it).
 - **The weapons** (navis/megaman/weapons): the routines that load a chip (0x0800FE78: chips.luau, MettGuard's and
   CrsShld's B+Back waiting 40 ticks, Ccann's TankCan1 not cracking), the card Shield (0x62, guards.luau), TriBustr
   (0x65, the buster's routine), ChrgS (0x63, the charged shot without the draw, the program always: its 0, the
