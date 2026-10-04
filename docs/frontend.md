@@ -188,7 +188,7 @@ is a netbattle on BN6's content between two MegaMen at their fresh stats
 no NaviCust programs (so roads carry them and holes stop them), set up at
 random from the seed (`nettai_match::draw::live`, which prints what it
 drew), unless a match file sets it up (`--match`, §6). (`--game bn5` draws a plain BN5 match instead:
-BN5's stock rules, a stage of its link battles, and on each side BN5's
+BN5's rules, a stage of its link battles, and on each side BN5's
 MegaMan at his fresh stats with a folder its rules accept.)
 
 - **The field**: one of the 96 link battle stages the content defines (the
@@ -891,7 +891,7 @@ programs = [                               # in the save's order; x, y the cente
 ]
 ```
 
-A BN5 match (`game = "bn5"`: its stock rules take no version and have no
+A BN5 match (`game = "bn5"`: its rules take no version and have no
 Crosses) names BN5's navis, chips, patch cards and NaviCust programs, and
 its sides may say besides:
 
