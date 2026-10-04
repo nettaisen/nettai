@@ -9,7 +9,7 @@ local fan = require("./fan")
 local HOOK_ADDRESS = 0x080E32E5
 
 local made = common.make {
-    id = "bn5:wind/controller",
+    id = "wind/controller",
     spawn_fan = fan.spawn,
     position = function(user: Object, spec: DimmingChipSpec): Vec3
         return Vec3.new(user.panel_y, spec.element, HOOK_ADDRESS)

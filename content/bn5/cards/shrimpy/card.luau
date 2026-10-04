@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local spreads = require("../../navis/megaman/weapons/spreads")
 
 return define.patch_card {
-    id = "bn5:shrimpy",
+    id = "shrimpy",
     mb = 10,
     effects = {
         cards.body("aqua"),

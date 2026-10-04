@@ -12,8 +12,8 @@ local regions = require("@exelib/regions")
 
 local strike = {}
 
-local SPRITE = asset.sprite("bn5:bass")
-local SOUND = asset.sound("bn5:col-army-2")
+local SPRITE = asset.sprite("bass")
+local SOUND = asset.sound("col-army-2")
 local WARNING = 0xA
 
 -- 0x080D4238: on its panel, its hit set up but nowhere yet.
@@ -86,7 +86,7 @@ local function tick(me: Object)
 end
 
 strike.kind = define.kind {
-    id = "bn5:bass/strike",
+    id = "bass/strike",
     pool = "attack",
     -- 0x080D4214.
     update = function(me: Object)

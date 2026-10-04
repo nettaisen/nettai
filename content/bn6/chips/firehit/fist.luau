@@ -13,14 +13,14 @@ local fist = {}
 -- BN6's look: its sprite and sound, the strike's spark and collision types
 -- (`dword_80CFEC0`'s bytes 1 to 3).
 local BN6: FireHitFistLook = {
-    sprite = asset.sprite("bn6:fire-hit"),
-    sound = asset.sound("bn6:fire-hit"),
+    sprite = asset.sprite("fire-hit"),
+    sound = asset.sound("fire-hit"),
     spark = sparks.fire,
     target = collision.hits_navis,
     self_type = collision.attack,
 }
 
-fist.kind = common.make_kind("bn6:firehit/fist", BN6)
+fist.kind = common.make_kind("firehit/fist", BN6)
 
 -- `sub_80CFDF2` and `sub_801155A`: a fist of `owner`'s on (x, y); of
 -- `kind`, BN6's by default.

@@ -6,7 +6,7 @@
 local blakwing = require("./blakwing")
 
 return define.chip {
-    id = "bn5:blakwing",
+    id = "blakwing",
     codes = { "W" },
     element = "null",
     family = "null",

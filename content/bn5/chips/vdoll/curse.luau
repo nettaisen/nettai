@@ -31,7 +31,7 @@ type DollAim = { target_x: number, target_y: number }
 local MARK, WAIT, HIT = 0x0, 0x4, 0x8
 local MARK_TICKS, WAIT_TICKS, HIT_TICKS = 0x3C, 0xA, 0x1E
 -- The mark's sound (0x08009620, BN6's `sub_800AE90`).
-local MARK_SOUND = asset.sound("bn5:err-select-91")
+local MARK_SOUND = asset.sound("err-select-91")
 local HIT_MOD = 1
 -- Where the other side's combatants stand (0x080E629C, by the controller's side: require, forbid 0).
 local OTHER_SIDE: { [number]: number } = { [0] = 0x0020_0000, [1] = 0x0040_0000 }
@@ -41,7 +41,7 @@ local OTHER_SIDE: { [number]: number } = { [0] = 0x0020_0000, [1] = 0x0040_0000 
 local OCCUPANT: { [number]: number } = { [0] = 0x0020_0000, [1] = 0x0000_2000 }
 -- The sparkles over whoever is hit: 32 ticks of effect 0x24 (BN5's table, 0x080DFC94: sheet 14-00 in palette 1).
 local SPARKLES_LENGTH = 2
-local SPARKLE = define.effect { sprite = asset.sprite("bn5:explosion"), anim = 0, palette = 1 }
+local SPARKLE = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 }
 
 -- 0x080E625E: one of the panels the other side's combatants stand on (bottom right first), at random; none, the aim
 -- stays.
@@ -157,7 +157,7 @@ local function effect(me: Object)
 end
 
 curse.kind = define.kind {
-    id = "bn5:vdoll/curse",
+    id = "vdoll/curse",
     pool = "effect",
     state = { target_x = "u8", target_y = "u8" },
     -- 0x080E6110.

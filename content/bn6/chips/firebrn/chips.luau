@@ -15,7 +15,7 @@ local function fire_burn(id: string): Action
 end
 
 local firebrn1 = define.chip {
-    id = "bn6:firebrn1",
+    id = "firebrn1",
     codes = { "F", "G", "H", "*" },
     element = "fire",
     family = "fire",
@@ -29,11 +29,11 @@ local firebrn1 = define.chip {
     beast = { lockon = lockon.firebrn1 },
     library = { number = 19, index = 19, sort = 203 },
     slot_in_limit = 3,
-    action = fire_burn("bn6:firebrn1/action"),
+    action = fire_burn("firebrn1/action"),
 }
 
 local firebrn2 = define.chip {
-    id = "bn6:firebrn2",
+    id = "firebrn2",
     codes = { "S", "T", "U" },
     element = "fire",
     family = "fire",
@@ -47,11 +47,11 @@ local firebrn2 = define.chip {
     beast = { lockon = lockon.firebrn1 },
     library = { number = 20, index = 20, sort = 204 },
     slot_in_limit = 3,
-    action = fire_burn("bn6:firebrn2/action"),
+    action = fire_burn("firebrn2/action"),
 }
 
 local firebrn3 = define.chip {
-    id = "bn6:firebrn3",
+    id = "firebrn3",
     codes = { "C", "D", "E" },
     element = "fire",
     family = "fire",
@@ -65,7 +65,7 @@ local firebrn3 = define.chip {
     beast = { lockon = lockon.firebrn1 },
     library = { number = 21, index = 21, sort = 205 },
     slot_in_limit = 3,
-    action = fire_burn("bn6:firebrn3/action"),
+    action = fire_burn("firebrn3/action"),
 }
 
 return { firebrn1 = firebrn1, firebrn2 = firebrn2, firebrn3 = firebrn3 }

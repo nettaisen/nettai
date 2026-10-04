@@ -65,7 +65,7 @@ local function leave(me: Object, s: LeaveState)
 end
 
 computer_navi.leave = define.action {
-    id = "bn5:computer-navi/leave",
+    id = "computer-navi/leave",
     state = { timer = "u16" },
     update = leave,
 }
@@ -114,7 +114,7 @@ function computer_navi.dismiss(side: number)
 end
 
 computer_navi.system = define.system {
-    id = "bn5:computer-navi",
+    id = "computer-navi",
     navi_state = ai.layout,
     -- A player's own drive (DarkInvs): its AI's state, AIData +0xF0 on.
     state = ai.layout,

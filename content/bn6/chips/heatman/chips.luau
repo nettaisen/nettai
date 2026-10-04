@@ -5,7 +5,7 @@
 local navi = require("./navi")
 
 local heatman = define.chip {
-    id = "bn6:heatman",
+    id = "heatman",
     codes = { "H", "*" },
     element = "fire",
     family = "fire",
@@ -23,7 +23,7 @@ local heatman = define.chip {
 }
 
 local heatman_ex = define.chip {
-    id = "bn6:heatman-ex",
+    id = "heatman-ex",
     codes = { "H" },
     element = "fire",
     family = "fire",
@@ -41,7 +41,7 @@ local heatman_ex = define.chip {
 }
 
 local heatman_sp = define.chip {
-    id = "bn6:heatman-sp",
+    id = "heatman-sp",
     codes = { "H" },
     element = "fire",
     family = "fire",

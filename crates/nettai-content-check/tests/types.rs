@@ -18,8 +18,9 @@ fn the_content_type_checks_against_the_core_api() {
 
 /// docs/design/content-model-v2.md §4.0: a listed module or a require of
 /// no module, a folder that is no pack, a require of another game's module
-/// (game to game, support to game) and a cycle of support packs fail the
-/// check with their paths.
+/// (game to game, support to game), a support pack reaching for the game's
+/// context by itself and a cycle of support packs fail the check with
+/// their paths.
 #[test]
 fn what_the_packs_refuse() {
     let dir = std::env::temp_dir().join(format!("nettai-check-{}", std::process::id()));
@@ -33,7 +34,10 @@ fn what_the_packs_refuse() {
     write("h/manifest.toml", "id = \"h\"\nkind = \"game\"\n");
     write("h/x.luau", "return {}\n");
     write("lib/manifest.toml", "id = \"lib\"\nkind = \"support\"\nuses = [\"base\"]\n");
-    write("lib/x.luau", "local g = require(\"@g/there\")\nlocal _ = asset.sprite(\"g:x\")\nreturn {}\n");
+    write(
+        "lib/x.luau",
+        "local g = require(\"@g/there\")\nlocal _ = asset.sprite(\"x\")\nlocal s = system.state\nreturn define.kind { id = \"x\" }\n",
+    );
     write("base/manifest.toml", "id = \"base\"\nkind = \"support\"\nuses = [\"lib\"]\n");
     write("stray/x.luau", "return {}\n");
     let problems = nettai_content_check::reach(&dir).unwrap();
@@ -42,7 +46,9 @@ fn what_the_packs_refuse() {
     has("g/there.luau: require(\"./nowhere\"): no module g/nowhere.luau");
     has("g/there.luau: require(\"@h/x\"): h is a game pack, which no other pack requires");
     has("lib/x.luau: require(\"@g/there\"): g is a game pack, which no other pack requires");
-    has("lib/x.luau: support pack lib names an asset");
+    has("lib/x.luau:2: support pack lib reaches for the game's context by itself, `asset`");
+    has("lib/x.luau:3: support pack lib reaches for the game's context by itself, `system`");
+    has("lib/x.luau:4: support pack lib reaches for the game's context by itself, `id = \"x\"`");
     has("its uses make a cycle: base uses lib uses base");
     has("stray/: no manifest.toml; a folder of content/ is a pack");
     std::fs::remove_dir_all(&dir).ok();
@@ -80,7 +86,7 @@ fn misuse_of_the_v2_api_is_a_type_error() {
         ("local function f(me: Object) me:set_attack('shot', 1) end", "an action by name"),
         ("local function f(me: Object) local _ = battle.spawn(me, me.pos) end", "an object for a kind"),
         ("local _ = define.region { panels = { 'front' } }", "a panel that isn't { dx, dy }"),
-        ("local _ = define.roles { actions = { anti_damage_counter = 3 } }", "a role that isn't an action"),
+        ("local _ = define.ruleset { id = 'x', stock = true, roles = { actions = { anti_damage_counter = 3 } } }", "a role that isn't an action"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
@@ -103,8 +109,8 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
         ("local _ = battle.hand_chip(0, 0)", "a hand's chip by number"),
         ("local function f(me: Object) dimming.show_navi_telop(me, 0x123) end", "a telop's chip by number"),
         ("battle.set_linked(0, { chip = 0x123, bonus = 0, damage = 0 })", "a linked record's chip by number"),
-        ("local _ = define.roles { actions = { turn = { legacy = { action = 0x3B } } } }", "a role by action number"),
-        ("local _ = define.roles { kinds = { support = { legacy = { kind = \"support\" } } } }", "a role by kind key"),
+        ("local _ = define.ruleset { id = 'x', stock = true, roles = { actions = { turn = { legacy = { action = 0x3B } } } } }", "a role by action number"),
+        ("local _ = define.ruleset { id = 'x', stock = true, roles = { kinds = { support = { legacy = { kind = \"support\" } } } } }", "a role by kind key"),
         ("local _ = data.rules.sine[1]", "a rule table by number"),
         ("local function f(me: Object) local _ = battle.effect(me.pos, 3) end", "an effect by number"),
         ("battle.play_sound(0x10)", "a sound by number"),

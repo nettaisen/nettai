@@ -7,10 +7,10 @@ local common = require("@exelib/boomer/boomerang")
 local sparks = require("../../lib/sparks")
 
 return common.make_kind {
-    id = "bn5:boomer/boomerang",
-    sprite = asset.sprite("bn5:boomerang"),
-    tomahawk_sprite = asset.sprite("bn5:boomerang"),
-    sound = asset.sound("bn5:boomerang"),
+    id = "boomer/boomerang",
+    sprite = asset.sprite("boomerang"),
+    tomahawk_sprite = asset.sprite("boomerang"),
+    sound = asset.sound("boomerang"),
     is = collision.attack,
     hits = collision.hits_navis,
     spark = sparks.wood,

@@ -10,7 +10,7 @@ local common = require("@exelib/swords/sonic_boom")
 local sonic_boom = {}
 
 local BN6: SonicBoomLook = {
-    sprite = asset.sprite("bn6:sword-slash"),
+    sprite = asset.sprite("sword-slash"),
     z = 0x10_0000,
     piercing_palette = 0xB,
     palettes = { [0] = 0, 1, 2, 3, 4, 0, 0, 0 },
@@ -22,7 +22,7 @@ local BN6: SonicBoomLook = {
 -- Its speed (16.16 pixels a tick) as its throwers set it.
 sonic_boom.SPEED = common.SPEED
 
-sonic_boom.kind = common.make_kind("bn6:sonic-boom", BN6)
+sonic_boom.kind = common.make_kind("sonic-boom", BN6)
 
 -- `sub_80CF91E`: a sonic boom from `owner` on panel (x, y), with
 -- `element`, the damage word and what it is. (A game's own kind of it:

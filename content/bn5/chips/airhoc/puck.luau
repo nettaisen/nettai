@@ -10,14 +10,14 @@ local sparks = require("../../lib/sparks")
 
 local puck = {}
 
-puck.kind = common.make_kind("bn5:airhoc/puck", {
-    sprite = asset.sprite("bn5:hockey-puck"),
-    sound = asset.sound("bn5:hockey-puck"),
-    bounce = asset.sound("bn5:bounce"),
+puck.kind = common.make_kind("airhoc/puck", {
+    sprite = asset.sprite("hockey-puck"),
+    sound = asset.sound("hockey-puck"),
+    bounce = asset.sound("bounce"),
     is = collision.breaking,
     hits = collision.hits_navis,
     spark = sparks.breaking,
-    burst = define.effect { sprite = asset.sprite("bn5:puff"), anim = 2, palette = 0 },
+    burst = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 },
     trail_tint = 0x8318,
 })
 

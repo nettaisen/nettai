@@ -25,7 +25,7 @@ export type State = {
 
 local ANIM_HOLD = 0xA
 local FIRE_TICKS, AFTER = 10, 0x1E
-local SOUND = asset.sound("bn6:corn-shot")
+local SOUND = asset.sound("corn-shot")
 
 -- `sub_80BCC2C`: the gun; on the tenth tick the sower, the gun's next
 -- animation and the sound.
@@ -91,7 +91,7 @@ local function tick(me: Object)
 end
 
 farmer.kind = define.kind {
-    id = "bn6:cornfsta/farmer",
+    id = "cornfsta/farmer",
     pool = "actor",
     state = { controller = "object", held = "object", sowing = "bool" },
     -- `sub_80BCB50`: by state, then the sprite.

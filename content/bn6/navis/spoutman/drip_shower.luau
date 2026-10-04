@@ -29,8 +29,8 @@ export type State = {
     sound: number,
 }
 
-local SPRITE = asset.sprite("bn6:drip-shower")
-local SOUND = asset.sound("bn6:drip-shower")
+local SPRITE = asset.sprite("drip-shower")
+local SOUND = asset.sound("drip-shower")
 local SOUND_EVERY = 0x10
 
 -- Its hits: aqua spark, an attack at navis.
@@ -163,7 +163,7 @@ local function init(me: Object)
 end
 
 drip_shower.kind = define.kind {
-    id = "bn6:spoutman/drip-shower",
+    id = "spoutman/drip-shower",
     pool = "attack",
     state = { turns = "u8", quarter_ticks = "u8", action = "action", quarter = "u32", sound = "i32" },
     -- `sub_80C91A0`.

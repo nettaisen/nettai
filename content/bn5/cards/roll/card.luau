@@ -6,7 +6,7 @@ local barriers = require("../../lib/barriers")
 local variants = require("../../objects/projectile/variants")
 
 return define.patch_card {
-    id = "bn5:roll",
+    id = "roll",
     mb = 40,
     effects = {
         cards.charge_shot_kind(variants.attack_90),

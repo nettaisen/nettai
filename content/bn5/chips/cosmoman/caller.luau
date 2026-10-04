@@ -21,8 +21,8 @@ export type State = {
     taken: { Identity? },
 }
 
-local SPRITE = asset.sprite("bn5:cosmoman")
-local SOUND_CALL = asset.sound("bn5:elmnt-man")
+local SPRITE = asset.sprite("cosmoman")
+local SOUND_CALL = asset.sound("elmnt-man")
 
 -- 0x080EA1E0: on its panel's center, a pixel up the field, 95 pixels up (Z's fraction is the spawner's
 -- register); three meteors more than the objects taken.
@@ -142,7 +142,7 @@ end
 local ACTIONS = { [0] = start, [4] = call, [8] = finish }
 
 caller.kind = define.kind {
-    id = "bn5:cosmoman/caller",
+    id = "cosmoman/caller",
     pool = "effect",
     state = {
         level = "u8",

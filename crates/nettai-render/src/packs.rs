@@ -142,7 +142,7 @@ pub fn background(c: &Content, id: BackgroundId) -> Option<u8> {
     number(c, AssetKind::Background, id.0).map(|n| n.id as u8)
 }
 
-/// The name content gives `kind` asset `h` (`bn6:bomb`), for a problem's
+/// The name content gives `kind` asset `h` (`bomb`), for a problem's
 /// text.
 pub fn name(c: &Content, kind: AssetKind, h: u16) -> Option<&str> {
     let names = match kind {
@@ -189,15 +189,15 @@ mod tests {
     #[test]
     fn each_asset_draws_from_its_own_pack() {
         let c = content();
-        let chip = c.defs.chip(c.defs.chip_by_key("test:gundels3").expect("a test chip")).key.clone();
+        let chip = c.defs.chip(c.defs.chip_by_key("gundels3").expect("a test chip")).key.clone();
         let a = bundle(1, keys::local(&chip));
         let packs = Packs::one(&a);
         let tiles = |s: Option<&SpriteSheet>| s.expect("a sheet").tilesets[0].pixels.len() / Tiles::TILE;
-        assert_eq!(tiles(packs.sprite(&c, testing::sprite_named(&c, "test:test-navi"))), 1);
+        assert_eq!(tiles(packs.sprite(&c, testing::sprite_named(&c, "test-navi"))), 1);
         assert!(std::ptr::eq(packs.game(&c), &a));
         assert!(std::ptr::eq(packs.own(), &a));
         // A chip's icon by its key in its pack ("gundels3", not
-        // "test:gundels3").
+        // "gundels3").
         assert_eq!(packs.chip_icon(&c, &chip).map(|t| t.pixels[0]), Some(1));
     }
 }

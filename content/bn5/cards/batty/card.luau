@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local chips = require("../../navis/megaman/weapons/chips")
 
 return define.patch_card {
-    id = "bn5:batty",
+    id = "batty",
     mb = 25,
     effects = {
         cards.air_shoes(true),

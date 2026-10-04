@@ -16,7 +16,7 @@ export type State = {
     ticks: number,
 }
 
-local SPRITE = asset.sprite("bn6:element-pillar-flames")
+local SPRITE = asset.sprite("element-pillar-flames")
 -- Its palette: the flames' red.
 local PALETTE = 4
 -- Eight pixels up.
@@ -70,7 +70,7 @@ local function init(me: Object)
 end
 
 flame.kind = define.kind {
-    id = "bn6:gregar/flame",
+    id = "gregar/flame",
     pool = "attack",
     state = { ticks = "u8" },
     -- `sub_80DF0A4`: by state (its end `object_genericDestroy`), then the

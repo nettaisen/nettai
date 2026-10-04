@@ -23,13 +23,13 @@ export type State = {
 
 -- The change, as the pause handler runs it.
 forms.action = define.action {
-    id = "bn6:forms/change",
+    id = "forms/change",
     state = { timer = "u16" },
     update = change.update,
 }
 
 forms.system = define.system {
-    id = "bn6:forms",
+    id = "forms",
     state = { beast_out_used = "bool", crossed = "bool" },
     -- What BN6's forms say of themselves (docs/design/rules-in-luau.md §7.5;
     -- kind.luau reads the kind): their kind (every form but the base form

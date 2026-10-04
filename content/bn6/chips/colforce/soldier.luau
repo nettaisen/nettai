@@ -14,8 +14,8 @@ export type State = {
     delay: number,
 }
 
-local SPRITE = asset.sprite("bn6:col-army")
-local SHOT_SOUND = asset.sound("bn6:col-army-2")
+local SPRITE = asset.sprite("col-army")
+local SHOT_SOUND = asset.sound("col-army-2")
 -- Where it drops from, 16.16.
 local DROP_Z = 0xFF_0000
 -- The shots: bullets (row 0x12), three of them 10 ticks apart, at one of
@@ -163,7 +163,7 @@ local function tick(me: Object)
 end
 
 soldier.kind = define.kind {
-    id = "bn6:colforce/soldier",
+    id = "colforce/soldier",
     pool = "attack",
     state = { delay = "u8" },
     -- `sub_80DF328`.

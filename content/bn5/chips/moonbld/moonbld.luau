@@ -21,8 +21,8 @@ export type State = {
 moonbld.STATE = { timer = "u16", turned = "u32" }
 
 -- The blade (attack object #0x69): sprite 10-38, BN5's rows 7 and 5 (0x0705FF01).
-moonbld.blade = common.make_kind("bn5:moonbld/blade", {
-    sprite = asset.sprite("bn5:moon-blade"),
+moonbld.blade = common.make_kind("moonbld/blade", {
+    sprite = asset.sprite("moon-blade"),
     is = collision.slash,
     hits = collision.hits_navis,
 })
@@ -31,7 +31,7 @@ moonbld.blade = common.make_kind("bn5:moonbld/blade", {
 local START, SET_UP, SWING, STEP_BACK, RECOVER = 0x0, 0x4, 0x8, 0xC, 0x10
 
 local ANIM_SPIN = 0x0C
-local SOUND = asset.sound("bn5:spin")
+local SOUND = asset.sound("spin")
 -- The swing's ticks, the tick (timer value) a charged swing leaves its afterimage, and the one the blade comes out.
 local SWING_TICKS, AFTERIMAGE_AT, BLADE_AT = 0x15, 0x10, 0x12
 -- The swing routine's address (with the Thumb bit), which the phase's dispatch leaves in a register: the blade's
@@ -44,7 +44,7 @@ local function set_step(me: Object, step: number)
 end
 
 moonbld.action = define.action {
-    id = "bn5:moonbld/action",
+    id = "moonbld/action",
     state = moonbld.STATE,
     update = function(me: Object, s: State)
         local step = me.step

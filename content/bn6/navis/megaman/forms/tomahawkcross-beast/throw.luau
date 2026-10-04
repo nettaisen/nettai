@@ -76,7 +76,7 @@ local function swing(me: Object, s: State)
 end
 
 throw.action = define.action {
-    id = "bn6:tomahawkcross-beast/throw/action",
+    id = "tomahawkcross-beast/throw/action",
     state = { timer = "u16" },
     -- `sub_80EF1EC`.
     update = function(me: Object, s: State)
@@ -92,7 +92,7 @@ throw.action = define.action {
 }
 
 throw.weapon = define.weapon {
-    id = "bn6:tomahawkcross-beast/throw",
+    id = "tomahawkcross-beast/throw",
     -- The charge table's row 0x1B, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 40, 40, 40, 40, 40, 20, 20, 20 },

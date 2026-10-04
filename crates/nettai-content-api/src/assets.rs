@@ -2,9 +2,9 @@
 //! §7.4): content names a sprite, a sound, a banner, a background or a
 //! mugshot (`asset.sprite("bomb")`), and the name resolves while content
 //! loads to an asset handle, its place among its kind's names in byte-wise
-//! order. Content loads from several packs at once (one a game): every name
-//! is qualified with its pack's game (`bn6:bomb`), as the loader qualifies
-//! definitions' keys, so the handles cover every loaded pack. The engine
+//! order. A match plays one game, so a name is its game's asset pack's own
+//! (`bomb`), as an id is local to its game (docs/design/content-model-v2.md
+//! §4.0). The engine
 //! knows an asset by its handle alone; what the pack calls it (a sprite's
 //! category and index, a sound's song-table entry) is here, for loaders,
 //! frontends, the audio and compat.
@@ -51,7 +51,7 @@ impl std::fmt::Display for AssetKind {
     }
 }
 
-/// The assets content can name, by kind and qualified name (`bn6:bomb`),
+/// The assets content can name, by kind and name (`bomb`, the pack's own),
 /// each with its pack and the pack's own number for it. A kind's handles
 /// are its names' places in byte order.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -77,24 +77,25 @@ pub struct PackIndex {
 }
 
 impl AssetNames {
-    /// The assets of `packs` (each its game and its index), their names
-    /// qualified with the game.
+    /// The assets of `packs` (each its game and its index), by their names
+    /// in their packs (a match plays one game: one pack, whose names meet no
+    /// other's).
     pub fn of_packs(packs: Vec<(String, PackIndex)>) -> AssetNames {
         let mut packs = packs;
         packs.sort_by(|a, b| a.0.cmp(&b.0));
         let mut a = AssetNames { packs: packs.iter().map(|(g, _)| g.clone()).collect(), ..Default::default() };
-        for (i, (game, index)) in packs.into_iter().enumerate() {
+        for (i, (_, index)) in packs.into_iter().enumerate() {
             let pack = PackId(i as u8);
-            fn add<T>(game: &str, pack: PackId, from: BTreeMap<String, T>, to: &mut BTreeMap<String, InPack<T>>) {
+            fn add<T>(pack: PackId, from: BTreeMap<String, T>, to: &mut BTreeMap<String, InPack<T>>) {
                 for (name, id) in from {
-                    to.insert(keys::qualify(game, &name), InPack { pack, id });
+                    to.insert(name, InPack { pack, id });
                 }
             }
-            add(&game, pack, index.sprites, &mut a.sprites);
-            add(&game, pack, index.sounds, &mut a.sounds);
-            add(&game, pack, index.banners, &mut a.banners);
-            add(&game, pack, index.backgrounds, &mut a.backgrounds);
-            add(&game, pack, index.mugshots, &mut a.mugshots);
+            add(pack, index.sprites, &mut a.sprites);
+            add(pack, index.sounds, &mut a.sounds);
+            add(pack, index.banners, &mut a.banners);
+            add(pack, index.backgrounds, &mut a.backgrounds);
+            add(pack, index.mugshots, &mut a.mugshots);
         }
         a
     }

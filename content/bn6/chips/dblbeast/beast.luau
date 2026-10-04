@@ -129,7 +129,7 @@ function beast.wait(me: Object, next: number)
 end
 
 -- The appearing (actions 0): shown, with a sound, 3 ticks.
-local SOUND_APPEAR = asset.sound("bn6:appear")
+local SOUND_APPEAR = asset.sound("appear")
 local ANIM_APPEAR, APPEAR_TICKS = 3, 3
 function beast.appear(me: Object)
     if me.phase_init == 0 then

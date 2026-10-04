@@ -17,11 +17,11 @@ local grass = require("./grass")
 local souls = require("../../../../rules/souls/system")
 
 return define.form {
-    id = "bn5:tomahawksoul",
+    id = "tomahawksoul",
     soul = { number = 10, family = "wood" },
     change = souls.action,
     revert = souls.revert,
-    sprite = asset.sprite("bn5:tomahawksoul"),
+    sprite = asset.sprite("tomahawksoul"),
     element = "wood",
     buster_bonus = 0,
     weapons = {
@@ -29,7 +29,7 @@ return define.form {
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
         -- Routine 0x33 (0x0800FA52): DrkLance (chip 0xBF), the charge table's row 0x33.
-        chaos = chaos.weapon("bn5:tomahawksoul/chaos", drklance, { 40, 60, 90, 120, 150, 40 }),
+        chaos = chaos.weapon("tomahawksoul/chaos", drklance, { 40, 60, 90, 120, 150, 40 }),
     },
     grass_doubles = { family = "wood" },
     reset = function(navi: Object)
@@ -39,8 +39,8 @@ return define.form {
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 0x16-0x1B, Team Colonel's
     -- souls'); in its Chaos Unison look while the chaos charge is armed (0x080125F6: the palette 11 on).
     mugshot = {
-        normal = asset.mugshot("bn5:tomahawksoul"),
-        variant = { normal = asset.mugshot("bn5:tomahawksoul-chaos") },
+        normal = asset.mugshot("tomahawksoul"),
+        variant = { normal = asset.mugshot("tomahawksoul-chaos") },
     },
     buster_arm = { anim = 0 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 10 of category 0).

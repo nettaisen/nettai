@@ -4,7 +4,7 @@
 local cards = require("../../rules/patch-cards/cards")
 
 return define.patch_card {
-    id = "bn5:count-zaps-custom",
+    id = "count-zaps-custom",
     mb = 35,
     effects = {
         cards.hp(300),

@@ -9,8 +9,7 @@
 //! The battle content is not extracted: it is the content directory's
 //! definitions (this repository's content/ unless `--content` names
 //! another; BN6's names are its bn6 folder's compat), which name these
-//! assets in full (`bn6:bomb`, a pack's own names being the part after its
-//! game). The graphics and the index are read back from the written pack
+//! assets by the pack's own names (`bomb`). The graphics and the index are read back from the written pack
 //! and compared with what was extracted, and the content's definitions are
 //! defined against the pack, so a pack that wouldn't load is never left
 //! behind silently.
@@ -161,8 +160,7 @@ fn asset_names(compat: &Path) -> nettai_content::names::AssetNames {
     names.backgrounds = c.assets.backgrounds.iter().map(|(k, &v)| (v, k.clone())).collect();
     names.mugshots = c.assets.mugshots.iter().map(|(k, &v)| (v, k.clone())).collect();
     names.banners = c.assets.banners.iter().map(|(k, &v)| (v, k.clone())).collect();
-    // (A chip's icon is named in the pack by its id's own part: `cannon`
-    // for `bn6:cannon`.)
+    // (A chip's icon is named in the pack by its id: `cannon`.)
     names.chips = c.chips.iter().map(|(k, e)| (e.id, nettai_content_api::keys::local(k).to_string())).collect();
     names.glyphs = c.text.glyphs.clone();
     names.dialogue_glyphs = c.text.dialogue_glyphs.clone();

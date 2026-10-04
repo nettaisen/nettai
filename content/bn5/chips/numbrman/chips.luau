@@ -7,7 +7,7 @@ local navi = require("./navi")
 -- NumbrMan (BN5 chip 0x0f2): NumberMan cuts in and throws a die three columns ahead, its face times his damage when it
 -- bursts (./navi).
 local numbrman = define.chip {
-    id = "bn5:numbrman",
+    id = "numbrman",
     codes = { "N" },
     element = "null",
     family = "null",
@@ -28,14 +28,14 @@ local numbrman = define.chip {
 -- bursts (../numbrman/navi); its damage by how fast its user deleted NumberMan SP (rules/sp-chips: formula 10, its
 -- table's row 9).
 local numbrmn_sp = define.chip {
-    id = "bn5:numbrmn-sp",
+    id = "numbrmn-sp",
     codes = { "N" },
     element = "null",
     family = "null",
     class = "mega",
     rarity = 3,
     mb = 66,
-    damage = { formula = "sp_navi", slot = "sp/numbrman", by_time = { 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40 }, per_player_gauges = 70 },
+    damage = { formula = "sp_navi", slot = "sp/numbrman", by_time = { 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40 }, operation_battle = 70 },
     hit_param = 158,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
@@ -48,14 +48,14 @@ local numbrmn_sp = define.chip {
 -- NumbrMnDS (BN5 chip 0x0f4): NumberMan, dark, cuts in and throws a die three columns ahead, its face times his damage
 -- when it bursts (../numbrman/navi); its damage by its user's side's statistic 3 (formula 32, its table's row 9).
 local numbrmn_ds = define.chip {
-    id = "bn5:numbrmn-ds",
+    id = "numbrmn-ds",
     codes = { "N" },
     element = "null",
     family = "null",
     class = "mega",
     rarity = 3,
     mb = 66,
-    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90 }, per_player_gauges = 50 },
+    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90 }, operation_battle = 50 },
     hit_param = 158,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },

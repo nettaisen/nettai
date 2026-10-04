@@ -6,7 +6,7 @@
 local anti_trap = require("../../lib/traps/anti_trap")
 
 return define.chip {
-    id = "bn5:antifire",
+    id = "antifire",
     codes = { "E", "K", "T", "*" },
     element = "fire",
     family = "fire",

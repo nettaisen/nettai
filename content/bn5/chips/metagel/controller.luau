@@ -74,7 +74,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "bn5:metagel/controller",
+    id = "metagel/controller",
     pool = "effect",
     state = { bonus = "u16", left = "i32", order = "u8[3]", out = "bool[4]" },
     update = dimming_chips.phases { name = "MetaGel", effect = effect },

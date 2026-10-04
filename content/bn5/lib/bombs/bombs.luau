@@ -11,7 +11,7 @@ local throw = require("@exelib/bombs/throw")
 
 local bombs = {}
 
-local SPRITE = asset.sprite("bn5:bomb")
+local SPRITE = asset.sprite("bomb")
 
 -- What the navi holds while throwing a bomb.
 bombs.held = attachment.look { sprite = SPRITE, palette = 0 }
@@ -20,9 +20,9 @@ bombs.held = attachment.look { sprite = SPRITE, palette = 0 }
 bombs.variant = bomb.variant
 
 local made = bomb.make {
-    id = "bn5:bomb",
+    id = "bomb",
     sprite = SPRITE,
-    hit_sound = asset.sound("bn5:hit-bomb-1"),
+    hit_sound = asset.sound("hit-bomb-1"),
     splash = effects.splash,
     explosion = effects.explosion,
     puff = effects.puff,
@@ -31,7 +31,7 @@ local made = bomb.make {
 -- A thrower that throws a bomb of `variant`, null-element.
 bombs.thrower = made.thrower
 
-local THROW: ThrowLook = { sound = asset.sound("bn5:minibomb-throw"), attachment = attachment.kind }
+local THROW: ThrowLook = { sound = asset.sound("minibomb-throw"), attachment = attachment.kind }
 
 -- A chip's throw.
 function bombs.throw(spec: ThrowSpec): Action

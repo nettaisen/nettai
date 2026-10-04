@@ -16,15 +16,15 @@ local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
 
 return common.make {
-    id = "bn6:roll/navi",
-    sprite = asset.sprite("bn6:roll-heart"),
-    appear = asset.sound("bn6:appear"),
-    warp = asset.sound("bn6:roll"),
-    swish = asset.sound("bn6:roll-2"),
+    id = "roll/navi",
+    sprite = asset.sprite("roll-heart"),
+    appear = asset.sound("appear"),
+    warp = asset.sound("roll"),
+    swish = asset.sound("roll-2"),
     sparkle = heart.sparkle,
     -- Her ribbon (the original's attachment row 0x12), its animation 5,
     -- animating while dimmed.
-    ribbon = attachment.look { sprite = asset.sprite("bn6:roll-heart"), palette = 0 },
+    ribbon = attachment.look { sprite = asset.sprite("roll-heart"), palette = 0 },
     ribbon_anim = 5,
     attach = attachment.attach,
     heart = heart.spawn,

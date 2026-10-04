@@ -7,7 +7,7 @@ local elcreel = require("./elcreel")
 -- ElcReel1 (BN5 chip 0x0a3): the navi launches a reel along its row; what it hits, it hooks with every navi around
 -- it, and shocks them: BN5's own (chips/elcreel/elcreel).
 local elcreel1 = define.chip {
-    id = "bn5:elcreel1",
+    id = "elcreel1",
     codes = { "C", "V", "Z" },
     element = "elec",
     family = "elec",
@@ -25,7 +25,7 @@ local elcreel1 = define.chip {
 -- ElcReel2 (BN5 chip 0x0a4): the navi launches a reel along its row; what it hits, it hooks with every navi around
 -- it, and shocks them: BN5's own (chips/elcreel/elcreel).
 local elcreel2 = define.chip {
-    id = "bn5:elcreel2",
+    id = "elcreel2",
     codes = { "B", "Q", "Y" },
     element = "elec",
     family = "elec",
@@ -43,7 +43,7 @@ local elcreel2 = define.chip {
 -- ElcReel3 (BN5 chip 0x0a5): the navi launches a reel along its row; what it hits, it hooks with every navi around
 -- it, and shocks them: BN5's own (chips/elcreel/elcreel).
 local elcreel3 = define.chip {
-    id = "bn5:elcreel3",
+    id = "elcreel3",
     codes = { "E", "L", "R" },
     element = "elec",
     family = "elec",

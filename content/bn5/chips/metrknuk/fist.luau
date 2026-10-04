@@ -9,8 +9,8 @@ local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")
 
 return common.make {
-    id = "bn5:metrknuk/fist",
-    sprite = asset.sprite("bn5:justice-one"),
+    id = "metrknuk/fist",
+    sprite = asset.sprite("justice-one"),
     sound = nil,
     burst = effects.burst,
     self_type = collision.thrown_break,

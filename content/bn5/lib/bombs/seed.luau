@@ -13,17 +13,17 @@ local common = require("@exelib/bombs/seed")
 
 local seed = {}
 
-local SPRITE = asset.sprite("bn5:bomb")
-local SPROUT = asset.sprite("bn5:grab-shot")
+local SPRITE = asset.sprite("bomb")
+local SPROUT = asset.sprite("grab-shot")
 
-seed.kind = common.make_kind("bn5:seed", {
+seed.kind = common.make_kind("seed", {
     sprite = SPRITE,
     anim = 9,
     is = collision.attack,
     hits = collision.hits_navis,
     hit_mod = 0,
-    splash = define.effect { sprite = asset.sprite("bn5:small-puff"), anim = 0, palette = 0 },
-    puff = define.effect { sprite = asset.sprite("bn5:puff"), anim = 2, palette = 0 },
+    splash = define.effect { sprite = asset.sprite("small-puff"), anim = 0, palette = 0 },
+    puff = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 },
 })
 
 -- The seeds by Param1: the panel, the sprout (effect 0x29 twice, 0x54, 0x55) and the sound.
@@ -33,28 +33,28 @@ seed.variants = {
         palette = 0,
         panel = "ice",
         effect = define.effect { sprite = SPROUT, anim = 1, palette = 0 },
-        sound = asset.sound("bn5:freeze"),
+        sound = asset.sound("freeze"),
     },
     sea = common.variant {
         element = 0,
         palette = 1,
         panel = "sea",
         effect = define.effect { sprite = SPROUT, anim = 1, palette = 0 },
-        sound = asset.sound("bn5:sand-worm"),
+        sound = asset.sound("sand-worm"),
     },
     grass = common.variant {
         element = 0,
         palette = 2,
         panel = "grass",
         effect = define.effect { sprite = SPROUT, anim = 1, palette = 8 },
-        sound = asset.sound("bn5:grass"),
+        sound = asset.sound("grass"),
     },
     lava = common.variant {
         element = 0,
         palette = 3,
         panel = "lava",
         effect = define.effect { sprite = SPROUT, anim = 1, palette = 0xC },
-        sound = asset.sound("bn5:panel-volcano"),
+        sound = asset.sound("panel-volcano"),
     },
 }
 

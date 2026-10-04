@@ -12,15 +12,15 @@ local common = require("@exelib/widesht/wave")
 local wave = {}
 
 wave.kind = common.make_kind {
-    id = "bn5:widesht/wave",
-    sprite = asset.sprite("bn5:wide-wave"),
-    sound = asset.sound("bn5:wide-shot"),
-    trail_sprite = asset.sprite("bn5:wide-wave"),
+    id = "widesht/wave",
+    sprite = asset.sprite("wide-wave"),
+    sound = asset.sound("wide-shot"),
+    trail_sprite = asset.sprite("wide-wave"),
     target = collision.hits_navis,
 }
 
 -- BN5's wide shooter (BN6's row 0x23's look, BN5's sprite).
-local SHOOTER = attachment.look { sprite = asset.sprite("bn5:wide-shooter"), palette = 0, attach_point = 12 }
+local SHOOTER = attachment.look { sprite = asset.sprite("wide-shooter"), palette = 0, attach_point = 12 }
 
 local LOOK: WideShotLook = { shooter = SHOOTER, attachment = attachment.kind, wave = wave.kind }
 

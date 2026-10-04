@@ -368,7 +368,7 @@ fn the_asset_index_lists_every_asset_by_name() {
     assert_eq!(index.banners.len(), b.hud.banners.len() + 1);
     assert_eq!(index.mugshots.len(), b.hud.mugshots.len() + b.hud.navi_mugshots.len());
     assert!(AssetNames::is_placeholder(AssetKind::Sound, "sound-002"));
-    assert!(AssetNames::is_placeholder(AssetKind::Sound, "bn6:sound-002"), "a qualified placeholder");
+    assert!(AssetNames::is_placeholder(AssetKind::Sound, "sound-002"), "a qualified placeholder");
     pack::write_files(&dir, &vec![nettai_content::names::index_file(&index)]).unwrap();
     let mut r = Report::default();
     assert_eq!(nettai_content::names::read_index(&dir, &mut r), Some(index), "{r}");

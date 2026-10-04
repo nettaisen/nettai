@@ -133,7 +133,7 @@ local function tick(me: Object)
 end
 
 numberman.kind = define.kind {
-    id = "bn6:numbrbl/numberman",
+    id = "numbrbl/numberman",
     pool = "actor",
     state = { controller = "object", balls = "u8", held = "object" },
     -- `sub_80C3000`: by state, then the sprite (stepping while dimmed).

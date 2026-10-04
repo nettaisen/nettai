@@ -16,8 +16,8 @@ export type State = {
     action: Action?,
 }
 
-local CLOUD_SPRITE = asset.sprite("bn6:dust-cloud")
-local DUSTMAN_SPRITE = asset.sprite("bn6:dustman")
+local CLOUD_SPRITE = asset.sprite("dust-cloud")
+local DUSTMAN_SPRITE = asset.sprite("dustman")
 local DUSTMAN_ANIM = 0x15
 
 -- `sub_80E86AC`, `sub_80E87B8`: on its owner.
@@ -76,7 +76,7 @@ local function update(sprite_asset: SpriteAsset, fixed_anim: number?): (me: Obje
 end
 
 clouds.cloud = define.kind {
-    id = "bn6:dustman/cloud",
+    id = "dustman/cloud",
     pool = "effect",
     state = { anim = "u8", action = "action" },
     -- `sub_80E8794`.
@@ -84,7 +84,7 @@ clouds.cloud = define.kind {
 }
 
 clouds.overlay = define.kind {
-    id = "bn6:dustman/overlay",
+    id = "dustman/overlay",
     pool = "effect",
     state = { anim = "u8", action = "action" },
     -- `sub_80E8688`.

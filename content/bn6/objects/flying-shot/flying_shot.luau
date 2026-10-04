@@ -44,9 +44,9 @@ function flying_shot.variant(v: FlyingShotVariant): FlyingShotVariant
     return define.record("flying-shot-variant", v)
 end
 
-local ARROW_SPRITE = asset.sprite("bn6:bow")
-local SHOT_SPRITE = asset.sprite("bn6:beast-shot")
-local BLADE_SPRITE = asset.sprite("bn6:sword")
+local ARROW_SPRITE = asset.sprite("bow")
+local SHOT_SPRITE = asset.sprite("beast-shot")
+local BLADE_SPRITE = asset.sprite("sword")
 local SHOT = { is = collision.attack, hits = collision.hits_navis }
 
 -- The variants (the original's rows; `by_number` for the callers that
@@ -81,7 +81,7 @@ local ROWS: { [number]: FlyingShotVariant } = {
         speed = 0x6_0000,
         range = 8,
         panel_spark = true,
-        launch_sound = asset.sound("bn6:twang"),
+        launch_sound = asset.sound("twang"),
     },
     [3] = flying_shot.variant {
         collision = SHOT,
@@ -109,7 +109,7 @@ local ROWS: { [number]: FlyingShotVariant } = {
         sprite = SHOT_SPRITE,
         speed = 0xC_0000,
         range = 2,
-        end_effect = define.effect { sprite = asset.sprite("bn6:hit-sparks"), anim = 0, palette = 0 },
+        end_effect = define.effect { sprite = asset.sprite("hit-sparks"), anim = 0, palette = 0 },
     },
     -- A thrown obstacle.
     [6] = flying_shot.variant {
@@ -293,7 +293,7 @@ local function init(me: Object)
 end
 
 flying_shot.kind = define.kind {
-    id = "bn6:flying-shot",
+    id = "flying-shot",
     pool = "attack",
     state = {
         variant = "record:flying-shot-variant",

@@ -10,7 +10,7 @@ local regions = require("@exelib/regions")
 
 local tornado = {}
 
-local SPRITE = asset.sprite("bn6:tengu-tornado")
+local SPRITE = asset.sprite("tengu-tornado")
 
 -- Its hits: pushing, reaching nothing by its target; no spark.
 local HIT_MOD = 1
@@ -87,7 +87,7 @@ local function init(me: Object)
 end
 
 tornado.kind = define.kind {
-    id = "bn6:tenguman/tornado",
+    id = "tenguman/tornado",
     pool = "attack",
     -- `sub_80D0500`.
     update = function(me: Object)

@@ -253,8 +253,7 @@ pub fn load_battle(content: &Path, assets: &Path) -> Result<(nettai_battle::Cont
 /// [`load_battle`]'s content before the define phase: the game's modules,
 /// the asset index and the sprite timing. The game is the asset pack's (a
 /// pack that says none is taken as BN6's, with a warning: packs extracted
-/// before they said it). Asset names are in full, their pack's game first
-/// (`bn6:bomb`).
+/// before they said it). Asset names are the pack's own (`bomb`).
 pub fn battle_content(content: &Path, assets: &Path) -> Result<(nettai_battle::Content, Report), Report> {
     let mut report = Report::default();
     let Some(game) = pack_game(assets, &mut report) else { return Err(report) };

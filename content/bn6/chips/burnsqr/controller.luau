@@ -30,7 +30,7 @@ local function effect(me: Object)
 end
 
 local kind = define.kind {
-    id = "bn6:burnsqr/controller",
+    id = "burnsqr/controller",
     pool = "effect",
     state = { bonus = "u16", busy = "bool" },
     -- `sub_80E702C`.

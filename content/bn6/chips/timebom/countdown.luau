@@ -15,17 +15,17 @@ countdown.make_kind = common.make_kind
 countdown.variant = common.variant
 countdown.spawn_kind = common.spawn_kind
 
-local BN6_SPRITE = asset.sprite("bn6:countdown-bomb")
+local BN6_SPRITE = asset.sprite("countdown-bomb")
 
-countdown.kind = common.make_kind("bn6:timebom/countdown", {
+countdown.kind = common.make_kind("timebom/countdown", {
     sprite = BN6_SPRITE,
     sounds = {
-        place = asset.sound("bn6:appear"),
-        tick = asset.sound("bn6:tick"),
-        last = asset.sound("bn6:last"),
-        blast = asset.sound("bn6:burst"),
+        place = asset.sound("appear"),
+        tick = asset.sound("tick"),
+        last = asset.sound("last"),
+        blast = asset.sound("burst"),
         -- The puff where it was broken.
-        puff = asset.sound("bn6:hit-bomb-1"),
+        puff = asset.sound("hit-bomb-1"),
     },
     blast = { is = collision.attack, hits = collision.hits_navis },
     explosion = effects.explosion,

@@ -6,7 +6,7 @@
 -- collision types, and BN5's blade animation, which goes by its souls (0x080EC038, `sub_80EBAE8`'s counterpart:
 -- `swords.blade_anim`, each sword's `blade_anim`). (Its attachment row, 0x080EC082, `sub_80EBB34`'s counterpart,
 -- is row 3 but in Chaos Unison's ProtoSoul and ColonelSoul: Chaos Unison's work, bn5-map.md §15.) BN5's swing also calls 0x080E9FD2 where BN6's calls `nullsub_12`: with battle
--- flag 0x40 (`battle.per_player_gauges()`, never set in a netbattle: bn5-map.md §3) it spawns effect object 0x83
+-- flag 0x40 (`operation_battle()`, never set in a netbattle: bn5-map.md §3) it spawns effect object 0x83
 -- on the panel ahead, which isn't ported. And BN5's sonic boom (attack object #0x58, BN6's the same number:
 -- 0x080D0E64, BN6's `sub_80CF810`, the same code but for its look): at the floor (BN6's 16 pixels up), its palette
 -- 9 going through (BN6's 0xB), else by its whole element byte (BN6's its primary element) from 0x080D0EF4, a BN5
@@ -18,6 +18,7 @@ local collision = require("../rules/collision")
 local slash = require("@exelib/swords/slash")
 local sonic_boom = require("@exelib/swords/sonic_boom")
 local stepsword = require("./stepsword")
+local operation_battle = require("./operation_battle")
 
 local swords = {}
 
@@ -40,9 +41,9 @@ function swords.blade_anim(me: Object): number
     return 0
 end
 
-local SLASH = asset.sprite("bn5:sword-slash")
+local SLASH = asset.sprite("sword-slash")
 
-swords.blade = attachment.look { sprite = asset.sprite("bn5:sword"), palette = 0 }
+swords.blade = attachment.look { sprite = asset.sprite("sword"), palette = 0 }
 swords.slashes_navis = { is = collision.slash, hits = collision.hits_navis }
 swords.effects = {
     -- Sword's, over the panel ahead (effect 0x18).
@@ -55,17 +56,17 @@ swords.effects = {
     wide_blade = define.effect { sprite = SLASH, anim = 0, palette = 5 },
     long_blade = define.effect { sprite = SLASH, anim = 1, palette = 5 },
     -- CustSwrd's big slash over two columns (0x28).
-    custom = define.effect { sprite = asset.sprite("bn5:big-slash"), anim = 0, palette = 3 },
+    custom = define.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 3 },
     -- LifeSrd's big slash over two columns (0x1B).
-    big = define.effect { sprite = asset.sprite("bn5:big-slash"), anim = 0, palette = 0 },
+    big = define.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 0 },
     -- DrkSword's dark big slash (0x1C).
-    dark = define.effect { sprite = asset.sprite("bn5:big-slash"), anim = 0, palette = 2 },
+    dark = define.effect { sprite = asset.sprite("big-slash"), anim = 0, palette = 2 },
     -- Over three panels: FtrSword's (0x2E).
     line = define.effect { sprite = SLASH, anim = 3, palette = 0 },
 }
-swords.swing = asset.sound("bn5:sword-swing")
-swords.big_swing = asset.sound("bn5:big-sword-swing")
-swords.sonic_boom = sonic_boom.make_kind("bn5:sonic-boom", {
+swords.swing = asset.sound("sword-swing")
+swords.big_swing = asset.sound("big-sword-swing")
+swords.sonic_boom = sonic_boom.make_kind("sonic-boom", {
     sprite = SLASH,
     z = 0,
     piercing_palette = 9,
@@ -93,11 +94,11 @@ end
 -- AntiSwrd's counter (the original's navi action 0x48: @exelib/antiswrd/counter) with BN5's blade and booms; its
 -- sounds BN6's. The ruleset starts it by role (`actions.anti_sword_counter`, rules/roles.luau).
 swords.anti_sword_counter = antiswrd.action_with {
-    id = "bn5:antiswrd/counter",
+    id = "antiswrd/counter",
     blade = swords.blade,
     boom = swords.sonic_boom,
-    start_sound = asset.sound("bn5:log-in"),
-    swing_sound = asset.sound("bn5:sword-swing"),
+    start_sound = asset.sound("log-in"),
+    swing_sound = asset.sound("sword-swing"),
     attachment = attachment.kind,
     -- (BN5's: no invulnerability, nothing restarted at its swings.)
     plain = true,

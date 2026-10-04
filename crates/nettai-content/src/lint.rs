@@ -132,7 +132,7 @@ pub fn duplicate_collision_types(c: &Content) -> Vec<(u8, Vec<(String, String)>)
 pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
     let mut out = Vec::new();
     for d in c.defs.definitions.of(Registry::Collision) {
-        let root = nettai_content_api::keys::root_of(&d.key).unwrap_or_default();
+        let root = c.game();
         let tests = ["side0", "side1"].iter().any(|k| d.spec.field(k).int().is_some_and(|w| w & 0x80 != 0));
         if !tests {
             continue;

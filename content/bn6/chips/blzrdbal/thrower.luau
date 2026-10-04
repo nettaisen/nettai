@@ -16,8 +16,8 @@ export type State = {
 }
 
 local WINDUP, THROW_ANIM, THROW_ANIM_AT, AFTER = 0x22, 0xC, 4, 0x5A
-local SOUND_WINDUP = asset.sound("bn6:blizzard-windup")
-local SOUND_THROW = asset.sound("bn6:blizzard-throw")
+local SOUND_WINDUP = asset.sound("blizzard-windup")
+local SOUND_THROW = asset.sound("blizzard-throw")
 -- The ball leaves 10 pixels in front of it.
 local AHEAD = 0xA_0000
 local SOLID = 0x10
@@ -73,7 +73,7 @@ local function tick(me: Object)
 end
 
 thrower.kind = define.kind {
-    id = "bn6:blzrdbal/thrower",
+    id = "blzrdbal/thrower",
     pool = "actor",
     state = { controller = "object" },
     -- `sub_80B8A18`.

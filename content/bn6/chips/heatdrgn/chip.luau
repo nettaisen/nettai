@@ -8,7 +8,7 @@ local lockon = require("../../rules/lockon")
 local sparks = require("../../lib/sparks")
 
 return define.chip {
-    id = "bn6:heatdrgn",
+    id = "heatdrgn",
     codes = { "G", "R", "T" },
     element = "fire", family = "fire", class = "standard",
     rarity = 2, mb = 40, damage = 140, hit_param = 30, lockout = 0,

@@ -7,7 +7,7 @@ local vulcan = require("./vulcan")
 
 -- Vulcan1 (BN5 chip 0x00f): action 0x19, BN6's vulcan with BN5's gun and bullets (chips/vulcan/vulcan): 3 bullets.
 local vulcan1 = define.chip {
-    id = "bn5:vulcan1",
+    id = "vulcan1",
     codes = { "C", "D", "E", "*" },
     element = "null",
     family = "null",
@@ -24,7 +24,7 @@ local vulcan1 = define.chip {
 
 -- Vulcan2 (BN5 chip 0x010): action 0x19, BN6's vulcan with BN5's gun and bullets (chips/vulcan/vulcan): 5 bullets.
 local vulcan2 = define.chip {
-    id = "bn5:vulcan2",
+    id = "vulcan2",
     codes = { "A", "B", "C" },
     element = "null",
     family = "null",
@@ -41,7 +41,7 @@ local vulcan2 = define.chip {
 
 -- Vulcan3 (BN5 chip 0x011): action 0x19, BN6's vulcan with BN5's gun and bullets (chips/vulcan/vulcan): 7 bullets.
 local vulcan3 = define.chip {
-    id = "bn5:vulcan3",
+    id = "vulcan3",
     codes = { "L", "M", "N" },
     element = "null",
     family = "null",
@@ -59,7 +59,7 @@ local vulcan3 = define.chip {
 -- SuprVulc (BN5 chip 0x0dc): action 0x19, BN6's vulcan with BN5's gun and bullets (chips/vulcan/vulcan): 12 bullets of
 -- row 0x10 (BN6's SuprVulc's).
 local suprvulc = define.chip {
-    id = "bn5:suprvulc",
+    id = "suprvulc",
     codes = { "S" },
     element = "null",
     family = "null",

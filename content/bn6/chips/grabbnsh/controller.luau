@@ -8,8 +8,8 @@ local common = require("@exelib/grabbnsh/controller")
 local hand = require("./hand")
 
 return common.make {
-    id = "bn6:grabbnsh/controller",
+    id = "grabbnsh/controller",
     hand = hand.kind,
-    returned = define.effect { sprite = asset.sprite("bn6:grab-shot"), anim = 1, palette = 0 },
-    return_sound = asset.sound("bn6:err-select-91"),
+    returned = define.effect { sprite = asset.sprite("grab-shot"), anim = 1, palette = 0 },
+    return_sound = asset.sound("err-select-91"),
 }

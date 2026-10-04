@@ -12,7 +12,7 @@ local ticker = {}
 local LIFETIME = 30
 
 ticker.kind = define.kind {
-    id = "test:test/ticker",
+    id = "test/ticker",
     pool = "effect",
     state = { ticks = "u16", variant = "record:ticker-variant", parent = "kind" },
     update = function(me: Object)

@@ -17,10 +17,10 @@ export type State = {
     centers: number,
 }
 
-local SPRITE = asset.sprite("bn6:crack-shot")
-local SOUND = asset.sound("bn6:crack-shot")
+local SPRITE = asset.sprite("crack-shot")
+local SOUND = asset.sound("crack-shot")
 -- The dust it raises on its panel (the original's effect 0x30).
-local DUST = define.effect { sprite = asset.sprite("bn6:dust"), anim = 0, palette = 0 }
+local DUST = define.effect { sprite = asset.sprite("dust"), anim = 0, palette = 0 }
 -- Up, then forward, 16.16 per tick; how high it flies (whole pixels).
 local RISE, SPEED, HEIGHT = 0x8_0000, 0x8_0000, 0x14
 -- A panel it can dig: solid (0x10) with nothing on it (bodies, neutral
@@ -120,7 +120,7 @@ local function init(me: Object)
 end
 
 shot.kind = define.kind {
-    id = "bn6:crakshot/shot",
+    id = "crakshot/shot",
     pool = "attack",
     state = { centers = "u8" },
     -- `sub_80CA544`.

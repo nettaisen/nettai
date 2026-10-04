@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local barriers = require("../../lib/barriers/barriers")
 
 return define.patch_card {
-    id = "bn6:famous-custom",
+    id = "famous-custom",
     mb = 69,
     effects = {
         cards.first_barrier(barriers.life_aura),

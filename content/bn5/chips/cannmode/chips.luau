@@ -6,10 +6,10 @@ local side_special = require("@exelib/instant/side_special")
 
 -- CannMode (BN5 chip 0x119): one of the Liberation Missions' mode chips: instant chip effect 11 (0x0802D62A, BN6's
 -- `sub_802E1BE`, @exelib/instant/side_special; the same code) writes its mode (the record's first parameter) and a
--- 480-tick timer (360 with per-player gauges) to the user's side state, which nothing in a battle reads (0x0800E576
+-- 480-tick timer (360 in the operation battle) to the user's side state, which nothing in a battle reads (0x0800E576
 -- counts the timer down), so the chip's use changes nothing observable.
 local cannmode = define.chip {
-    id = "bn5:cannmode",
+    id = "cannmode",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -27,10 +27,10 @@ local cannmode = define.chip {
 
 -- CannBall (BN5 chip 0x11a): one of the Liberation Missions' mode chips: instant chip effect 11 (0x0802D62A, BN6's
 -- `sub_802E1BE`, @exelib/instant/side_special; the same code) writes its mode (the record's first parameter) and a
--- 480-tick timer (360 with per-player gauges) to the user's side state, which nothing in a battle reads (0x0800E576
+-- 480-tick timer (360 in the operation battle) to the user's side state, which nothing in a battle reads (0x0800E576
 -- counts the timer down), so the chip's use changes nothing observable.
 local cannball_mode = define.chip {
-    id = "bn5:cannball-mode",
+    id = "cannball-mode",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -48,10 +48,10 @@ local cannball_mode = define.chip {
 
 -- SwrdMode (BN5 chip 0x11b): one of the Liberation Missions' mode chips: instant chip effect 11 (0x0802D62A, BN6's
 -- `sub_802E1BE`, @exelib/instant/side_special; the same code) writes its mode (the record's first parameter) and a
--- 480-tick timer (360 with per-player gauges) to the user's side state, which nothing in a battle reads (0x0800E576
+-- 480-tick timer (360 in the operation battle) to the user's side state, which nothing in a battle reads (0x0800E576
 -- counts the timer down), so the chip's use changes nothing observable.
 local swrdmode = define.chip {
-    id = "bn5:swrdmode",
+    id = "swrdmode",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -69,10 +69,10 @@ local swrdmode = define.chip {
 
 -- YoYoMode (BN5 chip 0x11c): one of the Liberation Missions' mode chips: instant chip effect 11 (0x0802D62A, BN6's
 -- `sub_802E1BE`, @exelib/instant/side_special; the same code) writes its mode (the record's first parameter) and a
--- 480-tick timer (360 with per-player gauges) to the user's side state, which nothing in a battle reads (0x0800E576
+-- 480-tick timer (360 in the operation battle) to the user's side state, which nothing in a battle reads (0x0800E576
 -- counts the timer down), so the chip's use changes nothing observable.
 local yoyomode = define.chip {
-    id = "bn5:yoyomode",
+    id = "yoyomode",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -90,10 +90,10 @@ local yoyomode = define.chip {
 
 -- DrilMode (BN5 chip 0x11d): one of the Liberation Missions' mode chips: instant chip effect 11 (0x0802D62A, BN6's
 -- `sub_802E1BE`, @exelib/instant/side_special; the same code) writes its mode (the record's first parameter) and a
--- 480-tick timer (360 with per-player gauges) to the user's side state, which nothing in a battle reads (0x0800E576
+-- 480-tick timer (360 in the operation battle) to the user's side state, which nothing in a battle reads (0x0800E576
 -- counts the timer down), so the chip's use changes nothing observable.
 local drilmode = define.chip {
-    id = "bn5:drilmode",
+    id = "drilmode",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",

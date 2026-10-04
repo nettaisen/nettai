@@ -39,8 +39,8 @@ export type State = {
     turned: number,
 }
 
-local SPRITE = asset.sprite("bn5:yoyo")
-local SOUND = asset.sound("bn5:set-down")
+local SPRITE = asset.sprite("yoyo")
+local SOUND = asset.sound("set-down")
 local HIT_MOD = 1
 local SPEED, ROUND = 0x5_0000, 8
 local OUT, SPIN, BACK = 0, 4, 8
@@ -283,7 +283,7 @@ local function gone(me: Object)
 end
 
 yoyo.kind = define.kind {
-    id = "bn5:yoyo/yoyo",
+    id = "yoyo/yoyo",
     pool = "attack",
     state = {
         spec = "record:bn5-yoyo",
@@ -328,7 +328,7 @@ function yoyo.spawn(owner: Object, x: number, y: number, element: number, z: num
 end
 
 -- The YoYo chips' yoyo arm (row 0x26).
-yoyo.arm = attachment.look { sprite = asset.sprite("bn5:yoyo-arm"), palette = 0, attach_point = 0x0F }
+yoyo.arm = attachment.look { sprite = asset.sprite("yoyo-arm"), palette = 0, attach_point = 0x0F }
 
 -- YoYo's throw: a yoyo of `spec`.
 function yoyo.action(id: string, spec: Spec): Action

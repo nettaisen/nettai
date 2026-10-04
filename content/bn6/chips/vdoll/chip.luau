@@ -8,7 +8,7 @@ local doll = require("./doll")
 local throw = require("../../lib/bombs/throw")
 
 return define.chip {
-    id = "bn6:vdoll",
+    id = "vdoll",
     codes = { "F", "N", "S", "*" },
     element = "null",
     family = "summon",
@@ -21,5 +21,5 @@ return define.chip {
     flags = { "standard_library", "library" },
     library = { number = 153, index = 153, sort = 450 },
     slot_in_limit = 3,
-    action = throw.action { id = "bn6:vdoll/action", held = bomb.held, thrower = doll.thrower() },
+    action = throw.action { id = "vdoll/action", held = bomb.held, thrower = doll.thrower() },
 }
