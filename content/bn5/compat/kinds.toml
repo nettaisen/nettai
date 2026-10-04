@@ -19,6 +19,7 @@
 "bn5:boomer/boomerang" = { pool = "attack", index = 0x32 }
 "engine/navi-warp" = { pool = "actor", index = 0x2D }
 "engine/navi-chip" = { pool = "effect", index = 0x10, scratch_position = true }
+"engine/full-synchro-aura" = { pool = "actor", index = 0x5E }
 "bn5:projectile" = { pool = "attack", index = 0x00 }
 "bn5:bomb" = { pool = "attack", index = 0x08 }
 "bn5:grab/shot" = { pool = "attack", index = 0x0F }
