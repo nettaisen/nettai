@@ -24,7 +24,7 @@ use nettai_battle::Content;
 use nettai_battle::content::{Board, BoardCell, NaviCustRules};
 use nettai_battle::navicust::{NaviCust, PlacedProgram, SIZE, Shape, cells};
 use nettai_content_api::NaviCustProgramHandle;
-use nettai_match::Side;
+use nettai_match::{Arena, Side};
 
 /// A cell's size on the screen.
 const CELL: f32 = 46.0;
@@ -104,13 +104,14 @@ fn set(side: &mut Side, parts: Vec<PlacedProgram>, expansions: u8) {
     side.navicust = NaviCust::new(&parts, expansions).ok().or(side.navicust);
 }
 
-/// Start a grid of programs on a side whose stats were set directly: the
-/// stats keep only what a save keeps, and the board is the largest.
-fn start_grid(content: &Content, side: &mut Side, largest: u8) {
+/// Start a grid of programs on a side of a match of `game` whose stats
+/// were set directly: the stats keep only what a save keeps, and the board
+/// is the largest.
+fn start_grid(content: &Content, game: &str, side: &mut Side, largest: u8) {
     let kept: std::collections::BTreeMap<String, toml::Value> =
         side.stats_block(content).into_iter().filter(|(k, _)| nettai_match::stats::SAVE_FIELDS.contains(&k.as_str())).collect();
     side.stats = Side::base_stats(content, side.navi, side.game);
-    nettai_match::stats::apply(content, &kept, &mut side.stats);
+    nettai_match::stats::apply(content, game, &kept, &mut side.stats);
     side.stats = nettai_match::starting(content, side.stats, side.game);
     side.navicust = Some(NaviCust::new(&[], largest).expect("an empty NaviCust"));
 }
@@ -133,9 +134,10 @@ fn fits(content: &Content, board: Option<&Board>, parts: &[PlacedProgram], shape
     cells(shape, x as u8, y as u8).all(|c| !taken.contains(&c))
 }
 
-/// Apply an edit; whether the match changed.
-pub fn update(content: &Content, side: &mut Side, state: &mut State, edit: Edit) -> bool {
-    let rules = nettai_match::navicust_rules(content, side).clone();
+/// Apply an edit to a side of a match on `arena`; whether the match
+/// changed.
+pub fn update(content: &Content, arena: &Arena, side: &mut Side, state: &mut State, edit: Edit) -> bool {
+    let rules = nettai_match::navicust_rules(content).clone();
     let largest = rules.boards.len().saturating_sub(1) as u8;
     match edit {
         Edit::ShowStats(on) => {
@@ -144,7 +146,7 @@ pub fn update(content: &Content, side: &mut Side, state: &mut State, edit: Edit)
         }
         Edit::UseGrid(on) => {
             if on {
-                start_grid(content, side, largest);
+                start_grid(content, &arena.game, side, largest);
             } else {
                 side.navicust = None;
             }
@@ -156,7 +158,7 @@ pub fn update(content: &Content, side: &mut Side, state: &mut State, edit: Edit)
             state.search = t;
             return false;
         }
-        Edit::Place(..) | Edit::Expansions(_) if side.navicust.is_none() => start_grid(content, side, largest),
+        Edit::Place(..) | Edit::Expansions(_) if side.navicust.is_none() => start_grid(content, &arena.game, side, largest),
         _ => {}
     }
     let mut parts: Vec<PlacedProgram> = side.navicust.map(|n| n.iter().collect()).unwrap_or_default();
@@ -557,7 +559,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         };
         return column![header, body].spacing(8).into();
     }
-    let rules = nettai_match::navicust_rules(c, side);
+    let rules = nettai_match::navicust_rules(c);
     let largest = rules.boards.len().saturating_sub(1) as u8;
     let expansions = side.navicust.map_or(largest, |n| n.expansions);
     let sizes: Vec<Choice<u8>> = (0..rules.boards.len() as u8)
@@ -656,8 +658,10 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
     };
     // The programs to pick up, searched.
     let needle = state.search.to_lowercase();
+    // (The match's game's.)
     let mut programs: Vec<(String, NaviCustProgramHandle)> = (0..c.defs.navicust_programs.len() as u16)
         .map(NaviCustProgramHandle)
+        .filter(|&h| nettai_match::ids::in_game(e.m.game(), &c.defs.navicust_program(h).key))
         .map(|h| (e.names.navicust_program(c, h), h))
         .filter(|(name, _)| needle.is_empty() || name.to_lowercase().contains(&needle))
         .collect();
@@ -724,50 +728,51 @@ mod tests {
     #[test]
     fn edits() {
         let content = nettai_match::testing::bn6_content();
-        let mut m = nettai_match::draw::live(&content, 7, None).unwrap();
+        let mut m = nettai_match::draw::live(&content, "bn6", 7, None).unwrap();
         let mut state = State::default();
+        let arena = m.arena.clone();
         let side = &mut m.sides[0];
-        assert!(update(&content, side, &mut state, Edit::UseGrid(true)));
+        assert!(update(&content, &arena, side, &mut state, Edit::UseGrid(true)));
         assert_eq!(side.navicust.unwrap().expansions, 2);
         assert!(side.stats_block(&content).keys().all(|k| nettai_match::stats::SAVE_FIELDS.contains(&k.as_str())));
-        let program = |key: &str| content.defs.navicust_program_by_key(key).unwrap();
+        let program = |name: &str| nettai_match::ids::navicust_program(&content, "bn6", name).unwrap();
         // Held from the list: nothing changes until it is put down.
-        assert!(!update(&content, side, &mut state, Edit::Hold(program("bn6:suprarmr"), 0)));
-        assert!(update(&content, side, &mut state, Edit::Place(2, 3)));
+        assert!(!update(&content, &arena, side, &mut state, Edit::Hold(program("suprarmr"), 0)));
+        assert!(update(&content, &arena, side, &mut state, Edit::Place(2, 3)));
         assert!(state.held.is_none());
-        update(&content, side, &mut state, Edit::Hold(program("bn6:hp-50"), 1));
+        update(&content, &arena, side, &mut state, Edit::Hold(program("hp-50"), 1));
         // Not over SuprArmr.
-        assert!(!update(&content, side, &mut state, Edit::Place(2, 3)));
-        assert!(update(&content, side, &mut state, Edit::Place(4, 2)));
-        update(&content, side, &mut state, Edit::Hold(program("bn6:hp-50"), 1));
-        assert!(update(&content, side, &mut state, Edit::Place(5, 2)));
+        assert!(!update(&content, &arena, side, &mut state, Edit::Place(2, 3)));
+        assert!(update(&content, &arena, side, &mut state, Edit::Place(4, 2)));
+        update(&content, &arena, side, &mut state, Edit::Hold(program("hp-50"), 1));
+        assert!(update(&content, &arena, side, &mut state, Edit::Place(5, 2)));
         let n = side.navicust.unwrap();
         assert_eq!(n.len(), 3);
         assert_eq!(state.selected, Some(2));
-        let problems = nettai_match::check::check_navicust(&content, side, &n);
+        let problems = nettai_match::check::check_navicust(&content, &arena, side, &n);
         assert!(problems.is_empty(), "{problems:?}");
         // Compressing one HP+50 compresses the other (one program, one color).
-        update(&content, side, &mut state, Edit::Compress(true));
+        update(&content, &arena, side, &mut state, Edit::Compress(true));
         let n = side.navicust.unwrap();
-        assert!(n.iter().filter(|p| p.program == program("bn6:hp-50")).all(|p| p.compressed));
+        assert!(n.iter().filter(|p| p.program == program("hp-50")).all(|p| p.compressed));
         // Picked up by a cell it covers (off the grid while held), put back.
         let first = n.iter().next().unwrap();
-        assert!(update(&content, side, &mut state, Edit::PickUp(0, first.x, first.y)));
+        assert!(update(&content, &arena, side, &mut state, Edit::PickUp(0, first.x, first.y)));
         assert_eq!(side.navicust.unwrap().len(), 2);
-        assert!(update(&content, side, &mut state, Edit::PutBack));
+        assert!(update(&content, &arena, side, &mut state, Edit::PutBack));
         assert_eq!(side.navicust.unwrap().iter().next(), Some(first));
         // Picked up, turned, put down a row lower; then taken off.
-        update(&content, side, &mut state, Edit::PickUp(0, first.x, first.y));
-        update(&content, side, &mut state, Edit::Rotate);
-        assert!(update(&content, side, &mut state, Edit::Place(first.x, first.y + 1)));
+        update(&content, &arena, side, &mut state, Edit::PickUp(0, first.x, first.y));
+        update(&content, &arena, side, &mut state, Edit::Rotate);
+        assert!(update(&content, &arena, side, &mut state, Edit::Place(first.x, first.y + 1)));
         let moved = side.navicust.unwrap().iter().last().unwrap();
         assert_eq!((moved.y, moved.rotation), (first.y + 1, 1));
-        update(&content, side, &mut state, Edit::Remove);
+        update(&content, &arena, side, &mut state, Edit::Remove);
         assert_eq!(side.navicust.unwrap().len(), 2);
         let problems = nettai_match::check_match(&content, &m);
         assert!(problems.is_empty(), "{problems:?}");
         let side = &mut m.sides[0];
-        assert!(update(&content, side, &mut state, Edit::UseGrid(false)));
+        assert!(update(&content, &arena, side, &mut state, Edit::UseGrid(false)));
         assert!(side.navicust.is_none());
     }
 }

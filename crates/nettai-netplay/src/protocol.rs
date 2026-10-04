@@ -48,7 +48,10 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// 5: an offer's side carries BN5's karma and the souls it has; NaviStats
 /// carries BN5's Hub Style (+0x4C); a system's setup starts from its
 /// defaults (BN5's karma 500).
-pub const VERSION: u16 = 5;
+/// 6: a match is of one game: the Hello says the game its side plays
+/// (peers of different games refuse), and an offer names the match's
+/// ruleset and everything of its side by name in that game.
+pub const VERSION: u16 = 6;
 
 /// The rollback horizon, in elements (ticks, besides the rare payload or
 /// marker): the widest gap a player's stream may have at the other peer
