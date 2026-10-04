@@ -61,8 +61,13 @@ pub struct Setup {
     #[serde(default)]
     pub navi_levels: Option<[u8; 2]>,
     /// Both consoles' save event flag 0x1720 (the NaviCust ran a bug's
-    /// routine at load: MegaMan's emotion window flickers, bugs in his
-    /// stats or not). Traces recorded without it read as clear.
+    /// routine at load: MegaMan's emotion window flickers, bugs the window
+    /// counts in his stats or not). No setup takes it: the engine's rules
+    /// make the glitch from the recorded stats (every recorded MegaMan
+    /// with the flag has a NaviCust bug in his stats, and none without it
+    /// has one; a link navi's flag, left by MegaMan's NaviCust, nothing
+    /// reads), and a replay checks theirs against it (`setup_differences`,
+    /// for MegaMan's).
     #[serde(default)]
     pub emotion_window_glitches: Option<[bool; 2]>,
     /// Both consoles' installed patch cards (the Japanese games'), each
@@ -400,13 +405,24 @@ impl Round {
         Some(before_cards(&recorded, &unhex(before).try_into().expect("a 0x64-byte navi stats block")))
     }
 
-    /// The round's start against the trace: a player's stats after the
-    /// engine applied their patch cards are the recorded ones (the fields
-    /// the engine models).
+    /// The round's start against the trace: the emotion window's glitch
+    /// the rules made for MegaMan (the navi whose window reads it) is the
+    /// save's recorded flag, and a player's stats after the engine applied
+    /// their patch cards are the recorded ones (the fields the engine
+    /// models).
     pub fn setup_differences(&self, b: &Battle, compat: &Compat) -> Vec<String> {
         let ids = Ids::new(&b.content, compat);
         let mut d = Vec::new();
         for side in 0..2 {
+            if let Some(flags) = self.setup.emotion_window_glitches
+                && b.content.navi(b.stats[side].navi).changes_form()
+                && b.consoles[side].emotion_window_glitch != flags[side]
+            {
+                d.push(format!(
+                    "side {side}'s emotion window glitch as the round is set up: ours {} theirs {}",
+                    b.consoles[side].emotion_window_glitch, flags[side]
+                ));
+            }
             if self.stats_before_cards(side).is_none() {
                 continue;
             }
@@ -416,13 +432,6 @@ impl Round {
                 if ours[i] != theirs[i] {
                     d.push(format!("side {side}'s stats after its patch cards, +{i:#04x}: ours {:#04x} theirs {:#04x}", ours[i], theirs[i]));
                 }
-            }
-            let glitch = self.setup.emotion_window_glitches.is_some_and(|g| g[side]);
-            if b.consoles[side].emotion_window_glitch != glitch {
-                d.push(format!(
-                    "side {side}'s emotion window glitch after its patch cards: ours {} theirs {glitch}",
-                    b.consoles[side].emotion_window_glitch
-                ));
             }
         }
         d
@@ -489,7 +498,6 @@ impl Round {
         };
         let mut player = PlayerSetup {
             folder,
-            souls: Default::default(),
             joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
             navi_level,
             sp_times: match &self.setup.sp_times {
@@ -516,13 +524,13 @@ impl Round {
     /// (BattleState+0x44/+0x45) as the setup has them. The other console's
     /// are in `rng1s` and `tag_pairs` when the trace has them; without
     /// them its RNG1 reads as 0 and it has no tag pair, which only a
-    /// re-deal on that player's screen would read. The save's
-    /// emotion window glitch (event flag 0x1720) is in the setups of
-    /// traces recorded with it, for both consoles; without it, it reads as
-    /// clear.
+    /// re-deal on that player's screen would read. (The save's emotion
+    /// window glitch, event flag 0x1720, which a trace records, is no
+    /// setup's: BN6's rules make it from the recorded stats' NaviCust bugs
+    /// and the patch cards, `setup_differences` holding them to the
+    /// recorded flag.)
     fn console_setup(&self, side: u8) -> ConsoleSetup {
         let bs = unhex(&self.setup.battle_state);
-        let emotion_window_glitch = self.setup.emotion_window_glitches.is_some_and(|g| g[side as usize & 1]);
         // The console's counter before the round's first tick: one less
         // than on the setup's frame, the round's first. The trace gives the
         // recording console's; without it (and for the other console,
@@ -539,9 +547,9 @@ impl Round {
             let s = side as usize & 1;
             let rng = self.setup.rng1s.map_or(0, |r| r[s]);
             let tag_pair = self.setup.tag_pairs.and_then(|t| (t[s][0] != 0).then_some(t[s][1]));
-            return ConsoleSetup { rng, tag_pair, emotion_window_glitch, frames };
+            return ConsoleSetup { rng, tag_pair, frames };
         }
-        ConsoleSetup { rng: self.setup.rng1, tag_pair: (bs[0x44] != 0).then_some(bs[0x45]), emotion_window_glitch, frames }
+        ConsoleSetup { rng: self.setup.rng1, tag_pair: (bs[0x44] != 0).then_some(bs[0x45]), frames }
     }
 
     /// A player's game, going by the transformations they send: Gregar's

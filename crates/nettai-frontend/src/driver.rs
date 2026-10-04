@@ -328,11 +328,12 @@ impl Driver for Bn5TracePlayer {
 // or a match file (`--match`).
 
 /// A round to play live on `content` with these battle settings: two
-/// MegaMen with 1000 HP (`nettai_match::draw::live_navi`), each bringing
-/// their folder, shuffled from the seed, with every Cross and Beast Out of
-/// Falzar.
+/// MegaMen at their fresh stats (`nettai_match::Side::base_stats`, as live
+/// play draws them), each bringing their folder, shuffled from the seed,
+/// with every Cross and Beast Out of Falzar.
 pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFolder; 2], seed: u32) -> RoundSetup {
-    let stats = nettai_match::draw::live_navi(content);
+    let megaman = content.form_changing_navi().expect("a navi that changes form");
+    let stats = nettai_match::Side::base_stats(content, megaman, GameVersion::Falzar);
     let player = |side: u32| {
         // Each console shuffles its folder with its own RNG (RNG1), which
         // goes on from there.
@@ -340,7 +341,6 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
         let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&folders[side as usize], 0, &mut rng, content);
         let mut player = PlayerSetup {
             folder: Some(folder),
-            souls: Default::default(),
             joypad_phase: 0,
             navi_level: nettai_match::default_navi_level(content, stats.navi),
             sp_times: Default::default(),
@@ -459,14 +459,15 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         Phase::Hidden { .. } => "CUSTOM (HIDDEN: ANY KEY)",
         Phase::Description { .. } => "CUSTOM: CHIP INFO (ANY KEY)",
         Phase::RunMessage { .. } => "CUSTOM: NO TIME TO RUN (A)",
-        // A system's window, by its name (BN6's Beast Out and Cross window).
+        // A system's window, by its name (BN6's Beast Out and Cross window,
+        // BN5's soul's choice).
         Phase::Window { window, .. } => match b.content.defs.window(window).name.as_str() {
             "beast_out" => "CUSTOM: BEAST OUT!",
             "cross_opening" | "cross_window" | "cross_closing" => "CUSTOM: CROSS (UP/DOWN, A CHOOSE, B BACK)",
             "cross_chosen" => "CUSTOM: CROSS!",
+            "soul_unison" => "CUSTOM: SOUL UNISON!",
             _ => "CUSTOM",
         },
-        Phase::SoulChosen { .. } => "CUSTOM: SOUL UNISON!",
         _ => "CUSTOM",
     };
     out.push_str(title);
@@ -474,8 +475,8 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         let x = &screen.slots[slot as usize];
         let label = match x.kind {
             SlotKind::Ok => "OK".to_string(),
-            SlotKind::Soul => "SOUL".to_string(),
-            // A system's button, by its name ("redeal": "REDEAL").
+            // A system's button, by its name ("redeal": "REDEAL", BN5's
+            // "soul": "SOUL").
             SlotKind::Button { button, cell: nettai_battle::custom::ButtonCell::Only | nettai_battle::custom::ButtonCell::Left } => {
                 b.content.defs.button(button).name.replace('_', " ").to_uppercase()
             }
@@ -582,7 +583,11 @@ mod tests {
     fn a_saved_match_plays_the_same_battle() {
         let content = nettai_match::testing::bn6_content();
         for seed in [5, 77] {
-            let drawn = nettai_match::draw::live(&content, "bn6", seed, None).unwrap();
+            let mut drawn = nettai_match::draw::live(&content, "bn6", seed, None).unwrap();
+            // (1000 HP each, so the round lasts the test.)
+            for s in &mut drawn.sides {
+                (s.stats.max_base_hp, s.stats.max_hp, s.stats.hp) = (1000, 1000, 1000);
+            }
             let text = nettai_match::write(&content, &drawn);
             let read = nettai_match::parse(&content, &text).unwrap();
             let mut a = LivePlayer::new(drawn.round(&content, seed), content.clone());

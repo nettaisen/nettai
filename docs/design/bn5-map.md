@@ -524,7 +524,8 @@ as bn6-extract takes BN6's) writes a pack whose manifest says `game = "bn5"`:
   0x95, the digits 0x99, the slots 0x9F, the column's icons 0xE1 and cells 0x47, the turn limit 0x4B, the name
   bar 0x1B6), a hidden slot filled with tile 2, the cursor over OK at (0x58, 0x70) and over the button at (0x58,
   0x88) with their corners (0x08024714, 0x08024744); the 13 element icons in BN5's family order, put in the
-  engine's; the re-deal and scrap buttons; the soul button (`buttons`: its states' tiles 0x086FBB64, its picture
+  engine's; the re-deal and scrap buttons; the soul button (the souls system's; `buttons`: its states' tiles
+  0x086FBB64, its picture
   0x087322E8 with Soul Unison's and Chaos Unison's palettes, the souls' 2x2 icons 0x08749FB8, 14 with Chaos's, in
   sprite palette 13, 0x0874AAB8); the emblems by version (13, with 8 palettes).
 - **Versions:** 12 chips (0x12D–0x136, 0x139, 0x13A: each version's five Giga chips, and DethPhnx and Phoenix)
@@ -1407,14 +1408,19 @@ them.
 
 ### 15.8 Soul Unison (as built)
 
-- **The soul button** (the engine's custom screen, BN5's layout: slot 11, `SlotKind::Soul`, 0x08023C54,
-  0x08024B28, 0x08024972): lit for the last pick's family when the navi has a soul of it (a form naming its
-  `soul = { number, family }`), the save has the soul (`SoulUnlocks`: bn5-compat gives
-  a finished save's six of the version and Chaos Unison) and it isn't used this round (Soul Unison and Chaos Unison
-  apart; a dark chip's is Chaos Unison). Pressed: BN5's state 9 (`Phase::SoulChosen`: fades 0x34 and 0x30), the
-  soul first in the selection in place of the chip given up. At OK the transform record asks for the soul's form,
-  3 turns and the NaviCust's bonus (NaviStats +0x32, at most 9) or Chaos Unison's 1 (0x08024FF6;
-  `TransformRequest::turns`, `chaos`; the netplay protocol's version 2); the chip given up leaves the folder.
+- **The soul button** (the souls system's button `soul`, rules/souls/custom.luau: BN5's layout's slot 11,
+  0x08023C54, 0x08024B28, 0x08024972): shown for MegaMan with souls, outside battle flag 0x40, with the save's
+  Soul Unison (event flag 0, the setup's `soul_unison`), unless he is worried or dark (in a soul or angry he may);
+  lit for the last pick's family when the navi has a soul of it (a form naming its `soul = { number, family }`),
+  the save has the soul (the setup's `souls`, its flags by number: bn5-compat gives a finished save's six of the
+  version) and it isn't given this round (the system's `souls_used`: Soul Unison and Chaos Unison apart; a dark
+  chip's is Chaos Unison, which needs the setup's `chaos_unison`, flag 0x236). Pressed: the window `soul_unison`
+  (BN5's state 9: the icon's flight, fades 0x34 and 0x30, then the white), whose white step puts the soul first in
+  the selection in place of the chip given up (`custom.trade_last_pick`). At OK (`custom.confirmed`) the transform
+  record asks for the soul's form, 3 turns and the bonus (NaviStats +0x32, `soul_turn_bonus`: at most 9, under 0
+  one) or Chaos Unison's 1 (0x08024FF6; `custom.set_form`'s turns and Chaos flag, `TransformRequest::turns`,
+  `chaos`); the chip given up leaves the folder in the soul's place. B on the soul puts the chip back. (Until
+  2026-10-04 this was the custom screen's Rust: `SlotKind::Soul`, `Phase::SoulChosen`, `SoulUnlocks`.)
 - **The change** (rules/souls/change.luau, the souls' `change`, BN5's 0x08011F74, run by the shared turn-start
   sequencer): onto the future panel, a flash, his moves stopped (`stop_moving`); the soul's image (objects/
   soul-image, actor 0x2A, its navi's sprite 08-xx) spirals in, blinks and fades; MegaMan emerges in the soul (the
@@ -1782,7 +1788,7 @@ side's statistic 1 marks it spent; NaviStats +0x2A, the operation battle's, rule
 0x40000000 (0x0802C16C, from object_subtractHP, 0x0800C6E0, and applyDamageToPlayer, 0x080185A2): the roles' `volley`,
 BN5's action 0x30 (rules/emotion/dark-survival). The battle dims and the screen fades out (the transformation's fade,
 `battle.screen_fade`; white, untouchable, his future panel, a flash), the HUD's gauge, HP box and emotion window go (the
-HUD part `hp_box`: draw task 7, the box and its low-HP alarm), his dark self comes out and spirals back (actor 0x2E:
+HUD part `hp_box`: draw task 7, the box's drawing only, its low-HP alarm sounding on), his dark self comes out and spirals back (actor 0x2E:
 rules/souls/shade's code, `shade.make`), the computer drives him for 720 ticks as DarkInvs's drive does (its end
 action 0x49), the HUD comes back (without the gauge in the last turns, `battle.late_turns`) and the screen fades in. The
 status section's `hp_loss = "bn5"` holds BN5's object_subtractHP (a player's loss drains its side's gauge too: ×128,
@@ -2029,6 +2035,14 @@ rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   no supports); without, the NaviCust's flag 0x10C1, which its bugs' routine sets when a bug applies (0x08140040).
   Each console reads its own save's. The navicust system's `glitch`, and the patch-cards system with cards; a
   recording's setup carries both consoles' (`emotion_window_glitches`, oracle-trace's `bn5_emotion_window_glitch`).
+  No setup gives the engine the flag: the rules make it, from a NaviCust's compile or, for a side without one (a
+  recording's, whose stats are as the compile left them), from the NaviCust bugs in the stats. Of the 308 recorded
+  sides with the flag, the 76 with it set have such a stat but two, `navicust/hubbatc` side 0 and
+  `navicust-compile/hubbatc` side 1: HubBatc's bug halves the HP programs and writes no bug stat, and a recording
+  carries no NaviCust to compile, so MegaMan's window doesn't flicker there. `navicust/hubbatc`, whose console is the
+  recording one, is a known difference (its RNG1 differs from the first flicker on: bn5-compat's `GLITCH_UNSEEN`,
+  listed in the replay report) until a recording carries its save's NaviCust; `navicust-compile/hubbatc`'s is the
+  other console, whose RNG1 a recording doesn't hold, and it matches.
 - **The weapons** (navis/megaman/weapons): the routines that load a chip (0x0800FE78: chips.luau, MettGuard's and
   CrsShld's B+Back waiting 40 ticks, Ccann's TankCan1 not cracking), the card Shield (0x62, guards.luau), TriBustr
   (0x65, the buster's routine), ChrgS (0x63, the charged shot without the draw, the program always: its 0, the
