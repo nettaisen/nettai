@@ -1451,8 +1451,10 @@ declare obstacle: {
     -- pushing hit (hit modifier 0x40) does: "forgets_damage" (the default,
     -- `sub_801AD9E`: pushed, its damage forgotten), "keeps_damage"
     -- (`sub_801AD12`: pushed, the damage lands), "any_hit" (`sub_801ADFA`:
-    -- that, and any one side's hit but type 0x1000 pushes it a panel away),
-    -- "ignored" (`sub_801AD6A`: never pushed).
+    -- that, and any one side's hit but type 0x1000 pushes it a panel away;
+    -- BN5's, 0x08017A78, by the hitters' flips: its game's rules'
+    -- `push_reading`), "ignored" (`sub_801AD6A`: never pushed). An
+    -- obstacle's push reads its hits as its game's `push_reading` says.
     take_hits: (me: Object, push: ObstaclePush?) -> (),
     -- `sub_800F672`: the lifetime (`timer`): broken when it runs out or
     -- the battle is over, blinking for its last three seconds.
