@@ -403,7 +403,6 @@ fn a_ruleset_change_drops_what_the_rules_dont_take() {
         navi,
         game: nettai_battle::custom::GameVersion::Gregar,
         stats: crate::Side::base_stats(&content, navi, nettai_battle::custom::GameVersion::Gregar),
-        emotion_window_glitch: false,
         folder: crate::Folder::EMPTY,
         crosses: crate::navi_crosses(&content, navi).map(|c| crate::CrossList::new(&c[..c.len().min(2)])),
         beast_out: true,

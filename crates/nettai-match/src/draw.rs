@@ -1,8 +1,9 @@
 //! Live play's random match (docs/frontend.md §2): a link battle's field,
 //! and for each side a legal random folder, five Crosses of both versions
-//! and a version, on a 1000-HP MegaMan with no NaviCust programs, all drawn
-//! from a seed. That is BN6's (its live navi and Crosses); another game's
-//! is a plain match ([`plain`]) of its own. The draw is the frontend's,
+//! and a version, on MegaMan at his fresh stats (100 HP, as a new match's:
+//! `Side::fresh`) with no NaviCust programs, all drawn from a seed. That is
+//! BN6's (its Crosses and versions); another game's is a plain match
+//! ([`plain`]) of its own. The draw is the frontend's,
 //! made before the battle; the battle is then a function of its setup and
 //! the buttons, as rollback needs. The same seed gives the same match,
 //! which can be written out as a match file (`crate::file`) and played
@@ -12,11 +13,9 @@ use crate::folders;
 use crate::{Arena, Match, Place, Side, ids};
 use nettai_battle::Battle;
 use std::sync::Arc;
-use bn6_compat::{Compat, codec};
 use nettai_battle::content::Content;
 use bn6_compat::CrossList;
 use nettai_battle::custom::{FolderChip, GameVersion, SavedFolder};
-use nettai_battle::setup::NaviStats;
 use nettai_content_api::{RulesetHandle, StageHandle};
 
 /// The frontend's own random draws for a setup (splitmix64): not the
@@ -48,22 +47,6 @@ impl Draws {
             items.swap(i, self.below(i + 1));
         }
     }
-}
-
-/// The live navi's NaviStats record: a MegaMan of Falzar with 1000 HP,
-/// custom level 5, Mega level 5, Giga level 1, Regular memory 50, three
-/// Beast Outs, the sun out (+0x22, as in the recorded matches: the sun
-/// chips hit harder), and no NaviCust programs: no FloatShoe or AirShoe
-/// (+0x1B, +0x1C), so road panels carry him and holes stop him.
-const LIVE_NAVI: &str = "08000000000100ff00320505010080000000ff00000000000000000000000001010301000000001f0000000a0000ffffff0000000000000000ff00000000e803e803e8030000010000000a0000000000000000000000ffffffffffff0000000000000000";
-
-fn unhex(s: &str) -> Vec<u8> {
-    (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
-}
-
-/// The live navi's stats on `content`.
-pub fn live_navi(content: &Content) -> NaviStats {
-    codec::navi_stats(&unhex(LIVE_NAVI).try_into().unwrap(), &codec::Ids::new(content, Compat::bn6_for(content)))
 }
 
 /// The backgrounds a BN6 link battle draws from (`sub_81209DC`'s
@@ -99,7 +82,8 @@ fn link_backgrounds(game: &str) -> &'static [&'static str] {
     if game == bn6_compat::ROOT { &BN6_LINK_BACKGROUNDS } else { &[] }
 }
 
-/// Whether live play draws `game`'s match from its live navi (BN6's).
+/// Whether live play draws `game`'s match with Crosses and a version
+/// (BN6's).
 fn draws_live(game: &str) -> bool {
     game == bn6_compat::ROOT
 }
@@ -143,27 +127,16 @@ fn crosses(content: &Content, game: &str, draws: &mut Draws) -> Result<CrossList
 }
 
 impl Side {
-    /// A live player of BN6: the live navi (`live_navi`) of `game`, with
-    /// this folder and Cross list, no patch cards.
-    pub fn live(content: &Content, folder: SavedFolder, crosses: CrossList, game: GameVersion) -> Side {
-        let stats = crate::starting(content, live_navi(content), game);
-        Side {
-            navi: stats.navi,
-            game,
-            stats,
-            emotion_window_glitch: false,
-            folder: folder.into(),
-            crosses: Some(crosses),
-            beast_out: true,
-            cards: Vec::new(),
-            navi_level: crate::default_navi_level(content, stats.navi),
-            bug_frags: 0,
-            sp_times: Default::default(),
-            navicust: None,
-            tactics: Default::default(),
-            karma: crate::facts::DEFAULT_KARMA,
-            souls: None,
-        }
+    /// A live player of BN6 on `arena`: a new match's side (`Side::fresh`:
+    /// MegaMan at his fresh stats, a NaviCust with no programs) of
+    /// `version`, with this folder and Cross list.
+    pub fn live(content: &Content, arena: &Arena, folder: SavedFolder, crosses: CrossList, version: GameVersion) -> Result<Side, String> {
+        let mut side = Side::fresh(content, arena)?;
+        side.game = version;
+        side.stats = Side::base_stats(content, side.navi, version);
+        side.folder = folder.into();
+        side.crosses = Some(crosses);
+        Ok(side)
     }
 
     /// A player of a match of `game` by its stock rules, drawn from
@@ -180,7 +153,7 @@ impl Side {
         let folder = folders::random_folder(content, game, &mut rules, 0, draws);
         let crosses = crosses(content, game, draws)?;
         let version = version(draws);
-        Ok(Side::live(content, folder, crosses, version))
+        Side::live(content, &arena, folder, crosses, version)
     }
 }
 
@@ -200,7 +173,6 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Resul
         navi,
         game: version,
         stats: Side::base_stats(content, navi, version),
-        emotion_window_glitch: false,
         folder: folder.into(),
         crosses: None,
         beast_out: true,
@@ -233,11 +205,11 @@ pub fn plain(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageH
     Ok(Match { seed: Some(seed), arena, sides })
 }
 
-/// The battle a live player's folder is drawn against: two live navis on
-/// `arena` (their folders anything: the rules read the stats).
+/// The battle a live player's folder is drawn against: two live players
+/// on `arena` (their folders anything: the rules read the stats).
 fn rules_battle(content: &Arc<Content>, arena: &Arena) -> Result<Battle, String> {
     let anything = SavedFolder { chips: [FolderChip::new(Default::default(), nettai_battle::content::ChipCode(0)); 30], regular: None, tags: None };
-    let side = Side::live(content, anything, CrossList::default(), GameVersion::Falzar);
+    let side = Side::live(content, arena, anything, CrossList::default(), GameVersion::Falzar)?;
     crate::check::start(content, &Match { seed: None, arena: arena.clone(), sides: [side.clone(), side] })
 }
 
@@ -246,8 +218,8 @@ fn rules_battle(content: &Arc<Content>, arena: &Arena) -> Result<Battle, String>
 /// random folder each player's rules accept (`crate::folders`), five of
 /// MegaMan's ten Crosses, of both versions, for each Cross window
 /// (`Unlocks::cross_list`, docs/engine/custom-screen.md §4.1), and each
-/// player's version, Falzar or Gregar; both players are 1000-HP MegaMen
-/// (`live_navi`). Another game's is [`plain`].
+/// player's version, Falzar or Gregar; both players are MegaMen at their
+/// fresh stats (100 HP). Another game's is [`plain`].
 pub fn live(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageHandle>) -> Result<Match, String> {
     if !draws_live(game) {
         return plain(content, game, seed, stage);
@@ -259,7 +231,8 @@ pub fn live(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageHa
         [folders::random_folder(content, game, &mut rules, 0, &mut draws), folders::random_folder(content, game, &mut rules, 1, &mut draws)];
     let crosses = [crosses(content, game, &mut draws)?, crosses(content, game, &mut draws)?];
     let versions = [version(&mut draws), version(&mut draws)];
-    let sides = [0, 1].map(|side| Side::live(content, folders[side], crosses[side], versions[side]));
+    let side = |side: usize| Side::live(content, &arena, folders[side], crosses[side], versions[side]);
+    let sides = [side(0)?, side(1)?];
     Ok(Match { seed: Some(seed), arena, sides })
 }
 
@@ -274,10 +247,17 @@ mod tests {
     #[test]
     fn the_live_match_is_drawn_from_the_seed() {
         let content = crate::testing::bn6_content();
-        // The navi: no NaviCust programs (road panels carry him).
-        let s = live_navi(&content);
-        assert_eq!((s.hp, s.mega_level, s.giga_level, s.reg_up), (1000, 5, 1, 50));
-        assert!(!s.float_shoes && !s.air_shoes && !s.undershirt && !s.super_armor && !s.chip_shuffle && !s.number_open);
+        // The navi: MegaMan at his fresh stats, as a new match's, with no
+        // NaviCust programs (road panels carry him).
+        let m = live(&content, "bn6", 0, None).unwrap();
+        let fresh = &crate::Match::empty(&content, "bn6").unwrap().sides[0];
+        for side in &m.sides {
+            let s = &side.stats;
+            assert_eq!((side.navi, side.navicust, side.navi_level), (fresh.navi, fresh.navicust, fresh.navi_level));
+            assert_eq!(*s, Side::base_stats(&content, side.navi, side.game));
+            assert_eq!((s.hp, s.max_hp), (100, 100));
+            assert!(!s.float_shoes && !s.air_shoes && !s.undershirt && !s.super_armor && !s.chip_shuffle && !s.number_open);
+        }
         let stages = crate::link_battle_stages(&content, "bn6");
         assert_eq!(stages.len(), 96);
         let mut seen = std::collections::BTreeSet::new();

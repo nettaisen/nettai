@@ -106,8 +106,6 @@ pub struct SideFile {
     pub level: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bug_frags: Option<u32>,
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub emotion_window_glitch: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub crosses: Option<Vec<String>>,
     #[serde(default = "yes", skip_serializing_if = "is_yes")]
@@ -415,7 +413,6 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
         navi,
         game: version,
         stats,
-        emotion_window_glitch: s.emotion_window_glitch,
         folder: folder?,
         crosses,
         beast_out: s.beast_out,
@@ -512,7 +509,6 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
         // (The navi's default level is left out.)
         level: s.navi_level.filter(|_| s.navi_level != crate::default_navi_level(content, s.navi)),
         bug_frags: (s.bug_frags != 0).then_some(s.bug_frags),
-        emotion_window_glitch: s.emotion_window_glitch,
         crosses: s.crosses.map(|l| l.forms().map(|f| name(&content.defs.form(f).key)).collect()),
         beast_out: s.beast_out,
         sp_times: crate::sp_times::named(crate::sp_slots(content), &s.sp_times)
@@ -663,9 +659,11 @@ mod tests {
             assert_eq!(format!("{:?}", back.round(&content, seed)), format!("{:?}", m.round(&content, seed)));
         }
         let text = write(&content, &crate::draw::live(&content, "bn6", 3, None).unwrap());
-        for line in ["game = \"bn6\"", "[arena]", "[left]", "folder = [\n    [\"", "\", \"", "[left.stats]", "hp = 1000", "regular_memory = 50"] {
+        for line in ["game = \"bn6\"", "[arena]", "[left]", "folder = [\n    [\"", "\", \"", "[left.navicust]", "expansions = 2", "programs = []"] {
             assert!(text.contains(line), "{line}:\n{text}");
         }
+        // (MegaMan at his fresh stats: no stats block.)
+        assert!(!text.contains("[left.stats]") && !text.contains("[right.stats]"), "{text}");
         // Every name is the game's own, written once with the game.
         assert!(!text.contains("bn6:") && !text.contains("ruleset"), "{text}");
         assert_eq!(game_of(&text).unwrap(), "bn6");
@@ -712,8 +710,12 @@ mod tests {
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
         has(bad("navi = \"megaman\"", "navi = \"nobody\""), "left: no navi \"nobody\" in bn6");
         has(bad("navi = \"megaman\"", "navi = \"bn6:megaman\""), "left: no navi \"bn6:megaman\" in bn6"); // (written in full)
-        has(bad("hp = 1000", "hp = 100000"), "stats: hp takes a whole number");
-        has(bad("hp = 1000", "hp = 1000\natack = 1"), "no stat \"atack\"");
+        // (A stats block, after the sides' tables.)
+        let stats = |block: &str| parse(&content, &format!("{good}\n[left.stats]\n{block}\n")).unwrap_err();
+        has(stats("hp = 100000"), "stats: hp takes a whole number");
+        has(stats("hp = 1000\natack = 1"), "no stat \"atack\"");
+        // No key takes the emotion window's glitch: the rules make it.
+        has(bad("navi = \"megaman\"", "navi = \"megaman\"\nemotion_window_glitch = true"), "unknown field `emotion_window_glitch`");
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
         has(bad(stage, "stage = \"moon\""), "arena: no stage \"moon\" in bn6");
         has(bad("game = \"bn6\"", "game = \"bn7\""), "no game \"bn7\"");
@@ -723,8 +725,10 @@ mod tests {
         m.sides[0].folder.chips = [m.sides[0].folder.chips[0]; 30];
         m.sides[0].folder.regular = None;
         has(crate::check_match(&content, &m), "left: folder: 30 copies of");
-        // A Mega chip past the navi's Mega level.
+        // A Mega chip past the navi's Mega level (its stats set directly:
+        // no NaviCust).
         let mut m = drawn.clone();
+        m.sides[1].navicust = None;
         m.sides[1].stats.mega_level = 0;
         let megas = m.sides[1].folder.chips().filter(|c| content.chip(c.id).class == nettai_battle::content::ChipClass::Mega).count();
         if megas > 0 {
@@ -766,6 +770,7 @@ mod tests {
         let protoman = ids::navi(&content, "bn6", "protoman").unwrap();
         m.sides[1].navi = protoman;
         m.sides[1].crosses = None;
+        m.sides[1].navicust = None;
         m.sides[1].navi_level = Some(0);
         m.sides[1].stats = crate::Side::save_base(&content, protoman, m.sides[1].game, Some(0));
         m.sides[1].folder.regular = None;
