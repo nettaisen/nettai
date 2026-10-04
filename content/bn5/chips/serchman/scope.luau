@@ -25,7 +25,8 @@ export type State = {
 
 local SIGHT = asset.sprite("bn5:sight")
 local SCOPE = asset.sprite("bn5:search-scope")
-local SOUND_MOVE = asset.sound("bn5:target-move")
+-- (0x10E: 0x080E52D4 loads it as 15 + 255.)
+local SOUND_MOVE = asset.sound("bn5:erase-man")
 local SOUND_LOCK = asset.sound("bn5:mark")
 local SOUND_BONUS = asset.sound("bn5:ok-8b")
 local TIME_LIMIT = 0x12C

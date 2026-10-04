@@ -54,7 +54,7 @@ function spreader.action(spec: SpreaderSpec, look: SpreaderLook): Action
         end
         local t = s.timer + 1
         s.timer = t
-        if t <= FIRE_AFTER then
+        if t <= (spec.fire_after or FIRE_AFTER) then
             return
         end
         local gun = me.overlay

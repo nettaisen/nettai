@@ -366,20 +366,6 @@ export type RockSpec = {
 
 -- ---- The dimming chips (chips/wind, chips/guardian, ...) -------------------
 
--- A Wind's or Fan's fan (chips/wind/fan): its palette; `pulls`: it blows
--- Fan's pulling gust from the far column rather than Wind's pushing one
--- from the enemy's front column; ticks from becoming its side's wind to
--- the first gust; HP; its identity (what it is taken for) and how it looks
--- absorbed (objects/absorbed-obstacle's `look`).
-export type FanVariant = {
-    palette: number,
-    pulls: boolean,
-    wait: number,
-    hp: number,
-    identity: Identity,
-    absorbed: AbsorbedLook,
-}
-
 -- CircGun's gun (chips/circgun/gun; the original's chip parameters): the
 -- ticks between its steps less one, its shots, and its look (the palette;
 -- look 1's shots hit as another attacker with a bug).
@@ -418,26 +404,6 @@ export type PanelChange = {
     change_sound: Sound?,
 }
 
--- A BN6 patch card's effect (rules/patch-cards/cards.luau's constructors
--- make them; the patch-cards system applies them): its kind, and the kind's
--- fields.
-export type PatchCardEffect = {
-    kind: string,
-    amount: number?,
-    element: ElementName?,
-    weapon: Weapon?,
-    variant: ProjectileVariant?,
-    barrier: Barrier?,
-    gauge: string?,
-    on: boolean?,
-    trail: string?,
-    level: number?,
-    blanks: number?,
-    charged: number?,
-    status: string?,
-    -- The card shows it as a bug.
-    bug: boolean?,
-}
 -- A barrier (lib/barriers): `sub_801A7CC`'s row (how it behaves, its HP,
 -- the damage a hit must reach to wear it, its timer (0xFFFF: none), the
 -- element that breaks it), and its visual (`byte_80E0A14`'s look: sprite,
@@ -952,11 +918,6 @@ export type HeatFlame = {
     -- What it is: an attack, or (Param3 set) a thrown attack.
     is: CollisionType,
 }
-
--- How a gust blows (objects/gust, the original's first parameter):
--- `pulls` turns it back toward its side, a weaker push; `unseen` hides it
--- and lets it blow through any panel.
-export type GustHow = { pulls: boolean?, unseen: boolean? }
 
 -- What a riding hit is spawned with (navis/slashman/riding_hit): its
 -- collision types, hit modifier and spark, and whether it goes on after

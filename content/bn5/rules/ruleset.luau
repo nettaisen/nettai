@@ -1,7 +1,7 @@
 --!strict
 -- BN5's stock rules (docs/design/rules-in-luau.md §2.2): the systems a BN5 player plays by: light and dark
--- MegaMan, BN5's emotions, Soul Unison, the computer navis Chaos Unison brings, the NaviCust and the folder rules so
--- far; its patch cards and its Team Battle are still to come as systems (docs/design/bn5-map.md §15).
+-- MegaMan, BN5's emotions, Soul Unison, the computer navis Chaos Unison brings, the NaviCust, the patch cards and the
+-- folder rules so far; its Team Battle is still to come as a system (docs/design/bn5-map.md §15).
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
 local computer_navi = require("./computer-navi/system")
@@ -9,6 +9,7 @@ local emotion = require("./emotion/system")
 local folder = require("./folder/system")
 local light_dark = require("./light-dark/system")
 local navicust = require("./navicust/system")
+local patch_cards = require("./patch-cards/system")
 local souls = require("./souls/system")
 
 return define.ruleset {
@@ -17,6 +18,8 @@ return define.ruleset {
     systems = {
         -- The NaviCust compiled into the navi's stats as the round is set up (BN6's compile, BN5's board and bugs).
         navicust,
+        -- The patch cards over what the NaviCust made, and the HP (0x0813F97C's).
+        patch_cards,
         -- Light and dark MegaMan: the holy panels a dark one clears, the chips each may use.
         light_dark,
         -- BN5's emotions: Full Synchro on a counter, the emotion-swing bug.

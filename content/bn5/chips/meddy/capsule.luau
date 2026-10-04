@@ -204,7 +204,8 @@ local function burst(me: Object)
             battle.effect(Vec3.new(cx, cy, 0), v.explosion)
         end
     end
-    me:set_lifecycle("destroy")
+    -- (0x080C627C: the lifecycle and action halfword, then the phase; its phase's init byte stays.)
+    me.lifecycle = "destroy"
     me.action = 0
     me.phase = 0
 end
@@ -220,13 +221,15 @@ local function tick(me: Object)
     me:hit_spark()
     if battle.over() then
         c:set_region(nil)
-        me:set_lifecycle("destroy")
+        -- (0x080C608E: the state byte alone.)
+        me.lifecycle = "destroy"
         return
     end
     if me:take_damage(0) < 0 or bit32.band(c.hit_flags, NAVI_HIT[me.alliance]) ~= 0 then
         blow_up(me)
         c:set_region(nil)
-        me:set_lifecycle("destroy")
+        -- (0x080C608E, as at the battle's end: the state byte alone.)
+        me.lifecycle = "destroy"
         return
     end
     if while_dimmed(me) or not battle.dimmed() then
@@ -319,15 +322,18 @@ export type Throw = {
     target_y: number,
     -- The damage word.
     damage: number,
+    -- Its third parameter (2, the default: it runs while dimmed, as a navi chip's; MeddySoul's 0).
+    mode: number?,
 }
 
--- 0x080C62D8: a capsule of `thrower`'s side and facing from its panel, with `element`, running while dimmed (its
--- third parameter 2). (Its position is the spawner's registers, which its init overwrites.)
+-- 0x080C62D8: a capsule of `thrower`'s side and facing from its panel, with `element`, its flags running it while
+-- dimmed (its third parameter says whether it does: 2 by default). (Its position is the spawner's registers, which
+-- its init overwrites.)
 function capsule.throw(thrower: Object, element: number, throw: Throw): Object?
     local o = battle.spawn(capsule.kind, Vec3.zero)
     if o then
         local s = o.state :: State
-        s.variant, s.line, s.mode = throw.variant, throw.line, 2
+        s.variant, s.line, s.mode = throw.variant, throw.line, throw.mode or 2
         o.future_panel_x, o.future_panel_y = throw.target_x, throw.target_y
         o.panel_x, o.panel_y = thrower.panel_x, thrower.panel_y
         o.element = element

@@ -4,10 +4,12 @@
 -- (tinted), blinks for 30 and fades out over 8. Its sprite is the soul's navi's (category 8 by the soul's number).
 -- It puts on what the soul's navi wears as it comes (0x0800ED0E with 1: 0x0800EDBC's routines by soul, their parts
 -- stepping even while paused) and takes it off as it goes (0x0800EEBE with 1): GyroMan's propeller, NapalmMan's
--- cannon, Colonel's cape and KnightMan's ball and chain (the body overlay rows 0, 4, 3 and 1).
+-- cannon, Colonel's cape and KnightMan's ball and chain (the body overlay rows 0, 4, 3 and 1), and NumberMan's face
+-- (NumberSoul's layer, row 0: 0x0800EE6E, 0x0800EFFA).
 
 local SINE: { number } = require("../math").sine
 local body_overlays = require("../../lib/body_overlays")
+local layer = require("../../navis/megaman/forms/numbersoul/layer")
 
 local image = {}
 
@@ -41,6 +43,8 @@ local PARTS: { [number]: Identity } = {
     [7] = wears("bn5:soul-image/colonel", body_overlays.colonel),
     [11] = wears("bn5:soul-image/knightman", body_overlays.knightman),
 }
+-- NumberMan's (soul 9): his face, a layer (row 0) in its second related slot.
+local NUMBER_SOUL, NUMBERMAN_FACE = 9, 0
 local SOUND = asset.sound("bn5:cross-merge")
 -- The tint while it spirals in.
 local TINT = 0x2108
@@ -101,9 +105,13 @@ local function fade(me: Object)
     if int.i16(me.timer) < 0 then
         me.sprite.alpha = nil
         me.visible = false
-        local parts = PARTS[(me.state :: State).soul]
+        local soul = (me.state :: State).soul
+        local parts = PARTS[soul]
         if parts then
             me:remove_parts(parts)
+        elseif soul == NUMBER_SOUL then
+            layer.take_off(me.related2)
+            me.related2 = nil
         end
         me:set_lifecycle("destroy")
         return
@@ -145,6 +153,8 @@ local function init(me: Object)
     local parts = PARTS[s.soul]
     if parts then
         me:add_parts(parts, 1)
+    elseif s.soul == NUMBER_SOUL then
+        me.related2 = layer.spawn(me, NUMBERMAN_FACE)
     end
     me:set_lifecycle("update")
     tick(me)
@@ -168,8 +178,13 @@ image.kind = define.kind {
 }
 
 -- 0x080C0524: the image of soul `soul` for `owner`, on its side and facing.
+--
+-- (It is spawned at the registers 0x0801201E's read of the side's transform record leaves (0x08012402): Chaos Unison
+-- (+1), the navi switch's navi (+6, 0xFFFF: none in a soul's change) and the turns (+3), which its first tick
+-- overwrites but NumberMan's face, spawned before it, copies.)
 function image.spawn(owner: Object, soul: number): Object?
-    local o = battle.spawn(image.kind, owner.pos)
+    local turns, chaos = owner:form_change_soul()
+    local o = battle.spawn(image.kind, Vec3.new(if chaos then 1 else 0, 0xFFFF, turns))
     if o then
         (o.state :: State).soul = soul
         o.related1 = owner
