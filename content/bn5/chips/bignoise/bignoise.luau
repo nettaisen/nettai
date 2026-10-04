@@ -258,7 +258,8 @@ local function update(me: Object)
             if controller then
                 navi_chip.navi_left(controller)
             end
-            me:set_lifecycle("destroy")
+            -- (0x080BD6FE: the state byte alone; his action and phase stay.)
+            me.lifecycle = "destroy"
         end
     else
         error(string.format("BigNoise's ShadeMan: action %#x reads past 0x080BD58C", a))
