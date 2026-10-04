@@ -4,7 +4,7 @@
 -- MegEnBom and BigBomb: what differs between the chips is its variant, a
 -- record (`bomb.variant { ... }`).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local common = require("@exelib/bombs/bomb")
 local effects = require("../effects")
 

@@ -10,7 +10,7 @@
 -- §3.6.20.
 
 local common = require("@exelib/roll/navi")
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local heart = require("./heart")
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")

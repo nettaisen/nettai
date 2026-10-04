@@ -1,15 +1,16 @@
 //! The content's scripts: the Luau modules of the packs a load reads
 //! (docs/design/content-model-v2.md §4.0), each named by its pack and its
-//! path in it (`bn6:chips/minibomb/chip`, `exelib:swords/slash`), which
+//! path in it (`bn6:chips/minibomb/init`, `exelib:swords/slash`), which
 //! live next to what they define.
 //!
-//! Each pack has a manifest (`manifest.toml`): a game pack's lists its
-//! definitions that a person picks or a ruleset names, and the support
-//! packs it uses; the define phase loads each pack's listed modules and
-//! what they require, nothing else, and holds a game pack's lists to the
-//! whole truth. A module requires only its own pack's modules and those of
-//! the support packs its pack uses. Every id a module writes is local to
-//! its game (`minibomb`).
+//! Each pack has a manifest (`manifest.toml`: its name, its kind and the
+//! support packs it depends on), and a game pack a top module
+//! (`<game>/init.luau`) that requires what the game has. The define phase
+//! runs each game's top module and what it requires, nothing else, and
+//! holds it to the whole truth: what a game has is defined by a module its
+//! init.luau requires itself. A module requires only its own pack's modules
+//! and those of the support packs its pack depends on. Every id a module
+//! writes is local to its game (`minibomb`).
 //!
 //! [`Content::define`](super::Content::define) turns what the modules
 //! define into what the script runtime binds (`content::defs`). Nothing in
@@ -62,23 +63,27 @@ impl Scripts {
     }
 
     /// Game `game`'s modules (by path in its directory), with a manifest
-    /// that loads every one of them and lists the definitions it must, and
-    /// uses every support pack the content holds (tests and tools that hold
-    /// a game's modules in memory; content/'s packs have their own).
-    pub fn add_game(&mut self, game: &str, modules: BTreeMap<String, String>) {
-        let uses = self.packs.iter().filter(|p| p.kind == PackKind::Support).map(|p| p.id.clone()).collect();
-        let manifest = Scripts::manifest_of(game, &modules, uses);
+    /// that depends on every support pack the content holds; without a top
+    /// module among them (`init`), one that requires every one of them
+    /// ([`Scripts::init_for`]). (Tests and tools that hold a game's modules
+    /// in memory; content/'s packs have their own.)
+    pub fn add_game(&mut self, game: &str, mut modules: BTreeMap<String, String>) {
+        let depends = self.packs.iter().filter(|p| p.kind == PackKind::Support).map(|p| p.id.clone()).collect();
+        if !modules.contains_key(packs::INIT) {
+            let init = Scripts::init_for(&modules);
+            modules.insert(packs::INIT.to_string(), init);
+        }
         self.add_dir(game, modules);
-        self.set_manifest(manifest);
+        self.set_manifest(PackManifest { id: game.to_string(), kind: PackKind::Game, depends });
     }
 
     /// Support pack `id`'s modules (by path in its directory), with its
-    /// manifest; the games the content holds use it.
+    /// manifest; the games the content holds depend on it.
     pub fn add_support(&mut self, id: &str, modules: BTreeMap<String, String>) {
         self.add_dir(id, modules);
         for p in self.packs.iter_mut().filter(|p| p.kind == PackKind::Game) {
-            if !p.uses.iter().any(|u| u == id) {
-                p.uses.push(id.to_string());
+            if !p.depends.iter().any(|u| u == id) {
+                p.depends.push(id.to_string());
             }
         }
         self.set_manifest(PackManifest { id: id.to_string(), kind: PackKind::Support, ..Default::default() });
@@ -96,24 +101,32 @@ impl Scripts {
         self.packs.insert(at, manifest);
     }
 
-    /// A manifest for game `game` whose modules are `modules` (by path in
-    /// its directory), using `uses`: it lists those that define what a
-    /// game lists under their lists ([`nettai_content_api::GAME_LISTS`]),
-    /// and the rest under `also`, so every one loads.
-    pub fn manifest_of(game: &str, modules: &BTreeMap<String, String>, uses: Vec<String>) -> PackManifest {
-        let mut m = PackManifest { id: game.to_string(), kind: PackKind::Game, uses, ..Default::default() };
+    /// A top module (`init.luau`'s source) for a game whose modules are
+    /// `modules` (by path in its directory): it requires every one, those
+    /// that define what a game has under their groups
+    /// ([`nettai_content_api::GAME_LISTS`]) and the rest under `also`, so
+    /// every one loads; each group in path order, a folder by its name.
+    pub fn init_for(modules: &BTreeMap<String, String>) -> String {
         let mut listed = std::collections::BTreeSet::new();
-        for (list, registries) in nettai_content_api::GAME_LISTS {
-            let out = m.definitions.list_mut(list).expect("a game's list");
-            for (path, source) in modules {
-                if registries.iter().any(|r| defines(source, r.name())) {
-                    out.push(path.clone());
-                    listed.insert(path.clone());
-                }
+        let mut out = String::from("return {\n");
+        let group = |name: &str, paths: Vec<&String>, out: &mut String| {
+            if paths.is_empty() {
+                return;
             }
+            out.push_str(&format!("    {name} = {{\n"));
+            for path in paths {
+                out.push_str(&format!("        require(\"@self/{}\"),\n", keys::listed_as(path)));
+            }
+            out.push_str("    },\n");
+        };
+        for (list, registries) in nettai_content_api::GAME_LISTS {
+            let paths: Vec<&String> = modules.iter().filter(|(_, source)| registries.iter().any(|r| defines(source, r.name()))).map(|(p, _)| p).collect();
+            listed.extend(paths.iter().map(|p| (*p).clone()));
+            group(list, paths, &mut out);
         }
-        m.definitions.also = modules.keys().filter(|p| !listed.contains(*p)).cloned().collect();
-        m
+        group("also", modules.keys().filter(|p| !listed.contains(*p) && p.as_str() != packs::INIT).collect(), &mut out);
+        out.push_str("}\n");
+        out
     }
 
     /// The module name of path `path` in content/'s directory `dir`.
@@ -127,8 +140,8 @@ impl Scripts {
         self.modules.get_mut(&Scripts::name(dir, path))
     }
 
-    /// What is wrong with the packs: a bad manifest, a pack twice, a use of
-    /// a game pack or a cycle of uses, a listed module that isn't there.
+    /// What is wrong with the packs: a bad manifest, a pack twice, a game
+    /// pack depended on or a cycle, a game without its top module.
     pub fn check_packs(&self) -> Result<(), String> {
         let mut all = BTreeMap::new();
         for p in &self.packs {
@@ -142,20 +155,34 @@ impl Scripts {
         }
         packs::load_order(&all, &self.games())?;
         for p in &self.packs {
-            for m in p.entries() {
-                if !self.modules.contains_key(&m) && !self.modules.contains_key(&keys::init_of(&m)) {
-                    return Err(format!("{}/{}: lists {}, which isn't there", p.id, packs::MANIFEST, keys::module_path(&m)));
-                }
+            if let Some(m) = p.entry()
+                && !self.modules.contains_key(&m)
+            {
+                return Err(format!(
+                    "{}.luau: game pack {} has no top module: its {}.luau requires what the game has",
+                    keys::module_path(&m),
+                    p.id,
+                    packs::INIT
+                ));
             }
         }
         Ok(())
     }
 
+    /// The modules game `game`'s top module requires itself, by name (a
+    /// folder by its name): what the game has (`packs::required_by_init`).
+    pub fn required_by_init(&self, game: &str) -> Result<Vec<String>, String> {
+        match self.modules.get(&packs::top_module(game)) {
+            Some(init) => packs::required_by_init(game, init),
+            None => Err(format!("{game}/{}.luau: game pack {game} has no top module", packs::INIT)),
+        }
+    }
+
     /// The modules as a runtime loads them, with the bytecode compiled
-    /// from them: the define phase starts from each pack's listed modules.
+    /// from them: the define phase starts from each game's top module.
     pub fn pack(&self) -> nettai_luau::Pack {
         let modules = self.modules.iter().map(|(k, v)| (k.clone(), v.clone()));
-        let entries = self.packs.iter().flat_map(|p| p.entries()).collect();
+        let entries = self.packs.iter().filter_map(|p| p.entry()).collect();
         nettai_luau::Pack::new(modules).with_entries(entries).with_packs(self.packs.iter().cloned()).with_compiled(self.compiled.0.clone())
     }
 }
@@ -334,48 +361,65 @@ mod tests {
         assert!(e.contains("which its base doesn't have"), "{e}");
     }
 
-    /// docs/design/content-model-v2.md §4.0: a game pack's manifest is the
-    /// whole truth about its definitions of what a game lists. The modules
-    /// it doesn't reach don't load; a definition it doesn't list, one under
-    /// the wrong list, a listed module that isn't there, a support pack's
-    /// definition of what a game lists: refused.
+    /// docs/design/content-model-v2.md §4.0: a game's top module (its
+    /// init.luau) is the whole truth about what the game has. The modules
+    /// it doesn't reach don't load; a definition of what a game has in a
+    /// module it doesn't require itself, a game without one, a support
+    /// pack's definition of what a game has: refused. The order of its
+    /// requires moves no key and no handle.
     #[test]
-    fn a_game_packs_manifest_lists_its_definitions() {
+    fn a_games_init_requires_what_it_has() {
         let modules: BTreeMap<String, String> = [
             ("rules/turns", "return define.system { id = 'turns' }"),
-            ("rules/ruleset", "return define.ruleset { id = 'stock', stock = true, systems = { require('./turns') } }"),
+            ("rules/init", "return define.ruleset { id = 'stock', stock = true, systems = { require('@self/turns') } }"),
             ("chips/cannon", "return define.record('card', { power = 3 })"),
-            ("never", "error('a module no manifest reaches never loads')"),
+            ("chips/sword/init", "return define.chip { id = 'sword', instant = function(u) end, parts = { define.record('part', {}), require('@self/edge') } }"),
+            ("chips/sword/edge", "return define.record('part', { long = true })"),
+            ("lib/pa", "return { chip = require('../chips/sword'), record = define.record('pa', {}) }"),
+            ("never", "error('a module no init reaches never loads')"),
         ]
         .into_iter()
         .map(|(p, s)| (p.to_string(), s.to_string()))
         .collect();
-        let with_manifest = |definitions: &str| -> Result<Content, String> {
+        let with_init = |init: Option<&str>| -> Result<Content, String> {
             let mut c = Content::default();
             c.scripts.add_dir("game", modules.clone());
-            let m = PackManifest::parse(&format!("id = \"game\"\nkind = \"game\"\n[definitions]\n{definitions}"), "game/manifest.toml")?;
-            c.scripts.set_manifest(m);
+            if let Some(init) = init {
+                c.scripts.modules.insert(packs::top_module("game"), init.to_string());
+            }
+            c.scripts.set_manifest(PackManifest::parse("id = \"game\"\nkind = \"game\"\n", "game/manifest.toml")?);
             c.define().map_err(|e| e.message)?;
             Ok(c)
         };
-        let c = with_manifest("rules = [\"rules/ruleset\"]").unwrap();
+        let c = with_init(Some("return { rules = require('@self/rules') }")).unwrap();
         assert!(c.defs.ruleset_by_key("stock").is_some());
         assert_eq!(c.defs.record("chips/cannon#1"), None, "unreached, unloaded");
-        // `also`: a module loaded for what it defines, which nothing listed requires.
-        let c = with_manifest("rules = [\"rules/ruleset\"]\nalso = [\"chips/cannon\"]").unwrap();
-        assert!(c.defs.record("chips/cannon#1").is_some());
-        let refused = |definitions: &str, said: &str| {
-            let e = with_manifest(definitions).expect_err(said);
+        // `also`: a module loaded for what it defines, which nothing else requires.
+        let all = "return { rules = require('@self/rules'), chips = { require('@self/chips/sword') }, also = { require('@self/chips/cannon'), require('@self/lib/pa') } }";
+        let c = with_init(Some(all)).unwrap();
+        assert!(c.defs.record("chips/cannon#1").is_some() && c.defs.chip_by_key("sword").is_some());
+        // The order of the requires is the load order, and nothing more: the
+        // same definitions under the same keys, so the same handles.
+        let turned = "return { also = { require('@self/lib/pa'), require('@self/chips/cannon') }, chips = { require('@self/chips/sword') }, rules = require('@self/rules') }";
+        let d = with_init(Some(turned)).unwrap();
+        assert_eq!(c.defs.definitions, d.defs.definitions);
+        let refused = |init: Option<&str>, said: &str| {
+            let e = with_init(init).expect_err(said);
             assert!(e.contains(said), "{said}: {e}");
         };
-        refused("also = [\"rules/ruleset\"]", "game/rules/ruleset.luau: ruleset stock is game's, and game/manifest.toml doesn't list rules/ruleset in `rules`");
-        refused("chips = [\"rules/ruleset\"]", "game/manifest.toml: `chips` lists rules/ruleset, which defines no chip");
-        refused("rules = [\"rules/ruleset\", \"gone\"]", "game/manifest.toml: lists game/gone, which isn't there");
-        // A support pack defines nothing a game lists.
+        // Reached, but not required by the init itself.
+        refused(
+            Some("return { rules = require('@self/rules'), also = { require('@self/lib/pa') } }"),
+            "game/chips/sword/init.luau: chip sword is game's, and game/init.luau doesn't require chips/sword",
+        );
+        refused(Some("return { rules = require('@self/rules'), also = { require('@self/gone') } }"), "no module game:gone.luau");
+        refused(Some("return { rules = require('./rules') }"), "leaves pack game");
+        refused(None, "game/init.luau: game pack game has no top module");
+        // A support pack defines nothing a game has.
         let mut c = Content::default();
         c.scripts.add_support("lib", [("x".to_string(), "return define.ruleset { id = 'r' }".to_string())].into());
         c.scripts.add_game("game", [("rules/ruleset".to_string(), "local _ = require('@lib/x')\nreturn define.ruleset { id = 'stock', stock = true }".to_string())].into());
         let e = c.define().unwrap_err().message;
-        assert!(e.contains("lib/x.luau: ruleset r: support pack lib defines nothing a game lists"), "{e}");
+        assert!(e.contains("lib/x.luau: ruleset r: support pack lib defines nothing a game has"), "{e}");
     }
 }

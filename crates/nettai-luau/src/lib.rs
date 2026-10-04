@@ -48,15 +48,15 @@ use mlua::{Function, Lua, Table, Value as LuaValue, VmState};
 
 /// Content's scripts: module name to source text, and bytecode already
 /// compiled from them. A module's name is its pack's and its path in the
-/// pack without `.luau` (`bn6:chips/minibomb/chip`; docs/design/
+/// pack without `.luau` (`bn6:chips/minibomb/init`; docs/design/
 /// content-model-v2.md §4.0); the definitions a module makes are keyed
 /// local to the game (`minibomb`).
 #[derive(Clone, Debug, Default)]
 pub struct Pack {
     modules: BTreeMap<String, String>,
-    /// The modules the define phase loads, in order (each pack's listed
-    /// modules), which require the rest; none: every module, in name order
-    /// (a pack a test makes of modules alone).
+    /// The modules the define phase loads, in order (each game's top
+    /// module, its init.luau), which require the rest; none: every module,
+    /// in name order (a pack a test makes of modules alone).
     entries: Vec<String>,
     /// The packs the modules are of, by name: what a module may require
     /// (`packs::check_require`); none: any module (a test's modules alone).
@@ -93,7 +93,7 @@ impl Compiled {
 
 impl Pack {
     /// Modules by name: their pack and their path in it
-    /// (`bn6:chips/minibomb/chip`, `keys::module_name`;
+    /// (`bn6:chips/minibomb/init`, `keys::module_name`;
     /// docs/design/content-model-v2.md §4.0).
     pub fn new(modules: impl IntoIterator<Item = (String, String)>) -> Pack {
         let modules: BTreeMap<String, String> = modules.into_iter().collect();
@@ -104,20 +104,20 @@ impl Pack {
     }
 
     /// The same pack, the define phase starting from these modules (each
-    /// pack's listed modules, by name) and loading what they require.
+    /// game's top module, by name) and loading what they require.
     pub fn with_entries(mut self, entries: Vec<String>) -> Pack {
         self.entries = entries;
         self
     }
 
     /// The same pack, its modules' packs these: a require reaches only its
-    /// own pack and the support packs it uses (`packs::check_require`).
+    /// own pack and the support packs it depends on (`packs::check_require`).
     pub fn with_packs(mut self, packs: impl IntoIterator<Item = nettai_content_api::PackManifest>) -> Pack {
         self.packs = packs.into_iter().map(|p| (p.id.clone(), p)).collect();
         self
     }
 
-    /// One folder's modules, by path in the folder (`chips/minibomb/chip`).
+    /// One folder's modules, by path in the folder (`chips/minibomb/init`).
     pub fn root(name: &str, modules: impl IntoIterator<Item = (String, String)>) -> Pack {
         Pack::new(modules.into_iter().map(|(path, source)| (format!("{name}{}{path}", keys::SEPARATOR), source)))
     }
@@ -545,8 +545,9 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
             }
         })
     });
-    // Each pack's listed modules, in order, and what they require; without
-    // any, every module in name order.
+    // Each game's top module, and what it requires (in the order it
+    // requires them, which no key depends on); without any, every module in
+    // name order.
     let paths: Vec<String> = if pack.entries.is_empty() { pack.modules.keys().cloned().collect() } else { pack.entries.clone() };
     for path in &paths {
         BUDGET.with(|b| b.set(options.budget.saturating_mul(16)));

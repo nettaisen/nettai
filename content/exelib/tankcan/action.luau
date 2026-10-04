@@ -4,7 +4,7 @@
 -- from the panel ahead on the 23rd, the screen shaking; it lowers the cannon on the 36th and is back to idle 4 ticks
 -- later.
 
-local attachment = require("../attachment/attachment")
+local attachment = require("../attachment")
 local shell = require("./shell")
 
 local tankcan = {}

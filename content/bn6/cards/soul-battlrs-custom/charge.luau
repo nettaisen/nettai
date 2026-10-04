@@ -6,7 +6,7 @@
 -- starts.
 
 local weapon = require("../../lib/weapon")
-local chips = require("../../chips/vulcan/chips")
+local chips = require("../../chips/vulcan")
 
 return define.weapon {
     id = "patch-cards/soul-battlrs-custom/charge",

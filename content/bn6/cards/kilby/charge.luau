@@ -5,7 +5,7 @@
 -- its use starts.
 
 local weapon = require("../../lib/weapon")
-local lance = require("../../chips/lance/chip")
+local lance = require("../../chips/lance")
 
 return define.weapon {
     id = "patch-cards/kilby/charge",

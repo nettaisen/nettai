@@ -4,7 +4,7 @@
 -- kind and look. BN6's look is `protoman.bn6`, which `protoman.summon`
 -- brings.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/protoman/navi")
 local parts = require("../../lib/swords/parts")

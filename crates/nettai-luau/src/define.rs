@@ -14,7 +14,7 @@
 //!   (`minibomb/action`, `minibomb/action/args/thrown`); owners are walked in
 //!   registry and key order, their fields in key order;
 //! - else `<module>#<n>`, its place among the module's definitions: a game
-//!   pack's module by its path in the pack (`chips/cannon/chips#2`), a
+//!   pack's module by its path in the pack (`chips/cannon/init#2`), a
 //!   support pack's by its name (`exelib:regions#57`, the loader's own key,
 //!   which content never writes).
 //!
@@ -488,7 +488,7 @@ pub(crate) fn finish(
 }
 
 /// What an anonymous definition's key starts with: a game pack's module's
-/// path in the pack (`chips/cannon/chips`), a support pack's module's name
+/// path in the pack (`chips/cannon/init`), a support pack's module's name
 /// (`exelib:regions`). `games`, the game packs (none: every module is a
 /// game's, a test's modules alone).
 fn anonymous_base<'m>(module: &'m str, games: &HashSet<String>) -> &'m str {

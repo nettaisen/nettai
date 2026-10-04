@@ -6,7 +6,7 @@
 -- the NaviCust's bugs make instead stays one (their actions don't read the
 -- variant).
 
-local buster = require("../../navis/megaman/weapons/buster/weapon")
+local buster = require("../../navis/megaman/weapons/buster")
 
 -- The buster's shot (its action).
 local SHOT: Action = buster.shot :: any

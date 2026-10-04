@@ -7,10 +7,10 @@
 -- its user's (`action { rack = ... }`, the original's variant): WindRack's
 -- rack, or TenguCross's fan for its charged shot.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local arm = require("../../lib/arm")
 local collision = require("../../rules/collision")
-local gust = require("../../objects/gust/gust")
+local gust = require("../../objects/gust")
 local regions = require("@exelib/regions")
 
 local action = {}

@@ -13,9 +13,9 @@
 -- docs/engine/field-objects.md. The behavior is BN5's too
 -- (@exelib/rock/rock), made here with BN6's look.
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
+local absorbed_obstacle = require("../../objects/absorbed-obstacle")
 local collision = require("../../rules/collision")
-local common = require("@exelib/rock/rock")
+local common = require("@exelib/rock")
 local debris = require("./debris")
 local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")

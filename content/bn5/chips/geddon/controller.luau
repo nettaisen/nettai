@@ -6,7 +6,7 @@
 
 local common = require("@exelib/geddon/controller")
 local quake = require("@exelib/geddon/quake")
-local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
+local rising_bubble = require("../../objects/rising-bubble")
 
 local quakes = quake.make {
     id = "geddon/quake",

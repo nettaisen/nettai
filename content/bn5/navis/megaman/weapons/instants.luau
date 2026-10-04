@@ -10,7 +10,7 @@
 -- - B↓Vacuum (`megaman/vacuum`, routine 0x4C, 0x0800FC82): effect 25 (0x080CEBC8, BN6's `sub_80CD4AC`, TenguCross's
 --   wind: the same code): a pulling gust (navis/megaman/gust) down each row from the far column, with its sound.
 
-local common_gust = require("@exelib/gust/gust")
+local common_gust = require("@exelib/gust")
 local gust = require("../gust")
 
 local instants = {}

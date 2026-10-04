@@ -5,7 +5,7 @@
 -- (@exelib/widesht/action, action 0x30) with BN5's attachment and wave: `wave.action { ... }`.
 
 local action = require("@exelib/widesht/action")
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local common = require("@exelib/widesht/wave")
 

@@ -5,6 +5,6 @@
 -- bonus 0).
 
 local common = require("@exelib/guardian/strike")
-local punisher = require("../punisher/chip")
+local punisher = require("../punisher")
 
 return common.make { id = "guardian/strike", punisher = punisher }

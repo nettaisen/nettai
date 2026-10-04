@@ -4,7 +4,7 @@
 -- and attachment. The ruleset starts it by role
 -- (`actions.anti_sword_counter`, rules/roles.luau).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local common = require("@exelib/antiswrd/counter")
 local parts = require("../../lib/swords/parts")
 local sonic_boom = require("../../lib/swords/sonic_boom")
