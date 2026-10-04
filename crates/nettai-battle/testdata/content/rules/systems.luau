@@ -69,9 +69,11 @@ local watcher = define.system {
 }
 
 -- BN6's own Beast Out turns (content/bn6/rules/beast), which the test
--- navis' forms go by as BN6's do, and its emotions (content/bn6/rules/
--- emotion: Full Synchro on a counter).
+-- navis' forms go by as BN6's do, its emotions (content/bn6/rules/
+-- emotion: Full Synchro on a counter) and its dark chips' bug frags
+-- (content/bn6/rules/dark-chips).
 local beast = require("./beast/system")
+local dark_chips = require("./dark-chips/system")
 local emotion = require("./emotion/system")
 local forms = require("./forms/system")
 
@@ -84,7 +86,7 @@ return {
     stock = define.ruleset {
         id = "stock",
         stock = true,
-        systems = { beast, counter, forms.system, emotion.system },
+        systems = { beast, counter, forms.system, emotion.system, dark_chips },
         berserk = require("./berserk"),
         buster = require("./buster"),
         math = require("./math"),
