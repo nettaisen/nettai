@@ -27,7 +27,7 @@
 //! save holds its own version's six; the save import reads them.
 
 use crate::Side;
-use nettai_battle::content::{Content, FormKind};
+use nettai_battle::content::Content;
 use nettai_battle::custom::PlayerSetup;
 use nettai_battle::rules::Fact;
 use nettai_content_api::{FormHandle, Registry, Value};
@@ -69,10 +69,10 @@ pub fn soul_capacity(content: &Content, side: &Side) -> usize {
         .unwrap_or(0)
 }
 
-/// Every soul the content has (forms of kind soul), in handle order: of
+/// Every soul the content has (forms with a `soul`), in handle order: of
 /// every game, either version.
 pub fn all_souls(content: &Content) -> Vec<FormHandle> {
-    (0..content.defs.forms.len() as u16).map(FormHandle).filter(|&f| content.form(f).kind == FormKind::Soul).collect()
+    (0..content.defs.forms.len() as u16).map(FormHandle).filter(|&f| content.form(f).soul.is_some()).collect()
 }
 
 /// The souls `side` has: its list, else every soul.
@@ -103,7 +103,7 @@ pub fn check(content: &Content, side: &Side) -> Vec<String> {
             out.push("a soul the content hasn't".into());
             continue;
         }
-        if content.form(f).kind != FormKind::Soul {
+        if content.form(f).soul.is_none() {
             out.push(format!("{} is no soul", crate::names::form(content, f)));
         }
         if list[..i].contains(&f) {

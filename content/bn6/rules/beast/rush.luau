@@ -13,6 +13,7 @@
 
 local beast_claw = require("../../navis/megaman/weapons/beast-claw/weapon")
 local slash_charge = require("../../navis/megaman/forms/slashcross/charge")
+local kind = require("../forms/kind")
 local lockon = require("../lockon")
 
 local rush = {}
@@ -89,7 +90,7 @@ end
 -- the original; here the mode the charged sword's setup gave with its
 -- slash, `rush_lockon`), and failing those, the chip's.
 local function lockon_mode(navi: Object): Lockon?
-    local over = battle.navi(navi.alliance).beast_over
+    local over = kind.beast_over(navi.alliance)
     if not over and (navi:status("blind") or navi:status("confused")) then
         return nil
     end
@@ -118,14 +119,14 @@ end
 -- `lifetime` ticks, less green, with a ground shadow, tied to the Beast
 -- form (or to the attack outside one: `sub_80E341E`).
 local function afterimage(navi: Object, pos: Vec3, anim: number, lifetime: number)
-    local beast = battle.navi(navi.alliance).beast
+    local beast = kind.beast(navi.alliance)
     battle.afterimage(navi, pos, {
         anim = anim,
         flip = bit32.bxor(navi.alliance, navi.flip),
         lifetime = lifetime,
         color_shader = 0x83E0,
         shadow = "ground",
-        tether = if beast then "beast_form" else "attack",
+        tether = if beast then "form" else "attack",
     })
 end
 
