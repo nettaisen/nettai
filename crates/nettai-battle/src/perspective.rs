@@ -84,17 +84,18 @@ impl Battle {
     /// objects unless they are the other side's and its navi
     /// (`sub_80103BC`) is blind. A navi whose init hasn't run yet has no
     /// collision data: the game reads its status word through the null
-    /// pointer, from the BIOS, which gives the opcode it last fetched
-    /// (`f1::NULL_READ`), and that has the blind bit. It happens on a
-    /// round's first tick when the other side's navi inits first and its
-    /// FirstBarrier's visual asks.
+    /// pointer, from the BIOS, which gives the opcode it last fetched (the
+    /// game's `missing_collision_status`: BN6's has the blind bit,
+    /// BN5's hasn't). It happens on a round's first tick when the other
+    /// side's navi inits first and its FirstBarrier's visual asks.
     pub fn sees(&self, viewer: u8, alliance: u8) -> bool {
         use crate::collision::f1;
         if alliance & 1 == viewer & 1 {
             return true;
         }
         let Some(navi) = self.player(viewer & 1) else { return true };
-        let status = self.objects.get(navi).collision.map_or(f1::NULL_READ, |c| self.collision.get(c).f1);
+        let missing = self.game_rules().missing_collision_status.0;
+        let status = self.objects.get(navi).collision.map_or(missing, |c| self.collision.get(c).f1);
         status & f1::BLIND == 0
     }
 
