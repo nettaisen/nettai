@@ -1,0 +1,17 @@
+# BN5's ROMs other than Team ProtoMan's US one, whose addresses compat's other files give: where each has them.
+# Written by tools/bn5/gen_rules.py (bn6battle-verify) from the four ROMs.
+
+[colonel]
+# How far its stage actor lists are from Team ProtoMan's US ROM's (a battle settings record's bytes 12..16:
+# its netbattle settings records at 0x0811B034): 0xE8.
+actor_lists = 232
+
+[jp-protoman]
+# How far its stage actor lists are from Team ProtoMan's US ROM's (a battle settings record's bytes 12..16:
+# its netbattle settings records at 0x0811AB68): -0x3E4.
+actor_lists = -996
+
+[jp-colonel]
+# How far its stage actor lists are from Team ProtoMan's US ROM's (a battle settings record's bytes 12..16:
+# its netbattle settings records at 0x0811AC50): -0x2FC.
+actor_lists = -764
