@@ -8,9 +8,9 @@
 -- Not reached: his other spawner (0x080BC0DA, which nothing calls), whose TomahawkMan keeps no controller waiting
 -- (his Param3 1).
 
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("@exelib/navi-chips/navi")
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).

@@ -1,12 +1,14 @@
-//! Type-check a Luau content root (docs/design/scripting.md §3.3) against
-//! the engine's content API definitions (content/nettai/core.d.luau, beside
-//! the roots) and the root's own (its `*.d.luau`), with Luau's own analysis
-//! (strict mode, the new solver), in process.
+//! Type-check the content (docs/design/scripting.md §3.3;
+//! docs/design/content-model-v2.md §4.0), each pack against its
+//! declarations (the engine's core.d.luau, the support packs' it uses, its
+//! own; `packs::declarations`), with Luau's own analysis (strict mode, the
+//! new solver), in process; and check that the packs' manifests and
+//! requires name only modules that are there, each require one its pack may
+//! make (a pack requires only itself and the support packs it uses).
 //!
 //! Each module is checked on its own and `require` is typed `any`; an
-//! editor running luau-lsp with `--definitions=content/nettai/core.d.luau
-//! --definitions=<root>/types.d.luau` resolves requires and checks across
-//! modules too.
+//! editor running luau-lsp with a `--definitions=` for each declaration
+//! resolves requires and checks across modules too.
 
 pub mod lints;
 
@@ -15,9 +17,6 @@ use std::time::Duration;
 
 /// A type error, as `path:line:col: message`.
 pub type Problem = String;
-
-/// The folder of behavior every game's folder may require (content/common).
-pub const COMMON: &str = "common";
 
 /// A checker loaded with a pack's API definitions.
 pub struct PackChecker {
@@ -69,101 +68,103 @@ pub fn modules(dir: &Path) -> std::io::Result<Vec<(String, String)>> {
     Ok(out)
 }
 
-/// The definitions a root's modules check against: the engine's (every
-/// `*.d.luau` of content/nettai, the sibling `nettai` of `dir`), the shared
-/// folder's (content/common's, the sibling `common` of `dir`, when there is
-/// one: the types of the modules every game's folder requires), then the
-/// root's own (its `*.d.luau`: BN6's shared types, `types.d.luau`), each in
-/// name order.
-pub fn definitions(dir: &Path) -> Result<String, String> {
-    let parent = dir.parent().unwrap_or(Path::new("."));
-    let engine = parent.join("nettai");
-    let common = parent.join(COMMON);
-    let mut folders = vec![engine.as_path()];
-    if common.is_dir() && common.file_name() != dir.file_name() {
-        folders.push(common.as_path());
-    }
-    folders.push(dir);
+/// The declarations pack `pack` of content `dir` checks against: the
+/// engine's, then the support packs it uses', then its own
+/// (`packs::declarations`).
+pub fn definitions(dir: &Path, pack: &str) -> Result<String, String> {
+    use nettai_content_api::packs;
+    let all = packs::packs(dir)?.into_iter().map(|p| (p.id.clone(), p)).collect();
     let mut defs = String::new();
-    for d in folders {
-        let mut files: Vec<_> = std::fs::read_dir(d)
-            .map_err(|e| format!("{}: {e}", d.display()))?
-            .flatten()
-            .map(|e| e.path())
-            .filter(|p| p.to_string_lossy().ends_with(".d.luau"))
-            .collect();
-        files.sort();
-        if d == engine && files.is_empty() {
-            return Err(format!("{}: the engine's API definitions (core.d.luau) aren't here", engine.display()));
-        }
-        for f in files {
-            defs += &std::fs::read_to_string(&f).map_err(|e| format!("{}: {e}", f.display()))?;
-            defs += "\n";
-        }
-    }
-    Ok(defs)
-}
-
-/// Check a whole pack directory against its definitions, and lint it: the
-/// number of modules checked and the problems found.
-pub fn check_pack(dir: &Path) -> Result<(usize, Vec<Problem>), String> {
-    let mut checker = PackChecker::new(&definitions(dir)?)?;
-    let modules = modules(dir).map_err(|e| e.to_string())?;
-    let mut problems = Vec::new();
-    for (path, source) in &modules {
-        problems.extend(checker.check(path, source)?);
-        problems.extend(lints::lints(path, source));
-    }
-    Ok((modules.len(), problems))
-}
-
-/// Check every folder of the content directory `dir` (content/: one
-/// namespace, docs/design/rules-in-luau.md) against the engine's
-/// declarations and every folder's own (a module may use another folder's
-/// types: BN5's BN6's), and lint it: the modules checked and the problems,
-/// each module named by its folder and path.
-pub fn check_content(dir: &Path) -> Result<(usize, Vec<Problem>), String> {
-    let folders: Vec<std::path::PathBuf> = {
-        let mut f: Vec<_> = std::fs::read_dir(dir)
-            .map_err(|e| format!("{}: {e}", dir.display()))?
-            .flatten()
-            .map(|e| e.path())
-            .filter(|p| p.is_dir() && p.file_name().is_some_and(|n| n != "nettai" && !n.to_string_lossy().starts_with('.')))
-            .collect();
-        f.sort();
-        f
-    };
-    let mut defs = own_definitions(&dir.join("nettai"))?;
-    for folder in &folders {
-        defs += &own_definitions(folder)?;
-    }
-    let mut checker = PackChecker::new(&defs)?;
-    let (mut n, mut problems) = (0, Vec::new());
-    for folder in &folders {
-        let name = folder.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-        for (path, source) in modules(folder).map_err(|e| e.to_string())? {
-            let full = format!("{name}/{path}");
-            problems.extend(checker.check(&full, &source)?);
-            problems.extend(lints::lints(&path, &source).into_iter().map(|p| format!("{name}/{p}")));
-            n += 1;
-        }
-    }
-    Ok((n, problems))
-}
-
-/// A folder's own definitions (its `*.d.luau`), in name order.
-fn own_definitions(dir: &Path) -> Result<String, String> {
-    let mut files: Vec<_> = std::fs::read_dir(dir)
-        .map_err(|e| format!("{}: {e}", dir.display()))?
-        .flatten()
-        .map(|e| e.path())
-        .filter(|p| p.to_string_lossy().ends_with(".d.luau"))
-        .collect();
-    files.sort();
-    let mut defs = String::new();
-    for f in files {
+    for f in packs::declarations(dir, &all, pack)? {
         defs += &std::fs::read_to_string(&f).map_err(|e| format!("{}: {e}", f.display()))?;
         defs += "\n";
     }
     Ok(defs)
+}
+
+/// What the packs of content `dir` refuse or can't find: a folder of
+/// content/ that is no pack (no manifest), a module outside the packs, a
+/// manifest's bad uses, a listed or unported module that isn't there, and
+/// in every module (listed or not) a require of no module and a require
+/// across packs that the packs refuse (`packs::check_require`); each with
+/// the path that names it.
+pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
+    use nettai_content_api::{keys, packs};
+    let mut problems = Vec::new();
+    let mut all = std::collections::BTreeMap::new();
+    let mut entries: Vec<std::path::PathBuf> =
+        std::fs::read_dir(dir).map_err(|e| format!("{}: {e} (is this a content directory?)", dir.display()))?.flatten().map(|e| e.path()).collect();
+    entries.sort();
+    for entry in entries {
+        let name = entry.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+        if name.starts_with('.') || name == packs::ENGINE {
+            continue;
+        }
+        if entry.is_dir() {
+            match packs::read(dir, &name) {
+                Ok(m) => {
+                    all.insert(name, m);
+                }
+                Err(e) => problems.push(if entry.join(packs::MANIFEST).is_file() {
+                    e
+                } else {
+                    format!("{name}/: no {}; a folder of content/ is a pack", packs::MANIFEST)
+                }),
+            }
+        } else if name.ends_with(".luau") {
+            problems.push(format!("{name}: a module belongs to a pack (content/<pack>/...)"));
+        }
+    }
+    for p in all.values() {
+        if let Err(e) = packs::with_uses(&all, &p.id) {
+            problems.push(e);
+        }
+        for m in p.entries().iter().chain(p.unported().iter()) {
+            let file = format!("{}.luau", keys::module_path(m));
+            if !dir.join(&file).is_file() {
+                problems.push(format!("{}/{}: lists {}, and no module {file} is there", p.id, packs::MANIFEST, keys::local(m)));
+            }
+        }
+        for (path, source) in modules(&dir.join(&p.id)).map_err(|e| e.to_string())? {
+            let name = p.module(path.trim_end_matches(".luau"));
+            let file = format!("{}/{path}", p.id);
+            for written in packs::requires(&source) {
+                match keys::resolve(&name, &written) {
+                    Ok(target) => {
+                        if let Err(e) = packs::check_require(&all, &name, &written, &target) {
+                            problems.push(e);
+                        } else if !dir.join(format!("{}.luau", keys::module_path(&target))).is_file() {
+                            problems.push(format!("{file}: require({written:?}): no module {}.luau", keys::module_path(&target)));
+                        }
+                    }
+                    Err(e) => problems.push(format!("{file}: {e}")),
+                }
+            }
+            if p.kind == nettai_content_api::PackKind::Support && lints::names_assets(&source) {
+                problems.push(format!("{file}: support pack {} names an asset; a support pack has none (its makers take the game's looks)", p.id));
+            }
+        }
+    }
+    Ok(problems)
+}
+
+/// Check the content directory `dir` (content/: packs,
+/// docs/design/content-model-v2.md §4.0), each pack against its
+/// declarations, and lint it: every script of every pack, each named by
+/// its path; then what the packs refuse or can't find ([`reach`]).
+pub fn check_content(dir: &Path) -> Result<(usize, Vec<Problem>), String> {
+    let (mut n, mut problems) = (0, Vec::new());
+    for p in nettai_content_api::packs::packs(dir)? {
+        let mut checker = PackChecker::new(&definitions(dir, &p.id)?)?;
+        let name = &p.id;
+        for (path, source) in modules(&dir.join(name)).map_err(|e| e.to_string())? {
+            let full = format!("{name}/{path}");
+            problems.extend(checker.check(&full, &source)?);
+            // (The lints read a module's path in its pack: rules/ holds a game's rules.)
+            problems.extend(lints::lints(&path, &source).into_iter().map(|p| format!("{name}/{p}")));
+            n += 1;
+        }
+    }
+    problems.extend(reach(dir)?);
+    Ok((n, problems))
 }

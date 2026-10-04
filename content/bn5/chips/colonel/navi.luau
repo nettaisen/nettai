@@ -9,10 +9,10 @@
 --
 -- Not reached: the slash of his Param1 0 (region 0x1F, effect 0x48): his init sets 2, and only 1 replaces it.
 
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("@exelib/navi-chips/navi")
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).

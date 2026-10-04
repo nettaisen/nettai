@@ -137,7 +137,7 @@ fn fits(content: &Content, board: Option<&Board>, parts: &[PlacedProgram], shape
 /// Apply an edit to a side of a match on `arena`; whether the match
 /// changed.
 pub fn update(content: &Content, arena: &Arena, side: &mut Side, state: &mut State, edit: Edit) -> bool {
-    let rules = nettai_match::navicust_rules(content, arena.ruleset).clone();
+    let rules = nettai_match::navicust_rules(content).clone();
     let largest = rules.boards.len().saturating_sub(1) as u8;
     match edit {
         Edit::ShowStats(on) => {
@@ -559,7 +559,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         };
         return column![header, body].spacing(8).into();
     }
-    let rules = nettai_match::navicust_rules(c, e.m.arena.ruleset);
+    let rules = nettai_match::navicust_rules(c);
     let largest = rules.boards.len().saturating_sub(1) as u8;
     let expansions = side.navicust.map_or(largest, |n| n.expansions);
     let sizes: Vec<Choice<u8>> = (0..rules.boards.len() as u8)

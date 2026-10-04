@@ -1,6 +1,6 @@
 --!strict
 -- BN5's LifeSync (the dimming handler's subtype 39): its dimming controller (effect object #0x5C, 0x080E710C: BN6's
--- `sub_80E7260` reworked) with BN6's marker (@common/lifesync/marker, effect object #0x60, BN5's look). The usual
+-- `sub_80E7260` reworked) with BN6's marker (@exelib/lifesync/marker, effect object #0x60, BN5's look). The usual
 -- dimming phases, with an effect that marks the enemy two panels ahead and, after a warning over each, sets the HP
 -- of the other combatants (side 1's, whoever uses it) to that enemy's, at most their own max HP (0x080E72C4; BN6's
 -- not capped). A link or boss-ranked battle (unless battle flag 0x40) turns it into a wait, as do finding no enemy
@@ -8,9 +8,9 @@
 -- enemy two panels ahead takes a hit of 50 instead (0x080E739C), then the wait.
 
 local collision = require("../../rules/collision")
-local dimming_chips = require("@common/dimming")
-local marker = require("@common/lifesync/marker")
-local regions = require("@common/regions")
+local dimming_chips = require("@exelib/dimming")
+local marker = require("@exelib/lifesync/marker")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
 local lifesync = {}

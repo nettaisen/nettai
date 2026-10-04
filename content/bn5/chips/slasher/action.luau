@@ -16,7 +16,7 @@
 -- presentation only).
 
 local attachment = require("../../objects/attachment/attachment")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local roles = require("../../rules/roles")
 local swords = require("../../lib/swords")
 

@@ -120,8 +120,8 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
 /// the save's Soul Unison and Chaos Unison (a finished save's event flags
 /// 0 and 0x236).
 pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerSetup) -> Result<(), String> {
-    let game = arena.game.as_str();
-    player.set_fact(content, game, KARMA_FIELD, &[Fact::Value(Value::Int(side.karma as i64))])?;
+    let (game, ruleset) = (arena.game.as_str(), Some(arena.ruleset));
+    player.set_fact(content, ruleset, KARMA_FIELD, &[Fact::Value(Value::Int(side.karma as i64))])?;
     if takes(content, arena.ruleset, SOULS_FIELD) {
         // (Every soul, as many as the rules hold.)
         let souls: Vec<Fact> = owned_souls(content, game, side)
@@ -129,7 +129,7 @@ pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerS
             .take(soul_capacity(content, arena.ruleset))
             .map(|f| Fact::Value(Value::Def(Registry::Form, f.0)))
             .collect();
-        player.set_fact(content, game, SOULS_FIELD, &souls)?;
+        player.set_fact(content, ruleset, SOULS_FIELD, &souls)?;
         player.souls.button = true;
         player.souls.chaos = true;
     }
@@ -150,18 +150,17 @@ impl Side {
         content.navi(self.navi).levels.is_some()
     }
 
-    /// Whether a side under `ruleset` takes SP navi deletion times (the
-    /// rules' `sp_slots`: BN6's and BN5's, each their own SP navis).
-    pub fn takes_sp_times(content: &Content, ruleset: RulesetHandle) -> bool {
-        !crate::sp_slots(content, ruleset).is_empty()
+    /// Whether a side takes SP navi deletion times (the game's rules'
+    /// `sp_slots`: BN6's and BN5's, each their own SP navis).
+    pub fn takes_sp_times(content: &Content) -> bool {
+        !crate::sp_slots(content).is_empty()
     }
 
-    /// The side, gone from rules `old` to `new`, without what the new rules
-    /// don't take: the Crosses, patch cards and NaviCust without their
-    /// systems, the karma and souls without theirs, the version (back to
-    /// Falzar) without `version`, and the SP times when the new rules' SP
-    /// navis aren't the old's (their slots differ).
-    pub fn fit_rules(&mut self, content: &Content, old: RulesetHandle, new: RulesetHandle) {
+    /// The side, on rules `new` (of its game's, whose SP navis are the
+    /// game's), without what they don't take: the Crosses, patch cards and
+    /// NaviCust without their systems, the karma and souls without theirs,
+    /// and the version (back to Falzar) without `version`.
+    pub fn fit_rules(&mut self, content: &Content, new: RulesetHandle) {
         let has = |system| crate::ruleset_has_system(content, new, system);
         if !has(crate::FORMS_SYSTEM) {
             self.crosses = None;
@@ -181,9 +180,6 @@ impl Side {
         if !Side::takes_game(content, new) {
             self.game = nettai_battle::custom::GameVersion::Falzar;
             self.stats.version = crate::version_byte(self.game);
-        }
-        if crate::sp_slots(content, new) != crate::sp_slots(content, old) {
-            self.sp_times = Default::default();
         }
     }
 }

@@ -4,9 +4,9 @@
 -- speed and puffs into dust where it lands; the stages' boulder
 -- (objects/boulder) and the encased bubble (objects/encased-bubble) throw
 -- it up too. Only drawn, but it draws the simulation RNG twice. The
--- behavior is BN5's too (@common/rock/debris), made here with BN6's look.
+-- behavior is BN5's too (@exelib/rock/debris), made here with BN6's look.
 
-local common = require("@common/rock/debris")
+local common = require("@exelib/rock/debris")
 local effects = require("../../lib/effects")
 
 local debris = {}

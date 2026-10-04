@@ -1,9 +1,9 @@
 --!strict
 -- MegaMan's buster in BN5 (`megaman/buster`): the original's weapon routine 0 (0x0800F522, BN6's `sub_8011A26`),
--- which sets up the shared buster shot (@common/megaman/buster, BN6's action 0x11, BN5's 0x11: the same code but
+-- which sets up the shared buster shot (@exelib/megaman/buster, BN6's action 0x11, BN5's 0x11: the same code but
 -- for the muzzle flash's attachment row and the absorbed-obstacle throw, which BN5 hasn't) with BN5's buster parts,
 -- projectile and attachment; its sound BN6's. The NaviCust's buster bugs may make a shot a blank (the shared blank
--- shot, @common/megaman/blank_shot: BN5's action 0x33, its click BN6's) or a charged shot instead (BN6's pick,
+-- shot, @exelib/megaman/blank_shot: BN5's action 0x33, its click BN6's) or a charged shot instead (BN6's pick,
 -- `sub_8013D5E`: the same code). Unlike
 -- BN6's, the damage is Attack plus the navi's buster bonus (0x0800F5AC by navi: no worn-out rule, no form's
 -- bonus, no cap), and it always draws: on half the draws the shot is the one the navi's buster-shot program
@@ -14,9 +14,9 @@
 -- The patch cards' TriBustr (B button routine 0x65, 0x0800FE12) is this routine with its own charge row.
 
 local attachment = require("../../../objects/attachment/attachment")
-local blank = require("@common/megaman/blank_shot")
+local blank = require("@exelib/megaman/blank_shot")
 local charged_shot = require("./charged-shot")
-local common = require("@common/megaman/buster")
+local common = require("@exelib/megaman/buster")
 local lib = require("../../../lib/buster")
 local projectile = require("../../../lib/projectile")
 local variants = require("../../../objects/projectile/variants")

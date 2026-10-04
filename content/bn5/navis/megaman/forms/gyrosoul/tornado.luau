@@ -5,8 +5,8 @@
 -- eight ticks. It highlights the three panels while it blows, and goes after the third hit or when the battle ends.
 
 local collision = require("../../../../rules/collision")
-local panels = require("@common/panels")
-local regions = require("@common/regions")
+local panels = require("@exelib/panels")
+local regions = require("@exelib/regions")
 
 local tornado = {}
 

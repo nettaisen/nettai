@@ -1,12 +1,12 @@
 --!strict
 -- ProtoMan, the navi of the ProtoMan chips (the original's actor object
--- #0x3C, `sub_80C26F0`): the shared ProtoMan (@common/protoman/navi), BN6's
+-- #0x3C, `sub_80C26F0`): the shared ProtoMan (@exelib/protoman/navi), BN6's
 -- kind and look. BN6's look is `protoman.bn6`, which `protoman.summon`
 -- brings.
 
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local common = require("@common/protoman/navi")
+local common = require("@exelib/protoman/navi")
 local parts = require("../../lib/swords/parts")
 
 local protoman = {}

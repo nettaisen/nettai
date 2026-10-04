@@ -1,14 +1,14 @@
 --!strict
 -- NumbrBl's dimming controller (the original's effect object #0x69,
 -- `sub_80E7F38`; docs/engine/dimming-chip-effects.md §15): the one BN5
--- shares (@common/numbrbl/controller), with BN6's effect, which sends
+-- shares (@exelib/numbrbl/controller), with BN6's effect, which sends
 -- NumberMan (./numberman) out in the user's place and waits until he is
 -- done.
 --
 -- NumbrBl's `dimming` hook is `controller.hook(balls)`.
 
-local common = require("@common/numbrbl/controller")
-local dimming_chips = require("@common/dimming")
+local common = require("@exelib/numbrbl/controller")
+local dimming_chips = require("@exelib/dimming")
 local numberman = require("./numberman")
 
 local controller = {}

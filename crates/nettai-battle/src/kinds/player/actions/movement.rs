@@ -259,7 +259,7 @@ fn astray_target(b: &Battle, r: ObjectRef, dir: u8) -> Option<PanelPos> {
         panic!("an astray step toward {dir:#x} walks in place forever (sub_800D15A)");
     }
     let airshoes = flag1(b, r) & f1::AIRSHOE != 0;
-    let cond = b.arena_rules().panels.dash_step.get(airshoes, o.alliance);
+    let cond = b.game_rules().panels.dash_step.get(airshoes, o.alliance);
     // sub_800D120 along the row, sub_800D15A along the column.
     let mut p = o.panel;
     let mut farthest = o.panel;
@@ -350,12 +350,12 @@ pub(crate) fn panel_trail(b: &mut Battle, r: ObjectRef, from: PanelPos) {
         }
         _ => {
             // (By the game's panel numbers: BN5's own, its panels section's.)
-            let Some(t) = b.arena_rules().panels.numbered(kind) else {
+            let Some(t) = b.game_rules().panels.numbered(kind) else {
                 panic!("panel-trail kind {kind:#x} is past the panel types (sub_8013CC4)");
             };
             b.set_panel_type(from.x, from.y, t);
             if t != old
-                && let Some(sound) = b.arena_rules().panels.types[t as usize].trail_sound
+                && let Some(sound) = b.game_rules().panels.types[t as usize].trail_sound
             {
                 b.play_sound(sound);
             }

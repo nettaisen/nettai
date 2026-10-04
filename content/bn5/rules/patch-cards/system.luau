@@ -8,7 +8,7 @@
 -- The cards (0x08138214): Hub Style (NaviStats +0x4C) cleared, and set with card 111 switched on (0x08137A58: 1,
 -- Team Colonel's routine 2, 0x081382FC); the
 -- block of slots seeded from the stats (0x08137B56) and each switched-on card's effects run over it in the kinds'
--- order (0x08137B00; the run BN6's shares, @common/patch-cards/apply); the HP the working HP; then the slots a card
+-- order (0x08137B00; the run BN6's shares, @exelib/patch-cards/apply); the HP the working HP; then the slots a card
 -- wrote copied into the stats (0x081382B8's 39 routines), some of them through tables, BugStop (the card's, at 1)
 -- holding back the bug slots. Their bug count (0x081384D8: the NaviCust's bug bytes, the encounters' and drops' bugs,
 -- no supports) sets event flag 0x10C4, the emotion window's glitch when the save has cards (0x0813F650: the card
@@ -20,7 +20,7 @@
 -- A side neither of whose NaviCust and cards the setup gives (a recording's: its stats are the original's after all
 -- this) is left as it is.
 
-local apply_cards = require("@common/patch-cards/apply")
+local apply_cards = require("@exelib/patch-cards/apply")
 local cards = require("./cards")
 
 -- What the player's save brings (the navicust system's too: one fact): whether it is in the cyberworld.

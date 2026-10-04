@@ -138,8 +138,10 @@ pub struct Options {
     /// The content directory given (`--content`), which Play hands the
     /// frontend too; else the repository's.
     pub content: Option<PathBuf>,
-    /// The content folders loaded (their strings tables).
-    pub roots: Vec<PathBuf>,
+    /// The content directory loaded, and the game loaded (its strings
+    /// tables).
+    pub content_dir: PathBuf,
+    pub games: Vec<String>,
     /// The packs given by directory (`--pack`), each in place of the found
     /// one of its game, which Play hands the frontend too.
     pub packs: Vec<PathBuf>,
@@ -186,12 +188,10 @@ pub struct Editor {
 
 impl Editor {
     pub fn new(content: Arc<Content>, pictures: Pictures, options: Options) -> Editor {
-        // A new match is an empty one of the default game, else the
-        // content's first (Random draws one as live play does).
+        // A new match is an empty one of the content's game (Random draws
+        // one as live play does).
         let new = |content: &Arc<Content>| {
-            let games = crate::load::games(content);
-            let game = games.iter().find(|g| *g == nettai_match::DEFAULT_GAME).or(games.first()).cloned().unwrap_or_default();
-            nettai_match::Match::empty(content, &game).unwrap_or_else(|e| {
+            nettai_match::Match::empty(content, content.game()).unwrap_or_else(|e| {
                 eprintln!("the content makes no match: {e}");
                 std::process::exit(1)
             })
@@ -215,7 +215,7 @@ impl Editor {
             dirty: false,
             entry: [0, 0],
             search: String::new(),
-            games: crate::load::games(&content),
+            games: crate::load::games(options.content.as_deref(), &options.packs),
             typed: HashMap::new(),
             sp_typed: HashMap::new(),
             problems: Vec::new(),
@@ -248,7 +248,7 @@ impl Editor {
         self.lang = lang;
         self.names.other = match lang {
             Lang::En => None,
-            Lang::Ja => match nettai_content::locale::load_many(&self.options.roots, lang.code()) {
+            Lang::Ja => match nettai_content::locale::load_for(&self.options.content_dir, &self.options.games, lang.code()) {
                 Ok(Some(s)) => Some(s),
                 _ => {
                     self.status = format!("the content has no {} names", lang.code());
@@ -281,7 +281,7 @@ impl Editor {
             let loaded = crate::load::load_game(self.options.content.as_deref(), &self.options.packs, game)?;
             self.content = loaded.content;
             self.pictures = loaded.pictures;
-            self.options.roots = loaded.roots;
+            (self.options.content_dir, self.options.games) = (loaded.dir, vec![loaded.game]);
             self.set_lang(self.lang);
         }
         Ok(self.content.clone())
@@ -372,11 +372,18 @@ impl Editor {
             }
             Msg::Open => {
                 if let Some(path) = rfd::FileDialog::new().add_filter("match", &["toml"]).pick_file() {
-                    match std::fs::read_to_string(&path).map_err(|e| vec![e.to_string()]).and_then(|t| read(&content, &t)) {
+                    // (The file's game's content: loaded if it is another's.)
+                    let opened = std::fs::read_to_string(&path).map_err(|e| vec![e.to_string()]).and_then(|t| {
+                        let game = nettai_match::file::game_of(&t).map_err(|e| vec![e])?;
+                        let content = self.content_of(&game).map_err(|e| vec![e])?;
+                        read(&content, &t)
+                    });
+                    match opened {
                         Ok(m) => {
                             self.m = m;
                             self.path = Some(path);
                             self.dirty = false;
+                            self.forget_sides();
                             self.typed.clear();
                             self.refresh();
                             self.status = "opened".into();
@@ -521,7 +528,12 @@ impl Editor {
                 if let Some(path) = rfd::FileDialog::new().add_filter("BN6 or BN5 save", &["sav", "raw"]).pick_file() {
                     let read = std::fs::read(&path).map_err(|e| e.to_string());
                     let game = self.m.arena.game.clone();
-                    match read.and_then(|bytes| self.m.import_save(&content, s, &bytes)) {
+                    // (The save's game's content: loaded if it is another's.)
+                    let imported = read.and_then(|bytes| {
+                        let content = self.content_of(nettai_match::save_game(&bytes)?)?;
+                        self.m.import_save(&content, s, &bytes)
+                    });
+                    match imported {
                         Ok(notes) => {
                             if self.m.arena.game != game {
                                 self.forget_sides();

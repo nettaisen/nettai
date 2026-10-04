@@ -1,11 +1,11 @@
 --!strict
 -- LifeSrd (BN5 chip 0x153): a big slash over the two columns ahead, the Program Advance of Sword, WideSwrd and
--- LongSwrd (or Sword, WideBlde and LongBlde) in that order: the shared slash (@common/swords/slash, action 0x13 with
+-- LongSwrd (or Sword, WideBlde and LongBlde) in that order: the shared slash (@exelib/swords/slash, action 0x13 with
 -- subtype 5) with BN5's parts (lib/swords): its subtype's rows of BN5's tables (0x080EBF8C, 0x080EBFC0: the two
 -- columns, a slash hitting navis, hit modifier 3; effect 0x1B by 0x080EC028) are BN6's.
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local swords = require("../../lib/swords")
 local recipe_longblde = require("../longblde/chip")
 local recipe_longswrd = require("../longswrd/chip")

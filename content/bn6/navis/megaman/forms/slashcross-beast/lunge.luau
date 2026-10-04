@@ -10,7 +10,7 @@
 local collision = require("../../../../rules/collision")
 local lockon = require("../../../../rules/lockon")
 local lunge_slash = require("./lunge_slash")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {

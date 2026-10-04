@@ -40,7 +40,7 @@ impl Side {
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::every_game;
+    use crate::testing::{bn5_content, bn6_content};
 
     /// A Team ProtoMan save, dark, with every soul flag set: its karma and
     /// its version's souls BN5 has (ProtoSoul among them), through the save
@@ -48,18 +48,24 @@ mod tests {
     /// into a match of BN5's).
     #[test]
     fn a_bn5_save_gives_the_karma_and_souls() {
-        let content = every_game();
+        let content = bn5_content();
         let mut image = vec![0u8; bn5_compat::save::IMAGE_SIZE];
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOB 20041006 US");
         image[0x29F8] = 0xFF;
         image[0x29F9] = 0xFF;
         image[0x52A8 + 0x44..0x52A8 + 0x46].copy_from_slice(&100u16.to_le_bytes());
-        // Into a BN6 match: the match becomes BN5's.
-        let mut m = crate::Match::empty(&content, "bn6").unwrap();
+        assert_eq!(crate::save_game(&image), Ok("bn5"));
+        // Into a BN6 match on BN5's content (a frontend loads the save's
+        // game's): the match becomes BN5's.
+        let mut m = crate::Match::empty(&bn6_content(), "bn6").unwrap();
         m.seed = Some(9);
         let notes = m.import_save(&content, 0, &image).unwrap();
         assert_eq!((m.arena.game.as_str(), m.seed), ("bn5", Some(9)));
         assert_eq!(notes[0], "a bn5 save: the match is now bn5's, both sides new");
+        // On BN6's content alone, a BN5 save makes no match.
+        let mut six = crate::Match::empty(&bn6_content(), "bn6").unwrap();
+        let e = six.import_save(&bn6_content(), 0, &image).unwrap_err();
+        assert!(e.contains("a bn5 save, but the content is bn6's"), "{e}");
         let s = &m.sides[0];
         assert_eq!(crate::ids::local(&content.defs.navi(s.navi).key), "megaman");
         assert!(crate::ids::in_game("bn5", &content.defs.navi(s.navi).key));

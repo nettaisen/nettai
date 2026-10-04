@@ -13,7 +13,7 @@
 -- an action of their own; link navis' actions would too.
 
 local falling_meteor = require("../../chips/meteors/falling_meteor")
-local shower = require("@common/meteors/shower")
+local shower = require("@exelib/meteors/shower")
 
 local meteor_shower = {}
 
@@ -27,7 +27,7 @@ export type State = {
 local FIRE = 1
 local DROP_TICKS = 0x14
 -- `sub_80E5A8A`: one of the other side's navis still standing, at random;
--- `sub_80E5AD6`: the target's panel, or a neighbor (@common/meteors/shower).
+-- `sub_80E5AD6`: the target's panel, or a neighbor (@exelib/meteors/shower).
 meteor_shower.pick = shower.pick
 meteor_shower.aim = shower.aim
 

@@ -31,6 +31,20 @@ pub struct Definitions {
     pub defs: Vec<Definition>,
 }
 
+/// A game pack's lists of definitions (its manifest's `[definitions]`,
+/// docs/design/content-model-v2.md §4.0): by name, the registries whose
+/// definitions each lists. Every definition of these registries is made by
+/// a module its game pack's manifest lists in its registry's list.
+pub const GAME_LISTS: &[(&str, &[Registry])] = &[
+    ("rules", &[Registry::Ruleset, Registry::Roles, Registry::Rules]),
+    ("chips", &[Registry::Chip]),
+    ("navis", &[Registry::Navi]),
+    ("forms", &[Registry::Form]),
+    ("stages", &[Registry::Stage]),
+    ("patch_cards", &[Registry::PatchCard]),
+    ("navicust", &[Registry::NaviCustProgram]),
+];
+
 impl Definitions {
     /// The definitions of one registry, in key order (their handles).
     pub fn of(&self, registry: Registry) -> &[Definition] {

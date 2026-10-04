@@ -173,7 +173,7 @@ impl HudState {
         // tick the icons come back.)
         let fighting = b.round.mode == mode::FIGHTING;
         let icons = b.chip_hud_for(b.setup.local_side).icons;
-        let own_game = b.content.rules_of(b.games.sides[b.setup.local_side as usize & 1]);
+        let own_game = b.content.rules();
         let at_close = region == "jp" || own_game.flow.chip_window_at_close;
         if at_close && icons && !self.icons_were && (b.round.mode == mode::CUSTOM || self.mode_was == mode::CUSTOM) {
             (self.early_window, self.early_fight_ticks) = (true, 0);
@@ -591,7 +591,7 @@ pub fn draw<'a>(
     if let Some(used) = b.used_chip_for(local) {
         let mut group = Vec::new();
         // (In the place of the other player's telop.)
-        let remote = b.arena_roles().banner(nettai_battle::content::BannerRole::TelopRemote);
+        let remote = b.roles().banner(nettai_battle::content::BannerRole::TelopRemote);
         if let Some((_, layout, _)) = crate::lookups::telop(packs, &b.content, remote, problems) {
             let name = used_chip_parts(b, hud, layout, used, &mut group, text, problems);
             insert_named(list, text, NAME_BUCKET, group, name);

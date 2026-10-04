@@ -24,13 +24,13 @@ pub struct SideRules {
 }
 
 impl SideRules {
-    /// A player's rules at a round's start: the ruleset their setup names
-    /// (or game `arena`'s stock one, the stage's game's), its systems'
-    /// state zeroed. Their setup's blocks are made the systems' defaults
+    /// A player's rules at a round's start: the match's ruleset (`ruleset`,
+    /// the round setup's; none: the game's stock one), its systems' state
+    /// zeroed. Their setup's blocks are made the systems' defaults
     /// (`setup_defaults`, the rest zero) for a setup that gives none, and
     /// must otherwise be the ruleset's.
-    pub fn for_player(content: &Content, player: &mut PlayerSetup, arena: crate::content::RootId) -> SideRules {
-        let ruleset = player.ruleset.or_else(|| content.defs.stock_ruleset_of(&content.defs.roots[arena.index()]));
+    pub fn for_player(content: &Content, player: &mut PlayerSetup, ruleset: Option<RulesetHandle>) -> SideRules {
+        let ruleset = ruleset.or_else(|| content.defs.stock_ruleset());
         let Some(r) = ruleset else {
             assert!(player.rules.is_empty(), "a player's setup gives system setups, and the content has no ruleset");
             return SideRules::default();
@@ -49,10 +49,10 @@ impl SideRules {
 
 impl PlayerSetup {
     /// Set field `field` of system `system`'s setup (by key) to `v`, for
-    /// the player's ruleset (their setup's, or `content`'s stock one): how
+    /// the match's ruleset (`ruleset`; none: `content`'s stock one): how
     /// tools write what a save says.
-    pub fn set_rule(&mut self, content: &Content, system: &str, field: &str, v: Value) -> Result<(), String> {
-        let (block, schema, i) = self.rule_field(content, system, field)?;
+    pub fn set_rule(&mut self, content: &Content, ruleset: Option<RulesetHandle>, system: &str, field: &str, v: Value) -> Result<(), String> {
+        let (block, schema, i) = self.rule_field(content, ruleset, system, field)?;
         block.set(schema, i, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
     }
 
@@ -82,17 +82,30 @@ impl PlayerSetup {
     }
 
     /// [`PlayerSetup::set_rule`] for an array field: element `k` of it.
-    pub fn set_rule_elem(&mut self, content: &Content, system: &str, field: &str, k: usize, v: Value) -> Result<(), String> {
-        let (block, schema, i) = self.rule_field(content, system, field)?;
+    pub fn set_rule_elem(
+        &mut self,
+        content: &Content,
+        ruleset: Option<RulesetHandle>,
+        system: &str,
+        field: &str,
+        k: usize,
+        v: Value,
+    ) -> Result<(), String> {
+        let (block, schema, i) = self.rule_field(content, ruleset, system, field)?;
         block.set_elem(schema, i, k, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
     }
 
-    /// The setup block of system `system` (by key) of the player's ruleset
-    /// and its layout, as the round will start with it (the systems'
-    /// defaults where the setup gives none): what a tool shows of it.
-    pub fn rule_block<'a>(&self, content: &'a Content, system: &str) -> Option<(&'a nettai_content_api::Schema, ContentState)> {
-        let game = nettai_content_api::keys::root_of(system)?;
-        let r = self.ruleset.or_else(|| content.defs.stock_ruleset_of(game))?;
+    /// The setup block of system `system` (by key) of the match's ruleset
+    /// (`ruleset`; none: the stock one) and its layout, as the round will
+    /// start with it (the systems' defaults where the setup gives none):
+    /// what a tool shows of it.
+    pub fn rule_block<'a>(
+        &self,
+        content: &'a Content,
+        ruleset: Option<RulesetHandle>,
+        system: &str,
+    ) -> Option<(&'a nettai_content_api::Schema, ContentState)> {
+        let r = ruleset.or_else(|| content.defs.stock_ruleset())?;
         let systems = &content.defs.ruleset(r).systems;
         let slot = systems.iter().position(|&h| content.defs.system(h).key == system)?;
         let def = content.defs.system(systems[slot]);
@@ -100,23 +113,18 @@ impl PlayerSetup {
         Some((content.defs.schema(def.setup), block))
     }
 
-    /// Write a fact of what the player brings into each system of their
-    /// ruleset (their setup's, or game `game`'s stock one) whose setup has
-    /// a field `field`: one value for a field, an element each for an
-    /// array (the rest zero), an enum's by its name (`Fact::Name`). How a
-    /// tool writes what several systems read (BN6's game version, which
-    /// its cross and beast systems both take). The number of systems that
-    /// took it: none on a content without the ruleset.
-    ///
-    /// Making the blocks, it names the ruleset they are for in the setup
-    /// (a setup without one would play by its arena's game's stock rules,
-    /// whose blocks these may not be).
-    pub fn set_fact(&mut self, content: &Content, game: &str, field: &str, values: &[Fact]) -> Result<usize, String> {
-        let Some(r) = self.ruleset.or_else(|| content.defs.stock_ruleset_of(game)) else { return Ok(0) };
+    /// Write a fact of what the player brings into each system of the
+    /// match's ruleset (`ruleset`; none: the stock one) whose setup has a
+    /// field `field`: one value for a field, an element each for an array
+    /// (the rest zero), an enum's by its name (`Fact::Name`). How a tool
+    /// writes what several systems read (BN6's game version, which its
+    /// cross and beast systems both take). The number of systems that took
+    /// it: none on a content without a ruleset.
+    pub fn set_fact(&mut self, content: &Content, ruleset: Option<RulesetHandle>, field: &str, values: &[Fact]) -> Result<usize, String> {
+        let Some(r) = ruleset.or_else(|| content.defs.stock_ruleset()) else { return Ok(0) };
         let def = content.defs.ruleset(r);
         if self.rules.is_empty() {
             self.rules = def.systems.iter().map(|&h| content.defs.system(h).setup_block()).collect();
-            self.ruleset = Some(r);
         }
         let mut took = 0;
         for block in &mut self.rules {
@@ -157,18 +165,18 @@ impl PlayerSetup {
         Ok(took)
     }
 
-    /// The setup block of system `system` (by key) of the player's ruleset,
-    /// its schema and the index of its field `field`; the blocks made the
-    /// systems' defaults first if the setup gives none.
+    /// The setup block of system `system` (by key) of the match's ruleset
+    /// (`ruleset`; none: the stock one), its schema and the index of its
+    /// field `field`; the blocks made the systems' defaults first if the
+    /// setup gives none.
     fn rule_field<'a>(
         &'a mut self,
         content: &'a Content,
+        ruleset: Option<RulesetHandle>,
         system: &str,
         field: &str,
     ) -> Result<(&'a mut ContentState, &'a nettai_content_api::Schema, usize), String> {
-        // (No ruleset in the setup: the system's game's stock rules.)
-        let game = nettai_content_api::keys::root_of(system).ok_or_else(|| format!("system {system:?} names no game"))?;
-        let r = self.ruleset.or_else(|| content.defs.stock_ruleset_of(game)).ok_or("the content has no ruleset")?;
+        let r = ruleset.or_else(|| content.defs.stock_ruleset()).ok_or("the content has no ruleset")?;
         let def = content.defs.ruleset(r);
         if self.rules.is_empty() {
             self.rules = def.systems.iter().map(|&h| content.defs.system(h).setup_block()).collect();
@@ -326,6 +334,23 @@ impl Battle {
             }
         }
         0
+    }
+
+    /// Side `side`'s systems' `controller(side, navi)`, asked of the side's
+    /// own navi (BN5's no-charge drive): the outcome the first system that
+    /// answers gives; None when none answers.
+    pub(crate) fn systems_controller_answer(&mut self, side: u8, navi: ObjectRef) -> Option<u8> {
+        let r = self.rules[side as usize].ruleset?;
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::Controller) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::Controller, navi: Some(navi), chip: None, weapon: None };
+                if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
+                    return Some(n as u8);
+                }
+            }
+        }
+        None
     }
 
     /// The `controller(side, navi)` of side `side`'s system in place `slot`
@@ -558,6 +583,12 @@ impl Battle {
         self.systems_chip_answer(side, navi, chip, SystemHook::ChipCheck)
     }
 
+    /// Side `side`'s systems' `chip_cost(side, navi, chip)`, earlier in
+    /// the preparation: as `systems_chip_check`.
+    pub(crate) fn systems_chip_cost(&mut self, side: u8, navi: ObjectRef, chip: Option<ChipHandle>) -> Option<ChipHandle> {
+        self.systems_chip_answer(side, navi, chip, SystemHook::ChipCost)
+    }
+
     /// Side `side`'s systems' `chip_substitute(side, navi, chip)` before a
     /// chip's record is loaded: the chip the first system that answers
     /// puts in its place (BN6's dark chips' substitute), or none.
@@ -627,7 +658,7 @@ mod tests {
     fn each_side_runs_its_rulesets_systems_for_itself() {
         let b = started(scenario::setup());
         let content = &b.content;
-        let stock = content.defs.stock_ruleset_of(testing::ROOT).expect("the test content's stock rules");
+        let stock = content.defs.stock_ruleset().expect("the test content's stock rules");
         assert_eq!(content.defs.ruleset(stock).key, "test:stock");
         for side in 0..2u8 {
             assert_eq!(b.side_rules(side).ruleset, Some(stock));
@@ -639,25 +670,28 @@ mod tests {
         }
     }
 
+    /// One ruleset a match (docs/design/content-model-v2.md §4.0: the arena
+    /// configuration determines everything): both sides play by the one
+    /// the setup names, each with its own state of its systems.
     #[test]
-    fn a_player_plays_by_the_ruleset_their_setup_names() {
+    fn a_match_plays_by_the_ruleset_its_setup_names() {
         let content = scenario::content();
         let mut setup = scenario::setup();
-        setup.players[1].ruleset = content.defs.ruleset_by_key("test:test-other");
+        setup.ruleset = content.defs.ruleset_by_key("test:test-other");
         let b = started(setup);
-        assert_eq!(b.side_rules(0).states.len(), 4, "side 0 keeps the stock rules");
-        assert_eq!(b.side_rules(1).states.len(), 2, "side 1 plays by its own");
-        assert_eq!(field(&b, 1, 0, "mark"), FieldValue::U8(0x41));
-        assert_eq!(field(&b, 1, 1, "side"), FieldValue::U8(1));
-        assert_eq!(field(&b, 0, 1, "side"), FieldValue::U8(0));
+        for side in 0..2u8 {
+            assert_eq!(b.side_rules(side).states.len(), 2, "side {side} plays by the match's");
+            assert_eq!(field(&b, side, 0, "mark"), FieldValue::U8(0x40 + side));
+            assert_eq!(field(&b, side, 1, "side"), FieldValue::U8(side));
+        }
     }
 
     #[test]
     fn a_systems_player_setup_reaches_it_and_no_other() {
         let content = scenario::content();
         let mut setup = scenario::setup();
-        setup.players[0].set_rule(&content, "test:test/counter", "bonus", Value::Int(7)).unwrap();
-        assert!(setup.players[0].set_rule(&content, "test:test/marker", "mark", Value::Int(1)).is_err(), "not the stock rules'");
+        setup.players[0].set_rule(&content, None, "test:test/counter", "bonus", Value::Int(7)).unwrap();
+        assert!(setup.players[0].set_rule(&content, None, "test:test/marker", "mark", Value::Int(1)).is_err(), "not the stock rules'");
         let b = started(setup);
         assert_eq!(field(&b, 0, 1, "bonus"), FieldValue::U16(14));
         assert_eq!(field(&b, 1, 1, "bonus"), FieldValue::U16(0), "the other player's setup is its own");
@@ -672,7 +706,7 @@ mod tests {
         let content = scenario::content();
         let watch = content.defs.ruleset_by_key("test:test-watch").expect("the watcher's ruleset");
         let mut setup = scenario::setup();
-        setup.players[1].ruleset = Some(watch);
+        setup.ruleset = Some(watch);
         let mut b = started(setup);
         let navi = b.player(1).expect("side 1's navi");
         b.systems_navi_intake(1, navi);
@@ -685,9 +719,10 @@ mod tests {
         assert_eq!(b.systems_chip_check(1, navi, Some(bomb)), Some(seed));
         assert_eq!(b.systems_chip_check(1, navi, Some(seed)), None);
         assert_eq!(b.systems_chip_check(1, navi, None), None);
-        // Side 0's rules have neither hook.
-        let navi0 = b.player(0).expect("side 0's navi");
-        assert_eq!(b.systems_chip_check(0, navi0, Some(bomb)), None);
+        // The stock rules have neither hook.
+        let mut stock = started(scenario::setup());
+        let navi0 = stock.player(0).expect("side 0's navi");
+        assert_eq!(stock.systems_chip_check(0, navi0, Some(bomb)), None);
     }
 
     #[test]
@@ -700,44 +735,11 @@ mod tests {
         let schema = &b.content.defs.schemas[s.id().0 as usize].schema;
         s.set(schema, schema.index_of("starts").unwrap(), Value::Int(9)).unwrap();
         assert_ne!(changed.digest(), b.digest());
-        assert_eq!(testing::build().defs.rulesets.len(), 6);
+        assert_eq!(testing::build().defs.rulesets.len(), 5);
     }
 
-    /// docs/design/rules-in-luau.md P1 item 8: a mix's own sections
-    /// (testdata's rules/souls.luau: its sides' HP bug periods) are what its
-    /// sides read, over its game's; its game's own tables and the other
-    /// side's don't change; a section about the battle or a chip's game is
-    /// refused, and so is a stock ruleset's own.
-    #[test]
-    fn a_mix_brings_its_own_side_sections() {
-        let content = scenario::content();
-        let souls = content.defs.ruleset_by_key("test:test-souls").expect("the souls mix");
-        let test = content.defs.root_id(testing::ROOT).unwrap();
-        assert_eq!(content.defs.ruleset(souls).sections, ["test:souls/status"]);
-        let own = [0, 1, 2, 3, 4, 5, 6, 7];
-        assert_eq!(content.side_rules(Some(souls), test).hp_bug_periods, own);
-        assert_ne!(content.rules_of(test).hp_bug_periods, own, "the game's own tables don't take it");
-        let mut setup = scenario::setup();
-        setup.players[1].ruleset = Some(souls);
-        let b = started(setup);
-        assert_eq!(b.side_game_rules(1).hp_bug_periods, own);
-        assert_eq!(b.side_game_rules(0).hp_bug_periods, content.rules_of(test).hp_bug_periods);
-        // Refused: an arena section, a chip's game's, a stock ruleset's own.
-        let patched = |from: &str, to: &str| {
-            let mut c = testing::build();
-            let src = c.scripts.module_mut(testing::ROOT, "rules/souls").expect("the souls module");
-            assert!(src.contains(from));
-            *src = src.replacen(from, to, 1);
-            c.define().map(|_| ()).map_err(|e| e.message)
-        };
-        let e = patched("test:souls/status\", { hp_bug_periods = { 0, 1, 2, 3, 4, 5, 6, 7 } }", "test:souls/math\", { sine = {} }").unwrap_err();
-        assert!(e.contains("section test:souls/math (`math`) is the battle's or a chip's game's"), "{e}");
-        let e = patched("base = systems.stock, ", "stock = true, systems = {}, ").unwrap_err();
-        assert!(e.contains("a stock ruleset's sections are its game's"), "{e}");
-    }
-
-    /// A mix (testdata's rules/mix.luau): the stock rules less BN6's forms
-    /// system, the marker after them; the stock rules' game.
+    /// A variant (testdata's rules/mix.luau): the stock rules less BN6's
+    /// forms system, the marker after them.
     #[test]
     fn a_mix_is_its_bases_systems_changed() {
         let content = scenario::content();
@@ -745,178 +747,13 @@ mod tests {
         let mix = defs.ruleset_by_key("test:test-mix").expect("the mix");
         let names: Vec<&str> = defs.ruleset(mix).systems.iter().map(|&h| defs.system(h).key.as_str()).collect();
         assert_eq!(names, ["test:beast", "test:test/counter", "test:emotion", "test:test/marker"]);
-        assert_eq!(defs.ruleset(mix).base, defs.stock_ruleset_of(testing::ROOT));
-        assert_eq!(Some(defs.ruleset(mix).game), defs.root_id(testing::ROOT));
+        assert_eq!(defs.ruleset(mix).base, defs.stock_ruleset());
         let mut setup = scenario::setup();
-        setup.players[1].ruleset = Some(mix);
+        setup.ruleset = Some(mix);
         let b = started(setup);
         assert_eq!(b.side_rules(1).states.len(), 4);
         assert_eq!(field(&b, 1, 3, "mark"), FieldValue::U8(0x41), "the marker ran for its side");
         assert_eq!(field(&b, 1, 1, "starts"), FieldValue::U8(1));
-    }
-
-    /// docs/design/rules-in-luau.md §2.3, with a second game, `twin`: its
-    /// own stock rules (the test counter), roles (the test content's, with
-    /// another pause sound) and pools (16 actors).
-    mod two_games {
-        use super::*;
-        use crate::content::{Content, RootManifest, SoundRole};
-        use crate::object::Pool;
-        use std::sync::Arc;
-
-        const TWIN: &[(&str, &str)] = &[
-            (
-                "rules/ruleset",
-                "local systems = require('@test/rules/systems')\n\
-                 return define.ruleset { id = 'twin:stock', stock = true, systems = { systems.counter } }",
-            ),
-            (
-                "rules/roles",
-                "local test = require('@test/rules/roles')\n\
-                 local spec = {}\n\
-                 for k, v in test do spec[k] = v end\n\
-                 local sounds = {}\n\
-                 for k, v in test.sounds do sounds[k] = v end\n\
-                 sounds.pause = asset.sound('twin:pause')\n\
-                 spec.sounds = sounds\n\
-                 spec.id = 'twin:roles'\n\
-                 return define.roles(spec)",
-            ),
-            ("rules/pools", "return define.rules('twin:pools', { actor = 16, attack = 32, effect = 32 })"),
-            // Its own base form (P1 item 12), the test content's weapons.
-            (
-                "navis/base",
-                "local test = require('@test/navis/test')\n\
-                 return define.form { id = 'twin:base', base = true, sprite = asset.sprite('twin:navi'), element = 'null', \
-                 buster_bonus = 0, weapons = test.base.weapons, buster_arm = { anim = 0 } }",
-            ),
-        ];
-
-        /// The test content with the `twin` root beside it, and twin's own
-        /// pack: a pause sound of its own (the song table's 0x40) and a sprite.
-        fn content() -> Arc<Content> {
-            static C: std::sync::OnceLock<Arc<Content>> = std::sync::OnceLock::new();
-            C.get_or_init(|| {
-                let mut c = testing::build();
-                let mut index = nettai_content_api::PackIndex::default();
-                index.sounds.insert("pause".into(), 0x40);
-                let navi = nettai_content_api::PackSprite { category: 0, index: 0 };
-                index.sprites.insert("navi".into(), navi);
-                let frame = crate::content::AnimFrame { duration: 4, flags: crate::object::sprite::FRAME_LAST };
-                testing::add_pack(&mut c, "twin", index, [(navi, vec![vec![frame]])].into_iter().collect());
-                let manifest = RootManifest::named("twin");
-                c.scripts.add_root(manifest, TWIN.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect());
-                c.define().unwrap_or_else(|e| panic!("{e}"));
-                Arc::new(c)
-            })
-            .clone()
-        }
-
-        /// docs/design/rules-in-luau.md P1 item 12: a base form per game, one
-        /// a game; a navi's is its game's, and a game without one takes the
-        /// first game's, by name, that has one.
-        #[test]
-        fn each_game_has_its_base_form() {
-            let c = content();
-            let (test, twin) = (c.defs.root_id(testing::ROOT).unwrap(), c.defs.root_id("twin").unwrap());
-            let (test_base, twin_base) = (c.defs.form_by_key("test:base"), c.defs.form_by_key("twin:base"));
-            assert!(test_base.is_some() && twin_base.is_some());
-            assert_eq!((c.defs.base_forms[test.index()], c.defs.base_forms[twin.index()]), (test_base, twin_base));
-            assert_eq!(Some(c.base_form_of(twin)), twin_base);
-            assert_eq!(Some(c.base_form_for(c.navi_by_key(testing::MEGAMAN))), test_base);
-            // A game without one (a folder of no base form, `aaa`, first by
-            // name) takes test's, the first that has one.
-            let mut lone = (*c).clone();
-            lone.scripts.add_root(RootManifest::named("aaa"), [("m".to_string(), "return define.record('x', { n = 1 })".to_string())].into());
-            lone.define().unwrap_or_else(|e| panic!("{e}"));
-            let aaa = lone.defs.root_id("aaa").unwrap();
-            assert_eq!((lone.defs.base_forms[aaa.index()], Some(lone.base_form_of(aaa))), (None, lone.defs.form_by_key("test:base")));
-            // Two in one game are refused.
-            let mut two = (*c).clone();
-            let second = TWIN.iter().find(|(p, _)| *p == "navis/base").unwrap().1.replace("twin:base", "twin:base-2");
-            *two.scripts.modules.entry(crate::content::Scripts::name("twin", "navis/base-2")).or_default() = second;
-            let e = two.define().unwrap_err().message;
-            assert!(e.contains("two forms of twin are base forms (twin:base and twin:base-2)"), "{e}");
-        }
-
-        /// A battle on the twin content, its sides playing by `rulesets`.
-        fn battle(rulesets: [&str; 2]) -> Battle {
-            let c = content();
-            let mut setup = scenario::setup();
-            setup.content = c.hash();
-            for (p, key) in setup.players.iter_mut().zip(rulesets) {
-                p.ruleset = Some(c.defs.ruleset_by_key(key).unwrap_or_else(|| panic!("no ruleset {key}")));
-            }
-            let mut b = Battle::new(setup, c);
-            for _ in 0..3 {
-                b.tick(&[PlayerTick::default(); 2], Default::default());
-            }
-            b
-        }
-
-        #[test]
-        fn each_side_reads_its_games_data_and_the_battle_its_arenas() {
-            let b = battle(["test:stock", "twin:stock"]);
-            let twin = b.content.defs.root_id("twin").expect("the twin root");
-            let test = b.content.defs.root_id(testing::ROOT).expect("the test game");
-            // The stage is the test content's: the arena's game is.
-            assert_eq!(b.games.arena, test);
-            assert_eq!(b.games.sides, [test, twin]);
-            let pause = |side| b.side_roles(side).sound(SoundRole::Pause);
-            assert_ne!(pause(0), pause(1), "each side's sounds are its game's");
-            assert_eq!(b.arena_roles().sound(SoundRole::Pause), pause(0));
-            // Twin's pause is its own pack's song; its other sounds the test
-            // pack's, as its roles take them.
-            let assets = &b.content.assets;
-            let twin_pack = assets.pack("twin").expect("twin's pack");
-            assert_eq!(assets.sound(pause(1).0).map(|a| (a.pack, a.id)), Some((twin_pack, 0x40)));
-            assert_eq!(assets.packs, ["test", "twin"]);
-            assert_eq!(b.side_roles(1).sound(SoundRole::Hit), b.side_roles(0).sound(SoundRole::Hit));
-            // The twin side runs its own systems.
-            assert_eq!(b.side_rules(1).states.len(), 1);
-            assert_eq!(field(&b, 1, 0, "starts"), FieldValue::U8(1));
-            // Capacity: the larger of the two games' pools.
-            assert_eq!(b.objects.capacity(Pool::Actor), 32);
-        }
-
-        #[test]
-        fn a_capacity_is_the_larger_of_the_two_games() {
-            let both = battle(["twin:stock", "twin:stock"]);
-            assert_eq!([Pool::Actor, Pool::Attack, Pool::Effect].map(|p| both.objects.capacity(p)), [16, 32, 32]);
-            assert_eq!(battle(["twin:stock", "test:stock"]).objects.capacity(Pool::Actor), 32);
-            // A battle of one game is that game's (the test content's: 32).
-            assert_eq!(battle(["test:stock", "test:stock"]).objects.capacity(Pool::Actor), 32);
-        }
-
-        /// A duel with a different game on each side plays and rolls back:
-        /// a copy taken mid-round goes the same way as the whole.
-        #[test]
-        fn a_battle_of_two_games_plays_and_rolls_back() {
-            for rulesets in [["test:stock", "twin:stock"], ["twin:stock", "twin:stock"], ["test:test-mix", "twin:stock"]] {
-                let c = content();
-                let mut setup = scenario::setup();
-                setup.content = c.hash();
-                for (p, key) in setup.players.iter_mut().zip(rulesets) {
-                    p.ruleset = c.defs.ruleset_by_key(key);
-                }
-                let tape = scenario::record_on_content(setup.clone(), c.clone(), 1200, 7);
-                let mut b = Battle::new(setup, c);
-                let mut copy = None;
-                for (i, t) in tape.iter().enumerate() {
-                    if i == 600 {
-                        copy = Some(b.clone());
-                    }
-                    b.tick(&t.input, t.events.clone());
-                }
-                let mut copy = copy.expect("a copy");
-                for t in &tape[600..] {
-                    copy.tick(&t.input, t.events.clone());
-                }
-                assert_eq!(copy.digest(), b.digest(), "{rulesets:?}");
-                assert!(!matches!(b.round_end(), Some(crate::battle::RoundEnd::Error(_))), "{rulesets:?}: {:?}", b.round_end());
-                assert!(b.round.frames > 1000, "{rulesets:?}: the round ran ({} frames)", b.round.frames);
-            }
-        }
     }
 
     /// BN6's patch-cards system (content/bn6/rules/patch-cards) with the
@@ -972,8 +809,8 @@ mod tests {
         fn with_cards(cards: &[(&str, bool)], tweak: impl FnOnce(&mut NaviStats)) -> Battle {
             let content = scenario::content();
             let mut s = scenario::setup();
+            s.ruleset = content.defs.ruleset_by_key("test:test-cards");
             let p = &mut s.players[0];
-            p.ruleset = content.defs.ruleset_by_key("test:test-cards");
             let list: Vec<InstalledCard> = cards
                 .iter()
                 .map(|&(key, enabled)| InstalledCard {

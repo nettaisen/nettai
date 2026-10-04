@@ -1,11 +1,11 @@
 --!strict
 -- A falling meteor (the original's attack object #0x56, `sub_80CF3BE`): the
--- shared meteor (@common/meteors/falling_meteor), BN6's kind and look.
+-- shared meteor (@exelib/meteors/falling_meteor), BN6's kind and look.
 -- Meteors (./chip) drops thirty; the instant chips' meteor shower
 -- (lib/instant/meteor_shower) uses it too.
 
 local collision = require("../../rules/collision")
-local common = require("@common/meteors/falling_meteor")
+local common = require("@exelib/meteors/falling_meteor")
 local effects = require("../../lib/effects")
 local marker = require("./marker")
 local sparks = require("../../lib/sparks")
