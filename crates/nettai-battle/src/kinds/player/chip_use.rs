@@ -244,7 +244,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
             b.set_panel_type(p.x, p.y, crate::field::PanelType::Normal);
             b.sound(BONUS_SOUND);
         }
-        Some(Boost::Cross | Boost::BeastOver) | None => {}
+        Some(Boost::Cross | Boost::NullDoubled) | None => {}
     }
     prime(b, r, cd);
     let mut damage = ai(b, r).attack.damage;
@@ -515,8 +515,8 @@ enum Boost {
     Anger,
     /// A Cross's element on a charged (or fully A-charged) chip.
     Cross,
-    /// Beast Over's Null chips.
-    BeastOver,
+    /// A form's Null chips (`doubles_null`: Beast Over's).
+    NullDoubled,
     /// A primed form's (spent by the use: BN5's GyroSoul).
     Primed,
     /// A form's chips on grass (the use turns it normal: BN5's
@@ -540,7 +540,7 @@ fn double_damage(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, damage: u16
             Emotion::Angry => Some(Boost::Anger),
             _ if cross_doubles(b, r, chip, charge) => Some(Boost::Cross),
             _ if grass_doubles(b, r, cd) => Some(Boost::Grass),
-            _ if beast_over_doubles(b, r, chip) => Some(Boost::BeastOver),
+            _ if null_doubles(b, r, chip) => Some(Boost::NullDoubled),
             _ => None,
         }
     };
@@ -582,9 +582,10 @@ fn grass_doubles(b: &Battle, r: ObjectRef, cd: &ChipData) -> bool {
         && chip_matches(rule, cd)
 }
 
-/// `sub_8012ABC`: Beast Over doubles its Null chips (not in battle mode 1).
-fn beast_over_doubles(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
-    if super::battle_mode(b) == 1 || !form_of(b, r).kind.is_beast_over() {
+/// `sub_8012ABC`: a form with `doubles_null` (Beast Over) doubles its
+/// damaging Null chips (not in battle mode 1).
+fn null_doubles(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
+    if super::battle_mode(b) == 1 || !form_of(b, r).traits.has(crate::content::FormTraits::DOUBLES_NULL) {
         return false;
     }
     let cd = entry_record(&b.content, chip);

@@ -55,7 +55,7 @@ return {
     link_navi = navi("test:test/link-navi", "test:test-navi", "link_navi", 4, false),
     base = define.form {
         id = "test:base",
-        kind = "base",
+        base = true,
         sprite = asset.sprite("test:test-navi"),
         element = "null",
         buster_bonus = 0,

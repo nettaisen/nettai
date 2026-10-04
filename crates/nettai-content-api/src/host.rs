@@ -284,6 +284,14 @@ pub enum SystemHook {
     /// first system that answers decides; none answering, the framework's
     /// rule (the custom level, NumbrOpn and the hand-shrink bug).
     CustomHandSize,
+    /// `custom.deal(side)`: the side's custom screen deals, before
+    /// `custom.open`: the folder as the last screen left it (the chips used
+    /// still leave their places empty: `custom.folder`), with the
+    /// framework's hand size (`custom.hand_size`); BN5's custom screen
+    /// opening (0x08022C5C) offers a worried or dark MegaMan a dark chip
+    /// there (0x08025114, its light and dark system's). Its result is
+    /// unused.
+    CustomDeal,
     /// `custom.open(side)`: the side's custom screen opens, before its hand
     /// size and its layout (BN6's: ChargeCross's screens counted, the
     /// round's first screen forgetting the round's Beast Out). Its result
@@ -362,6 +370,7 @@ impl SystemHook {
             SystemHook::NaviPalette => "navi_palette",
             SystemHook::NaviBug => "navi_bug",
             SystemHook::CustomHandSize => "custom.hand_size",
+            SystemHook::CustomDeal => "custom.deal",
             SystemHook::CustomOpen => "custom.open",
             SystemHook::CustomConfirmed => "custom.confirmed",
             SystemHook::CustomKeys => "custom.keys",
@@ -377,7 +386,7 @@ impl SystemHook {
         }
     }
 
-    pub const ALL: [SystemHook; 33] = [
+    pub const ALL: [SystemHook; 34] = [
         SystemHook::RoundSetup,
         SystemHook::RoundStart,
         SystemHook::TurnCheck,
@@ -404,6 +413,7 @@ impl SystemHook {
         SystemHook::ButtonState,
         SystemHook::ButtonPressed,
         SystemHook::CustomOpen,
+        SystemHook::CustomDeal,
         SystemHook::CustomConfirmed,
         SystemHook::WindowUpdate,
         SystemHook::ButtonTakenBack,

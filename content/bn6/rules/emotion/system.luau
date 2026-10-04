@@ -42,8 +42,8 @@ end
 -- a plain Beast Out, unless the countered navi's mood is held (and the
 -- counterer's own mood isn't: `battle.set_mood`).
 local function countered(side: number, victim: Object)
-    local kind = battle.navi(side).form.kind
-    if (kind == "base" or kind == "beast") and not victim.mood_held then
+    local form = battle.navi(side).form
+    if (form.base or form.kind == "beast") and not victim.mood_held then
         battle.set_mood(side, 0xFF)
     end
 end
@@ -58,7 +58,7 @@ local function navi_tick(side: number, navi: Object)
     if stats.emotion_bug == 0 or stats.beast_out_counter == 0 then
         return
     end
-    if stats.form.kind ~= "base" then
+    if not stats.form.base then
         navi:end_anger()
         navi.tired = false
         return

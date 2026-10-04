@@ -6,6 +6,8 @@
 -- the plain arm for forms below 0xB, 0xD for form 0xC and forms from 0x12
 -- (but 0x17), 0xC for the others.
 
+local kind = require("../rules/forms/kind")
+
 local arm = {}
 
 -- `sub_80EBAE8`.
@@ -19,11 +21,10 @@ function arm.anim(navi: Object): number
         end
         -- MegaMan's, by his form: 0, or a Beast form's (0xC for Gregar's,
         -- 0xD for Falzar's).
-        local stats = battle.navi(navi.alliance)
-        if not stats.beast then
+        if not kind.beast(navi.alliance) then
             return 0
         end
-        return if stats.form.game == "gregar" then 0x0C else 0x0D
+        return if battle.navi(navi.alliance).form.game == "gregar" then 0x0C else 0x0D
     end
     return 0
 end
