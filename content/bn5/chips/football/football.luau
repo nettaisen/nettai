@@ -30,7 +30,7 @@ local GRAVITY, LAND_Z = 0x1_0000, 0x8_0000
 local HIT_MOD = 3
 local LANDING = define.effect { sprite = SPRITE, anim = 0x11, palette = 0 }
 local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
-local SOUND_LAND = asset.sound("sound-13f")
+local SOUND_LAND = asset.sound("football-land")
 -- The block it hits: its panel and the ones right and down (0x080D94BC); the virus's ball highlights the same block
 -- (0x080D9600).
 local BLOCK = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } }
@@ -297,7 +297,7 @@ export type State = {
     kicked: number,
 }
 
-local SOUND_APPEAR, SOUND_KICK = asset.sound("appear"), asset.sound("sound-13e")
+local SOUND_APPEAR, SOUND_KICK = asset.sound("appear"), asset.sound("football-kick")
 local KICKS: { [number]: boolean } = { [171] = true, [126] = true, [111] = true, [96] = true }
 
 local function done(me: Object)
