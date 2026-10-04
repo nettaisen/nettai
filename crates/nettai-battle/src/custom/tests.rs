@@ -76,6 +76,7 @@ impl Extras for TestButtons {
 
     fn button_taken_back(&mut self, _: &mut Screen, _: ButtonHandle) {}
 
+    fn dealing(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut crate::console::Console) {}
     fn opened(&mut self, _: &mut Screen) {}
 
     fn confirmed(&mut self, _: &mut Screen, _: &mut BattleFolder) {}
