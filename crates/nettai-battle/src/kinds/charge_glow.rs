@@ -160,7 +160,7 @@ fn select_sprite(b: &mut Battle, r: ObjectRef, source: u8, chaos: bool) {
         return;
     }
     vars(b, r).sprite = Some(wanted);
-    let sprite = b.roles_for(r).sprite(wanted);
+    let sprite = b.roles().sprite(wanted);
     b.objects.sprite_mut(r).load(sprite);
     b.objects.sprite_mut(r).look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);

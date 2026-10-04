@@ -235,38 +235,10 @@ pub(crate) fn kind(key: &str) -> &str {
     keys::local(key).rsplit('/').next().unwrap_or("")
 }
 
-/// Whose a section's tables are (docs/design/rules-in-luau.md §2.3, P1
-/// item 8): a side's (what one navi's rules read: a mix may bring its own),
-/// or the battle's or a chip's game's (the arena's, a chip's own: a mix
-/// can't change them).
-pub(crate) fn about_a_side(kind: &str) -> bool {
-    matches!(kind, "custom-screen" | "berserk" | "navicust" | "status" | "lockon" | "cross-special")
-}
-
-/// The rule sections rulesets list as their own (`sections`): theirs, not
-/// their folder's game's.
-fn owned_by_rulesets(definitions: &Definitions) -> std::collections::BTreeSet<String> {
-    let mut out = std::collections::BTreeSet::new();
-    for d in definitions.of(Registry::Ruleset) {
-        if let nettai_content_api::Data::List(items) = d.spec.field("sections") {
-            for v in items {
-                if let nettai_content_api::Data::Ref(Registry::Rules, key) = v {
-                    out.insert(key.clone());
-                }
-            }
-        }
-    }
-    out
-}
-
-/// Root `root`'s rule sections into `rules` (which starts as the base):
-/// each only if the root defines it (and no ruleset lists it as its own).
-fn sections(rules: &mut Rules, root: &str, r: &SpecReader, definitions: &Definitions) -> Result<(), ContentError> {
-    let owned = owned_by_rulesets(definitions);
+/// The game's rule sections into `rules` (which starts as the base): each
+/// the game defines.
+fn sections(rules: &mut Rules, r: &SpecReader, definitions: &Definitions) -> Result<(), ContentError> {
     for d in definitions.of(Registry::Rules) {
-        if keys::root_of(&d.key).unwrap_or("") != root || owned.contains(&d.key) {
-            continue;
-        }
         section(rules, d, r)?;
     }
     Ok(())
@@ -303,8 +275,8 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
             "panels" => {
                 let s: PanelsSection = r.read(spec, &at).map_err(e)?;
                 // The types the game has (docs/design/bn5-map.md §15.3 item
-                // 1): BN6 names its 13, BN5 its 11; the others are another
-                // loaded game's (`fill_panel_types`).
+                // 1): BN6 names its 13, BN5 its 11; the others keep an
+                // empty rule (no panel of the game is one).
                 let mut types = vec![PanelTypeRule::default(); PanelType::ALL.len()];
                 for t in PanelType::ALL {
                     let name = serde_name(&t);
@@ -506,67 +478,13 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
     Ok(())
 }
 
-/// Each ruleset's own rules (P1 item 8), by `RulesetHandle`: for a ruleset
-/// that lists sections of its own (a mix's), its game's tables with them;
-/// None for the others. A section about the battle or a chip's game is
-/// refused: a mix changes only what its sides read.
-pub fn build_rulesets(content: &mut Content) -> Result<(), ContentError> {
-    let mut out: Vec<Option<Rules>> = Vec::with_capacity(content.defs.rulesets.len());
-    {
-        let r = SpecReader::new(&content.assets, &content.defs.definitions);
-        for rs in &content.defs.rulesets {
-            if rs.sections.is_empty() {
-                out.push(None);
-                continue;
-            }
-            let mut rules = content.rules[rs.game.index()].clone();
-            for key in &rs.sections {
-                let d = content.defs.definitions.get(Registry::Rules, key).expect("a listed section is defined");
-                let k = kind(key);
-                if !about_a_side(k) {
-                    return Err(ContentError::new(format!(
-                        "{}.luau: ruleset {}: section {key} (`{k}`) is the battle's or a chip's game's: a ruleset's own sections are its sides' \
-                         (custom-screen, berserk, navicust, status, lockon, cross-special)",
-                        d.module, rs.key
-                    )));
-                }
-                section(&mut rules, d, &r)?;
-            }
-            out.push(Some(rules));
-        }
-    }
-    content.ruleset_rules = out;
-    Ok(())
-}
-
-/// The rule sections the content defines, into `content.rules`.
+/// The rule sections the content defines, into `content.rules`: the game's
+/// (the base with its sections).
 pub fn build(content: &mut Content, definitions: &Definitions) -> Result<(), ContentError> {
     let r = SpecReader::new(&content.assets, definitions);
-    let mut all = Vec::new();
-    for root in Content::game_names(&content.scripts, definitions) {
-        let mut rules = content.base_rules.clone();
-        sections(&mut rules, &root, &r, definitions)?;
-        all.push(rules);
-    }
-    fill_panel_types(&mut all);
-    content.rules = all;
+    let mut rules = content.base_rules.clone();
+    sections(&mut rules, &r, definitions)?;
+    rules.panels.types.resize(PanelType::ALL.len(), PanelTypeRule::default());
+    content.rules = rules;
     Ok(())
-}
-
-/// A panel type a game's section doesn't name is the first other loaded
-/// game's that does, in root order (docs/design/rules-in-luau.md §7.4: a
-/// BN6 chip's road in a BN5 arena runs by BN6's rule; never a panic). One
-/// no loaded game names keeps an empty rule.
-pub(crate) fn fill_panel_types(all: &mut [Rules]) {
-    for rules in all.iter_mut() {
-        rules.panels.types.resize(PanelType::ALL.len(), PanelTypeRule::default());
-    }
-    for t in 0..PanelType::ALL.len() {
-        let Some(named) = all.iter().find(|r| r.panels.types[t].named).map(|r| r.panels.types[t]) else { continue };
-        for rules in all.iter_mut() {
-            if !rules.panels.types[t].named {
-                rules.panels.types[t] = PanelTypeRule { named: false, ..named };
-            }
-        }
-    }
 }

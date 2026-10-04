@@ -134,7 +134,7 @@ impl Side {
     pub fn live(content: &Content, folder: SavedFolder, crosses: CrossList, game: GameVersion) -> Side {
         let stats = crate::starting(content, live_navi(content), game);
         Side {
-            ruleset: content.defs.stock_ruleset_of(crate::DEFAULT_GAME),
+            ruleset: content.defs.stock_ruleset(),
             navi: stats.navi,
             game,
             stats,
@@ -186,7 +186,7 @@ pub fn plain(content: &Arc<Content>, seed: u32) -> Result<Match, String> {
     let folder = SavedFolder { chips: [FolderChip::new(chip, content.chip(chip).codes[0]); 30], regular: None, tags: None };
     let game = GameVersion::Falzar;
     let side = Side {
-        ruleset: content.defs.stock_ruleset_of(crate::DEFAULT_GAME),
+        ruleset: content.defs.stock_ruleset(),
         navi,
         game,
         stats: Side::base_stats(content, navi, game),

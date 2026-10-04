@@ -542,26 +542,22 @@ fn main() {
     let found = nettai_content::pack::find(&packs_dir, &args.packs, &mut found_report);
     show(&found_report);
     let found = found.unwrap_or_else(|| fail("can't read the packs given (--pack, $BN6_PACK)"));
-    let loaded = nettai_content::pack::load_found(args.content.as_deref(), &found).unwrap_or_else(|r| {
+    // (One game a match, docs/design/content-model-v2.md §4.0: the
+    // frontend's game is BN6 until it chooses one.)
+    let game = nettai_match::DEFAULT_GAME;
+    let loaded = nettai_content::pack::load_game(args.content.as_deref(), game, &found).unwrap_or_else(|r| {
         show(&r);
         fail("can't load the battle content (--content, --pack)")
     });
     show(&loaded.report);
-    for (game, why) in &loaded.left_out {
-        eprintln!("the game {game} is left out: {why}");
-    }
     if std::env::var_os("NETTAI_LOAD_TIMES").is_some() {
-        eprintln!("loaded the battle content in {:.1?} (packs {})", t.elapsed(), loaded.packs.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join(", "));
+        eprintln!("loaded the battle content in {:.1?} (pack {})", t.elapsed(), loaded.pack.display());
     }
     let content = Arc::new(loaded.content);
-    let (content_dir, games) = (loaded.dir, loaded.games);
-    // Each pack's graphics, by the content's pack order (`PackId`); the
-    // frontend's own game's (BN6's, by name) in the player's language.
-    let by_pack = loaded.packs;
-    let own = content.assets.pack(nettai_match::DEFAULT_GAME).unwrap_or_else(|| {
-        let why = loaded.left_out.iter().find(|(g, _)| g == nettai_match::DEFAULT_GAME).map_or(String::new(), |(_, why)| format!(": {why}"));
-        fail(format!("no {} pack is loaded{why}", nettai_match::DEFAULT_GAME))
-    });
+    let (content_dir, games) = (loaded.dir, vec![loaded.game]);
+    // The game's pack's graphics, in the player's language.
+    let by_pack = vec![loaded.pack];
+    let own = content.assets.pack(game).unwrap_or_else(|| fail(format!("no {game} pack is loaded")));
     session::quiet_engine_panics();
     if args.audit_content {
         audit_content(&args, &content, &by_pack, own, &content_dir, &games);

@@ -225,38 +225,37 @@ mod tests {
         ("chips/cannon", "return define.record('chip-ish', { power = 3 })"),
     ];
 
-    /// docs/design/rules-in-luau.md, the flat namespace: game packs load
-    /// together; every id is written in full, its game first.
+    /// docs/design/content-model-v2.md §4.0: content holds one game pack
+    /// (a match plays one game), every id written in full, its game first;
+    /// one game pack requires nothing of another's.
     #[test]
-    fn game_packs_load_together() {
+    fn content_holds_one_game() {
         let mix: &[(&str, &str)] = &[
             ("rules/extra", "return define.system { id = 'mix:extra' }"),
             ("rules/ruleset", "return define.ruleset { id = 'mix:stock', stock = true, systems = { require('./extra') } }"),
             ("cards", "return define.record('card', { power = 2 })"),
         ];
-        let c = content(vec![folder("mix", mix), folder("game", GAME)]).unwrap();
+        let c = content(vec![folder("game", GAME)]).unwrap();
         let d = &c.defs;
-        assert_eq!(d.roots, ["game", "mix"], "the games, by name");
+        assert_eq!((c.game(), d.game.as_str()), ("game", "game"));
         let keys: Vec<&str> = d.systems.iter().map(|s| s.key.as_str()).collect();
-        assert_eq!(keys, ["game:turns", "mix:extra"]);
-        let mix_rules = d.ruleset_by_key("mix:stock").unwrap();
-        assert_eq!(d.ruleset(mix_rules).systems.len(), 1);
-        assert_eq!(d.stock_ruleset_of("mix"), Some(mix_rules));
-        assert_eq!(d.stock_ruleset_of("game"), d.ruleset_by_key("game:stock"));
+        assert_eq!(keys, ["game:turns"]);
+        assert_eq!(d.stock_ruleset(), d.ruleset_by_key("game:stock"));
         // Lookups are exact.
         assert_eq!(d.ruleset_by_key("test:stock"), None);
-        assert!(d.record("game:cards#1").is_some() && d.record("mix:cards#1").is_some());
-        assert_eq!(d.record("test:cards#1"), None);
-        // A definition's game is its id's prefix.
-        assert_eq!(d.root_of("mix:extra"), d.root_id("mix"));
-        assert_eq!(d.root_of("engine/player"), None);
+        assert!(d.record("game:cards#1").is_some());
+        assert_eq!(d.record("mix:cards#1"), None);
+        // Two game packs are two contents.
+        let e = content(vec![folder("mix", mix), folder("game", GAME)]).unwrap_err();
+        assert!(e.contains("content holds one game, and these are mix and game"), "{e}");
         // One game pack requires nothing of another's.
-        let e = content(vec![
-            folder("mix", &[("rules/ruleset", "return define.ruleset { id = 'mix:stock', stock = true, systems = { require('@game/rules/turns') } }")]),
-            folder("game", GAME),
-        ])
-        .unwrap_err();
-        assert!(e.contains("mix/rules/ruleset.luau: require(\"@game/rules/turns\"): game is a game pack"), "{e}");
+        let mut c = Content::default();
+        c.scripts.add_dir("game", GAME.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect());
+        c.scripts.set_manifest(PackManifest { id: "game".into(), kind: PackKind::Game, ..Default::default() });
+        c.scripts.add_game("mix", [("rules/ruleset".to_string(), "return define.ruleset { id = 'mix:stock', stock = true, systems = { require('@game/rules/turns') } }".to_string())].into());
+        c.scripts.packs.retain(|p| p.id == "mix");
+        let e = c.define().unwrap_err().message;
+        assert!(e.contains("mix/rules/ruleset.luau: require(\"@game/rules/turns\"): game is no pack") || e.contains("game is a game pack"), "{e}");
     }
 
     #[test]
@@ -273,13 +272,11 @@ mod tests {
             ("b", "return define.ruleset { id = 'game:b', stock = true }"),
         ];
         let e = content(vec![folder("game", two)]).unwrap_err();
-        assert!(e.contains("root game has 2 stock rulesets"), "{e}");
+        assert!(e.contains("game game has 2 stock rulesets"), "{e}");
     }
 
-    /// docs/design/rules-in-luau.md §2.2: a mix is its base's systems,
-    /// less `remove`, with `add` after them; its game is its base's unless
-    /// it names one. (Its modules are the base's pack's: a game pack
-    /// requires nothing of another's.)
+    /// docs/design/rules-in-luau.md §2.2: a variant is its base's systems,
+    /// less `remove`, with `add` after them.
     #[test]
     fn a_mix_changes_its_base() {
         let mix: &[(&str, &str)] = &[
@@ -308,8 +305,6 @@ mod tests {
         };
         assert_eq!(systems("mix:plus"), ["game:turns", "mix:extra"]);
         assert!(systems("mix:minus").is_empty());
-        let game = d.root_id("game").unwrap();
-        assert_eq!(d.ruleset(d.ruleset_by_key("mix:plus").unwrap()).game, game, "its base's game");
         // What a ruleset refuses.
         let bad = |source: &str| -> String { with(&[("rules/bad", source)]).unwrap_err() };
         let base = "local game = require('./ruleset')\nlocal turns = require('./turns')\n";
@@ -318,9 +313,7 @@ mod tests {
             ("return define.ruleset { id = 'mix:x', base = game, systems = { turns } }", "not `systems`"),
             ("return define.ruleset { id = 'mix:x', base = game, add = { turns } }", "which it has already"),
             ("return define.ruleset { id = 'mix:x', systems = {}, remove = { turns } }", "names none"),
-            ("return define.ruleset { id = 'mix:x', systems = { turns } }", "no game's"),
-            ("return define.ruleset { id = 'mix:x', systems = { turns }, game = 'nowhere' }", "no loaded root"),
-            ("return define.ruleset { id = 'mix:x', systems = { turns }, game = 'mix' }", "which is no game's"),
+            ("return define.ruleset { id = 'mix:x', systems = { turns }, game = 'game' }", "`game` is no field of a ruleset"),
         ];
         for (source, want) in cases {
             let e = bad(&format!("{base}{source}"));
@@ -328,11 +321,6 @@ mod tests {
         }
         let e = bad("return define.ruleset { id = 'mix:x', base = require('./ruleset'), remove = { define.system { id = 'mix:y' } } }");
         assert!(e.contains("which its base doesn't have"), "{e}");
-        // A mix that names its game is that game's.
-        let named = with(&[("rules/ok", &format!("{base}return define.ruleset {{ id = 'mix:x', systems = {{ turns }}, game = 'game' }}"))])
-            .unwrap()
-            .defs;
-        assert_eq!(named.ruleset(named.ruleset_by_key("mix:x").unwrap()).game, named.root_id("game").unwrap());
     }
 
     /// docs/design/content-model-v2.md §4.0: a game pack's manifest is the
