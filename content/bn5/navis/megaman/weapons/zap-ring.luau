@@ -16,7 +16,7 @@ local statuses = require("../../../rules/status")
 
 -- ---- The ring -------------------------------------------------------------------------------------------------------
 
-local SPRITE = asset.sprite("sprite-0c-5b")
+local SPRITE = asset.sprite("zap-ring")
 -- 0x080DF380's rows: speed (pixels a tick), the status, the sound.
 type Row = { speed: number, status: Status?, sound: Sound }
 local ROWS: { [number]: Row } = {
@@ -123,7 +123,7 @@ end
 
 -- ---- The action -----------------------------------------------------------------------------------------------------
 
-local ARM = attachment.look { sprite = asset.sprite("sprite-0c-5a"), palette = 0, attach_point = 0x1C }
+local ARM = attachment.look { sprite = asset.sprite("zap-ring-arm"), palette = 0, attach_point = 0x1C }
 local ANIM = 10
 local HOLD_TICKS, SEND_AT, RECOVER_TICKS = 10, 5, 10
 local RING_Z = 0x1A_0000
