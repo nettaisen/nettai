@@ -48,7 +48,8 @@ pub struct Renderer<'a> {
     /// The version of the console whose screen is drawn, as its game's
     /// pack names its versions (BN5's "protoman", "colonel"), for a game
     /// whose versions the engine doesn't tell apart: what the console shows
-    /// of its own (BN5's navi chips' pictures and icons). None: the
+    /// of its own (BN5's emblems), and which chips are the other version's,
+    /// whose art its ROM draws otherwise (`ChipArt::version`). None: the
     /// engine's (BN6's `Unlocks::version`), or the pack's base version.
     pub console_version: Option<&'static str>,
     /// How text is drawn, and the font of the font mode.
