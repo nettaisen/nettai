@@ -52,6 +52,7 @@ return {
         require("@self/chips/cannball"),
         require("@self/chips/cannmode"),
         require("@self/chips/cannon"),
+        require("@self/chips/capsules"),
         require("@self/chips/chaoslrd"),
         require("@self/chips/circgun"),
         require("@self/chips/cloudman"),

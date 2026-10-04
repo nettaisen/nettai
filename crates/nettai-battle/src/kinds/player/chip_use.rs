@@ -9,6 +9,7 @@ use crate::battle::Battle;
 use crate::collision::f1;
 use crate::field::PanelType;
 use crate::content::{ChipData, ChipFamily, ChipFlags, ChipTraits, Content};
+use crate::custom::builder::modifier_bits;
 use crate::object::{ObjectRef, PanelPos, Vec3};
 use nettai_content_api::{ChipHandle, WeaponHandle};
 
@@ -125,8 +126,8 @@ struct HandEntry {
     damage: u16,
     /// Atk+ and charge bonuses plus any form or aura bonus.
     extra: u16,
-    /// Modifier flags folded into the entry (bit 1 paralyze, bit 2
-    /// uninstall).
+    /// Modifier flags folded into the entry (`modifier_bits`: bit 1
+    /// paralyze, bit 2 uninstall; BN5's capsules' bits 3 to 5).
     modifiers: u8,
     /// The type of panel the bonus came from, which the use turns Normal
     /// (the navi's `panel_bonus`: BN5's sea, 0x0800D0A6's bonus kind 4).
@@ -254,19 +255,26 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     }
     prime(b, r, cd);
     let mut damage = ai(b, r).attack.damage;
-    // sub_8012C34
-    if e.modifiers & 2 != 0 {
+    // sub_8012C34 (BN5's 0x08010368, which knows two more: its capsules').
+    if e.modifiers & modifier_bits::PARALYZE != 0 {
         damage |= damage_flags::PARALYZE;
     }
-    if e.modifiers & 4 != 0 {
+    if e.modifiers & modifier_bits::UNINSTALL != 0 {
         damage |= damage_flags::UNINSTALL;
+    }
+    let mixed = b.game_rules().chip_use.mixed_modifiers;
+    if mixed && e.modifiers & modifier_bits::DAMAGE_1000 != 0 {
+        damage |= 0x1000;
+    }
+    if mixed && e.modifiers & modifier_bits::DAMAGE_0800 != 0 {
+        damage |= 0x0800;
     }
     // sub_8012C4A
     if deals_damage(cd.flags) && cd.family == ChipFamily::Null && form_of(b, r).traits.has(crate::content::FormTraits::ERASES) {
         damage |= damage_flags::ERASE_CROSS;
     }
     ai_mut(b, r).attack.damage = damage;
-    heal_on_use(b, r, e.chip);
+    heal_on_use(b, r, e.chip, mixed && e.modifiers & modifier_bits::HEAL != 0);
     if cd.flags.has(ChipFlags::NAVI) {
         b.bump_side_stat(side, 6, 1);
     }
@@ -639,12 +647,16 @@ fn null_doubles(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
 /// chip-recovery stat, plus a twentieth of the base HP (rounded up) for
 /// non-dimming aqua chips in the aqua crosses; a recovery effect (#6) and
 /// its sound.
-fn heal_on_use(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
+fn heal_on_use(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>, mixed: bool) {
     let s = *stats(b, r);
     let cd = entry_record(&b.content, chip);
     let cross = form_of(b, r).chip_heals.is_some_and(|rule| chip_matches(rule, cd)) && !cd.flags.has(ChipFlags::DIMMING);
     let heal = if cross { (s.max_base_hp as u32 + 0x13) / 0x14 } else { 0 };
-    let total = s.chip_recovery as u32 + heal;
+    // BN5's 0x0800FFF6: a heal mixed into the chip (the hand's modifier
+    // 0x10: its pink capsule) is a tenth of the navi's maximum HP, rounded
+    // up.
+    let mixed = if mixed { (b.objects.get(r).max_hp as u32 + 9) / 10 } else { 0 };
+    let total = s.chip_recovery as u32 + heal + mixed;
     if total as u16 == 0 {
         return;
     }

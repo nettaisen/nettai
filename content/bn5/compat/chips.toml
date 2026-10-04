@@ -345,3 +345,8 @@
 "rush" = { id = 0x179, action = 0x14, subtype = 0 }
 "beat" = { id = 0x17a, action = 0x14, subtype = 0 }
 "tango" = { id = 0x17b, action = 0x14, subtype = 0 }
+"yelcapsl" = { id = 0x17c, action = 0x14, subtype = 0 }
+"blkcapsl" = { id = 0x17d, action = 0x15, subtype = 49 }
+"whicapsl" = { id = 0x17e, action = 0x15, subtype = 20 }
+"prpcapsl" = { id = 0x17f, action = 0x15, subtype = 50 }
+"pnkcapsl" = { id = 0x180, action = 0x15, subtype = 50 }
