@@ -1175,14 +1175,19 @@ AntiDmg's counter and shuriken, the swords' parts and slash, the sonic boom, Ant
 wave, the bullet and the vulcans, the tornado and its blow, Thunder's ball and shot, FireHit's fist, ElemTrap's trap
 and counterattack, Lance's lance, DrilArm's drill, ProtoMan, the boomerang, the plus chips' sparkle, the Spreaders'
 action, the shower's aim, and MegaMan's buster, blank and charged shots. BN5 makes its own kinds of each (compat's
-kinds.toml names them `bn5:...`); a BN5 look names BN6's assets where BN6's module did, as before. BN5 still uses
-these BN6 definitions as its own: BN6's effects (lib/effects: the explosions, puffs and flashes BN6's modules
-showed), BN6's collision rows that keep the 0x80 self bit where BN5's own rows drop it (thrown, curse, thrown-slash,
-attack, slash: BN5's grab shot, energy burst, GrabBnsh's hand, AntiDmg's shuriken, ProtoMan's slash and the
-projectile's burst; where BN5's row equals BN6's, BN5's own), BN6's plain shot as the fallback of BN5's forced
-charged shot, and BN6's barriers and their visual (lib/barriers: waits on bn5-chips-b's content/common/barriers).
-The 0x80 bit and the fallback are as BN6's modules had them; whether BN5's rows are the right ones is the chips'
-porters' to check.
+kinds.toml names them `bn5:...`); a BN5 look names BN5's assets (the same sheets and sounds where BN5's are
+BN6's, by BN6's names in compat/assets.toml). Since bn5-no-bn6 (2026-10-03) content/bn5 requires nothing of BN6's
+and names none of BN6's assets: a match loads its own game's pack alone. What it took from BN6 it now has of its
+own: BN5's effects (lib/effects: BN5's effect table, 0x080DFC94, whose rows to 0x22 are BN6's in BN5's sheets; the
+trap mark BN5's row 0x2B), BN5's own collision rows where BN6's kept the 0x80 self bit (thrown, curse,
+thrown-slash, attack, slash: the grab shot, the energy burst, GrabBnsh's hand, AntiDmg's shuriken, ProtoMan's slash
+and the projectile's burst; no BN5 target word tests the bit), BN5's plain shot as the fallback of the forced
+charged shot (BN5's projectile table's row 0), BN5's navi arm (the attachment table's row 0x2B) as the shared
+buster's enemy-navi arm, and the shared code where it is the same (@common/instant/side_special, BN6's
+`sub_802E1BE`; @common/guardian/strike, the strike back, whose telop names BN5's own Punisher, chip 0x175, as
+VDoll's curse names its Curse, 0x174: both BN5's SonicBom action of hit modifier 0). The sheets BN5's pack had no
+names for got them by their places (gen_content.py's SPRITES_BY_PLACE): 0c-06 `muzzle-flash`, 0c-07 `aura`, 0c-20
+`bubble`, 0c-3d `barrier`, 0c-49 `otenko`, 14-0a `burst` and 14-14 `lightning`.
 
 The lists below say how each was opened (each the smallest change that lets BN5 reuse it; BN6's behavior the same,
 its full set run on the batch):

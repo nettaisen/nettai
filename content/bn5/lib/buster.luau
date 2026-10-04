@@ -1,15 +1,16 @@
 --!strict
--- What BN5's buster shots share (@common/buster: BN6's code) but the arm they raise, BN5's own (lib/arm): BN6's muzzle
--- flash (and the arm looks BN6's code keeps), BN5's recovery table (rules/buster: BN6's values) and BN5's attachment.
+-- What BN5's buster shots share (@common/buster: BN6's code) but the arm they raise, BN5's own (lib/arm): the muzzle
+-- flash (BN5's attachment row 0x0D, BN6's 5), the arm looks BN6's code keeps (BN5's rows 0x23 and 0x2B), BN5's recovery
+-- table (rules/buster: BN6's values) and BN5's attachment.
 
 local arm = require("./arm")
 local attachment = require("../objects/attachment/attachment")
 local common = require("@common/buster")
 
 local buster = common.make {
-    flash = attachment.look { sprite = asset.sprite("bn6:muzzle-flash"), palette = 0, attach_point = 0x10 },
-    arm = attachment.look { sprite = asset.sprite("bn6:buster-arm"), palette = 0 },
-    navi_arm = attachment.look { sprite = asset.sprite("bn6:elec-coil"), palette = 0, attach_point = 0x0E },
+    flash = attachment.look { sprite = asset.sprite("bn5:muzzle-flash"), palette = 0, attach_point = 0x10 },
+    arm = attachment.look { sprite = asset.sprite("bn5:buster-arm"), palette = 0 },
+    navi_arm = attachment.look { sprite = asset.sprite("bn5:navi-arm"), palette = 0 },
     recovery = require("../rules/buster").recovery,
     attachment = attachment.kind,
 }

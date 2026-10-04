@@ -9,7 +9,6 @@
 -- navi's charged-shot program names (NaviStats +0x4F, the plain shot when 0), else the charged shot.
 
 local attachment = require("../../../objects/attachment/attachment")
-local bn6_variants = require("@bn6/objects/projectile/variants")
 local buster = require("../../../lib/buster")
 local common = require("@common/megaman/charged_shot")
 local marker = require("../../../lib/navi-chips/marker")
@@ -24,8 +23,8 @@ bn5.action = common.action {
     buster = buster,
     projectiles = projectile,
     attachment = attachment.kind,
-    shot_sound = asset.sound("bn6:buster-shot"),
-    plain = bn6_variants.plain,
+    shot_sound = asset.sound("bn5:buster-shot"),
+    plain = variants.plain,
     -- 0x080EC9F0: in the battle flag 0x40 mode, the wait, its panel in front marked (0x080E9FD2: style 8, 10
     -- ticks); else none.
     waits = function(me: Object): boolean
