@@ -22,8 +22,8 @@ impl Side {
     pub fn import_bn5_save(&mut self, content: &Content, arena: &Arena, save: &Save) -> Vec<String> {
         let mut notes = Vec::new();
         self.karma = save.light_dark();
-        if !crate::facts::takes(content, arena.ruleset, crate::facts::KARMA_FIELD) {
-            notes.push("the match's ruleset has no light and dark MegaMan: the save's karma is kept, unused".into());
+        if !crate::facts::takes(content, crate::facts::KARMA_FIELD) {
+            notes.push(format!("{} has no light and dark MegaMan: the save's karma is kept, unused", arena.game));
         }
         let numbers = save.souls();
         self.soul_unison = save.soul_unison();

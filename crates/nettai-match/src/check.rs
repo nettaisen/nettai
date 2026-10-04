@@ -2,18 +2,17 @@
 //! it loads, a netplay offer when it arrives (`check_side`), and the editor
 //! shows as they fail. Each problem is said, with where it is.
 //!
-//! - **The arena**: a game of the content's, one of its rulesets, its link
-//!   battle stages (`crate::link_battle_stages`), and backgrounds its pack
-//!   has.
+//! - **The arena**: the content's game, its link battle stages
+//!   (`crate::link_battle_stages`), and backgrounds its pack has.
 //! - **A side**: its navi, chips, patch cards, NaviCust programs and souls
 //!   are the match's game's, its stats' forms the content's; a Cross list
-//!   only with a ruleset that has the forms system,
+//!   only with rules that have the forms system,
 //!   each a Cross of the navi's, at most five, none twice; patch cards only
-//!   with a ruleset that has the patch-cards system, each installed once, at
+//!   with rules that have the patch-cards system, each installed once, at
 //!   most [`MAX_CARDS`], their MB together at most [`CARD_MB`] (BN6's menu
 //!   adds no card past 80 MB, `0x08141868`); a NaviCust only for MegaMan
 //!   under rules with the navicust system, on its board (`check_navicust`);
-//!   the folder by its own game's rules (the side's ruleset's
+//!   the folder by its own game's rules (the game's rules'
 //!   `folder_check`, `crate::folders`: BN6's folder editor's), on the stats
 //!   the round set up (the NaviCust's and the patch cards' folder limits:
 //!   the original's folder editor and its link battle check read the stats
@@ -51,10 +50,6 @@ pub fn check_arena(content: &Content, a: &Arena) -> Vec<String> {
     let games = ids::games(content);
     if !games.contains(&a.game) {
         return vec![format!("no game {:?} (the content's are {})", a.game, games.join(", "))];
-    }
-    if a.ruleset.index() >= content.defs.rulesets.len() || !ids::in_game(&a.game, &content.defs.ruleset(a.ruleset).key) {
-        out.push(format!("a ruleset {} hasn't", a.game));
-        return out;
     }
     check_place(content, &a.game, &a.first, "arena", &mut out);
     for (i, p) in a.later.iter().enumerate() {
@@ -140,8 +135,8 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
     }
     // The Crosses.
     if let Some(list) = &s.crosses {
-        if !arena.has_system(content, crate::FORMS_SYSTEM) {
-            out.push("a Cross list, but the ruleset has no Crosses (no forms system)".into());
+        if !crate::ruleset_has_system(content, crate::FORMS_SYSTEM) {
+            out.push(format!("a Cross list, but {game} has no Crosses (no forms system)"));
         }
         let forms: Vec<_> = list.forms().collect();
         if forms.iter().any(|f| f.index() >= defs.forms.len()) {
@@ -164,8 +159,8 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
     }
     // The patch cards.
     if !s.cards.is_empty() {
-        if !arena.has_system(content, crate::PATCH_CARDS_SYSTEM) {
-            out.push("patch cards, but the ruleset has no patch-cards system".into());
+        if !crate::ruleset_has_system(content, crate::PATCH_CARDS_SYSTEM) {
+            out.push(format!("patch cards, but {game} has no patch-cards system"));
         }
         if s.cards.len() > MAX_CARDS {
             out.push(format!("{} patch cards installed: a list holds {MAX_CARDS}", s.cards.len()));
@@ -209,8 +204,8 @@ pub fn check_navicust(content: &Content, arena: &Arena, s: &Side, n: &nettai_bat
     use nettai_battle::navicust::{SIZE, cells};
     let mut out = Vec::new();
     let defs = &content.defs;
-    if !arena.has_system(content, crate::NAVICUST_SYSTEM) {
-        out.push("a NaviCust, but the ruleset has no navicust system".into());
+    if !crate::ruleset_has_system(content, crate::NAVICUST_SYSTEM) {
+        out.push(format!("a NaviCust, but {} has no navicust system", arena.game));
     }
     if content.navi(s.navi).forms.is_none() {
         out.push(format!("a NaviCust, but {}'s stats aren't a NaviCust's (only MegaMan's compiles)", crate::names::navi(content, s.navi)));

@@ -6,7 +6,6 @@
 //!
 //! ```toml
 //! game = "bn6"                       # the match's game: everything below is its
-//! ruleset = "stock"                  # optional: both sides' rules (else the game's stock)
 //! seed = 42                          # optional: the setup's and battle's seed
 //!
 //! [arena]
@@ -71,8 +70,6 @@ use std::collections::BTreeMap;
 #[serde(deny_unknown_fields)]
 pub struct MatchFile {
     pub game: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ruleset: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub seed: Option<u32>,
     pub arena: ArenaFile,
@@ -246,10 +243,7 @@ pub fn resolve(content: &Content, f: &MatchFile) -> Result<Match, Vec<String>> {
     if !games.contains(&f.game) {
         return Err(vec![format!("no game {:?} (the content's are {})", f.game, games.join(", "))]);
     }
-    let Some(ruleset) = resolve_ruleset(content, &f.game, f.ruleset.as_deref(), &mut problems) else {
-        return Err(problems);
-    };
-    let arena = resolve_arena(content, &f.game, ruleset, &f.arena, &mut problems);
+    let arena = resolve_arena(content, &f.game, &f.arena, &mut problems);
     let Some(arena) = arena else { return Err(problems) };
     let left = resolve_side(content, &arena.game, &f.left, "left", &mut problems);
     let right = resolve_side(content, &arena.game, &f.right, "right", &mut problems);
@@ -257,18 +251,6 @@ pub fn resolve(content: &Content, f: &MatchFile) -> Result<Match, Vec<String>> {
         (Some(left), Some(right)) if problems.is_empty() => Ok(Match { seed: f.seed, arena, sides: [left, right] }),
         _ => Err(problems),
     }
-}
-
-/// `game`'s ruleset named `name` (none: its stock one).
-pub fn resolve_ruleset(content: &Content, game: &str, name: Option<&str>, problems: &mut Vec<String>) -> Option<nettai_content_api::RulesetHandle> {
-    let found = match name {
-        None => crate::stock_ruleset(content, game).map_err(|e| vec![e]),
-        Some(n) => ids::ruleset(content, game, n).ok_or_else(|| {
-            let have = names_in(game, content.defs.rulesets.iter().map(|r| r.key.as_str()));
-            vec![unknown("ruleset", n, game, &have)]
-        }),
-    };
-    found.map_err(|e| problems.extend(e)).ok()
 }
 
 fn resolve_place(content: &Content, game: &str, stage: &str, background: &Option<String>, at: &str, problems: &mut Vec<String>) -> Option<Place> {
@@ -287,8 +269,8 @@ fn resolve_place(content: &Content, game: &str, stage: &str, background: &Option
     Some(Place { stage: stage?, background: background.clone() })
 }
 
-/// A file's arena, of `game` by `ruleset`.
-pub fn resolve_arena(content: &Content, game: &str, ruleset: nettai_content_api::RulesetHandle, a: &ArenaFile, problems: &mut Vec<String>) -> Option<Arena> {
+/// A file's arena, of `game`.
+pub fn resolve_arena(content: &Content, game: &str, a: &ArenaFile, problems: &mut Vec<String>) -> Option<Arena> {
     let first = resolve_place(content, game, &a.stage, &a.background, "arena", problems);
     let later = match &a.later {
         None => first.clone().map(|p| [p.clone(), p]),
@@ -305,7 +287,7 @@ pub fn resolve_arena(content: &Content, game: &str, ruleset: nettai_content_api:
             None
         }
     };
-    Some(Arena { game: game.to_string(), ruleset, first: first?, later: later? })
+    Some(Arena { game: game.to_string(), first: first?, later: later? })
 }
 
 /// A file's side of a match of `game`, each name the game's.
@@ -575,8 +557,8 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
     }
 }
 
-/// A match's arena as a file writes it (its places; the game and the
-/// ruleset are the file's own keys).
+/// A match's arena as a file writes it (its places; the game is the
+/// file's own key).
 pub fn arena_file(content: &Content, a: &Arena) -> ArenaFile {
     let place = |p: &Place| PlaceFile { stage: ids::local(&content.defs.stage(p.stage).key).to_string(), background: p.background.clone() };
     let first = place(&a.first);
@@ -584,16 +566,10 @@ pub fn arena_file(content: &Content, a: &Arena) -> ArenaFile {
     ArenaFile { stage: first.stage, background: first.background, later }
 }
 
-/// The name a file gives `game`'s `ruleset`: none for the game's stock one.
-pub fn ruleset_name(content: &Content, game: &str, ruleset: nettai_content_api::RulesetHandle) -> Option<String> {
-    (crate::stock_ruleset(content, game).ok() != Some(ruleset)).then(|| ids::local(&content.defs.ruleset(ruleset).key).to_string())
-}
-
 /// A match as a file.
 pub fn to_file(content: &Content, m: &Match) -> MatchFile {
     MatchFile {
         game: m.arena.game.clone(),
-        ruleset: ruleset_name(content, &m.arena.game, m.arena.ruleset),
         seed: m.seed,
         arena: arena_file(content, &m.arena),
         left: side_file(content, &m.sides[0]),
@@ -755,15 +731,16 @@ mod tests {
         has(crate::check_match(&content, &m), "right: a Cross list, but ProtoMan doesn't change form");
     }
 
-    /// A ruleset without the forms system has no Crosses (the test
-    /// content's mix).
+    /// A game's rules have their systems, by name: BN6's the forms system
+    /// (its Crosses), and no key names another ruleset.
     #[test]
-    fn crosses_need_the_forms_system() {
-        let content = nettai_battle::content::testing::content();
-        let mix = content.defs.ruleset_by_key("test-mix").unwrap();
-        let stock = content.defs.stock_ruleset().unwrap();
-        assert!(crate::ruleset_has_system(&content, stock, crate::FORMS_SYSTEM));
-        assert!(!crate::ruleset_has_system(&content, mix, crate::FORMS_SYSTEM));
+    fn a_game_is_its_rules() {
+        let content = bn6_content();
+        assert!(crate::ruleset_has_system(&content, crate::FORMS_SYSTEM));
+        assert!(!crate::ruleset_has_system(&content, "souls"));
+        let good = write(&content, &crate::draw::live(&content, "bn6", 1, None).unwrap());
+        let e = parse(&content, &good.replacen("game = \"bn6\"\n", "game = \"bn6\"\nruleset = \"stock\"\n", 1)).unwrap_err();
+        assert!(e[0].contains("unknown field `ruleset`"), "{e:?}");
     }
 
     /// The SP deletion times, Beast Out locked and a level write and read
