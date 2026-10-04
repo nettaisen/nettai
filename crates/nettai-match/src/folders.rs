@@ -82,11 +82,12 @@ pub fn problems(b: &mut Battle, side: u8, folder: &Folder) -> Vec<FolderProblem>
 /// hold (BN6's own name for it: the rules name their problems).
 pub const CHIP_RULE: &str = "chip";
 
-/// The chips side `side`'s rules let a folder hold, in handle order: those
-/// they accept alone (in their first code).
-pub fn pool(content: &Content, b: &mut Battle, side: u8) -> Vec<ChipHandle> {
+/// The chips of `game` side `side`'s rules let a folder hold, in handle
+/// order: those they accept alone (in their first code).
+pub fn pool(content: &Content, game: &str, b: &mut Battle, side: u8) -> Vec<ChipHandle> {
     (0..content.defs.chips.len() as u16)
         .map(ChipHandle)
+        .filter(|&id| crate::ids::in_game(game, &content.defs.chip(id).key))
         .filter(|&id| {
             let code = content.chip(id).codes.first().copied().unwrap_or(ChipCode(0));
             !b.check_folder(side, &[FolderChip::new(id, code)], None, None, false).iter().any(|p| p.rule == CHIP_RULE)
@@ -94,14 +95,15 @@ pub fn pool(content: &Content, b: &mut Battle, side: u8) -> Vec<ChipHandle> {
         .collect()
 }
 
-/// A random folder that side `side`'s rules accept: chips drawn one at a
-/// time from the pool, each kept if the rules still accept the chips so far
+/// A random folder of `game`'s chips that side `side`'s rules accept: chips
+/// drawn one at a time from the pool, each kept if the rules still accept
+/// the chips so far
 /// (the copies of a chip, the Mega and Giga limits), in one of its codes.
 /// The codes lean to two the folder favors (and `*`), as a player's would,
 /// so that a hand often has chips to pick together. Its Regular chip is one
 /// the rules accept as Regular, if any is.
-pub fn random_folder(content: &Content, b: &mut Battle, side: u8, draws: &mut Draws) -> SavedFolder {
-    let pool = pool(content, b, side);
+pub fn random_folder(content: &Content, game: &str, b: &mut Battle, side: u8, draws: &mut Draws) -> SavedFolder {
+    let pool = pool(content, game, b, side);
     assert!(!pool.is_empty(), "the rules let a folder hold no chip");
     let favored = [ChipCode(draws.below(26) as u8), ChipCode(draws.below(26) as u8)];
     let mut chips: Vec<FolderChip> = Vec::with_capacity(FOLDER_SIZE);
@@ -154,7 +156,7 @@ mod tests {
 
     /// A battle of the live navi on both sides, to ask BN6's rules.
     fn rules(content: &std::sync::Arc<Content>) -> Battle {
-        crate::check::start(content, &crate::draw::live(content, 1, None).unwrap()).unwrap()
+        crate::check::start(content, &crate::draw::live(content, "bn6", 1, None).unwrap()).unwrap()
     }
 
     /// Random folders keep BN6's folder rules, with a Regular chip that
@@ -163,7 +165,7 @@ mod tests {
     fn random_folders_are_legal() {
         let content = bn6_content();
         let mut b = rules(&content);
-        let pool = pool(&content, &mut b, 0);
+        let pool = pool(&content, "bn6", &mut b, 0);
         // The pack's folder chips: no Program Advance, no dark chip, none
         // past the pack's (the BeastOut chip). The JP-content chips are
         // folder chips in the Japanese games' records, which the content
@@ -177,13 +179,13 @@ mod tests {
             assert!(!keys.contains(&key), "{key}");
         }
         for seed in 0..20 {
-            let f = random_folder(&content, &mut b, 0, &mut Draws::new(seed));
+            let f = random_folder(&content, "bn6", &mut b, 0, &mut Draws::new(seed));
             assert_eq!(problems(&mut b, 0, &f.into()), Vec::new(), "seed {seed}: {}", describe(&content, &f.into()));
             let r = f.regular.expect("a Regular chip");
             assert!(content.chip(f.chips[r as usize].id).mb <= 50);
         }
         // Another seed, another folder; the same seed, the same.
-        let mut one = |seed| random_folder(&content, &mut b, 0, &mut Draws::new(seed));
+        let mut one = |seed| random_folder(&content, "bn6", &mut b, 0, &mut Draws::new(seed));
         assert_ne!(one(1).chips, one(2).chips);
         assert_eq!(one(3).chips, one(3).chips);
     }

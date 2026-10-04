@@ -1,6 +1,7 @@
-//! What the editor shows: a bar of file actions, the panes (the arena, then
-//! each side's navi, folder, Crosses, patch cards and stats; only what the
-//! side's ruleset has), and the problems, live.
+//! What the editor shows: a bar of file actions, the panes (the arena, with
+//! the match's game and ruleset, then each side's navi, folder, Crosses,
+//! patch cards and stats; only what the ruleset has, every list the
+//! game's), and the problems, live.
 
 use crate::app::{Choice, Editor, Msg, Tab};
 use crate::names::Lang;
@@ -61,21 +62,22 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
 
     let mut tabs = Column::new().spacing(2).width(Length::Fixed(170.0));
     tabs = tabs.push(nav("Arena", Tab::Arena, e.tab));
+    let a = &e.m.arena;
     for (s, name) in SIDES.iter().enumerate() {
         let side = e.side(s);
         tabs = tabs.push(text(*name).size(13).color(DIM));
         tabs = tabs.push(nav("  Navi", Tab::Navi(s), e.tab));
         tabs = tabs.push(nav("  Folder", Tab::Folder(s), e.tab));
-        if side.has_system(&e.content, FORMS_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
+        if a.has_system(&e.content, FORMS_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
             tabs = tabs.push(nav("  Crosses", Tab::Crosses(s), e.tab));
         }
-        if nettai_match::facts::takes(&e.content, side, nettai_match::facts::SOULS_FIELD) {
+        if nettai_match::facts::takes(&e.content, a.ruleset, nettai_match::facts::SOULS_FIELD) {
             tabs = tabs.push(nav("  Souls", Tab::Souls(s), e.tab));
         }
-        if side.has_system(&e.content, PATCH_CARDS_SYSTEM) {
+        if a.has_system(&e.content, PATCH_CARDS_SYSTEM) {
             tabs = tabs.push(nav("  Patch cards", Tab::Cards(s), e.tab));
         }
-        if side.has_system(&e.content, NAVICUST_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
+        if a.has_system(&e.content, NAVICUST_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
             tabs = tabs.push(nav("  NaviCust", Tab::NaviCust(s), e.tab));
         }
         tabs = tabs.push(nav("  Stats", Tab::Stats(s), e.tab));
@@ -110,13 +112,32 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
 
 fn arena(e: &Editor) -> Element<'_, Msg> {
     let c = &e.content;
+    let m = &e.m;
+    let game = m.game();
+    // The game first: everything below it is the game's.
+    let games: Vec<Choice<String>> =
+        e.games.iter().map(|g| Choice { label: game_label(g), value: g.clone() }).collect();
+    let picked = games.iter().find(|g| g.value == game).cloned();
+    let rulesets: Vec<Choice<_>> = (0..c.defs.rulesets.len() as u16)
+        .map(nettai_content_api::RulesetHandle)
+        .filter(|&r| nettai_match::ids::in_game(game, &c.defs.ruleset(r).key))
+        .map(|r| {
+            let d = c.defs.ruleset(r);
+            let name = nettai_match::ids::local(&d.key);
+            // (The stock rules said so, unless their name says it.)
+            Choice { label: if d.stock && name != "stock" { format!("{name} (stock)") } else { name.to_string() }, value: r }
+        })
+        .collect();
+    let ruleset = rulesets.iter().find(|r| r.value == m.arena.ruleset).cloned();
+    let systems: Vec<&str> = c.defs.ruleset(m.arena.ruleset).systems.iter().map(|&h| nettai_match::ids::local(&c.defs.system(h).key)).collect();
+    let stage_label = |s: nettai_content_api::StageHandle| nettai_match::ids::local(&c.defs.stage(s).key).to_string();
     let stages: Vec<Choice<_>> =
-        nettai_match::link_battle_stages(c).into_iter().map(|s| Choice { label: c.defs.stage(s).key.clone(), value: s }).collect();
+        nettai_match::link_battle_stages(c, game).into_iter().map(|s| Choice { label: stage_label(s), value: s }).collect();
     let mut backgrounds: Vec<Choice<Option<String>>> = vec![Choice { label: "the stage's own".into(), value: None }];
-    // (By the name a match writes, in full.)
-    backgrounds.extend(c.assets.backgrounds.keys().map(|b| Choice { label: b.clone(), value: Some(b.clone()) }));
+    // (By the name a match writes: the game's.)
+    backgrounds.extend(nettai_match::ids::backgrounds(c, game).into_iter().map(|b| Choice { label: b.to_string(), value: Some(b.to_string()) }));
     let place = |i: usize, p: &nettai_match::Place| -> Element<Msg> {
-        let stage = Choice { label: c.defs.stage(p.stage).key.clone(), value: p.stage };
+        let stage = Choice { label: stage_label(p.stage), value: p.stage };
         let bg = Choice { label: p.background.clone().unwrap_or("the stage's own".into()), value: p.background.clone() };
         column![
             field("Stage", pick_list(stages.clone(), Some(stage), move |s| Msg::Stage(i, s))),
@@ -125,12 +146,17 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
         .spacing(6)
         .into()
     };
-    let m = &e.m;
     let same = m.arena.later == [m.arena.first.clone(), m.arena.first.clone()];
     let seed = e.typed.get(&(2, "seed")).cloned().unwrap_or_else(|| m.seed.map(|s| s.to_string()).unwrap_or_default());
     let mut col = column![
         heading("Arena"),
-        text("The stage's game decides the battle's data: the field, the flow, the music.").size(13).color(DIM),
+        field("Game", pick_list(games, picked, Msg::Game)),
+        text("The match is of one game: both sides' navis, chips, souls and patch cards are its, and everything below lists its alone. Changing it starts the sides over.")
+            .size(13)
+            .color(DIM),
+        field("Ruleset", pick_list(rulesets, ruleset, Msg::Ruleset)),
+        text(format!("Both sides play by it. Its systems: {}", if systems.is_empty() { "none".into() } else { systems.join(", ") })).size(13).color(DIM),
+        rule::horizontal(1),
         place(0, &m.arena.first),
         checkbox(same).label("The set's later rounds on the same place").on_toggle(Msg::LaterSame),
     ]
@@ -150,41 +176,19 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
 fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &e.content;
     let side = e.side(s);
-    let mut rulesets = vec![Choice { label: "the content's stock rules".to_string(), value: None }];
-    rulesets.extend(c.defs.rulesets.iter().enumerate().map(|(i, r)| Choice {
-        label: if r.stock { format!("{} (stock)", r.key) } else { r.key.clone() },
-        value: Some(nettai_content_api::RulesetHandle(i as u16)),
-    }));
-    let ruleset = rulesets.iter().find(|r| r.value == side.ruleset).cloned();
-    let fresh: Vec<nettai_content_api::NaviHandle> =
-        (0..c.defs.navis.len() as u16).map(nettai_content_api::NaviHandle).filter(|&n| c.navi(n).fresh.is_some()).collect();
-    // (Two games' MegaMan: each named with his game.)
-    let games = fresh.iter().map(|&n| game_of(&c.defs.navi(n).key)).collect::<std::collections::BTreeSet<_>>().len();
-    let navi_label = |n: nettai_content_api::NaviHandle| {
-        let name = e.names.navi(c, n);
-        if games > 1 { format!("{name} ({})", game_label(game_of(&c.defs.navi(n).key))) } else { name }
-    };
-    let navis: Vec<Choice<_>> = fresh.iter().map(|&n| Choice { label: navi_label(n), value: n }).collect();
-    let navi = Choice { label: navi_label(side.navi), value: side.navi };
-    let games = [Choice { label: "Falzar".into(), value: GameVersion::Falzar }, Choice { label: "Gregar".into(), value: GameVersion::Gregar }];
-    let game = games.iter().find(|g| g.value == side.game).cloned();
-    let systems: Vec<String> = side
-        .ruleset_or_stock(c)
-        .map(|r| c.defs.ruleset(r).systems.iter().map(|&h| c.defs.system(h).key.clone()).collect())
-        .unwrap_or_default();
+    let ruleset = e.m.arena.ruleset;
+    // (The match's game's navis.)
+    let navis: Vec<Choice<_>> = nettai_match::navis(c, e.m.game()).into_iter().map(|n| Choice { label: e.names.navi(c, n), value: n }).collect();
+    let navi = Choice { label: e.names.navi(c, side.navi), value: side.navi };
+    let versions = [Choice { label: "Falzar".into(), value: GameVersion::Falzar }, Choice { label: "Gregar".into(), value: GameVersion::Gregar }];
+    let version = versions.iter().find(|g| g.value == side.game).cloned();
     let level = e.typed.get(&(s, "level")).cloned().unwrap_or(side.navi_level.map_or(String::new(), |l| l.to_string()));
     let frags = e.typed.get(&(s, "bug_frags")).cloned().unwrap_or(side.bug_frags.to_string());
-    let mut col = column![
-        heading(SIDES[s]),
-        field("Ruleset", pick_list(rulesets, ruleset, move |r| Msg::Ruleset(s, r))),
-        text(format!("Its systems: {}", if systems.is_empty() { "none".into() } else { systems.join(", ") })).size(13).color(DIM),
-        field("Navi", pick_list(navis, Some(navi), move |n| Msg::Navi(s, n))),
-    ]
-    .spacing(10);
-    // What the side's rules and navi take, alone: BN6's game, a navi
+    let mut col = column![heading(SIDES[s]), field("Navi", pick_list(navis, Some(navi), move |n| Msg::Navi(s, n)))].spacing(10);
+    // What the rules and the navi take, alone: BN6's version, a navi
     // code's level (`nettai_match::facts`).
-    if side.takes_game(c) {
-        col = col.push(field("Game", pick_list(games, game, move |g| Msg::Game(s, g))));
+    if nettai_match::Side::takes_game(c, ruleset) {
+        col = col.push(field("Version", pick_list(versions, version, move |g| Msg::Version(s, g))));
     }
     // (No navi code for BN5's MegaMan.)
     let level_kind = side.takes_level(c).then(|| c.navi(side.navi).forms.is_none());
@@ -205,19 +209,19 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     col = col.push(checkbox(side.emotion_window_glitch).label("The emotion window glitches (the save's NaviCust bug flag)").on_toggle(move |b| Msg::Glitch(s, b)));
     col = col.push(button("Import from save…").on_press(Msg::ImportSave(s)));
     col = col.push(
-        text(if side.takes_game(c) {
-            "From a BN6 .sav: the game, Beast Out and the Crosses it owns, the navi code's level and the SP times."
-        } else {
-            "From a BN5 .sav (or a raw save image): its karma and the souls it has (its version's)."
-        })
+        text(
+            "From a BN6 .sav: the version, Beast Out and the Crosses it owns, the navi code's level and the SP times. \
+             From a BN5 .sav (or a raw save image): its karma and the souls it has (its version's). \
+             A save of another game than the match's makes a new match of its game.",
+        )
         .size(13)
         .color(DIM),
     );
-    if nettai_match::facts::takes(c, side, nettai_match::facts::KARMA_FIELD) {
+    if nettai_match::facts::takes(c, ruleset, nettai_match::facts::KARMA_FIELD) {
         col = col.push(rule::horizontal(1));
         col = col.push(karma(e, s));
     }
-    if side.takes_sp_times(c) {
+    if nettai_match::Side::takes_sp_times(c) {
         col = col.push(rule::horizontal(1));
         col = col.push(sp_times(e, s));
     }
@@ -272,13 +276,13 @@ fn label_text<'a>(s: String) -> Element<'a, Msg> {
 fn sp_times(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &*e.content;
     let side = e.side(s);
-    let slots = nettai_match::sp_slots(c, side.ruleset);
+    let slots = nettai_match::sp_slots(c);
     let mut col = column![text("SP navi deletion times").size(16), text("mm:ss.cc; empty: the fastest. The SP navi chips' damage goes by them.").size(13).color(DIM)]
         .spacing(6);
     for (i, slot) in slots.iter().enumerate() {
-        // The SP navi chip whose damage reads the slot (the rules' game's),
-        // by its name.
-        let chip = nettai_match::facts::sp_chip(c, side, i);
+        // The SP navi chip whose damage reads the slot (the game's), by
+        // its name.
+        let chip = nettai_match::facts::sp_chip(c, &e.m.arena, i);
         let label = chip.map_or_else(|| slot.clone(), |h| e.names.chip(c, h));
         let shown = e.sp_typed.get(&(s, i)).cloned().unwrap_or_else(|| match side.sp_times.0[i] {
             0 => String::new(),
@@ -366,15 +370,6 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
         Ok(st) => st[s],
         Err(_) => side.stats,
     };
-    // (With several games' chips, each says its game.)
-    let several = e.pool[s].iter().map(|&h| game_of(&c.defs.chip(h).key)).collect::<std::collections::BTreeSet<_>>().len() > 1;
-    let tag = |h: nettai_content_api::ChipHandle| -> Element<Msg> {
-        if several {
-            text(game_label(game_of(&c.defs.chip(h).key))).size(11).color(DIM).width(Length::Fixed(30.0)).into()
-        } else {
-            space().width(0).into()
-        }
-    };
     // The folder's entries.
     let mut entries = Column::new().spacing(1);
     for (i, chip) in f.chips.iter().enumerate() {
@@ -392,7 +387,6 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
                     text(format!("{i:>2}")).size(12).color(DIM).width(Length::Fixed(22.0)),
                     icon(e, chip.id),
                     text(e.names.chip(c, chip.id)).size(14).width(Length::Fill),
-                    tag(chip.id),
                     text(chip.code.letter().to_string()).size(14).color(if ok { Color::BLACK } else { RED }).width(Length::Fixed(16.0)),
                     text(marks).size(12).color(GREEN).width(Length::Fixed(64.0)),
                 ]
@@ -418,13 +412,7 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
             let sd = c.chip(selected.id);
             let about = column![
                 text(format!("Entry {}: {} {}", e.entry[s], e.names.chip(c, selected.id), selected.code.letter())).size(15),
-                text(format!(
-                    "{} · {} MB · {} damage · {}",
-                    class_name(sd.class),
-                    sd.mb,
-                    sd.damage,
-                    game_label(game_of(&c.defs.chip(selected.id).key))
-                ))
+                text(format!("{} · {} MB · {} damage", class_name(sd.class), sd.mb, sd.damage))
                 .size(13)
                 .color(DIM),
                 row![
@@ -472,21 +460,17 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
     let left = column![heading(format!("{}: folder", SIDES[s])), counts, scrollable(entries).height(Length::Fill)]
         .spacing(6)
         .width(Length::FillPortion(1));
-    // The chips a folder can hold (every loaded game's the rules take),
-    // of the game picked, searched.
-    let games: Vec<&str> =
-        e.pool[s].iter().map(|&h| game_of(&c.defs.chip(h).key)).collect::<std::collections::BTreeSet<_>>().into_iter().collect();
+    // The chips a folder can hold (the game's the rules take), searched.
     let needle = e.search.to_lowercase();
-    let mut pool: Vec<(String, &str, nettai_content_api::ChipHandle)> = e.pool[s]
+    let mut pool: Vec<(String, nettai_content_api::ChipHandle)> = e.pool[s]
         .iter()
         .copied()
-        .map(|h| (e.names.chip(c, h), game_of(&c.defs.chip(h).key), h))
-        .filter(|(_, game, _)| e.chip_game.as_deref().is_none_or(|g| g == *game))
-        .filter(|(name, _, h)| needle.is_empty() || name.to_lowercase().contains(&needle) || c.defs.chip(*h).key.contains(&needle))
+        .map(|h| (e.names.chip(c, h), h))
+        .filter(|(name, h)| needle.is_empty() || name.to_lowercase().contains(&needle) || nettai_match::ids::local(&c.defs.chip(*h).key).contains(&needle))
         .collect();
     pool.sort();
     let mut list = Column::new().spacing(1);
-    for (name, _, h) in pool.into_iter().take(400) {
+    for (name, h) in pool.into_iter().take(400) {
         let d = c.chip(h);
         let held = f.chips().filter(|x| x.id == h).count();
         let codes = d.codes.iter().fold(Row::new().spacing(2), |r, &code| {
@@ -498,7 +482,6 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
             row![
                 icon(e, h),
                 text(name).size(14).width(Length::Fill).color(if dark { RED } else { Color::BLACK }),
-                tag(h),
                 text(format!("{} {} MB", class_letter(d.class), d.mb)).size(12).color(DIM).width(Length::Fixed(64.0)),
                 text(count).size(12).color(GREEN).width(Length::Fixed(34.0)),
                 container(codes.wrap()).width(Length::Fixed(150.0)),
@@ -508,27 +491,15 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
             .align_y(Alignment::Center),
         );
     }
-    let mut filters = row![text_input("search chips", &e.search).on_input(Msg::Search)].spacing(8).align_y(Alignment::Center);
-    if several {
-        let mut choices = vec![Choice { label: "Every game".to_string(), value: None }];
-        choices.extend(games.iter().map(|g| Choice { label: game_label(g), value: Some(g.to_string()) }));
-        let picked = choices.iter().find(|x| x.value == e.chip_game).cloned();
-        filters = filters.push(pick_list(choices, picked, Msg::ChipGame).width(Length::Fixed(130.0)));
-    }
     let right = column![
         row![picture, about].spacing(10),
-        filters,
+        text_input("search chips", &e.search).on_input(Msg::Search),
         text("A code puts the chip in the selected entry.").size(12).color(DIM),
         scrollable(list).height(Length::Fill),
     ]
     .spacing(6)
     .width(Length::FillPortion(1));
     row![left.width(Length::FillPortion(2)), right.width(Length::FillPortion(3))].spacing(12).into()
-}
-
-/// The game of a definition: the content's (one game a match).
-fn game_of(_key: &str) -> &str {
-    ""
 }
 
 /// A game as the editor names it (`BN5`).
@@ -562,7 +533,7 @@ fn crosses(e: &Editor, s: usize) -> Element<'_, Msg> {
     let own = side.crosses.is_none();
     let mut col = column![
         heading(format!("{}: Crosses", SIDES[s])),
-        checkbox(own).label("The game's own five (the save's)").on_toggle(move |b| Msg::OwnCrosses(s, b)),
+        checkbox(own).label("The version's own five (the save's)").on_toggle(move |b| Msg::OwnCrosses(s, b)),
     ]
     .spacing(8);
     if !own {
@@ -570,12 +541,12 @@ fn crosses(e: &Editor, s: usize) -> Element<'_, Msg> {
         col = col.push(text(format!("{} of {} chosen; the window offers them in this order.", list.len(), nettai_battle::custom::screen::CROSSES)).size(13).color(DIM));
         for f in nettai_match::navi_crosses(c, side.navi).unwrap_or_default() {
             let on = list.contains(&f);
-            let game = match bn6_compat::forms::game(c, f) {
+            let version = match bn6_compat::forms::game(c, f) {
                 Some(GameVersion::Gregar) => "Gregar",
                 Some(GameVersion::Falzar) => "Falzar",
                 None => "",
             };
-            col = col.push(checkbox(on).label(format!("{} ({game})", e.names.form(c, f))).on_toggle(move |b| Msg::Cross(s, f, b)));
+            col = col.push(checkbox(on).label(format!("{} ({version})", e.names.form(c, f))).on_toggle(move |b| Msg::Cross(s, f, b)));
         }
     }
     scrollable(col).into()
@@ -583,18 +554,18 @@ fn crosses(e: &Editor, s: usize) -> Element<'_, Msg> {
 
 // ---- A side's souls ------------------------------------------------------------------------
 
-/// The souls the side has (BN5's Soul Unison): every soul of the content
-/// (the default), or those checked, of either version. A soul whose chip
-/// family the folder never holds never comes up.
+/// The souls the side has (BN5's Soul Unison): every soul of the match's
+/// game (the default), or those checked, of either version. A soul whose
+/// chip family the folder never holds never comes up.
 fn souls(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &e.content;
     let side = e.side(s);
     let every = side.souls.is_none();
-    let owned = nettai_match::facts::owned_souls(c, side);
-    let all = nettai_match::facts::all_souls(c);
+    let owned = nettai_match::facts::owned_souls(c, e.m.game(), side);
+    let all = nettai_match::facts::all_souls(c, e.m.game());
     let mut col = column![
         heading(format!("{}: souls", SIDES[s])),
-        text("The souls the soul button may offer (for the last chip picked of the soul's family). Any soul, either version's: a real save has its version's six.")
+        text("The souls the soul button may offer (for the last chip picked of the soul's family). Any of the game's souls, either version's: a real save has its version's six.")
             .size(13)
             .color(DIM),
         checkbox(every).label("Every soul (the default)").on_toggle(move |b| Msg::EverySoul(s, b)),
@@ -645,8 +616,10 @@ fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
         );
     }
     let needle = e.search.to_lowercase();
+    // (The match's game's.)
     let mut all: Vec<(String, nettai_content_api::PatchCardHandle)> = (0..c.defs.patch_cards.len() as u16)
         .map(nettai_content_api::PatchCardHandle)
+        .filter(|&h| nettai_match::ids::in_game(e.m.game(), &c.defs.patch_card(h).key))
         .filter(|h| !side.cards.iter().any(|x| x.card == *h))
         .map(|h| (e.names.patch_card(c, h), h))
         .filter(|(n, _)| needle.is_empty() || n.to_lowercase().contains(&needle))
@@ -702,6 +675,10 @@ pub fn navicust_stats(e: &Editor, s: usize) -> Element<'_, Msg> {
 fn stats_pane<'a>(e: &'a Editor, s: usize, only: Option<&'static [&'static str]>) -> Element<'a, Msg> {
     let c = &e.content;
     let side = e.side(s);
+    // (Weapons, records and forms by their names in the match's game.)
+    let game = e.m.game();
+    let local = |key: &str| nettai_match::ids::local(key).to_string();
+    let ours = move |key: &str| nettai_match::ids::in_game(game, key);
     let base = crate::levels::reset(c, side);
     let leveled = crate::levels::has_levels(c, side);
     let (title, about) = match only {
@@ -738,7 +715,9 @@ fn stats_pane<'a>(e: &'a Editor, s: usize, only: Option<&'static [&'static str]>
             }
             (Kind::Weapon, Value::Weapon(w)) => {
                 let mut options = vec![Choice { label: "none".into(), value: None }];
-                options.extend(c.defs.weapons.iter().enumerate().map(|(i, d)| Choice { label: d.key.clone(), value: Some(nettai_content_api::WeaponHandle(i as u16)) }));
+                options.extend(
+                    c.defs.weapons.iter().enumerate().filter(|(_, d)| ours(&d.key)).map(|(i, d)| Choice { label: local(&d.key), value: Some(nettai_content_api::WeaponHandle(i as u16)) }),
+                );
                 let now = options.iter().find(|o| o.value == w).cloned();
                 let name = f.name;
                 pick_list(options, now, move |o: Choice<_>| Msg::StatValue(s, name, Value::Weapon(o.value))).text_size(13).into()
@@ -746,8 +725,8 @@ fn stats_pane<'a>(e: &'a Editor, s: usize, only: Option<&'static [&'static str]>
             (Kind::Record(ty), Value::Record(r)) => {
                 let mut options = vec![Choice { label: "none".into(), value: None }];
                 options.extend(
-                    c.defs.records.iter().enumerate().filter(|(_, d)| d.record_type == ty).map(|(i, d)| Choice {
-                        label: d.key.clone(),
+                    c.defs.records.iter().enumerate().filter(|(_, d)| d.record_type == ty && ours(&d.key)).map(|(i, d)| Choice {
+                        label: local(&d.key),
                         value: Some(nettai_content_api::RecordHandle(i as u16)),
                     }),
                 );
@@ -756,8 +735,11 @@ fn stats_pane<'a>(e: &'a Editor, s: usize, only: Option<&'static [&'static str]>
                 pick_list(options, now, move |o: Choice<_>| Msg::StatValue(s, name, Value::Record(o.value))).text_size(13).into()
             }
             (Kind::Form, Value::Form(form)) => {
-                let options: Vec<Choice<_>> =
-                    (0..c.defs.forms.len() as u16).map(nettai_content_api::FormHandle).map(|h| Choice { label: c.defs.form(h).key.clone(), value: h }).collect();
+                let options: Vec<Choice<_>> = (0..c.defs.forms.len() as u16)
+                    .map(nettai_content_api::FormHandle)
+                    .filter(|&h| ours(&c.defs.form(h).key))
+                    .map(|h| Choice { label: local(&c.defs.form(h).key), value: h })
+                    .collect();
                 let now = options.iter().find(|o| o.value == form).cloned();
                 let name = f.name;
                 pick_list(options, now, move |o: Choice<_>| Msg::StatValue(s, name, Value::Form(o.value))).text_size(13).into()

@@ -8,9 +8,8 @@ use nettai_battle::content::{BackgroundId, BannerId, Content, InPack, MugshotId,
 use nettai_content_api::AssetKind;
 
 /// The loaded packs' graphics, by `PackId` (the content's `AssetNames::packs`
-/// order), and the frontend's own game's pack's (BN6's, by name:
-/// `nettai_match::DEFAULT_GAME`), which draws what belongs to no asset (the
-/// HUD's frame, the custom screen's).
+/// order), and the match's game's pack's (the frontend's own), which draws
+/// what belongs to no asset (the HUD's frame, the custom screen's).
 #[derive(Clone)]
 pub struct Packs<'a> {
     bundles: Vec<&'a Bundle>,

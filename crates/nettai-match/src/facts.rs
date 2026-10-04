@@ -22,15 +22,14 @@
 //! dark chip's Chaos Unison needs flag 0x236 too; a soul given this round
 //! isn't offered again. The engine ports that check on the souls owned (the
 //! souls system's setup, as the save's flags). A side may have any soul of
-//! the content, of either version or any game (the user: "allow all souls
-//! to be selected regardless of game"): none listed, every soul. A real
+//! the match's game, of either version: none listed, every soul. A real
 //! save holds its own version's six; the save import reads them.
 
-use crate::Side;
+use crate::{Arena, Side, ids};
 use nettai_battle::content::Content;
 use nettai_battle::custom::PlayerSetup;
 use nettai_battle::rules::Fact;
-use nettai_content_api::{FormHandle, Registry, Value};
+use nettai_content_api::{ChipHandle, FormHandle, Registry, RulesetHandle, Value};
 
 /// The setup fields the facts go into (BN6's game version is S6c's:
 /// bn6-compat's `Unlocks::write`, its cross and beast systems').
@@ -42,20 +41,19 @@ pub const VERSION_FIELD: &str = "version";
 pub const DEFAULT_KARMA: u16 = 500;
 pub const MAX_KARMA: u16 = 1000;
 
-/// Whether a system of `side`'s ruleset declares setup field `field` (the
-/// side's rules take that fact).
-pub fn takes(content: &Content, side: &Side, field: &str) -> bool {
-    let Some(r) = side.ruleset_or_stock(content) else { return false };
-    content.defs.ruleset(r).systems.iter().any(|&h| content.defs.schema(content.defs.system(h).setup).index_of(field).is_some())
+/// Whether a system of `ruleset` declares setup field `field` (a side
+/// under those rules takes that fact).
+pub fn takes(content: &Content, ruleset: RulesetHandle, field: &str) -> bool {
+    content.defs.ruleset(ruleset).systems.iter().any(|&h| content.defs.schema(content.defs.system(h).setup).index_of(field).is_some())
 }
 
-/// How many souls the side's rules take (the `souls` field's elements:
-/// BN5's souls system's 16), none when they take none.
-pub fn soul_capacity(content: &Content, side: &Side) -> usize {
-    let Some(r) = side.ruleset_or_stock(content) else { return 0 };
+/// How many souls a side under `ruleset` has room for (the `souls`
+/// field's elements: BN5's souls system's 16), none when the rules take
+/// none.
+pub fn soul_capacity(content: &Content, ruleset: RulesetHandle) -> usize {
     content
         .defs
-        .ruleset(r)
+        .ruleset(ruleset)
         .systems
         .iter()
         .filter_map(|&h| {
@@ -69,38 +67,42 @@ pub fn soul_capacity(content: &Content, side: &Side) -> usize {
         .unwrap_or(0)
 }
 
-/// Every soul the content has (forms with a `soul`), in handle order: of
-/// every game, either version.
-pub fn all_souls(content: &Content) -> Vec<FormHandle> {
-    (0..content.defs.forms.len() as u16).map(FormHandle).filter(|&f| content.form(f).soul.is_some()).collect()
+/// Every soul of `game` (its forms with a `soul`), in handle order, of
+/// either version.
+pub fn all_souls(content: &Content, game: &str) -> Vec<FormHandle> {
+    (0..content.defs.forms.len() as u16)
+        .map(FormHandle)
+        .filter(|&f| content.form(f).soul.is_some() && ids::in_game(game, &content.defs.form(f).key))
+        .collect()
 }
 
-/// The souls `side` has: its list, else every soul.
-pub fn owned_souls(content: &Content, side: &Side) -> Vec<FormHandle> {
-    side.souls.clone().unwrap_or_else(|| all_souls(content))
+/// The souls `side` of a match of `game` has: its list, else every soul.
+pub fn owned_souls(content: &Content, game: &str, side: &Side) -> Vec<FormHandle> {
+    side.souls.clone().unwrap_or_else(|| all_souls(content, game))
 }
 
-/// What is wrong with a side's karma and souls: karma past 1000, or other
-/// than the default under rules that take none; a soul list under rules
-/// without souls, a form that is no soul, a soul twice. (Either version's
-/// souls are fine.)
-pub fn check(content: &Content, side: &Side) -> Vec<String> {
+/// What is wrong with a side's karma and souls on `arena`: karma past
+/// 1000, or other than the default under rules that take none; a soul list
+/// under rules without souls, a form that is no soul of the game's, a soul
+/// twice. (Either version's souls are fine.)
+pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
     let mut out = Vec::new();
+    let ruleset = arena.ruleset;
     if side.karma > MAX_KARMA {
         out.push(format!("karma {}: the light/dark value is 0 to {MAX_KARMA}", side.karma));
     }
-    if side.karma != DEFAULT_KARMA && !takes(content, side, KARMA_FIELD) {
+    if side.karma != DEFAULT_KARMA && !takes(content, ruleset, KARMA_FIELD) {
         out.push("karma, but the ruleset has no light and dark MegaMan (no system takes `karma`)".into());
     }
     let Some(list) = &side.souls else { return out };
-    if !takes(content, side, SOULS_FIELD) {
+    if !takes(content, ruleset, SOULS_FIELD) {
         out.push("a soul list, but the ruleset has no Soul Unison (no system takes `souls`)".into());
-    } else if list.len() > soul_capacity(content, side) {
-        out.push(format!("{} souls; the rules hold {}", list.len(), soul_capacity(content, side)));
+    } else if list.len() > soul_capacity(content, ruleset) {
+        out.push(format!("{} souls; the rules hold {}", list.len(), soul_capacity(content, ruleset)));
     }
     for (i, &f) in list.iter().enumerate() {
-        if f.index() >= content.defs.forms.len() {
-            out.push("a soul the content hasn't".into());
+        if f.index() >= content.defs.forms.len() || !ids::in_game(&arena.game, &content.defs.form(f).key) {
+            out.push(format!("a soul {} hasn't", arena.game));
             continue;
         }
         if content.form(f).soul.is_none() {
@@ -114,17 +116,17 @@ pub fn check(content: &Content, side: &Side) -> Vec<String> {
 }
 
 /// Write `side`'s karma and souls into `player`'s setup, each into the
-/// systems that take it (none: nothing); with souls, the save's Soul
-/// Unison and Chaos Unison (a finished save's event flags 0 and 0x236).
-pub fn write(content: &Content, side: &Side, player: &mut PlayerSetup) -> Result<(), String> {
-    // (A side without a ruleset plays by the game's stock rules.)
-    let ruleset = side.ruleset;
+/// systems of the arena's rules that take it (none: nothing); with souls,
+/// the save's Soul Unison and Chaos Unison (a finished save's event flags
+/// 0 and 0x236).
+pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerSetup) -> Result<(), String> {
+    let (game, ruleset) = (arena.game.as_str(), Some(arena.ruleset));
     player.set_fact(content, ruleset, KARMA_FIELD, &[Fact::Value(Value::Int(side.karma as i64))])?;
-    if takes(content, side, SOULS_FIELD) {
+    if takes(content, arena.ruleset, SOULS_FIELD) {
         // (Every soul, as many as the rules hold.)
-        let souls: Vec<Fact> = owned_souls(content, side)
+        let souls: Vec<Fact> = owned_souls(content, game, side)
             .iter()
-            .take(soul_capacity(content, side))
+            .take(soul_capacity(content, arena.ruleset))
             .map(|f| Fact::Value(Value::Def(Registry::Form, f.0)))
             .collect();
         player.set_fact(content, ruleset, SOULS_FIELD, &souls)?;
@@ -135,10 +137,10 @@ pub fn write(content: &Content, side: &Side, player: &mut PlayerSetup) -> Result
 }
 
 impl Side {
-    /// Whether the side's rules take its game (Gregar or Falzar: BN6's
-    /// cross and beast systems' `version`). A BN5 side's don't.
-    pub fn takes_game(&self, content: &Content) -> bool {
-        takes(content, self, VERSION_FIELD)
+    /// Whether a side under `ruleset` takes its version (Gregar or Falzar:
+    /// BN6's cross and beast systems' `version`). BN5's rules don't.
+    pub fn takes_game(content: &Content, ruleset: RulesetHandle) -> bool {
+        takes(content, ruleset, VERSION_FIELD)
     }
 
     /// Whether the side's navi takes a navi code's level: its definition
@@ -148,51 +150,44 @@ impl Side {
         content.navi(self.navi).levels.is_some()
     }
 
-    /// Whether the side's rules take SP navi deletion times (their rules'
+    /// Whether a side takes SP navi deletion times (the game's rules'
     /// `sp_slots`: BN6's and BN5's, each their own SP navis).
-    pub fn takes_sp_times(&self, content: &Content) -> bool {
-        !crate::sp_slots(content, self.ruleset).is_empty()
+    pub fn takes_sp_times(content: &Content) -> bool {
+        !crate::sp_slots(content).is_empty()
     }
 
-    /// The side on `ruleset`, without what the new rules don't take: the
-    /// Crosses, patch cards and NaviCust without their systems, the karma
-    /// and souls without theirs, the game (back to Falzar) without
-    /// `version`, and the SP times when the new rules' SP navis aren't the
-    /// old's (their slots differ).
-    pub fn set_ruleset(&mut self, content: &Content, ruleset: Option<nettai_content_api::RulesetHandle>) {
-        let old_slots = crate::sp_slots(content, self.ruleset).to_vec();
-        self.ruleset = ruleset;
-        if !self.has_system(content, crate::FORMS_SYSTEM) {
+    /// The side, on rules `new` (of its game's, whose SP navis are the
+    /// game's), without what they don't take: the Crosses, patch cards and
+    /// NaviCust without their systems, the karma and souls without theirs,
+    /// and the version (back to Falzar) without `version`.
+    pub fn fit_rules(&mut self, content: &Content, new: RulesetHandle) {
+        let has = |system| crate::ruleset_has_system(content, new, system);
+        if !has(crate::FORMS_SYSTEM) {
             self.crosses = None;
         }
-        if !self.has_system(content, crate::PATCH_CARDS_SYSTEM) {
+        if !has(crate::PATCH_CARDS_SYSTEM) {
             self.cards.clear();
         }
-        if !self.has_system(content, crate::NAVICUST_SYSTEM) {
+        if !has(crate::NAVICUST_SYSTEM) {
             self.navicust = None;
         }
-        if !takes(content, self, SOULS_FIELD) {
+        if !takes(content, new, SOULS_FIELD) {
             self.souls = None;
         }
-        if !takes(content, self, KARMA_FIELD) {
+        if !takes(content, new, KARMA_FIELD) {
             self.karma = DEFAULT_KARMA;
         }
-        if !self.takes_game(content) {
+        if !Side::takes_game(content, new) {
             self.game = nettai_battle::custom::GameVersion::Falzar;
             self.stats.version = crate::version_byte(self.game);
-        }
-        if crate::sp_slots(content, self.ruleset) != old_slots.as_slice() {
-            self.sp_times = Default::default();
         }
     }
 }
 
-/// The SP navi chip whose damage reads slot `slot` of the side's rules (a
-/// chip of the rules' game), if the content has it: the slot's name in a
-/// tool.
-pub fn sp_chip(content: &Content, side: &Side, slot: usize) -> Option<nettai_content_api::ChipHandle> {
-    let _ = side;
+/// The SP navi chip of the arena's game whose damage reads slot `slot` of
+/// its rules, if the game has it: the slot's name in a tool.
+pub fn sp_chip(content: &Content, arena: &Arena, slot: usize) -> Option<ChipHandle> {
     (0..content.defs.chips.len() as u16)
-        .map(nettai_content_api::ChipHandle)
-        .find(|&h| content.chip_links(h).sp_slot == Some(slot as u8))
+        .map(ChipHandle)
+        .find(|&h| content.chip_links(h).sp_slot == Some(slot as u8) && ids::in_game(&arena.game, &content.defs.chip(h).key))
 }

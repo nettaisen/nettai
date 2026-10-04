@@ -3,7 +3,7 @@ name = "nettai-match"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "Match files: everything a round needs (the arena, each side's ruleset, navi, folder, Crosses, patch cards and NaviCust), by content key, checked against the content; and live play's random draw of one"
+description = "Match files: everything a round needs (the game and its ruleset, the arena, each side's navi, folder, Crosses, patch cards and NaviCust), by name in the game, checked against the content; and live play's random draw of one"
 
 [dependencies]
 nettai-battle.workspace = true
@@ -15,6 +15,8 @@ bn6-compat.workspace = true
 bn5-compat = { path = "../bn5-compat" }
 serde ={ version = "1", features = ["derive"] }
 toml = "0.8"
+# A match file's folder entries written one a line.
+toml_edit = "0.22"
 # `testing`: BN6's content for other crates' tests (its strings).
 nettai-content = { path = "../nettai-content", optional = true }
 
