@@ -1,5 +1,5 @@
 --!strict
--- DarkThnd (BN5 chip 0x0c1): a dark chip: Thunder's shot (@common/thunder) with BN5's big ball (chips/thunder/ball)
+-- DarkThnd (BN5 chip 0x0c1): a dark chip: Thunder's shot (@exelib/thunder) with BN5's big ball (chips/thunder/ball)
 -- that homes in for 12 panels, paralyzes and carries bug 0x19 (its record's parameters); its use costs the custom
 -- screen's HP drain (rules/light-dark).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.

@@ -1,11 +1,11 @@
 --!strict
 -- The wide wave (the original's attack object #0x3B, `sub_80CB49C`): the
--- shared wave (@common/widesht/wave), BN6's kind, look and variants.
+-- shared wave (@exelib/widesht/wave), BN6's kind, look and variants.
 -- WideSht's ends on its first hit; SuprSpr's goes through, hitting each
 -- panel once. See docs/engine/shot-chips.md §10.1.
 
 local collision = require("../../rules/collision")
-local common = require("@common/widesht/wave")
+local common = require("@exelib/widesht/wave")
 
 local wave = {}
 

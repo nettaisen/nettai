@@ -5,7 +5,7 @@
 -- breaks (cracks while something stands on it). It waits while dimmed; a
 -- hit ends its region. See docs/engine/standard-chips.md, "Action 0x0A".
 
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local strike = {}
 

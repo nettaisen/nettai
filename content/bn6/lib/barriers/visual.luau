@@ -6,9 +6,9 @@
 -- barrier grows back); popped by wind, it is blown away; with the barrier
 -- gone, it goes. The navi links it (`barrier_visual`, AIData+0x60), and
 -- hides and shows it with itself (its `shown`). The behavior is BN5's too
--- (@common/barriers/visual), made here as BN6's: blown away when popped.
+-- (@exelib/barriers/visual), made here as BN6's: blown away when popped.
 
-local common = require("@common/barriers/visual")
+local common = require("@exelib/barriers/visual")
 
 local visual = {}
 

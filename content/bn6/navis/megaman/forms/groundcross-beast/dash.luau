@@ -7,7 +7,7 @@
 -- it drops back onto the panel it left.
 
 local dash_hit = require("../../dash_hit")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {

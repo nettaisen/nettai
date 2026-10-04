@@ -1,5 +1,5 @@
 --!strict
--- BN5's BugBomb (attack object #0x77, 0x080D4E54): the shared BugBomb (@common/bugbomb/bomb, BN6's code) with BN5's
+-- BN5's BugBomb (attack object #0x77, 0x080D4E54): the shared BugBomb (@exelib/bugbomb/bomb, BN6's code) with BN5's
 -- look and bugs. It explodes as effect 0x32 (BN6's 0x4A, the same look) and sounds 0x6F crushed (BN6's 0x70).
 --
 -- Its bugs (0x080D50CA, BN6's `sub_80D9FC2`): of HP drain, custom-screen HP drain and emotion swings (NaviStats
@@ -9,7 +9,7 @@
 -- the emotion swings to 1.
 
 local collision = require("../../rules/collision")
-local common = require("@common/bugbomb/bomb")
+local common = require("@exelib/bugbomb/bomb")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local statuses = require("../../rules/status")
 local trajectory = require("../../lib/trajectory")

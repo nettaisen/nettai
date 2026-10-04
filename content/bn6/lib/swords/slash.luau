@@ -1,15 +1,15 @@
 --!strict
 -- BN6's swords' slash (the original's action 0x13, `sub_80EB776`): the
--- shared slash (@common/swords/slash) with BN6's attachment for the blade.
+-- shared slash (@exelib/swords/slash) with BN6's attachment for the blade.
 -- Each chip composes its own (`slash.action { blade = ..., hit = ...,
 -- effect = ..., sound = ... }`, docs/design/content-model-v2.md §5.2).
 
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local common = require("@common/swords/slash")
+local common = require("@exelib/swords/slash")
 local kind = require("../../rules/forms/kind")
 local parts = require("./parts")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local slash = {}
 

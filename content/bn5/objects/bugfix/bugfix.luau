@@ -1,9 +1,9 @@
 --!strict
 -- BN5's BugFix and the Liberation chips' controllers (the dimming handler's subtypes 22 and 66), and their glow:
 --
--- - the glow (actor object #0x5D, 0x080C42E8): BN6's (@common/bugfix/glow) a pixel up the field and lower than the
+-- - the glow (actor object #0x5D, 0x080C42E8): BN6's (@exelib/bugfix/glow) a pixel up the field and lower than the
 --   navi (BN6's down and higher), a player navi's parts stepping even while paused (0x0800F0EC with r2 1);
--- - BugFix's controller (effect object #0x3B, 0x080E4940): BN6's (@common/bugfix/controller) without Beast Out;
+-- - BugFix's controller (effect object #0x3B, 0x080E4940): BN6's (@exelib/bugfix/controller) without Beast Out;
 -- - the Liberation chips' (LCrsShld, LStepSwd, LCounter: effect object #0x8A, 0x080EA740, its effect 0x080EA784):
 --   the usual dimming phases; the glow's log-in variant over the user's side's navi; the side's Liberation ability
 --   set, five uses of the chip's (its first parameter: 0 CrsShld, 1 StepSwd, 2 Counter), and the user's AIData+0x44
@@ -11,9 +11,9 @@
 --   and that bit, is read only by battle flag 0x40's specials, 0x0802FA9C and 0x0802E77E: a Liberation Mission's,
 --   never a netbattle's. The engine models neither, so the chip sets nothing a battle reads.)
 
-local common_glow = require("@common/bugfix/glow")
-local controller = require("@common/bugfix/controller")
-local dimming_chips = require("@common/dimming")
+local common_glow = require("@exelib/bugfix/glow")
+local controller = require("@exelib/bugfix/controller")
+local dimming_chips = require("@exelib/dimming")
 
 local bugfix = {}
 

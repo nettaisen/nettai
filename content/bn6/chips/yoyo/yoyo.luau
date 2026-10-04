@@ -18,7 +18,7 @@
 -- first related object (which held it) and ends.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local yoyo = {}
 

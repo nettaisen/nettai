@@ -1,9 +1,9 @@
 --!strict
 -- CircGun's shot (the original's attack object #0x8A, `sub_80D67EC`): the
--- shared shot (@common/circgun/shot), BN6's kind and look.
+-- shared shot (@exelib/circgun/shot), BN6's kind and look.
 
 local collision = require("../../rules/collision")
-local common = require("@common/circgun/shot")
+local common = require("@exelib/circgun/shot")
 local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")
 

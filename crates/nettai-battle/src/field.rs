@@ -423,7 +423,7 @@ impl Battle {
     fn tick_panel(&mut self, x: u8, y: u8) {
         let h = self.field.hole_ticks;
         let p = self.field.panels[y as usize][x as usize];
-        let expires = self.content.rules_of(self.games.arena).panels.types[p.kind as usize].expires;
+        let expires = self.content.rules().panels.types[p.kind as usize].expires;
         match p.kind {
             PanelType::Missing => {}
             PanelType::Broken => {
@@ -431,7 +431,7 @@ impl Battle {
                 p.hole_timer = p.hole_timer.wrapping_sub(1);
                 if p.hole_timer == 0 {
                     p.kind = PanelType::Normal;
-                    self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
+                    self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
                     self.field.panels[y as usize][x as usize].hole_timer = h;
                     return;
                 }
@@ -445,7 +445,7 @@ impl Battle {
                 let latch = p.latch;
                 if latch & pflags::BODY != 0 && latch & pflags::FLOATING == 0 && p.flags & pflags::OCCUPIED == 0 {
                     p.kind = PanelType::Broken;
-                    self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
+                    self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
                     self.field.panels[y as usize][x as usize].hole_timer = h;
                     self.sound(SoundRole::PanelCrack);
                 }
@@ -466,7 +466,7 @@ impl Battle {
                 p.expire_timer = p.expire_timer.wrapping_sub(1);
                 if p.expire_timer == 0 {
                     p.kind = PanelType::Normal;
-                    self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
+                    self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
                     self.field.panels[y as usize][x as usize].expire_timer = ticks;
                     return;
                 }
@@ -549,7 +549,7 @@ impl Battle {
                             let p = &mut self.field.panels[y as usize][c as usize];
                             p.alliance = run.owner;
                             p.return_blink = (p.return_blink & 0xFF00) | 0x5A;
-                            self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, c, y);
+                            self.field.refresh(&self.content.rules().panels, &self.collision, c, y);
                         }
                     }
                 }
@@ -576,7 +576,7 @@ impl Battle {
         }
         p.reserver = Some(obj);
         p.flags |= pflags::RESERVED;
-        if self.content.rules_of(self.games.arena).panels.reservations == crate::content::Reservations::Marked {
+        if self.content.rules().panels.reservations == crate::content::Reservations::Marked {
             self.objects.get_mut(obj).flags |= crate::object::flags::HOLDS_RESERVATION;
         }
         true
@@ -615,10 +615,10 @@ impl Battle {
         p.kind = t;
         // (A type that expires starts its count: BN6's roads,
         // `_object_setPanelType`; BN5's lava and sea, 0x0800B2AE.)
-        if let Some(ticks) = self.content.rules_of(self.games.arena).panels.types[t as usize].expires {
+        if let Some(ticks) = self.content.rules().panels.types[t as usize].expires {
             p.expire_timer = ticks;
         }
-        self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
+        self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
     }
 
     /// `object_setPanelAlliance`.
@@ -629,7 +629,7 @@ impl Battle {
         }
         p.alliance = alliance;
         p.return_blink = 0;
-        self.field.refresh(&self.content.rules_of(self.games.arena).panels, &self.collision, x, y);
+        self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
     }
 
     /// `object_crackPanel`: crack a solid panel, or break an already
@@ -745,7 +745,7 @@ impl Battle {
         let o = self.objects.get(obj);
         let airshoes = o.collision.map(|c| self.collision.get(c).f1 & crate::collision::f1::AIRSHOE != 0).unwrap_or(false);
         let floor_free = airshoes || !self.field.is_solid(o.panel.x, o.panel.y);
-        self.field.meets(x, y, self.content.rules_of(self.games.arena).panels.step.get(floor_free, o.alliance))
+        self.field.meets(x, y, self.content.rules().panels.step.get(floor_free, o.alliance))
     }
 }
 
@@ -805,24 +805,4 @@ mod tests {
         assert_eq!(b.field.panels[2][2].display_kind, PanelType::Normal);
     }
 
-    /// A panel type a game's section doesn't name is the first other
-    /// loaded game's that does (docs/design/rules-in-luau.md §7.4).
-    #[test]
-    fn a_panel_type_a_game_lacks_is_another_games() {
-        use crate::content::{PanelTypeRule, Rules};
-        let named = |flags| PanelTypeRule { flags, named: true, ..PanelTypeRule::default() };
-        let mut a = Rules::default();
-        let mut b = Rules::default();
-        a.panels.types = vec![PanelTypeRule::default(); super::PanelType::ALL.len()];
-        b.panels.types = vec![PanelTypeRule::default(); super::PanelType::ALL.len()];
-        a.panels.types[super::PanelType::RoadUp as usize] = named(0x210);
-        b.panels.types[super::PanelType::Sea as usize] = named(0x20000);
-        let mut all = [a, b];
-        crate::content::sections::fill_panel_types(&mut all);
-        let [a, b] = all;
-        assert_eq!(a.panels.types[super::PanelType::Sea as usize].flags, 0x20000);
-        assert!(!a.panels.types[super::PanelType::Sea as usize].named);
-        assert_eq!(b.panels.types[super::PanelType::RoadUp as usize].flags, 0x210);
-        assert_eq!(b.panels.types[super::PanelType::Lava as usize], PanelTypeRule::default(), "no game names it");
-    }
 }

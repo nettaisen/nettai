@@ -1,11 +1,11 @@
 --!strict
 -- NumbrBl's thrower (the original's actor object #0x45, `sub_80C3000`;
 -- docs/engine/dimming-chip-effects.md §15): a stand-in for the user
--- (@common/dimming/stand_in) who raises the buster and sets balls (./ball)
+-- (@exelib/dimming/stand_in) who raises the buster and sets balls (./ball)
 -- down in front of himself, 18 ticks apart, then gives the user back. His
 -- sprite steps while dimmed.
 
-local stand_in = require("@common/dimming/stand_in")
+local stand_in = require("@exelib/dimming/stand_in")
 local attachment = require("../../objects/attachment/attachment")
 local buster = require("../../lib/buster")
 local ball = require("./ball")
@@ -13,7 +13,7 @@ local ball = require("./ball")
 local numberman = {}
 
 export type State = {
-    -- The chip's controller (@common/dimming/stand_in).
+    -- The chip's controller (@exelib/dimming/stand_in).
     controller: Object?,
     -- The balls to set down (Param1: the chip's first parameter).
     balls: number,

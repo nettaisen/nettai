@@ -2,7 +2,7 @@
 -- BN5's NaviCust (docs/design/bn5-map.md §15.13): as the round is set up (`round_setup`, before anything reads the
 -- stats), a player's NaviCust (`battle.navicust`: the programs placed on its grid) is compiled into the navi's stats,
 -- as the original's does (0x0813F97C's 0x0813FA10, for MegaMan alone; BN5's patch cards, 0x08138214, follow it). The
--- compile is BN6's routine for routine (@common/navicust/compile): the bugs counted, the stats reset (the setup's are
+-- compile is BN6's routine for routine (@exelib/navicust/compile): the bugs counted, the stats reset (the setup's are
 -- already the navi's fresh stats with what the save keeps: 0x08133DBC keeps the mood, the light/dark value, +0x21 and
 -- +0x22, the base HP, the soul, the folder and its three Regular chips, the Regular memory and the HP), the programs'
 -- effects, the bugs, the HP. BN5's own:
@@ -20,7 +20,7 @@
 --   save's and the maximum the effects' (0x0803C1CC: the base and the HP programs), HubBatc's bug's halving standing.
 
 local board = require("./board")
-local compile = require("@common/navicust/compile")
+local compile = require("@exelib/navicust/compile")
 local programs = require("./programs")
 
 -- Each bug at its level, 1 to 3 (0x08140054's routines).

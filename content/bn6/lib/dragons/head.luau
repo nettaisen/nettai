@@ -9,7 +9,7 @@
 local body = require("./body")
 local collision = require("../../rules/collision")
 local dragon = require("./dragon")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local head = {}
 

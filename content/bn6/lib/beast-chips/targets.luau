@@ -8,7 +8,7 @@
 -- 0x080EE0A8 (Falzar's controller) in the Falzar ROM, 0x080C5946 and
 -- 0x080EF3D8 in the Gregar ROM. (The US ROMs have neither.)
 
-local panels = require("@common/panels")
+local panels = require("@exelib/panels")
 
 local targets = {}
 

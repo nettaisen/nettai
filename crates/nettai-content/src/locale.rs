@@ -1,6 +1,6 @@
-//! A content folder's display text: `locales/<lang>.toml`, one table a
-//! language, by definition id (docs/design/text-rendering.md §10; the engine's
-//! `content::strings`).
+//! A game pack's display text: `locales/<lang>.toml`, one table a
+//! language, by definition id (docs/design/text-rendering.md §10; the
+//! engine's `content::strings`; docs/design/content-model-v2.md §4.0).
 //!
 //! A definition holds no display text. A chip's name and description, a
 //! navi's name and no-running message, a Cross's name and description and
@@ -30,8 +30,8 @@
 //! ```
 //!
 //! A table writes every id in full, as the modules do (docs/design/
-//! rules-in-luau.md, the flat namespace), and the tables of every folder
-//! the content loads are one ([`load_all`]).
+//! rules-in-luau.md, the flat namespace), each of its pack's; a load merges
+//! its games' tables ([`load_for`]).
 //!
 //! A line break in a description or a message is `\n`. A translated
 //! description may have another number of lines than the own language's:
@@ -51,15 +51,15 @@ use nettai_battle::content::Defs;
 use nettai_content_api::FormHandle;
 use std::path::{Path, PathBuf};
 
-/// The folder of a content folder that holds the tables.
+/// The directory of a pack that holds its tables.
 pub const DIR: &str = "locales";
 
 /// The content's own language: its table is the content's words.
 pub const OWN: &str = "en";
 
-/// The table of `lang` in a content folder.
-pub fn path(root: &Path, lang: &str) -> PathBuf {
-    root.join(DIR).join(format!("{lang}.toml"))
+/// The table of `lang` in pack folder `pack` (content/bn6).
+pub fn path(pack: &Path, lang: &str) -> PathBuf {
+    pack.join(DIR).join(format!("{lang}.toml"))
 }
 
 /// Parse a table (`file` names it in messages).
@@ -67,9 +67,9 @@ pub fn parse(text: &str, file: &str) -> Result<Strings, String> {
     toml::from_str(text).map_err(|e| format!("{file}: {e}"))
 }
 
-/// The content root's table of `lang`; `None` when it has none.
-pub fn load(root: &Path, lang: &str) -> Result<Option<Strings>, String> {
-    let path = path(root, lang);
+/// Pack folder `pack`'s table of `lang`; `None` when it has none.
+pub fn load(pack: &Path, lang: &str) -> Result<Option<Strings>, String> {
+    let path = path(pack, lang);
     if !path.is_file() {
         return Ok(None);
     }
@@ -81,40 +81,34 @@ pub fn load(root: &Path, lang: &str) -> Result<Option<Strings>, String> {
     Ok(Some(s))
 }
 
-/// The tables of `lang` of every folder of the content directory `dir`,
-/// merged into one (`None` when none has one).
-pub fn load_all(dir: &Path, lang: &str) -> Result<Option<Strings>, String> {
-    load_many(&crate::root::dirs(dir)?, lang)
-}
-
-/// [`load_all`] for the content folders `dirs` (the folders a frontend
-/// loaded: `pack::Loaded::roots`).
-pub fn load_many(dirs: &[std::path::PathBuf], lang: &str) -> Result<Option<Strings>, String> {
+/// The tables of `lang` of packs `packs` of content `dir`, merged (a
+/// frontend's other language for what it loaded); `None` when none has
+/// one.
+pub fn load_for(dir: &Path, packs: &[String], lang: &str) -> Result<Option<Strings>, String> {
     let mut out: Option<Strings> = None;
-    for d in dirs {
-        if let Some(s) = load(d, lang)? {
+    for p in packs {
+        if let Some(s) = load(&dir.join(p), lang)? {
             out.get_or_insert_with(|| Strings { language: lang.to_string(), ..Default::default() }).merge(s);
         }
     }
     Ok(out)
 }
 
-/// The languages any folder of the content directory `dir` has tables of.
-pub fn languages_all(dir: &Path) -> Vec<String> {
-    let mut out: Vec<String> = crate::root::dirs(dir).unwrap_or_default().iter().flat_map(|d| languages(d)).collect();
+/// The languages pack folder `pack` has tables of.
+pub fn languages_of(pack: &Path) -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(pack.join(DIR)) else { return Vec::new() };
+    let mut out: Vec<String> =
+        entries.flatten().filter_map(|e| e.path().file_name()?.to_str()?.strip_suffix(".toml").map(String::from)).collect();
     out.sort();
-    out.dedup();
     out
 }
 
-/// The languages a content folder has tables of.
-pub fn languages(root: &Path) -> Vec<String> {
-    let Ok(entries) = std::fs::read_dir(root.join(DIR)) else { return Vec::new() };
-    let mut out: Vec<String> = entries
-        .flatten()
-        .filter_map(|e| e.path().file_name()?.to_str()?.strip_suffix(".toml").map(String::from))
-        .collect();
+/// The languages any pack of content `dir` has tables of.
+pub fn languages(dir: &Path) -> Vec<String> {
+    let packs = crate::index::manifests(dir).map(|m| m.into_keys().collect::<Vec<_>>()).unwrap_or_default();
+    let mut out: Vec<String> = packs.iter().flat_map(|p| languages_of(&dir.join(p))).collect();
     out.sort();
+    out.dedup();
     out
 }
 
@@ -137,6 +131,8 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
         .filter_map(|n| n.record.forms.as_ref())
         .flat_map(|f| f.gregar.crosses.iter().chain(&f.falzar.crosses))
         .copied()
+        // (And the souls: BN5's soul window shows their names.)
+        .chain(defs.forms.iter().enumerate().filter(|(_, f)| f.record.soul.is_some()).map(|(i, _)| FormHandle(i as u16)))
         .collect();
     let mut out = Vec::new();
     let mut text = |what: String, v: &Option<String>| {
@@ -225,31 +221,43 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
     unknown
 }
 
-/// Check every strings table of the content root in `root` against its
-/// definitions (`check`), into `r` as errors; the own language's must be
-/// there.
-pub fn check_root(root: &Path, c: &nettai_battle::Content, r: &mut crate::report::Report) {
-    let name = match crate::root::folder_name(root) {
-        Ok(m) => m.name,
-        Err(e) => {
-            r.error(root.display().to_string(), e);
-            return;
+/// Check the tables of each game `c` loaded from content `dir` against
+/// `c`: each language's table of the game's pack (an id of another pack's
+/// is an error; a chip its manifest leaves unported, `chips/<key>/chip`,
+/// may have its strings before its use), and the own language's present.
+pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report::Report) {
+    for game in c.scripts.games() {
+        let pack = dir.join(&game);
+        let unported: std::collections::BTreeSet<String> = c
+            .scripts
+            .manifest(&game)
+            .map(|m| m.definitions.unported.iter())
+            .into_iter()
+            .flatten()
+            .filter_map(|p| Some(format!("{game}:{}", p.strip_prefix("chips/")?.strip_suffix("/chip")?)))
+            .collect();
+        let langs = languages_of(&pack);
+        if !langs.iter().any(|l| l == OWN) {
+            r.error(format!("{game}/{DIR}/{OWN}.toml"), "the game's own words are missing");
         }
-    };
-    let langs = languages(root);
-    if !langs.iter().any(|l| l == OWN) {
-        r.error(format!("{DIR}/{OWN}.toml"), "the content's own words are missing");
-    }
-    for lang in langs {
-        let file = format!("{DIR}/{lang}.toml");
-        match load(root, &lang) {
-            Ok(Some(s)) => {
-                for problem in check(&s, &name, &c.defs, lang == OWN) {
-                    r.error(&file, problem);
+        for lang in langs {
+            let at = format!("{game}/{DIR}/{lang}.toml");
+            match load(&pack, &lang) {
+                Ok(Some(mut s)) => {
+                    s.chips.retain(|k, _| !unported.contains(k));
+                    let ids = s.chips.keys().chain(s.navis.keys()).chain(s.forms.keys()).chain(s.patch_cards.keys()).chain(s.navicust_programs.keys());
+                    for id in ids {
+                        if nettai_content_api::keys::root_of(id) != Some(game.as_str()) {
+                            r.error(&at, format!("{id}: not an id of {game}'s"));
+                        }
+                    }
+                    for problem in check(&s, &game, &c.defs, lang == OWN) {
+                        r.error(&at, problem);
+                    }
                 }
+                Ok(None) => {}
+                Err(e) => r.error(&at, e),
             }
-            Ok(None) => {}
-            Err(e) => r.error(&file, e),
         }
     }
 }

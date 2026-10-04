@@ -8,7 +8,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local stepsword = require("../../lib/stepsword")
-local sonic_boom = require("@common/swords/sonic_boom")
+local sonic_boom = require("@exelib/swords/sonic_boom")
 local swords = require("../../lib/swords")
 
 local action = {}
