@@ -9,6 +9,7 @@
 
 local data = require("./data")
 local panels = require("./panels")
+local operation_battle = require("../../lib/operation_battle")
 
 local place = {}
 
@@ -164,7 +165,7 @@ end
 -- A class's routine: its steps by the step byte (the original's jump tables, `[step]` 0, 4, 8), or one routine.
 type Step = (navi: Object, s: State) -> ()
 
--- 0x08029D18 (classes 0 and 17, and 7 in flag-0x40 mode): the chip reaches the target from where the navi stands
+-- 0x08029D18 (classes 0 and 17, and 7 in the operation battle): the chip reaches the target from where the navi stands
 -- (its reach list toward its enemies): in place if a hit would land, else a step anywhere of its own area; else a
 -- step to a panel from which it reaches, or, with none, the next target and a step anywhere.
 local function reach_from_here(navi: Object, s: State)
@@ -357,7 +358,7 @@ local function lava_ahead(navi: Object, s: State)
     go(navi, s, 4, x, y :: number)
 end
 
--- 0x0802A2C8 (class 7 out of flag-0x40 mode): with the custom gauge's damage (`sub_8010B78`) 100 or more, a step to
+-- 0x0802A2C8 (class 7 out of the operation battle): with the custom gauge's damage (`sub_8010B78`) 100 or more, a step to
 -- a panel from which reach list 10 reaches the target; else not ready and a step anywhere.
 local function gauge_reach(navi: Object, s: State)
     if battle.gauge_damage(navi.alliance) >= 100 then
@@ -377,7 +378,7 @@ local SWING_REACH: { number } = { 8, 3, 7, 10, 22, 6, 15, 22, 10, 6, 0, 0, 0, 0x
 
 -- Class 8's chip: NeoVari (chip 0xD9, which 0x0802A342 and 0x0802A360 test), or any other (VarSwrd's row).
 local function neovari(chip: Chip): boolean
-    return chip.id == "bn5:neovari"
+    return chip.id == "neovari"
 end
 
 -- 0x0802A330 (class 8, VarSwrd's and NeoVari's): the side's sword pick (`sub_802E070` +0x12, which the sword reads)
@@ -633,10 +634,10 @@ end
 
 -- The element traps (chips 0x8C to 0x8F), which class 23 may set over one another.
 local ELEMENT_TRAPS: { [string]: boolean } = {
-    ["bn5:antifire"] = true,
-    ["bn5:antiwatr"] = true,
-    ["bn5:antielec"] = true,
-    ["bn5:antiwood"] = true,
+    ["antifire"] = true,
+    ["antiwatr"] = true,
+    ["antielec"] = true,
+    ["antiwood"] = true,
 }
 
 -- 0x0802A9B4 (class 23, the traps): the navi's side holds no defensive chip (`sub_802CE78`), or an element trap.
@@ -841,7 +842,7 @@ local function run(class: number, navi: Object, s: State)
     step(navi, s)
 end
 
--- 0x0802A2A0 (class 7): in flag-0x40 mode class 0's; else its own steps (0x0802A2C0).
+-- 0x0802A2A0 (class 7): in the operation battle class 0's; else its own steps (0x0802A2C0).
 local CLASS_7: { [number]: Step } = steps(gauge_reach)
 
 -- 0x08029B3C: one decision's step: busy until the class's routine says otherwise; whether it still is.
@@ -849,7 +850,7 @@ function place.step(navi: Object, s: State): boolean
     s.place_busy = true
     local class = record(chip_of(s)).class
     if class == 7 then
-        if battle.per_player_gauges() then
+        if operation_battle() then
             run(0, navi, s)
         else
             local step = CLASS_7[s.place_step]

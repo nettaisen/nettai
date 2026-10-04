@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local chrgs = require("../../lib/patch-cards/chrgs")
 
 return define.patch_card {
-    id = "bn6:chrgeman",
+    id = "chrgeman",
     mb = 31,
     effects = {
         cards.attack(3),

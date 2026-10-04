@@ -7,7 +7,7 @@ local controller = require("./controller")
 local statue = require("./statue")
 
 return define.chip {
-    id = "bn6:anubis",
+    id = "anubis",
     codes = { "P" },
     element = "null",
     family = "summon",

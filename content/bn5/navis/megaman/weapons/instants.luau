@@ -16,8 +16,8 @@ local gust = require("../gust")
 local instants = {}
 
 local INVISIBLE_TICKS = 120
-local INVISIBLE_SOUND = asset.sound("bn5:invisible")
-local VACUUM_SOUND = asset.sound("bn5:dustbrk")
+local INVISIBLE_SOUND = asset.sound("invisible")
+local VACUUM_SOUND = asset.sound("dustbrk")
 
 -- The routines name no action of their own: the instant chips' action runs their effect.
 local function names_effect(_navi: Object)
@@ -32,7 +32,7 @@ local function vanish(user: Object, _spec: InstantChipSpec)
 end
 
 instants.invisible = define.weapon {
-    id = "bn5:megaman/invisible",
+    id = "megaman/invisible",
     -- The charge table's row 0x47, by Charge 0 to 5: past 4 it reads on into row 0x48's first entry.
     charge_ticks = { 160, 155, 150, 145, 140, 80 },
     setup = names_effect,
@@ -45,7 +45,7 @@ local function vacuum(user: Object, _spec: InstantChipSpec)
 end
 
 instants.vacuum = define.weapon {
-    id = "bn5:megaman/vacuum",
+    id = "megaman/vacuum",
     -- The charge table's row 0x4C, by Charge 0 to 5: past 4 it reads on into row 0x4D's first entry.
     charge_ticks = { 70, 65, 60, 55, 50, 90 },
     setup = names_effect,

@@ -6,6 +6,6 @@
 local common = require("@exelib/circgun/controller")
 local gun = require("./gun")
 
-local bn6 = common.make("bn6:circgun/controller", gun.kind)
+local bn6 = common.make("circgun/controller", gun.kind)
 
 return { hook = bn6.hook, variant = common.variant, make = common.make }

@@ -3,7 +3,7 @@
 -- hand's chip reads (the chip record 0xFFFF past the chip table at 0x0801E214).
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
 
-return define.rules("bn5:buster", {
+return {
     recovery = {
         { 4, 8, 12, 16, 20, 24 },
         { 3, 7, 10, 14, 17, 20 },
@@ -19,4 +19,4 @@ return define.rules("bn5:buster", {
         { 36, 12, 9, 36 },
         { 27, 9, 9, 27 },
     },
-})
+}

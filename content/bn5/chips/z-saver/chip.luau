@@ -6,7 +6,7 @@
 local zsaver = require("./action")
 
 return define.chip {
-    id = "bn5:z-saver",
+    id = "z-saver",
     codes = { "Z" },
     element = "null",
     family = "sword",

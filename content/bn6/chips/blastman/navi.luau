@@ -17,9 +17,9 @@ export type State = {
 
 local blastman = {}
 
-local SPRITE = asset.sprite("bn6:blast-fire")
-local SOUND_APPEAR = asset.sound("bn6:appear")
-local SOUND_BLAST_MAN = asset.sound("bn6:blast-man")
+local SPRITE = asset.sprite("blast-fire")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_BLAST_MAN = asset.sound("blast-man")
 
 -- His blasts' speed (16.16 a tick; the original's Param1 4, a row of
 -- `byte_80C8454`).
@@ -123,7 +123,7 @@ end
 local ACTIONS = { [0] = appear, [4] = stand, [8] = wind_up, [0xC] = attack, [0x10] = leave }
 
 blastman.kind = define.kind {
-    id = "bn6:blastman/navi",
+    id = "blastman/navi",
     pool = "actor",
     state = { controller = "object" },
     -- `sub_80B8EA0`.

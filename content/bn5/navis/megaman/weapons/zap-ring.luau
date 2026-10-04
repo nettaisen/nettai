@@ -16,13 +16,13 @@ local statuses = require("../../../rules/status")
 
 -- ---- The ring -------------------------------------------------------------------------------------------------------
 
-local SPRITE = asset.sprite("bn5:sprite-0c-5b")
+local SPRITE = asset.sprite("sprite-0c-5b")
 -- 0x080DF380's rows: speed (pixels a tick), the status, the sound.
 type Row = { speed: number, status: Status?, sound: Sound }
 local ROWS: { [number]: Row } = {
-    [0] = { speed = 10, status = statuses.paralyze_90, sound = asset.sound("bn5:aqua-needle-2") },
-    [1] = { speed = 14, status = statuses.paralyze_120, sound = asset.sound("bn5:aqua-needle-2") },
-    [2] = { speed = 18, status = statuses.paralyze_150, sound = asset.sound("bn5:aqua-needle-2") },
+    [0] = { speed = 10, status = statuses.paralyze_90, sound = asset.sound("aqua-needle-2") },
+    [1] = { speed = 14, status = statuses.paralyze_120, sound = asset.sound("aqua-needle-2") },
+    [2] = { speed = 18, status = statuses.paralyze_150, sound = asset.sound("aqua-needle-2") },
 }
 
 export type RingState = {
@@ -89,7 +89,7 @@ local function init(me: Object)
 end
 
 local RING = define.kind {
-    id = "bn5:megaman/zap-ring/ring",
+    id = "megaman/zap-ring/ring",
     pool = "attack",
     state = { row = "u8" },
     -- 0x080DF38C.
@@ -123,7 +123,7 @@ end
 
 -- ---- The action -----------------------------------------------------------------------------------------------------
 
-local ARM = attachment.look { sprite = asset.sprite("bn5:sprite-0c-5a"), palette = 0, attach_point = 0x1C }
+local ARM = attachment.look { sprite = asset.sprite("sprite-0c-5a"), palette = 0, attach_point = 0x1C }
 local ANIM = 10
 local HOLD_TICKS, SEND_AT, RECOVER_TICKS = 10, 5, 10
 local RING_Z = 0x1A_0000
@@ -173,7 +173,7 @@ local function recover(me: Object, s: State)
 end
 
 local ACTION = define.action {
-    id = "bn5:megaman/zap-ring/action",
+    id = "megaman/zap-ring/action",
     state = { timer = "u16" },
     -- 0x080EFFC8.
     update = function(me: Object, s: State)
@@ -189,7 +189,7 @@ local ACTION = define.action {
 
 -- 0x0800FB76: 30 damage, hit parameter 10, Elec; no charge, bonus or lockout; parameters 0.
 return define.weapon {
-    id = "bn5:megaman/zap-ring",
+    id = "megaman/zap-ring",
     -- The charge table's row 0x42, by Charge 0 to 5: past 4 it reads on into row 0x43's first entry.
     charge_ticks = { 90, 85, 80, 75, 70, 60 },
     setup = function(navi: Object): Action

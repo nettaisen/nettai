@@ -7,7 +7,7 @@ local navi = require("./navi")
 -- Meddy (BN5 chip 0x0ec): Meddy cuts in and throws two capsules beside the enemy navi, bursting along their lines
 -- (./navi).
 local meddy = define.chip {
-    id = "bn5:meddy",
+    id = "meddy",
     codes = { "M" },
     element = "null",
     family = "null",
@@ -26,14 +26,14 @@ local meddy = define.chip {
 -- MeddySP (BN5 chip 0x0ed): Meddy cuts in and throws two capsules beside the enemy navi, bursting along their lines
 -- (../meddy/navi); its damage by how fast its user deleted Meddy SP (rules/sp-chips: formula 7, its table's row 6).
 local meddy_sp = define.chip {
-    id = "bn5:meddy-sp",
+    id = "meddy-sp",
     codes = { "M" },
     element = "null",
     family = "null",
     class = "mega",
     rarity = 3,
     mb = 63,
-    damage = { formula = "sp_navi", slot = "sp/meddy", by_time = { 200, 190, 180, 170, 160, 150, 140, 130, 120, 110, 100 }, per_player_gauges = 120 },
+    damage = { formula = "sp_navi", slot = "sp/meddy", by_time = { 200, 190, 180, 170, 160, 150, 140, 130, 120, 110, 100 }, operation_battle = 120 },
     hit_param = 148,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
@@ -45,14 +45,14 @@ local meddy_sp = define.chip {
 -- MeddyDS (BN5 chip 0x0ee): Meddy, dark, cuts in and throws two capsules beside the enemy navi, bursting along their
 -- lines (../meddy/navi); its damage by its user's side's statistic 3 (formula 29, its table's row 6).
 local meddy_ds = define.chip {
-    id = "bn5:meddy-ds",
+    id = "meddy-ds",
     codes = { "M" },
     element = "null",
     family = "null",
     class = "mega",
     rarity = 3,
     mb = 63,
-    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200 }, per_player_gauges = 100 },
+    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200 }, operation_battle = 100 },
     hit_param = 148,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },

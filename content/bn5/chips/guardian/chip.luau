@@ -6,7 +6,7 @@
 local guardian = require("./guardian")
 
 return define.chip {
-    id = "bn5:guardian",
+    id = "guardian",
     codes = { "O" },
     element = "null",
     family = "summon",

@@ -9,9 +9,9 @@ local common = require("@exelib/mine/land_mine")
 local land_mine = {}
 
 land_mine.kind = common.make_kind {
-    id = "bn6:mine/land-mine",
+    id = "mine/land-mine",
     identity = define.identity {
-        id = "bn6:mine",
+        id = "mine",
         class = "field_object",
         version = 1,
         ai_index = 1,
@@ -19,11 +19,11 @@ land_mine.kind = common.make_kind {
         scrap = false,
         look = { anim = 0, palette = 0, shadow = false },
     },
-    sprite = asset.sprite("bn6:land-mine"),
-    hop_sound = asset.sound("bn6:hop"),
+    sprite = asset.sprite("land-mine"),
+    hop_sound = asset.sound("hop"),
     -- The original's effect 0x47.
-    blast = define.effect { sprite = asset.sprite("bn6:blast"), anim = 0, palette = 0 },
-    blast_sound = asset.sound("bn6:hit-bomb-1"),
+    blast = define.effect { sprite = asset.sprite("blast"), anim = 0, palette = 0 },
+    blast_sound = asset.sound("hit-bomb-1"),
     self_type = collision.mine,
     target = collision.hits_both_sides,
 }

@@ -6,7 +6,7 @@ local effects = require("./effects")
 
 local hp = {}
 
-local SOUND_HIT_BOMB = asset.sound("bn6:hit-bomb-1")
+local SOUND_HIT_BOMB = asset.sound("hit-bomb-1")
 
 -- `object_applyDamage`: take this tick's damage (`take_damage`, which see
 -- for `mode`), and when that says it was broken (-1) or hit (1), show an

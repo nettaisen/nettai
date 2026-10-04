@@ -64,7 +64,7 @@ local function vulnerable(me: Object)
 end
 
 slasher.action = define.action {
-    id = "bn5:slasher/action",
+    id = "slasher/action",
     state = slasher.STATE,
     update = function(me: Object, s: State)
         local step = me.step

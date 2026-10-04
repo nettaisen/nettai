@@ -7,7 +7,7 @@ local beast_claw = require("../../weapons/beast-claw/weapon")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "bn6:gregar-beast-over",
+    id = "gregar-beast-over",
     kind = "beast_over",
     -- The target marker shows, its afterimages stay, a Null chip's A charge times by the claw,
     -- and its damaging Null chips deal double (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`,
@@ -25,13 +25,13 @@ return define.form {
     -- (No hit breaks Beast Over; the original's routine, by the form's number, would drop
     -- either to the Falzar beast.)
     breaks_to = falzar_beast,
-    sprite = asset.sprite("bn6:gregar-beast"),
+    sprite = asset.sprite("gregar-beast"),
     element = "null",
     buster_bonus = 0,
     weapons = { buster = gregar_beast_buster.weapon, alt_a_charge = beast_claw.weapon },
     -- Its face in the emotion window (`byte_801E700`): the Falzar ROM has no
     -- Gregar Beast Over face, and shows Falzar Beast Over's.
-    mugshot = asset.mugshot("bn6:gregar-beast-over"),
+    mugshot = asset.mugshot("gregar-beast-over"),
     -- What its status reset gives the navi (`sub_8014536`).
     status_reset = { "super_armor", "target_marker", "invulnerable", "berserk" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.

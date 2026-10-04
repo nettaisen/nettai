@@ -11,10 +11,10 @@ local statuses = require("../../rules/status")
 local whicapsl_invisible = require("../../chips/whicapsl-invisible/chip")
 
 return common.make {
-    id = "bn6:rush",
-    sprite = asset.sprite("bn6:rush"),
-    appear_sound = asset.sound("bn6:place"),
-    bite_sound = asset.sound("bn6:bite"),
+    id = "rush",
+    sprite = asset.sprite("rush"),
+    appear_sound = asset.sound("place"),
+    bite_sound = asset.sound("bite"),
     -- Digging in and out.
     dust = effects.puff,
     is = collision.thrown_piercing_break,

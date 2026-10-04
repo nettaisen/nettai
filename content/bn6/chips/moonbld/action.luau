@@ -22,7 +22,7 @@ action.STATE = { timer = "u16" }
 local READY, SWING, DONE = 0x0, 0x4, 0x8
 
 local ANIM_SPIN = 0x0C
-local SOUND = asset.sound("bn6:spin")
+local SOUND = asset.sound("spin")
 local SWINGS = 1
 -- The phase's ticks, and the tick (timer value) the blade comes out.
 local SWING_TICKS, BLADE_AT = 0x15, 0x12

@@ -29,15 +29,15 @@ export type WaterState = {
 }
 
 -- Its sprite by kind (0x080CD990: rows of category and index): kind 0, the bomb.
-local SPRITES: { [number]: SpriteAsset? } = { [0] = asset.sprite("bn5:bomb") }
-local GEYSER = asset.sprite("bn5:geyser")
+local SPRITES: { [number]: SpriteAsset? } = { [0] = asset.sprite("bomb") }
+local GEYSER = asset.sprite("geyser")
 local SPEED, GRAVITY = 0x2E666, -0x2800
 local HIT_MOD = 3
 -- The splash's damage on solid ground (its damage word's hit parameter, damage 10).
 local SPLASH_DAMAGE = 10
 -- Effect 0x1F: a splash.
-local SPLASH = define.effect { sprite = asset.sprite("bn5:spout-splash"), anim = 0, palette = 0 }
-local SOUND_ERUPT, SOUND_SPLASH = asset.sound("bn5:geyser"), asset.sound("bn5:spout-ball")
+local SPLASH = define.effect { sprite = asset.sprite("spout-splash"), anim = 0, palette = 0 }
+local SOUND_ERUPT, SOUND_SPLASH = asset.sound("geyser"), asset.sound("spout-ball")
 -- The geyser's water: two ticks in; then a panel every three ticks.
 local WATER_AT, WATER_TICKS = 2, 3
 -- The geyser stands this long between its rise and its fall.
@@ -75,7 +75,7 @@ end
 
 -- 0x080CDC2C: the order on its first tick; a panel every three ticks; gone after the eighth.
 geyser.water = define.kind {
-    id = "bn5:geyser/water",
+    id = "geyser/water",
     pool = "attack",
     state = { order = "u8[8]", count = "u16" },
     update = function(me: Object)
@@ -267,7 +267,7 @@ local function init(me: Object)
 end
 
 geyser.kind = define.kind {
-    id = "bn5:geyser/bomb",
+    id = "geyser/bomb",
     pool = "attack",
     state = { which = "u8", target_x = "u8", target_y = "u8" },
     -- 0x080CD992.

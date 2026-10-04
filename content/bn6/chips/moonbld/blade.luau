@@ -9,8 +9,8 @@ local common = require("@exelib/moonbld/blade")
 
 local blade = {}
 
-blade.kind = common.make_kind("bn6:moonbld/blade", {
-    sprite = asset.sprite("bn6:moon-blade"),
+blade.kind = common.make_kind("moonbld/blade", {
+    sprite = asset.sprite("moon-blade"),
     is = collision.slash,
     hits = collision.hits_navis,
 })

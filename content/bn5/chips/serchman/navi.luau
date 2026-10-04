@@ -24,9 +24,9 @@ export type State = {
 
 local searchman = {}
 
-local SPRITE = asset.sprite("bn5:searchman")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_SHOT = asset.sound("bn5:col-army-2")
+local SPRITE = asset.sprite("searchman")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_SHOT = asset.sound("col-army-2")
 
 -- By the level (0x0800DA8A: 0x0801D737's navi 3 count by 0x0800DAE8's row): SP's 2, DS's 3.
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 2, 3 }
@@ -203,7 +203,7 @@ local function init(me: Object)
 end
 
 searchman.kind = define.kind {
-    id = "bn5:serchman/navi",
+    id = "serchman/navi",
     pool = "actor",
     state = {
         controller = "object",

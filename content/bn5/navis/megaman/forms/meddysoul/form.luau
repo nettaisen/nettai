@@ -14,11 +14,11 @@ local drkrecov = require("../../../../chips/drkrecov/chip")
 local souls = require("../../../../rules/souls/system")
 
 return define.form {
-    id = "bn5:meddysoul",
+    id = "meddysoul",
     soul = { number = 6, family = "recovery", chaos_cycle = 2 },
     change = souls.action,
     revert = souls.revert,
-    sprite = asset.sprite("bn5:meddysoul"),
+    sprite = asset.sprite("meddysoul"),
     element = "null",
     buster_bonus = 0,
     weapons = {
@@ -26,14 +26,14 @@ return define.form {
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
         -- Routine 0x36 (0x0800FA70): DrkRecov (chip 0xC2), the charge table's row 0x36.
-        chaos = chaos.weapon("bn5:meddysoul/chaos", drkrecov, { 70, 90, 110, 130, 150, 70 }),
+        chaos = chaos.weapon("meddysoul/chaos", drkrecov, { 70, 90, 110, 130, 150, 70 }),
     },
     palette = 0,
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 5-10, the version's souls'); in its
     -- Chaos Unison look while the chaos charge is armed (0x080125F6: the palette 11 on).
     mugshot = {
-        normal = asset.mugshot("bn5:meddysoul"),
-        variant = { normal = asset.mugshot("bn5:meddysoul-chaos") },
+        normal = asset.mugshot("meddysoul"),
+        variant = { normal = asset.mugshot("meddysoul-chaos") },
     },
     buster_arm = { anim = 0 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 6 of category 0).

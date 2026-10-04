@@ -21,7 +21,7 @@ export type State = {
 }
 
 -- 0x080CB5EC: the bomb's sprite in animation 1, palette 4 (kind 2: 0).
-local SPRITE = asset.sprite("bn5:bomb")
+local SPRITE = asset.sprite("bomb")
 local FLIGHT_TICKS, GRAVITY = 50, -0x3000
 
 -- What the navi holds throwing one (the attachment table's row 0x1A): the bomb in palette 4.
@@ -30,10 +30,10 @@ local HIT_MOD = 3
 -- Its region once landed, by kind (0x080CB7A0).
 local REGIONS = { [0] = regions.single, [1] = regions.single, [2] = regions.wide, [3] = regions.region_20 }
 -- Effects 0x14 (a puff), 0x11 (an impact) and 0 (an explosion).
-local PUFF = define.effect { sprite = asset.sprite("bn5:puff"), anim = 2, palette = 0 }
-local IMPACT = define.effect { sprite = asset.sprite("bn5:hit-sparks"), anim = 1, palette = 0 }
-local EXPLOSION = define.effect { sprite = asset.sprite("bn5:explosion"), anim = 0, palette = 0 }
-local SOUND_CRACK, SOUND_BOMB = asset.sound("bn5:panel-crack"), asset.sound("bn5:hit-bomb-1")
+local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local IMPACT = define.effect { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 0 }
+local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
+local SOUND_CRACK, SOUND_BOMB = asset.sound("panel-crack"), asset.sound("hit-bomb-1")
 
 -- 0x080CB6BC: fly to the target panel; land there.
 local function fly(me: Object, s: State)
@@ -109,7 +109,7 @@ local function tick(me: Object)
 end
 
 cannball.kind = define.kind {
-    id = "bn5:cannball/ball",
+    id = "cannball/ball",
     pool = "attack",
     state = { which = "u8", target_x = "u8", target_y = "u8" },
     -- 0x080CB5C8.

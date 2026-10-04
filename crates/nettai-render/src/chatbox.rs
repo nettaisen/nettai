@@ -554,8 +554,8 @@ mod tests {
         for (language, table) in [(None, &c.strings), (Some(&ja), &ja)] {
             let strings = DisplayText::new(language);
             for key in ["heatcross", "groundcross", "spoutcross", "tomahawkcross"] {
-                let said = strings.form_description(&c, form(&format!("bn6:{key}"))).expect("a description");
-                let want = table.form(&format!("bn6:{key}")).and_then(|f| f.description.as_deref());
+                let said = strings.form_description(&c, form(&format!("{key}"))).expect("a description");
+                let want = table.form(&format!("{key}")).and_then(|f| f.description.as_deref());
                 assert_eq!(Some(said.text), want, "{key} in {:?}", table.language);
             }
         }

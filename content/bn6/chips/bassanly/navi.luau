@@ -11,15 +11,15 @@ local common = require("@exelib/bassanly/navi")
 local effects = require("../../lib/effects")
 local shot = require("./shot")
 
-local SPRITE = asset.sprite("bn6:bass-anly")
+local SPRITE = asset.sprite("bass-anly")
 
 return common.make {
-    id = "bn6:bassanly/navi",
+    id = "bassanly/navi",
     sprite = SPRITE,
     -- His cloak: a form overlay on his sprite, stepping while dimmed, on his
     -- animation + 0x14 (`dword_80C3D98`).
     cloak = { sprite = SPRITE, stepping = "while_dimmed", anim_offset = 0x14 },
-    sounds = { appear = asset.sound("bn6:appear"), raise = asset.sound("bn6:bass-anly") },
+    sounds = { appear = asset.sound("appear"), raise = asset.sound("bass-anly") },
     anims = { raise = 8, stance = 0xD, fire = 9, fire_loop = nil, rest = 0 },
     arm = nil,
     smoke = effects.smoke,

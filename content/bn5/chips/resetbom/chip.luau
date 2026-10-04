@@ -8,7 +8,7 @@ local bombs = require("../../lib/bombs/bombs")
 local crakbom = require("../crakbom/crakbom")
 
 return define.chip {
-    id = "bn5:resetbom",
+    id = "resetbom",
     codes = { "D", "I", "O" },
     element = "null",
     family = "null",

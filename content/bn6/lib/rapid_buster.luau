@@ -17,11 +17,11 @@ local projectile = require("./projectile")
 local variants = require("../objects/projectile/variants")
 
 return common.make {
-    id = "bn6:rapid-buster/action",
+    id = "rapid-buster/action",
     buster = buster,
     projectiles = projectile,
     attachment = attachment.kind,
-    shot_sound = asset.sound("bn6:buster-shot"),
+    shot_sound = asset.sound("buster-shot"),
     shot = variants.charged,
     overlay_steps = true,
 }

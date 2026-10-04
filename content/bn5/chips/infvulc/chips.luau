@@ -13,7 +13,7 @@ local vulcan = require("../vulcan/vulcan")
 -- InfVulc1 (BN5 chip 0x143): the Program Advance of three Vulcan1s with consecutive codes: action 0x19 with subtype
 -- 4, the Vulcans' action with the InfVulcs' gun firing 20 of their bullets (chips/vulcan/vulcan).
 local infvulc1 = define.chip {
-    id = "bn5:infvulc1",
+    id = "infvulc1",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -29,7 +29,7 @@ local infvulc1 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 6, sequence = { recipe_airspin1, recipe_airspin1, recipe_vulcan1 }, per_player_gauges_only = true },
+        { order = 6, sequence = { recipe_airspin1, recipe_airspin1, recipe_vulcan1 }, operation_battle_only = true },
         { order = 42, code_run = { chip = recipe_vulcan1, count = 3 } },
     },
     action = vulcan.infinite(20),
@@ -38,7 +38,7 @@ local infvulc1 = define.chip {
 -- InfVulc2 (BN5 chip 0x144): the Program Advance of three Vulcan2s with consecutive codes: action 0x19 with subtype
 -- 5, the Vulcans' action with the InfVulcs' gun firing 24 of their bullets (chips/vulcan/vulcan).
 local infvulc2 = define.chip {
-    id = "bn5:infvulc2",
+    id = "infvulc2",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -54,7 +54,7 @@ local infvulc2 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 7, sequence = { recipe_airspin2, recipe_airspin2, recipe_vulcan2 }, per_player_gauges_only = true },
+        { order = 7, sequence = { recipe_airspin2, recipe_airspin2, recipe_vulcan2 }, operation_battle_only = true },
         { order = 43, code_run = { chip = recipe_vulcan2, count = 3 } },
     },
     action = vulcan.infinite(24),
@@ -63,7 +63,7 @@ local infvulc2 = define.chip {
 -- InfVulc3 (BN5 chip 0x145): the Program Advance of three Vulcan3s with consecutive codes: action 0x19 with subtype
 -- 6, the Vulcans' action with the InfVulcs' gun firing 28 of their bullets (chips/vulcan/vulcan).
 local infvulc3 = define.chip {
-    id = "bn5:infvulc3",
+    id = "infvulc3",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -79,7 +79,7 @@ local infvulc3 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 8, sequence = { recipe_airspin3, recipe_airspin3, recipe_vulcan3 }, per_player_gauges_only = true },
+        { order = 8, sequence = { recipe_airspin3, recipe_airspin3, recipe_vulcan3 }, operation_battle_only = true },
         { order = 44, code_run = { chip = recipe_vulcan3, count = 3 } },
     },
     action = vulcan.infinite(28),

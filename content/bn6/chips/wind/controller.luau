@@ -5,7 +5,7 @@
 local common = require("@exelib/wind/controller")
 local fan = require("./fan")
 
-local made = common.make { id = "bn6:wind/controller", spawn_fan = fan.spawn }
+local made = common.make { id = "wind/controller", spawn_fan = fan.spawn }
 
 -- A chip's `dimming` hook (`sub_80E3128`): the controller placing a fan of `variant`.
 return { hook = made.hook }

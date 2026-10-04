@@ -8,7 +8,7 @@ local bombs = require("../../lib/bombs/bombs")
 local doll = require("./doll")
 
 return define.chip {
-    id = "bn5:vdoll",
+    id = "vdoll",
     codes = { "O", "T", "Z" },
     element = "null",
     family = "summon",

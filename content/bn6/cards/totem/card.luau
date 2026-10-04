@@ -4,7 +4,7 @@
 local cards = require("../../rules/patch-cards/cards")
 
 return define.patch_card {
-    id = "bn6:totem",
+    id = "totem",
     mb = 13,
     effects = {
         cards.body("fire"),

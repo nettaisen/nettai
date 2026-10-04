@@ -8,7 +8,7 @@ local top = require("./top")
 
 return {
     define.chip {
-        id = "bn6:airspin1",
+        id = "airspin1",
         codes = { "F", "G", "R" },
         element = "null", family = "wind", class = "standard",
         rarity = 1, mb = 22, damage = 50, hit_param = 10, lockout = 0,
@@ -18,7 +18,7 @@ return {
         action = action.action { whirlwind = top.sender(0, 2) },
     },
     define.chip {
-        id = "bn6:airspin2",
+        id = "airspin2",
         codes = { "A", "L", "T" },
         element = "null", family = "wind", class = "standard",
         rarity = 2, mb = 29, damage = 50, hit_param = 10, lockout = 0,
@@ -28,7 +28,7 @@ return {
         action = action.action { whirlwind = top.sender(1, 3) },
     },
     define.chip {
-        id = "bn6:airspin3",
+        id = "airspin3",
         codes = { "N", "O", "T" },
         element = "null", family = "wind", class = "standard",
         rarity = 3, mb = 36, damage = 50, hit_param = 10, lockout = 0,

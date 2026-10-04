@@ -26,7 +26,7 @@ export type State = {
     action: Action?,
 }
 
-local SPRITE = asset.sprite("bn6:whirlwind")
+local SPRITE = asset.sprite("whirlwind")
 
 -- How far ahead of its panel's center it stands (`byte_80D5738`), 16.16.
 local AHEAD = 0x28_0000
@@ -149,7 +149,7 @@ local function init(me: Object)
 end
 
 whirlwind.kind = define.kind {
-    id = "bn6:tengucross-beast/whirlwind",
+    id = "tengucross-beast/whirlwind",
     pool = "attack",
     state = { at_once = "bool", ticks = "u8", anim = "u8", action = "action" },
     -- `sub_80D5580`.

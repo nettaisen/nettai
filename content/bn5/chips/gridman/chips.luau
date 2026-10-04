@@ -6,7 +6,7 @@ local navi = require("./navi")
 
 -- GridMan (BN5 chip 0x113): GridMan cuts in, dashes across the field and strikes the whole enemy area (./navi).
 local gridman = define.chip {
-    id = "bn5:gridman",
+    id = "gridman",
     codes = { "F" },
     element = "null",
     family = "null",
@@ -25,14 +25,14 @@ local gridman = define.chip {
 -- GridManSP (BN5 chip 0x114): GridMan cuts in, dashes across the field and strikes the whole enemy area (../gridman/navi);
 -- its damage by how fast its user deleted GridMan SP (rules/sp-chips: formula 19, its table's row 18).
 local gridman_sp = define.chip {
-    id = "bn5:gridman-sp",
+    id = "gridman-sp",
     codes = { "F" },
     element = "null",
     family = "null",
     class = "mega",
     rarity = 3,
     mb = 72,
-    damage = { formula = "sp_navi", slot = "sp/gridman", by_time = { 250, 240, 230, 220, 210, 200, 190, 180, 170, 160, 150 }, per_player_gauges = 230 },
+    damage = { formula = "sp_navi", slot = "sp/gridman", by_time = { 250, 240, 230, 220, 210, 200, 190, 180, 170, 160, 150 }, operation_battle = 230 },
     hit_param = 168,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
@@ -44,14 +44,14 @@ local gridman_sp = define.chip {
 -- GridManDS (BN5 chip 0x115): GridMan, dark, cuts in, dashes across the field and strikes the whole enemy area
 -- (../gridman/navi); its damage by its user's side's statistic 3 (formula 41, its table's row 18).
 local gridman_ds = define.chip {
-    id = "bn5:gridman-ds",
+    id = "gridman-ds",
     codes = { "F" },
     element = "null",
     family = "null",
     class = "mega",
     rarity = 3,
     mb = 72,
-    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250 }, per_player_gauges = 180 },
+    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250 }, operation_battle = 180 },
     hit_param = 168,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },

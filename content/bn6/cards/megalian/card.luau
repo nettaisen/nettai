@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local barriers = require("../../lib/barriers/barriers")
 
 return define.patch_card {
-    id = "bn6:megalian",
+    id = "megalian",
     mb = 20,
     effects = {
         cards.bug(cards.hp(-80)),

@@ -12,8 +12,8 @@ export type State = {
 
 local glow = {}
 
-local SPRITE = asset.sprite("bn5:charge-glow")
-local SOUND_CHARGE, SOUND_CHARGED = asset.sound("bn5:buster-charge"), asset.sound("bn5:buster-charged")
+local SPRITE = asset.sprite("charge-glow")
+local SOUND_CHARGE, SOUND_CHARGED = asset.sound("buster-charge"), asset.sound("buster-charged")
 -- How long it builds (to 0), and its charged animation.
 local BUILD, CHARGED = 0x14, 2
 
@@ -61,7 +61,7 @@ local function init(me: Object)
 end
 
 glow.kind = define.kind {
-    id = "bn5:leadraid/glow",
+    id = "leadraid/glow",
     pool = "effect",
     state = { dx = "i32", dz = "i32" },
     -- 0x080EA0EC.

@@ -11,7 +11,7 @@ local charged_chip_bonus_1f = require("../../weapons/charged-chip-bonus-1f/weapo
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "bn6:spoutcross",
+    id = "spoutcross",
     kind = "cross",
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
@@ -20,13 +20,13 @@ return define.form {
     beast = spoutcross_beast,
     -- A weakness hit breaks the Cross: back to the base form.
     breaks_to = base,
-    sprite = asset.sprite("bn6:megaman"),
+    sprite = asset.sprite("megaman"),
     element = "aqua",
     buster_bonus = 0,
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = charged_chip_bonus_1f },
     palette = 5,
     -- Its faces in the emotion window, and once Beast Out is spent (`byte_801E700`).
-    mugshot = { normal = asset.mugshot("bn6:spoutcross"), tired = asset.mugshot("bn6:spoutcross-tired") },
+    mugshot = { normal = asset.mugshot("spoutcross"), tired = asset.mugshot("spoutcross-tired") },
     -- What R shows in the Cross window.
     -- The chips A charges.
     charged_chips = { { family = "aqua" } },
@@ -46,7 +46,7 @@ return define.form {
         aura_anim = 30,
         ice = "medium",
         -- What it wears over MegaMan's body.
-        parts = cross_overlay(asset.sprite("bn6:spoutcross-overlay")),
+        parts = cross_overlay(asset.sprite("spoutcross-overlay")),
         attach_points = {
             { 2, 0 },
             { 2, 0 },

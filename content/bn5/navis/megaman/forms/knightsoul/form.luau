@@ -16,20 +16,20 @@ local darkdril = require("../../../../chips/darkdril/chip")
 local souls = require("../../../../rules/souls/system")
 
 return define.form {
-    id = "bn5:knightsoul",
+    id = "knightsoul",
     soul = { number = 11, family = "break" },
     change = souls.action,
     revert = souls.revert,
-    sprite = asset.sprite("bn5:knightsoul"),
+    sprite = asset.sprite("knightsoul"),
     element = "null",
     buster_bonus = 0,
     weapons = {
         buster = buster.weapon,
         charge_shot = charge.weapon,
         -- Routine 0x12 (the charged chip is the chip with the bonus), the charge table's row 0x12.
-        a_charge = charged_chips.routine("bn5:knightsoul/a-charge", { 80, 80, 80, 80, 80, 120 }),
+        a_charge = charged_chips.routine("knightsoul/a-charge", { 80, 80, 80, 80, 80, 120 }),
         -- Routine 0x38 (0x0800FA84): DarkDril (chip 0xC4), the charge table's row 0x38.
-        chaos = chaos.weapon("bn5:knightsoul/chaos", darkdril, { 40, 60, 90, 120, 150, 40 }),
+        chaos = chaos.weapon("knightsoul/chaos", darkdril, { 40, 60, 90, 120, 150, 40 }),
     },
     charged_chips = { { family = "break", damaging = false, plain = true } },
     charged_bonus = { damage = 0xFF },
@@ -38,8 +38,8 @@ return define.form {
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 0x16-0x1B, Team Colonel's
     -- souls'); in its Chaos Unison look while the chaos charge is armed (0x080125F6: the palette 11 on).
     mugshot = {
-        normal = asset.mugshot("bn5:knightsoul"),
-        variant = { normal = asset.mugshot("bn5:knightsoul-chaos") },
+        normal = asset.mugshot("knightsoul"),
+        variant = { normal = asset.mugshot("knightsoul-chaos") },
     },
     buster_arm = { anim = 0 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 11 of category 0).

@@ -23,9 +23,9 @@ export type State = {
 
 local larkman = {}
 
-local SPRITE = asset.sprite("bn5:larkman")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_COMMAND = asset.sound("bn5:ok-8b")
+local SPRITE = asset.sprite("larkman")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_COMMAND = asset.sound("ok-8b")
 
 -- By the level (0x080BDC7C): the dark palette for DS's 4.
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 4 }
@@ -148,7 +148,7 @@ end
 local ACTIONS = { [0] = appear, [4] = stand, [8] = rise, [0xC] = attack }
 
 larkman.kind = define.kind {
-    id = "bn5:larkman/navi",
+    id = "larkman/navi",
     pool = "actor",
     state = {
         controller = "object",

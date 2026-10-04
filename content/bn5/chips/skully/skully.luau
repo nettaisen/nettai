@@ -19,7 +19,7 @@ export type State = {
     left: number,
 }
 
-local SPRITE = asset.sprite("bn5:skull")
+local SPRITE = asset.sprite("skull")
 local LIFETIME = 30
 local HEIGHT = 0x14_0000
 -- The enemy bodies by side (0x080D73D4).
@@ -113,7 +113,7 @@ local function init(me: Object)
 end
 
 skully.kind = define.kind {
-    id = "bn5:skully/skull",
+    id = "skully/skull",
     pool = "attack",
     state = { skulls = "record:skulls", left = "u8" },
     -- 0x080D7290: by its lifecycle, then a sprite step.
@@ -159,7 +159,7 @@ export type ActionState = {
 }
 
 local CALL, RECOVER = 0x0, 0x4
-local SOUND = asset.sound("bn5:boomerang")
+local SOUND = asset.sound("boomerang")
 
 -- A chip's Skully: its skulls.
 function skully.action(id: string, skulls: Skulls): Action

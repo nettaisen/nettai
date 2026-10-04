@@ -18,11 +18,11 @@ local effects = require("../../lib/effects")
 -- statue loads 0C-00, the swords' sheet, instead; the content shows the
 -- Japanese games' Otenko on every console (docs/engine/jp-differences.md
 -- §5).
-local SPRITE = asset.sprite("bn6:otenko")
+local SPRITE = asset.sprite("otenko")
 
 return common.make {
-    statue_id = "bn6:otenko/statue",
-    controller_id = "bn6:otenko/controller",
+    statue_id = "otenko/statue",
+    controller_id = "otenko/controller",
     sprite = SPRITE,
     -- Its identity: a field object, which looks as Otenko when something
     -- takes its place (`byte_8021220`'s row for its NameID: DustMan's
@@ -31,7 +31,7 @@ return common.make {
     -- (docs/engine/jp-differences.md §8, row 16). The content follows the
     -- Japanese games on every console.
     identity = define.identity {
-        id = "bn6:otenko",
+        id = "otenko",
         class = "field_object",
         version = 2,
         ai_index = 1,
@@ -41,7 +41,7 @@ return common.make {
     -- One of its side's two field objects of class 0 (a third evicts the
     -- oldest).
     class = 0,
-    sounds = { appear = asset.sound("bn6:appear"), ["break"] = asset.sound("bn6:panel-poison") },
+    sounds = { appear = asset.sound("appear"), ["break"] = asset.sound("panel-poison") },
     -- Another body of its side.
     is = collision.own_body,
     hits = collision.hit_by_other_side,

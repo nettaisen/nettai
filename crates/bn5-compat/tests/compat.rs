@@ -19,17 +19,17 @@ fn bn5_compat_reads() {
     let built_in = Compat::bn5();
     let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn5/compat"));
     assert_eq!(&Compat::read(dir).unwrap(), built_in);
-    assert_eq!(built_in.chips["bn5:cannon"].id, 0x001);
-    assert_eq!(built_in.chip_key(0x133), Some("bn5:holydrem"));
-    assert_eq!(built_in.chip(0x133).as_deref(), Some("bn5:holydrem"));
-    assert_eq!(built_in.chip_entry("bn5:holydrem").map(|c| c.id), Some(0x133));
-    assert_eq!(built_in.chip_entry("bn6:holydrem"), None);
-    let phoenix = &built_in.chips["bn5:phoenix"];
+    assert_eq!(built_in.chips["cannon"].id, 0x001);
+    assert_eq!(built_in.chip_key(0x133), Some("holydrem"));
+    assert_eq!(built_in.chip(0x133).as_deref(), Some("holydrem"));
+    assert_eq!(built_in.chip_entry("holydrem").map(|c| c.id), Some(0x133));
+    assert_eq!(built_in.chip_entry("bn6:holydrem"), None); // (written in full)
+    let phoenix = &built_in.chips["phoenix"];
     assert_eq!(phoenix.colonel.as_ref().and_then(|c| c.flags.as_deref()).map(|f| f.contains(&"library".to_string())), Some(true));
-    assert_eq!(built_in.chips["bn5:custswrd"].damage_formula, Some(45));
+    assert_eq!(built_in.chips["custswrd"].damage_formula, Some(45));
     // The e-Reader cards' chips: their strings and palettes are the save's.
-    assert_eq!((built_in.chips["bn5:leadraid"].id, built_in.chips["bn5:leadraid"].save_slot), (0x137, Some(0)));
-    assert_eq!((built_in.chips["bn5:chaoslrd"].id, built_in.chips["bn5:chaoslrd"].save_slot), (0x138, Some(1)));
+    assert_eq!((built_in.chips["leadraid"].id, built_in.chips["leadraid"].save_slot), (0x137, Some(0)));
+    assert_eq!((built_in.chips["chaoslrd"].id, built_in.chips["chaoslrd"].save_slot), (0x138, Some(1)));
     // BN5's holy panel is its type 9, the engine's Holy; metal, lava and
     // sea are BN5's own types (docs/design/bn5-map.md §15.3 item 1).
     assert_eq!(built_in.panel_type(9), Ok(Some(PanelType::Holy)));
@@ -43,8 +43,8 @@ fn bn5_compat_reads() {
     assert_eq!(built_in.assets.banners.get("program-advance"), Some(&0x24));
     assert_eq!(built_in.sprite_names().get(&(0x0C, 0x02)).map(String::as_str), Some("bomb"));
     // The statuses' bytes.
-    assert_eq!(built_in.status(0x10).as_deref(), Some("bn5:paralyze-90"));
-    assert_eq!(built_in.status(0x32).as_deref(), Some("bn5:blind-1200"));
+    assert_eq!(built_in.status(0x10).as_deref(), Some("paralyze-90"));
+    assert_eq!(built_in.status(0x32).as_deref(), Some("blind-1200"));
 }
 
 /// Team ProtoMan's NaviStats block as the chip lab's team-plain recording
@@ -90,10 +90,10 @@ fn chip_hands_decode() {
         b[0x32 + 2 * i..0x34 + 2 * i].copy_from_slice(&v.to_le_bytes());
     }
     let h = codec::chip_hand(Compat::bn5(), &b).unwrap();
-    assert_eq!(h.ids[0].as_ref().and_then(|c| c.key.as_deref()), Some("bn5:boxer1"));
+    assert_eq!(h.ids[0].as_ref().and_then(|c| c.key.as_deref()), Some("boxer1"));
     assert!(h.ids[1].is_none());
     let (chip, code) = h.selection[1].clone().unwrap();
-    assert_eq!((chip.key.as_deref(), code), (Some("bn5:firehit1"), 15));
+    assert_eq!((chip.key.as_deref(), code), (Some("firehit1"), 15));
 }
 
 #[cfg(feature = "trace")]
@@ -133,10 +133,11 @@ fn a_rounds_setup_names_what_the_content_lacks() {
     assert_eq!(round.chip_ids().unwrap(), [0x001]);
     let content = std::sync::Arc::new(nettai_battle::content::testing::build());
     let needs = round.needs(&content, Compat::bn5()).unwrap();
-    assert_eq!(needs[0], "chip bn5:cannon (0x001)");
-    assert!(needs.contains(&"side 1's navi bn5:megaman (0x00)".to_string()), "{needs:?}");
+    assert_eq!(needs[0], "chip cannon (0x001)");
+    // (Its navi's name, `megaman`, the test content has: a name is its
+    // game's, and a round runs on its own game's content.)
     assert!(needs.iter().any(|n| n.starts_with("the stage")), "{needs:?}");
     assert_eq!(needs.last().map(String::as_str), Some("BN5's pack"));
     let replay = trace::run_round(&round, &content, Compat::bn5());
-    assert!(matches!(replay.stopped, Some(Stop::Setup(ref e)) if e.contains("chip bn5:cannon")), "{:?}", replay.stopped);
+    assert!(matches!(replay.stopped, Some(Stop::Setup(ref e)) if e.contains("chip cannon")), "{:?}", replay.stopped);
 }

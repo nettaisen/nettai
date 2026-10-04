@@ -27,27 +27,27 @@ export type State = {
 
 local colonel = {}
 
-local SPRITE = asset.sprite("bn5:colonel")
-local SOUND_APPEAR = asset.sound("bn5:appear")
-local SOUND_COMMAND = asset.sound("bn5:ok-8b")
-local SOUND_SWING = asset.sound("bn5:spin")
+local SPRITE = asset.sprite("colonel")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_COMMAND = asset.sound("ok-8b")
+local SOUND_SWING = asset.sound("spin")
 -- What he wears (0x0800EE5E: BN5's body overlay row 3, its sprite 10-1E, in front at every animation), stepping
 -- even while paused.
 local CAPE = define.identity {
-    id = "bn5:colonel-navi",
+    id = "colonel-navi",
     class = "navi",
-    parts = { body = { sprite = asset.sprite("bn5:colonel-cape"), anims = 41 } },
+    parts = { body = { sprite = asset.sprite("colonel-cape"), anims = 41 } },
 }
 -- His sword (the attachment row 3), its animation 7, animating while dimmed; DS's palette 6 more.
-local SWORD = attachment.look { sprite = asset.sprite("bn5:sword"), palette = 0 }
+local SWORD = attachment.look { sprite = asset.sprite("sword"), palette = 0 }
 local SWORD_ANIM = 7
 -- By the level (0x0800DA8A: navi 7's count, 2, by 0x0800DAE8's row): DS's 6 (SP's level is 0).
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 4, 6 }
 -- His slashes by his Param2 (0x080BA49C: region, effect row 0x48 + it): rising, falling.
 local SLASH_REGIONS: { [number]: Region } = { [1] = regions.falling, [2] = regions.rising }
 local SLASHES: { [number]: Effect } = {
-    [1] = define.effect { sprite = asset.sprite("bn5:screen-divide"), anim = 1, palette = 0 },
-    [2] = define.effect { sprite = asset.sprite("bn5:screen-divide"), anim = 2, palette = 0 },
+    [1] = define.effect { sprite = asset.sprite("screen-divide"), anim = 1, palette = 0 },
+    [2] = define.effect { sprite = asset.sprite("screen-divide"), anim = 2, palette = 0 },
 }
 -- The panels his target holds (0x080BA5B0): an enemy navi's body, by side.
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
@@ -237,7 +237,7 @@ local function init(me: Object)
 end
 
 colonel.kind = define.kind {
-    id = "bn5:colonel/navi",
+    id = "colonel/navi",
     pool = "actor",
     state = { controller = "object", level = "u8", cross = "bool", slash = "u8" },
     -- 0x080BA280.

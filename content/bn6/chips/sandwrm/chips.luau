@@ -9,7 +9,7 @@ local worm = require("./worm")
 
 return {
     define.chip {
-        id = "bn6:sandwrm1",
+        id = "sandwrm1",
         codes = { "A", "G", "L" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 30, damage = 130, hit_param = 30, lockout = 0,
@@ -20,7 +20,7 @@ return {
         instant = worm.instant(0),
     },
     define.chip {
-        id = "bn6:sandwrm2",
+        id = "sandwrm2",
         codes = { "B", "R", "Y" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 34, damage = 150, hit_param = 30, lockout = 0,
@@ -31,7 +31,7 @@ return {
         instant = worm.instant(1),
     },
     define.chip {
-        id = "bn6:sandwrm3",
+        id = "sandwrm3",
         codes = { "H", "J", "S" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 38, damage = 170, hit_param = 30, lockout = 0,

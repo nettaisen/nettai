@@ -33,14 +33,14 @@ local HIT_PARAM = 0x9E
 -- (`byte_80EF606`), the hit's region (`byte_80EF5FC`'s records: the panel
 -- and the one ahead, then the column) and hit modifier (`byte_80EF604`),
 -- and the sound.
-local CLAWS = asset.sprite("bn6:slash-man-effect")
+local CLAWS = asset.sprite("slash-man-effect")
 local LOOKS = {
     [0] = define.effect { sprite = CLAWS, anim = 1, palette = 0 },
     [1] = define.effect { sprite = CLAWS, anim = 0, palette = 0 },
 }
 local REGIONS = { [0] = regions.long, [1] = regions.wide }
 local HIT_MODS = { [0] = 1, [1] = 3 }
-local FIRST_SOUND, SECOND_SOUND = asset.sound("bn6:beast-claw"), asset.sound("bn6:beast-claw-2")
+local FIRST_SOUND, SECOND_SOUND = asset.sound("beast-claw"), asset.sound("beast-claw-2")
 
 -- The hit: no spark, an attack at navis.
 local HIT_EFFECT: Spark? = nil
@@ -128,7 +128,7 @@ local function recover(me: Object, s: State)
 end
 
 beast_claw.action = define.action {
-    id = "bn6:megaman/beast-claw/action",
+    id = "megaman/beast-claw/action",
     state = { timer = "u16" },
     -- `sub_80EF534`.
     update = function(me: Object, s: State)
@@ -144,7 +144,7 @@ beast_claw.action = define.action {
 }
 
 beast_claw.weapon = define.weapon {
-    id = "bn6:megaman/beast-claw",
+    id = "megaman/beast-claw",
     -- The charge table's row 0x1E, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 20, 20, 20, 20, 20, 40, 40, 40 },

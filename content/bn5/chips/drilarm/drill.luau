@@ -2,7 +2,7 @@
 -- BN5's drills (attack object #0x71) and DrilArm's action (BN5's 0x4F, 0x080EF490; BN6's 0x2E): the shared drill
 -- (@exelib/drilarm/drill, BN6's code) but for
 --
--- - the action's start: no 10-tick wait outside battle flag 0x40 mode (0x080EF4B8; with it, 10 ticks and effect
+-- - the action's start: no 10-tick wait outside the operation battle (0x080EF4B8; with it, 10 ticks and effect
 --   object 0x83 on the panel ahead, which isn't ported: never in a netbattle), so the arm and drills come at once;
 -- - the arm: BN5's attachment row 0x2F (0C-1E, BN6's row 0x20), DarkDril's (subtype 1) with 1 added to its palette;
 --   and DarkDril drills for 60 ticks (0x080EF526) where DrilArm's record says 24;
@@ -14,6 +14,7 @@ local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local drill = require("@exelib/drilarm/drill")
 local sparks = require("../../lib/sparks")
+local operation_battle = require("../../lib/operation_battle")
 
 local bn5_drill = {}
 
@@ -22,7 +23,7 @@ export type State = {
     timer: number,
 }
 
-local KIND, spawn = drill.make_kind("bn5:drill", {
+local KIND, spawn = drill.make_kind("drill", {
     spark = sparks.breaking,
     first = collision.breaking,
     second = collision.second_drill,
@@ -32,9 +33,9 @@ local KIND, spawn = drill.make_kind("bn5:drill", {
 })
 bn5_drill.kind = KIND
 
-local ARM = attachment.look { sprite = asset.sprite("bn5:drill-arm"), palette = 0, attach_point = 0x13 }
+local ARM = attachment.look { sprite = asset.sprite("drill-arm"), palette = 0, attach_point = 0x13 }
 local ARM_DRILLING = 1
-local SOUND = asset.sound("bn5:drilarm")
+local SOUND = asset.sound("drilarm")
 -- The phases, on the attack's step.
 local WAIT, DRILL, DRAW_BACK = 0x0, 0x4, 0x8
 -- The drills' height.
@@ -67,11 +68,11 @@ function bn5_drill.action(dark: boolean): Action
         end
     end
 
-    -- 0x080EF4B0: outside battle flag 0x40 mode, drill at once; in it, 10 ticks first (and effect 0x83 on the panel
+    -- 0x080EF4B0: outside the operation battle, drill at once; in it, 10 ticks first (and effect 0x83 on the panel
     -- ahead, not ported).
     local function wait(me: Object, s: State)
         if me.step_init == 0 then
-            if not battle.per_player_gauges() then
+            if not operation_battle() then
                 me.step = DRILL
                 me.step_init = 0
                 grind(me, s)

@@ -16,24 +16,24 @@ shot.spawn_kind = common.spawn_kind
 
 -- BN6's look, which the gun's kind shares.
 shot.look = {
-    sprite = asset.sprite("bn6:sight"),
+    sprite = asset.sprite("sight"),
     sounds = {
         -- (The cursor steps with the sound EraseMan's mark has, the
         -- original's 0x10E.)
-        step = asset.sound("bn6:erase-man"),
-        mark = asset.sound("bn6:mark"),
-        hit = asset.sound("bn6:col-army-2"),
+        step = asset.sound("erase-man"),
+        mark = asset.sound("mark"),
+        hit = asset.sound("col-army-2"),
     },
     spark = sparks.of_element(0),
     target = collision.hits_navis,
     flash = effects.flash,
     hits = {
         [0] = collision.thrown,
-        [1] = define.collision { id = "bn6:circgun/other-hit", side0 = 0x80000488, side1 = 0x40000488, row_offset = 0x158 },
+        [1] = define.collision { id = "circgun/other-hit", side0 = 0x80000488, side1 = 0x40000488, row_offset = 0x158 },
     },
 } :: CircGunLook
 
-shot.kind = shot.make_kind("bn6:circgun/shot", shot.look)
+shot.kind = shot.make_kind("circgun/shot", shot.look)
 
 -- BN6's shot.
 function shot.spawn(gun: Object, x: number, y: number, element: number, damage: number, ticks: number, look: number, slot: number): Object?

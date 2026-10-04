@@ -11,7 +11,7 @@ local recipe_django_sp = require("../django/chips").django_sp
 local recipe_gundels3 = require("../gundels/chips").gundels3
 
 return define.chip {
-    id = "bn5:piledrvr",
+    id = "piledrvr",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

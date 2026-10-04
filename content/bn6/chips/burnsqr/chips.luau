@@ -6,7 +6,7 @@
 local controller = require("./controller")
 
 local burnsqr1 = define.chip {
-    id = "bn6:burnsqr1",
+    id = "burnsqr1",
     codes = { "H", "P", "V" },
     element = "fire",
     family = "fire",
@@ -23,7 +23,7 @@ local burnsqr1 = define.chip {
 }
 
 local burnsqr2 = define.chip {
-    id = "bn6:burnsqr2",
+    id = "burnsqr2",
     codes = { "D", "M", "T" },
     element = "fire",
     family = "fire",
@@ -40,7 +40,7 @@ local burnsqr2 = define.chip {
 }
 
 local burnsqr3 = define.chip {
-    id = "bn6:burnsqr3",
+    id = "burnsqr3",
     codes = { "E", "O", "Z" },
     element = "fire",
     family = "fire",

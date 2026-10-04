@@ -25,10 +25,10 @@ local FIRE, RECOVER = 0x0, 0x4
 local ANIM_HOLD = 0xA
 -- The corn leaves when the count reaches this; the recovery's ticks.
 local FIRE_TICKS, RECOVER_TICKS = 0xA, 0x18
-local SOUND = asset.sound("bn6:corn-shot")
+local SOUND = asset.sound("corn-shot")
 
 -- The corn gun (the original's attachment row 0x18).
-local GUN = attachment.look { sprite = asset.sprite("bn6:corn-shooter"), palette = 0, attach_point = 25 }
+local GUN = attachment.look { sprite = asset.sprite("corn-shooter"), palette = 0, attach_point = 25 }
 
 local function action(id: string): Action
     -- `sub_80ED0AC`: the Atk+ bonus goes into the damage word; the gun;
@@ -98,9 +98,9 @@ end
 cornsht.gun = GUN
 
 cornsht.actions = {
-    cornsht1 = action("bn6:cornsht1/action"),
-    cornsht2 = action("bn6:cornsht2/action"),
-    cornsht3 = action("bn6:cornsht3/action"),
+    cornsht1 = action("cornsht1/action"),
+    cornsht2 = action("cornsht2/action"),
+    cornsht3 = action("cornsht3/action"),
 }
 
 return cornsht

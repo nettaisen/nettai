@@ -4,4 +4,4 @@
 -- objects-and-player.md §1). A battle takes each pool's larger size of its two
 -- players' games (docs/design/rules-in-luau.md §2.3: a capacity-only limit).
 
-return define.rules("bn6:pools", { actor = 32, attack = 32, effect = 32 })
+return { actor = 32, attack = 32, effect = 32 }

@@ -10,7 +10,7 @@ local collision = require("../../rules/collision")
 -- throw, bomb and burst (@exelib/bombs, @exelib/energbom/burst; BN5's the same code), with BN5's collision
 -- types.
 local energbom = define.chip {
-    id = "bn5:energbom",
+    id = "energbom",
     codes = { "E", "P", "W" },
     element = "null",
     family = "null",
@@ -39,7 +39,7 @@ local energbom = define.chip {
 -- throw, bomb and burst (@exelib/bombs, @exelib/energbom/burst; BN5's the same code), with BN5's collision
 -- types.
 local megenbom = define.chip {
-    id = "bn5:megenbom",
+    id = "megenbom",
     codes = { "C", "K", "Z" },
     element = "null",
     family = "null",

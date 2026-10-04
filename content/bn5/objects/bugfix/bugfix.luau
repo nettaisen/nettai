@@ -8,7 +8,7 @@
 --   the usual dimming phases; the glow's log-in variant over the user's side's navi; the side's Liberation ability
 --   set, five uses of the chip's (its first parameter: 0 CrsShld, 1 StepSwd, 2 Counter), and the user's AIData+0x44
 --   bit 0x800000; the timer at 60; done when the glow is. (The ability's state, its side state's +0x51 and +0x52
---   and that bit, is read only by battle flag 0x40's specials, 0x0802FA9C and 0x0802E77E: a Liberation Mission's,
+--   and that bit, is read only by the operation battle's specials, 0x0802FA9C and 0x0802E77E: a Liberation Mission's,
 --   never a netbattle's. The engine models neither, so the chip sets nothing a battle reads.)
 
 local common_glow = require("@exelib/bugfix/glow")
@@ -18,17 +18,17 @@ local dimming_chips = require("@exelib/dimming")
 local bugfix = {}
 
 bugfix.glow = common_glow.make {
-    id = "bn5:bugfix/glow",
+    id = "bugfix/glow",
     sounds = {
-        flash = asset.sound("bn5:bugfix-flash"),
-        log_in = asset.sound("bn5:log-in"),
-        submerge = asset.sound("bn5:invisible"),
+        flash = asset.sound("bugfix-flash"),
+        log_in = asset.sound("log-in"),
+        submerge = asset.sound("invisible"),
     },
     offset = -1,
     bn5_parts = true,
 }
 
-bugfix.controller = controller.make { id = "bn5:bugfix/controller", glow = bugfix.glow.spawn, beast_out = false }
+bugfix.controller = controller.make { id = "bugfix/controller", glow = bugfix.glow.spawn, beast_out = false }
 
 -- The Liberation abilities (the chips' first parameter).
 export type Ability = "crsshld" | "stepswd" | "counter"
@@ -56,7 +56,7 @@ local function liberation(me: Object)
 end
 
 local LIBERATION = define.kind {
-    id = "bn5:liberation/controller",
+    id = "liberation/controller",
     pool = "effect",
     state = { busy = "bool", ability = { "crsshld", "stepswd", "counter" } },
     -- 0x080EA740.

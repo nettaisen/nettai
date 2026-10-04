@@ -17,21 +17,21 @@
 //! language = "ja"
 //!
 //! [chips]
-//! "bn6:cannon" = { name = "キャノン", description = "..." }
+//! "cannon" = { name = "キャノン", description = "..." }
 //!
 //! [navis]
-//! "bn6:megaman" = { name = "ロックマン", run_message = "..." }
+//! "megaman" = { name = "ロックマン", run_message = "..." }
 //!
 //! [forms]
-//! "bn6:heatcross" = { name = "...", description = "..." }
+//! "heatcross" = { name = "...", description = "..." }
 //!
 //! [patch-cards]
-//! "bn6:canodumb" = { name = "..." }
+//! "canodumb" = { name = "..." }
 //! ```
 //!
-//! A table writes every id in full, as the modules do (docs/design/
-//! rules-in-luau.md, the flat namespace), each of its pack's; a load merges
-//! its games' tables ([`load_for`]).
+//! A table names its game's definitions by their ids, as the game's
+//! modules do (local to the game: `cannon`; docs/design/rules-in-luau.md,
+//! the namespace).
 //!
 //! A line break in a description or a message is `\n`. A translated
 //! description may have another number of lines than the own language's:
@@ -112,17 +112,15 @@ pub fn languages(dir: &Path) -> Vec<String> {
     out
 }
 
-/// What is wrong with folder `root`'s table against the definitions: an
-/// id not written in full, an id no definition has, a form's strings for a
+/// What is wrong with a game's table against its definitions: an id no
+/// definition has, a form's strings for a
 /// form that isn't a Cross (nothing shows them), a string with a combining
 /// mark (write the composed character); and in the own language's (`own`),
-/// a chip, navi or Cross of the folder's game without a name, which a
-/// frontend would show by its id. (A string may be empty: the invalid
+/// a chip, navi or Cross without a name, which a frontend would show by
+/// its id. (A string may be empty: the invalid
 /// chip's name is, and the Japanese games print no description for some
 /// chips.)
-pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
-    use nettai_content_api::keys::{is_qualified, root_of};
-    let ours = |key: &str| root_of(key) == Some(root);
+pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
     // The Crosses: the forms the navis' Cross windows offer (their form
     // sets' `crosses`), whose strings the window shows.
     let crosses: std::collections::BTreeSet<FormHandle> = defs
@@ -143,15 +141,6 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
         }
     };
     let mut unknown = Vec::new();
-    // (An id is written in full, its game first: `bn6:cannon`.)
-    let keys = s.chips.keys().map(|k| ("chips", k)).chain(s.navis.keys().map(|k| ("navis", k)));
-    let keys = keys.chain(s.forms.keys().map(|k| ("forms", k))).chain(s.patch_cards.keys().map(|k| ("patch-cards", k)));
-    let keys = keys.chain(s.navicust_programs.keys().map(|k| ("navicust-programs", k)));
-    for (table, key) in keys {
-        if !is_qualified(key) {
-            unknown.push(format!("{table}.{key}: an id names its game: write it in full (\"{root}:{key}\")"));
-        }
-    }
     for (key, c) in &s.chips {
         if defs.chip_by_key(key).is_none() {
             unknown.push(format!("chips.{key}: no chip has this key"));
@@ -191,27 +180,27 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
     }
     if own {
         let named = |n: Option<&Option<String>>| n.is_some_and(|n| n.is_some());
-        for d in defs.chips.iter().filter(|d| ours(&d.key)) {
+        for d in &defs.chips {
             if !named(s.chip(&d.key).map(|c| &c.name)) {
                 unknown.push(format!("chips.{}: the content's own language names every chip", d.key));
             }
         }
-        for d in defs.navis.iter().filter(|d| ours(&d.key)) {
+        for d in &defs.navis {
             if !named(s.navi(&d.key).map(|n| &n.name)) {
                 unknown.push(format!("navis.{}: the content's own language names every navi", d.key));
             }
         }
-        for (_, d) in defs.forms.iter().enumerate().filter(|(i, d)| ours(&d.key) && crosses.contains(&FormHandle(*i as u16))) {
+        for (_, d) in defs.forms.iter().enumerate().filter(|(i, _)| crosses.contains(&FormHandle(*i as u16))) {
             if !named(s.form(&d.key).map(|f| &f.name)) {
                 unknown.push(format!("forms.{}: the content's own language names every Cross", d.key));
             }
         }
-        for d in defs.patch_cards.iter().filter(|d| ours(&d.key)) {
+        for d in &defs.patch_cards {
             if !named(s.patch_card(&d.key).map(|c| &c.name)) {
                 unknown.push(format!("patch-cards.{}: the content's own language names every patch card", d.key));
             }
         }
-        for d in defs.navicust_programs.iter().filter(|d| ours(&d.key)) {
+        for d in &defs.navicust_programs {
             if !named(s.navicust_program(&d.key).map(|c| &c.name)) {
                 unknown.push(format!("navicust-programs.{}: the content's own language names every NaviCust program", d.key));
             }
@@ -222,9 +211,9 @@ pub fn check(s: &Strings, root: &str, defs: &Defs, own: bool) -> Vec<String> {
 }
 
 /// Check the tables of each game `c` loaded from content `dir` against
-/// `c`: each language's table of the game's pack (an id of another pack's
-/// is an error; a chip its manifest leaves unported, `chips/<key>/chip`,
-/// may have its strings before its use), and the own language's present.
+/// `c`: each language's table of the game's pack (a chip its manifest
+/// leaves unported, `chips/<key>/chip`, may have its strings before its
+/// use), and the own language's present.
 pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report::Report) {
     for game in c.scripts.games() {
         let pack = dir.join(&game);
@@ -234,7 +223,7 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
             .map(|m| m.definitions.unported.iter())
             .into_iter()
             .flatten()
-            .filter_map(|p| Some(format!("{game}:{}", p.strip_prefix("chips/")?.strip_suffix("/chip")?)))
+            .filter_map(|p| Some(p.strip_prefix("chips/")?.strip_suffix("/chip")?.to_string()))
             .collect();
         let langs = languages_of(&pack);
         if !langs.iter().any(|l| l == OWN) {
@@ -245,13 +234,7 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
             match load(&pack, &lang) {
                 Ok(Some(mut s)) => {
                     s.chips.retain(|k, _| !unported.contains(k));
-                    let ids = s.chips.keys().chain(s.navis.keys()).chain(s.forms.keys()).chain(s.patch_cards.keys()).chain(s.navicust_programs.keys());
-                    for id in ids {
-                        if nettai_content_api::keys::root_of(id) != Some(game.as_str()) {
-                            r.error(&at, format!("{id}: not an id of {game}'s"));
-                        }
-                    }
-                    for problem in check(&s, &game, &c.defs, lang == OWN) {
+                    for problem in check(&s, &c.defs, lang == OWN) {
                         r.error(&at, problem);
                     }
                 }

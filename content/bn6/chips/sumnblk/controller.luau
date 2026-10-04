@@ -42,7 +42,7 @@ local function effect(me: Object)
 end
 
 controller.kind = define.kind {
-    id = "bn6:sumnblk/controller",
+    id = "sumnblk/controller",
     pool = "effect",
     state = { variant = "u8", busy = "bool", bonus = "u16" },
     update = dimming_chips.phases { name = "SumnBlk", effect = effect },
