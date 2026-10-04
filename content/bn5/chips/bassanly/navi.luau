@@ -6,7 +6,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local common = require("@exelib/bassanly/navi")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local shot = require("./shot")
 
 local SPRITE = asset.sprite("bn5:bass")
