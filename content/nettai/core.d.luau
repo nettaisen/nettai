@@ -356,6 +356,9 @@ declare class Object
     identity: Identity?
     -- Holds an object's sprite (and more, by kind).
     prevent_anim: number
+    -- BattleObject +0x1A (read-only): a player's chips left in its hand as
+    -- the HUD shows them; another actor's own count (BN5's Jealousy).
+    chips_held: number
     pos: Vec3
     vel: Vec3
     related1: Object?
@@ -1209,6 +1212,8 @@ declare battle: {
     set_face_variant: (side: number, variant: boolean) -> (),
     -- `sub_802E032`: add to a side's own custom gauge, up to full.
     add_side_gauge: (side: number, n: number) -> (),
+    -- `sub_802E04E`: take from a side's own custom gauge, down to empty.
+    drain_side_gauge: (side: number, n: number) -> (),
     -- `sub_8010488`'s special-source branch: add to a bonus a side stores
     -- for its special chip (`index` 0: the Atk+ bonus a damaging chip
     -- spends; 1: the Navi+ bonus a navi chip spends).
@@ -1265,6 +1270,9 @@ declare battle: {
     -- A side's hand has a chip at i and it does damage (its record's
     -- "has_damage" flag).
     hand_chip_damages: (side: number, i: number) -> boolean,
+    -- BN5's Jealousy (0x080E4596): the chips left in a side's hand, from
+    -- its cursor to the first empty slot.
+    hand_left: (side: number) -> number,
     -- Subtype 8 (Wind and Fan): a side's wind (`sub_80E543C`) and who
     -- placed it; `sub_80E541A` makes `me` a side's wind (the one there
     -- before is destroyed at once); `sub_80E544C` makes it no side's.
