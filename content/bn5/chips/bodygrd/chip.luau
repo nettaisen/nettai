@@ -10,7 +10,7 @@ local recipe_antinavi = require("../antinavi/chip")
 local recipe_muramasa = require("../muramasa/chip")
 
 return define.chip {
-    id = "bn5:bodygrd",
+    id = "bodygrd",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

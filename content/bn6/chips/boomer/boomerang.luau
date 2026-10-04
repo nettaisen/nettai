@@ -21,10 +21,10 @@ boomerang.tomahawk = define.record("boomerang-variant", {
 } :: BoomerangVariant)
 
 boomerang.kind = common.make_kind {
-    id = "bn6:boomer/boomerang",
-    sprite = asset.sprite("bn6:boomerang"),
-    tomahawk_sprite = asset.sprite("bn6:boomerang-tomahawk"),
-    sound = asset.sound("bn6:boomerang"),
+    id = "boomer/boomerang",
+    sprite = asset.sprite("boomerang"),
+    tomahawk_sprite = asset.sprite("boomerang-tomahawk"),
+    sound = asset.sound("boomerang"),
     is = collision.attack,
     hits = collision.hits_navis,
     spark = sparks.wood,

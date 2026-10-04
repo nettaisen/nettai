@@ -4,7 +4,7 @@
 local cards = require("../../rules/patch-cards/cards")
 
 return define.patch_card {
-    id = "bn5:gyroman",
+    id = "gyroman",
     mb = 45,
     effects = {
         cards.float_shoes(true),

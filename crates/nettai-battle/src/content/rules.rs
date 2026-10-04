@@ -97,8 +97,9 @@ pub struct ChipUseRules {
     /// (`sub_80EC39C`).
     #[serde(default)]
     pub leave_on_use: bool,
-    /// Where AntiNavi's sparkle shows (`sub_800ABC6`), in pixels from the
-    /// navi chip's panel's center: down the field, and up.
+    /// Where AntiNavi's sparkle and AntiRecv's mark show (`sub_800ABC6`),
+    /// in pixels from the panel's center (the navi chip's, the healer's):
+    /// down the field, and up.
     pub anti_navi_sparkle: SparkleOffset,
 }
 
@@ -351,6 +352,25 @@ pub struct IntakeRules {
     /// AI, 0x0802B4AC, or the reset of its state); and its last 180 ticks
     /// it flickers gray (0x080136E0). BN6 has none of it.
     pub no_charge_drive: bool,
+    /// How a navi loses HP (`object_subtractHP`, `applyDamageToPlayer`).
+    pub hp_loss: HpLoss,
+}
+
+/// How a navi loses HP (`IntakeRules::hp_loss`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum HpLoss {
+    /// BN6's: `object_subtractHP` takes the HP alone, and
+    /// `applyDamageToPlayer_801ba12` sounds a hit before it looks at the
+    /// HP left.
+    #[default]
+    Bn6,
+    /// BN5's (0x0800C6E0, 0x080185A2): a player's loss also drains its
+    /// side's gauge; a player MegaMan of BN5's emotion 5 (a dark
+    /// MegaMan's) whom it brings to 0 holds at 1 HP, once a battle, and
+    /// asks for the volley (0x0802C16C: BN5's action 0x30, his last
+    /// stand); and a hit shows (white, its sounds) only by the register
+    /// that check leaves at 0 HP (`kinds::player::LastStand`).
+    Bn5,
 }
 
 /// What a navi's status word (its collision data's flags 1) reads as while

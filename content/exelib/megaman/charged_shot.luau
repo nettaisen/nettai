@@ -56,7 +56,7 @@ end
 
 -- `sub_80EBE20`: wait; then the shot starts at once. (Its entry also
 -- calls `nullsub_12` with the panel in front.) BN5's (0x080EC9F0) waits in
--- the battle flag 0x40 mode alone (`look.waits`), the shot else starting on
+-- the own-gauges mode alone (`look.waits`), the shot else starting on
 -- its first tick.
 local function wait(me: Object, s: State, look: MegaManShotLook)
     if me.step_init == 0 then

@@ -9,7 +9,7 @@ local regions = require("@exelib/regions")
 local throw = require("../../lib/bombs/throw")
 
 return define.chip {
-    id = "bn6:bigbomb",
+    id = "bigbomb",
     codes = { "O", "P", "V" },
     element = "null", family = "null", class = "standard",
     rarity = 3, mb = 32, damage = 140, hit_param = 30, lockout = 0,

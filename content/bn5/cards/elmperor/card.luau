@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
 return define.patch_card {
-    id = "bn5:elmperor",
+    id = "elmperor",
     mb = 20,
     effects = {
         cards.charge_shot_kind(variants.charged_poisoning),

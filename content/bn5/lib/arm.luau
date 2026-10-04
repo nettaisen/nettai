@@ -18,12 +18,12 @@ local attachment = require("../objects/attachment/attachment")
 
 local arm = {}
 
-local ARM = asset.sprite("bn5:buster-arm")
+local ARM = asset.sprite("buster-arm")
 -- The attachment table's rows 0x23 (the buster arm), 0x2B (an enemy navi's arm) and 0x33 (the buster arm in the
 -- chaos palette).
 arm.looks = {
     buster = attachment.look { sprite = ARM, palette = 0 },
-    navi = attachment.look { sprite = asset.sprite("bn5:navi-arm"), palette = 0 },
+    navi = attachment.look { sprite = asset.sprite("navi-arm"), palette = 0 },
     chaos = attachment.look { sprite = ARM, palette = 14 },
 }
 

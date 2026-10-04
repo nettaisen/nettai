@@ -5,7 +5,7 @@
 local cannons = require("../cannon/chips")
 
 return define.chip {
-    id = "bn6:beat",
+    id = "beat",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",

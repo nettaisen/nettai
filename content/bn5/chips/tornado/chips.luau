@@ -7,7 +7,7 @@ local tornado = require("./tornado")
 -- Tornado (BN5 chip 0x008): action 0x22, BN6's blow with BN5's fan and tornado (chips/tornado/tornado): a plain tornado
 -- two panels ahead.
 local tornado_chip = define.chip {
-    id = "bn5:tornado",
+    id = "tornado",
     codes = { "D", "L", "R" },
     element = "null",
     family = "wind",
@@ -25,7 +25,7 @@ local tornado_chip = define.chip {
 -- Static (BN5 chip 0x01b): action 0x22, BN6's blow with BN5's fan and tornado (chips/tornado/tornado): static tornadoes two
 -- panels ahead and around, more the more kinds of NaviCust bug the navi has, paralyzing by that level.
 local static = define.chip {
-    id = "bn5:static",
+    id = "static",
     codes = { "N", "S", "V" },
     element = "null",
     family = "wind",

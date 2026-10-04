@@ -15,7 +15,7 @@ file gives each side its NaviCust (docs/frontend.md §6), and nettai-editor edit
 | A program: its colors, shape, compressed shape, whether it is a plus part | the engine's record of every game's program | `define.navicust_program`, `Registry::NaviCustProgram`, `NaviCustProgramDef` |
 | What a program does, which bug it brings, which programs it excludes | the game's rules' data on the definition | BN6: `effects`, `bug`, `exclusive` (and `anywhere`), read by rules/navicust |
 | A player's NaviCust: the programs placed (program, color, center, quarter turns, compressed) and the board's expansions | the player's setup | `PlayerSetup::navicust: Option<NaviCust>` (`crate::navicust`) |
-| The board: which cells a program may cover, its frame, the command line | the game's rule section | `define.rules("navicust", ...)`, `Rules::navicust` (`NaviCustRules`) |
+| The board: which cells a program may cover, its frame, the command line | the game's rule section | the stock ruleset's `navicust` (rules/navicust/section.luau), `Rules::navicust` (`NaviCustRules`) |
 | The compile: placement into stats and bugs | the game's rules | BN6's `navicust` system (`round_setup`) |
 | A program's name | the locales | `[navicust-programs]` in locales/<lang>.toml |
 | A program's number (a save's part id is 4 × it + the color variant) | compat | content/bn6/compat/navicust.toml |

@@ -116,7 +116,7 @@ local function tick(me: Object)
 end
 
 dust_storm.kind = define.kind {
-    id = "bn6:dust-storm",
+    id = "dust-storm",
     pool = "attack",
     state = { ticks = "u16", tied = "action" },
     -- `sub_80C6280`.

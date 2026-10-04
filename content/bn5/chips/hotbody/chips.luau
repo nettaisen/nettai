@@ -7,7 +7,7 @@ local hotbody = require("./hotbody")
 -- HotBody1 (BN5 chip 0x09a): the navi bursts into flames that spread to the enemies around it, two rounds 30 ticks
 -- apart (chips/hotbody/hotbody, action 0x58; the record's second parameter, 2).
 local hotbody1 = define.chip {
-    id = "bn5:hotbody1",
+    id = "hotbody1",
     codes = { "A", "F", "P" },
     element = "fire",
     family = "fire",
@@ -19,13 +19,13 @@ local hotbody1 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = hotbody.action("bn5:hotbody1/action", 2),
+    action = hotbody.action("hotbody1/action", 2),
 }
 
 -- HotBody2 (BN5 chip 0x09b): the navi bursts into flames that spread to the enemies around it, two rounds 30 ticks
 -- apart (chips/hotbody/hotbody, action 0x58; the record's second parameter, 2).
 local hotbody2 = define.chip {
-    id = "bn5:hotbody2",
+    id = "hotbody2",
     codes = { "C", "R", "W" },
     element = "fire",
     family = "fire",
@@ -37,13 +37,13 @@ local hotbody2 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = hotbody.action("bn5:hotbody2/action", 2),
+    action = hotbody.action("hotbody2/action", 2),
 }
 
 -- HotBody3 (BN5 chip 0x09c): the navi bursts into flames that spread to the enemies around it, two rounds 30 ticks
 -- apart (chips/hotbody/hotbody, action 0x58; the record's second parameter, 2).
 local hotbody3 = define.chip {
-    id = "bn5:hotbody3",
+    id = "hotbody3",
     codes = { "J", "M", "S" },
     element = "fire",
     family = "fire",
@@ -55,7 +55,7 @@ local hotbody3 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = hotbody.action("bn5:hotbody3/action", 2),
+    action = hotbody.action("hotbody3/action", 2),
 }
 
 return { hotbody1 = hotbody1, hotbody2 = hotbody2, hotbody3 = hotbody3 }

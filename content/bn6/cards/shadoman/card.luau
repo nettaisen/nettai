@@ -6,7 +6,7 @@ local anti_damage = require("../../navis/megaman/weapons/anti-damage/weapon")
 local charge = require("./charge")
 
 return define.patch_card {
-    id = "bn6:shadoman",
+    id = "shadoman",
     mb = 38,
     effects = {
         cards.bug(cards.hp(-50)),

@@ -1,7 +1,7 @@
 --!strict
 -- A napalm bomb (BN5's attack object #0x3A, 0x080CC490; BN6's `sub_80CB284` is the same, though no BN6 content
 -- throws it): lobbed at a panel, fire, it lands there in 45 ticks, falling by its variant's gravity (variant 2's
--- lighter), its target marked in the battle flag 0x40 mode (lib/navi-chips/marker). Off a solid panel it goes in a
+-- lighter), its target marked in the operation battle (lib/navi-chips/marker). Off a solid panel it goes in a
 -- puff. On one it hits its panel for 5 ticks (thrown, hitting navis, hit modifier 3, no spark), with a sound; when
 -- nothing stands there, its fire spreads over the eight panels around too (a one-tick hit region) and burns on
 -- them in an order the console's own RNG (RNG1) shuffles, half at once and half as it goes. Variant 0, unless told
@@ -28,11 +28,11 @@ export type State = {
 
 local bomb = {}
 
-local SPRITE = asset.sprite("bn5:napalm-bomb")
-local SOUND_LOB = asset.sound("bn5:cannon")
-local SOUND_LAND = asset.sound("bn5:target-move")
+local SPRITE = asset.sprite("napalm-bomb")
+local SOUND_LOB = asset.sound("cannon")
+local SOUND_LAND = asset.sound("target-move")
 -- The fire on a panel (the effect table's row 0x4B: sprite 10-19).
-local FIRE = define.effect { sprite = asset.sprite("bn5:napalm-fire"), anim = 0, palette = 0 }
+local FIRE = define.effect { sprite = asset.sprite("napalm-fire"), anim = 0, palette = 0 }
 -- Its flight's ticks, and its gravity by the variant (16.16 a tick).
 local FLIGHT = 0x2D
 local GRAVITY, LIGHT_GRAVITY = -0xA000, -0x4000
@@ -224,7 +224,7 @@ local function init(me: Object)
 end
 
 bomb.kind = define.kind {
-    id = "bn5:napalmmn/bomb",
+    id = "napalmmn/bomb",
     pool = "attack",
     state = {
         variant = "u8",

@@ -12,15 +12,15 @@ local common = require("@exelib/otenko/otenko")
 local effects = require("../../lib/effects")
 
 -- Its sheet, 0c-49 (`otenko`: BN6's JP ROMs' Otenko, the US ROMs' placeholder).
-local SPRITE = asset.sprite("bn5:otenko")
+local SPRITE = asset.sprite("otenko")
 
 local OTENKO = common.make {
-    statue_id = "bn5:otenko/statue",
-    controller_id = "bn5:otenko/controller",
+    statue_id = "otenko/statue",
+    controller_id = "otenko/controller",
     sprite = SPRITE,
     -- NameID 0xCF (actor record 0xCF: AI index 0x21, BN5's field objects').
     identity = define.identity {
-        id = "bn5:otenko",
+        id = "otenko",
         class = "field_object",
         version = 2,
         ai_index = 0x21,
@@ -28,7 +28,7 @@ local OTENKO = common.make {
     },
     lifetime = 0x258,
     class = 1,
-    sounds = { appear = asset.sound("bn5:appear") },
+    sounds = { appear = asset.sound("appear") },
     is = collision.own_body,
     hits = collision.hit_by_other_side,
     effects = { puff = effects.puff, bubbles = effects.bubbles },
@@ -36,7 +36,7 @@ local OTENKO = common.make {
 }
 
 return define.chip {
-    id = "bn5:otenko",
+    id = "otenko",
     codes = { "O" },
     element = "null",
     family = "summon",

@@ -147,7 +147,7 @@ local function init(me: Object)
 end
 
 magnetman.kind = define.kind {
-    id = "bn5:magnetmn/navi",
+    id = "magnetmn/navi",
     pool = "actor",
     state = { controller = "object", level = "u8", target_x = "u8", mirror_x = "u8", paired = "bool" },
     -- 0x080BAF2C.

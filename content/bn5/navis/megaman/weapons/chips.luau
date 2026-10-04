@@ -2,7 +2,7 @@
 -- The weapon routines that fire a chip, which the patch cards name for MegaMan's B button, charged shot and B+Back
 -- special (docs/design/bn5-map.md §15.14): each loads a chip as the attack (0x0800FE78, BN6's `loc_80126EA`'s place:
 -- the chip record's damage, hit parameter, lockout, element, subtype and parameters; no bonus; not charged) and
--- starts the chip's use. Each weapon is its routine (`bn5:megaman/<chip>`), its charge time the charge table's row
+-- starts the chip's use. Each weapon is its routine (`megaman/<chip>`), its charge time the charge table's row
 -- (0x0801CA6C) by Charge 0 to 5, Charge 5 reading on into the next row's first entry.
 --
 -- Three do more than load: MettGuard's and CrsShld's B+Back (0x6A, 0x6B) wait 40 ticks before the next chip (their
@@ -67,32 +67,32 @@ end
 
 -- ---- Charged shots ----------------------------------------------------------------------------------------------------
 
-chips.longswrd = fires("bn5:megaman/longswrd", longswrd, { 80, 75, 70, 65, 60, 120 }) -- 0x48, B↓LongS
-chips.thunder = fires("bn5:megaman/thunder", thunder, { 120, 115, 110, 105, 100, 60 }) -- 0x49, B↓Thundr
-chips.yoyo = fires("bn5:megaman/yoyo", yoyo, { 80, 75, 70, 65, 60, 70 }) -- 0x4B, B↓YoYo
-chips.katana = fires("bn5:megaman/katana1", katana.katana1, { 90, 85, 80, 75, 70, 70 }) -- 0x4D, B↓Katana
-chips.pulsar = fires("bn5:megaman/pulsar1", pulsar.pulsar1, { 110, 105, 100, 95, 90, 130 }) -- 0x50, B↓Pulsar
-chips.poltrgst = fires("bn5:megaman/poltrgst", poltrgst, { 130, 125, 120, 115, 110, 80 }) -- 0x51, B↓Poltr
-chips.wideswrd = fires("bn5:megaman/wideswrd", wideswrd, { 80, 75, 70, 65, 60, 70 }) -- 0x52, B↓WideS
+chips.longswrd = fires("megaman/longswrd", longswrd, { 80, 75, 70, 65, 60, 120 }) -- 0x48, B↓LongS
+chips.thunder = fires("megaman/thunder", thunder, { 120, 115, 110, 105, 100, 60 }) -- 0x49, B↓Thundr
+chips.yoyo = fires("megaman/yoyo", yoyo, { 80, 75, 70, 65, 60, 70 }) -- 0x4B, B↓YoYo
+chips.katana = fires("megaman/katana1", katana.katana1, { 90, 85, 80, 75, 70, 70 }) -- 0x4D, B↓Katana
+chips.pulsar = fires("megaman/pulsar1", pulsar.pulsar1, { 110, 105, 100, 95, 90, 130 }) -- 0x50, B↓Pulsar
+chips.poltrgst = fires("megaman/poltrgst", poltrgst, { 130, 125, 120, 115, 110, 80 }) -- 0x51, B↓Poltr
+chips.wideswrd = fires("megaman/wideswrd", wideswrd, { 80, 75, 70, 65, 60, 70 }) -- 0x52, B↓WideS
 -- (0x53: B↓MiniBm and B-Bomb.)
-chips.minibomb = fires("bn5:megaman/minibomb", minibomb, { 70, 65, 60, 55, 50, 100 })
-chips.cannball = fires("bn5:megaman/cannball", cannball, { 100, 95, 90, 85, 80, 120 }) -- 0x54, B↓CanBal
-chips.tornado = fires("bn5:megaman/tornado", tornado.tornado, { 120, 115, 110, 105, 100, 60 }) -- 0x55, B↓Trnado
-chips.moonbld = fires("bn5:megaman/moonbld1", moonbld.moonbld1, { 100, 95, 90, 85, 80, 140 }) -- 0x58, B↓MonBld
-chips.airhoc = fires("bn5:megaman/airhoc", airhoc, { 140, 135, 130, 125, 120, 150 }) -- 0x59, B↓AirHoc
-chips.circgun = fires("bn5:megaman/circgun", circgun, { 150, 145, 140, 135, 130, 120 }) -- 0x5A, B↓CircG
-chips.drilarm = fires("bn5:megaman/drilarm1", drilarm.drilarm1, { 120, 115, 110, 105, 100, 100 }) -- 0x5B, B↓DrlArm
-chips.wideblde = fires("bn5:megaman/wideblde", wideblde, { 100, 95, 90, 85, 80, 160 }) -- 0x5C, B↓WideB
-chips.blkbomb = fires("bn5:megaman/blkbomb", blkbomb, { 160, 155, 150, 145, 140, 100 }) -- 0x5D, B↓BlkBom
-chips.seaseed = fires("bn5:megaman/seaseed", seaseed, { 100, 95, 90, 85, 80, 100 }) -- 0x5E, B↓SeaSed
-chips.drksword = fires("bn5:megaman/drksword", drksword, { 180, 175, 170, 165, 160, 40 }) -- 0x60, B↓DarkS
-chips.boomer = fires("bn5:megaman/boomer", boomer, { 120, 115, 110, 105, 100, 120 }) -- 0x66, B↓Boomer
-chips.widesht = fires("bn5:megaman/widesht1", widesht.widesht1, { 120, 115, 110, 105, 100, 110 }) -- 0x67, B↓Wshot
+chips.minibomb = fires("megaman/minibomb", minibomb, { 70, 65, 60, 55, 50, 100 })
+chips.cannball = fires("megaman/cannball", cannball, { 100, 95, 90, 85, 80, 120 }) -- 0x54, B↓CanBal
+chips.tornado = fires("megaman/tornado", tornado.tornado, { 120, 115, 110, 105, 100, 60 }) -- 0x55, B↓Trnado
+chips.moonbld = fires("megaman/moonbld1", moonbld.moonbld1, { 100, 95, 90, 85, 80, 140 }) -- 0x58, B↓MonBld
+chips.airhoc = fires("megaman/airhoc", airhoc, { 140, 135, 130, 125, 120, 150 }) -- 0x59, B↓AirHoc
+chips.circgun = fires("megaman/circgun", circgun, { 150, 145, 140, 135, 130, 120 }) -- 0x5A, B↓CircG
+chips.drilarm = fires("megaman/drilarm1", drilarm.drilarm1, { 120, 115, 110, 105, 100, 100 }) -- 0x5B, B↓DrlArm
+chips.wideblde = fires("megaman/wideblde", wideblde, { 100, 95, 90, 85, 80, 160 }) -- 0x5C, B↓WideB
+chips.blkbomb = fires("megaman/blkbomb", blkbomb, { 160, 155, 150, 145, 140, 100 }) -- 0x5D, B↓BlkBom
+chips.seaseed = fires("megaman/seaseed", seaseed, { 100, 95, 90, 85, 80, 100 }) -- 0x5E, B↓SeaSed
+chips.drksword = fires("megaman/drksword", drksword, { 180, 175, 170, 165, 160, 40 }) -- 0x60, B↓DarkS
+chips.boomer = fires("megaman/boomer", boomer, { 120, 115, 110, 105, 100, 120 }) -- 0x66, B↓Boomer
+chips.widesht = fires("megaman/widesht1", widesht.widesht1, { 120, 115, 110, 105, 100, 110 }) -- 0x67, B↓Wshot
 
 -- 0x5F, B↓Ccann: TankCan1, its shell not cracking (the parameter's second byte 0).
-local CCANN = tankcan.make_action("bn5:megaman/tankcan1/action", { hit_mod = 0x4B, cracks = false, shift = 0 })
+local CCANN = tankcan.make_action("megaman/tankcan1/action", { hit_mod = 0x4B, cracks = false, shift = 0 })
 chips.tankcan = define.weapon {
-    id = "bn5:megaman/tankcan1",
+    id = "megaman/tankcan1",
     charge_ticks = { 100, 95, 90, 85, 80, 180 },
     setup = function(navi: Object): Action
         navi:load_chip_attack(tankcan_chips.tankcan1)
@@ -102,12 +102,12 @@ chips.tankcan = define.weapon {
 
 -- ---- B buttons -----------------------------------------------------------------------------------------------------
 
-chips.sword = fires("bn5:megaman/sword", sword, { 80, 75, 70, 65, 60, 60 }) -- 0x64, B-Sword
-chips.crakout = fires("bn5:megaman/crakout", crakout.crakout, { 50, 45, 40, 35, 30, 100 }) -- 0x57, B-Crack
+chips.sword = fires("megaman/sword", sword, { 80, 75, 70, 65, 60, 60 }) -- 0x64, B-Sword
+chips.crakout = fires("megaman/crakout", crakout.crakout, { 50, 45, 40, 35, 30, 100 }) -- 0x57, B-Crack
 
 -- ---- B+Back specials -----------------------------------------------------------------------------------------------
 
-chips.mettguard = guards("bn5:megaman/guard1", guard.guard1, { 60, 55, 50, 45, 40, 60 }) -- 0x6A, B+←Guard
-chips.crsshld = guards("bn5:megaman/crsshld1", crsshld.crsshld1, { 60, 55, 50, 45, 40, 2052 }) -- 0x6B, B+←CurS
+chips.mettguard = guards("megaman/guard1", guard.guard1, { 60, 55, 50, 45, 40, 60 }) -- 0x6A, B+←Guard
+chips.crsshld = guards("megaman/crsshld1", crsshld.crsshld1, { 60, 55, 50, 45, 40, 2052 }) -- 0x6B, B+←CurS
 
 return chips

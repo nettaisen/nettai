@@ -44,7 +44,7 @@ local function update(me: Object)
 end
 
 shakpar.kind = define.kind {
-    id = "bn5:shakpar/shaker",
+    id = "shakpar/shaker",
     pool = "effect",
     state = { sent = "u8", wave = "record:shake-wave" },
     -- 0x080E7F60.

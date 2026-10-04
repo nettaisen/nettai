@@ -7,7 +7,7 @@ local invisible = require("../invisibl/controller")
 
 -- 120 ticks (the record's first two parameter bytes, 120 and 0).
 return define.chip {
-    id = "bn6:whicapsl-invisible",
+    id = "whicapsl-invisible",
     codes = {},
     element = "null",
     family = "null",

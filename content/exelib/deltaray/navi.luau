@@ -9,7 +9,7 @@
 -- user presses A while dimmed during a strike, he goes on to the next
 -- corner of the delta (up to three strikes), as long as the panel is free;
 -- then he returns home, bursts, and leaves. Without an enemy navi ahead, he
--- only marks the air. BN5's, in the battle flag 0x40 mode, aims at the
+-- only marks the air. BN5's, in the own-gauges mode, aims at the
 -- enemy navi his side tracks instead (behind it toward his side's end). See
 -- docs/engine/chip-table.md (navi chip subtype 28).
 --
@@ -50,7 +50,7 @@ export type Spec = {
     -- The column of his first candidate panel from an enemy navi's column
     -- `x` and his facing `f`: BN6's behind it, BN5's `x + 1`.
     candidate_x: (x: number, f: number) -> number,
-    -- BN5's: in the battle flag 0x40 mode he aims at the enemy navi his
+    -- BN5's: in the own-gauges mode he aims at the enemy navi his
     -- side tracks (attack phase 0x1C).
     tracks: boolean,
 }
@@ -140,7 +140,7 @@ function deltaray.make(spec: Spec): {
     end
 
     -- `sub_80C2B8C`: a flash above him, 60 ticks; then on to the attack
-    -- (BN5's, in the battle flag 0x40 mode, at its phase 0x1C), or gone if
+    -- (BN5's, in the own-gauges mode, at its phase 0x1C), or gone if
     -- his panel isn't solid.
     local function arrive(me: Object)
         if me.phase_init == 0 then
@@ -162,7 +162,7 @@ function deltaray.make(spec: Spec): {
         end
         st(me).facing = bit32.bxor(me.alliance, me.flip)
         me:set_action(4)
-        if spec.tracks and battle.per_player_gauges() then
+        if spec.tracks and battle.own_gauges() then
             me.phase = 0x1C
         end
     end

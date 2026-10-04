@@ -7,7 +7,7 @@
 local heal = require("@exelib/recov/heal")
 
 return define.chip {
-    id = "bn5:drkrecov",
+    id = "drkrecov",
     codes = { "H", "*" },
     element = "null",
     family = "recovery",

@@ -17,7 +17,7 @@ local ROLL, RECOVER = 0x0, 0x4
 local ANIM_ROLL = 0x17
 local ROLL_TICKS, RECOVER_TICKS = 0x23, 0x1E
 
-local SOUND = asset.sound("bn6:junk-shot")
+local SOUND = asset.sound("junk-shot")
 
 -- The hits' counter byte, and the ball's element: Null (the attack's
 -- element byte).
@@ -61,7 +61,7 @@ end
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [ROLL] = roll, [RECOVER] = recover }
 
 charge.action = define.action {
-    id = "bn6:dustman/charge/action",
+    id = "dustman/charge/action",
     state = { timer = "u16" },
     -- `sub_80F1F18` (`off_80F1F2C`).
     update = function(me: Object, s: State)
@@ -70,7 +70,7 @@ charge.action = define.action {
 }
 
 charge.weapon = define.weapon {
-    id = "bn6:dustman/charge",
+    id = "dustman/charge",
     -- The charge table's row 0x49, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 100, 90, 80, 75, 70, 130, 120, 110 },

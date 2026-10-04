@@ -24,7 +24,7 @@ export type State = {
     angle: number,
 }
 
-local SPRITE = asset.sprite("bn6:sand-worm")
+local SPRITE = asset.sprite("sand-worm")
 -- The arc's length by level (`byte_80DEA50`), its height (`dword_80DF0A0`,
 -- in units of the sine table), and the first animation by look
 -- (`dword_80DEEE4`, `byte_80DEFC4`).
@@ -149,7 +149,7 @@ local function init(me: Object)
 end
 
 spray.kind = define.kind {
-    id = "bn6:sandwrm/spray",
+    id = "sandwrm/spray",
     pool = "attack",
     state = {
         level = "u8",

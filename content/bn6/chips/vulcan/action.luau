@@ -15,9 +15,9 @@ vulcan.STATE = common.STATE
 vulcan.bullets = { plain = bullet.variants.vulcan, super = bullet.variants.super_vulcan }
 
 local LOOK: VulcanLook = {
-    sound = asset.sound("bn6:col-army-2"),
+    sound = asset.sound("col-army-2"),
     -- The vulcan (the original's attachment row 0xD).
-    arm = attachment.look { sprite = asset.sprite("bn6:vulcan"), palette = 0, attach_point = 14 },
+    arm = attachment.look { sprite = asset.sprite("vulcan"), palette = 0, attach_point = 14 },
     attachment = attachment.kind,
     bullet_kind = bullet.kind,
 }

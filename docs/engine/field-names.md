@@ -132,7 +132,7 @@ New type: `object::DragStep { Start, Slide, Recover }` (the game's 0, 4, 8). `De
 | Old | New | Type | Meaning and evidence |
 |---|---|---|---|
 | `FightMachine::unk_1` | deleted | u8 | Byte 1 of the fighting-phase machine (the 0xC-byte block at 0x0203CA70). No ported reader. |
-| `SideState::unk_02` | deleted | u8 | `sub_802E070(side)`+0x02: set to 0xB4 by `sub_802E07C`. Battle flag 0x40 mode only. |
+| `SideState::unk_02` | deleted | u8 | `sub_802E070(side)`+0x02: set to 0xB4 by `sub_802E07C`. Chip gate battle only (battle flag 0x40). |
 | `SideState::unk_03` | deleted | u8 | +0x03: set to 0 by `sub_802E07C`. |
 | `SideState::unk_0b` | deleted | u8 | +0x0B: set to 0xFF by `sub_802DFC8`. |
 | `SideState::unk_0e` | deleted | u8 | +0x0E: set to 3 by `sub_802DFC8`. |
@@ -192,7 +192,7 @@ These are named after a bit value or an object index, not a struct offset or add
 They are candidates for a later naming pass: `request::PAUSE_40` (now `REVERT_FORM`), `request::PAUSE_4000000` (now
 `NAVI_SWITCH`, `CROSS_CHANGE` until rules-in-Luau S4), `request::TRAP_200` (now `ANTI_DAMAGE_TRIGGERED`), `request::TRAP_400` (now `ANTI_SWORD_TRIGGERED`),
 `request::TRAP_8000` (now `BODY_GUARD_TRIGGERED`), `request::ACTION_30` (now `VOLLEY`), `request::ACTION_49` (now
-`STUN_STRIKE`), `status::CROSS_2000` ... `CROSS_40000` (see below), `battle_flags::MODE_40` (now `PER_PLAYER_GAUGES`)
+`STUN_STRIKE`), `status::CROSS_2000` ... `CROSS_40000` (see below), `battle_flags::MODE_40` (now `OWN_GAUGES`)
 (and `is_mode_40`), and `setup::ActorKind::Object6E` / `Object7D`.
 
 ## Transformation and pause-request bits (Beast Out pass)

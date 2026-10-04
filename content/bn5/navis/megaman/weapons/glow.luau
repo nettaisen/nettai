@@ -12,7 +12,7 @@ export type State = {
 }
 
 glow.kind = define.kind {
-    id = "bn5:megaman/glow",
+    id = "megaman/glow",
     pool = "effect",
     state = { sprite = "sprite", anim = "u8", shadow = "bool" },
     update = function(me: Object)

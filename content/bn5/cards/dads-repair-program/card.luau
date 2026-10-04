@@ -4,7 +4,7 @@
 local cards = require("../../rules/patch-cards/cards")
 
 return define.patch_card {
-    id = "bn5:dads-repair-program",
+    id = "dads-repair-program",
     mb = 50,
     effects = {
         cards.bug_stopper(1),

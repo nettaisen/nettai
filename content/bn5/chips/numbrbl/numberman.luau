@@ -18,8 +18,8 @@ export type State = {
     level: number,
 }
 
-local SPRITE = asset.sprite("bn5:numberman")
-local SOUND_APPEAR = asset.sound("bn5:appear")
+local SPRITE = asset.sprite("numberman")
+local SOUND_APPEAR = asset.sound("appear")
 -- His palette: navi 9's count (0x0801D737: 1) by the level's row (0x0800DAE8), the level his first parameter.
 local PALETTE_ROWS = { [0] = 0, 0, 0, 2, 3, 0 }
 local ANIM_APPEAR, ANIM_STAND, ANIM_LEAVE, ANIM_THROW = 3, 0, 4, 0x10
@@ -28,12 +28,12 @@ local BALL_Z, BALL_WAIT = 0x10_0000, 0xA
 
 -- The balls (BN5's attack object #0x91, 0x080D895C).
 local ball = common_ball.make {
-    id = "bn5:numbrbl/ball",
-    sprite = asset.sprite("bn5:number-ball"),
+    id = "numbrbl/ball",
+    sprite = asset.sprite("number-ball"),
     sit_ticks = 0x1D,
     -- (0x112: 0x080D8A40 loads it as 19 + 255.)
-    set_sound = asset.sound("bn5:place"),
-    hit_sound = asset.sound("bn5:damage"),
+    set_sound = asset.sound("place"),
+    hit_sound = asset.sound("damage"),
     explosion = effects.explosion,
     is = collision.attack,
     hits = collision.hits_navis,
@@ -170,7 +170,7 @@ local function init(me: Object)
 end
 
 numberman.kind = define.kind {
-    id = "bn5:numbrbl/numberman",
+    id = "numbrbl/numberman",
     pool = "actor",
     state = { controller = "object", level = "u8" },
     -- 0x080C2018: by state, then the sprite (stepping while dimmed).

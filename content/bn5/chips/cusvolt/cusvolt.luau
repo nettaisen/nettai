@@ -16,7 +16,7 @@ local cusvolt = {}
 
 -- Its look (`sub_8011504`'s word 0x00000C40: sheet 0c-40, animation 0, no shadow) and collision (0x0A050300: a thrown
 -- thing that hits navis, hit modifier 3), over its panel and the column ahead (region 0x15).
-local SPRITE = asset.sprite("bn5:sprite-0c-40")
+local SPRITE = asset.sprite("sprite-0c-40")
 local HIT_MOD = 3
 -- 40 pixels ahead of its navi, at the navi's attach point 26.
 local AHEAD, ATTACH_POINT = 40, 26
@@ -83,7 +83,7 @@ local function init(me: Object)
 end
 
 cusvolt.beam = define.kind {
-    id = "bn5:cusvolt/beam",
+    id = "cusvolt/beam",
     pool = "attack",
     state = { navi = "object" },
     -- 0x080DD3D0: by its lifecycle, then a sprite step.
@@ -113,8 +113,8 @@ export type State = {
 
 local FIRE, LOWER = 0x0, 0x4
 local ANIM = 10
-local GUN = attachment.look { sprite = asset.sprite("bn5:sprite-0c-39"), palette = 0, attach_point = 0x19 }
-local SOUND = asset.sound("bn5:elec-man")
+local GUN = attachment.look { sprite = asset.sprite("sprite-0c-39"), palette = 0, attach_point = 0x19 }
+local SOUND = asset.sound("elec-man")
 -- The beam on this tick; the action ends after this one.
 local BEAM_TICK, LAST_TICK = 5, 30
 -- What the gun drains of the custom gauge (half).

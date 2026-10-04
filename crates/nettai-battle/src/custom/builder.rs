@@ -76,14 +76,14 @@ pub struct FormedAdvance {
 
 /// Build a hand from the picked chips, in pick order (`sub_8029110`),
 /// with each chip's damage from `damage`. `turn`: the screen's number in
-/// the round (1 = first). `per_player_gauges`: battle flag 0x40 (the
+/// the round (1 = first). `own_gauges`: battle flag 0x40 (the
 /// recipes only it tries count).
 pub fn build(
     picks: &[Pick],
     turn: u8,
     pa_used: &mut ProgramAdvancesUsed,
     library: &dyn Library,
-    per_player_gauges: bool,
+    own_gauges: bool,
     damage: impl Fn(ChipHandle) -> u16,
 ) -> Built {
     let mut entries = [EMPTY; 6];
@@ -100,7 +100,7 @@ pub fn build(
     let mut program_advance = None;
     if !picks.is_empty() {
         let chips: Vec<FolderChip> = picks.iter().map(|p| p.chip).collect();
-        if let Some((result, start, len)) = find_program_advance(&chips, pa_used, library, per_player_gauges) {
+        if let Some((result, start, len)) = find_program_advance(&chips, pa_used, library, own_gauges) {
             // sub_80292CC: the recipe's chips become the Program Advance;
             // it is the Regular chip if one of them was.
             let regular = entries[start..start + len].iter().fold(0, |m, e| m | (e.modifiers & modifier_bits::REGULAR));
@@ -135,12 +135,12 @@ fn find_program_advance(
     chips: &[FolderChip],
     used: &mut ProgramAdvancesUsed,
     library: &dyn Library,
-    per_player_gauges: bool,
+    own_gauges: bool,
 ) -> Option<(ChipHandle, usize, usize)> {
     for start in 0..chips.len().saturating_sub(2) {
         let rest = &chips[start..];
         for pa in library.program_advances() {
-            if pa.per_player_gauges_only && !per_player_gauges {
+            if pa.operation_battle_only && !own_gauges {
                 continue;
             }
             let len = pa.recipe.len();
@@ -301,12 +301,12 @@ mod tests {
                 ProgramAdvance {
                     result: ChipHandle(0x141),
                     recipe: Recipe::Sequence(vec![ChipHandle(QUIET), ChipHandle(CANNON), ChipHandle(QUIET)]),
-                    per_player_gauges_only: false,
+                    operation_battle_only: false,
                 },
                 ProgramAdvance {
                     result: ChipHandle(0x140),
                     recipe: Recipe::CodeRun { chip: ChipHandle(CANNON), count: 3 },
-                    per_player_gauges_only: false,
+                    operation_battle_only: false,
                 },
             ],
         )

@@ -7,7 +7,7 @@ local tankcan = require("./tankcan")
 -- TankCan1 (BN5 chip 0x03f): a shell from the panel ahead that staggers what it hits, or, off the far edge, blasts
 -- and cracks the last column and sets off three explosions there (chips/tankcan/tankcan: BN6's with BN5's look).
 local tankcan1 = define.chip {
-    id = "bn5:tankcan1",
+    id = "tankcan1",
     codes = { "A", "E", "P" },
     element = "null",
     family = "null",
@@ -25,7 +25,7 @@ local tankcan1 = define.chip {
 -- TankCan2 (BN5 chip 0x040): a shell from the panel ahead that staggers what it hits, or, off the far edge, blasts
 -- and cracks the last column and sets off three explosions there (chips/tankcan/tankcan: BN6's with BN5's look).
 local tankcan2 = define.chip {
-    id = "bn5:tankcan2",
+    id = "tankcan2",
     codes = { "B", "T", "Y" },
     element = "null",
     family = "null",
@@ -43,7 +43,7 @@ local tankcan2 = define.chip {
 -- TankCan3 (BN5 chip 0x041): a shell from the panel ahead that staggers what it hits, or, off the far edge, blasts
 -- and cracks the last column and sets off three explosions there (chips/tankcan/tankcan: BN6's with BN5's look).
 local tankcan3 = define.chip {
-    id = "bn5:tankcan3",
+    id = "tankcan3",
     codes = { "F", "M", "R" },
     element = "null",
     family = "null",

@@ -4,7 +4,7 @@
 local cards = require("../../rules/patch-cards/cards")
 
 return define.patch_card {
-    id = "bn5:quickman",
+    id = "quickman",
     mb = 38,
     effects = {
         cards.gauge("fast"),

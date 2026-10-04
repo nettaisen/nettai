@@ -9,7 +9,7 @@
 local navi = require("./navi")
 
 return define.chip {
-    id = "bn5:chaoslrd",
+    id = "chaoslrd",
     codes = { "X" },
     element = "null",
     family = "null",

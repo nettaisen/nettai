@@ -8,11 +8,11 @@ local common = require("@exelib/supports/heal")
 local trajectory = require("../trajectory")
 
 return common.make {
-    id = "bn5:tango/heal",
-    sprite = asset.sprite("bn5:tango-heal"),
-    sound = asset.sound("bn5:heal"),
+    id = "tango/heal",
+    sprite = asset.sprite("tango-heal"),
+    sound = asset.sound("heal"),
     -- The sparkle as it lands (BN5's effect 6, BN6's row: a recovery's).
-    sparkle = define.effect { sprite = asset.sprite("bn5:heal"), anim = 0, palette = 0 },
+    sparkle = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 },
     trajectory = trajectory,
     -- 0x080174DA(5), then the barrier's visual (0x080DA77A).
     raise_barrier = function(navi: Object)

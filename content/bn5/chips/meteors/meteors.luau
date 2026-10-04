@@ -10,7 +10,7 @@
 --   own panel (no draw for a neighbor), row 4 (row 3 without). (Its init also gives the shower, which has no
 --   collision, the bug 0x19: BN5 writes it through a null pointer, into the BIOS, to no effect.)
 --
--- Not ported: in battle flag 0x40 mode (never in a netbattle), a meteor also spawns effect object 0x83 on its panel
+-- Not ported: in the operation battle (never in a netbattle), a meteor also spawns effect object 0x83 on its panel
 -- for 20 ticks (0x080E9FA4, as FireHit's warning and the swords' swing).
 
 local collision = require("../../rules/collision")
@@ -24,9 +24,9 @@ local meteors = {}
 
 local ROW: MeteorRow = { is = collision.thrown, hits = collision.hits_navis, hit_mod = 3, shake = 1, panel = "none" }
 
-meteors.kind = falling_meteor.make_kind("bn5:meteor", {
-    sprite = asset.sprite("bn5:meteor"),
-    sounds = { fall = asset.sound("bn5:justice-one"), land = asset.sound("bn5:hit-bomb-1") },
+meteors.kind = falling_meteor.make_kind("meteor", {
+    sprite = asset.sprite("meteor"),
+    sounds = { fall = asset.sound("justice-one"), land = asset.sound("hit-bomb-1") },
     rows = {
         [0] = ROW,
         [1] = ROW,
@@ -92,7 +92,7 @@ local function tick(me: Object)
 end
 
 meteors.shower = define.kind {
-    id = "bn5:meteors/shower",
+    id = "meteors/shower",
     pool = "effect",
     state = { target = "object", dark = "bool", drops = "u8" },
     -- 0x080E5888

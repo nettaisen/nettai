@@ -17,7 +17,7 @@ export type State = {
 
 local THROW_ANIM, RECOVER_ANIM = 18, 19
 -- The glow's sprite (its parameters 0x141D: 14-1D, animation 0, no shadow).
-local FLASH = asset.sprite("bn5:napalmsoul-flash")
+local FLASH = asset.sprite("napalmsoul-flash")
 local THROW_AT, THROW_TICKS, RECOVER_TICKS = 10, 21, 10
 -- The bomb leaves 10 pixels ahead of him and 48 up, of variant 2.
 local AHEAD, UP = 10 * 0x1_0000, 48 * 0x1_0000
@@ -90,7 +90,7 @@ local function recover(me: Object, s: State)
 end
 
 charged_chip.action = define.action {
-    id = "bn5:napalmsoul/charged-chip",
+    id = "napalmsoul/charged-chip",
     state = { timer = "u16" },
     -- 0x080EF2A2
     update = function(me: Object, s: State)

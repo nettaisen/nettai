@@ -223,7 +223,7 @@ fn leave_idle(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_802E4E4`: the specials' requests start them: the SELECT special
-/// (the battle flag 0x40 mode's), and the Cross special (DarkInvs'
+/// (the own-gauges mode's), and the Cross special (DarkInvs'
 /// auto-battle: 0x1E0 ticks, invulnerable meanwhile, its controller's
 /// state cleared).
 fn start_specials(b: &mut Battle, r: ObjectRef) {

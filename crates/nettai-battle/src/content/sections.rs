@@ -1,11 +1,15 @@
-//! The rule sections (`define.rules("panels", { ... })`, rules/*.luau) as
-//! the ruleset's typed tables (`Rules`). Content without them (the
-//! engine's test content, whose tables are Rust) keeps its tables: each
-//! section is built only when the content defines it.
+//! The rule sections as the game's typed tables (`Rules`): the fields of
+//! its stock ruleset (rules/init.luau: `panels = require("./panels")`,
+//! each a plain table its module returns; docs/design/content-model-v2.md
+//! §3.8), each read against its schema when the content is defined (a
+//! message names the place: `ruleset stock: panels.types.grass.flags`).
+//! Content without them (the engine's test content, whose tables are
+//! Rust) keeps its tables: each section is built only when the ruleset
+//! names it.
 
 use std::collections::BTreeMap;
 
-use nettai_content_api::{ContentError, Definitions, Registry, keys};
+use nettai_content_api::{ContentError, Data, DataKey, Definitions};
 use serde::Deserialize;
 use serde_json::Value as Json;
 
@@ -184,6 +188,9 @@ struct StatusSection {
     no_charge_drive: bool,
     /// "bn6" (the default) or "bn5".
     #[serde(default)]
+    hp_loss: Option<String>,
+    /// "bn6" (the default) or "bn5".
+    #[serde(default)]
     emotions: Option<String>,
     /// "bn6" (the default) or "bn5".
     #[serde(default)]
@@ -237,28 +244,48 @@ fn serde_name<T: serde::Serialize>(v: &T) -> String {
     }
 }
 
-/// A section's kind: its id's last part (`custom-screen` of
-/// `bn6:custom-screen` and of a mix's `mix:souls/custom-screen`).
-pub(crate) fn kind(key: &str) -> &str {
-    keys::local(key).rsplit('/').next().unwrap_or("")
-}
+/// The rule sections a stock ruleset may name, by field (the engine's
+/// schemas).
+pub(crate) const SECTIONS: &[&str] = &[
+    "banners",
+    "berserk",
+    "buster",
+    "chip_use",
+    "cross_special",
+    "custom_screen",
+    "effects",
+    "elements",
+    "flow",
+    "lockon",
+    "math",
+    "navicust",
+    "panels",
+    "pools",
+    "reactions",
+    "sp_chips",
+    "status",
+];
 
 /// The game's rule sections into `rules` (which starts as the base): each
-/// the game defines.
+/// its stock ruleset names.
 fn sections(rules: &mut Rules, r: &SpecReader, definitions: &Definitions) -> Result<(), ContentError> {
-    for d in definitions.of(Registry::Rules) {
-        section(rules, d, r)?;
+    let Some(d) = super::defs::stock_ruleset(definitions) else { return Ok(()) };
+    let Data::Map(fields) = &d.spec else { return Ok(()) };
+    for (field, spec) in fields {
+        let DataKey::Str(name) = field else { continue };
+        if SECTIONS.contains(&name.as_str()) {
+            section(rules, name, spec, &format!("{}.luau: ruleset {}: {name}", d.module, d.key), r)?;
+        }
     }
     Ok(())
 }
 
-/// Section `d` into `rules`.
-fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader) -> Result<(), ContentError> {
+/// Section `name` (`spec`, at `at`) into `rules`.
+fn section(rules: &mut Rules, name: &str, spec: &Data, at: &str, r: &SpecReader) -> Result<(), ContentError> {
     {
-        let at = format!("{}.luau: rules {}", d.module, d.key);
+        let at = at.to_string();
         let e = |m: String| ContentError::new(m);
-        let spec = &d.spec;
-        match kind(&d.key) {
+        match name {
             "elements" => {
                 let s: ElementsSection = r.read(spec, &at).map_err(e)?;
                 let mut weakness = [[0u8; 6]; 6];
@@ -295,7 +322,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                                 ELEMENT_NAMES
                                     .iter()
                                     .position(|n| n == element)
-                                    .ok_or_else(|| e(format!("{at}: types.{name}.{field}: {element:?} is not an element")))?
+                                    .ok_or_else(|| e(format!("{at}.types.{name}.{field}: {element:?} is not an element")))?
                                     as u8,
                             )),
                             None => Ok(None),
@@ -307,7 +334,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                         Some(by_direction) => {
                             if by_direction.len() != 6 || by_direction.iter().any(|tries| tries.len() > 4) {
                                 return Err(e(format!(
-                                    "{at}: types.{name}.slide: six directions (none, up, down, back, forward, other), four steps or fewer each"
+                                    "{at}.types.{name}.slide: six directions (none, up, down, back, forward, other), four steps or fewer each"
                                 )));
                             }
                             let mut s = PanelSlide::default();
@@ -387,7 +414,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                 }
                 rules.pools = s;
             }
-            "custom-screen" => {
+            "custom_screen" => {
                 let s: CustomScreenSection = r.read(spec, &at).map_err(e)?;
                 rules.custom_screen = CustomScreenLayout {
                     slots: s.slots,
@@ -451,10 +478,16 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                     Some("bn5") => super::FormBreak::Bn5,
                     Some(other) => return Err(e(format!("{at}: form_break is \"bn6\" or \"bn5\", not {other:?}"))),
                 };
+                let hp_loss = match s.hp_loss.as_deref() {
+                    None | Some("bn6") => super::rules::HpLoss::Bn6,
+                    Some("bn5") => super::rules::HpLoss::Bn5,
+                    Some(other) => return Err(e(format!("{at}: hp_loss is \"bn6\" or \"bn5\", not {other:?}"))),
+                };
                 rules.intake = super::rules::IntakeRules {
                     bugs_before_drain: s.bugs_before_drain,
                     drain_bug_flags: s.drain_bug_flags,
                     no_charge_drive: s.no_charge_drive,
+                    hp_loss,
                 };
             }
             "lockon" => {
@@ -462,14 +495,14 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                 rules.lockon.column_shifts = s.column_shifts;
                 rules.lockon.clear_path = s.clear_path;
             }
-            "chip-use" => rules.chip_use = r.read::<super::rules::ChipUseRules>(spec, &at).map_err(e)?,
+            "chip_use" => rules.chip_use = r.read::<super::rules::ChipUseRules>(spec, &at).map_err(e)?,
             "flow" => rules.flow = r.read::<super::rules::FlowRules>(spec, &at).map_err(e)?,
             "effects" => rules.effects = r.read::<super::rules::EffectsRules>(spec, &at).map_err(e)?,
-            "sp-chips" => {
+            "sp_chips" => {
                 let s: SpChipsSection = r.read(spec, &at).map_err(e)?;
                 (rules.sp_deletion_times, rules.sp_slots) = (s.deletion_times, s.slots);
             }
-            "cross-special" => {
+            "cross_special" => {
                 let s: CrossSpecialSection = r.read(spec, &at).map_err(e)?;
                 rules.cross_special = s
                     .rows
@@ -484,7 +517,7 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                     })
                     .collect();
             }
-            other => return Err(e(format!("{at}: the engine has no rule section `{other}`"))),
+            other => return Err(e(format!("{at}: the engine has no rule section `{other}` ({})", SECTIONS.join(", ")))),
         }
     }
     Ok(())

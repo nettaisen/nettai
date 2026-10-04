@@ -12,8 +12,8 @@ local common = require("@exelib/geddon/quake")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 
 return common.make {
-    id = "bn6:geddon/quake",
-    puff = define.effect { sprite = asset.sprite("bn6:small-puff"), anim = 1, palette = 0 },
+    id = "geddon/quake",
+    puff = define.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 },
     bubble = rising_bubble.kind,
-    sounds = { puff = asset.sound("bn6:panel-crack"), bubble = asset.sound("bn6:panel-poison") },
+    sounds = { puff = asset.sound("panel-crack"), bubble = asset.sound("panel-poison") },
 }

@@ -5,7 +5,7 @@
 local bugfix = require("./controller")
 
 return define.chip {
-    id = "bn6:bugfix",
+    id = "bugfix",
     codes = { "K", "P", "Z", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 3, mb = 62, damage = 0, hit_param = 0, lockout = 0,

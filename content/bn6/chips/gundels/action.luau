@@ -29,7 +29,7 @@ action.STATE = { timer = "u16" }
 local WIND_UP, FIRING, RECOVER = 0x0, 0x4, 0x8
 
 local ANIM_RAISE = 0x0A
-local SOUND = asset.sound("bn6:gundels1")
+local SOUND = asset.sound("gundels1")
 local WIND_UP_TICKS, RECOVER_TICKS = 6, 10
 -- The beam, 80 pixels ahead of the navi.
 local BEAM_AHEAD = 0x50
@@ -42,7 +42,7 @@ local DAMAGE, SUN_DAMAGE = 2, 4
 -- The gun (the original's attachment rows 7 to 0xA, by the chip), in its
 -- palette.
 function action.gun(palette: number): AttachmentLook
-    return attachment.look { sprite = asset.sprite("bn6:gun-del-sol"), palette = palette, attach_point = 0x0D }
+    return attachment.look { sprite = asset.sprite("gun-del-sol"), palette = palette, attach_point = 0x0D }
 end
 
 local function set_phase(me: Object, step: number)

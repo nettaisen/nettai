@@ -11,19 +11,19 @@ local spreader = require("@exelib/spreadr/action")
 
 local spreads = {}
 
-local LOOK: SpreaderLook = { sound = asset.sound("bn5:h-burst"), attachment = attachment.kind, bullet_kind = bullet.kind }
-local GUN = attachment.look { sprite = asset.sprite("bn5:spreader"), palette = 0, attach_point = 11 }
+local LOOK: SpreaderLook = { sound = asset.sound("h-burst"), attachment = attachment.kind, bullet_kind = bullet.kind }
+local GUN = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 11 }
 local FIRE_AFTER = 10
 
 local HEAT = spreader.action({
-    id = "bn5:megaman/heat-shot/action",
+    id = "megaman/heat-shot/action",
     gun = GUN,
     z = 0x10_0000,
     bullet = bullet.variants.heat,
     fire_after = FIRE_AFTER,
 }, LOOK)
 local BUBBLE = spreader.action({
-    id = "bn5:megaman/bubble-shot/action",
+    id = "megaman/bubble-shot/action",
     gun = GUN,
     z = 0,
     bullet = bullet.variants.bubble,
@@ -34,7 +34,7 @@ local FIRE, AQUA = 1, 2
 
 -- 0x0800FC5A: 40 damage, hit parameter 10, Fire (the attack's other bytes as they were).
 spreads.heat = define.weapon {
-    id = "bn5:megaman/heat-shot",
+    id = "megaman/heat-shot",
     -- The charge table's row 0x4A, by Charge 0 to 5: past 4 it reads on into row 0x4B's first entry.
     charge_ticks = { 60, 55, 50, 45, 40, 80 },
     setup = function(navi: Object): Action
@@ -47,7 +47,7 @@ spreads.heat = define.weapon {
 
 -- 0x0800FCFE: 50 damage, hit parameter 10, Aqua.
 spreads.bubble = define.weapon {
-    id = "bn5:megaman/bubble-shot",
+    id = "megaman/bubble-shot",
     -- The charge table's row 0x56, by Charge 0 to 5: past 4 it reads on into row 0x57's first entry.
     charge_ticks = { 60, 55, 50, 45, 40, 50 },
     setup = function(navi: Object): Action

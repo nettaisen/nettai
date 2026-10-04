@@ -589,11 +589,16 @@ named_fields! {
         Turn = "turn", U8, ro;
         /// Battle flag 0x40: each player has a custom gauge (`sub_800A8F8`;
         /// not in netbattles).
-        PerPlayerGauges = "per_player_gauges", Bool, ro;
+        OwnGauges = "own_gauges", Bool, ro;
         /// Battle flag 1: the fight is on (collision is live).
         Fighting = "fighting", Bool, ro;
         /// Battle flag 2: the custom gauge is full.
         GaugeFull = "gauge_full", Bool, ro;
+        /// A link battle's last turns, from its 15th custom screen
+        /// (`sub_800A97A`).
+        LateTurns = "late_turns", Bool, ro;
+        /// A screen fade runs (`IsScreenFadeActive`).
+        ScreenFading = "screen_fading", Bool, ro;
     }
 }
 
@@ -709,6 +714,8 @@ named_flags! {
         /// angry at its next status update, unless its mood is held
         /// (`sub_8014326`).
         Anger = "anger",
+        /// The drag request (the collision's flag2 0x100: a knockback's).
+        Drag = "drag",
     }
 }
 
@@ -820,9 +827,22 @@ named_flags! {
         Gauge = "gauge",
         /// The emotion window (draw task 14).
         EmotionWindow = "emotion_window",
-        /// The battle flag 0x40 mode's gauge, drawn by its levels (draw
+        /// The own-gauges mode's gauge, drawn by its levels (draw
         /// task 17).
         LevelGauge = "level_gauge",
+        /// The HP box and its low-HP alarm (draw task 7).
+        HpBox = "hp_box",
+    }
+}
+
+named_flags! {
+    /// A screen fade content starts (`SetScreenFade`'s modes).
+    pub enum ScreenFade {
+        /// 0x44: the transformation sequencer's fade out (BN5's dark
+        /// MegaMan's last stand's too), to full.
+        TransformOut = "transform_out",
+        /// 0x40: ... and its fade back in, to clear.
+        TransformIn = "transform_in",
     }
 }
 
@@ -835,7 +855,7 @@ pub struct CustomPlayer {
 }
 
 named_flags! {
-    /// A side's special in progress (battle flag 0x40 mode;
+    /// A side's special in progress (the own-gauges mode;
     /// `sub_802E4B8`): the SELECT special, or a system's takeover of the
     /// side's navi (BN6's Cross special).
     pub enum SideSpecial {
@@ -1234,6 +1254,8 @@ pub trait CoreApi {
     /// `sub_801DA48` (`shown`) or `sub_801DACC` with a HUD part's draw
     /// task: every console shows or hides it (output only).
     fn show_hud(&mut self, part: HudPart, shown: bool);
+    /// `SetScreenFade(mode, speed)`: the screen fades from where it is.
+    fn screen_fade(&mut self, fade: ScreenFade, speed: u8);
     fn navi_stat(&self, side: u8, stat: NaviStat) -> Value;
     /// Change one of a side's navi stats (the writable ones).
     fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()>;
@@ -1358,7 +1380,7 @@ pub trait CoreApi {
     fn player(&self, side: u8) -> Option<ObjectRef>;
     /// A side's combatants still in, in slot order.
     fn alive_actors(&self, side: u8) -> Vec<ObjectRef>;
-    /// `sub_802EFEE`: the actor `side` tracks in the battle flag 0x40
+    /// `sub_802EFEE`: the actor `side` tracks in the own-gauges mode
     /// mode (its side state's +0x44), if any.
     fn tracked(&self, side: u8) -> Option<ObjectRef>;
     /// Slot `i` (from 0, of four) of a side's list of alive actors.
@@ -1426,7 +1448,7 @@ pub trait CoreApi {
     /// A side's slow and fast gauge timers (`sub_802E070`+0x3C, +0x3A).
     fn set_gauge_speed_ticks(&mut self, side: u8, slow: u16, fast: u16);
     /// `sub_8010B78`: the damage a side's custom gauge gives (its own gauge
-    /// in the battle flag 0x40 mode, else the shared one).
+    /// in the own-gauges mode, else the shared one).
     fn gauge_damage(&self, side: u8) -> u16;
     /// A side's sword pick (`sub_802E070`+0x12): the swing a variable sword
     /// makes for a navi no buttons drive (BN5's computer navi draws it,
@@ -1855,6 +1877,10 @@ pub trait CoreApi {
     /// sound; with `anti_recovery`, an opponent's armed AntiRecv turns it
     /// into damage instead (true when it did).
     fn heal(&mut self, o: ObjectRef, amount: u16, anti_recovery: bool) -> bool;
+    /// `object_subtractHP`: the HP down by `amount`, to 0, by the
+    /// object's side's rules (BN5's drains a player's side's gauge too, and
+    /// may hold a dark MegaMan at 1 HP: its last stand).
+    fn subtract_hp(&mut self, o: ObjectRef, amount: u16);
     /// `sub_801265A`: the buster's damage (the attack level, with the
     /// navi's and form's bonus, at most 10; 1 when worn out).
     fn buster_damage(&self, o: ObjectRef) -> u16;

@@ -4,7 +4,7 @@
 --
 -- - Shield (`megaman/shield`, routine 0x1F, 0x0800F8EA; the patch cards' `megaman/card-shield`, routine 0x62,
 --   0x0800FDAC, the same code with its own charge row): BN5's guard (action 0x1F, lib/guard) as the Shield program's
---   (subtype 3: it heeds nothing outside battle flag 0x40's mode, where a guarded hit puts 0x580 into the side's
+--   (subtype 3: it heeds nothing outside the operation battle's mode, where a guarded hit puts 0x580 into the side's
 --   gauge), no damage;
 -- - Reflect (`megaman/reflect`, routine 0x61, 0x0800FD84; routine 0x20, 0x0800F910, is the same): BN5's guard as the
 --   Reflect program's (subtype 4: a hit it guards from the front is fired back as the charged shot's projectile, 20
@@ -24,13 +24,13 @@ local TICKS = 0x14
 local LOCKOUT = 40
 
 local SHIELD = guard.action {
-    id = "bn5:megaman/shield/action",
+    id = "megaman/shield/action",
     ticks = TICKS,
     look = guard.looks.navicust_shield,
     counter = { kind = "gauge" },
 }
 local REFLECT = guard.action {
-    id = "bn5:megaman/reflect/action",
+    id = "megaman/reflect/action",
     ticks = TICKS,
     look = guard.looks.navicust_reflect,
     counter = { kind = "shot" },
@@ -47,7 +47,7 @@ end
 
 -- 0x0800F8EA.
 guards.shield = define.weapon {
-    id = "bn5:megaman/shield",
+    id = "megaman/shield",
     -- The charge table's row 0x1F (0x0801CB02), by Charge 0 to 5: past 4 it reads on into row 0x20's first entry.
     charge_ticks = { 40, 40, 40, 40, 40, 40 },
     setup = function(navi: Object): Action
@@ -58,7 +58,7 @@ guards.shield = define.weapon {
 
 -- 0x0800FDAC: the patch cards' Shield (B-Shield, B↓Shield), the same code as the program's, its own charge row.
 guards.card_shield = define.weapon {
-    id = "bn5:megaman/card-shield",
+    id = "megaman/card-shield",
     -- The charge table's row 0x62, by Charge 0 to 5: past 4 it reads on into row 0x63's first entry.
     charge_ticks = { 40, 40, 40, 40, 40, 100 },
     setup = function(navi: Object): Action
@@ -69,7 +69,7 @@ guards.card_shield = define.weapon {
 
 -- 0x0800FD84.
 guards.reflect = define.weapon {
-    id = "bn5:megaman/reflect",
+    id = "megaman/reflect",
     -- The charge table's row 0x61, by Charge 0 to 5: past 4 it reads on into row 0x62's first entry.
     charge_ticks = { 40, 40, 40, 40, 40, 40 },
     setup = function(navi: Object): Action
@@ -80,8 +80,8 @@ guards.reflect = define.weapon {
 
 -- 0x0800F938 and action 0x3D.
 local made = anti_damage.make {
-    weapon = "bn5:megaman/anti-damage",
-    action = "bn5:megaman/anti-damage/action",
+    weapon = "megaman/anti-damage",
+    action = "megaman/anti-damage/action",
     -- The charge table's row 0x21, by Charge 0 to 5: past 4 it reads on into row 0x22's first entry.
     charge_ticks = { 60, 60, 60, 60, 60, 50 },
 }

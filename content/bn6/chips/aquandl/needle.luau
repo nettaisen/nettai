@@ -19,10 +19,10 @@ export type State = {
     cracks: boolean,
 }
 
-local SPRITE = asset.sprite("bn6:aqua-needle")
+local SPRITE = asset.sprite("aqua-needle")
 local ANIM = 4
-local SOUND_FALL = asset.sound("bn6:aqua-needle-2")
-local SOUND_LAND = asset.sound("bn6:aqua-needle")
+local SOUND_FALL = asset.sound("aqua-needle-2")
+local SOUND_LAND = asset.sound("aqua-needle")
 -- Speed along X and down, 16.16 per tick, for 12 ticks; it lands 4
 -- pixels up.
 local SPEED, FLIGHT, LANDED_Z = 0xC_0000, 12, 0x4_0000
@@ -153,7 +153,7 @@ local function init(me: Object)
 end
 
 needle.kind = define.kind {
-    id = "bn6:aquandl/needle",
+    id = "aquandl/needle",
     pool = "attack",
     state = { palette = "u8", cracks = "bool" },
     -- `sub_80CE530`.

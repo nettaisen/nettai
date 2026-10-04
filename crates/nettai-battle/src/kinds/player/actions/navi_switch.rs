@@ -9,7 +9,7 @@
 //! (`sub_802D926`) brings the kept navi back. See docs/engine/battle-flow.md
 //! §3.4.
 //!
-//! Only the battle flag 0x40 mode sends a navi switch; no recording has
+//! Only the own-gauges mode sends a navi switch; no recording has
 //! one, so all of it is unverified.
 
 use super::ActionVars;

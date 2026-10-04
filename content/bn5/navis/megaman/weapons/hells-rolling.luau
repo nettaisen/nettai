@@ -11,21 +11,21 @@ local collision = require("../../../rules/collision")
 local whirl = require("@exelib/airspin/whirl")
 
 local made = whirl.make {
-    id = "bn5:megaman/hells-rolling/whirl",
-    sprite = asset.sprite("bn5:bass-anly-shot"),
-    sound = asset.sound("bn5:bass-anly-shot"),
+    id = "megaman/hells-rolling/whirl",
+    sprite = asset.sprite("bass-anly-shot"),
+    sound = asset.sound("bass-anly-shot"),
     attack = collision.attack,
     hits = collision.hits_navis,
     hidden = { "invisible", "submerged", "bubbled" },
 }
 
-local SPIN = airspin.action { id = "bn5:megaman/hells-rolling/action", whirlwind = made.sender }
+local SPIN = airspin.action { id = "megaman/hells-rolling/action", whirlwind = made.sender }
 
 local HIT_PARAM = 0x94
 
 -- 0x0800FB52: (Attack + 1) * 10 damage, hit parameter 0x94; Null, no Atk+ bonus; AirSpin's variant 2.
 return define.weapon {
-    id = "bn5:megaman/hells-rolling",
+    id = "megaman/hells-rolling",
     -- The charge table's row 0x69, by Charge 0 to 5: past 4 it reads on into row 0x6A's first entry.
     charge_ticks = { 140, 130, 120, 110, 100, 60 },
     setup = function(navi: Object): Action

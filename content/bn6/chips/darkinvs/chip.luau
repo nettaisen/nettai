@@ -7,7 +7,7 @@ local navi_boost = require("../../lib/navi-boost/controller")
 local invisibl = require("../invisibl/chip")
 
 return define.chip {
-    id = "bn6:darkinvs",
+    id = "darkinvs",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",

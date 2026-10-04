@@ -23,7 +23,7 @@ export type State = {
     while_dimmed: boolean,
 }
 
-local SPRITE = asset.sprite("bn6:blast-fire")
+local SPRITE = asset.sprite("blast-fire")
 local HIT_MOD = 3
 
 -- By direction: its step (`byte_80C846C`), how far it goes (16.16,
@@ -104,7 +104,7 @@ local function tick(me: Object)
 end
 
 fire.kind = define.kind {
-    id = "bn6:blastman/fire",
+    id = "blastman/fire",
     pool = "attack",
     state = {
         speed = "u32",

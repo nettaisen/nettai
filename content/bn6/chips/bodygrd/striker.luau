@@ -11,11 +11,11 @@ local shuriken = require("./shuriken")
 local striker = {}
 
 striker.kind = common.make_kind {
-    id = "bn6:bodygrd/striker",
+    id = "bodygrd/striker",
     -- Its identity: a field object nothing swallows or leaves as junk,
     -- with no look.
     identity = define.identity {
-        id = "bn6:bodygrd-striker",
+        id = "bodygrd-striker",
         class = "field_object",
         version = 0,
         ai_index = 1,
@@ -23,7 +23,7 @@ striker.kind = common.make_kind {
         look = { anim = 0, palette = 0, shadow = false },
     },
     shuriken = shuriken.kind,
-    throw_sound = asset.sound("bn6:boomerang"),
+    throw_sound = asset.sound("boomerang"),
 }
 
 -- `sub_80E8396`: the striker with `element` and the damage word, of

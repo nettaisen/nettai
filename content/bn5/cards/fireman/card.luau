@@ -6,7 +6,7 @@ local fire_arm = require("../../navis/megaman/weapons/fire-arm")
 local variants = require("../../objects/projectile/variants")
 
 return define.patch_card {
-    id = "bn5:fireman",
+    id = "fireman",
     mb = 43,
     effects = {
         cards.hp_percent(30),
