@@ -10,7 +10,7 @@ return common.make_kind {
     id = "bn5:boomer/boomerang",
     sprite = asset.sprite("bn5:boomerang"),
     tomahawk_sprite = asset.sprite("bn5:boomerang"),
-    sound = asset.sound("bn6:boomerang"),
+    sound = asset.sound("bn5:boomerang"),
     is = collision.attack,
     hits = collision.hits_navis,
     spark = sparks.wood,

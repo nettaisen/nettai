@@ -4,7 +4,7 @@
 -- panel where BN6 shows its own sparkle at an attach point, and in ColonelSoul the navi gets AirShoes.
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local souls = require("../../navis/megaman/souls")
 
 local SOUND = asset.sound("bn5:hub")

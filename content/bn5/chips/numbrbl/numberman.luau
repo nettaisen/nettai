@@ -7,7 +7,7 @@
 
 local common_ball = require("@common/numbrbl/ball")
 local collision = require("../../rules/collision")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 
 local numberman = {}
 
