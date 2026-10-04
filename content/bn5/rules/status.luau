@@ -402,6 +402,10 @@ local status = {
         flash_hides_on_clear = true,
         bugs_before_drain = true,
         drain_bug_flags = true,
+        -- DarkInvs's no-charge drive: its ticks count down at the intake's end (0x0800DBE0) and their end asks for the
+        -- stun strike (action 0x49, the drive's end: chips/darkinvs); the idle hands the step to the systems (the
+        -- computer-navi AI, 0x080F03E4); the last 180 ticks flicker gray (0x080136E0).
+        no_charge_drive = true,
         -- BN5's emotions (0x08012740): a soul first, then anger, a mood of 0 (a dark MegaMan's), Full Synchro, a mood
         -- under 65 worried; its mood setter (0x080127D6) leaves a mood of 0; its anger tick (0x08011A14) passes over
         -- AI index 23.

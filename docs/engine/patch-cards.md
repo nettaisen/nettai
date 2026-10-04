@@ -259,6 +259,12 @@ Every scenario matches on every frame, and the setup check (the stats after the 
 `gen-content check` lowers each card back to the card table's entries (MB, then every effect as id, parameter and
 bug through the ROM's lookup tables) and compares them with the Japanese ROM's card of its number.
 
+## 6.1 BN5
+
+BN5's cards (its Modification Cards, Team ProtoMan's and Team Colonel's, US and Japanese) share the application
+(content/exelib/patch-cards: the constructors and the loop; each game's kinds' order, choices and tables) and the
+card definitions' shape; BN5's own system, cards, weapons and Hub Style are docs/design/bn5-map.md §15.14's.
+
 ## 7. Unverified
 
 Ported, and reached by no card (docs/engine/unverified.md):

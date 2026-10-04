@@ -4,19 +4,26 @@
 -- counterpart 0x0800E0BE: MegaMan's isn't by variant), his netbattle banners (0x080090D8, 0x080090B0), his
 -- weapons (weapons/: the buster and the charged shot, BN6's actions with BN5's setups), and his identity: his
 -- actor record (0x08014C94: version 0, a player, AI index 0) and his sprite's 30 attach points (./attach_points). BN5 has no weakness table (BN6's `byte_80108D1`).
+-- On sea, his Aqua chips with damage (dimming chips too) hit 30 harder and spend the sea under him, unless his soul
+-- gives a bonus of its own (0x0800D0A6: NumberSoul's, NapalmSoul's; the panel turns Normal at 0x080100B0).
 --
--- Not yet (docs/design/bn5-map.md §15.7, §15.8): his souls 6 and 8 to 12 (forms, with Soul Unison), the held offset
--- and the custom screen's no-running message.
+-- Not yet (docs/design/bn5-map.md §15.7): the held offset and the custom screen's no-running message.
 
 local attach_points = require("./attach_points")
 local buster = require("./weapons/buster")
 local charged_shot = require("./weapons/charged-shot")
 local colonelsoul = require("./forms/colonelsoul/form")
 local gyrosoul = require("./forms/gyrosoul/form")
+local knightsoul = require("./forms/knightsoul/form")
 local magnetsoul = require("./forms/magnetsoul/form")
+local meddysoul = require("./forms/meddysoul/form")
 local napalmsoul = require("./forms/napalmsoul/form")
+local numbersoul = require("./forms/numbersoul/form")
 local protosoul = require("./forms/protosoul/form")
 local searchsoul = require("./forms/searchsoul/form")
+local shadowsoul = require("./forms/shadowsoul/form")
+local toadsoul = require("./forms/toadsoul/form")
+local tomahawksoul = require("./forms/tomahawksoul/form")
 
 return define.navi {
     id = "bn5:megaman",
@@ -26,11 +33,27 @@ return define.navi {
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("bn5:megaman-win"), lose = asset.banner("bn5:megaman-deleted") },
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
+    panel_bonus = { panel = "sea", family = "aqua", damage = 30 },
     -- His fresh stats, as a navi's stats start (0x080111BA from the table 0x0801D55F: his row, BN6's):
     -- the stats a match's side starts him at.
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },
     -- His souls, which the custom screen's soul button offers (rules/souls).
-    forms = { souls = { protosoul, gyrosoul, searchsoul, napalmsoul, magnetsoul, colonelsoul } },
+    forms = {
+        souls = {
+            protosoul,
+            gyrosoul,
+            searchsoul,
+            napalmsoul,
+            magnetsoul,
+            meddysoul,
+            colonelsoul,
+            shadowsoul,
+            numbersoul,
+            tomahawksoul,
+            knightsoul,
+            toadsoul,
+        },
+    },
     identity = define.identity {
         class = "megaman",
         version = 0,

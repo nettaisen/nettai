@@ -330,13 +330,18 @@ fn record(v: Version, id: u32) -> u32 {
 }
 
 /// A chip's picture (tiles and palette), icon and whether its record has
-/// them, in a version's ROM.
+/// them, in a version's ROM. A picture whose palette no ROM holds (the
+/// e-Reader cards' LeadRaid and ChaosLrd: their records point at EWRAM,
+/// 0x02001660 and 0x02001680, where the save's card data goes) gets a
+/// black one; its definition gives the palette (`art_palette`), as BN6's
+/// gift chips' do.
 fn chip_media(roms: &Roms, v: Version, id: u32) -> (Picture, Tiles) {
     let rom = roms.us(v);
     let r = record(v, id);
     let (icon, gfx, pal) = (rom.u32(r + 0x20), rom.u32(r + 0x24), rom.u32(r + 0x28));
-    let picture = if rom.contains(gfx) && rom.contains(pal) {
-        Picture { tiles: tiles(rom, gfx, PICTURE_BYTES), palette: palette(rom, pal) }
+    let picture = if rom.contains(gfx) {
+        let palette = if rom.contains(pal) { palette(rom, pal) } else { Default::default() };
+        Picture { tiles: tiles(rom, gfx, PICTURE_BYTES), palette }
     } else {
         Picture::default()
     };

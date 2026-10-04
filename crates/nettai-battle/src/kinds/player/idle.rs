@@ -165,6 +165,13 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     if let Some(chip) = super::chip_use::use_chip(b, r) {
         return after_chip(b, r, chip);
     }
+    // BN5's no-charge drive (0x080F03E4): the side's systems take the step
+    // a navi with the no-charge state would take (DarkInvs: BN5's
+    // computer-navi AI, 0x0802B4AC), and reset their drive's state for one
+    // without it (0x0802C03A); a system that answers has decided.
+    if b.rules_for(r).intake.no_charge_drive && b.systems_controller_answer(side as u8, r).is_some() {
+        return;
+    }
     let dir = held_direction(b, r);
     if dir != 0 {
         return start_move(b, r, dir);

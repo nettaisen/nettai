@@ -7,10 +7,11 @@
 -- `sub_8013D5E`: the same code). Unlike
 -- BN6's, the damage is Attack plus the navi's buster bonus (0x0800F5AC by navi: no worn-out rule, no form's
 -- bonus, no cap), and it always draws: on half the draws the shot is the one the navi's buster-shot program
--- names (NaviStats +0x4D, the plain shot when 0).
+-- names (NaviStats +0x4D, the plain shot when 0). MegaMan in his base form in Hub Style (NaviStats +0x4C, patch card
+-- 111's) fires the spread instead (the shot's variant 1: a row up and down too) of Hub Style's shot (projectile row
+-- 0x12), with its own flash (the attachment table's row 0x39, 0c-59: 0x080EBA30).
 --
--- (Not here: BN5's MegaMan in his base form with NaviStats +0x4C set fires a spread of projectile row 18;
--- bn5-compat refuses such stats until it is.)
+-- The patch cards' TriBustr (B button routine 0x65, 0x0800FE12) is this routine with its own charge row.
 
 local attachment = require("../../../objects/attachment/attachment")
 local blank = require("@exelib/megaman/blank_shot")
@@ -21,6 +22,9 @@ local projectile = require("../../../lib/projectile")
 local variants = require("../../../objects/projectile/variants")
 
 local bn5 = {}
+
+-- BN5's MegaMan (navi 0): his navi requires this module, so by his key.
+local MEGAMAN = "bn5:megaman"
 
 -- The shot (BN5's action 0x11), which throws no absorbed obstacle (BN5 absorbs none).
 local buster = {
@@ -33,6 +37,7 @@ local buster = {
         shot_sound = asset.sound("bn6:buster-shot"),
         plain = variants.plain,
         throw_sound = asset.sound("bn6:junk-shot"),
+        spread_flash = attachment.look { sprite = asset.sprite("bn5:sprite-0c-59"), palette = 0, attach_point = 0 },
     },
 }
 
@@ -58,8 +63,13 @@ function bn5.setup(navi: Object): Action
     if bit32.band(battle.rng_positive(), 4) ~= 0 then
         program = stats.buster_shot or variants.plain
     end
+    local mode = "shot"
+    -- MegaMan (navi 0, NaviStats +0x29) in his base form (+0x2C 0) in Hub Style (+0x4C): the spread.
+    if stats.navi.id == MEGAMAN and stats.form.base and stats.hub_style ~= 0 then
+        program, mode = variants.hub, "spread"
+    end
     local s = navi:action_state(buster.shot) :: { mode: string, projectile: ProjectileVariant? }
-    s.mode = "shot"
+    s.mode = mode
     s.projectile = program
     return buster.shot
 end
@@ -68,6 +78,14 @@ bn5.weapon = define.weapon {
     id = "bn5:megaman/buster",
     -- The buster isn't charged (the charge table's row 0).
     charge_ticks = { 0, 0, 0, 0, 0 },
+    setup = bn5.setup,
+}
+
+-- 0x0800FE12: the patch cards' TriBustr (a B button), the buster's routine.
+bn5.tri_buster = define.weapon {
+    id = "bn5:megaman/tri-buster",
+    -- The charge table's row 0x65, by Charge 0 to 5: past 4 it reads on into row 0x66's first entry.
+    charge_ticks = { 60, 60, 60, 60, 60, 120 },
     setup = bn5.setup,
 }
 
