@@ -98,6 +98,11 @@ function cannon.action(spec: CannonSpec, look: Look): Action
             color_shader = AFTERIMAGE_SHADER,
             shadow = "ground",
         })
+        -- (The game's more: BN5's Hub Style shade.)
+        local more = look.more_afterimages
+        if more ~= nil then
+            more(me, flip)
+        end
     end
 
     -- `sub_80EBC28`: raise the cannon; fire on the count's 0xF; lower it at

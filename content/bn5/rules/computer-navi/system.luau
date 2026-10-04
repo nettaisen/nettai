@@ -4,7 +4,9 @@
 -- In a netbattle the one is Dark MegaMan (AI index 0x16, navis/dark-megaman), whom a failed Chaos Unison brings
 -- (rules/souls/chaos) for twelve seconds: his idle runs the AI (./ai) until his time is up, then he leaves; his last
 -- three seconds he blinks. The system drives each such navi of its side's summoning; the navi's state is the AI's
--- (./ai's State, AIData +0x80 on).
+-- (./ai's State, AIData +0x80 on). It also drives a side's own player under DarkInvs (the no-charge drive, the
+-- status section's `no_charge_drive`: the player's idle asks it where it would step), on the AI's other family
+-- (0x0802B4AC), its state the system's of that side.
 
 local ai = require("./ai")
 
@@ -114,10 +116,32 @@ end
 computer_navi.system = define.system {
     id = "bn5:computer-navi",
     navi_state = ai.layout,
+    -- A player's own drive (DarkInvs): its AI's state, AIData +0xF0 on.
+    state = ai.layout,
     actions = { computer_navi.leave },
     hooks = {
-        -- The navi type's idle (action 6) of a navi this system drives: its AI index's.
+        -- The navi type's idle (action 6) of a navi this system drives: its AI index's. And the side's player's
+        -- idle where it would step (BN5's no-charge drive, 0x080F03E4): with the no-charge state the AI decides
+        -- for it (0x0802B4AC: DarkInvs's drive, on its own side's tactics, its state the system's of the side);
+        -- without, that state starts over (0x0802C03A) and its idle goes on.
         controller = function(_side: number, navi: Object)
+            if navi.actor_type == "player" then
+                local s = system.state()
+                if navi:navi_state("no_charge") then
+                    -- A drive started since its last step (its timer above the one it stepped with): the state
+                    -- from the start, as the drive's start leaves it (0x0802C03A, then AIData +0xF0 set again).
+                    if navi.no_charge_timer > s.drive_ticks then
+                        ai.reset(navi, s)
+                        navi.computer_driven = true
+                    end
+                    s.drive_ticks = navi.no_charge_timer
+                    ai.run_own(navi, s)
+                    return "nothing"
+                end
+                ai.reset(navi, s)
+                s.drive_ticks = 0
+                return nil
+            end
             check(navi)
             idle(navi)
             return "nothing"

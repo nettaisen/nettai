@@ -69,6 +69,7 @@ fn status_bit(flag: StatusFlag) -> u32 {
         StatusFlag::Bubbled => f1::BUBBLED,
         StatusFlag::HitWhileDimmed => f1::HIT_WHILE_DIMMED,
         StatusFlag::Carried => kinds::obstacle::obstacle_f1::CARRIED,
+        StatusFlag::Untouchable => f1::UNTOUCHABLE,
     }
 }
 
@@ -150,6 +151,7 @@ fn navi_state_bit(f: NaviState) -> u32 {
         NaviState::FormChangeSpriteHeld => status::FORM_CHANGE_SPRITE_HELD,
         NaviState::HeatTrap => status::HEAT_TRAP,
         NaviState::Vanished => status::VANISHED,
+        NaviState::Dives => status::DIVES,
     }
 }
 
@@ -378,6 +380,15 @@ impl CoreApi for Battle {
         Battle::shake_camera_secondary(self, magnitude, ticks);
     }
 
+    fn set_shake_through_pause(&mut self, on: bool) {
+        use crate::battle::battle_flags::SHAKE_THROUGH_PAUSE;
+        if on {
+            self.set_flags(SHAKE_THROUGH_PAUSE);
+        } else {
+            self.round.flags &= !SHAKE_THROUGH_PAUSE;
+        }
+    }
+
     fn spawn_burst(&mut self, navi: ObjectRef) -> Option<ObjectRef> {
         kinds::burst::spawn(self, navi)
     }
@@ -448,7 +459,7 @@ impl CoreApi for Battle {
             NaviStat::FloatShoes => Value::Bool(s.float_shoes),
             NaviStat::AirShoes => Value::Bool(s.air_shoes),
             NaviStat::Undershirt => Value::Bool(s.undershirt),
-            NaviStat::HubStyle => Value::Bool(s.hub_style),
+            NaviStat::HubStyle => i(s.hub_style as i64),
             NaviStat::Hp => i(s.hp as i64),
             NaviStat::MaxHp => i(s.max_hp as i64),
             NaviStat::MegaLevel => i(s.mega_level as i64),
@@ -574,7 +585,7 @@ impl CoreApi for Battle {
             (NaviStat::FloatShoes, FieldValue::Bool(x)) => s.float_shoes = x,
             (NaviStat::AirShoes, FieldValue::Bool(x)) => s.air_shoes = x,
             (NaviStat::Undershirt, FieldValue::Bool(x)) => s.undershirt = x,
-            (NaviStat::HubStyle, FieldValue::Bool(x)) => s.hub_style = x,
+            (NaviStat::HubStyle, FieldValue::U8(x)) => s.hub_style = x,
             // The support bug: none (the byte 0xFF); cleared, none set.
             (NaviStat::SupportBug, FieldValue::Bool(true)) => s.support = None,
             (NaviStat::SupportBug, FieldValue::Bool(false)) => {
@@ -1749,6 +1760,7 @@ impl CoreApi for Battle {
             ActorField::AttackElement => i(at.element as i64),
             ActorField::AttackDamage => i(at.damage as i64),
             ActorField::HitParam => i(at.hit_param as i64),
+            ActorField::AttackVariant => i(at.variant as i64),
             ActorField::Charged => i(at.charged as i64),
             ActorField::AttackLockout => i(at.lockout as i64),
             ActorField::Extra => i(at.extra as i64),
@@ -1786,6 +1798,8 @@ impl CoreApi for Battle {
             ActorField::PlusTint => i(a.plus_tint as i64),
             ActorField::ChaosArmed => Value::Bool(a.chaos.armed),
             ActorField::ChaosLevel => i(a.chaos.level as i64),
+            ActorField::NoChargeTimer => i(a.no_charge_timer as i64),
+            ActorField::ComputerDriven => Value::Bool(a.computer_driven),
         })
     }
 
@@ -1839,6 +1853,7 @@ impl CoreApi for Battle {
             (ActorField::AttackElement, FieldValue::U8(x)) => at.element = x,
             (ActorField::AttackDamage, FieldValue::U16(x)) => at.damage = x,
             (ActorField::HitParam, FieldValue::U16(x)) => at.hit_param = x,
+            (ActorField::AttackVariant, FieldValue::U8(x)) => at.variant = x,
             (ActorField::Charged, FieldValue::U8(x)) => at.charged = x,
             (ActorField::AttackLockout, FieldValue::U8(x)) => at.lockout = x,
             (ActorField::Extra, FieldValue::U16(x)) => at.extra = x,
@@ -1867,6 +1882,8 @@ impl CoreApi for Battle {
             (ActorField::PlusTint, FieldValue::U16(x)) => a.plus_tint = x,
             (ActorField::ChaosArmed, FieldValue::Bool(x)) => a.chaos.armed = x,
             (ActorField::ChaosLevel, FieldValue::U8(x)) => a.chaos.level = x.min(4),
+            (ActorField::NoChargeTimer, FieldValue::U16(x)) => a.no_charge_timer = x,
+            (ActorField::ComputerDriven, FieldValue::Bool(x)) => a.computer_driven = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())

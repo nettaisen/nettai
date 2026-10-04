@@ -258,6 +258,9 @@ named_fields! {
         AttackDamage = "attack_damage", U16, rw;
         /// The attack's hit parameter (its hitbox's counter byte).
         HitParam = "hit_param", U16, rw;
+        /// The attack's variant (AIAttackVars+3), as the anti-damage
+        /// counters read it.
+        AttackVariant = "attack_variant", U8, rw;
         Charged = "charged", U8, rw;
         /// Lockout the attack applies when it ends (kind 2: the chip
         /// lockout; kind 3: the B+Back cooldown).
@@ -345,6 +348,13 @@ named_fields! {
         /// most 4).
         ChaosArmed = "chaos_armed", Bool, rw;
         ChaosLevel = "chaos_level", U8, rw;
+        /// BN5's no-charge drive (DarkInvs): its ticks left (AIData+0x36;
+        /// counted down in the intake while the navi has the no-charge
+        /// state, asking for the stun strike at 0; 0xFFFF holds), and the
+        /// computer-navi AI driving it (AIData+0xF0, which VarSwrd's pick
+        /// reads).
+        NoChargeTimer = "no_charge_timer", U16, rw;
+        ComputerDriven = "computer_driven", Bool, rw;
     }
 }
 
@@ -493,8 +503,9 @@ named_fields! {
         FloatShoes = "float_shoes", Bool, rw;
         AirShoes = "air_shoes", Bool, rw;
         Undershirt = "undershirt", Bool, rw;
-        /// BN5's Hub Style (+0x4C), which its patch card 111 sets.
-        HubStyle = "hub_style", Bool, rw;
+        /// BN5's Hub Style (+0x4C), which its patch card 111 sets: 1 Team
+        /// ProtoMan's, 2 Team Colonel's; 0 none.
+        HubStyle = "hub_style", U8, rw;
         // Written by the patch cards at the round's start (rules/
         // patch-cards.luau), with the writable ones above.
         /// HP when the round starts, and its maximum (+0x40, +0x42).
@@ -637,6 +648,9 @@ named_flags! {
         // VDoll's doll.
         /// A field object being carried to be thrown (0x04000000).
         Carried = "carried",
+        /// Untouchable (0x08000000): no hit reaches it and it hits nothing
+        /// (Falzar Beast Over's form, BN5's DarkInvs drive).
+        Untouchable = "untouchable",
     }
 }
 
@@ -716,6 +730,10 @@ named_flags! {
         /// Gone from the field while its navi chip's navi acts
         /// (`sub_80E1352` sets it, `sub_80E13DC` clears it).
         Vanished = "vanished",
+        /// It dives: a panel that submerges (BN5's sea) submerges it and
+        /// doesn't hold it at a move's end (BN5's ToadSoul, 0x08011CB2).
+        /// The status reset ends it.
+        Dives = "dives",
     }
 }
 
@@ -1203,6 +1221,10 @@ pub trait CoreApi {
     /// `sub_80302B6`: the cameras' second shake, `magnitude` (0-3) for
     /// `ticks`.
     fn shake_camera_secondary(&mut self, magnitude: u16, ticks: u16);
+    /// `battle_setFlags(0x20)` / `battle_clearFlags(0x20)`: the cameras
+    /// shake even while the battle is paused (BN5's TomahawkSoul's change,
+    /// 0x08012138; the change's end clears it, 0x080121B6).
+    fn set_shake_through_pause(&mut self, on: bool);
     /// `sub_80EA438`: a burst around `navi`'s panel (effect object #0x90,
     /// which runs while paused).
     fn spawn_burst(&mut self, navi: ObjectRef) -> Option<ObjectRef>;

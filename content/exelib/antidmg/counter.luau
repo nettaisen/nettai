@@ -3,12 +3,12 @@
 -- `sub_80EE90C`; BN5's 0x47): each game makes its own (`counter.action_at`:
 -- its key, its shuriken's kind, its sounds and its puff). When
 -- an AntiDmg trap (or the AntiDmg program's stance) catches a hit, the
--- navi vanishes in a puff and throws a shuriken (./shuriken) at an enemy:
--- a random one, or the nearest ahead, its own row first. (The original
--- picks by the attack's variant, 0 or 1, and throws nothing for any other;
--- both of the counter's starters, a trap chip's catch and the stance,
--- leave it 0: a random enemy.) The ruleset starts it by role
--- (`actions.anti_damage_counter`, a game's rules/roles.luau).
+-- navi vanishes in a puff and throws a shuriken (./shuriken) at an enemy,
+-- by the attack's variant (`attack_variant`): a random one for 0, the nearest
+-- ahead, its own row first, for 1, none for any other. A trap chip's catch
+-- leaves it 0, the stance its weapon's: BN6's AntiDmg program 0, BN5's
+-- ShadowSoul 1. The ruleset starts it by role (`actions.anti_damage_counter`,
+-- a game's rules/roles.luau).
 
 local regions = require("../regions")
 local shuriken = require("./shuriken")
@@ -20,16 +20,12 @@ export type State = {
     timer: number,
 }
 
--- Whom the shuriken is thrown at.
-export type Target = "random" | "nearest"
-
 local STATE = { timer = "u16" }
 
--- A game's counter: its key, whom it throws at, its shuriken's kind, the
--- sounds of its vanishing and its throw, and the puff as it vanishes.
+-- A game's counter: its key, its shuriken's kind, the sounds of its
+-- vanishing and its throw, and the puff as it vanishes.
 export type Spec = {
     id: string,
-    target: Target,
     shuriken: Kind,
     vanish_sound: Sound,
     throw_sound: Sound,
@@ -115,16 +111,16 @@ local function vanish(me: Object, s: State, spec: Spec)
     set_step(me, 4)
 end
 
--- `sub_80EE996`: hidden, throw the shuriken at the target (none: no
--- throw), then 31 ticks.
+-- `sub_80EE996`: hidden, throw the shuriken at the target the variant
+-- picks (none: no throw), then 31 ticks.
 local function throw(me: Object, s: State, spec: Spec)
-    local target = spec.target
     me.visible = false
     if me.step_init == 0 then
+        local variant = me.attack_variant
         local x, y
-        if target == "random" then
+        if variant == 0 then
             x, y = random_enemy(me)
-        else
+        elseif variant == 1 then
             x, y = nearest_enemy(me)
         end
         if x and y then
@@ -160,7 +156,7 @@ local function back(me: Object, s: State)
     end
 end
 
--- A game's counter, throwing at `spec.target`.
+-- A game's counter.
 function counter.action_at(spec: Spec): Action
     return define.action {
         id = spec.id,

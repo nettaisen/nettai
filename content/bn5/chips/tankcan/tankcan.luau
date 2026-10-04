@@ -24,13 +24,13 @@ tankcan.kind = shell.make_kind("bn5:tankcan/shell", {
 
 local CANNON = attachment.look { sprite = asset.sprite("bn5:tank-cannon"), palette = 0, attach_point = 8 }
 
+-- The TankCans' action keyed `id`, its shell flying as `flies` says (the attack's parameters: MegaMan's B↓Ccann
+-- loads TankCan1 and takes the cracking away, navis/megaman/weapons/chips).
+function tankcan.make_action(id: string, flies: ShellSpec): Action
+    return action.action { id = id, cannon = CANNON, attachment = attachment.kind, kind = tankcan.kind, shell = flies }
+end
+
 -- The TankCans' action: their shell (the records' parameters: row 0, hit modifier 0x4B; cracking).
-tankcan.action = action.action {
-    id = "bn5:tankcan/action",
-    cannon = CANNON,
-    attachment = attachment.kind,
-    kind = tankcan.kind,
-    shell = { hit_mod = 0x4B, cracks = true, shift = 0 },
-}
+tankcan.action = tankcan.make_action("bn5:tankcan/action", { hit_mod = 0x4B, cracks = true, shift = 0 })
 
 return tankcan

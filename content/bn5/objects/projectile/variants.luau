@@ -6,6 +6,7 @@
 local collision = require("../../rules/collision")
 local projectile = require("./projectile")
 local sparks = require("../../lib/sparks")
+local statuses = require("../../rules/status")
 
 local variants = {}
 
@@ -38,5 +39,75 @@ variants.air = projectile.variant {
     element = "null",
     spark = sparks.impact,
 }
+
+-- ---- The shot programs (NaviStats +0x4D, +0x4F) the patch cards give, and Hub Style's spread ----------------------
+-- BN5's projectile (0x080C48B0) reads a row's +3 as the element, +4 as the spark, +8 as the panel type its hit
+-- leaves (0xFF: none), +9 as the status, +10 and +11 as the bug code and argument; its hit (0x080C4932) cracks the
+-- panel for rows 7 and 0x18 and breaks it for row 0x19, whatever +8 says.
+
+local function panel(kind: PanelType): PanelHit
+    return { effect = "set_type", left_side = kind, right_side = kind }
+end
+local function charged(id: string, extra: { [string]: any }): ProjectileVariant
+    local spec: { [string]: any } = { id = id, collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged }
+    for k, v in extra do
+        spec[k] = v
+    end
+    return projectile.variant(spec :: any)
+end
+
+-- Row 5: a breaking shot (collision row 6, the breaking spark; BN5 has no secondary elements).
+variants.breaking = projectile.variant {
+    id = "bn5:shot/breaking",
+    collision = { is = collision.breaking, hits = collision.hits_navis },
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.breaking,
+}
+-- Row 7: a shot that cracks the panel it hits (CrakBust).
+variants.cracking = projectile.variant {
+    id = "bn5:shot/cracking",
+    collision = SHOT,
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.plain,
+    hit_panel = { effect = "crack" },
+}
+-- Rows 8, 0x0D, 0x0E, 0x14: shots that turn the panel they hit poison (SwmpBust), grass, ice, sea (WtrBust).
+variants.poisoning = projectile.variant {
+    id = "bn5:shot/poisoning",
+    collision = SHOT,
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.plain,
+    hit_panel = panel("poison"),
+}
+variants.grass = projectile.variant { id = "bn5:shot/grass", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("grass") }
+variants.ice = projectile.variant { id = "bn5:shot/ice", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("ice") }
+variants.sea = projectile.variant { id = "bn5:shot/sea", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("sea") }
+-- Row 9: a shot of the attack type 0x90, the shot's spark (CSchpdst).
+variants.attack_90 = projectile.variant {
+    id = "bn5:shot/attack-90",
+    collision = { is = collision.attack_90, hits = collision.hits_navis },
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.shot,
+}
+-- Row 0x12: Hub Style's spread shot (0x0800F522), the erase beams' spark.
+variants.hub = projectile.variant { id = "bn5:shot/hub", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.erase }
+-- Rows 0x15 to 0x17: charged shots that confuse, paralyze, blind.
+variants.charged_confusing = charged("bn5:shot/charged-confusing", { status = statuses.confuse_480 })
+variants.charged_paralyzing = charged("bn5:shot/charged-paralyzing", { status = statuses.paralyze_90 })
+variants.charged_blinding = charged("bn5:shot/charged-blinding", { status = statuses.blind_480 })
+-- Rows 0x18 to 0x1B: charged shots that crack the panel they hit, break it (CShole), turn it lava, poison.
+variants.charged_cracking = charged("bn5:shot/charged-cracking", { hit_panel = { effect = "crack" } })
+variants.charged_panel_breaking = charged("bn5:shot/charged-panel-breaking", { hit_panel = { effect = "break" } })
+variants.charged_lava = charged("bn5:shot/charged-lava", { hit_panel = panel("lava") })
+variants.charged_poisoning = charged("bn5:shot/charged-poisoning", { hit_panel = panel("poison") })
+-- Row 0x1C: a charged shot of the attack type 0xA0 (collision row 0x47: CSbrrdlt, it takes barriers away).
+variants.charged_attack_a0 = charged("bn5:shot/charged-attack-a0", { collision = { is = collision.attack_a0, hits = collision.hits_navis } })
+-- Rows 0x1D, 0x1E: charged shots with a bug code: the programs go (0xFB, CSreset), the HP bug (0x18 with 0x11).
+variants.charged_uninstalling = charged("bn5:shot/charged-uninstalling", { bug = 0xFB })
+variants.charged_hp_bug = charged("bn5:shot/charged-hp-bug", { bug = 0x18, bug_arg = 0x11 })
 
 return variants

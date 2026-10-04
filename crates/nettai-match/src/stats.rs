@@ -162,7 +162,7 @@ pub const FIELDS: &[Field] = &[
     flag!("float_shoes", "FlotShoe: panels don't act on the navi", |s| s.float_shoes),
     flag!("air_shoes", "AirShoes: the navi stands over holes", |s| s.air_shoes),
     flag!("undershirt", "UnderSht: a hit that would delete leaves 1 HP", |s| s.undershirt),
-    flag!("hub_style", "BN5's Hub Style (its patch card 111): MegaMan's palettes and faces", |s| s.hub_style),
+    int!("hub_style", 2, "BN5's Hub Style (its patch card 111: 1 Team ProtoMan's, 2 Team Colonel's)", |s| s.hub_style),
     flag!("status_guard", "statuses don't take", |s| s.bugs.status_immunity),
     record!("first_barrier", "barrier", "the barrier the navi enters with", |s| s.first_barrier),
     Field {
