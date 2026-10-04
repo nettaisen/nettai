@@ -15,6 +15,8 @@ struct Args {
     /// (docs/design/rules-in-luau.md §7.4).
     packs: Vec<PathBuf>,
     content: Option<PathBuf>,
+    /// The game played without a match file (a match file names its own).
+    game: Option<String>,
     mute: bool,
     /// The trace (several with --audit).
     traces: Vec<PathBuf>,
@@ -66,14 +68,17 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
        nettai-frontend [OPTIONS] --audit-content
        nettai-frontend [OPTIONS] --audit TRACE.jsonl...
 
-  The content packs (graphics and sound, written from your ROMs by
-  `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6`)
-  are found in the packs directory, $NETTAI_PACKS, else data/content: each
-  folder with a pack, each by the game it says. The battle content is every
-  folder of the content directory, one namespace, whose game's pack is found
-  (one that doesn't load is left out, and said why).
+  You play one game, BN6 or BN5: a match file names its game, else --game
+  does (default bn6). The battle is that game's: its content folder and the
+  support folders it uses, drawn and heard from its pack (graphics and
+  sound, written from your ROMs by `bn6-extract content <falzar-us>
+  <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6`, BN5's by
+  bn5-extract), found in the packs directory, $NETTAI_PACKS, else
+  data/content, each pack by the game it says.
+  --game GAME      the game played without a match file: bn6 (default) or
+                   bn5 (a match file's game is its own)
   --pack DIR       a pack's directory, in place of the found pack of its game
-                   (again for another game's; $BN6_PACK, deprecated, is one)
+                   ($BN6_PACK, deprecated, is one)
   --content DIR    the content directory (default: $NETTAI_CONTENT, else
                    this repository's content/)
   --mute           no sound (headless rendering never plays any)
@@ -81,19 +86,19 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
   --seed N         live play's seed: the field, the folders, the Crosses
                    offered and the battle's RNG are drawn from it (default:
                    from the clock); each start prints it
-  --stage NAME     live play on this link battle stage (its key, e.g.
-                   bn6:netbattle-43) instead of a random one
-  --cards KEYS     live play: your patch cards (the Japanese games'
-                   Modification Cards), their keys comma-separated in the
-                   order they apply; -KEY installs one switched off (e.g.
-                   bn6:canodumb,-bn6:shadow)
-  --their-cards KEYS  the right navi's patch cards, likewise
-  --match FILE     play the match this file sets up (docs/frontend.md §6: the
-                   arena, each side's ruleset, navi, game, folder, Crosses,
-                   patch cards and stats, by content key; nettai-editor makes
-                   them), instead of a random one; you are its left side. With
-                   --host or --join the left side is what you bring, and the
-                   host's arena is the match's
+  --stage NAME     live play on this link battle stage (its name in the
+                   game, e.g. netbattle-43) instead of a random one
+  --cards NAMES    live play: your patch cards (the Japanese games'
+                   Modification Cards), their names comma-separated in the
+                   order they apply; -NAME installs one switched off (e.g.
+                   canodumb,-shadow)
+  --their-cards NAMES  the right navi's patch cards, likewise
+  --match FILE     play the match this file sets up (docs/frontend.md §6: its
+                   game and ruleset, the arena, each side's navi, version,
+                   folder, Crosses, patch cards and stats, by name in the
+                   game; nettai-editor makes them), instead of a random one;
+                   you are its left side. With --host or --join the left side
+                   is what you bring, and the host's arena is the match's
   --save-match FILE  write the match played (live play's random draw, or the
                    one netplay agreed) to FILE as a match file, to play again
                    or edit
@@ -144,11 +149,11 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    player to join; you are the left navi
   --join ADDR:PORT netplay: join the match hosted there; you are the right
                    navi, seen from your side. Both players need the same
-                   engine and content (the handshake checks); each brings
-                   their own folder, game and Crosses (drawn from their
-                   --seed) and patch cards (--cards); the host's --stage
-                   picks the stage; the field and the battle's RNG come
-                   from both players' seeds
+                   engine, game and content (the handshake checks), and the
+                   same ruleset; each brings their own folder, version and
+                   Crosses (drawn from their --seed) and patch cards
+                   (--cards); the host's --stage picks the stage; the field
+                   and the battle's RNG come from both players' seeds
   --delay N        netplay's input delay in frames (default 2): more delay,
                    fewer rollbacks
   --wait SECONDS   how long the host waits for a player, or the joiner for
@@ -158,6 +163,7 @@ fn parse() -> Result<Args, String> {
     let mut a = Args {
         packs: Vec::new(),
         content: None,
+        game: None,
         mute: false,
         traces: Vec::new(),
         round: 1,
@@ -196,6 +202,7 @@ fn parse() -> Result<Args, String> {
         match arg.as_str() {
             "--pack" => a.packs.push(value("--pack")?.into()),
             "--content" => a.content = Some(value("--content")?.into()),
+            "--game" => a.game = Some(value("--game")?),
             "--mute" => a.mute = true,
             "--round" => a.round = number(value("--round")?, "--round")? as usize,
             "--play" => a.play = true,
@@ -257,6 +264,9 @@ fn parse() -> Result<Args, String> {
         }
         if a.stage.is_some() || a.cards.iter().any(Option::is_some) {
             return Err("the match file names the stage and the patch cards (edit it, or leave out --match)".into());
+        }
+        if a.game.is_some() {
+            return Err("the match file names its game (edit it, or leave out --match)".into());
         }
     }
     if a.save_match.is_some() && !a.play {
@@ -342,10 +352,14 @@ fn audio_hook(banks: Vec<Arc<m4a::SoundBank>>, songs: nettai_audio::Songs) -> Bo
     })
 }
 
-/// A match file, read and checked against the content.
-fn read_match(content: &Arc<nettai_battle::Content>, path: &Path) -> nettai_match::Match {
-    let text = std::fs::read_to_string(path).unwrap_or_else(|e| fail(format!("can't read {}: {e}", path.display())));
-    nettai_match::parse(content, &text).unwrap_or_else(|problems| {
+/// A match file's text.
+fn match_text(path: &Path) -> String {
+    std::fs::read_to_string(path).unwrap_or_else(|e| fail(format!("can't read {}: {e}", path.display())))
+}
+
+/// A match file (its text), checked against the content.
+fn read_match(content: &Arc<nettai_battle::Content>, path: &Path, text: &str) -> nettai_match::Match {
+    nettai_match::parse(content, text).unwrap_or_else(|problems| {
         fail(format!("{} can't be played:\n  {}", path.display(), problems.join("\n  ")))
     })
 }
@@ -357,26 +371,23 @@ fn save_match(content: &nettai_battle::Content, m: &nettai_match::Match, seed: u
     eprintln!("wrote the match to {}", path.display());
 }
 
-/// A netplay match: connect (host or join), shake hands, and agree the
-/// round; each player brings their side, a match file's left side or one
-/// drawn from their own `seed` with their patch cards, and the host its
-/// arena or stage.
-fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, seed: u32, file: Option<nettai_match::Match>) -> Session {
+/// A netplay match of `game`: connect (host or join), shake hands, and
+/// agree the round; each player brings their side, a match file's left
+/// side or one drawn from their own `seed` with their patch cards, and the
+/// host its arena or stage.
+fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, game: &str, seed: u32, file: Option<nettai_match::Match>) -> Session {
     use nettai_frontend::netplay::{NetOptions, NetPlayer, Offer, agree, hello};
     use nettai_match::{Draws, Side, link_stage, patch_cards};
     use nettai_netplay::transport::{Connection, Role, Udp};
     let offer = match file {
-        Some(m) => {
-            let [side, _] = m.sides;
-            Offer { side, stage: None, arena: args.host.is_some().then_some(m.arena) }
-        }
+        Some(m) => Offer::of_match(m, args.host.is_some()),
         None => {
-            let mut side = Side::drawn(content, &mut Draws::new(seed)).unwrap_or_else(|e| fail(e));
+            let mut side = Side::drawn(content, game, &mut Draws::new(seed)).unwrap_or_else(|e| fail(e));
             if let Some(list) = &args.cards[0] {
-                side.cards = patch_cards(content, list).unwrap_or_else(|e| fail(e));
+                side.cards = patch_cards(content, game, list).unwrap_or_else(|e| fail(e));
             }
-            let stage = args.stage.as_deref().map(|key| link_stage(content, key).unwrap_or_else(|e| fail(e)));
-            Offer { side, stage, arena: None }
+            let stage = args.stage.as_deref().map(|name| link_stage(content, game, name).unwrap_or_else(|e| fail(e)));
+            Offer::stock(content, game, side, stage).unwrap_or_else(|e| fail(e))
         }
     };
     let wait = |default: u64| std::time::Duration::from_secs(if args.wait > 0 { args.wait } else { default });
@@ -534,20 +545,24 @@ fn main() {
             std::process::exit(2);
         }
     };
+    // The game played: the match file's, else --game's, else BN6.
+    let file_text = args.match_file.as_deref().map(match_text);
+    let game = match &file_text {
+        Some(text) => nettai_match::file::game_of(text)
+            .unwrap_or_else(|e| fail(format!("{} can't be played: {e}", args.match_file.as_ref().unwrap().display()))),
+        None => args.game.clone().unwrap_or_else(|| nettai_match::DEFAULT_GAME.to_string()),
+    };
     // The packs found in the packs directory (and given by --pack), and the
-    // content's folders that draw on them.
+    // game's content.
     let t = Instant::now();
     let mut found_report = nettai_content::report::Report::default();
     let packs_dir = nettai_content::pack::packs_dir();
     let found = nettai_content::pack::find(&packs_dir, &args.packs, &mut found_report);
     show(&found_report);
     let found = found.unwrap_or_else(|| fail("can't read the packs given (--pack, $BN6_PACK)"));
-    // (One game a match, docs/design/content-model-v2.md §4.0: the
-    // frontend's game is BN6 until it chooses one.)
-    let game = nettai_match::DEFAULT_GAME;
-    let loaded = nettai_content::pack::load_game(args.content.as_deref(), game, &found).unwrap_or_else(|r| {
+    let loaded = nettai_content::pack::load_game(args.content.as_deref(), &game, &found).unwrap_or_else(|r| {
         show(&r);
-        fail("can't load the battle content (--content, --pack)")
+        fail(format!("can't load {game}'s battle content (--content, --pack, --game)"))
     });
     show(&loaded.report);
     if std::env::var_os("NETTAI_LOAD_TIMES").is_some() {
@@ -557,7 +572,7 @@ fn main() {
     let (content_dir, games) = (loaded.dir, vec![loaded.game]);
     // The game's pack's graphics, in the player's language.
     let by_pack = vec![loaded.pack];
-    let own = content.assets.pack(game).unwrap_or_else(|| fail(format!("no {game} pack is loaded")));
+    let own = content.assets.pack(&game).unwrap_or_else(|| fail(format!("no {game} pack is loaded")));
     session::quiet_engine_panics();
     if args.audit_content {
         audit_content(&args, &content, &by_pack, own, &content_dir, &games);
@@ -574,9 +589,6 @@ fn main() {
             bundles.push(b);
         }
     }
-    // A mark one game's font lacks (BN5's stacked DS in BN6's) is drawn
-    // with the glyph of another loaded game's font that has it.
-    nettai_assets::lend_marks(&mut bundles);
     let mut renderer = Renderer::with_packs(Packs::new(bundles.iter().collect(), own));
     let strings = strings.map(Arc::new);
     renderer.set_strings(strings.clone());
@@ -604,21 +616,21 @@ fn main() {
 
     let mut sessions: Vec<Session> = Vec::new();
     if args.play {
-        let file = args.match_file.as_deref().map(|path| read_match(&content, path));
+        let file = args.match_file.as_deref().zip(file_text.as_deref()).map(|(path, text)| read_match(&content, path, text));
         let seed = args.seed.or(file.as_ref().and_then(|m| m.seed)).unwrap_or_else(|| {
             std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(1)
         });
         if args.host.is_some() || args.join.is_some() {
-            sessions.push(netplay(&args, &content, seed, file));
+            sessions.push(netplay(&args, &content, &game, seed, file));
         } else {
             let m = match file {
                 Some(m) => m,
                 None => {
-                    let stage = args.stage.as_deref().map(|key| nettai_match::link_stage(&content, key).unwrap_or_else(|e| fail(e)));
-                    let mut m = nettai_match::draw::live(&content, seed, stage).unwrap_or_else(|e| fail(e));
+                    let stage = args.stage.as_deref().map(|name| nettai_match::link_stage(&content, &game, name).unwrap_or_else(|e| fail(e)));
+                    let mut m = nettai_match::draw::live(&content, &game, seed, stage).unwrap_or_else(|e| fail(e));
                     for (side, list) in args.cards.iter().enumerate() {
                         if let Some(list) = list {
-                            m.sides[side].cards = nettai_match::patch_cards(&content, list).unwrap_or_else(|e| fail(e));
+                            m.sides[side].cards = nettai_match::patch_cards(&content, &game, list).unwrap_or_else(|e| fail(e));
                         }
                     }
                     let problems = nettai_match::check_match(&content, &m);

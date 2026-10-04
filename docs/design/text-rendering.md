@@ -858,7 +858,7 @@ character, so a string encodes and decodes the same way and a mark is one charac
 | M over B (`[MB]`) | dialogue E4 1B | U+E005 | drawn stacked |
 | The bat (`[bat]`, a picture) | 8x16 0xA0 (US), 0x81 (JP) | U+E006 | no |
 | End (`[End]`) | dialogue 0xE0; 8x16 0xC6 (JP) | U+E007 | no |
-| D over S (BN5's DS navi chips) | BN5's 8x16 0x9F (US), 0x85 (JP); BN5's dialogue 0x9F; BN6's fonts none (lent BN5's when its pack is loaded: `lend_marks`) | U+E008 | drawn stacked |
+| D over S (BN5's DS navi chips) | BN5's 8x16 0x9F (US), 0x85 (JP); BN5's dialogue 0x9F; BN6's fonts none (a BN6 match has no BN5 chip to name) | U+E008 | drawn stacked |
 
 - **Where they are written**: compat/text.toml (`"\uE002"`, as TOML escapes: a Private Use Area character shows as
   nothing in most editors), locales/{en,ja}.toml (`"Count\uE002"`, `"Press Ⓐ\nto burn a..."`), gen-content's
