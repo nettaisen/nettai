@@ -4,9 +4,9 @@
 -- dimming phases, with an effect that places a Guardian statue (./statue)
 -- on the panel in front of the user if it is free solid ground, striking
 -- with the damage plus the bonus, and waits 30 ticks. The behavior is BN5's
--- too (@common/guardian/controller), made here with BN6's statue.
+-- too (@exelib/guardian/controller), made here with BN6's statue.
 
-local common = require("@common/guardian/controller")
+local common = require("@exelib/guardian/controller")
 local statue = require("./statue")
 
 return common.make { id = "bn6:guardian/controller", statue = statue.spawn }

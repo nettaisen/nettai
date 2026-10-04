@@ -1,11 +1,11 @@
 --!strict
 -- ElemTrap's trap (the original's attack object #0x4D, `sub_80CDF84`): the
--- shared trap (@common/elemtrap/trap), BN6's kind and look. The trap
+-- shared trap (@exelib/elemtrap/trap), BN6's kind and look. The trap
 -- chips' controller (lib/traps/controller) sets it for ElemTrap:
 -- `trap.set(controller, user, chip, bonus)` (`sub_80E358C`).
 
 local collision = require("../../rules/collision")
-local common = require("@common/elemtrap/trap")
+local common = require("@exelib/elemtrap/trap")
 local strike = require("./strike")
 
 local trap = {}

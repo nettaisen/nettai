@@ -4,9 +4,9 @@
 -- dimming phases (lib/dimming), with an effect that drops the chip's
 -- statue (./statue) on the panel in front of the user, whatever is there,
 -- and waits 120 ticks. The behavior is BN5's too
--- (@common/anubis/controller), made here with BN6's statue.
+-- (@exelib/anubis/controller), made here with BN6's statue.
 
-local common = require("@common/anubis/controller")
+local common = require("@exelib/anubis/controller")
 local statue = require("./statue")
 
 return common.make { id = "bn6:anubis/controller", statue = statue.spawn }

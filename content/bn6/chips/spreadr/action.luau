@@ -1,13 +1,13 @@
 --!strict
 -- The Spreaders' action (the original's action 0x25, `sub_80ECBB0`;
 -- docs/engine/shot-chips.md §5): the shared action
--- (@common/spreadr/action) with BN6's sound, attachment and bullet.
+-- (@exelib/spreadr/action) with BN6's sound, attachment and bullet.
 -- SpoutCross's charged shot fires its own bullet from its water cannon the
 -- same way.
 
 local attachment = require("../../objects/attachment/attachment")
 local bullet = require("../../objects/bullet/bullet")
-local common = require("@common/spreadr/action")
+local common = require("@exelib/spreadr/action")
 
 local spreader = {}
 

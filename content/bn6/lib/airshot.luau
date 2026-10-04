@@ -1,11 +1,11 @@
 --!strict
 -- BN6's AirShot's action (the original's action 0x21, `sub_80EC884`): the
--- shared action (@common/airshot) with BN6's sound, attachment and
+-- shared action (@exelib/airshot) with BN6's sound, attachment and
 -- projectile. A chip gives what the navi holds and what it fires
 -- (`airshot.action { shooter = ..., shot = ... }`).
 
 local attachment = require("../objects/attachment/attachment")
-local common = require("@common/airshot")
+local common = require("@exelib/airshot")
 local projectile = require("./projectile")
 
 local airshot = {}

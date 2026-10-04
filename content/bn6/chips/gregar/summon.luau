@@ -12,7 +12,7 @@
 
 local arrival = require("../../lib/beast-chips/arrival")
 local flame = require("./flame")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local rock = require("../grndman/rock")
 local targets = require("../../lib/beast-chips/targets")
 

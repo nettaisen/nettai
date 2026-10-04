@@ -98,7 +98,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, anim: u8, lifetime: u1
     // Param1 0xFF: copy the owner's sprite; Param4 its facing
     // (`object_getFlip`).
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Afterimage, pos, [0xFF, 0, anim, alliance ^ flip])?;
-    let paused = b.rules_for(owner).effects.overlays_run_while_paused;
+    let paused = b.game_rules().effects.overlays_run_while_paused;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.alliance = alliance;
@@ -130,7 +130,7 @@ pub fn spawn_copy(
 ) -> Option<ObjectRef> {
     let alliance = b.objects.get(owner).alliance;
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Afterimage, pos, [0xFF, 0, anim, flip])?;
-    let paused = b.rules_for(owner).effects.overlays_run_while_paused;
+    let paused = b.game_rules().effects.overlays_run_while_paused;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.alliance = alliance;
@@ -160,7 +160,7 @@ pub fn spawn_plain(
     // (The sprite's handle in the first two parameters.)
     let [hi, lo] = sprite.0.to_be_bytes();
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Afterimage, pos, [hi, lo, anim, flip])?;
-    let paused = b.rules_for(owner).effects.overlays_run_while_paused;
+    let paused = b.game_rules().effects.overlays_run_while_paused;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.alliance = alliance;

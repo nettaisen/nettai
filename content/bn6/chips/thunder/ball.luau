@@ -1,9 +1,9 @@
 --!strict
 -- The thunder ball (the original's attack object #0x2A, `sub_80C93CC`):
--- the shared ball (@common/thunder/ball), BN6's kind and look.
+-- the shared ball (@exelib/thunder/ball), BN6's kind and look.
 
 local collision = require("../../rules/collision")
-local common = require("@common/thunder/ball")
+local common = require("@exelib/thunder/ball")
 local sparks = require("../../lib/sparks")
 
 local ball = {}

@@ -9,7 +9,7 @@
 local collision = require("../../rules/collision")
 local flame = require("../../chips/heatman/flame")
 local link = require("../../lib/link_chips")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 local trajectory = require("../../lib/trajectory")
 

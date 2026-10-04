@@ -128,7 +128,7 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     run_to(&mut b, p, &mut t, 12, 0);
     assert_eq!((act(&b, p0), b.objects.get(p0).panel), (IDLE, PanelPos { x: 3, y: 2 }));
 
-    let mut hand = ChipHand::empty(&b.content, b.games.arena);
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(testing::chip_in(&b.content, testing::SUN_GUN_3));
     // GunDelS3's firing time (chips/gundels), which a level-2 SunGun runs.
     let firing = 120u32;
@@ -206,7 +206,7 @@ fn a_blank_shot_raises_the_arm_and_recovers_from_its_own_panel() {
     // Five ticks up, then the recovery by the open panels from its own
     // (its body is off the field while it updates) to the enemy's:
     // rules.buster_recovery[Rapid 0][3].
-    let recovery = b.arena_rules().buster_recovery(0, 3) as u32;
+    let recovery = b.game_rules().buster_recovery(0, 3) as u32;
     run_to(&mut b, p, &mut t, 5 + recovery, 0);
     assert_eq!(runs(&b, p0), "megaman/blank-shot/action");
     run_to(&mut b, p, &mut t, 6 + recovery, 0);
@@ -254,7 +254,7 @@ fn find_kind(b: &Battle, name: &str) -> Option<ObjectRef> {
 /// Give side `side` the chip `chip` as the next in its hand, with its
 /// damage.
 fn hand_with(b: &mut Battle, side: usize, chip: &str) {
-    let mut hand = ChipHand::empty(&b.content, b.games.arena);
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(testing::chip_in(&b.content, chip));
     hand.damage[0] = b.content.chip(testing::chip_in(&b.content, chip)).damage;
     b.hands[side] = hand;
@@ -323,7 +323,7 @@ fn a_reflector_sends_the_first_blocked_hit_back_along_the_row() {
     run_to(&mut b, p, &mut t, 12, 0);
     assert_eq!(b.objects.get(p0).panel, PanelPos { x: 3, y: 2 });
     let reflector = testing::chip_handle(testing::REFLECTOR_1);
-    let mut hand = ChipHand::empty(&b.content, b.games.arena);
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(reflector);
     hand.damage[0] = b.content.chip(reflector).damage;
     b.hands[0] = hand;
@@ -360,7 +360,7 @@ fn a_guard_blocks_gun_del_sol_without_a_wave() {
     run_to(&mut b, p, &mut t, 12, 0);
     assert_eq!(b.objects.get(p0).panel, PanelPos { x: 3, y: 2 });
     let reflector = testing::chip_handle(testing::REFLECTOR_1);
-    let mut hand = ChipHand::empty(&b.content, b.games.arena);
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(reflector);
     hand.damage[0] = b.content.chip(reflector).damage;
     b.hands[0] = hand;
@@ -393,7 +393,7 @@ fn use_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: &str) {
 
 /// The same with the chip by handle.
 fn use_chip_handle(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: nettai_content_api::ChipHandle) {
-    let mut hand = ChipHand::empty(&b.content, b.games.arena);
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(chip);
     hand.damage[0] = b.content.chip(chip).damage;
     b.hands[0] = hand;
@@ -568,7 +568,7 @@ fn a_buster_shot_flies_a_panel_every_two_ticks_and_hits() {
 
     // Five ticks up, then the recovery by the open panels from the one in
     // front (3,2) to the enemy's: rules.buster_recovery[Rapid 0][2].
-    let recovery = b.arena_rules().buster_recovery(0, 2) as u32;
+    let recovery = b.game_rules().buster_recovery(0, 2) as u32;
     run_to(&mut b, p, &mut t, 5 + recovery, 0);
     assert_eq!(runs(&b, p0), "megaman/buster/shot");
     run_to(&mut b, p, &mut t, 6 + recovery, 0);
@@ -642,7 +642,7 @@ fn a_charged_shot_waits_then_fires_the_charged_kind() {
     // (Attack + 1) * 10 damage, four ticks later.
     run_to(&mut b, p, &mut t, 10, 0);
     assert_eq!(b.objects.get(p1).hp, 990);
-    let recovery = b.arena_rules().buster_recovery(0, 2) as u32;
+    let recovery = b.game_rules().buster_recovery(0, 2) as u32;
     run_to(&mut b, p, &mut t, 9 + recovery, 0);
     assert_eq!(runs(&b, p0), "megaman/charged-shot/action");
     run_to(&mut b, p, &mut t, 10 + recovery, 0);
@@ -739,7 +739,7 @@ fn a_throw_waits_the_last_shots_recovery() {
     tick(&mut b, p0, p1, keys::B);
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
-    let recovery = b.arena_rules().buster_recovery(0, 2) as u32;
+    let recovery = b.game_rules().buster_recovery(0, 2) as u32;
     run_to(&mut b, p, &mut t, 6 + recovery, 0);
     assert_eq!(act(&b, p0), IDLE);
     // Something else runs (a step), then the throw: it doesn't write the
@@ -1572,7 +1572,7 @@ fn fight_on(stage: &str, stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {
 #[test]
 fn an_instant_chip_runs_its_effect_once_and_idles() {
     let (mut b, p0, p1) = fight();
-    let mut hand = ChipHand::empty(&b.content, b.games.arena);
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = b.content.defs.chip_by_key(testing::FULL_CUST);
     b.hands[0] = hand;
     b.gauge.value = 0;
@@ -1715,7 +1715,7 @@ fn use_instant_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: &str) {
 
 /// The same with the chip by handle (one content defines).
 fn use_instant_chip_handle(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: nettai_content_api::ChipHandle) {
-    let mut hand = ChipHand::empty(&b.content, b.games.arena);
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(chip);
     b.hands[0] = hand;
     tick(b, p0, p1, keys::A);
@@ -1743,7 +1743,7 @@ fn a_plus_chip_on_its_own_raises_a_sparkle() {
     // From a special source the damage goes into the side's Atk+ bonus
     // instead.
     let (mut b, p0, p1) = fight();
-    let mut hand = ChipHand::empty(&b.content, b.games.arena);
+    let mut hand = ChipHand::empty(&b.content);
     (hand.ids[0], hand.damage[0]) = (Some(testing::chip_in(&b.content, testing::PLUS)), 10);
     b.hands[0] = hand;
     tick(&mut b, p0, p1, keys::A);
@@ -1764,7 +1764,7 @@ fn the_plus_chips_content_defines_raise_their_bonus() {
     for (key, bonus) in [(testing::ATTACK_10, (10, 0)), (testing::NAVI_20, (0, 20))] {
         let (mut b, p0, p1) = fight();
         let chip = b.content.defs.chip_by_key(key).unwrap();
-        let mut hand = ChipHand::empty(&b.content, b.games.arena);
+        let mut hand = ChipHand::empty(&b.content);
         (hand.ids[0], hand.damage[0]) = (Some(chip), b.content.chip(chip).damage);
         b.hands[0] = hand;
         tick(&mut b, p0, p1, keys::A);
@@ -1824,7 +1824,7 @@ fn spawning_instant_chips_run_their_objects_and_roll_back() {
         if name == "sandwrm/worm" {
             // The worm comes out behind the enemy, on a panel with the flag
             // the test content's panel types don't give.
-            let mut hand = ChipHand::empty(&b.content, b.games.arena);
+            let mut hand = ChipHand::empty(&b.content);
             hand.ids[0] = Some(chip);
             b.hands[0] = hand;
             tick(&mut b, p0, p1, keys::A);
@@ -1916,7 +1916,7 @@ fn the_tomahawk_throw_sends_two_tomahawks() {
 /// routine); the test content's base form charges no chip, so the charge
 /// itself is skipped.
 fn use_charged_chip(b: &mut Battle, p0: ObjectRef, routine: Option<&str>, chip: nettai_content_api::ChipHandle) {
-    let mut hand = ChipHand::empty(&b.content, b.games.arena);
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(chip);
     hand.damage[0] = b.content.chip(chip).damage;
     b.hands[0] = hand;
@@ -2212,7 +2212,7 @@ fn an_action_starts_the_next_by_definition() {
 fn the_ruleset_starts_a_role_action() {
     // A caught hit starts AntiDmg's counter: the role content fills.
     let (mut b, p0, p1) = fight_on_test_pack();
-    let role = b.arena_roles().try_action(crate::content::ActionRole::AntiDamageCounter).expect("the test pack fills it");
+    let role = b.roles().try_action(crate::content::ActionRole::AntiDamageCounter).expect("the test pack fills it");
     assert_eq!(nettai_content_api::keys::local(&b.content.defs.action(role).key), "test/anti-damage-counter");
     ai_mut(&mut b, p0).requests |= request::ANTI_DAMAGE_TRIGGERED;
     super::reactive::counter(&mut b, p0);
@@ -2228,7 +2228,7 @@ fn a_forced_charged_shot_starts_its_role() {
     // The request that starts the charged shot from idle without its
     // weapon's setup starts the role's action.
     let (mut b, p0, p1) = fight_on_test_pack();
-    let role = b.arena_roles().try_action(crate::content::ActionRole::ForcedChargedShot).expect("the test pack fills it");
+    let role = b.roles().try_action(crate::content::ActionRole::ForcedChargedShot).expect("the test pack fills it");
     ai_mut(&mut b, p0).requests |= request::FORCED_CHARGED_SHOT;
     tick(&mut b, p0, p1, 0);
     assert_eq!(super::super::running_content_action(&b, p0), Some(role));

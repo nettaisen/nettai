@@ -5,10 +5,10 @@
 -- 6, shows while its owner does, and ends with a short fade once the owner
 -- clears the slot it was stored in (its first related object). It runs
 -- while paused and dimmed, but doesn't animate while dimmed. See chips.md
--- §3.3. The behavior is BN5's too (@common/rflectr/shield), made here with
+-- §3.3. The behavior is BN5's too (@exelib/rflectr/shield), made here with
 -- BN6's sound and looks.
 
-local common = require("@common/rflectr/shield")
+local common = require("@exelib/rflectr/shield")
 
 local shield = {}
 
