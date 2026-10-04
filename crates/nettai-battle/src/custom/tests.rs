@@ -104,6 +104,7 @@ impl Extras for TestButtons {
         } else if b.0 == 0 {
             screen.start_sacrifice(slot);
         } else {
+            screen.play_named("redeal");
             screen.start_redeal(slot);
         }
     }

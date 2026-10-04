@@ -147,7 +147,6 @@ pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [B
     RoundSetup {
         content: content.hash(),
         settings: BattleSettings::on(content, content.stage_by_key(stage)),
-        ruleset: None,
         navi_stats: [megaman(content, hp), megaman(content, hp)],
         rng: seed,
         local_side: 0,
