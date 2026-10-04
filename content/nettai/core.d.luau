@@ -2559,10 +2559,13 @@ export type RolesSpec = {
         tango: Chip?,
     }?,
     -- The statuses the ruleset inflicts itself: what a damage word's
-    -- paralysis bit carries, what a counter hit lands, what an aqua hit
-    -- gives a body on ice, and the NaviCust on-hit bug's.
+    -- paralysis bit carries (and, with BN5's rule `effects.damage_word`,
+    -- its confusion and blindness bits), what a counter hit lands, what an
+    -- aqua hit gives a body on ice, and the NaviCust on-hit bug's.
     statuses: {
         damage_word_paralysis: Status?,
+        damage_word_confusion: Status?,
+        damage_word_blindness: Status?,
         counter_paralysis: Status?,
         ice_freeze: Status?,
         hit_bug_blind: Status?,
