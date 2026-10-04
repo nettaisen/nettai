@@ -2150,10 +2150,11 @@ impl Battle {
     /// The HP box's alarm (`sub_801C840`, the HUD's task bit 7; sound
     /// only): every 45 ticks a console's own navi is at a quarter of its HP
     /// or less, while the battle is neither over nor paused, that console
-    /// sounds 0x84. The count stops where the HP recovers.
+    /// sounds 0x84. The count stops where the HP recovers. (Hiding the HP
+    /// box, `HudHidden::hp_box`, stops its drawing only: the task runs on,
+    /// and so does its count.)
     fn low_hp_sound(&mut self) {
-        // (Its task doesn't run while the HP box is hidden.)
-        if self.is_battle_over() || self.paused || self.hud_hidden.hp_box {
+        if self.is_battle_over() || self.paused {
             return;
         }
         for side in 0..2u8 {
