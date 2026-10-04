@@ -1117,7 +1117,11 @@ impl CoreApi for Battle {
     }
 
     fn set_face_variant(&mut self, side: u8, variant: bool) {
-        self.sides[side as usize & 1].face_variant = variant;
+        self.looks[side as usize & 1].face_variant = variant;
+    }
+
+    fn set_name_variant(&mut self, side: u8, variant: bool) {
+        self.looks[side as usize & 1].name_variant = variant;
     }
 
     fn add_side_gauge(&mut self, side: u8, n: u16) {

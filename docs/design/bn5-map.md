@@ -2038,8 +2038,12 @@ rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   byte where BN6's subtracts the signed one), his base form wears its shade (body overlay row 5, 0c-58: 0x0800EE1C,
   the form's `put_on`, which also runs as a player's init ends, MegaMan's record's init hook being that routine;
   BN5's init has no starting form's overlay), GigaCan leaves a third afterimage (0x080EC224), the palette is
-  `hub_style * 5 + 20` and the faces move (§15.10). Not yet: the HUD's opponent entry (0x0801AE3A, presentation:
-  with battle effect 8, the other side's NameID 0x180 when its +0x53 is set, else 0xEA in Hub Style).
+  `hub_style * 5 + 20` and the faces move (§15.10), and in a link battle the enemy names show the navi's variant
+  name (0x0801AE3A, presentation: with battle effect 8, the other side's NameID 0x180 when its +0x53 is set, else
+  0xEA, BCMegaMn, in Hub Style; +0x53 is the reload's, 0x08135968, 1 exactly when 0x08137A58 finds no Hub Style:
+  the light-dark system's `round_setup`, `battle.set_name_variant`, the locales' `variant_name`; checked against
+  mGBA by verification's library-bn5 custom/hub-name). Battle effect 0x40000 names every entry 0xE6 (ChaosLrd): no
+  stage of BN5's content has it, not built.
 - The emotion window's start keeps the glitch outside BN5's battle modes 1 to 4; the engine's start keeps BN6's rule
   (no random battles, not modes 1 to 5 and 8), the same for a netbattle.
 
