@@ -26,6 +26,9 @@ nettai-match = { path = "../nettai-match" }
 nettai-content-api = { path = "../nettai-content-api" }
 m4a.workspace = true
 minifb = "0.28"
+# A netplay offer: a match file's names, in TOML.
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
 
 [dev-dependencies]
 # Reading the headless test's PNGs back.

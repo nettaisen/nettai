@@ -1,26 +1,59 @@
-//! A side from a BN6 save file (bn6-compat's `save`): what S6c's setup
-//! takes of it, the game, what it unlocks on the custom screen, the navi
-//! code's level and the SP navi deletion times; or from a BN5 one, its
-//! karma and souls (`import_bn5`). (The folder, NaviCust, patch cards and
-//! stats are a later import's.)
+//! A side from a save file, into a match of the save's game
+//! ([`Match::import_save`]): from a BN6 save (bn6-compat's `save`) what
+//! S6c's setup takes of it, the version, what it unlocks on the custom
+//! screen, the navi code's level and the SP navi deletion times; from a BN5
+//! one, its karma and souls (`import_bn5`). (The folder, NaviCust, patch
+//! cards and stats are a later import's.)
 
-use crate::{CrossList, Side};
+use crate::{CrossList, Match, Side};
 use bn6_compat::save::Save;
 use nettai_battle::content::Content;
 
+/// The game of the save in `file` (a .sav's bytes, or a raw BN5 save
+/// image): `bn6` or `bn5`, or why it is neither's.
+pub fn save_game(file: &[u8]) -> Result<&'static str, String> {
+    match Save::read(file) {
+        Ok(_) => Ok(bn6_compat::ROOT),
+        Err(six) => crate::import_bn5::read(file).map(|_| bn5_compat::ROOT).map_err(|five| format!("{six}; {five}")),
+    }
+}
+
+impl Match {
+    /// Fill side `side` from the save in `file` (a .sav's bytes, or a raw
+    /// BN5 save image) of the content's game ([`save_game`]: a frontend
+    /// loads that game's first): the match is the save's game's, so a save
+    /// of another game than the match's makes the match a new one of that
+    /// game (`Match::empty`, the seed kept) first. What is worth saying
+    /// about it, or why the file is no save of the content's game.
+    pub fn import_save(&mut self, content: &Content, side: usize, file: &[u8]) -> Result<Vec<String>, String> {
+        let game = save_game(file)?;
+        let five = if game == bn5_compat::ROOT { Some(crate::import_bn5::read(file)?) } else { None };
+        let mut notes = Vec::new();
+        if self.arena.game != game {
+            let seed = self.seed;
+            *self = Match::empty(content, game).map_err(|e| format!("a {game} save, but {e}"))?;
+            self.seed = seed;
+            notes.push(format!("a {game} save: the match is now {game}'s, both sides new"));
+        }
+        let arena = self.arena.clone();
+        let s = &mut self.sides[side];
+        notes.extend(match five {
+            Some(save) => s.import_bn5_save(content, &arena, &save),
+            None => s.import_bn6_save(content, &Save::read(file).expect("read above"))?,
+        });
+        Ok(notes)
+    }
+}
+
 impl Side {
-    /// Take the game, the unlocks, the navi code's level and the SP
-    /// deletion times from the save in `file` (a .sav's bytes): the version's
-    /// Crosses it owns become the side's Cross list (none when it owns all
-    /// five: the game's own), and a link navi's stats follow its level and
-    /// game as the save's reload gives them. What is worth saying about it
-    /// (what the side keeps), or why the file isn't a save.
-    pub fn import_save(&mut self, content: &Content, file: &[u8]) -> Result<Vec<String>, String> {
-        let save = match Save::read(file) {
-            Ok(save) => save,
-            // Else a BN5 save: its karma and souls.
-            Err(six) => return self.import_bn5_save(content, file).map_err(|five| format!("{six}; {five}")),
-        };
+    /// Take the version, the unlocks, the navi code's level and the SP
+    /// deletion times from a BN6 save, the side of a BN6 match: the
+    /// version's Crosses it owns become the side's Cross list
+    /// (none when it owns all five: the version's own), and a link navi's
+    /// stats follow its level and version as the save's reload gives them.
+    /// What is worth saying about it (what the side keeps), or why the save
+    /// can't be read.
+    pub fn import_bn6_save(&mut self, content: &Content, save: &Save) -> Result<Vec<String>, String> {
         let level = save.navi_level()?;
         let mut notes = Vec::new();
         self.game = save.version();
@@ -46,7 +79,7 @@ impl Side {
         }
         // The SP times of the rules' slots (the save's halfwords past them,
         // unused, read as 0xFFFF: a match file holds the slots alone).
-        let slots = crate::sp_slots(content, self.ruleset).len();
+        let slots = crate::sp_slots(content).len();
         self.sp_times = save.sp_times();
         for t in self.sp_times.0.iter_mut().skip(slots) {
             *t = 0;
@@ -77,19 +110,19 @@ mod tests {
         let mut times = SpTimes(std::array::from_fn(|i| 600 + i as u16));
         times.0[19] = 0xFFFF;
         let save = file(GameVersion::Falzar, false, [false, true, false, true, false], 11, Some(5), &times);
-        let mut m = crate::draw::live(&content, 1, None).unwrap();
+        let mut m = crate::draw::live(&content, "bn6", 1, None).unwrap();
         m.sides[0].game = GameVersion::Gregar;
-        let notes = m.sides[0].import_save(&content, &save).unwrap();
+        let notes = m.import_save(&content, 0, &save).unwrap();
         let s = &m.sides[0];
         assert_eq!((s.game, s.beast_out, s.navi_level, s.stats.version), (GameVersion::Falzar, false, Some(5), 1));
-        let list: Vec<&str> = s.crosses.unwrap().forms().map(|f| content.defs.form(f).key.as_str()).collect();
-        assert_eq!(list, ["bn6:tomahawkcross", "bn6:groundcross"]);
+        let list: Vec<&str> = s.crosses.unwrap().forms().map(|f| crate::ids::local(&content.defs.form(f).key)).collect();
+        assert_eq!(list, ["tomahawkcross", "groundcross"]);
         assert_eq!((s.sp_times.0[0], s.sp_times.0[17], s.sp_times.0[18], s.sp_times.0[19]), (600, 617, 0, 0));
         assert_eq!(notes, ["the save operates a link navi: its level is MegaMan's here"]);
         assert!(crate::check_match(&content, &m).is_empty(), "{:?}", crate::check_match(&content, &m));
         // Every Cross owned: the game's own five.
         let all = file(GameVersion::Gregar, true, [true; 5], 0, None, &SpTimes::default());
-        m.sides[0].import_save(&content, &all).unwrap();
+        m.import_save(&content, 0, &all).unwrap();
         assert_eq!((m.sides[0].crosses, m.sides[0].navi_level, m.sides[0].beast_out), (None, None, true));
     }
 
@@ -98,16 +131,17 @@ mod tests {
     #[test]
     fn a_link_navi_keeps_its_level_without_a_code() {
         let content = bn6_content();
-        let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
-        let mut m = crate::draw::live(&content, 1, None).unwrap();
+        let protoman = crate::ids::navi(&content, "bn6", "protoman").unwrap();
+        let mut m = crate::draw::live(&content, "bn6", 1, None).unwrap();
         let s = &mut m.sides[1];
         s.navi = protoman;
         s.crosses = None;
         s.navi_level = Some(7);
         s.stats = crate::Side::save_base(&content, protoman, s.game, Some(7));
-        let notes = s.import_save(&content, &file(GameVersion::Gregar, true, [true; 5], 0, None, &SpTimes::default())).unwrap();
+        let notes = m.import_save(&content, 1, &file(GameVersion::Gregar, true, [true; 5], 0, None, &SpTimes::default())).unwrap();
+        let s = &m.sides[1];
         assert_eq!((s.navi_level, s.game, s.stats.version), (Some(7), GameVersion::Gregar, 0));
         assert_eq!(notes, ["the save received no navi code: the side's link navi keeps its level"]);
-        assert!(s.import_save(&content, b"not a save").is_err());
+        assert!(m.import_save(&content, 1, b"not a save").is_err());
     }
 }
