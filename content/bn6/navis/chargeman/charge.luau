@@ -11,7 +11,7 @@
 local car = require("../../chips/chrgeman/car")
 local collision = require("../../rules/collision")
 local link = require("../../lib/link_chips")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 local weapon = require("../../lib/weapon")
 

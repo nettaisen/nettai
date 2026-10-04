@@ -11,7 +11,7 @@
 -- its first parameter (the chip's: 0 for Poltrgst), the nearest such in front (0x080E8E7C). Once the field has none
 -- left, 30 ticks later it ends, and the stand-in gives the user back.
 
-local dimming_chips = require("@common/dimming")
+local dimming_chips = require("@exelib/dimming")
 
 local poltergeist = {}
 

@@ -1,8 +1,8 @@
 --!strict
 -- CircGun's gun (the original's attack object #0x89, `sub_80D655C`): the
--- shared gun (@common/circgun/gun), BN6's kind (./shot's look and kind).
+-- shared gun (@exelib/circgun/gun), BN6's kind (./shot's look and kind).
 
-local common = require("@common/circgun/gun")
+local common = require("@exelib/circgun/gun")
 local shot = require("./shot")
 
 local gun = {}

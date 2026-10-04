@@ -6,7 +6,7 @@
 -- navi chip's controller warps it out and back), and nothing is kept as the last navi chip. Each chip makes its own
 -- (`controllers.make`: ./controller, ../dethphnx/controller).
 
-local dimming_chips = require("@common/dimming")
+local dimming_chips = require("@exelib/dimming")
 
 local controllers = {}
 

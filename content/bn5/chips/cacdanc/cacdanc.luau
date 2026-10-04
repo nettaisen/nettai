@@ -11,8 +11,8 @@
 -- object #0x83, which isn't ported.)
 
 local collision = require("../../rules/collision")
-local panels = require("@common/panels")
-local regions = require("@common/regions")
+local panels = require("@exelib/panels")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 local trajectory = require("../../lib/trajectory")
 

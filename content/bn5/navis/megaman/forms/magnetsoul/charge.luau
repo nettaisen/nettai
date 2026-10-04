@@ -8,7 +8,7 @@
 
 local collision = require("../../../../rules/collision")
 local magnet = require("./magnet")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local charge = {}
 

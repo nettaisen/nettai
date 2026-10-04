@@ -19,7 +19,6 @@ use nettai_content_api::{FieldType, FieldValue, FormHandle, NaviHandle, Registry
 pub const CROSSES: usize = 5;
 
 /// BN6's game root, whose stock ruleset a setup without one plays by.
-const GAME: &str = "bn6";
 
 /// BN6's systems that take these facts.
 const CROSS_SYSTEM: &str = "bn6:cross";
@@ -92,22 +91,22 @@ impl Unlocks {
     }
 
     /// Write these into `player`'s setup: each fact into every system of
-    /// their ruleset (theirs, or BN6's stock one) that takes it (BN6's
+    /// the match's ruleset (`ruleset`; none: BN6's stock one) that takes it (BN6's
     /// cross system the version, the Crosses and the list; its beast system
     /// the version, Beast Out and the list). A ruleset with none of BN6's
     /// systems takes none of it.
-    pub fn write(&self, content: &Content, player: &mut PlayerSetup) -> Result<(), String> {
+    pub fn write(&self, content: &Content, ruleset: Option<nettai_content_api::RulesetHandle>, player: &mut PlayerSetup) -> Result<(), String> {
         let version = match self.version {
             GameVersion::Gregar => "gregar",
             GameVersion::Falzar => "falzar",
         };
-        player.set_fact(content, GAME, "version", &[Fact::Name(version)])?;
+        player.set_fact(content, ruleset, "version", &[Fact::Name(version)])?;
         let crosses: Vec<Fact> = self.crosses.iter().map(|&b| Fact::Value(Value::Bool(b))).collect();
-        player.set_fact(content, GAME, "crosses", &crosses)?;
-        player.set_fact(content, GAME, "beast_out", &[Fact::Value(Value::Bool(self.beast_out))])?;
+        player.set_fact(content, ruleset, "crosses", &crosses)?;
+        player.set_fact(content, ruleset, "beast_out", &[Fact::Value(Value::Bool(self.beast_out))])?;
         let list: Vec<Fact> =
             self.cross_list.iter().flat_map(|l| l.forms()).map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
-        player.set_fact(content, GAME, "cross_list", &list)?;
+        player.set_fact(content, ruleset, "cross_list", &list)?;
         Ok(())
     }
 

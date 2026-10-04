@@ -2243,6 +2243,7 @@ name = "nettai-content-api"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "toml",
 ]
 
 [[package]]
@@ -2250,6 +2251,7 @@ name = "nettai-content-check"
 version = "0.1.0"
 dependencies = [
  "luau-analyze",
+ "nettai-content-api",
 ]
 
 [[package]]

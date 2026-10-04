@@ -1,13 +1,13 @@
 --!strict
 -- The bullet (the original's attack object #0x12, `sub_80C6946`): the
--- shared bullet (@common/bullet/bullet), BN6's kind, look and variants:
+-- shared bullet (@exelib/bullet/bullet), BN6's kind, look and variants:
 -- the Vulcans' and Spreaders' shot, SpoutCross's charged shot, ColArmy's
 -- and ColForce's soldiers'. See docs/engine/shot-chips.md §4.1.
 
 local collision = require("../../rules/collision")
-local common = require("@common/bullet/bullet")
+local common = require("@exelib/bullet/bullet")
 local effects = require("../../lib/effects")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local statuses = require("../../rules/status")
 
 local bullet = {}

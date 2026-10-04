@@ -5,10 +5,10 @@
 -- flies to its side's navi; there the chip at the hand's cursor, if it does
 -- damage, gets its bonus (or, while a special chip is in use, the side's
 -- special bonus does). It tells its controller (the holder) when it is
--- gone. The behavior is BN5's too (@common/colorpt/point), made here with
+-- gone. The behavior is BN5's too (@exelib/colorpt/point), made here with
 -- BN6's look.
 
-local common = require("@common/colorpt/point")
+local common = require("@exelib/colorpt/point")
 local trajectory = require("../../lib/trajectory")
 
 return common.make {
