@@ -1,12 +1,12 @@
 --!strict
--- VDoll's doll (the original's attack object #0x7A, `sub_80D46B8`): the shared one (@common/vdoll/doll) in BN6's look.
+-- VDoll's doll (the original's attack object #0x7A, `sub_80D46B8`): the shared one (@exelib/vdoll/doll) in BN6's look.
 -- A field object with 50 HP thrown three panels ahead in a 60-tick arc, which can hit in its last five ticks. Where
 -- it lands the panel turns to poison. The first damage it takes after landing curses the other side (./curse): a
 -- dimming that hits every combatant there with that damage. See docs/engine/shot-chips.md §14.2.
 
 local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
-local common = require("@common/vdoll/doll")
+local common = require("@exelib/vdoll/doll")
 local curse = require("./curse")
 local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")
