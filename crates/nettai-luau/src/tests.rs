@@ -276,7 +276,8 @@ fn assets_resolve_by_name_while_content_loads() {
     assert!(e.is_ok(), "calling it later is the runtime's error, not the define phase's");
 }
 
-/// A game's rules are one definition, its stock ruleset (rules/init.luau):
+/// A game's rules are one definition, its ruleset (rules/init.luau), which
+/// takes no id and is keyed `ruleset`:
 /// its rule sections and its roles are plain tables in it, whose
 /// definitions are references (docs/design/content-model-v2.md §3.8).
 #[test]
@@ -287,13 +288,18 @@ fn a_games_rules_are_one_ruleset() {
         ("rules/pools", "return { actor = 32, attack = 32, effect = 32 }"),
         (
             "rules/init",
-            "return define.ruleset { id = 'stock', stock = true, systems = {}, pools = require('@self/pools'), roles = require('@self/roles') }",
+            "return define.ruleset { systems = {}, pools = require('@self/pools'), roles = require('@self/roles') }",
         ),
     ])
     .unwrap();
-    let stock = d.get(Registry::Ruleset, "stock").expect("the stock ruleset");
-    assert_eq!(stock.spec.field("roles").field("actions").field("anti_damage_counter"), &Data::Ref(Registry::Action, "counter".into()));
-    assert_eq!(stock.spec.field("pools").field("actor"), &Data::Int(32));
+    let rules = d.get(Registry::Ruleset, nettai_content_api::RULESET_KEY).expect("the game's ruleset");
+    assert_eq!(rules.spec.field("roles").field("actions").field("anti_damage_counter"), &Data::Ref(Registry::Action, "counter".into()));
+    assert_eq!(rules.spec.field("pools").field("actor"), &Data::Int(32));
+    // It has no name to give, and a game has one.
+    let e = define_named(&[("m", "return define.ruleset { id = 'stock', systems = {} }")]).unwrap_err();
+    assert!(e.contains("define.ruleset takes no `id`: a game has one ruleset"), "{e}");
+    let e = define_named(&[("a", "return define.ruleset {}"), ("b", "return define.ruleset {}")]).unwrap_err();
+    assert!(e.contains("a game has one ruleset: test/a.luau defines one, and test/b.luau another"), "{e}");
     // No definer makes a section or the roles apart from it.
     for definer in ["rules('pools', {})", "roles {}"] {
         let source = format!("return define.{definer}");

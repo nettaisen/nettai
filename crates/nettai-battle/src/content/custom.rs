@@ -45,6 +45,10 @@ pub struct CustomScreenLayout {
     /// By slot: where its left and right scans start in their lists.
     pub left_scan_start: [u8; 12],
     pub right_scan_start: [u8; 12],
+    /// The re-deal (`sub_8029788`): by how many of the hand's chips it deals
+    /// again, how many of them stay in the hand (`byte_80298C8`: BN6's are
+    /// all zeros, as none listed; BN5's 0x080254C8).
+    pub redeal_kept: Vec<u8>,
 }
 
 impl Default for CustomScreenLayout {
@@ -58,6 +62,7 @@ impl Default for CustomScreenLayout {
             right_scan_bottom: Vec::new(),
             left_scan_start: [0; 12],
             right_scan_start: [0; 12],
+            redeal_kept: Vec::new(),
         }
     }
 }

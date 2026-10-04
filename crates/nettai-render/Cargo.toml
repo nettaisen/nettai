@@ -15,8 +15,9 @@ nettai-content = { path = "../nettai-content" }
 # The handles the engine names content by (a chip in a hand).
 nettai-content-api = { path = "../nettai-content-api" }
 # BN6's numbers the custom screen draws by (a navi's emblem, whether the
-# Program Advance animation shows a chip's code).
+# Program Advance animation shows a chip's code), and BN5's (the latter).
 bn6-compat = { workspace = true }
+bn5-compat = { path = "../bn5-compat" }
 # A frame as a PNG file (`present::write_png`).
 png = "0.17"
 # The text layer's vector font: shaping with kerning, outlines rasterized with

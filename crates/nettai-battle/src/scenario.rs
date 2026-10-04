@@ -71,7 +71,6 @@ pub fn setup() -> RoundSetup {
     RoundSetup {
         content: content.hash(),
         settings: BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE)),
-        ruleset: None,
         navi_stats: [megaman(&content); 2],
         rng: 0x1234_5678,
         local_side: 0,

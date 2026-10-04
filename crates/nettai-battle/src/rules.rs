@@ -8,79 +8,59 @@
 //! (`system.state()` in a hook): a side's rules see the other side through
 //! the engine alone.
 
-use nettai_content_api::{ChipHandle, ContentState, FieldType, HookCall, ObjectRef, RulesetHandle, SystemHook, Value, WeaponHandle};
+use nettai_content_api::{ChipHandle, ContentState, FieldType, HookCall, ObjectRef, SystemHook, Value, WeaponHandle};
 
 use crate::battle::Battle;
 use crate::content::Content;
 use crate::custom::PlayerSetup;
 
-/// A side's rules in a battle: its ruleset, and each of the ruleset's
-/// systems' state of the side, in the ruleset's order.
+/// A side's rules in a battle: each of the game's ruleset's systems' state
+/// of the side, in the ruleset's order (none: the content has no ruleset).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SideRules {
-    /// None: the content has no ruleset (a side with no systems).
-    pub ruleset: Option<RulesetHandle>,
     pub states: Vec<ContentState>,
 }
 
 impl SideRules {
-    /// A player's rules at a round's start: the match's ruleset (`ruleset`,
-    /// the round setup's; none: the game's stock one), its systems' state
-    /// zeroed. Their setup's blocks are made the systems' defaults
+    /// A player's rules at a round's start: the game's ruleset's systems'
+    /// state, zeroed (a game has one ruleset, which every match of it
+    /// plays by). Their setup's blocks are made the systems' defaults
     /// (`setup_defaults`, the rest zero) for a setup that gives none, and
     /// must otherwise be the ruleset's.
-    pub fn for_player(content: &Content, player: &mut PlayerSetup, ruleset: Option<RulesetHandle>) -> SideRules {
-        let ruleset = ruleset.or_else(|| content.defs.stock_ruleset());
-        let Some(r) = ruleset else {
+    pub fn for_player(content: &Content, player: &mut PlayerSetup) -> SideRules {
+        if content.defs.ruleset().is_none() {
             assert!(player.rules.is_empty(), "a player's setup gives system setups, and the content has no ruleset");
             return SideRules::default();
-        };
-        let def = content.defs.ruleset(r);
-        let systems: Vec<_> = def.systems.iter().map(|&h| content.defs.system(h)).collect();
+        }
+        let systems: Vec<_> = content.defs.ruleset_systems().iter().map(|&h| content.defs.system(h)).collect();
         if player.rules.is_empty() {
             player.rules = systems.iter().map(|s| s.setup_block()).collect();
         }
         let fits = player.rules.len() == systems.len() && player.rules.iter().zip(&systems).all(|(b, s)| b.id() == s.setup);
-        assert!(fits, "a player's setup gives system setups that aren't ruleset {}'s", def.key);
-        SideRules { ruleset, states: systems.iter().map(|s| ContentState::new(s.state)).collect() }
+        assert!(fits, "a player's setup gives system setups that aren't the game's ruleset's");
+        SideRules { states: systems.iter().map(|s| ContentState::new(s.state)).collect() }
     }
 }
 
 impl PlayerSetup {
-    /// Set field `field` of system `system`'s setup (by key) to `v`, for
-    /// the match's ruleset (`ruleset`; none: `content`'s stock one): how
-    /// tools write what a save says.
-    pub fn set_rule(&mut self, content: &Content, ruleset: Option<RulesetHandle>, system: &str, field: &str, v: Value) -> Result<(), String> {
-        let (block, schema, i) = self.rule_field(content, ruleset, system, field)?;
+    /// Set field `field` of system `system`'s setup (by key; a system of
+    /// the game's ruleset) to `v`: how tools write what a save says.
+    pub fn set_rule(&mut self, content: &Content, system: &str, field: &str, v: Value) -> Result<(), String> {
+        let (block, schema, i) = self.rule_field(content, system, field)?;
         block.set(schema, i, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
     }
 
     /// [`PlayerSetup::set_rule`] for an array field: element `k` of it.
-    pub fn set_rule_elem(
-        &mut self,
-        content: &Content,
-        ruleset: Option<RulesetHandle>,
-        system: &str,
-        field: &str,
-        k: usize,
-        v: Value,
-    ) -> Result<(), String> {
-        let (block, schema, i) = self.rule_field(content, ruleset, system, field)?;
+    pub fn set_rule_elem(&mut self, content: &Content, system: &str, field: &str, k: usize, v: Value) -> Result<(), String> {
+        let (block, schema, i) = self.rule_field(content, system, field)?;
         block.set_elem(schema, i, k, v).map_err(|e| format!("system {system}'s setup field `{field}`: {e}"))
     }
 
-    /// The setup block of system `system` (by key) of the match's ruleset
-    /// (`ruleset`; none: the stock one) and its layout, as the round will
-    /// start with it (the systems' defaults where the setup gives none):
-    /// what a tool shows of it.
-    pub fn rule_block<'a>(
-        &self,
-        content: &'a Content,
-        ruleset: Option<RulesetHandle>,
-        system: &str,
-    ) -> Option<(&'a nettai_content_api::Schema, ContentState)> {
-        let r = ruleset.or_else(|| content.defs.stock_ruleset())?;
-        let systems = &content.defs.ruleset(r).systems;
+    /// The setup block of system `system` (by key) of the game's ruleset
+    /// and its layout, as the round will start with it (the systems'
+    /// defaults where the setup gives none): what a tool shows of it.
+    pub fn rule_block<'a>(&self, content: &'a Content, system: &str) -> Option<(&'a nettai_content_api::Schema, ContentState)> {
+        let systems = content.defs.ruleset_systems();
         let slot = systems.iter().position(|&h| content.defs.system(h).key == system)?;
         let def = content.defs.system(systems[slot]);
         let block = self.rules.get(slot).copied().unwrap_or_else(|| def.setup_block());
@@ -88,17 +68,18 @@ impl PlayerSetup {
     }
 
     /// Write a fact of what the player brings into each system of the
-    /// match's ruleset (`ruleset`; none: the stock one) whose setup has a
+    /// game's ruleset whose setup has a
     /// field `field`: one value for a field, an element each for an array
     /// (the rest zero), an enum's by its name (`Fact::Name`). How a tool
     /// writes what several systems read (BN6's game version, which its
     /// cross and beast systems both take). The number of systems that took
     /// it: none on a content without a ruleset.
-    pub fn set_fact(&mut self, content: &Content, ruleset: Option<RulesetHandle>, field: &str, values: &[Fact]) -> Result<usize, String> {
-        let Some(r) = ruleset.or_else(|| content.defs.stock_ruleset()) else { return Ok(0) };
-        let def = content.defs.ruleset(r);
+    pub fn set_fact(&mut self, content: &Content, field: &str, values: &[Fact]) -> Result<usize, String> {
+        if content.defs.ruleset().is_none() {
+            return Ok(0);
+        }
         if self.rules.is_empty() {
-            self.rules = def.systems.iter().map(|&h| content.defs.system(h).setup_block()).collect();
+            self.rules = content.defs.ruleset_systems().iter().map(|&h| content.defs.system(h).setup_block()).collect();
         }
         let mut took = 0;
         for block in &mut self.rules {
@@ -139,27 +120,23 @@ impl PlayerSetup {
         Ok(took)
     }
 
-    /// The setup block of system `system` (by key) of the match's ruleset
-    /// (`ruleset`; none: the stock one), its schema and the index of its
-    /// field `field`; the blocks made the systems' defaults first if the
-    /// setup gives none.
+    /// The setup block of system `system` (by key) of the game's ruleset,
+    /// its schema and the index of its field `field`; the blocks made the
+    /// systems' defaults first if the setup gives none.
     fn rule_field<'a>(
         &'a mut self,
         content: &'a Content,
-        ruleset: Option<RulesetHandle>,
         system: &str,
         field: &str,
     ) -> Result<(&'a mut ContentState, &'a nettai_content_api::Schema, usize), String> {
-        let r = ruleset.or_else(|| content.defs.stock_ruleset()).ok_or("the content has no ruleset")?;
-        let def = content.defs.ruleset(r);
+        let systems = content.defs.ruleset().ok_or("the content has no ruleset")?.systems.as_slice();
         if self.rules.is_empty() {
-            self.rules = def.systems.iter().map(|&h| content.defs.system(h).setup_block()).collect();
+            self.rules = systems.iter().map(|&h| content.defs.system(h).setup_block()).collect();
         }
-        let slot = def
-            .systems
+        let slot = systems
             .iter()
             .position(|&h| content.defs.system(h).key == system)
-            .ok_or_else(|| format!("ruleset {} has no system {system}", def.key))?;
+            .ok_or_else(|| format!("the game's ruleset has no system {system}"))?;
         let block = &mut self.rules[slot];
         let schema = &content.defs.schemas[block.id().0 as usize].schema;
         let i = schema.index_of(field).ok_or_else(|| format!("system {system}'s setup has no field `{field}`"))?;
@@ -181,8 +158,7 @@ impl Battle {
     /// system: for a reader of what a player brought (the frontend's BN6
     /// look reads the cross system's version and Cross list).
     pub fn system_setup(&self, side: u8, key: &str) -> Option<(&nettai_content_api::Schema, &ContentState)> {
-        let r = self.rules[side as usize & 1].ruleset?;
-        let systems = &self.content.defs.ruleset(r).systems;
+        let systems = self.content.defs.ruleset_systems();
         let slot = systems.iter().position(|&h| self.content.defs.system(h).key == key)?;
         let def = self.content.defs.system(systems[slot]);
         Some((self.content.defs.schema(def.setup), self.setup.players[side as usize & 1].rules.get(slot)?))
@@ -196,8 +172,8 @@ impl Battle {
     /// Where system `system` is in side `side`'s ruleset, as the binding
     /// takes it (the side and the place), if the side plays by it.
     pub(crate) fn system_slot(&self, side: u8, system: nettai_content_api::SystemHandle) -> Option<(u8, u8)> {
-        let r = self.rules.get(side as usize)?.ruleset?;
-        let slot = self.content.defs.ruleset(r).systems.iter().position(|&h| h == system)?;
+        self.rules.get(side as usize)?;
+        let slot = self.content.defs.ruleset_systems().iter().position(|&h| h == system)?;
         Some((side, slot as u8))
     }
 
@@ -242,9 +218,8 @@ impl Battle {
 
     /// Call `hook` of each system of side `side`'s ruleset that has one.
     pub(crate) fn notify_side(&mut self, side: u8, hook: SystemHook) {
-        let Some(r) = self.rules[side as usize].ruleset else { return };
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(hook) {
                 let call = HookCall::System { side, slot: slot as u8, hook, navi: None, chip: None, weapon: None };
                 crate::behavior::call_hook(self, f, call);
@@ -256,9 +231,8 @@ impl Battle {
     /// fight in the navi's intake. (A ruleset without the hook calls
     /// nothing: BN6's.)
     pub(crate) fn systems_navi_intake(&mut self, side: u8, navi: ObjectRef) {
-        let Some(r) = self.rules[side as usize].ruleset else { return };
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::NaviIntake) {
                 let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::NaviIntake, navi: Some(navi), chip: None, weapon: None };
                 crate::behavior::call_hook(self, f, call);
@@ -270,9 +244,8 @@ impl Battle {
     /// chip's use is prepared (`sub_80127C0`): `chip` the chip it uses (the
     /// zeroed chip for the empty hand).
     pub(crate) fn systems_chip_prepared(&mut self, side: u8, navi: ObjectRef, chip: ChipHandle) {
-        let Some(r) = self.rules[side as usize].ruleset else { return };
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::ChipPrepared) {
                 let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::ChipPrepared, navi: Some(navi), chip: Some(chip), weapon: None };
                 crate::behavior::call_hook(self, f, call);
@@ -283,9 +256,8 @@ impl Battle {
     /// Side `side`'s systems' `chip_used(side, navi, chip, weapon)` once a
     /// chip's use has started its action.
     pub(crate) fn systems_chip_used(&mut self, side: u8, navi: ObjectRef, chip: ChipHandle, weapon: Option<WeaponHandle>) {
-        let Some(r) = self.rules[side as usize].ruleset else { return };
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::ChipUsed) {
                 let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::ChipUsed, navi: Some(navi), chip: Some(chip), weapon };
                 crate::behavior::call_hook(self, f, call);
@@ -297,9 +269,8 @@ impl Battle {
     /// original's number: 0 nothing, 1 a chip, 2 the buster, 3 a step) the
     /// first system that answers gives; none answering is nothing.
     pub(crate) fn systems_controller(&mut self, side: u8, navi: ObjectRef) -> u8 {
-        let Some(r) = self.rules[side as usize].ruleset else { return 0 };
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::Controller) {
                 let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::Controller, navi: Some(navi), chip: None, weapon: None };
                 if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
@@ -314,9 +285,8 @@ impl Battle {
     /// own navi (BN5's no-charge drive): the outcome the first system that
     /// answers gives; None when none answers.
     pub(crate) fn systems_controller_answer(&mut self, side: u8, navi: ObjectRef) -> Option<u8> {
-        let r = self.rules[side as usize].ruleset?;
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::Controller) {
                 let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::Controller, navi: Some(navi), chip: None, weapon: None };
                 if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
@@ -330,9 +300,8 @@ impl Battle {
     /// The `controller(side, navi)` of side `side`'s system in place `slot`
     /// (a navi no player controls: the system that drives it).
     pub(crate) fn systems_controller_at(&mut self, side: u8, slot: u8, navi: ObjectRef) {
-        let Some(r) = self.rules[side as usize & 1].ruleset else { return };
         let content = self.content.clone();
-        let Some(&h) = content.defs.ruleset(r).systems.get(slot as usize) else { return };
+        let Some(&h) = content.defs.ruleset_systems().get(slot as usize) else { return };
         if let Some(f) = content.defs.system(h).hook(SystemHook::Controller) {
             let call = HookCall::System { side, slot, hook: SystemHook::Controller, navi: Some(navi), chip: None, weapon: None };
             crate::behavior::call_hook(self, f, call);
@@ -341,9 +310,8 @@ impl Battle {
 
     /// Side `side`'s systems' `takeover_requested(side, navi)`.
     pub(crate) fn systems_takeover_requested(&mut self, side: u8, navi: ObjectRef) {
-        let Some(r) = self.rules[side as usize].ruleset else { return };
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::TakeoverRequested) {
                 let call = HookCall::System {
                     side,
@@ -362,9 +330,8 @@ impl Battle {
     /// first system that answers gives (as `systems_controller`'s, or 4:
     /// an attack of its own); none answering is nothing.
     pub(crate) fn systems_takeover(&mut self, side: u8, navi: ObjectRef) -> u8 {
-        let Some(r) = self.rules[side as usize].ruleset else { return 0 };
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::Takeover) {
                 let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::Takeover, navi: Some(navi), chip: None, weapon: None };
                 if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
@@ -376,9 +343,8 @@ impl Battle {
     }
 
     /// Side `side`'s systems' buttons, in the order the systems are listed.
-    pub(crate) fn side_buttons(&self, side: u8) -> Vec<crate::content::ButtonHandle> {
-        let Some(r) = self.rules[side as usize & 1].ruleset else { return Vec::new() };
-        self.content.defs.ruleset(r).systems.iter().flat_map(|&h| self.content.defs.system(h).buttons.iter().copied()).collect()
+    pub(crate) fn side_buttons(&self, _side: u8) -> Vec<crate::content::ButtonHandle> {
+        self.content.defs.ruleset_systems().iter().flat_map(|&h| self.content.defs.system(h).buttons.iter().copied()).collect()
     }
 
     /// One of a button's functions (`shown`, `state`, `pressed`), as its
@@ -410,9 +376,8 @@ impl Battle {
     /// Side `side`'s systems' custom chip hook `hook(side, chip)`, each in
     /// order.
     pub(crate) fn systems_call_custom_chip(&mut self, side: u8, hook: SystemHook, chip: ChipHandle) {
-        let Some(r) = self.rules[side as usize & 1].ruleset else { return };
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(hook) {
                 let call = HookCall::System { side, slot: slot as u8, hook, navi: None, chip: Some(chip), weapon: None };
                 crate::behavior::call_hook(self, f, call);
@@ -422,9 +387,8 @@ impl Battle {
 
     /// Side `side`'s systems' custom hook `hook(side)`, each in order.
     pub(crate) fn systems_call_custom(&mut self, side: u8, hook: SystemHook) {
-        let Some(r) = self.rules[side as usize & 1].ruleset else { return };
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(hook) {
                 let call = HookCall::System { side, slot: slot as u8, hook, navi: None, chip: None, weapon: None };
                 crate::behavior::call_hook(self, f, call);
@@ -435,9 +399,8 @@ impl Battle {
     /// Side `side`'s systems' custom hook `hook(side)` in order, until one
     /// answers true: whether one did.
     pub(crate) fn systems_ask_custom(&mut self, side: u8, hook: SystemHook) -> bool {
-        let Some(r) = self.rules[side as usize & 1].ruleset else { return false };
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(hook) {
                 let call = HookCall::System { side, slot: slot as u8, hook, navi: None, chip: None, weapon: None };
                 if crate::behavior::call_hook(self, f, call) == Value::Bool(true) {
@@ -452,8 +415,7 @@ impl Battle {
     /// ruleset has that system: for a reader of what a system keeps (the
     /// frontend's look of BN6's Cross window reads the cross system's).
     pub fn system_state(&self, side: u8, key: &str) -> Option<(&nettai_content_api::Schema, &ContentState)> {
-        let r = self.rules[side as usize & 1].ruleset?;
-        let systems = &self.content.defs.ruleset(r).systems;
+        let systems = &self.content.defs.ruleset_systems();
         let slot = systems.iter().position(|&h| self.content.defs.system(h).key == key)?;
         let def = self.content.defs.system(systems[slot]);
         Some((self.content.defs.schema(def.state), self.rules[side as usize & 1].states.get(slot)?))
@@ -461,9 +423,8 @@ impl Battle {
 
     /// Side `side`'s systems' `custom.hand_size(side)`: the first answer.
     pub(crate) fn systems_custom_hand_size(&mut self, side: u8) -> Option<u8> {
-        let r = self.rules[side as usize & 1].ruleset?;
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::CustomHandSize) {
                 let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::CustomHandSize, navi: None, chip: None, weapon: None };
                 if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
@@ -487,9 +448,8 @@ impl Battle {
     /// Side `side`'s systems' `navi_bug(side, navi)`: whether one answered
     /// true (the bug and the weapons' reload skipped).
     pub(crate) fn systems_navi_bug(&mut self, side: u8, navi: ObjectRef) -> bool {
-        let Some(r) = self.rules[side as usize & 1].ruleset else { return false };
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::NaviBug) {
                 let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::NaviBug, navi: Some(navi), chip: None, weapon: None };
                 if let Value::Bool(true) = crate::behavior::call_hook(self, f, call) {
@@ -502,9 +462,8 @@ impl Battle {
 
     /// Side `side`'s systems' `hook`, in order, until one answers a number.
     fn systems_ask(&mut self, side: u8, hook: SystemHook, navi: Option<ObjectRef>) -> Option<u8> {
-        let r = self.rules[side as usize & 1].ruleset?;
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(hook) {
                 let call = HookCall::System { side, slot: slot as u8, hook, navi, chip: None, weapon: None };
                 if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
@@ -528,9 +487,8 @@ impl Battle {
     /// Side `side`'s systems' `hook(side, navi)`, each in order; the
     /// results unused.
     fn systems_call(&mut self, side: u8, hook: SystemHook, navi: ObjectRef) {
-        let Some(r) = self.rules[side as usize & 1].ruleset else { return };
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(hook) {
                 let call = HookCall::System { side, slot: slot as u8, hook, navi: Some(navi), chip: None, weapon: None };
                 crate::behavior::call_hook(self, f, call);
@@ -540,9 +498,8 @@ impl Battle {
 
     /// Side `side`'s systems' `form_reverted(side, navi)`.
     pub(crate) fn systems_form_reverted(&mut self, side: u8, navi: ObjectRef) {
-        let Some(r) = self.rules[side as usize].ruleset else { return };
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(SystemHook::FormReverted) {
                 let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::FormReverted, navi: Some(navi), chip: None, weapon: None };
                 crate::behavior::call_hook(self, f, call);
@@ -572,9 +529,8 @@ impl Battle {
 
     /// A chip hook `hook(side, navi, chip)`'s first answer, a chip.
     fn systems_chip_answer(&mut self, side: u8, navi: ObjectRef, chip: Option<ChipHandle>, hook: SystemHook) -> Option<ChipHandle> {
-        let r = self.rules[side as usize].ruleset?;
         let content = self.content.clone();
-        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+        for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
             if let Some(f) = content.defs.system(h).hook(hook) {
                 let call = HookCall::System { side, slot: slot as u8, hook, navi: Some(navi), chip, weapon: None };
                 if let Value::Def(nettai_content_api::Registry::Chip, c) = crate::behavior::call_hook(self, f, call) {
@@ -613,7 +569,14 @@ mod tests {
 
     /// A battle from `setup`, run until its intro has spawned the navis.
     fn started(setup: RoundSetup) -> Battle {
-        let mut b = Battle::new(setup, scenario::content());
+        started_on(setup, scenario::content())
+    }
+
+    /// The same on `content`: the test content with another list of
+    /// systems (`testing::with_systems`: a game has one ruleset).
+    fn started_on(mut setup: RoundSetup, content: std::sync::Arc<Content>) -> Battle {
+        setup.content = content.hash();
+        let mut b = Battle::new(setup, content);
         for _ in 0..3 {
             b.tick(&[PlayerTick::default(); 2], Default::default());
         }
@@ -637,7 +600,7 @@ mod tests {
         let content = scenario::content();
         let mut setup = scenario::setup();
         let took = setup.players[0]
-            .set_fact(&content, None, "bug_frags", &[Fact::Value(nettai_content_api::Value::Int(7))])
+            .set_fact(&content, "bug_frags", &[Fact::Value(nettai_content_api::Value::Int(7))])
             .expect("a count of bug frags");
         assert_eq!(took, 1, "the dark-chips system alone takes them");
         let b = started(setup);
@@ -645,13 +608,11 @@ mod tests {
     }
 
     #[test]
-    fn each_side_runs_its_rulesets_systems_for_itself() {
+    fn each_side_runs_the_rulesets_systems_for_itself() {
         let b = started(scenario::setup());
         let content = &b.content;
-        let stock = content.defs.stock_ruleset().expect("the test content's stock rules");
-        assert_eq!(content.defs.ruleset(stock).key, "stock");
+        assert_eq!(content.defs.ruleset().expect("the test content's rules").systems.len(), 5);
         for side in 0..2u8 {
-            assert_eq!(b.side_rules(side).ruleset, Some(stock));
             // (BN6's beast system first, then the counter, then BN6's forms,
             // emotion and dark-chips systems.)
             assert_eq!(b.side_rules(side).states.len(), 5);
@@ -660,15 +621,12 @@ mod tests {
         }
     }
 
-    /// One ruleset a match (docs/design/content-model-v2.md §4.0: the arena
-    /// configuration determines everything): both sides play by the one
-    /// the setup names, each with its own state of its systems.
+    /// One ruleset a game (the user: "there should only be one ruleset per
+    /// game"): both sides play by its systems, in its order, each with its
+    /// own state of them. (Another list of systems is another content's.)
     #[test]
-    fn a_match_plays_by_the_ruleset_its_setup_names() {
-        let content = scenario::content();
-        let mut setup = scenario::setup();
-        setup.ruleset = content.defs.ruleset_by_key("test-other");
-        let b = started(setup);
+    fn both_sides_play_by_the_games_ruleset() {
+        let b = started_on(scenario::setup(), testing::with_systems("marker, counter"));
         for side in 0..2u8 {
             assert_eq!(b.side_rules(side).states.len(), 2, "side {side} plays by the match's");
             assert_eq!(field(&b, side, 0, "mark"), FieldValue::U8(0x40 + side));
@@ -680,8 +638,8 @@ mod tests {
     fn a_systems_player_setup_reaches_it_and_no_other() {
         let content = scenario::content();
         let mut setup = scenario::setup();
-        setup.players[0].set_rule(&content, None, "test/counter", "bonus", Value::Int(7)).unwrap();
-        assert!(setup.players[0].set_rule(&content, None, "test/marker", "mark", Value::Int(1)).is_err(), "not the stock rules'");
+        setup.players[0].set_rule(&content, "test/counter", "bonus", Value::Int(7)).unwrap();
+        assert!(setup.players[0].set_rule(&content, "test/marker", "mark", Value::Int(1)).is_err(), "not the ruleset's");
         let b = started(setup);
         assert_eq!(field(&b, 0, 1, "bonus"), FieldValue::U16(14));
         assert_eq!(field(&b, 1, 1, "bonus"), FieldValue::U16(0), "the other player's setup is its own");
@@ -693,11 +651,8 @@ mod tests {
     /// takes the chip's place; a side whose rules lack them calls nothing.
     #[test]
     fn a_systems_intake_and_chip_check_hooks() {
-        let content = scenario::content();
-        let watch = content.defs.ruleset_by_key("test-watch").expect("the watcher's ruleset");
-        let mut setup = scenario::setup();
-        setup.ruleset = Some(watch);
-        let mut b = started(setup);
+        let content = testing::with_systems("watcher");
+        let mut b = started_on(scenario::setup(), content.clone());
         let navi = b.player(1).expect("side 1's navi");
         b.systems_navi_intake(1, navi);
         b.systems_navi_intake(1, navi);
@@ -709,7 +664,7 @@ mod tests {
         assert_eq!(b.systems_chip_check(1, navi, Some(bomb)), Some(seed));
         assert_eq!(b.systems_chip_check(1, navi, Some(seed)), None);
         assert_eq!(b.systems_chip_check(1, navi, None), None);
-        // The stock rules have neither hook.
+        // The test content's own systems have neither hook.
         let mut stock = started(scenario::setup());
         let navi0 = stock.player(0).expect("side 0's navi");
         assert_eq!(stock.systems_chip_check(0, navi0, Some(bomb)), None);
@@ -725,22 +680,17 @@ mod tests {
         let schema = &b.content.defs.schemas[s.id().0 as usize].schema;
         s.set(schema, schema.index_of("starts").unwrap(), Value::Int(9)).unwrap();
         assert_ne!(changed.digest(), b.digest());
-        assert_eq!(testing::build().defs.rulesets.len(), 5);
     }
 
-    /// A variant (testdata's rules/mix.luau): the stock rules less BN6's
-    /// forms system, the marker after them.
+    /// A game without one of BN6's systems: the test content's rules less
+    /// BN6's forms system, the marker after them.
     #[test]
-    fn a_mix_is_its_bases_systems_changed() {
-        let content = scenario::content();
+    fn a_ruleset_lists_the_systems_its_game_plays_by() {
+        let content = testing::with_systems("beast, counter, emotion.system, dark_chips, marker");
         let defs = &content.defs;
-        let mix = defs.ruleset_by_key("test-mix").expect("the mix");
-        let names: Vec<&str> = defs.ruleset(mix).systems.iter().map(|&h| defs.system(h).key.as_str()).collect();
+        let names: Vec<&str> = defs.ruleset_systems().iter().map(|&h| defs.system(h).key.as_str()).collect();
         assert_eq!(names, ["beast", "test/counter", "emotion", "dark-chips", "test/marker"]);
-        assert_eq!(defs.ruleset(mix).base, defs.stock_ruleset());
-        let mut setup = scenario::setup();
-        setup.ruleset = Some(mix);
-        let b = started(setup);
+        let b = started_on(scenario::setup(), content.clone());
         assert_eq!(b.side_rules(1).states.len(), 5);
         assert_eq!(field(&b, 1, 4, "mark"), FieldValue::U8(0x41), "the marker ran for its side");
         assert_eq!(field(&b, 1, 1, "starts"), FieldValue::U8(1));
@@ -793,13 +743,13 @@ mod tests {
         use crate::patch_cards::{InstalledCard, PatchCards};
         use crate::setup::{GaugeSpeed, NaviStats, Supports};
 
-        /// A battle whose side 0 plays by the test-cards ruleset with
-        /// `cards` installed (key, switched on), its stats changed by
-        /// `tweak` first.
+        /// A battle on the test content with BN6's patch-cards system
+        /// (then the counter), side 0 with `cards` installed (key,
+        /// switched on), its stats changed by `tweak` first.
         fn with_cards(cards: &[(&str, bool)], tweak: impl FnOnce(&mut NaviStats)) -> Battle {
-            let content = scenario::content();
+            let content = testing::with_systems("patch_cards, counter");
             let mut s = scenario::setup();
-            s.ruleset = content.defs.ruleset_by_key("test-cards");
+            s.content = content.hash();
             let p = &mut s.players[0];
             let list: Vec<InstalledCard> = cards
                 .iter()

@@ -30,8 +30,8 @@ Words:
   screen's chip window, the flow, the turn-start sequencer);
 - a **system** is one self-contained piece of a game's rules in Luau (BN6's Crosses, its Beast Out, BN5's Soul
   Unison), with its own state, hooks and custom-screen extras;
-- a **ruleset** is a list of systems with the data the framework reads (rule sections, roles); each game has a
-  **stock** ruleset, and a mix is a ruleset too;
+- a **ruleset** is a list of systems with the data the framework reads (rule sections, roles); each game has one
+  (R6: the user, "there should only be one ruleset per game"; the mixes this document designed are gone);
 - a **root** is a content directory (content/bn6) with a manifest; **content** is what a root defines.
 
 Routine names are the original's (BN6's, as the disassembly names them). "Dimming", "cut-in chip", "counter
@@ -43,12 +43,12 @@ cut-in", "telop" and "supports" are used as in the rest of the project.
   their emotions, their navi's special controls, their per-player setup. The shared systems (objects, collision
   and hits, the field, chips, the flow) are framework Rust and common to both. Nothing battle-wide is a ruleset's:
   what the whole battle runs by (the field's panels, the flow's timings and banners, the music, the object pools'
-  sizes) comes from the game's stock ruleset (rules/init.luau, the game's one rules definition: its systems, its
+  sizes) comes from the game's ruleset (rules/init.luau, the game's one rules definition: its systems, its
   rule sections and its roles).
-- **A ruleset is a list of systems** (`define.system`, `define.ruleset`). BN6's stock ruleset is its Crosses, Beast
-  Out and Beast Over, the Cross special, its emotions, its custom-screen buttons and BN6's own setup; BN5's will be
-  Soul Unison, Chaos Unison, its emotions, its Team Battle. A mix (Crosses and Beast Out with Soul Unison) is a
-  ruleset defined in content from another ruleset by adding or removing systems.
+- **A ruleset is a list of systems** (`define.system`, `define.ruleset`). BN6's is its Crosses, Beast
+  Out and Beast Over, the Cross special, its emotions, its custom-screen buttons and BN6's own setup; BN5's is
+  Soul Unison, Chaos Unison, its emotions, and its Team Battle to come. A game has one ruleset (R6): the mixes
+  first designed here (a ruleset made from another by adding or removing systems) were built and then removed.
 - **Rust keeps what runs for every object every tick, and the services**, and the framework where the games share
   it. The BN5 map (bn5-map.md) shows more is shared than the survey assumed: the turn-start sequencer and its
   transform record, the navi switch (BN6's unused "Cross change"), the reversion before a custom screen, the
@@ -193,40 +193,37 @@ return define.system {
 }
 ```
 
-A ruleset is a list of systems; the game's stock one is also the game's one rules definition, holding the data the
-framework reads (content-model-v2.md §3.8, §7.4):
+A ruleset is a list of systems; a game's is also its one rules definition, holding the data the framework reads
+(content-model-v2.md §3.8, §7.4):
 
 ```luau
 -- content/bn6/rules/init.luau
 return define.ruleset {
-    id = "stock",
-    stock = true,                  -- the game's own rules
     systems = { cross, navicust, patch_cards, forms.system, beast, emotion.system, folder, dark_chips },
-    panels = require("./panels"),  -- its rule sections: plain tables, each read against the engine's schema
-    elements = require("./elements"),
+    panels = require("@self/panels"),  -- its rule sections: plain tables, each read against the engine's schema
+    elements = require("@self/elements"),
     -- ...
-    roles = require("./roles"),    -- what the framework starts, spawns, shows and plays
+    roles = require("@self/roles"),    -- what the framework starts, spawns, shows and plays
 }
 ```
 
-- **Stock rulesets**: each game defines exactly one ruleset with `stock = true`, its game's own rules (`stock`), in
-  rules/init.luau (the manifest's `rules = ["rules"]`).
-- **Variants**: a ruleset may start from another and change its systems: `define.ruleset { id = "souls", base =
-  stock, add = { soul_unison }, remove = { cross } }`. A variant changes only the systems: the game's rule sections and
-  roles are its stock ruleset's, and a section or `roles` on another ruleset is a load error saying so (P2); the
-  define phase checks every button a system offers has a slot. A setup chooses a ruleset by id (`RoundSetup::ruleset`,
-  the arena's).
+- **One ruleset a game** (R6): each game defines exactly one, in rules/init.luau, which its top module requires
+  (`rules = require("@self/rules")`). It has no `id` (its key is the engine's, `ruleset`) and no `stock` flag; a
+  second `define.ruleset` is a load error naming both modules.
+- **No variants** (R6): `base`, `add` and `remove` are refused. They were S0's and P1c's mixes (a ruleset made from
+  another); nothing played one outside the engine's tests. The define phase checks every button a system offers
+  has a slot.
 - **Dependencies**: a system may name systems it needs (`requires = { beast }` on Beast Over) or can't run with
-  (`excludes`); the define phase checks every ruleset.
+  (`excludes`); the define phase checks the ruleset.
 - **Order**: the framework calls a ruleset's systems in its `systems` order. Notification hooks call every system;
   deciding hooks (a deletion kept, a key handled, a chip use wrapped) stop at the first system that decides.
 
-### 2.3 One ruleset per match
+### 2.3 One ruleset per game
 
-A match plays one game, by one of its rulesets (the user: "you are either playing bn5 or bn6, the arena
-configuration determines everything"; content-model-v2.md §4.0). `RoundSetup::ruleset` names it; none means the
-game's stock ruleset. Both sides play by it, each with its own state of its systems (`SideRules`) and its own setup
-blocks (`PlayerSetup::rules`). Everything a battle reads is the game's:
+A match plays one game, by its ruleset (the user: "you are either playing bn5 or bn6, the arena configuration
+determines everything", content-model-v2.md §4.0; and "there should only be one ruleset per game"). A round's
+setup names none: both sides play by the game's, each with its own state of its systems (`SideRules`) and its own
+setup blocks (`PlayerSetup::rules`). Everything a battle reads is the game's:
 - its rule sections (`Content::rules`);
 - its roles (`Defs::roles`);
 - its pools;
@@ -2274,3 +2271,20 @@ definition is what it was, under the id it had (content-model-v2.md §4.0, §4.1
   chips.luau and the like init.luau, rewrites the requires, names a series' chips and writes the game's
   init.luau. New modules: a folder's main module is `init.luau`; inside it `./x` is beside the folder and
   `@self/x` inside it.
+- **One ruleset per game** (the user: "there should only be one ruleset per game").
+  - `define.ruleset { systems = ..., <rule sections>, roles = ... }` keeps its name (the user's word, and the
+    registry's). It takes no `id`, `stock`, `base`, `add` or `remove`, each refused by what it is; a game defines
+    one, keyed `ruleset` (`nettai_content_api::RULESET_KEY`), and a second is a load error naming both modules.
+  - `Defs::ruleset() -> Option<&RulesetDef>` and `Defs::ruleset_systems() -> &[SystemHandle]` replace
+    `stock_ruleset`, `ruleset(h)`, `ruleset_by_key` and `Defs::rulesets`; `RulesetDef` is its systems.
+  - `RoundSetup::ruleset` and `SideRules::ruleset` are gone; `SideRules::for_player(content, player)`.
+    `PlayerSetup::set_rule`, `set_rule_elem`, `rule_block` and `set_fact`, and bn6-compat's `Unlocks::write`, take
+    no ruleset. `RulesetHandle` is gone (nettai-content-api, nettai-netplay's wire); `Registry::Ruleset` stays for
+    the one definition and its hook slots.
+  - nettai-match's `systems(content)` reads `Defs::ruleset_systems` (the match file, the editor and the offer
+    named no ruleset already: branch one-ruleset).
+  - The test content has one ruleset; a test that plays by other systems (the marker, the watcher, BN6's
+    patch-cards system) plays another content, the same but for the list (`testing::with_systems`). The mix's
+    tests (a base's systems changed) went with the mixes.
+  - packs.py step 12 drops `id` and `stock` from a branch's `define.ruleset` and lists a variant or a second
+    ruleset for a hand edit.
