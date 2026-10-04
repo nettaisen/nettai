@@ -171,6 +171,11 @@ pub enum StatusRole {
     /// What a damage word's paralysis bit (0x4000) makes its hits carry
     /// (`sub_8019F44`).
     DamageWordParalysis,
+    /// What BN5's damage words' bits 0x2000 and 0x1000 make their hits
+    /// carry (0x080165EC: status bytes 0x20 and 0x30; the rule
+    /// `effects.damage_word`).
+    DamageWordConfusion,
+    DamageWordBlindness,
     /// What a counter hit lands instead of a flinch (`sub_800EB26`).
     CounterParalysis,
     /// What an aqua hit gives a body standing on ice (`sub_801A0E0`'s
@@ -183,8 +188,10 @@ pub enum StatusRole {
 }
 
 impl StatusRole {
-    pub const ALL: [StatusRole; 5] = [
+    pub const ALL: [StatusRole; 7] = [
         StatusRole::DamageWordParalysis,
+        StatusRole::DamageWordConfusion,
+        StatusRole::DamageWordBlindness,
         StatusRole::CounterParalysis,
         StatusRole::IceFreeze,
         StatusRole::HitBugBlind,
@@ -195,6 +202,8 @@ impl StatusRole {
     pub fn name(self) -> &'static str {
         match self {
             StatusRole::DamageWordParalysis => "damage_word_paralysis",
+            StatusRole::DamageWordConfusion => "damage_word_confusion",
+            StatusRole::DamageWordBlindness => "damage_word_blindness",
             StatusRole::CounterParalysis => "counter_paralysis",
             StatusRole::IceFreeze => "ice_freeze",
             StatusRole::HitBugBlind => "hit_bug_blind",
