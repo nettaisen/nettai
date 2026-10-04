@@ -100,7 +100,7 @@ end
 
 -- Action 8 (0x080BB070): 21 ticks (the magnets go on his action 8).
 local function hold(me: Object)
-    local left = navi_chips.countdown(me, 0x14)
+    local left = navi_chips.countdown_on_init(me, 0x14)
     if left ~= nil and left < 0 then
         me:set_action(0xC)
     end
@@ -108,7 +108,7 @@ end
 
 -- Action 0xC (0x080BB094): 31 ticks; then the controller moves on, and he goes.
 local function leave(me: Object)
-    local left = navi_chips.countdown(me, 0x1E)
+    local left = navi_chips.countdown_on_init(me, 0x1E)
     if left ~= nil and left < 0 then
         navi_chips.leave(me, (me.state :: State).controller)
     end
