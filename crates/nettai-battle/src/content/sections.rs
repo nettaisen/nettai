@@ -170,6 +170,10 @@ struct StatusSection {
     form_tick: bool,
     #[serde(default)]
     flash_hides_on_clear: bool,
+    /// The status word a navi without collision data reads as (BN6's
+    /// open-bus value when left out).
+    #[serde(default)]
+    missing_collision_status: Option<u32>,
     #[serde(default)]
     reactions: super::rules::Reactions,
     #[serde(default)]
@@ -434,6 +438,8 @@ fn section(rules: &mut Rules, d: &nettai_content_api::Definition, r: &SpecReader
                 let s: StatusSection = r.read(spec, &at).map_err(e)?;
                 (rules.hp_bug_periods, rules.form_tick) = (s.hp_bug_periods, s.form_tick);
                 rules.flash_hides_on_clear = s.flash_hides_on_clear;
+                rules.missing_collision_status =
+                    s.missing_collision_status.map_or_else(Default::default, super::rules::MissingCollisionStatus);
                 rules.reactions = s.reactions;
                 rules.emotions = match s.emotions.as_deref() {
                     None | Some("bn6") => super::Emotions::Bn6,

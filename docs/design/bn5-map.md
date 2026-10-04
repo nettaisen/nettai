@@ -2029,3 +2029,50 @@ The emotion window's glitch came with them: the navicust recordings line-g, bug-
 the counted bytes: supports, Hub) stopped on RNG1 at the first check, re-recorded with the glitches in their setups.
 bug-hp's stop was its last frame: a flicker's draw on the frame a recording ends has no frame left to agree, which
 bn5-compat's RNG1 comparison now leaves.
+
+The first barriers' visuals on a round's first tick: the other side's navi inits first (its first barrier's visual
+asking at once whether the local navi is blind, 0x0800CDF4), before the local navi has collision data, and the game
+reads its status word through the null pointer, from the BIOS. BN6's read gives the object spawn's CpuSet opcode,
+0xE3A02004, with the blind bit (the visual hidden for a tick); BN5's console gives an interrupt's, 0xE55EC002 (read
+at 0x0800CE18 with a scratch trap in the chip lab), without it: the visual shows at once. The status section's
+`missing_collision_status` (the engine's `Rules::missing_collision_status`, BN6's by default) says which; the
+replays' full object comparison caught it (navicust-compile/bug-colors, patch-cards-stats/bugstop, cards-02, cards-03,
+cards-08, clamps-hp: both sides with first barriers).
+
+### 15.15 BN5's supports (as built)
+
+The NaviCust supports, Rush, Beat and Tango, are BN6's code in BN5 (docs/engine/chips.md §2.10), so the two share
+them: content/exelib/supports (`controller`, `rush`, `beat`, `tango`, `heal`), each made of a game's look
+(`SupportsLook`, `RushLook`, `BeatLook`, `TangoLook`, `TangoHealLook`). BN6's lib/supports and BN5's
+content/bn5/lib/supports make them; BN5's roles name the controller (`kinds.support`) and the telops' chips
+(`chips.rush`, `beat`, `tango`).
+
+- **Where:** the triggers are BN6's routines at BN5's addresses (Tango 0x0800E3B6, from the idle state at
+  0x080F02C8; Beat 0x0800E418 and Rush 0x0800E498, from a chip's use at 0x080F0452: the engine's, as BN6's), each
+  passing its telop's chip in r7 (0x17B, 0x17A, 0x179, BN6's numbers: chips past the library, written by
+  gen_content.py's `SUPPORT_CHIPS`, their use the record's, the Cannon's, which nothing starts). The controller is
+  effect object #0x74 (0x080E8F50; BN6's #0x79), its spawner 0x080E906A, its phases BN6's (0x080E8FB8 to
+  0x080E903A) and its spawners' table 0x080E9010. Rush, Beat and Tango are actor objects #0x4B to #0x4D
+  (0x080C2214, 0x080C24C8, 0x080C2714; sprites 0c-48, 0c-4b, 0c-4c, named `rush`, `beat`, `tango` by place), the
+  heal attack object #0x9F (0x080DA6AC; BN6's #0xC7; sprite 0c-4d, `tango-heal`). The sounds and the effect rows
+  (0x14, 0x15, 6) are BN6's numbers.
+- **What differs:** BN5's Rush trigger hands the controller no chip (0x0800E498: `movs r4, #0`, where BN6 passes
+  the chip's number shifted into the third and fourth parameters), and the controller's phase 4 (0x080E8FE4)
+  doesn't load its parameters into r4 for the spawner; BN5's bite (0x080C23BE) has no check for the second
+  WhiCapsl (0x17E, which BN5 doesn't have): the opponent's hand always moves on, and without the opponent's navi
+  its branch pops what it pushed and moves no hand (BN6's skips the pop). So BN5's Rush keeps no chip (his look's
+  `spared` is nil, his kind no `eaten` state; the engine sets the controller's `eaten` for every game, which BN5's
+  never hands on). The inits load the sprites without BN6's `sprite_decompress`. The heal raises BN5's barrier type
+  5 (0x080174DA: BN5's barrier rows, lib/barriers) and BN5's barrier visual. BN5's chips Rush cancels: Invisibl
+  (0x085, its record's +0x16 bit 1) alone; BN5's Invis card weapon doesn't ask Rush (0x0800FC3A), where BN6's
+  patch card invisibility does.
+
+**Checked:** the BN5 lab's navicust/rush, beat and tango (a NaviCust part each, side 0 hosting: Rush bites the
+other side's Invisibl, Beat takes its SuprVulc, Tango heals at a quarter and her barrier takes the next Cannons;
+each support once, the second chip going through) and navicust/bug-support, and patch-cards/supports and
+supports-side1 (Tora's Tactics, all three supports from the card, on either side), replay on every frame. The
+earlier navicust/beat and tango recordings never brought their supports: their folders named chips with codes the
+chips don't have (Roll `*`, M-Cannon `*`), which BN5 makes the invalid chip; the scenarios now name legal codes,
+SuprVulc rather than Roll (Roll also wants a light MegaMan), and Tango's navi starts at 80 HP (side 1's M-Cannon
+takes only 60 from side 0's navi in these saves, where side 0's takes 120 from side 1's: not looked into). Not
+reached: a Giga chip for Beat, Rush without the opponent's navi, a failed spawn.
