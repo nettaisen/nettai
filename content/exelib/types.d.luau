@@ -199,7 +199,7 @@ export type MegaManShotLook = {
     shot_sound: Sound,
     plain: ProjectileVariant,
     -- Whether the charged shot waits before the buster comes up, asked on its first tick (none: always, BN6's; BN5's
-    -- in the battle flag 0x40 mode alone, marking the panel in front).
+    -- in the own-gauges mode alone, marking the panel in front).
     waits: ((me: Object) -> boolean)?,
 }
 
@@ -630,7 +630,7 @@ export type CopyDamageSpec = {
 
 -- A game's CopyDmg mark (@exelib/copydmg/mark): its kind's id, sprite and
 -- animation, its hit's sound and types; BN5's reloads its animation at its
--- init and hits its panel each tick it marks in the battle flag 0x40 mode
+-- init and hits its panel each tick it marks in the own-gauges mode
 -- (the hit's spark and types).
 export type CopyDamageMarkLook = {
     id: string,
@@ -640,7 +640,7 @@ export type CopyDamageMarkLook = {
     is: CollisionType,
     hits: CollisionType,
     reload_anim: boolean,
-    per_player_hit: { spark: Spark, is: CollisionType, hits: CollisionType }?,
+    own_gauges_hit: { spark: Spark, is: CollisionType, hits: CollisionType }?,
 }
 
 -- A CopyDmg mark made for a game (@exelib/copydmg/mark).

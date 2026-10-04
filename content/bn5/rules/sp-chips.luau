@@ -5,7 +5,7 @@
 -- hundredths; 0x0800E93C, BN6's) that pick the damage. Slot 0 is Roll's, whose SP chip counts holy panels instead
 -- (0x0800E8B4); Django's SP chip counts turns (0x0800E98A).
 
-return define.rules("sp-chips", {
+return {
     slots = {
         "sp/roll",
         "sp/protoman",
@@ -39,4 +39,4 @@ return define.rules("sp-chips", {
         0x00002600,
         0x00002800,
     },
-})
+}

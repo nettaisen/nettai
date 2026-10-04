@@ -19,7 +19,7 @@
 -- The steps a metal slide tries: forward, back, up, down.
 local F, B, U, D = { dx = 1, dy = 0 }, { dx = -1, dy = 0 }, { dx = 0, dy = -1 }, { dx = 0, dy = 1 }
 
-return define.rules("panels", {
+return {
     types = {
         missing = { flags = 0x00018000 },
         broken = { flags = 0x00014000 },
@@ -103,4 +103,4 @@ return define.rules("panels", {
     -- A reservation doesn't mark its holder (0x0801865C sets the panel's alone), and a destroyed holder's stay
     -- (BN5's destroys, 0x080138B6 and 0x080138F2, release none).
     reservations = "unmarked",
-})
+}

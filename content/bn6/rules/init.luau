@@ -38,4 +38,22 @@ return define.ruleset {
         -- The dark chips: their bug frag, substitute and HP bug.
         dark_chips,
     },
+    -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
+    banners = require("./banners"),
+    berserk = require("./berserk"),
+    buster = require("./buster"),
+    chip_use = require("./chip-use"),
+    cross_special = require("./cross-special"),
+    custom_screen = require("./custom-screen"),
+    elements = require("./elements"),
+    flow = require("./flow"),
+    lockon = require("./lockon").rules,
+    math = require("./math"),
+    navicust = require("./navicust/section"),
+    panels = require("./panels"),
+    pools = require("./pools"),
+    reactions = require("./reactions"),
+    roles = require("./roles"),
+    sp_chips = require("./sp-chips"),
+    status = require("./status").rules,
 }

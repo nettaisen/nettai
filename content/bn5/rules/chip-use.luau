@@ -4,7 +4,7 @@
 -- the same frame, as the instant chips' action does (0x080EC6F6), so the user stands during the dimming;
 -- AntiNavi's sparkle shows 16 pixels up from the navi chip's panel's center (0x080093A2).
 
-return define.rules("chip-use", {
+return {
     leave_on_use = true,
     anti_navi_sparkle = { dy = 0, z = 16 },
-})
+}

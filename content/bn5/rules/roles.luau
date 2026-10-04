@@ -28,8 +28,7 @@ local sparks = require("../lib/sparks")
 local statuses = require("./status")
 local swords = require("../lib/swords")
 
-return define.roles {
-    id = "roles",
+return {
     actions = {
         -- The charged shot a navi's request starts from idle without its weapon's setup (BN5's 0x1E: the shared
         -- action, @exelib/megaman/charged_shot, navis/megaman/weapons/charged-shot).

@@ -310,7 +310,7 @@ pub struct PlayerView<'a> {
     pub round: &'a RoundMemory,
     /// The folder's Regular chip hasn't been used yet.
     pub regular_pending: bool,
-    /// Battle flag 0x40 (per-player gauges; never set in netbattles).
+    /// Battle flag 0x40 (the own-gauges mode; never in a netbattle without chip gates).
     pub own_gauges: bool,
     /// Battle effects 0x200000 (random battles).
     pub random_battle: bool,

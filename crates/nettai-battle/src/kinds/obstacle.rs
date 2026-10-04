@@ -1183,7 +1183,7 @@ pub fn clear_wind(b: &mut Battle, o: ObjectRef) {
 // ---- Leaving the field -----------------------------------------------------
 
 /// `sub_802EF5C`: an obstacle leaving the field hands on each side's
-/// tracked target (`sub_802EF74`) in the battle flag 0x40 mode, which
+/// tracked target (`sub_802EF74`) in the own-gauges mode, which
 /// netbattles don't use.
 pub fn release_tracking(b: &mut Battle, r: ObjectRef) {
     if b.round.flags & battle_flags::OWN_GAUGES == 0 {

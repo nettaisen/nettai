@@ -1150,7 +1150,7 @@ fn enable_turning(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_802DFC8`: reset the side's extra state (set up only in the battle
-/// flag 0x40 mode).
+/// the own-gauges mode).
 fn reset_side_state(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get(r);
     let (side, panel_x) = (o.alliance as usize, o.panel.x);

@@ -395,7 +395,7 @@ local status = {
     -- height): MegaMan's (0x080F04CE) steps GyroSoul's overlay (rules/souls). Its hit intake (0x080178EC) takes a
     -- hit's NaviCust bug (0x0801103E) before the HP bug drains (0x0800DFEC), and a drain bug's argument goes by its
     -- flags (bit 4 adds, bit 5 subtracts, else it raises the level).
-    rules = define.rules("status", {
+    rules = {
         hp_bug_periods = { 0, 40, 35, 30, 25, 20, 15, 10 },
         form_tick = false,
         -- The mercy flash hides the navi while its timer's bit 1 is clear (0x080137B6; BN6's while it is set).
@@ -415,7 +415,7 @@ local status = {
         emotions = "bn5",
         -- The weakness request (a dark chip used in a soul, 0x08010070) breaks any form to the base form (0x080122C8).
         form_break = "bn5",
-    }),
+    },
 }
 
 return status

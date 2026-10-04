@@ -4,7 +4,7 @@
 -- (`sub_80EC45E`). The navi raises the buster and fires the projectile
 -- (objects/projectile) at a random height from the panel in front, with the
 -- muzzle flash; a move may cut a shot short from its fourth tick. In Beast
--- Over (or with a Cross special in the per-player gauge mode) eight more
+-- Over (or with a Cross special in the chip gate battle) eight more
 -- shots follow; holding B keeps it firing. See docs/engine/chips.md §4.6.
 
 local attachment = require("../../../../objects/attachment/attachment")

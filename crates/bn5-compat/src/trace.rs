@@ -449,7 +449,7 @@ impl Round {
     }
 
     /// What the round needs that `content` doesn't define: its chips
-    /// (`chip bn5:cannon (0x001)`), BN5's navis, forms and stage (none of
+    /// (`chip cannon (0x001)`), BN5's navis, forms and stage (none of
     /// which content/bn5 defines yet).
     pub fn needs(&self, content: &Content, compat: &Compat) -> Result<Vec<String>, String> {
         let d = decode_setup(&self.setup)?;

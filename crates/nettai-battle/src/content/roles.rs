@@ -1,6 +1,6 @@
 //! What the ruleset needs from content by role (docs/design/
-//! content-model-v2.md §7.4): `define.roles { ... }` in `rules/roles.luau`,
-//! once. The ruleset starts and recognizes the actions and kinds it needs
+//! content-model-v2.md §7.4): the stock ruleset's `roles`, a plain table
+//! (`rules/roles.luau`), once. The ruleset starts and recognizes the actions and kinds it needs
 //! through these, never by the original's numbers or by content's keys.
 //!
 //! A role names a definition. A role content hasn't filled is an error
@@ -585,7 +585,7 @@ impl Roles {
     /// naming it.
     pub fn action(&self, role: ActionRole) -> ActionHandle {
         self.try_action(role)
-            .unwrap_or_else(|| panic!("the role actions.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role actions.{} is not filled (the stock ruleset's roles, rules/roles.luau)", role.name()))
     }
 
     /// The chip of `role`, if content filled it.
@@ -597,7 +597,7 @@ impl Roles {
     /// it.
     pub fn chip(&self, role: ChipRole) -> ChipHandle {
         self.try_chip(role)
-            .unwrap_or_else(|| panic!("the role chips.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role chips.{} is not filled (the stock ruleset's roles, rules/roles.luau)", role.name()))
     }
 
     /// Whether `h` is the chip of `role`.
@@ -614,7 +614,7 @@ impl Roles {
     /// naming it.
     pub fn hook(&self, role: HookRole) -> FnId {
         self.try_hook(role)
-            .unwrap_or_else(|| panic!("the role hooks.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role hooks.{} is not filled (the stock ruleset's roles, rules/roles.luau)", role.name()))
     }
 
     /// The hook of `role`, if content filled it: an optional role's
@@ -634,7 +634,7 @@ impl Roles {
     /// it.
     pub fn status(&self, role: StatusRole) -> StatusHandle {
         self.try_status(role)
-            .unwrap_or_else(|| panic!("the role statuses.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role statuses.{} is not filled (the stock ruleset's roles, rules/roles.luau)", role.name()))
     }
 
     /// The effect of `role`; a role content hasn't filled is a panic naming
@@ -643,28 +643,28 @@ impl Roles {
         *self
             .effects
             .get(&role)
-            .unwrap_or_else(|| panic!("the role effects.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role effects.{} is not filled (the stock ruleset's roles, rules/roles.luau)", role.name()))
     }
 
     pub fn spark(&self, role: SparkRole) -> SparkHandle {
         *self
             .sparks
             .get(&role)
-            .unwrap_or_else(|| panic!("the role sparks.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role sparks.{} is not filled (the stock ruleset's roles, rules/roles.luau)", role.name()))
     }
 
     pub fn region(&self, role: RegionRole) -> RegionHandle {
         *self
             .regions
             .get(&role)
-            .unwrap_or_else(|| panic!("the role regions.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role regions.{} is not filled (the stock ruleset's roles, rules/roles.luau)", role.name()))
     }
 
     pub fn collision(&self, role: CollisionRole) -> CollisionHandle {
         *self
             .collisions
             .get(&role)
-            .unwrap_or_else(|| panic!("the role collision.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role collision.{} is not filled (the stock ruleset's roles, rules/roles.luau)", role.name()))
     }
 
     /// The sound, the music, the sprite and the banner of `role`
@@ -673,28 +673,28 @@ impl Roles {
         *self
             .sounds
             .get(&role)
-            .unwrap_or_else(|| panic!("the role sounds.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role sounds.{} is not filled (the stock ruleset's roles, rules/roles.luau)", role.name()))
     }
 
     pub fn music(&self, role: MusicRole) -> SoundId {
         *self
             .music
             .get(&role)
-            .unwrap_or_else(|| panic!("the role music.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role music.{} is not filled (the stock ruleset's roles, rules/roles.luau)", role.name()))
     }
 
     pub fn sprite(&self, role: SpriteRole) -> SpriteId {
         *self
             .sprites
             .get(&role)
-            .unwrap_or_else(|| panic!("the role sprites.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role sprites.{} is not filled (the stock ruleset's roles, rules/roles.luau)", role.name()))
     }
 
     pub fn banner(&self, role: BannerRole) -> BannerId {
         *self
             .banners
             .get(&role)
-            .unwrap_or_else(|| panic!("the role banners.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role banners.{} is not filled (the stock ruleset's roles, rules/roles.luau)", role.name()))
     }
 
     /// The kind of `role`; a role content hasn't filled is a panic naming
@@ -703,6 +703,6 @@ impl Roles {
         *self
             .kinds
             .get(&role)
-            .unwrap_or_else(|| panic!("the role kinds.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role kinds.{} is not filled (the stock ruleset's roles, rules/roles.luau)", role.name()))
     }
 }

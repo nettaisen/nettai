@@ -40,6 +40,19 @@ pub fn module_name(path: &str) -> String {
     }
 }
 
+/// The module a folder's name stands for, when no module has the name
+/// itself: its `init` (`bn6:rules` is `bn6:rules/init`, content/bn6/rules/
+/// init.luau), as a require and a manifest name it.
+pub fn init_of(name: &str) -> String {
+    format!("{name}/init")
+}
+
+/// How a manifest's list and a require name a module: a folder's `init`
+/// by the folder (`rules` for `rules/init`), any other by its path.
+pub fn listed_as(path: &str) -> &str {
+    path.strip_suffix("/init").unwrap_or(path)
+}
+
 /// The path in content/ of module `name` ([`module_name`]'s inverse).
 pub fn module_path(name: &str) -> String {
     match name.split_once(SEPARATOR) {

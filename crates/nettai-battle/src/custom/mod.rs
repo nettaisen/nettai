@@ -226,7 +226,7 @@ pub struct Context<'a> {
     pub emotion: Emotion,
     /// The screen's number in the round (1 = first).
     pub turn: u8,
-    /// Battle flag 0x40 (per-player gauges; never set in netbattles).
+    /// Battle flag 0x40 (the own-gauges mode; never in a netbattle without chip gates).
     pub own_gauges: bool,
     /// Battle effects 0x200000 (random battles).
     pub random_battle: bool,

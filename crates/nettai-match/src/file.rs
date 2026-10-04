@@ -711,7 +711,7 @@ mod tests {
         };
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
         has(bad("navi = \"megaman\"", "navi = \"nobody\""), "left: no navi \"nobody\" in bn6");
-        has(bad("navi = \"megaman\"", "navi = \"bn6:megaman\""), "left: no navi \"bn6:megaman\" in bn6");
+        has(bad("navi = \"megaman\"", "navi = \"bn6:megaman\""), "left: no navi \"bn6:megaman\" in bn6"); // (written in full)
         has(bad("hp = 1000", "hp = 100000"), "stats: hp takes a whole number");
         has(bad("hp = 1000", "hp = 1000\natack = 1"), "no stat \"atack\"");
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
