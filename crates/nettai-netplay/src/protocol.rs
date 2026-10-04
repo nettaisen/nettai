@@ -57,7 +57,9 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// 8: no setup carries the emotion window's glitch (an offer's side has no
 /// such key: the rules make it from the NaviCust and the patch cards), and
 /// BN6's drawn side is MegaMan at his fresh stats.
-pub const VERSION: u16 = 8;
+/// 9: a game has one ruleset: an offer names none (peers of one game play
+/// by its rules), and a round's setup names none.
+pub const VERSION: u16 = 9;
 
 /// The rollback horizon, in elements (ticks, besides the rare payload or
 /// marker): the widest gap a player's stream may have at the other peer
