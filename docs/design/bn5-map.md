@@ -2040,6 +2040,14 @@ rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   no supports); without, the NaviCust's flag 0x10C1, which its bugs' routine sets when a bug applies (0x08140040).
   Each console reads its own save's. The navicust system's `glitch`, and the patch-cards system with cards; a
   recording's setup carries both consoles' (`emotion_window_glitches`, oracle-trace's `bn5_emotion_window_glitch`).
+  No setup gives the engine the flag: the rules make it, from a NaviCust's compile or, for a side without one (a
+  recording's, whose stats are as the compile left them), from the NaviCust bugs in the stats. Of the 308 recorded
+  sides with the flag, the 76 with it set have such a stat but two, `navicust/hubbatc` side 0 and
+  `navicust-compile/hubbatc` side 1: HubBatc's bug halves the HP programs and writes no bug stat, and a recording
+  carries no NaviCust to compile, so MegaMan's window doesn't flicker there. `navicust/hubbatc`, whose console is the
+  recording one, is a known difference (its RNG1 differs from the first flicker on: bn5-compat's `GLITCH_UNSEEN`,
+  listed in the replay report) until a recording carries its save's NaviCust; `navicust-compile/hubbatc`'s is the
+  other console, whose RNG1 a recording doesn't hold, and it matches.
 - **The weapons** (navis/megaman/weapons): the routines that load a chip (0x0800FE78: chips.luau, MettGuard's and
   CrsShld's B+Back waiting 40 ticks, Ccann's TankCan1 not cracking), the card Shield (0x62, guards.luau), TriBustr
   (0x65, the buster's routine), ChrgS (0x63, the charged shot without the draw, the program always: its 0, the
