@@ -24,8 +24,8 @@ export type State = {
     burst: number,
 }
 
-local SPRITE = asset.sprite("sprite-10-41")
-local SOUND_RISE = asset.sound("sound-123")
+local SPRITE = asset.sprite("side-bubble")
+local SOUND_RISE = asset.sound("bubble-rise")
 local SOUND_POP = asset.sound("bubble-pop")
 local SOUND_BURST = asset.sound("junk-shot")
 local HIT_MOD = 3

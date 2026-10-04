@@ -73,7 +73,7 @@ local function row(r: {
     }
 end
 
-local BUBBLE = asset.sprite("sprite-10-41")
+local BUBBLE = asset.sprite("side-bubble")
 
 -- The rows at 0x080C5D0C.
 local ROWS: { [number]: Row } = {
