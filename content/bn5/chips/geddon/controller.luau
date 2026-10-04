@@ -9,10 +9,10 @@ local quake = require("@exelib/geddon/quake")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 
 local quakes = quake.make {
-    id = "bn5:geddon/quake",
-    puff = define.effect { sprite = asset.sprite("bn5:small-puff"), anim = 1, palette = 0 },
+    id = "geddon/quake",
+    puff = define.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 },
     bubble = rising_bubble.kind,
-    sounds = { puff = asset.sound("bn5:panel-crack"), bubble = asset.sound("bn5:panel-poison") },
+    sounds = { puff = asset.sound("panel-crack"), bubble = asset.sound("panel-poison") },
 }
 
-return common.make { id = "bn5:geddon/controller", name = "Geddon", quake = quakes.spawn, hold_panel = false }
+return common.make { id = "geddon/controller", name = "Geddon", quake = quakes.spawn, hold_panel = false }

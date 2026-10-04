@@ -22,7 +22,7 @@ bullet.make_kind = common.make_kind
 -- and what both reach.
 local BN6: BulletLook = { probe = collision.probe, attack = collision.attack, target = collision.hits_navis }
 
-bullet.kind = common.make_kind("bn6:bullet", BN6)
+bullet.kind = common.make_kind("bullet", BN6)
 
 -- `sub_80C6ADA`: a bullet of `variant` from `owner` on panel (x, y) at
 -- height `z` (16.16), with `element` and the damage word. Of `kind`, BN6's
@@ -34,15 +34,15 @@ end
 -- The variants (the original's rows: region, hit modifier, effect,
 -- status, sound; rows 0xC, 0xE, 0x10..0x12 show their effect once, at the
 -- bullet).
-local SPLASH = define.effect { sprite = asset.sprite("bn6:spout-splash"), anim = 0, palette = 0 }
-local HIT = define.effect { sprite = asset.sprite("bn6:vulcan-hit"), anim = 0, palette = 0 }
-local HIT_BRIGHT = define.effect { sprite = asset.sprite("bn6:vulcan-hit"), anim = 0, palette = 1 }
-local GLINT = define.effect { sprite = asset.sprite("bn6:form-change"), anim = 1, palette = 0 }
-local SPARKLE = define.effect { sprite = asset.sprite("bn6:colonel-effect"), anim = 3, palette = 0 }
-local SPREAD = asset.sound("bn6:h-burst")
-local SPLASHING = asset.sound("bn6:spout-ball")
+local SPLASH = define.effect { sprite = asset.sprite("spout-splash"), anim = 0, palette = 0 }
+local HIT = define.effect { sprite = asset.sprite("vulcan-hit"), anim = 0, palette = 0 }
+local HIT_BRIGHT = define.effect { sprite = asset.sprite("vulcan-hit"), anim = 0, palette = 1 }
+local GLINT = define.effect { sprite = asset.sprite("form-change"), anim = 1, palette = 0 }
+local SPARKLE = define.effect { sprite = asset.sprite("colonel-effect"), anim = 3, palette = 0 }
+local SPREAD = asset.sound("h-burst")
+local SPLASHING = asset.sound("spout-ball")
 -- (The fire rows' sound is the one the target squares make as they move.)
-local FIRE = asset.sound("bn6:target-move")
+local FIRE = asset.sound("target-move")
 
 local function v(region: Region, hit_mod: number, effect: Effect, sound: Sound?, more: { single: boolean?, status: Status? }?): BulletVariant
     local m: { single: boolean?, status: Status? } = more or {}

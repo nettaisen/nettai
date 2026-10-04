@@ -832,7 +832,7 @@ Steps of `sub_80172F0`, in order ("sim" = affects gameplay state):
 | 16 | `sub_80E0F02` with r7 = AIData+0x58 | spawns the player's **T4#8** helper (inserted right after the player, runs this tick) and stores it at AIData+0x58 — see §A.5 | slot/list |
 | 17 | `sub_800F378` | per-form hook `off_80EAA04[AIIndex]` = `nullsub_105` for 0 | no |
 | 18 | if stats[0x2C] == 0: `sub_8010DD0` | `off_8010E0C[ActorType][AIIndex]` for NameID's record = `nullsub_42` for MegaMan | no |
-| 19 | `sub_802DFC8` | zero the side's 0x1D0-byte battle struct (0x02036120+0x1D0*a); if battle flag-0x40 mode (`sub_800A8F8`): [0]=1, [0x0B]=0xFF, [0x10]=1, [0x11]=PanelX, [0x0E]=3, then `sub_802E07C` ([3]=0, [0x2A]=0, [0x50]=0, [0x18..0x23]=0xFF.., [2]=0xB4) | yes |
+| 19 | `sub_802DFC8` | zero the side's 0x1D0-byte battle struct (0x02036120+0x1D0*a); if the chip gate battle (`sub_800A8F8`): [0]=1, [0x0B]=0xFF, [0x10]=1, [0x11]=PanelX, [0x0E]=3, then `sub_802E07C` ([3]=0, [0x2A]=0, [0x50]=0, [0x18..0x23]=0xFF.., [2]=0xB4) | yes |
 | 20 | `sub_8013FF8` | if stats[0x3D] = n != 0 and HP != 1: subtract n if HP >= n, else HP-1 (`object_subtractHP`) | yes |
 | 21 | CurStateActionPhaseAndPhaseInitialized = 4 | CurState = 4, **CurAction = 0**, CurPhase = 0, PhaseInitialized = 0 | |
 
@@ -1472,7 +1472,7 @@ Terms used below:
 
 Let `f0` = flags44 as read at the entry of `sub_8012FC8`. The decode runs in this order:
 
-1. **SELECT special** (only if `TestBattleFlag_0x40`, via `sub_800A8F8`): if SELECT is pressed and `u16[sub_802E070(alliance)+0x28] ≥ 0x1500`, set 0x2000000 and **return**. Otherwise the local side plays SOUND_CANT_JACK_IN. UNCERTAIN: this looks like a form/Beast feature and should not occur in base PvP.
+1. **SELECT special** (only in the chip gate battle, battle flag 0x40: `TestBattleFlag_0x40`, via `sub_800A8F8`): if SELECT is pressed and `u16[sub_802E070(alliance)+0x28] ≥ 0x1500`, set 0x2000000 and **return**: the request opens the chip gate's Program Advance window, paid from the side's own gauge. Otherwise the local side plays SOUND_CANT_JACK_IN. A netbattle without chip gates never has the flag.
 2. **L/R** (skipped in battle mode 1).
    - If flags48 & 0x400: an L/R press sets 0x1000 when DirectionFlip ≠ 0 (and clears 0x2000), otherwise sets 0x2000 (and clears 0x1000).
    - Else if `battle_getFlags() & 2` (custom gauge full) and L or R is pressed: `battle_setFlags(0x10)` (open custom screen) and **return**. The rest of the decode is skipped that frame.
@@ -1697,7 +1697,7 @@ Minimum buster cycle: N+7 frames.
 - The ball, T3 0xB0 (`sub_80DB6A4`, Param1 0: frozen while dimmed): 18 pixels ahead of its panel's center, sprite (8, 0xA) anim 0x19. It rolls 6 pixels a tick toward the far column (Timer = the distance to column 6/1 over 6 pixels); on its first tick, and whenever it reaches or passes a panel's center, it stops if the panel's flags meet `byte_80DB888` (the other side's body, objects); then anim 0x1A, 30 ticks, and on the 5th a hit region (region 1, hit effect 0xA, target 5, self 0x15, modifier 3) and, on a solid panel, sound 0xC0 and `object_crackPanel`. Its Z at spawn is the caller's r3 (the low half of a RAM address), of which the init keeps the fraction; the trace comparison ignores it.
 - Routine 0x2A (`sub_8011F84`): lockout 0x28, action 0x58 (`sub_80EFCB4`): anim 0x17 (0x19 in form 0x16), USING_ACTION and MOVING, a vortex (T4#0 effect 0x63, flip = the side) 7 pixels behind and 4 lower with flags 0x14 cleared, sound 0xAD; on the 10th tick `sub_80EFD74` pulls in the obstacles (field-objects.md §4.4); 11 ticks later MOVING off and `object_exitAttackState`. Every tick the vortex's Timer is set to 2, so it lasts two ticks past the action.
 
-**Action 0x1C outside a pause (`sub_80EC39C`)** runs a chip's routine once (`off_80EC3F0[subtype]`, with the attack variables in registers: the user's panel and Z, the element, the parameters, and the damage word plus the bonus's low byte) and idles, 8 ticks later for subtype 0x14 (the ruleset's `actions/instant.rs`; the routines are the content pack's `instant_chip` scripts, chips.md §1.6). FullCust (0xAE, subtype 5, `sub_800AF34`) sets the custom gauge to 0x4000 (`sub_801DFA2`; in the flag-0x40 mode the side's gauge gets 0x1555 instead); the gauge task then raises the full flag.
+**Action 0x1C outside a pause (`sub_80EC39C`)** runs a chip's routine once (`off_80EC3F0[subtype]`, with the attack variables in registers: the user's panel and Z, the element, the parameters, and the damage word plus the bonus's low byte) and idles, 8 ticks later for subtype 0x14 (the ruleset's `actions/instant.rs`; the routines are the content pack's `instant_chip` scripts, chips.md §1.6). FullCust (0xAE, subtype 5, `sub_800AF34`) sets the custom gauge to 0x4000 (`sub_801DFA2`; in the chip gate battle the side's gauge gets 0x1555 instead); the gauge task then raises the full flag.
 
 #### B7. Charged shot (AI.Unk_07 = 1)
 
@@ -2369,7 +2369,7 @@ Player:
 7. Alliance-1 movement direction (Right = world -x) and all blocked-move, confusion, ice/road-slide, knockback/drag and status-action (paralysis/freeze/bubble) behavior are code-derived only (§M6, §H4.3, §H5).
 8. Occupancy bits 0x80000/0x800000/0x1000000/0x2000000 in panel flags: which object kinds set them is for the collision spec (§M6.4).
 9. HUD calls (`sub_801DA48`, `sub_801DACC`, `sub_801DC7C`, `sub_801EB18`, `sub_801E270`) are assumed to have no simulation effect; not fully audited.
-10. Who sets request flags 0x20, 0x600/0x8600 (reactive defensive chips), state flag 0x200 and the SELECT special (flags44 0x2000000) - form/Beast/chip features, unused in base PvP (§B5).
+10. Who sets request flags 0x20, 0x600/0x8600 (reactive defensive chips) and state flag 0x200 - form/Beast/chip features, unused in base PvP (§B5). (The SELECT special, flags44 0x2000000, is the chip gate battle's Program Advance window: B3.)
 11. HitModifier bit semantics (1 flinch, 2 mercy, 0x04-0x20 push, 0x40 drag, 0x80 vertical) are inferred from the player-side consumers; the attacker side belongs to the chip/collision specs. MegaMan's charged shot has HitModifier 0 (no flinch).
 12. Not analyzed: `sub_8011020` (per-NameID death hook), `sub_802EF5C` (deletion link bookkeeping), `sub_801BB78` (reservation cleanup scan), `sub_800A104`. The pause-time handler `sub_8017BC0` is in §M4.2; of its actions only Beast Out is analyzed (§12.9).
 13. Dimming shake: X/Z may be left perturbed if dimmed ends while the 30-tick shake counter is still running (§H4.4).

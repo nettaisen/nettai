@@ -21,8 +21,8 @@ export type State = {
     cracks: boolean,
 }
 
-local SPRITE = asset.sprite("bn6:countdown-bomb")
-local SOUND_SPOUT_BALL = asset.sound("bn6:spout-ball")
+local SPRITE = asset.sprite("countdown-bomb")
+local SOUND_SPOUT_BALL = asset.sound("spout-ball")
 
 -- Where it starts, ahead of its panel and above it; its speed forward
 -- (16.16).
@@ -109,7 +109,7 @@ local function tick(me: Object)
 end
 
 ball.kind = define.kind {
-    id = "bn6:spoutman/ball",
+    id = "spoutman/ball",
     pool = "attack",
     state = { while_dimmed = "bool", cracks = "bool" },
     -- `sub_80C853C`.

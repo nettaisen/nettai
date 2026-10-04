@@ -15,7 +15,7 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
     // A kind under objects/ that only one chip folder uses.
     c.scripts.modules.insert(
         module("objects/held/held"),
-        "return { kind = define.kind { id = 'test:held', pool = 'effect', update = function(me) end } }".into(),
+        "return { kind = define.kind { id = 'held', pool = 'effect', update = function(me) end } }".into(),
     );
     c.scripts.modules.insert(
         module("chips/holder/chip"),
@@ -49,7 +49,7 @@ fn a_collision_type_defined_twice_is_an_error() {
         let row_offset = if key == "other" { 0x7F8 } else { 0x7F0 };
         c.scripts.modules.insert(
             module(path),
-            format!("return define.collision {{ id = 'test:{key}', side0 = 0x80, side1 = 0x80, row_offset = {row_offset} }}"),
+            format!("return define.collision {{ id = '{key}', side0 = 0x80, side1 = 0x80, row_offset = {row_offset} }}"),
         );
     }
     testing::add_index(&mut c.scripts, testing::ROOT);
@@ -57,11 +57,11 @@ fn a_collision_type_defined_twice_is_an_error() {
     // (The test content's own types share rows with BN6's, whose module
     // it has too: only these are looked at.)
     let twins: Vec<_> = nettai_content::lint::duplicate_collision_types(&c).into_iter().filter(|(row, _)| *row >= 0xFE).collect();
-    assert_eq!(twins, [(0xFE, vec![("test:one".to_string(), "test:lib/one".to_string()), ("test:two".to_string(), "test:lib/two".to_string())])]);
+    assert_eq!(twins, [(0xFE, vec![("one".to_string(), "test:lib/one".to_string()), ("two".to_string(), "test:lib/two".to_string())])]);
     let mut r = Report::default();
     nettai_content::lint::definitions(&c, &mut r);
     let errors: Vec<&str> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| i.message.as_str()).collect();
-    assert!(errors.iter().any(|e| e.contains("collision type test:one is row 0xfe") && e.contains("test:two (test:lib/two.luau)")), "{errors:?}");
+    assert!(errors.iter().any(|e| e.contains("collision type one is row 0xfe") && e.contains("two (test:lib/two.luau)")), "{errors:?}");
 }
 
 /// The repository's content directory.
@@ -120,7 +120,7 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
     let errors: Vec<String> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| format!("{}: {}", i.file, i.message)).collect();
     assert!(errors.is_empty(), "{}", errors.join("\n"));
     // The own strings' shape is in the records: MagPanel's one line.
-    let magpanl = c.defs.chip_by_key("bn6:magpanl").expect("bn6:magpanl");
+    let magpanl = c.defs.chip_by_key("magpanl").expect("magpanl");
     assert_eq!(c.chip(magpanl).description_lines, 1);
     // Other text of the same shape: the same content.
     let mut renamed = base.strings.clone();
@@ -130,12 +130,13 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
     assert_eq!(define(renamed).hash(), c.hash());
     // Another shape: another content.
     let mut reshaped = base.strings.clone();
-    reshaped.chips.get_mut("bn6:magpanl").unwrap().description = Some("one\ntwo".into());
+    reshaped.chips.get_mut("magpanl").unwrap().description = Some("one\ntwo".into());
     assert_ne!(define(reshaped).hash(), c.hash());
 }
 
-/// docs/design/content-model-v2.md §4.0: content is one game, every id in
-/// full: BN5's content has `bn5:cannon` and no `bn6:cannon`. BN5's chips
+/// docs/design/content-model-v2.md §4.0: content is one game, its ids
+/// local: BN5's content has `cannon`, BN5's own, and a name written with a
+/// game (`bn6:cannon`, `bn5:cannon`) names nothing. BN5's chips
 /// that have no use yet (the port writes them) are its manifest's
 /// `unported`, which don't load. Two games are two contents.
 #[test]
@@ -144,16 +145,16 @@ fn a_game_loads_alone_under_its_names() {
     c.define().unwrap_or_else(|e| panic!("{e}"));
     let manifest = c.scripts.manifest("bn5").expect("BN5's manifest").clone();
     for path in &manifest.definitions.unported {
-        let key = format!("bn5:{}", path.trim_start_matches("chips/").trim_end_matches("/chip"));
+        let key = format!("{}", path.trim_start_matches("chips/").trim_end_matches("/chip"));
         assert!(c.defs.chip_by_key(&key).is_none(), "{key} is unported");
     }
     let d = &c.defs;
     assert_eq!((c.game(), d.game.as_str()), ("bn5", "bn5"));
-    assert!(d.chip_by_key("bn5:cannon").is_some());
-    assert_eq!(d.chip_by_key("bn6:cannon"), None, "BN6's chips are another content's");
-    assert_eq!(d.chip_by_key("cannon"), None, "an id is written in full");
-    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("bn5:stock"));
-    assert_eq!(c.strings.chip("bn5:cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));
+    assert!(d.chip_by_key("cannon").is_some(), "an id is local to its game");
+    assert_eq!(d.chip_by_key("bn6:cannon"), None, "BN6's chips are another content's"); // (written in full)
+    assert_eq!(d.chip_by_key("bn5:cannon"), None, "an id is written without its game"); // (written in full)
+    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("stock"));
+    assert_eq!(c.strings.chip("cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));
     let mut both = read(&["bn6", "bn5"]);
     let e = both.define().unwrap_err().message;
     assert!(e.contains("content holds one game"), "{e}");
@@ -185,7 +186,7 @@ fn bn5s_rules_are_its_games() {
     let mut bn6 = read(&["bn6"]);
     bn6.define().unwrap_or_else(|e| panic!("{e}"));
     let d = &c.defs;
-    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("bn5:stock"), "BN5's stock ruleset");
+    assert_eq!(d.stock_ruleset(), d.ruleset_by_key("stock"), "BN5's stock ruleset");
     let (six, five) = (bn6.rules(), c.rules());
     assert_eq!(five.pools.slots(), [16, 32, 32]);
     assert_eq!(six.pools.slots(), [32, 32, 32]);
@@ -196,7 +197,7 @@ fn bn5s_rules_are_its_games() {
     assert_eq!(five.hp_bug_periods, six.hp_bug_periods);
     // The ported chips: BN5's own, apart from BN6's of the same key.
     for key in ["cannon", "minibomb", "energbom", "panlgrab", "antiswrd", "holypanl", "fullcust"] {
-        assert!(d.chip_by_key(&format!("bn5:{key}")).is_some(), "bn5:{key}");
+        assert!(d.chip_by_key(&format!("{key}")).is_some(), "{key}");
     }
     // docs/design/bn5-map.md §15.3 items 10 and 11: BN5's chips leave
     // their action on the use frame, and AntiNavi's sparkle sits on the
@@ -212,5 +213,5 @@ fn bn5s_rules_are_its_games() {
                 return slash.chip { hits = collision.probe }";
     c.scripts.modules.insert("bn5:chips/probing/chip".into(), text.into());
     let found = nettai_content::lint::self_bit_targets(&c);
-    assert_eq!(found, vec![("bn5:probe".to_string(), "bn5:chips/probing/chip".to_string(), "exelib".to_string())]);
+    assert_eq!(found, vec![("probe".to_string(), "bn5:chips/probing/chip".to_string(), "exelib".to_string())]);
 }

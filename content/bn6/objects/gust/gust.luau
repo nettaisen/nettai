@@ -13,8 +13,8 @@ local common = require("@exelib/gust/gust")
 
 local gust = {}
 
-gust.kind = common.make_kind("bn6:gust", {
-    sprite = asset.sprite("bn6:gust"),
+gust.kind = common.make_kind("gust", {
+    sprite = asset.sprite("gust"),
     is = collision.pull,
     hits = collision.hits_navis,
     -- A hit that stops it (the collision's hit flags).

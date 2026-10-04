@@ -6,7 +6,7 @@
 local navi = require("../colonel/navi")
 
 return define.chip {
-    id = "bn5:crossdiv",
+    id = "crossdiv",
     codes = { "C" },
     element = "null",
     family = "null",

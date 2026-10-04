@@ -6,7 +6,7 @@ local charge = require("./charge")
 local variants = require("../../objects/projectile/variants")
 
 return define.patch_card {
-    id = "bn6:dark-megaman",
+    id = "dark-megaman",
     mb = 80,
     effects = {
         cards.attack(3),

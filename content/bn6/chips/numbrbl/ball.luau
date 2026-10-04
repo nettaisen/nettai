@@ -11,12 +11,12 @@ local common = require("@exelib/numbrbl/ball")
 local effects = require("../../lib/effects")
 
 return common.make {
-    id = "bn6:numbrbl/ball",
-    sprite = asset.sprite("bn6:number-ball"),
+    id = "numbrbl/ball",
+    sprite = asset.sprite("number-ball"),
     -- The ticks it sits before its wait (the first sets the count).
     sit_ticks = 0xE,
-    set_sound = asset.sound("bn6:place"),
-    hit_sound = asset.sound("bn6:damage"),
+    set_sound = asset.sound("place"),
+    hit_sound = asset.sound("damage"),
     explosion = effects.explosion,
     -- An attack hitting navis.
     is = collision.attack,

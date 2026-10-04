@@ -45,14 +45,14 @@ export type State = {
 -- What Colonel is taken for: his actor record, and what he wears (his
 -- cape, `sub_8010FAC`).
 local COLONEL_IDENTITY = define.identity {
-    id = "bn6:colonel",
+    id = "colonel",
     class = "navi",
     version = 0,
     ai_index = 0x12,
     ice = "large",
     parts = {
         body = {
-            sprite = asset.sprite("bn6:colonel"),
+            sprite = asset.sprite("colonel"),
             anims = 192,
             behind = { { 0x0D, 0x0F }, { 0x35, 0x37 }, { 0x42, 0x43 }, { 0x5B, 0x6F }, { 0x84, 0xAB }, { 0xBF, 0xBF } },
             anim_offset = 0x0D,
@@ -64,26 +64,26 @@ local COLONEL_IDENTITY = define.identity {
 -- wears (his actor record's: ProtoMan's wears nothing), and where beside
 -- his user he comes in, in pixels (forward, down).
 type Look = { sprite: SpriteAsset, identity: Identity?, dx: number, dy: number }
-local PROTOMAN: Look = { sprite = asset.sprite("bn6:protoman"), dx = 10, dy = 10 }
-local COLONEL: Look = { sprite = asset.sprite("bn6:colonel"), identity = COLONEL_IDENTITY, dx = -10, dy = -10 }
+local PROTOMAN: Look = { sprite = asset.sprite("protoman"), dx = 10, dy = 10 }
+local COLONEL: Look = { sprite = asset.sprite("colonel"), identity = COLONEL_IDENTITY, dx = -10, dy = -10 }
 
-local SOUND_APPEAR = asset.sound("bn6:appear")
-local SOUND_STRIKE = asset.sound("bn6:spin")
-local SOUND_CHARGE, SOUND_CHARGED = asset.sound("bn6:buster-charge"), asset.sound("bn6:buster-charged")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_STRIKE = asset.sound("spin")
+local SOUND_CHARGE, SOUND_CHARGED = asset.sound("buster-charge"), asset.sound("buster-charged")
 
 -- Colonel's sword (attachment 0x1F) and his X's two halves (effects 0x36
 -- and 0x37).
-local COLONEL_SWORD = attachment.look { sprite = asset.sprite("bn6:colonel-sword"), palette = 0 }
+local COLONEL_SWORD = attachment.look { sprite = asset.sprite("colonel-sword"), palette = 0 }
 local CROSS = {
-    define.effect { sprite = asset.sprite("bn6:colonel-effect"), anim = 1, palette = 0 },
-    define.effect { sprite = asset.sprite("bn6:colonel-effect"), anim = 2, palette = 0 },
+    define.effect { sprite = asset.sprite("colonel-effect"), anim = 1, palette = 0 },
+    define.effect { sprite = asset.sprite("colonel-effect"), anim = 2, palette = 0 },
 }
 
 -- Colonel's charge: the glow while it builds (effect 0x4E) and the flash
 -- when it is full (0x4F), at his sprite's attach point 0 (`sub_8018810` by
 -- his NameID: his sprite's table row, whose point 0 is (0, 0)).
-local CHARGING = define.effect { sprite = asset.sprite("bn6:charge-glow"), anim = 0, palette = 0 }
-local CHARGED = define.effect { sprite = asset.sprite("bn6:charge-glow"), anim = 2, palette = 0 }
+local CHARGING = define.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
+local CHARGED = define.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
 local GLOW_X, GLOW_Z = 0, 0
 
 -- The afterimages ProtoMan leaves (`sub_80BDA7C`): their color shader and
@@ -670,7 +670,7 @@ local function destroy(me: Object)
 end
 
 twinldrs.kind = define.kind {
-    id = "bn6:twinldrs/navi",
+    id = "twinldrs/navi",
     pool = "actor",
     state = {
         colonel = "bool",

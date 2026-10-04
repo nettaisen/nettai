@@ -167,7 +167,7 @@ local redeal: ButtonSpec = {
 }
 
 return define.system {
-    id = "bn6:navicust",
+    id = "navicust",
     buttons = { redeal = redeal },
     hooks = { round_setup = run },
 }

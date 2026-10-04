@@ -9,10 +9,10 @@ local panel_changer = {}
 -- A change (a "panel-change" record).
 panel_changer.change = common.change
 
-panel_changer.TICK_SOUND = asset.sound("bn5:panel-change-tick")
-panel_changer.CHANGE_SOUND = asset.sound("bn5:panel-change")
+panel_changer.TICK_SOUND = asset.sound("panel-change-tick")
+panel_changer.CHANGE_SOUND = asset.sound("panel-change")
 
-panel_changer.kind = common.make_kind("bn5:panel-changer")
+panel_changer.kind = common.make_kind("panel-changer")
 
 -- A changer of `change` on panel (`x`, `y`), on `spawner`'s side and facing; `holder` goes on once it is done.
 function panel_changer.spawn(spawner: Object, x: number, y: number, change: PanelChange, holder: Object?): Object?

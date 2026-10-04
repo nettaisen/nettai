@@ -5,7 +5,7 @@
 local hook = require("./hook")
 
 return define.chip {
-    id = "bn5:bighook",
+    id = "bighook",
     codes = { "G" },
     element = "null",
     family = "break",

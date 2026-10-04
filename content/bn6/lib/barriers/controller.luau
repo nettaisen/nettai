@@ -13,7 +13,7 @@ local barriers = require("./barriers")
 local common = require("@exelib/barriers/controller")
 
 return common.make {
-    id = "bn6:barriers/controller",
+    id = "barriers/controller",
     raise = function(navi: Object, b: Barrier)
         barriers.raise(navi, b)
     end,

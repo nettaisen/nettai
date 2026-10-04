@@ -6,7 +6,7 @@
 local cube = require("./cube")
 
 return define.chip {
-    id = "bn5:rockcube",
+    id = "rockcube",
     codes = { "*" },
     element = "null",
     family = "summon",

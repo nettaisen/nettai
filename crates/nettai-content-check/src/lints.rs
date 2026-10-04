@@ -186,11 +186,36 @@ pub fn untyped_constants(s: &Scanned) -> Vec<(usize, String, usize)> {
     out
 }
 
-/// Whether module source `source` names an asset (`asset.<kind>(`,
-/// outside its comments and strings).
-pub fn names_assets(source: &str) -> bool {
+/// What of the playing game's context module source `source` reaches for
+/// by itself, each with its line (docs/design/content-model-v2.md §4.0): a
+/// support pack's module has no `asset` or `system` (its environment
+/// lacks them, so the use fails when it runs) and writes no id of its own
+/// (`id = "..."`: an id names the game's definition, so it comes from the
+/// game's caller).
+pub fn game_context(source: &str) -> Vec<(usize, String)> {
     let s = Scanned::new(source);
-    ["sprite", "sound", "banner", "background", "mugshot"].iter().any(|kind| s.find(&format!("asset.{kind}(")).next().is_some())
+    let mut out = Vec::new();
+    for name in ["asset", "system"] {
+        for at in s.find(name) {
+            let after = s.code[at + name.len()..].trim_start();
+            if after.starts_with(['.', '[', ':']) {
+                out.push((s.line(at), format!("`{name}` (the game's: a support pack's environment has none)")));
+            }
+        }
+    }
+    for at in s.find("id") {
+        let after = &s.code[at + 2..];
+        let Some(value) = after.trim_start().strip_prefix('=') else { continue };
+        if value.starts_with('=') {
+            continue;
+        }
+        let quote = at + 2 + (after.len() - value.len()) + (value.len() - value.trim_start().len());
+        if let Some(id) = s.string_at(quote) {
+            out.push((s.line(at), format!("`id = {id:?}` (an id names the game's definition: the game's caller passes it)")));
+        }
+    }
+    out.sort();
+    out
 }
 
 /// The lints for module `path` (relative to the pack root, with `.luau`).

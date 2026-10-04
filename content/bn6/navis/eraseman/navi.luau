@@ -6,21 +6,21 @@ local charge = require("./charge")
 local eraseman = require("./chip")
 
 return define.navi {
-    id = "bn6:eraseman",
-    sprite = asset.sprite("bn6:eraseman"),
+    id = "eraseman",
+    sprite = asset.sprite("eraseman"),
     element = "null",
     weakness = { "wind" },
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("bn6:eraseman-win"), lose = asset.banner("bn6:eraseman-deleted") },
+    banners = { win = asset.banner("eraseman-win"), lose = asset.banner("eraseman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`): the Falzar ROM has no
     -- EraseMan face, and shows GroundMan's.
-    mugshot = asset.mugshot("bn6:eraseman"),
+    mugshot = asset.mugshot("eraseman"),
     merge_height = 0,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        portrait = asset.sprite("bn6:eraseman-portrait"),
+        portrait = asset.sprite("eraseman-portrait"),
     },
     own_chip = { chip = eraseman, code = "K" },
     chip_bonus = {

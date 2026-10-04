@@ -5,7 +5,7 @@
 local sonic = require("../sonicbom/action")
 
 return define.chip {
-    id = "bn6:punisher",
+    id = "punisher",
     codes = { "E", "L", "S", "*" },
     element = "null",
     family = "sword",

@@ -20,7 +20,7 @@ local function setup(navi: Object): Action
 end
 
 return define.weapon {
-    id = "bn6:needlarm/charge",
+    id = "needlarm/charge",
     charge_ticks = { 100, 100, 100, 100, 100, 120, 120, 120 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,
     sticky = true,

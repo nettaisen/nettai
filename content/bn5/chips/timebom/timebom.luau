@@ -21,16 +21,16 @@ local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
 
 local timebom = {}
 
-local SPRITE = asset.sprite("bn5:countdown-bomb")
+local SPRITE = asset.sprite("countdown-bomb")
 
-timebom.kind = countdown.make_kind("bn5:timebom/countdown", {
+timebom.kind = countdown.make_kind("timebom/countdown", {
     sprite = SPRITE,
     sounds = {
-        place = asset.sound("bn5:appear"),
-        tick = asset.sound("bn5:tick"),
-        last = asset.sound("bn5:last"),
-        blast = asset.sound("bn5:burst"),
-        puff = asset.sound("bn5:hit-bomb-1"),
+        place = asset.sound("appear"),
+        tick = asset.sound("tick"),
+        last = asset.sound("last"),
+        blast = asset.sound("burst"),
+        puff = asset.sound("hit-bomb-1"),
     },
     blast = { is = collision.attack, hits = collision.hits_navis },
     removal_puffs = true,
@@ -50,7 +50,7 @@ timebom.variants = {
         idle_anim = 1,
         hp = 50,
         identity = define.identity {
-            id = "bn5:timebomb",
+            id = "timebomb",
             class = "field_object",
             version = 5,
             ai_index = 0x21,
@@ -64,7 +64,7 @@ timebom.variants = {
         idle_anim = 3,
         hp = 300,
         identity = define.identity {
-            id = "bn5:timebomb-big",
+            id = "timebomb-big",
             class = "field_object",
             version = 0,
             ai_index = 0x21,
@@ -137,6 +137,6 @@ local function place(me: Object)
     end
 end
 
-timebom.controller = controller.make("bn5:timebom/controller", place)
+timebom.controller = controller.make("timebom/controller", place)
 
 return timebom

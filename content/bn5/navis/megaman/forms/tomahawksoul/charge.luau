@@ -17,12 +17,12 @@ export type State = {
 
 local HIT_PARAM = 0x9E
 local ANIM = 16
-local SOUND = asset.sound("bn5:tomahawk-man")
+local SOUND = asset.sound("tomahawk-man")
 local SWING_TICKS, STRIKE_AT, RECOVER_TICKS = 21, 12, 5
 local HIT_MOD = 3
 local WOOD = 4
 -- Effect 0x45: the big slash (sprite 0C-15, animation 1), 16 pixels up.
-local SLASH = define.effect { sprite = asset.sprite("bn5:big-slash"), anim = 1, palette = 0 }
+local SLASH = define.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
 local SLASH_Z = 16 * 0x1_0000
 
 -- 0x080EEEA0: the swing; the strike on the count's 12; 22 ticks.
@@ -78,7 +78,7 @@ local function recover(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "bn5:tomahawksoul/charge/action",
+    id = "tomahawksoul/charge/action",
     state = { timer = "u16" },
     -- 0x080EEE84
     update = function(me: Object, s: State)
@@ -104,7 +104,7 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "bn5:tomahawksoul/charge",
+    id = "tomahawksoul/charge",
     -- The charge table's row 0x1A (0x0801CB70); Charge 5 reads on into row 0x1B's first entry.
     charge_ticks = { 160, 150, 140, 130, 120, 20 },
     setup = setup,

@@ -15,10 +15,10 @@ local counter = {}
 -- with the variant its weapon zeroes), leave the attack's variant 0: a
 -- random enemy.
 counter.action = common.action_at {
-    id = "bn6:antidmg/counter",
+    id = "antidmg/counter",
     shuriken = shuriken.kind,
-    vanish_sound = asset.sound("bn6:trap-vanish"),
-    throw_sound = asset.sound("bn6:boomerang"),
+    vanish_sound = asset.sound("trap-vanish"),
+    throw_sound = asset.sound("boomerang"),
     puff = effects.bubbles,
 }
 

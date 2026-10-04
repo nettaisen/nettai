@@ -23,12 +23,12 @@ export type State = {
     late_b: number,
 }
 
-local SIGHT = asset.sprite("bn5:sight")
-local SCOPE = asset.sprite("bn5:search-scope")
+local SIGHT = asset.sprite("sight")
+local SCOPE = asset.sprite("search-scope")
 -- (0x10E: 0x080E52D4 loads it as 15 + 255.)
-local SOUND_MOVE = asset.sound("bn5:erase-man")
-local SOUND_LOCK = asset.sound("bn5:mark")
-local SOUND_BONUS = asset.sound("bn5:ok-8b")
+local SOUND_MOVE = asset.sound("erase-man")
+local SOUND_LOCK = asset.sound("mark")
+local SOUND_BONUS = asset.sound("ok-8b")
 local TIME_LIMIT = 0x12C
 
 -- `sub_800D5F0`: how many panels of column `x` aren't `side`'s.
@@ -225,7 +225,7 @@ local function tick(me: Object)
 end
 
 scope.kind = define.kind {
-    id = "bn5:serchman/scope",
+    id = "serchman/scope",
     pool = "effect",
     state = {
         level = "u8",

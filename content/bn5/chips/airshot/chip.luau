@@ -11,10 +11,10 @@ local projectile = require("../../lib/projectile")
 local variants = require("../../objects/projectile/variants")
 
 -- BN5's air shooter (its attachment row 8: BN6's row 0x13's look, BN5's sprite).
-local SHOOTER = attachment.look { sprite = asset.sprite("bn5:air-shooter"), palette = 0, attach_point = 10 }
+local SHOOTER = attachment.look { sprite = asset.sprite("air-shooter"), palette = 0, attach_point = 10 }
 
 return define.chip {
-    id = "bn5:airshot",
+    id = "airshot",
     codes = { "*" },
     element = "null",
     family = "wind",
@@ -29,6 +29,6 @@ return define.chip {
     slot_in_limit = 3,
     action = airshot.action(
         { shooter = SHOOTER, shot = variants.air },
-        { sound = asset.sound("bn5:h-burst"), attachment = attachment.kind, projectiles = projectile }
+        { sound = asset.sound("h-burst"), attachment = attachment.kind, projectiles = projectile }
     ),
 }

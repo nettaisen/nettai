@@ -11,7 +11,7 @@ local recipe_bugbomb = require("../bugbomb/chip")
 local recipe_geddon3 = require("../geddon/chips").geddon3
 
 return define.chip {
-    id = "bn5:poisphar",
+    id = "poisphar",
     codes = {},
     element = "null",
     family = "program_advance",

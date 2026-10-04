@@ -8,7 +8,7 @@ local regions = require("@exelib/regions")
 local swords = require("../../lib/swords")
 
 return define.chip {
-    id = "bn5:ftrsword",
+    id = "ftrsword",
     codes = { "E", "L", "S", "*" },
     element = "null",
     family = "sword",

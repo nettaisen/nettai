@@ -1,7 +1,7 @@
 --!strict
 -- BN5's plus chips used on their own (action 0x1A's effect 3, 0x0800E198, BN6's `sub_8010488`; its parameters the
 -- record's +0x10 and +0x11: the side's bonus it goes to, and whether it goes to the next chip). BN6's tests the
--- attack's special source; BN5's tests battle flag 0x40 (the per-player gauges, never in a netbattle) and adds the
+-- attack's special source; BN5's tests the operation battle (the operation battle) (the each side's own gauge, never in a netbattle) and adds the
 -- damage alone to the side's bonus, playing the bonus sound only for a chip that goes to the next chip. Otherwise,
 -- as BN6's, the sparkle by the navi (@exelib/instant/sparkle: BN5's bubble, the sound BN6's number).
 --
@@ -13,18 +13,19 @@
 
 local rising_bubble = require("../objects/rising-bubble/rising_bubble")
 local sparkle = require("@exelib/instant/sparkle")
+local operation_battle = require("./operation_battle")
 
 local plus = {}
 
 -- The sparkle by the navi.
-plus.sparkle = sparkle.make(rising_bubble.kind, asset.sound("bn5:panel-poison"))
+plus.sparkle = sparkle.make(rising_bubble.kind, asset.sound("panel-poison"))
 
 -- The invalid chip's `instant` hook (action 0x1A's effect 0): the sparkle, whatever the source.
 function plus.sparkle_alone(user: Object, _spec: InstantChipSpec)
     plus.sparkle(user)
 end
 
-local BONUS_SOUND = asset.sound("bn5:bonus")
+local BONUS_SOUND = asset.sound("bonus")
 -- DarkPlus's tint.
 local TINT = 24
 
@@ -33,7 +34,7 @@ local ATTACK_BONUS, NAVI_BONUS = 0, 1
 
 -- Attck+'s `instant` hook: from a special battle the damage into the side's attack bonus, else the sparkle.
 function plus.attack(user: Object, _spec: InstantChipSpec)
-    if battle.per_player_gauges() then
+    if operation_battle() then
         battle.add_special_bonus(user.alliance, ATTACK_BONUS, user.attack_damage)
         return
     end
@@ -42,7 +43,7 @@ end
 
 -- Navi+'s `instant` hook: from a special battle the damage into the side's Navi+ bonus, else the sparkle.
 function plus.navi(user: Object, _spec: InstantChipSpec)
-    if battle.per_player_gauges() then
+    if operation_battle() then
         battle.add_special_bonus(user.alliance, NAVI_BONUS, user.attack_damage)
         return
     end
@@ -51,7 +52,7 @@ end
 
 -- DarkPlus's `instant` hook (0x0800E198 with +0x11 1).
 function plus.dark(user: Object, _spec: InstantChipSpec)
-    if battle.per_player_gauges() then
+    if operation_battle() then
         battle.add_special_bonus(user.alliance, ATTACK_BONUS, user.attack_damage)
         user.plus_tint = TINT
         battle.play_sound(BONUS_SOUND)

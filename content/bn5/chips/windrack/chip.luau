@@ -6,7 +6,7 @@
 local windrack = require("./action")
 
 return define.chip {
-    id = "bn5:windrack",
+    id = "windrack",
     codes = { "B", "F", "J", "*" },
     element = "null",
     family = "wind",

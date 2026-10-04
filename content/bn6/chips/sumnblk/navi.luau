@@ -22,17 +22,17 @@ export type State = {
     target_y: number,
 }
 
-local SPRITE = asset.sprite("bn6:summon-black")
-local APPEAR_SOUND, RISE_SOUND, CLAW_SOUND = asset.sound("bn6:appear"), asset.sound("bn6:bug"), asset.sound("bn6:tomahawk-man")
+local SPRITE = asset.sprite("summon-black")
+local APPEAR_SOUND, RISE_SOUND, CLAW_SOUND = asset.sound("appear"), asset.sound("bug"), asset.sound("tomahawk-man")
 -- The puffs where it sinks and where it comes up (`byte_80C1854`: effect
 -- 0x14 by 1, 0x15 by 0), and its claw (effect 0x16).
-local PUFF = define.effect { sprite = asset.sprite("bn6:puff"), anim = 2, palette = 0 }
-local ARRIVE = define.effect { sprite = asset.sprite("bn6:puff"), anim = 3, palette = 0 }
-local CLAW = define.effect { sprite = asset.sprite("bn6:sword-slash"), anim = 0, palette = 0 }
+local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local ARRIVE = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 }
+local CLAW = define.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
 -- The claw drawn upside down (flip bit 1) and in palette +6.
 local CLAW_FLIP, CLAW_PALETTE = 2, 6
 -- An actor whose look is this stands two panels wide.
-local WIDE_LOOK = asset.sprite("bn6:wide-navi")
+local WIDE_LOOK = asset.sprite("wide-navi")
 -- Bodies (of either side) on a panel.
 local BODIES = 0x0F80_0000
 
@@ -271,7 +271,7 @@ local function init(me: Object)
 end
 
 navi.kind = define.kind {
-    id = "bn6:sumnblk/navi",
+    id = "sumnblk/navi",
     pool = "actor",
     state = { holder = "object", variant = "u8", target_x = "u8", target_y = "u8" },
     -- `sub_80C1570`.

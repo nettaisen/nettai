@@ -13,7 +13,7 @@ local debris = {}
 
 -- Its chunks' sheet, and the dust it lands in (effect 1, the splash's
 -- look).
-debris.kind = common.make_kind("bn6:rockcube/debris", asset.sprite("bn6:rock-debris"), effects.splash)
+debris.kind = common.make_kind("rockcube/debris", asset.sprite("rock-debris"), effects.splash)
 
 -- `sub_80E47A4`: a chunk at `pos` in sprite palette `palette`.
 function debris.spawn(pos: Vec3, palette: number): Object?

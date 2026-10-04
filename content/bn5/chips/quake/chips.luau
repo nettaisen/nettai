@@ -9,7 +9,7 @@ local quake = require("./quake")
 -- cracks the panel and hits around it (level 0): BN5's throw (lib/bombs, action 0x12 subtype 11) and its Quake bomb
 -- (chips/quake/quake, attack object #0x51).
 local quake1 = define.chip {
-    id = "bn5:quake1",
+    id = "quake1",
     codes = { "A", "K", "P" },
     element = "null",
     family = "break",
@@ -28,7 +28,7 @@ local quake1 = define.chip {
 -- cracks the panel and hits around it (level 1): BN5's throw (lib/bombs, action 0x12 subtype 11) and its Quake bomb
 -- (chips/quake/quake, attack object #0x51).
 local quake2 = define.chip {
-    id = "bn5:quake2",
+    id = "quake2",
     codes = { "B", "L", "Y" },
     element = "null",
     family = "break",
@@ -47,7 +47,7 @@ local quake2 = define.chip {
 -- cracks the panel and hits around it (level 2): BN5's throw (lib/bombs, action 0x12 subtype 11) and its Quake bomb
 -- (chips/quake/quake, attack object #0x51).
 local quake3 = define.chip {
-    id = "bn5:quake3",
+    id = "quake3",
     codes = { "F", "H", "N" },
     element = "null",
     family = "break",

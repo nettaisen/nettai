@@ -19,9 +19,9 @@ falling_meteor.spawn_kind = common.spawn_kind
 -- shake of 1; the panel left as it is.
 local BN6_ROW: MeteorRow = { is = collision.thrown, hits = collision.hits_navis, hit_mod = 3, shake = 1, panel = "none" }
 
-falling_meteor.kind = common.make_kind("bn6:meteors/falling-meteor", {
-    sprite = asset.sprite("bn6:meteor"),
-    sounds = { fall = asset.sound("bn6:justice-one"), land = asset.sound("bn6:hit-bomb-1") },
+falling_meteor.kind = common.make_kind("meteors/falling-meteor", {
+    sprite = asset.sprite("meteor"),
+    sounds = { fall = asset.sound("justice-one"), land = asset.sound("hit-bomb-1") },
     rows = { [0] = BN6_ROW, [1] = BN6_ROW, [2] = BN6_ROW },
     spark = sparks.of_element,
     burst = effects.burst,

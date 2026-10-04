@@ -32,8 +32,8 @@ export type State = {
     navi_acting: boolean,
 }
 
-local SPRITE = asset.sprite("bn5:phoenix")
-local SOUND_APPEAR = asset.sound("bn5:appear")
+local SPRITE = asset.sprite("phoenix")
+local SOUND_APPEAR = asset.sound("appear")
 -- Its animation (DethPhnx's; Phoenix's is 0).
 local ANIM = 1
 local SOLID = 0x10
@@ -324,7 +324,7 @@ local function init(me: Object)
 end
 
 phoenix.kind = define.kind {
-    id = "bn5:dethphnx/phoenix",
+    id = "dethphnx/phoenix",
     pool = "actor",
     state = {
         controller = "object",

@@ -26,7 +26,7 @@ local function setup(navi: Object): Action
 end
 
 return define.weapon {
-    id = "bn6:bugrswrd/charge",
+    id = "bugrswrd/charge",
     charge_ticks = { 120, 120, 120, 120, 120, 200, 200, 200 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,
     sticky = true,

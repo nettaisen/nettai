@@ -8,10 +8,10 @@ local flying_shot = require("../../objects/flying-shot/flying_shot")
 
 local cloud = {}
 
-local SPRITE = asset.sprite("bn5:cloudman")
-local SOUND_SHOW = asset.sound("bn5:panel-poison")
-local SOUND_CHARGE = asset.sound("bn5:erase-man-2")
-local SOUND_BOLT = asset.sound("bn5:wave")
+local SPRITE = asset.sprite("cloudman")
+local SOUND_SHOW = asset.sound("panel-poison")
+local SOUND_CHARGE = asset.sound("erase-man-2")
+local SOUND_BOLT = asset.sound("wave")
 local BOLT_ROW = 0xB
 
 -- Enter the action with a timer (its phase byte the entry flag), or count down; true once it has run out.
@@ -114,7 +114,7 @@ local function init(me: Object)
 end
 
 cloud.kind = define.kind {
-    id = "bn5:cloudman/cloud",
+    id = "cloudman/cloud",
     pool = "attack",
     -- 0x080DCA10.
     update = function(me: Object)

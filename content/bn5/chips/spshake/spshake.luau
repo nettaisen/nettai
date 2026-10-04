@@ -29,8 +29,8 @@ export type State = {
     hit_at: number,
 }
 
-local SPRITE = asset.sprite("bn5:shake-wave")
-local SOUND = asset.sound("bn5:wave")
+local SPRITE = asset.sprite("shake-wave")
+local SOUND = asset.sound("wave")
 local ELEC = 3
 -- The sine: 24 pixels, one swing over 80 pixels (two panels) of travel; it starts at the middle of the turn.
 local AMPLITUDE, SWING, START = 24, 0x50_0000, 0x8000
@@ -132,7 +132,7 @@ local function init(me: Object)
 end
 
 spshake.kind = define.kind {
-    id = "bn5:spshake/wave",
+    id = "spshake/wave",
     pool = "attack",
     state = { wave = "record:shake-wave", step = "i32", center_y = "i32", hit_at = "u32" },
     -- 0x080D2FF8: by its lifecycle, then a sprite step.

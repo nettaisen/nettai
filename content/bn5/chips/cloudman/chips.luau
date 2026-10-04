@@ -7,7 +7,7 @@ local navi = require("./navi")
 -- CloudMan (BN5 chip 0x10a): CloudMan cuts in and sets thunderclouds behind the enemies, each striking with a
 -- paralyzing bolt (./navi).
 local cloudman = define.chip {
-    id = "bn5:cloudman",
+    id = "cloudman",
     codes = { "C" },
     element = "elec",
     family = "elec",
@@ -27,14 +27,14 @@ local cloudman = define.chip {
 -- paralyzing bolt (../cloudman/navi); its damage by how fast its user deleted CloudMan SP (rules/sp-chips: formula 16,
 -- its table's row 15).
 local cloudmn_sp = define.chip {
-    id = "bn5:cloudmn-sp",
+    id = "cloudmn-sp",
     codes = { "C" },
     element = "elec",
     family = "elec",
     class = "mega",
     rarity = 3,
     mb = 74,
-    damage = { formula = "sp_navi", slot = "sp/cloudman", by_time = { 110, 105, 100, 95, 90, 85, 80, 75, 70, 65, 60 }, per_player_gauges = 80 },
+    damage = { formula = "sp_navi", slot = "sp/cloudman", by_time = { 110, 105, 100, 95, 90, 85, 80, 75, 70, 65, 60 }, operation_battle = 80 },
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
@@ -46,14 +46,14 @@ local cloudmn_sp = define.chip {
 -- CloudMnDS (BN5 chip 0x10c): CloudMan, dark, cuts in and sets thunderclouds behind the enemies, each striking with a
 -- paralyzing bolt (../cloudman/navi); its damage by its user's side's statistic 3 (formula 38, its table's row 15).
 local cloudmn_ds = define.chip {
-    id = "bn5:cloudmn-ds",
+    id = "cloudmn-ds",
     codes = { "C" },
     element = "elec",
     family = "elec",
     class = "mega",
     rarity = 3,
     mb = 74,
-    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110 }, per_player_gauges = 60 },
+    damage = { formula = "count", of = { side_stat = 3 }, by_count = { 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110 }, operation_battle = 60 },
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "damage_shown_variable", "library", "variable_damage" },

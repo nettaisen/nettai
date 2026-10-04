@@ -10,7 +10,7 @@ local recipe_larkman_ds = require("../larkman/chips").larkman_ds
 local recipe_larkman_sp = require("../larkman/chips").larkman_sp
 
 return define.chip {
-    id = "bn5:wildbird",
+    id = "wildbird",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

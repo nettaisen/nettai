@@ -11,7 +11,7 @@ local charged_chip_bonus_29 = require("../../weapons/charged-chip-bonus-29/weapo
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "bn6:chargecross",
+    id = "chargecross",
     kind = "cross",
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
@@ -20,14 +20,14 @@ return define.form {
     beast = chargecross_beast,
     -- A weakness hit breaks the Cross: back to the base form.
     breaks_to = base,
-    sprite = asset.sprite("bn6:megaman"),
+    sprite = asset.sprite("megaman"),
     element = "fire",
     buster_bonus = 0,
     weapons = { buster = buster.weapon, charge_shot = tackle.weapon, a_charge = charged_chip_bonus_29 },
     palette = 19,
     -- Its faces in the emotion window, and once Beast Out is spent
     -- (`byte_801E700`): the Falzar ROM has no ChargeCross face, and shows DustCross's.
-    mugshot = { normal = asset.mugshot("bn6:chargecross"), tired = asset.mugshot("bn6:chargecross-tired") },
+    mugshot = { normal = asset.mugshot("chargecross"), tired = asset.mugshot("chargecross-tired") },
     -- What R shows in the Cross window.
     -- The chips A charges.
     charged_chips = { { family = "fire" } },
@@ -49,7 +49,7 @@ return define.form {
         aura_anim = 29,
         ice = "medium",
         -- What it wears over MegaMan's body.
-        parts = cross_overlay(asset.sprite("bn6:chargecross-overlay")),
+        parts = cross_overlay(asset.sprite("chargecross-overlay")),
         attach_points = {
             { 2, 0 },
             { 2, 0 },

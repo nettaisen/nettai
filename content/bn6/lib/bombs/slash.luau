@@ -12,7 +12,7 @@ local slash = {}
 
 export type State = { ticks: number }
 
-local SPRITE = asset.sprite("bn6:sword")
+local SPRITE = asset.sprite("sword")
 local HIT_MOD = 3
 
 -- `sub_80C5FDE`: resolve last tick's hits; end with the battle, the timer
@@ -57,7 +57,7 @@ local function init(me: Object)
 end
 
 slash.kind = define.kind {
-    id = "bn6:bomb-slash",
+    id = "bomb-slash",
     pool = "attack",
     state = { ticks = "u8" },
     -- `sub_80C5F60`.

@@ -6,7 +6,7 @@ local heal = require("@exelib/recov/heal")
 
 local chips = {
     define.chip {
-        id = "bn6:recov10",
+        id = "recov10",
         codes = { "A", "D", "L", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 4, damage = 0, hit_param = 30, lockout = 30,
@@ -16,7 +16,7 @@ local chips = {
         action = heal.action { hp = 10 },
     },
     define.chip {
-        id = "bn6:recov30",
+        id = "recov30",
         codes = { "E", "L", "Q", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 12, damage = 0, hit_param = 30, lockout = 30,
@@ -26,7 +26,7 @@ local chips = {
         action = heal.action { hp = 30 },
     },
     define.chip {
-        id = "bn6:recov50",
+        id = "recov50",
         codes = { "C", "M", "P", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 18, damage = 0, hit_param = 40, lockout = 30,
@@ -36,7 +36,7 @@ local chips = {
         action = heal.action { hp = 50 },
     },
     define.chip {
-        id = "bn6:recov80",
+        id = "recov80",
         codes = { "H", "K", "V", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 24, damage = 0, hit_param = 40, lockout = 30,
@@ -46,7 +46,7 @@ local chips = {
         action = heal.action { hp = 80 },
     },
     define.chip {
-        id = "bn6:recov120",
+        id = "recov120",
         codes = { "F", "P", "S" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 32, damage = 0, hit_param = 50, lockout = 30,
@@ -56,7 +56,7 @@ local chips = {
         action = heal.action { hp = 120 },
     },
     define.chip {
-        id = "bn6:recov150",
+        id = "recov150",
         codes = { "J", "M", "T" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 38, damage = 0, hit_param = 50, lockout = 30,
@@ -66,7 +66,7 @@ local chips = {
         action = heal.action { hp = 150 },
     },
     define.chip {
-        id = "bn6:recov200",
+        id = "recov200",
         codes = { "I", "Q", "Z" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 42, damage = 0, hit_param = 50, lockout = 30,
@@ -76,7 +76,7 @@ local chips = {
         action = heal.action { hp = 200 },
     },
     define.chip {
-        id = "bn6:recov300",
+        id = "recov300",
         codes = { "J", "O", "Y" },
         element = "null", family = "null", class = "standard",
         rarity = 3, mb = 48, damage = 0, hit_param = 49, lockout = 30,
@@ -89,6 +89,6 @@ local chips = {
 
 -- The heal table's last row, which heals nothing and no chip has
 -- (`byte_80EC870`'s tenth entry, after DrkRecov's).
-chips.none = heal.action { id = "bn6:recov/none", hp = 0 }
+chips.none = heal.action { id = "recov/none", hp = 0 }
 
 return chips

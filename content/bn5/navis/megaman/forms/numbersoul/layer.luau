@@ -15,8 +15,8 @@ export type State = {
 
 -- Its sprites by row (0x080C32C0).
 local SPRITES: { [number]: SpriteAsset } = {
-    [0] = asset.sprite("bn5:numberman-face"),
-    [1] = asset.sprite("bn5:numbersoul-face"),
+    [0] = asset.sprite("numberman-face"),
+    [1] = asset.sprite("numbersoul-face"),
 }
 
 -- 0x080C3332: on its owner, wearing his look; out of sight unless he is in his animation 0.
@@ -61,7 +61,7 @@ local function init(me: Object)
 end
 
 layer.kind = define.kind {
-    id = "bn5:numbersoul/layer",
+    id = "numbersoul/layer",
     pool = "actor",
     state = { row = "u8" },
     -- 0x080C32C4

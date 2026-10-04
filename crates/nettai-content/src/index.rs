@@ -7,8 +7,8 @@
 //!                                 person picks or a ruleset names (rules, chips, navis, forms,
 //!                                 stages, patch cards, NaviCust programs), its `also` and its
 //!                                 `unported` (nettai_content_api::packs)
-//! <pack>/**/*.luau                the pack's scripts (bn6/chips/cannon/chips); every id written in
-//!                                 full (`bn6:minibomb`), every asset name too
+//! <pack>/**/*.luau                the pack's scripts (bn6/chips/cannon/chips); every id local to the
+//!                                 game (`minibomb`), every asset name its asset pack's (`bomb`)
 //! <pack>/**/*.d.luau              its API declarations, which its modules (and its users') check
 //!                                 against after the engine's
 //! <pack>/locales/<language>.toml  a game's display text by id: the own language's (en) is the
@@ -23,7 +23,7 @@
 //! those modules; a module requires only its own pack's and those of the
 //! support packs its pack uses (`packs::check_require`). [`read_all`]
 //! loads every game. The assets the definitions name
-//! (`asset.sprite("bn6:bomb")`) come from the extracted packs' asset
+//! (`asset.sprite("bomb")`) come from the extracted packs' asset
 //! indices; `crate::pack::load_battle` puts the two together.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -163,7 +163,21 @@ pub fn follow(
     }
     let mut seen: BTreeSet<String> = pending.iter().map(|(n, _)| n.clone()).collect();
     while let Some((name, from)) = pending.pop() {
-        let path = keys::module_path(&name);
+        let mut path = keys::module_path(&name);
+        // (A folder names its `init` module: `bn6:rules` is rules/init.luau.)
+        let init = keys::init_of(&name);
+        let name = if !modules.contains_key(&name)
+            && !dir.join(format!("{path}.luau")).is_file()
+            && (modules.contains_key(&init) || dir.join(format!("{}.luau", keys::module_path(&init))).is_file())
+        {
+            path = keys::module_path(&init);
+            if !seen.insert(init.clone()) {
+                continue;
+            }
+            init
+        } else {
+            name
+        };
         let text = match modules.get(&name) {
             Some(t) => t.clone(),
             None => match std::fs::read_to_string(dir.join(format!("{path}.luau"))) {
@@ -233,7 +247,7 @@ mod tests {
         let read = read_all(&content(), &mut r).unwrap_or_else(|| panic!("{r}"));
         assert_eq!(read.games(), ["bn5", "bn6"]);
         assert_eq!(read.packs[0].id, "exelib", "the support pack first");
-        assert!(read.modules.contains_key("bn6:rules/ruleset"));
+        assert!(read.modules.contains_key("bn6:rules/init"), "the manifest's `rules` is the folder's init");
         assert!(read.modules.contains_key("exelib:swords/slash"), "the support pack's modules come in by their requires");
     }
 

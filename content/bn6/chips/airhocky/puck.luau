@@ -29,10 +29,10 @@ local ROWS: { [number]: Variant } = {
 -- The chips' pucks.
 puck.variants = { airhocky = ROWS[2], pithocky = ROWS[3] }
 
-puck.kind = common.make_kind("bn6:airhocky/puck", {
-    sprite = asset.sprite("bn6:hockey-puck"),
-    sound = asset.sound("bn6:hockey-puck"),
-    bounce = asset.sound("bn6:bounce"),
+puck.kind = common.make_kind("airhocky/puck", {
+    sprite = asset.sprite("hockey-puck"),
+    sound = asset.sound("hockey-puck"),
+    bounce = asset.sound("bounce"),
     is = collision.breaking,
     hits = collision.hits_navis,
     spark = sparks.breaking,

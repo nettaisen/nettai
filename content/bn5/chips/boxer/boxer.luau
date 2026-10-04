@@ -76,7 +76,7 @@ local function update(me: Object)
 end
 
 boxer.kind = define.kind {
-    id = "bn5:boxer/boxer",
+    id = "boxer/boxer",
     pool = "effect",
     state = { punch = "u8", hit_mod = "u8" },
     -- 0x080E7CE0.

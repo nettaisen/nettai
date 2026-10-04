@@ -20,7 +20,7 @@ export type State = {
     y: number,
 }
 
-local SPRITE = asset.sprite("bn6:erase-drop")
+local SPRITE = asset.sprite("erase-drop")
 
 -- Where it starts, relative to its panel: this much back and up, 16.16;
 -- the fall covers the first part of each.
@@ -34,7 +34,7 @@ local FALLING, BLINKING = 0, 4
 local SOLID = 0x10
 
 -- Where it appears, and its burst (a puff).
-local APPEAR = define.effect { sprite = asset.sprite("bn6:puff"), anim = 3, palette = 0 }
+local APPEAR = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 }
 local BURST = effects.puff
 
 -- Its element: Cursor, whatever the attack's.
@@ -145,7 +145,7 @@ local function tick(me: Object)
 end
 
 erase_drop.kind = define.kind {
-    id = "bn6:erasecross-beast/drop",
+    id = "erasecross-beast/drop",
     pool = "attack",
     state = { ticks = "u8", x = "u8", y = "u8" },
     -- `sub_80D96A4`.

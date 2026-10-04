@@ -8,7 +8,7 @@
 -- - the Guard chips': a shock wave back along the row (lib/guard/wave, its row 0xC: 0x080ECC10's first byte for
 --   all three) with the chip's damage;
 -- - the Reflect program's: the charged shot's projectile, 20 pixels up;
--- - the Shield program's (in battle flag 0x40 mode only: it heeds nothing otherwise): 0x580 into the side's gauge;
+-- - the Shield program's (in the operation battle only: it heeds nothing otherwise): 0x580 into the side's gauge;
 -- - the CrsShld chips': a cross (CROSS below) leaving from the panel ahead, after which the guard ends at once.
 --
 -- A hit that breaks guards takes the shield down, the guard with it (the time still runs). The NaviCust programs'
@@ -20,17 +20,18 @@ local shield = require("@exelib/rflectr/shield")
 local sparks = require("../sparks")
 local variants = require("../../objects/projectile/variants")
 local wave = require("./wave")
+local operation_battle = require("../operation_battle")
 
 local guard = {}
 
 -- ---- The shields --------------------------------------------------------------------------------------------------
 
 -- The shield (attack object #0x2B, 0x080CA22C: BN6's `sub_80C96A0`, the same code).
-local SHIELD = shield.make { id = "bn5:rflectr/shield", sound = asset.sound("bn5:follow-effect") }
+local SHIELD = shield.make { id = "rflectr/shield", sound = asset.sound("follow-effect") }
 
 -- Its looks (0x080CA1F0's rows, by the guard's second parameter: BN6's `byte_80C9664`'s but for rows 3 to 6, BN5's
 -- ProtoMan's and CrsShld's, and row 9's sheet).
-local REFLECTOR, CROSS_SHIELD = asset.sprite("bn5:reflector-shield"), asset.sprite("bn5:sprite-04-05")
+local REFLECTOR, CROSS_SHIELD = asset.sprite("reflector-shield"), asset.sprite("sprite-04-05")
 local function look(l: ReflectorShieldLook): ReflectorShieldLook
     return shield.look(l)
 end
@@ -38,7 +39,7 @@ guard.looks = {
     guard1 = look { sprite = REFLECTOR, anim = 0, fade_anim = 1, fade_ticks = 0xE, palette = 0 },
     navicust_reflect = look { sprite = REFLECTOR, anim = 2, fade_anim = 3, fade_ticks = 0xE, palette = 0 },
     navicust_shield = look { sprite = REFLECTOR, anim = 4, fade_anim = 5, fade_ticks = 0xE, palette = 0 },
-    protoman = look { sprite = asset.sprite("bn5:protoman"), anim = 3, fade_anim = 4, fade_ticks = 4, palette = 7 },
+    protoman = look { sprite = asset.sprite("protoman"), anim = 3, fade_anim = 4, fade_ticks = 4, palette = 7 },
     crsshld1 = look { sprite = CROSS_SHIELD, anim = 3, fade_anim = 4, fade_ticks = 1, palette = 0 },
     crsshld2 = look { sprite = CROSS_SHIELD, anim = 3, fade_anim = 4, fade_ticks = 1, palette = 2 },
     crsshld3 = look { sprite = CROSS_SHIELD, anim = 3, fade_anim = 4, fade_ticks = 1, palette = 4 },
@@ -54,9 +55,9 @@ guard.looks = {
 -- stops on its panel, and 8 ticks later strikes it once (an attack, hit modifier 3), then goes.
 type CrossState = { palette: number }
 
-local CROSS_SPRITE = asset.sprite("bn5:sprite-04-05")
+local CROSS_SPRITE = asset.sprite("sprite-04-05")
 local CROSS_SPEED = 20
-local CROSS_SOUND = asset.sound("bn5:bite")
+local CROSS_SOUND = asset.sound("bite")
 -- Its actions.
 local FLY, STRIKE, DONE = 0, 4, 8
 -- Its probe's spark (row 6, the heavy hit's) and bug (0x080DB2B6: 0xF9, argument 0).
@@ -163,7 +164,7 @@ local function cross_init(me: Object)
 end
 
 local CROSS = define.kind {
-    id = "bn5:crsshld/cross",
+    id = "crsshld/cross",
     pool = "attack",
     state = { palette = "u8" },
     -- 0x080DB258.
@@ -199,7 +200,7 @@ end
 -- ---- The guard ----------------------------------------------------------------------------------------------------
 
 -- What a guard counters with: the Guard chips' shock wave, the Reflect program's shot, the Shield program's gauge
--- (only with battle flag 0x40), or a CrsShld's cross (in its palette).
+-- (only in the operation battle), or a CrsShld's cross (in its palette).
 export type Counter = { kind: "wave" } | { kind: "shot" } | { kind: "gauge" } | { kind: "cross", palette: number }
 
 export type Spec = {
@@ -247,7 +248,7 @@ function guard.action(spec: Spec): Action
             s.timer = 0
             return
         end
-        local heedless = counter.kind == "gauge" and not battle.per_player_gauges()
+        local heedless = counter.kind == "gauge" and not operation_battle()
         if not heedless and bit32.btest(me.collision.guard_dirs, bit32.lshift(1, me.flip)) then
             if bit32.btest(me.collision.hit_flags, BREAKS_GUARD) then
                 drop_shield(me)

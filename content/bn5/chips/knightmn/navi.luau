@@ -20,15 +20,15 @@ export type State = {
 
 local knightman = {}
 
-local SPRITE = asset.sprite("bn5:knightman")
-local SOUND_LAND = asset.sound("bn5:land")
-local SOUND_SWING = asset.sound("bn5:knight-swing")
+local SPRITE = asset.sprite("knightman")
+local SOUND_LAND = asset.sound("land")
+local SOUND_SWING = asset.sound("knight-swing")
 -- What he wears (0x0800EE7A: BN5's body overlay row 1, its sprite 10-47, in front at every animation), stepping
 -- even while paused.
 local CHAIN = define.identity {
-    id = "bn5:knightman-navi",
+    id = "knightman-navi",
     class = "navi",
-    parts = { body = { sprite = asset.sprite("bn5:knightman-ball"), anims = 20 } },
+    parts = { body = { sprite = asset.sprite("knightman-ball"), anims = 20 } },
 }
 -- Where he drops from and flies off to, how fast he falls faster, and how fast he rises.
 local HEIGHT = 0xA0_0000
@@ -209,7 +209,7 @@ local function init(me: Object)
 end
 
 knightman.kind = define.kind {
-    id = "bn5:knightmn/navi",
+    id = "knightmn/navi",
     pool = "actor",
     state = { controller = "object", level = "u8" },
     -- 0x080B9C28.

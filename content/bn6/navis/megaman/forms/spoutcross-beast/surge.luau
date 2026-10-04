@@ -16,8 +16,8 @@ type Spec = AquaSurge
 
 export type State = { ticks: number, beat: number }
 
-local SPRITE = asset.sprite("bn6:aqua-surge")
-local SOUND = asset.sound("bn6:aqua-surge")
+local SPRITE = asset.sprite("aqua-surge")
+local SOUND = asset.sound("aqua-surge")
 
 -- How far ahead of its panel's center it stands, 16.16.
 local AHEAD = 0x14_0000
@@ -113,7 +113,7 @@ local function init(me: Object)
 end
 
 surge.kind = define.kind {
-    id = "bn6:spoutcross-beast/surge",
+    id = "spoutcross-beast/surge",
     pool = "attack",
     state = { ticks = "u8", beat = "u8" },
     -- `sub_80D385C`.

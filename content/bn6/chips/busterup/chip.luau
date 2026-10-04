@@ -3,8 +3,8 @@
 -- `sub_8010820`, run once by action 0x1C), with a sparkle at the navi's
 -- attach point 0x20.
 
-local SPARKLE = define.effect { sprite = asset.sprite("bn6:buster-up"), anim = 0, palette = 0 }
-local SOUND = asset.sound("bn6:hub")
+local SPARKLE = define.effect { sprite = asset.sprite("buster-up"), anim = 0, palette = 0 }
+local SOUND = asset.sound("hub")
 
 -- Where the sparkle shows.
 local ATTACH_POINT = 0x20
@@ -28,7 +28,7 @@ local function raise(by: number): (user: Object, spec: InstantChipSpec) -> ()
 end
 
 return define.chip {
-    id = "bn6:busterup",
+    id = "busterup",
     codes = { "*" },
     element = "null", family = "plus", class = "standard",
     rarity = 1, mb = 11, damage = 0, hit_param = 0, lockout = 20,

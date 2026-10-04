@@ -4,4 +4,4 @@
 
 local common = require("@exelib/vdoll/sparkles")
 
-return common.make { id = "bn6:vdoll/sparkles", sound = asset.sound("bn6:hit-bomb-0") }
+return common.make { id = "vdoll/sparkles", sound = asset.sound("hit-bomb-0") }

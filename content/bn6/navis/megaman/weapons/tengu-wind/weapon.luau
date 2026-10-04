@@ -14,7 +14,7 @@ local tengu_wind = {}
 
 local COOLDOWN = 0x28
 
-local SOUND = asset.sound("bn6:dustbrk")
+local SOUND = asset.sound("dustbrk")
 
 -- `sub_8011CA8`: the cooldown; its effect is the weapon's `instant`, which
 -- the instant chips' action runs.
@@ -30,7 +30,7 @@ function tengu_wind.blow(user: Object, _spec: InstantChipSpec)
 end
 
 tengu_wind.weapon = define.weapon {
-    id = "bn6:megaman/tengu-wind",
+    id = "megaman/tengu-wind",
     -- The charge table's row 0x10, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 60, 60, 60 },

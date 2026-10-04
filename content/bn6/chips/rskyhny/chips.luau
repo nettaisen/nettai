@@ -10,7 +10,7 @@ local BEES = action.bees
 
 return {
     define.chip {
-        id = "bn6:rskyhny1",
+        id = "rskyhny1",
         codes = { "B", "G", "S" },
         element = "wood", family = "wood", class = "standard",
         rarity = 0, mb = 21, damage = 10, hit_param = 30, lockout = 0,
@@ -22,7 +22,7 @@ return {
         action = action.action { bee = BEES[1] },
     },
     define.chip {
-        id = "bn6:rskyhny2",
+        id = "rskyhny2",
         codes = { "C", "R", "V" },
         element = "wood", family = "wood", class = "standard",
         rarity = 1, mb = 28, damage = 15, hit_param = 30, lockout = 0,
@@ -34,7 +34,7 @@ return {
         action = action.action { bee = BEES[2] },
     },
     define.chip {
-        id = "bn6:rskyhny3",
+        id = "rskyhny3",
         codes = { "A", "D", "M" },
         element = "wood",
         family = "wood",
@@ -48,6 +48,6 @@ return {
         beast = { lockon = lockon.cannon },
         library = { number = 41, index = 41, sort = 400 },
         slot_in_limit = 3,
-        action = action.action { id = "bn6:rskyhny3/action", bee = BEES[3] },
+        action = action.action { id = "rskyhny3/action", bee = BEES[3] },
     },
 }
