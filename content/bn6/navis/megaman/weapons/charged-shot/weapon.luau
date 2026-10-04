@@ -70,16 +70,16 @@ function charged_shot.setup(navi: Object): Action
 end
 
 charged_shot.action = common.action {
-    id = "bn6:megaman/charged-shot/action",
+    id = "megaman/charged-shot/action",
     buster = lib,
     projectiles = projectile,
     attachment = attachment.kind,
-    shot_sound = asset.sound("bn6:buster-shot"),
+    shot_sound = asset.sound("buster-shot"),
     plain = variants.plain,
 }
 
 charged_shot.weapon = define.weapon {
-    id = "bn6:megaman/charged-shot",
+    id = "megaman/charged-shot",
     -- The charge table's row 1; Charge 5 reads on into row 2's first
     -- entry, as the original's table does.
     charge_ticks = { 100, 90, 80, 70, 60, 180 },

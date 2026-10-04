@@ -7,7 +7,7 @@ local mrkcan = require("./mrkcan")
 -- MrkCan1 (BN5 chip 0x00c): a sight sweeps the field ahead and locks on to the first enemy it finds, paralyzing it,
 -- and the cannon fires at it (BN5's own MarkCannon, chips/mrkcan/mrkcan: action 0x4E).
 local mrkcan1 = define.chip {
-    id = "bn5:mrkcan1",
+    id = "mrkcan1",
     codes = { "M", "K", "S" },
     element = "null",
     family = "cursor",
@@ -19,13 +19,13 @@ local mrkcan1 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = mrkcan.action { id = "bn5:mrkcan1/action", cannon = mrkcan.cannon(0) },
+    action = mrkcan.action { id = "mrkcan1/action", cannon = mrkcan.cannon(0) },
 }
 
 -- MrkCan2 (BN5 chip 0x00d): a sight sweeps the field ahead and locks on to the first enemy it finds, paralyzing it,
 -- and the cannon fires at it (BN5's own MarkCannon, chips/mrkcan/mrkcan: action 0x4E).
 local mrkcan2 = define.chip {
-    id = "bn5:mrkcan2",
+    id = "mrkcan2",
     codes = { "D", "F", "Z" },
     element = "null",
     family = "cursor",
@@ -37,13 +37,13 @@ local mrkcan2 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = mrkcan.action { id = "bn5:mrkcan2/action", cannon = mrkcan.cannon(3) },
+    action = mrkcan.action { id = "mrkcan2/action", cannon = mrkcan.cannon(3) },
 }
 
 -- MrkCan3 (BN5 chip 0x00e): a sight sweeps the field ahead and locks on to the first enemy it finds, paralyzing it,
 -- and the cannon fires at it (BN5's own MarkCannon, chips/mrkcan/mrkcan: action 0x4E).
 local mrkcan3 = define.chip {
-    id = "bn5:mrkcan3",
+    id = "mrkcan3",
     codes = { "E", "R", "Y" },
     element = "null",
     family = "cursor",
@@ -55,7 +55,7 @@ local mrkcan3 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = mrkcan.action { id = "bn5:mrkcan3/action", cannon = mrkcan.cannon(6) },
+    action = mrkcan.action { id = "mrkcan3/action", cannon = mrkcan.cannon(6) },
 }
 
 return { mrkcan1 = mrkcan1, mrkcan2 = mrkcan2, mrkcan3 = mrkcan3 }

@@ -12,7 +12,7 @@
 -- Its damage words' flag bits (0x080165EC, BN6's `sub_8019F44`) are its own: 0x4000 paralyzes without a flinch,
 -- 0x2000 confuses, 0x1000 blinds, 0x800 gives bug code 0x18 (ColonelSoul's soldiers strike with 0x4000).
 
-return define.rules("bn5:effects", {
+return {
     shake = "battle",
     spark_steps_at_start = false,
     retype = "bn5",
@@ -23,4 +23,4 @@ return define.rules("bn5:effects", {
     overlays_run_while_paused = false,
     -- Its obstacles' action tables have no frozen or bubbled entries: a kind's own actions from 6 (BN6's from 8).
     obstacle_actions = "bn5",
-})
+}

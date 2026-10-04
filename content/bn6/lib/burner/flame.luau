@@ -35,7 +35,7 @@ export type State = {
     wide: boolean,
 }
 
-local SPRITE = asset.sprite("bn6:flame")
+local SPRITE = asset.sprite("flame")
 -- The owner's attach point it starts at, and how far back of it.
 local HAND, BACK = 0x12, 0x28
 -- Ticks before it lights the next panel.
@@ -172,7 +172,7 @@ local function out(me: Object)
 end
 
 flame.kind = define.kind {
-    id = "bn6:flame",
+    id = "flame",
     pool = "attack",
     state = {
         ticks = "u8",

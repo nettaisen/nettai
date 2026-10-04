@@ -711,7 +711,7 @@ mod tests {
         };
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
         has(bad("navi = \"megaman\"", "navi = \"nobody\""), "left: no navi \"nobody\" in bn6");
-        has(bad("navi = \"megaman\"", "navi = \"bn6:megaman\""), "left: no navi \"bn6:megaman\" in bn6");
+        has(bad("navi = \"megaman\"", "navi = \"bn6:megaman\""), "left: no navi \"bn6:megaman\" in bn6"); // (written in full)
         has(bad("hp = 1000", "hp = 100000"), "stats: hp takes a whole number");
         has(bad("hp = 1000", "hp = 1000\natack = 1"), "no stat \"atack\"");
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
@@ -746,7 +746,7 @@ mod tests {
     #[test]
     fn crosses_need_the_forms_system() {
         let content = nettai_battle::content::testing::content();
-        let mix = content.defs.ruleset_by_key("test:test-mix").unwrap();
+        let mix = content.defs.ruleset_by_key("test-mix").unwrap();
         let stock = content.defs.stock_ruleset().unwrap();
         assert!(crate::ruleset_has_system(&content, stock, crate::FORMS_SYSTEM));
         assert!(!crate::ruleset_has_system(&content, mix, crate::FORMS_SYSTEM));

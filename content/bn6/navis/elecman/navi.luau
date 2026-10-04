@@ -6,20 +6,20 @@ local charge = require("./charge")
 local elecman = require("./chip")
 
 return define.navi {
-    id = "bn6:elecman",
-    sprite = asset.sprite("bn6:elecman"),
+    id = "elecman",
+    sprite = asset.sprite("elecman"),
     element = "elec",
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-    banners = { win = asset.banner("bn6:elecman-win"), lose = asset.banner("bn6:elecman-deleted") },
+    banners = { win = asset.banner("elecman-win"), lose = asset.banner("elecman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`): the Falzar ROM has no
     -- ElecMan face, and shows TomahawkMan's.
-    mugshot = asset.mugshot("bn6:elecman"),
+    mugshot = asset.mugshot("elecman"),
     merge_height = 0,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
     run_message = {
-        portrait = asset.sprite("bn6:elecman-portrait"),
+        portrait = asset.sprite("elecman-portrait"),
     },
     own_chip = { chip = elecman, code = "E" },
     chip_bonus = {

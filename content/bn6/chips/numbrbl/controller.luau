@@ -25,7 +25,7 @@ local function effect(me: Object)
     end
 end
 
-controller.kind = common.make("bn6:numbrbl/controller", effect)
+controller.kind = common.make("numbrbl/controller", effect)
 
 -- `sub_80E7FBA`: NumbrBl's `dimming` hook, for `balls` balls.
 function controller.hook(balls: number): (user: Object, spec: DimmingChipSpec) -> Object?

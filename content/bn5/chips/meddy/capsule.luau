@@ -8,7 +8,7 @@
 -- variant's hit modifier and status) and an explosion on each of the line's panels. Its variant (its first
 -- parameter, 0 to 5) gives its palette, its explosions' palette, its hit modifier and its status (none, confusion,
 -- blindness, immobilization, paralysis 90 and 150 ticks); one not running while dimmed (its third parameter not 2)
--- of variant 1 and up hits half as hard. Its target is marked in the battle flag 0x40 mode (lib/navi-chips/marker).
+-- of variant 1 and up hits half as hard. Its target is marked in the operation battle (lib/navi-chips/marker).
 
 local collision = require("../../rules/collision")
 local marker = require("../../lib/navi-chips/marker")
@@ -27,9 +27,9 @@ export type State = {
 
 local capsule = {}
 
-local SPRITE = asset.sprite("bn5:meddy-capsule")
-local EXPLOSION = asset.sprite("bn5:explosion")
-local SOUND_BURST = asset.sound("bn5:hit-bomb-1")
+local SPRITE = asset.sprite("meddy-capsule")
+local EXPLOSION = asset.sprite("explosion")
+local SOUND_BURST = asset.sound("hit-bomb-1")
 
 type Variant = {
     -- Its palette (0x080C5FE8), the hit modifier of its body and of its burst (0x080C5FF4, 0x080C62A8), its
@@ -286,7 +286,7 @@ local function init(me: Object)
 end
 
 capsule.kind = define.kind {
-    id = "bn5:meddy/capsule",
+    id = "meddy/capsule",
     pool = "attack",
     state = { variant = "u8", line = "u8", mode = "u8" },
     -- 0x080C5F18.

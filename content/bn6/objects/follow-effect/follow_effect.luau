@@ -27,8 +27,8 @@ local follow_effect = {}
 follow_effect.look = common.look
 
 follow_effect.kind = common.make_kind {
-    id = "bn6:follow-effect",
-    slide_sound = asset.sound("bn6:follow-effect"),
+    id = "follow-effect",
+    slide_sound = asset.sound("follow-effect"),
     copies_visibility = true,
 }
 

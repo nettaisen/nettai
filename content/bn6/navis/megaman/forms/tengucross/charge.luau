@@ -14,7 +14,7 @@ local charge = {}
 
 -- WindRack's action with TenguCross's fan (its compat key maps it to
 -- 0x3F).
-local GUST = windrack.action { id = "bn6:tengucross/charge/gust", rack = windrack.racks.tengu_fan }
+local GUST = windrack.action { id = "tengucross/charge/gust", rack = windrack.racks.tengu_fan }
 
 -- The attack's element (Wind, secondary element 0x20) and hit parameter.
 local WIND, HIT_PARAM = 0x20, 0x94
@@ -29,7 +29,7 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "bn6:tengucross/charge",
+    id = "tengucross/charge",
     -- The charge table's row 0xF, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 100, 90, 80, 75, 70, 0, 0, 0 },

@@ -4,7 +4,7 @@
 local cards = require("../../rules/patch-cards/cards")
 
 return define.patch_card {
-    id = "bn5:drain",
+    id = "drain",
     mb = 18,
     effects = {
         cards.chip_recovery(20),

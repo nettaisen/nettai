@@ -12,7 +12,7 @@ local spreader = require("../../chips/spreadr/action")
 -- fired from the ground) with the bubble's bullet (the parameter word 7).
 -- (Its compat key maps it to 0x25.)
 local SHOT = spreader.action {
-    id = "bn6:patch-cards/puffball/charge/action",
+    id = "patch-cards/puffball/charge/action",
     gun = spreader.guns.water_cannon,
     z = 0,
     bullet = bullet.variants.bubble,
@@ -30,7 +30,7 @@ local function setup(navi: Object): Action
 end
 
 return define.weapon {
-    id = "bn6:patch-cards/puffball/charge",
+    id = "patch-cards/puffball/charge",
     -- The charge table's row 0x5F, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 100, 90, 80, 75, 70, 120, 110, 100 },

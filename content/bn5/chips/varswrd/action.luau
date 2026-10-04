@@ -27,7 +27,7 @@ action.STATE = { flip = "u8", progress = "u8[5]" }
 local COUNTDOWN = 0x30
 -- The phases, on the attack's step.
 local START, PICK = 0, 4
-local SOUND = asset.sound("bn5:ok-8b")
+local SOUND = asset.sound("ok-8b")
 -- The souls that wait while A is up (NaviStats +0x2C): ProtoSoul and ShadowSoul.
 local WAITING_SOULS = { [1] = true, [8] = true }
 -- The joypad bits, as the game's JoypadHeld word has them.

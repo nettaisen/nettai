@@ -5,7 +5,7 @@ local cards = require("../../rules/patch-cards/cards")
 local variants = require("../../objects/projectile/variants")
 
 return define.patch_card {
-    id = "bn6:starfish",
+    id = "starfish",
     mb = 15,
     effects = {
         cards.body("aqua"),

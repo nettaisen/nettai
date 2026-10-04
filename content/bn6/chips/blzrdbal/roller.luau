@@ -9,10 +9,10 @@ local common = require("@exelib/blzrdbal/roller")
 local roller = {}
 
 roller.kind = common.make_kind {
-    id = "bn6:blzrdbal/roller",
-    self_type = define.collision { id = "bn6:blzrdbal/roller", side0 = 0xC0044080, side1 = 0xC0044080, row_offset = 0x2C0 },
+    id = "blzrdbal/roller",
+    self_type = define.collision { id = "blzrdbal/roller", side0 = 0xC0044080, side1 = 0xC0044080, row_offset = 0x2C0 },
     target = define.collision {
-        id = "bn6:blzrdbal/roller-reach",
+        id = "blzrdbal/roller-reach",
         side0 = 0x3F800000,
         side1 = 0x3F800000,
         row_offset = 0x248,

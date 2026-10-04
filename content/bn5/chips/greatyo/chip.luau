@@ -16,7 +16,7 @@ local LEADER = yoyo.spec { mode = 1, panels = 4, rounds = 5 }
 local FOLLOWER = yoyo.spec { mode = 2, panels = 4, rounds = 5 }
 
 return define.chip {
-    id = "bn5:greatyo",
+    id = "greatyo",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -32,11 +32,11 @@ return define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 20, sequence = { recipe_varswrd, recipe_varswrd, recipe_yoyo }, per_player_gauges_only = true },
+        { order = 20, sequence = { recipe_varswrd, recipe_varswrd, recipe_yoyo }, operation_battle_only = true },
         { order = 56, code_run = { chip = recipe_yoyo, count = 3 } },
     },
     action = throw.action {
-        id = "bn5:greatyo/action",
+        id = "greatyo/action",
         arm = yoyo.arm,
         attachment = attachment.kind,
         throw = function(me: Object, x: number, y: number, z: number, damage: number): Object?

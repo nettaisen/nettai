@@ -8,9 +8,9 @@ local rock = require("./rock")
 local cube = {}
 
 local made = common.make {
-    id = "bn6:rockcube/cube",
+    id = "rockcube/cube",
     spawn_rock = rock.spawn,
-    place_sound = asset.sound("bn6:place"),
+    place_sound = asset.sound("place"),
 }
 
 -- A chip's `dimming` hook (`sub_80E46B6`, `off_802CCB4[6]`): the controller that places a rock of `placed`.

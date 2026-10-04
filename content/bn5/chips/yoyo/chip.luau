@@ -6,7 +6,7 @@
 local yoyo = require("./yoyo")
 
 return define.chip {
-    id = "bn5:yoyo",
+    id = "yoyo",
     codes = { "D", "E", "F" },
     element = "null",
     family = "null",
@@ -18,5 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = yoyo.action("bn5:yoyo/action", yoyo.spec { mode = 0, panels = 2, rounds = 2 }),
+    action = yoyo.action("yoyo/action", yoyo.spec { mode = 0, panels = 2, rounds = 2 }),
 }

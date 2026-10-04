@@ -14,7 +14,7 @@ local recipe_hotbody3 = require("../hotbody/chips").hotbody3
 -- unseen boxer punches FireHit's fists down the rows, nine in all (chips/boxer/boxer, instant effect 21; the fists' hit
 -- modifier 1, the record's +0x11).
 local boxer1 = define.chip {
-    id = "bn5:boxer1",
+    id = "boxer1",
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -30,7 +30,7 @@ local boxer1 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 9, sequence = { recipe_hotbody1, recipe_hotbody1, recipe_firehit1 }, per_player_gauges_only = true },
+        { order = 9, sequence = { recipe_hotbody1, recipe_hotbody1, recipe_firehit1 }, operation_battle_only = true },
         { order = 45, code_run = { chip = recipe_firehit1, count = 3 } },
     },
     instant = boxer.instant(1),
@@ -40,7 +40,7 @@ local boxer1 = define.chip {
 -- unseen boxer punches FireHit's fists down the rows, nine in all (chips/boxer/boxer, instant effect 21; the fists' hit
 -- modifier 1, the record's +0x11).
 local boxer2 = define.chip {
-    id = "bn5:boxer2",
+    id = "boxer2",
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -56,7 +56,7 @@ local boxer2 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 10, sequence = { recipe_hotbody2, recipe_hotbody2, recipe_firehit2 }, per_player_gauges_only = true },
+        { order = 10, sequence = { recipe_hotbody2, recipe_hotbody2, recipe_firehit2 }, operation_battle_only = true },
         { order = 46, code_run = { chip = recipe_firehit2, count = 3 } },
     },
     instant = boxer.instant(1),
@@ -66,7 +66,7 @@ local boxer2 = define.chip {
 -- unseen boxer punches FireHit's fists down the rows, nine in all (chips/boxer/boxer, instant effect 21; the fists' hit
 -- modifier 1, the record's +0x11).
 local boxer3 = define.chip {
-    id = "bn5:boxer3",
+    id = "boxer3",
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -82,7 +82,7 @@ local boxer3 = define.chip {
     -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
     -- gauge tries.
     program_advances = {
-        { order = 11, sequence = { recipe_hotbody3, recipe_hotbody3, recipe_firehit3 }, per_player_gauges_only = true },
+        { order = 11, sequence = { recipe_hotbody3, recipe_hotbody3, recipe_firehit3 }, operation_battle_only = true },
         { order = 47, code_run = { chip = recipe_firehit3, count = 3 } },
     },
     instant = boxer.instant(1),

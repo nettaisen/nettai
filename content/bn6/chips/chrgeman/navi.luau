@@ -23,9 +23,9 @@ export type State = {
 
 local chrgeman = {}
 
-local SPRITE = asset.sprite("bn6:chargeman")
-local SOUND_APPEAR = asset.sound("bn6:appear")
-local SOUND_CHARGE_MAN = asset.sound("bn6:charge-man")
+local SPRITE = asset.sprite("chargeman")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_CHARGE_MAN = asset.sound("charge-man")
 
 -- A car's panel: solid, and none of these (`dword_80BBB8C`).
 local CAR_REQUIRE, CAR_FORBID = 0x10, 0x0F80_0000
@@ -185,7 +185,7 @@ end
 local ACTIONS = { [0] = appear, [4] = hitch, [8] = charge, [0xC] = leave, [0x10] = vanish }
 
 chrgeman.kind = define.kind {
-    id = "bn6:chrgeman/navi",
+    id = "chrgeman/navi",
     pool = "actor",
     state = { controller = "object", cars = "u32" },
     -- `sub_80BB914`.

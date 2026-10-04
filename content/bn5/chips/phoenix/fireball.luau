@@ -19,9 +19,9 @@ export type State = {
     target_y: number,
 }
 
-local SPRITE = asset.sprite("bn5:meteor")
-local SOUND_THROW = asset.sound("bn5:justice-one")
-local SOUND_BURST = asset.sound("bn5:form-change")
+local SPRITE = asset.sprite("meteor")
+local SOUND_THROW = asset.sound("justice-one")
+local SOUND_BURST = asset.sound("form-change")
 local FALL = 8
 local HIT_MOD = 3
 
@@ -115,7 +115,7 @@ local function init(me: Object)
 end
 
 fireball.kind = define.kind {
-    id = "bn5:phoenix/fireball",
+    id = "phoenix/fireball",
     pool = "attack",
     state = { target = "u8", start = "vec3", target_x = "i32", target_y = "i32" },
     -- 0x080DF490.

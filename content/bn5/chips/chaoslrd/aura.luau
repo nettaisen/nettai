@@ -15,7 +15,7 @@ export type State = {
 
 local aura = {}
 
-local SPRITE = asset.sprite("bn5:chaos-beast")
+local SPRITE = asset.sprite("chaos-beast")
 -- The beast's body, which fades in rather than flashing in.
 local BODY = 0x0D
 local DOWN, UP = 26, 26
@@ -143,7 +143,7 @@ local function init(me: Object)
 end
 
 aura.kind = define.kind {
-    id = "bn5:chaoslrd/aura",
+    id = "chaoslrd/aura",
     pool = "effect",
     state = { anim = "u8", hold = "u16", blink = "u8" },
     -- 0x080E5A40.

@@ -42,8 +42,8 @@ export type State = {
     follower: Object?,
 }
 
-local SPRITE = asset.sprite("bn5:larkman")
-local SOUND_SWOOP = asset.sound("bn5:swoop")
+local SPRITE = asset.sprite("larkman")
+local SOUND_SWOOP = asset.sound("swoop")
 local HIT_MOD = 3
 
 -- By the level (0x080DD844): the dark palette for DS's 4.
@@ -317,7 +317,7 @@ local function tick(me: Object)
 end
 
 swoop.kind = define.kind {
-    id = "bn5:larkman/swoop",
+    id = "larkman/swoop",
     pool = "attack",
     state = {
         level = "u8",

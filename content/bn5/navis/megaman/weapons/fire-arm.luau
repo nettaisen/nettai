@@ -68,7 +68,7 @@ local function recover(me: Object, s: State)
 end
 
 local ACTION = define.action {
-    id = "bn5:megaman/fire-arm/action",
+    id = "megaman/fire-arm/action",
     state = { timer = "u16" },
     -- 0x080F0074.
     update = function(me: Object, s: State)
@@ -84,7 +84,7 @@ local ACTION = define.action {
 
 -- 0x0800FC94: 50 damage, hit parameter 20, Fire; no charge, no bonus, no lockout; its parameters.
 return define.weapon {
-    id = "bn5:megaman/fire-arm",
+    id = "megaman/fire-arm",
     -- The charge table's row 0x4E, by Charge 0 to 5: past 4 it reads on into row 0x4F's first entry.
     charge_ticks = { 70, 65, 60, 55, 50, 80 },
     setup = function(navi: Object): Action

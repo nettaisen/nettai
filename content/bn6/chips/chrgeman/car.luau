@@ -29,7 +29,7 @@ export type State = {
     owner_action: number,
 }
 
-local SPRITE = asset.sprite("bn6:charge-car")
+local SPRITE = asset.sprite("charge-car")
 
 -- The floor it needs (`byte_80DB004`, both rows alike): require, forbid.
 local FLOOR = { 0x10, 0 }
@@ -175,7 +175,7 @@ local function tick(me: Object)
 end
 
 car.kind = define.kind {
-    id = "bn6:chrgeman/car",
+    id = "chrgeman/car",
     pool = "attack",
     state = {
         speed = "u32",

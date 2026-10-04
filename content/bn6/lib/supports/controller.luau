@@ -10,7 +10,7 @@ local tango = require("./tango")
 
 return {
     kind = common.make {
-        id = "bn6:support/controller",
+        id = "support/controller",
         rush = rush,
         beat = beat,
         tango = tango,

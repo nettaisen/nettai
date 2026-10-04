@@ -13,13 +13,13 @@ local effects = require("../../lib/effects")
 
 local shell = {}
 
-shell.kind = common.make_kind("bn6:tankcan/shell", {
+shell.kind = common.make_kind("tankcan/shell", {
     is = collision.attack,
     hits = collision.hits_navis,
-    sound = asset.sound("bn6:cannon"),
-    hit_sound = asset.sound("bn6:burst"),
+    sound = asset.sound("cannon"),
+    hit_sound = asset.sound("burst"),
     -- The edge blast: its effect (effect 0x60), a thrown hit.
-    blast = define.effect { sprite = asset.sprite("bn6:tank-blast"), anim = 0, palette = 0 },
+    blast = define.effect { sprite = asset.sprite("tank-blast"), anim = 0, palette = 0 },
     blast_is = collision.thrown,
     explosion = effects.explosion,
     burst = effects.shell_burst,

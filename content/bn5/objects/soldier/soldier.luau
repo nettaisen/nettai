@@ -28,21 +28,21 @@ export type State = {
 }
 
 -- 0x080CA858: sprite 10-20 with a shadow (`sub_8011504`'s 0x01001020 and 0x01031020: animation 0 or 3).
-local SPRITE = asset.sprite("bn5:colonel-soldier")
+local SPRITE = asset.sprite("colonel-soldier")
 local HP = 1
 -- Its collision (0x13140300): its side's body (row 0x13) that the other side reaches (row 0x14), hit modifier 3.
 local HIT_MOD = 3
-local DRAW_SOUND, SHOT_SOUND = asset.sound("bn5:sword-swing"), asset.sound("bn5:col-army-2")
+local DRAW_SOUND, SHOT_SOUND = asset.sound("sword-swing"), asset.sound("col-army-2")
 -- The slash: over the panel ahead and the one past it (region 2), no spark (0xFF), a slash (row 7) against navis
 -- (row 5), hit modifier 3 (r7); its look 16 pixels up, effect 0x17 of BN5's table (0x080DFC94: sprite 0C-14, the
 -- swords' slash, animation 1).
 local SLASH_TICKS, SLASH_AT = 24, 18
-local SLASH = define.effect { sprite = asset.sprite("bn5:sword-slash"), anim = 1, palette = 0 }
+local SLASH = define.effect { sprite = asset.sprite("sword-slash"), anim = 1, palette = 0 }
 local SLASH_Z = 0x10_0000
 -- The shots: the Vulcans' bullets (row 0xC), three 10 ticks apart, at one of four heights (0x080CAA84, pixels).
 local SHOTS, SHOT_TICKS = 3, 10
 local HEIGHTS = { [0] = 0x08, 0x10, 0x18, 0x20 }
--- Before striking, each marks the panel ahead in the battle flag 0x40 mode (0x080E9FD2: ticks, style).
+-- Before striking, each marks the panel ahead in the operation battle (0x080E9FD2: ticks, style).
 local DRAW_TICKS, AIM_TICKS = 15, 15
 local LEAVE_TICKS = 30
 
@@ -238,7 +238,7 @@ local function init(me: Object)
 end
 
 soldier.kind = define.kind {
-    id = "bn5:colonel-soldier",
+    id = "colonel-soldier",
     pool = "attack",
     state = { gun = "u8", hit = "bool" },
     -- 0x080CA834.

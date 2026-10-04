@@ -8,7 +8,7 @@ local shield = require("./shield")
 
 return {
     define.chip {
-        id = "bn6:rflectr1",
+        id = "rflectr1",
         codes = { "A", "C", "P", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 7, damage = 60, hit_param = 20, lockout = 0,
@@ -18,7 +18,7 @@ return {
         action = guard.action { ticks = 60, look = shield.looks.rflectr1, counter = "wave" },
     },
     define.chip {
-        id = "bn6:rflectr2",
+        id = "rflectr2",
         codes = { "B", "G", "Y", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 16, damage = 120, hit_param = 20, lockout = 0,
@@ -28,7 +28,7 @@ return {
         action = guard.action { ticks = 60, look = shield.looks.rflectr2, counter = "wave" },
     },
     define.chip {
-        id = "bn6:rflectr3",
+        id = "rflectr3",
         codes = { "E", "F", "O", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 25, damage = 200, hit_param = 20, lockout = 0,

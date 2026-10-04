@@ -11,7 +11,7 @@ local rock_barrage = require("../../weapons/rock-barrage/weapon")
 local forms = require("../../../../rules/forms/system")
 
 return define.form {
-    id = "bn6:groundcross",
+    id = "groundcross",
     kind = "cross",
     -- What changes MegaMan into it (BN6's five sequences).
     change = forms.action,
@@ -20,14 +20,14 @@ return define.form {
     beast = groundcross_beast,
     -- A weakness hit breaks the Cross: back to the base form.
     breaks_to = base,
-    sprite = asset.sprite("bn6:megaman"),
+    sprite = asset.sprite("megaman"),
     element = "null",
     weakness = { "cursor" },
     buster_bonus = 0,
     weapons = { buster = buster.weapon, charge_shot = drill.weapon, a_charge = rock_barrage },
     palette = 15,
     -- Its faces in the emotion window, and once Beast Out is spent (`byte_801E700`).
-    mugshot = { normal = asset.mugshot("bn6:groundcross"), tired = asset.mugshot("bn6:groundcross-tired") },
+    mugshot = { normal = asset.mugshot("groundcross"), tired = asset.mugshot("groundcross-tired") },
     -- What R shows in the Cross window.
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "break", damage = 10 },
@@ -50,7 +50,7 @@ return define.form {
         aura_anim = 33,
         ice = "medium",
         -- What it wears over MegaMan's body.
-        parts = cross_overlay(asset.sprite("bn6:groundcross-overlay")),
+        parts = cross_overlay(asset.sprite("groundcross-overlay")),
         attach_points = {
             { 2, 0 },
             { 2, 0 },

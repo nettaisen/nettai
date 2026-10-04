@@ -9,7 +9,7 @@
 local protoman = require("./protoman")
 
 return define.chip {
-    id = "bn5:leadraid",
+    id = "leadraid",
     codes = { "L" },
     element = "null",
     family = "null",

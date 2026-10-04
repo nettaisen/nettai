@@ -5,7 +5,7 @@ local seed = require("../../lib/bombs/seed")
 local throw = require("../../lib/bombs/throw")
 
 return define.chip {
-    id = "bn6:grasseed",
+    id = "grasseed",
     codes = { "A", "F", "S", "*" },
     element = "wood", family = "wood", class = "standard",
     rarity = 1, mb = 19, damage = 10, hit_param = 10, lockout = 10,
@@ -20,7 +20,7 @@ return define.chip {
             palette = 2,
             panel = "grass",
             effect = seed.green_sprout,
-            sound = asset.sound("bn6:grass"),
+            sound = asset.sound("grass"),
         }),
     },
 }

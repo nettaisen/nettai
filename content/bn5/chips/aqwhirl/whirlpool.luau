@@ -19,8 +19,8 @@ export type State = {
     ty: number,
 }
 
-local SPRITE = asset.sprite("bn5:aqua-whirl")
-local SOUND = asset.sound("bn5:spout-beast-charge")
+local SPRITE = asset.sprite("aqua-whirl")
+local SOUND = asset.sound("spout-beast-charge")
 local HIT_MOD = 3
 -- 0x080D1A78: the panel flag of an enemy navi, by its side.
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
@@ -213,7 +213,7 @@ local function init(me: Object)
 end
 
 whirlpool.kind = define.kind {
-    id = "bn5:aqwhirl/whirlpool",
+    id = "aqwhirl/whirlpool",
     pool = "attack",
     state = { palette = "u8", speed = "u8", tx = "i32", ty = "i32" },
     -- 0x080D16E0.

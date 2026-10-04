@@ -13,7 +13,7 @@ export type State = {
     powered: boolean,
 }
 
-local MISS = define.effect { sprite = asset.sprite("bn5:hit-sparks"), anim = 0, palette = 0 }
+local MISS = define.effect { sprite = asset.sprite("hit-sparks"), anim = 0, palette = 0 }
 
 -- 0x080D0D98: on its panel, 16 pixels up, its hit there (gone off the field).
 local function init(me: Object)
@@ -50,7 +50,7 @@ local function tick(me: Object)
 end
 
 shot.kind = define.kind {
-    id = "bn5:serchman/shot",
+    id = "serchman/shot",
     pool = "attack",
     state = { powered = "bool" },
     -- 0x080D0D78.

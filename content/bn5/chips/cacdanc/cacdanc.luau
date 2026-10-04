@@ -7,7 +7,7 @@
 -- bounces onto a panel beside it (one with the other side's navi, else any) in 10 ticks and goes in a puff; a hit, or
 -- landing off solid ground or the field, ends it at once.
 --
--- (With battle flag 0x40, never in a netbattle, the cactus also marks its panel and the next with 0x080E9FA4's effect
+-- (In the operation battle, never in a netbattle, the cactus also marks its panel and the next with 0x080E9FA4's effect
 -- object #0x83, which isn't ported.)
 
 local collision = require("../../rules/collision")
@@ -22,16 +22,16 @@ local cacdanc = {}
 
 -- Its look (`sub_8011504`'s word 0x01041030: sheet 10-30, animation 4, a ground shadow) and collision (0x0A050100: a
 -- thrown thing that hits navis, hit modifier 1).
-local SPRITE = asset.sprite("bn5:sprite-10-30")
+local SPRITE = asset.sprite("sprite-10-30")
 local ANIM = 4
 local HIT_MOD = 1
-local FALL_SOUND, BOUNCE_SOUND = asset.sound("bn5:drop"), asset.sound("bn5:sound-0f6")
+local FALL_SOUND, BOUNCE_SOUND = asset.sound("drop"), asset.sound("sound-0f6")
 -- It starts 160 pixels up and falls 0.25 pixels a tick faster each tick; the bounce takes 10 ticks, falling a pixel a
 -- tick faster each.
 local START_Z, FALL_GRAVITY = 0xA0_0000, int.i32(0xFFFFC000)
 local BOUNCE_TICKS, BOUNCE_GRAVITY = 10, int.i32(0xFFFF0000)
 -- The puff it goes in (effect row 0x14).
-local PUFF = define.effect { sprite = asset.sprite("bn5:puff"), anim = 2, palette = 0 }
+local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 -- The other side's navis (0x080DC860, 0x080E7F54) and the panels beside one (0x080DC868, 0x080E7F5C).
 local TARGETS = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
 local SOLID = 0x10
@@ -184,7 +184,7 @@ export type CactusState = {
 }
 
 cacdanc.cactus = define.kind {
-    id = "bn5:cacdanc/cactus",
+    id = "cacdanc/cactus",
     pool = "attack",
     state = { palette = "u8" },
     -- 0x080DC60C: by its lifecycle, then a sprite step.
@@ -209,7 +209,7 @@ cacdanc.cactus = define.kind {
 
 -- Its identity: a field object nothing swallows, leaves as junk or throws (NameID 0xD2), with no look.
 local DANCER = define.identity {
-    id = "bn5:cacdanc-dancer",
+    id = "cacdanc-dancer",
     class = "field_object",
     version = 0,
     ai_index = 1,
@@ -288,7 +288,7 @@ local function update(me: Object)
 end
 
 cacdanc.dancer = define.kind {
-    id = "bn5:cacdanc/dancer",
+    id = "cacdanc/dancer",
     pool = "effect",
     state = { palette = "u8" },
     -- 0x080E7E10.

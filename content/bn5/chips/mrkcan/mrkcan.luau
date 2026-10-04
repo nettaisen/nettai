@@ -38,8 +38,8 @@ export type SightState = {
     enemies: number,
 }
 
-local SIGHT_SPRITE = asset.sprite("bn5:mark-sight")
-local LOCK_SOUND = asset.sound("bn5:mark")
+local SIGHT_SPRITE = asset.sprite("mark-sight")
+local LOCK_SOUND = asset.sound("mark")
 -- The sweep: an arc of 16 ticks, 3 arcs; 120 pixels from the center, which starts 80 pixels behind the owner's
 -- column on the middle row and moves 40 pixels on each arc; it starts at a quarter turn, turning 8 steps a tick,
 -- the other way each arc.
@@ -178,7 +178,7 @@ local function init(me: Object, s: SightState)
 end
 
 mrkcan.sight = define.kind {
-    id = "bn5:mrkcan/sight",
+    id = "mrkcan/sight",
     pool = "effect",
     state = {
         slot = slot.TYPE,
@@ -240,7 +240,7 @@ mrkcan.STATE = { timer = "u16" }
 -- The phases, on the attack's step.
 local AIM, FIRE, RECOVER = 0x0, 0x4, 0x8
 
-local SHOT_SOUND = asset.sound("bn5:cannon")
+local SHOT_SOUND = asset.sound("cannon")
 -- The shot: on the panel found, 16 pixels up, hit modifier 3, the impact spark; at the 15th tick, 29 in all.
 local FIRE_AT, FIRE_TICKS = 0x0F, 0x1D
 -- The cannon's animation by the holder's AI index (0x080EF478: every player's 0; an AI index past it reads on).
@@ -248,7 +248,7 @@ local ANIM_ROWS = 0x18
 
 -- The cannons (the attachment table's rows 0x2C to 0x2E, by the chip).
 function mrkcan.cannon(palette: number): AttachmentLook
-    return attachment.look { sprite = asset.sprite("bn5:mark-cannon"), palette = palette, attach_point = 18 }
+    return attachment.look { sprite = asset.sprite("mark-cannon"), palette = palette, attach_point = 18 }
 end
 
 -- 0x080EF460: the cannon's animation.

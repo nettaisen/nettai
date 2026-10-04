@@ -15,13 +15,13 @@ local rock = require("../rock/rock")
 
 local boulder = {}
 
-local SPRITE = asset.sprite("bn5:sprite-10-31")
+local SPRITE = asset.sprite("sprite-10-31")
 
 boulder.kind = common.make {
-    id = "bn5:boulder",
+    id = "boulder",
     sprite = SPRITE,
     identity = define.identity {
-        id = "bn5:boulder",
+        id = "boulder",
         class = "field_object",
         version = 1,
         ai_index = 0x21,

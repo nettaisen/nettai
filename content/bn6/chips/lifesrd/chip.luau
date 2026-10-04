@@ -14,7 +14,7 @@ local wideblde = require("../wideblde/chip")
 local wideswrd = require("../wideswrd/chip")
 
 return define.chip {
-    id = "bn6:lifesrd",
+    id = "lifesrd",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -33,7 +33,7 @@ return define.chip {
         { order = 1, sequence = { sword, wideblde, longblde } },
     },
     action = slash.action {
-        id = "bn6:lifesrd/action",
+        id = "lifesrd/action",
         blade = parts.blades.sword,
         hit = { region = regions.wide_long, collision = parts.slashes_navis, hit_mod = 3 },
         effect = parts.effects.big,

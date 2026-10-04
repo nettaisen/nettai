@@ -5,7 +5,7 @@
 local grab = require("../../lib/grab/controller")
 
 return define.chip {
-    id = "bn6:panlgrab",
+    id = "panlgrab",
     codes = { "*" },
     element = "null", family = "null", class = "standard",
     rarity = 0, mb = 6, damage = 10, hit_param = 138, lockout = 0,

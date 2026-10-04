@@ -13,9 +13,9 @@ local effects = require("../../lib/effects")
 local shuriken = {}
 
 shuriken.kind = common.make_kind {
-    id = "bn6:bodygrd/shuriken",
-    sprite = asset.sprite("bn6:shuriken"),
-    land_sound = asset.sound("bn6:panel-crack"),
+    id = "bodygrd/shuriken",
+    sprite = asset.sprite("shuriken"),
+    land_sound = asset.sound("panel-crack"),
     puff = effects.bubbles,
     self_type = collision.thrown_slash,
     target = collision.hits_navis,

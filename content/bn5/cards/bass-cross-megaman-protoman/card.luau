@@ -7,7 +7,7 @@ local buster = require("../../navis/megaman/weapons/buster")
 local rapid_buster = require("../../navis/megaman/weapons/rapid-buster")
 
 return define.patch_card {
-    id = "bn5:bass-cross-megaman-protoman",
+    id = "bass-cross-megaman-protoman",
     mb = 70,
     effects = {
         cards.hp(200),

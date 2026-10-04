@@ -66,7 +66,7 @@ local function effect(me: Object)
     end
 end
 
-controller.kind = common.make("bn5:numbrbl/controller", effect)
+controller.kind = common.make("numbrbl/controller", effect)
 
 -- 0x080E83E6: NumbrBl's `dimming` hook, NumberMan of level `level`.
 function controller.hook(level: number): (user: Object, spec: DimmingChipSpec) -> Object?

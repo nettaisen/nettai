@@ -10,10 +10,10 @@ local attachment = require("../../objects/attachment/attachment")
 local bullet = require("../../objects/bullet/bullet")
 local spreader = require("@exelib/spreadr/action")
 
-local LOOK: SpreaderLook = { sound = asset.sound("bn5:h-burst"), attachment = attachment.kind, bullet_kind = bullet.kind }
+local LOOK: SpreaderLook = { sound = asset.sound("h-burst"), attachment = attachment.kind, bullet_kind = bullet.kind }
 
 return define.chip {
-    id = "bn5:spreader",
+    id = "spreader",
     codes = { "C", "D", "E", "*" },
     element = "null",
     family = "null",
@@ -26,8 +26,8 @@ return define.chip {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = spreader.action({
-        id = "bn5:spreader/action",
-        gun = attachment.look { sprite = asset.sprite("bn5:spreader"), palette = 0, attach_point = 11 },
+        id = "spreader/action",
+        gun = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 11 },
         z = 0x10_0000,
         bullet = bullet.variants.spreader,
     }, LOOK),

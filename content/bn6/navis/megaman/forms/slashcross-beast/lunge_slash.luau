@@ -67,7 +67,7 @@ local function init(me: Object)
 end
 
 lunge_slash.kind = define.kind {
-    id = "bn6:slashcross-beast/lunge-slash",
+    id = "slashcross-beast/lunge-slash",
     pool = "attack",
     -- `sub_80DB8CC`.
     update = function(me: Object)
