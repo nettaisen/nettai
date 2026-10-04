@@ -1,10 +1,10 @@
 --!strict
 -- BugCharg's dimming controller (BN5's effect object #0x7C, 0x080E98C8; BN6's SumnBlk controller's skeleton): the usual
--- dimming phases (@common/dimming), with an effect (0x080E990C) that sends out BugCharg's stand-in (./actor) with the
+-- dimming phases (@exelib/dimming), with an effect (0x080E990C) that sends out BugCharg's stand-in (./actor) with the
 -- damage plus the bonus and lasts until it is done.
 
 local actor = require("./actor")
-local dimming_chips = require("@common/dimming")
+local dimming_chips = require("@exelib/dimming")
 
 export type State = {
     -- The Atk+ / cross bonus (+0x32), which the shots' damage adds.

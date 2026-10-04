@@ -11,8 +11,8 @@
 -- (animation 2) for 25 and lets the controller go.
 
 local collision = require("../../rules/collision")
-local dimming_chips = require("@common/dimming")
-local regions = require("@common/regions")
+local dimming_chips = require("@exelib/dimming")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
 local rainyday = {}

@@ -1,8 +1,8 @@
 --!strict
--- BN5's attachments (actor object #5, BN6's code: @common/attachment/attachment), BN5's kind. What it shows is a look
+-- BN5's attachments (actor object #5, BN6's code: @exelib/attachment/attachment), BN5's kind. What it shows is a look
 -- (`attachment.look { ... }`); `attachment.attach(owner, look, slot, { anim = ... })`.
 
-local common = require("@common/attachment/attachment")
+local common = require("@exelib/attachment/attachment")
 
 local attachment = {}
 

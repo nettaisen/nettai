@@ -1,7 +1,7 @@
 --!strict
--- BN5's trap chips' dimming controller (effect object #0x2A, BN6's code: @common/traps/controller), BN5's kind.
+-- BN5's trap chips' dimming controller (effect object #0x2A, BN6's code: @exelib/traps/controller), BN5's kind.
 
-local common = require("@common/traps/controller")
+local common = require("@exelib/traps/controller")
 
 local traps = {}
 

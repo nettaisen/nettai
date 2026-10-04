@@ -1,10 +1,10 @@
 --!strict
 -- The boomerang (the original's attack object #0x32, `sub_80CA2A8`): the
--- shared boomerang (@common/boomer/boomerang), BN6's kind and look: an
+-- shared boomerang (@exelib/boomer/boomerang), BN6's kind and look: an
 -- attack that hits navis, the wood spark.
 
 local collision = require("../../rules/collision")
-local common = require("@common/boomer/boomerang")
+local common = require("@exelib/boomer/boomerang")
 local sparks = require("../../lib/sparks")
 
 local boomerang = {}

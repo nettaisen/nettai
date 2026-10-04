@@ -8,7 +8,7 @@
 -- 10 ticks of each other, 0x080BD2B6): down, down or right, right or A paralyzes (without a flinch); down, down
 -- or left, left or A confuses.
 
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("@exelib/navi-chips/navi")
 local crush = require("./crush")
 
 -- What a command gives his crush (./crush's `Effect`).

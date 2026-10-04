@@ -1,8 +1,8 @@
 --!strict
--- BN5's panel changer (effect object #0x1F, BN6's code: @common/panel-changer/panel_changer), BN5's kind; the
+-- BN5's panel changer (effect object #0x1F, BN6's code: @exelib/panel-changer/panel_changer), BN5's kind; the
 -- sounds most changes make BN6's (a tick every fourth tick, and the change).
 
-local common = require("@common/panel-changer/panel_changer")
+local common = require("@exelib/panel-changer/panel_changer")
 
 local panel_changer = {}
 

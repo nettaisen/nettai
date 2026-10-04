@@ -1,5 +1,5 @@
 --!strict
--- BN5's boulder (attack object #0x6E, 0x080D38C0): BN6's (@common/boulder) but for
+-- BN5's boulder (attack object #0x6E, 0x080D38C0): BN6's (@exelib/boulder) but for
 --
 -- - the damage it is thrown for: 100 (its stage spawner's word, 0x080068D0; BN6's 200);
 -- - how it leaves (0x080D39C4): any removal leaves a puff (BN5 neither absorbs nor blinks obstacles out);
@@ -10,7 +10,7 @@
 -- The stages' boulders (an actor list's entry type 3, 0x080068A0, BN6's entry type 0xA's code).
 
 local collision = require("../../rules/collision")
-local common = require("@common/boulder/boulder")
+local common = require("@exelib/boulder/boulder")
 local rock = require("../rock/rock")
 
 local boulder = {}

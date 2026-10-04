@@ -9,7 +9,7 @@
 
 local armshot = require("../../lib/armshot")
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local status = require("../../rules/status")
 
 local pulsar = {}

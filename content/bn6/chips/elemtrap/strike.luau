@@ -1,10 +1,10 @@
 --!strict
 -- ElemTrap's counterattack (the original's effect object #0x2B,
--- `sub_80E35A4`): the shared counterattack (@common/elemtrap/strike), BN6's
+-- `sub_80E35A4`): the shared counterattack (@exelib/elemtrap/strike), BN6's
 -- kind and look: its strikes by element, and BN6's panel bursts.
 
 local collision = require("../../rules/collision")
-local common = require("@common/elemtrap/strike")
+local common = require("@exelib/elemtrap/strike")
 local effects = require("../../lib/effects")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
 local sparks = require("../../lib/sparks")
