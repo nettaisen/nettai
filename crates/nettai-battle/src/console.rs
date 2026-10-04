@@ -36,9 +36,6 @@ pub struct ConsoleSetup {
     /// alone. Each chip OK takes out of the folder moves the index down by
     /// one, so it follows the pair as the folder closes up.
     pub tag_pair: Option<u8>,
-    /// The save's event flag 0x1720: MegaMan's emotion window flickers as
-    /// a bugged navi's does, bugs or not.
-    pub emotion_window_glitch: bool,
     /// The console's frame counter before the round's first tick
     /// (`Console::frames`).
     pub frames: u32,
@@ -81,9 +78,9 @@ pub struct EmotionWindow {
     /// +0x1D: flickers left, and +0x0F: ticks left of the current one.
     pub flickers: u8,
     pub flicker_ticks: u8,
-    /// +0x1E: the save's glitch (`ConsoleSetup::emotion_window_glitch`),
-    /// kept outside random battles and battle modes 1-5 and 8; BugFix
-    /// clears it.
+    /// +0x1E: the save's glitch (`Console::emotion_window_glitch`), kept
+    /// outside random battles and battle modes 1-5 and 8; BugFix clears
+    /// it.
     pub glitch: bool,
 }
 
@@ -97,7 +94,12 @@ pub struct Console {
     /// Where the folder's tag pair is (`ConsoleSetup`; OK moves it with
     /// the chips it takes out, an opening that could deal it drops it).
     pub tag_pair: Option<u8>,
-    /// The save's glitch, for the emotion window's start.
+    /// The save's glitch (BN6's event flag 0x1720, 0x1723 with patch
+    /// cards; BN5's 0x10C1 and 0x10C4), for the emotion window's start:
+    /// MegaMan's window flickers as a bugged navi's does, bugs or not. No
+    /// setup gives it: the game's rules make it as the round is set up
+    /// (`battle.set_emotion_window_glitch`: the NaviCust's compile when a
+    /// bug applies, the patch cards' routine).
     pub emotion_window_glitch: bool,
     /// The HP box's count to its next low-HP sound (`eStruct2035280`+6:
     /// only the sound depends on it).
@@ -115,7 +117,7 @@ impl Console {
             camera: CameraShake::default(),
             emotion_window: EmotionWindow::default(),
             tag_pair: setup.tag_pair,
-            emotion_window_glitch: setup.emotion_window_glitch,
+            emotion_window_glitch: false,
             low_hp_ticks: 0,
             frames: setup.frames,
         }

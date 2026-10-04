@@ -206,7 +206,6 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
         );
     }
     col = col.push(field("Bug frags", text_input("0", &frags).on_input(move |t| Msg::BugFrags(s, t)).width(Length::Fixed(100.0))));
-    col = col.push(checkbox(side.emotion_window_glitch).label("The emotion window glitches (the save's NaviCust bug flag)").on_toggle(move |b| Msg::Glitch(s, b)));
     col = col.push(button("Import from save…").on_press(Msg::ImportSave(s)));
     col = col.push(
         text(
