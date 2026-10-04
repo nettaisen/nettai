@@ -1330,8 +1330,9 @@ declare field: {
     -- unoccupied one.
     crack: (x: number, y: number) -> boolean,
     -- `object_breakPanel_dup2`: break a solid panel, or crack it while
-    -- something stands on it.
-    break_panel: (x: number, y: number) -> boolean,
+    -- something stands on it; with `sound` in place of the panel crack's
+    -- (`object_breakPanelLoud`'s).
+    break_panel: (x: number, y: number, sound: Sound?) -> boolean,
     -- `object_breakPanel_dup1`: break a solid panel, or crack it when
     -- something stands on it (not a neutral object); true only when it
     -- broke.
@@ -1467,8 +1468,9 @@ export type BlinkOut = "no" | "blinking" | "done"
 -- The obstacle framework: the steps of a field obstacle's update (rocks,
 -- cubes and the like, without actor data), which its update calls in its
 -- routine's order: `take_hits`, the hit spark, `tick_lifetime`, `react`
--- (then the kind's own action table: its entries for actions 0 appear, 2
--- destroyed and 8 idle, and the shared ones below for 1, 3 to 7), the
+-- (then the kind's own action table, in the framework's numbering: its
+-- entries for actions 0 appear, 2 destroyed and 8 idle, and the shared
+-- ones below for 1, 3 to 7), the
 -- sprite, and presenting its collision.
 declare obstacle: {
     -- `setFieldBattleObject_800F614`: one of `side`'s field objects of
@@ -1499,6 +1501,14 @@ declare obstacle: {
     -- While dimmed it holds the obstacle still once it has appeared
     -- ("after_appearing", the default) or always ("always", `sub_801B750`).
     react: (me: Object, crush: ObstacleCrush?, hold: ObstacleHold?) -> number?,
+    -- The framework's action numbers are BN6's (the kind's own from 8: its
+    -- idle, then the rest); the game may store others (BN5's obstacles
+    -- have no frozen or bubbled entries: their own from 6). `react` returns
+    -- the framework's number; `action_byte` gives the byte to store for
+    -- one (as `me.action`, or to `me:set_action`), `current` the object's
+    -- action in the framework's numbering.
+    action_byte: (me: Object, action: number) -> number,
+    current: (me: Object) -> number,
     -- The shared table entries: `sub_80165B8` (1), the pushes (5:
     -- `sub_8017E26` slides up to six panels, not into bodies or obstacles
     -- nor, pulled back, into the puller's area; `sub_8017CC0` is knocked

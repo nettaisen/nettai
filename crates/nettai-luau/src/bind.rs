@@ -2043,9 +2043,13 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let p = panel(x, y)?;
         with(|api, _| Ok(api.crack_panel(p)))
     });
-    lib_fn!(lua, t, "break_panel", |_, (x, y): (LuaValue, LuaValue)| {
+    lib_fn!(lua, t, "break_panel", |_, (x, y, sound): (LuaValue, LuaValue, LuaValue)| {
         let p = panel(x, y)?;
-        with(|api, _| Ok(api.break_panel(p)))
+        let sound = match sound {
+            LuaValue::Nil => None,
+            s => Some(sound_arg(s)?),
+        };
+        with(|api, _| Ok(api.break_panel(p, sound)))
     });
     lib_fn!(lua, t, "shatter", |_, (x, y): (LuaValue, LuaValue)| {
         let p = panel(x, y)?;
@@ -2161,6 +2165,11 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         };
         with(|api, _| api.obstacle_react(me.0, crush, hold).map_err(api_error))
     });
+    lib_fn!(lua, t, "action_byte", |_, (me, a): (Me, LuaValue)| {
+        let a = u8_arg(a, "action")?;
+        with(|api, _| api.obstacle_action_byte(me.0, a).map_err(api_error))
+    });
+    lib_fn!(lua, t, "current", |_, me: Me| with(|api, _| Ok(api.obstacle_current_action(me.0))));
     for &a in ObstacleAction::ALL {
         t.set(
             a.name(),

@@ -1500,8 +1500,9 @@ pub trait CoreApi {
     /// unoccupied one.
     fn crack_panel(&mut self, p: PanelPos) -> bool;
     /// `object_breakPanel_dup2`: break a solid panel, or crack it while
-    /// something stands on it.
-    fn break_panel(&mut self, p: PanelPos) -> bool;
+    /// something stands on it; with `sound` in place of the panel crack's
+    /// (`object_breakPanelLoud`).
+    fn break_panel(&mut self, p: PanelPos, sound: Option<u16>) -> bool;
     /// `object_breakPanel`: break a solid panel nothing stands on (true);
     /// leave any other alone.
     fn break_empty_panel(&mut self, p: PanelPos) -> bool;
@@ -2008,6 +2009,12 @@ pub trait CoreApi {
     fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush, hold: ObstacleHold) -> ApiResult<Option<u8>>;
     /// Run a shared entry of the obstacle's action table.
     fn obstacle_action(&mut self, o: ObjectRef, a: ObstacleAction) -> ApiResult<()>;
+    /// The byte the obstacle's game stores for action `a` of the
+    /// framework's numbering (BN6's: the kind's own from 8; BN5's own from
+    /// 6, with no frozen or bubbled entries).
+    fn obstacle_action_byte(&self, o: ObjectRef, a: u8) -> ApiResult<u8>;
+    /// The obstacle's action in the framework's numbering.
+    fn obstacle_current_action(&self, o: ObjectRef) -> u8;
     /// How the obstacle is leaving.
     fn obstacle_removal(&self, o: ObjectRef) -> ApiResult<ObstacleRemoval>;
     /// `sub_800F8CE`: blink out for 20 ticks when it vanishes.

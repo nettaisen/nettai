@@ -1254,8 +1254,8 @@ impl CoreApi for Battle {
         Battle::crack_panel(self, p.x, p.y)
     }
 
-    fn break_panel(&mut self, p: PanelPos) -> bool {
-        Battle::break_panel(self, p.x, p.y)
+    fn break_panel(&mut self, p: PanelPos, sound: Option<u16>) -> bool {
+        Battle::break_panel_sounding(self, p.x, p.y, sound.map(SoundId))
     }
 
     fn panel_solid(&self, p: PanelPos) -> bool {
@@ -2704,6 +2704,14 @@ impl CoreApi for Battle {
             ObstacleHold::Always => Hold::Always,
         };
         Ok(kinds::obstacle::react(self, o, crush, hold))
+    }
+
+    fn obstacle_action_byte(&self, o: ObjectRef, a: u8) -> ApiResult<u8> {
+        kinds::obstacle::action_byte(self, o, a).map_err(ApiError::Other)
+    }
+
+    fn obstacle_current_action(&self, o: ObjectRef) -> u8 {
+        kinds::obstacle::current_action(self, o)
     }
 
     fn obstacle_action(&mut self, o: ObjectRef, a: ObstacleAction) -> ApiResult<()> {
