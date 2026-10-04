@@ -1306,8 +1306,8 @@ Slasher's request 0x80000 (`actions.stun_strike`, BN5's action 0x49, unfilled) a
 chip throws them); battle flag 0x40's effect object 0x83 (0x080E9FD2, 0x080E9FA4: CrakBom's and Quake's bombs; never
 in a netbattle); Geyser's geyser (no recording throws it into a hole); a computer-controlled navi's VarSwrd pick (its
 tactics' byte, 0x0802D4E2 +0x12: no battle has one; only the story navis' routines set AIData +0xF0, 0x0802C110, so
-Chaos Unison's Dark MegaMan takes the joypad path and gets a Sword). **Waiting:** Voltz1 to 3 and VDoll (on BN5's
-field obstacles; Wind, Fan, RockCube, BoyBomb1 to 3 and RedFrut1 to 3 are in §15.11).
+Chaos Unison's Dark MegaMan takes the joypad path and gets a Sword). **Waiting:** VDoll (on BN5's field obstacles;
+Wind, Fan, RockCube, BoyBomb1 to 3, RedFrut1 to 3 and Voltz1 to 3 are in §15.11).
 
 ### 15.7 BN5's MegaMan, stages and roles (as built)
 
@@ -1726,6 +1726,18 @@ parameter pushes weaker (hit modifier 4, 0x080CEAA2; BN6's only a pull), no hit 
 flags against 0; BN6's against a wind stopper's 0x800000), and a side of 2 reads 0x080CEBA4's code. The chip lab's
 chips/0x054-fan/far-column (a RockCube pushed by AirShot to the far column), chips/0x054-fan/cosmoman (CosmoMan takes
 the fan: the puff) and chips/0x053-wind/broken (the opponent's Cannon breaks it) record the differences.
+
+Voltz1–3 (action 0x1A's instant effect 16, 0x080D88CE; BN5's own: chips/voltz/voltz; BN6's attack 0x90 is a virus's,
+`sub_80D7068`, unported): a sensor (attack object 0x90, 0x080D86E8; NameID 0xE4, 1 HP, its side's field object of
+class 1, sprite 04-17 `voltz`) on the panel three ahead drops from 160 pixels, 4 a tick, its collision on (a thrown
+body against navis, hit modifier 3, its element's spark) and its panel reserved for the last 16 pixels; anything its
+collision meets ends it at once, and evicted (its HP 0) it leaves a puff. Landed, 10 ticks; then its second
+animation, the thunder ball's sound and a shock (attack object 0x92, 0x080D8AF0, sprite 10-11) on each panel beside
+it that isn't its side's (up, down, behind, ahead: 0x080D8944), each going on its way to the next such panel after the
+record's third parameter (20 ticks) and lasting 5 more; 30 ticks later it blinks out over 30. Its palette is its level
+(the record's first parameter) times 4; its drop sound is 0xEA (`voltz-drop`). In battle flag 0x40's mode it marks its
+panel as it comes and lands (effect 0x83, lib/navi-chips/marker). The chip lab's chips/0x04e-voltz1/chain (from the
+back column: a shock goes on to the back column) and evicted (a second Voltz evicts the first) record the rest.
 
 **BN5's obstacle pushes** (the obstacle framework, by the obstacle's own game's `push_reading`): BN5 keeps a
 collision's hit flags only by the other collision's flip (+0x6C, +0x70: the hit registration 0x080169C8 to
