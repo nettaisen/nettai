@@ -16,7 +16,7 @@ local made = common.make {
     buster = buster,
     projectiles = projectile,
     attachment = attachment.kind,
-    shot_sound = asset.sound("bn6:buster-shot"),
+    shot_sound = asset.sound("bn5:buster-shot"),
     shot = variants.charged,
     overlay_steps = false,
 }

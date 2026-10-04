@@ -13,7 +13,7 @@ local attachment = require("../../objects/attachment/attachment")
 local black_bomb = require("@common/blkbomb/bomb")
 local bombs = require("../../lib/bombs/bombs")
 local collision = require("../../rules/collision")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local sparks = require("../../lib/sparks")
@@ -57,9 +57,9 @@ local KIND = black_bomb.make_kind("bn5:blkbomb/bomb", {
         class = "field_object",
         version = 2,
         ai_index = 1,
-        look = { sprite = asset.sprite("bn6:black-bomb"), anim = 0, palette = 0, shadow = true },
+        look = { sprite = asset.sprite("bn5:black-bomb"), anim = 0, palette = 0, shadow = true },
     },
-    sprite = asset.sprite("bn6:black-bomb"),
+    sprite = asset.sprite("bn5:black-bomb"),
     spark = sparks.breaking,
     is = collision.neutral_object,
     target = collision.everything,
@@ -67,8 +67,8 @@ local KIND = black_bomb.make_kind("bn5:blkbomb/bomb", {
     burst_target = collision.hits_navis,
     -- 0x08017984: any hit from the other side pushes it.
     push = "any_hit",
-    land_sound = asset.sound("bn6:land"),
-    burst_sound = asset.sound("bn6:burst"),
+    land_sound = asset.sound("bn5:land"),
+    burst_sound = asset.sound("bn5:burst"),
     burst_effect = effects.explosion,
     bubble = rising_bubble.kind,
     bursts = panel_bursts.kind,
@@ -76,7 +76,7 @@ local KIND = black_bomb.make_kind("bn5:blkbomb/bomb", {
 })
 
 -- What the navi holds while throwing one: the bomb's sprite, palette 4 (BN5's attachment row 0x1A).
-local HELD = attachment.look { sprite = asset.sprite("bn6:bomb"), palette = 4 }
+local HELD = attachment.look { sprite = asset.sprite("bn5:bomb"), palette = 4 }
 
 return define.chip {
     id = "bn5:blkbomb",

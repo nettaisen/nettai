@@ -90,6 +90,7 @@ language = "en"
 "bn5:crsshld2" = { name = "CrsShld2", description = "Attacks\neven when\nguarding!" }
 "bn5:crsshld3" = { name = "CrsShld3", description = "Attacks\neven when\nguarding!" }
 "bn5:csmopris" = { name = "CsmoPris", description = "Planet\nfrom Csmo\nholes" }
+"bn5:curse" = { name = "Curse", description = "" }
 "bn5:custswrd" = { name = "CustSwrd", description = "Cust\nGauge=\nAtk Str" }
 "bn5:cusvolt1" = { name = "CusVolt1", description = "Consumes\nCustom\nGauge" }
 "bn5:cusvolt2" = { name = "CusVolt2", description = "Consumes\nCustom\nGauge" }
@@ -243,6 +244,7 @@ language = "en"
 "bn5:pulsar1" = { name = "Pulsar1", description = "Sonic atk\nspreads\nwhen hits" }
 "bn5:pulsar2" = { name = "Pulsar2", description = "Sonic atk\nspreads\nwhen hits" }
 "bn5:pulsar3" = { name = "Pulsar3", description = "Sonic atk\nspreads\nwhen hits" }
+"bn5:punisher" = { name = "Punisher", description = "" }
 "bn5:quake1" = { name = "Quake1", description = "Quake\ncracks\n3sq ahead" }
 "bn5:quake2" = { name = "Quake2", description = "Quake\ncracks\n3sq ahead" }
 "bn5:quake3" = { name = "Quake3", description = "Quake\ncracks\n3sq ahead" }
