@@ -268,3 +268,8 @@
 "bn5:football/ball" = { pool = "attack", index = 0x95 }
 "bn5:bignoise/navi" = { pool = "actor", index = 0x1B }
 "bn5:bignoise/noise" = { pool = "attack", index = 0x04 }
+"bn5:support/controller" = { pool = "effect", index = 0x74 }
+"bn5:rush" = { pool = "actor", index = 0x4B }
+"bn5:beat" = { pool = "actor", index = 0x4C }
+"bn5:tango" = { pool = "actor", index = 0x4D }
+"bn5:tango/heal" = { pool = "attack", index = 0x9F }

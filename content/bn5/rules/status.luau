@@ -400,6 +400,10 @@ local status = {
         form_tick = false,
         -- The mercy flash hides the navi while its timer's bit 1 is clear (0x080137B6; BN6's while it is set).
         flash_hides_on_clear = true,
+        -- A navi's status word read before its init made its collision data (through the null pointer, from the
+        -- BIOS: a round's first tick, the other side's first barrier's visual asking whether the local navi is blind,
+        -- 0x0800CDF4): an interrupt's opcode (read on the console at 0x0800CE18), without BN6's blind bit.
+        missing_collision_status = 0xE55EC002,
         -- Its status block (0x08017CC8 on) runs the flash's timer first, whatever the battle's flags (0x080173C4),
         -- then the slides, a drag and a flinch, which end a paralysis unless a counter just made it.
         reactions = "bn5",

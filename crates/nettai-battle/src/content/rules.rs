@@ -329,6 +329,25 @@ pub struct IntakeRules {
     pub no_charge_drive: bool,
 }
 
+/// What a navi's status word (its collision data's flags 1) reads as while
+/// the navi has no collision data, its init not yet run
+/// (`Rules::missing_collision_status`): the game reads it through the null
+/// pointer, from the BIOS, which gives the opcode the BIOS last fetched
+/// (open bus). It happens on a round's first tick, when the other side's
+/// navi inits first and its first barrier's visual asks whether the local
+/// navi is blind (`sub_800EB6C`). BN6's is the object spawn's fill's
+/// (`ZeroFillByWord`'s CpuSet: 0xE3A02004, `f1::NULL_READ`, the default),
+/// which has the blind bit; BN5's an interrupt's (0xE55EC002, read on the
+/// console at 0x0800CE18), which hasn't.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct MissingCollisionStatus(pub u32);
+
+impl Default for MissingCollisionStatus {
+    fn default() -> Self {
+        Self(crate::collision::f1::NULL_READ)
+    }
+}
+
 /// How the weakness request breaks a form (`Rules::form_break`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum FormBreak {
@@ -363,7 +382,8 @@ pub struct Rules {
     pub hp_bug_periods: [u8; 8],
     /// BN6's per-form tick runs (`off_80EA93C`: `sub_80F0608`, MegaMan's
     /// and ChargeMan's: the Fire chips' charge, a form's height); BN5's
-    /// table (0x080EB1E8) has none of it (rule section `status`).
+    /// table (0x080EB1E8) has none of it (rule section `status`), its
+    /// MegaMan's routine being the forms' own (`FormDef::tick`).
     pub form_tick: bool,
     /// Which ticks of the mercy flash show the navi (rule section `status`):
     /// BN6's hides it while the flash timer's bit 1 is set
@@ -371,6 +391,9 @@ pub struct Rules {
     /// blink, two ticks out of phase. Presentation: visibility is no part
     /// of the simulation.
     pub flash_hides_on_clear: bool,
+    /// What a navi's status word reads as while it has no collision data
+    /// (rule section `status`): see [`MissingCollisionStatus`].
+    pub missing_collision_status: MissingCollisionStatus,
     /// How a navi's status block runs its reactions (rule section
     /// `status`).
     pub reactions: Reactions,
