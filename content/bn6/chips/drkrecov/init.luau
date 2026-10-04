@@ -2,7 +2,7 @@
 -- DrkRecov: the recovery chips' heal (content/exelib/recov/heal.luau) of 1000 HP.
 
 local heal = require("@exelib/recov/heal")
-local recov = require("./recov")
+local recov_chips = require("./recov")
 
 return define.chip {
     id = "drkrecov",
@@ -18,7 +18,7 @@ return define.chip {
     extra_flags = { 16, 32 },
     library = { number = 0, index = 68, sort = 0 },
     slot_in_limit = 1,
-    dark_substitute = recov[1],
+    dark_substitute = recov_chips.recov10,
     hp_bug = 7,
     action = heal.action { id = "drkrecov/action", hp = 1000 },
 }

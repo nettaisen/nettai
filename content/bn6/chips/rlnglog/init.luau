@@ -10,7 +10,7 @@ local lockon = require("../rules/lockon")
 local LOG: RollingLog = { big = true, stop_ticks = 60, hp = 20, thrown = true }
 
 return {
-    define.chip {
+    rlnglog1 = define.chip {
         id = "rlnglog1",
         codes = { "I", "K", "P" },
         element = "wood", family = "wood", class = "standard",
@@ -22,7 +22,7 @@ return {
         beast = { lockon = lockon.gundels1 },
         action = action.action { log = LOG },
     },
-    define.chip {
+    rlnglog2 = define.chip {
         id = "rlnglog2",
         codes = { "E", "Q", "Z" },
         element = "wood", family = "wood", class = "standard",
@@ -34,7 +34,7 @@ return {
         beast = { lockon = lockon.gundels1 },
         action = action.action { log = LOG },
     },
-    define.chip {
+    rlnglog3 = define.chip {
         id = "rlnglog3",
         codes = { "F", "N", "W" },
         element = "wood", family = "wood", class = "standard",

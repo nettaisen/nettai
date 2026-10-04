@@ -5,7 +5,7 @@
 local heal = require("@exelib/recov/heal")
 
 local chips = {
-    define.chip {
+    recov10 = define.chip {
         id = "recov10",
         codes = { "A", "D", "L", "*" },
         element = "null", family = "null", class = "standard",
@@ -15,7 +15,7 @@ local chips = {
         slot_in_limit = 1,
         action = heal.action { hp = 10 },
     },
-    define.chip {
+    recov30 = define.chip {
         id = "recov30",
         codes = { "E", "L", "Q", "*" },
         element = "null", family = "null", class = "standard",
@@ -25,7 +25,7 @@ local chips = {
         slot_in_limit = 1,
         action = heal.action { hp = 30 },
     },
-    define.chip {
+    recov50 = define.chip {
         id = "recov50",
         codes = { "C", "M", "P", "*" },
         element = "null", family = "null", class = "standard",
@@ -35,7 +35,7 @@ local chips = {
         slot_in_limit = 1,
         action = heal.action { hp = 50 },
     },
-    define.chip {
+    recov80 = define.chip {
         id = "recov80",
         codes = { "H", "K", "V", "*" },
         element = "null", family = "null", class = "standard",
@@ -45,7 +45,7 @@ local chips = {
         slot_in_limit = 1,
         action = heal.action { hp = 80 },
     },
-    define.chip {
+    recov120 = define.chip {
         id = "recov120",
         codes = { "F", "P", "S" },
         element = "null", family = "null", class = "standard",
@@ -55,7 +55,7 @@ local chips = {
         slot_in_limit = 1,
         action = heal.action { hp = 120 },
     },
-    define.chip {
+    recov150 = define.chip {
         id = "recov150",
         codes = { "J", "M", "T" },
         element = "null", family = "null", class = "standard",
@@ -65,7 +65,7 @@ local chips = {
         slot_in_limit = 1,
         action = heal.action { hp = 150 },
     },
-    define.chip {
+    recov200 = define.chip {
         id = "recov200",
         codes = { "I", "Q", "Z" },
         element = "null", family = "null", class = "standard",
@@ -75,7 +75,7 @@ local chips = {
         slot_in_limit = 1,
         action = heal.action { hp = 200 },
     },
-    define.chip {
+    recov300 = define.chip {
         id = "recov300",
         codes = { "J", "O", "Y" },
         element = "null", family = "null", class = "standard",

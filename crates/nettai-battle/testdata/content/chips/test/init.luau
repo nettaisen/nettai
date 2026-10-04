@@ -15,8 +15,8 @@ local elemtrap = require("./elemtrap")
 local elmntman = require("./elmntman/navi")
 local eraseman = require("./eraseman/navi")
 local fist = require("./firehit/fist")
-local flshbom = require("./flshbom")
-local gundels = require("./gundels")
+local flshbom_chips = require("./flshbom")
+local gundels_chips = require("./gundels")
 local heatman = require("./heatman/navi")
 local hook = require("./flmhook/hook")
 local invisible = require("./invisibl/controller")
@@ -30,7 +30,7 @@ local spoutman = require("./spoutman/navi")
 local stepswrd = require("./stepswrd")
 local sunmoon = require("./sunmoon/sun")
 local tenguman = require("./tenguman/navi")
-local timebom = require("./timebom")
+local timebom_chips = require("./timebom")
 local tmhkman = require("./tmhkman/navi")
 local traps = require("../lib/traps/controller")
 local wideswrd = require("./wideswrd")
@@ -71,9 +71,9 @@ local function chip(key: string, n: number, fields: { [string]: any }): Chip
     return define.chip(spec :: any)
 end
 
--- The SunGuns: BN6's GunDelSols' actions (chips/gundels), by level.
-local function sun_gun(key: string, n: number, level: number): Chip
-    return chip(key, n, { beast = { lockon = lockon.cannon }, action = gundels[level].action })
+-- The SunGuns: BN6's GunDelSols' actions (chips/gundels), each a GunDelSol's.
+local function sun_gun(key: string, n: number, gundel: Chip): Chip
+    return chip(key, n, { beast = { lockon = lockon.cannon }, action = gundel.action })
 end
 
 -- A thrown chip.
@@ -145,10 +145,10 @@ return {
             error("the test content's blank chip has no use")
         end,
     }),
-    sun_gun_1 = sun_gun("sun-gun-1", 0x01, 1),
-    sun_gun_2 = sun_gun("sun-gun-2", 0x02, 2),
-    sun_gun_3 = sun_gun("sun-gun-3", 0x03, 3),
-    sun_gun_ex = sun_gun("sun-gun-ex", 0x04, 4),
+    sun_gun_1 = sun_gun("sun-gun-1", 0x01, gundels_chips.gundels1),
+    sun_gun_2 = sun_gun("sun-gun-2", 0x02, gundels_chips.gundels2),
+    sun_gun_3 = sun_gun("sun-gun-3", 0x03, gundels_chips.gundels3),
+    sun_gun_ex = sun_gun("sun-gun-ex", 0x04, gundels_chips.gundelex),
     -- Invisibl's six seconds.
     veil = chip("veil", 0x05, {
         -- (The counter system's made-up extension.)
@@ -171,13 +171,13 @@ return {
         flags = { "dimming", "has_damage", "standard_library" },
         hit_param = 100,
         damage = 50,
-        dimming = timebom.timebom1.dimming,
+        dimming = timebom_chips.timebom1.dimming,
     }),
     time_bomb_plus = chip("time-bomb-plus", 0x32, {
         flags = { "dimming", "has_damage", "standard_library" },
         hit_param = 100,
         damage = 70,
-        dimming = timebom.timebom.dimming,
+        dimming = timebom_chips.timebom.dimming,
     }),
     -- A plus chip used on its own.
     plus = chip("plus", 0x41, { family = "plus", damage = 10, instant = plus.attack }),
@@ -203,7 +203,7 @@ return {
     }),
     bomb = thrown("bomb", 0x103, 50, minibomb.action),
     seed = thrown("seed", 0x104, 10, poisseed.action),
-    flash = thrown("flash", 0x105, 40, flshbom[2].action),
+    flash = thrown("flash", 0x105, 40, flshbom_chips.flshbom2.action),
     bug = thrown("bug", 0x106, 0, bugbomb.action),
     -- A column of three panels ahead; the same after a step two panels
     -- ahead; a strike at stunned or grounded opponents.

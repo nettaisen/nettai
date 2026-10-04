@@ -6,7 +6,7 @@
 local golem = require("@self/golem")
 
 return {
-    define.chip {
+    golmhit1 = define.chip {
         id = "golmhit1",
         codes = { "I", "K", "Y" },
         element = "null", family = "break", class = "standard",
@@ -16,7 +16,7 @@ return {
         slot_in_limit = 3,
         instant = golem.instant { palette = 0 },
     },
-    define.chip {
+    golmhit2 = define.chip {
         id = "golmhit2",
         codes = { "D", "P", "U" },
         element = "null", family = "break", class = "standard",
@@ -26,7 +26,7 @@ return {
         slot_in_limit = 3,
         instant = golem.instant { palette = 1 },
     },
-    define.chip {
+    golmhit3 = define.chip {
         id = "golmhit3",
         codes = { "H", "M", "V" },
         element = "null", family = "break", class = "standard",

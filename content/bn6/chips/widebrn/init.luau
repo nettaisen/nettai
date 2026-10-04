@@ -5,7 +5,7 @@
 -- leaves. The three differ only in their damage.
 
 local burn = require("../lib/burner/burn")
-local firebrn = require("./firebrn")
+local firebrn_chips = require("./firebrn")
 local lockon = require("../rules/lockon")
 
 local function wide_burn(id: string): Action
@@ -31,7 +31,7 @@ local widebrn1 = define.chip {
     beast = { lockon = lockon.gundels1 },
     library = { number = 323, index = 4, sort = 0 },
     slot_in_limit = 1,
-    program_advances = { { order = 17, code_run = { chip = firebrn.firebrn1, count = 3 } } },
+    program_advances = { { order = 17, code_run = { chip = firebrn_chips.firebrn1, count = 3 } } },
     action = wide_burn("widebrn1/action"),
 }
 
@@ -50,7 +50,7 @@ local widebrn2 = define.chip {
     beast = { lockon = lockon.gundels1 },
     library = { number = 324, index = 5, sort = 0 },
     slot_in_limit = 1,
-    program_advances = { { order = 18, code_run = { chip = firebrn.firebrn2, count = 3 } } },
+    program_advances = { { order = 18, code_run = { chip = firebrn_chips.firebrn2, count = 3 } } },
     action = wide_burn("widebrn2/action"),
 }
 
@@ -69,7 +69,7 @@ local widebrn3 = define.chip {
     beast = { lockon = lockon.gundels1 },
     library = { number = 325, index = 6, sort = 0 },
     slot_in_limit = 1,
-    program_advances = { { order = 19, code_run = { chip = firebrn.firebrn3, count = 3 } } },
+    program_advances = { { order = 19, code_run = { chip = firebrn_chips.firebrn3, count = 3 } } },
     action = wide_burn("widebrn3/action"),
 }
 

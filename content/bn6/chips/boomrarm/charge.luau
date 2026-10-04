@@ -7,7 +7,7 @@
 -- replace it, and while the navi has it a Beast buster gives way to the
 -- plain one.
 
-local boomer = require("../boomer")
+local boomer_chips = require("../boomer")
 local charge = require("../../lib/navi-boost/charge")
 
 -- The attack's element byte: Wood.
@@ -25,6 +25,6 @@ return define.weapon {
     id = "boomrarm/charge",
     charge_ticks = { 100, 100, 100, 100, 100, 90, 80, 70 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,
-    instant = boomer[1].instant,
+    instant = boomer_chips.boomer.instant,
     sticky = true,
 }

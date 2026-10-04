@@ -12,7 +12,7 @@ local tankcan = require("@self/action")
 local SHELL = { hit_mod = 0x4B, cracks = true, shift = 0 }
 
 return {
-    define.chip {
+    tankcan1 = define.chip {
         id = "tankcan1",
         codes = { "A", "G", "R" },
         element = "null", family = "null", class = "standard",
@@ -24,7 +24,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = tankcan.action { shell = SHELL },
     },
-    define.chip {
+    tankcan2 = define.chip {
         id = "tankcan2",
         codes = { "L", "S", "V" },
         element = "null", family = "null", class = "standard",
@@ -36,7 +36,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = tankcan.action { shell = SHELL },
     },
-    define.chip {
+    tankcan3 = define.chip {
         id = "tankcan3",
         codes = { "B", "M", "P" },
         element = "null", family = "null", class = "standard",
