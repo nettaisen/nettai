@@ -34,8 +34,9 @@ local ANIM_SPIN = 0x0C
 local SOUND = asset.sound("bn5:spin")
 -- The swing's ticks, the tick (timer value) a charged swing leaves its afterimage, and the one the blade comes out.
 local SWING_TICKS, AFTERIMAGE_AT, BLADE_AT = 0x15, 0x10, 0x12
--- The low byte of the swing routine's address (0x080EF87F), which the blade's spawner leaves in its panel Y.
-local SWING_ROUTINE_LOW = 0x7F
+-- The swing routine's address (with the Thumb bit), which the phase's dispatch leaves in a register: the blade's
+-- spawner leaves it in the blade's X and its low byte in its panel Y (@common/moonbld/blade).
+local SWING_ROUTINE = 0x080EF87F
 
 local function set_step(me: Object, step: number)
     me.step = step
@@ -71,7 +72,7 @@ moonbld.action = define.action {
             if s.timer == BLADE_AT then
                 -- The damage word (the hit parameter in its high half), plus the Atk+ bonus.
                 local damage = me.attack_damage + me.hit_param * 0x10000 + me.extra
-                common.spawn(moonbld.blade, me, bit32.band(me.extra, 0xFF), SWING_ROUTINE_LOW, damage, false)
+                common.spawn(moonbld.blade, me, bit32.band(me.extra, 0xFF), SWING_ROUTINE, damage, false)
             end
             local t = s.timer - 1
             s.timer = t

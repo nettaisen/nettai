@@ -5,9 +5,9 @@
 -- and bug 0x18 with argument 1; a plain blade, which no spawner makes, hit modifier 3 alone), then goes after 10
 -- ticks.
 --
--- Its spawner leaves registers in its panel and position (see `spawn`); its first update overwrites both, so its
--- position is declared scratch. Each game makes its kind with `blade.make_kind(id, look)` (BN6's chips/moonbld,
--- BN5's objects/moonbld).
+-- Its spawner leaves registers in its panel and position (see `spawn`); its first update after its init overwrites
+-- both, and its Z isn't modeled, so its position is declared scratch. Each game makes its kind with
+-- `blade.make_kind(id, look)` (BN6's chips/moonbld/blade, BN5's chips/moonbld).
 
 local regions = require("../regions")
 
@@ -118,13 +118,17 @@ function blade.make_kind(id: string, look: MoonBladeLook): Kind
     }
 end
 
--- `sub_80D5D34`: a blade of `kind` on `owner` (`plain`: a plain blade's hits). Its panel is what the spawner's
--- registers held (`panel_x`, `panel_y`: MoonBld's Atk+ bonus and the low byte of its phase routine's address), its
--- element 0; its position is the registers too (the routine's address, 0, and whatever was in r3).
-function blade.spawn(kind: Kind, owner: Object, panel_x: number, panel_y: number, damage: number, plain: boolean): Object?
-    local o = battle.spawn(kind, Vec3.zero)
+-- `sub_80D5D34`: a blade of `kind` on `owner` (`plain`: a plain blade's hits). Its panel and position are what the
+-- spawner's registers held: `routine` is the address (with the Thumb bit) of the MoonBld phase routine that spawns
+-- it, which the action's dispatch left in a register. Its panel X is `panel_x` (MoonBld's Atk+ bonus), its panel Y
+-- the routine's low byte, its element 0; its X is the routine's address, its Y 0, and its Z whatever the action's
+-- caller left (BN6's BattleState's address in a plain use, other values in a Beast or a Cross), which nothing reads
+-- and which stays 0 here. Its init doesn't move it, so on the tick it comes out it stands far off the screen and
+-- isn't drawn; its next update puts it on its owner.
+function blade.spawn(kind: Kind, owner: Object, panel_x: number, routine: number, damage: number, plain: boolean): Object?
+    local o = battle.spawn(kind, Vec3.new(routine, 0, 0))
     if o then
-        o.panel_x, o.panel_y = panel_x, panel_y
+        o.panel_x, o.panel_y = panel_x, bit32.band(routine, 0xFF)
         o.element = 0
         o:set_damage_word(damage)
         o.alliance, o.flip = owner.alliance, owner.flip
