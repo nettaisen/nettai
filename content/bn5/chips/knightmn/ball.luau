@@ -143,9 +143,9 @@ ball.kind = define.kind {
 
 export type Swing = { speed: number, turns: number, status: Status?, variant: number }
 
--- 0x080C76AC (by way of 0x080C768A): a ball around `owner`, of its side, null, with the damage word, running while
--- dimmed. (Its position is the spawner's registers, which its init overwrites.)
-function ball.swing(owner: Object, damage: number, swing: Swing): Object?
+-- 0x080C768A: a ball around `owner`, of its side, null, with the damage word (KnightSoul's charged shot's, 0x080EEB48).
+-- (Its position is the spawner's registers, which its init overwrites.)
+function ball.spawn(owner: Object, damage: number, swing: Swing): Object?
     local o = battle.spawn(ball.kind, Vec3.zero)
     if o then
         local s = o.state :: State
@@ -154,6 +154,14 @@ function ball.swing(owner: Object, damage: number, swing: Swing): Object?
         o:set_damage_word(damage)
         o.alliance = owner.alliance
         o.element = 0
+    end
+    return o
+end
+
+-- 0x080C76AC: the same ball, running while dimmed (KnightMan's).
+function ball.swing(owner: Object, damage: number, swing: Swing): Object?
+    local o = ball.spawn(owner, damage, swing)
+    if o then
         o.run_while_dimmed = true
     end
     return o
