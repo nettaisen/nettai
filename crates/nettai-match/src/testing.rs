@@ -1,5 +1,6 @@
-//! Content for tests: content/bn6's definitions (and with them, every
-//! game's: [`every_game`]) on a made-up asset index
+//! Content for tests: content/bn6's definitions (and BN5's:
+//! [`bn5_content`]), each game alone as a match loads it, on a made-up
+//! asset index
 //! (`testing::asset_names_used`), every sprite timed as the test content's
 //! navi is (nothing from a ROM), with their own strings.
 
@@ -47,14 +48,9 @@ pub fn bn6_content() -> Arc<Content> {
     BN6.get_or_init(|| Arc::new(defined(&["bn6"]).unwrap_or_else(|e| panic!("content/bn6: {e}")))).clone()
 }
 
-/// Every game of this repository's content/ (its game packs, BN5 and BN6), one namespace, as the loaders load it: each by its index (a
-/// game's unported chips don't load). Defined once per test process.
-pub fn every_game() -> Arc<Content> {
-    static ALL: OnceLock<Arc<Content>> = OnceLock::new();
-    ALL.get_or_init(|| {
-        let mut report = nettai_content::report::Report::default();
-        let read = nettai_content::index::read_all(std::path::Path::new(CONTENT), &mut report).unwrap_or_else(|| panic!("content/: {report}"));
-        Arc::new(defined_of(read).unwrap_or_else(|e| panic!("content/: {e}")))
-    })
-    .clone()
+/// content/'s BN5 (its game pack and the support packs it uses), defined
+/// once per test process.
+pub fn bn5_content() -> Arc<Content> {
+    static BN5: OnceLock<Arc<Content>> = OnceLock::new();
+    BN5.get_or_init(|| Arc::new(defined(&["bn5"]).unwrap_or_else(|e| panic!("content/bn5: {e}")))).clone()
 }
