@@ -2794,7 +2794,7 @@ declare custom: {
     hand_size: (side: number) -> number,
     refuse: (side: number) -> (),
     sacrifice: (side: number) -> (),
-    redeal: (side: number) -> (),
+    redeal: (side: number, keeps: { number }?) -> (),
     last_pick_is_chip: (side: number) -> boolean,
     cursor_state: (side: number) -> "selectable" | "unavailable" | "selected",
     -- For a system's buttons and windows: the slot under the cursor picked;
