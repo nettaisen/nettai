@@ -48,7 +48,8 @@ const CROSS_OPENING_MAPS: usize = 3;
 /// the others' in 13.
 const ADVANCE_NAME_CELLS: usize = 9;
 const ADVANCE_FIRST_ROW: i32 = 5;
-/// The chips past the table's that the animation shows no code for.
+/// The chips past the table's that the animation shows no code for (BN6's
+/// and BN5's alike: `sub_802B80C`, 0x08027BC6).
 pub(crate) const ADVANCE_NO_CODE_FROM: u16 = 0x160;
 const LAYER_TILES: usize = 0x200;
 /// The window's background colors: what the original copies over cells

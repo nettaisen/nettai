@@ -228,18 +228,31 @@ pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, pr
 }
 
 /// Whether the Program Advance animation shows a chip's code after its
-/// name (`sub_802B80C`: not for the original's chips from 0x160 on, its
-/// navi chips' and the like), by the chip's number in BN6's compat; a
-/// chip of another root shows none.
+/// name (BN6's `sub_802B80C`, BN5's 0x08027BC6: not for the original's
+/// chips from 0x160 on, its navi chips' and the like), by the chip's number
+/// in its game's compat (the match's: BN6's or BN5's); a support pack's
+/// chip shows none.
 pub fn advance_code(c: &Content, chip: ChipHandle, problems: &mut Problems) -> bool {
     let key = key(c, chip);
-    let compat = bn6_compat::Compat::bn6_for(c);
-    let Some(local) = compat.compat_key(c, key) else { return false };
-    let number = compat.chips.get(local).map(|e| e.id);
+    if nettai_content_api::keys::root_of(key).is_some() {
+        return false;
+    }
+    let number = chip_number(c, key);
     if problems.lookup(Lookup::AdvanceName(chip)) && number.is_none() {
-        problems.note(format!("chip {key:?} has no number in BN6's compat: the Program Advance animation can't tell whether its code shows"));
+        let game = c.game();
+        problems.note(format!("chip {key:?} has no number in {game}'s compat: the Program Advance animation can't tell whether its code shows"));
     }
     number.is_some_and(|n| n < crate::custom::ADVANCE_NO_CODE_FROM)
+}
+
+/// A chip's number in its game's compat (the content's game: BN5's for
+/// BN5, else BN6's), by its local key.
+fn chip_number(c: &Content, key: &str) -> Option<u16> {
+    if c.game() == bn5_compat::ROOT {
+        bn5_compat::Compat::bn5().chips.get(key).map(|e| e.id)
+    } else {
+        bn6_compat::Compat::bn6_for(c).chips.get(key).map(|e| e.id)
+    }
 }
 
 /// A name in the Program Advance animation (`name`, a chip's display
