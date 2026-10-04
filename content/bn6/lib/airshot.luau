@@ -11,9 +11,9 @@ local projectile = require("./projectile")
 local airshot = {}
 
 -- BN6's air shooter (the original's attachment row 0x13).
-airshot.shooter = attachment.look { sprite = asset.sprite("bn6:air-shooter"), palette = 0, attach_point = 10 }
+airshot.shooter = attachment.look { sprite = asset.sprite("air-shooter"), palette = 0, attach_point = 10 }
 
-local LOOK: ShooterLook = { sound = asset.sound("bn6:h-burst"), attachment = attachment.kind, projectiles = projectile }
+local LOOK: ShooterLook = { sound = asset.sound("h-burst"), attachment = attachment.kind, projectiles = projectile }
 
 -- An AirShot: what the navi holds and what it fires.
 function airshot.action(spec: AirShotSpec): Action

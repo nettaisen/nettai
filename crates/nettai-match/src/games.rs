@@ -41,11 +41,11 @@ const TANGO_BN5: [&str; 30] = [
 
 /// A BN6 folder: the live navi's kind of folder, Standard chips.
 const BN6: [&str; 30] = [
-    "bn6:cannon A", "bn6:cannon A", "bn6:cannon B", "bn6:airshot *", "bn6:airshot *", "bn6:vulcan1 D", "bn6:vulcan1 D",
-    "bn6:minibomb B", "bn6:minibomb B", "bn6:minibomb L", "bn6:sword S", "bn6:sword S", "bn6:sword S", "bn6:wideswrd S",
-    "bn6:wideswrd S", "bn6:recov10 A", "bn6:recov10 A", "bn6:recov10 L", "bn6:areagrab S", "bn6:areagrab S", "bn6:spreadr1 L",
-    "bn6:spreadr1 L", "bn6:longswrd S", "bn6:longswrd S", "bn6:crakshot A", "bn6:crakshot A", "bn6:widesht P", "bn6:widesht P",
-    "bn6:cannon C", "bn6:recov30 L",
+    "cannon A", "cannon A", "cannon B", "airshot *", "airshot *", "vulcan1 D", "vulcan1 D",
+    "minibomb B", "minibomb B", "minibomb L", "sword S", "sword S", "sword S", "wideswrd S",
+    "wideswrd S", "recov10 A", "recov10 A", "recov10 L", "areagrab S", "areagrab S", "spreadr1 L",
+    "spreadr1 L", "longswrd S", "longswrd S", "crakshot A", "crakshot A", "widesht P", "widesht P",
+    "cannon C", "recov30 L",
 ];
 
 /// A BN5 side by BN5's stock rules, with this folder.
@@ -71,7 +71,7 @@ fn refs(v: &[String]) -> Vec<&str> {
 #[test]
 fn a_bn5_folder_keeps_bn5s_rules() {
     let content = every_game();
-    let right = side("bn6:stock", "bn6:megaman", &BN6, "");
+    let right = side("stock", "megaman", &BN6, "");
     parse(&content, &bn5(&TANGO_BN5, ""), &right).unwrap_or_else(|p| panic!("{p:?}"));
     // A Regular chip within the fresh navi's Regular memory (4 MB: CrakOut).
     parse(&content, &bn5(&TANGO_BN5, "regular = 21"), &right).unwrap_or_else(|p| panic!("{p:?}"));
@@ -88,7 +88,7 @@ fn a_bn5_folder_keeps_bn5s_rules() {
 #[test]
 fn bn5s_rules_refuse() {
     let content = every_game();
-    let right = side("bn6:stock", "bn6:megaman", &BN6, "");
+    let right = side("stock", "megaman", &BN6, "");
     let refused = |chips: &[String], more: &str| -> Vec<String> {
         let e = parse(&content, &bn5(&refs(chips), more), &right).expect_err("refused");
         assert!(e.iter().all(|p| p.starts_with("left: folder: ")), "{e:?}");
@@ -136,12 +136,12 @@ fn a_mixed_folder_keeps_its_sides_rules() {
     let content = every_game();
     let five = with(&TANGO_BN5, 4, &["bn5:cannon C"]);
     let mixed: Vec<String> = refs(&five).iter().take(15).map(|s| s.to_string()).chain(BN6[15..].iter().map(|s| s.to_string())).collect();
-    let left = side("bn6:stock", "bn6:megaman", &refs(&mixed), "");
+    let left = side("stock", "megaman", &refs(&mixed), "");
     let right = bn5(&TANGO_BN5, "");
     parse(&content, &left, &right).unwrap_or_else(|p| panic!("{p:?}"));
     // And BN6's limits: a sixth copy is past BN6's five.
     let six = with(&refs(&mixed), 5, &["bn5:cannon *"]);
-    let e = parse(&content, &side("bn6:stock", "bn6:megaman", &refs(&six), ""), &right).expect_err("refused");
+    let e = parse(&content, &side("stock", "megaman", &refs(&six), ""), &right).expect_err("refused");
     assert!(e.iter().any(|p| p.contains("left: folder: 6 copies of bn5:cannon")), "{e:?}");
 }
 
@@ -151,12 +151,12 @@ fn a_mixed_folder_keeps_its_sides_rules() {
 #[test]
 fn every_games_chips_are_in_the_pool() {
     let content = every_game();
-    let m = parse(&content, &side("bn6:stock", "bn6:megaman", &BN6, ""), &bn5(&TANGO_BN5, "")).unwrap();
+    let m = parse(&content, &side("stock", "megaman", &BN6, ""), &bn5(&TANGO_BN5, "")).unwrap();
     let mut b = crate::check::start(&content, &m).unwrap();
     let key = |h: nettai_content_api::ChipHandle| content.defs.chip(h).key.clone();
     let six: Vec<String> = crate::folders::pool(&content, &mut b, 0).into_iter().map(key).collect();
     let five: Vec<String> = crate::folders::pool(&content, &mut b, 1).into_iter().map(key).collect();
-    for k in ["bn5:cannon", "bn6:cannon", "bn5:colonel", "bn5:bass"] {
+    for k in ["bn5:cannon", "cannon", "bn5:colonel", "bn5:bass"] {
         assert!(six.contains(&k.to_string()) && five.contains(&k.to_string()), "{k}");
     }
     for k in ["bn5:batcan1", "bn5:lifesrd", "bn5:invalid"] {
@@ -194,10 +194,10 @@ fn play(content: &Arc<Content>, m: &Match, ticks: usize) -> [Vec<String>; 2] {
 fn mixed_and_cross_game_matches_play() {
     let content = every_game();
     let mixed: Vec<String> = TANGO_BN5.iter().take(15).map(|s| s.to_string()).chain(BN6[15..].iter().map(|s| s.to_string())).collect();
-    let m = parse(&content, &side("bn6:stock", "bn6:megaman", &refs(&mixed), ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+    let m = parse(&content, &side("stock", "megaman", &refs(&mixed), ""), &side("stock", "megaman", &BN6, "")).unwrap();
     let used = play(&content, &m, 900);
     assert!(used[0].iter().any(|k| k.starts_with("bn5:")), "the mixed side used a BN5 chip: {used:?}");
-    let m = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+    let m = parse(&content, &bn5(&TANGO_BN5, ""), &side("stock", "megaman", &BN6, "")).unwrap();
     let used = play(&content, &m, 900);
     assert!(used[0].iter().any(|k| k.starts_with("bn5:")) && used[1].iter().any(|k| k.starts_with("bn6:")), "{used:?}");
 }
@@ -210,7 +210,7 @@ fn karma_and_souls_write_and_read_back() {
     let content = every_game();
     let left = bn5(&TANGO_BN5, "")
         .replacen("navi = \"bn5:megaman\"\n", "navi = \"bn5:megaman\"\nkarma = 100\nsouls = [\"bn5:protosoul\", \"bn5:colonelsoul\"]\n", 1);
-    let m = parse(&content, &left, &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap_or_else(|p| panic!("{p:?}"));
+    let m = parse(&content, &left, &side("stock", "megaman", &BN6, "")).unwrap_or_else(|p| panic!("{p:?}"));
     let s = &m.sides[0];
     assert_eq!(s.karma, 100);
     let souls = ["bn5:protosoul", "bn5:colonelsoul"].map(|k| content.defs.form_by_key(k).unwrap());
@@ -219,14 +219,14 @@ fn karma_and_souls_write_and_read_back() {
     assert!(text.contains("karma = 100") && text.contains("souls = [") && text.contains("\"bn5:colonelsoul\""), "{text}");
     assert_eq!(crate::parse(&content, &text).unwrap(), m);
     // A side that says nothing of them: the defaults, nothing written.
-    let plain = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+    let plain = parse(&content, &bn5(&TANGO_BN5, ""), &side("stock", "megaman", &BN6, "")).unwrap();
     assert_eq!((plain.sides[0].karma, plain.sides[0].souls.clone()), (500, None));
     let text = crate::write(&content, &plain);
     assert!(!text.contains("karma") && !text.contains("souls"), "{text}");
     // Karma past 1000; karma and a soul list under BN6's rules; a form that
     // is no soul: said.
-    let bad = side("bn6:stock", "bn6:megaman", &BN6, "")
-        .replacen("navi = \"bn6:megaman\"\n", "navi = \"bn6:megaman\"\nkarma = 1200\nsouls = [\"bn6:heatcross\"]\n", 1);
+    let bad = side("stock", "megaman", &BN6, "")
+        .replacen("navi = \"megaman\"\n", "navi = \"megaman\"\nkarma = 1200\nsouls = [\"heatcross\"]\n", 1);
     let e = parse(&content, &bn5(&TANGO_BN5, ""), &bad).unwrap_err();
     for p in [
         "right: karma 1200: the light/dark value is 0 to 1000",
@@ -255,7 +255,7 @@ fn a_dark_side_starts_dark() {
     use nettai_battle::kinds::player::Emotion;
     let content = every_game();
     let at = |value: Option<u16>| {
-        let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+        let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("stock", "megaman", &BN6, "")).unwrap();
         if let Some(v) = value {
             m.sides[0].karma = v;
         }
@@ -283,7 +283,7 @@ fn an_unowned_soul_cant_be_chosen() {
     // take: the round is played as set up).
     let sword = content.defs.chip_by_key("bn5:sword").unwrap();
     let offered = |souls: Option<Vec<nettai_content_api::FormHandle>>| {
-        let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+        let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("stock", "megaman", &BN6, "")).unwrap();
         m.sides[0].folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30];
         m.sides[0].souls = souls;
         let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
@@ -317,7 +317,7 @@ fn an_unowned_soul_cant_be_chosen() {
 #[test]
 fn karma_and_souls_reach_the_round() {
     let content = every_game();
-    let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("bn6:stock", "bn6:megaman", &BN6, "")).unwrap();
+    let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &side("stock", "megaman", &BN6, "")).unwrap();
     m.sides[0].karma = 300;
     m.sides[0].souls = Some(vec![content.defs.form_by_key("bn5:colonelsoul").unwrap()]);
     let b = started(&content, &m, 1);
@@ -337,7 +337,7 @@ fn karma_and_souls_reach_the_round() {
 fn a_sides_fields_are_its_rules() {
     let content = every_game();
     let mixed: Vec<String> = TANGO_BN5.iter().take(15).map(|s| s.to_string()).chain(BN6[15..].iter().map(|s| s.to_string())).collect();
-    let m = parse(&content, &side("bn6:stock", "bn6:megaman", &refs(&mixed), ""), &bn5(&TANGO_BN5, "")).unwrap();
+    let m = parse(&content, &side("stock", "megaman", &refs(&mixed), ""), &bn5(&TANGO_BN5, "")).unwrap();
     let (six, five) = (&m.sides[0], &m.sides[1]);
     assert!(six.takes_game(&content) && six.takes_level(&content) && six.takes_sp_times(&content));
     assert!(!five.takes_game(&content) && !five.takes_level(&content) && five.takes_sp_times(&content));
@@ -354,7 +354,7 @@ fn a_sides_fields_are_its_rules() {
 #[test]
 fn a_ruleset_change_drops_what_the_rules_dont_take() {
     let content = every_game();
-    let bn6 = content.defs.ruleset_by_key("bn6:stock");
+    let bn6 = content.defs.ruleset_by_key("stock");
     let bn5 = content.defs.ruleset_by_key("bn5:stock");
     let mut m = crate::draw::live(&content, 3, None).unwrap();
     let s = &mut m.sides[0];

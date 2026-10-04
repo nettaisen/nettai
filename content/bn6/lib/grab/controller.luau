@@ -8,4 +8,4 @@
 local common = require("@exelib/grab/controller")
 local shot = require("./shot")
 
-return common.make { id = "bn6:grab/controller", shot = shot.kind }
+return common.make { id = "grab/controller", shot = shot.kind }

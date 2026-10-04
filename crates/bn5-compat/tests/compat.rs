@@ -23,7 +23,7 @@ fn bn5_compat_reads() {
     assert_eq!(built_in.chip_key(0x133), Some("bn5:holydrem"));
     assert_eq!(built_in.chip(0x133).as_deref(), Some("bn5:holydrem"));
     assert_eq!(built_in.chip_entry("bn5:holydrem").map(|c| c.id), Some(0x133));
-    assert_eq!(built_in.chip_entry("bn6:holydrem"), None);
+    assert_eq!(built_in.chip_entry("holydrem"), None);
     let phoenix = &built_in.chips["bn5:phoenix"];
     assert_eq!(phoenix.colonel.as_ref().and_then(|c| c.flags.as_deref()).map(|f| f.contains(&"library".to_string())), Some(true));
     assert_eq!(built_in.chips["bn5:custswrd"].damage_formula, Some(45));

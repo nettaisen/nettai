@@ -625,7 +625,7 @@ mod tests {
         let compat = COMPAT.get_or_init(|| {
             let mut compat = Compat::bn6_for(content()).clone();
             compat.chips = [
-                (0x00, "test:test/blank"),
+                (0x00, "test/blank"),
                 (0x03, testing::SUN_GUN_3),
                 (0x05, testing::VEIL),
                 (0x41, testing::PLUS),
@@ -744,13 +744,13 @@ mod tests {
     fn numbers_reach_definitions_by_key() {
         let c = testing::with_test_pack();
         let mut compat = Compat { root: "test".into(), ..Compat::default() };
-        compat.chips.insert("test:test/ticker1".into(), crate::ChipEntry { id: 0x36, ..Default::default() });
-        compat.weapons.insert("test:test/tick-shot".into(), vec![0x2E, 0x2F]);
+        compat.chips.insert("test/ticker1".into(), crate::ChipEntry { id: 0x36, ..Default::default() });
+        compat.weapons.insert("test/tick-shot".into(), vec![0x2E, 0x2F]);
         let ids = Ids::new(&c, &compat);
-        let ticker = c.defs.chip_by_key("test:test/ticker1").unwrap();
+        let ticker = c.defs.chip_by_key("test/ticker1").unwrap();
         assert_eq!(ids.chip(0x36), ticker);
         assert_eq!(ids.chip_id(ticker), 0x36);
-        let shot = c.defs.weapon_by_key("test:test/tick-shot").unwrap();
+        let shot = c.defs.weapon_by_key("test/tick-shot").unwrap();
         assert_eq!((ids.weapon(0x2E), ids.weapon(0x2F)), (Some(shot), Some(shot)));
         assert_eq!(ids.weapon_number(Some(shot)), 0x2E);
         let mut raw = [0xFF; 2 * FOLDER_SIZE];

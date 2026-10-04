@@ -22,7 +22,7 @@ local WIND_UP, HOLD = 0x0, 0x4
 -- counter byte.
 local WIND, HIT_PARAM = 0x20, 0x8A
 
-local SOUND = asset.sound("bn6:aqua-surge")
+local SOUND = asset.sound("aqua-surge")
 
 -- The whirlwind (the attack's parameters, `dword_8011C34`): its waves in
 -- turn, 45 ticks, while the navi stays in this action.
@@ -70,7 +70,7 @@ local function hold(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "bn6:tengucross-beast/charge/action",
+    id = "tengucross-beast/charge/action",
     state = { timer = "u16" },
     -- `sub_80EE044`.
     update = function(me: Object, s: State)
@@ -86,7 +86,7 @@ charge.action = define.action {
 }
 
 charge.weapon = define.weapon {
-    id = "bn6:tengucross-beast/charge",
+    id = "tengucross-beast/charge",
     -- The charge table's row 0xA, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 60, 60, 60, 60, 60, 90, 80, 70 },

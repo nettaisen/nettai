@@ -843,7 +843,7 @@ impl Battle {
         self.round.time_up != 0 && self.round.alive[0] != 0 && self.round.alive[1] != 0
     }
 
-    /// The key of `r`'s kind (`"bn6:bomb"`, `"engine/effect"`): how tools
+    /// The key of `r`'s kind (`"bomb"`, `"engine/effect"`): how tools
     /// name what an object is.
     pub fn kind_key(&self, r: ObjectRef) -> &str {
         &self.content.defs.kind(self.objects.get(r).kind).key

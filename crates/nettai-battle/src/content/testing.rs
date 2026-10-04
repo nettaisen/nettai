@@ -25,85 +25,85 @@ use std::sync::Arc;
 // The test chips (testdata/content/chips/test/chips.luau), by key: made-up
 // records whose uses are BN6's builders and actions.
 /// Three GunDelSol levels and an EX (two columns).
-pub const SUN_GUN_1: &str = "test:test/sun-gun-1";
-pub const SUN_GUN_2: &str = "test:test/sun-gun-2";
-pub const SUN_GUN_3: &str = "test:test/sun-gun-3";
-pub const SUN_GUN_EX: &str = "test:test/sun-gun-ex";
+pub const SUN_GUN_1: &str = "test/sun-gun-1";
+pub const SUN_GUN_2: &str = "test/sun-gun-2";
+pub const SUN_GUN_3: &str = "test/sun-gun-3";
+pub const SUN_GUN_EX: &str = "test/sun-gun-ex";
 /// A dimming chip (the invisibility freeze).
-pub const VEIL: &str = "test:test/veil";
+pub const VEIL: &str = "test/veil";
 /// A navi chip (the eraser navi).
-pub const ERASER: &str = "test:test/eraser";
+pub const ERASER: &str = "test/eraser";
 /// Instant chips: a plus chip used on its own, fists (FireHit's) and flame
 /// hooks (FlmHook's).
-pub const PLUS: &str = "test:test/plus";
-pub const FIST: &str = "test:test/fist";
-pub const FLAME_HOOK: &str = "test:test/flame-hook";
+pub const PLUS: &str = "test/plus";
+pub const FIST: &str = "test/fist";
+pub const FLAME_HOOK: &str = "test/flame-hook";
 /// The thrown chips: a bomb, a seed that poisons panels, a flash bomb and
 /// a bug bomb.
-pub const BOMB: &str = "test:test/bomb";
-pub const SEED: &str = "test:test/seed";
-pub const FLASH: &str = "test:test/flash";
-pub const BUG: &str = "test:test/bug";
+pub const BOMB: &str = "test/bomb";
+pub const SEED: &str = "test/seed";
+pub const FLASH: &str = "test/flash";
+pub const BUG: &str = "test/bug";
 /// A sword (a column of three panels ahead).
-pub const BLADE: &str = "test:test/blade";
+pub const BLADE: &str = "test/blade";
 /// A step sword (the same, after a step two panels ahead).
-pub const STEP_BLADE: &str = "test:test/step-blade";
+pub const STEP_BLADE: &str = "test/step-blade";
 /// A strike at stunned or grounded opponents.
-pub const STUN_BLADE: &str = "test:test/stun-blade";
+pub const STUN_BLADE: &str = "test/stun-blade";
 /// A blank chip that is the AntiNavi trap when a side's defensive-chip
 /// record holds it.
-pub const ANTI_NAVI: &str = "test:test/anti-navi";
+pub const ANTI_NAVI: &str = "test/anti-navi";
 /// A trap chip that sets no object.
-pub const TRAP: &str = "test:test/trap";
+pub const TRAP: &str = "test/trap";
 /// An element trap (the trap object).
-pub const ELEM_TRAP: &str = "test:test/elem-trap";
+pub const ELEM_TRAP: &str = "test/elem-trap";
 /// Time bombs: the plain one and the big one.
-pub const TIME_BOMB: &str = "test:test/time-bomb";
-pub const TIME_BOMB_PLUS: &str = "test:test/time-bomb-plus";
+pub const TIME_BOMB: &str = "test/time-bomb";
+pub const TIME_BOMB_PLUS: &str = "test/time-bomb-plus";
 // Navi chips: the elements navi, the water navi, the heat, elec, slash,
 // charge, tomahawk, tengu and blast navis, the shooting navi (Bass's) and
 // the sun-and-moon navi.
-pub const ELEMENTS: &str = "test:test/elements";
-pub const SPOUT: &str = "test:test/spout";
-pub const HEAT: &str = "test:test/heat";
-pub const ELEC: &str = "test:test/elec";
-pub const SLASH: &str = "test:test/slash";
-pub const CHARGE: &str = "test:test/charge";
-pub const TOMAHAWK: &str = "test:test/tomahawk";
-pub const TENGU: &str = "test:test/tengu";
-pub const BLAST: &str = "test:test/blast";
-pub const BASS: &str = "test:test/shooter";
-pub const SUN_MOON: &str = "test:test/sun-moon";
+pub const ELEMENTS: &str = "test/elements";
+pub const SPOUT: &str = "test/spout";
+pub const HEAT: &str = "test/heat";
+pub const ELEC: &str = "test/elec";
+pub const SLASH: &str = "test/slash";
+pub const CHARGE: &str = "test/charge";
+pub const TOMAHAWK: &str = "test/tomahawk";
+pub const TENGU: &str = "test/tengu";
+pub const BLAST: &str = "test/blast";
+pub const BASS: &str = "test/shooter";
+pub const SUN_MOON: &str = "test/sun-moon";
 /// The link navis' own chips: BN6's HeatPres, DElecSwd, RSlash, EDeletBm,
 /// VolcChrg, DripShwr, ETomahwk, FTornado, RC Brakr and DustBrk's actions
 /// (navis/<navi>/chip.luau), as chips of made-up damage. Any navi can use
 /// them here.
 pub const LINK_CHIPS: [&str; 10] = [
-    "test:test/heatpres",
-    "test:test/delecswd",
-    "test:test/rslash",
-    "test:test/edeletbm",
-    "test:test/volcchrg",
-    "test:test/dripshwr",
-    "test:test/etomahwk",
-    "test:test/ftornado",
-    "test:test/rc-brakr",
-    "test:test/dustbrk",
+    "test/heatpres",
+    "test/delecswd",
+    "test/rslash",
+    "test/edeletbm",
+    "test/volcchrg",
+    "test/dripshwr",
+    "test/etomahwk",
+    "test/ftornado",
+    "test/rc-brakr",
+    "test/dustbrk",
 ];
 /// A link navi (the content's navi 1; AI index 4, whose actor record has
 /// no hooks).
-pub const LINK_NAVI: &str = "test:test/link-navi";
+pub const LINK_NAVI: &str = "test/link-navi";
 /// MegaMan, the navi that changes form.
-pub const MEGAMAN: &str = "test:megaman";
+pub const MEGAMAN: &str = "megaman";
 
 /// The test stages (testdata/content/stages/test.luau), link battles on
 /// the plain field: two navis, side 1's placed first (the usual netbattle
 /// order); side 0's first; two navis with two rocks, one on each side; and
 /// two navis with three boulders (the field has two stage slots).
-pub const LINK_BATTLE: &str = "test:test/link-battle";
-pub const LINK_BATTLE_SIDE0_FIRST: &str = "test:test/link-battle-side0-first";
-pub const ROCK_BATTLE: &str = "test:test/rock-battle";
-pub const BOULDER_BATTLE: &str = "test:test/boulder-battle";
+pub const LINK_BATTLE: &str = "test/link-battle";
+pub const LINK_BATTLE_SIDE0_FIRST: &str = "test/link-battle-side0-first";
+pub const ROCK_BATTLE: &str = "test/rock-battle";
+pub const BOULDER_BATTLE: &str = "test/boulder-battle";
 
 /// The test stages' music's song (the asset `test-stage-music`).
 pub const STAGE_SONG: u16 = 0x16;
@@ -250,62 +250,55 @@ pub fn weapon(key: &str) -> Option<nettai_content_api::WeaponHandle> {
 
 /// The test pack's ticker chips and tick shot weapon (`with_test_pack`),
 /// by key: setups reach them by handle.
-pub const TICKER_1: &str = "test:test/ticker1";
-pub const TICKER_2: &str = "test:test/ticker2";
-pub const TICKER_3: &str = "test:test/ticker3";
+pub const TICKER_1: &str = "test/ticker1";
+pub const TICKER_2: &str = "test/ticker2";
+pub const TICKER_3: &str = "test/ticker3";
 /// BN6's AreaGrab and PanelGrab (chips/areagrab, chips/panlgrab): dimming
 /// chips content defines, which grab a column and a panel.
-pub const AREA_GRAB: &str = "test:areagrab";
-pub const PANEL_GRAB: &str = "test:panlgrab";
+pub const AREA_GRAB: &str = "areagrab";
+pub const PANEL_GRAB: &str = "panlgrab";
 /// BN6's BusterUp, Atk+10 and Navi+20 (chips/busterup, chips/atk-10,
 /// chips/navi-20): instant chips content defines.
-pub const BUSTER_UP: &str = "test:busterup";
-pub const ATTACK_10: &str = "test:atk-10";
-pub const NAVI_20: &str = "test:navi-20";
+pub const BUSTER_UP: &str = "busterup";
+pub const ATTACK_10: &str = "atk-10";
+pub const NAVI_20: &str = "navi-20";
 /// BN6's instant chips content defines whose effects fill the gauge, sync
 /// the navi, and spawn objects: FullCust, SyncTrgr, Boomer, Lance,
 /// SandWrm1, JustcOne, GolmHit1 (chips/fullcust ... chips/golmhit).
-pub const FULL_CUST: &str = "test:fullcust";
-pub const SYNC_TRIGGER: &str = "test:synctrgr";
-pub const BOOMER: &str = "test:boomer";
-pub const LANCE: &str = "test:lance";
-pub const SAND_WORM: &str = "test:sandwrm1";
-pub const JUSTICE_ONE: &str = "test:justcone";
-pub const GOLEM_HIT: &str = "test:golmhit1";
+pub const FULL_CUST: &str = "fullcust";
+pub const SYNC_TRIGGER: &str = "synctrgr";
+pub const BOOMER: &str = "boomer";
+pub const LANCE: &str = "lance";
+pub const SAND_WORM: &str = "sandwrm1";
+pub const JUSTICE_ONE: &str = "justcone";
+pub const GOLEM_HIT: &str = "golmhit1";
 /// BN6's RockCube (chips/rockcube): a dimming chip content defines, which
 /// places a rock in front of its user.
-pub const ROCK_CUBE: &str = "test:rockcube";
-pub const TICK_SHOT: &str = "test:test/tick-shot";
+pub const ROCK_CUBE: &str = "rockcube";
+pub const TICK_SHOT: &str = "test/tick-shot";
 /// BN6's CrakShot, Rflectr1 and Recov50 (chips/crakshot, chips/rflectr,
 /// chips/recov): standard chips content defines, which dig up the panel
 /// ahead, guard and reflect, and heal.
-pub const CRAK_SHOT: &str = "test:crakshot";
-pub const REFLECTOR_1: &str = "test:rflectr1";
-pub const RECOV_50: &str = "test:recov50";
+pub const CRAK_SHOT: &str = "crakshot";
+pub const REFLECTOR_1: &str = "rflectr1";
+pub const RECOV_50: &str = "recov50";
 /// BN6's SloGauge and Mine (chips/slogauge, chips/mine): dimming chips
 /// content defines, which slow the custom gauge and lay a mine.
-pub const SLOW_GAUGE: &str = "test:slogauge";
-pub const MINE: &str = "test:mine";
+pub const SLOW_GAUGE: &str = "slogauge";
+pub const MINE: &str = "mine";
 /// BN6's RskyHny2 and ElecDrgn (chips/rskyhny, chips/elecdrgn): chips
 /// content defines, which send bees and an elec dragon.
-pub const BEES: &str = "test:rskyhny2";
-pub const DRAGON: &str = "test:elecdrgn";
+pub const BEES: &str = "rskyhny2";
+pub const DRAGON: &str = "elecdrgn";
 /// BN6's Gregar and Falzar (chips/gregar, chips/falzar: the Japanese ROMs'
 /// giga cut-in chips), which summon the cyber beasts.
-pub const GREGAR: &str = "test:gregar";
-pub const FALZAR: &str = "test:falzar";
+pub const GREGAR: &str = "gregar";
+pub const FALZAR: &str = "falzar";
 
 /// The test content's game: its own modules and the BN6 modules it borrows
 /// are one folder, `test`, whose ids are `test:...` (the borrowed modules'
 /// `bn6:` ids and asset names read as `test:` ones: `borrowed`).
 pub const ROOT: &str = "test";
-
-/// A BN6 module as the test content borrows it: its ids and asset names,
-/// which BN6 writes in full (`bn6:...`), are the test content's
-/// (`test:...`), on its synthetic pack.
-fn borrowed(source: String) -> String {
-    source.replace("\"bn6:", "\"test:").replace("'bn6:", "'test:")
-}
 
 /// The content model v2 test pack (crates/nettai-battle/testdata/pack):
 /// definitions the engine's tests run.
@@ -414,54 +407,14 @@ pub fn strings() -> crate::content::strings::Strings {
 /// (nothing ROM-derived; for tests that load modules the test content
 /// doesn't list).
 pub fn asset_names_used(game: &str, modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::AssetNames {
-    nettai_content_api::AssetNames::of_pack(game, pack_index_of(game, modules))
+    nettai_content_api::AssetNames::of_pack(game, pack_index_used(modules))
 }
 
-/// [`asset_names_used`] for every pack the modules of `scripts` name (a
-/// name's game is its prefix: `bn6:bomb` is the bn6 pack's).
+/// [`asset_names_used`] for the modules of `scripts`: the game's pack's (a
+/// match plays one game; content without packs, a pack of no name).
 pub fn asset_names_for(scripts: &Scripts) -> nettai_content_api::AssetNames {
-    let mut games = std::collections::BTreeSet::new();
-    for source in scripts.modules.values() {
-        for (game, _) in asset_names_in(source) {
-            games.insert(game);
-        }
-    }
-    let packs = games.into_iter().map(|g| {
-        let index = pack_index_of(&g, &scripts.modules);
-        (g, index)
-    });
-    nettai_content_api::AssetNames::of_packs(packs.collect())
-}
-
-/// The asset names a module's source gives `asset.<kind>("...")` calls, each
-/// its game and kind with its own name (`bn6:bomb` -> bn6, bomb).
-fn asset_names_in(source: &str) -> Vec<(String, (nettai_content_api::AssetKind, String))> {
-    let mut out = Vec::new();
-    for kind in nettai_content_api::AssetKind::ALL {
-        for piece in source.split(&format!("asset.{kind}(")).skip(1) {
-            let piece = piece.trim_start();
-            let Some(quote) = piece.chars().next().filter(|c| matches!(c, '"' | '\'')) else { continue };
-            let Some(name) = piece[1..].split(quote).next() else { continue };
-            if let Some(game) = nettai_content_api::keys::root_of(name) {
-                out.push((game.to_string(), (kind, nettai_content_api::keys::local(name).to_string())));
-            }
-        }
-    }
-    out
-}
-
-/// Game `game`'s pack index of the names `modules` give it.
-fn pack_index_of(game: &str, modules: &std::collections::BTreeMap<String, String>) -> nettai_content_api::PackIndex {
-    let mut own = std::collections::BTreeMap::new();
-    for (k, source) in modules {
-        let names: Vec<String> = asset_names_in(source)
-            .into_iter()
-            .filter(|(g, _)| g == game)
-            .map(|(_, (kind, name))| format!("asset.{kind}(\"{name}\")"))
-            .collect();
-        own.insert(k.clone(), names.join("\n"));
-    }
-    pack_index_used(&own)
+    let game = scripts.games().first().cloned().unwrap_or_default();
+    asset_names_used(&game, &scripts.modules)
 }
 
 /// [`asset_names_used`]'s pack index (its own, unqualified names).
@@ -475,8 +428,6 @@ pub fn pack_index_used(modules: &std::collections::BTreeMap<String, String>) -> 
                 let piece = piece.trim_start();
                 let Some(quote) = piece.chars().next().filter(|c| matches!(c, '"' | '\'')) else { continue };
                 let Some(name) = piece[1..].split(quote).next() else { continue };
-                // (A name written in full, its pack's own part.)
-                let name = nettai_content_api::keys::local(name);
                 n += 1;
                 let id = n;
                 match kind {
@@ -1006,7 +957,7 @@ pub fn scripts() -> Scripts {
         .get_or_init(|| {
             let read = |path: &str| {
                 let file = format!("{OVERLAY}/{path}.luau");
-                borrowed(std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}")))
+                std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}"))
             };
             let modules = [
                 ("objects/attachment/attachment", "objects/attachment/attachment"),

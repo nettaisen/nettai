@@ -732,14 +732,14 @@ mod tests {
         assert!(side.stats_block(&content).keys().all(|k| nettai_match::stats::SAVE_FIELDS.contains(&k.as_str())));
         let program = |key: &str| content.defs.navicust_program_by_key(key).unwrap();
         // Held from the list: nothing changes until it is put down.
-        assert!(!update(&content, side, &mut state, Edit::Hold(program("bn6:suprarmr"), 0)));
+        assert!(!update(&content, side, &mut state, Edit::Hold(program("suprarmr"), 0)));
         assert!(update(&content, side, &mut state, Edit::Place(2, 3)));
         assert!(state.held.is_none());
-        update(&content, side, &mut state, Edit::Hold(program("bn6:hp-50"), 1));
+        update(&content, side, &mut state, Edit::Hold(program("hp-50"), 1));
         // Not over SuprArmr.
         assert!(!update(&content, side, &mut state, Edit::Place(2, 3)));
         assert!(update(&content, side, &mut state, Edit::Place(4, 2)));
-        update(&content, side, &mut state, Edit::Hold(program("bn6:hp-50"), 1));
+        update(&content, side, &mut state, Edit::Hold(program("hp-50"), 1));
         assert!(update(&content, side, &mut state, Edit::Place(5, 2)));
         let n = side.navicust.unwrap();
         assert_eq!(n.len(), 3);
@@ -749,7 +749,7 @@ mod tests {
         // Compressing one HP+50 compresses the other (one program, one color).
         update(&content, side, &mut state, Edit::Compress(true));
         let n = side.navicust.unwrap();
-        assert!(n.iter().filter(|p| p.program == program("bn6:hp-50")).all(|p| p.compressed));
+        assert!(n.iter().filter(|p| p.program == program("hp-50")).all(|p| p.compressed));
         // Picked up by a cell it covers (off the grid while held), put back.
         let first = n.iter().next().unwrap();
         assert!(update(&content, side, &mut state, Edit::PickUp(0, first.x, first.y)));

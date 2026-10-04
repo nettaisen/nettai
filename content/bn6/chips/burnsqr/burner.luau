@@ -35,11 +35,11 @@ local TIMEOUT, STEP = 300, 6
 local FIRE_TICKS, FIRE_ANIM, FIRE_ANIM_AT, AFTER = 0x10, 0xC, 4, 0x3C
 -- (The cursor steps with the sound EraseMan's mark has, the original's
 -- 0x10E.)
-local SOUND_STEP = asset.sound("bn6:erase-man")
-local SOUND_FIRE = asset.sound("bn6:mark")
+local SOUND_STEP = asset.sound("erase-man")
+local SOUND_FIRE = asset.sound("mark")
 -- The square's corners (effect 0x48), each 6 ticks: 40 pixels apart
 -- across, 24 down.
-local CORNER = define.effect { sprite = asset.sprite("bn6:hit-sparks"), anim = 12, palette = 0 }
+local CORNER = define.effect { sprite = asset.sprite("hit-sparks"), anim = 12, palette = 0 }
 local ACROSS, DOWN = 0x28_0000, 0x18_0000
 -- Its flames (`sub_80C8DE0`): fire, HeatMan's (acting while dimmed), 30
 -- ticks.
@@ -193,7 +193,7 @@ local function tick(me: Object)
 end
 
 burner.kind = define.kind {
-    id = "bn6:burnsqr/burner",
+    id = "burnsqr/burner",
     pool = "actor",
     state = {
         controller = "object",

@@ -27,7 +27,7 @@ local varswrd = require("../chips/varswrd/chip")
 local vulcan = require("../chips/vulcan/chips")
 local wideswrd = require("../chips/wideswrd/chip")
 
-return define.rules("bn6:cross-special", {
+return define.rules("cross-special", {
     rows = {
         { cannons.cannon, minibomb, wideswrd },
         -- EnergBom.

@@ -15,7 +15,7 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
     // A kind under objects/ that only one chip folder uses.
     c.scripts.modules.insert(
         module("objects/held/held"),
-        "return { kind = define.kind { id = 'test:held', pool = 'effect', update = function(me) end } }".into(),
+        "return { kind = define.kind { id = 'held', pool = 'effect', update = function(me) end } }".into(),
     );
     c.scripts.modules.insert(
         module("chips/holder/chip"),
@@ -49,7 +49,7 @@ fn a_collision_type_defined_twice_is_an_error() {
         let row_offset = if key == "other" { 0x7F8 } else { 0x7F0 };
         c.scripts.modules.insert(
             module(path),
-            format!("return define.collision {{ id = 'test:{key}', side0 = 0x80, side1 = 0x80, row_offset = {row_offset} }}"),
+            format!("return define.collision {{ id = '{key}', side0 = 0x80, side1 = 0x80, row_offset = {row_offset} }}"),
         );
     }
     testing::add_index(&mut c.scripts, testing::ROOT);
@@ -57,11 +57,11 @@ fn a_collision_type_defined_twice_is_an_error() {
     // (The test content's own types share rows with BN6's, whose module
     // it has too: only these are looked at.)
     let twins: Vec<_> = nettai_content::lint::duplicate_collision_types(&c).into_iter().filter(|(row, _)| *row >= 0xFE).collect();
-    assert_eq!(twins, [(0xFE, vec![("test:one".to_string(), "test:lib/one".to_string()), ("test:two".to_string(), "test:lib/two".to_string())])]);
+    assert_eq!(twins, [(0xFE, vec![("one".to_string(), "test:lib/one".to_string()), ("two".to_string(), "test:lib/two".to_string())])]);
     let mut r = Report::default();
     nettai_content::lint::definitions(&c, &mut r);
     let errors: Vec<&str> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| i.message.as_str()).collect();
-    assert!(errors.iter().any(|e| e.contains("collision type test:one is row 0xfe") && e.contains("test:two (test:lib/two.luau)")), "{errors:?}");
+    assert!(errors.iter().any(|e| e.contains("collision type test:one is row 0xfe") && e.contains("two (test:lib/two.luau)")), "{errors:?}");
 }
 
 /// The repository's content directory.
@@ -120,7 +120,7 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
     let errors: Vec<String> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| format!("{}: {}", i.file, i.message)).collect();
     assert!(errors.is_empty(), "{}", errors.join("\n"));
     // The own strings' shape is in the records: MagPanel's one line.
-    let magpanl = c.defs.chip_by_key("bn6:magpanl").expect("bn6:magpanl");
+    let magpanl = c.defs.chip_by_key("magpanl").expect("magpanl");
     assert_eq!(c.chip(magpanl).description_lines, 1);
     // Other text of the same shape: the same content.
     let mut renamed = base.strings.clone();
@@ -130,7 +130,7 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
     assert_eq!(define(renamed).hash(), c.hash());
     // Another shape: another content.
     let mut reshaped = base.strings.clone();
-    reshaped.chips.get_mut("bn6:magpanl").unwrap().description = Some("one\ntwo".into());
+    reshaped.chips.get_mut("magpanl").unwrap().description = Some("one\ntwo".into());
     assert_ne!(define(reshaped).hash(), c.hash());
 }
 
@@ -150,7 +150,7 @@ fn a_game_loads_alone_under_its_names() {
     let d = &c.defs;
     assert_eq!((c.game(), d.game.as_str()), ("bn5", "bn5"));
     assert!(d.chip_by_key("bn5:cannon").is_some());
-    assert_eq!(d.chip_by_key("bn6:cannon"), None, "BN6's chips are another content's");
+    assert_eq!(d.chip_by_key("cannon"), None, "BN6's chips are another content's");
     assert_eq!(d.chip_by_key("cannon"), None, "an id is written in full");
     assert_eq!(d.stock_ruleset(), d.ruleset_by_key("bn5:stock"));
     assert_eq!(c.strings.chip("bn5:cannon").and_then(|s| s.name.as_deref()), Some("Cannon"));

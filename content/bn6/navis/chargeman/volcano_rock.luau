@@ -15,8 +15,8 @@ local trajectory = require("../../lib/trajectory")
 
 local volcano_rock = {}
 
-local SPRITE = asset.sprite("bn6:volcano-rock")
-local SOUND_LAND = asset.sound("bn6:hit-bomb-1")
+local SPRITE = asset.sprite("volcano-rock")
+local SOUND_LAND = asset.sound("hit-bomb-1")
 
 -- It starts 10 pixels ahead of its thrower, 48 up.
 local AHEAD, HEIGHT = 0xA, 0x30
@@ -125,7 +125,7 @@ local function tick(me: Object)
 end
 
 volcano_rock.kind = define.kind {
-    id = "bn6:chargeman/volcano-rock",
+    id = "chargeman/volcano-rock",
     pool = "attack",
     -- `sub_80D5D54`.
     update = function(me: Object)

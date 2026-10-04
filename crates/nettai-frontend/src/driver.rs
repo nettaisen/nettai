@@ -546,7 +546,7 @@ mod tests {
         let stage = content.stage_by_key(nettai_battle::content::testing::LINK_BATTLE);
         let settings = BattleSettings::on(&content, stage);
         // GunDelS3 N, which the test content has.
-        let folder = folder_of(&content, &[("test:gundels3", 13)]);
+        let folder = folder_of(&content, &[("gundels3", 13)]);
         let mut live = LivePlayer::new(live_setup(&content, settings, [folder, folder], 7), content.clone());
         let mut b = live.start();
         let mut shown = false;
@@ -641,11 +641,11 @@ mod tests {
         use nettai_battle::content::Element;
         use nettai_battle::kinds::player::{NaviAction, navi_action};
         let content = nettai_match::testing::bn6_content();
-        let heat = content.defs.form_by_key("bn6:heatcross").unwrap();
-        let heat_beast = content.defs.form_by_key("bn6:heatcross-beast").unwrap();
+        let heat = content.defs.form_by_key("heatcross").unwrap();
+        let heat_beast = content.defs.form_by_key("heatcross-beast").unwrap();
         let stage = nettai_match::link_battle_stages(&content)[0];
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
-        let folder = folder_of(&content, &[("bn6:cannon", 0)]);
+        let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], 5);
         Unlocks { cross_list: Some(bn6_compat::CrossList::new(&[heat])), ..Unlocks::everything(GameVersion::Falzar) }
             .write(&content, None, &mut setup.players[0])
@@ -687,7 +687,7 @@ mod tests {
         assert_eq!((b.actors.get(actor).buster, b.actors.get(actor).charge_shot), (weapons.buster, weapons.charge_shot));
         assert_eq!(b.objects.get(p0).element & 0xF, Element::Fire as u8);
         // B held charges the buster; let go, HeatCross's flame.
-        let flame = content.defs.action_by_key("bn6:heatcross/charge/action").unwrap();
+        let flame = content.defs.action_by_key("heatcross/charge/action").unwrap();
         let mut charged = false;
         play_until(
             &mut live,
@@ -751,7 +751,7 @@ mod tests {
         let content = nettai_match::testing::bn6_content();
         let stage = nettai_match::link_battle_stages(&content)[0];
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
-        let folder = folder_of(&content, &[("bn6:cannon", 0)]);
+        let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], 5);
         Unlocks {
             cross_list: list.map(|l| bn6_compat::CrossList::new(&l.iter().map(|k| form_of(&content, k)).collect::<Vec<_>>())),
@@ -768,7 +768,7 @@ mod tests {
 
     /// The form `key` (BN6's, without its prefix).
     fn form_of(content: &Content, key: &str) -> nettai_content_api::FormHandle {
-        content.defs.form_by_key(&format!("bn6:{key}")).unwrap_or_else(|| panic!("no form {key}"))
+        content.defs.form_by_key(&format!("{key}")).unwrap_or_else(|| panic!("no form {key}"))
     }
 
     /// Side 0's keys, one per tick, then on to the next tick.
@@ -808,7 +808,7 @@ mod tests {
 
     /// The cross system's record of the Crosses used this round.
     fn crosses_used(b: &Battle) -> [bool; 5] {
-        let (schema, state) = b.system_state(0, "bn6:cross").expect("BN6's cross system");
+        let (schema, state) = b.system_state(0, "cross").expect("BN6's cross system");
         let i = schema.index_of("crosses_used").unwrap();
         std::array::from_fn(|k| state.get_elem(schema, i, k) == Some(nettai_content_api::FieldValue::Bool(true)))
     }
@@ -926,7 +926,7 @@ mod tests {
             let content = nettai_match::testing::bn6_content();
             let stage = nettai_match::link_battle_stages(&content)[0];
             let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
-            let folder = folder_of(&content, &[("bn6:cannon", 0)]);
+            let folder = folder_of(&content, &[("cannon", 0)]);
             let mut setup = live_setup(&content, settings, [folder, folder], 5);
             setup.players[0].navi_level = level;
             let mut live = LivePlayer::new(setup, content.clone());

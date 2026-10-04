@@ -5,24 +5,24 @@
 //! seed = 42                          # optional: the setup's and battle's seed
 //!
 //! [arena]                            # the stage's game decides the battle's data
-//! stage = "bn6:netbattle-43"
-//! background = "bn6:honeycomb"       # optional: else the stage's own
+//! stage = "netbattle-43"
+//! background = "honeycomb"       # optional: else the stage's own
 //! later = [                          # optional: the set's later rounds (else the first's)
-//!     { stage = "bn6:netbattle-12", background = "bn6:code" },
-//!     { stage = "bn6:netbattle-7" },
+//!     { stage = "netbattle-12", background = "code" },
+//!     { stage = "netbattle-7" },
 //! ]
 //!
 //! [left]                             # you, side 0; then [right]
-//! ruleset = "bn6:stock"              # optional: else BN6's (crate::DEFAULT_GAME)
-//! navi = "bn6:megaman"
+//! ruleset = "stock"              # optional: else BN6's (crate::DEFAULT_GAME)
+//! navi = "megaman"
 //! game = "falzar"                    # or "gregar"
 //! level = 7                          # optional: the navi code's level, 0-14 (else a link navi's 0, MegaMan none)
-//! crosses = ["bn6:heatcross", "bn6:spoutcross"]   # optional: else the game's own five
+//! crosses = ["heatcross", "spoutcross"]   # optional: else the game's own five
 //! beast_out = false                  # optional: else Beast Out is unlocked
-//! cards = [{ card = "bn6:canodumb" }, { card = "bn6:shadow", on = false }]
+//! cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
 //!
 //! [left.folder]
-//! chips = ["bn6:cannon A", "bn6:cannon A", ...]   # 30, each "key code" ("" empty, while it's being made)
+//! chips = ["cannon A", "cannon A", ...]   # 30, each "key code" ("" empty, while it's being made)
 //! regular = 4                        # optional: an entry, counting from 0
 //! tags = [5, 6]                      # optional
 //!
@@ -36,7 +36,7 @@
 //! [left.navicust]                    # optional: the NaviCust, which the rules compile
 //! expansions = 2                     # optional: the board's (else the largest)
 //! programs = [                       # in the list's order; x, y the center on the 7x7 grid
-//!     { program = "bn6:suprarmr", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
+//!     { program = "suprarmr", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
 //! ]
 //!
 //! [left.tactics]                     # optional: BN5's computer-navi data, the save's (none: empty)
@@ -597,8 +597,8 @@ mod tests {
         let mut m = crate::draw::live(&content, 2, None).unwrap();
         let chip = |key: &str| content.defs.chip_by_key(key).unwrap();
         m.sides[0].tactics = Tactics {
-            entries: vec![Tactic::Chip(chip("bn6:cannon")), Tactic::Pattern(0), Tactic::Nothing, Tactic::Empty],
-            patterns: vec![TacticPattern { dx: 1, dy: -1, chips: vec![chip("bn6:sword"), chip("bn6:cannon")] }],
+            entries: vec![Tactic::Chip(chip("cannon")), Tactic::Pattern(0), Tactic::Nothing, Tactic::Empty],
+            patterns: vec![TacticPattern { dx: 1, dy: -1, chips: vec![chip("sword"), chip("cannon")] }],
         };
         let text = write(&content, &m);
         assert!(text.contains("[left.tactics]") && text.contains("\"pattern 1\"") && !text.contains("[right.tactics]"), "{text}");
@@ -611,7 +611,7 @@ mod tests {
         let bad = text.replacen("\"pattern 1\"", "\"pattern 2\"", 1);
         let problems = parse(&content, &bad).unwrap_err();
         assert!(problems.iter().any(|p| p.contains("the tactics name pattern 2")), "{problems:?}");
-        let bad = text.replacen("\"bn6:cannon\"", "\"bn6:nothing-at-all\"", 1);
+        let bad = text.replacen("\"cannon\"", "\"nothing-at-all\"", 1);
         let problems = parse(&content, &bad).unwrap_err();
         assert!(problems.iter().any(|p| p.contains("tactics: no chip")), "{problems:?}");
     }
@@ -627,11 +627,11 @@ mod tests {
             parse(&content, &good.replacen(from, to, 1)).unwrap_err()
         };
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
-        has(bad("navi = \"bn6:megaman\"", "navi = \"bn6:nobody\""), "left: no navi \"bn6:nobody\"");
+        has(bad("navi = \"megaman\"", "navi = \"nobody\""), "left: no navi \"nobody\"");
         has(bad("hp = 1000", "hp = 100000"), "stats: hp takes a whole number");
         has(bad("hp = 1000", "hp = 1000\natack = 1"), "no stat \"atack\"");
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
-        has(bad(stage, "stage = \"bn6:moon\""), "arena: no stage");
+        has(bad(stage, "stage = \"moon\""), "arena: no stage");
         // Thirty copies of a chip.
         let mut m = drawn.clone();
         m.sides[0].folder.chips = [m.sides[0].folder.chips[0]; 30];
@@ -646,10 +646,10 @@ mod tests {
         }
         // Patch cards past 80 MB; a Cross list for a navi without Crosses.
         let mut m = drawn.clone();
-        m.sides[0].cards = crate::patch_cards(&content, "bn6:canodumb,bn6:amonicul,bn6:coldbear,bn6:megalian,bn6:mettfire,bn6:kilplant").unwrap();
+        m.sides[0].cards = crate::patch_cards(&content, "canodumb,bn6:amonicul,bn6:coldbear,bn6:megalian,bn6:mettfire,bn6:kilplant").unwrap();
         has(crate::check_match(&content, &m), "left: the patch cards are");
         let mut m = drawn.clone();
-        let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
+        let protoman = content.defs.navi_by_key("protoman").unwrap();
         m.sides[1].navi = protoman;
         m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].game);
         has(crate::check_match(&content, &m), "right: a Cross list, but ProtoMan doesn't change form");
@@ -660,7 +660,7 @@ mod tests {
     #[test]
     fn crosses_need_the_forms_system() {
         let content = nettai_battle::content::testing::content();
-        let mix = content.defs.ruleset_by_key("test:test-mix").unwrap();
+        let mix = content.defs.ruleset_by_key("test-mix").unwrap();
         let stock = content.defs.stock_ruleset();
         assert!(crate::ruleset_has_system(&content, stock, crate::FORMS_SYSTEM));
         assert!(!crate::ruleset_has_system(&content, Some(mix), crate::FORMS_SYSTEM));
@@ -677,7 +677,7 @@ mod tests {
         m.sides[0].navi_level = Some(3);
         m.sides[0].sp_times.0[0] = 721;
         m.sides[0].sp_times.0[11] = 1500;
-        let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
+        let protoman = content.defs.navi_by_key("protoman").unwrap();
         m.sides[1].navi = protoman;
         m.sides[1].crosses = None;
         m.sides[1].navi_level = Some(0);
@@ -709,7 +709,7 @@ mod tests {
         m.sides[0].navi_level = Some(15);
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
         has(crate::check_match(&content, &m), "left: level 15: a navi code's level is 0 to 14");
-        let protoman = content.defs.navi_by_key("bn6:protoman").unwrap();
+        let protoman = content.defs.navi_by_key("protoman").unwrap();
         m.sides[0].navi_level = None;
         m.sides[1].navi = protoman;
         m.sides[1].crosses = None;

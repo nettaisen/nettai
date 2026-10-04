@@ -252,11 +252,7 @@ pub fn background(content: &Content, name: &str) -> Option<nettai_battle::conten
 
 /// What is wrong with a background a match names that the packs haven't.
 pub(crate) fn no_background(at: &str, name: &str) -> String {
-    if nettai_content_api::keys::is_qualified(name) {
-        format!("{at}: no background {name:?}")
-    } else {
-        format!("{at}: background {name:?} names no pack: write it in full (\"bn6:{name}\")")
-    }
+    format!("{at}: no background {name:?} in the game's asset pack")
 }
 
 /// The background a place shows.
@@ -278,7 +274,7 @@ impl Match {
         let stage = *link_battle_stages(content).first().ok_or("the content has no link battle stage")?;
         let fresh: Vec<NaviHandle> = (0..content.defs.navis.len() as u16).map(NaviHandle).filter(|&n| content.navi(n).fresh.is_some()).collect();
         let own: Vec<NaviHandle> =
-            fresh.iter().copied().filter(|&n| nettai_content_api::keys::root_of(&content.defs.navi(n).key) == Some(DEFAULT_GAME)).collect();
+            fresh.iter().copied().filter(|_| content.game() == DEFAULT_GAME).collect();
         let navis = if own.is_empty() { fresh } else { own };
         let navi = navis
             .iter()

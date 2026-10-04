@@ -6,7 +6,7 @@ local action = require("./action")
 local lockon = require("../../rules/lockon")
 
 return define.chip {
-    id = "bn6:windrack",
+    id = "windrack",
     codes = { "F", "J", "R", "*" },
     element = "null", family = "wind", class = "standard",
     rarity = 2, mb = 19, damage = 140, hit_param = 30, lockout = 0,

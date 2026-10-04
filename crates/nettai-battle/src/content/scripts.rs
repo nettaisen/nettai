@@ -219,8 +219,8 @@ mod tests {
     }
 
     const GAME: &[(&str, &str)] = &[
-        ("rules/turns", "return define.system { id = 'game:turns', state = { n = 'u8' } }"),
-        ("rules/ruleset", "return define.ruleset { id = 'game:stock', stock = true, systems = { require('./turns') } }"),
+        ("rules/turns", "return define.system { id = 'turns', state = { n = 'u8' } }"),
+        ("rules/ruleset", "return define.ruleset { id = 'stock', stock = true, systems = { require('./turns') } }"),
         ("cards", "return define.record('card', { power = 1 })"),
         ("chips/cannon", "return define.record('chip-ish', { power = 3 })"),
     ];
@@ -231,20 +231,20 @@ mod tests {
     #[test]
     fn content_holds_one_game() {
         let mix: &[(&str, &str)] = &[
-            ("rules/extra", "return define.system { id = 'mix:extra' }"),
-            ("rules/ruleset", "return define.ruleset { id = 'mix:stock', stock = true, systems = { require('./extra') } }"),
+            ("rules/extra", "return define.system { id = 'extra' }"),
+            ("rules/ruleset", "return define.ruleset { id = 'stock', stock = true, systems = { require('./extra') } }"),
             ("cards", "return define.record('card', { power = 2 })"),
         ];
         let c = content(vec![folder("game", GAME)]).unwrap();
         let d = &c.defs;
         assert_eq!((c.game(), d.game.as_str()), ("game", "game"));
         let keys: Vec<&str> = d.systems.iter().map(|s| s.key.as_str()).collect();
-        assert_eq!(keys, ["game:turns"]);
-        assert_eq!(d.stock_ruleset(), d.ruleset_by_key("game:stock"));
-        // Lookups are exact.
-        assert_eq!(d.ruleset_by_key("test:stock"), None);
-        assert!(d.record("game:cards#1").is_some());
-        assert_eq!(d.record("mix:cards#1"), None);
+        assert_eq!(keys, ["turns"]);
+        assert_eq!(d.stock_ruleset(), d.ruleset_by_key("stock"));
+        // Lookups are exact, of the one game's.
+        assert_eq!(d.ruleset_by_key("game:stock"), None);
+        assert!(d.record("cards#1").is_some());
+        assert_eq!(d.record("game:cards#1"), None);
         // Two game packs are two contents.
         let e = content(vec![folder("mix", mix), folder("game", GAME)]).unwrap_err();
         assert!(e.contains("content holds one game, and these are mix and game"), "{e}");
@@ -252,7 +252,7 @@ mod tests {
         let mut c = Content::default();
         c.scripts.add_dir("game", GAME.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect());
         c.scripts.set_manifest(PackManifest { id: "game".into(), kind: PackKind::Game, ..Default::default() });
-        c.scripts.add_game("mix", [("rules/ruleset".to_string(), "return define.ruleset { id = 'mix:stock', stock = true, systems = { require('@game/rules/turns') } }".to_string())].into());
+        c.scripts.add_game("mix", [("rules/ruleset".to_string(), "return define.ruleset { id = 'stock', stock = true, systems = { require('@game/rules/turns') } }".to_string())].into());
         c.scripts.packs.retain(|p| p.id == "mix");
         let e = c.define().unwrap_err().message;
         assert!(e.contains("mix/rules/ruleset.luau: require(\"@game/rules/turns\"): game is no pack") || e.contains("game is a game pack"), "{e}");
@@ -260,16 +260,16 @@ mod tests {
 
     #[test]
     fn what_the_namespace_refuses() {
-        let e = content(vec![folder("game", &[("rules/turns", "return define.system { id = 'turns' }")])]).unwrap_err();
-        assert!(e.contains("\"turns\" names no game: write it in full (\"game:turns\")"), "{e}");
-        let e = content(vec![folder("game", &[("rules/x", "return define.rules('pools', { actor = 16 })")])]).unwrap_err();
-        assert!(e.contains("section name \"pools\" names no game"), "{e}");
+        let e = content(vec![folder("game", &[("rules/turns", "return define.system { id = 'game:turns' }")])]).unwrap_err();
+        assert!(e.contains("\"game:turns\" is not a valid id"), "{e}");
+        let e = content(vec![folder("game", &[("rules/x", "return define.rules('Pools', { actor = 16 })")])]).unwrap_err();
+        assert!(e.contains("\"Pools\" is not a valid section name"), "{e}");
         let e = content(vec![folder("Game", GAME)]).unwrap_err();
         assert!(e.contains("not lowercase words"), "{e}");
         // Two stock rulesets in one game.
         let two: &[(&str, &str)] = &[
-            ("a", "return define.ruleset { id = 'game:a', stock = true }"),
-            ("b", "return define.ruleset { id = 'game:b', stock = true }"),
+            ("a", "return define.ruleset { id = 'a', stock = true }"),
+            ("b", "return define.ruleset { id = 'b', stock = true }"),
         ];
         let e = content(vec![folder("game", two)]).unwrap_err();
         assert!(e.contains("game game has 2 stock rulesets"), "{e}");
@@ -280,15 +280,15 @@ mod tests {
     #[test]
     fn a_mix_changes_its_base() {
         let mix: &[(&str, &str)] = &[
-            ("rules/extra", "return define.system { id = 'mix:extra' }"),
+            ("rules/extra", "return define.system { id = 'extra' }"),
             (
                 "rules/mixes",
                 "local game = require('./ruleset')\n\
                  local turns = require('./turns')\n\
                  local extra = require('./extra')\n\
                  return {\n\
-                   define.ruleset { id = 'mix:plus', base = game, add = { extra } },\n\
-                   define.ruleset { id = 'mix:minus', base = game, remove = { turns } },\n\
+                   define.ruleset { id = 'plus', base = game, add = { extra } },\n\
+                   define.ruleset { id = 'minus', base = game, remove = { turns } },\n\
                  }",
             ),
         ];
@@ -303,23 +303,23 @@ mod tests {
             let r = d.ruleset(d.ruleset_by_key(key).unwrap());
             r.systems.iter().map(|&h| d.system(h).key.as_str()).collect()
         };
-        assert_eq!(systems("mix:plus"), ["game:turns", "mix:extra"]);
-        assert!(systems("mix:minus").is_empty());
+        assert_eq!(systems("plus"), ["turns", "extra"]);
+        assert!(systems("minus").is_empty());
         // What a ruleset refuses.
         let bad = |source: &str| -> String { with(&[("rules/bad", source)]).unwrap_err() };
         let base = "local game = require('./ruleset')\nlocal turns = require('./turns')\n";
         let cases = [
-            ("return define.ruleset { id = 'mix:x', stock = true, base = game }", "has no `base`"),
-            ("return define.ruleset { id = 'mix:x', base = game, systems = { turns } }", "not `systems`"),
-            ("return define.ruleset { id = 'mix:x', base = game, add = { turns } }", "which it has already"),
-            ("return define.ruleset { id = 'mix:x', systems = {}, remove = { turns } }", "names none"),
-            ("return define.ruleset { id = 'mix:x', systems = { turns }, game = 'game' }", "`game` is no field of a ruleset"),
+            ("return define.ruleset { id = 'x', stock = true, base = game }", "has no `base`"),
+            ("return define.ruleset { id = 'x', base = game, systems = { turns } }", "not `systems`"),
+            ("return define.ruleset { id = 'x', base = game, add = { turns } }", "which it has already"),
+            ("return define.ruleset { id = 'x', systems = {}, remove = { turns } }", "names none"),
+            ("return define.ruleset { id = 'x', systems = { turns }, game = 'game' }", "`game` is no field of a ruleset"),
         ];
         for (source, want) in cases {
             let e = bad(&format!("{base}{source}"));
             assert!(e.contains(want), "{source}: {e}");
         }
-        let e = bad("return define.ruleset { id = 'mix:x', base = require('./ruleset'), remove = { define.system { id = 'mix:y' } } }");
+        let e = bad("return define.ruleset { id = 'x', base = require('./ruleset'), remove = { define.system { id = 'y' } } }");
         assert!(e.contains("which its base doesn't have"), "{e}");
     }
 
@@ -331,8 +331,8 @@ mod tests {
     #[test]
     fn a_game_packs_manifest_lists_its_definitions() {
         let modules: BTreeMap<String, String> = [
-            ("rules/turns", "return define.system { id = 'game:turns' }"),
-            ("rules/ruleset", "return define.ruleset { id = 'game:stock', stock = true, systems = { require('./turns') } }"),
+            ("rules/turns", "return define.system { id = 'turns' }"),
+            ("rules/ruleset", "return define.ruleset { id = 'stock', stock = true, systems = { require('./turns') } }"),
             ("chips/cannon", "return define.record('card', { power = 3 })"),
             ("never", "error('a module no manifest reaches never loads')"),
         ]
@@ -348,23 +348,23 @@ mod tests {
             Ok(c)
         };
         let c = with_manifest("rules = [\"rules/ruleset\"]").unwrap();
-        assert!(c.defs.ruleset_by_key("game:stock").is_some());
-        assert_eq!(c.defs.record("game:chips/cannon#1"), None, "unreached, unloaded");
+        assert!(c.defs.ruleset_by_key("stock").is_some());
+        assert_eq!(c.defs.record("chips/cannon#1"), None, "unreached, unloaded");
         // `also`: a module loaded for what it defines, which nothing listed requires.
         let c = with_manifest("rules = [\"rules/ruleset\"]\nalso = [\"chips/cannon\"]").unwrap();
-        assert!(c.defs.record("game:chips/cannon#1").is_some());
+        assert!(c.defs.record("chips/cannon#1").is_some());
         let refused = |definitions: &str, said: &str| {
             let e = with_manifest(definitions).expect_err(said);
             assert!(e.contains(said), "{said}: {e}");
         };
-        refused("also = [\"rules/ruleset\"]", "game/rules/ruleset.luau: ruleset game:stock is game's, and game/manifest.toml doesn't list rules/ruleset in `rules`");
+        refused("also = [\"rules/ruleset\"]", "game/rules/ruleset.luau: ruleset stock is game's, and game/manifest.toml doesn't list rules/ruleset in `rules`");
         refused("chips = [\"rules/ruleset\"]", "game/manifest.toml: `chips` lists rules/ruleset, which defines no chip");
         refused("rules = [\"rules/ruleset\", \"gone\"]", "game/manifest.toml: lists game/gone, which isn't there");
         // A support pack defines nothing a game lists.
         let mut c = Content::default();
-        c.scripts.add_support("lib", [("x".to_string(), "return define.ruleset { id = 'lib:r' }".to_string())].into());
-        c.scripts.add_game("game", [("rules/ruleset".to_string(), "local _ = require('@lib/x')\nreturn define.ruleset { id = 'game:stock', stock = true }".to_string())].into());
+        c.scripts.add_support("lib", [("x".to_string(), "return define.ruleset { id = 'r' }".to_string())].into());
+        c.scripts.add_game("game", [("rules/ruleset".to_string(), "local _ = require('@lib/x')\nreturn define.ruleset { id = 'stock', stock = true }".to_string())].into());
         let e = c.define().unwrap_err().message;
-        assert!(e.contains("lib/x.luau: ruleset lib:r: support pack lib defines nothing a game lists"), "{e}");
+        assert!(e.contains("lib/x.luau: ruleset r: support pack lib defines nothing a game lists"), "{e}");
     }
 }

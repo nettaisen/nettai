@@ -6,4 +6,4 @@
 
 local common = require("@exelib/invisibl/controller")
 
-return common.make { id = "bn6:invisibl/controller", sound = asset.sound("bn6:invisible") }
+return common.make { id = "invisibl/controller", sound = asset.sound("invisible") }

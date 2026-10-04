@@ -7,7 +7,7 @@ local cube = require("./cube")
 local rock = require("./rock")
 
 local rockcube = define.chip {
-    id = "bn6:rockcube",
+    id = "rockcube",
     codes = { "*" },
     element = "null",
     family = "summon",
@@ -25,7 +25,7 @@ local rockcube = define.chip {
 }
 
 local icecube = define.chip {
-    id = "bn6:icecube",
+    id = "icecube",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "summon",

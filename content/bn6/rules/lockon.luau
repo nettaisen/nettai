@@ -6,14 +6,14 @@
 
 local lockon = {
     stay = define.lockon {
-        id = "bn6:stay",
+        id = "stay",
         rule = "stay",
         column_shifts = false,
         clear_path = false,
         prefers_middle_row = false,
     },
     cannon = define.lockon {
-        id = "bn6:cannon",
+        id = "cannon",
         rule = "row",
         offsets = {
             { 0, 0 },
@@ -48,7 +48,7 @@ local lockon = {
         prefers_middle_row = false,
     },
     thunder = define.lockon {
-        id = "bn6:thunder",
+        id = "thunder",
         rule = "near",
         offsets = { { -1, 0 }, { -1, -1 }, { -1, 1 } },
         column_shifts = true,
@@ -56,7 +56,7 @@ local lockon = {
         prefers_middle_row = false,
     },
     widesht = define.lockon {
-        id = "bn6:widesht",
+        id = "widesht",
         rule = "near",
         offsets = { { -1, -1 }, { -1, 1 }, { -1, 0 } },
         column_shifts = true,
@@ -64,7 +64,7 @@ local lockon = {
         prefers_middle_row = true,
     },
     firebrn1 = define.lockon {
-        id = "bn6:firebrn1",
+        id = "firebrn1",
         rule = "near",
         offsets = { { -2, 0 }, { -1, 0 }, { -2, -1 }, { -1, -1 }, { -2, 1 }, { -1, 1 } },
         column_shifts = true,
@@ -72,7 +72,7 @@ local lockon = {
         prefers_middle_row = false,
     },
     yoyo = define.lockon {
-        id = "bn6:yoyo",
+        id = "yoyo",
         rule = "near",
         offsets = {
             { -3, 0 },
@@ -90,7 +90,7 @@ local lockon = {
         prefers_middle_row = false,
     },
     drksword = define.lockon {
-        id = "bn6:drksword",
+        id = "drksword",
         rule = "near",
         offsets = { { -1, 0 }, { -1, -1 }, { -1, 1 }, { -2, 0 }, { -2, -1 }, { -2, 1 } },
         column_shifts = true,
@@ -98,7 +98,7 @@ local lockon = {
         prefers_middle_row = true,
     },
     crakshot = define.lockon {
-        id = "bn6:crakshot",
+        id = "crakshot",
         rule = "near",
         offsets = { { -2, 0 } },
         column_shifts = true,
@@ -106,7 +106,7 @@ local lockon = {
         prefers_middle_row = false,
     },
     dublshot = define.lockon {
-        id = "bn6:dublshot",
+        id = "dublshot",
         rule = "near",
         offsets = { { -3, 0 } },
         column_shifts = true,
@@ -114,7 +114,7 @@ local lockon = {
         prefers_middle_row = false,
     },
     gundels1 = define.lockon {
-        id = "bn6:gundels1",
+        id = "gundels1",
         rule = "near",
         offsets = { { -2, 0 }, { -2, -1 }, { -2, 1 } },
         column_shifts = true,
@@ -122,7 +122,7 @@ local lockon = {
         prefers_middle_row = true,
     },
     trnarrw1 = define.lockon {
-        id = "bn6:trnarrw1",
+        id = "trnarrw1",
         rule = "near",
         offsets = { { -5, 0 }, { -4, 0 }, { -3, 0 }, { -2, 0 }, { -1, 0 } },
         column_shifts = false,
@@ -132,7 +132,7 @@ local lockon = {
     -- SlashCross Beast's lunge at a target off its row: a panel in front of
     -- it or two (two, in the far column).
     beast_lunge = define.lockon {
-        id = "bn6:beast-lunge",
+        id = "beast-lunge",
         rule = "near",
         offsets = { { 0, 0 }, { -2, 0 } },
         far_column_offsets = { { -2, 0 } },
@@ -142,7 +142,7 @@ local lockon = {
     },
     -- The Beast forms' charged claw's and GroundCross's drill's.
     beast_claw = define.lockon {
-        id = "bn6:beast-claw",
+        id = "beast-claw",
         rule = "near",
         offsets = { { -1, 0 } },
         column_shifts = true,
@@ -150,7 +150,7 @@ local lockon = {
         prefers_middle_row = false,
     },
     crosswrd = define.lockon {
-        id = "bn6:crosswrd",
+        id = "crosswrd",
         rule = "near",
         offsets = { { -1, 0 }, { -2, -1 }, { -2, 1 }, { 1, -1 }, { 1, 1 } },
         column_shifts = true,
@@ -158,7 +158,7 @@ local lockon = {
         prefers_middle_row = false,
     },
     sprsonic = define.lockon {
-        id = "bn6:sprsonic",
+        id = "sprsonic",
         rule = "near",
         offsets = { { -5, 0 }, { -4, 0 }, { -3, 0 }, { -2, 0 }, { -1, 0 } },
         column_shifts = false,
@@ -166,7 +166,7 @@ local lockon = {
         prefers_middle_row = true,
     },
     bigbomb = define.lockon {
-        id = "bn6:bigbomb",
+        id = "bigbomb",
         rule = "near",
         offsets = {
             { -3, 0 },
@@ -184,7 +184,7 @@ local lockon = {
         prefers_middle_row = false,
     },
     gundelex = define.lockon {
-        id = "bn6:gundelex",
+        id = "gundelex",
         rule = "near",
         offsets = { { -3, 0 } },
         column_shifts = true,
@@ -192,7 +192,7 @@ local lockon = {
         prefers_middle_row = true,
     },
     elcpuls1 = define.lockon {
-        id = "bn6:elcpuls1",
+        id = "elcpuls1",
         rule = "near",
         offsets = { { -2, 0 }, { -2, -1 }, { -2, 1 }, { -1, 0 } },
         column_shifts = true,
@@ -200,7 +200,7 @@ local lockon = {
         prefers_middle_row = false,
     },
     moonbld = define.lockon {
-        id = "bn6:moonbld",
+        id = "moonbld",
         rule = "near",
         offsets = { { -1, 0 }, { -1, -1 }, { -1, 1 }, { 0, -1 }, { 0, 1 }, { 1, -1 }, { 1, 1 }, { 1, 0 } },
         column_shifts = true,
@@ -209,7 +209,7 @@ local lockon = {
     },
 }
 
-lockon.rules = define.rules("bn6:lockon", {
+lockon.rules = define.rules("lockon", {
     column_shifts = { -1, -2, -3, -4 },
     clear_path = {
         { require = 0x00000000, forbid = 0x05800000 },

@@ -22,30 +22,30 @@ local strike = require("./strike")
 
 local statue = {}
 
-local SPRITE = asset.sprite("bn6:guardian-statue")
+local SPRITE = asset.sprite("guardian-statue")
 
 local made = common.make {
-    id = "bn6:guardian/statue",
+    id = "guardian/statue",
     sprite = SPRITE,
     -- Its identity: a field object, with the look something that takes its
     -- place shows (DustMan's junk).
     identity = define.identity {
-        id = "bn6:guardian",
+        id = "guardian",
         class = "field_object",
         version = 4,
         ai_index = 1,
-        look = { sprite = asset.sprite("bn6:guardian-statue"), anim = 0, palette = 0, shadow = true },
+        look = { sprite = asset.sprite("guardian-statue"), anim = 0, palette = 0, shadow = true },
     },
     hp = 1,
     sounds = {
-        place = asset.sound("bn6:appear"),
-        crumble = asset.sound("bn6:panel-poison"),
-        strike = asset.sound("bn6:beast-over-burst"),
+        place = asset.sound("appear"),
+        crumble = asset.sound("panel-poison"),
+        strike = asset.sound("beast-over-burst"),
     },
     -- The flash it arrives in, 16 pixels up (effect 0x15).
-    arrival = define.effect { sprite = asset.sprite("bn6:puff"), anim = 3, palette = 0 },
+    arrival = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 },
     -- The burst on each panel it strikes (effect 0x45).
-    burst = define.effect { sprite = asset.sprite("bn6:lightning"), anim = 0, palette = 0 },
+    burst = define.effect { sprite = asset.sprite("lightning"), anim = 0, palette = 0 },
     -- A neutral obstacle that everything reaches (row 0x0E, while dimmed
     -- too, breaking).
     is = collision.neutral_body,

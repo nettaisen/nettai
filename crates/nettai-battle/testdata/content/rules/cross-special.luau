@@ -4,7 +4,7 @@
 
 local minibomb = require("../chips/minibomb/chip")
 
-return define.rules("test:cross-special", {
+return define.rules("cross-special", {
     rows = {
         { minibomb },
     },

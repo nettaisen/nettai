@@ -6,7 +6,7 @@ local b_sword = require("../../lib/patch-cards/b-sword")
 local invisible_charge = require("../../lib/patch-cards/invisible-charge")
 
 return define.patch_card {
-    id = "bn6:shadow",
+    id = "shadow",
     mb = 6,
     effects = {
         cards.bug(cards.status_guard(false)),

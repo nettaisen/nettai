@@ -608,7 +608,6 @@ impl Round {
                 let version = d.versions[side];
                 let souls: Vec<nettai_battle::rules::Fact> = (0..content.defs.forms.len() as u16)
                     .map(nettai_content_api::FormHandle)
-                    .filter(|&f| nettai_content_api::keys::root_of(&content.defs.form(f).key) == Some(crate::ROOT))
                     .filter(|&f| content.form(f).soul.as_ref().is_some_and(|s| version.soul_flag(s.number).is_some()))
                     .map(|f| nettai_battle::rules::Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, f.0)))
                     .collect();

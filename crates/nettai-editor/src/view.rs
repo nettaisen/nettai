@@ -526,9 +526,9 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
     row![left.width(Length::FillPortion(2)), right.width(Length::FillPortion(3))].spacing(12).into()
 }
 
-/// The game of a definition: its key's prefix (`bn5` of `bn5:cannon`).
-fn game_of(key: &str) -> &str {
-    nettai_content_api::keys::root_of(key).unwrap_or("")
+/// The game of a definition: the content's (one game a match).
+fn game_of(_key: &str) -> &str {
+    ""
 }
 
 /// A game as the editor names it (`BN5`).

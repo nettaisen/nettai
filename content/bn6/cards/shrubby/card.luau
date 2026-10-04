@@ -6,7 +6,7 @@ local chrgs = require("../../lib/patch-cards/chrgs")
 local variants = require("../../objects/projectile/variants")
 
 return define.patch_card {
-    id = "bn6:shrubby",
+    id = "shrubby",
     mb = 6,
     effects = {
         cards.body("wood"),

@@ -26,7 +26,7 @@ impl Side {
         for n in numbers {
             let of = all.iter().copied().find(|&f| {
                 content.form(f).soul.as_ref().is_some_and(|s| s.number == n)
-                    && nettai_content_api::keys::root_of(&content.defs.form(f).key) == Some(bn5_compat::ROOT)
+                    && content.game() == bn5_compat::ROOT
             });
             match of {
                 Some(f) => souls.push(f),
