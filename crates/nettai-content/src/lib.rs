@@ -1,7 +1,7 @@
 //! Content packs: a game's graphics and sound in open formats that ordinary
 //! tools edit, loaded exactly into the data the engine, the frontend and the
 //! audio use; and the battle content, the content directory's packs
-//! ([`index`]: content/'s game packs and the support packs they use), which
+//! ([`index`]: content/'s game packs and the support packs they depend on), which
 //! name the asset packs' assets.
 //!
 //! - Battle content: the Luau modules that define the chips, navis, forms,

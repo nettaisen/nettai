@@ -5,7 +5,7 @@
 -- it, over its panel and the column ahead, and follows it until the action's end, 31 ticks in. Its damage is the
 -- custom gauge's (BN5's formulas 73 to 75).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local panels = require("@exelib/panels")
 local regions = require("@exelib/regions")

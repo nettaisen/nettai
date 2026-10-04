@@ -4,7 +4,7 @@
 -- spark; a lance of Param1 1 (DrkLance's, in its second palette) hits as BN5's row 0x25 with bug 0x16 (argument 2).
 
 local collision = require("../../rules/collision")
-local lance = require("@exelib/lance/lance")
+local lance = require("@exelib/lance")
 local sparks = require("../../lib/sparks")
 
 return {

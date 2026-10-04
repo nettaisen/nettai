@@ -15,7 +15,7 @@ local chip_gate_battle = require("../../lib/chip_gate_battle")
 
 local window = {}
 
--- The cross system's setup (rules/cross/system.luau declares it): the
+-- The cross system's setup (rules/cross/init.luau declares it): the
 -- player's game, the Crosses their save owns by Cross number, and nettai's
 -- Cross list (up to five forms of either game, in the window's order;
 -- docs/engine/custom-screen.md §4.1), none given: the version's own.
@@ -38,7 +38,7 @@ local function sealed(side: number): boolean
     return battle.navi_level(side) ~= nil
 end
 
--- The cross system's state fields the window keeps (rules/cross/system.luau
+-- The cross system's state fields the window keeps (rules/cross/init.luau
 -- declares them).
 export type State = {
     -- `dword_20349A0`: the Crosses used this round, by their place among

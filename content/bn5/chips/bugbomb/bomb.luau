@@ -10,7 +10,7 @@
 
 local collision = require("../../rules/collision")
 local common = require("@exelib/bugbomb/bomb")
-local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
+local rising_bubble = require("../../objects/rising-bubble")
 local statuses = require("../../rules/status")
 local trajectory = require("../../lib/trajectory")
 local operation_battle = require("../../lib/operation_battle")

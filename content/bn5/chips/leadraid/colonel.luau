@@ -7,7 +7,7 @@
 -- four diagonals, then the panel itself), and 20 ticks on he lets ProtoMan go on and leaves. Off a panel that isn't
 -- solid he waits 10 ticks and leaves.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local glow = require("./glow")
 local navi = require("../colonel/navi")

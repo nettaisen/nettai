@@ -3,6 +3,6 @@
 -- code), its telop naming BN5's Punisher (chip 0x175, ../punisher/chip).
 
 local common = require("@exelib/guardian/strike")
-local punisher = require("../punisher/chip")
+local punisher = require("../punisher")
 
 return common.make { id = "guardian/strike", punisher = punisher }

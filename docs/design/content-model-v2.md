@@ -592,7 +592,8 @@ crates/nettai-battle/testdata/content/stages/test.luau, and tests name stages by
 ### 3.8 Rules
 
 A game's rules are one plain Luau library with a single definition: its stock ruleset, `rules/init.luau` (the
-manifest lists it as `rules`, the folder's name, as a require names a folder's `init`). The ruleset names its
+game's top module requires it as `@self/rules`, the folder's name, as a require names a folder's `init`; it
+requires its own folder's modules as `@self/panels`). The ruleset names its
 systems and, as fields, each rule table, a **section**, and the game's roles (§7.4). A section is a plain table its
 module returns; the engine reads each against its schema when the ruleset is defined (sections.rs), and a message
 names the place (`rules/init.luau: ruleset stock: panels.types.grass.flags: invalid type`):
@@ -703,10 +704,15 @@ the arena configuration determines everything"; on what a pack imports, "don't a
 packs, games can only import from support and support can import from support, but support and games can't import from
 games"; and on the declaration, "okay instead of init.luau it should be manifest.toml".
 
+And after packs landed: "instead of manifest.toml containing imports etc, there should really be a top-level init.luau
+file that imports everything, and then manifest.toml just declares id/kind/depends".
+
 ```text
 content/
+  .luaurc                             the packs by name (`@bn6`, `@exelib`), for an editor's requires
   bn6/, bn5/                          the game packs: what a match plays
-    manifest.toml                     the pack (below)
+    manifest.toml                     the pack: its id, its kind, what it depends on
+    init.luau                         the game's top module: it requires what the game has (below)
     **/*.luau                         its scripts (the layout below, §4.1)
     types.d.luau                      its own declarations
     locales/<language>.toml           its display text by id
@@ -717,28 +723,38 @@ content/
   nettai/core.d.luau                  the engine's API declarations
 ```
 
-A manifest (`nettai_content_api::packs::PackManifest`):
+A manifest (`nettai_content_api::packs::PackManifest`) says what the pack is, and nothing of what it holds:
 
 ```toml
 id = "bn6"
 kind = "game"          # or "support"
-uses = ["exelib"]      # the support packs it requires from
-
-[definitions]          # its modules, by path in the pack
-rules = ["rules"]      # rules/init.luau: the stock ruleset, the game's one rules definition (§3.8)
-chips = ["chips/airshot/chip", "chips/cannon/chips", ...]
-navis = [...]
-forms = [...]
-stages = [...]
-patch_cards = [...]
-navicust = [...]
-also = ["lib/instant/repair", ...]
-unported = ["chips/x/chip", ...]
+depends = ["exelib"]   # the support packs it requires from
 ```
 
-- **Kinds.** A game pack is what a match plays. A support pack defines nothing a game lists (no chips, navis, forms,
-  stages, patch cards, NaviCust programs or rulesets) and has no strings: its makers take the game's ids and looks.
-  A support pack's manifest has no `[definitions]`.
+A game's top module, `<game>/init.luau` (`bn6:init`; the pack as a module, as a folder's init.luau is the folder,
+§4.1), requires what the game has:
+
+```luau
+return {
+    rules = require("@self/rules"),                 -- rules/init.luau: the game's rules (§3.8)
+    chips = {
+        require("@self/chips/airhocky"),
+        require("@self/chips/cannon"),              -- a series' module stands for its chips
+        require("@self/navis/elecman/chip"),        -- a link navi's own chip
+        -- require("@self/chips/later"),            -- no use yet
+    },
+    navis = { require("@self/navis/megaman"), require("@self/navis/elecman") },
+    forms = { require("@self/navis/megaman/forms/heatcross") },
+    stages = { require("@self/stages/netbattle") },
+    patch_cards = { require("@self/cards/airman") },
+    navicust = { require("@self/navicust/airshoes") },
+    also = { require("@self/lib/instant/repair") },
+}
+```
+
+- **Kinds.** A game pack is what a match plays. A support pack defines nothing a game has (no chips, navis, forms,
+  stages, patch cards, NaviCust programs or rules) and has no strings: its makers take the game's ids and looks.
+  A support pack has no top module: its modules load when a game requires them.
 - **A support pack has no game context** (the user: "for support libraries they must not be able to use implicit
   game context, they can only use game context if they've been passed in"). Its modules run in an environment of
   their own (`nettai_luau::define::environments`), a read-only copy of the globals without what resolves to the
@@ -755,74 +771,90 @@ unported = ["chips/x/chip", ...]
   `resolveImportSafe`), so `asset`, `system` and `define` are in no global table: each module gets its pack's
   environment, the game's with them. The content check's lint warns early: a support module naming `asset.`,
   `system.` or writing an id of its own (`id = "..."`).
-- **What a pack requires.** `uses` names the support packs a pack requires from; a support pack uses only support
-  packs, without cycles (refused with the chain named).
+- **What a pack requires.** `depends` names the support packs a pack requires from; a support pack depends only on
+  support packs, without cycles (refused with the chain named).
 
   | A pack of kind | may require |
   |---|---|
-  | game | itself, and the support packs in its `uses` |
-  | support | itself, and the support packs in its `uses` |
+  | game | itself, and the support packs in its `depends` |
+  | support | itself, and the support packs in its `depends` |
 
   No pack requires a game pack but itself, and a relative path never leaves its pack. The loader
   (`nettai_content::index::follow`), the runtime's `require` (`nettai_luau::Pack::with_packs`) and the content check
   refuse anything else, naming the module and the require (`packs::check_require`).
-- **The definitions.** A game pack's lists name, by registry, the modules that define what a person picks or a
-  ruleset names: `rules` (its rulesets: the stock one, rules/init.luau, holds its systems, rule sections and
-  roles; a folder's `init` is listed by the folder's name, `rules`), `chips`, `navis`, `forms`, `stages`,
-  `patch_cards`, `navicust`. A series module stands for its chips. Weapons, kinds, actions and the rest come in
-  through requires. `also` loads a module that defines something nothing listed requires (BN6's alias buster
-  routines, an effect or a kind the original's tables number, which compat names). `unported` names the chips the
-  game defines without a use yet, which don't load.
-- **The manifest is the whole truth.** The define phase refuses a definition of these registries whose module its
-  game pack's manifest doesn't list in its registry's list, a listed module that defines none of its list's, a
-  listed module that isn't there, and a support pack's definition of any of them.
-- **One game a match** (P3). A content is one game pack and the support packs it uses: `Content::define` refuses two
+- **What a game has.** Its init.luau requires, grouped by registry, the modules that define what a person picks or
+  the rules name: `rules` (rules/init.luau: its systems, rule sections and roles), `chips`, `navis`, `forms`,
+  `stages`, `patch_cards`, `navicust`. A series module stands for its chips. Weapons, kinds, actions and the rest
+  come in through requires. `also` requires a module that defines something nothing else requires (BN6's alias
+  buster routines, an effect or a kind the original's tables number, which compat names). A chip the game defines
+  without a use yet isn't required, so it doesn't load: index.py keeps it as a commented require among the chips,
+  and uncomments it when the chip has its use (no list of them is kept anywhere else; neither game has one
+  today).
+- **The init is the whole truth.** A load of a game runs its init.luau, and what that requires, in turn, is what
+  loads. The define phase refuses a definition of these registries made by a module the init doesn't require
+  itself (`game/chips/sword/init.luau: chip sword is game's, and game/init.luau doesn't require chips/sword`;
+  `packs::required_by_init` reads the init's own requires), a game without its init.luau, and a support pack's
+  definition of any of them. The engine reads the requires, not the table: the groups are for a reader, and
+  index.py writes them.
+- **The order of the requires is the load order, and nothing more.** A named definition's key is its id; an
+  anonymous one's counts the definitions its own module makes (§2.2), whenever the module loads; handles follow
+  the keys (§2.3); asset handles are the asset pack's. So turning the requires round defines the same definitions
+  under the same keys with the same handles (nettai-content's test turns both games' round). The content hash
+  covers the modules' text, init.luau's too.
+- **One game a match** (P3). A content is one game pack and the support packs it depends on: `Content::define` refuses two
   game packs, and every lookup sees only the loaded game's definitions. `nettai_content::pack::games` lists the game
   packs, each with its asset pack, and `load_game` loads one.
 - **Loading** (`nettai_content::index::read`). The loader reads the manifests of the games it loads and the support
-  packs they use. The load order is the support packs, each after those it uses, then the games. It reads each
-  listed module (not the unported) and what those require, and scans nothing. The games are the packs whose
+  packs they depend on. The load order is the support packs, each after those it depends on, then the games. It
+  reads each game's init.luau and what that requires, in turn, and scans nothing. The games are the packs whose
   manifest says `kind = "game"` (`packs::games`). The content, and its hash, is what loaded. A game whose asset pack
   isn't found isn't loaded.
 - **Declarations, by pack** (`packs::declarations`). A pack's modules check against the engine's declarations, then
-  those of the support packs it uses (in load order), then its own. No pack sees another game's types. A game's type
+  those of the support packs it depends on (in load order), then its own. No pack sees another game's types. A game's type
   that another pack's code names is the support pack's: packs.py moved 51 of BN6's 105 to exelib/types.d.luau. The
   engine's patch card spec takes `effects: { any }`, since each game types its own effects (BN6's
-  `PatchCardEffect`). Luau's .luaurc has no field for definition files.
+  `PatchCardEffect`). Luau's .luaurc has no field for definition files; content/.luaurc names the packs
+  (`"aliases": { "bn6": "./bn6", "exelib": "./exelib" }`), so an editor resolves `@exelib/...` as the engine does.
 - **Names.** Ids are local to their game (the user: "no i don't want qualified ids since you can't cross between
   games anymore"; "once a game is selected for the match, the rest of the configuration becomes completely
   namespaced for that side. so it's not possible to name another game's stuff"): `cannon`, `megaman`,
   `heatcross/charge/action`, and an asset by its pack's name (`asset.sprite("bomb")`); compat, the locales and match
-  files write them so. A module's name is its pack and its path in it (`bn6:chips/cannon/chips`,
-  `exelib:swords/slash`). A game module's anonymous definition is keyed by its path (`chips/cannon/chips#2`), a
+  files write them so. A module's name is its pack and its path in it (`bn6:chips/cannon/init`,
+  `exelib:swords/slash`). A game module's anonymous definition is keyed by its path (`chips/cannon/init#2`), a
   support pack's by its name (`exelib:regions#57`, which content never writes). Nothing refuses a `:` in a name:
   another game's names can't be loaded.
-- **The modules keep `define.*`.** A manifest only says which load and which are the game's.
+- **The modules keep `define.*`.** The init only says which load and which are the game's.
 - **Kept up by scripts** in the verification workspace:
-  - tools/content/index.py writes each manifest's lists from the pack's modules, by `define.<registry>`. A chip
-    naming no use is unported, and so, in turn, is a chip that requires an unported chip's module.
-  - gen_content.py runs index.py after writing, and layout.py's moves keep the lists right.
+  - tools/content/index.py writes each game's init.luau from the pack's modules, by `define.<registry>`, each
+    group in path order; each manifest; and content/.luaurc. A chip naming no use is a commented require, and so,
+    in turn, is a chip that requires such a chip's module.
+  - gen_content.py runs index.py after writing, and layout.py's moves keep the init right.
   - tools/content/packs.py is the porters' migration. It renames common to exelib, removes R5's layout, writes the
-    manifests, moves the shared types, lists the cross-game requires that are left, writes ids local (step 6),
-    rewrites the engine's Rust for one game a match and local ids (step 7), names flag 0x40's modes (step 8) and
-    makes a game's rules one ruleset table (step 9).
+    manifests and top modules, moves the shared types, lists the cross-game requires that are left, writes ids
+    local (step 6), rewrites the engine's Rust for one game a match and local ids (step 7), names flag 0x40's
+    modes (step 8), makes a game's rules one table (step 9), names each folder's main module init.luau and
+    rewrites the requires by Luau's rule (step 10, §4.1) and names a series' chips (step 11, §4.1).
   - A porter merges main, runs `tools/content/packs.py <checkout>`, then builds and tests.
 
 R5 (2026-10-03, never merged) had made content/ one namespace with explicit indices: content/bn6/init.luau and a
-root content/init.luau. The user asked for packs instead. Packs keep R5's lists and their whole-truth check, `also`,
-the loader that follows requires, and index.py.
+root content/init.luau. The user asked for packs instead, whose manifests first held R5's lists; R6 moved the lists
+back into each game's init.luau as requires, with the manifest kept for the pack's identity. The whole-truth
+check, `also`, the loader that follows requires and index.py are R5's throughout.
 
 ### 4.1 The rules
 
 ```text
 content/bn6/
+  init.luau                           the game's top module: it requires what the game has (§4.0)
   types.d.luau                        the game's shared types (the API: content/nettai/core.d.luau)
-  chips/<id>/                         one chip: chip.luau, and kinds only it uses
-  chips/<series>/                     a series (X1-X3, Hi-/M-, EX/SP, Recov*, the upgrades of one chip): all of them
-  navis/megaman/                      navi.luau; kinds and weapons several forms share
-  navis/megaman/forms/<form>/         form.luau; weapons and kinds only that form uses
+  chips/<id>/                         one chip: init.luau, and kinds only it uses
+  chips/<series>/                     a series (X1-X3, Hi-/M-, EX/SP, Recov*, the upgrades of one chip): init.luau
+                                      defines all of them and returns them by name
+  cards/<card>/, navicust/<program>/  a patch card, a NaviCust program: init.luau
+  navis/megaman/                      init.luau; kinds and weapons several forms share
+  navis/megaman/forms/<form>/         init.luau; weapons and kinds only that form uses
   navis/megaman/weapons/<weapon>/     weapons several forms share (buster, charged shot, blank shot, beast claw)
-  navis/<navi>/                       a link navi: navi.luau, its own chip (action 0x0A) and actions
+  navis/<navi>/                       a link navi: init.luau, its own chip (chip.luau, action 0x0A) and actions
   lib/<family>/                       builders a family composes, and the kinds it shares across folders
   lib/*.luau                          helpers with no family (panels, slot, trajectory, element, hp, effects, sparks, regions)
   objects/<kind>/                     kinds several families share
@@ -844,11 +876,76 @@ content/bn6/
 
 `nettai-content where <key>` prints the module that defines a key, and load errors name the module.
 
+**A folder's main module is its init.luau** (R6; the user: "instead of [chipname]/chip.luau and
+[rulename]/rule.luau it should all be init.luau and import should resolve it"), and a require names the folder:
+`require("../cannon")`, `require("@exelib/attachment")`, the game's `require("@self/chips/cannon")`. The main
+module is the one the folder is for:
+
+| Folder | Its init.luau |
+|---|---|
+| chips/<chip>/, chips/<series>/ | the chip, or the series' chips |
+| cards/<card>/, navicust/<program>/ | the patch card, the NaviCust program |
+| navis/<navi>/ | the navi |
+| .../forms/<form>/, .../weapons/<weapon>/ | the form, the weapon |
+| rules/, rules/<system>/ | the game's rules, the system |
+| any other with a module of the folder's name | that module (objects/boulder/, lib/barriers/, exelib's attachment/) |
+
+Every other module keeps its name, and says what it is: action.luau, charge.luau, controller.luau, a kind's
+module. Where a folder holds two things, the folder's own is the init:
+
+- a navi chip's folder is the chip's (chips/elecman/init.luau), and its navi object stays chips/elecman/navi.luau
+  (52 folders: 28 of BN6's, 24 of BN5's);
+- a link navi's folder is the navi's (navis/elecman/init.luau), and its own chip stays navis/elecman/chip.luau
+  (11: ChargeMan, DustMan, ElecMan, EraseMan, GroundMan, HeatMan, ProtoMan, SlashMan, SpoutMan, TenguMan,
+  TomahawkMan), which the game's init requires by that path;
+- a chip folder with an object named for the folder beside its chip keeps the object's name (chips/lance/lance.luau;
+  47 folders);
+- a module beside a folder of its name keeps the folder's modules' names (exelib's projectile.luau and
+  projectile/projectile.luau: both can't be `projectile`);
+- a folder whose only module says what it is keeps it (exelib's antirecv/controller.luau), and so do the modules
+  with a main module's name out of its place (lib/weapon.luau, lib/navi-chips/navi.luau,
+  objects/falling-rock/chip.luau, BN5's navis/megaman/weapons/chips.luau, exelib's bass/navi.luau and the other
+  navi makers: exelib has no chips/ or navis/).
+
+**Requires follow Luau's own rule** (`keys::resolve`, the Luau require navigator's), so an editor resolves them
+(content/.luaurc names the packs):
+
+| Written in | `./x`, `../x` are relative to | Its own folder's modules |
+|---|---|---|
+| chips/cannon/init.luau (a folder as a module) | the folder's place, chips/: `./hicannon` is chips/hicannon, `../lib/slot` is lib/slot | `@self/action` |
+| chips/cannon/action.luau (any other module) | its directory: `./shot`, `../hicannon`, `../../lib/slot` | `./shot` |
+| bn6/init.luau (the pack as a module) | content/, outside the pack: refused | `@self/chips/cannon` |
+
+A require of a folder names its init (`../cannon` from chips/cannon/action.luau is chips/cannon/init.luau), and
+`@<pack>/<path>` is a pack's module from its top. A module's name stays its file's (`bn6:chips/cannon/init`), and
+an anonymous definition's key with it (`chips/cannon/init#2`, which was `chips/cannon/chips#2`: the renaming gave
+the anonymous definitions new keys, and so, within a registry, possibly other handles; every id stayed).
+
+**A series' module returns its chips by name** (R6; the user: "instead of stuff like aquandl[3] it should really
+be aquandl_chips.aquandl3 like the rest of the things"): each chip by its id (`-` as `_`), and the local that
+holds a series' module is `<series>_chips`, the series its folder's name:
+
+```luau
+-- chips/aquandl/init.luau
+return {
+    aquandl1 = define.chip { id = "aquandl1", ... },
+    aquandl2 = define.chip { id = "aquandl2", ... },
+    aquandl3 = define.chip { id = "aquandl3", ... },
+}
+-- chips/mstrcros/init.luau
+local aquandl_chips = require("./aquandl")
+... sequence = { firehit_chips.firehit3, aquandl_chips.aquandl3, elcpuls_chips.elcpuls3, rskyhny_chips.rskyhny3 }
+```
+
+A local that holds one chip of a series takes it at the require and is named for the chip
+(`local recipe_hicannon = require("./cannon").hicannon`, BN5's recipes). A series' other fields (a state, a
+builder its upgrades share: `tornado_chips.blow`) stay beside its chips.
+
 **content/bn5 follows these rules** (as built, 2026-10-03; the user: "you should consolidate the chips together
 where appropriate and move colocate objects with those chips, where appropriate like what bn6 does"). The
 verification workspace's `tools/bn5/layout.py <checkout>` computes the layout from the content (who requires what,
 the chips' records and names, BN6's series) and moves it there with `git mv`, rewriting every `require` (a merged
-chip's `require("../hicannon/chip")` becomes `require("../cannon/chips").hicannon`); it changes no id. It is
+chip's `require("../hicannon")` becomes `require("../cannon").hicannon`); it changes no id. It is
 idempotent: a branch that gained chips or objects in the old layout runs it again after merging main (bn5-map.md
 §15.12). Its series are BN6's where BN6 has the same chips (chips/cannon, chips/recov, chips/vulcan with SuprVulc,
 chips/timebom with TimeBom+), a navi chip with its SP and DS (chips/blizman: BlizMan, BlizManSP, BlizManDS),
@@ -856,9 +953,9 @@ numbered levels (chips/katana), a Program Advance whose ingredients are one seri
 name shows (chips/crakout: CrakOut, DublCrak, TripCrak; chips/cannmode: the Liberation Missions' mode chips). It
 differs from BN6's layout in two things the port and the ids impose:
 
-- **A chip without a use stays in its own folder**, chips/<key>/chip.luau, until the port gives it one: the loader
-  leaves such a chip out by its folder (§7.3, partial loading), and with it every chip folder that requires one of
-  its modules, so it can't share a series file with chips that play; the next run takes it into its series.
+- **A chip without a use stays in its own folder**, chips/<key>/init.luau, until the port gives it one: the game's
+  init.luau doesn't require such a chip (§4.0), nor any chip folder that requires one of its modules, so it can't
+  share a series file with chips that play; the next run takes it into its series.
 - **A kind keyed for another place stays where it is.** The content check wants a kind in an owner's folder keyed
   under the owner (`<owner>/...`), and ids don't change with the layout, so a module whose `define.kind` key isn't
   the new folder's stays in objects/ until someone re-keys it: Meddy's capsule, NumberMan's dice, GyroMan's and
@@ -867,8 +964,8 @@ differs from BN6's layout in two things the port and the ids impose:
 
 Where BN5's shared kinds went: the families' to lib/ (lib/bombs/seed for the seeds, as BN6's; lib/instruments;
 the Anti traps' in lib/traps; the Guard chips' shock wave in lib/guard; the navi chips' throw marker in
-lib/navi-chips), each family's builder moving into its folder with them (lib/bombs/bombs.luau, as BN6's
-lib/barriers/barriers.luau); the soul system's (Chaos Unison's shade, the soul's image) to rules/souls, as BN6's
+lib/navi-chips), each family's builder moving into its folder with them (lib/bombs/init.luau, as BN6's
+lib/barriers/init.luau); the soul system's (Chaos Unison's shade, the soul's image) to rules/souls, as BN6's
 Cross merge is rules/forms'; a kind with a natural owner and borrowers to the owner (the Vulcans' gun, which the
 InfVulcs borrow; DrilArm's drill, DarkDril's too; CrakBom's bomb, ParaBom's and ResetBom's too). objects/ keeps
 what several families share (attachment, bullet, flying-shot, panel-bursts, panel-changer, projectile,
@@ -1118,7 +1215,7 @@ return bomb
 ```
 
 ```luau
--- chips/minibomb/chip.luau
+-- chips/minibomb/init.luau
 --!strict
 local throw = require("../../lib/bombs/throw")
 local bomb = require("../../lib/bombs/bomb")
@@ -1147,7 +1244,7 @@ return define.chip {
 ```
 
 ```luau
--- chips/bigbomb/chip.luau: the same throw, a bigger blast.
+-- chips/bigbomb/init.luau: the same throw, a bigger blast.
 return define.chip {
     id = "bigbomb", -- ... the record ...
     action = throw.action {
@@ -1232,7 +1329,7 @@ function slash.action(spec: SlashSpec): Action ... end
 ```
 
 ```luau
--- chips/sword/chip.luau
+-- chips/sword/init.luau
 local swords = require("../../lib/swords")
 local SLASH = { is = collision.slash, hits = collision.hits_navis }
 return define.chip {
@@ -1245,7 +1342,7 @@ return define.chip {
     },
 }
 
--- chips/wideswrd/chip.luau
+-- chips/wideswrd/init.luau
 return define.chip {
     id = "wideswrd", damage = 80, codes = { "H", "L", "S", "*" }, -- ... the record ...
     action = swords.slash.action {
@@ -1302,7 +1399,7 @@ v1: the projectile (attack #0) reads `data.objects.projectiles[me:param(1)]`, a 
 number; the buster passes a NaviCust-chosen number through `attack_param(1)`.
 
 ```luau
--- objects/projectile/projectile.luau exports the kind, `variant` and the firing helpers.
+-- objects/projectile/init.luau exports the kind, `variant` and the firing helpers.
 local projectile = {}
 projectile.kind = define.kind { id = "projectile", pool = "attack",
     state = { variant = "record:projectile-variant", row = "i8" }, update = update }
@@ -1321,7 +1418,7 @@ function projectile.fire(navi: Object, v: Variant, damage: number, opts: { z: nu
 -- lib/cannon.luau (group G3 writes it): the cannons' action (the original's 0x14).
 function cannon.action(spec: { shot: projectile.Variant, look: CannonLook }): Action ... end
 
--- chips/cannon/chips.luau: a series (v1: action 0x14, subtypes 0, 1, 2).
+-- chips/cannon/init.luau: a series (v1: action 0x14, subtypes 0, 1, 2).
 local SHOT = projectile.variant { collision = { is = collision.shot, hits = collision.hits_navis },
     hit_mod = 0, element = "null", spark = sparks.cannon }
 return {
@@ -1378,7 +1475,7 @@ return { area = hook(true), panel = hook(false) }
 ```
 
 ```luau
--- chips/areagrab/chip.luau
+-- chips/areagrab/init.luau
 local grab = require("../../lib/grab/controller")
 return define.chip { id = "areagrab", flags = { "dimming" }, -- ...
     dimming = grab.area }
@@ -1492,7 +1589,7 @@ end
 ```
 
 ```luau
--- chips/eraseman/chips.luau: the series (v1: action 0x1B, subtype 5, Param1 20, 16, 12).
+-- chips/eraseman/init.luau: the series (v1: action 0x1B, subtype 5, Param1 20, 16, 12).
 local sp = require("../../lib/navi-chips/sp")
 return {
     define.chip { id = "eraseman", damage = 120, hit_param = 138, -- ...
@@ -1581,7 +1678,7 @@ docs/engine/standard-chips.md, "Action 9".
 v1: action 0x1C calls `Hook::InstantChip(subtype)`; one module serves the 30 chips of subtype 3.
 
 ```luau
--- chips/busterup/chip.luau
+-- chips/busterup/init.luau
 local SPARKLE = define.effect { sprite = asset.sprite("buster-up"), anim = 0 }
 local SOUND = asset.sound("buster-up")
 return define.chip { id = "busterup", -- ...
@@ -1644,7 +1741,7 @@ FullCust, SyncTrgr, WhiCapsl (`plus.attack_with(plus.PARALYZE)`), FinalGun and N
 ### 5.7 Weapons and forms
 
 ```luau
--- navis/megaman/weapons/buster/weapon.luau
+-- navis/megaman/weapons/buster/init.luau
 local SHOT = define.action { id = "megaman/buster/shot", state = STATE, update = shot }  -- action 0x11 in compat
 return define.weapon {
     id = "megaman/buster",
@@ -1661,7 +1758,7 @@ return define.weapon {
 ```
 
 ```luau
--- navis/megaman/forms/heatcross/form.luau
+-- navis/megaman/forms/heatcross/init.luau
 local burner = require("../../../../lib/burner")
 local buster = require("../../weapons/buster/weapon")
 local body = require("../../overlays")          -- the Crosses' body overlays (records)
@@ -1783,11 +1880,11 @@ subtype (`me.variant`) and parameter bytes (`me:attack_param`), and its objects 
 switch on spawn parameters (`me:param`).
 
 ```luau
--- chips/gundels/chips.luau: a series; what the subtype and the pack's `[gun_del_sol]` data gave is each chip's.
+-- chips/gundels/init.luau: a series; what the subtype and the pack's `[gun_del_sol]` data gave is each chip's.
 define.chip { id = "gundels3", -- ... the record ...
     action = action.action { gun = action.gun(6), firing_ticks = 120, beam = BEAM, beam_in_sun = BEAM_IN_SUN } }
 
--- chips/heatdrgn/chip.luau: a family's builder (lib/dragons) and its variant record.
+-- chips/heatdrgn/init.luau: a family's builder (lib/dragons) and its variant record.
 define.chip { id = "heatdrgn", -- ...
     action = action.action { dragon = dragon.variant { speed = 0x4_0000, palette = 0, hit_mod = 3,
         spark = sparks.fire, panel = false, delays = { 3, 6, 9, 12 } } } }
@@ -1861,19 +1958,19 @@ its typed state or a variant record:
 
 | Family | Builder | Kinds (records) | Chips |
 |---|---|---|---|
-| YoYo | chips/yoyo/throw (`{ id, yoyo = { great?, panels, rounds } }`) | `yoyo/yoyo`, `yoyo/great-yoyo` (both in chips/yoyo/yoyo, which each name) | YoYo and GreatYo: records (chips/yoyo/chip, chips/greatyo/chip) |
+| YoYo | chips/yoyo/throw (`{ id, yoyo = { great?, panels, rounds } }`) | `yoyo/yoyo`, `yoyo/great-yoyo` (both in chips/yoyo/yoyo, which each name) | YoYo and GreatYo: records (chips/yoyo/init, chips/greatyo/init) |
 | Thunder | chips/thunder/shoot (`{ ball = { fast?, panels, status?, bug? } }`) | `thunder/ball` | Thunder: a definition; DarkThnd: a record (chips/darkthnd) |
-| Recovery | chips/recov/heal (`{ hp }`) | | Recov10 to Recov300: definitions (chips/recov/chips); DrkRecov: a record; the heal table's last row (no chip) is `recov/none` |
-| CrakShot | chips/crakshot/chips' `dig(region)` | `crakshot/shot` | CrakShot, DublShot, TrplShot: definitions |
+| Recovery | chips/recov/heal (`{ hp }`) | | Recov10 to Recov300: definitions (chips/recov/init); DrkRecov: a record; the heal table's last row (no chip) is `recov/none` |
+| CrakShot | chips/crakshot/init' `dig(region)` | `crakshot/shot` | CrakShot, DublShot, TrplShot: definitions |
 | CopyDmg | | `copydmg/mark` | a definition |
 | AirHocky | chips/airhocky/flick (`{ puck, down }`) | `airhocky/puck` (`hockey-puck-variant`: `byte_80C9818`'s rows, the chips' by name) | AirHocky, PitHocky: records |
 | FireBrn | lib/burner/burn (`{ burner, flame = { ticks, spread, wide?, cracks?, anim?, on_panel? } }`) | `flame` (lib/burner/flame) | FireBrn1-3, WideBrn1-3: records; HeatCross's charge returns its own burn |
-| TrnArrw | chips/trnarrw/chips | `flying-shot` (objects/flying-shot: `flying-shot-variant`, `byte_80C6038`'s rows, also the buster's throw and the Falzar Beast buster's) | TrnArrw1-3: definitions |
+| TrnArrw | chips/trnarrw/init | `flying-shot` (objects/flying-shot: `flying-shot-variant`, `byte_80C6038`'s rows, also the buster's throw and the Falzar Beast buster's) | TrnArrw1-3: definitions |
 | Reflectr | chips/rflectr/guard (`{ ticks, look, counter?, heedless? }`) | `rflectr/shield` (`reflector-shield-look`: `byte_80C9664`'s rows, the chips' and the programs' by name), `rflectr/shot` | Rflectr1-3: definitions; the NaviCust Shield and Reflect (weapons 0x3B, 0x3C, 0x8B, 0x8C) return their own guards, `megaman/shield/action` and `megaman/reflect/action` |
 | IronShl | chips/ironshl/throw (`{ shell = { palette, speed, bumps, para? } }`) | `ironshl/shell` | IronShl1-3, ParaShl: records |
-| BblStar | chips/bblstar/chips' `blow { speed, palette }` | `bblstar/star` | BblStar1-3: definitions |
+| BblStar | chips/bblstar/init' `blow { speed, palette }` | `bblstar/star` | BblStar1-3: definitions |
 | DrilArm | | `drill` (chips/drilarm/drill, kind `drilarm/drill`, with the drill arm look; GroundCross's charged shot and MstrCros's GroundCross spawn it too, `drill.spawn(owner, element, z, damage, { ticks, light? }, slot?)`) | a definition |
-| Tornado | chips/tornado/chips' `blow { fan, single? / spread? }` | `tornado/tornado` (`tornado-variant`: `byte_80CA064`'s rows) | Tornado, Static: definitions; the action's subtype 3 (no chip) is `tornado/back-spread` |
+| Tornado | chips/tornado/init' `blow { fan, single? / spread? }` | `tornado/tornado` (`tornado-variant`: `byte_80CA064`'s rows) | Tornado, Static: definitions; the action's subtype 3 (no chip) is `tornado/back-spread` |
 | WaveArm | chips/wavearm/strike (`{ wave, three_rows? }`) | `wavearm/wave` (`shock-wave-variant`: `byte_80C6B00`'s rows, the chips' by name; the viruses' too) | WaveArm1-3, PwrWave1-3: records |
 
 What it settled:
@@ -2148,8 +2245,8 @@ resolved against `Content::names`; netplay peers exchange handles once their con
 
 1. A fresh sandboxed VM (`sandbox::new_vm`), with `define`, `asset` and `require` installed before
    `lua.sandbox(true)`.
-2. The packs' listed modules, in load order, and what they require, loaded as `require` loads a module (compile,
-   `verify::check`, run once, deep freeze): a module loads once, when first required (§4.0).
+2. Each game's top module (its init.luau, §4.0) and what it requires, loaded as `require` loads a module
+   (compile, `verify::check`, run once, deep freeze): a module loads once, when first required.
 3. Each definer records `(registry, defining module, ordinal, spec table)` and returns the spec with its
    registry's metatable. Definers and `asset` fail once loading ends.
 4. Keys (§2.2): explicit ids; derived keys for anonymous definitions nested in a keyed definition of the same

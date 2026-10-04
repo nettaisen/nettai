@@ -10,7 +10,7 @@
 --   null) with the wood spark (spark 4, BN6's 5) and clears its flag when it goes.
 
 local collision = require("../../rules/collision")
-local common = require("@exelib/snake/snake")
+local common = require("@exelib/snake")
 local trajectory = require("../../lib/trajectory")
 local dimming_chips = require("@exelib/dimming")
 local sparks = require("../../lib/sparks")

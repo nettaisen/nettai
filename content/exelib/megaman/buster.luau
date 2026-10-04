@@ -6,7 +6,7 @@
 -- instead), with a muzzle flash in the navi's first related slot; after five ticks, the recovery, which a move may
 -- cut short. And the NaviCust's buster bugs' pick (`sub_8013D5E`). See docs/engine/objects-and-player.md §B6.
 
-local attachment = require("../attachment/attachment")
+local attachment = require("../attachment")
 
 -- (The recovery after the shot is the navi's `attack_count`, AIAttackVars+0x12:
 -- a throw doesn't write it, so it waits the last shot's, whatever ran in

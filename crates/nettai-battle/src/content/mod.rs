@@ -190,59 +190,48 @@ pub struct Content {
     pub strings: strings::Strings,
 }
 
-/// docs/design/content-model-v2.md §4.0: a game pack's manifest is the
-/// whole truth about its definitions of what a game lists: a listed module
-/// makes a definition of its list's registries, and every definition of the
-/// registries a game lists ([`nettai_content_api::GAME_LISTS`]) is made by a
-/// module its game pack's manifest lists in its registry's list (a support
-/// pack's module makes none). (Content whose scripts name no packs, a
-/// test's modules alone, has none.)
-fn check_lists(scripts: &Scripts, definitions: &nettai_content_api::Definitions) -> Result<(), nettai_content_api::ContentError> {
-    use nettai_content_api::{ContentError, GAME_LISTS, PackKind, keys, packs::MANIFEST};
+/// docs/design/content-model-v2.md §4.0: a game's top module (its
+/// init.luau) is the whole truth about what the game has: every definition
+/// of the registries a game holds ([`nettai_content_api::GAME_LISTS`]) is
+/// made by a module its game's init.luau requires itself (a support pack's
+/// module makes none). (Content whose scripts name no packs, a test's
+/// modules alone, has none.)
+fn check_init(scripts: &Scripts, definitions: &nettai_content_api::Definitions) -> Result<(), nettai_content_api::ContentError> {
+    use nettai_content_api::{ContentError, GAME_LISTS, PackKind, keys, packs::INIT};
     if scripts.packs.is_empty() {
         return Ok(());
     }
     let file = |module: &str| format!("{}.luau", keys::module_path(module));
+    let mut required: std::collections::BTreeMap<&str, Vec<String>> = Default::default();
     for p in scripts.packs.iter().filter(|p| p.kind == PackKind::Game) {
-        for (list, paths) in p.definitions.lists() {
-            let registries = GAME_LISTS.iter().find(|(n, _)| *n == list).map(|(_, r)| *r).unwrap_or_default();
-            for path in paths {
-                let m = p.module(path);
-                if !definitions.defs.iter().any(|d| (d.module == m || d.module == keys::init_of(&m)) && registries.contains(&d.registry)) {
-                    let names: Vec<&str> = registries.iter().map(|r| r.name()).collect();
-                    return Err(ContentError::new(format!(
-                        "{}/{MANIFEST}: `{list}` lists {path}, which defines no {}",
-                        p.id,
-                        names.join(" or ")
-                    )));
-                }
-            }
-        }
+        required.insert(&p.id, scripts.required_by_init(&p.id).map_err(ContentError::new)?);
     }
     for d in &definitions.defs {
-        let Some((list, _)) = GAME_LISTS.iter().find(|(_, rs)| rs.contains(&d.registry)) else { continue };
+        if !GAME_LISTS.iter().any(|(_, rs)| rs.contains(&d.registry)) {
+            continue;
+        }
         let Some(pack) = keys::root_of(&d.module) else { continue };
-        let path = keys::listed_as(keys::local(&d.module));
         match scripts.manifest(pack) {
             None => {
                 return Err(ContentError::new(format!("{}: {} {}: its pack, {pack}, has no manifest", file(&d.module), d.registry, d.key)));
             }
             Some(p) if p.kind == PackKind::Support => {
                 return Err(ContentError::new(format!(
-                    "{}: {} {}: support pack {pack} defines nothing a game lists (its makers take the game's ids)",
+                    "{}: {} {}: support pack {pack} defines nothing a game has (its makers take the game's ids)",
                     file(&d.module),
                     d.registry,
                     d.key
                 )));
             }
-            Some(p) => {
-                let listed = p.definitions.lists().iter().any(|(l, paths)| l == list && paths.iter().any(|x| keys::listed_as(x) == path));
-                if !listed {
+            Some(_) => {
+                let module = keys::listed_as(&d.module);
+                if !required.get(pack).is_some_and(|r| r.iter().any(|m| m == module)) {
                     return Err(ContentError::new(format!(
-                        "{}: {} {} is {pack}'s, and {pack}/{MANIFEST} doesn't list {path} in `{list}`",
+                        "{}: {} {} is {pack}'s, and {pack}/{INIT}.luau doesn't require {} (a game's {INIT}.luau requires every module that defines what the game has)",
                         file(&d.module),
                         d.registry,
-                        d.key
+                        d.key,
+                        keys::local(module)
                     )));
                 }
             }
@@ -271,7 +260,7 @@ impl Content {
         }
         let (definitions, compiled) = nettai_luau::define(&self.scripts.pack(), &self.assets, nettai_luau::Options::default())?;
         self.scripts.compiled = CompiledModules(compiled);
-        check_lists(&self.scripts, &definitions)?;
+        check_init(&self.scripts, &definitions)?;
         // The rule sections into the ruleset's typed tables.
         sections::build(self, &definitions)?;
         self.defs = Defs::build(self, definitions)?;

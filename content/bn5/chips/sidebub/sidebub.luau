@@ -10,7 +10,7 @@
 
 local arm_launch = require("../../lib/arm-launch")
 local collision = require("../../rules/collision")
-local flying_shot = require("../../objects/flying-shot/flying_shot")
+local flying_shot = require("../../objects/flying-shot")
 local sparks = require("../../lib/sparks")
 
 local sidebub = {}

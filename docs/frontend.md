@@ -77,11 +77,11 @@ The content goes with the packs (`nettai_content::pack::load_game`;
 docs/design/content-model-v2.md §4.0): `--content <dir>` names the content
 directory (so does `$NETTAI_CONTENT`); without it, this repository's
 content/. A match plays one game: the frontend loads that game's pack (its
-manifest's listed modules and what they require, with the support packs it
-uses, exelib) and its asset pack, nothing else; `nettai_content::pack::games`
+top module, init.luau, and what it requires, with the support packs it
+depends on, exelib) and its asset pack, nothing else; `nettai_content::pack::games`
 lists the games it can offer, each with its asset pack or the command that
-writes one. A game's chips without a use yet (a port's unwritten chips:
-BN5's) are its manifest's `unported`, which don't load. Every loader does the same (the
+writes one. A game's chips without a use yet (a port's unwritten chips)
+aren't required by its init.luau, so they don't load. Every loader does the same (the
 editor, the tools' `load_battle`, the BN5 replays, the static audit), and
 the content then is what loaded: its hash, which netplay's handshake
 compares, covers exactly that. A game the content must load whose pack
@@ -1041,7 +1041,7 @@ is said with where it is:
   ("right: a navi bn5 hasn't");
 - the arena's stages are the game's link battle stages (`link_battle_stages`);
 - the folder keeps the game's rules, which the match's ruleset checks: the
-  ruleset's systems' `folder_check` hooks (BN6's are rules/folder/system.luau:
+  ruleset's systems' `folder_check` hooks (BN6's are rules/folder/init.luau:
   30 chips, so a folder being made, with empty entries, is no folder yet;
   copies by MB, each chip in one of its codes, at most three dark
   chips, chips the chip pack lists, the Regular chip within the Regular
@@ -1051,7 +1051,7 @@ is said with where it is:
   limits, as the original's folder editor and link battle check read the
   reloaded stats). Rust only asks (`Battle::check_folder`) and reports what
   the hooks say, so another game's folder rules are its own Luau: BN5's
-  (content/bn5/rules/folder/system.luau, its folder editor's) are four copies
+  (content/bn5/rules/folder/init.luau, its folder editor's) are four copies
   of a Standard chip and one of a Mega, Giga or dark chip, the Mega and Giga
   levels, at most three dark chips, the chips its pack lists, the Regular
   chip within the Regular memory, and no tag chips. A folder holds the

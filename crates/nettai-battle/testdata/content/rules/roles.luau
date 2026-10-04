@@ -4,21 +4,21 @@
 -- test content has. (The test pack, crates/nettai-battle/testdata/pack,
 -- brings its own.)
 
-local absorbed_obstacle = require("../objects/absorbed-obstacle/absorbed_obstacle")
-local barriers = require("../lib/barriers/barriers")
+local absorbed_obstacle = require("../objects/absorbed-obstacle")
+local barriers = require("../lib/barriers")
 local beast_rush = require("./beast/rush")
-local beast_out = require("../chips/beastout/chip")
-local charged_shot = require("../navis/megaman/weapons/charged-shot/weapon")
+local beast_out = require("../chips/beastout")
+local charged_shot = require("../navis/megaman/weapons/charged-shot")
 local dust_beast_scatter = require("../navis/megaman/forms/dustcross-beast/scatter")
-local falling_rock = require("../objects/falling-rock/falling_rock")
+local falling_rock = require("../objects/falling-rock")
 local ground_drill = require("../navis/megaman/forms/groundcross/drill")
-local invalid = require("../chips/invalid/chip")
+local invalid = require("../chips/invalid")
 local ruleset = require("./ruleset")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
 local stun_strike = require("../lib/swords/stun_strike")
 local statuses = require("./status")
 local supports = require("../lib/supports/controller")
-local test_chips = require("../chips/test/chips")
+local test_chips = require("../chips/test")
 local turn = require("../navis/megaman/turn")
 
 return {

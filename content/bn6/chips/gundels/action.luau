@@ -9,7 +9,7 @@
 -- chips (the gun, how long it fires, the beam in and out of the sun, the
 -- width) is each chip's (`action { ... }`, `GunDelSolSpec`).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local beam = require("./beam")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")

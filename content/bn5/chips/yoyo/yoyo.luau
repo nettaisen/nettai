@@ -15,7 +15,7 @@
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 local throw = require("@exelib/yoyo/throw")
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 
 local yoyo = {}
 

@@ -4,14 +4,14 @@
 -- (Rust) still runs the BN6 rules no system has taken over yet; the systems
 -- take them slice by slice (§8).
 
-local beast = require("./beast/system")
-local cross = require("./cross/system")
-local dark_chips = require("./dark-chips/system")
-local folder = require("./folder/system")
-local emotion = require("./emotion/system")
-local forms = require("./forms/system")
-local navicust = require("./navicust/system")
-local patch_cards = require("./patch-cards/system")
+local beast = require("@self/beast")
+local cross = require("@self/cross")
+local dark_chips = require("@self/dark-chips")
+local folder = require("@self/folder")
+local emotion = require("@self/emotion")
+local forms = require("@self/forms")
+local navicust = require("@self/navicust")
+local patch_cards = require("@self/patch-cards")
 
 return define.ruleset {
     id = "stock",
@@ -39,20 +39,20 @@ return define.ruleset {
         dark_chips,
     },
     -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
-    banners = require("./banners"),
-    berserk = require("./berserk"),
-    buster = require("./buster"),
-    chip_use = require("./chip-use"),
-    custom_screen = require("./custom-screen"),
-    elements = require("./elements"),
-    flow = require("./flow"),
-    lockon = require("./lockon").rules,
-    math = require("./math"),
-    navicust = require("./navicust/section"),
-    panels = require("./panels"),
-    pools = require("./pools"),
-    reactions = require("./reactions"),
-    roles = require("./roles"),
-    sp_chips = require("./sp-chips"),
-    status = require("./status").rules,
+    banners = require("@self/banners"),
+    berserk = require("@self/berserk"),
+    buster = require("@self/buster"),
+    chip_use = require("@self/chip-use"),
+    custom_screen = require("@self/custom-screen"),
+    elements = require("@self/elements"),
+    flow = require("@self/flow"),
+    lockon = require("@self/lockon").rules,
+    math = require("@self/math"),
+    navicust = require("@self/navicust/section"),
+    panels = require("@self/panels"),
+    pools = require("@self/pools"),
+    reactions = require("@self/reactions"),
+    roles = require("@self/roles"),
+    sp_chips = require("@self/sp-chips"),
+    status = require("@self/status").rules,
 }

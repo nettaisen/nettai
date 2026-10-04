@@ -10,7 +10,7 @@
 -- leaves, and the controller moves on. See docs/engine/chips.md §3.6.33.
 
 local common = require("@exelib/bass/navi")
-local panel_strike = require("../../objects/panel-strike/panel_strike")
+local panel_strike = require("../../objects/panel-strike")
 local effects = require("../../lib/effects")
 
 -- His shots: 20 ticks of warning, hit modifier 3, on solid panels only.
