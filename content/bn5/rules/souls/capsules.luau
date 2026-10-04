@@ -182,6 +182,7 @@ capsules.window = {
             -- 0x0802382C
             if not fading then
                 custom.draw_emblem(side, 0)
+                custom.draw_regular(side)
                 return false
             end
         else
@@ -190,7 +191,9 @@ capsules.window = {
         s.mix_step, s.mix_count = step, count
         -- (The count is the screen's frame counter, +0x40.)
         custom.set_frame(side, count)
+        -- (0x08023746: the emblem and the Regular chip's frame, after the step.)
         custom.draw_emblem(side, 0)
+        custom.draw_regular(side)
         return true
     end,
 }
