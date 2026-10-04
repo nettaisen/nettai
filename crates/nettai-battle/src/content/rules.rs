@@ -118,6 +118,10 @@ pub struct EffectsRules {
     /// (its kind's), not the arena's.
     #[serde(default)]
     pub obstacle_soldiers: bool,
+    /// What holds a screen palette flash (effect object #0x0A,
+    /// `kinds::palette_flash`) by its mode.
+    #[serde(default)]
+    pub palette_flash: PaletteFlashRule,
 }
 
 impl Default for EffectsRules {
@@ -128,8 +132,25 @@ impl Default for EffectsRules {
             spark_steps_at_start: true,
             retype: RetypeRule::default(),
             obstacle_soldiers: false,
+            palette_flash: PaletteFlashRule::default(),
         }
     }
+}
+
+/// What holds a screen palette flash (effect object #0x0A) while the battle
+/// is paused or dimmed, by its mode (Param3: bit 0 keeps it flashing while
+/// dimmed, bit 1 while paused).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PaletteFlashRule {
+    /// BN6's (`sub_80E10C0`, `sub_80E114C`): bit 1 keeps it going through
+    /// both; else a pause holds it, and dimming does unless the variant's
+    /// bit is set (variant 0 tests bit 0, variant 1 bit 1).
+    #[default]
+    Bn6,
+    /// BN5's (0x080E104C, 0x080E10D0): a pause holds either variant
+    /// whatever its mode; dimming holds it only with a mode of 0.
+    Bn5,
 }
 
 /// How `sub_801A082` (an object's damage, hit modifier and collision types
@@ -201,7 +222,11 @@ pub enum OverlayRestart {
     Reload,
 }
 
-/// How a navi's push (slide type 1) reads the hits it took.
+/// How a navi's push (slide type 1) reads the hits it took; and, of an
+/// obstacle's own game, how an obstacle's push does (`kinds::obstacle`:
+/// BN5's 0x0800D4B0 reads the hits by the hitters' flips, its slide
+/// keeps no bounds, 0x08014894, and its push on any hit goes by the
+/// hitters' flips, 0x08017AD8).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PushReading {
