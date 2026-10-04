@@ -215,6 +215,7 @@ chips = [
     "chips/toadman/chips",
     "chips/tornado/chips",
     "chips/varswrd/chip",
+    "chips/vdoll/chip",
     "chips/voltz/chips",
     "chips/vulcan/chips",
     "chips/wavepit/chip",
@@ -416,8 +417,4 @@ navicust = [
     "navicust/sprarmr/program",
     "navicust/tango/program",
     "navicust/undersht/program",
-]
-# Chips defined without a use yet: not loaded (a port that writes the use moves them up).
-unported = [
-    "chips/vdoll/chip",
 ]
