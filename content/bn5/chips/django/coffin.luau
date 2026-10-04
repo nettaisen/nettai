@@ -45,6 +45,10 @@ coffin.kind = define.kind {
             tick(me)
         elseif l == "update" then
             tick(me)
+            -- 0x080DE096 pushes its return address but returns with `mov pc, lr`, leaving that word (0x080DE05C) on
+            -- the stack: 0x080DE050's closing `pop {pc}` takes it back to its sprite update, which then runs twice
+            -- (its look plays at double speed). Called from 0x080DE074 the stack evens out: one update there.
+            me:update_sprite()
         else
             me:free()
         end
