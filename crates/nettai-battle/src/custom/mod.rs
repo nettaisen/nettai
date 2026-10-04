@@ -31,7 +31,6 @@ use crate::kinds::player::Emotion;
 use crate::setup::{NaviStats, effects};
 use crate::transform::TransformRequest;
 use builder::{ClassCounts, Pick, ProgramAdvancesUsed};
-use screen::SPECIAL_SLOT;
 
 /// Which game a player plays: it decides their Crosses and Beast form.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Deserialize)]
@@ -40,18 +39,6 @@ pub enum GameVersion {
     Gregar,
     #[default]
     Falzar,
-}
-
-/// What a BN5 save has of Soul Unison: the soul button (event flag 0), the
-/// souls (bit n: soul n's flag, 0x08024BF0's table) and Chaos Unison
-/// (event flag 0x236); and the turns its NaviCust adds to a soul (NaviStats
-/// +0x32, signed: SoulT+1's 1).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct SoulUnlocks {
-    pub button: bool,
-    pub owned: u16,
-    pub chaos: bool,
-    pub turn_bonus: i8,
 }
 
 /// The highest level of a navi code (`sub_8121198`: a navi's 15 codes).
@@ -69,9 +56,6 @@ pub struct PlayerSetup {
     /// not simulated, and the recording supplies what it sends
     /// (`TickEvents::recorded`).
     pub folder: Option<BattleFolder>,
-    /// BN5's Soul Unison: what the save has of it (none in BN6; until BN5's
-    /// soul button is a system's).
-    pub souls: SoulUnlocks,
     /// The joypad's auto-repeat beat (0-4) on the round's first tick; each
     /// console counts its own.
     pub joypad_phase: u8,
@@ -114,7 +98,6 @@ impl Default for PlayerSetup {
     fn default() -> PlayerSetup {
         PlayerSetup {
             folder: Some(BattleFolder::empty()),
-            souls: SoulUnlocks::default(),
             joypad_phase: 0,
             navi_level: None,
             sp_times: Default::default(),
@@ -149,8 +132,6 @@ pub struct Recorded {
 /// One player's custom-screen state through a round.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Side {
-    /// BN5's Soul Unison (the setup's).
-    pub souls: SoulUnlocks,
     /// The joypad the screen reads: the player's buttons this tick, not
     /// delayed by the link like the fight's.
     pub joypad: Joypad,
@@ -176,7 +157,6 @@ pub struct Side {
 impl Side {
     pub fn new(setup: &PlayerSetup) -> Side {
         Side {
-            souls: setup.souls,
             joypad: Joypad::new(setup.joypad_phase),
             folder: setup.folder,
             round: RoundMemory::default(),
@@ -332,7 +312,6 @@ impl Side {
             library: ctx.library,
             stats: &ctx.stats,
             emotion: ctx.emotion,
-            souls: &self.souls,
             class_uses: &self.class_uses,
             round: &self.round,
             regular_pending,
@@ -442,9 +421,6 @@ impl Side {
                 Some(Pick { chip: screen::checked(chip, &view), regular })
             })
             .collect();
-        // (The family of the chip given up for BN5's soul, as the screen
-        // checked it.)
-        let soul_family = screen.chip_in(screen.soul.given_up, folder).map(|c| ctx.library.chip(screen::checked(c, &view).id).family);
         let mut pa_used = self.program_advances;
         let built = builder::build(&picks, ctx.turn, &mut pa_used, ctx.library, ctx.own_gauges, damage);
         self.program_advances = pa_used;
@@ -455,38 +431,24 @@ impl Side {
                 self.round.navi_chips_used |= 1 << navi.0;
             }
         }
-        let navi = ctx.stats.navi;
         let mut transform = TransformRequest::NONE;
-        // The form a system's pick holds (BN6's Beast Out or Cross), and
-        // what its systems note of the round (BN6's: Beast Out or the Cross
-        // used).
+        // What the side's systems note of the round (BN6's: Beast Out or the
+        // Cross used; BN5's: the soul given, 0x08024FF6, its form set now),
+        // then the form a system's pick holds (BN6's Beast Out or Cross,
+        // BN5's soul: with its turns and whether it is Chaos Unison).
+        extras.confirmed(screen, folder);
         if screen.form.is_some() {
             transform.form = screen.form;
-        }
-        extras.confirmed(screen, folder);
-        if screen.slots[SPECIAL_SLOT as usize].kind == SlotKind::Soul && screen.selection().contains(&SPECIAL_SLOT) {
-            // 0x08024FF6: BN5's soul, for 3 turns and the NaviCust's bonus
-            // (at most 9; under 0, 1), Chaos Unison for 1; the soul is used
-            // this round.
-            let soul = screen.soul;
-            transform.form = soul_family.and_then(|f| ctx.library.soul_for_family(navi, f)).map(|(_, f)| f);
-            let turns = 3 + self.souls.turn_bonus as i32;
-            transform.turns = if soul.chaos {
-                1
-            } else if turns > 9 {
-                9
-            } else if turns < 0 {
-                1
-            } else {
-                turns as u8
-            };
-            transform.chaos = soul.chaos;
-            self.round.souls_used |= if soul.chaos { 1 << (16 + soul.number) } else { 1 << soul.number };
+            transform.turns = screen.form_turns;
+            transform.chaos = screen.form_chaos;
         }
         for &slot in screen.selection() {
-            // (0x08025088: the soul's place takes the chip given up for it
-            // out of the folder.)
-            let slot = if screen.slots[slot as usize].kind == SlotKind::Soul { screen.soul.given_up } else { slot };
+            // (A button picked in a chip's place takes the chip out of the
+            // folder there: BN5's soul, 0x08025088.)
+            let slot = match screen.trade {
+                Some(t) if t.button == slot => t.chip,
+                _ => slot,
+            };
             if let SlotKind::Chip { index, regular } = screen.slots[slot as usize].kind {
                 folder.take(index as usize);
                 if regular {

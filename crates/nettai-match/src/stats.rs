@@ -374,13 +374,17 @@ pub fn diff(content: &Content, base: &NaviStats, stats: &NaviStats) -> BTreeMap<
 mod tests {
     use super::*;
 
-    /// Live play's navi, written as a block over MegaMan's fresh stats, is
-    /// itself again.
+    /// A MegaMan with stats of his own (1000 HP, Regular memory 50, a
+    /// buster bug), written as a block over his fresh stats, is himself
+    /// again.
     #[test]
     fn a_block_gives_back_the_stats() {
         let content = crate::testing::bn6_content();
-        let live = crate::draw::live_navi(&content);
-        let base = crate::Side::base_stats(&content, live.navi, nettai_battle::custom::GameVersion::Falzar);
+        let megaman = content.form_changing_navi().unwrap();
+        let base = crate::Side::base_stats(&content, megaman, nettai_battle::custom::GameVersion::Falzar);
+        let mut live = base;
+        (live.max_base_hp, live.max_hp, live.hp, live.reg_up, live.sun) = (1000, 1000, 1000, 50, true);
+        (live.bugs.buster_blanks, live.bugs.buster_charged) = (6, 1);
         let block = diff(&content, &base, &live);
         assert!(block.contains_key("hp"), "{block:?}");
         let mut back = base;

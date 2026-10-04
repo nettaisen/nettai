@@ -200,6 +200,11 @@ pub struct NaviStats {
     /// (0x081382FC); 0 none. MegaMan's buster, arm, shade, palettes and
     /// faces read it. No BN6 navi has it.
     pub hub_style: u8,
+    /// BN5's +0x32: the turns Soul Unison gives a soul beside its 3
+    /// (signed: the NaviCust's SoulT+1, the patch cards' SoulTm+ and
+    /// SoulTm-), which BN5's souls system reads at OK (0x08024FF6). No BN6
+    /// navi has it.
+    pub soul_turn_bonus: i8,
     pub weapons: NaviWeapons,
     pub bugs: NaviCustBugs,
 }

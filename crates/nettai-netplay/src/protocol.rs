@@ -51,7 +51,13 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// 6: a match is of one game: the Hello says the game its side plays
 /// (peers of different games refuse), and an offer names the match's
 /// ruleset and everything of its side by name in that game.
-pub const VERSION: u16 = 6;
+/// 7: an offer's side says BN5's Soul Unison and Chaos Unison (the save's
+/// event flags 0 and 0x236, now the souls system's setup), and NaviStats
+/// carries BN5's soul turns' bonus (+0x32).
+/// 8: no setup carries the emotion window's glitch (an offer's side has no
+/// such key: the rules make it from the NaviCust and the patch cards), and
+/// BN6's drawn side is MegaMan at his fresh stats.
+pub const VERSION: u16 = 8;
 
 /// The rollback horizon, in elements (ticks, besides the rare payload or
 /// marker): the widest gap a player's stream may have at the other peer
