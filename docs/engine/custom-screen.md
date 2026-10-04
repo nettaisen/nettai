@@ -532,7 +532,8 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
   - the emotion window (HUD task bit 14): started by the intro's HUD setup (`sub_800927C` → `sub_801E5F8`, first
     check 120 ticks on), stopped by the win, loss and draw states; every 20 ticks it checks the console's own navi,
     and flickers once or twice (the draw) when the navi has a NaviCust bug (`sub_800FE52`) or, for MegaMan, when the
-    save's event flag 0x1720 is set (`ConsoleSetup::emotion_window_glitch`; BugFix clears it on both consoles,
+    save's event flag 0x1720 is set (`Console::emotion_window_glitch`, which no setup gives: the rules make it as
+    the round is set up, `battle.set_emotion_window_glitch`; BugFix clears it on both consoles,
     `Battle::clear_emotion_window_glitch`, from BugFix's controller).
 
   **Fidelity.** Measured against the recording console's RNG1 column (a scratch probe; the trace comparison doesn't
@@ -542,10 +543,16 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
     the console's own network timing and can't be reproduced; the port's link never stalls, and nor did the
     recordings (their frames and ticks stay a constant apart through each round);
   - the save's event flag 0x1720 is in the setups of traces recorded since the coverage push
-    (`emotion_window_glitches`, both consoles'); bn6-compat reads it as clear in older ones. The NaviCust sets it
-    at load when a bug's routine ran (`sub_813CBCC`), also for the bugs the navi's stats don't show in battle (the
-    support bug, the result bug): the lab's `navicust/bug-support` has it set and keeps step (the three support
-    scenarios had it, unintended, until their parts were moved off the grid's outer ring);
+    (`emotion_window_glitches`, both consoles'). The NaviCust sets it at load when a bug's routine ran
+    (`sub_813CBCC`), also for the bugs the window's own count doesn't see (the support bug, the result bug): the
+    lab's `navicust/bug-support` has it set and keeps step (the three support scenarios had it, unintended, until
+    their parts were moved off the grid's outer ring). The engine takes no flag from a setup: for a recording's
+    side, whose stats are as the compile left them and which has no NaviCust, the navicust system sets the glitch
+    when the stats carry a NaviCust bug (@exelib/navicust/compile, `stats_bugged`), and bn6-compat holds that to
+    the recorded flag for MegaMan as the round is set up (`setup_differences`). Of the 15,182 recorded sides with
+    the flag, every MegaMan with it set (3,162) has such a stat and none without it (11,780) has one; 42 link-navi
+    sides have it set without one (the gregar-console lab's `run-message-navi-*`: MegaMan's NaviCust left it in the
+    save), which nothing reads, since the window reads the flag for MegaMan alone;
   - the other console's RNG1 (and tag pair) isn't recorded either: bn6-compat gives it 0 (and none), which only a
     re-deal on that player's screen would read;
   - shakes are the content's to start: it calls `battle.shake_camera` where the original calls
