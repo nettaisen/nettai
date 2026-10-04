@@ -93,7 +93,6 @@ pub enum Msg {
     Version(usize, Choice<GameVersion>),
     Level(usize, String),
     BugFrags(usize, String),
-    Glitch(usize, bool),
     /// An SP navi's deletion time (by its slot), as typed.
     SpTime(usize, usize, String),
     /// The side from a save file (a BN6 save's version, unlocks, navi code
@@ -554,10 +553,6 @@ impl Editor {
                     self.edited();
                 }
                 self.typed.insert((s, "bug_frags"), t);
-            }
-            Msg::Glitch(s, on) => {
-                self.m.sides[s].emotion_window_glitch = on;
-                self.edited();
             }
             Msg::Entry(s, i) => self.entry[s] = i,
             Msg::Put(s, chip, code) => {

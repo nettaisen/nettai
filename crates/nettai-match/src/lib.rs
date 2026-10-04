@@ -118,9 +118,6 @@ pub struct Side {
     /// The navi's stats as the round starts them (the version is the
     /// game's).
     pub stats: NaviStats,
-    /// The save's event flag 0x1720: the emotion window flickers as a
-    /// bugged navi's does.
-    pub emotion_window_glitch: bool,
     /// The folder, its entries empty while it is being made (a round is
     /// played with a whole one: the checks refuse a match without).
     pub folder: Folder,
@@ -156,6 +153,12 @@ pub struct Side {
     /// (`facts`).
     pub karma: u16,
     pub souls: Option<Vec<nettai_content_api::FormHandle>>,
+    /// BN5's Soul Unison and Chaos Unison (the save's event flags 0 and
+    /// 0x236): the custom screen's soul button, and a dark chip's Chaos
+    /// Unison. A finished save has both (the default); facts its souls
+    /// system takes by name (`facts`).
+    pub soul_unison: bool,
+    pub chaos_unison: bool,
 }
 
 impl Side {
@@ -316,7 +319,6 @@ impl Side {
             navi,
             game: version,
             stats: Side::base_stats(content, navi, version),
-            emotion_window_glitch: false,
             folder: Folder::EMPTY,
             crosses: None,
             beast_out: true,
@@ -328,6 +330,8 @@ impl Side {
             tactics: Tactics::default(),
             karma: facts::DEFAULT_KARMA,
             souls: None,
+            soul_unison: true,
+            chaos_unison: true,
         };
         let boards = navicust_rules(content).boards.len();
         if arena.has_system(content, NAVICUST_SYSTEM) && content.navi(navi).forms.is_some() && boards > 0 {
@@ -359,16 +363,10 @@ impl Match {
             let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, content);
             let mut player = PlayerSetup {
                 folder: Some(folder),
-                souls: Default::default(),
                 joypad_phase: 0,
                 navi_level: s.navi_level,
                 sp_times: s.sp_times,
-                console: ConsoleSetup {
-                    rng: rng.state,
-                    tag_pair,
-                    emotion_window_glitch: s.emotion_window_glitch,
-                    ..ConsoleSetup::default()
-                },
+                console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
                 rules: Vec::new(),
                 patch_cards: PatchCards::new(&s.cards).unwrap_or_default(),
                 navicust: s.navicust,
@@ -421,8 +419,7 @@ pub fn next_round(content: &Content, first: &RoundSetup, folders: &[SavedFolder;
         let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(folder, 0, &mut rng, content);
         let p = &mut next.players[side];
         p.folder = Some(folder);
-        // (The save's glitch flag stays.)
-        p.console = ConsoleSetup { rng: rng.state, tag_pair, frames: console.frames, emotion_window_glitch: p.console.emotion_window_glitch };
+        p.console = ConsoleSetup { rng: rng.state, tag_pair, frames: console.frames };
     }
     next
 }
