@@ -2229,15 +2229,18 @@ The last custom-screen piece in Rust that was one game's: BN5's soul button and 
 The user, on the content's shape: "instead of [chipname]/chip.luau and [rulename]/rule.luau it should all be
 init.luau and import should resolve it"; "instead of manifest.toml containing imports etc, there should really be a
 top-level init.luau file that imports everything, and then manifest.toml just declares id/kind/depends"; "instead of
-stuff like aquandl[3] it should really be aquandl_chips.aquandl3 like the rest of the things". Pure renames: no
-definition, key or handle changes (content-model-v2.md §4.0, §4.1 hold the rules).
+stuff like aquandl[3] it should really be aquandl_chips.aquandl3 like the rest of the things". Renames: every
+definition is what it was, under the id it had (content-model-v2.md §4.0, §4.1 hold the rules).
 
 - **A folder's main module is its init.luau** (866 modules: 455 of BN6's, 396 of BN5's, 14 of exelib's, the test
   content's one), and a require names the folder. `keys::resolve` follows Luau's own rule, as the bundled Luau's
   require navigator does: a folder's init is the folder as a module, so what it requires is relative to the
   folder's place and its own folder's modules are `@self/...`; any other module's requires are relative to its
   directory. P2's folder-to-init resolution in the loaders is the general rule. A module's name stays its file's
-  (`bn6:chips/cannon/init`), so no key moves.
+  (`bn6:chips/cannon/init`), so an anonymous definition's key follows its module's new name
+  (`chips/cannon/chips#2` is `chips/cannon/init#2`), and the handles of anonymous definitions, which follow the
+  keys' order, may be numbered otherwise within their registry. Nothing outside content names one: compat, the
+  locales and match files write ids.
   - What keeps its name, and why (§4.1): a navi chip's navi object (chips/<navi>/navi.luau, 52 folders: the
     folder is the chip's); a link navi's own chip (navis/<navi>/chip.luau, 11: the folder is the navi's); a chip
     folder's object named for the folder (47); exelib's projectile/projectile.luau (projectile.luau is beside the
