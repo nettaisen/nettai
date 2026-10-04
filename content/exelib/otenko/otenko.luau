@@ -89,7 +89,7 @@ function otenko.make(look: Look): Otenko
         end
         me.collision:set_region(regions.single)
         -- (BN5's action table has no frozen or bubbled rows: its blessing is its action 6.)
-        me:set_action(8)
+        me:set_action(obstacle.action_byte(me, 8))
     end
 
     -- `sub_80DB1E0`: every 5 ticks (from the first), +1 to the Atk+ bonus of the user's next chip if it deals damage,
