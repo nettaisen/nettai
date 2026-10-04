@@ -57,14 +57,14 @@ local function appear(me: Object)
         battle.play_sound(SOUND_APPEAR)
         me.visible = true
     end
-    if navi_chips.wait(me, 0xA, true) then
+    if navi_chips.wait_on_init(me, 0xA, true) then
         me:set_action(if set_clouds(me) ~= 0 then 4 else 0x10)
     end
 end
 
 -- Action 4 (0x080BC3F0): 30 ticks.
 local function stand(me: Object)
-    if navi_chips.wait(me, 0x1E, true) then
+    if navi_chips.wait_on_init(me, 0x1E, true) then
         me:set_action(8)
     end
 end
@@ -74,7 +74,7 @@ local function raise(me: Object)
     if me.phase_init == 0 then
         me.anim = 3
     end
-    if navi_chips.wait(me, 0x1E, true) then
+    if navi_chips.wait_on_init(me, 0x1E, true) then
         me:set_action(0xC)
     end
 end
@@ -84,7 +84,7 @@ local function hold(me: Object)
     if me.phase_init == 0 then
         me.anim = 4
     end
-    local left = navi_chips.countdown(me, HOLD)
+    local left = navi_chips.countdown_on_init(me, HOLD)
     if left == nil then
         return
     end
@@ -100,7 +100,7 @@ local function leave(me: Object)
     if me.phase_init == 0 then
         me.visible = false
     end
-    if navi_chips.wait(me, 0xA, true) then
+    if navi_chips.wait_on_init(me, 0xA, true) then
         navi_chips.leave(me, (me.state :: State).controller)
     end
 end

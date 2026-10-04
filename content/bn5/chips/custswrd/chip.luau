@@ -19,6 +19,8 @@ return define.chip {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "damage_shown_variable", "library", "variable_damage" },
+    -- (The custom screen shows its damage as "???" only on an A, which it never comes as.)
+    traits = { "hides_damage_as_a" },
     slot_in_limit = 3,
     damage = { formula = "gauge" },
     action = swords.slash {
