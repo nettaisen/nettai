@@ -11,6 +11,10 @@
 
 return define.rules("bn5:reactions", {
     push_reading = "bn5",
+    -- The hit test (0x0801691C): a bubbled body counts as submerged, elec reaching either; a FloatShoe body is hit by
+    -- all (BN5's collision types have no 0x80 self bit); a guard breaks to 0x1002 and turns aside what lacks
+    -- 0x0C004000.
+    hit_test = "bn5",
     push = {
         { dx = 1, dy = 0, panels = 6 },
         { dx = -1, dy = 0, panels = 6 },
