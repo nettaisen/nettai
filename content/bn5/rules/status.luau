@@ -400,6 +400,9 @@ local status = {
         form_tick = false,
         -- The mercy flash hides the navi while its timer's bit 1 is clear (0x080137B6; BN6's while it is set).
         flash_hides_on_clear = true,
+        -- Its status block (0x08017CC8 on) runs the flash's timer first, whatever the battle's flags (0x080173C4),
+        -- then the slides, a drag and a flinch, which end a paralysis unless a counter just made it.
+        reactions = "bn5",
         bugs_before_drain = true,
         drain_bug_flags = true,
         -- BN5's emotions (0x08012740): a soul first, then anger, a mood of 0 (a dark MegaMan's), Full Synchro, a mood

@@ -2240,9 +2240,10 @@ impl Battle {
 
     /// `sub_8009158`: the low-HP music switch (sound only, but it keeps a
     /// latch in the round state). Each console switches for its own navi;
-    /// the engine keeps both sides' latches.
+    /// the engine keeps both sides' latches. (Where the arena's flow rules
+    /// have it: BN5 has none.)
     fn low_hp_music(&mut self) {
-        if self.setup.settings.effects & effects::LINK == 0 {
+        if self.setup.settings.effects & effects::LINK == 0 || !self.content.rules_of(self.games.arena).flow.low_hp_music {
             return;
         }
         for side in 0..2 {
