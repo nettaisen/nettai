@@ -214,6 +214,7 @@ chips = [
     "chips/wind/chips",
     "chips/windrack/chip",
     "chips/woodnos/chips",
+    "chips/yelcapsl/chips",
     "chips/yoyo/chip",
     "chips/z-saver/chip",
 ]

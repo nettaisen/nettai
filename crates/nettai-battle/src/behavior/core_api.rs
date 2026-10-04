@@ -267,6 +267,17 @@ fn int(v: FieldValue) -> i64 {
 
 impl Battle {
     /// Side `side`'s custom screen, which a custom hook reaches (§4.4).
+    /// The slot of the system's button `button` on side `side`'s screen
+    /// (its first cell), for the call `what`.
+    fn own_button_slot(&self, side: u8, system: u8, button: &str, what: &str) -> ApiResult<u8> {
+        use crate::custom::screen::SlotKind;
+        let h = self.own_button(side, system, button)?;
+        let screen = self.custom_screen(side)?;
+        (0..crate::custom::screen::SLOTS as u8)
+            .find(|&s| matches!(screen.slots[s as usize].kind, SlotKind::Button { button, cell } if button == h && cell != crate::custom::ButtonCell::Right))
+            .ok_or_else(|| ApiError::Other(format!("{what}: {button:?} isn't on the screen")))
+    }
+
     fn custom_screen(&self, side: u8) -> ApiResult<&crate::custom::screen::Screen> {
         self.custom.sides[side as usize & 1].screen.as_ref().ok_or_else(|| ApiError::Other("no custom screen is open".into()))
     }
@@ -846,16 +857,46 @@ impl CoreApi for Battle {
         let last = self
             .with_custom_screen(side, |screen, view, folder, _, _| screen.last_pick(folder, view))
             .ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
-        Ok(last.map(|p| nettai_content_api::api::CustomPick { slot: p.slot, chip: p.chip.id, regular: p.regular, navi_chip: p.navi_chip }))
+        Ok(last.map(|p| nettai_content_api::api::CustomPick {
+            slot: p.slot,
+            chip: p.chip.id,
+            regular: p.regular,
+            navi_chip: p.navi_chip,
+            attached: p.attached,
+        }))
+    }
+
+    fn custom_attach_to_last_pick(&mut self, side: u8, system: u8, button: &str, modifiers: u8) -> ApiResult<bool> {
+        let slot = self.own_button_slot(side, system, button, "custom.attach_to_last_pick")?;
+        self.with_custom_screen(side, |screen, view, folder, _, _| screen.attach_to_last_pick(slot, modifiers, folder, view))
+            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
+    }
+
+    fn custom_hold_last_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<bool> {
+        let slot = self.own_button_slot(side, system, button, "custom.hold_last_pick")?;
+        self.with_custom_screen(side, |screen, view, folder, _, _| screen.hold_last_pick(slot, folder, view))
+            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
+    }
+
+    fn custom_held_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<Option<ChipHandle>> {
+        let slot = self.own_button_slot(side, system, button, "custom.held_pick")?;
+        self.with_custom_screen(side, |screen, view, folder, _, _| screen.held_pick(slot, folder, view).map(|c| c.id))
+            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
+    }
+
+    fn custom_set_held_icon(&mut self, side: u8, system: u8, button: &str, shown: bool) -> ApiResult<()> {
+        let slot = self.own_button_slot(side, system, button, "custom.set_held_icon")?;
+        let held = self
+            .with_custom_screen(side, |screen, view, folder, _, _| screen.set_held_icon(slot, shown, folder, view))
+            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        if !held {
+            return Err(ApiError::Other(format!("custom.set_held_icon: {button:?} holds no chip")));
+        }
+        Ok(())
     }
 
     fn custom_trade_last_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<bool> {
-        use crate::custom::screen::SlotKind;
-        let h = self.own_button(side, system, button)?;
-        let screen = self.custom_screen(side)?;
-        let slot = (0..crate::custom::screen::SLOTS as u8)
-            .find(|&s| matches!(screen.slots[s as usize].kind, SlotKind::Button { button, cell } if button == h && cell != crate::custom::ButtonCell::Right))
-            .ok_or_else(|| ApiError::Other(format!("custom.trade_last_pick: {button:?} isn't on the screen")))?;
+        let slot = self.own_button_slot(side, system, button, "custom.trade_last_pick")?;
         self.with_custom_screen(side, |screen, view, folder, _, _| screen.trade_last_pick(slot, folder, view))
             .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
     }
@@ -1831,6 +1872,7 @@ impl CoreApi for Battle {
             ActorField::PlusTint => i(a.plus_tint as i64),
             ActorField::ChaosArmed => Value::Bool(a.chaos.armed),
             ActorField::Primed => Value::Bool(a.primed),
+            ActorField::WeaponChip => a.weapon_chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
             ActorField::ChaosLevel => i(a.chaos.level as i64),
             ActorField::NoChargeTimer => i(a.no_charge_timer as i64),
             ActorField::ComputerDriven => Value::Bool(a.computer_driven),
@@ -1854,6 +1896,14 @@ impl CoreApi for Battle {
             }
             (ActorField::AttackChip, FieldValue::Ref(Some((other, _)))) => {
                 return Err(ApiError::Other(format!("attack_chip: a {other} is not a chip")));
+            }
+            _ => None,
+        };
+        // The weapon's chip by definition: a chip, or none.
+        let weapon_chip = match (f, v) {
+            (ActorField::WeaponChip, FieldValue::Ref(Some((Registry::Chip, h)))) => self.chip_from_api("weapon_chip", Some(ChipHandle(h)))?,
+            (ActorField::WeaponChip, FieldValue::Ref(Some((other, _)))) => {
+                return Err(ApiError::Other(format!("weapon_chip: a {other} is not a chip")));
             }
             _ => None,
         };
@@ -1916,6 +1966,7 @@ impl CoreApi for Battle {
             (ActorField::PlusTint, FieldValue::U16(x)) => a.plus_tint = x,
             (ActorField::ChaosArmed, FieldValue::Bool(x)) => a.chaos.armed = x,
             (ActorField::Primed, FieldValue::Bool(x)) => a.primed = x,
+            (ActorField::WeaponChip, FieldValue::Ref(_)) => a.weapon_chip = weapon_chip,
             (ActorField::ChaosLevel, FieldValue::U8(x)) => a.chaos.level = x.min(4),
             (ActorField::NoChargeTimer, FieldValue::U16(x)) => a.no_charge_timer = x,
             (ActorField::ComputerDriven, FieldValue::Bool(x)) => a.computer_driven = x,
