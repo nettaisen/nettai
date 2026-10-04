@@ -1870,3 +1870,16 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   and kind reads through other names.
 - **Verify:** gen-content's `RomForm` carries the BN6 fields beside the record, and the check compares them through
   `Defs::extension`.
+- **Fixed after the gates:** the shared buster's `table.find` over a form's traits doesn't type-check (the content
+  check's; the gate doesn't run it), so it is a loop now (`has_trait`), the same test.
+- **Merging main** (d3a547f7: BN5's RedFrut, BoyBomb, CopyDmg, Jealousy and more): s7.py rewrote one new read,
+  RedFrut's fruit's `stats.form.kind ~= "base"`, as a porter's run would.
+- **Gates** (on 1ac9231a, main 670f9c77 merged):
+  - the full gate: the 189 legacy rounds (0 differ), the lab 6548 (all to the end or a known deviation), 0 sound
+    rounds differing;
+  - identity.sh against main's frontend on main's content: the custom-screen and sample lists identical in both text
+    modes (174 scenarios, 200,712 frames each): the palettes, the HUD face and the warp's overlay draw as before;
+  - BN5's replays as main's on a fresh BN5 pack: 1,486 recordings, 1,373 matched, 951,715 of 1,045,902 frames;
+  - the audit 0 problems (49 traces and the static audit); gen-content check 0 errors and its tests;
+  - after main d3a547f7: the workspace's tests, the content check (1,529 modules), us-spelling 0 on both
+    repositories.
