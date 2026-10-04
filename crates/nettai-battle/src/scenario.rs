@@ -65,7 +65,6 @@ pub fn setup() -> RoundSetup {
         navi_level: None,
         sp_times: Default::default(),
         console: Default::default(),
-        ruleset: None,
         rules: Vec::new(),
         patch_cards: Default::default(),
         navicust: None,
@@ -74,6 +73,7 @@ pub fn setup() -> RoundSetup {
     RoundSetup {
         content: content.hash(),
         settings: BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE)),
+        ruleset: None,
         navi_stats: [megaman(&content); 2],
         rng: 0x1234_5678,
         local_side: 0,

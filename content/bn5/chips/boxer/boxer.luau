@@ -7,7 +7,7 @@
 -- random panel of those it walked.
 
 local fist = require("../firehit/fist")
-local common_fist = require("@common/firehit/fist")
+local common_fist = require("@exelib/firehit/fist")
 
 local boxer = {}
 

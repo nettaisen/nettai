@@ -11,11 +11,11 @@
 -- the round starts (stages/netbattle: the actor lists' entry type 8, the
 -- kind's `place`, with the variant the stage names). See
 -- docs/engine/field-objects.md. The behavior is BN5's too
--- (@common/rock/rock), made here with BN6's look.
+-- (@exelib/rock/rock), made here with BN6's look.
 
 local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
-local common = require("@common/rock/rock")
+local common = require("@exelib/rock/rock")
 local debris = require("./debris")
 local effects = require("../../lib/effects")
 local sparks = require("../../lib/sparks")

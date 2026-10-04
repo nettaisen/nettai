@@ -101,7 +101,7 @@ fn explode(b: &mut Battle, r: ObjectRef) {
     // The second call reuses whatever registers the first left: Z, but
     // list-node addresses from the allocator for X and Y
     // (objects-and-player.md §A.3).
-    let look = b.roles_for(r).effect(crate::content::EffectRole::Deletion);
+    let look = b.roles().effect(crate::content::EffectRole::Deletion);
     crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
     crate::kinds::effect::spawn_after_spawn(b, pos.z, look, 0, 0, 0);
     let o = b.objects.get_mut(r);
@@ -187,7 +187,7 @@ fn end_reaction(b: &mut Battle, r: ObjectRef) {
 /// overlay.
 fn reset_form_overlay(b: &mut Battle, r: ObjectRef) {
     if let Some(overlay) = b.objects.get(r).related[1] {
-        super::restart_overlay(b, r, overlay);
+        super::restart_overlay(b, overlay);
     }
 }
 
@@ -324,7 +324,7 @@ pub(super) fn bubble(b: &mut Battle, r: ObjectRef) {
     }
     let popped = mash(b, r, timer::BUBBLE, f1::BUBBLED);
     let t = coll(b, r).status_timers[timer::BUBBLE] as i16 as i32;
-    b.objects.get_mut(r).pos.z = (b.arena_rules().bubble_bob[((t >> 2) & 0x1F) as usize] as i32) << 16;
+    b.objects.get_mut(r).pos.z = (b.game_rules().bubble_bob[((t >> 2) & 0x1F) as usize] as i32) << 16;
     if popped {
         b.objects.get_mut(r).pos.z = 0;
         b.sound(crate::content::SoundRole::BubblePop);
@@ -385,7 +385,7 @@ fn start_drag(b: &mut Battle, r: ObjectRef) {
         let target = PanelPos { x: (p.x as i8 + v.dx) as u8, y: (p.y as i8 + v.dy) as u8 };
         if can_slide_to(b, r, target) {
             // (The arena's speed: BN5's goes 8 pixels a tick in depth.)
-            let speed = b.arena_rules().slide_speed;
+            let speed = b.game_rules().slide_speed;
             let o = b.objects.get_mut(r);
             o.vel.x = v.dx as i32 * speed.x;
             o.vel.y = v.dy as i32 * speed.y;
@@ -486,14 +486,14 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
     let facing = |v: SlideVector| SlideVector { dx: v.dx * front, ..v };
     let v = match o.slide_type {
         0 => SlideVector::NONE,
-        1 => match b.arena_rules().push_reading {
+        1 => match b.game_rules().push_reading {
             // sub_800E548: from the hit modifier bits.
             PushReading::Bn6 => {
                 let hm = coll(b, r).hit_mod_final;
                 let off = if hm & 0x80 != 0 { 5 } else { 0 };
                 let bits = (hm & 0x7F) >> 2;
                 let i = (0..4).find(|&i| bits & (1 << i) != 0).unwrap_or(4);
-                facing(b.arena_rules().push_vectors[i + off])
+                facing(b.game_rules().push_vectors[i + off])
             }
             // BN5's 0x0800C9D8: the first of bits 2 to 5 of the unflipped
             // hitters' modifier, else of the flipped ones' with the
@@ -505,16 +505,16 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
                     4 => (first(from1), -1),
                     i => (i, 1),
                 };
-                let v = b.arena_rules().push_vectors[i];
+                let v = b.game_rules().push_vectors[i];
                 SlideVector { dx: v.dx * front * sign, ..v }
             }
         },
-        2 => facing(*b.arena_rules().ice_vectors.get(coll(b, r).direction as usize).expect("ice slide direction")),
+        2 => facing(*b.game_rules().ice_vectors.get(coll(b, r).direction as usize).expect("ice slide direction")),
         3 => {
             let kind = panel_kind(b, o.panel);
             // BN5's metal (0x0800C8A8): the steps its slide tries by the
             // direction of the move, the first the navi can slide to.
-            if let Some(slide) = b.arena_rules().panels.types[kind as usize].slide {
+            if let Some(slide) = b.game_rules().panels.types[kind as usize].slide {
                 let tries = slide.tries.get(coll(b, r).direction as usize).copied().unwrap_or_default();
                 return tries
                     .into_iter()
@@ -523,7 +523,7 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
                     .find(|v| can_slide_to(b, r, PanelPos { x: (o.panel.x as i8 + v.dx) as u8, y: (o.panel.y as i8 + v.dy) as u8 }))
                     .unwrap_or(SlideVector::NONE);
             }
-            b.arena_rules().panels.road_slide(kind).unwrap_or(SlideVector::NONE)
+            b.game_rules().panels.road_slide(kind).unwrap_or(SlideVector::NONE)
         }
         t => panic!("slide type {t} reads past its table"),
     };
@@ -539,7 +539,7 @@ pub(super) fn can_slide_to(b: &Battle, r: ObjectRef, p: PanelPos) -> bool {
         return false;
     }
     let airshoes = flag1(b, r) & f1::AIRSHOE != 0;
-    b.field.meets(p.x, p.y, b.arena_rules().panels.step.get(airshoes, b.objects.get(r).alliance))
+    b.field.meets(p.x, p.y, b.game_rules().panels.step.get(airshoes, b.objects.get(r).alliance))
 }
 
 #[cfg(test)]
@@ -554,7 +554,8 @@ mod tests {
     fn fight(reading: PushReading) -> (Battle, [ObjectRef; 2]) {
         let mut c: Content = testing::build();
         c.define().unwrap_or_else(|e| panic!("{e}"));
-        for rules in &mut c.rules {
+        {
+            let rules = &mut c.rules;
             rules.push_reading = reading;
         }
         let c = Arc::new(c);
@@ -646,7 +647,8 @@ mod tests {
         let speed = |y: i32| {
             let mut c: Content = testing::build();
             c.define().unwrap_or_else(|e| panic!("{e}"));
-            for rules in &mut c.rules {
+            {
+            let rules = &mut c.rules;
                 rules.slide_speed.y = y;
             }
             let c = Arc::new(c);
@@ -696,7 +698,8 @@ mod tests {
         let emotions = |which: crate::content::Emotions| {
             let mut c: Content = testing::build();
             c.define().unwrap_or_else(|e| panic!("{e}"));
-            for rules in &mut c.rules {
+            {
+            let rules = &mut c.rules;
                 rules.emotions = which;
             }
             let c = Arc::new(c);

@@ -81,7 +81,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             // sub_80E1540
             // sprite_load and sprite_loadAnimationData: its animation 0
             // from the first frame's time.
-            let sprite = b.roles_for(r).sprite(crate::content::SpriteRole::TargetMarker);
+            let sprite = b.roles().sprite(crate::content::SpriteRole::TargetMarker);
             b.objects.sprite_mut(r).load(sprite);
             b.objects.sprite_mut(r).set_animation(0, &b.content);
             b.objects.sprite_mut(r).look.shadow = crate::object::sprite::Shadow::WithSprite;

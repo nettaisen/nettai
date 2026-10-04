@@ -1,7 +1,7 @@
 --!strict
 -- BN5's tornado (attack object 0x31, 0x080CAC60) and its blow (action 0x22, 0x080ECD46): the shared code
--- (@common/tornado: BN6's) with BN5's variants, panels, collision types and sparks, BN5's fan and attachment; its
--- sprite and sound BN6's.
+-- (@exelib/tornado: BN6's) with BN5's variants, panels, collision types and sparks, BN5's fan and attachment; its
+-- sprite and sound BN6's numbers.
 --
 -- - The variants (0x080CAD44: palette, re-arm ticks) are BN6's rows with re-arms of 2 for rows 0, 4, 5 and 6 (BN6's
 --   4).
@@ -11,8 +11,8 @@
 -- - The fan is BN5's attachment rows 0xC and 0x17 (BN6's 0x21 and 0x22: the same look in BN5's sprite).
 
 local attachment = require("../../objects/attachment/attachment")
-local blows = require("@common/tornado/blow")
-local common = require("@common/tornado/tornado")
+local blows = require("@exelib/tornado/blow")
+local common = require("@exelib/tornado/tornado")
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
 local status = require("../../rules/status")
@@ -32,8 +32,8 @@ tornado.variants = {
 }
 
 tornado.kind = common.make_kind("bn5:tornado", {
-    sprite = asset.sprite("bn6:tornado"),
-    sound = asset.sound("bn6:aqua-surge"),
+    sprite = asset.sprite("bn5:tornado"),
+    sound = asset.sound("bn5:aqua-surge"),
     panel_variants = {
         lava = tornado.variants.lava,
         sea = tornado.variants.sea,

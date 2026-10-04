@@ -55,7 +55,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
                 _ => None,
             };
             let EffectSprite { sprite: id, anim, palette } = b.content.spark(look.expect("a hit spark spawned with its look"));
-            let steps = b.arena_rules().effects.spark_steps_at_start;
+            let steps = b.game_rules().effects.spark_steps_at_start;
             let sprite = b.objects.sprite_mut(r);
             sprite.load(id);
             sprite.set_animation(anim, &b.content);
@@ -102,7 +102,8 @@ mod tests {
     fn lifetime(steps: bool) -> u32 {
         let mut c: Content = testing::build();
         c.define().unwrap_or_else(|e| panic!("{e}"));
-        for rules in &mut c.rules {
+        {
+            let rules = &mut c.rules;
             rules.effects.spark_steps_at_start = steps;
         }
         let c = Arc::new(c);
@@ -112,7 +113,7 @@ mod tests {
         b.spawn_actors();
         b.run_objects();
         let navi = b.player(0).unwrap();
-        let look = b.arena_roles().spark(SparkRole::Plain);
+        let look = b.roles().spark(SparkRole::Plain);
         let r = spawn(&mut b, navi, Vec3::default(), look).expect("a spark");
         let mut n = 0;
         while b.objects.in_order().any(|o| o == r) {

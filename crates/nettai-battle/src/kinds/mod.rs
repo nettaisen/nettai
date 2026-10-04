@@ -215,7 +215,7 @@ pub fn generic_destroy(b: &mut Battle, r: ObjectRef) {
 /// HP left, or at 0 what BN5's check leaves there (BN5's
 /// `applyDamageToPlayer` shows the hit by it).
 pub fn subtract_hp(b: &mut Battle, r: ObjectRef, amount: u16) -> bool {
-    if b.rules_for(r).intake.hp_loss == crate::content::HpLoss::Bn5 {
+    if b.game_rules().intake.hp_loss == crate::content::HpLoss::Bn5 {
         return player::bn5_lose_hp(b, r, amount);
     }
     let o = b.objects.get_mut(r);
@@ -391,7 +391,7 @@ fn damage_taken(b: &Battle, side: u8, cap: u16) -> u16 {
 fn sp_chip_damage(b: &Battle, id: nettai_content_api::ChipHandle, side: u8, by_time: &[u16]) -> u16 {
     let n = b.content.chip_links(id).sp_slot.expect("an SP navi chip's slot (resolved when the content loads)") as usize;
     let time = time_bcd(b.setup.players[side as usize & 1].sp_times.frames(n) as u32);
-    let step = b.content.rules_of(b.game_of(&b.content.defs.chip(id).key)).sp_deletion_times.iter().take_while(|&&t| time > t).count();
+    let step = b.content.rules().sp_deletion_times.iter().take_while(|&&t| time > t).count();
     *by_time.get(step).unwrap_or_else(|| {
         panic!("SP chip {:?} has no damage for deletion-time step {step} (sub_8010AE4)", b.content.defs.chip(id).key)
     })

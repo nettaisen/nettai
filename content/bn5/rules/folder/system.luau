@@ -1,7 +1,7 @@
 --!strict
 -- BN5's folder rules, as its folder editor enforces them and a link battle checks them again before it starts: a
 -- tool's question (`folder_check`: a match's checks, netplay's offer, the editor, live play's random folder), never
--- the simulation's, as BN6's (@bn6/rules/folder/system). The folder is `battle.checked_folder()`; each rule it breaks
+-- the simulation's, as BN6's (its rules/folder/system). The folder is `battle.checked_folder()`; each rule it breaks
 -- is a `battle.folder_problem(rule, text)`. The limits are the navi's stats as the round set them up. Team ProtoMan
 -- US's addresses; Team Colonel's routines are the same code, and so is its table of copies.
 --

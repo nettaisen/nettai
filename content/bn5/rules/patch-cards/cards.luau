@@ -1,11 +1,11 @@
 --!strict
 -- BN5's patch cards (its Modification Cards; docs/design/bn5-map.md §15.14): a card is the engine's
 -- (`define.patch_card`, content/bn5/cards/), its effects the values the shared constructors make
--- (@common/patch-cards/effects, BN6's too); the patch-cards system (./system.luau) applies a player's installed
+-- (@exelib/patch-cards/effects, BN6's too); the patch-cards system (./system.luau) applies a player's installed
 -- cards to the navi's stats as the round is set up. BN5's own are its tables: the kinds' order (its effect numbers,
 -- 0x00 to 0x89, the handlers at 0x08137BC8) and the trails' bytes (0x08138802).
 
-local effects = require("@common/patch-cards/effects")
+local effects = require("@exelib/patch-cards/effects")
 
 local patch_cards = {}
 
@@ -109,7 +109,7 @@ patch_cards.HIT_STATUS = { blind = 1, confuse = 2, hp_bug = 3, none = 0 } :: { [
 -- The random encounters' element (NaviStats +0x27, 0x081387FC), by program.
 patch_cards.ENCOUNTER = { oil_body = 2, fish = 4, battery = 8, jungle = 0x10, search = 1 } :: { [string]: number }
 
--- ---- The effects (@common/patch-cards/effects, BN6's too) ----------------
+-- ---- The effects (@exelib/patch-cards/effects, BN6's too) ----------------
 
 patch_cards.bug = effects.bug
 patch_cards.hp = effects.hp
@@ -156,7 +156,7 @@ patch_cards.status_bug = effects.status_bug
 patch_cards.bug_stopper = effects.bug_stopper
 patch_cards.hub_style = effects.hub_style
 
--- What the application reads of BN5's (@common/patch-cards/apply).
+-- What the application reads of BN5's (@exelib/patch-cards/apply).
 patch_cards.GAME = {
     rank = patch_cards.RANK,
     choice = patch_cards.CHOICE,

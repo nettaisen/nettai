@@ -1,5 +1,5 @@
 --!strict
--- BN5's Vulcans (action 0x19, 0x080EC5D0): the shared vulcan (@common/vulcan/action, BN6's code) holding BN5's gun (the
+-- BN5's Vulcans (action 0x19, 0x080EC5D0): the shared vulcan (@exelib/vulcan/action, BN6's code) holding BN5's gun (the
 -- attachment table's row 0xB, 0c-1d: BN6's row 0xD) and firing BN5's bullets (objects/bullet). The bullets by the
 -- chip's subtype (0x080EC6B4: 3, 5 and 7 for Vulcan1 to Vulcan3, 12 for SuprVulc, 20, 24 and 28 for InfVulc1 to
 -- InfVulc3), the variant its record's parameter (row 0xC; SuprVulc's 0x10, the InfVulcs' 0xE). From subtype 4 on
@@ -7,13 +7,13 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local bullet = require("../../objects/bullet/bullet")
-local vulcan_action = require("@common/vulcan/action")
+local vulcan_action = require("@exelib/vulcan/action")
 
 local vulcan = {}
 
--- BN5's gun, attachment and bullet; the shot's sound BN6's.
+-- BN5's gun, attachment and bullet; the shot's sound BN6's number.
 local LOOK: VulcanLook = {
-    sound = asset.sound("bn6:col-army-2"),
+    sound = asset.sound("bn5:col-army-2"),
     arm = attachment.look { sprite = asset.sprite("bn5:vulcan"), palette = 0, attach_point = 14 },
     attachment = attachment.kind,
     bullet_kind = bullet.kind,

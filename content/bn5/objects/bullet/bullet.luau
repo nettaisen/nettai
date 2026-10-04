@@ -1,5 +1,5 @@
 --!strict
--- BN5's bullet (attack object 0x12, 0x080C6B98): the shared bullet (@common/bullet/bullet, BN6's code) but for its
+-- BN5's bullet (attack object 0x12, 0x080C6B98): the shared bullet (@exelib/bullet/bullet, BN6's code) but for its
 -- collision types. It probes as BN5's row 0 (nothing; BN6's row 0x3D) and bursts as BN5's rows 4 and 5 (0x080C6BEC,
 -- 0x080C6D10). Its burst sets no status (BN6's `sub_80C6AB8` gives the variant's): BN5's variants have none. BN5 sets
 -- the collision's element to the whole element byte where BN6 splits it (no secondary elements: the same for BN5's
@@ -7,8 +7,8 @@
 -- effects BN6's: SuprVulc's BN5's effect 0x3D, BN6's 0x6A, the same row of the effect table).
 
 local collision = require("../../rules/collision")
-local common = require("@common/bullet/bullet")
-local regions = require("@common/regions")
+local common = require("@exelib/bullet/bullet")
+local regions = require("@exelib/regions")
 
 local bullet = {}
 
@@ -24,17 +24,17 @@ bullet.variants = {
     vulcan = common.variant {
         region = regions.long,
         hit_mod = 1,
-        effect = define.effect { sprite = asset.sprite("bn6:vulcan-hit"), anim = 0, palette = 0 },
+        effect = define.effect { sprite = asset.sprite("bn5:vulcan-hit"), anim = 0, palette = 0 },
         single = true,
     },
-    -- The patch cards' HeatS's (row 8: BN6's, its effect 0x22 and sound BN6's): the panel found and the one behind it.
+    -- The patch cards' HeatS's (row 8, its effect 0x22 and sound BN6's): the panel found and the one behind it.
     heat = common.variant {
         region = regions.long,
         hit_mod = 0,
         effect = define.effect { sprite = asset.sprite("bn5:shell-burst"), anim = 0, palette = 0 },
         sound = asset.sound("bn5:target-move"),
     },
-    -- The patch cards' BubSht's (row 4: BN6's, its effect 0x1F and sound BN6's): the panel found and the one behind it.
+    -- The patch cards' BubSht's (row 4, its effect 0x1F and sound BN6's): the panel found and the one behind it.
     bubble = common.variant {
         region = regions.long,
         hit_mod = 0,
@@ -52,14 +52,14 @@ bullet.variants = {
     infinite = common.variant {
         region = regions.long,
         hit_mod = 1,
-        effect = define.effect { sprite = asset.sprite("bn6:vulcan-hit"), anim = 0, palette = 2 },
+        effect = define.effect { sprite = asset.sprite("bn5:vulcan-hit"), anim = 0, palette = 2 },
         single = true,
     },
     -- SuprVulc's (row 0x10: BN6's): the same, its hit brighter.
     super_vulcan = common.variant {
         region = regions.long,
         hit_mod = 1,
-        effect = define.effect { sprite = asset.sprite("bn6:vulcan-hit"), anim = 0, palette = 1 },
+        effect = define.effect { sprite = asset.sprite("bn5:vulcan-hit"), anim = 0, palette = 1 },
         single = true,
     },
     -- NapalmSoul's charged shot's (rows 0x11 and 0x12, the last one's; BN6's ColArmy's and ColForce's with their

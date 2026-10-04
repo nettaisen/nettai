@@ -1,11 +1,11 @@
 --!strict
 -- What BN6's buster shots share (the buster, the charged shot, the blank
--- shot, DustCross's charged shot and the like; @common/buster): the arm the
+-- shot, DustCross's charged shot and the like; @exelib/buster): the arm the
 -- navi raises, the recovery after a shot, and the move that may cut the
 -- recovery short. See docs/engine/objects-and-player.md §B6.
 
 local attachment = require("../objects/attachment/attachment")
-local common = require("@common/buster")
+local common = require("@exelib/buster")
 
 return common.make {
     -- The muzzle flash a shot leaves in the navi's first related slot (the

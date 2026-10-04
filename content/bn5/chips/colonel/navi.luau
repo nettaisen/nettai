@@ -1,6 +1,6 @@
 --!strict
 -- Colonel, the navi of BN5's Colonel chips and CrossDiv (BN5's actor object #0x08, 0x080BA280; BN5's own, built on
--- BN6's navi template: BN6's Colonel, @bn6/chips/colonel, is another routine), brought by their navi chip controller.
+-- BN6's navi template: BN6's Colonel, its chips/colonel, is another routine), brought by their navi chip controller.
 -- He appears with his cape (his body overlay), picks his target as he comes (the first panel ahead holding an enemy
 -- navi, else three columns ahead, else none), stands 20 ticks and (on a solid panel, with a target) draws his sword
 -- and divides the screen there: one diagonal slash rising toward his front, or, if his user held B and Left while he
@@ -9,10 +9,10 @@
 --
 -- Not reached: the slash of his Param1 0 (region 0x1F, effect 0x48): his init sets 2, and only 1 replaces it.
 
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("@exelib/navi-chips/navi")
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).

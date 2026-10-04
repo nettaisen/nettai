@@ -1,10 +1,10 @@
 --!strict
 -- The mine the Mine chip lays (the original's attack object #0x4C,
--- `sub_80CDD44`): the shared mine (@common/mine/land_mine), BN6's kind,
+-- `sub_80CDD44`): the shared mine (@exelib/mine/land_mine), BN6's kind,
 -- identity and look.
 
 local collision = require("../../rules/collision")
-local common = require("@common/mine/land_mine")
+local common = require("@exelib/mine/land_mine")
 
 local land_mine = {}
 

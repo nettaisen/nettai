@@ -1,9 +1,9 @@
 --!strict
--- LongSwrd (BN5 chip 0x032): a slash over the two panels ahead: the shared slash (@common/swords/slash) with BN5's
+-- LongSwrd (BN5 chip 0x032): a slash over the two panels ahead: the shared slash (@exelib/swords/slash) with BN5's
 -- parts (lib/swords).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local swords = require("../../lib/swords")
 
 return define.chip {

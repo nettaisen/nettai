@@ -17,7 +17,7 @@
 --   cycles, and its release in the window fires the soul's chaos weapon, out of it the chaos failure, ./chaos).
 -- - 0x10 (0x08012196): 21 ticks, then the change is done and he idles.
 
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local hooks = require("./hooks")
 local image = require("./image")
 local shade = require("./shade")

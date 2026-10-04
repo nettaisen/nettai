@@ -7,8 +7,8 @@
 -- flies up and away; the controller moves on.
 
 local ball = require("./ball")
-local navi_chips = require("@common/navi-chips/navi")
-local effects = require("@bn6/lib/effects")
+local navi_chips = require("@exelib/navi-chips/navi")
+local effects = require("../../lib/effects")
 local statuses = require("../../rules/status")
 
 export type State = {

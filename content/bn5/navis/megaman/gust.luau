@@ -1,11 +1,11 @@
 --!strict
--- BN5's gust (attack object #0x49, 0x080CEA0C): the shared gust (@common/gust/gust, BN6's code) in BN6's look (sheet
+-- BN5's gust (attack object #0x49, 0x080CEA0C): the shared gust (@exelib/gust/gust, BN6's code) in BN6's look (sheet
 -- 0c-2e, BN6's), but that no hit stops it (0x080CEB30 tests its hit flags against 0: BN6's wind stoppers don't), an
 -- unseen one pushes weaker too (0x080CEAA6: any first parameter), and its panel table's side 2 reads other code.
 -- The patch cards' Vacuum blows three (navis/megaman/weapons/instants).
 
 local collision = require("../../rules/collision")
-local common = require("@common/gust/gust")
+local common = require("@exelib/gust/gust")
 
 local gust = {}
 

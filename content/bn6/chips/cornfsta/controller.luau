@@ -1,10 +1,10 @@
 --!strict
 -- CornFsta's dimming controller (the original's effect object #0x68,
 -- `sub_80E7E9C`; docs/engine/dimming-chip-effects.md §16): the usual
--- dimming phases (@common/dimming), with an effect that sends the farmer
+-- dimming phases (@exelib/dimming), with an effect that sends the farmer
 -- (./farmer) out in the user's place and waits until he is done.
 
-local dimming_chips = require("@common/dimming")
+local dimming_chips = require("@exelib/dimming")
 local farmer = require("./farmer")
 
 local controller = {}

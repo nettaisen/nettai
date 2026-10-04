@@ -26,7 +26,7 @@ local SHOTS = 3
 local SHOT_Z = 0x18_0000
 -- The rest after each shot, in ticks.
 local REST = 2
-local SOUND = asset.sound("bn6:buster-shot")
+local SOUND = asset.sound("bn5:buster-shot")
 
 -- The phases, on the attack's step.
 local START, SHOOT, RECOVER = 0x0, 0x4, 0x8

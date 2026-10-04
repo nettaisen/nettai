@@ -12,10 +12,10 @@
 --     as bug_fix's end.
 --
 -- When it is done it clears its spawner's `busy` flag. The behavior is
--- BN5's too (@common/bugfix/glow), made here with BN6's look: a pixel lower
+-- BN5's too (@exelib/bugfix/glow), made here with BN6's look: a pixel lower
 -- down the field and higher than the navi, its parts stepping on.
 
-local common = require("@common/bugfix/glow")
+local common = require("@exelib/bugfix/glow")
 
 local glow = {}
 

@@ -1,13 +1,13 @@
 --!strict
 -- PileDrvr's dimming controller (BN5's effect object #0x6F, 0x080E8800; BN6's code, `sub_80E83B8`, which no BN6 chip
--- uses): the usual dimming phases (@common/dimming), with an effect (0x080E8844) that sets down a pile (./pile) on
+-- uses): the usual dimming phases (@exelib/dimming), with an effect (0x080E8844) that sets down a pile (./pile) on
 -- the panel ahead of the user and another, turned around, at the far end of the user's row, if those are solid with
 -- nothing on them (0x080E8918), each knowing how far past it the first of the other side's bodies stands in the row
 -- (0x080E88CE). Someone four or more panels past the first pile means no piles at all, as does a first panel that
 -- isn't free; a second pile that sees no one, or only someone that far, beams at no one. The effect waits until
 -- its piles are done; then the undim.
 
-local dimming_chips = require("@common/dimming")
+local dimming_chips = require("@exelib/dimming")
 local pile = require("./pile")
 
 export type State = {

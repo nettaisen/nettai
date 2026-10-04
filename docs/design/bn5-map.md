@@ -1162,8 +1162,8 @@ banners (49, the same layout as BN6's: 0x0801B810), their digits and palette, an
 problems). Waiting in this batch: DrkRecov's dark chip cost (HP bug: BN5's own code, unread, §6), HolyDrem's light
 MegaMan (§6.1), the swing's call BN6 stubs out (0x080E9FD2, battle flag 0x40: never in a netbattle).
 
-**Shared code (common-shared, 2026-10-03; the user's direction: shared BN5/BN6 behavior in content/common).** The
-BN6 modules the lists below opened for BN5 now live in content/common as makers that take a game's look (none holds a
+**Shared code (common-shared, 2026-10-03; the user's direction: shared BN5/BN6 behavior in content/exelib).** The
+BN6 modules the lists below opened for BN5 now live in content/exelib as makers that take a game's look (none holds a
 game's ids or assets; rules-in-luau.md §7.2), BN6's modules at their old paths their BN6 wrappers, BN5's its own
 definitions made with them: the regions, panels, slot, element, trajectory (over a game's sine table), dimming and
 its stand-in, the recovery heal, the attachment, the buster's parts, the projectile and its firing, the cannons,
@@ -1175,14 +1175,19 @@ AntiDmg's counter and shuriken, the swords' parts and slash, the sonic boom, Ant
 wave, the bullet and the vulcans, the tornado and its blow, Thunder's ball and shot, FireHit's fist, ElemTrap's trap
 and counterattack, Lance's lance, DrilArm's drill, ProtoMan, the boomerang, the plus chips' sparkle, the Spreaders'
 action, the shower's aim, and MegaMan's buster, blank and charged shots. BN5 makes its own kinds of each (compat's
-kinds.toml names them `bn5:...`); a BN5 look names BN6's assets where BN6's module did, as before. BN5 still uses
-these BN6 definitions as its own: BN6's effects (lib/effects: the explosions, puffs and flashes BN6's modules
-showed), BN6's collision rows that keep the 0x80 self bit where BN5's own rows drop it (thrown, curse, thrown-slash,
-attack, slash: BN5's grab shot, energy burst, GrabBnsh's hand, AntiDmg's shuriken, ProtoMan's slash and the
-projectile's burst; where BN5's row equals BN6's, BN5's own), BN6's plain shot as the fallback of BN5's forced
-charged shot, and BN6's barriers and their visual (lib/barriers: waits on bn5-chips-b's content/common/barriers).
-The 0x80 bit and the fallback are as BN6's modules had them; whether BN5's rows are the right ones is the chips'
-porters' to check.
+kinds.toml names them `bn5:...`); a BN5 look names BN5's assets (the same sheets and sounds where BN5's are
+BN6's, by BN6's names in compat/assets.toml). Since bn5-no-bn6 (2026-10-03) content/bn5 requires nothing of BN6's
+and names none of BN6's assets: a match loads its own game's pack alone. What it took from BN6 it now has of its
+own: BN5's effects (lib/effects: BN5's effect table, 0x080DFC94, whose rows to 0x22 are BN6's in BN5's sheets; the
+trap mark BN5's row 0x2B), BN5's own collision rows where BN6's kept the 0x80 self bit (thrown, curse,
+thrown-slash, attack, slash: the grab shot, the energy burst, GrabBnsh's hand, AntiDmg's shuriken, ProtoMan's slash
+and the projectile's burst; no BN5 target word tests the bit), BN5's plain shot as the fallback of the forced
+charged shot (BN5's projectile table's row 0), BN5's navi arm (the attachment table's row 0x2B) as the shared
+buster's enemy-navi arm, and the shared code where it is the same (@exelib/instant/side_special, BN6's
+`sub_802E1BE`; @exelib/guardian/strike, the strike back, whose telop names BN5's own Punisher, chip 0x175, as
+VDoll's curse names its Curse, 0x174: both BN5's SonicBom action of hit modifier 0). The sheets BN5's pack had no
+names for got them by their places (gen_content.py's SPRITES_BY_PLACE): 0c-06 `muzzle-flash`, 0c-07 `aura`, 0c-20
+`bubble`, 0c-3d `barrier`, 0c-49 `otenko`, 14-0a `burst` and 14-14 `lightning`.
 
 The lists below say how each was opened (each the smallest change that lets BN5 reuse it; BN6's behavior the same,
 its full set run on the batch):
@@ -1257,19 +1262,19 @@ effect 0x83 (FireHit's warning, the swords' swing, the meteors, DrilArm's start:
 
 **Chips 0x000 to 0x06F** (2026-10-03, bn5-chips-a): WideBlde, LongBlde and CustSwrd (the shared slash with BN5's
 parts and its effects 0x19, 0x1A and 0x28; CustSwrd's damage the custom gauge's, formula 45); AirHoc (the shared
-puck and flick, content/common/airhocky, of BN5's look); Static (BN5's tornado blow, its tornadoes paralyzing by
+puck and flick, content/exelib/airhocky, of BN5's look); Static (BN5's tornado blow, its tornadoes paralyzing by
 the bug level: none, 90, 120, 150 ticks); Spreader (the shared Spreaders' action with BN5's gun and bullet row 3:
-BN5's flash 0x21 and sound); GunDelS1 to 3 (the shared sun beam, content/common/gundels; BN5's GunDelSol,
-chips/gundels/gundels); BugBomb (the shared BugBomb, content/common/bugbomb, with BN5's bugs: either HP drain plus 2 or
+BN5's flash 0x21 and sound); GunDelS1 to 3 (the shared sun beam, content/exelib/gundels; BN5's GunDelSol,
+chips/gundels/gundels); BugBomb (the shared BugBomb, content/exelib/bugbomb, with BN5's bugs: either HP drain plus 2 or
 the emotion swings); Katana1 to 3 (chips/katana/katana); MrkCan1 to 3 (chips/mrkcan/mrkcan: the sweeping sight, effect
 0x44, and the cannon at its panel); Pulsar1 to 3 and SpShake1 to 3 (lib/armshot, and lib/arm: BN5's buster arm,
 0x080EBABE; the pulse, attack 0x6A, and the shake wave, 0x68); Skully1 to 3 (chips/skully/skully, attack 0x88);
 Astroid1 to 3 (chips/meteors: instant effect 17, 6, 8 and 10 meteors); Snake (the shared snake and holes' scan,
-content/common/snake: BN5's nest sends three snakes at a time with a flag each, its snakes wait 48 ticks and
-strike as wood); YoYo (the shared throw, content/common/yoyo; BN5's yoyo, chips/yoyo/yoyo, attack 0x52, GreatYo's
+content/exelib/snake: BN5's nest sends three snakes at a time with a flag each, its snakes wait 48 ticks and
+strike as wood); YoYo (the shared throw, content/exelib/yoyo; BN5's yoyo, chips/yoyo/yoyo, attack 0x52, GreatYo's
 modes too); Slasher (BN5's own action 0x29: while A is held, the wide slash at an enemy navi's column); CircGun
 (the shared CircGun of DarkCirc's look, 4 shots); TankCan1 to 3 (the shared action and shell,
-content/common/tankcan; BN5's shell, chips/tankcan/tankcan); WindRack (BN5's own action: BN6's swing without the
+content/exelib/tankcan; BN5's shell, chips/tankcan/tankcan); WindRack (BN5's own action: BN6's swing without the
 gusts). Then LifeSync (BN5's controller, effect object 0x5C: no sync in a boss-ranked battle either, the HP
 capped by each one's max HP in turn, flag 0x40's hit of 50); MoonBld1 to 3 (BN5's own action 0x53, chips/moonbld/moonbld:
 BN6's spin with the Katanas' step, lib/stepsword, marked moving while it runs); CrakBom, ParaBom and ResetBom (their
@@ -1288,7 +1293,7 @@ panels) and SonicBom (0x173: BN5's action 0x2B, the sonic boom swing with the Ka
 gen_content.py writes (its USED_CHIPS). The chip lab has VarSwrd's five commands and Magnum's A press besides the
 generated scenarios (chiplab's library-bn5, by hand). Each matches every frame of its lab recordings. The batch's
 shared modules
-(content/common, as above): airhocky/puck and flick, gundels/beam, bugbomb/bomb, snake/snake, yoyo/throw,
+(content/exelib, as above): airhocky/puck and flick, gundels/beam, bugbomb/bomb, snake/snake, yoyo/throw,
 tankcan/action and shell, lifesync/marker, moonbld/blade and bombs/seed, each BN6's at its old path its BN6 wrapper
 (BN6 the same). BN5's Cannon, HiCannon and M-Cannon draw BN5's cannon (0c-01) and sound; CircGun and DarkCirc share
 one set of kinds (chips/circgun/circgun).
@@ -1418,8 +1423,12 @@ them.
     body and AirShoes and ShadowSoul's FloatShoes and floating body are the form's `status_reset`; the rest is the
     form's `reset` hook (`FormDef::reset`, called after the flags): SearchSoul's reveal of the other side's
     invisible navis (effect 0x8F), TomahawkSoul's grass (effect 0x16), ToadSoul's dives (the navi state "dives"),
-    ColonelSoul's arming of its side's soldiers (`obstacle.arm_soldiers`, 0x08011C44; §15.11). The forms' `put_on`
-    and `take_off` hooks run with the start and end hooks (0x0800F024, 0x0800F088): NumberSoul's layer (actor 0x54).
+    ColonelSoul's arming of its side's soldiers (`obstacle.arm_soldiers`, 0x08011C44; §15.11). BN5's put-on and
+    take-off routines are one table each, by soul (0x0800F024's 0x0800F038, 0x0800F088's 0x0800F09C): the base form's
+    Hub Style shade (row 0), GyroSoul's propeller (row 2, the default: its identity's parts), NumberSoul's layer
+    (row 9, actor 0x54), the rest nothing. A form's `put_on` and `take_off` replace the defaults (its identity's
+    parts; what its identity's death hook takes down), which a hook may call (`put_on_form_parts`,
+    `take_off_form_parts`).
   - **The chip use by soul** (0x0800FF48), by form data: `priming` (GyroSoul: a Wind chip primes it, AIData +0x0D,
     0x080102D2; primed, the next damaging Wind or Null chip is doubled, and neither Full Synchro nor anger doubles
     meanwhile, 0x0801026C), `grass_doubles` (TomahawkSoul's Wood chips on grass, which the use turns normal,
@@ -1438,8 +1447,8 @@ them.
     slash): a charged slash steps two panels ahead (charge 1, 0x080125D4), or in ShadowSoul (and by a charge of 2)
     warps behind the enemy, turned round (0x08012538); the afterimages and the step back go by a charge.
   - **The B+Back moves**: ProtoSoul's guard (routine 4, the Reflect program's), MagnetSoul's immobilizers ahead
-    (0x25: instant effect 10, a glow, @common/instant/immobilizer with BN5's mark), ShadowSoul's anti-damage stance
-    (0x45, action 0x3D: @common/navicust/anti-damage, the AntiDmg program's) with the attack's variant 1, so its
+    (0x25: instant effect 10, a glow, @exelib/instant/immobilizer with BN5's mark), ShadowSoul's anti-damage stance
+    (0x45, action 0x3D: @exelib/navicust/anti-damage, the AntiDmg program's) with the attack's variant 1, so its
     counter throws at the nearest enemy ahead (`attack_variant`, AIAttackVars +3); BN5's stance counter runs its
     first step at once (0x0800E340: the reactions section's `stance_counter = "at_once"`).
   - **ToadSoul under the sea** (0x0800DF5A, 0x08017030, 0x0800DEB2; by the arena's panel rules' `submerges`): a
@@ -1637,10 +1646,10 @@ that have a use; rerun it as chips get theirs.
 sets the self type only (no dimmed bit), leaves the target type and writes the target's `row_offset` plus four
 times the side into the next word. A hit's modifier goes into its side's slot by its flip (`hit_mod_by_side`).
 
-**Obstacles and stages.** The rock and its debris (content/common/rock), the boulder (content/common/boulder) are
+**Obstacles and stages.** The rock and its debris (content/exelib/rock), the boulder (content/exelib/boulder) are
 makers BN6's chips/rockcube and objects/boulder wrap (same APIs). BN5's rock (attack object 0x59, rows by
 variant), its debris (effect 0x38) and boulder (attack 0x6E) are in content/bn5/objects; the stage statue (the
-Guardian's, @common/guardian/statue) takes its stage damage word. The 25 netbattle stages that waited on them are
+Guardian's, @exelib/guardian/statue) takes its stage damage word. The 25 netbattle stages that waited on them are
 in content/bn5/stages/netbattle.luau and compat/stages.toml (64 stage recordings match). The engine's obstacle
 service gains `obstacle.throw` (`sub_800F6AC`: the request `sub_8018002` serves; nothing in BN6 makes it) and
 `obstacle.throwable` (an identity's `throwable`, default true; BN5's mine sets false: Poltergeist's 0x080E8CA0
@@ -1679,7 +1688,7 @@ for an obstacle whose own game's rules have `effects.obstacle_soldiers` (BN5's),
 state `gun` set; the soldier's element byte is what the search left in r2 (0x0800BD1D's low byte for the sword's,
 the body mask's for the gun's). The chip lab's souls/07-obstacle/soldiers-gun and soldiers-sword record it.
 
-**Shared modules moved to content/common** (makers taking a game's look; BN6's modules wrap them with the same
+**Shared modules moved to content/exelib** (makers taking a game's look; BN6's modules wrap them with the same
 APIs): anubis, guardian, otenko, justcone, batcan, colorpt, geddon (controller, quake), barriers (visual,
 controller), rflectr, rock (rock, debris), boulder, bugfix (glow, controller), h-burst (action, burst), bodygrd
 (striker, shuriken).
@@ -1720,7 +1729,7 @@ folder with the kinds it owns.
 
 **bn5-navichips' fifteen** (2026-10-03, as built; every recording of theirs matches on every frame):
 
-- *Shared with BN6 in content/common* (BN6's wrappers at their old paths): AirSpin1–3 (common/airspin: the action and
+- *Shared with BN6 in content/exelib* (BN6's wrappers at their old paths): AirSpin1–3 (common/airspin: the action and
   its top made by a look; BN5's top attack 0x9B), Z-Saver (common/zsaver), NumbrBl (common/numbrbl's balls and
   controller; BN5's NumberMan stand-in, actor 0x45, its own), CopyDmg (common/copydmg: BN5's action 0x24 with the buster
   arm, BN6's mark, attack 0x28, which in the battle flag 0x40 mode hits its panel each tick it marks).
@@ -1778,7 +1787,7 @@ holder's record) is an AI's (0x08108274), no chip's. The controller's position i
 
 RockCube (subtype 20: effect object 0x37, 0x080E4664, BN6's code) and Wind and Fan (subtype 9: effect object 0x25,
 0x080E329C; the fan, attack object 0x48, 0x080CE734; its gust, attack object 0x49, 0x080CEA0C) share BN6's modules
-through content/common (rockcube/cube, wind/controller, wind/fan: makers taking a game's look, BN6's wrappers
+through content/exelib (rockcube/cube, wind/controller, wind/fan: makers taking a game's look, BN6's wrappers
 keeping their APIs; the gust is the patch cards' shared one, gust/gust); their controllers stand at the dimming handler's registers as BoyBomb's does. BN5's
 fan: sprite 04-0A (`fan`), NameIDs 0xD6 and 0xD7 (actor records: versions 3 and 4, AI index 0x21; their field-object
 looks, 0x0801D6B0, the fan in palettes 0 and 1); it takes hits as BN6's (0x08017984: the push keeps the damage, after
@@ -1890,7 +1899,7 @@ stayed the same, recording by recording: 1,250 matching, 871,358 frames.)
 ### 15.13 BN5's NaviCust (as built)
 
 BN5's compile (0x0813FA10; 0x0813F97C runs it, then the patch cards, 0x08138214) is BN6's routine for routine, so the
-two share it: content/common/navicust/compile.luau, each game's navicust system passing its board, its bugs and its
+two share it: content/exelib/navicust/compile.luau, each game's navicust system passing its board, its bugs and its
 quirks (`NaviCustGame`). BN6's compile is unchanged (trace-tests' navicust: Tango's four saves and the lab's 1274
 NaviCusts). BN5's, content/bn5/rules/navicust:
 
@@ -1902,7 +1911,7 @@ NaviCusts). BN5's, content/bn5/rules/navicust:
   0x0813D0CC, BRKJ 0x0813D1B4; 16 bytes a part id, program n's four variants at 4n..4n+3: +0 the exclusive group,
   +1 a plus part, +3 the color, +4 the bug group). Unlike BN6's a program's colored variants needn't come first
   (SprArmr is only its fourth), so compat lists each program's colored variants; the Japanese ROMs' MegFldr1 comes in
-  pink too (part 17). The effects are the handlers of 0x0813FB44 (the shared constructors, @common/navicust/effects;
+  pink too (part 17). The effects are the handlers of 0x0813FB44 (the shared constructors, @exelib/navicust/effects;
   Shield, Reflect and AntiDmg are MegaMan's B+Back weapons 0x1F, 0x61 and 0x21, navis/megaman/weapons/guards.luau;
   SoulT+1 adds a soul turn, NaviStats +0x32, the stat `soul_turn_bonus`, at most 6).
 - **The counts** (0x0813F310): BN6's but for HubBatc (program 27), which counts its own bug once more (0x0813F5A8),
@@ -1947,7 +1956,7 @@ What the programs in battle brought into the engine:
 
 BN5's patch cards (its Modification Cards, 改造カード) work as BN6's: after the NaviCust's compile, 0x0813F97C runs
 the cards' routine (0x08138214) and then the HP rule. The application is BN6's, so the two share it
-(content/common/patch-cards/apply.luau and the effects' constructors, effects.luau; each game's
+(content/exelib/patch-cards/apply.luau and the effects' constructors, effects.luau; each game's
 rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `PatchCardsGame`). BN6's is unchanged
 (the JP lab's card traces). BN5's, content/bn5/rules/patch-cards:
 
@@ -1985,11 +1994,11 @@ rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   table's plain row, is none), HeatS and BubSht (0x4A, 0x56: the Spreaders' action in its variants 1 and 2, the
   bullet leaving after the count's 10, 0x080EC57C; the bullet's rows 8 and 4), Invis and Vacuum (0x47, 0x4C: the
   instant chips' action with effects 2 and 25, the second TenguCross's wind; BN5's gust, attack object #0x49, is
-  BN6's code, shared in content/common/gust: nothing stops it, an unseen one pushes weaker), FireAm (0x4E, action
+  BN6's code, shared in content/exelib/gust: nothing stops it, an unseen one pushes weaker), FireAm (0x4E, action
   0x57: ElemRage's flames, BN5's own action; BN6's 0x57 is another), ZapRng (0x42, action 0x32: a paralyzing ring,
   attack object #0xC4, BN6's `sub_80C51CC` code, which no BN6 content spawns), Sbustr (0x68: the rapid buster,
-  shared in content/common/megaman) and HelzR (0x69: AirSpin's action in its variant 2, the seeking whirlwind,
-  shared in content/common/airspin/whirl; BN6's patch card bass-cross-megaman fires it too). Invis's timer takes
+  shared in content/exelib/megaman) and HelzR (0x69: AirSpin's action in its variant 2, the seeking whirlwind,
+  shared in content/exelib/airspin/whirl; BN6's patch card bass-cross-megaman fires it too). Invis's timer takes
   its high byte from the attack parameters' second byte, which the routine leaves as the last attack left it: the
   engine keeps no attack parameters, so 0.
 - **Hub Style** (NaviStats +0x4C, the stat `hub_style`: a byte, 1 from Team ProtoMan's card, 2 from Team Colonel's,
@@ -1997,7 +2006,7 @@ rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   own flash, the attachment table's row 0x39), his arm by the value (0x080EBABE: 1 animation 13, 2 the chaos arm),
   his attachments sit a pixel off (0x080B9AB8: the BN5 attachment kind's `lifted`; BN5's follow adds the unsigned
   byte where BN6's subtracts the signed one), his base form wears its shade (body overlay row 5, 0c-58: 0x0800EE1C,
-  the form's `wears`, which also runs as a player's init ends, MegaMan's record's init hook being that routine;
+  the form's `put_on`, which also runs as a player's init ends, MegaMan's record's init hook being that routine;
   BN5's init has no starting form's overlay), GigaCan leaves a third afterimage (0x080EC224), the palette is
   `hub_style * 5 + 20` and the faces move (§15.10). Not yet: the HUD's opponent entry (0x0801AE3A, presentation:
   with battle effect 8, the other side's NameID 0x180 when its +0x53 is set, else 0xEA in Hub Style).

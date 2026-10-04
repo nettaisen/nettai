@@ -335,7 +335,7 @@ fn resolve_side(content: &Content, s: &SideFile, at: &str, problems: &mut Vec<St
                 parts.push(PlacedProgram { program, color: color as u8, x: p.x, y: p.y, rotation: p.rotation, compressed: p.compressed });
             }
             let expansions = n.expansions.unwrap_or_else(|| {
-                let rules = &content.side_rules(ruleset, crate::ruleset_game(content, ruleset)).navicust;
+                let rules = &content.rules().navicust;
                 rules.boards.len().saturating_sub(1) as u8
             });
             match NaviCust::new(&parts, expansions) {
@@ -661,7 +661,7 @@ mod tests {
     fn crosses_need_the_forms_system() {
         let content = nettai_battle::content::testing::content();
         let mix = content.defs.ruleset_by_key("test:test-mix").unwrap();
-        let stock = content.defs.stock_ruleset_of("test");
+        let stock = content.defs.stock_ruleset();
         assert!(crate::ruleset_has_system(&content, stock, crate::FORMS_SYSTEM));
         assert!(!crate::ruleset_has_system(&content, Some(mix), crate::FORMS_SYSTEM));
     }
