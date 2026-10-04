@@ -539,10 +539,10 @@ What a BN5 console does otherwise, by data, not by game:
   custom screen's close starts the chip window as a Japanese BN6 console's
   does (`chip_window_at_close`), the intro fades in from black
   (`intro_from_black`);
-- a chip each version draws its own way shows the console's version's
-  icon and picture, and the emblem is the console's version's
-  (`Renderer::console_version`, which a BN5 recording names; live play,
-  the pack's first version).
+- a version's own chip (its five Giga chips, DethPhnx or Phoenix) shows
+  its own version's ROM's icon and picture on either console (§5), and the
+  emblem is the console's version's (`Renderer::console_version`, which a
+  BN5 recording names; live play, the pack's first version).
 
 The frame comparison against BN5's consoles (verification's
 tools/frontend-compare/bn5.txt, chiplab's library-bn5) and what still
@@ -774,6 +774,22 @@ them).
   region's ROMs, 48 pixels around it (`objects::OTHER_REGION_MARGIN`: the
   US's sprite there may reach past the Japanese one). The console's region is
   the trace's (`game_regions`; US without it).
+- **Deliberate: a version's own chips on the other version's console.**
+  Each ROM draws its own version's chips and has their art again at the
+  other version's counterparts: BN6's five Giga chips a version (Bass and
+  BassAnly, BigHook and MetrKnuk, DeltaRay and CrossDiv, ColForce and
+  HubBatc, BugRSwrd and BgDthThd share one picture, palette and icon in a
+  ROM); BN5's five a version and its phoenix (Team ProtoMan's ROM draws
+  MetrKnuk and CrossDiv as HolyDrem, OmegaRkt and BugCharg as BigHook,
+  BassAnly as Bass, Phoenix as DethPhnx; Team Colonel's the other way).
+  The pack has each chip's picture and icon once, from its own version's
+  ROM (the one whose library lists it), marked with that version
+  (`ChipArt::version`), and the frontend and the editor show it on either
+  console (the user's choice: a version's chips show that version's art
+  always). A console of the other version shows the counterpart's there:
+  the chip window's picture, the icons in the custom screen's slots and
+  column, and the icons over the navi are listed as known
+  (`lookups::other_versions_icon`).
 - **Deliberate: the Gregar and Falzar chips' pictures.** Each Japanese ROM
   has one picture for both chips, its own beast; the pack has each chip's
   own (Gregar's from the Japanese Gregar ROM, Falzar's from the Japanese
