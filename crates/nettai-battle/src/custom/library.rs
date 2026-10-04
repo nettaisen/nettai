@@ -24,25 +24,13 @@ pub trait Library {
     /// Whether a navi changes form (MegaMan): the screen offers it its
     /// Crosses and Beast Out.
     fn changes_form(&self, navi: NaviHandle) -> bool;
-    /// BN5's Soul Unison: the navi has souls (the custom screen's soul
-    /// button), and the soul a chip of `family` given up gives (its number
-    /// and form).
     /// The words a custom screen's result takes on the link, a tick each
     /// (the sending side's game's flow: `FlowRules::result_words`).
     fn result_words(&self) -> u32 {
         super::SEND_TICKS
     }
-    fn has_souls(&self, _navi: NaviHandle) -> bool {
-        false
-    }
-    fn soul_for_family(&self, _navi: NaviHandle, _family: crate::content::ChipFamily) -> Option<(u8, FormHandle)> {
-        None
-    }
-    /// What the screen asks of a form, and whether it is a soul (BN5's).
+    /// What the screen asks of a form.
     fn form_traits(&self, form: FormHandle) -> FormTraits;
-    fn form_is_soul(&self, _form: FormHandle) -> bool {
-        false
-    }
     /// The Program Advances, in the order they are tried.
     fn program_advances(&self) -> &[ProgramAdvance];
     /// A link navi's own chip, offered once a round (none for MegaMan).
@@ -100,21 +88,8 @@ impl Library for Content {
         self.navi(navi).changes_form()
     }
 
-    fn has_souls(&self, navi: NaviHandle) -> bool {
-        self.navi(navi).forms.as_ref().is_some_and(|f| !f.souls.is_empty())
-    }
-
-    fn soul_for_family(&self, navi: NaviHandle, family: crate::content::ChipFamily) -> Option<(u8, FormHandle)> {
-        let forms = self.navi(navi).forms.as_ref()?;
-        forms.souls.iter().find_map(|&f| self.form(f).soul.filter(|s| s.family == family).map(|s| (s.number, f)))
-    }
-
     fn form_traits(&self, form: FormHandle) -> FormTraits {
         self.form(form).traits
-    }
-
-    fn form_is_soul(&self, form: FormHandle) -> bool {
-        self.form(form).soul.is_some()
     }
 
     fn program_advances(&self) -> &[ProgramAdvance] {

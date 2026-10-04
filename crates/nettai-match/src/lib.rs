@@ -156,6 +156,12 @@ pub struct Side {
     /// (`facts`).
     pub karma: u16,
     pub souls: Option<Vec<nettai_content_api::FormHandle>>,
+    /// BN5's Soul Unison and Chaos Unison (the save's event flags 0 and
+    /// 0x236): the custom screen's soul button, and a dark chip's Chaos
+    /// Unison. A finished save has both (the default); facts its souls
+    /// system takes by name (`facts`).
+    pub soul_unison: bool,
+    pub chaos_unison: bool,
 }
 
 impl Side {
@@ -328,6 +334,8 @@ impl Side {
             tactics: Tactics::default(),
             karma: facts::DEFAULT_KARMA,
             souls: None,
+            soul_unison: true,
+            chaos_unison: true,
         };
         let boards = navicust_rules(content).boards.len();
         if arena.has_system(content, NAVICUST_SYSTEM) && content.navi(navi).forms.is_some() && boards > 0 {
@@ -359,7 +367,6 @@ impl Match {
             let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, content);
             let mut player = PlayerSetup {
                 folder: Some(folder),
-                souls: Default::default(),
                 joypad_phase: 0,
                 navi_level: s.navi_level,
                 sp_times: s.sp_times,

@@ -572,17 +572,6 @@ impl Round {
             };
             Ok(PlayerSetup {
                 folder,
-                // BN5's Soul Unison as a finished save has it (the save's
-                // event flags aren't in a recording): the soul button and
-                // Chaos Unison; the souls, the version's six (below, the
-                // souls system's setup). (No Cross, no Beast Out: BN5's
-                // rules have neither.)
-                souls: nettai_battle::custom::SoulUnlocks {
-                    button: true,
-                    owned: 0,
-                    chaos: true,
-                    turn_bonus: d.navi_stats[side as usize].raw[0x32] as i8,
-                },
                 joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
                 navi_level: None,
                 sp_times: Default::default(),
@@ -764,6 +753,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         chip_shuffle: false,
         number_open: false,
         hub_style: s.hub_style,
+        soul_turn_bonus: r[0x32] as i8,
         weapons: NaviWeapons {
             buster: weapon(r[0x04])?,
             charge_shot: weapon(r[0x05])?,

@@ -340,7 +340,6 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
         let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&folders[side as usize], 0, &mut rng, content);
         let mut player = PlayerSetup {
             folder: Some(folder),
-            souls: Default::default(),
             joypad_phase: 0,
             navi_level: nettai_match::default_navi_level(content, stats.navi),
             sp_times: Default::default(),
@@ -459,14 +458,15 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         Phase::Hidden { .. } => "CUSTOM (HIDDEN: ANY KEY)",
         Phase::Description { .. } => "CUSTOM: CHIP INFO (ANY KEY)",
         Phase::RunMessage { .. } => "CUSTOM: NO TIME TO RUN (A)",
-        // A system's window, by its name (BN6's Beast Out and Cross window).
+        // A system's window, by its name (BN6's Beast Out and Cross window,
+        // BN5's soul's choice).
         Phase::Window { window, .. } => match b.content.defs.window(window).name.as_str() {
             "beast_out" => "CUSTOM: BEAST OUT!",
             "cross_opening" | "cross_window" | "cross_closing" => "CUSTOM: CROSS (UP/DOWN, A CHOOSE, B BACK)",
             "cross_chosen" => "CUSTOM: CROSS!",
+            "soul_unison" => "CUSTOM: SOUL UNISON!",
             _ => "CUSTOM",
         },
-        Phase::SoulChosen { .. } => "CUSTOM: SOUL UNISON!",
         _ => "CUSTOM",
     };
     out.push_str(title);
@@ -474,8 +474,8 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         let x = &screen.slots[slot as usize];
         let label = match x.kind {
             SlotKind::Ok => "OK".to_string(),
-            SlotKind::Soul => "SOUL".to_string(),
-            // A system's button, by its name ("redeal": "REDEAL").
+            // A system's button, by its name ("redeal": "REDEAL", BN5's
+            // "soul": "SOUL").
             SlotKind::Button { button, cell: nettai_battle::custom::ButtonCell::Only | nettai_battle::custom::ButtonCell::Left } => {
                 b.content.defs.button(button).name.replace('_', " ").to_uppercase()
             }
