@@ -1202,10 +1202,18 @@ impl Screen {
                 *d = folder.chips[i];
             }
             deal.count = n as u8;
-            // The table that could shuffle the dealt chips apart
-            // (`byte_80298C8`) is all zeros: one shuffle of them all.
+            // How many of the hand's chips stay in the hand, by how many of
+            // them are dealt again (`byte_80298C8`, the custom screen's
+            // `redeal_kept`: BN6's all zeros, BN5's 0x080254C8): with some
+            // kept, the hand's chips are shuffled first, and then all but
+            // that many at the front; with none, one shuffle of them all.
+            let hand = self.redeal_hand_places();
+            let kept = view.library.layout().redeal_kept.get(hand).copied().unwrap_or(0) as usize;
             if n != 0 {
-                shuffle(&mut deal.chips[..n], n, &mut console.rng);
+                if kept != 0 {
+                    shuffle(&mut deal.chips[..hand], hand, &mut console.rng);
+                }
+                shuffle(&mut deal.chips[kept..n], n - kept, &mut console.rng);
             }
             self.slots[button as usize].state = SlotState::Selected;
             self.update_availability(view, folder, extras);
@@ -1253,6 +1261,15 @@ impl Screen {
     /// counts eight dealt entries and leaves the folder's last two out.
     /// Where the tag pair straddles the end the original's walk runs on
     /// past the folder; this one stops at it.)
+    /// How many of [`Screen::redeal_places`] are the hand's (its first
+    /// walk's: the chip slots not picked, the Regular chip apart).
+    fn redeal_hand_places(&self) -> usize {
+        self.slots[..(self.hand_size as usize).min(SLOTS)]
+            .iter()
+            .filter(|slot| matches!(slot.kind, SlotKind::Chip { regular: false, .. }) && slot.state != SlotState::Selected)
+            .count()
+    }
+
     fn redeal_places(&self, tag_pair: Option<u8>) -> Vec<usize> {
         let mut places = Vec::new();
         let mut at = 0usize;
