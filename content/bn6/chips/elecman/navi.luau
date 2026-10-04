@@ -8,8 +8,8 @@
 -- §3.6.16.
 
 local navi_chips = require("../../lib/navi-chips/navi")
-local panels = require("@common/panels")
-local regions = require("@common/regions")
+local panels = require("@exelib/panels")
+local regions = require("@exelib/regions")
 local thunder = require("./thunder")
 
 local elecman = {}

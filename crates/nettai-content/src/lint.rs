@@ -19,23 +19,10 @@ use crate::report::Report;
 /// Report on `c`'s definitions.
 pub fn definitions(c: &Content, r: &mut Report) {
     let defs = &c.defs;
-    // Each game's roles (a root with a stock ruleset; content with no
-    // rulesets, its own root's).
-    // (The shared folder, content/common, is no game: it has no roles.)
-    let shared = |i: usize| defs.roots.get(i).is_some_and(|name| name == nettai_content_api::keys::SHARED);
-    let first = (0..defs.roles.len()).find(|&i| !shared(i)).unwrap_or(0);
-    let games: Vec<usize> = (0..defs.roles.len())
-        .filter(|&i| !shared(i) && (i == first || defs.roots.get(i).is_some_and(|name| defs.stock_ruleset_of(name).is_some())))
-        .collect();
-    for i in games {
-        if defs.definitions.is_empty() {
-            break;
-        }
-        let file = match defs.roots.get(i) {
-            Some(name) if defs.roots.len() > 1 => format!("{name}:rules/roles.luau"),
-            _ => "rules/roles.luau".to_string(),
-        };
-        let roles = &defs.roles[i];
+    // The game's roles (the support packs have none).
+    if !defs.definitions.is_empty() {
+        let file = if defs.game.is_empty() { "rules/roles.luau".to_string() } else { format!("{}/rules/roles.luau", defs.game) };
+        let roles = defs.roles();
         use nettai_battle::content::{ActionRole, KindRole};
         for role in ActionRole::ALL {
             if !roles.actions.contains_key(&role) {
@@ -59,7 +46,7 @@ pub fn definitions(c: &Content, r: &mut Report) {
         };
         // (The panels' burn and splash are needed only by a game whose own
         // panels burn or hold: BN5's lava and sea.)
-        let own = c.rules.get(i).map(|rules| &rules.panels.types[..]).unwrap_or(&[]);
+        let own = &c.rules().panels.types[..];
         let needs_burn = own.iter().any(|t| t.named && t.burn.is_some());
         let needs_splash = own.iter().any(|t| t.named && t.holds.is_some());
         for role in StatusRole::ALL {
@@ -133,15 +120,15 @@ pub fn duplicate_collision_types(c: &Content) -> Vec<(u8, Vec<(String, String)>)
     rows.into_iter().filter(|(_, twins)| twins.len() > 1).map(|(offset, twins)| ((offset / 8) as u8, twins)).collect()
 }
 
-/// Collision types of a root that requires another (BN5's, which uses BN6's
-/// modules) whose words test 0x80, named by a module of that root which
-/// uses the other's modules: BN6 adds that bit to the self type of every
-/// attack and object and BN5 has none, so a BN5 target type BN6's modules
-/// take must not test it (docs/design/bn5-map.md §15.3 item 9; BN5's own
-/// row 0x3D does, which is fine while only BN5's code uses it). Each with
-/// the module that names it and the root it requires. (A module names a
-/// type as `collision.<id with underscores>`, the way rules/collision
-/// exports it.)
+/// Collision types of a game that requires a support pack (BN5's, which uses
+/// exelib's makers, BN6's code made to take a game's looks) whose words test
+/// 0x80, named by a module of that game which uses the support pack's
+/// modules: BN6 adds that bit to the self type of every attack and object
+/// and BN5 has none, so a BN5 target type exelib's makers take must not
+/// test it (docs/design/bn5-map.md §15.3 item 9; BN5's own row 0x3D does,
+/// which is fine while only BN5's code uses it). Each with the module that
+/// names it and the pack it requires. (A module names a type as
+/// `collision.<id with underscores>`, the way rules/collision exports it.)
 pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
     let mut out = Vec::new();
     for d in c.defs.definitions.of(Registry::Collision) {
@@ -151,10 +138,11 @@ pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
             continue;
         }
         let field = format!("collision.{}", nettai_content_api::keys::local(&d.key).replace('-', "_"));
-        // (The other folders whose modules a module of the type's folder
-        // uses. The shared folder, content/common, is BN6's code made to take
-        // a game's looks: BN6's own types, with the bit, are its.)
-        for required in c.scripts.roots.iter().map(|r| r.name.clone()).filter(|n| n != root && !(n == nettai_content_api::keys::SHARED && root == "bn6")) {
+        // (The other packs whose modules a module of the type's game uses.
+        // The support pack, content/exelib, is BN6's code made to take a
+        // game's looks: BN6's own types, with the bit, are its.)
+        let dirs: BTreeSet<String> = c.scripts.modules.keys().filter_map(|m| nettai_content_api::keys::root_of(m)).map(str::to_string).collect();
+        for required in dirs.into_iter().filter(|n| n != root && !(n == "exelib" && root == "bn6")) {
             let required = &required;
             let uses = format!("@{required}/");
             let prefix = format!("{root}{}", nettai_content_api::keys::SEPARATOR);

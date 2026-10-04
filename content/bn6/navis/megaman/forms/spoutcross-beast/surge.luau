@@ -6,7 +6,7 @@
 -- (animation 1) 6 ticks in and falls (animation 2) with 8 left.
 
 local collision = require("../../../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local surge = {}
 

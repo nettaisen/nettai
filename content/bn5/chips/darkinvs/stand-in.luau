@@ -1,18 +1,18 @@
 --!strict
--- DarkInvs's stand-in (BN5's actor object #9, 0x080BA5C0; BN5's own): drawn as the user (@common/dimming/stand_in's
+-- DarkInvs's stand-in (BN5's actor object #9, 0x080BA5C0; BN5's own): drawn as the user (@exelib/dimming/stand_in's
 -- look: its sprite, palette and parts, where the user is, the user vanishing) for 30 ticks, its palette flickering
 -- between the user's and the dark one every other pair of ticks; then its parts off, the user back with a sound, and
 -- its controller (./controller) goes on. A user that isn't a player (no chip reaches one) has none: the controller
 -- goes on at once.
 
 local megaman = require("../../navis/megaman/navi")
-local stand_in = require("@common/dimming/stand_in")
+local stand_in = require("@exelib/dimming/stand_in")
 
 export type State = {
     -- The controller waiting for it (the flag it was given, +0x60: the controller's +0x0C).
     controller: Object?,
 }
--- What the controller keeps (@common/dimming/stand_in's `Waiting`).
+-- What the controller keeps (@exelib/dimming/stand_in's `Waiting`).
 type Waiting = { busy: boolean }
 
 local standin = {}

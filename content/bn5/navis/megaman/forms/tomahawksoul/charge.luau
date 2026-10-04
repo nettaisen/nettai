@@ -6,7 +6,7 @@
 -- (effect 0x45). 22 ticks, then 6 of recovery.
 
 local collision = require("../../../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local charge = {}
 

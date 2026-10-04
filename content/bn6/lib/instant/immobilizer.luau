@@ -1,12 +1,12 @@
 --!strict
 -- BN6's immobilizing hit (the original's attack object #0x3F, `sub_80CC044`;
 -- docs/engine/dimming-chips.md): the shared immobilizer
--- (@common/instant/immobilizer), BN6's kind: unseen, a guard-breaking attack
+-- (@exelib/instant/immobilizer), BN6's kind: unseen, a guard-breaking attack
 -- against navis that immobilizes (status 0x42). Instant chip effect 9
 -- spawns it (immobilize.luau).
 
 local collision = require("../../rules/collision")
-local common = require("@common/instant/immobilizer")
+local common = require("@exelib/instant/immobilizer")
 local statuses = require("../../rules/status")
 
 local immobilizer = {}

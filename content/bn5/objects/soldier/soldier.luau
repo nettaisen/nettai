@@ -14,9 +14,9 @@
 
 local bullet = require("../bullet/bullet")
 local collision = require("../../rules/collision")
-local common_bullet = require("@common/bullet/bullet")
+local common_bullet = require("@exelib/bullet/bullet")
 local marker = require("../../lib/navi-chips/marker")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local soldier = {}
 

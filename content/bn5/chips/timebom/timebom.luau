@@ -1,6 +1,6 @@
 --!strict
 -- BN5's TimeBom chips' bomb and controller (TimeBom1-3 and TimeBom+, the dimming handler's subtype 10): the shared
--- code (@common/timebom: BN6's, BN5's attack object #0x4B and effect object #0x27) but for
+-- code (@exelib/timebom: BN6's, BN5's attack object #0x4B and effect object #0x27) but for
 --
 -- - where the bomb goes (0x080E3420, BN6's `sub_80E3264`): in each row, the enemy's frontmost panel (from the
 --   back of the field, the first panel of the other side's, then the first of the user's, one step back toward
@@ -13,9 +13,9 @@
 --   blink are its 6 and 7, BN6's 8 and 9, the same actions).
 
 local collision = require("../../rules/collision")
-local controller = require("@common/timebom/controller")
-local countdown = require("@common/timebom/countdown")
-local dimming_chips = require("@common/dimming")
+local controller = require("@exelib/timebom/controller")
+local countdown = require("@exelib/timebom/countdown")
+local dimming_chips = require("@exelib/dimming")
 local effects = require("../../lib/effects")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
 

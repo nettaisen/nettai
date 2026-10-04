@@ -39,7 +39,7 @@ fn chaos_cycle(b: &mut Battle, r: ObjectRef) {
     }
     // 0x080106BC: the level's row, at most 2, unless the soul has its own.
     let row = form_of(b, r).soul.and_then(|s| s.chaos_cycle).unwrap_or(a.chaos.level.min(2));
-    let [period, first, second, third] = *b.rules_for(r).chaos_cycle.get(row as usize).unwrap_or_else(|| {
+    let [period, first, second, third] = *b.game_rules().chaos_cycle.get(row as usize).unwrap_or_else(|| {
         panic!("the chaos cycle's row {row} reads past the rules' chaos_cycle (0x08010650)")
     });
     let c = ai(b, r).chaos;
@@ -378,5 +378,5 @@ fn charge_threshold(b: &Battle, r: ObjectRef, source: u8) -> u16 {
 /// check tests flags a `ldr` doesn't set (never equal), so an empty hand
 /// reads chip 0xFFFF's record, past the table (`Rules::empty_hand`).
 fn uses_alt_a_charge(b: &Battle, r: ObjectRef) -> bool {
-    super::null_family(b, r, next_chip(b, r))
+    super::null_family(b, next_chip(b, r))
 }

@@ -295,14 +295,14 @@ fn flash_out(b: &mut Battle, r: ObjectRef) {
         o.related[0] = None;
         o.anim = 2;
         ai_mut(b, r).overlay = None;
-        if let Some(hook) = b.roles_for(r).try_hook(crate::content::HookRole::NaviDeleted) {
+        if let Some(hook) = b.roles().try_hook(crate::content::HookRole::NaviDeleted) {
             let v = crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::RoleNavi { navi: r });
             if let nettai_content_api::Value::Object(s) = v {
                 ai_mut(b, r).deletion_sparkles = Some(s);
             }
         }
         let pos = b.objects.get(r).pos;
-        let look = b.roles_for(r).effect(crate::content::EffectRole::Deletion);
+        let look = b.roles().effect(crate::content::EffectRole::Deletion);
         let at = Vec3 { z: pos.z.wrapping_add(0x20_0000), ..pos };
         if let Some(e) = crate::kinds::effect::spawn(b, at, look, 0, 0, 0) {
             b.objects.get_mut(e).timer = 90;

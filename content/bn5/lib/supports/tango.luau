@@ -1,9 +1,9 @@
 --!strict
--- Tango (BN5's actor object #0x4D, 0x080C2714): the shared Tango (@common/supports/tango, BN6's code) in BN5's look,
+-- Tango (BN5's actor object #0x4D, 0x080C2714): the shared Tango (@exelib/supports/tango, BN6's code) in BN5's look,
 -- the NaviCust support that heals her navi once, in link battles, when its HP drops to a quarter (0x0800E3B6), throwing
 -- her heal (./heal). See docs/engine/chips.md §2.10.
 
-local common = require("@common/supports/tango")
+local common = require("@exelib/supports/tango")
 local heal = require("./heal")
 
 local PUFF = asset.sprite("bn5:puff")

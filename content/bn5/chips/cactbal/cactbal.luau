@@ -9,7 +9,7 @@
 
 local arm = require("../../lib/arm")
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 local trajectory = require("../../lib/trajectory")
 

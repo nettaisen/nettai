@@ -5,7 +5,7 @@
 -- right and down in turn (each within a second of the first) powers the swoop (0x080BDDF4). WildBird's LarkMan (the
 -- summon table's entry 23, 0x080BDDCA: his Param4 1) sends the swoop's variant 6 instead, and takes no command.
 
-local navi_chips = require("@common/navi-chips/navi")
+local navi_chips = require("@exelib/navi-chips/navi")
 local swoop = require("./swoop")
 
 export type State = {

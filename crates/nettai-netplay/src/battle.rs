@@ -202,7 +202,7 @@ mod tests {
     #[test]
     fn a_player_input_crosses_the_link() {
         let result = CustomResult {
-            hand: Some(nettai_battle::hand::ChipHand::empty(&testing::content(), nettai_battle::content::RootId(0))),
+            hand: Some(nettai_battle::hand::ChipHand::empty(&testing::content())),
             navi_stats: testing::stats(500),
             transform: Default::default(),
         };

@@ -1,6 +1,6 @@
 --!strict
 -- A BugBomb (the original's attack object #0xA5, `sub_80D9D4C`): the
--- shared BugBomb (@common/bugbomb/bomb) with BN6's look and bugs. Lobbed
+-- shared BugBomb (@exelib/bugbomb/bomb) with BN6's look and bugs. Lobbed
 -- at the panel three ahead, it sits there with 40 HP for a second and then
 -- bursts over the 3x3 around it, giving what it hits a NaviCust bug: one
 -- its target's side doesn't have yet (HP drain, custom-screen HP drain, a
@@ -9,7 +9,7 @@
 -- of smoke.
 
 local collision = require("../../rules/collision")
-local common = require("@common/bugbomb/bomb")
+local common = require("@exelib/bugbomb/bomb")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local statuses = require("../../rules/status")
 local trajectory = require("../../lib/trajectory")

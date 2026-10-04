@@ -1,11 +1,11 @@
 --!strict
 -- LifeSync's marker (the original's effect object #0x60, `sub_80E76F8`;
 -- docs/engine/dimming-chip-effects.md §14): the shared marker
--- (@common/lifesync/marker) in BN6's hit sparks. A cursor over the panel
+-- (@exelib/lifesync/marker) in BN6's hit sparks. A cursor over the panel
 -- two ahead of the user, then over the enemy there, for 81 ticks. Only
 -- drawn; LifeSync's controller places it outside link battles only.
 
-local common = require("@common/lifesync/marker")
+local common = require("@exelib/lifesync/marker")
 
 local marker = {}
 
