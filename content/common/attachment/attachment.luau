@@ -73,7 +73,7 @@ end
 export type Lifted = (owner: Object, side: number) -> number?
 local function cross_lifted(owner: Object, side: number): number?
     local identity = owner.identity
-    if identity ~= nil and identity.class == "cross" and battle.navi(side).form.kind ~= "base" then
+    if identity ~= nil and identity.class == "cross" and not battle.navi(side).form.base then
         return -8
     end
     return nil

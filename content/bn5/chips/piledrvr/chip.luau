@@ -1,6 +1,14 @@
 --!strict
--- PileDrvr (BN5 chip 0x15d): its common record, written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
--- No use yet: the BN5 port writes it. It loads with the BN5 root (rules-in-luau.md R).
+-- PileDrvr (BN5 chip 0x15d): a Program Advance (GunDelS3, GunDelS3 and DjangoSP or DjangoDS) whose cut-in sets down a
+-- pile ahead of the user and another at the far end of the row, turned around, each beaming ten times at the first of
+-- the other side's bodies it sees down the row (./controller: BN5's effect object #0x6F, BN6's code that no BN6 chip
+-- uses).
+-- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
+
+local controller = require("./controller")
+local recipe_django_ds = require("../django/chips").django_ds
+local recipe_django_sp = require("../django/chips").django_sp
+local recipe_gundels3 = require("../gundels/chips").gundels3
 
 return define.chip {
     id = "bn5:piledrvr",
@@ -15,4 +23,12 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "library" },
     slot_in_limit = 1,
+    -- BN5's recipes (written by tools/bn5/recipes.py): in the order of its full table (0x08027FC8); the netbattles'
+    -- table (0x0802801C) is that table but for its first 21, which only a battle with each side keeping its own
+    -- gauge tries.
+    program_advances = {
+        { order = 32, sequence = { recipe_gundels3, recipe_gundels3, recipe_django_sp } },
+        { order = 33, sequence = { recipe_gundels3, recipe_gundels3, recipe_django_ds } },
+    },
+    dimming = controller.hook,
 }

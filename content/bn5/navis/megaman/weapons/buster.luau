@@ -65,7 +65,7 @@ function bn5.setup(navi: Object): Action
     end
     local mode = "shot"
     -- MegaMan (navi 0, NaviStats +0x29) in his base form (+0x2C 0) in Hub Style (+0x4C): the spread.
-    if stats.navi.id == MEGAMAN and stats.form.kind == "base" and stats.hub_style ~= 0 then
+    if stats.navi.id == MEGAMAN and stats.form.base and stats.hub_style ~= 0 then
         program, mode = variants.hub, "spread"
     end
     local s = navi:action_state(buster.shot) :: { mode: string, projectile: ProjectileVariant? }

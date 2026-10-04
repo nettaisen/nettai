@@ -56,6 +56,17 @@ pub struct Setup {
     /// have none.
     #[serde(default)]
     pub ai_lists: Option<[String; 2]>,
+    /// Both consoles' emotion window glitches as their window's start reads
+    /// them (0x0813F650: with patch cards in the save's list the cards' flag
+    /// 0x10C4, else the NaviCust's 0x10C1). Older recordings have none.
+    #[serde(default)]
+    pub emotion_window_glitches: Option<[bool; 2]>,
+    /// Both consoles' RNG1 and Regular flags (BattleState+0x17), when the
+    /// other console's last capture was on the setup's frame.
+    #[serde(default)]
+    pub rng1s: Option<[u32; 2]>,
+    #[serde(default)]
+    pub regular_flags: Option<[u8; 2]>,
 }
 
 /// A player's computer-navi data block (0xE0 bytes, BN5's 0x02034C20 by
@@ -565,9 +576,9 @@ impl Round {
                 navi_level: None,
                 sp_times: Default::default(),
                 console: ConsoleSetup {
-                    rng: if side == local { self.setup.rng1 } else { 0 },
+                    rng: if side == local { self.setup.rng1 } else { self.setup.rng1s.map_or(0, |r| r[side as usize & 1]) },
                     tag_pair: None,
-                    emotion_window_glitch: false,
+                    emotion_window_glitch: self.setup.emotion_window_glitches.is_some_and(|g| g[side as usize & 1]),
                     frames,
                 },
                 ruleset: Some(ruleset),
@@ -683,9 +694,11 @@ fn battle_folder(content: &Content, compat: &Compat, b: &[u8], regular_pending: 
 /// form (BN5's souls are its forms, to come); the NaviCust's bugs and what
 /// it does to drops and encounters at BN6's offsets, the ones BN5's bugs'
 /// routine writes (0x08140054's: +0x12, +0x13, +0x14, +0x15, +0x16, +0x1A,
-/// +0x24, +0x26, +0x28, +0x31, +0x54; the rest of BN6's bug bytes, which
-/// only a battle's hits write, none at the start); what BN5 has none of
-/// (BN6's Beast Out counter, the sun, the version) none.
+/// +0x24, +0x26, +0x28, +0x31, +0x54) and the patch cards' (0x081382B8's:
+/// the HP drains, +0x18 and +0x19, and the chip recovery, +0x50; the rest of
+/// BN6's bug bytes, which only a battle's hits write, none at the start);
+/// what BN5 has none of (BN6's Beast Out counter, the sun, the version)
+/// none.
 pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<EngineNaviStats, String> {
     let navi_key = navi_key(s.navi).ok_or_else(|| format!("navi {:#04x} has no key", s.navi))?;
     let navi = content.defs.navi_by_key(&navi_key).ok_or_else(|| format!("the content has no {navi_key}"))?;
@@ -736,7 +749,7 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
         max_base_hp: s.max_base_hp,
         hp: s.hp,
         max_hp: s.max_hp,
-        chip_recovery: 0,
+        chip_recovery: u16::from_le_bytes([r[0x50], r[0x51]]),
         folder_tags: [[0xFF, 0xFF], [0xFF, 0xFF]],
         chip_shuffle: false,
         number_open: false,
@@ -757,6 +770,8 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
             buster_blanks: r[0x14],
             buster_charged: r[0x15],
             hit_status: r[0x16],
+            hp_drain: r[0x18],
+            custom_drain: r[0x19],
             battle_start: r[0x1A],
             emotion: r[0x24],
             processing: r[0x31],
@@ -959,6 +974,17 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
             return replay;
         }
     };
+    // The recording console's RNG1 (the trace's `rng1`), sampled after the
+    // battle's update and before the main loop's draw: the engine after
+    // frame N is the trace at N + 1. Draws the console makes after the
+    // sample (an emotion window's flicker, a camera shake's) make the two
+    // differ for a frame or a few, then agree again; a difference still
+    // there at the round's end is the model's, and stops the round at the
+    // frame it began; one that begins on the last frame compared (a flicker's
+    // draw as the recording ends) has no frame left to agree on, and is
+    // left.
+    let local = b.setup.local_side as usize & 1;
+    let mut rng1_since: Option<(u32, u32, u32)> = None;
     for i in 0..frames.len() {
         let (input, events) = round.tick_inputs(i, &frames);
         if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.tick(&input, events))) {
@@ -970,7 +996,23 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
             replay.stopped = Some(Stop::Differs { frame: frames[i].frame, differences });
             return replay;
         }
+        if let Some(next) = frames.get(i + 1) {
+            let engine = b.consoles[local].rng.state;
+            if engine == next.rng1 {
+                rng1_since = None;
+            } else if rng1_since.is_none() {
+                rng1_since = Some((frames[i].frame, engine, next.rng1));
+            }
+        }
         replay.matched += 1;
+    }
+    let last_compared = frames.len().checked_sub(2).map(|i| frames[i].frame);
+    if let Some((frame, engine, trace)) = rng1_since.filter(|&(frame, _, _)| Some(frame) != last_compared) {
+        let differences = vec![format!(
+            "rng1: the recording console's RNG1 differs from frame {frame} to the round's end (engine {engine:#010x}, trace {trace:#010x} at frame {})",
+            frame + 1
+        )];
+        replay.stopped = Some(Stop::Differs { frame, differences });
     }
     replay
 }

@@ -76,6 +76,7 @@ impl Extras for TestButtons {
 
     fn button_taken_back(&mut self, _: &mut Screen, _: ButtonHandle) {}
 
+    fn dealing(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut crate::console::Console) {}
     fn opened(&mut self, _: &mut Screen) {}
 
     fn confirmed(&mut self, _: &mut Screen, _: &mut BattleFolder) {}
@@ -141,7 +142,9 @@ impl Player {
     fn buttons(&self) -> TestButtons {
         let megaman = self.lib.changes_form(self.stats.navi);
         TestButtons {
-            scrap: megaman && self.lib.form_traits(self.stats.form).has(crate::content::FormTraits::SCRAP_BUTTON),
+            // (DustCross and DustCross Beast: BN6's cross system's
+            // `scrap_button`.)
+            scrap: megaman && matches!(self.stats.form.0, 0x0A | 0x16),
             redeal: megaman && self.stats.chip_shuffle,
         }
     }
