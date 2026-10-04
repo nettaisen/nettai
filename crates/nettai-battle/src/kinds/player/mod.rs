@@ -424,12 +424,12 @@ pub fn shows_face_variant(b: &Battle, side: u8) -> bool {
 }
 
 /// Presentation: the second set for the side's base form when its rules
-/// ask (`SideState::face_variant`: BN5's Hub Style, 0x0801AF8E's picture 11
+/// ask (`SideLooks::face_variant`: BN5's Hub Style, 0x0801AF8E's picture 11
 /// on, which a soul's face doesn't take). Part of the picture as it is
 /// picked.
 pub fn face_hub(b: &Battle, side: u8) -> bool {
     let Some(p) = b.player(side) else { return false };
-    b.sides[side as usize & 1].face_variant && form_of(b, p).base
+    b.looks[side as usize & 1].face_variant && form_of(b, p).base
 }
 
 /// Presentation: the second set while the side's navi's Chaos Unison charge

@@ -342,7 +342,7 @@ language = "en"
 "bn5:z-saver" = { name = "Z Saver", description = "Repliroid\nswrd cuts\n3 times" }
 
 [navis]
-"bn5:megaman" = { name = "MegaMan" }
+"bn5:megaman" = { name = "MegaMan", variant_name = "BCMegaMn" }
 
 [navicust-programs]
 "bn5:airshoes" = { name = "AirShoes" }
