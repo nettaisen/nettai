@@ -192,6 +192,7 @@ pub fn round_setup(stage: &str, stats: crate::setup::NaviStats) -> crate::setup:
     crate::setup::RoundSetup {
         content: *hash,
         settings: crate::setup::BattleSettings::on(content, content.stage_by_key(stage)),
+        ruleset: None,
         navi_stats: [stats; 2],
         rng: 1,
         local_side: 0,
@@ -313,10 +314,22 @@ const TEST_PACK: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/pack");
 /// The test content's own modules (its roles).
 const TEST_CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/content");
 
-/// The shared folder (content/common) as a root of `scripts`: what BN6's
-/// modules require by `@common/...`, for content that loads them.
+/// The support pack (content/exelib) in `scripts`: what BN6's modules
+/// require by `@exelib/...`, for content that loads them.
 pub fn add_shared(scripts: &mut Scripts) {
-    scripts.add_root(RootManifest::named(nettai_content_api::keys::SHARED), modules_under(COMMON));
+    scripts.add_support(EXELIB_PACK, modules_under(EXELIB));
+}
+
+/// A manifest for game `game`, whose modules `scripts` holds under its
+/// name, that loads every one of them (`Scripts::add_game`'s) and uses the
+/// support packs `scripts` holds: for tests that load a game's directory as
+/// it is.
+pub fn add_index(scripts: &mut Scripts, game: &str) {
+    let prefix = format!("{game}{}", nettai_content_api::keys::SEPARATOR);
+    let own: std::collections::BTreeMap<String, String> =
+        scripts.modules.iter().filter_map(|(name, source)| Some((name.strip_prefix(&prefix)?.to_string(), source.clone()))).collect();
+    let uses = scripts.packs.iter().filter(|p| p.kind == nettai_content_api::PackKind::Support).map(|p| p.id.clone()).collect();
+    scripts.set_manifest(Scripts::manifest_of(game, &own, uses));
 }
 
 /// Every `.luau` module under `dir`, by path without `.luau`.
@@ -350,6 +363,8 @@ pub fn with_test_pack() -> Content {
     for (path, source) in modules_under(TEST_PACK) {
         c.scripts.modules.insert(Scripts::name(ROOT, &format!("test/{path}")), source);
     }
+    // (Its index, written again for these modules.)
+    add_index(&mut c.scripts, ROOT);
     c.define().unwrap_or_else(|e| panic!("content error: {e}"));
     c
 }
@@ -375,8 +390,7 @@ fn make() -> Content {
         // (The navis and the base form are definitions:
         // testdata/content/navis/test.luau.)
         base_rules: rules(),
-        rules: Vec::new(),
-        ruleset_rules: Vec::new(),
+        rules: Default::default(),
         animations: animations(&assets),
         scripts: scripts(),
         assets,
@@ -977,9 +991,12 @@ fn navi_chip_assets(a: &mut nettai_content_api::PackIndex) {
 /// Where the BN6 scripts are (the source overlay in this repository).
 const OVERLAY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
 
-/// The behavior BN5 and BN6 share (content/common), which BN6's modules
-/// require by `@common/...`: a root of its own beside the test content's.
-const COMMON: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/common");
+/// The behavior BN5 and BN6 share (content/exelib), which BN6's modules
+/// require by `@exelib/...`: a support pack beside the test content.
+const EXELIB: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/exelib");
+
+/// The support pack's name.
+pub const EXELIB_PACK: &str = "exelib";
 
 /// The test content's scripts: its own modules (testdata/content), these
 /// modules of the BN6 overlay, and whatever they `require` of it.
@@ -1421,7 +1438,7 @@ pub fn scripts() -> Scripts {
             let mut all: std::collections::BTreeMap<String, String> =
                 modules.map(|(to, from)| (to, read(&from))).chain(own).collect();
             // What they require of the overlay comes with them (what they
-            // require of content/common is its root's).
+            // require of content/exelib is the support pack's).
             let mut pending: Vec<String> = all.keys().cloned().collect();
             while let Some(module) = pending.pop() {
                 for required in requires(&module, &all[&module]) {
@@ -1431,8 +1448,9 @@ pub fn scripts() -> Scripts {
                     }
                 }
             }
-            let mut scripts = Scripts::root(RootManifest::named(ROOT), all);
+            let mut scripts = Scripts::default();
             add_shared(&mut scripts);
+            scripts.add_game(ROOT, all);
             scripts
         })
         .clone()
@@ -1440,7 +1458,7 @@ pub fn scripts() -> Scripts {
 
 /// The modules `source` (the module `module`) requires: each
 /// `require("<relative path>")`, as a module path. (A require of another
-/// folder, `@common/...`, is that folder's.)
+/// pack, `@exelib/...`, is that pack's.)
 fn requires(module: &str, source: &str) -> Vec<String> {
     let dir: Vec<&str> = module.split('/').collect();
     let dir = &dir[..dir.len() - 1];

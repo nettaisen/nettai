@@ -11,8 +11,8 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
-local slot = require("@common/slot")
+local regions = require("@exelib/regions")
+local slot = require("@exelib/slot")
 local sparks = require("../../lib/sparks")
 local status = require("../../rules/status")
 local trajectory = require("../../lib/trajectory")

@@ -10,12 +10,12 @@
 --   Reflect program's (subtype 4: a hit it guards from the front is fired back as the charged shot's projectile, 20
 --   pixels up), 50 damage;
 -- - AntiDmg (`megaman/anti-damage`, routine 0x21, 0x0800F938): its stance (action 0x3D, BN6's code:
---   @common/navicust/anti-damage), 50 damage.
+--   @exelib/navicust/anti-damage), 50 damage.
 --
 -- The guards hold 20 ticks (their params words' first byte: 0x214, 0x114) in the Shield program's look (row 2) or the
 -- Reflect program's (row 1); the navi's chips wait 40 ticks after them, 70 after AntiDmg's stance.
 
-local anti_damage = require("@common/navicust/anti-damage")
+local anti_damage = require("@exelib/navicust/anti-damage")
 local guard = require("../../../lib/guard/guard")
 
 local guards = {}

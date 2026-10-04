@@ -1,12 +1,12 @@
 --!strict
 -- BN5's MoonBlds (action 0x53, 0x080EF78A: BN5's own action, BN6's MoonBld swing, `sub_80EE2A0`, with BN5's Katana
--- step): the navi spins once with a blade (the shared moon blade, @common/moonbld/blade: BN5's attack object #0x69,
+-- step): the navi spins once with a blade (the shared moon blade, @exelib/moonbld/blade: BN5's attack object #0x69,
 -- 0x080D31C4, in BN5's sprite and collision rows) that sweeps the eight panels around it from the swing's fourth
 -- tick, a slash of the chip's damage with bug 0x18. A charged MoonBld steps first and back after (lib/stepsword),
 -- marked moving from the step until the action ends, and leaves an afterimage on the swing's sixth tick.
 
 local collision = require("../../rules/collision")
-local common = require("@common/moonbld/blade")
+local common = require("@exelib/moonbld/blade")
 local stepsword = require("../../lib/stepsword")
 
 local moonbld = {}
@@ -35,7 +35,7 @@ local SOUND = asset.sound("bn5:spin")
 -- The swing's ticks, the tick (timer value) a charged swing leaves its afterimage, and the one the blade comes out.
 local SWING_TICKS, AFTERIMAGE_AT, BLADE_AT = 0x15, 0x10, 0x12
 -- The swing routine's address (with the Thumb bit), which the phase's dispatch leaves in a register: the blade's
--- spawner leaves it in the blade's X and its low byte in its panel Y (@common/moonbld/blade).
+-- spawner leaves it in the blade's X and its low byte in its panel Y (@exelib/moonbld/blade).
 local SWING_ROUTINE = 0x080EF87F
 
 local function set_step(me: Object, step: number)

@@ -6,7 +6,7 @@
 -- recovery. Each chip composes its own (`action { dragon = ... }`).
 
 local head = require("./head")
-local panels = require("@common/panels")
+local panels = require("@exelib/panels")
 
 local action = {}
 

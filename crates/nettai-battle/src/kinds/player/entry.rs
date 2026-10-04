@@ -90,7 +90,7 @@ const ARRIVE_LOOK: EffectRole = EffectRole::Deletion;
 
 /// An effect that runs while paused.
 fn flash(b: &mut Battle, pos: crate::object::Vec3, look: EffectRole) {
-    let look = b.arena_roles().effect(look);
+    let look = b.roles().effect(look);
     if let Some(e) = crate::kinds::effect::spawn(b, pos, look, 0, 0, 0) {
         b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
     }

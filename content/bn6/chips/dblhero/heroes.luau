@@ -7,19 +7,19 @@
 -- slashes hit nothing); MegaMan gives the user back once ProtoMan is gone.
 -- MegaMan shares the user's actor data, so his buster arm is the user's.
 
-local stand_in = require("@common/dimming/stand_in")
+local stand_in = require("@exelib/dimming/stand_in")
 local attachment = require("../../objects/attachment/attachment")
 local buster = require("../../lib/buster")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local parts = require("../../lib/swords/parts")
 local protoman = require("../../navis/protoman/navi")
 
 local heroes = {}
 
 export type State = {
-    -- The chip's controller (@common/dimming/stand_in; none for ProtoMan).
+    -- The chip's controller (@exelib/dimming/stand_in; none for ProtoMan).
     controller: Object?,
     -- ProtoMan (Param1 1), else MegaMan's copy.
     protoman: boolean,

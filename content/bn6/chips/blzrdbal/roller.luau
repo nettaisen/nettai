@@ -1,10 +1,10 @@
 --!strict
 -- The snowball's roller (the original's attack object #0xB7, `sub_80DC260`):
--- the shared roller (@common/blzrdbal/roller), BN6's kind: what it is and
+-- the shared roller (@exelib/blzrdbal/roller), BN6's kind: what it is and
 -- reaches (rows 0x58 and 0x49), every attack, object and body of either
 -- side; hit modifier 0, no spark.
 
-local common = require("@common/blzrdbal/roller")
+local common = require("@exelib/blzrdbal/roller")
 
 local roller = {}
 

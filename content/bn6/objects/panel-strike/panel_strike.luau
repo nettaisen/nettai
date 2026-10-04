@@ -13,7 +13,7 @@
 -- §3.6.33.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
 local panel_strike = {}

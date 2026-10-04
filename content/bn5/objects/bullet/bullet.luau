@@ -1,5 +1,5 @@
 --!strict
--- BN5's bullet (attack object 0x12, 0x080C6B98): the shared bullet (@common/bullet/bullet, BN6's code) but for its
+-- BN5's bullet (attack object 0x12, 0x080C6B98): the shared bullet (@exelib/bullet/bullet, BN6's code) but for its
 -- collision types. It probes as BN5's row 0 (nothing; BN6's row 0x3D) and bursts as BN5's rows 4 and 5 (0x080C6BEC,
 -- 0x080C6D10). Its burst sets no status (BN6's `sub_80C6AB8` gives the variant's): BN5's variants have none. BN5 sets
 -- the collision's element to the whole element byte where BN6 splits it (no secondary elements: the same for BN5's
@@ -7,8 +7,8 @@
 -- effects BN6's: SuprVulc's BN5's effect 0x3D, BN6's 0x6A, the same row of the effect table).
 
 local collision = require("../../rules/collision")
-local common = require("@common/bullet/bullet")
-local regions = require("@common/regions")
+local common = require("@exelib/bullet/bullet")
+local regions = require("@exelib/regions")
 
 local bullet = {}
 

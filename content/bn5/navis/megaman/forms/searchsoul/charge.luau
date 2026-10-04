@@ -6,8 +6,8 @@
 -- recovery. With no enemy navi to find it goes straight to the recovery.
 
 local collision = require("../../../../rules/collision")
-local panels = require("@common/panels")
-local regions = require("@common/regions")
+local panels = require("@exelib/panels")
+local regions = require("@exelib/regions")
 local sparks = require("../../../../lib/sparks")
 
 local charge = {}

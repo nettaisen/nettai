@@ -668,6 +668,101 @@ from the definition. Its name is the locales' (`[patch-cards]`).
 
 ## 4. Folder layout
 
+### 4.0 Packs
+
+The user, after R5 (below): "okay actually i do want packs again. i also don't want to be able to load things
+cross-game, bn5 stays in bn5 and bn6 stays in bn6 and no mixing and matching is allowed. common should be renamed exelib
+(to align with the bn->exe change) and be a support pack as opposed to a game pack. you are either playing bn5 or bn6,
+the arena configuration determines everything"; on what a pack imports, "don't allow games to import from other game
+packs, games can only import from support and support can import from support, but support and games can't import from
+games"; and on the declaration, "okay instead of init.luau it should be manifest.toml".
+
+```text
+content/
+  bn6/, bn5/                          the game packs: what a match plays
+    manifest.toml                     the pack (below)
+    **/*.luau                         its scripts (the layout below, §4.1)
+    types.d.luau                      its own declarations
+    locales/<language>.toml           its display text by id
+    compat/                           the original's numbers: tools' data (§6), not loaded
+  exelib/                             the support pack: behavior the games share
+    manifest.toml                     id = "exelib", kind = "support"
+    **/*.luau, types.d.luau           makers that take the game's ids and looks; the types they share
+  nettai/core.d.luau                  the engine's API declarations
+```
+
+A manifest (`nettai_content_api::packs::PackManifest`):
+
+```toml
+id = "bn6"
+kind = "game"          # or "support"
+uses = ["exelib"]      # the support packs it requires from
+
+[definitions]          # its modules, by path in the pack
+rules = ["rules/banners", "rules/ruleset", ...]
+chips = ["chips/airshot/chip", "chips/cannon/chips", ...]
+navis = [...]
+forms = [...]
+stages = [...]
+patch_cards = [...]
+navicust = [...]
+also = ["lib/instant/repair", ...]
+unported = ["chips/x/chip", ...]
+```
+
+- **Kinds.** A game pack is what a match plays. A support pack defines nothing a game lists (no chips, navis, forms,
+  stages, patch cards, NaviCust programs, rulesets, roles or rule sections), names no asset (the content check's
+  lint) and has no strings: its makers take the game's ids and looks. A support pack's manifest has no
+  `[definitions]`.
+- **What a pack requires.** `uses` names the support packs a pack requires from; a support pack uses only support
+  packs, without cycles (refused with the chain named).
+
+  | A pack of kind | may require |
+  |---|---|
+  | game | itself, and the support packs in its `uses` |
+  | support | itself, and the support packs in its `uses` |
+
+  No pack requires a game pack but itself, and a relative path never leaves its pack. The loader
+  (`nettai_content::index::follow`), the runtime's `require` (`nettai_luau::Pack::with_packs`) and the content check
+  refuse anything else, naming the module and the require (`packs::check_require`).
+- **The definitions.** A game pack's lists name, by registry, the modules that define what a person picks or a
+  ruleset names: `rules` (the stock ruleset, its roles, its rule sections), `chips`, `navis`, `forms`, `stages`,
+  `patch_cards`, `navicust`. A series module stands for its chips. Weapons, kinds, actions and the rest come in
+  through requires. `also` loads a module that defines something nothing listed requires (BN6's alias buster
+  routines, an effect or a kind the original's tables number, which compat names). `unported` names the chips the
+  game defines without a use yet, which don't load.
+- **The manifest is the whole truth.** The define phase refuses a definition of these registries whose module its
+  game pack's manifest doesn't list in its registry's list, a listed module that defines none of its list's, a
+  listed module that isn't there, and a support pack's definition of any of them.
+- **One game a match** (P3). A content is one game pack and the support packs it uses: `Content::define` refuses two
+  game packs, and every lookup sees only the loaded game's definitions. `nettai_content::pack::games` lists the game
+  packs, each with its asset pack, and `load_game` loads one.
+- **Loading** (`nettai_content::index::read`). The loader reads the manifests of the games it loads and the support
+  packs they use. The load order is the support packs, each after those it uses, then the games. It reads each
+  listed module (not the unported) and what those require, and scans nothing. The games are the packs whose
+  manifest says `kind = "game"` (`packs::games`). The content, and its hash, is what loaded. A game whose asset pack
+  isn't found isn't loaded.
+- **Declarations, by pack** (`packs::declarations`). A pack's modules check against the engine's declarations, then
+  those of the support packs it uses (in load order), then its own. No pack sees another game's types. A game's type
+  that another pack's code names is the support pack's: packs.py moved 51 of BN6's 105 to exelib/types.d.luau. The
+  engine's patch card spec takes `effects: { any }`, since each game types its own effects (BN6's
+  `PatchCardEffect`). Luau's .luaurc has no field for definition files.
+- **Names.** A module's name is its pack and its path in it (`bn6:chips/cannon/chips`, `exelib:swords/slash`).
+  Anonymous definitions keep keys of that spelling (`exelib:regions#57`). Ids and asset names are written in full,
+  for now.
+- **The modules keep `define.*`.** A manifest only says which load and which are the game's.
+- **Kept up by scripts** in the verification workspace:
+  - tools/content/index.py writes each manifest's lists from the pack's modules, by `define.<registry>`. A chip
+    naming no use is unported, and so, in turn, is a chip that requires an unported chip's module.
+  - gen_content.py runs index.py after writing, and layout.py's moves keep the lists right.
+  - tools/content/packs.py is the porters' migration. It renames common to exelib, removes R5's layout, writes the
+    manifests, moves the shared types, and lists the cross-game requires that are left.
+  - A porter merges main, runs `tools/content/packs.py <checkout>`, then builds and tests.
+
+R5 (2026-10-03, never merged) had made content/ one namespace with explicit indices: content/bn6/init.luau and a
+root content/init.luau. The user asked for packs instead. Packs keep R5's lists and their whole-truth check, `also`,
+the loader that follows requires, and index.py.
+
 ### 4.1 The rules
 
 ```text
@@ -729,7 +824,7 @@ Cross merge is rules/forms'; a kind with a natural owner and borrowers to the ow
 InfVulcs borrow; DrilArm's drill, DarkDril's too; CrakBom's bomb, ParaBom's and ResetBom's too). objects/ keeps
 what several families share (attachment, bullet, flying-shot, panel-bursts, panel-changer, projectile,
 rising-bubble) and the six held above: 13 folders from 53, and chips/ 221 folders from 333 (53 series files for
-165 chips; 168 chips in their own folders, 68 of them waiting for a use). content/common needed no change: its
+165 chips; 168 chips in their own folders, 68 of them waiting for a use). content/exelib needed no change: its
 folders are already named by BN6's owners and families (common/vulcan, common/bombs), and it defines nothing.
 
 ### 4.2 Every current `objects/` entry
@@ -1813,7 +1908,7 @@ entry reaches the rock's `actor_list_entry` by its type number, and the other ty
   `set_state_variant`; `eaten`; `telop_chip`), and the support's out flag (the original's second parameter,
   which the support sets and clears) is the controller's `out`. Rush leaves the second WhiCapsl in the hand by
   its chip number still (that chip is a record, §5.4): the one chip number left in these modules. (Since BN5's
-  supports, the code is content/common/supports, made of each game's look: BN6's lib/supports and BN5's make them,
+  supports, the code is content/exelib/supports, made of each game's look: BN6's lib/supports and BN5's make them,
   Rush's spared chip BN6's look's; docs/design/bn5-map.md §15.15.)
 - **SlashCross's sword wave** (navis/megaman/forms/slashcross/sword_wave): its rows (`byte_80D7F4C`) are
   `SwordWaveVariant` records, `sword_wave.spawn(owner, variant, x, y, element, damage, hidden?)`, named by the
@@ -2004,8 +2099,8 @@ resolved against `Content::names`; netplay peers exchange handles once their con
 
 1. A fresh sandboxed VM (`sandbox::new_vm`), with `define`, `asset` and `require` installed before
    `lua.sandbox(true)`.
-2. Every `.luau` module of the pack, in path order, loaded as `require` loads it today (compile, `verify::check`,
-   run once, deep freeze). Order doesn't matter: a module loads once, when first required or reached.
+2. The packs' listed modules, in load order, and what they require, loaded as `require` loads a module (compile,
+   `verify::check`, run once, deep freeze): a module loads once, when first required (§4.0).
 3. Each definer records `(registry, defining module, ordinal, spec table)` and returns the spec with its
    registry's metatable. Definers and `asset` fail once loading ends.
 4. Keys (§2.2): explicit ids; derived keys for anonymous definitions nested in a keyed definition of the same
@@ -2104,25 +2199,17 @@ are in this design: builders put their parameters in `args` (a captured-only par
 key), and derived keys are claimed only within the defining module (a library's shared state table otherwise took
 the first chip's key).
 
-**Partial loading: an unported chip is skipped.** Every chip is a definition with its own use (§4.2), and the
-define phase refuses a chip without one. A game being ported (BN5's content/bn5) defines every chip's record
-first, from its ROM, and gives each its use as the port writes it; meanwhile its folder must still load. The
-loaders (`nettai_content::pack`: the frontend's and the editor's `load_found`, the tools' `load_battle`, which
-netplay, the match checks and the verification harness read through) apply one rule to every content folder
-before the define phase, `Root::leave_out_unported`:
+**Partial loading: an unported chip isn't listed.** Every chip is a definition with its own use (§4.2), and the
+define phase refuses a chip without one. A game being ported (BN5) defines every chip's record first, from its
+ROM, and gives each its use as the port writes it. Meanwhile its index lists the chip under `unported` (§4.0), and
+nothing loads it. tools/content/index.py moves a chip there or back by the rule the loaders once applied:
 
-- a chip whose module (`chips/<key>/chip.luau`) names none of `action`, `dimming`, `navi` and `instant` is left
-  out, with every module of its folder;
-- so is every chip folder one of whose modules requires a module left out (a Program Advance naming an unported
-  ingredient, a chip that borrows an unported chip's module), in turn;
-- one warning lists every chip left out (`3 of bn5's chips have no use yet (or need one's module) and are left
-  out: bn5:airspin1, ...`).
+- a chip whose module (`chips/<key>/chip.luau`) names none of `action`, `dimming`, `navi` and `instant` is unported;
+- so, in turn, is every chip folder one of whose modules requires a module of an unported chip's folder (a Program
+  Advance naming an unported ingredient, a chip that borrows an unported chip's module).
 
-Anything else that requires a left-out module (a rule section, a library that defines a kind) still stops the
-define phase, which says so, and the folder is left out whole with its reason, as any other error leaves it. The
-content is then exactly what loaded: its scripts hold none of the modules left out, so the content hash (a round
-setup's, netplay's handshake) covers what both peers loaded, and two peers with the same content agree. The rule
-names no game: a BN6 chip without a use would be left out the same way (none is).
+The content is then exactly what the indices reach, so the content hash (a round setup's, netplay's handshake)
+covers what both peers loaded, and two peers with the same content agree.
 
 ### 7.4 Roles
 
