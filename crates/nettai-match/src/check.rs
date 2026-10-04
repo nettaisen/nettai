@@ -52,7 +52,8 @@ pub fn check_arena(content: &Content, a: &Arena) -> Vec<String> {
     if !games.contains(&a.game) {
         return vec![format!("no game {:?} (the content's are {})", a.game, games.join(", "))];
     }
-    if a.ruleset.index() >= content.defs.rulesets.len() || !ids::in_game(&a.game, &content.defs.ruleset(a.ruleset).key) {
+    // (A game has one ruleset: the arena's handle is its, until the arena holds none.)
+    if content.defs.ruleset().is_none() || a.ruleset.index() != 0 {
         out.push(format!("a ruleset {} hasn't", a.game));
         return out;
     }

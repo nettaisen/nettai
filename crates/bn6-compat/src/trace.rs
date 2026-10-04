@@ -371,7 +371,6 @@ impl Round {
             settings: codec::battle_settings_of(self.console_game(), &unhex(&self.setup.settings), &ids),
             // BN6's stock rules; its systems' setups say what the save
             // unlocks.
-            ruleset: None,
             navi_stats: [stats(0), stats(1)],
             rng: self.setup.rng2,
             local_side: bs[0x0D],
@@ -511,11 +510,11 @@ impl Round {
             navicust: None,
             tactics: Default::default(),
         };
-        unlocks.write(ids.content, None, &mut player).unwrap_or_else(|e| panic!("the save's unlocks: {e}"));
+        unlocks.write(ids.content, &mut player).unwrap_or_else(|e| panic!("the save's unlocks: {e}"));
         // The bug frags: the dark-chips system's (its setup's `bug_frags`).
         let frags = self.setup.bug_frags.map_or(RECORDED_BUG_FRAGS, |f| f[side as usize]);
         player
-            .set_fact(ids.content, None, "bug_frags", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(frags as i64))])
+            .set_fact(ids.content, "bug_frags", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(frags as i64))])
             .unwrap_or_else(|e| panic!("the save's bug frags: {e}"));
         player
     }

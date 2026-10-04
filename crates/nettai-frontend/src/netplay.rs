@@ -179,7 +179,7 @@ pub fn netplay_setup(content: &Content, seed: u32, offers: &[Offer; 2]) -> Resul
         return Err(format!("the host plays {}, the joiner {}: a match is of one game", host.game, join.game));
     }
     if host.ruleset != join.ruleset {
-        let name = |r: RulesetHandle| ids::local(&content.defs.ruleset(r).key).to_string();
+        let name = |r: RulesetHandle| format!("ruleset {}", r.0);
         return Err(format!(
             "the host plays by the {} rules, the joiner by the {}: a match has one ruleset (each player's match file names it)",
             name(host.ruleset),

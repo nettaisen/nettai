@@ -263,10 +263,8 @@ pub fn resolve(content: &Content, f: &MatchFile) -> Result<Match, Vec<String>> {
 pub fn resolve_ruleset(content: &Content, game: &str, name: Option<&str>, problems: &mut Vec<String>) -> Option<nettai_content_api::RulesetHandle> {
     let found = match name {
         None => crate::stock_ruleset(content, game).map_err(|e| vec![e]),
-        Some(n) => ids::ruleset(content, game, n).ok_or_else(|| {
-            let have = names_in(game, content.defs.rulesets.iter().map(|r| r.key.as_str()));
-            vec![unknown("ruleset", n, game, &have)]
-        }),
+        // (A game has one ruleset, with no name: a file names none.)
+        Some(n) => ids::ruleset(content, game, n).ok_or_else(|| vec![format!("ruleset {n:?}: {game} has one ruleset, which a match file doesn't name")]),
     };
     found.map_err(|e| problems.extend(e)).ok()
 }
@@ -585,8 +583,8 @@ pub fn arena_file(content: &Content, a: &Arena) -> ArenaFile {
 }
 
 /// The name a file gives `game`'s `ruleset`: none for the game's stock one.
-pub fn ruleset_name(content: &Content, game: &str, ruleset: nettai_content_api::RulesetHandle) -> Option<String> {
-    (crate::stock_ruleset(content, game).ok() != Some(ruleset)).then(|| ids::local(&content.defs.ruleset(ruleset).key).to_string())
+pub fn ruleset_name(_content: &Content, _game: &str, _ruleset: nettai_content_api::RulesetHandle) -> Option<String> {
+    None
 }
 
 /// A match as a file.

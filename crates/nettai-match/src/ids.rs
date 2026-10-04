@@ -43,8 +43,9 @@ pub fn navi(content: &Content, game: &str, name: &str) -> Option<NaviHandle> {
     key(content, game, name).and_then(|k| content.defs.navi_by_key(k))
 }
 
-pub fn ruleset(content: &Content, game: &str, name: &str) -> Option<RulesetHandle> {
-    key(content, game, name).and_then(|k| content.defs.ruleset_by_key(k))
+/// (A game has one ruleset, which has no name: none is found by one.)
+pub fn ruleset(_content: &Content, _game: &str, _name: &str) -> Option<RulesetHandle> {
+    None
 }
 
 pub fn form(content: &Content, game: &str, name: &str) -> Option<FormHandle> {
@@ -85,7 +86,7 @@ pub fn backgrounds<'c>(content: &'c Content, game: &str) -> Vec<&'c str> {
 /// ruleset and a link battle stage (a content holds one game).
 pub fn games(content: &Content) -> Vec<String> {
     let game = content.game();
-    let playable = content.defs.stock_ruleset().is_some() && !crate::link_battle_stages(content, game).is_empty();
+    let playable = content.defs.ruleset().is_some() && !crate::link_battle_stages(content, game).is_empty();
     if playable { vec![game.to_string()] } else { Vec::new() }
 }
 

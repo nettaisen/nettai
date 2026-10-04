@@ -118,18 +118,11 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
     let games: Vec<Choice<String>> =
         e.games.iter().map(|g| Choice { label: game_label(g), value: g.clone() }).collect();
     let picked = games.iter().find(|g| g.value == game).cloned();
-    let rulesets: Vec<Choice<_>> = (0..c.defs.rulesets.len() as u16)
-        .map(nettai_content_api::RulesetHandle)
-        .filter(|&r| nettai_match::ids::in_game(game, &c.defs.ruleset(r).key))
-        .map(|r| {
-            let d = c.defs.ruleset(r);
-            let name = nettai_match::ids::local(&d.key);
-            // (The stock rules said so, unless their name says it.)
-            Choice { label: if d.stock && name != "stock" { format!("{name} (stock)") } else { name.to_string() }, value: r }
-        })
-        .collect();
+    // (A game has one ruleset: the picker holds it alone, until it goes.)
+    let rulesets: Vec<Choice<_>> =
+        c.defs.ruleset().into_iter().map(|_| Choice { label: format!("{game}'s rules"), value: nettai_content_api::RulesetHandle(0) }).collect();
     let ruleset = rulesets.iter().find(|r| r.value == m.arena.ruleset).cloned();
-    let systems: Vec<&str> = c.defs.ruleset(m.arena.ruleset).systems.iter().map(|&h| nettai_match::ids::local(&c.defs.system(h).key)).collect();
+    let systems: Vec<&str> = c.defs.ruleset_systems().iter().map(|&h| nettai_match::ids::local(&c.defs.system(h).key)).collect();
     let stage_label = |s: nettai_content_api::StageHandle| nettai_match::ids::local(&c.defs.stage(s).key).to_string();
     let stages: Vec<Choice<_>> =
         nettai_match::link_battle_stages(c, game).into_iter().map(|s| Choice { label: stage_label(s), value: s }).collect();
