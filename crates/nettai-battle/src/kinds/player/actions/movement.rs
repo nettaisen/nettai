@@ -349,7 +349,8 @@ pub(crate) fn panel_trail(b: &mut Battle, r: ObjectRef, from: PanelPos) {
             b.crack_panel(from.x, from.y);
         }
         _ => {
-            let Some(&t) = PanelType::ALL.get(kind as usize) else {
+            // (By the game's panel numbers: BN5's own, its panels section's.)
+            let Some(t) = b.arena_rules().panels.numbered(kind) else {
                 panic!("panel-trail kind {kind:#x} is past the panel types (sub_8013CC4)");
             };
             b.set_panel_type(from.x, from.y, t);

@@ -17,6 +17,7 @@ local attachment = require("../objects/attachment/attachment")
 local collision = require("../rules/collision")
 local slash = require("@common/swords/slash")
 local sonic_boom = require("@common/swords/sonic_boom")
+local stepsword = require("./stepsword")
 
 local swords = {}
 
@@ -74,9 +75,19 @@ swords.sonic_boom = sonic_boom.make_kind("bn5:sonic-boom", {
     hits = collision.hits_navis,
 })
 
--- A chip's slash (@common/swords/slash), its blade BN5's attachment.
+-- BN5's sword step (0x080EBD04: by the attack's charge, as its Katanas and MoonBlds take it, lib/stepsword): a
+-- charged slash steps two panels ahead, or in ShadowSoul (and by a charge of 2) behind the enemy, turned round.
+local STEPS: SlashSteps = {
+    steps = function(me: Object): boolean
+        return me.charged ~= 0
+    end,
+    kind = stepsword.kind,
+    warp_target = stepsword.behind_enemy,
+}
+
+-- A chip's slash (@common/swords/slash), its blade BN5's attachment, its step BN5's.
 function swords.slash(spec: SlashSpec): Action
-    return slash.action(spec, attachment.kind)
+    return slash.action(spec, attachment.kind, { steps = STEPS })
 end
 
 -- AntiSwrd's counter (the original's navi action 0x48: @common/antiswrd/counter) with BN5's blade and booms; its

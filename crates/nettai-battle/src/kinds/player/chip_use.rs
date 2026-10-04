@@ -7,6 +7,7 @@ use super::{Emotion, ai, ai_mut, emotion, flag1, form_of, navi_of, navi_record, 
 use crate::actor::{ActorType, AttackVars, request};
 use crate::battle::Battle;
 use crate::collision::f1;
+use crate::field::PanelType;
 use crate::content::{ChipData, ChipFamily, ChipFlags, ChipTraits, Content};
 use crate::object::{ObjectRef, PanelPos, Vec3};
 use nettai_content_api::{ChipHandle, WeaponHandle};
@@ -41,7 +42,7 @@ pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
     if requested & request::CHARGED_CHIP != 0 {
         // The form's A-charge routine decides what the charged chip does;
         // for the Null family the attack's chip id is cleared.
-        let chip = hand_entry(b, r).chip;
+        let chip = hand_entry(b, r, 0).chip;
         let null = super::null_family(b, r, chip);
         let routine = if null {
             ai_mut(b, r).attack.chip = None;
@@ -103,7 +104,7 @@ fn chip_used(b: &mut Battle, r: ObjectRef, weapon: Option<WeaponHandle>) {
 /// starting its action (inside the wrapper again). Not the chips with the `no_chain` trait
 /// (the variable swords), dimming chips, or an empty hand. True if it did.
 pub(crate) fn chain_next_chip(b: &mut Battle, r: ObjectRef) -> bool {
-    let Some(chip) = hand_entry(b, r).chip else { return false };
+    let Some(chip) = hand_entry(b, r, 0).chip else { return false };
     if b.content.chip(chip).traits.has(ChipTraits::NO_CHAIN) {
         return false;
     }
@@ -127,36 +128,41 @@ struct HandEntry {
     /// Modifier flags folded into the entry (bit 1 paralyze, bit 2
     /// uninstall).
     modifiers: u8,
+    /// The type of panel the bonus came from, which the use turns Normal
+    /// (the navi's `panel_bonus`: BN5's sea, 0x0800D0A6's bonus kind 4).
+    spends: Option<PanelType>,
 }
 
-/// `sub_800EDD0`: a player's next chip from its side's hand; anything else
-/// uses the chip it carries, with no damage, no bonus, and as modifiers the
-/// low byte the caller left in r4 (`sub_800FB54`'s chip requests).
-fn hand_entry(b: &Battle, r: ObjectRef) -> HandEntry {
+/// `sub_800EDD0(charge)`: a player's next chip from its side's hand;
+/// anything else uses the chip it carries, with no damage, no bonus, and as
+/// modifiers the low byte the caller left in r4 (`sub_800FB54`'s chip
+/// requests).
+fn hand_entry(b: &Battle, r: ObjectRef, charge: u8) -> HandEntry {
     let o = b.objects.get(r);
     if navi_record(b, r).actor_type != ActorType::Player {
         let requests = ai(b, r).requests & (request::CHIP | request::CHARGED_CHIP);
-        return HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: requests as u8 };
+        return HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: requests as u8, spends: None };
     }
     let hand = &b.hands[o.alliance as usize];
     let i = hand.cursor as usize;
     let chip = hand.ids[i];
-    let extra = hand.attack_bonus[i].wrapping_add(chip_bonus(b, r, chip)).wrapping_add(hand.charge_bonus[i]);
-    HandEntry { chip, damage: hand.damage[i], extra, modifiers: hand.modifiers[i] }
+    let (bonus, spends) = chip_bonus(b, r, chip, charge);
+    let extra = hand.attack_bonus[i].wrapping_add(bonus).wrapping_add(hand.charge_bonus[i]);
+    HandEntry { chip, damage: hand.damage[i], extra, modifiers: hand.modifiers[i], spends }
 }
 
 /// What the chip window shows after the next chip's damage (the bonus
-/// `sub_800ED90` returns): the hand's bonuses on it and the navi's own for
-/// it (presentation).
+/// `sub_800ED90` returns, for an uncharged use): the hand's bonuses on it
+/// and the navi's own for it (presentation).
 pub fn next_chip_bonus(b: &Battle, r: ObjectRef) -> u16 {
-    hand_entry(b, r).extra
+    hand_entry(b, r, 0).extra
 }
 
 /// Whether the chip window marks the next chip "x2" (`sub_8012A38` as the
 /// window asks it, with no charge: Full Synchro, anger, Beast Over's Null
 /// chips; presentation).
 pub fn next_chip_doubles(b: &Battle, r: ObjectRef) -> bool {
-    let e = hand_entry(b, r);
+    let e = hand_entry(b, r, 0);
     double_damage(b, r, e.chip, e.damage, 0).1.is_some()
 }
 
@@ -203,7 +209,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     if slot_in {
         ai_mut(b, r).attack.special_source = 1;
     }
-    let mut e = if slot_in { slot_in_entry(b, r) } else { hand_entry(b, r) };
+    let mut e = if slot_in { slot_in_entry(b, r) } else { hand_entry(b, r, charge) };
     if let Some(sub) = dark_substitute(b, r, e.chip) {
         e = sub;
     }
@@ -241,7 +247,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
         }
         Some(Boost::Grass) => {
             let p = b.objects.get(r).panel;
-            b.set_panel_type(p.x, p.y, crate::field::PanelType::Normal);
+            b.set_panel_type(p.x, p.y, PanelType::Normal);
             b.sound(BONUS_SOUND);
         }
         Some(Boost::Cross | Boost::NullDoubled) | None => {}
@@ -268,13 +274,29 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     // bug).
     let used = b.content.chip_or_zeroed(b.games.arena, e.chip);
     b.systems_chip_prepared(side, r, used);
-    // BN5's 0x080100E6: the side's rules may refuse the chip (its light and
-    // dark system, 0x08010118). The navi then uses the chip they give
-    // instead (BN5's 0x185, its variant 3 and no parameters, the rest of
-    // the attack as prepared: its lockout is still the refused chip's).
-    if let Some(instead) = b.systems_chip_check(side, r, e.chip) {
+    // BN5's 0x08010030 and 0x080100E6: the side's rules may refuse the
+    // chip, before the bonus's panel is spent (`chip_cost`: its light and
+    // dark system's dark chips) or after (`chip_check`: its chips for the
+    // other kind of MegaMan, 0x08010118). The navi then uses the chip they
+    // give instead (BN5's 0x185, its variant 3 and no parameters, the rest
+    // of the attack as prepared: its lockout is still the refused chip's).
+    let refuse = |b: &mut Battle, instead: ChipHandle| {
         ai_mut(b, r).attack.chip = Some(instead);
-        return charged_action(b, r, charge).unwrap_or_else(|| chip_action(b, r, Some(instead)));
+        charged_action(b, r, charge).unwrap_or_else(|| chip_action(b, r, Some(instead)))
+    };
+    if let Some(instead) = b.systems_chip_cost(side, r, e.chip) {
+        return refuse(b, instead);
+    }
+    // BN5's 0x080100B0: the panel the bonus came from turns Normal, if the
+    // navi still stands on that type.
+    if let Some(kind) = e.spends {
+        let p = b.objects.get(r).panel;
+        if b.field.panel(p.x, p.y).is_some_and(|panel| panel.kind == kind) {
+            b.set_panel_type(p.x, p.y, PanelType::Normal);
+        }
+    }
+    if let Some(instead) = b.systems_chip_check(side, r, e.chip) {
+        return refuse(b, instead);
     }
     front_guard(b, r, cd);
     charged_action(b, r, charge).unwrap_or_else(|| chip_action(b, r, e.chip))
@@ -355,11 +377,11 @@ fn dark_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> Op
     let chip = Some(sub);
     // sub_800EF02: anything but a player keeps the chip it carries.
     if navi_record(b, r).actor_type != ActorType::Player {
-        return Some(HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: 0 });
+        return Some(HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: 0, spends: None });
     }
     let damage = crate::hand::chip_damage(b, chip, b.objects.get(r).alliance);
-    let extra = chip_bonus(b, r, chip);
-    Some(HandEntry { chip, damage, extra, modifiers: 0 })
+    let (extra, spends) = chip_bonus(b, r, chip, 0);
+    Some(HandEntry { chip, damage, extra, modifiers: 0, spends })
 }
 
 /// `sub_800EE26`: the battle flag 0x40 mode's special chip (the side
@@ -368,12 +390,12 @@ fn dark_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> Op
 fn slot_in_entry(b: &mut Battle, r: ObjectRef) -> HandEntry {
     let side = b.objects.get(r).alliance as usize;
     if navi_record(b, r).actor_type != ActorType::Player {
-        return HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: 0 };
+        return HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: 0, spends: None };
     }
     // The zeroed field is the zeroed chip.
     let chip = b.sides[side].special_chip.or_else(|| b.zeroed_chip());
     pay_for_special_chip(b, side, chip);
-    let extra = chip_bonus(b, r, chip);
+    let (extra, spends) = chip_bonus(b, r, chip, 0);
     let content = b.content.clone();
     let cd = entry_record(&content, chip);
     let damage = crate::hand::chip_damage(b, chip, side as u8);
@@ -385,7 +407,7 @@ fn slot_in_entry(b: &mut Battle, r: ObjectRef) -> HandEntry {
     if cd.flags.has(ChipFlags::NAVI) {
         extra = extra.wrapping_add(std::mem::take(&mut s.special_navi_bonus));
     }
-    HandEntry { chip, damage, extra, modifiers: 0 }
+    HandEntry { chip, damage, extra, modifiers: 0, spends }
 }
 
 /// `sub_800EE98`: the special chip costs gauge by its class (0x1500
@@ -432,31 +454,52 @@ pub(crate) fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>
     a.charged = 0;
 }
 
-/// `sub_800EF34`: the damage bonus MegaMan's form gives a chip (a link
-/// navi's own, `sub_800F09E`), then the aura bonus (`sub_800F1DC`).
-fn chip_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> u16 {
-    let bonus = if !super::is_megaman(b, r) { link_navi_bonus(b, r, chip) } else { form_bonus(b, r, chip) };
-    bonus + aura_bonus(b, r, chip)
+/// `sub_800EF34` (BN5's 0x0800D0A6, `charge` its argument): the damage
+/// bonus MegaMan's form gives a chip (a link navi's own, `sub_800F09E`),
+/// then the aura bonus (`sub_800F1DC`); and the type of panel the bonus
+/// came from, which the use spends.
+fn chip_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, charge: u8) -> (u16, Option<PanelType>) {
+    let (bonus, spends) =
+        if !super::is_megaman(b, r) { (link_navi_bonus(b, r, chip), None) } else { form_bonus(b, r, chip, charge) };
+    (bonus + aura_bonus(b, r, chip), spends)
 }
 
 /// `sub_800EF34`'s MegaMan part: by form, a family's damaging chips get
-/// more (the form's `chip_bonus`: EraseCross's also boosts dimming chips);
-/// failing that, Beast Out's Null chips outside battle mode 1 (the form's
-/// `null_bonus`).
-fn form_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> u16 {
+/// more (the form's `chip_bonus`: EraseCross's also boosts dimming chips;
+/// NapalmSoul's only uncharged, with the A charge not full); failing that,
+/// Beast Out's Null chips outside battle mode 1 (the form's `null_bonus`).
+/// In a form with no `chip_bonus`, the navi's `panel_bonus` (BN5's Aqua
+/// chips on sea), which names the panel it spends.
+fn form_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, charge: u8) -> (u16, Option<PanelType>) {
     let form = form_of(b, r);
-    let Some(chip) = chip else { return 0 };
+    let Some(chip) = chip else { return (0, None) };
     let cd = b.content.chip(chip);
     let damaging = cd.flags.has(ChipFlags::HAS_DAMAGE);
+    let a = ai(b, r);
+    let a_charge_full = a.charge_source == 1 && a.charge_level >= 2;
     let form_bonus = form.chip_bonus.and_then(|bonus| {
         let counts = if bonus.dimming_chips { damaging } else { deals_damage(cd.flags) };
-        (counts && cd.family == bonus.family).then_some(bonus.damage)
+        let now = !bonus.uncharged || (charge == 0 && !a_charge_full);
+        (counts && cd.family == bonus.family && now).then_some(bonus.damage)
     });
     let beast_bonus = || {
         (form.null_bonus != 0 && deals_damage(cd.flags) && cd.family == ChipFamily::Null && super::battle_mode(b) != 1)
             .then_some(form.null_bonus)
     };
-    form_bonus.or_else(beast_bonus).unwrap_or(0)
+    if let Some(bonus) = form_bonus.or_else(beast_bonus) {
+        return (bonus, None);
+    }
+    if form.chip_bonus.is_some() {
+        return (0, None);
+    }
+    let Some(bonus) = b.content.navi(stats(b, r).navi).panel_bonus else { return (0, None) };
+    let p = b.objects.get(r).panel;
+    let on = b.field.panel(p.x, p.y).is_some_and(|panel| panel.kind == bonus.panel);
+    if on && damaging && cd.family == bonus.family {
+        (bonus.damage, Some(bonus.panel))
+    } else {
+        (0, None)
+    }
 }
 
 /// `sub_800F09E`: a link navi's bonus on its family's damaging chips, by
@@ -577,7 +620,7 @@ fn primed_doubles(b: &Battle, r: ObjectRef, cd: &ChipData) -> bool {
 fn grass_doubles(b: &Battle, r: ObjectRef, cd: &ChipData) -> bool {
     let Some(rule) = form_of(b, r).grass_doubles else { return false };
     let p = b.objects.get(r).panel;
-    b.field.panel(p.x, p.y).is_some_and(|panel| panel.kind == crate::field::PanelType::Grass)
+    b.field.panel(p.x, p.y).is_some_and(|panel| panel.kind == PanelType::Grass)
         && deals_damage(cd.flags)
         && chip_matches(rule, cd)
 }
