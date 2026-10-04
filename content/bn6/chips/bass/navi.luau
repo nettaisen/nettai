@@ -1,7 +1,7 @@
 --!strict
 -- Bass, the navi of the Bass chip (the original's actor object #0x4F,
 -- `sub_80C3970`), brought by its navi chip controller: BN6's
--- (@common/bass/navi, which BN5's shares). He appears on his user's panel
+-- (@exelib/bass/navi, which BN5's shares). He appears on his user's panel
 -- with his cape (a form overlay), rises for 100 ticks, then fires 24
 -- volleys of two shots (objects/panel-strike), 8 ticks apart, at the
 -- columns ahead holding the other side's panels: each shot at a panel with
@@ -9,7 +9,7 @@
 -- of those columns), none at a panel shot in the last 22 ticks. Then he
 -- leaves, and the controller moves on. See docs/engine/chips.md §3.6.33.
 
-local common = require("@common/bass/navi")
+local common = require("@exelib/bass/navi")
 local panel_strike = require("../../objects/panel-strike/panel_strike")
 local effects = require("../../lib/effects")
 

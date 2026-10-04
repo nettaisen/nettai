@@ -1,11 +1,11 @@
 --!strict
 -- AirHoc (BN5 chip 0x005): a puck flicked from the panel ahead, slanting down the field, that bounces around for 10
--- steps: BN6's AirHocky (the shared flick and puck, @common/airhocky; BN5's action 0x21, the same code but for the
+-- steps: BN6's AirHocky (the shared flick and puck, @exelib/airhocky; BN5's action 0x21, the same code but for the
 -- recovery's start, and the puck's, attack object 0x2E, but for its sprite) with BN5's puck (10-12; its rows at
 -- 0x080CA3A4 are BN6's, the record's Param1 2 and Param2 1, down).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local flick = require("@common/airhocky/flick")
+local flick = require("@exelib/airhocky/flick")
 local puck = require("./puck")
 
 return define.chip {

@@ -1,13 +1,13 @@
 --!strict
 -- BassAnly, the navi of the BassAnly chip (the original's actor object
--- #0x50, `sub_80C3CE8`): the shared BassAnly (@common/bassanly/navi), BN6's
+-- #0x50, `sub_80C3CE8`): the shared BassAnly (@exelib/bassanly/navi), BN6's
 -- kind. He appears (with his cloak, a form overlay) on his user's panel,
 -- waits 51 ticks, raises his arm, and fires four dark balls in turn, up and
 -- down the slant, that home in on enemy navis (./shot). Then he goes in a
 -- burst, and the controller moves on. He goes at once if his panel is off
 -- the field. See docs/engine/chips.md §3.6.35.
 
-local common = require("@common/bassanly/navi")
+local common = require("@exelib/bassanly/navi")
 local effects = require("../../lib/effects")
 local shot = require("./shot")
 

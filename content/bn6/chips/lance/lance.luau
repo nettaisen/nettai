@@ -1,10 +1,10 @@
 --!strict
 -- A lance (the original's attack object #0x6F, `sub_80D2460`): the shared
--- lance (@common/lance/lance), BN6's kind: Lance's three lances
+-- lance (@exelib/lance/lance), BN6's kind: Lance's three lances
 -- (chip.luau).
 
 local collision = require("../../rules/collision")
-local common = require("@common/lance/lance")
+local common = require("@exelib/lance/lance")
 local sparks = require("../../lib/sparks")
 
 local lance = {}

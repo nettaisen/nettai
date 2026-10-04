@@ -144,11 +144,11 @@ impl<'a> Renderer<'a> {
         self.problems.known.clear();
         self.packs.set_version(self.console_version);
         let view = Self::view(b);
-        // (The background is its own pack's; the field, the arena's game's
-        // pack's, a panel type it doesn't draw another's: `FieldArt`.)
+        // (The background is its own pack's; the field, the game's pack's:
+        // `FieldArt`.)
         let background = crate::lookups::background(&self.packs, &b.content, b.setup.settings.background, &mut self.problems);
         let draw = !self.lookups_only;
-        let stage = draw.then(|| Stage::new(&self.packs, &b.content, b.games.arena, background, StageClock::of(b)));
+        let stage = draw.then(|| Stage::new(&self.packs, &b.content, background, StageClock::of(b)));
         match &stage {
             Some(stage) => {
                 self.background.clear();
@@ -164,10 +164,9 @@ impl<'a> Renderer<'a> {
         self.names.clear();
         let mut text =
             TextSink::new(self.text_mode, self.font.as_deref()).measuring(self.measure.as_ref()).with_language(self.strings.as_deref());
-        // (The local player's custom screen and chatbox: their game's
-        // pack's.)
+        // (The local player's custom screen and chatbox: the game's pack's.)
         let local = b.setup.local_side as usize & 1;
-        let own_game = self.packs.of_root(&b.content, b.games.sides[local]);
+        let own_game = self.packs.game(&b.content);
         let version = bn6_compat::Unlocks::of_side(b, local as u8).version;
         let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, version, self.console_version, &mut self.problems);
         let chatbox = crate::chatbox::prepare(b, own_game, &self.packs, &text, &mut self.problems);
@@ -311,7 +310,7 @@ pub fn screen_fade(b: &Battle) -> Fade {
         } else {
             b.content.stage(s.stage).battle_number >= 2
         };
-        let own_game = b.content.rules_of(b.games.sides[b.setup.local_side as usize & 1]);
+        let own_game = b.content.rules();
         let fade = if later || own_game.flow.intro_from_black { Fade::Black } else { Fade::White };
         // Before the intro fade starts the screen is fully faded.
         if b.round.intro_bits & 0x10 == 0 {

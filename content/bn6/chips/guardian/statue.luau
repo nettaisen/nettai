@@ -8,14 +8,14 @@
 -- time running out) it just crumbles. The Guardian chip places one
 -- (./controller, with the user's side); stages can place one at the start
 -- (the kind's `place`, with its panel's side). The behavior is BN5's too
--- (@common/guardian/statue), made here with BN6's look.
+-- (@exelib/guardian/statue), made here with BN6's look.
 --
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
 local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
-local common = require("@common/guardian/statue")
+local common = require("@exelib/guardian/statue")
 local effects = require("../../lib/effects")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local strike = require("./strike")

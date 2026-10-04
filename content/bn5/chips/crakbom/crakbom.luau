@@ -7,7 +7,7 @@
 -- Kinds 4 and up would light the column up as it flies, and 5 crack only its panel (no chip throws those).
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local statuses = require("../../rules/status")
 local trajectory = require("../../lib/trajectory")
 

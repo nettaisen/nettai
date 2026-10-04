@@ -6,8 +6,10 @@ Battle Network games are meant to follow on the same core ([multi-game.md](docs/
 what that takes).
 
 The engine is a content-independent core with BN6's ruleset on it. The game's content (chips, navis and their
-forms, weapons, stages, the rule tables) is Luau in [`content/bn6`](content/bn6), committed here and named by
-keys rather than the original's numbers. The graphics and sound are not in this repository: you extract them
+forms, weapons, stages, the rule tables) is Luau in [`content/`](content), committed here and named by
+keys rather than the original's numbers, in packs: the game packs content/bn6 and content/bn5, each with a manifest
+listing its definitions, and the support pack content/exelib that both use. The graphics and sound are not in this
+repository: you extract them
 from a ROM you own into a content pack.
 
 A battle is deterministic and cloneable, and the players' inputs are its only input, which is what rollback
@@ -18,9 +20,11 @@ netplay needs.
 - `nettai-battle`: the engine: the simulation core, BN6's ruleset, and the content model it runs on.
 - `nettai-content-api`: the contract between the core and content: the API scripts call, definitions, handles.
 - `nettai-luau`: the Luau runtime for content (sandboxed scripts that keep no state of their own).
-- `nettai-content`: loads a content root and an asset pack into the engine; the pack's open formats.
-- `nettai-content-check`: type-checks a content root against the engine's API (`content/nettai/core.d.luau`) and
-  the root's own declarations, and lints it.
+- `nettai-content`: loads the content's game packs (by their manifests) and the asset packs into the engine; the
+  asset packs' open formats.
+- `nettai-content-check`: type-checks each pack of the content against its declarations (the engine's API,
+  `content/nettai/core.d.luau`, then its support packs' and its own), lints it, and checks that its manifests and
+  requires name only modules that exist and that a pack requires only itself and the support packs it uses.
 - `nettai-assets`: the battle graphics in typed form, for drawing.
 - `nettai-audio`: plays the engine's sound cues through the M4A driver.
 - `m4a`: the GBA's M4A (Sappy) sound driver.

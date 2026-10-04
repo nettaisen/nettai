@@ -21,8 +21,8 @@
 local collision = require("../../rules/collision")
 local attachment = require("../../objects/attachment/attachment")
 local effects = require("../../lib/effects")
-local panels = require("@common/panels")
-local regions = require("@common/regions")
+local panels = require("@exelib/panels")
+local regions = require("@exelib/regions")
 local trajectory = require("../../lib/trajectory")
 local navi_chips = require("../../lib/navi-chips/navi")
 

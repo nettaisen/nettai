@@ -8,7 +8,7 @@
 
 local drip_shower = require("./drip_shower")
 local link = require("../../lib/link_chips")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 export type State = {
     timer: number,

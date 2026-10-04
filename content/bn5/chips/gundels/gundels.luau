@@ -1,7 +1,7 @@
 --!strict
 -- BN5's GunDelSol (action 0x2F, 0x080EDCB8; BN6's action 0x37, `sub_80EDAE0`): GunDelS1 to 3's and GunDelEX's. A
 -- 7-tick wind-up with the gun out, then one hit per tick on the column two panels ahead (and the one past it,
--- GunDelEX's) under the sun beam (@common/gundels/beam, BN5's hum), for the chip's firing time while its player
+-- GunDelEX's) under the sun beam (@exelib/gundels/beam, BN5's hum), for the chip's firing time while its player
 -- holds A, then an 11-tick recovery. The hits are element 5: they drain HP without flinching; 2 damage a hit, 4 in
 -- the sun. BN6's code but:
 --
@@ -15,9 +15,9 @@
 -- - the recovery steps the gun's animation without a null check (BN6 checks; a missing gun's write goes nowhere).
 
 local attachment = require("../../objects/attachment/attachment")
-local beam = require("@common/gundels/beam")
+local beam = require("@exelib/gundels/beam")
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 local gundels = {}
 
