@@ -734,7 +734,7 @@ mod tests {
         play_until(&mut live, &mut b, 1000, |_, _| 0, |b| b.stats[0].form == heat_beast && navi_action(b, p0) == NaviAction::Idle);
         let weapons = content.form(heat_beast).weapons;
         assert_eq!((b.actors.get(actor).buster, b.actors.get(actor).charge_shot), (weapons.buster, weapons.charge_shot));
-        assert_eq!(content.form(heat_beast).game, Some(GameVersion::Gregar));
+        assert_eq!(bn6_compat::forms::game(&content, heat_beast), Some(GameVersion::Gregar));
     }
 
     // BN6's Cross window (the cross system's: content/bn6/rules/cross/

@@ -87,7 +87,7 @@ local STEPS: SlashSteps = {
 
 -- A chip's slash (@common/swords/slash), its blade BN5's attachment, its step BN5's.
 function swords.slash(spec: SlashSpec): Action
-    return slash.action(spec, attachment.kind, STEPS)
+    return slash.action(spec, attachment.kind, { steps = STEPS })
 end
 
 -- AntiSwrd's counter (the original's navi action 0x48: @common/antiswrd/counter) with BN5's blade and booms; its

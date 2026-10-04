@@ -11,7 +11,8 @@
 --
 -- A step sword (StepSwrd) first steps two panels ahead, if that panel is on
 -- the field with nobody on it, leaving afterimages, and steps back after
--- the swing (not in a Beast form). With nowhere to step it doesn't swing.
+-- the swing (not in BN6's Beast forms: its `SlashGame`). With nowhere to
+-- step it doesn't swing.
 
 local parts = require("./parts")
 
@@ -62,10 +63,17 @@ local function damage_word(me: Object): number
 end
 
 -- A chip's slash, its blade an attachment of `attachment` (a game's kind),
--- its step by `steps`, the game's (none: BN6's, by the chip's `step`).
-function slash.action(spec: SlashSpec, attachment: Kind, steps: SlashSteps?): Action
+-- with what `game` asks of the user's form (`SlashGame`: BN6's Beast forms)
+-- and its step (its `steps`; none: BN6's, by the chip's `step`).
+function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Action
+    local rules: SlashGame = game or {}
+    local steps = rules.steps
     -- The blade's animation (`sub_80EBAE8`, or the spec's game's own).
-    local blade_anim = spec.blade_anim or parts.blade_anim
+    local blade_anim = spec.blade_anim or rules.blade_anim or parts.blade_anim
+    local in_place = rules.stays
+    local function stays(me: Object): boolean
+        return in_place ~= nil and in_place(me.alliance)
+    end
 
     -- `sub_800E5FC`: not while moving or sliding; then moving, from its
     -- panel, which it holds.
@@ -98,7 +106,7 @@ function slash.action(spec: SlashSpec, attachment: Kind, steps: SlashSteps?): Ac
         if not spec.step then
             return nil
         end
-        if me.special_source == 0 and not battle.navi(me.alliance).beast and not set_off(me) then
+        if me.special_source == 0 and not stays(me) and not set_off(me) then
             return nil
         end
         return "step"
@@ -247,7 +255,7 @@ function slash.action(spec: SlashSpec, attachment: Kind, steps: SlashSteps?): Ac
     -- `sub_80EBB98`: a step sword goes back where it stepped from once its
     -- animation ends (a Beast form stays).
     local function step_back(me: Object, s: State)
-        if not battle.navi(me.alliance).beast then
+        if not stays(me) then
             if not bit32.btest(me.sprite.frame_flags, 0x80) then
                 return
             end

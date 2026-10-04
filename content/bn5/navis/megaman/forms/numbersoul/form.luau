@@ -20,7 +20,6 @@ local ROW = 1
 
 return define.form {
     id = "bn5:numbersoul",
-    kind = "soul",
     soul = { number = 9, family = "plus" },
     change = souls.action,
     revert = souls.revert,
