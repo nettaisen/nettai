@@ -147,7 +147,8 @@ local function leave(me: Object)
         local cs = c.state :: any
         cs.busy = false
     end
-    me:set_lifecycle("destroy")
+    -- (0x080C21E8: the state byte alone; his action and phase stay.)
+    me.lifecycle = "destroy"
 end
 
 local ACTIONS: { [number]: (Object) -> () } = { [0] = appear, [4] = stand, [8] = throws, [0xC] = leave }
