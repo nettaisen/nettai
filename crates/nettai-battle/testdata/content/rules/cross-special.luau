@@ -4,8 +4,9 @@
 
 local minibomb = require("../chips/minibomb/chip")
 
-return {
+return define.record("cross-special", {
+    id = "cross-special",
     rows = {
         { minibomb },
     },
-}
+})
