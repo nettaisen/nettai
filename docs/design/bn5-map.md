@@ -1312,8 +1312,8 @@ timer raises) and its other console's chip name (`sub_801EB18`); lib/arm's NaviS
 0x080E9FA4: CrakBom's and Quake's bombs; never in a netbattle); Geyser's geyser (no recording throws it into a hole).
 (A computer-controlled navi's VarSwrd pick, the side's sword pick, is DarkInvs's drive's: 0x0802C110 sets AIData
 +0xF0 for the story navis and DarkInvs, never Chaos Unison's Dark MegaMan, who takes the joypad path; the lab's
-chips/0x0bd-darkinvs/tactics-varswrd shows it.) **Waiting:** VDoll (on BN5's field obstacles;
-Wind, Fan, RockCube, BoyBomb1 to 3, RedFrut1 to 3 and Voltz1 to 3 are in §15.11).
+chips/0x0bd-darkinvs/tactics-varswrd shows it.) BN5's field obstacles' chips (Wind, Fan, RockCube, BoyBomb1 to 3,
+RedFrut1 to 3, Voltz1 to 3 and VDoll) are in §15.11.
 
 ### 15.7 BN5's MegaMan, stages and roles (as built)
 
@@ -1792,6 +1792,22 @@ record's third parameter (20 ticks) and lasting 5 more; 30 ticks later it blinks
 (the record's first parameter) times 4; its drop sound is 0xEA (`voltz-drop`). In battle flag 0x40's mode it marks its
 panel as it comes and lands (effect 0x83, lib/navi-chips/marker). The chip lab's chips/0x04e-voltz1/chain (from the
 back column: a shock goes on to the back column) and evicted (a second Voltz evicts the first) record the rest.
+
+VDoll (action 0x12's subtype 8: BN5's throw, holding the bomb, the attachment table's row 4) lobs BN6's doll
+(attack object 0x7A, 0x080D5618; content/common/vdoll/doll, a maker taking a game's look) three panels ahead. BN5's
+differs: from the start a body of no side that anything reaches, hit modifier 3 (BN6's its side's object, hit
+modifier 1, until it sets down; BN5's setting down, its action 6, does nothing); a hit of types 0x0C800002 breaks it
+as damage 0 (0x080D56D4: a puff, no curse); its leaving (0x080D57F0) has no blinking out or absorbing, and its curse
+starts with a puff 12 pixels up if a chip removed it, else effect 0x24 16 up and sound 0x107 (BN6's code for that
+is unreachable); NameID 0xE2 (version 3, AI index 0x21). BN5's curse (effect object 0x4E, 0x080E6110, BN5's own:
+chips/vdoll/curse) marks one panel, at random (an RNG2 draw, 0x080E625E), of those the other side's combatants stand
+on, keeping the doll's aim when there is none (a column of 0 ends it), where BN6's marks every combatant; it hits
+that panel with BN5's row 0x17 (a thrown piercing break) and hit modifier 1 (BN6's the curse row and 3), and its
+occupant test (0x080E7356) reads BN6's table by the side unscaled (side 1: 0x00002000). Its telop names BN5's Curse
+(chip 0x174). The sparkles (effect object 0x11) are BN6's code (content/common/vdoll/sparkles). The chip lab's
+chips/0x067-vdoll/cursed records the curse (its user's buster hurts the landed doll). The doll's own actions store
+BN6's numbers until the obstacle framework's per-game numbering (bn5-obstacles-numbering's `obstacle.action_byte`)
+lands: BN5 stores its setting down as 6, so the recordings in which the doll lands differ at its action byte.
 
 **BN5's obstacle pushes** (the obstacle framework, by the obstacle's own game's `push_reading`): BN5 keeps a
 collision's hit flags only by the other collision's flip (+0x6C, +0x70: the hit registration 0x080169C8 to
