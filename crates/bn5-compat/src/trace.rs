@@ -612,7 +612,11 @@ impl Round {
         let navicust_of = |side: usize| -> Result<Option<NaviCust>, String> {
             let Some(n) = self.setup.navicusts.as_ref().filter(|_| compiled(side)).map(|n| &n[side]) else { return Ok(None) };
             let (list, flags) = n.decode()?;
-            navicust(content, compat, &list, |part| flags[(part >> 3) as usize] & (0x80 >> (part & 7)) != 0).map(Some)
+            // The board is the recorded ExpMemry's (the one the save's
+            // parts were placed on), or the game's largest when its rules
+            // have fewer sizes than that.
+            let largest = content.rules().navicust.boards.len().saturating_sub(1) as u8;
+            navicust(content, compat, &list, n.expansions.min(largest), |part| flags[(part >> 3) as usize] & (0x80 >> (part & 7)) != 0).map(Some)
         };
         let cards_of = |side: usize| -> Result<nettai_battle::patch_cards::PatchCards, String> {
             let Some(lists) = self.setup.patch_cards.as_ref().filter(|_| compiled(side)) else { return Ok(Default::default()) };
@@ -891,9 +895,9 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
 /// 7x7 grid (content/bn5/rules/navicust/board.luau), a cell one column and
 /// one row on. A part is compressed when `compressed` says so of its part id
 /// (event flag 0x1EC0 + the id, which 0x0813EEFC reads). The list's empty
-/// entries (id 0) are left out, the others kept in order; BN5's board has
-/// no expansions.
-pub fn navicust(content: &Content, compat: &Compat, list: &[u8], compressed: impl Fn(u8) -> bool) -> Result<NaviCust, String> {
+/// entries (id 0) are left out, the others kept in order, on a board with
+/// `expansions` (the save's ExpMemry: [`crate::save::Save::expansions`]).
+pub fn navicust(content: &Content, compat: &Compat, list: &[u8], expansions: u8, compressed: impl Fn(u8) -> bool) -> Result<NaviCust, String> {
     let mut parts = Vec::new();
     for e in list.chunks_exact(8) {
         let Some((key, color)) = compat.navicust_part(e[0])? else { continue };
@@ -903,7 +907,7 @@ pub fn navicust(content: &Content, compat: &Compat, list: &[u8], compressed: imp
         }
         parts.push(PlacedProgram { program, color, x: e[2] + 1, y: e[3] + 1, rotation: e[4], compressed: compressed(e[0]) });
     }
-    NaviCust::new(&parts, 0)
+    NaviCust::new(&parts, expansions)
 }
 
 /// A save's patch cards (each card's number and whether it is switched on,
@@ -1094,15 +1098,16 @@ pub struct Replay {
     pub known: Option<&'static str>,
 }
 
-/// A known difference: the recording's save had the emotion window's
-/// glitch (flag 0x10C1) and the stats it recorded have no NaviCust bug to
-/// make it from. The engine takes no glitch from a setup: BN5's rules make
-/// it, from a NaviCust's compile or, of stats given as compiled, from the
-/// bugs in them. HubBatc's bug halves the HP programs and writes no bug
-/// stat, and a recording carries no NaviCust to compile, so MegaMan's
-/// window doesn't flicker in the replay and the console's RNG1 draws
-/// differ (the recording console's a replay compares: `navicust/hubbatc`
-/// stops on it).
+/// A known difference of a recording without its consoles' NaviCusts
+/// ([`Setup::navicusts`]: one with them is compiled, and its compile's
+/// glitch checked): the save had the emotion window's glitch (flag 0x10C1)
+/// and the stats it recorded have no NaviCust bug to make it from. The
+/// engine takes no glitch from a setup: BN5's rules make it, from a
+/// NaviCust's compile or, of stats given as compiled, from the bugs in
+/// them. HubBatc's bug halves the HP programs and writes no bug stat, so
+/// without the NaviCust MegaMan's window doesn't flicker in the replay and
+/// the console's RNG1 draws differ (the recording console's a replay
+/// compares: `navicust/hubbatc` as first recorded stopped on it).
 pub const GLITCH_UNSEEN: &str = "the save's emotion window glitch with no bug in the stats (HubBatc's bug writes none; the recording carries no NaviCust)";
 
 #[derive(Clone, Debug)]

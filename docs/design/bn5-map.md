@@ -493,9 +493,10 @@ The verification workspace traces BN5 consoles as it does BN6's, with the same l
   `expansions`, key item 0x61's count) and, when a console has any, their patch cards (`patch_cards`, each list's
   bytes). **bn5-compat replays such a round by compiling**: each MegaMan's recorded stats go back to what BN5's
   reset leaves in the bytes the compile and the cards write (`codec::RESET`), and the round is set up with the
-  NaviCust, the cards and the `cyberworld` fact, as a match is; the emotion window's glitch is then the compile's
-  and the cards', checked against the console's recorded flag (`emotion_window_glitches`). Recordings made before
-  carry neither field and replay their stats as recorded.
+  NaviCust (on the board of the recorded `expansions`, or the rules' largest when they have fewer sizes), the cards
+  and the `cyberworld` fact, as a match is; the emotion window's glitch is then the compile's and the cards', what
+  the rules made, checked against the console's recorded flag (`emotion_window_glitches`). Recordings made before
+  carry neither field and replay their stats as recorded, their glitch from the bugs in those stats.
   The hooks test checks every BN5 hook against BN6's code (masked for what moves, RAM included), Team Colonel's
   against Team ProtoMan's, and each Japanese ROM's against the US ROM of its version.
 - **chiplab** runs BN5 consoles from a base of BN5 ROMs and saves (Tango's primer walks into a Team Battle),
