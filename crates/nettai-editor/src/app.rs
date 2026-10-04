@@ -8,7 +8,7 @@ use nettai_battle::content::ChipCode;
 use nettai_battle::custom::{FolderChip, GameVersion};
 use nettai_battle::patch_cards::InstalledCard;
 use nettai_battle::setup::NaviStats;
-use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, PatchCardHandle, RulesetHandle, StageHandle};
+use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, PatchCardHandle, StageHandle};
 use nettai_match::{CrossList, Match, Side, stats};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -86,8 +86,6 @@ pub enum Msg {
     Seed(String),
     /// The match's game: a new match of it (the sides start over).
     Game(Choice<String>),
-    /// The match's ruleset, one of its game's.
-    Ruleset(Choice<RulesetHandle>),
     // A side.
     Navi(usize, Choice<NaviHandle>),
     Version(usize, Choice<GameVersion>),
@@ -427,13 +425,7 @@ impl Editor {
             Msg::LaterSame(same) => {
                 if same {
                     self.m.arena.later = [self.m.arena.first.clone(), self.m.arena.first.clone()];
-                } else if let Ok(a) = nettai_match::draw::arena(
-                    &content,
-                    &self.m.arena.game,
-                    self.m.arena.ruleset,
-                    &mut nettai_match::Draws::new(self.m.seed.unwrap_or(1)),
-                    None,
-                ) {
+                } else if let Ok(a) = nettai_match::draw::arena(&content, &self.m.arena.game, &mut nettai_match::Draws::new(self.m.seed.unwrap_or(1)), None) {
                     self.m.arena.later = a.later;
                 }
                 self.edited();
@@ -458,13 +450,6 @@ impl Editor {
                         Err(e) => self.status = format!("can't make a match of {}: {e}", c.value),
                     }
                 }
-            }
-            Msg::Ruleset(c) => {
-                // What the new rules don't take goes (`Match::set_ruleset`).
-                self.m.set_ruleset(&content, c.value);
-                self.typed.retain(|&(_, k), _| k != "karma");
-                self.sp_typed.clear();
-                self.edited();
             }
             Msg::Navi(s, c) => {
                 // A link navi: its stats at the side's level, as the game switches.
