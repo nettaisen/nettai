@@ -18,6 +18,8 @@ local cusvolt1 = define.chip {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "damage_shown_variable", "library", "variable_damage" },
+    -- (The custom screen shows its damage as "???" on an A, and the damage on another code.)
+    traits = { "hides_damage_as_a" },
     slot_in_limit = 3,
     damage = { formula = "gauge_level", base = 10 },
     action = cusvolt.action("bn5:cusvolt1/action"),
@@ -37,6 +39,8 @@ local cusvolt2 = define.chip {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "damage_shown_variable", "library", "variable_damage" },
+    -- (The custom screen shows its damage as "???" only on an A, which it never comes as.)
+    traits = { "hides_damage_as_a" },
     slot_in_limit = 3,
     damage = { formula = "gauge_level", base = 30 },
     action = cusvolt.action("bn5:cusvolt2/action"),
@@ -56,6 +60,8 @@ local cusvolt3 = define.chip {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "damage_shown_variable", "library", "variable_damage" },
+    -- (The custom screen shows its damage as "???" only on an A, which it never comes as.)
+    traits = { "hides_damage_as_a" },
     slot_in_limit = 3,
     damage = { formula = "gauge_level", base = 50 },
     action = cusvolt.action("bn5:cusvolt3/action"),
