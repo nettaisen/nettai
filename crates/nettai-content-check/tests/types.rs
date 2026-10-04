@@ -88,7 +88,7 @@ fn misuse_of_the_v2_api_is_a_type_error() {
         ("local function f(me: Object) me:set_attack('shot', 1) end", "an action by name"),
         ("local function f(me: Object) local _ = battle.spawn(me, me.pos) end", "an object for a kind"),
         ("local _ = define.region { panels = { 'front' } }", "a panel that isn't { dx, dy }"),
-        ("local _ = define.ruleset { id = 'x', stock = true, roles = { actions = { anti_damage_counter = 3 } } }", "a role that isn't an action"),
+        ("local _ = define.ruleset { roles = { actions = { anti_damage_counter = 3 } } }", "a role that isn't an action"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
@@ -111,8 +111,8 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
         ("local _ = battle.hand_chip(0, 0)", "a hand's chip by number"),
         ("local function f(me: Object) dimming.show_navi_telop(me, 0x123) end", "a telop's chip by number"),
         ("battle.set_linked(0, { chip = 0x123, bonus = 0, damage = 0 })", "a linked record's chip by number"),
-        ("local _ = define.ruleset { id = 'x', stock = true, roles = { actions = { turn = { legacy = { action = 0x3B } } } } }", "a role by action number"),
-        ("local _ = define.ruleset { id = 'x', stock = true, roles = { kinds = { support = { legacy = { kind = \"support\" } } } } }", "a role by kind key"),
+        ("local _ = define.ruleset { roles = { actions = { turn = { legacy = { action = 0x3B } } } } }", "a role by action number"),
+        ("local _ = define.ruleset { roles = { kinds = { support = { legacy = { kind = \"support\" } } } } }", "a role by kind key"),
         ("local _ = data.rules.sine[1]", "a rule table by number"),
         ("local function f(me: Object) local _ = battle.effect(me.pos, 3) end", "an effect by number"),
         ("battle.play_sound(0x10)", "a sound by number"),

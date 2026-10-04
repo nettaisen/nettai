@@ -174,6 +174,28 @@ pub fn content() -> Arc<Content> {
     shared().0.clone()
 }
 
+/// The content set with its ruleset listing `systems` instead (the Luau
+/// list's text, by rules/systems.luau's names: `"marker, counter"`),
+/// defined once per list: a game has one ruleset, so a test that plays by
+/// other systems plays another content. Its definitions are the content
+/// set's but the ruleset, so every handle is the same; a round's setup
+/// names it by its hash (`RoundSetup::content`).
+pub fn with_systems(systems: &str) -> Arc<Content> {
+    static MADE: std::sync::Mutex<Vec<(String, Arc<Content>)>> = std::sync::Mutex::new(Vec::new());
+    let mut made = MADE.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((_, c)) = made.iter().find(|(s, _)| s == systems) {
+        return c.clone();
+    }
+    let mut c = make();
+    let module = c.scripts.module_mut(ROOT, "rules/systems").expect("the test content's rules");
+    let stock = "local SYSTEMS: { System } = { beast, counter, forms.system, emotion.system, dark_chips }";
+    assert!(module.contains(stock), "rules/systems.luau lists its systems as `{stock}`");
+    *module = module.replace(stock, &format!("local SYSTEMS: {{ System }} = {{ {systems} }}"));
+    let c = Arc::new(c.defined());
+    made.push((systems.to_string(), c.clone()));
+    c
+}
+
 /// The content set and its hash, made once.
 fn shared() -> &'static (Arc<Content>, crate::content::ContentHash) {
     static SHARED: std::sync::OnceLock<(Arc<Content>, crate::content::ContentHash)> = std::sync::OnceLock::new();
@@ -191,7 +213,6 @@ pub fn round_setup(stage: &str, stats: crate::setup::NaviStats) -> crate::setup:
     crate::setup::RoundSetup {
         content: *hash,
         settings: crate::setup::BattleSettings::on(content, content.stage_by_key(stage)),
-        ruleset: None,
         navi_stats: [stats; 2],
         rng: 1,
         local_side: 0,
@@ -353,7 +374,7 @@ pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
 /// hands and navi stats hold them (`TICKER_1`, `TICKER_2`, `TICK_SHOT`).
 pub fn with_test_pack() -> Content {
     let mut c = make();
-    // The test pack brings its own roles (the stock ruleset's `roles`).
+    // The test pack brings its own roles (the ruleset's `roles`).
     c.scripts.modules.insert(Scripts::name(ROOT, "rules/roles"), "return require(\"../test/rules/roles\")\n".to_string());
     for (path, source) in modules_under(TEST_PACK) {
         c.scripts.modules.insert(Scripts::name(ROOT, &format!("test/{path}")), source);
@@ -1790,9 +1811,9 @@ fn pack_animations() -> std::collections::BTreeMap<PackSprite, Vec<Vec<AnimFrame
 }
 
 /// Side `side`'s bug frags in battle `b`: BN6's dark-chips system's state
-/// (the test content's stock ruleset plays it).
+/// (the test content's ruleset plays it).
 pub fn bug_frags(b: &crate::Battle, side: u8) -> u32 {
-    let (schema, state) = b.system_state(side, "dark-chips").expect("the test content's stock ruleset plays BN6's dark-chips system");
+    let (schema, state) = b.system_state(side, "dark-chips").expect("the test content's ruleset plays BN6's dark-chips system");
     match state.get(schema, schema.index_of("bug_frags").expect("its bug frags")) {
         nettai_content_api::FieldValue::U32(n) => n,
         other => panic!("bug frags {other:?}"),
@@ -1802,8 +1823,7 @@ pub fn bug_frags(b: &crate::Battle, side: u8) -> u32 {
 /// Give side `side` `n` bug frags in battle `b` (the dark-chips system's
 /// state).
 pub fn set_bug_frags(b: &mut crate::Battle, side: u8, n: u32) {
-    let r = b.rules[side as usize].ruleset.expect("a ruleset");
-    let systems = &b.content.defs.ruleset(r).systems;
+    let systems = b.content.defs.ruleset_systems();
     let slot = systems.iter().position(|&h| b.content.defs.system(h).key == "dark-chips").expect("the dark-chips system");
     let def = b.content.defs.system(systems[slot]);
     let schema = b.content.defs.schema(def.state).clone();

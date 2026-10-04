@@ -8,7 +8,8 @@
 //! a match plays one game, so nothing needs a prefix to tell games apart):
 //!
 //! - an explicit `id` (required for the registries named from outside
-//!   content, [`Registry::keyed`]);
+//!   content, [`Registry::keyed`]); a game's ruleset, which is one and takes
+//!   none, is `ruleset` (`RULESET_KEY`);
 //! - else, for a definition made while the same module loads as a keyed
 //!   definition that holds it, the owner's key and the field path
 //!   (`minibomb/action`, `minibomb/action/args/thrown`); owners are walked in
@@ -350,6 +351,14 @@ pub(crate) fn finish(
     let mut unwritten = Vec::new();
     for (i, m) in made.iter().enumerate() {
         let what = format!("{}: define.{}", m.module, m.registry.name());
+        // (A game's ruleset is one: it has a key of its own, and no name.)
+        if m.registry == Registry::Ruleset {
+            if !m.table.raw_get::<LuaValue>("id").map_err(|e| format!("{what}: {e}"))?.is_nil() {
+                return Err(format!("{what} takes no `id`: a game has one ruleset, its rules"));
+            }
+            keys[i] = Some(nettai_content_api::RULESET_KEY.to_string());
+            continue;
+        }
         match m.table.raw_get::<LuaValue>("id").map_err(|e| format!("{what}: {e}"))? {
             LuaValue::Nil if m.registry.keyed() => return Err(format!("{what} needs an `id`")),
             LuaValue::Nil => {}
@@ -411,6 +420,13 @@ pub(crate) fn finish(
     let mut by_key: BTreeMap<(Registry, &str), usize> = BTreeMap::new();
     for (i, m) in made.iter().enumerate() {
         if let Some(&j) = by_key.get(&(m.registry, keys[i].as_str())) {
+            if m.registry == Registry::Ruleset {
+                return Err(format!(
+                    "a game has one ruleset: {}.luau defines one, and {}.luau another",
+                    keys::module_path(&made[j].module),
+                    keys::module_path(&m.module)
+                ));
+            }
             return Err(format!(
                 "{} {:?} is defined twice: in {}.luau and in {}.luau",
                 m.registry.name(),
