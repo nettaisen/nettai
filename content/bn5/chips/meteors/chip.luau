@@ -1,10 +1,10 @@
 --!strict
 -- Meteors (BN5 chip 0x0d2): thirty meteors fall on the enemy's area, one every 10 ticks, cycling through its
--- panels from the far column: the shared Meteors (@common/meteors/controller, dimming subtype 18, its meteors' row 1)
+-- panels from the far column: the shared Meteors (@exelib/meteors/controller, dimming subtype 18, its meteors' row 1)
 -- with BN5's meteor (chips/meteors).
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local controller = require("@common/meteors/controller")
+local controller = require("@exelib/meteors/controller")
 local meteors = require("./meteors")
 
 local METEORS = controller.make("bn5:meteors/controller", meteors.kind)

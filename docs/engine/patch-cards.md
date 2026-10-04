@@ -262,7 +262,7 @@ bug through the ROM's lookup tables) and compares them with the Japanese ROM's c
 ## 6.1 BN5
 
 BN5's cards (its Modification Cards, Team ProtoMan's and Team Colonel's, US and Japanese) share the application
-(content/common/patch-cards: the constructors and the loop; each game's kinds' order, choices and tables) and the
+(content/exelib/patch-cards: the constructors and the loop; each game's kinds' order, choices and tables) and the
 card definitions' shape; BN5's own system, cards, weapons and Hub Style are docs/design/bn5-map.md §15.14's.
 
 ## 7. Unverified

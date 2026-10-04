@@ -1,5 +1,5 @@
 --!strict
--- A gust (attack object #0x49, `sub_80CD2EC`): the shared gust (@common/gust/gust, BN5's too) of BN6's look: a wind
+-- A gust (attack object #0x49, `sub_80CD2EC`): the shared gust (@exelib/gust/gust, BN5's too) of BN6's look: a wind
 -- that blows along its row 10 pixels a tick, pushing what it hits, until it leaves the field, reaches a panel it
 -- can't cross, is hit by a wind stopper, or (as some spawners ask) hits anything. WindRack blows unseen ones down
 -- each row; Wind and Fan blow one row at a time; TenguCross's B+Back blows three (instant chip effect 0x14).
@@ -9,7 +9,7 @@
 -- panel.
 
 local collision = require("../../rules/collision")
-local common = require("@common/gust/gust")
+local common = require("@exelib/gust/gust")
 
 local gust = {}
 

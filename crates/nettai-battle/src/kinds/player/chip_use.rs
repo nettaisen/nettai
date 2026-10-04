@@ -43,7 +43,7 @@ pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
         // The form's A-charge routine decides what the charged chip does;
         // for the Null family the attack's chip id is cleared.
         let chip = hand_entry(b, r, 0).chip;
-        let null = super::null_family(b, r, chip);
+        let null = super::null_family(b, chip);
         let routine = if null {
             ai_mut(b, r).attack.chip = None;
             ai(b, r).alt_a_charge
@@ -96,7 +96,7 @@ pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
 /// of it.
 fn chip_used(b: &mut Battle, r: ObjectRef, weapon: Option<WeaponHandle>) {
     let side = b.objects.get(r).alliance;
-    let chip = b.content.chip_or_zeroed(b.games.arena, ai(b, r).attack.chip);
+    let chip = b.content.chip_or_zeroed(ai(b, r).attack.chip);
     b.systems_chip_used(side, r, chip, weapon);
 }
 
@@ -272,7 +272,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     }
     // sub_800B79A: the side's systems' (BN6's dark chips worsen the HP
     // bug).
-    let used = b.content.chip_or_zeroed(b.games.arena, e.chip);
+    let used = b.content.chip_or_zeroed(e.chip);
     b.systems_chip_prepared(side, r, used);
     // BN5's 0x08010030 and 0x080100E6: the side's rules may refuse the
     // chip, before the bonus's panel is spent (`chip_cost`: its light and
@@ -347,7 +347,7 @@ pub(crate) fn chip_action(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>
     use super::actions::instant::Effect;
     use super::{EngineAction as E, NaviAction as A};
     let content = b.content.clone();
-    let chip = content.chip_or_zeroed(b.games.arena, chip);
+    let chip = content.chip_or_zeroed(chip);
     match content.defs.chip(chip).usage {
         ChipUsage::Action(h) => A::Content(h),
         ChipUsage::Dimming(_) => A::Engine(E::DimmingChip),
@@ -441,7 +441,7 @@ pub(crate) fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>
     let damage = crate::hand::chip_damage(b, chip, side);
     // (The elements of a chip's family: the hit kernel's table, the
     // arena's game's.)
-    let family = content.rules_of(b.games.arena).family_elements(cd.family).0;
+    let family = content.rules().family_elements(cd.family).0;
     let a = &mut ai_mut(b, r).attack;
     a.chip = chip;
     // (The original copies the record's subtype and parameter bytes too:
@@ -650,7 +650,7 @@ fn heal_on_use(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     }
     super::intake::add_hp(b, r, total);
     let pos = b.objects.get(r).pos;
-    let look = b.roles_for(r).effect(crate::content::EffectRole::Recovery);
+    let look = b.roles().effect(crate::content::EffectRole::Recovery);
     crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
     b.sound(crate::content::SoundRole::Recovery);
 }
@@ -700,7 +700,7 @@ fn rock_barrage(b: &mut Battle, r: ObjectRef) -> u8 {
     for (n, p) in panels.iter().enumerate() {
         // sub_80C7F20: Param1 counts down 3, 2, 1.
         let params = [3 - n as u8, 0, 0, 0];
-        let kind = b.roles_for(r).kind(crate::content::KindRole::FallingRock);
+        let kind = b.roles().kind(crate::content::KindRole::FallingRock);
         if let Some(rock) = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), params) {
             let o = b.objects.get_mut(rock);
             o.panel = *p;

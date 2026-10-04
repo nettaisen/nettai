@@ -5,7 +5,7 @@
 -- dimmed) carrying the bug code and its argument. Then its controller (./controller), which waits on it, moves on.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 
 export type State = {
     -- The controller waiting on it (its flag, +0x4C: the controller's +0x0C).

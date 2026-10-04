@@ -67,7 +67,7 @@ fn tick(b: &mut Battle, p: [ObjectRef; 2], held: u16) {
 /// until its controller has come: tick 0 is the controller's first.
 fn use_chip(b: &mut Battle, p: [ObjectRef; 2], chip: &str, controller: &str) -> ObjectRef {
     let chip = testing::chip_in(&b.content, chip);
-    let mut hand = ChipHand::empty(&b.content, b.games.arena);
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(chip);
     hand.damage[0] = b.content.chip(chip).damage;
     b.hands[0] = hand;
