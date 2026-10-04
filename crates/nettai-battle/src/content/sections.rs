@@ -218,21 +218,6 @@ struct SpChipsSection {
     slots: Vec<String>,
 }
 
-/// One of the Cross special's chips: a chip, or `{ chip, damage_of }`.
-#[derive(Deserialize)]
-#[serde(untagged)]
-enum SpecialChipEntry {
-    Chip(String),
-    With(SpecialChip),
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct CrossSpecialSection {
-    /// A row of chips by the hundreds of the navi's base max HP.
-    rows: Vec<Vec<SpecialChipEntry>>,
-}
-
 /// The names the elements section uses for the weakness table's rows.
 const ELEMENT_NAMES: [&str; 6] = ["null", "fire", "aqua", "elec", "wood", "drain"];
 
@@ -251,7 +236,6 @@ pub(crate) const SECTIONS: &[&str] = &[
     "berserk",
     "buster",
     "chip_use",
-    "cross_special",
     "custom_screen",
     "effects",
     "elements",
@@ -501,21 +485,6 @@ fn section(rules: &mut Rules, name: &str, spec: &Data, at: &str, r: &SpecReader)
             "sp_chips" => {
                 let s: SpChipsSection = r.read(spec, &at).map_err(e)?;
                 (rules.sp_deletion_times, rules.sp_slots) = (s.deletion_times, s.slots);
-            }
-            "cross_special" => {
-                let s: CrossSpecialSection = r.read(spec, &at).map_err(e)?;
-                rules.cross_special = s
-                    .rows
-                    .into_iter()
-                    .map(|row| {
-                        row.into_iter()
-                            .map(|c| match c {
-                                SpecialChipEntry::Chip(chip) => SpecialChip { chip, damage_of: None },
-                                SpecialChipEntry::With(c) => c,
-                            })
-                            .collect()
-                    })
-                    .collect();
             }
             other => return Err(e(format!("{at}: the engine has no rule section `{other}` ({})", SECTIONS.join(", ")))),
         }
