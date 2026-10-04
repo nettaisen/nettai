@@ -156,6 +156,12 @@ pub struct KindEntry {
     /// register): the comparison skips them.
     #[serde(default)]
     pub scratch_panel: bool,
+    /// What the recordings show as its collision's status is garbage: its
+    /// +0x54 holds no collision but a RAM address of its own (ShadowMan's
+    /// three, LeadRaid's Colonel), which the recorder reads through as
+    /// one. The comparison skips it.
+    #[serde(default)]
+    pub scratch_status: bool,
 }
 
 /// A netbattle stage (stages.toml): the settings records that are it, its
@@ -298,10 +304,22 @@ pub struct Compat {
     pub navicust: NaviCustNumbers,
     /// patch-cards.toml: the patch cards' numbers.
     pub patch_cards: PatchCardNumbers,
+    /// actions.toml: the navi action numbers chips.toml doesn't give (the
+    /// engine's own actions, content's actions of no chip), by key.
+    pub actions: BTreeMap<String, u8>,
 }
 
+/// BN5's navi states, by their CurAction (its player's state table,
+/// 0x080EAE08): BN6's order without its freeze and bubble (BN6's 6 and 7),
+/// so that idle is 6 (BN6's 8).
+const BN5_STATES: [nettai_battle::kinds::player::NaviAction; 7] = {
+    use nettai_battle::kinds::player::NaviAction::*;
+    [Entry, TakeControl, Deletion, Flinch, Paralysis, Drag, Idle]
+};
+
 /// The files of a compat folder.
-pub const FILES: [&str; 10] = [
+pub const FILES: [&str; 11] = [
+    "actions.toml",
     "chips.toml",
     "panels.toml",
     "assets.toml",
@@ -315,7 +333,8 @@ pub const FILES: [&str; 10] = [
 ];
 
 /// This repository's compat (content/bn5/compat), built in.
-const BN5: [(&str, &str); 10] = [
+const BN5: [(&str, &str); 11] = [
+    ("actions.toml", include_str!("../../../content/bn5/compat/actions.toml")),
     ("patch-cards.toml", include_str!("../../../content/bn5/compat/patch-cards.toml")),
     ("navicust.toml", include_str!("../../../content/bn5/compat/navicust.toml")),
     ("text.toml", include_str!("../../../content/bn5/compat/text.toml")),
@@ -411,10 +430,14 @@ impl Compat {
         }
         // (A compat folder from before the patch cards has none.)
         let patch_cards = PatchCardNumbers::parse(&text("patch-cards.toml").unwrap_or_default()).map_err(|e| format!("patch-cards.toml: {e}"))?;
+        // (A compat folder from before the action numbers has none.)
+        let actions_file = text("actions.toml").unwrap_or_default();
+        let actions: BTreeMap<String, u8> =
+            if actions_file.is_empty() { BTreeMap::new() } else { toml::from_str(&actions_file).map_err(|e| format!("actions.toml: {e}"))? };
         // (A compat folder from before the encodings has none.)
         let text_file = text("text.toml").unwrap_or_default();
         let text: Text = if text_file.is_empty() { Text::default() } else { toml::from_str(&text_file).map_err(|e| format!("text.toml: {e}"))? };
-        Ok(Compat { chips, panels: by_number, chip_keys, assets, rules, stages, records, kinds, text, navicust, patch_cards })
+        Ok(Compat { chips, panels: by_number, chip_keys, assets, rules, stages, records, kinds, text, navicust, patch_cards, actions })
     }
 
     /// The NaviCust program a part id names (its number, `id >> 2`) and its
@@ -509,6 +532,42 @@ impl Compat {
     /// The sprites' names by (category, index).
     pub fn sprite_names(&self) -> BTreeMap<(u8, u8), String> {
         self.assets.sprites.iter().filter_map(|(name, id)| Some((parse_sprite(id)?, name.clone()))).collect()
+    }
+
+    /// The original's action number for object `r`'s CurAction (+9), as the
+    /// traces record it: any object's but a navi's its own byte; a navi's
+    /// NaviAction as BN5 numbers it: the framework's states by BN5's state
+    /// table (`BN5_STATES`), a chip's action by its record (chips.toml's
+    /// `action`: the action of the chip whose use it is), the ruleset's
+    /// actions and content's others by key (actions.toml).
+    pub fn navi_action(&self, b: &nettai_battle::Battle, r: nettai_battle::object::ObjectRef) -> Result<u8, String> {
+        use nettai_battle::content::ChipUsage;
+        use nettai_battle::kinds::player::{NaviAction, navi_action};
+        if b.objects.get(r).actor.is_none() {
+            return Ok(b.objects.get(r).action);
+        }
+        let action = navi_action(b, r);
+        if let Some(n) = BN5_STATES.iter().position(|&s| s == action) {
+            return Ok(n as u8);
+        }
+        let key = match action {
+            NaviAction::Engine(e) => e.key(),
+            NaviAction::Content(h) => {
+                let key = b.content.defs.action(h).key.as_str();
+                if let Some(&n) = self.actions.get(key) {
+                    return Ok(n);
+                }
+                let of_chip = self.chips.iter().find(|(k, _)| {
+                    b.content.defs.chip_by_key(k).is_some_and(|c| matches!(b.content.defs.chip(c).usage, ChipUsage::Action(a) if a == h))
+                });
+                if let Some((_, entry)) = of_chip {
+                    return Ok(entry.action);
+                }
+                key
+            }
+            state => return Err(format!("BN5 has no state {state:?}")),
+        };
+        self.actions.get(key).copied().ok_or_else(|| format!("actions.toml has no {key:?}"))
     }
 
     /// The engine's panel type of BN5's panel type `n`: `Ok(None)` for a

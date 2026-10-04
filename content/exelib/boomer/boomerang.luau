@@ -251,11 +251,14 @@ end
 
 -- `sub_80CA4F6`, instant chip effect 1: a chip's `instant` hook that
 -- throws a boomerang (of `kind`) of `variant` from the user's back column,
--- row 3, 16 pixels up, turning at the far column.
-function boomerang.instant(kind: Kind, variant: Variant): (user: Object, spec: InstantChipSpec) -> ()
+-- row 3, 16 pixels up, turning at the far column. Its parameters are what
+-- the instant chip's dispatch left in r4: BN6's leaves 0, BN5's 0x01000005
+-- (its lab's traces), whose Param4 makes the boomerang `strong` (hit
+-- modifier 3: a flash with the flinch).
+function boomerang.instant(kind: Kind, variant: Variant, strong: boolean?): (user: Object, spec: InstantChipSpec) -> ()
     return function(user: Object, spec: InstantChipSpec)
         local x = bit32.bxor(user.alliance, user.flip) * 5 + 1
-        boomerang.spawn(kind, user, x, 3, spec.element, 0x10_0000, { variant = variant }, spec.damage)
+        boomerang.spawn(kind, user, x, 3, spec.element, 0x10_0000, { variant = variant, strong = strong }, spec.damage)
     end
 end
 

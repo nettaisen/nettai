@@ -204,7 +204,8 @@ local function burst(me: Object)
             battle.effect(Vec3.new(cx, cy, 0), v.explosion)
         end
     end
-    me:set_lifecycle("destroy")
+    -- (0x080C627C: the lifecycle and action halfword, then the phase; its phase's init byte stays.)
+    me.lifecycle = "destroy"
     me.action = 0
     me.phase = 0
 end
@@ -220,13 +221,15 @@ local function tick(me: Object)
     me:hit_spark()
     if battle.over() then
         c:set_region(nil)
-        me:set_lifecycle("destroy")
+        -- (0x080C608E: the state byte alone.)
+        me.lifecycle = "destroy"
         return
     end
     if me:take_damage(0) < 0 or bit32.band(c.hit_flags, NAVI_HIT[me.alliance]) ~= 0 then
         blow_up(me)
         c:set_region(nil)
-        me:set_lifecycle("destroy")
+        -- (0x080C608E, as at the battle's end: the state byte alone.)
+        me.lifecycle = "destroy"
         return
     end
     if while_dimmed(me) or not battle.dimmed() then

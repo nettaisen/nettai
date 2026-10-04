@@ -287,7 +287,8 @@ local function leave(me: Object)
     me.timer = int.u16(left)
     if left <= 0 then
         sent_done(me)
-        me:set_lifecycle("destroy")
+        -- (0x080BA09C: the state byte alone; its action and phase stay.)
+        me.lifecycle = "destroy"
     end
 end
 

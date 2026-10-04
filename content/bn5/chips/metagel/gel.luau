@@ -100,7 +100,8 @@ end
 local function tick(me: Object)
     if battle.over() then
         gone(me)
-        me:set_lifecycle("destroy")
+        -- (0x080CE0C6: the state byte alone.)
+        me.lifecycle = "destroy"
         return
     end
     local a = me.action
@@ -127,7 +128,8 @@ local function tick(me: Object)
         if t == 0 then
             gone(me)
             puff(me)
-            me:set_lifecycle("destroy")
+            -- (0x080CE206: the state byte alone.)
+            me.lifecycle = "destroy"
         end
     else
         error(string.format("MetaGel's gel action %#x reads past its table", a))

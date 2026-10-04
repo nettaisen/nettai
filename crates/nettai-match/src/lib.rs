@@ -278,8 +278,9 @@ impl Match {
     /// battle's is drawn when it is played). Its folders are none the
     /// checks accept until they are made.
     pub fn empty(content: &Content, game: &str) -> Result<Match, String> {
+        let ruleset = stock_ruleset(content, game)?;
         let stage = *link_battle_stages(content, game).first().ok_or_else(|| format!("{game} has no link battle stage"))?;
-        let arena = Arena::on(game, stock_ruleset(content, game)?, Place { stage, background: None });
+        let arena = Arena::on(game, ruleset, Place { stage, background: None });
         let side = Side::fresh(content, &arena)?;
         Ok(Match { seed: None, arena, sides: [side.clone(), side] })
     }

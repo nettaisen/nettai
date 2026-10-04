@@ -7,7 +7,7 @@
 
 local collision = require("../../rules/collision")
 local controller = require("@exelib/circgun/controller")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local gun = require("@exelib/circgun/gun")
 local shot = require("@exelib/circgun/shot")
 local sparks = require("../../lib/sparks")
