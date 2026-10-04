@@ -342,7 +342,6 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             folder: Some(folder),
             souls: Default::default(),
             joypad_phase: 0,
-            bug_frags: 0,
             navi_level: nettai_match::default_navi_level(content, stats.navi),
             sp_times: Default::default(),
             console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },

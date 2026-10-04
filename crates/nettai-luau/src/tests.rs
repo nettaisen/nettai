@@ -100,6 +100,18 @@ fn a_support_pack_has_no_game_context() {
     refused(&e, "asset", "lib:m");
 }
 
+/// `system.state_of` is a game's rules' (its API module's): a module
+/// outside rules/ calling it is refused, naming the module (As built S8).
+#[test]
+fn another_systems_state_is_for_the_games_rules() {
+    let call = "local s = system.state_of(0, define.system { id = 'x' })\nreturn {}";
+    let e = define_named(&[("chips/x/chip", call)]).unwrap_err();
+    assert!(e.contains("test:chips/x/chip: system.state_of is a game's rules'"), "{e}");
+    // (Under rules/ it passes the guard: here no battle runs.)
+    let e = define_named(&[("rules/api", call)]).unwrap_err();
+    assert!(!e.contains("is a game's rules'") && e.contains("only reachable while content runs"), "{e}");
+}
+
 fn pack(modules: &[(&str, &str)]) -> Pack {
     Pack::root("test", modules.iter().map(|(p, s)| (p.to_string(), s.to_string())))
 }
