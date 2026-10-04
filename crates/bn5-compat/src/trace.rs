@@ -536,7 +536,7 @@ impl Round {
     /// round needs is defined ([`Round::needs`]), then BN5's records go
     /// into the engine's: the settings record's stage and background, both
     /// NaviStats ([`navi_stats`]), the folders, the RNGs, the set's score,
-    /// both players on BN5's stock rules.
+    /// both players on BN5's rules.
     pub fn round_setup(&self, content: &Content, compat: &Compat) -> Result<RoundSetup, String> {
         // BN5's light and dark system (content/bn5/rules/light-dark).
         const LIGHT_DARK: &str = "light-dark";
@@ -793,9 +793,9 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
 /// 7x7 grid (content/bn5/rules/navicust/board.luau), a cell one column and
 /// one row on. A part is compressed when `compressed` says so of its part id
 /// (event flag 0x1EC0 + the id, which 0x0813EEFC reads). The list's empty
-/// entries (id 0) are left out, the others kept in order; BN5's board has
-/// no expansions.
-pub fn navicust(content: &Content, compat: &Compat, list: &[u8], compressed: impl Fn(u8) -> bool) -> Result<NaviCust, String> {
+/// entries (id 0) are left out, the others kept in order, on a board with
+/// `expansions` (the save's ExpMemry: [`crate::save::Save::expansions`]).
+pub fn navicust(content: &Content, compat: &Compat, list: &[u8], expansions: u8, compressed: impl Fn(u8) -> bool) -> Result<NaviCust, String> {
     let mut parts = Vec::new();
     for e in list.chunks_exact(8) {
         let Some((key, color)) = compat.navicust_part(e[0])? else { continue };
@@ -805,7 +805,7 @@ pub fn navicust(content: &Content, compat: &Compat, list: &[u8], compressed: imp
         }
         parts.push(PlacedProgram { program, color, x: e[2] + 1, y: e[3] + 1, rotation: e[4], compressed: compressed(e[0]) });
     }
-    NaviCust::new(&parts, 0)
+    NaviCust::new(&parts, expansions)
 }
 
 /// A save's patch cards (each card's number and whether it is switched on,

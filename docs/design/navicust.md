@@ -140,7 +140,8 @@ the order its bugs' routine runs them and what each writes by level, what a plac
 HubBatc counts its own bug once more), whether any bug sets the emotion window's glitch (BN6's flag 0x1720; BN5's
 flag is read outside battle only), and whether the HP is left as it is (BN5's compile in the cyberworld, the
 system's setup `cyberworld`). The programs' effects are shared constructors (@exelib/navicust/effects). BN5's board
-is 5x5 with no frame, the middle of the engine's 7x7 grid. The engine's model, the match file and the editor take it
+has no frame and grows as BN6's does (4x4, 5x4, 5x5 by its ExpMemry, key item 0x61), on its 5x5 grid, the middle of
+the engine's 7x7. The engine's model, the match file and the editor take it
 as they are. The editor draws whichever board the side's game's section gives, and lists the content's programs. BN4's NaviCust has two command lines and no plus parts. `NaviCustRules::command_line` is
 one row, so BN4 would widen it to a set of rows. That is a change to the section, not to the model.
 
@@ -166,7 +167,9 @@ is compiled compressed by the original.
 BN5's: `trace-tests --test bn5_navicust` compiles Tango's BN5 saves and the BN5 lab's scenarios the same way, in
 every byte the engine's compile can write (bn5-map.md §15.13): 59 NaviCusts of 164 programs, all 47 programs, every
 bug and level that changes a byte, uncompressed shapes (a scenario clearing the save's flags), turned ones, the
-cyberworld's HP, and the finished saves' own NaviCusts. Every one matches.
+cyberworld's HP, and the finished saves' own NaviCusts. Every one matches. The board is the save's ExpMemry's (the
+scenarios `board-4x4` and `board-5x4` poke fewer than the saves' two): BN5's compile reads no board, so the oracle
+checks that each part is on it.
 
 ## 6. Unverified (ported)
 

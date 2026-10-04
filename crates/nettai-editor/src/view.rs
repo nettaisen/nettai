@@ -1,6 +1,6 @@
 //! What the editor shows: a bar of file actions, the panes (the arena, with
-//! the match's game and ruleset, then each side's navi, folder, Crosses,
-//! patch cards and stats; only what the ruleset has, every list the
+//! the match's game, then each side's navi, folder, Crosses,
+//! patch cards and stats; only what the game's rules have, every list the
 //! game's), and the problems, live.
 
 use crate::app::{Choice, Editor, Msg, Tab};
@@ -62,22 +62,21 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
 
     let mut tabs = Column::new().spacing(2).width(Length::Fixed(170.0));
     tabs = tabs.push(nav("Arena", Tab::Arena, e.tab));
-    let a = &e.m.arena;
     for (s, name) in SIDES.iter().enumerate() {
         let side = e.side(s);
         tabs = tabs.push(text(*name).size(13).color(DIM));
         tabs = tabs.push(nav("  Navi", Tab::Navi(s), e.tab));
         tabs = tabs.push(nav("  Folder", Tab::Folder(s), e.tab));
-        if a.has_system(&e.content, FORMS_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
+        if nettai_match::ruleset_has_system(&e.content, FORMS_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
             tabs = tabs.push(nav("  Crosses", Tab::Crosses(s), e.tab));
         }
-        if nettai_match::facts::takes(&e.content, a.ruleset, nettai_match::facts::SOULS_FIELD) {
+        if nettai_match::facts::takes(&e.content, nettai_match::facts::SOULS_FIELD) {
             tabs = tabs.push(nav("  Souls", Tab::Souls(s), e.tab));
         }
-        if a.has_system(&e.content, PATCH_CARDS_SYSTEM) {
+        if nettai_match::ruleset_has_system(&e.content, PATCH_CARDS_SYSTEM) {
             tabs = tabs.push(nav("  Patch cards", Tab::Cards(s), e.tab));
         }
-        if a.has_system(&e.content, NAVICUST_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
+        if nettai_match::ruleset_has_system(&e.content, NAVICUST_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
             tabs = tabs.push(nav("  NaviCust", Tab::NaviCust(s), e.tab));
         }
         tabs = tabs.push(nav("  Stats", Tab::Stats(s), e.tab));
@@ -118,11 +117,8 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
     let games: Vec<Choice<String>> =
         e.games.iter().map(|g| Choice { label: game_label(g), value: g.clone() }).collect();
     let picked = games.iter().find(|g| g.value == game).cloned();
-    // (A game has one ruleset: the picker holds it alone, until it goes.)
-    let rulesets: Vec<Choice<_>> =
-        c.defs.ruleset().into_iter().map(|_| Choice { label: format!("{game}'s rules"), value: nettai_content_api::RulesetHandle(0) }).collect();
-    let ruleset = rulesets.iter().find(|r| r.value == m.arena.ruleset).cloned();
-    let systems: Vec<&str> = c.defs.ruleset_systems().iter().map(|&h| nettai_match::ids::local(&c.defs.system(h).key)).collect();
+    // (A game is its rules: their systems, by name.)
+    let systems: Vec<&str> = nettai_match::systems(c).iter().map(|&h| nettai_match::ids::local(&c.defs.system(h).key)).collect();
     let stage_label = |s: nettai_content_api::StageHandle| nettai_match::ids::local(&c.defs.stage(s).key).to_string();
     let stages: Vec<Choice<_>> =
         nettai_match::link_battle_stages(c, game).into_iter().map(|s| Choice { label: stage_label(s), value: s }).collect();
@@ -144,11 +140,10 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
     let mut col = column![
         heading("Arena"),
         field("Game", pick_list(games, picked, Msg::Game)),
-        text("The match is of one game: both sides' navis, chips, souls and patch cards are its, and everything below lists its alone. Changing it starts the sides over.")
+        text("The match is of one game: both sides play by its rules, their navis, chips, souls and patch cards are its, and everything below lists its alone. Changing it starts the sides over.")
             .size(13)
             .color(DIM),
-        field("Ruleset", pick_list(rulesets, ruleset, Msg::Ruleset)),
-        text(format!("Both sides play by it. Its systems: {}", if systems.is_empty() { "none".into() } else { systems.join(", ") })).size(13).color(DIM),
+        text(format!("Its rules' systems: {}", if systems.is_empty() { "none".into() } else { systems.join(", ") })).size(13).color(DIM),
         rule::horizontal(1),
         place(0, &m.arena.first),
         checkbox(same).label("The set's later rounds on the same place").on_toggle(Msg::LaterSame),
@@ -169,7 +164,6 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
 fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &e.content;
     let side = e.side(s);
-    let ruleset = e.m.arena.ruleset;
     // (The match's game's navis.)
     let navis: Vec<Choice<_>> = nettai_match::navis(c, e.m.game()).into_iter().map(|n| Choice { label: e.names.navi(c, n), value: n }).collect();
     let navi = Choice { label: e.names.navi(c, side.navi), value: side.navi };
@@ -180,7 +174,7 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     let mut col = column![heading(SIDES[s]), field("Navi", pick_list(navis, Some(navi), move |n| Msg::Navi(s, n)))].spacing(10);
     // What the rules and the navi take, alone: BN6's version, a navi
     // code's level (`nettai_match::facts`).
-    if nettai_match::Side::takes_game(c, ruleset) {
+    if nettai_match::Side::takes_game(c) {
         col = col.push(field("Version", pick_list(versions, version, move |g| Msg::Version(s, g))));
     }
     // (No navi code for BN5's MegaMan.)
@@ -203,13 +197,13 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     col = col.push(
         text(
             "From a BN6 .sav: the version, Beast Out and the Crosses it owns, the navi code's level and the SP times. \
-             From a BN5 .sav (or a raw save image): its karma and the souls it has (its version's). \
+             From a BN5 .sav (or a raw save image): its karma, the souls it has (its version's) and its NaviCust board's size. \
              A save of another game than the match's makes a new match of its game.",
         )
         .size(13)
         .color(DIM),
     );
-    if nettai_match::facts::takes(c, ruleset, nettai_match::facts::KARMA_FIELD) {
+    if nettai_match::facts::takes(c, nettai_match::facts::KARMA_FIELD) {
         col = col.push(rule::horizontal(1));
         col = col.push(karma(e, s));
     }

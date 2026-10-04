@@ -1,7 +1,7 @@
 //! Matches of each game (docs/frontend.md §6), each on its game's content
 //! alone (`testing::bn5_content`, `bn6_content`): a match is of one game,
 //! its arena's, and names nothing of another's. BN5's folder rules on
-//! BN5's sides (its stock ruleset's folder system,
+//! BN5's sides (its rules' folder system,
 //! content/bn5/rules/folder), a BN5 match played a few hundred ticks,
 //! BN5's karma and souls, and a name another game has but the match's
 //! hasn't refused as any unknown name is.
@@ -78,7 +78,7 @@ fn refs(v: &[String]) -> Vec<&str> {
     v.iter().map(String::as_str).collect()
 }
 
-/// BN5's MegaMan, on BN5's stock rules, with Tango's BN5 folder: the
+/// BN5's MegaMan, by BN5's rules, with Tango's BN5 folder: the
 /// rules accept it (the Regular chip too).
 #[test]
 fn a_bn5_folder_keeps_bn5s_rules() {
@@ -163,14 +163,12 @@ fn an_unknown_name_is_refused() {
     let e = parse_in(&six, "bn6", &side("megaman", &chips, ""), &side("megaman", &BN6, "")).unwrap_err();
     says(e, "left: folder entry 0: no chip \"gyroman\" in bn6");
     // A game the content hasn't (BN6's file on BN5's content, a game no
-    // content has); a ruleset the game hasn't.
+    // content has).
     let text = match_text(&content, "bn5", &ok, &ok);
     let e = crate::parse(&content, &text.replacen("game = \"bn5\"", "game = \"bn7\"", 1)).unwrap_err();
     says(e, "no game \"bn7\" (the content's are bn5)");
     let e = crate::parse(&six, &text).unwrap_err();
     says(e, "no game \"bn5\" (the content's are bn6)");
-    let e = crate::parse(&content, &text.replacen("game = \"bn5\"\n", "game = \"bn5\"\nruleset = \"bn6:stock\"\n", 1)).unwrap_err(); // (written in full)
-    assert!(e[0].starts_with("no ruleset \"bn6:stock\" in bn5"), "{e:?}"); // (written in full)
 }
 
 /// A match's lookups see only its game: its stages, navis, chips (the
@@ -191,7 +189,6 @@ fn a_matchs_lookups_only_see_its_game() {
         for s in &m.sides {
             assert!(of(&content.defs.navi(s.navi).key) && s.folder.chips().all(|c| of(&content.defs.chip(c.id).key)));
         }
-        assert!(of(&content.defs.ruleset(m.arena.ruleset).key));
         // Written, it names its game once, and nothing else qualified.
         let text = crate::write(&content, &m);
         assert!(text.contains(&format!("game = \"{game}\"")) && !text.contains("bn5:") && !text.contains("bn6:"), "{text}");
@@ -267,8 +264,8 @@ fn karma_and_souls_write_and_read_back() {
     let e = parse_in(&six, "bn6", &side("megaman", &BN6, ""), &bad).unwrap_err();
     for p in [
         "right: karma 1200: the light/dark value is 0 to 1000",
-        "right: karma, but the ruleset has no light and dark MegaMan (no system takes `karma`)",
-        "right: a soul list, but the ruleset has no Soul Unison (no system takes `souls`)",
+        "right: karma, but bn6 has no light and dark MegaMan (no system takes `karma`)",
+        "right: a soul list, but bn6 has no Soul Unison (no system takes `souls`)",
         "right: HeatCross is no soul",
     ] {
         assert!(e.iter().any(|x| x == p), "{p:?} not in {e:?}");
@@ -454,46 +451,10 @@ fn a_sides_fields_are_its_rules() {
     let (c5, c6) = (bn5_content(), bn6_content());
     let six = crate::draw::live(&c6, "bn6", 3, None).unwrap();
     let five = parse(&c5, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
-    let (r6, r5) = (six.arena.ruleset, five.arena.ruleset);
-    assert!(crate::Side::takes_game(&c6, r6) && six.sides[0].takes_level(&c6) && crate::Side::takes_sp_times(&c6));
-    assert!(!crate::Side::takes_game(&c5, r5) && !five.sides[0].takes_level(&c5) && crate::Side::takes_sp_times(&c5));
+    assert!(crate::Side::takes_game(&c6) && six.sides[0].takes_level(&c6) && crate::Side::takes_sp_times(&c6));
+    assert!(!crate::Side::takes_game(&c5) && !five.sides[0].takes_level(&c5) && crate::Side::takes_sp_times(&c5));
     // Each slot's chip is of the match's game.
     let chip = |c: &nettai_battle::Content, m: &Match, slot| crate::facts::sp_chip(c, &m.arena, slot).map(|h| c.defs.chip(h).key.clone());
     assert!(chip(&c6, &six, 0).is_some_and(|k| crate::ids::in_game("bn6", &k)), "{:?}", chip(&c6, &six, 0));
     assert!(chip(&c5, &five, 1).is_some_and(|k| crate::ids::in_game("bn5", &k)), "{:?}", chip(&c5, &five, 1));
-}
-
-/// A ruleset change drops what the new rules don't take (the test
-/// content's mix has no forms system: the Crosses go), and the same rules
-/// keep everything.
-#[test]
-fn a_ruleset_change_drops_what_the_rules_dont_take() {
-    let content = nettai_battle::content::testing::content();
-    let stock = content.defs.stock_ruleset().unwrap();
-    let mix = content.defs.ruleset_by_key("test-mix").unwrap();
-    let navi = content.form_changing_navi().unwrap();
-    let mut s = crate::Side {
-        navi,
-        game: nettai_battle::custom::GameVersion::Gregar,
-        stats: crate::Side::base_stats(&content, navi, nettai_battle::custom::GameVersion::Gregar),
-        folder: crate::Folder::EMPTY,
-        crosses: crate::navi_crosses(&content, navi).map(|c| crate::CrossList::new(&c[..c.len().min(2)])),
-        beast_out: true,
-        cards: Vec::new(),
-        navi_level: None,
-        bug_frags: 0,
-        sp_times: Default::default(),
-        navicust: None,
-        tactics: Default::default(),
-        karma: crate::facts::DEFAULT_KARMA,
-        souls: None,
-        soul_unison: true,
-        chaos_unison: true,
-    };
-    let kept = s.clone();
-    s.fit_rules(&content, stock);
-    assert_eq!(s, kept, "the same rules keep everything");
-    assert!(crate::ruleset_has_system(&content, stock, crate::FORMS_SYSTEM) && !crate::ruleset_has_system(&content, mix, crate::FORMS_SYSTEM));
-    s.fit_rules(&content, mix);
-    assert_eq!(s.crosses, None);
 }

@@ -369,7 +369,7 @@ impl Round {
         RoundSetup {
             content: content.hash(),
             settings: codec::battle_settings_of(self.console_game(), &unhex(&self.setup.settings), &ids),
-            // BN6's stock rules; its systems' setups say what the save
+            // BN6's rules; its systems' setups say what the save
             // unlocks.
             navi_stats: [stats(0), stats(1)],
             rng: self.setup.rng2,

@@ -226,8 +226,6 @@ handles! {
     RecordHandle => Record,
     /// A system of a game's rules.
     SystemHandle => System,
-    /// A player's rules.
-    RulesetHandle => Ruleset,
     /// A patch card.
     PatchCardHandle => PatchCard,
     /// A NaviCust program.

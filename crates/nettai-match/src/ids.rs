@@ -1,5 +1,5 @@
 //! Names in a match: once the arena chooses the game, everything else a
-//! match names (its stages and backgrounds, each side's ruleset, navi,
+//! match names (its stages and backgrounds, each side's navi,
 //! chips, Crosses, souls, patch cards, NaviCust programs, weapons and
 //! records) is a local name in that game's namespace (`cannon`), looked up
 //! only there. There is no way to write another game's name: a name the
@@ -14,7 +14,7 @@
 
 use nettai_battle::content::Content;
 use nettai_content_api::{
-    AssetKind, ChipHandle, FormHandle, NaviCustProgramHandle, NaviHandle, PatchCardHandle, RecordHandle, RulesetHandle, StageHandle,
+    AssetKind, ChipHandle, FormHandle, NaviCustProgramHandle, NaviHandle, PatchCardHandle, RecordHandle, StageHandle,
     WeaponHandle, keys,
 };
 
@@ -41,11 +41,6 @@ pub fn chip(content: &Content, game: &str, name: &str) -> Option<ChipHandle> {
 
 pub fn navi(content: &Content, game: &str, name: &str) -> Option<NaviHandle> {
     key(content, game, name).and_then(|k| content.defs.navi_by_key(k))
-}
-
-/// (A game has one ruleset, which has no name: none is found by one.)
-pub fn ruleset(_content: &Content, _game: &str, _name: &str) -> Option<RulesetHandle> {
-    None
 }
 
 pub fn form(content: &Content, game: &str, name: &str) -> Option<FormHandle> {
@@ -82,11 +77,11 @@ pub fn backgrounds<'c>(content: &'c Content, game: &str) -> Vec<&'c str> {
     (content.game() == game).then(|| content.assets.backgrounds.keys().map(|k| local(k)).collect()).unwrap_or_default()
 }
 
-/// The games a match on `content` can be of: its game, when it has a stock
+/// The games a match on `content` can be of: its game, when it has a
 /// ruleset and a link battle stage (a content holds one game).
 pub fn games(content: &Content) -> Vec<String> {
     let game = content.game();
-    let playable = content.defs.ruleset().is_some() && !crate::link_battle_stages(content, game).is_empty();
+    let playable = crate::playable(content, game).is_ok() && !crate::link_battle_stages(content, game).is_empty();
     if playable { vec![game.to_string()] } else { Vec::new() }
 }
 
@@ -105,7 +100,6 @@ mod tests {
         assert!(form(&content, "bn6", "heatcross").is_some());
         assert_eq!(chip(&content, "bn5", "cannon"), None);
         assert_eq!(chip(&content, "bn6", "bn6:cannon"), None); // (written in full)
-        assert_eq!(ruleset(&content, "bn6", "stock").map(|r| content.defs.ruleset(r).key.as_str()), Some("stock"));
         assert_eq!(games(&content), ["bn6"]);
     }
 }
