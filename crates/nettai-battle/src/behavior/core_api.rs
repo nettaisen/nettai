@@ -286,8 +286,8 @@ impl Battle {
     }
 
     fn side_system(&self, side: u8, system: u8) -> ApiResult<nettai_content_api::SystemHandle> {
-        let r = self.rules[side as usize & 1].ruleset.ok_or_else(|| ApiError::Other("the side plays by no ruleset".into()))?;
-        self.content.defs.ruleset(r).systems.get(system as usize).copied().ok_or_else(|| ApiError::Other("no such system".into()))
+        let _ = side;
+        self.content.defs.ruleset_systems().get(system as usize).copied().ok_or_else(|| ApiError::Other("no such system".into()))
     }
 
     fn custom_screen_mut(&mut self, side: u8) -> ApiResult<&mut crate::custom::screen::Screen> {

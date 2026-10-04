@@ -1,5 +1,5 @@
 --!strict
--- BN5's stock rules (docs/design/rules-in-luau.md §2.2): the systems a BN5 player plays by: light and dark
+-- BN5's rules, its one ruleset (docs/design/rules-in-luau.md §2.2): the systems a BN5 player plays by: light and dark
 -- MegaMan, BN5's emotions, Soul Unison, the computer navis Chaos Unison brings, the NaviCust, the patch cards and the
 -- folder rules so far; its Team Battle is still to come as a system (docs/design/bn5-map.md §15).
 -- Written by tools/bn5/gen_rules.py (bn6battle-verify) from the BN5 ROM; people own it now.
@@ -13,8 +13,6 @@ local patch_cards = require("@self/patch-cards")
 local souls = require("@self/souls")
 
 return define.ruleset {
-    id = "stock",
-    stock = true,
     systems = {
         -- The NaviCust compiled into the navi's stats as the round is set up (BN6's compile, BN5's board and bugs).
         navicust,
