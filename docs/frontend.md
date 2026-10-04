@@ -326,7 +326,11 @@ functions:
   not only for those a trace shows (its test:
   `a_lookup_by_the_wrong_key_fails_for_every_chip`). A string a
   language's table lacks shows in the content's own, by design: it is said,
-  not counted.
+  not counted; so is a language the content has strings in but its pack no
+  lettering for (BN5's Japanese, which its extraction makes none of): such
+  a console can't be shown, and the language isn't checked. It audits the
+  match's one game (`--game`): a chip's Program Advance code by its number
+  in that game's compat (BN6's or BN5's).
 - `--audit <trace.jsonl>...` runs traces, several at a time (`--jobs N`,
   default one a core), and makes the lookups their frames and sound cues
   make, without drawing: no stage, no composing, no sound synthesis
