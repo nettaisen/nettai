@@ -101,6 +101,12 @@ pub struct ChipUseRules {
     /// in pixels from the panel's center (the navi chip's, the healer's):
     /// down the field, and up.
     pub anti_navi_sparkle: SparkleOffset,
+    /// The hand's modifier bits 0x08, 0x10 and 0x20 count at a chip's use
+    /// (BN5's capsules: 0x08010368 turns 0x08 and 0x20 into the damage
+    /// word's 0x1000 and 0x0800, and 0x0800FFF6 heals the user a tenth of
+    /// its HP on 0x10); BN6's `sub_8012C34` knows bits 0x02 and 0x04 alone.
+    #[serde(default)]
+    pub mixed_modifiers: bool,
 }
 
 /// The rule section `effects` (docs/design/bn5-map.md §15.3 items 15 and

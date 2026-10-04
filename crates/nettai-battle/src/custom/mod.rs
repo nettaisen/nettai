@@ -418,7 +418,7 @@ impl Side {
             .filter_map(|&slot| {
                 let chip = screen.chip_in(slot, folder)?;
                 let regular = matches!(screen.slots[slot as usize].kind, SlotKind::Chip { regular: true, .. });
-                Some(Pick { chip: screen::checked(chip, &view), regular })
+                Some(Pick { chip: screen::checked(chip, &view), regular, marks: screen.slots[slot as usize].marks })
             })
             .collect();
         let mut pa_used = self.program_advances;
@@ -460,6 +460,14 @@ impl Side {
                 if let Some(t) = &mut console.tag_pair {
                     *t = t.wrapping_sub(1);
                 }
+            }
+        }
+        // A chip a button holds leaves the folder too (BN5's Arm Change,
+        // 0x080250C8: the Regular chip's flag stays as it is).
+        if let Some(SlotKind::Chip { index, .. }) = screen.hold.map(|h| screen.slots[h.chip as usize].kind) {
+            folder.take(index as usize);
+            if let Some(t) = &mut console.tag_pair {
+                *t = t.wrapping_sub(1);
             }
         }
         screen.program_advance = built.program_advance;
@@ -678,7 +686,15 @@ impl Extras for SideExtras<'_> {
             let shown = self.with_screen(&mut screen, None, |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonShown));
             if shown == nettai_content_api::Value::Bool(true) {
                 let d = content.defs.button(button);
-                out.push(screen::ButtonPlace { button, slot: d.slot, cells: d.cells, uses: d.uses, right: d.right, left: d.left });
+                // The chip it shows, if it says (BN5's capsules).
+                let chip = match d.chip {
+                    Some(_) => match self.with_screen(&mut screen, None, |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonChip)) {
+                        nettai_content_api::Value::Def(nettai_content_api::Registry::Chip, id) => Some(ChipHandle(id)),
+                        _ => None,
+                    },
+                    None => None,
+                };
+                out.push(screen::ButtonPlace { button, slot: d.slot, cells: d.cells, uses: d.uses, right: d.right, left: d.left, chip });
             }
         }
         out

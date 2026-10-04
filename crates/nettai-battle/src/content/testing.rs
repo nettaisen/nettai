@@ -1565,6 +1565,7 @@ fn rules() -> Rules {
         chip_use: crate::content::ChipUseRules {
             leave_on_use: false,
             anti_navi_sparkle: crate::content::SparkleOffset { dy: 16, z: 32 },
+            mixed_modifiers: false,
         },
         // The SP navi chips BN6's modules bring: Count[SP].
         sp_slots: vec!["sp/count".into()],

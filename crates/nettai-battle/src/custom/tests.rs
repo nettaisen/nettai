@@ -60,7 +60,7 @@ impl Extras for TestButtons {
     }
 
     fn buttons(&mut self, _: &Screen) -> Vec<ButtonPlace> {
-        let place = |b| ButtonPlace { button: ButtonHandle(b), slot: 8, cells: 2, uses: 1, right: Some(11), left: Some(7) };
+        let place = |b| ButtonPlace { button: ButtonHandle(b), slot: 8, cells: 2, uses: 1, right: Some(11), left: Some(7), chip: None };
         if self.scrap {
             vec![place(0)]
         } else if self.redeal {

@@ -32,19 +32,28 @@ souls.revert = define.action {
     update = revert.update,
 }
 
+-- The system's state: its own fields, the soul button's, and what each soul's addition to the custom screen keeps
+-- (./custom's `states`).
+local state: { [string]: string | { string } } = {
+    turns = "u8",
+    chaos = "bool",
+    -- The custom screen's (./custom): the round's souls given, the button's offer, the soul's choice's step.
+    souls_used = "u32",
+    offer = "form",
+    offer_number = "u8",
+    offer_chaos = "bool",
+    unite_step = "u8",
+    unite_count = "u8",
+}
+for _, fields in custom_souls.states do
+    for name, kind in fields do
+        state[name] = kind
+    end
+end
+
 souls.system = define.system {
     id = "souls",
-    state = {
-        turns = "u8",
-        chaos = "bool",
-        -- The custom screen's (./custom): the round's souls given, the button's offer, the soul's choice's step.
-        souls_used = "u32",
-        offer = "form",
-        offer_number = "u8",
-        offer_chaos = "bool",
-        unite_step = "u8",
-        unite_count = "u8",
-    },
+    state = state,
     -- What the player's save brings: the souls it has (a match's side's `souls`, which nettai-match writes by this
     -- field's name; a recording's, its version's: bn5-compat), which the custom screen's soul button may offer, as the
     -- save's soul flags (0x08024BF0's, by each soul's number; any souls of the game, either version's); Soul Unison
@@ -53,15 +62,18 @@ souls.system = define.system {
     setup = { souls = "form[16]", soul_unison = "bool", chaos_unison = "bool" },
     setup_defaults = { soul_unison = true, chaos_unison = true },
     actions = { souls.action, souls.revert },
-    -- Soul Unison on the custom screen (./custom).
+    -- Soul Unison on the custom screen, and what each soul adds to it (./custom).
     buttons = custom_souls.buttons,
-    windows = { soul_unison = custom_souls.window },
+    windows = custom_souls.windows,
     custom = {
         hand_size = custom_souls.hand_size,
         open = custom_souls.open,
+        deal = custom_souls.deal,
         confirmed = custom_souls.confirmed,
     },
     hooks = {
+        -- 0x08011DDC: the turn's requests read (ColonelSoul's arm chip).
+        turn_opened = custom_souls.turn_opened,
         -- 0x0801246C, 0x0801243A: in a soul whose turns ran out, MegaMan asks to revert.
         turn_check = function(side: number)
             local navi = battle.player(side) :: Object

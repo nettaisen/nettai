@@ -46,6 +46,7 @@ language = "en"
 "blizman-ds" = { name = "BlizMan\uE008", description = "Snowball\nexpands\nwhen hit" }
 "blizman-sp" = { name = "BlizMan\uE003", description = "Snowball\nexpands\nwhen hit" }
 "blkbomb" = { name = "BlkBomb", description = "Firebomb\nhits 3rd\nsq ahead!" }
+"blkcapsl" = { name = "BlkCapsl", description = "Add an\neffect:\nBlind" }
 "bodygrd" = { name = "BodyGrd", description = "Bodyguard\nthrows\nninjastar" }
 "boomer" = { name = "Boomer", description = "Boomerang\nencircles\nfield" }
 "boxer1" = { name = "Boxer1", description = "Rapid\npunch\nall enemy" }
@@ -235,12 +236,14 @@ language = "en"
 "phoenix" = { name = "Phoenix", description = "Fire Atk!\nRecover\nHP,too!" }
 "piledrvr" = { name = "PileDrvr", description = "Places a\nPileDrvr\nto attack" }
 "pithoky" = { name = "PitHoky", description = "Reflect\nhockey\nattack" }
+"pnkcapsl" = { name = "PnkCapsl", description = "Add an\neffect:\nRecovery" }
 "pnlretrn" = { name = "PnlRetrn", description = "Fix your\narea's\npanels" }
 "poisphar" = { name = "PoisPhar", description = "Places a\npoisoned\nPharaoh" }
 "poltrgst" = { name = "Poltrgst", description = "Objects\nthrown at\nenemies!" }
 "protoman" = { name = "ProtoMan", description = "Move in\nand slice\nthe enemy" }
 "protomn-ds" = { name = "ProtoMn\uE008", description = "Move in\nand slice\nthe enemy" }
 "protomn-sp" = { name = "ProtoMn\uE003", description = "Move in\nand slice\nthe enemy" }
+"prpcapsl" = { name = "PrpCapsl", description = "Add an\neffect:\nHP Bug" }
 "pulsar1" = { name = "Pulsar1", description = "Sonic atk\nspreads\nwhen hits" }
 "pulsar2" = { name = "Pulsar2", description = "Sonic atk\nspreads\nwhen hits" }
 "pulsar3" = { name = "Pulsar3", description = "Sonic atk\nspreads\nwhen hits" }
@@ -331,6 +334,7 @@ language = "en"
 "vulcan2" = { name = "Vulcan2", description = "5-shot to\npierce 1\npanel!" }
 "vulcan3" = { name = "Vulcan3", description = "7-shot to\npierce 1\npanel!" }
 "wavepit" = { name = "WavePit", description = "Wave from\nWater sq" }
+"whicapsl" = { name = "WhiCapsl", description = "Add an\neffect:\nParalyze" }
 "wideblde" = { name = "WideBlde", description = "Cuts enmy\nin front!\nRange: 3" }
 "widesht1" = { name = "WideSht1", description = "Fires 3sq\nshotgun\nblast!" }
 "widesht2" = { name = "WideSht2", description = "Fires 3sq\nshotgun\nblast!" }
@@ -342,6 +346,7 @@ language = "en"
 "woodnos1" = { name = "WoodNos1", description = "Branch\ngrows out\nfrom side" }
 "woodnos2" = { name = "WoodNos2", description = "Branch\ngrows out\nfrom side" }
 "woodnos3" = { name = "WoodNos3", description = "Branch\ngrows out\nfrom side" }
+"yelcapsl" = { name = "YelCapsl", description = "Add an\neffect:\nConfuse" }
 "yoyo" = { name = "YoYo", description = "Yoyo atk\nreaches\n3sq ahead" }
 "yoyomode" = { name = "YoYoMode", description = "ミテイ" }
 "z-saver" = { name = "Z Saver", description = "Repliroid\nswrd cuts\n3 times" }

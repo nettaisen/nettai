@@ -1021,6 +1021,16 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
                 Err(e) => format!("? ({e})"),
             };
             let status = x.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
+            // NumberMan's face on NumberSoul's image copies the image's
+            // spawn registers for a tick (0x0801201E's read of the transform
+            // record): its +6, the turn's arm chip by number, where the
+            // engine's image has 0xFFFF whatever the chip (rules/souls/image).
+            let mut at = [x.pos.x, x.pos.y, x.pos.z];
+            if key.as_str() == "numbersoul/layer" && at[1] == 0xFFFF {
+                if let Some(n) = arm_chip_number(b, compat, x.alliance) {
+                    at[1] = n as i32;
+                }
+            }
             vec![
                 ("kind", kind),
                 ("flags", format!("{:#04x}", x.flags)),
@@ -1031,7 +1041,7 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
                 ("panel", panel(i, [x.panel.x, x.panel.y])),
                 ("side", x.alliance.to_string()),
                 ("hp", format!("{}/{}", x.hp, x.max_hp)),
-                ("pos", pos([x.pos.x, x.pos.y, x.pos.z], garbage, xy, zf)),
+                ("pos", pos(at, garbage, xy, zf)),
                 ("timer", x.timer.to_string()),
                 ("anim", x.anim.to_string()),
                 ("status", status_field(i, format!("{status:#x}"))),
@@ -1078,6 +1088,17 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
         }
     }
     d
+}
+
+/// Side `side`'s arm chip for the turn (BN5's souls system's `arm_chip`:
+/// ColonelSoul's Arm Change, the transform record's +6), by BN5's number.
+fn arm_chip_number(b: &Battle, compat: &Compat, side: u8) -> Option<u16> {
+    let (schema, state) = b.system_state(side, "souls")?;
+    let nettai_content_api::FieldValue::Ref(Some((nettai_content_api::Registry::Chip, h))) = state.get(schema, schema.index_of("arm_chip")?) else {
+        return None;
+    };
+    let key = &b.content.defs.chips.get(h as usize)?.key;
+    compat.chips.get(key).map(|c| c.id)
 }
 
 /// How far a round's replay got.
