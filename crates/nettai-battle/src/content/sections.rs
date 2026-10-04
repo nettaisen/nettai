@@ -141,6 +141,8 @@ struct CustomScreenSection {
     right_scan_bottom: Vec<u8>,
     left_scan_start: [u8; 12],
     right_scan_start: [u8; 12],
+    #[serde(default)]
+    redeal_kept: Vec<u8>,
 }
 
 #[derive(Deserialize)]
@@ -408,6 +410,7 @@ fn section(rules: &mut Rules, name: &str, spec: &Data, at: &str, r: &SpecReader)
                     right_scan_bottom: s.right_scan_bottom,
                     left_scan_start: s.left_scan_start,
                     right_scan_start: s.right_scan_start,
+                    redeal_kept: s.redeal_kept,
                 };
             }
             "buster" => {
