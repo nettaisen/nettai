@@ -475,15 +475,18 @@ impl Battle {
         {
             return;
         }
-        // Guard.
+        // Guard (the arena's rule: BN5's breaks on 0x1002 always and marks
+        // a direction unless 0x0C004000).
         if rd.f1 & f1::GUARD != 0 {
-            let brk = if hs & 0x4000 != 0 { 0x1002 } else { 0x0002 };
+            let bn5 = self.arena_rules().effects.guard == crate::content::GuardRule::Bn5;
+            let brk = if bn5 || hs & 0x4000 != 0 { 0x1002 } else { 0x0002 };
             if hs & brk == 0 {
                 let hm = self.collision.get_mut(h);
                 hm.acc.hit_flags |= 1;
                 hm.acc.hit_flags_by_flip[rd.flip as usize & 1] |= 1;
                 let mut flags = hs & !0x10;
-                if flags & 0x0C00_5000 == 0 {
+                let unmarked = if bn5 { 0x0C00_4000 } else { 0x0C00_5000 };
+                if flags & unmarked == 0 {
                     self.collision.get_mut(r).guard_dirs |= 1 << hd.flip;
                     flags |= 0x2_0000;
                 }
@@ -682,5 +685,60 @@ fn decode_damage_word(s: &mut CollisionData, r1: u16, roles: &crate::content::Ro
     }
     if d & 0x1000 != 0 {
         s.bugs = (r1 << 8).wrapping_add(0xF7);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::battle::battle_flags;
+    use crate::content::{GuardRule, testing};
+    use std::sync::Arc;
+
+    /// A fight on the test content whose arena guards by `guard`: the
+    /// battle and its two navis' collisions (side 0's, side 1's).
+    fn fight(guard: GuardRule) -> (Battle, [CollisionId; 2]) {
+        let mut c: Content = testing::build();
+        c.define().unwrap_or_else(|e| panic!("{e}"));
+        for rules in &mut c.rules {
+            rules.effects.guard = guard;
+        }
+        let c = Arc::new(c);
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+        setup.content = c.hash();
+        let mut b = Battle::new(setup, c);
+        b.spawn_actors();
+        b.run_objects();
+        b.round.flags |= battle_flags::FIGHTING;
+        let ids = [0, 1].map(|side| {
+            let p = b.player(side).unwrap();
+            b.objects.get(p).collision.unwrap()
+        });
+        (b, ids)
+    }
+
+    /// Side 1's guarding navi hit by side 0's navi as an attack of types
+    /// `types`: whether the guard held (the hitter told it was guarded).
+    fn guarded(guard: GuardRule, types: u32) -> bool {
+        let (mut b, [h, r]) = fight(guard);
+        b.collision.get_mut(r).f1 |= f1::GUARD;
+        b.collision.get_mut(h).self_flags = types;
+        b.collision.get_mut(h).f1 = 0;
+        b.resolve_hit(r, h);
+        b.collision.get(h).acc.hit_flags & 1 != 0
+    }
+
+    /// docs/design/bn5-map.md §15.11: BN5's guard breaks on type 0x1000
+    /// whatever 0x4000 (BN6's only with it); with both, either breaks.
+    /// (BN5's guarded-direction mask, 0x0C004000 to BN6's 0x0C005000,
+    /// differs only for a hit of 0x1000, which BN5's guard never holds.)
+    #[test]
+    fn bn5_guard_breaks_on_0x1000() {
+        assert!(guarded(GuardRule::Bn6, 0x8000_1000));
+        assert!(!guarded(GuardRule::Bn5, 0x8000_1000));
+        assert!(!guarded(GuardRule::Bn6, 0x8000_5000));
+        assert!(!guarded(GuardRule::Bn5, 0x8000_5000));
+        assert!(guarded(GuardRule::Bn6, 0x8000_0000));
+        assert!(guarded(GuardRule::Bn5, 0x8000_0000));
     }
 }

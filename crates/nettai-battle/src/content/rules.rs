@@ -111,6 +111,25 @@ pub struct EffectsRules {
     /// (its kind's), not the arena's.
     #[serde(default)]
     pub obstacle_soldiers: bool,
+    /// How a guard takes a hit (`sub_3007218`'s guard step).
+    #[serde(default)]
+    pub guard: GuardRule,
+}
+
+/// How a guarding receiver takes a hit in the hit kernel (the arena's).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GuardRule {
+    /// BN6's `sub_3007218`: a hit of type 0x2 breaks through, or of 0x1000
+    /// when it is also 0x4000; a guarded hit marks its direction unless it
+    /// has 0x0C005000.
+    #[default]
+    Bn6,
+    /// BN5's (0x080169B8): a hit of 0x1002 breaks through, whatever its
+    /// 0x4000; a guarded hit marks its direction unless it has 0x0C004000.
+    /// (BN5's own collision types with 0x1000 all have 0x4000: they differ
+    /// only with another game's attacks.)
+    Bn5,
 }
 
 impl Default for EffectsRules {
@@ -121,6 +140,7 @@ impl Default for EffectsRules {
             spark_steps_at_start: true,
             retype: RetypeRule::default(),
             obstacle_soldiers: false,
+            guard: GuardRule::default(),
         }
     }
 }
