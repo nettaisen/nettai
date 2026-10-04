@@ -51,3 +51,5 @@
 "bn5:shadowsoul/back/action" = 0x3D
 "bn5:meddysoul/charge/action" = 0x3E
 "bn5:knightsoul/charge/action" = 0x40
+# DarkInvs's drive's end (its computer-navi drive on the user's own tactics).
+"bn5:darkinvs/drive-end" = 0x49
