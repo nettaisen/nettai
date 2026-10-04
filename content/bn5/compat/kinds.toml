@@ -35,6 +35,7 @@
 "bn5:panel-chips/controller" = { pool = "effect", index = 0x20, scratch_position = true }
 "bn5:grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
 "bn5:trap-chip" = { pool = "effect", index = 0x2A, scratch_position = true }
+"bn5:antirecv/controller" = { pool = "effect", index = 0x2C, scratch_position = true }
 "bn5:protoman/navi" = { pool = "actor", index = 0x3C }
 "engine/body-overlay" = { pool = "actor", index = 0x56 }
 "engine/form-overlay" = { pool = "actor", index = 0x57 }
@@ -146,6 +147,9 @@
 "bn5:rockcube/cube" = { pool = "effect", index = 0x37 }
 "bn5:wind/fan" = { pool = "attack", index = 0x48 }
 "bn5:wind/controller" = { pool = "effect", index = 0x25 }
+"bn5:vdoll/doll" = { pool = "attack", index = 0x7A }
+"bn5:vdoll/curse" = { pool = "effect", index = 0x4E, scratch_position = true }
+"bn5:vdoll/sparkles" = { pool = "effect", index = 0x11, scratch_position = true }
 "bn5:voltz/sensor" = { pool = "attack", index = 0x90 }
 "bn5:voltz/shock" = { pool = "attack", index = 0x92 }
 "bn5:tornado" = { pool = "attack", index = 0x31 }
@@ -155,6 +159,7 @@
 "bn5:crakout/crack" = { pool = "attack", index = 0x18 }
 "bn5:soul-image" = { pool = "actor", index = 0x2A }
 "bn5:chaos-shade" = { pool = "actor", index = 0x2B }
+"bn5:dark-survival/shade" = { pool = "actor", index = 0x2E }
 "bn5:gyrosoul/tornado" = { pool = "attack", index = 0x1E }
 "bn5:searchsoul/reveal" = { pool = "effect", index = 0x8F, scratch_position = true }
 "bn5:megaman/glow" = { pool = "effect", index = 0x26 }
@@ -265,3 +270,8 @@
 "bn5:football/ball" = { pool = "attack", index = 0x95 }
 "bn5:bignoise/navi" = { pool = "actor", index = 0x1B }
 "bn5:bignoise/noise" = { pool = "attack", index = 0x04 }
+"bn5:support/controller" = { pool = "effect", index = 0x74 }
+"bn5:rush" = { pool = "actor", index = 0x4B }
+"bn5:beat" = { pool = "actor", index = 0x4C }
+"bn5:tango" = { pool = "actor", index = 0x4D }
+"bn5:tango/heal" = { pool = "attack", index = 0x9F }

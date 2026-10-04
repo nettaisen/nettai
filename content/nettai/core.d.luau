@@ -58,8 +58,11 @@ export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out"
 export type SideSpecial = "none" | "select" | "takeover"
 -- A HUD part a chip's effect hides and shows: the custom gauge (draw task
 -- 4), the emotion window (14), the battle flag 0x40 mode's gauge drawn by
--- its levels (17).
-export type HudPart = "gauge" | "emotion_window" | "level_gauge"
+-- its levels (17), the HP box and its low-HP alarm (7).
+export type HudPart = "gauge" | "emotion_window" | "level_gauge" | "hp_box"
+-- A screen fade content starts (`SetScreenFade`'s modes): the
+-- transformation sequencer's fade out (0x44, to full) and back in (0x40).
+export type ScreenFade = "transform_out" | "transform_in"
 export type PanelType =
     "missing"
     | "broken"
@@ -147,6 +150,8 @@ export type Request =
     -- The anger request (the collision's flag2 0x200): angry at the next
     -- status update, unless the mood is held.
     | "anger"
+    -- The drag request (the collision's flag2 0x100: a knockback's).
+    | "drag"
 -- A navi's state bits.
 export type NaviStateFlag =
     "controllable"
@@ -489,6 +494,9 @@ declare class Object
     -- its level (AIData+0x6C: releases that succeeded, at most 4).
     chaos_armed: boolean
     chaos_level: number
+    -- Writable: BN5's priming (AIData+0x0D): a form's `priming` chip used,
+    -- its next doubling waiting.
+    primed: boolean
     -- Writable: BN5's no-charge drive (DarkInvs): its ticks left
     -- (AIData+0x36; counted down in the intake while the navi has the
     -- no-charge state, asking for the stun strike at 0; 0xFFFF holds), and
@@ -673,6 +681,10 @@ declare class Object
     -- dimming ("keep": its Param3 1, flags 0x14) or steps like any object
     -- ("normal"). Nothing without an overlay.
     function overlay_stepping(self, mode: "keep" | "normal"): ()
+    -- BN5's 0x080C451A: the navi's body overlay (related2) adds `offset` to
+    -- its owner's animation (its depth read by the sum). Nothing without
+    -- one.
+    function set_overlay_anim_offset(self, offset: number): ()
     -- `sub_8011384`, `sub_8011268`: take off what a form wore, put on what
     -- it wears (its `take_off`, `put_on`, or the defaults below).
     function take_off_form_overlay(self, form: FormDef): ()
@@ -789,6 +801,10 @@ declare class Object
     -- and sound; with `anti_recovery`, the opponent's armed AntiRecv turns
     -- it into damage instead (true when it did).
     function heal(self, amount: number, anti_recovery: boolean): boolean
+    -- `object_subtractHP`: the HP down by `amount`, to 0, by its side's
+    -- rules (BN5's drain a player's side's gauge too, and may hold a dark
+    -- MegaMan at 1 HP: his last stand).
+    function subtract_hp(self, amount: number): ()
     -- `sub_801265A`: the buster's damage.
     function buster_damage(self): number
     -- `sub_80127C0(0)`: fill the attack from the chip at the hand's cursor
@@ -1097,6 +1113,13 @@ declare battle: {
     fighting: () -> boolean,
     -- Battle flag 2: the custom gauge is full.
     gauge_full: () -> boolean,
+    -- A link battle's last turns, from its 15th custom screen (`sub_800A97A`).
+    late_turns: () -> boolean,
+    -- A screen fade runs (`IsScreenFadeActive`).
+    screen_fading: () -> boolean,
+    -- `SetScreenFade`: the screen fades out (to full) or back in (to clear)
+    -- from where it is, `speed` a step.
+    screen_fade: (fade: ScreenFade, speed: number) -> (),
     -- Sound for both players, or for one side's player (output only): a
     -- sound asset (asset.sound).
     play_sound: (sound: Sound) -> (),
@@ -1326,8 +1349,9 @@ declare field: {
     -- unoccupied one.
     crack: (x: number, y: number) -> boolean,
     -- `object_breakPanel_dup2`: break a solid panel, or crack it while
-    -- something stands on it.
-    break_panel: (x: number, y: number) -> boolean,
+    -- something stands on it; with `sound` in place of the panel crack's
+    -- (`object_breakPanelLoud`'s).
+    break_panel: (x: number, y: number, sound: Sound?) -> boolean,
     -- `object_breakPanel_dup1`: break a solid panel, or crack it when
     -- something stands on it (not a neutral object); true only when it
     -- broke.
@@ -1463,8 +1487,9 @@ export type BlinkOut = "no" | "blinking" | "done"
 -- The obstacle framework: the steps of a field obstacle's update (rocks,
 -- cubes and the like, without actor data), which its update calls in its
 -- routine's order: `take_hits`, the hit spark, `tick_lifetime`, `react`
--- (then the kind's own action table: its entries for actions 0 appear, 2
--- destroyed and 8 idle, and the shared ones below for 1, 3 to 7), the
+-- (then the kind's own action table, in the framework's numbering: its
+-- entries for actions 0 appear, 2 destroyed and 8 idle, and the shared
+-- ones below for 1, 3 to 7), the
 -- sprite, and presenting its collision.
 declare obstacle: {
     -- `setFieldBattleObject_800F614`: one of `side`'s field objects of
@@ -1495,6 +1520,14 @@ declare obstacle: {
     -- While dimmed it holds the obstacle still once it has appeared
     -- ("after_appearing", the default) or always ("always", `sub_801B750`).
     react: (me: Object, crush: ObstacleCrush?, hold: ObstacleHold?) -> number?,
+    -- The framework's action numbers are BN6's (the kind's own from 8: its
+    -- idle, then the rest); the game may store others (BN5's obstacles
+    -- have no frozen or bubbled entries: their own from 6). `react` returns
+    -- the framework's number; `action_byte` gives the byte to store for
+    -- one (as `me.action`, or to `me:set_action`), `current` the object's
+    -- action in the framework's numbering.
+    action_byte: (me: Object, action: number) -> number,
+    current: (me: Object) -> number,
     -- The shared table entries: `sub_80165B8` (1), the pushes (5:
     -- `sub_8017E26` slides up to six panels, not into bodies or obstacles
     -- nor, pulled back, into the puller's area; `sub_8017CC0` is knocked
@@ -2248,6 +2281,9 @@ export type FormDef = {
     -- routine).
     put_on: ((navi: Object) -> ())?,
     take_off: ((navi: Object) -> ())?,
+    -- Its own part of the per-form tick (BN5's MegaMan's, 0x080F04CE:
+    -- GyroSoul's propeller by the priming), each tick.
+    tick: ((navi: Object) -> ())?,
     traits: { FormTrait }?,
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.

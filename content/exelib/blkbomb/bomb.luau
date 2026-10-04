@@ -88,7 +88,7 @@ end
 local function set_down(me: Object)
     me.collision:set_region(regions.single)
     me.run_while_dimmed = true
-    me.action = SET
+    me.action = obstacle.action_byte(me, SET)
     me.phase, me.phase_init = 0, 0
 end
 
