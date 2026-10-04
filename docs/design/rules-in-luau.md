@@ -2115,3 +2115,30 @@ plain Luau library with a single definition.
      `// (written in full)` so packs.py's step 7 leaves them.
   4. The content check's placeholder lint now sees BN5's 45 placeholder asset names (`sprite-0c-42`), which the
      `bn5:` prefix used to hide from it; they are content/bn5's to name (compat/assets.toml).
+
+### S7c, BN6's lock-on modes, the Cross special's rows and the navis' form sets (2026-10-04)
+
+- **Lock-on modes are records** of type "lockon" (`define.record("lockon", { id = "cannon", ... })`, BN6's
+  rules/lockon.luau). `Registry::Lockon` and `LockonHandle` are gone.
+  - The engine keeps the search (`ho_8026554`, actions/lockon.rs), a primitive whose input is a mode's data: the
+    define phase reads every "lockon" record into a `LockonMode` (`Defs::lockons`, by record handle,
+    `LOCKON_RECORD`).
+  - `navi:lockon_panel(x, y, mode)` and the actor field `rush_lockon` (`record:lockon`) take the record. The
+    beast system's chip extension is `beast = { lockon = "record:lockon", rush = "bool" }`.
+  - The stock ruleset's `lockon` section (the column shifts, the clear-path condition) stays: the search reads
+    it.
+- **The Cross special's rows are the beast system's data**: a record of type "cross-special" (`cross-special`,
+  rules/cross-special.luau), which its controller requires. `Rules::cross_special`, the stock ruleset's
+  `cross_special` section and `SpecialChip` are gone. gen-content reads the record's rows.
+- **The navis' BN6 form sets leave the engine.**
+  - `NaviForms` keeps `souls`; its presence still says the navi changes form. A navi's `forms.gregar` and
+    `forms.falzar` (its Crosses, Beast Out and Beast Over) are BN6's.
+  - bn6-compat's `forms::set`, `cross`, `beast_out` and `beast_over` read the sets off the definition, for
+    `Unlocks`, the renderer, the match import and draw, the frontend's audit and gen-content.
+  - The custom screen's `Library` loses `cross_form`, `beast_out_form` and `beast_over_form`, which nothing in a
+    battle asked any more.
+  - nettai-content's strings check allows any form's strings. nettai-match's `bn6_crosses_have_their_strings`
+    checks BN6's Crosses' names and descriptions, and that no other BN6 form has strings.
+  - `bn6_forms_agree_with_their_kinds` checks the sets.
+- **Porter impact:** none. BN5 content defines no lock-on modes or sets. A branch that writes
+  `define.lockon {` writes `define.record("lockon", {` instead (with the closing `})`).
