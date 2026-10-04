@@ -16,8 +16,8 @@ local woodnos = {}
 
 -- ---- The geyser ---------------------------------------------------------------------------------------------------
 
-local GEYSER_SPRITE = asset.sprite("sprite-10-21")
-local GEYSER_SOUND = asset.sound("sound-125")
+local GEYSER_SPRITE = asset.sprite("wood-geyser")
+local GEYSER_SOUND = asset.sound("wood-geyser")
 -- Its hit (0x080DB254's 0x04050401): the panel alone, the spark of row 4, an attack hitting navis; hit modifier 8.
 local GEYSER_HIT_MOD = 8
 local GEYSER_HIT_AT, GEYSER_TICKS, GEYSER_FADE = 6, 14, 30
@@ -133,8 +133,8 @@ export type WaveState = {
     damage: number,
 }
 
-local WAVE_SPRITE = asset.sprite("sprite-0c-54")
-local WAVE_SOUND = asset.sound("sound-0b1")
+local WAVE_SPRITE = asset.sprite("wood-wave")
+local WAVE_SOUND = asset.sound("wood-wave")
 local WAVE_DAMAGE, WAVE_HIT_MOD = 10, 1
 local WAVE_SPEED, EDGE = 0x6_0000, 150
 -- The other side's navis' bodies, by WoodNos's wave's side (0x080DB104).
