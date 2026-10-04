@@ -314,6 +314,23 @@ impl Battle {
         0
     }
 
+    /// Side `side`'s systems' `controller(side, navi)`, asked of the side's
+    /// own navi (BN5's no-charge drive): the outcome the first system that
+    /// answers gives; None when none answers.
+    pub(crate) fn systems_controller_answer(&mut self, side: u8, navi: ObjectRef) -> Option<u8> {
+        let r = self.rules[side as usize].ruleset?;
+        let content = self.content.clone();
+        for (slot, &h) in content.defs.ruleset(r).systems.iter().enumerate() {
+            if let Some(f) = content.defs.system(h).hook(SystemHook::Controller) {
+                let call = HookCall::System { side, slot: slot as u8, hook: SystemHook::Controller, navi: Some(navi), chip: None, weapon: None };
+                if let Value::Int(n) = crate::behavior::call_hook(self, f, call) {
+                    return Some(n as u8);
+                }
+            }
+        }
+        None
+    }
+
     /// The `controller(side, navi)` of side `side`'s system in place `slot`
     /// (a navi no player controls: the system that drives it).
     pub(crate) fn systems_controller_at(&mut self, side: u8, slot: u8, navi: ObjectRef) {

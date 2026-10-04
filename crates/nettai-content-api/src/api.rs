@@ -345,6 +345,13 @@ named_fields! {
         /// most 4).
         ChaosArmed = "chaos_armed", Bool, rw;
         ChaosLevel = "chaos_level", U8, rw;
+        /// BN5's no-charge drive (DarkInvs): its ticks left (AIData+0x36;
+        /// counted down in the intake while the navi has the no-charge
+        /// state, asking for the stun strike at 0; 0xFFFF holds), and the
+        /// computer-navi AI driving it (AIData+0xF0, which VarSwrd's pick
+        /// reads).
+        NoChargeTimer = "no_charge_timer", U16, rw;
+        ComputerDriven = "computer_driven", Bool, rw;
     }
 }
 
@@ -636,6 +643,9 @@ named_flags! {
         // VDoll's doll.
         /// A field object being carried to be thrown (0x04000000).
         Carried = "carried",
+        /// Untouchable (0x08000000): no hit reaches it and it hits nothing
+        /// (Falzar Beast Over's form, BN5's DarkInvs drive).
+        Untouchable = "untouchable",
     }
 }
 
