@@ -8,23 +8,23 @@
 local airhocky = require("../chips/airhocky")
 local aquaswrd = require("../chips/aquaswrd")
 local bambswrd = require("../chips/bambswrd")
-local cannons = require("../chips/cannon")
-local dolthdr = require("../chips/dolthdr")
+local cannon_chips = require("../chips/cannon")
+local dolthdr_chips = require("../chips/dolthdr")
 local elecswrd = require("../chips/elecswrd")
-local energbom = require("../chips/energbom")
-local firebrn = require("../chips/firebrn")
+local energbom_chips = require("../chips/energbom")
+local firebrn_chips = require("../chips/firebrn")
 local fireswrd = require("../chips/fireswrd")
-local gundels = require("../chips/gundels")
+local gundels_chips = require("../chips/gundels")
 local lifesrd = require("../chips/lifesrd")
 local longswrd = require("../chips/longswrd")
 local minibomb = require("../chips/minibomb")
 local moonbld = require("../chips/moonbld")
-local rlnglog = require("../chips/rlnglog")
-local tankcan = require("../chips/tankcan")
-local tornado = require("../chips/tornado")
-local trnarrw = require("../chips/trnarrw")
+local rlnglog_chips = require("../chips/rlnglog")
+local tankcan_chips = require("../chips/tankcan")
+local tornado_chips = require("../chips/tornado")
+local trnarrw_chips = require("../chips/trnarrw")
 local varswrd = require("../chips/varswrd")
-local vulcan = require("../chips/vulcan")
+local vulcan_chips = require("../chips/vulcan")
 local wideswrd = require("../chips/wideswrd")
 
 -- (The beast system's data, which its Cross special reads: a record of
@@ -32,25 +32,25 @@ local wideswrd = require("../chips/wideswrd")
 return define.record("cross-special", {
     id = "cross-special",
     rows = {
-        { cannons.cannon, minibomb, wideswrd },
+        { cannon_chips.cannon, minibomb, wideswrd },
         -- EnergBom.
-        { cannons.cannon, energbom[1], wideswrd },
+        { cannon_chips.cannon, energbom_chips.energbom, wideswrd },
         -- MegEnBom.
-        { cannons.hicannon, energbom[2], longswrd },
-        { tankcan[1], firebrn.firebrn2, fireswrd },
-        { cannons.m_cannon, trnarrw[2], aquaswrd },
-        { tankcan[2], dolthdr[2], elecswrd },
+        { cannon_chips.hicannon, energbom_chips.megenbom, longswrd },
+        { tankcan_chips.tankcan1, firebrn_chips.firebrn2, fireswrd },
+        { cannon_chips.m_cannon, trnarrw_chips.trnarrw2, aquaswrd },
+        { tankcan_chips.tankcan2, dolthdr_chips.dolthdr2, elecswrd },
         -- GunDelS2.
-        { gundels[2], rlnglog[2], bambswrd },
-        { tankcan[3], tornado[1], moonbld },
-        { tankcan[3], airhocky, { chip = lifesrd, damage_of = varswrd } },
+        { gundels_chips.gundels2, rlnglog_chips.rlnglog2, bambswrd },
+        { tankcan_chips.tankcan3, tornado_chips.tornado, moonbld },
+        { tankcan_chips.tankcan3, airhocky, { chip = lifesrd, damage_of = varswrd } },
         -- (SuprVulc.)
         {
-            firebrn.firebrn3,
-            trnarrw[3],
-            dolthdr[3],
-            rlnglog[3],
-            vulcan[4],
+            firebrn_chips.firebrn3,
+            trnarrw_chips.trnarrw3,
+            dolthdr_chips.dolthdr3,
+            rlnglog_chips.rlnglog3,
+            vulcan_chips.suprvulc,
             { chip = lifesrd, damage_of = varswrd },
         },
     },

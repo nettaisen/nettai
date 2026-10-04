@@ -5,7 +5,7 @@
 -- (`loc_80126EA`, lib/weapon's `chip`) and starts what its use starts.
 
 local weapon = require("../../lib/weapon")
-local chips = require("../../chips/grabbnsh")
+local grabbnsh_chips = require("../../chips/grabbnsh")
 
 return define.weapon {
     id = "patch-cards/judgeman/charge",
@@ -13,6 +13,6 @@ return define.weapon {
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 200, 190, 180, 175, 170, 180, 170, 160 },
     setup = function(navi: Object)
-        return weapon.chip(navi, chips.grabbnsh)
+        return weapon.chip(navi, grabbnsh_chips.grabbnsh)
     end,
 }

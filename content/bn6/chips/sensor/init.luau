@@ -6,7 +6,7 @@
 local controller = require("@self/controller")
 
 return {
-    define.chip {
+    sensor1 = define.chip {
         id = "sensor1",
         codes = { "J", "O", "W" },
         element = "elec", family = "elec", class = "standard",
@@ -16,7 +16,7 @@ return {
         slot_in_limit = 3,
         dimming = controller.hook { palette = 0, hp = 20 },
     },
-    define.chip {
+    sensor2 = define.chip {
         id = "sensor2",
         codes = { "N", "U", "Y" },
         element = "elec", family = "elec", class = "standard",
@@ -26,7 +26,7 @@ return {
         slot_in_limit = 3,
         dimming = controller.hook { palette = 3, hp = 30 },
     },
-    define.chip {
+    sensor3 = define.chip {
         id = "sensor3",
         codes = { "I", "K", "Q" },
         element = "elec", family = "elec", class = "standard",

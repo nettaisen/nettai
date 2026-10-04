@@ -32,7 +32,7 @@ end
 local STATIC_SPREAD, BACK_SPREAD = common.STATIC_SPREAD, common.BACK_SPREAD
 
 local chips = {
-    define.chip {
+    tornado = define.chip {
         id = "tornado",
         codes = { "L", "R", "T" },
         element = "null", family = "wind", class = "standard",
@@ -47,7 +47,7 @@ local chips = {
             single = { variant = tornado.variants.plain, status = nil, ticks = 0x20 },
         },
     },
-    define.chip {
+    static = define.chip {
         id = "static",
         codes = { "G", "S", "V" },
         element = "null", family = "wind", class = "standard",

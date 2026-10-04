@@ -2184,3 +2184,51 @@ system. The point of S7/S8 is an engine with no BN6 resources, and a guarded acc
      chip requiring its system's module makes a require cycle (the systems require their chips).
   4. The runtime guard on `system.state_of` reads the calling function's module (the stack's chunk), so it holds
      for a function that runs after loading too, where the lint only sees the text.
+
+### R6, init.luau, a game's top module, a series' chips by name (2026-10-04)
+
+The user, on the content's shape: "instead of [chipname]/chip.luau and [rulename]/rule.luau it should all be
+init.luau and import should resolve it"; "instead of manifest.toml containing imports etc, there should really be a
+top-level init.luau file that imports everything, and then manifest.toml just declares id/kind/depends"; "instead of
+stuff like aquandl[3] it should really be aquandl_chips.aquandl3 like the rest of the things". Pure renames: no
+definition, key or handle changes (content-model-v2.md §4.0, §4.1 hold the rules).
+
+- **A folder's main module is its init.luau** (866 modules: 455 of BN6's, 396 of BN5's, 14 of exelib's, the test
+  content's one), and a require names the folder. `keys::resolve` follows Luau's own rule, as the bundled Luau's
+  require navigator does: a folder's init is the folder as a module, so what it requires is relative to the
+  folder's place and its own folder's modules are `@self/...`; any other module's requires are relative to its
+  directory. P2's folder-to-init resolution in the loaders is the general rule. A module's name stays its file's
+  (`bn6:chips/cannon/init`), so no key moves.
+  - What keeps its name, and why (§4.1): a navi chip's navi object (chips/<navi>/navi.luau, 52 folders: the
+    folder is the chip's); a link navi's own chip (navis/<navi>/chip.luau, 11: the folder is the navi's); a chip
+    folder's object named for the folder (47); exelib's projectile/projectile.luau (projectile.luau is beside the
+    folder); a main module's name out of its place.
+- **A game's top module** (`<game>/init.luau`, `bn6:init`) requires what the game has, where the manifest's
+  `[definitions]` listed it; the manifest says `id`, `kind` and `depends` (which was `uses`).
+  - `PackManifest { id, kind, depends }`; `PackManifest::entry()`, `packs::INIT`, `packs::top_module`,
+    `packs::required_by_init`; `PackDefinitions` is gone.
+  - A load of a game is a require of its top module (`Scripts::pack`'s entries, `index::read`'s start). A game
+    without one is refused (`check_packs`, the content check). A support pack has none.
+  - The whole-truth check (`check_init`) is on the init's own requires, since everything that loads is reached by
+    it: a definition of what a game has in a module the init doesn't require itself is refused. The engine doesn't
+    read the returned table; the reverse check ("`chips` lists X, which defines no chip") went with the lists.
+  - Unported chips are commented requires in the chips group, which index.py keeps; nothing lists them for the
+    engine (the strings check asks the disk for a chip folder that didn't load). Neither game has one today.
+  - In-memory games (`Scripts::add_game`, `testing::add_index`) get a top module made the same way
+    (`Scripts::init_for`).
+  - The order of the requires is the load order and moves no key and no handle (nettai-content's
+    `the_order_of_a_games_requires_moves_no_key_and_no_handle` turns both games' round and compares the
+    definitions).
+  - content/.luaurc names the packs for an editor.
+- **A series' module returns its chips by name**, each by its id, and the local that holds it is `<series>_chips`
+  (86 chips named in 27 of BN6's series modules, which listed them by place; 36 uses by number named; 61 locals
+  renamed across BN6, BN5 and the test content). BN5's recipes, which take one chip at the require
+  (`local recipe_hicannon = require("./cannon").hicannon`), keep their names.
+- **Tools** (the verification workspace): tools/content/packs.py steps 10 (inits.py) and 11 (series.py), which run
+  over main's content as it was and give this tree exactly; index.py writes the top modules, the manifests and
+  .luaurc; layout.py, gen_content.py and its generators, navicust/gen.py and gen-content read and write the new
+  names.
+- **Porter impact:** after merging main, run `tools/content/packs.py <checkout>`: it names a branch's chip.luau,
+  chips.luau and the like init.luau, rewrites the requires, names a series' chips and writes the game's
+  init.luau. New modules: a folder's main module is `init.luau`; inside it `./x` is beside the folder and
+  `@self/x` inside it.

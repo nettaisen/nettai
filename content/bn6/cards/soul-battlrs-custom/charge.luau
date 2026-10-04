@@ -6,7 +6,7 @@
 -- starts.
 
 local weapon = require("../../lib/weapon")
-local chips = require("../../chips/vulcan")
+local vulcan_chips = require("../../chips/vulcan")
 
 return define.weapon {
     id = "patch-cards/soul-battlrs-custom/charge",
@@ -14,6 +14,6 @@ return define.weapon {
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 180, 170, 160, 155, 150, 120, 110, 100 },
     setup = function(navi: Object)
-        return weapon.chip(navi, chips[4])
+        return weapon.chip(navi, vulcan_chips.suprvulc)
     end,
 }

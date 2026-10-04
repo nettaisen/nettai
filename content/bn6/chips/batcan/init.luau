@@ -14,7 +14,7 @@ local shot = require("@self/shot")
 local batcan = shot.action
 
 return {
-    define.chip {
+    batcan1 = define.chip {
         id = "batcan1",
         codes = { "*" },
         element = "null", family = "null", class = "standard",
@@ -26,7 +26,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = batcan { shots = { 3 } },
     },
-    define.chip {
+    batcan2 = define.chip {
         id = "batcan2",
         codes = { "S" },
         element = "null", family = "null", class = "standard",
@@ -38,7 +38,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = batcan { shots = { 3 } },
     },
-    define.chip {
+    batcan3 = define.chip {
         id = "batcan3",
         codes = { "R" },
         element = "null", family = "null", class = "standard",
@@ -50,7 +50,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = batcan { shots = { 3 } },
     },
-    define.chip {
+    batcan4 = define.chip {
         id = "batcan4",
         codes = { "Z" },
         element = "null", family = "null", class = "standard",

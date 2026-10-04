@@ -5,7 +5,7 @@
 -- its use starts.
 
 local weapon = require("../../lib/weapon")
-local chips = require("../../chips/rflectr")
+local rflectr_chips = require("../../chips/rflectr")
 
 return define.weapon {
     id = "patch-cards/b-reflect",
@@ -13,6 +13,6 @@ return define.weapon {
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 100, 90, 80 },
     setup = function(navi: Object)
-        return weapon.chip(navi, chips[1])
+        return weapon.chip(navi, rflectr_chips.rflectr1)
     end,
 }

@@ -178,8 +178,8 @@ local throw = require("../lib/bombs/throw")
 local bomb = require("../lib/bombs/bomb")
 local THROW = throw.action { held = 0x2E, thrower = bomb.variant { palette = 1 } }
 return {
-    define.chip { id = "flshbom1", name = "FlshBom1", action = THROW },
-    define.chip { id = "flshbom2", name = "FlshBom2", action = THROW },
+    flshbom1 = define.chip { id = "flshbom1", name = "FlshBom1", action = THROW },
+    flshbom2 = define.chip { id = "flshbom2", name = "FlshBom2", action = THROW },
 }
 "#,
     ),

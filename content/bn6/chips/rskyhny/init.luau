@@ -9,7 +9,7 @@ local lockon = require("../rules/lockon")
 local BEES = action.bees
 
 return {
-    define.chip {
+    rskyhny1 = define.chip {
         id = "rskyhny1",
         codes = { "B", "G", "S" },
         element = "wood", family = "wood", class = "standard",
@@ -21,7 +21,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = action.action { bee = BEES[1] },
     },
-    define.chip {
+    rskyhny2 = define.chip {
         id = "rskyhny2",
         codes = { "C", "R", "V" },
         element = "wood", family = "wood", class = "standard",
@@ -33,7 +33,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = action.action { bee = BEES[2] },
     },
-    define.chip {
+    rskyhny3 = define.chip {
         id = "rskyhny3",
         codes = { "A", "D", "M" },
         element = "wood",

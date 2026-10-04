@@ -22,7 +22,7 @@ local COOLDOWN = 0x28
 
 -- `sub_801255C`.
 local function setup(navi: Object): Action
-    navi:load_chip_attack(rskyhny_chips[1])
+    navi:load_chip_attack(rskyhny_chips.rskyhny1)
     navi.attack_lockout = COOLDOWN
     return HONEY
 end

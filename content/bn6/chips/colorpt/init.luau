@@ -6,7 +6,7 @@
 local controller = require("@self/controller")
 
 return {
-    define.chip {
+    colorpt = define.chip {
         id = "colorpt",
         codes = { "*" },
         element = "null", family = "plus", class = "standard",
@@ -16,7 +16,7 @@ return {
         slot_in_limit = 1,
         dimming = controller.hook { palette = 0, bonus = 10 },
     },
-    define.chip {
+    dblpoint = define.chip {
         id = "dblpoint",
         codes = { "*" },
         element = "null", family = "plus", class = "standard",
