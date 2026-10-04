@@ -77,7 +77,7 @@ pub fn backgrounds<'c>(content: &'c Content, game: &str) -> Vec<&'c str> {
     (content.game() == game).then(|| content.assets.backgrounds.keys().map(|k| local(k)).collect()).unwrap_or_default()
 }
 
-/// The games a match on `content` can be of: its game, when it has a stock
+/// The games a match on `content` can be of: its game, when it has a
 /// ruleset and a link battle stage (a content holds one game).
 pub fn games(content: &Content) -> Vec<String> {
     let game = content.game();
