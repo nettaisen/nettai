@@ -239,8 +239,8 @@ end
 -- The system's buttons: the soul button, and what a soul adds to the screen, each in its own module.
 custom_souls.buttons = {
     soul = custom_souls.button,
-    -- SearchSoul's Shuffle (./shuffle).
-    shuffle = shuffle.button,
+    -- SearchSoul's Shuffle (./shuffle), by the name the frontend draws the pack's re-deal button for.
+    redeal = shuffle.button,
 }
 
 -- The screen's hand: NumberSoul's ten chips (./hand).
