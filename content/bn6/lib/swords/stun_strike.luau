@@ -10,9 +10,9 @@
 -- subtype 1 or 2 would pick the other strikes there). Nothing in the game
 -- sets the request.
 
-local assnswrd = require("../../chips/assnswrd/chip")
-local elemswrd = require("../../chips/elemswrd/chip")
-local mchnswrd = require("../../chips/mchnswrd/chip")
+local assnswrd = require("../../chips/assnswrd")
+local elemswrd = require("../../chips/elemswrd")
+local mchnswrd = require("../../chips/mchnswrd")
 local strike = require("./strike")
 
 return {

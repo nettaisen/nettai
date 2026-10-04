@@ -4,7 +4,7 @@
 -- 0x10011308), BN5's animations (9 his arm rising, 10 up, 11 firing, 12 its loop, 13 after), his arm while he takes
 -- aim (BN5's attachment row 0x12, Bass's sprite, its animation 0x24: 0x080C2DC8), and BN5's dark ball (./shot).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local common = require("@exelib/bassanly/navi")
 local effects = require("../../lib/effects")
 local shot = require("./shot")

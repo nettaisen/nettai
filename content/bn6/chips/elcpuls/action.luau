@@ -6,7 +6,7 @@
 -- puts the coil away over 7 ticks. Each chip composes its own (`action {
 -- pulse = ..., hold = ... }`).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local pulse = require("./pulse")
 
 local action = {}

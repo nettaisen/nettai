@@ -390,7 +390,7 @@ end
 ```
 
 ```luau
--- chips/eraseman/chips.luau
+-- chips/eraseman/init.luau
 local navi = require("./navi")
 
 local eraseman = define.chip {

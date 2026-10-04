@@ -9,7 +9,7 @@
 -- while: his `prevent_anim`, which Colonel's spawn sets and Colonel clears) and leaves, and the controller moves on.
 -- Off a panel that isn't solid he waits 10 ticks and leaves.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local colonel = require("./colonel")
 local collision = require("../../rules/collision")
 local glow = require("./glow")

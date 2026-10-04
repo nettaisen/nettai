@@ -1,5 +1,5 @@
 //! Match setups: everything a round needs, chosen before the battle (the
-//! game and its ruleset, the arena, and each side's navi, version, stats,
+//! game, the arena, and each side's navi, version, stats,
 //! folder, Crosses and patch cards), as a human-readable TOML file of
 //! names (docs/frontend.md §6), checked against the content (`check`), and
 //! the round it plays ([`Match::round`]). Live play's random draw of one
@@ -9,8 +9,8 @@
 //! a side of one: the same checks refuse a bad file and a bad offer.
 //! nettai-editor edits them.
 //!
-//! A match is of one game, which its arena chooses (`Arena::game`), and
-//! one ruleset of that game's (`Arena::ruleset`): both sides play by it
+//! A match is of one game, which its arena chooses (`Arena::game`): a
+//! game is its rules (it has one ruleset), and both sides play by them
 //! with the game's navis, chips, souls and patch cards, every one named in
 //! the game's namespace alone (`ids`). There is no mixing of games.
 
@@ -48,7 +48,7 @@ use nettai_battle::patch_cards::{InstalledCard, PatchCards};
 use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, SpTimes, Stage, effects};
 use nettai_battle::tactics::Tactics;
 use nettai_battle::{Battle, Rng};
-use nettai_content_api::{NaviHandle, RulesetHandle, StageHandle};
+use nettai_content_api::{NaviHandle, StageHandle, SystemHandle};
 
 pub use check::{check_match, check_side};
 pub use draw::Draws;
@@ -65,38 +65,44 @@ pub struct Place {
 }
 
 /// The arena, which decides everything else: the match's game (`bn6`,
-/// `bn5`: everything else a match names is that game's), the ruleset both
-/// sides play by (one of the game's), the first round's place and the
+/// `bn5`: everything else a match names is that game's, and its rules are
+/// the game's: a game has one ruleset), the first round's place and the
 /// set's later rounds' (the original's init exchange carries those), its
 /// stages the game's.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Arena {
     pub game: String,
-    pub ruleset: RulesetHandle,
     pub first: Place,
     pub later: [Place; 2],
 }
 
 impl Arena {
-    /// Every round of a match of `game` by `ruleset` on one place.
-    pub fn on(game: &str, ruleset: RulesetHandle, place: Place) -> Arena {
-        Arena { game: game.to_string(), ruleset, later: [place.clone(), place.clone()], first: place }
-    }
-
-    /// Whether the match's ruleset has the system with this name (`forms`,
-    /// `patch-cards`).
-    pub fn has_system(&self, content: &Content, system: &str) -> bool {
-        ruleset_has_system(content, self.ruleset, system)
+    /// Every round of a match of `game` on one place.
+    pub fn on(game: &str, place: Place) -> Arena {
+        Arena { game: game.to_string(), later: [place.clone(), place.clone()], first: place }
     }
 }
 
-/// `game`'s stock ruleset (a match file that names none plays by it): the
-/// content's, when it is `game`'s.
-pub fn stock_ruleset(content: &Content, game: &str) -> Result<RulesetHandle, String> {
+/// That `content` is `game`'s (a content holds one game), with rules to
+/// play by: or why a match of `game` can't be made on it.
+pub fn playable(content: &Content, game: &str) -> Result<(), String> {
     if content.game() != game {
         return Err(format!("the content is {}'s, not {game}'s", content.game()));
     }
-    content.defs.stock_ruleset().ok_or_else(|| format!("{game} has no stock ruleset"))
+    if systems(content).is_empty() {
+        return Err(format!("{game} has no rules"));
+    }
+    Ok(())
+}
+
+/// The systems of the game's rules (a game has one ruleset). The one
+/// place this crate reads the engine's ruleset, so its one-ruleset form
+/// (`Defs::ruleset_systems`) is a small switch.
+pub fn systems(content: &Content) -> &[SystemHandle] {
+    match content.defs.stock_ruleset() {
+        Some(r) => &content.defs.ruleset(r).systems,
+        None => &[],
+    }
 }
 
 /// What a side's tactics' send draws from, with the seed and the side.
@@ -118,9 +124,6 @@ pub struct Side {
     /// The navi's stats as the round starts them (the version is the
     /// game's).
     pub stats: NaviStats,
-    /// The save's event flag 0x1720: the emotion window flickers as a
-    /// bugged navi's does.
-    pub emotion_window_glitch: bool,
     /// The folder, its entries empty while it is being made (a round is
     /// played with a whole one: the checks refuse a match without).
     pub folder: Folder,
@@ -218,9 +221,10 @@ pub fn version_byte(game: GameVersion) -> u8 {
     }
 }
 
-/// Whether `ruleset` lists a system named `system` in its game (`forms`).
-pub fn ruleset_has_system(content: &Content, ruleset: RulesetHandle, system: &str) -> bool {
-    content.defs.ruleset(ruleset).systems.iter().any(|&s| ids::local(&content.defs.system(s).key) == system)
+/// Whether the game's rules have a system named `system` (`forms`,
+/// `patch-cards`).
+pub fn ruleset_has_system(content: &Content, system: &str) -> bool {
+    systems(content).iter().any(|&s| ids::local(&content.defs.system(s).key) == system)
 }
 
 /// The system that brings the Cross window and the form changes (BN6's).
@@ -275,8 +279,8 @@ fn background_id(content: &Content, game: &str, p: &Place) -> nettai_battle::con
 }
 
 impl Match {
-    /// A new match of `game`, nothing chosen yet: the game's stock rules,
-    /// its first link battle stage (with its own background), and on each
+    /// A new match of `game`, nothing chosen yet: the game's first link
+    /// battle stage (with its own background), and on each
     /// side its navi (MegaMan, the navi that changes form, else the first
     /// with fresh stats) at its fresh stats, of Falzar; an empty folder, no
     /// Regular or tag chips, the game's own Crosses, no patch cards, and a
@@ -284,9 +288,9 @@ impl Match {
     /// battle's is drawn when it is played). Its folders are none the
     /// checks accept until they are made.
     pub fn empty(content: &Content, game: &str) -> Result<Match, String> {
-        let ruleset = stock_ruleset(content, game)?;
+        playable(content, game)?;
         let stage = *link_battle_stages(content, game).first().ok_or_else(|| format!("{game} has no link battle stage"))?;
-        let arena = Arena::on(game, ruleset, Place { stage, background: None });
+        let arena = Arena::on(game, Place { stage, background: None });
         let side = Side::fresh(content, &arena)?;
         Ok(Match { seed: None, arena, sides: [side.clone(), side] })
     }
@@ -294,15 +298,6 @@ impl Match {
     /// The match's game.
     pub fn game(&self) -> &str {
         &self.arena.game
-    }
-
-    /// The match on `ruleset` (one of its game's), each side without what
-    /// the new rules don't take (`Side::fit_rules`).
-    pub fn set_ruleset(&mut self, content: &Content, ruleset: RulesetHandle) {
-        self.arena.ruleset = ruleset;
-        for s in &mut self.sides {
-            s.fit_rules(content, ruleset);
-        }
     }
 }
 
@@ -322,7 +317,6 @@ impl Side {
             navi,
             game: version,
             stats: Side::base_stats(content, navi, version),
-            emotion_window_glitch: false,
             folder: Folder::EMPTY,
             crosses: None,
             beast_out: true,
@@ -338,7 +332,7 @@ impl Side {
             chaos_unison: true,
         };
         let boards = navicust_rules(content).boards.len();
-        if arena.has_system(content, NAVICUST_SYSTEM) && content.navi(navi).forms.is_some() && boards > 0 {
+        if ruleset_has_system(content, NAVICUST_SYSTEM) && content.navi(navi).forms.is_some() && boards > 0 {
             side.navicust = NaviCust::new(&[], (boards - 1) as u8).ok();
         }
         Ok(side)
@@ -370,12 +364,7 @@ impl Match {
                 joypad_phase: 0,
                 navi_level: s.navi_level,
                 sp_times: s.sp_times,
-                console: ConsoleSetup {
-                    rng: rng.state,
-                    tag_pair,
-                    emotion_window_glitch: s.emotion_window_glitch,
-                    ..ConsoleSetup::default()
-                },
+                console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
                 rules: Vec::new(),
                 patch_cards: PatchCards::new(&s.cards).unwrap_or_default(),
                 navicust: s.navicust,
@@ -389,7 +378,7 @@ impl Match {
             // Cross of the game (or the side's list) and Beast Out as the
             // side says.
             let unlocks = Unlocks { beast_out: s.beast_out, cross_list: s.crosses, ..Unlocks::everything(s.game) };
-            unlocks.write(content, Some(self.arena.ruleset), &mut player).expect("the match's ruleset takes BN6's setup as its systems declare it");
+            unlocks.write(content, None, &mut player).expect("the game's rules take BN6's setup as their systems declare it");
             // Its karma and souls, into the systems that take them.
             facts::write(content, &self.arena, s, &mut player).expect("a side's karma and souls fit its rules (the match's checks)");
             player
@@ -397,8 +386,8 @@ impl Match {
         RoundSetup {
             content: content.hash(),
             settings,
-            // (The match's one ruleset.)
-            ruleset: Some(self.arena.ruleset),
+            // (The game's rules.)
+            ruleset: None,
             navi_stats: [self.sides[0].round_stats(content), self.sides[1].round_stats(content)],
             rng: seed,
             local_side: 0,
@@ -428,8 +417,7 @@ pub fn next_round(content: &Content, first: &RoundSetup, folders: &[SavedFolder;
         let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(folder, 0, &mut rng, content);
         let p = &mut next.players[side];
         p.folder = Some(folder);
-        // (The save's glitch flag stays.)
-        p.console = ConsoleSetup { rng: rng.state, tag_pair, frames: console.frames, emotion_window_glitch: p.console.emotion_window_glitch };
+        p.console = ConsoleSetup { rng: rng.state, tag_pair, frames: console.frames };
     }
     next
 }
@@ -514,8 +502,7 @@ pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usi
             None => format!("stage {stage}"),
         }
     };
-    let ruleset = ids::local(&content.defs.ruleset(m.arena.ruleset).key);
-    let mut out = format!("match of {} ({ruleset} rules): seed {seed}, {}", m.arena.game, place(&m.arena.first));
+    let mut out = format!("match of {}: seed {seed}, {}", m.arena.game, place(&m.arena.first));
     for (side, s) in m.sides.iter().enumerate() {
         let who = match (side == you, side) {
             (true, _) => "you",
@@ -526,7 +513,7 @@ pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usi
             GameVersion::Gregar => " of Gregar",
             GameVersion::Falzar => " of Falzar",
         };
-        let version = if Side::takes_game(content, m.arena.ruleset) { version } else { "" };
+        let version = if Side::takes_game(content) { version } else { "" };
         let navi = names::navi(content, s.navi);
         out.push_str(&format!("\n  {navi}{version} ({who})"));
         if let Some(list) = &s.crosses {

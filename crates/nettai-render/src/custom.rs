@@ -951,7 +951,8 @@ impl Window {
         // (`art_palette`). The picture of a chip the US release cut is the
         // Japanese ROMs': a US console shows a placeholder there. The
         // Gregar and Falzar chips' are each their own beast: a console
-        // shows its own in both.
+        // shows its own in both. A version's own chip's is its own ROM's:
+        // a console of the other version shows its counterpart's.
         let art = if beast_out {
             Some((&v.beast.beast_out, None))
         } else {
@@ -960,16 +961,17 @@ impl Window {
         if let Some((p, art)) = art {
             self.tiles.put(self.layout.art, &p.tiles);
             self.palettes[10] = if beast_out { p.palette } else { data.art_palette.unwrap_or(p.palette) };
-            let console_version = version_name(v.b, v.side);
+            let console_version = v.packs.version().unwrap_or_else(|| version_name(v.b, v.side));
             self.picture_known = match art {
                 Some(a) if a.region.as_deref().is_some_and(|r| r != v.region) => {
                     Some("the Japanese games' chip picture (a US console shows a placeholder)")
                 }
-                // (A picture under its version's own key is the console's
-                // own: `Packs::chip_art`.)
-                Some(a) if a.version.as_deref().is_some_and(|g| g != console_version && !a.key.ends_with(g)) => {
-                    Some("the chip's own beast's picture (a console shows its own)")
-                }
+                Some(a) if a.version.as_deref().is_some_and(|g| g != console_version) => Some(match a.region {
+                    // (The Gregar and Falzar chips', which the US release
+                    // cut: each Japanese ROM has its own beast in both.)
+                    Some(_) => "the chip's own beast's picture (a console shows its own)",
+                    None => crate::lookups::OTHER_VERSIONS_ART,
+                }),
                 _ => None,
             };
         }
@@ -1106,11 +1108,37 @@ impl Window {
 
     /// The chip window's picture, where it shows, as a known difference.
     fn known_picture(&self, place: Placement, why: &'static str, problems: &mut Problems) {
-        let art = self.layout.art..self.layout.art + PICTURE_TILES;
+        self.known_tiles(place, self.layout.art..self.layout.art + PICTURE_TILES, why, problems);
+    }
+
+    /// The icons of the other version's chips (`lookups::other_versions_icon`)
+    /// in the slots and the picked chips' column, where they show, as known
+    /// differences.
+    fn known_icons(&self, v: &View, place: Placement, problems: &mut Problems) {
+        let other = |c: FolderChip| crate::lookups::other_versions_icon(&v.packs, v.b, c.id);
+        for (s, slot) in v.screen.slots.iter().enumerate().take(10) {
+            let shown = matches!(slot.kind, SlotKind::Chip { .. } | SlotKind::NaviChip(_)) && !v.screen.look.slot_picked[s];
+            if shown && v.screen.look.slot_chips[s].is_some_and(other) {
+                // (The slot's 2x2 icon cells: `slots`.)
+                let first = self.map[(13 + 3 * (s / 5)) * COLUMNS + 1 + 2 * (s % 5)].tile;
+                self.known_tiles(place, first..first + 4, crate::lookups::OTHER_VERSIONS_ART, problems);
+            }
+        }
+        for i in 0..5usize {
+            if v.screen.look.column[i].is_some_and(other) {
+                let first = self.layout.column_icons + 4 * i as u16;
+                self.known_tiles(place, first..first + 4, crate::lookups::OTHER_VERSIONS_ART, problems);
+            }
+        }
+    }
+
+    /// The window's cells that show `tiles` of its block, where they show,
+    /// as a known difference.
+    fn known_tiles(&self, place: Placement, tiles: std::ops::Range<u16>, why: &'static str, problems: &mut Problems) {
         let mut rect: Option<[i32; 4]> = None;
         for y in 0..ROWS {
             for x in place.from..place.to {
-                if !art.contains(&self.map[y * COLUMNS + x].tile) {
+                if !tiles.contains(&self.map[y * COLUMNS + x].tile) {
                     continue;
                 }
                 let Some(px) = screen_x(x as i32, place.scroll) else { continue };
@@ -1423,6 +1451,7 @@ pub fn draw<'a>(
     if let Some(why) = w.picture_known {
         w.known_picture(place, why, problems);
     }
+    w.known_icons(&v, place, problems);
     w.name_item(text, place);
     // The Program Advance's names, a column right of the layer's scroll
     // (`sub_802BA18`), each 9x2 cells column by column.

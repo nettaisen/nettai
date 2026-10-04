@@ -8,7 +8,7 @@
 -- crackling every 17 from the second, and the lightning dies down once it
 -- stops.
 
-local element_pillar = require("../../../../objects/element-pillar/element_pillar")
+local element_pillar = require("../../../../objects/element-pillar")
 local regions = require("@exelib/regions")
 local weapon = require("../../../../lib/weapon")
 

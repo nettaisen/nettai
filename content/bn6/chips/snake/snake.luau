@@ -6,7 +6,7 @@
 -- when it has none. Snake's nest (./nest) sends them out and counts them.
 
 local collision = require("../../rules/collision")
-local common = require("@exelib/snake/snake")
+local common = require("@exelib/snake")
 local trajectory = require("../../lib/trajectory")
 
 local snake = {}

@@ -48,7 +48,7 @@ pub fn bn6_content() -> Arc<Content> {
     BN6.get_or_init(|| Arc::new(defined(&["bn6"]).unwrap_or_else(|e| panic!("content/bn6: {e}")))).clone()
 }
 
-/// content/'s BN5 (its game pack and the support packs it uses), defined
+/// content/'s BN5 (its game pack and the support packs it depends on), defined
 /// once per test process.
 pub fn bn5_content() -> Arc<Content> {
     static BN5: OnceLock<Arc<Content>> = OnceLock::new();

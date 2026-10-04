@@ -10,7 +10,7 @@
 local charge = require("../../lib/navi-boost/charge")
 local shoot = require("../thunder/shoot")
 local statuses = require("../../rules/status")
-local thunder = require("../thunder/chip")
+local thunder = require("../thunder")
 
 local bgdththd = {}
 
