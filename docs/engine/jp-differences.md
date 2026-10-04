@@ -488,7 +488,7 @@ behavior there, by the user's choice (§8.2).
 
 | # | Variant | Size | A JP trace shows | Where to switch |
 |---|---|---|---|---|
-| 1 | Charged shot of a worn-out navi (`sub_8011A7E`) | US: +7 instructions | the shot's damage (AIAttackVars+8) and the target's HP: (Attack + 1) × 10, not 10 | content/bn6/navis/megaman/weapons/charged-shot/weapon.luau (`setup`) |
+| 1 | Charged shot of a worn-out navi (`sub_8011A7E`) | US: +7 instructions | the shot's damage (AIAttackVars+8) and the target's HP: (Attack + 1) × 10, not 10 | content/bn6/navis/megaman/weapons/charged-shot/init.luau (`setup`) |
 | 2 | SpoutCross's and SlashCross's charged shots keep the last bonus (`sub_8011C5E`, `sub_8011CD6`) | US: +2 and +1 instructions | AIAttackVars+6, the damage word | content/bn6/navis/megaman/forms/spoutcross/charge.luau and slashcross/charge.luau (`navi.extra = 0`) |
 | 3 | The weakness request survives a form change (`sub_8014CC0`, `sub_8014F04`, `sub_8015128`, `sub_80155CC`) | 3 literal words | AIData+0x44 bit 31 after the change, then the un-cross | crates/nettai-battle/src/kinds/player/actions/transform.rs (`finish`, for Cross, BeastOut, CrossBeast, BeastCross; not BeastOver) |
 | 4 | The drag's recovery keeps RskyHny's heat trap (`sub_8017A38`) | US: +2 instructions | AIData status 0x200000 after the drag; later non-fire hits swallowed | crates/nettai-battle/src/kinds/player/reactions.rs (`recover_from_drag`) |
@@ -503,7 +503,7 @@ behavior there, by the user's choice (§8.2).
 | 14 | GroundCross's drill burrows while moving (`sub_80EF004`) | US: +3 instructions | the drill's timing | content/bn6/navis/megaman/forms/groundcross/drill.luau |
 | 15 | SpoutMan's DripShwr flags (`sub_80F1694`) | JP: +5 instructions | SpoutMan's ObjectFlags1 0x40 and 0x80000 during the spray (what reads them then is **unverified**) | content/bn6/navis/spoutman/chip.luau |
 | 16 | Otenko's statue as DustMan's junk (`byte_8021220`, NameID 0xCF) | 5 data bytes | US: no junk (look none, freed); JP: a junk with sprite 0C-49, animation 1, shadow, which flies and hits | content/bn6/chips/otenko/statue.luau (the identity's `look`): **the content has the JP row on every console** (the user's call), so a US console's trace of it differs; bn6battle-verify records it on JP consoles (jp/chips/0x099-otenko/dustman), and gen-content's check expects the JP row |
-| 17 | The emotion window's glitch from patch cards (`sub_813BF1C`) | JP: +3 instructions | the console's emotion-window flicker | content/bn6/rules/patch-cards/system.luau: with cards installed (a JP save's), the glitch is the stats' NaviCust bugs after the cards (flag 0x1723), `battle.set_emotion_window_glitch`; without, the console setup's (0x1720). Verified: chip lab jp/cards/ (the setup check compares it) |
+| 17 | The emotion window's glitch from patch cards (`sub_813BF1C`) | JP: +3 instructions | the console's emotion-window flicker | content/bn6/rules/patch-cards/init.luau: with cards installed (a JP save's), the glitch is the stats' NaviCust bugs after the cards (flag 0x1723), `battle.set_emotion_window_glitch`; without, the console setup's (0x1720). Verified: chip lab jp/cards/ (the setup check compares it) |
 
 Not counted:
 

@@ -8,7 +8,7 @@
 -- (`throw.action { held = ..., thrower = ... }`): what it holds, and what
 -- throws what it throws (docs/design/content-model-v2.md §5.1).
 
-local attachment = require("../attachment/attachment")
+local attachment = require("../attachment")
 
 local throw = {}
 

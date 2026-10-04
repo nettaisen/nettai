@@ -6,7 +6,7 @@
 --
 -- Each game's chips throw their own yoyos: BN6's chips/yoyo, BN5's objects/yoyo.
 
-local attachment = require("../attachment/attachment")
+local attachment = require("../attachment")
 
 local throw = {}
 

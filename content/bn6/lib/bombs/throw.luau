@@ -5,7 +5,7 @@
 -- thrower = ... }`): what it holds, and what throws what it throws
 -- (docs/design/content-model-v2.md §5.1).
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local common = require("@exelib/bombs/throw")
 
 local throw = {}

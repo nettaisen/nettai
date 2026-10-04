@@ -1206,7 +1206,7 @@ its full set run on the batch):
   `protoman.bn6`. BN5's ProtoMan has its own sprite, sword animation, slash effect and spawner address, which
   were constants.
 - chips/boomer/boomerang.luau: a variant's optional `sprite`. BN5's boomerang is its own sprite.
-- navis/megaman/weapons/buster/weapon.luau: `buster.pick` exported (was local). BN5's buster picks blank and
+- navis/megaman/weapons/buster/init.luau: `buster.pick` exported (was local). BN5's buster picks blank and
   charged shots by BN6's code but sets up its own shot.
 
 Third batch:
@@ -1296,7 +1296,7 @@ panels) and SonicBom (0x173: BN5's action 0x2B, the sonic boom swing with the Ka
 gen_content.py writes (its USED_CHIPS). The chip lab has VarSwrd's five commands and Magnum's A press besides the
 generated scenarios (chiplab's library-bn5, by hand). Each matches every frame of its lab recordings. The batch's
 shared modules
-(content/exelib, as above): airhocky/puck and flick, gundels/beam, bugbomb/bomb, snake/snake, yoyo/throw,
+(content/exelib, as above): airhocky/puck and flick, gundels/beam, bugbomb/bomb, snake/init, yoyo/throw,
 tankcan/action and shell, lifesync/marker, moonbld/blade and bombs/seed, each BN6's at its old path its BN6 wrapper
 (BN6 the same). BN5's Cannon, HiCannon and M-Cannon draw BN5's cannon (0c-01) and sound; CircGun and DarkCirc share
 one set of kinds (chips/circgun/circgun).
@@ -1413,7 +1413,7 @@ them.
   soul-image, actor 0x2A, its navi's sprite 08-xx) spirals in, blinks and fades; MegaMan emerges in the soul (the
   old form's end hook and the new one's start hook, `put_on/take_off_form_overlay`; TomahawkSoul's shake), the
   status reset; Chaos Unison's 11 ticks arm the chaos charge (AIData +0x12, not yet modeled). The souls system
-  (rules/souls/system.luau) keeps the soul's turns (AIData +0x0F), counts them down at a turn's start (0x0801248C)
+  (rules/souls/init.luau) keeps the soul's turns (AIData +0x0F), counts them down at a turn's start (0x0801248C)
   and asks for the revert when they run out (0x0801246C); the revert is the souls' own (`FormData::revert`, the
   pause handler's: rules/souls/revert.luau, 0x080121D8: back to `bn5:base` with no state saved).
 - **ProtoSoul** (soul 1, sword): sprite 00-01, weapons from 0x0801CA1C's row 1: the buster, the charged slash
@@ -1559,7 +1559,7 @@ chips walked up to, patterns, traps; 10,225 frames, each through Dark MegaMan's 
   the dismissal of the Dark MegaMen across (0x08104284) and the new one on a random solid empty panel of the other
   side's area, then the revert to the base form.
 - *Dark MegaMan* (navis/dark-megaman: NameID 0x18D's record, enemy structs, collision and post-init hook) and the
-  system that drives him (rules/computer-navi/system: BN5's computer navis, a system of BN5's stock ruleset): his
+  system that drives him (rules/computer-navi/init: BN5's computer navis, a system of BN5's stock ruleset): his
   idle (twelve seconds from his first, then his leave, the navi type's action 7), his tick (the time running down
   outside pauses and dimming, his last three seconds blinking, the battle's end ending it).
 - *The AI* (rules/computer-navi/ai, 0x0802BA14): its decisions, the buster runs (his buster, weapon routine 0x3E,
@@ -1806,7 +1806,7 @@ holder's record) is an AI's (0x08108274), no chip's. The controller's position i
 RockCube (subtype 20: effect object 0x37, 0x080E4664, BN6's code) and Wind and Fan (subtype 9: effect object 0x25,
 0x080E329C; the fan, attack object 0x48, 0x080CE734; its gust, attack object 0x49, 0x080CEA0C) share BN6's modules
 through content/exelib (rockcube/cube, wind/controller, wind/fan: makers taking a game's look, BN6's wrappers
-keeping their APIs; the gust is the patch cards' shared one, gust/gust); their controllers stand at the dimming handler's registers as BoyBomb's does. BN5's
+keeping their APIs; the gust is the patch cards' shared one, gust/init); their controllers stand at the dimming handler's registers as BoyBomb's does. BN5's
 fan: sprite 04-0A (`fan`), NameIDs 0xD6 and 0xD7 (actor records: versions 3 and 4, AI index 0x21; their field-object
 looks, 0x0801D6B0, the fan in palettes 0 and 1); it takes hits as BN6's (0x08017984: the push keeps the damage, after
 BN5's lava burn); leaving (0x080CE90E), any removal (the flag word's 0x10000) is a puff and anything else breaks it,
@@ -1883,7 +1883,7 @@ recording).
 
 - **Series files.** A series' chips are one module, chips/<series>/chips.luau: each chip a `local` with its own
   comment above it, the requires once at the top, the module returning the chips by key
-  (`require("../cannon/chips").hicannon`), as BN6's chips/cannon/chips.luau. The series are BN6's where BN6 has the
+  (`require("../cannon/chips").hicannon`), as BN6's chips/cannon/init.luau. The series are BN6's where BN6 has the
   same chips (barrier, batcan, cannon, colorpt with DblPoint, energbom with MegEnBom, firehit, grabbnsh with
   GrabRvng, gundels, recov, tankcan, timebom with TimeBom+, tornado with Static, vulcan with SuprVulc; wind with
   Fan and gigacan once they have uses); each navi chip with its SP and DS (blizman, cloudman, colonel, cosmoman,

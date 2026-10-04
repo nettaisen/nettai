@@ -6,7 +6,7 @@
 -- Sticky: a form's own charged shot doesn't replace it, and while the navi
 -- has it a Beast buster gives way to the plain one.
 
-local aquandl = require("../aquandl/chips")
+local aquandl = require("../aquandl")
 local charge = require("../../lib/navi-boost/charge")
 
 -- The attack's element byte: Aqua.

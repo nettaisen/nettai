@@ -4,7 +4,7 @@
 -- 7, a sound), and strikes: a bolt (objects/flying-shot's row 0xB: elec, paralyzing) from 16 pixels ahead of it,
 -- 16 up, toward the enemy, running while dimmed; 91 ticks on it goes. The battle's end ends it at once.
 
-local flying_shot = require("../../objects/flying-shot/flying_shot")
+local flying_shot = require("../../objects/flying-shot")
 
 local cloud = {}
 

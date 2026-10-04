@@ -7,7 +7,7 @@
 -- clears the navi's first related object, then puts the arm away over 6
 -- ticks.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local common = require("@exelib/yoyo/throw")
 local yoyo = require("./yoyo")
 

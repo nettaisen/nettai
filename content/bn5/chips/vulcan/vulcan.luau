@@ -5,8 +5,8 @@
 -- InfVulc3), the variant its record's parameter (row 0xC; SuprVulc's 0x10, the InfVulcs' 0xE). From subtype 4 on
 -- (the InfVulcs) the gun is the attachment table's row 0x1F (0x080EC608: the same sheet in palette 3).
 
-local attachment = require("../../objects/attachment/attachment")
-local bullet = require("../../objects/bullet/bullet")
+local attachment = require("../../objects/attachment")
+local bullet = require("../../objects/bullet")
 local vulcan_action = require("@exelib/vulcan/action")
 
 local vulcan = {}

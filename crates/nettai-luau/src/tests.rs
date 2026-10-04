@@ -6,7 +6,11 @@ use nettai_content_api::Data;
 #[test]
 fn relative_paths_resolve_within_the_pack() {
     let r = keys::resolve;
-    assert_eq!(r("bn6:chips/gundels/chips", "../../objects/sun-beam/sun_beam").unwrap(), "bn6:objects/sun-beam/sun_beam");
+    assert_eq!(r("bn6:chips/gundels/beam", "../../objects/sun-beam/sun_beam").unwrap(), "bn6:objects/sun-beam/sun_beam");
+    // A folder's init.luau is the folder as a module: beside it is `./`,
+    // inside it `@self/`.
+    assert_eq!(r("bn6:chips/gundels/init", "../objects/sun-beam/sun_beam").unwrap(), "bn6:objects/sun-beam/sun_beam");
+    assert_eq!(r("bn6:chips/gundels/init", "@self/beam").unwrap(), "bn6:chips/gundels/beam");
     assert_eq!(r("bn6:(pack)", "./lib/slot").unwrap(), "bn6:lib/slot");
     assert!(r("bn6:lib/slot", "../../x").is_err());
     assert!(r("bn6:lib/slot", "objects/x").is_err());
@@ -17,16 +21,15 @@ fn relative_paths_resolve_within_the_pack() {
 }
 
 /// docs/design/content-model-v2.md §4.0: a game requires itself and the
-/// support packs it uses; a support pack itself and the support packs it
-/// uses; no pack another game's.
+/// support packs it depends on; a support pack itself and the support packs
+/// it depends on; no pack another game's.
 #[test]
-fn a_require_reaches_only_its_pack_and_the_support_packs_it_uses() {
+fn a_require_reaches_only_its_pack_and_the_support_packs_it_depends_on() {
     use nettai_content_api::{PackKind, PackManifest};
-    let manifest = |id: &str, kind: PackKind, uses: &[&str]| PackManifest {
+    let manifest = |id: &str, kind: PackKind, depends: &[&str]| PackManifest {
         id: id.into(),
         kind,
-        uses: uses.iter().map(|u| u.to_string()).collect(),
-        ..Default::default()
+        depends: depends.iter().map(|u| u.to_string()).collect(),
     };
     let packs = [manifest("lib", PackKind::Support, &[]), manifest("a", PackKind::Game, &["lib"]), manifest("b", PackKind::Game, &["lib"])];
     let load = |entry: &str, modules: &[(&str, &str)]| {
@@ -49,11 +52,10 @@ fn a_require_reaches_only_its_pack_and_the_support_packs_it_uses() {
 #[test]
 fn a_support_pack_has_no_game_context() {
     use nettai_content_api::{PackKind, PackManifest};
-    let manifest = |id: &str, kind: PackKind, uses: &[&str]| PackManifest {
+    let manifest = |id: &str, kind: PackKind, depends: &[&str]| PackManifest {
         id: id.into(),
         kind,
-        uses: uses.iter().map(|u| u.to_string()).collect(),
-        ..Default::default()
+        depends: depends.iter().map(|u| u.to_string()).collect(),
     };
     let packs = [manifest("lib", PackKind::Support, &[]), manifest("game", PackKind::Game, &["lib"])];
     let load = |modules: &[(&str, &str)]| {
@@ -157,10 +159,10 @@ return bomb
 "#,
     ),
     (
-        "chips/minibomb/chip",
+        "chips/minibomb/init",
         r#"--!strict
-local throw = require("../../lib/bombs/throw")
-local bomb = require("../../lib/bombs/bomb")
+local throw = require("../lib/bombs/throw")
+local bomb = require("../lib/bombs/bomb")
 return define.chip {
     id = "minibomb",
     name = "MiniBomb",
@@ -170,10 +172,10 @@ return define.chip {
 "#,
     ),
     (
-        "chips/flshbom/chips",
+        "chips/flshbom/init",
         r#"--!strict
-local throw = require("../../lib/bombs/throw")
-local bomb = require("../../lib/bombs/bomb")
+local throw = require("../lib/bombs/throw")
+local bomb = require("../lib/bombs/bomb")
 local THROW = throw.action { held = 0x2E, thrower = bomb.variant { palette = 1 } }
 return {
     define.chip { id = "flshbom1", name = "FlshBom1", action = THROW },
@@ -205,7 +207,7 @@ fn definitions_get_keys_from_ids_owners_and_modules() {
     assert_eq!(action.spec.field("update"), &Data::Function);
     let chip = d.get(Registry::Chip, "minibomb").unwrap();
     assert_eq!(chip.spec.field("action"), &Data::Ref(Registry::Action, "minibomb/action".into()));
-    assert_eq!(chip.module, "test:chips/minibomb/chip");
+    assert_eq!(chip.module, "test:chips/minibomb/init");
     let record = d.get(Registry::Record, "minibomb/action/args/thrower").unwrap();
     assert_eq!(record.record_type.as_deref(), Some("bomb-variant"));
 }
@@ -285,7 +287,7 @@ fn a_games_rules_are_one_ruleset() {
         ("rules/pools", "return { actor = 32, attack = 32, effect = 32 }"),
         (
             "rules/init",
-            "return define.ruleset { id = 'stock', stock = true, systems = {}, pools = require('./pools'), roles = require('./roles') }",
+            "return define.ruleset { id = 'stock', stock = true, systems = {}, pools = require('@self/pools'), roles = require('@self/roles') }",
         ),
     ])
     .unwrap();

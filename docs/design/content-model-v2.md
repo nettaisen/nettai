@@ -726,7 +726,7 @@ uses = ["exelib"]      # the support packs it requires from
 
 [definitions]          # its modules, by path in the pack
 rules = ["rules"]      # rules/init.luau: the stock ruleset, the game's one rules definition (§3.8)
-chips = ["chips/airshot/chip", "chips/cannon/chips", ...]
+chips = ["chips/airshot/init", "chips/cannon/init", ...]
 navis = [...]
 forms = [...]
 stages = [...]
@@ -793,8 +793,8 @@ unported = ["chips/x/chip", ...]
   games anymore"; "once a game is selected for the match, the rest of the configuration becomes completely
   namespaced for that side. so it's not possible to name another game's stuff"): `cannon`, `megaman`,
   `heatcross/charge/action`, and an asset by its pack's name (`asset.sprite("bomb")`); compat, the locales and match
-  files write them so. A module's name is its pack and its path in it (`bn6:chips/cannon/chips`,
-  `exelib:swords/slash`). A game module's anonymous definition is keyed by its path (`chips/cannon/chips#2`), a
+  files write them so. A module's name is its pack and its path in it (`bn6:chips/cannon/init`,
+  `exelib:swords/slash`). A game module's anonymous definition is keyed by its path (`chips/cannon/init#2`), a
   support pack's by its name (`exelib:regions#57`, which content never writes). Nothing refuses a `:` in a name:
   another game's names can't be loaded.
 - **The modules keep `define.*`.** A manifest only says which load and which are the game's.
@@ -867,8 +867,8 @@ differs from BN6's layout in two things the port and the ids impose:
 
 Where BN5's shared kinds went: the families' to lib/ (lib/bombs/seed for the seeds, as BN6's; lib/instruments;
 the Anti traps' in lib/traps; the Guard chips' shock wave in lib/guard; the navi chips' throw marker in
-lib/navi-chips), each family's builder moving into its folder with them (lib/bombs/bombs.luau, as BN6's
-lib/barriers/barriers.luau); the soul system's (Chaos Unison's shade, the soul's image) to rules/souls, as BN6's
+lib/navi-chips), each family's builder moving into its folder with them (lib/bombs/init.luau, as BN6's
+lib/barriers/init.luau); the soul system's (Chaos Unison's shade, the soul's image) to rules/souls, as BN6's
 Cross merge is rules/forms'; a kind with a natural owner and borrowers to the owner (the Vulcans' gun, which the
 InfVulcs borrow; DrilArm's drill, DarkDril's too; CrakBom's bomb, ParaBom's and ResetBom's too). objects/ keeps
 what several families share (attachment, bullet, flying-shot, panel-bursts, panel-changer, projectile,
@@ -1118,7 +1118,7 @@ return bomb
 ```
 
 ```luau
--- chips/minibomb/chip.luau
+-- chips/minibomb/init.luau
 --!strict
 local throw = require("../../lib/bombs/throw")
 local bomb = require("../../lib/bombs/bomb")
@@ -1147,7 +1147,7 @@ return define.chip {
 ```
 
 ```luau
--- chips/bigbomb/chip.luau: the same throw, a bigger blast.
+-- chips/bigbomb/init.luau: the same throw, a bigger blast.
 return define.chip {
     id = "bigbomb", -- ... the record ...
     action = throw.action {
@@ -1232,7 +1232,7 @@ function slash.action(spec: SlashSpec): Action ... end
 ```
 
 ```luau
--- chips/sword/chip.luau
+-- chips/sword/init.luau
 local swords = require("../../lib/swords")
 local SLASH = { is = collision.slash, hits = collision.hits_navis }
 return define.chip {
@@ -1245,7 +1245,7 @@ return define.chip {
     },
 }
 
--- chips/wideswrd/chip.luau
+-- chips/wideswrd/init.luau
 return define.chip {
     id = "wideswrd", damage = 80, codes = { "H", "L", "S", "*" }, -- ... the record ...
     action = swords.slash.action {
@@ -1302,7 +1302,7 @@ v1: the projectile (attack #0) reads `data.objects.projectiles[me:param(1)]`, a 
 number; the buster passes a NaviCust-chosen number through `attack_param(1)`.
 
 ```luau
--- objects/projectile/projectile.luau exports the kind, `variant` and the firing helpers.
+-- objects/projectile/init.luau exports the kind, `variant` and the firing helpers.
 local projectile = {}
 projectile.kind = define.kind { id = "projectile", pool = "attack",
     state = { variant = "record:projectile-variant", row = "i8" }, update = update }
@@ -1321,7 +1321,7 @@ function projectile.fire(navi: Object, v: Variant, damage: number, opts: { z: nu
 -- lib/cannon.luau (group G3 writes it): the cannons' action (the original's 0x14).
 function cannon.action(spec: { shot: projectile.Variant, look: CannonLook }): Action ... end
 
--- chips/cannon/chips.luau: a series (v1: action 0x14, subtypes 0, 1, 2).
+-- chips/cannon/init.luau: a series (v1: action 0x14, subtypes 0, 1, 2).
 local SHOT = projectile.variant { collision = { is = collision.shot, hits = collision.hits_navis },
     hit_mod = 0, element = "null", spark = sparks.cannon }
 return {
@@ -1378,7 +1378,7 @@ return { area = hook(true), panel = hook(false) }
 ```
 
 ```luau
--- chips/areagrab/chip.luau
+-- chips/areagrab/init.luau
 local grab = require("../../lib/grab/controller")
 return define.chip { id = "areagrab", flags = { "dimming" }, -- ...
     dimming = grab.area }
@@ -1492,7 +1492,7 @@ end
 ```
 
 ```luau
--- chips/eraseman/chips.luau: the series (v1: action 0x1B, subtype 5, Param1 20, 16, 12).
+-- chips/eraseman/init.luau: the series (v1: action 0x1B, subtype 5, Param1 20, 16, 12).
 local sp = require("../../lib/navi-chips/sp")
 return {
     define.chip { id = "eraseman", damage = 120, hit_param = 138, -- ...
@@ -1581,7 +1581,7 @@ docs/engine/standard-chips.md, "Action 9".
 v1: action 0x1C calls `Hook::InstantChip(subtype)`; one module serves the 30 chips of subtype 3.
 
 ```luau
--- chips/busterup/chip.luau
+-- chips/busterup/init.luau
 local SPARKLE = define.effect { sprite = asset.sprite("buster-up"), anim = 0 }
 local SOUND = asset.sound("buster-up")
 return define.chip { id = "busterup", -- ...
@@ -1644,7 +1644,7 @@ FullCust, SyncTrgr, WhiCapsl (`plus.attack_with(plus.PARALYZE)`), FinalGun and N
 ### 5.7 Weapons and forms
 
 ```luau
--- navis/megaman/weapons/buster/weapon.luau
+-- navis/megaman/weapons/buster/init.luau
 local SHOT = define.action { id = "megaman/buster/shot", state = STATE, update = shot }  -- action 0x11 in compat
 return define.weapon {
     id = "megaman/buster",
@@ -1661,7 +1661,7 @@ return define.weapon {
 ```
 
 ```luau
--- navis/megaman/forms/heatcross/form.luau
+-- navis/megaman/forms/heatcross/init.luau
 local burner = require("../../../../lib/burner")
 local buster = require("../../weapons/buster/weapon")
 local body = require("../../overlays")          -- the Crosses' body overlays (records)
@@ -1783,11 +1783,11 @@ subtype (`me.variant`) and parameter bytes (`me:attack_param`), and its objects 
 switch on spawn parameters (`me:param`).
 
 ```luau
--- chips/gundels/chips.luau: a series; what the subtype and the pack's `[gun_del_sol]` data gave is each chip's.
+-- chips/gundels/init.luau: a series; what the subtype and the pack's `[gun_del_sol]` data gave is each chip's.
 define.chip { id = "gundels3", -- ... the record ...
     action = action.action { gun = action.gun(6), firing_ticks = 120, beam = BEAM, beam_in_sun = BEAM_IN_SUN } }
 
--- chips/heatdrgn/chip.luau: a family's builder (lib/dragons) and its variant record.
+-- chips/heatdrgn/init.luau: a family's builder (lib/dragons) and its variant record.
 define.chip { id = "heatdrgn", -- ...
     action = action.action { dragon = dragon.variant { speed = 0x4_0000, palette = 0, hit_mod = 3,
         spark = sparks.fire, panel = false, delays = { 3, 6, 9, 12 } } } }
@@ -1861,19 +1861,19 @@ its typed state or a variant record:
 
 | Family | Builder | Kinds (records) | Chips |
 |---|---|---|---|
-| YoYo | chips/yoyo/throw (`{ id, yoyo = { great?, panels, rounds } }`) | `yoyo/yoyo`, `yoyo/great-yoyo` (both in chips/yoyo/yoyo, which each name) | YoYo and GreatYo: records (chips/yoyo/chip, chips/greatyo/chip) |
+| YoYo | chips/yoyo/throw (`{ id, yoyo = { great?, panels, rounds } }`) | `yoyo/yoyo`, `yoyo/great-yoyo` (both in chips/yoyo/yoyo, which each name) | YoYo and GreatYo: records (chips/yoyo/init, chips/greatyo/init) |
 | Thunder | chips/thunder/shoot (`{ ball = { fast?, panels, status?, bug? } }`) | `thunder/ball` | Thunder: a definition; DarkThnd: a record (chips/darkthnd) |
-| Recovery | chips/recov/heal (`{ hp }`) | | Recov10 to Recov300: definitions (chips/recov/chips); DrkRecov: a record; the heal table's last row (no chip) is `recov/none` |
-| CrakShot | chips/crakshot/chips' `dig(region)` | `crakshot/shot` | CrakShot, DublShot, TrplShot: definitions |
+| Recovery | chips/recov/heal (`{ hp }`) | | Recov10 to Recov300: definitions (chips/recov/init); DrkRecov: a record; the heal table's last row (no chip) is `recov/none` |
+| CrakShot | chips/crakshot/init' `dig(region)` | `crakshot/shot` | CrakShot, DublShot, TrplShot: definitions |
 | CopyDmg | | `copydmg/mark` | a definition |
 | AirHocky | chips/airhocky/flick (`{ puck, down }`) | `airhocky/puck` (`hockey-puck-variant`: `byte_80C9818`'s rows, the chips' by name) | AirHocky, PitHocky: records |
 | FireBrn | lib/burner/burn (`{ burner, flame = { ticks, spread, wide?, cracks?, anim?, on_panel? } }`) | `flame` (lib/burner/flame) | FireBrn1-3, WideBrn1-3: records; HeatCross's charge returns its own burn |
-| TrnArrw | chips/trnarrw/chips | `flying-shot` (objects/flying-shot: `flying-shot-variant`, `byte_80C6038`'s rows, also the buster's throw and the Falzar Beast buster's) | TrnArrw1-3: definitions |
+| TrnArrw | chips/trnarrw/init | `flying-shot` (objects/flying-shot: `flying-shot-variant`, `byte_80C6038`'s rows, also the buster's throw and the Falzar Beast buster's) | TrnArrw1-3: definitions |
 | Reflectr | chips/rflectr/guard (`{ ticks, look, counter?, heedless? }`) | `rflectr/shield` (`reflector-shield-look`: `byte_80C9664`'s rows, the chips' and the programs' by name), `rflectr/shot` | Rflectr1-3: definitions; the NaviCust Shield and Reflect (weapons 0x3B, 0x3C, 0x8B, 0x8C) return their own guards, `megaman/shield/action` and `megaman/reflect/action` |
 | IronShl | chips/ironshl/throw (`{ shell = { palette, speed, bumps, para? } }`) | `ironshl/shell` | IronShl1-3, ParaShl: records |
-| BblStar | chips/bblstar/chips' `blow { speed, palette }` | `bblstar/star` | BblStar1-3: definitions |
+| BblStar | chips/bblstar/init' `blow { speed, palette }` | `bblstar/star` | BblStar1-3: definitions |
 | DrilArm | | `drill` (chips/drilarm/drill, kind `drilarm/drill`, with the drill arm look; GroundCross's charged shot and MstrCros's GroundCross spawn it too, `drill.spawn(owner, element, z, damage, { ticks, light? }, slot?)`) | a definition |
-| Tornado | chips/tornado/chips' `blow { fan, single? / spread? }` | `tornado/tornado` (`tornado-variant`: `byte_80CA064`'s rows) | Tornado, Static: definitions; the action's subtype 3 (no chip) is `tornado/back-spread` |
+| Tornado | chips/tornado/init' `blow { fan, single? / spread? }` | `tornado/tornado` (`tornado-variant`: `byte_80CA064`'s rows) | Tornado, Static: definitions; the action's subtype 3 (no chip) is `tornado/back-spread` |
 | WaveArm | chips/wavearm/strike (`{ wave, three_rows? }`) | `wavearm/wave` (`shock-wave-variant`: `byte_80C6B00`'s rows, the chips' by name; the viruses' too) | WaveArm1-3, PwrWave1-3: records |
 
 What it settled:

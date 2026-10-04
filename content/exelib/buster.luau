@@ -8,7 +8,7 @@
 -- arm (row 0x2B, at attach point 0x0E), its recovery table (BN6's
 -- `byte_80209CC`) and its attachment kind.
 
-local attachment = require("./attachment/attachment")
+local attachment = require("./attachment")
 
 local buster = {}
 

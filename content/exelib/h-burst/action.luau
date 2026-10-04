@@ -7,7 +7,7 @@
 -- recovery (BN6's action 0x34, `sub_80ED810`; BN5's 0x35, the same code
 -- but for the spreader's attachment row).
 
-local attachment = require("../attachment/attachment")
+local attachment = require("../attachment")
 local burst = require("./burst")
 
 local action = {}

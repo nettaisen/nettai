@@ -4,7 +4,7 @@
 -- navi raises, the recovery after a shot, and the move that may cut the
 -- recovery short. See docs/engine/objects-and-player.md §B6.
 
-local attachment = require("../objects/attachment/attachment")
+local attachment = require("../objects/attachment")
 local common = require("@exelib/buster")
 
 return common.make {

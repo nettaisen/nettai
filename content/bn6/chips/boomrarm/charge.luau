@@ -7,7 +7,7 @@
 -- replace it, and while the navi has it a Beast buster gives way to the
 -- plain one.
 
-local boomer = require("../boomer/chips")
+local boomer = require("../boomer")
 local charge = require("../../lib/navi-boost/charge")
 
 -- The attack's element byte: Wood.

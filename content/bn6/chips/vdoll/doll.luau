@@ -4,7 +4,7 @@
 -- it lands the panel turns to poison. The first damage it takes after landing curses the other side (./curse): a
 -- dimming that hits every combatant there with that damage. See docs/engine/shot-chips.md §14.2.
 
-local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
+local absorbed_obstacle = require("../../objects/absorbed-obstacle")
 local collision = require("../../rules/collision")
 local common = require("@exelib/vdoll/doll")
 local curse = require("./curse")

@@ -10,7 +10,7 @@
 --   while dimmed; Param3 is DarkDril's, whose hit carries the bug 0xFA (argument 1), where BN6's makes a light one;
 -- - BN5's spark and collision types.
 
-local attachment = require("../../objects/attachment/attachment")
+local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local drill = require("@exelib/drilarm/drill")
 local sparks = require("../../lib/sparks")

@@ -13,7 +13,7 @@
 -- its command's window shuts for good once A isn't held (the third slash's
 -- hit opens it again).
 
-local attachment = require("@exelib/attachment/attachment")
+local attachment = require("@exelib/attachment")
 local regions = require("@exelib/regions")
 
 local zsaver = {}

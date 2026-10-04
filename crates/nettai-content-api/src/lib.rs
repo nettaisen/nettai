@@ -51,7 +51,7 @@ pub use api::{ObstacleHold, ObstaclePush, WindSource};
 pub use assets::{AssetKind, AssetNames, PackIndex};
 pub use data::{Data, Key as DataKey};
 pub use definitions::{Definition, Definitions, GAME_LISTS};
-pub use packs::{PackDefinitions, PackKind, PackManifest};
+pub use packs::{PackKind, PackManifest};
 pub use host::{
     BindPlan, ContentError, ContentHost, DimmingChipSpec, FnId, FnSource, HookCall,
     InstantChipSpec, Manifest, NaviChipSpec, PlaceSpec, SystemHook,
