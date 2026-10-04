@@ -11,12 +11,10 @@ use crate::content::{EffectRole, SoundRole};
 use crate::kinds::effect;
 use crate::object::{ObjectRef, Vec3};
 
-/// AntiRecv's counterattack: the counter byte its damage carries, the
-/// "trap!" mark (the role `effects.trap_mark`) raised over the healer, and
-/// its sound.
+/// AntiRecv's counterattack: the counter byte its damage carries (the
+/// "trap!" mark, the role `effects.trap_mark`, rises over the healer with
+/// its sound: `trap_mark`).
 pub(crate) const TRAP_HIT_PARAM: u32 = 0x1E;
-/// The mark's height, 32 pixels.
-pub(crate) const TRAP_MARK_Z: i32 = 0x20_0000;
 
 /// `sub_800E2FC`: heal `r` by `amount`; with `anti_recovery`, check the
 /// opponent's AntiRecv first. True when the trap sprang (the game's
@@ -89,12 +87,18 @@ pub(crate) fn spawn_counterattack(b: &mut Battle, healer: ObjectRef, damage: u32
 }
 
 /// `sub_800ABC6`: the trap's mark over `r`'s panel (for the local side's
-/// look, Param2), with its sound.
-pub(crate) fn trap_mark(b: &mut Battle, r: ObjectRef) {
+/// look, Param2), with its sound, where the game puts it from the panel's
+/// center (the chip-use rules' `anti_navi_sparkle`: BN6's 16 pixels down
+/// the field and 32 up, BN5's 16 up). Its height (which the routine leaves
+/// in r3).
+pub(crate) fn trap_mark(b: &mut Battle, r: ObjectRef) -> i32 {
     let panel = b.objects.get(r).panel;
     let (x, y) = crate::kinds::player::panel_coordinates(panel.x, panel.y);
     let local = b.round.local_side;
     let look = b.roles().effect(EffectRole::TrapMark);
-    effect::spawn(b, Vec3 { x, y: y.wrapping_add(0x10_0000), z: TRAP_MARK_Z }, look, local, 0, 0);
+    let at = b.game_rules().chip_use.anti_navi_sparkle;
+    let z = (at.z as i32) << 16;
+    effect::spawn(b, Vec3 { x, y: y.wrapping_add((at.dy as i32) << 16), z }, look, local, 0, 0);
     b.sound(SoundRole::CutIn);
+    z
 }

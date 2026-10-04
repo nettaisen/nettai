@@ -413,6 +413,11 @@ local status = {
         -- stun strike (action 0x49, the drive's end: chips/darkinvs); the idle hands the step to the systems (the
         -- computer-navi AI, 0x080F03E4); the last 180 ticks flicker gray (0x080136E0).
         no_charge_drive = true,
+        -- BN5's loss of HP (object_subtractHP, 0x0800C6E0; applyDamageToPlayer, 0x080185A2): a player's loss drains
+        -- its side's gauge too, a dark MegaMan (emotion 5) brought to 0 holds at 1 HP once a battle and asks for his
+        -- last stand (0x0802C16C: the roles' `volley`, rules/emotion/dark-survival), and a hit shows (white, its
+        -- sounds) by the register that check leaves.
+        hp_loss = "bn5",
         -- BN5's emotions (0x08012740): a soul first, then anger, a mood of 0 (a dark MegaMan's), Full Synchro, a mood
         -- under 65 worried; its mood setter (0x080127D6) leaves a mood of 0; its anger tick (0x08011A14) passes over
         -- AI index 23.
