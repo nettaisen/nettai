@@ -524,7 +524,8 @@ as bn6-extract takes BN6's) writes a pack whose manifest says `game = "bn5"`:
   0x95, the digits 0x99, the slots 0x9F, the column's icons 0xE1 and cells 0x47, the turn limit 0x4B, the name
   bar 0x1B6), a hidden slot filled with tile 2, the cursor over OK at (0x58, 0x70) and over the button at (0x58,
   0x88) with their corners (0x08024714, 0x08024744); the 13 element icons in BN5's family order, put in the
-  engine's; the re-deal and scrap buttons; the soul button (`buttons`: its states' tiles 0x086FBB64, its picture
+  engine's; the re-deal and scrap buttons; the soul button (the souls system's; `buttons`: its states' tiles
+  0x086FBB64, its picture
   0x087322E8 with Soul Unison's and Chaos Unison's palettes, the souls' 2x2 icons 0x08749FB8, 14 with Chaos's, in
   sprite palette 13, 0x0874AAB8); the emblems by version (13, with 8 palettes).
 - **Versions:** 12 chips (0x12D–0x136, 0x139, 0x13A: the version navi chips) are drawn differently by each
@@ -1400,14 +1401,19 @@ them.
 
 ### 15.8 Soul Unison (as built)
 
-- **The soul button** (the engine's custom screen, BN5's layout: slot 11, `SlotKind::Soul`, 0x08023C54,
-  0x08024B28, 0x08024972): lit for the last pick's family when the navi has a soul of it (a form naming its
-  `soul = { number, family }`), the save has the soul (`SoulUnlocks`: bn5-compat gives
-  a finished save's six of the version and Chaos Unison) and it isn't used this round (Soul Unison and Chaos Unison
-  apart; a dark chip's is Chaos Unison). Pressed: BN5's state 9 (`Phase::SoulChosen`: fades 0x34 and 0x30), the
-  soul first in the selection in place of the chip given up. At OK the transform record asks for the soul's form,
-  3 turns and the NaviCust's bonus (NaviStats +0x32, at most 9) or Chaos Unison's 1 (0x08024FF6;
-  `TransformRequest::turns`, `chaos`; the netplay protocol's version 2); the chip given up leaves the folder.
+- **The soul button** (the souls system's button `soul`, rules/souls/custom.luau: BN5's layout's slot 11,
+  0x08023C54, 0x08024B28, 0x08024972): shown for MegaMan with souls, outside battle flag 0x40, with the save's
+  Soul Unison (event flag 0, the setup's `soul_unison`), unless he is worried or dark (in a soul or angry he may);
+  lit for the last pick's family when the navi has a soul of it (a form naming its `soul = { number, family }`),
+  the save has the soul (the setup's `souls`, its flags by number: bn5-compat gives a finished save's six of the
+  version) and it isn't given this round (the system's `souls_used`: Soul Unison and Chaos Unison apart; a dark
+  chip's is Chaos Unison, which needs the setup's `chaos_unison`, flag 0x236). Pressed: the window `soul_unison`
+  (BN5's state 9: the icon's flight, fades 0x34 and 0x30, then the white), whose white step puts the soul first in
+  the selection in place of the chip given up (`custom.trade_last_pick`). At OK (`custom.confirmed`) the transform
+  record asks for the soul's form, 3 turns and the bonus (NaviStats +0x32, `soul_turn_bonus`: at most 9, under 0
+  one) or Chaos Unison's 1 (0x08024FF6; `custom.set_form`'s turns and Chaos flag, `TransformRequest::turns`,
+  `chaos`); the chip given up leaves the folder in the soul's place. B on the soul puts the chip back. (Until
+  2026-10-04 this was the custom screen's Rust: `SlotKind::Soul`, `Phase::SoulChosen`, `SoulUnlocks`.)
 - **The change** (rules/souls/change.luau, the souls' `change`, BN5's 0x08011F74, run by the shared turn-start
   sequencer): onto the future panel, a flash, his moves stopped (`stop_moving`); the soul's image (objects/
   soul-image, actor 0x2A, its navi's sprite 08-xx) spirals in, blinks and fades; MegaMan emerges in the soul (the

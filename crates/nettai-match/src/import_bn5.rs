@@ -14,17 +14,20 @@ pub(crate) fn read(file: &[u8]) -> Result<Save, String> {
 }
 
 impl Side {
-    /// Take the karma and the souls from a BN5 save, the side of a match
-    /// on `arena` (a BN5 one): the souls its version's flags give (the
-    /// game's souls of those numbers; none without Soul Unison) as the
-    /// side's soul list. What is worth saying about it.
+    /// Take the karma, the souls and Soul Unison from a BN5 save, the side
+    /// of a match on `arena` (a BN5 one): the souls its version's flags
+    /// give (the game's souls of those numbers) as the side's soul list,
+    /// and its Soul Unison and Chaos Unison (event flags 0 and 0x236). What
+    /// is worth saying about it.
     pub fn import_bn5_save(&mut self, content: &Content, arena: &Arena, save: &Save) -> Vec<String> {
         let mut notes = Vec::new();
         self.karma = save.light_dark();
         if !crate::facts::takes(content, arena.ruleset, crate::facts::KARMA_FIELD) {
             notes.push("the match's ruleset has no light and dark MegaMan: the save's karma is kept, unused".into());
         }
-        let numbers = if save.soul_unison() { save.souls() } else { Vec::new() };
+        let numbers = save.souls();
+        self.soul_unison = save.soul_unison();
+        self.chaos_unison = save.chaos_unison();
         let all = crate::facts::all_souls(content, &arena.game);
         let mut souls = Vec::new();
         for n in numbers {

@@ -51,7 +51,10 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// 6: a match is of one game: the Hello says the game its side plays
 /// (peers of different games refuse), and an offer names the match's
 /// ruleset and everything of its side by name in that game.
-pub const VERSION: u16 = 6;
+/// 7: an offer's side says BN5's Soul Unison and Chaos Unison (the save's
+/// event flags 0 and 0x236, now the souls system's setup), and NaviStats
+/// carries BN5's soul turns' bonus (+0x32).
+pub const VERSION: u16 = 7;
 
 /// The rollback horizon, in elements (ticks, besides the rare payload or
 /// marker): the widest gap a player's stream may have at the other peer
