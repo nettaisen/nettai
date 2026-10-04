@@ -311,10 +311,10 @@ fn a_dark_side_starts_dark() {
     assert_eq!(content.assets.handle(nettai_content_api::AssetKind::Mugshot, "bn5:megaman-dark"), Some(face.0));
 }
 
-/// The soul button offers only a soul the side has: with every soul
-/// (ProtoSoul among them), a Sword picked offers ProtoSoul; with none, or
-/// with GyroSoul alone, the button is there but the sword's soul isn't
-/// offered.
+/// The soul button (BN5's souls system's) offers only a soul the side has:
+/// with every soul (ProtoSoul among them), a Sword picked offers ProtoSoul;
+/// with none, or with GyroSoul alone, the button is there but the sword's
+/// soul isn't offered. Without Soul Unison there is no button.
 #[test]
 fn an_unowned_soul_cant_be_chosen() {
     use nettai_battle::custom::screen::{Phase, SPECIAL_SLOT, SlotKind, SlotState};
@@ -322,10 +322,11 @@ fn an_unowned_soul_cant_be_chosen() {
     // Swords alone, so the first chip dealt is one (no folder the rules
     // take: the round is played as set up).
     let sword = crate::ids::chip(&content, "bn5", "sword").unwrap();
-    let offered = |souls: Option<Vec<nettai_content_api::FormHandle>>| {
+    let offered_with = |souls: Option<Vec<nettai_content_api::FormHandle>>, soul_unison: bool| {
         let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
         m.sides[0].folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30];
         m.sides[0].souls = souls;
+        m.sides[0].soul_unison = soul_unison;
         let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
         let mut last = 0u16;
         for _ in 0..400 {
@@ -334,7 +335,7 @@ fn an_unowned_soul_cant_be_chosen() {
                 && s.selected == 1
             {
                 let slot = s.slots[SPECIAL_SLOT as usize];
-                let soul = slot.kind == SlotKind::Soul;
+                let soul = matches!(slot.kind, SlotKind::Button { button, .. } if content.defs.button(button).name == "soul");
                 return (soul, soul && slot.state == SlotState::Selectable);
             }
             let a = if screen.is_some() && last == 0 { nettai_battle::input::keys::A } else { 0 };
@@ -343,7 +344,9 @@ fn an_unowned_soul_cant_be_chosen() {
         }
         panic!("no chip picked");
     };
+    let offered = |souls| offered_with(souls, true);
     assert_eq!(offered(None), (true, true));
+    assert_eq!(offered_with(None, false), (false, false), "no Soul Unison, no button");
     assert_eq!(offered(Some(Vec::new())), (true, false));
     assert_eq!(offered(Some(vec![crate::ids::form(&content, "bn5", "gyrosoul").unwrap()])), (true, false));
     // ProtoSoul alone, or with Team Colonel's ColonelSoul: offered.
@@ -352,24 +355,32 @@ fn an_unowned_soul_cant_be_chosen() {
 }
 
 /// A side's karma and souls go into its round's setup: the light and dark
-/// system's block holds the karma, the souls system's the souls, which
-/// are the soul button's (by their numbers).
+/// system's block holds the karma, the souls system's the souls (which the
+/// soul button offers, by their numbers), Soul Unison and Chaos Unison
+/// (on unless the side says).
 #[test]
 fn karma_and_souls_reach_the_round() {
     let content = bn5_content();
     let mut m = parse(&content, &bn5(&TANGO_BN5, ""), &bn5(&TANGO_BN5, "")).unwrap();
     m.sides[0].karma = 300;
-    m.sides[0].souls = Some(vec![crate::ids::form(&content, "bn5", "colonelsoul").unwrap()]);
+    let colonel = crate::ids::form(&content, "bn5", "colonelsoul").unwrap();
+    m.sides[0].souls = Some(vec![colonel]);
+    m.sides[0].chaos_unison = false;
     let b = started(&content, &m, 1);
     let (schema, block) = b.system_setup(0, "bn5:light-dark").unwrap();
     assert_eq!(block.get(schema, schema.index_of("karma").unwrap()), nettai_content_api::FieldValue::U16(300));
-    let souls = b.setup.players[0].souls;
-    assert!(souls.button && souls.chaos && souls.owned == 1 << 7, "{souls:?}");
+    let (schema, block) = b.system_setup(0, "bn5:souls").unwrap();
+    let field = |name: &str| block.get(schema, schema.index_of(name).unwrap());
+    let soul = |k: usize| block.get_elem(schema, schema.index_of("souls").unwrap(), k);
+    use nettai_content_api::{FieldValue, Registry};
+    assert_eq!(soul(0), Some(FieldValue::Ref(Some((Registry::Form, colonel.0)))));
+    assert_eq!(soul(1), Some(FieldValue::Ref(None)));
+    assert_eq!((field("soul_unison"), field("chaos_unison")), (FieldValue::Bool(true), FieldValue::Bool(false)));
     // A BN6 match's sides have no souls.
     let six_content = bn6_content();
     let six = crate::draw::live(&six_content, "bn6", 1, None).unwrap();
     let b = started(&six_content, &six, 1);
-    assert_eq!(b.setup.players[1].souls, nettai_battle::custom::SoulUnlocks::default());
+    assert!(b.system_setup(1, "bn5:souls").is_none());
 }
 
 /// What the match's rules and a side's navi take decide the side's own
@@ -415,6 +426,8 @@ fn a_ruleset_change_drops_what_the_rules_dont_take() {
         tactics: Default::default(),
         karma: crate::facts::DEFAULT_KARMA,
         souls: None,
+        soul_unison: true,
+        chaos_unison: true,
     };
     let kept = s.clone();
     s.fit_rules(&content, stock);

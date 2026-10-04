@@ -346,9 +346,11 @@ impl<'a> View<'a> {
         use std::borrow::Cow;
         let a = self.assets;
         if let Some(b) = a.button(name) {
+            // (BN5's soul button: gray when unavailable or picked,
+            // 0x08024540.)
             let count = b.width as usize * b.height as usize;
             let cursor = cursor_at(&a.layout.special_cursor);
-            return Some(ButtonLook { details: Cow::Borrowed(&b.picture), palettes: &b.palettes, tiles: &b.tiles, count, two_states: false, advance: 0, cursor });
+            return Some(ButtonLook { details: Cow::Borrowed(&b.picture), palettes: &b.palettes, tiles: &b.tiles, count, two_states: true, advance: 0, cursor });
         }
         let wide = |details: &'a Picture, tiles: &'a Tiles| ButtonLook {
             details: Cow::Borrowed(details),
@@ -380,15 +382,67 @@ impl<'a> View<'a> {
     }
 }
 
+/// BN5's soul button's offer and choice, as its souls system keeps them
+/// (content/bn5/rules/souls/custom.luau, read by its fields' names): the
+/// soul it offers or gave (its number) and whether it is Chaos Unison
+/// (slot 11's +5 and +6), and the choice's step and count (the screen's
+/// state 9).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct SoulOffer {
+    pub number: u8,
+    pub chaos: bool,
+    pub step: u8,
+    pub count: u8,
+}
+
+/// The system BN5's soul button and its window are (`SoulOffer`).
+const SOULS_SYSTEM: &str = "bn5:souls";
+/// The soul's choice's window (the screen's state 9, 0x080232D0).
+const SOUL_WINDOW: &str = "soul_unison";
+
+impl SoulOffer {
+    /// Side `side`'s soul button's, when its ruleset has BN5's souls system.
+    pub fn of(b: &Battle, side: usize) -> Option<SoulOffer> {
+        let (schema, state) = b.system_state(side as u8, SOULS_SYSTEM)?;
+        let field = |name: &str| Some(state.get(schema, schema.index_of(name)?));
+        let byte = |v: Option<FieldValue>| match v {
+            Some(FieldValue::U8(n)) => Some(n),
+            _ => None,
+        };
+        let flag = |v: Option<FieldValue>| match v {
+            Some(FieldValue::Bool(b)) => Some(b),
+            _ => None,
+        };
+        Some(SoulOffer {
+            number: byte(field("offer_number"))?,
+            chaos: flag(field("offer_chaos"))?,
+            step: byte(field("unite_step"))?,
+            count: byte(field("unite_count"))?,
+        })
+    }
+}
+
+/// Whether slot `slot` of side `side`'s screen is BN5's soul button.
+fn is_soul_button(b: &Battle, screen: &Screen, slot: u8) -> bool {
+    matches!(screen.slots[slot as usize].kind, SlotKind::Button { button, .. } if b.content.defs.button(button).name == SOUL_BUTTON)
+}
+
+/// Whether the soul's choice is up on `screen` (the souls system's window).
+fn soul_window_up(b: &Battle, screen: &Screen) -> bool {
+    let Phase::Window { window, .. } = screen.phase else { return false };
+    let d = b.content.defs.window(window);
+    d.name == SOUL_WINDOW && b.content.defs.system(d.system).key == SOULS_SYSTEM
+}
+
 /// The icon of the soul BN5's soul button offers or gave, if the special
 /// slot is the soul button: the pack's `icons` and the icon's first tile in
 /// them (by the soul's number, Chaos Unison's 13: 0x0802341C).
-fn soul_icon<'a>(a: &'a CustomScreen, screen: &Screen) -> Option<(&'a Tiles, usize)> {
-    if screen.slots[SPECIAL_SLOT as usize].kind != SlotKind::Soul {
+fn soul_icon<'a>(a: &'a CustomScreen, v: &View) -> Option<(&'a Tiles, usize)> {
+    if !is_soul_button(v.b, v.screen, SPECIAL_SLOT) {
         return None;
     }
     let b = a.button(SOUL_BUTTON)?;
-    let soul = &screen.soul;
+    let soul = SoulOffer::of(v.b, v.side as usize)?;
     let n = if soul.chaos { CHAOS_ICON } else { soul.number as usize };
     (b.icons.len() >= 4 * (n + 1)).then_some((&b.icons, 4 * n))
 }
@@ -396,21 +450,23 @@ fn soul_icon<'a>(a: &'a CustomScreen, screen: &Screen) -> Option<(&'a Tiles, usi
 /// The Chaos Unison's icon among the soul button's.
 const CHAOS_ICON: usize = 13;
 
-/// BN5's soul choice (its state 9, 0x080232D0: `Phase::SoulChosen`): the
-/// soul's icon as a 16x16 sprite (sprite palette 13) over the picked
-/// column's cell after the picks (0x0802330C: y = 24 + 16 picks, x 0x60),
-/// drawn from the tick after it is loaded (0x08023360) through the white
-/// flashes, rising 2 pixels a tick for 8 ticks onto the first cell
-/// (0x0802337A), whitened by its flash (fades 0x34 and 0x30, the sprite
-/// palette's), until the soul takes the first cell (0x080233E0).
-fn soul_flight<'a>(a: &'a CustomScreen, screen: &Screen, sub: u8, counter: u8) -> Option<SpritePart<'a>> {
+/// BN5's soul choice (its state 9, 0x080232D0: the souls system's window
+/// `soul_unison`, at its step `sub` and count `counter`): the soul's icon as
+/// a 16x16 sprite (sprite palette 13) over the picked column's cell after
+/// the picks (0x0802330C: y = 24 + 16 picks, x 0x60), drawn from the tick
+/// after it is loaded (0x08023360) through the white flashes, rising 2
+/// pixels a tick for 8 ticks onto the first cell (0x0802337A), whitened by
+/// its flash (fades 0x34 and 0x30, the sprite palette's), until the soul
+/// takes the first cell (0x080233E0).
+fn soul_flight<'a>(a: &'a CustomScreen, v: &View, sub: u8, counter: u8) -> Option<SpritePart<'a>> {
+    let screen = v.screen;
     let rise = match sub {
         4 if counter > 0 => 0,
         8 => 2 * counter as i32,
         12 | 16 | 20 => 16,
         _ => return None,
     };
-    let (tiles, first) = soul_icon(a, screen)?;
+    let (tiles, first) = soul_icon(a, v)?;
     let b = a.button(SOUL_BUTTON)?;
     let f = screen.look.fade;
     let palette = match f.mode {
@@ -439,9 +495,8 @@ fn soul_flight<'a>(a: &'a CustomScreen, screen: &Screen, sub: u8, counter: u8) -
     })
 }
 
-/// The name BN5's soul button is drawn by (`SlotKind::Soul`; the pack's
-/// `CustomScreen::buttons`), which a system's button of that name draws by
-/// too.
+/// The name BN5's soul button is drawn by (the souls system's button; the
+/// pack's `CustomScreen::buttons`).
 const SOUL_BUTTON: &str = "soul";
 
 impl View<'_> {
@@ -857,14 +912,15 @@ impl Window {
             }
             SlotKind::Button { button, .. } => {
                 if let Some(look) = v.button_look(button) {
-                    blank_details(self, &look.details(state));
-                }
-            }
-            // BN5's soul button (0x08024540: its picture in its first palette, a
-            // Chaos Unison's in its second: the slot's +6), drawn by its name.
-            SlotKind::Soul => {
-                if let Some(look) = v.named_look(SOUL_BUTTON) {
-                    blank_details(self, &look.details(v.screen.soul.chaos as usize));
+                    // (BN5's soul button, 0x08024540: its picture in its
+                    // first palette, a Chaos Unison's in its second, the
+                    // slot's +6, whatever its state.)
+                    let palette = if is_soul_button(v.b, v.screen, cw.slot) {
+                        SoulOffer::of(v.b, v.side as usize).map_or(0, |o| o.chaos as usize)
+                    } else {
+                        state
+                    };
+                    blank_details(self, &look.details(palette));
                 }
             }
             SlotKind::Empty | SlotKind::Hidden => {}
@@ -970,13 +1026,6 @@ impl Window {
                     at += 6;
                 }
                 SlotKind::Ok | SlotKind::Button { cell: ButtonCell::Right, .. } => {}
-                // BN5's soul button in the special slot's place (its
-                // patch's tiles, as Beast Out's).
-                SlotKind::Soul => {
-                    if let Some(look) = v.named_look(SOUL_BUTTON) {
-                        self.tiles.put_part(at, look.tiles, look.count * (state != 0) as usize, look.count);
-                    }
-                }
                 SlotKind::Button { button, .. } => {
                     if let Some(look) = v.button_look(button) {
                         let set = if look.two_states { (state != 0) as usize } else { state };
@@ -1030,7 +1079,7 @@ impl Window {
             let icon = match v.screen.look.column[i] {
                 Some(c) => v.icon(c, problems).map(|t| (t, 0)),
                 // BN5's soul, given for a chip: its icon (0x0802341C).
-                None if picks.get(i) == Some(&SPECIAL_SLOT) => soul_icon(v.assets, v.screen),
+                None if picks.get(i) == Some(&SPECIAL_SLOT) => soul_icon(v.assets, v),
                 None => None,
             };
             let (tiles, first) = icon.unwrap_or((&a.empty_icon, 0));
@@ -1240,7 +1289,6 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             (16 * col + 8, 0x68 + 0x18 * row, CHIP_CURSOR)
         }
         SlotKind::Ok => cursor_at(&a.layout.ok_cursor),
-        SlotKind::Soul => cursor_at(&a.layout.special_cursor),
         SlotKind::Button { button, .. } => v.button_look(button).map_or((0x38, 0x80, BUTTON_CURSOR), |l| l.cursor),
     };
     let palette = v.emblem_palette();
@@ -1408,8 +1456,10 @@ pub fn draw<'a>(
     let mut queue: Vec<SpritePart<'a>> = Vec::new();
     // BN5's soul choice's flying icon (its state 9's routines draw it
     // before the screen's others).
-    if let Phase::SoulChosen { sub, counter } = screen.phase {
-        queue.extend(soul_flight(a, screen, sub, counter));
+    if soul_window_up(b, screen)
+        && let Some(o) = SoulOffer::of(b, v.side as usize)
+    {
+        queue.extend(soul_flight(a, &v, o.step, o.count));
     }
     if let Some(frame) = drawn.cursor {
         queue.extend(cursor_parts(&v, a, frame));

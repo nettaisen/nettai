@@ -35,6 +35,9 @@ use nettai_content_api::{ChipHandle, FormHandle, Registry, RulesetHandle, Value}
 /// bn6-compat's `Unlocks::write`, its cross and beast systems').
 pub const KARMA_FIELD: &str = "karma";
 pub const SOULS_FIELD: &str = "souls";
+/// BN5's Soul Unison and Chaos Unison (the save's event flags 0 and 0x236).
+pub const SOUL_UNISON_FIELD: &str = "soul_unison";
+pub const CHAOS_UNISON_FIELD: &str = "chaos_unison";
 pub const VERSION_FIELD: &str = "version";
 
 /// A fresh save's karma (0x08010C00), and the most there is.
@@ -94,6 +97,14 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
     if side.karma != DEFAULT_KARMA && !takes(content, ruleset, KARMA_FIELD) {
         out.push("karma, but the ruleset has no light and dark MegaMan (no system takes `karma`)".into());
     }
+    for (on, field, what) in [
+        (side.soul_unison, SOUL_UNISON_FIELD, "Soul Unison"),
+        (side.chaos_unison, CHAOS_UNISON_FIELD, "Chaos Unison"),
+    ] {
+        if !on && !takes(content, ruleset, field) {
+            out.push(format!("no {what}, but the ruleset has none (no system takes `{field}`)"));
+        }
+    }
     let Some(list) = &side.souls else { return out };
     if !takes(content, ruleset, SOULS_FIELD) {
         out.push("a soul list, but the ruleset has no Soul Unison (no system takes `souls`)".into());
@@ -130,8 +141,13 @@ pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerS
             .map(|f| Fact::Value(Value::Def(Registry::Form, f.0)))
             .collect();
         player.set_fact(content, ruleset, SOULS_FIELD, &souls)?;
-        player.souls.button = true;
-        player.souls.chaos = true;
+    }
+    // Soul Unison and Chaos Unison, where the rules take them (their
+    // defaults: on, a finished save's).
+    for (on, field) in [(side.soul_unison, SOUL_UNISON_FIELD), (side.chaos_unison, CHAOS_UNISON_FIELD)] {
+        if takes(content, arena.ruleset, field) {
+            player.set_fact(content, ruleset, field, &[Fact::Value(Value::Bool(on))])?;
+        }
     }
     Ok(())
 }
@@ -158,7 +174,8 @@ impl Side {
 
     /// The side, on rules `new` (of its game's, whose SP navis are the
     /// game's), without what they don't take: the Crosses, patch cards and
-    /// NaviCust without their systems, the karma and souls without theirs,
+    /// NaviCust without their systems, the karma, souls, Soul Unison and
+    /// Chaos Unison without theirs,
     /// and the version (back to Falzar) without `version`.
     pub fn fit_rules(&mut self, content: &Content, new: RulesetHandle) {
         let has = |system| crate::ruleset_has_system(content, new, system);
@@ -173,6 +190,12 @@ impl Side {
         }
         if !takes(content, new, SOULS_FIELD) {
             self.souls = None;
+        }
+        if !takes(content, new, SOUL_UNISON_FIELD) {
+            self.soul_unison = true;
+        }
+        if !takes(content, new, CHAOS_UNISON_FIELD) {
+            self.chaos_unison = true;
         }
         if !takes(content, new, KARMA_FIELD) {
             self.karma = DEFAULT_KARMA;
