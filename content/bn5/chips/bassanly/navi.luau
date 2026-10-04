@@ -1,12 +1,12 @@
 --!strict
 -- BassAnly, the navi of BN5's BassAnly chip (BN5's actor object #0x50, 0x080C2C9C): the shared BassAnly
--- (@common/bassanly/navi), BN5's kind: Bass's sprite 08-13, his cloak on his animation + 0x10 (0x080C2D40:
+-- (@exelib/bassanly/navi), BN5's kind: Bass's sprite 08-13, his cloak on his animation + 0x10 (0x080C2D40:
 -- 0x10011308), BN5's animations (9 his arm rising, 10 up, 11 firing, 12 its loop, 13 after), his arm while he takes
 -- aim (BN5's attachment row 0x12, Bass's sprite, its animation 0x24: 0x080C2DC8), and BN5's dark ball (./shot).
 
 local attachment = require("../../objects/attachment/attachment")
-local common = require("@common/bassanly/navi")
-local effects = require("@bn6/lib/effects")
+local common = require("@exelib/bassanly/navi")
+local effects = require("../../lib/effects")
 local shot = require("./shot")
 
 local SPRITE = asset.sprite("bn5:bass")

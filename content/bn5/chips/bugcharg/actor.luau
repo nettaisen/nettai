@@ -1,6 +1,6 @@
 --!strict
 -- BugCharg's stand-in (BN5's actor object #0x59, 0x080C3A40; BN5's own, on the dimming stand-ins' skeleton:
--- @common/dimming/stand_in): drawn as the user (its animation 16), it raises its charger (an attachment: BN5's row
+-- @exelib/dimming/stand_in): drawn as the user (its animation 16), it raises its charger (an attachment: BN5's row
 -- 0x1C, sprite 0C-43, on attach point 0x18) with a sound, takes in its user's NaviCust bugs (each it clears is a shot
 -- more, past the first; in the battle flag 0x40 mode only three of them, three shots each) and the save's emotion
 -- window glitch, and 41 ticks on fires: a heavy shot (objects/flying-shot's row 1) every 16 ticks from the panel ahead,
@@ -9,10 +9,10 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local flying_shot = require("../../objects/flying-shot/flying_shot")
-local stand_in = require("@common/dimming/stand_in")
+local stand_in = require("@exelib/dimming/stand_in")
 
 export type State = {
-    -- The controller waiting on it (@common/dimming/stand_in).
+    -- The controller waiting on it (@exelib/dimming/stand_in).
     controller: Object?,
     -- Its charger (+0x64).
     held: Object?,

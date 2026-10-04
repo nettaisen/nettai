@@ -1778,11 +1778,17 @@ pub trait CoreApi {
     /// dimming (`keep`: its Param3 1 and flags 0x14), or steps like any
     /// object again (its Param3 0). Nothing without an overlay.
     fn overlay_stepping(&mut self, o: ObjectRef, keep: bool);
-    /// `sub_8011384(form)`: take off what `form` wore (the base form: what
-    /// is there).
+    /// `sub_8011384(form)`: take off what `form` wore (its `take_off`, or the
+    /// default: `take_off_form_parts`).
     fn take_off_form_overlay(&mut self, o: ObjectRef, form: crate::FormHandle);
-    /// `sub_8011268(form)`: put on what `form` wears.
+    /// `sub_8011268(form)`: put on what `form` wears (its `put_on`, or the
+    /// default: `put_on_form_parts`).
     fn put_on_form_overlay(&mut self, o: ObjectRef, form: crate::FormHandle);
+    /// The default take-off routine of `form`: what its identity's death
+    /// hook takes down (the base form: what is there).
+    fn take_off_form_parts(&mut self, o: ObjectRef, form: crate::FormHandle);
+    /// The default put-on routine of `form`: its identity's parts.
+    fn put_on_form_parts(&mut self, o: ObjectRef, form: crate::FormHandle);
     /// `sub_800FC9E` and a form change's load: the navi's sprite in `form`,
     /// its animation 0 from the start, shadow on the ground, facing its
     /// way, white.

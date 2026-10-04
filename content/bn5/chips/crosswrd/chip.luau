@@ -1,10 +1,10 @@
 --!strict
 -- CrosSwrd (BN5 chip 0x176): a slash over the X ahead and one over the panel ahead (NeoVari's pick: no library
--- chip): the shared slash (@common/swords/slash, BN5's action 0x13 subtype 10) with BN5's parts (lib/swords), regions
+-- chip): the shared slash (@exelib/swords/slash, BN5's action 0x13 subtype 10) with BN5's parts (lib/swords), regions
 -- 0x0B and 1 and the effect table's row 0x37.
 -- Its record is written by tools/bn5/gen_content.py (bn6battle-verify) from the BN5 ROMs.
 
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local swords = require("../../lib/swords")
 
 return define.chip {

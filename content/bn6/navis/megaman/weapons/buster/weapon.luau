@@ -8,7 +8,7 @@
 -- this weapon's in compat (weapons.toml). See docs/engine/objects-and-player.md
 -- §B6.
 --
--- Action 0x11 (@common/megaman/buster, with BN6's buster parts, projectile,
+-- Action 0x11 (@exelib/megaman/buster, with BN6's buster parts, projectile,
 -- attachment and throw) raises the buster; on its second tick the projectile flies
 -- from the panel in front (the spread adds shots a row up and down; a
 -- throw, `throw_absorbed`'s, throws the obstacle the navi absorbed
@@ -17,7 +17,7 @@
 
 local attachment = require("../../../../objects/attachment/attachment")
 local blank_shot = require("../blank-shot/weapon")
-local common = require("@common/megaman/buster")
+local common = require("@exelib/megaman/buster")
 local charged_shot = require("../charged-shot/weapon")
 local flying_shot = require("../../../../objects/flying-shot/flying_shot")
 local lib = require("../../../../lib/buster")
@@ -59,7 +59,7 @@ local RARE: { [ProjectileVariant]: boolean } = {
     [variants.charged_ice] = true,
 }
 
--- `sub_8013D5E`: what this shot is (@common/megaman/buster).
+-- `sub_8013D5E`: what this shot is (@exelib/megaman/buster).
 buster.pick = common.pick
 
 -- `sub_8011A26`.

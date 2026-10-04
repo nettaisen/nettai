@@ -1,16 +1,16 @@
 --!strict
--- BN5's panel changer (effect object #0x1F, BN6's code: @common/panel-changer/panel_changer), BN5's kind; the
+-- BN5's panel changer (effect object #0x1F, BN6's code: @exelib/panel-changer/panel_changer), BN5's kind; the
 -- sounds most changes make BN6's (a tick every fourth tick, and the change).
 
-local common = require("@common/panel-changer/panel_changer")
+local common = require("@exelib/panel-changer/panel_changer")
 
 local panel_changer = {}
 
 -- A change (a "panel-change" record).
 panel_changer.change = common.change
 
-panel_changer.TICK_SOUND = asset.sound("bn6:panel-change-tick")
-panel_changer.CHANGE_SOUND = asset.sound("bn6:panel-change")
+panel_changer.TICK_SOUND = asset.sound("bn5:panel-change-tick")
+panel_changer.CHANGE_SOUND = asset.sound("bn5:panel-change")
 
 panel_changer.kind = common.make_kind("bn5:panel-changer")
 

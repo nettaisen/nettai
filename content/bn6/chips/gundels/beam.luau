@@ -1,6 +1,6 @@
 --!strict
 -- GunDelSol's sun beam (effect object #0x48, `sub_80E5C2C`): the shared
--- beam (@common/gundels/beam) with BN6's hum. The light shining on the
+-- beam (@exelib/gundels/beam) with BN6's hum. The light shining on the
 -- target column (CrosOver's Django shines it too). Visual only, but it
 -- takes an effect slot and a place in the update order. It follows its
 -- owner at a fixed offset and ends itself once the owner's slot is
@@ -9,7 +9,7 @@
 -- Its look (`SunBeam`, types.d.luau: the original's first two
 -- parameters, a look of `dword_80E5C28` and a palette) is its spawner's.
 
-local common = require("@common/gundels/beam")
+local common = require("@exelib/gundels/beam")
 
 local beam = {}
 

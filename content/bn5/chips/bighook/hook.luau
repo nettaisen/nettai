@@ -1,11 +1,11 @@
 --!strict
--- BigHook's hook (BN5's effect object #0x8C, 0x080EA8A0): the shared hook (@common/flmhook/hook), BN5's kind, the
+-- BigHook's hook (BN5's effect object #0x8C, 0x080EA8A0): the shared hook (@exelib/flmhook/hook), BN5's kind, the
 -- BigHook chip's navi (the summon table's entry 26, 0x080EA990). It has no sprite; it swings two flames (./fire),
 -- both from column 5 (side 1: 2; 0x080EA8F4), the first from row 4 and 20 ticks later the second from row 0, then
 -- goes 10 ticks later, and the controller moves on. Its spawner leaves its element 0, and its flames' second
 -- parameter 0: read with their swing as one halfword, it turns them the way the swing alone says.
 
-local common = require("@common/flmhook/hook")
+local common = require("@exelib/flmhook/hook")
 local fire = require("./fire")
 local sparks = require("../../lib/sparks")
 

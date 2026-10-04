@@ -1,13 +1,13 @@
 --!strict
 -- A NumbrBl ball (the original's attack object #0x91, `sub_80D7278`;
 -- docs/engine/dimming-chip-effects.md §15): the one BN5 shares
--- (@common/numbrbl/ball) in BN6's look. NumberMan (./numberman) sets it
+-- (@exelib/numbrbl/ball) in BN6's look. NumberMan (./numberman) sets it
 -- down in front of him; it sits 15 ticks, waits, then rolls down the row 3
 -- pixels a tick until it hits something (an explosion) or leaves the
 -- field.
 
 local collision = require("../../rules/collision")
-local common = require("@common/numbrbl/ball")
+local common = require("@exelib/numbrbl/ball")
 local effects = require("../../lib/effects")
 
 return common.make {

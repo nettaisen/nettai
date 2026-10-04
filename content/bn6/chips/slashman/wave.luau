@@ -10,7 +10,7 @@
 -- docs/engine/chips.md §3.6.18.
 
 local collision = require("../../rules/collision")
-local regions = require("@common/regions")
+local regions = require("@exelib/regions")
 local wave = {}
 
 export type State = {

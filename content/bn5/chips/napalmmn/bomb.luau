@@ -8,10 +8,10 @@
 -- quiet, lights the 3x3 around its target as it flies.
 
 local collision = require("../../rules/collision")
-local effects = require("@bn6/lib/effects")
+local effects = require("../../lib/effects")
 local marker = require("../../lib/navi-chips/marker")
-local panels = require("@common/panels")
-local regions = require("@common/regions")
+local panels = require("@exelib/panels")
+local regions = require("@exelib/regions")
 local trajectory = require("../../lib/trajectory")
 
 export type State = {

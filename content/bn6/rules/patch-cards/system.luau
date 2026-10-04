@@ -13,9 +13,9 @@
 -- are copied into the stats, some of them through tables; then the bugs are
 -- counted. A card that lists one effect twice applies the first only. The
 -- cards' run over the block is the one BN5's shares
--- (@common/patch-cards/apply); BN6's are its seed, its copy and its count.
+-- (@exelib/patch-cards/apply); BN6's are its seed, its copy and its count.
 
-local apply_cards = require("@common/patch-cards/apply")
+local apply_cards = require("@exelib/patch-cards/apply")
 local cards = require("./cards")
 
 -- The bug slots BugStop holds back.

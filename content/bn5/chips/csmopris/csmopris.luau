@@ -12,8 +12,8 @@
 -- are ported as the code has them.)
 
 local collision = require("../../rules/collision")
-local navi_chips = require("@common/navi-chips/navi")
-local regions = require("@common/regions")
+local navi_chips = require("@exelib/navi-chips/navi")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 
 local csmopris = {}

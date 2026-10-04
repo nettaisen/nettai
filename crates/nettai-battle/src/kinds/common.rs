@@ -59,7 +59,7 @@ pub fn panel_burn(b: &mut Battle, r: ObjectRef) {
     let d = b.collision.get(c);
     let p = d.panel;
     let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
-    let rules = b.content.rules_of(b.games.arena);
+    let rules = b.content.rules();
     let Some(damage) = rules.panels.types[kind as usize].burn else { return };
     if d.element == 1 || d.region.is_none() || d.f1 & f1::FLOATSHOE != 0 || d.f1 & 0x8800_0206 != 0 {
         return;
@@ -77,7 +77,7 @@ pub fn panel_burn(b: &mut Battle, r: ObjectRef) {
     b.set_panel_type(p.x, p.y, PanelType::Normal);
     let (x, y) = crate::kinds::player::panel_coordinates(p.x, p.y);
     let at = crate::kinds::spark::jitter(b, 0xF, Vec3 { x, y, z: 0 });
-    let spark = b.arena_roles().spark(crate::content::SparkRole::PanelBurn);
+    let spark = b.roles().spark(crate::content::SparkRole::PanelBurn);
     crate::kinds::spark::spawn(b, r, at, spark);
 }
 
@@ -219,7 +219,7 @@ pub fn spawn_guard_spark(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get(r);
     let pos = Vec3 { z: o.pos.z.wrapping_add(0x10 << 16), ..o.pos };
     let pos = crate::kinds::spark::jitter(b, 0xF, pos);
-    let spark = b.roles_for(r).spark(crate::content::SparkRole::Guard);
+    let spark = b.roles().spark(crate::content::SparkRole::Guard);
     crate::kinds::spark::spawn(b, r, pos, spark);
 }
 

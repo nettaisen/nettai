@@ -126,7 +126,7 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         land(b, r);
         face_default(b, r);
         let pos = b.objects.get(r).pos;
-        let look = b.roles_for(r).effect(EffectRole::Deletion);
+        let look = b.roles().effect(EffectRole::Deletion);
         if let Some(e) = effect::spawn(b, Vec3 { z: pos.z.wrapping_add(0x14_0000), ..pos }, look, 0, 0, 0) {
             b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
         }
@@ -216,7 +216,7 @@ fn calm_down(b: &mut Battle, r: ObjectRef) {
 /// region's removal and return, and the flags 0x80110000 and statuses
 /// 0x200800 it clears.
 pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> bool {
-    let bn5 = b.rules_for(r).form_break == crate::content::FormBreak::Bn5;
+    let bn5 = b.game_rules().form_break == crate::content::FormBreak::Bn5;
     if !matches!(ai(b, r).attack.action, ActionVars::FormChange(_)) {
         ai_mut(b, r).attack.action = ActionVars::FormChange(Vars::default());
     }
@@ -233,7 +233,7 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
         }
         face_default(b, r);
         let pos = b.objects.get(r).pos;
-        let look = b.roles_for(r).effect(EffectRole::Deletion);
+        let look = b.roles().effect(EffectRole::Deletion);
         if let Some(e) = effect::spawn(b, Vec3 { z: pos.z.wrapping_add(0x14_0000), ..pos }, look, 0, 0, 0) {
             b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
         }

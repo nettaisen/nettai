@@ -2,7 +2,7 @@
 -- The rapid buster (the original's action 0x5D, `sub_80F00F2`, and its
 -- weapon routine 0x39, `sub_8012124`): nine charged shots, six ticks
 -- apart, each from the panel in front and a row up, down or level in an
--- order one draw picks: the shared rapid buster (@common/megaman/rapid_buster,
+-- order one draw picks: the shared rapid buster (@exelib/megaman/rapid_buster,
 -- BN5's too) with BN6's buster parts, projectile, attachment and sound, its
 -- form overlay stepped at once as it restarts. See docs/engine/shot-chips.md §11.
 --
@@ -12,7 +12,7 @@
 
 local attachment = require("../objects/attachment/attachment")
 local buster = require("./buster")
-local common = require("@common/megaman/rapid_buster")
+local common = require("@exelib/megaman/rapid_buster")
 local projectile = require("./projectile")
 local variants = require("../objects/projectile/variants")
 

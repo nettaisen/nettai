@@ -1,20 +1,21 @@
 --!strict
--- BN5's wide wave (attack object #0x3B, BN6's code: @common/widesht/wave), BN5's kind: its sprite BN5's (a variant's
--- own, ./variants), its sound and afterimages' sprite BN6's, hitting navis; and BN5's wide shots
--- (@common/widesht/action, action 0x30) with BN5's attachment and wave: `wave.action { ... }`.
+-- BN5's wide wave (attack object #0x3B, BN6's code: @exelib/widesht/wave), BN5's kind: its sprite BN5's (a variant's
+-- own, ./variants), its sound BN6's number, hitting navis (its afterimages copy its sheet; BN5's one trailing variant
+-- names its own); and BN5's wide shots
+-- (@exelib/widesht/action, action 0x30) with BN5's attachment and wave: `wave.action { ... }`.
 
-local action = require("@common/widesht/action")
+local action = require("@exelib/widesht/action")
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local common = require("@common/widesht/wave")
+local common = require("@exelib/widesht/wave")
 
 local wave = {}
 
 wave.kind = common.make_kind {
     id = "bn5:widesht/wave",
     sprite = asset.sprite("bn5:wide-wave"),
-    sound = asset.sound("bn6:wide-shot"),
-    trail_sprite = asset.sprite("bn6:rock-cubes"),
+    sound = asset.sound("bn5:wide-shot"),
+    trail_sprite = asset.sprite("bn5:wide-wave"),
     target = collision.hits_navis,
 }
 

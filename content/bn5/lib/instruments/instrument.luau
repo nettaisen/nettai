@@ -1,15 +1,15 @@
 --!strict
 -- BN5's instruments (attack object #0x78) and their dimming controller (effect object #0x4A): the shared code
--- (@common/instruments: BN6's) but for their look: the sprite (04-08), 100 HP (0x080D5224, BN6's 60),
+-- (@exelib/instruments: BN6's) but for their look: the sprite (04-08), 100 HP (0x080D5224, BN6's 60),
 -- BN5's sounds and collision types, and their leaving (0x080D53D4): any removal leaves a puff (BN5 neither absorbs
 -- nor blinks obstacles out). Their rows (0x080D5158: each plays 0x55 × 2 ticks, BN6's by row, and pauses 0x3C,
 -- 0x080D53B0; DrkSonic's row 4 its own) are the chips'. (BN5's action table has 8 rows to BN6's 10, no frozen or
 -- bubbled: resting and playing are its 6 and 7, BN6's 8 and 9, the same actions.)
 
 local collision = require("../../rules/collision")
-local controller = require("@common/instruments/controller")
-local effects = require("@bn6/lib/effects")
-local instrument = require("@common/instruments/instrument")
+local controller = require("@exelib/instruments/controller")
+local effects = require("../effects")
+local instrument = require("@exelib/instruments/instrument")
 
 local bn5_instrument = {}
 
