@@ -25,8 +25,9 @@ export type State = {
 -- 0x080D7F50: sprite 0C-4E without a shadow (`sub_8011504`'s 0x00000C4E), animation 0.
 local SPRITE = asset.sprite("bn5:red-fruit")
 local HP = 1
--- Its collision (0x0E0F0003): a neutral body (row 0x0E) that everything reaches (row 0x0F), hit modifier 3.
-local HIT_MOD = 3
+-- Its collision (0x0E0F0003): a neutral body (row 0x0E) that everything reaches (row 0x0F), hit modifier 0 (the
+-- word's third byte; `sub_8011504` reads no fourth).
+local HIT_MOD = 0
 -- NameID 0xE7: actor record 0xE7 (0x08014C94: version 2, AI index 0x21); BN5's swallowing and Poltergeist leave it
 -- (0x0800D372, 0x080E8CA0).
 local IDENTITY = define.identity {
@@ -319,7 +320,8 @@ local function init(me: Object)
     local sprite = me.sprite
     sprite:load(SPRITE)
     sprite:set_animation(0)
-    sprite.shadow = "hidden"
+    -- (sprite_noShadow.)
+    sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = 0, 0xFF
     if not me:create_collision() then
         me:free()
