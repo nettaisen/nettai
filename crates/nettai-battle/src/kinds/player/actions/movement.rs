@@ -142,13 +142,16 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_80F02A2`: whether the step sets the navi's animations. The
-/// original turns them off while a state bit (0x8000) is on and the last
-/// chip's record left a second parameter byte in the attack: nothing sets
-/// that bit, and a chip leaves no parameter bytes here, so a step always
-/// animates.
-pub(super) fn animates(_b: &Battle, _r: ObjectRef) -> bool {
-    true
+/// `sub_80F02A2` (EXE5's 0x080F01CA): whether the step sets the navi's
+/// animations: not while the navi is in the air (the state bit 0x8000,
+/// `status::HOVERING`), where it keeps the animation it has and its ends
+/// leave it. The original also tests a byte of the attack (+0x0D), which
+/// EXE5's move starts set for AI index 2 alone (0x0800F234, 0x0802D544):
+/// GyroMan, whose tick is the only thing that sets the bit, so the bit
+/// says it all. (EXE6 keeps the test and sets neither: its steps always
+/// animate.)
+pub(super) fn animates(b: &Battle, r: ObjectRef) -> bool {
+    ai(b, r).status & status::HOVERING == 0
 }
 
 /// Leave for idle (keeping pending requests and the charge).

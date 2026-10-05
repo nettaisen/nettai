@@ -170,6 +170,22 @@ pub struct NaviDef {
     pub record: NaviData,
     /// A link navi's own chip (`NaviData::own_chip`), by handle.
     pub own_chip: Option<(ChipHandle, super::ChipCode)>,
+    /// `tick(navi)`: its own part of the per-tick pipeline, for a navi
+    /// that doesn't change form (one that does runs its form's `tick`):
+    /// the original's table by AI index (`off_80EA93C`; EXE5's 0x080EB1E8,
+    /// where GyroMan's entry watches the panel under him).
+    pub tick: Option<FnId>,
+    /// `idle(navi)`: its own idle, before the common one, which doesn't
+    /// run on a tick it starts an action (EXE5's table by control mode and
+    /// AI index, 0x080EB068: GyroMan's entry starts his take-off and his
+    /// landing; every entry of EXE6's `JumpTable80EA7B0` is the common
+    /// idle).
+    pub idle: Option<FnId>,
+    /// `post_init(navi)`: its post-init hook (`sub_800F378`'s table by AI
+    /// index, `off_80EAA04`; EXE5's 0x080EB2A8), as a player's init ends
+    /// and after a navi switch: EXE6's DustMan's two objects of battle
+    /// mode 9, EXE5's ToadMan's dive.
+    pub post_init: Option<FnId>,
 }
 
 /// The record type of a lock-on mode (`define.record("lockon", ...)`).
@@ -1552,7 +1568,17 @@ impl Defs {
                 Some(c) => Some((chip_handle(&c.chip, &format!("navi {}'s own chip", d.key))?, c.code)),
                 None => None,
             };
-            navis.push(NaviDef { key: d.key.clone(), record, own_chip });
+            let mut hook = |field: &str| -> Result<Option<FnId>, ContentError> {
+                Ok(match d.spec.field(field) {
+                    Data::Nil => None,
+                    _ => Some(functions.id(slot(d, field)?)),
+                })
+            };
+            let (tick, idle, post_init) = (hook("tick")?, hook("idle")?, hook("post_init")?);
+            if record.forms.is_some() && tick.is_some() {
+                return Err(what(d, "a navi that changes form has no `tick` of its own: its forms' `tick` run".into()));
+            }
+            navis.push(NaviDef { key: d.key.clone(), record, own_chip, tick, idle, post_init });
         }
         // (A round's record of the link navis' chips used is 32 bits.)
         if navis.len() > 32 {

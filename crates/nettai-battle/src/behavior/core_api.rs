@@ -90,8 +90,9 @@ fn timer_index(t: StatusTimer) -> usize {
 
 fn request_bit(f: RequestFlag) -> u32 {
     match f {
-        // (Not action requests: `request` and `set_request` read flag2.)
-        RequestFlag::Slide | RequestFlag::Anger | RequestFlag::Drag => 0,
+        // (Not action requests: `request` and `set_request` read flag2,
+        // or the navi's own requests.)
+        RequestFlag::Slide | RequestFlag::Anger | RequestFlag::Drag | RequestFlag::TakeOff | RequestFlag::Land => 0,
         RequestFlag::Buster => request::BUSTER,
         RequestFlag::ChargedShot => request::CHARGED_SHOT,
         RequestFlag::Chip => request::CHIP,
@@ -136,6 +137,15 @@ fn flag2_request(f: RequestFlag) -> Option<u32> {
     }
 }
 
+/// The bit of a navi's own requests a request that is one reads.
+fn own_request(f: RequestFlag) -> Option<u8> {
+    match f {
+        RequestFlag::TakeOff => Some(crate::actor::own_request::TAKE_OFF),
+        RequestFlag::Land => Some(crate::actor::own_request::LAND),
+        _ => None,
+    }
+}
+
 fn navi_state_bit(f: NaviState) -> u32 {
     match f {
         NaviState::Controllable => status::CONTROLLABLE,
@@ -155,6 +165,7 @@ fn navi_state_bit(f: NaviState) -> u32 {
         NaviState::HeatTrap => status::HEAT_TRAP,
         NaviState::Vanished => status::VANISHED,
         NaviState::Dives => status::DIVES,
+        NaviState::Hovering => status::HOVERING,
     }
 }
 
@@ -1994,6 +2005,9 @@ impl CoreApi for Battle {
         if let Some(bit) = flag2_request(f) {
             return Ok(self.collision_of(o)?.f2 & bit != 0);
         }
+        if let Some(bit) = own_request(f) {
+            return Ok(self.actor_of(o)?.own_requests & bit != 0);
+        }
         Ok(self.actor_of(o)?.requests & request_bit(f) != 0)
     }
 
@@ -2001,6 +2015,11 @@ impl CoreApi for Battle {
         if let Some(bit) = flag2_request(f) {
             let c = self.collision_of_mut(o)?;
             c.f2 = if on { c.f2 | bit } else { c.f2 & !bit };
+            return Ok(());
+        }
+        if let Some(bit) = own_request(f) {
+            let a = self.actor_of_mut(o)?;
+            a.own_requests = if on { a.own_requests | bit } else { a.own_requests & !bit };
             return Ok(());
         }
         let a = self.actor_of_mut(o)?;
@@ -2099,6 +2118,10 @@ impl CoreApi for Battle {
 
     fn check_reactive_abort(&mut self, o: ObjectRef) {
         kinds::player::actions::check_reactive_abort(self, o);
+    }
+
+    fn spawn_mode9_objects(&mut self, o: ObjectRef) {
+        kinds::player::spawn_mode9_objects(self, o);
     }
 
     fn start_stance_counter(&mut self, o: ObjectRef) {

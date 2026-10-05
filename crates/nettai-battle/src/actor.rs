@@ -24,6 +24,21 @@ pub enum ActorType {
     Player = 2,
 }
 
+/// A navi's own requests (`own_requests`): what its own tick asks of its
+/// own idle. In the original they are bits of the request word
+/// (AIData+0x44) like the rest; they are kept apart from `requests`
+/// because the two games give the same bits different meanings. EXE5's
+/// 0x10000000 and 0x20000000 are GyroMan's alone (his tick sets them,
+/// 0x080F0A16 and 0x080F0A34; his idle and his landing clear them, and no
+/// attack's or reaction's end does); EXE6's same bits are the mode-9 A
+/// press and the takeover (`request::MODE9_A`, `request::TAKEOVER`).
+pub mod own_request {
+    /// EXE5's 0x10000000: the navi asks to take off.
+    pub const TAKE_OFF: u8 = 0x1;
+    /// EXE5's 0x20000000: it asks to land.
+    pub const LAND: u8 = 0x2;
+}
+
 /// Action-request bits (`requests`).
 pub mod request {
     pub const BUSTER: u32 = 0x1;
@@ -118,6 +133,11 @@ pub mod status {
     /// A navi switch took effect (set when `sub_802D714` ends). A link
     /// navi with it falls back instead of being deleted (`sub_802DD2A`).
     pub const SWITCHED: u32 = 0x4000;
+    /// In the air (EXE5's 0x8000): GyroMan's tick sets it over a panel
+    /// that isn't solid (0x080F0A10) and his landing clears it
+    /// (0x080F0C9C); nothing else does. A step taken with it sets no
+    /// animation (`movement::animates`).
+    pub const HOVERING: u32 = 0x8000;
     /// Action 0x30 runs (the roles' `volley`: EXE5's last stand). Takes
     /// over the action dispatch.
     pub const VOLLEY: u32 = 0x1_0000;
@@ -332,6 +352,8 @@ pub struct ActorData {
     pub target_marker: Option<ObjectRef>,
     /// Action requests from input (`request::*`).
     pub requests: u32,
+    /// The navi's own requests (`own_request::*`).
+    pub own_requests: u8,
     /// Actor state bits (`status::*`).
     pub status: u32,
     /// AIData+0x4C: consecutive ticks spent flinching or paralyzed
