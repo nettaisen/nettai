@@ -23,16 +23,4 @@ return {
     -- plays a semitone higher and 282/256 as fast.
     low_hp_music = true,
     navi_win_banner = "link_battle",
-    -- The backgrounds a link battle picks one of at random with its settings (`sub_81209DC`: `byte_8120A20`, 21
-    -- entries, in the table's order; three are there twice, so twice as likely). Whoever makes a random match picks
-    -- from them (the engine picks none: a round's settings state its background).
-    link_backgrounds = {
-        asset.background("honeycomb"), asset.background("statues"), asset.background("statues"),
-        asset.background("seals"), asset.background("clouds"), asset.background("sprouts"),
-        asset.background("calendar-checkers"), asset.background("calendar-mint"), asset.background("calendar-lavender"),
-        asset.background("calendar-navy"), asset.background("calendar-blue"), asset.background("calendar-cyan"),
-        asset.background("trees"), asset.background("calendar-green"), asset.background("calendar-bright-blue"),
-        asset.background("code"), asset.background("globes"), asset.background("code-2"),
-        asset.background("code-2"), asset.background("calendar-purple"), asset.background("calendar-purple"),
-    },
 }

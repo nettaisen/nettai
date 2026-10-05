@@ -51,11 +51,11 @@ impl Draws {
 
 
 /// The backgrounds a link battle of the game picks from at random, by
-/// name: its flow rules' (`link_backgrounds`: EXE6's table, some there
+/// name: its rules' (`link_pick.backgrounds`: EXE6's table, some there
 /// twice and so twice as likely). None: a link battle shows its stage's
 /// own.
 fn link_backgrounds(content: &Content) -> Vec<&str> {
-    content.rules().flow.link_backgrounds.iter().filter_map(|&b| ids::background_name(content, b)).collect()
+    content.rules().link_pick.backgrounds.iter().filter_map(|&b| ids::background_name(content, b)).collect()
 }
 
 /// Whether live play draws the game's match with a Cross list each side:
@@ -66,14 +66,18 @@ fn draws_live(content: &Content) -> bool {
     content.defs.fact_field(nettai_battle::content::PlayerFact::CrossList).is_some()
 }
 
-/// A link battle's arena of `game`, drawn from `draws`: its stage and
-/// background, then the later rounds'; `stage` forces the first round's
-/// stage.
+/// A link battle's arena of `game`, picked at random from `draws` as the
+/// game picks one: its stage and background, then the later rounds';
+/// `stage` forces the first round's stage. The stage is one of the game's
+/// rules' `link_pick.stages`, the stage for each index of the original's
+/// pick: a stage there twice is twice as likely, and a link battle stage
+/// that isn't there is never picked (EXE5's records 76 to 87; a match may
+/// still name one).
 pub fn arena(content: &Content, game: &str, draws: &mut Draws, stage: Option<StageHandle>) -> Result<Arena, String> {
     crate::playable(content, game)?;
-    let stages = crate::link_battle_stages(content, game);
+    let stages = &content.rules().link_pick.stages;
     if stages.is_empty() {
-        return Err(format!("{game} has no link battle stage"));
+        return Err(format!("{game}'s rules state no stage a link battle picks (link_pick.stages)"));
     }
     let backgrounds = link_backgrounds(content);
     let place = |draws: &mut Draws| {
