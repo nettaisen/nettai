@@ -2425,9 +2425,18 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   types above. `Content::rules` is none until `define`, and for modules of no game that state no rules (a
   test's); `Content::rules()` reads it. The sections are read into what is stated (`sections::Stated`) and the rules made
   from that, with no placeholder value anywhere.
-- **Rust tables state them for the test content** (`Content::base_rules`, now an option: `testing::rules()`, each
-  value written out; gen-content's decode of the ROM), and a ruleset's sections replace them. A test that makes a
-  content of a few modules and a small ruleset starts from those tables.
+- **The test content states its rules in its ruleset too** (crates/nettai-battle/testdata/content/rules: its own
+  `panels`, `reactions`, `status_rules`, `custom_screen`, `sp_chips` and the lock-on's rules; EXE6's files for the
+  sections where it plays as EXE6 does). Its Rust tables are gone: `testing::rules()` is what its ruleset states.
+  (They went when the ruleset's type came to require the seven sections; the Luau sections were checked equal to
+  the Rust tables before those were deleted, but for the one banner the tables held by a stale handle, 0x24, which
+  named an arbitrary banner: none holds now.) `Content::base_rules`, now an option, is left for content whose
+  rules are Rust tables: gen-content's decode of the ROM, and a test that makes a content of a few modules and a
+  small ruleset, which starts from the test content's rules.
+- **The type says it too.** `RulesetSpec` in core.d.luau requires `chip_use`, `effects`, `flow`, `panels`,
+  `pools`, `reactions` and `status` (each a `RuleSection`, a table: a field typed `any` may be left out), so the
+  content check reports a ruleset without one before a load. The fields of a section are still the load's to
+  check: a section module returns a plain table, and `require` gives the checker no shape to follow.
 - **Kept, because they read as nothing for every game**:
   - a feature's section a game hasn't: `berserk`, `lockon`, `navicust` (no boards: no NaviCust), `sp_chips`,
     `banners` (none hold);
@@ -2473,3 +2482,54 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
 - The verification workspace: gen-content's decode states EXE6's rules, and its check compares each stated rule
   with it; tools/exe5/gen_rules.py writes the ruleset, the reactions and the status section as content/exe5 has
   them.
+
+### To schedule: the emotion models into each game's `emotion` system
+
+`status.emotions` is the one rule still named for a game (`"exe6"`, `"exe5"`). Each game already has an `emotion`
+system in Luau (content/<game>/rules/emotion) that decides *when* a mood changes (the counter's Full Synchro, the
+swing bug, EXE6's tired start); the *model* is still the framework's. This is what moving it takes.
+
+**What the Rust does by the rule today** (five places, all in nettai-battle):
+
+| Where | `"exe6"` | `"exe5"` |
+|---|---|---|
+| `kinds::player::emotion` (the emotion read off a side) | `sub_8015B54`: worn out when exhausted or at a mood of 0, then angry, tired, Full Synchro at 0xFF, else normal | 0x0801270C: in battle mode 1 Full Synchro or normal; out of the base form normal (a soul's own face); then angry, a mood of 0 worn out (a dark MegaMan's), Full Synchro, normal from 65, else worried |
+| `kinds::player::set_mood` (what holds a mood) | `sub_8015BEC`: held while tired or exhausted | 0x080127D6: held at a mood of 0 |
+| `status::tick_anger` | every navi of the player's kind | passes over AI index 23 (0x08011A14) |
+| `status::end_anger` | the mood to 0x80, whatever holds it | through its setter: a mood of 0 stays |
+| `kinds::full_synchro_aura` | steps unless paused or dimmed, follows its navi's identity's animation | actor object 0x5E (0x080C45E0): steps while paused, keeps the animation it started with, hidden while its navi is under the sea, stops running while paused once the fight is on |
+
+Shared and staying the framework's: the state itself (the side's mood, the navi's tired, exhausted and anger
+timer), `gain_mood` and `lose_mood` (the same in both games but for their callers), and the thirteen readers of
+`emotion()`: ten in the simulation (a chip's doubled damage, the buster's worn-out damage, EXE5's last stand, the
+navi's palette, the aura's spawn and its end, the anger tick, the counter shader's test of the other side's Full
+Synchro, the custom screen's context, the Luau API's `battle.emotion`) and three outside it (the HUD's emotion
+window and its Full Synchro tint, nettai-match's facts).
+
+**What the systems would need:**
+
+1. **`emotion(side, navi) -> Emotion?`**, a hook the first system answers: the derivation, twenty lines a game.
+   The cost is its readers. A hook runs in the simulation's VM with the battle mutable, and `emotion()` is read
+   with a shared battle, from the renderer and from tools. So the simulation keeps each side's emotion as state
+   (`Side::emotion`, snapshotted) and asks the hook again after each change of what it reads: the three mood
+   setters, the anger's start and end, the writes of tired and exhausted, a change of form. A debug check at the
+   end of a tick (the stored value against a fresh answer) catches a missed site.
+2. **`mood_held(side, navi) -> boolean?`** for `set_mood`'s test, or `set_mood` itself in each game's module with
+   a hook for the three Rust callers that set 0x80 (a chip's use, a form change's end, anger's start).
+3. **`anger_ended(side, navi)`**: the system writes the mood (EXE6 raw, EXE5 through its setter). The tick's skip
+   of AI index 23 is better a navi's own field than a hook (which navi it is isn't written down: find it first).
+4. **Readable state the API lacks**: the navi's anger timer; the battle's mode as a name (EXE5's module has
+   `operation_battle`, not mode 1). `navi.exhausted`, `navi.tired`, `navi.mood_held`, the side's mood and form are
+   there.
+5. **The aura is a separate matter**: its three differences are its object's (an actor kind's routine), not the
+   emotion model's. It can become a rule of its own in `effects` now, named for what it does, or a kind each
+   game defines.
+
+**A cheaper first step**, if the port waits: split the rule into the four things it switches, each named for what
+it does (`mood_held = "tired_or_exhausted" | "at_zero"`, `anger_end = "resets_mood" | "through_setter"`, the
+aura's, and the derivation's order, which would still be a bundle of one game's). That removes three of the four
+game-named switches without a hook.
+
+**Checks when it is done**: `kinds::player::reactions`'s emotion tests (both models over the same moods), the EXE6
+lab's `flow/synchro-*` and `flow/anger-*`, EXE5's `dark-survival/*`, `souls/*` and the patch cards that set the
+swing bug, and the rollback tests (the stored emotion is state).
