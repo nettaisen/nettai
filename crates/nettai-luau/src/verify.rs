@@ -357,14 +357,15 @@ mod tests {
     use super::*;
 
     fn compile(src: &str) -> Vec<u8> {
-        mlua::chunk::Compiler::new().set_debug_level(2).compile(src).unwrap()
+        crate::sandbox::compiler().compile(src).unwrap()
     }
 
     fn verdict(src: &str) -> Result<(), Rule> {
         check("test", &compile(src)).map_err(|v| v.rule)
     }
 
-    #[test]
+    #[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+    #[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
     fn stateless_modules_pass() {
         let src = r#"
             local LIMIT = 10
@@ -380,7 +381,8 @@ mod tests {
         assert_eq!(verdict(src), Ok(()));
     }
 
-    #[test]
+    #[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+    #[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
     fn module_level_counters_are_rejected() {
         let src = r#"
             local ticks = 0
@@ -389,7 +391,8 @@ mod tests {
         assert_eq!(verdict(src), Err(Rule::AssignsModuleLocal { name: "ticks".into() }));
     }
 
-    #[test]
+    #[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+    #[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
     fn module_locals_written_through_nested_closures_are_rejected() {
         let src = r#"
             local seen = nil
@@ -401,13 +404,15 @@ mod tests {
         assert_eq!(verdict(src), Err(Rule::AssignsModuleLocal { name: "seen".into() }));
     }
 
-    #[test]
+    #[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+    #[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
     fn global_writes_are_rejected() {
         assert_eq!(verdict("function update(me) end"), Err(Rule::AssignsGlobal));
         assert_eq!(verdict("return { update = function() counter = 1 end }"), Err(Rule::AssignsGlobal));
     }
 
-    #[test]
+    #[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+    #[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
     fn unreadable_bytecode_fails_closed() {
         let mut b = compile("return 1");
         b.truncate(b.len() / 2);

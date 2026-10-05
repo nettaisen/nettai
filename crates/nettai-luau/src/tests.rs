@@ -3,7 +3,8 @@
 use super::*;
 use nettai_content_api::Data;
 
-#[test]
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn relative_paths_resolve_within_the_pack() {
     let r = keys::resolve;
     assert_eq!(r("exe6:chips/gundels/beam", "../../objects/sun-beam/sun_beam").unwrap(), "exe6:objects/sun-beam/sun_beam");
@@ -23,7 +24,8 @@ fn relative_paths_resolve_within_the_pack() {
 /// docs/design/content-model-v2.md §4.0: a game requires itself and the
 /// support packs it depends on; a support pack itself and the support packs
 /// it depends on; no pack another game's.
-#[test]
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn a_require_reaches_only_its_pack_and_the_support_packs_it_depends_on() {
     use nettai_content_api::{PackKind, PackManifest};
     let manifest = |id: &str, kind: PackKind, depends: &[&str]| PackManifest {
@@ -49,7 +51,8 @@ fn a_require_reaches_only_its_pack_and_the_support_packs_it_depends_on() {
 /// docs/design/content-model-v2.md §4.0: a support pack's modules run
 /// without the playing game's context (`asset`, `system`), which reaches
 /// them only as their callers' arguments; a game's modules have it.
-#[test]
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn a_support_pack_has_no_game_context() {
     use nettai_content_api::{PackKind, PackManifest};
     let manifest = |id: &str, kind: PackKind, depends: &[&str]| PackManifest {
@@ -104,7 +107,8 @@ fn a_support_pack_has_no_game_context() {
 
 /// `system.state_of` is a game's rules' (its API module's): a module
 /// outside rules/ calling it is refused, naming the module (As built S8).
-#[test]
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn another_systems_state_is_for_the_games_rules() {
     let call = "local s = system.state_of(0, define.system { id = 'x' })\nreturn {}";
     let e = define_named(&[("chips/x/chip", call)]).unwrap_err();
@@ -116,6 +120,43 @@ fn another_systems_state_is_for_the_games_rules() {
 
 fn pack(modules: &[(&str, &str)]) -> Pack {
     Pack::root("test", modules.iter().map(|(p, s)| (p.to_string(), s.to_string())))
+}
+
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
+fn errors_unwind_and_leave_the_vm_usable() {
+    let lua = sandbox::new_vm(false).unwrap();
+    let fail = lua.create_function(|_, ()| -> mlua::Result<()> { Err(mlua::Error::runtime("host failure")) }).unwrap();
+    lua.globals().set("fail", fail).unwrap();
+    for _ in 0..32 {
+        assert!(lua.load("error('script failure')").exec().unwrap_err().to_string().contains("script failure"));
+        assert!(lua.load("fail()").exec().unwrap_err().to_string().contains("host failure"));
+        let caught: bool = lua.load("local ok = pcall(fail); return not ok").eval().unwrap();
+        assert!(caught);
+        assert!(lua.load("local =").exec().is_err());
+        assert_eq!(lua.load("return 6 * 7").eval::<i64>().unwrap(), 42);
+        lua.gc_collect().unwrap();
+    }
+}
+
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
+fn runaway_content_is_interrupted_and_a_new_pack_still_loads() {
+    let options = Options { budget: 10, ..Options::default() };
+    let e = define(&pack(&[("loop", "while true do end")]), &AssetNames::default(), options).unwrap_err();
+    assert!(e.message.contains("ran past its budget"), "{}", e.message);
+    assert!(define_pack(&[("ok", "return define.effect { anim = 0 }")]).is_ok());
+}
+
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
+fn definition_integers_keep_their_values_on_32_bit_targets() {
+    let defs = define_pack(&[("numbers", "return define.record('numbers', { low = -2147483649, high = 4294967295, [4294967295] = 123 })")]).unwrap();
+    let record = &defs.of(Registry::Record)[0].spec;
+    assert_eq!(record.field("low"), &Data::Int(-2147483649));
+    assert_eq!(record.field("high"), &Data::Int(4294967295));
+    let Data::Map(fields) = record else { panic!("a record is a map") };
+    assert!(fields.contains(&(nettai_content_api::data::Key::Int(4294967295), Data::Int(123))));
 }
 
 fn define_pack(modules: &[(&str, &str)]) -> Result<Definitions, String> {
@@ -185,7 +226,8 @@ return {
     ),
 ];
 
-#[test]
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn definitions_get_keys_from_ids_owners_and_modules() {
     let d = define_pack(BOMBS).unwrap();
     let keys = |r: Registry| d.of(r).iter().map(|d| d.key.as_str()).collect::<Vec<_>>();
@@ -212,7 +254,8 @@ fn definitions_get_keys_from_ids_owners_and_modules() {
     assert_eq!(record.record_type.as_deref(), Some("bomb-variant"));
 }
 
-#[test]
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn the_define_phase_reads_the_same_whatever_the_order() {
     let a = define_pack(BOMBS).unwrap();
     let mut reversed = BOMBS.to_vec();
@@ -221,7 +264,8 @@ fn the_define_phase_reads_the_same_whatever_the_order() {
     assert_eq!(define_pack(BOMBS).unwrap(), a);
 }
 
-#[test]
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn definition_mistakes_are_load_errors() {
     let cases: &[(&str, &str)] = &[
         ("return define.chip { name = 'x' }", "needs an `id`"),
@@ -256,7 +300,8 @@ fn define_named(modules: &[(&str, &str)]) -> Result<Definitions, String> {
     define(&pack(modules), &names(), Options::default()).map(|(d, _)| d).map_err(|e| e.message)
 }
 
-#[test]
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn assets_resolve_by_name_while_content_loads() {
     let d = define_named(&[(
         "lib/effects",
@@ -280,7 +325,8 @@ fn assets_resolve_by_name_while_content_loads() {
 /// takes no id and is keyed `ruleset`:
 /// its rule sections and its roles are plain tables in it, whose
 /// definitions are references (docs/design/content-model-v2.md §3.8).
-#[test]
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn a_games_rules_are_one_ruleset() {
     let d = define_named(&[
         ("lib/counter", "return define.action { id = 'counter', state = {}, update = function(me, s) end }"),
@@ -308,7 +354,8 @@ fn a_games_rules_are_one_ruleset() {
     }
 }
 
-#[test]
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn definitions_are_frozen_and_definers_close_after_loading() {
     let p = pack(&[(
         "m",
@@ -326,7 +373,8 @@ fn definitions_are_frozen_and_definers_close_after_loading() {
 
 /// Coverage (src/coverage.rs): the modules whose code ran while recording,
 /// on this thread; nothing when not recording.
-#[test]
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn coverage_records_the_modules_that_ran() {
     let p = pack(&[
         ("lib/twice", "return { twice = function(n) return n * 2 end, unused = function() return 0 end }"),
@@ -349,7 +397,8 @@ fn coverage_records_the_modules_that_ran() {
     drop(lua);
 }
 
-#[test]
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn a_plan_binds_definition_slots() {
     let modules = BOMBS.to_vec();
     let p = pack(&modules);
@@ -384,7 +433,8 @@ fn a_plan_binds_definition_slots() {
 
 /// docs/design/content-model-v2.md §4.0: content names an asset as its
 /// game's asset pack does (`bomb`); a name the pack hasn't is refused.
-#[test]
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn assets_are_named_as_their_pack_names_them() {
     let mut test = nettai_content_api::PackIndex::default();
     test.sprites.insert("bomb".into(), nettai_content_api::PackSprite { category: 0x0C, index: 2 });
