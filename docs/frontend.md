@@ -333,8 +333,8 @@ functions:
   not counted; so is a language the content has strings in but its pack no
   lettering for (EXE5's Japanese, which its extraction makes none of): such
   a console can't be shown, and the language isn't checked. It audits the
-  match's one game (`--game`): a chip's Program Advance code by its number
-  in that game's compat (EXE6's or EXE5's).
+  match's one game (`--game`): a chip's Program Advance code shows unless
+  its definition hides it (the trait `hides_advance_code`).
 - `--audit <trace.jsonl>...` runs traces, several at a time (`--jobs N`,
   default one a core), and makes the lookups their frames and sound cues
   make, without drawing: no stage, no composing, no sound synthesis
@@ -488,7 +488,9 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   slots dealt again, the emblem and the Regular chip's frame throughout;
 - a console's own pictures by its version (`Versioned`: a Gregar console's
   Beast and emblem, the pack's `-gregar` assets); a Cross's name and
-  colors in the Cross window are its own game's (`custom::cross_picture`,
+  colors in the Cross window are its own version's (`custom::cross_picture`:
+  the pack's pictures of the form's `version`, numbered by its
+  `window_order`, both said by its definition;
   for the form in the entry's place, `exe6_compat::Unlocks::cross_at` over
   the cross system's setup), so a Gregar
   Cross shows Gregar's name in any window, and a window a setup's Cross
@@ -928,9 +930,13 @@ its sides may say besides:
 karma = 100                                # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
 souls = ["protosoul", "colonelsoul"]       # optional: the souls it has, EXE5's, either version (none: every soul)
 
-[left.tactics]                             # optional: EXE5's computer-navi data (none: empty)
-entries = ["cannon", "pattern 1", "nothing", "empty"]   # up to 42, in the save's places
-patterns = [{ dx = 1, dy = 0, chips = ["sword", "wideswrd"] }]   # up to 8, each up to 6 chips
+[left.computer_navi]                       # optional: what a computer navi plays from the side's save (none: nothing learned)
+first = ["cannon"]                         # up to 3 entries it plays first, each a chip or a pattern
+rest = [                                   # up to 39 more; a chip named several times is played that much more often
+    "sword",
+    "sword",
+    { dx = -2, dy = 0, chips = ["sword", "wideswrd"] },   # a pattern: a place from its target, up to 5 chips
+]
 ```
 
 **The stats block** (`nettai_match::stats`) sets the navi's stats by name
@@ -1049,18 +1055,42 @@ compat names for those numbers), its Soul Unison and Chaos Unison and, to a side
 with a NaviCust, the board of its ExpMemry (`expansions`: the NaviCust's
 programs aren't the import's yet).
 
-**The tactics** (`[left.tactics]`, nettai_battle::tactics, docs/design/exe5-map.md
-§15.9) are EXE5's computer-navi data, the block an EXE5 save keeps for its
-player: what a computer navi across from them plays, EXE5's Dark MegaMan,
-whom a failed Chaos Unison brings. The entries are in the save's places,
-each a chip's name, `pattern N` (one of the patterns, from 1), `nothing` (a
-save's 0) or `empty` (an empty place); a pattern is a place by the target
-(`dx` columns toward the computer navi's enemies, `dy` rows) and the chips
-used there. As the round is set up each side's are sent as the console sends
-them (0x0802C7BE: the first three places and the next 39 shuffled, packed to
-the front), from a stream of the side's own from the seed. With none, Dark
-MegaMan only steps into an enemy's row and fires his buster (three shots)
-between rests. A netplay offer carries them.
+**The computer navi's data** (`[left.computer_navi]`,
+`nettai_match::computer_navi`, docs/design/exe5-map.md §15.9) is
+what a computer navi plays from the side's save: the Dark MegaMan that the
+side's failed Chaos Unison brings, and the side's own navi under DarkInvs.
+EXE5 learns it from its player (the chips they use most, and the runs of
+chips they use from one place) and keeps it in the save; a match states what
+a battle reads of it:
+
+- `first`: up to 3 entries the computer navi plays first;
+- `rest`: up to 39 more.
+
+An entry is a chip's name, or a pattern, a table: `dx` and `dy`, where the
+computer navi stands from its target (`dx` columns toward its enemies, so
+-2 is two columns short of the target; `dy` rows down the screen; at most 5
+columns and 2 rows), and `chips`, the one to five chips it uses there in a
+row. At most 8 different patterns. A chip named several times is played
+that much more often (the game writes its player's most used standard chip
+four times). The file refuses what the game can't hold, and any of it for
+a game without computer navis (EXE6).
+
+The computer navi plays the entries in order, the played one going last:
+three times in four the first, otherwise it steps into an enemy's row and
+fires its buster (three shots). As the round is set up each side's data is
+sent as the console sends it (0x0802C7BE: the first three places shuffled
+among themselves, the other 39 among themselves, packed to the front), from
+a stream of the side's own from the seed, so each group's order is the
+seed's. With none (a save that has learned nothing, and a new match's), the
+computer navi only fires its buster between rests. A netplay offer carries
+the data.
+
+A random match (`nettai_match::draw`, the editor's Random) states it too:
+what the game would have learned from a player who used each chip of the
+drawn folder once (`ComputerNavi::of_folder`: its sixteen most held
+standard chips, the two most held four times each, the next two twice, the
+rest once, then its five most held mega chips and its giga chip, as the
+game's battle end writes them, 0x0802C540).
 
 **The checks** (`nettai_match::check`) run when a file loads, when a netplay
 offer arrives (the same `check_side`), and live in the editor; each problem

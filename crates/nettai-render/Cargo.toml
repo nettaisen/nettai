@@ -14,10 +14,9 @@ nettai-assets = { path = "../nettai-assets" }
 nettai-content = { path = "../nettai-content" }
 # The handles the engine names content by (a chip in a hand).
 nettai-content-api = { path = "../nettai-content-api" }
-# EXE6's numbers the custom screen draws by (a navi's emblem, whether the
-# Program Advance animation shows a chip's code), and EXE5's (the latter).
+# EXE6's numbers and systems the custom screen still draws by (a navi's
+# emblem, the console's version and what its save unlocks, the Crosses).
 exe6-compat = { workspace = true }
-exe5-compat = { path = "../exe5-compat" }
 # A frame as a PNG file (`present::write_png`).
 png = "0.17"
 # The text layer's vector font: shaping with kerning, outlines rasterized with
