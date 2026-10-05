@@ -59,7 +59,7 @@ function parts.base_blade_anim(side: number): number
     if not kind.beast(side) then
         return 0
     end
-    return if battle.navi(side).form.game == "gregar" then 0x0C else 0x0D
+    return if battle.navi(side).form.version == "gregar" then 0x0C else 0x0D
 end
 
 -- `sub_80EBAE8`: the blade's animation, which matches the user's arm.

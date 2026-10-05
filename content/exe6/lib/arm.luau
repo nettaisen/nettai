@@ -24,7 +24,7 @@ function arm.anim(navi: Object): number
         if not kind.beast(navi.alliance) then
             return 0
         end
-        return if battle.navi(navi.alliance).form.game == "gregar" then 0x0C else 0x0D
+        return if battle.navi(navi.alliance).form.version == "gregar" then 0x0C else 0x0D
     end
     return 0
 end
