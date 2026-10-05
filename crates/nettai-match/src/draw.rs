@@ -116,6 +116,11 @@ fn version(draws: &mut Draws) -> GameVersion {
     if draws.below(2) == 0 { GameVersion::Gregar } else { GameVersion::Falzar }
 }
 
+/// What live play's players' versions are drawn from, with the seed: a
+/// stream of their own, drawn before the folders (the rules a folder is
+/// drawn by are its player's).
+const VERSION_SALT: u32 = 0x5645_5253;
+
 /// Five of `game`'s form-changing navi's Crosses of both versions, drawn at
 /// random, listed in the versions' order (Gregar's, then Falzar's).
 fn crosses(content: &Content, game: &str, draws: &mut Draws) -> Result<CrossList, String> {
@@ -133,16 +138,16 @@ impl Side {
     /// `version`, with this folder and Cross list.
     pub fn live(content: &Content, arena: &Arena, folder: SavedFolder, crosses: CrossList, version: GameVersion) -> Result<Side, String> {
         let mut side = Side::fresh(content, arena)?;
-        side.game = version;
-        side.stats = Side::base_stats(content, side.navi, version);
+        side.version = Some(version);
+        side.stats = Side::base_stats(content, side.navi, side.version);
         side.folder = folder.into();
         side.crosses = Some(crosses);
         Ok(side)
     }
 
     /// A player of a match of `game` drawn from
-    /// `draws` as netplay draws one: EXE6's a random folder the rules accept,
-    /// five Crosses of both versions, a version, no patch cards; another
+    /// `draws` as netplay draws one: EXE6's a version, a random folder the
+    /// rules accept, five Crosses of both versions, no patch cards; another
     /// game's a plain side's ([`plain`]).
     pub fn drawn(content: &Arc<Content>, game: &str, draws: &mut Draws) -> Result<Side, String> {
         let stage = *crate::link_battle_stages(content, game).first().ok_or_else(|| format!("{game} has no link battle stage"))?;
@@ -151,16 +156,17 @@ impl Side {
         if !draws_live(game) {
             return plain_side(content, &arena, draws);
         }
-        let mut rules = rules_battle(content, &arena)?;
+        let version = version(draws);
+        let mut rules = rules_battle(content, &arena, [version; 2])?;
         let folder = folders::random_folder(content, game, &mut rules, 0, draws);
         let crosses = crosses(content, game, draws)?;
-        let version = version(draws);
         Side::live(content, &arena, folder, crosses, version)
     }
 }
 
 /// A plain side on `arena`: the game's first navi with fresh stats, its
-/// fresh stats, and a folder of the rules' pool drawn from `draws` (else
+/// fresh stats, a version drawn from `draws` where the game's rules take
+/// one, and a folder of the rules' pool drawn from `draws` (else
 /// the game's first chip with a code, thirty times); where the game has
 /// computer navis (EXE5's), the computer-navi data the game would have
 /// learned from a player who used each chip of that folder once
@@ -174,10 +180,10 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Resul
         .find(|&c| !content.chip(c).codes.is_empty() && ids::in_game(content, game, &content.defs.chip(c).key))
         .ok_or_else(|| format!("{game} has no chip with a code"))?;
     let folder = SavedFolder { chips: [FolderChip::new(chip, content.chip(chip).codes[0]); 30], regular: None, tags: None };
-    let version = GameVersion::Falzar;
+    let version = Side::takes_version(content).then(|| version(draws));
     let mut side = Side {
         navi,
-        game: version,
+        version,
         stats: Side::base_stats(content, navi, version),
         folder: folder.into(),
         crosses: None,
@@ -217,12 +223,13 @@ pub fn plain(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageH
     Ok(Match { seed: Some(seed), arena, sides })
 }
 
-/// The battle a live player's folder is drawn against: two live players
-/// on `arena` (their folders anything: the rules read the stats).
-fn rules_battle(content: &Arc<Content>, arena: &Arena) -> Result<Battle, String> {
+/// The battle live players' folders are drawn against: two live players
+/// on `arena`, of these versions (their folders anything: the rules read
+/// the stats).
+fn rules_battle(content: &Arc<Content>, arena: &Arena, versions: [GameVersion; 2]) -> Result<Battle, String> {
     let anything = SavedFolder { chips: [FolderChip::new(Default::default(), nettai_battle::content::ChipCode(0)); 30], regular: None, tags: None };
-    let side = Side::live(content, arena, anything, CrossList::default(), GameVersion::Falzar)?;
-    crate::check::start(content, &Match { seed: None, arena: arena.clone(), sides: [side.clone(), side] })
+    let side = |version| Side::live(content, arena, anything, CrossList::default(), version);
+    crate::check::start(content, &Match { seed: None, arena: arena.clone(), sides: [side(versions[0])?, side(versions[1])?] })
 }
 
 /// Live play's match of `game`, drawn from `seed`.
@@ -230,19 +237,21 @@ fn rules_battle(content: &Arc<Content>, arena: &Arena) -> Result<Battle, String>
 /// random folder each player's rules accept (`crate::folders`), five of
 /// MegaMan's ten Crosses, of both versions, for each Cross window
 /// (`Unlocks::cross_list`, docs/engine/custom-screen.md §4.1), and each
-/// player's version, Falzar or Gregar; both players are MegaMen at their
-/// fresh stats (100 HP). Another game's is [`plain`].
+/// player's version, Falzar or Gregar, drawn too (from a stream of the
+/// versions' own from the seed: none is assumed); both players are MegaMen
+/// at their fresh stats (100 HP). Another game's is [`plain`].
 pub fn live(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageHandle>) -> Result<Match, String> {
     if !draws_live(game) {
         return plain(content, game, seed, stage);
     }
     let mut draws = Draws::new(seed);
     let arena = arena(content, game, &mut draws, stage)?;
-    let mut rules = rules_battle(content, &arena)?;
+    let mut own = Draws::new(seed ^ VERSION_SALT);
+    let versions = [version(&mut own), version(&mut own)];
+    let mut rules = rules_battle(content, &arena, versions)?;
     let folders =
         [folders::random_folder(content, game, &mut rules, 0, &mut draws), folders::random_folder(content, game, &mut rules, 1, &mut draws)];
     let crosses = [crosses(content, game, &mut draws)?, crosses(content, game, &mut draws)?];
-    let versions = [version(&mut draws), version(&mut draws)];
     let side = |side: usize| Side::live(content, &arena, folders[side], crosses[side], versions[side]);
     let sides = [side(0)?, side(1)?];
     Ok(Match { seed: Some(seed), arena, sides })
@@ -266,7 +275,8 @@ mod tests {
         for side in &m.sides {
             let s = &side.stats;
             assert_eq!((side.navi, side.navicust, side.navi_level), (fresh.navi, fresh.navicust, fresh.navi_level));
-            assert_eq!(*s, Side::base_stats(&content, side.navi, side.game));
+            assert_eq!(*s, Side::base_stats(&content, side.navi, side.version));
+            assert!(side.version.is_some(), "a drawn EXE6 side states its version");
             assert_eq!((s.hp, s.max_hp), (100, 100));
             assert!(!s.float_shoes && !s.air_shoes && !s.undershirt && !s.super_armor && !s.chip_shuffle && !s.number_open);
         }
@@ -290,8 +300,8 @@ mod tests {
                     let crosses = |g| exe6_compat::forms::set(&content, navi, g).unwrap().crosses;
                     assert!(crosses(GameVersion::Gregar).contains(&f) || crosses(GameVersion::Falzar).contains(&f));
                 }
-                assert_eq!(unlocks.version, m.sides[side].game);
-                assert_eq!(setup.navi_stats[side].version, crate::version_byte(m.sides[side].game));
+                assert_eq!(Some(unlocks.version), m.sides[side].version);
+                assert_eq!(setup.navi_stats[side].version, crate::version_byte(m.sides[side].version));
             }
             assert_eq!(live(&content, "exe6", seed, None).unwrap(), m);
             assert!(crate::check_match(&content, &m).is_empty(), "{:?}", crate::check_match(&content, &m));
@@ -299,7 +309,7 @@ mod tests {
         assert!(seen.len() > 6, "{seen:?}");
         // Both games come up, and some seed offers both games' Crosses.
         let games: std::collections::BTreeSet<String> =
-            (0..12).flat_map(|seed| live(&content, "exe6", seed, None).unwrap().sides.map(|s| format!("{:?}", s.game))).collect();
+            (0..12).flat_map(|seed| live(&content, "exe6", seed, None).unwrap().sides.map(|s| format!("{:?}", s.version))).collect();
         assert_eq!(games.len(), 2);
         let mixed = (0..12).any(|seed| {
             let list = live(&content, "exe6", seed, None).unwrap().sides[0].crosses.unwrap();
@@ -323,10 +333,16 @@ mod tests {
         let m = plain(&content, "exe6", 4, None).unwrap();
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
         assert_ne!(m.sides[0].folder.chips[0], m.sides[0].folder.chips[1], "a drawn folder");
+        // (Its sides' versions drawn: EXE6's rules take one.)
+        assert!(m.sides.iter().all(|s| s.version.is_some()));
         let content = crate::testing::exe5_content();
         let m = live(&content, "exe5", 4, None).unwrap();
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
         assert_eq!(m.arena.game, "exe5");
+        // An EXE5 match has no version: its sides state none, their stats'
+        // version byte is 0, and its file has no such key.
+        assert!(m.sides.iter().all(|s| s.version.is_none() && s.stats.version == 0));
+        assert!(!crate::write(&content, &m).contains("version"));
         assert!(m.sides.iter().flat_map(|s| s.folder.chips()).all(|c| ids::in_game(&content, "exe5", &content.defs.chip(c.id).key)));
         // An EXE5 match states what a computer navi plays: each side's
         // folder's chips, as the game would have learned them (a folder's
