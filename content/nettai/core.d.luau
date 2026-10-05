@@ -2578,8 +2578,11 @@ export type IdentitySpec = {
     -- By default the death hook takes its own parts off and an animation
     -- change restarts them (not an overlay worn only while standing).
     -- "flinch_checked" is a flinch hook that tests for what the navi wears
-    -- first (EXE5's team navis').
-    overlay_hooks: { "death" | "refresh" | "flinch" | "flinch_checked" | "drag" }?,
+    -- first (EXE5's team navis'). "lets_go": as a flinch, a drag or a
+    -- paralysis starts, what the navi wears is let go where an attack held
+    -- it shown or hidden (one routine in the three tables: EXE5's
+    -- KnightMan's ball and chain).
+    overlay_hooks: { "death" | "refresh" | "flinch" | "flinch_checked" | "drag" | "lets_go" }?,
     -- The Full Synchro aura's animation around it (a player's has one).
     aura_anim: number?,
     -- The ice block that fits it (none: small).
