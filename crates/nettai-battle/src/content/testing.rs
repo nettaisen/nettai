@@ -334,16 +334,25 @@ pub fn add_shared(scripts: &mut Scripts) {
 }
 
 /// A manifest for game `game`, whose modules `scripts` holds under its
-/// name, that depends on the support packs `scripts` holds; and a top
-/// module that loads every one of them (`Scripts::init_for`, in place of
-/// its own): for tests that load a game's directory as it is, or add
-/// modules to a game.
+/// name, that depends on the support packs `scripts` holds; and inits that
+/// load every one of them (`Scripts::inits_for`, in place of the game's
+/// own indexes and of those made before): for tests that load a game's
+/// directory as it is, or add modules to a game.
 pub fn add_index(scripts: &mut Scripts, game: &str) {
     use nettai_content_api::{PackKind, PackManifest, packs};
     let prefix = format!("{game}{}", nettai_content_api::keys::SEPARATOR);
+    // (The indexes go: the top module, and a folder's init that only requires.)
+    scripts.modules.retain(|name, source| {
+        name.strip_prefix(&prefix).is_none_or(|path| {
+            let folder_init = path.split_once('/').is_some_and(|(_, rest)| rest == packs::INIT);
+            !(path == packs::INIT || (folder_init && packs::is_index(source)))
+        })
+    });
     let own: std::collections::BTreeMap<String, String> =
         scripts.modules.iter().filter_map(|(name, source)| Some((name.strip_prefix(&prefix)?.to_string(), source.clone()))).collect();
-    scripts.modules.insert(packs::top_module(game), Scripts::init_for(&own));
+    for (path, source) in Scripts::inits_for(&own) {
+        scripts.modules.insert(Scripts::name(game, &path), source);
+    }
     let depends = scripts.packs.iter().filter(|p| p.kind == PackKind::Support).map(|p| p.id.clone()).collect();
     scripts.set_manifest(PackManifest { id: game.to_string(), kind: PackKind::Game, depends });
 }

@@ -31,11 +31,10 @@ pub struct Definitions {
     pub defs: Vec<Definition>,
 }
 
-/// What a game has (docs/design/content-model-v2.md §4.0): the groups of a
-/// game pack's top module (`<game>/init.luau`), by name, each with the
-/// registries whose definitions it holds. Every definition of these
-/// registries is made by a module its game's init.luau requires itself
-/// (`packs::required_by_init`).
+/// What a game has (docs/design/content-model-v2.md §4.0), by kind, each
+/// with the registries whose definitions it is. Every definition of these
+/// registries is made by a module its folder's init.luau requires itself
+/// (`packs::listed_by`): a game's inits are the whole truth about them.
 pub const GAME_LISTS: &[(&str, &[Registry])] = &[
     ("rules", &[Registry::Ruleset]),
     ("chips", &[Registry::Chip]),
