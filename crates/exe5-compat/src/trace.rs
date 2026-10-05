@@ -932,6 +932,21 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
     check("rng2", format!("{:#010x}", b.rng.state), format!("{:#010x}", f.rng2));
     check("paused", (b.paused as u8).to_string(), f.paused.to_string());
     check("gauge", format!("{:#x}", b.gauge.value), format!("{:#x}", f.gauge));
+    // The banner: its task (bit 15 of the HUD's tasks) and, while it shows,
+    // the number the traced console's record holds (its +1: the banner
+    // 0x0801B02E started, 0 for a telop), which for a result's is the
+    // console's own (0x080074D2, 0x0800758A).
+    let task = (f.hud_tasks >> 15) & 1 != 0;
+    check("banner", (b.banner.active as u8).to_string(), (task as u8).to_string());
+    if let (Some(id), true) = (b.banner_for(r.local_side), task) {
+        let ours = match b.telop_for(r.local_side) {
+            Some(_) => Some(0),
+            None => b.content.assets.number(nettai_content_api::AssetKind::Banner, id.0).map(|n| n.id as u8),
+        };
+        let theirs = unhex(&f.banner).ok().and_then(|x| x.get(1).copied());
+        let show = |n: Option<u8>| n.map_or("none".to_string(), |n| format!("{n:#04x}"));
+        check("banner number", show(ours), show(theirs));
+    }
     let number = |t: nettai_battle::field::PanelType| {
         compat.panels.keys().copied().find(|&n| compat.panel_type(n) == Ok(Some(t)))
     };
