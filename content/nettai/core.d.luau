@@ -49,6 +49,12 @@ export type Pool = "actor" | "attack" | "effect"
 -- ("finish" is the fourth state of kinds that have one after "destroy":
 -- for them "destroy" is a last running phase, and "finish" frees them.)
 export type Lifecycle = "init" | "update" | "destroy" | "finish"
+-- How the first part of each of a sprite's frames is drawn, by the
+-- original's three routines: "ground" (`sprite_hasShadow`: it is a shadow,
+-- drawn on the ground under the object), "hidden" (`sprite_removeShadow`:
+-- it is a shadow, not drawn), "with_sprite" (`sprite_noShadow`: the sprite
+-- has no shadow part, and the first part is drawn as the rest are).
+-- "hidden" on a sprite without a shadow part hides its first part.
 export type Shadow = "hidden" | "ground" | "with_sprite"
 export type ActorType = "virus" | "navi" | "player"
 export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out" | "worried"

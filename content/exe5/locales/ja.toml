@@ -310,6 +310,7 @@ language = "ja"
 "suprvulc" = { name = "スーパーバルカン", description = "きょういの\n12れんしゃ\nバルカンほう!" }
 "sword" = { name = "ソード", description = "目の前のてきを\nきりつける!\n攻撃はんいは1マス" }
 "swrdmode" = { name = "ソードモード", description = "ミテイ" }
+"t-swing" = { name = "Tスイング", description = "よこ2、たて3マス\nをきりつける\nトマホークスイング" }
 "tango" = { name = "タンゴサポート", description = "" }
 "tankcan1" = { name = "センシャホウ1", description = "前方にほうげき!\n画面はしにとどくと\nたて3マスばくふう" }
 "tankcan2" = { name = "センシャホウ2", description = "前方にほうげき!\n画面はしにとどくと\nたて3マスばくふう" }
@@ -359,6 +360,7 @@ language = "ja"
 "megaman" = { name = "ロックマン", variant_name = "FCロックマン" }
 "protoman" = { name = "ブルース" }
 "searchman" = { name = "サーチマン" }
+"tomahawkman" = { name = "トマホークマン" }
 
 [forms]
 "colonelsoul" = { name = "カーネルソウル" }
