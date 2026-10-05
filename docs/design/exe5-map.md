@@ -1953,8 +1953,28 @@ which the engine runs for a side whose rules say so (the status section's `emoti
   the damage, and has no step like EXE6's `sub_801A506`; the request's one setter is the dark chip's. Each game states
   it (the status section's `weakness_hit_breaks_form`): the engine broke any EXE5 navi hit on its weakness (the screen
   dimmed, a team navi reloaded as the base form) until ToadMan's recordings reached one. Recorded: ToadMan under the
-  sea and on the plain stage hit by a Thunder, TomahawkMan by a FireHit1, and (in scratch, for the souls' set) MegaMan
-  in ToadSoul by a Thunder: the mark, twice the damage, and each goes on as it was.
+  sea and on the plain stage hit by a Thunder, TomahawkMan by a FireHit1, and MegaMan in a soul of each element (the
+  lab's souls/12-aqua/weak, 10-wood/weak, 04-fire/weak and 05-elec/weak: ToadSoul by a Thunder, TomahawkSoul by a
+  FireHit1, NapalmSoul by a WideSht1, MagnetSoul by a Boomer), ToadSoul also 11 ticks into its charged shot
+  (12-aqua/weak-acting: the paralysis cuts the action short): the mark, twice the damage, and each goes on as it
+  was, the soul still on.
+  - *The damage.* The hit kernel (0x0801691C) shifts the hit's damage left by the element table's answer
+    (0x080168F0 over the 28 bytes at 0x08016900: 0 or 1) and adds it to the accumulator of the hitter's element; a
+    Fire hit on grass counts once more as Null damage (0x08016AF6). So a Thunder's 40 takes 80 from ToadSoul, a
+    WideSht1's 70 takes 140 from NapalmSoul, a Boomer's 60 takes 120 from MagnetSoul, and a FireHit1's 60 takes 180
+    from TomahawkSoul, who stands on the grass his status reset grows. The souls' scenarios are on the holes stage
+    for this: on exe5-team's own stage the navis stand on its holy middle row, which halves the sum, so the scratch
+    recording that first showed the mark (ToadSoul by a Thunder there) lost 40, the chip's own damage, and reads as
+    if nothing doubled.
+  - *No second weakness.* EXE5 has none of EXE6's secondary weaknesses (a Cross's to sword, wind, cursor or
+    breaking hits). Its element routine (0x0800E600) sets the element (the table 0x0800E634 by navi and soul, or
+    NaviStats +0x10) and returns, where EXE6's `sub_801086C` goes on to the form's weakness byte (`byte_80108D1`,
+    `sub_8019F9E`). Its hit kernel has no call for a secondary weakness (EXE6's `getSecondaryElementWeakness`
+    over the receiver's +0x18 and the hitter's +0x19), keeps no secondary element of the hitter (EXE6's +0x19 into
+    the receiver's +0x76), adds nothing for a thaw or for elec on a bubble, and stores no multiplier bytes (EXE6's
+    +0x74 and +0x75). The mark's routine reads the accumulator of the one element the receiver's element is weak
+    to (0x08017284 by element; none for Null). So a soul of no element has no weakness: ProtoSoul hit by a CannBall,
+    a breaking chip, takes its 140 with no mark (souls/01-sword/break-hit).
 
 - **The light/dark bug codes** (0x0801103E, the navi's hit NaviCust bug; the hook `navi_bug`, the light and dark
   system's): a hit with hit flag 0x400 brings nothing to a value of 1000 or more (not even the weapons' reload); code
