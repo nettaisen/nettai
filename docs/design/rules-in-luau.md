@@ -2213,7 +2213,7 @@ The last custom-screen piece in Rust that was one game's: EXE5's soul button and
 ### EXE5's capsules and Arm Change, the souls system's (2026-10-04, branch exe5-port-6)
 
 MeddySoul's capsules and ColonelSoul's Arm Change are two more buttons and windows of EXE5's souls system
-(rules/souls/capsules.luau, arm-change.luau; exe5-map.md §15.8), each a module rules/souls/custom.luau gathers (its
+(rules/souls/capsules.luau, arm_change.luau; exe5-map.md §15.8), each a module rules/souls/custom.luau gathers (its
 `buttons`, `windows` and `states`, which the system's definition takes whole). (Since "EXE5's souls by id", below,
 each is in its soul's folder, navis/megaman/forms/<soul>/, and is the form's `custom`.) What the framework gained
 for them is generic:
@@ -2376,7 +2376,7 @@ recording shows changed (exe5-map.md §15.8 holds the layout).
   The frontend's soul icon is by the soul's place in its navi's `forms.souls` (the pack's icons' order, the
   original's), read from the souls system's `offer` (a form); `offer_number` is gone from its state.
 - **What a soul adds to the custom screen is the soul's**, in its folder: ColonelSoul's Arm Change
-  (forms/colonelsoul/arm-change.luau), MeddySoul's capsules (forms/meddysoul/capsules.luau), SearchSoul's Shuffle
+  (forms/colonelsoul/arm_change.luau), MeddySoul's capsules (forms/meddysoul/capsules.luau), SearchSoul's Shuffle
   (forms/searchsoul/shuffle.luau), NumberSoul's hand (forms/numbersoul/hand.luau), each making its form's `custom`.
   - A `SoulCustom` (content/exe5/types.d.luau, EXE5's first shared declarations) has the state fields the soul
     keeps in the souls system's state, its buttons and windows by name, and `hand_size`, `deal`, `confirmed` and

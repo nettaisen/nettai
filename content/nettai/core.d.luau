@@ -2113,9 +2113,17 @@ export type NaviDef = {
     -- of panel, in a form with no `chip_bonus` (EXE5's: Aqua chips on sea);
     -- the use turns the panel Normal.
     panel_bonus: { panel: PanelType, family: ChipFamily, damage: number }?,
-    -- The chips it charges with A: its family's damaging chips, from a
-    -- navi level on (`byte_8021369`).
-    charged_chips: { family: ChipFamily, from_level: number }?,
+    -- The chips it charges with A: a family's, never its own chip.
+    -- `damaging` is always stated: only the damaging chips that aren't
+    -- dimming chips (false: any). `from_level`: only from that navi level
+    -- on, and only with a level (none: whatever the level). `plain`: only
+    -- the chips that are neither dimming nor dark chips. (EXE6's link
+    -- navis: their family's damaging chips from a level, `byte_8021369`;
+    -- EXE5's team navis: their family's plain chips.)
+    charged_chips: { family: ChipFamily, damaging: boolean, from_level: number?, plain: boolean? }?,
+    -- What a chip it charged gains (damage 0xFF: its damage again), where
+    -- its form states no `charged_bonus`: a form's comes first.
+    charged_bonus: { damage: number?, paralyzes: boolean? }?,
     -- The chips a charge doubles (`sub_8012AFA`).
     charge_doubles: ChipMatch?,
     -- Its A charge builds up the next Fire chip's damage, up to a limit by

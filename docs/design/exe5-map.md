@@ -1527,7 +1527,7 @@ them.
     The capsule chips never reach a hand; a slot shows its capsule as a chip (icon, and in the chip window the name
     and picture alone, 0x08024422), and R describes it. Their records' uses are leftovers (the cannon's action,
     Poltrgst's and RockCube's dimming routines, the supports' controller, routine 50: lib/supports/dimming).
-  - **ColonelSoul's Arm Change** (kinds 8 and 9; navis/megaman/forms/colonelsoul/arm-change.luau): on offer while the last pick
+  - **ColonelSoul's Arm Change** (kinds 8 and 9; navis/megaman/forms/colonelsoul/arm_change.luau): on offer while the last pick
     is a standard chip of no family that deals damage and neither dims nor is dark (0x08024C00). A on it
     (0x080249D6) runs the screen's state 0x38 (0x08023694: the window `arm_change`): the chip leaves the picks for
     the button (`custom.hold_last_pick`; five more can be picked) and its icon blinks in the column for 30 ticks.
@@ -2447,6 +2447,17 @@ TomahawkMan and ToadMan (0x29 to 0x2C) are empty: their A charge is of their ele
 their family, neither their own chip nor past 0x190, charges, and a charged one hits twice as hard, 0x080103D0). Each
 navi's own actions are its state table's entries from 7 on (0x080EADA8 by navi number; GyroMan has a tick of his
 own, 0x080EB1E8's).
+
+**The A charge, in content.** Both routines test the soul (NaviStats +0x2C) and then the navi (+0x29): NapalmMan
+(4) Fire, ToadMan (12) Aqua, MagnetMan (5) Elec, TomahawkMan (10) Wood. The chip's tests are the souls': a chip
+under 0x190 of that family that is neither a dimming nor a dark chip (its flags' bits 0x01 and 0x20), damaging or
+not; no level is read. So each of the four states `charged_chips = { family = ..., damaging = false, plain = true }`
+(a navi's rule always says `damaging`: EXE6's link navis say true, with their `from_level`) and `charged_bonus =
+{ damage = 0xFF }` (the chip's damage again, with the bonus's sound), and its `a_charge` weapon is the charged-chip
+routine with its row of the charge table (navis/megaman/weapons/charged-chip's `routine`: 0x29 NapalmMan's, 0x2A
+MagnetMan's, 0x2B TomahawkMan's, 0x2C ToadMan's). Where a form and its navi both state a `charged_bonus` the form's
+is the one read, as the original tests the soul first; the navi's is read in a form that states none. (NapalmSoul's
+charged Fire chips start its bomb's action, 0x08010442, by the soul alone: NapalmMan's are the chips themselves.)
 
 **The level.** A team navi's attacks take their damage from the damage rows (0x0801D74F, seven entries a row,
 0x0800EBC4) at the side's level: a word a side (0x0203C870) the init exchange sends, which 0x0800EBE0 counts from the
