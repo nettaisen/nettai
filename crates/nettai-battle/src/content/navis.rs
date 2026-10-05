@@ -60,10 +60,16 @@ pub struct NaviData {
     /// a netbattle).
     #[serde(default)]
     pub run_message: RunMessage,
-    /// The chips it charges with A, from a navi level (`sub_800F49E`,
-    /// `byte_8021369`).
+    /// The chips it charges with A (EXE6's link navis' from a navi level,
+    /// `sub_800F49E` and `byte_8021369`; EXE5's team navis', 0x0801090A's
+    /// tests by navi).
     #[serde(default)]
     pub charged_chips: Option<NaviChargedChips>,
+    /// What a chip it charged gains (EXE5's team navis', 0x080103D0's tests
+    /// by navi), in a form that states none: a form's own `charged_bonus`
+    /// comes first, as the original tests the soul before the navi.
+    #[serde(default)]
+    pub charged_bonus: Option<ChargedBonus>,
     /// The chips a charge doubles (`sub_8012AFA`).
     #[serde(default)]
     pub charge_doubles: Option<ChipMatch>,
@@ -233,13 +239,21 @@ pub struct NaviChipBonus {
     pub by_level: Vec<u8>,
 }
 
-/// The chips a link navi charges with A: its family's damaging chips, from
-/// a navi level on.
+/// The chips a navi charges with A: a family's, but never its own chip.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NaviChargedChips {
     pub family: ChipFamily,
-    pub from_level: u8,
+    /// Only from this navi level on, and only with a level (none: whatever
+    /// its level, and with none).
+    #[serde(default)]
+    pub from_level: Option<u8>,
+    /// Only its damaging chips that aren't dimming chips (false: any). A
+    /// rule states it: there is no usual answer.
+    pub damaging: bool,
+    /// Only its chips that are neither dimming chips nor dark chips.
+    #[serde(default)]
+    pub plain: bool,
 }
 
 /// The chips a rule is about: an element's, or a family's.
@@ -567,8 +581,8 @@ pub struct PanelChipBonus {
 #[serde(deny_unknown_fields)]
 pub struct ChargedChips {
     pub family: ChipFamily,
-    /// Only its damaging chips that aren't dimming chips (false: any).
-    #[serde(default = "yes")]
+    /// Only its damaging chips that aren't dimming chips (false: any). A
+    /// rule states it, as a navi's does: there is no usual answer.
     pub damaging: bool,
     /// And the chips with the `element_sword` trait.
     #[serde(default)]
@@ -579,11 +593,7 @@ pub struct ChargedChips {
     pub plain: bool,
 }
 
-fn yes() -> bool {
-    true
-}
-
-/// What a charged chip gains in a form.
+/// What a charged chip gains in a form, or for a navi.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ChargedBonus {
@@ -1040,5 +1050,34 @@ mod tests {
         assert_eq!([Emotion::Worried, Emotion::Angry].map(|e| exe5.shown(e, false).0), [2, 0]);
         assert_eq!([Emotion::Worried, Emotion::Angry].map(|e| exe5.shown(e, true).0), [13, 11]);
         assert_eq!(cross.shown(Emotion::Tired, true).0, 10);
+    }
+
+    #[test]
+    fn a_navis_charged_chips_say_whether_they_must_be_damaging() {
+        let read = |json: &str| serde_json::from_str::<NaviChargedChips>(json);
+        // EXE6's link navis: their family's damaging chips, from a level.
+        let exe6 = read(r#"{ "family": "wood", "from_level": 11, "damaging": true }"#).unwrap();
+        assert_eq!((exe6.from_level, exe6.damaging, exe6.plain), (Some(11), true, false));
+        // EXE5's team navis: any chip of the family that is neither a
+        // dimming nor a dark chip, at any level.
+        let exe5 = read(r#"{ "family": "wood", "damaging": false, "plain": true }"#).unwrap();
+        assert_eq!((exe5.from_level, exe5.damaging, exe5.plain), (None, false, true));
+        // Left out, the rule doesn't load, and the error names the field.
+        let error = read(r#"{ "family": "wood", "from_level": 11 }"#).unwrap_err().to_string();
+        assert!(error.contains("missing field `damaging`"), "{error}");
+    }
+
+    #[test]
+    fn a_forms_charged_chips_say_whether_they_must_be_damaging() {
+        let read = |json: &str| serde_json::from_str::<ChargedChips>(json);
+        // A Cross's: its family's damaging chips (SlashCross's the element
+        // swords too); Beast Out's any Null chip.
+        let cross = read(r#"{ "family": "sword", "damaging": true, "element_swords": true }"#).unwrap();
+        assert_eq!((cross.damaging, cross.element_swords, cross.plain), (true, true, false));
+        let beast = read(r#"{ "family": "null", "damaging": false }"#).unwrap();
+        assert_eq!((beast.damaging, beast.element_swords, beast.plain), (false, false, false));
+        // Left out, the rule doesn't load, and the error names the field.
+        let error = read(r#"{ "family": "wood" }"#).unwrap_err().to_string();
+        assert!(error.contains("missing field `damaging`"), "{error}");
     }
 }

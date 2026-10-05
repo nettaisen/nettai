@@ -6,9 +6,10 @@
 //! - every chip's icon, picture, name glyphs, its name and code in the
 //!   Program Advance animation, its window's class frame, element and code;
 //!   its description in the dialogue font;
-//! - every navi's face and emblem (on either game's console), its name and
-//!   no-running message with its portrait; every form's face for each
-//!   emotion; every Cross's name and colors and description;
+//! - every navi's face and emblem, its name and no-running message with
+//!   its portrait; every form's face for each emotion; every Cross's name
+//!   and colors and description; every custom-screen button's look, on a
+//!   console of each of the pack's versions;
 //! - every asset of the loaded packs, by its qualified name (a superset of
 //!   what the content names): each sprite with every animation and its
 //!   frames, each sound's song, each banner's glyphs (a telop's banner its
@@ -16,7 +17,7 @@
 //! - the HUD's text lines, the custom screen, the chatbox and the warning
 //!   marker, of each loaded game's pack (a console draws its own game's:
 //!   another pack's for its game's chips' names, windows and descriptions,
-//!   and its navis' emblems in each of its versions);
+//!   and its navis' emblems);
 //! - the field (docs/design/rules-in-luau.md §7.4): each loaded game's
 //!   pack's blocks for the panel types its game names, and in an arena of
 //!   each, every panel type a loaded game names and both highlights, as
@@ -154,8 +155,7 @@ fn is_loaded(packs: &Packs, pack: PackId) -> bool {
 /// (the local side's game's HUD, custom screen and chatbox), as `check`
 /// does the own pack's: its graphics, its game's chips' names (in its font,
 /// in a language it has lettering in), windows and descriptions, and its
-/// game's navis' emblems in each of its versions. Its problems, by game,
-/// and the lookups made.
+/// game's navis' emblems. Its problems, by game, and the lookups made.
 fn other_packs(c: &Content, packs: &Packs, lang: &str, text: &DisplayText) -> Vec<(String, Vec<String>, Vec<String>)> {
     let mut out = Vec::new();
     for (i, game) in c.assets.packs.iter().enumerate() {
@@ -185,17 +185,8 @@ fn other_packs(c: &Content, packs: &Packs, lang: &str, text: &DisplayText) -> Ve
             let code = d.record.codes.iter().map(|c| c.0).max().unwrap_or(ChipCode::ASTERISK.0);
             lookups::chip_window(a, c, chip, code, &mut p);
         }
-        let versions: Vec<&str> =
-            std::iter::once(a.versioned.base_version.as_str()).chain(a.versioned.versions.iter().map(|(v, _)| v.as_str())).collect();
         for k in (0..c.defs.navis.len()).filter(|&k| of_game(&c.defs.navi(NaviHandle(k as u16)).key)) {
-            let navi = NaviHandle(k as u16);
-            for &version in &versions {
-                let mut q = Problems::default();
-                lookups::emblem(a, c, navi, version, &mut q);
-                for (what, _) in q.iter() {
-                    p.note(format!("{what} (on a {version} console)"));
-                }
-            }
+            lookups::emblem(a, c, NaviHandle(k as u16), &mut p);
         }
         let made = p.lookups().map(|l| l.describe(c)).collect();
         out.push((game.clone(), p.iter().map(|(what, _)| what.to_string()).collect(), made));
@@ -238,6 +229,20 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
         }
     }
 
+    // The custom screen's buttons' looks: the pack's, and each of its
+    // versions' own (EXE6's Beast Out button is its version's Beast's).
+    for i in 0..c.defs.buttons.len() {
+        let button = nettai_battle::content::ButtonHandle(i as u16);
+        lookups::button(a, &a.versioned.base, c, button, p);
+        for (version, own) in &a.versioned.versions {
+            let mut q = Problems::default();
+            lookups::button(a, own, c, button, &mut q);
+            for (what, _) in q.iter() {
+                p.note(format!("{what} (on a {version} console)"));
+            }
+        }
+    }
+
     // The navis, their forms and Crosses.
     for i in 0..c.defs.navis.len() {
         let navi = NaviHandle(i as u16);
@@ -245,10 +250,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
         if !data.changes_form() {
             lookups::navi_face(packs, c, navi, p);
         }
-        // (On a console of each of the pack's versions.)
-        for version in std::iter::once(&a.versioned.base_version).chain(a.versioned.versions.iter().map(|(v, _)| v)) {
-            lookups::emblem(a, c, navi, version, p);
-        }
+        lookups::emblem(a, c, navi, p);
         lookups::navi_name(hud, navi, false, text.navi_name(c, navi), p);
         if let Some(name) = text.navi_variant_name(c, navi) {
             lookups::navi_name(hud, navi, true, name, p);
@@ -426,7 +428,7 @@ mod tests {
         };
         assert_eq!(missing(&c), PanelType::ALL.len());
         for t in [PanelType::Metal, PanelType::Lava, PanelType::Sea] {
-            c.rules.panels.types[t as usize].named = false;
+            c.rules_mut().panels.types[t as usize].named = false;
         }
         assert_eq!(missing(&c), PanelType::ALL.len() - 3);
     }

@@ -545,12 +545,16 @@ fn aura_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> u16 {
 }
 
 /// `sub_8012C7C`: a charged chip's bonus in ElecCross (it paralyzes) and
-/// SlashCross (+40), and their Beasts: the form's `charged_bonus`.
+/// SlashCross (+40), and their Beasts: the form's `charged_bonus`. A form
+/// that states none leaves it to the navi's own (EXE5's 0x080103D0 tests
+/// the soul, then the navi: NapalmMan's, ToadMan's, TomahawkMan's and
+/// MagnetMan's charged chips are doubled, as the souls' are).
 fn charged_bonus(b: &Battle, r: ObjectRef, charge: u8) -> u16 {
     if charge == 0 {
         return 0;
     }
-    let bonus = form_of(b, r).charged_bonus;
+    let form = form_of(b, r).charged_bonus;
+    let bonus = if form == Default::default() { navi_of(b, r).charged_bonus.unwrap_or_default() } else { form };
     if bonus.paralyzes { damage_flags::PARALYZE } else { bonus.damage }
 }
 

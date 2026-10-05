@@ -33,7 +33,7 @@ return define.form {
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "sword", damage = 50 },
     -- The chips A charges.
-    charged_chips = { { family = "sword", element_swords = true } },
+    charged_chips = { { family = "sword", damaging = true, element_swords = true } },
     -- A charged chip hits 40 harder.
     charged_bonus = { damage = 40 },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.

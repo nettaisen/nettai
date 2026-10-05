@@ -28,7 +28,7 @@ return define.form {
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
     null_bonus = 30,
     -- The chips A charges.
-    charged_chips = { { family = "aqua" }, { family = "null", damaging = false } },
+    charged_chips = { { family = "aqua", damaging = true }, { family = "null", damaging = false } },
     -- A charged Aqua chip hits twice as hard, and an Aqua chip's use heals.
     charge_doubles = { element = "aqua" },
     chip_heals = { element = "aqua" },

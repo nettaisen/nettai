@@ -41,7 +41,7 @@ pub mod battle_flags {
     /// mode of its own.
     /// - EXE5's operation battle (set at 0x0802D590 when the battle mode
     ///   isn't 1 and the navi's stats' +0x2A is set): both navis
-    ///   computer-driven, the Tactics screen.
+    ///   in auto battle, the Tactics screen.
     /// - EXE6's chip gate battle (set once a battle by `sub_802E112` when a
     ///   chip gate is on the link port, 0x0200AD04, or in a link battle,
     ///   battle mode 0, whose consoles both have one, EVENT_1722): the
@@ -468,7 +468,7 @@ pub struct Battle {
     /// that land on the other side's navis no player controls, at most 10
     /// each.
     pub navi_hit_counts: [[u8; 4]; 2],
-    /// Each player's tactics (`crate::tactics`), as the computer navis'
+    /// Each player's tactics (`crate::tactics`), as the auto-battling navis'
     /// AI turns them: their setups' at the round's start.
     pub tactics: [crate::tactics::Tactics; 2],
     /// Per-side registry of defensive chips and their linked objects
@@ -561,7 +561,7 @@ pub struct SideState {
     pub slow_gauge_ticks: u16,
     pub fast_gauge_ticks: u16,
     /// +0x12: the swing a variable sword makes for a navi no buttons drive
-    /// (EXE5's computer navi draws it before VarSwrd or NeoVari, 0x0802A330).
+    /// (EXE5's auto battle draws it before VarSwrd or NeoVari, 0x0802A330).
     pub sword_pick: u8,
     /// +0x44: the target the side tracks (an actor of the other side), which
     /// an obstacle leaving hands on (`sub_802EF74`).
@@ -708,6 +708,30 @@ impl Battle {
         let objects = Objects::with_capacity(content.rules().pools.slots());
         let hands = [ChipHand::empty(&content), ChipHand::empty(&content)];
         let rules = [0, 1].map(|p| crate::rules::SideRules::for_player(&content, &mut setup.players[p]));
+        let navi_levels: [u8; 2] = std::array::from_fn(|side| {
+            // (A setup's checks refuse a level past the navi codes:
+            // the tables a level reads stop there.)
+            let p = &setup.players[side];
+            let level = p.navi_level.unwrap_or(0xFF);
+            assert!(
+                p.navi_level.is_none_or(|l| l <= crate::custom::MAX_NAVI_LEVEL),
+                "a navi code's level is 0 to {}, not {level}",
+                crate::custom::MAX_NAVI_LEVEL
+            );
+            // A navi with a story (EXE5's team navis) has its side's
+            // level, up to its last: its attacks' damage is read at it.
+            let navi = setup.navi_stats[side].navi;
+            if let Some(story) = &content.navi(navi).story {
+                assert!(
+                    p.navi_level.is_some_and(|l| l <= story.max_level),
+                    "side {side} operates {}, whose level is 0 to {}: its setup states {:?}",
+                    content.defs.navi(navi).key,
+                    story.max_level,
+                    p.navi_level
+                );
+            }
+            level
+        });
         let mut b = Battle {
             content,
             stats: setup.navi_stats,
@@ -743,17 +767,7 @@ impl Battle {
             turn_transforms: [TransformRequest::NONE; 2],
             transform_seq: TransformSequencer::default(),
             custom_reversion: Default::default(),
-            navi_levels: setup.players.each_ref().map(|p| {
-                // (A setup's checks refuse a level past the navi codes:
-                // the tables a level reads stop there.)
-                let level = p.navi_level.unwrap_or(0xFF);
-                assert!(
-                    p.navi_level.is_none_or(|l| l <= crate::custom::MAX_NAVI_LEVEL),
-                    "a navi code's level is 0 to {}, not {level}",
-                    crate::custom::MAX_NAVI_LEVEL
-                );
-                level
-            }),
+            navi_levels,
             objects,
             actors: Actors::default(),
             collision: Collision::new(),
@@ -2289,7 +2303,7 @@ mod tests {
             let mut c: crate::content::Content = testing::build();
             c.define().unwrap_or_else(|e| panic!("{e}"));
             {
-            let rules = &mut c.rules;
+            let rules = c.rules_mut();
                 rules.flow.sequencer_before_custom = sequencer_before_custom;
             }
             let c = std::sync::Arc::new(c);

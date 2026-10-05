@@ -11,7 +11,7 @@
 --   and emotion window go.
 -- - 4 (0x080EFF10): his dark self leaves him and spirals back into him (actor object 0x2E: ../souls/shade's); 50
 --   ticks later another flash and a sound; 61 ticks.
--- - 8 (0x080EFF58): the computer drives him for 720 ticks (rules/computer-navi, as DarkInvs's drive drives its user:
+-- - 8 (0x080EFF58): he is in auto battle for 720 ticks (rules/auto_battle, as DarkInvs's drive drives its user:
 --   chips/darkinvs; the drive's end is EXE5's action 0x49, the roles' `stun_strike`), his statuses and his anger
 --   ended.
 -- - 0xC (0x080EFF78): the HUD back (in the last turns without the gauge) and the screen fades in; then he is no
@@ -35,7 +35,7 @@ local FLASH_SOUND = asset.sound("log-in")
 local CHANGE_SOUND = asset.sound("cross-change")
 -- The side's statistic the stand marks (0x0800931C's byte 1, which 0x0802C16C reads).
 local STOOD = 1
--- How long the computer drives him (0x080EFF64).
+-- How long he is in auto battle (0x080EFF64).
 local DRIVE = 0x2D0
 -- The screen fades' speed.
 local FADE_SPEED = 0x10
@@ -131,13 +131,13 @@ local function dark_shade(me: Object, s: State)
     end
 end
 
--- 0x080EFF58: white; the drive (0x0802C03A and 0x0802C110: the computer-navi AI's state from the start, which the
+-- 0x080EFF58: white; the drive (0x0802C03A and 0x0802C110: the auto battle AI's state from the start, which the
 -- system does on finding the drive new; the ticks, the AI on, the no-charge state); his statuses and his anger
 -- ended (0x08017068, 0x08011A94).
 local function take_over(me: Object)
     me.sprite.white = true
     me.no_charge_timer = DRIVE
-    me.computer_driven = true
+    me.in_auto_battle = true
     me:set_navi_state("no_charge", true)
     me:end_statuses()
     me:end_anger()

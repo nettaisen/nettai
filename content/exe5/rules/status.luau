@@ -406,24 +406,24 @@ local status = {
         missing_collision_status = 0xE55EC002,
         -- Its status block (0x08017CC8 on) runs the flash's timer first, whatever the battle's flags (0x080173C4),
         -- then the slides, a drag and a flinch, which end a paralysis unless a counter just made it.
-        reactions = "exe5",
+        reactions = "flash_timer_first",
         bugs_before_drain = true,
         drain_bug_flags = true,
         -- DarkInvs's no-charge drive: its ticks count down at the intake's end (0x0800DBE0) and their end asks for the
         -- stun strike (action 0x49, the drive's end: chips/darkinvs); the idle hands the step to the systems (the
-        -- computer-navi AI, 0x080F03E4); the last 180 ticks flicker gray (0x080136E0).
+        -- auto battle AI, 0x080F03E4); the last 180 ticks flicker gray (0x080136E0).
         no_charge_drive = true,
         -- EXE5's loss of HP (object_subtractHP, 0x0800C6E0; applyDamageToPlayer, 0x080185A2): a player's loss drains
         -- its side's gauge too, a dark MegaMan (emotion 5) brought to 0 holds at 1 HP once a battle and asks for his
         -- last stand (0x0802C16C: the roles' `volley`, rules/emotion/dark-survival), and a hit shows (white, its
         -- sounds) by the register that check leaves.
-        hp_loss = "exe5",
+        hp_loss = "gauge_and_last_stand",
         -- EXE5's emotions (0x08012740): a soul first, then anger, a mood of 0 (a dark MegaMan's), Full Synchro, a mood
         -- under 65 worried; its mood setter (0x080127D6) leaves a mood of 0; its anger tick (0x08011A14) passes over
         -- AI index 23.
         emotions = "exe5",
         -- The weakness request (a dark chip used in a soul, 0x08010070) breaks any form to the base form (0x080122C8).
-        form_break = "exe5",
+        form_break = "any_form",
     },
 }
 

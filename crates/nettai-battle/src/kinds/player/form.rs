@@ -76,10 +76,14 @@ pub(crate) fn navi_init_hook(b: &mut Battle, r: ObjectRef, identity: Option<Iden
 /// `sub_8010DD0` in the base form, at a player's init: the base form's
 /// put-on routine (its `put_on`), which EXE5's MegaMan's actor record names
 /// as his init hook (0x0800ED90's row 11 and 0x0800F038's row 0 are one
-/// routine, 0x0800EE1C: Hub Style's shade); else its navi's init hook.
+/// routine, 0x0800EE1C: Hub Style's shade); else its navi's init hook. (A
+/// navi that doesn't change form is in the game's base form too, MegaMan's:
+/// its own actor record's hook is its navi's, what its identity wears.)
 pub(crate) fn base_init_hook(b: &mut Battle, r: ObjectRef, identity: Option<IdentityHandle>) {
     let form = super::stats(b, r).form;
-    if let Some(f) = b.content.defs.form(form).put_on {
+    if super::is_megaman(b, r)
+        && let Some(f) = b.content.defs.form(form).put_on
+    {
         crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
         return;
     }

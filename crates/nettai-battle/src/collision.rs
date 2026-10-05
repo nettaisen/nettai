@@ -7,7 +7,7 @@
 //! read on their next update. See docs/engine/field-collision-damage.md §3.
 
 use crate::battle::Battle;
-use crate::content::{Content, DamageWordRule, HitTest, Region, RegionRole, SparkRole, StatusRole};
+use crate::content::{Content, DamageWordRule, Region, RegionRole, SparkRole, StatusRole};
 use crate::field::{self, PanelType};
 use crate::object::{ObjectRef, PanelPos};
 use nettai_content_api::{CollisionHandle, RegionHandle, SparkHandle, StatusHandle};
@@ -127,8 +127,8 @@ pub struct CollisionData {
     pub hit_mod_final: u8,
     /// The hit modifiers of the hits it took by the hitter's flip (EXE5's
     /// +0x18 and +0x19, 0x08016AA6: an unflipped hitter's, of either side,
-    /// and a flipped one's), which EXE5's push reads (`PushReading::Exe5`);
-    /// EXE6 keeps them unread.
+    /// and a flipped one's), which a push that reads by the hitter's flip
+    /// takes (`PushReading::ByHitterFlip`, EXE5's); EXE6's keeps them unread.
     pub hit_mod_by_side: [u8; 2],
     /// The status its hits carry, and the one the hits it took landed.
     pub status_base: Option<StatusHandle>,
@@ -346,20 +346,22 @@ impl Battle {
         let Some(id) = o.collision else { return };
         let (alliance, damage) = (o.alliance, o.damage);
         let dimmed = self.is_dimmed();
-        let exe5 = self.game_rules().effects.retype == crate::content::RetypeRule::Exe5;
+        // (`effects.retype`: what it is and what it hits, or what it is
+        // alone, EXE5's 0x08016B9E.)
+        let alone = self.game_rules().effects.retype == crate::content::RetypeRule::IsAlone;
         let word = self.game_rules().effects.damage_word;
         let (target_flags, row_offset) = self.content.collision_type(target_type, alliance);
         let s = self.collision.get_mut(id);
         s.hit_mod_base = hit_mod;
         s.self_damage = damage;
-        s.self_flags = self.content.collision_type(self_type, alliance).0 | if dimmed && !exe5 { 0x1_0000 } else { 0 };
-        if !exe5 {
+        s.self_flags = self.content.collision_type(self_type, alliance).0 | if dimmed && !alone { 0x1_0000 } else { 0 };
+        if !alone {
             s.target_flags = target_flags;
         }
         // A bug code's garbage high byte is what `battle_isTimeStop` left in
         // r1 (4, or 0x10000 while dimmed); EXE5's, what the target lookup
         // left.
-        let r1 = if exe5 {
+        let r1 = if alone {
             row_offset + alliance as u16 * 4
         } else if dimmed {
             0
@@ -462,18 +464,21 @@ impl Battle {
         if self.is_dimmed() && !(rd.f1 & f1::HIT_WHILE_DIMMED != 0 || hd.self_flags & 0x1_0000 != 0) {
             return;
         }
-        // (EXE5's test, 0x0801691C: a bubbled body counts as submerged, elec
-        // reaching either; no FloatShoe test; the guard's own masks.)
-        let exe5 = self.content.rules().hit_test == HitTest::Exe5;
-        let submerged = if exe5 { f1::SUBMERGED | f1::BUBBLED } else { f1::SUBMERGED };
+        // (The game's hit test, the reactions section's `hit_test`: EXE5's,
+        // 0x0801691C, counts a bubbled body as submerged, elec reaching
+        // either, has no FloatShoe test, and its guard breaks to 0x1002.)
+        let test = self.content.rules().hit_test;
+        let submerged = if test.bubbled_as_submerged { f1::SUBMERGED | f1::BUBBLED } else { f1::SUBMERGED };
+        let elec = |element: u8| test.elec_reaches_submerged && element == 3;
+        let self_bit = test.float_shoe_needs_self_bit;
         // The hitter's state against the receiver's type.
         let f = hd.f1;
         let rs = rd.self_flags;
         if (f & 0x202 != 0 && rs & 0x4 == 0)
-            || (f & submerged != 0 && rs & 0x1008 == 0 && !(exe5 && rd.element == 3))
+            || (f & submerged != 0 && rs & 0x1008 == 0 && !elec(rd.element))
             || (f & 0x0080_0000 != 0 && rs & 0x0C00_3000 == 0)
             || f & f1::UNTOUCHABLE != 0
-            || (!exe5 && f & 0x20 != 0 && rs & 0x80 == 0)
+            || (self_bit && f & 0x20 != 0 && rs & 0x80 == 0)
         {
             return;
         }
@@ -481,22 +486,24 @@ impl Battle {
         let f = rd.f1;
         let hs = hd.self_flags;
         if (f & 0x202 != 0 && hs & 0x4 == 0)
-            || (f & submerged != 0 && hs & 0x1008 == 0 && !(exe5 && hd.element == 3))
+            || (f & submerged != 0 && hs & 0x1008 == 0 && !elec(hd.element))
             || (f & 0x0080_0000 != 0 && hs & 0x3000 == 0)
             || f & f1::UNTOUCHABLE != 0
-            || (!exe5 && f & 0x20 != 0 && hs & 0x80 == 0)
+            || (self_bit && f & 0x20 != 0 && hs & 0x80 == 0)
         {
             return;
         }
         // Guard.
         if rd.f1 & f1::GUARD != 0 {
-            let brk = if exe5 || hs & 0x4000 != 0 { 0x1002 } else { 0x0002 };
+            let brk = if hs & 0x4000 != 0 { 0x1002 } else { test.guard_breaks_to };
             if hs & brk == 0 {
                 let hm = self.collision.get_mut(h);
                 hm.acc.hit_flags |= 1;
                 hm.acc.hit_flags_by_flip[rd.flip as usize & 1] |= 1;
                 let mut flags = hs & !0x10;
-                if flags & (if exe5 { 0x0C00_4000 } else { 0x0C00_5000 }) == 0 {
+                // (EXE5's mask is 0x0C004000: the same here, where its
+                // guard has broken to every type with 0x1000.)
+                if flags & 0x0C00_5000 == 0 {
                     self.collision.get_mut(r).guard_dirs |= 1 << hd.flip;
                     flags |= 0x2_0000;
                 }
@@ -583,8 +590,9 @@ impl Battle {
             m += 1;
         }
         // (EXE6's bubble; EXE5's kernel has none: its flag 0x80000000 is a
-        // body under the sea's surface, whose elec hits its panel doubles.)
-        if !exe5 && rd.f1 & f1::BUBBLED != 0 && hd.element == 3 {
+        // body under the sea's surface, `hit_test.bubbled_as_submerged`,
+        // whose elec hits its panel doubles.)
+        if !test.bubbled_as_submerged && rd.f1 & f1::BUBBLED != 0 && hd.element == 3 {
             m += 1;
         }
         rm.acc.exclamation = m - 1;
@@ -593,7 +601,7 @@ impl Battle {
         }
         let e = (hd.element as usize).min(5);
         rm.acc.element_damage[e] = rm.acc.element_damage[e].wrapping_add(hd.self_damage.wrapping_mul(m as u16));
-        let bonus = self.panel_bonus(&rd, &hd, exe5);
+        let bonus = self.panel_bonus(&rd, &hd);
         let rm = self.collision.get_mut(r);
         if bonus {
             rm.acc.element_damage[0] = rm.acc.element_damage[0].wrapping_add(hd.self_damage);
@@ -608,9 +616,10 @@ impl Battle {
     /// Whether a hit of `hd`'s counts once more as null damage on `rd`'s
     /// panel: fire on grass (EXE6's, and EXE5's 0x08016AF6, which elec on its
     /// sea does too).
-    fn panel_bonus(&self, rd: &CollisionData, hd: &CollisionData, exe5: bool) -> bool {
+    fn panel_bonus(&self, rd: &CollisionData, hd: &CollisionData) -> bool {
         let kind = self.field.panel(rd.panel.x, rd.panel.y).map(|p| p.kind);
-        (hd.element == 1 && kind == Some(PanelType::Grass)) || (exe5 && hd.element == 3 && kind == Some(PanelType::Sea))
+        let on_sea = self.content.rules().hit_test.elec_bonus_on_sea;
+        (hd.element == 1 && kind == Some(PanelType::Grass)) || (on_sea && hd.element == 3 && kind == Some(PanelType::Sea))
     }
 
     /// `sub_3007692`: the unfiltered channel barriers look at. (EXE5's,
@@ -621,11 +630,11 @@ impl Battle {
         if self.is_dimmed() && !(rd.f1 & f1::HIT_WHILE_DIMMED != 0 || hd.self_flags & 0x1_0000 != 0) {
             return;
         }
-        let exe5 = self.content.rules().hit_test == HitTest::Exe5;
-        if !exe5 && ((hd.f1 & 0x20 != 0 && rd.self_flags & 0x80 == 0) || (rd.f1 & 0x20 != 0 && hd.self_flags & 0x80 == 0)) {
+        let self_bit = self.content.rules().hit_test.float_shoe_needs_self_bit;
+        if self_bit && ((hd.f1 & 0x20 != 0 && rd.self_flags & 0x80 == 0) || (rd.f1 & 0x20 != 0 && hd.self_flags & 0x80 == 0)) {
             return;
         }
-        let bonus = self.panel_bonus(&rd, &hd, exe5);
+        let bonus = self.panel_bonus(&rd, &hd);
         let rm = self.collision.get_mut(r);
         rm.acc.raw_hit_flags |= hd.self_flags;
         rm.acc.raw_elements |= hd.secondary_element;
@@ -690,14 +699,15 @@ pub fn move_direction(old: PanelPos, new: PanelPos, alliance: u8) -> u8 {
 }
 
 /// `sub_8019F44`: decode the flag bits of a damage word (the rule
-/// `effects.damage_word`: EXE6's, or EXE5's 0x080165EC).
+/// `effects.damage_word`: a paralysis and two bug codes, EXE6's, or three
+/// statuses and a bug code, EXE5's 0x080165EC).
 fn decode_damage_word(s: &mut CollisionData, r1: u16, rule: DamageWordRule, roles: &crate::content::Roles) {
     let d = s.self_damage;
     s.self_damage = d & 0x7FF;
     if d & 0x8000 != 0 {
         s.self_damage = s.self_damage.wrapping_mul(2);
     }
-    if rule == DamageWordRule::Exe5 {
+    if rule == DamageWordRule::StatusesAndBug {
         // EXE5's: a paralysis that doesn't flinch, a confusion, a blindness
         // (status bytes 0x10, 0x20, 0x30), and bug code 0x18 (high byte
         // 0x11: the two bytes at +0x12).
@@ -738,13 +748,21 @@ mod tests {
     use crate::content::{HitTest, testing};
     use std::sync::Arc;
 
+    /// The test content's hit test (EXE6's guard: it breaks to 0x2), and one
+    /// whose guard breaks to 0x1002 (EXE5's).
+    fn tests() -> [HitTest; 2] {
+        let plain = testing::rules().hit_test;
+        assert_eq!(plain.guard_breaks_to, 0x0002);
+        [plain, HitTest { guard_breaks_to: 0x1002, ..plain }]
+    }
+
     /// A fight on the test content whose arena tests hits by `test`: the
     /// battle and its two navis' collisions (side 0's, side 1's).
     fn fight(test: HitTest) -> (Battle, [CollisionId; 2]) {
         let mut c: Content = testing::build();
         c.define().unwrap_or_else(|e| panic!("{e}"));
         {
-            let rules = &mut c.rules;
+            let rules = c.rules_mut();
             rules.hit_test = test;
         }
         let c = Arc::new(c);
@@ -778,11 +796,12 @@ mod tests {
     /// differs only for a hit of 0x1000, which EXE5's guard never holds.)
     #[test]
     fn exe5_guard_breaks_on_0x1000() {
-        assert!(guarded(HitTest::Exe6, 0x8000_1000));
-        assert!(!guarded(HitTest::Exe5, 0x8000_1000));
-        assert!(!guarded(HitTest::Exe6, 0x8000_5000));
-        assert!(!guarded(HitTest::Exe5, 0x8000_5000));
-        assert!(guarded(HitTest::Exe6, 0x8000_0000));
-        assert!(guarded(HitTest::Exe5, 0x8000_0000));
+        let [breaks_to_2, breaks_to_1002] = tests();
+        assert!(guarded(breaks_to_2, 0x8000_1000));
+        assert!(!guarded(breaks_to_1002, 0x8000_1000));
+        assert!(!guarded(breaks_to_2, 0x8000_5000));
+        assert!(!guarded(breaks_to_1002, 0x8000_5000));
+        assert!(guarded(breaks_to_2, 0x8000_0000));
+        assert!(guarded(breaks_to_1002, 0x8000_0000));
     }
 }

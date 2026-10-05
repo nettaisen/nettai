@@ -27,7 +27,7 @@ return define.form {
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
     null_bonus = 30,
     -- The chips A charges.
-    charged_chips = { { family = "fire" }, { family = "null", damaging = false } },
+    charged_chips = { { family = "fire", damaging = true }, { family = "null", damaging = false } },
     -- The A charge builds up the next Fire chip's damage, up to this much.
     fire_charge = 100,
     -- What its status reset gives the navi (`sub_8014536`).
