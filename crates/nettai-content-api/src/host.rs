@@ -157,8 +157,9 @@ pub enum HookCall {
     /// its result is unused.
     RoleNavi { navi: ObjectRef },
     /// A form's hook the engine calls with the navi in it (its `reset`:
-    /// what else the status reset does in the form, EXE5's souls'). Its
-    /// result is unused.
+    /// what else the status reset does in the form, EXE5's souls'), and a
+    /// chip's `setup`, called with the navi whose use of it is prepared.
+    /// Its result is unused.
     FormNavi { navi: ObjectRef },
     /// `encased(obstacle, ice, class)` (`sub_801813A`'s end): put what an
     /// obstacle encased in ice (`ice`) or a bubble becomes on its panel; its

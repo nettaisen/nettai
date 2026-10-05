@@ -31,6 +31,7 @@ pub mod link_navis;
 pub mod names;
 pub mod sp_times;
 pub mod stats;
+pub mod story;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
 

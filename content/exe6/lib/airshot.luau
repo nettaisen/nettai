@@ -6,6 +6,7 @@
 
 local attachment = require("../objects/attachment")
 local common = require("@exelib/airshot")
+local navi_arms = require("./navi_arms")
 local projectile = require("./projectile")
 
 local airshot = {}
@@ -13,7 +14,12 @@ local airshot = {}
 -- EXE6's air shooter (the original's attachment row 0x13).
 airshot.shooter = attachment.look { sprite = asset.sprite("air-shooter"), palette = 0, attach_point = 10 }
 
-local LOOK: ShooterLook = { sound = asset.sound("h-burst"), attachment = attachment.kind, projectiles = projectile }
+local LOOK: ShooterLook = {
+    sound = asset.sound("h-burst"),
+    attachment = attachment.kind,
+    projectiles = projectile,
+    arm_anims = navi_arms.air_shooter,
+}
 
 -- An AirShot: what the navi holds and what it fires.
 function airshot.action(spec: AirShotSpec): Action

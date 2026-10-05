@@ -23,7 +23,10 @@
 //! at 0x3DB0 (the toolkit's +0x50, a byte an item: ExpMemry's, item 0x61,
 //! is the NaviCust board's expansions), the computer-navi data at 0x554C
 //! (the toolkit's +0x78: seven blocks of 0xE0 bytes, the player's the
-//! first; docs/design/exe5-map.md §15.9).
+//! first; docs/design/exe5-map.md §15.9). The team navis' NaviStats blocks
+//! follow MegaMan's (0x60 bytes each: a version's six navis in its souls'
+//! order, 0x0801165C by navi number); the story sets their HP as it sets
+//! event flags from 0x300 on, whose count is the team navis' level too.
 
 use crate::Version;
 
@@ -51,6 +54,13 @@ const AREA: usize = 0x2944;
 const KEY_ITEMS: usize = 0x3DB0;
 pub const EXP_MEMORY: u8 = 0x61;
 
+/// The story's progress flags (event flags from here on, set in order as
+/// the story moves on): a team navi's level is how many of the first
+/// `MAX_NAVI_LEVEL` are set before the first clear one (0x0800EBE0, which
+/// the battle's init exchange sends).
+pub const STORY_FLAGS: u16 = 0x300;
+pub const MAX_NAVI_LEVEL: u8 = 6;
+
 /// The player's computer-navi data: the first of seven blocks, which a
 /// battle's end writes from what the save has learned (0x0802C540) and a
 /// battle's start sends (0x08009B64).
@@ -72,8 +82,9 @@ pub const COMPUTER_NAVI_PATTERN: u16 = 0x8000;
 
 /// A pattern record of a computer-navi data block, as it is: its place
 /// from a target (signed bytes), its five chip places (each a chip's
-/// number, 0, or 0xFFFF, empty: the AI reads them to the first 0xFFFF,
-/// and on past the fifth) and its score (the word at +12).
+/// number, 0, or 0xFFFF, empty: as written the AI reads them to the
+/// first 0xFFFF, and on past the fifth; no battle gets to that read,
+/// docs/design/exe5-map.md §15.9) and its score (the word at +12).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ComputerNaviPattern {
     pub dx: i8,
@@ -257,6 +268,26 @@ impl Save {
     /// MegaMan's NaviStats block.
     pub fn navi_stats(&self) -> [u8; crate::codec::NAVI_STATS] {
         self.image[NAVI_STATS..NAVI_STATS + crate::codec::NAVI_STATS].try_into().expect("a NaviStats block")
+    }
+
+    /// The team navis' level (0 to 6): the story's flags set from the
+    /// first, up to the first clear one (0x0800EBE0).
+    pub fn navi_level(&self) -> u8 {
+        (0..MAX_NAVI_LEVEL).take_while(|&k| self.event_flag(STORY_FLAGS + k as u16)).count() as u8
+    }
+
+    /// The NaviStats block of navi `number` (0 MegaMan's; 1 to 6 Team
+    /// ProtoMan's navis, 7 to 12 Team Colonel's: 0x0801165C's block for
+    /// it), if the save's version has the navi.
+    pub fn team_navi_stats(&self, number: u8) -> Option<[u8; crate::codec::NAVI_STATS]> {
+        let block = match (self.version, number) {
+            (_, 0) => 0,
+            (Version::Protoman, 1..=6) => number as usize,
+            (Version::Colonel, 7..=12) => number as usize - 6,
+            _ => return None,
+        };
+        let at = NAVI_STATS + crate::codec::NAVI_STATS * block;
+        Some(self.image[at..at + crate::codec::NAVI_STATS].try_into().expect("a NaviStats block"))
     }
 
     /// The NaviCust's list (`trace::navicust` reads it).
