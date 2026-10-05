@@ -272,7 +272,7 @@ pub fn queue_objects<'a>(
     b: &Battle,
     packs: &crate::packs::Packs<'a>,
     view: &View,
-    console_region: &str,
+    console_region: crate::render::Region,
     list: &mut SpriteList<'a>,
     problems: &mut Problems,
     lookups_only: bool,
@@ -381,7 +381,7 @@ pub fn queue_objects<'a>(
                 let (layer, bucket) = if on_ground { (3, 0) } else { (2, p.ground + 0x40) };
                 group.push((layer, bucket, sprite));
             }
-            if sheet.region.as_deref().is_some_and(|r| r != console_region) {
+            if sheet.region.as_deref().is_some_and(|r| r != console_region.name()) {
                 other_region(&p, &group, problems);
             }
             list.insert_group(group);

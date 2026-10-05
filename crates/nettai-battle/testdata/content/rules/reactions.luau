@@ -1,0 +1,62 @@
+--!strict
+-- The test content's reactions: made-up tables for the engine's tests, and
+-- the choices a game makes where games differ (the test content plays as
+-- EXE6 does).
+
+local NONE = { dx = 0, dy = 0, panels = 0 }
+
+-- The bubble's bob by its timer: up three pixels and back, twice, then
+-- down and back, twice.
+local bob = {}
+for i = 0, 31 do
+    local step = ({ 0, 1, 2, 3, 3, 2, 1, 0 })[i % 8 + 1]
+    bob[i + 1] = if i < 16 then step else -step
+end
+
+return {
+    -- A push reads the first of bits 2 to 5 of the hits' modifier, toward
+    -- the navi's front; the 0x80 bit picks the last five rows.
+    push_reading = "toward_front",
+    -- A FloatShoe body meets only collision types with the 0x80 self bit;
+    -- the flag 0x80000000 is a bubble, on which an elec hit counts once
+    -- more; a guard breaks to types with 0x2; its sea gives elec no bonus.
+    hit_test = {
+        float_shoe_needs_self_bit = true,
+        bubbled_as_submerged = false,
+        elec_reaches_submerged = false,
+        guard_breaks_to = 0x0002,
+        elec_bonus_on_sea = false,
+    },
+    -- A pulled obstacle stays out of the puller's area.
+    obstacle_slide_bounds = true,
+    -- Pushes by hit-modifier bit, then the five with the 0x80 bit.
+    push = {
+        { dx = 1, dy = 0, panels = 6 },
+        { dx = -1, dy = 0, panels = 6 },
+        { dx = 1, dy = 0, panels = 1 },
+        { dx = -1, dy = 0, panels = 1 },
+        NONE,
+        { dx = 0, dy = -1, panels = 1 },
+        { dx = 0, dy = 1, panels = 1 },
+        { dx = 1, dy = 0, panels = 2 },
+        { dx = -1, dy = 0, panels = 2 },
+        NONE,
+    },
+    -- Ice slides by the direction the navi last moved (none, up, down,
+    -- back, forward, other).
+    ice = {
+        NONE,
+        { dx = 0, dy = -1, panels = 1 },
+        { dx = 0, dy = 1, panels = 1 },
+        { dx = -1, dy = 0, panels = 1 },
+        { dx = 1, dy = 0, panels = 1 },
+        NONE,
+    },
+    bubble_bob = bob,
+    -- A slide and a drag go 10 pixels a tick across and 6 in depth.
+    slide_speed = { x = 0xA_0000, y = 0x6_0000 },
+    -- What a navi wears restarts with a step at once.
+    overlay_restart = "step",
+    -- The counter a stance's caught hit starts runs from the next tick.
+    stance_counter = "next_tick",
+}
