@@ -34,7 +34,7 @@ netplay needs.
   engine state and the packs' graphics; no window, sound or network.
 - `nettai-frontend`: the desktop app that shows battles drawn by `nettai-render`: it replays recorded matches or
   plays live, alone or over the network, with sound.
-- `nettai-match`: match files, everything a round needs by content key, checked; live play's random draw.
+- `nettai-match`: match files, everything a round needs by content key, checked; live play's random pick.
 - `nettai-editor`: a desktop app that edits match files and plays them with the frontend.
 - `exe6-extract`: extracts EXE6's graphics and sound from the four ROMs into a content pack.
 - `exe6-compat`: EXE6's original numbers for the content (`content/exe6/compat`): the codecs of the game's setup
@@ -139,7 +139,7 @@ first link battle stage, and on each side its MegaMan at his fresh stats with an
 match's arena pane asks each side's, Falzar or Gregar, beside the game, with nothing chosen: neither is assumed; an
 EXE5 match has none), the version's own Crosses, no patch cards and no NaviCust programs (the problems list says the
 folders aren't whole and the versions aren't chosen until they are).
-Random draws a match of the game as live play does, and `nettai-frontend --play --save-match FILE` writes live
+Random picks a match of the game as live play does, and `nettai-frontend --play --save-match FILE` writes live
 play's draw out to edit. `--lang ja` (or the language list) names the chips, navis, Crosses and patch cards in
 Japanese. The editor loads the match's game's content and pack as the frontend does (a game's chips with no use yet
 left out, with the frontend's warning), and Play hands the frontend the same: `--content` and `--pack` are the
