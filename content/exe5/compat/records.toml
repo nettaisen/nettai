@@ -11,6 +11,7 @@
 "searchman" = 3
 "meddy" = 6
 "gyroman" = 2
+"napalmman" = 4
 "shadowman" = 8
 "numberman" = 9
 "tomahawkman" = 10
@@ -73,6 +74,8 @@
 "meddy/charge" = [0x3B]
 "gyroman/buster" = [0x43]
 "gyroman/charge" = [0x28]
+"napalmman/buster" = [0x44]
+"napalmman/a-charge" = [0x29]
 # ShadowMan's shuriken from above, and his B+Back anti-damage stance.
 "shadowman/charge" = [0x24]
 "shadowman/back" = [0x0D]
