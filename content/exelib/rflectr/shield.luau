@@ -1,6 +1,6 @@
 --!strict
--- A guard's shield, as BN5 and BN6 share it (BN6's Reflectors' attack object #0x2B, `sub_80C96A0`; BN5's guard's
--- #0x2B, 0x080CA22C, the same code; BN6's chips.md §3.3): the barrier a navi holds up while it guards. Visual only:
+-- A guard's shield, as EXE5 and EXE6 share it (EXE6's Reflectors' attack object #0x2B, `sub_80C96A0`; EXE5's guard's
+-- #0x2B, 0x080CA22C, the same code; EXE6's chips.md §3.3): the barrier a navi holds up while it guards. Visual only:
 -- the guard is the navi's own status. It follows its owner at the owner's attach point 6, shows while its owner does,
 -- and ends with a short fade once the owner clears the slot it was stored in (its first related object). It runs
 -- while paused and dimmed, but doesn't animate while dimmed. Each game makes its kind (`shield.make`) with its sound;
@@ -10,7 +10,7 @@ local slot = require("@exelib/slot")
 
 local shield = {}
 
--- A shield's look (`ReflectorShieldLook`, BN6's types.d.luau; a row of BN6's `byte_80C9664`, by the original's
+-- A shield's look (`ReflectorShieldLook`, EXE6's types.d.luau; a row of EXE6's `byte_80C9664`, by the original's
 -- second parameter).
 export type Look = ReflectorShieldLook
 

@@ -44,7 +44,7 @@ pub trait Library {
         [0; 3]
     }
     /// The lines of a form's description (`FormData::description_lines`:
-    /// BN6's Crosses').
+    /// EXE6's Crosses').
     fn form_description_lines(&self, _form: FormHandle) -> u8 {
         3
     }
@@ -168,7 +168,7 @@ pub(crate) mod testing {
     /// A library of made-up chips: `chips` by number (others are plain
     /// standard chips in every code), and these Program Advances, on the
     /// test content's screen layout. A chip's, navi's or form's handle is
-    /// a number of the library's own, with BN6's numbering: the Beast Out
+    /// a number of the library's own, with EXE6's numbering: the Beast Out
     /// chip 0x13F, the invalid chip 0x185, the Program Advances from 0x140
     /// and the link navis' own chips from 0x190 (navi 1's); navi 0 changes
     /// form; forms 1 to 5 are Gregar's Crosses and 6 to 10 Falzar's (5 and

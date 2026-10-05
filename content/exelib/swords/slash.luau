@@ -1,6 +1,6 @@
 --!strict
--- The swords' slash, as BN5 and BN6 share it (BN6's action 0x13,
--- `sub_80EB776`; BN5's 0x13, the same code but for a step sword's
+-- The swords' slash, as EXE5 and EXE6 share it (EXE6's action 0x13,
+-- `sub_80EB776`; EXE5's 0x13, the same code but for a step sword's
 -- afterimage and the elemental swords' slash palettes): the navi
 -- holds a blade and slashes the panels ahead, one hit on the 10th tick of
 -- the swing, and an effect that draws the slash. Each chip composes its own
@@ -11,7 +11,7 @@
 --
 -- A step sword (StepSwrd) first steps two panels ahead, if that panel is on
 -- the field with nobody on it, leaving afterimages, and steps back after
--- the swing (not in BN6's Beast forms: its `SlashGame`). With nowhere to
+-- the swing (not in EXE6's Beast forms: its `SlashGame`). With nowhere to
 -- step it doesn't swing.
 
 local parts = require("./parts")
@@ -22,8 +22,8 @@ export type State = {
     -- Ticks left in the phase (AIAttackVars+0x10). (The swings left are
     -- the navi's `attack_count`.)
     timer: number,
-    -- The navi turned round while stepping (+0x34): BN5's warp behind its
-    -- target (ShadowSoul's charged swords); BN6's player actions never.
+    -- The navi turned round while stepping (+0x34): EXE5's warp behind its
+    -- target (ShadowSoul's charged swords); EXE6's player actions never.
     turned: number,
 }
 
@@ -63,8 +63,8 @@ local function damage_word(me: Object): number
 end
 
 -- A chip's slash, its blade an attachment of `attachment` (a game's kind),
--- with what `game` asks of the user's form (`SlashGame`: BN6's Beast forms)
--- and its step (its `steps`; none: BN6's, by the chip's `step`).
+-- with what `game` asks of the user's form (`SlashGame`: EXE6's Beast forms)
+-- and its step (its `steps`; none: EXE6's, by the chip's `step`).
 function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Action
     local rules: SlashGame = game or {}
     local steps = rules.steps
@@ -87,7 +87,7 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
         return true
     end
 
-    -- Whether the slash steps (BN6's a step sword; a game's by its
+    -- Whether the slash steps (EXE6's a step sword; a game's by its
     -- `steps`): its afterimages on the swing, its step back after it.
     local function stepping(me: Object): boolean
         if steps then
@@ -96,7 +96,7 @@ function slash.action(spec: SlashSpec, attachment: Kind, game: SlashGame?): Acti
         return if spec.step then true else false
     end
 
-    -- Where the step goes, and whether it ends turned round: BN6's
+    -- Where the step goes, and whether it ends turned round: EXE6's
     -- (`sub_80EB79C`) for a step sword, two panels ahead; a game's by
     -- its `steps` (nil: no step).
     local function step_to(me: Object): ("step" | "warp")?

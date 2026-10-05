@@ -1,5 +1,5 @@
 --!strict
--- The Spreaders' action, as BN5 and BN6 share it (BN6's action 0x25,
+-- The Spreaders' action, as EXE5 and EXE6 share it (EXE6's action 0x25,
 -- `sub_80ECBB0`, of a game's `SpreaderLook`: its sound, attachment kind and
 -- bullets' kind;
 -- docs/engine/shot-chips.md §5): the navi raises its gun and on the second

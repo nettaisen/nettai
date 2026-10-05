@@ -1,6 +1,6 @@
 --!strict
--- A hockey puck (BN6's attack object #0x2E, `sub_80C9824`; BN5's the same number and code, 0x080CA3B0, but for
--- its sprite and its rows): AirHocky's and PitHocky's, BN5's AirHoc's. It slides diagonally from panel center to
+-- A hockey puck (EXE6's attack object #0x2E, `sub_80C9824`; EXE5's the same number and code, 0x080CA3B0, but for
+-- its sprite and its rows): AirHocky's and PitHocky's, EXE5's AirHoc's. It slides diagonally from panel center to
 -- panel center, one step per its variant's ticks, bouncing off the field's top and bottom rows and side columns.
 -- Once it has been over the other side's panels it bounces off its own side's too. Its collision moves to the
 -- next panel halfway through each step; a hit takes its region away until it reaches another panel. It lasts its
@@ -8,13 +8,13 @@
 -- afterimages (PitHocky's).
 --
 -- Its look (sprite, sounds, collision types, spark, burst) is a game's: each game makes its kind with
--- `puck.make_kind(id, look)` (BN6's chips/airhocky/puck, BN5's chips/airhoc).
+-- `puck.make_kind(id, look)` (EXE6's chips/airhocky/puck, EXE5's chips/airhoc).
 
 local regions = require("../regions")
 
 local puck = {}
 
--- A puck's variant (a row of BN6's `byte_80C9818`, BN5's 0x080CA3A4): the steps it lasts (0: no limit), how
+-- A puck's variant (a row of EXE6's `byte_80C9818`, EXE5's 0x080CA3A4): the steps it lasts (0: no limit), how
 -- it bounces (1: off its own side too, once across; the game also divides by it, see `slide`), the ticks per
 -- step, and whether it leaves a trail.
 export type Variant = PuckVariant

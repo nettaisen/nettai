@@ -384,50 +384,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bn5-compat"
-version = "0.1.0"
-dependencies = [
- "nettai-battle",
- "nettai-content-api",
- "serde",
- "serde_json",
- "toml",
-]
-
-[[package]]
-name = "bn5-extract"
-version = "0.1.0"
-dependencies = [
- "bn5-compat",
- "m4a",
- "nettai-assets",
- "nettai-content",
- "nettai-content-api",
-]
-
-[[package]]
-name = "bn6-compat"
-version = "0.1.0"
-dependencies = [
- "nettai-battle",
- "nettai-content-api",
- "serde",
- "serde_json",
- "toml",
-]
-
-[[package]]
-name = "bn6-extract"
-version = "0.1.0"
-dependencies = [
- "bn6-compat",
- "m4a",
- "nettai-assets",
- "nettai-content",
- "nettai-content-api",
-]
-
-[[package]]
 name = "bstr"
 version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -980,6 +936,50 @@ checksum = "8be9f3dfaaffdae2972880079a491a1a8bb7cbed0b8dd7a347f668b4150a3b93"
 dependencies = [
  "event-listener",
  "pin-project-lite",
+]
+
+[[package]]
+name = "exe5-compat"
+version = "0.1.0"
+dependencies = [
+ "nettai-battle",
+ "nettai-content-api",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
+name = "exe5-extract"
+version = "0.1.0"
+dependencies = [
+ "exe5-compat",
+ "m4a",
+ "nettai-assets",
+ "nettai-content",
+ "nettai-content-api",
+]
+
+[[package]]
+name = "exe6-compat"
+version = "0.1.0"
+dependencies = [
+ "nettai-battle",
+ "nettai-content-api",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
+name = "exe6-extract"
+version = "0.1.0"
+dependencies = [
+ "exe6-compat",
+ "m4a",
+ "nettai-assets",
+ "nettai-content",
+ "nettai-content-api",
 ]
 
 [[package]]
@@ -2204,8 +2204,8 @@ version = "0.1.0"
 name = "nettai-audio"
 version = "0.1.0"
 dependencies = [
- "bn6-compat",
  "cpal",
+ "exe6-compat",
  "m4a",
  "nettai-battle",
  "nettai-content",
@@ -2259,7 +2259,7 @@ dependencies = [
 name = "nettai-editor"
 version = "0.1.0"
 dependencies = [
- "bn6-compat",
+ "exe6-compat",
  "iced",
  "nettai-assets",
  "nettai-battle",
@@ -2276,8 +2276,8 @@ dependencies = [
 name = "nettai-frontend"
 version = "0.1.0"
 dependencies = [
- "bn5-compat",
- "bn6-compat",
+ "exe5-compat",
+ "exe6-compat",
  "m4a",
  "minifb",
  "nettai-assets",
@@ -2306,8 +2306,8 @@ dependencies = [
 name = "nettai-match"
 version = "0.1.0"
 dependencies = [
- "bn5-compat",
- "bn6-compat",
+ "exe5-compat",
+ "exe6-compat",
  "nettai-battle",
  "nettai-content",
  "nettai-content-api",
@@ -2320,7 +2320,7 @@ dependencies = [
 name = "nettai-netplay"
 version = "0.1.0"
 dependencies = [
- "bn6-compat",
+ "exe6-compat",
  "getgud",
  "nettai-battle",
  "nettai-content",
@@ -2332,8 +2332,8 @@ dependencies = [
 name = "nettai-render"
 version = "0.1.0"
 dependencies = [
- "bn5-compat",
- "bn6-compat",
+ "exe5-compat",
+ "exe6-compat",
  "nettai-assets",
  "nettai-battle",
  "nettai-content",

@@ -37,7 +37,7 @@ pub struct Names {
 }
 
 /// A name for one line: a two-line name joined, and the games' stacked
-/// marks (U+E002 is EX, BN5's U+E008 DS, as the frontend's font draws them:
+/// marks (U+E002 is EX, EXE5's U+E008 DS, as the frontend's font draws them:
 /// `nettai_render::vfont::stacked_letters`) spelled as their letters,
 /// which the editor's font has.
 fn line(s: &str) -> String {

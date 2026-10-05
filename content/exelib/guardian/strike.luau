@@ -1,5 +1,5 @@
 --!strict
--- A Guardian statue's strike-back dimming (effect object #0x53: BN6's `sub_80E680C`, BN5's 0x080E6890, the same code;
+-- A Guardian statue's strike-back dimming (effect object #0x53: EXE6's `sub_80E680C`, EXE5's 0x080E6890, the same code;
 -- docs/engine/dimming-chip-effects.md §5): the controller the statue starts when an attack breaks it. The usual
 -- dimming phases (its telop names Punisher, chip 0x175 in both games), with an effect that tells the statue to strike
 -- and waits 60 ticks. A maker taking a game's kind id and telop.
@@ -26,7 +26,7 @@ type StatueState = { strike: boolean }
 local WAIT = 0x3C
 
 function strike.make(look: StrikeLook): Strike
-    -- BN6's `sub_80E6850`: the statue strikes; 60 ticks.
+    -- EXE6's `sub_80E6850`: the statue strikes; 60 ticks.
     local function effect(me: Object)
         if me.phase_init == 0 then
             local statue = me.related1
@@ -47,11 +47,11 @@ function strike.make(look: StrikeLook): Strike
     local kind = define.kind {
         id = look.id,
         pool = "effect",
-        -- BN6's `sub_80E680C`.
+        -- EXE6's `sub_80E680C`.
         update = dimming_chips.phases { name = "the Guardian strike", effect = effect },
     }
 
-    -- BN6's `sub_80E6878`: the controller for `statue`, on its panel and side, with its element and damage word. (It
+    -- EXE6's `sub_80E6878`: the controller for `statue`, on its panel and side, with its element and damage word. (It
     -- sits at the spawner's registers: the panel's Y, the element, 0.)
     local function spawn(statue: Object): Object?
         local o = battle.spawn(kind, Vec3.new(statue.panel_y, statue.element, 0))
@@ -66,7 +66,7 @@ function strike.make(look: StrikeLook): Strike
         return o
     end
 
-    -- What its telop names (BN6's `sub_80D4DF0` spawns it with Punisher, bonus 0).
+    -- What its telop names (EXE6's `sub_80D4DF0` spawns it with Punisher, bonus 0).
     return { kind = kind, spawn = spawn, telop = { chip = look.punisher } :: DimmingTelop }
 end
 

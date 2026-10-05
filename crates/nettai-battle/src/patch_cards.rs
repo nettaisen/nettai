@@ -1,4 +1,4 @@
-//! A player's patch cards (BN4's, BN5's and BN6's Modification Cards,
+//! A player's patch cards (BN4's, EXE5's and EXE6's Modification Cards,
 //! 改造カード; docs/engine/patch-cards.md): the cards their save has
 //! installed, in their list's order, each switched on or off.
 //!
@@ -6,18 +6,18 @@
 //! a player's installed cards are their setup's
 //! ([`crate::custom::PlayerSetup::patch_cards`]), which the setup exchange
 //! and the setup's hash cover as the rest of it. What the cards do is a
-//! game's rules': BN6's patch-cards system reads a side's cards
+//! game's rules': EXE6's patch-cards system reads a side's cards
 //! (`battle.patch_cards(side)`) and applies them to its stats as the round
 //! is set up (the `round_setup` hook).
 
 use nettai_content_api::PatchCardHandle;
 
-/// How many cards a player can have installed: BN6's save list's room (its
+/// How many cards a player can have installed: EXE6's save list's room (its
 /// 80 MB allow 16, as each card takes 5 or more).
 pub const MAX_CARDS: usize = 32;
 
 /// A card in a player's list: switched off, it stays installed but doesn't
-/// apply (BN6's menu's toggle, bit 7 of its byte in the save's list).
+/// apply (EXE6's menu's toggle, bit 7 of its byte in the save's list).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct InstalledCard {
     pub card: PatchCardHandle,

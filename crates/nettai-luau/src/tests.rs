@@ -6,18 +6,18 @@ use nettai_content_api::Data;
 #[test]
 fn relative_paths_resolve_within_the_pack() {
     let r = keys::resolve;
-    assert_eq!(r("bn6:chips/gundels/beam", "../../objects/sun-beam/sun_beam").unwrap(), "bn6:objects/sun-beam/sun_beam");
+    assert_eq!(r("exe6:chips/gundels/beam", "../../objects/sun-beam/sun_beam").unwrap(), "exe6:objects/sun-beam/sun_beam");
     // A folder's init.luau is the folder as a module: beside it is `./`,
     // inside it `@self/`.
-    assert_eq!(r("bn6:chips/gundels/init", "../objects/sun-beam/sun_beam").unwrap(), "bn6:objects/sun-beam/sun_beam");
-    assert_eq!(r("bn6:chips/gundels/init", "@self/beam").unwrap(), "bn6:chips/gundels/beam");
-    assert_eq!(r("bn6:(pack)", "./lib/slot").unwrap(), "bn6:lib/slot");
-    assert!(r("bn6:lib/slot", "../../x").is_err());
-    assert!(r("bn6:lib/slot", "objects/x").is_err());
+    assert_eq!(r("exe6:chips/gundels/init", "../objects/sun-beam/sun_beam").unwrap(), "exe6:objects/sun-beam/sun_beam");
+    assert_eq!(r("exe6:chips/gundels/init", "@self/beam").unwrap(), "exe6:chips/gundels/beam");
+    assert_eq!(r("exe6:(pack)", "./lib/slot").unwrap(), "exe6:lib/slot");
+    assert!(r("exe6:lib/slot", "../../x").is_err());
+    assert!(r("exe6:lib/slot", "objects/x").is_err());
     // A pack's top: its own, or another's (which `packs::check_require` may refuse).
-    assert_eq!(r("bn6:chips/x/chip", "@bn6/lib/slot").unwrap(), "bn6:lib/slot");
-    assert_eq!(r("bn6:chips/x/chip", "@exelib/swords/slash").unwrap(), "exelib:swords/slash");
-    assert!(r("bn5:rules/ruleset", "@bn6/../x").is_err());
+    assert_eq!(r("exe6:chips/x/chip", "@exe6/lib/slot").unwrap(), "exe6:lib/slot");
+    assert_eq!(r("exe6:chips/x/chip", "@exelib/swords/slash").unwrap(), "exelib:swords/slash");
+    assert!(r("exe5:rules/ruleset", "@exe6/../x").is_err());
 }
 
 /// docs/design/content-model-v2.md §4.0: a game requires itself and the

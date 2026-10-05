@@ -1,13 +1,13 @@
 --!strict
--- A lance, as BN5 and BN6 share it (BN6's attack object #0x6F,
--- `sub_80D2460`; BN5's #0x6F): Lance's
+-- A lance, as EXE5 and EXE6 share it (EXE6's attack object #0x6F,
+-- `sub_80D2460`; EXE5's #0x6F): Lance's
 -- three lances (chip.luau) thrust out of the far column's panels, one per
 -- row. Each appears 64 pixels past its panel, slides back 8 pixels a tick,
 -- hits the panel it is over on its seventh tick, and blinks out over 20
 -- ticks. Its sprite never animates. A lance spawned with Param1 set (none
--- of BN6's chips) takes the second palette. Each game's lance is a kind of
+-- of EXE6's chips) takes the second palette. Each game's lance is a kind of
 -- its look (`lance.make_kind`: its sprite, sound, and its hit by Param1;
--- BN5's DrkLance).
+-- EXE5's DrkLance).
 
 local regions = require("./regions")
 

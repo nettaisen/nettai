@@ -1,14 +1,14 @@
 --!strict
--- JustcOne's fist and the chip's effect, as BN5 and BN6 share them (BN6's attack object #0xAE, `sub_80DB304`, and
--- instant chip effect 19, `sub_80DB4B4`; BN5's #0xAE, 0x080DBDA4, and effect 20, 0x080DBF54): a fist falls from 256
+-- JustcOne's fist and the chip's effect, as EXE5 and EXE6 share them (EXE6's attack object #0xAE, `sub_80DB304`, and
+-- instant chip effect 19, `sub_80DB4B4`; EXE5's #0xAE, 0x080DBDA4, and effect 20, 0x080DBF54): a fist falls from 256
 -- pixels up and behind onto the other side's middle panel (column 5 facing right, 2 facing left), 16 pixels a tick
 -- for 16 ticks. It hits what it falls through. On a panel that can take it, it lands: a burst, the panels around it
 -- crack, two wide hits of 100 (beside it, then diagonally) that land while dimmed too, and nine puffs of dust. Then
 -- it stays, blinking, for 30 ticks (unless its panel is gone).
 --
 -- Each game makes its own (`strike.make`) with its look: the sprite, sounds, collision types, spark, and the fist's
--- element (BN6's Break, the secondary element 0x10; BN5's none: 0x080DBF66), which BN5's landing hits take too
--- (0x080DBF7C; BN6's are of no element).
+-- element (EXE6's Break, the secondary element 0x10; EXE5's none: 0x080DBF66), which EXE5's landing hits take too
+-- (0x080DBF7C; EXE6's are of no element).
 
 local regions = require("@exelib/regions")
 

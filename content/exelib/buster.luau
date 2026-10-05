@@ -1,11 +1,11 @@
 --!strict
--- What the buster's shots share, as BN5 and BN6 share it (the buster, the
+-- What the buster's shots share, as EXE5 and EXE6 share it (the buster, the
 -- charged shot, the blank shot, DustCross's charged shot and the like): the
 -- arm the navi raises, the recovery after a shot, and the move that may cut
 -- the recovery short. See docs/engine/objects-and-player.md §B6. Each game
--- makes its own (`buster.make`, a `BusterLook`): its muzzle flash (BN6's
+-- makes its own (`buster.make`, a `BusterLook`): its muzzle flash (EXE6's
 -- attachment row 5, at attach point 0x10), its arm (row 6), an enemy navi's
--- arm (row 0x2B, at attach point 0x0E), its recovery table (BN6's
+-- arm (row 0x2B, at attach point 0x0E), its recovery table (EXE6's
 -- `byte_80209CC`) and its attachment kind.
 
 local attachment = require("./attachment")
@@ -78,7 +78,7 @@ local function raise_arm_for(look: BusterLook, navi: Object, holder: Object, whi
             palette_add = 0x14 + stats.element
         end
     elseif has_trait(form, "mood_palette") then
-        -- A form whose palette follows the mood (BN6's Gregar and Falzar
+        -- A form whose palette follows the mood (EXE6's Gregar and Falzar
         -- Beast).
         if battle.emotion(side) == "full_synchro" then
             palette_add = NO_CHARGE_PALETTE

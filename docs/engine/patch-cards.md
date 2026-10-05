@@ -1,12 +1,12 @@
 # Patch cards (改造カード)
 
-The Japanese releases (EXE6 Falzar, BR6J; EXE6 Gregar, BR5J) read e-Reader Modification Cards: a card changes
+The Japanese releases (JP Falzar, BR6J; JP Gregar, BR5J) read e-Reader Modification Cards: a card changes
 MegaMan's stats and abilities, often with a bug attached. The US release cut the feature. This document is the
 reference for how the Japanese games do it (§1, §2), what the cards reach in a battle (§3), how nettai has it
 (§4), the names (§5), how it is verified (§6) and what isn't (§7). Appendix A lists the 117 cards.
 docs/design/patch-cards.md has the plan and the decisions.
 
-Addresses are EXE6 Falzar's. EXE6 Gregar has the same code 0x1DC8 bytes later (the apply routine at 0x08143FF8),
+Addresses are JP Falzar's. JP Gregar has the same code 0x1DC8 bytes later (the apply routine at 0x08143FF8),
 and the same card table, byte for byte. US routine names are the disassembly's (bn6f).
 
 ## 1. How the Japanese games do it
@@ -88,14 +88,14 @@ names (§3).
 The init exchange sends each console's current PET NaviStats, 0x64 bytes (battle-flow.md §3.1.1). Those are the
 save's, with the cards applied at load. **A netbattle carries the cards' effects in the NaviStats, not the cards.**
 The card list stays in each console's save, and the emotion window's glitch flag is each console's own. Tango's
-EXE6 netplay exchanges nothing more than a real link cable does, so the same holds there.
+Japanese netplay exchanges nothing more than a real link cable does, so the same holds there.
 
 ## 2. The cards and their effects
 
 **117 cards** (numbers 1 to 117), each 2 to 6 effects and 5 to 80 MB, in the ROM's card table (0x081429B0): a u16
 offset per card number, then per card a header entry (0xAB, MB, 0) and its effects as (id, parameter, shown as a
 bug) triples. The third byte only colors the menu text; the apply routine never reads it. Effect names are a
-text archive (0x0812F224's pointer). EXE6 Gregar's table (0x08144778) is the same bytes.
+text archive (0x0812F224's pointer). JP Gregar's table (0x08144778) is the same bytes.
 
 **170 effect ids** have a handler (0x00 to 0xA9). Ids 0xAA to 0xB7 have names (the NaviCust programs' names:
 Collect, Humor, ... SpprtBug) but no handler: the apply routine stops at 0xAA. **The cards use 134 of the 170 ids,
@@ -196,22 +196,22 @@ address as its Z (compared by whole pixels, kinds.toml `scratch_z_fraction`).
 
 ## 4. In nettai
 
-**The cards are the engine's; their effects are BN6's rules'.** Patch cards are in BN4, BN5 (JP) and BN6 (JP), so a
+**The cards are the engine's; their effects are EXE6's rules'.** Patch cards are in BN4, EXE5 (JP) and EXE6 (JP), so a
 card and a player's cards are engine concepts (the user's decision, 2026-10-02); what an effect does is each game's
-rule, BN6's patch-cards system (content/bn6/rules/patch-cards/init.luau, in content/bn6/rules/ruleset.luau).
+rule, EXE6's patch-cards system (content/exe6/rules/patch-cards/init.luau, in content/exe6/rules/ruleset.luau).
 
 - **The cards** are definitions of their own (`define.patch_card`, `Registry::PatchCard`, `PatchCardHandle`,
-  `Content::patch_card`): content/bn6/cards/<name>/card.luau, keyed by name (`canodumb`) as chips are, compat
+  `Content::patch_card`): content/exe6/cards/<name>/card.luau, keyed by name (`canodumb`) as chips are, compat
   patch-cards.toml giving each its number. **The engine's record of a card** (`PatchCardDef`) is what every game's
-  card is: its capacity cost (`mb`, BN6's MB, which the installed cards' limit counts) and its effects in the
+  card is: its capacity cost (`mb`, EXE6's MB, which the installed cards' limit counts) and its effects in the
   card's order, each a `kind` and whether the card shows it as a `bug`. The kind's own fields stay the
-  definition's data, which the game's rules read (BN6's: rules/patch-cards/cards.luau's constructors,
+  definition's data, which the game's rules read (EXE6's: rules/patch-cards/cards.luau's constructors,
   `cards.hp(-40)`, `cards.charged_shot(require("./charge"))`, `cards.bug(...)`, ...). Weapons, programs
   (projectile variants), barriers and gauges are named by definition, never by number. The name is the locales'.
 - **A player's installed cards** are their setup's (`PlayerSetup::patch_cards`: card handles in the list's order,
-  each switched on or off, at most 32, BN6's save list's room; its 80 MB allow 16), which the setup exchange and
-  the digest cover as the rest of the setup. The BN6 system reads them with `battle.patch_cards(side)`
-  (`{ card, enabled }` each). bn6-compat's `codec::patch_cards` makes them from a save's or trace's card list,
+  each switched on or off, at most 32, EXE6's save list's room; its 80 MB allow 16), which the setup exchange and
+  the digest cover as the rest of the setup. The EXE6 system reads them with `battle.patch_cards(side)`
+  (`{ card, enabled }` each). exe6-compat's `codec::patch_cards` makes them from a save's or trace's card list,
   the frontend from `--cards` and `--their-cards`.
 - **The application** is the system's `round_setup` hook: once per side as the round is set up (`Battle::new`),
   before anything reads the side's stats. It is §1.2 steps 2 to 7 over the side's stats (`battle.navi(side)`):
@@ -223,18 +223,18 @@ rule, BN6's patch-cards system (content/bn6/rules/patch-cards/init.luau, in cont
   GigaFolder− not clamping, the HP clamp after each HP effect, the percentages rounded toward zero, a card that
   lists one effect twice applying the first.
 - **The trace's setup** gives the stats before the cards (the oracle traps the apply routine's entry,
-  `navi_stats_before_cards`), the cards, and the stats after them (the init exchange's): bn6-compat builds the
+  `navi_stats_before_cards`), the cards, and the stats after them (the init exchange's): exe6-compat builds the
   setup from the first two and checks the engine's application against the third, and the emotion window's
   glitch against flag 0x1723 (`Round::setup_differences`).
 
 ## 5. Names
 
-The cards' names, like every display text, are the locales' (content/bn6/locales/<lang>.toml, `patch-cards` by
+The cards' names, like every display text, are the locales' (content/exe6/locales/<lang>.toml, `patch-cards` by
 the card's key). ja.toml has the Japanese games' card names, as the ROMs' name archive has them (a two-line name with
 its line break); gen-content checks them against the Japanese ROM. The card weapons have no names: nothing shows a
 weapon's name, so the locales have no `weapons` table (docs/design/text-rendering.md §10.2).
 
-The ROMs have Japanese names only. The cards' English names and keys come from the fan translation of EXE6 (the
+The ROMs have Japanese names only. The cards' English names and keys come from the fan translation of the Japanese games (the
 MMEXE6F and MMEXE6G IPS patches over the Japanese ROMs, with the idealexe English charset), which names every card
 in eight characters as the chip names are: Canodumb, Amonicul, KnigtMan, ... Cybeast Gregar, Bass-Cross MegaMan.
 They are the content's own English names (as Count's and Django's chip names are), which gen-content checks are
@@ -252,18 +252,18 @@ The chip lab's library/jp/cards/ (verification workspace), all on Japanese conso
   the NaviCust's panel and emotion bugs, a switched-off card, the glitch with every card switched off over a
   NaviCust bug, a link navi with cards, the first barriers taking hits, Aqua and Fire bodies against their
   weakness, MegaMan's charged shot with each of the 13 programs the cards give, the custom screen's damage, the
-  invisibility taken by the opponent's Rush, and EXE6 Gregar (SharkMan, the meteors from the B button and from
+  invisibility taken by the opponent's Rush, and JP Gregar (SharkMan, the meteors from the B button and from
   B+Back, CrakShot, Bass BX): 34.
 
 Every scenario matches on every frame, and the setup check (the stats after the cards and the glitch) on each.
 `gen-content check` lowers each card back to the card table's entries (MB, then every effect as id, parameter and
 bug through the ROM's lookup tables) and compares them with the Japanese ROM's card of its number.
 
-## 6.1 BN5
+## 6.1 EXE5
 
-BN5's cards (its Modification Cards, Team ProtoMan's and Team Colonel's, US and Japanese) share the application
+EXE5's cards (its Modification Cards, Team ProtoMan's and Team Colonel's, US and Japanese) share the application
 (content/exelib/patch-cards: the constructors and the loop; each game's kinds' order, choices and tables) and the
-card definitions' shape; BN5's own system, cards, weapons and Hub Style are docs/design/bn5-map.md §15.14's.
+card definitions' shape; EXE5's own system, cards, weapons and Hub Style are docs/design/exe5-map.md §15.14's.
 
 ## 7. Unverified
 

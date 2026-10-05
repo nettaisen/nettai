@@ -1,6 +1,6 @@
 --!strict
--- ElemTrap's trap, as BN5 and BN6 share it (BN6's attack object #0x4D,
--- `sub_80CDF84`; BN5's #0x4D, 0x080CF590): an
+-- ElemTrap's trap, as EXE5 and EXE6 share it (EXE6's attack object #0x4D,
+-- `sub_80CDF84`; EXE5's #0x4D, 0x080CF590): an
 -- invisible collision over the whole field, even while the battle is
 -- dimmed, that feels the other side's hits. The first hit of fire, aqua,
 -- elec or wood springs it: once the battle isn't dimmed it marks the enemy
@@ -12,8 +12,8 @@
 --
 -- Each game makes its kind with `trap.make_kind(id, look)` (what it
 -- watches, collides as, sparkles and strikes with) and sets it with
--- `trap.spawn` (the trap chips' controller, @exelib/traps/controller: BN6's
--- ElemTrap, BN5's AntiFire to AntiWood).
+-- `trap.spawn` (the trap chips' controller, @exelib/traps/controller: EXE6's
+-- ElemTrap, EXE5's AntiFire to AntiWood).
 
 local panels = require("../panels")
 local regions = require("../regions")

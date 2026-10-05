@@ -1,6 +1,6 @@
 --!strict
--- A drill, as BN5 and BN6 share it (BN6's attack object #0x71,
--- `sub_80D2A94`; BN5's #0x71): DrilArm's
+-- A drill, as EXE5 and EXE6 share it (EXE6's attack object #0x71,
+-- `sub_80D2A94`; EXE5's #0x71): DrilArm's
 -- (./chip), which GroundCross's charged shot
 -- (navis/megaman/forms/groundcross/drill) and MstrCros's GroundCross
 -- (chips/mstrcros/navi) use too. It sits on the panel ahead of its owner
@@ -11,7 +11,7 @@
 -- or, for the second, the first drill's link, which the first clears when
 -- it goes. A hit also shakes the camera. Each game's drill is a kind of its
 -- look (`drill.make_kind`: its spark, its collision, what its third
--- parameter means, and what its spawn keeps; BN5's DrilArm and DarkDril).
+-- parameter means, and what its spawn keeps; EXE5's DrilArm and DarkDril).
 
 local regions = require("../regions")
 
@@ -24,7 +24,7 @@ export type State = {
     -- The second drill (ExtraVars+8).
     child: Object?,
     -- It is the second (Param1 1), its ticks of hitting (Param2), and
-    -- Param3: BN6's light one that hits once, with hit modifier 3; BN5's
+    -- Param3: EXE6's light one that hits once, with hit modifier 3; EXE5's
     -- dark one, whose hit carries a bug.
     second: boolean,
     ticks: number,
@@ -160,7 +160,7 @@ function drill.make_kind(
         c:set_hit_effect(look.spark)
         local dark = look.param3
         if s.light and type(dark) == "table" then
-            -- (BN5's 0x080D4154: sub_801A4D0.)
+            -- (EXE5's 0x080D4154: sub_801A4D0.)
             c.bugs = dark.bug + bit32.lshift(dark.bug_arg, 8)
         end
         me:set_lifecycle("update")

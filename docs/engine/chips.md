@@ -1,6 +1,6 @@
 # Battle chips: data, hand handling, use, attack framework
 
-Engine spec for the clean-room Rust port of the MMBN6 US Falzar (BR6E) battle engine, PvP netbattle first.
+Engine spec for the clean-room Rust port of the EXE6 US Falzar (BR6E) battle engine, PvP netbattle first.
 It covers chip data, the per-player battle hand ("chip block"), how a chip gets from the custom screen into
 an attack action, the generic attack framework (action handlers, spawners, collision hand-off, dimming),
 the MegaBuster as the non-chip counterpart, and a frame-exact worked example (GunDelS3) from a real match.
@@ -86,7 +86,7 @@ The one exception is the empty-hand read in `chip_800AEE8` (§2.5).
 | +0x0C | u8 | `subtype` | Variant within the action, copied to `av[3]`. For example Cannon/HiCannon/M-Cannon = 0/1/2, GunDelS1/2/3/EX = 0/1/2/3. It indexes `off_802CCB4` for action 0x15 and `off_802CD5C` for action 0x1B. | `sub_80126E4` |
 | +0x0D | u8 | ? | **No reader found.** | – |
 | +0x0E | u8 | ? | 0/4/5/6. **No reader found.** | – |
-| +0x0F | u8 | `beast_lockon` | Copied to `av[0x1D]`, but only in Beast Out forms or for a chip-gate chip. When set, dispatch goes through the Beast wrapper `sub_80EAD9C` (§2.11). nettai: BN6's beast system's chip extension `beast` (its presence, unless `rush = false`), which its `chip_used` writes to the attack's `wrapped`. | `sub_800FB54` |
+| +0x0F | u8 | `beast_lockon` | Copied to `av[0x1D]`, but only in Beast Out forms or for a chip-gate chip. When set, dispatch goes through the Beast wrapper `sub_80EAD9C` (§2.11). nettai: EXE6's beast system's chip extension `beast` (its presence, unless `rush = false`), which its `chip_used` writes to the attack's `wrapped`. | `sub_800FB54` |
 | +0x10 | u32 | `params` | 4 action-specific bytes, copied to `av.u32[0xC]` and passed as r4 to spawners. Examples: Vulcan shot row 0x0C, AirShot 4, TankCan 0x100. | `sub_80126E4` |
 | +0x14 | u8 | `lockout` | Post-chip lockout in frames. Copied to `av[5]`, then to `ai[0x19]` at attack end (§2.8). Most chips 0. Seeds and Lance 10; FireHit, Boomer, GolmHit, BusterUp, Atk+10 and others 20; Recov and TimeBom 30; AirHocky 50. | `sub_80126E4` |
 | +0x15 | u8 | `lib_index` | Library sub-index. | menus only |
@@ -795,15 +795,15 @@ already set up (Beat first); Tango every idle frame before any request:
   the next Cannons wear), and `navicust/bug-support` (a bugged Rush never comes). Each support is hosted once by
   either side. Not reached: a Giga chip for Beat, WhiCapsl for Rush (its hand left alone), Rush with the victim's
   navi gone, a failed spawn.
-- **The content** is shared with BN5 (content/exelib/supports: `controller`, `rush`, `beat`, `tango`, `heal`, each
+- **The content** is shared with EXE5 (content/exelib/supports: `controller`, `rush`, `beat`, `tango`, `heal`, each
   made of a game's look: its kinds' keys, sprites, sounds and effects, Rush's bite and spared chip, the heal's
-  trajectory and barrier); BN6's lib/supports and BN5's make them. BN5's are BN6's code (the controller effect
+  trajectory and barrier); EXE6's lib/supports and EXE5's make them. EXE5's are EXE6's code (the controller effect
   object #0x74, 0x080E8F50; Rush, Beat and Tango actors #0x4B to #0x4D, 0x080C2214, 0x080C24C8, 0x080C2714; the
   heal attack #0x9F, 0x080DA6AC; the triggers 0x0800E3B6, 0x0800E418 and 0x0800E498 in the same places; the telop
-  chips 0x179 to 0x17B) but for Rush: BN5's ruleset hands him no chip (0x0800E498 passes 0, and its controller
+  chips 0x179 to 0x17B) but for Rush: EXE5's ruleset hands him no chip (0x0800E498 passes 0, and its controller
   doesn't load its parameters for the spawner), his bite (0x080C23BE) has no WhiCapsl check (the hand always moves
   on), and its branch without a victim pops what it pushed (no hand moves on). The inits don't decompress the
-  sprites; the heal raises BN5's barrier 5 (0x080174DA) and BN5's barrier visual. See docs/design/bn5-map.md §15.15.
+  sprites; the heal raises EXE5's barrier 5 (0x080174DA) and EXE5's barrier visual. See docs/design/exe5-map.md §15.15.
 
 ### 2.11 Cross / Beast Out differences (reachable in PvP; trace battle 2)
 
@@ -986,7 +986,7 @@ Representative handlers, all code-derived. Frame counts assume the attack is not
 | Navi chips (0x1B → `sub_80EC350`) | 1 | `sub_80E192C(panelX, panelY, av+2, av3, av.u32[0xC], av.u32[8], chip \| av6<<16)` spawns T4 0x10 (summon controller → `off_802CD5C[subtype]`). Registers the dimming exactly as 0x15, then exits **in the same frame**. |
 | GunDelSol (0x37 → `sub_80EDAE0`) | 140 (S3) | §4 |
 | Reflector (0x2B → `sub_80ED13E`; the pack's `chips/rflectr`) | params[0] + 2 (62) | One phase. f1: the shield (T3 0x2B, `sub_80C97E0`: at attach point 6, look `byte_80C9664[params[1]]`, stored in RelatedObject1Ptr), ObjectFlags1 GUARD and 0x400000, anim 0 (and the Beast head's, `sub_80101D4`), av+0x30 = 0, timer = 0. **Every tick after:** unless subtype 3, if CollisionData+0x03 (the directions the guard blocked) has bit `1 << flip`: a guard-breaking hit (FlagsFromCollision & 2) drops the shield and the guard; otherwise the first such tick (av+0x30 0 → 1) sends the wave back: subtypes 0..2 the T3 0x2F wave (`sub_80C9CDA`: one panel ahead, Z 16, damage word `av.u32[8] + av.u16[6]`, sound 0xC5), subtype 4 the buster's projectile (T3 #0 with Param1 6, Z 20), others nothing. Then timer + 1; past params[0]: the shield and guard go, exit. No reactive abort, no counter window. |
-| Recovery (0x20 → `sub_80EC844`; chips/recov, chips/drkrecov) | 1 | f1: `sub_800E2FC(byte_80EC870[subtype], 1)` (10, 30, 50, 80, 120, 150, 200, 300, 1000; each chip's `hp` in chips/recov/init.luau): unless the opponent's defensive-chip record is AntiRecv (0xBD), HP += n up to the maximum, effect #0 look 6 at the navi, sound 0x8A; if it is, AntiRecv's controller (T4 0x2C, `sub_80E3728`) starts a dimming (`sub_800BF16` with no cut-in) that takes n from the navi, the trap mark (effect #0 look 0x46, Param2 = the local side, sound 0xA5) and the record is spent. Then side statistic 5 + 1, exit. The ruleset's heal (`kinds::heal`) runs it; T4 0x2C is BN6's chips/antirecv/controller, the role `kinds.anti_recovery` (§3.6.7). The AntiRecv branch matches a scratch chip-lab recording (Recov10 against AntiRecv). |
+| Recovery (0x20 → `sub_80EC844`; chips/recov, chips/drkrecov) | 1 | f1: `sub_800E2FC(byte_80EC870[subtype], 1)` (10, 30, 50, 80, 120, 150, 200, 300, 1000; each chip's `hp` in chips/recov/init.luau): unless the opponent's defensive-chip record is AntiRecv (0xBD), HP += n up to the maximum, effect #0 look 6 at the navi, sound 0x8A; if it is, AntiRecv's controller (T4 0x2C, `sub_80E3728`) starts a dimming (`sub_800BF16` with no cut-in) that takes n from the navi, the trap mark (effect #0 look 0x46, Param2 = the local side, sound 0xA5) and the record is spent. Then side statistic 5 + 1, exit. The ruleset's heal (`kinds::heal`) runs it; T4 0x2C is EXE6's chips/antirecv/controller, the role `kinds.anti_recovery` (§3.6.7). The AntiRecv branch matches a scratch chip-lab recording (Recov10 against AntiRecv). |
 | Reflector's shield (T3 0x2B, `sub_80C96A0`; chips/rflectr/shield.luau) | - | Init: sprite, anim, palette from its look row, panel from its spawn position (the attach-point offset), flip, sound 0xA0, the offset kept in its velocity. Action 0: its owner's position + offset, until the owner's RelatedObject1Ptr is cleared; action 4: the fade animation for the row's ticks, then state 8 (`object_freeMemory`). After the action: visible, unless the local navi is blind to it (`sub_800EB6C`) or its owner vanished for a navi chip (state bit 0x100000). Runs while paused and dimmed; the sprite stands still while dimmed. |
 | Reflector's wave (T3 0x2F, `sub_80C9BC4`) | - | Init: off the field, freed; else sprite 0x14/4, timer 2, collision (4, 5, 0) region 1 on its panel. Each tick: resolve, hit spark; battle over: gone. A hit clears its region. Action 0: timer − 1; at 0 the next segment one panel ahead (same Z and damage), action 4. Action 4: gone when the animation's last frame ends. |
 
@@ -1289,7 +1289,7 @@ and hit parameter 0x1E, in the chip's parameters (Z = the mark's, left in r3). A
 dimming like the navi chip's controller; nothing else starts one (unlike a recovery chip's heal). Port:
 `kinds::navi_chip`, `kinds::heal`.
 
-**AntiRecv's counterattack, T4 0x2C (`sub_80E3728`; BN6's chips/antirecv/controller, which the ruleset spawns by the role `kinds.anti_recovery`).** Spawned by `sub_80E37D2`
+**AntiRecv's counterattack, T4 0x2C (`sub_80E3728`; EXE6's chips/antirecv/controller, which the ruleset spawns by the role `kinds.anti_recovery`).** Spawned by `sub_80E37D2`
 (r0/r1 the healer's panel, r2 element 0, r6 the damage word, r7 = 0xBD for the telop; RelatedObject1 = the healer,
 the healer's alliance; its position the spawner's registers). A dimming controller: states `object_timefreezeBegin`,
 `sub_80E3748`, `object_timefreezeEnd`; actions (`off_80E375C`) 0 `object_dimScreen`, 4 `object_drawChipName`, 8
@@ -1520,11 +1520,11 @@ blast) over region 0x80.
 
 **Where the counterattack goes: the Japanese games' (the user's decision, 2026-10-02).** The US games' `sub_80E360E`
 spawns it at the **head** of the update list (`sub_80033E4`, which only the US ROMs have), so it first runs in the
-next tick. The Japanese games' (EXE6 Falzar 0x080E81E6, EXE6 Gregar 0x080E9516) spawn it with `object_spawnType4`,
+next tick. The Japanese games' (JP Falzar 0x080E81E6, JP Gregar 0x080E9516) spawn it with `object_spawnType4`,
 right after the trap (`sub_8003400`), so it runs later in the tick the trap springs: the dimming, and all that
 follows, come a tick earlier. The engine runs the Japanese games' on every console
 (`battle.spawn`; jp-differences.md §8.1). The spring, the sparkles, the counterattack and the bursts are
-**verified** on Japanese consoles (EXE6 Falzar and Gregar; the chip lab's `jp/chips/0x0c5-elemtrap`: sprung by fire,
+**verified** on Japanese consoles (JP Falzar and Gregar; the chip lab's `jp/chips/0x0c5-elemtrap`: sprung by fire,
 aqua, elec and wood, `sprung-dimmed` (sprung inside the other side's dimming: it waits for the dimming to end), and
 every other ElemTrap scenario, `null-hit` among them: a hit without an element leaves the trap). The US consoles'
 recordings that spring it (`chips/0x0c5-elemtrap/sprung-fire`, `sprung-elec`, `sprung-dimmed`) match up to the
@@ -2549,8 +2549,8 @@ Count H\* + Count[EX] H + Count[SP] H: the Japanese games' names, which the cont
 HackJack, HackJck[EX] and HackJck[SP]. **The US games have no routine**: their
 `off_802CD5C[18]` is null (the game jumps to address 0), T1 0x11 and T3 0x0D point at placeholder routines and
 sprite (8, 0x16) is a placeholder archive (the pack has the Japanese ROMs' sprite, `count`). The Japanese games
-(EXE6 Falzar BR6J, EXE6 Gregar BR5J) have them; the
-two are the same code at different addresses (EXE6 Falzar's below; EXE6 Gregar's +0x1860 for the navi, +0x1860 for
+(JP Falzar BR6J, JP Gregar BR5J) have them; the
+two are the same code at different addresses (JP Falzar's below; JP Gregar's +0x1860 for the navi, +0x1860 for
 the lance). There is no Japanese disassembly: the addresses are the ROMs', the routines they call the US games'
 (the verification workspace's `fmap.py --to` maps them). Content: chips/count (navi, lance, chips).
 
@@ -2621,7 +2621,7 @@ Every lance Count drops has Param3 2: it strikes at once, while dimmed. Action 0
 the other user's: attack 0x0C (0x080C91E0), which drops lances with them, is spawned only by the Japanese games'
 Count navi AI (0x08107908, 0x0810DE6E; out of a netbattle's reach, as every navi AI).
 
-**Verified** on Japanese consoles (EXE6 Falzar and Gregar: the chip lab's jp/chips/0x113-count, 0x114-count-ex and
+**Verified** on Japanese consoles (JP Falzar and Gregar: the chip lab's jp/chips/0x113-count, 0x114-count-ex and
 0x115-count-sp, 43 scenarios): every timing above, each level's rain and lances, the targets (the enemy where it
 stands, invisible, killed by the rain; the grass, ice and poison stages' lists), no footing, the guards, AntiNavi
 (Count turned on his user), Beat (a Mega chip), the counter and the counter cut-ins both ways, Atk+10 and Navi+20
@@ -2638,7 +2638,7 @@ Django D\* + Django2 D + Django3 D. **The US games have no routine**: `off_802CD
 placeholder, sprite (0xC, 0xF) a placeholder archive (the pack has the Japanese ROMs' sprite, `django`), and
 attachment rows 0xB and 0xC show sprite (0xC, 0) (the Japanese games': (0xC, 0xF), Django's: the US games' CrosOver
 shows his gun from the blades' sheet; the content shows the Japanese games' on every console). The Japanese
-games' code below (EXE6 Falzar; EXE6 Gregar +0x1860). Content: chips/django (navi, chips).
+games' code below (JP Falzar; JP Gregar +0x1860). Content: chips/django (navi, chips).
 
 The records differ: the US games' are class 3 (not a folder chip) with flags 0; the Japanese games' class 1 (Mega)
 with flags 0x47 (dimming, damage, navi, library), and their sort keys are the Japanese order. Damage 130/180/260 (the
@@ -2686,14 +2686,14 @@ with none.
 
 Timeline from his init tick S: landed and riding S+10; the ride's end S+59 (freed then without the command).
 
-**Verified** on Japanese consoles (EXE6 Falzar and Gregar: the chip lab's jp/chips/0x116-django, 0x117-django2 and
+**Verified** on Japanese consoles (JP Falzar and Gregar: the chip lab's jp/chips/0x116-django, 0x117-django2 and
 0x118-django3, 48 scenarios): the drop, the ride's hits and misses at each level, a crash into a hole mid-ride and on
 the landing panel (with and without the command), the command with a target (in his row, a row or two away, the
 adjacent column) and without one (invisible), keys out of turn and after the ride, a RockCube in his row (his or the
 opponent's), the guards, AntiNavi and Beat (the Japanese record's navi flag and Mega class), the counter, the counter
 cut-ins both ways (the record's dimming flag), Atk+10 and Navi+20 (the ride takes them, the slash only the flags),
-Full Synchro, side 1 and the KOs. On EXE6 Gregar his spawner's address (his Z's fraction) is 0x080BEF03: his drop's
-velocity, so his and his bike's Z, differ from EXE6 Falzar's until he lands (compat's games.toml maps it).
+Full Synchro, side 1 and the KOs. On JP Gregar his spawner's address (his Z's fraction) is 0x080BEF03: his drop's
+velocity, so his and his bike's Z, differ from JP Falzar's until he lands (compat's games.toml maps it).
 **Unverified**: the command's 60 ticks running out (unreachable: the ride is 48) and a full pool (no bike, no
 Django).
 

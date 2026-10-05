@@ -74,14 +74,14 @@ fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
     b.objects.get(r).related[0].expect("Full Synchro aura has a navi")
 }
 
-/// Whether `r`'s side has BN5's emotions, and with them BN5's aura (actor
-/// object #0x5E, 0x080C45E0: docs/design/bn5-map.md §15.11).
-fn bn5(b: &Battle) -> bool {
-    b.game_rules().emotions == Emotions::Bn5
+/// Whether `r`'s side has EXE5's emotions, and with them EXE5's aura (actor
+/// object #0x5E, 0x080C45E0: docs/design/exe5-map.md §15.11).
+fn exe5(b: &Battle) -> bool {
+    b.game_rules().emotions == Emotions::Exe5
 }
 
 /// `sub_80C4B18`: the state's routine, then the sprite unless dimmed or
-/// paused (BN5's, 0x080C45E0: paused or not).
+/// paused (EXE5's, 0x080C45E0: paused or not).
 pub fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).state {
         state::INIT => init(b, r),
@@ -89,7 +89,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         _ => return b.objects.free(r),
     }
     if b.objects.is_allocated(r) && !b.is_dimmed() {
-        if bn5(b) {
+        if exe5(b) {
             common::update_sprite_even_paused(b, r);
         } else if !b.paused {
             common::update_sprite(b, r);
@@ -127,22 +127,22 @@ fn init(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80C4B84`: follow the navi (hidden when hidden, when the navi is
 /// submerged, or from a viewer whose navi is blind when the navi is the
-/// other side's); go when unlinked or no longer in Full Synchro. BN5's
+/// other side's); go when unlinked or no longer in Full Synchro. EXE5's
 /// (0x080C4648) keeps the animation it started with, is hidden while the
 /// navi is bubbled too, and once the fight is on stops running while
 /// paused.
 fn tick(b: &mut Battle, r: ObjectRef) {
-    let bn5 = bn5(b);
+    let exe5 = exe5(b);
     let navi = owner(b, r);
-    if !bn5 {
+    if !exe5 {
         let anim = animation(b, r);
         b.objects.get_mut(r).anim = anim;
     }
     let alliance = b.objects.get(r).alliance;
     let shown = vars(b, r).shown;
-    let hiding = if bn5 { f1::SUBMERGED | f1::BUBBLED } else { f1::SUBMERGED };
+    let hiding = if exe5 { f1::SUBMERGED | f1::BUBBLED } else { f1::SUBMERGED };
     let submerged = b.objects.get(navi).collision.is_some_and(|c| b.collision.get(c).f1 & hiding != 0);
-    if bn5 && b.round.flags & crate::battle::battle_flags::FIGHTING != 0 {
+    if exe5 && b.round.flags & crate::battle::battle_flags::FIGHTING != 0 {
         b.objects.get_mut(r).flags &= !flags::RUN_WHILE_PAUSED;
     }
     let (pos, flip) = {

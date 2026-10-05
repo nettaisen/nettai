@@ -274,7 +274,7 @@ pub struct Objects {
     loop_register: u32,
     /// How many slots of each pool a battle may use (at most `SLOTS`): the
     /// larger of the two players' games' (docs/design/rules-in-luau.md
-    /// §2.3). BN6's are 32 each; BN5's actor pool has 16.
+    /// §2.3). EXE6's are 32 each; EXE5's actor pool has 16.
     capacity: [u8; 3],
 }
 

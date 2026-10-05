@@ -1,6 +1,6 @@
 --!strict
--- A tornado, as BN5 and BN6 share it (BN6's attack object #0x31,
--- `sub_80C9F78`; BN5's #0x31, 0x080CAC60): Tornado's
+-- A tornado, as EXE5 and EXE6 share it (EXE6's attack object #0x31,
+-- `sub_80C9F78`; EXE5's #0x31, 0x080CAC60): Tornado's
 -- and Static's. It spins on its panel for its time, its region re-armed
 -- every few ticks (by its variant) after each hit, so it hits what stands
 -- there again and again. A plain tornado on a volcano, grass or ice panel

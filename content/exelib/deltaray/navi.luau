@@ -1,20 +1,20 @@
 --!strict
--- DeltaRay, the navi of the DeltaRay chip, as BN6 and BN5 share him (BN6's
--- actor object #0x3D, `sub_80C2A78`; BN5's #0x3D, 0x080C2018), brought by
+-- DeltaRay, the navi of the DeltaRay chip, as EXE6 and EXE5 share him (EXE6's
+-- actor object #0x3D, `sub_80C2A78`; EXE5's #0x3D, 0x080C2018), brought by
 -- its navi chip controller. He fades in on his user's panel, flashing, then
 -- looks for the first enemy navi ahead (column by column, rows 1 to 3) and
--- a free panel by it, diagonally up (behind it in BN6, the column past it
--- in BN5's code, whichever way he faces); there he strikes with his sword
+-- a free panel by it, diagonally up (behind it in EXE6, the column past it
+-- in EXE5's code, whichever way he faces); there he strikes with his sword
 -- (a column of three in front of him, with a slash effect). Each time his
 -- user presses A while dimmed during a strike, he goes on to the next
 -- corner of the delta (up to three strikes), as long as the panel is free;
 -- then he returns home, bursts, and leaves. Without an enemy navi ahead, he
--- only marks the air. BN5's, in the own-gauges mode, aims at the
+-- only marks the air. EXE5's, in the own-gauges mode, aims at the
 -- enemy navi his side tracks instead (behind it toward his side's end). See
 -- docs/engine/chip-table.md (navi chip subtype 28).
 --
 -- Each game makes his kind (`deltaray.make`: his sprite, sounds, effects,
--- sword, burst and finish, and where BN5's code differs: its candidate
+-- sword, burst and finish, and where EXE5's code differs: its candidate
 -- column, its flashes, its tracking).
 
 local regions = require("../regions")
@@ -45,12 +45,12 @@ export type Spec = {
     -- `burst(owner, pos, flip)`).
     finish_anim: number,
     burst: (owner: Object, pos: Vec3, flip: number) -> Object?,
-    -- The palette flashes BN6's strike and burst make (BN5's make none).
+    -- The palette flashes EXE6's strike and burst make (EXE5's make none).
     flashes: boolean,
     -- The column of his first candidate panel from an enemy navi's column
-    -- `x` and his facing `f`: BN6's behind it, BN5's `x + 1`.
+    -- `x` and his facing `f`: EXE6's behind it, EXE5's `x + 1`.
     candidate_x: (x: number, f: number) -> number,
-    -- BN5's: in the own-gauges mode he aims at the enemy navi his
+    -- EXE5's: in the own-gauges mode he aims at the enemy navi his
     -- side tracks (attack phase 0x1C).
     tracks: boolean,
 }
@@ -80,21 +80,21 @@ export type State = {
 
 local deltaray = {}
 
--- What he looks for (by side, BN6's `off_80C2F2C`: an enemy navi's body),
+-- What he looks for (by side, EXE6's `off_80C2F2C`: an enemy navi's body),
 -- and a panel he can stand on: solid, and none of these (by side).
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
 local STAND_FORBID = { [0] = 0x0788_0080, 0x0B88_0080 }
 
 -- The delta's steps from one corner to the next, x toward his front
--- (BN6's `byte_80C2F20`), by strike.
+-- (EXE6's `byte_80C2F20`), by strike.
 local STEPS = { [0] = { -1, -1 }, { 2, 1 }, { -2, 1 }, { 0, 0 } }
 
--- BN6's candidate: behind the enemy navi, from his facing.
+-- EXE6's candidate: behind the enemy navi, from his facing.
 function deltaray.behind(x: number, f: number): number
     return x - f
 end
 
--- BN5's: the column past it, x + 1, whichever way he faces (0x080C1C0C:
+-- EXE5's: the column past it, x + 1, whichever way he faces (0x080C1C0C:
 -- the code computes the step back and then adds 1).
 function deltaray.plus_one(x: number, _f: number): number
     return x + 1
@@ -140,7 +140,7 @@ function deltaray.make(spec: Spec): {
     end
 
     -- `sub_80C2B8C`: a flash above him, 60 ticks; then on to the attack
-    -- (BN5's, in the own-gauges mode, at its phase 0x1C), or gone if
+    -- (EXE5's, in the own-gauges mode, at its phase 0x1C), or gone if
     -- his panel isn't solid.
     local function arrive(me: Object)
         if me.phase_init == 0 then
@@ -230,7 +230,7 @@ function deltaray.make(spec: Spec): {
         not_found(me)
     end
 
-    -- BN5's phase 0x1C (0x080C1E68): the enemy navi his side tracks, its
+    -- EXE5's phase 0x1C (0x080C1E68): the enemy navi his side tracks, its
     -- candidate behind it toward his side's end, a row up.
     local function track(me: Object)
         local s = st(me)
@@ -345,7 +345,7 @@ function deltaray.make(spec: Spec): {
     end
 
     -- `sub_80C2D8C`: the strike: his sword out (animation 5), 20 ticks; at 10
-    -- left (BN6's with a flash) the hit (a column of three, 16 pixels up) and
+    -- left (EXE6's with a flash) the hit (a column of three, 16 pixels up) and
     -- the slash on the panel he faces. A press while more than 5 are left
     -- asks for another.
     local function strike(me: Object)
@@ -415,7 +415,7 @@ function deltaray.make(spec: Spec): {
     end
 
     -- `sub_80C2FBC`: a burst (the follow effect's "flash", 60 ticks) on
-    -- (x, y), with a sound (and BN6's white flash of 20 ticks).
+    -- (x, y), with a sound (and EXE6's white flash of 20 ticks).
     local function burst(me: Object, x: number, y: number)
         local cx, cy = field.center(x, y)
         local fx = spec.burst(me, Vec3.new(cx, cy, 0), bit32.bxor(me.alliance, me.flip))

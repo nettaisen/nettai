@@ -1,13 +1,13 @@
 --!strict
--- GunDelSol's sun beam (BN6's effect object #0x48, `sub_80E5C2C`; BN5's the same number and code, 0x080E5BD0, but
--- for the dimming test below): the light shining on the target column (BN6's CrosOver's Django shines it too).
+-- GunDelSol's sun beam (EXE6's effect object #0x48, `sub_80E5C2C`; EXE5's the same number and code, 0x080E5BD0, but
+-- for the dimming test below): the light shining on the target column (EXE6's CrosOver's Django shines it too).
 -- Visual only, but it takes an effect slot and a place in the update order. It follows its owner at a fixed
 -- offset and ends itself once the owner's slot is cleared.
 --
--- Its look (sprite and palette, the original's first two parameters, a look of BN6's `dword_80E5C28`) is its
--- spawner's; its hum is its game's (`beam.make_kind(id, look)`: BN6's chips/gundels/beam, BN5's
--- objects/gundels). BN5's hides it whenever the battle is dimmed (0x080E5C44): BN6's third parameter, which shows
--- it then too (CrosOver's), BN5's has not, and its spawns never set it.
+-- Its look (sprite and palette, the original's first two parameters, a look of EXE6's `dword_80E5C28`) is its
+-- spawner's; its hum is its game's (`beam.make_kind(id, look)`: EXE6's chips/gundels/beam, EXE5's
+-- objects/gundels). EXE5's hides it whenever the battle is dimmed (0x080E5C44): EXE6's third parameter, which shows
+-- it then too (CrosOver's), EXE5's has not, and its spawns never set it.
 
 local slot = require("../slot")
 

@@ -162,7 +162,7 @@ pub const FIELDS: &[Field] = &[
     flag!("float_shoes", "FlotShoe: panels don't act on the navi", |s| s.float_shoes),
     flag!("air_shoes", "AirShoes: the navi stands over holes", |s| s.air_shoes),
     flag!("undershirt", "UnderSht: a hit that would delete leaves 1 HP", |s| s.undershirt),
-    int!("hub_style", 2, "BN5's Hub Style (its patch card 111: 1 Team ProtoMan's, 2 Team Colonel's)", |s| s.hub_style),
+    int!("hub_style", 2, "EXE5's Hub Style (its patch card 111: 1 Team ProtoMan's, 2 Team Colonel's)", |s| s.hub_style),
     flag!("status_guard", "statuses don't take", |s| s.bugs.status_immunity),
     record!("first_barrier", "barrier", "the barrier the navi enters with", |s| s.first_barrier),
     Field {
@@ -379,7 +379,7 @@ mod tests {
     /// again.
     #[test]
     fn a_block_gives_back_the_stats() {
-        let content = crate::testing::bn6_content();
+        let content = crate::testing::exe6_content();
         let megaman = content.form_changing_navi().unwrap();
         let base = crate::Side::base_stats(&content, megaman, nettai_battle::custom::GameVersion::Falzar);
         let mut live = base;
@@ -388,14 +388,14 @@ mod tests {
         let block = diff(&content, &base, &live);
         assert!(block.contains_key("hp"), "{block:?}");
         let mut back = base;
-        assert_eq!(apply(&content, "bn6", &block, &mut back), Vec::<String>::new());
+        assert_eq!(apply(&content, "exe6", &block, &mut back), Vec::<String>::new());
         assert_eq!(back, live);
         // A name no stat has, a value out of range, a key of nothing.
         let mut bad = BTreeMap::new();
         bad.insert("atack".to_string(), toml::Value::Integer(1));
         bad.insert("rapid".to_string(), toml::Value::Integer(-1));
         bad.insert("buster".to_string(), toml::Value::String("nothing".into()));
-        let problems = apply(&content, "bn6", &bad, &mut back);
+        let problems = apply(&content, "exe6", &bad, &mut back);
         assert_eq!(problems.len(), 3, "{problems:?}");
     }
 }

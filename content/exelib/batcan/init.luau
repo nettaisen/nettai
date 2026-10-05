@@ -1,14 +1,14 @@
 --!strict
--- BatCan1-4, as BN5 and BN6 share them (BN6's action 0x19, `sub_80EC0E6`; BN5's 0x36, 0x080EE410; BN6's
+-- BatCan1-4, as EXE5 and EXE6 share them (EXE6's action 0x19, `sub_80EC0E6`; EXE5's 0x36, 0x080EE410; EXE6's
 -- docs/engine/shot-chips.md §6): the navi raises its bat cannon and fires an unseen shot from the panel ahead on the
--- 7th tick; BatCan4 fires three, 16 ticks apart, the last staggering harder. The shot (BN6's attack object #1,
--- `sub_80C50B8`; BN5's #1, 0x080C49FC) is the projectile's twin without a look: it steps a panel every two ticks
+-- 7th tick; BatCan4 fires three, 16 ticks apart, the last staggering harder. The shot (EXE6's attack object #1,
+-- `sub_80C50B8`; EXE5's #1, 0x080C49FC) is the projectile's twin without a look: it steps a panel every two ticks
 -- from where it appears and ends on its first hit, with the bat's spark; what differs between the shots is its hit
 -- modifier. (Its record also gives a word its hits add into the target's collision data, `sub_80C518C`'s, which
 -- nothing in either game reads; it isn't kept.)
 --
 -- Each game makes its own (`batcan.make`) with its look: the bat cannon, the sound, the shot's collision types and
--- spark, and whether raising the cannon restarts the navi's form overlay (BN6's; BN5's 0x080EE448 doesn't).
+-- spark, and whether raising the cannon restarts the navi's form overlay (EXE6's; EXE5's 0x080EE448 doesn't).
 
 local attachment = require("@exelib/attachment")
 
@@ -17,13 +17,13 @@ local batcan = {}
 export type Look = {
     -- The shot kind's id.
     shot_id: string,
-    -- The bat cannon (BN6's attachment row 0xF, BN5's 0x21: it sits at a fixed offset by its holder), and the
+    -- The bat cannon (EXE6's attachment row 0xF, EXE5's 0x21: it sits at a fixed offset by its holder), and the
     -- game's attachment kind that holds it.
     bat: AttachmentLook,
     attachment: Kind,
     sound: Sound,
     shot: { is: CollisionType, hits: CollisionType, spark: Spark },
-    -- Raising the cannon restarts the navi's form overlay (BN6's).
+    -- Raising the cannon restarts the navi's form overlay (EXE6's).
     restarts_overlay: boolean,
 }
 
@@ -155,7 +155,7 @@ function batcan.make(look: Look): BatCan
             me.step, me.step_init = FIRE, 0
         end
 
-        -- `sub_80EC11C`: raise a new bat cannon (BN6's form overlay restarts with the navi's animation); fire on the
+        -- `sub_80EC11C`: raise a new bat cannon (EXE6's form overlay restarts with the navi's animation); fire on the
         -- count's 5; at 0xF the next shot, or the recovery.
         local function fire_step(me: Object, s: State)
             if me.step_init == 0 then

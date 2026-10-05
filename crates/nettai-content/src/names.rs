@@ -1,7 +1,7 @@
 //! The names a pack's assets are written under (docs/design/
 //! content-model-v2.md §6.3): sprites, backgrounds and songs by name, the
 //! HUD's mugshots, banners and chip icons by name. The extractor fills
-//! them from BN6's compat/assets.toml; what they don't name is written
+//! them from EXE6's compat/assets.toml; what they don't name is written
 //! under a placeholder (`sprite-0c-2d`, `sound-10e`), so nothing is lost.
 //! Every file also holds its number (a sprite's `sprite.json`, a song's
 //! header...), which the importers read: a pack's names are free.

@@ -1,5 +1,5 @@
 --!strict
--- Sparkles (effect object #0x11: BN6's `sub_80E19BC`, BN5's 0x080E1A68, the same code): unseen
+-- Sparkles (effect object #0x11: EXE6's `sub_80E19BC`, EXE5's 0x080E1A68, the same code): unseen
 -- itself, it sets off an effect over an object, jittered, every 16 ticks
 -- for a while (VDoll's curse marks the combatants it hits with them). See
 -- docs/engine/shot-chips.md §14.2.
@@ -10,7 +10,7 @@
 
 local sparkles = {}
 
--- A game's sparkles: its kind's id and the sound each sparkle makes (BN6's and BN5's 0x6F).
+-- A game's sparkles: its kind's id and the sound each sparkle makes (EXE6's and EXE5's 0x6F).
 export type SparklesLook = { id: string, sound: Sound }
 
 -- The sparkles made for a game: `spawn` is `sub_80E1A6A`, sparkles over `over` (their position is what the

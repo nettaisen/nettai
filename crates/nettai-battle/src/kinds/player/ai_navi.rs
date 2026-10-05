@@ -1,8 +1,8 @@
-//! Navis no player controls (actor type navi): BN5's Chaos Unison failure
-//! brings one for the other side, Dark MegaMan (docs/design/bn5-map.md
+//! Navis no player controls (actor type navi): EXE5's Chaos Unison failure
+//! brings one for the other side, Dark MegaMan (docs/design/exe5-map.md
 //! §15.9). It is the player kind's object (actor object 0) with an actor
 //! record of type navi, so its init, its tick and its idle are the navi
-//! type's (BN5's 0x080F2228: 0x08013BF6, 0x080F224C; BN6's `sub_8016F56`
+//! type's (EXE5's 0x080F2228: 0x08013BF6, 0x080F224C; EXE6's `sub_8016F56`
 //! and `sub_80F2354`'s family), its reactions and attacks the player's.
 //! It is on its side's list of alive actors but not counted: neither its
 //! coming nor its deletion changes how many navis the side has, so the
@@ -28,7 +28,7 @@ pub struct Controller {
 /// `byte_800F354`, both games'), times the body's palette scale.
 const PALETTE_BY_VERSION: [u8; 8] = [0, 0, 0, 0, 3, 1, 0, 0];
 
-/// BN5's 0x08006AAE (BN6's `sub_80076A0` with its "not counted" flag):
+/// EXE5's 0x08006AAE (EXE6's `sub_80076A0` with its "not counted" flag):
 /// the navi `identity` (its actor record of type navi, its `body`) comes
 /// onto (x, y) for `side`, `summoner`'s doing, driven by `system` (of the
 /// summoner's side's ruleset, else of `side`'s). None when the object or
@@ -102,7 +102,7 @@ pub(crate) fn spawn(
     Ok(Some(r))
 }
 
-/// BN5's 0x080F2228: the state, then the sprite steps (`object_updateSprite`).
+/// EXE5's 0x080F2228: the state, then the sprite steps (`object_updateSprite`).
 pub(super) fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).state {
         state::INIT => init(b, r),
@@ -112,7 +112,7 @@ pub(super) fn update(b: &mut Battle, r: ObjectRef) {
     crate::kinds::common::update_sprite(b, r);
 }
 
-/// BN5's 0x08013BF6 (BN6's `sub_8016F56`): its sprite (the body's, its
+/// EXE5's 0x08013BF6 (EXE6's `sub_8016F56`): its sprite (the body's, its
 /// animation 0 from the start, its palette by version), its collision as
 /// its body says, its starting flags, its target the other side's player
 /// (whom it faces), its identity's parts; then its post-init hook's palette
@@ -166,9 +166,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let identity = b.objects.get(r).identity;
     super::form::navi_init_hook(b, r, identity);
     // (AIData+0x0C, the other player's max HP / 100 from 1 to 10, is read
-    // only for actors of version 4: BN5's 0x0800D396 makes their HP from
+    // only for actors of version 4: EXE5's 0x0800D396 makes their HP from
     // it; no navi here has that version, its load refuses it.)
-    // sub_800F378: its post-init hook (BN5's Dark MegaMan's 0x08104270:
+    // sub_800F378: its post-init hook (EXE5's Dark MegaMan's 0x08104270:
     // palette 1; its flag and its HP number are the body's).
     if let Some(p) = body.palette {
         b.objects.sprite_mut(r).look.palette = p;
@@ -177,7 +177,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     super::set_action(b, r, NaviAction::Entry);
 }
 
-/// BN5's 0x080F224C: its hits (0x080F22E8's entry: the navi intake,
+/// EXE5's 0x080F224C: its hits (0x080F22E8's entry: the navi intake,
 /// 0x08017688), its damage, reactions and action (`sub_801AF44`), its
 /// driver's tick (0x080F23FC's entry: the side's systems' `navi_tick`), its
 /// chip lockout running down, the hit statistics (0x080F2624), its
@@ -197,7 +197,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// BN5's 0x080F2624: a counter hit on it, and each byte of the bugs its
+/// EXE5's 0x080F2624: a counter hit on it, and each byte of the bugs its
 /// hits inflicted, count for the other side (0x0802AEA6: its per-player
 /// battle record's first four counters, at most 10 each, and its
 /// statistic 7).
@@ -229,7 +229,7 @@ fn count_hit(b: &mut Battle, side: u8, i: usize) {
     b.bump_side_stat(side, 7, 1);
 }
 
-/// Its idle (the navi type's action 6, BN5's 0x08104210 for Dark MegaMan):
+/// Its idle (the navi type's action 6, EXE5's 0x08104210 for Dark MegaMan):
 /// its driver decides all of it.
 pub(super) fn idle(b: &mut Battle, r: ObjectRef) {
     if let Some(c) = ai(b, r).controller {
@@ -237,7 +237,7 @@ pub(super) fn idle(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// The navi type's deletion (its action 2: BN5's 0x08013D24), not while
+/// The navi type's deletion (its action 2: EXE5's 0x08013D24), not while
 /// paused.
 pub(super) fn deletion(b: &mut Battle, r: ObjectRef) {
     if b.paused {
@@ -250,7 +250,7 @@ pub(super) fn deletion(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// BN5's 0x08013D44 (the player's deletion's first step without its
+/// EXE5's 0x08013D44 (the player's deletion's first step without its
 /// music): no collision region, its status visuals, the dive, the charge,
 /// no chips, its barrier; off the side's lists (counted or not, the slot);
 /// a side tracking it tracks another.
@@ -280,7 +280,7 @@ fn begin_deletion(b: &mut Battle, r: ObjectRef) {
     o.phase_init = 0;
 }
 
-/// BN5's 0x08013D82: once not dimmed, its deletion animation, its
+/// EXE5's 0x08013D82: once not dimmed, its deletion animation, its
 /// sparkles (the role hook `navi_deleted`), the deletion flash for 90
 /// ticks over it, 90 ticks of blinking white; then its reservation, its
 /// sparkles and its parts go, it leaves every list slot, and its object

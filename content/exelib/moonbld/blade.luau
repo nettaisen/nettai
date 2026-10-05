@@ -1,5 +1,5 @@
 --!strict
--- MoonBld's blade, as BN5 and BN6 share it (BN6's attack object #0x85, `sub_80D5C48`; BN5's #0x69, 0x080D31C4, the
+-- MoonBld's blade, as EXE5 and EXE6 share it (EXE6's attack object #0x85, `sub_80D5C48`; EXE5's #0x69, 0x080D31C4, the
 -- same code but for its sprite): it rides on its owner and sweeps the eight panels around it, one a tick for 8
 -- ticks, starting ahead and going round (each hit highlighted, on one panel, no spark, a slash with hit modifier 3
 -- and bug 0x18 with argument 1; a plain blade, which no spawner makes, hit modifier 3 alone), then goes after 10
@@ -7,7 +7,7 @@
 --
 -- Its spawner leaves registers in its panel and position (see `spawn`); its first update after its init overwrites
 -- both, and its Z isn't modeled, so its position is declared scratch. Each game makes its kind with
--- `blade.make_kind(id, look)` (BN6's chips/moonbld/blade, BN5's chips/moonbld).
+-- `blade.make_kind(id, look)` (EXE6's chips/moonbld/blade, EXE5's chips/moonbld).
 
 local regions = require("../regions")
 
@@ -122,7 +122,7 @@ end
 -- spawner's registers held: `routine` is the address (with the Thumb bit) of the MoonBld phase routine that spawns
 -- it, which the action's dispatch left in a register. Its panel X is `panel_x` (MoonBld's Atk+ bonus), its panel Y
 -- the routine's low byte, its element 0; its X is the routine's address, its Y 0, and its Z whatever the action's
--- caller left (BN6's BattleState's address in a plain use, other values in a Beast or a Cross), which nothing reads
+-- caller left (EXE6's BattleState's address in a plain use, other values in a Beast or a Cross), which nothing reads
 -- and which stays 0 here. Its init doesn't move it, so on the tick it comes out it stands far off the screen and
 -- isn't drawn; its next update puts it on its owner.
 function blade.spawn(kind: Kind, owner: Object, panel_x: number, routine: number, damage: number, plain: boolean): Object?

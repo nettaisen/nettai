@@ -1,7 +1,7 @@
 {
     "aliases": {
-        "bn5": "./bn5",
-        "bn6": "./bn6",
+        "exe5": "./exe5",
+        "exe6": "./exe6",
         "exelib": "./exelib"
     }
 }

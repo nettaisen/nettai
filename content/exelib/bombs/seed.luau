@@ -1,12 +1,12 @@
 --!strict
--- A thrown seed, as BN5 and BN6 share it (BN6's attack object #0x4F, `sub_80CE24C`; BN5's #0x4A, 0x080CEC04, the
+-- A thrown seed, as EXE5 and EXE6 share it (EXE6's attack object #0x4F, `sub_80CE24C`; EXE5's #0x4A, 0x080CEC04, the
 -- same code but for its look): it flies three panels ahead in the bomb's arc and lands: on a solid panel it hits it
 -- for a tick, then turns the panels around it into its variant's kind of panel, only its own if the hit landed on
 -- something; off the field or on a hole it just ends (a splash in the hole). What differs between the seeds is its
--- variant (its element, palette, panel, sprouts and sound); between the games, its look (`SeedLook`: BN6's hit
--- modifier 1 and its element's spark, BN5's hit modifier 0 and no spark).
+-- variant (its element, palette, panel, sprouts and sound); between the games, its look (`SeedLook`: EXE6's hit
+-- modifier 1 and its element's spark, EXE5's hit modifier 0 and no spark).
 --
--- Each game makes its kind with `seed.make_kind(id, look)` (BN6's lib/bombs/seed, BN5's lib/bombs).
+-- Each game makes its kind with `seed.make_kind(id, look)` (EXE6's lib/bombs/seed, EXE5's lib/bombs).
 
 local panels = require("../panels")
 local regions = require("../regions")

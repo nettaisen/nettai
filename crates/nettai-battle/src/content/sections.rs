@@ -176,7 +176,7 @@ struct StatusSection {
     form_tick: bool,
     #[serde(default)]
     flash_hides_on_clear: bool,
-    /// The status word a navi without collision data reads as (BN6's
+    /// The status word a navi without collision data reads as (EXE6's
     /// open-bus value when left out).
     #[serde(default)]
     missing_collision_status: Option<u32>,
@@ -188,13 +188,13 @@ struct StatusSection {
     drain_bug_flags: bool,
     #[serde(default)]
     no_charge_drive: bool,
-    /// "bn6" (the default) or "bn5".
+    /// "exe6" (the default) or "exe5".
     #[serde(default)]
     hp_loss: Option<String>,
-    /// "bn6" (the default) or "bn5".
+    /// "exe6" (the default) or "exe5".
     #[serde(default)]
     emotions: Option<String>,
-    /// "bn6" (the default) or "bn5".
+    /// "exe6" (the default) or "exe5".
     #[serde(default)]
     form_break: Option<String>,
 }
@@ -295,8 +295,8 @@ fn section(rules: &mut Rules, name: &str, spec: &Data, at: &str, r: &SpecReader)
             }
             "panels" => {
                 let s: PanelsSection = r.read(spec, &at).map_err(e)?;
-                // The types the game has (docs/design/bn5-map.md §15.3 item
-                // 1): BN6 names its 13, BN5 its 11; the others keep an
+                // The types the game has (docs/design/exe5-map.md §15.3 item
+                // 1): EXE6 names its 13, EXE5 its 11; the others keep an
                 // empty rule (no panel of the game is one).
                 let mut types = vec![PanelTypeRule::default(); PanelType::ALL.len()];
                 for t in PanelType::ALL {
@@ -456,19 +456,19 @@ fn section(rules: &mut Rules, name: &str, spec: &Data, at: &str, r: &SpecReader)
                     s.missing_collision_status.map_or_else(Default::default, super::rules::MissingCollisionStatus);
                 rules.reactions = s.reactions;
                 rules.emotions = match s.emotions.as_deref() {
-                    None | Some("bn6") => super::Emotions::Bn6,
-                    Some("bn5") => super::Emotions::Bn5,
-                    Some(other) => return Err(e(format!("{at}: emotions are \"bn6\" or \"bn5\", not {other:?}"))),
+                    None | Some("exe6") => super::Emotions::Exe6,
+                    Some("exe5") => super::Emotions::Exe5,
+                    Some(other) => return Err(e(format!("{at}: emotions are \"exe6\" or \"exe5\", not {other:?}"))),
                 };
                 rules.form_break = match s.form_break.as_deref() {
-                    None | Some("bn6") => super::FormBreak::Bn6,
-                    Some("bn5") => super::FormBreak::Bn5,
-                    Some(other) => return Err(e(format!("{at}: form_break is \"bn6\" or \"bn5\", not {other:?}"))),
+                    None | Some("exe6") => super::FormBreak::Exe6,
+                    Some("exe5") => super::FormBreak::Exe5,
+                    Some(other) => return Err(e(format!("{at}: form_break is \"exe6\" or \"exe5\", not {other:?}"))),
                 };
                 let hp_loss = match s.hp_loss.as_deref() {
-                    None | Some("bn6") => super::rules::HpLoss::Bn6,
-                    Some("bn5") => super::rules::HpLoss::Bn5,
-                    Some(other) => return Err(e(format!("{at}: hp_loss is \"bn6\" or \"bn5\", not {other:?}"))),
+                    None | Some("exe6") => super::rules::HpLoss::Exe6,
+                    Some("exe5") => super::rules::HpLoss::Exe5,
+                    Some(other) => return Err(e(format!("{at}: hp_loss is \"exe6\" or \"exe5\", not {other:?}"))),
                 };
                 rules.intake = super::rules::IntakeRules {
                     bugs_before_drain: s.bugs_before_drain,

@@ -1,13 +1,13 @@
 --!strict
--- A falling meteor, as BN5 and BN6 share it (BN6's attack object #0x56,
--- `sub_80CF3BE`; BN5's #0x56;
+-- A falling meteor, as EXE5 and EXE6 share it (EXE6's attack object #0x56,
+-- `sub_80CF3BE`; EXE5's #0x56;
 -- docs/engine/dimming-chip-effects.md §6): marked on its panel (./marker),
 -- it waits 30 ticks high up behind it, falls onto it in 16, and if the
 -- panel is solid or holds a body, bursts with a one-tick hit and the camera
 -- shaking. Meteors (./chip) drops thirty (running while dimmed); the
 -- instant chips' meteor shower (lib/instant/meteor_shower) uses it too,
 -- dropping them one at a time. What it is and does when it lands is its
--- row (`byte_80CF3AC`, by the original's first parameter: BN6's three
+-- row (`byte_80CF3AC`, by the original's first parameter: EXE6's three
 -- alike); each game's meteor is a kind of its look (its sprite, sounds,
 -- rows, sparks, burst and marker: `falling_meteor.make_kind`).
 

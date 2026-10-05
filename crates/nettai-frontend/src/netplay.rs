@@ -459,7 +459,7 @@ pub fn agree<D: Datagram>(content: &Arc<Content>, conn: &Connection<D>, mine: &O
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nettai_match::testing::bn6_content as bn6_test_content;
+    use nettai_match::testing::exe6_content as exe6_test_content;
     use nettai_netplay::standin::Masher;
     use nettai_netplay::transport::Udp;
 
@@ -468,64 +468,64 @@ mod tests {
     }
 
     fn offer(content: &Arc<Content>, seed: u32) -> Offer {
-        offer_of(content, "bn6", seed)
+        offer_of(content, "exe6", seed)
     }
 
     /// An offer goes over the wire as it is, every name the game's; one
     /// the content can't play is refused with a reason.
     #[test]
     fn offers_roundtrip_and_bad_ones_are_refused() {
-        let content = bn6_test_content();
+        let content = exe6_test_content();
         let mut o = offer(&content, 5);
-        o.stage = Some(nettai_match::link_battle_stages(&content, "bn6")[3]);
-        o.side.cards = nettai_match::patch_cards(&content, "bn6", "canodumb,-shadow").unwrap_or_default();
+        o.stage = Some(nettai_match::link_battle_stages(&content, "exe6")[3]);
+        o.side.cards = nettai_match::patch_cards(&content, "exe6", "canodumb,-shadow").unwrap_or_default();
         let bytes = o.to_bytes(&content);
         let text = String::from_utf8(bytes.clone()).unwrap();
-        assert!(text.starts_with("game = \"bn6\"") && !text.contains("bn6:"), "{text}");
-        assert_eq!(Offer::from_bytes(&content, "bn6", &bytes).unwrap(), o);
+        assert!(text.starts_with("game = \"exe6\"") && !text.contains("exe6:"), "{text}");
+        assert_eq!(Offer::from_bytes(&content, "exe6", &bytes).unwrap(), o);
         // A match file's arena goes too.
         let mut a = o.clone();
-        a.arena = Some(nettai_match::draw::live(&content, "bn6", 9, None).unwrap().arena);
-        assert_eq!(Offer::from_bytes(&content, "bn6", &a.to_bytes(&content)).unwrap(), a);
+        a.arena = Some(nettai_match::draw::live(&content, "exe6", 9, None).unwrap().arena);
+        assert_eq!(Offer::from_bytes(&content, "exe6", &a.to_bytes(&content)).unwrap(), a);
         let mut bad = o.clone();
         bad.side.folder.chips = [bad.side.folder.chips[0]; 30];
         bad.side.folder.regular = None;
-        assert!(Offer::from_bytes(&content, "bn6", &bad.to_bytes(&content)).unwrap_err().contains("breaks the rules"));
+        assert!(Offer::from_bytes(&content, "exe6", &bad.to_bytes(&content)).unwrap_err().contains("breaks the rules"));
         // A name the game hasn't: the ordinary unknown name.
-        let bad = text.replacen("navi = \"megaman\"", "navi = \"bn5:megaman\"", 1); // (written in full)
-        let e = Offer::from_bytes(&content, "bn6", bad.as_bytes()).unwrap_err();
-        assert!(e.contains("side: no navi \"bn5:megaman\" in bn6"), "{e}"); // (written in full)
+        let bad = text.replacen("navi = \"megaman\"", "navi = \"exe5:megaman\"", 1); // (written in full)
+        let e = Offer::from_bytes(&content, "exe6", bad.as_bytes()).unwrap_err();
+        assert!(e.contains("side: no navi \"exe5:megaman\" in exe6"), "{e}"); // (written in full)
         // Another game's offer, and bytes that aren't one.
-        assert!(Offer::from_bytes(&content, "bn5", &bytes).unwrap_err().contains("is of bn6, this match bn5's"));
-        assert!(Offer::from_bytes(&content, "bn6", &bytes[..10]).is_err());
+        assert!(Offer::from_bytes(&content, "exe5", &bytes).unwrap_err().contains("is of exe6, this match exe5's"));
+        assert!(Offer::from_bytes(&content, "exe6", &bytes[..10]).is_err());
     }
 
-    /// A BN5 side's offer carries its karma and souls; both peers' rounds
+    /// An EXE5 side's offer carries its karma and souls; both peers' rounds
     /// start from them alike. Karma past 1000, or a soul list under rules
     /// without souls, is refused.
     #[test]
     fn offers_carry_karma_and_souls() {
-        let content = nettai_match::testing::bn5_content();
-        let mut o = offer_of(&content, "bn5", 5);
+        let content = nettai_match::testing::exe5_content();
+        let mut o = offer_of(&content, "exe5", 5);
         o.side.karma = 100;
-        o.side.souls = Some(vec![ids::form(&content, "bn5", "protosoul").unwrap()]);
-        let back = Offer::from_bytes(&content, "bn5", &o.to_bytes(&content)).unwrap_or_else(|e| panic!("{e}"));
+        o.side.souls = Some(vec![ids::form(&content, "exe5", "protosoul").unwrap()]);
+        let back = Offer::from_bytes(&content, "exe5", &o.to_bytes(&content)).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back, o);
-        let (one, _) = netplay_setup(&content, 9, &[o.clone(), offer_of(&content, "bn5", 6)]).unwrap();
-        let (two, _) = netplay_setup(&content, 9, &[back, offer_of(&content, "bn5", 6)]).unwrap();
+        let (one, _) = netplay_setup(&content, 9, &[o.clone(), offer_of(&content, "exe5", 6)]).unwrap();
+        let (two, _) = netplay_setup(&content, 9, &[back, offer_of(&content, "exe5", 6)]).unwrap();
         assert_eq!(format!("{one:?}"), format!("{two:?}"));
         let mut bad = o.clone();
         bad.side.karma = 1200;
-        assert!(Offer::from_bytes(&content, "bn5", &bad.to_bytes(&content)).unwrap_err().contains("karma 1200"));
-        let six = bn6_test_content();
+        assert!(Offer::from_bytes(&content, "exe5", &bad.to_bytes(&content)).unwrap_err().contains("karma 1200"));
+        let six = exe6_test_content();
         let mut bad = offer(&six, 6);
         bad.side.souls = Some(Vec::new());
-        assert!(Offer::from_bytes(&six, "bn6", &bad.to_bytes(&six)).unwrap_err().contains("no Soul Unison"));
+        assert!(Offer::from_bytes(&six, "exe6", &bad.to_bytes(&six)).unwrap_err().contains("no Soul Unison"));
         // Offers of two games make no match.
         let mut other = o.clone();
-        other.game = "bn6".into();
+        other.game = "exe6".into();
         let e = netplay_setup(&content, 9, &[o.clone(), other]).unwrap_err();
-        assert_eq!(e, "the host plays bn5, the joiner bn6: a match is of one game");
+        assert_eq!(e, "the host plays exe5, the joiner exe6: a match is of one game");
     }
 
     /// What one player of [`pair`] saw: the round, the match, the settled
@@ -534,7 +534,7 @@ mod tests {
     type Played = (String, Match, Vec<(u32, u64)>, usize, String, Option<String>);
 
     /// Two players on loopback UDP, each in a thread with its own
-    /// `NetPlayer` on BN6's content, offering what `offers` makes of the
+    /// `NetPlayer` on EXE6's content, offering what `offers` makes of the
     /// content (the host's, then the joiner's), mashing with rollback until
     /// one has settled `ticks` and leaves; what each saw, by side. The
     /// settled states must agree, and the other must hear it leave.
@@ -542,7 +542,7 @@ mod tests {
         let host = Udp::host_on("127.0.0.1:0").unwrap();
         let addr = host.local_addr().unwrap();
         let play = move |udp: Udp, role: Role| -> Played {
-            let content = bn6_test_content();
+            let content = exe6_test_content();
             let mine = offers(&content, role as usize);
             let seed = 11 + 11 * role as u32;
             let timeout = Duration::from_secs(20);
@@ -633,12 +633,12 @@ mod tests {
     fn two_players_over_loopback_with_match_files() {
         // Each player's file, as the editor or --save-match writes one.
         fn file(content: &Arc<Content>, seed: u32) -> Match {
-            let text = nettai_match::write(content, &nettai_match::draw::live(content, "bn6", seed, None).unwrap());
+            let text = nettai_match::write(content, &nettai_match::draw::live(content, "exe6", seed, None).unwrap());
             nettai_match::parse(content, &text).unwrap()
         }
         let offers = |content: &Arc<Content>, role: usize| Offer::of_match(file(content, 40 + role as u32), role == 0);
         let [hosted, _] = pair(600, offers);
-        let content = bn6_test_content();
+        let content = exe6_test_content();
         let m = &hosted.1;
         assert_eq!(m.arena, file(&content, 40).arena, "the host's arena");
         assert_eq!(m.sides[0], file(&content, 40).sides[0]);

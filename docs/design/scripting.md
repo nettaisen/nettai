@@ -2,7 +2,7 @@
 
 Chips, weapons, navi-chip navis, the link navis' attacks and the object kinds they spawn are content: Luau
 modules in the content root, running on a typed content API. The engine is a content-independent core (object
-pools, collision, the damage pipeline, statuses, battle flow, rollback) plus the BN6 ruleset's frameworks in
+pools, collision, the damage pipeline, statuses, battle flow, rollback) plus the EXE6 ruleset's frameworks in
 Rust (the navi framework, movement, the custom screen, and the services content calls: dimming, form changes,
 the navi-chip controller, the Beast rush wrapper, the one-tick hitbox, effects and sparks, obstacles, the
 intro). docs/design/core-content-boundary.md draws that line; docs/design/rollback.md covers rollback netplay;
@@ -26,7 +26,7 @@ Max in release builds, on a machine shared with other work, so single runs vary 
   hash covers the scripts.
 - **Definitions and assets cross the API, not numbers.** `battle.spawn(bomb.kind, pos)`,
   `me:set_attack(action, 2)`, `me:setup_collision(collision.thrown, collision.hits_navis, 0)`,
-  `battle.play_sound(asset.sound("bn6:throw"))`. The engine keeps a handle for each.
+  `battle.play_sound(asset.sound("exe6:throw"))`. The engine keeps a handle for each.
 - **Fidelity.** Every golden trace matches every frame, also under rollback at every tested latency; the sound
   calls match; the chip lab's scenarios match every frame (§5).
 - **Rollback.** Content declares its state; the engine stores it inside `Battle` (64 bytes per object or
@@ -45,8 +45,8 @@ Max in release builds, on a machine shared with other work, so single runs vary 
 | crates/nettai-battle/src/content | `Content`: the registries the definitions build (`defs`), the roles (`roles`), the typed records, and `Scripts` (the modules). |
 | crates/nettai-content | Reads a content root and a pack (`root`, `pack`), reports on definitions (`lint`), reads and writes the pack's assets. |
 | crates/nettai-content-check | Type-checks a content root's Luau against its declarations with Luau's analysis, in process; lints; the guards (§3.3). |
-| crates/bn6-compat | The original's numbers by key (content/bn6/compat), the setup codecs and the trace harness. The engine doesn't depend on it. |
-| content/bn6 | BN6's content, with `core.d.luau` (the API) and `types.d.luau` (types the modules share). |
+| crates/exe6-compat | The original's numbers by key (content/exe6/compat), the setup codecs and the trace harness. The engine doesn't depend on it. |
+| content/exe6 | EXE6's content, with `core.d.luau` (the API) and `types.d.luau` (types the modules share). |
 | crates/nettai-battle/src/content/testing.rs, crates/nettai-battle/testdata | The test content and the test pack (content-pack.md §6). |
 | crates/nettai-netplay | Rollback tests on the test content; `examples/rollback_cost` measures a golden-trace round. |
 | crates/nettai-battle/examples | `content_bench` (duel and snapshot costs), `luau_ops` (cost per API operation). |
@@ -56,7 +56,7 @@ Running it:
 ```sh
 cargo test --workspace                                         # engine, runtime, rollback, the type check, the guards
 cargo run -p nettai-content-check                                # type-check and lint content/, every folder
-cargo run --release -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>     # a BN6 pack (assets), checked against content/bn6
+cargo run --release -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>     # an EXE6 pack (assets), checked against content/exe6
 cargo run --release -p nettai-content -- check <pack>             # the define phase and its report
 cargo run --release -p nettai-netplay --example rollback_cost -- <trace.jsonl> <pack> 1
 cargo run --release -p nettai-battle --example luau_ops --features test-content
@@ -281,7 +281,7 @@ the same data and code. Pixels, palettes and audio are presentation and are left
 ### 3.3 Typing and the checks
 
 `content/nettai/core.d.luau` declares the API (every root checks against it); a root's `types.d.luau` the types
-its modules share (content/bn6/types.d.luau). Scripts are
+its modules share (content/exe6/types.d.luau). Scripts are
 `--!strict` and declare their state types (`export type State = { timer: number }`). `nettai-content-check`
 type-checks every module with Luau's own analysis (the `luau-analyze` crate, in process), and its tests also
 check that API misuse (a misspelled field, a lifecycle state or status flag or button that doesn't exist, `Vec3
@@ -340,7 +340,7 @@ and moves the state out of the VM, which is what rollback needs.
 
 ## 4. An example
 
-EraseMan (content/bn6/chips/eraseman) is a navi chip: a navi kind, a builder for the chips' `navi` hook, and the
+EraseMan (content/exe6/chips/eraseman) is a navi chip: a navi kind, a builder for the chips' `navi` hook, and the
 three chips of the series, which compose the hook with their own arguments.
 
 ```luau

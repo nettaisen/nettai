@@ -1,8 +1,8 @@
-//! Action 0x1C as a form's revert (`sub_8015614`, the same code in BN5) and
+//! Action 0x1C as a form's revert (`sub_8015614`, the same code in EXE5) and
 //! a Cross breaking (`sub_8015766`): the framework's. The change into a form
 //! (`sub_8014A38`, the original's action 0x1C too) is the action the form
-//! names (`FormData::change`): BN6's five sequences are BN6's forms system's,
-//! content/bn6/rules/forms (docs/design/rules-in-luau.md §3.1). See
+//! names (`FormData::change`): EXE6's five sequences are EXE6's forms system's,
+//! content/exe6/rules/forms (docs/design/rules-in-luau.md §3.1). See
 //! docs/engine/battle-flow.md §3.4.1 and objects-and-player.md §12.9-§12.10.
 
 use crate::actor::status;
@@ -93,7 +93,7 @@ pub(crate) fn drop_statuses(b: &mut Battle, r: ObjectRef) {
     c.links[link::BUBBLE] = None;
 }
 
-/// BN5's soul change's first step (0x08011FAC): the part of
+/// EXE5's soul change's first step (0x08011FAC): the part of
 /// `sub_80158FA` it does itself (flags 0x1C40, the slide request, the
 /// slide's step).
 pub(crate) fn stop_moving(b: &mut Battle, r: ObjectRef) {
@@ -188,7 +188,7 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_80158CC`: mood 0x80 (stored directly); then the side's systems'
-/// `form_reverted` (BN6's: outside battle mode 1, a Beast Out is used up,
+/// `form_reverted` (EXE6's: outside battle mode 1, a Beast Out is used up,
 /// and Beast Over exhausts the navi).
 fn spend_form(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
@@ -210,13 +210,13 @@ fn calm_down(b: &mut Battle, r: ObjectRef) {
 /// `sub_8015766`: a weakness hit breaks the Cross (from action dispatch,
 /// with `status::CROSS_BREAKING`): dimming falls while the navi drops to
 /// base form (a Cross Beast to its Beast), then 30 ticks later it goes on.
-/// True while it runs. BN5's (0x080122C8, `FormBreak::Bn5`: a dark chip
+/// True while it runs. EXE5's (0x080122C8, `FormBreak::Exe5`: a dark chip
 /// used in a soul) drops any form to the base form, and lacks animation 2
 /// and the overlay's refresh, the overlay's kept stepping, the collision
 /// region's removal and return, and the flags 0x80110000 and statuses
 /// 0x200800 it clears.
 pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> bool {
-    let bn5 = b.game_rules().form_break == crate::content::FormBreak::Bn5;
+    let exe5 = b.game_rules().form_break == crate::content::FormBreak::Exe5;
     if !matches!(ai(b, r).attack.action, ActionVars::FormChange(_)) {
         ai_mut(b, r).attack.action = ActionVars::FormChange(Vars::default());
     }
@@ -225,7 +225,7 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
         b.set_flags(battle_flags::DIMMED);
         b.sound(SoundRole::Fade);
         land(b, r);
-        if !bn5 {
+        if !exe5 {
             let o = b.objects.get_mut(r);
             o.anim = 2;
             o.anim_loaded = 0xFF;
@@ -238,19 +238,19 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
             b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
         }
         let moving = f1::SLIDING | f1::PARALYZED | f1::FLINCHING | f1::MOVING;
-        clear_flag1(b, r, if bn5 { moving } else { moving | f1::BUBBLED | f1::DRAG | f1::FROZEN });
+        clear_flag1(b, r, if exe5 { moving } else { moving | f1::BUBBLED | f1::DRAG | f1::FROZEN });
         clear_flag2(b, r, 0x10);
         b.objects.get_mut(r).slide_state = 0;
-        if !bn5 {
+        if !exe5 {
             keep_overlay_stepping(b, r);
         }
         let current = stats(b, r).form;
         form::take_off_overlay(b, r, current);
         // What the form drops to (its `breaks_to`; the original's by the
         // form's number: the base form from a Cross, the game's Beast
-        // from a Cross in Beast Out); a form without one stays. BN5's: the
+        // from a Cross in Beast Out); a form without one stays. EXE5's: the
         // base form.
-        let new = if bn5 {
+        let new = if exe5 {
             b.content.base_form_for(stats(b, r).navi)
         } else {
             b.content.form(current).breaks_to.unwrap_or(current)
@@ -278,13 +278,13 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
         reset_status(b, r);
         calm_down(b, r);
         form::put_on_overlay(b, r, new);
-        if !bn5 {
+        if !exe5 {
             keep_overlay_stepping(b, r);
         }
         clear_invulnerable(b, r);
         b.objects.get_mut(r).related[0] = None;
         ai_mut(b, r).overlay = None;
-        if !bn5 {
+        if !exe5 {
             // object_clearCollisionRegion
             coll_mut(b, r).region = None;
         }
@@ -294,7 +294,7 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
     if timer_running(b, r) {
         return true;
     }
-    if bn5 {
+    if exe5 {
         ai_mut(b, r).status &= !status::CROSS_BREAKING;
         b.clear_flags(battle_flags::DIMMED);
         let a = &mut ai_mut(b, r).attack;

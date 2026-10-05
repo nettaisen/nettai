@@ -1,7 +1,7 @@
 --!strict
 -- The engine's test stages: two navis facing each other on plain panels
 -- (in either order of placing), and the same with rock cubes or boulders
--- on the field (the BN6 overlay's kinds).
+-- on the field (the EXE6 overlay's kinds).
 
 local boulder = require("../objects/boulder")
 local rock = require("../chips/rockcube/rock")

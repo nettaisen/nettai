@@ -1,4 +1,4 @@
-//! A player's NaviCust (BN4's, BN5's and BN6's Navi Customizer;
+//! A player's NaviCust (BN4's, EXE5's and EXE6's Navi Customizer;
 //! docs/design/navicust.md): the programs they have placed on its grid,
 //! each in one of its colors, turned and compressed or not, and how far
 //! the board has been expanded.
@@ -7,7 +7,7 @@
 //! `Content::navicust_program`): their colors and shapes, and what a game's
 //! rules read. A player's NaviCust is their setup's
 //! ([`crate::custom::PlayerSetup::navicust`]); what it gives the navi is a
-//! game's rules' (BN6's navicust system compiles it into the side's stats
+//! game's rules' (EXE6's navicust system compiles it into the side's stats
 //! as the round is set up, `round_setup`). The board (which cells a
 //! program can cover, and the command line) is the game's rule section
 //! `navicust` ([`crate::content::NaviCustRules`]).
@@ -22,7 +22,7 @@ pub const SIZE: usize = 7;
 /// (3, 3).
 pub type Shape = [[bool; SIZE]; SIZE];
 
-/// How many programs a NaviCust holds: BN6's list's room (0x31 parts).
+/// How many programs a NaviCust holds: EXE6's list's room (0x31 parts).
 pub const MAX_PARTS: usize = 49;
 
 /// A program on the grid: which, in which of its colors (an index into its
@@ -39,8 +39,8 @@ pub struct PlacedProgram {
 }
 
 /// A player's NaviCust: its programs in its list's order (the order a game's
-/// rules go through them), and the board's expansions (BN6's and BN5's:
-/// none, one or two; BN6's key item 0x71, BN5's 0x61).
+/// rules go through them), and the board's expansions (EXE6's and EXE5's:
+/// none, one or two; EXE6's key item 0x71, EXE5's 0x61).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NaviCust {
     parts: [Option<PlacedProgram>; MAX_PARTS],
@@ -83,7 +83,7 @@ impl NaviCust {
     }
 }
 
-/// `shape` turned a quarter clockwise `rotation` times, as BN6 turns a
+/// `shape` turned a quarter clockwise `rotation` times, as EXE6 turns a
 /// program (`sub_813B7A0`'s four copies: as it is, `sub_813B7FC` a quarter
 /// clockwise, `sub_813B818` a half, `sub_813B830` a quarter back).
 pub fn rotate(shape: &Shape, rotation: u8) -> Shape {
@@ -123,7 +123,7 @@ mod tests {
     /// A quarter turn clockwise moves the cell above the center to its
     /// right, as `sub_813B7FC` copies; four turns are none.
     #[test]
-    fn programs_turn_as_bn6_turns_them() {
+    fn programs_turn_as_exe6_turns_them() {
         let up = shape([".......", ".......", "...#...", "...#...", ".......", ".......", "......."]);
         let right = shape([".......", ".......", ".......", "...##..", ".......", ".......", "......."]);
         let down = shape([".......", ".......", ".......", "...#...", "...#...", ".......", "......."]);

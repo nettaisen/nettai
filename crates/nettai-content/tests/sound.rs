@@ -169,7 +169,7 @@ fn bank() -> SoundBank {
 }
 
 fn temp(name: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("bn6-content-sound-{name}-{}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("exe6-content-sound-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d
@@ -345,7 +345,7 @@ fn songs_mixing_loops_and_endings_are_refused_for_now() {
     assert!(failures[0].1.contains("one loop per song"));
 }
 
-/// Songs a version has its own of (BN5's Team Colonel) are song files of their
+/// Songs a version has its own of (EXE5's Team Colonel) are song files of their
 /// own named with their version, beside the base version's, and read back as
 /// they were; a pack without versions names no version anywhere.
 #[test]

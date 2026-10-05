@@ -31,7 +31,7 @@ pub struct Vars {
     /// ExtraVars[0] (`sub_80C4526`): drawn one pixel in front whatever
     /// the owner's animation.
     pub forced_front: bool,
-    /// BN5's ExtraVars word (0x080C451A, `set_overlay_anim_offset`), which
+    /// EXE5's ExtraVars word (0x080C451A, `set_overlay_anim_offset`), which
     /// its overlay adds to its owner's animation, its depth read by the sum
     /// (0x080C365C): GyroSoul's propeller while primed.
     pub extra_offset: u8,
@@ -161,9 +161,9 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     // flash (`sprite_getFinalPalette`), mosaic (`sub_8002F3E`, then
     // `loc_8002F02`: the sprite's mosaic flag, the size being the screen's),
     // alpha and facing. (The routine copies no alpha, yet the original
-    // draws the overlay's parts in its owner's blend: BN5's Hub Style shade
+    // draws the overlay's parts in its owner's blend: EXE5's Hub Style shade
     // fades in semi-transparent and mosaicked with its navi, the OAM of
-    // verification's library-bn5 custom/hub-name shows, frames 159 to 190.)
+    // verification's library-exe5 custom/hub-name shows, frames 159 to 190.)
     let own_palette = vars(b, r).own_palette;
     let owner_look = b.objects.sprite(owner).look;
     let look = &mut b.objects.sprite_mut(r).look;
@@ -183,7 +183,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// BN5's 0x080C451A on the overlay `r`: its animation offset (its ExtraVars
+/// EXE5's 0x080C451A on the overlay `r`: its animation offset (its ExtraVars
 /// word). Nothing for an overlay of another kind.
 pub(crate) fn set_extra_offset(b: &mut Battle, r: ObjectRef, offset: u8) {
     if let crate::kinds::Vars::BodyOverlay(v) = &mut b.objects.get_mut(r).vars {

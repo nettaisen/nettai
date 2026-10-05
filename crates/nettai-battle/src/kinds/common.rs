@@ -44,7 +44,7 @@ pub fn update_sprite_even_paused(b: &mut Battle, r: ObjectRef) {
     b.objects.sprite_mut(r).update(&b.content);
 }
 
-/// A panel that burns (BN5's lava: 0x08016E18 for navis, 0x08016D80 for
+/// A panel that burns (EXE5's lava: 0x08016E18 for navis, 0x08016D80 for
 /// other bodies, the same tests in another order) burns a grounded body
 /// on it that isn't of fire: its damage in fire (shifted by the body's
 /// weakness to fire) as a hit, unless the body is flagged 0x09; either way

@@ -1,6 +1,6 @@
 //! The engine never reads compat (docs/design/content-model-v2.md §6.4):
 //! the original's numbers for what content defines are the validator's
-//! (bn6-compat), which maps the engine's identities to them. In the engine
+//! (exe6-compat), which maps the engine's identities to them. In the engine
 //! and the crates it runs content through, the word appears only in
 //! comments.
 

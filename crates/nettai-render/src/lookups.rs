@@ -110,7 +110,7 @@ pub fn background<'a>(packs: &Packs<'a>, c: &Content, id: BackgroundId, problems
     found
 }
 
-/// A pack's name for a problem's text (`bn6's pack`).
+/// A pack's name for a problem's text (`exe6's pack`).
 pub fn pack_name(c: &Content, pack: PackId) -> String {
     c.assets.packs.get(pack.index()).map_or(format!("pack {}", pack.index()), |g| format!("{g}'s pack"))
 }
@@ -191,7 +191,7 @@ pub const OTHER_VERSIONS_ART: &str = "another version's chip's art, its own ROM'
 /// draws as its counterpart. The frontend shows the chip's own on either
 /// console: its icon is a known difference where it shows, as its picture
 /// is. (Not a chip the US release cut, whose picture alone is another
-/// ROM's: BN6's Gregar and Falzar chips' icons are the pack's own.)
+/// ROM's: EXE6's Gregar and Falzar chips' icons are the pack's own.)
 pub fn other_versions_icon(packs: &Packs, b: &nettai_battle::battle::Battle, chip: ChipHandle) -> bool {
     let console = packs.version().unwrap_or_else(|| crate::custom::version_name(b, b.setup.local_side));
     let art = packs.chip_art(&b.content, key(&b.content, chip)).filter(|a| a.region.is_none());
@@ -244,9 +244,9 @@ pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, pr
 }
 
 /// Whether the Program Advance animation shows a chip's code after its
-/// name (BN6's `sub_802B80C`, BN5's 0x08027BC6: not for the original's
+/// name (EXE6's `sub_802B80C`, EXE5's 0x08027BC6: not for the original's
 /// chips from 0x160 on, its navi chips' and the like), by the chip's number
-/// in its game's compat (the match's: BN6's or BN5's); a support pack's
+/// in its game's compat (the match's: EXE6's or EXE5's); a support pack's
 /// chip shows none.
 pub fn advance_code(c: &Content, chip: ChipHandle, problems: &mut Problems) -> bool {
     let key = key(c, chip);
@@ -261,13 +261,13 @@ pub fn advance_code(c: &Content, chip: ChipHandle, problems: &mut Problems) -> b
     number.is_some_and(|n| n < crate::custom::ADVANCE_NO_CODE_FROM)
 }
 
-/// A chip's number in its game's compat (the content's game: BN5's for
-/// BN5, else BN6's), by its local key.
+/// A chip's number in its game's compat (the content's game: EXE5's for
+/// EXE5, else EXE6's), by its local key.
 fn chip_number(c: &Content, key: &str) -> Option<u16> {
-    if c.game() == bn5_compat::ROOT {
-        bn5_compat::Compat::bn5().chips.get(key).map(|e| e.id)
+    if c.game() == exe5_compat::ROOT {
+        exe5_compat::Compat::exe5().chips.get(key).map(|e| e.id)
     } else {
-        bn6_compat::Compat::bn6_for(c).chips.get(key).map(|e| e.id)
+        exe6_compat::Compat::exe6_for(c).chips.get(key).map(|e| e.id)
     }
 }
 
@@ -332,13 +332,13 @@ pub fn form_face<'a>(
     (picture, face)
 }
 
-/// A navi's number in BN6's compat: its emblem and its emblem's palette
+/// A navi's number in EXE6's compat: its emblem and its emblem's palette
 /// (the cursor's too) are by it (`sub_802812C`); 0, MegaMan's, for a navi
 /// of another root.
 pub fn navi_number(c: &Content, navi: NaviHandle, problems: &mut Problems) -> usize {
     let (number, known) = compat_navi_number(c, navi);
     if problems.lookup(Lookup::NaviNumber(navi)) && !known {
-        problems.note(format!("navi {:?} has no number in BN6's compat: the custom screen shows MegaMan's emblem", c.defs.navi(navi).key));
+        problems.note(format!("navi {:?} has no number in EXE6's compat: the custom screen shows MegaMan's emblem", c.defs.navi(navi).key));
     }
     number
 }
@@ -348,9 +348,9 @@ pub fn navi_number_of(c: &Content, navi: NaviHandle) -> usize {
     compat_navi_number(c, navi).0
 }
 
-/// A navi's number, and false if it is BN6's but compat hasn't one.
+/// A navi's number, and false if it is EXE6's but compat hasn't one.
 fn compat_navi_number(c: &Content, navi: NaviHandle) -> (usize, bool) {
-    let compat = bn6_compat::Compat::bn6_for(c);
+    let compat = exe6_compat::Compat::exe6_for(c);
     match compat.compat_key(c, &c.defs.navi(navi).key) {
         Some(local) => compat.navis.get(local).map_or((0, false), |n| (n.navi as usize, true)),
         None => (0, true),

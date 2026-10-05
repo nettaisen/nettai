@@ -1,13 +1,13 @@
 //! Battle audio: plays nettai-battle's sound cues with the game's own sound
 //! driver (the `m4a` crate) and sound data (a content pack's sound, which
-//! nettai-content loads into an `m4a::SoundBank`; `bn6-extract content` writes
+//! nettai-content loads into an `m4a::SoundBank`; `exe6-extract content` writes
 //! the pack from the user's ROM).
 //!
 //! - [`Songs`]: what each of the engine's sounds (a handle over the loaded
 //!   packs' sounds) is in its pack's song table; [`Songs::cue`] turns a
 //!   cue's sounds into songs.
 //! - [`SoundCalls`]: what the game's sound functions ask of the driver for
-//!   each cue in songs (BN6's wrappers: `PlayMusic`'s current-music check,
+//!   each cue in songs (EXE6's wrappers: `PlayMusic`'s current-music check,
 //!   the pinch effect's pitch and tempo, ...), as [`Request`]s.
 //! - [`BattleAudio`]: cues in, samples out, a frame at a time, with the
 //!   game's timing (calls queue up and run on the next frame).
@@ -79,7 +79,7 @@ pub mod wav;
 #[cfg(feature = "playback")]
 pub use output::{AudioOut, OutputError};
 
-/// The music player BN6's background music plays on.
+/// The music player EXE6's background music plays on.
 pub const MUSIC_PLAYER: PlayerId = PlayerId(31);
 /// The player the custom screen balances against the music.
 pub const CUSTOM_SCREEN_PLAYER: PlayerId = PlayerId(22);
@@ -124,7 +124,7 @@ impl Request {
     }
 }
 
-/// BN6's sound functions: each cue as the driver calls the game queues.
+/// EXE6's sound functions: each cue as the driver calls the game queues.
 #[derive(Clone, Debug)]
 pub struct SoundCalls {
     /// The music `PlayMusic` last started (GameState's BGMusicIndicator;

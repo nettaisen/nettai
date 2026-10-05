@@ -30,8 +30,8 @@ const COLUMNS: usize = 15;
 const ROWS: usize = 20;
 /// Where the screen's tiles go in the HUD layer's character block: the
 /// window frame from tile 1, the rest where the pack's game loads them
-/// (`CustomScreen::layout`: BN6's `CustomLayout::BN6`, the chip window's
-/// name from 0x9B, BN5's from 0x59).
+/// (`CustomScreen::layout`: EXE6's `CustomLayout::EXE6`, the chip window's
+/// name from 0x9B, EXE5's from 0x59).
 const WINDOW_TILE: u16 = 0x01;
 /// A chip picture's tiles (7x6).
 const PICTURE_TILES: u16 = 42;
@@ -42,14 +42,14 @@ pub(crate) const CROSS_NAME_TILES: usize = 18;
 /// to five Crosses.
 const CROSS_OPENING_MAPS: usize = 3;
 /// The Program Advance animation's names (`sub_802B80C`): 9 cells of the
-/// 8x16 font from the chip window's picture's first tile (BN6's 0xAB), 18
+/// 8x16 font from the chip window's picture's first tile (EXE6's 0xAB), 18
 /// tiles a name; a pick's code in its last cell; a name every 3 rows from
 /// row 5, a column right of the layer's scroll; the recipe's in palette 10,
 /// the others' in 13.
 const ADVANCE_NAME_CELLS: usize = 9;
 const ADVANCE_FIRST_ROW: i32 = 5;
-/// The chips past the table's that the animation shows no code for (BN6's
-/// and BN5's alike: `sub_802B80C`, 0x08027BC6).
+/// The chips past the table's that the animation shows no code for (EXE6's
+/// and EXE5's alike: `sub_802B80C`, 0x08027BC6).
 pub(crate) const ADVANCE_NO_CODE_FROM: u16 = 0x160;
 const LAYER_TILES: usize = 0x200;
 /// The window's background colors: what the original copies over cells
@@ -307,7 +307,7 @@ struct View<'a> {
 }
 
 /// A system's button as the frontend draws it (docs/design/rules-in-luau.md
-/// §4.8: BN6's, by name): its details picture (in a palette by its state, if
+/// §4.8: EXE6's, by name): its details picture (in a palette by its state, if
 /// it has palettes), its tiles (`count` a state, selectable then
 /// unavailable and picked), and the cursor over it.
 struct ButtonLook<'a> {
@@ -322,10 +322,10 @@ struct ButtonLook<'a> {
     advance: u16,
     cursor: (i32, i32, CursorShape),
     /// Whether the chip window shows its uses left, in the damage's last
-    /// cell (BN5's Shuffle, 0x080245F2; the pack's layout says).
+    /// cell (EXE5's Shuffle, 0x080245F2; the pack's layout says).
     uses_digit: bool,
     /// Where the icon of the chip it holds is drawn, a sprite over it
-    /// (BN5's Arm Change, 0x080254F4).
+    /// (EXE5's Arm Change, 0x080254F4).
     held_at: Option<(i32, i32)>,
 }
 
@@ -335,9 +335,9 @@ enum Sets {
     /// One a state: selectable, unavailable, picked.
     Each,
     /// The second for unavailable and picked alike (the Beast Out button's
-    /// two, BN5's soul button's).
+    /// two, EXE5's soul button's).
     Other,
-    /// The second for unavailable alone (BN5's Arm Change, 0x0802415A:
+    /// The second for unavailable alone (EXE5's Arm Change, 0x0802415A:
     /// picked, it looks on offer, the chip it holds drawn over it).
     Unavailable,
 }
@@ -352,7 +352,7 @@ impl Sets {
     }
 }
 
-/// BN5's Arm Change's chip over its button (0x08025508: the sprite's x
+/// EXE5's Arm Change's chip over its button (0x08025508: the sprite's x
 /// 0x45, y 0x84).
 const HELD_CHIP: (i32, i32) = (0x45, 0x84);
 
@@ -371,17 +371,17 @@ impl<'a> View<'a> {
     }
 
     /// The look of the button named `name`: the pack's of that name
-    /// (`CustomScreen::buttons`: BN5's "soul", the special slot's under OK,
-    /// its picture in a palette by its state), else BN6's Beast Out (its
-    /// game's pictures), ChpShufl re-deal (BN5's Shuffle) and DustCross
-    /// scrap, and BN5's Arm Change. A name the frontend doesn't know is
-    /// drawn as nothing; a button that shows a chip (`Slot::face`: BN5's
+    /// (`CustomScreen::buttons`: EXE5's "soul", the special slot's under OK,
+    /// its picture in a palette by its state), else EXE6's Beast Out (its
+    /// game's pictures), ChpShufl re-deal (EXE5's Shuffle) and DustCross
+    /// scrap, and EXE5's Arm Change. A name the frontend doesn't know is
+    /// drawn as nothing; a button that shows a chip (`Slot::face`: EXE5's
     /// capsules) is drawn as that chip's slot whatever its name.
     fn named_look(&self, name: &str) -> Option<ButtonLook<'a>> {
         use std::borrow::Cow;
         let a = self.assets;
         if let Some(b) = a.button(name) {
-            // (BN5's soul button: gray when unavailable or picked,
+            // (EXE5's soul button: gray when unavailable or picked,
             // 0x08024540.)
             let count = b.width as usize * b.height as usize;
             let cursor = cursor_at(&a.layout.special_cursor);
@@ -426,7 +426,7 @@ impl<'a> View<'a> {
             }
             "redeal" => Some(ButtonLook { uses_digit: a.layout.button_uses, ..wide(&a.pictures.redeal, &a.redeal_buttons) }),
             "scrap" => Some(wide(&a.pictures.scrap, &a.scrap_buttons)),
-            // BN5's Arm Change (ColonelSoul's, 0x0802415A and 0x080245A0):
+            // EXE5's Arm Change (ColonelSoul's, 0x0802415A and 0x080245A0):
             // the tiles and the picture its pack has in the scrap button's
             // place.
             "arm_change" => {
@@ -437,8 +437,8 @@ impl<'a> View<'a> {
     }
 }
 
-/// BN5's soul button's offer and choice, as its souls system keeps them
-/// (content/bn5/rules/souls/custom.luau, read by its fields' names): the
+/// EXE5's soul button's offer and choice, as its souls system keeps them
+/// (content/exe5/rules/souls/custom.luau, read by its fields' names): the
 /// soul it offers or gave (its number) and whether it is Chaos Unison
 /// (slot 11's +5 and +6), and the choice's step and count (the screen's
 /// state 9).
@@ -450,13 +450,13 @@ pub struct SoulOffer {
     pub count: u8,
 }
 
-/// The system BN5's soul button and its window are (`SoulOffer`).
+/// The system EXE5's soul button and its window are (`SoulOffer`).
 const SOULS_SYSTEM: &str = "souls";
 /// The soul's choice's window (the screen's state 9, 0x080232D0).
 const SOUL_WINDOW: &str = "soul_unison";
 
 impl SoulOffer {
-    /// Side `side`'s soul button's, when its ruleset has BN5's souls system.
+    /// Side `side`'s soul button's, when its ruleset has EXE5's souls system.
     pub fn of(b: &Battle, side: usize) -> Option<SoulOffer> {
         let (schema, state) = b.system_state(side as u8, SOULS_SYSTEM)?;
         let field = |name: &str| Some(state.get(schema, schema.index_of(name)?));
@@ -477,7 +477,7 @@ impl SoulOffer {
     }
 }
 
-/// Whether slot `slot` of side `side`'s screen is BN5's soul button.
+/// Whether slot `slot` of side `side`'s screen is EXE5's soul button.
 fn is_soul_button(b: &Battle, screen: &Screen, slot: u8) -> bool {
     matches!(screen.slots[slot as usize].kind, SlotKind::Button { button, .. } if b.content.defs.button(button).name == SOUL_BUTTON)
 }
@@ -489,7 +489,7 @@ fn soul_window_up(b: &Battle, screen: &Screen) -> bool {
     d.name == SOUL_WINDOW && b.content.defs.system(d.system).key == SOULS_SYSTEM
 }
 
-/// The icon of the soul BN5's soul button offers or gave, if the special
+/// The icon of the soul EXE5's soul button offers or gave, if the special
 /// slot is the soul button: the pack's `icons` and the icon's first tile in
 /// them (by the soul's number, Chaos Unison's 13: 0x0802341C).
 fn soul_icon<'a>(a: &'a CustomScreen, v: &View) -> Option<(&'a Tiles, usize)> {
@@ -505,7 +505,7 @@ fn soul_icon<'a>(a: &'a CustomScreen, v: &View) -> Option<(&'a Tiles, usize)> {
 /// The Chaos Unison's icon among the soul button's.
 const CHAOS_ICON: usize = 13;
 
-/// BN5's soul choice (its state 9, 0x080232D0: the souls system's window
+/// EXE5's soul choice (its state 9, 0x080232D0: the souls system's window
 /// `soul_unison`, at its step `sub` and count `counter`): the soul's icon as
 /// a 16x16 sprite (sprite palette 13) over the picked column's cell after
 /// the picks (0x0802330C: y = 24 + 16 picks, x 0x60), drawn from the tick
@@ -518,7 +518,7 @@ fn soul_flight<'a>(a: &'a CustomScreen, v: &View, sub: u8, counter: u8) -> Optio
     flight(a, v, tiles, first, sub, counter)
 }
 
-/// BN5's capsule's mix, as its souls system keeps it (content/bn5/rules/
+/// EXE5's capsule's mix, as its souls system keeps it (content/exe5/rules/
 /// souls/capsules.luau, read by its fields' names): the capsule being mixed
 /// (1 or 2: the button `capsule_1` or `capsule_2`), and the sequence's step
 /// and count (the screen's state 0x3C).
@@ -533,7 +533,7 @@ pub struct CapsuleMix {
 const CAPSULE_WINDOW: &str = "capsule";
 
 impl CapsuleMix {
-    /// Side `side`'s, when its ruleset has BN5's souls system.
+    /// Side `side`'s, when its ruleset has EXE5's souls system.
     pub fn of(b: &Battle, side: usize) -> Option<CapsuleMix> {
         let (schema, state) = b.system_state(side as u8, SOULS_SYSTEM)?;
         let byte = |name: &str| match state.get(schema, schema.index_of(name)?) {
@@ -544,7 +544,7 @@ impl CapsuleMix {
     }
 }
 
-/// BN5's capsule's mix (its state 0x3C, 0x0802373A: the souls system's
+/// EXE5's capsule's mix (its state 0x3C, 0x0802373A: the souls system's
 /// window `capsule`): the capsule's icon, its chip's (0x08023770: the chip
 /// records' icons are the table it loads from, 0x0874A738), flies to the
 /// last pick's cell as the soul's icon does to the first (the soul's
@@ -565,7 +565,7 @@ fn capsule_flight<'a>(a: &'a CustomScreen, v: &View, packs: &crate::packs::Packs
     flight(a, v, tiles, 0, mix.step, mix.count)
 }
 
-/// The sprite of BN5's soul's choice and capsule's mix (0x080254D8): the
+/// The sprite of EXE5's soul's choice and capsule's mix (0x080254D8): the
 /// icon `first` of `tiles`, at the sequence's step `sub` and count
 /// `counter`, in the soul button's icons' palette.
 fn flight<'a>(a: &'a CustomScreen, v: &View, tiles: &'a Tiles, first: usize, sub: u8, counter: u8) -> Option<SpritePart<'a>> {
@@ -607,7 +607,7 @@ fn flight<'a>(a: &'a CustomScreen, v: &View, tiles: &'a Tiles, first: usize, sub
     })
 }
 
-/// The name BN5's soul button is drawn by (the souls system's button; the
+/// The name EXE5's soul button is drawn by (the souls system's button; the
 /// pack's `CustomScreen::buttons`).
 const SOUL_BUTTON: &str = "soul";
 
@@ -643,8 +643,8 @@ impl View<'_> {
 /// `cross_palettes[number]` (`[number + 5]` once used). `navi` is the
 /// navi whose Cross it is.
 pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
-    let game = bn6_compat::forms::game(c, form)?;
-    let number = (0..5u8).find(|&i| bn6_compat::forms::cross(c, navi, game, i) == Some(form))?;
+    let game = exe6_compat::forms::game(c, form)?;
+    let number = (0..5u8).find(|&i| exe6_compat::forms::cross(c, navi, game, i) == Some(form))?;
     Some((a.versioned.get(game_name(game)), number as usize))
 }
 
@@ -658,19 +658,19 @@ pub fn game_name(version: GameVersion) -> &'static str {
 
 /// The pictures of the Beast a side's navi goes into, or is in: the
 /// Beast Out button, its picture in the chip window and the BeastOut
-/// chip's. They are its game's (`bn6_compat::Unlocks::beast_game`, the beast
+/// chip's. They are its game's (`exe6_compat::Unlocks::beast_game`, the beast
 /// system's rule): the console's
 /// version's, but with a setup's Cross list a Cross of the other game
 /// goes into that game's Beast (docs/engine/custom-screen.md §4.1).
 pub fn beast_pictures<'a>(b: &Battle, a: &'a CustomScreen, side: u8) -> &'a VersionPictures {
     let side = side as usize & 1;
-    let game = bn6_compat::Unlocks::of_side(b, side as u8).beast_game(&*b.content, b.stats[side].form);
+    let game = exe6_compat::Unlocks::of_side(b, side as u8).beast_game(&*b.content, b.stats[side].form);
     a.versioned.get(game_name(game))
 }
 
 /// The pack's name of a console's game version (`Versioned`).
 pub fn version_name(b: &Battle, side: u8) -> &'static str {
-    game_name(bn6_compat::Unlocks::of_side(b, side).version)
+    game_name(exe6_compat::Unlocks::of_side(b, side).version)
 }
 
 /// A side's navi's number (see `View::navi_number`; its lookup is
@@ -706,7 +706,7 @@ fn state_number(s: SlotState) -> usize {
     }
 }
 
-/// BN6's cross system (content/bn6/rules/cross), whose state and windows
+/// EXE6's cross system (content/exe6/rules/cross), whose state and windows
 /// the Cross window's look reads.
 const CROSS_SYSTEM: &str = "cross";
 
@@ -715,8 +715,8 @@ const CROSS_SYSTEM: &str = "cross";
 /// is the chips' again.
 const CROSS_PUT_ON_TICK: u16 = 25;
 
-/// BN6's Cross window as the cross system keeps it
-/// (content/bn6/rules/cross/window.luau), read by its fields' names: the
+/// EXE6's Cross window as the cross system keeps it
+/// (content/exe6/rules/cross/window.luau), read by its fields' names: the
 /// Crosses offered (their places among the player's Crosses,
 /// `Unlocks::cross_at`), how many, which is chosen, the entry under the
 /// window's cursor, and the Cross chosen.
@@ -730,7 +730,7 @@ pub struct CrossWindow {
 }
 
 impl CrossWindow {
-    /// Side `side`'s Cross window, when its ruleset has BN6's cross system.
+    /// Side `side`'s Cross window, when its ruleset has EXE6's cross system.
     pub fn of(b: &Battle, side: usize) -> Option<CrossWindow> {
         let (schema, state) = b.system_state(side as u8, CROSS_SYSTEM)?;
         let elem = |name: &str, k: usize| state.get_elem(schema, schema.index_of(name)?, k);
@@ -757,7 +757,7 @@ impl CrossWindow {
     }
 }
 
-/// Where BN6's Cross window is: the cross system's window up (its tick),
+/// Where EXE6's Cross window is: the cross system's window up (its tick),
 /// or a description from it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CrossStage {
@@ -771,7 +771,7 @@ pub enum CrossStage {
     Chosen(u16),
 }
 
-/// The stage of BN6's Cross window on `s`, side `side`'s screen, if it is
+/// The stage of EXE6's Cross window on `s`, side `side`'s screen, if it is
 /// up.
 pub fn cross_stage(b: &Battle, s: &Screen) -> Option<CrossStage> {
     let (window, tick) = match s.phase {
@@ -825,7 +825,7 @@ impl Window {
         let cross = cross_map(v);
         let (map, patches) = match cross {
             Some(i) => (a.cross_maps.get(i), &a.cross_patches),
-            // (A game without the Cross tab has one map: BN5.)
+            // (A game without the Cross tab has one map: EXE5.)
             None => (a.window_maps.get(v.screen.look.cross_tab as usize).or(a.window_maps.first()), &a.window_patches),
         };
         if let Some(m) = map {
@@ -957,7 +957,7 @@ impl Window {
     /// the Cross under the cursor's (`sub_8029EAC`: a used one's darker).
     fn cross_names(&mut self, v: &View, problems: &mut Problems) {
         let Some(w) = CrossWindow::of(v.b, v.side as usize) else { return };
-        let unlocks = bn6_compat::Unlocks::of_side(v.b, v.side);
+        let unlocks = exe6_compat::Unlocks::of_side(v.b, v.side);
         // Each Cross's name and colors are its own game's (a setup's Cross
         // list can offer the other game's: docs/engine/custom-screen.md
         // §4.1).
@@ -1024,7 +1024,7 @@ impl Window {
             }
             SlotKind::Button { button, cell } => {
                 if let Some(chip) = v.screen.slots[slot as usize].face {
-                    // BN5's capsules (0x08024422): the chip's name and
+                    // EXE5's capsules (0x08024422): the chip's name and
                     // picture alone; the frame's colors stay the last
                     // drawn.
                     self.chip_name_and_art(v, chip, text, problems);
@@ -1034,7 +1034,7 @@ impl Window {
                     self.tiles.fill(self.layout.element, 4, BLANK_7);
                     self.tiles.fill(self.layout.digits, 6, BLANK_8);
                 } else if let Some(look) = v.button_look(button) {
-                    // (BN5's soul button, 0x08024540: its picture in its
+                    // (EXE5's soul button, 0x08024540: its picture in its
                     // first palette, a Chaos Unison's in its second, the
                     // slot's +6, whatever its state.)
                     let palette = if is_soul_button(v.b, v.screen, cw.slot) {
@@ -1103,7 +1103,7 @@ impl Window {
 
     /// A chip's name (8 cells of the 8x16 font in the window's colors) and
     /// its picture and palette: `sub_80284E2`'s first part, and all a
-    /// button's chip shows (BN5's capsules, 0x08024422).
+    /// button's chip shows (EXE5's capsules, 0x08024422).
     fn chip_name_and_art(&mut self, v: &View, chip: ChipHandle, text: &TextSink, problems: &mut Problems) {
         let c = chip;
         let data = v.b.content.chip(c);
@@ -1176,7 +1176,7 @@ impl Window {
                 SlotKind::Ok | SlotKind::Button { cell: ButtonCell::Right, .. } => {}
                 SlotKind::Button { button, .. } => {
                     if let Some(chip) = slot.face {
-                        // A button that shows a chip (BN5's capsules,
+                        // A button that shows a chip (EXE5's capsules,
                         // 0x08024114): a chip's slot, its icon the empty
                         // one once it is used, its code blank.
                         if slot.state == SlotState::Selected {
@@ -1196,8 +1196,8 @@ impl Window {
                     self.tiles.put_part(at + 4, &a.slot_codes, 2 * EMPTY_SLOT_CODE as usize, 2);
                     at += 6;
                 }
-                // (BN6's Beast Out button's hidden look; a game without
-                // the button, BN5, leaves its 3x2 the window's fill, as a
+                // (EXE6's Beast Out button's hidden look; a game without
+                // the button, EXE5, leaves its 3x2 the window's fill, as a
                 // hidden slot's: its handler for no special button,
                 // 0x080240D8, copies nothing in.)
                 SlotKind::Hidden if s as u8 == SPECIAL_SLOT && !v.beast.beast_buttons.is_empty() => {
@@ -1244,7 +1244,7 @@ impl Window {
             let at = self.layout.column_icons + 4 * i as u16;
             let icon = match v.screen.look.column[i] {
                 Some(c) => v.icon(c, problems).map(|t| (t, 0)),
-                // BN5's soul, given for a chip: its icon (0x0802341C).
+                // EXE5's soul, given for a chip: its icon (0x0802341C).
                 None if picks.get(i) == Some(&SPECIAL_SLOT) => soul_icon(v.assets, v),
                 None => None,
             };
@@ -1391,7 +1391,7 @@ fn names_shown(b: &Battle, s: &Screen) -> bool {
 fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Layer, text: &mut TextSink, problems: &mut Problems) {
     let side = (v.side ^ 1) as usize;
     let other = v.b.stats[side].navi;
-    // (Its variant name when its side's rules ask: BN5's Hub Style in a link
+    // (Its variant name when its side's rules ask: EXE5's Hub Style in a link
     // battle, 0x0801AE3A's NameID 0xEA.)
     let variant = if v.b.looks[side].name_variant { text.strings.navi_variant_name(&v.b.content, other) } else { None };
     let name = variant.unwrap_or_else(|| text.strings.navi_name(&v.b.content, other));
@@ -1420,7 +1420,7 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
 /// The cursor's corners (`sub_8028820`): where its slot's frame is
 /// (`jt_802886C`'s routines, less 3) and the four 8x8 corners in each of
 /// its two frames (`byte_80288B0` and the others: y, x, flips). OK's and
-/// the special slot's are the pack's (`CustomLayout`: BN5's sit otherwise).
+/// the special slot's are the pack's (`CustomLayout`: EXE5's sit otherwise).
 #[derive(Clone, Copy)]
 struct CursorShape {
     corners: [[(i32, i32, bool, bool); 4]; 2],
@@ -1561,7 +1561,7 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
 
 /// The Regular chip's frame (`sub_802899C`): a 32x32 sprite around the
 /// first slot.
-/// The chip a button holds, over the button (BN5's Arm Change, 0x080254F4):
+/// The chip a button holds, over the button (EXE5's Arm Change, 0x080254F4):
 /// its icon as a 16x16 sprite where the button's look says, in sprite
 /// palette 10 (the HUD's icons').
 fn held_part<'a>(v: &View, packs: &crate::packs::Packs<'a>, problems: &mut Problems) -> Option<SpritePart<'a>> {
@@ -1683,7 +1683,7 @@ pub fn draw<'a>(
     // one before).
     let drawn = screen.look.drawn;
     let mut queue: Vec<SpritePart<'a>> = Vec::new();
-    // BN5's soul choice's flying icon (its state 9's routines draw it
+    // EXE5's soul choice's flying icon (its state 9's routines draw it
     // before the screen's others).
     if soul_window_up(b, screen)
         && let Some(o) = SoulOffer::of(b, v.side as usize)

@@ -105,7 +105,7 @@ pub struct HudHidden {
     /// The own-gauges mode's gauge, drawn by its levels (draw task
     /// 17, `sub_801C640`).
     pub level_gauge: bool,
-    /// The HP box (draw task 7, `sub_801C840`: BN5's dark MegaMan's last
+    /// The HP box (draw task 7, `sub_801C840`: EXE5's dark MegaMan's last
     /// stand hides it). Its drawing only: its low-HP alarm sounds on.
     pub hp_box: bool,
 }

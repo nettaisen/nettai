@@ -1,6 +1,6 @@
 --!strict
--- The mine the Mine chip lays, as BN5 and BN6 share it (BN6's attack
--- object #0x4C, `sub_80CDD44`; BN5's #0x4C): each game makes its own kind
+-- The mine the Mine chip lays, as EXE5 and EXE6 share it (EXE6's attack
+-- object #0x4C, `sub_80CDD44`; EXE5's #0x4C): each game makes its own kind
 -- (`land_mine.make_kind`: its identity, sprite, sounds, blast and
 -- collision types). A field object that hops among the enemy's free panels
 -- in a shuffled order for two seconds, then hides where it stopped, armed:
@@ -29,7 +29,7 @@ local land_mine = {}
 
 -- A game's mine: its kind's key, its identity (a field object nothing
 -- absorbs, swallows or leaves as junk, with no look), its sprite, its
--- hop's sound, its blast (BN6's effect 0x47) and the blast's sound, and its
+-- hop's sound, its blast (EXE6's effect 0x47) and the blast's sound, and its
 -- collision types (what it is, and what it hits).
 export type Look = {
     id: string,

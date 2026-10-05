@@ -1,15 +1,15 @@
 --!strict
--- Rocks, as BN5 and BN6 share them (BN6's attack object #0x59, `sub_80CF954`; BN5's #0x59, 0x080D0FA0, the same
+-- Rocks, as EXE5 and EXE6 share them (EXE6's attack object #0x59, `sub_80CF954`; EXE5's #0x59, 0x080D0FA0, the same
 -- code): field obstacles with HP that block their panel, break into debris when destroyed, and leave after 6000
--- ticks. A rock is spawned with its variant (the original's first parameter, a row of BN6's `byte_80CF934` or BN5's
+-- ticks. A rock is spawned with its variant (the original's first parameter, a row of EXE6's `byte_80CF934` or EXE5's
 -- 0x080D0F80: the rock cubes and the ice block), the class of field-object slot it takes (the second: 0, two a side;
 -- 1, one) and how it comes onto the field (the third, its entrance). RockCube and IceCube place one, and others use
--- it too: an obstacle encased in ice becomes an ice block (BN6's), and some stages place them when the round starts
--- (an actor list's entry type 8, the kind's `place`, with the variant the stage names). See BN6's
+-- it too: an obstacle encased in ice becomes an ice block (EXE6's), and some stages place them when the round starts
+-- (an actor list's entry type 8, the kind's `place`, with the variant the stage names). See EXE6's
 -- docs/engine/field-objects.md.
 --
 -- Each game makes its own kind (`rock.make`) with its look: the sprite, the debris and effects it leaves, the
--- landing sound, how it looks absorbed (BN6's; BN5 neither absorbs nor blinks obstacles out: a removal leaves a
+-- landing sound, how it looks absorbed (EXE6's; EXE5 neither absorbs nor blinks obstacles out: a removal leaves a
 -- puff, 0x080D1170) and the damage a stage's rocks are thrown for. Its variants are the game's (`rock.variant`).
 --
 -- An obstacle: its update runs the obstacle framework's steps (the `obstacle` service) around its own actions.
@@ -40,10 +40,10 @@ export type Look = {
     is: CollisionType,
     hits: CollisionType,
     land_sound: Sound,
-    -- How it looks absorbed (BN6's obstacle kind 4: its own sprite, in the animation it stood in); none (BN5's): a
+    -- How it looks absorbed (EXE6's obstacle kind 4: its own sprite, in the animation it stood in); none (EXE5's): a
     -- removal leaves a puff.
     absorbed: AbsorbedLook?,
-    -- The damage a stage's rocks do when thrown (BN6's 200; BN5's the same, 0x08006910).
+    -- The damage a stage's rocks do when thrown (EXE6's 200; EXE5's the same, 0x08006910).
     stage_damage: number,
 }
 
@@ -70,7 +70,7 @@ local RISING = 0
 -- A frame's flag: its animation's last.
 local LAST_FRAME = 0x80
 
--- Its actions (BN6's `off_80CFA48`; BN5's table has no frozen or bubbled rows and stands in its 6, the same
+-- Its actions (EXE6's `off_80CFA48`; EXE5's table has no frozen or bubbled rows and stands in its 6, the same
 -- actions).
 local APPEAR, DESTROYED, STANDING = 0, 2, 8
 

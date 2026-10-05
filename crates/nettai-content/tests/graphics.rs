@@ -60,7 +60,7 @@ fn bundle() -> Bundle {
         palettes: (1..=8).map(palette).collect(),
         first_palette: 1,
         palette_anims: vec![PaletteAnim { slot: 2, frames: vec![(palette(20), 16), (palette(21), 8)], initial_timer: 14 }],
-        // (In another game's order, as BN5's: the types round-trip by name.)
+        // (In another game's order, as EXE5's: the types round-trip by name.)
         panel_types: vec![0, 1, 2, 3, 4, 13, 6, 7, 14, 5, 15],
         panels: (0..11 * 6).map(|i| std::array::from_fn(|k| entry(10 + (k % 6) as u16, 1 + (i % 8) as u8, k % 2 == 0, false))).collect(),
         front_edges: [std::array::from_fn(|k| entry(11, 1, false, k == 0)), std::array::from_fn(|_| entry(12, 5, true, true))],
@@ -191,7 +191,7 @@ fn custom() -> CustomScreen {
     let picture = |seed: u8| Picture { tiles: tiles(42, seed), palette: palette(seed as u16) };
     let patch = |x, y, w, h, by_column| MapPatch { x, y, width: w, height: h, palette: 9, by_column };
     CustomScreen {
-        layout: CustomLayout { name: 0x59, art: 0x69, button_uses: true, ..CustomLayout::BN6 },
+        layout: CustomLayout { name: 0x59, art: 0x69, button_uses: true, ..CustomLayout::EXE6 },
         buttons: vec![(
             "soul".into(),
             ButtonPictures {
@@ -258,7 +258,7 @@ fn custom() -> CustomScreen {
 
 /// A fresh directory for one test.
 fn temp(name: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("bn6-content-{name}-{}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("exe6-content-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d

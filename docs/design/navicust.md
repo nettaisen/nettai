@@ -1,9 +1,9 @@
 # The NaviCust in content
 
 **Status: built (2026-10-02).** A player's NaviCust is part of their setup: the programs they placed on its grid.
-BN6's rules compile it into the navi's stats as the round is set up, and the compile matches the original's on every
-recorded case. This note covers what is the engine's, what is content, and how BN6's compile works, routine by
-routine. It also covers how BN5 or BN4 would slot in, how the compile is verified, and what no recording reaches.
+EXE6's rules compile it into the navi's stats as the round is set up, and the compile matches the original's on every
+recorded case. This note covers what is the engine's, what is content, and how EXE6's compile works, routine by
+routine. It also covers how EXE5 or BN4 would slot in, how the compile is verified, and what no recording reaches.
 
 The request came from the match editor ("it configures e.g. ruleset, arena, chips, navicust, patch cards"). A match
 file gives each side its NaviCust (docs/frontend.md §6), and nettai-editor edits it as the game does.
@@ -13,17 +13,17 @@ file gives each side its NaviCust (docs/frontend.md §6), and nettai-editor edit
 | What | Whose | Where |
 |---|---|---|
 | A program: its colors, shape, compressed shape, whether it is a plus part | the engine's record of every game's program | `define.navicust_program`, `Registry::NaviCustProgram`, `NaviCustProgramDef` |
-| What a program does, which bug it brings, which programs it excludes | the game's rules' data on the definition | BN6: `effects`, `bug`, `exclusive` (and `anywhere`), read by rules/navicust |
+| What a program does, which bug it brings, which programs it excludes | the game's rules' data on the definition | EXE6: `effects`, `bug`, `exclusive` (and `anywhere`), read by rules/navicust |
 | A player's NaviCust: the programs placed (program, color, center, quarter turns, compressed) and the board's expansions | the player's setup | `PlayerSetup::navicust: Option<NaviCust>` (`crate::navicust`) |
 | The board: which cells a program may cover, its frame, the command line | the game's rule section | the stock ruleset's `navicust` (rules/navicust/section.luau), `Rules::navicust` (`NaviCustRules`) |
-| The compile: placement into stats and bugs | the game's rules | BN6's `navicust` system (`round_setup`) |
+| The compile: placement into stats and bugs | the game's rules | EXE6's `navicust` system (`round_setup`) |
 | A program's name | the locales | `[navicust-programs]` in locales/<lang>.toml |
-| A program's number (a save's part id is 4 × it + the color variant) | compat | content/bn6/compat/navicust.toml |
+| A program's number (a save's part id is 4 × it + the color variant) | compat | content/exe6/compat/navicust.toml |
 
 So the engine knows a NaviCust's geometry, which is generic: a 7x7 grid (`navicust::SIZE`), a program's shape
-centered on its middle cell, quarter turns as BN6's four copies make them (`navicust::rotate`), and boards of `o`
+centered on its middle cell, quarter turns as EXE6's four copies make them (`navicust::rotate`), and boards of `o`
 (board), `f` (frame) and `.` (no cell) cells. It also knows the one placement rule every NaviCust game shares,
-`NaviCustRules::fits` (BN6's `sub_813BB00`: each covered cell is a board or frame cell, and not all of them are
+`NaviCustRules::fits` (EXE6's `sub_813BB00`: each covered cell is a board or frame cell, and not all of them are
 frame). It knows nothing of what a program does. The definition's other fields are the game's, which its rules
 read through `battle.navicust(side)`. A game without a NaviCust has no `navicust` section and no system to compile
 one.
@@ -37,9 +37,9 @@ which is what the original's reset leaves (§3, step 3). A match side with a Nav
 **The NaviCust is MegaMan's.** The original compiles the PET's own navi's NaviCust, navi 0's. The system compiles
 a NaviCust only for the navi that changes form, and a match refuses one for another navi.
 
-## 2. BN6's programs as content
+## 2. EXE6's programs as content
 
-`content/bn6/navicust/<key>/program.luau` holds 46 definitions, one per program. The verification workspace's
+`content/exe6/navicust/<key>/program.luau` holds 46 definitions, one per program. The verification workspace's
 `tools/navicust/gen.py` writes them, with their names and numbers, from the ROM's part table (`StructArr_813944C`,
 16 bytes a part id). Its `check` mode compares the committed files with the ROM. The four ROMs' tables are the same,
 byte for byte, so the programs have no version or region differences.
@@ -60,7 +60,7 @@ return define.navicust_program {
 - **The table's bytes** are named by what they do. +0 is the exclusive group: `super-armor`, `guard` (Shield,
   Reflect, AntiDmg), `encounter-element` (OilBody, Fish, Battery, Jungle), `l-button` (Humor, Poem) and
   `custom-screen` (ChpShufl, NumbrOpn). +1 is 0 for a program, 1 for a plus part, and 2 for one that works anywhere
-  (no BN6 part is one). +4 is the bug the program brings, one of rules/navicust/programs.luau's `BUGS`. +2 is 1 for
+  (no EXE6 part is one). +4 is the bug the program brings, one of rules/navicust/programs.luau's `BUGS`. +2 is 1 for
   every part, and nothing reads it.
 - **The effects** are rules/navicust/programs.luau's constructors, one per handler of `navicust_jt_NCPs` (by
   `id >> 2`). A handler that calls others (BustPack, BodyPack, FldrPak1, FldrPak2) lists their effects in its
@@ -68,9 +68,9 @@ return define.navicust_program {
   FstBarr's is lib/barriers' `barrier_10`. A program whose handler writes a stat no netbattle reads (SneakRun,
   OilBody, Fish, Battery, Jungle, Millions, Humor, Poem, SlipRunr, AutoHeal) has `programs.outside(...)`, which
   the system does nothing for, because the engine doesn't keep the stat.
-- **Compressed shapes** are given where they differ from the shape. Every BN6 program has one.
+- **Compressed shapes** are given where they differ from the shape. Every EXE6 program has one.
 
-## 3. BN6's compile (rules/navicust/init.luau)
+## 3. EXE6's compile (rules/navicust/init.luau)
 
 The original's `reloadCurNaviStatBoosts` calls `sub_813C458` when the PET's navi is navi 0. The system's
 `round_setup` hook is that routine. The stock ruleset runs it before the patch cards, which apply to what it made
@@ -133,14 +133,14 @@ setup gives both (nettai-match's `starting`).
 ## 4. Other games
 
 A game brings its own programs (its root's `define.navicust_program`s, with its own names in its own colors), its
-own board section and its own compile system. **BN5's is built** (bn5-map.md §15.13): its compile is BN6's routine
+own board section and its own compile system. **EXE5's is built** (exe5-map.md §15.13): its compile is EXE6's routine
 for routine, so the routines are shared (content/exelib/navicust/compile.luau, `compile.run(side, game)`), and each
 game's navicust system passes what is its own (`NaviCustGame`, content/exelib/types.d.luau): its board, its bugs in
-the order its bugs' routine runs them and what each writes by level, what a placed program counts besides (BN5's
-HubBatc counts its own bug once more), whether any bug sets the emotion window's glitch (BN6's flag 0x1720; BN5's
-flag is read outside battle only), and whether the HP is left as it is (BN5's compile in the cyberworld, the
-system's setup `cyberworld`). The programs' effects are shared constructors (@exelib/navicust/effects). BN5's board
-has no frame and grows as BN6's does (4x4, 5x4, 5x5 by its ExpMemry, key item 0x61), on its 5x5 grid, the middle of
+the order its bugs' routine runs them and what each writes by level, what a placed program counts besides (EXE5's
+HubBatc counts its own bug once more), whether any bug sets the emotion window's glitch (EXE6's flag 0x1720; EXE5's
+flag is read outside battle only), and whether the HP is left as it is (EXE5's compile in the cyberworld, the
+system's setup `cyberworld`). The programs' effects are shared constructors (@exelib/navicust/effects). EXE5's board
+has no frame and grows as EXE6's does (4x4, 5x4, 5x5 by its ExpMemry, key item 0x61), on its 5x5 grid, the middle of
 the engine's 7x7. The engine's model, the match file and the editor take it
 as they are. The editor draws whichever board the side's game's section gives, and lists the content's programs. BN4's NaviCust has two command lines and no plus parts. `NaviCustRules::command_line` is
 one row, so BN4 would widen it to a set of rows. That is a change to the section, not to the model.
@@ -150,7 +150,7 @@ one row, so BN4 would widen it to a set of rows. That is a change to the section
 The verification workspace's `trace-tests --test navicust` compiles NaviCusts through the engine and compares the
 result with the original's:
 
-- **Tango's raw saves** (the canonical BN6 saves: US and JP, Falzar and Gregar) are compared on the save's NaviStats
+- **Tango's raw saves** (the canonical EXE6 saves: US and JP, Falzar and Gregar) are compared on the save's NaviStats
   block and its flag. Their NaviCusts are empty, with 1000 HP and no bug.
 - **The chip lab's scenarios that set a NaviCust** are compared on their recording's setup: every modeled stat byte,
   and the bug flag, with the patch cards on top where they are installed. That is 1,274 sides: 167 with programs,
@@ -164,16 +164,16 @@ A scenario's program is compressed only if the save's flag says so, and the lab'
 scenario places the compressed shape (`chiplab info` prints the flags). A program placed uncompressed on such a save
 is compiled compressed by the original.
 
-BN5's: `trace-tests --test bn5_navicust` compiles Tango's BN5 saves and the BN5 lab's scenarios the same way, in
-every byte the engine's compile can write (bn5-map.md §15.13): 59 NaviCusts of 164 programs, all 47 programs, every
+EXE5's: `trace-tests --test exe5_navicust` compiles Tango's EXE5 saves and the EXE5 lab's scenarios the same way, in
+every byte the engine's compile can write (exe5-map.md §15.13): 59 NaviCusts of 164 programs, all 47 programs, every
 bug and level that changes a byte, uncompressed shapes (a scenario clearing the save's flags), turned ones, the
 cyberworld's HP, and the finished saves' own NaviCusts. Every one matches. The board is the save's ExpMemry's (the
-scenarios `board-4x4` and `board-5x4` poke fewer than the saves' two): BN5's compile reads no board, so the oracle
+scenarios `board-4x4` and `board-5x4` poke fewer than the saves' two): EXE5's compile reads no board, so the oracle
 checks that each part is on it.
 
 ## 6. Unverified (ported)
 
-- A program that works anywhere (+1 = 2): no BN6 part is one.
+- A program that works anywhere (+1 = 2): no EXE6 part is one.
 - The `unread` bug (group 10): no part or color count brings it, and nothing reads +0x62.
 - Bug groups 13 to 15: no part has one. The original's table would read past its end.
 - The smaller boards (4x4, 5x4: key item 0x71 below 2). Every recorded save has the full board. A match file can

@@ -48,7 +48,7 @@ use mlua::{Function, Lua, Table, Value as LuaValue, VmState};
 
 /// Content's scripts: module name to source text, and bytecode already
 /// compiled from them. A module's name is its pack's and its path in the
-/// pack without `.luau` (`bn6:chips/minibomb/init`; docs/design/
+/// pack without `.luau` (`exe6:chips/minibomb/init`; docs/design/
 /// content-model-v2.md §4.0); the definitions a module makes are keyed
 /// local to the game (`minibomb`).
 #[derive(Clone, Debug, Default)]
@@ -93,7 +93,7 @@ impl Compiled {
 
 impl Pack {
     /// Modules by name: their pack and their path in it
-    /// (`bn6:chips/minibomb/init`, `keys::module_name`;
+    /// (`exe6:chips/minibomb/init`, `keys::module_name`;
     /// docs/design/content-model-v2.md §4.0).
     pub fn new(modules: impl IntoIterator<Item = (String, String)>) -> Pack {
         let modules: BTreeMap<String, String> = modules.into_iter().collect();
@@ -424,7 +424,7 @@ struct Loader {
 }
 
 fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Result<LuaValue> {
-    // (A folder names its `init` module, as a require does: `bn6:rules` is
+    // (A folder names its `init` module, as a require does: `exe6:rules` is
     // rules/init.luau.)
     let folder = keys::init_of(path);
     let path = if !loader.borrow().pack.modules.contains_key(path) && loader.borrow().pack.modules.contains_key(&folder) {

@@ -1,7 +1,7 @@
 --!strict
--- Rock debris, as BN5 and BN6 share it (BN6's effect object #0x38, `sub_80E46D8`; BN5's #0x38, 0x080E46F4, the same
+-- Rock debris, as EXE5 and EXE6 share it (EXE6's effect object #0x38, `sub_80E46D8`; EXE5's #0x38, 0x080E46F4, the same
 -- code): a chunk thrown up when a rock (@exelib/rock/rock) breaks, which flies off with a random speed and puffs into
--- dust where it lands; the stages' boulder (@exelib/boulder/boulder) and BN6's encased bubble throw it up too. Only
+-- dust where it lands; the stages' boulder (@exelib/boulder/boulder) and EXE6's encased bubble throw it up too. Only
 -- drawn, but it draws the simulation RNG twice.
 --
 -- Each game makes its own kind (`debris.make_kind`) with its look: the chunks' sprite and the dust they land in.

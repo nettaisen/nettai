@@ -1,5 +1,5 @@
 --!strict
--- The NaviCust supports' dimming controller, as BN5 and BN6 share it (BN6's effect object #0x79, `sub_80E8FE0`; BN5's
+-- The NaviCust supports' dimming controller, as EXE5 and EXE6 share it (EXE6's effect object #0x79, `sub_80E8FE0`; EXE5's
 -- #0x74, 0x080E8F50, the same code), of a game's `SupportsLook` (`controller.make`). In link battles a NaviCust
 -- program's support acts once: Rush eats a chip the opponent uses and Beat snatches a Mega or Giga chip (their host is
 -- the chip user's opponent), Tango heals her host when its HP drops to a quarter. The ruleset turns the chip back
@@ -25,7 +25,7 @@ export type State = {
     -- goes (the original's second parameter).
     out: boolean,
     -- The chip Rush eats, if any (the engine's for every game; a Rush
-    -- without a spared chip, BN5's, keeps none).
+    -- without a spared chip, EXE5's, keeps none).
     eaten: Chip?,
     -- The chip the telop names (+0x30: Rush's, Beat's or Tango's, the
     -- roles' `chips.rush`, `beat` and `tango`), which the ruleset sets.
@@ -52,7 +52,7 @@ end
 
 -- A game's supports' controller, of `look`.
 function controller.make(look: SupportsLook): Kind
-    -- The support's spawner (`off_80E90A4`, BN5's 0x080E9010, by the first
+    -- The support's spawner (`off_80E90A4`, EXE5's 0x080E9010, by the first
     -- parameter).
     local function send(me: Object, s: State)
         local support = s.support
@@ -65,7 +65,7 @@ function controller.make(look: SupportsLook): Kind
         end
     end
 
-    -- `sub_80E9024` (action 8; BN5's 0x080E8F94), by phase.
+    -- `sub_80E9024` (action 8; EXE5's 0x080E8F94), by phase.
     local function effect(me: Object)
         local s = me.state :: State
         local p = me.phase

@@ -1,6 +1,6 @@
 --!strict
--- BassAnly's shot, as BN6 and BN5 share it (BN6's attack object #0xC1,
--- `sub_80DD34C`; BN5's #0x73, its code BN6's but for its sprite): a dark
+-- BassAnly's shot, as EXE6 and EXE5 share it (EXE6's attack object #0xC1,
+-- `sub_80DD34C`; EXE5's #0x73, its code EXE6's but for its sprite): a dark
 -- ball that starts 24 pixels ahead, kicks back and accelerates forward
 -- along a slant (up or down; its level picks its speeds, 3 twice as fast),
 -- its body a hit region (hit, it goes off until it reaches another panel).
@@ -53,11 +53,11 @@ local PUSH = 0x4000
 local SLANT = 0xC000
 
 -- By level, its speed up or down the slant and forward once turned
--- (BN6's `byte_80DD6A8`, `byte_80DD6D0`).
+-- (EXE6's `byte_80DD6A8`, `byte_80DD6D0`).
 local TURN_Y: { [number]: number } = { [0] = 0x2_6666, 0x2_B333, 0x3_0000, 0x7_8000 }
 local TURN_X: { [number]: number } = { [0] = 0x3_8000, 0x4_8000, 0x5_0000, 0xC_8000 }
 
--- What homing 2 looks for, by side (BN6's `off_80DD6BC`): an enemy navi's
+-- What homing 2 looks for, by side (EXE6's `off_80DD6BC`): an enemy navi's
 -- body; and where, along the slant (`byte_80DD6E8` going down,
 -- `byte_80DD6ED` going up).
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }

@@ -74,7 +74,7 @@ pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
                 ai_mut(b, r).attack.charged = 0;
                 let action = super::idle::weapon_routine(b, r, weapon);
                 set_attack(b, r, action, 2);
-                // (BN6's beast system runs the Beast forms' claw and
+                // (EXE6's beast system runs the Beast forms' claw and
                 // SlashCross Beast's charged sword inside its rush.)
                 chip_used(b, r, Some(weapon));
                 ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
@@ -84,7 +84,7 @@ pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
     }
     let action = prepare(b, r, charge);
     set_attack(b, r, action, 2);
-    // (BN6's beast system runs a chip with the lock-on flag inside its
+    // (EXE6's beast system runs a chip with the lock-on flag inside its
     // rush, in a Beast form or from the Cross special.)
     chip_used(b, r, None);
     ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
@@ -101,7 +101,7 @@ fn chip_used(b: &mut Battle, r: ObjectRef, weapon: Option<WeaponHandle>) {
     b.systems_chip_used(side, r, chip, weapon);
 }
 
-/// `sub_800FC30`: the wrapper (BN6's Beast Out rush) chains the next chip,
+/// `sub_800FC30`: the wrapper (EXE6's Beast Out rush) chains the next chip,
 /// starting its action (inside the wrapper again). Not the chips with the `no_chain` trait
 /// (the variable swords), dimming chips, or an empty hand. True if it did.
 pub(crate) fn chain_next_chip(b: &mut Battle, r: ObjectRef) -> bool {
@@ -127,10 +127,10 @@ struct HandEntry {
     /// Atk+ and charge bonuses plus any form or aura bonus.
     extra: u16,
     /// Modifier flags folded into the entry (`modifier_bits`: bit 1
-    /// paralyze, bit 2 uninstall; BN5's capsules' bits 3 to 5).
+    /// paralyze, bit 2 uninstall; EXE5's capsules' bits 3 to 5).
     modifiers: u8,
     /// The type of panel the bonus came from, which the use turns Normal
-    /// (the navi's `panel_bonus`: BN5's sea, 0x0800D0A6's bonus kind 4).
+    /// (the navi's `panel_bonus`: EXE5's sea, 0x0800D0A6's bonus kind 4).
     spends: Option<PanelType>,
 }
 
@@ -255,7 +255,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     }
     prime(b, r, cd);
     let mut damage = ai(b, r).attack.damage;
-    // sub_8012C34 (BN5's 0x08010368, which knows two more: its capsules').
+    // sub_8012C34 (EXE5's 0x08010368, which knows two more: its capsules').
     if e.modifiers & modifier_bits::PARALYZE != 0 {
         damage |= damage_flags::PARALYZE;
     }
@@ -278,15 +278,15 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     if cd.flags.has(ChipFlags::NAVI) {
         b.bump_side_stat(side, 6, 1);
     }
-    // sub_800B79A: the side's systems' (BN6's dark chips worsen the HP
+    // sub_800B79A: the side's systems' (EXE6's dark chips worsen the HP
     // bug).
     let used = b.content.chip_or_zeroed(e.chip);
     b.systems_chip_prepared(side, r, used);
-    // BN5's 0x08010030 and 0x080100E6: the side's rules may refuse the
+    // EXE5's 0x08010030 and 0x080100E6: the side's rules may refuse the
     // chip, before the bonus's panel is spent (`chip_cost`: its light and
     // dark system's dark chips) or after (`chip_check`: its chips for the
     // other kind of MegaMan, 0x08010118). The navi then uses the chip they
-    // give instead (BN5's 0x185, its variant 3 and no parameters, the rest
+    // give instead (EXE5's 0x185, its variant 3 and no parameters, the rest
     // of the attack as prepared: its lockout is still the refused chip's).
     let refuse = |b: &mut Battle, instead: ChipHandle| {
         ai_mut(b, r).attack.chip = Some(instead);
@@ -295,7 +295,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     if let Some(instead) = b.systems_chip_cost(side, r, e.chip) {
         return refuse(b, instead);
     }
-    // BN5's 0x080100B0: the panel the bonus came from turns Normal, if the
+    // EXE5's 0x080100B0: the panel the bonus came from turns Normal, if the
     // navi still stands on that type.
     if let Some(kind) = e.spends {
         let p = b.objects.get(r).panel;
@@ -310,14 +310,14 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     charged_action(b, r, charge).unwrap_or_else(|| chip_action(b, r, e.chip))
 }
 
-/// BN5's 0x08010442: in a form with a `charged_action` (NapalmSoul), a
+/// EXE5's 0x08010442: in a form with a `charged_action` (NapalmSoul), a
 /// charged use starts that action in place of the chip's.
 fn charged_action(b: &Battle, r: ObjectRef, charge: u8) -> Option<super::NaviAction> {
     let action = form_of(b, r).charged_action?;
     (charge != 0).then_some(super::NaviAction::Content(action))
 }
 
-/// BN5's 0x080102D2: the use of a chip its form is primed by (not a
+/// EXE5's 0x080102D2: the use of a chip its form is primed by (not a
 /// dimming chip) primes it, with the priming's sound.
 fn prime(b: &mut Battle, r: ObjectRef, cd: &ChipData) {
     let Some(priming) = &form_of(b, r).priming else { return };
@@ -328,7 +328,7 @@ fn prime(b: &mut Battle, r: ObjectRef, cd: &ChipData) {
     }
 }
 
-/// BN5's 0x08010392: a damaging chip (not a dimming chip) used with the
+/// EXE5's 0x08010392: a damaging chip (not a dimming chip) used with the
 /// panel ahead not its side's keeps a form with a front guard (KnightSoul)
 /// invulnerable a while.
 fn front_guard(b: &mut Battle, r: ObjectRef, cd: &ChipData) {
@@ -374,7 +374,7 @@ fn deals_damage(flags: ChipFlags) -> bool {
 }
 
 /// `sub_8010D58`: the chip the side's systems put in the chip's place
-/// (`chip_substitute`: BN6's dark chips cost a bug frag, and with none
+/// (`chip_substitute`: EXE6's dark chips cost a bug frag, and with none
 /// left the player gets the chip's substitute, `off_8010D84`), through
 /// `sub_800EF02`, with its own damage and bonus and no modifiers.
 fn dark_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> Option<HandEntry> {
@@ -462,7 +462,7 @@ pub(crate) fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>
     a.charged = 0;
 }
 
-/// `sub_800EF34` (BN5's 0x0800D0A6, `charge` its argument): the damage
+/// `sub_800EF34` (EXE5's 0x0800D0A6, `charge` its argument): the damage
 /// bonus MegaMan's form gives a chip (a link navi's own, `sub_800F09E`),
 /// then the aura bonus (`sub_800F1DC`); and the type of panel the bonus
 /// came from, which the use spends.
@@ -476,7 +476,7 @@ fn chip_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, charge: u8) ->
 /// more (the form's `chip_bonus`: EraseCross's also boosts dimming chips;
 /// NapalmSoul's only uncharged, with the A charge not full); failing that,
 /// Beast Out's Null chips outside battle mode 1 (the form's `null_bonus`).
-/// In a form with no `chip_bonus`, the navi's `panel_bonus` (BN5's Aqua
+/// In a form with no `chip_bonus`, the navi's `panel_bonus` (EXE5's Aqua
 /// chips on sea), which names the panel it spends.
 fn form_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, charge: u8) -> (u16, Option<PanelType>) {
     let form = form_of(b, r);
@@ -568,15 +568,15 @@ enum Boost {
     Cross,
     /// A form's Null chips (`doubles_null`: Beast Over's).
     NullDoubled,
-    /// A primed form's (spent by the use: BN5's GyroSoul).
+    /// A primed form's (spent by the use: EXE5's GyroSoul).
     Primed,
-    /// A form's chips on grass (the use turns it normal: BN5's
+    /// A form's chips on grass (the use turns it normal: EXE5's
     /// TomahawkSoul).
     Grass,
 }
 
 /// `sub_8012A38`: whether the use doubles the chip's damage. A primed
-/// form doubles only what its priming does (BN5's 0x0801026C: then
+/// form doubles only what its priming does (EXE5's 0x0801026C: then
 /// neither Full Synchro nor anger does).
 fn double_damage(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, damage: u16, charge: u8) -> (u16, Option<Boost>) {
     let cd = entry_record(&b.content, chip);
@@ -616,14 +616,14 @@ fn cross_doubles(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, charge: u8)
     charge != 0 || (a.charge_level == 2 && a.charge_source == 1)
 }
 
-/// BN5's 0x08010302: a primed form doubles a chip its priming names (not
+/// EXE5's 0x08010302: a primed form doubles a chip its priming names (not
 /// a dimming chip).
 fn primed_doubles(b: &Battle, r: ObjectRef, cd: &ChipData) -> bool {
     let Some(priming) = &form_of(b, r).priming else { return false };
     deals_damage(cd.flags) && priming.doubles.iter().any(|&rule| chip_matches(rule, cd))
 }
 
-/// BN5's 0x0801032A: a form with `grass_doubles` (TomahawkSoul) standing
+/// EXE5's 0x0801032A: a form with `grass_doubles` (TomahawkSoul) standing
 /// on grass doubles the chips it names (not dimming chips).
 fn grass_doubles(b: &Battle, r: ObjectRef, cd: &ChipData) -> bool {
     let Some(rule) = form_of(b, r).grass_doubles else { return false };
@@ -652,7 +652,7 @@ fn heal_on_use(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>, mixed: bo
     let cd = entry_record(&b.content, chip);
     let cross = form_of(b, r).chip_heals.is_some_and(|rule| chip_matches(rule, cd)) && !cd.flags.has(ChipFlags::DIMMING);
     let heal = if cross { (s.max_base_hp as u32 + 0x13) / 0x14 } else { 0 };
-    // BN5's 0x0800FFF6: a heal mixed into the chip (the hand's modifier
+    // EXE5's 0x0800FFF6: a heal mixed into the chip (the hand's modifier
     // 0x10: its pink capsule) is a tenth of the navi's maximum HP, rounded
     // up.
     let mixed = if mixed { (b.objects.get(r).max_hp as u32 + 9) / 10 } else { 0 };

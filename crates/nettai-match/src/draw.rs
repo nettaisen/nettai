@@ -2,7 +2,7 @@
 //! and for each side a legal random folder, five Crosses of both versions
 //! and a version, on MegaMan at his fresh stats (100 HP, as a new match's:
 //! `Side::fresh`) with no NaviCust programs, all drawn from a seed. That is
-//! BN6's (its Crosses and versions); another game's is a plain match
+//! EXE6's (its Crosses and versions); another game's is a plain match
 //! ([`plain`]) of its own. The draw is the frontend's,
 //! made before the battle; the battle is then a function of its setup and
 //! the buttons, as rollback needs. The same seed gives the same match,
@@ -14,7 +14,7 @@ use crate::{Arena, Match, Place, Side, ids};
 use nettai_battle::Battle;
 use std::sync::Arc;
 use nettai_battle::content::Content;
-use bn6_compat::CrossList;
+use exe6_compat::CrossList;
 use nettai_battle::custom::{FolderChip, GameVersion, SavedFolder};
 use nettai_content_api::StageHandle;
 
@@ -49,10 +49,10 @@ impl Draws {
     }
 }
 
-/// The backgrounds a BN6 link battle draws from (`sub_81209DC`'s
-/// `byte_8120A20`, by name in BN6's pack; some are there twice, so twice
+/// The backgrounds an EXE6 link battle draws from (`sub_81209DC`'s
+/// `byte_8120A20`, by name in EXE6's pack; some are there twice, so twice
 /// as likely).
-const BN6_LINK_BACKGROUNDS: [&str; 21] = [
+const EXE6_LINK_BACKGROUNDS: [&str; 21] = [
     "honeycomb",
     "statues",
     "statues",
@@ -76,16 +76,16 @@ const BN6_LINK_BACKGROUNDS: [&str; 21] = [
     "calendar-purple",
 ];
 
-/// The backgrounds a link battle of `game` draws from (BN6's; another
+/// The backgrounds a link battle of `game` draws from (EXE6's; another
 /// game's shows its stage's own).
 fn link_backgrounds(game: &str) -> &'static [&'static str] {
-    if game == bn6_compat::ROOT { &BN6_LINK_BACKGROUNDS } else { &[] }
+    if game == exe6_compat::ROOT { &EXE6_LINK_BACKGROUNDS } else { &[] }
 }
 
 /// Whether live play draws `game`'s match with Crosses and a version
-/// (BN6's).
+/// (EXE6's).
 fn draws_live(game: &str) -> bool {
-    game == bn6_compat::ROOT
+    game == exe6_compat::ROOT
 }
 
 /// A link battle's arena of `game`, drawn from `draws`: its stage and
@@ -122,13 +122,13 @@ fn crosses(content: &Content, game: &str, draws: &mut Draws) -> Result<CrossList
     let all = crate::all_crosses(content, game)?;
     let mut picked: Vec<usize> = (0..all.len()).collect();
     draws.shuffle(&mut picked);
-    picked.truncate(bn6_compat::unlocks::CROSSES);
+    picked.truncate(exe6_compat::unlocks::CROSSES);
     picked.sort();
     Ok(CrossList::new(&picked.iter().map(|&i| all[i]).collect::<Vec<_>>()))
 }
 
 impl Side {
-    /// A live player of BN6 on `arena`: a new match's side (`Side::fresh`:
+    /// A live player of EXE6 on `arena`: a new match's side (`Side::fresh`:
     /// MegaMan at his fresh stats, a NaviCust with no programs) of
     /// `version`, with this folder and Cross list.
     pub fn live(content: &Content, arena: &Arena, folder: SavedFolder, crosses: CrossList, version: GameVersion) -> Result<Side, String> {
@@ -141,7 +141,7 @@ impl Side {
     }
 
     /// A player of a match of `game` drawn from
-    /// `draws` as netplay draws one: BN6's a random folder the rules accept,
+    /// `draws` as netplay draws one: EXE6's a random folder the rules accept,
     /// five Crosses of both versions, a version, no patch cards; another
     /// game's a plain side's ([`plain`]).
     pub fn drawn(content: &Arc<Content>, game: &str, draws: &mut Draws) -> Result<Side, String> {
@@ -198,7 +198,7 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Resul
     Ok(side)
 }
 
-/// A plain match of `game`, for a game live play draws none of (BN5's): an arena drawn from `seed` (`stage` forces the first
+/// A plain match of `game`, for a game live play draws none of (EXE5's): an arena drawn from `seed` (`stage` forces the first
 /// round's stage), and on both sides a plain side (`plain_side`), each its
 /// own folder.
 pub fn plain(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageHandle>) -> Result<Match, String> {
@@ -217,7 +217,7 @@ fn rules_battle(content: &Arc<Content>, arena: &Arena) -> Result<Battle, String>
 }
 
 /// Live play's match of `game`, drawn from `seed`.
-/// BN6's: a link battle's stage (`stage` forces one) and background, a
+/// EXE6's: a link battle's stage (`stage` forces one) and background, a
 /// random folder each player's rules accept (`crate::folders`), five of
 /// MegaMan's ten Crosses, of both versions, for each Cross window
 /// (`Unlocks::cross_list`, docs/engine/custom-screen.md §4.1), and each
@@ -249,11 +249,11 @@ mod tests {
     /// window; the same seed, the same match; a forced stage.
     #[test]
     fn the_live_match_is_drawn_from_the_seed() {
-        let content = crate::testing::bn6_content();
+        let content = crate::testing::exe6_content();
         // The navi: MegaMan at his fresh stats, as a new match's, with no
         // NaviCust programs (road panels carry him).
-        let m = live(&content, "bn6", 0, None).unwrap();
-        let fresh = &crate::Match::empty(&content, "bn6").unwrap().sides[0];
+        let m = live(&content, "exe6", 0, None).unwrap();
+        let fresh = &crate::Match::empty(&content, "exe6").unwrap().sides[0];
         for side in &m.sides {
             let s = &side.stats;
             assert_eq!((side.navi, side.navicust, side.navi_level), (fresh.navi, fresh.navicust, fresh.navi_level));
@@ -261,12 +261,12 @@ mod tests {
             assert_eq!((s.hp, s.max_hp), (100, 100));
             assert!(!s.float_shoes && !s.air_shoes && !s.undershirt && !s.super_armor && !s.chip_shuffle && !s.number_open);
         }
-        let stages = crate::link_battle_stages(&content, "bn6");
+        let stages = crate::link_battle_stages(&content, "exe6");
         assert_eq!(stages.len(), 96);
         let mut seen = std::collections::BTreeSet::new();
         let navi = content.form_changing_navi().unwrap();
         for seed in 0..12 {
-            let m = live(&content, "bn6", seed, None).unwrap();
+            let m = live(&content, "exe6", seed, None).unwrap();
             let setup = m.round(&content, seed);
             assert!(stages.contains(&setup.settings.stage));
             assert_eq!(setup.settings.effects & effects::RANDOM, 0);
@@ -274,50 +274,50 @@ mod tests {
             let mut b = crate::check::start(&content, &m).unwrap();
             for side in 0..2 {
                 assert!(folders::problems(&mut b, side as u8, &m.sides[side].folder).is_empty());
-                let unlocks = bn6_compat::Unlocks::of(&b, side as u8).unwrap();
+                let unlocks = exe6_compat::Unlocks::of(&b, side as u8).unwrap();
                 let list = unlocks.cross_list.unwrap();
                 assert_eq!(list.forms().count(), 5);
                 for f in list.forms() {
-                    let crosses = |g| bn6_compat::forms::set(&content, navi, g).unwrap().crosses;
+                    let crosses = |g| exe6_compat::forms::set(&content, navi, g).unwrap().crosses;
                     assert!(crosses(GameVersion::Gregar).contains(&f) || crosses(GameVersion::Falzar).contains(&f));
                 }
                 assert_eq!(unlocks.version, m.sides[side].game);
                 assert_eq!(setup.navi_stats[side].version, crate::version_byte(m.sides[side].game));
             }
-            assert_eq!(live(&content, "bn6", seed, None).unwrap(), m);
+            assert_eq!(live(&content, "exe6", seed, None).unwrap(), m);
             assert!(crate::check_match(&content, &m).is_empty(), "{:?}", crate::check_match(&content, &m));
         }
         assert!(seen.len() > 6, "{seen:?}");
         // Both games come up, and some seed offers both games' Crosses.
         let games: std::collections::BTreeSet<String> =
-            (0..12).flat_map(|seed| live(&content, "bn6", seed, None).unwrap().sides.map(|s| format!("{:?}", s.game))).collect();
+            (0..12).flat_map(|seed| live(&content, "exe6", seed, None).unwrap().sides.map(|s| format!("{:?}", s.game))).collect();
         assert_eq!(games.len(), 2);
         let mixed = (0..12).any(|seed| {
-            let list = live(&content, "bn6", seed, None).unwrap().sides[0].crosses.unwrap();
-            let gregar = list.forms().filter(|&f| bn6_compat::forms::game(&content, f) == Some(GameVersion::Gregar)).count();
+            let list = live(&content, "exe6", seed, None).unwrap().sides[0].crosses.unwrap();
+            let gregar = list.forms().filter(|&f| exe6_compat::forms::game(&content, f) == Some(GameVersion::Gregar)).count();
             gregar > 0 && gregar < 5
         });
         assert!(mixed);
-        let forced = live(&content, "bn6", 3, Some(crate::link_stage(&content, "bn6", "netbattle-43").unwrap())).unwrap();
+        let forced = live(&content, "exe6", 3, Some(crate::link_stage(&content, "exe6", "netbattle-43").unwrap())).unwrap();
         assert_eq!(ids::local(&content.defs.stage(forced.arena.first.stage).key), "netbattle-43");
-        assert_eq!(forced.sides, live(&content, "bn6", 3, None).unwrap().sides);
-        assert!(crate::link_stage(&content, "bn6", "netbattle-100").is_err());
+        assert_eq!(forced.sides, live(&content, "exe6", 3, None).unwrap().sides);
+        assert!(crate::link_stage(&content, "exe6", "netbattle-100").is_err());
         // Another game's name is none of this game's.
-        assert!(crate::link_stage(&content, "bn6", "bn6:netbattle-43").is_err()); // (written in full)
+        assert!(crate::link_stage(&content, "exe6", "exe6:netbattle-43").is_err()); // (written in full)
     }
 
     /// A plain match is one the checks accept (its folder the rules' draw),
-    /// and live play of BN5 is one, of BN5's alone.
+    /// and live play of EXE5 is one, of EXE5's alone.
     #[test]
     fn a_plain_match_is_legal() {
-        let content = crate::testing::bn6_content();
-        let m = plain(&content, "bn6", 4, None).unwrap();
+        let content = crate::testing::exe6_content();
+        let m = plain(&content, "exe6", 4, None).unwrap();
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
         assert_ne!(m.sides[0].folder.chips[0], m.sides[0].folder.chips[1], "a drawn folder");
-        let content = crate::testing::bn5_content();
-        let m = live(&content, "bn5", 4, None).unwrap();
+        let content = crate::testing::exe5_content();
+        let m = live(&content, "exe5", 4, None).unwrap();
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
-        assert_eq!(m.arena.game, "bn5");
-        assert!(m.sides.iter().flat_map(|s| s.folder.chips()).all(|c| ids::in_game(&content, "bn5", &content.defs.chip(c.id).key)));
+        assert_eq!(m.arena.game, "exe5");
+        assert!(m.sides.iter().flat_map(|s| s.folder.chips()).all(|c| ids::in_game(&content, "exe5", &content.defs.chip(c.id).key)));
     }
 }

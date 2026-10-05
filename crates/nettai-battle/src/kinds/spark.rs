@@ -61,7 +61,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             sprite.set_animation(anim, &b.content);
             sprite.look.shadow = crate::object::sprite::Shadow::WithSprite;
             sprite.look.palette = palette;
-            // (BN5's spark, 0x080E0870, doesn't step at its start: the
+            // (EXE5's spark, 0x080E0870, doesn't step at its start: the
             // arena's `effects` section.)
             if steps {
                 sprite.update(&b.content);
@@ -124,10 +124,10 @@ mod tests {
         n
     }
 
-    /// docs/design/bn5-map.md §15.3 item 16: BN5's spark (the arena's
+    /// docs/design/exe5-map.md §15.3 item 16: EXE5's spark (the arena's
     /// `effects`) doesn't step as it starts, so it lives a tick longer.
     #[test]
-    fn bn5s_spark_lives_a_tick_longer() {
+    fn exe5s_spark_lives_a_tick_longer() {
         assert_eq!(lifetime(false), lifetime(true) + 1);
     }
 }

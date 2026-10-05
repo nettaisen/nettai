@@ -198,12 +198,12 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     let level = e.typed.get(&(s, "level")).cloned().unwrap_or(side.navi_level.map_or(String::new(), |l| l.to_string()));
     let frags = e.typed.get(&(s, "bug_frags")).cloned().unwrap_or(side.bug_frags.to_string());
     let mut col = column![heading(SIDES[s]), field("Navi", pick_list(navis, Some(navi), move |n| Msg::Navi(s, n)))].spacing(10);
-    // What the rules and the navi take, alone: BN6's version, a navi
+    // What the rules and the navi take, alone: EXE6's version, a navi
     // code's level (`nettai_match::facts`).
     if nettai_match::Side::takes_game(c) {
         col = col.push(field("Version", pick_list(versions, version, move |g| Msg::Version(s, g))));
     }
-    // (No navi code for BN5's MegaMan.)
+    // (No navi code for EXE5's MegaMan.)
     let level_kind = side.takes_level(c).then(|| c.navi(side.navi).forms.is_none());
     if level_kind == Some(true) {
         col = col.push(field("Navi level", text_input("0", &level).on_input(move |t| Msg::Level(s, t)).width(Length::Fixed(80.0))));
@@ -222,8 +222,8 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     col = col.push(button("Import from save…").on_press(Msg::ImportSave(s)));
     col = col.push(
         text(
-            "From a BN6 .sav: the version, Beast Out and the Crosses it owns, the navi code's level and the SP times. \
-             From a BN5 .sav (or a raw save image): its karma, the souls it has (its version's) and its NaviCust board's size. \
+            "From an EXE6 .sav: the version, Beast Out and the Crosses it owns, the navi code's level and the SP times. \
+             From an EXE5 .sav (or a raw save image): its karma, the souls it has (its version's) and its NaviCust board's size. \
              A save of another game than the match's makes a new match of its game.",
         )
         .size(13)
@@ -242,8 +242,8 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     scrollable(col).into()
 }
 
-/// BN5's karma, the save's light/dark value: a slider from 0 to 1000 and
-/// its number, presets (light 500, very light 1000, dark 0), and what BN5
+/// EXE5's karma, the save's light/dark value: a slider from 0 to 1000 and
+/// its number, presets (light 500, very light 1000, dark 0), and what EXE5
 /// makes of it (0x08010118: a dark MegaMan under 470, light from 470; the
 /// starting mood's tiers, 0x0801283A: under 470 dark, under 500 worried,
 /// 1000 the brightest; at or under 499 he clears holy panels).
@@ -514,7 +514,7 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
     row![left.width(Length::FillPortion(2)), right.width(Length::FillPortion(3))].spacing(12).into()
 }
 
-/// A game as the editor names it (`BN5`).
+/// A game as the editor names it (`EXE5`).
 fn game_label(game: &str) -> String {
     game.to_uppercase()
 }
@@ -553,7 +553,7 @@ fn crosses(e: &Editor, s: usize) -> Element<'_, Msg> {
         col = col.push(text(format!("{} of {} chosen; the window offers them in this order.", list.len(), nettai_battle::custom::screen::CROSSES)).size(13).color(DIM));
         for f in nettai_match::navi_crosses(c, side.navi).unwrap_or_default() {
             let on = list.contains(&f);
-            let version = match bn6_compat::forms::game(c, f) {
+            let version = match exe6_compat::forms::game(c, f) {
                 Some(GameVersion::Gregar) => "Gregar",
                 Some(GameVersion::Falzar) => "Falzar",
                 None => "",
@@ -566,7 +566,7 @@ fn crosses(e: &Editor, s: usize) -> Element<'_, Msg> {
 
 // ---- A side's souls ------------------------------------------------------------------------
 
-/// The souls the side has (BN5's Soul Unison): every soul of the match's
+/// The souls the side has (EXE5's Soul Unison): every soul of the match's
 /// game (the default), or those checked, of either version. A soul whose
 /// chip family the folder never holds never comes up.
 fn souls(e: &Editor, s: usize) -> Element<'_, Msg> {
