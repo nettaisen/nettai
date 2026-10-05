@@ -182,8 +182,9 @@ end
 -- `sub_80DD91A`: a shuriken (of `kind`) onto (x, y) from `thrower` with `element`,
 -- `hit_mod` and the damage word, of the thrower's side and facing, its
 -- flip `flip` (the way it flies). Its position is the spawner's registers
--- (the panel's Y, the element, and 160 pixels up, the height it starts
--- from).
+-- (the panel's Y, the element, and the height it starts from: `height`,
+-- 16.16; AntiDmg's counter's is 160 pixels, EXE5's ShadowMan's 60 over
+-- himself).
 function shuriken.spawn(
     kind: Kind,
     thrower: Object,
@@ -192,9 +193,10 @@ function shuriken.spawn(
     element: number,
     hit_mod: number,
     damage: number,
-    flip: number
+    flip: number,
+    height: number
 ): Object?
-    local o = battle.spawn(kind, Vec3.new(y, element, 0xA0_0000))
+    local o = battle.spawn(kind, Vec3.new(y, element, height))
     if not o then
         return nil
     end
