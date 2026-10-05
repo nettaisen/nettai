@@ -903,6 +903,10 @@ them).
   two semi-transparent sprites whose alphas differ; no recording compared
   so far has one (the frame comparisons would show it as one of the two
   sprites too faint or too strong for as long as both are up).
+- An alpha of exactly 255. The compositor marks a sprite pixel that isn't
+  blended with the byte 0xFF, so a sprite whose alpha is 255 is drawn
+  opaque; the hardware adds it to what is behind in full (both weights
+  over 16). No object sets an alpha of 255.
 - Affine (rotated or scaled) object sprites (`sprite_makeScalable`: no kind
   in the engine or the content uses one yet; compose draws affine parts, the
   custom screen's emblem is one), the per-part palette override
