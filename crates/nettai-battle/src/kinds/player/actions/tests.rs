@@ -154,6 +154,24 @@ fn a_navis_own_hooks_run_where_the_originals_tables_call_them() {
 }
 
 #[test]
+fn an_identitys_own_part_routine_puts_on_what_its_object_wears() {
+    let (mut b, p0, p1) = fight_with(hooked());
+    // The record's init hook ran as its init ended: the test navi's routine
+    // keeps an object of the content's own kind in its second related slot.
+    let worn = b.objects.get(p0).related[1].expect("what its routine put on");
+    assert_eq!(b.local_kind_key(worn), "test/worn");
+    assert_eq!(b.objects.get(worn).related[0], Some(p0));
+    // Its death hook takes down what is in that slot, as it does an
+    // overlay: it goes at its next update.
+    let identity = b.objects.get(p0).identity;
+    super::super::form::navi_death_hook(&mut b, p0, identity);
+    assert_eq!(b.objects.get(p0).related[1], None);
+    assert_eq!(b.objects.get(worn).state, state::DESTROY);
+    tick(&mut b, p0, p1, 0);
+    assert!(b.objects.in_order().all(|o| o != worn));
+}
+
+#[test]
 fn a_step_commits_on_the_third_tick_and_ends_on_the_twelfth() {
     let (mut b, p0, p1) = fight();
     let (p, mut t) = ([p0, p1], 0);

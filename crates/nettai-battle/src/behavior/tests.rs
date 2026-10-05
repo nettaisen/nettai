@@ -185,6 +185,7 @@ fn battles_run_the_content_scripts() {
             "tengucross-beast/whirlwind",
             "tenguman/navi",
             "tenguman/tornado",
+            "test/worn",
             "thunder/ball",
             "timebom/controller",
             "timebom/countdown",
