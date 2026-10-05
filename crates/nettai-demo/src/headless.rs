@@ -2,10 +2,11 @@
 //! (`nettai_render::present::write_png`), and the trace audits.
 
 use nettai_frontend::Session;
+use nettai_frontend::driver::Driver;
+use nettai_frontend::player::Player;
 use nettai_render::Renderer;
 use nettai_render::audit::Problems;
 use nettai_render::present::write_png;
-use nettai_render::vfont::TextRenderer;
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -68,68 +69,63 @@ impl KeyScript {
     }
 }
 
-/// Run sessions in order and write `frame_NNNNN.png` for each wanted
-/// trace frame. Returns the frames written; a session that stops early
-/// (engine panic, end of trace) moves on to the next.
+/// Run what `player` plays, then each of `rest` in turn (a recording's later
+/// rounds), and write `frame_NNNNN.png` for each wanted frame. Returns the
+/// frames written; a round that stops early (engine panic, end of trace)
+/// moves on to the next.
 pub fn render_frames(
-    renderer: &mut Renderer,
-    sessions: Vec<Session>,
+    player: &mut Player,
+    rest: Vec<Box<dyn Driver>>,
     wanted: &BTreeSet<u32>,
     out: &Path,
     scale: usize,
     log: &mut dyn FnMut(&str),
 ) -> std::io::Result<Vec<u32>> {
-    render_frames_with(renderer, sessions, wanted, out, scale, false, &KeyScript::default(), None, log)
+    render_frames_with(player, rest, wanted, out, scale, false, &KeyScript::default(), log)
 }
 
 /// [`render_frames`], and with `objects` every written frame's objects
 /// (`objects::describe`) and text items (`textlayer::describe`) go to the
 /// log as the renderer sees them; `keys` are the local player's buttons,
-/// by tick (live play's); `text` draws the font mode's text items.
+/// by tick (live play's). The frames are the player's own
+/// (`Player::frame`: what a host shows), the font mode's text items drawn
+/// by its text renderer.
 #[allow(clippy::too_many_arguments)]
 pub fn render_frames_with(
-    renderer: &mut Renderer,
-    sessions: Vec<Session>,
+    player: &mut Player,
+    rest: Vec<Box<dyn Driver>>,
     wanted: &BTreeSet<u32>,
     out: &Path,
     scale: usize,
     objects: bool,
     keys: &KeyScript,
-    mut text: Option<&mut TextRenderer>,
     log: &mut dyn FnMut(&str),
 ) -> std::io::Result<Vec<u32>> {
     std::fs::create_dir_all(out)?;
     let _ = std::fs::remove_file(out.join("known.tsv"));
     let mut written = Vec::new();
     let last = wanted.iter().next_back().copied().unwrap_or(0);
-    for mut s in sessions {
-        renderer.reset();
-        renderer.console_region = s.driver.console_region();
-        renderer.console_version = s.driver.console_version();
-        while s.step(keys.held(s.ticks as u32 + 1)) {
-            // (A set's next round: the presentation starts over.)
-            if s.new_round {
-                renderer.reset();
-            }
-            renderer.observe(&s.battle);
-            let Some(f) = s.frame else { continue };
-            renderer.problems.at(Some(f));
+    let mut rest = rest.into_iter();
+    loop {
+        while player.tick(keys.held(player.ticks() as u32 + 1)) {
+            let Some(f) = player.session().frame else { continue };
+            player.renderer().problems.at(Some(f));
             if wanted.contains(&f) {
-                let frame = renderer.render(&s.battle);
-                write_png(&out.join(format!("frame_{f:05}.png")), &frame, scale, text.as_deref_mut())?;
+                let frame = player.frame();
+                write_png(&out.join(format!("frame_{f:05}.png")), &frame, scale, player.text())?;
                 written.push(f);
                 // Where the frame differs from the original on purpose
                 // (`known.tsv`: frame, x, y, width, height, why), for the
                 // frame comparison to leave out.
-                if !renderer.problems.known.is_empty() {
+                if !player.renderer().problems.known.is_empty() {
                     use std::io::Write;
                     let mut file = std::fs::OpenOptions::new().create(true).append(true).open(out.join("known.tsv"))?;
-                    for k in &renderer.problems.known {
+                    for k in &player.renderer().problems.known {
                         writeln!(file, "{f}\t{}\t{}\t{}\t{}\t{}", k.x, k.y, k.width, k.height, k.why)?;
                     }
                 }
                 if objects {
-                    for line in nettai_render::objects::describe(&s.battle, &Renderer::view(&s.battle)) {
+                    for line in nettai_render::objects::describe(player.battle(), &Renderer::view(player.battle())) {
                         log(&format!("frame {f}: {line}"));
                     }
                     for line in nettai_render::textlayer::describe(&frame) {
@@ -141,15 +137,17 @@ pub fn render_frames_with(
                 break;
             }
         }
-        if let Some(d) = &s.diverged {
+        if let Some(d) = player.diverged() {
             log(d);
         }
-        if let Some(why) = &s.stopped {
+        if let Some(why) = player.stopped() {
             log(why);
         }
-        if s.frame.is_some_and(|f| f >= last) {
+        if player.session().frame.is_some_and(|f| f >= last) {
             break;
         }
+        let Some(next) = rest.next() else { break };
+        player.play(next);
     }
     Ok(written)
 }
@@ -219,8 +217,8 @@ pub struct TraceAudit {
 }
 
 /// What a renderer of [`audit_traces`] is made with.
-pub struct AuditSetup<'a> {
-    pub packs: nettai_render::packs::Packs<'a>,
+pub struct AuditSetup {
+    pub packs: nettai_render::packs::PackGraphics,
     pub strings: Option<std::sync::Arc<nettai_content::locale::Strings>>,
     pub text: nettai_render::textlayer::TextMode,
     pub font: Option<std::sync::Arc<nettai_render::vfont::VectorFont>>,
