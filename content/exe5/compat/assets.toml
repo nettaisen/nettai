@@ -428,6 +428,30 @@ telop-remote = 0x50
 time-up = 0x54
 liberate-success = 0x58
 liberate-failed = 0x5c
+protoman-deleted = 0x60
+gyroman-deleted = 0x64
+searchman-deleted = 0x68
+napalmman-deleted = 0x6c
+magnetman-deleted = 0x70
+meddy-deleted = 0x74
+colonel-deleted = 0x78
+shadowman-deleted = 0x7c
+numberman-deleted = 0x80
+tomahawkman-deleted = 0x84
+knightman-deleted = 0x88
+toadman-deleted = 0x8c
+protoman-win = 0x94
+gyroman-win = 0x98
+searchman-win = 0x9c
+napalmman-win = 0xa0
+magnetman-win = 0xa4
+meddy-win = 0xa8
+colonel-win = 0xac
+shadowman-win = 0xb0
+numberman-win = 0xb4
+tomahawkman-win = 0xb8
+knightman-win = 0xbc
+toadman-win = 0xc0
 
 # Backgrounds: battle background numbers (settings byte 4), named by their look.
 [backgrounds]
@@ -444,7 +468,9 @@ glyphs = 0x1a
 
 # Mugshots: the emotion window's faces, by the number exe5-extract gives them (its hud.rs: the face
 # table's pictures with their own palettes, then the version souls' with the palettes Chaos Unison
-# shows them in, then Team Colonel's own souls').
+# shows them in, then Team Colonel's own souls'); then from 0x80 the team navis' faces (its navi
+# mugshots: 0x08019724's pictures, Team ProtoMan's six, then Team Colonel's; two palettes each, normal
+# and Full Synchro).
 [mugshots]
 megaman = 0x00
 megaman-angry = 0x01
@@ -480,3 +506,15 @@ numbersoul-chaos = 0x1e
 tomahawksoul-chaos = 0x1f
 knightsoul-chaos = 0x20
 toadsoul-chaos = 0x21
+protoman = 0x80
+gyroman = 0x81
+searchman = 0x82
+napalmman = 0x83
+magnetman = 0x84
+meddy = 0x85
+colonel = 0x86
+shadowman = 0x87
+numberman = 0x88
+tomahawkman = 0x89
+knightman = 0x8a
+toadman = 0x8b

@@ -55,3 +55,5 @@
 "darkinvs/drive-end" = 0x49
 # A dark MegaMan's last stand (the request 0x40000000's: the roles' volley).
 "dark-survival" = 0x30
+# The team navis' weapons' actions (navis/<navi>): ProtoMan's B+Back (the guard's action, as the Reflect program's).
+"protoman/back/action" = 0x1F

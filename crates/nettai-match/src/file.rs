@@ -44,6 +44,7 @@
 //! ]
 //!
 //! # In an EXE5 match ([left] of game = "exe5") a side may say besides:
+//! level = 3                          # optional: a team navi's level, 0 to 6 (default 0): its HP is the story's at it
 //! karma = 100                        # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
 //! souls = ["protosoul"]              # optional: the souls it has, either version's (none: every soul)
 //! soul_unison = false                # optional: no soul button (the save's event flag 0; default true)
