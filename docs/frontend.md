@@ -1001,6 +1001,18 @@ each player. The checks refuse a level past 14 and a link navi without one;
 a file written leaves out the navi's default (a link navi's 0, MegaMan's
 none).
 
+**An EXE5 team navi's level** (`level`, 0 to 6; docs/design/exe5-map.md
+§15.16) is the level its attacks' damage goes by: the count of the save's
+story flags, which the battle's init exchange sends. A side that operates
+one (`navi = "protoman"`: any of the twelve, of either version) always has
+a level, **0** without `level`, and its stats are the navi's fresh stats
+with the HP the story gives at that level (the navi's `story`,
+`nettai_match::story`: a level below 6 is the story's progress, and at 6 the
+story is taken as done); the stats block says otherwise (an HP of the
+player's choosing). The checks refuse a level past 6. A team navi has no
+NaviCust, patch cards or souls: they are MegaMan's. EXE5's MegaMan takes no
+level.
+
 **The SP deletion times** (`[left.sp_times]`) are by the SP navi slots of
 the match's rules (EXE6's `sp/heatman` to `sp/colonel`, rules/sp-chips.luau),
 each `mm:ss.cc`; a slot left out is the fastest. The game keeps frames and
@@ -1080,7 +1092,10 @@ said: a chip number the game has no chip for, and an entry for a pattern
 past the eighth. The editor's computer navi pane takes that data alone from
 a save ("From a save…", `nettai_match::computer_navi::of_save`), and edits
 it: the 42 places in their six lists, the eight records, and the game's
-chips to put in them (README.md, "The match editor").
+chips to put in them (README.md, "The match editor"). A side that operates a team navi takes
+the save's level (its story flags' count) and, where the save's version has
+the navi, the HP and the light/dark value of the navi's own block; a navi
+of the other version, the story's HP at the save's level.
 
 **The computer navi's data** (`[left.computer_navi]`,
 `nettai_match::computer_navi`, docs/design/exe5-map.md §15.9) is what a

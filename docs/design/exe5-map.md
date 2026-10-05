@@ -2338,3 +2338,99 @@ chips don't have (Roll `*`, M-Cannon `*`), which EXE5 makes the invalid chip; th
 SuprVulc rather than Roll (Roll also wants a light MegaMan), and Tango's navi starts at 80 HP (side 1's M-Cannon
 takes only 60 from side 0's navi in these saves, where side 0's takes 120 from side 1's: not looked into). Not
 reached: a Giga chip for Beat, Rush without the opponent's navi, a failed spawn.
+
+### 15.16 The team navis (in progress: the framework and ProtoMan)
+
+EXE5's players operate thirteen navis: MegaMan (navi 0) and the twelve team navis, six a version in its souls'
+order (NaviStats +0x29, and a save's GameState +1, the navi the PET operates): Team ProtoMan's ProtoMan, GyroMan,
+SearchMan, NapalmMan, MagnetMan and Meddy (1 to 6), Team Colonel's Colonel, ShadowMan, NumberMan, TomahawkMan,
+KnightMan and ToadMan (7 to 12). A save holds seven NaviStats blocks (MegaMan's at save +0x52A8, then its version's
+six, 0x60 bytes each: 0x0801165C by navi number). Every table below is the same in the four ROMs (each at its own
+address; Team ProtoMan US's are given).
+
+**Where the original lets one be operated.** The story (the Liberation missions and their areas) and the Battle
+Chip Gate's operation battle (its menu, 0x0813C2AC, sets the navi with NaviStats +0x2A raised: battle flag 0x40). The
+battle's init exchange (0x080098E0) sends the PET navi's block and the team navis' level; a plain NetBattle sets the
+PET navi to MegaMan for the battle (0x08135936) and puts it back. **In nettai a side of an EXE5 match may operate
+any of the twelve** (a match has no version; a side states its navi), in the netbattle's rules. Not built, and not
+planned here: the operation battle with a gate navi (the gate's own HP table, 0x0802FD74), the gate chip's
+mid-battle navi switch (§5), and the Liberation battles.
+
+**A navi's data** (content/exe5/navis/<navi>/init.luau, a `define.navi` without forms):
+
+| What | Where | Notes |
+|---|---|---|
+| Battle sprite | 0x0800DA65 by navi (08-NN) | the pack's `protoman` … `toadman` |
+| Element | 0x0800E634 | NapalmMan Fire, MagnetMan Elec, TomahawkMan Wood, ToadMan Aqua |
+| Buster bonus | 0x0800F5AC | 1; TomahawkMan 3 |
+| Move lag | 0x0801D462 (11 bytes a navi) | 4; KnightMan 10 |
+| Banners | 0x080090D8 (win, 0x94 + 4 (n − 1)), 0x080090B0 (deleted, 0x60 + 4 (n − 1)) | `<navi>-win`, `<navi>-deleted` |
+| Face | 0x08019724 (Team Colonel's 0x0801971C): the version's six pictures, two palettes each | the pack's navi mugshots, `<navi>` (0x80 + n − 1); the second palette in Full Synchro |
+| Actor record | 0x08014C94, NameID 0x180 + n | version 0, a player, AI index n |
+| Attach points | category 8's table, 0x08015C1C, row n | 30 points |
+| Stats row | 0x0801D55F (16 bytes, read by 0x080111AA) | the HP, SuperArmor, FloatShoes, AirShoes, UnderShirt, the Mega and Giga levels, the four weapons, the B+Back special's damage (+0x48) |
+| Palette step | 0x0801D737 | the sprite's palettes go by it (0x0800DA98: 4 steps in Full Synchro, 1 while it can't charge): 1; NapalmMan 3, MagnetMan, Meddy, Colonel and TomahawkMan 2 |
+| Own chip | 0x08025EA0 (a pair of the same chip and code) | below |
+| Story HP | 0x0804F960 (20 bytes a navi) | below |
+
+**Weapons.** The stats row names the weapon routines (0x0800F370's): every navi's buster is routine 0 (MegaMan's)
+but GyroMan's (0x43) and NapalmMan's (0x44); the charged attacks ProtoMan 0x1E, GyroMan 0x28, SearchMan 0x3F,
+MagnetMan 0x26, Meddy 0x3B, Colonel 0x46, ShadowMan 0x24, NumberMan 0x3D, TomahawkMan 0x3C, KnightMan 0x10, ToadMan
+0x2E (NapalmMan none); B+Back ProtoMan 0x0B and ShadowMan 0x0D; the A-charge routines of NapalmMan, MagnetMan,
+TomahawkMan and ToadMan (0x29 to 0x2C) are empty: their A charge is of their element's chips (0x0801090A: a chip of
+their family, neither their own chip nor past 0x190, charges, and a charged one hits twice as hard, 0x080103D0). Each
+navi's own actions are its state table's entries from 7 on (0x080EADA8 by navi number; GyroMan has a tick of his
+own, 0x080EB1E8's).
+
+**The level.** A team navi's attacks take their damage from the damage rows (0x0801D74F, seven entries a row,
+0x0800EBC4) at the side's level: a word a side (0x0203C870) the init exchange sends, which 0x0800EBE0 counts from the
+save's story flags, 0x300 on, up to 6. In content: `battle.navi_level(side)` through lib/navi_level for a weapon,
+and `damage = { formula = "level", by_level = { ... } }` for an own chip (the chips' damage formulas 50 to 72, each a
+row: 0x0800EAF8).
+
+**The own chips** (chips 0x191 to 0x1A6, past the library): StepSwrd B (ProtoMan), Airforce G (GyroMan), Satelity S
+(SearchMan), Napalm N (NapalmMan), NSTackle M (MagnetMan), MeddyCap M (Meddy), C-Cannon C (Colonel), SplitUp S
+(ShadowMan), NumTrap N (NumberMan), T-Swing T (TomahawkMan), KCrusher K (KnightMan), S-Melody T (ToadMan). The custom
+screen offers a team navi its chip in slot 9 until it is picked once a battle (0x08023EFE; the hand builder's
+0x08024E20 marks it), picking between its table's two entries, the same chip, with a draw of the console's RNG (the
+navi's `own_chip_draws`). A chip's record names a routine of its own (+0x1F: 0x0800EC68's table, 0x0800EC80), which
+the chip's use calls once the attack is loaded (0x080100CE): StepSwrd's sets the attack's charged byte, by which the
+sword's action steps two panels ahead; KCrusher's, S-Melody's and C-Cannon's set attack variables. In content it is
+the chip's `setup(navi)`. A team navi's own attacks carry a counter byte with bit 7 set (StepSwrd's 0x94): they make
+no counter hit.
+
+**The story's HP.** A team navi's HP is the story's, not its stats row's: a routine (0x08052E9C) sets every team
+navi's base, current and maximum HP from a table (0x0804F960: a row a navi) by the story's progress, the count of
+event flags set from 0x300 on (0 to 8), at a new game's start (0x08004C74) and from a map script as the story moves
+on; the level above is the same count up to 6. The rows, by navi pair (the two versions' tables are the same with
+their own navis): ProtoMan and Colonel 200, 300, 350, 400, 450, 500, 600, 700, 800; MagnetMan and KnightMan 400,
+400, 500, 550, 600, 650, 700, 800, 900; GyroMan and ShadowMan 250, 250, 250, 300, 350, 400, 500, 600, 700; NapalmMan
+and TomahawkMan 300, 300, 300, 300, 350, 400, 500, 600, 700; SearchMan and NumberMan 300, 300, 300, 300, 300, 350,
+450, 550, 650; Meddy and ToadMan 300, 300, 300, 300, 300, 300, 400, 500, 600. In content it is the navi's `story`
+(`hp` and `max_level`); nettai-match fills a side's stats from it (its `story` module, as its `link_navis` does an
+EXE6 link navi's): a level below the last is the progress, and at the last the story is taken as done. A new side
+of a team navi is at level 0; a match file's `level` and its stats block say otherwise; a save's import takes the
+save's level and, where its version has the navi, the HP and the light/dark value of the navi's own block.
+
+**What else goes by the navi.** No soul button (0x08023C90: the navi has no forms); a dark chip does nothing
+(0x08010056) and the light and dark chips' check lets any chip through (0x08010118); the patch cards and the
+NaviCust are MegaMan's (their rules pass a navi without forms). The Full Synchro aura's animation is its owner's AI
+index (0x080C4608: the identity's `aura_anim`). What a navi holds goes by its AI index: the cannon's, the air
+shooter's and the spreader's animations (0x080EC300, 0x080EC9B8, 0x080EC5B8: NapalmMan's, MagnetMan's and
+KnightMan's own; the shared actions take each game's table, lib/navi_arms), the buster arm's (lib/arm), the sword's
+blade (lib/swords), WindRack's rack and MrkCan's rows. The per-actor hooks (0x0800D30C's five tables, by actor type
+and AI index) have entries for GyroMan (three), Colonel (one), KnightMan (three) and ToadMan (one), and the
+animation-change hook (0x0800F13C) for GyroMan, NapalmMan, Colonel and KnightMan; GyroMan's move is a variant of its
+own (0x0800F234, 0x0802D544).
+
+**As built** (engine): a chip's `setup` hook and the `level` damage formula; a navi's `story`, `own_chip_draws` and
+`palette_step`; the shared cannon, AirShot and Spreader actions take their holders' animations from their game.
+exe5-compat names the navis by number (records.toml's `[navis]`) and reads the level from a recording's setup
+(`navi_levels`) and the B+Back special's damage from the stats block (+0x48). exe5-extract takes both versions'
+faces. The chip lab operates a team navi by name (`navi = "protoman"`: set in RAM as the init exchange starts, since
+a save that operates a team navi doesn't reach the link battle), with `navi_level` (the save's story flags) and `hp`
+(the navi's block).
+
+| Navi | Weapons | Own chip | Checked |
+|---|---|---|---|
+| ProtoMan | the charged slash (0x1E, 0x0800F8CE: WideSwrd loaded as the attack, the damage rows' row 0, counter byte 0x94) and the B+Back guard (0x0B, 0x0800F6CC: EXE5's guard as the Reflect program's, the stats' damage, 40 ticks before the next chip) | StepSwrd (action 0x13 as WideSwrd's, row 1, its routine 2) | 40 recordings (navis/protoman): his own chip at levels 0, 3 and 6, from another row, out of reach, blocked, onto a panel the opponent steps to, on a Japanese console and over four custom screens; the charged slash at three levels and let go early; the guard reflecting a buster shot and a Cannon, and too early; AntiSwrd against both; a counter hit and Full Synchro (an AirShot's; StepSwrd's makes none); twelve plain chips, a held A, a dark chip; hits, his deletion, a win. Every frame and every sound call. |

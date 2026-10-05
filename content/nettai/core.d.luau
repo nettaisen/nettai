@@ -1958,6 +1958,7 @@ export type DamageFormula =
     | { formula: "hp_last_digits" }
     | { formula: "half_opponent_max_hp" }
     | { formula: "navi_level", base: number, per_level: number }
+    | { formula: "level", by_level: { number } }
     | { formula: "count", of: DamageCount, by_count: { number }, operation_battle: number? }
 
 -- What a count formula counts: a side statistic, the side's panels of a
@@ -2011,6 +2012,10 @@ export type ChipSpec = {
     dimming: ((user: Object, spec: DimmingChipSpec) -> Object?)?,
     navi: ((user: Object, controller: Object, spec: NaviChipSpec) -> Object?)?,
     instant: ((user: Object, spec: InstantChipSpec) -> ())?,
+    -- What the chip itself does to the attack as a navi's use of it is
+    -- prepared (the attack's variables are loaded: the navi's `charged`,
+    -- its action's state): EXE5's team navis' own chips'.
+    setup: ((navi: Object) -> ())?,
     -- Its game's systems' fields (their `extends.chip`: EXE6's `beast`,
     -- `dark_substitute`, `hp_bug`; content/exe6/types.d.luau types them).
     [string]: any,
@@ -2087,6 +2092,9 @@ export type NaviDef = {
     run_message: RunMessage?,
     -- A link navi's own chip, offered once a round.
     own_chip: { chip: Chip, code: string }?,
+    -- The offer draws once from the console's RNG (EXE5's, which picks
+    -- between two entries of its table, the same chip).
+    own_chip_draws: boolean?,
     -- Its damage bonus on its family's damaging chips, by its level.
     chip_bonus: { family: ChipFamily, dimming_chips: boolean?, by_level: { number } }?,
     -- MegaMan's bonus on a family's damaging chips used standing on a type
@@ -2103,6 +2111,10 @@ export type NaviDef = {
     fire_charge: { number }?,
     -- "status_immune": a hit's status doesn't take.
     traits: { "status_immune" }?,
+    -- What its sprite's palettes go by, for a navi that doesn't change form
+    -- (1 when none is given): its Full Synchro palette is 4 of them, its
+    -- can't-charge palette 1. Presentation only.
+    palette_step: number?,
     -- Its forms (MegaMan's): where the original asks whether a navi is
     -- MegaMan, the ruleset asks whether it has them. The engine reads
     -- `souls` (EXE5's Soul Unison: forms with a `soul`, which the custom
@@ -2133,6 +2145,11 @@ export type NaviDef = {
     -- what each level adds over its fresh stats. Tools fill a side's stats
     -- from it; no battle reads it.
     levels: NaviLevels?,
+    -- What the story gives it by its level (EXE5's team navis): its HP by
+    -- the story's progress, from 0, and its last level; a level below the
+    -- last is the progress, and at the last the story is taken as done (the
+    -- last HP). Tools fill a side's stats from it; no battle reads it.
+    story: { hp: { number }, max_level: number }?,
 }
 -- A navi's levels (docs/engine/link-navis.md).
 export type NaviLevels = {
