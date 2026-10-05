@@ -188,7 +188,7 @@ fn a_battle_drives_the_music() {
     use nettai_battle::{Battle, PlayerTick, TickEvents};
     let content = testing::restaged(testing::LINK_BATTLE_SIDE0_FIRST, |s| s.music = Some(nettai_battle::SoundId(0)));
     let mut setup = testing::round_setup(testing::LINK_BATTLE_SIDE0_FIRST, testing::stats(500));
-    setup.content = content.hash();
+    testing::on(&mut setup, &content);
     let songs = Songs::of(&content.assets);
     let mut b = Battle::new(setup, std::sync::Arc::new(content));
     let mut a = BattleAudio::new(bank(), songs);
