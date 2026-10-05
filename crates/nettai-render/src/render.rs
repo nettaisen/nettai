@@ -45,6 +45,10 @@ impl Region {
     }
 }
 
+/// Why a frame whose background is another region's ROMs' is a known
+/// difference all over.
+const OTHER_REGIONS_BACKGROUND: &str = "a background the console's region's ROMs have another picture of (the pack's is the other region's)";
+
 /// Picks battles; keeps its layer buffers between frames. It owns what it
 /// draws from (the packs' graphics are shared), so it borrows nothing.
 pub struct Renderer {
@@ -180,6 +184,12 @@ impl Renderer {
         // (The background is its own pack's; the field, the game's pack's:
         // `FieldArt`.)
         let background = crate::lookups::background(&packs, &b.content, b.setup.settings.background, &mut self.problems);
+        // (A background of another region's ROMs than the console's, where
+        // the regions' pictures differ: the console draws its own, behind
+        // everything. `Background::region`.)
+        if background.is_some_and(|bg| bg.region.as_deref().is_some_and(|r| r != self.console_region.name())) {
+            self.problems.known(0, 0, compose::WIDTH as i32, compose::HEIGHT as i32, OTHER_REGIONS_BACKGROUND);
+        }
         let draw = !self.lookups_only;
         let stage = draw.then(|| Stage::new(&packs, &b.content, background, StageClock::of(b)));
         match &stage {
