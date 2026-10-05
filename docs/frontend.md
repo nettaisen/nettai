@@ -1,6 +1,6 @@
-# The frontend (`nettai-frontend` and `nettai-render`)
+# The frontend (`nettai-render`, `nettai-frontend` and `nettai-demo`)
 
-A desktop app that runs a battle through the native engine and draws it the
+A desktop program, `nettai-demo`, that runs a battle through the native engine and draws it the
 way the original does, in its 240x160 frame scaled up by the largest whole
 factor the window has room for. It draws from engine state: the field's
 panels, each object's sprite, animation frame and look, HP, the custom
@@ -15,7 +15,8 @@ own fonts, exactly as the original does.
 It replays a golden trace (the recorded inputs of a real match) or is
 played live from the keyboard, and can render chosen frames to PNG.
 
-Two crates make it up:
+Three crates make it up: the drawing, the playing, and the program around
+them. The commands in this document are the program's (`nettai-demo`).
 
 - **nettai-render** draws a battle into frames, and nothing else: it
   composes the layers (`compose`), draws the stage and the field
@@ -29,13 +30,21 @@ Two crates make it up:
   one to an output of any size, or writes it as a PNG; and a chip's
   pictures on their own (`pictures`, which the editor shows). It has no
   window, sound, network, netplay or command line.
-- **nettai-frontend** is the app around it: the window and the keys
-  (`app`, with the status line's small font, `text`); the sessions
-  (`session`) and what drives them (`driver`: a trace, live play, a match
-  file; `netplay`); the sound, a `TickHook` to nettai-audio, and the
-  audio's own lookups (`sound_lookups`); the command line (`main`);
-  headless output (`headless`) and the audits (`content_audit`,
-  `headless::audit_traces`).
+- **nettai-frontend** plays a battle for a host to show, as a library: it
+  has no window, no audio device and no command line, and nothing in it
+  prints or exits. It loads a game (`game`: the packs found, the content,
+  the graphics and strings in a language, the text's font, the sound, each
+  step a `Result`); it runs the sessions (`session`) and what drives them
+  (`driver`: live play of a set from the GBA button mask; `netplay`:
+  another player over the network); and it has the status line's small
+  font (`text`).
+- **nettai-demo** is the desktop program, a host of that library: the
+  window and the keys (`app`); the command line (`main`); the sound, a
+  `TickHook` to nettai-audio's audio device, and the audio's own lookups
+  (`sound_lookups`); headless output (`headless`) and the audits
+  (`content_audit`, `headless::audit_traces`); and the replay of the
+  original's recordings (`trace`, the one place that depends on the compat
+  crates).
 
 ## 1. The content pack
 
@@ -254,17 +263,17 @@ rules' `backgrounds`).
 
 ## 2. Running
 
-    cargo run -p nettai-frontend -- <trace.jsonl>              # watch a trace
-    cargo run -p nettai-frontend -- --play --game exe6          # play live
-    cargo run -p nettai-frontend -- --play --game exe6 --seed 42 --stage netbattle-43 --show-folders
-    cargo run -p nettai-frontend -- --match match.toml           # play a match file (§6)
-    cargo run -p nettai-frontend -- --play --game exe6 --seed 42 --save-match match.toml   # keep the draw
-    cargo run -p nettai-frontend -- <trace.jsonl> --headless 150,300,600 --out <dir>
-    cargo run -p nettai-frontend -- --audit-content            # what is missing?
-    cargo run -p nettai-frontend -- --audit <trace.jsonl>...   # and in these traces?
-    cargo run -p nettai-frontend -- --play --game exe6 --pack <dir>        # a pack elsewhere
-    cargo run -p nettai-frontend -- --play --game exe6 --host 7777         # netplay: host...
-    cargo run -p nettai-frontend -- --play --game exe6 --join 192.0.2.10:7777   # ...and join
+    cargo run -p nettai-demo -- <trace.jsonl>              # watch a trace
+    cargo run -p nettai-demo -- --play --game exe6          # play live
+    cargo run -p nettai-demo -- --play --game exe6 --seed 42 --stage netbattle-43 --show-folders
+    cargo run -p nettai-demo -- --match match.toml           # play a match file (§6)
+    cargo run -p nettai-demo -- --play --game exe6 --seed 42 --save-match match.toml   # keep the draw
+    cargo run -p nettai-demo -- <trace.jsonl> --headless 150,300,600 --out <dir>
+    cargo run -p nettai-demo -- --audit-content            # what is missing?
+    cargo run -p nettai-demo -- --audit <trace.jsonl>...   # and in these traces?
+    cargo run -p nettai-demo -- --play --game exe6 --pack <dir>        # a pack elsewhere
+    cargo run -p nettai-demo -- --play --game exe6 --host 7777         # netplay: host...
+    cargo run -p nettai-demo -- --play --game exe6 --join 192.0.2.10:7777   # ...and join
 
 Options: `--pack <dir>` names a content pack elsewhere and `--content <dir>`
 the battle content (see above), `--mute` turns the sound off, `--round N`
@@ -439,7 +448,7 @@ picture or with a name the font can't spell, a face, an emblem, a banner
 without glyphs, a telop's banner that is no telop's, a text line, a song.
 Each exits 1 if there was any; drawing itself skips what it can't find,
 so nothing else notices. Every such lookup goes through one module
-(nettai-render's `lookups.rs`; the audio's, a cue's song, nettai-frontend's
+(nettai-render's `lookups.rs`; the audio's, a cue's song, nettai-demo's
 `sound_lookups.rs`), which notes it (`audit::Lookup`) and checks it once a
 run, so both audits make the lookups a frame makes, through the same
 functions:
@@ -930,7 +939,7 @@ deletion's result. What still differs:
 
 The comparison needs the ROM, so it lives outside this repository, with the
 lists of scenarios. The frontend's own tests (`cargo test -p nettai-render
--p nettai-frontend`) use a small synthetic asset set and a live battle
+-p nettai-frontend -p nettai-demo`) use a small synthetic asset set and a live battle
 built in code, and the bundled font for the text layer (its layout and the
 depth test; not its pixels, which are floating-point arithmetic).
 

@@ -669,7 +669,7 @@ pub fn game_of(text: &str) -> Result<String, String> {
 pub fn write(content: &Content, m: &Match) -> String {
     let file = to_file(content, m);
     let body = toml::to_string_pretty(&file).expect("a match file serializes");
-    format!("# A nettai match (docs/frontend.md §6): play it with `nettai-frontend --match FILE`.\n\n{}", tidy(&body, &file))
+    format!("# A nettai match (docs/frontend.md §6): play it with `nettai-demo --match FILE`.\n\n{}", tidy(&body, &file))
 }
 
 /// `list`'s entries each on a line of its own.
