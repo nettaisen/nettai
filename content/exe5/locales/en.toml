@@ -298,6 +298,7 @@ language = "en"
 "snake" = { name = "Snake", description = "Call snak\nfrom hole\nin area" }
 "snctuary" = { name = "Snctuary", description = "Chng all\nown panel\nto holy" }
 "sonicbom" = { name = "SonicBom", description = "" }
+"splitup" = { name = "SplitUp", description = "Your\nshadow\nattacks" }
 "spreader" = { name = "Spreader", description = "Creates a\nlarge\nexplosion" }
 "sprsonic" = { name = "SprSonic", description = "" }
 "spshake1" = { name = "SpShake1", description = "Shakey\nshivers\n3sq ahead" }
@@ -362,6 +363,7 @@ language = "en"
 "megaman" = { name = "MegaMan", variant_name = "BCMegaMn" }
 "protoman" = { name = "ProtoMan" }
 "searchman" = { name = "SerchMan" }
+"shadowman" = { name = "ShadoMan" }
 "tomahawkman" = { name = "TmhkMan" }
 
 [forms]
