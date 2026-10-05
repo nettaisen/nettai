@@ -2074,8 +2074,8 @@ plain Luau library with a single definition.
     hit's spark, `me:run_wrapped()`'s wrapper role). exelib used none of what went, so no maker changed.
 - **A game's rules are one definition.**
   - content/<game>/rules/init.luau is the stock ruleset (`id = "stock"`), and the manifest lists it as `rules`: a
-    module name resolves to the folder's `init` when no module has the name (the loader, `index::follow`, the
-    manifests' checks, index.py).
+    module name resolves to the folder's `init` when no module has the name (`packs::module`, where the loader
+    and the manifests' checks find a module; index.py).
   - The ruleset names each rule section as a field by the engine's name (`panels`, `sp_chips`, `custom_screen`,
     `chip_use`, `cross_special`, ...; `sections::SECTIONS`) and the roles (`roles`). A section module returns a
     plain table (status.luau and lockon.luau keep their module tables, whose `.rules` the ruleset names), and
@@ -2212,8 +2212,9 @@ The last custom-screen piece in Rust that was one game's: EXE5's soul button and
 
 MeddySoul's capsules and ColonelSoul's Arm Change are two more buttons and windows of EXE5's souls system
 (rules/souls/capsules.luau, arm-change.luau; exe5-map.md §15.8), each a module rules/souls/custom.luau gathers (its
-`buttons`, `windows` and `states`, which the system's definition takes whole). What the framework gained for them is
-generic:
+`buttons`, `windows` and `states`, which the system's definition takes whole). (Since "EXE5's souls by id", below,
+each is in its soul's folder, navis/megaman/forms/<soul>/, and is the form's `custom`.) What the framework gained
+for them is generic:
 
 - **A button attached to a pick** (`custom.attach_to_last_pick(side, button, modifiers)`): the last pick, a chip with
   no button attached (`custom.last_pick`'s `attached`), carries modifier bits into the hand (`Slot::marks`, the
@@ -2268,9 +2269,10 @@ definition is what it was, under the id it had (content-model-v2.md §4.0, §4.1
     `packs::required_by_init`; `PackDefinitions` is gone.
   - A load of a game is a require of its top module (`Scripts::pack`'s entries, `index::read`'s start). A game
     without one is refused (`check_packs`, the content check). A support pack has none.
-  - The whole-truth check (`check_init`) is on the init's own requires, since everything that loads is reached by
-    it: a definition of what a game has in a module the init doesn't require itself is refused. The engine doesn't
-    read the returned table; the reverse check ("`chips` lists X, which defines no chip") went with the lists.
+  - The whole-truth check was on the init's own requires, since everything that loads is reached by it; it went
+    when the loader came to read its modules as it requires them (below): a module nothing requires never runs.
+    The engine doesn't read the returned table; the reverse check ("`chips` lists X, which defines no chip") went
+    with the lists.
   - Unported chips are commented requires in the chips group, which index.py keeps; nothing lists them for the
     engine (the strings check asks the disk for a chip folder that didn't load). Neither game has one today.
   - In-memory games (`Scripts::add_game`, `testing::add_index`) get a top module made the same way
@@ -2318,13 +2320,81 @@ chips/init.luau should import all chips, etc." (content-model-v2.md §4.0 holds 
     chips and EXE6's alias busters; chips/init.luau every chip but those eleven.
   - What only an id names (the old `also` group) is required by its folder's init: lib/init.luau, navis/init.luau.
   - Unported chips are commented requires in chips/init.luau.
-- **The whole truth, by folder** (`check_init`, `packs::listed_by`): a definition of what a game has is made by a
-  module its folder's init requires itself, and the top module requires the folder. The table's groups are gone;
-  the registry says the kind and the folder groups.
-- **A module that defines something and that no init reaches is a content-check error**
-  (`nettai_content_check::unloaded`): a chip added without its require was silently missing before.
-- **Same definitions**: both games define exactly what they did (nettai-content's `definitions` example prints
-  the counts by registry, a digest and every key: identical before and after), and the order of the requires
-  still moves no key and no handle (the test turns every init round).
+- **A load reads its modules as it requires them** (the user: "what's the deal with init_of? is nettai-content
+  enumerating all inits? why does it need to do that statically, can't it just import the root init.luau from the
+  pack and be done with it?").
+  - One resolver, `packs::find(modules, packs, from, written)`: Luau's rule for the path, a folder's name for
+    its init (`keys::init_of`'s one caller, `packs::module`), and the packs' import rule, with an error naming
+    the requiring module and the path as written. The VM's `require` calls it as it runs; the content check calls
+    it for each literal require of each file.
+  - `packs::Modules` is where a load reads from: a map in memory, the packs' folders (`packs::Dirs`), or one
+    before the other. `Scripts::dirs` holds the folders (no part of the content's equality or hash); the define
+    phase reads memory first (a tool's stand-in), then the folder, and what it read becomes `Scripts::modules`.
+    A runtime's VM loads from `Scripts::modules` alone.
+  - Gone: `index::follow` and its scan of literal requires, the loader's own folder-to-init fallback, the content
+    check's and the test content's followers (four implementations of how a require finds its module), and
+    `Read::modules`. `index::read` reads manifests and strings.
+  - The whole-truth check on the inits' own requires went with it: a module nothing requires never runs. No
+    check of the engine's lists the files a load didn't read (the user: "don't even bother with checking if
+    modules are unincluded or whatever. surely that's more of a linter check than a loader check?"): index.py
+    writes the inits from the files that are there, and its `--check` says when they are stale.
+  - Nothing needs the module set before a load. The content hash, the bytecode cache and netplay's comparison
+    all take the content after `define`, which has the modules read. The test content's made-up asset names are
+    the one thing that wants every module's text first, and they scan the folders' files (`Scripts::available`),
+    a tool's list, not a load's.
+  - The test content is its own modules and the EXE6 modules it names, in memory, over content/exe6 as its
+    game's folder: what those require is read as the load reaches it.
+- **Same content**: both games define exactly what they did (nettai-content's `definitions` example prints
+  the counts by registry, a digest and every key: identical before and after the inits' reshaping). The loader
+  read the same modules on demand as the scan found (EXE6 1044, EXE5 831) and the content hash is the same to the
+  bit. The order of the requires still moves no key and no handle (the test turns every init round).
 - **index.py** writes the inits whole and has `--check`; a merge conflict in an init is settled by running it.
 - Games held in memory (`Scripts::add_game`, `testing::add_index`) get the same shape (`Scripts::inits_for`).
+
+### EXE5's souls by id, each soul's own with the soul (2026-10-04, branch exe5-souls-id)
+
+The user: "instead of numbered souls they should be identified by id", and "then all the soul stuff like arm change
+hand size etc should be colocated with the souls rather than with the rules". Names and places: nothing a
+recording shows changed (exe5-map.md §15.8 holds the layout).
+
+- **A soul is its form's id.** `soul = { family }` has no `number` (`SoulData`), and no module tests one. Where
+  the original tests the soul's number, the content reads the form:
+  - the buster arm's animation is the form's `buster_arm.anim` (lib/arm read the number as the animation);
+  - the souls system extends forms (`extends.form`) with `blade_anim` (lib/swords), `steps_behind`
+    (lib/stepsword: ShadowSoul), `var_sword_waits` (chips/varswrd: ProtoSoul, ShadowSoul) and `emerge_shake`
+    (the change: TomahawkSoul), where those modules had constants;
+  - one module's rule about one soul is by id (BusterUp's AirShoes in ColonelSoul, MagnetSoul's B+Back's own
+    check); navis/megaman/souls.luau (a table of the souls' names) is gone;
+  - each soul's sprite's attach points are its folder's (forms/<soul>/attach_points.luau), which were rows of one
+    table by number;
+  - the round's souls given (`souls_used`) are bits by the soul's place among the side's navi's souls.
+- **The number is compat's** (content/exe5/compat/records.toml's `[forms]`; exe5-compat's `form_number`, `form`):
+  a recording's setup gives each side its version's souls by it, and the save import names a save's souls by it.
+  The frontend's soul icon is by the soul's place in its navi's `forms.souls` (the pack's icons' order, the
+  original's), read from the souls system's `offer` (a form); `offer_number` is gone from its state.
+- **What a soul adds to the custom screen is the soul's**, in its folder: ColonelSoul's Arm Change
+  (forms/colonelsoul/arm-change.luau), MeddySoul's capsules (forms/meddysoul/capsules.luau), SearchSoul's Shuffle
+  (forms/searchsoul/shuffle.luau), NumberSoul's hand (forms/numbersoul/hand.luau), each making its form's `custom`.
+  - A `SoulCustom` (content/exe5/types.d.luau, EXE5's first shared declarations) has the state fields the soul
+    keeps in the souls system's state, its buttons and windows by name, and `hand_size`, `deal`, `confirmed` and
+    `turn_opened`. Its functions take the system's state as an argument: a module outside rules/ doesn't call
+    `system.state()` (§4.5, the content check's lint).
+  - rules/souls/custom.luau gathers them at define time from MegaMan's `forms.souls` (a soul's button becomes a
+    `ButtonSpec` of the system's, shown while the side's navi is in the soul, outside battle mode 1) and at run
+    time asks the soul the side's navi is in (`form.custom`). It lists no soul and tests none.
+  - The value is a record (`define.record("soul-custom", ...)`; the extension's type `"record:soul-custom"`): an
+    extension field holds data, and a record is the Luau-only data a field can refer to, functions included. The
+    image's look is one too (`"record:soul-image"`).
+  - The turn's arm chip (`arm_chip`, the transform record's +6) is the system's own field: each screen's open
+    clears it and the change copies it into the navi's weapon chip whatever the soul; ColonelSoul's Arm Change
+    fills it at OK and reads it at the turn's start.
+- **The image's look is the soul's** (its form's `image`: rules/souls/image.luau's `image.look`, `image.wearing`):
+  the navi's sprite and what the image puts on and takes off (NumberMan's face is NumberSoul's own two functions),
+  where image.luau had three tables by number.
+- **The actions** `souls/change` and `souls/revert` are defined by rules/souls/change.luau and revert.luau, which
+  the forms require: rules/souls/init.luau requires the navi through custom.luau, so a form can't require it.
+- **The capsule chips stay in chips/capsules**: they are entries of the game's chip table like any other (a compat
+  number, strings, a record the generator writes), in the folder the user asked for; MeddySoul's module requires
+  them.
+- **One difference inside the state, which nothing reads:** out of MeddySoul the system keeps the last screen's two
+  capsules, where its deal zeroed them every screen (the slots that show them are MeddySoul's alone).

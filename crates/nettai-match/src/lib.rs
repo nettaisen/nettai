@@ -142,12 +142,13 @@ pub struct Side {
     /// directly). With one, the stats are the navi's fresh stats with what
     /// the save keeps (`stats::SAVE_FIELDS`).
     pub navicust: Option<NaviCust>,
-    /// EXE5's computer-navi data, the player's save's (`computer_navi`):
-    /// what a computer navi plays from it, the Dark MegaMan their failed
-    /// Chaos Unison brings and their own navi under DarkInvs. Empty: a save
-    /// that has learned nothing (the computer navi only fires its buster
-    /// between rests). The round's setup sends it as the console does
-    /// (`Tactics::sent`).
+    /// EXE5's computer-navi data, the player's save's block whole
+    /// (`computer_navi`): what a computer navi plays from it, the Dark
+    /// MegaMan their failed Chaos Unison brings and their own navi under
+    /// DarkInvs. The default: a block nothing has written (a save that
+    /// never finished a battle; the computer navi only fires its buster
+    /// between rests), which a game without computer navis has. The round's
+    /// setup sends it as the console does (`Tactics::sent`).
     pub computer_navi: ComputerNavi,
     /// EXE5's karma, the save's light/dark value (0 to 1000; a fresh
     /// save's 500), and the souls the side has (EXE5's Soul Unison: none
@@ -279,8 +280,11 @@ impl Match {
     /// battle stage (with its own background), and on each
     /// side its navi (MegaMan, the navi that changes form, else the first
     /// with fresh stats) at its fresh stats, of Falzar; an empty folder, no
-    /// Regular or tag chips, the game's own Crosses, no patch cards, and a
-    /// NaviCust with no programs where the rules have one. No seed (the
+    /// Regular or tag chips, the game's own Crosses, no patch cards, a
+    /// NaviCust with no programs where the rules have one, and where they
+    /// have computer navis the computer-navi data the game's battle end
+    /// writes of a player it has learned nothing of
+    /// (`ComputerNavi::nothing_learned`). No seed (the
     /// battle's is drawn when it is played). Its folders are none the
     /// checks accept until they are made.
     pub fn empty(content: &Content, game: &str) -> Result<Match, String> {
@@ -321,7 +325,9 @@ impl Side {
             bug_frags: 0,
             sp_times: SpTimes::default(),
             navicust: None,
-            computer_navi: ComputerNavi::default(),
+            // (What the game's battle end writes of a player it has
+            // learned nothing of, where the game has computer navis.)
+            computer_navi: if computer_navi::has(content) { ComputerNavi::nothing_learned() } else { ComputerNavi::default() },
             karma: facts::DEFAULT_KARMA,
             souls: None,
             soul_unison: true,

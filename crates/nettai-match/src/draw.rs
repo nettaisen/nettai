@@ -330,22 +330,25 @@ mod tests {
         assert!(m.sides.iter().flat_map(|s| s.folder.chips()).all(|c| ids::in_game(&content, "exe5", &content.defs.chip(c.id).key)));
         // An EXE5 match states what a computer navi plays: each side's
         // folder's chips, as the game would have learned them (a folder's
-        // own chips alone, nothing played first), written in its file.
-        use crate::computer_navi::Play;
+        // own chips alone, none in the first three places and no
+        // patterns), written in its file.
+        use crate::computer_navi::{Entry, LISTS, PATTERNS, Record};
         for s in &m.sides {
-            assert!(s.computer_navi.first.is_empty() && !s.computer_navi.rest.is_empty());
-            for p in &s.computer_navi.rest {
-                let Play::Chip(c) = p else { panic!("a drawn side has no patterns: {p:?}") };
+            assert!(s.computer_navi.entries() > 0);
+            assert!(s.computer_navi.list(&LISTS[0]).iter().chain(s.computer_navi.list(&PATTERNS)).all(|e| *e == Entry::Empty));
+            for e in s.computer_navi.places.iter().filter(|e| **e != Entry::Empty) {
+                let Entry::Chip(c) = e else { panic!("a drawn side has chips alone: {e:?}") };
                 assert!(s.folder.chips().any(|f| f.id == *c));
             }
+            assert_eq!(s.computer_navi.records, [Record::ZERO; 8]);
             assert_eq!(s.computer_navi, crate::ComputerNavi::of_folder(&content, &s.folder));
         }
         assert_ne!(m.sides[0].computer_navi, m.sides[1].computer_navi);
         let text = crate::write(&content, &m);
-        assert!(text.contains("[left.computer_navi]\nrest = [\n") && text.contains("[right.computer_navi]"), "{text}");
+        assert!(text.contains("[left.computer_navi]\nfirst = [{}, {}, {}]\nstandard = [\n") && text.contains("[right.computer_navi]"), "{text}");
         assert_eq!(crate::parse(&content, &text).unwrap(), m);
         // EXE6 has no computer navis: a drawn match of it states none.
         let six = crate::testing::exe6_content();
-        assert!(live(&six, "exe6", 4, None).unwrap().sides.iter().all(|s| s.computer_navi.is_empty()));
+        assert!(live(&six, "exe6", 4, None).unwrap().sides.iter().all(|s| s.computer_navi.is_blank()));
     }
 }

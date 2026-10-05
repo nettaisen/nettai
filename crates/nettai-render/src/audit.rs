@@ -57,8 +57,6 @@ pub enum Lookup {
     /// The chip window's colors and pictures of a chip's class, element
     /// and code.
     ChipWindow(ChipHandle),
-    /// A chip's name and code in the Program Advance animation.
-    AdvanceName(ChipHandle),
     /// A chip's description in the dialogue font (R on the custom screen).
     ChipDescription(ChipHandle),
     /// A mugshot, in its pack's HUD.
@@ -142,7 +140,6 @@ impl Lookup {
             Lookup::ChipArt(h) => format!("chip {} picture", chip(h)),
             Lookup::ChipName(h) => format!("chip {} name", chip(h)),
             Lookup::ChipWindow(h) => format!("chip {} window", chip(h)),
-            Lookup::AdvanceName(h) => format!("chip {} advance name", chip(h)),
             Lookup::ChipDescription(h) => format!("chip {} description", chip(h)),
             Lookup::Mugshot(id) => format!("mugshot {}", asset(AssetKind::Mugshot, id.0)),
             Lookup::NaviFace(h) => format!("navi {} face", navi(h)),
