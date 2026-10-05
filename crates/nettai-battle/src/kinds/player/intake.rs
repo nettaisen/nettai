@@ -370,7 +370,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
 
 /// EXE5's 0x08017216: a move's end on metal slides the body (slide type
 /// 3), unless it slid within the cooldown, is floating or slide-proof
-/// (flags 0x24), or is a navi whose form stands on metal (EXE5's soul 5).
+/// (flags 0x24), or is a navi whose form stands on metal (EXE5's MagnetSoul).
 fn metal_slide(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).road_cooldown != 0 || flag1(b, r) & 0x24 != 0 {
         return;

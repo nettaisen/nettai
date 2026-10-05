@@ -6,19 +6,23 @@
 -- Chaos Unison's (0x34: DarkWide); no B+Back (0xFF). Its status reset has him dive (0x08011CB2: AIData +0x44's 0x20,
 -- which every status reset clears first: the sea submerges him and doesn't hold him at a move's end).
 
-local attach_points = require("../attach_points")
+local attach_points = require("@self/attach_points")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_chips = require("../weapons/charged-chip")
 local darkwide = require("../../../chips/darkwide")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "toadsoul",
-    soul = { number = 12, family = "aqua" },
-    change = souls.action,
-    revert = souls.revert,
+    soul = { family = "aqua" },
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- ToadMan's image as MegaMan unites with him (rules/souls/image).
+    image = soul_image.look { sprite = asset.sprite("toadman") },
     sprite = asset.sprite("toadsoul"),
     element = "aqua",
     buster_bonus = 0,
@@ -42,7 +46,8 @@ return define.form {
         normal = asset.mugshot("toadsoul"),
         variant = { normal = asset.mugshot("toadsoul-chaos") },
     },
-    buster_arm = { anim = 0 },
+    -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
+    buster_arm = { anim = 12 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 12 of category 0).
     identity = define.identity {
         class = "megaman",
@@ -50,6 +55,6 @@ return define.form {
         actor_type = "player",
         ai_index = 0,
         aura_anim = 0,
-        attach_points = attach_points[12],
+        attach_points = attach_points,
     },
 }

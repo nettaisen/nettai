@@ -590,7 +590,7 @@ fn souls(e: &Editor, s: usize) -> Element<'_, Msg> {
             Some(h) => image(h.clone()).width(64).height(32).filter_method(image::FilterMethod::Nearest).into(),
             None => space().width(64).height(32).into(),
         };
-        let about = form.soul.as_ref().map_or(String::new(), |x| format!("soul {}, for {:?} chips", x.number, x.family).to_lowercase());
+        let about = form.soul.as_ref().map_or(String::new(), |x| format!("for {:?} chips", x.family).to_lowercase());
         let on = owned.contains(&f);
         let mut tick = checkbox(on);
         if !every {
