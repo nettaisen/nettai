@@ -31,7 +31,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 pub const FORMAT: &str = "nettai-content/custom";
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 1;
 
 const GLYPHS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
 const ICONS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 2, height: 2, columns };
@@ -76,8 +76,8 @@ pub struct CustomDoc {
     /// slot's icon.
     pub slot_codes: TileImage,
     pub empty_icon: TileImage,
-    /// The base game's own pictures (its version, when another version has
-    /// its own), and the other versions'.
+    /// The base game's own pictures and its version's name, and the other
+    /// versions'.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub base_version: String,
     pub own: VersionDoc,
@@ -521,7 +521,9 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         digits,
         slot_codes,
         empty_icon,
-        base_version: if vs.versions.is_empty() { String::new() } else { vs.base_version.clone() },
+        // (Its name stands with or without another version's pictures: a
+        // console with none of its own is of the base version.)
+        base_version: vs.base_version.clone(),
         own,
         versions,
         cursor,

@@ -48,8 +48,9 @@ pub struct CustomLettering {
     /// The Cross window's names (`VersionPictures::cross_names`) by game
     /// version; a version not listed keeps the pack's own.
     pub cross_names: Vec<(String, Tiles)>,
-    /// The named buttons that say something, by the button's name; a
-    /// button not listed keeps the pack's own.
+    /// The named buttons that say something, by the button's name (in the
+    /// names' order, as a pack keeps them); a button not listed keeps the
+    /// pack's own.
     pub buttons: Vec<(String, ButtonLettering)>,
 }
 

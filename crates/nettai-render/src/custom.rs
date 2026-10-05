@@ -557,13 +557,18 @@ fn flight<'a>(a: &'a CustomScreen, v: &View, tiles: &'a Tiles, first: usize, sub
 }
 
 /// The name EXE5's soul button is drawn by (the souls system's button; the
-/// pack's `CustomScreen::buttons`): what its window and its offer draw
-/// beside the button's look are this module's.
+/// pack's `CustomScreen::buttons`). The renderer names it because what the
+/// soul's choice draws beside the button's look is this module's (the
+/// offered soul's icon in the column and in flight, the button's picture in
+/// a Chaos Unison's palette): the content has no way to say those of a
+/// button; it would take fields.
 const SOUL_BUTTON: &str = "soul";
 
-/// The name of EXE6's Beast Out button (the beast system's): the BeastOut
-/// chip's picture in the chip window is that button's (the content has no
-/// way to say which button's picture a chip shows).
+/// The name of EXE6's Beast Out button (the beast system's). The renderer
+/// names it because the BeastOut chip's picture in the chip window is that
+/// button's: the content says which chip the button puts in the column only
+/// in the button's own code (`custom.set_column_icon`); saying which
+/// button's picture a chip shows would take a field.
 const BEAST_OUT_BUTTON: &str = "beast_out";
 
 impl View<'_> {
@@ -1019,7 +1024,6 @@ impl Window {
             w.tiles.fill(w.layout.element, 4, BLANK_7);
             w.tiles.fill(w.layout.digits, 6, BLANK_8);
         };
-        let state = state_number(v.screen.slots[slot as usize].state);
         match v.screen.slots[slot as usize].kind {
             SlotKind::Chip { .. } | SlotKind::NaviChip(_) => {
                 let Some(c) = cw.last_chip else { return };

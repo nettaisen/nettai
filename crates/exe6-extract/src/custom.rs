@@ -173,7 +173,6 @@ const GREGAR: VersionAddresses = VersionAddresses {
     cross_palettes: 0x086E_73D0,
 };
 
-const BEAST_OUT_PALETTE_COUNT: u32 = 2;
 const BEAST_BUTTON_BYTES: usize = 0x400;
 pub(crate) const CROSS_NAMES: (usize, usize) = (10, 0x240);
 const CROSS_PALETTE_COUNT: u32 = 10;
@@ -182,8 +181,12 @@ fn version_pictures(rom: &Rom, a: &VersionAddresses) -> VersionPictures {
     let palettes = |at: u32, n: u32| (0..n).map(|i| palette(rom, at + 32 * i)).collect::<Vec<_>>();
     // The Beast Out button, the version's Beast's (`sub_8028250`: 4x2 a
     // set: selectable, unavailable, battle mode 1's, and the hidden
-    // slot's), with its picture in the chip window.
-    let beast_palettes = palettes(a.beast_out_palettes, BEAST_OUT_PALETTE_COUNT);
+    // slot's), with its picture in the chip window. The picture's palette
+    // is the first of two (`sub_802871C` takes the one the special slot's
+    // +6 numbers, which EXE5's soul button sets for a Chaos Unison,
+    // 0x08024540, and nothing in EXE6 sets): the pack leaves the second
+    // out.
+    let own = palette(rom, a.beast_out_palettes);
     let beast_out = ButtonPictures {
         width: 4,
         height: 2,
@@ -191,8 +194,8 @@ fn version_pictures(rom: &Rom, a: &VersionAddresses) -> VersionPictures {
         sets: ButtonSets::Other,
         hidden: Some(3),
         cursor: SPECIAL_CURSOR,
-        picture: Picture { tiles: tiles(rom, (a.beast_out, PICTURE_BYTES)), palette: palette(rom, a.beast_out_palettes) },
-        palettes: beast_palettes,
+        picture: Picture { tiles: tiles(rom, (a.beast_out, PICTURE_BYTES)), palette: own },
+        palettes: vec![own],
         ..ButtonPictures::default()
     };
     VersionPictures {
