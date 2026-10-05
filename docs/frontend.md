@@ -893,6 +893,16 @@ them).
   draws its Japanese names in the US font (the font mode draws them); the
   static audit says so, not counted.
 - Live play shows the custom screen as text.
+- One blend register for every semi-transparent sprite. `sprite_setAlpha`
+  (EXE6's 0x08002C7A, EXE5's 0x08002AE6) writes the sprite's alpha straight
+  into BLDALPHA, which the whole screen shares: on the original every
+  semi-transparent sprite on a frame is blended by the alpha written last
+  that tick (the last such sprite's object to update), whatever its own. The
+  renderer blends each sprite by its own alpha (`compose::blend`, with the
+  register's five-bit weights). The two differ only on a frame that shows
+  two semi-transparent sprites whose alphas differ; no recording compared
+  so far has one (the frame comparisons would show it as one of the two
+  sprites too faint or too strong for as long as both are up).
 - Affine (rotated or scaled) object sprites (`sprite_makeScalable`: no kind
   in the engine or the content uses one yet; compose draws affine parts, the
   custom screen's emblem is one), the per-part palette override
