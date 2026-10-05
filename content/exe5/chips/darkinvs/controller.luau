@@ -2,7 +2,7 @@
 -- DarkInvs's dimming controller (EXE5's effect object #0x18, 0x080E22A8; EXE5's own): the usual dimming phases
 -- (@exelib/dimming), with an effect (0x080E22EC) that sends out a stand-in of its user (./stand-in: the user turning
 -- dark), waits for it, and starts the user's drive: for 600 ticks the auto battle AI drives the user
--- (rules/auto_battle: where it would step, its idle asks the AI, on the user's own side's tactics), which no hit
+-- (rules/auto_battle: where it would step, its idle asks the AI, on the user's own side's auto battle data), which no hit
 -- reaches (untouchable), its statuses and anger ended. The drive's end is EXE5's action 0x49 (./drive-end), which its
 -- timer's end asks for (rules/status's `no_charge_drive`).
 

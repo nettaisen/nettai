@@ -102,7 +102,7 @@ pub fn systems(content: &Content) -> &[SystemHandle] {
 
 /// What the send of a side's auto battle data draws from, with the seed
 /// and the side.
-const TACTICS_SALT: u32 = 0x5441_4354;
+const AUTO_BATTLE_SALT: u32 = 0x5441_4354;
 
 /// What a player brings to a match, all of it the match's game's: their
 /// navi and version, the navi's stats (what their save and NaviCust give
@@ -153,7 +153,7 @@ pub struct Side {
     /// DarkInvs. The default: a block nothing has written (a save that
     /// never finished a battle; the navi in auto battle only fires its buster
     /// between rests), which a game without auto battle has. The round's
-    /// setup sends it as the console does (`Tactics::sent`).
+    /// setup sends it as the console does (`AutoBattleData::sent`).
     pub auto_battle: AutoBattle,
     /// EXE5's karma, the save's light/dark value (0 to 1000; a fresh
     /// save's 500), and the souls the side has (EXE5's Soul Unison: none
@@ -378,7 +378,7 @@ impl Match {
                 // stream of the side's own from the seed (the original's
                 // is the console's at the link's start, which nothing
                 // here runs).
-                tactics: s.auto_battle.tactics().sent(&mut Rng::new(seed ^ TACTICS_SALT ^ (side as u32).wrapping_mul(0x9E37_79B9))),
+                auto_battle: s.auto_battle.data().sent(&mut Rng::new(seed ^ AUTO_BATTLE_SALT ^ (side as u32).wrapping_mul(0x9E37_79B9))),
             };
             // What the save unlocks, into its EXE6 systems' setup: its
             // version, every Cross of it (or the side's list) and Beast Out
