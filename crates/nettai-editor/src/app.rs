@@ -574,7 +574,7 @@ impl Editor {
             }
             Msg::Version(s, c) => {
                 let side = &mut self.m.sides[s];
-                side.stats.version = nettai_match::version_byte(Some(&c.value));
+                side.stats.version = nettai_match::version_byte(&content, Some(&c.value));
                 side.version = Some(c.value);
                 self.edited();
             }
