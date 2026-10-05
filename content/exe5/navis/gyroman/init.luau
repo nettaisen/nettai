@@ -35,6 +35,9 @@ return define.navi {
     -- What the story gives him (its table's row for him, 0x0804F960): his HP by its progress; his level is that
     -- progress up to 6.
     story = { hp = { 250, 250, 250, 300, 350, 400, 500, 600, 700 }, max_level = 6 },
+    -- Taking off (animation 18) and in the air (20), his charge glow shows 16 pixels higher (the charge glow's test
+    -- of his name, 0x080E0E58).
+    charge_glow_lift = { anims = { 18, 20 }, pixels = 16 },
     -- His tick rests while his Airforce runs (0x080F09EE).
     tick = hover.tick(airforce.action :: Action),
     idle = hover.idle,

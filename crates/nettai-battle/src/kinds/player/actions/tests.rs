@@ -153,6 +153,31 @@ fn a_navis_own_hooks_run_where_the_originals_tables_call_them() {
     assert_eq!(own(&b, p0), own_request::LAND);
 }
 
+/// A navi's charge glow sits at its attach point 0, and higher by what the
+/// navi states while its animation is one of those it names (EXE5's
+/// GyroMan's in the air).
+#[test]
+fn a_navis_charge_glow_lifts_in_the_animations_it_names() {
+    let (mut b, p0, p1) = fight_with(hooked());
+    let glow = super::super::ai(&b, p0).charge_glow.expect("the navi's charge glow");
+    let height = |b: &Battle| b.objects.get(glow).pos.z - b.objects.get(p0).pos.z;
+    for _ in 0..2 {
+        tick(&mut b, p0, p1, 0);
+    }
+    let (_, dz) = super::super::attach_point(&b, p0, 0);
+    assert_eq!(height(&b), dz << 16);
+    b.objects.get_mut(p0).anim = 9;
+    for _ in 0..2 {
+        tick(&mut b, p0, p1, 0);
+    }
+    assert_eq!((b.objects.get(p0).anim, height(&b)), (9, (dz + 16) << 16));
+    b.objects.get_mut(p0).anim = 8;
+    for _ in 0..2 {
+        tick(&mut b, p0, p1, 0);
+    }
+    assert_eq!((b.objects.get(p0).anim, height(&b)), (8, dz << 16));
+}
+
 #[test]
 fn a_step_commits_on_the_third_tick_and_ends_on_the_twelfth() {
     let (mut b, p0, p1) = fight();
