@@ -438,6 +438,10 @@ local status = {
         -- A weakness hit doesn't ask for it: its status routine (0x08017BF2) shows the hit's mark and has no such step,
         -- so a navi hit on its weakness, in a soul or not, goes on as it was.
         weakness_hit_breaks_form = false,
+        -- That mark (0x08017254) shows over the damage that tick's hits left of the element the navi's is weak to (the
+        -- accumulator its table, 0x08017284, names by the navi's element: the elements rule's weakness table read the
+        -- other way; none for null), whichever hit came last: its hit kernel stores no multiplier of a hit.
+        weakness_mark = "weak_element_damage",
     },
 }
 

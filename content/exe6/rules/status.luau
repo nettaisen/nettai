@@ -635,6 +635,10 @@ local status = {
         form_break = "cross_or_beast",
         -- A damaging weakness hit asks for that break (`sub_801A506`, a step of its status routine).
         weakness_hit_breaks_form = true,
+        -- The weakness mark ("!!", `sub_801A42E`) shows over the multiplier of the last hit to reach the navi that
+        -- tick (the byte its hit kernel stores: a weakness of either kind, a thaw, elec on a bubble), on a tick with
+        -- final damage.
+        weakness_mark = "last_hit_multiplier",
     },
 }
 
