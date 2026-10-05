@@ -141,6 +141,13 @@ pub struct OverlayHooks {
     pub flinch_checked: bool,
     /// A drag restarts it (`off_80EABF8`).
     pub drag: bool,
+    /// A flinch, a drag or a paralysis lets go of it where an attack holds
+    /// it shown or hidden (EXE5's KnightMan's hook in those three tables,
+    /// 0x080FBA20: `sub_80C4510` on his ball and chain; nothing without
+    /// it). EXE6's paralysis has no per-form hook.
+    pub flinch_lets_go: bool,
+    pub drag_lets_go: bool,
+    pub paralysis_lets_go: bool,
 }
 
 /// The size of the ice block that fits an identity's object
@@ -397,9 +404,7 @@ pub(crate) fn read(
         Data::Nil => OverlayHooks {
             death: parts.is_some(),
             refresh: matches!(parts, Some(Parts::Body(_) | Parts::Bodies(..) | Parts::BeastHead { .. })),
-            flinch: false,
-            flinch_checked: false,
-            drag: false,
+            ..OverlayHooks::default()
         },
         Data::List(names) => {
             let mut h = OverlayHooks::default();
@@ -410,7 +415,14 @@ pub(crate) fn read(
                     Data::Str(s) if s == "flinch" => h.flinch = true,
                     Data::Str(s) if s == "flinch_checked" => (h.flinch, h.flinch_checked) = (true, true),
                     Data::Str(s) if s == "drag" => h.drag = true,
-                    other => return Err(what(format!("`overlay_hooks` has {other:?}, not death, refresh, flinch, flinch_checked or drag"))),
+                    Data::Str(s) if s == "flinch_lets_go" => h.flinch_lets_go = true,
+                    Data::Str(s) if s == "drag_lets_go" => h.drag_lets_go = true,
+                    Data::Str(s) if s == "paralysis_lets_go" => h.paralysis_lets_go = true,
+                    other => {
+                        return Err(what(format!(
+                            "`overlay_hooks` has {other:?}, not death, refresh, flinch, flinch_checked, drag, flinch_lets_go, drag_lets_go or paralysis_lets_go"
+                        )));
+                    }
                 }
             }
             h
