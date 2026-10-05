@@ -94,6 +94,65 @@ fn run_to(b: &mut Battle, p: [ObjectRef; 2], now: &mut u32, last: u32, held: u16
     }
 }
 
+/// The test content's navi with hooks of its own on both sides.
+fn hooked() -> NaviStats {
+    megaman_with(|s| s.navi = testing::content().navi_by_key(testing::HOOKED_NAVI))
+}
+
+#[test]
+fn a_navis_own_hooks_run_where_the_originals_tables_call_them() {
+    use crate::actor::{own_request, status};
+    let own = |b: &Battle, r: ObjectRef| super::super::ai(b, r).own_requests;
+    let state = |b: &Battle, r: ObjectRef| super::super::ai(b, r).status;
+    let (mut b, p0, p1) = fight_with(hooked());
+    let p = [p0, p1];
+    // Its post-init hook ran as its init ended: the test navi's marks it.
+    assert_ne!(state(&b, p0) & status::DIVES, 0);
+    assert_eq!(state(&b, p0) & status::HOVERING, 0);
+    // Its tick runs each tick, after its action. The test navi's puts it in
+    // the air in the top row, and asks to take off: on the tick its step
+    // up commits (the third after it starts), in the middle of the step.
+    let mut t = 0;
+    tick(&mut b, p0, p1, keys::UP);
+    assert_eq!((act(&b, p0), b.objects.get(p0).anim), (MOVE, 4));
+    run_to(&mut b, p, &mut t, 2, 0);
+    assert_eq!((state(&b, p0) & status::HOVERING, own(&b, p0)), (0, 0));
+    run_to(&mut b, p, &mut t, 3, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 2, y: 1 });
+    assert_eq!((state(&b, p0) & status::HOVERING, own(&b, p0)), (status::HOVERING, own_request::TAKE_OFF));
+    // In the air the rest of the step sets no animation (the arrival's
+    // would be 0) and leaves the one it has; no end clears the request.
+    let anim = b.objects.get(p0).anim;
+    run_to(&mut b, p, &mut t, 12, 0);
+    assert_eq!((act(&b, p0), b.objects.get(p0).anim, own(&b, p0)), (IDLE, anim, own_request::TAKE_OFF));
+    // Its idle runs before the common one: the test navi's answers the
+    // take-off with nothing more, and the common idle goes on (a step).
+    b.objects.get_mut(p0).anim = 9;
+    tick(&mut b, p0, p1, keys::DOWN);
+    assert_eq!((own(&b, p0), act(&b, p0), b.objects.get(p0).anim), (0, MOVE, 9));
+    // Out of the top row its tick asks to land, each tick; nothing but its
+    // idle answers: a landing, its own action, and no common idle on that
+    // tick (the held B fires nothing).
+    t = 0;
+    run_to(&mut b, p, &mut t, 3, 0);
+    assert_eq!((b.objects.get(p0).panel, own(&b, p0)), (PanelPos { x: 2, y: 2 }, own_request::LAND));
+    run_to(&mut b, p, &mut t, 12, 0);
+    assert_eq!((act(&b, p0), b.objects.get(p0).anim, own(&b, p0)), (IDLE, 9, own_request::LAND));
+    tick(&mut b, p0, p1, keys::B);
+    let landing = testing::content().defs.actions.iter().position(|a| nettai_content_api::keys::local(&a.key) == "test/landing").unwrap();
+    assert_eq!(act(&b, p0), NaviAction::Content(nettai_content_api::ActionHandle(landing as u16)));
+    // (Its tick asked again on that tick: it is still in the air.)
+    assert_eq!(own(&b, p0), own_request::LAND);
+    for _ in 0..4 {
+        tick(&mut b, p0, p1, 0);
+    }
+    assert_eq!((act(&b, p0), state(&b, p0) & status::HOVERING), (IDLE, 0));
+    // The landing's request from its last ticks is answered once more,
+    // out of the air: the navi's own to clear (EXE5's GyroMan's landing
+    // clears it as it ends).
+    assert_eq!(own(&b, p0), own_request::LAND);
+}
+
 #[test]
 fn a_step_commits_on_the_third_tick_and_ends_on_the_twelfth() {
     let (mut b, p0, p1) = fight();

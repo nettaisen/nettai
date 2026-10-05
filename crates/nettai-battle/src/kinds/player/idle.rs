@@ -35,6 +35,16 @@ pub(super) fn control(b: &mut Battle, r: ObjectRef) {
         return set_attack(b, r, strike, 0);
     }
     // JumpTable80EA7B0[enemy struct byte 4]: every entry is sub_80F0354.
+    // EXE5's table (0x080EB068, by control mode and AI index) has an entry
+    // of GyroMan's own (0x080F0978): the navi's `idle`, which goes on to
+    // the common idle unless it started an action.
+    let navi = stats(b, r).navi;
+    if let Some(f) = b.content.defs.navi(navi).idle {
+        crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
+        if super::navi_action(b, r) != super::NaviAction::Idle {
+            return;
+        }
+    }
     decide(b, r);
 }
 

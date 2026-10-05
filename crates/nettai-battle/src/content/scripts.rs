@@ -418,7 +418,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         bubble_bob = row(32, 0),
         slide_speed = { x = 0x30000, y = 0x20000 },
         overlay_restart = "reload",
-        stance_counter = "next_tick","#,
+        stance_counter = "next_tick",
+        request_clears = { attack = { "mode9_a" }, paralysis = { "mode9_a" }, flinch = { "anti_sword_triggered" }, drag = { 0x400 } },"#,
             ),
             (
                 "status",
@@ -508,7 +509,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 52, "every field of every section");
+        assert_eq!(fields, 53, "every field of every section");
         // A field of a table of settings, too.
         let e = game(ruleset(None, None, Some((" elec_reaches_submerged = true,", "")))).unwrap_err();
         assert!(e.contains("ruleset: reactions.hit_test: missing field `elec_reaches_submerged`"), "{e}");
