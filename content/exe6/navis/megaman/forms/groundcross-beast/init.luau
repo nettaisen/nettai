@@ -31,7 +31,7 @@ return define.form {
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
     null_bonus = 30,
     -- The chips A charges.
-    charged_chips = { { family = "break" }, { family = "null", damaging = false } },
+    charged_chips = { { family = "break", damaging = true }, { family = "null", damaging = false } },
     -- What its status reset gives the navi (`sub_8014536`).
     status_reset = { "super_armor", "air_shoes", "float_shoes", "floating_body", "target_marker" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.

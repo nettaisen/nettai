@@ -581,8 +581,8 @@ pub struct PanelChipBonus {
 #[serde(deny_unknown_fields)]
 pub struct ChargedChips {
     pub family: ChipFamily,
-    /// Only its damaging chips that aren't dimming chips (false: any).
-    #[serde(default = "yes")]
+    /// Only its damaging chips that aren't dimming chips (false: any). A
+    /// rule states it, as a navi's does: there is no usual answer.
     pub damaging: bool,
     /// And the chips with the `element_sword` trait.
     #[serde(default)]
@@ -591,10 +591,6 @@ pub struct ChargedChips {
     /// souls, 0x0801090A).
     #[serde(default)]
     pub plain: bool,
-}
-
-fn yes() -> bool {
-    true
 }
 
 /// What a charged chip gains in a form, or for a navi.
@@ -1068,6 +1064,20 @@ mod tests {
         assert_eq!((exe5.from_level, exe5.damaging, exe5.plain), (None, false, true));
         // Left out, the rule doesn't load, and the error names the field.
         let error = read(r#"{ "family": "wood", "from_level": 11 }"#).unwrap_err().to_string();
+        assert!(error.contains("missing field `damaging`"), "{error}");
+    }
+
+    #[test]
+    fn a_forms_charged_chips_say_whether_they_must_be_damaging() {
+        let read = |json: &str| serde_json::from_str::<ChargedChips>(json);
+        // A Cross's: its family's damaging chips (SlashCross's the element
+        // swords too); Beast Out's any Null chip.
+        let cross = read(r#"{ "family": "sword", "damaging": true, "element_swords": true }"#).unwrap();
+        assert_eq!((cross.damaging, cross.element_swords, cross.plain), (true, true, false));
+        let beast = read(r#"{ "family": "null", "damaging": false }"#).unwrap();
+        assert_eq!((beast.damaging, beast.element_swords, beast.plain), (false, false, false));
+        // Left out, the rule doesn't load, and the error names the field.
+        let error = read(r#"{ "family": "wood" }"#).unwrap_err().to_string();
         assert!(error.contains("missing field `damaging`"), "{error}");
     }
 }
