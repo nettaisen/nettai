@@ -60,6 +60,7 @@ language = "ja"
 "bugcurse" = { name = "カースオブバグ", description = "あいてをひどい\nバグじょうたいに\nしてしまう!" }
 "bugfix" = { name = "バグシュウセイ", description = "ナビに発生している\nバグをしゅうせいし\nとりのぞく" }
 "busterup" = { name = "バスターアップ", description = "そのバトル中\nバスターの攻撃力を\n1アップさせる!" }
+"c-cannon" = { name = "カーネルキャノン", description = "前方にキャノンほう\n画面はしにとどくと\nたて3マスばくふう" }
 "cacdanc1" = { name = "サボテンダンス1", description = "てきエリアに\nサボテンボールが\nふりそそぎつづける" }
 "cacdanc2" = { name = "サボテンダンス2", description = "てきエリアに\nサボテンボールが\nふりそそぎつづける" }
 "cacdanc3" = { name = "サボテンダンス3", description = "てきエリアに\nサボテンボールが\nふりそそぎつづける" }
@@ -353,6 +354,7 @@ language = "ja"
 "z-saver" = { name = "Zセイバー", description = "でんせつの あかい\nレプリロイドの\n3だんぎりソード" }
 
 [navis]
+"colonel" = { name = "カーネル" }
 "megaman" = { name = "ロックマン", variant_name = "FCロックマン" }
 "protoman" = { name = "ブルース" }
 
