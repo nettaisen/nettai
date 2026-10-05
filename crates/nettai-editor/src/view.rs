@@ -1,7 +1,7 @@
 //! What the editor shows: a bar of file actions, the panes (the arena, with
-//! the match's game, then each side's navi, folder, Crosses,
-//! patch cards and stats; only what the game's rules have, every list the
-//! game's), and the problems, live.
+//! the match's game, then each side's navi, folder, Crosses, souls,
+//! computer-navi data, patch cards and stats; only what the game's rules
+//! have, every list the game's), and the problems, live.
 
 use crate::app::{App, Choice, Editor, Msg, Tab};
 use crate::names::Lang;
@@ -13,11 +13,11 @@ use nettai_match::stats::{self, Kind, Value};
 use nettai_match::{FORMS_SYSTEM, NAVICUST_SYSTEM, PATCH_CARDS_SYSTEM};
 
 pub const SIDES: [&str; 2] = ["Left (you)", "Right"];
-const RED: Color = Color::from_rgb(0.85, 0.2, 0.2);
-const GREEN: Color = Color::from_rgb(0.15, 0.6, 0.25);
-const DIM: Color = Color::from_rgb(0.5, 0.5, 0.55);
+pub(crate) const RED: Color = Color::from_rgb(0.85, 0.2, 0.2);
+pub(crate) const GREEN: Color = Color::from_rgb(0.15, 0.6, 0.25);
+pub(crate) const DIM: Color = Color::from_rgb(0.5, 0.5, 0.55);
 
-fn heading<'a>(s: impl text::IntoFragment<'a>) -> Element<'a, Msg> {
+pub(crate) fn heading<'a>(s: impl text::IntoFragment<'a>) -> Element<'a, Msg> {
     text(s).size(20).into()
 }
 
@@ -34,7 +34,7 @@ fn nav<'a>(name: &'a str, tab: Tab, now: Tab) -> Element<'a, Msg> {
     b.style(if tab == now { button::primary } else { button::text }).into()
 }
 
-fn icon<'a>(e: &'a Editor, chip: nettai_content_api::ChipHandle) -> Element<'a, Msg> {
+pub(crate) fn icon<'a>(e: &'a Editor, chip: nettai_content_api::ChipHandle) -> Element<'a, Msg> {
     let key = &e.content.defs.chip(chip).key;
     match e.pictures.chip(key).and_then(|p| p.icon.clone()) {
         Some(h) => image(h).width(16).height(16).filter_method(image::FilterMethod::Nearest).into(),
@@ -99,6 +99,10 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         if nettai_match::facts::takes(&e.content, nettai_match::facts::SOULS_FIELD) {
             tabs = tabs.push(nav("  Souls", Tab::Souls(s), e.tab));
         }
+        // (Where the game's rules have computer navis: EXE5's.)
+        if nettai_match::computer_navi::has(&e.content) {
+            tabs = tabs.push(nav("  Computer navi", Tab::ComputerNavi(s), e.tab));
+        }
         if nettai_match::ruleset_has_system(&e.content, PATCH_CARDS_SYSTEM) {
             tabs = tabs.push(nav("  Patch cards", Tab::Cards(s), e.tab));
         }
@@ -114,6 +118,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         Tab::Folder(s) => folder(e, s),
         Tab::Crosses(s) => crosses(e, s),
         Tab::Souls(s) => souls(e, s),
+        Tab::ComputerNavi(s) => crate::computer_navi::view(e, s),
         Tab::Cards(s) => cards(e, s),
         Tab::NaviCust(s) => crate::navicust::view(e, s),
         Tab::Stats(s) => stats_pane(e, s, None),
@@ -520,7 +525,7 @@ fn game_label(game: &str) -> String {
     game.to_uppercase()
 }
 
-fn class_name(c: ChipClass) -> &'static str {
+pub(crate) fn class_name(c: ChipClass) -> &'static str {
     match c {
         ChipClass::Standard => "Standard",
         ChipClass::Mega => "Mega",
@@ -529,7 +534,7 @@ fn class_name(c: ChipClass) -> &'static str {
     }
 }
 
-fn class_letter(c: ChipClass) -> &'static str {
+pub(crate) fn class_letter(c: ChipClass) -> &'static str {
     match c {
         ChipClass::Standard => "S",
         ChipClass::Mega => "M",

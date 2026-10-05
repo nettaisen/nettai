@@ -2,6 +2,7 @@
 //! nettai-frontend. README.md, "The match editor".
 
 mod app;
+mod computer_navi;
 mod levels;
 mod load;
 mod names;
@@ -31,7 +32,8 @@ usage: nettai-editor [OPTIONS] [MATCH.toml]
   --frontend PATH  the nettai-frontend program Play runs (default: the one
                    beside this program, else nettai-frontend on the PATH)
   --tab NAME       start on a pane: arena, or left- or right- and navi,
-                   folder, crosses, cards, navicust, stats
+                   folder, crosses, souls, computer-navi, cards, navicust,
+                   stats
   --screenshot PNG write the window to PNG once it has drawn, and quit";
 
 fn fail(msg: impl std::fmt::Display) -> ! {
