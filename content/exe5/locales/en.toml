@@ -308,6 +308,7 @@ language = "en"
 "suprvulc" = { name = "SuprVulc", description = "12-shot\nvulcan\ncannon" }
 "sword" = { name = "Sword", description = "Cuts enmy\nin front!\nRange: 1" }
 "swrdmode" = { name = "SwrdMode", description = "ミテイ" }
+"t-swing" = { name = "T-Swing", description = "Slices 2\nsq side 3\nsq vrticl" }
 "tango" = { name = "Tango", description = "" }
 "tankcan1" = { name = "TankCan1", description = "3sq blast\nif hits\nend row" }
 "tankcan2" = { name = "TankCan2", description = "3sq blast\nif hits\nend row" }
@@ -355,6 +356,7 @@ language = "en"
 [navis]
 "megaman" = { name = "MegaMan", variant_name = "BCMegaMn" }
 "protoman" = { name = "ProtoMan" }
+"tomahawkman" = { name = "TmhkMan" }
 
 [forms]
 "colonelsoul" = { name = "ColSoul" }
