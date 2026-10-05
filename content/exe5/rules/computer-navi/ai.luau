@@ -5,7 +5,9 @@
 -- driving itself) plays the navi's own side's, and faces, as it steps, the target whose search starts at the step's
 -- column (where the other starts at the pattern's search place); its pick for a crowded front is real code. Entry by
 -- entry: an entry is a chip, which it gets in place for (./place) and uses, or a pattern: a place by its target and a
--- run of chips. Three times in four it plays the first entry; otherwise, or with nothing to play, it steps into the row
+-- run of chips, which the game never plays (the test of its place is of a panel that isn't one, `pattern_place`: a
+-- pattern entry is a miss and a step). Three times in four it plays the first entry; otherwise, or with nothing to play
+-- (no entry, or a first place holding 0), it steps into the row
 -- of an enemy and fires its buster (three shots, ./buster), twice. Its state is AIData +0xF0 on (Dark MegaMan's the
 -- system's `navi_state`, a driven player's the system's state of its side), but +0xF0 itself, the navi's
 -- `computer_driven`.
@@ -177,14 +179,15 @@ end
 
 -- 0x0802BE4E and 0x0802BE9A (the navi's own side's tactics), 0x0802BE54 and 0x0802BEA0 (the other side's): the
 -- first of side `side`'s first `n` entries that is a chip whose record's byte 14 has `bit` comes first (it and the
--- first change places); none before an empty place: nil.
+-- first change places); none before an empty place: nil. (A place holding 0 is read as the chip table's first record,
+-- chip 0's, whose byte 14 is 0: passed over, as a pattern is.)
 local function pick_by(side: number, bit: number, n: number): Chip?
     for i = 1, n do
         local e = battle.tactic(side, i)
         if e == nil then
             return nil
         end
-        if type(e) ~= "number" then
+        if e ~= false and type(e) ~= "number" then
             local chip = e :: Chip
             if bit32.band(data.chips[chip.id].picks, bit) ~= 0 then
                 battle.swap_tactics(side, i)
@@ -262,8 +265,12 @@ local function decide(navi: Object, s: State, fam: Family)
     if bit32.band(battle.rng_positive(), 15) >= 12 then
         return to_buster(s)
     end
+    -- (0x0802BAC6, 0x0802B55E: a first place holding 0 is tested before an empty one and taken the same way: nothing
+    -- to play. But the send packs only the empty places away (0x0802C7BE), so a 0 is an entry, which comes first in
+    -- its turn and stays there, each decision that reaches it a miss, until five in a row bring the shuffle above.
+    -- No save the game wrote has one: a battle's end fills the places with chips' numbers, 0x0802C540.)
     local e = battle.tactic(tactics_side(navi, fam), 1)
-    if e == nil then
+    if e == nil or e == false then
         s.misses += 1
         return to_buster(s)
     end
@@ -343,8 +350,14 @@ local function dodge(navi: Object, s: State, fam: Family)
     end
 end
 
--- 0x0802BC48: to its pattern's place by its target (or, with no target or a place it can't step onto, anywhere of
--- its own area, nothing played).
+-- 0x0802BC48 (0x0802B6DC): to its pattern's place by its target, as written; as run, never: anywhere of its own area,
+-- nothing played, whatever the pattern. The step test (0x0800CAA0) is called after the move lag's routine (0x0800E0BE)
+-- and before the place is taken back off the stack (0x0802BC7E to 0x0802BC8E), so what it tests is what that routine
+-- left in its registers: for MegaMan's stats the lag as the column and the lag again as the row (4 and 4; in
+-- ShadowSoul 0 and 0), for another navi's the lag and the address of its row of the lag table. The field's rows are
+-- 1 to 3 (0x0800B33C), so the test fails for every navi at every place: a pattern entry is a miss, the target's
+-- search moved on, and a step, and nothing of a pattern (its place, its chips, its score, the record after it) shows
+-- in a battle. (The lab's chaos-ai/pattern-reached: a pattern at a free panel of his own area, none of it played.)
 local function pattern_place(navi: Object, s: State, fam: Family)
     local dx, dy = battle.tactic_pattern(tactics_side(navi, fam), s.entry_pattern)
     local t, i = target_from(navi, s.target_index)
@@ -352,7 +365,9 @@ local function pattern_place(navi: Object, s: State, fam: Family)
         s.target_index = i
         local x = t.panel_x + dx * panels.enemy_direction(navi)
         local y = t.panel_y + dy
-        if navi:can_step(x, y) then
+        -- (The computer navis here all read a MegaMan's stats: the side's player's.)
+        local lag = navi:move_lag()
+        if navi:can_step(lag, lag) then
             step_to(navi, s, x, y, fam)
             s.step = 0x14
             return
@@ -365,17 +380,31 @@ local function pattern_place(navi: Object, s: State, fam: Family)
     step_to(navi, s, x, y, fam)
 end
 
--- 0x0802BCD6: its pattern's chips, one a decision; past the last, the pattern goes last.
+-- 0x0802BCD6: its pattern's chips, one a decision; at an empty place the pattern goes last. No battle gets here
+-- (`pattern_place` above never takes the place). As written the read has no end but an empty place and takes whatever
+-- else it finds for a chip's number (0x0802C094 with no test of it): a place holding 0, and past a record whose five
+-- places all hold a chip the two halves of its score, the next record's `dx` and `dy` as one halfword, that record's
+-- places and score, and so on to the block's last eight bytes (`battle.tactic_pattern_read`). A chip's number names
+-- none here (content names chips, and the chip table's first record, chip 0, and its blank ones have no
+-- definition): such a read is an error that says what the game would play.
 local function pattern_chips(navi: Object, s: State, fam: Family)
-    local _, _, chips = battle.tactic_pattern(tactics_side(navi, fam), s.entry_pattern)
     s.pattern_chip += 1
-    local chip = chips[s.pattern_chip]
-    if chip == nil then
+    local read = battle.tactic_pattern_read(tactics_side(navi, fam), s.entry_pattern, s.pattern_chip)
+    if read == nil then
         turn(navi, s, fam)
         s.step = 4
         return
     end
-    ai.use_chip(navi, chip)
+    if type(read) == "number" then
+        error(
+            string.format(
+                "the computer navi's read of a pattern found the number %#06x where a chip's would be: the game plays its chip table's record of that number (0x0801E214 + 0x2C × %d; 0x0802BCD6, 0x0802C094)",
+                read,
+                read
+            )
+        )
+    end
+    ai.use_chip(navi, read :: Chip)
 end
 
 -- 0x0802BD08: a chip it walks up to first: anywhere of its own area, this time.

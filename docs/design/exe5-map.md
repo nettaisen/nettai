@@ -1087,9 +1087,24 @@ code, 6 the same but for constants, 34 similar, 1 differs and 8 absent. What dif
   0x18, judge-draw 0x1C, double-ko 8 on side 0's console and 4 on side 1's (the round goes to side 1),
   operation-win 0x38. The replays compare the banner's number with the traced console's record (its +1; a telop's
   holds 0) on every frame, in both games.
-- The operation battle's turn starts with banner 0, "BATTLE START", where a Team Battle's shows 0x0C (as recorded:
-  library-exe5/flow/operation-win; not read yet, and the engine doesn't run the mode: its replay stops on the
-  round's first frame, the gauge 0x1500 where the engine's is 0).
+- The operation battle (battle flag 0x40), as seen and not yet read (2026-10-04; the engine doesn't run the mode:
+  a replay stops on the round's first frame, frame 162, the gauge 0x1500 where the engine's is 0). Recorded with
+  chiplab's `exe5-operation-battle` base (a trap at 0x0802D590 raises NaviStats +0x2A, which no Team Battle sets):
+  library-exe5/flow/operation-win and operation-win-side1, the recordings kept in the verification workspace's
+  data/staged/exe5-operation-battle-2026-10-04 (not in the lab while they can't replay).
+  - No custom screen opens. The round's start shows "BATTLE 1 START!" (banner 0x30, frames 226 to 284) and the
+    turn's start banner 0, "BATTLE START" (frames 386 to 444), where a Team Battle's shows 0x0C; the fight runs from
+    frame 446. (The driver's `waitcustom` returns at once and its `fight` never does; five A presses 20 frames apart
+    before the fight do nothing seen.)
+  - Each console shows its own three chips in a row along the bottom with a cursor over the middle one (side 0,
+    Team ProtoMan's save: AirShot, AirSpin1, WindRack; side 1, Team Colonel's: YoYo, BugBomb, Sword: neither the
+    folder's first chips nor the save's computer-navi data), its navi's HP top left, and the gauge along the top,
+    full and red from the start.
+  - Both navis stand idle (action 6) until their player presses A: the navi then goes through action 0x47 and its
+    chip's own. Side 0's first A deleted side 1's navi at 20 HP (frames 794 to 823); side 1's navi's first chip
+    took 10 HP of side 0's navi.
+  - The win shows the winner's navi's banner (0x38, "MEGAMAN WIN!", from frame 880 with side 0 the winner:
+    0x080090C0's table), the result's wait 102 ticks as a Team Battle's.
 - `sub_80080D2` (fighting): no Cross-special check (EXE6 +0x3A, `sub_800AAD6` absent) and no own-gauge
   decrement (0x2900) on a custom request; EXE5 calls 0x08025ED0 there.
 - `sub_8008452`, `sub_8008492`: after the reversions EXE5 opens the custom screen (result 6) directly: no
@@ -1669,7 +1684,8 @@ chips walked up to, patterns, traps; 10,225 frames, each through Dark MegaMan's 
   idle (twelve seconds from his first, then his leave, the navi type's action 7), his tick (the time running down
   outside pauses and dimming, his last three seconds blinking, the battle's end ending it).
 - *The AI* (rules/computer-navi/ai, 0x0802BA14): its decisions, the buster runs (his buster, weapon routine 0x3E,
-  is attack 0x16: three shots, rules/computer-navi/buster), the patterns, the reposition, a chip's play; the
+  is attack 0x16: three shots, rules/computer-navi/buster), the patterns (never played: below), the reposition, a
+  chip's play; the
   pressure picks as written (the front one calls 0x081BC8AC, data: an error; the hole one reads the AI's own
   side's tactics; their counters stay 0); getting in place for a chip by its positioning class
   (rules/computer-navi/place: all 33 classes of 0x08029B3C, and the panel searches they share, ./panels).
@@ -1689,9 +1705,44 @@ seven saves (Tango's templates and three played ones):
 - *The block* (0xE0 bytes): 42 halfword places (a chip's number; 0x8000 with a pattern's index; 0xFFFF empty), a
   count at +0x54 that only the send writes (a save's is 0xFFFFFFFF), and from +0x58 eight pattern records of 16
   bytes: `dx`, `dy` (signed bytes), five chip places to the first 0xFFFF, and the pattern's score, a word at +12.
-  The AI reads a pattern's chips to the first 0xFFFF with no other end (0x0802BCD6), so a record with all five
-  places filled is read on into its score (a chip number), the score's upper half (chip 0) and the next record.
-  No save seen has a pattern of more than two chips; the engine's patterns end at their chips.
+  As written the AI reads a pattern's chips to the first 0xFFFF with no other end and takes any other halfword
+  for a chip's number (0x0802BCD6, 0x0802C094), so a record with all five places filled would be read on into its
+  score (its lower half a chip's number, its upper half chip 0), the next record's `dx` and `dy` as one halfword,
+  that record's places, and so through the records to the block's last eight bytes, which nothing writes (0xFF).
+  As run, nothing of a pattern is ever read: see *A pattern is never played* below. The engine's type holds the
+  record whole all the same (`TacticPattern`: `dx`, `dy`, five places each a chip, 0 or empty, the score; eight
+  records in their places; `Tactics::pattern_read` is the read as written), and exe5-compat refuses a block whose
+  last eight bytes aren't 0xFF.
+- *A pattern is never played* (2026-10-05). The step of a pattern entry (0x0802BC48; the same code at 0x0802B6DC
+  and around 0x0802B930) works out its place from the target, calls the move lag's routine (0x0800E0BE) and then
+  the step test (0x0800CAA0) before it takes the place back off the stack (0x0802BC7E to 0x0802BC8E): the test is of what
+  the lag's routine left in r0 and r1. For MegaMan's stats that is the lag as the column and the lag again as the
+  row (4 and 4; 0 and 0 in ShadowSoul), for another navi's the lag and the address of its row of the lag table
+  (0x0800E0F0). The field's rows are 1 to 3 (0x0800B33C), so the test fails for every navi at every place, and the
+  entry takes the other branch: a miss (+0xF4), the target's search moved on (+0xFC), a step to a random panel of
+  its own area. The step that reads a pattern's chips (+0xF2 = 0x14) is set by the branch that never runs. So a
+  pattern entry differs from an empty turn only in being an entry (it is counted, shuffled and turned), and its
+  place, chips, score and the record after it show in no battle. Recorded: library-exe5/chaos-ai/pattern-reached (a
+  two-chip pattern two columns back from its target in its row, a free panel of Dark MegaMan's own area: he steps
+  and punches, 36 steps and 10 buster runs, and plays no chip), pattern-full and pattern-full-zeroed (five chips
+  and a score of 3, the records after it 0xFF and zeroed: the same frames). The engine's port had tested the place
+  itself and played the pattern from it, which no recording had met: chaos-ai/pattern, the lab's one pattern
+  scenario till then, has both its places on side 0's area (dx 1 and 2), where the step fails either way;
+  pattern-reached stopped at frame 908 of 1,658 (the miss's draw for the panel) and matches with the test as the
+  game has it (`pattern_place`: `can_step(lag, lag)`). The chips' read stays as written behind it
+  (`pattern_chips`, by `battle.tactic_pattern_read`); a halfword there that is no chip place's chip is an error
+  naming the number (content names chips; the chip table's first record, chip 0, a blank record with the plus
+  chips' own use and a damage of 1, and its other blank ones have no definition).
+- *A place holding 0* (the halfword 0, chip 0's number; `Tactic::Nothing`). The send packs only 0xFFFF away
+  (0x0802C7BE), so a 0 is an entry. The decision tests the first place for 0 before it tests for 0xFFFF and takes
+  both the same way (0x0802BAC6, 0x0802B55E): a miss and a buster run. So a 0 that comes first stays first, each
+  decision that reaches it a miss, until five in a row bring the swap with a random other place (0x0802C0DC); the
+  pickers (0x0802BE4E, 0x0802BE9A) read it as chip 0's record, whose byte 14 is 0, and pass over it. No save the
+  game wrote has one: a battle's end fills the 42 places with 0xFFFF and then chips' numbers from its standard,
+  mega, giga and program advance lists and the pattern entries (chip 0 is class 3, a list it doesn't write).
+  Recorded: chaos-ai/zero-first (a 0 first, Cannon among the rest: his buster runs until the swap brings Cannon
+  first, once in his twelve seconds) and zero-later (Cannon first, a 0 and Sword among the rest). The engine had
+  given the AI `false` for it, which its decision then indexed as a chip.
 - *Where it is:* seven blocks at save +0x554C (0x0200554C, the toolkit's +0x78). A battle sends the first
   (0x08009B64: with battle flag 0x40, the operation battle, 0x0802C7A0 builds one from the player's folder instead,
   its 30 halfwords in places 4 to 33). Nothing writes the other six (0x0802C8C2, which copies a block into one by
@@ -1727,6 +1778,16 @@ seven saves (Tango's templates and three played ones):
   target, and any of it under rules without the computer-navi system. A random match states what the game would
   write for a player who used each chip of the drawn folder once (`ComputerNavi::of_folder`). The learning itself
   (the tables and the runs during a battle) is not ported: nothing of a battle reads it.
+- *What a battle's end writes of the records* (0x0802C540's end, read 2026-10-05). The 42 places are built on the
+  stack (0xFFFF, then the lists' chips and the pattern entries) and copied to the block's first 0x54 bytes; the
+  eight records are copied from the save's 24 learning records (+0x0000), sorted by score (0x0802C820), 0x80 bytes
+  to the block's +0x58. A new game zeroes the 24 (0x0802C1E0), and a record with a score of 0 is an unused one
+  (0x0802C62A stops at it), so after any finished battle a record the block has no pattern for is zeroed (`dx` 0,
+  `dy` 0, five places of 0, score 0: Team Colonel's played save), where a save that has finished no battle keeps
+  0xFF there. The count (+0x54) and the last eight bytes (+0xD8) are never written. A learned pattern's unused chip
+  places are 0xFFFF (the run's buffer is reset to it, 0x0802C3B2); the buffer's count has no bound and the copy
+  into a record takes `dx`, `dy` and five chips (0x0802C3A0: 12 bytes), so a run of five chips or more gives a
+  record all of whose places hold a chip.
 
 ### 15.10 EXE5's emotions (as built)
 
