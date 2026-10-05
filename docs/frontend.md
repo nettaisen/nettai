@@ -330,9 +330,9 @@ functions:
   not only for those a trace shows (its test:
   `a_lookup_by_the_wrong_key_fails_for_every_chip`). A string a
   language's table lacks shows in the content's own, by design: it is said,
-  not counted; so is a language the content has strings in but its pack no
-  lettering for (EXE5's Japanese, which its extraction makes none of): such
-  a console can't be shown, and the language isn't checked. It audits the
+  not counted. A language the content has strings in and its pack no
+  lettering for is a problem (a console in it can't be shown): both games'
+  packs have their Japanese. It audits the
   match's one game (`--game`): a chip's Program Advance code by its number
   in that game's compat (EXE6's or EXE5's).
 - `--audit <trace.jsonl>...` runs traces, several at a time (`--jobs N`,
