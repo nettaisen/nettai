@@ -1384,7 +1384,7 @@ timer raises) and its other console's chip name (`sub_801EB18`); lib/arm's NaviS
 0x080E9FA4: CrakBom's and Quake's bombs; never in a netbattle); Geyser's geyser (no recording throws it into a hole).
 (An auto-battling navi's VarSwrd pick, the side's sword pick, is DarkInvs's drive's: 0x0802C110 sets AIData
 +0xF0 for the story navis and DarkInvs, never Chaos Unison's Dark MegaMan, who takes the joypad path; the lab's
-chips/0x0bd-darkinvs/tactics-varswrd shows it.) EXE5's field obstacles' chips (Wind, Fan, RockCube, BoyBomb1 to 3,
+chips/0x0bd-darkinvs/auto-battle-varswrd shows it.) EXE5's field obstacles' chips (Wind, Fan, RockCube, BoyBomb1 to 3,
 RedFrut1 to 3, Voltz1 to 3 and VDoll) are in §15.11.
 
 ### 15.7 EXE5's MegaMan, stages and roles (as built)
@@ -1736,9 +1736,9 @@ chips walked up to, patterns, traps; 10,225 frames, each through Dark MegaMan's 
   is attack 0x16: three shots, rules/auto_battle/buster), the patterns (never played: below), the reposition, a
   chip's play; the
   pressure picks as written (the front one calls 0x081BC8AC, data: an error; the hole one reads the AI's own
-  side's tactics; their counters stay 0); getting in place for a chip by its positioning class
+  side's auto battle data; their counters stay 0); getting in place for a chip by its positioning class
   (rules/auto_battle/place: all 33 classes of 0x08029B3C, and the panel searches they share, ./panels).
-- *The tactics* (nettai_battle::tactics): the recordings' exchanged blocks (exe5-compat); a match file's
+- *The auto battle data* (nettai_battle::auto_battle): the recordings' exchanged blocks (exe5-compat); a match file's
   `[side.auto_battle]` (below), sent as the console sends it (0x0802C7BE); the netplay offer.
 - EXE5's shots raise EXE5's own arm (lib/arm, 0x080EBABE; lib/buster's), the arm a navi in auto battle of AI index 0x16
   raises.
@@ -1759,8 +1759,8 @@ seven saves (Tango's templates and three played ones):
   score (its lower half a chip's number, its upper half chip 0), the next record's `dx` and `dy` as one halfword,
   that record's places, and so through the records to the block's last eight bytes, which nothing writes (0xFF).
   As run, nothing of a pattern is ever read: see *A pattern is never played* below. The engine's type holds the
-  record whole all the same (`TacticPattern`: `dx`, `dy`, five places each a chip, 0 or empty, the score; eight
-  records in their places; `Tactics::pattern_read` is the read as written), and exe5-compat refuses a block whose
+  record whole all the same (`PatternRecord`: `dx`, `dy`, five places each a chip, 0 or empty, the score; eight
+  records in their places; `AutoBattleData::pattern_read` is the read as written), and exe5-compat refuses a block whose
   last eight bytes aren't 0xFF.
   A record the learning never filled is zeros (place 0, 0, five chip places of 0, score 0: the played saves'
   unused records), one nothing has written 0xFF.
@@ -1786,7 +1786,7 @@ seven saves (Tango's templates and three played ones):
   scenario till then, has both its places on side 0's area (dx 1 and 2), where the step fails either way;
   pattern-reached stopped at frame 908 of 1,658 (the miss's draw for the panel) and matches with the test as the
   game has it (`pattern_place`: `can_step(lag, lag)`). The chips' read stays as written behind it
-  (`pattern_chips`, by `battle.tactic_pattern_read`); a halfword there that is no chip place's chip is an error
+  (`pattern_chips`, by `battle.auto_battle_pattern_read`); a halfword there that is no chip place's chip is an error
   naming the number (content names chips; the chip table's first record, chip 0, a blank record with the plus
   chips' own use and a damage of 1, and its other blank ones have no definition).
 - *Who is in auto battle in a netbattle, and whose stats it reads* (2026-10-05). Three ways in: the Dark MegaMan a
@@ -1800,7 +1800,7 @@ seven saves (Tango's templates and three played ones):
   pattern entry and Cannon in the data; 27 steps, 12 buster runs, Cannon twice, none of the pattern; every frame
   and sound call match). With the games' navis the two reads of the pattern step's row can't be told apart (4 or 0,
   or an address: none a row); the port keeps both as the game has them.
-- *A place holding 0* (the halfword 0, chip 0's number; `Tactic::Nothing`). The send packs only 0xFFFF away
+- *A place holding 0* (the halfword 0, chip 0's number; `AutoBattleEntry::Nothing`). The send packs only 0xFFFF away
   (0x0802C7BE), so a 0 is an entry. The decision tests the first place for 0 before it tests for 0xFFFF and takes
   both the same way (0x0802BAC6, 0x0802B55E): a miss and a buster run. So a 0 that comes first stays first, each
   decision that reaches it a miss, until five in a row bring the swap with a random other place (0x0802C0DC); the
@@ -1860,7 +1860,7 @@ seven saves (Tango's templates and three played ones):
   (`exe5_compat::save::AutoBattleBlock`, the block by number as it is; `nettai_match::auto_battle::of_save`).
   A random match states what the game would write for a player who used each chip of the drawn folder once and
   learned no pattern (`AutoBattle::of_folder`: every record zeros). A match compiles to the engine's block
-  (`Tactics`) place for place and record for record. The learning itself (the tables and the runs during a battle)
+  (`AutoBattleData`) place for place and record for record. The learning itself (the tables and the runs during a battle)
   is not ported: nothing of a battle reads it.
 - *What a battle's end writes of the records* (0x0802C540's end, read 2026-10-05). The 42 places are built on the
   stack (0xFFFF, then the lists' chips and the pattern entries) and copied to the block's first 0x54 bytes; the
@@ -2070,7 +2070,7 @@ folder with the kinds it owns.
   gathering flames effect 0x4B on the sine table, the chaos strike attack 0x82; its landing's palette flash needs EXE5's
   `effects.palette_flash`: a pause holds either variant, dimming only a modeless one); DarkInvs (effect 0x18, its
   stand-in actor 9; the user driven for 600 ticks, untouchable, by the auto battle AI's other family, 0x0802B4AC, on
-  its own side's tactics, facing the target searched from a step's column; the status section's `no_charge_drive`: the
+  its own side's auto battle data, facing the target searched from a step's column; the status section's `no_charge_drive`: the
   timer at the intake's end, the idle's step asked of the systems' `controller`, the last 180 ticks' gray flicker; its
   end, EXE5's action 0x49, the roles' `stun_strike`, with its dark image, actor 10).
 
@@ -2092,7 +2092,7 @@ shows, white then its sounds, only by the register r1 the check leaves at 0 HP, 
 straight to the deletion test, which tries the stand first). AntiRecv's counterattack takes its HP through
 `Object:subtract_hp` (EXE6's the same), EXE5's its mood too (0x080E39DC: its damage word's high half, 0x08012820), and
 its mark sits where the trap's game puts it (`anti_navi_sparkle`). Also new: the request `drag` (flag2 0x100). Where a
-hit landed and which chips a side used are learned for the auto-battling navis' tactics (0x0802C294, 0x0802C3C4, 0x0802C3E2:
+hit landed and which chips a side used are learned for the auto-battling navis' auto battle data (0x0802C294, 0x0802C3C4, 0x0802C3E2:
 the battles after; nothing of a battle reads them), not ported. As drawn (2026-10-05, against the original's frames:
 tools/frontend-compare's dark-survival/holds, the console's own navi, and holds-side1, the other side's): the
 transformation's fades started outside the sequencer are drawn by the fade's own record (the renderer's `layer_fade`:
