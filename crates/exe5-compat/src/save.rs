@@ -72,8 +72,9 @@ pub const COMPUTER_NAVI_PATTERN: u16 = 0x8000;
 
 /// A pattern record of a computer-navi data block, as it is: its place
 /// from a target (signed bytes), its five chip places (each a chip's
-/// number, 0, or 0xFFFF, empty: the AI reads them to the first 0xFFFF,
-/// and on past the fifth) and its score (the word at +12).
+/// number, 0, or 0xFFFF, empty: as written the AI reads them to the
+/// first 0xFFFF, and on past the fifth; no battle gets to that read,
+/// docs/design/exe5-map.md §15.9) and its score (the word at +12).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ComputerNaviPattern {
     pub dx: i8,
