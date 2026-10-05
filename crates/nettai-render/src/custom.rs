@@ -22,7 +22,7 @@ use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
 use nettai_battle::content::{ChipFlags, ChipTraits};
 use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
-use nettai_battle::custom::{ButtonCell, FolderChip, GameVersion, Phase, Screen, Side, SlotKind, SlotState};
+use nettai_battle::custom::{ButtonCell, FolderChip, Phase, Screen, Side, SlotKind, SlotState};
 use nettai_content_api::{ChipHandle, Data, FieldValue, FormHandle, NaviHandle, Registry};
 
 /// The window: 15 columns of 20 rows at the HUD layer's top left.
@@ -683,29 +683,36 @@ pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, for
     Some((a.versioned.get(version), number))
 }
 
-/// The pack's name of a game version (`Versioned`).
-pub fn game_name(version: GameVersion) -> &'static str {
-    match version {
-        GameVersion::Gregar => "gregar",
-        GameVersion::Falzar => "falzar",
-    }
-}
-
 /// The pictures of the Beast a side's navi goes into, or is in: the
 /// Beast Out button, its picture in the chip window and the BeastOut
-/// chip's. They are its game's (`exe6_compat::Unlocks::beast_game`, the beast
-/// system's rule): the console's
-/// version's, but with a setup's Cross list a Cross of the other game
-/// goes into that game's Beast (docs/engine/custom-screen.md §4.1).
+/// chip's. They are its version's (EXE6's beast system's rule): the
+/// player's version's, but with a setup's Cross list (the fact
+/// `cross_list`, given) a form of another version (the form's `version`)
+/// goes into that version's Beast (docs/engine/custom-screen.md §4.1).
 pub fn beast_pictures<'a>(b: &Battle, a: &'a CustomScreen, side: u8) -> &'a VersionPictures {
-    let side = side as usize & 1;
-    let game = exe6_compat::Unlocks::of_side(b, side as u8).beast_game(&*b.content, b.stats[side].form);
-    a.versioned.get(game_name(game))
+    let side = side & 1;
+    let listed = matches!(b.fact(side, "cross_list").and_then(|f| f.elem(0)), Some(FieldValue::Ref(Some(_))));
+    let form = b.content.form(b.stats[side as usize].form);
+    let version = match form.version.as_deref() {
+        Some(own) if listed && !form.base => Some(own),
+        _ => version_name(b, side),
+    };
+    version.map_or(&a.versioned.base, |v| a.versioned.get(v))
 }
 
-/// The pack's name of a console's game version (`Versioned`).
-pub fn version_name(b: &Battle, side: u8) -> &'static str {
-    game_name(exe6_compat::Unlocks::of_side(b, side).version)
+/// The version of their game a side's player brought, by the name the
+/// game's pack keeps a version's pictures under (`Versioned`): the fact
+/// `version` of their setup (EXE6's "gregar" or "falzar"); none for a
+/// game whose players bring none.
+pub fn version_name(b: &Battle, side: u8) -> Option<&str> {
+    b.fact(side, "version")?.name()
+}
+
+/// The version a side's console is of, by that name: what the frontend
+/// says of the console (`Packs::version`: a recording's), else the side's
+/// player's (`version_name`), else the base version of the game's pack.
+pub fn console_version<'x, 'a: 'x>(b: &'x Battle, packs: &crate::packs::Packs<'a>, side: u8) -> &'x str {
+    packs.version().or_else(|| version_name(b, side)).unwrap_or(&packs.game(&b.content).custom.versioned.base_version)
 }
 
 /// A side's navi's number (see `View::navi_number`; its lookup is
@@ -752,9 +759,9 @@ const CROSS_PUT_ON_TICK: u16 = 25;
 
 /// EXE6's Cross window as the cross system keeps it
 /// (content/exe6/rules/cross/window.luau), read by its fields' names: the
-/// Crosses offered (their places among the player's Crosses,
-/// `Unlocks::cross_at`), how many, which is chosen, the entry under the
-/// window's cursor, and the Cross chosen.
+/// Crosses offered (their places among the player's Crosses: `cross_at`
+/// finds the form in a place), how many, which is chosen, the entry under
+/// the window's cursor, and the Cross chosen (its place).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CrossWindow {
     pub offered: [u8; 5],
@@ -790,6 +797,24 @@ impl CrossWindow {
         }
         Some(w)
     }
+}
+
+/// The Cross in place `place` of a side's Crosses, as EXE6's cross system
+/// finds it (content/exe6/rules/cross/window.luau's `cross_at`), from what
+/// the player brought: the entry of their Cross list (the fact
+/// `cross_list`, if it gives one: its first entry set), else the Cross of
+/// that number of their version (the fact `version`) as their navi lists
+/// them (`navi_crosses`). None: no such Cross.
+pub fn cross_at(b: &Battle, side: u8, place: u8) -> Option<FormHandle> {
+    let form = |v: Option<FieldValue>| match v {
+        Some(FieldValue::Ref(Some((Registry::Form, h)))) => Some(FormHandle(h)),
+        _ => None,
+    };
+    if let Some(list) = b.fact(side, "cross_list").filter(|l| form(l.elem(0)).is_some()) {
+        return form(list.elem(place as usize));
+    }
+    let navi = b.stats[side as usize & 1].navi;
+    navi_crosses(&b.content, navi, version_name(b, side)?).nth(place as usize)
 }
 
 /// Where EXE6's Cross window is: the cross system's window up (its tick),
@@ -993,13 +1018,12 @@ impl Window {
     /// the Cross under the cursor's (`sub_8029EAC`: a used one's darker).
     fn cross_names(&mut self, v: &View, problems: &mut Problems) {
         let Some(w) = CrossWindow::of(v.b, v.side as usize) else { return };
-        let unlocks = exe6_compat::Unlocks::of_side(v.b, v.side);
-        // Each Cross's name and colors are its own game's (a setup's Cross
-        // list can offer the other game's: docs/engine/custom-screen.md
+        // Each Cross's name and colors are its own version's (a setup's
+        // Cross list can offer another's: docs/engine/custom-screen.md
         // §4.1).
         let navi = v.b.stats[v.side as usize].navi;
         let mut picture = |slot: usize| {
-            let form = unlocks.cross_at(&*v.b.content, navi, w.offered[slot])?;
+            let form = cross_at(v.b, v.side, w.offered[slot])?;
             crate::lookups::cross_name(v.assets, &v.b.content, navi, form, problems)
         };
         for slot in 0..w.count.min(5) as usize {
@@ -1169,7 +1193,7 @@ impl Window {
         if let Some((p, art)) = art {
             self.tiles.put(self.layout.art, &p.tiles);
             self.palettes[10] = if beast_out { p.palette } else { data.art_palette.unwrap_or(p.palette) };
-            let console_version = v.packs.version().unwrap_or_else(|| version_name(v.b, v.side));
+            let console_version = console_version(v.b, &v.packs, v.side);
             self.picture_known = match art {
                 Some(a) if a.region.as_deref().is_some_and(|r| r != v.region) => {
                     Some("the Japanese games' chip picture (a US console shows a placeholder)")
