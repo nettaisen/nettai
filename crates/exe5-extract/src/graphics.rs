@@ -238,9 +238,10 @@ fn backgrounds(rom: &Rom) -> Vec<Option<Background>> {
 const JP_BACKGROUNDS: [u32; 2] = [0x0808_BEC4, 0x0808_BF34];
 
 /// The backgrounds whose picture a Japanese ROM has another of than the US
-/// Team ProtoMan's (one, 0x05: the US ROMs' goldfish, the Japanese ROMs'
-/// bubbles in the dark). No netbattle shows it, and the pack keeps the
-/// US's.
+/// Team ProtoMan's (one, 0x05: the US ROMs' goldfish among bubbles, the
+/// Japanese ROMs' the bubbles alone). A link battle draws it as it does
+/// the other 26 (0x08129F2C), so a Japanese console shows its own there;
+/// the pack keeps the US's.
 pub fn japanese_backgrounds(roms: &Roms) -> Vec<u8> {
     let us = &roms.protoman;
     (0..BACKGROUND_COUNT)
