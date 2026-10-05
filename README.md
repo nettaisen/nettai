@@ -110,7 +110,8 @@ These checks need no ROM:
 ## The match editor
 
 A match file sets up a round of one game, EXE6 or EXE5: the game (which is its rules), the arena (stage and background),
-and each side's navi, version, folder, Crosses, patch cards, NaviCust and stats, each by its name in the game
+and each side's navi, folder, patch cards, NaviCust and stats, and what the game's rules take of a side besides
+(its facts: EXE6's version and Crosses, EXE5's karma and souls), each by its name in the game
 (`cannon`, `megaman`; [docs/frontend.md](docs/frontend.md) §6). The editor makes and edits them, checking them
 against the content as you go, and plays them:
 
@@ -123,14 +124,15 @@ and for a new match (the editor started without a file, or New) the editor asks 
 on the command line). The arena pane shows the game: everything below it is that game's, and there is no way to pick another
 game's navi, chip, soul or patch card. Changing the game there makes a new match of it (the sides start over). A game is
 its rules (it has one ruleset), whose systems the pane lists. The panes show only what
-those rules have (Crosses with the forms system, patch cards with the patch-cards system, the NaviCust with the
-navicust system, souls with the souls system): the arena's stages and backgrounds (the game's); each side's navi
-(the game's) and version, with the stats the round starts the navi with (a link navi's level fills in the stats
+those rules have (patch cards with the patch-cards system, the NaviCust with the navicust system, and each fact
+the rules' systems declare of a side): the arena's stages and backgrounds (the game's); each side's navi
+(the game's), with the stats the round starts the navi with (a link navi's level fills in the stats
 its save gives at that level, as does switching to a link navi; an edited stat says what the level gives; MegaMan's
 optional navi code level); the SP navi deletion times; Import from save; the folder (the game's chips the rules
 allow, with their pictures from the game's pack, searchable; a code puts a chip in the selected entry; the Regular
 and tag chips; the copies and the Mega, Giga, Regular and tag limits live, as the game's folder rules count them:
-EXE6's folder editor's, or EXE5's, content/exe5/rules/folder); the Crosses; the patch cards (the game's; MB used of 80);
+EXE6's folder editor's, or EXE5's, content/exe5/rules/folder); the lists the rules take of a side (EXE6's Cross
+list, EXE5's souls); the patch cards (the game's; MB used of 80);
 the NaviCust (the board as the game draws it, with its frame and command line, edited with the mouse as Tango's is:
 drag a program's color swatch onto the grid, or press a placed program to pick it up and drag it; while held it
 shows where it would land, lit if it fits and red if not; the wheel or R turns it, C compresses it, right-click,
@@ -139,20 +141,27 @@ compiles to show beside it, and the stats-and-bugs block set directly is the pan
 weapons, records and forms the game's). The problems with the match show at the bottom as you edit. Play saves the
 match and runs `nettai-demo --match` (the one beside the editor's program, or `--frontend PATH`). A new match
 (the editor started without a file, or New) is an empty one of the game the editor asks for: its stock rules, its
-first link battle stage, and on each side its MegaMan at his fresh stats with an empty folder, no version (an EXE6
-side's navi pane asks its own, Falzar or Gregar, with nothing chosen: neither is assumed; an EXE5 match has none),
-the version's own Crosses, no patch cards and no NaviCust programs (the problems list says the folders aren't whole
-and the versions aren't chosen until they are).
+first link battle stage, and on each side its MegaMan at his fresh stats with an empty folder, its facts the rules'
+defaults (an EXE6 side has no version: its navi pane asks its own, falzar or gregar, with nothing chosen, since
+neither is assumed; an EXE5 match has none to state), no patch cards and no NaviCust programs (the problems list
+says the folders aren't whole and the versions aren't chosen until they are).
 Random picks a match of the game as live play does, and `nettai-demo --play --save-match FILE` writes live
 play's draw out to edit. `--lang ja` (or the language list) names the chips, navis, Crosses and patch cards in
 Japanese. The editor loads the match's game's content and pack as the frontend does (a game's chips with no use yet
 left out, with the frontend's warning), and Play hands the frontend the same: `--content` and `--pack` are the
 frontend's, and only what you give is passed on.
 
-An EXE5 match's navi pane has the side's karma (the light/dark value): a slider from 0 to 1000 with its number,
-presets (light 500, very light 1000, dark 0) and what EXE5 makes of it (dark under 470, the starting mood's tiers at
-470, 500 and 1000, holy panels cleared at 499 or under). Its Souls pane has every soul of EXE5 by default, or those
-checked, each with its face, of either version. Its Auto battle pane (shown where the game's rules have auto
+**A side's facts** (what its game's rules take of it: docs/frontend.md §6) get their controls from the rules'
+own declarations, by each setup field's type, and the editor names none of them: a flag is a checkbox (EXE6's
+Beast out, EXE5's Soul unison), a number a field to type it in with the rules' default as its placeholder (EXE5's
+Karma, EXE6's Bug frags), an enum a list of the variants the rules name (EXE6's Version, nothing chosen until the
+side states one), a few flags a checkbox each (EXE6's Crosses: which of its version's five the side owns), all on
+the navi pane under "What the rules take"; a list of definitions has a pane of its own with a checkbox for each one
+it may hold (EXE6's Cross list: the side's navi's ten Crosses of both versions, five at most, kept in the window's
+order; EXE5's Souls: the twelve the rules' default lists, each with its face). Each has a Default button where it
+isn't the rules' default. A game that declares another fact has its control here with no change to the editor.
+
+An EXE5 match's Auto battle pane (shown where the game's rules have auto
 battle: not for EXE6) is what a navi in auto battle plays from the side's save, the Dark MegaMan its failed Chaos Unison
 brings and its own navi under DarkInvs, whole (docs/frontend.md §6): on the left the save's 42 places in the six lists
 the game writes them in, each a chip, a pattern's number, a 0 or empty; in the middle its eight pattern records, each
@@ -162,8 +171,7 @@ to the next as the folder pane does. An entry the game wouldn't write where it i
 folder" fills it in as the game would have written it for a player who used each chip of the side's folder once; "From
 a save…" takes it alone from an EXE5 save; "Nothing learned" is what the game writes of a player it has learned nothing
 of (a new match's), and "No data" a save that never finished a battle (the file then states none). A side's own fields
-show only when the rules and its navi take them
-(`nettai_match::facts`): the version (Gregar or Falzar) with rules whose systems take EXE6's `version`, the navi
+show only when the rules and its navi take them: the navi
 code's level with a navi whose definition has `levels` (not EXE5's MegaMan), the SP times with rules that have SP
 navi slots (each named by the game's SP navi chip).
 "Import from save…" reads an EXE6 .sav (its version, Beast Out and the Crosses it owns, the navi code's level and the
