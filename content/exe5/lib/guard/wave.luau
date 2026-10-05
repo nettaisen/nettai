@@ -134,7 +134,8 @@ local function init(me: Object)
     local v = ROWS[(me.state :: State).row]
     local sprite = me.sprite
     sprite:load(SPRITE)
-    sprite.shadow = "hidden"
+    -- (`sprite_noShadow`: the first part is drawn with the sprite.)
+    sprite.shadow = "with_sprite"
     me.visible = true
     me.anim, me.anim_loaded = v.anim, v.anim
     sprite:set_animation(v.anim)
