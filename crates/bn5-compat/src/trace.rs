@@ -42,10 +42,8 @@ pub struct Setup {
     pub rng2: u32,
     /// Both sides' versions ("protoman" or "colonel").
     pub game_versions: [String; 2],
-    /// Both sides' regions ("us" or "jp"); recordings of US consoles have
-    /// none.
-    #[serde(default)]
-    pub game_regions: Option<[String; 2]>,
+    /// Both sides' regions ("us" or "jp").
+    pub game_regions: [String; 2],
     /// Both consoles' joypad repeat beats on the round's first frame.
     pub joypad_phases: [u8; 2],
     /// The recording console's frame counter on the setup's frame.
@@ -295,10 +293,7 @@ pub fn decode_setup(s: &Setup) -> Result<DecodedSetup, String> {
         "jp" => Ok(true),
         r => Err(format!("region {r:?}")),
     };
-    let regions = match &s.game_regions {
-        Some([a, b]) => [region(a)?, region(b)?],
-        None => [false, false],
-    };
+    let regions = [region(&s.game_regions[0])?, region(&s.game_regions[1])?];
     let battle_state = unhex(&s.battle_state)?;
     if battle_state.len() != 0xF0 {
         return Err(format!("a BattleState of {:#x} bytes", battle_state.len()));

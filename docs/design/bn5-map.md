@@ -485,9 +485,10 @@ The verification workspace traces BN5 consoles as it does BN6's, with the same l
 
 - **oracle-trace** has the games `TeamProtoMan` (BRBE), `TeamColonel` (BRKE) and the Japanese `JpTeamOfBlues`
   (BRBJ) and `JpTeamOfColonel` (BRKJ), their hooks (§8; both link applets' returns are trapped) and a RAM
-  `Layout` per game (§3.4; the Japanese ROMs' RAM is the US ROMs'). BN6's lines are byte-identical to before. A
-  BN5 setup line says `"game":"bn5"`, has BN5's 0x60-byte NaviStats blocks, says the regions when a side is
-  Japanese, and leaves out what is BN6's alone (SP times, link navi levels, bug frags, event flags, Tag chips).
+  `Layout` per game (§3.4; the Japanese ROMs' RAM is the US ROMs'). Every setup line says the game it is of, first
+  (`"game":"bn6"`, `"game":"bn5"`), and both consoles' regions. A
+  BN5 setup line has BN5's 0x60-byte NaviStats blocks
+  and leaves out what is BN6's alone (SP times, link navi levels, bug frags, event flags, Tag chips).
   It carries both consoles' NaviCusts (`navicusts`: each save's list, 0x02004D6C, the compression flags' bytes,
   event flags 0x1EC0 to 0x1FBF, whether the compile leaves the HP, `cyberworld`, and the board's memory
   `expansions`, key item 0x61's count) and, when a console has any, their patch cards (`patch_cards`, each list's
