@@ -399,6 +399,7 @@ flame-hook-fire = 0x158
 rslash = 0x164
 magnet-pull = 0x166
 soul-primed = 0x167
+dark-hover = 0x16b
 telop = 0x173
 
 # Banners: banner ids (the records at 0x0801B810).

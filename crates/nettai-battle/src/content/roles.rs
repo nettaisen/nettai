@@ -391,6 +391,9 @@ definition_roles! {
         CustomCursor = "custom_cursor",
         /// SELECT hides the custom screen's window, and a key brings it back.
         CustomHide = "custom_hide",
+        /// The custom screen's hover over a dark chip, every 64 ticks
+        /// (EXE5's; a game that plays none fills none).
+        CustomDarkHover = "custom_dark_hover",
         /// A chip, Beast Out, the scrap or a Cross is picked.
         CustomPick = "custom_pick",
         /// OK is pressed.
@@ -680,6 +683,11 @@ impl Roles {
 
     /// The sound, the music, the sprite and the banner of `role`
     /// (likewise).
+    /// The sound of a role a game may leave unfilled.
+    pub fn try_sound(&self, role: SoundRole) -> Option<SoundId> {
+        self.sounds.get(&role).copied()
+    }
+
     pub fn sound(&self, role: SoundRole) -> SoundId {
         *self
             .sounds
