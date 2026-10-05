@@ -75,7 +75,7 @@ pub fn main(args: &[String]) {
     let jp = crate::graphics::japanese_backgrounds(&roms);
     if !jp.is_empty() {
         let ids: Vec<String> = jp.iter().map(|&id| format!("{id:#04x} ({})", names.background(id))).collect();
-        eprintln!("note: the Japanese ROMs have another background {} (no netbattle shows it); the pack has the US's", ids.join(", "));
+        eprintln!("note: the Japanese ROMs have another background {} (a link battle on their consoles draws theirs); the pack has the US's", ids.join(", "));
     }
 
     let mut files = vec![manifest(&bundle)];

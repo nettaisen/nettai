@@ -52,11 +52,12 @@ pub struct FlowRules {
     /// `banners.win`); any other win shows the role `win`'s, or
     /// `win_judged`'s on the judge's ruling. Each game states its own.
     pub navi_win_banner: NaviWinBanner,
-    /// The backgrounds a link battle draws one of with its settings (EXE6's
-    /// `sub_81209DC`: `byte_8120A20`, 21 entries, some there twice and so
-    /// twice as likely), in the table's order. For whoever draws a match's
-    /// arena: the engine draws none (a round's settings state its
-    /// background). None: a link battle shows its stage's own.
+    /// The backgrounds a link battle picks one of at random with its
+    /// settings (EXE6's `sub_81209DC`: `byte_8120A20`, 21 entries, some
+    /// there twice and so twice as likely), in the table's order. For
+    /// whoever makes a random match: the engine picks none (a round's
+    /// settings state its background). None: a link battle shows its
+    /// stage's own.
     pub link_backgrounds: Vec<super::BackgroundId>,
 }
 

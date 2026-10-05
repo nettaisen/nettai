@@ -459,17 +459,36 @@ tomahawkman-win = 0xb8
 knightman-win = 0xbc
 toadman-win = 0xc0
 
-# Backgrounds: battle background numbers (settings byte 4), named by their look.
+# Backgrounds: battle background numbers (settings byte 4), named by their look: the 27 a link battle draws from
+# (0x08129F2C's table at 0x08129F6C, the numbers 0x00 to 0x1A). A number that draws another's picture in its
+# palette too has its name and a count (0x0C is 0x08 again, 0x0D 0x09, 0x0E 0x0A, 0x0F 0x12 and 0x14, 0x18 0x1A).
 [backgrounds]
+binary = 0x00
+drills = 0x01
 soccer-balls = 0x02
+rabbits-and-apples = 0x03
 faces-and-crosses = 0x04
 goldfish = 0x05
 calendar-squares = 0x06
+rings-blue = 0x07
 calendar-blue = 0x08
 calendar-gold = 0x09
+ones-and-zeros = 0x0a
+grid = 0x0b
+calendar-blue-2 = 0x0c
+calendar-gold-2 = 0x0d
+ones-and-zeros-2 = 0x0e
+numbers-3 = 0x0f
+ship-wheels = 0x10
 swirls = 0x11
 numbers = 0x12
+lions = 0x13
 numbers-2 = 0x14
+crests = 0x15
+shuriken = 0x16
+microchips = 0x17
+glyphs-2 = 0x18
+glyphs-blue = 0x19
 glyphs = 0x1a
 
 # Mugshots: the emotion window's faces, by the number exe5-extract gives them (its hud.rs: the face

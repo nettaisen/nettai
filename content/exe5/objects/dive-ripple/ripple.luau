@@ -31,12 +31,14 @@ ripple.kind = define.kind {
     update = function(me: Object)
         local l = me.lifecycle
         if l == "init" then
-            -- 0x080E4B88: its sprite (0C-2D) with its shadow, at the background's priority 1, animation 0.
+            -- 0x080E4B88: its sprite (0C-2D) with its shadow, all of it under the objects, animation 0. (Its call of
+            -- 0x08002E8E, EXE6's `sub_800302A`, with 1 sets two bits of the sprite's +0x16 and its flag 0x40, which
+            -- nothing that draws a sprite reads: its priority stays the field's.)
             me.visible = true
             local sprite = me.sprite
             sprite:load(SPRITE)
             sprite.shadow = "ground"
-            sprite.priority = 1
+            sprite.under_objects = true
             me.anim, me.anim_loaded = 0, 0
             sprite:set_animation(0)
             sprite:step()
