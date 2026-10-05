@@ -275,3 +275,7 @@
 "beat" = { pool = "actor", index = 0x4C }
 "tango" = { pool = "actor", index = 0x4D }
 "tango/heal" = { pool = "attack", index = 0x9F }
+"searchman/satelity/controller" = { pool = "effect", index = 0x3F, scratch_position = true }
+"searchman/satelity/satellite" = { pool = "effect", index = 0x61 }
+"searchman/satelity/beam" = { pool = "effect", index = 0x62 }
+"searchman/satelity/flare" = { pool = "attack", index = 0xAF }
