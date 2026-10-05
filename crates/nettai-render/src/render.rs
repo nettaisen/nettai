@@ -134,6 +134,7 @@ impl Renderer {
     /// own.
     pub fn set_strings(&mut self, strings: Option<Arc<nettai_content::locale::Strings>>) {
         self.strings = strings;
+        self.problems.recheck();
     }
 
     /// Draw text in `mode`; the font mode hands the strings `font` has to
@@ -151,6 +152,17 @@ impl Renderer {
     /// The graphics it draws from (another renderer of the same: a clone).
     pub fn graphics(&self) -> &PackGraphics {
         &self.graphics
+    }
+
+    /// Draw from other graphics from the next frame on: the same packs'
+    /// in another language (with [`Renderer::set_strings`], its strings).
+    /// Nothing the renderer follows over time is touched (the HUD's rolling
+    /// numbers and timers are the battle's, not the graphics'), so a swap
+    /// mid-battle is no reset. The frame's lookups are checked again
+    /// against what is drawn from now.
+    pub fn set_graphics(&mut self, graphics: PackGraphics) {
+        self.graphics = graphics;
+        self.problems.recheck();
     }
 
     /// Follow a tick of the battle being shown (call after every tick).
