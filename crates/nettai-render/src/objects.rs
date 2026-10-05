@@ -171,19 +171,17 @@ pub fn shade(mut p: Palette, shader: u16) -> Palette {
 /// 0-8) on the frames its counter has bit 2 clear; 1 (`sub_80E114C`, the
 /// FlashBomb's) the background palettes 0-14 (the stage's and the HUD's)
 /// and the sprites' every frame. Neither shows while the battle holds it
-/// (paused, or dimmed unless it keeps flashing then): it turns its palette
-/// transform off.
+/// (paused, or dimmed unless it keeps flashing then, as the game's rule
+/// has it: `kinds::palette_flash::held`): it turns its palette transform
+/// off.
 pub fn palette_flash(b: &Battle) -> Option<u8> {
-    b.objects.in_order().map(|r| b.objects.get(r)).find_map(|o| {
+    b.objects.in_order().find_map(|r| {
+        let o = b.objects.get(r);
         if !is(b, o, EngineKind::PaletteFlash) || o.state == 0 {
             return None;
         }
-        let [variant, _, mode, _] = o.params;
-        let (while_dimmed, while_paused) = (mode & 1 != 0, mode & 2 != 0);
-        // (Variant 1 tests the pause bit where variant 0 tests the dimming
-        // one.)
-        let keeps_dimming = if variant == 1 { while_paused } else { while_dimmed };
-        let held = !while_paused && (b.paused || (!keeps_dimming && b.is_dimmed()));
+        let variant = o.params[0];
+        let held = nettai_battle::kinds::palette_flash::held(b, r);
         (!held && (variant == 1 || o.timer & 4 == 0)).then_some(variant)
     })
 }
