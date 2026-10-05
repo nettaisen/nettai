@@ -242,17 +242,50 @@ draws it (docs/frontend.md §3):
   after A, and blanks it at once after held B (the end then runs on a tick that prints all at once);
 - the portrait (`chatbox_8040B8C`): drawn with the tint before the tick's step of its fade, added to each
   color channel (`sub_3005F34`); its face (`+0x1F0`..`+0x1F3`): still as `F5` loads it, talking from a character
-  that talks (`chatbox_8040C44`: letters and digits), idle after one that doesn't and after every command or
-  character printed all at once (`chatbox_8040C9C`); the sprite takes the face when the talking changes, and its
-  animation steps once a tick it's drawn;
+  that talks (`chatbox_8040C44`: the game's rule `custom_screen.talking_characters`, below), idle after one that
+  doesn't and after every command or character printed all at once (`chatbox_8040C9C`); the sprite takes the face
+  when the talking changes, and its animation steps once a tick it's drawn;
 - the key-wait arrow (`chatbox_804082C`), from the tick the wait first runs until the key: its frame by a step
   counted only while it shows (`byte_80408A4`: six ticks each of three frames, then from the second step).
+
+**Two rules of the game's** (the rule section `custom_screen`), where EXE5's chatbox isn't EXE6's (its other
+routines are the same code, or differ in what no battle script runs: the option boxes, the box kinds past 7, a
+kept face):
+
+- **`chatbox_commands_wait_for_text`**: a command waits out the character printed before it. EXE6's interpreter
+  (`chatbox_interpreteAndDrawDialogChar`) tests the print delay before a command as before a character (`movs r0,
+  #0; ldrb r2, [r5, #9]; cmp r2, #0; bgt` ahead of the jump through the commands' table), so the command after a
+  line's last character runs two ticks after it. EXE5's (0x0803EADC) has no such test: the command runs on the
+  character's own tick, and the delay is left for the next character to wait out. A line break moves no text (the
+  next line's first character comes three ticks after the last either way), but the speaker's mouth closes two
+  ticks sooner at each line's end; the wait for a key starts two ticks sooner (EXE5's MegaMan takes A or B from
+  T+78 where EXE6's does from T+80), and its arrow with it; and after a rush no leftover delay holds the wait up
+  (A on odd ticks closes EXE6's message on tick 30, EXE5's on 28). A description prints with no delay: nothing of
+  it waits in either game.
+- **`talking_characters`**: the characters that move the speaker's mouth, `only` those listed or `all_but` them.
+  EXE6's test (`chatbox_8040C44`) passes ranges of its charmap: the digits and letters (0x01 to 0x24, 0x26 to 0x3F)
+  and four kana (0x59 to 0x5C); the asterisk between the letters, 0x25, is tested apart and doesn't. EXE5's
+  (0x0803F7CC) leaves out a space, 0x92 to 0xB4 (its punctuation and marks, with ャ at the range's start) and its
+  ellipsis (0x112), and every other character talks: the asterisks of ToadMan's `*Ribbit!!!*` open his mouth.
+  Presentation: the define phase reads the rule for the masks it counts into the navis' records (`talking`).
+
+Both are read off the ROMs by the generators' checks (gen-content's decode for EXE6, `tools/exe5/gen_rules.py`
+and `gen_content.py check` for EXE5: the tests' code and the charmaps).
+
+**A navi with no message.** L opens the box for a navi whose content states a message (`run_message` in its
+strings: the record's `counts`); for one without, L does nothing. Every navi of the originals has one, so a
+missing one is a content error, which the frontend's content audit lists for each navi a side can start, in a
+game whose roles fill the message's sound (docs/frontend.md §2): EXE5's thirteen had none until 2026-10-05, and L
+opened an empty box.
 
 **Verified** in the lab: `custom/description-arm-001-5..9` and `-09a-5..9` (Cannon, three lines, takes A from
 R+8; Recov10, two lines, from R+7), `description-invalid-4..6` (from R+6), `description-cross-7`, `-8` (a Cross's,
 from R+8, back to the Cross window), `description-b-held-12`, `-30`, `description-keys`; `run-message`, `-b`,
 `-wait`, `-taps-0`, `-taps-1` (A on every other frame, from either parity), `-b-held`, and the link navis'
-`run-message-navi-1` to `-11` with their `-wait` (every link navi's message).
+`run-message-navi-1` to `-11` with their `-wait` (every link navi's message). EXE5's (library-exe5):
+`custom/run-message` and its `-colonel-console`, `-b-held`, `-wait`, `-taps-0` and `-taps-1`, and each team navi's
+`navis/<navi>/run-message` (A on every other frame) and `-wait` (printed at its own speed) on its team's console,
+with a copy of each on a Japanese console.
 
 Three chips' descriptions aren't in their scripts: DblBeast's, Gregar's and Falzar's scripts copy their text from
 the console's memory (`FF 01 nn`, `chatbox_FF_copytext`: 0x40 bytes of a buffer the game keeps, run as script and
