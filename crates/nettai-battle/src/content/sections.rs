@@ -150,6 +150,7 @@ struct CustomScreenSection {
     /// (None listed: a re-deal keeps none, whatever the hand.)
     #[serde(default)]
     redeal_kept: Vec<u8>,
+    emblem_at_window_return: bool,
 }
 
 #[derive(Deserialize)]
@@ -577,6 +578,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     left_scan_start: s.left_scan_start,
                     right_scan_start: s.right_scan_start,
                     redeal_kept: s.redeal_kept,
+                    emblem_at_window_return: s.emblem_at_window_return,
                 });
             }
             "buster" => stated.buster = Some(r.read(spec, &at).map_err(e)?),
