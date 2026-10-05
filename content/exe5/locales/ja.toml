@@ -234,6 +234,7 @@ language = "ja"
 "numbrman" = { name = "ナンバーマン", description = "3マス前方にボム!\n攻撃力は出目しだい\n9マス分にばくはつ" }
 "numbrmn-ds" = { name = "ナンバーマン\uE008", description = "3マス前方にボム!\n攻撃力は出目しだい\n9マス分にばくはつ" }
 "numbrmn-sp" = { name = "ナンバーマン\uE003", description = "3マス前方にボム!\n攻撃力は出目しだい\n9マス分にばくはつ" }
+"numtrap" = { name = "ナンバートラップ", description = "2マス前方に\nナンバートラップ!\nふむとワナはつどう" }
 "omegarkt" = { name = "オメガロケット", description = "まん中のれつを\nまっすぐすすむ\nきょだいロケット!" }
 "otenko" = { name = "オテンコサマ", description = "目の前に攻撃力を\nじょうしょうさせる\nオテンコサマをおく" }
 "panlgrab" = { name = "パネルスチール", description = "前方のてきエリアの\n1マスを 自分の\nエリアにぬりかえる" }
@@ -367,6 +368,7 @@ language = "ja"
 "meddy" = { name = "メディ" }
 "megaman" = { name = "ロックマン", variant_name = "FCロックマン" }
 "napalmman" = { name = "ナパームマン" }
+"numberman" = { name = "ナンバーマン" }
 "protoman" = { name = "ブルース" }
 "searchman" = { name = "サーチマン" }
 "shadowman" = { name = "シャドーマン" }
