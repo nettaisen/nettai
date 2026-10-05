@@ -50,9 +50,10 @@ impl Draws {
 }
 
 
-/// The backgrounds a link battle of the game draws from, by name: its flow
-/// rules' (`link_backgrounds`: EXE6's table, some there twice and so twice
-/// as likely). None: a link battle shows its stage's own.
+/// The backgrounds a link battle of the game picks from at random, by
+/// name: its flow rules' (`link_backgrounds`: EXE6's table, some there
+/// twice and so twice as likely). None: a link battle shows its stage's
+/// own.
 fn link_backgrounds(content: &Content) -> Vec<&str> {
     content.rules().flow.link_backgrounds.iter().filter_map(|&b| ids::background_name(content, b)).collect()
 }
