@@ -12,8 +12,10 @@
 //! version's ROM has its counterpart's there), under the chip's key; a
 //! song a version played otherwise would be in it twice, named `-protoman`
 //! and `-colonel` (the two ROMs play every song alike). The Japanese ROMs
-//! are checked against the US ones: their battle graphics differ only where
-//! text is drawn, so the pack has none of theirs yet.
+//! give the pack's Japanese lettering (`lettering`: the fonts, the HUD's
+//! lines, the banners and pictures with words); the rest of what a battle
+//! draws is the same in all four (the verification workspace's
+//! tools/exe5/jpassets.py compares them).
 //!
 //! The assets are named as EXE5's content names them (content/exe5/compat/
 //! assets.toml, through exe5-compat: EXE6's names where the asset or its place
@@ -25,6 +27,7 @@ mod content;
 mod custom;
 mod graphics;
 mod hud;
+mod lettering;
 mod rom;
 mod sound;
 mod sprite;
