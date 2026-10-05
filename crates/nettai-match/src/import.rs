@@ -57,10 +57,10 @@ impl Side {
     pub fn import_exe6_save(&mut self, content: &Content, save: &Save) -> Result<Vec<String>, String> {
         let level = save.navi_level()?;
         let mut notes = Vec::new();
-        self.game = save.version();
+        self.version = Some(save.version());
         let unlocks = save.unlocks();
         self.beast_out = unlocks.beast_out;
-        self.crosses = match exe6_compat::forms::set(content, self.navi, self.game) {
+        self.crosses = match exe6_compat::forms::set(content, self.navi, save.version()) {
             Some(set) if !unlocks.crosses.iter().all(|&c| c) => {
                 let own = &set.crosses;
                 let owned: Vec<_> = own.iter().zip(unlocks.crosses).filter(|(_, o)| *o).map(|(&f, _)| f).collect();
@@ -86,7 +86,7 @@ impl Side {
             *t = 0;
         }
         // The stats: the game's (NaviStats+0x20), a link navi's at its level.
-        self.stats.version = crate::version_byte(self.game);
+        self.stats.version = crate::version_byte(self.version);
         if let Some(s) = self.reloaded(content) {
             self.stats = s;
         }
@@ -112,10 +112,10 @@ mod tests {
         times.0[19] = 0xFFFF;
         let save = file(GameVersion::Falzar, false, [false, true, false, true, false], 11, Some(5), &times);
         let mut m = crate::draw::live(&content, "exe6", 1, None).unwrap();
-        m.sides[0].game = GameVersion::Gregar;
+        m.sides[0].version = Some(GameVersion::Gregar);
         let notes = m.import_save(&content, 0, &save).unwrap();
         let s = &m.sides[0];
-        assert_eq!((s.game, s.beast_out, s.navi_level, s.stats.version), (GameVersion::Falzar, false, Some(5), 1));
+        assert_eq!((s.version, s.beast_out, s.navi_level, s.stats.version), (Some(GameVersion::Falzar), false, Some(5), 1));
         let list: Vec<&str> = s.crosses.unwrap().forms().map(|f| crate::ids::local(&content.defs.form(f).key)).collect();
         assert_eq!(list, ["tomahawkcross", "groundcross"]);
         assert_eq!((s.sp_times.0[0], s.sp_times.0[17], s.sp_times.0[18], s.sp_times.0[19]), (600, 617, 0, 0));
@@ -138,10 +138,10 @@ mod tests {
         s.navi = protoman;
         s.crosses = None;
         s.navi_level = Some(7);
-        s.stats = crate::Side::save_base(&content, protoman, s.game, Some(7));
+        s.stats = crate::Side::save_base(&content, protoman, s.version, Some(7));
         let notes = m.import_save(&content, 1, &file(GameVersion::Gregar, true, [true; 5], 0, None, &SpTimes::default())).unwrap();
         let s = &m.sides[1];
-        assert_eq!((s.navi_level, s.game, s.stats.version), (Some(7), GameVersion::Gregar, 0));
+        assert_eq!((s.navi_level, s.version, s.stats.version), (Some(7), Some(GameVersion::Gregar), 0));
         assert_eq!(notes, ["the save received no navi code: the side's link navi keeps its level"]);
         assert!(m.import_save(&content, 1, b"not a save").is_err());
     }

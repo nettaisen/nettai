@@ -451,8 +451,8 @@ fn a_sides_fields_are_its_rules() {
     let (c5, c6) = (exe5_content(), exe6_content());
     let six = crate::draw::live(&c6, "exe6", 3, None).unwrap();
     let five = parse(&c5, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
-    assert!(crate::Side::takes_game(&c6) && six.sides[0].takes_level(&c6) && crate::Side::takes_sp_times(&c6));
-    assert!(!crate::Side::takes_game(&c5) && !five.sides[0].takes_level(&c5) && crate::Side::takes_sp_times(&c5));
+    assert!(crate::Side::takes_version(&c6) && six.sides[0].takes_level(&c6) && crate::Side::takes_sp_times(&c6));
+    assert!(!crate::Side::takes_version(&c5) && !five.sides[0].takes_level(&c5) && crate::Side::takes_sp_times(&c5));
     // Each slot's chip is of the match's game.
     let chip = |c: &nettai_battle::Content, m: &Match, slot| crate::facts::sp_chip(c, &m.arena, slot).map(|h| c.defs.chip(h).key.clone());
     assert!(chip(&c6, &six, 0).is_some_and(|k| crate::ids::in_game(&c6, "exe6", &k)), "{:?}", chip(&c6, &six, 0));
