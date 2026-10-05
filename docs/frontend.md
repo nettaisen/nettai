@@ -315,7 +315,7 @@ functions:
 
 - `--audit-content` (`content_audit.rs`) makes every lookup for everything
   the content defines, in every language it has strings in: every chip's
-  icon, picture, name, Program Advance name and code, its window's class,
+  icon, picture, name, its window's class,
   element and code pictures, its description in the dialogue font; every
   navi's face, emblem on either game's console, name and no-running message
   with its portrait; every form's face for each emotion, every Cross's name
@@ -333,8 +333,7 @@ functions:
   not counted; so is a language the content has strings in but its pack no
   lettering for (EXE5's Japanese, which its extraction makes none of): such
   a console can't be shown, and the language isn't checked. It audits the
-  match's one game (`--game`): a chip's Program Advance code shows unless
-  its definition hides it (the trait `hides_advance_code`).
+  match's one game (`--game`).
 - `--audit <trace.jsonl>...` runs traces, several at a time (`--jobs N`,
   default one a core), and makes the lookups their frames and sound cues
   make, without drawing: no stage, no composing, no sound synthesis
@@ -483,14 +482,18 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
 - the Program Advance animation (the window out): the picks' names and
   codes a column right of the layer's scroll, the recipe's in the blinking
   palette 10 and taken off, the Program Advance's in their place; the
-  stage and the objects fade a quarter of the way;
+  stage and the objects fade a quarter of the way. The original hides
+  the code of a chip numbered 0x160 or more (0x08027BC6 in EXE5,
+  `sub_802B80C` in EXE6), and no recipe of either game uses such a chip,
+  so every pick shows its code;
 - the scrap and the re-deal: the column losing the scrapped picks, the
   slots dealt again, the emblem and the Regular chip's frame throughout;
 - a console's own pictures by its version (`Versioned`: a Gregar console's
   Beast and emblem, the pack's `-gregar` assets); a Cross's name and
   colors in the Cross window are its own version's (`custom::cross_picture`:
-  the pack's pictures of the form's `version`, numbered by its
-  `window_order`, both said by its definition;
+  the pack's pictures of the form's `version`, numbered by the Cross's
+  place among that version's Crosses in its navi's list,
+  `forms.<version>.crosses`, which is the original's order;
   for the form in the entry's place, `exe6_compat::Unlocks::cross_at` over
   the cross system's setup), so a Gregar
   Cross shows Gregar's name in any window, and a window a setup's Cross

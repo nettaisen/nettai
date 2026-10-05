@@ -87,7 +87,6 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library", "variable_damage" },
     library = { number = 403, index = 0, sort = 7 },
-    traits = { "hides_advance_code" },
     slot_in_limit = 1,
     -- `sub_80F1056` (`off_80F1068`).
     action = define.action {
