@@ -26,6 +26,15 @@ return {
     overlay_restart = "step",
     -- The counter a stance's caught hit starts runs from the next tick (`sub_80105F2`).
     stance_counter = "next_tick",
+    -- What the ends of a navi's actions clear of its requests besides the attacks' six: the mode-9 A press, at an
+    -- attack's end (`sub_801171C`: 0x1000003F) and a paralysis's, a freeze's or a bubble's; at a flinch's and a
+    -- drag's (0x1000043F) the anti-sword trigger too.
+    request_clears = {
+        attack = { "mode9_a" },
+        paralysis = { "mode9_a" },
+        flinch = { "anti_sword_triggered", "mode9_a" },
+        drag = { "anti_sword_triggered", "mode9_a" },
+    },
     push = {
         { dx = 1, dy = 0, panels = 6 },
         { dx = -1, dy = 0, panels = 6 },

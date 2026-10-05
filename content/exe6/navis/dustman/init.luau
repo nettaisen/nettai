@@ -32,6 +32,14 @@ return define.navi {
     -- and the rest of its fresh stats; and its HP after the change, by side
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },
+    -- His post-init hook (`sub_80F22F8`, the one entry of `off_80EAA04` that
+    -- isn't empty): in battle mode 9 he spawns two objects he keeps, which
+    -- only that mode has.
+    post_init = function(navi: Object)
+        if battle.mode() == 9 then
+            navi:spawn_mode9_objects()
+        end
+    end,
     fresh = { hp = 250, super_armor = true, mega_level = 5, giga_level = 1 },
     cross_hp = { 150, 150 },
     -- What the save's reload gives it at its link navi level

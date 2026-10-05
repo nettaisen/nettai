@@ -118,6 +118,7 @@ struct ReactionsSection {
     slide_speed: super::rules::SlideSpeed,
     overlay_restart: super::rules::OverlayRestart,
     stance_counter: super::rules::StanceCounter,
+    request_clears: super::rules::RequestClears,
 }
 
 #[derive(Deserialize)]
@@ -284,6 +285,7 @@ impl Stated {
                 slide_speed: r.slide_speed,
                 overlay_restart: r.overlay_restart,
                 stance_counter: r.stance_counter,
+                request_clears: r.request_clears,
             }),
             berserk: Some(r.berserk),
             sine: Some(r.sine.clone()),
@@ -366,6 +368,7 @@ impl Stated {
             slide_speed: reactions.slide_speed,
             overlay_restart: reactions.overlay_restart,
             stance_counter: reactions.stance_counter,
+            request_clears: reactions.request_clears,
             bubble_bob: reactions.bubble_bob,
             lockon: self.lockon.unwrap_or_default(),
             berserk: self.berserk.unwrap_or_default(),
