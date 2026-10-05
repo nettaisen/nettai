@@ -1,9 +1,9 @@
 //! What EXE6's systems say of its forms (docs/design/rules-in-luau.md, S7b
 //! and S7c):
 //! their extensions of EXE6's form definitions, which the engine checks and
-//! never reads. The forms system's: a form's kind, whose game's form it is,
-//! the navi a Cross is made with, the animation a change into a Cross lets
-//! the navi go of. The beast system's: a Cross's form in Beast Out, the
+//! never reads. The forms system's: a form's kind, the navi a Cross is made
+//! with, the animation a change into a Cross lets the navi go of (whose
+//! game's form it is, is the form's own `version`). The beast system's: a Cross's form in Beast Out, the
 //! Cross special's buster volley. The cross system's: ChargeCross's extra
 //! chips, DustCross's scrap button. And a navi's sets by game (its `forms`
 //! table's `gregar` and `falzar`: its Crosses, Beast Out and Beast Over),
@@ -66,12 +66,13 @@ pub fn is_beast(content: &Content, form: FormHandle) -> bool {
 }
 
 /// Whose game's form it is (the Beast's roar; none: the base form, or
-/// another game's form).
+/// another game's form): its `version`, the engine's field, which EXE6's
+/// forms name "gregar" or "falzar".
 pub fn game(content: &Content, form: FormHandle) -> Option<GameVersion> {
-    match field(content, form, "game")? {
-        Data::Str(g) if g == "gregar" => Some(GameVersion::Gregar),
-        Data::Str(g) if g == "falzar" => Some(GameVersion::Falzar),
-        other => panic!("form {}'s game is {other:?} (the forms system checks it)", content.defs.form(form).key),
+    match content.form(form).version.as_deref()? {
+        "gregar" => Some(GameVersion::Gregar),
+        "falzar" => Some(GameVersion::Falzar),
+        other => panic!("form {}'s version is {other:?}, neither of EXE6's", content.defs.form(form).key),
     }
 }
 
