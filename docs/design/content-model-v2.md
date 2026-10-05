@@ -639,7 +639,7 @@ return define.ruleset {
 
 A field is a section by the engine's name (snake_case: `custom_screen`, `chip_use`, `sp_chips`).
 **A ruleset states every rule of its game**: the engine has no game's rules of its own (the user: "no default
-games anywhere please"). The sections `chip_use`, `effects`, `flow`, `fresh_stats`, `panels`, `pools`,
+games anywhere please"). The sections `chip_use`, `effects`, `flow`, `fresh_stats`, `link_pick`, `panels`, `pools`,
 `reactions` and `status` are required, and so is every field of them that has no neutral value; one left out is a
 load error that names it (`exe6/rules/init.luau: ruleset: flow: missing field `escape_check``), as is a game pack
 that defines no ruleset. The ruleset's declared type requires the eight (`RulesetSpec`, each a `RuleSection`), so

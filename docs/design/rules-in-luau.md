@@ -2710,7 +2710,8 @@ engine picks none: a round's settings state its stage and background):
   the same, so two more stages are there twice. The list is the original's as it stands. EXE5 got the stage of its
   record 95 (netbattle-94), which the pick reaches and the content lacked.
 - **`backgrounds`**: EXE6's `byte_8120A20` (21, three of them twice); EXE5's 27 at 0x08129F6C, each once.
-- **A section of its own, and one a ruleset may leave out.** It was `flow.link_backgrounds` for a day. A module
+- **A section of its own, which every ruleset states** (empty `stages`: no random pick, as the engine's test content
+  states it). It was `flow.link_backgrounds` for a day. A module
   that states stages requires the game's stages, and `flow.luau` is taken whole by other contents (the engine's
   test content plays EXE6's flow), which then loaded all of EXE6's stages. The stages are references, resolved once
   the definitions have their handles (`sections::link`, as the fresh stats' weapon is).
