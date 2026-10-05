@@ -493,7 +493,8 @@ The verification workspace traces EXE5 consoles as it does EXE6's, with the same
   event flags 0x1EC0 to 0x1FBF, whether the compile leaves the HP, `cyberworld`, and the board's memory
   `expansions`, key item 0x61's count) and, when a console has any, their patch cards (`patch_cards`, each list's
   bytes). **exe5-compat replays such a round by compiling**: each MegaMan's recorded stats go back to what EXE5's
-  reset leaves in the bytes the compile and the cards write (`codec::RESET`), and the round is set up with the
+  reset leaves (`trace::reset`: the navi's fresh stats, the engine's `NaviStats::fresh`, with what the save keeps),
+  and the round is set up with the
   NaviCust (on the board of the recorded `expansions`, or the rules' largest when they have fewer sizes), the cards
   and the `cyberworld` fact, as a match is; the emotion window's glitch is then the compile's and the cards', what
   the rules made, checked against the console's recorded flag (`emotion_window_glitches`). Recordings made before
@@ -2267,7 +2268,7 @@ NaviCusts). EXE5's, content/exe5/rules/navicust:
   and no frame. Five colors bring the status bug, six the stronger one.
 - **The reset** (0x08133DBC) keeps the mood, the light/dark value, +0x21, +0x22, the base HP, the soul, the folder and
   its Regular chips, the Regular memory and the HP; the rest is the navi's fresh stats (0x08010C00 under MegaMan's row
-  of 0x0801D55F).
+  of 0x0801D55F: in content, rules/fresh_stats.luau and his definition's `fresh` and `weapons`).
 - **The bugs** (0x08140008, its table 0x08140054 by group and level): steps astray (+0x31), the emotion swing
   (+0x24), the panel trail (+0x12 = 3, +0x13 = 2, 4 or 8), the custom screen's damage (+0x54: 20, 40, 80), encounters
   (+0x28), drops (+0x26), the buster (+0x14 = 4, +0x15 = 2), no supports (+0x0D = 0xFF), the HP bug (+0x16 = 3), Hub's
@@ -2370,7 +2371,12 @@ rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   0xEA, BCMegaMn, in Hub Style; +0x53 is the reload's, 0x08135968, 1 exactly when 0x08137A58 finds no Hub Style:
   the light-dark system's `round_setup`, `battle.set_name_variant`, the locales' `variant_name`; checked against
   mGBA by verification's library-exe5 custom/hub-name). Battle effect 0x40000 names every entry 0xE6 (ChaosLrd): no
-  stage of EXE5's content has it, not built.
+  stage of EXE5's content has it, not built. A deliberate difference: the routine's names start as side 1's actors'
+  NameIDs (0x080091A2 reads the battle state's +0x90 list, whichever side the console is), and the link battle's
+  overrides above name only a MegaMan enemy. So the original's side-1 console facing a team navi on side 0 (a state
+  the game never reaches: a link battle's navis are both MegaMan) names its own navi for the custom screen's first
+  frames, where nettai names the enemy's, as a player expects (seen with the chip lab's swapped base, traced on
+  side 1; the team navis' from-the-left scenarios are traced on the navi's own console, where the two agree).
 - The emotion window's start keeps the glitch outside EXE5's battle modes 1 to 4; the engine's start keeps EXE6's rule
   (no random battles, not modes 1 to 5 and 8), the same for a netbattle.
 
@@ -2463,7 +2469,7 @@ mid-battle navi switch (§5), and the Liberation battles.
 | Face | 0x08019724 (Team Colonel's 0x0801971C): the version's six pictures, two palettes each | the pack's navi mugshots, `<navi>` (0x80 + n − 1); the second palette in Full Synchro |
 | Actor record | 0x08014C94, NameID 0x180 + n | version 0, a player, AI index n |
 | Attach points | category 8's table, 0x08015C1C, row n | 30 points |
-| Stats row | 0x0801D55F (16 bytes, read by 0x080111AA) | the HP, SuperArmor, FloatShoes, AirShoes, UnderShirt, the Mega and Giga levels, the four weapons, the B+Back special's damage (+0x48) |
+| Stats row | 0x0801D55F (16 bytes, read by 0x080111AA) | the HP, SuperArmor, FloatShoes, AirShoes, UnderShirt, the Mega and Giga levels, the four weapons, the B+Back special's damage (+0x48). The rest of a fresh block is the game's, the same for every navi (0x08010C00: rules/fresh_stats.luau) |
 | Palette step | 0x0801D737 | the sprite's palettes go by it (0x0800DA98: 4 steps in Full Synchro, 1 while it can't charge): 1; NapalmMan 3, MagnetMan, Meddy, Colonel and TomahawkMan 2 |
 | Own chip | 0x08025EA0 (a pair of the same chip and code) | below |
 | Story HP | 0x0804F960 (20 bytes a navi) | below |
