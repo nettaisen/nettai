@@ -32,7 +32,6 @@
 use nettai_assets::Bundle;
 use nettai_battle::Content;
 use nettai_battle::content::{BackgroundId, BannerId, BannerRole, ChipCode, ChipRole, MugshotId, PackId, SpriteId};
-use nettai_battle::custom::GameVersion;
 use nettai_battle::field::PanelType;
 use nettai_battle::kinds::player::Emotion;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
@@ -195,10 +194,8 @@ fn other_packs(c: &Content, packs: &Packs, lang: &str, text: &DisplayText) -> Ve
         for k in (0..c.defs.navis.len()).filter(|&k| of_game(&c.defs.navi(NaviHandle(k as u16)).key)) {
             let navi = NaviHandle(k as u16);
             for &version in &versions {
-                // (Each version's own run: the lookup is by the engine's
-                // version, which tells EXE5's apart by none.)
                 let mut q = Problems::default();
-                lookups::emblem(a, c, navi, GameVersion::Falzar, Some(version), &mut q);
+                lookups::emblem(a, c, navi, version, &mut q);
                 for (what, _) in q.iter() {
                     p.note(format!("{what} (on a {version} console)"));
                 }
@@ -252,8 +249,9 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
         if !data.changes_form() {
             lookups::navi_face(packs, c, navi, p);
         }
-        for version in [GameVersion::Falzar, GameVersion::Gregar] {
-            lookups::emblem(a, c, navi, version, None, p);
+        // (On a console of each of the pack's versions.)
+        for version in std::iter::once(&a.versioned.base_version).chain(a.versioned.versions.iter().map(|(v, _)| v)) {
+            lookups::emblem(a, c, navi, version, p);
         }
         lookups::navi_name(hud, navi, false, text.navi_name(c, navi), p);
         if let Some(name) = text.navi_variant_name(c, navi) {
