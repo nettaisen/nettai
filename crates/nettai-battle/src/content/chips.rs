@@ -215,12 +215,6 @@ impl ChipTraits {
     /// is M; EXE5's 0x080243C0: Muramasa, CustSwrd and the three CusVolts,
     /// of which CusVolt1 comes as an A).
     pub const HIDES_DAMAGE_AS_A: u16 = 0x400;
-    /// The Program Advance animation shows its name without its code: the
-    /// original prints a pick's code only for the chips below 0x160, its
-    /// chip table's own (`sub_802B80C`; EXE5's 0x08027BC6, the same number),
-    /// not for the chips past them (the special chips: a navi's own, the
-    /// supports', the capsules').
-    pub const HIDES_ADVANCE_CODE: u16 = 0x800;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x01, "no_chain"),
         (0x02, "aura_bonus"),
@@ -233,7 +227,6 @@ impl ChipTraits {
         (0x100, "goes_with_any"),
         (0x200, "not_navi_slot"),
         (0x400, "hides_damage_as_a"),
-        (0x800, "hides_advance_code"),
     ];
 
     pub fn has(self, bit: u16) -> bool {
