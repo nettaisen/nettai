@@ -24,6 +24,9 @@ return {
     palette_flash_order = "before_fades",
     -- Its afterimages (0x080E35F4) and form overlays don't run while paused (no header flag 0x04).
     overlays_run_while_paused = false,
+    -- Its afterimage (0x080E3550) is a sprite alone: its spawners give it the owner's battle sprite (0x0800DA72) and it
+    -- takes no NameID, so an afterimage of a navi that wears something (KnightMan's ball, NumberMan's face) wears none.
+    afterimages_wear_overlays = false,
     -- Its sprites' frame load (0x03006898) leaves the palette offset of a frame's first part to the next step
     -- (0x03006948): its hit spark, which doesn't step as it starts, shows its first frame in palette 0.
     load_sets_part_palette = false,

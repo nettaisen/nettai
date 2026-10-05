@@ -84,6 +84,9 @@
 "tomahawkman/tomahawk" = { pool = "attack", index = 0xB4, scratch_z_fraction = true }
 "shadowman/shadow" = { pool = "actor", index = 0x04 }
 "knightman/crusher" = { pool = "attack", index = 0x15 }
+"numberman/numtrap/controller" = { pool = "effect", index = 0x40 }
+"numberman/trap" = { pool = "attack", index = 0xC3 }
+"numberman/press" = { pool = "attack", index = 0x8C }
 "gyroman/navi" = { pool = "actor", index = 0x0C }
 "napalmmn/navi" = { pool = "actor", index = 0x0E }
 "magnetmn/navi" = { pool = "actor", index = 0x0D }
@@ -129,6 +132,7 @@
 "meddy/capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "napalmmn/bomb" = { pool = "attack", index = 0x3A }
 "gyroman/bomb" = { pool = "attack", index = 0x1B, scratch_position = true }
+"gyroman/strike" = { pool = "attack", index = 0x1C }
 "shuriken" = { pool = "attack", index = 0x5C }
 "numbrman/dice" = { pool = "attack", index = 0x05 }
 "dice-marker" = { pool = "effect", index = 0x83, scratch_position = true }
