@@ -46,7 +46,8 @@ pub fn module_name(path: &str) -> String {
 
 /// The module a folder's name stands for, when no module has the name
 /// itself: its `init` (`exe6:rules` is `exe6:rules/init`, content/exe6/rules/
-/// init.luau), as a require names it.
+/// init.luau), as a require names it. (`packs::module` is its one user:
+/// where a name finds its module.)
 pub fn init_of(name: &str) -> String {
     format!("{name}/init")
 }
