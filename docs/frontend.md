@@ -927,16 +927,30 @@ its sides may say besides:
 karma = 100                                # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
 souls = ["protosoul", "colonelsoul"]       # optional: the souls it has, EXE5's, either version (none: every soul)
 
-[left.computer_navi]                       # optional: what a computer navi plays from the side's save (none: nothing learned)
-first = ["areagrab"]                       # the data's places 1 to 3; each entry a chip, a pattern or {} (an empty place)
-standard = ["sword", "sword", "sword", "sword", "cannon"]   # places 4 to 27: the game writes its player's most used standard chips
-mega = ["protoman"]                        # places 28 to 32: mega chips
-giga = "crossdiv"                          # place 33: a giga chip
-patterns = [                               # places 34 to 41: a pattern is a place from its target and 1 to 5 chips used there
-    { dx = -2, dy = 0, chips = ["sword", "wideswrd"] },
-    { dx = -1, dy = 1, chips = ["cannon", "cannon", "cannon", "cannon", "cannon"], score = 10 },   # five chips: with its score
+[left.computer_navi]                       # optional: what a computer navi plays from the side's save, whole (none: nothing learned)
+first = [{}, {}, {}]                       # the data's places 1 to 3: each a chip, a pattern record's number, 0 or {} (an empty place)
+standard = [                               # places 4 to 27, all 24: the game writes its player's most used standard chips
+    "sword", "sword", "sword", "sword",
+    "cannon", "cannon", {}, {},
+    {}, {}, {}, {},
+    {}, {}, {}, {},
+    {}, {}, {}, {},
+    {}, {}, {}, {},
 ]
-program_advance = "csmopris"               # place 42: a program advance
+mega = ["protoman", {}, {}, {}, {}]        # places 28 to 32: mega chips
+giga = "crossdiv"                          # place 33: a giga chip
+patterns = [1, {}, {}, {}, {}, {}, {}, {}]  # places 34 to 41: pattern records, by number (1 to 8)
+program_advance = {}                       # place 42: a program advance
+records = [                                # the eight pattern records: a place from its target, five chip places, a score
+    { dx = -2, dy = 0, chips = ["sword", "wideswrd", {}, {}, {}], score = 10 },
+    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },
+    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },
+    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },
+    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },
+    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },
+    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },
+    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },
+]
 ```
 
 **The stats block** (`nettai_match::stats`) sets the navi's stats by name
@@ -1053,10 +1067,10 @@ EXE5's and gives its karma, the souls its version's flags give (EXE5's
 souls of those numbers), its Soul Unison and Chaos Unison, to a side
 with a NaviCust the board of its ExpMemry (`expansions`: the NaviCust's
 programs aren't the import's yet), and its computer-navi data (the block at
-save +0x554C: each of its 42 places in its list, chips by their numbers'
-names, each pattern entry with its record and score). What a match doesn't
-hold of a block is left out and said: a chip number the game hasn't and a
-place holding 0. (`nettai_match::computer_navi::of_save` reads that data
+save +0x554C, place for place and record for record, chips by their
+numbers' names). What a match can't state of a block is left empty and
+said: a chip number the game has no chip for, and an entry for a pattern
+past the eighth. (`nettai_match::computer_navi::of_save` reads that data
 alone from a save.)
 
 **The computer navi's data** (`[left.computer_navi]`,
@@ -1064,9 +1078,15 @@ alone from a save.)
 computer navi plays from the side's save: the Dark MegaMan that the side's
 failed Chaos Unison brings, and the side's own navi under DarkInvs. EXE5
 learns it from its player (the chips they use most, and the runs of chips
-they use from one place) and keeps it in the save as 42 places, each a chip,
-a pattern or empty. A match states every place, in the six lists the game's
-battle end writes them in:
+they use from one place) and keeps it in the save as a block of 42 places
+and eight pattern records. A battle reads nearly all of that block, so a
+side that states the data states all of it, and nothing is filled in: every
+place of every list, and all eight records. A side with no
+`[left.computer_navi]` has a block nothing has written (every place empty,
+every record blank): nothing learned, and the computer navi only fires its
+buster between rests.
+
+The 42 places, in the six lists the game's battle end writes them in:
 
 | list | places | what the game writes there |
 |---|---|---|
@@ -1074,61 +1094,69 @@ battle end writes them in:
 | `standard` | 4 to 27 | its player's sixteen most used standard chips: the two most used four times each, the next two twice, the rest once |
 | `mega` | 28 to 32 | the five most used mega chips |
 | `giga` | 33 | the most used giga chip |
-| `patterns` | 34 to 41 | up to eight patterns, the highest scored first |
+| `patterns` | 34 to 41 | the pattern records that have a score, by number, from the first |
 | `program_advance` | 42 | the most used program advance |
 
-A list is its entries from its first place, those after its last entry
-empty; `giga` and `program_advance`, one place each, are that entry alone.
-An entry is a chip's name, a pattern, or `{}`, an empty place before a later
-entry. The lists are named for what the game writes there, but any entry may
+An entry is a chip's name; a number 1 to 8, that pattern record (the first
+of `records` is 1); `0`, a place holding 0 (no chip, but no empty place
+either); or `{}`, an empty place. `giga` and `program_advance`, one place
+each, are that entry alone. The lists are named for what the game writes there, but any entry may
 stand in any place, as in the save (a save made by hand can have a giga chip
 among the patterns' places).
 
-A pattern is a table: `dx` and `dy`, where the computer navi stands from its
-target (`dx` columns toward its enemies, so -2 is two columns short of the
-target; `dy` rows down the screen; at most 5 columns and 2 rows), `chips`,
-the one to five chips it uses there in a row, and `score`, how the game's
-learning ranks the pattern (a new pattern's is 10; one seen again in a battle
-gains 5, the others lose 1). The score is read by a battle in one case: the
-game reads a pattern's chips to the first empty chip place with no other
-end, so from a pattern of five chips it reads on into the score. A pattern
-of five chips must state its score; another may. At most 8 different
-patterns.
+`records` is the eight pattern records in their order, each a table: `dx`
+and `dy`, where the computer navi stands from its target (`dx` columns
+toward its enemies, so -2 is two columns short of the target; `dy` rows down
+the screen); `chips`, its five chip places, each a chip's name, `0` or `{}`
+(the chips it uses there in a row, to the first empty place); and `score`,
+how the game's learning ranks the pattern (a new pattern's is 10; one seen
+again in a battle gains 5, the others lose 1). A record the game's learning
+never filled is zeros (`dx = 0, dy = 0`, five `0`, `score = 0`); one nothing
+has written is `dx = -1, dy = -1`, five `{}` and `score = 4294967295`.
 
-The file refuses what the game can't hold (a list with more entries than it
-has places, a ninth pattern, a pattern of none or of more than five chips or
-further from its target than the field is wide, a chip the game hasn't), and
-any of it for a game without computer navis (EXE6).
+The file refuses what the game can't hold: a list or a record that doesn't
+state each of its places, a pattern number past 8, a place from the target
+or a score that doesn't fit its bytes, a chip the game hasn't, an entry that
+is none of the above; and any of it for a game without computer navis
+(EXE6).
 
-**Why every place is stated.** The computer navi plays the entries in order,
+**Why all of it is stated.** The computer navi plays the entries in order,
 the played one going last: three times in four the first, otherwise it steps
-into an enemy's row and fires its buster (three shots). The order it starts
-with is the console's send of the data as the round is set up (0x0802C7BE):
-three swaps among places 1 to 3, 39 swaps among the other 39 (each swap two
-places drawn at random), then the entries packed to the front, here from a
-stream of the side's own from the seed. That is no even shuffle: a place is
-in none of the 39 swaps about one time in eight, so the entry in place 4
-leads what is sent about six times as often as another, and an empty place
-between two entries changes what a seed sends. A chip in several places is
-played that much more often. With none (a save that has learned nothing, and
-a new match's), the computer navi only fires its buster between rests. A
-netplay offer carries the data.
+into an enemy's row and fires its buster (three shots).
 
-**What the form leaves out of the save's block**, none of it read by a
-battle: which of the eight records a pattern is in (the game reaches a
-pattern only through the entry naming it; here each different pattern is a
-record, in the order the entries come, as the game's own write has them),
-records no entry names, the count at +0x54 (the send writes it) and the
-block's last eight bytes. A place holding 0 (no chip) is not stated either:
-no save the game wrote has one. `nettai_match`'s tests hold a block and the
-data read from it to the same sent list, entry for entry, for every seed
-tried.
+- *The places.* The order it starts with is the console's send of the data
+  as the round is set up (0x0802C7BE): three swaps among places 1 to 3, 39
+  swaps among the other 39 (each swap two places drawn at random), then the
+  entries packed to the front, here from a stream of the side's own from the
+  seed. That is no even shuffle: a place is in none of the 39 swaps about
+  one time in eight, so the entry in place 4 leads what is sent about six
+  times as often as another, and an empty place between two entries changes
+  what a seed sends. A chip in several places is played that much more
+  often.
+- *A 0* is packed with the entries, not away with the empty places: it can
+  come first, where a decision treats it as nothing to play (a miss, then a
+  buster run).
+- *The records.* The game reads a pattern's chips to the first empty chip
+  place with nothing else to end them, so from a record whose five places
+  are all filled it reads on: into the record's score, then the next
+  record's place and chips, each as a chip's number. So a record's score,
+  the record after it (named by an entry or not) and the records' order all
+  show. (The engine doesn't play the reading on yet, nor a 0 among a
+  pattern's chips, which a match's checks refuse for now: the AI's port is
+  getting both.)
+
+**What the form leaves out of the save's block**: the count at +0x54, which
+the send writes, and the block's last eight bytes, which nothing reads.
+`nettai_match`'s tests hold a block read into a side and written back, by
+itself and through a match file, to the same places and records, over
+blocks of each awkward shape.
 
 A random match (`nettai_match::draw`, the editor's Random) states the data
-too: what the game would have learned from a player who used each chip of
-the drawn folder once (`ComputerNavi::of_folder`: the folder's most held
-standard, mega and giga chips in their lists, as the game's battle end
-writes them, 0x0802C540).
+too: what the game would have written for a player who used each chip of the
+drawn folder once and learned no pattern (`ComputerNavi::of_folder`: the
+folder's most held standard, mega and giga chips in their lists, every
+record zeros, as the game's battle end writes them, 0x0802C540). A netplay
+offer carries the data.
 
 **The checks** (`nettai_match::check`) run when a file loads, when a netplay
 offer arrives (the same `check_side`), and live in the editor; each problem

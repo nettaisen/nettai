@@ -6,62 +6,55 @@
 //! stats are a later import's.) `Match::import_save` comes here for a save
 //! that isn't EXE6's.
 
-use crate::{Arena, ComputerNavi, Side, ids};
-use exe5_compat::save::{ComputerNaviBlock, Save};
+use crate::computer_navi::{ChipPlace, ComputerNavi, Entry, RECORDS, Record};
+use crate::{Arena, Side, ids};
+use exe5_compat::save::{COMPUTER_NAVI_EMPTY, COMPUTER_NAVI_PATTERN, ComputerNaviBlock, Save};
 use nettai_battle::content::Content;
-use nettai_battle::tactics::{Tactic, TacticPattern, Tactics};
 
-/// A save's computer-navi data block as a side states it: each place's
-/// entry, its chips by their numbers' names in `game`, a pattern entry with
-/// its record and score (`ComputerNavi::of_block`). What a match doesn't
-/// hold of it is left out and said: a chip `game` hasn't (and a pattern
-/// with one), a place holding 0, an entry for a pattern past the block's
-/// eight.
+/// A save's computer-navi data block as a side states it, place for place
+/// and record for record: its chips by their numbers' names in `game`, a
+/// pattern entry by its record's number. What a match can't state of it is
+/// left empty and said: a chip number `game` has no chip for, and an entry
+/// for a pattern record past the block's eight.
 pub(crate) fn computer_navi(content: &Content, game: &str, block: &ComputerNaviBlock) -> (ComputerNavi, Vec<String>) {
     let mut notes = Vec::new();
     let compat = exe5_compat::Compat::exe5();
-    let chip = |n: u16| compat.chip_key(n).and_then(|k| ids::chip(content, game, k));
-    // The pattern records, those with a chip the game hasn't none.
-    let patterns: Vec<Option<TacticPattern>> = block
-        .patterns
-        .iter()
-        .map(|p| {
-            let chips: Option<Vec<_>> = p.chips.iter().map(|&n| chip(n)).collect();
-            chips.map(|chips| TacticPattern { dx: p.dx, dy: p.dy, chips, score: p.score })
-        })
-        .collect();
-    let mut entries = Vec::with_capacity(block.places.len());
+    let mut nameless: Vec<u16> = Vec::new();
+    let mut chip = |n: u16| {
+        let c = compat.chip_key(n).and_then(|k| ids::chip(content, game, k));
+        if c.is_none() && !nameless.contains(&n) {
+            nameless.push(n);
+        }
+        c
+    };
+    let mut out = ComputerNavi::default();
     for (i, &h) in block.places.iter().enumerate() {
-        entries.push(match h {
-            0xFFFF => Tactic::Empty,
-            0 => Tactic::Nothing,
-            h if h & 0x8000 != 0 => {
-                let n = (h & 0x7FFF) as usize;
-                match patterns.get(n) {
-                    Some(Some(_)) => Tactic::Pattern(n as u8),
-                    Some(None) => {
-                        notes.push(format!("pattern {} of the save's computer-navi data has a chip {game} hasn't: left out", n + 1));
-                        Tactic::Empty
-                    }
-                    None => {
-                        notes.push(format!("place {} of the save's computer-navi data names pattern {}, past its eight: left out", i + 1, n + 1));
-                        Tactic::Empty
-                    }
-                }
-            }
-            h => match chip(h) {
-                Some(c) => Tactic::Chip(c),
-                None => {
-                    notes.push(format!("place {} of the save's computer-navi data holds chip {h:#05x}, which {game} hasn't: left out", i + 1));
-                    Tactic::Empty
+        out.places[i] = match h {
+            COMPUTER_NAVI_EMPTY => Entry::Empty,
+            0 => Entry::Zero,
+            h if h & COMPUTER_NAVI_PATTERN != 0 => match (h & !COMPUTER_NAVI_PATTERN) as usize {
+                n if n < RECORDS => Entry::Pattern(n as u8),
+                n => {
+                    notes.push(format!("place {} of the save's computer-navi data names pattern {}, past its eight: left empty", i + 1, n + 1));
+                    Entry::Empty
                 }
             },
-        });
+            h => chip(h).map_or(Entry::Empty, Entry::Chip),
+        };
     }
-    let block = Tactics { entries, patterns: patterns.into_iter().map(Option::unwrap_or_default).collect() };
-    let (data, more) = ComputerNavi::of_block(&block);
-    notes.extend(more);
-    (data, notes)
+    for (record, p) in out.records.iter_mut().zip(&block.patterns) {
+        let chips = p.chips.map(|h| match h {
+            COMPUTER_NAVI_EMPTY => ChipPlace::Empty,
+            0 => ChipPlace::Zero,
+            h => chip(h).map_or(ChipPlace::Empty, ChipPlace::Chip),
+        });
+        *record = Record { dx: p.dx, dy: p.dy, chips, score: p.score };
+    }
+    if !nameless.is_empty() {
+        let numbers: Vec<String> = nameless.iter().map(|n| format!("{n:#05x}")).collect();
+        notes.push(format!("the save's computer-navi data holds chip numbers {game} has no chip for ({}): their places are left empty", numbers.join(", ")));
+    }
+    (out, notes)
 }
 
 /// The EXE5 save in `file` (a .sav's bytes, or a raw save image as Tango's
@@ -118,6 +111,7 @@ impl Side {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::testing::{exe5_content, exe6_content};
 
     /// A Team ProtoMan save, dark, with every soul flag set and one
@@ -167,15 +161,14 @@ mod tests {
         assert!(e.contains("EXE6") && e.contains("EXE5"), "{e}");
     }
 
-    /// A save's computer-navi data becomes the side's: each place's entry
-    /// in its place, chips by their numbers' names, a pattern entry its
-    /// record with its score; a save that has learned nothing gives none;
-    /// what a match doesn't hold is said.
+    /// A save's computer-navi data becomes the side's, place for place and
+    /// record for record: chips by their numbers' names, a pattern entry by
+    /// its record's number, a 0 a 0; a block nothing has written gives the
+    /// side's default; what a match can't state is said.
     #[test]
     fn a_exe5_save_gives_the_computer_navi_data() {
-        use crate::computer_navi::{Pattern, Play};
         let content = exe5_content();
-        let chip = |name: &str| Play::Chip(crate::ids::chip(&content, "exe5", name).unwrap());
+        let chip = |name: &str| crate::ids::chip(&content, "exe5", name).unwrap();
         let number = |name: &str| exe5_compat::Compat::exe5().chip_entry(name).unwrap().id;
         let mut image = vec![0u8; exe5_compat::save::IMAGE_SIZE];
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOK 20041006 US");
@@ -186,47 +179,142 @@ mod tests {
             }
         };
         // As a battle's end writes it: place 2 (of the first three), the
-        // most used standard chips from place 4, a pattern in place 34.
+        // most used standard chips from place 4, a pattern in place 34, its
+        // record the first; the second record zeros.
         put(&mut image, 2, &[number("areagrab")]);
         put(&mut image, 6, &[number("lance"), number("lance"), number("lance"), number("lance"), number("sidebub3")]);
         put(&mut image, 66, &[0x8000]);
         image[0x554C + 0x58..0x554C + 0x5A].copy_from_slice(&[0xFD, 0x01]);
         put(&mut image, 0x5A, &[number("sword"), number("wideswrd")]);
         put(&mut image, 0x64, &[7, 0]);
+        image[0x554C + 0x68..0x554C + 0x78].fill(0);
         let mut m = crate::Match::empty(&content, "exe5").unwrap();
         let notes = m.import_save(&content, 1, &image).unwrap();
-        let sword = crate::ids::chip(&content, "exe5", "sword").unwrap();
-        let wideswrd = crate::ids::chip(&content, "exe5", "wideswrd").unwrap();
-        let data = &m.sides[1].computer_navi;
-        let mut want = crate::ComputerNavi::default();
-        want.places[1] = Some(chip("areagrab"));
+        let mut want = ComputerNavi::default();
+        want.places[1] = Entry::Chip(chip("areagrab"));
         for i in 3..7 {
-            want.places[i] = Some(chip("lance"));
+            want.places[i] = Entry::Chip(chip("lance"));
         }
-        want.places[7] = Some(chip("sidebub3"));
-        want.places[33] = Some(Play::Pattern(Pattern { dx: -3, dy: 1, chips: vec![sword, wideswrd], score: Some(7) }));
-        assert_eq!(*data, want);
+        want.places[7] = Entry::Chip(chip("sidebub3"));
+        want.places[33] = Entry::Pattern(0);
+        want.records[0] = Record {
+            dx: -3,
+            dy: 1,
+            chips: [ChipPlace::Chip(chip("sword")), ChipPlace::Chip(chip("wideswrd")), ChipPlace::Empty, ChipPlace::Empty, ChipPlace::Empty],
+            score: 7,
+        };
+        want.records[1] = Record::ZERO;
+        assert_eq!(m.sides[1].computer_navi, want);
         assert!(!notes.iter().any(|n| n.contains("computer-navi")), "{notes:?}");
-        assert!(m.sides[0].computer_navi.is_empty());
+        assert!(m.sides[0].computer_navi.is_blank());
         assert!(!crate::check_match(&content, &m).iter().any(|p| p.contains("computer navi")), "{:?}", crate::check_match(&content, &m));
-        // What a match doesn't hold: a chip number the game hasn't, a place
-        // holding 0, a pattern past the eighth. A full record comes with
-        // its score.
-        put(&mut image, 8, &[0x1FF, 0, 0x8009, 0x8001]);
-        image[0x554C + 0x68..0x554C + 0x6A].copy_from_slice(&[0xFF, 0x00]);
-        put(&mut image, 0x6A, &[number("sword"); 5]);
-        put(&mut image, 0x74, &[12, 0]);
+        // What a match can't state: a chip number the game has no chip for
+        // (among the places, and in a record), a pattern past the eighth.
+        put(&mut image, 8, &[0x1FF, 0, 0x8009]);
+        put(&mut image, 0x5E, &[0x1FE]);
         let notes = m.import_save(&content, 1, &image).unwrap();
-        for said in ["place 5 of the save's computer-navi data holds chip 0x1ff, which exe5 hasn't", "names pattern 10, past its eight", "1 of the computer-navi data's places hold no chip (0)"] {
-            assert!(notes.iter().any(|n| n.contains(said)), "{said}: {notes:?}");
-        }
-        assert_eq!(notes.iter().filter(|n| n.contains("computer-navi")).count(), 3, "{notes:?}");
+        let said: Vec<&String> = notes.iter().filter(|n| n.contains("computer-navi")).collect();
+        assert_eq!(said.len(), 2, "{notes:?}");
+        assert!(said[0].contains("place 7 of the save's computer-navi data names pattern 10, past its eight"), "{notes:?}");
+        assert!(said[1].contains("holds chip numbers exe5 has no chip for (0x1ff, 0x1fe): their places are left empty"), "{notes:?}");
         let data = &m.sides[1].computer_navi;
-        assert_eq!(data.places[3..8], [Some(chip("lance")), None, None, None, Some(Play::Pattern(Pattern { dx: -1, dy: 0, chips: vec![sword; 5], score: Some(12) }))]);
-        assert!(!crate::check_match(&content, &m).iter().any(|p| p.contains("computer navi")), "{:?}", crate::check_match(&content, &m));
-        // A save that has learned nothing.
+        assert_eq!(data.places[3..8], [Entry::Chip(chip("lance")), Entry::Empty, Entry::Zero, Entry::Empty, Entry::Chip(chip("sidebub3"))]);
+        assert_eq!(data.records[0].chips[2], ChipPlace::Empty);
+        // A block nothing has written.
         image[0x554C..0x554C + 0xE0].fill(0xFF);
         m.import_save(&content, 1, &image).unwrap();
-        assert!(m.sides[1].computer_navi.is_empty());
+        assert!(m.sides[1].computer_navi.is_blank());
+    }
+
+    /// The block a side's data is, by number: the import's way back.
+    fn block_of(content: &nettai_battle::content::Content, data: &ComputerNavi) -> ComputerNaviBlock {
+        let number = |c: nettai_content_api::ChipHandle| exe5_compat::Compat::exe5().chip_entry(crate::ids::local(&content.defs.chip(c).key)).unwrap().id;
+        ComputerNaviBlock {
+            places: data.places.map(|e| match e {
+                Entry::Empty => COMPUTER_NAVI_EMPTY,
+                Entry::Zero => 0,
+                Entry::Chip(c) => number(c),
+                Entry::Pattern(n) => COMPUTER_NAVI_PATTERN | n as u16,
+            }),
+            patterns: data.records.map(|r| exe5_compat::save::ComputerNaviPattern {
+                dx: r.dx,
+                dy: r.dy,
+                chips: r.chips.map(|c| match c {
+                    ChipPlace::Empty => COMPUTER_NAVI_EMPTY,
+                    ChipPlace::Zero => 0,
+                    ChipPlace::Chip(c) => number(c),
+                }),
+                score: r.score,
+            }),
+        }
+    }
+
+    /// What a match states of a block is the block: a block read into a
+    /// side's data and written back is the same in every place and every
+    /// record (all a battle reads of it: only its count and its last eight
+    /// bytes aren't stated), and so is the data written to a match file and
+    /// read back. Over blocks of each awkward shape: as a battle's end
+    /// writes one; a pattern that fills its record, the record after it
+    /// zeros, and another, the record after it blank; a 0 among the places
+    /// and among a record's chips; pattern entries out of the records'
+    /// order, in the first places, one twice, and records no entry names;
+    /// a full block; one with zeroed records alone; a blank one.
+    #[test]
+    fn what_a_match_states_of_a_block_is_the_block() {
+        use exe5_compat::save::ComputerNaviPattern;
+        let content = exe5_content();
+        let n = |name: &str| exe5_compat::Compat::exe5().chip_entry(name).unwrap().id;
+        let none = COMPUTER_NAVI_EMPTY;
+        let blank = ComputerNaviPattern { dx: -1, dy: -1, chips: [none; 5], score: 0xFFFF_FFFF };
+        let zero = ComputerNaviPattern { dx: 0, dy: 0, chips: [0; 5], score: 0 };
+        let block = |places: &[(usize, u16)], patterns: [ComputerNaviPattern; 8]| {
+            let mut out = ComputerNaviBlock { places: [none; 42], patterns };
+            for &(i, h) in places {
+                out.places[i] = h;
+            }
+            out
+        };
+        let (lance, sword, cannon, wide) = (n("lance"), n("sword"), n("cannon"), n("wideswrd"));
+        let two = ComputerNaviPattern { dx: -3, dy: 1, chips: [lance, lance, none, none, none], score: 7 };
+        let full = ComputerNaviPattern { dx: -1, dy: 0, chips: [sword, wide, sword, wide, cannon], score: 12 };
+        let long_score = ComputerNaviPattern { dx: 2, dy: -2, chips: [cannon, 0, sword, none, cannon], score: 0x0123_4567 };
+        // As a battle's end writes one: the standard chips (the most used
+        // four times), megas, a giga, two patterns, a program advance.
+        let mut written: Vec<(usize, u16)> = (3..7).map(|i| (i, lance)).chain((7..11).map(|i| (i, n("sidebub3")))).collect();
+        written.extend([(11, n("magnum")), (12, n("magnum")), (13, cannon), (27, n("protoman")), (28, n("colonel")), (32, n("crossdiv"))]);
+        written.extend([(33, 0x8000), (34, 0x8001), (41, n("csmopris"))]);
+        let every: Vec<(usize, u16)> = (0..42).map(|i| (i, if i % 7 == 0 { 0x8000 | (i as u16 / 7) } else { [lance, sword, cannon, wide][i % 4] })).collect();
+        let blocks = [
+            ("written", block(&written, [two, full, zero, zero, zero, zero, zero, zero])),
+            ("a full pattern, then zeros", block(&[(33, 0x8000)], [full, zero, blank, blank, blank, blank, blank, blank])),
+            ("a full pattern, then a blank record", block(&[(33, 0x8000)], [full, blank, zero, zero, zero, zero, zero, zero])),
+            ("a full pattern last", block(&[(33, 0x8007)], [zero, zero, zero, zero, zero, zero, zero, full])),
+            ("a 0 among the places and in a record", block(&[(3, lance), (4, 0), (5, lance), (0, 0), (40, 0x8002)], [blank, blank, long_score, blank, blank, blank, blank, blank])),
+            (
+                "patterns out of order, in the first places, one twice, records unnamed",
+                block(&[(0, 0x8005), (2, 0x8001), (12, 0x8005), (13, sword), (33, 0x8000)], [two, full, long_score, zero, blank, two, full, long_score]),
+            ),
+            ("full", block(&every, [full; 8])),
+            ("zeroed records alone", block(&[], [zero; 8])),
+            ("blank", block(&[], [blank; 8])),
+        ];
+        for (name, original) in &blocks {
+            let (data, notes) = super::computer_navi(&content, "exe5", original);
+            assert_eq!(notes, Vec::<String>::new(), "{name}");
+            assert_eq!(block_of(&content, &data), *original, "{name}");
+            // (And as bytes, but for the count and the last eight.)
+            assert_eq!(ComputerNaviBlock::read(&original.bytes()), Ok(*original), "{name}");
+            // Through a match file.
+            let mut m = crate::Match::empty(&content, "exe5").unwrap();
+            m.sides[0].computer_navi = data;
+            let text = crate::write(&content, &m);
+            let file: crate::file::MatchFile = toml::from_str(&text).unwrap_or_else(|e| panic!("{name}: {e}\n{text}"));
+            let back = crate::file::resolve(&content, &file).unwrap_or_else(|e| panic!("{name}: {e:?}\n{text}"));
+            assert_eq!(back.sides[0].computer_navi, data, "{name}:\n{text}");
+            assert_eq!(block_of(&content, &back.sides[0].computer_navi), *original, "{name}");
+            // A block nothing has written is the side that states none.
+            assert_eq!(text.contains("computer_navi"), *name != "blank", "{name}:\n{text}");
+        }
+        assert!(super::computer_navi(&content, "exe5", &blocks[8].1).0.is_blank());
     }
 }
