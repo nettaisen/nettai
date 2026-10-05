@@ -7,17 +7,24 @@
 
 local attach_points = require("@self/attach_points")
 local buster = require("../weapons/buster")
+local capsules = require("@self/capsules")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged-shot")
 local drkrecov = require("../../../chips/drkrecov")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "meddysoul",
     soul = { family = "recovery", chaos_cycle = 2 },
-    change = souls.action,
-    revert = souls.revert,
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- Meddy's image as MegaMan unites with her (rules/souls/image).
+    image = soul_image.look { sprite = asset.sprite("meddy") },
+    -- What it adds to the custom screen (the souls system gathers it, rules/souls/custom): its capsules (./capsules).
+    custom = capsules.custom,
     sprite = asset.sprite("meddysoul"),
     element = "null",
     buster_bonus = 0,

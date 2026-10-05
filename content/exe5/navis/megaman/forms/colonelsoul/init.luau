@@ -7,19 +7,27 @@
 -- arms its side's army: the obstacles on the other side's panels turn into its soldiers (objects/soldier, the
 -- obstacle framework's step; exe5-map.md §15.11), which strike with the damage words it sets.
 
+local arm_change = require("@self/arm-change")
 local attach_points = require("@self/attach_points")
+local body_overlays = require("../../../lib/body_overlays")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged-shot")
 local drksonic = require("../../../chips/drksonic")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "colonelsoul",
     soul = { family = "summon" },
-    change = souls.action,
-    revert = souls.revert,
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- Colonel's image as MegaMan unites with him (rules/souls/image), in his cape (0x0800EDBC's routine for the soul).
+    image = soul_image.wearing(asset.sprite("colonel"), "soul-image/colonel", body_overlays.colonel),
+    -- What it adds to the custom screen (the souls system gathers it, rules/souls/custom): Arm Change (./arm-change).
+    custom = arm_change.custom,
     sprite = asset.sprite("colonelsoul"),
     element = "null",
     buster_bonus = 0,
