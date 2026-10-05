@@ -47,8 +47,7 @@ pub trait Datagram {
 
 /// The largest datagram a peer sends or takes: a horizon of one-byte ticks
 /// and a frame's header with room to spare, under the 1,500-byte Ethernet
-/// frame (a payload's chunks can make a frame longer; only recordings have
-/// payloads, and they play on one machine).
+/// frame.
 pub const MAX_DATAGRAM: usize = 64 * 1024;
 
 /// UDP to one other peer.

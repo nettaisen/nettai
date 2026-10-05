@@ -119,16 +119,6 @@ pub struct Sent {
     pub arrives: u32,
 }
 
-/// What a recording says about a player whose screen isn't simulated (see
-/// `PlayerSetup::folder`).
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Recorded {
-    /// Their custom screen's status bit as they send it this tick.
-    pub in_custom: bool,
-    /// Their result, arrived this tick.
-    pub result: Option<Box<CustomResult>>,
-}
-
 /// One player's custom-screen state through a round.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Side {
@@ -524,7 +514,7 @@ impl Battle {
 
     /// One tick of both players' screens after the opening tick, then the
     /// link: the fight resumes once both results are in.
-    pub(crate) fn tick_custom_screens(&mut self, recorded: &[Option<Recorded>; 2]) {
+    pub(crate) fn tick_custom_screens(&mut self) {
         self.custom.ticks += 1;
         if self.custom.ticks == 10 && self.round.turn != 1 {
             // The window has slid in: the NaviCust custom-HP bug bites
@@ -534,14 +524,6 @@ impl Battle {
             }
         }
         for side in 0..2u8 {
-            if let Some(r) = &recorded[side as usize] {
-                let s = &mut self.custom.sides[side as usize];
-                if let Some(result) = &r.result {
-                    let now = self.round.ticks;
-                    s.sent = Some(Sent { result: (**result).clone(), sent_at: now, arrives: now });
-                }
-                continue;
-            }
             let content = self.content.clone();
             let library: &crate::content::Content = &content;
             let ctx = self.custom_context(side, library);
