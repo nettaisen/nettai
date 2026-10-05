@@ -148,6 +148,8 @@ pub struct EffectsRules {
     pub load_sets_part_palette: bool,
     /// How the game's obstacles number their action tables.
     pub obstacle_actions: ObstacleActions,
+    /// The Full Synchro aura where games differ.
+    pub full_synchro_aura: AuraRules,
 }
 
 /// How a game's obstacles number their action tables (`kinds::obstacle`):
@@ -431,22 +433,78 @@ pub enum FormBreak {
     AnyForm,
 }
 
-/// Which emotions a side's navi has (`Rules::emotions`): a whole model of
-/// the two the engine has, which nothing shorter than its game names
-/// honestly (how an emotion is read off the navi, what holds its mood, how
-/// its anger ends, and its Full Synchro aura all go together).
+/// A side's emotions where games differ (the status section's `emotion`):
+/// how the emotion is read off the navi (`kinds::player::emotion`: EXE6's
+/// `sub_8015B54`, EXE5's 0x0801270C), what holds a mood and how anger
+/// leaves it. Read in this order: battle mode 1's plain reading, a form's
+/// normal, then anger and worn out (a mood of 0, or exhausted) in the
+/// game's order, tired, Full Synchro (a mood of 0xFF), worried, normal.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EmotionRules {
+    /// What holds a side's mood against the setter (`sub_8015BEC`, EXE5's
+    /// 0x080127D6).
+    pub mood_held: MoodHeld,
+    /// How the end of anger leaves the mood (`sub_80143A6`, EXE5's
+    /// 0x08011A94).
+    pub anger_end: AngerEnd,
+    /// In battle mode 1 a side is in Full Synchro (a mood of 0xFF) or
+    /// normal, whatever else (EXE5's 0x080127C0).
+    pub plain_in_battle_mode_1: bool,
+    /// Out of its base form a navi reads as normal (EXE5's: in a soul, the
+    /// soul's own face, which nothing doubles or ends).
+    pub normal_in_a_form: bool,
+    /// Anger is read before worn out (EXE5's: an angry navi at a mood of 0
+    /// is angry); else worn out first (EXE6's).
+    pub anger_before_worn_out: bool,
+    /// The navi's held states are read: exhausted is worn out, and held
+    /// tired its own emotion (EXE6's AIData +0x33 and +0x32); else neither
+    /// (EXE5's routine reads no such byte).
+    pub tired_and_exhausted: bool,
+    /// A mood under this is worried (EXE5's 65); none stated: no mood is.
+    #[serde(default)]
+    pub worried_below: Option<u8>,
+}
+
+/// What holds a side's mood against the setter (`EmotionRules::mood_held`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum Emotions {
-    /// EXE6's (`sub_8015B54`, `sub_8015BEC`): worn out when exhausted or at
-    /// a mood of 0, then angry, tired, Full Synchro; a tired or exhausted
-    /// navi's mood is held; anger's end sets the mood to 0x80.
-    Exe6,
-    /// EXE5's (0x08012740): a soul first, then anger, a mood of 0 and Full
-    /// Synchro, a mood under 65 worried; the setter (0x080127D6) leaves a
-    /// mood of 0, anger's end too; the anger tick passes over AI index 23;
-    /// its own aura (actor object 0x5E).
-    Exe5,
+pub enum MoodHeld {
+    /// Its navi held tired or exhausted (EXE6's `sub_8015BEC`).
+    TiredOrExhausted,
+    /// A mood of 0, which stays (EXE5's 0x080127D6: a dark MegaMan never
+    /// reaches Full Synchro, and anger's end doesn't lift him).
+    AtZero,
+}
+
+/// How the end of anger leaves the mood (`EmotionRules::anger_end`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AngerEnd {
+    /// The mood goes to 0x80, whatever holds it (EXE6's `sub_80143A6`).
+    ResetsMood,
+    /// The mood goes to 0x80 through the setter: a held mood stays (EXE5's
+    /// 0x08011A94).
+    ThroughSetter,
+}
+
+/// The Full Synchro aura where games differ (the effects section's
+/// `full_synchro_aura`; `kinds::full_synchro_aura`: EXE6's `sub_80C4B18`,
+/// EXE5's actor object 0x5E, 0x080C45E0).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AuraRules {
+    /// Its animation follows its navi's identity each tick (EXE6's
+    /// `sub_80C4B84`: a Cross's or a Beast's own as the navi changes form);
+    /// else it keeps the one it started with (EXE5's 0x080C4648).
+    pub follows_identity: bool,
+    /// Its sprite steps while the battle is paused (EXE5's); else a pause
+    /// stills it (EXE6's). Dimming stills it in both.
+    pub steps_while_paused: bool,
+    /// Once the fight is on it stops running while the battle is paused
+    /// (EXE5's: its header flag goes); else it runs through every pause
+    /// (EXE6's).
+    pub stops_at_a_pause_in_the_fight: bool,
 }
 
 /// Global rules: element weakness, collision types, panels, banners,
@@ -483,12 +541,10 @@ pub struct Rules {
     /// How a navi's status block runs its reactions (rule section
     /// `status`).
     pub reactions: Reactions,
-    /// Whose emotions the side's navi has (rule section `status`): EXE6's
-    /// (`sub_8015B54`, `sub_8015BEC`) or EXE5's (0x08012740: a soul first,
-    /// then anger, a mood of 0 and Full Synchro, a mood under 65 worried;
-    /// 0x080127D6's setter leaving a mood of 0; the anger tick passing
-    /// over AI index 23).
-    pub emotions: Emotions,
+    /// A side's emotions where games differ (rule section `status`'s
+    /// `emotion`): how one is read off the navi, what holds a mood, how
+    /// anger leaves it.
+    pub emotion: EmotionRules,
     /// How the weakness request breaks a form (rule section `status`):
     /// EXE6's (`sub_8015766`: a Cross or a Beast, to what it breaks to) or
     /// EXE5's (0x080122C8: any form, to the base form; no animation 2, no
