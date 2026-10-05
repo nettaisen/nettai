@@ -165,7 +165,8 @@ local function init(me: Object)
     me:set_panel_from_coordinates()
     local sprite = me.sprite
     sprite:load(SPRITE)
-    sprite.shadow = "hidden"
+    -- (The setup's shadow byte is 0: `sprite_noShadow`, 0x0800F1C4, the first part drawn with the sprite.)
+    sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = ANIM, 0xFF
     if not me:create_collision() then
         me:free()

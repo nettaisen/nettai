@@ -169,7 +169,7 @@ fn player_setup(f: BattleFolder, seed: u32, side: u32) -> PlayerSetup {
         rules: Vec::new(),
         patch_cards: Default::default(),
         navicust: None,
-        tactics: Default::default(),
+        auto_battle: Default::default(),
     }
 }
 
