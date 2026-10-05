@@ -76,7 +76,7 @@ fn rgb(c: u16) -> [u8; 3] {
 #[test]
 fn renders_a_live_battle_to_png() {
     let assets = assets();
-    let renderer = Renderer::new(&assets);
+    let renderer = Renderer::new(std::sync::Arc::new(assets));
     // A live battle on the engine's hand-authored test content.
     let content = testing::content();
     let settings = nettai_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));

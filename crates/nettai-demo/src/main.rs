@@ -606,7 +606,7 @@ fn main() {
     let renderer = graphics.renderer(args.text, font.clone());
     if args.audit {
         let setup = headless::AuditSetup {
-            packs: renderer.packs.clone(),
+            packs: renderer.graphics().clone(),
             strings: graphics.strings.clone(),
             text: args.text,
             font,
