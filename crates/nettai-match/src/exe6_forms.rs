@@ -8,7 +8,7 @@
 use crate::testing::exe6_content;
 use exe6_compat::forms::{self, Kind};
 use nettai_battle::content::FormTraits;
-use nettai_battle::custom::GameVersion;
+use exe6_compat::GameVersion;
 use nettai_content_api::FormHandle;
 
 #[test]

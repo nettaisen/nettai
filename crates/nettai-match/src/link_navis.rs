@@ -16,7 +16,6 @@
 
 use crate::Side;
 use nettai_battle::content::Content;
-use nettai_battle::custom::GameVersion;
 use nettai_battle::setup::NaviStats;
 use nettai_content_api::NaviHandle;
 
@@ -134,7 +133,7 @@ impl Side {
     /// reload over its fresh stats), a team navi's as the story leaves them
     /// at `level`, else its fresh stats ([`Side::base_stats`]). What a match
     /// file's stats block is written over.
-    pub fn save_base(content: &Content, navi: NaviHandle, version: Option<GameVersion>, level: Option<u8>) -> NaviStats {
+    pub fn save_base(content: &Content, navi: NaviHandle, version: Option<&str>, level: Option<u8>) -> NaviStats {
         let fresh = Side::base_stats(content, navi, version);
         match at_level(content, navi, &fresh, level) {
             Some(s) => crate::starting(content, s, version),
@@ -155,7 +154,7 @@ impl Side {
     /// side's stats (`from`: what the save keeps carries over, as the game's
     /// switch carries it). None for a navi without levels.
     pub fn reloaded_as(&self, content: &Content, navi: NaviHandle) -> Option<NaviStats> {
-        at_level(content, navi, &self.stats, self.navi_level).map(|s| crate::starting(content, s, self.version))
+        at_level(content, navi, &self.stats, self.navi_level).map(|s| crate::starting(content, s, self.version.as_deref()))
     }
 }
 
@@ -189,17 +188,17 @@ mod tests {
         ];
         for (key, attack, rapid, charge, custom, mega, max_hp, base_hp) in tango {
             let n = navi(&content, key);
-            let s = Side::save_base(&content, n, Some(GameVersion::Falzar), Some(14));
+            let s = Side::save_base(&content, n, Some("falzar"), Some(14));
             assert_eq!(
                 (s.attack, s.rapid, s.charge, s.custom_level, s.mega_level, s.giga_level, s.max_hp, s.hp, s.max_base_hp),
                 (attack, rapid, charge, custom, mega, 1, max_hp, max_hp, base_hp),
                 "{key}"
             );
         }
-        let tengu = Side::save_base(&content, navi(&content, "tenguman"), Some(GameVersion::Falzar), Some(14));
+        let tengu = Side::save_base(&content, navi(&content, "tenguman"), Some("falzar"), Some(14));
         assert!(tengu.float_shoes && tengu.air_shoes);
         let protoman = navi(&content, "protoman");
-        let back = |level| Side::save_base(&content, protoman, Some(GameVersion::Falzar), Some(level)).weapons.back_special.map(|w| content.defs.weapon(w).key.clone());
+        let back = |level| Side::save_base(&content, protoman, Some("falzar"), Some(level)).weapons.back_special.map(|w| content.defs.weapon(w).key.clone());
         assert_eq!(back(14).as_deref(), Some("protoman/back-special-2"), "the reflecting guard from level 10");
         assert_eq!(back(9).as_deref(), Some("protoman/back-special"), "the guard that only guards below");
     }
@@ -209,7 +208,7 @@ mod tests {
     #[test]
     fn protoman_at_level_5() {
         let content = exe6_content();
-        let s = Side::save_base(&content, navi(&content, "protoman"), Some(GameVersion::Falzar), Some(5));
+        let s = Side::save_base(&content, navi(&content, "protoman"), Some("falzar"), Some(5));
         assert_eq!((s.attack, s.rapid, s.charge, s.custom_level, s.mega_level, s.max_hp, s.max_base_hp), (1, 1, 1, 5, 5, 1150, 800));
     }
 
