@@ -650,5 +650,16 @@ of the earlier games) gets three things on the screen, all ported though no chip
   5 frames. When the cursor leaves (or the state changes), fades 0x50 and 0x58 take both back and the volumes go
   the other way, 6 steps (a fade toward clear holds its first frame). The volumes are cues
   (`SoundCue::ScreenVolume`) for the screen's player; the closing's `sub_802A3CC` sets both to 0x100 again
-  (`RestoreVolume`), and `sub_80062EC` clears both fade records. A counter at `+0x14` the routine steps changes
-  nothing. The look keeps the hover (`ScreenLook::dark`) and the second record (`window_fade`).
+  (`RestoreVolume`), and `sub_80062EC` clears both fade records. The look keeps the hover (`ScreenLook::dark`)
+  and the second record (`window_fade`).
+- **The hover's counter** (`+0x14`; `ScreenLook::hover_count`): the routine steps it every tick, 0 to 63, from 0
+  as each screen opens, whatever the screen's state (a description, a system's window such as EXE5's soul's
+  choice, the window hidden). EXE6's routine does nothing with it. EXE5's (0x08025A80) plays its hover sound,
+  0x16B, each time the counter wraps to 0 with the hover not clear (darkening, dark or clearing: 0x08025AA2): the
+  optional sound role `custom_dark_hover`, which EXE5's rules fill and EXE6's don't (`ScreenSound::DarkHover`, for
+  the screen's player). So a cursor that rests on a dark chip sounds 63 ticks after the screen's opening sound and
+  every 64 after that, and not while it is on OK, a system's window is up or the window is hidden (the hover is
+  clear there). Checked against the original on the chip lab's custom/dark-hover, dark-hover-soul and
+  dark-hover-hidden (library-exe5): every frame and every sound call, two screens of a round, through a
+  description, Chaos Unison's choice and SELECT's hide. No other recording of the EXE5 lab has the call: none
+  keeps the hover up over a wrap (the longest is 14 ticks).
