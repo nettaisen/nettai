@@ -46,6 +46,7 @@ return define.ruleset {
     elements = require("@self/elements"),
     flow = require("@self/flow"),
     fresh_stats = require("@self/fresh_stats"),
+    link_pick = require("@self/link_pick"),
     lockon = require("@self/lockon").rules,
     math = require("@self/math"),
     navicust = require("@self/navicust/section"),
