@@ -209,7 +209,7 @@ pub fn trace_rounds(path: &std::path::Path, content: &Arc<Content>) -> Result<Ve
             let rounds = Bn5TracePlayer::load(path, content)?;
             Ok(rounds.into_iter().map(|r| (r.round_number, Box::new(r) as Box<dyn Driver>)).collect())
         }
-        other => Err(format!("a {other} recording: no game this frontend replays recordings of")),
+        other => Err(format!("a recording of {other}: no game this frontend replays recordings of")),
     }
 }
 
