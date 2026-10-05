@@ -142,12 +142,12 @@ fn custom_of(rom: &Rom, a: &Addresses) -> CustomLettering {
         pictures: SlotPictures { ok: picture(rom, a.ok), ok_picked: picture(rom, a.ok_picked), other: picture(rom, a.other) },
         // (EXE5 has no Cross window.)
         cross_names: Vec::new(),
-        // The soul button's tiles, and the re-deal button's and Arm Change's
-        // pictures in the chip window.
+        // Arm Change's and the re-deal button's pictures in the chip window,
+        // and the soul button's tiles (by name, as a pack keeps them).
         buttons: vec![
-            (SOUL_BUTTON.into(), ButtonLettering { tiles: Some(crate::hud::tiles(rom, a.soul_buttons, SOUL_BUTTON_BYTES)), picture: None }),
-            (REDEAL_BUTTON.into(), ButtonLettering { tiles: None, picture: Some(picture(rom, a.redeal)) }),
             (ARM_CHANGE_BUTTON.into(), ButtonLettering { tiles: None, picture: Some(picture(rom, a.scrap)) }),
+            (REDEAL_BUTTON.into(), ButtonLettering { tiles: None, picture: Some(picture(rom, a.redeal)) }),
+            (SOUL_BUTTON.into(), ButtonLettering { tiles: Some(crate::hud::tiles(rom, a.soul_buttons, SOUL_BUTTON_BYTES)), picture: None }),
         ],
     }
 }
