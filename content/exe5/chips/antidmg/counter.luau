@@ -20,6 +20,9 @@ local shuriken_kind = shuriken.make_kind {
     target = collision.hits_navis,
 }
 
+-- (ShadowMan's charged attack throws the same shuriken: navis/shadowman/charge.)
+counter.shuriken = shuriken_kind
+
 counter.action = common.action_at {
     id = "antidmg/counter",
     shuriken = shuriken_kind,
