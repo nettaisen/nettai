@@ -47,6 +47,15 @@ pub const VERSION_FIELD: &str = "version";
 /// EXE6's bug frags: its dark-chips system's setup (a dark chip spends one).
 pub const BUG_FRAGS_FIELD: &str = "bug_frags";
 
+/// The versions a side of a game that takes one states (EXE6's, as a match
+/// file names them).
+pub const VERSIONS: &str = "falzar or gregar";
+
+/// Why a game whose rules take no version has none to state.
+pub fn no_versions(game: &str) -> String {
+    format!("its versions play alike, so a match of {game} is of neither")
+}
+
 /// A fresh save's karma (0x08010C00), and the most there is.
 pub const DEFAULT_KARMA: u16 = 500;
 pub const MAX_KARMA: u16 = 1000;
@@ -87,12 +96,19 @@ pub fn owned_souls(content: &Content, game: &str, side: &Side) -> Vec<FormHandle
     side.souls.clone().unwrap_or_else(|| all_souls(content, game))
 }
 
-/// What is wrong with a side's karma and souls on `arena`: karma past
-/// 1000, or other than the default under rules that take none; a soul list
-/// under rules without souls, a form that is no soul of the game's, a soul
-/// twice. (Either version's souls are fine.)
+/// What is wrong with a side's version, karma and souls on `arena`: no
+/// version under rules that take one (nothing fills one in), or one under
+/// rules that take none; karma past 1000, or other than the default under
+/// rules that take none; a soul list under rules without souls, a form that
+/// is no soul of the game's, a soul twice. (Either version's souls are
+/// fine.)
 pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
     let mut out = Vec::new();
+    match (side.version, Side::takes_version(content)) {
+        (None, true) => out.push(format!("no version: a side of {} states its own ({VERSIONS}); none is assumed", arena.game)),
+        (Some(_), false) => out.push(format!("a version, but {} has none to state: {}", arena.game, no_versions(&arena.game))),
+        _ => {}
+    }
     if side.karma > MAX_KARMA {
         out.push(format!("karma {}: the light/dark value is 0 to {MAX_KARMA}", side.karma));
     }
@@ -158,9 +174,10 @@ pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerS
 }
 
 impl Side {
-    /// Whether a side takes its version (Gregar or Falzar: EXE6's cross and
-    /// beast systems' `version`). EXE5's rules don't.
-    pub fn takes_game(content: &Content) -> bool {
+    /// Whether a side takes a version (Gregar or Falzar: EXE6's cross and
+    /// beast systems' `version`). EXE5's rules don't: its two versions play
+    /// alike, and a match of it states none.
+    pub fn takes_version(content: &Content) -> bool {
         takes(content, VERSION_FIELD)
     }
 

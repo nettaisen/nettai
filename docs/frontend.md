@@ -548,9 +548,11 @@ What an EXE5 console does otherwise, by data, not by game:
   (nettai-render's `SoulOffer`: the offer, a soul's form, and the window's
   step, read of the system's state by name; the icon is the soul's place
   among its navi's souls, `soul_place`: a pack's soul icons are in the order
-  the navi lists its souls, the original's soul numbers'), in the console's
-  version's palette (Team
-  Colonel's icon has another outline color: the pack's `icon_versions`);
+  the navi lists its souls, the original's soul numbers'), in the palette of
+  the soul's own version on any console (Team Colonel's icons have another
+  outline color, the pack's `icon_versions`; the soul's version is its
+  place's among the navi's souls, a version's after another's:
+  `soul_palette_row`; §5);
 - what a soul adds to the screen, drawn by what the engine's screen says,
   not by soul (verified frame for frame, exe5.txt's custom/capsules,
   custom/capsule-frame, custom/arm-change and five souls/ scenarios):
@@ -827,6 +829,19 @@ them).
   the chip window's picture, the icons in the custom screen's slots and
   column, and the icons over the navi are listed as known
   (`lookups::other_versions_icon`).
+- **Deliberate: a soul's flying icon on the other version's console.** As a
+  Soul Unison is chosen the soul's icon flies onto the first cell in the
+  soul button's icons' palette, of which each EXE5 ROM has its own (Team
+  Colonel's outline is another color) and in which it draws every soul's
+  icon. The frontend draws each soul's in the soul's own version's on either
+  console, as a version's chips show that version's art (the user's choice):
+  so nothing of an EXE5 match needs a console's version to draw it. A soul's
+  version is its place's among MegaMan's souls (`forms.souls` lists Team
+  ProtoMan's six, then Team Colonel's: `custom::soul_palette_row`); no
+  field restates it. A console of the other version than the soul's shows
+  the icon in its own outline: listed as known
+  (`custom::OTHER_VERSIONS_SOUL`), as is a MeddySoul capsule's icon, which
+  flies in the same palette.
 - **Deliberate: the Gregar and Falzar chips' pictures.** Each Japanese ROM
   has one picture for both chips, its own beast; the pack has each chip's
   own (Gregar's from the Japanese Gregar ROM, Falzar's from the Japanese
@@ -893,7 +908,7 @@ later = [                                  # optional: the set's later rounds (e
 
 [left]                                     # you (side 0); then [right]
 navi = "megaman"
-version = "gregar"                         # optional: falzar (default) or gregar
+version = "gregar"                         # falzar or gregar: an EXE6 side states its own (none is assumed)
 crosses = ["heatcross", "spoutcross"]      # optional: else the version's own five
 beast_out = false                          # optional: else Beast Out is unlocked (the save's flag 0xE0)
 cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
@@ -923,6 +938,18 @@ programs = [                               # in the save's order; x, y the cente
     { program = "hp-100", color = "pink", x = 3, y = 1, compressed = true },
 ]
 ```
+
+**A side's version.** A side of EXE6 states its version, `falzar` or
+`gregar` (its Beast, its own Crosses, its pictures and its navi's version
+byte): nothing fills one in, and a file without it is refused with where
+it is missing. A new match's sides have none until they are given theirs
+(the editor asks beside the game, with nothing chosen), and a drawn match
+draws each side's from its seed and writes it. An EXE5 match has no
+version: Team ProtoMan and Team Colonel play alike (its rules take none: a
+side may hold either version's souls and chips), so a `version` in an EXE5
+match is refused, and its sides bring none to a battle (their navis'
+version byte is 0, as an EXE5 recording's). A version is still read at the
+edges that have one: a save's, a recording's console's.
 
 An EXE5 match (`game = "exe5"`: its rules take no version and have no
 Crosses) names EXE5's navis, chips, patch cards and NaviCust programs, and
