@@ -228,6 +228,15 @@ pub fn has(content: &Content) -> bool {
     crate::ruleset_has_system(content, SYSTEM)
 }
 
+/// Why a navi in auto battle can't play `chip`, if it can't: what the
+/// game's rules say of it (their `unplayable_tactics`, from their own data:
+/// EXE5's chips whose positioning class the original has no routine for,
+/// where it crashes). A match's check refuses such a chip among the data's
+/// 42 places (not in a pattern record, which never plays).
+pub fn unplayable(content: &Content, chip: ChipHandle) -> Option<&str> {
+    content.defs.unplayable_tactic(chip)
+}
+
 impl AutoBattle {
     /// Whether it is a block nothing has written (the default: what a side
     /// that states no data has).
@@ -343,7 +352,12 @@ impl AutoBattle {
 
     /// What is wrong with the data for a side of a match of `game`: what
     /// the game can't hold (the lists' and the records' sizes are the
-    /// type's).
+    /// type's), and each chip among its 42 places that its rules can't play
+    /// ([`unplayable`]: the original crashes when its navi in auto battle
+    /// goes to play one, and the game's own writer never puts one there),
+    /// with where it is. A record's chip place may hold one: the game
+    /// writes them there (a run takes any chip used), and a record never
+    /// plays.
     pub fn check(&self, content: &Content, game: &str) -> Vec<String> {
         let mut out = Vec::new();
         if self.is_blank() {
@@ -362,6 +376,16 @@ impl AutoBattle {
         let foreign = |c: ChipHandle| c.index() >= content.defs.chips.len() || !ids::in_game(content, game, &content.defs.chip(c).key);
         if self.chips().any(foreign) {
             out.push(format!("the auto battle data names a chip {game} hasn't"));
+        }
+        let why = |c: ChipHandle| if foreign(c) { None } else { unplayable(content, c) };
+        for (i, e) in self.places.iter().enumerate() {
+            if let Entry::Chip(c) = e
+                && let Some(why) = why(*c)
+            {
+                let list = list_of(i);
+                let (entry, name) = (i - list.start + 1, crate::names::chip(content, *c));
+                out.push(format!("place {} of the auto battle data (`{}`, entry {entry}) holds {name}: {why}", i + 1, list.name));
+            }
         }
         out
     }
@@ -469,6 +493,35 @@ mod tests {
             out.places[*place] = *e;
         }
         out
+    }
+
+    /// A chip the game's rules can't play in auto battle (the content's
+    /// own answer, from its data's positioning classes: a team navi's own
+    /// chip, the chips past the library) is refused among the 42 places,
+    /// with where it is and why; a pattern record may hold one (a save
+    /// can), and a chip the AI plays is fine anywhere.
+    #[test]
+    fn a_chip_auto_battle_cant_play_is_refused_among_the_places() {
+        let content = exe5_content();
+        let (step, capsule, cannon) = (chip(&content, "stepswrd"), chip(&content, "pnkcapsl"), chip(&content, "cannon"));
+        let why = "the original can't play it in auto battle (positioning class 255 is past the game's table of them: the game crashes)";
+        assert_eq!((unplayable(&content, step), unplayable(&content, capsule), unplayable(&content, cannon)), (Some(why), Some(why), None));
+        let mut d = data(&[(3, Entry::Chip(cannon)), (28, Entry::Chip(step)), (41, Entry::Chip(capsule))]);
+        d.records = [Record::ZERO; RECORDS];
+        d.records[2] = Record { dx: 1, dy: 0, chips: [ChipPlace::Chip(step), ChipPlace::Chip(cannon), ChipPlace::Empty, ChipPlace::Empty, ChipPlace::Empty], score: 10 };
+        assert_eq!(
+            d.check(&content, "exe5"),
+            [
+                format!("place 29 of the auto battle data (`mega`, entry 2) holds {}: {why}", crate::names::chip(&content, step)),
+                format!("place 42 of the auto battle data (`program_advance`, entry 1) holds {}: {why}", crate::names::chip(&content, capsule)),
+            ]
+        );
+        d.places[28] = Entry::Empty;
+        d.places[41] = Entry::Empty;
+        assert_eq!(d.check(&content, "exe5"), Vec::<String>::new(), "a record may hold one");
+        // EXE6's rules have no auto battle: they say nothing of any chip.
+        let six = exe6_content();
+        assert!((0..six.defs.chips.len() as u16).all(|c| unplayable(&six, ChipHandle(c)).is_none()));
     }
 
     /// The lists are the block's 42 places, in order, none shared.

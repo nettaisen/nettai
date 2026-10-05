@@ -168,8 +168,9 @@ impl std::fmt::Display for ContentHash {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Content {
     /// Rules stated as Rust tables, which the ruleset's sections replace
-    /// (the engine's test content's made-up tables, a tool's decode of a
-    /// ROM's); none: the ruleset states every rule (a game's content).
+    /// (a tool's decode of a ROM's, a test's content of a few modules);
+    /// none: the ruleset states every rule (a game's content, and the
+    /// engine's test content).
     pub base_rules: Option<Rules>,
     /// The game's tables (what its ruleset states, over the Rust tables),
     /// made by [`Content::define`]: what a battle reads

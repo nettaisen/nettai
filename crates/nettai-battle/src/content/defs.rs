@@ -339,7 +339,11 @@ pub struct SystemDef {
     pub setup: StateId,
     /// Its player setup when the player's setup says nothing of a field:
     /// its `setup_defaults` (EXE5's light/dark value a fresh save's 500),
-    /// zero elsewhere ([`SystemDef::setup_block`]).
+    /// zero elsewhere, but an enum, which has no default unless
+    /// `setup_defaults` gives it one: it is left unstated
+    /// (`ContentState::unstate`: EXE6's player's version, falzar or gregar),
+    /// and a round doesn't start until the player's setup states it
+    /// ([`SystemDef::setup_block`], `SideRules::for_player`).
     pub setup_default: nettai_content_api::ContentState,
     /// The layout of its state of each navi no player controls that it
     /// drives (its `controller`: the navi object's own state), if it
@@ -357,11 +361,17 @@ pub struct SystemDef {
     pub views: ViewFields,
     /// Its extensions of its game's definitions (`extends`).
     pub extends: Vec<Extension>,
+    /// The chips its rules can't play of a player's tactics, each with why
+    /// (`unplayable_tactics`: EXE5's auto battle's chips whose positioning
+    /// class the original has no routine for): for tools (a match's check;
+    /// the engine reads none, and its rules raise when one is played).
+    pub unplayable_tactics: Vec<(ChipHandle, String)>,
 }
 
 impl SystemDef {
     /// A player's setup block for it when the player gives none: its
-    /// defaults (`setup_defaults`), the rest zero.
+    /// defaults (`setup_defaults`), the rest zero, an enum without a
+    /// default unstated.
     pub fn setup_block(&self) -> nettai_content_api::ContentState {
         self.setup_default
     }
@@ -618,6 +628,13 @@ impl Defs {
 
     pub fn system(&self, h: SystemHandle) -> &SystemDef {
         &self.systems[h.index()]
+    }
+
+    /// Why the game's rules can't play `chip` of a player's tactics, if
+    /// they can't (the first of its ruleset's systems that says:
+    /// `SystemDef::unplayable_tactics`): for tools.
+    pub fn unplayable_tactic(&self, chip: ChipHandle) -> Option<&str> {
+        self.ruleset_systems().iter().find_map(|&s| self.system(s).unplayable_tactics.iter().find(|(c, _)| *c == chip).map(|(_, why)| why.as_str()))
     }
 
     pub fn button(&self, h: ButtonHandle) -> &ButtonDef {
@@ -1721,14 +1738,17 @@ impl Defs {
 
         // The systems and the ruleset.
         let mut systems = Vec::new();
+        // (Each system's `unplayable_tactics`, by chip id, with its module
+        // and key: in the systems' order.)
+        let mut unplayable_tactics: Vec<(String, String, Vec<(String, String)>)> = Vec::new();
         let mut buttons: Vec<ButtonDef> = Vec::new();
         let mut windows: Vec<WindowDef> = Vec::new();
         for d in definitions.of(Registry::System) {
             let what = |e: &str| ContentError::new(format!("{}.luau: system {}: {e}", d.module, d.key));
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
-                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions", "extends"].contains(&f.as_str())) {
-                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, setup_defaults, navi_state, hooks, custom, buttons, windows, actions, extends)")));
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions", "extends", "unplayable_tactics"].contains(&f.as_str())) {
+                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, setup_defaults, navi_state, hooks, custom, buttons, windows, actions, extends, unplayable_tactics)")));
                     }
                 }
             }
@@ -1905,10 +1925,31 @@ impl Defs {
                 }
                 _ => return Err(what("`extends` is a table of fields by registry (chip, form, navi)")),
             }
+            // The chips it can't play of a player's tactics, by id, each
+            // with why (the ids are resolved once every chip is known).
+            let mut unplayable = Vec::new();
+            match d.spec.field("unplayable_tactics") {
+                Data::Nil => {}
+                Data::Map(entries) => {
+                    for (k, why) in entries {
+                        let (nettai_content_api::DataKey::Str(id), Data::Str(why)) = (k, why) else {
+                            return Err(what("`unplayable_tactics` is a table of sentences by chip id"));
+                        };
+                        unplayable.push((id.clone(), why.clone()));
+                    }
+                }
+                _ => return Err(what("`unplayable_tactics` is a table of sentences by chip id")),
+            }
+            unplayable.sort();
+            unplayable_tactics.push((d.module.clone(), d.key.clone(), unplayable));
             // Its setup's defaults: a value of a field of its setup each
             // (an enum's by name), which it must hold as given.
             let setup = layout("setup")?;
             let mut setup_default = nettai_content_api::ContentState::new(setup);
+            // (An enum has no default but one given below: unstated.)
+            for i in 0..schemas[setup.0 as usize].schema.fields().len() {
+                setup_default.unstate(&schemas[setup.0 as usize].schema, i);
+            }
             match d.spec.field("setup_defaults") {
                 Data::Nil => {}
                 Data::Map(entries) => {
@@ -1954,6 +1995,7 @@ impl Defs {
                 windows: own_windows,
                 views,
                 extends,
+                unplayable_tactics: Vec::new(),
             });
         }
         // The extensions: one system of the game owns a field of a registry,
@@ -2167,6 +2209,15 @@ impl Defs {
         }
         for (i, c) in defs.chips.iter().enumerate() {
             defs.chip_keys.insert(c.key.clone(), ChipHandle(i as u16));
+        }
+        // (A system's `unplayable_tactics` names chips of its game.)
+        for (system, (module, key, unplayable)) in defs.systems.iter_mut().zip(unplayable_tactics) {
+            for (id, why) in unplayable {
+                let chip = defs.chip_keys.get(&id).copied().ok_or_else(|| {
+                    ContentError::new(format!("{module}.luau: system {key}: `unplayable_tactics` names {id}, which is no chip of the game"))
+                })?;
+                system.unplayable_tactics.push((chip, why));
+            }
         }
         defs.functions = functions.list;
         Ok(defs)

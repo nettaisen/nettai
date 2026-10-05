@@ -16,7 +16,10 @@ use nettai_battle::content::Content;
 /// and record for record: its chips by their numbers' names in `game`, a
 /// pattern entry by its record's number. What a match can't state of it is
 /// left empty and said: a chip number `game` has no chip for, and an entry
-/// for a pattern record past the block's eight.
+/// for a pattern record past the block's eight. (A chip the game's rules
+/// can't play in auto battle comes in as the save has it: the game writes
+/// none among the places, where a match's check refuses one, and a record
+/// may hold one.)
 pub(crate) fn auto_battle(content: &Content, game: &str, block: &AutoBattleBlock) -> (AutoBattle, Vec<String>) {
     let mut notes = Vec::new();
     let compat = exe5_compat::Compat::exe5();

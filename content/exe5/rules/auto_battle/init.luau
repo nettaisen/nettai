@@ -9,6 +9,7 @@
 -- (0x0802B4AC), its state the system's of that side.
 
 local ai = require("@self/ai")
+local place = require("@self/place")
 
 local auto_battle = {}
 
@@ -119,6 +120,8 @@ auto_battle.system = define.system {
     -- A player's own drive (DarkInvs): its AI's state, AIData +0xF0 on.
     state = ai.layout,
     actions = { auto_battle.leave },
+    -- What a match's check refuses in a side's auto battle data: the chips the AI can't place a navi for.
+    unplayable_tactics = place.unplayable(),
     hooks = {
         -- The navi type's idle (action 6) of a navi this system drives: its AI index's. And the side's player's
         -- idle where it would step (EXE5's no-charge drive, 0x080F03E4): with the no-charge state the AI decides
