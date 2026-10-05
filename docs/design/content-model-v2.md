@@ -757,9 +757,6 @@ A manifest (`nettai_content_api::packs::PackManifest`) says what the pack is, an
 id = "exe6"
 kind = "game"          # or "support"
 depends = ["exelib"]   # the support packs it requires from
-# A game pack's, optional: the command that writes its asset pack ({dir}: the pack's directory), which a loader
-# prints when it finds none. (Added 2026-10-05, so that no loader names a game to know its extractor.)
-extract = "cargo run --release -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> {dir}"
 ```
 
 A game's top module, `<game>/init.luau` (`exe6:init`; the pack as a module, as a folder's init.luau is the folder,
