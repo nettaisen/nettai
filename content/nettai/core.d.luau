@@ -1948,6 +1948,12 @@ export type RulesetSpec = {
     chip_use: RuleSection,
     effects: RuleSection,
     flow: RuleSection,
+    -- What a link battle picks at random with its settings, for whoever
+    -- makes a random match (the engine picks none): `stages`, the stage for
+    -- each index of the pick (a stage as often as an index reaches it;
+    -- none: no random pick), and `backgrounds`, the background for each
+    -- (none: the stage's own).
+    link_pick: RuleSection,
     fresh_stats: RuleSection,
     panels: RuleSection,
     pools: RuleSection,
@@ -1963,11 +1969,6 @@ export type RulesetSpec = {
     math: any?,
     navicust: any?,
     sp_chips: any?,
-    -- What a link battle picks at random with its settings, for whoever
-    -- makes a random match (the engine picks none): `stages`, the stage for
-    -- each index of the pick (a stage as often as an index reaches it), and
-    -- `backgrounds`, the background for each (none: the stage's own).
-    link_pick: any?,
     roles: RolesSpec?,
 }
 export type Ruleset = RulesetSpec

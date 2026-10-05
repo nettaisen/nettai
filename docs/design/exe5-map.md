@@ -1403,7 +1403,8 @@ RedFrut1 to 3, Voltz1 to 3 and VDoll) are in §15.11.
   (EXE5 true). The engine asks a player's identity for a Full Synchro aura animation, which
   EXE5 has differently (EXE6's `sub_80C4C52` is absent): 0, EXE6's rule, until EXE5's emotions.
 - **Stages** (content/exe5/stages.luau, compat stages.toml): a stage per distinct record of EXE5's
-  netbattle settings list (0x0811AF4C, 95 records), its layout (0x0800BD6C) and its actor list; the lab's
+  netbattle settings list (0x0811AF4C, 96 records: as many as the link battle's pick reaches, 0x08129F2C; the
+  last, record 95, is netbattle-94), its layout (0x0800BD6C) and its actor list; the lab's
   settings (written to RAM by the Team Battle with its own background and effects) match the list's by layout,
   actor list, music, mode and panel pattern. Those with obstacles (actor types 3, 8, 9: EXE5's boulder, rock and
   statue aren't ported) are listed as waiting; those with metal, sea or lava panels are stages since the rules
@@ -1411,7 +1412,9 @@ RedFrut1 to 3, Voltz1 to 3 and VDoll) are in §15.11.
   actor lists' addresses are Team ProtoMan's US ROM's; the other three ROMs have the same list, each its actor
   lists a constant away (compat/games.toml, as EXE6's: Team Colonel +0xE8, the Japanese Team ProtoMan −0x3E4 and
   Team Colonel −0x2FC), and a recording's settings record is its traced console's (the BattleState's local side's
-  version and region): jp-team-plain matches through it.
+  version and region): jp-team-plain matches through it. (Checked over the lab on 2026-10-05: every recording whose
+  settings match no record by the US addresses, 51 of them, is record 65 or record 1 on a Team Colonel or a Japanese
+  console, its actor list at that ROM's address. None is a setup outside the list.)
 - **Panels** are a registered section now: EXE5's types, EXE6's roads and either-side step rule (EXE5 has neither;
   the section must name the engine's 13 types; nothing of EXE5's reaches them).
 - **Roles** EXE5 shares with EXE6: the sparks (EXE5's 0 to 0xD are EXE6's rows), the deletion, recovery and cut-in

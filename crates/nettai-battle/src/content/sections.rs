@@ -267,7 +267,7 @@ pub(crate) const SECTIONS: &[&str] = &[
 /// The rule sections a ruleset states, whatever else it does: those with a
 /// rule that has no neutral value (a choice between games' behaviors, a
 /// size, a speed). The engine has no game's to fall back on.
-pub(crate) const REQUIRED: &[&str] = &["chip_use", "effects", "flow", "fresh_stats", "panels", "pools", "reactions", "status"];
+pub(crate) const REQUIRED: &[&str] = &["chip_use", "effects", "flow", "fresh_stats", "link_pick", "panels", "pools", "reactions", "status"];
 
 /// What is stated of the rules, by section: a ruleset's sections, over
 /// the content's Rust tables when it has them.
@@ -354,6 +354,7 @@ impl Stated {
         let chip_use = self.chip_use.ok_or_else(|| missing("chip_use"))?;
         let effects = self.effects.ok_or_else(|| missing("effects"))?;
         let flow = self.flow.ok_or_else(|| missing("flow"))?;
+        let link_pick = self.link_pick.ok_or_else(|| missing("link_pick"))?;
         let fresh_stats = self.fresh_stats.ok_or_else(|| missing("fresh_stats"))?;
         let mut panels = self.panels.ok_or_else(|| missing("panels"))?;
         let pools = self.pools.ok_or_else(|| missing("pools"))?;
@@ -387,7 +388,7 @@ impl Stated {
             sp_deletion_times: sp_chips.deletion_times,
             sp_slots: sp_chips.slots,
             // (Its stages are `link`'s to resolve.)
-            link_pick: super::rules::LinkPick { stages: Vec::new(), backgrounds: self.link_pick.map(|s| s.backgrounds).unwrap_or_default() },
+            link_pick: super::rules::LinkPick { stages: Vec::new(), backgrounds: link_pick.backgrounds },
             sine: self.sine.unwrap_or_default(),
             push_vectors: reactions.push,
             push_reading: reactions.push_reading,
@@ -616,9 +617,13 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
             "flow" => stated.flow = Some(r.read(spec, &at).map_err(e)?),
             "link_pick" => {
                 // (Its stages are definitions, which `link` resolves once
-                // they have their handles; stated all the same.)
-                if matches!(spec.field("stages"), Data::Nil) {
-                    return Err(e(format!("{at}: missing field `stages`")));
+                // they have their handles; stated all the same. Both
+                // fields are asked for here: a section with one alone
+                // reads as an empty table once the stages are out.)
+                for field in ["stages", "backgrounds"] {
+                    if matches!(spec.field(field), Data::Nil) {
+                        return Err(e(format!("{at}: missing field `{field}`")));
+                    }
                 }
                 let mut data = spec.clone();
                 super::reader::strip(&mut data, &["stages"]);
