@@ -102,6 +102,8 @@ return define.system {
         crosses = "bool[5]",
         cross_list = "form[5]",
     },
+    -- A setup that says nothing owns every Cross of its version (a finished game's save).
+    setup_defaults = { crosses = { true, true, true, true, true } },
     -- ChargeCross's extra chips (`extra_chips`, `sub_802A49C`) and DustCross's
     -- scrap button (`scrap_button`, `sub_8027F10`), and theirs in Beast Out.
     extends = {
