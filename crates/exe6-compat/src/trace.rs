@@ -13,6 +13,9 @@ use std::sync::Arc;
 /// starts running.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Setup {
+    /// The game the recording is of: this crate's ([`crate::ROOT`]; another
+    /// game's recording is refused, and so is one that names none).
+    pub game: String,
     pub frame: u32,
     pub settings_ptr: u32,
     /// BattleSettings (0x10 bytes), hex.
@@ -26,40 +29,25 @@ pub struct Setup {
     pub rng1: u32,
     pub rng2: u32,
     /// The stages of the set's later rounds (`byte_203CA50`, 4 bytes), hex.
-    /// Traces recorded without it leave the stages unknown.
-    #[serde(default)]
-    pub stages: Option<String>,
+    pub stages: String,
     /// Both players' SP navi deletion times (`byte_203EB00`, 0x28 bytes
-    /// each), hex. Traces recorded without them read as the best times.
-    #[serde(default)]
-    pub sp_times: Option<[String; 2]>,
+    /// each), hex.
+    pub sp_times: [String; 2],
     /// Both consoles' battle folders (`eBattleFolder`, 0x50 bytes each,
-    /// by side), as shuffled at the round's init. Traces recorded without
-    /// them have only the local console's (`folder`).
-    #[serde(default)]
-    pub folders: Option<[String; 2]>,
+    /// by side), as shuffled at the round's init.
+    pub folders: [String; 2],
     /// Both consoles' joypad repeat beats on the round's first frame
-    /// (`eJoypad`+0x13). Traces recorded without them read as the frame
-    /// number modulo 5, which is what the recording tool's consoles show.
-    #[serde(default)]
-    pub joypad_phases: Option<[u8; 2]>,
-    /// Both players' games ("gregar" or "falzar"), by side. Traces
-    /// recorded without them go by the Crosses and Beast Outs the players
-    /// send, else Falzar.
-    #[serde(default)]
-    pub game_versions: Option<[String; 2]>,
-    /// Both consoles' regions ("us" or "jp"), by side; traces recorded
-    /// without them are the US's.
-    #[serde(default)]
-    pub game_regions: Option<[String; 2]>,
-    /// Both players' bug frags (`dword_203F7E0`). Traces recorded without
-    /// them read as `RECORDED_BUG_FRAGS`.
-    #[serde(default)]
-    pub bug_frags: Option<[u32; 2]>,
-    /// Both players' link navi levels (`dword_203CFA0`). Traces recorded
-    /// without them read as 0.
-    #[serde(default)]
-    pub navi_levels: Option<[u8; 2]>,
+    /// (`eJoypad`+0x13).
+    pub joypad_phases: [u8; 2],
+    /// Both players' games ("gregar" or "falzar"), by side.
+    pub game_versions: [String; 2],
+    /// Both consoles' regions ("us" or "jp"), by side.
+    pub game_regions: [String; 2],
+    /// Both players' bug frags (`dword_203F7E0`).
+    pub bug_frags: [u32; 2],
+    /// Both players' link navi levels (`dword_203CFA0`; 0xFF: no navi
+    /// code's level, MegaMan's).
+    pub navi_levels: [u8; 2],
     /// Both consoles' save event flag 0x1720 (the NaviCust ran a bug's
     /// routine at load: MegaMan's emotion window flickers, bugs the window
     /// counts in his stats or not). No setup takes it: the engine's rules
@@ -68,8 +56,7 @@ pub struct Setup {
     /// has one; a link navi's flag, left by MegaMan's NaviCust, nothing
     /// reads), and a replay checks theirs against it (`setup_differences`,
     /// for MegaMan's).
-    #[serde(default)]
-    pub emotion_window_glitches: Option<[bool; 2]>,
+    pub emotion_window_glitches: [bool; 2],
     /// Both consoles' installed patch cards (the Japanese games'), each
     /// its save's card list (the card's number, bit 7 set when switched
     /// off). Traces recorded without them have none.
@@ -144,11 +131,6 @@ fn unlocks_from_flags(version: GameVersion, flags: &[u8]) -> Unlocks {
     }
 }
 
-/// The bug frags a trace without them reads as: the recording tool's
-/// saves have frags to spare (their dark chips are used as themselves),
-/// so the most a save holds.
-pub const RECORDED_BUG_FRAGS: u32 = 9999;
-
 /// A battle object as the trace records it.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct Object {
@@ -175,9 +157,10 @@ pub struct Object {
 /// One battle frame of the original game.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Frame {
-    /// The traced console's game (its round's setup's; not in the line).
+    /// The traced console's game (its round's setup's; not in the line:
+    /// [`rounds`] gives a round's frames theirs).
     #[serde(skip)]
-    pub console: Game,
+    pub console: Option<Game>,
     pub frame: u32,
     /// BattleState bytes 0-3: top state, mode sub-state, and two sub-sub-states.
     pub state: [u8; 4],
@@ -190,24 +173,17 @@ pub struct Frame {
     pub rng1: u32,
     pub rng2: u32,
     /// BattleState (0xF0 bytes), hex.
-    #[serde(default)]
     pub bs: String,
     /// The fighting-phase machine (0xC bytes at 0x0203CA70), hex.
-    #[serde(default)]
     pub fight: String,
     /// Custom gauge value (0..0x4000) and fill per tick.
-    #[serde(default)]
     pub gauge: u16,
-    #[serde(default)]
     pub gauge_rate: u16,
     /// The battle pause byte.
-    #[serde(default)]
     pub paused: u8,
     /// HUD update-task mask (bit 4 = gauge fill, bit 15 = banner).
-    #[serde(default)]
     pub hud_tasks: u32,
     /// Banner state (0x10 bytes at 0x02036840), hex.
-    #[serde(default)]
     pub banner: String,
     /// Per player: held, pressed, released.
     pub input: [[u16; 3]; 2],
@@ -218,34 +194,34 @@ pub struct Frame {
     pub chip_blocks: [String; 2],
 }
 
-#[derive(Clone, Debug)]
-pub enum Line {
-    Setup(Setup),
-    Frame(Box<Frame>),
-}
-
 #[derive(Deserialize)]
 struct SetupLine {
     setup: Setup,
 }
 
-/// Read a trace file, one line at a time (a frame's console is the last
-/// setup's).
-pub fn read(path: impl AsRef<std::path::Path>) -> std::io::Result<impl Iterator<Item = Line>> {
-    let f = std::io::BufReader::new(std::fs::File::open(path)?);
-    let mut console = Game::Falzar;
-    Ok(f.lines().map(move |l| {
-        let l = l.expect("reading trace");
-        if l.starts_with("{\"setup\"") {
-            let setup = serde_json::from_str::<SetupLine>(&l).expect("parsing setup").setup;
-            console = setup.console_game();
-            Line::Setup(setup)
-        } else {
-            let mut frame: Box<Frame> = Box::new(serde_json::from_str(&l).expect("parsing frame"));
-            frame.console = console;
-            Line::Frame(frame)
-        }
-    }))
+/// What a recording that names no game is refused with: nothing takes it
+/// for this game's.
+pub const NO_GAME: &str = "a recording that names no game (one recorded before recordings named theirs: the verification workspace's tools/rename-exe.py converts them)";
+
+/// A setup line's setup. Another game's recording is refused, and one that
+/// names no game ([`NO_GAME`]); the game is read first, since another
+/// game's line hasn't this game's keys. A line that doesn't parse panics,
+/// like any malformed line.
+fn setup_of(line: &str) -> Result<Setup, String> {
+    #[derive(Deserialize)]
+    struct Stated {
+        game: Option<String>,
+    }
+    #[derive(Deserialize)]
+    struct StatedLine {
+        setup: Stated,
+    }
+    match serde_json::from_str::<StatedLine>(line).unwrap_or_else(|e| panic!("parsing setup: {e}")).setup.game {
+        None => return Err(NO_GAME.to_string()),
+        Some(game) if game != crate::ROOT => return Err(format!("an {game} recording")),
+        Some(_) => {}
+    }
+    Ok(serde_json::from_str::<SetupLine>(line).unwrap_or_else(|e| panic!("parsing setup: {e}")).setup)
 }
 
 /// Decode a hex string from a trace.
@@ -282,11 +258,11 @@ fn navi_stats(hex: &str, ids: &Ids) -> NaviStats {
 
 use crate::{Compat, Game};
 use crate::codec::{self, Ids};
-use nettai_battle::battle::{Battle, CustomResult, TickEvents};
+use nettai_battle::battle::{Battle, TickEvents};
 use nettai_battle::content::Content;
 use nettai_battle::console::{Console, ConsoleSetup};
 use crate::unlocks::Unlocks;
-use nettai_battle::custom::{Context, GameVersion, PlayerSetup, Recorded, Request, Side};
+use nettai_battle::custom::{Context, GameVersion, PlayerSetup, Request, Side};
 use nettai_battle::hand::ChipHand;
 use nettai_battle::input::PlayerTick;
 use nettai_battle::kinds::player::Emotion;
@@ -314,7 +290,8 @@ pub struct Round {
     pub frames: Vec<Frame>,
 }
 
-/// Split a trace into rounds.
+/// Split a trace into rounds. Another game's recording is an error
+/// ("an exe5 recording"), and so is one that names no game ([`NO_GAME`]).
 pub fn rounds(path: impl AsRef<std::path::Path>) -> std::io::Result<Vec<Round>> {
     let f = std::io::BufReader::new(std::fs::File::open(path)?);
     let mut rounds: Vec<Round> = Vec::new();
@@ -322,7 +299,7 @@ pub fn rounds(path: impl AsRef<std::path::Path>) -> std::io::Result<Vec<Round>> 
     for l in f.lines() {
         let l = l?;
         if l.starts_with("{\"setup\"") {
-            let setup = serde_json::from_str::<SetupLine>(&l).expect("setup").setup;
+            let setup = setup_of(&l).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
             rounds.push(Round { setup, exchanges: std::mem::take(&mut pending_exchanges), frames: Vec::new() });
         } else if l.starts_with("{\"exchange\"") {
             let e = serde_json::from_str::<ExchangeLine>(&l).expect("exchange").exchange;
@@ -332,7 +309,7 @@ pub fn rounds(path: impl AsRef<std::path::Path>) -> std::io::Result<Vec<Round>> 
             }
         } else if let Some(r) = rounds.last_mut() {
             let mut frame: Frame = serde_json::from_str(&l).expect("frame");
-            frame.console = r.console_game();
+            frame.console = Some(r.console_game());
             r.frames.push(frame);
         }
     }
@@ -341,13 +318,12 @@ pub fn rounds(path: impl AsRef<std::path::Path>) -> std::io::Result<Vec<Round>> 
 
 impl Setup {
     /// The traced console's game: its side's (BattleState+0x0D, the local
-    /// side) in `game_versions` and `game_regions`; the US Falzar in traces
-    /// recorded without them.
+    /// side) in `game_versions` and `game_regions`.
     pub fn console_game(&self) -> Game {
         let local = unhex(&self.battle_state)[0x0D] as usize & 1;
-        let version = self.game_versions.as_ref().map_or("falzar", |v| v[local].as_str());
-        let region = self.game_regions.as_ref().map_or("us", |r| r[local].as_str());
-        Game::of_names(version, region)
+        let version = self.game_versions[local].as_str();
+        let region = self.game_regions[local].as_str();
+        Game::of_names(version, region).unwrap_or_else(|| panic!("a console of version {version:?} and region {region:?}"))
     }
 }
 
@@ -375,10 +351,7 @@ impl Round {
             rng: self.setup.rng2,
             local_side: bs[0x0D],
             score: SetScore { wins: bs[0x18], losses: bs[0x19], round: bs[0x1A], max_combo: bs[0x1B] },
-            // Unknown stages read as entry 0. A replay never gets to use
-            // them: the tick that chains the next round is that round's
-            // init, which isn't among the battle frames.
-            later_stages: self.setup.stages.as_deref().map(|s| codec::later_stages(&unhex(s), &ids)).unwrap_or_default(),
+            later_stages: codec::later_stages(&unhex(&self.setup.stages), &ids),
             low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
             players: std::array::from_fn(|p| self.player_setup(p as u8, &ids)),
             link_delay: self.link_delay(),
@@ -413,10 +386,8 @@ impl Round {
         let ids = Ids::new(&b.content, compat);
         let mut d = Vec::new();
         for side in 0..2 {
-            if let Some(flags) = self.setup.emotion_window_glitches
-                && b.content.navi(b.stats[side].navi).changes_form()
-                && b.consoles[side].emotion_window_glitch != flags[side]
-            {
+            let flags = self.setup.emotion_window_glitches;
+            if b.content.navi(b.stats[side].navi).changes_form() && b.consoles[side].emotion_window_glitch != flags[side] {
                 d.push(format!(
                     "side {side}'s emotion window glitch as the round is set up: ours {} theirs {}",
                     b.consoles[side].emotion_window_glitch, flags[side]
@@ -451,13 +422,7 @@ impl Round {
         b
     }
 
-    /// Whether the trace has this player's folder (else their custom
-    /// screen can't be simulated).
-    pub fn folder_known(&self, side: u8) -> bool {
-        self.setup.folders.is_some() || unhex(&self.setup.battle_state)[0x0D] == side
-    }
-
-    /// A player's folder, game and joypad beat, as far as the trace knows.
+    /// A player's folder, game and joypad beat.
     fn player_setup(&self, side: u8, ids: &Ids) -> PlayerSetup {
         let bs = unhex(&self.setup.battle_state);
         let local = bs[0x0D] == side;
@@ -471,38 +436,24 @@ impl Round {
             Some(r) => r[side as usize & 1] != 0,
             None => stats.folder_reg[stats.folder as usize & 1] != 0xFF,
         };
-        let folder = match &self.setup.folders {
-            Some(f) => Some(codec::battle_folder(&unhex(&f[side as usize]), regular, ids)),
-            None if local => Some(codec::battle_folder(&unhex(&self.setup.folder), regular, ids)),
-            None => None,
-        };
-        let version = match &self.setup.game_versions {
-            Some(v) => match v[side as usize].as_str() {
-                "gregar" => GameVersion::Gregar,
-                "falzar" => GameVersion::Falzar,
-                other => panic!("game version {other:?}"),
-            },
-            None => self.sent_version(side),
+        let folder = codec::battle_folder(&unhex(&self.setup.folders[side as usize]), regular, ids);
+        let version = match self.setup.game_versions[side as usize].as_str() {
+            "gregar" => GameVersion::Gregar,
+            "falzar" => GameVersion::Falzar,
+            other => panic!("game version {other:?}"),
         };
         let unlocks = match &self.setup.unlock_flags {
             Some(f) => unlocks_from_flags(version, &unhex(&f[side as usize])),
             None => Unlocks::everything(version),
         };
-        // The navi code's level (0xFF: none). A trace without the levels
-        // reads as a link navi's level 0 (a link navi exists through its
-        // code) and MegaMan's none.
-        let navi_level = match self.setup.navi_levels {
-            Some(l) => (l[side as usize] != 0xFF).then_some(l[side as usize]),
-            None => (!ids.content.navi(stats.navi).changes_form()).then_some(0),
-        };
+        // The navi code's level (0xFF: none).
+        let level = self.setup.navi_levels[side as usize];
+        let navi_level = (level != 0xFF).then_some(level);
         let mut player = PlayerSetup {
             folder,
-            joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
+            joypad_phase: self.setup.joypad_phases[side as usize],
             navi_level,
-            sp_times: match &self.setup.sp_times {
-                Some(t) => codec::sp_times(&unhex(&t[side as usize])),
-                None => Default::default(),
-            },
+            sp_times: codec::sp_times(&unhex(&self.setup.sp_times[side as usize])),
             console: self.console_setup(side),
             rules: Vec::new(),
             patch_cards: self.patch_cards(side, ids),
@@ -512,7 +463,7 @@ impl Round {
         };
         unlocks.write(ids.content, &mut player).unwrap_or_else(|e| panic!("the save's unlocks: {e}"));
         // The bug frags: the dark-chips system's (its setup's `bug_frags`).
-        let frags = self.setup.bug_frags.map_or(RECORDED_BUG_FRAGS, |f| f[side as usize]);
+        let frags = self.setup.bug_frags[side as usize];
         player
             .set_fact(ids.content, "bug_frags", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(frags as i64))])
             .unwrap_or_else(|e| panic!("the save's bug frags: {e}"));
@@ -551,23 +502,6 @@ impl Round {
         ConsoleSetup { rng: self.setup.rng1, tag_pair: (bs[0x44] != 0).then_some(bs[0x45]), frames }
     }
 
-    /// A player's game, going by the transformations they send: Gregar's
-    /// Crosses are forms 1-5 and its Beast Out 0x0B.
-    fn sent_version(&self, side: u8) -> GameVersion {
-        let gregar = |f: u8| matches!(f, 1..=5 | 0x0B | 0x0D..=0x11 | 0x17);
-        let falzar = |f: u8| matches!(f, 6..=0x0A | 0x0C | 0x12..=0x16 | 0x18);
-        for e in &self.exchanges {
-            let form = unhex(&e.transform[side as usize])[0];
-            if gregar(form) {
-                return GameVersion::Gregar;
-            }
-            if falzar(form) {
-                return GameVersion::Falzar;
-            }
-        }
-        GameVersion::Falzar
-    }
-
     /// The frame record with this frame number, if the round has it.
     fn frame(&self, number: u32) -> Option<&Frame> {
         let first = self.frames.first()?.frame;
@@ -588,37 +522,15 @@ impl Round {
         self.frame(frame + self.link_delay() as u32).map_or(0, |f| f.input[side][0] & 0x3FF)
     }
 
-    /// Inputs and events for a frame (the players' results decoded with
-    /// `ids`).
-    pub fn tick_inputs(&self, i: usize, frames: &[&Frame], ids: &Ids) -> ([PlayerTick; 2], TickEvents) {
+    /// Inputs and events for a frame: the players' buttons (both custom
+    /// screens run from them, on the folders the setup records).
+    pub fn tick_inputs(&self, i: usize, frames: &[&Frame]) -> ([PlayerTick; 2], TickEvents) {
         let f = frames[i];
         let input = std::array::from_fn(|p| PlayerTick { held: self.joypad(f.frame, p) });
         let mut events = TickEvents::default();
         // The link session closed on the tick the end state moved on.
         if i > 0 && f.state[0] == 8 && f.state[1] == 4 && frames[i - 1].state[1] == 0 {
             events.link_closed = true;
-        }
-        // A player whose folder the trace lacks: their custom screen's
-        // status (as it arrives `link_delay` frames later) and, on
-        // the tick before the mode leaves the custom screen, their result.
-        for p in 0..2 {
-            if self.folder_known(p as u8) {
-                continue;
-            }
-            let arriving = self.frame(f.frame + self.link_delay() as u32).unwrap_or(f);
-            let in_custom = unhex(&arriving.bs).get(0x14 + p).copied().unwrap_or(0) & 4 != 0;
-            let mut result = None;
-            if let Some(next) = frames.get(i + 1)
-                && f.state[1] == 8
-                && next.state[1] == 0x0C
-            {
-                let e = self.exchanges.iter().rfind(|e| e.frame <= f.frame).expect("exchange record");
-                let navi_stats = navi_stats(&e.navi_stats[p], ids);
-                let transform = codec::transform_request(&unhex(&e.transform[p]), ids);
-                let hand = Some(codec::chip_hand(&unhex(&f.chip_blocks[p]), ids));
-                result = Some(Box::new(CustomResult { hand, navi_stats, transform }));
-            }
-            events.recorded[p] = Some(Recorded { in_custom, result });
         }
         (input, events)
     }
@@ -662,7 +574,7 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
     // The traced console's game (its round's setup's): a Gregar or a
     // Japanese console's objects keep its own ROM's addresses where the
     // content has the US Falzar's (games.toml).
-    let game = f.console;
+    let game = f.console.expect("a round's frame (trace::rounds gives it its console)");
     let ours: Vec<String> = order.iter().zip(&unknown).map(|(&o, &u)| describe(b, compat, o, u, game)).collect();
     let theirs: Vec<String> =
         f.objects.iter().enumerate().map(|(i, o)| describe_trace(compat, o, unknown.get(i).copied().unwrap_or_default())).collect();
@@ -860,9 +772,8 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usi
     if !setup.is_empty() {
         return (0, Some((round.setup.frame, setup)));
     }
-    let ids = Ids::new(content, compat);
     for i in 0..frames.len() {
-        let (input, events) = round.tick_inputs(i, &frames, &ids);
+        let (input, events) = round.tick_inputs(i, &frames);
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.tick(&input, events)));
         if let Err(e) = result {
             let msg = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()));
@@ -924,8 +835,7 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
     // hooks): their state through the round, and the stats and turn each
     // screen reads, set from the trace as it opens.
     let mut battle = Battle::new(setup.clone(), content.clone());
-    let mut sides: [Option<Side>; 2] =
-        std::array::from_fn(|p| round.folder_known(p as u8).then(|| Side::new(&setup.players[p])));
+    let mut sides: [Side; 2] = std::array::from_fn(|p| Side::new(&setup.players[p]));
     // Each console's RNG as far as the screens alone go: its draws outside
     // them (camera shakes, the emotion window) aren't simulated here. The
     // recording console's are in the trace instead, which samples its RNG
@@ -968,20 +878,16 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
             }
         };
         for (p, side) in sides.iter_mut().enumerate() {
-            if let Some(side) = side {
-                side.joypad.update(round.joypad(f.frame, p));
-            }
+            side.joypad.update(round.joypad(f.frame, p));
         }
         let custom = f.state[0] == 4 && f.state[1] == 8;
         let prev_init = i.checked_sub(1).map(|j| frames[j].state[3]);
         if custom && f.state[3] == 1 && prev_init == Some(0) {
             for (p, side) in sides.iter_mut().enumerate() {
-                if let Some(side) = side {
-                    let ctx = context(p);
-                    battle.stats[p] = ctx.stats;
-                    battle.round.turn = ctx.turn;
-                    side.open_with(&ctx, &mut consoles[p], &mut battle.custom_extras(p as u8, ctx.emotion));
-                }
+                let ctx = context(p);
+                battle.stats[p] = ctx.stats;
+                battle.round.turn = ctx.turn;
+                side.open_with(&ctx, &mut consoles[p], &mut battle.custom_extras(p as u8, ctx.emotion));
             }
             open = Some((f.frame, [None; 2], [None; 2]));
             continue;
@@ -989,7 +895,6 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
         let Some((opened, confirmed, cleared)) = open.as_mut() else { continue };
         if custom {
             for (p, side) in sides.iter_mut().enumerate() {
-                let Some(side) = side else { continue };
                 let was_open = side.in_custom;
                 let ctx = context(p);
                 battle.stats[p] = ctx.stats;
@@ -1013,9 +918,8 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
         }
         // The fight resumes next frame: this frame installed the results.
         let before = frames[i.saturating_sub(1)];
-        let arrivals: Vec<u32> = sides.iter().flatten().filter_map(|s| s.sent.as_ref().map(|x| x.arrives)).collect();
+        let arrivals: Vec<u32> = sides.iter().filter_map(|s| s.sent.as_ref().map(|x| x.arrives)).collect();
         for (p, side) in sides.iter().enumerate() {
-            let Some(side) = side else { continue };
             let mut d = Vec::new();
             match &side.sent {
                 None => d.push("never sent".to_string()),
@@ -1049,7 +953,7 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
             if ours_cleared != theirs_cleared {
                 d.push(format!("status bit arrives cleared: ours {ours_cleared:?} theirs {theirs_cleared:?}"));
             }
-            if sides.iter().all(|s| s.is_some()) && arrivals.iter().max() != Some(&f.frame) {
+            if arrivals.iter().max() != Some(&f.frame) {
                 d.push(format!("results in: ours {:?} theirs {}", arrivals.iter().max(), f.frame));
             }
             checks.push(ScreenCheck { side: p as u8, opened: *opened, resumed: f.frame + 1, confirmed: confirmed[p], differences: d });
@@ -1062,6 +966,22 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A recording is this game's when its setup says so: another game's
+    /// is refused by name.
+    #[test]
+    fn another_games_recording_is_refused() {
+        let e = setup_of(r#"{"setup": {"game": "exe5", "frame": 10}}"#).unwrap_err();
+        assert_eq!(e, "an exe5 recording");
+    }
+
+    /// A setup that names no game is no recording of this game's: nothing
+    /// takes it for one, and the refusal says what it is.
+    #[test]
+    fn a_setup_names_its_game() {
+        let e = setup_of(r#"{"setup": {"frame": 72, "game_versions": ["falzar", "falzar"]}}"#).unwrap_err();
+        assert!(e.starts_with("a recording that names no game"), "{e}");
+    }
 
     #[test]
     fn unlocks_from_event_flags() {

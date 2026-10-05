@@ -5,9 +5,8 @@
 //!
 //!     exe5-extract content <protoman-us> <colonel-us> <protoman-jp> <colonel-jp> <pack-dir>
 //!
-//! The pack is EXE5's own (its manifest says `game = "exe5"`): when it loads
-//! beside an EXE6 pack, its names are qualified by the game (`exe5:...`), so
-//! the two never collide and EXE5's assets are named for EXE5 alone
+//! The pack is EXE5's own (its manifest says `game = "exe5"`): a battle
+//! loads one game's pack, so EXE5's assets are named for EXE5 alone
 //! (docs/design/exe5-map.md §9). Most of it is the US Team ProtoMan ROM's.
 //! A version chip's picture and icon are its own version's ROM's (the other
 //! version's ROM has its counterpart's there), under the chip's key; a

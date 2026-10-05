@@ -865,9 +865,7 @@ character, so a string encodes and decodes the same way and a mark is one charac
   built-in charmap and the verification workspace's tools/jp/locale/textjp.py. The battle's strings use Ⓐ, Ⓑ, ✕,
   U+E002 and U+E003; the others are in the encoding only.
 - **The original mode** draws the same pixels as before: the charmaps (`font_chars` and the dialogue font's `chars`
-  in `hud.json`, written from compat/text.toml by the extractor) map the characters to the same glyph numbers. A
-  pack written before (hud.json version 6) has the bracketed names, so the frontend asks for it to be extracted
-  again (version 7).
+  in `hud.json`, written from compat/text.toml by the extractor) map the characters to the same glyph numbers.
 - **The font mode**: a mark the font has is drawn by the font (Ⓡ, ✕, ○ with Murecho). One it lacks the text layer
   draws (`vfont::mark`): a button as its letter at 68% of the size, centered in an antialiased ring 1.15 times the
   capitals' height with a stroke a tenth of it; a stacked mark as its two letters in one cell, each as high as half

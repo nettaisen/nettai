@@ -28,7 +28,7 @@
 //! - [`standin`]: a battle stepped on the buttons alone, for synthetic
 //!   matches;
 //! - [`protocol`]: nettai's rennet protocol: the elements a player's stream
-//!   carries (ticks, payloads, round and match markers), the per-frame
+//!   carries (ticks, round and match markers), the per-frame
 //!   meta (the tick advantage), their byte-minimal codecs, the horizon;
 //! - [`wire`]: byte codecs for the engine types that travel (a recorded
 //!   custom-screen result, a player's folder and Crosses);

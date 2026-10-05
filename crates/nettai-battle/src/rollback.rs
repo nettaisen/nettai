@@ -24,9 +24,7 @@ use crate::input::PlayerTick;
 ///
 /// Each player's share is their buttons ([`PlayerTick`]); both players'
 /// custom screens run in the engine from them. The [`TickEvents`] are the
-/// link session closing at the end of the round, and, only when checking
-/// against a recording that lacks a player's folder, that player's
-/// recorded custom-screen results. In netplay the events belong to the
+/// link session closing at the end of the round. In netplay the events belong to the
 /// frame's input record like the buttons do: both peers must step the
 /// frame with the same events (the netplay layer carries them in a
 /// player's input).

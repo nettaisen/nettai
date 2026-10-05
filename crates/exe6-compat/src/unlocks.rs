@@ -118,8 +118,12 @@ impl Unlocks {
         let field = |name: &str| schema.index_of(name);
         let version = match block.get(schema, field("version")?) {
             FieldValue::Enum(i) => match &schema.field(field("version")?).ty {
-                FieldType::Enum(names) if names.get(i as usize).map(String::as_str) == Some("gregar") => GameVersion::Gregar,
-                _ => GameVersion::Falzar,
+                FieldType::Enum(names) => match names.get(i as usize).map(String::as_str) {
+                    Some("gregar") => GameVersion::Gregar,
+                    Some("falzar") => GameVersion::Falzar,
+                    _ => return None,
+                },
+                _ => return None,
             },
             _ => return None,
         };
