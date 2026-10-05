@@ -345,12 +345,13 @@ impl Driver for Exe5TracePlayer {
 // or a match file (`--match`).
 
 /// A round to play live on `content` with these battle settings: two
-/// MegaMen at their fresh stats (`nettai_match::Side::base_stats`, as live
-/// play draws them), each bringing their folder, shuffled from the seed,
-/// with every Cross and Beast Out of Falzar.
-pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFolder; 2], seed: u32) -> RoundSetup {
+/// MegaMen of `version` at their fresh stats
+/// (`nettai_match::Side::base_stats`, as live play draws them), each
+/// bringing their folder, shuffled from the seed, with every Cross and
+/// Beast Out of that version.
+pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFolder; 2], version: GameVersion, seed: u32) -> RoundSetup {
     let megaman = content.form_changing_navi().expect("a navi that changes form");
-    let stats = nettai_match::Side::base_stats(content, megaman, GameVersion::Falzar);
+    let stats = nettai_match::Side::base_stats(content, megaman, Some(version));
     let player = |side: u32| {
         // Each console shuffles its folder with its own RNG (RNG1), which
         // goes on from there.
@@ -367,7 +368,7 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             navicust: None,
             tactics: Default::default(),
         };
-        Unlocks::everything(GameVersion::Falzar).write(content, &mut player).expect("EXE6's setup");
+        Unlocks::everything(version).write(content, &mut player).expect("EXE6's setup");
         player
     };
     RoundSetup {
@@ -569,7 +570,7 @@ mod tests {
         let settings = BattleSettings::on(&content, stage);
         // GunDelS3 N, which the test content has.
         let folder = folder_of(&content, &[("gundels3", 13)]);
-        let mut live = LivePlayer::new(live_setup(&content, settings, [folder, folder], 7), content.clone());
+        let mut live = LivePlayer::new(live_setup(&content, settings, [folder, folder], GameVersion::Falzar, 7), content.clone());
         let mut b = live.start();
         let mut shown = false;
         for tick in 0..3000u32 {
@@ -672,7 +673,7 @@ mod tests {
         let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
-        let mut setup = live_setup(&content, settings, [folder, folder], 5);
+        let mut setup = live_setup(&content, settings, [folder, folder], GameVersion::Falzar, 5);
         Unlocks { cross_list: Some(exe6_compat::CrossList::new(&[heat])), ..Unlocks::everything(GameVersion::Falzar) }
             .write(&content, &mut setup.players[0])
             .unwrap();
@@ -778,7 +779,7 @@ mod tests {
         let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
-        let mut setup = live_setup(&content, settings, [folder, folder], 5);
+        let mut setup = live_setup(&content, settings, [folder, folder], GameVersion::Falzar, 5);
         Unlocks {
             cross_list: list.map(|l| exe6_compat::CrossList::new(&l.iter().map(|k| form_of(&content, k)).collect::<Vec<_>>())),
             ..Unlocks::everything(version)
@@ -953,7 +954,7 @@ mod tests {
             let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
             let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
             let folder = folder_of(&content, &[("cannon", 0)]);
-            let mut setup = live_setup(&content, settings, [folder, folder], 5);
+            let mut setup = live_setup(&content, settings, [folder, folder], GameVersion::Falzar, 5);
             setup.players[0].navi_level = level;
             let mut live = LivePlayer::new(setup, content.clone());
             let mut b = live.start();
