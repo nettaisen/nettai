@@ -418,10 +418,21 @@ local status = {
         -- last stand (0x0802C16C: the roles' `volley`, rules/emotion/dark-survival), and a hit shows (white, its
         -- sounds) by the register that check leaves.
         hp_loss = "gauge_and_last_stand",
-        -- EXE5's emotions (0x08012740): a soul first, then anger, a mood of 0 (a dark MegaMan's), Full Synchro, a mood
-        -- under 65 worried; its mood setter (0x080127D6) leaves a mood of 0; its anger tick (0x08011A14) passes over
-        -- AI index 23.
-        emotions = "exe5",
+        -- EXE5's emotions (0x0801270C): in battle mode 1 Full Synchro or normal (0x080127C0); else (0x08012740) a navi
+        -- in a soul reads as normal (the soul's own face), then anger is read before a mood of 0 (a dark MegaMan's,
+        -- worn out), then Full Synchro, and a mood under 65 is worried; no held tired or exhausted state is read.
+        -- Its mood setter (0x080127D6) leaves a mood of 0, and anger's end goes through it (0x08011A94). (Its anger
+        -- tick, 0x08011A14, passes over the actor records of AI index 23, ShadowMan's SplitUp shadow's: an
+        -- identity's `never_angers`, which no navi a player operates has.)
+        emotion = {
+            mood_held = "at_zero",
+            anger_end = "through_setter",
+            plain_in_battle_mode_1 = true,
+            normal_in_a_form = true,
+            anger_before_worn_out = true,
+            tired_and_exhausted = false,
+            worried_below = 65,
+        },
         -- The weakness request (a dark chip used in a soul, 0x08010070) breaks any form to the base form (0x080122C8).
         form_break = "any_form",
     },
