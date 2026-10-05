@@ -761,8 +761,8 @@ fn apply_status(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_801A2CC`: a chip-erasing hit (self bit 0x10) loses the current
-/// chip.
+/// `sub_801A2CC`: chip destruction, a hit (self bit 0x10) that destroys the
+/// current chip.
 fn lose_chip(b: &mut Battle, r: ObjectRef) {
     if coll(b, r).acc.hit_flags & 0x10 == 0 {
         return;

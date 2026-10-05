@@ -25,18 +25,18 @@ sprite	blast	blast	high		14-13: used by chips/mine/land_mine, lib/effects.
 sprite	blast-fire	blast-fire	high		08-0c: used by chips/blastman/fire, chips/blastman/navi, lib/effects.	
 sprite	blindness	blindness	high		14-09: role sprites.blindness.	
 sprite	blizzard-ball	blizzard-ball	high		10-47: used by chips/blzrdbal/ball.	
-sprite	body-overlay-02	heatman-overlay	high	number	Only HeatMan wears it (navis/heatman/navi.luau): his flames.	applied: accepted-1
-sprite	body-overlay-04	heatcross-overlay	high	number	Only the heatcross form wears it (navis/megaman/forms/heatcross/form.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
-sprite	body-overlay-05	spoutcross-overlay	high	number	Only the spoutcross form wears it (navis/megaman/forms/spoutcross/form.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
-sprite	body-overlay-08	eleccross-overlay	high	number	Only the eleccross form wears it (navis/megaman/forms/eleccross/form.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
-sprite	body-overlay-09	tengucross-overlay	high	number	Only the tengucross form wears it (navis/megaman/forms/tengucross/form.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
-sprite	body-overlay-0a	slashcross-overlay	high	number	Only the slashcross form wears it (navis/megaman/forms/slashcross/form.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
-sprite	body-overlay-0b	groundman-overlay	high	number	Only GroundMan wears it (navis/groundman/navi.luau).	applied: accepted-1
-sprite	body-overlay-0c	erasecross-overlay	high	number	Only the erasecross form wears it (navis/megaman/forms/erasecross/form.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
-sprite	body-overlay-0d	groundcross-overlay	high	number	Only the groundcross form wears it (navis/megaman/forms/groundcross/form.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
-sprite	body-overlay-0e	tomahawkcross-overlay	high	number	Only the tomahawkcross form wears it (navis/megaman/forms/tomahawkcross/form.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
-sprite	body-overlay-11	chargecross-overlay	high	number	Only the chargecross form wears it (navis/megaman/forms/chargecross/form.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
-sprite	body-overlay-12	dustcross-overlay	high	number	Only the dustcross form wears it (navis/megaman/forms/dustcross/form.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
+sprite	body-overlay-02	heatman-overlay	high	number	Only HeatMan wears it (navis/heatman/init.luau): his flames.	applied: accepted-1
+sprite	body-overlay-04	heatcross-overlay	high	number	Only the heatcross form wears it (navis/megaman/forms/heatcross/init.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
+sprite	body-overlay-05	spoutcross-overlay	high	number	Only the spoutcross form wears it (navis/megaman/forms/spoutcross/init.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
+sprite	body-overlay-08	eleccross-overlay	high	number	Only the eleccross form wears it (navis/megaman/forms/eleccross/init.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
+sprite	body-overlay-09	tengucross-overlay	high	number	Only the tengucross form wears it (navis/megaman/forms/tengucross/init.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
+sprite	body-overlay-0a	slashcross-overlay	high	number	Only the slashcross form wears it (navis/megaman/forms/slashcross/init.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
+sprite	body-overlay-0b	groundman-overlay	high	number	Only GroundMan wears it (navis/groundman/init.luau).	applied: accepted-1
+sprite	body-overlay-0c	erasecross-overlay	high	number	Only the erasecross form wears it (navis/megaman/forms/erasecross/init.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
+sprite	body-overlay-0d	groundcross-overlay	high	number	Only the groundcross form wears it (navis/megaman/forms/groundcross/init.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
+sprite	body-overlay-0e	tomahawkcross-overlay	high	number	Only the tomahawkcross form wears it (navis/megaman/forms/tomahawkcross/init.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
+sprite	body-overlay-11	chargecross-overlay	high	number	Only the chargecross form wears it (navis/megaman/forms/chargecross/init.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
+sprite	body-overlay-12	dustcross-overlay	high	number	Only the dustcross form wears it (navis/megaman/forms/dustcross/init.luau, `parts`); named for the body overlay row it had.	applied: accepted-1
 sprite	bomb	bomb	high		0c-02: used by chips/blkbomb/bomb, chips/bugbomb/bomb, lib/bombs/bomb, lib/bombs/seed.	
 sprite	boomerang	boomerang	high		10-07: used by chips/boomer/boomerang.	
 sprite	boomerang-tomahawk	boomerang-tomahawk	high		10-57: used by chips/boomer/boomerang.	
@@ -76,7 +76,7 @@ sprite	drill-arm	drill-arm	high		0c-58: used by chips/dblbeast/gregar, chips/dri
 sprite	drip-shower	drip-shower	high		10-22: used by navis/spoutman/drip_shower.	
 sprite	dust	dust	high		14-0e: used by chips/crakshot/shot, lib/effects.	
 sprite	dust-2	dust-spray	low		Shows white and blue sprays: GolmHit's golem landing and TomahawkMan's strike (effect 0x34).	
-sprite	dust-cloud	dust-cloud	high		10-59: used by lib/effects, navis/dustman/clouds, navis/megaman/weapons/absorb/weapon.	
+sprite	dust-cloud	dust-cloud	high		10-59: used by lib/effects, navis/dustman/clouds, navis/megaman/weapons/absorb/init.	
 sprite	dust-storm-mote	dust-storm-mote	high		10-10: used by lib/instant/dust_storm_mote.	
 sprite	eagle-tomahawk	eagle-tomahawk	high		10-2a: used by navis/tomahawkman/axe.	
 sprite	effect-55	effect-55	low	number	A virus's sheet (a green creature with blades); only effect 0x55 uses it (animation 12). No use names it better.	
@@ -162,7 +162,7 @@ sprite	sand-worm	sand-worm	high		04-1a: used by chips/sandwrm/spray, chips/sandw
 sprite	sensor	sensor	high		04-05: used by chips/sensor/turret.	
 sprite	shell-burst	shell-burst	high		14-11: used by lib/effects.	
 sprite	shock-wave	shock-wave	high		10-03: used by chips/wavearm/wave.	
-sprite	shot-impact	shot-impact	high		14-0c: used by lib/sparks.	
+sprite	shot-impact	chip-destruction-spark	high	wrong	14-0c: the chip destruction hit spark (spark 0x09, lib/sparks). The user's name.	applied: accepted-2
 sprite	shuriken	shuriken	high		0c-2f: used by chips/antidmg/shuriken, chips/bodygrd/shuriken.	
 sprite	sight	sight	high		10-45: used by chips/circgun/gun, chips/circgun/shot, chips/magnum/gunner, lib/effects.	
 sprite	slash-man-effect	claw-slash	medium		Shows cyan claw slashes: SlashMan's slash and DblBeast's Gregar claw and slam.	
@@ -282,8 +282,8 @@ sound	arrive	arrive	high		0x116: used by lib/supports/tango.
 sound	bass-anly	bass-anly	high		0x0fd: used by chips/bassanly/navi.	
 sound	bass-anly-shot	bass-anly-shot	high		0x140: used by chips/airspin/whirl, chips/bassanly/shot.	
 sound	bblstar1	blow	low	number	BblStar's blow, CrakShot, WaveArm's strike (named for BblStar1).	
-sound	beast-claw	beast-claw	high		0x1c5: used by navis/megaman/weapons/beast-claw/weapon.	
-sound	beast-claw-2	beast-claw-2	high	number	0x1c6: used by navis/megaman/weapons/beast-claw/weapon.	
+sound	beast-claw	beast-claw	high		0x1c5: used by navis/megaman/weapons/beast-claw/init.	
+sound	beast-claw-2	beast-claw-2	high	number	0x1c6: used by navis/megaman/weapons/beast-claw/init.	
 sound	beast-out	beast-out	high		0x100: role sounds.beast_out.	
 sound	beast-over	beast-over	high		0x19a: role sounds.beast_over_rumble; used by chips/dolthdr/action, chips/sensor/turret, navis/megaman/forms/eleccross-beast/charge.	
 sound	beast-over-burst	thunder	medium		ElecMan's thunder, ElemTrap's and ElmntMan's bolts, Guardian's strike; also the role sounds.beast_over_burst. Its sprite shows lightning (proposed `lightning`).	
@@ -742,6 +742,7 @@ effect	vulcan_hit	vulcan_hit	high		effect 0x20: Effect 0x20.
 effect	vulcan_hit_6a	vulcan_hit_p1	medium	number	Effect 0x6A: vulcan-hit, palette 1. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.	
 spark	hit	guard	high		Spark 0x08 is the role sparks.guard: a blocked hit.	applied: accepted-1
 spark	spark_0e	uninstall	high	number	Spark 0x0E is the role sparks.uninstall: a navi's programs uninstalled.	applied: accepted-1
+spark	shot	chip_destruction	high	wrong	Spark 0x09 is the chip destruction hit spark (the chip destruction shot's, and EXE5's SerchMan's shot's). The user's name.	applied: accepted-2
 region	region_03	ahead	medium	number	Region 0x03: the panel ahead, not the anchor. Unused by content; named for its shape.	
 region	region_05	above_below	medium	number	Region 0x05: the panels above and below the anchor. Unused by content; named for its shape.	
 region	region_07	line_4	medium	number	Region 0x07: the anchor and three ahead (`line` is three, `long` two). Unused by content; named for its shape.	
@@ -771,14 +772,14 @@ region	region_2c	rows_two_away	medium	number	Region 0x2C: the rows two above and
 region	region_2d	column	medium	number	Region 0x2D: the anchor's column, five tall. Unused by content; named for its shape.	
 region	region_2e	column_ends	medium	number	Region 0x2E: the anchor's column, five tall, without the anchor. Unused by content; named for its shape.	
 collision	attack-480	attack-480	low	number	Row 0x25: an attack with the flag 0x400, whose test no routine was found for; nothing names a better reading.	
-collision	attack-90	chip-erasing	medium	number	Row 0x08: an attack that erases the held chip (flag 0x10). A projectile variant uses it (shot/attack-90).	
+collision	attack-90	chip-destruction	high	number	Row 0x08: chip destruction, an attack that destroys the chip a navi holds (flag 0x10). The chip destruction shot uses it (shot/attack-90). The user's name.	applied: accepted-2
 collision	attack-a0	attack-a0	low	number	Row 0x47: an attack with the flag 0x20 (untested by any routine found); a projectile variant uses it.	
 collision	collision-03	collision-03	low	number	Row 0x03: what reaches the other side's attacks, objects and other bodies and the neutral objects, with 0x100. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.	
 collision	collision-09	collision-09	low	number	Row 0x09: an attack with the flag 0x100 (counted into the receiver's drain total). Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.	
 collision	collision-11	collision-11	low	number	Row 0x11: a slash with the flag 0x400, whose test no routine was found for. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.	
-collision	collision-1a	thrown-piercing-break-chip-erasing	medium	number	Row 0x1A: a thrown attack that pierces, breaks and erases the held chip (0x10). Unused by content; named for its flags.	
+collision	collision-1a	thrown-piercing-break-chip-destruction	medium	number	Row 0x1A: a thrown attack that pierces, breaks and destroys the held chip (chip destruction, 0x10). Unused by content; named for its flags.	
 collision	collision-1b	collision-1b	high		type 0x1B: Row 0x1B.	
-collision	collision-1d	thrown-piercing-chip-erasing	medium	number	Row 0x1D: a thrown attack that pierces and erases the held chip. Unused by content; named for its flags.	
+collision	collision-1d	thrown-piercing-chip-destruction	medium	number	Row 0x1D: a thrown attack that pierces and destroys the held chip. Unused by content; named for its flags.	
 collision	collision-1f	collision-1f	low	number	Row 0x1F: a breaking attack with the bit 0x40000 (the mine's and the hitbox's). Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.	
 collision	collision-20	thrown-pushing	medium	number	Row 0x20: a thrown attack that pushes. Unused by content; named for its flags.	
 collision	collision-21	collision-21	low	number	Row 0x21: a thrown breaking attack with the bit 0x40000. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.	
@@ -805,7 +806,7 @@ collision	collision-3e	own-floating-body	medium	number	Row 0x3E: another body of
 collision	collision-3f	thrown-breaking-floating-navi	medium	number	Row 0x3F: a floating navi's body, thrown and breaking. Unused by content; named for its flags.	
 collision	collision-40	own-slash-object	medium	number	Row 0x40: an object of its side that slashes, while dimmed too. Unused by content; named for its flags.	
 collision	collision-41	other-side-body	medium	number	Row 0x41: only the body bit of side 1 (0x04000000) for side 0, and the reverse. Unused by content; named for its flags.	
-collision	collision-42	chip-erasing-slash	medium	number	Row 0x42: a slash that erases the held chip. Unused by content; named for its flags.	
+collision	collision-42	chip-destruction-slash	medium	number	Row 0x42: a slash that destroys the held chip. Unused by content; named for its flags.	
 collision	collision-43	collision-43	low	number	Row 0x43: the bit 0x40000 and 0x80, no side. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.	
 collision	collision-44	collision-44	low	number	Row 0x44: an object of its side with the bit 0x40000, while dimmed too. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.	
 collision	collision-45	thrown-break-slash	medium	number	Row 0x45: a thrown breaking slash. Unused by content; named for its flags.	
@@ -814,12 +815,12 @@ collision	collision-4b	collision-4b	low	number	Row 0x4B: the same flags as row 0
 collision	collision-4c	own-breaking-drain-body	medium	number	Row 0x4C: another body of its side, breaking and draining, while dimmed too. Unused by content; named for its flags.	
 collision	collision-4d	collision-4d	low	number	Row 0x4D: what a navi hits, but the neutral objects (row 0x02 without 0x00800000). Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.	
 collision	collision-50	slash-navi	medium	number	Row 0x50: a navi's body that slashes. Unused by content; named for its flags.	
-collision	collision-51	chip-erasing-breaking-navi	medium	number	Row 0x51: a navi's body that breaks and erases the held chip. Unused by content; named for its flags.	
+collision	collision-51	chip-destruction-breaking-navi	medium	number	Row 0x51: a navi's body that breaks and destroys the held chip. Unused by content; named for its flags.	
 collision	collision-53	breaking-slash-navi	medium	number	Row 0x53: a navi's body that slashes and breaks. Unused by content; named for its flags.	
-collision	collision-54	chip-erasing-breaking-slash	medium	number	Row 0x54: a breaking slash that erases the held chip. Unused by content; named for its flags.	
-collision	collision-55	thrown-chip-erasing-breaking-navi	medium	number	Row 0x55: a navi's body, thrown, breaking, erasing the held chip. Unused by content; named for its flags.	
+collision	collision-54	chip-destruction-breaking-slash	medium	number	Row 0x54: a breaking slash that destroys the held chip. Unused by content; named for its flags.	
+collision	collision-55	thrown-chip-destruction-breaking-navi	medium	number	Row 0x55: a navi's body, thrown, breaking, destroying the held chip. Unused by content; named for its flags.	
 collision	collision-56	piercing-pushing	medium	number	Row 0x56: a piercing pushing attack. Unused by content; named for its flags.	
-collision	collision-57	collision-57	low	number	Row 0x57: a breaking attack that erases the held chip, with the flag 0x20. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.	
+collision	collision-57	collision-57	low	number	Row 0x57: a breaking attack that destroys the held chip, with the flag 0x20. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.	
 status	blind-1200	blind-1200	high		status byte 0x32: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).	
 status	blind-1200-past-confuse	blind-1200-past-confuse	high		status byte 0x28: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).	
 status	blind-1200-past-paralyze	blind-1200-past-paralyze	high		status byte 0x1E: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).	
@@ -935,7 +936,7 @@ lockon	thunder	thunder	high		mode 0x02: named as it is defined; see the module.
 lockon	trnarrw1	trnarrw	medium		Named for the first chip that uses it (trnarrw1); its other levels use it too, so the level digit says nothing.	
 lockon	widesht	widesht	high		mode 0x03: named as it is defined; see the module.	
 lockon	yoyo	yoyo	high		mode 0x05: named as it is defined; see the module.	
-projectile-variant	shot/attack-90	shot/chip-erasing	medium	number	Projectile row 0x09: its collision type erases the held chip (row 0x08's flag 0x10).	
+projectile-variant	shot/attack-90	shot/chip-destruction	high	number	Projectile row 0x09: the chip destruction shot (collision row 0x08, whose flag 0x10 destroys the held chip). The user's name.	applied: accepted-2
 projectile-variant	shot/blade	shot/blade	high		projectile row 0x02: A sword's blade for a shot; it flinches.	
 projectile-variant	shot/blinding	shot/blinding	high		projectile row 0x0B: status 0x30: named as it is defined; see the module.	
 projectile-variant	shot/breaking	shot/breaking	high		projectile row 0x05: A breaking shot.	
