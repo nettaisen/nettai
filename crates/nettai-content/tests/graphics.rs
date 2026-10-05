@@ -251,6 +251,8 @@ fn custom() -> CustomScreen {
             CustomLettering {
                 pictures: SlotPictures { ok: picture(91), ok_picked: picture(92), redeal: picture(93), scrap: picture(94), other: picture(95) },
                 cross_names: vec![("falzar".into(), tiles(36, 96)), ("gregar".into(), tiles(36, 97))],
+                // The soul button's label in this language (its three states).
+                buttons: vec![("soul".into(), tiles(18, 104))],
             },
         )],
     }

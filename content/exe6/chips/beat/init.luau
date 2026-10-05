@@ -16,7 +16,6 @@ return define.chip {
     hit_param = 0,
     lockout = 0,
     library = { number = 378, index = 0, sort = 0 },
-    traits = { "hides_advance_code" },
     slot_in_limit = 1,
     action = cannon_chips.cannon.action,
 }

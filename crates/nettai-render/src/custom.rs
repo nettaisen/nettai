@@ -23,7 +23,7 @@ use nettai_battle::battle::{FadeMode, mode};
 use nettai_battle::content::{ChipFlags, ChipTraits};
 use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
 use nettai_battle::custom::{ButtonCell, FolderChip, GameVersion, Phase, Screen, Side, SlotKind, SlotState};
-use nettai_content_api::{ChipHandle, FieldValue, FormHandle};
+use nettai_content_api::{ChipHandle, Data, FieldValue, FormHandle, NaviHandle, Registry};
 
 /// The window: 15 columns of 20 rows at the HUD layer's top left.
 const COLUMNS: usize = 15;
@@ -436,12 +436,12 @@ impl<'a> View<'a> {
 
 /// EXE5's soul button's offer and choice, as its souls system keeps them
 /// (content/exe5/rules/souls/custom.luau, read by its fields' names): the
-/// soul it offers or gave (its number) and whether it is Chaos Unison
-/// (slot 11's +5 and +6), and the choice's step and count (the screen's
-/// state 9).
+/// soul it offers or gave (its form; none: no offer) and whether it is Chaos
+/// Unison (slot 11's +5 and +6), and the choice's step and count (the
+/// screen's state 9).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SoulOffer {
-    pub number: u8,
+    pub soul: Option<FormHandle>,
     pub chaos: bool,
     pub step: u8,
     pub count: u8,
@@ -465,8 +465,13 @@ impl SoulOffer {
             Some(FieldValue::Bool(b)) => Some(b),
             _ => None,
         };
+        let soul = match field("offer")? {
+            FieldValue::Ref(Some((nettai_content_api::Registry::Form, h))) => Some(FormHandle(h)),
+            FieldValue::Ref(None) => None,
+            _ => return None,
+        };
         Some(SoulOffer {
-            number: byte(field("offer_number"))?,
+            soul,
             chaos: flag(field("offer_chaos"))?,
             step: byte(field("unite_step"))?,
             count: byte(field("unite_count"))?,
@@ -488,19 +493,31 @@ fn soul_window_up(b: &Battle, screen: &Screen) -> bool {
 
 /// The icon of the soul EXE5's soul button offers or gave, if the special
 /// slot is the soul button: the pack's `icons` and the icon's first tile in
-/// them (by the soul's number, Chaos Unison's 13: 0x0802341C).
+/// them (the soul's, Chaos Unison's the 13th: 0x0802341C).
 fn soul_icon<'a>(a: &'a CustomScreen, v: &View) -> Option<(&'a Tiles, usize)> {
     if !is_soul_button(v.b, v.screen, SPECIAL_SLOT) {
         return None;
     }
     let b = a.button(SOUL_BUTTON)?;
     let soul = SoulOffer::of(v.b, v.side as usize)?;
-    let n = if soul.chaos { CHAOS_ICON } else { soul.number as usize };
+    let n = if soul.chaos { CHAOS_ICON } else { soul_place(v.b, v.side, soul.soul) };
     (b.icons.len() >= 4 * (n + 1)).then_some((&b.icons, 4 * n))
 }
 
 /// The Chaos Unison's icon among the soul button's.
 const CHAOS_ICON: usize = 13;
+
+/// A soul's icon among the pack's soul button's: its place among its
+/// side's navi's souls, from 1 (the navi's `forms.souls` lists them in the
+/// icons' order, the original's soul numbers'); 0, the empty icon, for no
+/// soul or one the navi hasn't.
+fn soul_place(b: &Battle, side: u8, soul: Option<FormHandle>) -> usize {
+    let navi = b.stats[side as usize & 1].navi;
+    match (soul, &b.content.navi(navi).forms) {
+        (Some(f), Some(forms)) => forms.souls.iter().position(|&s| s == f).map_or(0, |i| i + 1),
+        _ => 0,
+    }
+}
 
 /// EXE5's soul choice (its state 9, 0x080232D0: the souls system's window
 /// `soul_unison`, at its step `sub` and count `counter`): the soul's icon as
@@ -515,8 +532,9 @@ fn soul_flight<'a>(a: &'a CustomScreen, v: &View, sub: u8, counter: u8) -> Optio
     flight(a, v, tiles, first, sub, counter)
 }
 
-/// EXE5's capsule's mix, as its souls system keeps it (content/exe5/rules/
-/// souls/capsules.luau, read by its fields' names): the capsule being mixed
+/// EXE5's capsule's mix, as its souls system keeps it (MeddySoul's part of
+/// it: content/exe5/navis/megaman/forms/meddysoul/capsules.luau, read by its
+/// fields' names): the capsule being mixed
 /// (1 or 2: the button `capsule_1` or `capsule_2`), and the sequence's step
 /// and count (the screen's state 0x3C).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -632,16 +650,37 @@ impl View<'_> {
     }
 }
 
+/// A navi's Crosses of a version of its game, in the order its definition
+/// lists them (its `forms.<version>.crosses`, which EXE6's cross system
+/// reads): the Cross window's order, and the order of a pack version's
+/// names and colors.
+pub fn navi_crosses<'c>(c: &'c Content, navi: NaviHandle, version: &str) -> impl Iterator<Item = FormHandle> + 'c {
+    let listed = match c.defs.definitions.get(Registry::Navi, &c.defs.navi(navi).key) {
+        Some(d) => d.spec.field("forms").field(version).field("crosses"),
+        None => &Data::Nil,
+    };
+    let items = match listed {
+        Data::List(items) => items.as_slice(),
+        _ => &[],
+    };
+    items.iter().filter_map(|v| match v {
+        Data::Ref(Registry::Form, key) => c.defs.form_by_key(key),
+        _ => None,
+    })
+}
+
 /// A Cross's name pictures and colors in the Cross window, by the Cross's
 /// own version (a Gregar Cross shows Gregar's name in any player's window):
 /// its version's custom-screen pictures (the form's `version`) and its
-/// number among that version's Crosses (its `window_order`). Its name is
-/// `cross_names`' 18 tiles from `18 * number` on the cursor's row
-/// (`18 * (number + 5)` on the others'), its colors `cross_palettes[number]`
-/// (`[number + 5]` once used). None: a form that says neither.
-pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
-    let f = c.form(form);
-    Some((a.versioned.get(f.version.as_deref()?), f.window_order? as usize))
+/// number among that version's Crosses as `navi`, whose Cross it is, lists
+/// them (`navi_crosses`). Its name is `cross_names`' 18 tiles from
+/// `18 * number` on the cursor's row (`18 * (number + 5)` on the others'),
+/// its colors `cross_palettes[number]` (`[number + 5]` once used). None: a
+/// form of no version, or one the navi doesn't list.
+pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
+    let version = c.form(form).version.as_deref()?;
+    let number = navi_crosses(c, navi, version).position(|f| f == form)?;
+    Some((a.versioned.get(version), number))
 }
 
 /// The pack's name of a game version (`Versioned`).
@@ -905,10 +944,11 @@ impl Window {
         out
     }
 
-    /// A pick's name and code into name `k`'s tiles.
+    /// A pick's name and code into name `k`'s tiles. (The original leaves
+    /// the code off a chip numbered 0x160 or more, `sub_802B80C`, EXE5's
+    /// 0x08027BC6: no recipe of either game names one.)
     fn put_advance_name(&mut self, v: &View, k: usize, c: FolderChip, text: &TextSink, problems: &mut Problems) {
-        let code = crate::lookups::advance_code(&v.b.content, c.id, problems).then_some(c.code.0);
-        self.put_advance_text(v, k, c.id, text.strings.chip_name(&v.b.content, c.id), code, text, problems);
+        self.put_advance_text(v, k, c.id, text.strings.chip_name(&v.b.content, c.id), Some(c.code.0), text, problems);
     }
 
     /// A name (chip `chip`'s, and a pick's code in its last cell) into name
@@ -960,7 +1000,7 @@ impl Window {
         let navi = v.b.stats[v.side as usize].navi;
         let mut picture = |slot: usize| {
             let form = unlocks.cross_at(&*v.b.content, navi, w.offered[slot])?;
-            crate::lookups::cross_name(v.assets, &v.b.content, form, problems)
+            crate::lookups::cross_name(v.assets, &v.b.content, navi, form, problems)
         };
         for slot in 0..w.count.min(5) as usize {
             let Some((own, number)) = picture(slot) else { continue };

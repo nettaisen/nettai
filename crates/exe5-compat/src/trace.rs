@@ -673,14 +673,18 @@ impl Round {
             }
         }
         // Each side's souls: its version's six (Team ProtoMan's 1 to 6,
-        // Team Colonel's 7 to 12: 0x08024BF0's flags), those the content
-        // has, into the souls system's setup.
+        // Team Colonel's 7 to 12: 0x08024BF0's flags, by the forms'
+        // numbers, records.toml's), those the content has, into the souls
+        // system's setup.
         for (side, p) in [&mut p0, &mut p1].into_iter().enumerate() {
             if let Ok(p) = p {
                 let version = d.versions[side];
+                let has = |f: nettai_content_api::FormHandle| {
+                    compat.form_number(&content.defs.form(f).key).is_some_and(|n| version.soul_flag(n).is_some())
+                };
                 let souls: Vec<nettai_battle::rules::Fact> = (0..content.defs.forms.len() as u16)
                     .map(nettai_content_api::FormHandle)
-                    .filter(|&f| content.form(f).soul.as_ref().is_some_and(|s| version.soul_flag(s.number).is_some()))
+                    .filter(|&f| content.form(f).soul.is_some() && has(f))
                     .map(|f| nettai_battle::rules::Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, f.0)))
                     .collect();
                 p.set_fact(content, "souls", &souls)?;

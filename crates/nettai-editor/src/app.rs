@@ -96,8 +96,8 @@ pub enum Msg {
     /// An SP navi's deletion time (by its slot), as typed.
     SpTime(usize, usize, String),
     /// The side from a save file (an EXE6 save's version, unlocks, navi code
-    /// level and SP times; an EXE5 save's karma and souls), into a match of
-    /// the save's game.
+    /// level and SP times; an EXE5 save's karma, souls and computer-navi
+    /// data), into a match of the save's game.
     ImportSave(usize),
     // The folder.
     Entry(usize, usize),
