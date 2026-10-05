@@ -221,6 +221,12 @@ pub struct Identity {
     /// The Full Synchro aura's animation around it (`sub_80C4C52`); none:
     /// it gets no aura (`sub_80139C4`).
     pub aura_anim: Option<u8>,
+    /// The anger tick passes over it (EXE5's 0x08011A14 tests the actor
+    /// record's AI index for 23: the records of NameIDs 0x18E to 0x190, a
+    /// player's type, which ShadowMan's SplitUp shadow has and no navi a
+    /// player operates). A body of the player's kind that takes no part in
+    /// the emotions states it.
+    pub never_angers: bool,
     /// The ice block that fits it.
     pub ice: IceSize,
     /// Whose it is, for a navi's or a form's.
@@ -246,6 +252,7 @@ impl Identity {
             parts: None,
             overlay_hooks: OverlayHooks::default(),
             aura_anim: None,
+            never_angers: false,
             ice: IceSize::Small,
             owner: None,
             body: None,
@@ -523,6 +530,7 @@ pub(crate) fn read(
         parts,
         overlay_hooks,
         aura_anim,
+        never_angers: flag(spec.field("never_angers"), "never_angers", false)?,
         ice,
         owner: None,
         body,
