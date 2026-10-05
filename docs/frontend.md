@@ -974,7 +974,9 @@ programs = [                               # in the save's order; x, y the cente
 
 **A side's version.** A side of EXE6 states its version, `falzar` or
 `gregar` (its Beast, its own Crosses, its pictures and its navi's version
-byte): nothing fills one in, and a file without it is refused with where
+byte): nothing fills one in (the engine itself starts no round whose
+player's setup leaves an enum of its rules' unstated: EXE6's `version` has
+no default), and a file without it is refused with where
 it is missing. A new match's sides have none until they are given theirs
 (the editor asks beside the game, with nothing chosen), and a drawn match
 draws each side's from its seed and writes it. An EXE5 match has no
@@ -1191,6 +1193,21 @@ either); or `{}`, an empty place. `giga` and `program_advance`, one place
 each, are that entry alone. The lists are named for what the game writes there, but any entry may
 stand in any place, as in the save (a save made by hand can have a giga chip
 among the patterns' places).
+
+One kind of chip is refused in a place: a chip the original can't play in
+auto battle (a team navi's own chip, such as StepSwrd, and the chips
+past the library, FtrSword to PnkCapsl). The AI gets in place for a chip by
+the chip's positioning class, and theirs, 255, is past the game's table of
+classes: the original crashes there, and the engine raises. The game's own
+writer never puts one among the 42 places (it counts library chips only),
+so only a block made by hand holds one, and the check says where: "place 29
+of the auto battle data (`mega`, entry 2) holds StepSwrd: the original
+can't play it in auto battle (...)". Which chips those are is the content's
+to say (the auto battle system's `unplayable_tactics`, from its own data's
+classes: `Defs::unplayable_tactic`), so a navi's own chip is covered as it
+lands. A pattern record may hold one (the game writes any chip used in a
+run there, and a record never plays): the editor notes it quietly, and its
+chip list for a place doesn't offer those chips.
 
 `records` is the eight pattern records in their order, each a table: `dx`
 and `dy`, where the navi in auto battle stands from its target (`dx` columns

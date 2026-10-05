@@ -13,9 +13,10 @@
 //! that is empty without it (`elements`, `buster`, `math`,
 //! `custom_screen`); in a section, a list or an attribute of one entry
 //! that is none unless stated (a panel type's `burn`, `chaos_cycle`).
-//! Content whose rules are Rust tables (`Content::base_rules`: the engine's
-//! test content, a tool's decode of a ROM) states them there, and its
-//! ruleset's sections replace those.
+//! Content whose rules are Rust tables (`Content::base_rules`: a tool's
+//! decode of a ROM, a test's content of a few modules) states them there,
+//! and its ruleset's sections replace those. (The engine's test content
+//! states its rules in its ruleset, as a game does.)
 
 use std::collections::BTreeMap;
 
