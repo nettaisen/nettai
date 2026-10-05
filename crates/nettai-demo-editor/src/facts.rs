@@ -12,9 +12,18 @@
 //! - a few flags (`bool[5]`): a checkbox each, numbered;
 //! - a list of definitions (`form[5]`, `form[16]`): a pane of its own,
 //!   with a checkbox for each definition the list may hold
-//!   (`nettai_match::facts::offered`).
+//!   (`nettai_match::facts::offered`). One the rules give no default is
+//!   not stated until the side states it (an empty list is a statement:
+//!   "None" states it), as an enum is.
 //!
-//! Each has a button back to the rules' default where it isn't that.
+//! Each has a button back to the rules' default where it has one and isn't
+//! that.
+//!
+//! The rules assume nothing a side must state, so the editor fills in what
+//! it can for the person: when the side's version is chosen (the engine's
+//! version fact), its form list (the engine's: EXE6's Crosses) becomes its
+//! navi's own of that version (`Side::state_own_forms`) where it wasn't
+//! stated, or was the last version's own.
 
 use crate::app::{Editor, Msg};
 use crate::view::{DIM, RED, SIDES, heading};
@@ -39,11 +48,15 @@ pub enum Edit {
     Variant(String),
     /// A definition into a list of them, or out of it.
     Listed(u16, bool),
+    /// A list of definitions stated as holding none.
+    Empty,
+    /// The form list as the side's navi's own of its version.
+    Own,
     /// Back at what a side that says nothing has.
     Default,
 }
 
-/// A fact's name as a pane's label: `cross_list` as "Cross list".
+/// A fact's name as a pane's label: `soul_unison` as "Soul unison".
 pub fn title(name: &str) -> String {
     let spaced = name.replace('_', " ");
     let mut letters = spaced.chars();
@@ -80,9 +93,22 @@ pub fn list_named(content: &Content, name: &str) -> Option<usize> {
 pub fn apply(content: &Content, game: &str, side: &mut Side, name: &str, edit: &Edit) -> bool {
     let Some(field) = facts::field(content, name) else { return false };
     let before = side.facts.clone();
+    // (The side's form list, if it is its navi's own of its version: it
+    // follows a change of the version.)
+    let own = |side: &Side| {
+        let mut with_own = side.clone();
+        with_own.state_own_forms(content) && with_own.facts == side.facts
+    };
+    let followed = facts::role_of(content, name) == Some(PlayerFact::Version)
+        && (side.facts.role(content, PlayerFact::CrossList).is_some_and(|l| !l.stated()) || own(side));
     let done = match edit {
         Edit::Default => {
             side.facts.reset(content, name);
+            Ok(())
+        }
+        Edit::Empty => side.set_fact(content, name, &[]),
+        Edit::Own => {
+            side.state_own_forms(content);
             Ok(())
         }
         Edit::Flag(on) => side.set_fact(content, name, &[Fact::Value(Value::Bool(*on))]),
@@ -119,6 +145,9 @@ pub fn apply(content: &Content, game: &str, side: &mut Side, name: &str, edit: &
     if done.is_err() {
         side.facts = before;
         return false;
+    }
+    if followed {
+        side.state_own_forms(content);
     }
     // (The version in the navi's stats goes by the side's.)
     side.stats.version = nettai_match::version_byte(content, side.version(content));
@@ -166,7 +195,8 @@ pub fn rows(e: &Editor, s: usize) -> Column<'_, Msg> {
         };
         let mut line = row![text(title(f.name)).size(14).width(Length::Fixed(160.0)), control].spacing(8).align_y(Alignment::Center);
         let unstated = value == Stated::Variant(None);
-        if !unstated && !side.facts.is_default(c, f.name) && defaults.get(c, f.name) != Some(Stated::Variant(None)) {
+        let required = matches!(defaults.get(c, f.name), Some(Stated::Variant(None) | Stated::Unlisted));
+        if !unstated && !side.facts.is_default(c, f.name) && !required {
             line = line.push(button(text("Default").size(13)).on_press(msg(Edit::Default)).style(button::secondary));
         }
         col = col.push(line);
@@ -211,7 +241,10 @@ pub fn list(e: &Editor, s: usize, index: usize) -> Element<'_, Msg> {
     let Some(f) = fields.get(index).filter(|f| is_list(f)) else { return space().into() };
     let (FieldType::Array(elem, capacity), Some(offered)) = (f.ty, facts::offered(c, e.m.game(), side, f)) else { return space().into() };
     let FieldType::Ref(registry, _) = **elem else { return space().into() };
-    let held = side.facts.get(c, f.name).map(|v| v.defs()).unwrap_or_default();
+    let stated = side.facts.get(c, f.name);
+    let unstated = stated == Some(Stated::Unlisted);
+    let required = nettai_match::Facts::defaults(c).get(c, f.name) == Some(Stated::Unlisted);
+    let held = stated.map(|v| v.defs()).unwrap_or_default();
     let name = f.name.to_string();
     let msg = move |edit: Edit| Msg::Fact(s, name.clone(), edit);
     // (The list's own order is the pane's once it is edited here; a file's
@@ -225,15 +258,24 @@ pub fn list(e: &Editor, s: usize, index: usize) -> Element<'_, Msg> {
         format!("{} of {capacity}, listed in another order than here: {}.", held.len(), names.join(", "))
     };
     let mut top = row![text(count).size(13).color(DIM)].spacing(12).align_y(Alignment::Center);
-    if side.facts.is_default(c, f.name) {
+    if required {
+        // (No default to go back to: what the buttons state instead.)
+        if !held.is_empty() || unstated {
+            top = top.push(button(text("None").size(13)).on_press(msg(Edit::Empty)).style(button::secondary));
+        }
+        if facts::role_of(c, f.name) == Some(PlayerFact::CrossList) && side.version(c).is_some() {
+            top = top.push(button(text("Its version's own").size(13)).on_press(msg(Edit::Own)).style(button::secondary));
+        }
+    } else if side.facts.is_default(c, f.name) {
         top = top.push(text("The rules' default: what a side that says nothing has.").size(13).color(DIM));
     } else {
         top = top.push(button(text("Default").size(13)).on_press(msg(Edit::Default)).style(button::secondary));
     }
     let mut col = column![heading(format!("{}: {}", SIDES[s], title(f.name))), top].spacing(8);
-    // (The engine's form list, with none listed, is the version's own.)
-    if held.is_empty() && facts::role_of(c, f.name) == Some(PlayerFact::CrossList) {
-        col = col.push(text("None listed: the side's version's own forms.").size(13).color(DIM));
+    if unstated {
+        col = col.push(
+            text(format!("No {} is stated: a side states its own (None, for none), and a round doesn't start without.", f.name)).size(13).color(RED),
+        );
     }
     for h in offered {
         let on = held.contains(&h);
@@ -263,49 +305,65 @@ mod tests {
     use nettai_match::testing::{exe5_content, exe6_content};
 
     /// Each game's facts get their controls from their types alone: EXE6's
-    /// version a list of two, its owned Crosses five flags, its Cross list a
-    /// pane of MegaMan's ten; EXE5's karma a number, its souls a pane of
-    /// twelve. Edits go through the facts' own writer, and one a fact
-    /// doesn't take changes nothing.
+    /// version a list of two, its Crosses a pane of MegaMan's ten; EXE5's
+    /// karma a number, its souls a pane of twelve. Edits go through the
+    /// facts' own writer, and one a fact doesn't take changes nothing. What
+    /// the rules require and assume nothing of, the editor fills in where
+    /// it can: the version's own Crosses when the version is chosen.
     #[test]
     fn facts_are_edited_by_their_types() {
         let six = exe6_content();
         let mut m = nettai_match::Match::empty(&six, "exe6").unwrap();
         let side = &mut m.sides[0];
-        assert_eq!(lists(&six, "exe6", side), [(0, "Cross list".to_string())]);
-        assert_eq!(list_named(&six, "cross_list"), Some(0));
-        assert_eq!(list_named(&six, "crosses"), None, "five flags: a row, no pane");
-        // The version: a variant by its name, and the stats' byte with it.
+        assert_eq!(lists(&six, "exe6", side), [(0, "Crosses".to_string())]);
+        assert_eq!(list_named(&six, "crosses"), Some(0));
+        assert_eq!(list_named(&six, "version"), None, "an enum: a row, no pane");
+        let field = facts::field(&six, "crosses").unwrap();
+        let offered = facts::offered(&six, "exe6", side, &field).unwrap();
+        assert_eq!(offered.len(), 10, "MegaMan's Crosses of both versions: Gregar's five, then Falzar's");
+        let crosses = |side: &Side| side.facts.get(&six, "crosses").unwrap().defs();
+        // A new side states neither its version nor its Crosses. Choosing
+        // the version (a variant by its name; the stats' byte goes with it)
+        // fills in that version's own five, and choosing the other swaps
+        // them while they are the version's own.
+        assert_eq!(side.facts.get(&six, "crosses"), Some(Stated::Unlisted));
         assert!(apply(&six, "exe6", side, "version", &Edit::Variant("falzar".into())));
         assert_eq!((side.version(&six), side.stats.version), (Some("falzar"), 1));
+        assert_eq!(crosses(side), offered[5..]);
+        assert!(apply(&six, "exe6", side, "version", &Edit::Variant("gregar".into())));
+        assert_eq!(crosses(side), offered[..5]);
         assert!(!apply(&six, "exe6", side, "version", &Edit::Variant("azure".into())));
-        assert_eq!(side.version(&six), Some("falzar"));
-        // A flag, one of five flags, a number as typed.
+        assert_eq!(side.version(&six), Some("gregar"));
+        // The Crosses: none, which is a statement; then checked in any
+        // order they keep the window's order, and hold five.
+        assert!(apply(&six, "exe6", side, "crosses", &Edit::Empty));
+        assert_eq!(side.facts.get(&six, "crosses"), Some(Stated::List(vec![Stated::Def(Registry::Form, None); 5])));
+        for &h in [offered[7], offered[2], offered[9], offered[0], offered[4], offered[5]].iter() {
+            apply(&six, "exe6", side, "crosses", &Edit::Listed(h, true));
+        }
+        let held = crosses(side);
+        assert_eq!(held, [offered[0], offered[2], offered[4], offered[7], offered[9]], "the sixth isn't taken");
+        // (Crosses of the side's own choosing stay when the version changes.)
+        assert!(apply(&six, "exe6", side, "version", &Edit::Variant("falzar".into())));
+        assert_eq!(crosses(side), held);
+        assert!(apply(&six, "exe6", side, "crosses", &Edit::Listed(offered[2], false)));
+        assert_eq!(crosses(side).len(), 4);
+        assert!(apply(&six, "exe6", side, "crosses", &Edit::Own));
+        assert_eq!(crosses(side), offered[5..]);
+        // A flag, a number as typed.
         assert!(apply(&six, "exe6", side, "beast_out", &Edit::Flag(false)));
-        assert!(apply(&six, "exe6", side, "crosses", &Edit::FlagAt(1, false)));
-        assert_eq!(side.facts.get(&six, "crosses"), Some(Stated::List([true, false, true, true, true].map(Stated::Flag).to_vec())));
         assert!(apply(&six, "exe6", side, "bug_frags", &Edit::Number(" 12 ".into())));
         assert!(!apply(&six, "exe6", side, "bug_frags", &Edit::Number("many".into())));
         assert!(!apply(&six, "exe6", side, "bug_frags", &Edit::Number("-1".into())));
         assert_eq!(side.facts.get(&six, "bug_frags"), Some(Stated::Number(12)));
-        // The Cross list: MegaMan's ten are offered, the list keeps the
-        // window's order whatever order they are checked in, and holds five.
-        let field = facts::field(&six, "cross_list").unwrap();
-        let offered = facts::offered(&six, "exe6", side, &field).unwrap();
-        assert_eq!(offered.len(), 10);
-        for &h in [offered[7], offered[2], offered[9], offered[0], offered[4], offered[5]].iter() {
-            apply(&six, "exe6", side, "cross_list", &Edit::Listed(h, true));
-        }
-        let held = side.facts.get(&six, "cross_list").unwrap().defs();
-        assert_eq!(held, [offered[0], offered[2], offered[4], offered[7], offered[9]], "the sixth isn't taken");
-        assert!(apply(&six, "exe6", side, "cross_list", &Edit::Listed(offered[2], false)));
-        assert_eq!(side.facts.get(&six, "cross_list").unwrap().defs().len(), 4);
-        // Back at the defaults: every fact but the version, which has none.
-        for name in ["beast_out", "crosses", "bug_frags", "cross_list"] {
+        // Back at the defaults, for the facts that have one.
+        for name in ["beast_out", "bug_frags"] {
             assert!(apply(&six, "exe6", side, name, &Edit::Default), "{name}");
             assert!(side.facts.is_default(&six, name), "{name}");
         }
+        assert_eq!(nettai_match::check::check_side_alone(&six, &m.arena, &m.sides[0]).iter().filter(|p| !p.contains("folder")).count(), 0);
         // A navi that doesn't change form is offered no form list.
+        let side = &mut m.sides[0];
         side.navi = nettai_match::ids::navi(&six, "exe6", "protoman").unwrap();
         assert!(lists(&six, "exe6", side).is_empty());
 

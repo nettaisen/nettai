@@ -7,7 +7,8 @@
 //! stats are a later import's.) What a save says that its game's rules take
 //! is written as the side's facts, each by its setup field's name: a
 //! boundary names its own game's (EXE6's `version`, `beast_out` and
-//! `crosses`; EXE5's `karma`, `souls`, `soul_unison` and `chaos_unison`).
+//! `crosses`, the list of the Crosses the save's flags own; EXE5's `karma`,
+//! `souls`, `soul_unison` and `chaos_unison`).
 //!
 //! A boundary with the compat crates: a save file is the original's own
 //! bytes, which each game's compat crate reads (`exe6_compat::save`,
@@ -20,7 +21,7 @@ use crate::{Match, Side};
 use exe6_compat::save::Save;
 use nettai_battle::content::Content;
 use nettai_battle::rules::Fact;
-use nettai_content_api::Value;
+use nettai_content_api::{Registry, Value};
 
 /// The game of the save in `file` (a .sav's bytes, or a raw EXE5 save
 /// image): `exe6` or `exe5`, or why it is neither's.
@@ -61,20 +62,21 @@ impl Match {
 impl Side {
     /// Take the version, the unlocks, the navi code's level and the SP
     /// deletion times from an EXE6 save, the side of an EXE6 match: its
-    /// version (`version`), whether it has Beast Out (`beast_out`) and which
-    /// of its version's five Crosses it owns (`crosses`: the Cross window
-    /// offers those; a Cross list of the side's own, which no save has,
-    /// goes), and a link navi's stats follow its level and version as the
-    /// save's reload gives them. What is worth saying about it (what the
-    /// side keeps), or why the save can't be read.
+    /// version (`version`), whether it has Beast Out (`beast_out`) and its
+    /// Crosses (`crosses`: those of its version's five the save's flags
+    /// own, in the Cross numbers' order, as the side's navi lists them;
+    /// none for a navi that doesn't change form), and a link navi's stats
+    /// follow its level and version as the save's reload gives them. What
+    /// is worth saying about it (what the side keeps), or why the save
+    /// can't be read.
     pub fn import_exe6_save(&mut self, content: &Content, save: &Save) -> Result<Vec<String>, String> {
         let level = save.navi_level()?;
         let mut notes = Vec::new();
         let unlocks = save.unlocks();
         self.set_fact(content, "version", &[Fact::Name(save.version().name())])?;
         self.set_fact(content, "beast_out", &[Fact::Value(Value::Bool(unlocks.beast_out))])?;
-        self.set_fact(content, "crosses", &unlocks.crosses.map(|owned| Fact::Value(Value::Bool(owned))))?;
-        self.facts.reset(content, "cross_list");
+        let owned: Vec<Fact> = unlocks.owned_crosses(content, self.navi).iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
+        self.set_fact(content, "crosses", &owned)?;
         // The level is the save's operated navi's; a link navi always has
         // one (it exists through its code).
         let link_navi = !content.navi(self.navi).changes_form();
@@ -112,9 +114,9 @@ mod tests {
 
     /// A Falzar save without Beast Out, owning TomahawkCross and
     /// GroundCross, operating ProtoMan from his level-5 code: a MegaMan side
-    /// takes the game, the unlocks (of Falzar's five Crosses it owns those
-    /// two, and the Cross list a random side had is gone), the level
-    /// (MegaMan from a code) and the SP times of the rules' slots.
+    /// takes the game, the unlocks (its Crosses are those two, in place of
+    /// the five a random side had), the level (MegaMan from a code) and the
+    /// SP times of the rules' slots.
     #[test]
     fn a_save_gives_the_game_unlocks_level_and_times() {
         let content = exe6_content();
@@ -123,28 +125,31 @@ mod tests {
         let save = file(GameVersion::Falzar, false, [false, true, false, true, false], 11, Some(5), &times);
         let mut m = crate::pick::live(&content, "exe6", 1, None).unwrap();
         m.sides[0].set_fact(&content, "version", &[Fact::Name("gregar")]).unwrap();
-        assert!(!m.sides[0].facts.form_list(&content).is_empty());
+        assert_eq!(m.sides[0].facts.form_list(&content).len(), 5);
         let notes = m.import_save(&content, 0, &save).unwrap();
         let s = &m.sides[0];
         assert_eq!((s.version(&content), s.navi_level, s.stats.version), (Some("falzar"), Some(5), 1));
         assert_eq!(s.facts.get(&content, "beast_out"), Some(Stated::Flag(false)));
-        let owned = [false, true, false, true, false];
-        assert_eq!(s.facts.get(&content, "crosses"), Some(Stated::List(owned.map(Stated::Flag).to_vec())));
-        assert!(s.facts.form_list(&content).is_empty());
-        // (Which of Falzar's five those are: its navi's listed forms, by
-        // their places.)
-        let own = content.navi(s.navi).forms.as_ref().unwrap().listed("falzar");
-        let list: Vec<&str> = own.iter().zip(owned).filter(|(_, o)| *o).map(|(&f, _)| crate::ids::local(&content.defs.form(f).key)).collect();
+        // (Falzar's second and fourth, by Cross number: the list holds them
+        // from its front.)
+        let list: Vec<&str> = s.facts.form_list(&content).iter().map(|&f| crate::ids::local(&content.defs.form(f).key)).collect();
         assert_eq!(list, ["tomahawkcross", "groundcross"]);
         assert_eq!((s.sp_times.0[0], s.sp_times.0[17], s.sp_times.0[18], s.sp_times.0[19]), (600, 617, 0, 0));
         assert_eq!(notes, ["the save operates a link navi: its level is MegaMan's here"]);
         assert!(crate::check_match(&content, &m).is_empty(), "{:?}", crate::check_match(&content, &m));
-        // Every Cross owned: the game's own five.
+        // Every Cross owned: the game's own five, stated; and none owned,
+        // an empty list, stated too.
         let all = file(GameVersion::Gregar, true, [true; 5], 0, None, &SpTimes::default());
         m.import_save(&content, 0, &all).unwrap();
         let s = &m.sides[0];
         assert_eq!((s.version(&content), s.navi_level), (Some("gregar"), None));
-        assert!(["crosses", "cross_list", "beast_out"].iter().all(|f| s.facts.is_default(&content, f)));
+        assert_eq!(s.facts.form_list(&content), content.navi(s.navi).forms.as_ref().unwrap().listed("gregar"));
+        assert!(s.facts.is_default(&content, "beast_out"));
+        let none = file(GameVersion::Gregar, true, [false; 5], 0, None, &SpTimes::default());
+        m.import_save(&content, 0, &none).unwrap();
+        assert_eq!(m.sides[0].facts.get(&content, "crosses").map(|v| v.defs()), Some(Vec::new()));
+        assert_ne!(m.sides[0].facts.get(&content, "crosses"), Some(Stated::Unlisted));
+        assert!(crate::check_match(&content, &m).is_empty(), "{:?}", crate::check_match(&content, &m));
     }
 
     /// A link navi keeps its level when the save received no code; its
@@ -156,7 +161,7 @@ mod tests {
         let mut m = crate::pick::live(&content, "exe6", 1, None).unwrap();
         let s = &mut m.sides[1];
         s.navi = protoman;
-        s.facts.reset(&content, "cross_list");
+        s.set_fact(&content, "crosses", &[]).unwrap();
         s.navi_level = Some(7);
         s.stats = crate::Side::save_base(&content, protoman, s.version(&content), Some(7));
         let notes = m.import_save(&content, 1, &file(GameVersion::Gregar, true, [true; 5], 0, None, &SpTimes::default())).unwrap();

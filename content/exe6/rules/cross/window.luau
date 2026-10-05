@@ -17,20 +17,15 @@ local chip_gate_battle = require("../../lib/chip_gate_battle")
 local window = {}
 
 -- The cross system's setup (rules/cross/init.luau declares it): the
--- player's game, the Crosses their save owns by Cross number, and nettai's
--- Cross list (up to five forms of either game, in the window's order;
--- docs/engine/custom-screen.md §4.1), none given: the version's own.
+-- player's game, and the Crosses they have: up to five forms of either
+-- game, in the window's order, filled from the front
+-- (docs/engine/custom-screen.md §4.1). The original's window offers those
+-- of its version's five the save owns, by Cross number; a save the game
+-- makes owns them in that order, so its list is its window.
 export type Setup = {
     version: "falzar" | "gregar",
-    crosses: { boolean },
-    cross_list: { FormDef? },
+    crosses: { FormDef? },
 }
-
--- The setup's Cross list, if it gives one (its first entry set).
-local function cross_list(): { FormDef? }?
-    local setup = system.setup() :: Setup
-    return if setup.cross_list[1] ~= nil then setup.cross_list else nil
-end
 
 -- Event flag 0x163, a navi code received (`sub_800B144` sends its level
 -- only then): no Beast Out button, and the Cross window then needs the
@@ -43,8 +38,9 @@ end
 -- declares them).
 export type State = {
     -- `dword_20349A0`: the Crosses used this round, by their place among
-    -- the player's Crosses (0-4: the version's Cross number, or the place
-    -- in the setup's Cross list); the round's first screen forgets them.
+    -- the player's Crosses (0-4: the place in the setup's list, which is a
+    -- save's version's Cross number); the round's first screen forgets
+    -- them.
     crosses_used: { boolean },
     -- The screen's window (`+0x50`): the places of the Crosses offered,
     -- how many, which entry is chosen (one at most), the entry under the
@@ -71,33 +67,15 @@ local function megaman(side: number): boolean
     return battle.navi(side).navi.forms ~= nil
 end
 
--- `Unlocks::cross_at`: the player's Cross in place `place`: the setup's
--- Cross list's entry (of either game), else the version's Cross with that
--- number. None when the content has no such Cross.
-local function cross_at(side: number, place: number): FormDef?
-    local list = cross_list()
-    if list ~= nil then
-        return list[place + 1]
-    end
-    local forms = battle.navi(side).navi.forms
-    if forms == nil then
-        return nil
-    end
-    local set = if (system.setup() :: Setup).version == "gregar" then forms.gregar else forms.falzar
-    if set == nil then
-        return nil
-    end
-    return set.crosses[place + 1]
+-- The player's Cross in place `place`: the setup's list's entry (of either
+-- game); none past the list's end.
+local function cross_at(_side: number, place: number): FormDef?
+    return (system.setup() :: Setup).crosses[place + 1]
 end
 
--- `Unlocks::owns_cross`: the save owns the Cross in place `place`, or the
--- setup's list names one there.
+-- The player has a Cross in place `place`.
 local function owns_cross(side: number, place: number): boolean
-    local list = cross_list()
-    if list ~= nil then
-        return list[place + 1] ~= nil
-    end
-    return (system.setup() :: Setup).crosses[place + 1]
+    return cross_at(side, place) ~= nil
 end
 
 -- `sub_8029F70` (battle modes 0, 0xA and 0xB): not in a random battle; with
@@ -125,14 +103,12 @@ local function crosses_left(side: number): number
     return n
 end
 
--- What a setup's Cross list (nettai's extension) offers of its entries:
--- Crosses only, and in a Beast form only the Crosses whose Beast it is
--- (that game's: their forms in Beast Out are that Beast's). Everything
--- else offers.
+-- What the list offers of its entries: Crosses only, and in a Beast form
+-- only the Crosses whose Beast it is (that game's: their forms in Beast Out
+-- are that Beast's). A save's Crosses are its own version's, which its
+-- Beast is too, so the original has no case of it: a list of both games'
+-- is nettai's.
 local function listed_cross_fits(side: number, form: FormDef): boolean
-    if cross_list() == nil then
-        return true
-    end
     local current = battle.navi(side).form
     return form.kind == "cross" and not (kind.is_beast(current.kind) and form.version ~= current.version)
 end

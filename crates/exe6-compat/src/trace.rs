@@ -125,9 +125,6 @@ fn unlocks_from_flags(version: GameVersion, flags: &[u8]) -> Unlocks {
         version,
         crosses: std::array::from_fn(|i| flag(first + i as u16)),
         beast_out: flag(0xE0),
-        // (A save names no Crosses of its own: the window offers the
-        // version's.)
-        cross_list: None,
     }
 }
 
@@ -459,7 +456,9 @@ impl Round {
             navicust: None,
             auto_battle: Default::default(),
         };
-        unlocks.write(ids.content, &mut player).unwrap_or_else(|e| panic!("the save's unlocks: {e}"));
+        // (The Crosses the console's save owns, as the list a setup states:
+        // those of its navi's of its version, in Cross-number order.)
+        unlocks.write(ids.content, stats.navi, &mut player).unwrap_or_else(|e| panic!("the save's unlocks: {e}"));
         // The bug frags: the dark-chips system's (its setup's `bug_frags`).
         let frags = self.setup.bug_frags[side as usize];
         player
