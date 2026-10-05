@@ -434,7 +434,7 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
         sp_times,
         navicust,
         auto_battle,
-        karma: s.karma.unwrap_or(crate::facts::DEFAULT_KARMA),
+        karma: s.karma.unwrap_or(crate::facts::default_karma(content)),
         souls,
         soul_unison: s.soul_unison,
         chaos_unison: s.chaos_unison,
@@ -601,7 +601,7 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
             }
         }),
         stats: s.stats_block(content),
-        karma: (s.karma != crate::facts::DEFAULT_KARMA).then_some(s.karma),
+        karma: (s.karma != crate::facts::default_karma(content)).then_some(s.karma),
         souls: s.souls.as_ref().map(|l| l.iter().map(|&f| name(&content.defs.form(f).key)).collect()),
         soul_unison: s.soul_unison,
         chaos_unison: s.chaos_unison,
