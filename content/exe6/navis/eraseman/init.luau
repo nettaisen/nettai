@@ -16,6 +16,7 @@ return define.navi {
     -- Its face in the emotion window (`byte_801CDDC`): the Falzar ROM has no
     -- EraseMan face, and shows GroundMan's.
     mugshot = asset.mugshot("eraseman"),
+    version = "gregar",
     merge_height = 0,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.
