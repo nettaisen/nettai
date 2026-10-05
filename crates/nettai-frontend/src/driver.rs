@@ -482,6 +482,8 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
             "cross_opening" | "cross_window" | "cross_closing" => "CUSTOM: CROSS (UP/DOWN, A CHOOSE, B BACK)",
             "cross_chosen" => "CUSTOM: CROSS!",
             "soul_unison" => "CUSTOM: SOUL UNISON!",
+            "capsule" => "CUSTOM: CAPSULE!",
+            "arm_change" => "CUSTOM: ARM CHANGE!",
             _ => "CUSTOM",
         },
         _ => "CUSTOM",
@@ -491,6 +493,10 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         let x = &screen.slots[slot as usize];
         let label = match x.kind {
             SlotKind::Ok => "OK".to_string(),
+            // A button that shows a chip (BN5's capsules): the chip's name.
+            SlotKind::Button { .. } if x.face.is_some() => {
+                x.face.map(|c| nettai_render::strings::own_chip_name(&b.content, c).to_string()).unwrap_or_default()
+            }
             // A system's button, by its name ("redeal": "REDEAL", BN5's
             // "soul": "SOUL").
             SlotKind::Button { button, cell: nettai_battle::custom::ButtonCell::Only | nettai_battle::custom::ButtonCell::Left } => {

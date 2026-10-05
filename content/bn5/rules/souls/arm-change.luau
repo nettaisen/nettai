@@ -91,19 +91,27 @@ arm_change.window = {
             s.arm_step, s.arm_timer = 4, BLINK
         else
             local t = s.arm_timer
-            custom.set_held_icon(side, "arm_change", bit32.btest(t, if t > 20 then 1 else 2))
+            local shown = bit32.btest(t, if t > 20 then 1 else 2)
+            custom.set_held_icon(side, "arm_change", shown)
+            -- From 20 down, the ticks the column hides it draw it over the button (0x08023700).
+            if t <= 20 and not shown then
+                custom.draw_held(side)
+            end
             t -= 1
             s.arm_timer = t
             if t == 0 then
                 custom.update_availability(side)
                 custom.set_frame(side, 0)
                 custom.draw_emblem(side, 0)
+                custom.draw_regular(side)
                 return false
             end
         end
-        -- (The timer is the screen's frame counter, +0x40.)
+        -- (The timer is the screen's frame counter, +0x40. 0x080236A8: the emblem and the Regular chip's frame,
+        -- after the step.)
         custom.set_frame(side, s.arm_timer)
         custom.draw_emblem(side, 0)
+        custom.draw_regular(side)
         return true
     end,
 }

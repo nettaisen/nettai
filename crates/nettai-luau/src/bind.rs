@@ -1380,6 +1380,10 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_draw_regular(side).map_err(api_error))
     });
+    lib_fn!(lua, t, "draw_held", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_draw_held(side).map_err(api_error))
+    });
     lib_fn!(lua, t, "draw_cross_cursor", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_draw_cross_cursor(side).map_err(api_error))
