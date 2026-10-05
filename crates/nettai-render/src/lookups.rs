@@ -11,7 +11,6 @@ use crate::audit::{Graphics, Lookup, Problems, emotion_number};
 use crate::packs::Packs;
 use nettai_assets::{BannerLayout, ChipArt, CustomScreen, DialogueFont, Hud, Palette, SpriteFrame, SpritePart, SpriteSheet, Tiles};
 use nettai_battle::content::{BackgroundId, BannerId, ChipClass, ChipFlags, Content, MugshotId, PackId, SpriteId};
-use nettai_battle::custom::GameVersion;
 use nettai_battle::field::PanelType;
 use nettai_battle::kinds::player::Emotion;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
@@ -193,7 +192,7 @@ pub const OTHER_VERSIONS_ART: &str = "another version's chip's art, its own ROM'
 /// is. (Not a chip the US release cut, whose picture alone is another
 /// ROM's: EXE6's Gregar and Falzar chips' icons are the pack's own.)
 pub fn other_versions_icon(packs: &Packs, b: &nettai_battle::battle::Battle, chip: ChipHandle) -> bool {
-    let console = packs.version().unwrap_or_else(|| crate::custom::version_name(b, b.setup.local_side));
+    let console = crate::custom::console_version(b, packs, b.setup.local_side);
     let art = packs.chip_art(&b.content, key(&b.content, chip)).filter(|a| a.region.is_none());
     art.and_then(|a| a.version.as_deref()).is_some_and(|v| v != console)
 }
@@ -330,26 +329,24 @@ fn compat_navi_number(c: &Content, navi: NaviHandle) -> (usize, bool) {
 }
 
 /// A navi's emblem (four 8x8 tiles) on a console of `version` (the pack's
-/// version `console` names, for a game whose versions the engine doesn't
-/// tell apart: `Renderer::console_version`), as the
-/// custom screen's 4x4 sprite holds it (the middle four tiles).
-pub fn emblem(a: &CustomScreen, c: &Content, navi: NaviHandle, version: GameVersion, console: Option<&str>, problems: &mut Problems) -> Tiles {
+/// version of that name: `custom::console_version`), as the custom screen's
+/// 4x4 sprite holds it (the middle four tiles).
+pub fn emblem(a: &CustomScreen, c: &Content, navi: NaviHandle, version: &str, problems: &mut Problems) -> Tiles {
     let number = navi_number(c, navi, problems);
     let e = a.emblem_of.get(number).copied();
-    let pictures = &a.versioned.get(console.unwrap_or(crate::custom::game_name(version))).emblems;
+    let pictures = &a.versioned.get(version).emblems;
     let mut t = Tiles { pixels: vec![0; 16 * Tiles::TILE] };
     for (k, place) in [5usize, 6, 9, 10].into_iter().enumerate() {
         if let Some(src) = pictures.get(4 * e.unwrap_or(0) as usize + k) {
             t.pixels[place * Tiles::TILE..(place + 1) * Tiles::TILE].copy_from_slice(src);
         }
     }
-    if problems.lookup(Lookup::Emblem(navi, version)) {
+    if problems.lookup(Lookup::Emblem(navi, crate::audit::VersionTag::of(version))) {
         let palette = a.emblem_palette_of.get(number).and_then(|&i| a.emblem_palettes.get(i as usize));
         if !e.is_some_and(|e| pictures.len() >= 4 * (e as usize + 1)) || palette.is_none() {
             problems.note(format!(
-                "navi {:?} (number {number}) has no emblem or emblem colors on the {} custom screen",
+                "navi {:?} (number {number}) has no emblem or emblem colors on the {version} custom screen",
                 c.defs.navi(navi).key,
-                crate::custom::game_name(version)
             ));
         }
     }

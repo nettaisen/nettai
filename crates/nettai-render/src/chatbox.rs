@@ -121,7 +121,7 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
             let sheet = crate::lookups::sprite(packs, &b.content, id, &who, problems);
             if let Some(sheet) = sheet {
                 crate::lookups::animation(sheet, &b.content, id, look.anim, &who, problems);
-                note_true_face(b, navi, crate::custom::version_name(b, b.setup.local_side), problems);
+                note_true_face(b, navi, crate::custom::console_version(b, packs, b.setup.local_side), problems);
             }
             sheet.map(|sheet| (sheet, look))
         }
