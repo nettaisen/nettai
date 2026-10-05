@@ -262,7 +262,8 @@ use nettai_battle::battle::{Battle, TickEvents};
 use nettai_battle::content::Content;
 use nettai_battle::console::{Console, ConsoleSetup};
 use crate::unlocks::Unlocks;
-use nettai_battle::custom::{Context, GameVersion, PlayerSetup, Request, Side};
+use crate::GameVersion;
+use nettai_battle::custom::{Context, PlayerSetup, Request, Side};
 use nettai_battle::hand::ChipHand;
 use nettai_battle::input::PlayerTick;
 use nettai_battle::kinds::player::Emotion;
@@ -437,11 +438,8 @@ impl Round {
             None => stats.folder_reg[stats.folder as usize & 1] != 0xFF,
         };
         let folder = codec::battle_folder(&unhex(&self.setup.folders[side as usize]), regular, ids);
-        let version = match self.setup.game_versions[side as usize].as_str() {
-            "gregar" => GameVersion::Gregar,
-            "falzar" => GameVersion::Falzar,
-            other => panic!("game version {other:?}"),
-        };
+        let named = self.setup.game_versions[side as usize].as_str();
+        let version = GameVersion::from_name(named).unwrap_or_else(|| panic!("game version {named:?}"));
         let unlocks = match &self.setup.unlock_flags {
             Some(f) => unlocks_from_flags(version, &unhex(&f[side as usize])),
             None => Unlocks::everything(version),

@@ -15,7 +15,7 @@
 
 use crate::codec;
 use crate::unlocks::Unlocks;
-use nettai_battle::custom::GameVersion;
+use crate::GameVersion;
 use nettai_battle::setup::SpTimes;
 
 /// Where the image starts in the file, and its size.

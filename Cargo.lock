@@ -966,6 +966,7 @@ version = "0.1.0"
 dependencies = [
  "nettai-battle",
  "nettai-content-api",
+ "nettai-match",
  "serde",
  "serde_json",
  "toml",
@@ -2259,7 +2260,6 @@ dependencies = [
 name = "nettai-editor"
 version = "0.1.0"
 dependencies = [
- "exe6-compat",
  "iced",
  "nettai-assets",
  "nettai-battle",

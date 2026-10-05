@@ -9,6 +9,8 @@
 "protoman" = 1
 "colonel" = 7
 "searchman" = 3
+"meddy" = 6
+"shadowman" = 8
 "tomahawkman" = 10
 
 # Weapons: the weapon routine numbers (0x0800F370, EXE6's `off_80117D4`) NaviStats +0x04 (buster), +0x05 (charged
@@ -65,12 +67,17 @@
 "protoman/back" = [0x0B]
 "colonel/charge" = [0x46]
 "searchman/charge" = [0x3F]
+"meddy/charge" = [0x3B]
+# ShadowMan's shuriken from above, and his B+Back anti-damage stance.
+"shadowman/charge" = [0x24]
+"shadowman/back" = [0x0D]
 # TomahawkMan's thrown tomahawk, and his A charge (+0x39: an empty routine, his charged Wood chips').
 "tomahawkman/charge" = [0x3C]
 "tomahawkman/a-charge" = [0x2B]
 
 # Projectile variants: the projectile table's rows (0x080C4718, EXE6's `off_80C4C78`) the buster-shot and
 # charged-shot programs (NaviStats +0x4D, +0x4F) name; the buster's and the charged shot's own, and the chips'.
+# (As a shot program the byte 0 is no program: a shot with none is the plain shot.)
 [projectile_variants]
 "shot/plain" = 0x00
 "shot/cannon" = 0x01

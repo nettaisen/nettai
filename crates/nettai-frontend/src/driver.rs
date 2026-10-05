@@ -5,8 +5,8 @@ use nettai_battle::battle::{mode, top};
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::cues::CueAction;
 use nettai_battle::content::{ChipCode, Content, WindowView};
-use exe6_compat::Unlocks;
-use nettai_battle::custom::{self, BattleFolder, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState};
+use exe6_compat::{GameVersion, Unlocks};
+use nettai_battle::custom::{self, BattleFolder, FolderChip, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState};
 use nettai_battle::input::keys;
 use nettai_battle::link::Link;
 use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
@@ -352,7 +352,7 @@ impl Driver for Exe5TracePlayer {
 /// Beast Out of that version.
 pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFolder; 2], version: GameVersion, seed: u32) -> RoundSetup {
     let megaman = content.form_changing_navi().expect("a navi that changes form");
-    let stats = nettai_match::Side::base_stats(content, megaman, Some(version));
+    let stats = nettai_match::Side::base_stats(content, megaman, Some(version.name()));
     let player = |side: u32| {
         // Each console shuffles its folder with its own RNG (RNG1), which
         // goes on from there.
