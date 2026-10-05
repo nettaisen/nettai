@@ -323,7 +323,7 @@ impl Stated {
             }),
             lockon: Some(r.lockon.clone()),
             chip_use: Some(r.chip_use),
-            flow: Some(r.flow),
+            flow: Some(r.flow.clone()),
             effects: Some(r.effects),
             fresh_stats: Some(r.fresh_stats),
             sp_chips: Some(SpChipsSection { deletion_times: r.sp_deletion_times.clone(), slots: r.sp_slots.clone() }),

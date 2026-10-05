@@ -329,7 +329,7 @@ impl Side {
             // (What the game's battle end writes of a player it has
             // learned nothing of, where the game has auto battle.)
             auto_battle: if auto_battle::has(content) { AutoBattle::nothing_learned() } else { AutoBattle::default() },
-            karma: facts::DEFAULT_KARMA,
+            karma: facts::default_karma(content),
             souls: None,
             soul_unison: true,
             chaos_unison: true,

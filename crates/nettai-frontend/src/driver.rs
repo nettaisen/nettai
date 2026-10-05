@@ -5,7 +5,6 @@ use nettai_battle::battle::{mode, top};
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::cues::CueAction;
 use nettai_battle::content::{ChipCode, Content, WindowView};
-use exe6_compat::{GameVersion, Unlocks};
 use nettai_battle::custom::{self, BattleFolder, FolderChip, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState};
 use nettai_battle::input::keys;
 use nettai_battle::link::Link;
@@ -196,6 +195,11 @@ impl Driver for TracePlayer {
 /// [`TracePlayer`]s, an EXE5 one's [`Exe5TracePlayer`]s. A recording that
 /// states no game, another game than the content's, or a game no player
 /// here replays is refused.
+///
+/// This is the frontend's boundary with the compat crates: a recording is
+/// the original's own numbers, which each game's compat crate reads, so the
+/// recording's game picks the reader here (and nowhere else does this crate
+/// ask which game a content is).
 pub fn trace_rounds(path: &std::path::Path, content: &Arc<Content>) -> Result<Vec<(usize, Box<dyn Driver>)>, String> {
     let game = trace_game(path)?;
     if game != content.game() {
@@ -346,13 +350,13 @@ impl Driver for Exe5TracePlayer {
 // or a match file (`--match`).
 
 /// A round to play live on `content` with these battle settings: two
-/// MegaMen of `version` at their fresh stats
-/// (`nettai_match::Side::base_stats`, as live play draws them), each
-/// bringing their folder, shuffled from the seed, with every Cross and
-/// Beast Out of that version.
-pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFolder; 2], version: GameVersion, seed: u32) -> RoundSetup {
+/// MegaMen of `version` (one of the names the game's rules declare) at
+/// their fresh stats (`nettai_match::Side::base_stats`, as live play draws
+/// them), each bringing their folder, shuffled from the seed, with every
+/// Cross and Beast Out of that version (`nettai_match::facts`).
+pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFolder; 2], version: &str, seed: u32) -> RoundSetup {
     let megaman = content.form_changing_navi().expect("a navi that changes form");
-    let stats = nettai_match::Side::base_stats(content, megaman, Some(version.name()));
+    let stats = nettai_match::Side::base_stats(content, megaman, Some(version));
     let player = |side: u32| {
         // Each console shuffles its folder with its own RNG (RNG1), which
         // goes on from there.
@@ -369,7 +373,7 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             navicust: None,
             auto_battle: Default::default(),
         };
-        Unlocks::everything(version).write(content, &mut player).expect("EXE6's setup");
+        nettai_match::facts::write_version(content, &mut player, version, true, None).expect("the rules take the version");
         player
     };
     RoundSetup {
@@ -574,7 +578,7 @@ mod tests {
         let settings = BattleSettings::on(&content, stage);
         // GunDelS3 N, which the test content has.
         let folder = folder_of(&content, &[("gundels3", 13)]);
-        let mut live = LivePlayer::new(live_setup(&content, settings, [folder, folder], GameVersion::Falzar, 7), content.clone());
+        let mut live = LivePlayer::new(live_setup(&content, settings, [folder, folder], "falzar", 7), content.clone());
         let mut b = live.start();
         let mut shown = false;
         for tick in 0..3000u32 {
@@ -677,10 +681,8 @@ mod tests {
         let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
-        let mut setup = live_setup(&content, settings, [folder, folder], GameVersion::Falzar, 5);
-        Unlocks { cross_list: Some(exe6_compat::CrossList::new(&[heat])), ..Unlocks::everything(GameVersion::Falzar) }
-            .write(&content, &mut setup.players[0])
-            .unwrap();
+        let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 5);
+        nettai_match::facts::write_version(&content, &mut setup.players[0], "falzar", true, Some(&nettai_match::CrossList::new(&[heat]))).unwrap();
         let mut live = LivePlayer::new(setup, content.clone());
         let mut b = live.start();
         // The first screen: UP opens the Cross window (a hold acts on its
@@ -733,7 +735,7 @@ mod tests {
         // The next screen, opened with L once the gauge is full: Beast Out
         // (START, DOWN, A) from HeatCross is HeatCross's Beast form, of
         // Gregar's Beast: the Beast Out button and pictures are Gregar's.
-        assert_eq!(Unlocks::of(&b, 0).unwrap().beast_game(&*content, heat), GameVersion::Gregar);
+        assert_eq!(content.form(heat).version.as_deref(), Some("gregar"));
         let mut beast = false;
         play_until(
             &mut live,
@@ -765,7 +767,7 @@ mod tests {
         play_until(&mut live, &mut b, 1000, |_, _| 0, |b| b.stats[0].form == heat_beast && navi_action(b, p0) == NaviAction::Idle);
         let weapons = content.form(heat_beast).weapons;
         assert_eq!((b.actors.get(actor).buster, b.actors.get(actor).charge_shot), (weapons.buster, weapons.charge_shot));
-        assert_eq!(exe6_compat::forms::game(&content, heat_beast), Some(GameVersion::Gregar));
+        assert_eq!(content.form(heat_beast).version.as_deref(), Some("gregar"));
     }
 
     // EXE6's Cross window (the cross system's: content/exe6/rules/cross/
@@ -775,7 +777,7 @@ mod tests {
     /// with the Cross list `list` (form keys; none: the version's Crosses),
     /// its stats changed by `tweak`, run to its first screen's choosing.
     fn cross_battle(
-        version: GameVersion,
+        version: &str,
         list: Option<&[&str]>,
         tweak: impl FnOnce(&Content, &mut nettai_battle::setup::NaviStats),
     ) -> (Arc<Content>, LivePlayer, Battle) {
@@ -783,13 +785,9 @@ mod tests {
         let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
-        let mut setup = live_setup(&content, settings, [folder, folder], GameVersion::Falzar, 5);
-        Unlocks {
-            cross_list: list.map(|l| exe6_compat::CrossList::new(&l.iter().map(|k| form_of(&content, k)).collect::<Vec<_>>())),
-            ..Unlocks::everything(version)
-        }
-        .write(&content, &mut setup.players[0])
-        .unwrap();
+        let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 5);
+        let list = list.map(|l| nettai_match::CrossList::new(&l.iter().map(|k| form_of(&content, k)).collect::<Vec<_>>()));
+        nettai_match::facts::write_version(&content, &mut setup.players[0], version, true, list.as_ref()).unwrap();
         tweak(&content, &mut setup.navi_stats[0]);
         let mut live = LivePlayer::new(setup, content.clone());
         let mut b = live.start();
@@ -852,7 +850,7 @@ mod tests {
     #[test]
     fn a_cross_list_offers_crosses_of_either_game_once_a_round() {
         use nettai_battle::battle::battle_flags;
-        let (content, mut live, mut b) = cross_battle(GameVersion::Falzar, Some(&["heatcross", "groundcross"]), |_, _| {});
+        let (content, mut live, mut b) = cross_battle("falzar", Some(&["heatcross", "groundcross"]), |_, _| {});
         let heat = form_of(&content, "heatcross");
         let w = b.form_list(0).unwrap();
         assert_eq!((w.count, &w.offered[..2]), (2, &[0, 1][..]));
@@ -882,7 +880,7 @@ mod tests {
     fn r_in_the_cross_window_describes_the_cross_under_the_cursor() {
         for (list, down, key) in [(true, 0, "heatcross"), (true, 1, "groundcross"), (false, 0, "spoutcross"), (false, 1, "tomahawkcross")] {
             let list = list.then_some(&["heatcross", "groundcross"][..]);
-            let (content, mut live, mut b) = cross_battle(GameVersion::Falzar, list, |_, _| {});
+            let (content, mut live, mut b) = cross_battle("falzar", list, |_, _| {});
             open_cross_window(&mut live, &mut b);
             for _ in 0..down {
                 keys_in_turn(&mut live, &mut b, &[keys::DOWN, keys::DOWN, 0]);
@@ -904,7 +902,7 @@ mod tests {
     #[test]
     fn in_a_beast_form_a_cross_list_offers_that_beasts_crosses() {
         for (beast, place, result) in [("falzar-beast", 1, "groundcross-beast"), ("heatcross-beast", 0, "heatcross-beast")] {
-            let (content, mut live, mut b) = cross_battle(GameVersion::Falzar, Some(&["heatcross", "groundcross"]), |c, stats| {
+            let (content, mut live, mut b) = cross_battle("falzar", Some(&["heatcross", "groundcross"]), |c, stats| {
                 stats.form = form_of(c, beast);
                 stats.starting_form = stats.form;
             });
@@ -922,7 +920,7 @@ mod tests {
     #[test]
     fn a_cross_list_offers_crosses_only() {
         let list = ["spoutcross", "gregar-beast", "eleccross", "tomahawkcross"];
-        let (_, _, b) = cross_battle(GameVersion::Gregar, Some(&list), |c, stats| stats.starting_form = form_of(c, "eleccross"));
+        let (_, _, b) = cross_battle("gregar", Some(&list), |c, stats| stats.starting_form = form_of(c, "eleccross"));
         let w = b.form_list(0).unwrap();
         assert_eq!((w.count, &w.offered[..2]), (2, &[0, 3][..]));
     }
@@ -931,7 +929,7 @@ mod tests {
     /// form go, Beast Out is on offer again, and nothing goes out.
     #[test]
     fn b_takes_the_cross_back() {
-        let (_, mut live, mut b) = cross_battle(GameVersion::Falzar, None, |_, _| {});
+        let (_, mut live, mut b) = cross_battle("falzar", None, |_, _| {});
         open_cross_window(&mut live, &mut b);
         choose_cross(&mut live, &mut b, 1);
         let screen = b.custom.sides[0].screen.unwrap();
@@ -957,7 +955,7 @@ mod tests {
             let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
             let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
             let folder = folder_of(&content, &[("cannon", 0)]);
-            let mut setup = live_setup(&content, settings, [folder, folder], GameVersion::Falzar, 5);
+            let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 5);
             setup.players[0].navi_level = level;
             let mut live = LivePlayer::new(setup, content.clone());
             let mut b = live.start();

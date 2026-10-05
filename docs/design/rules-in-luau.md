@@ -2636,3 +2636,28 @@ data tell them apart. Everywhere else a version is the name the game's rules dec
   setup, the Cross sets, and the draw of a random side's version, which stays in the original's order (Gregar,
   Falzar) so that a seed draws the match it always has; the rules' names come in another order.
 - No behavior changed: the same drawn matches, match files and recordings.
+
+### nettai-match, the editor and the frontend use compat at its boundaries alone (2026-10-05)
+
+What the three crates had of the compat crates that was no boundary is gone:
+
+- **A side's EXE6 facts by name.** `nettai_match::facts::write` states a side's version, the Crosses it owns, Beast Out
+  and its Cross list into the systems that take them (`write_version`), beside EXE5's karma and souls: no
+  `Unlocks::write`. `CrossList` and `CROSSES` are nettai-match's own (`cross_list.rs`); a list's room is the rules'
+  `cross_list` field's.
+- **The versions' order is the content's.** EXE6's cross and beast systems declare `version = { "gregar", "falzar" }`,
+  the original's order (Gregar 0, Falzar 1), and tools go by it: a random side's version is drawn among the declared
+  names, a navi's Crosses come version by version in it (`NaviForms::by_version`), and the version's number in a
+  navi's stats (NaviStats+0x20) is its place (`version_byte`). A seed draws the match it drew before the reorder.
+- **A question about the content, not a game's name.** A live draw with Crosses is for a game whose rules take a
+  Cross list (`PlayerFact::CrossList`). A link battle's background is drawn from the table the game's `flow` rules
+  state, `link_backgrounds` (EXE6's `sub_81209DC` table `byte_8120A20`, which was Rust in nettai-match; gen-content
+  reads the ROM's table to check it). EXE5's is empty for now, which is not what the original does: its 0x08129F2C
+  draws from a table of 27 at 0x08129F6C, and its stage draw folds records 76 to 87 onto 0 to 11 (scheduled).
+- **A value stated once.** A fresh save's karma is the light and dark system's `setup_defaults.karma`, which
+  `facts::default_karma` reads; the constant is gone.
+- **The editor** depends on no compat crate (a Cross's version is its form's own `version`).
+- **What stays, and says so where it is used:** the save importers (`nettai_match::import`, `import_exe5`, and
+  `auto_battle::of_save`), where whose game's a file is picks compat's reader; the frontend's recording replay
+  (`driver::trace_rounds`), the same for a recording; and `AutoBattle::learned`'s tie-break by the original's chip
+  numbers, the game's own order. The test of what EXE6's forms say of each other is exe6-compat's (`tests/forms.rs`).
