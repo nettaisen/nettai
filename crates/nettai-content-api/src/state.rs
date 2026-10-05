@@ -588,6 +588,45 @@ mod tests {
         assert!(st.set(&s, 5, Value::Int(1)).is_err(), "a whole array isn't one value");
     }
 
+    /// A list of definitions may be stated by nobody, as an enum may: it
+    /// reads as empty and isn't stated; writing an element (an empty one
+    /// too) states it, the rest empty; a stated list never holds the mark.
+    /// Other fields have no such state.
+    #[test]
+    fn a_list_of_definitions_may_be_unstated() {
+        let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
+        let form = || FieldType::Ref(Registry::Form, None);
+        let s = Schema::new(vec![
+            f("flags", FieldType::Array(Box::new(FieldType::Bool), 3)),
+            f("forms", FieldType::Array(Box::new(form()), 3)),
+            f("one", form()),
+            f("which", FieldType::Enum(vec!["a".into(), "b".into()])),
+        ])
+        .unwrap();
+        let (flags, forms, one, which) = (s.index_of("flags").unwrap(), s.index_of("forms").unwrap(), s.index_of("one").unwrap(), s.index_of("which").unwrap());
+        let mut st = ContentState::new(StateId(0));
+        assert!((0..4).all(|i| st.stated(&s, i)), "zeroed: an empty list, the first variant");
+        for i in 0..4 {
+            st.unstate(&s, i);
+        }
+        assert_eq!((st.stated(&s, flags), st.stated(&s, forms), st.stated(&s, one), st.stated(&s, which)), (true, false, true, false));
+        assert!((0..3).all(|k| st.get_elem(&s, forms, k) == Some(FieldValue::Ref(None))), "an unstated list reads as empty");
+        // An element written states the list, the others empty.
+        let mut written = st;
+        written.set_elem(&s, forms, 1, Value::Def(Registry::Form, 7)).unwrap();
+        assert!(written.stated(&s, forms));
+        let read: Vec<_> = (0..3).map(|k| written.get_elem(&s, forms, k).unwrap()).collect();
+        assert_eq!(read, [FieldValue::Ref(None), FieldValue::Ref(Some((Registry::Form, 7))), FieldValue::Ref(None)]);
+        // An empty first element states it too: the empty list.
+        let mut empty = st;
+        empty.set_elem(&s, forms, 0, Value::Nil).unwrap();
+        assert!(empty.stated(&s, forms) && (0..3).all(|k| empty.get_elem(&s, forms, k) == Some(FieldValue::Ref(None))));
+        assert_ne!(empty, st, "none is not nothing said");
+        // Unstated again: whatever it held is gone.
+        written.unstate(&s, forms);
+        assert_eq!(written, st);
+    }
+
     #[test]
     fn wrong_kinds_and_bad_enum_values_are_errors() {
         let s = schema();
