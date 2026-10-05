@@ -89,6 +89,8 @@ fn bundle() -> Bundle {
                 repeat_from: None,
             },
         ],
+        // (Its picture is one region's ROMs': the mark goes round too.)
+        region: Some("us".into()),
     };
     let hud = Hud {
         tiles: tiles(6, 7),
