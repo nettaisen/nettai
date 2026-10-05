@@ -723,16 +723,37 @@ mod tests {
 
     /// docs/design/exe5-map.md §15.10: EXE5's emotions go by its order (a mood
     /// under 65 worried, anger before a mood of 0), and its setter leaves a
-    /// mood of 0; EXE6's by its own.
+    /// mood of 0; EXE6's by its own. Each is a set of the status section's
+    /// `emotion` rules, as the game's content states them.
     #[test]
     fn each_games_emotions_go_by_its_rules() {
         use super::super::{Emotion, emotion, set_mood};
-        let emotions = |which: crate::content::Emotions| {
+        use crate::content::{AngerEnd, EmotionRules, MoodHeld};
+        let exe6 = EmotionRules {
+            mood_held: MoodHeld::TiredOrExhausted,
+            anger_end: AngerEnd::ResetsMood,
+            plain_in_battle_mode_1: false,
+            normal_in_a_form: false,
+            anger_before_worn_out: false,
+            tired_and_exhausted: true,
+            worried_below: None,
+        };
+        let exe5 = EmotionRules {
+            mood_held: MoodHeld::AtZero,
+            anger_end: AngerEnd::ThroughSetter,
+            plain_in_battle_mode_1: true,
+            normal_in_a_form: true,
+            anger_before_worn_out: true,
+            tired_and_exhausted: false,
+            worried_below: Some(65),
+        };
+        assert_eq!(testing::rules().emotion, exe6, "the test content plays as EXE6 does");
+        let emotions = |which: EmotionRules| {
             let mut c: Content = testing::build();
             c.define().unwrap_or_else(|e| panic!("{e}"));
             {
-            let rules = c.rules_mut();
-                rules.emotions = which;
+                let rules = c.rules_mut();
+                rules.emotion = which;
             }
             let c = Arc::new(c);
             let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
@@ -749,13 +770,22 @@ mod tests {
             // Angry with a mood of 0.
             ai_mut(&mut b, r).anger = 600;
             seen.push(emotion(&b, 0));
-            ai_mut(&mut b, r).anger = 0;
-            // The setter, from a mood of 0.
+            // Anger's end, from a mood of 0.
+            super::super::status::end_anger(&mut b, r);
+            let calmed = b.stats[0].mood;
+            b.stats[0].mood = 0;
+            // The setter, from a mood of 0; then with the navi held tired
+            // (a mood of 0x80), and its emotion.
             set_mood(&mut b, 0, 0xFF);
-            (seen, b.stats[0].mood)
+            let set = b.stats[0].mood;
+            b.stats[0].mood = 0x80;
+            ai_mut(&mut b, r).tired = true;
+            set_mood(&mut b, 0, 0xFF);
+            seen.push(emotion(&b, 0));
+            (seen, calmed, set, b.stats[0].mood)
         };
         use Emotion::*;
-        assert_eq!(emotions(crate::content::Emotions::Exe6), (vec![Normal, Normal, FullSynchro, WornOut, WornOut], 0xFF));
-        assert_eq!(emotions(crate::content::Emotions::Exe5), (vec![Normal, Worried, FullSynchro, WornOut, Angry], 0));
+        assert_eq!(emotions(exe6), (vec![Normal, Normal, FullSynchro, WornOut, WornOut, Tired], 0x80, 0xFF, 0x80));
+        assert_eq!(emotions(exe5), (vec![Normal, Worried, FullSynchro, WornOut, Angry, FullSynchro], 0, 0, 0xFF));
     }
 }

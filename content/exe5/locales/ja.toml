@@ -182,6 +182,7 @@ language = "ja"
 "katana1" = { name = "サムライソード1", description = "ワイドとロングに\n2回れんぞくで\nきりつける!" }
 "katana2" = { name = "サムライソード2", description = "ワイドとロングに\n2回れんぞくで\nきりつける!" }
 "katana3" = { name = "サムライソード3", description = "ワイドとロングに\n2回れんぞくで\nきりつける!" }
+"kcrusher" = { name = "Kクラッシャー", description = "前方へむけて\nかんつうする\nてっきゅうをはなつ" }
 "knightmn" = { name = "ナイトマン", description = "じぶんのしゅういを\nかいてんする\nてっきゅう攻撃!" }
 "knigtmn-ds" = { name = "ナイトマン\uE008", description = "じぶんのしゅういを\nかいてんする\nてっきゅう攻撃!" }
 "knigtmn-sp" = { name = "ナイトマン\uE003", description = "じぶんのしゅういを\nかいてんする\nてっきゅう攻撃!" }
@@ -361,6 +362,7 @@ language = "ja"
 [navis]
 "colonel" = { name = "カーネル" }
 "gyroman" = { name = "ジャイロマン" }
+"knightman" = { name = "ナイトマン" }
 "meddy" = { name = "メディ" }
 "megaman" = { name = "ロックマン", variant_name = "FCロックマン" }
 "protoman" = { name = "ブルース" }

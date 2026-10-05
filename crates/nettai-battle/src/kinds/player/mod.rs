@@ -89,7 +89,7 @@ pub(crate) use status::end_anger;
 
 pub(crate) use reactions::passed;
 
-use crate::content::Emotions;
+use crate::content::MoodHeld;
 use nettai_content_api::IdentityHandle;
 use crate::actor::{ActorData, ActorId, ActorType, request};
 use crate::battle::{Battle, battle_flags};
@@ -373,48 +373,43 @@ pub enum Emotion {
     Worried,
 }
 
-/// `sub_8015B54`: a side's emotion (EXE5's: `exe5_emotion`).
+/// `sub_8015B54` (EXE5's 0x0801270C): a side's emotion, read off its navi
+/// by the game's rules (`EmotionRules`, the status section's `emotion`).
+///
+/// EXE6's: worn out (exhausted, AIData +0x33, or a mood of 0), then angry
+/// (+0x34), held tired (+0x32), Full Synchro (a mood of 0xFF), else normal.
+///
+/// EXE5's (0x08012740; in battle mode 1, 0x080127C0: Full Synchro or
+/// normal): in a soul (NaviStats +0x2C) normal, the soul's own face (its
+/// emotion 4), which nothing doubles or ends; then angry, a mood of 0 (5: a
+/// dark MegaMan's), Full Synchro, normal (65 and up), else worried (1). It
+/// reads no held tired or exhausted state.
 pub fn emotion(b: &Battle, side: u8) -> Emotion {
+    let rules = b.game_rules().emotion;
     let mood = b.stats[side as usize].mood;
     let p = b.player(side).expect("side has a player");
-    if b.game_rules().emotions == Emotions::Exe5 {
-        return exe5_emotion(b, p, mood);
+    let full_synchro = mood == 0xFF;
+    if rules.plain_in_battle_mode_1 && battle_mode(b) == 1 {
+        return if full_synchro { Emotion::FullSynchro } else { Emotion::Normal };
+    }
+    if rules.normal_in_a_form && !form_of(b, p).base {
+        return Emotion::Normal;
     }
     let a = ai(b, p);
-    if a.exhausted || mood == 0 {
+    let worn_out = mood == 0 || (rules.tired_and_exhausted && a.exhausted);
+    let angry = a.anger != 0;
+    if worn_out && !(angry && rules.anger_before_worn_out) {
         Emotion::WornOut
-    } else if a.anger != 0 {
+    } else if angry {
         Emotion::Angry
-    } else if a.tired {
+    } else if rules.tired_and_exhausted && a.tired {
         Emotion::Tired
-    } else if mood == 0xFF {
+    } else if full_synchro {
         Emotion::FullSynchro
-    } else {
-        Emotion::Normal
-    }
-}
-
-/// EXE5's 0x0801270C (0x08012740; in battle mode 1, 0x080127C0: Full
-/// Synchro or normal): in a soul (NaviStats +0x2C), the soul's own face
-/// (its emotion 4), which nothing doubles or ends; then anger (AIData
-/// +0x34), a mood of 0 (5: a dark MegaMan's), Full Synchro (0xFF), normal
-/// (65 and up), else worried (1).
-fn exe5_emotion(b: &Battle, p: ObjectRef, mood: u8) -> Emotion {
-    if battle_mode(b) == 1 {
-        return if mood == 0xFF { Emotion::FullSynchro } else { Emotion::Normal };
-    }
-    if !form_of(b, p).base {
-        Emotion::Normal
-    } else if ai(b, p).anger != 0 {
-        Emotion::Angry
-    } else if mood == 0 {
-        Emotion::WornOut
-    } else if mood == 0xFF {
-        Emotion::FullSynchro
-    } else if mood >= 65 {
-        Emotion::Normal
-    } else {
+    } else if rules.worried_below.is_some_and(|below| mood < below) {
         Emotion::Worried
+    } else {
+        Emotion::Normal
     }
 }
 
@@ -532,15 +527,20 @@ pub(crate) fn mood_held(b: &Battle, r: ObjectRef) -> bool {
     a.tired || a.exhausted
 }
 
-/// `sub_8015BEC`: set a side's mood, unless its navi's mood is held
-/// (EXE5's 0x080127D6: unless the mood is 0).
+/// Whether a side's mood is held against the setter, by the game's rule
+/// (the status section's `emotion.mood_held`): its navi held tired or
+/// exhausted (`sub_8015BEC`'s test), or a mood of 0 (EXE5's 0x080127D6).
+pub(crate) fn mood_is_held(b: &Battle, side: u8) -> bool {
+    match b.game_rules().emotion.mood_held {
+        MoodHeld::TiredOrExhausted => b.player(side).is_some_and(|p| mood_held(b, p)),
+        MoodHeld::AtZero => b.stats[side as usize & 1].mood == 0,
+    }
+}
+
+/// `sub_8015BEC` (EXE5's 0x080127D6): set a side's mood, unless it is held
+/// ([`mood_is_held`]).
 pub(crate) fn set_mood(b: &mut Battle, side: u8, mood: u8) {
-    let Some(p) = b.player(side) else { return };
-    let held = match b.game_rules().emotions {
-        Emotions::Exe6 => mood_held(b, p),
-        Emotions::Exe5 => b.stats[side as usize].mood == 0,
-    };
-    if held {
+    if b.player(side).is_none() || mood_is_held(b, side) {
         return;
     }
     b.stats[side as usize].mood = mood;

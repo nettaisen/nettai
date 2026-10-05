@@ -182,6 +182,7 @@ language = "en"
 "katana1" = { name = "Katana1", description = "Cut twice\nonce wide\nonce long" }
 "katana2" = { name = "Katana2", description = "Cut twice\nonce wide\nonce long" }
 "katana3" = { name = "Katana3", description = "Cut twice\nonce wide\nonce long" }
+"kcrusher" = { name = "KCrusher", description = "Throw an\niron ball\nahead" }
 "knightmn" = { name = "KnightMn", description = "Circle\naround\nand atk" }
 "knigtmn-ds" = { name = "KnigtMn\uE008", description = "Circle\naround\nand atk" }
 "knigtmn-sp" = { name = "KnigtMn\uE003", description = "Circle\naround\nand atk" }
@@ -361,6 +362,7 @@ language = "en"
 [navis]
 "colonel" = { name = "Colonel" }
 "gyroman" = { name = "GyroMan" }
+"knightman" = { name = "KnightMn" }
 "meddy" = { name = "Meddy" }
 "megaman" = { name = "MegaMan", variant_name = "BCMegaMn" }
 "protoman" = { name = "ProtoMan" }
