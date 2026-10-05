@@ -54,9 +54,9 @@ return define.navi {
             { hp = 1000, attack = 3, rapid = 2, charge = 4, custom_level = 3, mega_level = 1, super_armor = true },
         },
     },
-    -- The chips A charges, from a navi level on, and the most damage the charge adds to a
+    -- The chips A charges (its family's damaging chips, from a navi level on), and the most damage the charge adds to a
     -- Fire chip, by the navi's level.
-    charged_chips = { family = "fire", from_level = 3 },
+    charged_chips = { family = "fire", from_level = 3, damaging = true },
     fire_charge = { 0, 0, 0, 30, 30, 30, 30, 30, 30, 50, 50, 50, 50, 50, 100 },
     identity = define.identity {
         class = "link_navi",

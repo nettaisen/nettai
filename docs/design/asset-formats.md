@@ -90,11 +90,12 @@ graphics/
   custom/
     custom.json  window.png  column-cells.png  turn-limit.png  name-bar.png
     codes.png  elements.png  digits.png  slot-codes.png  empty-icon.png
-    redeal-buttons.png  scrap-buttons.png  cursor.png  cross-cursor.png
-    regular.png  chip-art/CHIP.png  pictures/NAME.png
-    beast-buttons-V.png  emblems-V.png  cross-names-V.png
-    pictures/beast-out-V.png  (V: falzar, gregar)
-    buttons/NAME.png  buttons/NAME-icons.png  (a game's own buttons: EXE5's soul)
+    cursor.png  cross-cursor.png  regular.png
+    chip-art/CHIP.png  emblems/NAVI.png  pictures/NAME.png
+    buttons/BUTTON.png  pictures/BUTTON.png  buttons/BUTTON-icons.png
+    (a button by the name its content registers it under: redeal, scrap, soul)
+    cross-names-V.png  buttons/BUTTON-V.png  pictures/BUTTON-V.png
+    (V: falzar, gregar; a version's own look of a button: beast_out)
     (an EXE5 pack's HUD also: mugshots/NAME-box.png, the box a face brings)
     (and another language's lettering, L: ja)
     hud/font-L.png  dialogue-font-L.png  waiting-L.png  gauge-L.png  banners/NAME-L.png
@@ -374,17 +375,52 @@ that has it.
 (by the chip under the cursor's class: standard, Mega, Giga, dark), each
 chip's picture (`chip-art/CHIP.png`, 7x6 tiles) its own palette,
 `elements.png` a palette row per element whose colors 10-15 are the ones
-the element brings, `emblems.png` the emblems' palettes, `cross-cursor.png`
+the element brings, each navi's emblem (`emblems/NAVI.png`, 2x2 tiles,
+under the navi's key) its own palette, which is the cursor's and the
+Regular chip's frame's too while that navi's console has the screen up,
+`cross-cursor.png`
 the Cross window's cursor (its corner and its edge, two frames) with sprite
 palette 14. `custom.json` holds the window's maps (15x20, without and with
 the Cross tab) and the Cross window's (three opening steps, then the window
 with one to five Crosses), their patch lists (a block of consecutive tile
 numbers at a cell, row or column first, in a palette), the three palettes
-no image owns as color lists, which emblem a navi shows, and the Program
-Advance animation's three sets of name colors; and each chip's picture by
+no image owns as color lists, and the Program
+Advance animation's three sets of name colors; each chip's picture by
 its chip's key, with the `region` and `version` of a picture from another
-ROM (below). The frontend composes the tile numbers the maps name from
+ROM (below); each navi's emblem by its navi's key; and the buttons
+(below). The frontend composes the tile numbers the maps name from
 these blocks, as the original's VRAM holds them.
+
+A navi's emblem is its own on any console: the extractor takes each from
+the ROM that has it (EXE6's ROMs each have MegaMan's, ProtoMan's and their
+own version's five link navis'; EXE5's MegaMan's and their own team's
+six), under the key the game's compat gives the navi's number; a navi
+without a key has none. The original has no picture for the other
+version's navis and shows its own counterpart's in the navi's colors
+(docs/frontend.md §5).
+
+**Buttons** (`buttons` in `custom.json`): a system's button on the custom
+screen is drawn by the pack's look of the name its content registers it
+under (EXE6's `redeal`, `scrap` and `beast_out`; EXE5's `soul`, `redeal`
+and `arm_change`); the frontend has no look of its own. An entry has the
+button's tiles among the slots' (`buttons/BUTTON.png`: `size` tiles a
+cell, a slot's 2x3 or the special slot's own; a set its cells', set after
+set), which set a state shows (`sets`: `each`, one a state; `other`, the
+second for unavailable and picked; `unavailable`, the second for
+unavailable alone), the set its slot shows while the button isn't there
+(`hidden`: EXE6's Beast Out's fourth; left out, the window's fill), the
+cursor over it (`cursor`: its place and each frame's four corners), its
+picture in the chip window with its palettes as rows, its own first
+(`pictures/BUTTON.png`), whether the chip window shows its uses left
+(`uses_digit`: EXE5's Shuffle) and where the chip it holds is drawn
+(`held_at`: EXE5's Arm Change). EXE5's `soul` has the souls' 2x2 icons
+besides (`buttons/soul-icons.png`, with their sprite palette, which the
+soul choice flies onto the column; `icon_versions` names the game versions
+whose consoles fly the icon in a palette of their own, the image's rows
+after the first: Team Colonel's). A version's own look of a button is in
+its version's entry (EXE6's `beast_out`: `buttons/beast_out-V.png`,
+`pictures/beast_out-V.png`), and a language's own tiles or picture of one
+in its language's (`buttons/soul-ja.png`, `pictures/redeal-ja.png`).
 
 **Another game's HUD and custom screen** (EXE5's, docs/design/exe5-map.md §11)
 use the same files, with optional fields where its game lays them out
@@ -397,21 +433,14 @@ otherwise; an EXE6 pack writes none of them and is byte-identical to before:
   and Team Colonel's faces), by mugshot number; `no_count_box` says the
   game has no box without a count (EXE5's souls' faces show their turns
   left: `counts.png`, by count).
-- `custom.json`: `layout` (written only when it isn't EXE6's) puts the
+- `custom.json`: `layout` (every pack says its game's) puts the
   window's parts at the game's tile numbers (the chip's name, picture,
   code, element and digits, the slots, the column's icons and cells, the
   turn limit, the name bar, the Cross names), says which tile a hidden slot
-  is filled with, and where the cursor stands over OK and over the special
-  slot, with each one's corners (EXE5's special slot is a 3x2 button, EXE6's
-  Beast Out 2x2), and whether the chip window shows the re-deal button's
-  uses left (`button_uses`: EXE5's Shuffle; left out when false). `buttons`
-  are the game's own buttons, drawn by name where
-  a system's button stands (EXE5's `soul`: its states' tiles, its picture in
-  the chip window with a palette for Soul Unison and one for Chaos Unison,
-  and the souls' 2x2 icons with their sprite palette, which the soul choice
-  flies onto the column; `icon_versions` names the game versions whose
-  consoles fly the icon in a palette of their own, the icons' image's
-  palette rows after the first: Team Colonel's).
+  is filled with, and where the cursor stands over OK, with its corners.
+  `buttons` are the game's own (above: EXE5's special slot is the 3x2 soul
+  button, with a palette for Soul Unison and one for Chaos Unison; EXE6's
+  the 4x2 Beast Out).
 - A version's own chip (EXE5's and EXE6's version Giga chips, EXE5's Phoenix
   and DethPhnx), which the other version's ROM draws as its counterpart,
   has its icon and picture once, under the chip's key, from its own
@@ -431,11 +460,11 @@ own, read at the addresses the same code points at there (exe6-extract's
 - **What differs by version** is two assets, each named with its version:
   `cross-names-falzar` and `cross-names-gregar` (nettai-assets
   `Versioned`, whose halves the names find; an asset no version has its
-  own of has no suffix). On the custom screen these are the Beast's
-  picture in the chip window with its palettes (`pictures/beast-out-V`,
-  which the BeastOut chip shows too), the Beast Out button
-  (`beast-buttons-V`), the emblems (`emblems-V`: MegaMan's are the
-  version's; Falzar's owns the emblems' palettes) and the Cross window's
+  own of has no suffix). On the custom screen these are the Beast Out
+  button, the version's Beast's (`buttons/beast_out-V`, four sets of 4x2:
+  selectable, unavailable, battle mode 1's, the hidden slot's), with its
+  picture in the chip window (`pictures/beast_out-V`, which the BeastOut
+  chip shows too) and the Cross window's
   names, 9x2 tiles each, the five on the cursor's row then on the others',
   with background palette 10 for the Cross under the cursor
   (`cross-names-V`). `custom.json` lists the base's (`own`, its version in

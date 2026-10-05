@@ -1,5 +1,5 @@
 --!strict
--- EXE5's computer navi getting in place for a chip (0x08029B3C, from the AI's chip play, ./ai): each chip's record
+-- A navi in EXE5's auto battle getting in place for a chip (0x08029B3C, from the AI's chip play, ./ai): each chip's record
 -- names how (byte 13, its positioning class: data.chips[...].class), and the class's routine runs once a decision
 -- until it says it is no longer busy. Most classes have two steps: a search for a panel the chip reaches the target
 -- from, a step there, and the next decision's "in place"; the rest test a condition and say at once. In place or
@@ -54,7 +54,7 @@ end
 local function record(chip: Chip)
     local r = data.chips[chip.id]
     if r == nil then
-        error(string.format("the computer navi plays %s, which the AI's data (./data) doesn't list", chip.id))
+        error(string.format("the navi in auto battle plays %s, which the AI's data (./data) doesn't list", chip.id))
     end
     return r
 end
@@ -63,7 +63,7 @@ end
 local function reach(range: number): { { number } }
     local list = data.ranges[range]
     if list == nil then
-        error(string.format("the computer navi's chip names reach list %d, past the lists (sub_8022AF4)", range))
+        error(string.format("the auto-battling navi's chip names reach list %d, past the lists (sub_8022AF4)", range))
     end
     return list
 end
@@ -222,11 +222,11 @@ local function spot(navi: Object, s: State)
     local range = record(chip_of(s)).range
     if range < 32 then
         -- 0x08029E7A branches to itself.
-        error(string.format("the computer navi's chip of positioning class 2 has reach %d: 0x08029E7A loops forever", range))
+        error(string.format("the auto-battling navi's chip of positioning class 2 has reach %d: 0x08029E7A loops forever", range))
     end
     local test = SPOTS[range]
     if test == nil then
-        error(string.format("the computer navi's chip of positioning class 2 has reach %d, past the table at 0x08029E80", range))
+        error(string.format("the auto-battling navi's chip of positioning class 2 has reach %d, past the table at 0x08029E80", range))
     end
     local t = target_of(s)
     if test(navi, t) then
@@ -830,7 +830,7 @@ local CLASSES: { [number]: { [number]: Step } | Step } = {
 local function run(class: number, navi: Object, s: State)
     local c = CLASSES[class]
     if c == nil then
-        error(string.format("the computer navi's chip has positioning class %d, past the table at 0x08029B68", class))
+        error(string.format("the auto-battling navi's chip has positioning class %d, past the table at 0x08029B68", class))
     end
     if type(c) == "function" then
         return (c :: Step)(navi, s)

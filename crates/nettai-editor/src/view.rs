@@ -1,6 +1,6 @@
 //! What the editor shows: a bar of file actions, the panes (the arena, with
 //! the match's game, then each side's navi, folder, Crosses, souls,
-//! computer-navi data, patch cards and stats; only what the game's rules
+//! auto battle data, patch cards and stats; only what the game's rules
 //! have, every list the game's), and the problems, live.
 
 use crate::app::{App, Choice, Editor, Msg, Tab};
@@ -102,9 +102,9 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         if changes_form && nettai_match::facts::takes(&e.content, nettai_match::facts::SOULS_FIELD) {
             tabs = tabs.push(nav("  Souls", Tab::Souls(s), e.tab));
         }
-        // (Where the game's rules have computer navis: EXE5's.)
-        if nettai_match::computer_navi::has(&e.content) {
-            tabs = tabs.push(nav("  Computer navi", Tab::ComputerNavi(s), e.tab));
+        // (Where the game's rules have auto battle: EXE5's.)
+        if nettai_match::auto_battle::has(&e.content) {
+            tabs = tabs.push(nav("  Auto battle", Tab::AutoBattle(s), e.tab));
         }
         if changes_form && nettai_match::ruleset_has_system(&e.content, PATCH_CARDS_SYSTEM) {
             tabs = tabs.push(nav("  Patch cards", Tab::Cards(s), e.tab));
@@ -121,7 +121,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         Tab::Folder(s) => folder(e, s),
         Tab::Crosses(s) => crosses(e, s),
         Tab::Souls(s) => souls(e, s),
-        Tab::ComputerNavi(s) => crate::computer_navi::view(e, s),
+        Tab::AutoBattle(s) => crate::auto_battle::view(e, s),
         Tab::Cards(s) => cards(e, s),
         Tab::NaviCust(s) => crate::navicust::view(e, s),
         Tab::Stats(s) => stats_pane(e, s, None),
@@ -250,7 +250,7 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
         text(
             "From an EXE6 .sav: the version, Beast Out and the Crosses it owns, the navi code's level and the SP times. \
              From an EXE5 .sav (or a raw save image): its karma, the souls it has (its version's), its NaviCust board's size \
-             and what a computer navi plays from it. \
+             and what a navi in auto battle plays from it. \
              A save of another game than the match's makes a new match of its game.",
         )
         .size(13)

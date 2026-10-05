@@ -30,7 +30,7 @@
 //! hud.rs's and custom.rs's addresses.
 
 use crate::rom::{Rom, Roms, Version};
-use nettai_assets::{CustomLettering, Hud, HudLettering, SlotPictures};
+use nettai_assets::{ButtonLettering, CustomLettering, Hud, HudLettering, SlotPictures};
 use nettai_content::names::AssetNames;
 
 /// The language the Japanese ROMs' lettering is.
@@ -137,18 +137,18 @@ fn hud_of(rom: &Rom, a: &Addresses, base: &Hud, names: &AssetNames) -> HudLetter
 
 /// A Japanese ROM's custom-screen lettering.
 fn custom_of(rom: &Rom, a: &Addresses) -> CustomLettering {
-    use crate::custom::{SOUL_BUTTON, SOUL_BUTTON_BYTES, picture};
+    use crate::custom::{ARM_CHANGE_BUTTON, REDEAL_BUTTON, SOUL_BUTTON, SOUL_BUTTON_BYTES, picture};
     CustomLettering {
-        pictures: SlotPictures {
-            ok: picture(rom, a.ok),
-            ok_picked: picture(rom, a.ok_picked),
-            redeal: picture(rom, a.redeal),
-            scrap: picture(rom, a.scrap),
-            other: picture(rom, a.other),
-        },
+        pictures: SlotPictures { ok: picture(rom, a.ok), ok_picked: picture(rom, a.ok_picked), other: picture(rom, a.other) },
         // (EXE5 has no Cross window.)
         cross_names: Vec::new(),
-        buttons: vec![(SOUL_BUTTON.into(), crate::hud::tiles(rom, a.soul_buttons, SOUL_BUTTON_BYTES))],
+        // Arm Change's and the re-deal button's pictures in the chip window,
+        // and the soul button's tiles (by name, as a pack keeps them).
+        buttons: vec![
+            (ARM_CHANGE_BUTTON.into(), ButtonLettering { tiles: None, picture: Some(picture(rom, a.scrap)) }),
+            (REDEAL_BUTTON.into(), ButtonLettering { tiles: None, picture: Some(picture(rom, a.redeal)) }),
+            (SOUL_BUTTON.into(), ButtonLettering { tiles: Some(crate::hud::tiles(rom, a.soul_buttons, SOUL_BUTTON_BYTES)), picture: None }),
+        ],
     }
 }
 

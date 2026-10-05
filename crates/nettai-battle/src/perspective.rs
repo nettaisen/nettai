@@ -257,7 +257,7 @@ mod tests {
         let content = |rule: NaviWinBanner| {
             let mut c: crate::content::Content = testing::build();
             c.define().unwrap_or_else(|e| panic!("{e}"));
-            c.rules.flow.navi_win_banner = rule;
+            c.rules_mut().flow.navi_win_banner = rule;
             std::sync::Arc::new(c)
         };
         let with = |c: &std::sync::Arc<crate::content::Content>, link: bool| {
