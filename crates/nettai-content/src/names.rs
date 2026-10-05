@@ -36,6 +36,9 @@ pub struct AssetNames {
     pub banners: BTreeMap<u8, String>,
     /// Chip icons, by chip id: the chip's key.
     pub chips: BTreeMap<u16, String>,
+    /// Navis by their number in the game: the navi's key, which its emblem
+    /// is written under. A navi without one has no emblem in the pack.
+    pub navis: BTreeMap<u8, String>,
     /// What each glyph of the game's text font draws (the game's text
     /// encoding), for the HUD's font; and what the dialogue font draws past
     /// them.

@@ -69,10 +69,10 @@ pub enum Lookup {
     /// A navi's variant name there (`battle.set_name_variant`: EXE5's Hub
     /// Style).
     NaviVariantName(NaviHandle),
-    /// A navi's number in EXE6's compat (its emblem's).
-    NaviNumber(NaviHandle),
-    /// A navi's emblem on a console of a game's custom screen.
-    Emblem(NaviHandle, VersionTag),
+    /// A navi's emblem on the custom screen.
+    Emblem(NaviHandle),
+    /// A custom-screen button's look (by the button's handle).
+    Button(u16),
     /// A navi's no-running message in the dialogue font, with its portrait.
     RunMessage(NaviHandle),
     /// A Cross's name and colors in the Cross window.
@@ -102,25 +102,6 @@ pub enum Graphics {
     Chatbox,
     /// The warning marker.
     Warning,
-}
-
-/// A version of a game, by the name its pack keeps the version's pictures
-/// under (`Versioned`), in a [`Lookup`]: its first 16 bytes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct VersionTag([u8; 16]);
-
-impl VersionTag {
-    pub fn of(name: &str) -> VersionTag {
-        let mut tag = [0; 16];
-        let n = (0..=name.len().min(16)).rev().find(|&n| name.is_char_boundary(n)).unwrap_or(0);
-        tag[..n].copy_from_slice(&name.as_bytes()[..n]);
-        VersionTag(tag)
-    }
-
-    pub fn name(&self) -> &str {
-        let n = self.0.iter().position(|&b| b == 0).unwrap_or(16);
-        std::str::from_utf8(&self.0[..n]).unwrap_or("")
-    }
 }
 
 /// An emotion's number in a [`Lookup::FormFace`] (`sub_8015B54`'s code;
@@ -164,8 +145,8 @@ impl Lookup {
             Lookup::FormFace(h, e) => format!("form {} face {e}", form(h)),
             Lookup::NaviName(h) => format!("navi {} name", navi(h)),
             Lookup::NaviVariantName(h) => format!("navi {} variant name", navi(h)),
-            Lookup::NaviNumber(h) => format!("navi {} number", navi(h)),
-            Lookup::Emblem(h, v) => format!("navi {} emblem {}", navi(h), v.name()),
+            Lookup::Emblem(h) => format!("navi {} emblem", navi(h)),
+            Lookup::Button(h) => format!("button {}", c.defs.button(nettai_battle::content::ButtonHandle(h)).name),
             Lookup::RunMessage(h) => format!("navi {} run message", navi(h)),
             Lookup::CrossName(h) => format!("form {} cross name", form(h)),
             Lookup::CrossDescription(h) => format!("form {} description", form(h)),

@@ -16,7 +16,9 @@ pub const USAGE: &str = "usage: exe5-extract content <protoman-us> <colonel-us> 
 /// The names EXE5's compat (content/exe5/compat, built into exe5-compat) gives
 /// the assets: sprites, songs and banners by EXE6's names for what is EXE6's,
 /// the faces by EXE5's (its [mugshots]), chip icons by the chips' ids
-/// (`cannon`); and what the fonts' glyphs draw (its text.toml).
+/// (`cannon`), the navis' emblems by the navis' (`megaman`: the navis the
+/// content has, `exe5_compat::trace::navi_key`); and what the fonts' glyphs
+/// draw (its text.toml).
 fn asset_names() -> nettai_content::names::AssetNames {
     let c = exe5_compat::Compat::exe5();
     nettai_content::names::AssetNames {
@@ -26,6 +28,7 @@ fn asset_names() -> nettai_content::names::AssetNames {
         backgrounds: c.assets.backgrounds.iter().map(|(k, &v)| (v, k.clone())).collect(),
         mugshots: c.assets.mugshots.iter().map(|(k, &v)| (v, k.clone())).collect(),
         chips: c.chip_keys.iter().map(|(&id, k)| (id, nettai_content_api::keys::local(k).to_string())).collect(),
+        navis: (0..crate::custom::NAVI_COUNT).filter_map(|n| Some((n, exe5_compat::trace::navi_key(n)?))).collect(),
         glyphs: c.text.glyphs.clone(),
         dialogue_glyphs: c.text.dialogue_glyphs.clone(),
         // The Japanese ROMs' encoding is the pack's Japanese lettering's.

@@ -169,8 +169,8 @@ impl<'a> Renderer<'a> {
         // (The local player's custom screen and chatbox: the game's pack's.)
         let local = b.setup.local_side as usize & 1;
         let own_game = self.packs.game(&b.content);
-        let version = crate::custom::console_version(b, &self.packs, local as u8);
-        let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, version, &mut self.problems);
+        let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, &mut self.problems);
+        let (emblem, emblem_palette) = (crate::custom::emblem_sprite(emblem), emblem.map_or([0; 16], |e| e.palette));
         let chatbox = crate::chatbox::prepare(b, own_game, &self.packs, &text, &mut self.problems);
         let mut list = SpriteList::default();
         objects::queue_objects(b, &self.packs, &view, self.console_region, &mut list, &mut self.problems, !draw);
@@ -179,6 +179,7 @@ impl<'a> Renderer<'a> {
             own_game,
             &self.packs,
             &emblem,
+            emblem_palette,
             self.console_region,
             &mut self.hud,
             &mut self.names,
