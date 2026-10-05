@@ -98,7 +98,7 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
   --match FILE     play the match this file sets up (docs/frontend.md §6: its
                    game, the arena, each side's navi, version,
                    folder, Crosses, patch cards and stats, by name in the
-                   game; nettai-editor makes them), instead of a random one;
+                   game; nettai-demo-editor makes them), instead of a random one;
                    you are its left side. With --host or --join the left side
                    is what you bring, and the host's arena is the match's
   --save-match FILE  write the match played (live play's random pick, or the
