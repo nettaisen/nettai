@@ -82,6 +82,8 @@ return define.system {
         beast_out = "bool",
         cross_list = "form[5]",
     },
+    -- A setup that says nothing has Beast Out (a finished game's save).
+    setup_defaults = { beast_out = true },
     -- A chip's Beast rush (`beast`): the lock-on mode it runs by (none: where
     -- the navi stands), and `rush = false` for a chip with a mode that
     -- doesn't rush (docs/design/rules-in-luau.md §7.5).
