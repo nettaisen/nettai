@@ -315,14 +315,46 @@ struct ButtonLook<'a> {
     /// The details picture's palettes by the slot's state (none: its own).
     palettes: &'a [Palette],
     tiles: &'a Tiles,
-    /// Its tiles a state, and whether its unavailable and picked states
-    /// share the second set (the Beast Out button's two).
+    /// Its tiles a state, and which set a state shows.
     count: usize,
-    two_states: bool,
+    sets: Sets,
     /// The tiles the slots after it start past (none: they overlap it).
     advance: u16,
     cursor: (i32, i32, CursorShape),
+    /// Whether the chip window shows its uses left, in the damage's last
+    /// cell (BN5's Shuffle, 0x080245F2; the pack's layout says).
+    uses_digit: bool,
+    /// Where the icon of the chip it holds is drawn, a sprite over it
+    /// (BN5's Arm Change, 0x080254F4).
+    held_at: Option<(i32, i32)>,
 }
+
+/// Which of a button's tile sets a slot in a state shows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Sets {
+    /// One a state: selectable, unavailable, picked.
+    Each,
+    /// The second for unavailable and picked alike (the Beast Out button's
+    /// two, BN5's soul button's).
+    Other,
+    /// The second for unavailable alone (BN5's Arm Change, 0x0802415A:
+    /// picked, it looks on offer, the chip it holds drawn over it).
+    Unavailable,
+}
+
+impl Sets {
+    fn of(self, state: usize) -> usize {
+        match self {
+            Sets::Each => state,
+            Sets::Other => (state != 0) as usize,
+            Sets::Unavailable => (state == 1) as usize,
+        }
+    }
+}
+
+/// BN5's Arm Change's chip over its button (0x08025508: the sprite's x
+/// 0x45, y 0x84).
+const HELD_CHIP: (i32, i32) = (0x45, 0x84);
 
 impl ButtonLook<'_> {
     /// Its details picture for a slot in state `state`.
@@ -341,8 +373,10 @@ impl<'a> View<'a> {
     /// The look of the button named `name`: the pack's of that name
     /// (`CustomScreen::buttons`: BN5's "soul", the special slot's under OK,
     /// its picture in a palette by its state), else BN6's Beast Out (its
-    /// game's pictures), ChpShufl re-deal and DustCross scrap. A name the
-    /// frontend doesn't know is drawn as nothing.
+    /// game's pictures), ChpShufl re-deal (BN5's Shuffle) and DustCross
+    /// scrap, and BN5's Arm Change. A name the frontend doesn't know is
+    /// drawn as nothing; a button that shows a chip (`Slot::face`: BN5's
+    /// capsules) is drawn as that chip's slot whatever its name.
     fn named_look(&self, name: &str) -> Option<ButtonLook<'a>> {
         use std::borrow::Cow;
         let a = self.assets;
@@ -351,16 +385,28 @@ impl<'a> View<'a> {
             // 0x08024540.)
             let count = b.width as usize * b.height as usize;
             let cursor = cursor_at(&a.layout.special_cursor);
-            return Some(ButtonLook { details: Cow::Borrowed(&b.picture), palettes: &b.palettes, tiles: &b.tiles, count, two_states: true, advance: 0, cursor });
+            return Some(ButtonLook {
+                details: Cow::Borrowed(&b.picture),
+                palettes: &b.palettes,
+                tiles: &b.tiles,
+                count,
+                sets: Sets::Other,
+                advance: 0,
+                cursor,
+                uses_digit: false,
+                held_at: None,
+            });
         }
         let wide = |details: &'a Picture, tiles: &'a Tiles| ButtonLook {
             details: Cow::Borrowed(details),
             palettes: &[],
             tiles,
             count: 12,
-            two_states: false,
+            sets: Sets::Each,
             advance: 12,
             cursor: (0x38, 0x80, BUTTON_CURSOR),
+            uses_digit: false,
+            held_at: None,
         };
         match name {
             "beast_out" => {
@@ -371,13 +417,21 @@ impl<'a> View<'a> {
                     palettes: &[],
                     tiles: &beast.beast_buttons,
                     count: 8,
-                    two_states: true,
+                    sets: Sets::Other,
                     advance: 0,
                     cursor: cursor_at(&a.layout.special_cursor),
+                    uses_digit: false,
+                    held_at: None,
                 })
             }
-            "redeal" => Some(wide(&a.pictures.redeal, &a.redeal_buttons)),
+            "redeal" => Some(ButtonLook { uses_digit: a.layout.button_uses, ..wide(&a.pictures.redeal, &a.redeal_buttons) }),
             "scrap" => Some(wide(&a.pictures.scrap, &a.scrap_buttons)),
+            // BN5's Arm Change (ColonelSoul's, 0x0802415A and 0x080245A0):
+            // the tiles and the picture its pack has in the scrap button's
+            // place.
+            "arm_change" => {
+                Some(ButtonLook { sets: Sets::Unavailable, held_at: Some(HELD_CHIP), ..wide(&a.pictures.scrap, &a.scrap_buttons) })
+            }
             _ => None,
         }
     }
@@ -460,6 +514,61 @@ const CHAOS_ICON: usize = 13;
 /// its flash (fades 0x34 and 0x30, the sprite palette's), until the soul
 /// takes the first cell (0x080233E0).
 fn soul_flight<'a>(a: &'a CustomScreen, v: &View, sub: u8, counter: u8) -> Option<SpritePart<'a>> {
+    let (tiles, first) = soul_icon(a, v)?;
+    flight(a, v, tiles, first, sub, counter)
+}
+
+/// BN5's capsule's mix, as its souls system keeps it (content/bn5/rules/
+/// souls/capsules.luau, read by its fields' names): the capsule being mixed
+/// (1 or 2: the button `capsule_1` or `capsule_2`), and the sequence's step
+/// and count (the screen's state 0x3C).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CapsuleMix {
+    pub capsule: u8,
+    pub step: u8,
+    pub count: u8,
+}
+
+/// The capsule's mix's window (the screen's state 0x3C, 0x0802373A).
+const CAPSULE_WINDOW: &str = "capsule";
+
+impl CapsuleMix {
+    /// Side `side`'s, when its ruleset has BN5's souls system.
+    pub fn of(b: &Battle, side: usize) -> Option<CapsuleMix> {
+        let (schema, state) = b.system_state(side as u8, SOULS_SYSTEM)?;
+        let byte = |name: &str| match state.get(schema, schema.index_of(name)?) {
+            FieldValue::U8(n) => Some(n),
+            _ => None,
+        };
+        Some(CapsuleMix { capsule: byte("mix_capsule")?, step: byte("mix_step")?, count: byte("mix_count")? })
+    }
+}
+
+/// BN5's capsule's mix (its state 0x3C, 0x0802373A: the souls system's
+/// window `capsule`): the capsule's icon, its chip's (0x08023770: the chip
+/// records' icons are the table it loads from, 0x0874A738), flies to the
+/// last pick's cell as the soul's icon does to the first (the soul's
+/// choice's steps and sprite, 0x080254D8).
+fn capsule_flight<'a>(a: &'a CustomScreen, v: &View, packs: &crate::packs::Packs<'a>, problems: &mut Problems) -> Option<SpritePart<'a>> {
+    let Phase::Window { window, .. } = v.screen.phase else { return None };
+    let d = v.b.content.defs.window(window);
+    if d.name != CAPSULE_WINDOW || v.b.content.defs.system(d.system).key != SOULS_SYSTEM {
+        return None;
+    }
+    let mix = CapsuleMix::of(v.b, v.side as usize)?;
+    let name = format!("capsule_{}", mix.capsule);
+    let chip = v.screen.slots.iter().find_map(|s| match s.kind {
+        SlotKind::Button { button, .. } if v.b.content.defs.button(button).name == name => s.face,
+        _ => None,
+    })?;
+    let (tiles, _) = crate::lookups::chip_icon(packs, &v.b.content, chip, problems)?;
+    flight(a, v, tiles, 0, mix.step, mix.count)
+}
+
+/// The sprite of BN5's soul's choice and capsule's mix (0x080254D8): the
+/// icon `first` of `tiles`, at the sequence's step `sub` and count
+/// `counter`, in the soul button's icons' palette.
+fn flight<'a>(a: &'a CustomScreen, v: &View, tiles: &'a Tiles, first: usize, sub: u8, counter: u8) -> Option<SpritePart<'a>> {
     let screen = v.screen;
     let rise = match sub {
         4 if counter > 0 => 0,
@@ -467,15 +576,17 @@ fn soul_flight<'a>(a: &'a CustomScreen, v: &View, sub: u8, counter: u8) -> Optio
         12 | 16 | 20 => 16,
         _ => return None,
     };
-    let (tiles, first) = soul_icon(a, v)?;
     let b = a.button(SOUL_BUTTON)?;
+    // (The console's version's: Team Colonel's outline is another color.)
+    let own = v.packs.version().and_then(|version| b.icon_palettes.iter().find(|(name, _)| name == version));
+    let colors = own.map_or(b.icon_palette, |(_, p)| *p);
     let f = screen.look.fade;
     let palette = match f.mode {
         nettai_battle::battle::FadeMode::SoulFlash | nettai_battle::battle::FadeMode::SoulFlashBack => {
             let n = (f.level >> 4).min(16) as u8;
-            b.icon_palette.map(|c| crate::compose::apply_fade(c, Fade::White(n)))
+            colors.map(|c| crate::compose::apply_fade(c, Fade::White(n)))
         }
-        _ => b.icon_palette,
+        _ => colors,
     };
     let y = 24 + 16 * screen.selection().len() as i32 - rise;
     Some(SpritePart {
@@ -911,8 +1022,18 @@ impl Window {
                 let p = if cw.picks == 0 { &a.pictures.ok } else { &a.pictures.ok_picked };
                 blank_details(self, p);
             }
-            SlotKind::Button { button, .. } => {
-                if let Some(look) = v.button_look(button) {
+            SlotKind::Button { button, cell } => {
+                if let Some(chip) = v.screen.slots[slot as usize].face {
+                    // BN5's capsules (0x08024422): the chip's name and
+                    // picture alone; the frame's colors stay the last
+                    // drawn.
+                    self.chip_name_and_art(v, chip, text, problems);
+                    self.palettes[9] = self.frame_palette(v, cw.framed, problems);
+                    // sub_802869E
+                    self.tiles.fill(self.layout.code, 2, BLANK_8);
+                    self.tiles.fill(self.layout.element, 4, BLANK_7);
+                    self.tiles.fill(self.layout.digits, 6, BLANK_8);
+                } else if let Some(look) = v.button_look(button) {
                     // (BN5's soul button, 0x08024540: its picture in its
                     // first palette, a Chaos Unison's in its second, the
                     // slot's +6, whatever its state.)
@@ -922,6 +1043,13 @@ impl Window {
                         state
                     };
                     blank_details(self, &look.details(palette));
+                    if look.uses_digit {
+                        // 0x080245C8: the uses left (the button's first
+                        // cell's, +4), over the damage's last cell.
+                        let first = if cell == ButtonCell::Right { slot - 1 } else { slot };
+                        let uses = v.screen.slots[first as usize].uses_left as usize;
+                        self.tiles.put_part(self.layout.digits + 4, &a.digits, 2 * uses.min(9), 2);
+                    }
                 }
             }
             SlotKind::Empty | SlotKind::Hidden => {}
@@ -936,50 +1064,10 @@ impl Window {
     fn chip_details(&mut self, v: &View, c: FolderChip, text: &TextSink, problems: &mut Problems) {
         let a = v.assets;
         let data = v.b.content.chip(c.id);
-        let name = text.strings.chip_name(&v.b.content, c.id);
-        let glyphs = crate::lookups::chip_name(v.hud, &v.b.content, c.id, name, problems);
-        if text.takes(name) {
-            // The name's cells in the window's color, the words on the
-            // text layer in all eight of them (nothing follows the name).
-            self.tiles.put(self.layout.name, &fonts::cell_text(v.hud, &[], NAME_CELLS, NAME_SHIFT));
-            self.name = Some((name.to_string(), NAME_CELLS));
-        } else {
-            self.tiles.put(self.layout.name, &fonts::cell_text(v.hud, &glyphs, NAME_CELLS, NAME_SHIFT));
-        }
-        // (The Beast Out chip's picture is the Beast's the navi goes into.)
-        let beast_out = v.b.roles().try_chip(nettai_battle::content::ChipRole::BeastOut) == Some(c.id);
-        // A chip whose palette no ROM holds has its definition's
-        // (`art_palette`). The picture of a chip the US release cut is the
-        // Japanese ROMs': a US console shows a placeholder there. The
-        // Gregar and Falzar chips' are each their own beast: a console
-        // shows its own in both. A version's own chip's is its own ROM's:
-        // a console of the other version shows its counterpart's.
-        let art = if beast_out {
-            Some((&v.beast.beast_out, None))
-        } else {
-            crate::lookups::chip_art(&v.packs, &v.b.content, c.id, problems).map(|art| (&art.picture, Some(art)))
-        };
-        if let Some((p, art)) = art {
-            self.tiles.put(self.layout.art, &p.tiles);
-            self.palettes[10] = if beast_out { p.palette } else { data.art_palette.unwrap_or(p.palette) };
-            let console_version = v.packs.version().unwrap_or_else(|| version_name(v.b, v.side));
-            self.picture_known = match art {
-                Some(a) if a.region.as_deref().is_some_and(|r| r != v.region) => {
-                    Some("the Japanese games' chip picture (a US console shows a placeholder)")
-                }
-                Some(a) if a.version.as_deref().is_some_and(|g| g != console_version) => Some(match a.region {
-                    // (The Gregar and Falzar chips', which the US release
-                    // cut: each Japanese ROM has its own beast in both.)
-                    Some(_) => "the chip's own beast's picture (a console shows its own)",
-                    None => crate::lookups::OTHER_VERSIONS_ART,
-                }),
-                _ => None,
-            };
-        }
+        self.chip_name_and_art(v, c.id, text, problems);
         // The frame's colors by class, a dark chip's (of the first
         // three classes) dark; the code's glyph, the element's icon.
-        let frame = crate::lookups::chip_window(a, &v.b.content, c.id, c.code.0, problems);
-        self.palettes[9] = a.frame_palettes.get(frame).copied().unwrap_or([0; 16]);
+        self.palettes[9] = self.frame_palette(v, Some(c), problems);
         let code = c.code.0.min(NO_CODE) as usize;
         self.tiles.put_part(self.layout.code, &a.codes, 2 * code, 2);
         let family = data.family as usize;
@@ -1001,6 +1089,63 @@ impl Window {
         self.tiles.fill(self.layout.digits, 2 * blanks, BLANK_8);
         for (i, &d) in digits.iter().enumerate() {
             self.tiles.put_part(self.layout.digits + 2 * (blanks + i) as u16, &a.digits, 2 * d, 2);
+        }
+    }
+
+    /// The frame's colors (palette 9) for the chip that last set them: by
+    /// its class, a dark chip's (of the first three classes) dark; the
+    /// standard ones for none (OK's and a button's picture, `sub_80287D2`).
+    fn frame_palette(&self, v: &View, c: Option<FolderChip>, problems: &mut Problems) -> Palette {
+        let a = v.assets;
+        let frame = c.map_or(0, |c| crate::lookups::chip_window(a, &v.b.content, c.id, c.code.0, problems));
+        a.frame_palettes.get(frame).copied().unwrap_or([0; 16])
+    }
+
+    /// A chip's name (8 cells of the 8x16 font in the window's colors) and
+    /// its picture and palette: `sub_80284E2`'s first part, and all a
+    /// button's chip shows (BN5's capsules, 0x08024422).
+    fn chip_name_and_art(&mut self, v: &View, chip: ChipHandle, text: &TextSink, problems: &mut Problems) {
+        let c = chip;
+        let data = v.b.content.chip(c);
+        let name = text.strings.chip_name(&v.b.content, c);
+        let glyphs = crate::lookups::chip_name(v.hud, &v.b.content, c, name, problems);
+        if text.takes(name) {
+            // The name's cells in the window's color, the words on the
+            // text layer in all eight of them (nothing follows the name).
+            self.tiles.put(self.layout.name, &fonts::cell_text(v.hud, &[], NAME_CELLS, NAME_SHIFT));
+            self.name = Some((name.to_string(), NAME_CELLS));
+        } else {
+            self.tiles.put(self.layout.name, &fonts::cell_text(v.hud, &glyphs, NAME_CELLS, NAME_SHIFT));
+        }
+        // (The Beast Out chip's picture is the Beast's the navi goes into.)
+        let beast_out = v.b.roles().try_chip(nettai_battle::content::ChipRole::BeastOut) == Some(c);
+        // A chip whose palette no ROM holds has its definition's
+        // (`art_palette`). The picture of a chip the US release cut is the
+        // Japanese ROMs': a US console shows a placeholder there. The
+        // Gregar and Falzar chips' are each their own beast: a console
+        // shows its own in both. A version's own chip's is its own ROM's:
+        // a console of the other version shows its counterpart's.
+        let art = if beast_out {
+            Some((&v.beast.beast_out, None))
+        } else {
+            crate::lookups::chip_art(&v.packs, &v.b.content, c, problems).map(|art| (&art.picture, Some(art)))
+        };
+        if let Some((p, art)) = art {
+            self.tiles.put(self.layout.art, &p.tiles);
+            self.palettes[10] = if beast_out { p.palette } else { data.art_palette.unwrap_or(p.palette) };
+            let console_version = v.packs.version().unwrap_or_else(|| version_name(v.b, v.side));
+            self.picture_known = match art {
+                Some(a) if a.region.as_deref().is_some_and(|r| r != v.region) => {
+                    Some("the Japanese games' chip picture (a US console shows a placeholder)")
+                }
+                Some(a) if a.version.as_deref().is_some_and(|g| g != console_version) => Some(match a.region {
+                    // (The Gregar and Falzar chips', which the US release
+                    // cut: each Japanese ROM has its own beast in both.)
+                    Some(_) => "the chip's own beast's picture (a console shows its own)",
+                    None => crate::lookups::OTHER_VERSIONS_ART,
+                }),
+                _ => None,
+            };
         }
     }
 
@@ -1030,9 +1175,19 @@ impl Window {
                 }
                 SlotKind::Ok | SlotKind::Button { cell: ButtonCell::Right, .. } => {}
                 SlotKind::Button { button, .. } => {
-                    if let Some(look) = v.button_look(button) {
-                        let set = if look.two_states { (state != 0) as usize } else { state };
-                        self.tiles.put_part(at, look.tiles, look.count * set, look.count);
+                    if let Some(chip) = slot.face {
+                        // A button that shows a chip (BN5's capsules,
+                        // 0x08024114): a chip's slot, its icon the empty
+                        // one once it is used, its code blank.
+                        if slot.state == SlotState::Selected {
+                            self.tiles.put(at, &a.empty_icon);
+                        } else if let Some((icon, _)) = crate::lookups::chip_icon(&v.packs, &v.b.content, chip, problems) {
+                            self.tiles.put(at, icon);
+                        }
+                        self.tiles.fill(at + 4, 2, self.layout.slot_blank);
+                        at += 6;
+                    } else if let Some(look) = v.button_look(button) {
+                        self.tiles.put_part(at, look.tiles, look.count * look.sets.of(state), look.count);
                         at += look.advance;
                     }
                 }
@@ -1063,6 +1218,14 @@ impl Window {
                 SlotKind::Chip { .. } | SlotKind::NaviChip(_) if slot.state == SlotState::Unavailable => 12,
                 SlotKind::Chip { .. } | SlotKind::NaviChip(_) => 11,
                 SlotKind::Ok => continue,
+                // (A button's chip: a chip's, 0x08024200.)
+                SlotKind::Button { .. } if slot.face.is_some() => {
+                    if slot.state == SlotState::Unavailable {
+                        12
+                    } else {
+                        11
+                    }
+                }
                 _ => 9,
             };
             let (x, y) = (1 + 2 * (s % 5), 13 + 3 * (s / 5));
@@ -1087,7 +1250,7 @@ impl Window {
             };
             let (tiles, first) = icon.unwrap_or((&a.empty_icon, 0));
             self.tiles.put_part(at, tiles, first, 4);
-            let filled = (i < picks.len()) as u16;
+            let filled = (i < picks.len() || v.screen.look.column_kept == Some(i as u8)) as u16;
             let tile = self.layout.column_cells + 2 * filled;
             for (x, hflip) in [(11, false), (14, true)] {
                 self.map[(3 + 2 * i) * COLUMNS + x] = MapEntry { tile, hflip, vflip: false, palette: 9 };
@@ -1322,6 +1485,11 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             (16 * col + 8, 0x68 + 0x18 * row, CHIP_CURSOR)
         }
         SlotKind::Ok => cursor_at(&a.layout.ok_cursor),
+        // (A button that shows a chip: a chip's cursor, 0x080246B8.)
+        SlotKind::Button { .. } if s.slots[slot as usize].face.is_some() => {
+            let (col, row) = ((slot % 5) as i32, (slot / 5) as i32);
+            (16 * col + 8, 0x68 + 0x18 * row, CHIP_CURSOR)
+        }
         SlotKind::Button { button, .. } => v.button_look(button).map_or((0x38, 0x80, BUTTON_CURSOR), |l| l.cursor),
     };
     let palette = v.emblem_palette();
@@ -1393,6 +1561,33 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
 
 /// The Regular chip's frame (`sub_802899C`): a 32x32 sprite around the
 /// first slot.
+/// The chip a button holds, over the button (BN5's Arm Change, 0x080254F4):
+/// its icon as a 16x16 sprite where the button's look says, in sprite
+/// palette 10 (the HUD's icons').
+fn held_part<'a>(v: &View, packs: &crate::packs::Packs<'a>, problems: &mut Problems) -> Option<SpritePart<'a>> {
+    let h = v.screen.hold?;
+    let SlotKind::Button { button, .. } = v.screen.slots[h.button as usize].kind else { return None };
+    let (x, y) = v.button_look(button)?.held_at?;
+    let chip = v.screen.look.slot_chips[h.chip as usize]?;
+    let (tiles, palette) = crate::lookups::chip_icon(packs, &v.b.content, chip.id, problems)?;
+    Some(SpritePart {
+        x: (x & 0x1FF) as u16,
+        y: (y & 0xFF) as u8,
+        width: 16,
+        height: 16,
+        tiles,
+        first_tile: 0,
+        hflip: false,
+        vflip: false,
+        palette: *palette,
+        priority: 1,
+        alpha: None,
+        mosaic: None,
+        vscale: None,
+        affine: None,
+    })
+}
+
 fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
     SpritePart {
         x: 2,
@@ -1495,6 +1690,8 @@ pub fn draw<'a>(
     {
         queue.extend(soul_flight(a, &v, o.step, o.count));
     }
+    // Its capsule's mix's (state 0x3C's).
+    queue.extend(capsule_flight(a, &v, packs, problems));
     if let Some(frame) = drawn.cursor {
         queue.extend(cursor_parts(&v, a, frame));
     }
@@ -1503,6 +1700,9 @@ pub fn draw<'a>(
     }
     if drawn.regular {
         queue.push(regular_part(&v, a));
+    }
+    if drawn.held {
+        queue.extend(held_part(&v, packs, problems));
     }
     if let Some(frame) = drawn.cross_cursor {
         queue.extend(cross_cursor_parts(&v, a, frame));

@@ -693,3 +693,156 @@ fn the_cursor_stays_put_without_a_dark_chip() {
         assert_eq!((p.screen().look.dark, p.screen().look.drawn.volume), (DarkHover::Clear, None));
     }
 }
+
+/// Run one of the screen's routines a system's content calls (`custom.*`),
+/// with the side's folder and view.
+fn on_screen<R>(p: &mut Player, f: impl FnOnce(&mut Screen, &BattleFolder, &super::screen::PlayerView) -> R) -> R {
+    let side = p.side.clone();
+    let folder = side.folder.expect("a folder");
+    let mut screen = side.screen.expect("a screen");
+    let r = {
+        let ctx = p.context();
+        let view = side.view(&ctx, folder.regular_pending);
+        f(&mut screen, &folder, &view)
+    };
+    p.side.screen = Some(screen);
+    r
+}
+
+/// OK, and the hand the side sends.
+fn confirm(p: &mut Player) -> crate::hand::ChipHand {
+    p.press(keys::START);
+    assert_eq!(p.step(keys::A), Some(Request::Confirm));
+    p.step(0);
+    p.wait(20);
+    p.side.sent.as_ref().expect("a result sent").result.hand.clone().expect("a hand")
+}
+
+/// `custom.attach_to_last_pick` (BN5's capsules): the last pick carries
+/// the button's modifier bits into the hand, one button a chip; B on the
+/// chip clears them and frees the button.
+#[test]
+fn a_button_attached_to_a_pick_marks_it_into_the_hand() {
+    let mut p = Player::new(&[(SHOT, 0), (WAVE, 0), (SHOT, 0)]);
+    p.open();
+    p.wait(10);
+    p.step(0);
+    // Nothing picked: nothing to attach to.
+    assert!(!on_screen(&mut p, |s, f, v| s.attach_to_last_pick(8, 0x04, f, v)));
+    p.press(keys::A);
+    assert!(on_screen(&mut p, |s, f, v| s.attach_to_last_pick(8, 0x04, f, v)));
+    let s = p.screen();
+    assert_eq!((s.slots[0].marks, s.slots[0].attached, s.slots[8].state), (0x04, Some(8), SlotState::Selected));
+    assert!(on_screen(&mut p, |s, f, v| s.last_pick(f, v)).is_some_and(|l| l.attached));
+    // A second button on the same chip is refused.
+    assert!(!on_screen(&mut p, |s, f, v| s.attach_to_last_pick(9, 0x10, f, v)));
+    assert_eq!(p.screen().slots[0].marks, 0x04);
+    // B: the chip is taken back, its marks with it, and the button is free.
+    p.press(keys::B);
+    let s = p.screen();
+    assert_eq!((s.selected, s.slots[0].marks, s.slots[0].attached, s.slots[8].state), (0, 0, None, SlotState::Selectable));
+    // Picked and attached again (the Regular chip's bit is never a
+    // button's), then OK: the hand's modifiers carry the bits.
+    p.press(keys::A);
+    assert!(on_screen(&mut p, |s, f, v| s.attach_to_last_pick(8, 0x04 | 0x01, f, v)));
+    assert_eq!(p.screen().slots[0].marks, 0x04);
+    let hand = confirm(&mut p);
+    assert_eq!((hand.ids[0], hand.modifiers[0]), (Some(ChipHandle(SHOT)), 0x04));
+}
+
+/// `custom.hold_last_pick` (BN5's Arm Change): the last pick leaves the
+/// picks for the button; B puts it back once the picks are as they were
+/// then, after any later pick; at OK it leaves the folder without being in
+/// the hand.
+#[test]
+fn a_button_holding_a_pick_takes_it_out_of_the_picks_and_the_folder() {
+    let mut p = Player::new(&[(SHOT, 0), (WAVE, 0), (SHOT, 0)]);
+    p.open();
+    p.wait(10);
+    p.step(0);
+    assert!(!on_screen(&mut p, |s, f, v| s.hold_last_pick(8, f, v)), "nothing picked");
+    p.press(keys::A);
+    p.press(keys::RIGHT);
+    p.press(keys::A);
+    assert_eq!(p.screen().selection(), [0, 1]);
+    assert!(on_screen(&mut p, |s, f, v| s.hold_last_pick(8, f, v)));
+    let s = p.screen();
+    assert_eq!(s.selection(), [0]);
+    assert_eq!(s.hold.map(|h| (h.button, h.chip, h.at)), Some((8, 1, 1)));
+    assert_eq!((s.slots[1].state, s.slots[8].state), (SlotState::Selected, SlotState::Selected));
+    // (Its cell in the column stays drawn until the blink redraws it.)
+    assert_eq!(s.look.column_kept, Some(1));
+    assert!(!on_screen(&mut p, |s, f, v| s.hold_last_pick(8, f, v)), "one chip held at a time");
+    assert_eq!(on_screen(&mut p, |s, f, v| s.held_pick(8, f, v)).map(|c| c.id), Some(ChipHandle(WAVE)));
+    assert_eq!(on_screen(&mut p, |s, f, v| s.held_pick(9, f, v)), None);
+    // The blink: the icon in the cell it left, hidden or shown.
+    assert!(on_screen(&mut p, |s, f, v| s.set_held_icon(8, false, f, v)));
+    assert_eq!((p.screen().look.column[1], p.screen().look.column_kept), (None, None));
+    assert!(on_screen(&mut p, |s, f, v| s.set_held_icon(8, true, f, v)));
+    assert_eq!(p.screen().look.column[1].map(|c| c.id), Some(ChipHandle(WAVE)));
+    assert!(on_screen(&mut p, |s, f, v| s.set_held_icon(8, false, f, v)));
+    // The held chip is drawn over the button while choosing.
+    p.step(0);
+    assert!(p.screen().look.drawn.held);
+    // A later pick is taken back first; then, the picks as they were, the
+    // held chip is the last pick again and the button is free.
+    p.press(keys::RIGHT);
+    p.press(keys::A);
+    assert_eq!(p.screen().selection(), [0, 2]);
+    p.press(keys::B);
+    assert_eq!(p.screen().selection(), [0]);
+    assert!(p.screen().hold.is_some());
+    p.press(keys::B);
+    let s = p.screen();
+    assert_eq!((s.selection(), s.hold, s.slots[8].state), (&[0u8, 1][..], None, SlotState::Selectable));
+    assert_eq!(s.look.column[1].map(|c| c.id), Some(ChipHandle(WAVE)));
+    assert!(!s.look.drawn.held);
+    // Held again, and OK: the first pick alone is the hand; both chips
+    // left the folder.
+    assert!(on_screen(&mut p, |s, f, v| s.hold_last_pick(8, f, v)));
+    let hand = confirm(&mut p);
+    assert_eq!(hand.ids[..2], [Some(ChipHandle(SHOT)), None]);
+    let f = p.side.folder.unwrap();
+    assert_eq!((f.chips[0], f.chips[1]), (None, None));
+    assert_eq!(f.chips[2], Some(FolderChip::new(ChipHandle(SHOT), ChipCode(0))));
+}
+
+/// A button that shows a chip (`ButtonPlace::chip`, BN5's capsules): the
+/// chip window keeps the frame of the last chip slot it showed (OK and a
+/// button's picture set the standard one), and R describes the chip.
+#[test]
+fn a_buttons_chip_keeps_the_chip_windows_frame_and_is_described() {
+    let mut p = Player::new(&[(MEGA, 0), (SHOT, 0)]);
+    p.open();
+    p.wait(10);
+    p.step(0);
+    let framed = |p: &Player| p.screen().look.chip_window.framed.map(|c| c.id);
+    assert_eq!(framed(&p), Some(ChipHandle(MEGA)));
+    // The second slot a button showing a chip, the third a plain button.
+    {
+        let s = p.side.screen.as_mut().unwrap();
+        s.slots[1] = Slot { kind: SlotKind::Button { button: ButtonHandle(1), cell: ButtonCell::Only }, face: Some(ChipHandle(WAVE)), ..s.slots[1] };
+        s.slots[2] = Slot { kind: SlotKind::Button { button: ButtonHandle(1), cell: ButtonCell::Only }, face: None, ..s.slots[2] };
+    }
+    p.press(keys::RIGHT);
+    assert_eq!((p.screen().cursor, p.screen().look.chip_window.slot), (1, 1));
+    assert_eq!(framed(&p), Some(ChipHandle(MEGA)), "the button's chip sets no frame");
+    // R: its chip's description.
+    p.press(keys::R);
+    assert!(matches!(p.phase(), Phase::Description { window: None, .. }));
+    while p.phase() != Phase::Choosing && p.tick < 1000 {
+        p.press(keys::A);
+    }
+    assert_eq!(p.phase(), Phase::Choosing);
+    // A button's picture: the standard frame; R on it describes nothing.
+    p.press(keys::RIGHT);
+    assert_eq!((p.screen().cursor, framed(&p)), (2, None));
+    p.press(keys::R);
+    assert_eq!(p.phase(), Phase::Choosing);
+    // Back on the chip: its own again; OK: the standard one.
+    p.press(keys::LEFT);
+    p.press(keys::LEFT);
+    assert_eq!((p.screen().cursor, framed(&p)), (0, Some(ChipHandle(MEGA))));
+    p.press(keys::START);
+    assert_eq!((p.screen().cursor, framed(&p)), (OK_SLOT, None));
+}

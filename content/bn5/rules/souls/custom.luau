@@ -153,6 +153,14 @@ custom_souls.button = {
 -- flashes (fades 0x34 and 0x30) and whitens (fade 4); white, the soul takes the place of the chip given up for it,
 -- first in the selection, the button is picked, and the screen clears (fade 0); then the picking goes on. Each step
 -- after the flash waits for the fade before it.
+-- What the state draws after its step (0x080232DC): the emblem, the Regular chip's frame, and the chip the Arm
+-- Change button holds (0x080254F4).
+local function drawn(side: number)
+    custom.draw_emblem(side, 0)
+    custom.draw_regular(side)
+    custom.draw_held(side)
+end
+
 custom_souls.window = {
     update = function(side: number): boolean
         local s = system.state() :: State
@@ -200,7 +208,7 @@ custom_souls.window = {
         elseif step == 24 then
             -- 0x08023452
             if not fading then
-                custom.draw_emblem(side, 0)
+                drawn(side)
                 return false
             end
         else
@@ -209,7 +217,7 @@ custom_souls.window = {
         s.unite_step, s.unite_count = step, count
         -- (The count is the screen's frame counter, +0x40: the cursor blinks on from where it leaves it.)
         custom.set_frame(side, count)
-        custom.draw_emblem(side, 0)
+        drawn(side)
         return true
     end,
 }
