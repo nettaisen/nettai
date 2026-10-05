@@ -105,5 +105,7 @@ pub fn custom(falzar: &Rom, gregar: &Rom) -> CustomLettering {
             other: picture(falzar, OTHER),
         },
         cross_names: vec![("falzar".into(), names(falzar, CROSS_NAMES_FALZAR)), ("gregar".into(), names(gregar, CROSS_NAMES_GREGAR))],
+        // (EXE6 draws no named button: Beast Out's is its versions'.)
+        buttons: Vec::new(),
     }
 }

@@ -22,6 +22,7 @@ const TWO_GLYPH: u32 = 0x086C_BB28;
 /// The gauge's tiles (EXE6 `sub_801DED0`'s counterpart, 0x0801A7F4: to
 /// tile 0x202).
 const GAUGE_TILES: u32 = 0x086F_A2CC;
+pub(crate) const GAUGE_BYTES: usize = 0x380;
 const GAUGE_FIRST_TILE: u16 = 0x202;
 /// Background palettes 9 (the gauge) and 13 (the HP box: + 0x20 per color
 /// state).
@@ -33,7 +34,7 @@ const GAUGE_FRAME: u32 = 0x0801_B5F8;
 /// The 8x16 font (glyph k = 0x40 bytes; EXE6 `dword_86B7AE0`), drawn with
 /// the HP box's first palette.
 pub(crate) const FONT: u32 = 0x086C_BA68;
-const FONT_GLYPHS: usize = 0xE0;
+pub(crate) const FONT_GLYPHS: usize = 0xE0;
 /// The opponent's HP digits by color (EXE6 `off_801D854`'s tables, at
 /// 0x0801A1A4) and their sprite palette (the load list's first).
 const ENEMY_DIGITS: [u32; 3] = [0x086F_6B30, 0x086F_6DB0, 0x086F_7030];
@@ -73,6 +74,8 @@ const NAVI_MUGSHOT_PALETTES: u32 = 0x0874_2138;
 /// its advances: a word a glyph in EXE5 (a byte in EXE6).
 const DIALOGUE_FONT: u32 = 0x086C_14C8;
 const DIALOGUE_ADVANCES: u32 = 0x0804_26B4;
+/// The dialogue font's glyphs: it runs up to the 8x16 font (in every ROM).
+pub(crate) const DIALOGUE_GLYPHS: usize = ((FONT - DIALOGUE_FONT) / 0x60) as usize;
 /// "PAUSE" (EXE6 `off_801E188`'s): a 32x16 sprite's eight tiles and an 8x16
 /// one's two.
 const PAUSE: u32 = 0x086F_B7CC;
@@ -86,7 +89,7 @@ const TEXT_END: u8 = 0xE6;
 /// `dword_86F1DC0`, by `off_801FD64`'s counterpart at 0x0801C698) and the
 /// banners' palette (EXE6 `byte_86F2900`).
 const BANNERS: u32 = 0x0801_B810;
-const BANNER_COUNT: u32 = 49;
+pub(crate) const BANNER_COUNT: u32 = 49;
 const BANNER_FILLER: u32 = 0x0801_C6F4;
 const BANNER_DIGITS: u32 = 0x0873_C6B8;
 const BANNER_PALETTE: u32 = 0x0873_D1F8;
@@ -94,6 +97,9 @@ const BANNER_PALETTE: u32 = 0x0873_D1F8;
 /// banners (EXE6 `off_801EF30`'s one, 0x200 bytes with the banners'
 /// palette); the other two (0x240 and 0x2C0 bytes) are EXE5's own.
 const WAITING: u32 = 0x0873_C938;
+/// (The other two are what the screen says in a Team Battle between its
+/// rounds and while a side changes its order: "Interval...", "Strat
+/// Change...". A netbattle shows neither, and the pack has neither.)
 /// The warning marker's two 16x16 frames and its palette (EXE6's
 /// `dword_86E55FC` and `byte_86E56FC`, the same data).
 const WARNING: u32 = 0x086F_AD2C;
@@ -134,7 +140,7 @@ fn glyph_name(names: &AssetNames, k: usize) -> String {
 
 /// The HUD's text lines at `at`: a line with anything but glyphs in it (a
 /// text command) is cut there.
-fn texts(rom: &Rom, at: u32) -> Vec<Vec<u16>> {
+pub(crate) fn texts(rom: &Rom, at: u32) -> Vec<Vec<u16>> {
     let offset = |i: u32| rom.u16(at + 2 * i) as u32;
     (0..offset(0) / 2)
         .map(|i| {
@@ -183,10 +189,11 @@ fn mugshots(roms: &Roms) -> (Vec<(Tiles, Palette)>, Vec<Tiles>) {
     (faces, boxes)
 }
 
-/// Banner `id` (EXE6's `pt_801EF84` layout, read as exe6-extract's
-/// `banner_at` reads EXE6's).
-fn banner(rom: &Rom, id: u32) -> BannerLayout {
-    let p = rom.u32(BANNERS + 4 * id);
+/// Banner `id` of the table at `banners`, whose glyph filler is at `filler`
+/// (EXE6's `pt_801EF84` layout, read as exe6-extract's `banner_at` reads
+/// EXE6's).
+pub(crate) fn banner_at(rom: &Rom, (banners, filler): (u32, u32), id: u32) -> BannerLayout {
+    let p = rom.u32(banners + 4 * id);
     let head = rom.u32(p);
     let (x, y, kind) = (head as u8, (head >> 8) as u8, (head >> 16) as u8);
     let mut glyphs = Tiles::default();
@@ -201,11 +208,11 @@ fn banner(rom: &Rom, id: u32) -> BannerLayout {
             let t = tiles(rom, g, 0x40);
             glyphs.push(t.get(0).unwrap());
             glyphs.push(t.get(1).unwrap());
-            if g != BANNER_FILLER {
+            if g != filler {
                 q += 4;
             }
         }
-        if rom.u32(q) == BANNER_FILLER {
+        if rom.u32(q) == filler {
             q += 4;
         }
         if kind == 1 {
@@ -214,6 +221,18 @@ fn banner(rom: &Rom, id: u32) -> BannerLayout {
         }
     }
     BannerLayout { x, y, kind, glyphs, number_at }
+}
+
+/// The dialogue font at `font` with its advances at `advances` (a word a
+/// glyph), its glyphs drawing `chars` (the 8x16 font's characters, then the
+/// dialogue font's past them; a glyph past them its number in brackets).
+pub(crate) fn dialogue_font(rom: &Rom, (font, advances): (u32, u32), (cell, dialogue): (&[String], &[String])) -> DialogueFont {
+    let name = |k: usize| cell.iter().chain(dialogue).nth(k).cloned().unwrap_or_else(|| format!("[{k:03x}]"));
+    DialogueFont {
+        pixels: rom.bytes(font, 0x60 * DIALOGUE_GLYPHS).iter().flat_map(|&b| [b & 15, b >> 4]).collect(),
+        advances: (0..DIALOGUE_GLYPHS as u32).map(|i| rom.u32(advances + 4 * i) as u8).collect(),
+        chars: (0..DIALOGUE_GLYPHS).map(name).collect(),
+    }
 }
 
 fn chatbox(rom: &Rom) -> Chatbox {
@@ -245,8 +264,6 @@ pub fn hud(roms: &Roms, names: &AssetNames, chip_icons: Vec<ChipIcon>) -> Hud {
         hud_tiles.push(t.get(0).unwrap());
         hud_tiles.push(t.get(1).unwrap());
     }
-    // The dialogue font runs up to the HUD font.
-    let dialogue_glyphs = ((FONT - DIALOGUE_FONT) / 0x60) as usize;
     // The banner digits, and the filler as glyph 10 (blank).
     let mut banner_digits = tiles(rom, BANNER_DIGITS, 0x40 * 10);
     let blank = tiles(rom, BANNER_FILLER, 0x40);
@@ -266,7 +283,7 @@ pub fn hud(roms: &Roms, names: &AssetNames, chip_icons: Vec<ChipIcon>) -> Hud {
     Hud {
         tiles: hud_tiles,
         first_tile: HUD_FIRST_TILE,
-        gauge_tiles: tiles(rom, GAUGE_TILES, 0x380),
+        gauge_tiles: tiles(rom, GAUGE_TILES, GAUGE_BYTES),
         gauge_first_tile: GAUGE_FIRST_TILE,
         hp_palettes: std::array::from_fn(|i| palette(rom, HUD_PALETTES + 0x20 * i as u32)),
         gauge_palette: palette(rom, HUD_PALETTES),
@@ -293,18 +310,14 @@ pub fn hud(roms: &Roms, names: &AssetNames, chip_icons: Vec<ChipIcon>) -> Hud {
         navi_box: tiles(rom, NAVI_BOX, 0x80),
         pause,
         texts: texts(rom, TEXTS),
-        banners: (0..BANNER_COUNT).map(|id| banner(rom, id)).collect(),
+        banners: (0..BANNER_COUNT).map(|id| banner_at(rom, (BANNERS, BANNER_FILLER), id)).collect(),
         banner_digits,
         banner_palette: palette(rom, BANNER_PALETTE),
         waiting: tiles(rom, WAITING, 0x200),
         waiting_palette: palette(rom, BANNER_PALETTE),
         warning: tiles(rom, WARNING, 0x100),
         warning_palette: palette(rom, WARNING_PALETTE),
-        dialogue_font: DialogueFont {
-            pixels: rom.bytes(DIALOGUE_FONT, 0x60 * dialogue_glyphs).iter().flat_map(|&b| [b & 15, b >> 4]).collect(),
-            advances: (0..dialogue_glyphs as u32).map(|i| rom.u32(DIALOGUE_ADVANCES + 4 * i) as u8).collect(),
-            chars: (0..dialogue_glyphs).map(|k| glyph_name(names, k)).collect(),
-        },
+        dialogue_font: dialogue_font(rom, (DIALOGUE_FONT, DIALOGUE_ADVANCES), (&names.glyphs, &names.dialogue_glyphs)),
         chatbox: chatbox(rom),
         language: String::new(),
         languages: Vec::new(),

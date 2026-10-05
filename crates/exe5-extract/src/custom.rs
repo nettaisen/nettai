@@ -124,7 +124,10 @@ const SCRAP_BUTTONS: (u32, usize) = (0x086F_A7CC, 0x600);
 /// state (selectable, unavailable, pressed; the HUD's load list's to tile
 /// 0xDB), and its picture in the chip window with a palette a state
 /// (EXE6 `sub_802871C`'s counterpart, 0x08024540: by the slot's state).
-const SOUL_BUTTONS: (u32, usize) = (0x086F_BB64, 0x240);
+const SOUL_BUTTONS: (u32, usize) = (0x086F_BB64, SOUL_BUTTON_BYTES);
+pub(crate) const SOUL_BUTTON_BYTES: usize = 0x240;
+/// The soul button's name among the pack's buttons.
+pub(crate) const SOUL_BUTTON: &str = "soul";
 const SOUL_PICTURE: u32 = 0x0873_22E8;
 const SOUL_PALETTES: (u32, u32) = (0x0873_4D48, 2);
 /// The souls' icons in the picked column, by soul number (13: Chaos Unison's; the
@@ -158,7 +161,7 @@ fn block(rom: &Rom, (a, len): (u32, usize)) -> Tiles {
     tiles(rom, a, len)
 }
 
-fn picture(rom: &Rom, (gfx, pal): (u32, u32)) -> Picture {
+pub(crate) fn picture(rom: &Rom, (gfx, pal): (u32, u32)) -> Picture {
     Picture { tiles: tiles(rom, gfx, PICTURE_BYTES), palette: palette(rom, pal) }
 }
 
@@ -216,7 +219,7 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
             special_cursor: CursorPlace { corners: cursor_corners(rom, CURSOR_CORNERS.1), ..LAYOUT.special_cursor },
             ..LAYOUT
         },
-        buttons: vec![("soul".into(), soul)],
+        buttons: vec![(SOUL_BUTTON.into(), soul)],
         window_tiles: block(rom, WINDOW_TILES),
         column_cells: block(rom, COLUMN_CELLS),
         turn_limit: block(rom, TURN_LIMIT),
