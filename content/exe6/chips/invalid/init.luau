@@ -16,6 +16,7 @@ return define.chip {
     hit_param = 0,
     lockout = 20,
     library = { number = 389, index = 0, sort = 7 },
+    traits = { "hides_advance_code" },
     slot_in_limit = 1,
     instant = plus.sparkle_alone,
 }
