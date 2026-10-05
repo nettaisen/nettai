@@ -610,6 +610,12 @@ pub struct Rules {
     /// EXE5's (0x080122C8: any form, to the base form; no animation 2, no
     /// overlay's stepping kept, the collision region left, fewer flags).
     pub form_break: FormBreak,
+    /// A damaging weakness hit asks for the form break (rule section
+    /// `status`): a step of EXE6's status routine (`sub_801A506`). EXE5's
+    /// routine has no such step (0x08017BF2: the mark, the counter's
+    /// bookkeeping, the damage), and only a dark chip used in a soul asks
+    /// (0x08010070): a weakness hit there shows its mark and breaks nothing.
+    pub weakness_hit_breaks_form: bool,
     /// How a navi takes a hit's NaviCust bug (rule section `status`, the
     /// navi's game's).
     pub intake: IntakeRules,
