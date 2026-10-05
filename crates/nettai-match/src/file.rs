@@ -805,7 +805,7 @@ mod tests {
     #[test]
     fn auto_battle_data_writes_and_reads_back() {
         use auto_battle::{GIGA, MEGA, PATTERNS, PROGRAM_ADVANCE, STANDARD};
-        use nettai_battle::tactics::{Tactic, TacticPattern};
+        use nettai_battle::auto_battle::{AutoBattleEntry, PatternRecord};
         let content = crate::testing::exe5_content();
         let mut m = crate::draw::live(&content, "exe5", 2, None).unwrap();
         let chip = |name: &str| ids::chip(&content, "exe5", name).unwrap();
@@ -841,19 +841,19 @@ mod tests {
             { dx = -1, dy = 0, chips = [\"cannon\", \"cannon\", \"cannon\", \"cannon\", \"cannon\"], score = 10 },\n    \
             { dx = -1, dy = -1, chips = [{}, {}, {}, {}, {}], score = 4294967295 },\n";
         assert!(text.contains(written), "{text}");
-        assert!(!text.contains("[right.auto_battle]") && !text.contains("tactics") && !text.contains("[[left") && !text.contains("[left.auto_battle."), "{text}");
+        assert!(!text.contains("[right.auto_battle]") && !text.contains("[[left") && !text.contains("[left.auto_battle."), "{text}");
         assert!(text.find("[left.auto_battle]") > text.find("[left]") && text.find("[right]") > text.find("[left.auto_battle]"), "{text}");
         let back = parse(&content, &text).unwrap_or_else(|e| panic!("{e:?}\n{text}"));
         assert_eq!(back, m);
         // The round sends it: its twelve entries (the 0 one of them), the
         // one of the first three places still first; its eight records.
-        let sent = &m.round(&content, 2).players[0].tactics;
-        assert_eq!((sent.entries.len(), sent.entries[0]), (12, Tactic::Chip(chip("areagrab"))));
-        assert!(sent.entries.contains(&Tactic::Nothing) && sent.entries.contains(&Tactic::Pattern(2)));
+        let sent = &m.round(&content, 2).players[0].auto_battle;
+        assert_eq!((sent.entries.len(), sent.entries[0]), (12, AutoBattleEntry::Chip(chip("areagrab"))));
+        assert!(sent.entries.contains(&AutoBattleEntry::Nothing) && sent.entries.contains(&AutoBattleEntry::Pattern(2)));
         assert_eq!(sent.patterns.len(), 8);
-        assert_eq!(sent.patterns[0], TacticPattern::of(-2, 1, &[chip("sword"), chip("wideswrd")], 7));
-        assert_eq!((sent.patterns[1].score, sent.patterns[2].score, sent.patterns[3]), (0, 10, TacticPattern::UNUSED));
-        assert!(m.round(&content, 2).players[1].tactics.entries.is_empty());
+        assert_eq!(sent.patterns[0], PatternRecord::of(-2, 1, &[chip("sword"), chip("wideswrd")], 7));
+        assert_eq!((sent.patterns[1].score, sent.patterns[2].score, sent.patterns[3]), (0, 10, PatternRecord::UNUSED));
+        assert!(m.round(&content, 2).players[1].auto_battle.entries.is_empty());
         // What a file gets wrong.
         let bad = |from: &str, to: &str| -> Vec<String> {
             assert!(text.contains(from), "{from}:\n{text}");
@@ -934,7 +934,7 @@ mod tests {
         has(crate::check_match(&five, &odd), "right: a version, but exe5 has none to state: its versions play alike");
         // (The round an EXE5 match starts brings its players no version.)
         let b = crate::check::start(&five, &m).unwrap();
-        assert!(b.fact(0, crate::facts::VERSION_FIELD).is_none() && b.stats[0].version == 0);
+        assert!(b.fact(0, nettai_battle::content::PlayerFact::Version).is_none() && b.stats[0].version == 0);
     }
 
     /// What a file can get wrong is said, with where it is.
