@@ -325,14 +325,12 @@ pub fn find(dir: &Path, overrides: &[PathBuf], report: &mut Report) -> Option<Ve
     Some(found)
 }
 
-/// How to write the pack of `game`, for a message.
+/// How to write the asset pack of `game` into `dir`, for a message: its
+/// extractor's `content` command. A game's extractor is the crate named for
+/// the game pack's id (`<id>-extract`); which ROMs it takes is the game's
+/// own, and the README lists them (no code here knows a game by name).
 pub fn extract_command(game: &str, dir: &Path) -> String {
-    let dir = dir.join(game);
-    match game {
-        "exe6" => format!("cargo run --release -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> {}", dir.display()),
-        "exe5" => format!("cargo run --release -p exe5-extract -- content <protoman-us> <colonel-us> <protoman-jp> <colonel-jp> {}", dir.display()),
-        _ => format!("the {game} extractor's `content` command, into {}", dir.display()),
-    }
+    format!("cargo run --release -p {game}-extract -- content <its ROMs> {}", dir.join(game).display())
 }
 
 /// A game of the content a frontend can offer (docs/frontend.md §1): a
@@ -389,7 +387,7 @@ fn no_pack(game: &str, found: &[Found]) -> String {
     let packs = found.iter().map(|f| format!("{} ({})", f.game, f.dir.display())).collect::<Vec<_>>();
     let had = if packs.is_empty() { "none".to_string() } else { packs.join(", ") };
     format!(
-        "the game {game} draws on {game}'s assets, and no pack of {game} is found in {} (found: {had}); write it with `{}`, or name its directory with --pack",
+        "the game {game} draws on {game}'s assets, and no pack of {game} is found in {} (found: {had}); write it with `{}` (README.md, \"Getting started\", lists each game's ROMs), or name its directory with --pack",
         packs_dir().display(),
         extract_command(game, &packs_dir()),
     )

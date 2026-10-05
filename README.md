@@ -49,6 +49,11 @@ content pack from them, in that order, into `data/content/exe6` (the directory i
 
     cargo run --release -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/exe6
 
+An EXE5 pack is written the same way by its own extractor, from the four Mega Man Battle Network 5 ROMs in this order
+(the US Team ProtoMan and Team Colonel, then the Japanese Team of Blues and Team of Colonel), into `data/content/exe5`:
+
+    cargo run --release -p exe5-extract -- content <protoman-us> <colonel-us> <protoman-jp> <colonel-jp> data/content/exe5
+
 The frontend and the editor find the packs in `data/content` (or the directory `$NETTAI_PACKS` names), each by the
 game it says, with no options: an EXE5 pack written there (`exe5-extract content`) sits beside EXE6's. You play one game
 at a time, EXE6 or EXE5: a match file names its game and a trace states its own, else `--game` says it (there is no
