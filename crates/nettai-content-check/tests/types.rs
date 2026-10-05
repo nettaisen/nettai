@@ -84,12 +84,14 @@ fn the_test_pack_and_test_content_type_check() {
 /// A small ruleset for a test: the sections every game states (each any
 /// table, to the type), then `more` (its fields, each ending in a comma).
 fn ruleset(more: &str) -> String {
-    format!("local _ = define.ruleset {{ chip_use = {{}}, effects = {{}}, flow = {{}}, panels = {{}}, pools = {{}}, reactions = {{}}, status = {{}}, {more} }}")
+    format!(
+        "local _ = define.ruleset {{ chip_use = {{}}, effects = {{}}, flow = {{}}, fresh_stats = {{}}, panels = {{}}, pools = {{}}, reactions = {{}}, status = {{}}, {more} }}"
+    )
 }
 
 /// docs/design/content-model-v2.md §3.8: a ruleset states `chip_use`,
-/// `effects`, `flow`, `panels`, `pools`, `reactions` and `status`, and the
-/// type says so: one without any of them doesn't type-check, whatever else
+/// `effects`, `flow`, `fresh_stats`, `panels`, `pools`, `reactions` and
+/// `status`, and the type says so: one without any of them doesn't type-check, whatever else
 /// it states (the load says which field of one is missing).
 #[test]
 fn a_ruleset_without_a_required_section_is_a_type_error() {
@@ -97,7 +99,7 @@ fn a_ruleset_without_a_required_section_is_a_type_error() {
     let mut check = |source: &str| checker.check("rules/init.luau", &format!("--!strict\n{source}\n")).unwrap();
     let whole = ruleset("systems = {}, math = { sine = {} },");
     assert_eq!(check(&whole), Vec::<String>::new(), "every required section stated");
-    for section in ["chip_use", "effects", "flow", "panels", "pools", "reactions", "status"] {
+    for section in ["chip_use", "effects", "flow", "fresh_stats", "panels", "pools", "reactions", "status"] {
         let without = whole.replace(&format!("{section} = {{}}, "), "");
         assert_ne!(without, whole);
         let problems = check(&without);
