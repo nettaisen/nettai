@@ -18,7 +18,6 @@
 //! bring their own chip definitions too; tests name either by key.)
 
 use super::*;
-use crate::field::{PanelType, pflags};
 
 use std::sync::Arc;
 
@@ -157,16 +156,6 @@ pub fn stage_music() -> crate::sound::SoundId {
 }
 /// Where the navi holds a gun.
 pub const GUN_POINT: AttachPoint = AttachPoint { x: 20, y: 16 };
-
-// Collision type bits by what they mean (field-collision-damage.md §3.3),
-// which panels' flags carry too. (The test content's collision types are
-// testdata/content/rules/ruleset.luau's.)
-const BODY: [u32; 2] = [0x0800_0000, 0x0400_0000];
-const OTHER_BODY: [u32; 2] = [0x0200_0000, 0x0100_0000];
-const NEUTRAL: u32 = 0x0080_0000;
-const PLAYER: [u32; 2] = [0x0040_0000, 0x0020_0000];
-// A panel flag every panel type has.
-const ON_FIELD: u32 = 0x0001_0000;
 
 /// The content set, shared (defined once per process: the define phase
 /// runs every module).
@@ -431,7 +420,8 @@ fn make() -> Content {
     Content {
         // (The navis and the base form are definitions:
         // testdata/content/navis/test.luau.)
-        base_rules: Some(rules()),
+        // (Its rules are its ruleset's: testdata/content/rules.)
+        base_rules: None,
         rules: None,
         animations: animations(&assets),
         scripts: scripts(),
@@ -1458,264 +1448,14 @@ pub fn scripts() -> Scripts {
         .clone()
 }
 
-/// The test content's rules, stated as Rust tables (`Content::base_rules`):
-/// a made-up game's, every rule its own choice (the engine has none to
-/// give it). Where games differ it plays as EXE6 does, with EXE5's three
-/// panel types beside EXE6's; a test that plays a rule another way says so
-/// (`Content::rules_mut`). Also the tables of a test that makes a content
-/// of a few modules and a ruleset of its own.
+/// The test content's rules: what its ruleset states
+/// (testdata/content/rules: a made-up game's, every rule its own choice;
+/// where games differ it plays as EXE6 does, with EXE5's three panel types
+/// beside EXE6's). For a test that wants a rule's value as the test content
+/// has it, or that makes a content of a few modules and a small ruleset of
+/// its own and gives it these as its Rust tables (`Content::base_rules`).
 pub fn rules() -> Rules {
-    // Panels: what each type adds to a panel's flags word.
-    let types = PanelType::ALL
-        .iter()
-        .map(|&t| {
-            let (flags, road_slide) = match t {
-                PanelType::Missing | PanelType::Broken => (0, None),
-                PanelType::Normal => (pflags::SOLID, None),
-                PanelType::Cracked => (pflags::SOLID | pflags::CRACKED, None),
-                PanelType::Poison => (pflags::SOLID | 0x100, None),
-                PanelType::Holy => (pflags::SOLID | 0x2000, None),
-                PanelType::Grass => (pflags::SOLID | 0x400, None),
-                PanelType::Ice => (pflags::SOLID | 0x800, None),
-                PanelType::Volcano => (pflags::SOLID | 0x1000, None),
-                PanelType::RoadUp => (pflags::SOLID | 0x200, Some(SlideVector { dx: 0, dy: -1, tiles: 1 })),
-                PanelType::RoadDown => (pflags::SOLID | 0x200, Some(SlideVector { dx: 0, dy: 1, tiles: 1 })),
-                PanelType::RoadLeft => (pflags::SOLID | 0x200, Some(SlideVector { dx: -1, dy: 0, tiles: 1 })),
-                PanelType::RoadRight => (pflags::SOLID | 0x200, Some(SlideVector { dx: 1, dy: 0, tiles: 1 })),
-                // EXE5's three (docs/design/exe5-map.md §15.2).
-                PanelType::Metal => (pflags::SOLID | 0x200, None),
-                PanelType::Lava => (pflags::SOLID | 0x1000, None),
-                PanelType::Sea => (pflags::SOLID | 0x20000, None),
-            };
-            // Every panel type is on the field (the step sword looks for
-            // this bit). The roads last 0x708 ticks, lava and sea 960 as
-            // EXE5's do; lava burns for 50, sea drains fire bodies and
-            // holds a body that ends a move on it for 20 ticks, and metal
-            // slides it as EXE5's does.
-            let road = t.is_road();
-            PanelTypeRule {
-                flags: flags | ON_FIELD,
-                road_slide,
-                trail_sound: None,
-                expires: if road { Some(0x708) } else if matches!(t, PanelType::Lava | PanelType::Sea) { Some(960) } else { None },
-                burn: (t == PanelType::Lava).then_some(50),
-                drains: (t == PanelType::Sea).then_some(1),
-                holds: (t == PanelType::Sea).then_some(20),
-                submerges: t == PanelType::Sea,
-                slide: (t == PanelType::Metal).then(metal_slide),
-                cleared_by: match t {
-                    PanelType::Grass => Some(1),
-                    PanelType::Volcano | PanelType::Lava => Some(2),
-                    PanelType::Metal => Some(4),
-                    t if t.is_road() => Some(4),
-                    _ => None,
-                },
-                named: true,
-            }
-        })
-        .collect();
-    // Steps: onto a free panel of one's own side, solid unless floor-free.
-    let own_side = |s: usize| PanelCondition {
-        require: if s == 1 { pflags::ALLIANCE_1 } else { 0 },
-        forbid: pflags::OCCUPIED | if s == 0 { pflags::ALLIANCE_1 } else { 0 },
-    };
-    let solid = |c: PanelCondition| PanelCondition { require: c.require | pflags::SOLID, ..c };
-    let step = StepRuleSet { grounded: [solid(own_side(0)), solid(own_side(1))], floor_free: [own_side(0), own_side(1)] };
-    let any_side = PanelCondition { require: 0, forbid: pflags::OCCUPIED };
-    let mut start_visible = [[false; 8]; 5];
-    for row in &mut start_visible[1..4] {
-        row[1..7].fill(true);
-    }
-    let mut front_edges = [[false; 8]; 5];
-    front_edges[3][1..7].fill(true);
-
-    Rules {
-        element_weakness: {
-            // Fire is weak to aqua, aqua to elec, elec to wood, wood to
-            // fire.
-            let mut w = [[0; 6]; 6];
-            (w[1][2], w[2][3], w[3][4], w[4][1]) = (1, 1, 1, 1);
-            w
-        },
-        family_elements: ChipFamily::ALL.map(|f| {
-            SecondaryElements(match f {
-                ChipFamily::Sword => SecondaryElements::SWORD,
-                ChipFamily::Cursor => SecondaryElements::CURSOR,
-                ChipFamily::Wind => SecondaryElements::WIND,
-                ChipFamily::Break => SecondaryElements::BREAK,
-                _ => 0,
-            })
-        }),
-        panels: PanelRules {
-            types,
-            start_visible,
-            front_edges,
-            step,
-            dash_step: step,
-            any_side_step: StepRuleSet { grounded: [solid(any_side); 2], floor_free: [any_side; 2] },
-            mend: 0x258,
-            mend_in_battle_mode_1: 0x1E0,
-            // Its panel types number as the engine orders them.
-            numbers: PanelType::ALL.to_vec(),
-            // A reservation marks its holder, whose destroy releases it.
-            reservations: crate::content::Reservations::Marked,
-        },
-        holding_banners: vec![BannerId(0x24)],
-        // (The statuses are testdata/content/rules/status.luau's.)
-        hp_bug_periods: [0, 60, 50, 40, 30, 20, 10, 5],
-        form_tick: true,
-        flash_hides_on_clear: false,
-        // A navi without collision data reads as blind (the word's blind
-        // bit, as EXE6's open-bus value has it).
-        missing_collision_status: crate::content::MissingCollisionStatus(0xE3A0_2004),
-        reactions: crate::content::Reactions::FlashTimerLast,
-        emotions: crate::content::Emotions::Exe6,
-        form_break: crate::content::FormBreak::CrossOrBeast,
-        intake: crate::content::IntakeRules {
-            bugs_before_drain: false,
-            drain_bug_flags: false,
-            no_charge_drive: false,
-            hp_loss: crate::content::HpLoss::HpAlone,
-        },
-        empty_hand: EmptyHandChip { null_family: false, fire: false, flags: ChipFlags(0x10) },
-        buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
-        chaos_cycle: Vec::new(),
-        sp_deletion_times: vec![0x2000, 0x4000],
-        flow: crate::content::FlowRules {
-            result_words: 50,
-            sequencer_before_custom: true,
-            escape_check: true,
-            result_wait: crate::content::ResultWait { normal: 0x66, special: 0x5E },
-            chip_window_at_close: false,
-            intro_from_black: false,
-            low_hp_music: true,
-            navi_win_banner: crate::content::NaviWinBanner::LinkBattle,
-        },
-        effects: crate::content::EffectsRules {
-            shake: crate::content::ShakeRule::ConsoleRng,
-            spark_steps_at_start: true,
-            retype: crate::content::RetypeRule::IsAndHits,
-            damage_word: crate::content::DamageWordRule::ParalysisAndBugs,
-            obstacle_soldiers: false,
-            palette_flash: crate::content::PaletteFlashRule::ModeRunsThroughPause,
-            overlays_run_while_paused: true,
-            load_sets_part_palette: true,
-            obstacle_actions: crate::content::ObstacleActions::OwnFrom8,
-        },
-        chip_use: crate::content::ChipUseRules {
-            leave_on_use: false,
-            anti_navi_sparkle: crate::content::SparkleOffset { dy: 16, z: 32 },
-            mixed_modifiers: false,
-        },
-        // The SP navi chips EXE6's modules bring: Count[SP].
-        sp_slots: vec!["sp/count".into()],
-        push_vectors: [
-            SlideVector { dx: 1, dy: 0, tiles: 6 },
-            SlideVector { dx: -1, dy: 0, tiles: 6 },
-            SlideVector { dx: 1, dy: 0, tiles: 1 },
-            SlideVector { dx: -1, dy: 0, tiles: 1 },
-            SlideVector::NONE,
-            SlideVector { dx: 0, dy: -1, tiles: 1 },
-            SlideVector { dx: 0, dy: 1, tiles: 1 },
-            SlideVector { dx: 1, dy: 0, tiles: 2 },
-            SlideVector { dx: -1, dy: 0, tiles: 2 },
-            SlideVector::NONE,
-        ],
-        ice_vectors: [
-            SlideVector::NONE,
-            SlideVector { dx: 0, dy: -1, tiles: 1 },
-            SlideVector { dx: 0, dy: 1, tiles: 1 },
-            SlideVector { dx: -1, dy: 0, tiles: 1 },
-            SlideVector { dx: 1, dy: 0, tiles: 1 },
-            SlideVector::NONE,
-        ],
-        bubble_bob: std::array::from_fn(|i| [0, 1, 2, 3, 3, 2, 1, 0][i % 8] * if i < 16 { 1 } else { -1 }),
-        push_reading: crate::content::PushReading::TowardFront,
-        // A FloatShoe body meets only types with the self bit; a guard
-        // breaks to types with 0x2; its sea gives elec no bonus.
-        hit_test: crate::content::HitTest {
-            float_shoe_needs_self_bit: true,
-            bubbled_as_submerged: false,
-            elec_reaches_submerged: false,
-            guard_breaks_to: 0x0002,
-            elec_bonus_on_sea: false,
-        },
-        // A pulled obstacle stays out of the puller's area.
-        obstacle_slide_bounds: true,
-        // 10 pixels a tick across, 6 in depth.
-        slide_speed: crate::content::SlideSpeed { x: 0xA_0000, y: 0x6_0000 },
-        overlay_restart: crate::content::OverlayRestart::Step,
-        stance_counter: crate::content::StanceCounter::NextTick,
-        // A triangle wave: 256 at a quarter turn, -256 at three quarters,
-        // over a turn and a half.
-        sine: (0..384)
-            .map(|i: i16| {
-                let t = i % 256;
-                if t < 64 { t * 4 } else if t < 192 { 512 - t * 4 } else { t * 4 - 1024 }
-            })
-            .collect(),
-        // (The modes are testdata/content/rules/lockon.luau's.)
-        lockon: Lockon {
-            column_shifts: vec![-1, -2],
-            clear_path: [PanelCondition { require: 0, forbid: pflags::OCCUPIED }; 2],
-        },
-        berserk: BerserkRules {
-            step,
-            opponent: [
-                PanelCondition { require: BODY[1], forbid: 0 },
-                PanelCondition { require: BODY[0], forbid: 0 },
-            ],
-            blocking: [NEUTRAL | OTHER_BODY[1], NEUTRAL | OTHER_BODY[0]],
-            opposing_player: [PLAYER[1], PLAYER[0]],
-        },
-        custom_screen: custom_screen_layout(),
-        // Every pool as large as the engine's slots.
-        pools: crate::content::PoolSizes { actor: crate::object::SLOTS as u8, attack: crate::object::SLOTS as u8, effect: crate::object::SLOTS as u8 },
-        // No NaviCust.
-        navicust: Default::default(),
-    }
-}
-
-/// EXE5's metal slide (0x0800C920, 0x0800C9C0): by the direction of the
-/// move, the steps tried in turn (forward, back, up, down: dx toward the
-/// front).
-pub fn metal_slide() -> crate::content::PanelSlide {
-    let (f, b, u, d) = (Some((1, 0)), Some((-1, 0)), Some((0, -1)), Some((0, 1)));
-    crate::content::PanelSlide { tries: [[None; 4], [f, u, b, d], [b, d, f, u], [u, b, d, f], [d, f, u, b], [d, f, u, b]] }
-}
-
-/// The custom screen's grid: five chip slots on top, five below, OK at
-/// the top row's right end and a special button under it; the last two
-/// bottom slots start hidden. A neighbor that is missing is looked for
-/// along its row, which wraps through OK (the top row) or the button
-/// under it (the bottom row).
-pub fn custom_screen_layout() -> CustomScreenLayout {
-    let slot = |kind, vertical, left, right| SlotLayout { kind, vertical, left, right };
-    let chip = TemplateSlot::ChipPosition;
-    let hidden = TemplateSlot::Hidden;
-    CustomScreenLayout {
-        slots: [
-            slot(chip, 5, 10, 1),
-            slot(chip, 6, 0, 2),
-            slot(chip, 7, 1, 3),
-            slot(chip, 8, 2, 4),
-            slot(chip, 9, 3, 10),
-            slot(chip, 0, 11, 6),
-            slot(chip, 1, 5, 7),
-            slot(chip, 2, 6, 8),
-            slot(hidden, 3, 7, 9),
-            slot(hidden, 4, 8, 11),
-            slot(TemplateSlot::Ok, 11, 4, 0),
-            slot(hidden, 10, 9, 5),
-        ],
-        left_scan_top: vec![4, 3, 2, 1, 0, 10],
-        left_scan_bottom: vec![9, 8, 7, 6, 5, 11, 10],
-        right_scan_top: vec![0, 1, 2, 3, 4, 10],
-        right_scan_bottom: vec![5, 6, 7, 8, 9, 11, 10],
-        left_scan_start: [5, 4, 3, 2, 1, 5, 4, 3, 2, 1, 0, 0],
-        right_scan_start: [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 0, 0],
-        redeal_kept: Vec::new(),
-    }
+    content().rules().clone()
 }
 
 /// Animation timing for the sprites the tests' battles show: the test
