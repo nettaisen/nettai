@@ -95,8 +95,13 @@ pub struct NaviCustSetup {
     /// bytes), hex: part `p` is compressed when bit `0x80 >> (p & 7)` of
     /// byte `p >> 3` is set.
     pub compressed: String,
-    /// The compile leaves the HP (the console is in the cyberworld, or has
-    /// event flag 0x10B2: the navicust system's setup `cyberworld`).
+    /// Whether the console's own compile left the HP: it is in the
+    /// cyberworld (its area from 0x80), or has event flag 0x10B2. What the
+    /// recording says of its console, which no rule reads: the engine's
+    /// compile ends the one way, the real world's, which a link battle
+    /// can't tell from the other (content/exe5/rules/navicust). Verify's
+    /// compile test reads it to know which bytes of the console's block
+    /// the other ending wrote.
     pub cyberworld: bool,
     /// The board's memory expansions (key item 0x61's count, which the
     /// editor sizes the board by, 0x081329B0; the compile reads none).
@@ -687,16 +692,6 @@ impl Round {
                     .map(|f| nettai_battle::rules::Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, f.0)))
                     .collect();
                 p.set_fact(content, "souls", &souls)?;
-            }
-        }
-        // Whether each compiled side's compile leaves the HP: the navicust
-        // system's setup.
-        for (side, p) in [&mut p0, &mut p1].into_iter().enumerate() {
-            if let (Ok(p), Some(n), true) = (p, &self.setup.navicusts, compiled(side)) {
-                let took = p.set_fact(content, "cyberworld", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Bool(n[side].cyberworld))])?;
-                if took == 0 {
-                    return Err("no system of EXE5's rules takes `cyberworld`".into());
-                }
             }
         }
         let stats = |side: usize| -> Result<EngineNaviStats, String> {

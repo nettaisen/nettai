@@ -182,7 +182,7 @@ fn an_unknown_name_is_refused() {
     let crosses = exe5(&TANGO_EXE5, "souls = [\"heatcross\"]");
     says(parse(&content, &crosses, &ok).unwrap_err(), "left: souls: no form \"heatcross\" in exe5");
     let crosses = exe5(&TANGO_EXE5, "cross_list = [\"heatcross\"]");
-    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no field \"cross_list\" (a side of exe5 takes cyberworld, karma, chaos_unison, soul_unison, souls)");
+    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no field \"cross_list\" (a side of exe5 takes karma, chaos_unison, soul_unison, souls)");
     // A chip of EXE6's alone (HeatMan), a qualified name, a misspelling:
     // one error.
     let six = exe6_content();
