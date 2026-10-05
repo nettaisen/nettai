@@ -68,7 +68,7 @@ use crate::{Arena, Folder, Match, Place, Side, ids, stats};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
 use crate::CrossList;
-use nettai_battle::custom::{FolderChip, GameVersion};
+use nettai_battle::custom::FolderChip;
 use nettai_battle::navicust::{NaviCust, PlacedProgram};
 use nettai_battle::patch_cards::InstalledCard;
 use nettai_battle::setup::SpTimes;
@@ -232,14 +232,6 @@ fn is_yes(b: &bool) -> bool {
     *b
 }
 
-/// The version's name in a file.
-pub fn version_name(g: GameVersion) -> &'static str {
-    match g {
-        GameVersion::Gregar => "gregar",
-        GameVersion::Falzar => "falzar",
-    }
-}
-
 /// A folder entry as a file writes it: the chip's name and its code.
 pub fn chip_entry(content: &Content, c: FolderChip) -> [String; 2] {
     [ids::local(&content.defs.chip(c.id).key).to_string(), c.code.letter().to_string()]
@@ -328,10 +320,9 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
     // (one that states none is the checks' to refuse: nothing is filled
     // in); a game whose rules take none has none to state.
     let version = match (s.version.as_deref(), Side::takes_version(content)) {
-        (Some("falzar"), true) => Some(GameVersion::Falzar),
-        (Some("gregar"), true) => Some(GameVersion::Gregar),
+        (Some(g), true) if crate::facts::versions(content).iter().any(|v| v == g) => Some(g.to_string()),
         (Some(g), true) => {
-            say(format!("no version {g:?} ({})", crate::facts::VERSIONS));
+            say(format!("no version {g:?} ({})", crate::facts::versions_phrase(content)));
             None
         }
         (Some(_), false) => {
@@ -422,11 +413,11 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
     let navi = navi?;
     // (No level: a link navi's 0, MegaMan's none; the checks hold it.)
     let navi_level = s.level.or_else(|| crate::default_navi_level(content, navi));
-    let mut stats = Side::save_base(content, navi, version, navi_level);
+    let mut stats = Side::save_base(content, navi, version.as_deref(), navi_level);
     for p in stats::apply(content, game, &s.stats, &mut stats) {
         say(format!("stats: {p}"));
     }
-    let stats = crate::starting(content, stats, version);
+    let stats = crate::starting(content, stats, version.as_deref());
     if problems.len() > start {
         return None;
     }
@@ -554,7 +545,7 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
     let name = |key: &str| ids::local(key).to_string();
     SideFile {
         navi: name(&content.defs.navi(s.navi).key),
-        version: s.version.map(|v| version_name(v).to_string()),
+        version: s.version.clone(),
         // (The navi's default level is left out.)
         level: s.navi_level.filter(|_| s.navi_level != crate::default_navi_level(content, s.navi)),
         bug_frags: (s.bug_frags != 0).then_some(s.bug_frags),
@@ -805,7 +796,7 @@ mod tests {
     #[test]
     fn auto_battle_data_writes_and_reads_back() {
         use auto_battle::{GIGA, MEGA, PATTERNS, PROGRAM_ADVANCE, STANDARD};
-        use nettai_battle::tactics::{Tactic, TacticPattern};
+        use nettai_battle::auto_battle::{AutoBattleEntry, PatternRecord};
         let content = crate::testing::exe5_content();
         let mut m = crate::draw::live(&content, "exe5", 2, None).unwrap();
         let chip = |name: &str| ids::chip(&content, "exe5", name).unwrap();
@@ -841,19 +832,19 @@ mod tests {
             { dx = -1, dy = 0, chips = [\"cannon\", \"cannon\", \"cannon\", \"cannon\", \"cannon\"], score = 10 },\n    \
             { dx = -1, dy = -1, chips = [{}, {}, {}, {}, {}], score = 4294967295 },\n";
         assert!(text.contains(written), "{text}");
-        assert!(!text.contains("[right.auto_battle]") && !text.contains("tactics") && !text.contains("[[left") && !text.contains("[left.auto_battle."), "{text}");
+        assert!(!text.contains("[right.auto_battle]") && !text.contains("[[left") && !text.contains("[left.auto_battle."), "{text}");
         assert!(text.find("[left.auto_battle]") > text.find("[left]") && text.find("[right]") > text.find("[left.auto_battle]"), "{text}");
         let back = parse(&content, &text).unwrap_or_else(|e| panic!("{e:?}\n{text}"));
         assert_eq!(back, m);
         // The round sends it: its twelve entries (the 0 one of them), the
         // one of the first three places still first; its eight records.
-        let sent = &m.round(&content, 2).players[0].tactics;
-        assert_eq!((sent.entries.len(), sent.entries[0]), (12, Tactic::Chip(chip("areagrab"))));
-        assert!(sent.entries.contains(&Tactic::Nothing) && sent.entries.contains(&Tactic::Pattern(2)));
+        let sent = &m.round(&content, 2).players[0].auto_battle;
+        assert_eq!((sent.entries.len(), sent.entries[0]), (12, AutoBattleEntry::Chip(chip("areagrab"))));
+        assert!(sent.entries.contains(&AutoBattleEntry::Nothing) && sent.entries.contains(&AutoBattleEntry::Pattern(2)));
         assert_eq!(sent.patterns.len(), 8);
-        assert_eq!(sent.patterns[0], TacticPattern::of(-2, 1, &[chip("sword"), chip("wideswrd")], 7));
-        assert_eq!((sent.patterns[1].score, sent.patterns[2].score, sent.patterns[3]), (0, 10, TacticPattern::UNUSED));
-        assert!(m.round(&content, 2).players[1].tactics.entries.is_empty());
+        assert_eq!(sent.patterns[0], PatternRecord::of(-2, 1, &[chip("sword"), chip("wideswrd")], 7));
+        assert_eq!((sent.patterns[1].score, sent.patterns[2].score, sent.patterns[3]), (0, 10, PatternRecord::UNUSED));
+        assert!(m.round(&content, 2).players[1].auto_battle.entries.is_empty());
         // What a file gets wrong.
         let bad = |from: &str, to: &str| -> Vec<String> {
             assert!(text.contains(from), "{from}:\n{text}");
@@ -922,19 +913,32 @@ mod tests {
         assert_eq!(refused, "the round doesn't start: a player's setup doesn't state the cross system's `version` (falzar or gregar): none is assumed");
         let drawn = write(&six, &crate::draw::live(&six, "exe6", 1, None).unwrap());
         assert_eq!(drawn.matches("\nversion = \"falzar\"\n").count() + drawn.matches("\nversion = \"gregar\"\n").count(), 2, "{drawn}");
+        // A version is its name, one of those the game's rules declare
+        // (their `version` field's, in its order): a side made in code
+        // with another is refused as a file's is.
+        assert_eq!(crate::facts::versions(&six), ["falzar", "gregar"]);
+        assert_eq!((crate::facts::versions_phrase(&six), crate::facts::version_title("falzar")), ("falzar or gregar".to_string(), "Falzar".to_string()));
+        let live = crate::draw::live(&six, "exe6", 1, None).unwrap();
+        assert!(live.sides.iter().all(|s| crate::facts::versions(&six).contains(s.version.as_ref().unwrap())));
+        let mut odd = live.clone();
+        odd.sides[0].version = Some("azure".into());
+        has(crate::check_match(&six, &odd), "left: no version \"azure\" (falzar or gregar)");
+        // (The byte a battle's stats carry is EXE6's number for the name.)
+        assert_eq!((crate::version_byte(Some("gregar")), crate::version_byte(Some("falzar")), crate::version_byte(None)), (0, 1, 0));
         // EXE5.
         let five = crate::testing::exe5_content();
+        assert!(crate::facts::versions(&five).is_empty());
         let m = crate::draw::live(&five, "exe5", 1, None).unwrap();
         let text = write(&five, &m);
         assert!(!text.contains("version"), "{text}");
         let e = parse(&five, &text.replacen("navi = \"megaman\"", "navi = \"megaman\"\nversion = \"falzar\"", 1)).unwrap_err();
         assert_eq!(e, ["left: version: exe5 has none to state (its versions play alike, so a match of exe5 is of neither)"]);
         let mut odd = m.clone();
-        odd.sides[1].version = Some(GameVersion::Gregar);
+        odd.sides[1].version = Some("gregar".into());
         has(crate::check_match(&five, &odd), "right: a version, but exe5 has none to state: its versions play alike");
         // (The round an EXE5 match starts brings its players no version.)
         let b = crate::check::start(&five, &m).unwrap();
-        assert!(b.fact(0, crate::facts::VERSION_FIELD).is_none() && b.stats[0].version == 0);
+        assert!(b.fact(0, nettai_battle::content::PlayerFact::Version).is_none() && b.stats[0].version == 0);
     }
 
     /// What a file can get wrong is said, with where it is.
@@ -984,7 +988,7 @@ mod tests {
         let mut m = drawn.clone();
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[1].navi = protoman;
-        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].version);
+        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].version.as_deref());
         has(crate::check_match(&content, &m), "right: a Cross list, but ProtoMan doesn't change form");
     }
 
@@ -1016,7 +1020,7 @@ mod tests {
         m.sides[1].crosses = None;
         m.sides[1].navicust = None;
         m.sides[1].navi_level = Some(0);
-        m.sides[1].stats = crate::Side::save_base(&content, protoman, m.sides[1].version, Some(0));
+        m.sides[1].stats = crate::Side::save_base(&content, protoman, m.sides[1].version.as_deref(), Some(0));
         m.sides[1].folder.regular = None;
         let text = write(&content, &m);
         for line in ["beast_out = false", "level = 3", "[left.sp_times]", "\"sp/heatman\" = \"00:12.01\"", "\"sp/blastman\" = \"00:25.00\""] {
@@ -1049,7 +1053,7 @@ mod tests {
         m.sides[1].navi = protoman;
         m.sides[1].crosses = None;
         m.sides[1].navi_level = None;
-        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].version);
+        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].version.as_deref());
         let problems = crate::check_match(&content, &m);
         has(problems.clone(), "right: ProtoMan has no level: a link navi exists only through its navi code");
         assert!(!problems.iter().any(|p| p.starts_with("left")), "MegaMan without a code is fine: {problems:?}");

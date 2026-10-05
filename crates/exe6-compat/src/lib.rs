@@ -14,6 +14,8 @@
 //! - [`unlocks`]: what a save unlocks on the custom screen, and nettai's
 //!   Cross list, as EXE6's systems' setup.
 //! - [`save`]: an EXE6 save file, and what a player's setup reads of it.
+//! - [`version`]: Gregar or Falzar, as the original tells them apart (the
+//!   engine knows a version by the name the rules declare).
 //!
 //! The engine never reads any of it: this crate depends on `nettai-battle`,
 //! never the other way (a test guards it), and content (Luau) can't load
@@ -25,8 +27,10 @@ pub mod forms;
 pub mod trace;
 pub mod save;
 pub mod unlocks;
+pub mod version;
 
 pub use unlocks::{CrossList, Unlocks};
+pub use version::GameVersion;
 
 use nettai_battle::Battle;
 use nettai_battle::kinds::player::{NaviAction, navi_action};

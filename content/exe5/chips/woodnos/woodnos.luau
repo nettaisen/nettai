@@ -96,7 +96,8 @@ local GEYSER = define.kind {
             me.flip = bit32.bxor(me.flip, 1)
             local sprite = me.sprite
             sprite:load(GEYSER_SPRITE)
-            sprite.shadow = "hidden"
+            -- (0x0801892E with a shadow byte of 0: `sprite_noShadow`, the first part drawn with the sprite.)
+            sprite.shadow = "with_sprite"
             me.anim, me.anim_loaded = 0, 0xFF
             sprite:set_flip(bit32.bxor(me.alliance, me.flip))
             me.visible = true
