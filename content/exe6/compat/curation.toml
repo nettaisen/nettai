@@ -370,7 +370,6 @@
 "sprites.sensor" = "04-05: Sensor's turret (B2a); used by absorbed obstacle 0x0D, NameID 0x0E4's look"
 "sprites.shell-burst" = "14-11: a burst, effect 0x22: the bullet's rows 8-0xB, TankCan's shell (G3)"
 "sprites.shock-wave" = "10-03: the shock wave, attack object 0x16 (chips/wavearm/wave.luau)"
-"sprites.shot-impact" = "14-0c: spark 9 (G3)"
 "sprites.shuriken" = "0c-2f: the trap counters' shurikens (chips/antidmg/shuriken.luau, chips/bodygrd/shuriken.luau)"
 "sprites.sight" = "10-45: the target sights of CircGun (chips/circgun/gun.luau) and Magnum; used by effect 0x49, effect 0x56"
 "sprites.slash-man-effect" = "10-38: effect 0x39 in objects/slash-man/slash_man.luau"
@@ -607,7 +606,6 @@ region_2e = "region 0x2E"
 ["lib/sparks.luau"]
 
 ["objects/projectile/variants.luau"]
-"shot/attack-90" = "projectile row 0x09: the attack type 0x90 (collision row 8)"
 "shot/blade" = "projectile row 0x02: a sword's blade for a shot, hit modifier 1"
 "shot/blinding" = "projectile row 0x0B: status 0x30"
 "shot/breaking" = "projectile row 0x05: a breaking shot"

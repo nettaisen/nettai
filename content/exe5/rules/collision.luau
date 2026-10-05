@@ -55,7 +55,7 @@ collision.pull = define.collision { id = "pull", side0 = 0x00004200, side1 = 0x0
 -- Row 0x06 (EXE6's 0x80000082, 0x40000082).
 collision.breaking = define.collision { id = "breaking", side0 = 0x80000002, side1 = 0x40000002, row_offset = 0x30 }
 -- Row 0x08 (EXE6's 0x80000090, 0x40000090).
-collision.attack_90 = define.collision { id = "attack-90", side0 = 0x80000010, side1 = 0x40000010, row_offset = 0x40 }
+collision.chip_destruction = define.collision { id = "chip-destruction", side0 = 0x80000010, side1 = 0x40000010, row_offset = 0x40 }
 -- Row 0x12 (EXE6's 0x80000880, 0x40000880).
 collision.pushing = define.collision { id = "pushing", side0 = 0x80000800, side1 = 0x40000800, row_offset = 0x90 }
 -- Row 0x19 (EXE6's 0x8000008c, 0x4000008c).
