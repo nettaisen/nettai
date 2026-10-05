@@ -217,8 +217,8 @@ pub struct TraceAudit {
 }
 
 /// What a renderer of [`audit_traces`] is made with.
-pub struct AuditSetup<'a> {
-    pub packs: nettai_render::packs::Packs<'a>,
+pub struct AuditSetup {
+    pub packs: nettai_render::packs::PackGraphics,
     pub strings: Option<std::sync::Arc<nettai_content::locale::Strings>>,
     pub text: nettai_render::textlayer::TextMode,
     pub font: Option<std::sync::Arc<nettai_render::vfont::VectorFont>>,
