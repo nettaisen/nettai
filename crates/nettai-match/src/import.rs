@@ -57,7 +57,7 @@ impl Side {
     pub fn import_exe6_save(&mut self, content: &Content, save: &Save) -> Result<Vec<String>, String> {
         let level = save.navi_level()?;
         let mut notes = Vec::new();
-        self.version = Some(save.version());
+        self.version = Some(save.version().name().to_string());
         let unlocks = save.unlocks();
         self.beast_out = unlocks.beast_out;
         self.crosses = match exe6_compat::forms::set(content, self.navi, save.version()) {
@@ -86,7 +86,7 @@ impl Side {
             *t = 0;
         }
         // The stats: the game's (NaviStats+0x20), a link navi's at its level.
-        self.stats.version = crate::version_byte(self.version);
+        self.stats.version = crate::version_byte(self.version.as_deref());
         if let Some(s) = self.reloaded(content) {
             self.stats = s;
         }
@@ -98,7 +98,7 @@ impl Side {
 mod tests {
     use crate::testing::exe6_content;
     use exe6_compat::save::testing::file;
-    use nettai_battle::custom::GameVersion;
+    use exe6_compat::GameVersion;
     use nettai_battle::setup::SpTimes;
 
     /// A Falzar save without Beast Out, owning TomahawkCross and
@@ -112,10 +112,10 @@ mod tests {
         times.0[19] = 0xFFFF;
         let save = file(GameVersion::Falzar, false, [false, true, false, true, false], 11, Some(5), &times);
         let mut m = crate::draw::live(&content, "exe6", 1, None).unwrap();
-        m.sides[0].version = Some(GameVersion::Gregar);
+        m.sides[0].version = Some("gregar".into());
         let notes = m.import_save(&content, 0, &save).unwrap();
         let s = &m.sides[0];
-        assert_eq!((s.version, s.beast_out, s.navi_level, s.stats.version), (Some(GameVersion::Falzar), false, Some(5), 1));
+        assert_eq!((s.version.as_deref(), s.beast_out, s.navi_level, s.stats.version), (Some("falzar"), false, Some(5), 1));
         let list: Vec<&str> = s.crosses.unwrap().forms().map(|f| crate::ids::local(&content.defs.form(f).key)).collect();
         assert_eq!(list, ["tomahawkcross", "groundcross"]);
         assert_eq!((s.sp_times.0[0], s.sp_times.0[17], s.sp_times.0[18], s.sp_times.0[19]), (600, 617, 0, 0));
@@ -138,10 +138,10 @@ mod tests {
         s.navi = protoman;
         s.crosses = None;
         s.navi_level = Some(7);
-        s.stats = crate::Side::save_base(&content, protoman, s.version, Some(7));
+        s.stats = crate::Side::save_base(&content, protoman, s.version.as_deref(), Some(7));
         let notes = m.import_save(&content, 1, &file(GameVersion::Gregar, true, [true; 5], 0, None, &SpTimes::default())).unwrap();
         let s = &m.sides[1];
-        assert_eq!((s.navi_level, s.version, s.stats.version), (Some(7), Some(GameVersion::Gregar), 0));
+        assert_eq!((s.navi_level, s.version.as_deref(), s.stats.version), (Some(7), Some("gregar"), 0));
         assert_eq!(notes, ["the save received no navi code: the side's link navi keeps its level"]);
         assert!(m.import_save(&content, 1, b"not a save").is_err());
     }

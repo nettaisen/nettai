@@ -47,9 +47,31 @@ pub const VERSION_FIELD: &str = "version";
 /// EXE6's bug frags: its dark-chips system's setup (a dark chip spends one).
 pub const BUG_FRAGS_FIELD: &str = "bug_frags";
 
-/// The versions a side of a game that takes one states (EXE6's, as a match
-/// file names them).
-pub const VERSIONS: &str = "falzar or gregar";
+/// The versions a side of the game states one of, by the names its rules
+/// declare, in their order: the names of the engine's version fact
+/// (`PlayerFact::Version`, the `version` enum of the first of the ruleset's
+/// systems whose setup declares it: EXE6's cross system's "falzar" and
+/// "gregar"). None: the rules take no version.
+pub fn versions(content: &Content) -> &[String] {
+    let defs = &content.defs;
+    let Some((slot, field)) = defs.fact_field(nettai_battle::content::PlayerFact::Version) else { return &[] };
+    match &defs.schema(defs.system(defs.ruleset_systems()[slot]).setup).field(field).ty {
+        nettai_content_api::FieldType::Enum(names) => names,
+        _ => &[],
+    }
+}
+
+/// The game's versions in a phrase, for a message: "falzar or gregar".
+pub fn versions_phrase(content: &Content) -> String {
+    versions(content).join(" or ")
+}
+
+/// A version's name as a tool shows it: its declared name with a capital
+/// ("Falzar").
+pub fn version_title(name: &str) -> String {
+    let mut letters = name.chars();
+    letters.next().map_or(String::new(), |first| first.to_uppercase().chain(letters).collect())
+}
 
 /// Why a game whose rules take no version has none to state.
 pub fn no_versions(game: &str) -> String {
@@ -104,8 +126,9 @@ pub fn owned_souls(content: &Content, game: &str, side: &Side) -> Vec<FormHandle
 /// fine.)
 pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
     let mut out = Vec::new();
-    match (side.version, Side::takes_version(content)) {
-        (None, true) => out.push(format!("no version: a side of {} states its own ({VERSIONS}); none is assumed", arena.game)),
+    match (side.version.as_deref(), Side::takes_version(content)) {
+        (None, true) => out.push(format!("no version: a side of {} states its own ({}); none is assumed", arena.game, versions_phrase(content))),
+        (Some(v), true) if !versions(content).iter().any(|name| name == v) => out.push(format!("no version {v:?} ({})", versions_phrase(content))),
         (Some(_), false) => out.push(format!("a version, but {} has none to state: {}", arena.game, no_versions(&arena.game))),
         _ => {}
     }
@@ -174,11 +197,11 @@ pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerS
 }
 
 impl Side {
-    /// Whether a side takes a version (Gregar or Falzar: EXE6's cross and
-    /// beast systems' `version`). EXE5's rules don't: its two versions play
-    /// alike, and a match of it states none.
+    /// Whether a side takes a version (one of [`versions`]: EXE6's cross
+    /// and beast systems' `version`, falzar or gregar). EXE5's rules don't:
+    /// its two versions play alike, and a match of it states none.
     pub fn takes_version(content: &Content) -> bool {
-        takes(content, VERSION_FIELD)
+        !versions(content).is_empty()
     }
 
     /// Whether the side's navi takes a level: its definition says what a
