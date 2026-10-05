@@ -407,6 +407,73 @@ mod tests {
         assert!(said(1, 3, 3).iter().any(|p| p.contains("3 expansions")));
     }
 
+    /// EXE5's HubBatc shares a board with no HP program. It has one place
+    /// (the middle of the 5x5 board, the whole command line its own; no
+    /// smaller board holds it), which leaves four corners of three cells in
+    /// an L, and no HP program fits one: turned or not, compressed or not
+    /// (none has a compressed shape of its own). So its bug, which halves
+    /// what the HP programs add (0x08140248), has nothing to halve on a
+    /// board a save can hold. The lab's recordings of that halving
+    /// (docs/design/exe5-map.md §15.13) lay HP+500 over HubBatc, which the
+    /// original's compile takes and its placing refuses (0x0813F2A4), as
+    /// this check does. BugStop fits beside it only compressed, in a corner,
+    /// off the command line, where it stops nothing.
+    #[test]
+    fn exe5s_hubbatc_shares_a_board_with_no_hp_program() {
+        use nettai_battle::navicust::{SIZE, cells};
+        let content = crate::testing::exe5_content();
+        let m = crate::pick::live(&content, "exe5", 3, None).unwrap();
+        let program = |name: &str| ids::navicust_program(&content, "exe5", name).unwrap();
+        let problems = |parts: &[PlacedProgram], expansions: u8| -> Vec<String> {
+            let mut m = m.clone();
+            m.sides[0].navicust = Some(NaviCust::new(parts, expansions).unwrap());
+            check_match(&content, &m).into_iter().filter(|p| p.contains("navicust") || p.contains("NaviCust")).collect()
+        };
+        let at = |program, x: u8, y: u8, rotation: u8, compressed: bool| PlacedProgram { program, color: 0, x, y, rotation, compressed };
+        let everywhere = || (0..SIZE as u8).flat_map(|x| (0..SIZE as u8).map(move |y| (x, y)));
+        let hub = program("hubbatc");
+        // HubBatc: the middle of the largest board alone.
+        for expansions in 0..3 {
+            for (x, y) in everywhere() {
+                let fits = problems(&[at(hub, x, y, 0, false)], expansions).is_empty();
+                assert_eq!(fits, expansions == 2 && (x, y) == (3, 3), "{expansions} expansions, ({x}, {y})");
+            }
+        }
+        let beside_hub = |part: PlacedProgram| problems(&[at(hub, 3, 3, 0, false), part], 2);
+        // No HP program beside it.
+        for name in ["hp-50", "hp-100", "hp-200", "hp-300", "hp-400", "hp-500"] {
+            let hp = program(name);
+            for (x, y) in everywhere() {
+                for rotation in 0..4 {
+                    for compressed in [false, true] {
+                        let said = beside_hub(at(hp, x, y, rotation, compressed));
+                        assert!(
+                            said.iter().any(|p| p.contains("off the board") || p.contains("is over program 1")),
+                            "{name} at ({x}, {y}) turned {rotation}, compressed {compressed}: {said:?}"
+                        );
+                    }
+                }
+            }
+        }
+        // (The lab's board: HP+500 over HubBatc's top.)
+        assert!(beside_hub(at(program("hp-500"), 3, 2, 0, false)).iter().any(|p| p.contains("is over program 1")));
+        // BugStop beside it: compressed alone, and never on the command line.
+        let bugstop = program("bugstop");
+        let line = crate::navicust_rules(&content).command_line as i32;
+        let mut places = 0;
+        for (x, y) in everywhere() {
+            for rotation in 0..4 {
+                assert!(!beside_hub(at(bugstop, x, y, rotation, false)).is_empty(), "BugStop as it is at ({x}, {y}) turned {rotation}");
+                if beside_hub(at(bugstop, x, y, rotation, true)).is_empty() {
+                    let shape = content.defs.navicust_program(bugstop).placed_shape(true, rotation);
+                    assert!(cells(&shape, x, y).all(|(_, row)| row != line), "BugStop on the command line at ({x}, {y}) turned {rotation}");
+                    places += 1;
+                }
+            }
+        }
+        assert!(places > 0, "compressed, BugStop fits a corner");
+    }
+
     /// A side with no NaviCust has its stats as a compile left them: no
     /// match key or setup field gives the emotion window's glitch, and the
     /// rules make it from the stats' NaviCust bugs (here the support bug,
