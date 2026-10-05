@@ -1407,7 +1407,7 @@ RedFrut1 to 3, Voltz1 to 3 and VDoll) are in §15.11.
   settings (written to RAM by the Team Battle with its own background and effects) match the list's by layout,
   actor list, music, mode and panel pattern. Those with obstacles (actor types 3, 8, 9: EXE5's boulder, rock and
   statue aren't ported) are listed as waiting; those with metal, sea or lava panels are stages since the rules
-  work's P1a (68 stages). The backgrounds are named by their look (no EXE6 background has their tiles). The
+  work's P1a (68 stages). The backgrounds are named for their areas (docs/frontend.md §1: no EXE6 background has their tiles). The
   actor lists' addresses are Team ProtoMan's US ROM's; the other three ROMs have the same list, each its actor
   lists a constant away (compat/games.toml, as EXE6's: Team Colonel +0xE8, the Japanese Team ProtoMan −0x3E4 and
   Team Colonel −0x2FC), and a recording's settings record is its traced console's (the BattleState's local side's
