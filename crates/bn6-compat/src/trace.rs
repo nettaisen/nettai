@@ -14,7 +14,7 @@ use std::sync::Arc;
 #[derive(Clone, Debug, Deserialize)]
 pub struct Setup {
     /// The game the recording is of: this crate's ([`crate::ROOT`]; another
-    /// game's recording is refused, one that says none doesn't parse).
+    /// game's recording is refused, and so is one that names none).
     pub game: String,
     pub frame: u32,
     pub settings_ptr: u32,
@@ -204,10 +204,14 @@ struct SetupLine {
     setup: Setup,
 }
 
-/// A setup line's setup. Another game's recording is refused (its game is
-/// read first: its line hasn't this game's keys); a line that doesn't
-/// parse panics, like any malformed line, and one that states no game is
-/// such a line (`game` is required: nothing takes it for this game's).
+/// What a recording that names no game is refused with: nothing takes it
+/// for this game's.
+pub const NO_GAME: &str = "a recording that names no game (one recorded before recordings named theirs: the verification workspace's tools/rename-exe.py converts them)";
+
+/// A setup line's setup. Another game's recording is refused, and one that
+/// names no game ([`NO_GAME`]); the game is read first, since another
+/// game's line hasn't this game's keys. A line that doesn't parse panics,
+/// like any malformed line.
 fn setup_of(line: &str) -> Result<Setup, String> {
     #[derive(Deserialize)]
     struct Stated {
@@ -217,9 +221,10 @@ fn setup_of(line: &str) -> Result<Setup, String> {
     struct StatedLine {
         setup: Stated,
     }
-    let stated = serde_json::from_str::<StatedLine>(line).unwrap_or_else(|e| panic!("parsing setup: {e}")).setup.game;
-    if let Some(game) = stated.filter(|g| g != crate::ROOT) {
-        return Err(format!("a {game} recording"));
+    match serde_json::from_str::<StatedLine>(line).unwrap_or_else(|e| panic!("parsing setup: {e}")).setup.game {
+        None => return Err(NO_GAME.to_string()),
+        Some(game) if game != crate::ROOT => return Err(format!("a {game} recording")),
+        Some(_) => {}
     }
     Ok(serde_json::from_str::<SetupLine>(line).unwrap_or_else(|e| panic!("parsing setup: {e}")).setup)
 }
@@ -310,7 +315,7 @@ pub struct Round {
 }
 
 /// Split a trace into rounds. Another game's recording is an error
-/// ("a bn5 recording").
+/// ("a bn5 recording"), and so is one that names no game ([`NO_GAME`]).
 pub fn rounds(path: impl AsRef<std::path::Path>) -> std::io::Result<Vec<Round>> {
     let f = std::io::BufReader::new(std::fs::File::open(path)?);
     let mut rounds: Vec<Round> = Vec::new();
@@ -994,12 +999,12 @@ mod tests {
         assert_eq!(e, "a bn5 recording");
     }
 
-    /// A setup that states no game is no recording of this game's: nothing
-    /// takes it for one.
+    /// A setup that names no game is no recording of this game's: nothing
+    /// takes it for one, and the refusal says what it is.
     #[test]
-    #[should_panic(expected = "missing field `game`")]
-    fn a_setup_states_its_game() {
-        let _ = setup_of(r#"{"setup": {"frame": 72, "game_versions": ["falzar", "falzar"]}}"#);
+    fn a_setup_names_its_game() {
+        let e = setup_of(r#"{"setup": {"frame": 72, "game_versions": ["falzar", "falzar"]}}"#).unwrap_err();
+        assert!(e.starts_with("a recording that names no game"), "{e}");
     }
 
     #[test]

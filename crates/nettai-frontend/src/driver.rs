@@ -234,7 +234,7 @@ pub fn trace_game(path: &std::path::Path) -> Result<String, String> {
             continue;
         }
         let stated: Line = serde_json::from_str(&line).map_err(|e| format!("its setup line: {e}"))?;
-        return stated.setup.game.ok_or_else(|| "its setup line states no game (`\"game\"`)".to_string());
+        return stated.setup.game.ok_or_else(|| bn6_compat::trace::NO_GAME.to_string());
     }
     Err("it has no setup line".into())
 }
@@ -980,7 +980,7 @@ mod tests {
         let five = write("five.jsonl", "{\"setup\": {\"frame\": 10, \"game\": \"bn5\"}}\n");
         assert_eq!(trace_game(&five).as_deref(), Ok("bn5"));
         let none = write("none.jsonl", "{\"setup\":{\"frame\":72,\"game_versions\":[\"falzar\",\"falzar\"]}}\n");
-        assert!(trace_game(&none).unwrap_err().contains("states no game"));
+        assert!(trace_game(&none).unwrap_err().starts_with("a recording that names no game"));
         let empty = write("empty.jsonl", exchange);
         assert!(trace_game(&empty).unwrap_err().contains("no setup line"));
         // A recording of another game than the content's, or of none, plays
@@ -988,7 +988,7 @@ mod tests {
         let content = nettai_match::testing::bn6_content();
         let refused = |path: &std::path::Path| trace_rounds(path, &content).err().expect("refused");
         assert!(refused(&five).contains("a bn5 recording, and the content loaded is bn6's"), "{}", refused(&five));
-        assert!(refused(&none).contains("states no game"));
+        assert!(refused(&none).starts_with("a recording that names no game"));
         let _ = std::fs::remove_dir_all(dir);
     }
 }
