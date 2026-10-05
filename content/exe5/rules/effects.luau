@@ -29,4 +29,12 @@ return {
     load_sets_part_palette = false,
     -- Its obstacles' action tables have no frozen or bubbled entries: a kind's own actions from 6 (EXE6's from 8).
     obstacle_actions = "own_from_6",
+    -- Its Full Synchro aura (actor object 0x5E, 0x080C45E0) keeps the animation it started with (0x080C4648), steps
+    -- its sprite paused or not, and once the fight is on stops running while the battle is paused (its header flag
+    -- goes). It is hidden while its navi is under the sea's surface too (the reactions' `hit_test`).
+    full_synchro_aura = {
+        follows_identity = false,
+        steps_while_paused = true,
+        stops_at_a_pause_in_the_fight = true,
+    },
 }
