@@ -325,18 +325,21 @@ fn label_text<'a>(s: String) -> Element<'a, Msg> {
 }
 
 /// The side's SP navi deletion times (`mm:ss.cc`; empty the fastest), each
-/// by the SP navi chip that reads it.
+/// by the SP navi chip that reads it. A slot no chip's damage reads isn't
+/// listed: its time changes nothing of a battle (EXE5's first slot, Roll's,
+/// whose SP chip counts holy panels instead: the rules name the slot
+/// `sp/roll`, which is no chip's key and has no name to show).
 fn sp_times(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &*e.content;
     let side = e.side(s);
     let slots = nettai_match::sp_slots(c);
     let mut col = column![text("SP navi deletion times").size(16), text("mm:ss.cc; empty: the fastest. The SP navi chips' damage goes by them.").size(13).color(DIM)]
         .spacing(6);
-    for (i, slot) in slots.iter().enumerate() {
+    for i in 0..slots.len() {
         // The SP navi chip whose damage reads the slot (the game's), by
-        // its name.
-        let chip = nettai_match::facts::sp_chip(c, &e.m.arena, i);
-        let label = chip.map_or_else(|| slot.clone(), |h| e.names.chip(c, h));
+        // its name; none reads it: nothing to set.
+        let Some(chip) = nettai_match::facts::sp_chip(c, &e.m.arena, i) else { continue };
+        let label = e.names.chip(c, chip);
         let shown = e.sp_typed.get(&(s, i)).cloned().unwrap_or_else(|| match side.sp_times.0[i] {
             0 => String::new(),
             f => nettai_match::sp_times::format(f),

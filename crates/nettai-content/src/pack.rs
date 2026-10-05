@@ -325,13 +325,15 @@ pub fn find(dir: &Path, overrides: &[PathBuf], report: &mut Report) -> Option<Ve
     Some(found)
 }
 
-/// How to write the pack of `game`, for a message.
-pub fn extract_command(game: &str, dir: &Path) -> String {
+/// How to write the asset pack of `game` into `dir`, for a message: the
+/// command its game pack's manifest states (`extract`, in the content
+/// directory `content`), else that it states none.
+pub fn extract_command(content: &Path, game: &str, dir: &Path) -> String {
     let dir = dir.join(game);
-    match game {
-        "exe6" => format!("cargo run --release -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> {}", dir.display()),
-        "exe5" => format!("cargo run --release -p exe5-extract -- content <protoman-us> <colonel-us> <protoman-jp> <colonel-jp> {}", dir.display()),
-        _ => format!("the {game} extractor's `content` command, into {}", dir.display()),
+    let stated = crate::index::manifests(content).ok().and_then(|all| all.get(game).and_then(|m| m.extract.clone()));
+    match stated {
+        Some(command) => command.replace("{dir}", &dir.display().to_string()),
+        None => format!("the {game} extractor's `content` command, into {} ({game}'s manifest states no `extract`)", dir.display()),
     }
 }
 
@@ -365,7 +367,7 @@ pub fn games(content: Option<&Path>, found: &[Found]) -> Result<Vec<GameChoice>,
         .into_iter()
         .map(|game| {
             let pack = found.iter().find(|f| f.game == game).map(|f| f.dir.clone());
-            let why_not = pack.is_none().then(|| no_pack(&game, found));
+            let why_not = pack.is_none().then(|| no_pack(&dir, &game, found));
             GameChoice { game, pack, why_not }
         })
         .collect())
@@ -385,13 +387,13 @@ pub struct Loaded {
 }
 
 /// Why game `game` can't load: no pack of its game is found.
-fn no_pack(game: &str, found: &[Found]) -> String {
+fn no_pack(content: &Path, game: &str, found: &[Found]) -> String {
     let packs = found.iter().map(|f| format!("{} ({})", f.game, f.dir.display())).collect::<Vec<_>>();
     let had = if packs.is_empty() { "none".to_string() } else { packs.join(", ") };
     format!(
         "the game {game} draws on {game}'s assets, and no pack of {game} is found in {} (found: {had}); write it with `{}`, or name its directory with --pack",
         packs_dir().display(),
-        extract_command(game, &packs_dir()),
+        extract_command(content, game, &packs_dir()),
     )
 }
 
@@ -416,7 +418,7 @@ pub fn load_game(content: Option<&Path>, game: &str, found: &[Found]) -> Result<
         }
     }
     let Some(pack) = found.iter().find(|f| f.game == game).map(|f| f.dir.clone()) else {
-        report.error(dir.display().to_string(), no_pack(game, found));
+        report.error(dir.display().to_string(), no_pack(&dir, game, found));
         return Err(report);
     };
     let Some(read) = crate::index::read(&dir, &[game.to_string()], &mut report) else { return Err(report) };

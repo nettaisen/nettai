@@ -4,3 +4,4 @@
 id = "exe5"
 kind = "game"
 depends = ["exelib"]
+extract = "cargo run --release -p exe5-extract -- content <protoman-us> <colonel-us> <protoman-jp> <colonel-jp> {dir}"
