@@ -259,6 +259,13 @@ impl Problems {
         *self = Problems::default();
     }
 
+    /// Forget which lookups were made, so each is checked again when it is
+    /// next made (the graphics or the strings they are checked against
+    /// changed); the problems found so far stay.
+    pub fn recheck(&mut self) {
+        self.lookups.clear();
+    }
+
     /// One line per problem: the text, how often, and the frames.
     pub fn lines(&self) -> Vec<String> {
         lines(&self.seen)
