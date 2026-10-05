@@ -473,8 +473,8 @@ export type NaviCustBoard = {
 -- What a game's NaviCust compile (@exelib/navicust/compile) is made of besides the shared routines: its name (for
 -- errors), its board, its bugs in the order the bugs' routine runs them and what each writes by its level (1 to 3;
 -- `hp`, what the HP programs add), what a placed program counts besides (EXE5's HubBatc), whether any bug sets the
--- emotion window's glitch, whether the side's HP is left as it is (`keeps_hp`: EXE5's in the cyberworld; none,
--- never), and what stops the bugs or keeps them whatever BugStop says (`bug_stop`: EXE5's patch cards; nil, nothing).
+-- emotion window's glitch, and what stops the bugs or keeps them whatever BugStop says (`bug_stop`: EXE5's patch
+-- cards; nil, nothing).
 export type NaviCustGame = {
     name: string,
     board: NaviCustBoard,
@@ -482,7 +482,6 @@ export type NaviCustGame = {
     bug_work: { [string]: (stats: Navi, level: number, hp: number) -> () },
     extra: ((part: PlacedProgram, count: (bug: string?, n: number?) -> ()) -> ())?,
     glitch: boolean,
-    keeps_hp: ((side: number) -> boolean)?,
     bug_stop: ((side: number) -> boolean?)?,
 }
 

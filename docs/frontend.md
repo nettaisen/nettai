@@ -38,7 +38,8 @@ them. The commands in this document are the program's (`nettai-demo`).
   (`session`), the renderer and the audio, and gives a host the picture and
   the sound as it is driven; what drives a session is a driver (`driver`:
   live play of a set from the GBA button mask; `netplay`: another player
-  over the network); and it has the status lines' small font (`text`).
+  over the network). It draws the battle's picture and nothing over it: it
+  has no text of its own.
 - **nettai-demo** is the desktop program, a host of that library: the
   window and the keys, a loop over the player (`app`); the command line
   (`main`); the audio device the player's samples go to, and the audio's
@@ -306,13 +307,16 @@ netplay agreed, with its seed, as a match file.
 Keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START,
 Backspace = SELECT; Space pauses, `.` steps one frame while paused, `-` and
 `=` change speed (1/8x to 16x of 59.73 Hz), F5 starts over (a recording's
-round; live play's set, from its first round) (none of these in netplay), H
-toggles the status line, Tab shows the next of the content's languages (the
-battle goes on: the language is the drawing's alone), Esc quits.
+round; live play's set, from its first round) (none of these in netplay),
+Tab shows the next of the content's languages (the
+battle goes on: the language is the drawing's alone), Esc quits. Nothing is
+written over the battle's picture: the window's title says where playback
+is, its speed, a pause, why it stopped, and in netplay the connection's
+figures and the result.
 
 **Trace playback** runs at the original's 59.73 frames per second until the
 input ends or the engine hits something it doesn't implement yet. Then it
-stops, shows the reason on screen and prints it; the first difference from
+stops, with the reason in the window's title and printed; the first difference from
 the trace's recorded state is printed too. Frame numbers are the trace's.
 
 **Live play** (`--play --game GAME`): you are the left navi; the right one stands still. With `--game exe6` the round
@@ -327,7 +331,7 @@ MegaMan at his fresh stats with a folder its rules accept.)
 Live play is a set, as a link battle is, best of three: when a round ends the
 next one starts, on the arena's next stage, with the score carried and each
 folder shuffled again by its console's RNG, and when the set is decided play
-stops with the result on the status line (`the match is over: you won`). How a
+stops with the result in the window's title and printed (`the match is over: you won`). How a
 set goes on is `nettai_match::Set`'s to say, for live play and netplay alike
 (`Set::after`: the next round's battle from the round that ended, or the
 result); the session swaps the battle and tells the presentation to start
@@ -415,16 +419,17 @@ frontend's side is `netplay`):
   is simulated again when a prediction was wrong. A cue played on a wrong
   prediction is stopped or taken back (rollback.md §3.2). There is no pause,
   speed change or restart (F5) in netplay.
-- **The status line** (H toggles it) shows `PING` (the round trip, in
-  milliseconds), `LOSS` (the share of the other player's datagrams that
-  were lost), `DELAY` (the input delay), `ROLLBACK` (the last rollback's
-  depth), `MAX` (the deepest, and in brackets how many) and `WAIT` (frames
-  held for clock sync or the stall guard).
-- **The end**: when the set is over the result shows on the status line and
+- **The window's title** shows the connection's figures (the library's
+  `Player::net_status`, values the program words itself): `ping` (the round
+  trip, in milliseconds), `loss` (the share of the other player's datagrams
+  that were lost), `delay` (the input delay), `rollback` (the last
+  rollback's depth, then the deepest and how many in all) and `waits`
+  (frames held for clock sync or the stall guard).
+- **The end**: when the set is over the result shows in the title and
   the window stays open; Esc leaves, and tells the other player. If the
   other player leaves, nothing arrives from them for 10 seconds, or their
   input falls more than the rollback horizon behind, the match stops with
-  the reason on screen.
+  the reason in the title and printed.
 
 The stand-in bot (the right navi standing still, picking its first chip)
 stays for playing alone.
@@ -800,8 +805,8 @@ description's lines, a message's characters per line), and a translation
 prints in step with it (a description's whole lines in the proportion of
 the own lines printed, a message's characters in the proportion of the own
 characters), so two players of different languages play one battle. The
-frontend's own text (live play's status line, folder listings) is the
-content's own strings.
+program's own text (what it prints: folder listings, a match's
+description) is the content's own strings.
 
 The bundled font is Murecho (`crates/nettai-render/fonts/murecho`, SIL
 Open Font License 1.1, its license beside it): Latin, kana and some 2,300
@@ -1169,7 +1174,7 @@ match files, its descriptions and the editor without a line of Rust.
   side's from its seed and writes it.
 - What is refused (`nettai_match::facts::check`, and the file's reader): a
   key no system declares ("left: no field \"karm\" (a side of exe5 takes
-  cyberworld, karma, chaos_unison, soul_unison, souls)"); a value that isn't
+  karma, chaos_unison, soul_unison, souls)"); a value that isn't
   the field's type's ("karma: 70000 is past a u16 (0 to 65535)", "version:
   no \"azure\" (gregar or falzar)"); a name the game hasn't; a definition
   twice in a list; and, for the one list the engine knows by its role (its
@@ -1187,7 +1192,7 @@ own); `crosses`, which of the version's own five the side owns (a save's
 flags; all, unless said); `beast_out`; `bug_frags`. EXE5's: `karma` (the
 light/dark value; dark under 470), `souls` (up to sixteen, either
 version's; every soul unless said), `soul_unison` and `chaos_unison` (the
-save's event flags 0 and 0x236), `cyberworld`. An EXE5 match has no
+save's event flags 0 and 0x236). An EXE5 match has no
 version: Team ProtoMan and Team Colonel play alike (its rules take none: a
 side may hold either version's souls and chips), so a `version` in an EXE5
 match is refused as any key its rules don't declare, and its sides bring
@@ -1571,7 +1576,7 @@ renderer, the font mode's text renderer and the battle's audio:
         let now = Instant::now();
         player.advance(now - last, buttons);
         last = now;
-        // The picture, into the host's own pixels (0x00RRGGBB) at any size, the status lines over it.
+        // The picture, into the host's own pixels (0x00RRGGBB) at any size: the battle's, nothing over it.
         player.present(window.pixels(), window.width(), window.height());
         // The sound of those ticks, as stereo samples at 32768 Hz, for the host's own output.
         samples.clear();
@@ -1589,15 +1594,22 @@ renderer, the font mode's text renderer and the battle's audio:
   embedding example does.
 - `frame()` is the battle's 240x160 picture with nothing over it;
   `present(buffer, width, height)` scales it by the largest whole factor that
-  fits, draws the font mode's text at the buffer's resolution and writes
-  `lines()` over the top left. A host that draws its own text takes
-  `frame()` and the lines apart: `prompt()` (the custom screen in words),
-  `status()` (netplay's connection, the set's result), `position()`,
-  `stopped()`, `diverged()`.
+  fits and draws the font mode's text (the game's own) at the buffer's
+  resolution. Neither has anything of the library's over it: the library
+  composes no text and draws none.
+- What a host may want to say is values, to show however it likes or not
+  at all: `position()` (where playback is, in a few words), `paused()` and
+  `speed()`, `stopped()` (why, once it has: the engine stopped, the input
+  ran out, the set is over, the other player left), `finished()`,
+  `result()` (a set's, for the local player; a netplay match's as soon as
+  it is over), `diverged()` (the first difference from a recording) and
+  `net_status()` (a netplay connection's figures: ping, loss, input delay,
+  the last and deepest rollback and their count, frames waited).
+  nettai-demo puts them in its window's title and prints a stop and a
+  difference.
 - `set_paused`, `slower`, `faster` and `restart` are the controls; each
   returns false and does nothing while the battle runs in real time with
-  another player (`real_time()`: netplay). `show_status` shows the status
-  lines or not.
+  another player (`real_time()`: netplay).
 - `take_samples` gives the sound of the ticks run since the last call (about
   549 samples a tick); a player made without sound gives none.
 - `play(driver)` goes on with another driver in the same picture and sound (a

@@ -490,13 +490,14 @@ The verification workspace traces EXE5 consoles as it does EXE6's, with the same
   EXE5 setup line has EXE5's 0x60-byte NaviStats blocks
   and leaves out what is EXE6's alone (SP times, link navi levels, bug frags, event flags, Tag chips).
   It carries both consoles' NaviCusts (`navicusts`: each save's list, 0x02004D6C, the compression flags' bytes,
-  event flags 0x1EC0 to 0x1FBF, whether the compile leaves the HP, `cyberworld`, and the board's memory
+  event flags 0x1EC0 to 0x1FBF, whether the console's own compile left the HP, `cyberworld` (which no rule reads:
+  §15.13), and the board's memory
   `expansions`, key item 0x61's count) and, when a console has any, their patch cards (`patch_cards`, each list's
   bytes). **exe5-compat replays such a round by compiling**: each MegaMan's recorded stats go back to what EXE5's
   reset leaves (`trace::reset`: the navi's fresh stats, the engine's `NaviStats::fresh`, with what the save keeps),
   and the round is set up with the
-  NaviCust (on the board of the recorded `expansions`, or the rules' largest when they have fewer sizes), the cards
-  and the `cyberworld` fact, as a match is; the emotion window's glitch is then the compile's and the cards', what
+  NaviCust (on the board of the recorded `expansions`, or the rules' largest when they have fewer sizes) and the
+  cards, as a match is; the emotion window's glitch is then the compile's and the cards', what
   the rules made, checked against the console's recorded flag (`emotion_window_glitches`). Recordings made before
   carry neither field and replay their stats as recorded, their glitch from the bugs in those stats.
   The hooks test checks every EXE5 hook against EXE6's code (masked for what moves, RAM included), Team Colonel's
@@ -2332,8 +2333,11 @@ NaviCusts). EXE5's, content/exe5/rules/navicust:
   flag 0x10C1, the emotion window's glitch when the save has no patch cards (§15.14).
 - **The HP** (0x0803C13C): in the real world the maximum again and the HP with it; in the cyberworld (the save's
   area, 0x02002944, from 0x80, or event flag 0x10B2) nothing, so the HP is the save's and the maximum the effects'
-  (0x0803C1CC), Hub's halving standing. The navicust system's setup `cyberworld` says which; Tango's finished Team
-  ProtoMan light save is in the cyberworld (area 0x8C, HP 850 of 1000).
+  (0x0803C1CC), Hub's halving standing. Tango's finished Team ProtoMan light save is in the cyberworld (area 0x8C,
+  HP 850 of 1000). **The engine's rules have the real world's ending alone**, and a side states no world: a link
+  battle starts every navi at its maximum whatever the block's HP says, and the maximum is the same in both endings
+  on every board the game builds (below). What the other ending wrote is in a recording's setup still (the
+  console's `cyberworld`, its block's HP), and verify's compile test leaves those bytes out for such a console.
   - *Hub's halving is reached by no board the game builds.* The part table's shapes (16 bytes a part: +8 the shape,
     +0xC the compressed one; the four ROMs agree): HP+50 a straight three, HP+100 a square of four, HP+200 six (two
     over four), HP+300 seven (four over three), HP+400 two by four, HP+500 two by five, each in white, pink and
@@ -2426,8 +2430,8 @@ rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   0x6A, 0x6B, 0x61, 0x21, none), the gauges, the panel trail's bytes (EXE5's panel numbers: the panels section's
   `numbers`), the hit statuses. BugStop (a card's, at 1) holds back the bug slots and, asked first by the
   NaviCust's compile (0x0813FA48 asks 0x08137A30), stops or keeps the NaviCust's bugs (`NaviCustGame.bug_stop`).
-- **The HP** (0x0813F97C, after the cards): in the real world the maximum; in the cyberworld (the setup's
-  `cyberworld`, a fact the navicust system takes too) no more than it.
+- **The HP** (0x0813F97C, after the cards): in the real world the maximum; in the cyberworld no more than it. The
+  rules have the real world's (§15.13).
 - **The emotion window's glitch** (0x0801AF14 through 0x0813F650, as the window starts; not in battle modes 1 to
   4): with cards in the save's list (its count, switched on or not) the cards' flag 0x10C4, which the routine sets
   when the stats after the cards have a bug (0x081384D8: the NaviCust's bug bytes, the encounters' and drops' bugs,

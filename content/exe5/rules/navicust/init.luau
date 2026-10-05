@@ -16,9 +16,14 @@
 --   ../patch-cards/system);
 -- - BugStop (+0x1F) stops the bugs unless the patch cards say (0x0813FA48 asks 0x08137A30 first): a switched-on
 --   card's BugStop effect (the last card's) stops them at 1 and keeps them else;
--- - the HP (0x0803C13C): in the real world the maximum again and the HP with it, as EXE6's; in the cyberworld (the
---   save's area, 0x02002944, from 0x80, or event flag 0x10B2: the setup's `cyberworld`) neither, so the HP is the
---   save's and the maximum the effects' (0x0803C1CC: the base and the HP programs), HubBatc's bug's halving standing.
+-- - the HP (0x0803C13C): the maximum again and the HP with it, as EXE6's. That is the original's ending in the real
+--   world, and the one a battle here has. Its other, for a console in the cyberworld (the save's area, 0x02002944,
+--   from 0x80, or event flag 0x10B2), leaves both: the HP the save's, and the maximum the effects' (0x0803C1CC: the
+--   base and the HP programs) with HubBatc's bug's halving standing. No link battle can tell the two apart: its start
+--   puts every navi at its maximum (`init_hp`: the settings' keep-HP effect is a story battle's), and the maximum
+--   differs only with HubBatc and an HP program on one board, which no board holds (HubBatc's one place leaves an HP
+--   program no room, and the editor refuses an overlap, 0x0813F2A4; docs/design/exe5-map.md §15.13). So a side
+--   states no such thing, and the rules have the one ending.
 
 local board = require("@self/board")
 local compile = require("@exelib/navicust/compile")
@@ -75,10 +80,6 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
 -- HubBatc (program 27), which bugs itself.
 local HUBBATC = "hubbatc"
 
--- What the player's save brings (nettai-match from a match's side, the tools from a save): whether it is in the
--- cyberworld (its area, 0x02002944, from 0x80, or event flag 0x10B2), where the compile leaves the HP.
-type Setup = { cyberworld: boolean }
-
 -- EXE5's compile.
 local EXE5: NaviCustGame = {
     name = "EXE5",
@@ -92,9 +93,6 @@ local EXE5: NaviCustGame = {
         end
     end,
     glitch = true,
-    keeps_hp = function(_side: number): boolean
-        return (system.setup() :: Setup).cyberworld
-    end,
     -- 0x08137A30: the cards' BugStop (the block as the cards' last application left it, whose cards these are): at 1
     -- the bugs stop, else they stay; no card's, the NaviCust's own.
     bug_stop = function(side: number): boolean?
@@ -118,7 +116,6 @@ local EXE5: NaviCustGame = {
 
 return define.system {
     id = "navicust",
-    setup = { cyberworld = "bool" },
     hooks = {
         round_setup = function(side: number)
             compile.run(side, EXE5)

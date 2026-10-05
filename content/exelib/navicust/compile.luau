@@ -18,8 +18,8 @@
 --    programs add up, and the maximum is the base and them.
 -- 4. The bugs (`sub_813CBCC`), unless a program stopped them (BugStop): each bug at its count's level, 1 to 3, as the
 --    game's table says. Any bug sets the save's flag (EXE6's 0x1720, EXE5's 0x10C1), the emotion window's glitch.
--- 5. The HP (`sub_803CE44`): the maximum again, and the HP the round starts with (in the real world, the maximum;
---    EXE5's leaves both in the cyberworld: `keeps_hp`).
+-- 5. The HP (`sub_803CE44`): the maximum again, and the HP the round starts with, the maximum (the original's in
+--    the real world; EXE5's other ending, in the cyberworld, is none a link battle can tell: its rules say why).
 --
 -- A program's color, shape and whether it is a plus part are the engine's (its definition's); its `bug`, its
 -- `exclusive` and its `effects` the rules' (./effects). A program `anywhere` (no EXE5 or EXE6 program is one) works on
@@ -368,12 +368,9 @@ function compile.run(side: number, game: NaviCustGame): boolean
         battle.set_emotion_window_glitch(side, bugged)
     end
 
-    -- 5. The HP (EXE6's `sub_803CE44`, EXE5's 0x0803C13C): the maximum again, and the round starts with it; unless the
-    -- game leaves the HP (EXE5's in the cyberworld, where the maximum is the effects' and the bugs').
-    if game.keeps_hp == nil or not game.keeps_hp(side) then
-        stats.max_hp = stats.max_base_hp + work.hp
-        stats.hp = stats.max_hp
-    end
+    -- 5. The HP (EXE6's `sub_803CE44`, EXE5's 0x0803C13C): the maximum again, and the round starts with it.
+    stats.max_hp = stats.max_base_hp + work.hp
+    stats.hp = stats.max_hp
     return true
 end
 
