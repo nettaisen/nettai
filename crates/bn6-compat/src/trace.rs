@@ -433,7 +433,7 @@ impl Round {
             Some(r) => r[side as usize & 1] != 0,
             None => stats.folder_reg[stats.folder as usize & 1] != 0xFF,
         };
-        let folder = Some(codec::battle_folder(&unhex(&self.setup.folders[side as usize]), regular, ids));
+        let folder = codec::battle_folder(&unhex(&self.setup.folders[side as usize]), regular, ids);
         let version = match self.setup.game_versions[side as usize].as_str() {
             "gregar" => GameVersion::Gregar,
             "falzar" => GameVersion::Falzar,

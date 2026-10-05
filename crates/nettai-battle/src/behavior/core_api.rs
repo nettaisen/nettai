@@ -678,12 +678,12 @@ impl CoreApi for Battle {
     }
 
     fn custom_folder(&self, side: u8) -> ApiResult<Vec<Option<ChipHandle>>> {
-        let folder = self.custom.sides[side as usize & 1].folder.ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        let folder = self.custom.sides[side as usize & 1].folder;
         Ok(folder.chips.iter().map(|c| c.map(|c| c.id)).collect())
     }
 
     fn custom_swap_folder(&mut self, side: u8, a: u8, b: u8) -> ApiResult<()> {
-        let folder = self.custom.sides[side as usize & 1].folder.as_mut().ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        let folder = &mut self.custom.sides[side as usize & 1].folder;
         let n = folder.chips.len();
         if a as usize >= n || b as usize >= n {
             return Err(ApiError::Other(format!("custom.swap_folder: the folder has {n} places")));
@@ -798,7 +798,7 @@ impl CoreApi for Battle {
 
     fn custom_pick_first(&mut self, side: u8, icon: Option<ChipHandle>) -> ApiResult<()> {
         let i = side as usize & 1;
-        let folder = self.custom.sides[i].folder.ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        let folder = self.custom.sides[i].folder;
         self.custom_screen_mut(side)?.pick_first(&folder, icon);
         Ok(())
     }
@@ -930,13 +930,13 @@ impl CoreApi for Battle {
     }
 
     fn custom_draw_window(&mut self, side: u8) -> ApiResult<()> {
-        let folder = self.custom.sides[side as usize & 1].folder.ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        let folder = self.custom.sides[side as usize & 1].folder;
         self.custom_screen_mut(side)?.draw_window(&folder);
         Ok(())
     }
 
     fn custom_draw_regular(&mut self, side: u8) -> ApiResult<()> {
-        let folder = self.custom.sides[side as usize & 1].folder.ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
+        let folder = self.custom.sides[side as usize & 1].folder;
         self.custom_screen_mut(side)?.look.draw_regular(folder.regular_pending);
         Ok(())
     }

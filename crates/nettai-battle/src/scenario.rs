@@ -58,7 +58,7 @@ pub fn setup() -> RoundSetup {
     let mut folder = BattleFolder::empty();
     folder.chips = [Some(FolderChip::new(testing::chip_in(&content, testing::SUN_GUN_3), ChipCode(0))); 30];
     let player = PlayerSetup {
-        folder: Some(folder),
+        folder,
         joypad_phase: 0,
         navi_level: None,
         sp_times: Default::default(),
@@ -108,7 +108,7 @@ pub fn setup_with_handles(chips: &[ChipHandle]) -> RoundSetup {
         *slot = Some(FolderChip::new(h, code));
     }
     for p in &mut s.players {
-        p.folder = Some(folder);
+        p.folder = folder;
     }
     s
 }

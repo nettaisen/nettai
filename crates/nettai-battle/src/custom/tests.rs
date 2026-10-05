@@ -121,7 +121,7 @@ struct Player {
 
 impl Player {
     fn new(chips: &[(ChipId, u8)]) -> Player {
-        let setup = PlayerSetup { folder: Some(folder(chips)), ..PlayerSetup::default() };
+        let setup = PlayerSetup { folder: folder(chips), ..PlayerSetup::default() };
         Player { side: Side::new(&setup), console: Console::new(&setup.console), lib: library(), stats: stats(), tick: 0 }
     }
 
@@ -250,7 +250,7 @@ fn the_timeline_from_opening_to_sending() {
     assert_eq!(hand.selection[0], Some(FolderChip::new(ChipHandle(SHOT), ChipCode(1))));
     assert_eq!(hand.damage[0], 40);
     // The picked chip left the folder.
-    assert_eq!(p.side.folder.unwrap().chips[1], None);
+    assert_eq!(p.side.folder.chips[1], None);
 }
 
 #[test]
@@ -338,7 +338,7 @@ fn dust_cross_scraps_the_picks() {
     assert_eq!(p.screen().slots[8].state, SlotState::Selected);
     // The scrapped chips went to the end of the folder, in pick order, and
     // the hand is dealt again from the front.
-    let f = p.side.folder.unwrap();
+    let f = p.side.folder;
     let ids: Vec<(ChipId, u8)> = f.chips.iter().flatten().map(|c| (c.id.0, c.code.0)).collect();
     assert_eq!(ids[..5], [(WAVE, 0), (WAVE, 1), (SHOT, 2), (MEGA, 5), (MEGA, 6)]);
     assert_eq!(ids[28..], [(SHOT, 0), (SHOT, 1)]);
@@ -354,7 +354,7 @@ fn dust_cross_scrapping_the_regular_chip_ends_it() {
     let mut p = Player::new(&chips);
     let mut f = folder(&chips);
     f.regular_pending = true;
-    p.side.folder = Some(f);
+    p.side.folder = f;
     p.stats.form = library::testing::DUST_CROSS;
     p.open();
     assert!(matches!(p.screen().slots[0].kind, SlotKind::Chip { regular: true, .. }));
@@ -371,7 +371,7 @@ fn dust_cross_scrapping_the_regular_chip_ends_it() {
     while p.phase() != Phase::Choosing && p.tick < 1000 {
         p.step(0);
     }
-    assert!(!p.side.folder.unwrap().regular_pending);
+    assert!(!p.side.folder.regular_pending);
     assert!(matches!(p.screen().slots[0].kind, SlotKind::Chip { regular: true, .. }));
 }
 
@@ -424,7 +424,7 @@ fn chip_shuffle_redeals_what_is_not_picked() {
     p.wait(10);
     p.step(0);
     p.press(keys::A);
-    let before = p.side.folder.unwrap();
+    let before = p.side.folder;
     // Down from the fourth chip to the re-deal button.
     p.press(keys::RIGHT);
     p.press(keys::RIGHT);
@@ -443,7 +443,7 @@ fn chip_shuffle_redeals_what_is_not_picked() {
     // The pick stays; the other 29 are shuffled once from the RNG as it
     // was (29 swaps, two draws each), which the 7 shows in between (the
     // same again each) don't change.
-    let after = p.side.folder.unwrap();
+    let after = p.side.folder;
     assert_eq!(after.chips[0], before.chips[0]);
     let mut expected = before.chips[1..].to_vec();
     let mut r = rng;
@@ -465,13 +465,13 @@ fn chip_shuffle_leaves_the_regular_chip_and_the_tag_pair() {
     p.stats.chip_shuffle = true;
     let mut f = folder(&chips);
     f.regular_pending = true;
-    p.side.folder = Some(f);
+    p.side.folder = f;
     p.console = Console::new(&ConsoleSetup { rng: 0x0BAD_F00D, tag_pair: Some(12), ..ConsoleSetup::default() });
     p.open();
     assert!(matches!(p.screen().slots[0].kind, SlotKind::Chip { regular: true, .. }));
     p.wait(10);
     p.step(0);
-    let before = p.side.folder.unwrap();
+    let before = p.side.folder;
     p.press(keys::RIGHT);
     p.press(keys::RIGHT);
     p.press(keys::RIGHT);
@@ -480,7 +480,7 @@ fn chip_shuffle_leaves_the_regular_chip_and_the_tag_pair() {
     while p.phase() != Phase::Choosing && p.tick < 1000 {
         p.step(0);
     }
-    let after = p.side.folder.unwrap();
+    let after = p.side.folder;
     // The Regular chip (entry 0) and the tag pair (entries 12 and 13)
     // stay where they are.
     assert_eq!(after.chips[0], before.chips[0]);
@@ -497,7 +497,7 @@ fn the_tag_pair_index_follows_the_folder_as_picks_leave_it() {
     p.open();
     p.wait(10);
     p.step(0);
-    let pair = p.side.folder.unwrap().chips[12..14].to_vec();
+    let pair = p.side.folder.chips[12..14].to_vec();
     // Two picks (the same chip in two codes), then OK: each chip taken out
     // moves the pair's index down with the pair.
     p.press(keys::A);
@@ -514,7 +514,7 @@ fn the_tag_pair_index_follows_the_folder_as_picks_leave_it() {
     p.open();
     p.wait(10);
     p.step(0);
-    let before = p.side.folder.unwrap();
+    let before = p.side.folder;
     assert_eq!(before.chips[10..12], pair[..]);
     p.press(keys::RIGHT);
     p.press(keys::RIGHT);
@@ -525,7 +525,7 @@ fn the_tag_pair_index_follows_the_folder_as_picks_leave_it() {
     while p.phase() != Phase::Choosing && p.tick < 1000 {
         p.step(0);
     }
-    let after = p.side.folder.unwrap();
+    let after = p.side.folder;
     assert_eq!(after.chips[10..12], pair[..]);
     assert_ne!(after.chips, before.chips);
 }

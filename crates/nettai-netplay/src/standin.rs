@@ -133,7 +133,7 @@ pub fn megaman(content: &Content, hp: u16) -> NaviStats {
 /// derived from the seed.
 pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [BattleFolder; 2]) -> RoundSetup {
     let player = |f: BattleFolder, side: u32| PlayerSetup {
-        folder: Some(f),
+        folder: f,
         joypad_phase: 0,
         navi_level: None,
         sp_times: Default::default(),

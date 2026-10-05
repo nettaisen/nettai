@@ -335,7 +335,7 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
         let mut rng = Rng::new(seed ^ side.wrapping_mul(0x9E37_79B9));
         let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&folders[side as usize], 0, &mut rng, content);
         let mut player = PlayerSetup {
-            folder: Some(folder),
+            folder,
             joypad_phase: 0,
             navi_level: nettai_match::default_navi_level(content, stats.navi),
             sp_times: Default::default(),
@@ -438,7 +438,7 @@ impl Driver for LivePlayer {
 /// window when it's open.
 pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
     let s = &b.custom.sides[side];
-    let (screen, folder) = (s.screen.as_ref()?, s.folder.as_ref()?);
+    let (screen, folder) = (s.screen.as_ref()?, &s.folder);
     if b.round.mode != mode::CUSTOM {
         return None;
     }
