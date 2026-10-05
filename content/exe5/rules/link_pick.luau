@@ -32,8 +32,18 @@ return {
         stages.netbattle_9, stages.netbattle_10, stages.netbattle_11, stages.netbattle_12, stages.netbattle_87, stages.netbattle_88,
         stages.netbattle_89, stages.netbattle_90, stages.netbattle_91, stages.netbattle_92, stages.netbattle_93, stages.netbattle_94,
     },
-    -- Not yet what the original does. EXE5 picks a link battle's background at random as EXE6 does (0x08129F2C, EXE6's
-    -- `sub_81209DC`: `table[PosRNG2() % 27]`, the table at 0x08129F6C its backgrounds 0x00 to 0x1A, each once). The
-    -- empty list here leaves a link battle its stage's own background until the 27 are stated.
-    backgrounds = {},
+    -- The backgrounds a link battle picks one of at random with its settings (`table[PosRNG2() % 27]`, the table at
+    -- 0x08129F6C: its backgrounds 0x00 to 0x1A, each once, in the table's order). A stage's own background (every
+    -- record's is the same one) is what a match that names none shows.
+    backgrounds = {
+        asset.background("binary"), asset.background("drills"), asset.background("soccer-balls"),
+        asset.background("rabbits-and-apples"), asset.background("faces-and-crosses"), asset.background("goldfish"),
+        asset.background("calendar-squares"), asset.background("rings-blue"), asset.background("calendar-blue"),
+        asset.background("calendar-gold"), asset.background("ones-and-zeros"), asset.background("grid"),
+        asset.background("calendar-blue-2"), asset.background("calendar-gold-2"), asset.background("ones-and-zeros-2"),
+        asset.background("numbers-3"), asset.background("ship-wheels"), asset.background("swirls"),
+        asset.background("numbers"), asset.background("lions"), asset.background("numbers-2"),
+        asset.background("crests"), asset.background("shuriken"), asset.background("microchips"),
+        asset.background("glyphs-2"), asset.background("glyphs-blue"), asset.background("glyphs"),
+    },
 }

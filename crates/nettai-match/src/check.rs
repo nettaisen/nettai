@@ -342,7 +342,7 @@ mod tests {
     /// [`compiled`], MegaMan from a navi code of `level`.
     fn compiled_at(parts: &[(&str, &str, u8, u8)], level: Option<u8>) -> (NaviStats, bool, Vec<String>) {
         let content = crate::testing::exe6_content();
-        let mut m = crate::draw::live(&content, "exe6", 3, None).unwrap();
+        let mut m = crate::pick::live(&content, "exe6", 3, None).unwrap();
         let s = &mut m.sides[0];
         s.navi_level = level;
         s.stats = crate::Side::base_stats(&content, s.navi, s.version.as_deref());
@@ -397,7 +397,7 @@ mod tests {
     fn exe5s_board_grows_with_its_expansions() {
         let content = crate::testing::exe5_content();
         assert_eq!(crate::navicust_rules(&content).boards.len(), 3);
-        let m = crate::draw::live(&content, "exe5", 3, None).unwrap();
+        let m = crate::pick::live(&content, "exe5", 3, None).unwrap();
         assert_eq!(crate::Match::empty(&content, "exe5").unwrap().sides[0].navicust.map(|n| n.expansions), Some(2));
         let undersht = ids::navicust_program(&content, "exe5", "undersht").unwrap();
         // (UnderSht covers its center and the cell above it.)
@@ -437,7 +437,7 @@ mod tests {
     #[test]
     fn stats_set_directly_glitch_as_their_bugs_say() {
         let content = crate::testing::exe6_content();
-        let mut m = crate::draw::live(&content, "exe6", 3, None).unwrap();
+        let mut m = crate::pick::live(&content, "exe6", 3, None).unwrap();
         for s in &mut m.sides {
             s.navicust = None;
         }
