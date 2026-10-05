@@ -333,6 +333,10 @@ The inputs go between the peers on rennet (Tango's netplay transport, §4.6), ov
 - `network`: a seeded datagram network, one direction of it: latency, jitter (each datagram on its own, so jitter
   reorders), loss alone or in bursts, duplication, outages.
 - `sim::Match`: two peers over two networks plus a lockstep reference run (§4.3).
+- `cost`: what rollback costs a world, measured (§6): a world stepped by hand at ticks of a recorded match
+  (`Subject`, `Point`), a session through its frames with the other player's inputs arriving as a simulated link
+  delivers them (`Peer`, `Drive`, `arrivals`), the heap counted (`Counting`), and the tables. Generic, so another
+  world on getgud is measured by the same loops.
 
 A host does each frame what the simulator does for a peer (`Peer`): take the datagrams that arrived
 (`Peer::receive`), hold the frame if running ahead or at the stall guard (`Peer::wait`), else decide its player's
@@ -682,6 +686,14 @@ with getgud and 6.2 to 6.6 µs with the old peer, measured side by side.
 (Not measured again for getgud's nettai-fixes branch (§4.5): the per-frame path gained a `catch_unwind` around
 each tick, which costs nothing unless a tick panics, and getgud now keeps a call's promoted states until the next
 call instead of recycling them at once.)
+
+`cargo run --release -p nettai-netplay --example rollback_bench -- <trace.jsonl> <pack>` measures more of it, with
+`nettai_netplay::cost`: in the fight and in the custom screens of a recorded match, a step, a save (time and
+bytes), a restore and rollbacks of 1 to 16 ticks as a session makes them; a session's frames over three simulated
+links (the median, the 99th percentile and the worst frame, the rollbacks and their depth); what the session's
+states hold; and what a saved state is made of, part by part. The verification workspace's tools/rollback-bench
+measures Tango's emulated pair beside the engine on the same match with the same loops; its tools/rollback-bench.md
+has the method and the results.
 
 ## 7. Hazards
 
