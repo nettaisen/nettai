@@ -53,8 +53,8 @@ return define.navi {
             { hp = 1000, attack = 4, rapid = 2, charge = 2, custom_level = 1, mega_level = 2, super_armor = true },
         },
     },
-    -- The chips A charges, from a navi level on, and those a charge doubles.
-    charged_chips = { family = "wood", from_level = 11 },
+    -- The chips A charges (its family's damaging chips, from a navi level on), and those a charge doubles.
+    charged_chips = { family = "wood", from_level = 11, damaging = true },
     charge_doubles = { element = "wood" },
     -- A hit's status doesn't take.
     traits = { "status_immune" },

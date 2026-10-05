@@ -118,15 +118,21 @@ fn chip_charges(b: &Battle, r: ObjectRef, chip: ChipHandle) -> bool {
     if charges {
         return true;
     }
-    // The link navis' own charged chips: from a navi level
-    // (`sub_800F49E`; 0xFF: none), ChargeMan's, SpoutMan's, TomahawkMan's
-    // and ProtoMan's damaging chips of their family (`byte_8021369`: the
-    // navi's `charged_chips`; MegaMan has none).
-    let level = b.navi_levels[b.objects.get(r).alliance as usize];
-    if level == 0xFF || !damaging {
-        return false;
+    // The navi's own `charged_chips` (MegaMan has none). EXE6's link navis:
+    // from a navi level (`sub_800F49E`; 0xFF: none), ChargeMan's,
+    // SpoutMan's, TomahawkMan's and ProtoMan's damaging chips of their
+    // family (`byte_8021369`). EXE5's team navis (0x0801090A's tests by
+    // navi, after the souls'): NapalmMan's Fire, ToadMan's Aqua,
+    // MagnetMan's Elec and TomahawkMan's Wood chips that are neither
+    // dimming nor dark chips, whatever the level.
+    let Some(own) = navi_of(b, r).charged_chips else { return false };
+    if let Some(from) = own.from_level {
+        let level = b.navi_levels[b.objects.get(r).alliance as usize];
+        if level == 0xFF || level < from {
+            return false;
+        }
     }
-    navi_of(b, r).charged_chips.is_some_and(|own| family == own.family && level >= own.from_level)
+    family == own.family && (damaging || !own.damaging) && (plain || !own.plain)
 }
 
 /// `sub_8013396`: the B button charges.
