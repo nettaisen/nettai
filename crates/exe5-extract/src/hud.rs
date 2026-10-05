@@ -62,13 +62,17 @@ const PROTOMAN_FACES: FaceAddresses =
 const COLONEL_FACES: FaceAddresses =
     FaceAddresses { faces: 0x0874_107C, soul_faces: 0x0874_17FC, faces_dark: 0x0874_237C, counts: 0x0874_1DFC, palettes: 0x0874_2AFC };
 const DARK_PALETTES: u32 = 11;
-/// The link navis' faces (EXE6 `sub_801CC34`'s counterpart, 0x08019724:
-/// navi n's at + 0x100 (n - 1)), the box beside them and their two
-/// palettes each.
+/// The team navis' faces (EXE6 `sub_801CC34`'s counterpart, 0x08019724:
+/// navi n's at + 0x100 (n - 1), its version's six), the box beside them
+/// (the same in both versions) and their two palettes each, normal and
+/// Full Synchro. Team Colonel's routine (0x0801971C) reads its own six, navi
+/// n's at + 0x100 (n - 7).
 const NAVI_MUGSHOTS: u32 = 0x0874_1B38;
 const NAVI_MUGSHOT_COUNT: u32 = 6;
 const NAVI_BOX: u32 = 0x0874_1AB8;
 const NAVI_MUGSHOT_PALETTES: u32 = 0x0874_2138;
+const COLONEL_NAVI_MUGSHOTS: u32 = 0x0874_2E3C;
+const COLONEL_NAVI_MUGSHOT_PALETTES: u32 = 0x0874_343C;
 /// The dialogue font (16x12 glyphs of 0x60 bytes, up to the HUD font) and
 /// its advances: a word a glyph in EXE5 (a byte in EXE6).
 const DIALOGUE_FONT: u32 = 0x086C_14C8;
@@ -284,12 +288,20 @@ pub fn hud(roms: &Roms, names: &AssetNames, chip_icons: Vec<ChipIcon>) -> Hud {
         // (EXE5 has no box without a count: its faces bring their own.)
         count_box: Tiles::default(),
         mugshot_boxes,
-        navi_mugshots: (0..NAVI_MUGSHOT_COUNT)
-            .map(|n| NaviMugshot {
-                tiles: tiles(rom, NAVI_MUGSHOTS + 0x100 * n, 0x100),
-                palettes: std::array::from_fn(|k| palette(rom, NAVI_MUGSHOT_PALETTES + 0x40 * n + 0x20 * k as u32)),
+        // The team navis' by navi number: Team ProtoMan's six, then Team
+        // Colonel's.
+        navi_mugshots: [
+            (rom, NAVI_MUGSHOTS, NAVI_MUGSHOT_PALETTES),
+            (roms.us(Version::Colonel), COLONEL_NAVI_MUGSHOTS, COLONEL_NAVI_MUGSHOT_PALETTES),
+        ]
+        .into_iter()
+        .flat_map(|(rom, faces, palettes)| {
+            (0..NAVI_MUGSHOT_COUNT).map(move |n| NaviMugshot {
+                tiles: tiles(rom, faces + 0x100 * n, 0x100),
+                palettes: std::array::from_fn(|k| palette(rom, palettes + 0x40 * n + 0x20 * k as u32)),
             })
-            .collect(),
+        })
+        .collect(),
         navi_box: tiles(rom, NAVI_BOX, 0x80),
         pause,
         texts: texts(rom, TEXTS),

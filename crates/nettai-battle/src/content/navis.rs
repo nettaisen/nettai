@@ -37,6 +37,11 @@ pub struct NaviData {
     /// A link navi's own chip, offered on the custom screen once a round.
     #[serde(default)]
     pub own_chip: Option<CodedChip>,
+    /// The custom screen's offer of the own chip draws once from the
+    /// console's RNG (EXE5's, which picks between its table's two entries
+    /// for the navi, the same chip, with the draw).
+    #[serde(default)]
+    pub own_chip_draws: bool,
     /// A link navi's damage bonus on its family's chips.
     #[serde(default)]
     pub chip_bonus: Option<NaviChipBonus>,
@@ -62,6 +67,12 @@ pub struct NaviData {
     pub fire_charge: Option<Vec<u8>>,
     #[serde(default)]
     pub traits: NaviTraits,
+    /// What its sprite's palettes go by, for a navi that doesn't change
+    /// form: its Full Synchro palette is 4 of them and its can't-charge
+    /// palette 1 (EXE5's 0x0801D737 by navi; EXE6's `byte_80212BB` is all
+    /// ones, as none given). Presentation only.
+    #[serde(default = "one_palette")]
+    pub palette_step: u8,
     /// Its forms ([`NaviForms`]): where the original asks whether a navi is
     /// MegaMan, the ruleset asks whether it has forms. (This and what
     /// follows are read from the definition by handle, not with the rest of
@@ -87,6 +98,39 @@ pub struct NaviData {
     /// (nettai-match's `link_navis`); no battle reads it.
     #[serde(skip)]
     pub levels: Option<NaviLevels>,
+    /// What the story gives it by its level (EXE5's team navis). Tools
+    /// fill a side's stats from it (nettai-match's `story`); no battle
+    /// reads it.
+    #[serde(skip)]
+    pub story: Option<NaviStory>,
+}
+
+fn one_palette() -> u8 {
+    1
+}
+
+/// What the story gives a navi (EXE5's team navis): its HP by the story's
+/// progress (the routine a map script calls as the story moves on, and a
+/// new game's start; its table's row), and its level, which its damage
+/// rows read: that progress, up to `max_level`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct NaviStory {
+    /// The HP (current, maximum and base), from progress 0.
+    pub hp: Vec<u16>,
+    pub max_level: u8,
+}
+
+impl NaviStory {
+    /// The HP at `level`: below the last level, the progress is the level;
+    /// at the last, the story is taken as done (the table's last entry).
+    /// None past the levels.
+    pub fn hp_at(&self, level: u8) -> Option<u16> {
+        match level.cmp(&self.max_level) {
+            std::cmp::Ordering::Less => self.hp.get(level as usize).copied(),
+            std::cmp::Ordering::Equal => self.hp.last().copied(),
+            std::cmp::Ordering::Greater => None,
+        }
+    }
 }
 
 /// A navi's levels: what the save's reload (`reloadCurNaviBaseStats_8120df0`)
@@ -716,7 +760,7 @@ pub(crate) fn read_navi(
     let mut o = super::reader::fields(
         d,
         r,
-        &["id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "cross_hp", "levels", "forms"],
+        &["id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "cross_hp", "levels", "story", "forms"],
     )?;
     let banners = d.spec.field("banners");
     for (field, which) in [("win_banner", "win"), ("lose_banner", "lose")] {
@@ -821,6 +865,43 @@ pub(crate) fn read_cross_hp(d: &nettai_content_api::Definition) -> Result<Option
         },
         _ => Err(what()),
     }
+}
+
+/// A navi definition's `story`: its HP by the story's progress and its
+/// last level.
+pub(crate) fn read_story(d: &nettai_content_api::Definition) -> Result<Option<NaviStory>, nettai_content_api::ContentError> {
+    use nettai_content_api::{ContentError, Data};
+    let what = |m: String| ContentError::new(format!("{}.luau: navi {}: {m}", d.module, d.key));
+    let story = match d.spec.field("story") {
+        Data::Nil => return Ok(None),
+        v @ Data::Map(entries) => {
+            if let Some((k, _)) = entries.iter().find(|(k, _)| !["hp", "max_level"].contains(&k.to_string().as_str())) {
+                return Err(what(format!("story has no field `{k}` (it has hp, max_level)")));
+            }
+            v
+        }
+        other => return Err(what(format!("`story` is {other:?}, not a table"))),
+    };
+    let max_level = match story.field("max_level") {
+        Data::Int(i) if (0..=crate::custom::MAX_NAVI_LEVEL as i64).contains(i) => *i as u8,
+        other => return Err(what(format!("story.max_level is {other:?}, not a level up to {}", crate::custom::MAX_NAVI_LEVEL))),
+    };
+    let hp = match story.field("hp") {
+        Data::List(items) => items
+            .iter()
+            .enumerate()
+            .map(|(i, v)| match v {
+                Data::Int(n) if (1..=0xFFFF).contains(n) => Ok(*n as u16),
+                other => Err(what(format!("story.hp[{}] is {other:?}, not HP up to 65535", i + 1))),
+            })
+            .collect::<Result<Vec<u16>, _>>()?,
+        other => return Err(what(format!("story.hp is {other:?}, not a list of HP"))),
+    };
+    // (A level below the last is the progress: each has its entry.)
+    if hp.len() <= max_level as usize {
+        return Err(what(format!("story.hp has {} entries: levels 0 to {max_level} need {}", hp.len(), max_level as usize + 1)));
+    }
+    Ok(Some(NaviStory { hp, max_level }))
 }
 
 /// A navi definition's `levels`: its base HP by the story's progress and

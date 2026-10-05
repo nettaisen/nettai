@@ -1,7 +1,8 @@
 //! A side from an EXE5 save file (exe5-compat's `save`): its karma (the
 //! light/dark value), the souls it has, its Soul Unison and Chaos Unison,
-//! and how far its NaviCust's board is expanded (its ExpMemry). (Its folder,
-//! the NaviCust's programs and its stats are a later import's.)
+//! and how far its NaviCust's board is expanded (its ExpMemry); for a side
+//! that operates a team navi, the navi's level and HP. (Its folder, the
+//! NaviCust's programs and MegaMan's stats are a later import's.)
 //! `Match::import_save` comes here for a save that isn't EXE6's.
 
 use crate::{Arena, Side};
@@ -49,7 +50,37 @@ impl Side {
                 notes.push(format!("the save has {had} ExpMemry, but the NaviCust's board has {sizes} sizes: the side's board is kept"));
             }
         }
+        notes.extend(self.import_exe5_team_navi(content, save));
         notes
+    }
+
+    /// A side that operates a team navi (a navi with a story) takes the
+    /// save's level (its story flags' count) and, where the save's version
+    /// has the navi, the HP and the light/dark value of the navi's own
+    /// block (a battle from the real world starts it at its full HP); a
+    /// navi of the other version takes the story's HP at the save's level.
+    fn import_exe5_team_navi(&mut self, content: &Content, save: &Save) -> Vec<String> {
+        if content.navi(self.navi).story.is_none() {
+            return Vec::new();
+        }
+        let name = crate::names::navi(content, self.navi);
+        let level = save.navi_level();
+        self.navi_level = Some(level);
+        if let Some(s) = self.reloaded(content) {
+            self.stats = s;
+        }
+        let compat = exe5_compat::Compat::exe5();
+        let key = crate::ids::local(&content.defs.navi(self.navi).key);
+        let block = compat.navi_number(key).and_then(|n| save.team_navi_stats(n));
+        match block.map(|b| exe5_compat::codec::navi_stats(&b)) {
+            Some(Ok(b)) => {
+                (self.stats.max_base_hp, self.stats.max_hp, self.stats.hp) = (b.max_base_hp, b.max_hp, b.max_hp);
+                self.karma = b.light_dark.0;
+                vec![format!("{name}: the save's level {level} and his HP {}", b.max_hp)]
+            }
+            Some(Err(e)) => vec![format!("{name}: the save's level {level}; his block doesn't read ({e}): the story's HP at that level")],
+            None => vec![format!("{name}: the save's level {level}; its version hasn't him: the story's HP at that level")],
+        }
     }
 }
 
@@ -100,5 +131,45 @@ mod tests {
         assert_eq!(m.sides[0].navicust.map(|n| n.expansions), Some(1));
         let e = m.import_save(&content, 0, b"not a save").unwrap_err();
         assert!(e.contains("EXE6") && e.contains("EXE5"), "{e}");
+    }
+    /// A Team ProtoMan save whose story is four flags along: a side that
+    /// operates ProtoMan takes its level (4) and his own block's HP and
+    /// light/dark value; from a Team Colonel save, which hasn't him, the
+    /// level and the story's HP at it.
+    #[test]
+    fn a_exe5_save_gives_a_team_navi_its_level_and_hp() {
+        let content = exe5_content();
+        let mut image = vec![0u8; exe5_compat::save::IMAGE_SIZE];
+        image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOB 20041006 US");
+        // Event flags 0x300 to 0x303 (and 0x305, past the first clear one).
+        image[0x29F8 + 0x60] = 0xF4;
+        // His block, the first after MegaMan's: base, current and maximum HP,
+        // then the light/dark value.
+        let block = 0x52A8 + 0x60;
+        image[block + 0x29] = 1;
+        for (at, v) in [(0x3E, 470u16), (0x40, 123), (0x42, 470), (0x44, 519)] {
+            image[block + at..block + at + 2].copy_from_slice(&v.to_le_bytes());
+        }
+        let protoman = crate::ids::navi(&content, "exe5", "protoman").unwrap();
+        let mut m = crate::Match::empty(&content, "exe5").unwrap();
+        let s = &mut m.sides[0];
+        s.navi_level = Some(0);
+        s.stats = s.reloaded_as(&content, protoman).unwrap();
+        (s.navi, s.navicust) = (protoman, None);
+        assert_eq!((s.stats.max_hp, s.stats.hp), (200, 200));
+        let notes = m.import_save(&content, 0, &image).unwrap();
+        let s = &m.sides[0];
+        assert_eq!((s.navi_level, s.stats.max_base_hp, s.stats.max_hp, s.stats.hp, s.karma), (Some(4), 470, 470, 470, 519));
+        assert!(notes.iter().any(|n| n.contains("level 4") && n.contains("470")), "{notes:?}");
+        assert_eq!(crate::check::check_side_alone(&content, &m.arena, s), Vec::<String>::new());
+        image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOK 20041006 US");
+        let notes = m.import_save(&content, 0, &image).unwrap();
+        let s = &m.sides[0];
+        assert_eq!((s.navi_level, s.stats.max_hp, s.stats.hp), (Some(4), 450, 450));
+        assert!(notes.iter().any(|n| n.contains("its version hasn't him")), "{notes:?}");
+        // A MegaMan side takes no level from the save.
+        assert_eq!(m.sides[1].navi_level, None);
+        m.import_save(&content, 1, &image).unwrap();
+        assert_eq!(m.sides[1].navi_level, None);
     }
 }

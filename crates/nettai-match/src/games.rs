@@ -142,7 +142,8 @@ fn an_unknown_name_is_refused() {
     let says = |e: Vec<String>, what: &str| assert!(e.iter().any(|p| p.starts_with(what)), "{what:?} not in {e:?}");
     let ok = exe5(&TANGO_EXE5, "");
     // An EXE6 navi, Cross and NaviCust program: none of EXE5's.
-    says(parse(&content, &side("protoman", &TANGO_EXE5, ""), &ok).unwrap_err(), "left: no navi \"protoman\" in exe5");
+    // (EXE5 has a ProtoMan of its own: HeatMan is EXE6's alone.)
+    says(parse(&content, &side("heatman", &TANGO_EXE5, ""), &ok).unwrap_err(), "left: no navi \"heatman\" in exe5");
     let crosses = exe5(&TANGO_EXE5, "crosses = [\"heatcross\"]");
     says(parse(&content, &crosses, &ok).unwrap_err(), "left: no Cross \"heatcross\" in exe5");
     // A chip of EXE6's alone (HeatMan), a qualified name, a misspelling:
