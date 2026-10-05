@@ -230,6 +230,7 @@ language = "ja"
 "navi-20" = { name = "ナビ+20", description = "ナビチップの\nあとにえらぶと\n攻撃力を+20!" }
 "neovari" = { name = "ネオバリアブル", description = "へんげんじざいの\nテクニカルソード\nじょうきゅうへん" }
 "nrthwind" = { name = "スーパーキタカゼ", description = "すさまじいキタカゼ\nがバリアやオーラを\nふきとばしてしまう" }
+"nstackle" = { name = "NSタックル", description = "前方へNSタックル\nでとっしんする!" }
 "numbrbl" = { name = "ナンバーボール", description = "HPの下2ケタが\n攻撃力になるボール\nを前方にハッシャ!" }
 "numbrman" = { name = "ナンバーマン", description = "3マス前方にボム!\n攻撃力は出目しだい\n9マス分にばくはつ" }
 "numbrmn-ds" = { name = "ナンバーマン\uE008", description = "3マス前方にボム!\n攻撃力は出目しだい\n9マス分にばくはつ" }
@@ -365,6 +366,7 @@ language = "ja"
 "colonel" = { name = "カーネル" }
 "gyroman" = { name = "ジャイロマン" }
 "knightman" = { name = "ナイトマン" }
+"magnetman" = { name = "マグネットマン" }
 "meddy" = { name = "メディ" }
 "megaman" = { name = "ロックマン", variant_name = "FCロックマン" }
 "napalmman" = { name = "ナパームマン" }
