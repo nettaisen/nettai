@@ -106,9 +106,9 @@ tornado.kind = define.kind {
         if l == "init" then
             init(me)
         elseif l == "update" then
-            -- 0x080C8222: gone when the battle is over.
+            -- 0x080C8222: gone when the battle is over (the state byte alone: its phase stays).
             if battle.over() then
-                me:set_lifecycle("destroy")
+                me.lifecycle = "destroy"
             elseif me.action == 0 then
                 blow(me)
             else
