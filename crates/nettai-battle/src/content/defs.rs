@@ -341,7 +341,7 @@ pub struct SystemDef {
     /// its `setup_defaults` (EXE5's light/dark value a fresh save's 500),
     /// zero elsewhere, but an enum, which has no default unless
     /// `setup_defaults` gives it one: it is left unstated
-    /// (`ContentState::unstate`: EXE6's player's version, falzar or gregar),
+    /// (`ContentState::unstate`: EXE6's player's version, gregar or falzar),
     /// and a round doesn't start until the player's setup states it
     /// ([`SystemDef::setup_block`], `SideRules::for_player`).
     pub setup_default: nettai_content_api::ContentState,

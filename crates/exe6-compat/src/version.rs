@@ -1,7 +1,7 @@
 //! Which version of EXE6 a player plays, as the original tells them apart:
 //! what its saves, its traces and its link data say (Gregar 0, Falzar 1).
 //! The engine has no such type. It and the content know a version by the
-//! name the game's rules declare (`version = { "falzar", "gregar" }` in the
+//! name the game's rules declare (`version = { "gregar", "falzar" }` in the
 //! cross and beast systems' setups), and a match's side holds that name;
 //! this is those names at compat's boundary.
 

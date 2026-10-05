@@ -76,8 +76,9 @@ return define.system {
     -- unlocked (event flag 0xE0), and nettai's Cross list (the cross
     -- system's too: with one, a Cross of the other game's Beast is that
     -- game's).
+    -- (The versions in the cross system's order, the original's.)
     setup = {
-        version = { "falzar", "gregar" },
+        version = { "gregar", "falzar" },
         beast_out = "bool",
         cross_list = "form[5]",
     },
