@@ -1751,6 +1751,11 @@ export type SystemSpec = {
     -- variants, or a table of such fields. The engine checks a definition's
     -- and reads none of them.
     extends: { [string]: { [string]: any } }?,
+    -- For tools, never the simulation: the chips of its game its rules
+    -- can't play of a player's tactics (`battle.tactic`), by id, each with
+    -- why, as a clause about "it" (EXE5's auto battle: a chip the original
+    -- crashes on). A match's check refuses them in a side's tactics.
+    unplayable_tactics: { [string]: string }?,
     custom: {
         -- As the screen opens: how many chips it deals (`sub_802A40C`).
         -- None answering: the custom level (8 at most), NumbrOpn's 10, and

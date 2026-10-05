@@ -835,6 +835,36 @@ mod tests {
         );
     }
 
+    /// A system says, for tools, the chips its rules can't play of a
+    /// player's tactics, each with why (`unplayable_tactics`): the game's
+    /// ruleset answers for a chip (`Defs::unplayable_tactic`), a system out
+    /// of the ruleset doesn't, and an id that is no chip of the game is
+    /// refused as the content is defined.
+    #[test]
+    fn a_system_says_the_tactics_it_cant_play() {
+        let with = |system: &str, entry: &str| {
+            let mut c = testing::build();
+            let src = c.scripts.module_mut(testing::ROOT, "rules/systems").expect("the module");
+            let from = format!("    id = \"{system}\",");
+            assert!(src.contains(&from), "{from}");
+            *src = src.replacen(&from, &format!("{from}\n    unplayable_tactics = {entry},"), 1);
+            c.define().map(|_| c).map_err(|e| e.message)
+        };
+        let chip = |c: &Content, key: &str| c.defs.chip_by_key(key).unwrap_or_else(|| panic!("no chip {key}"));
+        let content = with("test/counter", "{ [\"test/veil\"] = \"it has no weight\" }").expect("defined");
+        assert_eq!(content.defs.unplayable_tactic(chip(&content, "test/veil")), Some("it has no weight"));
+        assert_eq!(content.defs.unplayable_tactic(chip(&content, testing::BOMB)), None);
+        let stock = scenario::content();
+        assert_eq!(stock.defs.unplayable_tactic(chip(&stock, "test/veil")), None, "no system says any");
+        // (The marker isn't one of the stock ruleset's systems.)
+        let unused = with("test/marker", "{ [\"test/veil\"] = \"it has no weight\" }").expect("defined");
+        assert_eq!(unused.defs.unplayable_tactic(chip(&unused, "test/veil")), None);
+        let e = with("test/counter", "{ [\"test/nothing\"] = \"it isn't\" }").map(|_| ()).expect_err("no such chip");
+        assert!(e.contains("`unplayable_tactics` names test/nothing, which is no chip of the game"), "{e}");
+        let e = with("test/counter", "{ \"test/veil\" }").map(|_| ()).expect_err("a list");
+        assert!(e.contains("`unplayable_tactics` is a table of sentences by chip id"), "{e}");
+    }
+
     mod patch_cards {
         use super::*;
         use crate::patch_cards::{InstalledCard, PatchCards};
