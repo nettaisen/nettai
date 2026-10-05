@@ -152,11 +152,64 @@ pub enum Fact<'a> {
     Name(&'a str),
 }
 
+/// A fact of what a player brought, read back ([`Battle::fact`]): a field
+/// of a system's setup.
+#[derive(Clone, Copy)]
+pub struct SetupFact<'a> {
+    schema: &'a nettai_content_api::Schema,
+    block: &'a ContentState,
+    index: usize,
+}
+
+impl<'a> SetupFact<'a> {
+    /// Its value (an array's first element's).
+    pub fn value(&self) -> nettai_content_api::FieldValue {
+        self.block.get(self.schema, self.index)
+    }
+
+    /// An enum's variant, by its name.
+    pub fn name(&self) -> Option<&'a str> {
+        match (self.value(), &self.schema.field(self.index).ty) {
+            (nettai_content_api::FieldValue::Enum(i), FieldType::Enum(names)) => names.get(i as usize).map(String::as_str),
+            _ => None,
+        }
+    }
+
+    /// A flag's value.
+    pub fn flag(&self) -> Option<bool> {
+        match self.value() {
+            nettai_content_api::FieldValue::Bool(b) => Some(b),
+            _ => None,
+        }
+    }
+
+    /// Element `k` of an array (none past its end, or for a field that is
+    /// no array).
+    pub fn elem(&self, k: usize) -> Option<nettai_content_api::FieldValue> {
+        self.block.get_elem(self.schema, self.index, k)
+    }
+}
+
 impl Battle {
+    /// A fact of what side `side`'s player brought, by its name (what
+    /// [`PlayerSetup::set_fact`] writes): the setup field `field` of the
+    /// first system of the game's ruleset that has one. For a reader of
+    /// what a console shows of its player (their game's version, what their
+    /// save unlocks), whichever system keeps it; none when no system does,
+    /// or the player's setup gives the systems none.
+    pub fn fact(&self, side: u8, field: &str) -> Option<SetupFact<'_>> {
+        let rules = &self.setup.players[side as usize & 1].rules;
+        self.content.defs.ruleset_systems().iter().enumerate().find_map(|(slot, &h)| {
+            let schema = self.content.defs.schema(self.content.defs.system(h).setup);
+            Some(SetupFact { schema, block: rules.get(slot)?, index: schema.index_of(field)? })
+        })
+    }
+
     /// Side `side`'s system `key`'s setup block (the player's, as the round
     /// started with it) and its layout, when the side's ruleset has that
-    /// system: for a reader of what a player brought (the frontend's EXE6
-    /// look reads the cross system's version and Cross list).
+    /// system: for a reader of what a player brought by the system that
+    /// keeps it (a game's tools; a frontend reads a fact by its name,
+    /// [`Battle::fact`]).
     pub fn system_setup(&self, side: u8, key: &str) -> Option<(&nettai_content_api::Schema, &ContentState)> {
         let systems = self.content.defs.ruleset_systems();
         let slot = systems.iter().position(|&h| self.content.defs.system(h).key == key)?;
