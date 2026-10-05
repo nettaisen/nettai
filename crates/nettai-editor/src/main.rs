@@ -9,16 +9,20 @@ mod navicust;
 mod pictures;
 mod view;
 
-use app::{Editor, Options, Tab};
+use app::{App, Editor, Options, Tab};
 use names::Lang;
 
 const USAGE: &str = "\
 usage: nettai-editor [OPTIONS] [MATCH.toml]
 
-  A match is of one game, BN6 or BN5, picked first in the arena pane: the
-  file's, else BN6. Its content and its pack (the chips' pictures) are
-  found as nettai-frontend finds them: the packs in the packs directory,
-  $NETTAI_PACKS, else data/content, each by its game.
+  A match is of one game, BN6 or BN5: an opened file's is the one it names,
+  and a new match's is the one you choose (the editor asks first, with
+  none selected; --game answers on the command line). Its content and its
+  pack (the chips' pictures) are found as nettai-frontend finds them: the
+  packs in the packs directory, $NETTAI_PACKS, else data/content, each by
+  its game.
+  --game GAME      a new match's game (bn6 or bn5), in place of the
+                   question; with MATCH.toml, the game it must be of
   --content DIR    the battle content directory (default: $NETTAI_CONTENT,
                    else this repository's content/)
   --pack DIR       a pack's directory, in place of the found pack of its game
@@ -43,6 +47,7 @@ fn parse() -> Result<Options, String> {
         packs: Vec::new(),
         frontend: None,
         file: None,
+        game: None,
         lang: Lang::En,
         tab: Tab::Arena,
         screenshot: None,
@@ -53,6 +58,7 @@ fn parse() -> Result<Options, String> {
         match arg.as_str() {
             "--content" => o.content = Some(value("--content")?.into()),
             "--pack" => o.packs.push(value("--pack")?.into()),
+            "--game" => o.game = Some(value("--game")?),
             "--lang" => {
                 let l = value("--lang")?;
                 o.lang = Lang::from_code(&l).ok_or_else(|| format!("no language {l:?} (en or ja)"))?;
@@ -86,30 +92,40 @@ fn main() -> iced::Result {
             std::process::exit(2);
         }
     };
-    let mut options = options;
-    // The game's content, as the frontend loads it: the file's game, else
-    // BN6.
-    let game = match &options.file {
-        Some(path) => std::fs::read_to_string(path)
-            .map_err(|e| e.to_string())
-            .and_then(|t| nettai_match::file::game_of(&t))
-            .unwrap_or_else(|e| fail(format!("{}: {e}", path.display()))),
-        None => nettai_match::DEFAULT_GAME.to_string(),
+    // The match's game, when the command line says one: the file's (which
+    // --game, if given, must be), else --game's. With neither the window
+    // asks: no game is chosen for a match that hasn't said its own.
+    let game = match (&options.file, &options.game) {
+        (Some(path), given) => {
+            let stated = std::fs::read_to_string(path)
+                .map_err(|e| e.to_string())
+                .and_then(|t| nettai_match::file::game_of(&t))
+                .unwrap_or_else(|e| fail(format!("{}: {e}", path.display())));
+            if let Some(given) = given.as_ref().filter(|g| **g != stated) {
+                fail(format!("{} is a {stated} match, not a {given} one (--game)", path.display()));
+            }
+            Some(stated)
+        }
+        (None, given) => given.clone(),
     };
-    let loaded = load::load_game(options.content.as_deref(), &options.packs, &game).unwrap_or_else(|e| fail(e));
-    (options.content_dir, options.games) = (loaded.dir, vec![loaded.game]);
-    let (content, pictures) = (loaded.content, loaded.pictures);
+    // Its content, as the frontend loads it.
+    let loaded = game.map(|game| {
+        let loaded = load::load_game(options.content.as_deref(), &options.packs, &game).unwrap_or_else(|e| fail(e));
+        let mut of_match = options.clone();
+        (of_match.content_dir, of_match.games) = (loaded.dir, vec![loaded.game]);
+        (loaded.content, loaded.pictures, of_match)
+    });
     // A round that doesn't start is a problem the editor shows, not a
     // message on the terminal.
     std::panic::set_hook(Box::new(|_| {}));
     let shot = options.screenshot.is_some();
-    let boot = std::cell::RefCell::new(Some((content, pictures, options)));
+    let boot = std::cell::RefCell::new(Some((options, loaded)));
     let start = move || {
-        let (content, pictures, options) = boot.borrow_mut().take().expect("the editor boots once");
-        Editor::new(content, pictures, options)
+        let (options, loaded) = boot.borrow_mut().take().expect("the editor boots once");
+        App::new(options, loaded.map(|(content, pictures, of_match)| Editor::new(content, pictures, of_match)))
     };
-    iced::application(start, Editor::update, view::view)
-        .title(Editor::title)
+    iced::application(start, App::update, view::window)
+        .title(App::title)
         .theme(view::theme)
         .subscription(move |_| if shot { iced::window::frames().map(|_| app::Msg::Frame) } else { iced::Subscription::none() })
         .font(FONT)

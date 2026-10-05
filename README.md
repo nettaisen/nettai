@@ -51,14 +51,15 @@ content pack from them, in that order, into `data/content/bn6` (the directory is
 
 The frontend and the editor find the packs in `data/content` (or the directory `$NETTAI_PACKS` names), each by the
 game it says, with no options: a BN5 pack written there (`bn5-extract content`) sits beside BN6's. You play one game
-at a time, BN6 or BN5: a match file names its game, else `--game` does (`bn6` by default), and the battle is that
+at a time, BN6 or BN5: a match file names its game and a trace states its own, else `--game` says it (there is no
+default game: without one the frontend lists the games it found a pack of and stops), and the battle is that
 game's content on its pack. `--pack DIR` names a pack elsewhere, in place of the found one of its game.
 
 Then run the frontend:
 
-    cargo run --release -p nettai-frontend -- --play                                # play live
-    cargo run --release -p nettai-frontend -- <trace.jsonl>                         # replay a recorded match
-    cargo run --release -p nettai-frontend -- --play --headless 1-120 --out <dir>   # render frames to PNG
+    cargo run --release -p nettai-frontend -- --play --game bn6                                # play live
+    cargo run --release -p nettai-frontend -- <trace.jsonl>                                    # replay a recorded match
+    cargo run --release -p nettai-frontend -- --play --game bn6 --headless 1-120 --out <dir>   # render frames to PNG
 
 In live play alone you are the left navi, and the right one is a stand-in that stands still. Each start draws its setup from a seed, which
 it prints: a link battle stage and background, each side's version (Falzar's or Gregar's Beast), a legal random
@@ -79,8 +80,8 @@ uses another TrueType or OpenType font ([text-rendering.md](docs/design/text-ren
 To play another player, one hosts and the other joins, over a LAN, or over the Internet with the host's UDP port
 forwarded to the host's machine:
 
-    cargo run --release -p nettai-frontend -- --play --host 7777                    # host, the left navi
-    cargo run --release -p nettai-frontend -- --play --join 192.0.2.10:7777         # join, the right navi
+    cargo run --release -p nettai-frontend -- --play --game bn6 --host 7777                    # host, the left navi
+    cargo run --release -p nettai-frontend -- --play --game bn6 --join 192.0.2.10:7777         # join, the right navi
 
 Both need the same engine, game and content pack (the handshake checks, and says what differs). Each brings their own folder, version and Crosses, drawn from their own `--seed`, and their patch cards
 (`--cards`); the host's `--stage` picks the stage. Both play with rollback: inputs go out every frame, the other player's are predicted until they
@@ -105,11 +106,13 @@ and each side's navi, version, folder, Crosses, patch cards, NaviCust and stats,
 against the content as you go, and plays them:
 
     cargo build --release -p nettai-frontend -p nettai-editor
-    cargo run --release -p nettai-editor -- [match.toml]
+    cargo run --release -p nettai-editor -- [--game GAME] [match.toml]
     cargo run --release -p nettai-frontend -- --match match.toml     # what Play runs
 
-The arena pane picks the game first: everything below it is that game's, and there is no way to pick another
-game's navi, chip, soul or patch card. Changing the game makes a new match of it (the sides start over). A game is
+A match's game is chosen before anything else, and none is preselected: an opened file is of the game it names,
+and for a new match (the editor started without a file, or New) the editor asks which game first (`--game` answers
+on the command line). The arena pane shows the game: everything below it is that game's, and there is no way to pick another
+game's navi, chip, soul or patch card. Changing the game there makes a new match of it (the sides start over). A game is
 its rules (it has one ruleset), whose systems the pane lists. The panes show only what
 those rules have (Crosses with the forms system, patch cards with the patch-cards system, the NaviCust with the
 navicust system, souls with the souls system): the arena's stages and backgrounds (the game's); each side's navi
