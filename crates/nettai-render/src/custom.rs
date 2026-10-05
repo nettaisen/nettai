@@ -23,7 +23,7 @@ use nettai_battle::battle::{FadeMode, mode};
 use nettai_battle::content::{ChipFlags, ChipTraits};
 use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
 use nettai_battle::custom::{ButtonCell, FolderChip, GameVersion, Phase, Screen, Side, SlotKind, SlotState};
-use nettai_content_api::{ChipHandle, FieldValue, FormHandle};
+use nettai_content_api::{ChipHandle, Data, FieldValue, FormHandle, NaviHandle, Registry};
 
 /// The window: 15 columns of 20 rows at the HUD layer's top left.
 const COLUMNS: usize = 15;
@@ -650,16 +650,37 @@ impl View<'_> {
     }
 }
 
+/// A navi's Crosses of a version of its game, in the order its definition
+/// lists them (its `forms.<version>.crosses`, which EXE6's cross system
+/// reads): the Cross window's order, and the order of a pack version's
+/// names and colors.
+pub fn navi_crosses<'c>(c: &'c Content, navi: NaviHandle, version: &str) -> impl Iterator<Item = FormHandle> + 'c {
+    let listed = match c.defs.definitions.get(Registry::Navi, &c.defs.navi(navi).key) {
+        Some(d) => d.spec.field("forms").field(version).field("crosses"),
+        None => &Data::Nil,
+    };
+    let items = match listed {
+        Data::List(items) => items.as_slice(),
+        _ => &[],
+    };
+    items.iter().filter_map(|v| match v {
+        Data::Ref(Registry::Form, key) => c.defs.form_by_key(key),
+        _ => None,
+    })
+}
+
 /// A Cross's name pictures and colors in the Cross window, by the Cross's
 /// own version (a Gregar Cross shows Gregar's name in any player's window):
 /// its version's custom-screen pictures (the form's `version`) and its
-/// number among that version's Crosses (its `window_order`). Its name is
-/// `cross_names`' 18 tiles from `18 * number` on the cursor's row
-/// (`18 * (number + 5)` on the others'), its colors `cross_palettes[number]`
-/// (`[number + 5]` once used). None: a form that says neither.
-pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
-    let f = c.form(form);
-    Some((a.versioned.get(f.version.as_deref()?), f.window_order? as usize))
+/// number among that version's Crosses as `navi`, whose Cross it is, lists
+/// them (`navi_crosses`). Its name is `cross_names`' 18 tiles from
+/// `18 * number` on the cursor's row (`18 * (number + 5)` on the others'),
+/// its colors `cross_palettes[number]` (`[number + 5]` once used). None: a
+/// form of no version, or one the navi doesn't list.
+pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
+    let version = c.form(form).version.as_deref()?;
+    let number = navi_crosses(c, navi, version).position(|f| f == form)?;
+    Some((a.versioned.get(version), number))
 }
 
 /// The pack's name of a game version (`Versioned`).
@@ -923,10 +944,11 @@ impl Window {
         out
     }
 
-    /// A pick's name and code into name `k`'s tiles.
+    /// A pick's name and code into name `k`'s tiles. (The original leaves
+    /// the code off a chip numbered 0x160 or more, `sub_802B80C`, EXE5's
+    /// 0x08027BC6: no recipe of either game names one.)
     fn put_advance_name(&mut self, v: &View, k: usize, c: FolderChip, text: &TextSink, problems: &mut Problems) {
-        let code = crate::lookups::advance_code(&v.b.content, c.id, problems).then_some(c.code.0);
-        self.put_advance_text(v, k, c.id, text.strings.chip_name(&v.b.content, c.id), code, text, problems);
+        self.put_advance_text(v, k, c.id, text.strings.chip_name(&v.b.content, c.id), Some(c.code.0), text, problems);
     }
 
     /// A name (chip `chip`'s, and a pick's code in its last cell) into name
@@ -978,7 +1000,7 @@ impl Window {
         let navi = v.b.stats[v.side as usize].navi;
         let mut picture = |slot: usize| {
             let form = unlocks.cross_at(&*v.b.content, navi, w.offered[slot])?;
-            crate::lookups::cross_name(v.assets, &v.b.content, form, problems)
+            crate::lookups::cross_name(v.assets, &v.b.content, navi, form, problems)
         };
         for slot in 0..w.count.min(5) as usize {
             let Some((own, number)) = picture(slot) else { continue };

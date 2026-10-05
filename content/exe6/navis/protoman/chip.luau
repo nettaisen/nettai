@@ -19,7 +19,6 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library", "variable_damage" },
     library = { number = 410, index = 0, sort = 0 },
-    traits = { "hides_advance_code" },
     slot_in_limit = 1,
     action = slash.action {
         id = "stepswrd-protoman/action",

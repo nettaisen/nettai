@@ -10,7 +10,7 @@
 use crate::audit::{Graphics, Lookup, Problems, emotion_number};
 use crate::packs::Packs;
 use nettai_assets::{BannerLayout, ChipArt, CustomScreen, DialogueFont, Hud, Palette, SpriteFrame, SpritePart, SpriteSheet, Tiles};
-use nettai_battle::content::{BackgroundId, BannerId, ChipClass, ChipFlags, ChipTraits, Content, MugshotId, PackId, SpriteId};
+use nettai_battle::content::{BackgroundId, BannerId, ChipClass, ChipFlags, Content, MugshotId, PackId, SpriteId};
 use nettai_battle::custom::GameVersion;
 use nettai_battle::field::PanelType;
 use nettai_battle::kinds::player::Emotion;
@@ -243,14 +243,6 @@ pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, pr
     frame
 }
 
-/// Whether the Program Advance animation shows a chip's code after its
-/// name: not for a chip whose definition hides it (its trait
-/// `hides_advance_code`: the chips past the original's chip table).
-pub fn advance_code(c: &Content, chip: ChipHandle, problems: &mut Problems) -> bool {
-    problems.lookup(Lookup::AdvanceName(chip));
-    !c.chip(chip).traits.has(ChipTraits::HIDES_ADVANCE_CODE)
-}
-
 /// A name in the Program Advance animation (`name`, a chip's display
 /// text) in the 8x16 font's glyphs.
 pub fn advance_name(hud: &Hud, chip: ChipHandle, name: &str, problems: &mut Problems) -> Vec<u16> {
@@ -420,14 +412,23 @@ pub fn warning(hud: &Hud, problems: &mut Problems) -> bool {
 }
 
 /// A Cross's name and colors in the Cross window: its version's pictures
-/// and its number among that version's Crosses (`custom::cross_picture`),
-/// with its name's tiles and colors there.
-pub fn cross_name<'a>(a: &'a CustomScreen, c: &Content, form: FormHandle, problems: &mut Problems) -> Option<(&'a nettai_assets::VersionPictures, usize)> {
-    let found = crate::custom::cross_picture(c, a, form);
+/// and its number among that version's Crosses as `navi` lists them
+/// (`custom::cross_picture`), with its name's tiles and colors there.
+pub fn cross_name<'a>(
+    a: &'a CustomScreen,
+    c: &Content,
+    navi: NaviHandle,
+    form: FormHandle,
+    problems: &mut Problems,
+) -> Option<(&'a nettai_assets::VersionPictures, usize)> {
+    let found = crate::custom::cross_picture(c, a, navi, form);
     if problems.lookup(Lookup::CrossName(form)) {
         let key = &c.defs.form(form).key;
         match found {
-            None => problems.note(format!("form {key:?} has no name on the custom screen (its definition says no `version` or no `window_order`)")),
+            None => {
+                let navi = &c.defs.navi(navi).key;
+                problems.note(format!("form {key:?} has no name on the custom screen (it says no `version`, or navi {navi:?} doesn't list it among that version's Crosses)"));
+            }
             Some((own, number)) => {
                 let names = crate::custom::CROSS_NAME_TILES * (number + 5 + 1);
                 if own.cross_names.len() < names || own.cross_palettes.len() < number + 5 + 1 {
