@@ -3,7 +3,7 @@ name = "nettai-demo-editor"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "Edits nettai match files (the arena, each side's ruleset, navi, folder, Crosses, patch cards, NaviCust and stats), checked live against the content, and plays them with nettai-frontend"
+description = "Edits nettai match files (the arena, each side's ruleset, navi, folder, Crosses, patch cards, NaviCust and stats), checked live against the content, and plays them with nettai-demo"
 
 [dependencies]
 nettai-battle.workspace = true

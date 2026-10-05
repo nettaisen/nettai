@@ -3,38 +3,31 @@ name = "nettai-frontend"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "The desktop app that shows nettai battles drawn by nettai-render: replays golden traces, plays live or over the network, with sound"
+description = "Plays nettai battles for a host app to show: loads a game, runs a set live or over the network, and gives its frames and sound. A library with no window, audio device or command line in it (nettai-demo is a desktop program over it)"
 
 [dependencies]
 nettai-battle = { path = "../nettai-battle" }
 # The drawing: a battle into frames.
 nettai-render = { path = "../nettai-render" }
-# The recording replay alone (src/driver.rs: `trace_rounds`): a recording is
-# the original's numbers, which a game's compat crate reads and compares.
-exe6-compat = { workspace = true, features = ["trace"] }
-# EXE5's recordings (the chip lab's EXE5 library), played as EXE6's are.
-exe5-compat = { path = "../exe5-compat", features = ["trace"] }
 nettai-assets = { path = "../nettai-assets" }
-nettai-audio = { path = "../nettai-audio" }
+# The battle's sound as samples (`BattleAudio`), for the host's own output:
+# without `playback`, which is the audio device (cpal).
+nettai-audio = { path = "../nettai-audio", default-features = false }
 # Live play against another player: rollback (getgud) over the rennet
 # protocol, on UDP.
 nettai-netplay = { path = "../nettai-netplay" }
+# The packs: a game's content, graphics, strings and sound.
 nettai-content = { path = "../nettai-content" }
-# Match files (--match): the setup a round is played from, checked; live
-# play's random draw of one.
+# A match: the setup a set is played from, checked; live play's random pick
+# of one; how a set goes on.
 nettai-match = { path = "../nettai-match" }
 # The handles the engine names content by (a chip in a hand).
 nettai-content-api = { path = "../nettai-content-api" }
 m4a.workspace = true
-minifb = "0.28"
 # A netplay offer: a match file's names, in TOML.
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
-# A recording's setup line, for the game it states.
-serde_json = "1"
 
 [dev-dependencies]
-# Reading the headless test's PNGs back.
-png = "0.17"
 nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
 nettai-match = { path = "../nettai-match", features = ["testing"] }

@@ -32,10 +32,13 @@ netplay needs.
   [rennet](https://github.com/tangobattle/rennet) over UDP (or any datagram channel), with a simulated lossy network.
 - `nettai-render`: draws a battle into frames: the stage, the objects, the HUD, the custom screen and the text, from
   engine state and the packs' graphics; no window, sound or network.
-- `nettai-frontend`: the desktop app that shows battles drawn by `nettai-render`: it replays recorded matches or
-  plays live, alone or over the network, with sound.
+- `nettai-frontend`: plays battles for a host app to show, as a library with no window, audio device or command
+  line in it: it loads a game (its content, graphics, strings and sound), runs a set live or over the network a tick
+  at a time from the buttons, and the frames are `nettai-render`'s.
+- `nettai-demo`: the desktop program over `nettai-frontend`: a window and its keys, the command line, headless
+  frames, the audits, the replay of recorded matches, and the sound through the audio device.
 - `nettai-match`: match files, everything a round needs by content key, checked; live play's random pick.
-- `nettai-demo-editor`: a desktop app that edits match files and plays them with the frontend.
+- `nettai-demo-editor`: a desktop app that edits match files and plays them with `nettai-demo`.
 - `exe6-extract`: extracts EXE6's graphics and sound from the four ROMs into a content pack.
 - `exe6-compat`: EXE6's original numbers for the content (`content/exe6/compat`): the codecs of the game's setup
   records, and the trace harness. The engine never depends on it.
@@ -62,9 +65,9 @@ game's content on its pack. `--pack DIR` names a pack elsewhere, in place of the
 
 Then run the frontend:
 
-    cargo run --release -p nettai-frontend -- --play --game exe6                                # play live
-    cargo run --release -p nettai-frontend -- <trace.jsonl>                                    # replay a recorded match
-    cargo run --release -p nettai-frontend -- --play --game exe6 --headless 1-120 --out <dir>   # render frames to PNG
+    cargo run --release -p nettai-demo -- --play --game exe6                                # play live
+    cargo run --release -p nettai-demo -- <trace.jsonl>                                    # replay a recorded match
+    cargo run --release -p nettai-demo -- --play --game exe6 --headless 1-120 --out <dir>   # render frames to PNG
 
 In live play alone you are the left navi, and the right one is a stand-in that stands still. Each start draws its setup from a seed, which
 it prints: a link battle stage and background, each side's version (Falzar's or Gregar's Beast), a legal random
@@ -85,8 +88,8 @@ uses another TrueType or OpenType font ([text-rendering.md](docs/design/text-ren
 To play another player, one hosts and the other joins, over a LAN, or over the Internet with the host's UDP port
 forwarded to the host's machine:
 
-    cargo run --release -p nettai-frontend -- --play --game exe6 --host 7777                    # host, the left navi
-    cargo run --release -p nettai-frontend -- --play --game exe6 --join 192.0.2.10:7777         # join, the right navi
+    cargo run --release -p nettai-demo -- --play --game exe6 --host 7777                    # host, the left navi
+    cargo run --release -p nettai-demo -- --play --game exe6 --join 192.0.2.10:7777         # join, the right navi
 
 Both need the same engine, game and content pack (the handshake checks, and says what differs). Each brings their own folder, version and Crosses, drawn from their own `--seed`, and their patch cards
 (`--cards`); the host's `--stage` picks the stage. Both play with rollback: inputs go out every frame, the other player's are predicted until they
@@ -110,9 +113,9 @@ and each side's navi, version, folder, Crosses, patch cards, NaviCust and stats,
 (`cannon`, `megaman`; [docs/frontend.md](docs/frontend.md) §6). The editor makes and edits them, checking them
 against the content as you go, and plays them:
 
-    cargo build --release -p nettai-frontend -p nettai-demo-editor
+    cargo build --release -p nettai-demo -p nettai-demo-editor
     cargo run --release -p nettai-demo-editor -- [--game GAME] [match.toml]
-    cargo run --release -p nettai-frontend -- --match match.toml     # what Play runs
+    cargo run --release -p nettai-demo -- --match match.toml     # what Play runs
 
 A match's game is chosen before anything else, and none is preselected: an opened file is of the game it names,
 and for a new match (the editor started without a file, or New) the editor asks which game first (`--game` answers
@@ -133,13 +136,13 @@ shows where it would land, lit if it fits and red if not; the wheel or R turns i
 Delete or a drag off the grid takes it off, Esc puts it back; right-clicking a placed program turns it; the stats it
 compiles to show beside it, and the stats-and-bugs block set directly is the pane's other view); every stat (its
 weapons, records and forms the game's). The problems with the match show at the bottom as you edit. Play saves the
-match and runs `nettai-frontend --match` (the one beside the editor's program, or `--frontend PATH`). A new match
+match and runs `nettai-demo --match` (the one beside the editor's program, or `--frontend PATH`). A new match
 (the editor started without a file, or New) is an empty one of the game the editor asks for: its stock rules, its
 first link battle stage, and on each side its MegaMan at his fresh stats with an empty folder, no version (an EXE6
 side's navi pane asks its own, Falzar or Gregar, with nothing chosen: neither is assumed; an EXE5 match has none),
 the version's own Crosses, no patch cards and no NaviCust programs (the problems list says the folders aren't whole
 and the versions aren't chosen until they are).
-Random picks a match of the game as live play does, and `nettai-frontend --play --save-match FILE` writes live
+Random picks a match of the game as live play does, and `nettai-demo --play --save-match FILE` writes live
 play's draw out to edit. `--lang ja` (or the language list) names the chips, navis, Crosses and patch cards in
 Japanese. The editor loads the match's game's content and pack as the frontend does (a game's chips with no use yet
 left out, with the frontend's warning), and Play hands the frontend the same: `--content` and `--pack` are the
