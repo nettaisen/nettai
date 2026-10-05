@@ -29,7 +29,7 @@ return define.form {
     mugshot = { normal = asset.mugshot("spoutcross"), tired = asset.mugshot("spoutcross-tired") },
     -- What R shows in the Cross window.
     -- The chips A charges.
-    charged_chips = { { family = "aqua" } },
+    charged_chips = { { family = "aqua", damaging = true } },
     -- A charged Aqua chip hits twice as hard, and an Aqua chip's use heals.
     charge_doubles = { element = "aqua" },
     chip_heals = { element = "aqua" },
