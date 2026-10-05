@@ -8,8 +8,8 @@ use nettai_battle::content::ChipCode;
 use nettai_battle::custom::FolderChip;
 use nettai_battle::patch_cards::InstalledCard;
 use nettai_battle::setup::NaviStats;
-use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, PatchCardHandle, StageHandle};
-use nettai_match::{CrossList, Match, Side, stats};
+use nettai_content_api::{ChipHandle, NaviHandle, PatchCardHandle, StageHandle};
+use nettai_match::{Match, Side, stats};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -20,8 +20,9 @@ pub enum Tab {
     Arena,
     Navi(usize),
     Folder(usize),
-    Crosses(usize),
-    Souls(usize),
+    /// A list the game's rules take of a side (EXE6's Cross list, EXE5's
+    /// souls), by its place among the game's facts (`crate::facts`).
+    List(usize, usize),
     AutoBattle(usize),
     Cards(usize),
     NaviCust(usize),
@@ -30,9 +31,10 @@ pub enum Tab {
 
 impl Tab {
     /// The tab by its name (`--tab`): `arena`, or `left-` or `right-` and
-    /// `navi`, `folder`, `crosses`, `souls`, `auto-battle`, `cards`,
-    /// `navicust`, `stats`.
-    pub fn from_name(name: &str) -> Option<Tab> {
+    /// `navi`, `folder`, `auto-battle`, `cards`, `navicust`, `stats`, or
+    /// the name of a list the content's game's rules take of a side
+    /// (`cross_list`, `souls`).
+    pub fn from_name(content: &Content, name: &str) -> Option<Tab> {
         if name == "arena" {
             return Some(Tab::Arena);
         }
@@ -45,13 +47,11 @@ impl Tab {
         Some(match pane {
             "navi" => Tab::Navi(side),
             "folder" => Tab::Folder(side),
-            "crosses" => Tab::Crosses(side),
-            "souls" => Tab::Souls(side),
             "auto-battle" => Tab::AutoBattle(side),
             "cards" => Tab::Cards(side),
             "navicust" => Tab::NaviCust(side),
             "stats" => Tab::Stats(side),
-            _ => return None,
+            list => Tab::List(side, crate::facts::list_named(content, list)?),
         })
     }
 }
@@ -93,10 +93,10 @@ pub enum Msg {
     Game(Choice<String>),
     // A side.
     Navi(usize, Choice<NaviHandle>),
-    /// A side's version, by its name (one the game's rules declare).
-    Version(usize, Choice<String>),
+    /// One of a side's facts (what its game's rules take of it), by its
+    /// setup field's name.
+    Fact(usize, String, crate::facts::Edit),
     Level(usize, String),
-    BugFrags(usize, String),
     /// An SP navi's deletion time (by its slot), as typed.
     SpTime(usize, usize, String),
     /// The side from a save file (an EXE6 save's version, unlocks, navi code
@@ -111,15 +111,6 @@ pub enum Msg {
     Regular(usize),
     Tag(usize),
     Search(String),
-    // The Crosses.
-    OwnCrosses(usize, bool),
-    Cross(usize, FormHandle, bool),
-    // The souls: every soul (the default), or the side's list.
-    EverySoul(usize, bool),
-    Soul(usize, FormHandle, bool),
-    // EXE5's karma: a value (the slider, a preset), or as typed.
-    Karma(usize, u16),
-    KarmaText(usize, String),
     // The patch cards.
     AddCard(usize, PatchCardHandle),
     CardOn(usize, usize, bool),
@@ -157,7 +148,9 @@ pub struct Options {
     /// else the window asks.
     pub game: Option<String>,
     pub lang: Lang,
-    pub tab: Tab,
+    /// The pane to start on, by its name (`--tab`, `Tab::from_name`: a
+    /// game's lists are known once its content is loaded).
+    pub tab: Option<String>,
     pub screenshot: Option<PathBuf>,
 }
 
@@ -266,6 +259,9 @@ pub struct Editor {
     /// What is typed into each side's SP deletion times (side, slot), until
     /// it reads as a time.
     pub sp_typed: HashMap<(usize, usize), String>,
+    /// What is typed into a side's facts' number fields (side, the fact's
+    /// name), until it parses.
+    pub fact_typed: HashMap<(usize, String), String>,
     /// What is wrong with the match (none: it can be played).
     pub problems: Vec<String>,
     /// The stats each side's round starts with (after the NaviCust and the
@@ -305,7 +301,7 @@ impl Editor {
             names: Names::default(),
             lang: Lang::En,
             path: options.file.clone(),
-            tab: options.tab,
+            tab: Tab::Arena,
             m,
             dirty: false,
             entry: [0, 0],
@@ -313,6 +309,7 @@ impl Editor {
             games: crate::load::games(options.content.as_deref(), &options.packs),
             typed: HashMap::new(),
             sp_typed: HashMap::new(),
+            fact_typed: HashMap::new(),
             problems: Vec::new(),
             round: Err(String::new()),
             pool: Default::default(),
@@ -324,6 +321,12 @@ impl Editor {
             pictures,
             options,
         };
+        if let Some(name) = e.options.tab.clone() {
+            match Tab::from_name(&e.content, &name) {
+                Some(tab) => e.tab = tab,
+                None => e.status = format!("no pane {name:?} (--tab)"),
+            }
+        }
         e.set_lang(e.options.lang);
         e.refresh();
         e
@@ -392,7 +395,12 @@ impl Editor {
     fn forget_sides(&mut self) {
         self.typed.retain(|&(s, _), _| s > 1);
         self.sp_typed.clear();
+        self.fact_typed.clear();
         self.entry = [0, 0];
+        // (A list's pane is its game's.)
+        if matches!(self.tab, Tab::List(..)) {
+            self.tab = Tab::Arena;
+        }
         self.navicust = Default::default();
         self.auto_battle = Default::default();
     }
@@ -556,27 +564,38 @@ impl Editor {
                     return Task::none();
                 }
                 let side = &mut self.m.sides[s];
-                let keep = stats::diff(&content, &Side::base_stats(&content, side.navi, side.version.as_deref()), &side.stats);
+                let keep = stats::diff(&content, &Side::base_stats(&content, side.navi, side.version(&content)), &side.stats);
                 side.navi = c.value;
                 // (Operating MegaMan again clears the navi code received,
                 // `sub_809CD60`.)
                 side.navi_level = nettai_match::default_navi_level(&content, c.value);
                 self.typed.remove(&(s, "level"));
-                side.stats = Side::base_stats(&content, c.value, side.version.as_deref());
+                side.stats = Side::base_stats(&content, c.value, side.version(&content));
                 // The save's own fields carry over.
                 let carried: std::collections::BTreeMap<String, toml::Value> =
                     keep.into_iter().filter(|(k, _)| ["hp", "regular_memory", "mood", "sun", "beast_out_counter"].contains(&k.as_str())).collect();
                 stats::apply(&content, &self.m.arena.game, &carried, &mut side.stats);
                 if content.navi(c.value).forms.is_none() {
-                    side.crosses = None;
+                    side.facts.reset(&content, nettai_battle::content::PlayerFact::CrossList.name());
                 }
                 self.edited();
             }
-            Msg::Version(s, c) => {
-                let side = &mut self.m.sides[s];
-                side.stats.version = nettai_match::version_byte(&content, Some(&c.value));
-                side.version = Some(c.value);
-                self.edited();
+            Msg::Fact(s, name, edit) => {
+                let game = self.m.arena.game.clone();
+                let changed = crate::facts::apply(&content, &game, &mut self.m.sides[s], &name, &edit);
+                // (What is typed stays as typed until it is a number the
+                // fact takes; any other edit shows the fact's value.)
+                match edit {
+                    crate::facts::Edit::Number(typed) => {
+                        self.fact_typed.insert((s, name), typed);
+                    }
+                    _ => {
+                        self.fact_typed.remove(&(s, name));
+                    }
+                }
+                if changed {
+                    self.edited();
+                }
             }
             Msg::Level(s, t) => {
                 // A level, or none (MegaMan without a navi code; a link navi
@@ -621,6 +640,7 @@ impl Editor {
                             }
                             self.typed.retain(|&(x, _), _| x != s);
                             self.sp_typed.retain(|&(x, _), _| x != s);
+                            self.fact_typed.retain(|(x, _), _| *x != s);
                             self.edited();
                             let notes = if notes.is_empty() { String::new() } else { format!(" ({})", notes.join("; ")) };
                             self.status = format!("imported {}{notes}", path.display());
@@ -628,13 +648,6 @@ impl Editor {
                         Err(e) => self.status = format!("can't import {}: {e}", path.display()),
                     }
                 }
-            }
-            Msg::BugFrags(s, t) => {
-                if let Ok(v) = t.trim().parse() {
-                    self.m.sides[s].bug_frags = v;
-                    self.edited();
-                }
-                self.typed.insert((s, "bug_frags"), t);
             }
             Msg::Entry(s, i) => self.entry[s] = i,
             Msg::Put(s, chip, code) => {
@@ -675,53 +688,6 @@ impl Editor {
                 self.edited();
             }
             Msg::Search(t) => self.search = t,
-            Msg::OwnCrosses(s, own) => {
-                let side = &mut self.m.sides[s];
-                side.crosses = if own { None } else { Some(CrossList::default()) };
-                self.edited();
-            }
-            Msg::Cross(s, f, on) => {
-                let side = &mut self.m.sides[s];
-                let mut forms: Vec<FormHandle> = side.crosses.map(|l| l.forms().collect()).unwrap_or_default();
-                forms.retain(|&x| x != f);
-                if on && forms.len() < nettai_match::CROSSES {
-                    forms.push(f);
-                }
-                // In the window's order: the navi's (Gregar's, then Falzar's).
-                let order = nettai_match::navi_crosses(&content, side.navi).unwrap_or_default();
-                forms.sort_by_key(|f| order.iter().position(|x| x == f));
-                side.crosses = Some(CrossList::new(&forms));
-                self.edited();
-            }
-            Msg::EverySoul(s, every) => {
-                let side = &mut self.m.sides[s];
-                side.souls = if every { None } else { Some(nettai_match::facts::all_souls(&content, &self.m.arena.game)) };
-                self.edited();
-            }
-            Msg::Soul(s, f, on) => {
-                let side = &mut self.m.sides[s];
-                let mut list = nettai_match::facts::owned_souls(&content, &self.m.arena.game, side);
-                list.retain(|&x| x != f);
-                if on {
-                    list.push(f);
-                }
-                // In the content's order.
-                list.sort();
-                side.souls = Some(list);
-                self.edited();
-            }
-            Msg::Karma(s, v) => {
-                self.m.sides[s].karma = v;
-                self.typed.remove(&(s, "karma"));
-                self.edited();
-            }
-            Msg::KarmaText(s, t) => {
-                if let Ok(v) = t.trim().parse::<u16>() {
-                    self.m.sides[s].karma = v;
-                    self.edited();
-                }
-                self.typed.insert((s, "karma"), t);
-            }
             Msg::AddCard(s, card) => {
                 let cards = &mut self.m.sides[s].cards;
                 if !cards.iter().any(|c| c.card == card) {

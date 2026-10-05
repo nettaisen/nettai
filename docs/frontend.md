@@ -1075,9 +1075,10 @@ them).
 
 A match file is everything a round needs, chosen before the battle: the
 game (which is its rules: a game has one ruleset, so a match names none),
-the arena, and each side's navi,
-version, navi code level, stats, folder, Crosses, Beast Out, SP deletion
-times, patch cards and NaviCust, in TOML. **A match is of one game**, named
+the arena, and each side's navi, navi code level, stats, folder, SP deletion
+times, patch cards and NaviCust, and what its game's rules take of it
+besides (its facts: EXE6's version, Cross list and Beast Out, EXE5's karma
+and souls), in TOML. **A match is of one game**, named
 once at the file's top: everything else is a name in that game's namespace
 (`cannon`, `megaman`, `netbattle-43`), looked up there alone
 (`nettai_match::ids`), so a match can't name another game's chip, navi,
@@ -1105,12 +1106,13 @@ later = [                                  # optional: the set's later rounds (e
 
 [left]                                     # you (side 0); then [right]
 navi = "megaman"
-version = "gregar"                         # gregar or falzar: an EXE6 side states its own (none is assumed)
-crosses = ["heatcross", "spoutcross"]      # optional: else the version's own five
-beast_out = false                          # optional: else Beast Out is unlocked (the save's flag 0xE0)
+version = "gregar"                         # the side's facts (see below). EXE6's: version, gregar or falzar: a side states
+cross_list = ["heatcross", "spoutcross"]   # its own (none is assumed); cross_list, else the version's own five; crosses,
+crosses = [true, true, false, true, true]  # which of the version's five it owns (else all); beast_out, else unlocked
+beast_out = false                          # (the save's flag 0xE0); bug_frags, else 0
+bug_frags = 0
 cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
 level = 0                                  # optional: the navi code's level, 0-14 (see below)
-bug_frags = 0                              # optional
 folder = [                                 # 30 entries, [chip, code] ([] empty: a folder being made)
     ["cannon", "A"],
     ["cannon", "A"],
@@ -1136,28 +1138,70 @@ programs = [                               # in the save's order; x, y the cente
 ]
 ```
 
-**A side's version.** A side of EXE6 states its version, `falzar` or
-`gregar` (its Beast, its own Crosses, its pictures and its navi's version
-byte): nothing fills one in (the engine itself starts no round whose
-player's setup leaves an enum of its rules' unstated: EXE6's `version` has
-no default), and a file without it is refused with where
-it is missing. A new match's sides have none until they are given theirs
-(the editor asks on each side's navi pane, with nothing chosen), and a random match
-draws each side's from its seed and writes it. An EXE5 match has no
+**A side's facts.** What a side brings that its game's rules take is the
+game's own to say: each system of the game's ruleset declares a `setup`
+(content/exe6/rules/cross: `setup = { version = { "gregar", "falzar" },
+crosses = "bool[5]", cross_list = "form[5]" }`; content/exe5/rules/light-dark:
+`setup = { karma = "u16" }`), and every field of every system's setup is a
+fact a side of that game may state, as a key of its table by the field's
+name. `nettai-match` names none of them (`nettai_match::facts`): a side
+holds its facts as those setup blocks, the round's setup hands the engine
+the blocks as they are, and a game that declares another fact has it in its
+match files, its descriptions and the editor without a line of Rust.
+
+- A fact's value is its field's type's: a flag `true` or `false`; a whole
+  number in the type's range; an enum's variant by the name the rules give
+  it (`version = "falzar"`); a definition by its name in the game
+  (`"heatcross"`); a list as a TOML array, no longer than it holds, the
+  entries past the last given empty (`souls = []`: none).
+- A fact a file leaves out is what the rules say a side that says nothing
+  has (`setup_defaults`: EXE6's every Cross owned and Beast Out; EXE5's
+  every soul, both unisons and a fresh save's karma, 500), else zero. A
+  file is written with only the facts that differ from that.
+- An enum without a default is **required**: nothing fills one in. EXE6's
+  `version` is the one such: a side of EXE6 states `falzar` or `gregar`
+  (its Beast, its own Crosses, its pictures and its navi's version byte),
+  the engine itself starts no round whose player's setup leaves it
+  unstated, and a file without it is refused with where it is missing
+  ("left: no version: a side of exe6 states its own (gregar or falzar);
+  none is assumed"). A new match's sides have none until they are given
+  theirs (the editor shows nothing chosen), and a random match picks each
+  side's from its seed and writes it.
+- What is refused (`nettai_match::facts::check`, and the file's reader): a
+  key no system declares ("left: no field \"karm\" (a side of exe5 takes
+  cyberworld, karma, chaos_unison, soul_unison, souls)"); a value that isn't
+  the field's type's ("karma: 70000 is past a u16 (0 to 65535)", "version:
+  no \"azure\" (gregar or falzar)"); a name the game hasn't; a definition
+  twice in a list; and, for the one list the engine knows by its role (its
+  form list, EXE6's `cross_list`), a form that is none of the side's navi's
+  own lists. What a value means is the rules' alone: no range is checked
+  beyond the type's.
+- Three facts the engine knows by role (`PlayerFact`: the version, Beast
+  Out, the form list), and where a tool needs one it asks by the role: a
+  navi's version byte in its stats, the forms a random match's form list is
+  picked from.
+
+EXE6's facts: `version` (required); `cross_list`, up to five Crosses of
+either version for the Cross window, in its order (none: the version's
+own); `crosses`, which of the version's own five the side owns (a save's
+flags; all, unless said); `beast_out`; `bug_frags`. EXE5's: `karma` (the
+light/dark value; dark under 470), `souls` (up to sixteen, either
+version's; every soul unless said), `soul_unison` and `chaos_unison` (the
+save's event flags 0 and 0x236), `cyberworld`. An EXE5 match has no
 version: Team ProtoMan and Team Colonel play alike (its rules take none: a
 side may hold either version's souls and chips), so a `version` in an EXE5
-match is refused, and its sides bring none to a battle (their navis'
-version byte is 0, as an EXE5 recording's). A version is still read at the
-edges that have one: a save's, a recording's console's.
+match is refused as any key its rules don't declare, and its sides bring
+none to a battle (their navis' version byte is 0, as an EXE5 recording's).
+A version is still read at the edges that have one: a save's, a recording's
+console's.
 
-An EXE5 match (`game = "exe5"`: its rules take no version and have no
-Crosses) names EXE5's navis, chips, patch cards and NaviCust programs, and
-its sides may say besides:
+An EXE5 match (`game = "exe5"`) names EXE5's navis, chips, patch cards and
+NaviCust programs, and its sides may say besides:
 
 ```toml
 [left]
-karma = 100                                # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
-souls = ["protosoul", "colonelsoul"]       # optional: the souls it has, EXE5's, either version (none: every soul)
+karma = 100                                # a fact: the light/dark value (default 500; dark under 470)
+souls = ["protosoul", "colonelsoul"]       # a fact: the souls it has, EXE5's, either version (default: every soul)
 
 [left.auto_battle]                       # optional: what a navi in auto battle plays from the side's save, whole (none: nothing learned)
 first = [{}, {}, {}]                       # the data's places 1 to 3: each a chip, a pattern record's number, 0 or {} (an empty place)
