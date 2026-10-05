@@ -277,6 +277,7 @@ language = "ja"
 "roll-ds" = { name = "ロール\uE008", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
 "roll-sp" = { name = "ロール\uE003", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
 "rush" = { name = "ラッシュサポート", description = "" }
+"s-melody" = { name = "Sメロディー", description = "マヒこうかのある\nうたをはなつ\nついびしてすすむ" }
 "satelity" = { name = "サテライトレイ", description = "カーソルをとめて\nそのマスにクロスに\nひろがるレーザー!" }
 "seaseed" = { name = "オーシャンシード", description = "3マス前にタネ!\n9マス分のパネルを\n水パネルにする!" }
 "serchman" = { name = "サーチマン", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
@@ -374,6 +375,7 @@ language = "ja"
 "protoman" = { name = "ブルース" }
 "searchman" = { name = "サーチマン" }
 "shadowman" = { name = "シャドーマン" }
+"toadman" = { name = "トードマン" }
 "tomahawkman" = { name = "トマホークマン" }
 
 [forms]

@@ -361,3 +361,4 @@
 "splitup" = { id = 0x19e, action = 0x0a, subtype = 0, damage_formula = 64 }
 "kcrusher" = { id = 0x1a5, action = 0x08, subtype = 1, damage_formula = 70 }
 "numtrap" = { id = 0x1a1, action = 0x08, subtype = 3, damage_formula = 66 }
+"s-melody" = { id = 0x1a6, action = 0x07, subtype = 3, damage_formula = 72 }

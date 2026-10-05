@@ -2,8 +2,9 @@
 -- The ripple over a body under the sea's surface (EXE5's effect object #0x3E, 0x080E4B64; EXE6's `sub_80E4CB8`, which
 -- nothing starts): the navi's status tick keeps one while its flags say it is under (0x80000004, 0x0800DEB2: the role
 -- `kinds.dive_ripple`, the body its first related) and ends it as it comes up. It sits on the surface over the body,
--- its animation by the body's (0 standing, 2 for the body's 3, 1 for the rest), shown on the consoles that see the
--- body (0x0800CDF4); as it starts, a splash (the effect table's row 0x5D, 14-1E).
+-- its animation by the body's (0 standing, 1 for the body's 4, 2 for the rest: the body's 3, and any other by the
+-- register its visibility mask was in, 0x080E4BFC: a navi whose animations aren't MegaMan's, ToadMan shooting),
+-- shown on the consoles that see the body (0x0800CDF4); as it starts, a splash (the effect table's row 0x5D, 14-1E).
 
 local ripple = {}
 
@@ -17,7 +18,7 @@ local function follow(me: Object)
     me.pos = Vec3.new(p.x, p.y, 0)
     me.visible = true
     local a = body.anim
-    me.anim = if a == 0 then 0 elseif a == 3 then 2 else 1
+    me.anim = if a == 0 then 0 elseif a == 4 then 1 else 2
     me:hide_from_blind()
     if me.phase_init == 0 then
         battle.effect(me.pos, SPLASH)

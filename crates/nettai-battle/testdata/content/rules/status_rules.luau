@@ -34,4 +34,5 @@ return {
     },
     -- The weakness request breaks a Cross or a Beast to what it breaks to.
     form_break = "cross_or_beast",
+    weakness_hit_breaks_form = true,
 }

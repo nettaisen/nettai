@@ -196,6 +196,9 @@ return {
         confusion = asset.sprite("confusion"),
         blindness = asset.sprite("blindness"),
         immobilized = asset.sprite("immobilized"),
+        -- The mark over a navi a damaging weakness hit landed on ("!!": effect object 0x6B, 0x080E84B0, EXE6's code
+        -- with its animation 0 alone; spawned by 0x08017254).
+        hit_marker = asset.sprite("hit-marker"),
         -- The Full Synchro aura (actor object 0x5E, 0x080C4608: 14-16, EXE6's sprite numbers; its animation the navi's
         -- actor record's AI index).
         full_synchro_aura = asset.sprite("full-synchro-aura"),
