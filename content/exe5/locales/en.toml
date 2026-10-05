@@ -60,6 +60,7 @@ language = "en"
 "bugcurse" = { name = "BugCurse", description = "Make\nenemy\nbuggy!" }
 "bugfix" = { name = "BugFix", description = "Repairs &\nremoves\nbugs" }
 "busterup" = { name = "BusterUp", description = "Power\ngoes up\nby 1" }
+"c-cannon" = { name = "C-Cannon", description = "3sq blast\nif hits\nend row" }
 "cacdanc1" = { name = "CacDanc1", description = "Balls of\ncacti atk\nthe enmy" }
 "cacdanc2" = { name = "CacDanc2", description = "Balls of\ncacti atk\nthe enmy" }
 "cacdanc3" = { name = "CacDanc3", description = "Balls of\ncacti atk\nthe enmy" }
@@ -353,6 +354,7 @@ language = "en"
 "z-saver" = { name = "Z Saver", description = "Repliroid\nswrd cuts\n3 times" }
 
 [navis]
+"colonel" = { name = "Colonel" }
 "megaman" = { name = "MegaMan", variant_name = "BCMegaMn" }
 "protoman" = { name = "ProtoMan" }
 

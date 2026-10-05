@@ -7,6 +7,7 @@
 [navis]
 "megaman" = 0
 "protoman" = 1
+"colonel" = 7
 
 # Weapons: the weapon routine numbers (0x0800F370, EXE6's `off_80117D4`) NaviStats +0x04 (buster), +0x05 (charged
 # shot), +0x07 (B+Back) and +0x39 (A charge) name; 0xFF none.
@@ -60,6 +61,7 @@
 # routine 0, MegaMan's).
 "protoman/charge" = [0x1E]
 "protoman/back" = [0x0B]
+"colonel/charge" = [0x46]
 
 # Projectile variants: the projectile table's rows (0x080C4718, EXE6's `off_80C4C78`) the buster-shot and
 # charged-shot programs (NaviStats +0x4D, +0x4F) name; the buster's and the charged shot's own, and the chips'.
