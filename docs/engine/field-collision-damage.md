@@ -707,7 +707,7 @@ Bits the engine tests directly (everything else only matters through `Target & S
 | 0x1008 / 0x3000 / 0x0C003000 | Flag filters | Reach targets with F1 0x4 / 0x00800000 |
 | 0x0100 | `sub_3007218` | Counted into receiver +0x92 (drain) |
 | 0x0080 | Flag filters | Reach / be reached by F1 0x20 objects |
-| 0x0010 | Guard (stripped), `sub_801A2CC` | On a navi: erases the held chip |
+| 0x0010 | Guard (stripped), `sub_801A2CC` | On a navi: chip destruction (destroys the held chip) |
 | 0x0004 | Flag filters, `sub_801A648` | Pierces invisibility and flashing (0x202) |
 | 0x0002 | `sub_30074BA` | "Break": thaws a frozen target for +1 multiplier |
 

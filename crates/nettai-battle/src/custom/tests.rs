@@ -846,3 +846,28 @@ fn a_buttons_chip_keeps_the_chip_windows_frame_and_is_described() {
     p.press(keys::START);
     assert_eq!((p.screen().cursor, framed(&p)), (OK_SLOT, None));
 }
+
+/// The hover over a dark chip plays its sound each time the hover's
+/// counter wraps, every 64 ticks from the screen's opening, while the
+/// screen isn't clear (EXE5's 0x08025A8C); never without a dark chip.
+#[test]
+fn the_dark_hover_sounds_every_64_ticks() {
+    let sounded = |chips: &[(ChipId, u8)]| -> Vec<u32> {
+        let mut p = Player::new(chips);
+        p.open();
+        let mut ticks = Vec::new();
+        for _ in 0..200 {
+            p.step(0);
+            if p.screen().look.drawn.sounds().any(|s| s == super::look::ScreenSound::DarkHover) {
+                assert_eq!(p.screen().look.hover_count, 0);
+                assert_ne!(p.screen().look.dark, DarkHover::Clear);
+                ticks.push(p.tick);
+            }
+        }
+        ticks
+    };
+    let ticks = sounded(&[(DARK, 0), (SHOT, 0)]);
+    assert_eq!(ticks.len(), 3, "{ticks:?}");
+    assert!(ticks.windows(2).all(|w| w[1] - w[0] == 64), "{ticks:?}");
+    assert_eq!(sounded(&[(SHOT, 0), (MEGA, 0)]), Vec::<u32>::new());
+}

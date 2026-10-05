@@ -283,14 +283,21 @@ pub fn dim_fade(b: &Battle) -> Fade {
 
 /// The transformation sequencer fades the tile layers (not the sprites)
 /// out to black while the navis change form, and back in (a palette flash
-/// takes its place: `objects::palette_flash`).
+/// takes its place: `objects::palette_flash`). The same two fades started
+/// outside the sequencer (`battle.screen_fade`: EXE5's dark MegaMan's last
+/// stand, his action 0x30) are drawn by the fade's own record: out as it
+/// runs and black until the fade back in, which clears as it runs.
 pub fn layer_fade(b: &Battle) -> Fade {
     let left = b.fade.remaining();
     match b.transform_seq.state {
         SequencerState::Transform { phase: TransformPhase::FadeOut, started: true } => Fade::Black(16u8.saturating_sub(left)),
         SequencerState::Transform { phase: TransformPhase::Change, .. } => Fade::Black(16),
         SequencerState::Transform { phase: TransformPhase::FadeIn, started } => Fade::Black(if started { left.min(16) } else { 16 }),
-        _ => Fade::None,
+        _ => match b.fade.mode {
+            FadeMode::TransformOut => Fade::Black(16u8.saturating_sub(left)),
+            FadeMode::TransformIn if b.fade.active() => Fade::Black(left.min(16)),
+            _ => Fade::None,
+        },
     }
 }
 
