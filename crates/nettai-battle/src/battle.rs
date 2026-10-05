@@ -6,7 +6,7 @@ use nettai_content_api::SystemHook;
 use crate::actor::{ActorId, Actors};
 use crate::collision::Collision;
 use crate::behavior::Behaviors;
-use crate::custom::{CustomScreens, Recorded};
+use crate::custom::CustomScreens;
 use crate::field::Field;
 use crate::hand::ChipHand;
 use crate::hud::{Banner, BannerStatus, CustomGauge};
@@ -380,10 +380,6 @@ pub struct TickEvents {
     /// After the round, the link session the end state asked to close has
     /// closed.
     pub link_closed: bool,
-    /// For checking against recordings that lack a player's folder: what
-    /// the recording says that player's custom screen sends (see
-    /// `custom::PlayerSetup::folder`). None for simulated players.
-    pub recorded: [Option<Recorded>; 2],
 }
 
 #[derive(Clone, Debug)]
@@ -939,7 +935,7 @@ impl Battle {
         // renderer clears them after drawing.
         self.field.clear_one_frame_looks();
         match self.round.top {
-            top::RUNNING => self.tick_running(input, events),
+            top::RUNNING => self.tick_running(input),
             top::END => self.tick_end(input, &events),
             _ => {}
         }
@@ -951,13 +947,10 @@ impl Battle {
     /// The link's step at the start of a tick (`sub_801FF18`): both
     /// players' packets go out, the ones sent `delay` ticks ago arrive;
     /// and both joypads read this tick's buttons.
-    fn exchange_packets(&mut self, input: &[PlayerTick; 2], events: &TickEvents) -> [Packet; 2] {
+    fn exchange_packets(&mut self, input: &[PlayerTick; 2]) -> [Packet; 2] {
         let sent = std::array::from_fn(|p| Packet {
             held: input[p].held & 0x3FF,
-            in_custom: match &events.recorded[p] {
-                Some(r) => r.in_custom,
-                None => self.custom.sides[p].in_custom,
-            },
+            in_custom: self.custom.sides[p].in_custom,
         });
         for (side, t) in self.custom.sides.iter_mut().zip(input) {
             side.joypad.update(t.held);
@@ -965,15 +958,15 @@ impl Battle {
         self.link.exchange(sent)
     }
 
-    fn tick_running(&mut self, input: &[PlayerTick; 2], events: TickEvents) {
+    fn tick_running(&mut self, input: &[PlayerTick; 2]) {
         // Apply both players' packets.
-        let arrived = self.exchange_packets(input, &events);
+        let arrived = self.exchange_packets(input);
         for (p, packet) in arrived.iter().enumerate() {
             self.inputs[p].update(packet.held | keys::PRESENT);
             self.round.remote_status[p] = if packet.in_custom { 4 } else { 0 };
         }
 
-        self.run_mode_handler(&events);
+        self.run_mode_handler();
         self.run_objects();
         self.update_cameras();
         if !self.paused && !self.is_dimmed() {
@@ -1002,7 +995,7 @@ impl Battle {
     /// then close the link session (mode 0, `sub_8007B9C`). Once it has
     /// closed (mode 4) the round is over (`sub_8007CA0`).
     fn tick_end(&mut self, input: &[PlayerTick; 2], events: &TickEvents) {
-        self.exchange_packets(input, events);
+        self.exchange_packets(input);
         if self.round.mode != 0 {
             if self.outcome.is_none() {
                 self.finish_round();
@@ -1163,11 +1156,11 @@ impl Battle {
 
     // ---- Battle-mode handler -------------------------------------------
 
-    fn run_mode_handler(&mut self, events: &TickEvents) {
+    fn run_mode_handler(&mut self) {
         match self.round.mode {
             mode::INTRO => self.mode_intro(),
             mode::BANNER => self.mode_banner(),
-            mode::CUSTOM => self.mode_custom(&events.recorded),
+            mode::CUSTOM => self.mode_custom(),
             mode::FIGHTING => self.mode_fighting(),
             mode::FADE_OUT => self.mode_fade_out(),
             m => panic!("battle mode state {m:#x} not supported in netbattles"),
@@ -1304,7 +1297,7 @@ impl Battle {
     /// screens open on the first tick (`sub_8026840`) and run from the
     /// next; the tick after both results are in, the fight resumes
     /// (`sub_8026A6C`).
-    fn mode_custom(&mut self, recorded: &[Option<Recorded>; 2]) {
+    fn mode_custom(&mut self) {
         if self.round.init == 0 {
             self.round.init = 1;
             self.open_custom_screens();
@@ -1313,7 +1306,7 @@ impl Battle {
         if self.custom.committed {
             return self.close_custom_screens();
         }
-        self.tick_custom_screens(recorded);
+        self.tick_custom_screens();
     }
 
     /// `sub_8026A6C`: the screens close and the fight resumes.

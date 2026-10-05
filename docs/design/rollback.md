@@ -21,7 +21,7 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
 - **Protocol**: rennet (a workspace dependency likewise) carries each player's inputs to the other peer once and in
   order over datagrams that are lost, reordered and duplicated, every frame resending what isn't acknowledged, so a
   lost datagram's inputs come with the next one. nettai's protocol (`protocol`) names what a player's stream holds:
-  a tick's buttons and event flags (one byte for A, B and the directions), a payload for the rare event with data,
+  a tick's buttons and event flags (one byte for A, B and the directions),
   and the round and match markers; and the frame's meta, the sender's tick advantage. A frame costs 6 bytes at no
   latency, 9 at 2 frames, 17 at 5 and 28 at 10 (the unacknowledged window grows with the round trip) (§4.6).
 - **Transport**: a `Datagram` trait (send, and take what arrived, never waiting); UDP for direct play
@@ -87,8 +87,7 @@ the frame's record combines both shares (`bn6::tick_input`).
 | `TickEvents::exchange` | Each player's result (`custom::Side::sent`), arriving 50 + `link_delay` ticks after it is sent |
 | `TickEvents::link_closed` | Still an event (the end state's link session closing) |
 
-`TickEvents::recorded` exists only to check against golden traces that lack a player's folder: that player's
-screen isn't simulated and the recording supplies what it sent (engine/custom-screen.md §7). The events are part
+The events are part
 of the frame's input record: one player's input carries them (the golden-trace replay puts them in player 0's),
 both peers receive them like any input, and a peer that predicted "no events" rolls back when they arrive.
 Prediction repeats the buttons and never repeats events (`Game::predict` for `Battle`).
@@ -321,10 +320,9 @@ The inputs go between the peers on rennet (Tango's netplay transport, §4.6), ov
 - `standin`: `StandInBattle` as a `Game` on the buttons alone (what live netplay plays); a MegaMan built in code, a
   netbattle setup on given content with given folders, and a seeded button masher.
 - `protocol`: nettai's rennet protocol: the elements, the meta, their codecs, the horizon, and `WireInput`, a
-  game input's wire form (buttons, flags, payload), for the buttons alone and for `PlayerInput` (§4.6).
-- `wire`: byte codecs for the engine types that travel: a recorded custom-screen result (a `PlayerInput`'s
-  payload), a folder, a Cross list, a game, the content's hash. Structs are written field by field, destructured
-  without `..`, so a new field doesn't compile until it is written.
+  game input's wire form (buttons and flags), for the buttons alone and for `PlayerInput` (§4.6).
+- `wire`: byte codecs for what the handshake carries: its versions, the game, the content's hash, the nonce. (What
+  a player brings to the match is the frontend's to encode: a match file's side, as text.)
 - `link`: `InputLink`, one peer's end of the exchange on rennet's `OutStream`/`InStream`: inputs pushed with the
   tick advantage, the datagram to send, the datagrams received turned into inputs in order, and what went by (sizes,
   copies, reordering, the round trip, the other's loss as the receiver sees it).
@@ -442,7 +440,6 @@ which says what an element and the meta are. nettai's (`protocol::Netplay`):
 | Element | What | Wire form (a LEB128 head; bit 0 tells a tick from the rest) |
 |---|---|---|
 | `Tick { held, flags }` | One tick of a player's input: the buttons (ten), and the game's flags for the tick's events | `(buttons << 1) | flags << 11`: buttons in the wire order A, B, right, left, up, down, SELECT, START, R, L, so that a tick with only A, B and directions is one byte, with any button two, with flags up to three |
-| `Payload(chunk)` | Up to 32 bytes that the next tick carries besides, in order before it | head `(len + 1) << 1 | 1`, then the bytes |
 | `RoundEnd` | The sender's round is over: what follows is the next round's | `0x01` |
 | `MatchEnd` | The sender left | `0x03` |
 
@@ -451,11 +448,9 @@ LEB128: one byte), which the receiver hands getgud with each input it delivers (
 reordered old frame can't set it back). An ack-only frame (nothing new to send while the peer waits) still carries
 the window, the ack and the meta.
 
-**A game's input on the wire** is `protocol::WireInput`: its buttons, flags and payload. The stand-in battle's input
-is the buttons, with no flags (live netplay's: the end of a round is derived in the game). `PlayerInput`'s events
-are flags: the link closing, and for each side whose recording lacks a folder, the recorded screen status and
-whether a result comes; a recorded result is the payload (a `CustomResult` in `wire`'s form, 130 to 170 bytes,
-four to six chunks), once a custom screen. Only the golden-trace replays have recorded events; they go through the same
+**A game's input on the wire** is `protocol::WireInput`: its buttons and flags. The stand-in battle's input
+is the buttons, with no flags (live netplay's: the end of a round is derived in the game). `PlayerInput`'s one event
+is a flag: the link closing. The golden-trace replays go through the same
 protocol as live play.
 
 **Byte cost.** A frame is the header (the base, two bytes from the 128th element to the 16,383rd, three after;
@@ -476,17 +471,14 @@ the mean frame per peer:
 | 25% lost, 10 + 4 | 24.1 | 30.0 | 59 |
 
 At 60 frames a second each way, that is about 2 to 3.5 kB/s with the headers. The golden traces cost the same
-(§5.3: 5.9 to 28 bytes a frame). (A replay of a recording that lacks a player's folder would carry that player's
-recorded screen status as flags every tick, two bytes, and their results as four to six chunks a custom screen;
-the traces the suite replays under rollback all have both folders, so the payload path is checked by
-nettai-netplay's own tests.)
+(§5.3: 5.9 to 28 bytes a frame).
 
 **The horizon** (`protocol::HORIZON`, 240 elements: four seconds) is the widest gap the in-stream accepts: an element
 that many past the first missing one can't be recovered in time, and the link breaks (`LinkError::HorizonExceeded`).
 The out-stream keeps at most that many unacknowledged elements. getgud has no limit of its own: a peer's stall guard
 (`max_lead`) bounds how far its player's input runs ahead of the other's, and since each side may lead by that much
 a gap reaches at most twice the stall guard; `protocol::max_lead` keeps the stall guard under half the horizon,
-less a margin for payloads and markers (`PeerConfig::new` checks; the frontend's stall guard is 30). So two peers
+less a margin for markers (`PeerConfig::new` checks; the frontend's stall guard is 30). So two peers
 that keep it never open a gap past the horizon, and a gap past it means a peer that doesn't, which tears the match
 down. A link that just goes quiet doesn't break: both peers wait at their stall guard, sending their windows, and
 when the link comes back the match goes on (§5.1); the frontend gives up after 10 seconds of silence.
@@ -587,7 +579,7 @@ and the peers stall a little more for clock sync. getgud rolls back less often t
 before it: it checks predictions as rows settle, promotes the prefix that held, and catches up on several arrivals in
 one rollback.
 
-The other tests: the engine's own input record with the recorded events riding in player 0's input (latencies 3 and
+The other tests: the engine's own input record with the events riding in player 0's input (latencies 3 and
 8, in sync), observers seeing every simulated, rewound and settled frame and nothing past the end of the input,
 clock sync (a peer that starts 6 or 20 frames ahead), the two negative tests below, and:
 
