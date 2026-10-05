@@ -626,7 +626,17 @@ impl Round {
                 folder,
                 joypad_phase: self.setup.joypad_phases[side as usize],
                 navi_level: match self.setup.navi_levels.map(|l| l[side as usize]) {
-                    None => None,
+                    // (Nothing reads MegaMan's side's level: an older
+                    // recording, which has none, replays. A team navi's
+                    // attacks go by its side's.)
+                    None if d.navi_stats[side as usize].navi == 0 => None,
+                    None => {
+                        return Err(format!(
+                            "side {side} operates a team navi (navi {}), but the recording's setup has no navi_levels: \
+                             its attacks' damage goes by its side's level; record it again with a chip lab that writes them",
+                            d.navi_stats[side as usize].navi
+                        ));
+                    }
                     Some(l) if l <= nettai_battle::custom::MAX_NAVI_LEVEL as u32 => Some(l as u8),
                     Some(l) => return Err(format!("side {side}'s navi level {l}")),
                 },

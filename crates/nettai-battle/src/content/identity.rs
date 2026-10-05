@@ -135,6 +135,10 @@ pub struct OverlayHooks {
     pub refresh: bool,
     /// A flinch restarts it (`off_80EAB94`).
     pub flinch: bool,
+    /// The flinch's hook tests for what the navi wears before it restarts
+    /// it (EXE5's team navis' hooks; EXE6's link navis' don't, and without
+    /// the overlay jump into another routine).
+    pub flinch_checked: bool,
     /// A drag restarts it (`off_80EABF8`).
     pub drag: bool,
 }
@@ -394,6 +398,7 @@ pub(crate) fn read(
             death: parts.is_some(),
             refresh: matches!(parts, Some(Parts::Body(_) | Parts::Bodies(..) | Parts::BeastHead { .. })),
             flinch: false,
+            flinch_checked: false,
             drag: false,
         },
         Data::List(names) => {
@@ -403,8 +408,9 @@ pub(crate) fn read(
                     Data::Str(s) if s == "death" => h.death = true,
                     Data::Str(s) if s == "refresh" => h.refresh = true,
                     Data::Str(s) if s == "flinch" => h.flinch = true,
+                    Data::Str(s) if s == "flinch_checked" => (h.flinch, h.flinch_checked) = (true, true),
                     Data::Str(s) if s == "drag" => h.drag = true,
-                    other => return Err(what(format!("`overlay_hooks` has {other:?}, not death, refresh, flinch or drag"))),
+                    other => return Err(what(format!("`overlay_hooks` has {other:?}, not death, refresh, flinch, flinch_checked or drag"))),
                 }
             }
             h

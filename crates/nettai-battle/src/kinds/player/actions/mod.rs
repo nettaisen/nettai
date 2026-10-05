@@ -56,13 +56,14 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: super::NaviAction) {
     }
 }
 
-/// `object_setDefaultCounterTime`: an attack opens a 16-tick counter
-/// window (for players, only in link battles).
-pub(crate) fn open_counter_window(b: &mut Battle, r: ObjectRef) {
+/// `object_setCounterTime`: an attack opens a counter window of `ticks`
+/// (for players, only in link battles); `object_setDefaultCounterTime`'s
+/// is 16 ticks.
+pub(crate) fn open_counter_window(b: &mut Battle, r: ObjectRef, ticks: u8) {
     if super::ai(b, r).actor_type == crate::actor::ActorType::Player && !super::is_link(b) {
         return;
     }
-    super::coll_mut(b, r).counter_timer = 0x10;
+    super::coll_mut(b, r).counter_timer = ticks;
 }
 
 /// The reactive-defense abort some chip actions check after each phase
