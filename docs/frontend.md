@@ -1083,8 +1083,12 @@ and eight pattern records. A battle reads nearly all of that block, so a
 side that states the data states all of it, and nothing is filled in: every
 place of every list, and all eight records. A side with no
 `[left.computer_navi]` has a block nothing has written (every place empty,
-every record blank): nothing learned, and the computer navi only fires its
-buster between rests.
+every record blank: 0xFF throughout), which is a save's that has never
+finished a battle; the computer navi only fires its buster between rests.
+A new match (the editor's New) and a random one state what the game's
+battle end writes instead: a new match's sides every place empty and every
+record zeros (a player it has learned nothing of, who plays the same), a
+random match's below.
 
 The 42 places, in the six lists the game's battle end writes them in:
 
