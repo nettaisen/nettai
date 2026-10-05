@@ -951,7 +951,7 @@ later = [                                  # optional: the set's later rounds (e
 
 [left]                                     # you (side 0); then [right]
 navi = "megaman"
-version = "gregar"                         # falzar or gregar: an EXE6 side states its own (none is assumed)
+version = "gregar"                         # gregar or falzar: an EXE6 side states its own (none is assumed)
 crosses = ["heatcross", "spoutcross"]      # optional: else the version's own five
 beast_out = false                          # optional: else Beast Out is unlocked (the save's flag 0xE0)
 cards = [{ card = "canodumb" }, { card = "shadow", on = false }]

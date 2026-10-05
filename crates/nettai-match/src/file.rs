@@ -342,8 +342,8 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
                 f
             })
             .collect();
-        if forms.len() > exe6_compat::unlocks::CROSSES {
-            say(format!("{} Crosses: a Cross window offers {}", forms.len(), exe6_compat::unlocks::CROSSES));
+        if forms.len() > crate::facts::cross_list_capacity(content) {
+            say(format!("{} Crosses: a Cross window offers {}", forms.len(), crate::facts::cross_list_capacity(content)));
             CrossList::default()
         } else {
             CrossList::new(&forms)
@@ -904,27 +904,29 @@ mod tests {
         assert!(new.sides.iter().all(|s| s.version.is_none() && s.stats.version == 0));
         let problems = crate::check_match(&six, &new);
         for side in ["left", "right"] {
-            has(problems.clone(), &format!("{side}: no version: a side of exe6 states its own (falzar or gregar); none is assumed"));
+            has(problems.clone(), &format!("{side}: no version: a side of exe6 states its own (gregar or falzar); none is assumed"));
         }
         assert!(!write(&six, &new).contains("version"));
         // (Nor does the engine start its round: a player's setup states the
         // version, and nothing fills one in.)
         let refused = crate::check::start(&six, &new).err().expect("no round without the versions");
-        assert_eq!(refused, "the round doesn't start: a player's setup doesn't state the cross system's `version` (falzar or gregar): none is assumed");
+        assert_eq!(refused, "the round doesn't start: a player's setup doesn't state the cross system's `version` (gregar or falzar): none is assumed");
         let drawn = write(&six, &crate::draw::live(&six, "exe6", 1, None).unwrap());
         assert_eq!(drawn.matches("\nversion = \"falzar\"\n").count() + drawn.matches("\nversion = \"gregar\"\n").count(), 2, "{drawn}");
         // A version is its name, one of those the game's rules declare
         // (their `version` field's, in its order): a side made in code
         // with another is refused as a file's is.
-        assert_eq!(crate::facts::versions(&six), ["falzar", "gregar"]);
-        assert_eq!((crate::facts::versions_phrase(&six), crate::facts::version_title("falzar")), ("falzar or gregar".to_string(), "Falzar".to_string()));
+        // (EXE6's come in the original's order, which numbers them: the
+        // byte a navi's stats carry is the version's place.)
+        assert_eq!(crate::facts::versions(&six), ["gregar", "falzar"]);
+        assert_eq!((crate::facts::versions_phrase(&six), crate::facts::version_title("falzar")), ("gregar or falzar".to_string(), "Falzar".to_string()));
         let live = crate::draw::live(&six, "exe6", 1, None).unwrap();
         assert!(live.sides.iter().all(|s| crate::facts::versions(&six).contains(s.version.as_ref().unwrap())));
         let mut odd = live.clone();
         odd.sides[0].version = Some("azure".into());
-        has(crate::check_match(&six, &odd), "left: no version \"azure\" (falzar or gregar)");
-        // (The byte a battle's stats carry is EXE6's number for the name.)
-        assert_eq!((crate::version_byte(Some("gregar")), crate::version_byte(Some("falzar")), crate::version_byte(None)), (0, 1, 0));
+        has(crate::check_match(&six, &odd), "left: no version \"azure\" (gregar or falzar)");
+        let byte = |v| crate::version_byte(&six, v);
+        assert_eq!((byte(Some("gregar")), byte(Some("falzar")), byte(None), byte(Some("azure"))), (0, 1, 0, 0));
         // EXE5.
         let five = crate::testing::exe5_content();
         assert!(crate::facts::versions(&five).is_empty());
@@ -965,8 +967,8 @@ mod tests {
         has(bad("game = \"exe6\"", "game = \"bn7\""), "no game \"bn7\"");
         // The version: one of the game's two, stated (none is assumed).
         let version = good.lines().find(|l| l.starts_with("version = ")).unwrap();
-        has(bad(version, "version = \"azure\""), "left: no version \"azure\" (falzar or gregar)");
-        has(bad(&format!("{version}\n"), ""), "left: no version: a side of exe6 states its own (falzar or gregar); none is assumed");
+        has(bad(version, "version = \"azure\""), "left: no version \"azure\" (gregar or falzar)");
+        has(bad(&format!("{version}\n"), ""), "left: no version: a side of exe6 states its own (gregar or falzar); none is assumed");
         // Thirty copies of a chip.
         let mut m = drawn.clone();
         m.sides[0].folder.chips = [m.sides[0].folder.chips[0]; 30];
