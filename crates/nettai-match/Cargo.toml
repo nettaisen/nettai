@@ -8,10 +8,11 @@ description = "Match files: everything a round needs (the game and its ruleset, 
 [dependencies]
 nettai-battle.workspace = true
 nettai-content-api = { path = "../nettai-content-api" }
-# EXE6's folder rules read which chips the chip pack lists (by the
-# original's number), and live play's navi is a NaviStats record.
+# The save importers alone (src/import.rs, src/import_exe5.rs): a save file
+# is the original's bytes, which a game's compat crate reads. EXE5's also
+# gives the original's chip numbers, the tie-break of the auto battle data
+# the game's writer would make (src/auto_battle.rs).
 exe6-compat.workspace = true
-# An EXE5 save's light/dark value and souls (`import`).
 exe5-compat = { path = "../exe5-compat" }
 serde ={ version = "1", features = ["derive"] }
 toml = "0.8"

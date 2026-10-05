@@ -363,7 +363,10 @@ of them by number, they say:
 - **The tables by AI index are the identity's.** `parts`, what the actor record's init hook puts on
   (`sub_8010DF6`): a `body` overlay (its sprite; how many of the wearer's animations its depth table covers,
   `anims`, and those it is drawn `behind` in; `own_palette`; `anim_offset`), a `second` one, an `idle`
-  overlay (worn while standing) or a `beast_head` (its palette, or none: the mood's). `overlay_hooks`: which of
+  overlay (worn while standing), a `beast_head` (its palette, or none: the mood's), or `own`, a routine of its
+  own (`own(wearer)`), for a record whose hook puts on an object of the content's own kind: it runs wherever the
+  record's init hook does (a player's init, an afterimage of it, its image, a navi switch) and keeps what it puts
+  on in the wearer's second related slot itself, where the death hook finds it. `overlay_hooks`: which of
   the death hook, an animation change, a flinch and a drag touch what the object wears (by default its death
   takes a body or head off and an animation change restarts it). `aura_anim`: the Full Synchro aura's
   animation (`sub_80C4C52`; a player's identity has one). `ice`: the ice block that fits (`byte_80E9C30`,
