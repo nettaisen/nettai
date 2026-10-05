@@ -413,6 +413,10 @@ impl Schema {
     }
 }
 
+/// What an enum field holds that nothing has stated
+/// ([`ContentState::unstate`]): no variant's index.
+pub const ENUM_UNSTATED: u8 = 0xFF;
+
 /// Which schema a [`ContentState`] follows (an index into the content's
 /// [`crate::Manifest`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -441,6 +445,26 @@ impl ContentState {
     /// Field `i` of `schema` (for an array, its first element).
     pub fn get(&self, schema: &Schema, i: usize) -> FieldValue {
         schema.field(i).ty.decode(&self.bytes[schema.at(i)..])
+    }
+
+    /// Leave enum field `i` stated by nobody: it holds no variant
+    /// ([`ENUM_UNSTATED`]) until something states one. For a player's
+    /// setup, whose enums have no default (a choice among named things is
+    /// none of the engine's to make): a round doesn't start with one
+    /// unstated. A field that is no enum is left as it is.
+    pub fn unstate(&mut self, schema: &Schema, i: usize) {
+        if let FieldType::Enum(_) = schema.field(i).ty {
+            self.bytes[schema.at(i)] = ENUM_UNSTATED;
+        }
+    }
+
+    /// Whether enum field `i` holds one of its variants (true of a field
+    /// that is no enum).
+    pub fn stated(&self, schema: &Schema, i: usize) -> bool {
+        match (&schema.field(i).ty, self.get(schema, i)) {
+            (FieldType::Enum(names), FieldValue::Enum(v)) => (v as usize) < names.len(),
+            _ => true,
+        }
     }
 
     /// Store `v` in field `i`, converted by the field's type.
