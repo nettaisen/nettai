@@ -179,16 +179,6 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
         text(format!("Its rules' systems: {}", if systems.is_empty() { "none".into() } else { systems.join(", ") })).size(13).color(DIM),
     ]
     .spacing(10);
-    // Each side's version, where the game's rules take one: asked here,
-    // beside the game, with nothing chosen for a new match.
-    if nettai_match::Side::takes_version(c) {
-        for (s, name) in SIDES.iter().enumerate() {
-            col = col.push(field(format!("{name}: version"), version_list(e, s)));
-        }
-        if m.sides.iter().any(|s| s.version.is_none()) {
-            col = col.push(text("Each side plays its own version of the game (its Beast, its own Crosses, its pictures): choose them. Neither is assumed.").size(13).color(RED));
-        }
-    }
     col = col.push(rule::horizontal(1));
     col = col.push(place(0, &m.arena.first));
     col = col.push(checkbox(same).label("The set's later rounds on the same place").on_toggle(Msg::LaterSame));
