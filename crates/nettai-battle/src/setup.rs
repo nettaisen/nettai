@@ -210,23 +210,35 @@ pub struct NaviStats {
 }
 
 impl NaviStats {
-    /// `init_8013B64`: `navi`'s stats, fresh: the defaults
-    /// (`initNaviStats_WithDefaultStatsMaybe_8013438`) with what the navi
-    /// comes with (`byte_80210DD`'s row: the navi's `fresh` and `weapons`).
-    /// What a navi switch brings a link navi with, and what MegaMan's
-    /// NaviCust starts from (`sub_8136C24`). None for a navi without a row.
+    /// `init_8013B64` (EXE5's 0x080111AA): `navi`'s stats, fresh: what the
+    /// game's routine writes for every navi
+    /// (`initNaviStats_WithDefaultStatsMaybe_8013438`, EXE5's 0x08010C00:
+    /// the game's rule section `fresh_stats`, and the block's empty values)
+    /// with what the navi comes with (`byte_80210DD`'s row: the navi's
+    /// `fresh` and `weapons`). What a navi switch brings a link navi with,
+    /// and what MegaMan's NaviCust starts from (`sub_8136C24`). None for a
+    /// navi without a row. No value here is a game's: each is the game's
+    /// rules' or the navi's, or none.
     pub fn fresh(navi: NaviHandle, content: &Content) -> Option<NaviStats> {
         let data = content.navi(navi);
         let fresh = data.fresh?;
+        let game = content.rules().fresh_stats;
         let defaults = NaviStats::default();
         let base = content.base_form_for(navi);
         Some(NaviStats {
-            version: 1,
-            reg_up: 4,
-            custom_level: 5,
+            // (+0x20, the version, is no value of the navi's or the game's:
+            // the routine writes its console's own, 0 in a Gregar ROM and 1
+            // in a Falzar one. Who makes the block gives it the side's: a
+            // battle's start does, `sub_800A2F8`, and the navi switch keeps
+            // the side's.)
+            reg_up: game.reg_up,
+            custom_level: game.custom_level,
+            mood: game.mood,
+            beast_out_counter: game.beast_out_counter,
+            // The block's empty values: the support byte there with no
+            // support on (0xFF is no byte), the first folder, no Regular
+            // chip and no tag chips.
             support: Some(Default::default()),
-            mood: 0x99,
-            beast_out_counter: 3,
             form: base,
             starting_form: base,
             folder: 0,
@@ -249,11 +261,11 @@ impl NaviStats {
                 back_special: data.weapons.back_special,
                 a_charge: data.weapons.a_charge,
                 back_special_damage: fresh.back_special_damage,
-                // (+0x44, which the defaults leave zero: weapon routine 0,
-                // MegaMan's buster.)
-                mode9_a: content.form_changing_navi().and_then(|m| content.navi(m).weapons.buster),
+                mode9_a: game.mode9_a,
+                // (No shot programs: the bytes 0.)
                 ..defaults.weapons
             },
+            // (No panel trail: the byte 0xFF.)
             bugs: NaviCustBugs { panel_trail_kind: 0xFF, ..defaults.bugs },
             ..defaults
         })

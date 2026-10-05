@@ -3,7 +3,6 @@
 
 local cards = require("../rules/patch-cards/cards")
 local charged_shot = require("../navis/megaman/weapons/charged-shot")
-local variants = require("../objects/projectile/variants")
 
 return define.patch_card {
     id = "woodman",
@@ -12,7 +11,7 @@ return define.patch_card {
         cards.hp_percent(25),
         cards.body("wood"),
         cards.status_guard(true),
-        cards.bug(cards.buster_shot(variants.plain)),
+        cards.bug(cards.buster_shot(nil)),
         cards.bug(cards.charged_shot(charged_shot.program)),
     },
 }

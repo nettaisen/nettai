@@ -77,6 +77,7 @@
 
 # Projectile variants: the projectile table's rows (0x080C4718, EXE6's `off_80C4C78`) the buster-shot and
 # charged-shot programs (NaviStats +0x4D, +0x4F) name; the buster's and the charged shot's own, and the chips'.
+# (As a shot program the byte 0 is no program: a shot with none is the plain shot.)
 [projectile_variants]
 "shot/plain" = 0x00
 "shot/cannon" = 0x01
