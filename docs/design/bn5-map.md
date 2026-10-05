@@ -2112,9 +2112,9 @@ rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   consoles' NaviCusts and cards (§10's setup line) is replayed by compiling them, and the compile's flag is checked
   against the console's: HubBatc's bug halves the HP programs and writes no bug stat, so only the compile knows it.
   A recording without them has the flag from its stats alone; one whose save had the flag with no bug stat
-  (`navicust/hubbatc` as first recorded) differs from the first flicker on (its console's RNG1), which bn5-compat
-  names (`GLITCH_UNSEEN`, listed in the replay report). No recording of the lab is one since the NaviCust and
-  patch-card scenarios were recorded again with their NaviCusts.
+  (`navicust/hubbatc` as first recorded) would differ from the first flicker on (its console's RNG1). No recording
+  of the lab is one since the NaviCust and patch-card scenarios were recorded again with their NaviCusts, so the
+  replay names no such difference.
 - **The weapons** (navis/megaman/weapons): the routines that load a chip (0x0800FE78: chips.luau, MettGuard's and
   CrsShld's B+Back waiting 40 ticks, Ccann's TankCan1 not cracking), the card Shield (0x62, guards.luau), TriBustr
   (0x65, the buster's routine), ChrgS (0x63, the charged shot without the draw, the program always: its 0, the

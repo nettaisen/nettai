@@ -408,7 +408,7 @@ fn the_soul_takes_the_chips_place() {
     let (hand, transform) = b.custom.sides[0].built.clone().expect("OK built the hand");
     assert_eq!((transform.form, transform.turns, transform.chaos), (Some(proto), 3, false));
     assert!(hand.is_some(), "the soul is a pick");
-    let folder = b.custom.sides[0].folder.expect("a folder");
+    let folder = b.custom.sides[0].folder;
     assert_eq!(folder.chips[0], None, "the Sword given up left the folder");
     assert_eq!(folder.count(), 29);
 }
