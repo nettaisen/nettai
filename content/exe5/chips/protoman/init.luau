@@ -70,12 +70,14 @@ local protomn_sp = define.chip {
 
 -- ProtoMnDS (EXE5 chip 0x0f1): ProtoMan, dark, cuts in and slashes each enemy navi he can reach, as ProtoMan's (the
 -- shared navi with EXE5's look: chips/protoman/init.luau; his palette by the chip's Param1, 0x080C1714: 3 for its 4); its
--- damage by its user's side's statistic 3 (formula 24, its table's row 1).
+-- damage by its user's side's statistic 3 (formula 24, its table's row 1). His sword is the dark one: the sword's word
+-- by the same Param1 (0x080C199C: 0x00010103 for 0 to 3, 0x06010103 for 4) carries a palette in its top byte, which
+-- the attachment adds to its row's (0x080B9B0A): 6, the sheet's dark blade (the attachment's own row 0x32's).
 
 local LOOK_PROTOMN_DS = common.look {
     sprite = asset.sprite("protoman"),
     palette = 3,
-    sword = attachment.look { sprite = asset.sprite("sword"), palette = 0 },
+    sword = attachment.look { sprite = asset.sprite("sword"), palette = 6 },
     sword_anim = 1,
     slash = define.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 },
     spawner_address = 0x080C1A01,

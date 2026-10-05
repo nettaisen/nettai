@@ -67,3 +67,5 @@
 # ShadowMan's charged attack (his table's entry 9) and his B+Back (the anti-damage stance, as ShadowSoul's).
 "shadowman/charge/action" = 0x09
 "shadowman/back/action" = 0x3D
+# KnightMan's charged attack (his table's entry 9).
+"knightman/charge/action" = 0x09
