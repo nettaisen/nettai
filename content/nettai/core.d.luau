@@ -2281,11 +2281,12 @@ export type FormDef = {
     -- battle mode 1).
     chip_bonus: { family: ChipFamily, damage: number, dimming_chips: boolean?, uncharged: boolean? }?,
     null_bonus: number?,
-    -- The chips it charges with A: a family's damaging chips that aren't
-    -- dimming chips (`damaging = false`: any of the family), and with
-    -- `element_swords` the chips with the `element_sword` trait; `plain`:
-    -- only those that are neither dimming nor dark chips (EXE5's souls).
-    charged_chips: { { family: ChipFamily, damaging: boolean?, element_swords: boolean?, plain: boolean? } }?,
+    -- The chips it charges with A, a family's by each rule. `damaging` is
+    -- always stated: only the damaging chips that aren't dimming chips
+    -- (false: any of the family). With `element_swords` the chips with the
+    -- `element_sword` trait too; `plain`: only those that are neither
+    -- dimming nor dark chips (EXE5's souls).
+    charged_chips: { { family: ChipFamily, damaging: boolean, element_swords: boolean?, plain: boolean? } }?,
     -- What a charged chip gains in it.
     charged_bonus: { damage: number?, paralyzes: boolean? }?,
     -- The chips a charge doubles, and those whose use heals a twentieth of
