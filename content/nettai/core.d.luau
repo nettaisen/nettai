@@ -1069,15 +1069,23 @@ declare battle: {
     -- Player `side`'s tactics (EXE5's computer-navi data, which a computer
     -- navi on the other side plays): how many entries they count; the entry
     -- in place `i` (from 1; past the count, an empty place): a chip, a
-    -- pattern's number (from 1), false (nothing: chip 0, a block no save
-    -- filled) or nil (an empty place); and
-    -- pattern `i` (from 1): its place from the target (`dx` columns toward
-    -- the navi's enemies, `dy` rows) and its chips.
+    -- pattern's number (from 1), false (a place holding 0, the game's
+    -- chip 0, which no save the game wrote has there) or nil (an empty
+    -- place); pattern `i` (from 1)'s place from the target (`dx` columns
+    -- toward the navi's enemies, `dy` rows); and read `k` (from 1) of that
+    -- pattern's run as EXE5's computer navi reads it (0x0802BCD6): a chip
+    -- place's chip, nil at an empty place, the run's end, or a number, a
+    -- halfword the game takes for a chip's number without its being a
+    -- chip place's chip (a place holding 0; and, past the five places of a
+    -- record all of which hold a chip, the two halves of its score, then
+    -- the next record's `dx` and `dy` as one halfword and that record's
+    -- places, and so on to the block's end).
     tactic_count: (side: number) -> number,
     -- Slot `i` (1 to 4) of a side's list of alive actors, filled or not.
     alive_actor_slot: (side: number, i: number) -> Object?,
     tactic: (side: number, i: number) -> (Chip | number | false)?,
-    tactic_pattern: (side: number, i: number) -> (number, number, { Chip }),
+    tactic_pattern: (side: number, i: number) -> (number, number),
+    tactic_pattern_read: (side: number, i: number, k: number) -> (Chip | number)?,
     -- The first entry and the entry in place `i` (from 1) change places
     -- (0x0802C0DC); the first entry goes last of the count, the rest move
     -- up (0x0802BF1C).
