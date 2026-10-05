@@ -5,9 +5,10 @@
 //! <pack>/manifest.toml            the pack: its name, its kind (a game, or a support pack games
 //!                                 share) and the support packs it depends on
 //!                                 (nettai_content_api::packs)
-//! <game>/init.luau                a game's top module: it requires every module that defines what
-//!                                 the game has (its rules, chips, navis, forms, stages, patch
-//!                                 cards, NaviCust programs, and what only an id names)
+//! <game>/init.luau                a game's top module: it requires the game's rules and folders
+//! <game>/<folder>/init.luau       a folder's index: it requires the folder's modules that define
+//!                                 what the game has (its chips, navis, forms, stages, patch cards,
+//!                                 NaviCust programs, and what only an id names)
 //! <pack>/**/*.luau                the pack's scripts (exe6/chips/cannon/init.luau: a folder's main
 //!                                 module, which the folder's name stands for); every id local to
 //!                                 the game (`minibomb`), every asset name its asset pack's (`bomb`)
@@ -246,6 +247,7 @@ mod tests {
         assert_eq!(read.games(), ["exe5", "exe6"]);
         assert_eq!(read.packs[0].id, "exelib", "the support pack first");
         assert!(read.modules.contains_key("exe6:init") && read.modules.contains_key("exe5:init"), "each game's top module");
+        assert!(read.modules.contains_key("exe6:chips/init") && read.modules.contains_key("exe6:chips/cannon/init"), "a folder's init, and what it requires");
         assert!(read.modules.contains_key("exe6:rules/init"), "`@self/rules` is the folder's init");
         assert!(!read.modules.contains_key("exelib:init"), "a support pack has none");
         assert!(read.modules.contains_key("exelib:swords/slash"), "the support pack's modules come in by their requires");
@@ -264,10 +266,10 @@ mod tests {
         write("lib/manifest.toml", "id = \"lib\"\nkind = \"support\"\n");
         write("lib/x.luau", "return {}\n");
         write("g/manifest.toml", "id = \"g\"\nkind = \"game\"\ndepends = [\"lib\"]\n");
-        write("g/init.luau", "return { rules = require(\"@self/rules\") }\n");
+        write("g/init.luau", "require(\"@self/rules\")\n");
         write("g/rules.luau", "local x = require(\"@g/nowhere\")\nlocal y = require(\"@lib/x\")\nreturn {}\n");
         write("h/manifest.toml", "id = \"h\"\nkind = \"game\"\n");
-        write("h/init.luau", "return { rules = require(\"@self/rules\"), also = { require(\"@self/gone\") } }\n");
+        write("h/init.luau", "require(\"@self/rules\")\nrequire(\"@self/gone\")\n");
         write("h/rules.luau", "local x = require(\"@g/rules\")\nreturn {}\n");
         write("i/manifest.toml", "id = \"i\"\nkind = \"game\"\n");
         write("i/rules.luau", "return {}\n");

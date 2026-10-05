@@ -68,8 +68,10 @@ Gregar console), 0x81, 0xBC (`sub_802774C`; the BeastOut chip's 0x193 or
 0x191, 0xBC: `sub_8027624`); ChpShufl's re-deal 0x182
 and its shuffles 0x113 (`sub_802723A`); DustCross's scrap 0x196 a chip, 0x182
 when done; the Program Advance animation's chips of the recipe 0x91 and the
-Program Advance 0x92 (`sub_802B80C`, `sub_802B920`). The chatbox makes no
-sound in battle.
+Program Advance 0x92 (`sub_802B80C`, `sub_802B920`). EXE5's dark chip
+hover sounds 0x16B every 64 ticks of the screen while it isn't clear (the
+optional role `custom_dark_hover`, custom-screen.md §9; EXE6 has no such
+sound). The chatbox makes no sound in battle.
 
 Two sounds depend on a word the original's actions share. Every action
 keeps a count in its attack variables (AIAttackVars+0x12: shots, swings,

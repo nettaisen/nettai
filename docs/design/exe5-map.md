@@ -1655,7 +1655,7 @@ chips walked up to, patterns, traps; 10,225 frames, each through Dark MegaMan's 
   side's tactics; their counters stay 0); getting in place for a chip by its positioning class
   (rules/computer-navi/place: all 33 classes of 0x08029B3C, and the panel searches they share, ./panels).
 - *The tactics* (nettai_battle::tactics): the recordings' exchanged blocks (exe5-compat); a match file's
-  `[side.tactics]`, sent as the console sends them (0x0802C7BE); the netplay offer (protocol version 3).
+  `[side.computer_navi]` (below), sent as the console sends it (0x0802C7BE); the netplay offer.
 - EXE5's shots raise EXE5's own arm (lib/arm, 0x080EBABE; lib/buster's), the arm a computer navi of AI index 0x16
   raises.
 
@@ -1663,6 +1663,51 @@ New APIs: a collision's `counter_timer`, `battle.gauge_damage`, a side's sword p
 `set_sword_pick`: `sub_802E070`+0x12, which the AI draws for VarSwrd and NeoVari and EXE5's VarSwrd, when ported,
 reads for a navi no buttons drive), the identity spec's `body`. Read as constant: NaviStats +0x2A (class 28's test;
 its EXE5 meaning unread, 0 in every setup).
+
+**The computer-navi data a save keeps, and how a match states it (2026-10-04).** Read from Team ProtoMan's code and
+seven saves (Tango's templates and three played ones):
+
+- *The block* (0xE0 bytes): 42 halfword places (a chip's number; 0x8000 with a pattern's index; 0xFFFF empty), a
+  count at +0x54 that only the send writes (a save's is 0xFFFFFFFF), and from +0x58 eight pattern records of 16
+  bytes: `dx`, `dy` (signed bytes), five chip places to the first 0xFFFF, and the pattern's score, a word at +12.
+  The AI reads a pattern's chips to the first 0xFFFF with no other end (0x0802BCD6), so a record with all five
+  places filled is read on into its score (a chip number), the score's upper half (chip 0) and the next record.
+  No save seen has a pattern of more than two chips; the engine's patterns end at their chips.
+- *Where it is:* seven blocks at save +0x554C (0x0200554C, the toolkit's +0x78). A battle sends the first
+  (0x08009B64: with battle flag 0x40, the operation battle, 0x0802C7A0 builds one from the player's folder instead,
+  its 30 halfwords in places 4 to 33). Nothing writes the other six (0x0802C8C2, which copies a block into one by
+  its index, has no caller): 0xFFFF throughout in every save, as the first is in a save that has learned nothing.
+- *What it is learned from* (all in the save): two tables of a halfword a chip (368 chips each, +0x7340 and
+  +0x2340) and 24 pattern records at +0x0000 (16 kept, 8 for the battle's), all zeroed for a new game
+  (0x0802C1E0). Only the console's own player is learned from (0x0802C1FC tests the local side). A chip's use adds
+  to the first table by its class (record byte 7): a standard or a mega chip 1, or 3 when the caller's third
+  argument is over 1; a giga chip or a program advance 1; a special chip nothing. It would add to the second
+  table by how the use went (1, 4 or 8), but the weight is tested against a register the chip's test has just
+  loaded with 4, so it adds 0 (0x0802C216 to 0x0802C222; the Japanese ROM's code is the same). A chip whose record
+  byte 14 has bit 2 also joins a run (0x0802C294: a run is chips used from one column, each within 30 ticks of
+  the last); a hit records where it landed for the run's chip (0x0802C3E2, from the hit code 0x08017E7C and
+  0x080185F4); a run of two or more that ends (0x0802C2DC: another column, a chip without the bit, or the 30
+  ticks, 0x0802C3C4) becomes a pattern, its place the nearer of its first two chips' hits from where the player
+  stands, `dx` toward the enemies (eight a battle).
+- *The battle's end* (0x0802C540, from 0x0800713C, block 0) sorts each table's chips by class and count
+  (0x0814301C: the higher count first, then the higher chip number), takes 1 off every kept pattern's score
+  (not under 1), adds 5 to one the battle saw again, sorts the 24 by score (0x0802C820) and writes: places 1 to 3
+  the three most counted standard chips of the second table; places 4 to 27 the sixteen most used standard chips
+  of the first, by the table 0x0802C790 (4, 4, 2, 2 times, then once each); places 28 to 32 the five most used mega
+  chips; place 33 the most used giga chip; places 34 to 41 the patterns with a score (0x0802C892), up to eight;
+  place 42 the most used program advance; then the eight highest scored pattern records. A played Team Colonel
+  save: 58 chips counted, the block Lance and SideBub3 four times each, Magnum and CrsShld3 twice, twelve more
+  standard chips once, five megas, CrossDiv, eight patterns of two chips each, CsmoPris. Places 1 to 3 are empty in every US save seen, as the code says; one
+  Japanese save has three chips there and the second table filled like the first, which this reading doesn't
+  explain.
+- *The send* (0x0802C7BE) shuffles places 1 to 3 among themselves and the other 39 among themselves and packs
+  them. So a battle reads of a place only its group, and a match states the data as that
+  (`nettai_match::computer_navi`, docs/frontend.md §6): `first` (up to 3 entries) and `rest` (up to 39), each entry
+  a chip by name or a pattern (`dx`, `dy`, one to five chips), at most eight different patterns; none: a save that
+  has learned nothing. A match's checks refuse more, a pattern's place more than 5 columns or 2 rows from its
+  target, and any of it under rules without the computer-navi system. A random match states what the game would
+  write for a player who used each chip of the drawn folder once (`ComputerNavi::of_folder`). The learning itself
+  (the tables and the runs during a battle) is not ported: nothing of a battle reads it.
 
 ### 15.10 EXE5's emotions (as built)
 
