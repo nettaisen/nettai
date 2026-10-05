@@ -620,9 +620,18 @@ local status = {
         drain_bug_flags = false,
         no_charge_drive = false,
         hp_loss = "hp_alone",
-        -- (The engine has two games' emotions, each a whole: how an emotion is read off the navi, what holds its
-        -- mood, how its anger ends, its Full Synchro aura.)
-        emotions = "exe6",
+        -- Its emotions (`sub_8015B54`): worn out (exhausted, or a mood of 0) is read before anger, then held tired,
+        -- Full Synchro (a mood of 0xFF), else normal, the same in every battle mode and every form; no mood is
+        -- worried. A navi held tired or exhausted holds its mood against the setter (`sub_8015BEC`), and anger's
+        -- end puts the mood at 0x80 whatever holds it (`sub_80143A6`).
+        emotion = {
+            mood_held = "tired_or_exhausted",
+            anger_end = "resets_mood",
+            plain_in_battle_mode_1 = false,
+            normal_in_a_form = false,
+            anger_before_worn_out = false,
+            tired_and_exhausted = true,
+        },
         form_break = "cross_or_beast",
     },
 }
