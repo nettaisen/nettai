@@ -696,7 +696,8 @@ fn main() {
     eprintln!("{}", app::HELP);
     let mut player = Player::with(renderer, text, audio, first);
     let opts = app::Options { scale: args.scale, start_paused: args.paused, quit_after: args.quit_after };
-    if let Err(e) = app::run(&mut player, drivers, device.as_ref(), &opts) {
+    let mut languages = app::Languages::new(&loaded, &args.lang, graphics);
+    if let Err(e) = app::run(&mut player, drivers, device.as_ref(), &mut languages, &opts) {
         fail(format!("window: {e}"));
     }
 }
