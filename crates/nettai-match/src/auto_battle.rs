@@ -42,7 +42,7 @@
 //! learning never filled is zeros, [`Record::ZERO`]). So after any finished
 //! battle a save's unused records are zeros
 //! ([`AutoBattle::nothing_learned`] is what the write leaves of a player
-//! it has learned nothing of: a new match's side, and what a drawn one
+//! it has learned nothing of: a new match's side, and what a random one
 //! starts from). A block nothing has written is 0xFF throughout
 //! ([`AutoBattle::default`]: the save's six other blocks are, and its
 //! player's until its first battle ends): a side that states no data.
@@ -52,7 +52,7 @@
 //!
 //! - *Every place.* As a battle starts each console sends its block
 //!   shuffled (0x0802C7BE, `AutoBattleData::sent`): three swaps among the first
-//!   three places, 39 swaps among the other 39 (each swap two places drawn
+//!   three places, 39 swaps among the other 39 (each swap two places picked
 //!   at random), the entries then packed to the front. That is no even
 //!   shuffle: a place is in none of 39 swaps about one time in eight, so
 //!   the entry in place 4 leads the sent list far more often than another,

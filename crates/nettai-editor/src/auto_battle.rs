@@ -489,7 +489,7 @@ mod tests {
     #[test]
     fn the_panes_edits_change_the_data() {
         let content = nettai_match::testing::exe5_content();
-        let mut m = nettai_match::draw::live(&content, "exe5", 3, None).unwrap();
+        let mut m = nettai_match::pick::live(&content, "exe5", 3, None).unwrap();
         let side = &mut m.sides[0];
         let mut state = State::default();
         let (sword, cannon) = (ids::chip(&content, "exe5", "sword").unwrap(), ids::chip(&content, "exe5", "cannon").unwrap());
@@ -526,7 +526,7 @@ mod tests {
         assert!(edit(side, &mut state, Edit::Put(cannon)));
         assert_eq!(state.selected, Selected::Place(data::PLACES - 1));
         assert_eq!(side.auto_battle.check(&content, "exe5"), Vec::<String>::new());
-        // From the folder: what a drawn match states; no data: none.
+        // From the folder: what a random match states; no data: none.
         let drawn = AutoBattle::of_folder(&content, &side.folder);
         assert!(edit(side, &mut state, Edit::FromFolder));
         assert_eq!((side.auto_battle, state.selected), (drawn, Selected::Place(data::STANDARD.start)));

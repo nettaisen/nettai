@@ -10,7 +10,7 @@
 //! folder, version, Crosses and patch cards, each by its name in the game;
 //! the language is each player's own) and their halves of the seed. Both
 //! then build the same round ([`netplay_setup`]): the host's arena (a match
-//! file's, else drawn from the seed on the host's stage, if it names one),
+//! file's, else picked from the seed on the host's stage, if it names one),
 //! each player's side on their side (the host's is side 0, the left navi),
 //! by the game's rules.
 //!
@@ -38,7 +38,7 @@ use nettai_battle::setup::RoundSetup;
 use nettai_battle::{Battle, BattleResult, RoundEnd};
 use nettai_content_api::StageHandle;
 use nettai_match::file::{ArenaFile, SideFile};
-use nettai_match::{Arena, Draws, Match, Place, Side, ids};
+use nettai_match::{Arena, Picks, Match, Place, Side, ids};
 use nettai_netplay::protocol::BUTTONS;
 use nettai_netplay::standin::StandInBattle;
 use nettai_netplay::transport::{Connection, Datagram, Hello, Role};
@@ -171,7 +171,7 @@ pub fn netplay_setup(content: &Content, seed: u32, offers: &[Offer; 2]) -> Resul
     }
     let arena = match &host.arena {
         Some(a) => a.clone(),
-        None => nettai_match::draw::arena(content, &host.game, &mut Draws::new(seed), host.stage)?,
+        None => nettai_match::pick::arena(content, &host.game, &mut Picks::new(seed), host.stage)?,
     };
     let m = Match { seed: Some(seed), arena, sides: [host.side.clone(), join.side.clone()] };
     Ok((m.round(content, seed), m))
@@ -464,7 +464,7 @@ mod tests {
     use nettai_netplay::transport::Udp;
 
     fn offer_of(content: &Arc<Content>, game: &str, seed: u32) -> Offer {
-        Offer::of_side(game, Side::drawn(content, game, &mut Draws::new(seed)).unwrap(), None)
+        Offer::of_side(game, Side::picked(content, game, &mut Picks::new(seed)).unwrap(), None)
     }
 
     fn offer(content: &Arc<Content>, seed: u32) -> Offer {
@@ -485,7 +485,7 @@ mod tests {
         assert_eq!(Offer::from_bytes(&content, "exe6", &bytes).unwrap(), o);
         // A match file's arena goes too.
         let mut a = o.clone();
-        a.arena = Some(nettai_match::draw::live(&content, "exe6", 9, None).unwrap().arena);
+        a.arena = Some(nettai_match::pick::live(&content, "exe6", 9, None).unwrap().arena);
         assert_eq!(Offer::from_bytes(&content, "exe6", &a.to_bytes(&content)).unwrap(), a);
         let mut bad = o.clone();
         bad.side.folder.chips = [bad.side.folder.chips[0]; 30];
@@ -633,7 +633,7 @@ mod tests {
     fn two_players_over_loopback_with_match_files() {
         // Each player's file, as the editor or --save-match writes one.
         fn file(content: &Arc<Content>, seed: u32) -> Match {
-            let text = nettai_match::write(content, &nettai_match::draw::live(content, "exe6", seed, None).unwrap());
+            let text = nettai_match::write(content, &nettai_match::pick::live(content, "exe6", seed, None).unwrap());
             nettai_match::parse(content, &text).unwrap()
         }
         let offers = |content: &Arc<Content>, role: usize| Offer::of_match(file(content, 40 + role as u32), role == 0);
