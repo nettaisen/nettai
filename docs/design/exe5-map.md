@@ -1527,7 +1527,7 @@ them.
     The capsule chips never reach a hand; a slot shows its capsule as a chip (icon, and in the chip window the name
     and picture alone, 0x08024422), and R describes it. Their records' uses are leftovers (the cannon's action,
     Poltrgst's and RockCube's dimming routines, the supports' controller, routine 50: lib/supports/dimming).
-  - **ColonelSoul's Arm Change** (kinds 8 and 9; navis/megaman/forms/colonelsoul/arm-change.luau): on offer while the last pick
+  - **ColonelSoul's Arm Change** (kinds 8 and 9; navis/megaman/forms/colonelsoul/arm_change.luau): on offer while the last pick
     is a standard chip of no family that deals damage and neither dims nor is dark (0x08024C00). A on it
     (0x080249D6) runs the screen's state 0x38 (0x08023694: the window `arm_change`): the chip leaves the picks for
     the button (`custom.hold_last_pick`; five more can be picked) and its icon blinks in the column for 30 ticks.
