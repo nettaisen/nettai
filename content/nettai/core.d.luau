@@ -1998,7 +1998,9 @@ export type ChipSpec = {
     -- (a navi chip whose navi brings the user back itself), "goes_with_any"
     -- (it goes with any selection on the custom screen, and leaves the
     -- selection's rules alone: EXE6's BeastOut chip), "hides_damage_as_a"
-    -- (the custom screen shows its damage as "???" on a copy of code A).
+    -- (the custom screen shows its damage as "???" on a copy of code A),
+    -- "hides_advance_code" (the Program Advance animation shows its name
+    -- without its code: the chips past the original's chip table).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
