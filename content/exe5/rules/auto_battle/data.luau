@@ -421,6 +421,7 @@ data.chips = {
     ["stepswrd"] = { approach = false, class = 255, picks = 4, range = 16 },
     ["airforce"] = { approach = false, class = 255, picks = 0, range = 16 },
     ["satelity"] = { approach = true, class = 255, picks = 0, range = 16 },
+    ["napalm"] = { approach = false, class = 255, picks = 0, range = 16 },
     ["meddycap"] = { approach = false, class = 255, picks = 0, range = 16 },
     ["c-cannon"] = { approach = false, class = 255, picks = 0, range = 16 },
     ["splitup"] = { approach = false, class = 255, picks = 0, range = 16 },
