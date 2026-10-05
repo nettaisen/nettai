@@ -1779,10 +1779,11 @@ export type SystemSpec = {
     state: StateSchema?,
     setup: StateSchema?,
     -- What a player's setup that says nothing of a field holds (else zero): a
-    -- value of each field given (an enum's by name). An enum of the setup
-    -- has no default but one given here: a player's setup states it, or the
-    -- round doesn't start (the engine picks none of its names).
-    setup_defaults: { [string]: number | boolean | string }?,
+    -- value of each field given (an enum's by name, a definition's by its
+    -- id; an array's, a list of them from its first element). An enum of the
+    -- setup has no default but one given here: a player's setup states it, or
+    -- the round doesn't start (the engine picks none of its names).
+    setup_defaults: { [string]: number | boolean | string | { number | boolean | string } }?,
     -- Its own actions, which reach its state (`system.state()`) for the
     -- side of the navi running them.
     actions: { Action }?,
