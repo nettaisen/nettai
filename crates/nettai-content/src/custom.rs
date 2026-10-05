@@ -1,17 +1,20 @@
 //! The custom screen's graphics (`graphics/custom`): one indexed PNG per
 //! tile block, laid out as the screen draws it, and `custom.json` (the
 //! window's maps and patches, which tile numbers the blocks load at, the
-//! tables by navi). A chip's picture is a file under the chip's key
-//! (`chip-art/<chip>.png`); `custom.json` lists them in the game's order.
+//! buttons' looks). A chip's picture is a file under the chip's key
+//! (`chip-art/<chip>.png`), a navi's emblem one under the navi's
+//! (`emblems/<navi>.png`), a button's tiles and picture ones under the
+//! name its content registers it by (`buttons/<name>.png`,
+//! `pictures/<name>.png`); `custom.json` lists each in the game's order.
 //!
 //! Each palette belongs to one image, as rows of that image's palette
 //! (`palettes` in its entry); the three palettes no image owns are color
 //! lists in `custom.json`. Images drawn with another image's palette show
 //! it for viewing only.
 //!
-//! What a game version shows of its own (`VersionPictures`: its Beast's
-//! pictures, the emblems, its Crosses' names) is an image a version, each
-//! named with its version (`cross-names-falzar.png`, `cross-names-gregar.png`;
+//! What a game version shows of its own (`VersionPictures`: its own look
+//! of a button, its Crosses' names) is an image a version, each named with
+//! its version (`cross-names-falzar.png`, `cross-names-gregar.png`;
 //! without another version's, `cross-names.png`): the base game's in `own`
 //! (its version `base_version`), the others' in `versions`.
 
@@ -20,15 +23,15 @@ use crate::sprite::read_json;
 use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
 use nettai_assets::{
-    ButtonPictures, ChipArt, CursorPlace, CustomLayout, CustomLettering, CustomScreen, MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures, Tiles,
-    VersionPictures, Versioned,
+    ButtonLettering, ButtonPictures, ButtonSets, ChipArt, CursorPlace, CustomLayout, CustomLettering, CustomScreen, Emblem, MapEntry, MapPatch, Palette,
+    PatchList, Picture, SlotPictures, Tiles, VersionPictures, Versioned,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::Path;
 
 pub const FORMAT: &str = "nettai-content/custom";
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
 const GLYPHS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
 const ICONS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 2, height: 2, columns };
@@ -69,12 +72,10 @@ pub struct CustomDoc {
     pub codes: TileImage,
     pub elements: TileImage,
     pub digits: TileImage,
-    /// The slots' codes (2x1, the last the empty slot's), the empty slot's
-    /// icon, and the re-deal and scrap buttons.
+    /// The slots' codes (2x1, the last the empty slot's) and the empty
+    /// slot's icon.
     pub slot_codes: TileImage,
     pub empty_icon: TileImage,
-    pub redeal_buttons: TileImage,
-    pub scrap_buttons: TileImage,
     /// The base game's own pictures (its version, when another version has
     /// its own), and the other versions'.
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -86,9 +87,9 @@ pub struct CustomDoc {
     /// (corner and edge, two frames), the Regular chip's frame (two frames).
     pub cursor: TileImage,
     pub cross_cursor: TileImage,
-    /// Which emblem and emblem palette a navi shows, by the navi's number.
-    pub emblem_of: Vec<u8>,
-    pub emblem_palette_of: Vec<u8>,
+    /// The navis' emblems by navi key, each with its palette (sprite
+    /// palette 11: the cursor's and the Regular chip's frame's too).
+    pub emblems: Vec<EmblemDoc>,
     pub regular: TileImage,
     /// The Program Advance animation's names' first four colors, the sets
     /// it steps through.
@@ -100,11 +101,18 @@ pub struct CustomDoc {
     /// Where the blocks go among the HUD layer's tile numbers: the game's
     /// own layout (every pack says its game's; none stands in).
     pub layout: LayoutDoc,
-    /// The buttons drawn by name (EXE5's soul button): each one's tiles by
-    /// state and its picture in the chip window with that picture's
-    /// palettes by state.
+    /// The buttons, by the name their content registers them under: each
+    /// one's tiles by set, its picture in the chip window with that
+    /// picture's palettes, and how the screen draws it.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub buttons: Vec<ButtonDoc>,
+}
+
+/// A navi's emblem (`nettai_assets::Emblem`): its 2x2 tiles in its palette.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EmblemDoc {
+    pub navi: String,
+    pub image: TileImage,
 }
 
 /// `nettai_assets::CustomLayout`: the tile number each block loads at.
@@ -123,9 +131,6 @@ pub struct LayoutDoc {
     pub cross_names: u16,
     pub slot_blank: u8,
     pub ok_cursor: CursorDoc,
-    pub special_cursor: CursorDoc,
-    /// Whether the chip window shows the re-deal button's uses left (EXE5's).
-    pub button_uses: bool,
 }
 
 /// `nettai_assets::CursorPlace`: the place, and each frame's four corners
@@ -164,8 +169,6 @@ impl From<CustomLayout> for LayoutDoc {
             cross_names,
             slot_blank,
             ok_cursor,
-            special_cursor,
-            button_uses,
         } = l;
         LayoutDoc {
             column_cells,
@@ -181,8 +184,6 @@ impl From<CustomLayout> for LayoutDoc {
             cross_names,
             slot_blank,
             ok_cursor: ok_cursor.into(),
-            special_cursor: special_cursor.into(),
-            button_uses,
         }
     }
 }
@@ -203,8 +204,6 @@ impl From<LayoutDoc> for CustomLayout {
             cross_names,
             slot_blank,
             ok_cursor,
-            special_cursor,
-            button_uses,
         } = l;
         CustomLayout {
             column_cells,
@@ -220,20 +219,33 @@ impl From<LayoutDoc> for CustomLayout {
             cross_names,
             slot_blank,
             ok_cursor: ok_cursor.into(),
-            special_cursor: special_cursor.into(),
-            button_uses,
         }
     }
 }
 
 /// A button drawn by name (`nettai_assets::ButtonPictures`): its tiles
-/// (`size` tiles a state), and its picture with a palette row a state.
+/// (`size` tiles a cell, a set its cells'), which set a state shows
+/// (`sets`: "each", "other" or "unavailable"), the cursor over it, and its
+/// picture with its palettes as rows (its own first).
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ButtonDoc {
     pub name: String,
     pub size: [u8; 2],
     pub tiles: TileImage,
+    pub sets: String,
+    /// The set its slot shows while the button isn't there (left out: the
+    /// window's fill).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hidden: Option<u8>,
+    pub cursor: CursorDoc,
     pub picture: TileImage,
+    /// Whether the chip window shows its uses left (left out when false).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub uses_digit: bool,
+    /// Where the icon of the chip it holds is drawn, [x, y] (left out:
+    /// it holds none).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub held_at: Option<[i16; 2]>,
     /// The column's icons for what it gives, with the flying icon's palette.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icons: Option<TileImage>,
@@ -245,26 +257,36 @@ pub struct ButtonDoc {
 
 /// Another language's pictures with words: its own files, named with the
 /// language (`pictures/ok-ja.png`, `cross-names-falzar-ja.png`,
-/// `buttons/soul-ja.png`).
+/// `buttons/soul-ja.png`, `pictures/redeal-ja.png`).
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CustomLanguageDoc {
     pub pictures: PicturesDoc,
     /// The Cross window's names by game version.
     pub cross_names: BTreeMap<String, TileImage>,
-    /// The named buttons' tiles by state where this language has its own
-    /// (`CustomDoc::buttons`' `tiles`), by the button's name.
+    /// What this language has of its own for a named button, by the
+    /// button's name.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub buttons: BTreeMap<String, TileImage>,
+    pub buttons: BTreeMap<String, ButtonLanguageDoc>,
 }
 
-/// A version's own pictures: Beast Out's picture with its palettes, the
-/// Beast Out button, the navis' emblems (the base's with the emblems'
-/// palettes), the Cross window's names with their palettes.
+/// A language's own tiles and picture of a named button
+/// (`nettai_assets::ButtonLettering`): each left out where the pack's own
+/// stands.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ButtonLanguageDoc {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tiles: Option<TileImage>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub picture: Option<TileImage>,
+}
+
+/// A version's own pictures: its own look of a button (EXE6's Beast Out:
+/// `buttons/beast_out-V.png`, `pictures/beast_out-V.png`) and the Cross
+/// window's names with their palettes.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct VersionDoc {
-    pub beast_out: TileImage,
-    pub beast_buttons: TileImage,
-    pub emblems: TileImage,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub buttons: Vec<ButtonDoc>,
     pub cross_names: TileImage,
 }
 
@@ -309,9 +331,48 @@ pub struct ChipArtDoc {
 pub struct PicturesDoc {
     pub ok: TileImage,
     pub ok_picked: TileImage,
-    pub redeal: TileImage,
-    pub scrap: TileImage,
     pub other: TileImage,
+}
+
+/// How a pack names a button's sets (`ButtonDoc::sets`).
+const SETS: [(ButtonSets, &str); 3] = [(ButtonSets::Each, "each"), (ButtonSets::Other, "other"), (ButtonSets::Unavailable, "unavailable")];
+
+/// What writes an image of an export: its file, tiles, layout, palette
+/// rows, how many of them are data, and each tile's row.
+type Image<'a> = dyn FnMut(&str, &Tiles, Layout, &[Palette], usize, &dyn Fn(usize) -> u8) -> TileImage + 'a;
+
+/// A button's tiles as an image: a cell a block, a set's cells a row.
+fn button_layout(b: &ButtonPictures, tiles: &Tiles) -> Layout {
+    let (w, h) = (b.width as u32, b.height as u32);
+    let cells = (tiles.len() as u32).div_ceil((w * h).max(1)).max(1);
+    Layout::Blocks { width: w, height: h, columns: cells }
+}
+
+/// A button's entry; its files are `buttons/<file>.png`, `pictures/<file>.png`
+/// and `buttons/<file>-icons.png` (`file`: its name, with its version for
+/// a version's own).
+fn button_doc(image: &mut Image, name: &str, file: &str, b: &ButtonPictures, frame0: Palette) -> ButtonDoc {
+    let none = |_: usize| 0u8;
+    let tiles = image(&format!("buttons/{file}.png"), &b.tiles, button_layout(b, &b.tiles), &[frame0], 0, &none);
+    // (The picture's palettes: its own first.)
+    let rows: Vec<Palette> = if b.palettes.is_empty() { vec![b.picture.palette] } else { b.palettes.clone() };
+    let picture = image(&format!("pictures/{file}.png"), &b.picture.tiles, PICTURE, &rows, rows.len(), &none);
+    let icon_rows: Vec<Palette> = std::iter::once(b.icon_palette).chain(b.icon_palettes.iter().map(|(_, p)| *p)).collect();
+    let icons = (!b.icons.is_empty()).then(|| image(&format!("buttons/{file}-icons.png"), &b.icons, ICONS(14), &icon_rows, icon_rows.len(), &none));
+    let icon_versions = if icons.is_some() { b.icon_palettes.iter().map(|(v, _)| v.clone()).collect() } else { Vec::new() };
+    ButtonDoc {
+        name: name.into(),
+        size: [b.width, b.height],
+        tiles,
+        sets: SETS.iter().find(|(s, _)| *s == b.sets).map_or("each", |(_, n)| n).into(),
+        hidden: b.hidden,
+        cursor: b.cursor.into(),
+        picture,
+        uses_digit: b.uses_digit,
+        held_at: b.held_at.map(|(x, y)| [x, y]),
+        icons,
+        icon_versions,
+    }
 }
 
 fn patch_doc(p: &PatchList) -> PatchListDoc {
@@ -358,7 +419,9 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     };
     let none = |_: usize| 0u8;
     let frame0 = c.frame_palettes.first().copied().unwrap_or([0; 16]);
-    let emblem0 = c.emblem_palettes.first().copied().unwrap_or([0; 16]);
+    // (The cursor and the Regular chip's frame show in the first emblem's
+    // palette: they are drawn in the navi's emblem's.)
+    let emblem0 = c.emblems.first().map_or([0; 16], |e| e.palette);
     let grid = |columns| Layout::Grid { columns };
     let window = image("window.png", &c.window_tiles, grid(16), &c.frame_palettes, c.frame_palettes.len(), &none);
     let column_cells = image("column-cells.png", &c.column_cells, GLYPHS(2), &[frame0], 0, &none);
@@ -379,18 +442,13 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     let mut picture = |file: &str, pic: &Picture| image(file, &pic.tiles, PICTURE, &[pic.palette], 1, &none);
     let ok = picture("pictures/ok.png", &p.ok);
     let ok_picked = picture("pictures/ok-picked.png", &p.ok_picked);
-    let redeal = picture("pictures/redeal.png", &p.redeal);
-    let scrap = picture("pictures/scrap.png", &p.scrap);
     let other = picture("pictures/other.png", &p.other);
     let vs = &c.versioned;
     let mut version = |which: Option<&str>, v: &VersionPictures| {
-        let emblem_rows = if which.is_none() { c.emblem_palettes.len() } else { 0 };
         let names = v.cross_names.len() / CROSS_NAME_TILES;
         let file = |name: &str| format!("{}.png", vs.name(name, which));
         VersionDoc {
-            beast_out: image(&file("pictures/beast-out"), &v.beast_out.tiles, PICTURE, &v.beast_out_palettes, v.beast_out_palettes.len(), &none),
-            beast_buttons: image(&file("beast-buttons"), &v.beast_buttons, Layout::Blocks { width: 4, height: 2, columns: 1 }, &[frame0], 0, &none),
-            emblems: image(&file("emblems"), &v.emblems, ICONS(7), &c.emblem_palettes, emblem_rows, &|i| (i / 4) as u8),
+            buttons: v.buttons.iter().map(|(name, b)| button_doc(&mut image, name, &vs.name(name, which), b, frame0)).collect(),
             cross_names: image(&file("cross-names"), &v.cross_names, CROSS_NAME, &v.cross_palettes, v.cross_palettes.len(), &|i| {
                 ((i / CROSS_NAME_TILES).min(names.saturating_sub(1))) as u8
             }),
@@ -404,9 +462,11 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
     let digits = image("digits.png", &c.digits, GLYPHS(11), &[frame0], 0, &none);
     let slot_codes = image("slot-codes.png", &c.slot_codes, Layout::Blocks { width: 2, height: 1, columns: 14 }, &[frame0], 0, &none);
     let empty_icon = image("empty-icon.png", &c.empty_icon, ICONS(1), &[c.icon_palette], 0, &none);
-    let buttons = |n| Layout::Blocks { width: 2, height: 3, columns: n };
-    let redeal_buttons = image("redeal-buttons.png", &c.redeal_buttons, buttons(6), &[frame0], 0, &none);
-    let scrap_buttons = image("scrap-buttons.png", &c.scrap_buttons, buttons(8), &[frame0], 0, &none);
+    let emblems = c
+        .emblems
+        .iter()
+        .map(|e| EmblemDoc { navi: e.navi.clone(), image: image(&format!("emblems/{}.png", e.navi), &e.tiles, ICONS(1), &[e.palette], 1, &none) })
+        .collect();
     let cursor = image("cursor.png", &c.cursor, Layout::Blocks { width: 1, height: 1, columns: 2 }, &[emblem0], 0, &none);
     let cross_cursor =
         image("cross-cursor.png", &c.cross_cursor, Layout::Blocks { width: 1, height: 1, columns: 4 }, &[c.cross_cursor_palette], 1, &none);
@@ -418,8 +478,6 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         let pictures = PicturesDoc {
             ok: picture("ok", &p.ok),
             ok_picked: picture("ok-picked", &p.ok_picked),
-            redeal: picture("redeal", &p.redeal),
-            scrap: picture("scrap", &p.scrap),
             other: picture("other", &p.other),
         };
         let mut cross_names = BTreeMap::new();
@@ -431,31 +489,16 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
             cross_names.insert(version.clone(), doc);
         }
         let mut buttons = BTreeMap::new();
-        for (name, tiles) in &l.buttons {
-            // (Laid out as the button's own tiles are: a state a column.)
+        for (name, own) in &l.buttons {
+            // (Laid out as the button's own tiles are.)
             let Some((_, b)) = c.buttons.iter().find(|(n, _)| n == name) else { continue };
-            let (w, h) = (b.width as u32, b.height as u32);
-            let states = (tiles.len() as u32).div_ceil((w * h).max(1)).max(1);
-            let file = format!("buttons/{name}-{lang}.png");
-            buttons.insert(name.clone(), image(&file, tiles, Layout::Blocks { width: w, height: h, columns: states }, &[frame0], 0, &none));
+            let tiles = own.tiles.as_ref().map(|t| image(&format!("buttons/{name}-{lang}.png"), t, button_layout(b, t), &[frame0], 0, &none));
+            let picture = own.picture.as_ref().map(|p| image(&format!("pictures/{name}-{lang}.png"), &p.tiles, PICTURE, &[p.palette], 1, &none));
+            buttons.insert(name.clone(), ButtonLanguageDoc { tiles, picture });
         }
         languages.insert(lang.clone(), CustomLanguageDoc { pictures, cross_names, buttons });
     }
-    let buttons = c
-        .buttons
-        .iter()
-        .map(|(name, b)| {
-            let (w, h) = (b.width as u32, b.height as u32);
-            let states = (b.tiles.len() as u32).div_ceil((w * h).max(1)).max(1);
-            let tiles = image(&format!("buttons/{name}.png"), &b.tiles, Layout::Blocks { width: w, height: h, columns: states }, &[frame0], 0, &none);
-            let picture = image(&format!("pictures/{name}.png"), &b.picture.tiles, PICTURE, &b.palettes, b.palettes.len(), &none);
-            let icon_rows: Vec<Palette> = std::iter::once(b.icon_palette).chain(b.icon_palettes.iter().map(|(_, p)| *p)).collect();
-            let icons =
-                (!b.icons.is_empty()).then(|| image(&format!("buttons/{name}-icons.png"), &b.icons, ICONS(14), &icon_rows, icon_rows.len(), &none));
-            let icon_versions = if icons.is_some() { b.icon_palettes.iter().map(|(v, _)| v.clone()).collect() } else { Vec::new() };
-            ButtonDoc { name: name.clone(), size: [b.width, b.height], tiles, picture, icons, icon_versions }
-        })
-        .collect();
+    let buttons = c.buttons.iter().map(|(name, b)| button_doc(&mut image, name, name, b, frame0)).collect();
     let maps =|m: &[Vec<MapEntry>]| m.iter().map(|m| m.iter().map(tiles::entry_text).collect()).collect();
     let doc = CustomDoc {
         format: FORMAT.into(),
@@ -472,21 +515,18 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         gray_palette: tiles::palette_text(&c.gray_palette),
         other_palette: tiles::palette_text(&c.other_palette),
         chip_art,
-        pictures: PicturesDoc { ok, ok_picked, redeal, scrap, other },
+        pictures: PicturesDoc { ok, ok_picked, other },
         codes,
         elements,
         digits,
         slot_codes,
         empty_icon,
-        redeal_buttons,
-        scrap_buttons,
         base_version: if vs.versions.is_empty() { String::new() } else { vs.base_version.clone() },
         own,
         versions,
         cursor,
         cross_cursor,
-        emblem_of: c.emblem_of.clone(),
-        emblem_palette_of: c.emblem_palette_of.clone(),
+        emblems,
         regular,
         advance_name_colors: c.advance_name_colors.iter().map(|s| s.iter().map(|&c| tiles::color_text(c)).collect()).collect(),
         languages,
@@ -529,54 +569,10 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
     let pictures = SlotPictures {
         ok: one(img(&doc.pictures.ok, report)?),
         ok_picked: one(img(&doc.pictures.ok_picked, report)?),
-        redeal: one(img(&doc.pictures.redeal, report)?),
-        scrap: one(img(&doc.pictures.scrap, report)?),
         other: one(img(&doc.pictures.other, report)?),
     };
     let (elements, element_rows) = img(&doc.elements, report)?;
-    let version = |d: &VersionDoc, report: &mut Report| -> Option<(VersionPictures, Vec<Palette>)> {
-        let (beast_tiles, beast_out_palettes) = img(&d.beast_out, report)?;
-        let (emblems, emblem_palettes) = img(&d.emblems, report)?;
-        let (cross_names, cross_palettes) = img(&d.cross_names, report)?;
-        let v = VersionPictures {
-            beast_out: Picture { tiles: beast_tiles, palette: beast_out_palettes.first().copied().unwrap_or([0; 16]) },
-            beast_out_palettes,
-            beast_buttons: img(&d.beast_buttons, report)?.0,
-            emblems,
-            cross_names,
-            cross_palettes,
-        };
-        Some((v, emblem_palettes))
-    };
-    let (base, emblem_palettes) = version(&doc.own, report)?;
-    let (cross_cursor, cross_cursor_palettes) = img(&doc.cross_cursor, report)?;
-    let cross_cursor_palette = cross_cursor_palettes.first().copied().unwrap_or([0; 16]);
-    let mut versioned = Versioned::new(&doc.base_version, base);
-    for v in &doc.versions {
-        versioned.versions.push((v.version.clone(), version(&v.own, report)?.0));
-    }
-    let palette = |v: &[String], report: &mut Report| tiles::parse_palette(v, report, &name);
-    let mut languages = Vec::new();
-    for (lang, d) in &doc.languages {
-        let pictures = SlotPictures {
-            ok: one(img(&d.pictures.ok, report)?),
-            ok_picked: one(img(&d.pictures.ok_picked, report)?),
-            redeal: one(img(&d.pictures.redeal, report)?),
-            scrap: one(img(&d.pictures.scrap, report)?),
-            other: one(img(&d.pictures.other, report)?),
-        };
-        let mut cross_names = Vec::new();
-        for (version, i) in &d.cross_names {
-            cross_names.push((version.clone(), img(i, report)?.0));
-        }
-        let mut buttons = Vec::new();
-        for (name, i) in &d.buttons {
-            buttons.push((name.clone(), img(i, report)?.0));
-        }
-        languages.push((lang.clone(), CustomLettering { pictures, cross_names, buttons }));
-    }
-    let mut buttons = Vec::new();
-    for b in &doc.buttons {
+    let button = |b: &ButtonDoc, report: &mut Report| -> Option<(String, ButtonPictures)> {
         let (picture, palettes) = img(&b.picture, report)?;
         let picture = Picture { tiles: picture, palette: palettes.first().copied().unwrap_or([0; 16]) };
         let tiles = img(&b.tiles, report)?.0;
@@ -588,10 +584,81 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
             }
             None => (Tiles::default(), [0; 16], Vec::new()),
         };
-        buttons.push((
+        let sets = match SETS.iter().find(|(_, n)| *n == b.sets) {
+            Some((s, _)) => *s,
+            None => {
+                report.error(&name, format!("button {}: its sets are \"each\", \"other\" or \"unavailable\", not {:?}", b.name, b.sets));
+                ButtonSets::default()
+            }
+        };
+        Some((
             b.name.clone(),
-            ButtonPictures { width: b.size[0], height: b.size[1], tiles, picture, palettes, icons, icon_palette, icon_palettes },
-        ));
+            ButtonPictures {
+                width: b.size[0],
+                height: b.size[1],
+                tiles,
+                sets,
+                hidden: b.hidden,
+                cursor: b.cursor.into(),
+                picture,
+                palettes,
+                uses_digit: b.uses_digit,
+                held_at: b.held_at.map(|[x, y]| (x, y)),
+                icons,
+                icon_palette,
+                icon_palettes,
+            },
+        ))
+    };
+    let version = |d: &VersionDoc, report: &mut Report| -> Option<VersionPictures> {
+        let mut buttons = Vec::new();
+        for b in &d.buttons {
+            buttons.push(button(b, report)?);
+        }
+        let (cross_names, cross_palettes) = img(&d.cross_names, report)?;
+        Some(VersionPictures { buttons, cross_names, cross_palettes })
+    };
+    let base = version(&doc.own, report)?;
+    let (cross_cursor, cross_cursor_palettes) = img(&doc.cross_cursor, report)?;
+    let cross_cursor_palette = cross_cursor_palettes.first().copied().unwrap_or([0; 16]);
+    let mut versioned = Versioned::new(&doc.base_version, base);
+    for v in &doc.versions {
+        versioned.versions.push((v.version.clone(), version(&v.own, report)?));
+    }
+    let palette = |v: &[String], report: &mut Report| tiles::parse_palette(v, report, &name);
+    let mut languages = Vec::new();
+    for (lang, d) in &doc.languages {
+        let pictures = SlotPictures {
+            ok: one(img(&d.pictures.ok, report)?),
+            ok_picked: one(img(&d.pictures.ok_picked, report)?),
+            other: one(img(&d.pictures.other, report)?),
+        };
+        let mut cross_names = Vec::new();
+        for (version, i) in &d.cross_names {
+            cross_names.push((version.clone(), img(i, report)?.0));
+        }
+        let mut buttons = Vec::new();
+        for (name, own) in &d.buttons {
+            let tiles = match &own.tiles {
+                Some(i) => Some(img(i, report)?.0),
+                None => None,
+            };
+            let picture = match &own.picture {
+                Some(i) => Some(one(img(i, report)?)),
+                None => None,
+            };
+            buttons.push((name.clone(), ButtonLettering { tiles, picture }));
+        }
+        languages.push((lang.clone(), CustomLettering { pictures, cross_names, buttons }));
+    }
+    let mut buttons = Vec::new();
+    for b in &doc.buttons {
+        buttons.push(button(b, report)?);
+    }
+    let mut emblems = Vec::new();
+    for e in &doc.emblems {
+        let (tiles, palettes) = img(&e.image, report)?;
+        emblems.push(Emblem { navi: e.navi.clone(), tiles, palette: palettes.first().copied().unwrap_or([0; 16]) });
     }
     Some(CustomScreen {
         layout: doc.layout.into(),
@@ -616,15 +683,11 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         digits: img(&doc.digits, report)?.0,
         slot_codes: img(&doc.slot_codes, report)?.0,
         empty_icon: img(&doc.empty_icon, report)?.0,
-        redeal_buttons: img(&doc.redeal_buttons, report)?.0,
-        scrap_buttons: img(&doc.scrap_buttons, report)?.0,
         versioned,
         cursor: img(&doc.cursor, report)?.0,
         cross_cursor,
         cross_cursor_palette,
-        emblem_palettes,
-        emblem_of: doc.emblem_of.clone(),
-        emblem_palette_of: doc.emblem_palette_of.clone(),
+        emblems,
         regular: img(&doc.regular, report)?.0,
         advance_name_colors: doc
             .advance_name_colors

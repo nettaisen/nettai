@@ -77,7 +77,7 @@ const PICTURE_BYTES: usize = 0x540;
 pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
     let rom = &roms.protoman;
     let mut hud = crate::hud::hud(roms, names, chip_icons(roms, names));
-    let mut custom = crate::custom::custom(roms, chip_art(roms, names));
+    let mut custom = crate::custom::custom(roms, names, chip_art(roms, names));
     // The US ROMs' words are English; the Japanese ROMs' lettering is the
     // pack's Japanese (`lettering`).
     let ja = crate::lettering::LANGUAGE.to_string();

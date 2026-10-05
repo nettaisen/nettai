@@ -41,6 +41,17 @@ pub struct Picture {
     pub palette: Palette,
 }
 
+/// A navi's emblem over the picked column (`sub_8029C08`), under its navi's
+/// key: its 2x2 tiles and its palette, which is sprite palette 11 while
+/// the navi's console has the screen up (the cursor and the Regular chip's
+/// frame are drawn in it too: `sub_802812C`).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Emblem {
+    pub navi: String,
+    pub tiles: Tiles,
+    pub palette: Palette,
+}
+
 /// A chip's picture, under its chip's key.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ChipArt {
@@ -59,33 +70,25 @@ pub struct ChipArt {
     pub version: Option<String>,
 }
 
-/// The chip window's pictures for the slots that aren't chips (Beast Out's
-/// is the version's: `VersionPictures`).
+/// The chip window's pictures for the slots that are neither chips nor
+/// buttons (a button's is its own: `ButtonPictures::picture`).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SlotPictures {
     /// OK with nothing picked yet, and with chips picked ("sending").
     pub ok: Picture,
     pub ok_picked: Picture,
-    /// ChpShufl's re-deal button and DustCross's scrap button.
-    pub redeal: Picture,
-    pub scrap: Picture,
     /// The slot kind battle mode 1 has (a Beast Out without the button's
     /// art).
     pub other: Picture,
 }
 
-/// What a game version's custom screen shows of its own: its Beast and its
-/// Crosses.
+/// What a game version's custom screen shows of its own: its buttons (its
+/// Beast's) and its Crosses.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct VersionPictures {
-    /// The Beast Out button's picture in the chip window, with its palettes.
-    pub beast_out: Picture,
-    pub beast_out_palettes: Vec<Palette>,
-    /// The Beast Out button (4x2 each): selectable, unavailable, battle
-    /// mode 1's, none.
-    pub beast_buttons: Tiles,
-    /// The navis' emblems (2x2 each; MegaMan's are the version's).
-    pub emblems: Tiles,
+    /// The buttons the version has its own look of, by name (EXE6's
+    /// "beast_out": the version's Beast).
+    pub buttons: Vec<(String, ButtonPictures)>,
     /// The Cross window's names (9x2 each): the version's five Crosses on
     /// the cursor's row, then on the others' (`dword_86E7DCC`).
     pub cross_names: Tiles,
@@ -94,11 +97,18 @@ pub struct VersionPictures {
     pub cross_palettes: Vec<Palette>,
 }
 
+impl VersionPictures {
+    /// The version's own look of the button named `name`.
+    pub fn button(&self, name: &str) -> Option<&ButtonPictures> {
+        self.buttons.iter().find(|(n, _)| n == name).map(|(_, b)| b)
+    }
+}
+
 /// Where the screen's blocks go among the HUD layer's tile numbers, which
-/// its window map and patch list count with: a game's own (EXE6's is
-/// [`CustomLayout::EXE6`]; EXE5's smaller frame puts everything after it
-/// lower). A pack says its game's; the default is no layout (zeros: an
-/// empty bundle's), never a game's.
+/// its window map and patch list count with: a game's own (EXE5's smaller
+/// frame puts everything after it lower than EXE6's). A pack says its
+/// game's; the default is no layout (zeros: an empty bundle's), never a
+/// game's.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CustomLayout {
     /// The picked-chip column's cells and the late turns' block.
@@ -123,13 +133,8 @@ pub struct CustomLayout {
     /// The color a hidden slot's tiles and a slot's blank code are filled
     /// with (EXE6's `byte_802A700`: 1).
     pub slot_blank: u8,
-    /// The cursor over OK and over the special slot under it.
+    /// The cursor over OK (a button's is its own: `ButtonPictures::cursor`).
     pub ok_cursor: CursorPlace,
-    pub special_cursor: CursorPlace,
-    /// Whether the chip window shows the re-deal button's uses left, a
-    /// digit in the damage's last cell (EXE5's Shuffle, 0x080245F2; EXE6's
-    /// `sub_80287A4` reads the count and draws nothing).
-    pub button_uses: bool,
 }
 
 /// Where the cursor's corners go over a slot (`sub_8028820`): the slot's
@@ -142,55 +147,50 @@ pub struct CursorPlace {
     pub corners: [[(i8, i8, bool, bool); 4]; 2],
 }
 
-impl CustomLayout {
-    /// EXE6's (`sub_8026840`, `sub_8028250`, `byte_8029DF8`; the cursor over
-    /// OK `sub_80288D0` and `byte_80288E4`, over Beast Out `sub_8028904`
-    /// and `byte_8028918`).
-    pub const EXE6: CustomLayout = CustomLayout {
-        column_cells: 0x89,
-        turn_limit: 0x8D,
-        name: 0x9B,
-        art: 0xAB,
-        code: 0xD5,
-        element: 0xD7,
-        digits: 0xDB,
-        slots: 0xE1,
-        column_icons: 0x125,
-        name_bar: 0x1D6,
-        cross_names: 0x139,
-        slot_blank: 1,
-        ok_cursor: CursorPlace {
-            x: 0x58 + 3,
-            y: 0x70 - 2,
-            corners: [
-                [(2, 1, false, false), (2, 0x16, true, false), (0x14, 0x16, true, true), (0x14, 1, false, true)],
-                [(4, 3, false, false), (4, 0x14, true, false), (0x12, 0x14, true, true), (0x12, 3, false, true)],
-            ],
-        },
-        special_cursor: CursorPlace {
-            x: 0x58 + 3,
-            y: 0x88 - 1,
-            corners: [
-                [(2, 1, false, false), (2, 0x16, true, false), (0xE, 0x16, true, true), (0xE, 1, false, true)],
-                [(3, 2, false, false), (3, 0x15, true, false), (0xD, 0x15, true, true), (0xD, 2, false, true)],
-            ],
-        },
-        button_uses: false,
-    };
+/// Which of a button's tile sets a slot in a state shows.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ButtonSets {
+    /// One a state: selectable, unavailable, picked (EXE6's re-deal and
+    /// scrap buttons).
+    #[default]
+    Each,
+    /// The second for unavailable and picked alike (EXE6's Beast Out
+    /// button, EXE5's soul button).
+    Other,
+    /// The second for unavailable alone (EXE5's Arm Change, 0x0802415A:
+    /// picked, it looks on offer, the chip it holds drawn over it).
+    Unavailable,
 }
 
 /// A button the screen draws by its name (a system's button,
-/// docs/design/rules-in-luau.md §4.8, or EXE5's soul button): its tiles in
-/// the slots' row (`width` x `height` tiles a state, row by row: selectable,
-/// unavailable, then the game's others) and its picture in the chip window
-/// with that picture's palettes by state.
+/// docs/design/rules-in-luau.md §4.8: the name its content registers it
+/// under). Its tiles among the slots': `width` x `height` a cell (a slot's
+/// 2x3, its icon then its code; the special slot's own size), a set its
+/// cells', set after set (selectable, unavailable, then the game's others;
+/// `sets` says which a state shows). And its picture in the chip window.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ButtonPictures {
     pub width: u8,
     pub height: u8,
     pub tiles: Tiles,
+    pub sets: ButtonSets,
+    /// The set its slot shows while the button isn't there (EXE6's Beast
+    /// Out button's fourth); none: the window's fill.
+    pub hidden: Option<u8>,
+    /// The cursor over it (`sub_8028820`).
+    pub cursor: CursorPlace,
+    /// Its picture in the chip window, and that picture's palettes: its
+    /// own first, then the others its game has for it (EXE5's soul
+    /// button's second is a Chaos Unison's).
     pub picture: Picture,
     pub palettes: Vec<Palette>,
+    /// Whether the chip window shows its uses left, a digit in the
+    /// damage's last cell (EXE5's Shuffle, 0x080245F2; EXE6's
+    /// `sub_80287A4` reads the count and draws nothing).
+    pub uses_digit: bool,
+    /// Where the icon of the chip it holds is drawn, a sprite over it
+    /// (EXE5's Arm Change, 0x080254F4).
+    pub held_at: Option<(i16, i16)>,
     /// The icons (2x2 each) the picked column shows for what the button
     /// gives, by its number (EXE5's souls by their number, 13 Chaos Unison's:
     /// 0x08024010's table), and the palette of the sprite the icon flies as
@@ -207,8 +207,8 @@ pub struct ButtonPictures {
 pub struct CustomScreen {
     /// Where the blocks below go among the layer's tile numbers.
     pub layout: CustomLayout,
-    /// The buttons drawn by name that the fields below don't hold (EXE5's
-    /// "soul"), by name.
+    /// The buttons, by name (a version's own look of one is its
+    /// `VersionPictures`').
     pub buttons: Vec<(String, ButtonPictures)>,
     // ---- The HUD layer's tiles, by the tile number they load at.
     /// The window frame, from tile 1.
@@ -253,13 +253,6 @@ pub struct CustomScreen {
     pub slot_codes: Tiles,
     /// The icon of an empty or picked slot (2x2).
     pub empty_icon: Tiles,
-    /// The Beast Out button (4x2 each): selectable, unavailable, battle
-    /// mode 1's, none.
-    /// ChpShufl's and DustCross's buttons over slots 8 and 9 (12 tiles
-    /// each: two slots' icon and code), by state (the scrap button's
-    /// fourth is its pressed look).
-    pub redeal_buttons: Tiles,
-    pub scrap_buttons: Tiles,
     /// The pictures by game version.
     pub versioned: Versioned<VersionPictures>,
     // ---- Sprites.
@@ -270,11 +263,8 @@ pub struct CustomScreen {
     /// (sprite palette 14, the battle's).
     pub cross_cursor: Tiles,
     pub cross_cursor_palette: Palette,
-    /// The emblems' palettes (the cursor's too), and which emblem and
-    /// palette a navi shows by its number.
-    pub emblem_palettes: Vec<Palette>,
-    pub emblem_of: Vec<u8>,
-    pub emblem_palette_of: Vec<u8>,
+    /// The navis' emblems, by navi key.
+    pub emblems: Vec<Emblem>,
     /// The Regular chip's frame (two frames of 4x4).
     pub regular: Tiles,
     /// The Program Advance animation's names' first four colors
@@ -300,5 +290,10 @@ impl CustomScreen {
     /// The button named `name` (`buttons`).
     pub fn button(&self, name: &str) -> Option<&ButtonPictures> {
         self.buttons.iter().find(|(n, _)| n == name).map(|(_, b)| b)
+    }
+
+    /// The emblem of the navi with key `navi`.
+    pub fn emblem(&self, navi: &str) -> Option<&Emblem> {
+        self.emblems.iter().find(|e| e.navi == navi)
     }
 }
