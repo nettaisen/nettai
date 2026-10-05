@@ -538,10 +538,16 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
             .align_y(Alignment::Center),
         );
     }
+    // (The chips are those the side's rules let a folder hold, which a round
+    // that doesn't start can't say: a side without its version, for one.)
+    let hint: Element<Msg> = match &e.round {
+        Err(why) if e.pool[s].is_empty() => text(format!("No chips to list yet: {why}")).size(13).color(RED).into(),
+        _ => text("A code puts the chip in the selected entry.").size(12).color(DIM).into(),
+    };
     let right = column![
         row![picture, about].spacing(10),
         text_input("search chips", &e.search).on_input(Msg::Search),
-        text("A code puts the chip in the selected entry.").size(12).color(DIM),
+        hint,
         scrollable(list).height(Length::Fill),
     ]
     .spacing(6)
