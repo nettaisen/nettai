@@ -1,7 +1,7 @@
 --!strict
 -- EXE5's revert out of a soul (0x080121D8, EXE6's `sub_801562C`'s place): when the soul's turns run out (./init),
--- MegaMan's side asks for it; while the battle is paused he is back in his base form. Every soul names this action
--- as its `revert`. Unlike EXE6's revert it saves no state to resume, spends nothing and leaves the mood to the status
+-- MegaMan's side asks for it; while the battle is paused he is back in his base form. Every soul names this
+-- module's action as its `revert`. Unlike EXE6's revert it saves no state to resume, spends nothing and leaves the mood to the status
 -- reset.
 --
 -- Its one step: onto his future panel (its reservation given up), facing the default way, a flash (effect 3) and
@@ -57,5 +57,12 @@ function revert.update(me: Object, s: State)
     me:set_navi_state("reverting_form", false)
     me:exit_attack()
 end
+
+-- The revert out of a soul, as the pause handler runs it: one of the souls system's actions (./init).
+revert.action = define.action {
+    id = "souls/revert",
+    state = { timer = "u16" },
+    update = revert.update,
+}
 
 return revert

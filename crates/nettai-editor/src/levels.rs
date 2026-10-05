@@ -2,7 +2,8 @@
 //! link navi fills in the stats its save's reload gives it
 //! (nettai-match's `link_navis`, docs/engine/link-navis.md), what the save
 //! keeps carried over; an edited stat stays edited, and the stats pane shows
-//! where it differs from the level's.
+//! where it differs from the level's. An EXE5 team navi's level likewise: its
+//! HP as the story leaves it at that level (nettai-match's `story`).
 
 use nettai_battle::Content;
 use nettai_battle::setup::NaviStats;
@@ -28,6 +29,10 @@ pub fn switch_navi(content: &Content, side: &mut Side, navi: NaviHandle) -> bool
     side.navi = navi;
     side.stats = stats;
     side.crosses = None;
+    // (Only the navi that changes form has a NaviCust: MegaMan's compiles.)
+    if content.navi(navi).forms.is_none() {
+        side.navicust = None;
+    }
     true
 }
 

@@ -1057,12 +1057,21 @@ impl CoreApi for Battle {
         }
     }
 
-    fn tactic_pattern(&self, side: u8, i: usize) -> ApiResult<(i8, i8, Vec<nettai_content_api::ChipHandle>)> {
-        let p = self.tactics[side as usize & 1]
-            .patterns
-            .get(i)
-            .ok_or_else(|| ApiError::Other(format!("side {side}'s tactics have no pattern {i}")))?;
-        Ok((p.dx, p.dy, p.chips.clone()))
+    fn tactic_pattern(&self, side: u8, i: usize) -> ApiResult<(i8, i8)> {
+        if i >= crate::tactics::MAX_PATTERNS {
+            return Err(ApiError::Other(format!("side {side}'s tactics have no pattern {i}: the block has eight records (0x0802BEFE reads past them)")));
+        }
+        let p = self.tactics[side as usize & 1].patterns.get(i).copied().unwrap_or_default();
+        Ok((p.dx, p.dy))
+    }
+
+    fn tactic_pattern_read(&self, side: u8, i: usize, k: usize) -> nettai_content_api::TacticPatternRead {
+        use crate::tactics::PatternRead;
+        match self.tactics[side as usize & 1].pattern_read(i, k) {
+            PatternRead::Chip(c) => nettai_content_api::TacticPatternRead::Chip(c),
+            PatternRead::Number(n) => nettai_content_api::TacticPatternRead::Number(n),
+            PatternRead::End => nettai_content_api::TacticPatternRead::End,
+        }
     }
 
     fn swap_tactics(&mut self, side: u8, i: usize) {

@@ -556,16 +556,32 @@ as exe6-extract takes EXE6's) writes a pack whose manifest says `game = "exe5"`:
   with the bank's voicegroups (the version's matched to equal ones of the bank, samples, waves and key maps by
   content, or added); nettai-content's `sound::SongVersions` holds them, and a pack without versions names no
   version anywhere.
-- **Left out, for now:**
-  - The Japanese ROMs' one different sprite (14-17, which has text on it): the US release localized it rather than
-    cut it, so the pack keeps the US's, as EXE6's does.
-  - **Languages** (EXE6's shape, text-rendering.md §10): with an EXE5 content root, its strings go in
-    `content/exe5/locales/en.toml` (from the US ROMs) and `ja.toml` (from the Japanese ROMs), keyed by definition
-    key; and exe5-extract writes the Japanese ROMs' lettering beside the US's as nettai-assets' `HudLettering` and
-    `CustomLettering` (the fonts in the Japanese encoding, the HUD's lines, the banners and pictures with words in
-    them), as exe6-extract's `lettering` does. The strings exist; the lettering doesn't yet: the pack is the US
-    ROMs' lettering alone, so an EXE5 console in Japanese (`--lang ja --text original`) draws the Japanese names in
-    the US font (the static audit says so, not counted).
+- **Languages** (EXE6's shape, text-rendering.md §10): the strings are in `content/exe5/locales/en.toml` (from the
+  US ROMs) and `ja.toml` (from the Japanese ROMs), keyed by definition key; and exe5-extract writes the Japanese
+  ROMs' lettering beside the US's as nettai-assets' `HudLettering` and `CustomLettering` (its `lettering`, as
+  exe6-extract's does), so an EXE5 console in Japanese (`--lang ja`) draws as Team of Blues and Team of Colonel do:
+  - the 8x16 font and the dialogue font with its advances, in the Japanese encoding (compat/text.toml's `[jp]`);
+  - the HUD's text lines;
+  - the ten banners whose words differ (ROCKMAN, BLUES, SEARCHMAN and TODOMAN for MegaMan, ProtoMan, SearchMan and
+    TomahawkMan, DELETED and WIN!; the Program Advance's katakana, twice), some starting elsewhere, and the
+    banners' palette;
+  - カスタム中… for "Cstmzing...", seven tiles wide for eight;
+  - the chip window's pictures for OK and the re-deal button (チップが えらばれて いません; the shared tiles of
+    "chip data transmission" and "BLOCKING!") with their palettes;
+  - the soul button's label, "uni son" in two rows where the US ROMs' says "UNITE" (a named button's tiles by
+    language: `CustomLettering::buttons`).
+
+  The two Japanese ROMs' lettering is the same (the extractor checks it), and so is the rest of what a netbattle
+  draws in all four ROMs: the HUD's and the custom screen's other blocks, the faces and emblems, every chip's icon
+  and picture, the field (the verification workspace's tools/exe5/jpassets.py compares them block by block, by the
+  literals of the routines the builds share).
+- **Left out:**
+  - The Japanese ROMs' one different sprite (14-17, the "BLOCK!" label, ブロック! there): the US release localized
+    it rather than cut it, so the pack keeps the US's, as EXE6's does; no content draws it.
+  - The Japanese ROMs' background 0x05, which is another picture than the US ROMs' (bubbles in the dark for the
+    goldfish): no netbattle's stage shows it, and the pack keeps the US's. The extractor says both.
+  - "Interval..." and "Strat Change..." (インターバル中…, サクセンヘンコウ中…), which a Team Battle shows where a
+    netbattle shows "Cstmzing...": the pack has neither language's.
 - **Names:** placeholders (`sprite-0c-2d`, `sound-10e`, `chip-12d`; a glyph's number in brackets) until an EXE5 content
   root names them in its compat, as EXE6's does.
 - **Shared decoding:** the sprite archive and GFX-animation decoders are EXE6's format and code; exe5-extract has its
@@ -1087,9 +1103,24 @@ code, 6 the same but for constants, 34 similar, 1 differs and 8 absent. What dif
   0x18, judge-draw 0x1C, double-ko 8 on side 0's console and 4 on side 1's (the round goes to side 1),
   operation-win 0x38. The replays compare the banner's number with the traced console's record (its +1; a telop's
   holds 0) on every frame, in both games.
-- The operation battle's turn starts with banner 0, "BATTLE START", where a Team Battle's shows 0x0C (as recorded:
-  library-exe5/flow/operation-win; not read yet, and the engine doesn't run the mode: its replay stops on the
-  round's first frame, the gauge 0x1500 where the engine's is 0).
+- The operation battle (battle flag 0x40), as seen and not yet read (2026-10-04; the engine doesn't run the mode:
+  a replay stops on the round's first frame, frame 162, the gauge 0x1500 where the engine's is 0). Recorded with
+  chiplab's `exe5-operation-battle` base (a trap at 0x0802D590 raises NaviStats +0x2A, which no Team Battle sets):
+  library-exe5/flow/operation-win and operation-win-side1, the recordings kept in the verification workspace's
+  data/staged/exe5-operation-battle-2026-10-04 (not in the lab while they can't replay).
+  - No custom screen opens. The round's start shows "BATTLE 1 START!" (banner 0x30, frames 226 to 284) and the
+    turn's start banner 0, "BATTLE START" (frames 386 to 444), where a Team Battle's shows 0x0C; the fight runs from
+    frame 446. (The driver's `waitcustom` returns at once and its `fight` never does; five A presses 20 frames apart
+    before the fight do nothing seen.)
+  - Each console shows its own three chips in a row along the bottom with a cursor over the middle one (side 0,
+    Team ProtoMan's save: AirShot, AirSpin1, WindRack; side 1, Team Colonel's: YoYo, BugBomb, Sword: neither the
+    folder's first chips nor the save's computer-navi data), its navi's HP top left, and the gauge along the top,
+    full and red from the start.
+  - Both navis stand idle (action 6) until their player presses A: the navi then goes through action 0x47 and its
+    chip's own. Side 0's first A deleted side 1's navi at 20 HP (frames 794 to 823); side 1's navi's first chip
+    took 10 HP of side 0's navi.
+  - The win shows the winner's navi's banner (0x38, "MEGAMAN WIN!", from frame 880 with side 0 the winner:
+    0x080090C0's table), the result's wait 102 ticks as a Team Battle's.
 - `sub_80080D2` (fighting): no Cross-special check (EXE6 +0x3A, `sub_800AAD6` absent) and no own-gauge
   decrement (0x2900) on a custom request; EXE5 calls 0x08025ED0 there.
 - `sub_8008452`, `sub_8008492`: after the reversions EXE5 opens the custom screen (result 6) directly: no
@@ -1437,12 +1468,32 @@ them.
 
 ### 15.8 Soul Unison (as built)
 
+- **Where it is.** A soul is a form of MegaMan's, named by its id (`colonelsoul`), never by the original's number.
+  - *The soul's own* is in its folder, navis/megaman/forms/<soul>/: the form (init.luau), its weapons, its sprite's
+    attach points (attach_points.luau) and what only it does. The form says what the rules ask of a soul: its
+    family (`soul = { family }`, the engine's), its buster arm's animation (`buster_arm`), and the souls system's
+    fields (the system's `extends`; content/exe5/types.d.luau types them): its navi's image at the change
+    (`image`, a `SoulImage`: the sprite, and what the image puts on and takes off), what it adds to the custom
+    screen (`custom`, a `SoulCustom`: below), its blade's animation (`blade_anim`), its charged sword's step behind
+    the enemy (`steps_behind`), VarSwrd's wait (`var_sword_waits`) and the cameras' shake at its change
+    (`emerge_shake`).
+  - *The system's* is rules/souls/: the soul button and the soul's choice (custom.luau), the turns (init.luau), the
+    change and the revert (change.luau, revert.luau, each defining its action, which every soul names), the image
+    and the shade (image.luau, shade.luau), Chaos Unison's failure (chaos.luau). It names no soul: custom.luau
+    gathers each soul's `custom` from MegaMan's `forms.souls` and asks the soul the side's navi is in.
+  - *The original's number* (NaviStats +0x2C: 1 to 12) is compat's: content/exe5/compat/records.toml's `[forms]`
+    (exe5-compat's `Compat::form_number`, `form`), which a recording's setup (each version's six souls, by the
+    save's flags) and the save import read. MegaMan lists his souls in that order (navis/megaman/init.luau's
+    `forms.souls`): the order of the soul button's icons in a pack, by which the frontend takes a soul's icon
+    (nettai-render's `soul_place`; nettai-match's `megamans_souls_are_in_the_order_of_their_numbers` holds the
+    list to compat's numbers).
 - **The soul button** (the souls system's button `soul`, rules/souls/custom.luau: EXE5's layout's slot 11,
   0x08023C54, 0x08024B28, 0x08024972): shown for MegaMan with souls, outside battle flag 0x40, with the save's
   Soul Unison (event flag 0, the setup's `soul_unison`), unless he is worried or dark (in a soul or angry he may);
-  lit for the last pick's family when the navi has a soul of it (a form naming its `soul = { number, family }`),
-  the save has the soul (the setup's `souls`, its flags by number: exe5-compat gives a finished save's six of the
-  version) and it isn't given this round (the system's `souls_used`: Soul Unison and Chaos Unison apart; a dark
+  lit for the last pick's family when the navi has a soul of it (a form naming its `soul = { family }`),
+  the save has the soul (the setup's `souls`, a list of forms: exe5-compat gives a recording's side its version's
+  six) and it isn't given this round (the system's `souls_used`, a bit a soul by its place among the navi's souls,
+  the original's word 0x02034E10: Soul Unison and Chaos Unison apart; a dark
   chip's is Chaos Unison, which needs the setup's `chaos_unison`, flag 0x236). Pressed: the window `soul_unison`
   (EXE5's state 9: the icon's flight, fades 0x34 and 0x30, then the white), whose white step puts the soul first in
   the selection in place of the chip given up (`custom.trade_last_pick`). At OK (`custom.confirmed`) the transform
@@ -1451,9 +1502,17 @@ them.
   `chaos`); the chip given up leaves the folder in the soul's place. B on the soul puts the chip back. (Until
   2026-10-04 this was the custom screen's Rust: `SlotKind::Soul`, `Phase::SoulChosen`, `SoulUnlocks`.)
 - **What a soul adds to the screen** (0x08023CF8, by the soul MegaMan is in, when the side's navi is MegaMan, the
-  screen's +0x10): its slots 8 and 9, over the hand's last two chips. SearchSoul's Shuffle (kinds 4 and 5) and
-  NumberSoul's hand of ten (0x08025BE4) are the two bullets after this one; the two that change a chip are:
-  - **MeddySoul's capsules** (soul 6, kinds 6 and 7; rules/souls/capsules.luau): two of five capsule chips a screen
+  screen's +0x10): its slots 8 and 9, over the hand's last two chips. Each soul's is its own, a module in its
+  folder that makes the form's `custom` (a `SoulCustom`: the state fields it keeps, its buttons and windows by
+  name, and its `hand_size`, `deal`, `confirmed` and `turn_opened`). rules/souls/custom.luau gathers them from
+  MegaMan's souls into the system's buttons, windows and state, and calls a soul's while the side's navi is in that
+  soul, with the system's state (its buttons and its `deal` not in battle mode 1, where the routine reads no
+  soul). What the souls keep of a screen starts fresh at each deal, every soul's and whatever soul the navi is in:
+  the system sets each field of each soul's `custom.state` to what a fresh state holds, by the field's declared
+  type, before the soul's deal runs (the original zeroes the screen's record as it opens, 0x08022CA2: out of
+  MeddySoul there are no capsules). SearchSoul's Shuffle (kinds 4 and 5) and NumberSoul's hand of ten
+  (0x08025BE4) are the two bullets after this one; the two that change a chip are:
+  - **MeddySoul's capsules** (kinds 6 and 7; navis/megaman/forms/meddysoul/capsules.luau): two of five capsule chips a screen
     (0x17C YelCapsl, 0x17D BlkCapsl, 0x17E WhiCapsl, 0x17F PrpCapsl, 0x180 PnkCapsl: chips/capsules), one draw of
     the console's RNG1 as the slots are laid out (0x08023D30: bits 1 to 4 and 17 to 20 into a table of sixteen,
     0x08025E60, or 0x08025E80 while MegaMan's HP is under a quarter of its maximum; the system's deal hook, after
@@ -1468,7 +1527,7 @@ them.
     The capsule chips never reach a hand; a slot shows its capsule as a chip (icon, and in the chip window the name
     and picture alone, 0x08024422), and R describes it. Their records' uses are leftovers (the cannon's action,
     Poltrgst's and RockCube's dimming routines, the supports' controller, routine 50: lib/supports/dimming).
-  - **ColonelSoul's Arm Change** (soul 7, kinds 8 and 9; rules/souls/arm-change.luau): on offer while the last pick
+  - **ColonelSoul's Arm Change** (kinds 8 and 9; navis/megaman/forms/colonelsoul/arm-change.luau): on offer while the last pick
     is a standard chip of no family that deals damage and neither dims nor is dark (0x08024C00). A on it
     (0x080249D6) runs the screen's state 0x38 (0x08023694: the window `arm_change`): the chip leaves the picks for
     the button (`custom.hold_last_pick`; five more can be picked) and its icon blinks in the column for 30 ticks.
@@ -1501,7 +1560,7 @@ them.
     pair by navi from 0x08025EA0 in slot 9, 0x08023EFE; the navi switch, state 0x40; battle mode 1's button in
     slot 11). A netbattle's navi is MegaMan.
 - **SearchSoul's Shuffle** (the souls system's button `redeal`, the name the frontend draws the pack's re-deal
-  button's tiles and picture for; rules/souls/shuffle.luau; the per-soul slots,
+  button's tiles and picture for; navis/megaman/forms/searchsoul/shuffle.luau; the per-soul slots,
   0x08023CF8, by the soul the emotion routine leaves in r1, so never in battle mode 1): slots 8 and 9 (types 4 and 5),
   its right neighbor the special slot, its left the eighth chip's; three uses a screen (3 less the screen's +0x16,
   which each open zeroes). A on it (0x080249B0, no sound of its own; EXE6's ChpShufl plays one, now its button's
@@ -1510,14 +1569,17 @@ them.
   in the hand (0x080253E8's table, 0x080254C8: the custom-screen rules' `redeal_kept`, by how many of the hand it
   deals again: 0, 0, 0, 1, 1, 2, 2, 3, 3): the hand's are shuffled among themselves, then all but the first kept
   with the rest of the folder. Its scenarios: souls/03-cursor/shuffle, shuffle-3, shuffle-picked-1 to 5.
-- **NumberSoul's hand of ten** (rules/souls/hand.luau, the souls system's `custom.hand_size`; 0x08025BE4): MegaMan
-  in soul 9 is dealt ten chips whatever his custom level, in battle modes 0 and 6 (mode 1 takes the same branch, but
+- **NumberSoul's hand of ten** (navis/megaman/forms/numbersoul/hand.luau, through the souls system's
+  `custom.hand_size`; 0x08025BE4): MegaMan
+  in NumberSoul is dealt ten chips whatever his custom level, in battle modes 0 and 6 (mode 1 takes the same branch, but
   its emotion routine, 0x080127C0, leaves the stats' address in r1, not the soul: the custom level's hand; any other
   mode deals five, which nothing answers yet). Its scenario: souls/09-plus/hand-of-ten.
 - **The change** (rules/souls/change.luau, the souls' `change`, EXE5's 0x08011F74, run by the shared turn-start
-  sequencer): onto the future panel, a flash, his moves stopped (`stop_moving`); the soul's image (objects/
-  soul-image, actor 0x2A, its navi's sprite 08-xx) spirals in, blinks and fades; MegaMan emerges in the soul (the
-  old form's end hook and the new one's start hook, `put_on/take_off_form_overlay`; TomahawkSoul's shake), the
+  sequencer): onto the future panel, a flash, his moves stopped (`stop_moving`); the soul's image (rules/souls/
+  image.luau, actor 0x2A, in the look its form's `image` gives: its navi's sprite 08-xx and what it wears) spirals
+  in, blinks and fades; MegaMan emerges in the soul (the
+  old form's end hook and the new one's start hook, `put_on/take_off_form_overlay`; TomahawkSoul's shake, its form's
+  `emerge_shake`), the
   status reset; Chaos Unison's 11 ticks arm the chaos charge (AIData +0x12, not yet modeled). The souls system
   (rules/souls/init.luau) keeps the soul's turns (AIData +0x0F), counts them down at a turn's start (0x0801248C)
   and asks for the revert when they run out (0x0801246C); the revert is the souls' own (`FormData::revert`, the
@@ -1525,7 +1587,8 @@ them.
 - **ProtoSoul** (soul 1, sword): sprite 00-01, weapons from 0x0801CA1C's row 1: the buster, the charged slash
   (routine 3: WideSwrd's slash, 80 + 10 × (Attack + 1), counter byte 0x94), Sword chips charged with A (routine
   5: any Sword chip but a dimming or dark one, `charged_chips`' `plain`, 0x0801090A; doubled, 0x080103D0). EXE5's
-  blade animation goes by the soul (0x080EC038: ProtoSoul 13, ColonelSoul 14, ShadowSoul 15; `blade_anim`).
+  blade animation goes by the soul (0x080EC038: ProtoSoul 13, ColonelSoul 14, ShadowSoul 15; each form's
+  `blade_anim`, which lib/swords' `blade_anim` reads).
   souls/01-sword/unison matches every frame; its B+Back shield is routine 4 (EXE5's guard as the Reflect program's).
 - **The other eleven** follow the pattern: a form file each under navis/megaman/forms (sprite 00-0n, image sprite
   08-0n, family, weapons from 0x0801CA1C: +5 the A-charge's routine, +6 the buster's, +7 the charged shot's, +8
@@ -1669,7 +1732,8 @@ chips walked up to, patterns, traps; 10,225 frames, each through Dark MegaMan's 
   idle (twelve seconds from his first, then his leave, the navi type's action 7), his tick (the time running down
   outside pauses and dimming, his last three seconds blinking, the battle's end ending it).
 - *The AI* (rules/computer-navi/ai, 0x0802BA14): its decisions, the buster runs (his buster, weapon routine 0x3E,
-  is attack 0x16: three shots, rules/computer-navi/buster), the patterns, the reposition, a chip's play; the
+  is attack 0x16: three shots, rules/computer-navi/buster), the patterns (never played: below), the reposition, a
+  chip's play; the
   pressure picks as written (the front one calls 0x081BC8AC, data: an error; the hole one reads the AI's own
   side's tactics; their counters stay 0); getting in place for a chip by its positioning class
   (rules/computer-navi/place: all 33 classes of 0x08029B3C, and the panel searches they share, ./panels).
@@ -1689,9 +1753,46 @@ seven saves (Tango's templates and three played ones):
 - *The block* (0xE0 bytes): 42 halfword places (a chip's number; 0x8000 with a pattern's index; 0xFFFF empty), a
   count at +0x54 that only the send writes (a save's is 0xFFFFFFFF), and from +0x58 eight pattern records of 16
   bytes: `dx`, `dy` (signed bytes), five chip places to the first 0xFFFF, and the pattern's score, a word at +12.
-  The AI reads a pattern's chips to the first 0xFFFF with no other end (0x0802BCD6), so a record with all five
-  places filled is read on into its score (a chip number), the score's upper half (chip 0) and the next record.
-  No save seen has a pattern of more than two chips; the engine's patterns end at their chips.
+  As written the AI reads a pattern's chips to the first 0xFFFF with no other end and takes any other halfword
+  for a chip's number (0x0802BCD6, 0x0802C094), so a record with all five places filled would be read on into its
+  score (its lower half a chip's number, its upper half chip 0), the next record's `dx` and `dy` as one halfword,
+  that record's places, and so through the records to the block's last eight bytes, which nothing writes (0xFF).
+  As run, nothing of a pattern is ever read: see *A pattern is never played* below. The engine's type holds the
+  record whole all the same (`TacticPattern`: `dx`, `dy`, five places each a chip, 0 or empty, the score; eight
+  records in their places; `Tactics::pattern_read` is the read as written), and exe5-compat refuses a block whose
+  last eight bytes aren't 0xFF.
+  A record the learning never filled is zeros (place 0, 0, five chip places of 0, score 0: the played saves'
+  unused records), one nothing has written 0xFF.
+- *A pattern is never played* (2026-10-05). The step of a pattern entry (0x0802BC48; the same code at 0x0802B6DC
+  and around 0x0802B930) works out its place from the target, calls the move lag's routine (0x0800E0BE) and then
+  the step test (0x0800CAA0) before it takes the place back off the stack (0x0802BC7E to 0x0802BC8E): the test is of what
+  the lag's routine left in r0 and r1. For MegaMan's stats that is the lag as the column and the lag again as the
+  row (4 and 4; 0 and 0 in ShadowSoul), for another navi's the lag and the address of its row of the lag table
+  (0x0800E0F0). The field's rows are 1 to 3 (0x0800B33C), so the test fails for every navi at every place, and the
+  entry takes the other branch: a miss (+0xF4), the target's search moved on (+0xFC), a step to a random panel of
+  its own area. The step that reads a pattern's chips (+0xF2 = 0x14) is set by the branch that never runs. So a
+  pattern entry differs from an empty turn only in being an entry (it is counted, shuffled and turned), and its
+  place, chips, score and the record after it show in no battle. Recorded: library-exe5/chaos-ai/pattern-reached (a
+  two-chip pattern two columns back from its target in its row, a free panel of Dark MegaMan's own area: he steps
+  and punches, 36 steps and 10 buster runs, and plays no chip), pattern-full and pattern-full-zeroed (five chips
+  and a score of 3, the records after it 0xFF and zeroed: the same frames). The engine's port had tested the place
+  itself and played the pattern from it, which no recording had met: chaos-ai/pattern, the lab's one pattern
+  scenario till then, has both its places on side 0's area (dx 1 and 2), where the step fails either way;
+  pattern-reached stopped at frame 908 of 1,658 (the miss's draw for the panel) and matches with the test as the
+  game has it (`pattern_place`: `can_step(lag, lag)`). The chips' read stays as written behind it
+  (`pattern_chips`, by `battle.tactic_pattern_read`); a halfword there that is no chip place's chip is an error
+  naming the number (content names chips; the chip table's first record, chip 0, a blank record with the plus
+  chips' own use and a damage of 1, and its other blank ones have no definition).
+- *A place holding 0* (the halfword 0, chip 0's number; `Tactic::Nothing`). The send packs only 0xFFFF away
+  (0x0802C7BE), so a 0 is an entry. The decision tests the first place for 0 before it tests for 0xFFFF and takes
+  both the same way (0x0802BAC6, 0x0802B55E): a miss and a buster run. So a 0 that comes first stays first, each
+  decision that reaches it a miss, until five in a row bring the swap with a random other place (0x0802C0DC); the
+  pickers (0x0802BE4E, 0x0802BE9A) read it as chip 0's record, whose byte 14 is 0, and pass over it. No save the
+  game wrote has one: a battle's end fills the 42 places with 0xFFFF and then chips' numbers from its standard,
+  mega, giga and program advance lists and the pattern entries (chip 0 is class 3, a list it doesn't write).
+  Recorded: chaos-ai/zero-first (a 0 first, Cannon among the rest: his buster runs until the swap brings Cannon
+  first, once in his twelve seconds) and zero-later (Cannon first, a 0 and Sword among the rest). The engine had
+  given the AI `false` for it, which its decision then indexed as a chip.
 - *Where it is:* seven blocks at save +0x554C (0x0200554C, the toolkit's +0x78). A battle sends the first
   (0x08009B64: with battle flag 0x40, the operation battle, 0x0802C7A0 builds one from the player's folder instead,
   its 30 halfwords in places 4 to 33). Nothing writes the other six (0x0802C8C2, which copies a block into one by
@@ -1719,14 +1820,41 @@ seven saves (Tango's templates and three played ones):
   standard chips once, five megas, CrossDiv, eight patterns of two chips each, CsmoPris. Places 1 to 3 are empty in every US save seen, as the code says; one
   Japanese save has three chips there and the second table filled like the first, which this reading doesn't
   explain.
-- *The send* (0x0802C7BE) shuffles places 1 to 3 among themselves and the other 39 among themselves and packs
-  them. So a battle reads of a place only its group, and a match states the data as that
-  (`nettai_match::computer_navi`, docs/frontend.md §6): `first` (up to 3 entries) and `rest` (up to 39), each entry
-  a chip by name or a pattern (`dx`, `dy`, one to five chips), at most eight different patterns; none: a save that
-  has learned nothing. A match's checks refuse more, a pattern's place more than 5 columns or 2 rows from its
-  target, and any of it under rules without the computer-navi system. A random match states what the game would
-  write for a player who used each chip of the drawn folder once (`ComputerNavi::of_folder`). The learning itself
-  (the tables and the runs during a battle) is not ported: nothing of a battle reads it.
+- *The send* (0x0802C7BE) makes three swaps among places 1 to 3 and 39 among the other 39 (`sub_8000CDA`: each swap
+  two places drawn at random), packs the entries to the front and counts them. That is no even shuffle: a place is
+  in none of 39 swaps (38/39)^78 of the time, 13%, so the entry in place 4 leads the sent list about 15% of the
+  time where an even shuffle gives 2.6%, and where the empty places are changes what a seed sends. So a battle can
+  tell where in the block an entry was.
+- *A match states the block whole* (`nettai_match::computer_navi`, docs/frontend.md §6), as a battle reads nearly
+  all of the places: besides their order, a place holding 0 is packed with the entries by the send (only 0xFFFF is
+  packed away). Of a pattern a battle shows only that its entry is one (*A pattern is never played*, above: not its
+  place, its chips, its score or the record after it); the file carries the records whole as the save has them all
+  the same. `[side.computer_navi]` is the 42
+  places in the six lists the battle's end writes them in (`first` 1 to 3, `standard` 4 to 27, `mega` 28 to 32,
+  `giga` 33, `patterns` 34 to 41, `program_advance` 42), each entry a chip by name, a pattern record's number (1 to
+  8), `0` or `{}` (an empty place), any entry in any place as in the block, and `records`, the eight pattern records in order
+  (`dx`, `dy`, five chip places of a name, `0` or `{}`, and `score`). Every place and record is stated; a side
+  without the section has a block nothing has written (0xFF throughout: a save that never finished a battle), and
+  a new match's side what the battle's end writes of nothing learned (empty places, zeroed records:
+  `ComputerNavi::nothing_learned`). Left out: the count and the last eight
+  bytes. A test holds a block read into a side and written back, by itself and through a match file, to the same
+  places and records (blocks as the game writes them; a full pattern before a zeroed record and before a blank one;
+  a 0 among the places and in a record; patterns out of the records' order). The save import reads block 0 so
+  (`exe5_compat::save::ComputerNaviBlock`, the block by number as it is; `nettai_match::computer_navi::of_save`).
+  A random match states what the game would write for a player who used each chip of the drawn folder once and
+  learned no pattern (`ComputerNavi::of_folder`: every record zeros). A match compiles to the engine's block
+  (`Tactics`) place for place and record for record. The learning itself (the tables and the runs during a battle)
+  is not ported: nothing of a battle reads it.
+- *What a battle's end writes of the records* (0x0802C540's end, read 2026-10-05). The 42 places are built on the
+  stack (0xFFFF, then the lists' chips and the pattern entries) and copied to the block's first 0x54 bytes; the
+  eight records are copied from the save's 24 learning records (+0x0000), sorted by score (0x0802C820), 0x80 bytes
+  to the block's +0x58. A new game zeroes the 24 (0x0802C1E0), and a record with a score of 0 is an unused one
+  (0x0802C62A stops at it), so after any finished battle a record the block has no pattern for is zeroed (`dx` 0,
+  `dy` 0, five places of 0, score 0: Team Colonel's played save), where a save that has finished no battle keeps
+  0xFF there. The count (+0x54) and the last eight bytes (+0xD8) are never written. A learned pattern's unused chip
+  places are 0xFFFF (the run's buffer is reset to it, 0x0802C3B2); the buffer's count has no bound and the copy
+  into a record takes `dx`, `dy` and five chips (0x0802C3A0: 12 bytes), so a run of five chips or more gives a
+  record all of whose places hold a chip.
 
 ### 15.10 EXE5's emotions (as built)
 
@@ -2061,7 +2189,8 @@ recording).
   chips/anubis/anubis, ParaBom and ResetBom chips/crakbom/crakbom, MudWave and RedWave chips/wavepit/wavepit. A
   family's is in its lib/ folder, its builder with it: lib/bombs (bombs, seed), lib/guard (guard, the Guard chips'
   shock wave), lib/traps (traps, the Anti traps' anti_trap), lib/instruments (instrument), lib/navi-chips (the
-  navi chips' throw marker). The soul system's are rules/souls' (shade, image).
+  navi chips' throw marker). The soul system's are rules/souls' (shade, image); a soul's own are in its form's
+  folder (§15.8).
 - **objects/** keeps what several families share (attachment, bullet, flying-shot, panel-bursts, panel-changer,
   projectile with its variants, rising-bubble), and six modules whose `define.kind` keys name no owner, which
   can't move without new ids (the content check keys a kind in an owner's folder under the owner): capsule
@@ -2275,3 +2404,99 @@ chips don't have (Roll `*`, M-Cannon `*`), which EXE5 makes the invalid chip; th
 SuprVulc rather than Roll (Roll also wants a light MegaMan), and Tango's navi starts at 80 HP (side 1's M-Cannon
 takes only 60 from side 0's navi in these saves, where side 0's takes 120 from side 1's: not looked into). Not
 reached: a Giga chip for Beat, Rush without the opponent's navi, a failed spawn.
+
+### 15.16 The team navis (in progress: the framework and ProtoMan)
+
+EXE5's players operate thirteen navis: MegaMan (navi 0) and the twelve team navis, six a version in its souls'
+order (NaviStats +0x29, and a save's GameState +1, the navi the PET operates): Team ProtoMan's ProtoMan, GyroMan,
+SearchMan, NapalmMan, MagnetMan and Meddy (1 to 6), Team Colonel's Colonel, ShadowMan, NumberMan, TomahawkMan,
+KnightMan and ToadMan (7 to 12). A save holds seven NaviStats blocks (MegaMan's at save +0x52A8, then its version's
+six, 0x60 bytes each: 0x0801165C by navi number). Every table below is the same in the four ROMs (each at its own
+address; Team ProtoMan US's are given).
+
+**Where the original lets one be operated.** The story (the Liberation missions and their areas) and the Battle
+Chip Gate's operation battle (its menu, 0x0813C2AC, sets the navi with NaviStats +0x2A raised: battle flag 0x40). The
+battle's init exchange (0x080098E0) sends the PET navi's block and the team navis' level; a plain NetBattle sets the
+PET navi to MegaMan for the battle (0x08135936) and puts it back. **In nettai a side of an EXE5 match may operate
+any of the twelve** (a match has no version; a side states its navi), in the netbattle's rules. Not built, and not
+planned here: the operation battle with a gate navi (the gate's own HP table, 0x0802FD74), the gate chip's
+mid-battle navi switch (§5), and the Liberation battles.
+
+**A navi's data** (content/exe5/navis/<navi>/init.luau, a `define.navi` without forms):
+
+| What | Where | Notes |
+|---|---|---|
+| Battle sprite | 0x0800DA65 by navi (08-NN) | the pack's `protoman` … `toadman` |
+| Element | 0x0800E634 | NapalmMan Fire, MagnetMan Elec, TomahawkMan Wood, ToadMan Aqua |
+| Buster bonus | 0x0800F5AC | 1; TomahawkMan 3 |
+| Move lag | 0x0801D462 (11 bytes a navi) | 4; KnightMan 10 |
+| Banners | 0x080090D8 (win, 0x94 + 4 (n − 1)), 0x080090B0 (deleted, 0x60 + 4 (n − 1)) | `<navi>-win`, `<navi>-deleted` |
+| Face | 0x08019724 (Team Colonel's 0x0801971C): the version's six pictures, two palettes each | the pack's navi mugshots, `<navi>` (0x80 + n − 1); the second palette in Full Synchro |
+| Actor record | 0x08014C94, NameID 0x180 + n | version 0, a player, AI index n |
+| Attach points | category 8's table, 0x08015C1C, row n | 30 points |
+| Stats row | 0x0801D55F (16 bytes, read by 0x080111AA) | the HP, SuperArmor, FloatShoes, AirShoes, UnderShirt, the Mega and Giga levels, the four weapons, the B+Back special's damage (+0x48) |
+| Palette step | 0x0801D737 | the sprite's palettes go by it (0x0800DA98: 4 steps in Full Synchro, 1 while it can't charge): 1; NapalmMan 3, MagnetMan, Meddy, Colonel and TomahawkMan 2 |
+| Own chip | 0x08025EA0 (a pair of the same chip and code) | below |
+| Story HP | 0x0804F960 (20 bytes a navi) | below |
+
+**Weapons.** The stats row names the weapon routines (0x0800F370's): every navi's buster is routine 0 (MegaMan's)
+but GyroMan's (0x43) and NapalmMan's (0x44); the charged attacks ProtoMan 0x1E, GyroMan 0x28, SearchMan 0x3F,
+MagnetMan 0x26, Meddy 0x3B, Colonel 0x46, ShadowMan 0x24, NumberMan 0x3D, TomahawkMan 0x3C, KnightMan 0x10, ToadMan
+0x2E (NapalmMan none); B+Back ProtoMan 0x0B and ShadowMan 0x0D; the A-charge routines of NapalmMan, MagnetMan,
+TomahawkMan and ToadMan (0x29 to 0x2C) are empty: their A charge is of their element's chips (0x0801090A: a chip of
+their family, neither their own chip nor past 0x190, charges, and a charged one hits twice as hard, 0x080103D0). Each
+navi's own actions are its state table's entries from 7 on (0x080EADA8 by navi number; GyroMan has a tick of his
+own, 0x080EB1E8's).
+
+**The level.** A team navi's attacks take their damage from the damage rows (0x0801D74F, seven entries a row,
+0x0800EBC4) at the side's level: a word a side (0x0203C870) the init exchange sends, which 0x0800EBE0 counts from the
+save's story flags, 0x300 on, up to 6. In content: `battle.navi_level(side)` through lib/navi_level for a weapon,
+and `damage = { formula = "level", by_level = { ... } }` for an own chip (the chips' damage formulas 50 to 72, each a
+row: 0x0800EAF8).
+
+**The own chips** (chips 0x191 to 0x1A6, past the library): StepSwrd B (ProtoMan), Airforce G (GyroMan), Satelity S
+(SearchMan), Napalm N (NapalmMan), NSTackle M (MagnetMan), MeddyCap M (Meddy), C-Cannon C (Colonel), SplitUp S
+(ShadowMan), NumTrap N (NumberMan), T-Swing T (TomahawkMan), KCrusher K (KnightMan), S-Melody T (ToadMan). The custom
+screen offers a team navi its chip in slot 9 until it is picked once a battle (0x08023EFE; the hand builder's
+0x08024E20 marks it), picking between its table's two entries, the same chip, with a draw of the console's RNG (the
+navi's `own_chip_draws`). A chip's record names a routine of its own (+0x1F: 0x0800EC68's table, 0x0800EC80), which
+the chip's use calls once the attack is loaded (0x080100CE): StepSwrd's sets the attack's charged byte, by which the
+sword's action steps two panels ahead; KCrusher's, S-Melody's and C-Cannon's set attack variables. In content it is
+the chip's `setup(navi)`. A team navi's own attacks carry a counter byte with bit 7 set (StepSwrd's 0x94): they make
+no counter hit.
+
+**The story's HP.** A team navi's HP is the story's, not its stats row's: a routine (0x08052E9C) sets every team
+navi's base, current and maximum HP from a table (0x0804F960: a row a navi) by the story's progress, the count of
+event flags set from 0x300 on (0 to 8), at a new game's start (0x08004C74) and from a map script as the story moves
+on; the level above is the same count up to 6. The rows, by navi pair (the two versions' tables are the same with
+their own navis): ProtoMan and Colonel 200, 300, 350, 400, 450, 500, 600, 700, 800; MagnetMan and KnightMan 400,
+400, 500, 550, 600, 650, 700, 800, 900; GyroMan and ShadowMan 250, 250, 250, 300, 350, 400, 500, 600, 700; NapalmMan
+and TomahawkMan 300, 300, 300, 300, 350, 400, 500, 600, 700; SearchMan and NumberMan 300, 300, 300, 300, 300, 350,
+450, 550, 650; Meddy and ToadMan 300, 300, 300, 300, 300, 300, 400, 500, 600. In content it is the navi's `story`
+(`hp` and `max_level`); nettai-match fills a side's stats from it (its `story` module, as its `link_navis` does an
+EXE6 link navi's): a level below the last is the progress, and at the last the story is taken as done. A new side
+of a team navi is at level 0; a match file's `level` and its stats block say otherwise; a save's import takes the
+save's level and, where its version has the navi, the HP and the light/dark value of the navi's own block.
+
+**What else goes by the navi.** No soul button (0x08023C90: the navi has no forms); a dark chip does nothing
+(0x08010056) and the light and dark chips' check lets any chip through (0x08010118); the patch cards and the
+NaviCust are MegaMan's (their rules pass a navi without forms). The Full Synchro aura's animation is its owner's AI
+index (0x080C4608: the identity's `aura_anim`). What a navi holds goes by its AI index: the cannon's, the air
+shooter's and the spreader's animations (0x080EC300, 0x080EC9B8, 0x080EC5B8: NapalmMan's, MagnetMan's and
+KnightMan's own; the shared actions take each game's table, lib/navi_arms), the buster arm's (lib/arm), the sword's
+blade (lib/swords), WindRack's rack and MrkCan's rows. The per-actor hooks (0x0800D30C's five tables, by actor type
+and AI index) have entries for GyroMan (three), Colonel (one), KnightMan (three) and ToadMan (one), and the
+animation-change hook (0x0800F13C) for GyroMan, NapalmMan, Colonel and KnightMan; GyroMan's move is a variant of its
+own (0x0800F234, 0x0802D544).
+
+**As built** (engine): a chip's `setup` hook and the `level` damage formula; a navi's `story`, `own_chip_draws` and
+`palette_step`; the shared cannon, AirShot and Spreader actions take their holders' animations from their game.
+exe5-compat names the navis by number (records.toml's `[navis]`) and reads the level from a recording's setup
+(`navi_levels`) and the B+Back special's damage from the stats block (+0x48). exe5-extract takes both versions'
+faces. The chip lab operates a team navi by name (`navi = "protoman"`: set in RAM as the init exchange starts, since
+a save that operates a team navi doesn't reach the link battle), with `navi_level` (the save's story flags) and `hp`
+(the navi's block).
+
+| Navi | Weapons | Own chip | Checked |
+|---|---|---|---|
+| ProtoMan | the charged slash (0x1E, 0x0800F8CE: WideSwrd loaded as the attack, the damage rows' row 0, counter byte 0x94) and the B+Back guard (0x0B, 0x0800F6CC: EXE5's guard as the Reflect program's, the stats' damage, 40 ticks before the next chip) | StepSwrd (action 0x13 as WideSwrd's, row 1, its routine 2) | 40 recordings (navis/protoman): his own chip at levels 0, 3 and 6, from another row, out of reach, blocked, onto a panel the opponent steps to, on a Japanese console and over four custom screens; the charged slash at three levels and let go early; the guard reflecting a buster shot and a Cannon, and too early; AntiSwrd against both; a counter hit and Full Synchro (an AirShot's; StepSwrd's makes none); twelve plain chips, a held A, a dark chip; hits, his deletion, a win. Every frame and every sound call. |

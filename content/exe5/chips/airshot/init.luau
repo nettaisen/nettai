@@ -7,6 +7,7 @@
 
 local airshot = require("@exelib/airshot")
 local attachment = require("../objects/attachment")
+local navi_arms = require("../lib/navi_arms")
 local projectile = require("../lib/projectile")
 local variants = require("../objects/projectile/variants")
 
@@ -29,6 +30,11 @@ return define.chip {
     slot_in_limit = 3,
     action = airshot.action(
         { shooter = SHOOTER, shot = variants.air },
-        { sound = asset.sound("h-burst"), attachment = attachment.kind, projectiles = projectile }
+        {
+            sound = asset.sound("h-burst"),
+            attachment = attachment.kind,
+            projectiles = projectile,
+            arm_anims = navi_arms.air_shooter,
+        }
     ),
 }

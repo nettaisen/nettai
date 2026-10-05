@@ -1,12 +1,62 @@
 //! A side from an EXE5 save file (exe5-compat's `save`): its karma (the
 //! light/dark value), the souls it has, its Soul Unison and Chaos Unison,
-//! and how far its NaviCust's board is expanded (its ExpMemry). (Its folder,
-//! the NaviCust's programs and its stats are a later import's.)
-//! `Match::import_save` comes here for a save that isn't EXE6's.
+//! how far its NaviCust's board is expanded (its ExpMemry), and its
+//! computer-navi data (what a computer navi plays from it:
+//! `crate::computer_navi`); for a side that operates a team navi, the
+//! navi's level and HP. (Its folder, the NaviCust's programs and MegaMan's
+//! stats are a later import's.) `Match::import_save` comes here for a save
+//! that isn't EXE6's.
 
-use crate::{Arena, Side};
-use exe5_compat::save::Save;
+use crate::computer_navi::{ChipPlace, ComputerNavi, Entry, RECORDS, Record};
+use crate::{Arena, Side, ids};
+use exe5_compat::save::{COMPUTER_NAVI_EMPTY, COMPUTER_NAVI_PATTERN, ComputerNaviBlock, Save};
 use nettai_battle::content::Content;
+
+/// A save's computer-navi data block as a side states it, place for place
+/// and record for record: its chips by their numbers' names in `game`, a
+/// pattern entry by its record's number. What a match can't state of it is
+/// left empty and said: a chip number `game` has no chip for, and an entry
+/// for a pattern record past the block's eight.
+pub(crate) fn computer_navi(content: &Content, game: &str, block: &ComputerNaviBlock) -> (ComputerNavi, Vec<String>) {
+    let mut notes = Vec::new();
+    let compat = exe5_compat::Compat::exe5();
+    let mut nameless: Vec<u16> = Vec::new();
+    let mut chip = |n: u16| {
+        let c = compat.chip_key(n).and_then(|k| ids::chip(content, game, k));
+        if c.is_none() && !nameless.contains(&n) {
+            nameless.push(n);
+        }
+        c
+    };
+    let mut out = ComputerNavi::default();
+    for (i, &h) in block.places.iter().enumerate() {
+        out.places[i] = match h {
+            COMPUTER_NAVI_EMPTY => Entry::Empty,
+            0 => Entry::Zero,
+            h if h & COMPUTER_NAVI_PATTERN != 0 => match (h & !COMPUTER_NAVI_PATTERN) as usize {
+                n if n < RECORDS => Entry::Pattern(n as u8),
+                n => {
+                    notes.push(format!("place {} of the save's computer-navi data names pattern {}, past its eight: left empty", i + 1, n + 1));
+                    Entry::Empty
+                }
+            },
+            h => chip(h).map_or(Entry::Empty, Entry::Chip),
+        };
+    }
+    for (record, p) in out.records.iter_mut().zip(&block.patterns) {
+        let chips = p.chips.map(|h| match h {
+            COMPUTER_NAVI_EMPTY => ChipPlace::Empty,
+            0 => ChipPlace::Zero,
+            h => chip(h).map_or(ChipPlace::Empty, ChipPlace::Chip),
+        });
+        *record = Record { dx: p.dx, dy: p.dy, chips, score: p.score };
+    }
+    if !nameless.is_empty() {
+        let numbers: Vec<String> = nameless.iter().map(|n| format!("{n:#05x}")).collect();
+        notes.push(format!("the save's computer-navi data holds chip numbers {game} has no chip for ({}): their places are left empty", numbers.join(", ")));
+    }
+    (out, notes)
+}
 
 /// The EXE5 save in `file` (a .sav's bytes, or a raw save image as Tango's
 /// netplay templates hold), or why it is none.
@@ -15,14 +65,16 @@ pub(crate) fn read(file: &[u8]) -> Result<Save, String> {
 }
 
 impl Side {
-    /// Take the karma, the souls, Soul Unison and the NaviCust board's
-    /// expansions from an EXE5 save, the side of a match on `arena` (an EXE5
-    /// one): the souls its version's flags give (the game's souls of those
-    /// numbers) as the side's soul list, and its Soul Unison and Chaos
-    /// Unison (event flags 0 and 0x236); the save's ExpMemry (key item
-    /// 0x61's count) as the expansions of the side's NaviCust, if it has one
-    /// (its programs stay: one off a smaller board is the match's check's to
-    /// say). What is worth saying about it.
+    /// Take the karma, the souls, Soul Unison, the NaviCust board's
+    /// expansions and the computer-navi data from an EXE5 save, the side of
+    /// a match on `arena` (an EXE5 one): the souls its version's flags give
+    /// (the game's souls of those numbers) as the side's soul list, and its
+    /// Soul Unison and Chaos Unison (event flags 0 and 0x236); the save's
+    /// ExpMemry (key item 0x61's count) as the expansions of the side's
+    /// NaviCust, if it has one (its programs stay: one off a smaller board
+    /// is the match's check's to say); the save's computer-navi data (its
+    /// first block, [`computer_navi`]: what the game has learned of this
+    /// player) as the side's. What is worth saying about it.
     pub fn import_exe5_save(&mut self, content: &Content, arena: &Arena, save: &Save) -> Vec<String> {
         let mut notes = Vec::new();
         self.karma = save.light_dark();
@@ -34,8 +86,11 @@ impl Side {
         self.chaos_unison = save.chaos_unison();
         let all = crate::facts::all_souls(content, &arena.game);
         let mut souls = Vec::new();
+        // (A save's souls are by the original's number: compat names each
+        // number's form.)
+        let compat = exe5_compat::Compat::exe5();
         for n in numbers {
-            match all.iter().copied().find(|&f| content.form(f).soul.as_ref().is_some_and(|s| s.number == n)) {
+            match compat.form(n).and_then(|k| crate::ids::form(content, &arena.game, k)).filter(|f| all.contains(f)) {
                 Some(f) => souls.push(f),
                 None => notes.push(format!("the save has soul {n}, which {} hasn't", arena.game)),
             }
@@ -49,12 +104,48 @@ impl Side {
                 notes.push(format!("the save has {had} ExpMemry, but the NaviCust's board has {sizes} sizes: the side's board is kept"));
             }
         }
+        if crate::computer_navi::has(content) {
+            let (data, more) = computer_navi(content, &arena.game, &save.computer_navi());
+            self.computer_navi = data;
+            notes.extend(more);
+        }
+        notes.extend(self.import_exe5_team_navi(content, save));
         notes
+    }
+
+    /// A side that operates a team navi (a navi with a story) takes the
+    /// save's level (its story flags' count) and, where the save's version
+    /// has the navi, the HP and the light/dark value of the navi's own
+    /// block (a battle from the real world starts it at its full HP); a
+    /// navi of the other version takes the story's HP at the save's level.
+    fn import_exe5_team_navi(&mut self, content: &Content, save: &Save) -> Vec<String> {
+        if content.navi(self.navi).story.is_none() {
+            return Vec::new();
+        }
+        let name = crate::names::navi(content, self.navi);
+        let level = save.navi_level();
+        self.navi_level = Some(level);
+        if let Some(s) = self.reloaded(content) {
+            self.stats = s;
+        }
+        let compat = exe5_compat::Compat::exe5();
+        let key = crate::ids::local(&content.defs.navi(self.navi).key);
+        let block = compat.navi_number(key).and_then(|n| save.team_navi_stats(n));
+        match block.map(|b| exe5_compat::codec::navi_stats(&b)) {
+            Some(Ok(b)) => {
+                (self.stats.max_base_hp, self.stats.max_hp, self.stats.hp) = (b.max_base_hp, b.max_hp, b.max_hp);
+                self.karma = b.light_dark.0;
+                vec![format!("{name}: the save's level {level} and his HP {}", b.max_hp)]
+            }
+            Some(Err(e)) => vec![format!("{name}: the save's level {level}; his block doesn't read ({e}): the story's HP at that level")],
+            None => vec![format!("{name}: the save's level {level}; its version hasn't him: the story's HP at that level")],
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::testing::{exe5_content, exe6_content};
 
     /// A Team ProtoMan save, dark, with every soul flag set and one
@@ -67,6 +158,8 @@ mod tests {
         let content = exe5_content();
         let mut image = vec![0u8; exe5_compat::save::IMAGE_SIZE];
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOB 20041006 US");
+        // (Its computer-navi data: nothing learned.)
+        image[0x554C..0x554C + 0xE0].fill(0xFF);
         image[0x29F8] = 0xFF;
         image[0x29F9] = 0xFF;
         image[0x52A8 + 0x44..0x52A8 + 0x46].copy_from_slice(&100u16.to_le_bytes());
@@ -100,5 +193,220 @@ mod tests {
         assert_eq!(m.sides[0].navicust.map(|n| n.expansions), Some(1));
         let e = m.import_save(&content, 0, b"not a save").unwrap_err();
         assert!(e.contains("EXE6") && e.contains("EXE5"), "{e}");
+    }
+
+    /// A Team ProtoMan save whose story is four flags along: a side that
+    /// operates ProtoMan takes its level (4) and his own block's HP and
+    /// light/dark value; from a Team Colonel save, which hasn't him, the
+    /// level and the story's HP at it.
+    #[test]
+    fn a_exe5_save_gives_a_team_navi_its_level_and_hp() {
+        let content = exe5_content();
+        let mut image = vec![0u8; exe5_compat::save::IMAGE_SIZE];
+        image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOB 20041006 US");
+        // Event flags 0x300 to 0x303 (and 0x305, past the first clear one).
+        image[0x29F8 + 0x60] = 0xF4;
+        // His block, the first after MegaMan's: base, current and maximum HP,
+        // then the light/dark value.
+        let block = 0x52A8 + 0x60;
+        image[block + 0x29] = 1;
+        for (at, v) in [(0x3E, 470u16), (0x40, 123), (0x42, 470), (0x44, 519)] {
+            image[block + at..block + at + 2].copy_from_slice(&v.to_le_bytes());
+        }
+        let protoman = crate::ids::navi(&content, "exe5", "protoman").unwrap();
+        let mut m = crate::Match::empty(&content, "exe5").unwrap();
+        let s = &mut m.sides[0];
+        s.navi_level = Some(0);
+        s.stats = s.reloaded_as(&content, protoman).unwrap();
+        (s.navi, s.navicust) = (protoman, None);
+        assert_eq!((s.stats.max_hp, s.stats.hp), (200, 200));
+        let notes = m.import_save(&content, 0, &image).unwrap();
+        let s = &m.sides[0];
+        assert_eq!((s.navi_level, s.stats.max_base_hp, s.stats.max_hp, s.stats.hp, s.karma), (Some(4), 470, 470, 470, 519));
+        assert!(notes.iter().any(|n| n.contains("level 4") && n.contains("470")), "{notes:?}");
+        assert_eq!(crate::check::check_side_alone(&content, &m.arena, s), Vec::<String>::new());
+        image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOK 20041006 US");
+        let notes = m.import_save(&content, 0, &image).unwrap();
+        let s = &m.sides[0];
+        assert_eq!((s.navi_level, s.stats.max_hp, s.stats.hp), (Some(4), 450, 450));
+        assert!(notes.iter().any(|n| n.contains("its version hasn't him")), "{notes:?}");
+        // A MegaMan side takes no level from the save.
+        assert_eq!(m.sides[1].navi_level, None);
+        m.import_save(&content, 1, &image).unwrap();
+        assert_eq!(m.sides[1].navi_level, None);
+    }
+
+    /// The content names a soul by its form's id; the original's number for
+    /// it is compat's (records.toml's forms). MegaMan lists his souls in
+    /// the order of those numbers, 1 to 12: the order of the soul button's
+    /// icons in a pack, which the frontend takes an icon by
+    /// (nettai-render's `soul_place`).
+    #[test]
+    fn megamans_souls_are_in_the_order_of_their_numbers() {
+        let content = exe5_content();
+        let compat = exe5_compat::Compat::exe5();
+        let megaman = content.defs.navi_by_key("megaman").unwrap();
+        let souls = &content.navi(megaman).forms.as_ref().unwrap().souls;
+        let numbers: Vec<Option<u8>> = souls.iter().map(|&f| compat.form_number(&content.defs.form(f).key)).collect();
+        assert_eq!(numbers, (1..=12).map(Some).collect::<Vec<_>>());
+        assert_eq!((compat.form(0), compat.form(7), compat.form(13)), (Some("base"), Some("colonelsoul"), None));
+    }
+
+    /// A save's computer-navi data becomes the side's, place for place and
+    /// record for record: chips by their numbers' names, a pattern entry by
+    /// its record's number, a 0 a 0; a block nothing has written gives the
+    /// side's default; what a match can't state is said.
+    #[test]
+    fn a_exe5_save_gives_the_computer_navi_data() {
+        let content = exe5_content();
+        let chip = |name: &str| crate::ids::chip(&content, "exe5", name).unwrap();
+        let number = |name: &str| exe5_compat::Compat::exe5().chip_entry(name).unwrap().id;
+        let mut image = vec![0u8; exe5_compat::save::IMAGE_SIZE];
+        image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOK 20041006 US");
+        image[0x554C..0x554C + 0xE0].fill(0xFF);
+        let put = |image: &mut [u8], at: usize, halves: &[u16]| {
+            for (i, h) in halves.iter().enumerate() {
+                image[0x554C + at + i * 2..0x554C + at + i * 2 + 2].copy_from_slice(&h.to_le_bytes());
+            }
+        };
+        // As a battle's end writes it: place 2 (of the first three), the
+        // most used standard chips from place 4, a pattern in place 34, its
+        // record the first; the second record zeros.
+        put(&mut image, 2, &[number("areagrab")]);
+        put(&mut image, 6, &[number("lance"), number("lance"), number("lance"), number("lance"), number("sidebub3")]);
+        put(&mut image, 66, &[0x8000]);
+        image[0x554C + 0x58..0x554C + 0x5A].copy_from_slice(&[0xFD, 0x01]);
+        put(&mut image, 0x5A, &[number("sword"), number("wideswrd")]);
+        put(&mut image, 0x64, &[7, 0]);
+        image[0x554C + 0x68..0x554C + 0x78].fill(0);
+        let mut m = crate::Match::empty(&content, "exe5").unwrap();
+        let notes = m.import_save(&content, 1, &image).unwrap();
+        let mut want = ComputerNavi::default();
+        want.places[1] = Entry::Chip(chip("areagrab"));
+        for i in 3..7 {
+            want.places[i] = Entry::Chip(chip("lance"));
+        }
+        want.places[7] = Entry::Chip(chip("sidebub3"));
+        want.places[33] = Entry::Pattern(0);
+        want.records[0] = Record {
+            dx: -3,
+            dy: 1,
+            chips: [ChipPlace::Chip(chip("sword")), ChipPlace::Chip(chip("wideswrd")), ChipPlace::Empty, ChipPlace::Empty, ChipPlace::Empty],
+            score: 7,
+        };
+        want.records[1] = Record::ZERO;
+        assert_eq!(m.sides[1].computer_navi, want);
+        assert!(!notes.iter().any(|n| n.contains("computer-navi")), "{notes:?}");
+        // (The other side: a new match's.)
+        assert_eq!(m.sides[0].computer_navi, ComputerNavi::nothing_learned());
+        assert!(!crate::check_match(&content, &m).iter().any(|p| p.contains("computer navi")), "{:?}", crate::check_match(&content, &m));
+        // What a match can't state: a chip number the game has no chip for
+        // (among the places, and in a record), a pattern past the eighth.
+        put(&mut image, 8, &[0x1FF, 0, 0x8009]);
+        put(&mut image, 0x5E, &[0x1FE]);
+        let notes = m.import_save(&content, 1, &image).unwrap();
+        let said: Vec<&String> = notes.iter().filter(|n| n.contains("computer-navi")).collect();
+        assert_eq!(said.len(), 2, "{notes:?}");
+        assert!(said[0].contains("place 7 of the save's computer-navi data names pattern 10, past its eight"), "{notes:?}");
+        assert!(said[1].contains("holds chip numbers exe5 has no chip for (0x1ff, 0x1fe): their places are left empty"), "{notes:?}");
+        let data = &m.sides[1].computer_navi;
+        assert_eq!(data.places[3..8], [Entry::Chip(chip("lance")), Entry::Empty, Entry::Zero, Entry::Empty, Entry::Chip(chip("sidebub3"))]);
+        assert_eq!(data.records[0].chips[2], ChipPlace::Empty);
+        // A block nothing has written.
+        image[0x554C..0x554C + 0xE0].fill(0xFF);
+        m.import_save(&content, 1, &image).unwrap();
+        assert!(m.sides[1].computer_navi.is_blank());
+    }
+
+    /// The block a side's data is, by number: the import's way back.
+    fn block_of(content: &nettai_battle::content::Content, data: &ComputerNavi) -> ComputerNaviBlock {
+        let number = |c: nettai_content_api::ChipHandle| exe5_compat::Compat::exe5().chip_entry(crate::ids::local(&content.defs.chip(c).key)).unwrap().id;
+        ComputerNaviBlock {
+            places: data.places.map(|e| match e {
+                Entry::Empty => COMPUTER_NAVI_EMPTY,
+                Entry::Zero => 0,
+                Entry::Chip(c) => number(c),
+                Entry::Pattern(n) => COMPUTER_NAVI_PATTERN | n as u16,
+            }),
+            patterns: data.records.map(|r| exe5_compat::save::ComputerNaviPattern {
+                dx: r.dx,
+                dy: r.dy,
+                chips: r.chips.map(|c| match c {
+                    ChipPlace::Empty => COMPUTER_NAVI_EMPTY,
+                    ChipPlace::Zero => 0,
+                    ChipPlace::Chip(c) => number(c),
+                }),
+                score: r.score,
+            }),
+        }
+    }
+
+    /// What a match states of a block is the block: a block read into a
+    /// side's data and written back is the same in every place and every
+    /// record (all a battle reads of it: only its count and its last eight
+    /// bytes aren't stated), and so is the data written to a match file and
+    /// read back. Over blocks of each awkward shape: as a battle's end
+    /// writes one; a pattern that fills its record, the record after it
+    /// zeros, and another, the record after it blank; a 0 among the places
+    /// and among a record's chips; pattern entries out of the records'
+    /// order, in the first places, one twice, and records no entry names;
+    /// a full block; one with zeroed records alone; a blank one.
+    #[test]
+    fn what_a_match_states_of_a_block_is_the_block() {
+        use exe5_compat::save::ComputerNaviPattern;
+        let content = exe5_content();
+        let n = |name: &str| exe5_compat::Compat::exe5().chip_entry(name).unwrap().id;
+        let none = COMPUTER_NAVI_EMPTY;
+        let blank = ComputerNaviPattern { dx: -1, dy: -1, chips: [none; 5], score: 0xFFFF_FFFF };
+        let zero = ComputerNaviPattern { dx: 0, dy: 0, chips: [0; 5], score: 0 };
+        let block = |places: &[(usize, u16)], patterns: [ComputerNaviPattern; 8]| {
+            let mut out = ComputerNaviBlock { places: [none; 42], patterns };
+            for &(i, h) in places {
+                out.places[i] = h;
+            }
+            out
+        };
+        let (lance, sword, cannon, wide) = (n("lance"), n("sword"), n("cannon"), n("wideswrd"));
+        let two = ComputerNaviPattern { dx: -3, dy: 1, chips: [lance, lance, none, none, none], score: 7 };
+        let full = ComputerNaviPattern { dx: -1, dy: 0, chips: [sword, wide, sword, wide, cannon], score: 12 };
+        let long_score = ComputerNaviPattern { dx: 2, dy: -2, chips: [cannon, 0, sword, none, cannon], score: 0x0123_4567 };
+        // As a battle's end writes one: the standard chips (the most used
+        // four times), megas, a giga, two patterns, a program advance.
+        let mut written: Vec<(usize, u16)> = (3..7).map(|i| (i, lance)).chain((7..11).map(|i| (i, n("sidebub3")))).collect();
+        written.extend([(11, n("magnum")), (12, n("magnum")), (13, cannon), (27, n("protoman")), (28, n("colonel")), (32, n("crossdiv"))]);
+        written.extend([(33, 0x8000), (34, 0x8001), (41, n("csmopris"))]);
+        let every: Vec<(usize, u16)> = (0..42).map(|i| (i, if i % 7 == 0 { 0x8000 | (i as u16 / 7) } else { [lance, sword, cannon, wide][i % 4] })).collect();
+        let blocks = [
+            ("written", block(&written, [two, full, zero, zero, zero, zero, zero, zero])),
+            ("a full pattern, then zeros", block(&[(33, 0x8000)], [full, zero, blank, blank, blank, blank, blank, blank])),
+            ("a full pattern, then a blank record", block(&[(33, 0x8000)], [full, blank, zero, zero, zero, zero, zero, zero])),
+            ("a full pattern last", block(&[(33, 0x8007)], [zero, zero, zero, zero, zero, zero, zero, full])),
+            ("a 0 among the places and in a record", block(&[(3, lance), (4, 0), (5, lance), (0, 0), (40, 0x8002)], [blank, blank, long_score, blank, blank, blank, blank, blank])),
+            (
+                "patterns out of order, in the first places, one twice, records unnamed",
+                block(&[(0, 0x8005), (2, 0x8001), (12, 0x8005), (13, sword), (33, 0x8000)], [two, full, long_score, zero, blank, two, full, long_score]),
+            ),
+            ("full", block(&every, [full; 8])),
+            ("zeroed records alone", block(&[], [zero; 8])),
+            ("blank", block(&[], [blank; 8])),
+        ];
+        for (name, original) in &blocks {
+            let (data, notes) = super::computer_navi(&content, "exe5", original);
+            assert_eq!(notes, Vec::<String>::new(), "{name}");
+            assert_eq!(block_of(&content, &data), *original, "{name}");
+            // (And as bytes, but for the count and the last eight.)
+            assert_eq!(ComputerNaviBlock::read(&original.bytes()), Ok(*original), "{name}");
+            // Through a match file.
+            let mut m = crate::Match::empty(&content, "exe5").unwrap();
+            (m.sides[0].computer_navi, m.sides[1].computer_navi) = (data, ComputerNavi::default());
+            let text = crate::write(&content, &m);
+            let file: crate::file::MatchFile = toml::from_str(&text).unwrap_or_else(|e| panic!("{name}: {e}\n{text}"));
+            let back = crate::file::resolve(&content, &file).unwrap_or_else(|e| panic!("{name}: {e:?}\n{text}"));
+            assert_eq!(back.sides[0].computer_navi, data, "{name}:\n{text}");
+            assert_eq!(block_of(&content, &back.sides[0].computer_navi), *original, "{name}");
+            // A block nothing has written is the side that states none.
+            assert_eq!(text.contains("computer_navi"), *name != "blank", "{name}:\n{text}");
+        }
+        assert!(super::computer_navi(&content, "exe5", &blocks[8].1).0.is_blank());
     }
 }

@@ -1069,15 +1069,23 @@ declare battle: {
     -- Player `side`'s tactics (EXE5's computer-navi data, which a computer
     -- navi on the other side plays): how many entries they count; the entry
     -- in place `i` (from 1; past the count, an empty place): a chip, a
-    -- pattern's number (from 1), false (nothing: chip 0, a block no save
-    -- filled) or nil (an empty place); and
-    -- pattern `i` (from 1): its place from the target (`dx` columns toward
-    -- the navi's enemies, `dy` rows) and its chips.
+    -- pattern's number (from 1), false (a place holding 0, the game's
+    -- chip 0, which no save the game wrote has there) or nil (an empty
+    -- place); pattern `i` (from 1)'s place from the target (`dx` columns
+    -- toward the navi's enemies, `dy` rows); and read `k` (from 1) of that
+    -- pattern's run as EXE5's computer navi reads it (0x0802BCD6): a chip
+    -- place's chip, nil at an empty place, the run's end, or a number, a
+    -- halfword the game takes for a chip's number without its being a
+    -- chip place's chip (a place holding 0; and, past the five places of a
+    -- record all of which hold a chip, the two halves of its score, then
+    -- the next record's `dx` and `dy` as one halfword and that record's
+    -- places, and so on to the block's end).
     tactic_count: (side: number) -> number,
     -- Slot `i` (1 to 4) of a side's list of alive actors, filled or not.
     alive_actor_slot: (side: number, i: number) -> Object?,
     tactic: (side: number, i: number) -> (Chip | number | false)?,
-    tactic_pattern: (side: number, i: number) -> (number, number, { Chip }),
+    tactic_pattern: (side: number, i: number) -> (number, number),
+    tactic_pattern_read: (side: number, i: number, k: number) -> (Chip | number)?,
     -- The first entry and the entry in place `i` (from 1) change places
     -- (0x0802C0DC); the first entry goes last of the count, the rest move
     -- up (0x0802BF1C).
@@ -1962,6 +1970,7 @@ export type DamageFormula =
     | { formula: "hp_last_digits" }
     | { formula: "half_opponent_max_hp" }
     | { formula: "navi_level", base: number, per_level: number }
+    | { formula: "level", by_level: { number } }
     | { formula: "count", of: DamageCount, by_count: { number }, operation_battle: number? }
 
 -- What a count formula counts: a side statistic, the side's panels of a
@@ -2002,9 +2011,7 @@ export type ChipSpec = {
     -- (a navi chip whose navi brings the user back itself), "goes_with_any"
     -- (it goes with any selection on the custom screen, and leaves the
     -- selection's rules alone: EXE6's BeastOut chip), "hides_damage_as_a"
-    -- (the custom screen shows its damage as "???" on a copy of code A),
-    -- "hides_advance_code" (the Program Advance animation shows its name
-    -- without its code: the chips past the original's chip table).
+    -- (the custom screen shows its damage as "???" on a copy of code A).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
@@ -2017,6 +2024,10 @@ export type ChipSpec = {
     dimming: ((user: Object, spec: DimmingChipSpec) -> Object?)?,
     navi: ((user: Object, controller: Object, spec: NaviChipSpec) -> Object?)?,
     instant: ((user: Object, spec: InstantChipSpec) -> ())?,
+    -- What the chip itself does to the attack as a navi's use of it is
+    -- prepared (the attack's variables are loaded: the navi's `charged`,
+    -- its action's state): EXE5's team navis' own chips'.
+    setup: ((navi: Object) -> ())?,
     -- Its game's systems' fields (their `extends.chip`: EXE6's `beast`,
     -- `dark_substitute`, `hp_bug`; content/exe6/types.d.luau types them).
     [string]: any,
@@ -2093,6 +2104,9 @@ export type NaviDef = {
     run_message: RunMessage?,
     -- A link navi's own chip, offered once a round.
     own_chip: { chip: Chip, code: string }?,
+    -- The offer draws once from the console's RNG (EXE5's, which picks
+    -- between two entries of its table, the same chip).
+    own_chip_draws: boolean?,
     -- Its damage bonus on its family's damaging chips, by its level.
     chip_bonus: { family: ChipFamily, dimming_chips: boolean?, by_level: { number } }?,
     -- MegaMan's bonus on a family's damaging chips used standing on a type
@@ -2109,6 +2123,10 @@ export type NaviDef = {
     fire_charge: { number }?,
     -- "status_immune": a hit's status doesn't take.
     traits: { "status_immune" }?,
+    -- What its sprite's palettes go by, for a navi that doesn't change form
+    -- (1 when none is given): its Full Synchro palette is 4 of them, its
+    -- can't-charge palette 1. Presentation only.
+    palette_step: number?,
     -- Its forms (MegaMan's): where the original asks whether a navi is
     -- MegaMan, the ruleset asks whether it has them. The engine reads
     -- `souls` (EXE5's Soul Unison: forms with a `soul`, which the custom
@@ -2139,6 +2157,11 @@ export type NaviDef = {
     -- what each level adds over its fresh stats. Tools fill a side's stats
     -- from it; no battle reads it.
     levels: NaviLevels?,
+    -- What the story gives it by its level (EXE5's team navis): its HP by
+    -- the story's progress, from 0, and its last level; a level below the
+    -- last is the progress, and at the last the story is taken as done (the
+    -- last HP). Tools fill a side's stats from it; no battle reads it.
+    story: { hp: { number }, max_level: number }?,
 }
 -- A navi's levels (docs/engine/link-navis.md).
 export type NaviLevels = {
@@ -2197,7 +2220,7 @@ export type FormEffect =
 --     (EraseCross);
 --   special_holds_buster: its held buster doesn't fire while its B+Back
 --     special is asked for (TenguCross and DustCross in Beast Out);
---   stands_on_metal: a metal panel doesn't slide the navi (EXE5's soul 5);
+--   stands_on_metal: a metal panel doesn't slide the navi (EXE5's MagnetSoul);
 --   controlled: the side's systems' `controller` decides its idle (EXE6's
 --     Beast Over: the berserk), the player's buttons don't reach it, and a
 --     full gauge opens the custom screen;
@@ -2244,10 +2267,8 @@ export type FormDef = {
     mugshot: (Mugshot | MugshotFaces)?,
     -- The version of its game it belongs to (EXE6's "gregar" or "falzar":
     -- a version's Crosses and Beast), by the name the game's pack keeps a
-    -- version's pictures under; and its place among its version's forms in
-    -- their window (EXE6's Cross window: its name and colors there).
+    -- version's pictures under.
     version: string?,
-    window_order: number?,
     weapons: FormWeapons?,
     identity: Identity?,
     -- The damage it adds to a family's damaging chips (`uncharged`: only
@@ -2315,11 +2336,11 @@ export type FormDef = {
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.
     buster_arm: { anim: number, palette_add: number? }?,
-    -- A soul (EXE5's Soul Unison): its number, the chip
-    -- family the custom screen's soul button gives up for it, and the
-    -- chaos cycle's row its Chaos Unison charge keeps whatever the chaos
-    -- level (MeddySoul's; none: the level's, at most 2).
-    soul: { number: number, family: ChipFamily, chaos_cycle: number? }?,
+    -- A soul (EXE5's Soul Unison), named by its form's id: the chip family
+    -- the custom screen's soul button gives up for it, and the chaos
+    -- cycle's row its Chaos Unison charge keeps whatever the chaos level
+    -- (MeddySoul's; none: the level's, at most 2).
+    soul: { family: ChipFamily, chaos_cycle: number? }?,
     -- Its game's systems' fields (their `extends.form`: EXE6's `kind`,
     -- `game`, `cross_of`, `beast`, ...; content/exe6/types.d.luau types them).
     [string]: any,

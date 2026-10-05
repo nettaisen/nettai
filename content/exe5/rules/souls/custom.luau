@@ -2,34 +2,36 @@
 -- Soul Unison on EXE5's custom screen (docs/design/rules-in-luau.md §4.4, docs/design/exe5-map.md §15.8): the soul
 -- button in the special slot (0x08023C54, its offer 0x08024B28, A on it 0x08024972), the soul's choice as the window
 -- `soul_unison` (the screen's state 9, 0x080232D0), the soul given at OK (0x08024FF6) and the round's souls used
--- (0x02034E10). Its state is the souls system's (./init). What a soul adds to the screen (its per-soul slots,
--- 0x08023CF8) is a module each, gathered at this module's end for the system.
+-- (0x02034E10). Its state is the souls system's (./init). What a soul adds to the screen (its slots, 0x08023CF8, and
+-- its part of the screen's routines) is the soul's own: its form's `custom` (a `SoulCustom`, in the soul's folder:
+-- navis/megaman/forms/<soul>), which this module's end gathers for the system from the souls of the navi that has
+-- them, and asks while the side's navi is in the soul.
 
-local arm_change = require("./arm-change")
-local capsules = require("./capsules")
-local hand = require("./hand")
+local megaman = require("../../navis/megaman")
 local operation_battle = require("../../lib/operation_battle")
-local shuffle = require("./shuffle")
 
 local custom_souls = {}
 
 -- The souls system's state fields the screen keeps (./init declares them).
 type State = {
-    -- 0x02034E10: the souls given this round: bit n Soul Unison with soul n, bit 16 + n its Chaos Unison (the
-    -- round's first screen forgets them).
+    -- 0x02034E10: the souls given this round, a bit a soul for its Soul Unison and another for its Chaos Unison
+    -- (`used_bit`; the round's first screen forgets them).
     souls_used: number,
-    -- The button's offer (slot 11's +5 and +6): the soul (none: no offer), its number, and whether a dark chip makes
-    -- it Chaos Unison. Once the soul is given, the soul given.
+    -- The button's offer (slot 11's +5 and +6): the soul (none: no offer), and whether a dark chip makes it Chaos
+    -- Unison. Once the soul is given, the soul given.
     offer: FormDef?,
-    offer_number: number,
     offer_chaos: boolean,
     -- The window's step (0x080232F0's offsets 0 to 0x18) and its count (+0x40).
     unite_step: number,
     unite_count: number,
+    -- The turn's arm chip (the transform record's +6; none: its 0xFFFF): each screen's open clears it, a soul that
+    -- takes one fills it at OK (ColonelSoul's Arm Change), and the soul change copies it into the navi's weapon chip
+    -- (./change).
+    arm_chip: Chip?,
 }
 
--- What the player's save brings (./init declares it): the souls it has (their flags, 0x08024BF0's, by each soul's
--- number), Soul Unison (event flag 0: the button) and Chaos Unison (event flag 0x236).
+-- What the player's save brings (./init declares it): the souls it has (the original's flags, 0x08024BF0's, one a
+-- soul), Soul Unison (event flag 0: the button) and Chaos Unison (event flag 0x236).
 type Setup = {
     souls: { FormDef? },
     soul_unison: boolean,
@@ -40,6 +42,51 @@ type Setup = {
 local FADE_SPEED = 32
 -- A Soul Unison's turns (+ the NaviCust's and the cards' bonus, at most 9; under 0, 1), a Chaos Unison's.
 local TURNS, MAX_TURNS, CHAOS_TURNS = 3, 9, 1
+
+-- What the souls keep of a screen in the system's state: each soul's `custom.state`, its fields by their declared
+-- types (this module's end gathers them with the souls' buttons and windows).
+local states: { StateSchema } = {}
+
+-- The whole numbers a state field may be declared as.
+local INTEGERS: { [string]: boolean } = { u8 = true, u16 = true, u32 = true, i8 = true, i16 = true, i32 = true }
+
+-- What a fresh state holds in a field declared as `kind` (a state starts all zero, like the game's scratch): 0 for a
+-- number, false for a boolean, the first of a list of variants, and for anything else (a definition, an asset, an
+-- object) none.
+local function fresh(kind: string | { string }): any
+    if type(kind) == "table" then
+        return kind[1]
+    elseif kind == "bool" then
+        return false
+    elseif kind == "vec3" then
+        return Vec3.new(0, 0, 0)
+    elseif INTEGERS[kind] then
+        return 0
+    end
+    return nil
+end
+
+-- 0x08022CA2: the screen's record is zeroed as it opens. What every soul keeps of a screen (`states`) is back as a
+-- fresh state has it, from the fields' own declarations, whatever soul the side's navi is in: a soul's fields don't
+-- outlast the screen they were set on.
+local function forget_screen(s: any)
+    for _, fields in states do
+        for name, kind in fields do
+            local element, count
+            if type(kind) == "string" then
+                element, count = string.match(kind, "^(.+)%[(%d+)%]$")
+            end
+            if element ~= nil then
+                -- (An array: each of its elements.)
+                for i = 1, tonumber(count) :: number do
+                    s[name][i] = fresh(element)
+                end
+            else
+                s[name] = fresh(kind)
+            end
+        end
+    end
+end
 
 -- The side's navi's souls (MegaMan's: the forms with a `soul`).
 local function souls_of(side: number): { FormDef }
@@ -64,50 +111,69 @@ end
 -- The setup's souls' places (./init's `form[16]`).
 local SOUL_PLACES = 16
 
--- The save has soul `number` (its flag: one of the setup's souls of that number).
-local function owned(number: number): boolean
+-- The save has `soul` (its flag: it is one of the setup's souls).
+local function owned(soul: FormDef): boolean
     local setup = system.setup() :: Setup
     for i = 1, SOUL_PLACES do
-        local form = setup.souls[i]
-        if form ~= nil and form.soul ~= nil and form.soul.number == number then
+        if setup.souls[i] == soul then
             return true
         end
     end
     return false
 end
 
--- A soul's bit in the round's souls used.
-local function used_bit(number: number, chaos: boolean): number
-    return bit32.lshift(1, if chaos then 16 + number else number)
+-- A soul's bit in the round's souls given: by its place among the side's navi's souls for its Soul Unison, 16
+-- places on for its Chaos Unison.
+local function used_bit(side: number, soul: FormDef, chaos: boolean): number
+    local place = table.find(souls_of(side), soul)
+    if place == nil then
+        error(string.format("%s is none of the side's navi's souls", soul.id))
+    end
+    return bit32.lshift(1, if chaos then 16 + place else place)
 end
 
 -- 0x08024B28: the soul the last pick offers: a chip (not the Regular chip, not a link navi's, with no capsule mixed
 -- into it: the slot's +5) of a family one of the navi's souls is for, a soul the save has (a dark chip's Chaos
 -- Unison needs the save's Chaos Unison), not given yet this round (Soul Unison and Chaos Unison apart). None:
--- (nil, 0, false).
-local function offer(side: number): (FormDef?, number, boolean)
+-- (nil, false).
+local function offer(side: number): (FormDef?, boolean)
     local last = custom.last_pick(side)
     if last == nil or last.regular or last.navi_chip or last.attached then
-        return nil, 0, false
+        return nil, false
     end
     local chip = last.chip
     local chaos = table.find(chip.flags or {}, "dark") ~= nil
     if chaos and not (system.setup() :: Setup).chaos_unison then
-        return nil, 0, false
+        return nil, false
     end
     local family = chip.family
     local form = if family ~= nil then soul_for(side, family) else nil
     if form == nil or form.soul == nil then
-        return nil, 0, false
+        return nil, false
     end
-    local number = form.soul.number
-    if not owned(number) then
-        return nil, 0, false
+    if not owned(form) then
+        return nil, false
     end
-    if bit32.btest((system.state() :: State).souls_used, used_bit(number, chaos)) then
-        return nil, 0, false
+    if bit32.btest((system.state() :: State).souls_used, used_bit(side, form, chaos)) then
+        return nil, false
     end
-    return form, number, chaos
+    return form, chaos
+end
+
+-- What the soul the side's navi is in adds to the screen (its form's `custom`), if the navi is in one of its souls
+-- (the screen's +0x10: the side's navi is MegaMan; the soul: NaviStats +0x2C) and the soul adds anything.
+local function united(side: number): SoulCustom?
+    local form = battle.navi(side).form
+    if form.soul == nil or table.find(souls_of(side), form) == nil then
+        return nil
+    end
+    return form.custom
+end
+
+-- The same, for the screen's slots (0x08023CF8): they are by the soul the emotion routine leaves in r1 (0x08023C3C:
+-- NaviStats +0x2C), which in battle mode 1 is the stats' address instead (0x080127C0): no soul's slots there.
+local function slots_of(side: number): SoulCustom?
+    return if battle.mode() ~= 1 then united(side) else nil
 end
 
 -- The soul button (0x08023C54), in the special slot.
@@ -128,13 +194,9 @@ custom_souls.button = {
     -- 0x08024B28: unavailable until the last pick offers a soul, which the button keeps.
     state = function(side: number): "selectable" | "unavailable"
         local s = system.state() :: State
-        local form, number, chaos = offer(side)
-        if form == nil then
-            s.offer_number, s.offer_chaos = 0, false
-            return "unavailable"
-        end
-        s.offer, s.offer_number, s.offer_chaos = form, number, chaos
-        return "selectable"
+        local form, chaos = offer(side)
+        s.offer, s.offer_chaos = form, chaos
+        return if form == nil then "unavailable" else "selectable"
     end,
     -- 0x08024972: a soul on offer starts its sequence.
     pressed = function(side: number)
@@ -222,27 +284,49 @@ custom_souls.window = {
     end,
 }
 
--- The round's first screen forgets the round's souls.
-function custom_souls.open(side: number)
+-- The screen opens: the round's first forgets the round's souls, and there is no arm chip for the turn (0x080123D4:
+-- the transform record's +6 0xFFFF).
+function custom_souls.open(_side: number)
+    local s = system.state() :: State
     if battle.turn() == 1 then
-        (system.state() :: State).souls_used = 0
+        s.souls_used = 0
     end
-    arm_change.open(side)
+    s.arm_chip = nil
 end
 
--- The screen deals (0x08022CFC to 0x08023BF4: its hand, then its slots).
+-- The screen's hand (0x08025BE4): the soul's, if it says (NumberSoul's ten).
+function custom_souls.hand_size(side: number): number?
+    local part = united(side)
+    if part ~= nil and part.hand_size ~= nil then
+        return part.hand_size(side, system.state())
+    end
+    return nil
+end
+
+-- The screen deals (0x08022CFC to 0x08023BF4: its hand, then its slots): what the souls keep of a screen starts
+-- fresh, every soul's (`forget_screen`: out of MeddySoul there are no capsules), and then the soul the navi is in
+-- lays its slots out (MeddySoul draws its capsules).
 function custom_souls.deal(side: number)
-    capsules.deal(side)
+    local s = system.state()
+    forget_screen(s)
+    local part = slots_of(side)
+    if part ~= nil and part.deal ~= nil then
+        part.deal(side, s)
+    end
 end
 
 -- 0x08024FF6: OK with the soul picked: the turn's form is the soul, for 3 turns and the save's bonus (at most 9;
 -- under 0, 1), a Chaos Unison for 1; the soul is given this round.
 function custom_souls.confirmed(side: number)
-    arm_change.confirmed(side)
+    local s = system.state() :: State
+    -- (0x08024EC0: the soul MegaMan is in first: ColonelSoul's arm chip.)
+    local part = united(side)
+    if part ~= nil and part.confirmed ~= nil then
+        part.confirmed(side, s)
+    end
     if not custom.button_picked(side, "soul") then
         return
     end
-    local s = system.state() :: State
     local turns = TURNS + battle.navi(side).soul_turn_bonus
     if s.offer_chaos then
         turns = CHAOS_TURNS
@@ -251,34 +335,87 @@ function custom_souls.confirmed(side: number)
     elseif turns < 0 then
         turns = 1
     end
-    custom.set_form(side, s.offer, turns, s.offer_chaos)
-    s.souls_used = bit32.bor(s.souls_used, used_bit(s.offer_number, s.offer_chaos))
+    local soul = s.offer :: FormDef
+    custom.set_form(side, soul, turns, s.offer_chaos)
+    s.souls_used = bit32.bor(s.souls_used, used_bit(side, soul, s.offer_chaos))
 end
 
--- The turn's start, before either side's change of form (0x08011DDC).
+-- The turn's start, before either side's change of form (0x08011DDC): the soul MegaMan is in reads the turn's
+-- requests (ColonelSoul takes its arm chip, 0x080124AE).
 function custom_souls.turn_opened(side: number)
-    arm_change.turn_opened(side)
+    local part = united(side)
+    if part ~= nil and part.turn_opened ~= nil then
+        part.turn_opened(side, system.state())
+    end
 end
 
--- The system's buttons and windows, by name (what the frontend draws them by), and the state fields they keep,
--- beside the soul button's (./init declares those): the soul button, and what a soul adds to the screen, each in
--- its own module.
-custom_souls.buttons = {
-    soul = custom_souls.button,
-    -- SearchSoul's Shuffle (./shuffle), by the name the frontend draws the pack's re-deal button for.
-    redeal = shuffle.button,
-    capsule_1 = capsules.buttons[1],
-    capsule_2 = capsules.buttons[2],
-    arm_change = arm_change.button,
-}
-custom_souls.windows = {
-    soul_unison = custom_souls.window,
-    capsule = capsules.window,
-    arm_change = arm_change.window,
-}
-custom_souls.states = { capsules.state, arm_change.state }
+-- A soul's button as the system's: on the screen while the side's navi is in the soul (`slots_of`), its functions
+-- called with the system's state.
+local function button_of(part: SoulCustom, button: SoulButton): ButtonSpec
+    local state, chip = button.state, button.chip
+    return {
+        slot = button.slot,
+        cells = button.cells,
+        uses = button.uses,
+        right = button.right,
+        left = button.left,
+        shown = function(side: number): boolean
+            return slots_of(side) == part
+        end,
+        state = if state ~= nil
+            then function(side: number): "selectable" | "unavailable"
+                return state(side, system.state())
+            end
+            else nil,
+        pressed = function(side: number)
+            button.pressed(side, system.state())
+        end,
+        chip = if chip ~= nil
+            then function(side: number): Chip?
+                return chip(side, system.state())
+            end
+            else nil,
+    }
+end
 
--- The screen's hand: NumberSoul's ten chips (./hand).
-custom_souls.hand_size = hand.size
+-- A soul's window as the system's.
+local function window_of(window: SoulWindow): WindowSpec
+    return {
+        update = function(side: number): boolean
+            return window.update(side, system.state())
+        end,
+    }
+end
+
+-- The system's buttons and windows, by name (what the frontend draws them by), and the state fields they keep
+-- beside the soul button's (./init declares those): the soul button, and what each soul adds to the screen, gathered
+-- from the souls of the navi that has them (MegaMan's `forms.souls`, each form's `custom`). A name is one of the
+-- system's: two souls can't both add a button or a window of the same name. (`states`, above: `forget_screen` reads
+-- it at each deal.)
+local buttons: { [string]: ButtonSpec } = { soul = custom_souls.button }
+local windows: { [string]: WindowSpec } = { soul_unison = custom_souls.window }
+for _, soul in megaman.forms.souls do
+    local part: SoulCustom? = soul.custom
+    if part ~= nil then
+        for name, button in part.buttons or {} do
+            if buttons[name] ~= nil then
+                error(string.format("%s's button `%s` is another's too: a button's name is one of the souls system's", soul.id, name))
+            end
+            buttons[name] = button_of(part, button)
+        end
+        for name, window in part.windows or {} do
+            if windows[name] ~= nil then
+                error(string.format("%s's window `%s` is another's too: a window's name is one of the souls system's", soul.id, name))
+            end
+            windows[name] = window_of(window)
+        end
+        if part.state ~= nil then
+            table.insert(states, part.state)
+        end
+    end
+end
+custom_souls.buttons = buttons
+custom_souls.windows = windows
+custom_souls.states = states
 
 return custom_souls
