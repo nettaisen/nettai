@@ -1,7 +1,7 @@
 --!strict
--- The glow over a navi, as BN5 and BN6 share it (BN6's actor object #0x5D, `sub_80C4828`; BN5's #0x5D, 0x080C42E8,
--- the same code but for its start; BN6's docs/engine/dimming-chips.md §5.2): a copy of the side's navi, which
--- vanishes under it, flashing white. BugFix's controller spawns its first variant, BN5's Liberation chips' its third;
+-- The glow over a navi, as EXE5 and EXE6 share it (EXE6's actor object #0x5D, `sub_80C4828`; EXE5's #0x5D, 0x080C42E8,
+-- the same code but for its start; EXE6's docs/engine/dimming-chips.md §5.2): a copy of the side's navi, which
+-- vanishes under it, flashing white. BugFix's controller spawns its first variant, EXE5's Liberation chips' its third;
 -- the second is the original's, which nothing spawns.
 --
 --   bug_fix (`sub_80C493C`): white flashes further and further apart for 120 ticks, then 30 ticks, and the navi is
@@ -10,8 +10,8 @@
 --   log_in (`sub_80C4A52`): white for 30 ticks with the log-in sound, then as bug_fix's end.
 --
 -- When it is done it clears its spawner's `busy` flag. Each game makes its own kind (`glow.make`) with its look: its
--- sounds and how its start (BN6's `sub_80C4848`, BN5's 0x080C4308) places the copy and takes the navi's parts: BN6's
--- a pixel lower down the field and higher, the parts stepping on (its overlay's Param3 and flags 0x14); BN5's a pixel
+-- sounds and how its start (EXE6's `sub_80C4848`, EXE5's 0x080C4308) places the copy and takes the navi's parts: EXE6's
+-- a pixel lower down the field and higher, the parts stepping on (its overlay's Param3 and flags 0x14); EXE5's a pixel
 -- up the field and lower, a player navi's parts by its NaviStats (0x0800F0EC, `sub_8011420` with r2 1).
 
 local glow = {}
@@ -30,11 +30,11 @@ export type Look = {
     id: string,
     -- A flash, the log in, going under.
     sounds: { flash: Sound, log_in: Sound, submerge: Sound },
-    -- Pixels down the field and up its copy sits from the navi (BN6's 1, BN5's -1).
+    -- Pixels down the field and up its copy sits from the navi (EXE6's 1, EXE5's -1).
     offset: number,
-    -- BN5's: the parts are a player navi's alone, stepping even while paused (`add_parts_of`'s `paused_stepping`);
-    -- BN6's: any holder's, stepping on (its `keep_stepping`).
-    bn5_parts: boolean,
+    -- EXE5's: the parts are a player navi's alone, stepping even while paused (`add_parts_of`'s `paused_stepping`);
+    -- EXE6's: any holder's, stepping on (its `keep_stepping`).
+    exe5_parts: boolean,
 }
 
 export type Glow = {
@@ -211,7 +211,7 @@ function glow.make(look: Look): Glow
         -- sub_801002C: the navi's palette (the one it wears).
         sprite.palette = navi.sprite.palette
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-        if not look.bn5_parts then
+        if not look.exe5_parts then
             me:add_parts_of(navi, true)
         elseif navi.actor_type == "player" then
             me:add_parts_of(navi, false, true)

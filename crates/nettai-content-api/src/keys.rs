@@ -7,13 +7,13 @@
 //! `engine/...` keys.
 //!
 //! A module is named by its pack and its path in it:
-//! `bn6:chips/minibomb/init` is content/bn6/chips/minibomb/init.luau,
+//! `exe6:chips/minibomb/init` is content/exe6/chips/minibomb/init.luau,
 //! `exelib:swords/slash` content/exelib/swords/slash.luau ([`module_name`],
 //! [`module_path`]; the packs, `crate::packs`). A folder's main module is
-//! its `init.luau`, and the folder's name stands for it (`bn6:chips/minibomb`,
+//! its `init.luau`, and the folder's name stands for it (`exe6:chips/minibomb`,
 //! `require("../minibomb")`, a game's `require("@self/chips/minibomb")`:
 //! [`init_of`], [`listed_as`]), as Luau's own requires read a folder. A
-//! game pack's own init.luau is the game: `bn6:init` (`packs::INIT`).
+//! game pack's own init.luau is the game: `exe6:init` (`packs::INIT`).
 
 /// What the engine's own entries' keys start with (`engine/player`): they
 /// belong to no game.
@@ -29,14 +29,14 @@ pub fn root_of(key: &str) -> Option<&str> {
 }
 
 /// A module name's path in its pack: `chips/cannon/init` of
-/// `bn6:chips/cannon/init` (a key as it is).
+/// `exe6:chips/cannon/init` (a key as it is).
 pub fn local(key: &str) -> &str {
     key.split_once(SEPARATOR).map_or(key, |(_, k)| k)
 }
 
 /// The module name of the script at `path` in content/ (without `.luau`):
-/// its pack, then its path in the pack (`bn6/chips/cannon/init` is
-/// `bn6:chips/cannon/init`).
+/// its pack, then its path in the pack (`exe6/chips/cannon/init` is
+/// `exe6:chips/cannon/init`).
 pub fn module_name(path: &str) -> String {
     match path.split_once('/') {
         Some((first, rest)) => format!("{first}{SEPARATOR}{rest}"),
@@ -45,7 +45,7 @@ pub fn module_name(path: &str) -> String {
 }
 
 /// The module a folder's name stands for, when no module has the name
-/// itself: its `init` (`bn6:rules` is `bn6:rules/init`, content/bn6/rules/
+/// itself: its `init` (`exe6:rules` is `exe6:rules/init`, content/exe6/rules/
 /// init.luau), as a require names it.
 pub fn init_of(name: &str) -> String {
     format!("{name}/init")
@@ -66,11 +66,11 @@ pub fn module_path(name: &str) -> String {
 }
 
 /// Resolve a `require` path written in module `from`
-/// (`bn6:rules/beast/rush`), by Luau's own rule, so an editor resolves it
+/// (`exe6:rules/beast/rush`), by Luau's own rule, so an editor resolves it
 /// the same:
 /// - relative to its directory in its pack (`./berserk`, `../../lib/slot`),
 ///   which never leaves the pack;
-/// - from a folder's `init.luau` (`bn6:rules/beast/init`), which is the
+/// - from a folder's `init.luau` (`exe6:rules/beast/init`), which is the
 ///   folder as a module, relative to the folder's place: `./forms` is the
 ///   folder beside it (rules/forms), and a module of its own folder is
 ///   `@self/rush`;
@@ -129,7 +129,7 @@ pub fn resolve(from: &str, path: &str) -> Result<String, String> {
 }
 
 /// Whether `name` is a valid game name: lowercase ASCII letters
-/// and digits in `-`-separated words (`bn6`, `bn6-souls`), and not
+/// and digits in `-`-separated words (`exe6`, `exe6-souls`), and not
 /// `engine`.
 pub fn valid_root_name(name: &str) -> bool {
     name != "engine"
@@ -145,30 +145,30 @@ mod tests {
     fn keys_and_module_names() {
         assert_eq!(root_of("exelib:regions#57"), Some("exelib"));
         assert_eq!(root_of("minibomb/action"), None);
-        assert_eq!(local("bn6:chips/cannon/init"), "chips/cannon/init");
+        assert_eq!(local("exe6:chips/cannon/init"), "chips/cannon/init");
         assert_eq!(local("cannon"), "cannon");
-        assert!(valid_root_name("bn6-souls"));
+        assert!(valid_root_name("exe6-souls"));
         assert!(!valid_root_name("engine"));
-        assert!(!valid_root_name("BN6"));
-        assert_eq!(module_name("bn6/chips/cannon/init"), "bn6:chips/cannon/init");
+        assert!(!valid_root_name("EXE6"));
+        assert_eq!(module_name("exe6/chips/cannon/init"), "exe6:chips/cannon/init");
         assert_eq!(module_path("exelib:swords/slash"), "exelib/swords/slash");
-        assert_eq!(resolve("bn6:rules/beast/rush", "./berserk"), Ok("bn6:rules/beast/berserk".into()));
-        assert_eq!(resolve("bn6:rules/beast/rush", "../../lib/x"), Ok("bn6:lib/x".into()));
-        assert_eq!(resolve("bn6:chips/cannon/action", "@exelib/swords/slash.luau"), Ok("exelib:swords/slash".into()));
-        assert!(resolve("bn6:chips/cannon/action", "../../../exelib/cannon").unwrap_err().contains("leaves pack bn6"));
-        assert!(resolve("bn6:chips/cannon/init", "../../exelib/cannon").unwrap_err().contains("leaves pack bn6"));
+        assert_eq!(resolve("exe6:rules/beast/rush", "./berserk"), Ok("exe6:rules/beast/berserk".into()));
+        assert_eq!(resolve("exe6:rules/beast/rush", "../../lib/x"), Ok("exe6:lib/x".into()));
+        assert_eq!(resolve("exe6:chips/cannon/action", "@exelib/swords/slash.luau"), Ok("exelib:swords/slash".into()));
+        assert!(resolve("exe6:chips/cannon/action", "../../../exelib/cannon").unwrap_err().contains("leaves pack exe6"));
+        assert!(resolve("exe6:chips/cannon/init", "../../exelib/cannon").unwrap_err().contains("leaves pack exe6"));
         // A folder's init is the folder as a module (Luau's rule): `./` is
         // beside the folder, `@self/` inside it.
-        assert_eq!(resolve("bn6:chips/cannon/init", "./hicannon"), Ok("bn6:chips/hicannon".into()));
-        assert_eq!(resolve("bn6:chips/cannon/init", "../lib/slot"), Ok("bn6:lib/slot".into()));
-        assert_eq!(resolve("bn6:chips/cannon/init", "@self/action"), Ok("bn6:chips/cannon/action".into()));
-        assert_eq!(resolve("bn6:rules/init", "@self/beast"), Ok("bn6:rules/beast".into()));
+        assert_eq!(resolve("exe6:chips/cannon/init", "./hicannon"), Ok("exe6:chips/hicannon".into()));
+        assert_eq!(resolve("exe6:chips/cannon/init", "../lib/slot"), Ok("exe6:lib/slot".into()));
+        assert_eq!(resolve("exe6:chips/cannon/init", "@self/action"), Ok("exe6:chips/cannon/action".into()));
+        assert_eq!(resolve("exe6:rules/init", "@self/beast"), Ok("exe6:rules/beast".into()));
         // A pack's top module is the pack: its modules are `@self/`.
-        assert_eq!(resolve("bn6:init", "@self/chips/cannon"), Ok("bn6:chips/cannon".into()));
-        assert!(resolve("bn6:init", "./chips/cannon").unwrap_err().contains("leaves pack bn6"));
-        assert_eq!(resolve("bn6:chips/cannon/action", "../cannon"), Ok("bn6:chips/cannon".into()));
-        assert!(resolve("bn6:chips/cannon/action", "@self/x").unwrap_err().contains("is a folder's init.luau's"));
-        assert_eq!((init_of("bn6:chips/cannon"), listed_as("chips/cannon/init")), ("bn6:chips/cannon/init".to_string(), "chips/cannon"));
+        assert_eq!(resolve("exe6:init", "@self/chips/cannon"), Ok("exe6:chips/cannon".into()));
+        assert!(resolve("exe6:init", "./chips/cannon").unwrap_err().contains("leaves pack exe6"));
+        assert_eq!(resolve("exe6:chips/cannon/action", "../cannon"), Ok("exe6:chips/cannon".into()));
+        assert!(resolve("exe6:chips/cannon/action", "@self/x").unwrap_err().contains("is a folder's init.luau's"));
+        assert_eq!((init_of("exe6:chips/cannon"), listed_as("chips/cannon/init")), ("exe6:chips/cannon/init".to_string(), "chips/cannon"));
         assert!(resolve("x", "lib/x").is_err());
     }
 }

@@ -69,10 +69,10 @@ pub enum Lookup {
     FormFace(FormHandle, u8),
     /// A navi's name on the custom screen (the enemy names).
     NaviName(NaviHandle),
-    /// A navi's variant name there (`battle.set_name_variant`: BN5's Hub
+    /// A navi's variant name there (`battle.set_name_variant`: EXE5's Hub
     /// Style).
     NaviVariantName(NaviHandle),
-    /// A navi's number in BN6's compat (its emblem's).
+    /// A navi's number in EXE6's compat (its emblem's).
     NaviNumber(NaviHandle),
     /// A navi's emblem on a console of a game's custom screen.
     Emblem(NaviHandle, GameVersion),
@@ -108,7 +108,7 @@ pub enum Graphics {
 }
 
 /// An emotion's number in a [`Lookup::FormFace`] (`sub_8015B54`'s code;
-/// BN5's worried, its own 1, 6; 0x10 more for the form's second set).
+/// EXE5's worried, its own 1, 6; 0x10 more for the form's second set).
 pub fn emotion_number(e: nettai_battle::kinds::player::Emotion) -> u8 {
     use nettai_battle::kinds::player::Emotion;
     match e {

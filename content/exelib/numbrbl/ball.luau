@@ -1,13 +1,13 @@
 --!strict
--- A NumbrBl ball (attack object #0x91 in both games: BN6's `sub_80D7278`,
--- docs/engine/dimming-chip-effects.md §15; BN5's 0x080D895C), made for a
+-- A NumbrBl ball (attack object #0x91 in both games: EXE6's `sub_80D7278`,
+-- docs/engine/dimming-chip-effects.md §15; EXE5's 0x080D895C), made for a
 -- game's look (`ball.make`): its thrower sets it down in front of him; it
 -- sits, waits, then rolls down the row 3 pixels a tick until it hits
 -- something (an explosion) or leaves the field. Its hit is live from its
 -- first tick, even while it waits.
 --
--- The games part: BN6's sits 15 ticks, BN5's 30 (with another sound), and
--- BN5's hides its sprite's parts 2 to 21 each tick it waits and rolls.
+-- The games part: EXE6's sits 15 ticks, EXE5's 30 (with another sound), and
+-- EXE5's hides its sprite's parts 2 to 21 each tick it waits and rolls.
 
 
 local ball = {}
@@ -30,7 +30,7 @@ end
 
 -- A ball of `look`'s game: its kind and `spawn`.
 function ball.make(look: NumberBallLook): NumberBall
-    -- BN5's 0x080D8ABA: the parts it hides.
+    -- EXE5's 0x080D8ABA: the parts it hides.
     local function hide_parts(me: Object)
         local hidden = look.hidden_parts
         if hidden then
@@ -38,7 +38,7 @@ function ball.make(look: NumberBallLook): NumberBall
         end
     end
 
-    -- `sub_80D7358` (BN5's 0x080D8A34): sit its ticks, the sound as it is
+    -- `sub_80D7358` (EXE5's 0x080D8A34): sit its ticks, the sound as it is
     -- set down.
     local function sit(me: Object)
         if me.phase_init == 0 then
@@ -53,7 +53,7 @@ function ball.make(look: NumberBallLook): NumberBall
         end
     end
 
-    -- `sub_80D7382` (BN5's 0x080D8A5E): rolling's animation and shadow; the
+    -- `sub_80D7382` (EXE5's 0x080D8A5E): rolling's animation and shadow; the
     -- wait.
     local function ready(me: Object)
         hide_parts(me)
@@ -70,7 +70,7 @@ function ball.make(look: NumberBallLook): NumberBall
         end
     end
 
-    -- `sub_80D73AC` (BN5's 0x080D8A8C): roll on; gone past the field.
+    -- `sub_80D73AC` (EXE5's 0x080D8A8C): roll on; gone past the field.
     local function roll(me: Object)
         hide_parts(me)
         local p = me.pos
@@ -83,7 +83,7 @@ function ball.make(look: NumberBallLook): NumberBall
         end
     end
 
-    -- `sub_80D730A` (BN5's 0x080D89E6): resolve last tick's hits; a hit
+    -- `sub_80D730A` (EXE5's 0x080D89E6): resolve last tick's hits; a hit
     -- ends it with an explosion where it is; else its action, and present.
     local function tick(me: Object)
         local c = me.collision
@@ -109,7 +109,7 @@ function ball.make(look: NumberBallLook): NumberBall
         c:present()
     end
 
-    -- `sub_80D729C` (BN5's 0x080D8980): on its panel (its Z the spawner's),
+    -- `sub_80D729C` (EXE5's 0x080D8980): on its panel (its Z the spawner's),
     -- no shadow yet, its collision live; on at once. (Without a collision
     -- slot it is freed.)
     local function init(me: Object)
@@ -136,7 +136,7 @@ function ball.make(look: NumberBallLook): NumberBall
         id = look.id,
         pool = "attack",
         state = { wait = "u8" },
-        -- `sub_80D7278` (BN5's 0x080D895C): by state, then the sprite
+        -- `sub_80D7278` (EXE5's 0x080D895C): by state, then the sprite
         -- (stepping while dimmed).
         update = function(me: Object)
             local l = me.lifecycle
@@ -155,7 +155,7 @@ function ball.make(look: NumberBallLook): NumberBall
         end,
     }
 
-    -- `sub_80D73D6` (BN5's 0x080D8AC4): a ball on (`x`, `y`) at height `z`,
+    -- `sub_80D73D6` (EXE5's 0x080D8AC4): a ball on (`x`, `y`) at height `z`,
     -- of `thrower`'s side and facing, with its element and damage word,
     -- waiting `wait` ticks (plus one) before it rolls, running while
     -- dimmed. (Its X and Y are the spawner's registers until its init.)

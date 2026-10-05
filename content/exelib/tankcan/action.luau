@@ -1,5 +1,5 @@
 --!strict
--- The TankCans' action (BN6's action 0x24, `sub_80ECACA`; BN5's action 0x46, 0x080EEF4A, the same code but for the
+-- The TankCans' action (EXE6's action 0x24, `sub_80ECACA`; EXE5's action 0x46, 0x080EEF4A, the same code but for the
 -- cannon's attachment row): the navi aims its tank cannon for 16 ticks, then fires a shell (@exelib/tankcan/shell)
 -- from the panel ahead on the 23rd, the screen shaking; it lowers the cannon on the 36th and is back to idle 4 ticks
 -- later.

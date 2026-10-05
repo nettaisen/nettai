@@ -3,7 +3,7 @@
 Chips 0x138 Gregar and 0x139 Falzar are giga cut-in chips (action 0x15, subtypes 0x22 and 0x23). The US ROMs
 (BR6E, BR5E) have their records and nothing else: `off_802CCB4[34]` and `[35]` are null (the game jumps to
 address 0), and the object slots their routines would fill point at placeholders. The Japanese ROMs (BR6J
-Falzar, BR5J Gregar) have the routines; the port's are content/bn6's chips/gregar, chips/falzar and
+Falzar, BR5J Gregar) have the routines; the port's are content/exe6's chips/gregar, chips/falzar and
 lib/beast-chips. This is those routines, from the Japanese ROMs' bytes (there is no Japanese disassembly; every
 routine they call is the US one of the same name, which bn6battle-verify's `tools/gregar/fmap.py --to` maps).
 Conventions as in dimming-chip-effects.md (§0: the controllers' common shape, "counts", "Tn#x").

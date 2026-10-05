@@ -1,7 +1,7 @@
 --!strict
--- FireHit's fist and the chips' effect, as BN5 and BN6 share them (BN6's
+-- FireHit's fist and the chips' effect, as EXE5 and EXE6 share them (EXE6's
 -- attack object #0x5B, `sub_80CFCF8`, and instant chip effect 8,
--- `sub_80CFE08`; BN5's #0x5B, 0x080D131C, and effect 9). The effect
+-- `sub_80CFE08`; EXE5's #0x5B, 0x080D131C, and effect 9). The effect
 -- looks ahead of the user, column by column along its row, for a column
 -- with something of the other side in it (any row); a fist appears on
 -- each such row, on that column or at most three panels ahead of the

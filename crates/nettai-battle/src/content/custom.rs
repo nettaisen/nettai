@@ -46,8 +46,8 @@ pub struct CustomScreenLayout {
     pub left_scan_start: [u8; 12],
     pub right_scan_start: [u8; 12],
     /// The re-deal (`sub_8029788`): by how many of the hand's chips it deals
-    /// again, how many of them stay in the hand (`byte_80298C8`: BN6's are
-    /// all zeros, as none listed; BN5's 0x080254C8).
+    /// again, how many of them stay in the hand (`byte_80298C8`: EXE6's are
+    /// all zeros, as none listed; EXE5's 0x080254C8).
     pub redeal_kept: Vec<u8>,
 }
 
@@ -134,7 +134,7 @@ pub struct ProgramAdvanceRecipe {
     /// original's table order): the first that matches wins.
     pub order: u8,
     /// Tried only in a battle where each side keeps its own gauge (battle
-    /// flag 0x40, never set in a netbattle): BN5's 21 recipes its full
+    /// flag 0x40, never set in a netbattle): EXE5's 21 recipes its full
     /// table (0x08027FC8) has before the netbattles' (0x0802801C, the rest
     /// of it; 0x080251DC picks the table by `sub_800A8F8`).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]

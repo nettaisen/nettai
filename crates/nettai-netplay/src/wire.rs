@@ -120,7 +120,7 @@ impl Wire for u8 {
     }
 }
 
-/// A signed byte, as its byte (BN5's soul turns' bonus).
+/// A signed byte, as its byte (EXE5's soul turns' bonus).
 impl Wire for i8 {
     fn write(&self, w: &mut Writer) {
         w.byte(*self as u8);

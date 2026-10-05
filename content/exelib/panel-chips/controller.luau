@@ -1,6 +1,6 @@
 --!strict
--- The panel chips' dimming controller, as BN5 and BN6 share it (BN6's
--- effect object #0x20, `sub_80E2AE8`; BN5's #0x20;
+-- The panel chips' dimming controller, as EXE5 and EXE6 share it (EXE6's
+-- effect object #0x20, `sub_80E2AE8`; EXE5's #0x20;
 -- docs/engine/dimming-chips.md §4.1): PnlRetrn, HolyPanl, Snctuary,
 -- ComingRd and GoingRd. Each game makes its own (`panel_chips.make`: its
 -- kind and its panel changer's). The usual dimming phases

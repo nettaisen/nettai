@@ -1,5 +1,5 @@
 --!strict
--- The engine's test lock-on modes, under the BN6 modes' names (the BN6
+-- The engine's test lock-on modes, under the EXE6 modes' names (the EXE6
 -- overlay's chips name them): made-up modes for the tests. `cannon` is next
 -- to the target with the column shifts; `thunder` beside the target or
 -- diagonally behind it; `beast_lunge` a panel or two in front of it (only

@@ -47,13 +47,13 @@ pub struct ChipArt {
     pub key: String,
     pub picture: Picture,
     /// The region whose ROMs the picture comes from, when not the pack's
-    /// own (BN6: `"jp"`, a chip the US release cut and left a placeholder
+    /// own (EXE6: `"jp"`, a chip the US release cut and left a placeholder
     /// picture for). A console of another region shows something else.
     pub region: Option<String>,
     /// The game version whose ROM the chip's picture and icon are from,
     /// for a chip only its own version's ROM draws: a version's own chip
-    /// (BN6's and BN5's version Giga chips, BN5's Phoenix and DethPhnx),
-    /// which the other version's ROM draws as its counterpart, and BN6's
+    /// (EXE6's and EXE5's version Giga chips, EXE5's Phoenix and DethPhnx),
+    /// which the other version's ROM draws as its counterpart, and EXE6's
     /// Gregar and Falzar chips (each ROM has its own beast in both). A
     /// console of the other version shows another picture there.
     pub version: Option<String>,
@@ -95,8 +95,8 @@ pub struct VersionPictures {
 }
 
 /// Where the screen's blocks go among the HUD layer's tile numbers, which
-/// its window map and patch list count with: BN6's (the default, a pack
-/// that says none), or a game's whose window is laid out otherwise (BN5's
+/// its window map and patch list count with: EXE6's (the default, a pack
+/// that says none), or a game's whose window is laid out otherwise (EXE5's
 /// smaller frame puts everything after it lower).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CustomLayout {
@@ -112,21 +112,21 @@ pub struct CustomLayout {
     pub element: u16,
     pub digits: u16,
     /// The slots (6 tiles each, as their kinds take them) and the special
-    /// button after them (slot 11's: Beast Out's 4x2 in BN6, the soul
-    /// button's 3x2 in BN5), then the picked column's icons.
+    /// button after them (slot 11's: Beast Out's 4x2 in EXE6, the soul
+    /// button's 3x2 in EXE5), then the picked column's icons.
     pub slots: u16,
     pub column_icons: u16,
     /// The enemy names' bar, and the Cross window's names.
     pub name_bar: u16,
     pub cross_names: u16,
     /// The color a hidden slot's tiles and a slot's blank code are filled
-    /// with (BN6's `byte_802A700`: 1).
+    /// with (EXE6's `byte_802A700`: 1).
     pub slot_blank: u8,
     /// The cursor over OK and over the special slot under it.
     pub ok_cursor: CursorPlace,
     pub special_cursor: CursorPlace,
     /// Whether the chip window shows the re-deal button's uses left, a
-    /// digit in the damage's last cell (BN5's Shuffle, 0x080245F2; BN6's
+    /// digit in the damage's last cell (EXE5's Shuffle, 0x080245F2; EXE6's
     /// `sub_80287A4` reads the count and draws nothing).
     pub button_uses: bool,
 }
@@ -142,10 +142,10 @@ pub struct CursorPlace {
 }
 
 impl CustomLayout {
-    /// BN6's (`sub_8026840`, `sub_8028250`, `byte_8029DF8`; the cursor over
+    /// EXE6's (`sub_8026840`, `sub_8028250`, `byte_8029DF8`; the cursor over
     /// OK `sub_80288D0` and `byte_80288E4`, over Beast Out `sub_8028904`
     /// and `byte_8028918`).
-    pub const BN6: CustomLayout = CustomLayout {
+    pub const EXE6: CustomLayout = CustomLayout {
         column_cells: 0x89,
         turn_limit: 0x8D,
         name: 0x9B,
@@ -180,12 +180,12 @@ impl CustomLayout {
 
 impl Default for CustomLayout {
     fn default() -> CustomLayout {
-        CustomLayout::BN6
+        CustomLayout::EXE6
     }
 }
 
 /// A button the screen draws by its name (a system's button,
-/// docs/design/rules-in-luau.md §4.8, or BN5's soul button): its tiles in
+/// docs/design/rules-in-luau.md §4.8, or EXE5's soul button): its tiles in
 /// the slots' row (`width` x `height` tiles a state, row by row: selectable,
 /// unavailable, then the game's others) and its picture in the chip window
 /// with that picture's palettes by state.
@@ -197,13 +197,13 @@ pub struct ButtonPictures {
     pub picture: Picture,
     pub palettes: Vec<Palette>,
     /// The icons (2x2 each) the picked column shows for what the button
-    /// gives, by its number (BN5's souls by their number, 13 Chaos Unison's:
+    /// gives, by its number (EXE5's souls by their number, 13 Chaos Unison's:
     /// 0x08024010's table), and the palette of the sprite the icon flies as
-    /// (BN5's state 9).
+    /// (EXE5's state 9).
     pub icons: Tiles,
     pub icon_palette: Palette,
     /// The flying icon's palette on a console of another game version,
-    /// where it differs, by version (BN5: Team Colonel's has another
+    /// where it differs, by version (EXE5: Team Colonel's has another
     /// outline color, its ROM's 0x0874BDBC).
     pub icon_palettes: Vec<(String, Palette)>,
 }
@@ -212,7 +212,7 @@ pub struct ButtonPictures {
 pub struct CustomScreen {
     /// Where the blocks below go among the layer's tile numbers.
     pub layout: CustomLayout,
-    /// The buttons drawn by name that the fields below don't hold (BN5's
+    /// The buttons drawn by name that the fields below don't hold (EXE5's
     /// "soul"), by name.
     pub buttons: Vec<(String, ButtonPictures)>,
     // ---- The HUD layer's tiles, by the tile number they load at.

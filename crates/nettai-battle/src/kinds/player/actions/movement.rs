@@ -100,7 +100,7 @@ pub(in crate::kinds::player) fn start(b: &mut Battle, r: ObjectRef, dir: u8, end
 
 /// `sub_80116AE(5, end_lag, 2)` after setting AIAttackVars+0x16/+0x17: a
 /// step straight to `target` (the berserk controller's), facing nothing;
-/// with `face`, BN5's `sub_80116F6` (the computer navis' AI's), which keeps
+/// with `face`, EXE5's `sub_80116F6` (the computer navis' AI's), which keeps
 /// the object to face. A target in column 0 means no step.
 pub(crate) fn start_absolute_facing(b: &mut Battle, r: ObjectRef, target: PanelPos, end_lag: u16, kind: MoveKind, face: Option<ObjectRef>) {
     let vars = Vars { dir: ABSOLUTE_DIRECTION, kind, end_lag, target, ..Vars::default() };
@@ -349,7 +349,7 @@ pub(crate) fn panel_trail(b: &mut Battle, r: ObjectRef, from: PanelPos) {
             b.crack_panel(from.x, from.y);
         }
         _ => {
-            // (By the game's panel numbers: BN5's own, its panels section's.)
+            // (By the game's panel numbers: EXE5's own, its panels section's.)
             let Some(t) = b.game_rules().panels.numbered(kind) else {
                 panic!("panel-trail kind {kind:#x} is past the panel types (sub_8013CC4)");
             };

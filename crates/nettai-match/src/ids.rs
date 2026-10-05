@@ -3,7 +3,7 @@
 //! chips, Crosses, souls, patch cards, NaviCust programs, weapons and
 //! records) is a local name in that game's namespace (`cannon`), looked up
 //! only there. There is no way to write another game's name: a name the
-//! game hasn't is the ordinary "no chip `x` in bn6".
+//! game hasn't is the ordinary "no chip `x` in exe6".
 //!
 //! Every lookup goes through [`key`] (a game and a local name to the
 //! content's key: the name itself, when the content is that game's), and
@@ -90,16 +90,16 @@ mod tests {
     use super::*;
 
     /// A match's lookups see only its game: a name is its game's (`cannon`
-    /// in bn6 is BN6's Cannon), and a name the game hasn't, whatever it is
+    /// in exe6 is EXE6's Cannon), and a name the game hasn't, whatever it is
     /// (another game's, written in full), is none.
     #[test]
     fn lookups_see_only_their_game() {
-        let content = crate::testing::bn6_content();
-        let six = chip(&content, "bn6", "cannon").unwrap();
+        let content = crate::testing::exe6_content();
+        let six = chip(&content, "exe6", "cannon").unwrap();
         assert_eq!(local(&content.defs.chip(six).key), "cannon");
-        assert!(form(&content, "bn6", "heatcross").is_some());
-        assert_eq!(chip(&content, "bn5", "cannon"), None);
-        assert_eq!(chip(&content, "bn6", "bn6:cannon"), None); // (written in full)
-        assert_eq!(games(&content), ["bn6"]);
+        assert!(form(&content, "exe6", "heatcross").is_some());
+        assert_eq!(chip(&content, "exe5", "cannon"), None);
+        assert_eq!(chip(&content, "exe6", "exe6:cannon"), None); // (written in full)
+        assert_eq!(games(&content), ["exe6"]);
     }
 }

@@ -1,6 +1,6 @@
 --!strict
--- A thrown bomb, as BN5 and BN6 share it (BN6's attack object #8,
--- `sub_80C5BB0`; BN5's #8): each game makes its own (`bomb.make`, a
+-- A thrown bomb, as EXE5 and EXE6 share it (EXE6's attack object #8,
+-- `sub_80C5BB0`; EXE5's #8): each game makes its own (`bomb.make`, a
 -- `BombLook`: its kind, sprite, sound and effects). MiniBomb,
 -- EnergBom, MegEnBom and BigBomb. It flies three panels ahead in an arc for
 -- 40 ticks, then lands: on a solid panel it blasts its variant's region

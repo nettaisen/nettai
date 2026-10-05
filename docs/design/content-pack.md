@@ -6,11 +6,11 @@ animation timing, and the Luau code that runs them. The engine holds it as one t
 `nettai_battle::Content`, and reads it from nowhere else: no ROM, no tables or scripts compiled into the engine. It
 comes from two places:
 
-- the **content root**, a checkout's folder of Luau modules that *define* the content. BN6's is content/bn6 in
+- the **content root**, a checkout's folder of Luau modules that *define* the content. EXE6's is content/exe6 in
   this repository: people own it, and the verification workspace checks it against the ROM (§3);
-- a **content pack**, a folder of open-format assets that `bn6-extract content` writes from the user's ROM:
+- a **content pack**, a folder of open-format assets that `exe6-extract content` writes from the user's ROM:
   graphics (with the sprites' animation timing) and sound, each under its name, and the asset index that lists
-  them. The definitions name the pack's assets in full (`asset.sprite("bn6:bomb")`), never their numbers.
+  them. The definitions name the pack's assets in full (`asset.sprite("exe6:bomb")`), never their numbers.
 
 This document describes the two and how they load, and the `Content` API the engine and other layers use. The
 pack's graphics and sound formats are in [asset-formats.md](asset-formats.md); what a definition is and how to
@@ -19,7 +19,7 @@ record, with the reasons and the as-built notes, in [content-model-v2.md](conten
 
 ## 0. Summary
 
-- **One extraction, of assets.** `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>` (the four ROMs:
+- **One extraction, of assets.** `exe6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>` (the four ROMs:
   US Falzar, US Gregar, JP Falzar, JP Gregar) writes the graphics, the sound and the asset
   index, reads the graphics and the index back to check them, and defines the content root against the pack to
   check its names resolve. The engine, the frontend, the audio, netplay and the verification workspace all load
@@ -27,7 +27,7 @@ record, with the reasons and the as-built notes, in [content-model-v2.md](conten
 - **Content is definitions.** Everything in the content root is a `define.*` call in a module, keyed by name.
   The engine has no chip, weapon, kind, action, effect, spark, region, collision type, status, lock-on mode or
   identity by number, and no navi or form: it holds handles, and content passes definitions.
-- **The original's numbers are compat's.** content/bn6/compat maps keys to the original's numbers for the tools
+- **The original's numbers are compat's.** content/exe6/compat maps keys to the original's numbers for the tools
   that need them (the trace harness, save and link-data codecs, the extractor's asset names, `gen-content
   check`). The engine never reads it (a test guards the dependency), and content can't load it.
 - **Exact.** What the definitions build equals the ROM's data, field by field (`gen-content check`), and every
@@ -67,8 +67,8 @@ A module is `--!strict` Luau that returns a table. While it loads it makes defin
 returns is what other modules get from `require("../../lib/bombs/bomb")` (a path relative to the requiring
 file). Nothing registers a module: the engine runs what the definitions hold.
 
-The folder is named as its game (content/bn6), and every id its modules, compat and locales write is in full,
-`bn6:minibomb`, as is every asset name, `asset.sprite("bn6:bomb")` (rules-in-luau.md §7.2: the content is one
+The folder is named as its game (content/exe6), and every id its modules, compat and locales write is in full,
+`exe6:minibomb`, as is every asset name, `asset.sprite("exe6:bomb")` (rules-in-luau.md §7.2: the content is one
 namespace). `nettai_content::root::read(dir)` reads a folder: every module, by its path without `.luau`;
 `read_all(content)` every folder of a content directory, content/nettai (the engine's declarations) aside.
 `nettai_content::root::content()` is the content directory: `$NETTAI_CONTENT`, else this repository's content/.
@@ -156,8 +156,8 @@ let pas = b.content.program_advances();            // in the order they are trie
   screen reads a `custom::Library`, which `Content` implements.
 - Where a function needs `&mut Battle` while holding content data, clone the `Arc` first (`let content =
   b.content.clone();`): it costs an atomic increment.
-- Trace replays (bn6-compat's `trace`) take the content and compat: `trace::run_round(round, &content,
-  &compat)`. The setup codecs (`bn6_compat::codec`) take an `Ids` (the content and compat), which maps the
+- Trace replays (exe6-compat's `trace`) take the content and compat: `trace::run_round(round, &content,
+  &compat)`. The setup codecs (`exe6_compat::codec`) take an `Ids` (the content and compat), which maps the
   records' numbers to the engine's handles and back: a folder's chip ids, a navi stats record's weapons, the
   stage a battle settings record is.
 - The scripts run from the content: `Battle::new` gets the runtime with `Behaviors::for_content(&content)`
@@ -177,12 +177,12 @@ let pas = b.content.program_advances();            // in the order they are trie
 
 In-repo tests never load game data. `nettai_battle::content::testing` (the `test-content` feature, and the
 engine's own tests) is a small content set: its own modules (crates/nettai-battle/testdata/content: made-up chips,
-navis, stages, statuses and lock-on modes, and its roles), some of content/bn6's modules read from the
+navis, stages, statuses and lock-on modes, and its roles), some of content/exe6's modules read from the
 repository with whatever they `require`, and made-up assets for the names they use. So the tests run the real
 scripts on made-up data. A second set, the test pack (crates/nettai-battle/testdata/pack), is definitions written
 for the tests alone. The engine, netplay, audio and frontend tests run on them; one test defines all of
-content/bn6 with made-up assets.
+content/exe6 with made-up assets.
 
-Tests about BN6's actual data (effect lifetimes, GunDelSol's 480 HP in the sun, the stages' rocks, the golden
-traces, the chip lab) live in the verification workspace, which loads content/bn6 with the BN6 pack it extracts
-to `data/content/bn6`.
+Tests about EXE6's actual data (effect lifetimes, GunDelSol's 480 HP in the sun, the stages' rocks, the golden
+traces, the chip lab) live in the verification workspace, which loads content/exe6 with the EXE6 pack it extracts
+to `data/content/exe6`.

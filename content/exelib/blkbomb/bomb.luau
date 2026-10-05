@@ -1,6 +1,6 @@
 --!strict
--- A BlkBomb, as BN5 and BN6 share it (BN6's attack object #0x4A,
--- `sub_80CD4EC`; BN5's #0x47). Lobbed at
+-- A BlkBomb, as EXE5 and EXE6 share it (EXE6's attack object #0x4A,
+-- `sub_80CD4EC`; EXE5's #0x47). Lobbed at
 -- the panel three ahead, it sits there as an obstacle with 100 HP (one to a
 -- side, `obstacle.register` class 1) until a fire hit sets it off: it
 -- bursts over the whole of the side opposite its panel's owner (one hit,

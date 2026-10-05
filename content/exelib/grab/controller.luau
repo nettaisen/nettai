@@ -1,6 +1,6 @@
 --!strict
--- AreaGrab's and PanelGrab's dimming controller, as BN5 and BN6 share it
--- (BN6's effect object #3, `sub_80E0710`; BN5's #3): each game makes its
+-- AreaGrab's and PanelGrab's dimming controller, as EXE5 and EXE6 share it
+-- (EXE6's effect object #3, `sub_80E0710`; EXE5's #3): each game makes its
 -- own (`grab.make`: its kind and its grab shot's). The usual dimming
 -- phases (@exelib/dimming), with an effect that drops grab shots
 -- (@exelib/grab/shot) on the first column in front

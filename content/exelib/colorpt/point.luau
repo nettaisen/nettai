@@ -1,12 +1,12 @@
 --!strict
--- A point of ColorPt's and DblPoint's, as BN5 and BN6 share it (BN6's effect object #0x51, `sub_80E655C`; BN5's
--- #0x51, 0x080E65E8; BN6's docs/engine/dimming-chips.md §10.2): it gives its panel to the other side (the
+-- A point of ColorPt's and DblPoint's, as EXE5 and EXE6 share it (EXE6's effect object #0x51, `sub_80E655C`; EXE5's
+-- #0x51, 0x080E65E8; EXE6's docs/engine/dimming-chips.md §10.2): it gives its panel to the other side (the
 -- stolen-area return brings it back), rises, and flies to its side's navi; there the chip at the hand's cursor, if it
 -- does damage, gets its bonus (or the side's special bonus does). It tells its controller (the holder) when it is
 -- gone.
 --
--- Each game makes its own kind (`point.make`) with its look and its test for the special bonus: BN6's while a
--- special chip is in use (its player's AI+0xBB), BN5's with each side keeping its own gauge (battle flag 0x40,
+-- Each game makes its own kind (`point.make`) with its look and its test for the special bonus: EXE6's while a
+-- special chip is in use (its player's AI+0xBB), EXE5's with each side keeping its own gauge (battle flag 0x40,
 -- 0x080E6746).
 
 

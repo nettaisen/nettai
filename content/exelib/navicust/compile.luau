@@ -1,15 +1,15 @@
 --!strict
--- The NaviCust compile BN5's and BN6's share (docs/design/navicust.md §3, §4): as the round is set up (a game's
+-- The NaviCust compile EXE5's and EXE6's share (docs/design/navicust.md §3, §4): as the round is set up (a game's
 -- navicust system's `round_setup`, before anything reads the stats and before the patch cards, which apply to what
 -- the NaviCust made), a player's NaviCust (`battle.navicust`: the programs placed on its grid) is compiled into the
--- navi's stats, as the original's reload does (BN6's `reloadCurNaviStatBoosts`'s `sub_813C458`, BN5's 0x0813FA10,
+-- navi's stats, as the original's reload does (EXE6's `reloadCurNaviStatBoosts`'s `sub_813C458`, EXE5's 0x0813FA10,
 -- the same routines), for MegaMan alone:
 --
--- 1. The bugs counted (BN6's `sub_813BBD4`, BN5's 0x0813F310), by the bug each program brings: a plus part on the
+-- 1. The bugs counted (EXE6's `sub_813BBD4`, EXE5's 0x0813F310), by the bug each program brings: a plus part on the
 --    command line (`sub_813BC1C`) and a program off it (`sub_813BC98`); for each program, each other program beside
 --    it (its shape moved a cell left, right, up or down, on a cell where a neighbor counts) of the same color,
---    counted for that one's bug (`sub_813BD24`); what the game counts besides (`sub_813BE8C`: BN5's HubBatc); five
---    colors on the grid, or more (`sub_813BEA8`); a program on the board's frame (BN6's `sub_813C584`; BN5's board
+--    counted for that one's bug (`sub_813BD24`); what the game counts besides (`sub_813BE8C`: EXE5's HubBatc); five
+--    colors on the grid, or more (`sub_813BEA8`); a program on the board's frame (EXE6's `sub_813C584`; EXE5's board
 --    has none).
 -- 2. The stats reset (`sub_8136C24`): the setup's are already the navi's fresh stats with what the save keeps
 --    (nettai-match's `Side`), so no work here.
@@ -17,24 +17,24 @@
 --    only (`exclusive`); the plus parts off it, in the list's order; the plus parts on it, left to right. The HP
 --    programs add up, and the maximum is the base and them.
 -- 4. The bugs (`sub_813CBCC`), unless a program stopped them (BugStop): each bug at its count's level, 1 to 3, as the
---    game's table says. Any bug sets the save's flag (BN6's 0x1720, BN5's 0x10C1), the emotion window's glitch.
+--    game's table says. Any bug sets the save's flag (EXE6's 0x1720, EXE5's 0x10C1), the emotion window's glitch.
 -- 5. The HP (`sub_803CE44`): the maximum again, and the HP the round starts with (in the real world, the maximum;
---    BN5's leaves both in the cyberworld: `keeps_hp`).
+--    EXE5's leaves both in the cyberworld: `keeps_hp`).
 --
 -- A program's color, shape and whether it is a plus part are the engine's (its definition's); its `bug`, its
--- `exclusive` and its `effects` the rules' (./effects). A program `anywhere` (no BN5 or BN6 program is one) works on
+-- `exclusive` and its `effects` the rules' (./effects). A program `anywhere` (no EXE5 or EXE6 program is one) works on
 -- the command line or off it and is never bugged by where it is.
 --
 -- A side without a NaviCust has its stats as a compile left them (a recording's, a match's set directly, a link
 -- navi's): no setup gives the glitch, so its flag is what those stats say, set when they carry a bug (`stats_bugged`:
--- any stat a bug's routine writes). Every recorded MegaMan with the flag has such a stat but BN5's HubBatc alone,
+-- any stat a bug's routine writes). Every recorded MegaMan with the flag has such a stat but EXE5's HubBatc alone,
 -- whose bug halves the HP programs and writes none.
 
 local compile = {}
 
 -- A game's board and what its compile is made of besides the shared routines: `NaviCustBoard`, `NaviCustGame`
--- (common/types.d.luau). BN5's HubBatc counts its own bug once more (`extra`, 0x0813F5A8); BN6's flag 0x1720 is
--- the emotion window's glitch (`glitch`), BN5's 0x10C1 one no battle reads.
+-- (common/types.d.luau). EXE5's HubBatc counts its own bug once more (`extra`, 0x0813F5A8); EXE6's flag 0x1720 is
+-- the emotion window's glitch (`glitch`), EXE5's 0x10C1 one no battle reads.
 
 -- Whether the cell of `rows` (a definition's shape: strings of `#` and `.`) at (x, y) is filled.
 local function filled(rows: { string }, x: number, y: number): boolean
@@ -199,7 +199,7 @@ function compile.run(side: number, game: NaviCustGame): boolean
         return grid[y * size + x]
     end
 
-    -- The grid (BN6's `Unk200414c`, BN5's 0x0200xxxx grid, which placing a program writes: `sub_813B950`): each cell
+    -- The grid (EXE6's `Unk200414c`, EXE5's 0x0200xxxx grid, which placing a program writes: `sub_813B950`): each cell
     -- the program on it, by its place in the list.
     local shapes: { { { boolean } } } = {}
     local grid: { [number]: number } = {}
@@ -346,7 +346,7 @@ function compile.run(side: number, game: NaviCustGame): boolean
     end
     stats.max_hp = stats.max_base_hp + work.hp
 
-    -- 4. The bugs, unless stopped (`sub_813CBCC`; BN5's 0x0813FA48 asks its patch cards first).
+    -- 4. The bugs, unless stopped (`sub_813CBCC`; EXE5's 0x0813FA48 asks its patch cards first).
     local bugged = false
     local stopped = work.bug_stop
     if game.bug_stop ~= nil then
@@ -368,8 +368,8 @@ function compile.run(side: number, game: NaviCustGame): boolean
         battle.set_emotion_window_glitch(side, bugged)
     end
 
-    -- 5. The HP (BN6's `sub_803CE44`, BN5's 0x0803C13C): the maximum again, and the round starts with it; unless the
-    -- game leaves the HP (BN5's in the cyberworld, where the maximum is the effects' and the bugs').
+    -- 5. The HP (EXE6's `sub_803CE44`, EXE5's 0x0803C13C): the maximum again, and the round starts with it; unless the
+    -- game leaves the HP (EXE5's in the cyberworld, where the maximum is the effects' and the bugs').
     if game.keeps_hp == nil or not game.keeps_hp(side) then
         stats.max_hp = stats.max_base_hp + work.hp
         stats.hp = stats.max_hp

@@ -30,7 +30,7 @@ fn found(packs: &[PathBuf]) -> Result<Vec<nettai_content::pack::Found>, String> 
     let mut report = nettai_content::report::Report::default();
     let found = nettai_content::pack::find(&nettai_content::pack::packs_dir(), packs, &mut report);
     show(&report);
-    found.ok_or_else(|| "can't read the packs given (--pack, $BN6_PACK)".into())
+    found.ok_or_else(|| "can't read the packs given (--pack, $EXE6_PACK)".into())
 }
 
 /// The content of `game` (`content_dir`: `--content`; `packs`: `--pack`),

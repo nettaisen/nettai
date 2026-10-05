@@ -323,7 +323,7 @@ pub fn queue_objects<'a>(
             mask &= !look.hidden_parts;
 
             // The palette offset the sprite holds: the first part's of the
-            // frame it last took one from (`Look::part_palette`; BN5's
+            // frame it last took one from (`Look::part_palette`; EXE5's
             // frame load leaves the last step's).
             let first_palette = look.part_palette.map_or(0, |(anim, frame)| {
                 sheet

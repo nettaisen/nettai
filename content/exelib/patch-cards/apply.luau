@@ -1,6 +1,6 @@
 --!strict
--- Patch cards' application as BN5's and BN6's share it (docs/engine/patch-cards.md §1.2; BN5's 0x08138214,
--- bn5-map.md §15.14): the original keeps a block of slots, one per kind of effect, seeded from the stats the NaviCust
+-- Patch cards' application as EXE5's and EXE6's share it (docs/engine/patch-cards.md §1.2; EXE5's 0x08138214,
+-- exe5-map.md §15.14): the original keeps a block of slots, one per kind of effect, seeded from the stats the NaviCust
 -- made (each game's seed). Each switched-on card in the list's order runs its effects in the order of their kinds
 -- (the game's, the original's effect numbers; not the card's order), each writing its slot (a later card's write
 -- wins); then the slots a card wrote are copied into the stats (each game's copy). A card that lists one effect
@@ -60,8 +60,8 @@ function apply.in_order(effects: { PatchCardEffect }, game: PatchCardsGame): { P
     return out
 end
 
--- The switched-on cards of `installed` over the block (`slot`, seeded by the game; `hp` the working HP, BN6's
--- `sub_8141AEC`, BN5's 0x08137B00): the working HP after them, and which slots a card wrote.
+-- The switched-on cards of `installed` over the block (`slot`, seeded by the game; `hp` the working HP, EXE6's
+-- `sub_8141AEC`, EXE5's 0x08137B00): the working HP after them, and which slots a card wrote.
 function apply.run(installed: { { card: PatchCard, enabled: boolean } }, game: PatchCardsGame, hp: number, slot: { [string]: any }): (number, { [string]: boolean })
     local written: { [string]: boolean } = {}
     local clamp, signed_byte = apply.clamp, apply.signed_byte
@@ -114,7 +114,7 @@ function apply.run(installed: { { card: PatchCard, enabled: boolean } }, game: P
                     -- (Its handler stores without the clamp.)
                     put("giga", bit32.band(signed_byte(slot.giga) - n, 0xFF))
                 elseif k == "soul_time_add" then
-                    -- (BN5's: -2 to 6, 0x08137FE4.)
+                    -- (EXE5's: -2 to 6, 0x08137FE4.)
                     stat("soul_time", n, -2, 6)
                 elseif k == "soul_time_sub" then
                     stat("soul_time", -n, -2, 6)

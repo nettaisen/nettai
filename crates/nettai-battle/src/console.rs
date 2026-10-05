@@ -94,8 +94,8 @@ pub struct Console {
     /// Where the folder's tag pair is (`ConsoleSetup`; OK moves it with
     /// the chips it takes out, an opening that could deal it drops it).
     pub tag_pair: Option<u8>,
-    /// The save's glitch (BN6's event flag 0x1720, 0x1723 with patch
-    /// cards; BN5's 0x10C1 and 0x10C4), for the emotion window's start:
+    /// The save's glitch (EXE6's event flag 0x1720, 0x1723 with patch
+    /// cards; EXE5's 0x10C1 and 0x10C4), for the emotion window's start:
     /// MegaMan's window flickers as a bugged navi's does, bugs or not. No
     /// setup gives it: the game's rules make it as the round is set up
     /// (`battle.set_emotion_window_glitch`: the NaviCust's compile when a
@@ -217,8 +217,8 @@ impl Battle {
         }
     }
 
-    /// BN5's shake (0x08030D78, the arena's `effects.shake`): one channel
-    /// (BN5 has no `sub_80302B6`), shaking while the battle isn't paused,
+    /// EXE5's shake (0x08030D78, the arena's `effects.shake`): one channel
+    /// (EXE5 has no `sub_80302B6`), shaking while the battle isn't paused,
     /// while it dims or while battle flag 0x20 is set (TomahawkSoul's change:
     /// `battle_isTimeStopPauseOrBattleFlags0x20_800a0a4`; the battle's
     /// subsystem is always in use), its jitter two draws from
@@ -254,7 +254,7 @@ impl Battle {
     /// `sub_802FFF4`'s shake, each running tick after the objects: the
     /// primary channel first unless the battle is paused without dimming
     /// while player 0's status (BattleState+0x14) has neither bit 0 nor 2
-    /// (`sub_80269D0`) or battle flag 0x20 is set (which nothing in BN6
+    /// (`sub_80269D0`) or battle flag 0x20 is set (which nothing in EXE6
     /// sets); the secondary otherwise. (The battle's subsystem is always in
     /// use.)
     pub(crate) fn update_cameras(&mut self) {
@@ -348,11 +348,11 @@ mod tests {
         assert_eq!(c.camera.jitter, (0, 0));
     }
 
-    /// docs/design/bn5-map.md §15.3 item 15: BN5's shake (the arena's
+    /// docs/design/exe5-map.md §15.3 item 15: EXE5's shake (the arena's
     /// `effects.shake`) draws its jitter twice a tick from the battle's
     /// RNG, alike on both consoles, and holds while paused.
     #[test]
-    fn bn5s_shake_draws_from_the_battle() {
+    fn exe5s_shake_draws_from_the_battle() {
         use crate::content::{Content, testing};
         let mut c: Content = testing::build();
         c.define().unwrap_or_else(|e| panic!("{e}"));

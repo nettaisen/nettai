@@ -145,7 +145,7 @@ fn ordered<'a>(names: impl Iterator<Item = &'a String>, prefix: &str) -> Vec<Str
 }
 
 /// Songs game versions have their own of at the same numbers as the bank's
-/// (no game's ROMs so far: BN5's two play every song alike). The
+/// (no game's ROMs so far: EXE5's two play every song alike). The
 /// bank's own songs are `base_version`'s; each other version's play with the
 /// bank's voicegroups. A console of a version plays its own, else the
 /// bank's. In a pack each is a song file of its own, named with its version

@@ -1,19 +1,19 @@
 //! What a side's save brings that the game's rules' systems take by a field's
-//! name (S6c's facts, `PlayerSetup::set_fact`), besides BN6's (the game,
-//! the Crosses, Beast Out: bn6-compat's `Unlocks`): BN5's karma, souls,
+//! name (S6c's facts, `PlayerSetup::set_fact`), besides EXE6's (the game,
+//! the Crosses, Beast Out: exe6-compat's `Unlocks`): EXE5's karma, souls,
 //! Soul Unison and Chaos Unison. A match file and a netplay offer carry them
 //! as the side's own keys (`karma`, `souls`, `soul_unison`, `chaos_unison`);
 //! the round's setup writes each into whichever of the side's systems
-//! declares the field (BN5's light and dark system's `karma`, its souls
+//! declares the field (EXE5's light and dark system's `karma`, its souls
 //! system's the rest), and a game with none takes none.
 //!
-//! **Karma** is BN5's light/dark value (NaviStats +0x44), 0 to 1000: a
+//! **Karma** is EXE5's light/dark value (NaviStats +0x44), 0 to 1000: a
 //! fresh save's 500 (0x08010C00) is the default. Under 470 a dark MegaMan
 //! (mood 0, the dark face and palette, dark chips, no soul button); 499 or
 //! under clears holy panels; under 500 worried at the start; 1000 the
 //! brightest (Tango's light templates).
 //!
-//! **Souls** (BN5's Soul Unison) are the souls the side has, which the
+//! **Souls** (EXE5's Soul Unison) are the souls the side has, which the
 //! custom screen's soul button may offer. The original's button
 //! (0x08024B28) offers the soul of the last chip's family (the table
 //! 0x08024BE0) when the save has it: each version's table 0x08024BF0 gives
@@ -26,7 +26,7 @@
 //! save holds its own version's six; the save import reads them.
 //!
 //! **Soul Unison and Chaos Unison** are the save's event flags 0 and 0x236:
-//! the soul button at all (the souls system's, content/bn5/rules/souls), and
+//! the soul button at all (the souls system's, content/exe5/rules/souls), and
 //! a dark chip's Chaos Unison. A finished save has both (the default; the
 //! souls system's `setup_defaults` too); the save import reads them.
 
@@ -36,15 +36,15 @@ use nettai_battle::custom::PlayerSetup;
 use nettai_battle::rules::Fact;
 use nettai_content_api::{ChipHandle, FormHandle, Registry, Value};
 
-/// The setup fields the facts go into (BN6's game version is S6c's:
-/// bn6-compat's `Unlocks::write`, its cross and beast systems').
+/// The setup fields the facts go into (EXE6's game version is S6c's:
+/// exe6-compat's `Unlocks::write`, its cross and beast systems').
 pub const KARMA_FIELD: &str = "karma";
 pub const SOULS_FIELD: &str = "souls";
-/// BN5's Soul Unison and Chaos Unison (the save's event flags 0 and 0x236).
+/// EXE5's Soul Unison and Chaos Unison (the save's event flags 0 and 0x236).
 pub const SOUL_UNISON_FIELD: &str = "soul_unison";
 pub const CHAOS_UNISON_FIELD: &str = "chaos_unison";
 pub const VERSION_FIELD: &str = "version";
-/// BN6's bug frags: its dark-chips system's setup (a dark chip spends one).
+/// EXE6's bug frags: its dark-chips system's setup (a dark chip spends one).
 pub const BUG_FRAGS_FIELD: &str = "bug_frags";
 
 /// A fresh save's karma (0x08010C00), and the most there is.
@@ -58,7 +58,7 @@ pub fn takes(content: &Content, field: &str) -> bool {
 }
 
 /// How many souls a side has room for (the `souls` field's elements:
-/// BN5's souls system's 16), none when the game's rules take none.
+/// EXE5's souls system's 16), none when the game's rules take none.
 pub fn soul_capacity(content: &Content) -> usize {
     crate::systems(content)
         .iter()
@@ -136,7 +136,7 @@ pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerS
     // (No ruleset named: the game's own, its one.)
     let game = arena.game.as_str();
     player.set_fact(content, KARMA_FIELD, &[Fact::Value(Value::Int(side.karma as i64))])?;
-    // (BN6's: the dark-chips system's.)
+    // (EXE6's: the dark-chips system's.)
     player.set_fact(content, BUG_FRAGS_FIELD, &[Fact::Value(Value::Int(side.bug_frags as i64))])?;
     if takes(content, SOULS_FIELD) {
         // (Every soul, as many as the rules hold.)
@@ -158,21 +158,21 @@ pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerS
 }
 
 impl Side {
-    /// Whether a side takes its version (Gregar or Falzar: BN6's cross and
-    /// beast systems' `version`). BN5's rules don't.
+    /// Whether a side takes its version (Gregar or Falzar: EXE6's cross and
+    /// beast systems' `version`). EXE5's rules don't.
     pub fn takes_game(content: &Content) -> bool {
         takes(content, VERSION_FIELD)
     }
 
     /// Whether the side's navi takes a navi code's level: its definition
-    /// says what a level gives it (`levels`: BN6's MegaMan and link navis;
-    /// BN5's MegaMan has none).
+    /// says what a level gives it (`levels`: EXE6's MegaMan and link navis;
+    /// EXE5's MegaMan has none).
     pub fn takes_level(&self, content: &Content) -> bool {
         content.navi(self.navi).levels.is_some()
     }
 
     /// Whether a side takes SP navi deletion times (the game's rules'
-    /// `sp_slots`: BN6's and BN5's, each their own SP navis).
+    /// `sp_slots`: EXE6's and EXE5's, each their own SP navis).
     pub fn takes_sp_times(content: &Content) -> bool {
         !crate::sp_slots(content).is_empty()
     }

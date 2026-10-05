@@ -1,6 +1,6 @@
 --!strict
--- What a shower of meteors aims at, as BN5 and BN6 share it (BN6's effect
--- object #0x46, `sub_80E59E8`, lib/instant/meteor_shower; BN5's #0x46,
+-- What a shower of meteors aims at, as EXE5 and EXE6 share it (EXE6's effect
+-- object #0x46, `sub_80E59E8`, lib/instant/meteor_shower; EXE5's #0x46,
 -- 0x080E58EC): one of the other side's navis still standing, and its panel
 -- or a neighbor of it.
 

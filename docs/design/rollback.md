@@ -75,7 +75,7 @@ simulation keeps no state outside `Battle`, reads no clock, does no I/O, and use
 mutability, hash-map iteration or addresses (§7).
 
 Each player contributes their share. In nettai-netplay that is `PlayerInput { tick: PlayerTick, events: TickEvents }`;
-the frame's record combines both shares (`bn6::tick_input`).
+the frame's record combines both shares (`exe6::tick_input`).
 
 **The custom screen is simulated.** Both players' custom screens run in the engine from their buttons
 (engine/custom-screen.md): `PlayerTick` is just the buttons, and what used to be inputs is state:
@@ -316,7 +316,7 @@ The inputs go between the peers on rennet (Tango's netplay transport, §4.6), ov
   steps one: a panic stops the battle), `Observer` (`rolled_back`, `simulated`, `confirmed`; implemented for
   `&mut` of an observer), `BattleWorld`, which owns its observer and tells it all three, and `BattleState`.
   `BattleWorld::session` makes the session.
-- `bn6`: `Battle` as a `Game` on the engine's input record (`PlayerInput`, `tick_input`), and the sound feed
+- `exe6`: `Battle` as a `Game` on the engine's input record (`PlayerInput`, `tick_input`), and the sound feed
   (`CueFeed`).
 - `standin`: `StandInBattle` as a `Game` on the buttons alone (what live netplay plays); a MegaMan built in code, a
   netbattle setup on given content with given folders, and a seeded button masher.
@@ -553,7 +553,7 @@ Nothing above the `Datagram` changes: the protocol, the peer and the frontend's 
 ### 5.1 Synthetic netbattles (in this repository)
 
 `crates/nettai-netplay/tests/rollback.rs`: two navis with 300 HP on the battle settings 0 of the engine's test content
-(`content::testing`: BN6's modules the tests need and made-up chips on the engine's own actions, not BN6's data):
+(`content::testing`: EXE6's modules the tests need and made-up chips on the engine's own actions, not EXE6's data):
 side 0's folder holds a level-3 GunDelSol, an eraser navi chip, a level-1 GunDelSol, an invisibility dimming chip
 and a level-3 GunDelSol over and over, side 1's GunDelSols only (no Crosses or Beast Out). Both players mash (held
 buttons change every four frames on average: a direction, A, B, L or R; START is never pressed), and the mashing
@@ -611,7 +611,7 @@ bombs, swords, traps, grabs, 500 HP): no tick stops, settled or speculated (§7.
 **Over real UDP** (`tests/udp.rs`): two peers on loopback, each with its own socket, shake hands and play 600 ticks of
 a mashed battle at their own pace (a frame each 4 to 5 ms), once in two threads and once in two processes (the test
 binary run again as each peer); their settled states agree at every tick both settled. The frontend's test plays two
-`NetPlayer`s on loopback on BN6's content (the handshake, each player's own loadout, 900 ticks of mashing), and they
+`NetPlayer`s on loopback on EXE6's content (the handshake, each player's own loadout, 900 ticks of mashing), and they
 agree too. Two frontends in their windows, one hosting and one joining on loopback, play with a 18 ms round trip; the
 joiner sees the battle from its side, with its own custom screen.
 
@@ -633,7 +633,7 @@ over the simulated datagram network, up to the frames the plain replay matches, 
 networks: latencies 0, 2 + 1, 5 + 2 and 10 + 3 as they are, and lossy (10% of the datagrams lost, a lost one
 followed by another 30% of the time, 5% duplicated; at 10 + 3, 20%, 50% and 10%). Every frame either peer confirms
 (its last simulation before it settles, which the world reports) and every settled state getgud returns with a
-frame (most frames) must match the trace exactly, the peers must agree, and each peer's sound (its cue actions through BN6's sound calls and the driver) must
+frame (most frames) must match the trace exactly, the peers must agree, and each peer's sound (its cue actions through EXE6's sound calls and the driver) must
 be the plain replay's, later by at most the latency and the longest run of lost datagrams. All of them do:
 
 | Round | Frames | 0 | 2 + 1 | 5 + 2 | 10 + 3 | 0, lossy | 2 + 1, lossy | 5 + 2, lossy | 10 + 3, lossy |

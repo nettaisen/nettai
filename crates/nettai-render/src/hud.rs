@@ -56,8 +56,8 @@ pub struct HudState {
     mode_was: u8,
     icons_were: bool,
     /// The custom screen showed the form chosen there in the emotion window
-    /// as it was last up (BN6's Beast Out and Crosses: `eStruct2035280`
-    /// +0x4C, which takes the window down as the screen closes; BN5's soul
+    /// as it was last up (EXE6's Beast Out and Crosses: `eStruct2035280`
+    /// +0x4C, which takes the window down as the screen closes; EXE5's soul
     /// choice shows none).
     form_face_shown: bool,
 }
@@ -70,7 +70,7 @@ struct Face {
     /// The mugshot's pack and number there (none: the form names no face).
     picture: Option<nettai_battle::content::InPack<u8>>,
     /// One of MegaMan's own faces (the base form's: pictures 0..=4 in
-    /// BN6), which blink when they change.
+    /// EXE6), which blink when they change.
     own: bool,
     full_synchro: bool,
     count: u8,
@@ -167,7 +167,7 @@ impl HudState {
         // the US games' shows it from the navi's first decision in the
         // fight (`Battle::chip_hud`). Presentation of the Japanese games'
         // HUD code (docs/engine/jp-differences.md §5); once the fight runs
-        // its decisions set the window on either console. A BN5 console's
+        // its decisions set the window on either console. An EXE5 console's
         // does it too (0x080230CC: its game's flow's `chip_window_at_close`).
         // (The task starts as the screens' results are exchanged, on the
         // tick the icons come back.)
@@ -182,8 +182,8 @@ impl HudState {
             // Through the screen's closing and the turn's banner, then the
             // fight's first ticks until a decision shows the window (or
             // four went by: one that keeps it off). (A later turn's fight
-            // resumes in the state its screen was asked from: BN6's flow
-            // has moved it on to the sequence's, 0x24, by then; BN5's, which
+            // resumes in the state its screen was asked from: EXE6's flow
+            // has moved it on to the sequence's, 0x24, by then; EXE5's, which
             // opens the screen from the reversions' state, 0x08007774, is
             // still in that one, 0x20.)
             let closing = b.round.mode == mode::CUSTOM && icons;
@@ -334,7 +334,7 @@ fn decided(b: &Battle) -> bool {
 /// The mugshot of a player who chose a form on the custom screen is gone
 /// from the tick the fight resumes when the screen showed the form's face
 /// in the window: closing takes the window down with it (`sub_802A0F8`;
-/// BN5's close has no such step, its soul choice shows no face).
+/// EXE5's close has no such step, its soul choice shows no face).
 fn transform_hides(b: &Battle, state: &HudState) -> (bool, bool) {
     let chose = b.transform_requests[b.setup.local_side as usize & 1].form.is_some() && state.form_face_shown;
     match b.transform_seq.state {
@@ -852,9 +852,9 @@ fn mugshot_parts<'a>(
     let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { palettes.first().copied().unwrap_or_default() };
     let pal = window_faded(b, pal);
     out.push(block(gfx, 32, 16, pal, x, 18));
-    // The box beside it: the face's own (BN5's), a count, or the box
+    // The box beside it: the face's own (EXE5's), a count, or the box
     // without one. A game whose faces bring their boxes has no box
-    // without a count: a face that brings none (BN5's souls') shows its
+    // without a count: a face that brings none (EXE5's souls') shows its
     // side's count (`window_count`).
     let face_hud = picture.map_or(hud, |m| packs.mugshot(m).0);
     let tiles = match picture.and_then(|m| face_hud.mugshot_box(m.id)) {
@@ -881,7 +881,7 @@ fn window_faded(b: &Battle, palette: Palette) -> Palette {
 }
 
 /// The count a side's emotion window shows beside a face that brings no
-/// box, in a game whose faces bring their own (BN5's souls': the turns
+/// box, in a game whose faces bring their own (EXE5's souls': the turns
 /// left, AIData +0x0F, its souls system's `turns`): the side's rules'
 /// `turns`, if a system of theirs keeps one.
 fn window_count(b: &Battle, side: u8) -> Option<u8> {
@@ -916,7 +916,7 @@ fn falzar_face(picture: u8) -> bool {
 /// the face's palette, are a known difference.
 fn note_true_face(b: &Battle, side: usize, picture: Option<u8>, x: i32, problems: &mut Problems) {
     use nettai_battle::custom::GameVersion;
-    let console = bn6_compat::Unlocks::of_side(b, b.setup.local_side).version;
+    let console = exe6_compat::Unlocks::of_side(b, b.setup.local_side).version;
     let others = match console {
         GameVersion::Falzar => picture.is_some_and(gregar_face),
         GameVersion::Gregar => picture.is_some_and(falzar_face),
@@ -939,7 +939,7 @@ fn beast_count_shown(b: &Battle, side: u8) -> bool {
         5 => true,
         1 => false,
         _ => {
-            bn6_compat::Unlocks::of_side(b, side).beast_out
+            exe6_compat::Unlocks::of_side(b, side).beast_out
                 && b.setup.players[side as usize & 1].navi_level.is_none()
                 && b.round.flags & battle_flags::OWN_GAUGES == 0
                 && b.setup.settings.effects & effects::RANDOM == 0
@@ -1146,16 +1146,16 @@ fn name_parts<'a>(
     item
 }
 
-/// Glyphs of the HUD layer's tiles (tile `first_tile + 2k`; BN6's from
-/// 0x1A0, BN5's from 0x180): the HP digits (from the first), the damage
-/// digits (BN6's tiles 0x1B8..), the '?' of a defensive chip's "????"
+/// Glyphs of the HUD layer's tiles (tile `first_tile + 2k`; EXE6's from
+/// 0x1A0, EXE5's from 0x180): the HP digits (from the first), the damage
+/// digits (EXE6's tiles 0x1B8..), the '?' of a defensive chip's "????"
 /// (0x1CC), '+' (0x1CE), and the 'x' and '2' of a doubled chip (0x1D2,
 /// 0x1D4).
 const DAMAGE_DIGIT: usize = (0x1B8 - 0x1A0) / 2;
 const HIDDEN_GLYPH: usize = (0x1CC - 0x1A0) / 2;
 const PLUS_GLYPH: usize = (0x1CE - 0x1A0) / 2;
 const TIMES_GLYPH: usize = (0x1D2 - 0x1A0) / 2;
-/// The custom gauge's tiles (from `gauge_first_tile`: BN6's 0x222, BN5's
+/// The custom gauge's tiles (from `gauge_first_tile`: EXE6's 0x222, EXE5's
 /// 0x202): its cell filling by eighths (from the first), filled, full (four
 /// frames), and its "L or R" (two frames of four).
 const GAUGE_FILLED: u16 = 0x22A - 0x222;
@@ -1173,7 +1173,7 @@ mod tests {
     const CHARS: &str = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz?";
 
     /// A HUD whose font draws `CHARS` (glyph k its kth character) and
-    /// whose telops sit where BN6's do.
+    /// whose telops sit where EXE6's do.
     fn hud() -> Hud {
         let mut banners = vec![BannerLayout::default(); 21];
         banners[0x4C / 4] = BannerLayout { x: 0, y: 32, kind: 3, ..BannerLayout::default() };

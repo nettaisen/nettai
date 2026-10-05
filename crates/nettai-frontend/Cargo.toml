@@ -10,9 +10,9 @@ nettai-battle = { path = "../nettai-battle" }
 # The drawing: a battle into frames.
 nettai-render = { path = "../nettai-render" }
 # Trace playback, and the live driver's setup records.
-bn6-compat = { workspace = true, features = ["trace"] }
-# BN5's recordings (the chip lab's BN5 library), played as BN6's are.
-bn5-compat = { path = "../bn5-compat", features = ["trace"] }
+exe6-compat = { workspace = true, features = ["trace"] }
+# EXE5's recordings (the chip lab's EXE5 library), played as EXE6's are.
+exe5-compat = { path = "../exe5-compat", features = ["trace"] }
 nettai-assets = { path = "../nettai-assets" }
 nettai-audio = { path = "../nettai-audio" }
 # Live play against another player: rollback (getgud) over the rennet

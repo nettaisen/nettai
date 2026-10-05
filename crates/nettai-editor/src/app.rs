@@ -93,8 +93,8 @@ pub enum Msg {
     BugFrags(usize, String),
     /// An SP navi's deletion time (by its slot), as typed.
     SpTime(usize, usize, String),
-    /// The side from a save file (a BN6 save's version, unlocks, navi code
-    /// level and SP times; a BN5 save's karma and souls), into a match of
+    /// The side from a save file (an EXE6 save's version, unlocks, navi code
+    /// level and SP times; an EXE5 save's karma and souls), into a match of
     /// the save's game.
     ImportSave(usize),
     // The folder.
@@ -111,7 +111,7 @@ pub enum Msg {
     // The souls: every soul (the default), or the side's list.
     EverySoul(usize, bool),
     Soul(usize, FormHandle, bool),
-    // BN5's karma: a value (the slider, a preset), or as typed.
+    // EXE5's karma: a value (the slider, a preset), or as typed.
     Karma(usize, u16),
     KarmaText(usize, String),
     // The patch cards.
@@ -507,9 +507,9 @@ impl Editor {
                 self.sp_typed.insert((s, slot), t);
             }
             Msg::ImportSave(s) => {
-                // A BN6 save, or a BN5 one (a .sav, or a raw image as
+                // An EXE6 save, or an EXE5 one (a .sav, or a raw image as
                 // Tango's netplay templates hold): a match of its game.
-                if let Some(path) = rfd::FileDialog::new().add_filter("BN6 or BN5 save", &["sav", "raw"]).pick_file() {
+                if let Some(path) = rfd::FileDialog::new().add_filter("EXE6 or EXE5 save", &["sav", "raw"]).pick_file() {
                     let read = std::fs::read(&path).map_err(|e| e.to_string());
                     let game = self.m.arena.game.clone();
                     // (The save's game's content: loaded if it is another's.)

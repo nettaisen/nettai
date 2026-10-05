@@ -1,5 +1,5 @@
 --!strict
--- Patch cards' effects as BN5's and BN6's cards share them (docs/engine/patch-cards.md; BN5's, bn5-map.md §15.14):
+-- Patch cards' effects as EXE5's and EXE6's cards share them (docs/engine/patch-cards.md; EXE5's, exe5-map.md §15.14):
 -- a card is the engine's (`define.patch_card`, a game's cards/), its effects the values these constructors make,
 -- which a game's patch-cards system applies to the navi's stats as the round is set up (@exelib/patch-cards/apply).
 -- Each game's rules/patch-cards/cards.luau gives these and its own tables (the kinds' order, the trails' panels).
@@ -67,7 +67,7 @@ function effects.body(element: ElementName): PatchCardEffect
 end
 
 -- The buster's Attack, Rapid and Charge, the custom screen's size, the
--- folder's Mega and Giga limits, BN5's soul turns: plus or minus `n`.
+-- folder's Mega and Giga limits, EXE5's soul turns: plus or minus `n`.
 local function signed(add: string, sub: string, what: string): (number) -> PatchCardEffect
     return function(n: number): PatchCardEffect
         local kind = if n >= 0 then add else sub
@@ -102,14 +102,14 @@ effects.rush = ability("rush")
 effects.beat = ability("beat")
 effects.tango = ability("tango")
 effects.chip_shuffle = ability("chip_shuffle")
--- BN5's programs that work outside battle (a NaviStats byte no battle reads): SneakRun, Millions, AutoHeal,
+-- EXE5's programs that work outside battle (a NaviStats byte no battle reads): SneakRun, Millions, AutoHeal,
 -- MegVirus.
 effects.sneak_run = ability("sneak_run")
 effects.millions = ability("millions")
 effects.auto_heal = ability("auto_heal")
 effects.mega_virus = ability("mega_virus")
 
--- BN5's random encounters' element (OilBody, Fish, Battery, Jungle, Search: a NaviStats byte no battle reads).
+-- EXE5's random encounters' element (OilBody, Fish, Battery, Jungle, Search: a NaviStats byte no battle reads).
 function effects.encounter_element(what: "oil_body" | "fish" | "battery" | "jungle" | "search"): PatchCardEffect
     return effect({ kind = "encounter_element", what = what })
 end
@@ -173,7 +173,7 @@ function effects.buster_blanks(blanks: number, charged: number): PatchCardEffect
     return effect({ kind = "buster_blanks", blanks = whole(blanks, "buster_blanks", 15), charged = whole(charged, "buster_blanks", 15) })
 end
 
--- the charged shots of the buster's 16 (BN6's; no card has it);
+-- the charged shots of the buster's 16 (EXE6's; no card has it);
 function effects.charge_blanks(charged: number): PatchCardEffect
     return effect({ kind = "charge_blanks", charged = whole(charged, "charge_blanks", 15) })
 end
@@ -207,13 +207,13 @@ function effects.status_bug(n: number): PatchCardEffect
     return effect({ kind = "status_bug", amount = whole(n, "status_bug", 255) })
 end
 
--- BugStop: at 1, none of the cards' bugs above is copied (BN6: no card has
--- it); BN5's NaviCust reads it too.
+-- BugStop: at 1, none of the cards' bugs above is copied (EXE6: no card has
+-- it); EXE5's NaviCust reads it too.
 function effects.bug_stopper(n: number): PatchCardEffect
     return effect({ kind = "bug_stopper", amount = whole(n, "bug_stopper", 255) })
 end
 
--- BN5's card 111 (Bass-Cross MegaMan) switched on: Hub Style (NaviStats +0x4C), `n` as its version's routine writes
+-- EXE5's card 111 (Bass-Cross MegaMan) switched on: Hub Style (NaviStats +0x4C), `n` as its version's routine writes
 -- it (Team ProtoMan's 1, Team Colonel's 2). Not one of the card table's effects: the cards' routine knows the card by
 -- its number (0x08137A58).
 function effects.hub_style(n: number): PatchCardEffect

@@ -1,7 +1,7 @@
 --!strict
--- Beat, as BN5 and BN6 share him (actor object #0x4C in both: BN6's `sub_80C34E0`, BN5's 0x080C24C8, the same code),
+-- Beat, as EXE5 and EXE6 share him (actor object #0x4C in both: EXE6's `sub_80C34E0`, EXE5's 0x080C24C8, the same code),
 -- of a game's `BeatLook` (`beat.make`): the NaviCust support that snatches a Mega or Giga chip: the opponent used one,
--- the ruleset turned the use back (BN6's `sub_80106C0`, BN5's 0x0800E418) and summoned him through the supports'
+-- the ruleset turned the use back (EXE6's `sub_80106C0`, EXE5's 0x0800E418) and summoned him through the supports'
 -- controller (./controller). He swoops in from 240 pixels behind the opponent's navi and 112 above it, bounces off
 -- it, takes the chip (the opponent's hand moves on) and, a little over a second later, flies off. Then the controller
 -- moves on. See docs/engine/chips.md §2.10.
@@ -27,7 +27,7 @@ local function glide(me: Object)
     me.pos = Vec3.new(int.i32(p.x + v.x), int.i32(p.y + v.y), int.i32(p.z + v.z))
 end
 
--- `sub_80C36AE` (BN5's 0x080C268E): behind and above the opponent's
+-- `sub_80C36AE` (EXE5's 0x080C268E): behind and above the opponent's
 -- navi, swooping toward it.
 local function place(me: Object)
     local other = bit32.bxor(me.alliance, 1)
@@ -44,7 +44,7 @@ end
 
 -- A game's Beat, of `look`.
 function beat.make(look: BeatLook): SupportActor
-    -- `sub_80C3558` (BN5's 0x080C2538), by phase.
+    -- `sub_80C3558` (EXE5's 0x080C2538), by phase.
     local function tick(me: Object)
         local p = me.phase
         if p == 0 then
@@ -111,7 +111,7 @@ function beat.make(look: BeatLook): SupportActor
         end
     end
 
-    -- `sub_80C3504` (BN5's 0x080C24EC, without BN6's `sprite_decompress`):
+    -- `sub_80C3504` (EXE5's 0x080C24EC, without EXE6's `sprite_decompress`):
     -- his look and his start; his first update at once. (He also sets his
     -- first extra variable to 1, which only the uncalled `sub_80C3700`
     -- reads.)
@@ -152,7 +152,7 @@ function beat.make(look: BeatLook): SupportActor
         update = update,
     }
 
-    -- `sub_80C3710` (BN5's 0x080C26F0): Beat, for `controller` (whose `out`
+    -- `sub_80C3710` (EXE5's 0x080C26F0): Beat, for `controller` (whose `out`
     -- flag he sets, and clears when he goes).
     local function spawn(controller: Object): Object?
         local o = battle.spawn(kind, Vec3.zero)

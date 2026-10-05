@@ -1,10 +1,10 @@
 --!strict
--- The hook, as BN6 and BN5 share it (BN6's effect object #0x8C,
--- `sub_80EA010`, FlmHook's and BigHook's; BN5's #0x8C, 0x080EA8A0,
+-- The hook, as EXE6 and EXE5 share it (EXE6's effect object #0x8C,
+-- `sub_80EA010`, FlmHook's and BigHook's; EXE5's #0x8C, 0x080EA8A0,
 -- BigHook's): it has no sprite; it swings two flames (./fire), the first
 -- from a column ahead of its user and 20 ticks later the second from
 -- another, then goes 10 ticks later. FlmHook1 to 3 bring it as their
--- instant effect (BN6's `sub_80EA11C`, instant chip effect 14); the BigHook
+-- instant effect (EXE6's `sub_80EA11C`, instant chip effect 14); the BigHook
 -- Giga chip brings it as its navi, its flames the big ones from fixed
 -- columns, and the controller waits for it. Each game makes its kind
 -- (`hook.make`: its id, its flames' columns, its flames, and whether it
@@ -23,14 +23,14 @@ export type Spec = {
     columns: (me: Object, big: boolean) -> (number, number),
     -- A flame of swing `swing` from (x, y): the game's.
     flame: (owner: Object, x: number, y: number, element: number, damage: number, swing: number, flames: Flames) -> Object?,
-    -- BN6's keeps its user's element (BN5's spawner leaves it 0).
+    -- EXE6's keeps its user's element (EXE5's spawner leaves it 0).
     keeps_element: boolean,
 }
 
 export type State = {
     big: boolean,
     spark: Spark?,
-    -- The controller waiting for BigHook's (BN6's ExtraVars[1], BN5's
+    -- The controller waiting for BigHook's (EXE6's ExtraVars[1], EXE5's
     -- +0x64).
     controller: Object?,
 }

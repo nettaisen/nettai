@@ -1,6 +1,6 @@
 --!strict
--- Attachments, as BN5 and BN6 share them (BN6's actor object #5,
--- `sub_80B8CD8`; BN5's #5): each game makes its own kind
+-- Attachments, as EXE5 and EXE6 share them (EXE6's actor object #5,
+-- `sub_80B8CD8`; EXE5's #5): each game makes its own kind
 -- (`attachment.make_kind`). A sprite a navi holds during an attack, such as
 -- a bomb before it's thrown or the
 -- buster's arm. Visual only, but it takes an actor slot and a place in the
@@ -69,7 +69,7 @@ local function follow(me: Object)
 end
 
 -- What a game's attachments are raised by for who holds them, over their look's (`lifted(owner, side)`; nil: the
--- look's). BN6's (`sub_80B8CF8`, the default): a Cross's identity in a form other than the base form, 8 pixels.
+-- look's). EXE6's (`sub_80B8CF8`, the default): a Cross's identity in a form other than the base form, 8 pixels.
 export type Lifted = (owner: Object, side: number) -> number?
 local function cross_lifted(owner: Object, side: number): number?
     local identity = owner.identity
@@ -117,7 +117,7 @@ local function init(me: Object, lifted: Lifted)
     follow(me)
 end
 
--- A game's attachment kind, keyed `id`, raised by its rule (`lifted`; none: BN6's).
+-- A game's attachment kind, keyed `id`, raised by its rule (`lifted`; none: EXE6's).
 function attachment.make_kind(id: string, lifted: Lifted?): Kind
     local rule: Lifted = lifted or cross_lifted
     return define.kind {

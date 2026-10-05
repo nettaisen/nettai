@@ -1,7 +1,7 @@
 --!strict
--- The trap chips' dimming controller, as BN5 and BN6 share it (BN6's
--- effect object #0x2A, `sub_80E34C0`; BN5's #0x2A): AntiNavi, AntiDmg,
--- AntiSwrd, AntiRecv, ElemTrap and BodyGrd (BN5's anti chips too). Each game
+-- The trap chips' dimming controller, as EXE5 and EXE6 share it (EXE6's
+-- effect object #0x2A, `sub_80E34C0`; EXE5's #0x2A): AntiNavi, AntiDmg,
+-- AntiSwrd, AntiRecv, ElemTrap and BodyGrd (EXE5's anti chips too). Each game
 -- makes its own kind (`traps.make_kind`). The usual dimming phases
 -- (@exelib/dimming), with the telop hidden,
 -- and an effect that makes the chip its user's side's defensive chip (the

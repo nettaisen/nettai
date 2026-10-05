@@ -1,5 +1,5 @@
 --!strict
--- WideSht and SuprSpr, as BN5 and BN6 share them (each game passes its
+-- WideSht and SuprSpr, as EXE5 and EXE6 share them (each game passes its
 -- `WideShotLook`: its shooter, attachment kind and wave kind): the navi
 -- raises its wide shooter and sends a wave
 -- (wave.luau) from the panel ahead over a column of three; SuprSpr sends

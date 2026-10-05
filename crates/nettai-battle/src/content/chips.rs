@@ -73,9 +73,9 @@ pub enum ChipFamily {
     ProgramAdvance = 11,
     /// The cross and beast attacks (chips 0x160..0x171).
     Special = 12,
-    /// BN5's recovery chips (docs/design/bn5-map.md §13, §15.3 item 5).
+    /// EXE5's recovery chips (docs/design/exe5-map.md §13, §15.3 item 5).
     Recovery = 13,
-    /// BN5's invisible family: Invisibl, AntiDmg, Mine.
+    /// EXE5's invisible family: Invisibl, AntiDmg, Mine.
     Invisible = 14,
 }
 
@@ -117,7 +117,7 @@ impl ChipFlags {
     /// A dark chip as the custom screen treats it: the cursor starts on it,
     /// and while it rests on it the screen darkens and the music quiets
     /// (`sub_802806C`, `sub_802A2B0`); its window frame is the dark one. No
-    /// BN6 chip has it (docs/engine/unverified.md).
+    /// EXE6 chip has it (docs/engine/unverified.md).
     pub const DARK: u8 = 0x20;
     /// In a library (menus only).
     pub const LIBRARY: u8 = 0x40;
@@ -185,8 +185,8 @@ impl ChipTraits {
     pub const ELEMENT_SWORD: u16 = 0x08;
     /// AntiNavi turns it back though it has no `navi` flag (the navi
     /// chips' block of the chip table, `sub_800BDB2`: the US games' records
-    /// of Django's chips, which lack it; BN6's content takes the Japanese
-    /// games', which have it, so no BN6 chip has this).
+    /// of Django's chips, which lack it; EXE6's content takes the Japanese
+    /// games', which have it, so no EXE6 chip has this).
     pub const NAVI_SLOT: u16 = 0x10;
     /// Its navi heals: the other side's armed AntiRecv springs instead of
     /// it coming (`sub_80E192C`: Roll's chips).
@@ -200,19 +200,19 @@ impl ChipTraits {
     /// original's navi 0).
     pub const NAVI_RETURNS_USER: u16 = 0x80;
     /// It goes with any selection, and the selection's code and chip rules
-    /// leave it out (`sub_8028E4C`, `sub_8028EC8`: BN6's BeastOut chip).
+    /// leave it out (`sub_8028E4C`, `sub_8028EC8`: EXE6's BeastOut chip).
     pub const GOES_WITH_ANY: u16 = 0x100;
     /// AntiNavi lets it through, and it isn't kept as the last navi chip
     /// used, though it has the `navi` flag: it is past the navi chips'
     /// block of the chip table (`sub_800BDB2`, `sub_80E1880`: chips 0xDD to
-    /// 0x118; BN5's version navi chips, Bass, BassAnly, Phoenix and
+    /// 0x118; EXE5's version navi chips, Bass, BassAnly, Phoenix and
     /// DethPhnx, have the flag).
     pub const NOT_NAVI_SLOT: u16 = 0x200;
     /// The custom screen's chip window shows "???" for its damage on a
     /// copy of code A, and its damage on any other: the original compares
     /// the whole chip word, number and code, with the chip's number, so
     /// only code A (0) matches (`sub_80284E2`: Muramasa, whose only code
-    /// is M; BN5's 0x080243C0: Muramasa, CustSwrd and the three CusVolts,
+    /// is M; EXE5's 0x080243C0: Muramasa, CustSwrd and the three CusVolts,
     /// of which CusVolt1 comes as an A).
     pub const HIDES_DAMAGE_AS_A: u16 = 0x400;
     pub(crate) const NAMES: &[(u32, &str)] = &[
@@ -272,9 +272,9 @@ pub enum DamageFormula {
     /// An SP navi chip's: by how long its user took to delete that SP navi
     /// (`sub_8010AE4`; formulas 1 to 18). `slot`: the SP navi, one of the
     /// rules' `sp_slots`; `by_time`: the damage by deletion-time step
-    /// (`Rules::sp_deletion_times`). `operation_battle`: BN5's SP navi
+    /// (`Rules::sp_deletion_times`). `operation_battle`: EXE5's SP navi
     /// chips' damage in the own-gauges mode instead (0x0800E8DE's
-    /// table; BN6's has no such branch).
+    /// table; EXE6's has no such branch).
     SpNavi {
         slot: String,
         by_time: Vec<u16>,
@@ -283,8 +283,8 @@ pub enum DamageFormula {
     },
     /// By how full the custom gauge is (`sub_8010B78`; formula 19).
     Gauge,
-    /// The HP its user has lost, at most `cap`: BN6's 500 (`sub_8010BD0`;
-    /// formula 20) when none, BN5's 999 (its formula 46, 0x0800EA78).
+    /// The HP its user has lost, at most `cap`: EXE6's 500 (`sub_8010BD0`;
+    /// formula 20) when none, EXE5's 999 (its formula 46, 0x0800EA78).
     HpLost {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         cap: Option<u16>,
@@ -297,13 +297,13 @@ pub enum DamageFormula {
     /// its user's buster attack up to 5 (`sub_8010C50`, a row of
     /// `byte_80212D4`; formulas 23 to 44).
     NaviLevel { base: u8, per_level: u8 },
-    /// BN5's CusVolt (its formulas 73 to 75, 0x0800EB0E): `base` plus 100
+    /// EXE5's CusVolt (its formulas 73 to 75, 0x0800EB0E): `base` plus 100
     /// by the custom gauge's level (its value >> 7): 100 × level / 95 below
     /// 96, 100 to 126, none from 127 (full); the side's own gauge in the
     /// the own-gauges mode.
     GaugeLevel { base: u16 },
     /// By a count of its user's side, `by_count[n]` (the last entry for
-    /// more), and `operation_battle` in BN5's operation battle: BN5's
+    /// more), and `operation_battle` in EXE5's operation battle: EXE5's
     /// DS navi chips (formulas 23 to 44, 0x0800E9B0: the side's statistic
     /// 3), Roll SP's (formula 1, 0x0800E8B4: the side's holy panels),
     /// Django SP's (formula 22, 0x0800E98A: the turns before this one).

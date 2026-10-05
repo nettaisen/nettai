@@ -1,5 +1,5 @@
 //! `ho_8026554`: the panel a navi attacks a target from in a lock-on mode
-//! (BN6's rules/lockon: records of type "lockon"): what the game's wrapper, BN6's Beast Out
+//! (EXE6's rules/lockon: records of type "lockon"): what the game's wrapper, EXE6's Beast Out
 //! rush (rules/beast/rush.luau), and the Beast claw's, the lunge's and
 //! GroundCross's drill's setups ask (`CoreApi::lockon_panel`).
 

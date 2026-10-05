@@ -1,6 +1,6 @@
-# Field, collision and damage — engine spec (BN6 US Falzar, BR6E, link PvP)
+# Field, collision and damage — engine spec (EXE6 US Falzar, BR6E, link PvP)
 
-This document specifies the **panel field**, the **collision pipeline** and the **damage/status pipeline** of the BN6 battle engine precisely enough to reimplement them in Rust without reading the assembly. The target is bit-exact behavior: same observable state every tick and the same RNG call sequence.
+This document specifies the **panel field**, the **collision pipeline** and the **damage/status pipeline** of the EXE6 battle engine precisely enough to reimplement them in Rust without reading the assembly. The target is bit-exact behavior: same observable state every tick and the same RNG call sequence.
 
 Companion documents in this directory:
 - `battle-flow.md`: tick anatomy, battle flags, RNG roles, BattleState.

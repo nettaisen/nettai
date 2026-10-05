@@ -1,6 +1,6 @@
 --!strict
--- AirSpin's whirlwind top (attack object #0x9B in both games: BN6's
--- `sub_80D88E0`, BN5's 0x080D9EE4), made for a game's look (`top.make`).
+-- AirSpin's whirlwind top (attack object #0x9B in both games: EXE6's
+-- `sub_80D88E0`, EXE5's 0x080D9EE4), made for a game's look (`top.make`).
 -- Set down on its panel, it rolls forward at 4 pixels a tick toward the
 -- next panel while that one is open (solid, nothing standing on it), at
 -- most 4 panels, then stands 14 ticks and spins: it hits the ring around
@@ -11,10 +11,10 @@
 -- object.
 --
 -- The games part (`AirSpinTopLook`):
--- - BN6's: a neutral body of 400 HP, set down only on a solid panel with no
+-- - EXE6's: a neutral body of 400 HP, set down only on a solid panel with no
 --   body on it (else a puff, and gone); a wind hit spins it once more, and
 --   a chip can remove it (absorbed, or blinking out).
--- - BN5's: its side's own body of 50 HP, hit by the other side, set down
+-- - EXE5's: its side's own body of 50 HP, hit by the other side, set down
 --   wherever it is sent; its gust hits without pushing; standing, and after
 --   each spin, it draws RNG2 for a panel marker's style (9 or 11) and sets
 --   that marker (battle flag 0x40's); its spins count down on Timer 2.
@@ -38,26 +38,26 @@ export type State = {
 local SPEED, MAX_PANELS = 0x4_0000, 4
 -- Its field-object class.
 local CLASS = 1
--- Panel flags: solid (0x10); where BN6's can't be set down (bodies:
+-- Panel flags: solid (0x10); where EXE6's can't be set down (bodies:
 -- 0x3800000); what stops its rolling (bodies and neutral objects:
 -- 0xF800000).
 local SOLID, BODIES, BLOCKERS = 0x10, 0x03800000, 0x0F800000
 -- Hits that break it at once: bodies, neutral objects, type 2.
 local CRUSHING = 0x0F800002
--- Hits that make BN6's spin once more: hit flag 0x800, or a wind hit
+-- Hits that make EXE6's spin once more: hit flag 0x800, or a wind hit
 -- (secondary element 0x20).
 local EXTRA_SPIN_HIT, WIND = 0x800, 0x20
 -- Its hit modifier, and its gust's: the ring around its panel, no spark.
 local HIT_MOD, HIT_MOD_SPIN = 0x03, 1
--- The marker styles BN5's draws from (RNG2's bit 2).
+-- The marker styles EXE5's draws from (RNG2's bit 2).
 local MARKER_STYLE, MARKER_STYLE_ALT = 9, 11
--- BN5's marker over its panel as it stands.
+-- EXE5's marker over its panel as it stands.
 local STAND_MARKER_TICKS = 0x14
 
 -- The actions.
 local ROLL, STAND, SPIN, BLOW_AWAY, REMOVED = 0x0, 0x4, 0x8, 0xC, 0x10
 
--- `sub_80D8C10` (BN5's 0x080DA1AA): it can roll onto (x, y): on the field,
+-- `sub_80D8C10` (EXE5's 0x080DA1AA): it can roll onto (x, y): on the field,
 -- solid, nothing standing there.
 local function open(x: number, y: number): boolean
     local f = field.flags(x, y)
@@ -95,7 +95,7 @@ function top.make(look: AirSpinTopLook): AirSpinTop
         battle.effect(me.pos + Vec3.px(0, 0, lift), look.puff)
     end
 
-    -- BN5's (0x080E9FD2's caller): RNG2's bit 2 picks the style of a marker
+    -- EXE5's (0x080E9FD2's caller): RNG2's bit 2 picks the style of a marker
     -- over its panel for `ticks`.
     local function mark(me: Object, ticks: number)
         local marker = look.marker
@@ -123,7 +123,7 @@ function top.make(look: AirSpinTopLook): AirSpinTop
         me:set_action(STAND)
     end
 
-    -- `sub_80D8A3C` (BN5's 0x080D9FDC): roll toward the next panel while it
+    -- `sub_80D8A3C` (EXE5's 0x080D9FDC): roll toward the next panel while it
     -- is open; past its center, aim at the one after, for at most 4 panels.
     local function roll(me: Object)
         if me.phase_init == 0 then
@@ -157,7 +157,7 @@ function top.make(look: AirSpinTopLook): AirSpinTop
         me:update_collision_panels()
     end
 
-    -- `sub_80D8AB6` (BN5's 0x080DA056): stand 14 ticks (BN5's marking its
+    -- `sub_80D8AB6` (EXE5's 0x080DA056): stand 14 ticks (EXE5's marking its
     -- panel as it starts), then spin every 10.
     local function stand(me: Object)
         if me.phase_init == 0 then
@@ -168,13 +168,13 @@ function top.make(look: AirSpinTopLook): AirSpinTop
         local t = me.timer - 1
         me.timer = t
         if t <= 0 then
-            -- sub_80D8C06 (BN5's 0x080DA18E)
+            -- sub_80D8C06 (EXE5's 0x080DA18E)
             (me.state :: State).interval = 0x0A
             me:set_action(SPIN)
         end
     end
 
-    -- `sub_80D8BD4` (BN5's 0x080DA162): a hit around its panel, and the gust.
+    -- `sub_80D8BD4` (EXE5's 0x080DA162): a hit around its panel, and the gust.
     local function gust(me: Object)
         battle.hitbox(me, {
             panel_x = me.panel_x,
@@ -196,8 +196,8 @@ function top.make(look: AirSpinTopLook): AirSpinTop
         end
     end
 
-    -- `sub_80D8ADC` (BN5's 0x080DA092): spin, hitting at once and then every
-    -- `interval` ticks, its spins' times (BN5's counted on Timer 2, a marker
+    -- `sub_80D8ADC` (EXE5's 0x080DA092): spin, hitting at once and then every
+    -- `interval` ticks, its spins' times (EXE5's counted on Timer 2, a marker
     -- over its panel after each).
     local function spin(me: Object)
         local s = me.state :: State
@@ -231,7 +231,7 @@ function top.make(look: AirSpinTopLook): AirSpinTop
         end
     end
 
-    -- `sub_80D8B18` (BN5's 0x080DA0EA): a puff, and gone 3 ticks later.
+    -- `sub_80D8B18` (EXE5's 0x080DA0EA): a puff, and gone 3 ticks later.
     local function blow_away(me: Object)
         if me.phase_init == 0 then
             me.anim = 0
@@ -246,7 +246,7 @@ function top.make(look: AirSpinTopLook): AirSpinTop
         end
     end
 
-    -- `sub_80D8B52` (BN6's alone): removed by a chip: absorbed, it flies to
+    -- `sub_80D8B52` (EXE6's alone): removed by a chip: absorbed, it flies to
     -- the absorbing navi; blinking out, it blinks first; otherwise it goes
     -- in a puff.
     local function removed(me: Object)
@@ -276,9 +276,9 @@ function top.make(look: AirSpinTopLook): AirSpinTop
 
     -- ---- The lifecycle -----------------------------------------------------------
 
-    -- `sub_80D8988` (BN5's 0x080D9F5C): take its hits; break, blow away off
+    -- `sub_80D8988` (EXE5's 0x080D9F5C): take its hits; break, blow away off
     -- solid ground, or act (outside dimming, unless a chip just removed
-    -- BN6's).
+    -- EXE6's).
     local function tick(me: Object)
         local c = me.collision
         c:remove()
@@ -316,7 +316,7 @@ function top.make(look: AirSpinTopLook): AirSpinTop
         c:present()
     end
 
-    -- `sub_80D8908` (BN5's 0x080D9F0C): set down and roll (BN6's only on a
+    -- `sub_80D8908` (EXE5's 0x080D9F0C): set down and roll (EXE6's only on a
     -- solid panel with no body; otherwise a puff, and gone).
     local function init(me: Object)
         me:set_coordinates_from_panel()
@@ -362,7 +362,7 @@ function top.make(look: AirSpinTopLook): AirSpinTop
         id = look.id,
         pool = "attack",
         state = { target_x = "i32", interval = "i32", spins = "u8", palette = "u8" },
-        -- `sub_80D88E0` (BN5's 0x080D9EE4).
+        -- `sub_80D88E0` (EXE5's 0x080D9EE4).
         update = function(me: Object)
             local l = me.lifecycle
             if l == "init" then
@@ -379,7 +379,7 @@ function top.make(look: AirSpinTopLook): AirSpinTop
         end,
     }
 
-    -- `sub_80D8B96` (BN5's 0x080DA124): a whirlwind top for `owner` on
+    -- `sub_80D8B96` (EXE5's 0x080DA124): a whirlwind top for `owner` on
     -- (x, y) in `palette`, spinning `spins` times, with the damage word
     -- `damage`. It runs while dimmed and is its side's class-1 field object
     -- at once. Its position is the spawner's registers (the panel Y, the

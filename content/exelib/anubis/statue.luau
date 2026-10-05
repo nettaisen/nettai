@@ -1,14 +1,14 @@
 --!strict
--- The Anubis statue, as BN5 and BN6 share it (BN6's attack object #0x55, `sub_80CF0D0`; BN5's #0x55, 0x080D0868;
--- BN6's docs/engine/dimming-chip-effects.md §7): Anubis's and PoisPhar's. It drops onto the panel in front of the
+-- The Anubis statue, as EXE5 and EXE6 share it (EXE6's attack object #0x55, `sub_80CF0D0`; EXE5's #0x55, 0x080D0868;
+-- EXE6's docs/engine/dimming-chip-effects.md §7): Anubis's and PoisPhar's. It drops onto the panel in front of the
 -- user; on anything but free solid ground it breaks at once. Standing, it drains every enemy panel's navi 1 HP each
 -- period (its variant's), with bubbles rising over the enemy's area every 16 ticks, for its lifetime (a field
 -- obstacle's, counting only ticks it runs) or until time is up.
 --
 -- Each game makes its own kind (`statue.make`) with its look: the sprite, sounds, collision types (what the statue
--- is and reaches, and what its drain is: BN6's row 0x52, BN5's 0x31) and how it leaves when removed (BN6's
--- `sub_80CF1DC`: absorbed, blinking out or a puff; BN5's 0x080D0970, which neither absorbs nor blinks obstacles
--- out: a puff for any removal). BN5's lifetime is 3000 for either variant (0x080D08E2), BN6's its variant's: each
+-- is and reaches, and what its drain is: EXE6's row 0x52, EXE5's 0x31) and how it leaves when removed (EXE6's
+-- `sub_80CF1DC`: absorbed, blinking out or a puff; EXE5's 0x080D0970, which neither absorbs nor blinks obstacles
+-- out: a puff for any removal). EXE5's lifetime is 3000 for either variant (0x080D08E2), EXE6's its variant's: each
 -- game's variants say it.
 --
 -- An obstacle: its update runs the obstacle framework's steps (the `obstacle` service) around its own actions.
@@ -35,8 +35,8 @@ export type Look = {
     drain: CollisionType,
     -- What the drain reaches: nothing.
     nothing: CollisionType,
-    -- How it looks absorbed (BN6's: absorbed, it flies to the absorber, and a removal may blink it out); none
-    -- (BN5's): a removal leaves a puff.
+    -- How it looks absorbed (EXE6's: absorbed, it flies to the absorber, and a removal may blink it out); none
+    -- (EXE5's): a removal leaves a puff.
     absorbed: AbsorbedLook?,
     -- The effects it leaves (the game's lib/effects).
     effects: { puff: Effect, explosion: Effect },
@@ -84,7 +84,7 @@ function statue.make(look: Look): Statue
             if field.check(me.panel_x, me.panel_y, SOLID, OCCUPIED) then
                 me.collision:set_region(regions.single)
                 battle.play_sound(look.sounds.land)
-                -- (BN5's action table has no frozen or bubbled rows: its drain is its action 6.)
+                -- (EXE5's action table has no frozen or bubbled rows: its drain is its action 6.)
                 me:set_action(obstacle.action_byte(me, 8))
                 return
             end
@@ -154,8 +154,8 @@ function statue.make(look: Look): Statue
         })
     end
 
-    -- BN6's `sub_80CF1DC`: leave the field: absorbed, removed by a chip (a puff, or blinking out), or broken (an
-    -- explosion). BN5's 0x080D0970: removed by a chip (a puff) or broken.
+    -- EXE6's `sub_80CF1DC`: leave the field: absorbed, removed by a chip (a puff, or blinking out), or broken (an
+    -- explosion). EXE5's 0x080D0970: removed by a chip (a puff) or broken.
     local function destroyed(me: Object)
         me.collision:set_region(nil)
         me:unreserve_panel(me.future_panel_x, me.future_panel_y)

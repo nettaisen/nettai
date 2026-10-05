@@ -1,13 +1,13 @@
 --!strict
--- A flame of the hook (./hook), as BN6 and BN5 share it (BN6's attack
--- object #0xCA, `sub_80DE7F4`, FlmHook's and BigHook's; BN5's #0xCA,
+-- A flame of the hook (./hook), as EXE6 and EXE5 share it (EXE6's attack
+-- object #0xCA, `sub_80DE7F4`, FlmHook's and BigHook's; EXE5's #0xCA,
 -- 0x080DF9D4, BigHook's): it swings along an arc of 160 pixels' radius
 -- around a point behind its column and 48 down, starting at an angle and
 -- lasting as long as its table says (by kind, facing and swing). It hits
 -- the two panels ahead of where it is, only on the tick it enters a panel;
--- a hit flashes the screen (BN5's shakes it too). BN6's leave afterimages,
+-- a hit flashes the screen (EXE5's shakes it too). EXE6's leave afterimages,
 -- take their facing and a big one's palette, and center their arcs from
--- their columns; BN5's (the big kind alone) do none of that, their centers
+-- their columns; EXE5's (the big kind alone) do none of that, their centers
 -- set by swing. Each game makes its kind (`fire.make`: its kind and its
 -- swing).
 
@@ -16,7 +16,7 @@ local regions = require("../regions")
 local fire = {}
 
 -- What a flame is swung with: which way it turns (`swing` 0 or 1, its
--- Param1), whether it is a big one (BN6's Param2), its hit spark (BN6's
+-- Param1), whether it is a big one (EXE6's Param2), its hit spark (EXE6's
 -- Param3).
 export type Swing = { swing: number, big: boolean, spark: Spark }
 
@@ -34,14 +34,14 @@ export type Look = {
     turn: (big: boolean) -> number,
     -- Its arc's center's x (16.16), from its facing, swing and column.
     center_x: (me: Object, swing: number, turn: number) -> number,
-    -- BN6's afterimages: every few ticks by size, their shader by size, how
+    -- EXE6's afterimages: every few ticks by size, their shader by size, how
     -- long they last.
     trail: { every: (big: boolean) -> number, shader: (big: boolean) -> number, ticks: number }?,
-    -- BN6's: it takes its facing and a big one's palette.
+    -- EXE6's: it takes its facing and a big one's palette.
     sets_look: boolean,
-    -- BN5's: a hit shakes the camera too.
+    -- EXE5's: a hit shakes the camera too.
     hit_shakes: boolean,
-    -- Whether one runs while dimmed (BN6's big ones, BN5's all).
+    -- Whether one runs while dimmed (EXE6's big ones, EXE5's all).
     while_dimmed: (big: boolean) -> boolean,
 }
 
@@ -56,14 +56,14 @@ export type State = {
     trail: number,
 }
 
--- Its hit modifier (BN6's `dword_80DEA38`).
+-- Its hit modifier (EXE6's `dword_80DEA38`).
 local HIT_MOD = 3
 -- Where the arc's center is down, 16.16.
 local CENTER_DOWN = 0x30_0000
--- The arc's radius (BN6's `byte_80DEA44`), 16.16 per unit of the sine
+-- The arc's radius (EXE6's `byte_80DEA44`), 16.16 per unit of the sine
 -- table.
 local RADIUS = 0xA000
--- A hit's screen flash: 10 ticks, going on while dimmed; BN5's shake.
+-- A hit's screen flash: 10 ticks, going on while dimmed; EXE5's shake.
 local FLASH_TICKS = 10
 local SHAKE_MAGNITUDE, SHAKE_TICKS = 3, 0x14
 

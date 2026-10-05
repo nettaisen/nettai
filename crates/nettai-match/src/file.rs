@@ -1,11 +1,11 @@
 //! The match file: a [`Match`] as TOML (docs/frontend.md §6). It names its
 //! game once, at the top; everything else is a name in that game's
 //! namespace (`cannon`, `megaman`: `crate::ids`), and a name the game
-//! hasn't is said as such ("no chip "x" in bn6"). There is no way to name
+//! hasn't is said as such ("no chip "x" in exe6"). There is no way to name
 //! another game's.
 //!
 //! ```toml
-//! game = "bn6"                       # the match's game: everything below is its
+//! game = "exe6"                       # the match's game: everything below is its
 //! seed = 42                          # optional: the setup's and battle's seed
 //!
 //! [arena]
@@ -43,11 +43,11 @@
 //!     { program = "suprarmr", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
 //! ]
 //!
-//! [left.tactics]                     # optional: BN5's computer-navi data, the save's (none: empty)
+//! [left.tactics]                     # optional: EXE5's computer-navi data, the save's (none: empty)
 //! entries = ["cannon", "pattern 1", "nothing", "empty"]   # up to 42: a chip, a pattern by its number, 0, 0xFFFF
 //! patterns = [{ dx = 1, dy = 0, chips = ["sword", "wideswrd"] }]   # up to 8, each up to 6 chips
 //!
-//! # In a BN5 match ([left] of game = "bn5") a side may say besides:
+//! # In an EXE5 match ([left] of game = "exe5") a side may say besides:
 //! karma = 100                        # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
 //! souls = ["protosoul"]              # optional: the souls it has, either version's (none: every soul)
 //! soul_unison = false                # optional: no soul button (the save's event flag 0; default true)
@@ -220,7 +220,7 @@ pub fn chip_entry(content: &Content, c: FolderChip) -> [String; 2] {
     [ids::local(&content.defs.chip(c.id).key).to_string(), c.code.letter().to_string()]
 }
 
-/// What names nothing in `game`: "no chip "x" in bn6", and the game's
+/// What names nothing in `game`: "no chip "x" in exe6", and the game's
 /// names of that kind when they are few enough to read.
 fn unknown(what: &str, name: &str, game: &str, have: &[&str]) -> String {
     if have.is_empty() || have.len() > 40 {
@@ -318,8 +318,8 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
                 f
             })
             .collect();
-        if forms.len() > bn6_compat::unlocks::CROSSES {
-            say(format!("{} Crosses: a Cross window offers {}", forms.len(), bn6_compat::unlocks::CROSSES));
+        if forms.len() > exe6_compat::unlocks::CROSSES {
+            say(format!("{} Crosses: a Cross window offers {}", forms.len(), exe6_compat::unlocks::CROSSES));
             CrossList::default()
         } else {
             CrossList::new(&forms)
@@ -586,7 +586,7 @@ pub fn parse(content: &std::sync::Arc<Content>, text: &str) -> Result<Match, Vec
     if problems.is_empty() { Ok(m) } else { Err(problems) }
 }
 
-/// The game a match file's text names (`game = "bn6"`), read before the
+/// The game a match file's text names (`game = "exe6"`), read before the
 /// content it needs is loaded: or why it names none.
 pub fn game_of(text: &str) -> Result<String, String> {
     #[derive(Deserialize)]
@@ -594,7 +594,7 @@ pub fn game_of(text: &str) -> Result<String, String> {
         game: Option<String>,
     }
     let g: Game = toml::from_str(text).map_err(|e| e.to_string())?;
-    g.game.ok_or_else(|| "the match file names no game (game = \"bn6\" at its top)".into())
+    g.game.ok_or_else(|| "the match file names no game (game = \"exe6\" at its top)".into())
 }
 
 /// A match file's text.
@@ -630,39 +630,39 @@ fn folders_inline(body: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::bn6_content;
+    use crate::testing::exe6_content;
 
     /// Live play's draw, written as a match file and read back, is the same
     /// match, and starts the same round.
     #[test]
     fn a_drawn_match_writes_and_reads_back() {
-        let content = bn6_content();
+        let content = exe6_content();
         for seed in 0..6 {
-            let m = crate::draw::live(&content, "bn6", seed, None).unwrap();
+            let m = crate::draw::live(&content, "exe6", seed, None).unwrap();
             let text = write(&content, &m);
             let back = parse(&content, &text).unwrap_or_else(|e| panic!("seed {seed}: {e:?}\n{text}"));
             assert_eq!(back, m, "seed {seed}:\n{text}");
             assert_eq!(format!("{:?}", back.round(&content, seed)), format!("{:?}", m.round(&content, seed)));
         }
-        let text = write(&content, &crate::draw::live(&content, "bn6", 3, None).unwrap());
-        for line in ["game = \"bn6\"", "[arena]", "[left]", "folder = [\n    [\"", "\", \"", "[left.navicust]", "expansions = 2", "programs = []"] {
+        let text = write(&content, &crate::draw::live(&content, "exe6", 3, None).unwrap());
+        for line in ["game = \"exe6\"", "[arena]", "[left]", "folder = [\n    [\"", "\", \"", "[left.navicust]", "expansions = 2", "programs = []"] {
             assert!(text.contains(line), "{line}:\n{text}");
         }
         // (MegaMan at his fresh stats: no stats block.)
         assert!(!text.contains("[left.stats]") && !text.contains("[right.stats]"), "{text}");
         // Every name is the game's own, written once with the game.
-        assert!(!text.contains("bn6:") && !text.contains("ruleset"), "{text}");
-        assert_eq!(game_of(&text).unwrap(), "bn6");
+        assert!(!text.contains("exe6:") && !text.contains("ruleset"), "{text}");
+        assert_eq!(game_of(&text).unwrap(), "exe6");
         assert!(game_of("[arena]\nstage = \"x\"\n").is_err());
     }
 
-    /// A side's tactics (BN5's computer-navi data) write and read back, and
+    /// A side's tactics (EXE5's computer-navi data) write and read back, and
     /// what they get wrong is said.
     #[test]
     fn tactics_write_and_read_back() {
-        let content = bn6_content();
-        let mut m = crate::draw::live(&content, "bn6", 2, None).unwrap();
-        let chip = |name: &str| ids::chip(&content, "bn6", name).unwrap();
+        let content = exe6_content();
+        let mut m = crate::draw::live(&content, "exe6", 2, None).unwrap();
+        let chip = |name: &str| ids::chip(&content, "exe6", name).unwrap();
         m.sides[0].tactics = Tactics {
             entries: vec![Tactic::Chip(chip("cannon")), Tactic::Pattern(0), Tactic::Nothing, Tactic::Empty],
             patterns: vec![TacticPattern { dx: 1, dy: -1, chips: vec![chip("sword"), chip("cannon")] }],
@@ -680,22 +680,22 @@ mod tests {
         assert!(problems.iter().any(|p| p.contains("the tactics name pattern 2")), "{problems:?}");
         let bad = text.replacen("entries = [\n    \"cannon\"", "entries = [\n    \"nothing-at-all\"", 1);
         let problems = parse(&content, &bad).unwrap_err();
-        assert!(problems.iter().any(|p| p.contains("tactics: no chip \"nothing-at-all\" in bn6")), "{problems:?}\n{text}");
+        assert!(problems.iter().any(|p| p.contains("tactics: no chip \"nothing-at-all\" in exe6")), "{problems:?}\n{text}");
     }
 
     /// What a file can get wrong is said, with where it is.
     #[test]
     fn problems_are_said() {
-        let content = bn6_content();
-        let drawn = crate::draw::live(&content, "bn6", 1, None).unwrap();
+        let content = exe6_content();
+        let drawn = crate::draw::live(&content, "exe6", 1, None).unwrap();
         let good = write(&content, &drawn);
         let bad = |from: &str, to: &str| -> Vec<String> {
             assert!(good.contains(from), "{from}");
             parse(&content, &good.replacen(from, to, 1)).unwrap_err()
         };
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
-        has(bad("navi = \"megaman\"", "navi = \"nobody\""), "left: no navi \"nobody\" in bn6");
-        has(bad("navi = \"megaman\"", "navi = \"bn6:megaman\""), "left: no navi \"bn6:megaman\" in bn6"); // (written in full)
+        has(bad("navi = \"megaman\"", "navi = \"nobody\""), "left: no navi \"nobody\" in exe6");
+        has(bad("navi = \"megaman\"", "navi = \"exe6:megaman\""), "left: no navi \"exe6:megaman\" in exe6"); // (written in full)
         // (A stats block, after the sides' tables.)
         let stats = |block: &str| parse(&content, &format!("{good}\n[left.stats]\n{block}\n")).unwrap_err();
         has(stats("hp = 100000"), "stats: hp takes a whole number");
@@ -703,8 +703,8 @@ mod tests {
         // No key takes the emotion window's glitch: the rules make it.
         has(bad("navi = \"megaman\"", "navi = \"megaman\"\nemotion_window_glitch = true"), "unknown field `emotion_window_glitch`");
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
-        has(bad(stage, "stage = \"moon\""), "arena: no stage \"moon\" in bn6");
-        has(bad("game = \"bn6\"", "game = \"bn7\""), "no game \"bn7\"");
+        has(bad(stage, "stage = \"moon\""), "arena: no stage \"moon\" in exe6");
+        has(bad("game = \"exe6\"", "game = \"bn7\""), "no game \"bn7\"");
         has(bad("navi = \"megaman\"", "navi = \"megaman\"\nversion = \"azure\""), "no version \"azure\"");
         // Thirty copies of a chip.
         let mut m = drawn.clone();
@@ -722,24 +722,24 @@ mod tests {
         }
         // Patch cards past 80 MB; a Cross list for a navi without Crosses.
         let mut m = drawn.clone();
-        m.sides[0].cards = crate::patch_cards(&content, "bn6", "canodumb,amonicul,coldbear,megalian,mettfire,kilplant").unwrap();
+        m.sides[0].cards = crate::patch_cards(&content, "exe6", "canodumb,amonicul,coldbear,megalian,mettfire,kilplant").unwrap();
         has(crate::check_match(&content, &m), "left: the patch cards are");
         let mut m = drawn.clone();
-        let protoman = ids::navi(&content, "bn6", "protoman").unwrap();
+        let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[1].navi = protoman;
         m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].game);
         has(crate::check_match(&content, &m), "right: a Cross list, but ProtoMan doesn't change form");
     }
 
-    /// A game's rules have their systems, by name: BN6's the forms system
+    /// A game's rules have their systems, by name: EXE6's the forms system
     /// (its Crosses), and no key names another ruleset.
     #[test]
     fn a_game_is_its_rules() {
-        let content = bn6_content();
+        let content = exe6_content();
         assert!(crate::ruleset_has_system(&content, crate::FORMS_SYSTEM));
         assert!(!crate::ruleset_has_system(&content, "souls"));
-        let good = write(&content, &crate::draw::live(&content, "bn6", 1, None).unwrap());
-        let e = parse(&content, &good.replacen("game = \"bn6\"\n", "game = \"bn6\"\nruleset = \"stock\"\n", 1)).unwrap_err();
+        let good = write(&content, &crate::draw::live(&content, "exe6", 1, None).unwrap());
+        let e = parse(&content, &good.replacen("game = \"exe6\"\n", "game = \"exe6\"\nruleset = \"stock\"\n", 1)).unwrap_err();
         assert!(e[0].contains("unknown field `ruleset`"), "{e:?}");
     }
 
@@ -748,13 +748,13 @@ mod tests {
     /// left out, and a file without one reads as it.
     #[test]
     fn sp_times_beast_out_and_levels_write_and_read_back() {
-        let content = bn6_content();
-        let mut m = crate::draw::live(&content, "bn6", 2, None).unwrap();
+        let content = exe6_content();
+        let mut m = crate::draw::live(&content, "exe6", 2, None).unwrap();
         m.sides[0].beast_out = false;
         m.sides[0].navi_level = Some(3);
         m.sides[0].sp_times.0[0] = 721;
         m.sides[0].sp_times.0[11] = 1500;
-        let protoman = ids::navi(&content, "bn6", "protoman").unwrap();
+        let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[1].navi = protoman;
         m.sides[1].crosses = None;
         m.sides[1].navicust = None;
@@ -782,12 +782,12 @@ mod tests {
     /// A navi code's level is 0 to 14, and a link navi has one.
     #[test]
     fn the_level_is_checked() {
-        let content = bn6_content();
-        let mut m = crate::draw::live(&content, "bn6", 2, None).unwrap();
+        let content = exe6_content();
+        let mut m = crate::draw::live(&content, "exe6", 2, None).unwrap();
         m.sides[0].navi_level = Some(15);
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
         has(crate::check_match(&content, &m), "left: level 15: a navi code's level is 0 to 14");
-        let protoman = ids::navi(&content, "bn6", "protoman").unwrap();
+        let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[0].navi_level = None;
         m.sides[1].navi = protoman;
         m.sides[1].crosses = None;

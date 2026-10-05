@@ -60,7 +60,7 @@ fn what_the_packs_refuse() {
 /// type-check against the same definitions, and pass the lints.
 #[test]
 fn the_test_pack_and_test_content_type_check() {
-    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "bn6").unwrap()).unwrap();
+    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();
     let mut problems = Vec::new();
     for (name, at_least) in [("pack", 5), ("content", 5)] {
         let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../nettai-battle/testdata").join(name);
@@ -79,7 +79,7 @@ fn the_test_pack_and_test_content_type_check() {
 
 #[test]
 fn misuse_of_the_v2_api_is_a_type_error() {
-    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "bn6").unwrap()).unwrap();
+    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();
     for (bad, why) in [
         ("local _ = define.kind { id = 'x', pool = 'water', update = function(me: Object) end }", "not a pool"),
         ("local _ = define.kind { id = 'x', pool = 'attack' }", "a kind without its update"),
@@ -97,7 +97,7 @@ fn misuse_of_the_v2_api_is_a_type_error() {
 
 #[test]
 fn the_numeric_api_that_is_gone_is_a_type_error() {
-    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "bn6").unwrap()).unwrap();
+    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();
     for (bad, why) in [
         ("local _ = battle.spawn(\"attack\", 8)", "a spawn by pool and index"),
         ("local _ = battle.spawn_kind(\"rock\")", "a spawn by name"),
@@ -129,7 +129,7 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
 
 #[test]
 fn misuse_of_the_core_api_is_a_type_error() {
-    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "bn6").unwrap()).unwrap();
+    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();
     for (bad, why) in [
         ("local function f(me: Object) me.anmi = 3 end", "misspelled field"),
         ("local function f(me: Object) me:set_lifecycle(\"running\") end", "not a lifecycle state"),

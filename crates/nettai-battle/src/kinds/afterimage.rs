@@ -28,7 +28,7 @@ pub enum Tether {
     #[default]
     None,
     /// The navi's side leaving the forms whose afterimages stay
-    /// (`afterimages_stay`: BN6's Beast forms).
+    /// (`afterimages_stay`: EXE6's Beast forms).
     Form,
     /// The navi going back to a non-attack action.
     Attack,
@@ -105,7 +105,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, anim: u8, lifetime: u1
     if paused {
         o.flags |= flags::RUN_WHILE_PAUSED;
     }
-    // sub_80E341E: tied to the form (BN6's Beast forms), or to the attack.
+    // sub_80E341E: tied to the form (EXE6's Beast forms), or to the attack.
     let stays = b.form(alliance as usize).traits.has(crate::content::FormTraits::AFTERIMAGES_STAY);
     let tether = if stays { Tether::Form } else { Tether::Attack };
     // Less green, with a ground shadow (the spawner's r7 is 0x01010014 - n).

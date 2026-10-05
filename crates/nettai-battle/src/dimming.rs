@@ -269,9 +269,9 @@ fn start_telop(b: &mut Battle, r: ObjectRef, side: u8, hidden: TelopHidden) {
 
 /// The navi chips AntiNavi turns back: the original's block of them in its
 /// chip table (`ChipTraits::in_navi_block`): the chips with the `navi`
-/// flag but those with the `not_navi_slot` trait (BN5's version navi
+/// flag but those with the `not_navi_slot` trait (EXE5's version navi
 /// chips), and the chips with the `navi_slot` trait (the US games' records
-/// of Django's three lack the flag; BN6's content has the Japanese games',
+/// of Django's three lack the flag; EXE6's content has the Japanese games',
 /// which have it).
 fn is_navi_chip(b: &Battle, chip: Option<ChipHandle>) -> bool {
     chip.is_some_and(|h| {
@@ -326,7 +326,7 @@ fn anti_navi_check(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let local = b.round.local_side;
     let look = b.roles().effect(crate::content::EffectRole::TrapMark);
     // `sub_800ABC6`'s sparkle (the role `effects.trap_mark`), where
-    // AntiNavi's game puts it from the panel's center (BN6: 16 pixels down
+    // AntiNavi's game puts it from the panel's center (EXE6: 16 pixels down
     // the field and 32 up), with its sound (the role `sounds.cut_in`).
     let at = b.game_rules().chip_use.anti_navi_sparkle;
     let (dy, z) = ((at.dy as i32) << 16, (at.z as i32) << 16);
@@ -498,7 +498,7 @@ pub fn show_user(b: &mut Battle, user: ObjectRef) {
     }
 }
 
-/// `sub_80E146C` (`sub_80E14EC` for an actor that isn't a player: BN5's
+/// `sub_80E146C` (`sub_80E14EC` for an actor that isn't a player: EXE5's
 /// Django shutting a navi in his coffin): the actor vanishes, its barrier
 /// visual and its confusion and blindness visuals with it. (Its HUD's draw
 /// task 0, `sub_801DACC(1)`, presentation the engine doesn't keep, goes
