@@ -26,4 +26,5 @@ return {
     right_scan_bottom = { 5, 6, 7, 8, 9, 11, 10 },
     left_scan_start = { 5, 4, 3, 2, 1, 5, 4, 3, 2, 1, 0, 0 },
     right_scan_start = { 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 0, 0 },
+    emblem_at_window_return = true,
 }

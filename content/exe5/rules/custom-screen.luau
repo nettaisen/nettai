@@ -27,4 +27,8 @@ return {
     -- The re-deal (SearchSoul's Shuffle, its form's folder's shuffle: 0x080253E8): how many of the hand's chips it deals again
     -- stay in the hand, by how many they are, from none (0x080254C8; past the list, none).
     redeal_kept = { 0, 0, 0, 1, 1, 2, 2, 3, 3 },
+    -- SELECT's hidden window, brought back by a key, draws no emblem on that tick or the next (0x08023022 has
+    -- neither of the calls EXE6's `sub_8026D06` makes of the emblem's routine, here 0x08025824): it is back with
+    -- the choosing state's own draw.
+    emblem_at_window_return = false,
 }
