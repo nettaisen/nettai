@@ -38,7 +38,6 @@ pub fn max_level(content: &Content, navi: NaviHandle) -> Option<u8> {
 mod tests {
     use crate::Side;
     use crate::testing::exe5_content;
-    use nettai_battle::custom::GameVersion;
 
     /// ProtoMan's HP by his level: the progress below the last level, the
     /// story done at the last; MegaMan has no story.
@@ -48,7 +47,7 @@ mod tests {
         let navi = |name: &str| crate::ids::navi(&content, "exe5", name).unwrap();
         let protoman = navi("protoman");
         let hp = |level| {
-            let s = Side::save_base(&content, protoman, GameVersion::Falzar, Some(level));
+            let s = Side::save_base(&content, protoman, None, Some(level));
             assert_eq!((s.hp, s.max_base_hp), (s.max_hp, s.max_hp));
             s.max_hp
         };
