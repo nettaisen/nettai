@@ -1,4 +1,4 @@
-# Battle flow and tick structure (BN6 US Falzar, link PvP)
+# Battle flow and tick structure (EXE6 US Falzar, link PvP)
 
 This spec covers the battle's control flow for a cable-link PvP netbattle:
 - the frame/tick anatomy;
@@ -290,7 +290,7 @@ PvP P0 in the trace has no reg, tag or giga: 30 swaps, 60 RNG1 draws (frames 70 
    - Type 0 goes `sub_80073CC` → `sub_800753C`: spawn T1 index 0 (navi), flags |= 4, AIData+0 = 2 (player), NameID = navistats+0x29 + 0x1A0.
    - `sub_8007778` puts the navi into the alive list (BS+0x80 + 0x10·alliance) and does BS+4+alliance += 1.
    - `sub_80077D2` does BS+8+alliance += 1 and stores the NameID at BS+0x4C + 8·alliance + 2k.
-   - Other entry types (`off_80073A0[type]`): 1 virus/navi (`sub_80073E2`), 2 T3#0xA9 with a probability (draws RNG2), 3 T3#0x6E, 4/5 nothing, 6 T4#0x41, 7 T3#0x9C, **8 rock T3#0x59** (`sub_80074FA`), 9 T3#0x7D, 0xA T3#0x98. Only types 0, 3, 8 and 9 occur in the lists `BattleSettingsList1` (0x080B0D88, 192 records) refers to: 28 distinct lists at 0x080B1989..0x080B1B46, extracted to the content's actor lists (`Stages::actor_lists`, a pack's `rules/stages.toml`), each keeping its address as `original_address` (settings bytes 12..16 carry it unchanged even when the runtime patches other settings bytes; bn6-compat's `codec::battle_settings` resolves it). The US Gregar ROM has every list 0x1870 bytes later (the Japanese Falzar 0x2530, the Japanese Gregar 0x3D90), so such a console's settings carry that address (compat's games.toml; `codec::battle_settings_of`).
+   - Other entry types (`off_80073A0[type]`): 1 virus/navi (`sub_80073E2`), 2 T3#0xA9 with a probability (draws RNG2), 3 T3#0x6E, 4/5 nothing, 6 T4#0x41, 7 T3#0x9C, **8 rock T3#0x59** (`sub_80074FA`), 9 T3#0x7D, 0xA T3#0x98. Only types 0, 3, 8 and 9 occur in the lists `BattleSettingsList1` (0x080B0D88, 192 records) refers to: 28 distinct lists at 0x080B1989..0x080B1B46, extracted to the content's actor lists (`Stages::actor_lists`, a pack's `rules/stages.toml`), each keeping its address as `original_address` (settings bytes 12..16 carry it unchanged even when the runtime patches other settings bytes; exe6-compat's `codec::battle_settings` resolves it). The US Gregar ROM has every list 0x1870 bytes later (the Japanese Falzar 0x2530, the Japanese Gregar 0x3D90), so such a console's settings carry that address (compat's games.toml; `codec::battle_settings_of`).
    - Type 8, rock: x/y from byte1, variant = byte2, side = the panel's current owner (PanelData+3); spawns via `sub_80CFBC4` with params {variant, 0, 3, 0} and damage 200. Rocks do **not** go through `sub_8007778`/`sub_80077D2`: no alive entry, no actor count, no NameID. See field-objects.md.
    - After the list: BS+0x12/0x13 = BS+4/5 (a halfword copy), and BS+0x80..0x9F is copied to BS+0xD0..0xEF.
    - Navi init spawns a T4 index-8 helper per navi.
@@ -678,7 +678,7 @@ Carried over between rounds:
 - the effects dword of the settings;
 - anything outside the re-initialized structures.
 
-`byte_203CA50` is not carried: every init copies it from player 0's init exchange (`battle_copyStructsIncludingBattleStats_800b2d8`, from `dword_203F568`). It holds two (settings index, background) pairs: the pair used after round n is entry n−1 of the copy made for round n. Machgun round 1 had `11 03 46 13` (round 2 on List1[0x11], background 3) and round 2 `3D 13 59 00`. Soundmod rounds 1 and 2 had `43 0B 02 0D` and `48 11 14 04`: rounds 2 and 3 were List1[0x43] background 0x0B and List1[0x14] background 4, as their setups show. The engine takes the pairs as `RoundSetup::later_stages`, each naming a stage (the content's stages are the table's 192 records, `v1/stage-11` for List1[0x11]; bn6-compat's codec maps an index to its stage) and the background.
+`byte_203CA50` is not carried: every init copies it from player 0's init exchange (`battle_copyStructsIncludingBattleStats_800b2d8`, from `dword_203F568`). It holds two (settings index, background) pairs: the pair used after round n is entry n−1 of the copy made for round n. Machgun round 1 had `11 03 46 13` (round 2 on List1[0x11], background 3) and round 2 `3D 13 59 00`. Soundmod rounds 1 and 2 had `43 0B 02 0D` and `48 11 14 04`: rounds 2 and 3 were List1[0x43] background 0x0B and List1[0x14] background 4, as their setups show. The engine takes the pairs as `RoundSetup::later_stages`, each naming a stage (the content's stages are the table's 192 records, `v1/stage-11` for List1[0x11]; exe6-compat's codec maps an index to its stage) and the background.
 
 BS+0x20 is not carried either (§2.2).
 
@@ -1124,7 +1124,7 @@ In the machgun trace these bytes never change: +0x0C, +0x21–0x27, +0x2A–0x31
 | 0x08 | special (with BS+0x0B = 1) | `sub_80D8DEE` | — | (not PvP) |
 | 0x10 | custom-screen request | `sub_8012FC8` | `sub_801DF92` | `sub_800A1D0` |
 | 0x20 | (unknown) | no setter found | `sub_8014CC0`, `sub_8014F04`, `sub_8015128`, and two more | `battle_isTimeStopPauseOrBattleFlags0x20_800a0a4` |
-| 0x40 | the chip gate battle: each side its own custom gauge, which pays for the chips slotted into its gate (the engine's `OWN_GAUGES`; BN5's is its operation battle) | `sub_802E112` (a netbattle only with two gates) | — | `TestBattleFlag_0x40` / `sub_800A8F8` (fighting branches, `sub_802DE5C`, `sub_802E156`) |
+| 0x40 | the chip gate battle: each side its own custom gauge, which pays for the chips slotted into its gate (the engine's `OWN_GAUGES`; EXE5's is its operation battle) | `sub_802E112` (a netbattle only with two gates) | — | `TestBattleFlag_0x40` / `sub_800A8F8` (fighting branches, `sub_802DE5C`, `sub_802E156`) |
 
 In the machgun match the word was 0x0000, then 0x0001 from the first fighting tick.
 

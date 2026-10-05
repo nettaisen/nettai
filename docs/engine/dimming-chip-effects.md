@@ -1,4 +1,4 @@
-# Dimming chip effects: subtypes 2, 3, 7, 8, 12, 14–19, 21–24, 29, 30, 32, 37 (BN6 US Falzar, BR6E)
+# Dimming chip effects: subtypes 2, 3, 7, 8, 12, 14–19, 21–24, 29, 30, 32, 37 (EXE6 US Falzar, BR6E)
 
 The controllers of the dimming chips `off_802CCB4` indexes (docs/engine/chips.md §3.6, §3.6.10) and every
 object they spawn, routine by routine, from the disassembly. The chip lab's scenarios (bn6battle-verify

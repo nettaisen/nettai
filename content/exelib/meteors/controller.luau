@@ -3,7 +3,7 @@
 -- `sub_80E4188`; docs/engine/dimming-chip-effects.md §6): thirty meteors
 -- (./falling_meteor, row 1) fall on the enemy's area, one every 10 ticks,
 -- cycling through its panels from the far column. Another game's
--- controller drops its own meteors (`controller.make`; BN5's Meteors).
+-- controller drops its own meteors (`controller.make`; EXE5's Meteors).
 
 local dimming_chips = require("../dimming")
 local falling_meteor = require("./falling_meteor")
@@ -140,6 +140,6 @@ function controller.make(id: string, meteor_kind: Kind): (user: Object, spec: Di
     end
 end
 
--- BN6's.
+-- EXE6's.
 
 return controller

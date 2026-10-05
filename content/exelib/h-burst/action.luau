@@ -1,10 +1,10 @@
 --!strict
--- H-Burst, as BN5 and BN6 share it (each game passes its `HyperBurstLook`:
+-- H-Burst, as EXE5 and EXE6 share it (each game passes its `HyperBurstLook`:
 -- its spreader, attachment kind, sound and shot kind): the navi raises a
 -- spreader (an attachment in its overlay slot) and on the second tick
 -- fires H-Burst's shot (./burst) along its row from the panel ahead: at
 -- the first thing it hits it bursts again and again. Then 21 ticks of
--- recovery (BN6's action 0x34, `sub_80ED810`; BN5's 0x35, the same code
+-- recovery (EXE6's action 0x34, `sub_80ED810`; EXE5's 0x35, the same code
 -- but for the spreader's attachment row).
 
 local attachment = require("../attachment")

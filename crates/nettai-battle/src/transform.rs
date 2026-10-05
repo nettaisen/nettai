@@ -15,7 +15,7 @@ pub struct TransformRequest {
     pub form: Option<FormHandle>,
     /// A navi switch: the navi to change to.
     pub navi_switch: Option<NaviHandle>,
-    /// BN5's Soul Unison (`sub_8015952`'s record, 0x0203C940): the soul's
+    /// EXE5's Soul Unison (`sub_8015952`'s record, 0x0203C940): the soul's
     /// turns (+3) and whether it is Chaos Unison (+1).
     pub turns: u8,
     pub chaos: bool,
@@ -138,9 +138,9 @@ impl Battle {
 
     /// `sub_801486C`: a side asking for a navi switch gets it started; a
     /// side without a transformation has its rules check whether its form's
-    /// time ran out (BN6's beast system: Beast Out, `sub_80159C6`).
+    /// time ran out (EXE6's beast system: Beast Out, `sub_80159C6`).
     fn sequencer_check(&mut self) {
-        // BN5's 0x08011DDC: each side's request for the turn is read first
+        // EXE5's 0x08011DDC: each side's request for the turn is read first
         // (its ColonelSoul's arm chip, 0x080124AE: the souls system's).
         for side in 0..2u8 {
             if self.player(side).is_some() {

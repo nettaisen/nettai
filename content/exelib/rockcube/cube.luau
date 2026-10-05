@@ -1,5 +1,5 @@
 --!strict
--- RockCube's and IceCube's dimming controller (BN6's effect object #0x37, `sub_80E4634`; BN5's the same code,
+-- RockCube's and IceCube's dimming controller (EXE6's effect object #0x37, `sub_80E4634`; EXE5's the same code,
 -- 0x080E4664): the usual dimming phases, with an effect that places a rock on the panel in front of the user and
 -- waits 60 ticks. What differs between the chips is the rock (the original's chip parameters: its variant, its
 -- field-object class and its entrance); between the games, their rock, its place sound and where the controller

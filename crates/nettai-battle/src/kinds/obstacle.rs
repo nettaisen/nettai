@@ -58,32 +58,32 @@ impl Action {
     }
 }
 
-/// Whether the game numbers its obstacles' action tables as BN5's
+/// Whether the game numbers its obstacles' action tables as EXE5's
 /// (`effects.obstacle_actions`, the game's rules).
-fn bn5_actions(b: &Battle) -> bool {
-    b.game_rules().effects.obstacle_actions == crate::content::ObstacleActions::Bn5
+fn exe5_actions(b: &Battle) -> bool {
+    b.game_rules().effects.obstacle_actions == crate::content::ObstacleActions::Exe5
 }
 
 /// The byte the game stores in obstacle `r` for action `a` of the
-/// framework's numbering ([`Action`], BN6's: the kind's own from 8). BN5's
+/// framework's numbering ([`Action`], EXE6's: the kind's own from 8). EXE5's
 /// obstacles have no frozen or bubbled entries (6 and 7), so their own start
 /// at 6.
 pub fn action_byte(b: &Battle, r: ObjectRef, a: u8) -> Result<u8, String> {
-    if !bn5_actions(b) {
+    if !exe5_actions(b) {
         return Ok(a);
     }
     match a {
         0..=5 => Ok(a),
-        6 | 7 => Err(format!("{}: BN5's obstacles have no action {a} (frozen, bubbled)", b.kind_key(r))),
+        6 | 7 => Err(format!("{}: EXE5's obstacles have no action {a} (frozen, bubbled)", b.kind_key(r))),
         _ => Ok(a - 2),
     }
 }
 
-/// Obstacle `r`'s action in the framework's numbering (BN6's), from the
+/// Obstacle `r`'s action in the framework's numbering (EXE6's), from the
 /// game's byte.
 pub fn current_action(b: &Battle, r: ObjectRef) -> u8 {
     let a = b.objects.get(r).action;
-    if bn5_actions(b) && a >= 6 { a + 2 } else { a }
+    if exe5_actions(b) && a >= 6 { a + 2 } else { a }
 }
 
 /// The shared entries of an obstacle's action table.
@@ -220,7 +220,7 @@ const SLIDE_BLOCKERS: u32 = 0x0380_0000;
 const KNOCKBACK_BLOCKERS: u32 = pflags::OCCUPIED;
 
 // (A slide's speed is the obstacle's game's reactions section's
-// `slide_speed`: BN6's 10 pixels a tick across and 6 in depth, BN5's 8 in
+// `slide_speed`: EXE6's 10 pixels a tick across and 6 in depth, EXE5's 8 in
 // depth, 0x08014894 and 0x08014730.)
 /// The panels a slide goes at most (`sub_8017E44`, whatever the hit says).
 const SLIDE_PANELS: u8 = 6;
@@ -345,12 +345,12 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
     if b.is_battle_over() || f1_of(b, r) & f1::DEAD != 0 {
         return;
     }
-    // (BN5's lava burns first: 0x08017A18 and its variants.)
+    // (EXE5's lava burns first: 0x08017A18 and its variants.)
     common::panel_burn(b, r);
     if push == Push::AnyHit {
         match b.game_rules().push_reading {
-            PushReading::Bn6 => push_on_any_hit(b, c),
-            PushReading::Bn5 => push_on_any_hit_by_flip(b, c),
+            PushReading::Exe6 => push_on_any_hit(b, c),
+            PushReading::Exe5 => push_on_any_hit_by_flip(b, c),
         }
     }
     let hit_mod = b.collision.get(c).hit_mod_final;
@@ -375,7 +375,7 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
 
 /// `sub_801AE56`: a hit from one side only (and not of type 0x1000, nor
 /// already a push) pushes it a panel away from that side.
-/// BN5's (0x08017AD8, from its any-hit reaction 0x08017A78): the same by
+/// EXE5's (0x08017AD8, from its any-hit reaction 0x08017A78): the same by
 /// the hitters' flips (`hit_flags_by_flip`, 0x08017B34): one side's hits
 /// by unflipped hitters alone push it by the unflipped hitters' modifier
 /// byte (`hit_mod_by_side[0]`), by flipped ones alone by the other; any
@@ -520,7 +520,7 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u
     Some(current_action(b, r))
 }
 
-/// Per side: BN5's ColonelSoul army (docs/design/bn5-map.md §15.11). Armed
+/// Per side: EXE5's ColonelSoul army (docs/design/exe5-map.md §15.11). Armed
 /// is BattleState+0x5C's bit 0x10 (side 0) or 0x20 (side 1), which
 /// ColonelSoul's start sets (0x080CAC1E) and its end clears (0x080CAC30);
 /// the words are the side's soldiers' damage words (0x02034000 + 8 × side,
@@ -534,13 +534,13 @@ pub struct Soldiers {
     pub words: [u32; 2],
 }
 
-/// What BN5's `object_getPanelParameters` leaves in r2: the address it
+/// What EXE5's `object_getPanelParameters` leaves in r2: the address it
 /// calls `_object_getPanelDataOffset` through (0x0800BD1C, Thumb), which
 /// 0x080CAB02 leaves in turn when the sword's soldier answers; the
 /// soldier's element byte comes of it (0x1D).
 const PANEL_LOOKUP_REGISTER: u32 = 0x0800_BD1D;
 
-/// BN5's step in its four obstacle reactions (0x08018000, 0x08018168,
+/// EXE5's step in its four obstacle reactions (0x08018000, 0x08018168,
 /// 0x080182D4 and 0x08018404, after the damage and the crushing hits,
 /// for an obstacle they leave standing): outside the dimming and past its
 /// first action, an obstacle where an armed side can use it (0x080CAB02,
@@ -706,8 +706,8 @@ const THROW_HIT_MOD: u8 = 3;
 
 /// `sub_800F6AC`: ask `r` to be picked up by `side` and thrown at (x, y)
 /// after shaking `shake` ticks, with the damage word: +0x1C, +0x1D and
-/// +0x1E, the word, f2 0x400 (side 0) or 0x800 (side 1). BN5's Poltergeist
-/// makes it (0x080E8DD8; nothing in BN6 does).
+/// +0x1E, the word, f2 0x400 (side 0) or 0x800 (side 1). EXE5's Poltergeist
+/// makes it (0x080E8DD8; nothing in EXE6 does).
 pub fn request_throw(b: &mut Battle, r: ObjectRef, side: u8, x: u8, y: u8, shake: u8, damage: u32) {
     let o = b.objects.get_mut(r);
     (o.slide_dx, o.slide_dy, o.slide_timer) = (x, y, shake);
@@ -716,7 +716,7 @@ pub fn request_throw(b: &mut Battle, r: ObjectRef, side: u8, x: u8, y: u8, shake
 }
 
 /// `sub_8018002`: picked up and thrown, the request `sub_800F6AC` makes
-/// (BN5's Poltergeist; nothing in BN6): the thrower's side (`f2::THROWN`),
+/// (EXE5's Poltergeist; nothing in EXE6): the thrower's side (`f2::THROWN`),
 /// the target panel in `slide_dx`/`slide_dy` (+0x1C, +0x1D), the ticks it
 /// shakes in `slide_timer` (+0x1E) and the damage word. It rises 64 px in
 /// 32 ticks, shakes, flies onto the target panel at 8 px a tick and breaks
@@ -935,8 +935,8 @@ fn encased(b: &mut Battle, r: ObjectRef) {
             unregister(b, r);
             clear_wind(b, r);
             let ice = f1_of(b, r) & obstacle_f1::ENCASED_ICE != 0;
-            // (A game without the role has nothing for it to do: BN5,
-            // docs/design/bn5-map.md §15.3 item 4.)
+            // (A game without the role has nothing for it to do: EXE5,
+            // docs/design/exe5-map.md §15.3 item 4.)
             if let Some(hook) = b.roles().try_hook(crate::content::HookRole::Encased) {
                 crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::RoleEncased { obstacle: r, ice, class });
             }
@@ -995,8 +995,8 @@ struct PushVector {
 /// obstacle held still in one (`object_updateSprite` leaves it): no pusher
 /// bits either way, so it's left out.
 fn push_vector(b: &Battle, r: ObjectRef) -> PushVector {
-    if b.game_rules().push_reading == PushReading::Bn5 {
-        return push_vector_bn5(b, r);
+    if b.game_rules().push_reading == PushReading::Exe5 {
+        return push_vector_exe5(b, r);
     }
     let d = b.collision.get(collision(b, r));
     let hits = d.acc.hit_flags;
@@ -1016,14 +1016,14 @@ fn push_vector(b: &Battle, r: ObjectRef) -> PushVector {
     PushVector { pusher, dx: dx * pusher, dy, panels }
 }
 
-/// BN5's `sub_800F598` (0x0800D4B0): the pusher is side 0 when its hits
+/// EXE5's `sub_800F598` (0x0800D4B0): the pusher is side 0 when its hits
 /// alone pushed it (nothing when both sides' did), else side 1 (neither's
 /// too); the vector is the first of bits 2 to 5 of the unflipped hitters'
 /// modifier byte (`hit_mod_by_side[0]`), else of the flipped ones' with
-/// the direction reversed, from BN5's table (0x0800D53B: BN6's four rows
+/// the direction reversed, from EXE5's table (0x0800D53B: EXE6's four rows
 /// and a fifth of nothing when neither has a bit). (The +0x54 word takes
-/// part as in BN6's, left out the same.)
-fn push_vector_bn5(b: &Battle, r: ObjectRef) -> PushVector {
+/// part as in EXE6's, left out the same.)
+fn push_vector_exe5(b: &Battle, r: ObjectRef) -> PushVector {
     let d = b.collision.get(collision(b, r));
     let hits = d.acc.hit_flags;
     let pusher: i8 = if hits & PUSHERS[0] != 0 {
@@ -1079,16 +1079,16 @@ fn start_slide(b: &mut Battle, r: ObjectRef, kind: Slide) {
     let fp = b.objects.get(r).future_panel;
     b.unreserve_panel(r, fp.x, fp.y);
     let v = push_vector(b, r);
-    let (bn5, speed) = {
+    let (exe5, speed) = {
         let rules = b.game_rules();
-        (rules.push_reading == PushReading::Bn5, rules.slide_speed)
+        (rules.push_reading == PushReading::Exe5, rules.slide_speed)
     };
     let o = b.objects.get_mut(r);
     o.slide_dx = v.dx as u8;
     o.slide_dy = v.dy as u8;
     let panels = match kind {
-        // BN5's (0x08014894) keeps no bounds: it slides anywhere open.
-        Slide::Bounded if bn5 => {
+        // EXE5's (0x08014894) keeps no bounds: it slides anywhere open.
+        Slide::Bounded if exe5 => {
             o.slide_bounds = SlideBounds::Anywhere;
             SLIDE_PANELS
         }

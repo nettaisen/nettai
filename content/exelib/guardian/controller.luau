@@ -1,6 +1,6 @@
 --!strict
--- The Guardian chip's dimming controller, as BN5 and BN6 share it (BN6's effect object #0x52, `sub_80E6758`; BN5's
--- #0x52, 0x080E67DC, the same code; BN6's docs/engine/dimming-chip-effects.md §5): the usual dimming phases (BN6's
+-- The Guardian chip's dimming controller, as EXE5 and EXE6 share it (EXE6's effect object #0x52, `sub_80E6758`; EXE5's
+-- #0x52, 0x080E67DC, the same code; EXE6's docs/engine/dimming-chip-effects.md §5): the usual dimming phases (EXE6's
 -- lib/dimming), with an effect that places a Guardian statue on the panel in front of the user if it is free solid
 -- ground, striking with the damage plus the bonus, and waits 30 ticks. Each game makes its own
 -- (`controller.make`) with its statue's spawn; the chip's `dimming` hook is the made controller's `hook`.

@@ -81,9 +81,9 @@ pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
 /// `sub_80105F2(requests, lockout, variant, damage)`: the AntiDmg
 /// program's stance (action 0x5A) caught a hit: the counter keeps the
 /// stance's damage word, lockout and variant (which the counters read:
-/// BN6's AntiDmg program sets 0, BN5's ShadowSoul 1; no chip), and its
+/// EXE6's AntiDmg program sets 0, EXE5's ShadowSoul 1; no chip), and its
 /// action starts: AntiDmg's, or AntiSwrd's for a sword hit. It runs from
-/// the next tick, or at once by the navi's rules (BN5's 0x0800E340).
+/// the next tick, or at once by the navi's rules (EXE5's 0x0800E340).
 pub(crate) fn stance_counter(b: &mut Battle, r: ObjectRef) {
     let requests = ai(b, r).requests;
     let (lockout, damage) = {

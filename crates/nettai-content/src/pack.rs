@@ -36,7 +36,7 @@ pub struct Manifest {
     pub format: String,
     pub version: u32,
     pub name: String,
-    /// The game whose assets it holds (`bn6`).
+    /// The game whose assets it holds (`exe6`).
     pub game: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub graphics: Option<GraphicsManifest>,
@@ -207,7 +207,7 @@ pub fn import_sound(root: &Path, report: &mut Report) -> Option<SoundBank> {
 }
 
 /// [`export_sound`], with the songs game versions have their own of
-/// (`sound::SongVersions`: BN5's Team Colonel's).
+/// (`sound::SongVersions`: EXE5's Team Colonel's).
 pub fn export_sound_versions(
     bank: &SoundBank,
     versions: &sound::SongVersions,
@@ -275,8 +275,8 @@ fn battle_content_of(
 
 // ---- Finding packs -------------------------------------------------------------
 
-/// Where the extractors write their packs (`data/content/bn6`,
-/// `data/content/bn5`), and where a frontend finds them.
+/// Where the extractors write their packs (`data/content/exe6`,
+/// `data/content/exe5`), and where a frontend finds them.
 pub const PACKS: &str = "data/content";
 
 /// The packs directory: `$NETTAI_PACKS`, else `data/content`.
@@ -329,8 +329,8 @@ pub fn find(dir: &Path, overrides: &[PathBuf], report: &mut Report) -> Option<Ve
 pub fn extract_command(game: &str, dir: &Path) -> String {
     let dir = dir.join(game);
     match game {
-        "bn6" => format!("cargo run --release -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> {}", dir.display()),
-        "bn5" => format!("cargo run --release -p bn5-extract -- content <protoman-us> <colonel-us> <protoman-jp> <colonel-jp> {}", dir.display()),
+        "exe6" => format!("cargo run --release -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> {}", dir.display()),
+        "exe5" => format!("cargo run --release -p exe5-extract -- content <protoman-us> <colonel-us> <protoman-jp> <colonel-jp> {}", dir.display()),
         _ => format!("the {game} extractor's `content` command, into {}", dir.display()),
     }
 }
@@ -339,7 +339,7 @@ pub fn extract_command(game: &str, dir: &Path) -> String {
 /// game pack, and its asset pack if one is found.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GameChoice {
-    /// The game pack's id (`bn6`).
+    /// The game pack's id (`exe6`).
     pub game: String,
     /// Its asset pack's directory, if found.
     pub pack: Option<PathBuf>,
@@ -374,7 +374,7 @@ pub fn games(content: Option<&Path>, found: &[Found]) -> Result<Vec<GameChoice>,
 /// The battle content a frontend plays ([`load_game`]): one game.
 pub struct Loaded {
     pub content: nettai_battle::Content,
-    /// The game (`bn6`).
+    /// The game (`exe6`).
     pub game: String,
     /// Its asset pack's directory: the frontend's graphics and sound.
     pub pack: PathBuf,
@@ -496,17 +496,17 @@ mod tests {
     /// directory stands in for the found one of its game.
     #[test]
     fn every_pack_is_found_by_its_game() {
-        let dir = packs("found", &[("bn6", "bn6"), ("five", "bn5")]);
+        let dir = packs("found", &[("exe6", "exe6"), ("five", "exe5")]);
         let mut r = Report::default();
         let found = discover(&dir, &mut r);
         let games: Vec<(&str, &str)> =
             found.iter().map(|f| (f.game.as_str(), f.dir.file_name().unwrap().to_str().unwrap())).collect();
-        assert_eq!(games, [("bn6", "bn6"), ("bn5", "five")]);
+        assert_eq!(games, [("exe6", "exe6"), ("exe5", "five")]);
         assert!(r.issues.is_empty(), "{:?}", r.issues);
-        let other = packs("override", &[("mine", "bn6")]);
+        let other = packs("override", &[("mine", "exe6")]);
         let found = find(&dir, &[other.join("mine")], &mut Report::default()).unwrap();
-        let bn6 = found.iter().find(|f| f.game == "bn6").unwrap();
-        assert_eq!(bn6.dir, other.join("mine"));
+        let exe6 = found.iter().find(|f| f.game == "exe6").unwrap();
+        assert_eq!(exe6.dir, other.join("mine"));
         assert_eq!(found.len(), 2);
         // A manifest that says no game is no pack's.
         std::fs::write(dir.join("five").join(MANIFEST), "format = \"nettai-content\"\nversion = 1\nname = \"x\"\n").unwrap();
@@ -516,7 +516,7 @@ mod tests {
         // None in a directory that isn't there.
         assert!(discover(&dir.join("missing"), &mut Report::default()).is_empty());
         // Two packs of one game: an error.
-        let two = packs("two", &[("a", "bn6"), ("b", "bn6")]);
+        let two = packs("two", &[("a", "exe6"), ("b", "exe6")]);
         let mut r = Report::default();
         assert_eq!(discover(&two, &mut r).len(), 1);
         assert!(r.has_errors());

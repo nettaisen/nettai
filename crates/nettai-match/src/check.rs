@@ -9,11 +9,11 @@
 //!   only with rules that have the forms system,
 //!   each a Cross of the navi's, at most five, none twice; patch cards only
 //!   with rules that have the patch-cards system, each installed once, at
-//!   most [`MAX_CARDS`], their MB together at most [`CARD_MB`] (BN6's menu
+//!   most [`MAX_CARDS`], their MB together at most [`CARD_MB`] (EXE6's menu
 //!   adds no card past 80 MB, `0x08141868`); a NaviCust only for MegaMan
 //!   under rules with the navicust system, on its board (`check_navicust`);
 //!   the folder by its own game's rules (the game's rules'
-//!   `folder_check`, `crate::folders`: BN6's folder editor's), on the stats
+//!   `folder_check`, `crate::folders`: EXE6's folder editor's), on the stats
 //!   the round set up (the NaviCust's and the patch cards' folder limits:
 //!   the original's folder editor and its link battle check read the stats
 //!   the reload made).
@@ -26,7 +26,7 @@ use nettai_battle::patch_cards::MAX_CARDS;
 use nettai_battle::setup::NaviStats;
 use std::sync::Arc;
 
-/// The installed patch cards' MB together at most (BN6's).
+/// The installed patch cards' MB together at most (EXE6's).
 pub const CARD_MB: u32 = 80;
 
 fn check_place(content: &Content, game: &str, p: &Place, at: &str, out: &mut Vec<String>) {
@@ -192,10 +192,10 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
 }
 
 /// What is wrong with a side's NaviCust: it is MegaMan's (the navi that
-/// changes form: BN6 compiles the PET's own navi's alone) under rules with
+/// changes form: EXE6 compiles the PET's own navi's alone) under rules with
 /// the navicust system; the stats set besides are only what the save keeps
 /// through its compile; each program in one of its colors, on the board of
-/// its expansions (BN6's `sub_813BB00`: every cell it covers on the board or
+/// its expansions (EXE6's `sub_813BB00`: every cell it covers on the board or
 /// its frame, not all on the frame), over no other (`sub_813BB68`); copies
 /// of a program in one color all compressed or not (the save keeps it by
 /// program and color: event flag 0x2660 + the part id).
@@ -351,7 +351,7 @@ mod tests {
     use super::*;
     use nettai_battle::navicust::{NaviCust, PlacedProgram};
 
-    /// A MegaMan with a NaviCust of BN6's programs: the navicust system
+    /// A MegaMan with a NaviCust of EXE6's programs: the navicust system
     /// compiles it into the stats the round starts with.
     fn compiled(parts: &[(&str, &str, u8, u8)]) -> (NaviStats, bool, Vec<String>) {
         compiled_at(parts, None)
@@ -359,8 +359,8 @@ mod tests {
 
     /// [`compiled`], MegaMan from a navi code of `level`.
     fn compiled_at(parts: &[(&str, &str, u8, u8)], level: Option<u8>) -> (NaviStats, bool, Vec<String>) {
-        let content = crate::testing::bn6_content();
-        let mut m = crate::draw::live(&content, "bn6", 3, None).unwrap();
+        let content = crate::testing::exe6_content();
+        let mut m = crate::draw::live(&content, "exe6", 3, None).unwrap();
         let s = &mut m.sides[0];
         s.navi_level = level;
         s.stats = crate::Side::base_stats(&content, s.navi, s.game);
@@ -368,7 +368,7 @@ mod tests {
         let placed: Vec<PlacedProgram> = parts
             .iter()
             .map(|&(name, color, x, y)| {
-                let program = ids::navicust_program(&content, "bn6", name).unwrap();
+                let program = ids::navicust_program(&content, "exe6", name).unwrap();
                 let color = content.defs.navicust_program(program).colors.iter().position(|c| c == color).unwrap() as u8;
                 PlacedProgram { program, color, x, y, rotation: 0, compressed: false }
             })
@@ -406,18 +406,18 @@ mod tests {
         assert!(problems.iter().any(|p| p.contains("off the board")), "{problems:?}");
     }
 
-    /// BN5's board grows with its ExpMemry (4x4, 5x4, 5x5, no frame): a
+    /// EXE5's board grows with its ExpMemry (4x4, 5x4, 5x5, no frame): a
     /// program in the fifth column fits from one expansion, one in the fifth
     /// row from two; off the board it is said, as the original's placing
     /// refuses it (0x0813F250). A new side's board is the largest, and the
     /// compile is the same on every board the programs fit.
     #[test]
-    fn bn5s_board_grows_with_its_expansions() {
-        let content = crate::testing::bn5_content();
+    fn exe5s_board_grows_with_its_expansions() {
+        let content = crate::testing::exe5_content();
         assert_eq!(crate::navicust_rules(&content).boards.len(), 3);
-        let m = crate::draw::live(&content, "bn5", 3, None).unwrap();
-        assert_eq!(crate::Match::empty(&content, "bn5").unwrap().sides[0].navicust.map(|n| n.expansions), Some(2));
-        let undersht = ids::navicust_program(&content, "bn5", "undersht").unwrap();
+        let m = crate::draw::live(&content, "exe5", 3, None).unwrap();
+        assert_eq!(crate::Match::empty(&content, "exe5").unwrap().sides[0].navicust.map(|n| n.expansions), Some(2));
+        let undersht = ids::navicust_program(&content, "exe5", "undersht").unwrap();
         // (UnderSht covers its center and the cell above it.)
         let with = |x: u8, y: u8, expansions: u8| {
             let mut m = m.clone();
@@ -454,8 +454,8 @@ mod tests {
     /// which the window's own count of bugs doesn't see).
     #[test]
     fn stats_set_directly_glitch_as_their_bugs_say() {
-        let content = crate::testing::bn6_content();
-        let mut m = crate::draw::live(&content, "bn6", 3, None).unwrap();
+        let content = crate::testing::exe6_content();
+        let mut m = crate::draw::live(&content, "exe6", 3, None).unwrap();
         for s in &mut m.sides {
             s.navicust = None;
         }
@@ -472,7 +472,7 @@ mod tests {
     /// buster's levels to 4, the custom level to 8, the Mega level to 10.
     #[test]
     fn megaman_from_a_navi_code_gets_his_levels_gains() {
-        let content = crate::testing::bn6_content();
+        let content = crate::testing::exe6_content();
         let megaman = content.form_changing_navi().unwrap();
         let parts = [("undersht", "white", 1, 3), ("attack-1", "pink", 5, 2), ("hp-100", "white", 3, 2)];
         let (base, _, problems) = compiled(&parts);

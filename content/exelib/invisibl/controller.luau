@@ -1,6 +1,6 @@
 --!strict
--- Invisibl's dimming controller, as BN5 and BN6 share it (BN6's effect
--- object #0x5D, `sub_80E74D4`, which BN6's second WhiCapsl uses too; BN5's
+-- Invisibl's dimming controller, as EXE5 and EXE6 share it (EXE6's effect
+-- object #0x5D, `sub_80E74D4`, which EXE6's second WhiCapsl uses too; EXE5's
 -- #0x5D): each game makes its own (`invisible.make`: its kind and sound).
 -- The usual dimming phases (@exelib/dimming),
 -- with an effect that turns the user invisible, flashing for the chip's

@@ -20,7 +20,7 @@ toml = "0.8"
 
 [features]
 # `content::testing`: a small hand-authored content set for other crates'
-# tests and examples (made up, not BN6's data).
+# tests and examples (made up, not EXE6's data).
 test-content = []
 # Luau's native code generator, selectable with `Behaviors::load`'s
 # options (deterministic, but not faster for this content:

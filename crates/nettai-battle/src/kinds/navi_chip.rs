@@ -101,7 +101,7 @@ fn counterattack_damage(word: u32) -> u32 {
 
 /// The navi is done (`sub_80BADE4` and the like write 0 through the
 /// pointer they were given): the controller's flag, or, for an object of a
-/// content kind that brought the navi itself (BN5's DethPhnx), its kind's
+/// content kind that brought the navi itself (EXE5's DethPhnx), its kind's
 /// `navi_left`.
 pub fn navi_left(b: &mut Battle, controller: ObjectRef) {
     if let crate::kinds::Vars::NaviChip(v) = &mut b.objects.get_mut(controller).vars {
@@ -220,7 +220,7 @@ fn effect(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// The last navi chip used (`byte_203C960`, BN5's 0x0203C430): the chip
+/// The last navi chip used (`byte_203C960`, EXE5's 0x0203C430): the chip
 /// (the original keeps its navi's number and its parameters, which the
 /// chip's `navi` hook stands for), and the element and the damage word,
 /// bonus included, its navi came with.

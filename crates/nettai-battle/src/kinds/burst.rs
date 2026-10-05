@@ -1,7 +1,7 @@
-//! The burst (effect object #0x90, `sub_80EA364`; BN5 has the same):
-//! spawned around a navi (`sub_80EA438`; BN6's as the navi vanishes into
+//! The burst (effect object #0x90, `sub_80EA364`; EXE5 has the same):
+//! spawned around a navi (`sub_80EA438`; EXE6's as the navi vanishes into
 //! Beast Over, `battle.burst`), it waits 31 ticks, then every 8 ticks sets
-//! off the role effect `burst` (BN6's #0x68) on a panel diagonal to the
+//! off the role effect `burst` (EXE6's #0x68) on a panel diagonal to the
 //! navi's, four in all. Invisible itself.
 
 use crate::battle::Battle;

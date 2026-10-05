@@ -1,5 +1,5 @@
 //! The content scripts' tests, on the hand-authored test content (whose
-//! scripts are this repository's BN6 scripts): what the content registers,
+//! scripts are this repository's EXE6 scripts): what the content registers,
 //! and the Luau runtime's rules (no state kept in the VM, no
 //! nondeterminism, integers only, bounded work).
 
@@ -560,7 +560,7 @@ fn link_chip_setup(chips: &[usize]) -> crate::setup::RoundSetup {
 
 #[test]
 fn the_link_navis_chips_play_and_roll_back() {
-    // Each test link chip runs the action of BN6's link navi's chip (its
+    // Each test link chip runs the action of EXE6's link navi's chip (its
     // CurAction the content action's): every one runs, with what it
     // spawns, and a copy taken at any tick plays on as the battle does.
     let mut seen = std::collections::BTreeMap::new();
@@ -616,9 +616,9 @@ fn registrations_follow_the_content_data() {
     assert!(matches!(plus.usage, crate::content::ChipUsage::Instant(_)), "{:?}", plus.usage);
     assert!(d.weapon(c.weapon_by_key("megaman/tengu-wind")).instant.is_some());
     // A chip's action may be another chip's (the test link chips run
-    // BN6's link navis' chips' actions).
-    for (key, bn6) in testing::LINK_CHIPS.iter().zip(["heatpres", "delecswd", "rslash"]) {
-        let (chip, other) = (d.chip(testing::chip_in(&c, key)), d.chip(testing::chip_in(&c, bn6)));
+    // EXE6's link navis' chips' actions).
+    for (key, exe6) in testing::LINK_CHIPS.iter().zip(["heatpres", "delecswd", "rslash"]) {
+        let (chip, other) = (d.chip(testing::chip_in(&c, key)), d.chip(testing::chip_in(&c, exe6)));
         assert!(matches!(chip.usage, crate::content::ChipUsage::Action(_)), "{key}: {:?}", chip.usage);
         assert_eq!(chip.usage, other.usage, "{key}");
     }
@@ -1362,7 +1362,7 @@ fn gc_timing_does_not_reach_the_battle() {
     assert_eq!(have, want);
 }
 
-/// BN5's dark chips' writes (content/bn5/rules/light-dark): `sub_800AB2E`
+/// EXE5's dark chips' writes (content/exe5/rules/light-dark): `sub_800AB2E`
 /// sets a side's statistic (where `sub_800AB46` adds), the mood is
 /// writable, and battle effect 0x100000 reads as `no_dark_chips`.
 #[test]
@@ -1684,7 +1684,7 @@ fn the_summoned_navi_comes_out_of_a_hole() {
 #[test]
 fn first_barrier_raises_a_barrier() {
     // The NaviCust FirstBarrier (the navi stat): the role's hook, which
-    // the test content fills as BN6's roles do, raises the Barrier chip's
+    // the test content fills as EXE6's roles do, raises the Barrier chip's
     // barrier, with its visual, as the navi comes in.
     let mut s = scenario::setup();
     let content = scenario::content();

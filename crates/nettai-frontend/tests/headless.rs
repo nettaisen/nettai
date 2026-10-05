@@ -82,7 +82,7 @@ fn renders_a_live_battle_to_png() {
     let folder = folder_of(&content, &[("gundels3", 13)]);
     let setup = live_setup(&content, settings, [folder, folder], 1);
     let session = Session::new(Box::new(LivePlayer::new(setup, content.clone())));
-    let out = std::env::temp_dir().join(format!("bn6-frontend-test-{}", std::process::id()));
+    let out = std::env::temp_dir().join(format!("exe6-frontend-test-{}", std::process::id()));
     let wanted: BTreeSet<u32> = [1, 100].into_iter().collect();
     let mut log = |s: &str| panic!("{s}");
     let written = headless::render_frames(&mut renderer, vec![session], &wanted, &out, 1, &mut log).unwrap();

@@ -15,13 +15,13 @@ use names::Lang;
 const USAGE: &str = "\
 usage: nettai-editor [OPTIONS] [MATCH.toml]
 
-  A match is of one game, BN6 or BN5: an opened file's is the one it names,
+  A match is of one game, EXE6 or EXE5: an opened file's is the one it names,
   and a new match's is the one you choose (the editor asks first, with
   none selected; --game answers on the command line). Its content and its
   pack (the chips' pictures) are found as nettai-frontend finds them: the
   packs in the packs directory, $NETTAI_PACKS, else data/content, each by
   its game.
-  --game GAME      a new match's game (bn6 or bn5), in place of the
+  --game GAME      a new match's game (exe6 or exe5), in place of the
                    question; with MATCH.toml, the game it must be of
   --content DIR    the battle content directory (default: $NETTAI_CONTENT,
                    else this repository's content/)

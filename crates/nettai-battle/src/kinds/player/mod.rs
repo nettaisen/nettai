@@ -30,7 +30,7 @@ pub(crate) fn move_lag(b: &Battle, r: ObjectRef) -> u16 {
     idle::move_lag(b, r)
 }
 
-/// BN5's 0x081042E6: a navi's status visuals forgotten (`sub_801A5E2`)
+/// EXE5's 0x081042E6: a navi's status visuals forgotten (`sub_801A5E2`)
 /// and its chips off the HUD (`sub_801DC36`, BattleObject +0x1A, +0x2A).
 pub(crate) fn drop_links(b: &mut Battle, r: ObjectRef) {
     let c = coll_mut(b, r);
@@ -41,7 +41,7 @@ pub(crate) fn drop_links(b: &mut Battle, r: ObjectRef) {
     o.chip = None;
 }
 
-/// BN5's 0x08104306: a navi no player controls leaves: no HP, the side's
+/// EXE5's 0x08104306: a navi no player controls leaves: no HP, the side's
 /// damage-carry record forgets it (`sub_802CDD0`), its reservation goes,
 /// it leaves every slot of the alive lists (0x08006BC2) and its object
 /// goes to its destroy state.
@@ -151,7 +151,7 @@ pub fn spawn(b: &mut Battle, entry: &ActorEntry) -> Option<ObjectRef> {
 /// The player's update (`sub_80EA460`): lifecycle state, then the sprite
 /// step every tick.
 pub fn update(b: &mut Battle, r: ObjectRef) {
-    // A navi no player controls: the navi type's update (BN5's 0x080F2228).
+    // A navi no player controls: the navi type's update (EXE5's 0x080F2228).
     if ai_navi::is_ai_navi(b, r) {
         return ai_navi::update(b, r);
     }
@@ -366,19 +366,19 @@ pub enum Emotion {
     FullSynchro,
     /// (3)
     Angry,
-    /// Mood 0, or exhausted after Beast Over (5). (BN5's mood of 0: a dark
+    /// Mood 0, or exhausted after Beast Over (5). (EXE5's mood of 0: a dark
     /// MegaMan's.)
     WornOut,
-    /// BN5's mood under 65 (its emotion 1, 0x08012740): worried.
+    /// EXE5's mood under 65 (its emotion 1, 0x08012740): worried.
     Worried,
 }
 
-/// `sub_8015B54`: a side's emotion (BN5's: `bn5_emotion`).
+/// `sub_8015B54`: a side's emotion (EXE5's: `exe5_emotion`).
 pub fn emotion(b: &Battle, side: u8) -> Emotion {
     let mood = b.stats[side as usize].mood;
     let p = b.player(side).expect("side has a player");
-    if b.game_rules().emotions == Emotions::Bn5 {
-        return bn5_emotion(b, p, mood);
+    if b.game_rules().emotions == Emotions::Exe5 {
+        return exe5_emotion(b, p, mood);
     }
     let a = ai(b, p);
     if a.exhausted || mood == 0 {
@@ -394,12 +394,12 @@ pub fn emotion(b: &Battle, side: u8) -> Emotion {
     }
 }
 
-/// BN5's 0x0801270C (0x08012740; in battle mode 1, 0x080127C0: Full
+/// EXE5's 0x0801270C (0x08012740; in battle mode 1, 0x080127C0: Full
 /// Synchro or normal): in a soul (NaviStats +0x2C), the soul's own face
 /// (its emotion 4), which nothing doubles or ends; then anger (AIData
 /// +0x34), a mood of 0 (5: a dark MegaMan's), Full Synchro (0xFF), normal
 /// (65 and up), else worried (1).
-fn bn5_emotion(b: &Battle, p: ObjectRef, mood: u8) -> Emotion {
+fn exe5_emotion(b: &Battle, p: ObjectRef, mood: u8) -> Emotion {
     if battle_mode(b) == 1 {
         return if mood == 0xFF { Emotion::FullSynchro } else { Emotion::Normal };
     }
@@ -422,22 +422,22 @@ fn bn5_emotion(b: &Battle, p: ObjectRef, mood: u8) -> Emotion {
 /// side's is spent.
 const STOOD: usize = 1;
 
-/// What BN5's 0x0802C16C finds of a navi a loss of HP has brought to 0.
+/// What EXE5's 0x0802C16C finds of a navi a loss of HP has brought to 0.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum LastStand {
-    /// A player MegaMan of BN5's emotion 5 whose side hasn't stood: he
-    /// holds at 1 HP and asks for the volley (BN5's action 0x30).
+    /// A player MegaMan of EXE5's emotion 5 whose side hasn't stood: he
+    /// holds at 1 HP and asks for the volley (EXE5's action 0x30).
     Holds,
     /// Not; and whether the register r1 its callers read next is left
-    /// non-zero (BN5's `applyDamageToPlayer` takes it for HP left, and
+    /// non-zero (EXE5's `applyDamageToPlayer` takes it for HP left, and
     /// shows the hit).
     Falls { shows: bool },
 }
 
-/// BN5's 0x0802C16C: a player MegaMan (AIData +0, +1: actor type 2, AI
+/// EXE5's 0x0802C16C: a player MegaMan (AIData +0, +1: actor type 2, AI
 /// index 0), NaviStats +0x2A clear (which the own-gauges mode's init
 /// reads, 0x0802D590: the engine has it as that mode), his side not stood
-/// yet (0x0800931C(side, 1)), of BN5's emotion 5 (0x0801270C: a mood of 0,
+/// yet (0x0800931C(side, 1)), of EXE5's emotion 5 (0x0801270C: a mood of 0,
 /// out of a soul and unangry, never in battle mode 1). What it leaves in r1
 /// on a fall: the actor type, the AI index, the NaviStats pointer, 1, else
 /// the soul (NaviStats +0x2C).
@@ -464,7 +464,7 @@ pub(crate) fn hold_last_stand(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).requests |= request::VOLLEY;
 }
 
-/// BN5's 0x0800C734: what a player's loss drains of its side's gauge in
+/// EXE5's 0x0800C734: what a player's loss drains of its side's gauge in
 /// the own-gauges mode, by its size.
 fn gauge_loss(amount: u16) -> u32 {
     match amount {
@@ -475,11 +475,11 @@ fn gauge_loss(amount: u16) -> u32 {
     }
 }
 
-/// BN5's `object_subtractHP` (0x0800C6E0): a player's loss first drains
+/// EXE5's `object_subtractHP` (0x0800C6E0): a player's loss first drains
 /// its side's gauge (0x0802D4C0: by the loss ×128, in the own-gauges mode
 /// mode by `gauge_loss`), then the HP goes down, to 0, where the last
 /// stand may hold. Whether r1 is left non-zero (`kinds::subtract_hp`).
-pub(crate) fn bn5_lose_hp(b: &mut Battle, r: ObjectRef, amount: u16) -> bool {
+pub(crate) fn exe5_lose_hp(b: &mut Battle, r: ObjectRef, amount: u16) -> bool {
     let player = b.objects.get(r).actor.is_some_and(|id| b.actors.get(id).actor_type == ActorType::Player);
     if player {
         let drain = if own_gauges(b) { gauge_loss(amount) } else { (amount as u32) << 7 };
@@ -509,7 +509,7 @@ pub fn shows_face_variant(b: &Battle, side: u8) -> bool {
 }
 
 /// Presentation: the second set for the side's base form when its rules
-/// ask (`SideLooks::face_variant`: BN5's Hub Style, 0x0801AF8E's picture 11
+/// ask (`SideLooks::face_variant`: EXE5's Hub Style, 0x0801AF8E's picture 11
 /// on, which a soul's face doesn't take). Part of the picture as it is
 /// picked.
 pub fn face_hub(b: &Battle, side: u8) -> bool {
@@ -518,7 +518,7 @@ pub fn face_hub(b: &Battle, side: u8) -> bool {
 }
 
 /// Presentation: the second set while the side's navi's Chaos Unison charge
-/// is armed (BN5's 0x080125F6, AIData +0x12: the face's palette 11 on, a
+/// is armed (EXE5's 0x080125F6, AIData +0x12: the face's palette 11 on, a
 /// soul's Chaos Unison look), whichever picture the window shows: the
 /// original reads it as it draws (0x08019704).
 pub fn face_chaos(b: &Battle, side: u8) -> bool {
@@ -533,12 +533,12 @@ pub(crate) fn mood_held(b: &Battle, r: ObjectRef) -> bool {
 }
 
 /// `sub_8015BEC`: set a side's mood, unless its navi's mood is held
-/// (BN5's 0x080127D6: unless the mood is 0).
+/// (EXE5's 0x080127D6: unless the mood is 0).
 pub(crate) fn set_mood(b: &mut Battle, side: u8, mood: u8) {
     let Some(p) = b.player(side) else { return };
     let held = match b.game_rules().emotions {
-        Emotions::Bn6 => mood_held(b, p),
-        Emotions::Bn5 => b.stats[side as usize].mood == 0,
+        Emotions::Exe6 => mood_held(b, p),
+        Emotions::Exe5 => b.stats[side as usize].mood == 0,
     };
     if held {
         return;
@@ -546,7 +546,7 @@ pub(crate) fn set_mood(b: &mut Battle, side: u8, mood: u8) {
     b.stats[side as usize].mood = mood;
 }
 
-/// BN5's 0x08012802: a side's mood rises by `n`, to 254 at most; a mood
+/// EXE5's 0x08012802: a side's mood rises by `n`, to 254 at most; a mood
 /// of 0 or 0xFF (Full Synchro) stays.
 pub(crate) fn gain_mood(b: &mut Battle, side: u8, n: u16) {
     let s = &mut b.stats[side as usize & 1];
@@ -555,7 +555,7 @@ pub(crate) fn gain_mood(b: &mut Battle, side: u8, n: u16) {
     }
 }
 
-/// `sub_8015C12` (BN5's 0x08012820): a side's mood falls by `n`, to 1 at
+/// `sub_8015C12` (EXE5's 0x08012820): a side's mood falls by `n`, to 1 at
 /// least; a mood of 0 stays.
 pub(crate) fn lose_mood(b: &mut Battle, side: u8, n: u16) {
     let s = &mut b.stats[side as usize & 1];
@@ -664,7 +664,7 @@ pub(crate) fn end_attack(b: &mut Battle, r: ObjectRef) {
         match kind {
             2 => a.lockout = a.attack.lockout,
             3 => a.back_special_cooldown = a.attack.lockout,
-            // BN5's chaos failure disarms the Chaos Unison charge
+            // EXE5's chaos failure disarms the Chaos Unison charge
             // (0x0800F2D0).
             idle::CHAOS_FAILURE_KIND => a.chaos.armed = false,
             _ => {}
@@ -811,7 +811,7 @@ pub(crate) fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_80C44D2`: restart `overlay`, what the navi `r` wears, by its game's
-/// rules: BN6's steps it at once, BN5's (0x080C374E) has it reload its
+/// rules: EXE6's steps it at once, EXE5's (0x080C374E) has it reload its
 /// animation at its next step.
 pub(crate) fn restart_overlay(b: &mut Battle, overlay: ObjectRef) {
     match b.game_rules().overlay_restart {
@@ -830,7 +830,7 @@ pub(crate) fn prepare_chip(b: &mut Battle, r: ObjectRef) {
 // ---- The transformation sequencer's checks -------------------------------------
 
 // (`sub_80159C6`, the turn-start check that a Beast Out whose counter ran
-// out reverts, is BN6's beast system's `turn_check`: content/bn6/rules/
+// out reverts, is EXE6's beast system's `turn_check`: content/exe6/rules/
 // beast/system.luau.)
 
 /// `sub_80159A2`: a form reversion is pending or running.
@@ -889,7 +889,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
         b.objects.get_mut(r).identity = b.content.form_identity(s.navi, s.form);
     }
     // sub_8011268: the starting form's overlay. A base form's is its navi's
-    // init hook's, below (BN6's base form wears nothing; BN5's init has no
+    // init hook's, below (EXE6's base form wears nothing; EXE5's init has no
     // call here, its base form's routine being MegaMan's record's hook).
     if !b.content.form(s.form).base {
         form::put_on_overlay(b, r, s.form);
@@ -1007,7 +1007,7 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
     let eff = b.setup.settings.effects;
     if eff & effects::LINK != 0 || eff & 0x1_0000 != 0 || stats(b, r).mood != 0xFF {
         // sub_8015C2C: the starting mood (the side's systems may say
-        // another: BN5's light and dark system's, by the light/dark value,
+        // another: EXE5's light and dark system's, by the light/dark value,
         // 0x0801283A).
         let side = b.objects.get(r).alliance;
         let mood = b.systems_starting_mood(side).unwrap_or(0x80);
@@ -1023,7 +1023,7 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
         let hook = b.roles().hook(crate::content::HookRole::FirstBarrier);
         crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::RoleNavi { navi: r });
     }
-    // (BN6's emotion system holds a navi whose Beast Out counter is spent
+    // (EXE6's emotion system holds a navi whose Beast Out counter is spent
     // tired from the round's start.)
     reset_navicust_state(b, r);
 }
@@ -1110,13 +1110,13 @@ pub(crate) fn reset_status(b: &mut Battle, r: ObjectRef) {
 fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
     let side = b.objects.get(r).alliance as usize;
     b.hands[side].charge_bonus = [0; 6];
-    // BN5's (0x08011B3C, 0x080CAC30) disarms the side's ColonelSoul army
-    // (`obstacle::Soldiers`; the form's reset below arms it again): BN6
+    // EXE5's (0x08011B3C, 0x080CAC30) disarms the side's ColonelSoul army
+    // (`obstacle::Soldiers`; the form's reset below arms it again): EXE6
     // has none to disarm.
     b.obstacle_soldiers[side & 1].armed = false;
     ai_mut(b, r).status &= !0x20;
     // (Netbattle, local player: removes the opponent's HUD entry.)
-    // BN5's 0x08011B74: a form's priming is spent (BN6 never primes).
+    // EXE5's 0x08011B74: a form's priming is spent (EXE6 never primes).
     ai_mut(b, r).primed = false;
     let hm = body_hit_modifier(b);
     let anchor = b.anchor_region();
@@ -1162,7 +1162,7 @@ fn load_weapons(b: &mut Battle, r: ObjectRef) {
         a.alt_a_charge = w.alt_a_charge;
         a.chaos.weapon = w.chaos;
     }
-    // BN5's load (0x0800DCD8) disarms a Chaos Unison charge.
+    // EXE5's load (0x0800DCD8) disarms a Chaos Unison charge.
     a.chaos.armed = false;
 }
 
@@ -1273,7 +1273,7 @@ fn apply_starting_hp_bug(b: &mut Battle, r: ObjectRef) {
 /// `sub_80EA484`: the per-tick pipeline (§12.M M1).
 fn tick(b: &mut Battle, r: ObjectRef) {
     input::update(b, r);
-    // The side's systems' tick for the navi, if one asked (BN6's NaviCust
+    // The side's systems' tick for the navi, if one asked (EXE6's NaviCust
     // emotion-swing bug, `sub_8013DA0`), not while paused.
     if !b.paused && ai(b, r).ticked {
         let side = b.objects.get(r).alliance;
@@ -1310,7 +1310,7 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
         b.objects.sprite_mut(r).look.color_shader = shader;
         return;
     }
-    // The side's systems may pick it (BN5's 0x0800DD94: its light and dark
+    // The side's systems may pick it (EXE5's 0x0800DD94: its light and dark
     // system's).
     let side = b.objects.get(r).alliance;
     if let Some(palette) = b.systems_navi_palette(side, r) {
@@ -1337,10 +1337,10 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
         if base {
             by_mood.wrapping_add(style)
         } else if mood_palette {
-            // (BN6's Beast Out.)
+            // (EXE6's Beast Out.)
             by_mood
         } else if soul && ai(b, r).chaos.armed {
-            // BN5's soul (0x0800DDCA): palette 2 while its Chaos Unison
+            // EXE5's soul (0x0800DDCA): palette 2 while its Chaos Unison
             // charge is armed.
             2
         } else {
@@ -1358,12 +1358,12 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
 /// level, `byte_802136D`: the navi's `fire_charge`; ChargeCross's 100:
 /// the form's), and the height clamp of a navi that changes form.
 fn per_form_tick(b: &mut Battle, r: ObjectRef) {
-    // The form's own part (BN5's MegaMan's routine, 0x080F04CE: by soul).
+    // The form's own part (EXE5's MegaMan's routine, 0x080F04CE: by soul).
     let form = stats(b, r).form;
     if let Some(f) = b.content.defs.form(form).tick {
         crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
     }
-    // (BN5's runs none of the rest: the status rules' `form_tick`.)
+    // (EXE5's runs none of the rest: the status rules' `form_tick`.)
     if !b.game_rules().form_tick {
         return;
     }

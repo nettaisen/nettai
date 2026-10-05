@@ -66,7 +66,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize & 1;
     b.chip_hud[side].window = super::input::chips_enabled(b, r);
     phase_timer(b, r);
-    // A controlled form (BN6's Beast Over): the side's systems' controller
+    // A controlled form (EXE6's Beast Over): the side's systems' controller
     // decides (`sub_802D322`, the berserk).
     if form_of(b, r).traits.has(crate::content::FormTraits::CONTROLLED) {
         match b.systems_controller(side as u8, r) {
@@ -96,7 +96,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     if b.sides[side].select_special != 0 {
         return select_special(b, r);
     }
-    // A system's takeover (BN6's Cross special, `sub_802D4C6`): the side's
+    // A system's takeover (EXE6's Cross special, `sub_802D4C6`): the side's
     // systems' `takeover` decides, and ends it.
     if b.sides[side].takeover != 0 {
         match b.systems_takeover(side as u8, r) {
@@ -145,7 +145,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         let kind = if sticky { 2 } else { 1 };
         return set_attack(b, r, action, kind);
     }
-    // BN5's Chaos Unison releases (0x080F034E, 0x080F0382).
+    // EXE5's Chaos Unison releases (0x080F034E, 0x080F0382).
     if f & request::CHAOS_SUCCESS != 0 {
         return chaos_success(b, r);
     }
@@ -165,8 +165,8 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     if let Some(chip) = super::chip_use::use_chip(b, r) {
         return after_chip(b, r, chip);
     }
-    // BN5's no-charge drive (0x080F03E4): the side's systems take the step
-    // a navi with the no-charge state would take (DarkInvs: BN5's
+    // EXE5's no-charge drive (0x080F03E4): the side's systems take the step
+    // a navi with the no-charge state would take (DarkInvs: EXE5's
     // computer-navi AI, 0x0802B4AC), and reset their drive's state for one
     // without it (0x0802C03A); a system that answers has decided.
     if b.game_rules().intake.no_charge_drive && b.systems_controller_answer(side as u8, r).is_some() {
@@ -233,7 +233,7 @@ fn start_specials(b: &mut Battle, r: ObjectRef) {
         b.sides[side].select_special = 1;
         clear_special_selection(b, r);
     }
-    // A takeover asked for (BN6's Cross special): the side's systems start
+    // A takeover asked for (EXE6's Cross special): the side's systems start
     // it (`takeover_requested`).
     if ai(b, r).requests & request::TAKEOVER != 0 {
         ai_mut(b, r).requests &= !request::TAKEOVER;
@@ -264,7 +264,7 @@ fn select_special(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).requests &= !request::SELECT_SPECIAL;
 }
 
-/// BN5's 0x080F034E: a Chaos Unison charge released in its window: the
+/// EXE5's 0x080F034E: a Chaos Unison charge released in its window: the
 /// chaos level rises (at most 4) and the soul's chaos weapon fires
 /// (0x0800F338: the side's statistic 0 counts it), an attack of kind 5
 /// (the charge stays armed).
@@ -279,13 +279,13 @@ fn chaos_success(b: &mut Battle, r: ObjectRef) {
     set_attack(b, r, action, CHAOS_WEAPON_KIND);
 }
 
-/// The attack kinds of the chaos releases (BN5's `set_attack` slots 5 and
+/// The attack kinds of the chaos releases (EXE5's `set_attack` slots 5 and
 /// 6): the failure's end disarms the charge (`end_attack`).
 pub(crate) const CHAOS_WEAPON_KIND: u8 = 5;
 pub(crate) const CHAOS_FAILURE_KIND: u8 = 6;
 
-/// BN5's 0x080F0382: released out of the window: uninterruptible, the
-/// chaos failure (BN5's action 0x39, the role `chaos_failure`).
+/// EXE5's 0x080F0382: released out of the window: uninterruptible, the
+/// chaos failure (EXE5's action 0x39, the role `chaos_failure`).
 fn chaos_failure(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).status |= status::UNINTERRUPTIBLE;
     leave_idle(b, r);
@@ -558,7 +558,7 @@ pub(crate) fn start_move(b: &mut Battle, r: ObjectRef, dir: u8) {
 }
 
 /// `sub_8010332`: ticks of lag at the end of a move (4 for MegaMan, but
-/// in a form with its own: BN5's ShadowSoul's 0, 0x0800E0D2).
+/// in a form with its own: EXE5's ShadowSoul's 0, 0x0800E0D2).
 pub(super) fn move_lag(b: &Battle, r: ObjectRef) -> u16 {
     if super::battle_mode(b) == 9 {
         return 1;

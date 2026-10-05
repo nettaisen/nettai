@@ -1,12 +1,12 @@
 --!strict
--- A gust, as BN5 and BN6 share it (attack object #0x49 in both: BN6's `sub_80CD2EC`, BN5's 0x080CEA0C, the same code
+-- A gust, as EXE5 and EXE6 share it (attack object #0x49 in both: EXE6's `sub_80CD2EC`, EXE5's 0x080CEA0C, the same code
 -- but for what the game's `GustLook` says): a wind that blows along its row 10 pixels a tick, pushing what it hits,
--- until it leaves the field, reaches a panel it can't cross, is hit by a wind stopper (BN6's), or (as some spawners
+-- until it leaves the field, reaches a panel it can't cross, is hit by a wind stopper (EXE6's), or (as some spawners
 -- ask) hits anything. Each game makes its kind (`gust.make_kind`).
 --
 -- How it blows (`GustHow`, the original's first parameter): `pulls` (bit 0) turns it back toward its side, in its
 -- other palette; `unseen` (bit 7) hides it and lets it blow through any panel. A gust that pulls pushes weaker (hit
--- modifier 4 rather than 8); BN5's, any first parameter but 0 (an unseen one too).
+-- modifier 4 rather than 8); EXE5's, any first parameter but 0 (an unseen one too).
 
 local gust = {}
 
@@ -56,7 +56,7 @@ end
 
 -- A game's gust kind, keyed `id`, of `look`.
 function gust.make_kind(id: string, look: GustLook): Kind
-    -- (BN6's `sub_80CD414`, BN5's 0x080CEB30): blow on; end on a stopping hit, off the field, or (unless unseen) on
+    -- (EXE6's `sub_80CD414`, EXE5's 0x080CEB30): blow on; end on a stopping hit, off the field, or (unless unseen) on
     -- a panel it can't blow over (the game's table by side: the other side's panels; a side of 2, a turned navi's
     -- side shifted by its flip, reads the code after the table).
     local function blow(me: Object)
@@ -88,7 +88,7 @@ function gust.make_kind(id: string, look: GustLook): Kind
         end
     end
 
-    -- (BN6's `sub_80CD3B0`): resolve its hits, then blow on (and register again).
+    -- (EXE6's `sub_80CD3B0`): resolve its hits, then blow on (and register again).
     local function tick(me: Object)
         local s = me.state :: State
         local c = me.collision
@@ -111,7 +111,7 @@ function gust.make_kind(id: string, look: GustLook): Kind
         c:present()
     end
 
-    -- (BN6's `sub_80CD310`): its look, its speed along the row (the way a pull turns it), its registration.
+    -- (EXE6's `sub_80CD310`): its look, its speed along the row (the way a pull turns it), its registration.
     local function init(me: Object)
         local s = me.state :: State
         if not s.unseen then
@@ -150,7 +150,7 @@ function gust.make_kind(id: string, look: GustLook): Kind
         id = id,
         pool = "attack",
         state = { stop_on_hit = "bool", holder = "object", slot = "u8", pulls = "bool", unseen = "bool" },
-        -- (BN6's `sub_80CD2EC`.)
+        -- (EXE6's `sub_80CD2EC`.)
         update = function(me: Object)
             local l = me.lifecycle
             if l == "init" then
@@ -165,7 +165,7 @@ function gust.make_kind(id: string, look: GustLook): Kind
     }
 end
 
--- (BN6's `sub_80CD488`): a gust of `kind` on (x, y) for side `alliance` and flip `flip` (the spawner's halfword),
+-- (EXE6's `sub_80CD488`): a gust of `kind` on (x, y) for side `alliance` and flip `flip` (the spawner's halfword),
 -- blowing as `how` says, with the damage word `damage`, and the spawner that tracks it by `holder.state.gusts[slot]`
 -- (which becomes 1), if any. Its position is the spawner's registers, which its init overwrites.
 function gust.spawn(
@@ -197,7 +197,7 @@ function gust.spawn(
     return o
 end
 
--- (BN6's `sub_80CD4AC`, BN5's 0x080CEBC8: the instant effect TenguCross's B+Back, BN6's patch card dustman's and BN5's
+-- (EXE6's `sub_80CD4AC`, EXE5's 0x080CEBC8: the instant effect TenguCross's B+Back, EXE6's patch card dustman's and EXE5's
 -- patch cards' Vacuum have): a gust of `kind` in each row, from column 6 when the user faces right (1 when it faces
 -- left), pulling. Their side is the user's shifted by its flip (the game's `lsl`), their flip 0; no damage, nothing
 -- tracks them; then `sound`.

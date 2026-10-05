@@ -1,6 +1,6 @@
 --!strict
--- The bullet, as BN5 and BN6 share it (BN6's attack object #0x12,
--- `sub_80C6946`; BN5's #0x12, 0x080C6B98): the
+-- The bullet, as EXE5 and EXE6 share it (EXE6's attack object #0x12,
+-- `sub_80C6946`; EXE5's #0x12, 0x080C6B98): the
 -- Vulcans' and Spreaders' shot, SpoutCross's charged shot, ColArmy's and
 -- ColForce's soldiers'. An unseen probe that steps a panel a tick from where it
 -- appears; on the first thing it would hit it bursts there: its variant's

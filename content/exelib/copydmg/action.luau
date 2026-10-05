@@ -1,7 +1,7 @@
 --!strict
--- CopyDmg's action (BN6's action 0x23, `sub_80ECA34`; BN5's 0x24,
+-- CopyDmg's action (EXE6's action 0x23, `sub_80ECA34`; EXE5's 0x24,
 -- 0x080ECEFE), made for a game (`action.make`): the navi raises its buster
--- and, on the next tick, fires what its chip sends (BN6's mark, BN5's by
+-- and, on the next tick, fires what its chip sends (EXE6's mark, EXE5's by
 -- the chip's subtype from 0x080ECF78: 0 the mark, 1 a sword wave, which no
 -- chip sends) along its row from the panel ahead. 5 ticks, then 11 of
 -- recovery.
@@ -18,7 +18,7 @@ local SHOOT, RECOVER = 0x0, 0x4
 
 -- A game's CopyDmg action.
 function action.make(spec: CopyDamageSpec): Action
-    -- `sub_80ECA50` (BN5's 0x080ECF18): the buster up; the shot flies on
+    -- `sub_80ECA50` (EXE5's 0x080ECF18): the buster up; the shot flies on
     -- the second tick.
     local function shoot(me: Object, s: State)
         if me.step_init == 0 then
@@ -43,7 +43,7 @@ function action.make(spec: CopyDamageSpec): Action
         end
     end
 
-    -- `sub_80ECAA4` (BN5's 0x080ECF84): 11 ticks, then the arm goes and
+    -- `sub_80ECAA4` (EXE5's 0x080ECF84): 11 ticks, then the arm goes and
     -- back to idle.
     local function recover(me: Object, s: State)
         if me.step_init == 0 then
@@ -59,7 +59,7 @@ function action.make(spec: CopyDamageSpec): Action
         end
     end
 
-    -- `sub_80ECA34` (BN5's 0x080ECEFE).
+    -- `sub_80ECA34` (EXE5's 0x080ECEFE).
     local function update(me: Object, s: State)
         local step = me.step
         if step == SHOOT then

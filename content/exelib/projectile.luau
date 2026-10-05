@@ -1,5 +1,5 @@
 --!strict
--- Firing the projectile, as BN5 and BN6 share it (@exelib/projectile/projectile,
+-- Firing the projectile, as EXE5 and EXE6 share it (@exelib/projectile/projectile,
 -- the original's attack object #0), of a game's kind and buster
 -- (`projectile.make`): the shot of the buster and the charged shot, the cannons, AirShot,
 -- Reflectr and more. An action fires one with `projectile.fire`, from the

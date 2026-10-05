@@ -1,7 +1,7 @@
 --!strict
 -- The link navis' own chips (the original's action 0x0A, the entry the
 -- user's own action table has past its idle: `off_80EA4C8[AIIndex][0xA]`):
--- what their routines share, any game's (no game's data in it; BN6's
+-- what their routines share, any game's (no game's data in it; EXE6's
 -- lib/link_chips is this). Each navi's chip is its own action, in its
 -- folder (navis/heatman/chip.luau: HeatPres), which the chip runs; which
 -- navi has which chip is the navi's (its own chip). See

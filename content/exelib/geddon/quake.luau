@@ -1,6 +1,6 @@
 --!strict
--- Geddon's quake, as BN5 and BN6 share it (BN6's effect object #0x1E, `sub_80E25D0`; BN5's #0x1E, the same code;
--- BN6's docs/engine/dimming-chip-effects.md §12): it lists the field's solid panels, shuffles them, and changes one
+-- Geddon's quake, as EXE5 and EXE6 share it (EXE6's effect object #0x1E, `sub_80E25D0`; EXE5's #0x1E, the same code;
+-- EXE6's docs/engine/dimming-chip-effects.md §12): it lists the field's solid panels, shuffles them, and changes one
 -- every 8 ticks, the last listed first (Geddon breaks them, the capsules crack them, a third change no chip uses
 -- poisons them), with a puff over each that changed; then it lets its holder go on. Geddon's and the capsules'
 -- controller (@exelib/geddon/controller) spawns it.

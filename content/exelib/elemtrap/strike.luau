@@ -1,6 +1,6 @@
 --!strict
--- ElemTrap's counterattack, as BN5 and BN6 share it (BN6's effect object
--- #0x2B, `sub_80E35A4`; BN5's #0x2B, 0x080E3818): a dimming controller its
+-- ElemTrap's counterattack, as EXE5 and EXE6 share it (EXE6's effect object
+-- #0x2B, `sub_80E35A4`; EXE5's #0x2B, 0x080E3818): a dimming controller its
 -- trap (./trap) starts when it
 -- springs, right after the trap in the update list (the Japanese games'
 -- placement; see `strike.spawn`). The usual dimming phases
@@ -108,8 +108,8 @@ end
 
 -- `sub_80E360E`: the counterattack for `user`, of `element`, with the
 -- trap's damage word and bonus. It goes right after the trap in the update
--- list, so it first runs later this tick: the Japanese games' routine (EXE6
--- Falzar 0x080E81E6, EXE6 Gregar 0x080E9516) spawns it with
+-- list, so it first runs later this tick: the Japanese games' routine (JP
+-- Falzar 0x080E81E6, JP Gregar 0x080E9516) spawns it with
 -- `object_spawnType4`, as `battle.spawn` does. The US games' spawns it at
 -- the head of the list (`sub_80033E4`, US only), so it first runs next
 -- tick; the content follows the Japanese games on every console (the

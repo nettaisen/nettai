@@ -1,5 +1,5 @@
 --!strict
--- MegaMan's charged shot, as BN5 and BN6 share it (BN6's action 0x16, `sub_80EBE00`; BN5's 0x1E, the same code but
+-- MegaMan's charged shot, as EXE5 and EXE6 share it (EXE6's action 0x16, `sub_80EBE00`; EXE5's 0x1E, the same code but
 -- for its muzzle flash's attachment row), of a game's `MegaManShotLook` (`charged_shot.action`): it waits 5 ticks,
 -- raises the buster, and on the next tick the projectile flies from the panel in front with a muzzle flash in the
 -- navi's first related slot; after five ticks, the recovery, which a move may cut short. See
@@ -55,7 +55,7 @@ local function shoot(me: Object, s: State, look: MegaManShotLook)
 end
 
 -- `sub_80EBE20`: wait; then the shot starts at once. (Its entry also
--- calls `nullsub_12` with the panel in front.) BN5's (0x080EC9F0) waits in
+-- calls `nullsub_12` with the panel in front.) EXE5's (0x080EC9F0) waits in
 -- the own-gauges mode alone (`look.waits`), the shot else starting on
 -- its first tick.
 local function wait(me: Object, s: State, look: MegaManShotLook)

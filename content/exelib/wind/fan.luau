@@ -1,5 +1,5 @@
 --!strict
--- The fan Wind and Fan place (attack object #0x48, BN6's `sub_80CCFDC`, BN5's 0x080CE734: the same code but where
+-- The fan Wind and Fan place (attack object #0x48, EXE6's `sub_80CCFDC`, EXE5's 0x080CE734: the same code but where
 -- the look says; docs/engine/dimming-chip-effects.md §1): a field obstacle with 40 HP that stands for 1440 ticks and,
 -- from its second update, is its side's wind and blows a gust along the enemy's rows every 12 ticks, rows 2, 1, 3 in
 -- turn: Wind's push away from the enemy's front column, Fan's pull from the far column. What differs between the two
@@ -136,14 +136,14 @@ function fan.make(look: FanLook): Fan
     end
 
     -- `sub_80CD1BE`: leave the field: broken (an explosion), removed by a chip
-    -- (a puff, or blinking out: BN6's), or absorbed (BN6's); no longer its side's wind.
+    -- (a puff, or blinking out: EXE6's), or absorbed (EXE6's); no longer its side's wind.
     local function destroyed(me: Object)
         local how = obstacle.removal(me)
         if how == "broken" then
             battle.play_sound(look.break_sound)
             battle.effect(me.pos, look.explosion)
         elseif not look.absorbs then
-            -- BN5's (0x080CE90E): any removal leaves a puff.
+            -- EXE5's (0x080CE90E): any removal leaves a puff.
             local p = me.pos
             battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), look.puff)
         elseif how == "absorbed" then

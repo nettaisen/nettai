@@ -1,13 +1,13 @@
 --!strict
--- MetrKnuk's dimming controller, as BN6 and BN5 share it (BN6's effect
--- object #0x76, `sub_80E8B00`; BN5's #0x76, 0x080E9188;
+-- MetrKnuk's dimming controller, as EXE6 and EXE5 share it (EXE6's effect
+-- object #0x76, `sub_80E8B00`; EXE5's #0x76, 0x080E9188;
 -- docs/engine/dimming-chip-effects.md §18): the usual dimming phases
 -- (../dimming), with an effect that throws 16 fists (./fist) at the enemy's
 -- area, 8 ticks apart, at random panels around the enemies (never the last
--- one twice in a row). BN6's first goes at a random panel an enemy stands
--- on, and with no enemy standing the others go at the enemy's area; BN5's
+-- one twice in a row). EXE6's first goes at a random panel an enemy stands
+-- on, and with no enemy standing the others go at the enemy's area; EXE5's
 -- first goes around the enemies too, and with none standing no fist goes.
--- BN5's fists are null. Each game makes its kind (`controller.make`).
+-- EXE5's fists are null. Each game makes its kind (`controller.make`).
 
 local dimming_chips = require("../dimming")
 local panels = require("../panels")
@@ -19,11 +19,11 @@ export type Spec = {
     id: string,
     -- A fist over (x, y) at height z with the damage word: the game's.
     fist: (spawner: Object, x: number, y: number, element: number, z: number, damage: number) -> Object?,
-    -- BN6's: the first fist at an enemy's own panel (`sub_80E8C44`), and the
+    -- EXE6's: the first fist at an enemy's own panel (`sub_80E8C44`), and the
     -- enemy's whole area when no enemy stands (`sub_80E8CFA`).
     first_on_body: boolean,
     area_fallback: boolean,
-    -- BN6's fists take the chip's element; BN5's are null (0x080E9268).
+    -- EXE6's fists take the chip's element; EXE5's are null (0x080E9268).
     fists_take_element: boolean,
 }
 
@@ -44,7 +44,7 @@ local BETWEEN = 6
 -- The height the fists fall from.
 local HEIGHT = 0x78_0000
 -- The panels of the other side, by the controller's side, with an enemy
--- body on them (BN6's `byte_80E8D6C`), or any (`byte_80E8D58`).
+-- body on them (EXE6's `byte_80E8D6C`), or any (`byte_80E8D58`).
 local ENEMY_BODY = { [0] = { require = 0x04010020, forbid = 0 }, [1] = { require = 0x08010000, forbid = 0x20 } }
 local ENEMY_AREA = { [0] = { require = 0x00010020, forbid = 0 }, [1] = { require = 0x00010000, forbid = 0x20 } }
 -- `byte_80E8D80`: a body's 3x3, which `sub_80E8CC4` walks from the last.
@@ -108,7 +108,7 @@ function controller.make(spec: Spec): { kind: Kind, hook: (user: Object, dspec: 
     -- `sub_80E8BF8`: the marked panels of the enemy's area but the last
     -- target (`sub_80E8D92`: rows 4 to 1, columns 7 to 1, past the field
     -- too, whose flags meet nothing), one at random (a `rng_positive` draw);
-    -- 0 when none. (BN5's with no enemy standing: none, at once.)
+    -- 0 when none. (EXE5's with no enemy standing: none, at once.)
     local function next_target(me: Object, s: State): number
         if not mark_around_bodies(me, s) then
             if not spec.area_fallback then

@@ -1,4 +1,4 @@
-//! The custom screen (BN6 ruleset): between turns each player deals chips
+//! The custom screen (EXE6 ruleset): between turns each player deals chips
 //! from their folder, picks some with their joypad (and maybe Beast Out or
 //! a Cross), and presses OK; the hand is built and sent over the link, and
 //! the fight resumes once both players' results are in.
@@ -47,7 +47,7 @@ pub const MAX_NAVI_LEVEL: u8 = 14;
 /// What a player brings to a round that only their own console knows in
 /// the original: the battle folder (shuffled at the round's init), what
 /// their save holds that the battle reads, and what their ruleset's
-/// systems take (BN6's: the game version and what the save unlocks on the
+/// systems take (EXE6's: the game version and what the save unlocks on the
 /// custom screen, in its systems' setup blocks).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PlayerSetup {
@@ -59,7 +59,7 @@ pub struct PlayerSetup {
     /// The level of the navi code the save received (0 to
     /// [`MAX_NAVI_LEVEL`]; event flag 0x163 set), which the init exchange
     /// shares (`sub_800B144`, `dword_203CFA0`): a link navi's chip bonus,
-    /// and what BN6's rules read of the code (the custom screen's seal on
+    /// and what EXE6's rules read of the code (the custom screen's seal on
     /// Beast Out and the Cross window, MegaMan's level gains). None: no
     /// code received (0xFF), MegaMan only: a link navi exists through its
     /// code (docs/engine/link-navis.md).
@@ -78,14 +78,14 @@ pub struct PlayerSetup {
     /// writes one by name).
     pub rules: Vec<nettai_content_api::ContentState>,
     /// The patch cards the player has installed (`crate::patch_cards`):
-    /// their ruleset's rules apply them (BN6's patch-cards system).
+    /// their ruleset's rules apply them (EXE6's patch-cards system).
     pub patch_cards: crate::patch_cards::PatchCards,
     /// The player's NaviCust (`crate::navicust`), which their ruleset's
-    /// rules compile into the navi's stats as the round is set up (BN6's
+    /// rules compile into the navi's stats as the round is set up (EXE6's
     /// navicust system); none: the stats are the setup's as they are (a
     /// recording's, which the original's NaviCust has already made).
     pub navicust: Option<crate::navicust::NaviCust>,
-    /// The player's tactics (BN5's computer-navi data, `crate::tactics`),
+    /// The player's tactics (EXE5's computer-navi data, `crate::tactics`),
     /// which a computer navi on the other side plays; none: empty. (A
     /// recording's; match files and netplay don't carry them yet.)
     pub tactics: crate::tactics::Tactics,
@@ -285,7 +285,7 @@ impl Extras for NoExtras {
 }
 
 /// Ticks a result takes to send: the link carries one of its words a tick
-/// (`sub_801FF18`), BN6's 50 (a game's own: `Library::result_words`).
+/// (`sub_801FF18`), EXE6's 50 (a game's own: `Library::result_words`).
 pub const SEND_TICKS: u32 = 50;
 
 impl Side {
@@ -415,10 +415,10 @@ impl Side {
             }
         }
         let mut transform = TransformRequest::NONE;
-        // What the side's systems note of the round (BN6's: Beast Out or the
-        // Cross used; BN5's: the soul given, 0x08024FF6, its form set now),
-        // then the form a system's pick holds (BN6's Beast Out or Cross,
-        // BN5's soul: with its turns and whether it is Chaos Unison).
+        // What the side's systems note of the round (EXE6's: Beast Out or the
+        // Cross used; EXE5's: the soul given, 0x08024FF6, its form set now),
+        // then the form a system's pick holds (EXE6's Beast Out or Cross,
+        // EXE5's soul: with its turns and whether it is Chaos Unison).
         extras.confirmed(screen, folder);
         if screen.form.is_some() {
             transform.form = screen.form;
@@ -427,7 +427,7 @@ impl Side {
         }
         for &slot in screen.selection() {
             // (A button picked in a chip's place takes the chip out of the
-            // folder there: BN5's soul, 0x08025088.)
+            // folder there: EXE5's soul, 0x08025088.)
             let slot = match screen.trade {
                 Some(t) if t.button == slot => t.chip,
                 _ => slot,
@@ -445,7 +445,7 @@ impl Side {
                 }
             }
         }
-        // A chip a button holds leaves the folder too (BN5's Arm Change,
+        // A chip a button holds leaves the folder too (EXE5's Arm Change,
         // 0x080250C8: the Regular chip's flag stays as it is).
         if let Some(SlotKind::Chip { index, .. }) = screen.hold.map(|h| screen.slots[h.chip as usize].kind) {
             folder.take(index as usize);
@@ -577,7 +577,7 @@ impl Battle {
 
 impl Battle {
     /// Side `side`'s custom-screen extras (its systems' `custom` hooks),
-    /// for a screen run outside the battle's own loop (bn6-compat's check
+    /// for a screen run outside the battle's own loop (exe6-compat's check
     /// of the traces' screens, which sets the side's stats and the turn
     /// first).
     pub fn custom_extras(&mut self, side: u8, emotion: Emotion) -> impl Extras + '_ {
@@ -661,7 +661,7 @@ impl Extras for SideExtras<'_> {
             let shown = self.with_screen(&mut screen, None, |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonShown));
             if shown == nettai_content_api::Value::Bool(true) {
                 let d = content.defs.button(button);
-                // The chip it shows, if it says (BN5's capsules).
+                // The chip it shows, if it says (EXE5's capsules).
                 let chip = match d.chip {
                     Some(_) => match self.with_screen(&mut screen, None, |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonChip)) {
                         nettai_content_api::Value::Def(nettai_content_api::Registry::Chip, id) => Some(ChipHandle(id)),

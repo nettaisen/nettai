@@ -1,6 +1,6 @@
 --!strict
--- CopyDmg's mark (attack object #0x28 in both games: BN6's `sub_80C8FFC`,
--- BN5's 0x080C9A6C), made for a game's look (`mark.make`): an unseen probe
+-- CopyDmg's mark (attack object #0x28 in both games: EXE6's `sub_80C8FFC`,
+-- EXE5's 0x080C9A6C), made for a game's look (`mark.make`): an unseen probe
 -- that steps a panel a tick along its row until it hits something. If that
 -- was a navi (a player on the panel, found in the other side's actor
 -- list), it marks the navi for 180 ticks: the navi's side's damage-carry
@@ -10,8 +10,8 @@
 -- and goes when its time is up or the record is no longer its. A probe
 -- that hits nothing, or leaves the field, or finds time up, just goes.
 --
--- BN5's also hits its panel for 50 each tick it marks, in the own-gauges
--- mode (battle flag 0x40, BN5's operation battle: 0x080C9B90), and reloads
+-- EXE5's also hits its panel for 50 each tick it marks, in the own-gauges
+-- mode (battle flag 0x40, EXE5's operation battle: 0x080C9B90), and reloads
 -- its animation at its init.
 --
 -- Four states: init, flying (update), marking (destroy) and gone
@@ -29,7 +29,7 @@ local MARK_POINT = 0x1B
 local PLAYERS = 0x60_0000
 -- The probe's element: the sixth slot, which no hit's element names.
 local SIXTH_ELEMENT = 5
--- BN5's hit in the own-gauges mode: 50, hit modifier 3.
+-- EXE5's hit in the own-gauges mode: 50, hit modifier 3.
 local OWN_GAUGES_DAMAGE, OWN_GAUGES_HIT_MOD = 50, 3
 
 -- The damage-carry record the probe's side sets: the other side's (the
@@ -73,7 +73,7 @@ end
 
 -- A mark of `look`'s game: its kind and `spawn`.
 function mark.make(look: CopyDamageMarkLook): CopyDamageMark
-    -- `sub_80C9074` (BN5's 0x080C9AE8): resolve its hits; on a hit, mark
+    -- `sub_80C9074` (EXE5's 0x080C9AE8): resolve its hits; on a hit, mark
     -- (or go); else a panel on.
     local function fly(me: Object)
         local c = me.collision
@@ -103,8 +103,8 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
         c:present()
     end
 
-    -- `sub_80C90DC` (BN5's 0x080C9B50): over the marked navi while the
-    -- record is the probe's, for its time (BN5's hitting its panel each
+    -- `sub_80C90DC` (EXE5's 0x080C9B50): over the marked navi while the
+    -- record is the probe's, for its time (EXE5's hitting its panel each
     -- tick in the own-gauges mode); then the record forgets it
     -- (`sub_802CDE6`) and it goes.
     local function marking(me: Object)
@@ -151,7 +151,7 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
         vanish(me)
     end
 
-    -- `sub_80C9024` (BN5's 0x080C9A94).
+    -- `sub_80C9024` (EXE5's 0x080C9A94).
     local function init(me: Object)
         local sprite = me.sprite
         sprite:load(look.sprite)
@@ -177,7 +177,7 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
     local kind = define.kind {
         id = look.id,
         pool = "attack",
-        -- `sub_80C8FFC` (BN5's 0x080C9A6C).
+        -- `sub_80C8FFC` (EXE5's 0x080C9A6C).
         update = function(me: Object)
             local l = me.lifecycle
             if l == "init" then
@@ -197,7 +197,7 @@ function mark.make(look: CopyDamageMarkLook): CopyDamageMark
         end,
     }
 
-    -- `sub_80C9184` (BN5's 0x080C9C14): a probe on (x, y) for `owner`, with
+    -- `sub_80C9184` (EXE5's 0x080C9C14): a probe on (x, y) for `owner`, with
     -- the damage word `damage`. It goes at the end of the update list
     -- (`sub_8003374`). Its position is the spawner's registers (the panel
     -- Y, the element and 0) until its init places it.

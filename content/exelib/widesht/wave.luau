@@ -1,6 +1,6 @@
 --!strict
--- The wide wave, as BN5 and BN6 share it (BN6's attack object #0x3B,
--- `sub_80CB49C`; BN5's #0x3B, the same code but for its sprite): each game
+-- The wide wave, as EXE5 and EXE6 share it (EXE6's attack object #0x3B,
+-- `sub_80CB49C`; EXE5's #0x3B, the same code but for its sprite): each game
 -- makes its own kind (`wave.make_kind`, a `WideWaveLook`). It
 -- rises over the navi's column, and when its rising animation ends it
 -- slides forward over a column of three panels. What differs between its
@@ -33,7 +33,7 @@ local ANIM_RISE, ANIM_SLIDE = 0, 1
 -- A holding variant's wait after it rises.
 local HOLD_TICKS = 0xF
 -- The afterimages: every 5 ticks (the first after 10), of the game's trail
--- sprite (BN6's "10-00", animation 1) with this color shader, for 20 ticks.
+-- sprite (EXE6's "10-00", animation 1) with this color shader, for 20 ticks.
 local TRAIL_FIRST, TRAIL_INTERVAL = 0xA, 5
 local TRAIL_ANIM, TRAIL_SHADER, TRAIL_TICKS = 1, 0xC3FF, 0x14
 -- What a holding variant writes over its spawner's attack (the step and

@@ -10,7 +10,7 @@
 -- defines; a game whose instruments have other HP, another sprite or effect
 -- period gives them there (`hp`, `sprite`, `effect_period`). Another game's
 -- instrument is a kind of its look (`instrument.make_kind`: its sprite,
--- HP, sounds and collision, and whether any removal just puffs; BN5's).
+-- HP, sounds and collision, and whether any removal just puffs; EXE5's).
 --
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
@@ -39,7 +39,7 @@ local EFFECT_PERIOD, TUNE_PERIOD = 3, 0x40
 local APPEAR, DESTROYED, REST, PLAY = 0, 2, 8, 9
 
 -- An instrument; with its own sprite, its absorbed look is that sprite's
--- (an "absorbed-look" record, as BN6's objects/absorbed-obstacle makes).
+-- (an "absorbed-look" record, as EXE6's objects/absorbed-obstacle makes).
 function instrument.instrument(i: Instrument): Instrument
     if i.sprite then
         i.absorbed = define.record("absorbed-look", { sprite = i.sprite } :: AbsorbedLook)
@@ -149,7 +149,7 @@ function instrument.make_kind(id: string, look: InstrumentLook): Kind
             local p = me.pos
             battle.effect(Vec3.new(p.x, p.y, p.z + 0x14_0000), look.explosion)
         elseif look.removal_puffs then
-            -- (BN5's 0x080D53D4: removed any way, a puff.)
+            -- (EXE5's 0x080D53D4: removed any way, a puff.)
             local p = me.pos
             battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), look.puff)
         elseif how == "absorbed" then

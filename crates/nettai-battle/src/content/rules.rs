@@ -4,49 +4,49 @@ use super::{BannerId, ChipFamily, CustomScreenLayout, PanelCondition, PanelOffse
 use crate::field::PanelType;
 use serde::{Deserialize, Serialize};
 
-/// The rule section `flow` (docs/design/bn5-map.md §15.3 items 7 and 13,
-/// §15.4): where the arena's game's battle flow differs from BN6's.
+/// The rule section `flow` (docs/design/exe5-map.md §15.3 items 7 and 13,
+/// §15.4): where the arena's game's battle flow differs from EXE6's.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FlowRules {
     /// The words a custom screen's result takes on the link, one a tick
-    /// (`sub_800B3A2`'s count: BN6's 50; BN5's 49, its NaviStats 0x60
-    /// bytes to BN6's 0x64), read of the sending side's game: the screens
-    /// close on the tick after both results are in (`sub_8026A28`; BN5's
+    /// (`sub_800B3A2`'s count: EXE6's 50; EXE5's 49, its NaviStats 0x60
+    /// bytes to EXE6's 0x64), read of the sending side's game: the screens
+    /// close on the tick after both results are in (`sub_8026A28`; EXE5's
     /// Team Battle screen's state 8, 0x08025FEC, after 0x080266FA).
     #[serde(default = "result_words")]
     pub result_words: u8,
     /// Before the custom screen opens, the transformation sequencer runs
-    /// once more after the reversions (BN6's state 0x24, `sub_8008492`);
-    /// BN5 opens it straight after them.
+    /// once more after the reversions (EXE6's state 0x24, `sub_8008492`);
+    /// EXE5 opens it straight after them.
     #[serde(default = "yes")]
     pub sequencer_before_custom: bool,
-    /// The fight checks for an escape (BN6's `sub_800AAD6`; BN5 has none).
+    /// The fight checks for an escape (EXE6's `sub_800AAD6`; EXE5 has none).
     #[serde(default = "yes")]
     pub escape_check: bool,
     /// Ticks the result's banner holds before the round ends, at least
-    /// (`sub_80081A4`, `sub_800825A`: BN6 102; 94 in a special battle,
-    /// effect 2, BN5 65).
+    /// (`sub_80081A4`, `sub_800825A`: EXE6 102; 94 in a special battle,
+    /// effect 2, EXE5 65).
     pub result_wait: ResultWait,
     /// Presentation, read of a console's own game (the frontend's; the
     /// simulation reads neither): the custom screen's close starts the
     /// HUD's chip window too, so the next chip's name shows through the
-    /// turn's banner (BN5's 0x080230CC calls `sub_801E012`'s counterpart,
-    /// as a Japanese BN6 console's `sub_8026DC4` does; a US BN6 console's
+    /// turn's banner (EXE5's 0x080230CC calls `sub_801E012`'s counterpart,
+    /// as a Japanese EXE6 console's `sub_8026DC4` does; a US EXE6 console's
     /// waits for the navi's first decision).
     #[serde(default)]
     pub chip_window_at_close: bool,
     /// Presentation, as above: the intro fades in from black on a set's
-    /// first battle too (BN5's `sub_80E0684` counterpart, 0x080E0698, reads
+    /// first battle too (EXE5's `sub_80E0684` counterpart, 0x080E0698, reads
     /// the byte it tests through a flags value rather than the battle
-    /// state: one the open bus gives, never 1 or less; BN6's first battle
+    /// state: one the open bus gives, never 1 or less; EXE6's first battle
     /// fades in from white).
     #[serde(default)]
     pub intro_from_black: bool,
-    /// Sound, read of the arena's game: the low-HP music switch (BN6's
+    /// Sound, read of the arena's game: the low-HP music switch (EXE6's
     /// `sub_8009158`: while a console's navi is at a quarter of its HP or
-    /// less, the music plays a semitone higher and 282/256 as fast). BN5
-    /// has none: its ROM has no tempo or pitch control (BN6's
+    /// less, the music plays a semitone higher and 282/256 as fast). EXE5
+    /// has none: its ROM has no tempo or pitch control (EXE6's
     /// `sub_800065A` and `sound_8000672` have no counterpart), and none of
     /// its lab's sound recordings calls one.
     #[serde(default = "yes")]
@@ -65,13 +65,13 @@ pub struct ResultWait {
     pub special: u16,
 }
 
-/// BN6's result words (`FlowRules::result_words`).
+/// EXE6's result words (`FlowRules::result_words`).
 fn result_words() -> u8 {
     50
 }
 
 impl Default for FlowRules {
-    /// BN6's flow.
+    /// EXE6's flow.
     fn default() -> FlowRules {
         FlowRules {
             result_words: 50,
@@ -85,14 +85,14 @@ impl Default for FlowRules {
     }
 }
 
-/// The rule section `chip-use` (docs/design/bn5-map.md §15.3 items 10 and
+/// The rule section `chip-use` (docs/design/exe5-map.md §15.3 items 10 and
 /// 11), read from the section of the chip's own root.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ChipUseRules {
     /// The dimming handler (action 0x15) and the instant chips' action
-    /// leave the action on the frame they run (BN5's 0x080EC318 and
-    /// 0x080EC6F6), not on the next update after the dimming (BN6's
+    /// leave the action on the frame they run (EXE5's 0x080EC318 and
+    /// 0x080EC6F6), not on the next update after the dimming (EXE6's
     /// `sub_80EBD9C`) nor, for a weapon's own effect, 8 ticks later
     /// (`sub_80EC39C`).
     #[serde(default)]
@@ -102,24 +102,24 @@ pub struct ChipUseRules {
     /// down the field, and up.
     pub anti_navi_sparkle: SparkleOffset,
     /// The hand's modifier bits 0x08, 0x10 and 0x20 count at a chip's use
-    /// (BN5's capsules: 0x08010368 turns 0x08 and 0x20 into the damage
+    /// (EXE5's capsules: 0x08010368 turns 0x08 and 0x20 into the damage
     /// word's 0x1000 and 0x0800, and 0x0800FFF6 heals the user a tenth of
-    /// its HP on 0x10); BN6's `sub_8012C34` knows bits 0x02 and 0x04 alone.
+    /// its HP on 0x10); EXE6's `sub_8012C34` knows bits 0x02 and 0x04 alone.
     #[serde(default)]
     pub mixed_modifiers: bool,
 }
 
-/// The rule section `effects` (docs/design/bn5-map.md §15.3 items 15 and
+/// The rule section `effects` (docs/design/exe5-map.md §15.3 items 15 and
 /// 16), the arena's: the battle's shared effects where a game's touch the
-/// simulation otherwise than BN6's.
+/// simulation otherwise than EXE6's.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct EffectsRules {
     /// What the camera shake draws its jitter from.
     #[serde(default)]
     pub shake: ShakeRule,
-    /// A hit spark steps its sprite once as it starts (BN6's
-    /// `sub_80E0864`); BN5's (0x080E0870) doesn't, so it lasts a tick
+    /// A hit spark steps its sprite once as it starts (EXE6's
+    /// `sub_80E0864`); EXE5's (0x080E0870) doesn't, so it lasts a tick
     /// longer.
     #[serde(default = "yes")]
     pub spark_steps_at_start: bool,
@@ -129,8 +129,8 @@ pub struct EffectsRules {
     /// How a damage word's flag bits decode (`sub_8019F44`).
     #[serde(default)]
     pub damage_word: DamageWordRule,
-    /// An obstacle's reaction has BN5's step for ColonelSoul's army
-    /// (0x080CAB02 from its four reactions, docs/design/bn5-map.md §15.11:
+    /// An obstacle's reaction has EXE5's step for ColonelSoul's army
+    /// (0x080CAB02 from its four reactions, docs/design/exe5-map.md §15.11:
     /// `kinds::obstacle::Soldiers`): one standing where an armed side can
     /// use it turns into that side's soldier (the role
     /// `kinds.obstacle_soldier`).
@@ -141,16 +141,16 @@ pub struct EffectsRules {
     #[serde(default)]
     pub palette_flash: PaletteFlashRule,
     /// An afterimage (`sub_80E33FA`) and a form overlay (`sub_80C4530`'s
-    /// spawner) run while the battle is paused: BN6's spawners set their
-    /// header flag 0x04; BN5's (0x080E35F4, and its overlays', whose flags
+    /// spawner) run while the battle is paused: EXE6's spawners set their
+    /// header flag 0x04; EXE5's (0x080E35F4, and its overlays', whose flags
     /// its lab records without it) don't.
     #[serde(default = "yes")]
     pub overlays_run_while_paused: bool,
     /// Loading an animation's frame (`sprite_loadAnimationData`) takes the
     /// palette offset of the frame's first part, which a sprite is drawn
-    /// with (BN6's `sub_3006730`); BN5's (0x03006898) leaves it to the
+    /// with (EXE6's `sub_3006730`); EXE5's (0x03006898) leaves it to the
     /// sprite's next step, so a sprite drawn before it steps again keeps
-    /// its last step's offset, or 0 when just loaded (BN5's hit spark,
+    /// its last step's offset, or 0 when just loaded (EXE5's hit spark,
     /// which doesn't step as it starts, shows its first frame in its
     /// palette 0). Presentation: `Look::part_palette`.
     #[serde(default = "yes")]
@@ -166,13 +166,13 @@ pub struct EffectsRules {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ObstacleActions {
-    /// BN6's: the actors' frozen and bubbled entries at 6 and 7, the
+    /// EXE6's: the actors' frozen and bubbled entries at 6 and 7, the
     /// kind's own from 8.
     #[default]
-    Bn6,
-    /// BN5's: neither frozen nor bubbled (as its navis' state table,
+    Exe6,
+    /// EXE5's: neither frozen nor bubbled (as its navis' state table,
     /// 0x080EAE08), the kind's own from 6.
-    Bn5,
+    Exe5,
 }
 
 /// How the collision setup (`object_setupCollisionData`'s and
@@ -182,22 +182,22 @@ pub enum ObstacleActions {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DamageWordRule {
-    /// BN6's: 0x4000 the role `statuses.damage_word_paralysis` with hit
+    /// EXE6's: 0x4000 the role `statuses.damage_word_paralysis` with hit
     /// modifier 1 (a flinch too); then 0x2000 bug code 0xF8 (and no more),
     /// else 0x1000 bug code 0xF7, each code's high byte what the caller
     /// left in r1.
     #[default]
-    Bn6,
-    /// BN5's (0x080165EC): 0x4000 the paralysis (status byte 0x10) with hit
+    Exe6,
+    /// EXE5's (0x080165EC): 0x4000 the paralysis (status byte 0x10) with hit
     /// modifier 0 (no flinch), and no more; else 0x2000 the role
     /// `statuses.damage_word_confusion` (0x20), and no more; else 0x1000
     /// `statuses.damage_word_blindness` (0x30); then 0x800 bug code 0x18
     /// with high byte 0x11.
-    Bn5,
+    Exe5,
 }
 
 impl Default for EffectsRules {
-    /// BN6's.
+    /// EXE6's.
     fn default() -> EffectsRules {
         EffectsRules {
             shake: ShakeRule::default(),
@@ -208,7 +208,7 @@ impl Default for EffectsRules {
             palette_flash: PaletteFlashRule::default(),
             overlays_run_while_paused: true,
             load_sets_part_palette: true,
-            obstacle_actions: ObstacleActions::Bn6,
+            obstacle_actions: ObstacleActions::Exe6,
         }
     }
 }
@@ -219,14 +219,14 @@ impl Default for EffectsRules {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PaletteFlashRule {
-    /// BN6's (`sub_80E10C0`, `sub_80E114C`): bit 1 keeps it going through
+    /// EXE6's (`sub_80E10C0`, `sub_80E114C`): bit 1 keeps it going through
     /// both; else a pause holds it, and dimming does unless the variant's
     /// bit is set (variant 0 tests bit 0, variant 1 bit 1).
     #[default]
-    Bn6,
-    /// BN5's (0x080E104C, 0x080E10D0): a pause holds either variant
+    Exe6,
+    /// EXE5's (0x080E104C, 0x080E10D0): a pause holds either variant
     /// whatever its mode; dimming holds it only with a mode of 0.
-    Bn5,
+    Exe5,
 }
 
 /// How `sub_801A082` (an object's damage, hit modifier and collision types
@@ -234,32 +234,32 @@ pub enum PaletteFlashRule {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RetypeRule {
-    /// BN6's: what it is and what it hits, marked as made while dimmed
+    /// EXE6's: what it is and what it hits, marked as made while dimmed
     /// when the battle is.
     #[default]
-    Bn6,
-    /// BN5's (0x08016B9E): what it is alone, never marked; its store of
+    Exe6,
+    /// EXE5's (0x08016B9E): what it is alone, never marked; its store of
     /// what it hits goes to the row number plus 0x34, a BIOS address no
     /// write reaches, so it keeps hitting what it did. A bug code's
     /// garbage high byte is the target lookup's offset, as the setup's.
-    Bn5,
+    Exe5,
 }
 
 /// How the camera shakes (`camera_doShakeEffect_80301e8`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ShakeRule {
-    /// BN6's: each console's camera draws from its own RNG1, on two
+    /// EXE6's: each console's camera draws from its own RNG1, on two
     /// channels (the primary and the secondary, `sub_80302B6`).
     #[default]
     Console,
-    /// BN5's (0x08030D78): one channel, its jitter two draws from the
+    /// EXE5's (0x08030D78): one channel, its jitter two draws from the
     /// battle's RNG2 each shaking tick, the shake held (and nothing drawn)
     /// while the battle is paused without dimming.
     Battle,
 }
 
-/// The speed of a navi's slides (ice, roads, BN5's metal: `sub_8016730`)
+/// The speed of a navi's slides (ice, roads, EXE5's metal: `sub_8016730`)
 /// and drags (a push: `sub_80178D4`), 16.16 pixels a tick across and in
 /// depth.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
@@ -270,7 +270,7 @@ pub struct SlideSpeed {
 }
 
 impl Default for SlideSpeed {
-    /// BN6's: 10 pixels across, 6 in depth (BN5's 8: 0x0801361E and
+    /// EXE6's: 10 pixels across, 6 in depth (EXE5's 8: 0x0801361E and
     /// 0x080143A8).
     fn default() -> SlideSpeed {
         SlideSpeed { x: 0xA_0000, y: 0x6_0000 }
@@ -290,11 +290,11 @@ pub struct SparkleOffset {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum OverlayRestart {
-    /// BN6's `sub_80C44D2`: the overlay reloads its animation and steps
+    /// EXE6's `sub_80C44D2`: the overlay reloads its animation and steps
     /// its sprite at once.
     #[default]
     Step,
-    /// BN5's 0x080C374E: it reloads its animation at its next step.
+    /// EXE5's 0x080C374E: it reloads its animation at its next step.
     Reload,
 }
 
@@ -302,71 +302,71 @@ pub enum OverlayRestart {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StanceCounter {
-    /// BN6's `sub_80105F2`: from the next tick.
+    /// EXE6's `sub_80105F2`: from the next tick.
     #[default]
     NextTick,
-    /// BN5's 0x0800E340: its first step at once, as after a trap's catch.
+    /// EXE5's 0x0800E340: its first step at once, as after a trap's catch.
     AtOnce,
 }
 
 /// How a navi's push (slide type 1) reads the hits it took; and, of an
 /// obstacle's own game, how an obstacle's push does (`kinds::obstacle`:
-/// BN5's 0x0800D4B0 reads the hits by the hitters' flips, its slide
+/// EXE5's 0x0800D4B0 reads the hits by the hitters' flips, its slide
 /// keeps no bounds, 0x08014894, and its push on any hit goes by the
 /// hitters' flips, 0x08017AD8).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PushReading {
-    /// BN6's `sub_800E548`: the first of bits 2 to 5 of the hits' modifier,
+    /// EXE6's `sub_800E548`: the first of bits 2 to 5 of the hits' modifier,
     /// toward the navi's front; the 0x80 bit picks the last five rows.
     #[default]
-    Bn6,
-    /// BN5's 0x0800C9D8: the first of bits 2 to 5 of the unflipped
+    Exe6,
+    /// EXE5's 0x0800C9D8: the first of bits 2 to 5 of the unflipped
     /// hitters' modifier, else of the flipped ones' with the direction
     /// reversed.
-    Bn5,
+    Exe5,
 }
 
-/// Which pairs of collisions a hit can't join (the hit test, BN6's
+/// Which pairs of collisions a hit can't join (the hit test, EXE6's
 /// `sub_3007218`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum HitTest {
-    /// BN6's: a submerged body (flag 0x4) meets only collision types with
+    /// EXE6's: a submerged body (flag 0x4) meets only collision types with
     /// bit 0x8 or 0x1000; a FloatShoe body (flag 0x20) only those with the
     /// 0x80 self bit; a guard breaks to types with 0x2 (0x1002 with 0x4000)
     /// and turns aside those without 0x0C005000.
     #[default]
-    Bn6,
-    /// BN5's (0x0801691C): a submerged or bubbled body (flags 0x80000004)
+    Exe6,
+    /// EXE5's (0x0801691C): a submerged or bubbled body (flags 0x80000004)
     /// meets only types with 0x8 or 0x1000 unless the other is elec; a
-    /// FloatShoe body meets all (BN5's types have no 0x80 self bit); a
+    /// FloatShoe body meets all (EXE5's types have no 0x80 self bit); a
     /// guard breaks to types with 0x1002 always and turns aside those
     /// without 0x0C004000.
-    Bn5,
+    Exe5,
 }
 
-/// How a navi takes a hit's NaviCust bug where a game's differs from BN6's
+/// How a navi takes a hit's NaviCust bug where a game's differs from EXE6's
 /// (`sub_801AC6C`, `sub_80139F6`; the default).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct IntakeRules {
-    /// The bug is taken before the HP bug drains (BN5's hit intake,
-    /// 0x080178EC, calls 0x0801103E before 0x0800DFEC); BN6's after, so a
+    /// The bug is taken before the HP bug drains (EXE5's hit intake,
+    /// 0x080178EC, calls 0x0801103E before 0x0800DFEC); EXE6's after, so a
     /// drain bug's first drain comes a tick later.
     pub bugs_before_drain: bool,
     /// A drain bug's argument (codes 0x18 and 0x19) goes by its flags
-    /// (BN5's 0x0801103E): with bit 4 it adds its low four bits (to at most
+    /// (EXE5's 0x0801103E): with bit 4 it adds its low four bits (to at most
     /// 7), with bit 5 it subtracts them (to at least 0), else it raises the
     /// level to them (no lower level changes, and nothing is reloaded).
-    /// BN6's adds the argument (to at most 7).
+    /// EXE6's adds the argument (to at most 7).
     pub drain_bug_flags: bool,
-    /// BN5's no-charge drive (DarkInvs, 0x080E2318): a navi with the
+    /// EXE5's no-charge drive (DarkInvs, 0x080E2318): a navi with the
     /// no-charge state counts its drive's ticks down at the intake's end
-    /// (0x0800DBE0) and asks for the stun strike when they run out (BN5's
+    /// (0x0800DBE0) and asks for the stun strike when they run out (EXE5's
     /// action 0x49 ends the drive); its idle hands the step it would take
     /// to the side's systems' `controller` (0x080F03E4: the computer-navi
     /// AI, 0x0802B4AC, or the reset of its state); and its last 180 ticks
-    /// it flickers gray (0x080136E0). BN6 has none of it.
+    /// it flickers gray (0x080136E0). EXE6 has none of it.
     pub no_charge_drive: bool,
     /// How a navi loses HP (`object_subtractHP`, `applyDamageToPlayer`).
     pub hp_loss: HpLoss,
@@ -375,18 +375,18 @@ pub struct IntakeRules {
 /// How a navi loses HP (`IntakeRules::hp_loss`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum HpLoss {
-    /// BN6's: `object_subtractHP` takes the HP alone, and
+    /// EXE6's: `object_subtractHP` takes the HP alone, and
     /// `applyDamageToPlayer_801ba12` sounds a hit before it looks at the
     /// HP left.
     #[default]
-    Bn6,
-    /// BN5's (0x0800C6E0, 0x080185A2): a player's loss also drains its
-    /// side's gauge; a player MegaMan of BN5's emotion 5 (a dark
+    Exe6,
+    /// EXE5's (0x0800C6E0, 0x080185A2): a player's loss also drains its
+    /// side's gauge; a player MegaMan of EXE5's emotion 5 (a dark
     /// MegaMan's) whom it brings to 0 holds at 1 HP, once a battle, and
-    /// asks for the volley (0x0802C16C: BN5's action 0x30, his last
+    /// asks for the volley (0x0802C16C: EXE5's action 0x30, his last
     /// stand); and a hit shows (white, its sounds) only by the register
     /// that check leaves at 0 HP (`kinds::player::LastStand`).
-    Bn5,
+    Exe5,
 }
 
 /// What a navi's status word (its collision data's flags 1) reads as while
@@ -395,9 +395,9 @@ pub enum HpLoss {
 /// pointer, from the BIOS, which gives the opcode the BIOS last fetched
 /// (open bus). It happens on a round's first tick, when the other side's
 /// navi inits first and its first barrier's visual asks whether the local
-/// navi is blind (`sub_800EB6C`). BN6's is the object spawn's fill's
+/// navi is blind (`sub_800EB6C`). EXE6's is the object spawn's fill's
 /// (`ZeroFillByWord`'s CpuSet: 0xE3A02004, `f1::NULL_READ`, the default),
-/// which has the blind bit; BN5's an interrupt's (0xE55EC002, read on the
+/// which has the blind bit; EXE5's an interrupt's (0xE55EC002, read on the
 /// console at 0x0800CE18), which hasn't.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct MissingCollisionStatus(pub u32);
@@ -412,16 +412,16 @@ impl Default for MissingCollisionStatus {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum FormBreak {
     #[default]
-    Bn6,
-    Bn5,
+    Exe6,
+    Exe5,
 }
 
 /// Whose emotions a side's navi has (`Rules::emotions`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Emotions {
     #[default]
-    Bn6,
-    Bn5,
+    Exe6,
+    Exe5,
 }
 
 /// Global rules: element weakness, collision types, panels, banners,
@@ -440,14 +440,14 @@ pub struct Rules {
     pub holding_banners: Vec<BannerId>,
     /// The HP bug's drain period by bug level.
     pub hp_bug_periods: [u8; 8],
-    /// BN6's per-form tick runs (`off_80EA93C`: `sub_80F0608`, MegaMan's
-    /// and ChargeMan's: the Fire chips' charge, a form's height); BN5's
+    /// EXE6's per-form tick runs (`off_80EA93C`: `sub_80F0608`, MegaMan's
+    /// and ChargeMan's: the Fire chips' charge, a form's height); EXE5's
     /// table (0x080EB1E8) has none of it (rule section `status`), its
     /// MegaMan's routine being the forms' own (`FormDef::tick`).
     pub form_tick: bool,
     /// Which ticks of the mercy flash show the navi (rule section `status`):
-    /// BN6's hides it while the flash timer's bit 1 is set
-    /// (`sub_8016934`), BN5's while it is clear (0x080137B6): the same
+    /// EXE6's hides it while the flash timer's bit 1 is set
+    /// (`sub_8016934`), EXE5's while it is clear (0x080137B6): the same
     /// blink, two ticks out of phase. Presentation: visibility is no part
     /// of the simulation.
     pub flash_hides_on_clear: bool,
@@ -457,15 +457,15 @@ pub struct Rules {
     /// How a navi's status block runs its reactions (rule section
     /// `status`).
     pub reactions: Reactions,
-    /// Whose emotions the side's navi has (rule section `status`): BN6's
-    /// (`sub_8015B54`, `sub_8015BEC`) or BN5's (0x08012740: a soul first,
+    /// Whose emotions the side's navi has (rule section `status`): EXE6's
+    /// (`sub_8015B54`, `sub_8015BEC`) or EXE5's (0x08012740: a soul first,
     /// then anger, a mood of 0 and Full Synchro, a mood under 65 worried;
     /// 0x080127D6's setter leaving a mood of 0; the anger tick passing
     /// over AI index 23).
     pub emotions: Emotions,
     /// How the weakness request breaks a form (rule section `status`):
-    /// BN6's (`sub_8015766`: a Cross or a Beast, to what it breaks to) or
-    /// BN5's (0x080122C8: any form, to the base form; no animation 2, no
+    /// EXE6's (`sub_8015766`: a Cross or a Beast, to what it breaks to) or
+    /// EXE5's (0x080122C8: any form, to the base form; no animation 2, no
     /// overlay's stepping kept, the collision region left, fewer flags).
     pub form_break: FormBreak,
     /// How a navi takes a hit's NaviCust bug (rule section `status`, the
@@ -476,7 +476,7 @@ pub struct Rules {
     /// Ticks of recovery after a buster shot, by Rapid stat, then by open
     /// panels ahead (0..=5).
     pub buster_recovery: Vec<[u8; 6]>,
-    /// BN5's Chaos Unison cycle (0x08010650, rule section `buster`), a row
+    /// EXE5's Chaos Unison cycle (0x08010650, rule section `buster`), a row
     /// by the chaos level (at most 2): its period and three bounds. While
     /// the B charge is full a counter runs through the period; under the
     /// first bound a release succeeds (the window 2), then 1 under the
@@ -495,10 +495,10 @@ pub struct Rules {
     pub sine: Vec<i16>,
     /// Pushes by hit-modifier bit (+5 with 0x80).
     pub push_vectors: [SlideVector; 10],
-    /// How a push reads the hit modifiers (docs/design/bn5-map.md §15.3
+    /// How a push reads the hit modifiers (docs/design/exe5-map.md §15.3
     /// item 2).
     pub push_reading: PushReading,
-    /// Which pairs a hit can't join (docs/design/bn5-map.md §15.3 item 12).
+    /// Which pairs a hit can't join (docs/design/exe5-map.md §15.3 item 12).
     pub hit_test: HitTest,
     /// Ice slides by the direction the navi last moved.
     pub ice_vectors: [SlideVector; 6],
@@ -530,7 +530,7 @@ pub struct Rules {
     pub pools: PoolSizes,
     /// The NaviCust's board (rule section `navicust`; none: the game has no
     /// NaviCust): what a setup's programs may cover. What they do is the
-    /// game's rules' (BN6's navicust system).
+    /// game's rules' (EXE6's navicust system).
     pub navicust: NaviCustRules,
 }
 
@@ -540,7 +540,7 @@ pub enum BoardCell {
     /// No cell: no program can cover it.
     #[default]
     Off,
-    /// The frame around the board: a program may jut onto it (BN6: and is
+    /// The frame around the board: a program may jut onto it (EXE6: and is
     /// bugged).
     Frame,
     /// The board.
@@ -550,8 +550,8 @@ pub enum BoardCell {
 /// The NaviCust's board: its 7x7 grid's cells by row, then column.
 pub type Board = [[BoardCell; crate::navicust::SIZE]; crate::navicust::SIZE];
 
-/// The NaviCust's boards, by how far it has been expanded (BN6's and BN5's:
-/// 4x4, 5x4 and 5x5, by key item 0x71 and BN5's 0x61; BN5's without a
+/// The NaviCust's boards, by how far it has been expanded (EXE6's and EXE5's:
+/// 4x4, 5x4 and 5x5, by key item 0x71 and EXE5's 0x61; EXE5's without a
 /// frame), and its command line (a row).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviCustRules {
@@ -566,7 +566,7 @@ impl NaviCustRules {
     }
 
     /// Whether a program of `shape` can be placed with its center at
-    /// `(x, y)` on `board` (BN6's `sub_813BB00`): every cell it covers is a
+    /// `(x, y)` on `board` (EXE6's `sub_813BB00`): every cell it covers is a
     /// cell of the board or its frame, and not all of them the frame.
     pub fn fits(board: &Board, shape: &crate::navicust::Shape, x: u8, y: u8) -> bool {
         let n = crate::navicust::SIZE as i32;
@@ -585,7 +585,7 @@ impl NaviCustRules {
     }
 }
 
-/// How many objects each pool holds (BN6's are 32 each; BN5's actor pool
+/// How many objects each pool holds (EXE6's are 32 each; EXE5's actor pool
 /// 16). At most `object::SLOTS`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -643,14 +643,14 @@ pub struct PanelRules {
     pub step: StepRuleSet,
     pub dash_step: StepRuleSet,
     pub any_side_step: StepRuleSet,
-    /// Ticks a broken panel stays broken, and in battle mode 1 (BN6: 0x258
-    /// and 0x1E0, `sub_800C4BC`; BN5: 600 in both, 0x0800A998).
+    /// Ticks a broken panel stays broken, and in battle mode 1 (EXE6: 0x258
+    /// and 0x1E0, `sub_800C4BC`; EXE5: 600 in both, 0x0800A998).
     pub mend: u16,
     pub mend_in_battle_mode_1: u16,
     /// The game's panel types by its own numbers, where they aren't the
-    /// engine's order (`PanelType::ALL`, BN6's): BN5's 11 (5 its metal, 8
+    /// engine's order (`PanelType::ALL`, EXE6's): EXE5's 11 (5 its metal, 8
     /// its lava, 9 its holy, 10 its sea), which a panel trail's byte
-    /// (NaviStats+0x12) names. Empty: BN6's.
+    /// (NaviStats+0x12) names. Empty: EXE6's.
     pub numbers: Vec<PanelType>,
     /// Whether a reservation marks its holder (`Reservations`).
     pub reservations: Reservations,
@@ -661,19 +661,19 @@ pub struct PanelRules {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Reactions {
-    /// BN6's: a drag, then the slides, a flinch, then the mercy flash's
+    /// EXE6's: a drag, then the slides, a flinch, then the mercy flash's
     /// timer (`sub_801A5EE`, only while the battle is fighting); a drag or
     /// a flinch resets the attack's links and ends a freeze or a bubble,
     /// and keeps a paralysis that a counter just made or that no flash
     /// request comes with.
     #[default]
-    Bn6,
-    /// BN5's (0x08017CC8 on): the mercy flash's timer first (0x080173C4,
+    Exe6,
+    /// EXE5's (0x08017CC8 on): the mercy flash's timer first (0x080173C4,
     /// whatever the battle's flags), then the slides, a drag and a flinch;
     /// a drag or a flinch ends a paralysis unless a counter just made it
     /// (0x08017084 unless its flag2 bit, the engine's 0x4000), and resets
-    /// nothing else (BN5 has no freeze or bubble).
-    Bn5,
+    /// nothing else (EXE5 has no freeze or bubble).
+    Exe5,
 }
 
 /// What reserving a panel does to its holder (the panels section's
@@ -681,12 +681,12 @@ pub enum Reactions {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Reservations {
-    /// BN6's: the holder's header flag 0x20 is set (`object_reservePanel`),
+    /// EXE6's: the holder's header flag 0x20 is set (`object_reservePanel`),
     /// and its destroy releases what it holds (`sub_801BB78`, from
     /// `object_genericDestroy` and the navis' end).
     #[default]
     Marked,
-    /// BN5's: the holder isn't marked (its reserve, 0x0801865C, sets only
+    /// EXE5's: the holder isn't marked (its reserve, 0x0801865C, sets only
     /// the panel's), and nothing releases a destroyed holder's (its
     /// destroys, 0x080138B6 and 0x080138F2, free the collision and the
     /// object alone).
@@ -712,7 +712,7 @@ impl PanelRules {
     }
 }
 
-/// What one panel type is, and what it does (docs/design/bn5-map.md
+/// What one panel type is, and what it does (docs/design/exe5-map.md
 /// §15.2; the behaviors are the engine's, keyed by the panel type, their
 /// numbers the game's).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -725,27 +725,27 @@ pub struct PanelTypeRule {
     /// type (`byte_8013D44`; none: silent).
     pub trail_sound: Option<crate::sound::SoundId>,
     /// Ticks the type lasts before the panel turns normal, blinking its
-    /// last 60 (BN6's roads 0x708, `sub_800C380`; BN5's lava and sea 960,
+    /// last 60 (EXE6's roads 0x708, `sub_800C380`; EXE5's lava and sea 960,
     /// 0x0800A998).
     pub expires: Option<u16>,
     /// The fire damage a grounded body standing on it takes, shifted by
-    /// its weakness to fire, as the panel turns normal (BN5's lava,
+    /// its weakness to fire, as the panel turns normal (EXE5's lava,
     /// 0x08016D80 and 0x08016E18).
     pub burn: Option<u16>,
-    /// The element of the bodies it drains as poison drains any (BN5's
+    /// The element of the bodies it drains as poison drains any (EXE5's
     /// sea: fire, 0x08016C7E).
     pub drains: Option<u8>,
     /// Ticks a body that ends a move on it is held there, with a splash
-    /// (BN5's sea, 0x0801715E).
+    /// (EXE5's sea, 0x0801715E).
     pub holds: Option<u16>,
     /// A body that can dive (its AI's flag 0x20) is submerged while on it,
-    /// and no body is submerged off it (BN5's sea, 0x08017030).
+    /// and no body is submerged off it (EXE5's sea, 0x08017030).
     pub submerges: bool,
     /// A move's end on it starts a slide (slide type 3), tried in turn by
-    /// the direction of the move (BN5's metal, 0x08017216, 0x0800C8A8).
+    /// the direction of the move (EXE5's metal, 0x08017216, 0x0800C8A8).
     pub slide: Option<PanelSlide>,
     /// The element of the hitboxes that turn it normal as they pass over
-    /// it (`sub_3007708`: fire grass, aqua the volcano, wood roads; BN5's
+    /// it (`sub_3007708`: fire grass, aqua the volcano, wood roads; EXE5's
     /// 0x08016D14: and aqua lava, wood metal).
     pub cleared_by: Option<u8>,
     /// Whether the game's own section names the type; one it doesn't is
@@ -754,7 +754,7 @@ pub struct PanelTypeRule {
     pub named: bool,
 }
 
-/// A panel's slide (BN5's metal): by the direction the body last moved
+/// A panel's slide (EXE5's metal): by the direction the body last moved
 /// (`CollisionData::direction`: none, up, down, back, forward, other),
 /// the steps tried in turn, `dx` toward the body's front; the first one
 /// the body can slide to is the slide, a panel at a time.

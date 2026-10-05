@@ -1,5 +1,5 @@
-//! Content for tests: content/bn6's definitions (and BN5's:
-//! [`bn5_content`]), each game alone as a match loads it, on a made-up
+//! Content for tests: content/exe6's definitions (and EXE5's:
+//! [`exe5_content`]), each game alone as a match loads it, on a made-up
 //! asset index
 //! (`testing::asset_names_used`), every sprite timed as the test content's
 //! navi is (nothing from a ROM), with their own strings.
@@ -42,15 +42,15 @@ fn defined_of(read: nettai_content::index::Read) -> Result<Content, String> {
     Ok(c)
 }
 
-/// content/'s BN6, defined once per test process.
-pub fn bn6_content() -> Arc<Content> {
-    static BN6: OnceLock<Arc<Content>> = OnceLock::new();
-    BN6.get_or_init(|| Arc::new(defined(&["bn6"]).unwrap_or_else(|e| panic!("content/bn6: {e}")))).clone()
+/// content/'s EXE6, defined once per test process.
+pub fn exe6_content() -> Arc<Content> {
+    static EXE6: OnceLock<Arc<Content>> = OnceLock::new();
+    EXE6.get_or_init(|| Arc::new(defined(&["exe6"]).unwrap_or_else(|e| panic!("content/exe6: {e}")))).clone()
 }
 
-/// content/'s BN5 (its game pack and the support packs it depends on), defined
+/// content/'s EXE5 (its game pack and the support packs it depends on), defined
 /// once per test process.
-pub fn bn5_content() -> Arc<Content> {
-    static BN5: OnceLock<Arc<Content>> = OnceLock::new();
-    BN5.get_or_init(|| Arc::new(defined(&["bn5"]).unwrap_or_else(|e| panic!("content/bn5: {e}")))).clone()
+pub fn exe5_content() -> Arc<Content> {
+    static EXE5: OnceLock<Arc<Content>> = OnceLock::new();
+    EXE5.get_or_init(|| Arc::new(defined(&["exe5"]).unwrap_or_else(|e| panic!("content/exe5: {e}")))).clone()
 }

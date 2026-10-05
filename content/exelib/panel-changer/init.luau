@@ -1,6 +1,6 @@
 --!strict
--- The panel changer, as BN5 and BN6 share it (BN6's effect object #0x1F,
--- `sub_80E28A8`; BN5's #0x1F; docs/engine/dimming-chips.md §4.2): each game
+-- The panel changer, as EXE5 and EXE6 share it (EXE6's effect object #0x1F,
+-- `sub_80E28A8`; EXE5's #0x1F; docs/engine/dimming-chips.md §4.2): each game
 -- makes its own kind (`panel_changer.make_kind`). It lists the panels its
 -- change picks
 -- (all, its row, the panel in front, or its own; those meeting its side's

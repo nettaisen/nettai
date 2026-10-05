@@ -1,12 +1,12 @@
 --!strict
--- AntiDmg's counter, as BN5 and BN6 share it (BN6's navi action 0x47,
--- `sub_80EE90C`; BN5's 0x47): each game makes its own (`counter.action_at`:
+-- AntiDmg's counter, as EXE5 and EXE6 share it (EXE6's navi action 0x47,
+-- `sub_80EE90C`; EXE5's 0x47): each game makes its own (`counter.action_at`:
 -- its key, its shuriken's kind, its sounds and its puff). When
 -- an AntiDmg trap (or the AntiDmg program's stance) catches a hit, the
 -- navi vanishes in a puff and throws a shuriken (./shuriken) at an enemy,
 -- by the attack's variant (`attack_variant`): a random one for 0, the nearest
 -- ahead, its own row first, for 1, none for any other. A trap chip's catch
--- leaves it 0, the stance its weapon's: BN6's AntiDmg program 0, BN5's
+-- leaves it 0, the stance its weapon's: EXE6's AntiDmg program 0, EXE5's
 -- ShadowSoul 1. The ruleset starts it by role (`actions.anti_damage_counter`,
 -- a game's rules/roles.luau).
 

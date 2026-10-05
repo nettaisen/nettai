@@ -1,0 +1,532 @@
+# Japanese: EXE5's strings by definition key (the Japanese ROMs, EXE5 Team of Blues and Team of
+# Colonel, the same), written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs. Display text only.
+
+language = "ja"
+
+[chips]
+"airhoc" = { name = "エアホッケー", description = "かべにはんしゃする\nエアホッケーを\nななめ右になげる!" }
+"airshot" = { name = "エアシュート", description = "ヒットしたあいてを\n1マスおくへおす\nくうきほう" }
+"airspin1" = { name = "エアホイール1", description = "しゅういをおそう\n風をおこすしゃりん\nを前方にすべらせる" }
+"airspin2" = { name = "エアホイール2", description = "しゅういをおそう\n風をおこすしゃりん\nを前方にすべらせる" }
+"airspin3" = { name = "エアホイール3", description = "しゅういをおそう\n風をおこすしゃりん\nを前方にすべらせる" }
+"antidmg" = { name = "カワリミ", description = "てきにワナをはる\n攻撃にあたると\nしゅりけん攻撃!" }
+"antielec" = { name = "ヒライシン", description = "てきにワナをはる\n電気の攻撃をだすと\n自分がダメージ!" }
+"antifire" = { name = "カキゲンキン", description = "てきにワナをはる\n炎の攻撃をだすと\n自分がダメージ!" }
+"antinavi" = { name = "ナビスカウト", description = "てきにワナをはる\nよびだしたナビを\nねがえらせる" }
+"antirecv" = { name = "バッドメディスン", description = "てきにワナをはる\nてきのリカバリーが\nぎゃくにダメージに" }
+"antiswrd" = { name = "シラハドリ", description = "てきにワナをはる\nソード攻撃をうけ\nながしてはんげき!" }
+"antiwatr" = { name = "ダイコウズイ", description = "てきにワナをはる\n水の攻撃をだすと\n自分がダメージ!" }
+"antiwood" = { name = "マヨイノモリ", description = "てきにワナをはる\n木の攻撃をだすと\n自分がダメージ!" }
+"anubis" = { name = "ポイズンアヌビス", description = "目の前のマスに\nどくを発生させる\nアヌビスぞうをおく" }
+"aqwhirl1" = { name = "アクアワール1", description = "えんをえがいて\nすすむウズマキ!\nじめんを水パネルに" }
+"aqwhirl2" = { name = "アクアワール2", description = "えんをえがいて\nすすむウズマキ!\nじめんを水パネルに" }
+"aqwhirl3" = { name = "アクアワール3", description = "えんをえがいて\nすすむウズマキ!\nじめんを水パネルに" }
+"areagrab" = { name = "エリアスチール", description = "てきエリアの左はし\nたて1れつを自分の\nエリアにぬりかえる" }
+"astroid1" = { name = "メテオアース1", description = "てきめがけて\nふりそそぐメテオ\nじめんをヒビに!" }
+"astroid2" = { name = "メテオアース2", description = "てきめがけて\nふりそそぐメテオ\nじめんをヒビに!" }
+"astroid3" = { name = "メテオアース3", description = "てきめがけて\nふりそそぐメテオ\nじめんをヒビに!" }
+"attck-10" = { name = "アタック+10", description = "攻撃チップのあとに\nえらぶと 攻撃力を\n+10できる" }
+"attck-30" = { name = "アタック+30", description = "攻撃チップのあとに\nえらぶと 攻撃力を\n+30できる" }
+"barr100" = { name = "バリア100", description = "バリアをはり\n100HPぶんの\nダメージをむこうか" }
+"barr200" = { name = "バリア200", description = "バリアをはり\n200HPぶんの\nダメージをむこうか" }
+"barrier" = { name = "バリア", description = "バリアをはり\n10HPぶんの\nダメージをむこうか" }
+"bass" = { name = "フォルテ", description = "前方こうはんいに\nれんしゃする\nフォルテバスター!" }
+"bassanly" = { name = "フォルテアナザー", description = "いちどだけまがる\nリングを4発\nなげつける!" }
+"batcan1" = { name = "バットキャノン1", description = "あてるとゾクタイに\nステータスいじょう\nのオジャマ攻撃!" }
+"batcan2" = { name = "バットキャノン2", description = "あてるとゾクタイの\n方にカラスがあらわ\nれるオジャマ攻撃!" }
+"batcan3" = { name = "バットキャノン3", description = "あてるとゾクタイの\nシェードマンHPを\nかいふくさせる!" }
+"batcan4" = { name = "バットキャノン4", description = "あてるとゾクタイに\n3しゅるいの\nオジャマ攻撃をする" }
+"bblwrap" = { name = "バブルラップ", description = "はがれても また\nふっかつするバリア\n電気攻撃にはよわい" }
+"beat" = { name = "ビートサポート", description = "" }
+"bighook" = { name = "ギガントフック", description = "よこ2マスぶんの\nコブシが2つ\nフックをはなつ!" }
+"bignoise" = { name = "ビッグノイズ", description = "4マス前方まで\nとどく きょだい\nちょうおんぱ!!" }
+"blakwing" = { name = "ブラックウイング", description = "てきエリアはしに\nどうくつがあらわれ\nくろいツバサ攻撃!" }
+"blinder" = { name = "ブラインド", description = "きょうりょくな光で\nあいてをもうもく\nじょうたいにする!" }
+"blizman" = { name = "ブリザードマン", description = "前方にゆきだま!\nものにあたると\nまきこんで大きく!" }
+"blizman-ds" = { name = "ブリザードマン\uE008", description = "前方にゆきだま!\nものにあたると\nまきこんで大きく!" }
+"blizman-sp" = { name = "ブリザードマン\uE003", description = "前方にゆきだま!\nものにあたると\nまきこんで大きく!" }
+"blkbomb" = { name = "ブラックボム", description = "ふはつだんを\n3マス前になげる!\n炎攻撃でバクハツ!" }
+"blkcapsl" = { name = "ブラックカプセル", description = "1つ前にえらんだ\n攻撃チップに\nもうもくをつける" }
+"bodygrd" = { name = "ボディガード", description = "ようじんぼうが\nしゅりけんをなげ\n攻撃してくれる!" }
+"boomer" = { name = "ブーメラン", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
+"boxer1" = { name = "マッドボクサー1", description = "前方のかくれつに\n炎のパンチを\nれんぞくではなつ!" }
+"boxer2" = { name = "マッドボクサー2", description = "前方のかくれつに\n炎のパンチを\nれんぞくではなつ!" }
+"boxer3" = { name = "マッドボクサー3", description = "前方のかくれつに\n炎のパンチを\nれんぞくではなつ!" }
+"boybomb1" = { name = "ボーイズボム1", description = "目の前のマスに\nボーイズボム!\nおすと前へすすむ!" }
+"boybomb2" = { name = "ボーイズボム2", description = "目の前のマスに\nボーイズボム!\nおすと前へすすむ!" }
+"boybomb3" = { name = "ボーイズボム3", description = "目の前のマスに\nボーイズボム!\nおすと前へすすむ!" }
+"bugbomb" = { name = "バグボム", description = "あいてをバグらせる\nバグボムを3マス前\nになげつける" }
+"bugcharg" = { name = "バグチャージ", description = "はっせいしている\nバグの分だけ、バグ\nもろともはっしゃ!" }
+"bugcurse" = { name = "カースオブバグ", description = "あいてをひどい\nバグじょうたいに\nしてしまう!" }
+"bugfix" = { name = "バグシュウセイ", description = "ナビに発生している\nバグをしゅうせいし\nとりのぞく" }
+"busterup" = { name = "バスターアップ", description = "そのバトル中\nバスターの攻撃力を\n1アップさせる!" }
+"cacdanc1" = { name = "サボテンダンス1", description = "てきエリアに\nサボテンボールが\nふりそそぎつづける" }
+"cacdanc2" = { name = "サボテンダンス2", description = "てきエリアに\nサボテンボールが\nふりそそぎつづける" }
+"cacdanc3" = { name = "サボテンダンス3", description = "てきエリアに\nサボテンボールが\nふりそそぎつづける" }
+"cactbal1" = { name = "サボテンボール1", description = "2マス前にむけて\nサボテンをはなつ\n4回はねすすむ!" }
+"cactbal2" = { name = "サボテンボール2", description = "2マス前にむけて\nサボテンをはなつ\n4回はねすすむ!" }
+"cactbal3" = { name = "サボテンボール3", description = "2マス前にむけて\nサボテンをはなつ\n4回はねすすむ!" }
+"cannball" = { name = "ホウガン", description = "3マス前に\nホウガンをなげる!\nパネルはかい攻撃!" }
+"cannball-mode" = { name = "ホウガンモード", description = "ミテイ" }
+"cannmode" = { name = "キャノンモード", description = "ミテイ" }
+"cannon" = { name = "キャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
+"chaoslrd" = { name = "ロードオブカオス", description = "にくしみのパワーが\nフォルテにへんしん\nカオスナイトメア!" }
+"circgun" = { name = "サークルガン", description = "まわるサイトを\nボタンでとめて\nショット攻撃!" }
+"cloudman" = { name = "クラウドマン", description = "てきのはいごに\nクラウドをうみだし\nカミナリ攻撃!" }
+"cloudmn-ds" = { name = "クラウドマン\uE008", description = "てきのはいごに\nクラウドをうみだし\nカミナリ攻撃!" }
+"cloudmn-sp" = { name = "クラウドマン\uE003", description = "てきのはいごに\nクラウドをうみだし\nカミナリ攻撃!" }
+"colonel" = { name = "カーネル", description = "おなじれつ前方の\nてきを 右あがりの\nななめにきりつける" }
+"colonel-ds" = { name = "カーネル\uE008", description = "おなじれつ前方の\nてきを 右あがりの\nななめにきりつける" }
+"colonel-sp" = { name = "カーネル\uE003", description = "おなじれつ前方の\nてきを 右あがりの\nななめにきりつける" }
+"colorpt" = { name = "カラーポイント", description = "自エリアをぎせいに\nしてつぎのチップの\n攻撃力を+10ずつ" }
+"copydmg" = { name = "コピーダメージ", description = "カーソルのあいてに\nほかのてきがうけた\nダメージをコピー!" }
+"cosmoman" = { name = "コスモマン", description = "そらにあなをあけて\nいんせきをふらせる" }
+"cosmomn-ds" = { name = "コスモマン\uE008", description = "そらにあなをあけて\nいんせきをふらせる" }
+"cosmomn-sp" = { name = "コスモマン\uE003", description = "そらにあなをあけて\nいんせきをふらせる" }
+"crakbom" = { name = "クラックボム", description = "3マス前方にボム!\nたて3マス攻撃で\nじめんをヒビに!" }
+"crakout" = { name = "クラックアウト", description = "パネルはかい攻撃!\n目の前の1マスを\nけしさってしまう" }
+"crossdiv" = { name = "クロスディバイド", description = "前方のてきを\nクロスにきりつける" }
+"crosswrd" = { name = "クロスソード", description = "" }
+"crsshld1" = { name = "カースシールド1", description = "ガードするとあいて\nにかみつくシールド\nあいてはのろわれる" }
+"crsshld2" = { name = "カースシールド2", description = "ガードするとあいて\nにかみつくシールド\nあいてはのろわれる" }
+"crsshld3" = { name = "カースシールド3", description = "ガードするとあいて\nにかみつくシールド\nあいてはのろわれる" }
+"csmopris" = { name = "コスモプリズン", description = "コスモホールから\nわくせいをよびだし\n攻撃する!" }
+"curse" = { name = "ノロイ", description = "" }
+"custswrd" = { name = "カスタムソード", description = "カスタムゲージが\nマンタンにちかい\nほど攻撃力アップ!" }
+"cusvolt1" = { name = "カスタムボルト1", description = "ひろがる電撃!\nカスタムゲージを\nしょうひしてはなつ" }
+"cusvolt2" = { name = "カスタムボルト2", description = "ひろがる電撃!\nカスタムゲージを\nしょうひしてはなつ" }
+"cusvolt3" = { name = "カスタムボルト3", description = "ひろがる電撃!\nカスタムゲージを\nしょうひしてはなつ" }
+"darkcirc" = { name = "ダークサークル", description = "エリアノシュウイヲ\nマワルカーソルヲ\nトメテコウゲキセヨ" }
+"darkdril" = { name = "ダークドリル", description = "オノレノハカイ\nショウドウヲミタス\nヤミノドリルナリ!" }
+"darkinvs" = { name = "ダークインビジ", description = "オノレノナカノヤミ\nヲトキハナチ ミヲ\nユダネルノダ!" }
+"darkmetr" = { name = "ダークメテオ", description = "メテオノアメガ\nテキヲネラッテ\nフリソソグデアロウ" }
+"darkplus" = { name = "ダークプラス", description = "ツギノチップノ\nコウゲキリョクヲ\n+50シテヤロウ!" }
+"darkthnd" = { name = "ダークサンダー", description = "マヒコウカヲモッタ\nサンダーボールデ\nジワジワオイツメヨ" }
+"darktorn" = { name = "ダークトルネード", description = "キズヲオウホドニ\nハンイヲヒロゲル\nニクシミノアラシ" }
+"darkwide" = { name = "ダークワイド", description = "タテ3マスノワイド\nショットガアイテヲ\nツラヌイテススム" }
+"dbldream" = { name = "ダブルドリーム", description = "" }
+"dblpoint" = { name = "ダブルポイント", description = "自エリアをぎせいに\nしてつぎのチップの\n攻撃力を+20ずつ" }
+"deltaray" = { name = "デルタレイエッジ", description = "きりつけるときに\nAボタンでさいこう\n3だんのソード攻撃" }
+"dethphnx" = { name = "デスフェニックス", description = "フィールド中に\nヤミの炎、さらに\nナビをリサイクル!" }
+"discord" = { name = "ディスコード", description = "ララチューバをおく\nえんそうちゅう\nあいてがこんらん!" }
+"django" = { name = "ジャンゴ", description = "前方のてきを\nかんおけにとじこめ\nたいよう光で攻撃!" }
+"django-ds" = { name = "ジャンゴ\uE008", description = "前方のてきを\nかんおけにとじこめ\nたいよう光で攻撃!" }
+"django-sp" = { name = "ジャンゴ\uE003", description = "前方のてきを\nかんおけにとじこめ\nたいよう光で攻撃!" }
+"drilarm1" = { name = "ドリルアーム1", description = "前方2マスはんいを\nドリル攻撃!\nてきをおしやる!" }
+"drilarm2" = { name = "ドリルアーム2", description = "前方2マスはんいを\nドリル攻撃!\nてきをおしやる!" }
+"drilarm3" = { name = "ドリルアーム3", description = "前方2マスはんいを\nドリル攻撃!\nてきをおしやる!" }
+"drilmode" = { name = "ドリルモード", description = "ミテイ" }
+"drklance" = { name = "ダークランス", description = "ウシロデアンシン\nシテイルテキヲ\nハイゴカラネラエ" }
+"drkrecov" = { name = "ダークリカバリー", description = "キョウイノカイフク\nノウリョクヲモッテ\nイルノダ・・・" }
+"drksonic" = { name = "ダークサウンド", description = "ソノサウンドハ\nキクモノノウゴキヲ\nフウジテシマウノダ" }
+"drksword" = { name = "ダークソード", description = "キョダイナソードデ\nゼンポウノアイテヲ\nキリツケルノダ!" }
+"dublcrak" = { name = "ダブルクラック", description = "パネルはかい攻撃!\n前のよこ2マスを\nけしさってしまう" }
+"elcreel1" = { name = "エレキリール1", description = "前方に電気のいと!\nとなりあったてきに\n電気がながれていく" }
+"elcreel2" = { name = "エレキリール2", description = "前方に電気のいと!\nとなりあったてきに\n電気がながれていく" }
+"elcreel3" = { name = "エレキリール3", description = "前方に電気のいと!\nとなりあったてきに\n電気がながれていく" }
+"elempowr" = { name = "エレメントパワー", description = "ミテイ" }
+"elemrage" = { name = "エレメントレイジ", description = "前方3マス攻撃\nぞくせいパネルの\n上だとパワーアップ" }
+"energbom" = { name = "エナジーボム", description = "3マス前に\nれんぞくばくふうの\nボムをなげつける" }
+"fan" = { name = "スイコミ", description = "バキュームファンを\nおき 風でてきを\nすいよせる" }
+"fanfare" = { name = "オウエンカ", description = "ララパッパをおく\nえんそうちゅう\n自分がむてきに!" }
+"finalgun" = { name = "ファイナルガン", description = "ミテイ" }
+"firehit1" = { name = "ファイアパンチ1", description = "前方たて3れつで\n一ばんちかいてきの\nいるれつにパンチ!" }
+"firehit2" = { name = "ファイアパンチ2", description = "前方たて3れつで\n一ばんちかいてきの\nいるれつにパンチ!" }
+"firehit3" = { name = "ファイアパンチ3", description = "前方たて3れつで\n一ばんちかいてきの\nいるれつにパンチ!" }
+"football" = { name = "フットメガボール", description = "てきエリアに\n4マスはんい攻撃の\nボールをけりこむ!" }
+"fstgauge" = { name = "クイックゲージ", description = "しばらくのあいだ\nカスタムゲージの\nスピードがあがる" }
+"ftrsword" = { name = "ファイターソード", description = "" }
+"fullcust" = { name = "フルカスタム", description = "カスタムゲージが\nいっしゅんで\nマンタンになる!" }
+"geddon1" = { name = "デスマッチ1", description = "パネルのあるマスが\nすべてヒビに!" }
+"geddon2" = { name = "デスマッチ2", description = "あいているマスが\nすべてこわれる!" }
+"geddon3" = { name = "デスマッチ3", description = "パネルのあるマスが\nすべてどくぬまに!" }
+"geyser" = { name = "カンケツセン", description = "3マス前になげつけ\nあなマスにおちると\n水がふきだす!" }
+"gigacan1" = { name = "ギガキャノン1", description = "前方のてきに\nギガきゅうの\nキャノン攻撃!" }
+"gigacan2" = { name = "ギガキャノン2", description = "前方のてきに\nギガきゅうの\nキャノン攻撃!" }
+"gigacan3" = { name = "ギガキャノン3", description = "前方のてきに\nギガきゅうの\nキャノン攻撃!" }
+"grabbnsh" = { name = "スチールパニシュ", description = "ぬすまれたパネルの\nかずだけ あいてに\n20のダメージ!" }
+"grabrvng" = { name = "スチールリベンジ", description = "ぬすまれたパネルの\nかずだけ あいてに\n40のダメージ!" }
+"grasseed" = { name = "クサムラシード", description = "3マス前にタネ!\n9マス分のパネルを\nクサムラにする!" }
+"greatyo" = { name = "ヨーヨーグレート", description = "たて3れつに\nすすむヨーヨー!" }
+"gridman" = { name = "フットマン", description = "ななめ上へかけだし\nゴールにたっすると\n大ばくはつをおこす" }
+"gridman-ds" = { name = "フットマン\uE008", description = "ななめ上へかけだし\nゴールにたっすると\n大ばくはつをおこす" }
+"gridman-sp" = { name = "フットマン\uE003", description = "ななめ上へかけだし\nゴールにたっすると\n大ばくはつをおこす" }
+"guard1" = { name = "メットガード1", description = "タイミングガードし\n攻撃をしょうげきは\nにしてはねかえす!" }
+"guard2" = { name = "メットガード2", description = "タイミングガードし\n攻撃をしょうげきは\nにしてはねかえす!" }
+"guard3" = { name = "メットガード3", description = "タイミングガードし\n攻撃をしょうげきは\nにしてはねかえす!" }
+"guardian" = { name = "オジゾウサン", description = "目の前のマスに\nこわしてはいけない\nオジゾウサンをおく" }
+"gundelex" = { name = "ガンデルソルEX", description = "さらにこうはんいに\nたいようこうせんを\nしょうしゃする!" }
+"gundels1" = { name = "ガンデルソル1", description = "ボタンをおしつづけ\nると2マス前方の\nたて3マスに日の光" }
+"gundels2" = { name = "ガンデルソル2", description = "ボタンをおしつづけ\nると2マス前方の\nたて3マスに日の光" }
+"gundels3" = { name = "ガンデルソル3", description = "ボタンをおしつづけ\nると2マス前方の\nたて3マスに日の光" }
+"gyroman" = { name = "ジャイロマン", description = "ヘリけいたいになり\nおなじれつの前方に\nばくげき!!" }
+"gyroman-ds" = { name = "ジャイロマン\uE008", description = "ヘリけいたいになり\nおなじれつの前方に\nばくげき!!" }
+"gyroman-sp" = { name = "ジャイロマン\uE003", description = "ヘリけいたいになり\nおなじれつの前方に\nばくげき!!" }
+"h-burst" = { name = "ハイパーバースト", description = "ヒットすると\nまわりにひろがる\nれんぞくはれつ攻撃" }
+"hicannon" = { name = "ハイキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
+"holydrem" = { name = "ホーリードリーム", description = "ホーリーパネルを\nすいこんで前方へ\nホーリーショット!" }
+"holypanl" = { name = "ホーリーパネル", description = "目の前のパネルを\nダメージはんげんの\nホーリーパネルに!" }
+"hotbody1" = { name = "ヒートボディ1", description = "じぶんのまわりの\nてきに炎攻撃!\nもえうつっていく!" }
+"hotbody2" = { name = "ヒートボディ2", description = "じぶんのまわりの\nてきに炎攻撃!\nもえうつっていく!" }
+"hotbody3" = { name = "ヒートボディ3", description = "じぶんのまわりの\nてきに炎攻撃!\nもえうつっていく!" }
+"iceseed" = { name = "アイスシード", description = "3マス前にタネ!\n9マス分のパネルを\nこおりにする!" }
+"infvulc1" = { name = "ムゲンバルカン1", description = "前方のてきに\n20れんしゃの\nひっさつバルカン!" }
+"infvulc2" = { name = "ムゲンバルカン2", description = "前方のてきに\n24れんしゃの\nひっさつバルカン!" }
+"infvulc3" = { name = "ムゲンバルカン3", description = "前方のてきに\n28れんしゃの\nひっさつバルカン!" }
+"invalid" = { name = "", description = "" }
+"invisibl" = { name = "インビジブル", description = "少しの間とうめいに\nなって ほとんどの\n攻撃にあたらない" }
+"jealousy" = { name = "ジェラシー", description = "チップをもつてきに\n枚数におうじた\nダメージをあたえる" }
+"justcone" = { name = "ジャスティスワン", description = "左から5れつめ\nまん中のマスに\nせいぎのコブシ!" }
+"katana1" = { name = "サムライソード1", description = "ワイドとロングに\n2回れんぞくで\nきりつける!" }
+"katana2" = { name = "サムライソード2", description = "ワイドとロングに\n2回れんぞくで\nきりつける!" }
+"katana3" = { name = "サムライソード3", description = "ワイドとロングに\n2回れんぞくで\nきりつける!" }
+"knightmn" = { name = "ナイトマン", description = "じぶんのしゅういを\nかいてんする\nてっきゅう攻撃!" }
+"knigtmn-ds" = { name = "ナイトマン\uE008", description = "じぶんのしゅういを\nかいてんする\nてっきゅう攻撃!" }
+"knigtmn-sp" = { name = "ナイトマン\uE003", description = "じぶんのしゅういを\nかいてんする\nてっきゅう攻撃!" }
+"lance" = { name = "バンブーランス", description = "てきエリアの右はし\nたてれつにとつぜん\nたけやりが発生!" }
+"larkman" = { name = "スワローマン", description = "2マス前方をとおる\nルートでせんかいし\nてきを攻撃!" }
+"larkman-ds" = { name = "スワローマン\uE008", description = "2マス前方をとおる\nルートでせんかいし\nてきを攻撃!" }
+"larkman-sp" = { name = "スワローマン\uE003", description = "2マス前方をとおる\nルートでせんかいし\nてきを攻撃!" }
+"lavaseed" = { name = "マグマシード", description = "3マス前にタネ!\n9マス分のパネルを\nマグマにする!" }
+"lcounter" = { name = "Lカウンター", description = "ミテイ" }
+"lcrsshld" = { name = "Lカースシールド", description = "ミテイ" }
+"leadraid" = { name = "リーダーズレイド", description = "ブルースとカーネル\nリーダーどうしが\nゆめのきょうえん!" }
+"lifeaur" = { name = "ドリームオーラ", description = "攻撃力が200より\nひくい攻撃を\nむこうかするオーラ" }
+"lifesrd" = { name = "ドリームソード", description = "よこ2、たて3の\nはんいをきる\nきょだいソード!" }
+"lifesync" = { name = "ライフシンクロ", description = "2マス前のてきに\nカーソル!てきの\nHPをおなじにする" }
+"longblde" = { name = "ロングブレード", description = "目の前のてきを\nきりつける!\nはんいはよこ2マス" }
+"longswrd" = { name = "ロングソード", description = "目の前のてきを\nきりつける!\nはんいはよこ2マス" }
+"lstepswd" = { name = "Lフミコミザン", description = "ミテイ" }
+"m-cannon" = { name = "メガキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
+"magnetmn" = { name = "マグネットマン", description = "前方へNSタックル\nでとっしんする!" }
+"magntmn-ds" = { name = "マグネットマン\uE008", description = "前方へNSタックル\nでとっしんする!" }
+"magntmn-sp" = { name = "マグネットマン\uE003", description = "前方へNSタックル\nでとっしんする!" }
+"magnum" = { name = "マグナム", description = "カーソルをとめて\nパネルをはかいする\nマグナムをハッシャ" }
+"meddy" = { name = "メディ", description = "カプセルボムを2コ\nてきのエリアに\nなげこむ!" }
+"meddy-ds" = { name = "メディ\uE008", description = "カプセルボムを2コ\nてきのエリアに\nなげこむ!" }
+"meddy-sp" = { name = "メディ\uE003", description = "カプセルボムを2コ\nてきのエリアに\nなげこむ!" }
+"megenbom" = { name = "メガエナジーボム", description = "3マス前に\nれんぞくばくふうの\nボムをなげつける" }
+"metagel" = { name = "スチールゼリー", description = "てきエリア左はしに\nパネルをぬりかえる\nゼリー攻撃!" }
+"meteors" = { name = "リュウセイグン", description = "あいてエリアに\nむすうのリュウセイ\nがふりそそぐ!" }
+"metrknuk" = { name = "メテオナックル", description = "うちゅうから\nせいぎのこぶしが\nむすうにふりそそぐ" }
+"mine" = { name = "ステルスマイン", description = "てきエリアのどこか\nに見えないじらいを\nセットする!" }
+"minibomb" = { name = "ミニボム", description = "3マス前におちる\nボムをなげつける" }
+"moonbld1" = { name = "エンゲツクナイ1", description = "じぶんのまわりに\nかいてんぎり!\nふかいきずをおわす" }
+"moonbld2" = { name = "エンゲツクナイ2", description = "じぶんのまわりに\nかいてんぎり!\nふかいきずをおわす" }
+"moonbld3" = { name = "エンゲツクナイ3", description = "じぶんのまわりに\nかいてんぎり!\nふかいきずをおわす" }
+"mrkcan1" = { name = "マークキャノン1", description = "前方3れつまでの\nてきをロックオンし\nキャノン攻撃!" }
+"mrkcan2" = { name = "マークキャノン2", description = "前方3れつまでの\nてきをロックオンし\nキャノン攻撃!" }
+"mrkcan3" = { name = "マークキャノン3", description = "前方3れつまでの\nてきをロックオンし\nキャノン攻撃!" }
+"mudwave" = { name = "ドロツナミホール", description = "あなパネルから\nドロツナミはっせい" }
+"muramasa" = { name = "ムラマサブレード", description = "へっているHP分が\n攻撃力になる\nのろいのカタナ!" }
+"napalmmn" = { name = "ナパームマン", description = "4マス前方に\n9マス分にひろがる\nナパームボム!" }
+"naplmmn-ds" = { name = "ナパームマン\uE008", description = "4マス前方に\n9マス分にひろがる\nナパームボム!" }
+"naplmmn-sp" = { name = "ナパームマン\uE003", description = "4マス前方に\n9マス分にひろがる\nナパームボム!" }
+"navi-20" = { name = "ナビ+20", description = "ナビチップの\nあとにえらぶと\n攻撃力を+20!" }
+"neovari" = { name = "ネオバリアブル", description = "へんげんじざいの\nテクニカルソード\nじょうきゅうへん" }
+"nrthwind" = { name = "スーパーキタカゼ", description = "すさまじいキタカゼ\nがバリアやオーラを\nふきとばしてしまう" }
+"numbrbl" = { name = "ナンバーボール", description = "HPの下2ケタが\n攻撃力になるボール\nを前方にハッシャ!" }
+"numbrman" = { name = "ナンバーマン", description = "3マス前方にボム!\n攻撃力は出目しだい\n9マス分にばくはつ" }
+"numbrmn-ds" = { name = "ナンバーマン\uE008", description = "3マス前方にボム!\n攻撃力は出目しだい\n9マス分にばくはつ" }
+"numbrmn-sp" = { name = "ナンバーマン\uE003", description = "3マス前方にボム!\n攻撃力は出目しだい\n9マス分にばくはつ" }
+"omegarkt" = { name = "オメガロケット", description = "まん中のれつを\nまっすぐすすむ\nきょだいロケット!" }
+"otenko" = { name = "オテンコサマ", description = "目の前に攻撃力を\nじょうしょうさせる\nオテンコサマをおく" }
+"panlgrab" = { name = "パネルスチール", description = "前方のてきエリアの\n1マスを 自分の\nエリアにぬりかえる" }
+"parabom" = { name = "パラライズボム", description = "3マス前方にボム!\nたて3マス攻撃で\nマヒこうかつき!" }
+"phoenix" = { name = "フェニックス", description = "フィールドまん中に\nふりそそぐ火炎!\nさらにHPかいふく" }
+"piledrvr" = { name = "パイルドライバー", description = "目の前のマスに\nパイルドライバーを\nおいて前方を攻撃!" }
+"pithoky" = { name = "ジゴクホッケー", description = "はんしゃしながら\nすすむきょうふの\nホッケー攻撃!" }
+"pnkcapsl" = { name = "ピンクカプセル", description = "1つ前にえらんだ\n攻撃チップに\nリカバリーをつける" }
+"pnlretrn" = { name = "パネルリターン", description = "自分のエリアの\nパネルをノーマルに\nもどす!" }
+"poisphar" = { name = "ポイズンファラオ", description = "目の前にどくを\nはっせいさせる\nファラオぞうをおく" }
+"poltrgst" = { name = "ポルターガイスト", description = "フィールド上にある\nぶったいをとばして\nあいてにぶつける!" }
+"protoman" = { name = "ブルース", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
+"protomn-ds" = { name = "ブルース\uE008", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
+"protomn-sp" = { name = "ブルース\uE003", description = "てきの前にいって\nきりつけてまわる\nいけないばあいも" }
+"prpcapsl" = { name = "パープルカプセル", description = "1つ前にえらんだ\n攻撃チップに\nHPバグをつける" }
+"pulsar1" = { name = "パルスビーム1", description = "前方におんぱ攻撃!\nものにあたると\nまわりにひろがる!" }
+"pulsar2" = { name = "パルスビーム2", description = "前方におんぱ攻撃!\nものにあたると\nまわりにひろがる!" }
+"pulsar3" = { name = "パルスビーム3", description = "前方におんぱ攻撃!\nものにあたると\nまわりにひろがる!" }
+"punisher" = { name = "バチアタリ", description = "" }
+"quake1" = { name = "アースクエイク1", description = "3マス前方に\nアースクエイク攻撃\nじめんをヒビに!" }
+"quake2" = { name = "アースクエイク2", description = "3マス前方に\nアースクエイク攻撃\nじめんをヒビに!" }
+"quake3" = { name = "アースクエイク3", description = "3マス前方に\nアースクエイク攻撃\nじめんをヒビに!" }
+"rainyday" = { name = "カモンレイン", description = "じぶんのエリアの\n水パネルをすいこみ\nてきにあめをふらす" }
+"recov10" = { name = "リカバリー10", description = "HPを10\nかいふくする" }
+"recov120" = { name = "リカバリー120", description = "HPを120\nかいふくする" }
+"recov150" = { name = "リカバリー150", description = "HPを150\nかいふくする" }
+"recov200" = { name = "リカバリー200", description = "HPを200\nかいふくする" }
+"recov30" = { name = "リカバリー30", description = "HPを30\nかいふくする" }
+"recov300" = { name = "リカバリー300", description = "HPを300\nかいふくする" }
+"recov50" = { name = "リカバリー50", description = "HPを50\nかいふくする" }
+"recov80" = { name = "リカバリー80", description = "HPを80\nかいふくする" }
+"redfrut1" = { name = "レッドフルーツ1", description = "りんごがしゅつげん\n攻撃をあてるとHP\nが300かいふく!" }
+"redfrut2" = { name = "レッドフルーツ2", description = "りんごがしゅつげん\n攻撃をあてると\nむてきじょうたいに" }
+"redfrut3" = { name = "レッドフルーツ3", description = "りんごがしゅつげん\n攻撃をあてると\nフルシンクロに!" }
+"redwave" = { name = "アカツナミホール", description = "マグマパネルから\nアカツナミはっせい" }
+"resetbom" = { name = "リセットボム", description = "3マス前方にボム!\nたて3マス攻撃で\nパワーダウンこうか" }
+"rockcube" = { name = "ストーンキューブ", description = "目の前のマスに\nストーンキューブを\n発生させる" }
+"roll" = { name = "ロール", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
+"roll-ds" = { name = "ロール\uE008", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
+"roll-sp" = { name = "ロール\uE003", description = "てき1たいを攻撃\nかいふくのハートで\nいやしてくれる" }
+"rush" = { name = "ラッシュサポート", description = "" }
+"seaseed" = { name = "オーシャンシード", description = "3マス前にタネ!\n9マス分のパネルを\n水パネルにする!" }
+"serchman" = { name = "サーチマン", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
+"serchmn-ds" = { name = "サーチマン\uE008", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
+"serchmn-sp" = { name = "サーチマン\uE003", description = "サイトをボタンで\nとめて 5れんしゃ\nのスコープガン!" }
+"shademan" = { name = "シェードマン", description = "ほうしゃじょうに\nちょうおんぱ攻撃\nクラッシュノイズ!" }
+"shademn-ds" = { name = "シェードマン\uE008", description = "ほうしゃじょうに\nちょうおんぱ攻撃\nクラッシュノイズ!" }
+"shademn-sp" = { name = "シェードマン\uE003", description = "ほうしゃじょうに\nちょうおんぱ攻撃\nクラッシュノイズ!" }
+"shadoman" = { name = "シャドーマン", description = "てきのいるマスに\n3まいのしゅりけん\nをなげつける!" }
+"shadomn-ds" = { name = "シャドーマン\uE008", description = "てきのいるマスに\n3まいのしゅりけん\nをなげつける!" }
+"shadomn-sp" = { name = "シャドーマン\uE003", description = "てきのいるマスに\n3まいのしゅりけん\nをなげつける!" }
+"shakpar1" = { name = "ユラパレード1", description = "ゆれながらすすむ\nユラのパレード!\nあいてをマヒに!" }
+"shakpar2" = { name = "ユラパレード2", description = "ゆれながらすすむ\nユラのパレード!\nあいてをマヒに!" }
+"shakpar3" = { name = "ユラパレード3", description = "ゆれながらすすむ\nユラのパレード!\nあいてをマヒに!" }
+"sidebub1" = { name = "サイドバブル1", description = "モリの入ったアワを\nりょうななめ前方に\nはっせいさせる" }
+"sidebub2" = { name = "サイドバブル2", description = "モリの入ったアワを\nりょうななめ前方に\nはっせいさせる" }
+"sidebub3" = { name = "サイドバブル3", description = "モリの入ったアワを\nりょうななめ前方に\nはっせいさせる" }
+"silence" = { name = "サイレンス", description = "ララミュートをおく\nえんそうちゅう\nあいてはもうもくに" }
+"skully1" = { name = "スカルチェーン1", description = "3マスだけすすむ\nついびするホネ!\nあたるとこんらんに" }
+"skully2" = { name = "スカルチェーン2", description = "3マスだけすすむ\nついびするホネ!\nあたるとこんらんに" }
+"skully3" = { name = "スカルチェーン3", description = "3マスだけすすむ\nついびするホネ!\nあたるとこんらんに" }
+"slasher" = { name = "イアイフォーム", description = "Aボタンをおして\nいる間に入ってくる\nてきをきる!" }
+"slogauge" = { name = "ヘビーゲージ", description = "しばらくのあいだ\nカスタムゲージの\nスピードがおちる" }
+"snake" = { name = "カモンスネーク", description = "自分のエリアの\nあなマスから\nこヘビがとんでいく" }
+"snctuary" = { name = "サンクチュアリ", description = "自分のエリアの\nすべてのマスを\nホーリーパネルに!" }
+"sonicbom" = { name = "ソニックブーム", description = "" }
+"spreader" = { name = "スプレッドガン", description = "ヒットすると\nまわりの1マスに\nゆうばく!" }
+"sprsonic" = { name = "スーパーソニック", description = "" }
+"spshake1" = { name = "スペースユラ1", description = "たて3マスはばで\nゆれながらすすむ\nユラをはっしゃ!" }
+"spshake2" = { name = "スペースユラ2", description = "たて3マスはばで\nゆれながらすすむ\nユラをはっしゃ!" }
+"spshake3" = { name = "スペースユラ3", description = "たて3マスはばで\nゆれながらすすむ\nユラをはっしゃ!" }
+"static" = { name = "ノイズストーム", description = "2マス前にノイズの\nアラシ!バグがある\nとパワーアップする" }
+"suprspr1" = { name = "スーパーワイド1", description = "かんつうする\nワイドショットを\n3れんしゃ!" }
+"suprspr2" = { name = "スーパーワイド2", description = "かんつうする\nワイドショットを\n3れんしゃ!" }
+"suprspr3" = { name = "スーパーワイド3", description = "かんつうする\nワイドショットを\n3れんしゃ!" }
+"suprvulc" = { name = "スーパーバルカン", description = "きょういの\n12れんしゃ\nバルカンほう!" }
+"sword" = { name = "ソード", description = "目の前のてきを\nきりつける!\n攻撃はんいは1マス" }
+"swrdmode" = { name = "ソードモード", description = "ミテイ" }
+"tango" = { name = "タンゴサポート", description = "" }
+"tankcan1" = { name = "センシャホウ1", description = "前方にほうげき!\n画面はしにとどくと\nたて3マスばくふう" }
+"tankcan2" = { name = "センシャホウ2", description = "前方にほうげき!\n画面はしにとどくと\nたて3マスばくふう" }
+"tankcan3" = { name = "センシャホウ3", description = "前方にほうげき!\n画面はしにとどくと\nたて3マスばくふう" }
+"thunder" = { name = "サンダーボール", description = "ゆっくりとすすむ\nついび電気攻撃\nあたるとマヒする!" }
+"timebom" = { name = "ギガカウントボム", description = "てきエリアのどこか\nにギガカウントボム\nをはっせいさせる!" }
+"timebom1" = { name = "カウントボム1", description = "3びょうごに\nばくはつするボムを\nてきエリアにおく!" }
+"timebom2" = { name = "カウントボム2", description = "3びょうごに\nばくはつするボムを\nてきエリアにおく!" }
+"timebom3" = { name = "カウントボム3", description = "3びょうごに\nばくはつするボムを\nてきエリアにおく!" }
+"timpani" = { name = "ティンパニー", description = "ララボーンをおく\nえんそうちゅう\nじしんであしどめ!" }
+"tmhwkman" = { name = "トマホークマン", description = "よこ2、たて3マス\nをきりつける\nトマホークスイング" }
+"tmhwkmn-ds" = { name = "トマホークマン\uE008", description = "よこ2、たて3マス\nをきりつける\nトマホークスイング" }
+"tmhwkmn-sp" = { name = "トマホークマン\uE003", description = "よこ2、たて3マス\nをきりつける\nトマホークスイング" }
+"toadman" = { name = "トードマン", description = "マヒこうかのある\nうたをはなつ\nついびしてすすむ" }
+"toadman-ds" = { name = "トードマン\uE008", description = "マヒこうかのある\nうたをはなつ\nついびしてすすむ" }
+"toadman-sp" = { name = "トードマン\uE003", description = "マヒこうかのある\nうたをはなつ\nついびしてすすむ" }
+"tornado" = { name = "トルネード", description = "2マス前方に\n8ヒットのたつまき\nを発生させる!" }
+"tripcrak" = { name = "トリプルクラック", description = "パネルはかい攻撃!\n前のたて3マスを\nけしさってしまう" }
+"varswrd" = { name = "バリアブルソード", description = "へんげんじざいの\nテクニカルソード" }
+"vdoll" = { name = "ワラニンギョウ", description = "おそろしいノロイの\nワラニンギョウを\n3マス前方になげる" }
+"voltz1" = { name = "イナズマキング1", description = "3マス前にピカラー\nがしゅつげん!\nじゅうじにほうでん" }
+"voltz2" = { name = "イナズマキング2", description = "3マス前にピカラー\nがしゅつげん!\nじゅうじにほうでん" }
+"voltz3" = { name = "イナズマキング3", description = "3マス前にピカラー\nがしゅつげん!\nじゅうじにほうでん" }
+"vulcan1" = { name = "バルカン1", description = "3れんしゃバルカン\nヒットすると1マス\nおくにもかんつう!" }
+"vulcan2" = { name = "バルカン2", description = "5れんしゃバルカン\nヒットすると1マス\nおくにもかんつう!" }
+"vulcan3" = { name = "バルカン3", description = "7れんしゃバルカン\nヒットすると1マス\nおくにもかんつう!" }
+"wavepit" = { name = "ツナミホール", description = "水パネルから\nツナミがはっせい" }
+"whicapsl" = { name = "ホワイトカプセル", description = "1つ前にえらんだ\n攻撃チップに\nマヒこうかをつける" }
+"wideblde" = { name = "ワイドブレード", description = "目の前のてきを\nきりつける!\nはんいはたて3マス" }
+"widesht1" = { name = "ワイドショット1", description = "たて3マスのはばを\nもつワイドショット\nを前方へはなつ!" }
+"widesht2" = { name = "ワイドショット2", description = "たて3マスのはばを\nもつワイドショット\nを前方へはなつ!" }
+"widesht3" = { name = "ワイドショット3", description = "たて3マスのはばを\nもつワイドショット\nを前方へはなつ!" }
+"wideswrd" = { name = "ワイドソード", description = "目の前のてきを\nきりつける!\nはんいはたて3マス" }
+"wildbird" = { name = "ワイルドスワロー", description = "2マス前方をとぶ\nきどうで3かいてん\nとびまわり攻撃!" }
+"wind" = { name = "トップウ", description = "ウインドボックスを\nおき てきエリアに\n風をふかせる" }
+"windrack" = { name = "フウジンラケット", description = "目の前のてきを\n風でふきとばす!\nはんいはたて3マス" }
+"woodnos1" = { name = "ウッディノーズ1", description = "前方にタネをはなつ\n画面そとから2マス\nのえだがのびてくる" }
+"woodnos2" = { name = "ウッディノーズ2", description = "前方にタネをはなつ\n画面そとから2マス\nのえだがのびてくる" }
+"woodnos3" = { name = "ウッディノーズ3", description = "前方にタネをはなつ\n画面そとから2マス\nのえだがのびてくる" }
+"yelcapsl" = { name = "イエローカプセル", description = "1つ前にえらんだ\n攻撃チップに\nこんらんをつける" }
+"yoyo" = { name = "ヨーヨー", description = "3マス前までとどく\nヨーヨー攻撃!\n3マス前は3ヒット" }
+"yoyomode" = { name = "ヨーヨーモード", description = "ミテイ" }
+"z-saver" = { name = "Zセイバー", description = "でんせつの あかい\nレプリロイドの\n3だんぎりソード" }
+
+[navis]
+"megaman" = { name = "ロックマン", variant_name = "FCロックマン" }
+
+[forms]
+"colonelsoul" = { name = "カーネルソウル" }
+"gyrosoul" = { name = "ジャイロソウル" }
+"knightsoul" = { name = "ナイトソウル" }
+"magnetsoul" = { name = "マグネットソウル" }
+"meddysoul" = { name = "メディソウル" }
+"napalmsoul" = { name = "ナパームソウル" }
+"numbersoul" = { name = "ナンバーソウル" }
+"protosoul" = { name = "ブルースソウル" }
+"searchsoul" = { name = "サーチソウル" }
+"shadowsoul" = { name = "シャドーソウル" }
+"toadsoul" = { name = "トードソウル" }
+"tomahawksoul" = { name = "トマホークソウル" }
+
+[navicust-programs]
+"airshoes" = { name = "エアシューズ" }
+"antidmg" = { name = "カワリミマジック" }
+"attck-1" = { name = "アタック+1" }
+"attckmax" = { name = "アタックMAX" }
+"autoheal" = { name = "セルフリカバリー" }
+"autorun" = { name = "オートランニング" }
+"battery" = { name = "バッテリーモード" }
+"beat" = { name = "ビートサポート" }
+"bodypack" = { name = "ボディパック" }
+"bugstop" = { name = "バグストッパー" }
+"bustpack" = { name = "バスターパック" }
+"charge-1" = { name = "チャージ+1" }
+"chargmax" = { name = "チャージMAX" }
+"chivalry" = { name = "ダンディズム" }
+"collect" = { name = "コレクターズアイ" }
+"custom1" = { name = "カスタム1" }
+"custom2" = { name = "カスタム2" }
+"fish" = { name = "アイムフィッシュ" }
+"flotshoe" = { name = "フロートシューズ" }
+"fstbarr" = { name = "ファーストバリア" }
+"gigavirs" = { name = "ギガウイルス" }
+"gigfldr1" = { name = "ギガフォルダ1" }
+"hp-100" = { name = "HP+100" }
+"hp-200" = { name = "HP+200" }
+"hp-300" = { name = "HP+300" }
+"hp-400" = { name = "HP+400" }
+"hp-50" = { name = "HP+50" }
+"hp-500" = { name = "HP+500" }
+"hubbatc" = { name = "サイトバッチ" }
+"humor" = { name = "ユーモアセンス" }
+"jungle" = { name = "ジャングルランド" }
+"megavirs" = { name = "メガウイルス" }
+"megfldr1" = { name = "メガフォルダ1" }
+"megfldr2" = { name = "メガフォルダ2" }
+"millions" = { name = "ミリオネア" }
+"oilbody" = { name = "オイルボディ" }
+"reflect" = { name = "リフレクト" }
+"rush" = { name = "ラッシュサポート" }
+"shield" = { name = "シールド" }
+"sneakrun" = { name = "シノビダッシュ" }
+"soulclen" = { name = "ソウルクリーナー" }
+"soult-1" = { name = "ソウルタイム+1" }
+"speed-1" = { name = "ラピッド+1" }
+"speedmax" = { name = "ラピッドMAX" }
+"sprarmr" = { name = "スーパーアーマー" }
+"tango" = { name = "タンゴサポート" }
+"undersht" = { name = "アンダーシャツ" }
+
+[patch-cards]
+"alpha" = { name = "プロト" }
+"alphabug" = { name = "プロトバグ" }
+"anaconda" = { name = "ダイジャン" }
+"anettas-custom" = { name = "アネッタの\nカスタマイズ" }
+"appley" = { name = "アップルサム" }
+"aquaman" = { name = "アクアマン" }
+"basher" = { name = "ドゴーン" }
+"bass" = { name = "フォルテ" }
+"bass-cross-megaman-colonel" = { name = "フォルテクロス\nロックマン" }
+"bass-cross-megaman-protoman" = { name = "フォルテクロス\nロックマン" }
+"bassgs" = { name = "フォルテGS" }
+"bassxx" = { name = "フォルテXX" }
+"batty" = { name = "パルスバット" }
+"billy" = { name = "ビリー" }
+"bombman" = { name = "ボンバーマン" }
+"boomer" = { name = "ラウンダ" }
+"brushman" = { name = "フデロー" }
+"bubblman" = { name = "バブルマン" }
+"bugtank" = { name = "カブタンク" }
+"bunny" = { name = "ラビリー" }
+"cactikil" = { name = "サボテコロン" }
+"candela" = { name = "キャンデービル" }
+"catack" = { name = "キャタック" }
+"champy" = { name = "チャンプル" }
+"chauds-custom" = { name = "炎山の\nカスタマイズ" }
+"chill-skis-custom" = { name = "コオリスキーの\nカスタマイズ" }
+"cirkill" = { name = "サーキラー" }
+"cloudy" = { name = "クモンペ" }
+"colonel" = { name = "カーネル" }
+"cosmoman" = { name = "コスモマン" }
+"count-zaps-custom" = { name = "エレキはくしゃく\nのカスタマイズ" }
+"dads-repair-program" = { name = "パパのしゅうせい\nプログラム" }
+"dexs-custom" = { name = "デカオの\nカスタマイズ" }
+"dharma" = { name = "ダーマ" }
+"dominerd" = { name = "カーズ" }
+"drain" = { name = "チクリート" }
+"drillman" = { name = "ドリルマン" }
+"drixol" = { name = "ドリクロール" }
+"duo" = { name = "デューオ" }
+"eleball" = { name = "パラボール" }
+"elebee" = { name = "スパークビー" }
+"elecman" = { name = "エレキマン" }
+"elmperor" = { name = "エレンプラ" }
+"fan" = { name = "ファンカー" }
+"fireman" = { name = "ファイアマン" }
+"fishy" = { name = "キオルシン" }
+"flameman" = { name = "フレイムマン" }
+"flamey" = { name = "フレイボー" }
+"flashman" = { name = "フラッシュマン" }
+"froshell" = { name = "フロシェル" }
+"gaia" = { name = "ガイアント" }
+"gateman" = { name = "ゲートマン" }
+"ghost" = { name = "ゴースラー" }
+"gospel" = { name = "ゴスペル" }
+"gutsman" = { name = "ガッツマン" }
+"gyroman" = { name = "ジャイロマン" }
+"hardhead" = { name = "ハルドボルズ" }
+"heatman" = { name = "ヒートマン" }
+"hub-hikari" = { name = "光彩斗" }
+"junkman" = { name = "ジャンクマン" }
+"killreye" = { name = "キラーズアイ" }
+"kingman" = { name = "キングマン" }
+"lans-custom" = { name = "熱斗の\nカスタマイズ" }
+"lark" = { name = "ゲイラーク" }
+"laserman" = { name = "レーザーマン" }
+"lavagon" = { name = "マグマドラゴン" }
+"life-virus" = { name = "ドリームウイルス" }
+"maddys-custom" = { name = "まどいの\nカスタマイズ" }
+"magicman" = { name = "マジックマン" }
+"meddy" = { name = "メディ" }
+"melody" = { name = "プルメロ" }
+"metalman" = { name = "メタルマン" }
+"mettaur" = { name = "メットール" }
+"moloko" = { name = "マルモコ" }
+"mr-matchs-custom" = { name = "ヒノケンの\nカスタマイズ" }
+"mushy" = { name = "チャマッシュ" }
+"n-o" = { name = "N.O" }
+"nebula-gray" = { name = "ネビュラグレイ" }
+"ninjoy" = { name = "ゲニン" }
+"null" = { name = "ヌール" }
+"pengi" = { name = "コリペン" }
+"piranha" = { name = "アーバルボーイ" }
+"popper" = { name = "ミノゴロモン" }
+"powie" = { name = "ポワルド" }
+"protecto" = { name = "プロテクト" }
+"protoman" = { name = "ブルース" }
+"puffball" = { name = "バジリコ" }
+"quaker" = { name = "クエイカー" }
+"quickman" = { name = "クイックマン" }
+"ratty" = { name = "チュートン" }
+"redufo" = { name = "UFOサニー" }
+"roll" = { name = "ロール" }
+"rush" = { name = "ラッシュ" }
+"scuttlst" = { name = "ドリームビット" }
+"serenade" = { name = "セレナード" }
+"shademan" = { name = "シェードマン" }
+"shrimpy" = { name = "エビロン" }
+"snakeman" = { name = "スネークマン" }
+"snowblow" = { name = "スーンハーク" }
+"sparkman" = { name = "スパークマン" }
+"spikey" = { name = "ガルー" }
+"swordy" = { name = "スウォーディン" }
+"tmhkman" = { name = "トマホークマン" }
+"toras-tactics" = { name = "トラキチの\n戦じゅつ" }
+"volgear" = { name = "ボルケルギア" }
+"weather" = { name = "ウェザース" }
+"whirly" = { name = "ウズリム" }
+"windman" = { name = "ウインドマン" }
+"woodman" = { name = "ウッドマン" }
+"yahoots-bug-repair" = { name = "マハ・ジャラマの\nバグしゅうせい" }
+"yort" = { name = "ヨーヨット" }
+"zomon" = { name = "ザエモン" }

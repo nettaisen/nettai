@@ -68,16 +68,16 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
        nettai-frontend [OPTIONS] --audit-content
        nettai-frontend [OPTIONS] --audit TRACE.jsonl...
 
-  You play one game, BN6 or BN5: a match file names its game and a trace
+  You play one game, EXE6 or EXE5: a match file names its game and a trace
   states its own, else --game says it (there is no default game: without
   one the frontend lists those it found a pack of and stops). The battle
   is that game's: its content folder and the
   support folders it uses, drawn and heard from its pack (graphics and
-  sound, written from your ROMs by `bn6-extract content <falzar-us>
-  <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6`, BN5's by
-  bn5-extract), found in the packs directory, $NETTAI_PACKS, else
+  sound, written from your ROMs by `exe6-extract content <falzar-us>
+  <gregar-us> <falzar-jp> <gregar-jp> data/content/exe6`, EXE5's by
+  exe5-extract), found in the packs directory, $NETTAI_PACKS, else
   data/content, each pack by the game it says.
-  --game GAME      the game played, bn6 or bn5: required without a match
+  --game GAME      the game played, exe6 or exe5: required without a match
                    file or a trace (a match file's game is its own, and so
                    is a trace's: one of another game than GAME is refused)
   --pack DIR       a pack's directory, in place of the found pack of its game

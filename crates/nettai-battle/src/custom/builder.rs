@@ -15,9 +15,9 @@ pub mod modifier_bits {
     /// WhiCapsl folded in: the chip paralyzes.
     pub const PARALYZE: u8 = 0x02;
     /// Uninstll folded in: the chip uninstalls (the damage word's 0x2000;
-    /// BN5's confusion, mixed in by its yellow capsule).
+    /// EXE5's confusion, mixed in by its yellow capsule).
     pub const UNINSTALL: u8 = 0x04;
-    /// BN5's capsules (0x08023824, by 0x08010368 and 0x0800FFF6): the
+    /// EXE5's capsules (0x08023824, by 0x08010368 and 0x0800FFF6): the
     /// damage word's 0x1000 (its blindness), its 0x0800 (its HP bug), and
     /// the user healed a tenth of its HP at the use.
     pub const DAMAGE_1000: u8 = 0x08;
@@ -49,7 +49,7 @@ pub struct Pick {
     pub chip: FolderChip,
     pub regular: bool,
     /// The modifier bits a button mixed into the pick (the slot's `marks`:
-    /// BN5's capsules).
+    /// EXE5's capsules).
     pub marks: u8,
 }
 
@@ -139,7 +139,7 @@ pub fn build(
 /// `sub_8029520`: the first Program Advance in the selection, trying each
 /// start position in turn and the recipes in table order; one already
 /// formed this round is passed over, and one only battle flag 0x40 tries
-/// without it (BN5's 0x080251DC: its full table with the flag, the
+/// without it (EXE5's 0x080251DC: its full table with the flag, the
 /// netbattles' without). Returns (result, start, length).
 fn find_program_advance(
     chips: &[FolderChip],

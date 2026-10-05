@@ -13,11 +13,11 @@ Routine names are the original's (`sub_80EDAE0`). "Tick" is one call of `Battle:
 
 **Three layers, two boundaries.**
 
-- **Core**: mechanism with no BN6 rules in it. Object pools and the update list with the game's insertion and
+- **Core**: mechanism with no EXE6 rules in it. Object pools and the update list with the game's insertion and
   freeing semantics, pause and dimming gating, the typed state store, collision registration on panels and
   pair iteration, the panel grid with reservations and cached flags, 16.16 positions, the animation stepper,
   RNG, input records, the sound and look output channels, snapshots and the digest.
-- **Ruleset**: BN6's battle rules, in Rust on the core. The hit kernel and damage pipeline, element weakness,
+- **Ruleset**: EXE6's battle rules, in Rust on the core. The hit kernel and damage pipeline, element weakness,
   guard, counters, statuses, the navi framework (request decoding, charge, the idle controller, `set_attack`
   and exit, hit reactions, deletion), the chip hand and chip use, the custom screen and gauge, the flow state
   machines, panel types, the obstacle framework, the dimming service, the navi-chip controller, the forms
@@ -32,8 +32,8 @@ and the engine sees content only as handles into registries and function slots i
 
 **What the engine never holds**: a chip, kind, action, weapon, effect, spark, region, collision type, status,
 lock-on mode or identity by the original's number, or by its key. It has handles; what it needs by meaning it
-asks by role. The original's numbers are compat's (content/bn6/compat), which only tools read: the engine
-doesn't depend on bn6-compat (a test guards it), and content can't load it.
+asks by role. The original's numbers are compat's (content/exe6/compat), which only tools read: the engine
+doesn't depend on exe6-compat (a test guards it), and content can't load it.
 
 **What content never holds**: battle state. Its state is typed fields the engine stores inside `Battle`;
 scripts are stateless functions over it. So a battle is a plain value: cheap to snapshot, exact to restore.
@@ -43,7 +43,7 @@ scripts are stateless functions over it. So a battle is a plain value: cheap to 
 | Layer | Belongs here | Test |
 |---|---|---|
 | Core | Pools, list and update order, gating, the state store, collision registration and pairing, the panel grid, fixed-point geometry, animation stepping, RNG, input plumbing, output channels, snapshots | Would another Battle Network-style game need it unchanged? |
-| Ruleset | BN6's generic battle rules: damage, elements, guard, counter, statuses, the navi framework, chip hand, custom gauge, turn and round flow, the forms framework, the services | Does it apply to every chip, navi or form rather than to one? |
+| Ruleset | EXE6's generic battle rules: damage, elements, guard, counter, statuses, the navi framework, chip hand, custom gauge, turn and round flow, the forms framework, the services | Does it apply to every chip, navi or form rather than to one? |
 | Content | Specific chips, actions, object kinds, navis, forms, effects, stages, tables | Does it name one? |
 
 ### 1.1 The engine, module by module
@@ -66,8 +66,8 @@ crates/nettai-battle/src:
 | behavior/ | the boundary | `impl CoreApi for Battle` and the dispatch of kinds, actions and hooks to the runtime |
 
 The other crates: nettai-content-api (the contract below both sides), nettai-luau (the runtime), nettai-content (reading
-a content root and a pack), nettai-content-check (the type check, lints and guards), bn6-compat (the original's
-numbers, the setup codecs, the trace harness), bn6-extract (the pack's assets from a ROM), nettai-assets,
+a content root and a pack), nettai-content-check (the type check, lints and guards), exe6-compat (the original's
+numbers, the setup codecs, the trace harness), exe6-extract (the pack's assets from a ROM), nettai-assets,
 nettai-frontend, nettai-audio and m4a (presentation), nettai-netplay (rollback).
 
 ## 2. How the two sides reach each other
@@ -104,7 +104,7 @@ Nothing in the API names a particular chip or kind.
 ### 2.3 Identity and the traces
 
 The golden traces compare the original's numbers: an object's pool and index, a navi's action number, a chip
-id. The engine has none of them. bn6-compat maps what the engine runs back to them by key
+id. The engine has none of them. exe6-compat maps what the engine runs back to them by key
 (`Compat::object_slot`, `Compat::navi_action`, the codecs' `Ids`): compat/kinds.toml gives each kind's slot (the
 engine's own kinds included), actions.toml each action's number, chips.toml each chip's id. A kind's
 register-garbage position is declared there too (`scratch_position`), for the comparison to skip.
@@ -172,9 +172,9 @@ for the action to read, don't exist: what an action needs of its chip is its bui
 
 ### 4.3 Beast Out's wrapper around arbitrary chips
 
-When a chip with a lock-on mode is used in a Beast form, BN6's beast system marks the attack `wrapped` as its use
+When a chip with a lock-on mode is used in a Beast form, EXE6's beast system marks the attack `wrapped` as its use
 starts (its `chip_used` hook), and the dispatcher then routes every tick through the side's wrapper (the role
-`actions.wrapper`: content/bn6/rules/beast/rush.luau) instead of the chip's action: it holds the panel, warps
+`actions.wrapper`: content/exe6/rules/beast/rush.luau) instead of the chip's action: it holds the panel, warps
 next to the target marker's target by the chip's lock-on mode (a "lockon" record), runs the chip's action from
 its own phase (`navi:run_wrapped()`), watches for it to end, then chains the next chip or warps back. It is the
 ruleset's, and wraps whatever action content defines; a chip says how it is wrapped in its record (`beast = {
@@ -213,8 +213,8 @@ the comparison skips it. Garbage the ruleset produces (a decoded bug's high byte
 While the battle is paused, a navi's action dispatch is replaced by the pause handler: it runs a pause-time
 action by state bit (the form change, the revert, the Cross change, the Cross knock-out) or starts one from a
 request. The revert, the Cross change and the knock-out are the framework's (kinds/player/actions/transform.rs,
-cross_change.rs); the change into a form is the action the form names (`FormData::change`: BN6's forms system's,
-content/bn6/rules/forms, docs/design/rules-in-luau.md), with the effects
+cross_change.rs); the change into a form is the action the form names (`FormData::change`: EXE6's forms system's,
+content/exe6/rules/forms, docs/design/rules-in-luau.md), with the effects
 they show by role. Only objects that run while paused run, so what a pause-time action spawns sets that flag.
 
 ### 4.8 Counters

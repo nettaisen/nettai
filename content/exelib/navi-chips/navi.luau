@@ -1,6 +1,6 @@
 --!strict
--- What the navi chips' navis share, BN6's and BN5's (docs/engine/chips.md
--- §3.6; BN5's spawners and helpers are BN6's code): how a chip places its
+-- What the navi chips' navis share, EXE6's and EXE5's (docs/engine/chips.md
+-- §3.6; EXE5's spawners and helpers are EXE6's code): how a chip places its
 -- navi, how he stands on his panel, the footing he needs, the timers of his
 -- actions, his leaving, and how his flying attacks tell they passed a
 -- panel's center. The navi chip controller (the ruleset's) calls a chip's
@@ -75,7 +75,7 @@ function navi_chips.wait(me: Object, ticks: number, word: boolean?): boolean
     return left ~= nil and left <= 0
 end
 
--- The timer as BN5's navis keep it (CloudMan's, GyroMan's, MagnetMan's and
+-- The timer as EXE5's navis keep it (CloudMan's, GyroMan's, MagnetMan's and
 -- Meddy's actions): on the phase's init byte, not the phase. On
 -- `phase_init` 0, `phase_init` 4 with `ticks` (Timer2 cleared when `word`),
 -- returning nil, so that what the action starts with on the same test runs
@@ -120,7 +120,7 @@ function navi_chips.leave(me: Object, controller: Object?)
     me:set_lifecycle("destroy")
 end
 
--- The same, with the original's byte store of the state alone: his action and phase stay as they were (BN5's
+-- The same, with the original's byte store of the state alone: his action and phase stay as they were (EXE5's
 -- Colonel, 0x080BA504, and ToadMan, 0x080BC902).
 function navi_chips.leave_keeping_action(me: Object, controller: Object?)
     if controller then

@@ -99,7 +99,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let chaos = b.actors.get(actor).chaos;
     // Seen by a viewer who sees the owner's side (`sub_800EB6C`), and on
     // its owner's console only unless the B button charges (source 2) for
-    // anything but an armed Chaos Unison charge (BN5's 0x080E0DE6).
+    // anything but an armed Chaos Unison charge (EXE5's 0x080E0DE6).
     let shown_to = |b: &Battle, viewer: u8| match source {
         0 => false,
         2 if !chaos.armed => b.sees(viewer, alliance),
@@ -112,7 +112,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let v = vars(b, r);
     v.previous_level = v.level;
     v.level = level;
-    // A full armed Chaos Unison charge shows its cycle's window (BN5's
+    // A full armed Chaos Unison charge shows its cycle's window (EXE5's
     // 0x080E0E10): animation 2 + the window.
     let anim = if level == 2 && source == 2 && chaos.armed { chaos.window + 2 } else { level };
     b.objects.get_mut(r).anim = anim;
@@ -128,7 +128,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80E0F5E`: the charge sounds, as the charge starts and as it
 /// completes; only the charging navi's player hears a charge unless it
-/// comes from source 2 (and isn't an armed Chaos Unison charge: BN5's
+/// comes from source 2 (and isn't an armed Chaos Unison charge: EXE5's
 /// 0x080E0EEC).
 fn charge_sound(b: &mut Battle, r: ObjectRef, alliance: u8, source: u8, chaos: bool) {
     let v = vars(b, r);
@@ -145,8 +145,8 @@ fn charge_sound(b: &mut Battle, r: ObjectRef, alliance: u8, source: u8, chaos: b
 }
 
 /// `sub_80E0F2E`: the A charge glows differently from the B charge, and
-/// an armed Chaos Unison charge differently again (BN5's 0x080E0EA4).
-/// (BN5 also lifts the glow 16 pixels for its navi of NameID 0x182 in
+/// an armed Chaos Unison charge differently again (EXE5's 0x080E0EA4).
+/// (EXE5 also lifts the glow 16 pixels for its navi of NameID 0x182 in
 /// animations 18 and 20, 0x080E0E58: no navi here has that record.)
 fn select_sprite(b: &mut Battle, r: ObjectRef, source: u8, chaos: bool) {
     let wanted = if source == 1 {

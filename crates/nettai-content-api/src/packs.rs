@@ -3,7 +3,7 @@
 //! says what it is:
 //!
 //! ```toml
-//! id = "bn6"
+//! id = "exe6"
 //! kind = "game"          # or "support"
 //! depends = ["exelib"]   # the support packs it requires from
 //! ```
@@ -55,7 +55,7 @@ pub const ENGINE: &str = "nettai";
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PackKind {
-    /// A game: what a match plays (BN6, BN5).
+    /// A game: what a match plays (EXE6, EXE5).
     #[default]
     Game,
     /// Behavior games share (exelib), defining nothing a game has.
@@ -67,7 +67,7 @@ pub enum PackKind {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PackManifest {
-    /// Its name, its folder's (`bn6`).
+    /// Its name, its folder's (`exe6`).
     pub id: String,
     pub kind: PackKind,
     /// The support packs it requires modules of, by name.
@@ -94,26 +94,26 @@ impl PackManifest {
         Ok(m)
     }
 
-    /// Module `path` of this pack, by name (`bn6:chips/cannon/init`).
+    /// Module `path` of this pack, by name (`exe6:chips/cannon/init`).
     pub fn module(&self, path: &str) -> String {
         format!("{}{}{path}", self.id, keys::SEPARATOR)
     }
 
     /// The module a load of this pack starts from, by name: a game's top
-    /// module (`bn6:init`); a support pack's none (its modules load when a
+    /// module (`exe6:init`); a support pack's none (its modules load when a
     /// game requires them).
     pub fn entry(&self) -> Option<String> {
         (self.kind == PackKind::Game).then(|| top_module(&self.id))
     }
 }
 
-/// Game pack `id`'s top module, by name (`bn6:init`).
+/// Game pack `id`'s top module, by name (`exe6:init`).
 pub fn top_module(id: &str) -> String {
     format!("{id}{}{INIT}", keys::SEPARATOR)
 }
 
 /// The modules pack `id`'s top module (source `init`) requires itself, by
-/// name, in order, each once; a folder by its name (`bn6:chips/cannon`,
+/// name, in order, each once; a folder by its name (`exe6:chips/cannon`,
 /// [`keys::listed_as`]). A require it can't resolve is an error naming it.
 pub fn required_by_init(id: &str, init: &str) -> Result<Vec<String>, String> {
     let name = top_module(id);
@@ -302,9 +302,9 @@ mod tests {
 
     #[test]
     fn a_manifest_reads() {
-        let m = PackManifest::parse("id = \"bn6\"\nkind = \"game\"\ndepends = [\"exelib\"]\n", "bn6/manifest.toml").unwrap();
+        let m = PackManifest::parse("id = \"exe6\"\nkind = \"game\"\ndepends = [\"exelib\"]\n", "exe6/manifest.toml").unwrap();
         assert_eq!((m.kind, m.depends.as_slice()), (PackKind::Game, ["exelib".to_string()].as_slice()));
-        assert_eq!(m.entry(), Some("bn6:init".to_string()));
+        assert_eq!(m.entry(), Some("exe6:init".to_string()));
         let m = PackManifest::parse("id = \"exelib\"\nkind = \"support\"\n", "exelib/manifest.toml").unwrap();
         assert_eq!((m.kind, m.entry()), (PackKind::Support, None));
         // What it holds isn't the manifest's.
@@ -319,10 +319,10 @@ mod tests {
     #[test]
     fn a_games_init_requires_what_it_has() {
         let init = "return {\n    rules = require(\"@self/rules\"),\n    chips = {\n        require(\"@self/chips/cannon\"),\n        -- require(\"@self/chips/later\"),\n        require(\"@self/navis/elecman/chip\"),\n    },\n    also = { require(\"@self/chips/cannon\"), require(\"@exelib/x/init\") },\n}\n";
-        assert_eq!(required_by_init("bn6", init).unwrap(), ["bn6:rules", "bn6:chips/cannon", "bn6:navis/elecman/chip", "exelib:x"]);
+        assert_eq!(required_by_init("exe6", init).unwrap(), ["exe6:rules", "exe6:chips/cannon", "exe6:navis/elecman/chip", "exelib:x"]);
         // (Beside a pack is outside it.)
-        let e = required_by_init("bn6", "return { require(\"./bn5/chips/x\") }").unwrap_err();
-        assert!(e.starts_with("bn6/init.luau: ") && e.contains("leaves pack bn6"), "{e}");
+        let e = required_by_init("exe6", "return { require(\"./exe5/chips/x\") }").unwrap_err();
+        assert!(e.starts_with("exe6/init.luau: ") && e.contains("leaves pack exe6"), "{e}");
     }
 
     /// A game requires itself and the support packs it depends on; a
@@ -331,43 +331,43 @@ mod tests {
     #[test]
     fn a_pack_requires_itself_and_the_support_packs_it_depends_on() {
         let all: BTreeMap<String, PackManifest> = [
-            pack("bn6", PackKind::Game, &["exelib"]),
-            pack("bn5", PackKind::Game, &["exelib"]),
+            pack("exe6", PackKind::Game, &["exelib"]),
+            pack("exe5", PackKind::Game, &["exelib"]),
             pack("exelib", PackKind::Support, &["base"]),
             pack("base", PackKind::Support, &[]),
             pack("other", PackKind::Support, &[]),
         ]
         .into_iter()
         .collect();
-        assert_eq!(check_require(&all, "bn6:chips/x", "./y", "bn6:chips/y"), Ok(()));
-        assert_eq!(check_require(&all, "bn6:chips/x", "@exelib/y", "exelib:y"), Ok(()));
+        assert_eq!(check_require(&all, "exe6:chips/x", "./y", "exe6:chips/y"), Ok(()));
+        assert_eq!(check_require(&all, "exe6:chips/x", "@exelib/y", "exelib:y"), Ok(()));
         assert_eq!(check_require(&all, "exelib:y", "@base/z", "base:z"), Ok(()));
         // Game to game.
-        let e = check_require(&all, "bn6:chips/x", "@bn5/lib/y", "bn5:lib/y").unwrap_err();
-        assert!(e.starts_with("bn6/chips/x.luau: require(\"@bn5/lib/y\"): bn5 is a game pack"), "{e}");
+        let e = check_require(&all, "exe6:chips/x", "@exe5/lib/y", "exe5:lib/y").unwrap_err();
+        assert!(e.starts_with("exe6/chips/x.luau: require(\"@exe5/lib/y\"): exe5 is a game pack"), "{e}");
         // Support to game.
-        let e = check_require(&all, "exelib:y", "@bn6/lib/z", "bn6:lib/z").unwrap_err();
-        assert!(e.contains("bn6 is a game pack, which no other pack requires"), "{e}");
+        let e = check_require(&all, "exelib:y", "@exe6/lib/z", "exe6:lib/z").unwrap_err();
+        assert!(e.contains("exe6 is a game pack, which no other pack requires"), "{e}");
         // A support pack it doesn't depend on (what its own depend on doesn't
         // count).
-        assert!(check_require(&all, "bn6:chips/x", "@other/y", "other:y").unwrap_err().contains("bn6 doesn't depend on other"));
-        assert!(check_require(&all, "bn6:chips/x", "@base/y", "base:y").unwrap_err().contains("bn6 doesn't depend on base"));
+        assert!(check_require(&all, "exe6:chips/x", "@other/y", "other:y").unwrap_err().contains("exe6 doesn't depend on other"));
+        assert!(check_require(&all, "exe6:chips/x", "@base/y", "base:y").unwrap_err().contains("exe6 doesn't depend on base"));
         // The load order: support packs first, each after what it depends on.
         let ids = |v: Vec<&PackManifest>| v.into_iter().map(|p| p.id.clone()).collect::<Vec<_>>();
-        assert_eq!(ids(load_order(&all, &["bn6".into()]).unwrap()), ["base", "exelib", "bn6"]);
+        assert_eq!(ids(load_order(&all, &["exe6".into()]).unwrap()), ["base", "exelib", "exe6"]);
         // A game depending on a game, a load of a support pack as a game.
         let mut bad = all.clone();
-        bad.insert("bn6".into(), pack("bn6", PackKind::Game, &["bn5"]).1);
-        assert!(load_order(&bad, &["bn6".into()]).unwrap_err().contains("depends on bn5, a game pack"));
+        bad.insert("exe6".into(), pack("exe6", PackKind::Game, &["exe5"]).1);
+        assert!(load_order(&bad, &["exe6".into()]).unwrap_err().contains("depends on exe5, a game pack"));
         assert!(load_order(&all, &["exelib".into()]).unwrap_err().contains("a support pack, not a game"));
         // A support pack depending on a game.
         let mut bad = all.clone();
-        bad.insert("base".into(), pack("base", PackKind::Support, &["bn5"]).1);
-        assert!(load_order(&bad, &["bn6".into()]).unwrap_err().contains("base/manifest.toml: depends on bn5, a game pack"));
+        bad.insert("base".into(), pack("base", PackKind::Support, &["exe5"]).1);
+        assert!(load_order(&bad, &["exe6".into()]).unwrap_err().contains("base/manifest.toml: depends on exe5, a game pack"));
         // A cycle of support packs, the chain named.
         let mut bad = all.clone();
         bad.insert("base".into(), pack("base", PackKind::Support, &["exelib"]).1);
-        let e = load_order(&bad, &["bn6".into()]).unwrap_err();
-        assert!(e.contains("its `depends` make a cycle: bn6 depends on exelib depends on base depends on exelib"), "{e}");
+        let e = load_order(&bad, &["exe6".into()]).unwrap_err();
+        assert!(e.contains("its `depends` make a cycle: exe6 depends on exelib depends on base depends on exelib"), "{e}");
     }
 }

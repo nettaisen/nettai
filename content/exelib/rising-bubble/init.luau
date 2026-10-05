@@ -1,6 +1,6 @@
 --!strict
--- The rising bubble, as BN5 and BN6 share it (BN6's effect object #0x14,
--- `sub_80E1CF8`; BN5's #0x14): each game makes its own kind
+-- The rising bubble, as EXE5 and EXE6 share it (EXE6's effect object #0x14,
+-- `sub_80E1CF8`; EXE5's #0x14): each game makes its own kind
 -- (`rising_bubble.make_kind`: its sprite). A bubble that floats up two
 -- pixels a tick while its animation plays once,
 -- then goes. Only drawn. Anubis and PoisPhar's statue sends them up over

@@ -1,6 +1,6 @@
 //! The graphics a battle frontend draws with, in typed form: what a
 //! content pack's graphics (nettai-content) load into. Nothing ROM-derived is
-//! checked in; `bn6-extract content` writes the pack from the user's copies
+//! checked in; `exe6-extract content` writes the pack from the user's copies
 //! of the games (both US ROMs).
 //!
 //! Colors are the GBA's 15-bit BGR555. Tiles are 8x8 with one palette index
@@ -12,7 +12,7 @@ pub use lettering::{BASE_LANGUAGE, CustomLettering, HudLettering};
 pub use custom::{ButtonPictures, ChipArt, CursorPlace, CustomLayout, CustomScreen, MapPatch, PatchList, Picture, SlotPictures, VersionPictures};
 
 /// Assets a game version has its own of: the base game's (`base_version`,
-/// a BN6 pack's "falzar"), and other versions' that differ, by version name
+/// an EXE6 pack's "falzar"), and other versions' that differ, by version name
 /// ("gregar", from the second ROM). A console of a version shows its own,
 /// else the base's. In a pack each is its own asset, named with its
 /// version (`cross-names-falzar`, `cross-names-gregar`); one that no other
@@ -158,7 +158,7 @@ pub struct SpriteSheet {
     pub part_lists: Vec<Vec<SpritePart>>,
     pub animations: Vec<Vec<SpriteFrame>>,
     /// The region whose ROMs the sprite comes from, when not the pack's
-    /// own (BN6: `"jp"`, a sprite the US release cut and left a
+    /// own (EXE6: `"jp"`, a sprite the US release cut and left a
     /// placeholder in). A console of another region shows something else
     /// there.
     pub region: Option<String>,
@@ -211,8 +211,8 @@ pub struct Field {
     /// Panel palettes that cycle.
     pub palette_anims: Vec<PaletteAnim>,
     /// The panel types the field draws, by the engine's number for each
-    /// (`PanelType as u8`), in the order of their blocks in `panels`: BN6's
-    /// 13 in the engine's order, BN5's 11 in BN5's (its metal, lava and sea
+    /// (`PanelType as u8`), in the order of their blocks in `panels`: EXE6's
+    /// 13 in the engine's order, EXE5's 11 in EXE5's (its metal, lava and sea
     /// among them). docs/design/rules-in-luau.md §7.4.
     pub panel_types: Vec<u8>,
     /// A panel's 5x3 block by `6 * k + 3 * owner + row - 1`, where `k` is
@@ -220,7 +220,7 @@ pub struct Field {
     pub panels: Vec<[MapEntry; 15]>,
     /// The 5x1 edge under a front-row panel, by owner.
     pub front_edges: [[MapEntry; 5]; 2],
-    /// Highlighted panel blocks (a chip's target), by highlight - 1: BN6
+    /// Highlighted panel blocks (a chip's target), by highlight - 1: EXE6
     /// has two; a field may have one (a highlight it lacks is another
     /// pack's, or drawn as a fallback).
     pub highlights: Vec<[MapEntry; 15]>,
@@ -341,9 +341,9 @@ pub struct Hud {
     /// without a number.
     pub counts: Vec<Tiles>,
     pub count_box: Tiles,
-    /// The box a face brings for beside it (2x2 tiles), by mugshot: BN5's
+    /// The box a face brings for beside it (2x2 tiles), by mugshot: EXE5's
     /// faces have their own (all but its souls', which show a count); none
-    /// (empty, or past the list: BN6's) shows the count box or a count.
+    /// (empty, or past the list: EXE6's) shows the count box or a count.
     pub mugshot_boxes: Vec<Tiles>,
     /// The link navis' faces (a ROM holds its own version's navis' and
     /// ProtoMan's or Colonel's). Which face a form or a navi shows is its
@@ -560,8 +560,8 @@ pub struct BannerLayout {
 mod tests {
     use super::*;
 
-    /// A glyph name may be several characters (bn5-extract names a glyph
-    /// its content has no character for by its number, `[0a3]`); BN6's
+    /// A glyph name may be several characters (exe5-extract names a glyph
+    /// its content has no character for by its number, `[0a3]`); EXE6's
     /// are one each, its marks too (U+E002 the stacked EX).
     #[test]
     fn text_takes_the_longest_glyph_names() {

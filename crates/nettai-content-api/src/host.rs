@@ -150,14 +150,14 @@ pub enum HookCall {
     /// A kind's `place(spec)`: returns what it placed, or nil.
     Place { spec: PlaceSpec },
     /// A kind's `navi_left(controller)`: the navi chip's navi an object of
-    /// the kind brought (BN5's DethPhnx: the last navi chip's) is done. Its
+    /// the kind brought (EXE5's DethPhnx: the last navi chip's) is done. Its
     /// result is unused.
     NaviLeft { controller: ObjectRef },
     /// A role hook the ruleset calls with a navi (the roles' `hooks`):
     /// its result is unused.
     RoleNavi { navi: ObjectRef },
     /// A form's hook the engine calls with the navi in it (its `reset`:
-    /// what else the status reset does in the form, BN5's souls'). Its
+    /// what else the status reset does in the form, EXE5's souls'). Its
     /// result is unused.
     FormNavi { navi: ObjectRef },
     /// `encased(obstacle, ice, class)` (`sub_801813A`'s end): put what an
@@ -186,15 +186,15 @@ pub enum HookCall {
 pub enum SystemHook {
     /// `round_setup(side)`: once per side as the round is set up
     /// (`Battle::new`), before anything reads the side's navi stats: a
-    /// system may change them (BN6's patch cards). Its result is unused.
+    /// system may change them (EXE6's patch cards). Its result is unused.
     RoundSetup,
     /// `round_start(side)`: once per side, after the navis spawn. Its result
     /// is unused.
     RoundStart,
     /// `turn_opened(side)`: the turn-start sequencer's check begins
-    /// (`sub_801486C`'s entry; BN5's 0x08011DDC), each side in turn, before
+    /// (`sub_801486C`'s entry; EXE5's 0x08011DDC), each side in turn, before
     /// either side's `turn_check` or change of form: a side's request for
-    /// the turn is read (BN5's ColonelSoul takes its arm chip, 0x080124AE).
+    /// the turn is read (EXE5's ColonelSoul takes its arm chip, 0x080124AE).
     /// Its result is unused.
     TurnOpened,
     /// `turn_check(side)`: the turn-start sequencer's check of a side that
@@ -211,18 +211,18 @@ pub enum SystemHook {
     /// (`sub_8009338`).
     CustomClosed,
     /// `navi_intake(side, navi)`: each tick of the fight, in the navi's
-    /// intake (`sub_801AC6C`) after the standing effects: BN5's light and
+    /// intake (`sub_801AC6C`) after the standing effects: EXE5's light and
     /// dark system clears the holy panel a dark MegaMan stands on
     /// (0x08017136). Its result is unused.
     NaviIntake,
     /// `chip_check(side, navi, chip)`: a chip's use is prepared (the end of
-    /// `sub_80127C0`, where BN5's 0x080100E6 checks it): nil lets it be
-    /// used; a chip is what the navi uses instead (BN5's light and dark
+    /// `sub_80127C0`, where EXE5's 0x080100E6 checks it): nil lets it be
+    /// used; a chip is what the navi uses instead (EXE5's light and dark
     /// system refuses a chip its MegaMan may not use: 0x08010118). The
     /// first system that answers decides.
     ChipCheck,
     /// `chip_cost(side, navi, chip)`: earlier in a chip use's preparation,
-    /// before the hand bonus's panel is spent (BN5's 0x08010030: a dark
+    /// before the hand bonus's panel is spent (EXE5's 0x08010030: a dark
     /// chip's use, which may fizzle, and the chip's cost, 0x0802C934). It
     /// answers as `chip_check` does; a chip in the use's place skips the
     /// rest of the preparation, `chip_check` too.
@@ -230,31 +230,31 @@ pub enum SystemHook {
     /// `chip_substitute(side, navi, chip)`: a chip's use is prepared, before
     /// its record is loaded (`sub_80127C0`'s `sub_8010D58`): a chip is what
     /// the navi uses in its place, with its own record, damage and bonus
-    /// (BN6's dark chips' substitute, with no bug frag left); nil, the chip.
+    /// (EXE6's dark chips' substitute, with no bug frag left); nil, the chip.
     /// The first system that answers decides.
     ChipSubstitute,
     /// `chip_prepared(side, navi, chip)`: a chip's use was prepared
     /// (`sub_80127C0`, on each of its paths: a use, the wrapper's chain, the
     /// counter cut-in's), its substitute taken: `chip` the chip it uses.
-    /// BN6's dark chips worsen the user's HP bug (`sub_800B79A`). Its result
+    /// EXE6's dark chips worsen the user's HP bug (`sub_800B79A`). Its result
     /// is unused.
     ChipPrepared,
     /// `chip_used(side, navi, chip, weapon)`: a chip's use started
     /// (`sub_800FB54`, its action set): `chip` the chip it reads (the
     /// zeroed chip for the empty hand), `weapon` the form's weapon run
-    /// instead of it (a charged use), else nil. BN6's beast system decides
+    /// instead of it (a charged use), else nil. EXE6's beast system decides
     /// whether it runs inside the rush (the attack's `wrapped`). Its result
     /// is unused.
     ChipUsed,
     /// `controller(side, navi)`: each tick of the idle action of a navi whose
-    /// form is `controlled` (BN6's Beast Over: `sub_802D322`), in place of
+    /// form is `controlled` (EXE6's Beast Over: `sub_802D322`), in place of
     /// the player's decisions: "nothing", "chip" (a chip's use started),
     /// "buster" (the buster is to fire) or "moved" (a step started); the
     /// framework carries it out as idle does. The first system that
     /// answers decides.
     Controller,
     /// `takeover_requested(side, navi)`: idle finds the navi's takeover
-    /// request (`sub_802E4E4`; BN6's DarkInvs asks for its Cross
+    /// request (`sub_802E4E4`; EXE6's DarkInvs asks for its Cross
     /// special): a system starts it (`battle.take_over`). Its result is
     /// unused.
     TakeoverRequested,
@@ -266,55 +266,55 @@ pub enum SystemHook {
     /// answers decides.
     Takeover,
     /// `countered(side, victim)`: side `side`'s navi landed a counter on
-    /// `victim` (`sub_801A200`): BN6's emotion system gives Full Synchro
+    /// `victim` (`sub_801A200`): EXE6's emotion system gives Full Synchro
     /// unless the victim's mood is held. Its result is unused.
     Countered,
     /// `navi_tick(side, navi)`: each unpaused tick, after the navi's input
     /// (`sub_8013DA0`'s place), for a navi a system asked it for (its
-    /// `ticked`): BN6's NaviCust emotion-swing bug. Its result is unused.
+    /// `ticked`): EXE6's NaviCust emotion-swing bug. Its result is unused.
     NaviTick,
     /// `starting_mood(side)`: the mood the side's navi starts the round with
-    /// (`sub_8015C2C`'s 0x80, set where `sub_8013892` sets it): BN5's light
+    /// (`sub_8015C2C`'s 0x80, set where `sub_8013892` sets it): EXE5's light
     /// and dark system's by the light/dark value (0x0801283A). The first
     /// system that answers decides; none, 0x80.
     StartingMood,
     /// `navi_palette(side, navi)`: each tick, the sprite palette of the
     /// side's navi of a player's kind (presentation; `sub_80100EC`'s
-    /// `sub_801002C`, BN5's 0x0800DD94: its light and dark system's). The
-    /// first system that answers decides; none, the framework's (BN6's).
+    /// `sub_801002C`, EXE5's 0x0800DD94: its light and dark system's). The
+    /// first system that answers decides; none, the framework's (EXE6's).
     NaviPalette,
     /// `navi_bug(side, navi)`: before the navi takes its hit's NaviCust bug
-    /// (`sub_80139F6`, BN5's 0x0801103E): a system may change the bug
-    /// (the collision's `inflicted_bugs`: BN5's light and dark system turns
+    /// (`sub_80139F6`, EXE5's 0x0801103E): a system may change the bug
+    /// (the collision's `inflicted_bugs`: EXE5's light and dark system turns
     /// its codes 0xFD and 0xFC into an HP drain or none), or answer true:
-    /// the bug and the weapons' reload are skipped (BN5's, for hit flag
+    /// the bug and the weapons' reload are skipped (EXE5's, for hit flag
     /// 0x400 on a light/dark value of 1000 or more). The first system that
     /// answers true decides.
     NaviBug,
     /// `custom.hand_size(side)`: how many chips the side's custom screen
-    /// deals (`sub_802A40C`; BN5's `sub_802A49C`), asked as it opens. The
+    /// deals (`sub_802A40C`; EXE5's `sub_802A49C`), asked as it opens. The
     /// first system that answers decides; none answering, the framework's
     /// rule (the custom level, NumbrOpn and the hand-shrink bug).
     CustomHandSize,
     /// `custom.deal(side)`: the side's custom screen deals, before
     /// `custom.open`: the folder as the last screen left it (the chips used
     /// still leave their places empty: `custom.folder`), with the
-    /// framework's hand size (`custom.hand_size`); BN5's custom screen
+    /// framework's hand size (`custom.hand_size`); EXE5's custom screen
     /// opening (0x08022C5C) offers a worried or dark MegaMan a dark chip
     /// there (0x08025114, its light and dark system's). Its result is
     /// unused.
     CustomDeal,
     /// `custom.open(side)`: the side's custom screen opens, before its hand
-    /// size and its layout (BN6's: ChargeCross's screens counted, the
+    /// size and its layout (EXE6's: ChargeCross's screens counted, the
     /// round's first screen forgetting the round's Beast Out). Its result
     /// is unused.
     CustomOpen,
-    /// `custom.chip_picked(side, chip)`: a chip of the hand was picked (BN6's
+    /// `custom.chip_picked(side, chip)`: a chip of the hand was picked (EXE6's
     /// BeastOut chip starts its animation, `sub_802A00C`). Its result is
     /// unused.
     CustomChipPicked,
     /// `custom.chip_taken_back(side, chip)`: B took a chip's pick back
-    /// (BN6's BeastOut chip: its face goes, `sub_802A0EC`). Its result is
+    /// (EXE6's BeastOut chip: its face goes, `sub_802A0EC`). Its result is
     /// unused.
     CustomChipTakenBack,
     /// `custom.confirmed(side)`: OK was pressed and the hand is built (the
@@ -322,18 +322,18 @@ pub enum SystemHook {
     CustomConfirmed,
     /// `custom.keys(side)`: choosing chips, on a tick a key repeats or is
     /// pressed, before the screen's own keys (`custom.pressed`,
-    /// `custom.repeated`): whether the system took the tick's keys (BN6's
+    /// `custom.repeated`): whether the system took the tick's keys (EXE6's
     /// UP opening the Cross window, `sub_8028B74`). The first system that
     /// answers true takes them.
     CustomKeys,
     /// `custom.take_back(side)`: B with nothing picked (`sub_8029032`):
-    /// whether the system took something back (BN6's Cross chosen). The
+    /// whether the system took something back (EXE6's Cross chosen). The
     /// first system that answers true did; none, and B is refused.
     CustomTakeBack,
     /// A system's window's `update(side)`, each tick it is up: whether it
     /// stays up (`custom.window_tick` counts its ticks from 1).
     WindowUpdate,
-    /// A button's `taken_back(side)`: B took its pick back (BN6's Beast
+    /// A button's `taken_back(side)`: B took its pick back (EXE6's Beast
     /// Out: its face goes).
     ButtonTakenBack,
     /// A system's custom-screen button's `shown(side)` (§4.4), as the
@@ -347,11 +347,11 @@ pub enum SystemHook {
     /// A button's `pressed(side)`: A on it.
     ButtonPressed,
     /// A button's `chip(side)`, as the screen lays it out: the chip it
-    /// shows, if any (BN5's capsules: the chip window shows it, R describes
+    /// shows, if any (EXE5's capsules: the chip window shows it, R describes
     /// it).
     ButtonChip,
     /// `form_reverted(side, navi)`: the framework reverts the navi to its
-    /// base form, its form not yet changed (`sub_80158CC`): BN6's spends a
+    /// base form, its form not yet changed (`sub_80158CC`): EXE6's spends a
     /// Beast Out and exhausts a Beast Over. Its result is unused.
     FormReverted,
     /// `folder_check(side)`: a tool asks whether a folder keeps the side's

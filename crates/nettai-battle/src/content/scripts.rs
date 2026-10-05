@@ -1,6 +1,6 @@
 //! The content's scripts: the Luau modules of the packs a load reads
 //! (docs/design/content-model-v2.md §4.0), each named by its pack and its
-//! path in it (`bn6:chips/minibomb/init`, `exelib:swords/slash`), which
+//! path in it (`exe6:chips/minibomb/init`, `exelib:swords/slash`), which
 //! live next to what they define.
 //!
 //! Each pack has a manifest (`manifest.toml`: its name, its kind and the
@@ -25,7 +25,7 @@ use nettai_content_api::{PackKind, PackManifest, keys, packs};
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Scripts {
     /// Source text by module name: its pack, then its path in the pack
-    /// without `.luau` (`bn6:objects/sun-beam/sun_beam`, `keys::module_name`).
+    /// without `.luau` (`exe6:objects/sun-beam/sun_beam`, `keys::module_name`).
     pub modules: BTreeMap<String, String>,
     /// The packs the content loads (their manifests), in load order: the
     /// support packs, then the games. None: every module loads (modules a

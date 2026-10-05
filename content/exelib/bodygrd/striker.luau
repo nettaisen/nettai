@@ -1,11 +1,11 @@
 --!strict
--- BodyGrd's striker, as BN5 and BN6 share it (BN6's effect object #0x6E,
--- `sub_80E8268`; BN5's #0x6E, the same code): each game makes its own kind
+-- BodyGrd's striker, as EXE5 and EXE6 share it (EXE6's effect object #0x6E,
+-- `sub_80E8268`; EXE5's #0x6E, the same code): each game makes its own kind
 -- (`striker.make_kind`, a `BodyGuardStrikerLook`). An unseen thrower, one
 -- of its side's field objects (one a side) with 1 HP. Outside dimming,
 -- every 20 ticks it drops a shuriken (./shuriken) on the enemy's player
 -- navi, ten in all, until the battle is over, the navi is down or another
--- field object replaces it. BN6's BodyGrd counter leaves it; BN5's BodyGrd
+-- field object replaces it. EXE6's BodyGrd counter leaves it; EXE5's BodyGrd
 -- sends it out at once.
 
 local shuriken = require("./shuriken")

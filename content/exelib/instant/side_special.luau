@@ -6,7 +6,7 @@
 -- the own-gauges mode). Nothing in battle reads either (docs/engine/
 -- field-names.md, SideState), so the effect changes nothing observable.
 --
--- No chip, weapon routine or link navi of BN6's names effect 11; BN5's
+-- No chip, weapon routine or link navi of EXE6's names effect 11; EXE5's
 -- mode chips (CannMode to DrilMode, FinalGun) use it, the same code
 -- (0x0802D62A), and their lab recordings match. Shared: either game's
 -- effect 11.

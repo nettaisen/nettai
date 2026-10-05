@@ -215,7 +215,7 @@ named_fields! {
         /// Holds an object's sprite (and more, by kind: `PreventAnim`).
         PreventAnim = "prevent_anim", U8, rw;
         /// BattleObject +0x1A: a player's chips left in its hand as the HUD
-        /// shows them; another actor's own count (BN5's Jealousy reads it).
+        /// shows them; another actor's own count (EXE5's Jealousy reads it).
         ChipsHeld = "chips_held", U8, ro;
         Pos = "pos", Vec3, rw;
         Vel = "vel", Vec3, rw;
@@ -271,7 +271,7 @@ named_fields! {
         /// Which `set_attack` kind started the action (0..5).
         AttackKind = "attack_kind", U8, ro;
         /// 1 while the action runs inside the side's wrapper (`sub_801B9E6`
-        /// runs the role `actions.wrapper` instead: BN6's Beast Out rush).
+        /// runs the role `actions.wrapper` instead: EXE6's Beast Out rush).
         Wrapped = "wrapped", U8, rw;
         /// The wrapper's state starts over (`sub_801011A` clears it with the
         /// attack's links); the wrapper clears it once it has.
@@ -280,11 +280,11 @@ named_fields! {
         /// `sub_802D310`); the controller clears it once it has.
         ControllerFresh = "controller_fresh", Bool, rw;
         /// Its mood is held (`sub_8015BEC`): held tired or exhausted. What
-        /// another side's rules read (BN6's counter, `sub_801A200`).
+        /// another side's rules read (EXE6's counter, `sub_801A200`).
         MoodHeld = "mood_held", Bool, ro;
         /// The side's systems' `navi_tick` runs for it each tick.
         Ticked = "ticked", Bool, rw;
-        /// Exhausted for the rest of the battle (BN6's after Beast Over):
+        /// Exhausted for the rest of the battle (EXE6's after Beast Over):
         /// worn out, the mood can't change, 1 HP lost per tick (never the
         /// last), no Full Synchro or anger.
         Exhausted = "exhausted", Bool, rw;
@@ -312,7 +312,7 @@ named_fields! {
         ActorType = "actor_type", enum_type(&ACTOR_TYPES), ro;
         /// Form or AI variant.
         AiIndex = "ai_index", U8, ro;
-        /// The target marker (BN6's Beast Out lock-on marker).
+        /// The target marker (EXE6's Beast Out lock-on marker).
         TargetMarker = "target_marker", Object, rw;
         /// The charge glow.
         ChargeGlow = "charge_glow", Object, rw;
@@ -339,23 +339,23 @@ named_fields! {
         Tired = "tired", Bool, rw;
         /// AIData+0x60: the barrier's visual (effect #7).
         BarrierVisual = "barrier_visual", Object, rw;
-        /// BN5's AIData+0x3C: DarkPlus's tint (0 none), which picks the
+        /// EXE5's AIData+0x3C: DarkPlus's tint (0 none), which picks the
         /// navi's status shader.
         PlusTint = "plus_tint", U16, rw;
-        /// BN5's Chaos Unison charge: armed (AIData+0x12; the chaos
+        /// EXE5's Chaos Unison charge: armed (AIData+0x12; the chaos
         /// change arms it, a weapons' load and the failure's end disarm
         /// it) and its level (AIData+0x6C: releases that succeeded, at
         /// most 4).
         ChaosArmed = "chaos_armed", Bool, rw;
-        /// BN5's priming (AIData+0x0D): a form's `priming` chip used, its
+        /// EXE5's priming (AIData+0x0D): a form's `priming` chip used, its
         /// next doubling waiting.
         Primed = "primed", Bool, rw;
-        /// The chip a weapon of the navi's loads (BN5's AIData+0x32:
+        /// The chip a weapon of the navi's loads (EXE5's AIData+0x32:
         /// ColonelSoul's arm chip, which its charged shot's routine 0x13
         /// fires, 0x0800F7D8; none: 0xFFFF).
         WeaponChip = "weapon_chip", Ref(Registry::Chip, None), rw;
         ChaosLevel = "chaos_level", U8, rw;
-        /// BN5's no-charge drive (DarkInvs): its ticks left (AIData+0x36;
+        /// EXE5's no-charge drive (DarkInvs): its ticks left (AIData+0x36;
         /// counted down in the intake while the navi has the no-charge
         /// state, asking for the stun strike at 0; 0xFFFF holds), and the
         /// computer-navi AI driving it (AIData+0xF0, which VarSwrd's pick
@@ -467,9 +467,9 @@ named_fields! {
         Attack = "attack", U8, rw;
         Rapid = "rapid", U8, rw;
         Charge = "charge", U8, rw;
-        /// Writable: BN5's dark chips set it (0x080127D6).
+        /// Writable: EXE5's dark chips set it (0x080127D6).
         Mood = "mood", U8, rw;
-        /// The Beast Out turns left (writable: BN6's beast system spends
+        /// The Beast Out turns left (writable: EXE6's beast system spends
         /// them).
         BeastOutCounter = "beast_out_counter", U8, rw;
         /// The form the navi started the battle in.
@@ -510,7 +510,7 @@ named_fields! {
         FloatShoes = "float_shoes", Bool, rw;
         AirShoes = "air_shoes", Bool, rw;
         Undershirt = "undershirt", Bool, rw;
-        /// BN5's Hub Style (+0x4C), which its patch card 111 sets: 1 Team
+        /// EXE5's Hub Style (+0x4C), which its patch card 111 sets: 1 Team
         /// ProtoMan's, 2 Team Colonel's; 0 none.
         HubStyle = "hub_style", U8, rw;
         // Written by the patch cards at the round's start (rules/
@@ -562,9 +562,9 @@ named_fields! {
         /// custom-screen damage, emotion swings, the two HP drains, a
         /// battle-start hook, a shrinking hand).
         BugKinds = "bug_kinds", U8, ro;
-        /// BN5's NaviStats +0x32: the turns a soul lasts longer (SoulT+1's
+        /// EXE5's NaviStats +0x32: the turns a soul lasts longer (SoulT+1's
         /// 1), which the custom screen adds to a soul's three (signed).
-        /// Writable: BN5's NaviCust rules set it.
+        /// Writable: EXE5's NaviCust rules set it.
         SoulTurnBonus = "soul_turn_bonus", I8, rw;
     }
 }
@@ -577,10 +577,10 @@ named_fields! {
         /// A battle against a ranked boss (battle effect 1: LifeSync does
         /// nothing in one, `sub_80E72C8`).
         BossRank = "boss_rank", Bool, ro;
-        /// A battle whose dark chips fizzle (battle effect 0x100000: BN5's
+        /// A battle whose dark chips fizzle (battle effect 0x100000: EXE5's
         /// dark chip rule, 0x0801003C).
         NoDarkChips = "no_dark_chips", Bool, ro;
-        /// A battle that holds BN5's light/dark value at 500 (battle effect
+        /// A battle that holds EXE5's light/dark value at 500 (battle effect
         /// 0x20000, 0x08010EDC).
         LightDarkHeld = "light_dark_held", Bool, ro;
         Mode = "mode", U8, ro;
@@ -661,7 +661,7 @@ named_flags! {
         /// A field object being carried to be thrown (0x04000000).
         Carried = "carried",
         /// Untouchable (0x08000000): no hit reaches it and it hits nothing
-        /// (Falzar Beast Over's form, BN5's DarkInvs drive).
+        /// (Falzar Beast Over's form, EXE5's DarkInvs drive).
         Untouchable = "untouchable",
     }
 }
@@ -707,7 +707,7 @@ named_flags! {
         NaviSwitch = "navi_switch",
         SwitchKnockout = "switch_knockout",
         Mode9A = "mode9_a",
-        /// A system's takeover of the side's navi (BN6's Cross special).
+        /// A system's takeover of the side's navi (EXE6's Cross special).
         Takeover = "takeover",
         Volley = "volley",
         WeaknessHit = "weakness_hit",
@@ -744,8 +744,8 @@ named_flags! {
         /// Gone from the field while its navi chip's navi acts
         /// (`sub_80E1352` sets it, `sub_80E13DC` clears it).
         Vanished = "vanished",
-        /// It dives: a panel that submerges (BN5's sea) submerges it and
-        /// doesn't hold it at a move's end (BN5's ToadSoul, 0x08011CB2).
+        /// It dives: a panel that submerges (EXE5's sea) submerges it and
+        /// doesn't hold it at a move's end (EXE5's ToadSoul, 0x08011CB2).
         /// The status reset ends it.
         Dives = "dives",
     }
@@ -818,7 +818,7 @@ named_flags! {
         Angry = "angry",
         /// Mood 0, or exhausted after Beast Over.
         WornOut = "worn_out",
-        /// BN5's mood under 65.
+        /// EXE5's mood under 65.
         Worried = "worried",
     }
 }
@@ -843,7 +843,7 @@ named_flags! {
 named_flags! {
     /// A screen fade content starts (`SetScreenFade`'s modes).
     pub enum ScreenFade {
-        /// 0x44: the transformation sequencer's fade out (BN5's dark
+        /// 0x44: the transformation sequencer's fade out (EXE5's dark
         /// MegaMan's last stand's too), to full.
         TransformOut = "transform_out",
         /// 0x40: ... and its fade back in, to clear.
@@ -876,7 +876,7 @@ pub struct CustomPlayer {
 named_flags! {
     /// A side's special in progress (the own-gauges mode;
     /// `sub_802E4B8`): the SELECT special, or a system's takeover of the
-    /// side's navi (BN6's Cross special).
+    /// side's navi (EXE6's Cross special).
     pub enum SideSpecial {
         None = "none",
         Select = "select",
@@ -1101,7 +1101,7 @@ pub struct AfterimageSpec {
     pub shadow: Shadow,
     pub steady: bool,
     /// It ends early: 1 when its side leaves the forms whose afterimages
-    /// stay (BN6's Beast forms), 2 when its owner's action drops below
+    /// stay (EXE6's Beast forms), 2 when its owner's action drops below
     /// 0x10 (0 never).
     pub tether: u8,
 }
@@ -1125,7 +1125,7 @@ pub struct ColumnInfo {
     pub timer: u16,
 }
 
-/// An entry of a player's tactics (BN5's computer-navi data) as content
+/// An entry of a player's tactics (EXE5's computer-navi data) as content
 /// reads it: a chip, a pattern (its place among the patterns, from 0), or
 /// nothing (the halfword 0 or an empty place, 0xFFFF).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1212,10 +1212,10 @@ pub trait CoreApi {
     /// Battle flag 4: the screen is dimmed and only objects that run while
     /// dimmed update.
     fn is_dimmed(&self) -> bool;
-    /// Battle flag 4 alone (BN5's chaos failure dims the battle so with
+    /// Battle flag 4 alone (EXE5's chaos failure dims the battle so with
     /// none of a dimming's machinery: 0x080EE66A, 0x080EE76A).
     fn set_dimmed(&mut self, on: bool);
-    /// BN5's 0x08006AAE: the navi `identity` (actor type navi, with a
+    /// EXE5's 0x08006AAE: the navi `identity` (actor type navi, with a
     /// `body`) comes onto `panel` for `side`, brought by `summoner`, driven
     /// by `system` (its `controller` and `navi_state`; of the summoner's
     /// side's ruleset). None when a pool or the side's list of alive actors
@@ -1264,7 +1264,7 @@ pub trait CoreApi {
     /// `ticks`.
     fn shake_camera_secondary(&mut self, magnitude: u16, ticks: u16);
     /// `battle_setFlags(0x20)` / `battle_clearFlags(0x20)`: the cameras
-    /// shake even while the battle is paused (BN5's TomahawkSoul's change,
+    /// shake even while the battle is paused (EXE5's TomahawkSoul's change,
     /// 0x08012138; the change's end clears it, 0x080121B6).
     fn set_shake_through_pause(&mut self, on: bool);
     /// `sub_80EA438`: a burst around `navi`'s panel (effect object #0x90,
@@ -1283,16 +1283,16 @@ pub trait CoreApi {
     /// Set a side's mood, unless its navi's emotion is held (`sub_8015BEC`).
     fn set_mood(&mut self, side: u8, mood: u8);
     /// Raise a side's mood by `n`, capped at 254; a mood of 0 or 0xFF
-    /// stays (BN5's 0x08012802: its recovery chips, docs/design/bn5-map.md
+    /// stays (EXE5's 0x08012802: its recovery chips, docs/design/exe5-map.md
     /// §15.3 item 6).
     fn gain_mood(&mut self, side: u8, n: u16);
     /// Lower a side's mood by `n`, to 1 at least; a mood of 0 stays
-    /// (`sub_8015C12`, BN5's 0x08012820: the hits' loss, BN5's navi chips
+    /// (`sub_8015C12`, EXE5's 0x08012820: the hits' loss, EXE5's navi chips
     /// leaving).
     fn lose_mood(&mut self, side: u8, n: u16);
     /// Whether `side`'s console starts its emotion window glitching (the
     /// save's NaviCust bug flag; a ruleset's system decides it as the round
-    /// is set up, as BN6's patch cards do).
+    /// is set up, as EXE6's patch cards do).
     fn set_emotion_window_glitch(&mut self, side: u8, on: bool);
     /// A side's installed patch cards in their list's order (handles), and
     /// whether each is switched on (the setup's: `PlayerSetup::patch_cards`).
@@ -1311,14 +1311,14 @@ pub trait CoreApi {
     fn side_special(&self, side: u8) -> SideSpecial;
     /// A system's takeover of side `side`'s navi starts, for `ticks`
     /// (counted down in the navi's stage B, `sub_802E1D8`), or ends: while
-    /// it runs, idle asks the side's systems' `takeover` (BN6's Cross
+    /// it runs, idle asks the side's systems' `takeover` (EXE6's Cross
     /// special: SideState +0x54 and +0x30).
     fn take_over(&mut self, side: u8, ticks: u16);
     /// The side's custom screen, in a system's custom hook (its button's
     /// functions; docs/design/rules-in-luau.md §4.4): the refusal sound;
     /// the shared machinery for the button under the cursor (the picked
-    /// chips scrapped: BN6's DustCross; the chips not picked dealt again:
-    /// BN6's ChpShufl); whether the last pick is a chip; the state of the
+    /// chips scrapped: EXE6's DustCross; the chips not picked dealt again:
+    /// EXE6's ChpShufl); whether the last pick is a chip; the state of the
     /// button under the cursor ("selectable", "unavailable", "selected").
     fn custom_refuse(&mut self, side: u8) -> ApiResult<()>;
     /// `custom.folder(side)`: the side's battle folder as its screen has
@@ -1339,7 +1339,7 @@ pub trait CoreApi {
     fn custom_pick(&mut self, side: u8) -> ApiResult<()>;
     fn custom_play(&mut self, side: u8, sound: &str) -> ApiResult<()>;
     fn custom_set_column_icon(&mut self, side: u8, chip: Option<crate::ChipHandle>) -> ApiResult<()>;
-    /// `ticks`: the ticks it has had already (BN6's Cross window, whose
+    /// `ticks`: the ticks it has had already (EXE6's Cross window, whose
     /// first tick its opening's last runs).
     fn custom_open_window(&mut self, side: u8, system: u8, window: &str, ticks: u16) -> ApiResult<()>;
     fn custom_window_tick(&self, side: u8) -> ApiResult<u16>;
@@ -1354,7 +1354,7 @@ pub trait CoreApi {
     fn custom_update_availability(&mut self, side: u8) -> ApiResult<()>;
     fn custom_draw_emblem(&mut self, side: u8, x: u32) -> ApiResult<()>;
     /// The form the system's pick holds for the turn's start, with the
-    /// transform record's turns and Chaos flag (BN5's Soul Unison; 0 and
+    /// transform record's turns and Chaos flag (EXE5's Soul Unison; 0 and
     /// false elsewhere).
     fn custom_set_form(&mut self, side: u8, system: u8, form: Option<crate::FormHandle>, turns: u8, chaos: bool) -> ApiResult<()>;
     fn custom_form_taken(&self, side: u8, system: u8) -> ApiResult<bool>;
@@ -1364,17 +1364,17 @@ pub trait CoreApi {
     /// screen checked it (`custom.last_pick`).
     fn custom_last_pick(&mut self, side: u8) -> ApiResult<Option<CustomPick>>;
     /// The system's button `button` takes the last pick's place, first in
-    /// the selection (BN5's soul given for a chip, 0x080233E0); false when
+    /// the selection (EXE5's soul given for a chip, 0x080233E0); false when
     /// the last pick isn't a chip (`custom.trade_last_pick`).
     fn custom_trade_last_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<bool>;
     /// The system's button `button` is used on the last pick, a chip with
     /// no button attached yet: the pick carries `modifiers` (the hand's
     /// modifier bits) into the hand, and the button is picked until B takes
-    /// the chip back (BN5's capsules, 0x080237B4); false when the last pick
+    /// the chip back (EXE5's capsules, 0x080237B4); false when the last pick
     /// isn't such a chip (`custom.attach_to_last_pick`).
     fn custom_attach_to_last_pick(&mut self, side: u8, system: u8, button: &str, modifiers: u8) -> ApiResult<bool>;
     /// The last pick, a chip dealt from the folder, leaves the picks for
-    /// the system's button `button`, which is picked (BN5's Arm Change,
+    /// the system's button `button`, which is picked (EXE5's Arm Change,
     /// 0x080236C0: B, with the picks as they were, puts it back; at OK it
     /// leaves the folder); false when the last pick isn't such a chip
     /// (`custom.hold_last_pick`).
@@ -1383,7 +1383,7 @@ pub trait CoreApi {
     /// it (`custom.held_pick`).
     fn custom_held_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<Option<crate::ChipHandle>>;
     /// The held chip's icon in the column cell it left, shown or not
-    /// (`custom.set_held_icon`: BN5's Arm Change's blink, 0x080236EC).
+    /// (`custom.set_held_icon`: EXE5's Arm Change's blink, 0x080236EC).
     fn custom_set_held_icon(&mut self, side: u8, system: u8, button: &str, shown: bool) -> ApiResult<()>;
     /// The screen's fade is still running (`custom.fading`).
     fn custom_fading(&self, side: u8) -> ApiResult<bool>;
@@ -1403,7 +1403,7 @@ pub trait CoreApi {
     fn custom_draw_window(&mut self, side: u8) -> ApiResult<()>;
     fn custom_draw_regular(&mut self, side: u8) -> ApiResult<()>;
     /// The icon of the chip a button holds (`custom_hold_last_pick`), over
-    /// the button (BN5's 0x080254F4): nothing while none holds one.
+    /// the button (EXE5's 0x080254F4): nothing while none holds one.
     fn custom_draw_held(&mut self, side: u8) -> ApiResult<()>;
     fn custom_draw_cross_cursor(&mut self, side: u8) -> ApiResult<()>;
     fn custom_show_chip_window(&mut self, side: u8) -> ApiResult<()>;
@@ -1417,7 +1417,7 @@ pub trait CoreApi {
     /// emotion it reads, and a random battle.
     fn custom_player(&self, side: u8) -> ApiResult<CustomPlayer>;
     /// The level of the navi code side `side`'s save received (0 to 14),
-    /// or none (`PlayerSetup::navi_level`): what BN6's rules read of event
+    /// or none (`PlayerSetup::navi_level`): what EXE6's rules read of event
     /// flag 0x163.
     fn navi_level(&self, side: u8) -> Option<u8>;
     fn end_takeover(&mut self, side: u8);
@@ -1432,7 +1432,7 @@ pub trait CoreApi {
     fn tracked(&self, side: u8) -> Option<ObjectRef>;
     /// Slot `i` (from 0, of four) of a side's list of alive actors.
     fn alive_actor_slot(&self, side: u8, i: u8) -> Option<ObjectRef>;
-    /// Player `side`'s tactics (BN5's computer-navi data): how many entries
+    /// Player `side`'s tactics (EXE5's computer-navi data): how many entries
     /// they count, their entry in place `i` (from 0; past the count, an
     /// empty place), and their pattern `i` (from 0): its place from the
     /// target and its chips.
@@ -1470,13 +1470,13 @@ pub trait CoreApi {
     /// Add to the Atk+ bonus of the chip at `i` of a side's hand
     /// (wrapping).
     fn add_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16);
-    /// BN5's DarkPlus (0x0800E1D6): the Atk+ bonus of a hand's chip at `i`
+    /// EXE5's DarkPlus (0x0800E1D6): the Atk+ bonus of a hand's chip at `i`
     /// becomes `n`.
     fn set_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16);
     /// A side's hand has a chip at `i` and it does damage (its record's
     /// flag 0x02, "has_damage").
     fn hand_chip_damages(&self, side: u8, i: u8) -> bool;
-    /// BN5's Jealousy (0x080E4596): the chips left in a side's hand, from
+    /// EXE5's Jealousy (0x080E4596): the chips left in a side's hand, from
     /// its cursor to the first empty slot.
     fn hand_left(&self, side: u8) -> u8;
     /// A side's defensive-chip record.
@@ -1486,7 +1486,7 @@ pub trait CoreApi {
     fn clear_linked(&mut self, side: u8);
     /// FullCust: the custom gauge is full.
     fn fill_custom_gauge(&mut self);
-    /// `sub_801DFD0` (BN5's CusVolt): the custom gauge drops by `n`, to 0
+    /// `sub_801DFD0` (EXE5's CusVolt): the custom gauge drops by `n`, to 0
     /// at least.
     fn drain_custom_gauge(&mut self, n: u16);
     /// `sub_801DF8C`: the custom gauge fills `rate` a tick (full at
@@ -1498,15 +1498,15 @@ pub trait CoreApi {
     /// in the own-gauges mode, else the shared one).
     fn gauge_damage(&self, side: u8) -> u16;
     /// A side's sword pick (`sub_802E070`+0x12): the swing a variable sword
-    /// makes for a navi no buttons drive (BN5's computer navi draws it,
+    /// makes for a navi no buttons drive (EXE5's computer navi draws it,
     /// 0x0802A330).
     fn sword_pick(&self, side: u8) -> u8;
     fn set_sword_pick(&mut self, side: u8, pick: u8);
     /// Presentation: whether side `side`'s emotion window shows its form's
-    /// second set of faces (`variant`; BN5's Hub Style).
+    /// second set of faces (`variant`; EXE5's Hub Style).
     fn set_face_variant(&mut self, side: u8, variant: bool);
     /// Presentation: whether the custom screen's enemy names show side
-    /// `side`'s navi by its variant name (BN5's Hub Style in a link battle,
+    /// `side`'s navi by its variant name (EXE5's Hub Style in a link battle,
     /// 0x0801AE3A).
     fn set_name_variant(&mut self, side: u8, variant: bool);
     /// `sub_802E032`: add to a side's own custom gauge (battle flag 0x40),
@@ -1603,10 +1603,10 @@ pub trait CoreApi {
     fn chips_enabled(&self, o: ObjectRef) -> ApiResult<bool>;
     /// `sub_8010332`: the ticks a step of its ends with.
     fn move_lag(&self, o: ObjectRef) -> ApiResult<u16>;
-    /// A navi's links let go as it leaves (BN5's 0x081042E6): its status
+    /// A navi's links let go as it leaves (EXE5's 0x081042E6): its status
     /// visuals (`sub_801A5E2`) and its chips on the HUD (`sub_801DC36`).
     fn drop_links(&mut self, o: ObjectRef) -> ApiResult<()>;
-    /// A navi no player controls leaves (BN5's 0x08104306): no HP, the
+    /// A navi no player controls leaves (EXE5's 0x08104306): no HP, the
     /// damage-carry record forgets it, its reservation goes, it leaves its
     /// side's lists and is destroyed.
     fn leave(&mut self, o: ObjectRef) -> ApiResult<()>;
@@ -1836,7 +1836,7 @@ pub trait CoreApi {
     /// dimming (`keep`: its Param3 1 and flags 0x14), or steps like any
     /// object again (its Param3 0). Nothing without an overlay.
     fn overlay_stepping(&mut self, o: ObjectRef, keep: bool);
-    /// BN5's 0x080C451A: the navi's body overlay (`related2`) adds `offset`
+    /// EXE5's 0x080C451A: the navi's body overlay (`related2`) adds `offset`
     /// to its owner's animation. Nothing without one.
     fn set_overlay_anim_offset(&mut self, o: ObjectRef, offset: u8);
     /// `sub_8011384(form)`: take off what `form` wore (its `take_off`, or the
@@ -1863,12 +1863,12 @@ pub trait CoreApi {
     /// The form the navi's side asked to change into at this turn's start
     /// (none: none, or the base form).
     fn form_change_target(&self, o: ObjectRef) -> Option<crate::FormHandle>;
-    /// BN5's Soul Unison: the turns the soul the side asked for lasts, and
+    /// EXE5's Soul Unison: the turns the soul the side asked for lasts, and
     /// whether it is Chaos Unison (the turn's transform record's +3, +1).
     fn form_change_soul(&self, o: ObjectRef) -> (u8, bool);
-    /// BN5's soul change's first step (0x08011FAC): the navi stops moving,
+    /// EXE5's soul change's first step (0x08011FAC): the navi stops moving,
     /// flinching, being paralyzed and sliding, and forgets a slide request
-    /// and its slide's step (a part of BN6's `sub_80158FA`).
+    /// and its slide's step (a part of EXE6's `sub_80158FA`).
     fn stop_moving(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// `sub_80C4526(overlay, 1)`: an overlay on an image sits in front (an
     /// idle overlay keeps its owner's height).
@@ -1899,7 +1899,7 @@ pub trait CoreApi {
     /// the dimming, navi or instant chip's), in `set_attack` slot `kind`.
     fn start_chip_attack(&mut self, o: ObjectRef, chip: crate::ChipHandle, kind: u8) -> ApiResult<()>;
     /// `sub_80116AE(5, end_lag, 2)`: a step straight to `target` (column 0:
-    /// no step), then `end_lag` ticks; with `face`, BN5's `sub_80116F6`'s
+    /// no step), then `end_lag` ticks; with `face`, EXE5's `sub_80116F6`'s
     /// (the object a step turns to face in the panel patterns 0x23, 0x31
     /// and 0x33).
     fn start_move_to(&mut self, o: ObjectRef, target: PanelPos, end_lag: u16, face: Option<ObjectRef>) -> ApiResult<()>;
@@ -1932,7 +1932,7 @@ pub trait CoreApi {
     /// into damage instead (true when it did).
     fn heal(&mut self, o: ObjectRef, amount: u16, anti_recovery: bool) -> bool;
     /// `object_subtractHP`: the HP down by `amount`, to 0, by the
-    /// object's side's rules (BN5's drains a player's side's gauge too, and
+    /// object's side's rules (EXE5's drains a player's side's gauge too, and
     /// may hold a dark MegaMan at 1 HP: its last stand).
     fn subtract_hp(&mut self, o: ObjectRef, amount: u16);
     /// `sub_801265A`: the buster's damage (the attack level, with the
@@ -2048,7 +2048,7 @@ pub trait CoreApi {
     fn hide_user_sparing(&mut self, user: ObjectRef);
     /// `sub_80E146C`: an actor that isn't a player vanishes (its barrier
     /// visual and its confusion and blindness visuals with it), and
-    /// `sub_80E14AC` it is back: BN5's Django's coffin.
+    /// `sub_80E14AC` it is back: EXE5's Django's coffin.
     fn hide_actor(&mut self, o: ObjectRef);
     fn show_actor(&mut self, o: ObjectRef);
     /// `sub_80E49C4` (BugFix): a side's NaviCust bugs are fixed: the stats
@@ -2062,7 +2062,7 @@ pub trait CoreApi {
     fn clear_emotion_window_glitch(&mut self);
     /// A navi chip's navi is done: its controller moves on.
     fn navi_chip_left(&mut self, controller: ObjectRef);
-    /// The last navi chip used, of either side (`byte_203C960`, BN5's
+    /// The last navi chip used, of either side (`byte_203C960`, EXE5's
     /// 0x0203C430): the chip, and the element and the damage word, bonus
     /// included, its navi came with; none since the battle started.
     fn last_navi_chip(&self) -> Option<(ChipHandle, u8, u32)>;
@@ -2090,7 +2090,7 @@ pub trait CoreApi {
     /// Run a shared entry of the obstacle's action table.
     fn obstacle_action(&mut self, o: ObjectRef, a: ObstacleAction) -> ApiResult<()>;
     /// The byte the obstacle's game stores for action `a` of the
-    /// framework's numbering (BN6's: the kind's own from 8; BN5's own from
+    /// framework's numbering (EXE6's: the kind's own from 8; EXE5's own from
     /// 6, with no frozen or bubbled entries).
     fn obstacle_action_byte(&self, o: ObjectRef, a: u8) -> ApiResult<u8>;
     /// The obstacle's action in the framework's numbering.
@@ -2162,14 +2162,14 @@ pub trait CoreApi {
     /// original's NameID word 0xCD to 0xFF, its +0x2A half 0) but those
     /// `sub_800F486` excludes, which BlzrdBal's ball swallows.
     fn obstacle_swallowable(&self, o: ObjectRef) -> bool;
-    /// BN5's Poltergeist's test (0x080E8CA0): the object's identity is
+    /// EXE5's Poltergeist's test (0x080E8CA0): the object's identity is
     /// `throwable`.
     fn obstacle_throwable(&self, o: ObjectRef) -> bool;
     /// `sub_800F6AC`: ask the field object `o` to be picked up by `side` and
     /// thrown at panel (x, y) after shaking `shake` ticks, hitting with the
     /// damage word `damage` (`sub_8018002` does it).
     fn obstacle_throw(&mut self, o: ObjectRef, side: u8, x: u8, y: u8, shake: u8, damage: u32);
-    /// BN5's ColonelSoul army (docs/design/bn5-map.md §15.11): arm side
+    /// EXE5's ColonelSoul army (docs/design/exe5-map.md §15.11): arm side
     /// `side` (BattleState+0x5C bit 0x10 or 0x20, 0x080CAC1E) with its
     /// soldiers' damage words (0x080CABF8): the sword soldier's and the gun
     /// soldier's. While it is armed, an obstacle of a game whose rules have

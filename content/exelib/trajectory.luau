@@ -1,5 +1,5 @@
 --!strict
--- Aiming thrown things, as BN5 and BN6 share them: the game's trajectory
+-- Aiming thrown things, as EXE5 and EXE6 share them: the game's trajectory
 -- helpers and the GBA BIOS routines they call (division, square root,
 -- arctangent), as the BIOS computes them, over a game's sine table (its
 -- rules' `math` section: `trajectory.over`).

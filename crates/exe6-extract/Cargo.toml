@@ -1,0 +1,14 @@
+[package]
+name = "exe6-extract"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Extracts an EXE6 (US Falzar) ROM's battle assets (graphics, sound) into a content pack"
+
+[dependencies]
+m4a.workspace = true
+nettai-assets = { path = "../nettai-assets" }
+nettai-content = { path = "../nettai-content" }
+# The assets' names (content/exe6/compat/assets.toml).
+exe6-compat.workspace = true
+nettai-content-api = { path = "../nettai-content-api" }

@@ -1,12 +1,12 @@
 --!strict
--- A barrier's visual, as BN5 and BN6 share it (BN6's effect object #7, `sub_80E0AD4`; BN5's #7, 0x080E0AA0; BN6's
+-- A barrier's visual, as EXE5 and EXE6 share it (EXE6's effect object #7, `sub_80E0AD4`; EXE5's #7, 0x080E0AA0; EXE6's
 -- docs/engine/dimming-chips.md §3.3): it sits on its navi at the look's attach point and follows the navi's barrier
 -- (the collision data's): up, it shows; worn down, it goes down (and comes back up when the barrier grows back); with
 -- the barrier gone, it goes. The navi links it (`barrier_visual`, AIData+0x60), and hides and shows it with itself
 -- (its `shown`).
 --
--- Each game makes its own kind (`visual.make`): BN6's is blown away when wind pops the barrier (`sub_80E0C74`'s
--- popped branch, `sub_80E0D38`) and comes back up only on a navi that isn't bubbled (`sub_80E0CAA`); BN5's has
+-- Each game makes its own kind (`visual.make`): EXE6's is blown away when wind pops the barrier (`sub_80E0C74`'s
+-- popped branch, `sub_80E0D38`) and comes back up only on a navi that isn't bubbled (`sub_80E0CAA`); EXE5's has
 -- neither (0x080E0C38, 0x080E0C5C: no blown action, no bubble status).
 
 local element = require("@exelib/element")
@@ -24,7 +24,7 @@ export type State = {
 export type Spec = {
     -- The kind's id.
     id: string,
-    -- BN6's: blown away when popped, and back up only on a navi that isn't bubbled.
+    -- EXE6's: blown away when popped, and back up only on a navi that isn't bubbled.
     blows: boolean,
 }
 
@@ -121,7 +121,7 @@ end
 function visual.make(spec: Spec): Visual
     local blows = spec.blows
 
-    -- `sub_80E0C74`: up while the navi links it and its barrier holds HP; down when it doesn't; (BN6's) blown away
+    -- `sub_80E0C74`: up while the navi links it and its barrier holds HP; down when it doesn't; (EXE6's) blown away
     -- when popped.
     local function up(me: Object, owner: Object)
         if owner.barrier_visual == nil then
@@ -139,7 +139,7 @@ function visual.make(spec: Spec): Visual
         end
     end
 
-    -- `sub_80E0CAA`: going down (the next animation); back up when the barrier has HP again (and, BN6's, its navi
+    -- `sub_80E0CAA`: going down (the next animation); back up when the barrier has HP again (and, EXE6's, its navi
     -- isn't bubbled); hidden at the end of the animation while the barrier stands; gone at it once the barrier is.
     local function down(me: Object, owner: Object)
         local b = (me.state :: State).barrier

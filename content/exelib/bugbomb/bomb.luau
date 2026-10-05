@@ -1,11 +1,11 @@
 --!strict
--- A BugBomb (BN6's attack object #0xA5, `sub_80D9D4C`; BN5's #0x77, 0x080D4E54, the same code but for its
+-- A BugBomb (EXE6's attack object #0xA5, `sub_80D9D4C`; EXE5's #0x77, 0x080D4E54, the same code but for its
 -- look and its bugs). Lobbed at the panel three ahead, it sits there
 -- with 40 HP for a second and then bursts over the 3x3 around it, giving what it hits a NaviCust bug its target's
 -- side doesn't have yet, picked at random by its game (`look.pick_bug`). Breaking it or a crushing hit first ends
 -- it in an explosion; landing in a hole, in a puff of smoke.
 --
--- Each game makes its kind with `bomb.make_kind(id, look)` (BN6's chips/bugbomb, BN5's chips/bugbomb).
+-- Each game makes its kind with `bomb.make_kind(id, look)` (EXE6's chips/bugbomb, EXE5's chips/bugbomb).
 
 local regions = require("../regions")
 local rising_bubble = require("../rising-bubble")

@@ -40,7 +40,7 @@ Two crates make it up:
 ## 1. The content pack
 
 The battle content the engine runs on is this repository's content/ (its
-packs: the game packs content/bn6 and content/bn5 and the support pack
+packs: the game packs content/exe6 and content/exe5 and the support pack
 content/exelib, docs/design/content-model-v2.md §4.0; `--content <dir>` or
 `$NETTAI_CONTENT` for another content directory). What the
 frontend shows and plays comes from a content pack made from your own ROMs
@@ -51,23 +51,23 @@ sound, in open formats (indexed PNG, JSON, Tiled maps, MIDI, TOML, WAV; see
 `docs/design/content-pack.md` and `docs/design/asset-formats.md`), by the
 names the content gives them. Extract it once:
 
-    cargo run -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6
+    cargo run -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/exe6
 
-(`data/content/` is gitignored.) **You play one game**, BN6 or BN5: a match
-is of one game (§6), which a match file names (`game = "bn6"`) and a
+(`data/content/` is gitignored.) **You play one game**, EXE6 or EXE5: a match
+is of one game (§6), which a match file names (`game = "exe6"`) and a
 trace states (its setup line's `"game"`: one that states none, or another
 game than a `--game` given, is refused; nothing takes a recording for a
 game it doesn't name), else `--game GAME` says it. There is no default
 game: with no match file, no trace and no `--game`, the frontend lists the
-games it found a pack of ("say which game: --game bn5 or --game bn6") and
+games it found a pack of ("say which game: --game exe5 or --game exe6") and
 stops. The battle is that
 game's content, drawn and heard from its pack: there is no mixing of games,
 no other game's chip, navi or field art. The frontend (and the editor)
 finds at start-up
 **every pack in the packs directory**, `$NETTAI_PACKS`, else
 `data/content`: each folder with a pack manifest, by the game the manifest
-says (`nettai_content::pack::find`); `bn5-extract content` writes BN5's into
-`data/content/bn5` beside it. `--pack <dir>` names a pack elsewhere, in
+says (`nettai_content::pack::find`); `exe5-extract content` writes EXE5's into
+`data/content/exe5` beside it. `--pack <dir>` names a pack elsewhere, in
 place of the found one of its game, and can be given again for another
 game's. Two packs of one game in the directory are an error. A pack is of
 the format's one version (each file says it): an older one is refused, with
@@ -87,7 +87,7 @@ depends on, exelib) and its asset pack, nothing else; `nettai_content::pack::gam
 lists the games it can offer, each with its asset pack or the command that
 writes one. A game's chips without a use yet (a port's unwritten chips)
 aren't required by its init.luau, so they don't load. Every loader does the same (the
-editor, the tools' `load_battle`, the BN5 replays, the static audit), and
+editor, the tools' `load_battle`, the EXE5 replays, the static audit), and
 the content then is what loaded: its hash, which netplay's handshake
 compares, covers exactly that. A game the content must load whose pack
 isn't found is an error naming the extract command. (Netplay's handshake
@@ -138,16 +138,16 @@ are the link navis' faces, with their Full Synchro palettes.
 ## 2. Running
 
     cargo run -p nettai-frontend -- <trace.jsonl>              # watch a trace
-    cargo run -p nettai-frontend -- --play --game bn6          # play live
-    cargo run -p nettai-frontend -- --play --game bn6 --seed 42 --stage netbattle-43 --show-folders
+    cargo run -p nettai-frontend -- --play --game exe6          # play live
+    cargo run -p nettai-frontend -- --play --game exe6 --seed 42 --stage netbattle-43 --show-folders
     cargo run -p nettai-frontend -- --match match.toml           # play a match file (§6)
-    cargo run -p nettai-frontend -- --play --game bn6 --seed 42 --save-match match.toml   # keep the draw
+    cargo run -p nettai-frontend -- --play --game exe6 --seed 42 --save-match match.toml   # keep the draw
     cargo run -p nettai-frontend -- <trace.jsonl> --headless 150,300,600 --out <dir>
     cargo run -p nettai-frontend -- --audit-content            # what is missing?
     cargo run -p nettai-frontend -- --audit <trace.jsonl>...   # and in these traces?
-    cargo run -p nettai-frontend -- --play --game bn6 --pack <dir>        # a pack elsewhere
-    cargo run -p nettai-frontend -- --play --game bn6 --host 7777         # netplay: host...
-    cargo run -p nettai-frontend -- --play --game bn6 --join 192.0.2.10:7777   # ...and join
+    cargo run -p nettai-frontend -- --play --game exe6 --pack <dir>        # a pack elsewhere
+    cargo run -p nettai-frontend -- --play --game exe6 --host 7777         # netplay: host...
+    cargo run -p nettai-frontend -- --play --game exe6 --join 192.0.2.10:7777   # ...and join
 
 Options: `--pack <dir>` names a content pack elsewhere and `--content <dir>`
 the battle content (see above), `--mute` turns the sound off, `--round N`
@@ -163,7 +163,7 @@ how strings are drawn (default `font`; the frame comparison uses
 bundled one's place, `--lang en|ja` the language of the battle's words
 (default `en`; §3, "Languages"). For live play, `--seed N` gives the seed its
 setup and battle are drawn from (default: from the clock; each start
-prints it), `--game GAME` says the game (`bn6` or `bn5`: required), `--stage NAME`
+prints it), `--game GAME` says the game (`exe6` or `exe5`: required), `--stage NAME`
 forces a link battle stage by its name in the game (`netbattle-1` to
 `netbattle-96`), `--show-folders` prints both folders,
 `--cards` and `--their-cards` install your and the right navi's patch cards
@@ -186,13 +186,13 @@ input ends or the engine hits something it doesn't implement yet. Then it
 stops, shows the reason on screen and prints it; the first difference from
 the trace's recorded state is printed too. Frame numbers are the trace's.
 
-**Live play** (`--play --game GAME`): you are the left navi; the right one stands still. With `--game bn6` the round
-is a netbattle on BN6's content between two MegaMen at their fresh stats
+**Live play** (`--play --game GAME`): you are the left navi; the right one stands still. With `--game exe6` the round
+is a netbattle on EXE6's content between two MegaMen at their fresh stats
 (100 HP, as a new match's in the editor: `nettai_match::Side::fresh`) with
 no NaviCust programs (so roads carry them and holes stop them), set up at
 random from the seed (`nettai_match::draw::live`, which prints what it
-drew), unless a match file sets it up (`--match`, §6). (`--game bn5` draws a plain BN5 match instead:
-BN5's rules, a stage of its link battles, and on each side BN5's
+drew), unless a match file sets it up (`--match`, §6). (`--game exe5` draws a plain EXE5 match instead:
+EXE5's rules, a stage of its link battles, and on each side EXE5's
 MegaMan at his fresh stats with a folder its rules accept.)
 
 - **The field**: one of the 96 link battle stages the content defines (the
@@ -200,7 +200,7 @@ MegaMan at his fresh stats with a folder its rules accept.)
   the link effect and not the random battle's), with a background drawn as
   a link battle draws one (`byte_8120A20`). The set's later rounds get
   theirs the same way.
-- **A folder for each player**: 30 chips that keep BN6's folder rules
+- **A folder for each player**: 30 chips that keep EXE6's folder rules
   (`nettai_match::folders`: the folder editor's, `sub_8135080` with `sub_8135500`: copies
   of a chip by its MB, five up to 19 MB down to one from 50; Mega and Giga
   chips within the fresh navi's levels; a code each chip comes in; a
@@ -249,7 +249,7 @@ frontend's side is `netplay`):
   custom screen, HUD and sounds.
 - **The handshake** checks that both players run the same netplay protocol,
   the same engine, the same game (a match is of one: "can't play: the other
-  side plays bn5, this one bn6: a match is of one game, both sides playing
+  side plays exe5, this one exe6: a match is of one game, both sides playing
   it") and the same content (`Content::hash`: the definitions, scripts and
   rule tables, and what the battle reads of the pack, the asset names and
   the animations' timing), and refuses a mismatch on both sides with what
@@ -331,10 +331,10 @@ functions:
   `a_lookup_by_the_wrong_key_fails_for_every_chip`). A string a
   language's table lacks shows in the content's own, by design: it is said,
   not counted; so is a language the content has strings in but its pack no
-  lettering for (BN5's Japanese, which its extraction makes none of): such
+  lettering for (EXE5's Japanese, which its extraction makes none of): such
   a console can't be shown, and the language isn't checked. It audits the
   match's one game (`--game`): a chip's Program Advance code by its number
-  in that game's compat (BN6's or BN5's).
+  in that game's compat (EXE6's or EXE5's).
 - `--audit <trace.jsonl>...` runs traces, several at a time (`--jobs N`,
   default one a core), and makes the lookups their frames and sound cues
   make, without drawing: no stage, no composing, no sound synthesis
@@ -464,7 +464,7 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   the layer's scroll, and SELECT takes it off;
 - the chip window: the chip's name (8 cells of the 8x16 font, in the
   window's colors), its picture and palette, the window's colors by its
-  class (a dark chip's dark: no BN6 chip is one), its code, its element's icon and colors, its damage ("???" for
+  class (a dark chip's dark: no EXE6 chip is one), its code, its element's icon and colors, its damage ("???" for
   a chip with the trait `hides_damage_as_a` as an A: the original compares the whole chip word, number and code,
   with Muramasa's number, so a Muramasa M shows its damage); for OK, Beast Out and the buttons their pictures;
 - the slots (each dealt chip's icon and code, grayed or picked by its
@@ -489,12 +489,12 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
 - a console's own pictures by its version (`Versioned`: a Gregar console's
   Beast and emblem, the pack's `-gregar` assets); a Cross's name and
   colors in the Cross window are its own game's (`custom::cross_picture`,
-  for the form in the entry's place, `bn6_compat::Unlocks::cross_at` over
+  for the form in the entry's place, `exe6_compat::Unlocks::cross_at` over
   the cross system's setup), so a Gregar
   Cross shows Gregar's name in any window, and a window a setup's Cross
   list mixes shows each game's own; the Beast Out button, its picture in
   the chip window and the BeastOut chip's picture are of the Beast the
-  navi goes into (`custom::beast_pictures`, `bn6_compat::Unlocks::beast_game`), so a
+  navi goes into (`custom::beast_pictures`, `exe6_compat::Unlocks::beast_game`), so a
   Falzar player in HeatCross sees Gregar's;
 - what the screen does to the rest: the HP box and the mugshot move right
   with the window and the field and the sprites 15 pixels down (the
@@ -503,7 +503,7 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   fade darkens the stage, the HUD layer and the objects (sprite palettes
   0-10) half way, the camera's jitter moves the HUD layer in Beast Out's
   states, and the emotion window shows the Beast form chosen. A dark
-  chip's hover (never seen in BN6) darkens the stage and the objects on the
+  chip's hover (never seen in EXE6) darkens the stage and the objects on the
   first fade record and the HUD layer and the screen's sprites on the
   second.
 
@@ -525,26 +525,26 @@ arrow. The text is the content's strings (the chip's or the Cross's
 far it has printed and the rest the engine's chatbox
 (docs/engine/custom-screen.md §3.5).
 
-**A BN5 console.** In a BN5 match the HUD, the custom screen and the
-chatbox are BN5's pack's: its HP box, gauge, fonts, banners, emotion
+**An EXE5 console.** In an EXE5 match the HUD, the custom screen and the
+chatbox are EXE5's pack's: its HP box, gauge, fonts, banners, emotion
 window, window and chatbox, by the pack's own tile numbers and layout
 (docs/design/asset-formats.md §4, "Another game's HUD and custom screen").
-What a BN5 console does otherwise, by data, not by game:
+What an EXE5 console does otherwise, by data, not by game:
 
-- the emotion window: the faces BN5's forms name bring their own box
+- the emotion window: the faces EXE5's forms name bring their own box
   (MegaMan's five, Team Colonel's), and a soul's face shows the soul's
   turns left beside it (the souls system's `turns`, read by name);
 - the custom screen: the special slot's button is the one the pack names
   for the system's button (`soul`: Soul Unison's, its picture in the chip
   window in Chaos Unison's palette for Chaos), the cursor over OK and over
   the button where the pack's layout puts them; the soul choice (the
-  souls system's window `soul_unison`, BN5's state 9) flies the soul's icon
+  souls system's window `soul_unison`, EXE5's state 9) flies the soul's icon
   up onto the column's first cell under its flash, and the cell keeps it
   (nettai-render's `SoulOffer`: the offer and the window's step, read of the
   system's state by name), in the console's version's palette (Team
   Colonel's icon has another outline color: the pack's `icon_versions`);
 - what a soul adds to the screen, drawn by what the engine's screen says,
-  not by soul (verified frame for frame, bn5.txt's custom/capsules,
+  not by soul (verified frame for frame, exe5.txt's custom/capsules,
   custom/capsule-frame, custom/arm-change and five souls/ scenarios):
   - a button that shows a chip (`Slot::face`: MeddySoul's capsules) is a
     chip's slot: the chip's icon (the empty icon once used), a blank code,
@@ -562,19 +562,19 @@ What a BN5 console does otherwise, by data, not by game:
     when the column hides the icon); the column cell the chip left stays
     drawn for the tick it leaves (`ScreenLook::column_kept`);
   - the re-deal button's uses left, a digit in the chip window's damage
-    cells, where the pack's layout says (`button_uses`: BN5's Shuffle;
-    BN6's ChpShufl shows none);
+    cells, where the pack's layout says (`button_uses`: EXE5's Shuffle;
+    EXE6's ChpShufl shows none);
 - its game's flow (rules `flow`, read of the console's own game): the
-  custom screen's close starts the chip window as a Japanese BN6 console's
+  custom screen's close starts the chip window as a Japanese EXE6 console's
   does (`chip_window_at_close`), the intro fades in from black
   (`intro_from_black`);
 - a version's own chip (its five Giga chips, DethPhnx or Phoenix) shows
   its own version's ROM's icon and picture on either console (§5), and the
-  emblem is the console's version's (`Renderer::console_version`, which a
-  BN5 recording names; live play, the pack's first version).
+  emblem is the console's version's (`Renderer::console_version`, which an
+  EXE5 recording names; live play, the pack's first version).
 
-The frame comparison against BN5's consoles (verification's
-tools/frontend-compare/bn5.txt, chiplab's library-bn5) and what still
+The frame comparison against EXE5's consoles (verification's
+tools/frontend-compare/exe5.txt, chiplab's library-exe5) and what still
 differs are in §4.
 
 **Text** (docs/design/text-rendering.md §9). Every string goes through
@@ -737,21 +737,21 @@ labels) and a Japanese console's HUD timings (the next chip's name shown
 from the fight's first frame), the chips' pictures included; the Gregar
 chip's on a Falzar console is the known difference above.
 
-**On BN5 consoles** (verification's tools/frontend-compare/bn5.txt: 16 of
-chiplab's library-bn5 scenarios, Team ProtoMan against Team Colonel,
+**On EXE5 consoles** (verification's tools/frontend-compare/exe5.txt: 16 of
+chiplab's library-exe5 scenarios, Team ProtoMan against Team Colonel,
 traced on the Team ProtoMan console and once on the Team Colonel one,
 Soul and Chaos Unison and the computer navi's Chaos among them, compared
-with `--text original`, BN5's pack loaded beside BN6's): of 7,964 frames,
+with `--text original`, EXE5's pack loaded beside EXE6's): of 7,964 frames,
 7,914 are pixel-exact, the navis included, and 12 scenarios wholly: the
 HUD, the emotion window (a dark chip user's flicker too, now that the
-console's RNG1 is the engine's: the dark chip offer, bn5-map.md §15.3
+console's RNG1 is the engine's: the dark chip offer, exe5-map.md §15.3
 item 13), the custom screen with its picks, Soul Unison's choice and a
 dark chip's hover, its close (the hand's name and icons on the tick the
 results are in), the chatbox, the banners, the mercy flash and a
 deletion's result. What still differs:
 
 - the UNITE button for a soul not offered yet (HeatSoul for AntiFire, a
-  pick in custom/picks) is gray where BN5's is lit;
+  pick in custom/picks) is gray where EXE5's is lit;
 - a soul's buster shot's flame is whiter for a few frames (Soul and Chaos
   Unison, the computer navi's Chaos);
 - an explosion's colors in two frames of AntiFire's.
@@ -805,10 +805,10 @@ them).
   the trace's (`game_regions`).
 - **Deliberate: a version's own chips on the other version's console.**
   Each ROM draws its own version's chips and has their art again at the
-  other version's counterparts: BN6's five Giga chips a version (Bass and
+  other version's counterparts: EXE6's five Giga chips a version (Bass and
   BassAnly, BigHook and MetrKnuk, DeltaRay and CrossDiv, ColForce and
   HubBatc, BugRSwrd and BgDthThd share one picture, palette and icon in a
-  ROM); BN5's five a version and its phoenix (Team ProtoMan's ROM draws
+  ROM); EXE5's five a version and its phoenix (Team ProtoMan's ROM draws
   MetrKnuk and CrossDiv as HolyDrem, OmegaRkt and BugCharg as BigHook,
   BassAnly as Bass, Phoenix as DethPhnx; Team Colonel's the other way).
   The pack has each chip's picture and icon once, from its own version's
@@ -832,8 +832,8 @@ them).
   the Gregar chip's description differs on a Falzar console (and the
   Falzar chip's, presumably, on a Gregar console). Not listed as known: no
   content says which chips copy that buffer.
-- A BN5 console in Japanese: the BN5 pack has the US ROMs' lettering
-  alone (docs/design/bn5-map.md §11), so `--lang ja --text original`
+- An EXE5 console in Japanese: the EXE5 pack has the US ROMs' lettering
+  alone (docs/design/exe5-map.md §11), so `--lang ja --text original`
   draws its Japanese names in the US font (the font mode draws them); the
   static audit says so, not counted.
 - Live play shows the custom screen as text.
@@ -862,7 +862,7 @@ once at the file's top: everything else is a name in that game's namespace
 (`cannon`, `megaman`, `netbattle-43`), looked up there alone
 (`nettai_match::ids`), so a match can't name another game's chip, navi,
 soul, patch card or stage: a name the game hasn't is said as any unknown
-name is ("left: folder entry 3: no chip \"darkthnd\" in bn6"), whether
+name is ("left: folder entry 3: no chip \"darkthnd\" in exe6"), whether
 another game has it or not. `--match FILE` plays one (you are its left
 side), `--save-match FILE` writes the match played, and nettai-editor makes
 and edits them (README.md, "The match editor"). The crate `nettai-match`
@@ -872,7 +872,7 @@ setup written out and played again is the same battle (the frontend's test
 `a_saved_match_plays_the_same_battle` compares the digest every tick).
 
 ```toml
-game = "bn6"                               # the match's game and its rules: everything below is its
+game = "exe6"                               # the match's game and its rules: everything below is its
 seed = 42                                  # optional: the setup's and battle's seed
 
 [arena]
@@ -908,7 +908,7 @@ regular_memory = 50
 sun = true
 
 [left.navicust]                            # optional: MegaMan's NaviCust, compiled into his stats
-expansions = 2                             # optional: the board, 0 (4x4) to 2 (5x5, the default), in BN6 and BN5
+expansions = 2                             # optional: the board, 0 (4x4) to 2 (5x5, the default), in EXE6 and EXE5
 programs = [                               # in the save's order; x, y the center on the 7x7 grid
     { program = "suprarmr", color = "red", x = 2, y = 3 },
     { program = "undersht", color = "white", x = 5, y = 3, rotation = 1 },   # quarter turns
@@ -916,16 +916,16 @@ programs = [                               # in the save's order; x, y the cente
 ]
 ```
 
-A BN5 match (`game = "bn5"`: its rules take no version and have no
-Crosses) names BN5's navis, chips, patch cards and NaviCust programs, and
+An EXE5 match (`game = "exe5"`: its rules take no version and have no
+Crosses) names EXE5's navis, chips, patch cards and NaviCust programs, and
 its sides may say besides:
 
 ```toml
 [left]
 karma = 100                                # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
-souls = ["protosoul", "colonelsoul"]       # optional: the souls it has, BN5's, either version (none: every soul)
+souls = ["protosoul", "colonelsoul"]       # optional: the souls it has, EXE5's, either version (none: every soul)
 
-[left.tactics]                             # optional: BN5's computer-navi data (none: empty)
+[left.tactics]                             # optional: EXE5's computer-navi data (none: empty)
 entries = ["cannon", "pattern 1", "nothing", "empty"]   # up to 42, in the save's places
 patterns = [{ dx = 1, dy = 0, chips = ["sword", "wideswrd"] }]   # up to 8, each up to 6 chips
 ```
@@ -952,7 +952,7 @@ so a written block gives back the same stats. Writing a match, only the
 fields that differ are written.
 
 **The emotion window's glitch** (the save's event flag 0x1720, 0x1723
-with patch cards; BN5's 0x10C1 and 0x10C4: MegaMan's window flickers) is
+with patch cards; EXE5's 0x10C1 and 0x10C4: MegaMan's window flickers) is
 no key of a match and no field of a setup: the game's rules make it as the
 round is set up. The NaviCust's compile sets it when a bug applies, the
 patch cards' routine from the stats they leave, and for a side with no
@@ -973,7 +973,7 @@ a file written leaves out the navi's default (a link navi's 0, MegaMan's
 none).
 
 **The SP deletion times** (`[left.sp_times]`) are by the SP navi slots of
-the match's rules (BN6's `sp/heatman` to `sp/colonel`, rules/sp-chips.luau),
+the match's rules (EXE6's `sp/heatman` to `sp/colonel`, rules/sp-chips.luau),
 each `mm:ss.cc`; a slot left out is the fastest. The game keeps frames and
 shows them as a time rounded down to the hundredth (`sub_8000D84`): a
 written time is the fewest frames that show as it, so a time the game shows
@@ -982,8 +982,8 @@ reads back as itself. The SP navi chips' damage goes by them
 
 **A save** (the editor's "Import from save…", `Match::import_save`, into a
 match of the save's game: a save of the other game makes a new match of its
-game first) of BN6, a .sav as an emulator keeps it, read by
-`bn6_compat::save`, gives a side its version, Beast Out and the Crosses it
+game first) of EXE6, a .sav as an emulator keeps it, read by
+`exe6_compat::save`, gives a side its version, Beast Out and the Crosses it
 owns (as a Cross list, unless it owns all
 five), the navi code's level (a link navi keeps its own when the save has no
 code) and the SP times; its folder, NaviCust, patch cards and stats are not
@@ -999,23 +999,23 @@ bugs) from the programs as the round is set up. Without one, the stats block
 is the stats as they are, NaviCust included, as a recording's are. The
 editor's NaviCust pane places the programs on the board as the game does.
 
-**The karma** (`karma`, `nettai_match::facts`) is BN5's light/dark value
+**The karma** (`karma`, `nettai_match::facts`) is EXE5's light/dark value
 (NaviStats +0x44), 0 to 1000; without it, **500**, a fresh save's
 (0x08010C00): light for the chips, the starting mood 0x80, no holy panels
 cleared. Under 470 a dark MegaMan (mood 0, the dark face and palette, dark
 chips usable in a link battle, no soul button); 499 or under clears holy
 panels; under 500 he starts worried; 1000 the brightest (mood 190, Tango's
-light templates). Like BN6's `version`, `crosses` and `beast_out` (S6c's
+light templates). Like EXE6's `version`, `crosses` and `beast_out` (S6c's
 facts), the round's setup writes it into whichever of the rules' systems
-declares the setup field (`PlayerSetup::set_fact`): BN5's light and dark
+declares the setup field (`PlayerSetup::set_fact`): EXE5's light and dark
 system's `karma`. A game whose rules take none refuses one other than 500.
-Hub Style (NaviStats +0x4C, which BN5's patch card 111 sets) waits for
-BN5's patch cards. A netplay offer carries the karma and the souls,
+Hub Style (NaviStats +0x4C, which EXE5's patch card 111 sets) waits for
+EXE5's patch cards. A netplay offer carries the karma and the souls,
 by their names in the game, and a round's setup and the battle's digest hold
 them, so both peers start alike.
 
 **The souls** (`souls`, `nettai_match::facts`) are the souls the side has,
-BN5's Soul Unison, by name: those the custom screen's soul button may
+EXE5's Soul Unison, by name: those the custom screen's soul button may
 offer. Without `souls`, every soul of the game (both versions'); with a
 list, those; an empty list, none (the button never lit). The original's soul
 button (0x08024B28) offers the soul of the last chip's family when the save
@@ -1037,17 +1037,17 @@ finished save has them; the round's setup writes them into the souls
 system's setup (its defaults, on, for a setup that says nothing). A game
 whose rules take neither refuses one off. The netplay offer carries them.
 
-**A BN5 save** (the editor's "Import from save…", `Match::import_save`,
-which reads a save that isn't BN6's as BN5's: a .sav, or a raw save image as
-Tango's netplay templates hold, read by `bn5_compat::save`) makes the match
-BN5's and gives its karma, the souls its version's flags give (BN5's
+**An EXE5 save** (the editor's "Import from save…", `Match::import_save`,
+which reads a save that isn't EXE6's as EXE5's: a .sav, or a raw save image as
+Tango's netplay templates hold, read by `exe5_compat::save`) makes the match
+EXE5's and gives its karma, the souls its version's flags give (EXE5's
 souls of those numbers), its Soul Unison and Chaos Unison and, to a side
 with a NaviCust, the board of its ExpMemry (`expansions`: the NaviCust's
 programs aren't the import's yet).
 
-**The tactics** (`[left.tactics]`, nettai_battle::tactics, docs/design/bn5-map.md
-§15.9) are BN5's computer-navi data, the block a BN5 save keeps for its
-player: what a computer navi across from them plays, BN5's Dark MegaMan,
+**The tactics** (`[left.tactics]`, nettai_battle::tactics, docs/design/exe5-map.md
+§15.9) are EXE5's computer-navi data, the block an EXE5 save keeps for its
+player: what a computer navi across from them plays, EXE5's Dark MegaMan,
 whom a failed Chaos Unison brings. The entries are in the save's places,
 each a chip's name, `pattern N` (one of the patterns, from 1), `nothing` (a
 save's 0) or `empty` (an empty place); a pattern is a place by the target
@@ -1067,9 +1067,9 @@ is said with where it is:
   Cross, a patch card, a chip, a NaviCust program, a soul, a weapon, a
   record, a form), and every stat is in range; a match made in memory
   holding another game's (no file or offer can) is refused the same way
-  ("right: a navi bn5 hasn't");
+  ("right: a navi exe5 hasn't");
 - the arena's stages are the game's link battle stages (`link_battle_stages`);
-- the folder keeps the game's rules: their systems' `folder_check` hooks (BN6's are rules/folder/init.luau:
+- the folder keeps the game's rules: their systems' `folder_check` hooks (EXE6's are rules/folder/init.luau:
   30 chips, so a folder being made, with empty entries, is no folder yet;
   copies by MB, each chip in one of its codes, at most three dark
   chips, chips the chip pack lists, the Regular chip within the Regular
@@ -1078,8 +1078,8 @@ is said with where it is:
   (after the rules' `round_setup`: the NaviCust's and the patch cards' folder
   limits, as the original's folder editor and link battle check read the
   reloaded stats). Rust only asks (`Battle::check_folder`) and reports what
-  the hooks say, so another game's folder rules are its own Luau: BN5's
-  (content/bn5/rules/folder/init.luau, its folder editor's) are four copies
+  the hooks say, so another game's folder rules are its own Luau: EXE5's
+  (content/exe5/rules/folder/init.luau, its folder editor's) are four copies
   of a Standard chip and one of a Mega, Giga or dark chip, the Mega and Giga
   levels, at most three dark chips, the chips its pack lists, the Regular
   chip within the Regular memory, and no tag chips. A folder holds the
@@ -1096,7 +1096,7 @@ is said with where it is:
   of the game's (a form of kind `soul`), none twice, of either version;
 - karma 0 to 1000, and other than 500 only with rules that take it;
 - patch cards only in a game whose rules have the patch-cards system, each
-  installed once, at most 32, their MB together at most 80 (BN6's menu adds
+  installed once, at most 32, their MB together at most 80 (EXE6's menu adds
   none past 80 MB, `0x08141868`);
 - the round starts (`Battle::new` doesn't stop).
 

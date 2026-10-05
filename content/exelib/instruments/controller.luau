@@ -63,6 +63,6 @@ function instruments.make(id: string, instrument_kind: Kind): (Instrument) -> (u
     return hook
 end
 
--- BN6's.
+-- EXE6's.
 
 return instruments

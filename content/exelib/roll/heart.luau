@@ -1,5 +1,5 @@
 --!strict
--- Roll's heart, as BN6 and BN5 share it (the original's attack object #0x4E: BN6's `sub_80CE118`, BN5's 0x080CF71C,
+-- Roll's heart, as EXE6 and EXE5 share it (the original's attack object #0x4E: EXE6's `sub_80CE118`, EXE5's 0x080CF71C,
 -- the same code but for its sprite and the effect table's rows): it sinks from 160 pixels above her user's panel, 3
 -- pixels a tick, sparkling every 10 ticks; landed, it heals the user by its damage (or to full, with none), with a
 -- sound and an effect, and goes 60 ticks later. See docs/engine/chips.md §3.6.20.

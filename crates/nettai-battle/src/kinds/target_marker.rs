@@ -1,7 +1,7 @@
-//! The target marker (effect object #0x0F, `sub_80E1520`; BN5 has the
+//! The target marker (effect object #0x0F, `sub_80E1520`; EXE5 has the
 //! same): it sits over the opponent nearest ahead of its owner, shown only
 //! to the owner's side while the owner's form is a Beast form (forms 0xB
-//! to 0x18; S7 replaces the form kind). Its panel is what BN6's Beast Out
+//! to 0x18; S7 replaces the form kind). Its panel is what EXE6's Beast Out
 //! rush and berserk read as the target (`sub_80E164A`), and its freeze is
 //! theirs (`sub_80E1654`, the framework unfreezes it as an attack's links
 //! reset: `sub_80E1662`). See docs/engine/objects-and-player.md §A.7.
@@ -45,7 +45,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
     Some(r)
 }
 
-/// `sub_80E1654`: hold the marker where it is (BN6's rush locked on).
+/// `sub_80E1654`: hold the marker where it is (EXE6's rush locked on).
 pub fn freeze(b: &mut Battle, r: ObjectRef) {
     vars(b, r).frozen = true;
     b.objects.get_mut(r).anim = 1;

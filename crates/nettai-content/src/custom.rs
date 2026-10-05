@@ -100,7 +100,7 @@ pub struct CustomDoc {
     /// Where the blocks go among the HUD layer's tile numbers: the game's
     /// own layout (every pack says its game's; none stands in).
     pub layout: LayoutDoc,
-    /// The buttons drawn by name (BN5's soul button): each one's tiles by
+    /// The buttons drawn by name (EXE5's soul button): each one's tiles by
     /// state and its picture in the chip window with that picture's
     /// palettes by state.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -124,7 +124,7 @@ pub struct LayoutDoc {
     pub slot_blank: u8,
     pub ok_cursor: CursorDoc,
     pub special_cursor: CursorDoc,
-    /// Whether the chip window shows the re-deal button's uses left (BN5's).
+    /// Whether the chip window shows the re-deal button's uses left (EXE5's).
     pub button_uses: bool,
 }
 

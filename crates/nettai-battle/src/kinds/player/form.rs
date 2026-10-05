@@ -74,7 +74,7 @@ pub(crate) fn navi_init_hook(b: &mut Battle, r: ObjectRef, identity: Option<Iden
 }
 
 /// `sub_8010DD0` in the base form, at a player's init: the base form's
-/// put-on routine (its `put_on`), which BN5's MegaMan's actor record names
+/// put-on routine (its `put_on`), which EXE5's MegaMan's actor record names
 /// as his init hook (0x0800ED90's row 11 and 0x0800F038's row 0 are one
 /// routine, 0x0800EE1C: Hub Style's shade); else its navi's init hook.
 pub(crate) fn base_init_hook(b: &mut Battle, r: ObjectRef, identity: Option<IdentityHandle>) {
@@ -86,7 +86,7 @@ pub(crate) fn base_init_hook(b: &mut Battle, r: ObjectRef, identity: Option<Iden
     navi_init_hook(b, r, identity);
 }
 
-/// `sub_8011268(form)`: the form's put-on routine (BN6's by form, BN5's
+/// `sub_8011268(form)`: the form's put-on routine (EXE6's by form, EXE5's
 /// 0x0800F024 by soul): its `put_on`, else the default (`put_on_form_parts`).
 pub(crate) fn put_on_overlay(b: &mut Battle, r: ObjectRef, form: FormHandle) {
     if let Some(f) = b.content.defs.form(form).put_on {
@@ -188,7 +188,7 @@ pub(crate) fn navi_death_hook(b: &mut Battle, r: ObjectRef, identity: Option<Ide
     }
 }
 
-/// `sub_8011384(form)`: the form's take-off routine (BN5's 0x0800F088 by
+/// `sub_8011384(form)`: the form's take-off routine (EXE5's 0x0800F088 by
 /// soul): its `take_off`, else the default (`take_off_form_parts`).
 pub(crate) fn take_off_overlay(b: &mut Battle, r: ObjectRef, form: FormHandle) {
     if let Some(f) = b.content.defs.form(form).take_off {
@@ -202,7 +202,7 @@ pub(crate) fn take_off_overlay(b: &mut Battle, r: ObjectRef, form: FormHandle) {
 /// wears one: its identity's death hook (`sub_80113FC`, `sub_801140E`; a
 /// form that wears nothing leaves `related[1]` alone, `nullsub_43`). The
 /// base form, which has no identity of its own, takes off whatever is
-/// there (`sub_80111B8`; BN5's 0x0800EFCC).
+/// there (`sub_80111B8`; EXE5's 0x0800EFCC).
 pub(crate) fn take_off_form_parts(b: &mut Battle, r: ObjectRef, form: FormHandle) {
     let takes = match b.content.form(form).identity {
         None => true,
@@ -219,7 +219,7 @@ pub(crate) fn take_off_form_parts(b: &mut Battle, r: ObjectRef, form: FormHandle
 pub(super) fn apply_form_flags(b: &mut Battle, r: ObjectRef) {
     let effects = form_of(b, r).status_reset;
     apply_effects(b, r, effects);
-    // The form's own (`reset`: BN5's souls' routines, 0x08011B92).
+    // The form's own (`reset`: EXE5's souls' routines, 0x08011B92).
     let form = super::stats(b, r).form;
     form_hook(b, r, b.content.defs.form(form).reset);
 }
@@ -238,7 +238,7 @@ pub(super) fn refresh_form_flags(b: &mut Battle, r: ObjectRef) {
 /// `SetObjectSuperArmorFlag`, AirShoe and FloatShoe of `sub_8014606`, the
 /// untouchable flag 0x08000000 with the shoes of `sub_8014674`); the floating body; the lock-on marker;
 /// invulnerable for good and the controllers' state cleared
-/// (`sub_8014650`: `controller_fresh`, which BN6's systems read).
+/// (`sub_8014650`: `controller_fresh`, which EXE6's systems read).
 fn apply_effects(b: &mut Battle, r: ObjectRef, effects: FormEffects) {
     if effects.has(FormEffects::CLEAR_STATUSES) {
         clear_statuses_unless_mode1(b, r);
