@@ -50,9 +50,27 @@ souls.system = define.system {
     -- field's name; a recording's, its version's: exe5-compat), which the custom screen's soul button may offer, as the
     -- save's soul flags (0x08024BF0's, one a soul; any souls of the game, either version's); Soul Unison
     -- (event flag 0: the soul button) and Chaos Unison (event flag 0x236: a dark chip's soul). A finished save has
-    -- both, as a setup that says nothing.
+    -- both, as a setup that says nothing, which has every soul of either version too (by its id: a form's module
+    -- reads this folder's, so this one names them rather than reads theirs).
     setup = { souls = "form[16]", soul_unison = "bool", chaos_unison = "bool" },
-    setup_defaults = { soul_unison = true, chaos_unison = true },
+    setup_defaults = {
+        souls = {
+            "colonelsoul",
+            "gyrosoul",
+            "knightsoul",
+            "magnetsoul",
+            "meddysoul",
+            "napalmsoul",
+            "numbersoul",
+            "protosoul",
+            "searchsoul",
+            "shadowsoul",
+            "toadsoul",
+            "tomahawksoul",
+        },
+        soul_unison = true,
+        chaos_unison = true,
+    },
     actions = { change.action, revert.action },
     -- What a soul's form says for the rules that ask (a soul is named by its form's id; the original tests its
     -- number, NaviStats +0x2C, in each place; the pack's types.d.luau types them): its navi's image at the change
