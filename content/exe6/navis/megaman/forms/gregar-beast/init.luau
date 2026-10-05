@@ -15,7 +15,7 @@ return define.form {
     traits = { "shows_target_marker", "afterimages_stay", "alt_charge_time", "mood_palette" },
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
-    game = "gregar",
+    version = "gregar",
     sprite = asset.sprite("gregar-beast"),
     element = "null",
     buster_bonus = 0,

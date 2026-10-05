@@ -1071,6 +1071,25 @@ code, 6 the same but for constants, 34 similar, 1 differs and 8 absent. What dif
 
 - `sub_800825A` (the result): a special battle's result wait 65 ticks (EXE6 94); the normal win's 102 as EXE6's;
   `sub_80081A4` plays EXE5's own winner songs at the same numbers (0x19 special, 0x1F).
+- `sub_80081A4` (the win's banner; EXE5's 0x080074D2). EXE6 shows the winner's navi's banner in every link battle,
+  whatever the result (`sub_800A8D4`'s table by NaviStats +0x29); outside one banner 4, "ENEMY DELETED", or 0x14,
+  "YOU WIN", for the round's result 7 (the judge's ruling: time up with navis left on both sides). EXE5 shows the
+  navi's (0x080090C0's table: MegaMan's 0x38, the team navis' 0x94 to 0xC0) only in a link battle that is an
+  operation battle (0x080090E8: battle flag 0x40); a Team Battle's and a NetBattle's win is banner 4, or 0x14 on the
+  judge's ruling. The loser's is the same in both (`sub_800825A`, EXE5's 0x0800758A: the navi's, 0x18 "YOU LOSE" on
+  the judge's ruling). The flow rule `navi_win_banner` (`link_battle`, `operation_battle`), each game's own, and
+  the banner roles `win`, `win_judged` and `lose_judged` (2026-10-05: the engine showed the navi's for every win,
+  "MEGAMAN WIN!" on an EXE5 winner's console, and named the judged loss's by a raw number where a handle goes, so
+  EXE6's showed "MEGAMAN DELETED"). Both routines' other branches: a win with a boss among side 1's actors (EXE6's
+  Cybeasts, NameIDs 0x173 to 0x17E; EXE5's 0x173 to 0x176, 0x08008F6E) has neither music nor banner and holds 102
+  ticks; a win in battle modes 4 and 5 (and 8 in EXE6) plays the special battle's song and holds its wait. As
+  recorded (library-exe5/flow, each on both consoles): ko-win and ko-win-netbattle 4, judge-win 0x14, judge-lose
+  0x18, judge-draw 0x1C, double-ko 8 on side 0's console and 4 on side 1's (the round goes to side 1),
+  operation-win 0x38. The replays compare the banner's number with the traced console's record (its +1; a telop's
+  holds 0) on every frame, in both games.
+- The operation battle's turn starts with banner 0, "BATTLE START", where a Team Battle's shows 0x0C (as recorded:
+  library-exe5/flow/operation-win; not read yet, and the engine doesn't run the mode: its replay stops on the
+  round's first frame, the gauge 0x1500 where the engine's is 0).
 - `sub_80080D2` (fighting): no Cross-special check (EXE6 +0x3A, `sub_800AAD6` absent) and no own-gauge
   decrement (0x2900) on a custom request; EXE5 calls 0x08025ED0 there.
 - `sub_8008452`, `sub_8008492`: after the reversions EXE5 opens the custom screen (result 6) directly: no

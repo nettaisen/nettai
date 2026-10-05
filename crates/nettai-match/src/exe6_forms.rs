@@ -23,7 +23,16 @@ fn exe6_forms_agree_with_their_kinds() {
             say("the base form, and only it, has no kind");
         }
         if form.base == forms::game(&c, f).is_some() {
-            say("every form but the base form says whose game's it is");
+            say("every form but the base form says whose game's it is (its `version`)");
+        }
+        if (kind == Some(Kind::Cross)) != form.window_order.is_some() {
+            say("a Cross, and only a Cross, says its place in the Cross window (`window_order`)");
+        }
+        // (A link navi is of its Cross's game: its `version`.)
+        if let (Some(Kind::Cross), Some(navi)) = (kind, forms::cross_of(&c, f))
+            && c.navi(navi).version != form.version
+        {
+            say("its navi (`cross_of`) is of its version");
         }
         if kind.is_some_and(Kind::has_cross) != forms::cross_of(&c, f).is_some() {
             say("a Cross (and one in Beast Out), and only one, names its navi (`cross_of`)");
@@ -55,13 +64,27 @@ fn exe6_forms_agree_with_their_kinds() {
         if n.record.forms.is_some() != sets.iter().any(Option::is_some) {
             problems.push(format!("{}: a navi with forms has EXE6's sets (`forms.gregar`, `forms.falzar`), and only one", n.key));
         }
-        for set in sets.iter().flatten() {
+        for (game, set) in [GameVersion::Gregar, GameVersion::Falzar].into_iter().zip(&sets) {
+            let Some(set) = set else { continue };
             let ok = set.crosses.iter().all(|&f| forms::kind(&c, f) == Some(Kind::Cross))
                 && set.beast_out.is_none_or(|f| forms::kind(&c, f) == Some(Kind::Beast))
                 && set.beast_over.is_none_or(|f| forms::kind(&c, f) == Some(Kind::BeastOver));
             if !ok {
                 problems.push(format!("{}: its forms' `crosses` are Crosses, `beast_out` a Beast and `beast_over` a Beast Over", n.key));
             }
+            // A game's set is of that game's forms, and a Cross's place in
+            // the Cross window is its number in its game's set.
+            if set.crosses.iter().chain(&set.beast_out).chain(&set.beast_over).any(|&f| forms::game(&c, f) != Some(game)) {
+                problems.push(format!("{}: its {game:?} forms are that game's (their `version`)", n.key));
+            }
+            if set.crosses.iter().enumerate().any(|(k, &f)| c.form(f).window_order != Some(k as u8)) {
+                problems.push(format!("{}: its {game:?} Crosses' `window_order` is their number in the set", n.key));
+            }
+        }
+        // (Only a Cross's navi is of one version.)
+        let crossed = (0..c.defs.forms.len() as u16).map(FormHandle).any(|f| forms::cross_of(&c, f) == Some(navi));
+        if n.record.version.is_some() != crossed {
+            problems.push(format!("{}: a link navi with a Cross, and only one, says its `version`", n.key));
         }
     }
     assert!(problems.is_empty(), "{problems:#?}");

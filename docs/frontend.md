@@ -333,8 +333,8 @@ functions:
   not counted; so is a language the content has strings in but its pack no
   lettering for (EXE5's Japanese, which its extraction makes none of): such
   a console can't be shown, and the language isn't checked. It audits the
-  match's one game (`--game`): a chip's Program Advance code by its number
-  in that game's compat (EXE6's or EXE5's).
+  match's one game (`--game`): a chip's Program Advance code shows unless
+  its definition hides it (the trait `hides_advance_code`).
 - `--audit <trace.jsonl>...` runs traces, several at a time (`--jobs N`,
   default one a core), and makes the lookups their frames and sound cues
   make, without drawing: no stage, no composing, no sound synthesis
@@ -488,7 +488,9 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   slots dealt again, the emblem and the Regular chip's frame throughout;
 - a console's own pictures by its version (`Versioned`: a Gregar console's
   Beast and emblem, the pack's `-gregar` assets); a Cross's name and
-  colors in the Cross window are its own game's (`custom::cross_picture`,
+  colors in the Cross window are its own version's (`custom::cross_picture`:
+  the pack's pictures of the form's `version`, numbered by its
+  `window_order`, both said by its definition;
   for the form in the entry's place, `exe6_compat::Unlocks::cross_at` over
   the cross system's setup), so a Gregar
   Cross shows Gregar's name in any window, and a window a setup's Cross
