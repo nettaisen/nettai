@@ -8,14 +8,13 @@
 
 local hand = {}
 
--- The soul's number (NaviStats +0x2C), and its hand.
-local NUMBERSOUL, CHIPS = 9, 10
+-- The soul (NaviStats +0x2C), by its form's id, and its hand.
+local NUMBERSOUL, CHIPS = "numbersoul", 10
 
 -- The systems' `custom.hand_size`: NumberSoul's ten; none for anything else.
 function hand.size(side: number): number?
-    local soul = battle.navi(side).form.soul
     local mode = battle.mode()
-    if soul ~= nil and soul.number == NUMBERSOUL and (mode == 0 or mode == 6) then
+    if battle.navi(side).form.id == NUMBERSOUL and (mode == 0 or mode == 6) then
         return CHIPS
     end
     return nil
