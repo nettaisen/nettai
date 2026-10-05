@@ -434,7 +434,7 @@ impl Editor {
                 p
             }
             (None, _) => {
-                let p = std::env::temp_dir().join("nettai-editor-match.toml");
+                let p = std::env::temp_dir().join("nettai-demo-editor-match.toml");
                 if let Err(e) = std::fs::write(&p, nettai_match::write(&self.content, &self.m)) {
                     self.status = format!("can't write {}: {e}", p.display());
                     return;
