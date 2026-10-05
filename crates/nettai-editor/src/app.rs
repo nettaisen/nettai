@@ -69,8 +69,10 @@ impl<T> std::fmt::Display for Choice<T> {
 #[derive(Clone, Debug)]
 pub enum Msg {
     Tab(Tab),
-    /// A new, empty match.
+    /// A new match: the window asks which game it is of ([`App`]).
     New,
+    /// The game chosen for a new match.
+    Choose(String),
     Open,
     Save,
     SaveAs,
@@ -131,6 +133,7 @@ pub enum Msg {
 }
 
 /// How the editor was started.
+#[derive(Clone)]
 pub struct Options {
     /// The content directory given (`--content`), which Play hands the
     /// frontend too; else the repository's.
@@ -144,9 +147,96 @@ pub struct Options {
     pub packs: Vec<PathBuf>,
     pub frontend: Option<PathBuf>,
     pub file: Option<PathBuf>,
+    /// The game of a new match, when the command line says it (`--game`):
+    /// else the window asks.
+    pub game: Option<String>,
     pub lang: Lang,
     pub tab: Tab,
     pub screenshot: Option<PathBuf>,
+}
+
+/// The editor's window: a match being edited, or, before there is one, the
+/// choice of its game. No game is preselected: a new match is of the game
+/// chosen for it (the first screen, `--game`, or New), and an opened file
+/// is of the game it names.
+pub struct App {
+    /// How the editor was started (a match's own options are a copy).
+    pub options: Options,
+    /// The games a match can be of: those whose asset pack is found.
+    pub games: Vec<String>,
+    pub editor: Option<Editor>,
+    /// What the choice came to, when it made no match.
+    pub status: String,
+    frames: u32,
+}
+
+impl App {
+    /// The window, on `editor` (a match opened or started on the command
+    /// line), else on the choice of a game.
+    pub fn new(options: Options, editor: Option<Editor>) -> App {
+        let games = crate::load::games(options.content.as_deref(), &options.packs);
+        App { options, games, editor, status: String::new(), frames: 0 }
+    }
+
+    pub fn title(&self) -> String {
+        match &self.editor {
+            Some(e) => e.title(),
+            None => "nettai editor: a new match".into(),
+        }
+    }
+
+    /// A match of `game` to edit: `file`, or a new one.
+    fn start(&mut self, game: &str, file: Option<PathBuf>) -> Result<(), String> {
+        let loaded = crate::load::load_game(self.options.content.as_deref(), &self.options.packs, game)?;
+        let mut options = self.options.clone();
+        options.file = file;
+        (options.content_dir, options.games) = (loaded.dir, vec![loaded.game]);
+        self.editor = Some(Editor::new(loaded.content, loaded.pictures, options));
+        Ok(())
+    }
+
+    pub fn update(&mut self, msg: Msg) -> Task<Msg> {
+        match (msg, &mut self.editor) {
+            // A new match: of which game is asked again.
+            (Msg::New, _) => {
+                self.editor = None;
+                self.status = String::new();
+            }
+            (Msg::Choose(game), _) => {
+                self.status = match self.start(&game, None) {
+                    Ok(()) => String::new(),
+                    Err(e) => e,
+                };
+            }
+            (msg, Some(editor)) => return editor.update(msg),
+            // Before there is a match: a file opened is of the game it names.
+            (Msg::Open, None) => {
+                if let Some(path) = rfd::FileDialog::new().add_filter("match", &["toml"]).pick_file() {
+                    let game = std::fs::read_to_string(&path).map_err(|e| e.to_string()).and_then(|t| nettai_match::file::game_of(&t));
+                    if let Err(e) = game.and_then(|game| self.start(&game, Some(path.clone()))) {
+                        self.status = format!("can't open {}: {e}", path.display());
+                    }
+                }
+            }
+            (Msg::Frame, None) => {
+                self.frames += 1;
+                if self.frames == 20 && self.options.screenshot.is_some() {
+                    return iced::window::latest().and_then(iced::window::screenshot).map(Msg::Shot);
+                }
+            }
+            (Msg::Shot(shot), None) => {
+                if let Some(path) = &self.options.screenshot {
+                    match save_png(path, &shot) {
+                        Ok(()) => eprintln!("wrote {}", path.display()),
+                        Err(e) => eprintln!("can't write {}: {e}", path.display()),
+                    }
+                }
+                return iced::exit();
+            }
+            (_, None) => {}
+        }
+        Task::none()
+    }
 }
 
 pub struct Editor {
@@ -357,16 +447,8 @@ impl Editor {
         let content = self.content.clone();
         match msg {
             Msg::Tab(t) => self.tab = t,
-            Msg::New => {
-                if let Ok(m) = nettai_match::Match::empty(&content, self.m.game()) {
-                    self.m = m;
-                    self.path = None;
-                    self.dirty = false;
-                    self.forget_sides();
-                    self.refresh();
-                    self.status = format!("a new match of {}", self.m.game());
-                }
-            }
+            // (The window's: a new match asks its game, `App::update`.)
+            Msg::New | Msg::Choose(_) => {}
             Msg::Open => {
                 if let Some(path) = rfd::FileDialog::new().add_filter("match", &["toml"]).pick_file() {
                     // (The file's game's content: loaded if it is another's.)

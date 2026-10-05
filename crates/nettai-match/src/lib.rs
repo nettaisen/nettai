@@ -14,9 +14,6 @@
 //! with the game's navis, chips, souls and patch cards, every one named in
 //! the game's namespace alone (`ids`). There is no mixing of games.
 
-/// The game a frontend plays without a match file: BN6.
-pub const DEFAULT_GAME: &str = "bn6";
-
 #[cfg(test)]
 mod bn6_forms;
 pub mod check;
