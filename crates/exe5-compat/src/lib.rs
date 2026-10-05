@@ -208,11 +208,14 @@ pub struct StageEntry {
     pub actor_list: u32,
 }
 
-/// What EXE5's NaviStats name by number (records.toml): weapons by routine
-/// number, projectile variants by row, barriers by type, each by its key.
+/// What EXE5's NaviStats name by number (records.toml): navis by navi
+/// number, weapons by routine number, projectile variants by row, barriers
+/// by type, each by its key.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RecordNumbers {
+    #[serde(default)]
+    pub navis: BTreeMap<String, u8>,
     #[serde(default)]
     pub weapons: BTreeMap<String, Vec<u8>>,
     #[serde(default)]
@@ -545,6 +548,17 @@ impl Compat {
         let shift = self.games.of(version, japanese).map_or(0, |g| g.actor_lists);
         let actor_list = actor_list.wrapping_sub(shift as u32);
         self.stages.iter().find(|(_, e)| e.layout == layout && e.actor_list == actor_list).map(|(k, _)| k.clone())
+    }
+
+    /// The navi of a navi number (NaviStats +0x29): its id, if records.toml
+    /// has it (the navis the content has).
+    pub fn navi_key(&self, n: u8) -> Option<&str> {
+        self.records.navis.iter().find(|&(_, &v)| v == n).map(|(k, _)| k.as_str())
+    }
+
+    /// A navi's number (NaviStats +0x29), by its id.
+    pub fn navi_number(&self, key: &str) -> Option<u8> {
+        self.records.navis.get(key).copied()
     }
 
     /// The weapon of a routine number: its id (None: 0xFF, no weapon; Err:

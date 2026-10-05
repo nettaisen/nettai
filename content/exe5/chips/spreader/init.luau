@@ -8,9 +8,15 @@
 
 local attachment = require("../objects/attachment")
 local bullet = require("../objects/bullet")
+local navi_arms = require("../lib/navi_arms")
 local spreader = require("@exelib/spreadr/action")
 
-local LOOK: SpreaderLook = { sound = asset.sound("h-burst"), attachment = attachment.kind, bullet_kind = bullet.kind }
+local LOOK: SpreaderLook = {
+    sound = asset.sound("h-burst"),
+    attachment = attachment.kind,
+    bullet_kind = bullet.kind,
+    gun_anims = navi_arms.spreader,
+}
 
 return define.chip {
     id = "spreader",

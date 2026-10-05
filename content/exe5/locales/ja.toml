@@ -301,6 +301,7 @@ language = "ja"
 "spshake2" = { name = "スペースユラ2", description = "たて3マスはばで\nゆれながらすすむ\nユラをはっしゃ!" }
 "spshake3" = { name = "スペースユラ3", description = "たて3マスはばで\nゆれながらすすむ\nユラをはっしゃ!" }
 "static" = { name = "ノイズストーム", description = "2マス前にノイズの\nアラシ!バグがある\nとパワーアップする" }
+"stepswrd" = { name = "フミコミザン", description = "2マス前に\nふみこんで\nワイドソード!" }
 "suprspr1" = { name = "スーパーワイド1", description = "かんつうする\nワイドショットを\n3れんしゃ!" }
 "suprspr2" = { name = "スーパーワイド2", description = "かんつうする\nワイドショットを\n3れんしゃ!" }
 "suprspr3" = { name = "スーパーワイド3", description = "かんつうする\nワイドショットを\n3れんしゃ!" }
@@ -353,6 +354,7 @@ language = "ja"
 
 [navis]
 "megaman" = { name = "ロックマン", variant_name = "FCロックマン" }
+"protoman" = { name = "ブルース" }
 
 [forms]
 "colonelsoul" = { name = "カーネルソウル" }
