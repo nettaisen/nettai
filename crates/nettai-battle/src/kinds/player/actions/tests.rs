@@ -777,7 +777,7 @@ fn charged_projectile(b: &mut Battle, p: [ObjectRef; 2], variant: &str, x: u8, y
     stand_on(b, p[0], x, y);
     let program = b.content.defs.record(variant).unwrap_or_else(|| panic!("no projectile variant {variant:?}"));
     b.stats[0].weapons.charge_shot_kind = Some(program);
-    let mask = if matches!(variant, "shot/attack-90" | "shot/charged-hp-bug-marked") { 7 } else { 1 };
+    let mask = if matches!(variant, "shot/chip-destruction" | "shot/charged-hp-bug-marked") { 7 } else { 1 };
     while (crate::rng::Rng { state: b.rng.state }).next_positive() & mask != 0 {
         b.rng.next();
     }
