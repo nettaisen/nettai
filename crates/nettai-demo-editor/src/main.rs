@@ -1,4 +1,4 @@
-//! nettai-editor: edit a match file (docs/frontend.md §6) and play it with
+//! nettai-demo-editor: edit a match file (docs/frontend.md §6) and play it with
 //! nettai-frontend. README.md, "The match editor".
 
 mod app;
@@ -14,7 +14,7 @@ use app::{App, Editor, Options, Tab};
 use names::Lang;
 
 const USAGE: &str = "\
-usage: nettai-editor [OPTIONS] [MATCH.toml]
+usage: nettai-demo-editor [OPTIONS] [MATCH.toml]
 
   A match is of one game, EXE6 or EXE5: an opened file's is the one it names,
   and a new match's is the one you choose (the editor asks first, with

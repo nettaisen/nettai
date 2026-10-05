@@ -1064,7 +1064,7 @@ once at the file's top: everything else is a name in that game's namespace
 soul, patch card or stage: a name the game hasn't is said as any unknown
 name is ("left: folder entry 3: no chip \"darkthnd\" in exe6"), whether
 another game has it or not. `--match FILE` plays one (you are its left
-side), `--save-match FILE` writes the match played, and nettai-editor makes
+side), `--save-match FILE` writes the match played, and nettai-demo-editor makes
 and edits them (README.md, "The match editor"). The crate `nettai-match`
 reads, checks and writes them, and builds the round (`Match::round`); live
 play's random pick is a match too (`nettai_match::pick::live`), so a random
