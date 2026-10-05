@@ -537,20 +537,22 @@ impl Battle {
                 None => content.chip(id).damage,
             };
             let request = s.tick_with(&ctx, &mut console, damage, &mut SideExtras { b: self, side, emotion: ctx.emotion });
-            // The screen's sounds, which only its player hears.
+            // What the screen asked of the sound driver, which only its
+            // player hears, in the order it asked.
             if let Some(screen) = &s.screen {
-                for sound in screen.look.drawn.sounds() {
-                    // (The dark chip hover's is EXE5's alone.)
-                    if sound == look::ScreenSound::DarkHover {
-                        if let Some(id) = self.roles().try_sound(sound.role()) {
-                            self.play_sound_for(side, id);
+                for call in screen.look.drawn.calls() {
+                    match call {
+                        // (The dark chip hover's is EXE5's alone.)
+                        look::ScreenCall::Sound(sound @ look::ScreenSound::DarkHover) => {
+                            if let Some(id) = self.roles().try_sound(sound.role()) {
+                                self.play_sound_for(side, id);
+                            }
                         }
-                    } else {
-                        self.sound_for(side, sound.role());
+                        look::ScreenCall::Sound(sound) => self.sound_for(side, sound.role()),
+                        look::ScreenCall::Volume { music, screen } => {
+                            self.play_sound_for(side, crate::sound::SoundCue::ScreenVolume { music, screen });
+                        }
                     }
-                }
-                if let Some((music, screen)) = screen.look.drawn.volume {
-                    self.play_sound_for(side, crate::sound::SoundCue::ScreenVolume { music, screen });
                 }
             }
             self.custom.sides[side as usize] = s;
