@@ -116,13 +116,14 @@ local function tick(me: Object)
     action(me)
 end
 
--- 0x080EA608: on its panel, on the ground, animation 0 with its shadow, all of it under the objects; its sound; then
--- its first update.
+-- 0x080EA608: on its panel, on the ground, animation 0 with its shadow, facing its object's way (0x0801892E's end),
+-- all of it under the objects; its sound; then its first update.
 local function init(me: Object)
     local sprite = me.sprite
     sprite:load(SPRITE)
     sprite.shadow = "ground"
     me.anim, me.anim_loaded = 0, 0xFF
+    sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     sprite.under_objects = true
     me.visible = true
     me:set_coordinates_from_panel()
