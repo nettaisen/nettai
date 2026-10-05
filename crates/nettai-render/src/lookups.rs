@@ -9,7 +9,9 @@
 
 use crate::audit::{Graphics, Lookup, Problems, emotion_number};
 use crate::packs::Packs;
-use nettai_assets::{BannerLayout, ChipArt, CustomScreen, DialogueFont, Hud, Palette, SpriteFrame, SpritePart, SpriteSheet, Tiles};
+use nettai_assets::{
+    BannerLayout, ButtonPictures, ChipArt, CustomScreen, DialogueFont, Emblem, Hud, Palette, SpriteFrame, SpritePart, SpriteSheet, Tiles, VersionPictures,
+};
 use nettai_battle::content::{BackgroundId, BannerId, ChipClass, ChipFlags, Content, MugshotId, PackId, SpriteId};
 use nettai_battle::field::PanelType;
 use nettai_battle::kinds::player::Emotion;
@@ -303,54 +305,42 @@ pub fn form_face<'a>(
     (picture, face)
 }
 
-/// A navi's number in EXE6's compat: its emblem and its emblem's palette
-/// (the cursor's too) are by it (`sub_802812C`); 0, MegaMan's, for a navi
-/// of another root.
-pub fn navi_number(c: &Content, navi: NaviHandle, problems: &mut Problems) -> usize {
-    let (number, known) = compat_navi_number(c, navi);
-    if problems.lookup(Lookup::NaviNumber(navi)) && !known {
-        problems.note(format!("navi {:?} has no number in EXE6's compat: the custom screen shows MegaMan's emblem", c.defs.navi(navi).key));
+/// A navi's emblem on the custom screen: the pack's under the navi's key
+/// (`CustomScreen::emblems`), its tiles and its palette. None: the pack has
+/// none for the navi (nothing is drawn, and the cursor has no colors).
+pub fn emblem<'a>(a: &'a CustomScreen, c: &Content, navi: NaviHandle, problems: &mut Problems) -> Option<&'a Emblem> {
+    let key = &c.defs.navi(navi).key;
+    let found = a.emblem(key).filter(|e| e.tiles.len() >= 4);
+    if problems.lookup(Lookup::Emblem(navi)) && found.is_none() {
+        problems.note(format!("navi {key:?} has no emblem in the pack (the custom screen draws none, and its cursor has no colors)"));
     }
-    number
+    found
 }
 
-/// [`navi_number`], once its lookup has been made.
-pub fn navi_number_of(c: &Content, navi: NaviHandle) -> usize {
-    compat_navi_number(c, navi).0
+/// The pack's look of the button named `name`: the version's own (`own`:
+/// the pictures of the version the screen draws, `custom::beast_pictures`),
+/// else the pack's.
+pub fn button_of<'a>(a: &'a CustomScreen, own: &'a VersionPictures, name: &str) -> Option<&'a ButtonPictures> {
+    own.button(name).or_else(|| a.button(name))
 }
 
-/// A navi's number, and false if it is EXE6's but compat hasn't one.
-fn compat_navi_number(c: &Content, navi: NaviHandle) -> (usize, bool) {
-    let compat = exe6_compat::Compat::exe6_for(c);
-    match compat.compat_key(c, &c.defs.navi(navi).key) {
-        Some(local) => compat.navis.get(local).map_or((0, false), |n| (n.navi as usize, true)),
-        None => (0, true),
+/// A button's look (`button_of`, by the name its content registers it
+/// under). A button with none is drawn as nothing, which is a problem
+/// unless it shows a chip (`ButtonDef::chip`: it is drawn as that chip's
+/// slot).
+pub fn button<'a>(
+    a: &'a CustomScreen,
+    own: &'a VersionPictures,
+    c: &Content,
+    button: nettai_battle::content::ButtonHandle,
+    problems: &mut Problems,
+) -> Option<&'a ButtonPictures> {
+    let d = c.defs.button(button);
+    let found = button_of(a, own, &d.name);
+    if problems.lookup(Lookup::Button(button.0)) && found.is_none() && d.chip.is_none() {
+        problems.note(format!("button {:?} has no look in the pack (the custom screen draws nothing for it)", d.name));
     }
-}
-
-/// A navi's emblem (four 8x8 tiles) on a console of `version` (the pack's
-/// version of that name: `custom::console_version`), as the custom screen's
-/// 4x4 sprite holds it (the middle four tiles).
-pub fn emblem(a: &CustomScreen, c: &Content, navi: NaviHandle, version: &str, problems: &mut Problems) -> Tiles {
-    let number = navi_number(c, navi, problems);
-    let e = a.emblem_of.get(number).copied();
-    let pictures = &a.versioned.get(version).emblems;
-    let mut t = Tiles { pixels: vec![0; 16 * Tiles::TILE] };
-    for (k, place) in [5usize, 6, 9, 10].into_iter().enumerate() {
-        if let Some(src) = pictures.get(4 * e.unwrap_or(0) as usize + k) {
-            t.pixels[place * Tiles::TILE..(place + 1) * Tiles::TILE].copy_from_slice(src);
-        }
-    }
-    if problems.lookup(Lookup::Emblem(navi, crate::audit::VersionTag::of(version))) {
-        let palette = a.emblem_palette_of.get(number).and_then(|&i| a.emblem_palettes.get(i as usize));
-        if !e.is_some_and(|e| pictures.len() >= 4 * (e as usize + 1)) || palette.is_none() {
-            problems.note(format!(
-                "navi {:?} (number {number}) has no emblem or emblem colors on the {version} custom screen",
-                c.defs.navi(navi).key,
-            ));
-        }
-    }
-    t
+    found
 }
 
 /// A navi's name (`name`, its display text: its variant name if

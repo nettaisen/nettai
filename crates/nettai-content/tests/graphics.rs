@@ -173,13 +173,37 @@ fn bundle() -> Bundle {
     Bundle { sprites: vec![sprite(0, 1), sprite(0x14, 0x3A)], field, backgrounds: vec![Some(background), None, None], hud, custom: custom() }
 }
 
-/// A version's own pictures.
+/// A cursor's place.
+fn cursor(seed: i8) -> CursorPlace {
+    CursorPlace {
+        x: 0x58 + seed as i16,
+        y: 0x70 - seed as i16,
+        corners: [
+            [(2, 1, false, false), (2, 0x16, true, false), (0x14, 0x16, true, true), (0x14, 1, false, true)],
+            [(4, 3 + seed, false, false), (4, 0x14, true, false), (0x12, 0x14, true, true), (0x12, 3, false, true)],
+        ],
+    }
+}
+
+/// A version's own pictures: its own look of a button (a special slot's:
+/// four sets of 4x2, the last its hidden slot's, two palettes), its
+/// Crosses' names.
 fn own(seed: u8) -> VersionPictures {
     VersionPictures {
-        beast_out: Picture { tiles: tiles(42, seed), palette: palette(seed as u16) },
-        beast_out_palettes: vec![palette(seed as u16), palette(seed as u16 + 1)],
-        beast_buttons: tiles(32, seed + 2),
-        emblems: tiles(8, seed + 3),
+        buttons: vec![(
+            "beast_out".into(),
+            ButtonPictures {
+                width: 4,
+                height: 2,
+                tiles: tiles(32, seed + 2),
+                sets: ButtonSets::Other,
+                hidden: Some(3),
+                cursor: cursor(1),
+                picture: Picture { tiles: tiles(42, seed), palette: palette(seed as u16) },
+                palettes: vec![palette(seed as u16), palette(seed as u16 + 1)],
+                ..ButtonPictures::default()
+            },
+        )],
         cross_names: tiles(36, seed + 4),
         cross_palettes: vec![palette(seed as u16 + 5), palette(seed as u16 + 6)],
     }
@@ -191,20 +215,69 @@ fn custom() -> CustomScreen {
     let picture = |seed: u8| Picture { tiles: tiles(42, seed), palette: palette(seed as u16) };
     let patch = |x, y, w, h, by_column| MapPatch { x, y, width: w, height: h, palette: 9, by_column };
     CustomScreen {
-        layout: CustomLayout { name: 0x59, art: 0x69, button_uses: true, ..CustomLayout::EXE6 },
-        buttons: vec![(
-            "soul".into(),
-            ButtonPictures {
-                width: 3,
-                height: 2,
-                tiles: tiles(18, 98),
-                picture: picture(99),
-                palettes: vec![palette(99), palette(100)],
-                icons: tiles(56, 101),
-                icon_palette: palette(102),
-                icon_palettes: vec![("colonel".into(), palette(103))],
-            },
-        )],
+        layout: CustomLayout {
+            column_cells: 0x89,
+            turn_limit: 0x8D,
+            name: 0x59,
+            art: 0x69,
+            code: 0xD5,
+            element: 0xD7,
+            digits: 0xDB,
+            slots: 0xE1,
+            column_icons: 0x125,
+            name_bar: 0x1D6,
+            cross_names: 0x139,
+            slot_blank: 1,
+            ok_cursor: cursor(0),
+        },
+        // A special slot's button with icons, and two over the slots' row
+        // (two cells of 2x3 a set): one that shows its uses left, one that
+        // holds a chip and has another rule for its sets.
+        buttons: vec![
+            (
+                "soul".into(),
+                ButtonPictures {
+                    width: 3,
+                    height: 2,
+                    tiles: tiles(18, 98),
+                    sets: ButtonSets::Other,
+                    cursor: cursor(2),
+                    picture: picture(99),
+                    palettes: vec![palette(99), palette(100)],
+                    icons: tiles(56, 101),
+                    icon_palette: palette(102),
+                    icon_palettes: vec![("colonel".into(), palette(103))],
+                    ..ButtonPictures::default()
+                },
+            ),
+            (
+                "redeal".into(),
+                ButtonPictures {
+                    width: 2,
+                    height: 3,
+                    tiles: tiles(36, 76),
+                    cursor: cursor(3),
+                    picture: picture(65),
+                    palettes: vec![palette(65)],
+                    uses_digit: true,
+                    ..ButtonPictures::default()
+                },
+            ),
+            (
+                "arm_change".into(),
+                ButtonPictures {
+                    width: 2,
+                    height: 3,
+                    tiles: tiles(48, 77),
+                    sets: ButtonSets::Unavailable,
+                    cursor: cursor(3),
+                    picture: picture(66),
+                    palettes: vec![palette(66)],
+                    held_at: Some((0x45, 0x84)),
+                    ..ButtonPictures::default()
+                },
+            ),
+        ],
         window_tiles: tiles(0x87, 40),
         column_cells: tiles(4, 41),
         turn_limit: tiles(14, 42),
@@ -222,37 +295,34 @@ fn custom() -> CustomScreen {
             ChipArt { key: "cut".into(), picture: picture(59), region: Some("jp".into()), version: Some("gregar".into()) },
             ChipArt { key: "no-picture".into(), picture: Picture::default(), region: None, version: None },
         ],
-        pictures: SlotPictures {
-            ok: picture(61),
-            ok_picked: picture(62),
-            redeal: picture(65),
-            scrap: picture(66),
-            other: picture(67),
-        },
+        pictures: SlotPictures { ok: picture(61), ok_picked: picture(62), other: picture(67) },
         codes: tiles(56, 70),
         elements: tiles(8, 71),
         element_colors: vec![[1, 2, 3, 4, 5, 6], [0x7FFF, 0, 0x1F, 0x3E0, 0x7C00, 0x2108]],
         digits: tiles(22, 72),
         slot_codes: tiles(56, 73),
         empty_icon: tiles(4, 74),
-        redeal_buttons: tiles(36, 76),
-        scrap_buttons: tiles(48, 77),
         versioned: Versioned { base: own(63), base_version: "falzar".into(), versions: vec![("gregar".into(), own(90))] },
         cursor: tiles(2, 78),
         cross_cursor: tiles(4, 84),
         cross_cursor_palette: palette(85),
-        emblem_palettes: vec![palette(80), palette(81)],
-        emblem_of: vec![0, 1, 1],
-        emblem_palette_of: vec![1, 0, 0],
+        emblems: vec![
+            Emblem { navi: "megaman".into(), tiles: tiles(4, 79), palette: palette(80) },
+            Emblem { navi: "heatman".into(), tiles: tiles(4, 83), palette: palette(81) },
+        ],
         regular: tiles(32, 82),
         advance_name_colors: vec![[0, 0x7FFF, 0x14A5, 0], [0, 0x43F0, 0x14A5, 0]],
         languages: vec![(
             "ja".into(),
             CustomLettering {
-                pictures: SlotPictures { ok: picture(91), ok_picked: picture(92), redeal: picture(93), scrap: picture(94), other: picture(95) },
+                pictures: SlotPictures { ok: picture(91), ok_picked: picture(92), other: picture(95) },
                 cross_names: vec![("falzar".into(), tiles(36, 96)), ("gregar".into(), tiles(36, 97))],
-                // The soul button's label in this language (its three states).
-                buttons: vec![("soul".into(), tiles(18, 104))],
+                // The soul button's label in this language (its three
+                // states), and the re-deal button's picture.
+                buttons: vec![
+                    ("redeal".into(), ButtonLettering { tiles: None, picture: Some(picture(93)) }),
+                    ("soul".into(), ButtonLettering { tiles: Some(tiles(18, 104)), picture: None }),
+                ],
             },
         )],
     }

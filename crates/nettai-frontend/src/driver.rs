@@ -49,8 +49,8 @@ pub trait Driver {
     }
     /// The game version of the console whose screen this is, as its pack
     /// names its versions' assets, for a game whose versions the engine
-    /// doesn't tell apart (EXE5's "protoman" and "colonel": its emblems, the
-    /// other version's chips; `Renderer::console_version`). None: the
+    /// doesn't tell apart (EXE5's "protoman" and "colonel": the other
+    /// version's chips; `Renderer::console_version`). None: the
     /// version the console's player brought (the fact `version`).
     fn console_version(&self) -> Option<&'static str> {
         None
