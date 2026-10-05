@@ -58,10 +58,11 @@ impl Action {
     }
 }
 
-/// Whether the game numbers its obstacles' action tables as EXE5's
-/// (`effects.obstacle_actions`, the game's rules).
-fn exe5_actions(b: &Battle) -> bool {
-    b.game_rules().effects.obstacle_actions == crate::content::ObstacleActions::Exe5
+/// Whether the game's obstacles' action tables have their kinds' own
+/// actions from 6 (`effects.obstacle_actions`: no frozen or bubbled
+/// entries, EXE5's).
+fn own_from_6(b: &Battle) -> bool {
+    b.game_rules().effects.obstacle_actions == crate::content::ObstacleActions::OwnFrom6
 }
 
 /// The byte the game stores in obstacle `r` for action `a` of the
@@ -69,7 +70,7 @@ fn exe5_actions(b: &Battle) -> bool {
 /// obstacles have no frozen or bubbled entries (6 and 7), so their own start
 /// at 6.
 pub fn action_byte(b: &Battle, r: ObjectRef, a: u8) -> Result<u8, String> {
-    if !exe5_actions(b) {
+    if !own_from_6(b) {
         return Ok(a);
     }
     match a {
@@ -83,7 +84,7 @@ pub fn action_byte(b: &Battle, r: ObjectRef, a: u8) -> Result<u8, String> {
 /// game's byte.
 pub fn current_action(b: &Battle, r: ObjectRef) -> u8 {
     let a = b.objects.get(r).action;
-    if exe5_actions(b) && a >= 6 { a + 2 } else { a }
+    if own_from_6(b) && a >= 6 { a + 2 } else { a }
 }
 
 /// The shared entries of an obstacle's action table.
@@ -349,8 +350,8 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
     common::panel_burn(b, r);
     if push == Push::AnyHit {
         match b.game_rules().push_reading {
-            PushReading::Exe6 => push_on_any_hit(b, c),
-            PushReading::Exe5 => push_on_any_hit_by_flip(b, c),
+            PushReading::TowardFront => push_on_any_hit(b, c),
+            PushReading::ByHitterFlip => push_on_any_hit_by_flip(b, c),
         }
     }
     let hit_mod = b.collision.get(c).hit_mod_final;
@@ -995,8 +996,8 @@ struct PushVector {
 /// obstacle held still in one (`object_updateSprite` leaves it): no pusher
 /// bits either way, so it's left out.
 fn push_vector(b: &Battle, r: ObjectRef) -> PushVector {
-    if b.game_rules().push_reading == PushReading::Exe5 {
-        return push_vector_exe5(b, r);
+    if b.game_rules().push_reading == PushReading::ByHitterFlip {
+        return push_vector_by_flip(b, r);
     }
     let d = b.collision.get(collision(b, r));
     let hits = d.acc.hit_flags;
@@ -1023,7 +1024,7 @@ fn push_vector(b: &Battle, r: ObjectRef) -> PushVector {
 /// the direction reversed, from EXE5's table (0x0800D53B: EXE6's four rows
 /// and a fifth of nothing when neither has a bit). (The +0x54 word takes
 /// part as in EXE6's, left out the same.)
-fn push_vector_exe5(b: &Battle, r: ObjectRef) -> PushVector {
+fn push_vector_by_flip(b: &Battle, r: ObjectRef) -> PushVector {
     let d = b.collision.get(collision(b, r));
     let hits = d.acc.hit_flags;
     let pusher: i8 = if hits & PUSHERS[0] != 0 {
@@ -1079,16 +1080,17 @@ fn start_slide(b: &mut Battle, r: ObjectRef, kind: Slide) {
     let fp = b.objects.get(r).future_panel;
     b.unreserve_panel(r, fp.x, fp.y);
     let v = push_vector(b, r);
-    let (exe5, speed) = {
+    let (bounded, speed) = {
         let rules = b.game_rules();
-        (rules.push_reading == PushReading::Exe5, rules.slide_speed)
+        (rules.obstacle_slide_bounds, rules.slide_speed)
     };
     let o = b.objects.get_mut(r);
     o.slide_dx = v.dx as u8;
     o.slide_dy = v.dy as u8;
     let panels = match kind {
-        // EXE5's (0x08014894) keeps no bounds: it slides anywhere open.
-        Slide::Bounded if exe5 => {
+        // (`obstacle_slide_bounds` off, EXE5's 0x08014894: it keeps no
+        // bounds, and slides anywhere open.)
+        Slide::Bounded if !bounded => {
             o.slide_bounds = SlideBounds::Anywhere;
             SLIDE_PANELS
         }

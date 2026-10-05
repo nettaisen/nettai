@@ -215,7 +215,7 @@ pub fn generic_destroy(b: &mut Battle, r: ObjectRef) {
 /// HP left, or at 0 what EXE5's check leaves there (EXE5's
 /// `applyDamageToPlayer` shows the hit by it).
 pub fn subtract_hp(b: &mut Battle, r: ObjectRef, amount: u16) -> bool {
-    if b.game_rules().intake.hp_loss == crate::content::HpLoss::Exe5 {
+    if b.game_rules().intake.hp_loss == crate::content::HpLoss::GaugeAndLastStand {
         return player::exe5_lose_hp(b, r, amount);
     }
     let o = b.objects.get_mut(r);

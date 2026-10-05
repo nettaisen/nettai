@@ -93,4 +93,23 @@ return {
             { require = 0x00000000, forbid = 0x0B800000 },
         },
     },
+    -- EXE6's panel types by its own numbers (a panel trail's byte, NaviStats +0x12, names one).
+    numbers = {
+        "missing",
+        "broken",
+        "normal",
+        "cracked",
+        "poison",
+        "holy",
+        "grass",
+        "ice",
+        "volcano",
+        "road_up",
+        "road_down",
+        "road_left",
+        "road_right",
+    },
+    -- A reservation marks its holder (`object_reservePanel` sets its header flag 0x20), and the holder's destroy
+    -- releases what it holds (`sub_801BB78`, from `object_genericDestroy` and the navis' end).
+    reservations = "marked",
 }

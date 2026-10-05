@@ -1110,7 +1110,8 @@ EXE6 stays byte-identical; EXE5's side is unit tests and asm citations, and the 
   element whose hitboxes turn the type normal: fire grass, aqua the volcano and lava, wood roads and metal; EXE6's
   conversions now read it). Per game `mend` (EXE6 0x258 and 0x1E0 in battle mode 1, EXE5 600 in both). EXE5's panels
   section is registered with its own types; exe5-compat maps EXE5's 5, 8 and 10 to them.
-- **Push (item 2).** `reactions.push_reading = "exe5"`, the arena's: EXE5's 0x0800C9D8 reads the side-0 hits'
+- **Push (item 2).** `reactions.push_reading = "by_hitter_flip"` (named `"exe5"` until the rules were named for
+  what they do), the arena's: EXE5's 0x0800C9D8 reads the side-0 hits'
   modifier toward the navi's front, else the side-1 hits' the other way. The hit resolver keeps the modifiers by
   the hitter's side (`CollisionData::hit_mod_by_side`, EXE5's +0x18 and +0x19, 0x08016AA6), which EXE6 doesn't read.
   EXE5's obstacle push (0x08017AD8) isn't ported.
@@ -1150,7 +1151,8 @@ EXE6 stays byte-identical; EXE5's side is unit tests and asm citations, and the 
 
 The engine items the EXE5 replays stopped on (docs/design/exe5-map.md §15.3 items 14 to 18), built by the EXE5 port
 with the coordinator's go-ahead while the rules work did R4. EXE6 stays byte-identical: its ruleset has no system
-with the new hooks, and its sections keep EXE6's numbers by default.
+with the new hooks, and its sections keep EXE6's numbers by default (until "No rule defaults that mean a game",
+below: each game states them).
 
 - **Two system hooks (item 14).** `navi_intake(side, navi)` runs each tick of the fight in the navi's intake
   (`sub_801AC6C`), after the standing effects, where EXE5's 0x080178EC calls 0x08017136. `chip_check(side, navi,
@@ -1165,7 +1167,7 @@ with the new hooks, and its sections keep EXE6's numbers by default.
   `megaman` field (its record's +0x15) asks for the other kind of MegaMan becomes the invalid chip (EXE5's 0x185,
   now in content: gen_content.py's `RULE_CHIPS`), and its use shows a sparkle. Any navi but MegaMan passes. The
   dark chips' own refusals and costs (EXE5's 0x08010030) wait for EXE5's dark chip rules.
-- **The `effects` section, the arena's (items 15 and 16).** `shake = "battle"`: EXE5's camera shake (0x08030D78)
+- **The `effects` section, the arena's (items 15 and 16).** `shake = "battle_rng"` (then `"battle"`): EXE5's camera shake (0x08030D78)
   has one channel. It draws its jitter twice a shaking tick from the battle's RNG2, alike on every console, and
   holds while the battle is paused without dimming (EXE6's draws from each console's RNG1, on two channels).
   `spark_steps_at_start = false`: EXE5's hit spark (0x080E0870) doesn't step its sprite as it starts, so it lives
@@ -1176,7 +1178,7 @@ with the new hooks, and its sections keep EXE6's numbers by default.
   EXE6 tests 9 to 12). A type that `holds` (EXE5's sea) ends the slide.
 - **What a navi wears restarting.** The `reactions` section's `overlay_restart`, the navi's game's: an animation
   change, a flinch and a drag restart what a navi wears (`sub_8011450`, `sub_80F06CE`). EXE6's restart
-  (`sub_80C44D2`) reloads the overlay's animation and steps its sprite at once (`"step"`, the default); EXE5's
+  (`sub_80C44D2`) reloads the overlay's animation and steps its sprite at once (`"step"`); EXE5's
   (0x080C374E) only has it reload at its next step (`"reload"`).
 - **The souls' engine items (exe5-map.md §15.8).** The `reactions` section's `stance_counter`, the navi's game's:
   the counter a stance's caught hit starts runs from the next tick in EXE6 (`sub_80105F2`, `"next_tick"`), its
@@ -2349,3 +2351,69 @@ chips/init.luau should import all chips, etc." (content-model-v2.md §4.0 holds 
   bit. The order of the requires still moves no key and no handle (the test turns every init round).
 - **index.py** writes the inits whole and has `--check`; a merge conflict in an init is settled by running it.
 - Games held in memory (`Scripts::add_game`, `testing::add_index`) get the same shape (`Scripts::inits_for`).
+
+### No rule defaults that mean a game, and rules named for what they do (2026-10-05)
+
+The user: "no default games anywhere please". The engine's rule types had defaults that were EXE6's (fourteen
+enums' `#[default]`, `impl Default` for `FlowRules`, `EffectsRules`, `SlideSpeed`, `MissingCollisionStatus` and
+`PoolSizes`, serde defaults on thirty-four fields of the sections), so EXE5's ruleset stated its rules and EXE6's
+stated none of them. And the choices were named for the games (`retype = "exe5"`).
+
+- **A ruleset states every rule.** `sections::REQUIRED` (`chip_use`, `effects`, `flow`, `panels`, `pools`,
+  `reactions`, `status`) and every field of them; a section or a field left out is a load error naming it
+  (`ruleset: it states no `effects` section`, `ruleset: flow: missing field `escape_check``), and so is a game
+  pack with no ruleset at all (`game pack exe6 defines no ruleset`). content/exe6 gained
+  rules/effects.luau and states its flow's, chip use's, status's, reactions' and panels' rules (31 settings it
+  never wrote).
+- **No `Default` stands for a game.** `Rules` has none, nor `PanelRules`, `IntakeRules`, `ChipUseRules` and the
+  types above. `Content::rules` is none until `define`, and for modules of no game that state no rules (a
+  test's); `Content::rules()` reads it. The sections are read into what is stated (`sections::Stated`) and the rules made
+  from that, with no placeholder value anywhere.
+- **Rust tables state them for the test content** (`Content::base_rules`, now an option: `testing::rules()`, each
+  value written out; gen-content's decode of the ROM), and a ruleset's sections replace them. A test that makes a
+  content of a few modules and a small ruleset starts from those tables.
+- **Kept, because they read as nothing for every game**:
+  - a feature's section a game hasn't: `berserk`, `lockon`, `navicust` (no boards: no NaviCust), `sp_chips`,
+    `banners` (none hold);
+  - a table that is empty without its section: `elements` (no weakness, no family adds an element), `buster`,
+    `math`, `custom_screen`;
+  - in a section: `family_elements`, the buster's `chaos_cycle` (no rows: no cycle), the custom screen's
+    `redeal_kept` (none listed: a re-deal keeps none), `sp_chips.slots`, `banners.holding`;
+  - an attribute of one entry: a panel type's `road_slide`, `trail_sound`, `expires`, `burn`, `drains`, `holds`,
+    `submerges`, `slide`, `cleared_by`; a status's `cancels_flinch` and `survives_counter`; a lock-on mode's
+    offsets and flags (`LockonRule::Stay`: the navi's own panel); `BoardCell::Off`;
+  - zeros: `SparkleOffset`, `SlideVector`, `StepRuleSet`, `PanelSlide`, `EmptyHandChip`, `BerserkRules`.
+- **Named for what they do** (the routine addresses stay in the doc comments):
+
+  | Setting | Was | Is |
+  |---|---|---|
+  | `effects.shake` | `console`, `battle` | `console_rng` (two channels, each console's RNG1), `battle_rng` (one channel, the battle's RNG2) |
+  | `effects.retype` | `exe6`, `exe5` | `is_and_hits`, `is_alone` |
+  | `effects.damage_word` | `exe6`, `exe5` | `paralysis_and_bugs`, `statuses_and_bug` |
+  | `effects.palette_flash` | `exe6`, `exe5` | `mode_runs_through_pause`, `pause_holds` |
+  | `effects.obstacle_actions` | `exe6`, `exe5` | `own_from_8`, `own_from_6` |
+  | `reactions.push_reading` | `exe6`, `exe5` | `toward_front`, `by_hitter_flip` |
+  | `reactions.hit_test` | `exe6`, `exe5` | a table: `float_shoe_needs_self_bit`, `bubbled_as_submerged`, `elec_reaches_submerged`, `guard_breaks_to`, `elec_bonus_on_sea` |
+  | `reactions.obstacle_slide_bounds` | part of `push_reading` | a setting of its own |
+  | `status.reactions` | `exe6`, `exe5` | `flash_timer_last`, `flash_timer_first` |
+  | `status.hp_loss` | `exe6`, `exe5` | `hp_alone`, `gauge_and_last_stand` |
+  | `status.form_break` | `exe6`, `exe5` | `cross_or_beast`, `any_form` |
+  | `status.emotions` | `exe6`, `exe5` | unchanged: see below |
+
+- **Still a bundle under one name** (each a whole routine of one game, named for its most visible difference):
+  `retype` (what is set, the dimmed mark, a bug code's high byte), `damage_word` (the whole decode of the flag
+  bits), `palette_flash` (the pause, and for variant 1 the dimming), `push_reading` (a navi's push and an
+  obstacle's), `status.reactions` (the order, when the flash's timer runs, what a drag or a flinch resets),
+  `hp_loss` (the gauge, the last stand, how a hit shows), `form_break` (which forms break, and the break's
+  animation, overlay and collision region).
+- **No honest short name: `status.emotions`.** It picks one of two whole emotion models: how an emotion is read
+  off the navi (EXE6's worn out when exhausted or at a mood of 0, then angry, tired, Full Synchro; EXE5's a soul
+  first, then anger, a mood of 0, Full Synchro, a mood under 65 worried, and battle mode 1 its own), what holds a
+  mood (tired or exhausted; a mood of 0), how anger ends, the anger tick's pass over AI index 23, and the Full
+  Synchro aura's object. It keeps `"exe6"` and `"exe5"`. Each game has an `emotion` system in Luau already; the
+  model belongs there, which is a port of its own.
+- **The hit test's guard mask needed no setting**: EXE5's turn-aside mask (0x0C004000) differs from EXE6's
+  (0x0C005000) only for a type with 0x1000, which a guard that breaks to 0x1002 never reaches.
+- The verification workspace: gen-content's decode states EXE6's rules, and its check compares each stated rule
+  with it; tools/exe5/gen_rules.py writes the ruleset, the reactions and the status section as content/exe5 has
+  them.
