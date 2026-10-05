@@ -435,6 +435,9 @@ local status = {
         },
         -- The weakness request (a dark chip used in a soul, 0x08010070) breaks any form to the base form (0x080122C8).
         form_break = "any_form",
+        -- A weakness hit doesn't ask for it: its status routine (0x08017BF2) shows the hit's mark and has no such step,
+        -- so a navi hit on its weakness, in a soul or not, goes on as it was.
+        weakness_hit_breaks_form = false,
     },
 }
 

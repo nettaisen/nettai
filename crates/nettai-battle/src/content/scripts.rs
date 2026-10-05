@@ -448,7 +448,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         no_charge_drive = false,
         hp_loss = "hp_alone",
         emotion = { mood_held = "at_zero", anger_end = "resets_mood", plain_in_battle_mode_1 = false, normal_in_a_form = true, anger_before_worn_out = false, tired_and_exhausted = true, worried_below = 40 },
-        form_break = "cross_or_beast","#,
+        form_break = "cross_or_beast",
+        weakness_hit_breaks_form = true,"#,
             ),
         ];
         assert_eq!(STATED.iter().map(|(name, _)| *name).collect::<Vec<_>>(), crate::content::sections::REQUIRED);
@@ -528,7 +529,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 60, "every field of every section");
+        assert_eq!(fields, 61, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(ruleset(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();
