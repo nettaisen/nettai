@@ -941,7 +941,9 @@ programs = [                               # in the save's order; x, y the cente
 
 **A side's version.** A side of EXE6 states its version, `falzar` or
 `gregar` (its Beast, its own Crosses, its pictures and its navi's version
-byte): nothing fills one in, and a file without it is refused with where
+byte): nothing fills one in (the engine itself starts no round whose
+player's setup leaves an enum of its rules' unstated: EXE6's `version` has
+no default), and a file without it is refused with where
 it is missing. A new match's sides have none until they are given theirs
 (the editor asks beside the game, with nothing chosen), and a drawn match
 draws each side's from its seed and writes it. An EXE5 match has no

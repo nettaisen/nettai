@@ -63,7 +63,7 @@ mod tests {
     fn battle(music: Option<SoundId>, link: bool) -> Battle {
         let content = testing::restaged(testing::LINK_BATTLE_SIDE0_FIRST, |s| s.music = music);
         let mut setup = testing::round_setup(testing::LINK_BATTLE_SIDE0_FIRST, testing::stats(500));
-        setup.content = content.hash();
+        crate::content::testing::on(&mut setup, &content);
         setup.settings.effects = if link { effects::LINK } else { 0 };
         setup.rng = 0x1234_5678;
         Battle::new(setup, std::sync::Arc::new(content))

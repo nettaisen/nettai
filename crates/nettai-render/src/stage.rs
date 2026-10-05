@@ -440,7 +440,7 @@ mod tests {
             c.rules.panels.types[t as usize].named = t != PanelType::Sea;
         }
         let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(100));
-        setup.content = c.hash();
+        testing::on(&mut setup, &c);
         setup.settings = nettai_battle::BattleSettings::on(&c, c.stage_by_key(testing::LINK_BATTLE));
         let mut b = Battle::new(setup, std::sync::Arc::new(c));
         for (x, t) in (1..=3).zip(types) {

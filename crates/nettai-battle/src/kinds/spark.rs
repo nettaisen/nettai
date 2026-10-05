@@ -108,7 +108,7 @@ mod tests {
         }
         let c = Arc::new(c);
         let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
-        setup.content = c.hash();
+        crate::content::testing::on(&mut setup, &c);
         let mut b = Battle::new(setup, c);
         b.spawn_actors();
         b.run_objects();
