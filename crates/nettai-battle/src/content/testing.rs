@@ -92,6 +92,9 @@ pub const LINK_CHIPS: [&str; 10] = [
 /// A link navi (the content's navi 1; AI index 4, whose actor record has
 /// no hooks).
 pub const LINK_NAVI: &str = "test/link-navi";
+/// A link navi with hooks of its own (AI index 5): a tick, an idle and a
+/// post-init hook (testdata/content/navis/test.luau).
+pub const HOOKED_NAVI: &str = "test/hooked-navi";
 /// MegaMan, the navi that changes form.
 pub const MEGAMAN: &str = "megaman";
 
