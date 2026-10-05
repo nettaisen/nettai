@@ -79,6 +79,12 @@ pub struct PackManifest {
     /// The support packs it requires modules of, by name.
     #[serde(default)]
     pub depends: Vec<String>,
+    /// A game pack's: the command that writes its asset pack (the
+    /// original's graphics and sound, which no repository holds), with
+    /// `{dir}` where the pack's directory goes: what a loader says when it
+    /// finds no asset pack of the game. None: it says no command.
+    #[serde(default)]
+    pub extract: Option<String>,
 }
 
 impl PackManifest {
@@ -437,7 +443,7 @@ mod tests {
     use super::*;
 
     fn pack(id: &str, kind: PackKind, depends: &[&str]) -> (String, PackManifest) {
-        (id.into(), PackManifest { id: id.into(), kind, depends: depends.iter().map(|u| u.to_string()).collect() })
+        (id.into(), PackManifest { id: id.into(), kind, depends: depends.iter().map(|u| u.to_string()).collect(), extract: None })
     }
 
     #[test]
