@@ -523,7 +523,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 56, "every field of every section");
+        assert_eq!(fields, 57, "every field of every section");
         // A field of a table of settings, too.
         let e = game(ruleset(None, None, Some((" elec_reaches_submerged = true,", "")))).unwrap_err();
         assert!(e.contains("ruleset: reactions.hit_test: missing field `elec_reaches_submerged`"), "{e}");
