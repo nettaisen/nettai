@@ -1558,8 +1558,9 @@ renderer, the font mode's text renderer and the battle's audio:
 - `play(driver)` goes on with another driver in the same picture and sound (a
   recording's next round).
 
-The player borrows the loaded game's graphics (`Player<'g>`): the host keeps
-the `Loaded` for as long as the player lives.
+The player owns everything it needs: the graphics it draws from are shared
+with the `Loaded` they came from (`Arc`), so a host keeps a player wherever
+it keeps its state, for as long as it likes.
 
 **What the library leaves to the host:** the panic hook that keeps an engine
 stop off stderr (`session::quiet_engine_panics`: the session reports the
