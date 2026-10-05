@@ -107,6 +107,10 @@ pub fn render_frames_with(
         renderer.console_region = s.driver.console_region();
         renderer.console_version = s.driver.console_version();
         while s.step(keys.held(s.ticks as u32 + 1)) {
+            // (A set's next round: the presentation starts over.)
+            if s.new_round {
+                renderer.reset();
+            }
             renderer.observe(&s.battle);
             let Some(f) = s.frame else { continue };
             renderer.problems.at(Some(f));
