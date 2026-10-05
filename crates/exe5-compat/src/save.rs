@@ -1,7 +1,7 @@
 //! An EXE5 save file (the .sav an emulator keeps), and what nettai reads of
 //! it for a player's setup: the version, the light/dark value, the souls it
 //! has, its NaviCust (the list, the compression flags, whether the compile
-//! leaves the HP) and its patch cards.
+//! leaves the HP), its patch cards and its computer-navi data.
 //!
 //! The file holds the save image at 0x100: 0x7C14 bytes, the game's EWRAM
 //! from 0x02000000 as the game saves it (an address's offset in the image
@@ -21,7 +21,9 @@
 //! 0x79D0 (a byte each: the card, bit 7 switched off), the area at 0x2944
 //! (the game state's +4: the cyberworld's from 0x80), the key items' counts
 //! at 0x3DB0 (the toolkit's +0x50, a byte an item: ExpMemry's, item 0x61,
-//! is the NaviCust board's expansions).
+//! is the NaviCust board's expansions), the computer-navi data at 0x554C
+//! (the toolkit's +0x78: seven blocks of 0xE0 bytes, the player's the
+//! first; docs/design/exe5-map.md §15.9).
 
 use crate::Version;
 
@@ -48,6 +50,65 @@ const AREA: usize = 0x2944;
 /// screen reads as it opens (0x08132928) to pick its board (0x0813F138).
 const KEY_ITEMS: usize = 0x3DB0;
 pub const EXP_MEMORY: u8 = 0x61;
+
+/// The player's computer-navi data: the first of seven blocks, which a
+/// battle's end writes from what the save has learned (0x0802C540) and a
+/// battle's start sends (0x08009B64).
+const COMPUTER_NAVI: usize = 0x554C;
+/// The block's size, its places (a halfword each), and its pattern records
+/// (16 bytes each from +0x58: `dx`, `dy`, five chip places, the score).
+pub const COMPUTER_NAVI_SIZE: usize = 0xE0;
+pub const COMPUTER_NAVI_PLACES: usize = 42;
+pub const COMPUTER_NAVI_PATTERNS: usize = 8;
+pub const COMPUTER_NAVI_PATTERN_CHIPS: usize = 5;
+const COMPUTER_NAVI_RECORDS: usize = 0x58;
+
+/// A pattern record of a computer-navi data block: its place from a
+/// target, its chips' numbers (the record's chip places to the first empty
+/// one) and its score (the word at +12).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ComputerNaviPattern {
+    pub dx: i8,
+    pub dy: i8,
+    pub chips: Vec<u16>,
+    pub score: u32,
+}
+
+impl ComputerNaviPattern {
+    /// The record in `bytes` (16 of them).
+    pub fn read(bytes: &[u8; 16]) -> ComputerNaviPattern {
+        let half = |o: usize| u16::from_le_bytes([bytes[o], bytes[o + 1]]);
+        let chips = (0..COMPUTER_NAVI_PATTERN_CHIPS).map(|k| half(2 + k * 2)).take_while(|&c| c != 0xFFFF).collect();
+        let score = u32::from_le_bytes([bytes[12], bytes[13], bytes[14], bytes[15]]);
+        ComputerNaviPattern { dx: bytes[0] as i8, dy: bytes[1] as i8, chips, score }
+    }
+}
+
+/// A save's computer-navi data block by number: its places in order, each a
+/// chip's number, 0x8000 with a pattern record's index, or 0xFFFF (empty),
+/// and its pattern records.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ComputerNaviBlock {
+    pub places: [u16; COMPUTER_NAVI_PLACES],
+    pub patterns: [ComputerNaviPattern; COMPUTER_NAVI_PATTERNS],
+}
+
+impl ComputerNaviBlock {
+    /// The block in `bytes` (0xE0 of them).
+    pub fn read(bytes: &[u8]) -> Result<ComputerNaviBlock, String> {
+        if bytes.len() != COMPUTER_NAVI_SIZE {
+            return Err(format!("a computer-navi data block is {COMPUTER_NAVI_SIZE:#x} bytes, not {:#x}", bytes.len()));
+        }
+        let half = |o: usize| u16::from_le_bytes([bytes[o], bytes[o + 1]]);
+        Ok(ComputerNaviBlock { places: std::array::from_fn(|i| half(i * 2)), patterns: std::array::from_fn(|i| ComputerNaviBlock::pattern(bytes, i)) })
+    }
+
+    /// Pattern record `i` of the block in `bytes`.
+    pub fn pattern(bytes: &[u8], i: usize) -> ComputerNaviPattern {
+        let at = COMPUTER_NAVI_RECORDS + i * 16;
+        ComputerNaviPattern::read(bytes[at..at + 16].try_into().expect("a record of the block"))
+    }
+}
 
 /// The NaviCust list's room.
 pub const NAVICUST_PARTS: usize = 25;
@@ -172,6 +233,12 @@ impl Save {
         &self.image[NAVICUST..NAVICUST + NAVICUST_PARTS * 8]
     }
 
+    /// The player's computer-navi data: what a computer navi plays from
+    /// this save.
+    pub fn computer_navi(&self) -> ComputerNaviBlock {
+        ComputerNaviBlock::read(&self.image[COMPUTER_NAVI..COMPUTER_NAVI + COMPUTER_NAVI_SIZE]).expect("a block of the image")
+    }
+
     /// How many of key item `item` the save has.
     pub fn key_item(&self, item: u8) -> u8 {
         self.image[KEY_ITEMS + item as usize]
@@ -221,6 +288,40 @@ mod tests {
         }
         image[NAVI_STATS + LIGHT_DARK..NAVI_STATS + LIGHT_DARK + 2].copy_from_slice(&value.to_le_bytes());
         image
+    }
+
+    /// A save's computer-navi data is the first block at 0x554C: its places
+    /// by number, and its pattern records' places, chips (the record's five
+    /// chip places) and scores (the word after them).
+    #[test]
+    fn a_saves_computer_navi_data_is_its_first_block() {
+        let mut image = image(Version::Colonel, &[], 500);
+        // Two blocks: the player's, and the next (which nothing reads).
+        image[COMPUTER_NAVI..COMPUTER_NAVI + 2 * COMPUTER_NAVI_SIZE].fill(0xFF);
+        let put = |image: &mut [u8], at: usize, halves: &[u16]| {
+            for (i, h) in halves.iter().enumerate() {
+                image[COMPUTER_NAVI + at + i * 2..COMPUTER_NAVI + at + i * 2 + 2].copy_from_slice(&h.to_le_bytes());
+            }
+        };
+        put(&mut image, 6, &[0x51, 0x51, 0xA2]);
+        put(&mut image, 66, &[0x8000, 0x8001]);
+        put(&mut image, 82, &[0x157]);
+        // Pattern 0: 3 columns short, 1 row down, chips 0xC9 and 0x28, score 7.
+        image[COMPUTER_NAVI + 0x58..COMPUTER_NAVI + 0x5A].copy_from_slice(&[0xFD, 0x01]);
+        put(&mut image, 0x5A, &[0xC9, 0x28]);
+        put(&mut image, 0x64, &[7, 0]);
+        // Pattern 1: a full record, its score after its five chips.
+        image[COMPUTER_NAVI + 0x68..COMPUTER_NAVI + 0x6A].copy_from_slice(&[0xFF, 0xFE]);
+        put(&mut image, 0x6A, &[1, 2, 3, 4, 5, 10, 0]);
+        put(&mut image, COMPUTER_NAVI_SIZE, &[0x99]);
+        let block = Save::from_image(&image).unwrap().computer_navi();
+        let mut places = [0xFFFFu16; COMPUTER_NAVI_PLACES];
+        (places[3], places[4], places[5], places[33], places[34], places[41]) = (0x51, 0x51, 0xA2, 0x8000, 0x8001, 0x157);
+        assert_eq!(block.places, places);
+        assert_eq!(block.patterns[0], ComputerNaviPattern { dx: -3, dy: 1, chips: vec![0xC9, 0x28], score: 7 });
+        assert_eq!(block.patterns[1], ComputerNaviPattern { dx: -1, dy: -2, chips: vec![1, 2, 3, 4, 5], score: 10 });
+        assert_eq!(block.patterns[2], ComputerNaviPattern { dx: -1, dy: -1, chips: Vec::new(), score: 0xFFFF_FFFF });
+        assert!(ComputerNaviBlock::read(&[0; 4]).is_err());
     }
 
     /// A save's souls are its version's whose flags are set: flags 2 to 7

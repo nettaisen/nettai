@@ -1672,7 +1672,8 @@ seven saves (Tango's templates and three played ones):
   bytes: `dx`, `dy` (signed bytes), five chip places to the first 0xFFFF, and the pattern's score, a word at +12.
   The AI reads a pattern's chips to the first 0xFFFF with no other end (0x0802BCD6), so a record with all five
   places filled is read on into its score (a chip number), the score's upper half (chip 0) and the next record.
-  No save seen has a pattern of more than two chips; the engine's patterns end at their chips.
+  No save seen has a pattern of more than two chips. The engine's pattern carries its five chip places' chips and
+  its score (`TacticPattern`); what the AI makes of reading on is the AI's port's.
 - *Where it is:* seven blocks at save +0x554C (0x0200554C, the toolkit's +0x78). A battle sends the first
   (0x08009B64: with battle flag 0x40, the operation battle, 0x0802C7A0 builds one from the player's folder instead,
   its 30 halfwords in places 4 to 33). Nothing writes the other six (0x0802C8C2, which copies a block into one by
@@ -1700,14 +1701,26 @@ seven saves (Tango's templates and three played ones):
   standard chips once, five megas, CrossDiv, eight patterns of two chips each, CsmoPris. Places 1 to 3 are empty in every US save seen, as the code says; one
   Japanese save has three chips there and the second table filled like the first, which this reading doesn't
   explain.
-- *The send* (0x0802C7BE) shuffles places 1 to 3 among themselves and the other 39 among themselves and packs
-  them. So a battle reads of a place only its group, and a match states the data as that
-  (`nettai_match::computer_navi`, docs/frontend.md §6): `first` (up to 3 entries) and `rest` (up to 39), each entry
-  a chip by name or a pattern (`dx`, `dy`, one to five chips), at most eight different patterns; none: a save that
-  has learned nothing. A match's checks refuse more, a pattern's place more than 5 columns or 2 rows from its
-  target, and any of it under rules without the computer-navi system. A random match states what the game would
-  write for a player who used each chip of the drawn folder once (`ComputerNavi::of_folder`). The learning itself
-  (the tables and the runs during a battle) is not ported: nothing of a battle reads it.
+- *The send* (0x0802C7BE) makes three swaps among places 1 to 3 and 39 among the other 39 (`sub_8000CDA`: each swap
+  two places drawn at random), packs the entries to the front and counts them. That is no even shuffle: a place is
+  in none of 39 swaps (38/39)^78 of the time, 13%, so the entry in place 4 leads the sent list about 15% of the
+  time where an even shuffle gives 2.6%, and where the empty places are changes what a seed sends. So a battle can
+  tell where in the block an entry was.
+- *A match states every place* (`nettai_match::computer_navi`, docs/frontend.md §6): `[side.computer_navi]`'s six
+  lists are the block's places as the battle's end writes them (`first` 1 to 3, `standard` 4 to 27, `mega` 28 to 32,
+  `giga` 33, `patterns` 34 to 41, `program_advance` 42), each entry a chip by name, a pattern (`dx`, `dy`, one to
+  five chips, its `score`) or `{}` for an empty place before a later entry; any entry may stand in any place, as in
+  the block. A pattern of five chips must state its score (the AI reads on into it); the engine's pattern carries
+  it (`TacticPattern::score`). The checks refuse a list longer than its places, a ninth pattern, a pattern's place
+  more than 5 columns or 2 rows from its target, and any of it under rules without the computer-navi system. Left
+  out, as nothing of a battle reads them: a pattern's record number (the records are the entries' patterns in the
+  order they come, as the game's write has them), records no entry names, the count, the last eight bytes; and a
+  place holding 0, which no save has. A test holds a block and the data read from it to the same sent list for
+  every seed tried (blocks as the game writes them, sparse, with empty places between entries, with patterns
+  numbered out of order). The save import reads block 0 (`exe5_compat::save::ComputerNaviBlock`,
+  `nettai_match::computer_navi::of_save`). A random match states what the game would write for a player who used
+  each chip of the drawn folder once (`ComputerNavi::of_folder`). The learning itself (the tables and the runs
+  during a battle) is not ported: nothing of a battle reads it.
 
 ### 15.10 EXE5's emotions (as built)
 
