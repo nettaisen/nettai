@@ -1914,10 +1914,11 @@ export type System = SystemSpec
 -- returns, `panels = require("@self/panels")`), which the engine reads
 -- against its schemas when the ruleset is defined, and the game's roles
 -- (§7.4, `roles = require("@self/roles")`). The engine has no game's rules
--- of its own: a ruleset states `chip_use`, `effects`, `flow`, `panels`,
--- `pools`, `reactions` and `status` (required here, so a ruleset without
--- one doesn't type-check), and every field of them (one left out is a load
--- error that names it). A section it may leave out is a feature the game
+-- of its own: a ruleset states `chip_use`, `effects`, `flow`,
+-- `fresh_stats`, `panels`, `pools`, `reactions` and `status` (required
+-- here, so a ruleset without one doesn't type-check), and every field of
+-- them that has no neutral value (one left out is a load error that names
+-- it). A section it may leave out is a feature the game
 -- hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`) or a
 -- table that is empty without it.
 --
@@ -1930,6 +1931,7 @@ export type RulesetSpec = {
     chip_use: RuleSection,
     effects: RuleSection,
     flow: RuleSection,
+    fresh_stats: RuleSection,
     panels: RuleSection,
     pools: RuleSection,
     reactions: RuleSection,
@@ -2576,8 +2578,11 @@ export type IdentitySpec = {
     -- By default the death hook takes its own parts off and an animation
     -- change restarts them (not an overlay worn only while standing).
     -- "flinch_checked" is a flinch hook that tests for what the navi wears
-    -- first (EXE5's team navis').
-    overlay_hooks: { "death" | "refresh" | "flinch" | "flinch_checked" | "drag" }?,
+    -- first (EXE5's team navis'). "lets_go": as a flinch, a drag or a
+    -- paralysis starts, what the navi wears is let go where an attack held
+    -- it shown or hidden (one routine in the three tables: EXE5's
+    -- KnightMan's ball and chain).
+    overlay_hooks: { "death" | "refresh" | "flinch" | "flinch_checked" | "drag" | "lets_go" }?,
     -- The Full Synchro aura's animation around it (a player's has one).
     aura_anim: number?,
     -- The ice block that fits it (none: small).

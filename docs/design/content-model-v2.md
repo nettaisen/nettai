@@ -633,11 +633,14 @@ return define.ruleset {
 
 A field is a section by the engine's name (snake_case: `custom_screen`, `chip_use`, `sp_chips`).
 **A ruleset states every rule of its game**: the engine has no game's rules of its own (the user: "no default
-games anywhere please"). The sections `chip_use`, `effects`, `flow`, `panels`, `pools`, `reactions` and `status`
-are required, and so is every field of them; one left out is a load error that names it
-(`exe6/rules/init.luau: ruleset: flow: missing field `escape_check``), as is a game pack that defines no ruleset.
-The ruleset's declared type requires the seven (`RulesetSpec`, each a `RuleSection`), so the content check reports
-a ruleset without one before any load; which field of a section is missing is the load's to say. What may be left out reads as nothing for
+games anywhere please"). The sections `chip_use`, `effects`, `flow`, `fresh_stats`, `panels`, `pools`,
+`reactions` and `status` are required, and so is every field of them that has no neutral value; one left out is a
+load error that names it (`exe6/rules/init.luau: ruleset: flow: missing field `escape_check``), as is a game pack
+that defines no ruleset. The ruleset's declared type requires the eight (`RulesetSpec`, each a `RuleSection`), so
+the content check reports a ruleset without one before any load; which field of a section is missing is the
+load's to say. `fresh_stats` is what a navi's stats hold when made fresh beyond its own row (`NaviStats::fresh`):
+the Regular memory, the custom level and the mood, and for a game that has them the Beast Out turns and the weapon
+of battle mode 9's A button. What may be left out reads as nothing for
 every game: a feature's section the game hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`), a table
 that is empty without it (`elements`, `buster`, `math`, `custom_screen`), and in a section a list or an attribute
 of one entry that is none unless stated (a panel type's `burn`, the buster's `chaos_cycle`). A rule that picks
