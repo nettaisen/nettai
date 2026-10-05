@@ -77,6 +77,14 @@ bullet.variants = {
         effect = define.effect { sprite = asset.sprite("vulcan-hit"), anim = 1, palette = 0 },
         single = true,
     },
+    -- NapalmMan the navi's buster's (row 0x13: navis/napalmman/buster): the panel found and the one behind it, with
+    -- no flinch, its hit shown once at the bullet (effect 0x58).
+    napalm_buster = common.variant {
+        region = regions.long,
+        hit_mod = 0,
+        effect = define.effect { sprite = asset.sprite("vulcan-hit"), anim = 1, palette = 0 },
+        single = true,
+    },
 }
 
 return bullet
