@@ -138,10 +138,10 @@ impl Side {
             Some(Ok(b)) => {
                 (self.stats.max_base_hp, self.stats.max_hp, self.stats.hp) = (b.max_base_hp, b.max_hp, b.max_hp);
                 self.karma = b.light_dark.0;
-                vec![format!("{name}: the save's level {level} and his HP {}", b.max_hp)]
+                vec![format!("{name}: the save's level {level} and its block's HP {}", b.max_hp)]
             }
-            Some(Err(e)) => vec![format!("{name}: the save's level {level}; his block doesn't read ({e}): the story's HP at that level")],
-            None => vec![format!("{name}: the save's level {level}; its version hasn't him: the story's HP at that level")],
+            Some(Err(e)) => vec![format!("{name}: the save's level {level}; the navi's block doesn't read ({e}): the story's HP at that level")],
+            None => vec![format!("{name}: the save's level {level}; its version has no such navi: the story's HP at that level")],
         }
     }
 }
@@ -232,7 +232,7 @@ mod tests {
         let notes = m.import_save(&content, 0, &image).unwrap();
         let s = &m.sides[0];
         assert_eq!((s.navi_level, s.stats.max_hp, s.stats.hp), (Some(4), 450, 450));
-        assert!(notes.iter().any(|n| n.contains("its version hasn't him")), "{notes:?}");
+        assert!(notes.iter().any(|n| n.contains("its version has no such navi")), "{notes:?}");
         // A MegaMan side takes no level from the save.
         assert_eq!(m.sides[1].navi_level, None);
         m.import_save(&content, 1, &image).unwrap();
