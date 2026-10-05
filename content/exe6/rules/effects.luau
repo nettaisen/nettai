@@ -22,6 +22,9 @@ return {
     -- Its afterimages (`sub_80E33FA`) and form overlays (`sub_80C4530`'s spawner) run while the battle is paused
     -- (their header flag 0x04).
     overlays_run_while_paused = true,
+    -- An afterimage that copies its owner (`sub_80E32D8`) takes its NameID and wears what that record's init hook
+    -- puts on (a Cross's or a Beast's overlay), taken off as it goes.
+    afterimages_wear_overlays = true,
     -- Its sprites' frame load (`sprite_loadAnimationData`, `sub_3006730`) takes the palette offset of the frame's
     -- first part.
     load_sets_part_palette = true,

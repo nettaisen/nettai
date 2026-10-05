@@ -140,6 +140,14 @@ pub struct EffectsRules {
     /// header flag 0x04; EXE5's (0x080E35F4, and its overlays', whose flags
     /// its lab records without it) don't.
     pub overlays_run_while_paused: bool,
+    /// An afterimage that copies its owner (`sub_80E32D8` with no sprite of
+    /// its own) takes the owner's NameID and wears what that record's init
+    /// hook puts on, taken off as it goes: EXE6's. EXE5's afterimage
+    /// (0x080E3550) has no such mode: its spawners give it the owner's
+    /// battle sprite (0x0800DA72) and it wears nothing, so an afterimage of
+    /// a navi that wears something (KnightMan's ball, NumberMan's face) is
+    /// the navi alone.
+    pub afterimages_wear_overlays: bool,
     /// Loading an animation's frame (`sprite_loadAnimationData`) takes the
     /// palette offset of the frame's first part, which a sprite is drawn
     /// with (EXE6's `sub_3006730`); EXE5's (0x03006898) leaves it to the
