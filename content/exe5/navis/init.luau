@@ -5,6 +5,9 @@
 
 -- Navis (a navi chip's navi is defined with its chips).
 require("@self/megaman")
+require("@self/protoman")
+-- Chips: a module defining one, or a series module defining several.
+require("@self/protoman/chip")
 -- Forms.
 require("@self/megaman/forms/base")
 require("@self/megaman/forms/colonelsoul")

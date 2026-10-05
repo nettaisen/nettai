@@ -76,6 +76,12 @@ pub struct Setup {
     /// any, or in an older recording.
     #[serde(default)]
     pub patch_cards: Option<[Vec<u8>; 2]>,
+    /// Both players' team navi levels (0x0203C870, a word a side, from each
+    /// console's init block: the count of its save's event flags 0x300 to
+    /// 0x305, 0 to 6), which the team navis' attacks read their damage by.
+    /// Older recordings have none (MegaMan reads no level).
+    #[serde(default)]
+    pub navi_levels: Option<[u32; 2]>,
 }
 
 /// A console's NaviCust in a setup line.
@@ -522,9 +528,9 @@ impl Round {
             }
         }
         for (side, s) in d.navi_stats.iter().enumerate() {
-            let navi = navi_key(s.navi);
-            if !navi.as_ref().is_some_and(|k| content.defs.navi_by_key(k).is_some()) {
-                out.push(format!("side {side}'s navi {} ({:#04x})", navi.as_deref().unwrap_or("with no key"), s.navi));
+            let navi = compat.navi_key(s.navi);
+            if !navi.is_some_and(|k| content.defs.navi_by_key(k).is_some()) {
+                out.push(format!("side {side}'s navi {} ({:#04x})", navi.unwrap_or("with no key"), s.navi));
             }
             if s.form != 0 {
                 out.push(format!("side {side}'s soul {:#04x} (EXE5's forms)", s.form));
@@ -640,7 +646,11 @@ impl Round {
             Ok(PlayerSetup {
                 folder,
                 joypad_phase: self.setup.joypad_phases[side as usize],
-                navi_level: None,
+                navi_level: match self.setup.navi_levels.map(|l| l[side as usize]) {
+                    None => None,
+                    Some(l) if l <= nettai_battle::custom::MAX_NAVI_LEVEL as u32 => Some(l as u8),
+                    Some(l) => return Err(format!("side {side}'s navi level {l}")),
+                },
                 sp_times: Default::default(),
                 // (The save's emotion window glitch, which a recording
                 // has, is no setup's: EXE5's rules make it. A compiled
@@ -813,8 +823,8 @@ fn battle_folder(content: &Content, compat: &Compat, b: &[u8], regular_pending: 
 /// what EXE5 has none of (EXE6's Beast Out counter, the sun, the version)
 /// none.
 pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<EngineNaviStats, String> {
-    let navi_key = navi_key(s.navi).ok_or_else(|| format!("navi {:#04x} has no key", s.navi))?;
-    let navi = content.defs.navi_by_key(&navi_key).ok_or_else(|| format!("the content has no {navi_key}"))?;
+    let navi_key = compat.navi_key(s.navi).ok_or_else(|| format!("navi {:#04x} has no key", s.navi))?;
+    let navi = content.defs.navi_by_key(navi_key).ok_or_else(|| format!("the content has no {navi_key}"))?;
     let weapon = |n: u8| -> Result<Option<WeaponHandle>, String> {
         match compat.weapon(n)? {
             None => Ok(None),
@@ -876,7 +886,8 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
             mode9_a: None,
             buster_shot: variant(r[0x4D])?,
             charge_shot_kind: variant(r[0x4F])?,
-            back_special_damage: 0,
+            // (EXE5's +0x48, as EXE6's: a team navi's B+Back special's.)
+            back_special_damage: u16::from_le_bytes([r[0x48], r[0x49]]),
         },
         bugs: NaviCustBugs {
             panel_trail_kind: r[0x12],
@@ -928,12 +939,6 @@ pub fn patch_cards(content: &Content, compat: &Compat, version: crate::Version, 
         cards.push(nettai_battle::patch_cards::InstalledCard { card, enabled });
     }
     nettai_battle::patch_cards::PatchCards::new(&cards)
-}
-
-/// EXE5's navi numbers' keys (NaviStats +0x29): MegaMan's. (The Team
-/// Battle's navis come with their content.)
-pub fn navi_key(n: u8) -> Option<String> {
-    (n == 0).then(|| "megaman".to_string())
 }
 
 /// Differences between the engine and an EXE5 frame: the state machine and

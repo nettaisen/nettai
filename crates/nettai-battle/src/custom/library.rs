@@ -35,6 +35,11 @@ pub trait Library {
     fn program_advances(&self) -> &[ProgramAdvance];
     /// A link navi's own chip, offered once a round (none for MegaMan).
     fn navi_chip(&self, navi: NaviHandle) -> Option<FolderChip>;
+    /// Whether the offer of the navi's own chip draws from the console's
+    /// RNG (`NaviData::own_chip_draws`).
+    fn navi_chip_draws(&self, _navi: NaviHandle) -> bool {
+        false
+    }
     /// The navi's no-running message: the characters in each of its lines
     /// (a line after the first with none isn't there).
     fn run_message(&self, navi: NaviHandle) -> [u8; 3];
@@ -99,6 +104,10 @@ impl Library for Content {
     fn navi_chip(&self, navi: NaviHandle) -> Option<FolderChip> {
         let (id, code) = Content::navi_chip(self, navi)?;
         Some(FolderChip { id, code })
+    }
+
+    fn navi_chip_draws(&self, navi: NaviHandle) -> bool {
+        self.navi(navi).own_chip_draws
     }
 
     fn run_message(&self, navi: NaviHandle) -> [u8; 3] {

@@ -5,6 +5,7 @@
 
 local attachment = require("../objects/attachment")
 local common = require("@exelib/cannon")
+local navi_arms = require("./navi_arms")
 local projectile = require("./projectile")
 
 local cannon = {}
@@ -30,6 +31,7 @@ local LOOK: ShooterLook = {
     sound = asset.sound("cannon"),
     attachment = attachment.kind,
     projectiles = projectile,
+    arm_anims = navi_arms.cannon,
     more_afterimages = hub_afterimage,
 }
 

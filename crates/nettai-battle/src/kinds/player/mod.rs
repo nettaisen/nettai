@@ -1301,8 +1301,9 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 /// - MegaMan in a Cross (a Cross Beast's is 0): the Cross's
 ///   (`byte_80203EA`);
 /// - a link navi (`sub_800FD0A`): 4 in Full Synchro, 1 while it can't
-///   charge, else 0 (the navi's version 0's of `byte_800FD5C`; every
-///   navi's multiplier in `byte_80212BB` is 1).
+///   charge, else 0 (the navi's version 0's of `byte_800FD5C`), times the
+///   navi's palette step (`byte_80212BB`: every navi's is 1 in EXE6; EXE5's
+///   0x0801D737).
 fn navi_palette(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
     if let Some(glow) = &form_of(b, r).glow {
@@ -1325,11 +1326,12 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
     let full_synchro = emotion(b, b.objects.get(r).alliance) == Emotion::FullSynchro;
     let style = if s.element != 0 { s.element.wrapping_mul(5).wrapping_add(0x12) } else { 0 };
     let palette = if !is_megaman(b, r) {
-        match (full_synchro, no_charge) {
+        let by_state: u8 = match (full_synchro, no_charge) {
             (true, _) => 4,
             (false, true) => 1,
             (false, false) => 0,
-        }
+        };
+        by_state.wrapping_mul(navi_of(b, r).palette_step)
     } else if no_charge {
         1u8.wrapping_add(style)
     } else {
