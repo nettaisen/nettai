@@ -358,10 +358,10 @@ named_fields! {
         /// EXE5's no-charge drive (DarkInvs): its ticks left (AIData+0x36;
         /// counted down in the intake while the navi has the no-charge
         /// state, asking for the stun strike at 0; 0xFFFF holds), and the
-        /// computer-navi AI driving it (AIData+0xF0, which VarSwrd's pick
+        /// auto battle AI driving it (AIData+0xF0, which VarSwrd's pick
         /// reads).
         NoChargeTimer = "no_charge_timer", U16, rw;
-        ComputerDriven = "computer_driven", Bool, rw;
+        InAutoBattle = "in_auto_battle", Bool, rw;
     }
 }
 
@@ -1125,7 +1125,7 @@ pub struct ColumnInfo {
     pub timer: u16,
 }
 
-/// An entry of a player's tactics (EXE5's computer-navi data) as content
+/// An entry of a player's tactics (EXE5's auto battle data) as content
 /// reads it: a chip, a pattern (its place among the patterns, from 0), or
 /// nothing (the halfword 0 or an empty place, 0xFFFF).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1138,7 +1138,7 @@ pub enum TacticEntry {
     Empty,
 }
 
-/// What a computer navi's read of a pattern finds (EXE5's 0x0802BCD6): a
+/// What an auto-battling navi's read of a pattern finds (EXE5's 0x0802BCD6): a
 /// chip place's chip, a halfword the game takes for a chip's number
 /// without its being a chip place's chip (a place holding 0, half of a
 /// pattern's score, a record's `dx` and `dy`), or the run's end (0xFFFF).
@@ -1443,10 +1443,10 @@ pub trait CoreApi {
     fn tracked(&self, side: u8) -> Option<ObjectRef>;
     /// Slot `i` (from 0, of four) of a side's list of alive actors.
     fn alive_actor_slot(&self, side: u8, i: u8) -> Option<ObjectRef>;
-    /// Player `side`'s tactics (EXE5's computer-navi data): how many entries
+    /// Player `side`'s tactics (EXE5's auto battle data): how many entries
     /// they count, their entry in place `i` (from 0; past the count, an
     /// empty place), their pattern `i` (from 0)'s place from the target,
-    /// and the `k`th halfword (from 0) a computer navi reads of that
+    /// and the `k`th halfword (from 0) a navi in auto battle reads of that
     /// pattern's run, which goes on past a record whose five chip places
     /// all hold one (0x0802BCD6).
     fn tactic_count(&self, side: u8) -> usize;
@@ -1512,7 +1512,7 @@ pub trait CoreApi {
     /// in the own-gauges mode, else the shared one).
     fn gauge_damage(&self, side: u8) -> u16;
     /// A side's sword pick (`sub_802E070`+0x12): the swing a variable sword
-    /// makes for a navi no buttons drive (EXE5's computer navi draws it,
+    /// makes for a navi no buttons drive (EXE5's auto battle draws it,
     /// 0x0802A330).
     fn sword_pick(&self, side: u8) -> u8;
     fn set_sword_pick(&mut self, side: u8, pick: u8);

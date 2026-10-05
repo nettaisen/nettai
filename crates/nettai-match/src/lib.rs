@@ -17,7 +17,7 @@
 #[cfg(test)]
 mod exe6_forms;
 pub mod check;
-pub mod computer_navi;
+pub mod auto_battle;
 pub mod draw;
 pub mod facts;
 pub mod file;
@@ -49,7 +49,7 @@ use nettai_battle::{Battle, Rng};
 use nettai_content_api::{NaviHandle, StageHandle, SystemHandle};
 
 pub use check::{check_match, check_side};
-pub use computer_navi::ComputerNavi;
+pub use auto_battle::AutoBattle;
 pub use draw::Draws;
 pub use file::{parse, write};
 pub use import::save_game;
@@ -100,7 +100,7 @@ pub fn systems(content: &Content) -> &[SystemHandle] {
     content.defs.ruleset_systems()
 }
 
-/// What the send of a side's computer-navi data draws from, with the seed
+/// What the send of a side's auto battle data draws from, with the seed
 /// and the side.
 const TACTICS_SALT: u32 = 0x5441_4354;
 
@@ -147,14 +147,14 @@ pub struct Side {
     /// directly). With one, the stats are the navi's fresh stats with what
     /// the save keeps (`stats::SAVE_FIELDS`).
     pub navicust: Option<NaviCust>,
-    /// EXE5's computer-navi data, the player's save's block whole
-    /// (`computer_navi`): what a computer navi plays from it, the Dark
+    /// EXE5's auto battle data, the player's save's block whole
+    /// (`auto_battle`): what a navi in auto battle plays from it, the Dark
     /// MegaMan their failed Chaos Unison brings and their own navi under
     /// DarkInvs. The default: a block nothing has written (a save that
-    /// never finished a battle; the computer navi only fires its buster
-    /// between rests), which a game without computer navis has. The round's
+    /// never finished a battle; the navi in auto battle only fires its buster
+    /// between rests), which a game without auto battle has. The round's
     /// setup sends it as the console does (`Tactics::sent`).
-    pub computer_navi: ComputerNavi,
+    pub auto_battle: AutoBattle,
     /// EXE5's karma, the save's light/dark value (0 to 1000; a fresh
     /// save's 500), and the souls the side has (EXE5's Soul Unison: none
     /// listed, every soul the content has): facts its systems take by name
@@ -290,9 +290,9 @@ impl Match {
     /// rules take one, each side's is to be chosen); an empty folder, no
     /// Regular or tag chips, the game's own Crosses, no patch cards, a
     /// NaviCust with no programs where the rules have one, and where they
-    /// have computer navis the computer-navi data the game's battle end
+    /// have auto battle the auto battle data the game's battle end
     /// writes of a player it has learned nothing of
-    /// (`ComputerNavi::nothing_learned`). No seed (the
+    /// (`AutoBattle::nothing_learned`). No seed (the
     /// battle's is drawn when it is played). Its folders are none the
     /// checks accept until they are made, nor is a side without the version
     /// its game takes.
@@ -336,8 +336,8 @@ impl Side {
             sp_times: SpTimes::default(),
             navicust: None,
             // (What the game's battle end writes of a player it has
-            // learned nothing of, where the game has computer navis.)
-            computer_navi: if computer_navi::has(content) { ComputerNavi::nothing_learned() } else { ComputerNavi::default() },
+            // learned nothing of, where the game has auto battle.)
+            auto_battle: if auto_battle::has(content) { AutoBattle::nothing_learned() } else { AutoBattle::default() },
             karma: facts::DEFAULT_KARMA,
             souls: None,
             soul_unison: true,
@@ -384,7 +384,7 @@ impl Match {
                 // stream of the side's own from the seed (the original's
                 // is the console's at the link's start, which nothing
                 // here runs).
-                tactics: s.computer_navi.tactics().sent(&mut Rng::new(seed ^ TACTICS_SALT ^ (side as u32).wrapping_mul(0x9E37_79B9))),
+                tactics: s.auto_battle.tactics().sent(&mut Rng::new(seed ^ TACTICS_SALT ^ (side as u32).wrapping_mul(0x9E37_79B9))),
             };
             // What the save unlocks, into its EXE6 systems' setup: its
             // version, every Cross of it (or the side's list) and Beast Out
@@ -507,8 +507,8 @@ pub fn navi_crosses(content: &Content, navi: NaviHandle) -> Option<Vec<nettai_co
 
 /// What a match is, for the terminal: its game and rules, the seed, the
 /// field, each side's navi, version (where the rules take one) and
-/// Crosses, with `folders` the folders, and where the game has computer
-/// navis what one plays from the side's save; `you` is the side the player
+/// Crosses, with `folders` the folders, and where the game has auto
+/// battle what a navi in it plays from the side's save; `you` is the side the player
 /// plays.
 pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usize) -> String {
     let place = |p: &Place| {
@@ -544,10 +544,10 @@ pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usi
         if folders {
             out.push_str(&format!("\n  folder ({who}): {}", folders::describe(content, &s.folder)));
         }
-        // What a computer navi plays from the side's save, where the game
-        // has computer navis.
-        if computer_navi::has(content) {
-            out.push_str(&format!("\n  a computer navi's plays ({who}): {}", s.computer_navi.describe(content)));
+        // What a navi in auto battle plays from the side's save, where the game
+        // has auto battle.
+        if auto_battle::has(content) {
+            out.push_str(&format!("\n  auto battle plays ({who}): {}", s.auto_battle.describe(content)));
         }
     }
     out

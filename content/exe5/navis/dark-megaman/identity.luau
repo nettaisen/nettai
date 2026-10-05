@@ -1,7 +1,7 @@
 --!strict
 -- Dark MegaMan (NameID 0x18D), whom a failed Chaos Unison brings onto the other side (rules/souls/chaos): a navi no
 -- player controls (docs/design/exe5-map.md §15.9). His actor record (0x08014C94's row: version 0, actor type navi, AI
--- index 0x16, which EXE5's computer-navi AI answers for: rules/computer-navi); his enemy structs (0x081041C0: MegaMan's
+-- index 0x16, which EXE5's auto battle AI answers for: rules/auto_battle); his enemy structs (0x081041C0: MegaMan's
 -- battle sprite 00-00 with a shadow, palette scale 1; 0x081041C8: 500 HP, no element, flags 9, his body dealing 10);
 -- his collision (0x08013C5A: for NameID 0x18D his own body's row 0x13 and the navi target's row 2, hit modifier 3);
 -- what his flags give (superarmor, affected by ice) and his post-init hook (0x08104270: palette 1, untouchable, his

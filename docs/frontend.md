@@ -750,7 +750,7 @@ chip's on a Falzar console is the known difference above.
 **On EXE5 consoles** (verification's tools/frontend-compare/exe5.txt: 16 of
 chiplab's library-exe5 scenarios, Team ProtoMan against Team Colonel,
 traced on the Team ProtoMan console and once on the Team Colonel one,
-Soul and Chaos Unison and the computer navi's Chaos among them, compared
+Soul and Chaos Unison and the auto-battling navi's Chaos among them, compared
 with `--text original`, EXE5's pack loaded beside EXE6's): of 7,964 frames,
 7,914 are pixel-exact, the navis included, and 12 scenarios wholly: the
 HUD, the emotion window (a dark chip user's flicker too, now that the
@@ -763,7 +763,7 @@ deletion's result. What still differs:
 - the UNITE button for a soul not offered yet (HeatSoul for AntiFire, a
   pick in custom/picks) is gray where EXE5's is lit;
 - a soul's buster shot's flame is whiter for a few frames (Soul and Chaos
-  Unison, the computer navi's Chaos);
+  Unison, the auto-battling navi's Chaos);
 - an explosion's colors in two frames of AntiFire's.
 
 The comparison needs the ROM, so it lives outside this repository, with the
@@ -960,7 +960,7 @@ its sides may say besides:
 karma = 100                                # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
 souls = ["protosoul", "colonelsoul"]       # optional: the souls it has, EXE5's, either version (none: every soul)
 
-[left.computer_navi]                       # optional: what a computer navi plays from the side's save, whole (none: nothing learned)
+[left.auto_battle]                       # optional: what a navi in auto battle plays from the side's save, whole (none: nothing learned)
 first = [{}, {}, {}]                       # the data's places 1 to 3: each a chip, a pattern record's number, 0 or {} (an empty place)
 standard = [                               # places 4 to 27, all 24: the game writes its player's most used standard chips
     "sword", "sword", "sword", "sword",
@@ -1112,30 +1112,30 @@ Tango's netplay templates hold, read by `exe5_compat::save`) makes the match
 EXE5's and gives its karma, the souls its version's flags give (the forms
 compat names for those numbers), its Soul Unison and Chaos Unison, to a side
 with a NaviCust the board of its ExpMemry (`expansions`: the NaviCust's
-programs aren't the import's yet), and its computer-navi data (the block at
+programs aren't the import's yet), and its auto battle data (the block at
 save +0x554C, place for place and record for record, chips by their
 numbers' names). What a match can't state of a block is left empty and
 said: a chip number the game has no chip for, and an entry for a pattern
-past the eighth. The editor's computer navi pane takes that data alone from
-a save ("From a save…", `nettai_match::computer_navi::of_save`), and edits
+past the eighth. The editor's Auto battle pane takes that data alone from
+a save ("From a save…", `nettai_match::auto_battle::of_save`), and edits
 it: the 42 places in their six lists, the eight records, and the game's
 chips to put in them (README.md, "The match editor"). A side that operates a team navi takes
 the save's level (its story flags' count) and, where the save's version has
 the navi, the HP and the light/dark value of the navi's own block; a navi
 of the other version, the story's HP at the save's level.
 
-**The computer navi's data** (`[left.computer_navi]`,
-`nettai_match::computer_navi`, docs/design/exe5-map.md §15.9) is what a
-computer navi plays from the side's save: the Dark MegaMan that the side's
+**The auto battle data** (`[left.auto_battle]`,
+`nettai_match::auto_battle`, docs/design/exe5-map.md §15.9) is what a
+navi in auto battle plays from the side's save: the Dark MegaMan that the side's
 failed Chaos Unison brings, and the side's own navi under DarkInvs. EXE5
 learns it from its player (the chips they use most, and the runs of chips
 they use from one place) and keeps it in the save as a block of 42 places
 and eight pattern records. A battle reads nearly all of that block, so a
 side that states the data states all of it, and nothing is filled in: every
 place of every list, and all eight records. A side with no
-`[left.computer_navi]` has a block nothing has written (every place empty,
+`[left.auto_battle]` has a block nothing has written (every place empty,
 every record blank: 0xFF throughout), which is a save's that has never
-finished a battle; the computer navi only fires its buster between rests.
+finished a battle; the navi in auto battle only fires its buster between rests.
 A new match (the editor's New) and a random one state what the game's
 battle end writes instead: a new match's sides every place empty and every
 record zeros (a player it has learned nothing of, who plays the same), a
@@ -1160,7 +1160,7 @@ stand in any place, as in the save (a save made by hand can have a giga chip
 among the patterns' places).
 
 `records` is the eight pattern records in their order, each a table: `dx`
-and `dy`, where the computer navi stands from its target (`dx` columns
+and `dy`, where the navi in auto battle stands from its target (`dx` columns
 toward its enemies, so -2 is two columns short of the target; `dy` rows down
 the screen); `chips`, its five chip places, each a chip's name, `0` or `{}`
 (the chips it uses there in a row, to the first empty place); and `score`,
@@ -1172,10 +1172,10 @@ has written is `dx = -1, dy = -1`, five `{}` and `score = 4294967295`.
 The file refuses what the game can't hold: a list or a record that doesn't
 state each of its places, a pattern number past 8, a place from the target
 or a score that doesn't fit its bytes, a chip the game hasn't, an entry that
-is none of the above; and any of it for a game without computer navis
+is none of the above; and any of it for a game without auto battle
 (EXE6).
 
-**Why all of it is stated.** The computer navi plays the entries in order,
+**Why all of it is stated.** The navi in auto battle plays the entries in order,
 the played one going last: three times in four the first, otherwise it steps
 into an enemy's row and fires its buster (three shots).
 
@@ -1199,7 +1199,7 @@ into an enemy's row and fires its buster (three shots).
   show, to a navi that plays a pattern. None of the games' navis does: the
   game's test of the pattern's place (0x0802BC48) reads what its move-lag
   routine left behind, not the place, and always fails for them, so a
-  pattern entry only ever costs the computer navi a turn (it steps to a
+  pattern entry only ever costs the navi in auto battle a turn (it steps to a
   panel of its own area) and its record's contents don't play. The records
   are stated as the save has them all the same.
 
@@ -1211,7 +1211,7 @@ blocks of each awkward shape.
 
 A random match (`nettai_match::draw`, the editor's Random) states the data
 too: what the game would have written for a player who used each chip of the
-drawn folder once and learned no pattern (`ComputerNavi::of_folder`: the
+drawn folder once and learned no pattern (`AutoBattle::of_folder`: the
 folder's most held standard, mega and giga chips in their lists, every
 record zeros, as the game's battle end writes them, 0x0802C540). A netplay
 offer carries the data.

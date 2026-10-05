@@ -411,7 +411,7 @@ local status = {
         drain_bug_flags = true,
         -- DarkInvs's no-charge drive: its ticks count down at the intake's end (0x0800DBE0) and their end asks for the
         -- stun strike (action 0x49, the drive's end: chips/darkinvs); the idle hands the step to the systems (the
-        -- computer-navi AI, 0x080F03E4); the last 180 ticks flicker gray (0x080136E0).
+        -- auto battle AI, 0x080F03E4); the last 180 ticks flicker gray (0x080136E0).
         no_charge_drive = true,
         -- EXE5's loss of HP (object_subtractHP, 0x0800C6E0; applyDamageToPlayer, 0x080185A2): a player's loss drains
         -- its side's gauge too, a dark MegaMan (emotion 5) brought to 0 holds at 1 HP once a battle and asks for his

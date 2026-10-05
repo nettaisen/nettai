@@ -1,12 +1,12 @@
-//! EXE5's computer-navi data, as a match states it for a side: what a
-//! computer navi plays from that player's save.
+//! EXE5's auto battle data, as a match states it for a side: what a
+//! navi in auto battle plays from that player's save.
 //!
 //! **What it is.** An EXE5 save keeps a block of 0xE0 bytes for its player
 //! (save +0x554C, the toolkit's +0x78; `nettai_battle::tactics`): 42
 //! places, each a chip, a pattern record's number, a 0 or empty, and eight
 //! pattern records, each a place by a target (`dx` columns toward the
-//! computer navi's enemies, `dy` rows), five chip places and the pattern's
-//! score. A computer navi plays it (content/exe5/rules/computer-navi): the
+//! auto-battling navi's enemies, `dy` rows), five chip places and the pattern's
+//! score. A navi in auto battle plays it (content/exe5/rules/auto_battle): the
 //! Dark MegaMan a failed Chaos Unison brings plays the data of the player
 //! whose Chaos Unison failed, and a navi under DarkInvs its own side's. It
 //! plays the entries in order, the played one going last: three times in
@@ -41,10 +41,10 @@
 //! (a learned pattern's chip places past its chips are empty; a record its
 //! learning never filled is zeros, [`Record::ZERO`]). So after any finished
 //! battle a save's unused records are zeros
-//! ([`ComputerNavi::nothing_learned`] is what the write leaves of a player
+//! ([`AutoBattle::nothing_learned`] is what the write leaves of a player
 //! it has learned nothing of: a new match's side, and what a drawn one
 //! starts from). A block nothing has written is 0xFF throughout
-//! ([`ComputerNavi::default`]: the save's six other blocks are, and its
+//! ([`AutoBattle::default`]: the save's six other blocks are, and its
 //! player's until its first battle ends): a side that states no data.
 //!
 //! **What a battle reads of it** is nearly all of it, so a match states
@@ -70,7 +70,7 @@
 //!   order all show. A 0 in a chip place is played as chip 0. (To a navi
 //!   that plays a pattern: with the games' own navis the test of a
 //!   pattern's place, 0x0802BC48, always fails, so a pattern entry only
-//!   costs the computer navi a turn and its record never plays. A match
+//!   costs the navi in auto battle a turn and its record never plays. A match
 //!   states the records as the save has them all the same.)
 //!
 //! The lists are named for what the game writes there; any entry may stand
@@ -81,19 +81,19 @@
 //! send writes, and the block's last eight bytes, which nothing reads. And
 //! a chip number the game has no chip for can't be named.
 //!
-//! **What the game can't hold** is refused ([`ComputerNavi::check`], and a
+//! **What the game can't hold** is refused ([`AutoBattle::check`], and a
 //! file's own reading): a list or a record with more or fewer entries than
 //! it has places, a pattern number past the eighth record, a place from a
 //! target or a score that doesn't fit its bytes, a chip the game hasn't,
-//! and any of it for a game whose rules have no computer navis (EXE6).
+//! and any of it for a game whose rules have no auto battle (EXE6).
 
 use crate::ids;
 use nettai_battle::content::{ChipClass, Content};
 use nettai_battle::tactics::{MAX_ENTRIES, MAX_PATTERNS, PATTERN_CHIPS, PatternChip, Tactic, TacticPattern, Tactics};
 use nettai_content_api::ChipHandle;
 
-/// The system that drives the computer navis (EXE5's).
-pub const SYSTEM: &str = "computer-navi";
+/// The system that drives the navis in auto battle (EXE5's).
+pub const SYSTEM: &str = "auto-battle";
 /// The block's places, and how many of them (the first) the send shuffles
 /// apart from the rest.
 pub const PLACES: usize = MAX_ENTRIES;
@@ -177,7 +177,7 @@ pub enum ChipPlace {
     Chip(ChipHandle),
 }
 
-/// A pattern record, as the block has it: where the computer navi stands
+/// A pattern record, as the block has it: where the navi in auto battle stands
 /// from its target (`dx` columns toward its enemies, so a negative one is
 /// short of the target; `dy` rows, down the screen), its five chip places
 /// (the chips it uses there, in order, to the first empty one), and its
@@ -207,39 +207,39 @@ impl Record {
     }
 }
 
-/// A player's computer-navi data: the block's 42 places and its eight
+/// A player's auto battle data: the block's 42 places and its eight
 /// pattern records, in order. The default is a block nothing has written
 /// (every place empty, every record blank), a save's that has never
-/// finished a battle: the computer navi only fires its buster.
+/// finished a battle: the navi in auto battle only fires its buster.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ComputerNavi {
+pub struct AutoBattle {
     pub places: [Entry; PLACES],
     pub records: [Record; RECORDS],
 }
 
-impl Default for ComputerNavi {
-    fn default() -> ComputerNavi {
-        ComputerNavi { places: [Entry::Empty; PLACES], records: [Record::BLANK; RECORDS] }
+impl Default for AutoBattle {
+    fn default() -> AutoBattle {
+        AutoBattle { places: [Entry::Empty; PLACES], records: [Record::BLANK; RECORDS] }
     }
 }
 
-/// Whether the game's rules have computer navis (a side takes the data).
+/// Whether the game's rules have auto battle (a side takes the data).
 pub fn has(content: &Content) -> bool {
     crate::ruleset_has_system(content, SYSTEM)
 }
 
-impl ComputerNavi {
+impl AutoBattle {
     /// Whether it is a block nothing has written (the default: what a side
     /// that states no data has).
     pub fn is_blank(&self) -> bool {
-        *self == ComputerNavi::default()
+        *self == AutoBattle::default()
     }
 
     /// What the game's battle end writes (0x0802C540) for a player it has
     /// learned nothing of: every place empty, every record zeros. The
-    /// computer navi only fires its buster, as from a blank block.
-    pub fn nothing_learned() -> ComputerNavi {
-        ComputerNavi { places: [Entry::Empty; PLACES], records: [Record::ZERO; RECORDS] }
+    /// navi in auto battle only fires its buster, as from a blank block.
+    pub fn nothing_learned() -> AutoBattle {
+        AutoBattle { places: [Entry::Empty; PLACES], records: [Record::ZERO; RECORDS] }
     }
 
     /// How many places aren't empty.
@@ -305,7 +305,7 @@ impl ComputerNavi {
     /// count stays 0) or the patterns'; every record zeros. Chips used
     /// equally often come as the game's sort leaves them (0x0814301C: the
     /// higher chip number first).
-    pub fn learned(content: &Content, uses: &[(ChipHandle, u32)]) -> ComputerNavi {
+    pub fn learned(content: &Content, uses: &[(ChipHandle, u32)]) -> AutoBattle {
         let number = |c: ChipHandle| exe5_compat::Compat::exe5().chip_entry(ids::local(&content.defs.chip(c).key)).map_or(c.0, |e| e.id);
         let most = |class: ChipClass| -> Vec<ChipHandle> {
             let mut list: Vec<(u32, u16, ChipHandle)> =
@@ -313,7 +313,7 @@ impl ComputerNavi {
             list.sort_by(|a, b| (b.0, b.1).cmp(&(a.0, a.1)));
             list.into_iter().map(|x| x.2).collect()
         };
-        let mut out = ComputerNavi::nothing_learned();
+        let mut out = AutoBattle::nothing_learned();
         let mut write = |list: &List, chips: &mut dyn Iterator<Item = ChipHandle>| {
             for (place, chip) in list.places().zip(chips) {
                 out.places[place] = Entry::Chip(chip);
@@ -328,9 +328,9 @@ impl ComputerNavi {
     }
 
     /// The data the game would have learned from a player who used each
-    /// chip of `folder` once ([`ComputerNavi::learned`], each chip counted
+    /// chip of `folder` once ([`AutoBattle::learned`], each chip counted
     /// as often as the folder holds it).
-    pub fn of_folder(content: &Content, folder: &crate::Folder) -> ComputerNavi {
+    pub fn of_folder(content: &Content, folder: &crate::Folder) -> AutoBattle {
         let mut uses: Vec<(ChipHandle, u32)> = Vec::new();
         for c in folder.chips() {
             match uses.iter_mut().find(|(id, _)| *id == c.id) {
@@ -338,7 +338,7 @@ impl ComputerNavi {
                 None => uses.push((c.id, 1)),
             }
         }
-        ComputerNavi::learned(content, &uses)
+        AutoBattle::learned(content, &uses)
     }
 
     /// What is wrong with the data for a side of a match of `game`: what
@@ -350,18 +350,18 @@ impl ComputerNavi {
             return out;
         }
         if !has(content) {
-            out.push(format!("computer-navi data, but {game} has no computer navis (no {SYSTEM} system)"));
+            out.push(format!("auto battle data, but {game} has no auto battle (no {SYSTEM} system)"));
         }
         for (i, e) in self.places.iter().enumerate() {
             if let Entry::Pattern(n) = e
                 && *n as usize >= RECORDS
             {
-                out.push(format!("place {} of the computer navi's data names pattern {}; it has {RECORDS} pattern records", i + 1, *n as u16 + 1));
+                out.push(format!("place {} of the auto battle data names pattern {}; it has {RECORDS} pattern records", i + 1, *n as u16 + 1));
             }
         }
         let foreign = |c: ChipHandle| c.index() >= content.defs.chips.len() || !ids::in_game(content, game, &content.defs.chip(c).key);
         if self.chips().any(foreign) {
-            out.push(format!("the computer navi's data names a chip {game} hasn't"));
+            out.push(format!("the auto battle data names a chip {game} hasn't"));
         }
         out
     }
@@ -409,7 +409,7 @@ impl ComputerNavi {
 }
 
 /// A pattern's place across the field, in words: "2 columns short of its
-/// target" (`dx` is toward the computer navi's enemies).
+/// target" (`dx` is toward the auto-battling navi's enemies).
 pub fn across(dx: i8) -> String {
     let columns = |n: u8| if n == 1 { "1 column".to_string() } else { format!("{n} columns") };
     match dx {
@@ -434,20 +434,20 @@ pub fn place(dx: i8, dy: i8) -> String {
     format!("{}, {}", across(dx), down(dy))
 }
 
-/// The computer-navi data of the EXE5 save in `file` (a .sav's bytes, or a
+/// The auto battle data of the EXE5 save in `file` (a .sav's bytes, or a
 /// raw save image), for a side of a match of `game`: what the game has
 /// learned of the save's player (`crate::import_exe5`), and what is worth
 /// saying about it; or why the file gives none.
-pub fn of_save(content: &Content, game: &str, file: &[u8]) -> Result<(ComputerNavi, Vec<String>), String> {
+pub fn of_save(content: &Content, game: &str, file: &[u8]) -> Result<(AutoBattle, Vec<String>), String> {
     if !has(content) {
-        return Err(format!("{game} has no computer navis"));
+        return Err(format!("{game} has no auto battle"));
     }
     match crate::save_game(file)? {
         exe5_compat::ROOT => {
             let save = crate::import_exe5::read(file)?;
-            Ok(crate::import_exe5::computer_navi(content, game, &save.computer_navi()))
+            Ok(crate::import_exe5::auto_battle(content, game, &save.auto_battle()))
         }
-        other => Err(format!("a save of {other}, which keeps no computer-navi data")),
+        other => Err(format!("a save of {other}, which keeps no auto battle data")),
     }
 }
 
@@ -463,8 +463,8 @@ mod tests {
 
     /// The data with these entries in these places (from 0), its records
     /// blank.
-    fn data(entries: &[(usize, Entry)]) -> ComputerNavi {
-        let mut out = ComputerNavi::default();
+    fn data(entries: &[(usize, Entry)]) -> AutoBattle {
+        let mut out = AutoBattle::default();
         for (place, e) in entries {
             out.places[*place] = *e;
         }
@@ -484,7 +484,7 @@ mod tests {
         assert_eq!((list_of(0).name, list_of(3).name, list_of(32).name, list_of(40).name, list_of(41).name), ("first", "standard", "giga", "patterns", "program_advance"));
         assert_eq!(STANDARD_TIMES.iter().sum::<usize>(), STANDARD.len);
         assert_eq!((Record::BLANK.played().len(), Record::ZERO.played().len()), (0, RECORD_CHIPS));
-        assert!(ComputerNavi::default().is_blank() && ComputerNavi::default().entries() == 0);
+        assert!(AutoBattle::default().is_blank() && AutoBattle::default().entries() == 0);
     }
 
     /// Why a match states the places: the send's swaps are no even shuffle.
@@ -498,7 +498,7 @@ mod tests {
         let content = exe5_content();
         let chips: Vec<ChipHandle> =
             (0..content.defs.chips.len() as u16).map(ChipHandle).filter(|&c| !content.chip(c).codes.is_empty()).take(39).collect();
-        let mut full = ComputerNavi::default();
+        let mut full = AutoBattle::default();
         for (i, &c) in chips.iter().enumerate() {
             full.places[FIRST + i] = Entry::Chip(c);
         }
@@ -516,7 +516,7 @@ mod tests {
         let zero = data(&[(3, Entry::Zero), (9, Entry::Chip(chips[0]))]).tactics().sent(&mut Rng::new(7));
         assert_eq!(zero.entries.len(), 2);
         assert!(zero.entries.contains(&Tactic::Nothing));
-        assert_eq!(ComputerNavi::default().tactics().sent(&mut Rng::new(3)).entries, Vec::new());
+        assert_eq!(AutoBattle::default().tactics().sent(&mut Rng::new(3)).entries, Vec::new());
     }
 
     /// What the engine plays of the data: each place its entry, each record
@@ -540,7 +540,7 @@ mod tests {
         assert_eq!(block.patterns[3], TacticPattern { dx: 0, dy: 0, chips: [PatternChip::Nothing; 5], score: 0 });
         // (A blank record is the engine's unused one.)
         assert_eq!(block.patterns[1], TacticPattern::UNUSED);
-        assert_eq!(ComputerNavi::default().tactics().patterns, [TacticPattern::UNUSED; RECORDS]);
+        assert_eq!(AutoBattle::default().tactics().patterns, [TacticPattern::UNUSED; RECORDS]);
         assert_eq!((d.entries(), d.chips().count()), (5, 2 + 3 + 5));
         assert_eq!(d.check(&content, "exe5"), Vec::<String>::new());
     }
@@ -550,18 +550,18 @@ mod tests {
     fn what_the_game_cant_hold_is_refused() {
         let content = exe5_content();
         let cannon = chip(&content, "cannon");
-        let has = |d: &ComputerNavi, said: &str| {
+        let has = |d: &AutoBattle, said: &str| {
             let problems = d.check(&content, "exe5");
             assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
         };
-        has(&data(&[(33, Entry::Pattern(8))]), "place 34 of the computer navi's data names pattern 9; it has 8 pattern records");
+        has(&data(&[(33, Entry::Pattern(8))]), "place 34 of the auto battle data names pattern 9; it has 8 pattern records");
         has(&data(&[(0, Entry::Chip(ChipHandle(u16::MAX)))]), "names a chip exe5 hasn't");
-        let mut foreign = ComputerNavi::default();
+        let mut foreign = AutoBattle::default();
         foreign.records[7].chips[4] = ChipPlace::Chip(ChipHandle(u16::MAX));
         has(&foreign, "names a chip exe5 hasn't");
         // Every place filled, any class anywhere, every record full: the
         // block holds it. So are records of zeros, named or not.
-        let mut full = ComputerNavi { places: [Entry::Chip(cannon); PLACES], records: [Record { dx: -5, dy: 2, chips: [ChipPlace::Chip(cannon); 5], score: u32::MAX }; RECORDS] };
+        let mut full = AutoBattle { places: [Entry::Chip(cannon); PLACES], records: [Record { dx: -5, dy: 2, chips: [ChipPlace::Chip(cannon); 5], score: u32::MAX }; RECORDS] };
         full.places[33] = Entry::Pattern(7);
         assert_eq!(full.check(&content, "exe5"), Vec::<String>::new());
         let mut zeros = data(&[(3, Entry::Chip(cannon))]);
@@ -569,12 +569,12 @@ mod tests {
         assert_eq!(zeros.check(&content, "exe5"), Vec::<String>::new());
         zeros.places[33] = Entry::Pattern(1);
         assert_eq!(zeros.check(&content, "exe5"), Vec::<String>::new());
-        // EXE6 has no computer navis.
+        // EXE6 has no auto battle.
         let six = exe6_content();
         let cannon6 = ids::chip(&six, "exe6", "cannon").unwrap();
         let problems = data(&[(0, Entry::Chip(cannon6))]).check(&six, "exe6");
-        assert_eq!(problems, ["computer-navi data, but exe6 has no computer navis (no computer-navi system)"]);
-        assert!(ComputerNavi::default().check(&six, "exe6").is_empty());
+        assert_eq!(problems, ["auto battle data, but exe6 has no auto battle (no auto-battle system)"]);
+        assert!(AutoBattle::default().check(&six, "exe6").is_empty());
         assert!(super::has(&content) && !super::has(&six));
     }
 
@@ -597,8 +597,8 @@ mod tests {
         // gigas, two program advances.
         let counted = |chips: &[ChipHandle]| -> Vec<(ChipHandle, u32)> { chips.iter().enumerate().map(|(i, &c)| (c, (chips.len() - i) as u32)).collect() };
         let uses = [counted(&standard[..18]), counted(&mega[..6]), counted(&giga[..2]), counted(&advances[..2])].concat();
-        let d = ComputerNavi::learned(&content, &uses);
-        let mut want = ComputerNavi::nothing_learned();
+        let d = AutoBattle::learned(&content, &uses);
+        let mut want = AutoBattle::nothing_learned();
         let mut place = STANDARD.start;
         for (i, &c) in standard[..16].iter().enumerate() {
             for _ in 0..STANDARD_TIMES[i] {
@@ -619,14 +619,14 @@ mod tests {
         // HiCannon 2). Two standard chips alone: places 4 to 11, the mega
         // chips' places empty.
         let (cannon, hicannon) = (chip(&content, "cannon"), chip(&content, "hicannon"));
-        let tied = ComputerNavi::learned(&content, &[(cannon, 2), (hicannon, 2)]);
+        let tied = AutoBattle::learned(&content, &[(cannon, 2), (hicannon, 2)]);
         assert_eq!(tied.places[3..11], [[Entry::Chip(hicannon); 4], [Entry::Chip(cannon); 4]].concat());
         assert_eq!(tied.entries(), 8);
         // No chip used: what the write leaves of nothing learned, which is
         // no blank block (its records are zeros).
-        assert_eq!(ComputerNavi::learned(&content, &[(cannon, 0)]), ComputerNavi::nothing_learned());
-        assert!(!ComputerNavi::nothing_learned().is_blank() && ComputerNavi::nothing_learned().entries() == 0);
-        assert_eq!(ComputerNavi::nothing_learned().describe(&content), "nothing learned (its buster alone)");
+        assert_eq!(AutoBattle::learned(&content, &[(cannon, 0)]), AutoBattle::nothing_learned());
+        assert!(!AutoBattle::nothing_learned().is_blank() && AutoBattle::nothing_learned().entries() == 0);
+        assert_eq!(AutoBattle::nothing_learned().describe(&content), "nothing learned (its buster alone)");
     }
 
     /// The terminal's line: the lists with entries by name, an empty place
@@ -641,7 +641,7 @@ mod tests {
             d.describe(&content),
             "standard Cannon x2, -, Sword, 0; patterns pattern 2 [2 columns short of its target, 1 row down: Sword, 0, Cannon]"
         );
-        assert_eq!(ComputerNavi::default().describe(&content), "nothing learned (its buster alone)");
+        assert_eq!(AutoBattle::default().describe(&content), "nothing learned (its buster alone)");
         assert_eq!(place(0, 0), "its target's column, its target's row");
         assert_eq!(place(1, -2), "1 column past its target, 2 rows up");
     }

@@ -14,7 +14,7 @@ local SHOT = { is = collision.attack, hits = collision.hits_navis }
 
 -- The buster's plain shot (row 0).
 variants.plain = projectile.variant { id = "shot/plain", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain }
--- A plain shot with the charged shot's spark (row 3): the computer navi's buster's (rules/computer-navi/buster).
+-- A plain shot with the charged shot's spark (row 3): the auto-battling navi's buster's (rules/auto_battle/buster).
 variants.bright = projectile.variant { id = "shot/bright", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged }
 -- The charged shot (row 6).
 variants.charged = projectile.variant { id = "shot/charged", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged }

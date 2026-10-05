@@ -314,7 +314,7 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
 /// left, or what the last stand's check leaves: `kinds::subtract_hp`), a
 /// hit that doesn't goes straight to the deletion's test (no element-5
 /// damage), and that test first tries the last stand (0x0802C16C). (Where
-/// a hit landed is learned for the computer navis' tactics too, 0x0802C3E2:
+/// a hit landed is learned for the auto-battling navis' tactics too, 0x0802C3E2:
 /// for the battles after, which nothing of a battle reads.)
 fn exe5_apply_damage(b: &mut Battle, r: ObjectRef) {
     let mut d = coll(b, r).acc.final_damage;
