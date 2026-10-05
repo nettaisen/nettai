@@ -27,4 +27,6 @@ return {
     left_scan_start = { 5, 4, 3, 2, 1, 5, 4, 3, 2, 1, 0, 0 },
     right_scan_start = { 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 0, 0 },
     emblem_at_window_return = true,
+    chatbox_commands_wait_for_text = true,
+    talking_characters = { only = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" },
 }

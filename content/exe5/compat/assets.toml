@@ -4,7 +4,9 @@
 # the banners whose records are EXE6's). exe5-extract writes each asset under its name here, the rest under a
 # placeholder (`sprite-cc-ii`, `sound-nnn`, `banner-nn`), which content may not use.
 
-# Sprites: "cc-ii", the category's byte offset in the sprite list (0x08032728) and the index.
+# Sprites: "cc-ii", the category's byte offset in the sprite list (0x08032728) and the index. Category 20 is the
+# chatbox's portraits (a no-running message's speaker: its script's `F5 00 ii`), each from the team's ROM that
+# has its face (the other's has a placeholder for four or five of them: navis its console can't operate).
 [sprites]
 megaman = "00-00"
 protosoul = "00-01"
@@ -217,6 +219,19 @@ chaos-charge-glow = "14-1c"
 napalmsoul-flash = "14-1d"
 dive-splash = "14-1e"
 splash = "14-1f"
+megaman-portrait = "20-30"
+protoman-portrait = "20-34"
+gyroman-portrait = "20-40"
+searchman-portrait = "20-41"
+napalmman-portrait = "20-42"
+magnetman-portrait = "20-43"
+meddy-portrait = "20-44"
+colonel-portrait = "20-45"
+shadowman-portrait = "20-46"
+numberman-portrait = "20-47"
+tomahawkman-portrait = "20-48"
+knightman-portrait = "20-49"
+toadman-portrait = "20-4a"
 
 # Sounds: the song table's numbers, music and sound effects.
 [sounds]

@@ -32,7 +32,7 @@
 
 use nettai_assets::Bundle;
 use nettai_battle::Content;
-use nettai_battle::content::{BackgroundId, BannerId, BannerRole, ChipCode, ChipRole, MugshotId, PackId, SpriteId};
+use nettai_battle::content::{BackgroundId, BannerId, BannerRole, ChipCode, ChipRole, MugshotId, PackId, SoundRole, SpriteId};
 use nettai_battle::field::PanelType;
 use nettai_battle::kinds::player::Emotion;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
@@ -258,6 +258,20 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
         if let Some(said) = text.run_message(c, navi) {
             lookups::dialogue(font, Lookup::RunMessage(navi), said.text, p);
         }
+        // A game whose custom screen has the no-running message (its roles
+        // fill the message's sound) has one for every navi a side can
+        // start, said by a portrait: the screen opens no box for a navi
+        // whose content states no words (`custom::Screen`), so a missing
+        // one shows as L doing nothing.
+        if c.defs.roles().try_sound(SoundRole::CustomRunMessage).is_some() && data.fresh.is_some() {
+            let key = &c.defs.navi(navi).key;
+            if data.run_message.counts.is_empty() {
+                p.note(format!("navi {key} has no no-running message (`run_message` in the content's strings): L on the custom screen opens nothing"));
+            }
+            if data.run_message.portrait.is_none() {
+                p.note(format!("navi {key}'s no-running message has no speaker (`run_message.portrait` in its definition)"));
+            }
+        }
         if let Some(id) = data.run_message.portrait {
             let who = || "(a portrait)".to_string();
             if let Some(sheet) = lookups::sprite(packs, c, id, &who, p) {
@@ -431,6 +445,31 @@ mod tests {
             c.rules_mut().panels.types[t as usize].named = false;
         }
         assert_eq!(missing(&c), PanelType::ALL.len() - 3);
+    }
+
+    /// A navi a side can start that has no no-running message is listed
+    /// (L on the custom screen would open nothing for it), in a game whose
+    /// roles fill the message's sound.
+    #[test]
+    fn a_navi_without_its_no_running_message_is_listed() {
+        let mut c = (*testing::content()).clone();
+        let own = c.assets.pack(testing::ROOT).expect("the test pack");
+        let silent = |c: &Content| {
+            let found = audit(c, vec![Bundle::default()], own, None, &[("en".into(), None)]);
+            found.problems.into_iter().filter(|p| p.contains("has no no-running message")).collect::<Vec<_>>()
+        };
+        // (The test content's navis that say nothing are listed already.)
+        let before = silent(&c);
+        let navi = c.defs.navis.iter().position(|d| d.record.fresh.is_some() && !d.record.run_message.counts.is_empty()).expect("a navi with a message");
+        let named = format!("navi {} has no no-running message", c.defs.navis[navi].key);
+        assert!(!before.iter().any(|p| p.starts_with(&named)), "{before:?}");
+        c.defs.navis[navi].record.run_message.counts.clear();
+        let found = silent(&c);
+        assert_eq!(found.len(), before.len() + 1, "{found:?}");
+        assert!(found.iter().any(|p| p.starts_with(&named)), "{found:?}");
+        // A game with no such message (no sound for it) has none to miss.
+        c.defs.roles.sounds.remove(&SoundRole::CustomRunMessage);
+        assert_eq!(silent(&c), Vec::<String>::new());
     }
 
     /// Another loaded game's pack is audited as its console draws it (its

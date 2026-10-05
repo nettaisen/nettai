@@ -41,7 +41,8 @@ pub trait Library {
         false
     }
     /// The navi's no-running message: the characters in each of its lines
-    /// (a line after the first with none isn't there).
+    /// (a line after the first with none isn't there; none in the first:
+    /// the navi has no message, and L opens none).
     fn run_message(&self, navi: NaviHandle) -> [u8; 3];
     /// Which of its characters move the speaker's mouth, by line
     /// (`RunMessage::talking`). Presentation.
@@ -201,6 +202,9 @@ pub(crate) mod testing {
     /// The test library's forms the tests name.
     pub const DUST_CROSS: FormHandle = FormHandle(0x0A);
 
+    /// The test library's navi with no no-running message.
+    pub const SILENT_NAVI: NaviHandle = NaviHandle(0x7F);
+
     /// The chips the screen names by role, as the test library numbers them.
     pub const BEAST_OUT: ChipId = 0x13F;
     pub const INVALID: ChipId = 0x185;
@@ -247,8 +251,8 @@ pub(crate) mod testing {
         fn navi_chip(&self, _navi: NaviHandle) -> Option<FolderChip> {
             None
         }
-        fn run_message(&self, _navi: NaviHandle) -> [u8; 3] {
-            [19, 12, 0]
+        fn run_message(&self, navi: NaviHandle) -> [u8; 3] {
+            if navi == SILENT_NAVI { [0; 3] } else { [19, 12, 0] }
         }
         /// Form f's description has f % 3 + 1 lines, so a test can tell
         /// whose description a chatbox shows.
