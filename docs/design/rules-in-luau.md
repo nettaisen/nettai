@@ -2212,8 +2212,9 @@ The last custom-screen piece in Rust that was one game's: EXE5's soul button and
 
 MeddySoul's capsules and ColonelSoul's Arm Change are two more buttons and windows of EXE5's souls system
 (rules/souls/capsules.luau, arm-change.luau; exe5-map.md §15.8), each a module rules/souls/custom.luau gathers (its
-`buttons`, `windows` and `states`, which the system's definition takes whole). What the framework gained for them is
-generic:
+`buttons`, `windows` and `states`, which the system's definition takes whole). (Since "EXE5's souls by id", below,
+each is in its soul's folder, navis/megaman/forms/<soul>/, and is the form's `custom`.) What the framework gained
+for them is generic:
 
 - **A button attached to a pick** (`custom.attach_to_last_pick(side, button, modifiers)`): the last pick, a chip with
   no button attached (`custom.last_pick`'s `attached`), carries modifier bits into the hand (`Slot::marks`, the
@@ -2328,3 +2329,51 @@ chips/init.luau should import all chips, etc." (content-model-v2.md §4.0 holds 
   still moves no key and no handle (the test turns every init round).
 - **index.py** writes the inits whole and has `--check`; a merge conflict in an init is settled by running it.
 - Games held in memory (`Scripts::add_game`, `testing::add_index`) get the same shape (`Scripts::inits_for`).
+
+### EXE5's souls by id, each soul's own with the soul (2026-10-04, branch exe5-souls-id)
+
+The user: "instead of numbered souls they should be identified by id", and "then all the soul stuff like arm change
+hand size etc should be colocated with the souls rather than with the rules". Names and places: nothing a
+recording shows changed (exe5-map.md §15.8 holds the layout).
+
+- **A soul is its form's id.** `soul = { family }` has no `number` (`SoulData`), and no module tests one. Where
+  the original tests the soul's number, the content reads the form:
+  - the buster arm's animation is the form's `buster_arm.anim` (lib/arm read the number as the animation);
+  - the souls system extends forms (`extends.form`) with `blade_anim` (lib/swords), `steps_behind`
+    (lib/stepsword: ShadowSoul), `var_sword_waits` (chips/varswrd: ProtoSoul, ShadowSoul) and `emerge_shake`
+    (the change: TomahawkSoul), where those modules had constants;
+  - one module's rule about one soul is by id (BusterUp's AirShoes in ColonelSoul, MagnetSoul's B+Back's own
+    check); navis/megaman/souls.luau (a table of the souls' names) is gone;
+  - each soul's sprite's attach points are its folder's (forms/<soul>/attach_points.luau), which were rows of one
+    table by number;
+  - the round's souls given (`souls_used`) are bits by the soul's place among the side's navi's souls.
+- **The number is compat's** (content/exe5/compat/records.toml's `[forms]`; exe5-compat's `form_number`, `form`):
+  a recording's setup gives each side its version's souls by it, and the save import names a save's souls by it.
+  The frontend's soul icon is by the soul's place in its navi's `forms.souls` (the pack's icons' order, the
+  original's), read from the souls system's `offer` (a form); `offer_number` is gone from its state.
+- **What a soul adds to the custom screen is the soul's**, in its folder: ColonelSoul's Arm Change
+  (forms/colonelsoul/arm-change.luau), MeddySoul's capsules (forms/meddysoul/capsules.luau), SearchSoul's Shuffle
+  (forms/searchsoul/shuffle.luau), NumberSoul's hand (forms/numbersoul/hand.luau), each making its form's `custom`.
+  - A `SoulCustom` (content/exe5/types.d.luau, EXE5's first shared declarations) has the state fields the soul
+    keeps in the souls system's state, its buttons and windows by name, and `hand_size`, `deal`, `confirmed` and
+    `turn_opened`. Its functions take the system's state as an argument: a module outside rules/ doesn't call
+    `system.state()` (§4.5, the content check's lint).
+  - rules/souls/custom.luau gathers them at define time from MegaMan's `forms.souls` (a soul's button becomes a
+    `ButtonSpec` of the system's, shown while the side's navi is in the soul, outside battle mode 1) and at run
+    time asks the soul the side's navi is in (`form.custom`). It lists no soul and tests none.
+  - The value is a record (`define.record("soul-custom", ...)`; the extension's type `"record:soul-custom"`): an
+    extension field holds data, and a record is the Luau-only data a field can refer to, functions included. The
+    image's look is one too (`"record:soul-image"`).
+  - The turn's arm chip (`arm_chip`, the transform record's +6) is the system's own field: each screen's open
+    clears it and the change copies it into the navi's weapon chip whatever the soul; ColonelSoul's Arm Change
+    fills it at OK and reads it at the turn's start.
+- **The image's look is the soul's** (its form's `image`: rules/souls/image.luau's `image.look`, `image.wearing`):
+  the navi's sprite and what the image puts on and takes off (NumberMan's face is NumberSoul's own two functions),
+  where image.luau had three tables by number.
+- **The actions** `souls/change` and `souls/revert` are defined by rules/souls/change.luau and revert.luau, which
+  the forms require: rules/souls/init.luau requires the navi through custom.luau, so a form can't require it.
+- **The capsule chips stay in chips/capsules**: they are entries of the game's chip table like any other (a compat
+  number, strings, a record the generator writes), in the folder the user asked for; MeddySoul's module requires
+  them.
+- **One difference inside the state, which nothing reads:** out of MeddySoul the system keeps the last screen's two
+  capsules, where its deal zeroed them every screen (the slots that show them are MeddySoul's alone).
