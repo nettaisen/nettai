@@ -7,19 +7,23 @@
 //!
 //! - **a game, loaded** ([`game`]): the packs found, the game's content,
 //!   its graphics and strings in a language, the text's font, its sound;
-//! - **a session** ([`session`]) over **a driver** ([`driver`]): live play
-//!   of a set from the buttons, or another player over the network
-//!   ([`netplay`]), a tick at a time from the GBA button mask;
+//! - **a player** ([`Player`]) over **a driver** ([`driver`]: live play of
+//!   a set from the buttons; [`netplay`]: another player over the
+//!   network): the host gives it the GBA buttons held and the time that
+//!   passed, or asks for a tick, and takes the picture, the sound as
+//!   samples and what there is to say. Under it, the [`session`];
 //! - the drawing, which is nettai-render's ([`Renderer`], [`Frame`]), and
 //!   the status lines' text ([`text`]).
 //!
-//! docs/frontend.md.
+//! docs/frontend.md §7, and `examples/embed.rs`: a host with no window.
 
 pub mod driver;
 pub mod game;
 pub mod netplay;
+pub mod player;
 pub mod session;
 pub mod text;
 
 pub use nettai_render::{Frame, Renderer};
-pub use session::{Session, TickHook};
+pub use player::Player;
+pub use session::Session;

@@ -32,16 +32,17 @@ them. The commands in this document are the program's (`nettai-demo`).
   window, sound, network, netplay or command line.
 - **nettai-frontend** plays a battle for a host to show, as a library: it
   has no window, no audio device and no command line, and nothing in it
-  prints or exits. It loads a game (`game`: the packs found, the content,
-  the graphics and strings in a language, the text's font, the sound, each
-  step a `Result`); it runs the sessions (`session`) and what drives them
-  (`driver`: live play of a set from the GBA button mask; `netplay`:
-  another player over the network); and it has the status line's small
-  font (`text`).
+  prints or exits (§7). It loads a game (`game`: the packs found, the
+  content, the graphics and strings in a language, the text's font, the
+  sound, each step a `Result`); its player (`player`) owns the session
+  (`session`), the renderer and the audio, and gives a host the picture and
+  the sound as it is driven; what drives a session is a driver (`driver`:
+  live play of a set from the GBA button mask; `netplay`: another player
+  over the network); and it has the status lines' small font (`text`).
 - **nettai-demo** is the desktop program, a host of that library: the
-  window and the keys (`app`); the command line (`main`); the sound, a
-  `TickHook` to nettai-audio's audio device, and the audio's own lookups
-  (`sound_lookups`); headless output (`headless`) and the audits
+  window and the keys, a loop over the player (`app`); the command line
+  (`main`); the audio device the player's samples go to, and the audio's
+  own lookups (`sound_lookups`); headless output (`headless`) and the audits
   (`content_audit`, `headless::audit_traces`); and the replay of the
   original's recordings (`trace`, the one place that depends on the compat
   crates).
@@ -489,12 +490,11 @@ functions:
   cover: the few golden traces that, with the static audit, make every
   lookup all of them make.
 
-**Sound**: the window plays each tick's sound cues through nettai-audio, with
-the pack's sound, unless `--mute`; headless rendering never plays sound. In
-netplay it plays the cue actions of each frame (plays, and cancels of cues
-played on a wrong prediction). Other per-tick consumers can plug in the same
-way, as a `TickHook` (`nettai_frontend::session`), which the window runs
-after every step with the session.
+**Sound**: the player renders each tick's sound cues with the pack's sound
+(nettai-audio's `BattleAudio`) and the window plays the samples through the
+audio device (`nettai_audio::Output`), unless `--mute`; headless rendering
+never plays sound. In netplay the player renders the cue actions of each
+frame (plays, and cancels of cues played on a wrong prediction).
 
 ## 3. What is drawn, and how
 
@@ -1476,3 +1476,105 @@ is said with where it is:
 `--join`): the file's left side is what you bring, wherever netplay puts
 you, and the host's file's arena is the match's (the joiner's is not
 sent). The battle's RNG still comes from both players' halves of the seed.
+
+## 7. Embedding
+
+nettai-frontend is a library a larger app depends on to play battles in its
+own window: it has no window toolkit, no audio device and no command line in
+it (`cargo tree -p nettai-frontend` names neither minifb nor cpal), and
+nothing in it prints or exits. Every failure is a value. The host owns the
+window, the keys, the sound output and what it tells its user; nettai-demo is
+one such host (its window loop, `app.rs`, is the loop below), and
+`crates/nettai-frontend/examples/embed.rs` another, with no window at all.
+
+**Loading a game** is one call, `game::load(name, &Options)`: the packs found
+(in `Options::packs_dir`, by default where the program looks), the game's
+content, its graphics and strings in the language asked for, the text's font
+and, unless `sound` is off, its sound. It gives a `Loaded` or a `LoadError`
+that says which step failed (`Failed::Packs`, `Content`, `NoPack`, `Part`,
+`Language`, `Font`) and carries what the loaders reported up to there; a
+`Loaded` carries their warnings too (`Loaded::report`). The steps are public
+one by one for a host that wants them apart (`Found::find`, `Game::load`,
+`Game::graphics`, `font`, `Game::sound`), as the program does, which loads no
+sound for frames it only writes.
+
+**What is played** is a driver's: `LivePlayer` plays a set of a match
+(`nettai_match::Set::of(&content, &m, seed)`: a match file's, or a random
+pick's, `nettai_match::pick::live`) from the local player's buttons, round
+after round to the set's end; `netplay::NetPlayer` plays one against another
+player (the offer and the handshake are in `netplay`; the handshake waits for
+the other side, so a host runs it off its UI thread). A host may bring a
+driver of its own (`Driver`): the program's replays the original's
+recordings.
+
+**The player** (`Player`) is what the host drives. It owns the session, the
+renderer, the font mode's text renderer and the battle's audio:
+
+    use nettai_frontend::{Player, driver::LivePlayer, game};
+
+    let game = game::load("exe6", &game::Options::default())?;         // a LoadError says what failed
+    let m = nettai_match::pick::live(&game.game.content, "exe6", seed, None)?;
+    let set = nettai_match::Set::of(&game.game.content, &m, seed);
+    let mut player = Player::new(&game, Box::new(LivePlayer::new(set)));
+
+    let mut last = Instant::now();
+    let mut samples = Vec::new();
+    while window.is_open() {
+        // The keys are the host's: the GBA's buttons held, as a mask (nettai_battle::input::keys).
+        let buttons = window.gba_buttons();
+        // The time that passed: the player keeps the original's 59.7275 Hz clock and runs the ticks due.
+        let now = Instant::now();
+        player.advance(now - last, buttons);
+        last = now;
+        // The picture, into the host's own pixels (0x00RRGGBB) at any size, the status lines over it.
+        player.present(window.pixels(), window.width(), window.height());
+        // The sound of those ticks, as stereo samples at 32768 Hz, for the host's own output.
+        samples.clear();
+        player.take_samples(&mut samples);
+        speaker.queue(&samples);
+        if let Some(why) = player.stopped() {
+            // The engine stopped, or the set is over (player.finished(), player.result()).
+        }
+    }
+
+- `advance(elapsed, buttons)` runs the ticks due for the time that passed
+  (at most a quarter of a second's, so a stalled host doesn't catch up) at
+  the speed set, and keeps the part of a tick left over. A host that paces
+  itself calls `tick(buttons)` instead, once per frame of its own clock; the
+  embedding example does.
+- `frame()` is the battle's 240x160 picture with nothing over it;
+  `present(buffer, width, height)` scales it by the largest whole factor that
+  fits, draws the font mode's text at the buffer's resolution and writes
+  `lines()` over the top left. A host that draws its own text takes
+  `frame()` and the lines apart: `prompt()` (the custom screen in words),
+  `status()` (netplay's connection, the set's result), `position()`,
+  `stopped()`, `diverged()`.
+- `set_paused`, `slower`, `faster` and `restart` are the controls; each
+  returns false and does nothing while the battle runs in real time with
+  another player (`real_time()`: netplay). `show_status` shows the status
+  lines or not.
+- `take_samples` gives the sound of the ticks run since the last call (about
+  549 samples a tick); a player made without sound gives none.
+- `play(driver)` goes on with another driver in the same picture and sound (a
+  recording's next round).
+
+The player owns everything it needs: the graphics it draws from are shared
+with the `Loaded` they came from (`Arc`), so a host keeps a player wherever
+it keeps its state, for as long as it likes.
+
+**What the library leaves to the host:** the panic hook that keeps an engine
+stop off stderr (`session::quiet_engine_panics`: the session reports the
+stop either way; the hook is the whole process's, so the host decides);
+resampling the sound to its device's rate; where a match comes from.
+
+**Its dependencies** are the engine's crates alone, with nettai-audio taken
+without its `playback` feature. The two compat crates are in its tree through
+nettai-match's save importers (a host that imports saves needs them); the
+library itself reads no recording and no save.
+
+**The proof that it embeds** is the example: it plays a seeded random match
+with scripted buttons a tick at a time, with no window, and checks every
+frame it takes against the PNG the program writes headless for the same seed
+and buttons, byte for byte, and its samples against a second rendition from
+the battle's cues. The verification workspace runs it against both games
+(`tools/embed-against.sh`).
