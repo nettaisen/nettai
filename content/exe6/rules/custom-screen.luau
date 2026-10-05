@@ -27,4 +27,12 @@ return {
     -- SELECT's hidden window, brought back by a key, draws the emblem on that tick and the next (`sub_8026D06`'s
     -- two calls of `sub_8029C08`).
     emblem_at_window_return = true,
+    -- A command of a chatbox script waits out the character printed before it (`chatbox_interpreteAndDrawDialogChar`
+    -- tests the print delay before a command as before a character): a message's wait for a key starts two ticks
+    -- after its last character.
+    chatbox_commands_wait_for_text = true,
+    -- The characters of a message that move its speaker's mouth (`chatbox_8040C44`: the US charmap's 0x01 to 0x24,
+    -- 0x26 to 0x3F and 0x59 to 0x5C, the digits, the letters and four kana; no other does, nor the asterisk between
+    -- the letters, 0x25).
+    talking_characters = { only = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzネノヌナ" },
 }

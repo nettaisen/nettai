@@ -34,6 +34,12 @@ return define.navi {
     move_lag = { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 },
     banners = { win = asset.banner("knightman-win"), lose = asset.banner("knightman-deleted") },
     mugshot = asset.mugshot("knightman"),
+    -- The no-running message's portrait: the speaker beside the box (L on the custom screen, 0x08023190: the run
+    -- dialog's script 0x21, which script 3's navi check sends him to). Its words are locales/<lang>.toml's; the
+    -- content's own (en) time it.
+    run_message = {
+        portrait = asset.sprite("knightman-portrait"),
+    },
     own_chip = { chip = kcrusher, code = "K" },
     own_chip_draws = true,
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },
