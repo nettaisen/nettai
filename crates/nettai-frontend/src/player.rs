@@ -55,11 +55,12 @@ const MOST_ELAPSED: Duration = Duration::from_millis(250);
 /// The most sound kept for a host that hasn't taken it: about a second.
 const MOST_SAMPLES: usize = nettai_audio::SAMPLE_RATE as usize;
 
-/// A battle being played. `'g` is the game's graphics, which the renderer
-/// draws from ([`crate::game::Graphics`]: the host keeps them).
-pub struct Player<'g> {
+/// A battle being played. It owns everything it needs (the graphics it
+/// draws from are shared with whoever loaded them), so a host keeps it
+/// wherever it keeps its state.
+pub struct Player {
     session: Session,
-    renderer: Renderer<'g>,
+    renderer: Renderer,
     text: Option<TextRenderer>,
     audio: Option<BattleAudio>,
     /// The sound of the ticks run since the host last took it.
@@ -72,10 +73,16 @@ pub struct Player<'g> {
     status: bool,
 }
 
-impl<'g> Player<'g> {
+// (A player borrows nothing: a host's state of any lifetime holds one.)
+const _: () = {
+    const fn owned<T: 'static>() {}
+    owned::<Player>();
+};
+
+impl Player {
     /// A player of what `driver` plays, shown and heard from a loaded game
     /// (its sound, if it was loaded).
-    pub fn new(game: &'g Loaded, driver: Box<dyn Driver>) -> Player<'g> {
+    pub fn new(game: &Loaded, driver: Box<dyn Driver>) -> Player {
         let audio = game.sound.as_ref().map(|s| BattleAudio::with_banks(s.banks.clone(), s.songs.clone()));
         Player::with(game.renderer(), game.font.clone().map(TextRenderer::new), audio, driver)
     }
@@ -83,7 +90,7 @@ impl<'g> Player<'g> {
     /// A player of what `driver` plays, from its parts: the renderer, the
     /// font mode's text renderer (none: the frames carry their own text)
     /// and the audio (none: silent).
-    pub fn with(renderer: Renderer<'g>, text: Option<TextRenderer>, audio: Option<BattleAudio>, driver: Box<dyn Driver>) -> Player<'g> {
+    pub fn with(renderer: Renderer, text: Option<TextRenderer>, audio: Option<BattleAudio>, driver: Box<dyn Driver>) -> Player {
         let mut player = Player {
             session: Session::new(driver),
             renderer,
@@ -332,7 +339,7 @@ impl<'g> Player<'g> {
     }
 
     /// The renderer (what it looked up and didn't find, its text mode).
-    pub fn renderer(&mut self) -> &mut Renderer<'g> {
+    pub fn renderer(&mut self) -> &mut Renderer {
         &mut self.renderer
     }
 
@@ -393,8 +400,8 @@ mod tests {
     /// asked for outright still runs.
     #[test]
     fn the_player_keeps_the_clock() {
-        let graphics = nettai_assets::Bundle::default();
-        let mut p = Player::with(Renderer::new(&graphics), None, None, live());
+        let graphics = Arc::new(nettai_assets::Bundle::default());
+        let mut p = Player::with(Renderer::new(graphics.clone()), None, None, live());
         assert_eq!(p.advance(time(10.5), 0), 10);
         assert_eq!(p.advance(time(0.6), 0), 1, "the half tick left over counts");
         assert_eq!(p.ticks(), 11);
@@ -424,8 +431,8 @@ mod tests {
     /// while they show.
     #[test]
     fn the_player_gives_the_picture_and_the_lines() {
-        let graphics = nettai_assets::Bundle::default();
-        let mut p = Player::with(Renderer::new(&graphics), None, None, live());
+        let graphics = Arc::new(nettai_assets::Bundle::default());
+        let mut p = Player::with(Renderer::new(graphics.clone()), None, None, live());
         for _ in 0..3 {
             p.advance(time(10.2), 0);
         }
@@ -475,8 +482,8 @@ mod tests {
     /// shows while the status lines do.
     #[test]
     fn a_real_time_battle_is_not_paused_or_restarted() {
-        let graphics = nettai_assets::Bundle::default();
-        let mut p = Player::with(Renderer::new(&graphics), None, None, Box::new(RealTime(live())));
+        let graphics = Arc::new(nettai_assets::Bundle::default());
+        let mut p = Player::with(Renderer::new(graphics.clone()), None, None, Box::new(RealTime(live())));
         assert!(p.real_time());
         assert!(!p.set_paused(true) && !p.faster() && !p.slower() && !p.restart());
         assert_eq!((p.paused(), p.speed()), (false, 1.0));
@@ -492,7 +499,7 @@ mod tests {
     #[test]
     fn the_player_gives_the_sound_as_samples() {
         use m4a::bank::{MixerConfig, PlayerConfig};
-        let graphics = nettai_assets::Bundle::default();
+        let graphics = Arc::new(nettai_assets::Bundle::default());
         // A sound bank with EXE6's players and no songs: a silent frame a tick.
         let players = (0..32).map(|p| PlayerConfig { max_tracks: if p == 31 { 8 } else { 2 }, uses_priority: p != 31, track_order: p as u8 }).collect();
         let bank = m4a::SoundBank {
@@ -505,7 +512,7 @@ mod tests {
             waves: vec![],
         };
         let audio = BattleAudio::with_banks(vec![Arc::new(bank)], nettai_audio::Songs::numbers(0x100));
-        let mut p = Player::with(Renderer::new(&graphics), None, Some(audio), live());
+        let mut p = Player::with(Renderer::new(graphics.clone()), None, Some(audio), live());
         assert_eq!(p.advance(time(10.1), 0) + p.advance(time(10.1), 0), 20);
         let mut samples = Vec::new();
         p.take_samples(&mut samples);
@@ -521,7 +528,7 @@ mod tests {
         samples.clear();
         p.take_samples(&mut samples);
         assert_eq!(samples.len(), MOST_SAMPLES);
-        let mut silent = Player::with(Renderer::new(&graphics), None, None, live());
+        let mut silent = Player::with(Renderer::new(graphics.clone()), None, None, live());
         silent.advance(time(5.1), 0);
         samples.clear();
         silent.take_samples(&mut samples);

@@ -19,7 +19,7 @@ use nettai_content::locale::{self, Strings};
 use nettai_content::pack;
 pub use nettai_content::report::Report;
 use nettai_render::Renderer;
-use nettai_render::packs::Packs;
+use nettai_render::packs::PackGraphics;
 pub use nettai_render::textlayer::TextMode;
 pub use nettai_render::vfont::VectorFont;
 use std::fmt;
@@ -141,7 +141,7 @@ impl Game {
                 }
             };
             if i != self.own.index() {
-                bundles.push(bundle);
+                bundles.push(Arc::new(bundle));
                 continue;
             }
             let failed = |why: String, report: Report| LoadError { what: Failed::Language(why), report };
@@ -156,7 +156,7 @@ impl Game {
                 };
             }
             match bundle.in_language(lang) {
-                Ok(b) => bundles.push(b),
+                Ok(b) => bundles.push(Arc::new(b)),
                 Err(e) => return Err(failed(format!("{e} (extract the pack again with the Japanese ROMs)"), report)),
             }
         }
@@ -183,10 +183,12 @@ impl Game {
     }
 }
 
-/// A game's graphics, in a language.
+/// A game's graphics, in a language. They are shared: every renderer made of
+/// them draws from the same, and keeps them for as long as it lives.
+#[derive(Clone)]
 pub struct Graphics {
     /// Each loaded pack's, by `PackId`.
-    pub bundles: Vec<Bundle>,
+    pub bundles: Vec<Arc<Bundle>>,
     /// The content's strings in the language (none: the content's own).
     pub strings: Option<Arc<Strings>>,
     /// The game's own pack.
@@ -197,8 +199,8 @@ pub struct Graphics {
 impl Graphics {
     /// A renderer of these graphics, its text drawn in `text` mode
     /// (`font`: the font mode's, [`font`]).
-    pub fn renderer(&self, text: TextMode, font: Option<Arc<VectorFont>>) -> Renderer<'_> {
-        let mut renderer = Renderer::with_packs(Packs::new(self.bundles.iter().collect(), self.own));
+    pub fn renderer(&self, text: TextMode, font: Option<Arc<VectorFont>>) -> Renderer {
+        let mut renderer = Renderer::with_packs(PackGraphics::new(self.bundles.clone(), self.own));
         renderer.set_strings(self.strings.clone());
         renderer.set_text(text, font);
         renderer
@@ -268,7 +270,7 @@ pub struct Loaded {
 
 impl Loaded {
     /// A renderer of the game's graphics, the text as it was asked for.
-    pub fn renderer(&self) -> Renderer<'_> {
+    pub fn renderer(&self) -> Renderer {
         self.graphics.renderer(self.text, self.font.clone())
     }
 

@@ -6,6 +6,37 @@
 use nettai_assets::{Bundle, Hud, SpriteSheet};
 use nettai_battle::content::{BackgroundId, BannerId, Content, InPack, MugshotId, PackId, PackSprite, SpriteId};
 use nettai_content_api::AssetKind;
+use std::sync::Arc;
+
+/// The loaded packs' graphics, held: by `PackId`, each shared, and which is
+/// the frontend's own. A renderer keeps one, so it borrows from nobody (a
+/// host keeps a renderer wherever it keeps its state, and several renderers
+/// share the same graphics); what a frame draws from is a [`Packs`] over
+/// them ([`PackGraphics::packs`]).
+#[derive(Clone)]
+pub struct PackGraphics {
+    bundles: Vec<Arc<Bundle>>,
+    own: PackId,
+}
+
+impl PackGraphics {
+    /// One pack's graphics: every asset is its.
+    pub fn one(bundle: Arc<Bundle>) -> PackGraphics {
+        PackGraphics { bundles: vec![bundle], own: PackId(0) }
+    }
+
+    /// Several packs' graphics, by `PackId`; `own` the frontend's own
+    /// game's.
+    pub fn new(bundles: Vec<Arc<Bundle>>, own: PackId) -> PackGraphics {
+        assert!(own.index() < bundles.len(), "the frontend's own pack is loaded");
+        PackGraphics { bundles, own }
+    }
+
+    /// The packs to draw from.
+    pub fn packs(&self) -> Packs<'_> {
+        Packs { bundles: self.bundles.iter().map(|b| &**b).collect(), own: self.own, version: None }
+    }
+}
 
 /// The loaded packs' graphics, by `PackId` (the content's `AssetNames::packs`
 /// order), and the match's game's pack's (the frontend's own), which draws
