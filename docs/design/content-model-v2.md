@@ -213,9 +213,13 @@ export type ChipSpec = {
   by_time = {...} }` (the SP chips' damage by the user's deletion time of that navi; the slot is one of
   rules/sp-chips.luau's `slots`, the save's deletion times in the setup's order), `{ formula = "hp_lost" }`
   (Muramasa), `{ formula = "hp_last_digits" }` (NumbrBl), `{ formula = "navi_level", base = 60, per_level =
-  10 }` (the link navis' chips), and the ones no EXE6 chip uses (`opponent_hp`, `gauge`,
+  10 }` (the link navis' chips), `{ formula = "level", by_level = {...} }` (EXE5's team navis' chips: a row
+  read at the side's navi level), and the ones no EXE6 chip uses (`opponent_hp`, `gauge`,
   `half_opponent_max_hp`). The original's "1000 + n selects formula n" encoding is gone; the hand holds the
   evaluated damage, as it does today.
+- `setup(navi)`, beside its use: what the chip itself does to the attack as a navi's use of it is prepared, once
+  the attack is loaded (EXE5's chip records name a routine each: a team navi's own chip sets attack variables,
+  as StepSwrd the charged byte its sword steps by).
 - `program_advances` refers to its ingredients by value: `{ order = 13, code_run = { chip = cannon, count = 3
   } }`, `{ order = 0, sequence = { sword, wideswrd, longswrd } }` (`order`: where the recipe is tried among
   all of them).
@@ -239,6 +243,10 @@ export type NaviSpec = {
     run_message: { counts: { number }, text: string?, portrait: Sprite? }?,  -- the no-running message:
                                                   -- its lines' characters (its timing), words, speaker
     own_chip: { chip: Chip, code: string }?,      -- a link navi's chip, once a round
+    own_chip_draws: boolean?,                     -- its offer draws from the console's RNG (EXE5's)
+    story: { hp: { number }, max_level: number }?,  -- EXE5's team navis: the HP by the story's progress,
+                                                  -- the last level (tools fill a side's stats from it)
+    palette_step: number?,                        -- what its palettes go by (EXE5's team navis')
     chip_bonus: { family: ChipFamily, dimming_chips: boolean?, by_level: { number } }?,
     identity: Identity,                           -- the NameID record: attach points, actor type, parts
     actions: { [string]: Action }?,               -- a link navi's own actions

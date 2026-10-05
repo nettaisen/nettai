@@ -62,8 +62,7 @@ return define.navi {
         version = 0,
         actor_type = "player",
         ai_index = 0,
-        -- The Full Synchro aura's animation: EXE6's rule (`sub_80C4C52`: the AI index), which EXE5 hasn't (its aura
-        -- is its own, to come with EXE5's emotions); the engine asks every player for one.
+        -- The Full Synchro aura's animation: its owner's AI index (the aura's start, 0x080C4608).
         aura_anim = 0,
         -- He wears what his soul does: his death hook takes it off (0x0800EFCC, his record's category 2), and an
         -- animation change (0x0800F11C by AI index 0), a flinch and a drag (0x080F0500) restart it.

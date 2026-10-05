@@ -8,6 +8,7 @@
 local attachment = require("../../objects/attachment")
 local bullet = require("../../objects/bullet")
 local common = require("@exelib/spreadr/action")
+local navi_arms = require("../../lib/navi_arms")
 
 local spreader = {}
 
@@ -19,7 +20,12 @@ spreader.guns = {
     water_cannon = attachment.look { sprite = asset.sprite("water-cannon"), palette = 0, attach_point = 25 },
 }
 
-local LOOK: SpreaderLook = { sound = asset.sound("h-burst"), attachment = attachment.kind, bullet_kind = bullet.kind }
+local LOOK: SpreaderLook = {
+    sound = asset.sound("h-burst"),
+    attachment = attachment.kind,
+    bullet_kind = bullet.kind,
+    gun_anims = navi_arms.spreader,
+}
 
 -- A chip's spreader.
 function spreader.action(spec: SpreaderSpec): Action

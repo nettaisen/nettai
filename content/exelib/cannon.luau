@@ -46,21 +46,19 @@ local CANNON_POINT, NAVI_ANIM = 7, 8
 -- point 7.)
 type Look = ShooterLook
 
--- `sub_80EBD68`: the arm's animation by who holds it: a link navi as a
--- player shows its own (HeatMan, GroundMan and DustMan, AI indices 1, 9
--- and 10: 1), anyone else the plain one.
-local function arm_anim(me: Object): number
+-- `sub_80EBD68`: the arm's animation by who holds it: a player's by its AI
+-- index, from its game's table (`look.arm_anims`: EXE6's `off_80EBD80`,
+-- where the link navis HeatMan, GroundMan and DustMan hold their own, 1),
+-- anyone else's the plain one.
+local function arm_anim(me: Object, look: Look): number
     if me.actor_type ~= "player" then
         return 0
     end
-    local ai = me.ai_index
-    if ai == 1 or ai == 9 or ai == 10 then
-        return 1
+    local anim = look.arm_anims[me.ai_index + 1]
+    if anim == nil then
+        error(string.format("AI index %d reads past the cannon arms' table (`sub_80EBD68`)", me.ai_index))
     end
-    if ai > 27 then
-        error(string.format("AI index %d reads past off_80EBD80", ai))
-    end
-    return 0
+    return anim
 end
 
 -- The attack's damage word with the Atk+ bonus (`av.u32[8] + av.u16[6]`).
@@ -112,7 +110,7 @@ function cannon.action(spec: CannonSpec, look: Look): Action
             me:set_animation(ANIM_RAISE)
             me:open_counter_window()
             s.timer = 0
-            attachment.attach(look.attachment, me, spec.arm, "related", { anim = arm_anim(me) })
+            attachment.attach(look.attachment, me, spec.arm, "related", { anim = arm_anim(me, look) })
             me:set_status("using_action", true)
             me.step_init = 4
             return

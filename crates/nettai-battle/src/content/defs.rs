@@ -136,6 +136,11 @@ pub struct ChipDef {
     /// How it is used: its definition's `action`, `dimming`, `navi` or
     /// `instant`.
     pub usage: ChipUsage,
+    /// `setup(navi)`: what the chip itself does to the attack as its use
+    /// is prepared (EXE5's 0x0800EC68, the routine its record's +0x1F
+    /// names: a team navi's own chip's attack variables), after the hand's
+    /// bonuses and before the side's rules check the chip.
+    pub setup: Option<FnId>,
     /// What its record names, by handle.
     pub links: ChipLinks,
 }
@@ -1351,9 +1356,13 @@ impl Defs {
                 )));
             };
             let record = chip_record(d, &reader)?;
+            let setup = match d.spec.field("setup") {
+                Data::Nil => None,
+                _ => Some(functions.id(slot(d, "setup")?)),
+            };
             chips.add(
                 d.key.clone(),
-                ChipDef { key: d.key.clone(), record, usage, links: ChipLinks::default() },
+                ChipDef { key: d.key.clone(), record, usage, setup, links: ChipLinks::default() },
                 format!("defined in {}.luau", d.module),
             );
         }
@@ -1467,6 +1476,7 @@ impl Defs {
             })?;
             record.cross_hp = super::navis::read_cross_hp(d)?;
             record.levels = super::navis::read_levels(d, &weapon_handle)?;
+            record.story = super::navis::read_story(d)?;
             record.identity = identity_of(d, &identities)?;
             record.forms = match d.spec.field("forms") {
                 Data::Nil => None,

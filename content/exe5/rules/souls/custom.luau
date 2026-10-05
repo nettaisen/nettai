@@ -43,6 +43,51 @@ local FADE_SPEED = 32
 -- A Soul Unison's turns (+ the NaviCust's and the cards' bonus, at most 9; under 0, 1), a Chaos Unison's.
 local TURNS, MAX_TURNS, CHAOS_TURNS = 3, 9, 1
 
+-- What the souls keep of a screen in the system's state: each soul's `custom.state`, its fields by their declared
+-- types (this module's end gathers them with the souls' buttons and windows).
+local states: { StateSchema } = {}
+
+-- The whole numbers a state field may be declared as.
+local INTEGERS: { [string]: boolean } = { u8 = true, u16 = true, u32 = true, i8 = true, i16 = true, i32 = true }
+
+-- What a fresh state holds in a field declared as `kind` (a state starts all zero, like the game's scratch): 0 for a
+-- number, false for a boolean, the first of a list of variants, and for anything else (a definition, an asset, an
+-- object) none.
+local function fresh(kind: string | { string }): any
+    if type(kind) == "table" then
+        return kind[1]
+    elseif kind == "bool" then
+        return false
+    elseif kind == "vec3" then
+        return Vec3.new(0, 0, 0)
+    elseif INTEGERS[kind] then
+        return 0
+    end
+    return nil
+end
+
+-- 0x08022CA2: the screen's record is zeroed as it opens. What every soul keeps of a screen (`states`) is back as a
+-- fresh state has it, from the fields' own declarations, whatever soul the side's navi is in: a soul's fields don't
+-- outlast the screen they were set on.
+local function forget_screen(s: any)
+    for _, fields in states do
+        for name, kind in fields do
+            local element, count
+            if type(kind) == "string" then
+                element, count = string.match(kind, "^(.+)%[(%d+)%]$")
+            end
+            if element ~= nil then
+                -- (An array: each of its elements.)
+                for i = 1, tonumber(count) :: number do
+                    s[name][i] = fresh(element)
+                end
+            else
+                s[name] = fresh(kind)
+            end
+        end
+    end
+end
+
 -- The side's navi's souls (MegaMan's: the forms with a `soul`).
 local function souls_of(side: number): { FormDef }
     local forms = battle.navi(side).navi.forms
@@ -258,12 +303,15 @@ function custom_souls.hand_size(side: number): number?
     return nil
 end
 
--- The screen deals (0x08022CFC to 0x08023BF4: its hand, then its slots): the soul lays its slots out (MeddySoul
--- draws its capsules).
+-- The screen deals (0x08022CFC to 0x08023BF4: its hand, then its slots): what the souls keep of a screen starts
+-- fresh, every soul's (`forget_screen`: out of MeddySoul there are no capsules), and then the soul the navi is in
+-- lays its slots out (MeddySoul draws its capsules).
 function custom_souls.deal(side: number)
+    local s = system.state()
+    forget_screen(s)
     local part = slots_of(side)
     if part ~= nil and part.deal ~= nil then
-        part.deal(side, system.state())
+        part.deal(side, s)
     end
 end
 
@@ -342,10 +390,10 @@ end
 -- The system's buttons and windows, by name (what the frontend draws them by), and the state fields they keep
 -- beside the soul button's (./init declares those): the soul button, and what each soul adds to the screen, gathered
 -- from the souls of the navi that has them (MegaMan's `forms.souls`, each form's `custom`). A name is one of the
--- system's: two souls can't both add a button or a window of the same name.
+-- system's: two souls can't both add a button or a window of the same name. (`states`, above: `forget_screen` reads
+-- it at each deal.)
 local buttons: { [string]: ButtonSpec } = { soul = custom_souls.button }
 local windows: { [string]: WindowSpec } = { soul_unison = custom_souls.window }
-local states: { StateSchema } = {}
 for _, soul in megaman.forms.souls do
     local part: SoulCustom? = soul.custom
     if part ~= nil then
