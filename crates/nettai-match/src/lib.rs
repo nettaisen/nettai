@@ -7,7 +7,7 @@
 //!
 //! nettai-frontend plays a match file (`--match`), and netplay's offers are
 //! a side of one: the same checks refuse a bad file and a bad offer.
-//! nettai-editor edits them.
+//! nettai-demo-editor edits them.
 //!
 //! A match is of one game, which its arena chooses (`Arena::game`): a
 //! game is its rules (it has one ruleset), and both sides play by them
