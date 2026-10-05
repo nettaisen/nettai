@@ -4,6 +4,7 @@
 language = "en"
 
 [chips]
+"airforce" = { name = "Airforce", description = "Helicoptr\nstrafes\na row" }
 "airhoc" = { name = "AirHoc", description = "Ricochet\nattack to\nright" }
 "airshot" = { name = "AirShot", description = "Knock\nenmy back\n1 square" }
 "airspin1" = { name = "AirSpin1", description = "Spits out\nhurricane\nattack" }
@@ -232,6 +233,7 @@ language = "en"
 "numbrman" = { name = "NumbrMan", description = "Bomb 3\nahead!\nHits 9sq" }
 "numbrmn-ds" = { name = "NumbrMn\uE008", description = "Bomb 3\nahead!\nHits 9sq" }
 "numbrmn-sp" = { name = "NumbrMn\uE003", description = "Bomb 3\nahead!\nHits 9sq" }
+"numtrap" = { name = "NumTrap", description = "Set a\ntrap 2 sq\nahead" }
 "omegarkt" = { name = "OmegaRkt", description = "A rocket\nmoves\nstraight" }
 "otenko" = { name = "Otenko", description = "Put Otnko\nto raise\natk pwr" }
 "panlgrab" = { name = "PanlGrab", description = "Steals 1\nenemy\nsquare!" }
@@ -360,9 +362,11 @@ language = "en"
 
 [navis]
 "colonel" = { name = "Colonel" }
+"gyroman" = { name = "GyroMan" }
 "knightman" = { name = "KnightMn" }
 "meddy" = { name = "Meddy" }
 "megaman" = { name = "MegaMan", variant_name = "BCMegaMn" }
+"numberman" = { name = "NumbrMan" }
 "protoman" = { name = "ProtoMan" }
 "searchman" = { name = "SerchMan" }
 "shadowman" = { name = "ShadoMan" }

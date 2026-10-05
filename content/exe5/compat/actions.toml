@@ -58,6 +58,9 @@
 # The team navis' weapons' actions (navis/<navi>): ProtoMan's B+Back (the guard's action, as the Reflect program's).
 "protoman/back/action" = 0x1F
 "meddy/charge/action" = 0x07
+"gyroman/hover/action" = 0x09
+"gyroman/buster/action" = 0x0A
+"gyroman/charge/action" = 0x08
 "colonel/charge/action" = 0x07
 # A team navi's own actions are its state table's entries from 7 on (0x080EADA8 by navi): TomahawkMan's throw.
 "tomahawkman/charge/action" = 0x07
@@ -66,3 +69,5 @@
 "shadowman/back/action" = 0x3D
 # KnightMan's charged attack (his table's entry 9).
 "knightman/charge/action" = 0x09
+# NumberMan's charged attack (his table's entry 7).
+"numberman/charge/action" = 0x07
