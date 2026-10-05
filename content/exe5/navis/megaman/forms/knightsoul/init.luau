@@ -7,19 +7,24 @@
 -- damaging chip (not a dimming one) used from his area's front edge (the panel ahead not his side's) keeps him
 -- invulnerable for 50 ticks (0x08010392).
 
-local attach_points = require("../attach_points")
+local attach_points = require("@self/attach_points")
+local body_overlays = require("../../../lib/body_overlays")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_chips = require("../weapons/charged-chip")
 local darkdril = require("../../../chips/darkdril")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "knightsoul",
-    soul = { number = 11, family = "break" },
-    change = souls.action,
-    revert = souls.revert,
+    soul = { family = "break" },
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- KnightMan's image as MegaMan unites with him (rules/souls/image), with his ball and chain (0x0800EDBC's routine for the soul).
+    image = soul_image.wearing(asset.sprite("knightman"), "soul-image/knightman", body_overlays.knightman),
     sprite = asset.sprite("knightsoul"),
     element = "null",
     buster_bonus = 0,
@@ -41,7 +46,8 @@ return define.form {
         normal = asset.mugshot("knightsoul"),
         variant = { normal = asset.mugshot("knightsoul-chaos") },
     },
-    buster_arm = { anim = 0 },
+    -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
+    buster_arm = { anim = 11 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 11 of category 0).
     identity = define.identity {
         class = "megaman",
@@ -49,6 +55,6 @@ return define.form {
         actor_type = "player",
         ai_index = 0,
         aura_anim = 0,
-        attach_points = attach_points[11],
+        attach_points = attach_points,
     },
 }

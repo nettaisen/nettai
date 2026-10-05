@@ -545,8 +545,11 @@ What an EXE5 console does otherwise, by data, not by game:
   the button where the pack's layout puts them; the soul choice (the
   souls system's window `soul_unison`, EXE5's state 9) flies the soul's icon
   up onto the column's first cell under its flash, and the cell keeps it
-  (nettai-render's `SoulOffer`: the offer and the window's step, read of the
-  system's state by name), in the console's version's palette (Team
+  (nettai-render's `SoulOffer`: the offer, a soul's form, and the window's
+  step, read of the system's state by name; the icon is the soul's place
+  among its navi's souls, `soul_place`: a pack's soul icons are in the order
+  the navi lists its souls, the original's soul numbers'), in the console's
+  version's palette (Team
   Colonel's icon has another outline color: the pack's `icon_versions`);
 - what a soul adds to the screen, drawn by what the engine's screen says,
   not by soul (verified frame for frame, exe5.txt's custom/capsules,
@@ -1033,7 +1036,8 @@ the event flags 2 to 7 and Team Colonel's 7 to 12 the flags 8 to 0x0D, the
 other version's none, and a dark chip's Chaos Unison needs flag 0x236 too.
 The engine ports that check on the souls owned: the round's setup writes
 the side's into the souls system's setup field `souls` (`set_fact`), and the
-battle reads them as the save's flags, by each soul's number. A side may have
+battle reads them as the save's flags (a soul is its form, named by its id;
+the original's number for it is compat's, exe5-compat's `form_number`). A side may have
 any of the game's souls, of either version (nettai's extension, as a Cross
 list may name either version's), and a soul whose family the folder never
 holds never comes up. Only a game whose rules' systems take `souls` takes a list
@@ -1049,8 +1053,8 @@ whose rules take neither refuses one off. The netplay offer carries them.
 **An EXE5 save** (the editor's "Import from save…", `Match::import_save`,
 which reads a save that isn't EXE6's as EXE5's: a .sav, or a raw save image as
 Tango's netplay templates hold, read by `exe5_compat::save`) makes the match
-EXE5's and gives its karma, the souls its version's flags give (EXE5's
-souls of those numbers), its Soul Unison and Chaos Unison and, to a side
+EXE5's and gives its karma, the souls its version's flags give (the forms
+compat names for those numbers), its Soul Unison and Chaos Unison and, to a side
 with a NaviCust, the board of its ExpMemry (`expansions`: the NaviCust's
 programs aren't the import's yet).
 

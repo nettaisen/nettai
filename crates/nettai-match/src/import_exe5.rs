@@ -34,8 +34,11 @@ impl Side {
         self.chaos_unison = save.chaos_unison();
         let all = crate::facts::all_souls(content, &arena.game);
         let mut souls = Vec::new();
+        // (A save's souls are by the original's number: compat names each
+        // number's form.)
+        let compat = exe5_compat::Compat::exe5();
         for n in numbers {
-            match all.iter().copied().find(|&f| content.form(f).soul.as_ref().is_some_and(|s| s.number == n)) {
+            match compat.form(n).and_then(|k| crate::ids::form(content, &arena.game, k)).filter(|f| all.contains(f)) {
                 Some(f) => souls.push(f),
                 None => notes.push(format!("the save has soul {n}, which {} hasn't", arena.game)),
             }
@@ -100,5 +103,21 @@ mod tests {
         assert_eq!(m.sides[0].navicust.map(|n| n.expansions), Some(1));
         let e = m.import_save(&content, 0, b"not a save").unwrap_err();
         assert!(e.contains("EXE6") && e.contains("EXE5"), "{e}");
+    }
+
+    /// The content names a soul by its form's id; the original's number for
+    /// it is compat's (records.toml's forms). MegaMan lists his souls in
+    /// the order of those numbers, 1 to 12: the order of the soul button's
+    /// icons in a pack, which the frontend takes an icon by
+    /// (nettai-render's `soul_place`).
+    #[test]
+    fn megamans_souls_are_in_the_order_of_their_numbers() {
+        let content = exe5_content();
+        let compat = exe5_compat::Compat::exe5();
+        let megaman = content.defs.navi_by_key("megaman").unwrap();
+        let souls = &content.navi(megaman).forms.as_ref().unwrap().souls;
+        let numbers: Vec<Option<u8>> = souls.iter().map(|&f| compat.form_number(&content.defs.form(f).key)).collect();
+        assert_eq!(numbers, (1..=12).map(Some).collect::<Vec<_>>());
+        assert_eq!((compat.form(0), compat.form(7), compat.form(13)), (Some("base"), Some("colonelsoul"), None));
     }
 }

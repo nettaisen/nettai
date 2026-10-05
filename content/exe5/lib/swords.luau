@@ -22,11 +22,9 @@ local operation_battle = require("./operation_battle")
 
 local swords = {}
 
--- The blade's animations of MegaMan's souls (0x080EC038): ProtoSoul's, ColonelSoul's and ShadowSoul's arms.
-local SOUL_BLADE_ANIMS: { [number]: number } = { [1] = 13, [7] = 14, [8] = 15 }
-
 -- 0x080EC038: the blade's animation, which matches its holder's arm: a navi AI's (under 0xD), a player AI's (but
--- 0x17's, 0), or for MegaMan's base AI, his soul's (0 in none).
+-- 0x17's, 0), or for MegaMan's base AI, his soul's (its form's `blade_anim`: ProtoSoul's, ColonelSoul's and
+-- ShadowSoul's arms; 0 in another, and in none).
 function swords.blade_anim(me: Object): number
     local kind, ai = me.actor_type, me.ai_index
     if kind == "navi" then
@@ -35,8 +33,8 @@ function swords.blade_anim(me: Object): number
         if ai ~= 0 then
             return if ai == 0x17 then 0 else ai
         end
-        local soul = battle.navi(me.alliance).form.soul
-        return if soul then SOUL_BLADE_ANIMS[soul.number] or 0 else 0
+        local anim: number? = battle.navi(me.alliance).form.blade_anim
+        return anim or 0
     end
     return 0
 end
