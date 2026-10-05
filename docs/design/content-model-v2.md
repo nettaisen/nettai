@@ -247,6 +247,8 @@ export type NaviSpec = {
     story: { hp: { number }, max_level: number }?,  -- EXE5's team navis: the HP by the story's progress,
                                                   -- the last level (tools fill a side's stats from it)
     palette_step: number?,                        -- what its palettes go by (EXE5's team navis')
+    charge_glow_lift: { anims: { number }, pixels: number }?,  -- its animations that lift its charge glow
+                                                  -- (EXE5's GyroMan's in the air)
     chip_bonus: { family: ChipFamily, dimming_chips: boolean?, by_level: { number } }?,
     identity: Identity,                           -- the NameID record: attach points, actor type, parts
     actions: { [string]: Action }?,               -- a link navi's own actions
@@ -363,8 +365,9 @@ of them by number, they say:
   `anims`, and those it is drawn `behind` in; `own_palette`; `anim_offset`), a `second` one, an `idle`
   overlay (worn while standing), a `beast_head` (its palette, or none: the mood's), or `own`, a routine of its
   own (`own(wearer)`), for a record whose hook puts on an object of the content's own kind: it runs wherever the
-  record's init hook does (a player's init, an afterimage of it, its image, a navi switch) and keeps what it puts
-  on in the wearer's second related slot itself, where the death hook finds it. `overlay_hooks`: which of
+  record's init hook does (a player's init, its image, a navi switch, and an afterimage of it where the game's
+  afterimages wear what their owner does: the effects rule `afterimages_wear_overlays`, EXE6's) and keeps what it
+  puts on in the wearer's second related slot itself, where the death hook finds it. `overlay_hooks`: which of
   the death hook, an animation change, a flinch and a drag touch what the object wears (by default its death
   takes a body or head off and an animation change restarts it). `aura_anim`: the Full Synchro aura's
   animation (`sub_80C4C52`; a player's identity has one). `ice`: the ice block that fits (`byte_80E9C30`,

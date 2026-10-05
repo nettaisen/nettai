@@ -7,7 +7,9 @@ use crate::content::{PanelCondition, SoundRole};
 use crate::sound::SoundId;
 use crate::object::{ObjectRef, PanelPos, Vec3};
 
-/// Panel types. The type is also the low nibble of a panel's flags word.
+/// Panel types, in the engine's order. A panel's flags word holds its type
+/// in the low nibble by the game's number of it (`PanelRules::type_flags`):
+/// EXE6's numbers are this order's first thirteen, EXE5's its own.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PanelType {
@@ -65,6 +67,7 @@ impl PanelType {
 
 /// Bits of a panel's cached flags word.
 pub mod pflags {
+    /// The panel's type, by the game's number of it.
     pub const TYPE_MASK: u32 = 0x0F;
     pub const SOLID: u32 = 0x10;
     pub const ALLIANCE_1: u32 = 0x20;
@@ -764,6 +767,21 @@ impl Battle {
 mod tests {
     use crate::battle::Battle;
     use crate::scenario;
+
+    /// A panel's flags word holds its type in the low nibble by the game's
+    /// number of it (EXE5 numbers holy 9 and metal 5, where EXE6's 5 is
+    /// holy), with the type's own flags.
+    #[test]
+    fn a_panels_flags_hold_the_games_number_of_its_type() {
+        use super::PanelType::*;
+        let mut rules = scenario::content().rules().panels.clone();
+        let own = |rules: &crate::content::PanelRules, t: super::PanelType| rules.types[t as usize].flags;
+        assert_eq!(rules.type_flags(Holy), Holy as u32 | own(&rules, Holy));
+        rules.numbers = vec![Missing, Broken, Normal, Cracked, Poison, Metal, Grass, Ice, Lava, Holy, Sea];
+        assert_eq!(rules.type_flags(Holy), 9 | own(&rules, Holy));
+        assert_eq!(rules.type_flags(Metal), 5 | own(&rules, Metal));
+        assert_eq!(rules.type_flags(Normal), 2 | own(&rules, Normal));
+    }
 
     /// Stolen columns of one side that come due together return one a
     /// tick, the frontmost first (the original's list loop restarts at its

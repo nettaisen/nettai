@@ -120,7 +120,13 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         b.objects.get_mut(r).set_visible(false);
     }
     charge_sound(b, r, alliance, source, chaos.armed);
-    let (dx, dz) = crate::kinds::player::attach_point(b, owner, 0);
+    let (dx, mut dz) = crate::kinds::player::attach_point(b, owner, 0);
+    // A navi whose animation lifts the glow (EXE5's GyroMan's in the air,
+    // 0x080E0E58).
+    let anim = b.objects.get(owner).anim;
+    if let Some(lift) = crate::kinds::player::navi_of(b, owner).charge_glow_lift.as_ref().filter(|l| l.anims.contains(&anim)) {
+        dz = dz.wrapping_add(lift.pixels);
+    }
     let p = b.objects.get(owner).pos;
     b.objects.get_mut(r).pos = Vec3 { x: p.x.wrapping_add(dx << 16), y: p.y, z: p.z.wrapping_add(dz << 16) };
     crate::kinds::player::update_sprite(b, r);
