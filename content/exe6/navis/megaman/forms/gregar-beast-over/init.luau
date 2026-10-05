@@ -21,7 +21,7 @@ return define.form {
     },
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
-    game = "gregar",
+    version = "gregar",
     -- (No hit breaks Beast Over; the original's routine, by the form's number, would drop
     -- either to the Falzar beast.)
     breaks_to = falzar_beast,
