@@ -3,8 +3,8 @@
 -- holding A and the chip becomes another sword by the direction sequence entered (with A held, each step the whole
 -- joypad word, EXE6's sequences): LongSwrd, FtrSword, WideSwrd, LifeSrd or SonicBom (0x080ED618). Letting go of A, or
 -- 48 ticks without a sequence, gives a Sword (chip 0x30). The pick's action starts in place (`object_setAttack0`) as
--- that chip's, with its subtype and parameters and the original damage. In ProtoSoul or ShadowSoul (souls 1 and 8)
--- the navi waits while A is up.
+-- that chip's, with its subtype and parameters and the original damage. In ProtoSoul or ShadowSoul (the forms with
+-- `var_sword_waits`) the navi waits while A is up.
 --
 -- A computer-controlled navi (NaviStats +0x2A, never set in a Team Battle, or AIData +0xF0) takes the side's sword
 -- pick instead (0x0802D4E2's +0x12, which its AI draws: the picks by their place, one past the last a Sword). +0xF0
@@ -28,8 +28,6 @@ local COUNTDOWN = 0x30
 -- The phases, on the attack's step.
 local START, PICK = 0, 4
 local SOUND = asset.sound("ok-8b")
--- The souls that wait while A is up (NaviStats +0x2C): ProtoSoul and ShadowSoul.
-local WAITING_SOULS = { [1] = true, [8] = true }
 -- The joypad bits, as the game's JoypadHeld word has them.
 local KEYS: { { key: Key, bit: number } } = {
     { key = "a", bit = 0x001 },
@@ -121,8 +119,9 @@ local function pick(me: Object, s: State, spec: Spec)
     end
     local held = held_word(me)
     if not bit32.btest(held, 0x001) then
-        local soul = battle.navi(me.alliance).form.soul
-        if soul and WAITING_SOULS[soul.number] then
+        -- (The souls that wait while A is up, by NaviStats +0x2C: ProtoSoul and ShadowSoul, their forms'
+        -- `var_sword_waits`.)
+        if battle.navi(me.alliance).form.var_sword_waits == true then
             return
         end
         return become(me, spec.sword)

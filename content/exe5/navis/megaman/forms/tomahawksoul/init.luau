@@ -7,20 +7,24 @@
 -- grass (0x08011C98: ./grass), and its damaging Wood chips but dimming ones deal double while he stands on grass,
 -- which the use turns normal (0x0801032A, 0x0800FFD6).
 
-local attach_points = require("../attach_points")
+local attach_points = require("@self/attach_points")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged-shot")
 local drklance = require("../../../chips/drklance")
 local grass = require("@self/grass")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "tomahawksoul",
-    soul = { number = 10, family = "wood" },
-    change = souls.action,
-    revert = souls.revert,
+    soul = { family = "wood" },
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- TomahawkMan's image as MegaMan unites with him (rules/souls/image).
+    image = soul_image.look { sprite = asset.sprite("tomahawkman") },
     sprite = asset.sprite("tomahawksoul"),
     element = "wood",
     buster_bonus = 0,
@@ -42,7 +46,10 @@ return define.form {
         normal = asset.mugshot("tomahawksoul"),
         variant = { normal = asset.mugshot("tomahawksoul-chaos") },
     },
-    buster_arm = { anim = 0 },
+    -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
+    buster_arm = { anim = 10 },
+    -- MegaMan's emerging in it shakes the cameras (rules/souls/change, 0x0801212C).
+    emerge_shake = true,
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 10 of category 0).
     identity = define.identity {
         class = "megaman",
@@ -50,6 +57,6 @@ return define.form {
         actor_type = "player",
         ai_index = 0,
         aura_anim = 0,
-        attach_points = attach_points[10],
+        attach_points = attach_points,
     },
 }
