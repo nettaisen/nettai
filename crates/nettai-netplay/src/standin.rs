@@ -28,12 +28,20 @@ impl StandInBattle {
     /// The engine input for this tick, from the buttons and the battle as
     /// it stands before the tick.
     pub fn tick_input(&mut self, buttons: [u16; 2]) -> TickInput {
-        let r = &self.battle.round;
-        // The end state asks the link session to close; it closes at once.
-        let events = TickEvents { link_closed: r.top == top::END && r.mode == 0 && r.sub == 4 && r.init == 4, ..TickEvents::default() };
-        let player = |side: usize| PlayerTick { held: buttons[side] & 0x3FF };
-        TickInput { players: [player(0), player(1)], events }
+        tick_input(&self.battle, buttons)
     }
+}
+
+/// The engine input for `battle`'s next tick from the two players' buttons
+/// (by side) and the battle as it stands before the tick: the one place
+/// that derives it, for whoever steps a battle on buttons alone (a netplay
+/// peer, offline play).
+pub fn tick_input(battle: &Battle, buttons: [u16; 2]) -> TickInput {
+    let r = &battle.round;
+    // The end state asks the link session to close; it closes at once.
+    let events = TickEvents { link_closed: r.top == top::END && r.mode == 0 && r.sub == 4 && r.init == 4, ..TickEvents::default() };
+    let player = |side: usize| PlayerTick { held: buttons[side] & 0x3FF };
+    TickInput { players: [player(0), player(1)], events }
 }
 
 impl Game for StandInBattle {
