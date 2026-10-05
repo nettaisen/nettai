@@ -19,3 +19,6 @@ trace = ["dep:serde_json"]
 
 [dev-dependencies]
 nettai-battle = { workspace = true, features = ["test-content"] }
+# content/exe6 itself, for the test of what its forms say of each other
+# (tests/forms.rs).
+nettai-match = { path = "../nettai-match", features = ["testing"] }

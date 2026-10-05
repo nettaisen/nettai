@@ -262,7 +262,10 @@ mod tests {
     /// `testing::rules`), for a test whose small ruleset names its systems
     /// alone: a ruleset states every rule, or the content's tables do.
     fn stated() -> Content {
-        Content { base_rules: Some(crate::content::testing::rules()), ..Default::default() }
+        let mut rules = crate::content::testing::rules();
+        // (Its fresh stats' weapon is a handle of the test content's.)
+        rules.fresh_stats.mode9_a = None;
+        Content { base_rules: Some(rules), ..Default::default() }
     }
 
     fn folder(name: &str, modules: &[(&str, &str)]) -> Game {
@@ -371,6 +374,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         damage_word = "statuses_and_bug",
         obstacle_soldiers = false,
         palette_flash = "mode_runs_through_pause",
+        palette_flash_order = "after_fades",
         overlays_run_while_paused = true,
         load_sets_part_palette = true,
         obstacle_actions = "own_from_6","#,
@@ -386,6 +390,13 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         intro_from_black = false,
         low_hp_music = true,
         navi_win_banner = "operation_battle","#,
+            ),
+            (
+                "fresh_stats",
+                r#"
+        reg_up = 7,
+        custom_level = 6,
+        mood = 0x70,"#,
             ),
             (
                 "panels",
@@ -487,6 +498,9 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         );
         assert_eq!((r.form_tick, r.flash_hides_on_clear, r.missing_collision_status.0, r.intake.drain_bug_flags), (false, true, 7, true));
         assert_eq!((r.pools.slots(), r.panels.reservations), ([16, 32, 8], Reservations::Unmarked));
+        let f = r.fresh_stats;
+        assert_eq!((f.reg_up, f.custom_level, f.mood), (7, 6, 0x70));
+        assert_eq!((f.beast_out_counter, f.mode9_a), (0, None), "none stated: no Beast Out turns, no weapon");
         assert_eq!((r.panels.numbered(2), r.panels.numbered(3)), (Some(crate::field::PanelType::Normal), None), "its own numbers, no others");
         // What it may leave out reads as nothing, for every game.
         assert!(r.navicust.boards.is_empty() && r.lockon.column_shifts.is_empty() && r.chaos_cycle.is_empty() && r.holding_banners.is_empty());
@@ -508,10 +522,25 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 52, "every field of every section");
+        assert_eq!(fields, 56, "every field of every section");
         // A field of a table of settings, too.
         let e = game(ruleset(None, None, Some((" elec_reaches_submerged = true,", "")))).unwrap_err();
         assert!(e.contains("ruleset: reactions.hit_test: missing field `elec_reaches_submerged`"), "{e}");
+        // The fresh stats' weapon is a weapon the content defines.
+        let with_weapon = |weapon: &str| -> Result<Content, String> {
+            let mut c = Content::default();
+            let text = ruleset(None, None, Some(("mood = 0x70,", &format!("mood = 0x70,\n        mode9_a = {weapon},"))));
+            let weapon = "define.weapon { id = 'shot', charge_ticks = { 0, 0, 0, 0, 0 }, setup = function(navi) return nil :: any end }";
+            let text = format!("local shot = {weapon}\n{text}");
+            c.scripts.add_game("game", [("rules/init".to_string(), text)].into());
+            c.define().map_err(|e| e.message)?;
+            Ok(c)
+        };
+        let c = with_weapon("shot").unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(c.rules().fresh_stats.mode9_a, c.defs.weapon_by_key("shot"));
+        assert!(c.rules().fresh_stats.mode9_a.is_some());
+        let e = with_weapon("3").unwrap_err();
+        assert!(e.contains("game/rules/init.luau: ruleset: fresh_stats.mode9_a: a weapon (a `define.weapon`), not"), "{e}");
         // A rule is one of the engine's, by name.
         let e = game(ruleset(None, None, Some(("shake = \"battle_rng\"", "shake = \"exe5\"")))).unwrap_err();
         assert!(e.contains("ruleset: effects.shake: unknown variant `exe5`, expected `console_rng` or `battle_rng`"), "{e}");

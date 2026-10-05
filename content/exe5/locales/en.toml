@@ -206,6 +206,7 @@ language = "en"
 "meddy" = { name = "Meddy", description = "Throw 2\nbombs to\nenmy area" }
 "meddy-ds" = { name = "Meddy\uE008", description = "Throw 2\nbombs to\nenmy area" }
 "meddy-sp" = { name = "Meddy\uE003", description = "Throw 2\nbombs to\nenmy area" }
+"meddycap" = { name = "MeddyCap", description = "Throw a\nparalyzer\ncapsule" }
 "megenbom" = { name = "MegEnBom", description = "Throws a\nbomb 3sq\nahead" }
 "metagel" = { name = "MetaGel", description = "Gel atk\nsteals a\npanel!" }
 "meteors" = { name = "Meteors", description = "Drop many\nmeteor on\nenmy area" }
@@ -297,6 +298,7 @@ language = "en"
 "snake" = { name = "Snake", description = "Call snak\nfrom hole\nin area" }
 "snctuary" = { name = "Snctuary", description = "Chng all\nown panel\nto holy" }
 "sonicbom" = { name = "SonicBom", description = "" }
+"splitup" = { name = "SplitUp", description = "Your\nshadow\nattacks" }
 "spreader" = { name = "Spreader", description = "Creates a\nlarge\nexplosion" }
 "sprsonic" = { name = "SprSonic", description = "" }
 "spshake1" = { name = "SpShake1", description = "Shakey\nshivers\n3sq ahead" }
@@ -357,9 +359,11 @@ language = "en"
 
 [navis]
 "colonel" = { name = "Colonel" }
+"meddy" = { name = "Meddy" }
 "megaman" = { name = "MegaMan", variant_name = "BCMegaMn" }
 "protoman" = { name = "ProtoMan" }
 "searchman" = { name = "SerchMan" }
+"shadowman" = { name = "ShadoMan" }
 "tomahawkman" = { name = "TmhkMan" }
 
 [forms]

@@ -6,7 +6,7 @@
 -- makes its own (`buster.make`, a `BusterLook`): its muzzle flash (EXE6's
 -- attachment row 5, at attach point 0x10), its arm (row 6), an enemy navi's
 -- arm (row 0x2B, at attach point 0x0E), its recovery table (EXE6's
--- `byte_80209CC`) and its attachment kind.
+-- `byte_80209CC`), what stops a shot's panel count, and its attachment kind.
 
 local attachment = require("./attachment")
 
@@ -89,16 +89,12 @@ local function raise_arm_for(look: BusterLook, navi: Object, holder: Object, whi
     attach(look.arm, if arm then arm.anim else 0, palette_add)
 end
 
--- What stops a shot's panel count (`byte_800FB4C`, by side): bodies,
--- neutral objects, blockers and reservations, and only the other side's
--- barrier bits.
-local CLOSED = { [0] = 0x0D880080, [1] = 0x0E880080 }
-
 -- `sub_800FAF6`: the ticks of recovery after a shot, by the Rapid stat and
 -- the open panels from (x, y) forward, counting (x, y) itself, at most 5
 -- (a Rapid past the table is an error: the original reads on into what
--- follows it).
-local function recovery(RECOVERY: { { number } }, navi: Object, x: number, y: number): number
+-- follows it). What stops the count is the game's (the look's `closed`, by
+-- the shooter's side).
+local function recovery(RECOVERY: { { number } }, CLOSED: { [number]: number }, navi: Object, x: number, y: number): number
     local closed = CLOSED[navi.alliance]
     local open = 0
     while true do
@@ -152,7 +148,7 @@ function buster.make(look: BusterLook): Buster
         raise_arm_for(look, navi, navi, "overlay", false)
     end
     function b.recovery(navi: Object, x: number, y: number): number
-        return recovery(look.recovery, navi, x, y)
+        return recovery(look.recovery, look.closed, navi, x, y)
     end
     b.move_cancel = move_cancel
     return b

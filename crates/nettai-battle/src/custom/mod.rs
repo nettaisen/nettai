@@ -32,16 +32,6 @@ use crate::setup::{NaviStats, effects};
 use crate::transform::TransformRequest;
 use builder::{ClassCounts, Pick, ProgramAdvancesUsed};
 
-/// Which version of EXE6 a player plays: it decides their Crosses and
-/// Beast form. Neither is a default: whoever makes a player says which. (A
-/// game whose versions play alike, EXE5, has none here.)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum GameVersion {
-    Gregar,
-    Falzar,
-}
-
 /// The highest level of a navi code (`sub_8121198`: a navi's 15 codes).
 pub const MAX_NAVI_LEVEL: u8 = 14;
 
