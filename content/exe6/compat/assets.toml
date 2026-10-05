@@ -725,29 +725,40 @@ sound-1d7 = 0x1D7
 sound-1d8 = 0x1D8
 sound-1d9 = 0x1D9
 
-# Battle backgrounds (`off_8080F98`).
+# Battle backgrounds (`off_8080F98`), each named for the area whose maps draw it: a battle draws its
+# map's (`sub_8081308`: the table at 0x0808139C by map group and number; 0x07 for a real-world map)
+# unless its settings state one. The names are the menu's (`sub_811F290`), in full where its twelve
+# characters cut one short; docs/frontend.md §1 has the table of them, tools/backgrounds (the
+# verification workspace) the names and their areas from the ROM.
 [backgrounds]
-honeycomb = 0x00
-statues = 0x01
-seals = 0x03
-clouds = 0x04
-sprouts = 0x05
-calendar-checkers = 0x06
-calendar-mint = 0x07
-calendar-lavender = 0x08
-calendar-navy = 0x09
-calendar-blue = 0x0A
-calendar-cyan = 0x0B
-trees = 0x0C
-calendar-green = 0x0D
-calendar-bright-blue = 0x0E
-code = 0x0F
-globes = 0x10
-code-2 = 0x11
-swirls = 0x12
-calendar-purple = 0x13
-storm-clouds = 0x14
-globes-2 = 0x15
+lans-hp = 0x00  # Lan's HP
+acdc-hp = 0x01  # ACDC HP
+aquarium-hp = 0x03  # Aquarium HP
+sky-hp = 0x04  # Sky HP
+green-hp = 0x05  # Green HP
+robot-control-comp = 0x06  # RobCtrlComp1 and 2 ("Robot Control Comp" in dialogue); PavilonComp4 too
+# the default: the 26 comps of the first comp map (RoboDogComp, the classrooms', the Bathroom, Elevator and Fan comps
+# and so on), every real-world map, and what a link battle's settings state
+comp = 0x07
+# the six comps of the second comp map (Lab'sComp1 and 2, BookComp, HeliportComp, VendngMcComp and Pipe Comp): 0x07's
+# picture in another palette
+comp-alt = 0x08
+central-area = 0x09  # CentralArea1 to 3
+aquarium-comp = 0x0A  # AquarumComp1 to 3 ("AQUARIUM COMP" in dialogue); PavilonComp1 too
+seaside-area = 0x0B  # SeasideArea1 to 3
+judgetree-comp = 0x0C  # JdgTreeComp1 to 3 ("JudgeTreeComp" in dialogue); PavilonComp2 too
+green-area = 0x0D  # Green Area1 and 2
+sky-area = 0x0E  # Sky Area1 and 2
+undernet = 0x0F  # Undernet1 to 3 and UndernetZero
+# MrWeathrCmp1 to 3 ("Mr.Weather" in dialogue) once the comp's storm is cleared; PavilonComp3 too
+mr-weather-comp = 0x10
+underground = 0x11  # Underground1 and 2
+copybot-comp = 0x12  # CopyBotComp
+acdc-area = 0x13  # ACDC Area
+graveyard = 0x14  # Graveyard1 and Graveyard; ImmortalArea too
+# MrWeathrCmp1 to 3 and PavilonComp3 in place of 0x10, until the comp's event flag is set (its typhoon virus beaten:
+# 0x0BE1 to 0x0BE3, 0x0FD2); 0x10's picture with animations of its own
+mr-weather-comp-storm = 0x15
 
 # Banners: banner ids (`pt_801EF84`).
 [banners]
