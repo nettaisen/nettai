@@ -28,6 +28,8 @@ fn asset_names() -> nettai_content::names::AssetNames {
         chips: c.chip_keys.iter().map(|(&id, k)| (id, nettai_content_api::keys::local(k).to_string())).collect(),
         glyphs: c.text.glyphs.clone(),
         dialogue_glyphs: c.text.dialogue_glyphs.clone(),
+        // The Japanese ROMs' encoding is the pack's Japanese lettering's.
+        language_glyphs: [(crate::lettering::LANGUAGE.to_string(), (c.text.jp.glyphs.clone(), c.text.jp.dialogue_glyphs.clone()))].into(),
         ..Default::default()
     }
 }
@@ -65,7 +67,12 @@ pub fn main(args: &[String]) {
     let jp = crate::graphics::japanese_differences(&roms);
     if !jp.is_empty() {
         let ids: Vec<String> = jp.iter().map(|(c, i)| format!("{c:02x}-{i:02x}")).collect();
-        eprintln!("note: the Japanese ROMs draw sprites {} otherwise; the pack has the US's", ids.join(", "));
+        eprintln!("note: the Japanese ROMs draw sprites {} otherwise (no content draws them); the pack has the US's", ids.join(", "));
+    }
+    let jp = crate::graphics::japanese_backgrounds(&roms);
+    if !jp.is_empty() {
+        let ids: Vec<String> = jp.iter().map(|&id| format!("{id:#04x} ({})", names.background(id))).collect();
+        eprintln!("note: the Japanese ROMs have another background {} (no netbattle shows it); the pack has the US's", ids.join(", "));
     }
 
     let mut files = vec![manifest(&bundle)];
