@@ -67,11 +67,15 @@ const NOT_BUILTINS: [&str; 31] = [
 
 /// The compiler content is compiled with.
 pub fn compiler() -> Compiler {
+    #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+    crate::wasm::initialize();
     Compiler::new().set_optimization_level(1).set_debug_level(2).set_disabled_builtins(NOT_BUILTINS)
 }
 
 /// A VM with the content standard library.
 pub fn new_vm(debug_print: bool) -> mlua::Result<Lua> {
+    #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+    crate::wasm::initialize();
     let lua = Lua::new_with(StdLib::STRING | StdLib::TABLE | StdLib::BIT | StdLib::MATH, LuaOptions::default())?;
     let g = lua.globals();
     for name in

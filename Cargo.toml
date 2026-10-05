@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/*"]
+exclude = ["crates/nettai-luau/wasm/libc"]
 
 [workspace.package]
 edition = "2024"
@@ -22,3 +23,7 @@ opt-level = 1
 
 [profile.release]
 debug = 1
+
+[patch.crates-io]
+# Supply the file API stubs that stock mlua needs on bare Wasm.
+libc = { path = "crates/nettai-luau/wasm/libc" }
