@@ -556,16 +556,32 @@ as exe6-extract takes EXE6's) writes a pack whose manifest says `game = "exe5"`:
   with the bank's voicegroups (the version's matched to equal ones of the bank, samples, waves and key maps by
   content, or added); nettai-content's `sound::SongVersions` holds them, and a pack without versions names no
   version anywhere.
-- **Left out, for now:**
-  - The Japanese ROMs' one different sprite (14-17, which has text on it): the US release localized it rather than
-    cut it, so the pack keeps the US's, as EXE6's does.
-  - **Languages** (EXE6's shape, text-rendering.md §10): with an EXE5 content root, its strings go in
-    `content/exe5/locales/en.toml` (from the US ROMs) and `ja.toml` (from the Japanese ROMs), keyed by definition
-    key; and exe5-extract writes the Japanese ROMs' lettering beside the US's as nettai-assets' `HudLettering` and
-    `CustomLettering` (the fonts in the Japanese encoding, the HUD's lines, the banners and pictures with words in
-    them), as exe6-extract's `lettering` does. The strings exist; the lettering doesn't yet: the pack is the US
-    ROMs' lettering alone, so an EXE5 console in Japanese (`--lang ja --text original`) draws the Japanese names in
-    the US font (the static audit says so, not counted).
+- **Languages** (EXE6's shape, text-rendering.md §10): the strings are in `content/exe5/locales/en.toml` (from the
+  US ROMs) and `ja.toml` (from the Japanese ROMs), keyed by definition key; and exe5-extract writes the Japanese
+  ROMs' lettering beside the US's as nettai-assets' `HudLettering` and `CustomLettering` (its `lettering`, as
+  exe6-extract's does), so an EXE5 console in Japanese (`--lang ja`) draws as Team of Blues and Team of Colonel do:
+  - the 8x16 font and the dialogue font with its advances, in the Japanese encoding (compat/text.toml's `[jp]`);
+  - the HUD's text lines;
+  - the ten banners whose words differ (ROCKMAN, BLUES, SEARCHMAN and TODOMAN for MegaMan, ProtoMan, SearchMan and
+    TomahawkMan, DELETED and WIN!; the Program Advance's katakana, twice), some starting elsewhere, and the
+    banners' palette;
+  - カスタム中… for "Cstmzing...", seven tiles wide for eight;
+  - the chip window's pictures for OK and the re-deal button (チップが えらばれて いません; the shared tiles of
+    "chip data transmission" and "BLOCKING!") with their palettes;
+  - the soul button's label, "uni son" in two rows where the US ROMs' says "UNITE" (a named button's tiles by
+    language: `CustomLettering::buttons`).
+
+  The two Japanese ROMs' lettering is the same (the extractor checks it), and so is the rest of what a netbattle
+  draws in all four ROMs: the HUD's and the custom screen's other blocks, the faces and emblems, every chip's icon
+  and picture, the field (the verification workspace's tools/exe5/jpassets.py compares them block by block, by the
+  literals of the routines the builds share).
+- **Left out:**
+  - The Japanese ROMs' one different sprite (14-17, the "BLOCK!" label, ブロック! there): the US release localized
+    it rather than cut it, so the pack keeps the US's, as EXE6's does; no content draws it.
+  - The Japanese ROMs' background 0x05, which is another picture than the US ROMs' (bubbles in the dark for the
+    goldfish): no netbattle's stage shows it, and the pack keeps the US's. The extractor says both.
+  - "Interval..." and "Strat Change..." (インターバル中…, サクセンヘンコウ中…), which a Team Battle shows where a
+    netbattle shows "Cstmzing...": the pack has neither language's.
 - **Names:** placeholders (`sprite-0c-2d`, `sound-10e`, `chip-12d`; a glyph's number in brackets) until an EXE5 content
   root names them in its compat, as EXE6's does.
 - **Shared decoding:** the sprite archive and GFX-animation decoders are EXE6's format and code; exe5-extract has its
@@ -1739,10 +1755,9 @@ seven saves (Tango's templates and three played ones):
   a 0 among the places and in a record; patterns out of the records' order). The save import reads block 0 so
   (`exe5_compat::save::ComputerNaviBlock`, the block by number as it is; `nettai_match::computer_navi::of_save`).
   A random match states what the game would write for a player who used each chip of the drawn folder once and
-  learned no pattern (`ComputerNavi::of_folder`: every record zeros). The engine's own block (`Tactics`) doesn't
-  hold a record's five places and score yet: a match compiles to the chips the AI reads within each record, and
-  its checks refuse a 0 among a named pattern's chips until the AI's port takes the record as it is. The learning
-  itself (the tables and the runs during a battle) is not ported: nothing of a battle reads it.
+  learned no pattern (`ComputerNavi::of_folder`: every record zeros). A match compiles to the engine's block
+  (`Tactics`) place for place and record for record. The learning itself (the tables and the runs during a battle)
+  is not ported: nothing of a battle reads it.
 
 ### 15.10 EXE5's emotions (as built)
 

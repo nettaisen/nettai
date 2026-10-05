@@ -330,9 +330,9 @@ functions:
   not only for those a trace shows (its test:
   `a_lookup_by_the_wrong_key_fails_for_every_chip`). A string a
   language's table lacks shows in the content's own, by design: it is said,
-  not counted; so is a language the content has strings in but its pack no
-  lettering for (EXE5's Japanese, which its extraction makes none of): such
-  a console can't be shown, and the language isn't checked. It audits the
+  not counted. A language the content has strings in and its pack no
+  lettering for is a problem (a console in it can't be shown): both games'
+  packs have their Japanese. It audits the
   match's one game (`--game`): a chip's Program Advance code shows unless
   its definition hides it (the trait `hides_advance_code`).
 - `--audit <trace.jsonl>...` runs traces, several at a time (`--jobs N`,
@@ -1141,9 +1141,8 @@ into an enemy's row and fires its buster (three shots).
   are all filled it reads on: into the record's score, then the next
   record's place and chips, each as a chip's number. So a record's score,
   the record after it (named by an entry or not) and the records' order all
-  show. (The engine doesn't play the reading on yet, nor a 0 among a
-  pattern's chips, which a match's checks refuse for now: the AI's port is
-  getting both.)
+  show. (The engine holds the block so; its AI still ends a pattern at its
+  first place that holds no chip, until its port reads on as the game does.)
 
 **What the form leaves out of the save's block**: the count at +0x54, which
 the send writes, and the block's last eight bytes, which nothing reads.

@@ -81,7 +81,7 @@
 
 use crate::ids;
 use nettai_battle::content::{ChipClass, Content};
-use nettai_battle::tactics::{MAX_ENTRIES, MAX_PATTERNS, Tactic, TacticPattern, Tactics};
+use nettai_battle::tactics::{MAX_ENTRIES, MAX_PATTERNS, PATTERN_CHIPS, PatternChip, Tactic, TacticPattern, Tactics};
 use nettai_content_api::ChipHandle;
 
 /// The system that drives the computer navis (EXE5's).
@@ -92,7 +92,7 @@ pub const PLACES: usize = MAX_ENTRIES;
 pub const FIRST: usize = 3;
 /// The block's pattern records, and the chip places of a record.
 pub const RECORDS: usize = MAX_PATTERNS;
-pub const RECORD_CHIPS: usize = 5;
+pub const RECORD_CHIPS: usize = PATTERN_CHIPS;
 /// The score a battle gives a pattern it has just seen (0x0802C4D0).
 pub const NEW_SCORE: u32 = 10;
 
@@ -251,10 +251,7 @@ impl ComputerNavi {
     }
 
     /// The block the engine plays (its type, in place order): each place
-    /// its entry, each record a pattern of the chips the AI reads within it.
-    /// (The engine's pattern has no place for a 0 among its chips, for its
-    /// score or for the reading on from a full record: `check` refuses the
-    /// first, and the others wait on the AI's port.)
+    /// its entry, each record as it is.
     pub fn tactics(&self) -> Tactics {
         let entries = self
             .places
@@ -272,14 +269,12 @@ impl ComputerNavi {
             .map(|r| TacticPattern {
                 dx: r.dx,
                 dy: r.dy,
-                chips: r
-                    .played()
-                    .iter()
-                    .filter_map(|c| match c {
-                        ChipPlace::Chip(c) => Some(*c),
-                        _ => None,
-                    })
-                    .collect(),
+                chips: r.chips.map(|c| match c {
+                    ChipPlace::Empty => PatternChip::Empty,
+                    ChipPlace::Zero => PatternChip::Nothing,
+                    ChipPlace::Chip(c) => PatternChip::Chip(c),
+                }),
+                score: r.score,
             })
             .collect();
         Tactics { entries, patterns }
@@ -333,7 +328,7 @@ impl ComputerNavi {
 
     /// What is wrong with the data for a side of a match of `game`: what
     /// the game can't hold (the lists' and the records' sizes are the
-    /// type's), and what the engine doesn't play yet.
+    /// type's).
     pub fn check(&self, content: &Content, game: &str) -> Vec<String> {
         let mut out = Vec::new();
         if self.is_blank() {
@@ -352,14 +347,6 @@ impl ComputerNavi {
         let foreign = |c: ChipHandle| c.index() >= content.defs.chips.len() || !ids::in_game(content, game, &content.defs.chip(c).key);
         if self.chips().any(foreign) {
             out.push(format!("the computer navi's data names a chip {game} hasn't"));
-        }
-        // (Until the engine's pattern holds a record's five places as they
-        // are: a 0 the AI would read as a chip, in a record a place names.)
-        for (n, r) in self.records.iter().enumerate() {
-            let named = self.places.contains(&Entry::Pattern(n as u8));
-            if named && r.played().contains(&ChipPlace::Zero) {
-                out.push(format!("the computer navi's pattern {} has a 0 among its chips, which the engine doesn't play yet", n + 1));
-            }
         }
         out
     }
@@ -518,7 +505,7 @@ mod tests {
     }
 
     /// What the engine plays of the data: each place its entry, each record
-    /// a pattern by its number, of the chips the AI reads within it.
+    /// a pattern by its number, as it is.
     #[test]
     fn the_engine_plays_the_datas_places_and_records() {
         let content = exe5_content();
@@ -532,15 +519,18 @@ mod tests {
         let filled: Vec<(usize, Tactic)> = block.entries.iter().copied().enumerate().filter(|(_, e)| *e != Tactic::Empty).collect();
         assert_eq!(filled, [(1, Tactic::Chip(cannon)), (5, Tactic::Nothing), (33, Tactic::Pattern(2)), (34, Tactic::Pattern(0)), (41, Tactic::Chip(sword))]);
         assert_eq!(block.patterns.len(), RECORDS);
-        assert_eq!(block.patterns[0], TacticPattern { dx: -2, dy: 1, chips: vec![sword, cannon] });
-        assert_eq!(block.patterns[2], TacticPattern { dx: -1, dy: 0, chips: vec![cannon; 5] });
-        assert_eq!(block.patterns[1], TacticPattern { dx: -1, dy: -1, chips: Vec::new() });
+        let places = [PatternChip::Chip(sword), PatternChip::Chip(cannon), PatternChip::Empty, PatternChip::Chip(cannon), PatternChip::Empty];
+        assert_eq!(block.patterns[0], TacticPattern { dx: -2, dy: 1, chips: places, score: 7 });
+        assert_eq!(block.patterns[2], TacticPattern::of(-1, 0, &[cannon; 5], 10));
+        assert_eq!(block.patterns[3], TacticPattern { dx: 0, dy: 0, chips: [PatternChip::Nothing; 5], score: 0 });
+        // (A blank record is the engine's unused one.)
+        assert_eq!(block.patterns[1], TacticPattern::UNUSED);
+        assert_eq!(ComputerNavi::default().tactics().patterns, [TacticPattern::UNUSED; RECORDS]);
         assert_eq!((d.entries(), d.chips().count()), (5, 2 + 3 + 5));
         assert_eq!(d.check(&content, "exe5"), Vec::<String>::new());
     }
 
-    /// What the game can't hold is said; and what the engine doesn't play
-    /// yet.
+    /// What the game can't hold is said.
     #[test]
     fn what_the_game_cant_hold_is_refused() {
         let content = exe5_content();
@@ -555,17 +545,15 @@ mod tests {
         foreign.records[7].chips[4] = ChipPlace::Chip(ChipHandle(u16::MAX));
         has(&foreign, "names a chip exe5 hasn't");
         // Every place filled, any class anywhere, every record full: the
-        // block holds it. So are records of zeros no place names.
+        // block holds it. So are records of zeros, named or not.
         let mut full = ComputerNavi { places: [Entry::Chip(cannon); PLACES], records: [Record { dx: -5, dy: 2, chips: [ChipPlace::Chip(cannon); 5], score: u32::MAX }; RECORDS] };
         full.places[33] = Entry::Pattern(7);
         assert_eq!(full.check(&content, "exe5"), Vec::<String>::new());
         let mut zeros = data(&[(3, Entry::Chip(cannon))]);
         zeros.records = [Record::ZERO; RECORDS];
         assert_eq!(zeros.check(&content, "exe5"), Vec::<String>::new());
-        // A 0 the AI would play as a chip, in a record a place names: not
-        // yet.
         zeros.places[33] = Entry::Pattern(1);
-        has(&zeros, "pattern 2 has a 0 among its chips, which the engine doesn't play yet");
+        assert_eq!(zeros.check(&content, "exe5"), Vec::<String>::new());
         // EXE6 has no computer navis.
         let six = exe6_content();
         let cannon6 = ids::chip(&six, "exe6", "cannon").unwrap();
