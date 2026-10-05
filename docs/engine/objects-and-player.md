@@ -1139,7 +1139,7 @@ The marker is never read by the move. It is part of the persistent AttackVars st
    - **1:** `sub_800F998(PanelX, PanelY, dir)` tries 4 directions from `byte_800FA00[dir*4..]`: dir 1→{1,3,2,4}, 2→{2,4,1,3}, 3→{3,2,4,1}, 4→{4,1,3,2}. It returns the first valid target; the same SLIDING→0 rule applies.
    - **2:** absolute target `(AttackVars.Unk_16, Unk_17)`.
    - **3:** `sub_800FA20` (ProcessingBug; not in this match).
-5. **If the target is 0 (blocked):** `sub_80F02A2()` is 1 unless `AttackVars.Unk_0d != 0 && AIData.Unk_48 & 0x8000`; it is 1 in normal play. (The move never writes `Unk_0d`: it is byte 1 of the params the last chip left in the attack variables.) So `object_exitAttackState()` runs: `CurAnim = 0` and `CurAction = 8`. The otherwise branch is `sub_801171C`. Nothing else changes.
+5. **If the target is 0 (blocked):** `sub_80F02A2()` is 1 unless `AttackVars.Unk_0d != 0 && AIData.Unk_48 & 0x8000`; it is 1 in normal play. (The move never writes `Unk_0d`: it is byte 1 of the params the last chip left in the attack variables. The test is EXE5's GyroMan's, kept: there the move's start sets the byte for his AI index and his tick sets the bit while he is in the air, the navi state `hovering`: docs/design/exe5-map.md §15.16.) So `object_exitAttackState()` runs: `CurAnim = 0` and `CurAction = 8`. The otherwise branch is `sub_801171C`. Nothing else changes.
 6. **If the target is valid:**
    - `AttackVars.Unk_16/17 = FuturePanelX/Y = target`.
    - `object_reservePanel` (§M6.5).

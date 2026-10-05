@@ -1193,6 +1193,13 @@ below: each game states them).
   change, a flinch and a drag restart what a navi wears (`sub_8011450`, `sub_80F06CE`). EXE6's restart
   (`sub_80C44D2`) reloads the overlay's animation and steps its sprite at once (`"step"`); EXE5's
   (0x080C374E) only has it reload at its next step (`"reload"`).
+- **What an end clears of a navi's requests.** The `reactions` section's `request_clears`, a list of names for
+  each of four ends, besides the six attack requests every one clears: an attack's (`sub_801171C`), a
+  paralysis's (EXE6's freeze's and bubble's too), a flinch's and a drag's. The original's masks differ by game:
+  EXE6's are 0x1000003F and, at a flinch's and a drag's, 0x1000043F (the mode-9 A press; the anti-sword trigger);
+  EXE5's are 0x1803F at an attack's end and 0x1843F at the three reactions' (the Chaos Unison releases; the
+  anti-sword trigger). A navi's own requests (EXE5's GyroMan's take-off and landing, exe5-map.md §15.16) are in
+  none: its own idle clears them.
 - **The souls' engine items (exe5-map.md §15.8).** The `reactions` section's `stance_counter`, the navi's game's:
   the counter a stance's caught hit starts runs from the next tick in EXE6 (`sub_80105F2`, `"next_tick"`), its
   first step at once in EXE5 (0x0800E340, `"at_once"`). (EXE5's hit kernel is the `reactions` section's
@@ -1500,7 +1507,7 @@ P1's items 12 and 8 (exe5-map.md §15.3), on R4.
      (its counter's 0x80, the soul's effect) act on the same levers: the mood, the held states, anger, and their
      own `countered` hook. If EXE5's emotions need names EXE6's five lack, the pushed emotion comes with EXE5's port.
      *As built for EXE5 (2026-10-03, exe5-map.md §15.10):* still no pushed emotion. The order and the setter are
-     the game's (the status section's `emotions`: EXE5's 0x08012740 and 0x080127D6), with a sixth emotion,
+     the game's (the status section's `emotion` rules: EXE5's 0x08012740 and 0x080127D6), with a sixth emotion,
      `worried` (EXE5's mood under 65); the starting mood and the palette are system hooks (`starting_mood`,
      `navi_palette`), which EXE5's light and dark system answers by its value.
   2. **Anger stays framework.** Its trigger (120 stunned ticks or a hit of 300), its 600 ticks, mood 0x80 and
@@ -2486,7 +2493,7 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   | `status.reactions` | `exe6`, `exe5` | `flash_timer_last`, `flash_timer_first` |
   | `status.hp_loss` | `exe6`, `exe5` | `hp_alone`, `gauge_and_last_stand` |
   | `status.form_break` | `exe6`, `exe5` | `cross_or_beast`, `any_form` |
-  | `status.emotions` | `exe6`, `exe5` | unchanged: see below |
+  | `status.emotions` | `exe6`, `exe5` | split since (below): `status.emotion`'s seven rules and `effects.full_synchro_aura`'s three |
 
 - **Still a bundle under one name** (each a whole routine of one game, named for its most visible difference):
   `retype` (what is set, the dimmed mark, a bug code's high byte), `damage_word` (the whole decode of the flag
@@ -2494,12 +2501,9 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   obstacle's), `status.reactions` (the order, when the flash's timer runs, what a drag or a flinch resets),
   `hp_loss` (the gauge, the last stand, how a hit shows), `form_break` (which forms break, and the break's
   animation, overlay and collision region).
-- **No honest short name: `status.emotions`.** It picks one of two whole emotion models: how an emotion is read
-  off the navi (EXE6's worn out when exhausted or at a mood of 0, then angry, tired, Full Synchro; EXE5's a soul
-  first, then anger, a mood of 0, Full Synchro, a mood under 65 worried, and battle mode 1 its own), what holds a
-  mood (tired or exhausted; a mood of 0), how anger ends, the anger tick's pass over AI index 23, and the Full
-  Synchro aura's object. It keeps `"exe6"` and `"exe5"`. Each game has an `emotion` system in Luau already; the
-  model belongs there, which is a port of its own.
+- **`status.emotions` had no honest short name** as one rule: it picked one of two whole emotion models. It has
+  since been split into what it switched, each named for what it does ("`status.emotions`, split", below); no rule
+  is named for a game now.
 - **The hit test's guard mask needed no setting**: EXE5's turn-aside mask (0x0C004000) differs from EXE6's
   (0x0C005000) only for a type with 0x1000, which a guard that breaks to 0x1002 never reaches.
 - The verification workspace: gen-content's decode states EXE6's rules, and its check compares each stated rule
@@ -2538,19 +2542,54 @@ new game calls for all seven save blocks, MegaMan's and the team navis' alike).
   templates with nothing installed; EXE6: 4 saves, 1,274); the EXE6 link navis' reloads (`link_navis`); gen-content
   reads EXE6's four bytes off the routine's instructions. No lab has a new game's save.
 
+### `status.emotions`, split (2026-10-05)
+
+The one rule still named for a game picked between two whole emotion models. It is now what it switched, each a
+rule named for what it does, stated by both games; nothing in the simulation changed.
+
+| Rule | EXE6 | EXE5 |
+|---|---|---|
+| `status.emotion.mood_held` | `tired_or_exhausted` (`sub_8015BEC`) | `at_zero` (0x080127D6) |
+| `status.emotion.anger_end` | `resets_mood` (`sub_80143A6`: 0x80 whatever holds it) | `through_setter` (0x08011A94: a held mood stays) |
+| `status.emotion.plain_in_battle_mode_1` | false | true (0x080127C0: Full Synchro or normal) |
+| `status.emotion.normal_in_a_form` | false | true (a soul's own face) |
+| `status.emotion.anger_before_worn_out` | false (worn out first) | true |
+| `status.emotion.tired_and_exhausted` | true (exhausted is worn out; held tired its own emotion) | false (no such byte is read) |
+| `status.emotion.worried_below` | not stated: no mood is worried | 65 |
+| `effects.full_synchro_aura.follows_identity` | true (its navi's identity's animation each tick) | false (the one it started with) |
+| `effects.full_synchro_aura.steps_while_paused` | false | true |
+| `effects.full_synchro_aura.stops_at_a_pause_in_the_fight` | false | true |
+
+- **The derivation is no bundle.** The two routines (`sub_8015B54`, 0x0801270C) are one reading with five
+  switches: battle mode 1's plain reading, a form's normal, then worn out (a mood of 0, or exhausted) and anger in
+  the game's order, held tired, Full Synchro (0xFF), worried, normal. `kinds::player::emotion` is that one function;
+  `exe5_emotion` is gone.
+- **The aura's fourth difference needed no rule**: EXE5's hides while its navi's flag 0x80000000 is set as well,
+  which is the flag's meaning there (under the sea's surface): `reactions.hit_test.bubbled_as_submerged`, stated
+  already.
+- **The anger tick's AI index 23 is no navi's.** EXE5's tick (0x08011A14) passes over the actor records of AI index
+  23: NameIDs 0x18E, 0x18F and 0x190, a player's type, the last three rows of the table (0x08014C94). 0x18E is
+  ShadowMan's SplitUp shadow, which in content is a kind of its own and never runs the tick; what 0x18F and 0x190
+  are isn't written down. The engine's test is an identity's `never_angers` (no index in Rust), which no identity
+  states today: no navi a player operates has such a record.
+- `worried_below` is the one field left out by a game: none stated, no mood is worried.
+- Checked: the emotion test plays both sets of rules over the same moods, anger's end and the setter; the
+  generators know the rules (gen-content states and compares EXE6's, `gen_rules.py` writes EXE5's status rules as
+  stated); replays of the recordings that exercise emotions in each game.
+
 ### To schedule: the emotion models into each game's `emotion` system
 
-`status.emotions` is the one rule still named for a game (`"exe6"`, `"exe5"`). Each game already has an `emotion`
-system in Luau (content/<game>/rules/emotion) that decides *when* a mood changes (the counter's Full Synchro, the
-swing bug, EXE6's tired start); the *model* is still the framework's. This is what moving it takes.
+The model's differences are rules of the game now (above), read by the framework. Each game already has an
+`emotion` system in Luau (content/<game>/rules/emotion) that decides *when* a mood changes (the counter's Full
+Synchro, the swing bug, EXE6's tired start); moving the *model* there is what this section plans.
 
-**What the Rust does by the rule today** (five places, all in nettai-battle):
+**What the Rust does by the rules** (five places, all in nettai-battle; the table gives each game's side):
 
-| Where | `"exe6"` | `"exe5"` |
+| Where | EXE6's rules | EXE5's rules |
 |---|---|---|
 | `kinds::player::emotion` (the emotion read off a side) | `sub_8015B54`: worn out when exhausted or at a mood of 0, then angry, tired, Full Synchro at 0xFF, else normal | 0x0801270C: in battle mode 1 Full Synchro or normal; out of the base form normal (a soul's own face); then angry, a mood of 0 worn out (a dark MegaMan's), Full Synchro, normal from 65, else worried |
 | `kinds::player::set_mood` (what holds a mood) | `sub_8015BEC`: held while tired or exhausted | 0x080127D6: held at a mood of 0 |
-| `status::tick_anger` | every navi of the player's kind | passes over AI index 23 (0x08011A14) |
+| `status::tick_anger` | every navi of the player's kind | passes over an identity that `never_angers` (0x08011A14's AI index 23: none today) |
 | `status::end_anger` | the mood to 0x80, whatever holds it | through its setter: a mood of 0 stays |
 | `kinds::full_synchro_aura` | steps unless paused or dimmed, follows its navi's identity's animation | actor object 0x5E (0x080C45E0): steps while paused, keeps the animation it started with, hidden while its navi is under the sea, stops running while paused once the fight is on |
 
@@ -2571,8 +2610,8 @@ window and its Full Synchro tint, nettai-match's facts).
    end of a tick (the stored value against a fresh answer) catches a missed site.
 2. **`mood_held(side, navi) -> boolean?`** for `set_mood`'s test, or `set_mood` itself in each game's module with
    a hook for the three Rust callers that set 0x80 (a chip's use, a form change's end, anger's start).
-3. **`anger_ended(side, navi)`**: the system writes the mood (EXE6 raw, EXE5 through its setter). The tick's skip
-   of AI index 23 is better a navi's own field than a hook (which navi it is isn't written down: find it first).
+3. **`anger_ended(side, navi)`**: the system writes the mood (EXE6 raw, EXE5 through its setter). (The tick's skip
+   of AI index 23 is an identity's `never_angers` already.)
 4. **Readable state the API lacks**: the navi's anger timer; the battle's mode as a name (EXE5's module has
    `operation_battle`, not mode 1). `navi.exhausted`, `navi.tired`, `navi.mood_held`, the side's mood and form are
    there.
@@ -2580,10 +2619,9 @@ window and its Full Synchro tint, nettai-match's facts).
    emotion model's. It can become a rule of its own in `effects` now, named for what it does, or a kind each
    game defines.
 
-**A cheaper first step**, if the port waits: split the rule into the four things it switches, each named for what
-it does (`mood_held = "tired_or_exhausted" | "at_zero"`, `anger_end = "resets_mood" | "through_setter"`, the
-aura's, and the derivation's order, which would still be a bundle of one game's). That removes three of the four
-game-named switches without a hook.
+**The cheaper first step is done** ("`status.emotions`, split", above): the rule is split into what it switched,
+each named for what it does, and the derivation turned out to be one reading with five switches, not a bundle.
+What is left for the port is moving that reading and the setter out of Rust.
 
 **Checks when it is done**: `kinds::player::reactions`'s emotion tests (both models over the same moods), the EXE6
 lab's `flow/synchro-*` and `flow/anger-*`, EXE5's `dark-survival/*`, `souls/*` and the patch cards that set the
@@ -2636,3 +2674,28 @@ data tell them apart. Everywhere else a version is the name the game's rules dec
   setup, the Cross sets, and the draw of a random side's version, which stays in the original's order (Gregar,
   Falzar) so that a seed draws the match it always has; the rules' names come in another order.
 - No behavior changed: the same drawn matches, match files and recordings.
+
+### nettai-match, the editor and the frontend use compat at its boundaries alone (2026-10-05)
+
+What the three crates had of the compat crates that was no boundary is gone:
+
+- **A side's EXE6 facts by name.** `nettai_match::facts::write` states a side's version, the Crosses it owns, Beast Out
+  and its Cross list into the systems that take them (`write_version`), beside EXE5's karma and souls: no
+  `Unlocks::write`. `CrossList` and `CROSSES` are nettai-match's own (`cross_list.rs`); a list's room is the rules'
+  `cross_list` field's.
+- **The versions' order is the content's.** EXE6's cross and beast systems declare `version = { "gregar", "falzar" }`,
+  the original's order (Gregar 0, Falzar 1), and tools go by it: a random side's version is drawn among the declared
+  names, a navi's Crosses come version by version in it (`NaviForms::by_version`), and the version's number in a
+  navi's stats (NaviStats+0x20) is its place (`version_byte`). A seed draws the match it drew before the reorder.
+- **A question about the content, not a game's name.** A live draw with Crosses is for a game whose rules take a
+  Cross list (`PlayerFact::CrossList`). A link battle's background is drawn from the table the game's `flow` rules
+  state, `link_backgrounds` (EXE6's `sub_81209DC` table `byte_8120A20`, which was Rust in nettai-match; gen-content
+  reads the ROM's table to check it). EXE5's is empty for now, which is not what the original does: its 0x08129F2C
+  draws from a table of 27 at 0x08129F6C, and its stage draw folds records 76 to 87 onto 0 to 11 (scheduled).
+- **A value stated once.** A fresh save's karma is the light and dark system's `setup_defaults.karma`, which
+  `facts::default_karma` reads; the constant is gone.
+- **The editor** depends on no compat crate (a Cross's version is its form's own `version`).
+- **What stays, and says so where it is used:** the save importers (`nettai_match::import`, `import_exe5`, and
+  `auto_battle::of_save`), where whose game's a file is picks compat's reader; the frontend's recording replay
+  (`driver::trace_rounds`), the same for a recording; and `AutoBattle::learned`'s tie-break by the original's chip
+  numbers, the game's own order. The test of what EXE6's forms say of each other is exe6-compat's (`tests/forms.rs`).

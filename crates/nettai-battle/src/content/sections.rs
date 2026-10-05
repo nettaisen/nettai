@@ -119,6 +119,7 @@ struct ReactionsSection {
     slide_speed: super::rules::SlideSpeed,
     overlay_restart: super::rules::OverlayRestart,
     stance_counter: super::rules::StanceCounter,
+    request_clears: super::rules::RequestClears,
 }
 
 #[derive(Deserialize)]
@@ -188,7 +189,7 @@ struct StatusSection {
     drain_bug_flags: bool,
     no_charge_drive: bool,
     hp_loss: super::rules::HpLoss,
-    emotions: super::Emotions,
+    emotion: super::rules::EmotionRules,
     form_break: super::FormBreak,
 }
 
@@ -300,6 +301,7 @@ impl Stated {
                 slide_speed: r.slide_speed,
                 overlay_restart: r.overlay_restart,
                 stance_counter: r.stance_counter,
+                request_clears: r.request_clears,
             }),
             berserk: Some(r.berserk),
             sine: Some(r.sine.clone()),
@@ -318,12 +320,12 @@ impl Stated {
                 drain_bug_flags: r.intake.drain_bug_flags,
                 no_charge_drive: r.intake.no_charge_drive,
                 hp_loss: r.intake.hp_loss,
-                emotions: r.emotions,
+                emotion: r.emotion,
                 form_break: r.form_break,
             }),
             lockon: Some(r.lockon.clone()),
             chip_use: Some(r.chip_use),
-            flow: Some(r.flow),
+            flow: Some(r.flow.clone()),
             effects: Some(r.effects),
             fresh_stats: Some(r.fresh_stats),
             sp_chips: Some(SpChipsSection { deletion_times: r.sp_deletion_times.clone(), slots: r.sp_slots.clone() }),
@@ -362,7 +364,7 @@ impl Stated {
             flash_hides_on_clear: status.flash_hides_on_clear,
             missing_collision_status: super::rules::MissingCollisionStatus(status.missing_collision_status),
             reactions: status.reactions,
-            emotions: status.emotions,
+            emotion: status.emotion,
             form_break: status.form_break,
             intake: super::rules::IntakeRules {
                 bugs_before_drain: status.bugs_before_drain,
@@ -384,6 +386,7 @@ impl Stated {
             slide_speed: reactions.slide_speed,
             overlay_restart: reactions.overlay_restart,
             stance_counter: reactions.stance_counter,
+            request_clears: reactions.request_clears,
             bubble_bob: reactions.bubble_bob,
             lockon: self.lockon.unwrap_or_default(),
             berserk: self.berserk.unwrap_or_default(),
