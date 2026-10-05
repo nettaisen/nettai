@@ -172,7 +172,7 @@ const PROTOMAN_EMBLEMS: Emblems = Emblems { pictures: 0x0874_22B8, palettes: 0x0
 const COLONEL_EMBLEMS: Emblems = Emblems { pictures: 0x0874_35BC, palettes: 0x086F_C0E8, palette_of: 0x0802_3FC8 };
 /// The navis that operate (NaviStats +0x29): MegaMan (0), Team ProtoMan's
 /// six (1 to 6) and Team Colonel's (7 to 12).
-pub(crate) const NAVI_COUNT: u8 = 13;
+const NAVI_COUNT: u8 = 13;
 const TEAM_NAVIS: u8 = 6;
 const EMBLEM_PALETTE_COUNT: u32 = 8;
 /// The Program Advance animation's names' colors (EXE6 `byte_802BA48`'s

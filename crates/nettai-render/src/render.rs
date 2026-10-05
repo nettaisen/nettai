@@ -47,9 +47,9 @@ pub struct Renderer<'a> {
     pub console_region: &'static str,
     /// The version of the console whose screen is drawn, as its game's
     /// pack names its versions (EXE5's "protoman", "colonel"), for a game
-    /// whose versions the engine doesn't tell apart: what the console shows
-    /// of its own (EXE5's emblems), and which chips are the other version's,
-    /// whose art its ROM draws otherwise (`ChipArt::version`). None: the
+    /// whose versions the engine doesn't tell apart: which chips are the
+    /// other version's, whose art its ROM draws otherwise
+    /// (`ChipArt::version`), and the soul icon's outline. None: the
     /// version the console's player brought, or the pack's base version
     /// (`custom::console_version`).
     pub console_version: Option<&'static str>,
