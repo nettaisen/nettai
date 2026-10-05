@@ -1914,10 +1914,11 @@ export type System = SystemSpec
 -- returns, `panels = require("@self/panels")`), which the engine reads
 -- against its schemas when the ruleset is defined, and the game's roles
 -- (§7.4, `roles = require("@self/roles")`). The engine has no game's rules
--- of its own: a ruleset states `chip_use`, `effects`, `flow`, `panels`,
--- `pools`, `reactions` and `status` (required here, so a ruleset without
--- one doesn't type-check), and every field of them (one left out is a load
--- error that names it). A section it may leave out is a feature the game
+-- of its own: a ruleset states `chip_use`, `effects`, `flow`,
+-- `fresh_stats`, `panels`, `pools`, `reactions` and `status` (required
+-- here, so a ruleset without one doesn't type-check), and every field of
+-- them that has no neutral value (one left out is a load error that names
+-- it). A section it may leave out is a feature the game
 -- hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`) or a
 -- table that is empty without it.
 --
@@ -1930,6 +1931,7 @@ export type RulesetSpec = {
     chip_use: RuleSection,
     effects: RuleSection,
     flow: RuleSection,
+    fresh_stats: RuleSection,
     panels: RuleSection,
     pools: RuleSection,
     reactions: RuleSection,
