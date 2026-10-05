@@ -1,12 +1,12 @@
-//! A player's tactics: EXE5's auto battle data (0xE0 bytes a player at
+//! A player's auto battle data: EXE5's (0xE0 bytes a player at
 //! 0x02034C20), which each console builds from its save at its last
 //! battle's end (0x0802C540, from the chips its player used most and the
 //! runs of them it played from a place by its target) and the link
 //! exchanges as a battle starts (0x08009B9A). A navi in auto battle on the other
-//! side plays them (EXE5's Dark MegaMan, docs/design/exe5-map.md §15.9): the
+//! side plays it (EXE5's Dark MegaMan, docs/design/exe5-map.md §15.9): the
 //! entries in order, a chip or a pattern (a place by its target and a run
-//! of chips). Each side's tactics are battle state: the auto-battling navi's AI
-//! turns their entries as it plays them.
+//! of chips). Each side's data is battle state: the auto-battling navi's AI
+//! turns its entries as it plays them.
 //!
 //! The block: 42 halfword places, their count (+0x54), eight pattern
 //! records of 16 bytes from +0x58 (`dx`, `dy`, five chip places, the
@@ -15,16 +15,16 @@
 
 use nettai_content_api::ChipHandle;
 
-/// Most entries a player's tactics hold (0x0802BEB0's loop: 42).
+/// Most entries a player's auto battle data holds (0x0802BEB0's loop: 42).
 pub const MAX_ENTRIES: usize = 42;
 /// Most patterns (the block's 16-byte records from +0x58: 8).
 pub const MAX_PATTERNS: usize = 8;
 /// The chip places of a pattern's record.
 pub const PATTERN_CHIPS: usize = 5;
 
-/// An entry of a player's tactics: a halfword of the block.
+/// An entry of a player's auto battle data: a halfword of the block.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Tactic {
+pub enum AutoBattleEntry {
     /// A chip.
     Chip(ChipHandle),
     /// A pattern, by its place among the patterns (bit 15 with its index).
@@ -53,28 +53,28 @@ pub enum PatternChip {
 /// the battle saw again, and writes the eight highest: 0x0802C540) and
 /// nothing of a battle means to read. The AI's read of a record all of
 /// whose places hold a chip reaches it all the same
-/// ([`Tactics::pattern_read`]).
+/// ([`AutoBattleData::pattern_read`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct TacticPattern {
+pub struct PatternRecord {
     pub dx: i8,
     pub dy: i8,
     pub chips: [PatternChip; PATTERN_CHIPS],
     pub score: u32,
 }
 
-impl TacticPattern {
+impl PatternRecord {
     /// A record nothing has written (0xFF throughout): a save's that has
     /// learned no pattern for it.
-    pub const UNUSED: TacticPattern = TacticPattern { dx: -1, dy: -1, chips: [PatternChip::Empty; PATTERN_CHIPS], score: u32::MAX };
+    pub const UNUSED: PatternRecord = PatternRecord { dx: -1, dy: -1, chips: [PatternChip::Empty; PATTERN_CHIPS], score: u32::MAX };
 
     /// A pattern of `chips` (the first [`PATTERN_CHIPS`] of them), the
     /// places after them empty.
-    pub fn of(dx: i8, dy: i8, chips: &[ChipHandle], score: u32) -> TacticPattern {
+    pub fn of(dx: i8, dy: i8, chips: &[ChipHandle], score: u32) -> PatternRecord {
         let mut places = [PatternChip::Empty; PATTERN_CHIPS];
         for (place, &c) in places.iter_mut().zip(chips) {
             *place = PatternChip::Chip(c);
         }
-        TacticPattern { dx, dy, chips: places, score }
+        PatternRecord { dx, dy, chips: places, score }
     }
 
     /// The chips of its run: those before its first place that holds none.
@@ -89,13 +89,13 @@ impl TacticPattern {
     }
 }
 
-impl Default for TacticPattern {
-    fn default() -> TacticPattern {
-        TacticPattern::UNUSED
+impl Default for PatternRecord {
+    fn default() -> PatternRecord {
+        PatternRecord::UNUSED
     }
 }
 
-/// What the AI's read of a pattern finds ([`Tactics::pattern_read`]).
+/// What the AI's read of a pattern finds ([`AutoBattleData::pattern_read`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PatternRead {
     /// A chip place's chip.
@@ -108,17 +108,17 @@ pub enum PatternRead {
     End,
 }
 
-/// A player's tactics.
+/// A player's auto battle data.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Tactics {
+pub struct AutoBattleData {
     /// The entries (their count is the block's +0x54).
-    pub entries: Vec<Tactic>,
+    pub entries: Vec<AutoBattleEntry>,
     /// The pattern records in their places, from the first (those past the
     /// last here, unused).
-    pub patterns: Vec<TacticPattern>,
+    pub patterns: Vec<PatternRecord>,
 }
 
-impl Tactics {
+impl AutoBattleData {
     /// 0x0802BCD6: the `k`th halfword (from 0) the AI reads of pattern
     /// `pattern`'s run, the one after its record's `dx` and `dy` being the
     /// first. The read has no end but a halfword of 0xFFFF and takes any
@@ -135,7 +135,7 @@ impl Tactics {
         if record >= MAX_PATTERNS {
             return PatternRead::End;
         }
-        let p = self.patterns.get(record).copied().unwrap_or(TacticPattern::UNUSED);
+        let p = self.patterns.get(record).copied().unwrap_or(PatternRecord::UNUSED);
         let number = |n: u16| if n == 0xFFFF { PatternRead::End } else { PatternRead::Number(n) };
         match field {
             0 => number(u16::from_le_bytes([p.dx as u8, p.dy as u8])),
@@ -150,8 +150,8 @@ impl Tactics {
     }
 
     /// The entry in place `i` (from 0): past the count, an empty place.
-    pub fn get(&self, i: usize) -> Tactic {
-        self.entries.get(i).copied().unwrap_or(Tactic::Empty)
+    pub fn get(&self, i: usize) -> AutoBattleEntry {
+        self.entries.get(i).copied().unwrap_or(AutoBattleEntry::Empty)
     }
 
     /// 0x0802C0DC / 0x0802C0D6's swap: the first entry and entry `i`
@@ -167,10 +167,10 @@ impl Tactics {
     /// swaps, the next 39 by 39 (each swap two places drawn from `rng`,
     /// RNG2 then: `sub_8000CDA`), the entries packed to the front
     /// (`sub_8000EB6`) and counted up to the first empty place.
-    pub fn sent(&self, rng: &mut crate::rng::Rng) -> Tactics {
+    pub fn sent(&self, rng: &mut crate::rng::Rng) -> AutoBattleData {
         let mut places = self.entries.clone();
-        places.resize(MAX_ENTRIES, Tactic::Empty);
-        let mut shuffle = |places: &mut [Tactic], swaps: u32| {
+        places.resize(MAX_ENTRIES, AutoBattleEntry::Empty);
+        let mut shuffle = |places: &mut [AutoBattleEntry], swaps: u32| {
             let n = places.len() as u32;
             for _ in 0..swaps {
                 let a = rng.next_positive() % n;
@@ -180,8 +180,8 @@ impl Tactics {
         };
         shuffle(&mut places[..3], 3);
         shuffle(&mut places[3..], 39);
-        let entries = places.into_iter().filter(|&e| e != Tactic::Empty).collect();
-        Tactics { entries, patterns: self.patterns.clone() }
+        let entries = places.into_iter().filter(|&e| e != AutoBattleEntry::Empty).collect();
+        AutoBattleData { entries, patterns: self.patterns.clone() }
     }
 
     /// 0x0802BF1C's list part: the first entry goes last, the rest move up
@@ -189,12 +189,12 @@ impl Tactics {
     /// stays). With no entries the original loops 2^32 times.
     pub fn turn(&mut self) -> Result<(), String> {
         if self.entries.is_empty() {
-            return Err("a navi in auto battle turns empty tactics (0x0802BF1C: sub_8000EB6 counts 2^32 entries)".into());
+            return Err("a navi in auto battle turns auto battle data with no entries (0x0802BF1C: sub_8000EB6 counts 2^32 entries)".into());
         }
         let first = self.entries[0];
-        self.entries[0] = Tactic::Empty;
-        let mut packed: Vec<Tactic> = self.entries.iter().copied().filter(|&e| e != Tactic::Empty).collect();
-        packed.resize(self.entries.len(), Tactic::Empty);
+        self.entries[0] = AutoBattleEntry::Empty;
+        let mut packed: Vec<AutoBattleEntry> = self.entries.iter().copied().filter(|&e| e != AutoBattleEntry::Empty).collect();
+        packed.resize(self.entries.len(), AutoBattleEntry::Empty);
         let last = packed.len() - 1;
         packed[last] = first;
         self.entries = packed;
@@ -211,8 +211,8 @@ mod tests {
     /// places gone), and draws two numbers a swap: 84.
     #[test]
     fn the_send_packs_the_shuffled_block() {
-        let chip = |n: u16| Tactic::Chip(ChipHandle(n));
-        let t = Tactics { entries: vec![chip(1), Tactic::Empty, chip(2), Tactic::Nothing, Tactic::Pattern(0)], patterns: Vec::new() };
+        let chip = |n: u16| AutoBattleEntry::Chip(ChipHandle(n));
+        let t = AutoBattleData { entries: vec![chip(1), AutoBattleEntry::Empty, chip(2), AutoBattleEntry::Nothing, AutoBattleEntry::Pattern(0)], patterns: Vec::new() };
         let mut rng = Rng::new(7);
         let sent = t.sent(&mut rng);
         let mut after = Rng::new(7);
@@ -221,10 +221,10 @@ mod tests {
         }
         assert_eq!(rng, after);
         assert_eq!(sent.entries.len(), 4);
-        for e in [chip(1), chip(2), Tactic::Nothing, Tactic::Pattern(0)] {
+        for e in [chip(1), chip(2), AutoBattleEntry::Nothing, AutoBattleEntry::Pattern(0)] {
             assert!(sent.entries.contains(&e), "{e:?} in {:?}", sent.entries);
         }
-        assert_eq!(Tactics::default().sent(&mut Rng::new(7)), Tactics::default());
+        assert_eq!(AutoBattleData::default().sent(&mut Rng::new(7)), AutoBattleData::default());
     }
 
     /// 0x0802BCD6's read ends at an empty place alone: a record of five
@@ -233,35 +233,35 @@ mod tests {
     fn a_patterns_read_ends_at_an_empty_place_alone() {
         use PatternRead::{Chip, End, Number};
         let c = ChipHandle;
-        let reads = |t: &Tactics, pattern: usize| -> Vec<PatternRead> {
+        let reads = |t: &AutoBattleData, pattern: usize| -> Vec<PatternRead> {
             (0..).map(|k| t.pattern_read(pattern, k)).take_while(|r| *r != End).collect()
         };
         // Two chips: its run, and no more.
-        let short = TacticPattern::of(1, 0, &[c(7), c(8)], 3);
-        let t = Tactics { entries: Vec::new(), patterns: vec![short] };
+        let short = PatternRecord::of(1, 0, &[c(7), c(8)], 3);
+        let t = AutoBattleData { entries: Vec::new(), patterns: vec![short] };
         assert_eq!(reads(&t, 0), [Chip(c(7)), Chip(c(8))]);
         // Five: then the score's halves; an unused record after it ends
         // the read at its place (0xFF, 0xFF).
-        let full = TacticPattern::of(1, 0, &[c(1), c(2), c(3), c(4), c(5)], 3);
-        let t = Tactics { entries: Vec::new(), patterns: vec![full] };
+        let full = PatternRecord::of(1, 0, &[c(1), c(2), c(3), c(4), c(5)], 3);
+        let t = AutoBattleData { entries: Vec::new(), patterns: vec![full] };
         assert_eq!(reads(&t, 0), [Chip(c(1)), Chip(c(2)), Chip(c(3)), Chip(c(4)), Chip(c(5)), Number(3), Number(0)]);
         // A pattern after it: its place as a number (dx the low byte), then
         // its chips.
-        let t = Tactics { entries: Vec::new(), patterns: vec![full, TacticPattern::of(2, -1, &[c(9)], 1)] };
+        let t = AutoBattleData { entries: Vec::new(), patterns: vec![full, PatternRecord::of(2, -1, &[c(9)], 1)] };
         assert_eq!(reads(&t, 0)[5..], [Number(3), Number(0), Number(0xFF02), Chip(c(9))]);
         assert_eq!(reads(&t, 1), [Chip(c(9))]);
         // A score of 0xFFFFFFFF ends it after the chips; one whose upper
         // half alone is 0xFFFF, after its lower half.
-        let t = Tactics { entries: Vec::new(), patterns: vec![TacticPattern { score: u32::MAX, ..full }] };
+        let t = AutoBattleData { entries: Vec::new(), patterns: vec![PatternRecord { score: u32::MAX, ..full }] };
         assert_eq!(reads(&t, 0).len(), 5);
-        let t = Tactics { entries: Vec::new(), patterns: vec![TacticPattern { score: 0xFFFF_0004, ..full }] };
+        let t = AutoBattleData { entries: Vec::new(), patterns: vec![PatternRecord { score: 0xFFFF_0004, ..full }] };
         assert_eq!(reads(&t, 0)[5..], [Number(4)]);
         // Zeroed records after it (a played save's unused ones): chip 0 a
         // halfword, to the block's last bytes past the eighth record.
-        let zeroed = TacticPattern { dx: 0, dy: 0, chips: [PatternChip::Nothing; PATTERN_CHIPS], score: 0 };
+        let zeroed = PatternRecord { dx: 0, dy: 0, chips: [PatternChip::Nothing; PATTERN_CHIPS], score: 0 };
         let mut patterns = vec![zeroed; MAX_PATTERNS];
         patterns[6] = full;
-        let t = Tactics { entries: Vec::new(), patterns };
+        let t = AutoBattleData { entries: Vec::new(), patterns };
         let r = reads(&t, 6);
         assert_eq!(r.len(), 5 + 2 + 8);
         assert!(r[7..].iter().all(|x| *x == Number(0)));

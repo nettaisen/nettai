@@ -73,7 +73,7 @@ pub fn setup_on(content: &Content) -> RoundSetup {
         rules: Vec::new(),
         patch_cards: Default::default(),
         navicust: None,
-        tactics: Default::default(),
+        auto_battle: Default::default(),
     };
     player.set_fact(content, "version", &[crate::rules::Fact::Name(testing::VERSION)]).expect("the test content's version");
     RoundSetup {

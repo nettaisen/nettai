@@ -1073,8 +1073,8 @@ declare battle: {
     set_dimmed: (on: boolean) -> (),
     -- BattleState+0x40, `sub_800A704`: the fight's ticks so far (capped).
     battle_time: () -> number,
-    -- Player `side`'s tactics (EXE5's auto battle data, which a navi in auto
-    -- battle on the other side plays): how many entries they count; the entry
+    -- Player `side`'s auto battle data (EXE5's, which a navi in auto battle
+    -- on the other side plays): how many entries it counts; the entry
     -- in place `i` (from 1; past the count, an empty place): a chip, a
     -- pattern's number (from 1), false (a place holding 0, the game's
     -- chip 0, which no save the game wrote has there) or nil (an empty
@@ -1087,17 +1087,17 @@ declare battle: {
     -- record all of which hold a chip, the two halves of its score, then
     -- the next record's `dx` and `dy` as one halfword and that record's
     -- places, and so on to the block's end).
-    tactic_count: (side: number) -> number,
+    auto_battle_count: (side: number) -> number,
     -- Slot `i` (1 to 4) of a side's list of alive actors, filled or not.
     alive_actor_slot: (side: number, i: number) -> Object?,
-    tactic: (side: number, i: number) -> (Chip | number | false)?,
-    tactic_pattern: (side: number, i: number) -> (number, number),
-    tactic_pattern_read: (side: number, i: number, k: number) -> (Chip | number)?,
+    auto_battle_entry: (side: number, i: number) -> (Chip | number | false)?,
+    auto_battle_pattern: (side: number, i: number) -> (number, number),
+    auto_battle_pattern_read: (side: number, i: number, k: number) -> (Chip | number)?,
     -- The first entry and the entry in place `i` (from 1) change places
     -- (0x0802C0DC); the first entry goes last of the count, the rest move
     -- up (0x0802BF1C).
-    swap_tactics: (side: number, i: number) -> (),
-    turn_tactics: (side: number) -> (),
+    auto_battle_swap: (side: number, i: number) -> (),
+    auto_battle_turn: (side: number) -> (),
     -- EXE5's 0x08006AAE: the navi `identity` (actor type navi, with a
     -- `body`) comes onto (x, y) for `side`, brought by `summoner`, driven by
     -- `system` (its `controller`, with the navi's state its `navi_state`;
@@ -1782,10 +1782,10 @@ export type SystemSpec = {
     -- and reads none of them.
     extends: { [string]: { [string]: any } }?,
     -- For tools, never the simulation: the chips of its game its rules
-    -- can't play of a player's tactics (`battle.tactic`), by id, each with
+    -- can't play of a player's auto battle data (`battle.auto_battle_entry`), by id, each with
     -- why, as a clause about "it" (EXE5's auto battle: a chip the original
-    -- crashes on). A match's check refuses them in a side's tactics.
-    unplayable_tactics: { [string]: string }?,
+    -- crashes on). A match's check refuses them in a side's auto battle data.
+    unplayable_in_auto_battle: { [string]: string }?,
     custom: {
         -- As the screen opens: how many chips it deals (`sub_802A40C`).
         -- None answering: the custom level (8 at most), NumbrOpn's 10, and
