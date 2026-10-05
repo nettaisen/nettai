@@ -8,7 +8,8 @@
 -- (./hover) rests meanwhile. Its damage is by his level (the chips' damage formula 52: the damage rows' row 3).
 --
 -- Off the field his panel is column 0 and, for its row, a byte the reservation leaves in a register (0x0801865C):
--- the low byte of his panel's flags with the reservation's bit, or 0 had another reserved the panel he stands on.
+-- the low byte of his panel's flags with the reservation's bit (the game's number of the panel's type, and its
+-- solid, side and cracked bits), or 0 had another reserved the panel he stands on.
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local flight = require("../../chips/gyroman/navi")
