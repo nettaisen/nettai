@@ -16,7 +16,9 @@ local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged-shot")
 local darktorn = require("../../../chips/darktorn")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 -- 0x080F04CE in soul 2: the propeller's animation offset by the priming.
 local PRIMED_ANIM = 17
@@ -24,8 +26,10 @@ local PRIMED_ANIM = 17
 return define.form {
     id = "gyrosoul",
     soul = { family = "wind" },
-    change = souls.action,
-    revert = souls.revert,
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- GyroMan's image as MegaMan unites with him (rules/souls/image), in his propeller (0x0800EDBC's routine for the soul).
+    image = soul_image.wearing(asset.sprite("gyroman"), "soul-image/gyroman", body_overlays.gyroman),
     sprite = asset.sprite("gyrosoul"),
     element = "null",
     buster_bonus = 0,

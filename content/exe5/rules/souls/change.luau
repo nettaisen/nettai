@@ -2,13 +2,13 @@
 -- EXE5's Soul Unison change (0x08011F74, EXE6's `sub_8014A38`'s place): while the battle is paused at a turn's start,
 -- MegaMan unites with the soul his side asked for (the turn's transform record: `navi:form_change_target()`, its
 -- turns and Chaos Unison `navi:form_change_soul()`). The turn-start sequencer (the framework's) waits for it. Every
--- soul names this action as its `change` (./init).
+-- soul names this module's action as its `change`.
 --
 -- Its steps (0x08011F94, on the attack's step):
 --
 -- - 0 (0x08011FAC): onto his future panel, facing the default way, the charge dropped, his moves stopped; a flash
 --   (effect 3) and a sound; his sprite held.
--- - 4 (0x08012010): the soul's image comes in (rules/souls/image), with Chaos Unison the dark shade too (objects/
+-- - 4 (0x08012010): the soul's image comes in (./image: its form's `image`), with Chaos Unison the dark shade too (objects/
 --   chaos-shade); 50 ticks later another flash and the soul's sound (Chaos Unison's its own); 61 ticks.
 -- - 8 (0x08012090): MegaMan in the soul: the old form's end hook, his sprite by the soul, his statuses ended, the
 --   soul's turns, his form, the new form's start hook (./hooks); in TomahawkSoul the cameras shake; 10 ticks later
@@ -100,7 +100,7 @@ local function emerge(me: Object, s: State, target: FormDef, chaos: boolean)
         local turns, is_chaos = me:form_change_soul()
         local souls = system.state() :: Souls
         souls.turns, souls.chaos = turns, is_chaos
-        -- (0x08012102: the record's arm chip, +6, into AIData +0x32: Arm Change's, ./arm-change.)
+        -- (0x08012102: the record's arm chip, +6, into AIData +0x32: ColonelSoul's Arm Change fills it.)
         me.weapon_chip = souls.arm_chip
         stats.form = target
         hooks.identity(me, target)
@@ -176,5 +176,12 @@ function change.update(me: Object, s: State)
         me:step_sprite()
     end
 end
+
+-- The soul change, as the pause handler runs it: one of the souls system's actions (./init).
+change.action = define.action {
+    id = "souls/change",
+    state = { timer = "u16" },
+    update = change.update,
+}
 
 return change

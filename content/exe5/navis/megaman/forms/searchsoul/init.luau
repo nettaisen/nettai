@@ -13,13 +13,20 @@ local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged-shot")
 local darkcirc = require("../../../chips/darkcirc")
 local reveal = require("@self/reveal")
-local souls = require("../../../rules/souls")
+local shuffle = require("@self/shuffle")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "searchsoul",
     soul = { family = "cursor" },
-    change = souls.action,
-    revert = souls.revert,
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- SearchMan's image as MegaMan unites with him (rules/souls/image).
+    image = soul_image.look { sprite = asset.sprite("searchman") },
+    -- What it adds to the custom screen (the souls system gathers it, rules/souls/custom): Shuffle (./shuffle).
+    custom = shuffle.custom,
     sprite = asset.sprite("searchsoul"),
     element = "null",
     buster_bonus = 0,
