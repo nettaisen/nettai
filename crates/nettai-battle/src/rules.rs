@@ -30,7 +30,7 @@ impl SideRules {
     /// must otherwise be the ruleset's. An enum of a system's setup has no
     /// default but its `setup_defaults`': the round doesn't start with one
     /// the player's setup leaves unstated (EXE6's version: nothing fills in
-    /// falzar or gregar).
+    /// gregar or falzar).
     pub fn for_player(content: &Content, player: &mut PlayerSetup) -> SideRules {
         if content.defs.ruleset().is_none() {
             assert!(player.rules.is_empty(), "a player's setup gives system setups, and the content has no ruleset");
@@ -809,7 +809,7 @@ mod tests {
         assert!(!block.stated(schema, version) && block.stated(schema, schema.index_of("beast_out").unwrap()));
         let refused = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Battle::new(setup.clone(), content.clone())));
         let why = refused.err().and_then(|e| e.downcast_ref::<String>().cloned()).expect("the round doesn't start");
-        assert_eq!(why, "a player's setup doesn't state the beast system's `version` (falzar or gregar): none is assumed");
+        assert_eq!(why, "a player's setup doesn't state the beast system's `version` (gregar or falzar): none is assumed");
         // One player's stated: the other's still stops it.
         setup.players[0].set_fact(&content, "version", &[Fact::Name("gregar")]).unwrap();
         assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Battle::new(setup.clone(), content.clone()))).is_err());
