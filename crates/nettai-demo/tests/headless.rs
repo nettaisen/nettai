@@ -6,7 +6,8 @@ use nettai_assets::{Bundle, Field, MapEntry, SpriteFrame, SpritePart, SpriteShee
 use nettai_battle::content::testing;
 use nettai_frontend::driver::{LivePlayer, folder_of, live_setup};
 use nettai_demo::headless;
-use nettai_frontend::{Renderer, Session};
+use nettai_frontend::Renderer;
+use nettai_frontend::player::Player;
 use std::collections::BTreeSet;
 
 const RED: u16 = 0x001F;
@@ -75,18 +76,19 @@ fn rgb(c: u16) -> [u8; 3] {
 #[test]
 fn renders_a_live_battle_to_png() {
     let assets = assets();
-    let mut renderer = Renderer::new(&assets);
+    let renderer = Renderer::new(std::sync::Arc::new(assets));
     // A live battle on the engine's hand-authored test content.
     let content = testing::content();
     let settings = nettai_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));
     // (Folders of GunDelS3 N: the test content has it.)
     let folder = folder_of(&content, &[("gundels3", 13)]);
     let setup = live_setup(&content, settings, [folder, folder], "falzar", 1);
-    let session = Session::new(Box::new(LivePlayer::new(nettai_match::Set::new(content.clone(), setup, [folder, folder]))));
+    let live = LivePlayer::new(nettai_match::Set::new(content.clone(), setup, [folder, folder]));
+    let mut player = Player::with(renderer, None, None, Box::new(live));
     let out = std::env::temp_dir().join(format!("exe6-frontend-test-{}", std::process::id()));
     let wanted: BTreeSet<u32> = [1, 100].into_iter().collect();
     let mut log = |s: &str| panic!("{s}");
-    let written = headless::render_frames(&mut renderer, vec![session], &wanted, &out, 1, &mut log).unwrap();
+    let written = headless::render_frames(&mut player, Vec::new(), &wanted, &out, 1, &mut log).unwrap();
     assert_eq!(written, vec![1, 100]);
 
     // Tick 1: the screen starts fully faded to white.

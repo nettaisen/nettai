@@ -5,19 +5,6 @@ use nettai_battle::cues::CueAction;
 use nettai_battle::{Battle, BattleResult};
 use nettai_match::After;
 
-/// Called after every step with the session (the window runs its hooks
-/// after each one; sound plugs in here, handing the step's cues, or a
-/// netplay frame's cue actions, to the audio output).
-pub trait TickHook {
-    fn after_tick(&mut self, s: &Session);
-}
-
-impl<F: FnMut(&Session)> TickHook for F {
-    fn after_tick(&mut self, s: &Session) {
-        self(s)
-    }
-}
-
 pub struct Session {
     pub driver: Box<dyn Driver>,
     pub battle: Battle,

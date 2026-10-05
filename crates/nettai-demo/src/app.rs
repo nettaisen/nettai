@@ -1,21 +1,16 @@
-//! The window: runs a session at the original's 59.73 frames a second and
-//! shows it scaled up by the largest whole factor the window has room for
-//! (`present`: resize it at will), with the font mode's text drawn at the
-//! window's resolution.
+//! The window: a host loop over the library's player. It gives the player
+//! the time that passed and the buttons held, shows its picture scaled up by
+//! the largest whole factor the window has room for (resize it at will; the
+//! font mode's text is drawn at the window's resolution), and plays its
+//! sound through the audio device. The keys are the window's.
 
-use nettai_frontend::{Session, TickHook};
-use nettai_render::Renderer;
-use nettai_render::compose::{HEIGHT, WIDTH};
-use nettai_render::present::{present, write_rgb_png};
-use nettai_render::vfont::TextRenderer;
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use nettai_battle::input::keys;
-use std::time::{Duration, Instant};
-
-/// The original's frame rate.
-pub const FRAME_RATE: f64 = 59.7275;
-
-const SPEEDS: [f64; 8] = [0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0];
+use nettai_frontend::driver::Driver;
+use nettai_frontend::player::Player;
+use nettai_render::compose::{HEIGHT, WIDTH};
+use nettai_render::present::write_rgb_png;
+use std::time::Instant;
 
 pub struct Options {
     pub scale: usize,
@@ -43,165 +38,98 @@ keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START, Backspace = SELECT
       Space pause, . step one frame (paused), - / = slower / faster, F5 restart
       (not in netplay), H toggle the status line, Esc quit";
 
-/// Show `sessions` one after another (a trace's rounds): a round that
-/// runs out of input moves on to the next; one the engine stopped stays.
-/// `hooks` see the battle after every tick (sound); `text` draws the font
-/// mode's text items.
-pub fn run(
-    renderer: &mut Renderer,
-    mut sessions: Vec<Session>,
-    hooks: &mut [Box<dyn TickHook>],
-    opts: &Options,
-    mut text: Option<&mut TextRenderer>,
-) -> Result<(), String> {
-    if sessions.is_empty() {
-        return Ok(());
-    }
-    let mut current = 0usize;
+/// Show what `player` plays, then each of `rest` in turn (a recording's
+/// later rounds): one that comes to its end moves on to the next; one the
+/// engine stopped stays. `audio` plays the player's sound.
+pub fn run(player: &mut Player, rest: Vec<Box<dyn Driver>>, audio: Option<&nettai_audio::Output>, opts: &Options) -> Result<(), String> {
+    let mut rest = rest.into_iter();
     let scale = opts.scale.max(1);
     let (mut w, mut h) = (WIDTH * scale, HEIGHT * scale);
     let options = WindowOptions { resize: true, ..WindowOptions::default() };
     let mut window = Window::new("nettai-demo", w, h, options).map_err(|e| e.to_string())?;
     window.set_target_fps(120);
     let mut buffer = vec![0u32; w * h];
-    let mut paused = opts.start_paused;
-    let mut speed = 3usize;
-    let mut status = true;
+    player.set_paused(opts.start_paused);
     let mut reported = (false, false);
-    let mut owed = 0.0f64;
     let mut last = Instant::now();
     let mut title = String::new();
+    let mut samples = Vec::new();
     let mut loops = 0u64;
     while window.is_open() && !window.is_key_down(Key::Escape) {
         loops += 1;
-        if sessions[current].finished && current + 1 < sessions.len() {
-            current += 1;
+        if player.finished()
+            && let Some(next) = rest.next()
+        {
+            player.play(next);
             reported = (false, false);
-            renderer.reset();
         }
-        let session = &mut sessions[current];
-        // Netplay runs in real time with the other player: no pause, no
-        // other speed, no restart.
-        let real_time = session.driver.real_time();
         let mut buttons = 0u16;
         for (k, b) in BUTTONS {
             if window.is_key_down(k) {
                 buttons |= b;
             }
         }
+        // (Netplay runs in real time with the other player: the player
+        // refuses a pause, another speed and a restart.)
         let mut single_step = false;
         for k in window.get_keys_pressed(KeyRepeat::Yes) {
             match k {
-                Key::H => status = !status,
-                _ if real_time => {}
-                Key::Space => paused = !paused,
-                Key::Period => single_step = true,
-                Key::Minus => speed = speed.saturating_sub(1),
-                Key::Equal => speed = (speed + 1).min(SPEEDS.len() - 1),
+                Key::H => player.show_status(!player.status_shown()),
+                Key::Space => {
+                    player.set_paused(!player.paused());
+                }
+                Key::Period => single_step = !player.real_time(),
+                Key::Minus => {
+                    player.slower();
+                }
+                Key::Equal => {
+                    player.faster();
+                }
                 Key::F5 => {
-                    session.restart();
-                    renderer.reset();
-                    reported = (false, false);
+                    if player.restart() {
+                        reported = (false, false);
+                    }
                 }
                 _ => {}
             }
         }
         let now = Instant::now();
-        let dt = now.duration_since(last).min(Duration::from_millis(250));
+        let elapsed = now.duration_since(last);
         last = now;
-        // Run a step: follow what it showed, and hand it to the hooks.
-        let mut step = |session: &mut Session| {
-            if !session.step(buttons) {
-                return false;
-            }
-            if session.new_round {
-                renderer.reset();
-            }
-            if session.fresh {
-                renderer.observe(&session.battle);
-            }
-            for h in hooks.iter_mut() {
-                h.after_tick(session);
-            }
-            true
-        };
-        if !paused && session.stopped.is_none() {
-            owed += dt.as_secs_f64() * FRAME_RATE * SPEEDS[speed];
-            let n = owed.floor() as u32;
-            owed -= n as f64;
-            for _ in 0..n {
-                if !step(session) {
-                    break;
-                }
-            }
+        if single_step && (player.paused() || player.stopped().is_some()) {
+            player.tick(buttons);
         } else {
-            owed = 0.0;
-            if single_step {
-                step(session);
-            }
+            player.advance(elapsed, buttons);
         }
-        if let (Some(d), false) = (&session.diverged, reported.0) {
+        if let Some(out) = audio {
+            samples.clear();
+            player.take_samples(&mut samples);
+            out.queue(&samples);
+        }
+        if let (Some(d), false) = (player.diverged(), reported.0) {
             eprintln!("{d}");
             reported.0 = true;
         }
-        if let (Some(s), false) = (&session.stopped, reported.1) {
+        if let (Some(s), false) = (player.stopped(), reported.1) {
             eprintln!("{s}");
             reported.1 = true;
         }
 
-        let mut frame = renderer.render(&session.battle);
-        let mut lines = Vec::new();
-        if let Some(p) = session.driver.prompt(&session.battle) {
-            lines.push(p);
-        }
-        if let Some(s) = session.driver.status().filter(|_| status) {
-            lines.push(s);
-        }
-        if status && (paused || session.stopped.is_some()) {
-            lines.push(format!(
-                "{}{}  x{}",
-                if paused { "PAUSED  " } else { "" },
-                session.driver.position(),
-                SPEEDS[speed]
-            ));
-        }
-        if let Some(s) = &session.stopped {
-            lines.push(s.clone());
-        }
-        if !lines.is_empty() {
-            // (The status text is in front of everything, the text layer's
-            // items too.)
-            let text = lines.join("\n");
-            nettai_frontend::text::draw(&mut frame.pixels, WIDTH, 0, 0, &text, 0x7FFF);
-            // Only the boxes the lines are drawn on (`text::draw`'s: four
-            // pixels a character and one more, six rows a line).
-            let cols = nettai_frontend::text::columns(WIDTH).max(1);
-            let mut y = 0;
-            for line in text.lines() {
-                let chars = line.chars().count();
-                for n in (0..chars.max(1)).step_by(cols).map(|i| (chars - i.min(chars)).min(cols)) {
-                    for row in y..(y + 6).min(HEIGHT) {
-                        frame.depth[row * WIDTH..][..(n * 4 + 1).min(WIDTH)].fill(0);
-                    }
-                    y += 6;
-                }
-            }
-        }
         let (ww, wh) = window.get_size();
         if (ww, wh) != (w, h) && ww > 0 && wh > 0 {
             (w, h) = (ww, wh);
             buffer = vec![0u32; w * h];
         }
-        present(&frame, text.as_deref_mut(), &mut buffer, w, h);
+        player.present(&mut buffer, w, h);
         if loops % 15 == 0 {
-            let t = format!("nettai-demo - {} - x{}{}", session.driver.position(), SPEEDS[speed], if paused { " (paused)" } else { "" });
+            let t = format!("nettai-demo - {} - x{}{}", player.position(), player.speed(), if player.paused() { " (paused)" } else { "" });
             if t != title {
                 window.set_title(&t);
                 title = t;
             }
         }
         window.update_with_buffer(&buffer, w, h).map_err(|e| e.to_string())?;
-        if opts.quit_after.is_some_and(|n| session.ticks >= n) {
+        if opts.quit_after.is_some_and(|n| player.ticks() >= n) {
             break;
         }
     }
