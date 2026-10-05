@@ -826,12 +826,12 @@ fn mugshot_parts<'a>(
     let navi = b.content.navi(stats.navi);
     if !navi.changes_form() {
         // (The mugshot's own pack's HUD holds its picture.)
-        let Some((tiles, palettes, picture)) = crate::lookups::navi_face(packs, &b.content, stats.navi, problems) else { return };
+        let Some((tiles, palettes, _)) = crate::lookups::navi_face(packs, &b.content, stats.navi, problems) else { return };
         let full_synchro = emotion(b, side as u8) == Emotion::FullSynchro;
         let pal = window_faded(b, palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default());
         out.push(block(tiles, 32, 16, pal, x, 18));
         out.push(block(&hud.navi_box, 16, 16, pal, x + 32, 18));
-        note_true_face(b, side, Some(picture), x, problems);
+        note_true_face(b, packs, side, navi.version.as_deref(), x, problems);
         return;
     }
     let mut face = state.mood.map(|m| m.shown()).unwrap_or_else(|| Face::of(b, r));
@@ -866,7 +866,7 @@ fn mugshot_parts<'a>(
     if let Some(tiles) = tiles {
         out.push(block(tiles, 16, 16, pal, x + 32, 18));
     }
-    note_true_face(b, side, face.picture.map(|p| p.id), x, problems);
+    note_true_face(b, packs, side, b.content.form(face.form).version.as_deref(), x, problems);
 }
 
 /// The emotion window's palette (sprite palette 12: `byte_30016D0`) as
@@ -895,40 +895,22 @@ fn window_count(b: &Battle, side: u8) -> Option<u8> {
     })
 }
 
-/// The faces Gregar has of its own (the pack's, from the Gregar ROM: its
-/// emotion-window pictures from 0x17, its link navis' after the Falzar
-/// ROM's six).
-fn gregar_face(picture: u8) -> bool {
-    (0x17..0x80).contains(&picture) || (nettai_assets::NAVI_MUGSHOTS + 6..nettai_assets::NAVI_MUGSHOTS + 11).contains(&picture)
-}
-
-/// The faces Falzar has of its own, which the Gregar ROM's tables have
-/// Gregar's in place of: its emotion-window pictures 5 to 0x16 (its
-/// Crosses, tired, in Beast Out, its Beast, Full Synchro, Beast Over) and
-/// its link navis' (the first five of its six; the sixth is ProtoMan's).
-fn falzar_face(picture: u8) -> bool {
-    (5..=0x16).contains(&picture) || (nettai_assets::NAVI_MUGSHOTS..nettai_assets::NAVI_MUGSHOTS + 5).contains(&picture)
-}
-
 /// A console shows every form's and navi's true face, where the original
-/// has none for the other game's and shows its own counterpart's
-/// (deliberately: docs/frontend.md §5): the face and the box beside it, in
-/// the face's palette, are a known difference.
-fn note_true_face(b: &Battle, side: usize, picture: Option<u8>, x: i32, problems: &mut Problems) {
-    use nettai_battle::custom::GameVersion;
-    let console = exe6_compat::Unlocks::of_side(b, b.setup.local_side).version;
-    let others = match console {
-        GameVersion::Falzar => picture.is_some_and(gregar_face),
-        GameVersion::Gregar => picture.is_some_and(falzar_face),
-    };
-    if others && side == b.setup.local_side as usize & 1 {
+/// has none for another version's (a form or link navi that says its
+/// `version`: `owner`, its faces being that version's ROM's own) and shows
+/// its own counterpart's (deliberately: docs/frontend.md §5): the face and
+/// the box beside it, in the face's palette, are a known difference.
+fn note_true_face(b: &Battle, packs: &crate::packs::Packs, side: usize, owner: Option<&str>, x: i32, problems: &mut Problems) {
+    let console = crate::custom::console_version(b, packs, b.setup.local_side);
+    if owner.is_some_and(|v| v != console) && side == b.setup.local_side as usize & 1 {
         problems.known(x, 18, 48, 16, "the other game's face on this console (the true face)");
     }
 }
 
 /// `sub_801D814`: whether the emotion window shows the Beast Out count
 /// (else its empty box): always in battle mode 5, never in mode 1, and
-/// otherwise while the console's save has Beast Out (event flag 0xE0) and
+/// otherwise while the console's save has Beast Out (event flag 0xE0: the
+/// player's fact `beast_out`) and
 /// hasn't sealed it (0x163: a navi code received, the setup's level), in a
 /// battle without a gauge for each player (battle flag 0x40) that isn't
 /// random (effects 0x200000).
@@ -939,7 +921,7 @@ fn beast_count_shown(b: &Battle, side: u8) -> bool {
         5 => true,
         1 => false,
         _ => {
-            exe6_compat::Unlocks::of_side(b, side).beast_out
+            b.fact(side, "beast_out").and_then(|f| f.flag()) == Some(true)
                 && b.setup.players[side as usize & 1].navi_level.is_none()
                 && b.round.flags & battle_flags::OWN_GAUGES == 0
                 && b.setup.settings.effects & effects::RANDOM == 0
