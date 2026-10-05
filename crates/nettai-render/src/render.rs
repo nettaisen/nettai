@@ -57,6 +57,9 @@ pub struct Renderer<'a> {
     hud: Layer,
     /// BG0, in front of everything: the custom screen's enemy names.
     names: Layer,
+    /// BG0's chatbox, apart for its palette (background palette 15: the
+    /// custom screen's fades of the window's palettes leave it be).
+    dialogue: Layer,
     /// Rolling HUD numbers; follow every tick with `observe`.
     pub hud_state: HudState,
     /// What the frames drawn so far named that the pack doesn't have.
@@ -103,6 +106,7 @@ impl<'a> Renderer<'a> {
             field: Layer::new(2, 2),
             hud: Layer { palettes: Palettes::Hud, ..Layer::new(1, 3) },
             names: Layer { palettes: Palettes::Hud, ..Layer::new(0, 0) },
+            dialogue: Layer { palettes: Palettes::Dialogue, ..Layer::new(0, 0) },
             hud_state: HudState::default(),
             problems: Problems::default(),
             console_region: Region::Us,
@@ -182,8 +186,10 @@ impl<'a> Renderer<'a> {
         }
         self.hud.drawn = draw;
         self.names.drawn = draw;
+        self.dialogue.drawn = draw;
         self.hud.clear();
         self.names.clear();
+        self.dialogue.clear();
         let mut text =
             TextSink::new(self.text_mode, self.font.as_deref()).measuring(self.measure.as_ref()).with_language(self.strings.as_deref());
         // (The local player's custom screen and chatbox: the game's pack's.)
@@ -208,7 +214,7 @@ impl<'a> Renderer<'a> {
             &mut self.problems,
         );
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
-            crate::chatbox::draw(c, own_game, &mut self.names, &mut list, &mut text);
+            crate::chatbox::draw(c, own_game, &mut self.dialogue, &mut list, &mut text);
         }
         crate::hud::draw(b, own_game, &self.packs, &self.hud_state, &mut self.hud, &mut list, &mut text, &mut self.problems);
         let Some(stage) = stage else {
@@ -256,8 +262,13 @@ impl<'a> Renderer<'a> {
             _ => custom_hud,
         };
         let sprites = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b).unwrap_or_default() };
-        let fades = Fades { stage, hud, sprites, screen: screen_fade(b) };
-        let layers = [&self.names, &self.hud, &self.field, &self.background];
+        // (The chatbox's palette is past every ranged fade's palettes: a
+        // dimming's 0-8, the custom screen's 0-13 and 9-13, the two-layer
+        // flash's 0-14. The fades of every palette reach it: the
+        // transformation's, and the custom screen's white.)
+        let dialogue = if transform != Fade::None { transform } else { crate::custom::sprite_fade(b).unwrap_or_default() };
+        let fades = Fades { stage, hud, dialogue, sprites, screen: screen_fade(b) };
+        let layers = [&self.dialogue, &self.names, &self.hud, &self.field, &self.background];
         let (pixels, depth) = compose::compose_with_depth(backdrop, &layers, &parts, fades);
         // Each item's depth and fades: its layer's (the HUD layer's moved
         // with its shake), or its sprite parts' (an item whose parts the
