@@ -406,8 +406,8 @@ fn make() -> Content {
     Content {
         // (The navis and the base form are definitions:
         // testdata/content/navis/test.luau.)
-        base_rules: rules(),
-        rules: Default::default(),
+        base_rules: Some(rules()),
+        rules: None,
         animations: animations(&assets),
         scripts: scripts(),
         assets,
@@ -1433,7 +1433,13 @@ pub fn scripts() -> Scripts {
         .clone()
 }
 
-fn rules() -> Rules {
+/// The test content's rules, stated as Rust tables (`Content::base_rules`):
+/// a made-up game's, every rule its own choice (the engine has none to
+/// give it). Where games differ it plays as EXE6 does, with EXE5's three
+/// panel types beside EXE6's; a test that plays a rule another way says so
+/// (`Content::rules_mut`). Also the tables of a test that makes a content
+/// of a few modules and a ruleset of its own.
+pub fn rules() -> Rules {
     // Panels: what each type adds to a panel's flags word.
     let types = PanelType::ALL
         .iter()
@@ -1524,25 +1530,53 @@ fn rules() -> Rules {
             any_side_step: StepRuleSet { grounded: [solid(any_side); 2], floor_free: [any_side; 2] },
             mend: 0x258,
             mend_in_battle_mode_1: 0x1E0,
-            numbers: Vec::new(),
-            reservations: Default::default(),
+            // Its panel types number as the engine orders them.
+            numbers: PanelType::ALL.to_vec(),
+            // A reservation marks its holder, whose destroy releases it.
+            reservations: crate::content::Reservations::Marked,
         },
         holding_banners: vec![BannerId(0x24)],
         // (The statuses are testdata/content/rules/status.luau's.)
         hp_bug_periods: [0, 60, 50, 40, 30, 20, 10, 5],
         form_tick: true,
         flash_hides_on_clear: false,
-        missing_collision_status: Default::default(),
-        reactions: Default::default(),
-        emotions: Default::default(),
-        form_break: Default::default(),
-        intake: Default::default(),
+        // A navi without collision data reads as blind (the word's blind
+        // bit, as EXE6's open-bus value has it).
+        missing_collision_status: crate::content::MissingCollisionStatus(0xE3A0_2004),
+        reactions: crate::content::Reactions::FlashTimerLast,
+        emotions: crate::content::Emotions::Exe6,
+        form_break: crate::content::FormBreak::CrossOrBeast,
+        intake: crate::content::IntakeRules {
+            bugs_before_drain: false,
+            drain_bug_flags: false,
+            no_charge_drive: false,
+            hp_loss: crate::content::HpLoss::HpAlone,
+        },
         empty_hand: EmptyHandChip { null_family: false, fire: false, flags: ChipFlags(0x10) },
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
         chaos_cycle: Vec::new(),
         sp_deletion_times: vec![0x2000, 0x4000],
-        flow: Default::default(),
-        effects: Default::default(),
+        flow: crate::content::FlowRules {
+            result_words: 50,
+            sequencer_before_custom: true,
+            escape_check: true,
+            result_wait: crate::content::ResultWait { normal: 0x66, special: 0x5E },
+            chip_window_at_close: false,
+            intro_from_black: false,
+            low_hp_music: true,
+            navi_win_banner: crate::content::NaviWinBanner::LinkBattle,
+        },
+        effects: crate::content::EffectsRules {
+            shake: crate::content::ShakeRule::ConsoleRng,
+            spark_steps_at_start: true,
+            retype: crate::content::RetypeRule::IsAndHits,
+            damage_word: crate::content::DamageWordRule::ParalysisAndBugs,
+            obstacle_soldiers: false,
+            palette_flash: crate::content::PaletteFlashRule::ModeRunsThroughPause,
+            overlays_run_while_paused: true,
+            load_sets_part_palette: true,
+            obstacle_actions: crate::content::ObstacleActions::OwnFrom8,
+        },
         chip_use: crate::content::ChipUseRules {
             leave_on_use: false,
             anti_navi_sparkle: crate::content::SparkleOffset { dy: 16, z: 32 },
@@ -1571,11 +1605,22 @@ fn rules() -> Rules {
             SlideVector::NONE,
         ],
         bubble_bob: std::array::from_fn(|i| [0, 1, 2, 3, 3, 2, 1, 0][i % 8] * if i < 16 { 1 } else { -1 }),
-        push_reading: Default::default(),
-        hit_test: Default::default(),
-        slide_speed: Default::default(),
-        overlay_restart: Default::default(),
-        stance_counter: Default::default(),
+        push_reading: crate::content::PushReading::TowardFront,
+        // A FloatShoe body meets only types with the self bit; a guard
+        // breaks to types with 0x2; its sea gives elec no bonus.
+        hit_test: crate::content::HitTest {
+            float_shoe_needs_self_bit: true,
+            bubbled_as_submerged: false,
+            elec_reaches_submerged: false,
+            guard_breaks_to: 0x0002,
+            elec_bonus_on_sea: false,
+        },
+        // A pulled obstacle stays out of the puller's area.
+        obstacle_slide_bounds: true,
+        // 10 pixels a tick across, 6 in depth.
+        slide_speed: crate::content::SlideSpeed { x: 0xA_0000, y: 0x6_0000 },
+        overlay_restart: crate::content::OverlayRestart::Step,
+        stance_counter: crate::content::StanceCounter::NextTick,
         // A triangle wave: 256 at a quarter turn, -256 at three quarters,
         // over a turn and a half.
         sine: (0..384)
@@ -1599,7 +1644,9 @@ fn rules() -> Rules {
             opposing_player: [PLAYER[1], PLAYER[0]],
         },
         custom_screen: custom_screen_layout(),
-        pools: Default::default(),
+        // Every pool as large as the engine's slots.
+        pools: crate::content::PoolSizes { actor: crate::object::SLOTS as u8, attack: crate::object::SLOTS as u8, effect: crate::object::SLOTS as u8 },
+        // No NaviCust.
         navicust: Default::default(),
     }
 }

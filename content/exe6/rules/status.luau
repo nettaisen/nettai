@@ -600,7 +600,31 @@ local status = {
         duration = 65535,
         timer = { other = 1 },
     },
-    rules = { hp_bug_periods = { 0, 40, 35, 30, 25, 20, 15, 10 } },
+    -- EXE6's per-form tick table (`off_80EA93C`) runs (`sub_80F0608`: the Fire chips' charge, a form's height). Its
+    -- hit intake (`sub_801AC6C`, `sub_80139F6`) drains the HP bug before it takes a hit's NaviCust bug, whose drain
+    -- argument it adds (to at most 7); it has no no-charge drive (EXE5's DarkInvs); `object_subtractHP` takes the
+    -- HP alone. Its emotions are `sub_8015B54`'s and `sub_8015BEC`'s, and the weakness request breaks a Cross or a
+    -- Beast to what it breaks to (`sub_8015766`).
+    rules = {
+        hp_bug_periods = { 0, 40, 35, 30, 25, 20, 15, 10 },
+        form_tick = true,
+        -- The mercy flash hides the navi while its timer's bit 1 is set (`sub_8016934`).
+        flash_hides_on_clear = false,
+        -- What a navi's status word reads as while it has no collision data: the opcode the BIOS last fetched, the
+        -- object spawn's fill's (`ZeroFillByWord`'s CpuSet), which has the blind bit.
+        missing_collision_status = 0xE3A02004,
+        -- A navi's status block runs a drag, the slides and a flinch, then the mercy flash's timer
+        -- (`sub_801A5EE`, while the battle is fighting).
+        reactions = "flash_timer_last",
+        bugs_before_drain = false,
+        drain_bug_flags = false,
+        no_charge_drive = false,
+        hp_loss = "hp_alone",
+        -- (The engine has two games' emotions, each a whole: how an emotion is read off the navi, what holds its
+        -- mood, how its anger ends, its Full Synchro aura.)
+        emotions = "exe6",
+        form_break = "cross_or_beast",
+    },
 }
 
 return status
