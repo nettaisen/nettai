@@ -180,7 +180,7 @@ return define.system {
     -- What the player brings (the save's unlock), read-only in battle.
     setup = { unlocked = "bool", sealed = "bool" },
     -- (An enum of the setup has no default: a player's setup states it, or the round doesn't start. EXE6's
-    -- `version = { "falzar", "gregar" }` is none of the engine's to pick. `setup_defaults` may give it one.)
+    -- `version = { "gregar", "falzar" }` is none of the engine's to pick. `setup_defaults` may give it one.)
     -- (`setup_defaults = { field = value }`: what a player's setup that says nothing of a field
     -- holds, else zero; EXE5's light and dark system's `{ karma = 500 }`, a fresh save's.)
     hooks = {
@@ -2596,7 +2596,7 @@ data tell them apart. Everywhere else a version is the name the game's rules dec
   cross and beast systems' setups, `PlayerFact::Version`, a form's and a navi's `version`.
 - **A match's side** holds the name (`Side::version: Option<String>`), checked against the names the rules declare
   (`nettai_match::facts::versions`: the version fact's enum, of the first of the ruleset's systems that declares
-  it; a file's or a side's other name is refused, "no version \"azure\" (falzar or gregar)"). The editor's list
+  it; a file's or a side's other name is refused, "no version \"azure\" (gregar or falzar)"). The editor's list
   is those names, and a Cross's version there is the form's own `version`: nettai-editor depends on no compat crate.
 - **exe6-compat at the boundary**: a save's version and what it unlocks (`Unlocks`), a trace's `game_versions`, and
   NaviStats+0x20 (`stats_byte`: 0 Gregar, 1 Falzar, which `nettai_match::version_byte` asks it for by name).

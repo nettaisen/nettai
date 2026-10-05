@@ -94,8 +94,11 @@ return define.system {
     -- from a match's side): the game's version (its five Crosses), the
     -- Crosses it owns (by Cross number: Gregar's event flags 0xE2-0xE6,
     -- Falzar's 0xE7-0xEB), and nettai's Cross list (window.luau).
+    -- The versions come in the original's order (Gregar 0, Falzar 1: the
+    -- number a navi's stats carry, NaviStats+0x20), which tools go by: they
+    -- list and draw the versions in it, and number them by it.
     setup = {
-        version = { "falzar", "gregar" },
+        version = { "gregar", "falzar" },
         crosses = "bool[5]",
         cross_list = "form[5]",
     },
