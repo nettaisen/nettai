@@ -18,8 +18,9 @@ fn the_content_type_checks_against_the_core_api() {
 /// docs/design/content-model-v2.md §4.0: a game without its top module, a
 /// require of no module, a folder that is no pack, a require of another
 /// game's module (game to game, support to game), a support pack reaching
-/// for the game's context by itself and a cycle of support packs fail the
-/// check with their paths.
+/// for the game's context by itself, a cycle of support packs and a game's
+/// module that defines something the game doesn't load fail the check with
+/// their paths.
 #[test]
 fn what_the_packs_refuse() {
     let dir = std::env::temp_dir().join(format!("nettai-check-{}", std::process::id()));
@@ -29,7 +30,15 @@ fn what_the_packs_refuse() {
         std::fs::write(p, text).unwrap();
     };
     write("g/manifest.toml", "id = \"g\"\nkind = \"game\"\ndepends = [\"lib\"]\n");
-    write("g/init.luau", "return { rules = require(\"@self/there\"), also = { require(\"@self/gone\"), require(\"./there\") } }\n");
+    write("g/init.luau", "require(\"@self/there\")\nrequire(\"@self/gone\")\nrequire(\"./there\")\nrequire(\"@self/chips\")\n");
+    // Its chips' init requires one, leaves one waiting, and misses one.
+    write("g/chips/init.luau", "require(\"@self/sword\")\n-- require(\"@self/later\")  -- no use yet\n");
+    write("g/chips/sword/init.luau", "return define.chip { id = \"sword\" }\n");
+    write("g/chips/sword/edge.luau", "return {}\n");
+    write("g/chips/later/init.luau", "return define.chip { id = \"later\" }\n");
+    write("g/chips/later/blade.luau", "return define.kind { id = \"later/blade\" }\n");
+    write("g/chips/missed/init.luau", "return define.chip { id = \"missed\" } -- (no define.x here)\n");
+    write("g/lib/unused.luau", "-- define.kind in a comment\nreturn {}\n");
     write("g/there.luau", "local y = require(\"./nowhere\")\nlocal z = require(\"@h/x\")\nlocal w = require(\"@lib/x\")\nreturn {}\n");
     write("h/manifest.toml", "id = \"h\"\nkind = \"game\"\n");
     write("h/x.luau", "return {}\n");
@@ -53,6 +62,10 @@ fn what_the_packs_refuse() {
     has("lib/x.luau:4: support pack lib reaches for the game's context by itself, `id = \"x\"`");
     has("its `depends` make a cycle: base depends on lib depends on base");
     has("stray/: no manifest.toml; a folder of content/ is a pack");
+    has("g/chips/missed/init.luau: it defines something, and g doesn't load it");
+    for fine in ["g/chips/sword", "g/chips/later", "g/lib/unused", "lib/x.luau: it defines"] {
+        assert!(!problems.iter().any(|p| p.starts_with(fine) && p.contains("doesn't load it")), "{fine}: {problems:#?}");
+    }
     std::fs::remove_dir_all(&dir).ok();
 }
 

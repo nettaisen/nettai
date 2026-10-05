@@ -128,6 +128,8 @@ function shade.make(spec: Spec): { kind: Kind, spawn: (owner: Object) -> Object?
         sprite:load(SPRITE)
         sprite.shadow = spec.shadow
         me.anim, me.anim_loaded = 0, 0xFF
+        -- (0x0801892E's end, 0x0800C896 and 0x08002DC0: the sprite faces its object's way, which the load forgets.)
+        sprite:set_flip(bit32.bxor(me.alliance, me.flip))
         me.visible = true
         sprite.palette = PALETTE
         local owner = me.related1 :: Object
@@ -166,7 +168,6 @@ function shade.make(spec: Spec): { kind: Kind, spawn: (owner: Object) -> Object?
             o.related1 = owner
             o.alliance, o.flip = owner.alliance, owner.flip
             o.run_while_paused = true
-            o.sprite:set_flip(bit32.bxor(owner.alliance, owner.flip))
         end
         return o
     end

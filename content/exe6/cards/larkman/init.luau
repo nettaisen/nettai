@@ -9,7 +9,7 @@ return define.patch_card {
     mb = 36,
     effects = {
         cards.air_shoes(true),
-        cards.charge_shot_kind(variants.attack_90),
+        cards.charge_shot_kind(variants.chip_destruction),
         cards.beat(true),
         cards.bug(cards.hit_status("confuse")),
     },
