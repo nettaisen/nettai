@@ -206,13 +206,12 @@ pub enum ChipMatch {
     Family(ChipFamily),
 }
 
-/// A soul's place on EXE5's custom screen: its number (NaviStats +0x2C,
-/// the soul-used bits' and the save's soul flags' order) and the family
-/// of the chip given up for it (0x08024BE0's table).
+/// A soul on EXE5's custom screen: the family of the chip given up for it
+/// (0x08024BE0's table). A soul is named by its form's key; the original's
+/// number for it (NaviStats +0x2C) is compat's (exe5-compat's `forms`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SoulData {
-    pub number: u8,
     pub family: ChipFamily,
     /// The chaos cycle's row its Chaos Unison charges by whatever the
     /// chaos level (0x080106BC: MeddySoul's 2); none: the level's, at
@@ -231,7 +230,7 @@ pub struct FormData {
     /// change form, and what a revert takes them back to (one a game).
     #[serde(default)]
     pub base: bool,
-    /// A soul's number and family (EXE5's Soul Unison: the form is a soul).
+    /// A soul's family (EXE5's Soul Unison: the form is a soul).
     #[serde(default)]
     pub soul: Option<SoulData>,
     pub sprite: SpriteId,
@@ -606,8 +605,8 @@ impl FormTraits {
     /// Its held buster doesn't fire while its B+Back special is asked for
     /// (TenguCross and DustCross in Beast Out).
     pub const SPECIAL_HOLDS_BUSTER: u16 = 0x004;
-    /// A metal panel doesn't slide the navi (EXE5's soul 5, NaviStats
-    /// +0x2C: 0x08017216).
+    /// A metal panel doesn't slide the navi (EXE5's MagnetSoul:
+    /// 0x08017216).
     pub const STANDS_ON_METAL: u16 = 0x008;
     /// The side's systems' controller decides the navi's idle (Beast Over's
     /// berserk, `sub_802D322`): the player's buttons don't reach it

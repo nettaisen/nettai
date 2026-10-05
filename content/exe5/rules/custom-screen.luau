@@ -24,7 +24,7 @@ return {
     right_scan_bottom = { 5, 6, 7, 8, 9, 11, 10 },
     left_scan_start = { 7, 6, 5, 4, 2, 17, 16, 15, 7, 1, 0, 0 },
     right_scan_start = { 1, 2, 3, 5, 7, 1, 2, 3, 4, 5, 0, 0 },
-    -- The re-deal (SearchSoul's Shuffle, rules/souls/shuffle: 0x080253E8): how many of the hand's chips it deals again
+    -- The re-deal (SearchSoul's Shuffle, its form's folder's shuffle: 0x080253E8): how many of the hand's chips it deals again
     -- stay in the hand, by how many they are, from none (0x080254C8; past the list, none).
     redeal_kept = { 0, 0, 0, 1, 1, 2, 2, 3, 3 },
 }
