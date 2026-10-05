@@ -173,11 +173,10 @@ impl Battle {
         if id == remote_telop {
             return Some(telop);
         }
-        let navi = |side: u8| self.content.navi(self.stats[side as usize].navi);
-        let result_banner = navi(local).win_banner == id || navi(local).lose_banner == id;
-        if result_banner && matches!(self.fight.state, fight::WIN | fight::LOSE) {
-            let won = self.round.winner == viewer;
-            return Some(if won { navi(viewer).win_banner } else { navi(viewer).lose_banner });
+        // (A result's banner is each console's own: its win's or its
+        // loss's, as its own routine picks it.)
+        if matches!(self.fight.state, fight::WIN | fight::LOSE) && id == self.result_banner(local, self.round.winner == local) {
+            return Some(self.result_banner(viewer, self.round.winner == viewer));
         }
         Some(id)
     }
@@ -245,6 +244,67 @@ mod tests {
         let navi = b.content.navi(b.content.navi_by_key(testing::MEGAMAN)).clone();
         b.start_banner(navi.win_banner);
         assert_eq!((b.banner_for(0), b.banner_for(1)), (Some(navi.win_banner), Some(navi.lose_banner)));
+    }
+
+    /// The result's banner as each game's routine picks it (`sub_80081A4`,
+    /// `sub_800825A`; EXE5's 0x080074D2): the winner's navi's in the link
+    /// battles the flow names, else "ENEMY DELETED", and the judge's
+    /// ruling's "YOU WIN" and "YOU LOSE".
+    #[test]
+    fn a_results_banner_is_the_navis_or_the_roles() {
+        use crate::battle::battle_flags;
+        use crate::content::{BannerRole, NaviWinBanner};
+        let content = |rule: NaviWinBanner| {
+            let mut c: crate::content::Content = testing::build();
+            c.define().unwrap_or_else(|e| panic!("{e}"));
+            c.rules.flow.navi_win_banner = rule;
+            std::sync::Arc::new(c)
+        };
+        let with = |c: &std::sync::Arc<crate::content::Content>, link: bool| {
+            let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(c));
+            setup.content = c.hash();
+            if !link {
+                setup.settings.effects &= !crate::setup::effects::LINK;
+            }
+            Battle::new(setup, c.clone())
+        };
+        let exe6 = content(NaviWinBanner::LinkBattle);
+        let mut b = with(&exe6, true);
+        let navi = b.content.navi(b.content.navi_by_key(testing::MEGAMAN)).clone();
+        let role = |b: &Battle, r: BannerRole| b.roles().banner(r);
+        // A deletion: EXE6's link battle shows the navi's on both consoles.
+        b.round.actor_count = [1, 0];
+        assert_eq!((b.result_banner(0, true), b.result_banner(1, false)), (navi.win_banner, navi.lose_banner));
+        // The judge's ruling: the navi's still for the winner, "YOU LOSE"
+        // for the loser.
+        b.round.actor_count = [1, 1];
+        b.round.time_up = 1;
+        assert_eq!((b.result_banner(0, true), b.result_banner(1, false)), (navi.win_banner, role(&b, BannerRole::LoseJudged)));
+        // Outside a link battle a win is "ENEMY DELETED", or "YOU WIN".
+        let mut b = with(&exe6, false);
+        b.round.actor_count = [1, 0];
+        assert_eq!(b.result_banner(0, true), role(&b, BannerRole::Win));
+        b.round.actor_count = [1, 1];
+        b.round.time_up = 1;
+        assert_eq!(b.result_banner(0, true), role(&b, BannerRole::WinJudged));
+        // EXE5's: the same in a link battle that is no operation battle,
+        // on each console its own.
+        let mut b = with(&content(NaviWinBanner::OperationBattle), true);
+        b.round.actor_count = [1, 0];
+        assert_eq!((b.result_banner(0, true), b.result_banner(1, false)), (role(&b, BannerRole::Win), navi.lose_banner));
+        b.fight.state = fight::WIN;
+        b.round.winner = 0;
+        b.start_banner(b.result_banner(0, true));
+        assert_eq!((b.banner_for(0), b.banner_for(1)), (Some(role(&b, BannerRole::Win)), Some(navi.lose_banner)));
+        b.round.actor_count = [1, 1];
+        b.round.time_up = 1;
+        assert_eq!((b.result_banner(0, true), b.result_banner(1, false)), (role(&b, BannerRole::WinJudged), role(&b, BannerRole::LoseJudged)));
+        // And the navi's in an operation battle, whatever the result.
+        b.round.flags |= battle_flags::OWN_GAUGES;
+        assert_eq!(b.result_banner(0, true), navi.win_banner);
+        b.round.time_up = 0;
+        b.round.actor_count = [1, 0];
+        assert_eq!(b.result_banner(0, true), navi.win_banner);
     }
 
     /// Each viewer sees the objects as its own console would: a blind
