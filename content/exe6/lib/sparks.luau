@@ -36,8 +36,8 @@ sparks.impact = define.spark { sprite = asset.sprite("impact"), anim = 0, palett
 -- BigHook's flames).
 sparks.breaking = define.spark { sprite = asset.sprite("hit-sparks"), anim = 1, palette = 0 }
 
--- A shot's impact (spark 9: a projectile variant nothing names yet).
-sparks.shot = define.spark { sprite = asset.sprite("shot-impact"), anim = 0, palette = 0 }
+-- The chip destruction hit spark (spark 9: the chip destruction shot's).
+sparks.chip_destruction = define.spark { sprite = asset.sprite("chip-destruction-spark"), anim = 0, palette = 0 }
 
 -- A blast (spark 0x0B: GigaCan's shot).
 sparks.blast = define.spark { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }

@@ -64,7 +64,7 @@
 "shot/breaking" = 0x05
 "shot/cracking" = 0x07
 "shot/poisoning" = 0x08
-"shot/attack-90" = 0x09
+"shot/chip-destruction" = 0x09
 "shot/grass" = 0x0D
 "shot/ice" = 0x0E
 "shot/hub" = 0x12
