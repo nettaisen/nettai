@@ -633,16 +633,15 @@ impl View<'_> {
 }
 
 /// A Cross's name pictures and colors in the Cross window, by the Cross's
-/// own game (a Gregar Cross shows Gregar's name in any player's window):
-/// its game's custom-screen pictures and its number among that game's
-/// Crosses. Its name is `cross_names`' 18 tiles from `18 * number` on the
-/// cursor's row (`18 * (number + 5)` on the others'), its colors
-/// `cross_palettes[number]` (`[number + 5]` once used). `navi` is the
-/// navi whose Cross it is.
-pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
-    let game = exe6_compat::forms::game(c, form)?;
-    let number = (0..5u8).find(|&i| exe6_compat::forms::cross(c, navi, game, i) == Some(form))?;
-    Some((a.versioned.get(game_name(game)), number as usize))
+/// own version (a Gregar Cross shows Gregar's name in any player's window):
+/// its version's custom-screen pictures (the form's `version`) and its
+/// number among that version's Crosses (its `window_order`). Its name is
+/// `cross_names`' 18 tiles from `18 * number` on the cursor's row
+/// (`18 * (number + 5)` on the others'), its colors `cross_palettes[number]`
+/// (`[number + 5]` once used). None: a form that says neither.
+pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, form: FormHandle) -> Option<(&'a VersionPictures, usize)> {
+    let f = c.form(form);
+    Some((a.versioned.get(f.version.as_deref()?), f.window_order? as usize))
 }
 
 /// The pack's name of a game version (`Versioned`).

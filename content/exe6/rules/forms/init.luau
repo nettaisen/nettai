@@ -33,14 +33,14 @@ forms.system = define.system {
     state = { beast_out_used = "bool", crossed = "bool" },
     -- What EXE6's forms say of themselves (docs/design/rules-in-luau.md §7.5;
     -- kind.luau reads the kind): their kind (every form but the base form
-    -- names one), whose game's form each is (the Beast's roar, a Cross's
-    -- game), the navi a Cross (and one in Beast Out) is made with, and the
-    -- animation a change into a Cross lets the navi go of (`sub_8014B18`:
-    -- GroundCross's drill).
+    -- names one), the navi a Cross (and one in Beast Out) is made with, and
+    -- the animation a change into a Cross lets the navi go of
+    -- (`sub_8014B18`: GroundCross's drill). (Whose game's form each is, the
+    -- Beast's roar and a Cross's game, is the form's `version`, the
+    -- engine's field: "gregar" or "falzar".)
     extends = {
         form = {
             kind = { "cross", "beast", "cross_beast", "beast_over" },
-            game = { "gregar", "falzar" },
             cross_of = "navi",
             cross_release_anim = "u8",
         },
