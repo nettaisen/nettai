@@ -138,12 +138,13 @@ impl ComputerNavi {
     /// entries played first in the first three places (those left over
     /// empty), the rest after them, each different pattern a record.
     pub fn tactics(&self) -> Tactics {
-        let patterns: Vec<TacticPattern> =
-            self.patterns().into_iter().map(|p| TacticPattern { dx: p.dx, dy: p.dy, chips: p.chips.clone() }).collect();
+        // (A match states no score: an unwritten one, 0xFFFFFFFF, at which
+        // the read of a pattern of five chips ends.)
+        let patterns: Vec<TacticPattern> = self.patterns().into_iter().map(|p| TacticPattern::of(p.dx, p.dy, &p.chips, u32::MAX)).collect();
         let entry = |p: &Play| match p {
             Play::Chip(c) => Tactic::Chip(*c),
             Play::Pattern(p) => {
-                let at = patterns.iter().position(|t| (t.dx, t.dy) == (p.dx, p.dy) && t.chips == p.chips).expect("one of the entries' patterns");
+                let at = patterns.iter().position(|t| (t.dx, t.dy) == (p.dx, p.dy) && t.run() == p.chips).expect("one of the entries' patterns");
                 Tactic::Pattern(at as u8)
             }
         };
@@ -172,7 +173,7 @@ impl ComputerNavi {
                     continue;
                 }
                 Tactic::Pattern(n) => match block.patterns.get(n as usize) {
-                    Some(p) => Play::Pattern(Pattern { dx: p.dx, dy: p.dy, chips: p.chips.clone() }),
+                    Some(p) => Play::Pattern(Pattern { dx: p.dx, dy: p.dy, chips: p.run() }),
                     None => {
                         notes.push(format!("place {} of the computer-navi data names pattern {}, which it hasn't: left out", i + 1, n as u16 + 1));
                         continue;
@@ -344,7 +345,7 @@ mod tests {
             block.entries,
             [Tactic::Chip(cannon), Tactic::Empty, Tactic::Empty, Tactic::Pattern(0), Tactic::Chip(sword), Tactic::Pattern(0), Tactic::Chip(sword)]
         );
-        assert_eq!(block.patterns, [TacticPattern { dx: -2, dy: 1, chips: vec![sword, cannon] }]);
+        assert_eq!(block.patterns, [TacticPattern::of(-2, 1, &[sword, cannon], u32::MAX)]);
         assert_eq!(ComputerNavi::of_block(&block), (data.clone(), Vec::new()));
         assert_eq!(data.check(&content, "exe5"), Vec::<String>::new());
         // What the console sends of it: the entries packed, the first

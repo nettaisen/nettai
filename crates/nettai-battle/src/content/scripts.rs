@@ -6,11 +6,14 @@
 //! Each pack has a manifest (`manifest.toml`: its name, its kind and the
 //! support packs it depends on), and a game pack a top module
 //! (`<game>/init.luau`) that requires what the game has. The define phase
-//! runs each game's top module and what it requires, nothing else, and
-//! holds it to the whole truth: what a game has is defined by a module its
-//! init.luau requires itself. A module requires only its own pack's modules
-//! and those of the support packs its pack depends on. Every id a module
-//! writes is local to its game (`minibomb`).
+//! runs each game's top module, and each `require` finds and reads its
+//! module as it is reached (`packs::find`): from the modules held in
+//! memory, else from the packs' folders ([`Scripts::dirs`]). What the load
+//! read is the content's modules from then on: its hash covers them, and a
+//! runtime loads them again from memory, never from a folder. A module
+//! requires only its own pack's modules and those of the support packs its
+//! pack depends on. Every id a module writes is local to its game
+//! (`minibomb`).
 //!
 //! [`Content::define`](super::Content::define) turns what the modules
 //! define into what the script runtime binds (`content::defs`). Nothing in
@@ -26,11 +29,16 @@ use nettai_content_api::{PackKind, PackManifest, keys, packs};
 pub struct Scripts {
     /// Source text by module name: its pack, then its path in the pack
     /// without `.luau` (`exe6:objects/sun-beam/sun_beam`, `keys::module_name`).
+    /// Before the define phase, the modules held in memory (a test's, a
+    /// tool's stand-ins); after it, those and every module the load read.
     pub modules: BTreeMap<String, String>,
     /// The packs the content loads (their manifests), in load order: the
     /// support packs, then the games. None: every module loads (modules a
     /// test makes alone).
     pub packs: Vec<PackManifest>,
+    /// Where the define phase reads a module `modules` hasn't: the packs'
+    /// folders (content/'s). No part of what the content is.
+    pub dirs: ModuleDirs,
     /// Their bytecode, as the define phase compiled it (a runtime then
     /// skips the compiler).
     pub compiled: CompiledModules,
@@ -64,17 +72,31 @@ impl Scripts {
 
     /// Game `game`'s modules (by path in its directory), with a manifest
     /// that depends on every support pack the content holds; without a top
-    /// module among them (`init`), inits that require every one of them
-    /// ([`Scripts::inits_for`]). (Tests and tools that hold a game's
-    /// modules in memory; content/'s packs have their own.)
+    /// module among them (`init`), one that requires every one of them
+    /// ([`Scripts::init_for`]). (Tests and tools that hold a game's modules
+    /// in memory; content/'s packs have their own.)
     pub fn add_game(&mut self, game: &str, mut modules: BTreeMap<String, String>) {
         let depends = self.packs.iter().filter(|p| p.kind == PackKind::Support).map(|p| p.id.clone()).collect();
         if !modules.contains_key(packs::INIT) {
-            let inits = Scripts::inits_for(&modules);
-            modules.extend(inits);
+            let init = Scripts::init_for(&modules);
+            modules.insert(packs::INIT.to_string(), init);
         }
         self.add_dir(game, modules);
         self.set_manifest(PackManifest { id: game.to_string(), kind: PackKind::Game, depends });
+    }
+
+    /// Support pack `id` in folder `dir` (content/exelib): its manifest,
+    /// which the games the content holds depend on, and its modules read
+    /// from the folder as a load requires them.
+    pub fn add_support_dir(&mut self, id: &str, dir: impl Into<std::path::PathBuf>) {
+        self.read_from(id, dir);
+        self.add_support(id, BTreeMap::new());
+    }
+
+    /// Pack `id`'s modules are read from folder `dir` (content/<id>) as a
+    /// load requires them: each one memory holds none of the name for.
+    pub fn read_from(&mut self, id: &str, dir: impl Into<std::path::PathBuf>) {
+        self.dirs.0.0.insert(id.to_string(), dir.into());
     }
 
     /// Support pack `id`'s modules (by path in its directory), with its
@@ -101,42 +123,13 @@ impl Scripts {
         self.packs.insert(at, manifest);
     }
 
-    /// The inits (by path, with their source) for a game whose modules are
-    /// `modules` (by path in its directory), so that every one loads, as a
-    /// game pack's do (docs/design/content-model-v2.md §4.0): each folder
-    /// of the pack an init that requires every module of the folder, and
-    /// the top module (`init`), which requires the folders and the modules
-    /// beside them. A folder whose own init is a module of its own (a
-    /// game's rules) keeps it, and the top module requires the folder's
-    /// modules too. Each in path order, a folder by its name.
-    pub fn inits_for(modules: &BTreeMap<String, String>) -> BTreeMap<String, String> {
-        let init_of = |folder: &str| format!("{folder}/{}", packs::INIT);
-        let mut folders: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
-        let mut top: Vec<String> = Vec::new();
-        for path in modules.keys().filter(|p| p.as_str() != packs::INIT) {
-            match path.split_once('/') {
-                Some((folder, rest)) => folders.entry(folder).or_default().push(rest),
-                None => top.push(path.clone()),
-            }
-        }
-        let mut out = BTreeMap::new();
-        for (folder, members) in &folders {
-            top.push(folder.to_string());
-            let own = modules.get(&init_of(folder)).is_some_and(|source| !packs::is_index(source));
-            let listed = members.iter().filter(|m| **m != packs::INIT).map(|m| keys::listed_as(m));
-            if own {
-                // (Its own init is the folder's; the rest load from the top.)
-                top.extend(listed.map(|m| format!("{folder}/{m}")));
-            } else {
-                let lines: String = listed.map(|m| format!("require(\"@self/{m}\")\n")).collect();
-                out.insert(init_of(folder), format!("{GENERATED}{lines}"));
-            }
-        }
-        top.sort();
-        top.dedup();
-        let lines: String = top.iter().map(|m| format!("require(\"@self/{m}\")\n")).collect();
-        out.insert(packs::INIT.to_string(), format!("{GENERATED}{lines}"));
-        out
+    /// A top module (`init.luau`'s text) for a game whose modules are
+    /// `modules` (by path in its directory): it requires every one, so
+    /// every one loads, in path order, a folder by its name.
+    pub fn init_for(modules: &BTreeMap<String, String>) -> String {
+        let lines: String =
+            modules.keys().filter(|p| p.as_str() != packs::INIT).map(|p| format!("require(\"@self/{}\")\n", keys::listed_as(p))).collect();
+        format!("{GENERATED}{lines}")
     }
 
     /// The module name of path `path` in content/'s directory `dir`.
@@ -164,9 +157,10 @@ impl Scripts {
             }
         }
         packs::load_order(&all, &self.games())?;
+        let modules = (&self.modules, &self.dirs.0);
         for p in &self.packs {
             if let Some(m) = p.entry()
-                && !self.modules.contains_key(&m)
+                && packs::module(&modules, &m).is_none()
             {
                 return Err(format!(
                     "{}.luau: game pack {} has no top module: its {}.luau requires what the game has",
@@ -179,23 +173,59 @@ impl Scripts {
         Ok(())
     }
 
-    /// The modules module `module` (by name) requires itself, by name (a
-    /// folder by its name; `packs::required_by`); none: no such module.
-    pub fn required_by(&self, module: &str) -> Option<Result<Vec<String>, String>> {
-        self.modules.get(module).map(|source| packs::required_by(module, source))
+    /// The modules as the define phase loads them: from each game's top
+    /// module, each module read as it is required, from memory or, one
+    /// memory hasn't, from the packs' folders.
+    pub fn pack_to_define(&self) -> nettai_luau::Pack {
+        let entries = self.packs.iter().filter_map(|p| p.entry()).collect::<Vec<_>>();
+        if self.packs.is_empty() {
+            // (A test's modules alone: every one, in name order.)
+            return nettai_luau::Pack::new(self.modules.clone());
+        }
+        nettai_luau::Pack::of((self.modules.clone(), self.dirs.0.clone()), entries).with_packs(self.packs.iter().cloned())
     }
 
     /// The modules as a runtime loads them, with the bytecode compiled
-    /// from them: the define phase starts from each game's top module.
+    /// from them: from each game's top module, from memory alone (what the
+    /// define phase read: no folder is read again).
     pub fn pack(&self) -> nettai_luau::Pack {
-        let modules = self.modules.iter().map(|(k, v)| (k.clone(), v.clone()));
-        let entries = self.packs.iter().filter_map(|p| p.entry()).collect();
-        nettai_luau::Pack::new(modules).with_entries(entries).with_packs(self.packs.iter().cloned()).with_compiled(self.compiled.0.clone())
+        let entries = self.packs.iter().filter_map(|p| p.entry()).collect::<Vec<_>>();
+        let pack = nettai_luau::Pack::new(self.modules.clone()).with_packs(self.packs.iter().cloned()).with_compiled(self.compiled.0.clone());
+        if self.packs.is_empty() { pack } else { pack.with_entries(entries) }
+    }
+
+    /// Every module the content could load, by name: those in memory and
+    /// every file of the packs' folders (a tool's list: the test content's
+    /// made-up assets; never what a load reads).
+    pub fn available(&self) -> BTreeMap<String, String> {
+        use nettai_content_api::packs::Modules;
+        let mut out: BTreeMap<String, String> =
+            self.dirs.0.names().into_iter().filter_map(|name| Some((name.clone(), self.dirs.0.read(&name)?))).collect();
+        out.extend(self.modules.iter().map(|(k, v)| (k.clone(), v.clone())));
+        out
     }
 }
 
-/// The first line of an init [`Scripts::inits_for`] makes.
+/// The first line of an init [`Scripts::init_for`] makes.
 pub const GENERATED: &str = "-- (Made for a game held in memory: it requires every module there is.)\n";
+
+/// The packs' folders the define phase reads modules from
+/// ([`Scripts::dirs`]): where the content came from on this machine, so
+/// content equality and the content hash leave it out.
+#[derive(Clone, Debug, Default)]
+pub struct ModuleDirs(pub packs::Dirs);
+
+impl PartialEq for ModuleDirs {
+    fn eq(&self, _: &ModuleDirs) -> bool {
+        true
+    }
+}
+
+impl Eq for ModuleDirs {}
+
+impl std::hash::Hash for ModuleDirs {
+    fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
+}
 
 /// Bytecode compiled from [`Scripts::modules`]: derived from them (each
 /// module's with the source it was compiled from, which loading checks),
@@ -337,16 +367,14 @@ mod tests {
         }
     }
 
-    /// docs/design/content-model-v2.md §4.0: a game's inits are the whole
-    /// truth about what the game has. The top module requires the game's
-    /// folders, and a folder's init its modules; what they don't reach
-    /// doesn't load. A definition of what a game has in a module its
-    /// folder's init doesn't require itself, a folder the top module
-    /// doesn't require, a game without a top module, a support pack's
-    /// definition of what a game has: refused. The order of the requires
-    /// moves no key and no handle.
+    /// docs/design/content-model-v2.md §4.0: a load runs the game's top
+    /// module, and each require finds and reads its module as it is
+    /// reached; what nothing requires never runs, so it defines nothing.
+    /// The order of the requires moves no key and no handle. A require of
+    /// no module, a cycle, a require the packs refuse and a game without a
+    /// top module are errors that say where they are written.
     #[test]
-    fn a_games_inits_require_what_it_has() {
+    fn a_load_reads_what_its_requires_reach() {
         let modules: BTreeMap<String, String> = [
             ("rules/turns", "return define.system { id = 'turns' }"),
             ("rules/init", "return define.ruleset { systems = { require('@self/turns') } }"),
@@ -359,14 +387,16 @@ mod tests {
         .into_iter()
         .map(|(p, s)| (p.to_string(), s.to_string()))
         .collect();
-        // The game with these inits (by path).
+        // The game with these inits (by path), and a support pack `lib`.
         let with_inits = |inits: &[(&str, &str)]| -> Result<Content, String> {
             let mut c = Content::default();
             c.scripts.add_dir("game", modules.clone());
             for (path, source) in inits {
                 c.scripts.modules.insert(Scripts::name("game", path), source.to_string());
             }
-            c.scripts.set_manifest(PackManifest::parse("id = \"game\"\nkind = \"game\"\n", "game/manifest.toml")?);
+            c.scripts.add_dir("lib", [("x".to_string(), "return require('@game/rules')".to_string())].into());
+            c.scripts.set_manifest(PackManifest::parse("id = \"lib\"\nkind = \"support\"\n", "lib/manifest.toml")?);
+            c.scripts.set_manifest(PackManifest::parse("id = \"game\"\nkind = \"game\"\ndepends = [\"lib\"]\n", "game/manifest.toml")?);
             c.define().map_err(|e| e.message)?;
             Ok(c)
         };
@@ -389,41 +419,95 @@ mod tests {
         ];
         let d = with_inits(&turned).unwrap();
         assert_eq!(c.defs.definitions, d.defs.definitions);
+        // A chip its folder's init leaves out still loads when something
+        // requires it (the Program Advance's module): the inits list for a
+        // reader, and tools/content/index.py writes them.
+        let reached = with_inits(&[top, ("chips/init", "require('@self/cannon')"), lib]).unwrap();
+        assert_eq!(reached.defs.definitions, c.defs.definitions);
         let refused = |inits: &[(&str, &str)], said: &str| {
             let e = with_inits(inits).expect_err(said);
             assert!(e.contains(said), "{said}: {e}");
         };
-        // Reached (the Program Advance's module requires it), but its
-        // folder's init doesn't list it.
-        refused(
-            &[top, ("chips/init", "require('@self/cannon')"), lib],
-            "game/chips/sword/init.luau: chip sword is game's, and game/chips/init.luau doesn't require chips/sword",
-        );
-        // Listed by its folder's init, which the top module doesn't require.
-        refused(
-            &[("init", "require('@self/rules')\nrequire('@self/lib')\nrequire('@self/chips/sword')"), chips, lib],
-            "game/chips/sword/init.luau: chip sword is game's, and game/init.luau doesn't require chips",
-        );
-        // Its folder has no init.
-        refused(
-            &[("init", "require('@self/rules')\nrequire('@self/lib')"), lib],
-            "game/chips/sword/init.luau: chip sword is game's, and there is no game/chips/init.luau to require chips/sword",
-        );
-        refused(&[("init", "require('@self/rules')\nrequire('@self/gone')")], "no module game:gone.luau");
-        refused(&[("init", "require('./rules')")], "leaves pack game");
+        refused(&[("init", "require('@self/rules')\nrequire('@self/gone')")], "game/init.luau: require(\"@self/gone\"): no module game/gone.luau");
+        refused(&[("init", "require('./rules')")], "game/init.luau: require(\"./rules\") from game:init: leaves pack game");
         refused(&[], "game/init.luau: game pack game has no top module");
-        // A game held in memory gets inits that load every module of it.
+        // A cycle, by the files it goes through.
+        refused(
+            &[("init", "require('@self/a')"), ("a", "return require('./b')"), ("b", "return require('./a')")],
+            "require cycle: game/init.luau -> game/a.luau -> game/b.luau -> game/a.luau",
+        );
+        // What the packs refuse: a support pack requires no game.
+        refused(&[("init", "require('@lib/x')")], "lib/x.luau: require(\"@game/rules\"): game is a game pack, which no other pack requires");
+        // A game held in memory gets a top module that loads every module.
         let mut held = modules.clone();
         held.remove("never");
-        let inits = Scripts::inits_for(&held);
-        assert_eq!(inits.keys().collect::<Vec<_>>(), ["chips/init", "init", "lib/init"]);
-        assert!(inits["init"].ends_with("require(\"@self/chips\")\nrequire(\"@self/lib\")\nrequire(\"@self/rules\")\nrequire(\"@self/rules/turns\")\n"), "{}", inits["init"]);
-        assert!(inits["chips/init"].ends_with("require(\"@self/cannon\")\nrequire(\"@self/sword/edge\")\nrequire(\"@self/sword\")\n"), "{}", inits["chips/init"]);
+        let init = Scripts::init_for(&held);
+        assert!(init.ends_with("require(\"@self/chips/cannon\")\nrequire(\"@self/chips/sword/edge\")\nrequire(\"@self/chips/sword\")\nrequire(\"@self/lib/pa\")\nrequire(\"@self/rules\")\nrequire(\"@self/rules/turns\")\n"), "{init}");
         let mut c = Content::default();
         c.scripts.add_game("game", held);
         c.define().unwrap_or_else(|e| panic!("{}", e.message));
         assert_eq!(c.defs.definitions, d.defs.definitions);
-        // A support pack defines nothing a game has.
+    }
+
+    /// The define phase reads a module where the packs' folders have it, as
+    /// its require is reached, unless memory holds one of its name (a
+    /// tool's stand-in). What it read is the content's modules from then
+    /// on: the hash covers them and not where they came from, and a runtime
+    /// loads them from memory.
+    #[test]
+    fn a_load_reads_the_packs_folders_as_it_requires() {
+        let dir = std::env::temp_dir().join(format!("nettai-scripts-{}", std::process::id()));
+        let write = |path: &str, text: &str| {
+            let p = dir.join(path);
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(p, text).unwrap();
+        };
+        write("game/init.luau", "require(\"@self/rules\")\nrequire(\"@self/chips\")\n");
+        write("game/rules/init.luau", "return define.ruleset { systems = { require(\"@self/turns\") } }\n");
+        write("game/rules/turns.luau", "return define.system { id = \"turns\" }\n");
+        write("game/chips/init.luau", "require(\"@self/sword\")\n");
+        write("game/chips/sword/init.luau", "return define.chip { id = \"sword\", instant = require(\"@lib/hit\") }\n");
+        write("game/chips/unread/init.luau", "error(\"nothing requires this\")\n");
+        write("lib/hit.luau", "return function(u) end\n");
+        write("lib/unread.luau", "error(\"nothing requires this\")\n");
+        let on_disk = || {
+            let mut c = Content::default();
+            c.scripts.add_support_dir("lib", dir.join("lib"));
+            c.scripts.set_manifest(PackManifest { id: "game".into(), kind: PackKind::Game, depends: vec!["lib".into()] });
+            c.scripts.read_from("game", dir.join("game"));
+            c
+        };
+        let mut c = on_disk();
+        assert!(c.scripts.modules.is_empty(), "nothing is read ahead");
+        c.define().unwrap_or_else(|e| panic!("{}", e.message));
+        assert_eq!(
+            c.scripts.modules.keys().collect::<Vec<_>>(),
+            ["game:chips/init", "game:chips/sword/init", "game:init", "game:rules/init", "game:rules/turns", "lib:hit"],
+            "what the load read"
+        );
+        assert!(c.defs.chip_by_key("sword").is_some());
+        // The same content from memory alone is the same content.
+        let mut held = Content::default();
+        held.scripts.modules = c.scripts.modules.clone();
+        held.scripts.packs = c.scripts.packs.clone();
+        held.define().unwrap_or_else(|e| panic!("{}", e.message));
+        assert_eq!((held.hash(), &held.defs.definitions), (c.hash(), &c.defs.definitions));
+        // A runtime loads what was read, though the folder is gone.
+        let mut stand_in = on_disk();
+        stand_in.scripts.modules.insert("game:rules/turns".into(), "return define.system { id = \"rounds\" }\n".into());
+        stand_in.define().unwrap_or_else(|e| panic!("{}", e.message));
+        assert_eq!(stand_in.defs.systems[0].key, "rounds", "memory before the folder");
+        // A require of no module in a file says the file.
+        write("game/chips/init.luau", "require(\"@self/sword\")\nrequire(\"@self/gone\")\n");
+        let e = on_disk().define().unwrap_err().message;
+        assert!(e.contains("game/chips/init.luau: require(\"@self/gone\"): no module game/chips/gone.luau"), "{e}");
+        std::fs::remove_dir_all(&dir).ok();
+        crate::behavior::Behaviors::load(&c, Default::default()).unwrap_or_else(|e| panic!("{}", e.message));
+    }
+
+    /// A support pack defines nothing a game has.
+    #[test]
+    fn a_support_pack_defines_nothing_a_game_has() {
         let mut c = Content::default();
         c.scripts.add_support("lib", [("x".to_string(), "return define.ruleset {}".to_string())].into());
         c.scripts.add_game("game", [("chips/y".to_string(), "local _ = require('@lib/x')\nreturn define.record('y', {})".to_string())].into());
