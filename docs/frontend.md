@@ -1169,7 +1169,7 @@ match files, its descriptions and the editor without a line of Rust.
   side's from its seed and writes it.
 - What is refused (`nettai_match::facts::check`, and the file's reader): a
   key no system declares ("left: no field \"karm\" (a side of exe5 takes
-  cyberworld, karma, chaos_unison, soul_unison, souls)"); a value that isn't
+  karma, chaos_unison, soul_unison, souls)"); a value that isn't
   the field's type's ("karma: 70000 is past a u16 (0 to 65535)", "version:
   no \"azure\" (gregar or falzar)"); a name the game hasn't; a definition
   twice in a list; and, for the one list the engine knows by its role (its
@@ -1187,7 +1187,7 @@ own); `crosses`, which of the version's own five the side owns (a save's
 flags; all, unless said); `beast_out`; `bug_frags`. EXE5's: `karma` (the
 light/dark value; dark under 470), `souls` (up to sixteen, either
 version's; every soul unless said), `soul_unison` and `chaos_unison` (the
-save's event flags 0 and 0x236), `cyberworld`. An EXE5 match has no
+save's event flags 0 and 0x236). An EXE5 match has no
 version: Team ProtoMan and Team Colonel play alike (its rules take none: a
 side may hold either version's souls and chips), so a `version` in an EXE5
 match is refused as any key its rules don't declare, and its sides bring

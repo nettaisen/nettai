@@ -17,9 +17,9 @@
 //! navi's stats, the forms a navi's list may hold) it asks by the role.
 //!
 //! The games' own (EXE6's `version`, `crosses`, `cross_list`, `beast_out`,
-//! `bug_frags`; EXE5's `karma`, `souls`, `soul_unison`, `chaos_unison`,
-//! `cyberworld`) are documented where they are declared: content/exe6/rules
-//! and content/exe5/rules.
+//! `bug_frags`; EXE5's `karma`, `souls`, `soul_unison`, `chaos_unison`) are
+//! documented where they are declared: content/exe6/rules and
+//! content/exe5/rules.
 
 use crate::{Arena, Side, ids};
 use nettai_battle::content::{Content, PlayerFact};
