@@ -9,7 +9,8 @@ description = "The desktop app that shows nettai battles drawn by nettai-render:
 nettai-battle = { path = "../nettai-battle" }
 # The drawing: a battle into frames.
 nettai-render = { path = "../nettai-render" }
-# Trace playback, and the live driver's setup records.
+# The recording replay alone (src/driver.rs: `trace_rounds`): a recording is
+# the original's numbers, which a game's compat crate reads and compares.
 exe6-compat = { workspace = true, features = ["trace"] }
 # EXE5's recordings (the chip lab's EXE5 library), played as EXE6's are.
 exe5-compat = { path = "../exe5-compat", features = ["trace"] }

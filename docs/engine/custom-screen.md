@@ -354,7 +354,7 @@ All 20 recorded transformations match **[dumps]** (Crosses 2, 5, 6, 7, 0x0A, Bea
 ### 4.1 nettai's extension: a setup's Cross list
 
 **Not the original's.** The original's window offers only its version's five Crosses that the save owns. A
-nettai setup can name the Crosses instead: `Unlocks::cross_list` (`custom::CrossList`), up to five forms, of
+nettai setup can name the Crosses instead: the `cross_list` fact (a match's side's `nettai_match::CrossList`), up to five forms, of
 either game, in the order the window lists them. nettai-frontend's live play uses it to offer five of all ten
 Crosses (docs/frontend.md §2). Without a list (every recording, the chip lab, the netplay stand-in) nothing below
 applies and the screen is the original's.
