@@ -199,7 +199,10 @@ fn player_sprite(content: &Content, identity: Option<IdentityHandle>) -> SpriteI
 }
 
 /// `sub_80E32D8`: copy the owner's NameID and sprite, put on its form's
-/// overlay, and show `anim`.
+/// overlay, and show `anim`. Where a game's afterimages wear nothing (the
+/// rule `afterimages_wear_overlays`: EXE5's spawners pass the owner's
+/// battle sprite, 0x0800DA72, and its afterimage has no NameID), the copy
+/// is the sprite alone.
 fn init(b: &mut Battle, r: ObjectRef) {
     if is_plain(b, r) {
         return init_plain(b, r);
@@ -207,10 +210,12 @@ fn init(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).set_visible(true);
     let owner = b.objects.get(r).related[0].expect("afterimage has an owner");
     let identity = b.objects.get(owner).identity;
-    b.objects.get_mut(r).identity = identity;
     b.objects.sprite_mut(r).load(player_sprite(&b.content, identity));
     b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
-    put_on_layer(b, r, identity);
+    if b.game_rules().effects.afterimages_wear_overlays {
+        b.objects.get_mut(r).identity = identity;
+        put_on_layer(b, r, identity);
+    }
     let anim = vars(b, r).anim;
     let lifetime = vars(b, r).lifetime;
     let flip = b.objects.get(r).params[3];
@@ -303,8 +308,9 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 /// afterimage is freed.
 fn destroy(b: &mut Battle, r: ObjectRef) {
     set_progress(b, r, Progress::DESTROY);
-    if is_plain(b, r) {
-        // NameID 0's teardown (sub_8011044) does nothing.
+    if is_plain(b, r) || !b.game_rules().effects.afterimages_wear_overlays {
+        // NameID 0's teardown (sub_8011044) does nothing; a copy that wears
+        // nothing has none.
         b.objects.free(r);
         return;
     }

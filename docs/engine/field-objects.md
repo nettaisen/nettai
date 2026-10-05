@@ -16,7 +16,7 @@ boulder (T3#0x6E) is in `objects/boulder`; the absorbed obstacle
 obstacle kinds, `byte_80E98C0`) are records each obstacle defines for
 itself (`absorbed_obstacle.look { sprite, ... }`). What a
 stage places goes through its kind's `place`: the stage's `actors` name
-the kind and, for a rock, its variant (stages/netbattle.luau); the
+the kind and, for a rock, its variant (stages.luau); the
 absorbed obstacle is the role `kinds.absorbed_obstacle`.
 
 Routine names are the original's. "f1"/"f2" are the

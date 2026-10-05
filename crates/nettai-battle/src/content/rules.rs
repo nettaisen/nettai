@@ -52,11 +52,12 @@ pub struct FlowRules {
     /// `banners.win`); any other win shows the role `win`'s, or
     /// `win_judged`'s on the judge's ruling. Each game states its own.
     pub navi_win_banner: NaviWinBanner,
-    /// The backgrounds a link battle draws one of with its settings (EXE6's
-    /// `sub_81209DC`: `byte_8120A20`, 21 entries, some there twice and so
-    /// twice as likely), in the table's order. For whoever draws a match's
-    /// arena: the engine draws none (a round's settings state its
-    /// background). None: a link battle shows its stage's own.
+    /// The backgrounds a link battle picks one of at random with its
+    /// settings (EXE6's `sub_81209DC`: `byte_8120A20`, 21 entries, some
+    /// there twice and so twice as likely), in the table's order. For
+    /// whoever makes a random match: the engine picks none (a round's
+    /// settings state its background). None: a link battle shows its
+    /// stage's own.
     pub link_backgrounds: Vec<super::BackgroundId>,
 }
 
@@ -139,6 +140,14 @@ pub struct EffectsRules {
     /// header flag 0x04; EXE5's (0x080E35F4, and its overlays', whose flags
     /// its lab records without it) don't.
     pub overlays_run_while_paused: bool,
+    /// An afterimage that copies its owner (`sub_80E32D8` with no sprite of
+    /// its own) takes the owner's NameID and wears what that record's init
+    /// hook puts on, taken off as it goes: EXE6's. EXE5's afterimage
+    /// (0x080E3550) has no such mode: its spawners give it the owner's
+    /// battle sprite (0x0800DA72) and it wears nothing, so an afterimage of
+    /// a navi that wears something (KnightMan's ball, NumberMan's face) is
+    /// the navi alone.
+    pub afterimages_wear_overlays: bool,
     /// Loading an animation's frame (`sprite_loadAnimationData`) takes the
     /// palette offset of the frame's first part, which a sprite is drawn
     /// with (EXE6's `sub_3006730`); EXE5's (0x03006898) leaves it to the

@@ -365,8 +365,9 @@ of them by number, they say:
   `anims`, and those it is drawn `behind` in; `own_palette`; `anim_offset`), a `second` one, an `idle`
   overlay (worn while standing), a `beast_head` (its palette, or none: the mood's), or `own`, a routine of its
   own (`own(wearer)`), for a record whose hook puts on an object of the content's own kind: it runs wherever the
-  record's init hook does (a player's init, an afterimage of it, its image, a navi switch) and keeps what it puts
-  on in the wearer's second related slot itself, where the death hook finds it. `overlay_hooks`: which of
+  record's init hook does (a player's init, its image, a navi switch, and an afterimage of it where the game's
+  afterimages wear what their owner does: the effects rule `afterimages_wear_overlays`, EXE6's) and keeps what it
+  puts on in the wearer's second related slot itself, where the death hook finds it. `overlay_hooks`: which of
   the death hook, an animation change, a flinch and a drag touch what the object wears (by default its death
   takes a body or head off and an animation change restarts it). `aura_anim`: the Full Synchro aura's
   animation (`sub_80C4C52`; a player's identity has one). `ice`: the ice block that fits (`byte_80E9C30`,
@@ -2813,7 +2814,7 @@ registries, the object tables, the text). It is not committed here.
 generator can't run over a content root that has people's modules at its paths, so a writer whose modules
 people have since reshaped is dead code. With step 12 the stages', the lock-on modes' and the statuses'
 writers are retired (`gen_stages`, `gen_lockon`, `gen_status`: the definitions lost their legacy markers and
-name kinds, variants and each other in forms the generator never wrote): content/exe6/stages/netbattle.luau,
+name kinds, variants and each other in forms the generator never wrote): content/exe6/stages.luau,
 rules/lockon.luau and rules/status.luau are edited by hand, and `gen-content check` compares them with the ROM through compat. `gen-content write` still writes
 compat's numbers for them (stages.toml, records.toml, rules.toml), keeping the committed keys.
 
