@@ -8,20 +8,24 @@
 -- stance on B+Back (0x45, ./back), Chaos Unison's (0x31: DarkInvs). His sword's arm is the blade's animation 15
 -- (0x080EC038).
 
-local attach_points = require("../attach_points")
+local attach_points = require("@self/attach_points")
 local back = require("@self/back")
 local buster = require("../weapons/buster")
 local charge = require("@self/charge")
 local chaos = require("../weapons/chaos")
 local charged_chips = require("../weapons/charged-chip")
 local darkinvs = require("../../../chips/darkinvs")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "shadowsoul",
-    soul = { number = 8, family = "invisible" },
-    change = souls.action,
-    revert = souls.revert,
+    soul = { family = "invisible" },
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- ShadowMan's image as MegaMan unites with him (rules/souls/image).
+    image = soul_image.look { sprite = asset.sprite("shadowman") },
     sprite = asset.sprite("shadowsoul"),
     element = "null",
     buster_bonus = 0,
@@ -44,7 +48,14 @@ return define.form {
         normal = asset.mugshot("shadowsoul"),
         variant = { normal = asset.mugshot("shadowsoul-chaos") },
     },
-    buster_arm = { anim = 0 },
+    -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
+    buster_arm = { anim = 8 },
+    -- His sword's arm (lib/swords, 0x080EC038): the blade's animation.
+    blade_anim = 15,
+    -- His charged sword warps behind the enemy, turned round, whatever its charge (lib/stepsword, 0x08012538).
+    steps_behind = true,
+    -- VarSwrd and NeoVari wait for their sequence while A is up (chips/varswrd, 0x080ED570).
+    var_sword_waits = true,
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 8 of category 0).
     identity = define.identity {
         class = "megaman",
@@ -52,6 +63,6 @@ return define.form {
         actor_type = "player",
         ai_index = 0,
         aura_anim = 0,
-        attach_points = attach_points[8],
+        attach_points = attach_points,
     },
 }

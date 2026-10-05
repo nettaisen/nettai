@@ -25,15 +25,14 @@ back.immobilizer = immobilizer.make_kind("immobilizer", {
 
 -- The glow (effect 0x26's parameters 0x141B: 14-1B, animation 0, no shadow).
 local GLOW = asset.sprite("magnetsoul-glow")
--- MagnetSoul.
-local MAGNET_SOUL = 5
+-- MagnetSoul, by its form's id.
+local MAGNET_SOUL = "magnetsoul"
 -- The wait before the next B+Back (the attack's lockout).
 local COOLDOWN = 120
 
 -- 0x080124D0: in MagnetSoul, the glow and the immobilizers ahead.
 local function effect(user: Object, spec: InstantChipSpec)
-    local soul = battle.navi(user.alliance).form.soul
-    if soul == nil or soul.number ~= MAGNET_SOUL then
+    if battle.navi(user.alliance).form.id ~= MAGNET_SOUL then
         return
     end
     glow.spawn(user, GLOW)
