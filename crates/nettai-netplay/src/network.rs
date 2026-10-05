@@ -2,7 +2,7 @@
 //! does to UDP (or to WebRTC's unordered, unreliable data channel). Each
 //! datagram takes `latency` frames plus up to `jitter` more, independently
 //! of the others, so jitter reorders them; some are lost, alone or in
-//! bursts; some arrive twice. Everything is drawn from a seed, so a run
+//! bursts; some arrive twice. Everything is picked from a seed, so a run
 //! repeats exactly. Time is counted in wall-clock frames.
 
 use crate::rng::SplitMix64;
