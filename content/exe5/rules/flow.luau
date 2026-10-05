@@ -22,8 +22,4 @@ return {
     -- flag 0x40, 0x080090E8, then 0x080090C0's table); a Team Battle's and a NetBattle's shows "ENEMY DELETED", or
     -- "YOU WIN" on the judge's ruling (the roles `win` and `win_judged`). EXE6's link battles all show the navi's.
     navi_win_banner = "operation_battle",
-    -- Not yet what the original does. EXE5 picks a link battle's background at random as EXE6 does (0x08129F2C, EXE6's
-    -- `sub_81209DC`: `table[PosRNG2() % 27]`, the table at 0x08129F6C its backgrounds 0x00 to 0x1A, each once). The
-    -- empty list here leaves a link battle its stage's own background until the 27 are stated.
-    link_backgrounds = {},
 }

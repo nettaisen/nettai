@@ -250,7 +250,7 @@ pub struct PaletteAnim {
     pub slot: u8,
     /// Each frame's palette and how many frames it shows.
     pub frames: Vec<(Palette, u8)>,
-    /// Draws until the first switch (to frame 1).
+    /// Picks until the first switch (to frame 1).
     pub initial_timer: u8,
 }
 
