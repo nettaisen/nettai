@@ -96,14 +96,17 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         if nettai_match::ruleset_has_system(&e.content, FORMS_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
             tabs = tabs.push(nav("  Crosses", Tab::Crosses(s), e.tab));
         }
-        if nettai_match::facts::takes(&e.content, nettai_match::facts::SOULS_FIELD) {
+        // (Souls and patch cards are the navi's that changes form: a team
+        // navi has no soul button, and the cards change MegaMan's stats.)
+        let changes_form = e.content.navi(side.navi).forms.is_some();
+        if changes_form && nettai_match::facts::takes(&e.content, nettai_match::facts::SOULS_FIELD) {
             tabs = tabs.push(nav("  Souls", Tab::Souls(s), e.tab));
         }
         // (Where the game's rules have computer navis: EXE5's.)
         if nettai_match::computer_navi::has(&e.content) {
             tabs = tabs.push(nav("  Computer navi", Tab::ComputerNavi(s), e.tab));
         }
-        if nettai_match::ruleset_has_system(&e.content, PATCH_CARDS_SYSTEM) {
+        if changes_form && nettai_match::ruleset_has_system(&e.content, PATCH_CARDS_SYSTEM) {
             tabs = tabs.push(nav("  Patch cards", Tab::Cards(s), e.tab));
         }
         if nettai_match::ruleset_has_system(&e.content, NAVICUST_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
@@ -224,7 +227,13 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     let level_kind = side.takes_level(c).then(|| c.navi(side.navi).forms.is_none());
     if level_kind == Some(true) {
         col = col.push(field("Navi level", text_input("0", &level).on_input(move |t| Msg::Level(s, t)).width(Length::Fixed(80.0))));
-        if crate::levels::has_levels(c, side) {
+        if let Some(last) = nettai_match::story::max_level(c, side.navi) {
+            col = col.push(
+                text(format!("0 to {last}: changing it fills in the HP the story gives at that level (the stats pane); at {last}, the story done."))
+                    .size(13)
+                    .color(DIM),
+            );
+        } else if crate::levels::has_levels(c, side) {
             col = col.push(text("0 to 14: changing it fills in the stats the save gives at that level, the game cleared (the stats pane).").size(13).color(DIM));
         }
     } else if level_kind == Some(false) {

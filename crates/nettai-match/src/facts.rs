@@ -181,11 +181,12 @@ impl Side {
         takes(content, VERSION_FIELD)
     }
 
-    /// Whether the side's navi takes a navi code's level: its definition
-    /// says what a level gives it (`levels`: EXE6's MegaMan and link navis;
-    /// EXE5's MegaMan has none).
+    /// Whether the side's navi takes a level: its definition says what a
+    /// level gives it (`levels`: EXE6's MegaMan and link navis, a navi
+    /// code's; `story`: EXE5's team navis; EXE5's MegaMan has neither).
     pub fn takes_level(&self, content: &Content) -> bool {
-        content.navi(self.navi).levels.is_some()
+        let navi = content.navi(self.navi);
+        navi.levels.is_some() || navi.story.is_some()
     }
 
     /// Whether a side takes SP navi deletion times (the game's rules'

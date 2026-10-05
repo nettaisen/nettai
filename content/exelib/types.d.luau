@@ -62,6 +62,9 @@ export type ShooterLook = {
     sound: Sound,
     attachment: Kind,
     projectiles: Projectiles,
+    -- The animation of what the navi holds by its AI index, from 0 (the game's table for the action: a navi a player
+    -- operates may hold its own).
+    arm_anims: { number },
     -- A cannon's afterimages after its two (@exelib/cannon; EXE5's Hub Style shade), by the navi's flip.
     more_afterimages: ((me: Object, flip: number) -> ())?,
 }
@@ -241,7 +244,13 @@ export type SpreaderSpec = {
 
 -- A game's spreaders (@exelib/spreadr/action): the shot's sound, the attachment kind (the gun's) and its bullets'
 -- kind.
-export type SpreaderLook = { sound: Sound, attachment: Kind, bullet_kind: Kind }
+export type SpreaderLook = {
+    sound: Sound,
+    attachment: Kind,
+    bullet_kind: Kind,
+    -- The gun's animation by its holder's AI index, from 0 (the game's table).
+    gun_anims: { number },
+}
 
 -- A trap chip's object (a "trap" record, @exelib/traps/controller): `set` spawns it for the controller and its user,
 -- with the chip and bonus the controller keeps.
