@@ -1875,8 +1875,12 @@ export type System = SystemSpec
 -- §3.8: tables of rules no entity owns, each a plain table its module
 -- returns, `panels = require("@self/panels")`), which the engine reads
 -- against its schemas when the ruleset is defined, and the game's roles
--- (§7.4, `roles = require("@self/roles")`). A section the ruleset doesn't
--- name keeps the engine's table.
+-- (§7.4, `roles = require("@self/roles")`). The engine has no game's rules
+-- of its own: a ruleset states `chip_use`, `effects`, `flow`, `panels`,
+-- `pools`, `reactions` and `status`, and every field of them (one left out
+-- is a load error that names it). A section it may leave out is a feature
+-- the game hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`)
+-- or a table that is empty without it.
 export type RulesetSpec = {
     systems: { System }?,
     banners: any?,
@@ -2281,11 +2285,12 @@ export type FormDef = {
     -- battle mode 1).
     chip_bonus: { family: ChipFamily, damage: number, dimming_chips: boolean?, uncharged: boolean? }?,
     null_bonus: number?,
-    -- The chips it charges with A: a family's damaging chips that aren't
-    -- dimming chips (`damaging = false`: any of the family), and with
-    -- `element_swords` the chips with the `element_sword` trait; `plain`:
-    -- only those that are neither dimming nor dark chips (EXE5's souls).
-    charged_chips: { { family: ChipFamily, damaging: boolean?, element_swords: boolean?, plain: boolean? } }?,
+    -- The chips it charges with A, a family's by each rule. `damaging` is
+    -- always stated: only the damaging chips that aren't dimming chips
+    -- (false: any of the family). With `element_swords` the chips with the
+    -- `element_sword` trait too; `plain`: only those that are neither
+    -- dimming nor dark chips (EXE5's souls).
+    charged_chips: { { family: ChipFamily, damaging: boolean, element_swords: boolean?, plain: boolean? } }?,
     -- What a charged chip gains in it.
     charged_bonus: { damage: number?, paralyzes: boolean? }?,
     -- The chips a charge doubles, and those whose use heals a twentieth of
