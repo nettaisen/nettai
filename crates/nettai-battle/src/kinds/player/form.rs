@@ -62,6 +62,12 @@ pub(crate) fn put_on_parts(b: &mut Battle, r: ObjectRef, identity: Option<Identi
             };
             form_overlay::spawn_with(b, r, spec)
         }
+        // A record's own routine (EXE5's 0x0800EE6E, NumberMan's): it keeps
+        // what it puts on in the second related slot itself.
+        Parts::Own(f) => {
+            crate::behavior::call_hook(b, *f, nettai_content_api::HookCall::FormNavi { navi: r });
+            return;
+        }
     };
     b.objects.get_mut(r).related[1] = overlay;
 }

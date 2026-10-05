@@ -2594,7 +2594,8 @@ export type IdentitySpec = {
     throwable: boolean?,
     -- What its object wears (its actor record's init hook, `off_8010E0C`):
     -- a body overlay (and a second), an overlay worn only while standing,
-    -- or a beast's head (its palette; none: it follows the side's mood).
+    -- a beast's head (its palette; none: it follows the side's mood), or
+    -- what a routine of its own puts on.
     parts: Parts?,
     -- Which of its object's hooks touch what the object wears: its death
     -- takes it off, an animation change, a flinch or a drag restarts it.
@@ -2654,6 +2655,14 @@ export type Parts = {
     second: BodyPart?,
     idle: { sprite: SpriteAsset }?,
     beast_head: { sprite: SpriteAsset, palette: number? }?,
+    -- A routine of its own, in place of the others: its record's init hook
+    -- where what it wears is an object of the content's own kind, which
+    -- the routine keeps in the wearer's second related slot (`related2`)
+    -- itself. It runs wherever the record's init hook does: for a player,
+    -- for an afterimage of it, for its image. The death hook takes down
+    -- what is in that slot, as it does the others (EXE5's NumberMan's
+    -- face, NumberSoul's layer).
+    own: ((wearer: Object) -> ())?,
 }
 export type Identity = IdentitySpec
 
