@@ -665,7 +665,7 @@ impl Observer<StandInBattle> for Failures {
 #[ignore]
 fn mashed_battles_with_everything_never_stop() {
     use exe6_compat::Unlocks;
-    use nettai_battle::custom::GameVersion;
+    use exe6_compat::GameVersion;
     use testing::*;
     let c = content();
     let codes = |keys: &[&str]| -> Vec<(String, u8)> {

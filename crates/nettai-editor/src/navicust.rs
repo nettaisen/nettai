@@ -110,9 +110,9 @@ fn set(side: &mut Side, parts: Vec<PlacedProgram>, expansions: u8) {
 fn start_grid(content: &Content, game: &str, side: &mut Side, largest: u8) {
     let kept: std::collections::BTreeMap<String, toml::Value> =
         side.stats_block(content).into_iter().filter(|(k, _)| nettai_match::stats::SAVE_FIELDS.contains(&k.as_str())).collect();
-    side.stats = Side::base_stats(content, side.navi, side.version);
+    side.stats = Side::base_stats(content, side.navi, side.version.as_deref());
     nettai_match::stats::apply(content, game, &kept, &mut side.stats);
-    side.stats = nettai_match::starting(content, side.stats, side.version);
+    side.stats = nettai_match::starting(content, side.stats, side.version.as_deref());
     side.navicust = Some(NaviCust::new(&[], largest).expect("an empty NaviCust"));
 }
 

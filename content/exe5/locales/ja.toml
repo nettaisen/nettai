@@ -206,6 +206,7 @@ language = "ja"
 "meddy" = { name = "メディ", description = "カプセルボムを2コ\nてきのエリアに\nなげこむ!" }
 "meddy-ds" = { name = "メディ\uE008", description = "カプセルボムを2コ\nてきのエリアに\nなげこむ!" }
 "meddy-sp" = { name = "メディ\uE003", description = "カプセルボムを2コ\nてきのエリアに\nなげこむ!" }
+"meddycap" = { name = "メディカプセル", description = "マヒこうかのある\nカプセルを\n3マス前になげる!" }
 "megenbom" = { name = "メガエナジーボム", description = "3マス前に\nれんぞくばくふうの\nボムをなげつける" }
 "metagel" = { name = "スチールゼリー", description = "てきエリア左はしに\nパネルをぬりかえる\nゼリー攻撃!" }
 "meteors" = { name = "リュウセイグン", description = "あいてエリアに\nむすうのリュウセイ\nがふりそそぐ!" }
@@ -358,6 +359,7 @@ language = "ja"
 
 [navis]
 "colonel" = { name = "カーネル" }
+"meddy" = { name = "メディ" }
 "megaman" = { name = "ロックマン", variant_name = "FCロックマン" }
 "protoman" = { name = "ブルース" }
 "searchman" = { name = "サーチマン" }

@@ -2582,3 +2582,25 @@ field `offered`, a fact `version`). It reads typed values now (§4.8):
 - **Still strings**, as keys and never switches: asset names and definition keys (a navi's key for its emblem, a
   button's name for its look, a chip's key for its picture), a version's name (a pack's versions' and a
   definition's `version`, compared for equality), language codes, and the reasons written to `known.tsv`.
+
+### A version is its name: `GameVersion` leaves the engine (2026-10-05)
+
+The engine had one type that named a game's versions, `custom::GameVersion { Gregar, Falzar }`. It is exe6-compat's
+now (`exe6_compat::GameVersion`: `name`, `from_name`, `stats_byte`), the original's two as its saves, traces and link
+data tell them apart. Everywhere else a version is the name the game's rules declare for it:
+
+- **The engine** knows no version. Its last use was the custom screen's Beast Out sound, `ScreenSound::BeastOut(v)`
+  choosing between two roles. They are two screen sounds now (`BeastOutFalzar`, `BeastOutGregar`), a role each, and
+  the rules choose between them by name as they already did (`custom.play(side, "beast_out_" .. beast_game(side))`):
+  no field added, nothing declared anew. A version's name is declared and read as before: the `version` enum of the
+  cross and beast systems' setups, `PlayerFact::Version`, a form's and a navi's `version`.
+- **A match's side** holds the name (`Side::version: Option<String>`), checked against the names the rules declare
+  (`nettai_match::facts::versions`: the version fact's enum, of the first of the ruleset's systems that declares
+  it; a file's or a side's other name is refused, "no version \"azure\" (falzar or gregar)"). The editor's list
+  is those names, and a Cross's version there is the form's own `version`: nettai-editor depends on no compat crate.
+- **exe6-compat at the boundary**: a save's version and what it unlocks (`Unlocks`), a trace's `game_versions`, and
+  NaviStats+0x20 (`stats_byte`: 0 Gregar, 1 Falzar, which `nettai_match::version_byte` asks it for by name).
+  nettai-match still goes through the enum where it does EXE6's own things: the unlocks it writes into a side's
+  setup, the Cross sets, and the draw of a random side's version, which stays in the original's order (Gregar,
+  Falzar) so that a seed draws the match it always has; the rules' names come in another order.
+- No behavior changed: the same drawn matches, match files and recordings.
