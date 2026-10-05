@@ -28,6 +28,7 @@ mod import;
 mod import_exe5;
 pub mod link_navis;
 pub mod names;
+mod set;
 pub mod sp_times;
 pub mod stats;
 pub mod story;
@@ -37,12 +38,12 @@ pub mod testing;
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::content::Content;
 pub use cross_list::{CROSSES, CrossList};
-use nettai_battle::custom::{BattleFolder, PlayerSetup, SavedFolder};
+use nettai_battle::custom::{BattleFolder, PlayerSetup};
 use nettai_battle::link::Link;
 use nettai_battle::navicust::NaviCust;
 use nettai_battle::patch_cards::{InstalledCard, PatchCards};
 use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, SpTimes, Stage, effects};
-use nettai_battle::{Battle, Rng};
+use nettai_battle::Rng;
 use nettai_content_api::{NaviHandle, StageHandle, SystemHandle};
 
 pub use check::{check_match, check_side};
@@ -51,6 +52,7 @@ pub use pick::Picks;
 pub use file::{parse, write};
 pub use import::save_game;
 pub use folders::Folder;
+pub use set::{After, Set};
 
 /// Where a round is fought: a stage and the background shown, by its name
 /// in the match's game's pack (none: the stage's own).
@@ -398,28 +400,6 @@ impl Match {
             link_delay: Link::RECORDED_DELAY,
         }
     }
-}
-
-/// A set's next round after `ended`, a round of `first`'s set: the
-/// settings and score the round's end hands over, the players' folders
-/// shuffled again by their consoles' RNG where the round left it (the
-/// original's carries on through the next init's shuffle), the battle's
-/// RNG picked from the first round's and the round's number. Both peers of
-/// a netplay match build the same from their settled states.
-pub fn next_round(content: &Content, first: &RoundSetup, folders: &[SavedFolder; 2], ended: &Battle, settings: BattleSettings, score: SetScore) -> RoundSetup {
-    let mut next = first.clone();
-    next.settings = settings;
-    next.score = score;
-    next.rng = Picks::new(first.rng ^ (score.round as u32) << 24).next() as u32;
-    for (side, folder) in folders.iter().enumerate() {
-        let console = &ended.consoles[side];
-        let mut rng = console.rng;
-        let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(folder, 0, &mut rng, content);
-        let p = &mut next.players[side];
-        p.folder = folder;
-        p.console = ConsoleSetup { rng: rng.state, tag_pair, frames: console.frames };
-    }
-    next
 }
 
 /// The stages a link battle of `game` picks from: the game's link battle

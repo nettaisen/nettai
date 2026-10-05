@@ -486,7 +486,7 @@ when the link comes back the match goes on (§5.1); the frontend gives up after 
 **Rounds.** A set's rounds are one getgud session each (a session counts ticks from its start), on one rennet
 stream. When a peer's settled state is over, it ends the round (`Peer::end_round`): it pushes `RoundEnd` and starts
 the next round's session from the next round's setup, which both peers build from the settled end state and the
-shared setup (`nettai-frontend`'s `driver::next_round_setup`: the round's end hands over the settings and the score;
+shared setup (`nettai_match::Set::after`, which offline play asks too: the round's end hands over the settings and the score;
 each player's folder is shuffled again by their console's RNG where the round left it; the battle's RNG is drawn
 from the first round's and the round number). The other player's inputs past their round's end, which the peer
 predicted past the end before it noticed, are dropped (they come before their `RoundEnd`); their next round's
@@ -806,7 +806,7 @@ starts the next round's from that settled state and the shared data.
 
 Done that way (§4.6, "Rounds"): a peer confirms the boundary (its settled state is over) before it starts the
 next round, marks its stream, and builds the next round from the settled end state and the setup both peers
-agreed (the frontend's `driver::next_round_setup`: the settings and score the end hands over; the first round's
+agreed (`nettai_match::Set::after`: the settings and score the end hands over; the first round's
 navi stats; each player's folder shuffled again by their console's RNG where the round left it, and the console's
 frame counter carried on; the battle's RNG drawn from the first round's and the round number, since the
 original's init exchange has no counterpart here).

@@ -81,7 +81,7 @@ fn renders_a_live_battle_to_png() {
     // (Folders of GunDelS3 N: the test content has it.)
     let folder = folder_of(&content, &[("gundels3", 13)]);
     let setup = live_setup(&content, settings, [folder, folder], "falzar", 1);
-    let session = Session::new(Box::new(LivePlayer::new(setup, content.clone())));
+    let session = Session::new(Box::new(LivePlayer::new(nettai_match::Set::new(content.clone(), setup, [folder, folder]))));
     let out = std::env::temp_dir().join(format!("exe6-frontend-test-{}", std::process::id()));
     let wanted: BTreeSet<u32> = [1, 100].into_iter().collect();
     let mut log = |s: &str| panic!("{s}");
