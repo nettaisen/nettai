@@ -79,6 +79,11 @@ pub struct NaviData {
     pub fire_charge: Option<Vec<u8>>,
     #[serde(default)]
     pub traits: NaviTraits,
+    /// What lifts its charge glow: while its animation is one of these the
+    /// glow shows that much above its attach point 0 (EXE5's GyroMan in the
+    /// air: the charge glow's test of his name and animation, 0x080E0E58).
+    #[serde(default)]
+    pub charge_glow_lift: Option<ChargeGlowLift>,
     /// What its sprite's palettes go by, for a navi that doesn't change
     /// form: its Full Synchro palette is 4 of them and its can't-charge
     /// palette 1 (EXE5's 0x0801D737 by navi; EXE6's `byte_80212BB` is all
@@ -575,6 +580,15 @@ pub struct FormChipBonus {
     /// NapalmSoul, 0x0800D0A6).
     #[serde(default)]
     pub uncharged: bool,
+}
+
+/// A navi's charge glow's lift (`NaviData::charge_glow_lift`): the
+/// animations of the navi it holds in, and its height in whole pixels.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChargeGlowLift {
+    pub anims: Vec<u8>,
+    pub pixels: i32,
 }
 
 /// The damage a navi adds to a family's damaging chips used standing on a

@@ -105,6 +105,8 @@ local function navi(id: string, sprite: string, class: IdentityClass, ai_index: 
         tick = if hooks then hooks.tick else nil,
         idle = if hooks then hooks.idle else nil,
         post_init = if hooks then hooks.post_init else nil,
+        -- (The navi with hooks: its charge glow shows 16 pixels higher in its animation 9.)
+        charge_glow_lift = if hooks then { anims = { 9 }, pixels = 16 } else nil,
         id = id,
         sprite = asset.sprite(sprite),
         element = "null",

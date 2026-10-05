@@ -113,7 +113,8 @@ local function tick(me: Object)
     me:hit_spark()
     if battle.over() then
         c:set_region(nil)
-        me:set_lifecycle("destroy")
+        -- (The state byte alone: its action and phase stay.)
+        me.lifecycle = "destroy"
         return
     end
     if me.run_while_dimmed or not battle.dimmed() then
