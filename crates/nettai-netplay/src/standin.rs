@@ -66,9 +66,8 @@ pub fn folder(content: &Content, chips: &[(&str, u8)]) -> BattleFolder {
     f
 }
 
-/// A MegaMan (base form) with `hp` HP, on `content`: of no version (his
-/// stats' version byte 0; the stand-in's players bring no version, their
-/// EXE6 systems' setups zero).
+/// A MegaMan (base form) with `hp` HP, on `content` (his stats' version
+/// byte 0, as the stand-in's rounds have always had it).
 pub fn megaman(content: &Content, hp: u16) -> NaviStats {
     // MegaMan: the content's navi that changes form.
     let megaman = content.form_changing_navi().unwrap_or_else(|| panic!("the content has no navi that changes form"));
@@ -128,21 +127,17 @@ pub fn megaman(content: &Content, hp: u16) -> NaviStats {
 
 /// A one-round netbattle between two MegaMen on `content`'s stage `stage`
 /// (its key), simulated from side 0's perspective, with these battle
-/// folders. The Crosses and Beast Out are locked (EXE6's systems' setups
-/// left zero: nothing unlocked); the players' buttons
+/// folders. The players are of [`VERSION`], stated where the content's
+/// rules take a version (a round assumes none), with the Crosses and Beast
+/// Out locked (the rest of EXE6's systems' setups zero: nothing unlocked);
+/// the players' buttons
 /// reach the fight at once (no link delay). Each player's console RNG is
 /// derived from the seed.
 pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [BattleFolder; 2]) -> RoundSetup {
-    let player = |f: BattleFolder, side: u32| PlayerSetup {
-        folder: f,
-        joypad_phase: 0,
-        navi_level: None,
-        sp_times: Default::default(),
-        console: ConsoleSetup { rng: seed.rotate_left(16) ^ side.wrapping_mul(0x9E37_79B9), ..ConsoleSetup::default() },
-        rules: Vec::new(),
-        patch_cards: Default::default(),
-        navicust: None,
-        tactics: Default::default(),
+    let player = |f: BattleFolder, side: u32| {
+        let mut p = player_setup(f, seed, side);
+        p.set_fact(content, "version", &[nettai_battle::rules::Fact::Name(VERSION)]).expect("the stand-in's players' version");
+        p
     };
     let [a, b] = folders;
     RoundSetup {
@@ -156,6 +151,25 @@ pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [B
         low_hp_music_latched: false,
         players: [player(a, 0), player(b, 1)],
         link_delay: 0,
+    }
+}
+
+/// The version the stand-in's players are of (the test content plays by
+/// EXE6's beast system, and EXE6's content by its own: each takes one).
+pub const VERSION: &str = "falzar";
+
+/// A stand-in player's setup but for what the content's rules take.
+fn player_setup(f: BattleFolder, seed: u32, side: u32) -> PlayerSetup {
+    PlayerSetup {
+        folder: f,
+        joypad_phase: 0,
+        navi_level: None,
+        sp_times: Default::default(),
+        console: ConsoleSetup { rng: seed.rotate_left(16) ^ side.wrapping_mul(0x9E37_79B9), ..ConsoleSetup::default() },
+        rules: Vec::new(),
+        patch_cards: Default::default(),
+        navicust: None,
+        tactics: Default::default(),
     }
 }
 
