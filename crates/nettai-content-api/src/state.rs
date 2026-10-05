@@ -199,7 +199,11 @@ impl FieldType {
             FieldType::Enum(_) => FieldValue::Enum(b[0]),
             FieldType::OptionalU8 => FieldValue::OptionalU8((b[0] != 0).then_some(b[1])),
             FieldType::Array(elem, _) => elem.decode(b),
-            FieldType::Ref(r, _) => FieldValue::Ref(u16::from_le_bytes([b[0], b[1]]).checked_sub(1).map(|h| (*r, h))),
+            // (A list nothing has stated reads as holding nothing:
+            // `LIST_UNSTATED` is no definition's.)
+            FieldType::Ref(r, _) => {
+                FieldValue::Ref(Some(u16::from_le_bytes([b[0], b[1]])).filter(|&v| v != LIST_UNSTATED).and_then(|v| v.checked_sub(1)).map(|h| (*r, h)))
+            }
             FieldType::Asset(k) => FieldValue::Asset(*k, u16::from_le_bytes([b[0], b[1]]).checked_sub(1)),
         }
     }
@@ -417,6 +421,12 @@ impl Schema {
 /// ([`ContentState::unstate`]): no variant's index.
 pub const ENUM_UNSTATED: u8 = 0xFF;
 
+/// What the first element of a list of definitions holds when nothing has
+/// stated the list ([`ContentState::unstate`]): no definition's stored
+/// value (a registry has fewer than 0xFFFE definitions), and not "none".
+/// A stated list never holds it.
+pub const LIST_UNSTATED: u16 = 0xFFFF;
+
 /// Which schema a [`ContentState`] follows (an index into the content's
 /// [`crate::Manifest`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -447,22 +457,35 @@ impl ContentState {
         schema.field(i).ty.decode(&self.bytes[schema.at(i)..])
     }
 
-    /// Leave enum field `i` stated by nobody: it holds no variant
-    /// ([`ENUM_UNSTATED`]) until something states one. For a player's
-    /// setup, whose enums have no default (a choice among named things is
-    /// none of the engine's to make): a round doesn't start with one
-    /// unstated. A field that is no enum is left as it is.
+    /// Leave field `i` stated by nobody, if it is an enum or a list of
+    /// definitions (an array of them): an enum holds no variant
+    /// ([`ENUM_UNSTATED`]) and a list is marked as no list at all
+    /// ([`LIST_UNSTATED`]; it reads as empty) until something states one.
+    /// For a player's setup, whose enums and lists of definitions have no
+    /// default (a choice among named things is none of the engine's to
+    /// make, and an empty list is a statement: no Crosses): a round doesn't
+    /// start with one unstated. Any other field is left as it is.
     pub fn unstate(&mut self, schema: &Schema, i: usize) {
-        if let FieldType::Enum(_) = schema.field(i).ty {
-            self.bytes[schema.at(i)] = ENUM_UNSTATED;
+        let at = schema.at(i);
+        match &schema.field(i).ty {
+            FieldType::Enum(_) => self.bytes[at] = ENUM_UNSTATED,
+            ty @ FieldType::Array(elem, _) if matches!(**elem, FieldType::Ref(..)) => {
+                self.bytes[at..at + ty.size()].fill(0);
+                self.bytes[at..at + 2].copy_from_slice(&LIST_UNSTATED.to_le_bytes());
+            }
+            _ => {}
         }
     }
 
-    /// Whether enum field `i` holds one of its variants (true of a field
-    /// that is no enum).
+    /// Whether field `i` is stated: an enum holds one of its variants, a
+    /// list of definitions isn't marked unstated (true of any other field).
     pub fn stated(&self, schema: &Schema, i: usize) -> bool {
+        let at = schema.at(i);
         match (&schema.field(i).ty, self.get(schema, i)) {
             (FieldType::Enum(names), FieldValue::Enum(v)) => (v as usize) < names.len(),
+            (FieldType::Array(elem, _), _) if matches!(**elem, FieldType::Ref(..)) => {
+                u16::from_le_bytes([self.bytes[at], self.bytes[at + 1]]) != LIST_UNSTATED
+            }
             _ => true,
         }
     }
@@ -493,6 +516,11 @@ impl ContentState {
             return Err(format!("index {} is past the end of `{}` ({n} elements)", k + 1, schema.field(i).name));
         }
         let stored = elem.store(v).map_err(|e| e.to_string())?;
+        // (Writing an element states a list nothing had stated: it is then
+        // the list of what is written, the rest empty.)
+        if !self.stated(schema, i) {
+            self.bytes[schema.at(i)..schema.at(i) + 2].fill(0);
+        }
         elem.encode(stored, &mut self.bytes[schema.at(i) + k * elem.size()..]);
         Ok(())
     }

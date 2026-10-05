@@ -72,15 +72,12 @@ return define.system {
         beast_out_used = "bool",
     },
     -- What the player's save brings (exe6-compat writes it, nettai-match
-    -- from a match's side): the game's version (its Beast), Beast Out
-    -- unlocked (event flag 0xE0), and nettai's Cross list (the cross
-    -- system's too: with one, a Cross of the other game's Beast is that
-    -- game's).
+    -- from a match's side): the game's version (its Beast) and Beast Out
+    -- unlocked (event flag 0xE0).
     -- (The versions in the cross system's order, the original's.)
     setup = {
         version = { "gregar", "falzar" },
         beast_out = "bool",
-        cross_list = "form[5]",
     },
     -- A setup that says nothing has Beast Out (a finished game's save).
     setup_defaults = { beast_out = true },

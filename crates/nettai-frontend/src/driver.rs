@@ -137,8 +137,10 @@ pub struct Ran {
 /// MegaMen of `version` (one of the names the game's rules declare) at
 /// their fresh stats (`nettai_match::Side::base_stats`, as live play picks
 /// them), each bringing their folder, shuffled from the seed, and of what
-/// the game's rules take besides, the version (the engine's version fact)
-/// and their defaults (EXE6's: every Cross of that version, Beast Out).
+/// the game's rules take besides, the version (the engine's version fact),
+/// the navi's own forms of it for their form list (the engine's: EXE6's
+/// version's five Crosses) and the rules' defaults for the rest (EXE6's
+/// Beast Out).
 pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFolder; 2], version: &str, seed: u32) -> RoundSetup {
     let megaman = content.form_changing_navi().expect("a navi that changes form");
     let stats = nettai_match::Side::base_stats(content, megaman, Some(version));
@@ -158,8 +160,12 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             navicust: None,
             auto_battle: Default::default(),
         };
-        let field = nettai_battle::content::PlayerFact::Version.name();
-        player.set_fact(content, field, &[nettai_battle::rules::Fact::Name(version)]).expect("the rules take the version");
+        use nettai_battle::content::PlayerFact;
+        use nettai_battle::rules::Fact;
+        player.set_fact(content, PlayerFact::Version.name(), &[Fact::Name(version)]).expect("the rules take the version");
+        let own = content.navi(megaman).forms.as_ref().map_or(&[][..], |f| f.listed(version));
+        let own: Vec<Fact> = own.iter().map(|f| Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, f.0))).collect();
+        player.set_fact(content, PlayerFact::CrossList.name(), &own).expect("the rules take a form list");
         player
     };
     RoundSetup {
@@ -396,7 +402,7 @@ mod tests {
         s.screen.as_ref().filter(|x| s.in_custom && b.round.mode == mode::CUSTOM && x.phase == Phase::Choosing)
     }
 
-    /// nettai's Cross list on EXE6's content: a Falzar player offered
+    /// Crosses of the other game on EXE6's content: a Falzar player offered
     /// HeatCross, Gregar's, chooses it on the custom screen and fights in
     /// it (its form, element, buster and charged shot: HeatCross's flame);
     /// on the next screen Beast Out from it is HeatCross's Beast form, a
@@ -413,7 +419,7 @@ mod tests {
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 5);
-        setup.players[0].set_fact(&content, "cross_list", &[form_fact(heat)]).unwrap();
+        setup.players[0].set_fact(&content, "crosses", &[form_fact(heat)]).unwrap();
         let mut live = LivePlayer::new(Set::new(content.clone(), setup, [folder, folder]));
         let mut b = live.start();
         // The first screen: UP opens the Cross window (a hold acts on its
@@ -503,10 +509,10 @@ mod tests {
     }
 
     // EXE6's Cross window (the cross system's: content/exe6/rules/cross/
-    // window.luau) with nettai's Cross list, which no recording covers.
+    // window.luau) with Crosses of both games, which no recording covers.
 
     /// A link battle on EXE6's content whose side 0 is a `version` player
-    /// with the Cross list `list` (form keys; none: the version's Crosses),
+    /// with the Crosses `list` (form keys; none: the version's own five),
     /// its stats changed by `tweak`, run to its first screen's choosing.
     fn cross_battle(
         version: &str,
@@ -519,10 +525,12 @@ mod tests {
         let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 5);
         setup.players[0].set_fact(&content, "version", &[nettai_battle::rules::Fact::Name(version)]).unwrap();
-        if let Some(list) = list {
-            let list: Vec<_> = list.iter().map(|k| form_fact(form_of(&content, k))).collect();
-            setup.players[0].set_fact(&content, "cross_list", &list).unwrap();
-        }
+        let megaman = content.navi(setup.navi_stats[0].navi).forms.as_ref().expect("MegaMan's forms");
+        let list: Vec<_> = match list {
+            Some(list) => list.iter().map(|k| form_fact(form_of(&content, k))).collect(),
+            None => megaman.listed(version).iter().map(|&f| form_fact(f)).collect(),
+        };
+        setup.players[0].set_fact(&content, "crosses", &list).unwrap();
         tweak(&content, &mut setup.navi_stats[0]);
         let mut live = LivePlayer::new(Set::new(content.clone(), setup, [folder, folder]));
         let mut b = live.start();

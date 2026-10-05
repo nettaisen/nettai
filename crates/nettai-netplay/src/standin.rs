@@ -97,10 +97,10 @@ pub fn megaman(content: &Content, hp: u16) -> NaviStats {
 /// A one-round netbattle between two MegaMen on `content`'s stage `stage`
 /// (its key), simulated from side 0's perspective, with these battle
 /// folders. The players are of [`VERSION`], stated where the content's
-/// rules take a version (a round assumes none), with the Crosses and Beast
-/// Out locked, stated too where the rules take them (a setup that says
-/// nothing has the rules' own defaults, a finished save's: everything
-/// unlocked); the players' buttons
+/// rules take a version (a round assumes none), with no Crosses (a list a
+/// round assumes none of either: an empty one) and Beast Out locked, stated
+/// where the rules take them (a setup that says nothing of Beast Out has
+/// the rules' own default, a finished save's: unlocked); the players' buttons
 /// reach the fight at once (no link delay). Each player's console RNG is
 /// derived from the seed.
 pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [BattleFolder; 2]) -> RoundSetup {
@@ -108,7 +108,7 @@ pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [B
     let player = |f: BattleFolder, side: u32| {
         let mut p = player_setup(f, seed, side);
         p.set_fact(content, "version", &[Fact::Name(VERSION)]).expect("the stand-in's players' version");
-        // (No Cross owned: an array's elements past those given are zero.)
+        // (No Crosses: the empty list.)
         p.set_fact(content, "crosses", &[]).expect("the stand-in's players' Crosses");
         p.set_fact(content, "beast_out", &[Fact::Value(nettai_content_api::Value::Bool(false))]).expect("the stand-in's players' Beast Out");
         p

@@ -142,8 +142,9 @@ weapons, records and forms the game's). The problems with the match show at the 
 match and runs `nettai-demo --match` (the one beside the editor's program, or `--frontend PATH`). A new match
 (the editor started without a file, or New) is an empty one of the game the editor asks for: its stock rules, its
 first link battle stage, and on each side its MegaMan at his fresh stats with an empty folder, its facts the rules'
-defaults (an EXE6 side has no version: its navi pane asks its own, falzar or gregar, with nothing chosen, since
-neither is assumed; an EXE5 match has none to state), no patch cards and no NaviCust programs (the problems list
+defaults (an EXE6 side has no version and no Crosses stated: its navi pane asks its version, falzar or gregar, with
+nothing chosen, since neither is assumed, and choosing one states that version's five Crosses; an EXE5 match has
+neither to state), no patch cards and no NaviCust programs (the problems list
 says the folders aren't whole and the versions aren't chosen until they are).
 Random picks a match of the game as live play does, and `nettai-demo --play --save-match FILE` writes live
 play's draw out to edit. `--lang ja` (or the language list) names the chips, navis, Crosses and patch cards in
@@ -157,9 +158,12 @@ Beast out, EXE5's Soul unison), a number a field to type it in with the rules' d
 Karma, EXE6's Bug frags), an enum a list of the variants the rules name (EXE6's Version, nothing chosen until the
 side states one), a few flags a checkbox each (EXE6's Crosses: which of its version's five the side owns), all on
 the navi pane under "What the rules take"; a list of definitions has a pane of its own with a checkbox for each one
-it may hold (EXE6's Cross list: the side's navi's ten Crosses of both versions, five at most, kept in the window's
-order; EXE5's Souls: the twelve the rules' default lists, each with its face). Each has a Default button where it
-isn't the rules' default. A game that declares another fact has its control here with no change to the editor.
+it may hold (EXE6's Crosses: the side's navi's ten of both versions, five at most, kept in the window's
+order; EXE5's Souls: the twelve the rules' default lists, each with its face). Each has a Default button where the
+rules give it a default and it isn't that. What the rules require and assume nothing of (EXE6's version, and its
+Crosses, where an empty list means none) starts unchosen, and the editor fills in what it can: choosing the version
+states that version's own five Crosses, to edit from there ("None" and "Its version's own" on the pane).
+A game that declares another fact has its control here with no change to the editor.
 
 An EXE5 match's Auto battle pane (shown where the game's rules have auto
 battle: not for EXE6) is what a navi in auto battle plays from the side's save, the Dark MegaMan its failed Chaos Unison

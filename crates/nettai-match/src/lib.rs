@@ -141,7 +141,7 @@ pub struct Side {
     pub auto_battle: AutoBattle,
     /// What the side brings that its game's rules take, each a field of a
     /// system's setup by its name there (`facts`: EXE6's `version`, its
-    /// `cross_list`; EXE5's `karma`, its `souls`): the systems' setup
+    /// `crosses`; EXE5's `karma`, its `souls`): the systems' setup
     /// blocks, as the round's setup carries them. A side that says nothing
     /// has the rules' defaults.
     pub facts: Facts,
