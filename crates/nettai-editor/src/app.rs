@@ -22,7 +22,7 @@ pub enum Tab {
     Folder(usize),
     Crosses(usize),
     Souls(usize),
-    ComputerNavi(usize),
+    AutoBattle(usize),
     Cards(usize),
     NaviCust(usize),
     Stats(usize),
@@ -30,7 +30,7 @@ pub enum Tab {
 
 impl Tab {
     /// The tab by its name (`--tab`): `arena`, or `left-` or `right-` and
-    /// `navi`, `folder`, `crosses`, `souls`, `computer-navi`, `cards`,
+    /// `navi`, `folder`, `crosses`, `souls`, `auto-battle`, `cards`,
     /// `navicust`, `stats`.
     pub fn from_name(name: &str) -> Option<Tab> {
         if name == "arena" {
@@ -47,7 +47,7 @@ impl Tab {
             "folder" => Tab::Folder(side),
             "crosses" => Tab::Crosses(side),
             "souls" => Tab::Souls(side),
-            "computer-navi" => Tab::ComputerNavi(side),
+            "auto-battle" => Tab::AutoBattle(side),
             "cards" => Tab::Cards(side),
             "navicust" => Tab::NaviCust(side),
             "stats" => Tab::Stats(side),
@@ -99,7 +99,7 @@ pub enum Msg {
     /// An SP navi's deletion time (by its slot), as typed.
     SpTime(usize, usize, String),
     /// The side from a save file (an EXE6 save's version, unlocks, navi code
-    /// level and SP times; an EXE5 save's karma, souls and computer-navi
+    /// level and SP times; an EXE5 save's karma, souls and auto battle
     /// data), into a match of the save's game.
     ImportSave(usize),
     // The folder.
@@ -130,8 +130,8 @@ pub enum Msg {
     StatsReset(usize),
     // The NaviCust.
     NaviCust(usize, crate::navicust::Edit),
-    // EXE5's computer-navi data.
-    ComputerNavi(usize, crate::computer_navi::Edit),
+    // EXE5's auto battle data.
+    AutoBattle(usize, crate::auto_battle::Edit),
     // --screenshot.
     Frame,
     Shot(iced::window::Screenshot),
@@ -274,8 +274,8 @@ pub struct Editor {
     pub pool: [Vec<ChipHandle>; 2],
     /// Each side's NaviCust pane's own state.
     pub navicust: [crate::navicust::State; 2],
-    /// Each side's computer navi pane's own state.
-    pub computer_navi: [crate::computer_navi::State; 2],
+    /// Each side's Auto battle pane's own state.
+    pub auto_battle: [crate::auto_battle::State; 2],
     pub status: String,
     frames: u32,
 }
@@ -316,7 +316,7 @@ impl Editor {
             round: Err(String::new()),
             pool: Default::default(),
             navicust: Default::default(),
-            computer_navi: Default::default(),
+            auto_battle: Default::default(),
             status: String::new(),
             frames: 0,
             content,
@@ -393,7 +393,7 @@ impl Editor {
         self.sp_typed.clear();
         self.entry = [0, 0];
         self.navicust = Default::default();
-        self.computer_navi = Default::default();
+        self.auto_battle = Default::default();
     }
 
     pub fn side(&self, s: usize) -> &Side {
@@ -772,25 +772,25 @@ impl Editor {
                     self.edited();
                 }
             }
-            // The computer-navi data of an EXE5 save alone (a .sav, or a raw
+            // The auto battle data of an EXE5 save alone (a .sav, or a raw
             // image): the side's other things stay.
-            Msg::ComputerNavi(s, crate::computer_navi::Edit::FromSave) => {
+            Msg::AutoBattle(s, crate::auto_battle::Edit::FromSave) => {
                 if let Some(path) = rfd::FileDialog::new().add_filter("EXE5 save", &["sav", "raw"]).pick_file() {
                     let read = std::fs::read(&path).map_err(|e| e.to_string());
-                    match read.and_then(|bytes| nettai_match::computer_navi::of_save(&content, self.m.game(), &bytes)) {
+                    match read.and_then(|bytes| nettai_match::auto_battle::of_save(&content, self.m.game(), &bytes)) {
                         Ok((data, notes)) => {
-                            self.m.sides[s].computer_navi = data;
-                            self.computer_navi[s] = Default::default();
+                            self.m.sides[s].auto_battle = data;
+                            self.auto_battle[s] = Default::default();
                             self.edited();
                             let notes = if notes.is_empty() { String::new() } else { format!(" ({})", notes.join("; ")) };
-                            self.status = format!("took the computer-navi data of {}{notes}", path.display());
+                            self.status = format!("took the auto battle data of {}{notes}", path.display());
                         }
-                        Err(e) => self.status = format!("can't take the computer-navi data of {}: {e}", path.display()),
+                        Err(e) => self.status = format!("can't take the auto battle data of {}: {e}", path.display()),
                     }
                 }
             }
-            Msg::ComputerNavi(s, edit) => {
-                if crate::computer_navi::update(&content, &mut self.m.sides[s], &mut self.computer_navi[s], edit) {
+            Msg::AutoBattle(s, edit) => {
+                if crate::auto_battle::update(&content, &mut self.m.sides[s], &mut self.auto_battle[s], edit) {
                     self.edited();
                 }
             }

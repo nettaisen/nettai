@@ -506,10 +506,10 @@ declare class Object
     -- Writable: EXE5's no-charge drive (DarkInvs): its ticks left
     -- (AIData+0x36; counted down in the intake while the navi has the
     -- no-charge state, asking for the stun strike at 0; 0xFFFF holds), and
-    -- the computer-navi AI driving it (AIData+0xF0, which VarSwrd's pick
+    -- the auto battle AI driving it (AIData+0xF0, which VarSwrd's pick
     -- reads).
     no_charge_timer: number
-    computer_driven: boolean
+    in_auto_battle: boolean
 
     -- `sub_800F26C`: the look its NameID gives is `sprite` (an object's
     -- NameID look; a navi's or form's NameID gives its sprite). An error
@@ -653,8 +653,9 @@ declare class Object
     function dimmed_held(self, key: Key): boolean
     function dimmed_pressed(self, key: Key): boolean
     function dimmed_released(self, key: Key): boolean
-    -- `object_setDefaultCounterTime`.
-    function open_counter_window(self): ()
+    -- `object_setDefaultCounterTime`: a counter window of 16 ticks, or of
+    -- `ticks` (`object_setCounterTime`).
+    function open_counter_window(self, ticks: number?): ()
     -- `sub_801056A`, after each phase of an attack.
     function check_reactive_abort(self): ()
     -- `sub_80105F2`: the stance's own trap (the AntiDmg program's) caught a
@@ -1066,14 +1067,14 @@ declare battle: {
     set_dimmed: (on: boolean) -> (),
     -- BattleState+0x40, `sub_800A704`: the fight's ticks so far (capped).
     battle_time: () -> number,
-    -- Player `side`'s tactics (EXE5's computer-navi data, which a computer
-    -- navi on the other side plays): how many entries they count; the entry
+    -- Player `side`'s tactics (EXE5's auto battle data, which a navi in auto
+    -- battle on the other side plays): how many entries they count; the entry
     -- in place `i` (from 1; past the count, an empty place): a chip, a
     -- pattern's number (from 1), false (a place holding 0, the game's
     -- chip 0, which no save the game wrote has there) or nil (an empty
     -- place); pattern `i` (from 1)'s place from the target (`dx` columns
     -- toward the navi's enemies, `dy` rows); and read `k` (from 1) of that
-    -- pattern's run as EXE5's computer navi reads it (0x0802BCD6): a chip
+    -- pattern's run as EXE5's auto battle reads it (0x0802BCD6): a chip
     -- place's chip, nil at an empty place, the run's end, or a number, a
     -- halfword the game takes for a chip's number without its being a
     -- chip place's chip (a place holding 0; and, past the five places of a
@@ -1258,7 +1259,7 @@ declare battle: {
     -- when each side has one, `own_gauges`, else the shared one).
     gauge_damage: (side: number) -> number,
     -- A side's sword pick (`sub_802E070`+0x12): the swing a variable sword
-    -- makes for a navi no buttons drive (EXE5's computer navi draws it).
+    -- makes for a navi no buttons drive (EXE5's auto battle draws it).
     sword_pick: (side: number) -> number,
     set_sword_pick: (side: number, pick: number) -> (),
     -- Presentation: whether the side's emotion window shows its base form's second set of faces (`mugshot.variant`:
@@ -1877,8 +1878,12 @@ export type System = SystemSpec
 -- §3.8: tables of rules no entity owns, each a plain table its module
 -- returns, `panels = require("@self/panels")`), which the engine reads
 -- against its schemas when the ruleset is defined, and the game's roles
--- (§7.4, `roles = require("@self/roles")`). A section the ruleset doesn't
--- name keeps the engine's table.
+-- (§7.4, `roles = require("@self/roles")`). The engine has no game's rules
+-- of its own: a ruleset states `chip_use`, `effects`, `flow`, `panels`,
+-- `pools`, `reactions` and `status`, and every field of them (one left out
+-- is a load error that names it). A section it may leave out is a feature
+-- the game hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`)
+-- or a table that is empty without it.
 export type RulesetSpec = {
     systems: { System }?,
     banners: any?,
@@ -2111,9 +2116,17 @@ export type NaviDef = {
     -- of panel, in a form with no `chip_bonus` (EXE5's: Aqua chips on sea);
     -- the use turns the panel Normal.
     panel_bonus: { panel: PanelType, family: ChipFamily, damage: number }?,
-    -- The chips it charges with A: its family's damaging chips, from a
-    -- navi level on (`byte_8021369`).
-    charged_chips: { family: ChipFamily, from_level: number }?,
+    -- The chips it charges with A: a family's, never its own chip.
+    -- `damaging` is always stated: only the damaging chips that aren't
+    -- dimming chips (false: any). `from_level`: only from that navi level
+    -- on, and only with a level (none: whatever the level). `plain`: only
+    -- the chips that are neither dimming nor dark chips. (EXE6's link
+    -- navis: their family's damaging chips from a level, `byte_8021369`;
+    -- EXE5's team navis: their family's plain chips.)
+    charged_chips: { family: ChipFamily, damaging: boolean, from_level: number?, plain: boolean? }?,
+    -- What a chip it charged gains (damage 0xFF: its damage again), where
+    -- its form states no `charged_bonus`: a form's comes first.
+    charged_bonus: { damage: number?, paralyzes: boolean? }?,
     -- The chips a charge doubles (`sub_8012AFA`).
     charge_doubles: ChipMatch?,
     -- Its A charge builds up the next Fire chip's damage, up to a limit by
@@ -2275,11 +2288,12 @@ export type FormDef = {
     -- battle mode 1).
     chip_bonus: { family: ChipFamily, damage: number, dimming_chips: boolean?, uncharged: boolean? }?,
     null_bonus: number?,
-    -- The chips it charges with A: a family's damaging chips that aren't
-    -- dimming chips (`damaging = false`: any of the family), and with
-    -- `element_swords` the chips with the `element_sword` trait; `plain`:
-    -- only those that are neither dimming nor dark chips (EXE5's souls).
-    charged_chips: { { family: ChipFamily, damaging: boolean?, element_swords: boolean?, plain: boolean? } }?,
+    -- The chips it charges with A, a family's by each rule. `damaging` is
+    -- always stated: only the damaging chips that aren't dimming chips
+    -- (false: any of the family). With `element_swords` the chips with the
+    -- `element_sword` trait too; `plain`: only those that are neither
+    -- dimming nor dark chips (EXE5's souls).
+    charged_chips: { { family: ChipFamily, damaging: boolean, element_swords: boolean?, plain: boolean? } }?,
     -- What a charged chip gains in it.
     charged_bonus: { damage: number?, paralyzes: boolean? }?,
     -- The chips a charge doubles, and those whose use heals a twentieth of
@@ -2519,7 +2533,9 @@ export type IdentitySpec = {
     -- takes it off, an animation change, a flinch or a drag restarts it.
     -- By default the death hook takes its own parts off and an animation
     -- change restarts them (not an overlay worn only while standing).
-    overlay_hooks: { "death" | "refresh" | "flinch" | "drag" }?,
+    -- "flinch_checked" is a flinch hook that tests for what the navi wears
+    -- first (EXE5's team navis').
+    overlay_hooks: { "death" | "refresh" | "flinch" | "flinch_checked" | "drag" }?,
     -- The Full Synchro aura's animation around it (a player's has one).
     aura_anim: number?,
     -- The ice block that fits it (none: small).

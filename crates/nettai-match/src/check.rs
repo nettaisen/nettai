@@ -6,7 +6,7 @@
 //!   (`crate::link_battle_stages`), and backgrounds its pack has.
 //! - **A side**: its navi, chips, patch cards, NaviCust programs and souls
 //!   are the match's game's, its stats' forms the content's; its
-//!   computer-navi data what the game can hold (`crate::computer_navi`); a Cross list
+//!   auto battle data what the game can hold (`crate::auto_battle`); a Cross list
 //!   only with rules that have the forms system,
 //!   each a Cross of the navi's, at most five, none twice; patch cards only
 //!   with rules that have the patch-cards system, each installed once, at
@@ -104,9 +104,9 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
         }
         _ => {}
     }
-    // The computer-navi data: what the game can hold of it, where the
-    // game has computer navis.
-    out.extend(s.computer_navi.check(content, game));
+    // The auto battle data: what the game can hold of it, where the
+    // game has auto battle.
+    out.extend(s.auto_battle.check(content, game));
     let foreign = |c: nettai_content_api::ChipHandle| c.index() >= defs.chips.len() || !of_game(&defs.chip(c).key);
     // The karma and the souls.
     out.extend(crate::facts::check(content, arena, s));

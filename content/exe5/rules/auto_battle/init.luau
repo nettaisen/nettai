@@ -1,5 +1,5 @@
 --!strict
--- EXE5's computer navis (docs/design/exe5-map.md §15.9): the navis no player controls a battle brings, which the
+-- EXE5's auto battle (docs/design/exe5-map.md §15.9): the navis no player controls a battle brings, which the
 -- navi type's tables drive by their AI index (its idle, 0x081041F0's action 6, and its tick, 0x080F23FC's entry).
 -- In a netbattle the one is Dark MegaMan (AI index 0x16, navis/dark-megaman), whom a failed Chaos Unison brings
 -- (rules/souls/chaos) for twelve seconds: his idle runs the AI (./ai) until his time is up, then he leaves; his last
@@ -10,7 +10,7 @@
 
 local ai = require("@self/ai")
 
-local computer_navi = {}
+local auto_battle = {}
 
 -- The ticks Dark MegaMan stays (0x08104218).
 local LIFETIME = 0x2D0
@@ -32,7 +32,7 @@ end
 
 local function check(navi: Object)
     if navi.ai_index ~= DARK_MEGAMAN then
-        error(string.format("the computer navis' tables have no AI index %#x for a netbattle (only Dark MegaMan's, 0x16)", navi.ai_index))
+        error(string.format("the auto-battling navis' tables have no AI index %#x for a netbattle (only Dark MegaMan's, 0x16)", navi.ai_index))
     end
 end
 
@@ -64,8 +64,8 @@ local function leave(me: Object, s: LeaveState)
     end
 end
 
-computer_navi.leave = define.action {
-    id = "computer-navi/leave",
+auto_battle.leave = define.action {
+    id = "auto-battle/leave",
     state = { timer = "u16" },
     update = leave,
 }
@@ -79,7 +79,7 @@ local function idle(navi: Object)
         s.timed = true
     end
     if s.lifetime == 0 then
-        navi:set_attack(computer_navi.leave, 0)
+        navi:set_attack(auto_battle.leave, 0)
         return
     end
     ai.run(navi, navi.state)
@@ -103,7 +103,7 @@ end
 
 -- 0x08104284: the Dark MegaMen on the side across from `side` (its alive actors of actor type navi and AI index
 -- 0x16) see their time up.
-function computer_navi.dismiss(side: number)
+function auto_battle.dismiss(side: number)
     local other = bit32.bxor(side, 1)
     for i = 1, 4 do
         local navi = battle.alive_actor_slot(other, i)
@@ -113,12 +113,12 @@ function computer_navi.dismiss(side: number)
     end
 end
 
-computer_navi.system = define.system {
-    id = "computer-navi",
+auto_battle.system = define.system {
+    id = "auto-battle",
     navi_state = ai.layout,
     -- A player's own drive (DarkInvs): its AI's state, AIData +0xF0 on.
     state = ai.layout,
-    actions = { computer_navi.leave },
+    actions = { auto_battle.leave },
     hooks = {
         -- The navi type's idle (action 6) of a navi this system drives: its AI index's. And the side's player's
         -- idle where it would step (EXE5's no-charge drive, 0x080F03E4): with the no-charge state the AI decides
@@ -132,7 +132,7 @@ computer_navi.system = define.system {
                     -- from the start, as the drive's start leaves it (0x0802C03A, then AIData +0xF0 set again).
                     if navi.no_charge_timer > s.drive_ticks then
                         ai.reset(navi, s)
-                        navi.computer_driven = true
+                        navi.in_auto_battle = true
                     end
                     s.drive_ticks = navi.no_charge_timer
                     ai.run_own(navi, s)
@@ -158,4 +158,4 @@ computer_navi.system = define.system {
     },
 }
 
-return computer_navi
+return auto_battle

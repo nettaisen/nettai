@@ -165,13 +165,18 @@ impl std::fmt::Display for ContentHash {
 /// the module docs.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Content {
-    /// The tables the game's rule sections start from: the engine's
-    /// defaults (the test content's made-up tables).
-    pub base_rules: Rules,
-    /// The game's tables (the base with its rule sections), made by
-    /// [`Content::define`]: what a battle reads (docs/design/rules-in-luau.md
-    /// §2.3; a match plays one game, docs/design/content-model-v2.md §4.0).
-    pub rules: Rules,
+    /// Rules stated as Rust tables, which the ruleset's sections replace
+    /// (the engine's test content's made-up tables, a tool's decode of a
+    /// ROM's); none: the ruleset states every rule (a game's content).
+    pub base_rules: Option<Rules>,
+    /// The game's tables (what its ruleset states, over the Rust tables),
+    /// made by [`Content::define`]: what a battle reads
+    /// (docs/design/rules-in-luau.md §2.3; a match plays one game,
+    /// docs/design/content-model-v2.md §4.0). None until then, and for
+    /// modules of no game that state none (a test's: no ruleset, no Rust
+    /// tables): the engine has no game's rules of its own to give them. A
+    /// game pack that states none doesn't load. Read by [`Content::rules`].
+    pub rules: Option<Rules>,
     /// Every sprite's animation timing.
     pub animations: Animations,
     /// The assets content can name (`asset.sprite("bomb")`): the loader
@@ -282,9 +287,15 @@ impl Content {
         ContentHash(crate::digest::stable_hash(self))
     }
 
-    /// The game's tables.
+    /// The game's tables. (Content that states no rules has none: nothing
+    /// that runs a battle is made of it.)
     pub fn rules(&self) -> &Rules {
-        &self.rules
+        self.rules.as_ref().expect("the content states its rules (a ruleset, defined)")
+    }
+
+    /// The game's tables, to change (tests, which play a rule another way).
+    pub fn rules_mut(&mut self) -> &mut Rules {
+        self.rules.as_mut().expect("the content states its rules (a ruleset, defined)")
     }
 
     /// The game the content is: its game pack's id (`exe6`); "" for content

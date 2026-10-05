@@ -215,7 +215,7 @@ pub fn generic_destroy(b: &mut Battle, r: ObjectRef) {
 /// HP left, or at 0 what EXE5's check leaves there (EXE5's
 /// `applyDamageToPlayer` shows the hit by it).
 pub fn subtract_hp(b: &mut Battle, r: ObjectRef, amount: u16) -> bool {
-    if b.game_rules().intake.hp_loss == crate::content::HpLoss::Exe5 {
+    if b.game_rules().intake.hp_loss == crate::content::HpLoss::GaugeAndLastStand {
         return player::exe5_lose_hp(b, r, amount);
     }
     let o = b.objects.get_mut(r);
@@ -286,12 +286,15 @@ pub fn chip_damage_formula(b: &Battle, id: nettai_content_api::ChipHandle, side:
         F::NaviLevel { base, per_level } => navi_chip_damage(b, side, *base, *per_level),
         F::Level { by_level } => {
             // 0x0800EBC4: the row's entry at the side's level (a word the
-            // init exchange set from the save's story flags: 0 in a new
-            // save, as a side that states none).
-            let level = match b.navi_levels[side as usize & 1] {
-                0xFF => 0,
-                level => level,
-            };
+            // init exchange set from the save's story flags; a side that
+            // operates a navi with such a chip states it, `Battle::new`).
+            let level = b.navi_levels[side as usize & 1];
+            // A side that states none operates no such navi and holds no
+            // such chip: the custom screen reads every formula's damage
+            // each tick, for the hand it may build.
+            if level == 0xFF {
+                return 0;
+            }
             *by_level.get(level as usize).unwrap_or_else(|| {
                 panic!(
                     "chip {:?}'s damage by level reads past its row at level {level:#04x} (0x0800EBC4)",
