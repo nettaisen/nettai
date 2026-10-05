@@ -15,9 +15,10 @@ local capsules = {}
 local yelcapsl, blkcapsl, whicapsl = capsules_chips.yelcapsl, capsules_chips.blkcapsl, capsules_chips.whicapsl
 local prpcapsl, pnkcapsl = capsules_chips.prpcapsl, capsules_chips.pnkcapsl
 
--- What the capsules keep in the souls system's state.
+-- What the capsules keep in the souls system's state (each screen starts with it fresh: the souls system's deal).
 type State = {
-    -- The screen's two capsules (its +0x26 and +0x28), as its slots were last laid out in MeddySoul.
+    -- The screen's two capsules (its +0x26 and +0x28; none out of MeddySoul: the screen's record is zeroed as it
+    -- opens, 0x08022CA2).
     capsule_1: Chip?,
     capsule_2: Chip?,
     -- The capsule being mixed (1 or 2), and its sequence's step and count (0x08023754's offsets 0 to 0x18; the

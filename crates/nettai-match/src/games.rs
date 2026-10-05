@@ -413,10 +413,111 @@ fn the_soul_takes_the_chips_place() {
     assert_eq!(folder.count(), 29);
 }
 
+/// What a soul keeps of a custom screen in the souls system's state (its
+/// form's `custom.state`) is as a fresh state has it when the next screen
+/// deals, whatever soul the navi is in then: the original zeroes the
+/// screen's record as it opens (0x08022CA2). MegaMan in MeddySoul is dealt
+/// two capsules and mixes the first into a Sword; his soul has no turns
+/// left, so the turn's start takes him back to his base form, and the next
+/// screen's deal, out of MeddySoul, leaves no capsule and no mix.
+#[test]
+fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
+    use nettai_battle::Battle;
+    use nettai_battle::custom::screen::{OK_SLOT, Phase, SlotKind};
+    use nettai_battle::input::{PlayerTick, keys};
+    use nettai_content_api::{FieldValue, Registry};
+    let content = exe5_content();
+    let sword = crate::ids::chip(&content, "exe5", "sword").unwrap();
+    let meddy = crate::ids::form(&content, "exe5", "meddysoul").unwrap();
+    let mut m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
+    m.sides[0].folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30];
+    let mut b = Battle::new(m.round(&content, 0x5EED), content.clone());
+    let base = b.stats[0].form;
+    // (In MeddySoul from the start, his stats' starting form: the souls
+    // system's state is a fresh one, with no turns of the soul.)
+    b.stats[0].starting_form = meddy;
+    let field = |b: &Battle, name: &str| {
+        let (schema, state) = b.system_state(0, "souls").expect("EXE5's souls system");
+        state.get(schema, schema.index_of(name).unwrap_or_else(|| panic!("the souls system keeps no `{name}`")))
+    };
+    let choosing = |b: &Battle, side: usize| {
+        let s = &b.custom.sides[side];
+        s.in_custom && s.screen.is_some_and(|s| s.phase == Phase::Choosing)
+    };
+    let tick = |b: &mut Battle, left: u16, right: u16| b.tick(&[PlayerTick { held: left }, PlayerTick { held: right }], Default::default());
+    // A tick with `key` pressed by the left side, then ticks without until
+    // its screen is back to choosing.
+    let press = |b: &mut Battle, key: u16| {
+        tick(b, key, 0);
+        for _ in 0..200 {
+            tick(b, 0, 0);
+            if choosing(b, 0) {
+                return;
+            }
+        }
+        panic!("the screen stays out of choosing");
+    };
+    for _ in 0..400 {
+        if choosing(&b, 0) && choosing(&b, 1) {
+            break;
+        }
+        tick(&mut b, 0, 0);
+    }
+    // The first screen, in MeddySoul: two capsules, in the hand's last two
+    // slots.
+    assert!(choosing(&b, 0) && choosing(&b, 1));
+    assert_eq!(b.stats[0].form, meddy);
+    let a_capsule = |v: FieldValue| matches!(v, FieldValue::Ref(Some((Registry::Chip, _))));
+    assert!(a_capsule(field(&b, "capsule_1")) && a_capsule(field(&b, "capsule_2")), "MeddySoul's deal draws two capsules");
+    let screen = b.custom.sides[0].screen.unwrap();
+    for slot in [8, 9] {
+        assert!(matches!(screen.slots[slot].kind, SlotKind::Button { button, .. } if content.defs.button(button).name.starts_with("capsule_")));
+    }
+    // A Sword picked, and the first capsule mixed into it: its sequence's
+    // end is in the state.
+    press(&mut b, keys::A);
+    b.custom.sides[0].screen.as_mut().unwrap().cursor = 8;
+    press(&mut b, keys::A);
+    assert_eq!((field(&b, "mix_capsule"), field(&b, "mix_step")), (FieldValue::U8(1), FieldValue::U8(24)));
+    assert!(b.custom.sides[0].screen.unwrap().slots[0].attached.is_some(), "the capsule is in the Sword");
+    // OK on both screens, and the fight: the turn's start reverts a soul
+    // with no turns left.
+    for side in 0..2 {
+        b.custom.sides[side].screen.as_mut().unwrap().cursor = OK_SLOT;
+    }
+    tick(&mut b, keys::A, keys::A);
+    for _ in 0..600 {
+        if !b.custom.sides[0].in_custom && !b.custom.sides[1].in_custom {
+            break;
+        }
+        tick(&mut b, 0, 0);
+    }
+    assert!(!b.custom.sides[0].in_custom, "the fight goes on");
+    // L each other tick until the gauge is full and the next screen opens.
+    for t in 0..6000 {
+        if choosing(&b, 0) {
+            break;
+        }
+        tick(&mut b, if t % 2 == 0 { keys::L } else { 0 }, 0);
+    }
+    assert!(choosing(&b, 0), "the second screen");
+    assert_eq!(b.stats[0].form, base, "out of MeddySoul");
+    // Its deal left what MeddySoul kept of the first screen as a fresh
+    // state has it.
+    for name in ["capsule_1", "capsule_2"] {
+        assert_eq!(field(&b, name), FieldValue::Ref(None), "{name}");
+    }
+    for name in ["mix_capsule", "mix_step", "mix_count", "arm_step", "arm_timer"] {
+        assert_eq!(field(&b, name), FieldValue::U8(0), "{name}");
+    }
+    let screen = b.custom.sides[0].screen.unwrap();
+    assert!(!matches!(screen.slots[8].kind, SlotKind::Button { .. }), "no capsule's slot out of MeddySoul");
+}
+
 /// A side's karma and souls go into its round's setup: the light and dark
 /// system's block holds the karma, the souls system's the souls (which the
-/// soul button offers, by their numbers), Soul Unison and Chaos Unison
-/// (on unless the side says).
+/// soul button offers), Soul Unison and Chaos Unison (on unless the side
+/// says).
 #[test]
 fn karma_and_souls_reach_the_round() {
     let content = exe5_content();
