@@ -522,8 +522,8 @@ impl Round {
                 }
             }
             for (what, n) in [("buster-shot program", s.raw[0x4D]), ("charged-shot program", s.raw[0x4F])] {
-                match compat.projectile_variant(n) {
-                    Ok(k) if content.defs.record(&k).is_none() => out.push(format!("side {side}'s {what} {k}")),
+                match compat.shot_program(n) {
+                    Ok(Some(k)) if content.defs.record(&k).is_none() => out.push(format!("side {side}'s {what} {k}")),
                     Err(e) => out.push(format!("side {side}'s {what}: {e}")),
                     _ => {}
                 }
@@ -599,7 +599,7 @@ impl Round {
         let local = bs[0x0D] & 1;
         // A side whose setup carries its console's NaviCust (MegaMan's): the
         // engine compiles it and applies the console's patch cards over the
-        // stats EXE5's reset leaves ([`codec::reset`]), as a match is set up.
+        // stats EXE5's reset leaves ([`reset`]), as a match is set up.
         // (The recorded stats are what the battle's start made of them: the
         // reload, 0x0813F97C.)
         let compiled = |side: usize| self.setup.navicusts.is_some() && d.navi_stats[side].navi == 0;
@@ -700,11 +700,8 @@ impl Round {
             }
         }
         let stats = |side: usize| -> Result<EngineNaviStats, String> {
-            if compiled(side) {
-                navi_stats(content, compat, &codec::navi_stats(&codec::reset(&d.navi_stats[side].raw))?)
-            } else {
-                navi_stats(content, compat, &d.navi_stats[side])
-            }
+            let recorded = navi_stats(content, compat, &d.navi_stats[side])?;
+            if compiled(side) { reset(content, &recorded) } else { Ok(recorded) }
         };
         Ok(RoundSetup {
             content: content.hash(),
@@ -820,9 +817,12 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
             Some(k) => content.defs.weapon_by_key(&k).map(Some).ok_or_else(|| format!("the content has no weapon {k}")),
         }
     };
+    // (A shot program's byte 0 is no program.)
     let variant = |n: u8| -> Result<Option<RecordHandle>, String> {
-        let k = compat.projectile_variant(n)?;
-        content.defs.record(&k).map(Some).ok_or_else(|| format!("the content has no projectile variant {k}"))
+        match compat.shot_program(n)? {
+            None => Ok(None),
+            Some(k) => content.defs.record(&k).map(Some).ok_or_else(|| format!("the content has no projectile variant {k}")),
+        }
     };
     let first_barrier = match compat.barrier(s.first_barrier)? {
         None => None,
@@ -892,6 +892,33 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
             custom_damage: u16::from_le_bytes([r[0x54], r[0x55]]),
             ..Default::default()
         },
+    })
+}
+
+/// The stats EXE5's reset leaves of `recorded`, which a NaviCust is compiled
+/// over (the reload a battle's start runs, 0x0813F97C: the reset,
+/// 0x08133DBC, then the compile, 0x0813FA10, and the cards, 0x08138214). The
+/// reset lays the navi's fresh stats (0x080111AA: the engine's
+/// `NaviStats::fresh`, what the game's rules and the navi's definition
+/// state) and keeps of the save's the mood, the base HP, the soul, the
+/// folder and its Regular chips, the Regular memory and the HP (and +0x21,
+/// +0x22 and the light/dark value, which the engine's stats don't hold). The
+/// navi's variant is the recording's: the console sets it as the battle
+/// starts, after the reload.
+pub fn reset(content: &Content, recorded: &EngineNaviStats) -> Result<EngineNaviStats, String> {
+    let fresh = EngineNaviStats::fresh(recorded.navi, content)
+        .ok_or_else(|| format!("{} has no fresh stats (its definition's `fresh`)", content.defs.navi(recorded.navi).key))?;
+    Ok(EngineNaviStats {
+        mood: recorded.mood,
+        max_base_hp: recorded.max_base_hp,
+        hp: recorded.hp,
+        form: recorded.form,
+        starting_form: recorded.starting_form,
+        folder: recorded.folder,
+        folder_reg: recorded.folder_reg,
+        reg_up: recorded.reg_up,
+        navi_variant: recorded.navi_variant,
+        ..fresh
     })
 }
 
