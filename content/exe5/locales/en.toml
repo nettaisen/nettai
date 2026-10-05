@@ -223,6 +223,7 @@ language = "en"
 "mrkcan3" = { name = "MrkCan3", description = "DoomerEX\nlocks on\n3 rows" }
 "mudwave" = { name = "MudWave", description = "MudWave\nout of\nhole" }
 "muramasa" = { name = "Muramasa", description = "Atk power\nequal amt\nof lostHP" }
+"napalm" = { name = "Napalm", description = "9-panel\ncross\nexplosion" }
 "napalmmn" = { name = "NapalmMn", description = "Explosion\nspreads\n9 panels" }
 "naplmmn-ds" = { name = "NaplmMn\uE008", description = "Explosion\nspreads\n9 panels" }
 "naplmmn-sp" = { name = "NaplmMn\uE003", description = "Explosion\nspreads\n9 panels" }
@@ -365,6 +366,7 @@ language = "en"
 "knightman" = { name = "KnightMn" }
 "meddy" = { name = "Meddy" }
 "megaman" = { name = "MegaMan", variant_name = "BCMegaMn" }
+"napalmman" = { name = "NapalmMn" }
 "protoman" = { name = "ProtoMan" }
 "searchman" = { name = "SerchMan" }
 "shadowman" = { name = "ShadoMan" }
