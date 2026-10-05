@@ -356,7 +356,7 @@ impl Match {
             let saved = s.folder.saved().expect("a whole folder (the match's checks refuse one being made; `check::start` fills one in)");
             let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, content);
             let mut player = PlayerSetup {
-                folder: Some(folder),
+                folder,
                 joypad_phase: 0,
                 navi_level: s.navi_level,
                 sp_times: s.sp_times,
@@ -411,7 +411,7 @@ pub fn next_round(content: &Content, first: &RoundSetup, folders: &[SavedFolder;
         let mut rng = console.rng;
         let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(folder, 0, &mut rng, content);
         let p = &mut next.players[side];
-        p.folder = Some(folder);
+        p.folder = folder;
         p.console = ConsoleSetup { rng: rng.state, tag_pair, frames: console.frames };
     }
     next

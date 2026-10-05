@@ -51,11 +51,8 @@ pub const MAX_NAVI_LEVEL: u8 = 14;
 /// custom screen, in its systems' setup blocks).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PlayerSetup {
-    /// The shuffled battle folder. None only when checking against a
-    /// recording that lacks this player's folder: their screen is then
-    /// not simulated, and the recording supplies what it sends
-    /// (`TickEvents::recorded`).
-    pub folder: Option<BattleFolder>,
+    /// The shuffled battle folder.
+    pub folder: BattleFolder,
     /// The joypad's auto-repeat beat (0-4) on the round's first tick; each
     /// console counts its own.
     pub joypad_phase: u8,
@@ -97,7 +94,7 @@ pub struct PlayerSetup {
 impl Default for PlayerSetup {
     fn default() -> PlayerSetup {
         PlayerSetup {
-            folder: Some(BattleFolder::empty()),
+            folder: BattleFolder::empty(),
             joypad_phase: 0,
             navi_level: None,
             sp_times: Default::default(),
@@ -125,7 +122,7 @@ pub struct Side {
     /// The joypad the screen reads: the player's buttons this tick, not
     /// delayed by the link like the fight's.
     pub joypad: Joypad,
-    pub folder: Option<BattleFolder>,
+    pub folder: BattleFolder,
     pub round: RoundMemory,
     pub program_advances: ProgramAdvancesUsed,
     /// Chips sent this round, by class.
@@ -158,11 +155,6 @@ impl Side {
             sent: None,
             emotion: Emotion::Normal,
         }
-    }
-
-    /// The screen is simulated (the folder is known).
-    pub fn simulated(&self) -> bool {
-        self.folder.is_some()
     }
 }
 
@@ -327,7 +319,7 @@ impl Side {
         if ctx.turn == 1 {
             self.round = RoundMemory::default();
         }
-        let Some(mut folder) = self.folder else { return };
+        let mut folder = self.folder;
         let regular = folder.regular_pending;
         // (Palette 11 keeps the last chip window's element colors from
         // screen to screen.)
@@ -341,7 +333,7 @@ impl Side {
         if console.tag_pair.is_some_and(|t| t < screen.hand_size) {
             console.tag_pair = None;
         }
-        self.folder = Some(folder);
+        self.folder = folder;
         self.screen = Some(screen);
     }
 
@@ -361,7 +353,8 @@ impl Side {
         extras: &mut dyn Extras,
     ) -> Option<Request> {
         self.emotion = ctx.emotion;
-        let (Some(mut screen), Some(mut folder)) = (self.screen, self.folder) else { return None };
+        let Some(mut screen) = self.screen else { return None };
+        let mut folder = self.folder;
         let request = screen.tick(&self.joypad, &self.view(ctx, folder.regular_pending), &mut folder, console, extras);
         match request {
             Some(Request::Confirm) => self.confirm(ctx, &mut screen, &mut folder, console, damage, extras),
@@ -383,7 +376,7 @@ impl Side {
             self.in_custom = false;
         }
         self.screen = Some(screen);
-        self.folder = Some(folder);
+        self.folder = folder;
         request
     }
 
@@ -632,7 +625,7 @@ impl SideExtras<'_> {
             self.b.custom.sides[side].joypad = *j;
         }
         if let Some(f) = &folder {
-            self.b.custom.sides[side].folder = Some(**f);
+            self.b.custom.sides[side].folder = **f;
         }
         if let Some(c) = &console {
             self.b.consoles[side] = **c;
@@ -640,7 +633,7 @@ impl SideExtras<'_> {
         let r = f(self.b);
         *screen = self.b.custom.sides[side].screen.expect("the screen stays");
         if let Some(folder) = folder {
-            *folder = self.b.custom.sides[side].folder.expect("the folder stays");
+            *folder = self.b.custom.sides[side].folder;
         }
         if let Some(console) = console {
             *console = self.b.consoles[side];
@@ -769,7 +762,8 @@ impl Battle {
         f: impl FnOnce(&mut Screen, &PlayerView, &mut BattleFolder, &mut Console, &mut dyn Extras) -> R,
     ) -> Option<R> {
         let i = side as usize & 1;
-        let (Some(mut screen), Some(mut folder)) = (self.custom.sides[i].screen, self.custom.sides[i].folder) else { return None };
+        let mut screen = self.custom.sides[i].screen?;
+        let mut folder = self.custom.sides[i].folder;
         let copy = self.custom.sides[i].clone();
         let content = self.content.clone();
         let library: &crate::content::Content = &content;
@@ -781,7 +775,7 @@ impl Battle {
         let mut console = self.consoles[i];
         let r = f(&mut screen, &view, &mut folder, &mut console, &mut SideExtras { b: self, side, emotion });
         self.custom.sides[i].screen = Some(screen);
-        self.custom.sides[i].folder = Some(folder);
+        self.custom.sides[i].folder = folder;
         self.consoles[i] = console;
         Some(r)
     }

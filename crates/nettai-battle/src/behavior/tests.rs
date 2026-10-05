@@ -287,7 +287,7 @@ fn bee_and_dragon_setup() -> crate::setup::RoundSetup {
     }
     let mut s = scenario::setup();
     for p in &mut s.players {
-        p.folder = Some(folder);
+        p.folder = folder;
     }
     s
 }
@@ -1047,7 +1047,7 @@ fn the_navi_changing_chips_change_the_navi() {
             assert!(testing::content().chip(chip).codes.contains(&code));
             *slot = Some(FolderChip::new(chip, code));
         }
-        s.players[0].folder = Some(folder);
+        s.players[0].folder = folder;
         s
     };
     let tape = scenario::record_on(setup(), 2400, 5);
