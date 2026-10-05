@@ -354,6 +354,7 @@
 "c-cannon" = { id = 0x19d, action = 0x08, subtype = 3, damage_formula = 61 }
 "satelity" = { id = 0x195, action = 0x07, subtype = 3, damage_formula = 54 }
 "meddycap" = { id = 0x19a, action = 0x07, subtype = 3, damage_formula = 60 }
+"airforce" = { id = 0x192, action = 0x07, subtype = 3, damage_formula = 52 }
 "t-swing" = { id = 0x1a2, action = 0x08, subtype = 3, damage_formula = 68 }
 "splitup" = { id = 0x19e, action = 0x0a, subtype = 0, damage_formula = 64 }
 "kcrusher" = { id = 0x1a5, action = 0x08, subtype = 1, damage_formula = 70 }

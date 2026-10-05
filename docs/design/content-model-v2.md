@@ -247,6 +247,8 @@ export type NaviSpec = {
     story: { hp: { number }, max_level: number }?,  -- EXE5's team navis: the HP by the story's progress,
                                                   -- the last level (tools fill a side's stats from it)
     palette_step: number?,                        -- what its palettes go by (EXE5's team navis')
+    charge_glow_lift: { anims: { number }, pixels: number }?,  -- its animations that lift its charge glow
+                                                  -- (EXE5's GyroMan's in the air)
     chip_bonus: { family: ChipFamily, dimming_chips: boolean?, by_level: { number } }?,
     identity: Identity,                           -- the NameID record: attach points, actor type, parts
     actions: { [string]: Action }?,               -- a link navi's own actions
@@ -2811,7 +2813,7 @@ registries, the object tables, the text). It is not committed here.
 generator can't run over a content root that has people's modules at its paths, so a writer whose modules
 people have since reshaped is dead code. With step 12 the stages', the lock-on modes' and the statuses'
 writers are retired (`gen_stages`, `gen_lockon`, `gen_status`: the definitions lost their legacy markers and
-name kinds, variants and each other in forms the generator never wrote): content/exe6/stages/netbattle.luau,
+name kinds, variants and each other in forms the generator never wrote): content/exe6/stages.luau,
 rules/lockon.luau and rules/status.luau are edited by hand, and `gen-content check` compares them with the ROM through compat. `gen-content write` still writes
 compat's numbers for them (stages.toml, records.toml, rules.toml), keeping the committed keys.
 
