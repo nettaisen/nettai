@@ -2,8 +2,8 @@
 //! game, the arena, and each side's navi, version, stats,
 //! folder, Crosses and patch cards), as a human-readable TOML file of
 //! names (docs/frontend.md §6), checked against the content (`check`), and
-//! the round it plays ([`Match::round`]). Live play's random draw of one
-//! is here too (`draw`), so a drawn setup can be written out and edited.
+//! the round it plays ([`Match::round`]). Live play's random pick of one
+//! is here too (`pick`), so a random setup can be written out and edited.
 //!
 //! nettai-frontend plays a match file (`--match`), and netplay's offers are
 //! a side of one: the same checks refuse a bad file and a bad offer.
@@ -17,7 +17,7 @@
 mod cross_list;
 pub mod check;
 pub mod auto_battle;
-pub mod draw;
+pub mod pick;
 pub mod facts;
 pub mod file;
 pub mod folders;
@@ -47,7 +47,7 @@ use nettai_content_api::{NaviHandle, StageHandle, SystemHandle};
 
 pub use check::{check_match, check_side};
 pub use auto_battle::AutoBattle;
-pub use draw::Draws;
+pub use pick::Picks;
 pub use file::{parse, write};
 pub use import::save_game;
 pub use folders::Folder;
@@ -97,7 +97,7 @@ pub fn systems(content: &Content) -> &[SystemHandle] {
     content.defs.ruleset_systems()
 }
 
-/// What the send of a side's auto battle data draws from, with the seed
+/// What the send of a side's auto battle data picks from, with the seed
 /// and the side.
 const AUTO_BATTLE_SALT: u32 = 0x5441_4354;
 
@@ -248,7 +248,7 @@ pub fn sp_slots(content: &Content) -> &[String] {
 }
 
 /// A whole match: the arena and both sides (the left, side 0, then the
-/// right), and the seed its setup and battle are drawn from, if it names
+/// right), and the seed its setup and battle are picked from, if it names
 /// one.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Match {
@@ -290,7 +290,7 @@ impl Match {
     /// have auto battle the auto battle data the game's battle end
     /// writes of a player it has learned nothing of
     /// (`AutoBattle::nothing_learned`). No seed (the
-    /// battle's is drawn when it is played). Its folders are none the
+    /// battle's is picked when it is played). Its folders are none the
     /// checks accept until they are made, nor is a side without the version
     /// its game takes.
     pub fn empty(content: &Content, game: &str) -> Result<Match, String> {
@@ -404,13 +404,13 @@ impl Match {
 /// settings and score the round's end hands over, the players' folders
 /// shuffled again by their consoles' RNG where the round left it (the
 /// original's carries on through the next init's shuffle), the battle's
-/// RNG drawn from the first round's and the round's number. Both peers of
+/// RNG picked from the first round's and the round's number. Both peers of
 /// a netplay match build the same from their settled states.
 pub fn next_round(content: &Content, first: &RoundSetup, folders: &[SavedFolder; 2], ended: &Battle, settings: BattleSettings, score: SetScore) -> RoundSetup {
     let mut next = first.clone();
     next.settings = settings;
     next.score = score;
-    next.rng = Draws::new(first.rng ^ (score.round as u32) << 24).next() as u32;
+    next.rng = Picks::new(first.rng ^ (score.round as u32) << 24).next() as u32;
     for (side, folder) in folders.iter().enumerate() {
         let console = &ended.consoles[side];
         let mut rng = console.rng;
@@ -422,8 +422,8 @@ pub fn next_round(content: &Content, first: &RoundSetup, folders: &[SavedFolder;
     next
 }
 
-/// The stages a link battle of `game` draws from: the game's link battle
-/// stages that aren't the random battle's (`sub_81209DC` draws a link
+/// The stages a link battle of `game` picks from: the game's link battle
+/// stages that aren't the random battle's (`sub_81209DC` picks a link
 /// battle's from the settings records 0 to 0x5F; those from 0x60 on are
 /// the random battle's, `effects::RANDOM`). A match is fought on one of
 /// them.

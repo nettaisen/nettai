@@ -170,7 +170,7 @@ forces a link battle stage by its name in the game (`netbattle-1` to
 (the Japanese games', docs/engine/patch-cards.md: names comma-separated in
 the order they apply, `-name` switched off, e.g. `canodumb,-shadow`),
 and with `--headless`, `--keys` holds buttons on given ticks (below).
-`--match FILE` plays a match file instead of a random draw (§6: you are its
+`--match FILE` plays a match file instead of a random pick (§6: you are its
 left side; it names the game, the stage and the patch cards, so `--game`,
 `--stage` and `--cards` don't go with it; `--seed` overrides its seed), and
 `--save-match FILE` writes the match played, live play's draw or the one
@@ -190,17 +190,20 @@ the trace's recorded state is printed too. Frame numbers are the trace's.
 is a netbattle on EXE6's content between two MegaMen at their fresh stats
 (100 HP, as a new match's in the editor: `nettai_match::Side::fresh`) with
 no NaviCust programs (so roads carry them and holes stop them), set up at
-random from the seed (`nettai_match::draw::live`, which prints what it
+random from the seed (`nettai_match::pick::live`, which prints what it
 drew), unless a match file sets it up (`--match`, §6). (`--game exe5` draws a plain EXE5 match instead:
 EXE5's rules, a stage of its link battles, and on each side EXE5's
 MegaMan at his fresh stats with a folder its rules accept.)
 
-- **The field**: one of the 96 link battle stages the content defines (the
-  settings records a link battle draws from, `sub_81209DC`: the stages with
-  the link effect and not the random battle's), with a background picked at
-  random as a link battle picks one: from the table the game's `flow` rules state
-  (`link_backgrounds`: EXE6's `byte_8120A20`, which gen-content checks
-  against the ROM). The set's later rounds get theirs the same way.
+- **The field**: a stage and a background picked at random as a link battle
+  picks them, from the game's rule section `link_pick` (`sub_81209DC`: its
+  `stages`, the stage for each index of the original's pick, EXE6's 96 link
+  battle stages each once; its `backgrounds`, EXE6's `byte_8120A20`). The
+  set's later rounds get theirs the same way. gen-content checks both lists
+  against the ROM, and verify's `link_pick` test checks them against every
+  recording's later rounds. (EXE5's are its own: 96 indices over 82 stages,
+  the first twelve records twice and twelve stages never, as its 0x08129F2C
+  picks; and 27 backgrounds.)
 - **A folder for each player**: 30 chips that keep EXE6's folder rules
   (`nettai_match::folders`: the folder editor's, `sub_8135080` with `sub_8135500`: copies
   of a chip by its MB, five up to 19 MB down to one from 50; Mega and Giga
@@ -258,7 +261,7 @@ frontend's side is `netplay`):
   this one's ...)"). Each player then brings their own side of the match (an
   offer, by name in the game as a match file names things): a match file's
   left side (`--match`), or a folder, a version and five Crosses drawn from
-  their own `--seed` (as live play draws a player's) with their patch cards
+  their own `--seed` (as live play picks a player's) with their patch cards
   (`--cards`); the other player's is checked against the content as a match
   file's side is (`nettai_match::check_side`, §6). Both play by the game's
   rules (a game has one ruleset, so an offer names none). The language (`--lang`) is each player's own. The field
@@ -943,7 +946,7 @@ another game has it or not. `--match FILE` plays one (you are its left
 side), `--save-match FILE` writes the match played, and nettai-editor makes
 and edits them (README.md, "The match editor"). The crate `nettai-match`
 reads, checks and writes them, and builds the round (`Match::round`); live
-play's random draw is a match too (`nettai_match::draw::live`), so a drawn
+play's random pick is a match too (`nettai_match::pick::live`), so a random
 setup written out and played again is the same battle (the frontend's test
 `a_saved_match_plays_the_same_battle` compares the digest every tick).
 
@@ -998,7 +1001,7 @@ byte): nothing fills one in (the engine itself starts no round whose
 player's setup leaves an enum of its rules' unstated: EXE6's `version` has
 no default), and a file without it is refused with where
 it is missing. A new match's sides have none until they are given theirs
-(the editor asks beside the game, with nothing chosen), and a drawn match
+(the editor asks beside the game, with nothing chosen), and a random match
 draws each side's from its seed and writes it. An EXE5 match has no
 version: Team ProtoMan and Team Colonel play alike (its rules take none: a
 side may hold either version's souls and chips), so a `version` in an EXE5
@@ -1280,7 +1283,7 @@ the send writes, and the block's last eight bytes, which nothing reads.
 itself and through a match file, to the same places and records, over
 blocks of each awkward shape.
 
-A random match (`nettai_match::draw`, the editor's Random) states the data
+A random match (`nettai_match::pick`, the editor's Random) states the data
 too: what the game would have written for a player who used each chip of the
 drawn folder once and learned no pattern (`AutoBattle::of_folder`: the
 folder's most held standard, mega and giga chips in their lists, every

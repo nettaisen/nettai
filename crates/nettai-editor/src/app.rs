@@ -497,7 +497,7 @@ impl Editor {
             }
             Msg::Draw => {
                 let seed = self.m.seed.unwrap_or(1).wrapping_mul(0x2545_F491).wrapping_add(7);
-                if let Ok(m) = nettai_match::draw::live(&content, self.m.game(), seed, None) {
+                if let Ok(m) = nettai_match::pick::live(&content, self.m.game(), seed, None) {
                     self.m = m;
                     self.forget_sides();
                     self.edited();
@@ -522,7 +522,7 @@ impl Editor {
             Msg::LaterSame(same) => {
                 if same {
                     self.m.arena.later = [self.m.arena.first.clone(), self.m.arena.first.clone()];
-                } else if let Ok(a) = nettai_match::draw::arena(&content, &self.m.arena.game, &mut nettai_match::Draws::new(self.m.seed.unwrap_or(1)), None) {
+                } else if let Ok(a) = nettai_match::pick::arena(&content, &self.m.arena.game, &mut nettai_match::Picks::new(self.m.seed.unwrap_or(1)), None) {
                     self.m.arena.later = a.later;
                 }
                 self.edited();
