@@ -289,6 +289,12 @@ pub fn chip_damage_formula(b: &Battle, id: nettai_content_api::ChipHandle, side:
             // init exchange set from the save's story flags; a side that
             // operates a navi with such a chip states it, `Battle::new`).
             let level = b.navi_levels[side as usize & 1];
+            // A side that states none operates no such navi and holds no
+            // such chip: the custom screen reads every formula's damage
+            // each tick, for the hand it may build.
+            if level == 0xFF {
+                return 0;
+            }
             *by_level.get(level as usize).unwrap_or_else(|| {
                 panic!(
                     "chip {:?}'s damage by level reads past its row at level {level:#04x} (0x0800EBC4)",
