@@ -209,6 +209,17 @@ pub struct NaviForms {
     /// The souls the custom screen's soul button offers (each a form with
     /// its [`SoulData`]).
     pub souls: Vec<FormHandle>,
+    /// The forms its form list offers, by version of its game, in the
+    /// list's order (the table's `<version>.crosses`: EXE6's Crosses). A
+    /// frontend numbers a version's pictures of them by it.
+    pub by_version: Vec<(String, Vec<FormHandle>)>,
+}
+
+impl NaviForms {
+    /// The forms the form list offers a player of `version`, in order.
+    pub fn listed(&self, version: &str) -> &[FormHandle] {
+        self.by_version.iter().find(|(v, _)| v == version).map_or(&[], |(_, forms)| forms)
+    }
 }
 
 /// A navi's stats when a navi switch brings it fresh (`byte_80210DD`,
