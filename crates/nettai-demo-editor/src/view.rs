@@ -1,15 +1,16 @@
 //! What the editor shows: a bar of file actions, the panes (the arena, with
-//! the match's game, then each side's navi, folder, Crosses, souls,
+//! the match's game, then each side's navi, folder, the lists its game's
+//! rules take of it (`crate::facts`: EXE6's Cross list, EXE5's souls),
 //! auto battle data, patch cards and stats; only what the game's rules
 //! have, every list the game's), and the problems, live.
 
 use crate::app::{App, Choice, Editor, Msg, Tab};
 use crate::names::Lang;
-use iced::widget::{Column, Row, button, checkbox, column, container, image, pick_list, row, rule, scrollable, slider, space, text, text_input};
+use iced::widget::{Column, Row, button, checkbox, column, container, image, pick_list, row, rule, scrollable, space, text, text_input};
 use iced::{Alignment, Color, Element, Length, Theme};
 use nettai_battle::content::{ChipClass, ChipFlags};
 use nettai_match::stats::{self, Kind, Value};
-use nettai_match::{FORMS_SYSTEM, NAVICUST_SYSTEM, PATCH_CARDS_SYSTEM};
+use nettai_match::{NAVICUST_SYSTEM, PATCH_CARDS_SYSTEM};
 
 pub const SIDES: [&str; 2] = ["Left (you)", "Right"];
 pub(crate) const RED: Color = Color::from_rgb(0.85, 0.2, 0.2);
@@ -26,6 +27,12 @@ fn label<'a>(s: impl text::IntoFragment<'a>) -> Element<'a, Msg> {
 
 fn field<'a>(name: impl text::IntoFragment<'a>, widget: impl Into<Element<'a, Msg>>) -> Element<'a, Msg> {
     row![label(name), widget.into()].spacing(8).align_y(Alignment::Center).into()
+}
+
+/// [`nav`], for a name made up as the view is.
+fn nav_owned<'a>(name: String, tab: Tab, now: Tab) -> Element<'a, Msg> {
+    let b = button(text(name).size(14)).width(Length::Fill).on_press(Msg::Tab(tab));
+    b.style(if tab == now { button::primary } else { button::text }).into()
 }
 
 fn nav<'a>(name: &'a str, tab: Tab, now: Tab) -> Element<'a, Msg> {
@@ -92,15 +99,14 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         tabs = tabs.push(text(*name).size(13).color(DIM));
         tabs = tabs.push(nav("  Navi", Tab::Navi(s), e.tab));
         tabs = tabs.push(nav("  Folder", Tab::Folder(s), e.tab));
-        if nettai_match::ruleset_has_system(&e.content, FORMS_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
-            tabs = tabs.push(nav("  Crosses", Tab::Crosses(s), e.tab));
+        // (The lists the game's rules take of a side, each a pane: EXE6's
+        // Cross list, where the navi has forms to list; EXE5's souls.)
+        for (index, title) in crate::facts::lists(&e.content, e.m.game(), side) {
+            tabs = tabs.push(nav_owned(format!("  {title}"), Tab::List(s, index), e.tab));
         }
-        // (Souls and patch cards are the navi's that changes form: a team
-        // navi has no soul button, and the cards change MegaMan's stats.)
+        // (Patch cards are the navi's that changes form: the cards change
+        // MegaMan's stats.)
         let changes_form = e.content.navi(side.navi).forms.is_some();
-        if changes_form && nettai_match::facts::takes(&e.content, nettai_match::facts::SOULS_FIELD) {
-            tabs = tabs.push(nav("  Souls", Tab::Souls(s), e.tab));
-        }
         // (Where the game's rules have auto battle: EXE5's.)
         if nettai_match::auto_battle::has(&e.content) {
             tabs = tabs.push(nav("  Auto battle", Tab::AutoBattle(s), e.tab));
@@ -118,8 +124,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         Tab::Arena => arena(e),
         Tab::Navi(s) => navi(e, s),
         Tab::Folder(s) => folder(e, s),
-        Tab::Crosses(s) => crosses(e, s),
-        Tab::Souls(s) => souls(e, s),
+        Tab::List(s, index) => crate::facts::list(e, s, index),
         Tab::AutoBattle(s) => crate::auto_battle::view(e, s),
         Tab::Cards(s) => cards(e, s),
         Tab::NaviCust(s) => crate::navicust::view(e, s),
@@ -201,17 +206,7 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     let navis: Vec<Choice<_>> = nettai_match::navis(c, e.m.game()).into_iter().map(|n| Choice { label: e.names.navi(c, n), value: n }).collect();
     let navi = Choice { label: e.names.navi(c, side.navi), value: side.navi };
     let level = e.typed.get(&(s, "level")).cloned().unwrap_or(side.navi_level.map_or(String::new(), |l| l.to_string()));
-    let frags = e.typed.get(&(s, "bug_frags")).cloned().unwrap_or(side.bug_frags.to_string());
     let mut col = column![heading(SIDES[s]), field("Navi", pick_list(navis, Some(navi), move |n| Msg::Navi(s, n)))].spacing(10);
-    // What the rules and the navi take, alone: EXE6's version, a navi
-    // code's level (`nettai_match::facts`). The version has nothing chosen
-    // for a new side: neither is a default.
-    if nettai_match::Side::takes_version(c) {
-        col = col.push(field("Version", version_list(e, s)));
-        if side.version.is_none() {
-            col = col.push(text("The side's version of the game isn't chosen: its Beast, its own Crosses and its pictures go by it.").size(13).color(RED));
-        }
-    }
     // (No navi code for EXE5's MegaMan.)
     let level_kind = side.takes_level(c).then(|| c.navi(side.navi).forms.is_none());
     if level_kind == Some(true) {
@@ -233,7 +228,13 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
                 .color(DIM),
         );
     }
-    col = col.push(field("Bug frags", text_input("0", &frags).on_input(move |t| Msg::BugFrags(s, t)).width(Length::Fixed(100.0))));
+    // What the game's rules take of the side, each by its setup field's
+    // type (`crate::facts`): EXE6's version (nothing chosen for a new
+    // side: none is a default), EXE5's karma. The lists have their panes.
+    col = col.push(rule::horizontal(1));
+    col = col.push(text("What the rules take").size(16));
+    col = col.push(crate::facts::rows(e, s));
+    col = col.push(rule::horizontal(1));
     col = col.push(button("Import from save…").on_press(Msg::ImportSave(s)));
     col = col.push(
         text(
@@ -245,10 +246,6 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
         .size(13)
         .color(DIM),
     );
-    if nettai_match::facts::takes(c, nettai_match::facts::KARMA_FIELD) {
-        col = col.push(rule::horizontal(1));
-        col = col.push(karma(e, s));
-    }
     if nettai_match::Side::takes_sp_times(c) {
         col = col.push(rule::horizontal(1));
         col = col.push(sp_times(e, s));
@@ -256,48 +253,6 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     col = col.push(rule::horizontal(1));
     col = col.push(round_stats(e, s));
     scrollable(col).into()
-}
-
-/// A side's version of the game: the versions the game's rules declare
-/// (`facts::versions`: EXE6's Falzar and Gregar), with nothing chosen until
-/// the side has one: none is a default.
-fn version_list(e: &Editor, s: usize) -> Element<'_, Msg> {
-    let versions: Vec<Choice<String>> = nettai_match::facts::versions(&e.content)
-        .iter()
-        .map(|name| Choice { label: nettai_match::facts::version_title(name), value: name.clone() })
-        .collect();
-    let version = versions.iter().find(|g| Some(&g.value) == e.side(s).version.as_ref()).cloned();
-    pick_list(versions, version, move |g| Msg::Version(s, g)).placeholder("choose one").into()
-}
-
-/// A side's karma (EXE5's light/dark value, the save's): a slider and its
-/// number, and a fresh save's value to go back to, which is the rules'
-/// default (stated in the content alone). What a value does is the light
-/// and dark system's to say: this pane states none of its rules.
-fn karma(e: &Editor, s: usize) -> Element<'_, Msg> {
-    let v = e.side(s).karma;
-    let fresh = nettai_match::facts::default_karma(&e.content);
-    let most = nettai_match::facts::MAX_KARMA;
-    let set = move |x: u16| Msg::Karma(s, x);
-    let shown = e.typed.get(&(s, "karma")).cloned().unwrap_or_else(|| v.to_string());
-    column![
-        text("Light and dark").size(16),
-        row![
-            label_text("Karma".into()),
-            slider(0..=most, v.min(most), set).step(10u16).width(Length::Fixed(300.0)),
-            text_input(&fresh.to_string(), &shown).on_input(move |t| Msg::KarmaText(s, t)).width(Length::Fixed(70.0)),
-            button(text(format!("A fresh save's ({fresh})")).size(13)).on_press(set(fresh)).style(button::secondary),
-        ]
-        .spacing(8)
-        .align_y(Alignment::Center),
-        text(format!("The save's light/dark value, 0 to {most}.")).size(13).color(DIM),
-    ]
-    .spacing(6)
-    .into()
-}
-
-fn label_text<'a>(s: String) -> Element<'a, Msg> {
-    text(s).size(14).width(Length::Fixed(160.0)).into()
 }
 
 /// The side's SP navi deletion times (`mm:ss.cc`; empty the fastest), each
@@ -561,71 +516,6 @@ pub(crate) fn class_letter(c: ChipClass) -> &'static str {
         ChipClass::Giga => "G",
         _ => "?",
     }
-}
-
-// ---- A side's Crosses ------------------------------------------------------------------------
-
-fn crosses(e: &Editor, s: usize) -> Element<'_, Msg> {
-    let c = &e.content;
-    let side = e.side(s);
-    let own = side.crosses.is_none();
-    let mut col = column![
-        heading(format!("{}: Crosses", SIDES[s])),
-        checkbox(own).label("The version's own five (the save's)").on_toggle(move |b| Msg::OwnCrosses(s, b)),
-    ]
-    .spacing(8);
-    if !own {
-        let list: Vec<_> = side.crosses.map(|l| l.forms().collect()).unwrap_or_default();
-        col = col.push(text(format!("{} of {} chosen; the window offers them in this order.", list.len(), nettai_battle::custom::screen::CROSSES)).size(13).color(DIM));
-        for f in nettai_match::navi_crosses(c, side.navi).unwrap_or_default() {
-            let on = list.contains(&f);
-            // (Whose version's the Cross is: the form's own `version`.)
-            let version = c.form(f).version.as_deref().map_or(String::new(), nettai_match::facts::version_title);
-            col = col.push(checkbox(on).label(format!("{} ({version})", e.names.form(c, f))).on_toggle(move |b| Msg::Cross(s, f, b)));
-        }
-    }
-    scrollable(col).into()
-}
-
-// ---- A side's souls ------------------------------------------------------------------------
-
-/// The souls the side has (EXE5's Soul Unison): every soul of the match's
-/// game (the default), or those checked, of either version. A soul whose
-/// chip family the folder never holds never comes up.
-fn souls(e: &Editor, s: usize) -> Element<'_, Msg> {
-    let c = &e.content;
-    let side = e.side(s);
-    let every = side.souls.is_none();
-    let owned = nettai_match::facts::owned_souls(c, e.m.game(), side);
-    let all = nettai_match::facts::all_souls(c, e.m.game());
-    let mut col = column![
-        heading(format!("{}: souls", SIDES[s])),
-        text("The souls the soul button may offer (for the last chip picked of the soul's family). Any of the game's souls, either version's: a real save has its version's six.")
-            .size(13)
-            .color(DIM),
-        checkbox(every).label("Every soul (the default)").on_toggle(move |b| Msg::EverySoul(s, b)),
-        text(format!("{} of {} souls", owned.len(), all.len())).size(13).color(DIM),
-    ]
-    .spacing(8);
-    for f in all {
-        let form = c.form(f);
-        let face: Element<Msg> = match e.pictures.face(&c.defs.form(f).key) {
-            Some(h) => image(h.clone()).width(64).height(32).filter_method(image::FilterMethod::Nearest).into(),
-            None => space().width(64).height(32).into(),
-        };
-        let about = form.soul.as_ref().map_or(String::new(), |x| format!("for {:?} chips", x.family).to_lowercase());
-        let on = owned.contains(&f);
-        let mut tick = checkbox(on);
-        if !every {
-            tick = tick.on_toggle(move |b| Msg::Soul(s, f, b));
-        }
-        col = col.push(
-            row![tick, face, text(e.names.form(c, f)).size(15).width(Length::Fixed(160.0)), text(about).size(13).color(DIM)]
-                .spacing(10)
-                .align_y(Alignment::Center),
-        );
-    }
-    scrollable(col).into()
 }
 
 // ---- A side's patch cards ------------------------------------------------------------------

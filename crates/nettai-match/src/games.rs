@@ -6,10 +6,44 @@
 //! EXE5's karma and souls, and a name another game has but the match's
 //! hasn't refused as any unknown name is.
 
+use crate::facts::Stated;
 use crate::testing::{exe5_content, exe6_content};
 use crate::{Match, check_match};
 use nettai_battle::content::Content;
+use nettai_battle::rules::Fact;
+use nettai_content_api::{FormHandle, Registry, Value};
 use std::sync::Arc;
+
+/// A number, a flag and forms of `game` by name, as a side's fact takes
+/// them.
+fn number(n: i64) -> [Fact<'static>; 1] {
+    [Fact::Value(Value::Int(n))]
+}
+
+fn flag(on: bool) -> [Fact<'static>; 1] {
+    [Fact::Value(Value::Bool(on))]
+}
+
+fn forms(content: &Content, game: &str, names: &[&str]) -> Vec<Fact<'static>> {
+    names.iter().map(|n| Fact::Value(Value::Def(Registry::Form, crate::ids::form(content, game, n).unwrap().0))).collect()
+}
+
+/// EXE5's souls, of both versions: what a side that says nothing has, in
+/// the forms' order.
+const EXE5_SOULS: [&str; 12] = [
+    "colonelsoul",
+    "gyrosoul",
+    "knightsoul",
+    "magnetsoul",
+    "meddysoul",
+    "napalmsoul",
+    "numbersoul",
+    "protosoul",
+    "searchsoul",
+    "shadowsoul",
+    "toadsoul",
+    "tomahawksoul",
+];
 
 /// A match file's text of `game`: its first link battle stage, and the
 /// sides `left` and `right` (each a side's table body).
@@ -141,11 +175,14 @@ fn an_unknown_name_is_refused() {
     let content = exe5_content();
     let says = |e: Vec<String>, what: &str| assert!(e.iter().any(|p| p.starts_with(what)), "{what:?} not in {e:?}");
     let ok = exe5(&TANGO_EXE5, "");
-    // An EXE6 navi, Cross and NaviCust program: none of EXE5's.
+    // An EXE6 navi, Cross (as a soul: EXE5's rules take no Cross list at
+    // all) and NaviCust program: none of EXE5's.
     // (EXE5 has a ProtoMan of its own: HeatMan is EXE6's alone.)
     says(parse(&content, &side("heatman", &TANGO_EXE5, ""), &ok).unwrap_err(), "left: no navi \"heatman\" in exe5");
-    let crosses = exe5(&TANGO_EXE5, "crosses = [\"heatcross\"]");
-    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no Cross \"heatcross\" in exe5");
+    let crosses = exe5(&TANGO_EXE5, "souls = [\"heatcross\"]");
+    says(parse(&content, &crosses, &ok).unwrap_err(), "left: souls: no form \"heatcross\" in exe5");
+    let crosses = exe5(&TANGO_EXE5, "cross_list = [\"heatcross\"]");
+    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no field \"cross_list\" (a side of exe5 takes karma, chaos_unison, soul_unison, souls)");
     // A chip of EXE6's alone (HeatMan), a qualified name, a misspelling:
     // one error.
     let six = exe6_content();
@@ -181,9 +218,12 @@ fn a_matchs_lookups_only_see_its_game() {
         let of = |key: &str| crate::ids::in_game(&content, game, key);
         assert!(crate::link_battle_stages(&content, game).iter().all(|&s| of(&content.defs.stage(s).key)));
         assert!(crate::navis(&content, game).iter().all(|&n| of(&content.defs.navi(n).key)));
-        assert!(crate::facts::all_souls(&content, game).iter().all(|&f| of(&content.defs.form(f).key)));
         let m = crate::pick::live(&content, game, 5, None).unwrap();
         assert_eq!(check_match(&content, &m), Vec::<String>::new(), "{game}");
+        // (The forms its sides' facts hold: a picked Cross list, the souls
+        // a side that says nothing has.)
+        let held: Vec<u16> = crate::facts::fields(&content).iter().flat_map(|f| m.sides[0].facts.get(&content, f.name).unwrap().defs()).collect();
+        assert!(!held.is_empty() && held.iter().all(|&f| of(&content.defs.form(FormHandle(f)).key)), "{game}");
         let mut b = crate::check::start(&content, &m).unwrap();
         let pool = crate::folders::pool(&content, game, &mut b, 0);
         assert!(pool.len() > 100 && pool.iter().all(|&c| of(&content.defs.chip(c).key)), "{game}: {} chips", pool.len());
@@ -195,10 +235,10 @@ fn a_matchs_lookups_only_see_its_game() {
         assert!(text.contains(&format!("game = \"{game}\"")) && !text.contains("exe5:") && !text.contains("exe6:"), "{text}");
         assert_eq!(crate::parse(&content, &text).unwrap(), m);
     }
-    // EXE5's souls aren't EXE6's (EXE6 has none); EXE6's names are none of
-    // EXE5's content's.
-    assert!(crate::facts::all_souls(&exe6_content(), "exe6").is_empty());
-    assert!(!crate::facts::all_souls(&exe5_content(), "exe5").is_empty());
+    // EXE5's souls aren't EXE6's; EXE6's names are none of EXE5's
+    // content's.
+    assert_eq!(crate::ids::form(&exe6_content(), "exe6", "protosoul"), None);
+    assert!(crate::ids::form(&exe5_content(), "exe5", "protosoul").is_some());
     assert_eq!(crate::ids::form(&exe5_content(), "exe6", "heatcross"), None);
     assert_eq!(crate::ids::games(&exe5_content()), ["exe5"]);
     // A match of another game than the content's makes no match.
@@ -238,6 +278,61 @@ fn a_exe5_match_plays() {
     assert!(used.iter().all(|u| !u.is_empty() && u.iter().all(|k| crate::ids::in_game(&content, "exe5", k))), "{used:?}");
 }
 
+/// What a match is, in words: each side's navi and the facts it states,
+/// each as its name and value; a fact at its rules' default isn't said.
+#[test]
+fn a_match_is_described_by_its_facts() {
+    let six = exe6_content();
+    let mut m = crate::pick::live(&six, "exe6", 1, None).unwrap();
+    let side = &mut m.sides[0];
+    side.set_fact(&six, "version", &[Fact::Name("falzar")]).unwrap();
+    side.set_fact(&six, "cross_list", &forms(&six, "exe6", &["heatcross", "spoutcross"])).unwrap();
+    side.set_fact(&six, "beast_out", &flag(false)).unwrap();
+    side.set_fact(&six, "crosses", &[true, false, true, true, true].map(|on| Fact::Value(Value::Bool(on)))).unwrap();
+    side.set_fact(&six, "bug_frags", &number(9)).unwrap();
+    let said = crate::describe(&six, &m, 1, false, 0);
+    let line = said.lines().nth(1).unwrap();
+    assert_eq!(line, "  MegaMan (you); cross_list: HeatCross, SpoutCross; crosses: yes, no, yes, yes, yes; version: falzar; beast_out: no; bug_frags: 9");
+    let five = exe5_content();
+    let mut m = parse(&five, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
+    assert_eq!(crate::describe(&five, &m, 1, false, 0).lines().nth(1).unwrap(), "  MegaMan (you)");
+    m.sides[0].set_fact(&five, "karma", &number(100)).unwrap();
+    m.sides[0].set_fact(&five, "souls", &[]).unwrap();
+    assert_eq!(crate::describe(&five, &m, 1, false, 0).lines().nth(1).unwrap(), "  MegaMan (you); karma: 100; souls: none");
+}
+
+/// What a tool offers for a side's list of definitions: for the engine's
+/// form list, the forms of the navi's own lists (EXE6's ten Crosses, in its
+/// versions' order; none for a navi without); else what the rules' default
+/// lists (EXE5's twelve souls), with whatever else the side's list holds.
+#[test]
+fn a_list_fact_offers_its_definitions() {
+    let six = exe6_content();
+    let m = crate::pick::live(&six, "exe6", 1, None).unwrap();
+    let field = crate::facts::field(&six, "cross_list").unwrap();
+    let offered = crate::facts::offered(&six, "exe6", &m.sides[0], &field).unwrap();
+    let megaman = six.navi(m.sides[0].navi).forms.as_ref().unwrap();
+    let own: Vec<u16> = megaman.listed("gregar").iter().chain(megaman.listed("falzar")).map(|f| f.0).collect();
+    assert_eq!((offered.len(), &offered), (10, &own));
+    let mut link = m.sides[0].clone();
+    link.navi = crate::ids::navi(&six, "exe6", "protoman").unwrap();
+    assert_eq!(crate::facts::offered(&six, "exe6", &link, &field), Some(Vec::new()));
+    // (Flags and single values are no lists of definitions.)
+    for name in ["crosses", "version", "beast_out", "bug_frags"] {
+        assert_eq!(crate::facts::offered(&six, "exe6", &m.sides[0], &crate::facts::field(&six, name).unwrap()), None, "{name}");
+    }
+    let five = exe5_content();
+    let mut m = parse(&five, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
+    let field = crate::facts::field(&five, "souls").unwrap();
+    let souls: Vec<u16> = EXE5_SOULS.map(|n| crate::ids::form(&five, "exe5", n).unwrap().0).to_vec();
+    assert_eq!(crate::facts::offered(&five, "exe5", &m.sides[0], &field), Some(souls.clone()));
+    // (A form the default doesn't list, MegaMan's base form, stated all the
+    // same: offered after.)
+    m.sides[0].set_fact(&five, "souls", &forms(&five, "exe5", &["protosoul", "base"])).unwrap();
+    let base = crate::ids::form(&five, "exe5", "base").unwrap().0;
+    assert_eq!(crate::facts::offered(&five, "exe5", &m.sides[0], &field).unwrap(), [souls, vec![base]].concat());
+}
+
 /// An EXE5 side's karma and souls write to a match file and read back; the
 /// karma's default (a fresh save's 500) and an unlisted soul list (every
 /// soul) are left out, so old files load unchanged.
@@ -247,33 +342,49 @@ fn karma_and_souls_write_and_read_back() {
     let left = exe5(&TANGO_EXE5, "").replacen("navi = \"megaman\"\n", "navi = \"megaman\"\nkarma = 100\nsouls = [\"protosoul\", \"colonelsoul\"]\n", 1);
     let m = parse(&content, &left, &exe5(&TANGO_EXE5, "")).unwrap_or_else(|p| panic!("{p:?}"));
     let s = &m.sides[0];
-    assert_eq!(s.karma, 100);
-    let souls = ["protosoul", "colonelsoul"].map(|n| crate::ids::form(&content, "exe5", n).unwrap());
-    assert_eq!(s.souls, Some(souls.to_vec()), "either version's");
+    assert_eq!(s.facts.get(&content, "karma"), Some(Stated::Number(100)));
+    let souls = ["protosoul", "colonelsoul"].map(|n| crate::ids::form(&content, "exe5", n).unwrap().0);
+    assert_eq!(s.facts.get(&content, "souls").unwrap().defs(), souls, "either version's");
     let text = crate::write(&content, &m);
     assert!(text.contains("karma = 100") && text.contains("souls = [") && text.contains("\"colonelsoul\""), "{text}");
     assert_eq!(crate::parse(&content, &text).unwrap(), m);
     // A side that says nothing of them: the defaults, nothing written.
     let plain = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
-    assert_eq!((plain.sides[0].karma, plain.sides[0].souls.clone()), (500, None));
+    assert_eq!(plain.sides[0].facts, crate::Facts::defaults(&content));
+    assert_eq!(plain.sides[0].facts.get(&content, "karma"), Some(Stated::Number(500)));
+    let all: Vec<u16> = EXE5_SOULS.map(|n| crate::ids::form(&content, "exe5", n).unwrap().0).to_vec();
+    assert_eq!(plain.sides[0].facts.get(&content, "souls").unwrap().defs(), all);
     let text = crate::write(&content, &plain);
     assert!(!text.contains("karma") && !text.contains("souls"), "{text}");
-    // Karma past 1000; karma and a soul list under EXE6's rules; an EXE6
-    // Cross, no soul of EXE5's.
+    // No souls at all is stated too (an empty list isn't the default).
+    let none = exe5(&TANGO_EXE5, "").replacen("navi = \"megaman\"\n", "navi = \"megaman\"\nsouls = []\n", 1);
+    let m = parse(&content, &none, &exe5(&TANGO_EXE5, "")).unwrap();
+    assert!(m.sides[0].facts.get(&content, "souls").unwrap().defs().is_empty());
+    let text = crate::write(&content, &m);
+    assert!(text.contains("souls = []"), "{text}");
+    assert_eq!(crate::parse(&content, &text).unwrap(), m);
+    // Karma and a soul list under EXE6's rules, which take neither: the
+    // facts EXE6 takes are said. (An EXE6 Cross is none of EXE5's forms.)
     let bad = side("megaman", &EXE6, "").replacen("navi = \"megaman\"\n", "navi = \"megaman\"\nkarma = 1200\nsouls = [\"heatcross\"]\n", 1);
     let six = exe6_content();
     let e = parse_in(&six, "exe6", &side("megaman", &EXE6, ""), &bad).unwrap_err();
-    for p in [
-        "right: karma 1200: the light/dark value is 0 to 1000",
-        "right: karma, but exe6 has no light and dark MegaMan (no system takes `karma`)",
-        "right: a soul list, but exe6 has no Soul Unison (no system takes `souls`)",
-        "right: HeatCross is no soul",
-    ] {
-        assert!(e.iter().any(|x| x == p), "{p:?} not in {e:?}");
+    let takes = "(a side of exe6 takes cross_list, crosses, version, beast_out, bug_frags)";
+    for p in [format!("right: no field \"karma\" {takes}"), format!("right: no field \"souls\" {takes}")] {
+        assert!(e.iter().any(|x| *x == p), "{p:?} not in {e:?}");
     }
     let bad = exe5(&TANGO_EXE5, "souls = [\"heatcross\"]");
     let e = parse(&content, &bad, &exe5(&TANGO_EXE5, "")).unwrap_err();
-    assert!(e.contains(&"left: souls: no soul \"heatcross\" in exe5".to_string()), "{e:?}");
+    assert!(e.contains(&"left: souls: no form \"heatcross\" in exe5".to_string()), "{e:?}");
+    // A value past its field's type, a soul twice, more souls than the list
+    // holds.
+    for (stated, said) in [
+        ("karma = 70000", "left: karma: 70000 is past a u16 (0 to 65535)"),
+        ("souls = [\"protosoul\", \"protosoul\"]", "left: souls: ProtSoul is there twice"),
+        ("soul_unison = \"no\"", "left: soul_unison: \"no\" is neither true nor false"),
+    ] {
+        let e = parse(&content, &exe5(&TANGO_EXE5, stated), &exe5(&TANGO_EXE5, "")).unwrap_err();
+        assert!(e.contains(&said.to_string()), "{said:?} not in {e:?}");
+    }
 }
 
 /// What a setup that says nothing has is the rules' own to state (their
@@ -295,7 +406,7 @@ fn a_setup_that_says_nothing_has_the_rules_defaults() {
     let (schema, block) = nothing.rule_block(&five, "souls").expect("EXE5's souls system");
     let souls = schema.index_of("souls").unwrap();
     let listed: Vec<_> = (0..16).filter_map(|k| block.get_elem(schema, souls, k)).take_while(|v| *v != FieldValue::Ref(None)).collect();
-    let all: Vec<_> = crate::facts::all_souls(&five, "exe5").into_iter().map(|f| FieldValue::Ref(Some((Registry::Form, f.0)))).collect();
+    let all: Vec<_> = EXE5_SOULS.iter().map(|n| FieldValue::Ref(Some((Registry::Form, crate::ids::form(&five, "exe5", n).unwrap().0)))).collect();
     assert_eq!(listed, all, "every soul the game has, in the forms' order");
     assert_eq!(all.len(), 12);
     for flag in ["soul_unison", "chaos_unison"] {
@@ -327,7 +438,7 @@ fn a_dark_side_starts_dark() {
     let at = |value: Option<u16>| {
         let mut m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
         if let Some(v) = value {
-            m.sides[0].karma = v;
+            m.sides[0].set_fact(&content, "karma", &number(v as i64)).unwrap();
         }
         let b = started(&content, &m, 40);
         (b.stats[0].mood, nettai_battle::kinds::player::emotion(&b, 0))
@@ -352,11 +463,13 @@ fn an_unowned_soul_cant_be_chosen() {
     // Swords alone, so the first chip dealt is one (no folder the rules
     // take: the round is played as set up).
     let sword = crate::ids::chip(&content, "exe5", "sword").unwrap();
-    let offered_with = |souls: Option<Vec<nettai_content_api::FormHandle>>, soul_unison: bool| {
+    let offered_with = |souls: Option<&[&str]>, soul_unison: bool| {
         let mut m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
         m.sides[0].folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); 30];
-        m.sides[0].souls = souls;
-        m.sides[0].soul_unison = soul_unison;
+        if let Some(names) = souls {
+            m.sides[0].set_fact(&content, "souls", &forms(&content, "exe5", names)).unwrap();
+        }
+        m.sides[0].set_fact(&content, "soul_unison", &flag(soul_unison)).unwrap();
         let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
         let mut last = 0u16;
         for _ in 0..400 {
@@ -377,11 +490,10 @@ fn an_unowned_soul_cant_be_chosen() {
     let offered = |souls| offered_with(souls, true);
     assert_eq!(offered(None), (true, true));
     assert_eq!(offered_with(None, false), (false, false), "no Soul Unison, no button");
-    assert_eq!(offered(Some(Vec::new())), (true, false));
-    assert_eq!(offered(Some(vec![crate::ids::form(&content, "exe5", "gyrosoul").unwrap()])), (true, false));
+    assert_eq!(offered(Some(&[])), (true, false));
+    assert_eq!(offered(Some(&["gyrosoul"])), (true, false));
     // ProtoSoul alone, or with Team Colonel's ColonelSoul: offered.
-    let proto = crate::ids::form(&content, "exe5", "protosoul").unwrap();
-    assert_eq!(offered(Some(vec![proto, crate::ids::form(&content, "exe5", "colonelsoul").unwrap()])), (true, true));
+    assert_eq!(offered(Some(&["protosoul", "colonelsoul"])), (true, true));
 }
 
 /// The soul given for a chip (the souls system's button and window): the
@@ -555,10 +667,10 @@ fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
 fn karma_and_souls_reach_the_round() {
     let content = exe5_content();
     let mut m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
-    m.sides[0].karma = 300;
+    m.sides[0].set_fact(&content, "karma", &number(300)).unwrap();
     let colonel = crate::ids::form(&content, "exe5", "colonelsoul").unwrap();
-    m.sides[0].souls = Some(vec![colonel]);
-    m.sides[0].chaos_unison = false;
+    m.sides[0].set_fact(&content, "souls", &forms(&content, "exe5", &["colonelsoul"])).unwrap();
+    m.sides[0].set_fact(&content, "chaos_unison", &flag(false)).unwrap();
     let b = started(&content, &m, 1);
     let (schema, block) = b.system_setup(0, "light-dark").unwrap();
     assert_eq!(block.get(schema, schema.index_of("karma").unwrap()), nettai_content_api::FieldValue::U16(300));

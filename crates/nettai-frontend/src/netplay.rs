@@ -42,7 +42,7 @@ use nettai_netplay::standin::StandInBattle;
 use nettai_netplay::transport::{Connection, Datagram, Hello, Role};
 use nettai_netplay::{BattleWorld, Game, Observer, Peer, PeerConfig};
 
-use crate::driver::{Driver, Ran, Step, result_text};
+use crate::driver::{Driver, NetStatus, Ran, Step, result_text};
 
 /// What a player brings to a netbattle: the match's game (a game is its
 /// rules), their side of the match (a match file's left side, or one drawn
@@ -385,23 +385,22 @@ impl<D: Datagram> Driver for NetPlayer<D> {
         format!("netplay round {} tick {} (settled {})", self.peer.round() + 1, s.local_frontier(), s.settled_state().tick())
     }
 
-    fn status(&self) -> Option<String> {
+    fn net_status(&self) -> Option<NetStatus> {
         let s = self.peer.stats();
         let l = self.peer.link_stats();
-        let ping = l.srtt.map_or("-".to_string(), |r| format!("{r:.0}MS"));
-        let mut line = format!(
-            "PING {ping} LOSS {:.0}% DELAY {} ROLLBACK {} MAX {} ({}) WAIT {}",
-            l.loss() * 100.0,
-            self.options.delay,
-            s.last_rollback,
-            s.max_rollback,
-            s.rollbacks,
-            s.stalls + s.parked,
-        );
-        if let Some(r) = self.over {
-            line.push_str(&format!("\nTHE MATCH IS OVER: {}", result_text(r).to_uppercase()));
-        }
-        Some(line)
+        Some(NetStatus {
+            ping_ms: l.srtt.map(|r| r as f64),
+            loss: l.loss() as f64,
+            delay: self.options.delay,
+            last_rollback: s.last_rollback,
+            max_rollback: s.max_rollback,
+            rollbacks: s.rollbacks,
+            waits: s.stalls + s.parked,
+        })
+    }
+
+    fn result(&self) -> Option<BattleResult> {
+        self.over
     }
 
     fn real_time(&self) -> bool {
@@ -482,27 +481,32 @@ mod tests {
         assert!(Offer::from_bytes(&content, "exe6", &bytes[..10]).is_err());
     }
 
-    /// An EXE5 side's offer carries its karma and souls; both peers' rounds
-    /// start from them alike. Karma past 1000, or a soul list under rules
-    /// without souls, is refused.
+    /// An EXE5 side's offer carries its facts (its karma, its souls); both
+    /// peers' rounds start from them alike. A fact past its field's type,
+    /// or one the offer's game's rules don't take, is refused.
     #[test]
     fn offers_carry_karma_and_souls() {
+        use nettai_battle::rules::Fact;
+        use nettai_content_api::{Registry, Value};
         let content = nettai_match::testing::exe5_content();
         let mut o = offer_of(&content, "exe5", 5);
-        o.side.karma = 100;
-        o.side.souls = Some(vec![ids::form(&content, "exe5", "protosoul").unwrap()]);
+        o.side.set_fact(&content, "karma", &[Fact::Value(Value::Int(100))]).unwrap();
+        let proto = ids::form(&content, "exe5", "protosoul").unwrap();
+        o.side.set_fact(&content, "souls", &[Fact::Value(Value::Def(Registry::Form, proto.0))]).unwrap();
         let back = Offer::from_bytes(&content, "exe5", &o.to_bytes(&content)).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back, o);
         let (one, _) = netplay_setup(&content, 9, &[o.clone(), offer_of(&content, "exe5", 6)]).unwrap();
         let (two, _) = netplay_setup(&content, 9, &[back, offer_of(&content, "exe5", 6)]).unwrap();
         assert_eq!(format!("{:?}", one.first()), format!("{:?}", two.first()));
-        let mut bad = o.clone();
-        bad.side.karma = 1200;
-        assert!(Offer::from_bytes(&content, "exe5", &bad.to_bytes(&content)).unwrap_err().contains("karma 1200"));
+        let stated = String::from_utf8(o.to_bytes(&content)).unwrap();
+        assert!(stated.contains("karma = 100\n"), "{stated}");
+        let bad = stated.replacen("karma = 100\n", "karma = 70000\n", 1);
+        assert!(Offer::from_bytes(&content, "exe5", bad.as_bytes()).unwrap_err().contains("karma: 70000 is past a u16"));
         let six = exe6_test_content();
-        let mut bad = offer(&six, 6);
-        bad.side.souls = Some(Vec::new());
-        assert!(Offer::from_bytes(&six, "exe6", &bad.to_bytes(&six)).unwrap_err().contains("no Soul Unison"));
+        let plain = String::from_utf8(offer(&six, 6).to_bytes(&six)).unwrap();
+        let bad = plain.replacen("[side]\n", "[side]\nsouls = []\n", 1);
+        assert_ne!(bad, plain);
+        assert!(Offer::from_bytes(&six, "exe6", bad.as_bytes()).unwrap_err().contains("no field \"souls\" (a side of exe6 takes"));
         // Offers of two games make no match.
         let mut other = o.clone();
         other.game = "exe6".into();
@@ -612,12 +616,13 @@ mod tests {
     /// What one player of [`set_pair`] saw: the result, each new round's
     /// start (the settled tick count it came at, and the simulation's score:
     /// rounds played, side 0's wins and losses), the settled digests by
-    /// round and tick, the status line at the end, and why it stopped.
+    /// round and tick, the connection's figures at the end, and why it
+    /// stopped.
     struct SetPlayed {
         result: Option<BattleResult>,
         rounds: Vec<(usize, (u8, u8, u8))>,
         settled: Vec<(usize, u32, u64)>,
-        status: String,
+        status: NetStatus,
         left: Option<String>,
         report: String,
     }
@@ -650,7 +655,7 @@ mod tests {
             let mut player = NetPlayer::new(conn, set, NetOptions::default());
             let mut shown = player.start();
             let start = Instant::now();
-            let mut out = SetPlayed { result: None, rounds: Vec::new(), settled: Vec::new(), status: String::new(), left: None, report: String::new() };
+            let mut out = SetPlayed { result: None, rounds: Vec::new(), settled: Vec::new(), status: NetStatus::default(), left: None, report: String::new() };
             let mut after = 0;
             for frame in 1u32.. {
                 assert!(frame < 40_000, "{game} side {side}: the set doesn't end ({})", player.position());
@@ -682,7 +687,7 @@ mod tests {
                 let next = start + Duration::from_millis(2) * frame;
                 std::thread::sleep(next.saturating_duration_since(Instant::now()));
             }
-            out.status = player.status().unwrap_or_default();
+            out.status = player.net_status().expect("a netplay driver has a connection");
             let (s, _) = player.stats();
             out.report = format!(
                 "{game} side {side}: {:?}, new rounds at {:?}, {} settled, rollbacks {} (deepest {}), waits {}; {}",
@@ -717,8 +722,12 @@ mod tests {
             for p in [&hosted, &joined] {
                 assert_eq!(p.rounds.iter().map(|r| r.1).collect::<Vec<_>>(), [(1, 1, 0)], "{game}");
             }
-            assert!(hosted.status.ends_with("THE MATCH IS OVER: YOU WON"), "{game}: {}", hosted.status);
-            assert!(joined.status.ends_with("THE MATCH IS OVER: YOU LOST"), "{game}: {}", joined.status);
+            // (The connection's figures are values: the delay asked for,
+            // a round trip measured on loopback.)
+            for p in [&hosted, &joined] {
+                assert_eq!(p.status.delay, NetOptions::default().delay, "{game}");
+                assert!(p.status.ping_ms.is_some() && (0.0..=1.0).contains(&p.status.loss), "{game}: {:?}", p.status);
+            }
             assert_eq!(joined.left.as_deref(), Some("the match is over (you lost); the other player left"), "{game}");
             // The settled states agree, in the second round too.
             let theirs: std::collections::HashMap<(usize, u32), u64> = joined.settled.iter().map(|&(r, t, d)| ((r, t), d)).collect();

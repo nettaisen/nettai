@@ -1,7 +1,7 @@
 //! Match setups: everything a round needs, chosen before the battle (the
-//! game, the arena, and each side's navi, version, stats,
-//! folder, Crosses and patch cards), as a human-readable TOML file of
-//! names (docs/frontend.md §6), checked against the content (`check`), and
+//! game, the arena, and each side's navi, stats, folder, patch cards and
+//! what its game's rules take besides, its facts), as a human-readable TOML
+//! file of names (docs/frontend.md §6), checked against the content (`check`), and
 //! the round it plays ([`Match::round`]). Live play's random pick of one
 //! is here too (`pick`), so a random setup can be written out and edited.
 //!
@@ -11,10 +11,9 @@
 //!
 //! A match is of one game, which its arena chooses (`Arena::game`): a
 //! game is its rules (it has one ruleset), and both sides play by them
-//! with the game's navis, chips, souls and patch cards, every one named in
+//! with the game's navis, chips, forms and patch cards, every one named in
 //! the game's namespace alone (`ids`). There is no mixing of games.
 
-mod cross_list;
 pub mod check;
 pub mod auto_battle;
 pub mod pick;
@@ -37,7 +36,6 @@ pub mod testing;
 
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::content::Content;
-pub use cross_list::{CROSSES, CrossList};
 use nettai_battle::custom::{BattleFolder, PlayerSetup};
 use nettai_battle::link::Link;
 use nettai_battle::navicust::NaviCust;
@@ -48,6 +46,7 @@ use nettai_content_api::{NaviHandle, StageHandle, SystemHandle};
 
 pub use check::{check_match, check_side};
 pub use auto_battle::AutoBattle;
+pub use facts::Facts;
 pub use pick::Picks;
 pub use file::{parse, write};
 pub use import::save_game;
@@ -104,41 +103,26 @@ pub fn systems(content: &Content) -> &[SystemHandle] {
 const AUTO_BATTLE_SALT: u32 = 0x5441_4354;
 
 /// What a player brings to a match, all of it the match's game's: their
-/// navi and version, the navi's stats (what their save and NaviCust give
-/// it), their folder (as a save holds it, once whole: the round's init
-/// shuffles it), the Crosses their Cross window offers, their patch cards
-/// (each switched on or not, in the order they apply), and the rest of
-/// what their save says.
+/// navi, the navi's stats (what their save and NaviCust give it), their
+/// folder (as a save holds it, once whole: the round's init shuffles it),
+/// their patch cards (each switched on or not, in the order they apply),
+/// the rest of what their save says that the engine keeps for every game,
+/// and what their game's rules take besides: its facts.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Side {
     pub navi: NaviHandle,
-    /// The player's version of the game, by the name the game's rules
-    /// declare for it, where they take one (`facts::versions`: EXE6's
-    /// "gregar" or "falzar"; the checks refuse another): their Beast (Beast
-    /// Out and Beast Over), their console's own pictures and Beast Out roar,
-    /// and the navi's version (NaviStats+0x20, which MstrCros reads). None
-    /// is no default of either: a side of such a game states its own (the
-    /// checks refuse a match until it does), and a side of a game whose
-    /// versions play alike (EXE5) has none.
-    pub version: Option<String>,
-    /// The navi's stats as the round starts them (the version is the
-    /// side's).
+    /// The navi's stats as the round starts them (the version there is the
+    /// side's: `Side::round_stats`).
     pub stats: NaviStats,
     /// The folder, its entries empty while it is being made (a round is
     /// played with a whole one: the checks refuse a match without).
     pub folder: Folder,
-    /// The Crosses the Cross window offers (none: the game's own five), and
-    /// Beast Out unlocked (the save's event flag 0xE0).
-    pub crosses: Option<CrossList>,
-    pub beast_out: bool,
     pub cards: Vec<InstalledCard>,
     /// The level of the navi code the save received (0 to 14: a link
     /// navi's chip bonus and stats, MegaMan's gains over his NaviCust);
     /// none, MegaMan without a code (a link navi always has one:
-    /// [`default_navi_level`]). The save's bug frags (a dark chip or a chip
-    /// weapon spends them).
+    /// [`default_navi_level`]).
     pub navi_level: Option<u8>,
-    pub bug_frags: u32,
     /// How fast the save deleted each SP navi, in frames (the SP navi
     /// chips' damage; 0 the fastest).
     pub sp_times: SpTimes,
@@ -155,18 +139,12 @@ pub struct Side {
     /// between rests), which a game without auto battle has. The round's
     /// setup sends it as the console does (`AutoBattleData::sent`).
     pub auto_battle: AutoBattle,
-    /// EXE5's karma, the save's light/dark value (0 to 1000; a fresh
-    /// save's 500), and the souls the side has (EXE5's Soul Unison: none
-    /// listed, every soul the content has): facts its systems take by name
-    /// (`facts`).
-    pub karma: u16,
-    pub souls: Option<Vec<nettai_content_api::FormHandle>>,
-    /// EXE5's Soul Unison and Chaos Unison (the save's event flags 0 and
-    /// 0x236): the custom screen's soul button, and a dark chip's Chaos
-    /// Unison. A finished save has both (the default); facts its souls
-    /// system takes by name (`facts`).
-    pub soul_unison: bool,
-    pub chaos_unison: bool,
+    /// What the side brings that its game's rules take, each a field of a
+    /// system's setup by its name there (`facts`: EXE6's `version`, its
+    /// `cross_list`; EXE5's `karma`, its `souls`): the systems' setup
+    /// blocks, as the round's setup carries them. A side that says nothing
+    /// has the rules' defaults.
+    pub facts: Facts,
 }
 
 impl Side {
@@ -180,14 +158,14 @@ impl Side {
 
     /// The side's stats as the battle starts them (`starting`).
     pub fn round_stats(&self, content: &Content) -> NaviStats {
-        starting(content, self.stats, self.version.as_deref())
+        starting(content, self.stats, self.version(content))
     }
 
     /// The side's stats block: what differs from the navi's stats as a save
     /// gives them (a link navi's at its level: `Side::save_base`), but what
     /// the battle's start sets (MegaMan's variant).
     pub fn stats_block(&self, content: &Content) -> std::collections::BTreeMap<String, toml::Value> {
-        let base = Side::save_base(content, self.navi, self.version.as_deref(), self.navi_level);
+        let base = Side::save_base(content, self.navi, self.version(content), self.navi_level);
         let mut block = stats::diff(content, &base, &self.round_stats(content));
         if content.navi(self.navi).forms.is_some() {
             block.remove("navi_variant");
@@ -285,16 +263,17 @@ impl Match {
     /// A new match of `game`, nothing chosen yet: the game's first link
     /// battle stage (with its own background), and on each
     /// side its navi (MegaMan, the navi that changes form, else the first
-    /// with fresh stats) at its fresh stats, of no version (where the game's
-    /// rules take one, each side's is to be chosen); an empty folder, no
-    /// Regular or tag chips, the game's own Crosses, no patch cards, a
-    /// NaviCust with no programs where the rules have one, and where they
+    /// with fresh stats) at its fresh stats; an empty folder, no
+    /// Regular or tag chips, no patch cards, a
+    /// NaviCust with no programs where the rules have one, where they
     /// have auto battle the auto battle data the game's battle end
     /// writes of a player it has learned nothing of
-    /// (`AutoBattle::nothing_learned`). No seed (the
-    /// battle's is picked when it is played). Its folders are none the
-    /// checks accept until they are made, nor is a side without the version
-    /// its game takes.
+    /// (`AutoBattle::nothing_learned`), and of the facts its rules take what
+    /// a side that says nothing has (their defaults; one a round can't
+    /// start without, EXE6's version, is each side's to choose). No seed
+    /// (the battle's is picked when it is played). Its folders are none the
+    /// checks accept until they are made, nor is a side without a fact its
+    /// rules require.
     pub fn empty(content: &Content, game: &str) -> Result<Match, String> {
         playable(content, game)?;
         let stage = *link_battle_stages(content, game).first().ok_or_else(|| format!("{game} has no link battle stage"))?;
@@ -314,27 +293,22 @@ impl Side {
     pub fn fresh(content: &Content, arena: &Arena) -> Result<Side, String> {
         let game = &arena.game;
         let navi = first_navi(content, game).ok_or_else(|| format!("{game} has no navi with fresh stats"))?;
-        // (No version: a side of a game that takes one is given its own,
-        // or the checks say it has none.)
+        // (Its facts the rules' defaults: where they require one that has
+        // none, a version, the side is given its own, or the checks say
+        // it states none.)
+        let facts = Facts::defaults(content);
         let mut side = Side {
             navi,
-            version: None,
-            stats: Side::base_stats(content, navi, None),
+            stats: Side::base_stats(content, navi, facts.version(content)),
             folder: Folder::EMPTY,
-            crosses: None,
-            beast_out: true,
             cards: Vec::new(),
             navi_level: default_navi_level(content, navi),
-            bug_frags: 0,
             sp_times: SpTimes::default(),
             navicust: None,
             // (What the game's battle end writes of a player it has
             // learned nothing of, where the game has auto battle.)
             auto_battle: if auto_battle::has(content) { AutoBattle::nothing_learned() } else { AutoBattle::default() },
-            karma: facts::default_karma(content),
-            souls: None,
-            soul_unison: true,
-            chaos_unison: true,
+            facts,
         };
         let boards = navicust_rules(content).boards.len();
         if ruleset_has_system(content, NAVICUST_SYSTEM) && content.navi(navi).forms.is_some() && boards > 0 {
@@ -364,13 +338,15 @@ impl Match {
             let mut rng = Rng::new(seed ^ (side as u32).wrapping_mul(0x9E37_79B9));
             let saved = s.folder.saved().expect("a whole folder (the match's checks refuse one being made; `check::start` fills one in)");
             let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, content);
-            let mut player = PlayerSetup {
+            let player = PlayerSetup {
                 folder,
                 joypad_phase: 0,
                 navi_level: s.navi_level,
                 sp_times: s.sp_times,
                 console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
-                rules: Vec::new(),
+                // What the side brings that its rules' systems take: their
+                // setup blocks, as the side holds them.
+                rules: s.facts.blocks().to_vec(),
                 patch_cards: PatchCards::new(&s.cards).unwrap_or_default(),
                 navicust: s.navicust,
                 // The block the console sends (0x0802C7BE), its RNG2 a
@@ -379,11 +355,6 @@ impl Match {
                 // here runs).
                 auto_battle: s.auto_battle.data().sent(&mut Rng::new(seed ^ AUTO_BATTLE_SALT ^ (side as u32).wrapping_mul(0x9E37_79B9))),
             };
-            // What the side brings that its rules' systems take, each fact
-            // by its name: its version and what its save unlocks (EXE6's
-            // Crosses, Beast Out, the side's Cross list), its karma and
-            // souls (EXE5's).
-            facts::write(content, &self.arena, s, &mut player).expect("a side's facts fit its rules (the match's checks)");
             player
         };
         RoundSetup {
@@ -462,26 +433,28 @@ pub fn patch_cards(content: &Content, game: &str, list: &str) -> Result<Vec<Inst
     Ok(cards)
 }
 
-/// The Crosses of `game`'s navi that changes form, of both versions, in
-/// the versions' order (Gregar's, then Falzar's).
-pub fn all_crosses(content: &Content, game: &str) -> Result<Vec<nettai_content_api::FormHandle>, String> {
-    let navi = navis(content, game).into_iter().find(|&n| navi_crosses(content, n).is_some_and(|c| !c.is_empty()));
-    let navi = navi.ok_or_else(|| format!("{game} has no navi with Crosses"))?;
-    navi_crosses(content, navi).ok_or_else(|| "the navi that changes form has no forms".into())
+/// The forms a form list of `game` may hold: those of its navi that
+/// changes form's own lists, of every version, in the versions' order
+/// (EXE6's Crosses: Gregar's, then Falzar's).
+pub fn listed_forms(content: &Content, game: &str) -> Result<Vec<nettai_content_api::FormHandle>, String> {
+    let navi = navis(content, game).into_iter().find(|&n| navi_forms(content, n).is_some_and(|c| !c.is_empty()));
+    let navi = navi.ok_or_else(|| format!("{game} has no navi with form lists"))?;
+    navi_forms(content, navi).ok_or_else(|| "the navi that changes form has no forms".into())
 }
 
 /// The forms `navi`'s form list offers, of every version (EXE6's Crosses of
 /// both), in the versions' order as the rules declare them, each version's
 /// in its list's (`NaviForms::by_version`); none: it doesn't change form.
-pub fn navi_crosses(content: &Content, navi: NaviHandle) -> Option<Vec<nettai_content_api::FormHandle>> {
+pub fn navi_forms(content: &Content, navi: NaviHandle) -> Option<Vec<nettai_content_api::FormHandle>> {
     let forms = content.navi(navi).forms.as_ref()?;
     Some(facts::versions(content).iter().flat_map(|version| forms.listed(version).iter().copied()).collect())
 }
 
-/// What a match is, for the terminal: its game and rules, the seed, the
-/// field, each side's navi, version (where the rules take one) and
-/// Crosses, with `folders` the folders, and where the game has auto
-/// battle what a navi in it plays from the side's save; `you` is the side the player
+/// What a match is, for the terminal: its game, the seed, the field, each
+/// side's navi and the facts it states (those that aren't its rules'
+/// defaults, each as its field's name and its value: `version: falzar`),
+/// with `folders` the folders, and where the game has auto battle what a
+/// navi in it plays from the side's save; `you` is the side the player
 /// plays.
 pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usize) -> String {
     let place = |p: &Place| {
@@ -498,17 +471,17 @@ pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usi
             (false, 0) => "the left navi",
             (false, _) => "the right navi",
         };
-        let version = s.version.as_deref().map_or(String::new(), |v| format!(" of {}", facts::version_title(v)));
         let navi = names::navi(content, s.navi);
-        out.push_str(&format!("\n  {navi}{version} ({who})"));
-        if let Some(list) = &s.crosses {
-            let crosses: Vec<&str> = list.forms().map(|f| names::form(content, f)).collect();
-            out.push_str(&format!(", Crosses: {}", crosses.join(", ")));
+        out.push_str(&format!("\n  {navi} ({who})"));
+        for f in facts::fields(content) {
+            if let Some(value) = s.facts.get(content, f.name).filter(|_| !s.facts.is_default(content, f.name)) {
+                out.push_str(&format!("; {}: {}", f.name, facts::shown(content, &value)));
+            }
         }
         if !s.cards.is_empty() {
             let cards: Vec<String> =
                 s.cards.iter().map(|c| format!("{}{}", if c.enabled { "" } else { "-" }, names::patch_card(content, c.card))).collect();
-            out.push_str(&format!(", patch cards: {}", cards.join(", ")));
+            out.push_str(&format!("; patch cards: {}", cards.join(", ")));
         }
         if folders {
             out.push_str(&format!("\n  folder ({who}): {}", folders::describe(content, &s.folder)));
