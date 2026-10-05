@@ -50,15 +50,18 @@
 //! chaos_unison = false               # optional: no Chaos Unison (the save's event flag 0x236; default true)
 //!
 //! [left.computer_navi]               # optional: what a computer navi plays from the side's save (none: nothing learned)
-//! first = ["cannon"]                 # up to 3 entries it plays first, each a chip or a pattern
-//! rest = [                           # up to 39 more; a chip named several times is played that much more often
-//!     "sword",
-//!     "sword",
-//!     { dx = -2, dy = 0, chips = ["sword", "wideswrd"] },   # a pattern: a place from its target, up to 5 chips
+//! first = ["areagrab"]               # the data's places 1 to 3; each entry a chip, a pattern or {} (an empty place)
+//! standard = ["sword", "sword", "sword", "sword", "cannon"]   # places 4 to 27: the game writes its player's most used standard chips
+//! mega = ["protoman"]                # places 28 to 32: mega chips
+//! giga = "crossdiv"                  # place 33: a giga chip
+//! patterns = [                       # places 34 to 41: a pattern is a place from its target and 1 to 5 chips used there
+//!     { dx = -2, dy = 0, chips = ["sword", "wideswrd"] },
+//!     { dx = -1, dy = 1, chips = ["cannon", "cannon", "cannon", "cannon", "cannon"], score = 10 },   # five chips: with its score
 //! ]
+//! program_advance = "csmopris"       # place 42: a program advance
 //! ```
 
-use crate::computer_navi::{ComputerNavi, Pattern, Play};
+use crate::computer_navi::{self, ComputerNavi, Pattern, Play};
 use crate::{Arena, Folder, Match, Place, Side, ids, stats};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
@@ -140,26 +143,55 @@ pub struct SideFile {
     pub computer_navi: Option<ComputerNaviFile>,
 }
 
-/// A player's computer-navi data (`crate::computer_navi`): the entries a
-/// computer navi plays first and the rest, each a chip's name (a string) or
-/// a pattern (a table: [`PatternFile`]).
+/// A player's computer-navi data (`crate::computer_navi`): its six lists by
+/// name, each the entries of its places from the first, an entry a chip's
+/// name (a string), a pattern (a table: [`PatternFile`]) or an empty place
+/// (`{}`); those after a list's last entry are left off. The two lists of
+/// one place are that entry alone.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ComputerNaviFile {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub first: Vec<toml::Value>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub rest: Vec<toml::Value>,
+    pub standard: Vec<toml::Value>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mega: Vec<toml::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub giga: Option<toml::Value>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub patterns: Vec<toml::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub program_advance: Option<toml::Value>,
+}
+
+impl ComputerNaviFile {
+    /// The entries the file gives the list named `name`
+    /// (`computer_navi::LISTS`), in its places' order.
+    pub fn entries(&self, name: &str) -> &[toml::Value] {
+        match name {
+            "first" => &self.first,
+            "standard" => &self.standard,
+            "mega" => &self.mega,
+            "giga" => self.giga.as_slice(),
+            "patterns" => &self.patterns,
+            "program_advance" => self.program_advance.as_slice(),
+            _ => &[],
+        }
+    }
 }
 
 /// A pattern: its place from its target (`dx` columns toward the computer
-/// navi's enemies, `dy` rows down) and its chips' names.
+/// navi's enemies, `dy` rows down), its chips' names, and its score (a
+/// pattern of five chips states it).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PatternFile {
     pub dx: i8,
     pub dy: i8,
     pub chips: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub score: Option<u32>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -422,14 +454,19 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
     })
 }
 
-/// A file's computer-navi data: each entry a chip of `game` by name or a
-/// pattern of them. What is neither, and what names nothing in `game`, is
-/// said, and left out.
+/// A file's computer-navi data: each list's entries into its places, an
+/// entry a chip of `game` by name, a pattern of them or an empty place.
+/// What is none of them, what names nothing in `game` and a list with more
+/// entries than it has places are said; such an entry is left out.
 fn resolve_computer_navi(content: &Content, game: &str, c: &ComputerNaviFile, say: &mut impl FnMut(String)) -> ComputerNavi {
-    let mut group = |name: &str, entries: &[toml::Value]| -> Vec<Play> {
-        let mut out = Vec::with_capacity(entries.len());
-        for (i, e) in entries.iter().enumerate() {
-            let at = format!("computer_navi: {name} entry {}", i + 1);
+    let mut out = ComputerNavi::default();
+    for list in &computer_navi::LISTS {
+        let entries = c.entries(list.name);
+        if entries.len() > list.len {
+            say(format!("computer_navi: {} has {} entries; the data has {} places for them", list.name, entries.len(), list.len));
+        }
+        for (i, e) in entries.iter().take(list.len).enumerate() {
+            let at = if list.len == 1 { format!("computer_navi: {}", list.name) } else { format!("computer_navi: {} entry {}", list.name, i + 1) };
             let mut chip = |n: &str| {
                 let c = ids::chip(content, game, n);
                 if c.is_none() {
@@ -437,25 +474,30 @@ fn resolve_computer_navi(content: &Content, game: &str, c: &ComputerNaviFile, sa
                 }
                 c
             };
-            match e {
-                toml::Value::String(n) => out.extend(chip(n).map(Play::Chip)),
+            out.places[list.start + i] = match e {
+                toml::Value::String(n) => chip(n).map(Play::Chip),
+                // ({}: an empty place.)
+                toml::Value::Table(t) if t.is_empty() => None,
                 toml::Value::Table(_) => match e.clone().try_into::<PatternFile>() {
                     // (A pattern missing a chip the game hasn't is another
                     // pattern: the whole entry is left out.)
                     Ok(p) => {
                         let chips: Vec<_> = p.chips.iter().map(|n| chip(n)).collect();
-                        if chips.iter().all(Option::is_some) {
-                            out.push(Play::Pattern(Pattern { dx: p.dx, dy: p.dy, chips: chips.into_iter().flatten().collect() }));
-                        }
+                        chips.iter().all(Option::is_some).then(|| Play::Pattern(Pattern { dx: p.dx, dy: p.dy, chips: chips.into_iter().flatten().collect(), score: p.score }))
                     }
-                    Err(e) => say(format!("{at}: a pattern is {{ dx, dy, chips }}: {}", e.message())),
+                    Err(e) => {
+                        say(format!("{at}: a pattern is {{ dx, dy, chips }} (and its score): {}", e.message()));
+                        None
+                    }
                 },
-                other => say(format!("{at}: {other} is neither a chip's name nor a pattern ({{ dx, dy, chips }})")),
-            }
+                other => {
+                    say(format!("{at}: {other} is neither a chip's name, a pattern ({{ dx, dy, chips }}) nor an empty place ({{}})"));
+                    None
+                }
+            };
         }
-        out
-    };
-    ComputerNavi { first: group("first", &c.first), rest: group("rest", &c.rest) }
+    }
+    out
 }
 
 /// A file side's folder: up to 30 entries, an empty one `[]` and those past
@@ -518,16 +560,23 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
         },
         regular: s.folder.regular,
         tags: s.folder.tags.map(|(a, b)| [a, b]),
-        // (Nothing learned is left out.)
+        // (Nothing learned is left out; so are the empty places after a
+        // list's last entry.)
         computer_navi: (!s.computer_navi.is_empty()).then(|| {
-            let play = |p: &Play| match p {
-                Play::Chip(c) => toml::Value::String(name(&content.defs.chip(*c).key)),
-                Play::Pattern(p) => {
+            let play = |p: &Option<Play>| match p {
+                None => toml::Value::Table(Default::default()),
+                Some(Play::Chip(c)) => toml::Value::String(name(&content.defs.chip(*c).key)),
+                Some(Play::Pattern(p)) => {
                     let chips = p.chips.iter().map(|&c| name(&content.defs.chip(c).key)).collect();
-                    toml::Value::try_from(PatternFile { dx: p.dx, dy: p.dy, chips }).expect("a pattern serializes")
+                    toml::Value::try_from(PatternFile { dx: p.dx, dy: p.dy, chips, score: p.score }).expect("a pattern serializes")
                 }
             };
-            ComputerNaviFile { first: s.computer_navi.first.iter().map(play).collect(), rest: s.computer_navi.rest.iter().map(play).collect() }
+            let list = |i: usize| -> Vec<toml::Value> {
+                let places = s.computer_navi.list(&computer_navi::LISTS[i]);
+                let last = places.iter().rposition(Option::is_some).map_or(0, |i| i + 1);
+                places[..last].iter().map(play).collect()
+            };
+            ComputerNaviFile { first: list(0), standard: list(1), mega: list(2), giga: list(3).pop(), patterns: list(4), program_advance: list(5).pop() }
         }),
         stats: s.stats_block(content),
         karma: (s.karma != crate::facts::DEFAULT_KARMA).then_some(s.karma),
@@ -610,10 +659,12 @@ fn a_line_each(list: &mut toml_edit::Array) {
     list.set_trailing("\n");
 }
 
-/// A computer navi's entry as a file writes it: a chip's name, or a
-/// pattern on one line, its place then its chips.
+/// A computer navi's entry as a file writes it: a chip's name, a pattern
+/// on one line (its place, its chips, then its score if it states one), or
+/// `{}` for an empty place.
 fn play_item(play: &toml::Value) -> toml_edit::Value {
     match play {
+        toml::Value::Table(p) if p.is_empty() => toml_edit::InlineTable::new().into(),
         toml::Value::Table(p) => {
             let mut table = toml_edit::InlineTable::new();
             for key in ["dx", "dy"] {
@@ -621,6 +672,9 @@ fn play_item(play: &toml::Value) -> toml_edit::Value {
             }
             let chips: toml_edit::Array = p.get("chips").and_then(toml::Value::as_array).into_iter().flatten().filter_map(toml::Value::as_str).collect();
             table.insert("chips", chips.into());
+            if let Some(score) = p.get("score").and_then(toml::Value::as_integer) {
+                table.insert("score", score.into());
+            }
             table.into()
         }
         other => other.as_str().unwrap_or_default().into(),
@@ -630,8 +684,8 @@ fn play_item(play: &toml::Value) -> toml_edit::Value {
 /// `body`, the pretty printer's text of `file`, as a person would lay it
 /// out: each folder entry (`["cannon", "A"]`) on a line of its own (the
 /// printer spreads every element of a nested array over lines), and the
-/// computer navi's entries a line each where there are more than a few, a
-/// pattern on one line.
+/// computer navi's lists in the data's order, a list of more than a few
+/// entries a line each, a pattern on one line.
 fn tidy(body: &str, file: &MatchFile) -> String {
     let mut doc: toml_edit::DocumentMut = body.parse().expect("a match file parses");
     for (side, of) in [("left", &file.left), ("right", &file.right)] {
@@ -648,22 +702,33 @@ fn tidy(body: &str, file: &MatchFile) -> String {
             }
             a_line_each(folder);
         }
-        // (Written over the printer's, which makes a list of patterns
-        // alone a table each.)
-        let (Some(data), Some(table)) = (&of.computer_navi, doc.get_mut(side).and_then(|s| s.get_mut("computer_navi")).and_then(|c| c.as_table_mut())) else {
+        // (The table written anew over the printer's, which puts a
+        // pattern's table and a list of patterns alone after everything
+        // else, a table each.)
+        let (Some(data), Some(item)) = (&of.computer_navi, doc.get_mut(side).and_then(|s| s.get_mut("computer_navi"))) else {
             continue;
         };
-        table.set_implicit(false);
-        for (name, plays) in [("first", &data.first), ("rest", &data.rest)] {
-            if plays.is_empty() {
-                continue;
-            }
-            let mut list: toml_edit::Array = plays.iter().map(play_item).collect();
-            if plays.len() > crate::computer_navi::FIRST || plays.iter().any(|p| !p.is_str()) {
-                a_line_each(&mut list);
-            }
-            table.insert(name, toml_edit::value(list));
+        let mut table = toml_edit::Table::new();
+        if let Some(position) = item.as_table().and_then(|t| t.position()) {
+            table.set_position(position);
         }
+        for list in &computer_navi::LISTS {
+            let entries = data.entries(list.name);
+            match entries {
+                [] => {}
+                [entry] if list.len == 1 => {
+                    table.insert(list.name, toml_edit::value(play_item(entry)));
+                }
+                _ => {
+                    let mut items: toml_edit::Array = entries.iter().map(play_item).collect();
+                    if entries.len() > computer_navi::FIRST || entries.iter().any(|p| !p.is_str()) {
+                        a_line_each(&mut items);
+                    }
+                    table.insert(list.name, toml_edit::value(items));
+                }
+            }
+        }
+        *item = toml_edit::Item::Table(table);
     }
     doc.to_string()
 }
@@ -697,42 +762,69 @@ mod tests {
         assert!(game_of("[arena]\nstage = \"x\"\n").is_err());
     }
 
-    /// A side's computer-navi data (EXE5's) writes and reads back, chips by
-    /// name and patterns as tables; the round sends it; and what a file gets
+    /// A side's computer-navi data (EXE5's) writes and reads back, its six
+    /// lists by name, chips by name, patterns as tables, an empty place
+    /// before an entry as `{}`; the round sends it; and what a file gets
     /// wrong is said, with where it is.
     #[test]
     fn computer_navi_data_writes_and_reads_back() {
+        use computer_navi::{GIGA, MEGA, PROGRAM_ADVANCE, STANDARD};
         use nettai_battle::tactics::{Tactic, TacticPattern};
         let content = crate::testing::exe5_content();
         let mut m = crate::draw::live(&content, "exe5", 2, None).unwrap();
         let chip = |name: &str| ids::chip(&content, "exe5", name).unwrap();
-        let pattern = Pattern { dx: -2, dy: 1, chips: vec![chip("sword"), chip("wideswrd")] };
-        m.sides[0].computer_navi = ComputerNavi {
-            first: vec![Play::Chip(chip("cannon"))],
-            rest: vec![Play::Chip(chip("sword")), Play::Pattern(pattern.clone()), Play::Chip(chip("sword"))],
-        };
+        let pattern = Pattern { dx: -2, dy: 1, chips: vec![chip("sword"), chip("wideswrd")], score: None };
+        let five = Pattern { dx: -1, dy: 0, chips: vec![chip("cannon"); 5], score: Some(10) };
+        let patterns = computer_navi::LISTS[4];
+        let mut data = ComputerNavi::default();
+        data.places[0] = Some(Play::Chip(chip("areagrab")));
+        for (i, name) in ["sword", "sword", "sword", "sword", "cannon"].into_iter().enumerate() {
+            data.places[STANDARD.start + i] = Some(Play::Chip(chip(name)));
+        }
+        // (An empty place before the second mega chip.)
+        data.places[MEGA.start + 1] = Some(Play::Chip(chip("protoman")));
+        data.places[GIGA.start] = Some(Play::Chip(chip("crossdiv")));
+        data.places[patterns.start] = Some(Play::Pattern(pattern.clone()));
+        data.places[patterns.start + 1] = Some(Play::Pattern(five.clone()));
+        data.places[PROGRAM_ADVANCE.start] = Some(Play::Chip(chip("csmopris")));
+        m.sides[0].computer_navi = data.clone();
         m.sides[1].computer_navi = ComputerNavi::default();
         let text = write(&content, &m);
-        for line in ["[left.computer_navi]", "first = [\"cannon\"]", "    \"sword\",\n", "    { dx = -2, dy = 1, chips = [\"sword\", \"wideswrd\"] },\n"] {
-            assert!(text.contains(line), "{line}:\n{text}");
-        }
-        assert!(!text.contains("[right.computer_navi]") && !text.contains("tactics"), "{text}");
+        let written = "[left.computer_navi]\n\
+            first = [\"areagrab\"]\n\
+            standard = [\n    \"sword\",\n    \"sword\",\n    \"sword\",\n    \"sword\",\n    \"cannon\",\n]\n\
+            mega = [\n    {},\n    \"protoman\",\n]\n\
+            giga = \"crossdiv\"\n\
+            patterns = [\n    { dx = -2, dy = 1, chips = [\"sword\", \"wideswrd\"] },\n    \
+            { dx = -1, dy = 0, chips = [\"cannon\", \"cannon\", \"cannon\", \"cannon\", \"cannon\"], score = 10 },\n]\n\
+            program_advance = \"csmopris\"\n";
+        assert!(text.contains(written), "{text}");
+        assert!(!text.contains("[right.computer_navi]") && !text.contains("tactics") && !text.contains("[[left") && !text.contains("[left.computer_navi."), "{text}");
         let back = parse(&content, &text).unwrap_or_else(|e| panic!("{e:?}\n{text}"));
         assert_eq!(back, m);
-        // Patterns alone (which the printer would make a table each) are a
-        // list as any other.
-        let mut patterns = m.clone();
-        patterns.sides[1].computer_navi =
-            ComputerNavi { first: vec![Play::Pattern(pattern.clone())], rest: vec![Play::Pattern(Pattern { dx: 0, dy: 0, chips: vec![chip("cannon")] })] };
-        let listed = write(&content, &patterns);
-        let lines = "[right.computer_navi]\nfirst = [\n    { dx = -2, dy = 1, chips = [\"sword\", \"wideswrd\"] },\n]\nrest = [\n    { dx = 0, dy = 0, chips = [\"cannon\"] },\n]\n";
-        assert!(listed.contains(lines) && !listed.contains("[[right"), "{listed}");
-        assert_eq!(parse(&content, &listed).unwrap_or_else(|e| panic!("{e:?}\n{listed}")), patterns);
-        // The round sends it: the entry played first still first, the
-        // others after it in an order the seed draws.
+        // Patterns alone, and a pattern in a list of one place (which the
+        // printer would make tables of their own), are written the same way.
+        let mut tables = m.clone();
+        tables.sides[1].computer_navi.places[GIGA.start] = Some(Play::Pattern(pattern.clone()));
+        tables.sides[1].computer_navi.places[patterns.start + 1] = Some(Play::Pattern(five.clone()));
+        let listed = write(&content, &tables);
+        let lines = "[right.computer_navi]\n\
+            giga = { dx = -2, dy = 1, chips = [\"sword\", \"wideswrd\"] }\n\
+            patterns = [\n    {},\n    { dx = -1, dy = 0, chips = [\"cannon\", \"cannon\", \"cannon\", \"cannon\", \"cannon\"], score = 10 },\n]\n";
+        assert!(listed.contains(lines) && !listed.contains("[[right") && !listed.contains("[right.computer_navi."), "{listed}");
+        assert!(listed.find("[right.computer_navi]") > listed.find("[right]") && listed.find("[right]") > listed.find("[left.computer_navi]"), "{listed}");
+        assert_eq!(parse(&content, &listed).unwrap_or_else(|e| panic!("{e:?}\n{listed}")), tables);
+        // The round sends it: its eleven entries, the one of the first three
+        // places still first, the patterns its records.
         let sent = &m.round(&content, 2).players[0].tactics;
-        assert_eq!((sent.entries.len(), sent.entries[0]), (4, Tactic::Chip(chip("cannon"))));
-        assert_eq!(sent.patterns, [TacticPattern { dx: -2, dy: 1, chips: pattern.chips.clone() }]);
+        assert_eq!((sent.entries.len(), sent.entries[0]), (11, Tactic::Chip(chip("areagrab"))));
+        assert_eq!(
+            sent.patterns,
+            [
+                TacticPattern { dx: -2, dy: 1, chips: pattern.chips.clone(), score: 0xFFFF_FFFF },
+                TacticPattern { dx: -1, dy: 0, chips: five.chips.clone(), score: 10 }
+            ]
+        );
         assert!(m.round(&content, 2).players[1].tactics.entries.is_empty());
         // What a file gets wrong.
         let bad = |from: &str, to: &str| -> Vec<String> {
@@ -740,20 +832,26 @@ mod tests {
             parse(&content, &text.replacen(from, to, 1)).unwrap_err()
         };
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
-        has(bad("first = [\"cannon\"]", "first = [\"nothing-at-all\"]"), "left: computer_navi: first entry 1: no chip \"nothing-at-all\" in exe5");
-        has(bad("first = [\"cannon\"]", "first = [7]"), "left: computer_navi: first entry 1: 7 is neither a chip's name nor a pattern");
-        has(bad("first = [\"cannon\"]", "first = [\"cannon\", \"cannon\", \"cannon\", \"cannon\"]"), "left: the computer navi plays 4 entries first");
-        has(bad("dx = -2, dy = 1", "dx = -2, dy = 1, dz = 0"), "left: computer_navi: rest entry 2: a pattern is { dx, dy, chips }");
-        has(bad("dx = -2, dy = 1", "dx = -2"), "left: computer_navi: rest entry 2: a pattern is { dx, dy, chips }");
-        has(bad("chips = [\"sword\", \"wideswrd\"]", "chips = [\"sword\", \"wideswd\"]"), "left: computer_navi: rest entry 2: no chip \"wideswd\" in exe5");
+        has(bad("first = [\"areagrab\"]", "first = [\"nothing-at-all\"]"), "left: computer_navi: first entry 1: no chip \"nothing-at-all\" in exe5");
+        has(bad("first = [\"areagrab\"]", "first = [7]"), "left: computer_navi: first entry 1: 7 is neither a chip's name, a pattern");
+        has(
+            bad("first = [\"areagrab\"]", "first = [\"cannon\", \"cannon\", \"cannon\", \"cannon\"]"),
+            "left: computer_navi: first has 4 entries; the data has 3 places for them",
+        );
+        has(bad("giga = \"crossdiv\"", "giga = \"crosdiv\""), "left: computer_navi: giga: no chip \"crosdiv\" in exe5");
+        has(bad("giga = \"crossdiv\"", "giga = [\"crossdiv\"]"), "left: computer_navi: giga: [\"crossdiv\"] is neither a chip's name");
+        has(bad("dx = -2, dy = 1", "dx = -2, dy = 1, dz = 0"), "left: computer_navi: patterns entry 1: a pattern is { dx, dy, chips }");
+        has(bad("dx = -2, dy = 1", "dx = -2"), "left: computer_navi: patterns entry 1: a pattern is { dx, dy, chips }");
+        has(bad("chips = [\"sword\", \"wideswrd\"]", "chips = [\"sword\", \"wideswd\"]"), "left: computer_navi: patterns entry 1: no chip \"wideswd\" in exe5");
         has(bad("dx = -2", "dx = -6"), "left: the computer navi's pattern 1 is -6 columns and 1 rows from its target");
         has(bad("chips = [\"sword\", \"wideswrd\"]", "chips = []"), "left: the computer navi's pattern 1 has no chips");
-        has(bad("first = [\"cannon\"]", "first = [\"cannon\"]\nentries = []"), "unknown field `entries`");
+        has(bad(", score = 10", ""), "left: the computer navi's pattern 2 has 5 chips and no score");
+        has(bad("first = [\"areagrab\"]", "first = [\"areagrab\"]\nrest = []"), "unknown field `rest`");
         // EXE6 has no computer navis: its match file takes no such data.
         let six = exe6_content();
         let good = write(&six, &crate::draw::live(&six, "exe6", 2, None).unwrap());
         assert!(!good.contains("computer_navi"), "{good}");
-        let problems = parse(&six, &format!("{good}\n[left.computer_navi]\nrest = [\"cannon\"]\n")).unwrap_err();
+        let problems = parse(&six, &format!("{good}\n[left.computer_navi]\nstandard = [\"cannon\"]\n")).unwrap_err();
         assert_eq!(problems, ["left: computer-navi data, but exe6 has no computer navis (no computer-navi system)"]);
     }
 
