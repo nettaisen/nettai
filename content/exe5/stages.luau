@@ -1,5 +1,5 @@
 --!strict
--- EXE5's netbattle stages: the battle settings records its link battles take a stage from (0x0811AF4C, 95 records,
+-- EXE5's netbattle stages: the battle settings records its link battles take a stage from (0x0811AF4C, 96 records,
 -- EXE6's `BattleSettingsList1` netbattle records' counterpart), each distinct one a stage, with its panel layout
 -- (0x0800BD6C) and its actor list (the navis, and the obstacles: EXE5's boulders, rocks and Guardian statues,
 -- actor types 3, 8 and 9: objects/boulder, objects/rock, chips/guardian/guardian). A record's numbers (its
@@ -1529,6 +1529,26 @@ return {
             { place = "navi", side = 1, x = 5, y = 3 },
             { place = boulder.kind, x = 2, y = 1 },
             { place = boulder.kind, x = 5, y = 1 },
+        },
+    },
+    netbattle_94 = define.stage {
+        id = "netbattle-94",
+        layout = {
+            "grass grass grass grass grass grass",
+            "poison poison poison poison poison poison",
+            "grass grass grass grass grass grass",
+        },
+        panel_pattern = 0x38,
+        music = asset.sound("virus-battle"),
+        background = asset.background("calendar-squares"),
+        mode = 0,
+        battle_number = 0,
+        effects = 0x0000008C,
+        actors = {
+            { place = "navi", side = 1, x = 5, y = 3 },
+            { place = "navi", side = 0, x = 2, y = 3 },
+            { place = boulder.kind, x = 5, y = 1 },
+            { place = boulder.kind, x = 2, y = 1 },
         },
     },
 }

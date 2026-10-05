@@ -59,7 +59,7 @@ pub const BUG_FRAGS_FIELD: &str = "bug_frags";
 /// (`PlayerFact::Version`, the `version` enum of the first of the ruleset's
 /// systems whose setup declares it: EXE6's cross system's "gregar" and
 /// "falzar", the original's order). None: the rules take no version. Tools
-/// go by the order: they list and draw the versions in it, and a version's
+/// go by the order: they list and pick the versions in it, and a version's
 /// place is its number in a navi's stats (`crate::version_byte`).
 pub fn versions(content: &Content) -> &[String] {
     let defs = &content.defs;
