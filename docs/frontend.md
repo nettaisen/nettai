@@ -460,7 +460,10 @@ functions:
   icon, picture, name, its window's class,
   element and code pictures, its description in the dialogue font; every
   navi's face, emblem, name and no-running message
-  with its portrait; every form's face for each emotion, every Cross's name
+  with its portrait (a navi a side can start that has no message, or none
+  to say it, is a problem where the game's roles fill the message's sound:
+  the custom screen opens no box for it, so L would do nothing); every
+  form's face for each emotion, every Cross's name
   and description; every custom-screen button's look (a button the pack
   has none for is drawn as nothing, unless it shows a chip), on a console
   of each of the pack's versions; and every asset of the loaded packs (each sprite with
@@ -749,7 +752,12 @@ What an EXE5 console does otherwise, by data, not by game:
 - its game's custom screen (rules `custom_screen`): the emblem as SELECT's
   hidden window comes back, on the tick of the key and the next
   (`emblem_at_window_return`: EXE6's screen draws it on both, EXE5's on
-  neither; the engine's screen draws it or not, `ScreenLook::drawn`);
+  neither; the engine's screen draws it or not, `ScreenLook::drawn`); the
+  chatbox's commands after a character (`chatbox_commands_wait_for_text`:
+  EXE5's key-wait arrow comes up, and its speaker's mouth closes at a
+  line's end, two ticks sooner than EXE6's) and the characters that move
+  the speaker's mouth (`talking_characters`), both in the engine's
+  chatbox, whose look the frontend draws;
 - a version's own chip (its five Giga chips, DethPhnx or Phoenix) shows
   its own version's ROM's icon and picture on either console (§5; the
   console's version is `Renderer::console_version`, which an EXE5 recording

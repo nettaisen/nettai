@@ -7,7 +7,7 @@
 -- On sea, his Aqua chips with damage (dimming chips too) hit 30 harder and spend the sea under him, unless his soul
 -- gives a bonus of its own (0x0800D0A6: NumberSoul's, NapalmSoul's; the panel turns Normal at 0x080100B0).
 --
--- Not yet (docs/design/exe5-map.md §15.7): the held offset and the custom screen's no-running message.
+-- Not yet (docs/design/exe5-map.md §15.7): the held offset.
 
 local attach_points = require("@self/attach_points")
 local buster = require("@self/weapons/buster")
@@ -32,6 +32,11 @@ return define.navi {
     buster_bonus = 1,
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("megaman-win"), lose = asset.banner("megaman-deleted") },
+    -- The no-running message's portrait: the speaker beside the box (L on the custom screen, 0x08023190: the run
+    -- dialog's script 3, past its navi check). Its words are locales/<lang>.toml's; the content's own (en) time it.
+    run_message = {
+        portrait = asset.sprite("megaman-portrait"),
+    },
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
     panel_bonus = { panel = "sea", family = "aqua", damage = 30 },
     -- His fresh stats, as a navi's stats start (0x080111BA from the table 0x0801D55F: his row, EXE6's):

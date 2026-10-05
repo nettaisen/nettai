@@ -19,6 +19,12 @@ return define.navi {
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("meddy-win"), lose = asset.banner("meddy-deleted") },
     mugshot = asset.mugshot("meddy"),
+    -- The no-running message's portrait: the speaker beside the box (L on the custom screen, 0x08023190: the run
+    -- dialog's script 0x1c, which script 3's navi check sends her to). Its words are locales/<lang>.toml's; the
+    -- content's own (en) time it.
+    run_message = {
+        portrait = asset.sprite("meddy-portrait"),
+    },
     own_chip = { chip = meddycap, code = "M" },
     own_chip_draws = true,
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },

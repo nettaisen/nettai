@@ -2503,6 +2503,24 @@ any of the twelve** (a match has no version; a side states its navi), in the net
 planned here: the operation battle with a gate navi (the gate's own HP table, 0x0802FD74), the gate chip's
 mid-battle navi switch (§5), and the Liberation battles.
 
+**The no-running message** (L on the custom screen where no one runs: 0x08023190, EXE6's `sub_8026EC8`; built
+2026-10-05, after L was found to open an empty box). The screen's run state runs script 3 of the run dialog's
+archive (0x08739868; Team Colonel's 0x0873AB24, the Japanese ROMs' 0x0875028C and 0x087516FC), whose first command
+(`EF 2F`, thirteen scripts by the player's navi) leaves MegaMan the rest of script 3 and sends each team navi to
+its own, 0x17 to 0x22. A message is `F5 00 n` (its speaker's portrait, the sprite list's category 0x20: 0x30
+MegaMan, 0x34 ProtoMan, 0x40 to 0x4A the others in the navis' order), `E8 00`, the text, `E7 00`, `E6`: EXE6's
+shape, timed by the engine's chatbox with two rules of EXE5's own (docs/engine/custom-screen.md §3.5: a command
+runs on the last character's tick; the characters that move the mouth). The key routine (0x080247DC) takes L as
+EXE6's does (not in battle mode 1), plays sound 0x7B, and the message is the console's own: the other console
+shows nothing of it. In content: each navi's `run_message.portrait`, the words in `locales/en.toml` and `ja.toml`
+(`tools/exe5/gen_content.py`, which holds the definitions' portraits to the scripts'). A team's ROM has a
+placeholder for the portraits of four or five of the other team's navis; the pack takes each face from the ROM
+that has it, and no console shows the other's (a save has a stats block for its own team's navis alone, and
+chiplab refuses another). Recorded for MegaMan on both teams' consoles and each team navi on its own, with a copy
+on Japanese consoles (the lab's `custom/run-message*`, `navis/<navi>/run-message*`); a Japanese console times the
+message by its own words, as EXE6's does, so its frames while the message is up differ from the engine's, which
+prints the Japanese in step with the content's English (docs/design/text-rendering.md §10).
+
 **A navi's data** (content/exe5/navis/<navi>/init.luau, a `define.navi` without forms):
 
 | What | Where | Notes |
