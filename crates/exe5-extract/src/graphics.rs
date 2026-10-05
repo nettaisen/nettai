@@ -84,7 +84,15 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
     hud.languages.push((ja.clone(), crate::lettering::hud(roms, &hud, names)));
     hud.language = nettai_assets::BASE_LANGUAGE.into();
     custom.languages.push((ja, crate::lettering::custom(roms)));
-    Bundle { sprites: sprites(rom), field: field(rom), backgrounds: backgrounds(rom), hud, custom }
+    // The pack's backgrounds are the US ROMs'; one the Japanese ROMs have
+    // another picture of says whose it is.
+    let mut backgrounds = backgrounds(rom);
+    for id in japanese_backgrounds(roms) {
+        if let Some(Some(b)) = backgrounds.get_mut(id as usize) {
+            b.region = Some("us".into());
+        }
+    }
+    Bundle { sprites: sprites(rom), field: field(rom), backgrounds, hud, custom }
 }
 
 use crate::hud::{palette, tiles};
@@ -228,7 +236,7 @@ fn backgrounds(rom: &Rom) -> Vec<Option<Background>> {
             let cb = rom.u32(BACKGROUND_SCROLL + 16 * id + 4) & !1;
             let scroll = SCROLLERS.iter().find(|(a, _)| *a == cb).map(|(_, v)| *v).unwrap_or((0, 0));
             let anims = gfx_anims(rom, rom.u32(BACKGROUND_ANIMS + 4 * id));
-            Some(Background { tiles, first_tile, map, map_width, map_height, palette, scroll, anims })
+            Some(Background { tiles, first_tile, map, map_width, map_height, palette, scroll, anims, region: None })
         })
         .collect()
 }
@@ -241,7 +249,7 @@ const JP_BACKGROUNDS: [u32; 2] = [0x0808_BEC4, 0x0808_BF34];
 /// Team ProtoMan's (one, 0x05: the US ROMs' goldfish among bubbles, the
 /// Japanese ROMs' the bubbles alone). A link battle draws it as it does
 /// the other 26 (0x08129F2C), so a Japanese console shows its own there;
-/// the pack keeps the US's.
+/// the pack keeps the US's, and says so (`Background::region`).
 pub fn japanese_backgrounds(roms: &Roms) -> Vec<u8> {
     let us = &roms.protoman;
     (0..BACKGROUND_COUNT)

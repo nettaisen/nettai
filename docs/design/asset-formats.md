@@ -328,7 +328,10 @@ JSON map (orthogonal, 8x8 tiles, one tile layer, the tileset being
 `tiles.png`, gid = tile number + 1, flips as Tiled's flip bits; palettes, when
 any cell's isn't 0, as the layer's `palettes` property, a hex digit a cell);
 `background.json` (whether it has its own palette, scroll speed in 1/16 pixel,
-animations). A tile animation's frames are `anim-K.png`, one block of tiles a
+animations; `region`, the region whose ROMs the picture is from where another
+region's have another, as a sprite's: EXE5's 0x05 is the US ROMs', and a
+Japanese console's frames with it are a known difference all over). A tile
+animation's frames are `anim-K.png`, one block of tiles a
 frame; a palette animation's frames are color lists. Tiled's rotation bit is
 refused (the GBA only flips), and so are infinite maps and compressed layers,
 each with the setting to change.

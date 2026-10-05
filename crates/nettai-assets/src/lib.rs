@@ -270,6 +270,11 @@ pub struct Background {
     /// Scroll per frame in 1/16 pixel (the game's scroll counters).
     pub scroll: (i32, i32),
     pub anims: Vec<GfxAnim>,
+    /// The region whose ROMs the picture comes from, where another
+    /// region's have another (EXE5's 0x05: `"us"`, the goldfish; the
+    /// Japanese ROMs' is the bubbles alone). A console of another region
+    /// shows something else.
+    pub region: Option<String>,
 }
 
 /// A graphics animation: tiles or palettes replaced on a schedule.
