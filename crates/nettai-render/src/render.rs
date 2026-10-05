@@ -5,6 +5,7 @@ use crate::audit::Problems;
 use crate::compose::{self, Fade, Fades, Layer, Palettes};
 use crate::hud::HudState;
 use crate::objects::{self, SpriteList, View};
+use crate::packs::PackGraphics;
 use crate::stage::{Stage, StageClock};
 use crate::textlayer::{Plane, TextItem, TextMode, TextSink};
 use crate::vfont::VectorFont;
@@ -44,14 +45,13 @@ impl Region {
     }
 }
 
-/// Picks battles; keeps its layer buffers between frames.
-pub struct Renderer<'a> {
-    /// The content's own pack's graphics (the HUD's and the custom
-    /// screen's frames).
-    pub assets: &'a Bundle,
+/// Picks battles; keeps its layer buffers between frames. It owns what it
+/// draws from (the packs' graphics are shared), so it borrows nothing.
+pub struct Renderer {
     /// Every loaded pack's graphics, for the assets of each
-    /// (docs/design/rules-in-luau.md §7.4).
-    pub packs: crate::packs::Packs<'a>,
+    /// (docs/design/rules-in-luau.md §7.4), and the content's own pack's
+    /// (the HUD's and the custom screen's frames).
+    graphics: PackGraphics,
     background: Layer,
     field: Layer,
     hud: Layer,
@@ -90,17 +90,16 @@ pub struct Renderer<'a> {
     lookups_only: bool,
 }
 
-impl<'a> Renderer<'a> {
-    /// A renderer in the original text mode.
-    pub fn new(assets: &'a Bundle) -> Renderer<'a> {
-        Renderer::with_packs(crate::packs::Packs::one(assets))
+impl Renderer {
+    /// A renderer of one pack's graphics, in the original text mode.
+    pub fn new(assets: Arc<Bundle>) -> Renderer {
+        Renderer::with_packs(PackGraphics::one(assets))
     }
 
     /// A renderer of several packs' graphics.
-    pub fn with_packs(packs: crate::packs::Packs<'a>) -> Renderer<'a> {
+    pub fn with_packs(graphics: PackGraphics) -> Renderer {
         Renderer {
-            assets: packs.own(),
-            packs,
+            graphics,
             // Background priority 3 (BG1), field 2 (BG2), HUD 1 (BG3).
             background: Layer::new(3, 1),
             field: Layer::new(2, 2),
@@ -145,6 +144,11 @@ impl<'a> Renderer<'a> {
         self.text_mode
     }
 
+    /// The graphics it draws from (another renderer of the same: a clone).
+    pub fn graphics(&self) -> &PackGraphics {
+        &self.graphics
+    }
+
     /// Follow a tick of the battle being shown (call after every tick).
     pub fn observe(&mut self, b: &Battle) {
         self.hud_state.tick(b, self.console_region);
@@ -168,13 +172,16 @@ impl<'a> Renderer<'a> {
     /// Draw a battle as a 240x160 frame with its text items.
     pub fn render(&mut self, b: &Battle) -> Frame {
         self.problems.known.clear();
-        self.packs.set_version(self.console_version);
+        // (The packs for this frame: the layers and the problems are the
+        // renderer's own fields, written while these are read.)
+        let mut packs = self.graphics.packs();
+        packs.set_version(self.console_version);
         let view = Self::view(b);
         // (The background is its own pack's; the field, the game's pack's:
         // `FieldArt`.)
-        let background = crate::lookups::background(&self.packs, &b.content, b.setup.settings.background, &mut self.problems);
+        let background = crate::lookups::background(&packs, &b.content, b.setup.settings.background, &mut self.problems);
         let draw = !self.lookups_only;
-        let stage = draw.then(|| Stage::new(&self.packs, &b.content, background, StageClock::of(b)));
+        let stage = draw.then(|| Stage::new(&packs, &b.content, background, StageClock::of(b)));
         match &stage {
             Some(stage) => {
                 self.background.clear();
@@ -182,7 +189,7 @@ impl<'a> Renderer<'a> {
                 self.field.clear();
                 stage.draw_field(b, &mut self.field, b.setup.local_side, &view, &mut self.problems);
             }
-            None => crate::stage::field_lookups(b, &self.packs, b.setup.local_side, &mut self.problems),
+            None => crate::stage::field_lookups(b, &packs, b.setup.local_side, &mut self.problems),
         }
         self.hud.drawn = draw;
         self.names.drawn = draw;
@@ -194,16 +201,16 @@ impl<'a> Renderer<'a> {
             TextSink::new(self.text_mode, self.font.as_deref()).measuring(self.measure.as_ref()).with_language(self.strings.as_deref());
         // (The local player's custom screen and chatbox: the game's pack's.)
         let local = b.setup.local_side as usize & 1;
-        let own_game = self.packs.game(&b.content);
+        let own_game = packs.game(&b.content);
         let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, &mut self.problems);
         let (emblem, emblem_palette) = (crate::custom::emblem_sprite(emblem), emblem.map_or([0; 16], |e| e.palette));
-        let chatbox = crate::chatbox::prepare(b, own_game, &self.packs, &text, &mut self.problems);
+        let chatbox = crate::chatbox::prepare(b, own_game, &packs, &text, &mut self.problems);
         let mut list = SpriteList::default();
-        objects::queue_objects(b, &self.packs, &view, self.console_region, &mut list, &mut self.problems, !draw);
+        objects::queue_objects(b, &packs, &view, self.console_region, &mut list, &mut self.problems, !draw);
         crate::custom::draw(
             b,
             own_game,
-            &self.packs,
+            &packs,
             &emblem,
             emblem_palette,
             self.console_region,
@@ -216,7 +223,7 @@ impl<'a> Renderer<'a> {
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
             crate::chatbox::draw(c, own_game, &mut self.dialogue, &mut list, &mut text);
         }
-        crate::hud::draw(b, own_game, &self.packs, &self.hud_state, &mut self.hud, &mut list, &mut text, &mut self.problems);
+        crate::hud::draw(b, own_game, &packs, &self.hud_state, &mut self.hud, &mut list, &mut text, &mut self.problems);
         let Some(stage) = stage else {
             note_missing_strings(&mut text, &mut self.problems);
             return Frame::default();
