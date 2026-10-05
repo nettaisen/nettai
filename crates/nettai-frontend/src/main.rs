@@ -408,7 +408,7 @@ fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, game: &str, seed:
     }
     .unwrap_or_else(|e| fail(format!("netplay: {e}")));
     let peer = conn.datagram().peer().map_or("the other player".to_string(), |a| a.to_string());
-    let (offers, setup, m) = agree(content, &conn, &offer).unwrap_or_else(|e| fail(format!("netplay: {e}")));
+    let (_, set, m) = agree(content, &conn, &offer).unwrap_or_else(|e| fail(format!("netplay: {e}")));
     let side = conn.side();
     eprintln!(
         "netplay: playing {peer}; you are the {} navi (your setup's seed {seed}, the match's {}, input delay {})",
@@ -421,9 +421,7 @@ fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, game: &str, seed:
         save_match(content, &m, conn.seed(), path);
     }
     let options = NetOptions { delay: args.delay, ..NetOptions::default() };
-    // The offers were checked as they came (`Offer::from_bytes`): whole folders.
-    let folders = offers.map(|o| o.side.folder.saved().expect("checked offers' folders are whole"));
-    Session::new(Box::new(NetPlayer::new(content.clone(), conn, setup, folders, options)))
+    Session::new(Box::new(NetPlayer::new(conn, set, options)))
 }
 
 /// `--audit-content`: every lookup for everything the content defines, in
@@ -671,7 +669,7 @@ fn main() {
             if let Some(path) = &args.save_match {
                 save_match(&content, &m, seed, path);
             }
-            sessions.push(Session::new(Box::new(LivePlayer::new(m.round(&content, seed), content.clone()))));
+            sessions.push(Session::new(Box::new(LivePlayer::new(nettai_match::Set::of(&content, &m, seed)))));
         }
     } else if let Some(path) = args.traces.first() {
         let rounds = trace_rounds(path, &content).unwrap_or_else(|e| fail(format!("can't play {}: {e}", path.display())));
