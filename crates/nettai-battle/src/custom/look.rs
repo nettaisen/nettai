@@ -49,6 +49,11 @@ pub struct ScreenLook {
     /// each pick's chip as checked, Beast Out's the BeastOut chip's; a
     /// Beast Out puts the picks back in their new order, unchecked).
     pub column: [Option<super::FolderChip>; 5],
+    /// A column cell past the picks whose frame is still drawn filled: the
+    /// cell a button's held chip left, on the tick it leaves (BN5's Arm
+    /// Change, 0x080236C0, takes the pick without drawing; its blink draws
+    /// the cell empty from the next tick, 0x08023712).
+    pub column_kept: Option<u8>,
     /// The chips the slots' tiles show, as checked when the screen last
     /// drew them (`sub_8028250`, on opening and after every pick or take
     /// back: the chips OK takes out of the folder stay drawn).
@@ -277,6 +282,7 @@ impl ScreenLook {
             chip_window: ChipWindow { slot: 0, picks: 0, last_chip, framed: None },
             cross_tab,
             column: [None; 5],
+            column_kept: None,
             slot_chips: [None; 12],
             slot_picked: [false; 12],
             face: None,
