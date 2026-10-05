@@ -7,7 +7,7 @@
 -- edge and, 6 ticks later, hits its column's edge panel and the one before it with the chip's damage (hit modifier
 -- 8), then lingers 30 ticks.
 
-local arm_launch = require("../../lib/arm-launch")
+local arm_launch = require("../../lib/arm_launch")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
@@ -252,7 +252,7 @@ local function wave(owner: Object, x: number, y: number, element: number, damage
     end
 end
 
--- 0x080ED286: the arm raised, the wave on the action's second tick (lib/arm-launch).
+-- 0x080ED286: the arm raised, the wave on the action's second tick (lib/arm_launch).
 woodnos.action = arm_launch.action("0x080ED298", function(me: Object, damage: number)
     wave(me, me.panel_x + me.facing, me.panel_y, me.attack_element, damage)
 end)
