@@ -2557,7 +2557,9 @@ form's `kind` and `game`, `with_beast()` its `beast`, the per-form tables and ro
 `fire_charge`, `status_reset`, `navicust_refresh`, `hover`, `special_volley`, `cross_release_anim`; `status_immune`,
 `erases`, `charged_sword_rush`, `extra_chips`, `scrap_button`, `special_holds_buster`), and the Cross navi and the
 form a weakness hit leaves are `cross_of` and `breaks_to`. `Navi::MEGAMAN` is `NaviData::changes_form` (the navi's
-`forms`), the link navis' numbers their `charged_chips`, `charge_doubles`, `fire_charge` and `status_immune`. The
+`forms`), the link navis' numbers their `charged_chips` (which always says whether the chip must be `damaging`;
+EXE5's team navis state theirs too, with a `charged_bonus` of their own that a form's comes before: exe5-map.md
+§15.16), `charge_doubles`, `fire_charge` and `status_immune`. The
 AI-index tables are the identity's `parts`, `overlay_hooks` (one list for the death, refresh, flinch and drag
 rows), `aura_anim` and `ice`; the actor keeps its navi's identity through the forms.
 
