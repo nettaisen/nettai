@@ -49,6 +49,12 @@ export type Pool = "actor" | "attack" | "effect"
 -- ("finish" is the fourth state of kinds that have one after "destroy":
 -- for them "destroy" is a last running phase, and "finish" frees them.)
 export type Lifecycle = "init" | "update" | "destroy" | "finish"
+-- How the first part of each of a sprite's frames is drawn, by the
+-- original's three routines: "ground" (`sprite_hasShadow`: it is a shadow,
+-- drawn on the ground under the object), "hidden" (`sprite_removeShadow`:
+-- it is a shadow, not drawn), "with_sprite" (`sprite_noShadow`: the sprite
+-- has no shadow part, and the first part is drawn as the rest are).
+-- "hidden" on a sprite without a shadow part hides its first part.
 export type Shadow = "hidden" | "ground" | "with_sprite"
 export type ActorType = "virus" | "navi" | "player"
 export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out" | "worried"
@@ -1732,7 +1738,9 @@ export type SystemSpec = {
     state: StateSchema?,
     setup: StateSchema?,
     -- What a player's setup that says nothing of a field holds (else zero): a
-    -- value of each field given (an enum's by name).
+    -- value of each field given (an enum's by name). An enum of the setup
+    -- has no default but one given here: a player's setup states it, or the
+    -- round doesn't start (the engine picks none of its names).
     setup_defaults: { [string]: number | boolean | string }?,
     -- Its own actions, which reach its state (`system.state()`) for the
     -- side of the navi running them.
@@ -1749,6 +1757,11 @@ export type SystemSpec = {
     -- variants, or a table of such fields. The engine checks a definition's
     -- and reads none of them.
     extends: { [string]: { [string]: any } }?,
+    -- For tools, never the simulation: the chips of its game its rules
+    -- can't play of a player's tactics (`battle.tactic`), by id, each with
+    -- why, as a clause about "it" (EXE5's auto battle: a chip the original
+    -- crashes on). A match's check refuses them in a side's tactics.
+    unplayable_tactics: { [string]: string }?,
     custom: {
         -- As the screen opens: how many chips it deals (`sub_802A40C`).
         -- None answering: the custom level (8 at most), NumbrOpn's 10, and
