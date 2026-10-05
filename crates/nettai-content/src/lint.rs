@@ -131,6 +131,13 @@ pub fn duplicate_collision_types(c: &Content) -> Vec<(u8, Vec<(String, String)>)
 /// `collision.<id with underscores>`, the way rules/collision exports it.)
 pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
     let mut out = Vec::new();
+    // A game whose own types carry the self bit may test it: its words
+    // reach the same objects through a support pack's makers as through its
+    // own code. Its rules say so (`hit_test.float_shoe_needs_self_bit`:
+    // its hit test goes by the bit; EXE6's does, EXE5's types have none).
+    if c.rules().hit_test.float_shoe_needs_self_bit {
+        return out;
+    }
     for d in c.defs.definitions.of(Registry::Collision) {
         let root = c.game();
         let tests = ["side0", "side1"].iter().any(|k| d.spec.field(k).int().is_some_and(|w| w & 0x80 != 0));
@@ -138,11 +145,9 @@ pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
             continue;
         }
         let field = format!("collision.{}", nettai_content_api::keys::local(&d.key).replace('-', "_"));
-        // (The other packs whose modules a module of the type's game uses.
-        // The support pack, content/exelib, is EXE6's code made to take a
-        // game's looks: EXE6's own types, with the bit, are its.)
+        // (The other packs whose modules a module of the type's game uses.)
         let dirs: BTreeSet<String> = c.scripts.modules.keys().filter_map(|m| nettai_content_api::keys::root_of(m)).map(str::to_string).collect();
-        for required in dirs.into_iter().filter(|n| n != root && !(n == "exelib" && root == "exe6")) {
+        for required in dirs.into_iter().filter(|n| n != root) {
             let required = &required;
             let uses = format!("@{required}/");
             let prefix = format!("{root}{}", nettai_content_api::keys::SEPARATOR);

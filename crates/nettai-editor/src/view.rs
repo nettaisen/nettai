@@ -280,41 +280,27 @@ fn version_list(e: &Editor, s: usize) -> Element<'_, Msg> {
     pick_list(versions, version, move |g| Msg::Version(s, g)).placeholder("choose one").into()
 }
 
-/// EXE5's karma, the save's light/dark value: a slider from 0 to 1000 and
-/// its number, presets (light: a fresh save's, the rules' default; very
-/// light 1000; dark 0), and what EXE5
-/// makes of it (0x08010118: a dark MegaMan under 470, light from 470; the
-/// starting mood's tiers, 0x0801283A: under 470 dark, under 500 worried,
-/// 1000 the brightest; at or under 499 he clears holy panels).
+/// A side's karma (EXE5's light/dark value, the save's): a slider and its
+/// number, and a fresh save's value to go back to, which is the rules'
+/// default (stated in the content alone). What a value does is the light
+/// and dark system's to say: this pane states none of its rules.
 fn karma(e: &Editor, s: usize) -> Element<'_, Msg> {
     let v = e.side(s).karma;
-    // (A fresh save's: the rules' default, stated in the content alone.)
     let fresh = nettai_match::facts::default_karma(&e.content);
+    let most = nettai_match::facts::MAX_KARMA;
     let set = move |x: u16| Msg::Karma(s, x);
     let shown = e.typed.get(&(s, "karma")).cloned().unwrap_or_else(|| v.to_string());
-    let kind = if v < 470 { "dark" } else if v >= 1000 { "very light" } else { "light" };
-    let mood = match v {
-        0..=469 => "0: the dark face and palette, dark chips usable in a link battle, light chips refused, no soul button".to_string(),
-        470..=499 => "64: worried (no soul button until the mood rises)".to_string(),
-        1000.. => "190, the palette's brightest tier".to_string(),
-        _ => format!("{} (karma / 20 + 103; 0x80 at 500)", v / 20 + 103),
-    };
-    let holy = if v <= 499 { " Holy panels he stands on turn Normal." } else { "" };
-    let preset = |name: &'static str, x: u16| button(text(format!("{name} ({x})")).size(13)).on_press(set(x)).style(button::secondary);
     column![
         text("Light and dark").size(16),
         row![
             label_text("Karma".into()),
-            slider(0..=1000, v.min(1000), set).step(10u16).width(Length::Fixed(300.0)),
+            slider(0..=most, v.min(most), set).step(10u16).width(Length::Fixed(300.0)),
             text_input(&fresh.to_string(), &shown).on_input(move |t| Msg::KarmaText(s, t)).width(Length::Fixed(70.0)),
+            button(text(format!("A fresh save's ({fresh})")).size(13)).on_press(set(fresh)).style(button::secondary),
         ]
         .spacing(8)
         .align_y(Alignment::Center),
-        row![space().width(Length::Fixed(160.0)), preset("Light", fresh), preset("Very light", 1000), preset("Dark", 0)].spacing(8),
-        text(format!("{v}: a {kind} MegaMan. Starting mood {mood}.{holy}")).size(13),
-        text(format!("The save's light/dark value, 0 to 1000; a fresh save's {fresh}. Under 470 dark (dark chips, no light ones); 499 or under clears holy panels; under 500 worried at the start; 1000 the brightest."))
-            .size(13)
-            .color(DIM),
+        text(format!("The save's light/dark value, 0 to {most}.")).size(13).color(DIM),
     ]
     .spacing(6)
     .into()
@@ -325,18 +311,21 @@ fn label_text<'a>(s: String) -> Element<'a, Msg> {
 }
 
 /// The side's SP navi deletion times (`mm:ss.cc`; empty the fastest), each
-/// by the SP navi chip that reads it.
+/// by the SP navi chip that reads it. A slot no chip's damage reads isn't
+/// listed: its time changes nothing of a battle (EXE5's first slot, Roll's,
+/// whose SP chip counts holy panels instead: the rules name the slot
+/// `sp/roll`, which is no chip's key and has no name to show).
 fn sp_times(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &*e.content;
     let side = e.side(s);
     let slots = nettai_match::sp_slots(c);
     let mut col = column![text("SP navi deletion times").size(16), text("mm:ss.cc; empty: the fastest. The SP navi chips' damage goes by them.").size(13).color(DIM)]
         .spacing(6);
-    for (i, slot) in slots.iter().enumerate() {
+    for i in 0..slots.len() {
         // The SP navi chip whose damage reads the slot (the game's), by
-        // its name.
-        let chip = nettai_match::facts::sp_chip(c, &e.m.arena, i);
-        let label = chip.map_or_else(|| slot.clone(), |h| e.names.chip(c, h));
+        // its name; none reads it: nothing to set.
+        let Some(chip) = nettai_match::facts::sp_chip(c, &e.m.arena, i) else { continue };
+        let label = e.names.chip(c, chip);
         let shown = e.sp_typed.get(&(s, i)).cloned().unwrap_or_else(|| match side.sp_times.0[i] {
             0 => String::new(),
             f => nettai_match::sp_times::format(f),
