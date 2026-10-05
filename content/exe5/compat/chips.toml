@@ -355,3 +355,4 @@
 "satelity" = { id = 0x195, action = 0x07, subtype = 3, damage_formula = 54 }
 "meddycap" = { id = 0x19a, action = 0x07, subtype = 3, damage_formula = 60 }
 "t-swing" = { id = 0x1a2, action = 0x08, subtype = 3, damage_formula = 68 }
+"splitup" = { id = 0x19e, action = 0x0a, subtype = 0, damage_formula = 64 }
