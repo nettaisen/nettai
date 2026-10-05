@@ -295,8 +295,9 @@ netplay agreed, with its seed, as a match file.
 
 Keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START,
 Backspace = SELECT; Space pauses, `.` steps one frame while paused, `-` and
-`=` change speed (1/8x to 16x of 59.73 Hz), F5 restarts the round (none of
-these in netplay), H toggles the status line, Esc quits.
+`=` change speed (1/8x to 16x of 59.73 Hz), F5 starts over (a recording's
+round; live play's set, from its first round) (none of these in netplay), H
+toggles the status line, Esc quits.
 
 **Trace playback** runs at the original's 59.73 frames per second until the
 input ends or the engine hits something it doesn't implement yet. Then it
@@ -311,6 +312,15 @@ random from the seed (`nettai_match::pick::live`, which prints what it
 drew), unless a match file sets it up (`--match`, §6). (`--game exe5` draws a plain EXE5 match instead:
 EXE5's rules, a stage of its link battles, and on each side EXE5's
 MegaMan at his fresh stats with a folder its rules accept.)
+
+Live play is a set, as a link battle is, best of three: when a round ends the
+next one starts, on the arena's next stage, with the score carried and each
+folder shuffled again by its console's RNG, and when the set is decided play
+stops with the result on the status line (`the match is over: you won`). How a
+set goes on is `nettai_match::Set`'s to say, for live play and netplay alike
+(`Set::after`: the next round's battle from the round that ended, or the
+result); the session swaps the battle and tells the presentation to start
+over, and the frames go on being numbered from the set's first tick.
 
 - **The field**: a stage and a background picked at random as a link battle
   picks them, from the game's rule section `link_pick` (`sub_81209DC`: its
