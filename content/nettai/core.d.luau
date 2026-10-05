@@ -1703,11 +1703,33 @@ export type Kind = KindSpec
 -- §2.2): its state of each side and its player's setup (named fields, as a
 -- kind's state), and the hooks the framework calls, each for one side
 -- (§4.1). A system sees only its own state, of the side it is called for.
+-- What a frontend draws of a button besides its look, which is its pack's
+-- by the button's name (docs/design/rules-in-luau.md §4.8): "form_offer",
+-- it offers a form (the picked column shows the offered form's icon, and
+-- its picture is in its second palette for the form's alternate offer; its
+-- system's state keeps `offer`, a form, `offer_chaos`, a bool, and `turns`,
+-- the turns left in the form it gave, which the emotion window counts);
+-- "chip_picture", its picture in the chip window is also the picture of the
+-- chip the ruleset's role `beast_out` names.
+export type ButtonView = "form_offer" | "chip_picture"
+-- What a frontend draws while a window is up (§4.8). A list of forms to
+-- choose from, in its four windows: "form_list_opening", "form_list",
+-- "form_list_closing" and "form_chosen" (their system's state keeps
+-- `offered`, a u8 array of the places offered, `offered_count`, `marked`, a
+-- bool array, `window_cursor`, `cross_chosen`, a bool, and `chosen`).
+-- "offer_flight": the form a "form_offer" button offers flies to the picked
+-- column as its icon (the state keeps `unite_step` and `unite_count`).
+-- "chip_flight": the chip a button shows flies there (`mix_capsule`, which
+-- of the screen's buttons that show a chip, from 1, `mix_step` and
+-- `mix_count`).
+export type WindowView = "form_list_opening" | "form_list" | "form_list_closing" | "form_chosen" | "offer_flight" | "chip_flight"
 -- A system's custom-screen button (docs/design/rules-in-luau.md §4.4).
 export type ButtonSpec = {
     -- Its first slot, and how many it takes (1 or 2).
     slot: number,
     cells: number?,
+    -- What a frontend draws of it besides its look, if anything.
+    view: ButtonView?,
     -- Its uses on a screen (the machinery it starts counts them).
     uses: number?,
     -- Its first cell's right neighbor and its last cell's left one, over
@@ -1731,6 +1753,8 @@ export type ButtonSpec = {
 -- A system's custom-screen window (§4.4): its update, each tick it is up
 -- (`custom.window_tick` counts them from 1): whether it stays up.
 export type WindowSpec = {
+    -- What a frontend draws while it is up, if anything of its own.
+    view: WindowView?,
     update: (side: number) -> boolean,
 }
 export type SystemSpec = {
@@ -1747,8 +1771,8 @@ export type SystemSpec = {
     actions: { Action }?,
     -- Its custom screen's extras (docs/design/rules-in-luau.md §4.4): the
     -- side's screen asks them; the first system that answers decides.
-    -- Its custom-screen buttons, by name (what the frontend draws them by):
-    -- where each sits and its functions, which run as the system's.
+    -- Its custom-screen buttons, by name (the key a pack has each one's look
+    -- under): where each sits and its functions, which run as the system's.
     buttons: { [string]: ButtonSpec }?,
     -- Its custom-screen windows, by name (`custom.open_window`).
     windows: { [string]: WindowSpec }?,

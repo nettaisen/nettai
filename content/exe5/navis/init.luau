@@ -7,11 +7,13 @@
 require("@self/colonel")
 require("@self/megaman")
 require("@self/protoman")
+require("@self/searchman")
 require("@self/shadowman")
 require("@self/tomahawkman")
 -- Chips: a module defining one, or a series module defining several.
 require("@self/colonel/chip")
 require("@self/protoman/chip")
+require("@self/searchman/chip")
 require("@self/shadowman/chip")
 require("@self/tomahawkman/chip")
 -- Forms.

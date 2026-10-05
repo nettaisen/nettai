@@ -609,8 +609,8 @@ reads depends on it.
   the Cross window its own cursor (`sub_80289E4`); closing the Cross window, putting a Cross on and the re-deal's
   end draw the chip window again (`sub_8028476`). A Cross's choice whitens the screen on the screen's fade (mode 4
   then 0, at 0x20 a frame) and, once white, shows the Cross's face (`sub_802A088`: its Beast form's in Beast Out).
-  The Cross window's names and palette 10 are the frontend's, from the cross system's state (nettai-render's
-  `CrossWindow`, by its fields' names).
+  The Cross window's names and palette 10 are the frontend's, from the cross system's state (the engine's
+  `Battle::form_list`: what a window whose view is a form list's shows of its system's state).
 - **The scrap**: each chip scrapped takes its icon off the picked column (`sub_80281D4`) and draws the chip window
   again; the slots' tiles keep the look they were last drawn with (`look.slot_picked`: a picked chip's slot shows
   the empty icon until the slots are drawn again, on the scrap's last tick).

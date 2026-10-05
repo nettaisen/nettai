@@ -4,15 +4,18 @@
 -- far edge, down one column and up the next, a panel every 6 ticks (4 for the SP and DS chips), until its user
 -- presses A while the battle is dimmed or 300 ticks pass; then it locks on (animation 1) and gives SearchMan the
 -- panel. B pressed with A, or within 5 ticks of it, powers his last shot.
+--
+-- Satelity's controller (navis/searchman/controller) sends the same object out as a sight (its other look) and takes
+-- the panel as SearchMan does; the power-up it is given it doesn't read.
 
 local scope = {}
 
 export type State = {
     -- The chip's level (its Param1): a faster sweep for SP and DS.
     level: number,
-    -- Its look: the sight (its +0x64; SearchMan's is 0: the scope).
+    -- Its look: the sight (its +0x64: Satelity's; SearchMan's is 0, the scope).
     sight: boolean,
-    -- SearchMan's user (+0x60), whose new presses while dimmed it reads (+0x58: his AIData+0x2C).
+    -- SearchMan's user (+0x60; Satelity's), whose new presses while dimmed it reads (+0x58: his AIData+0x2C).
     user: Object?,
     -- Its sweep: down (+5), toward the far edge (+7), between the columns it may not reach (+0x14, +0x15).
     down: boolean,
@@ -153,7 +156,7 @@ local function move(me: Object)
     wait(me)
 end
 
--- The lock's power-up: SearchMan's last shot.
+-- The lock's power-up (the byte at +5 of who sent it): SearchMan's last shot.
 local function bonus(me: Object)
     local searchman = me.related1 :: Object
     searchman.state.powered = true
@@ -251,14 +254,15 @@ scope.kind = define.kind {
     end,
 }
 
--- 0x080E547C: SearchMan's scope for `searchman`, his user's presses read, of a chip of `level`.
-function scope.spawn(searchman: Object, user: Object, level: number): Object?
+-- 0x080E547C: SearchMan's scope for `searchman` (who takes its panel and its power-up: his state's `powered`), his
+-- user's presses read, of a chip of `level`; `sight`: in its other look (Satelity's, for its controller).
+function scope.spawn(searchman: Object, user: Object, level: number, sight: boolean?): Object?
     local o = battle.spawn(scope.kind, Vec3.zero)
     if o then
         local s = o.state :: State
         s.user = user
         s.level = level
-        s.sight = false
+        s.sight = sight == true
         o.alliance, o.flip = searchman.alliance, searchman.flip
         o.related1 = searchman
     end
