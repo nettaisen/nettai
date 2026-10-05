@@ -1764,12 +1764,17 @@ seven saves (Tango's templates and three played ones):
   last eight bytes aren't 0xFF.
   A record the learning never filled is zeros (place 0, 0, five chip places of 0, score 0: the played saves'
   unused records), one nothing has written 0xFF.
-- *A pattern is never played* (2026-10-05). The step of a pattern entry (0x0802BC48; the same code at 0x0802B6DC
-  and around 0x0802B930) works out its place from the target, calls the move lag's routine (0x0800E0BE) and then
-  the step test (0x0800CAA0) before it takes the place back off the stack (0x0802BC7E to 0x0802BC8E): the test is of what
-  the lag's routine left in r0 and r1. For MegaMan's stats that is the lag as the column and the lag again as the
-  row (4 and 4; 0 and 0 in ShadowSoul), for another navi's the lag and the address of its row of the lag table
-  (0x0800E0F0). The field's rows are 1 to 3 (0x0800B33C), so the test fails for every navi at every place, and the
+- *A pattern is never played* (2026-10-05). The step of a pattern entry (0x0802BC48, Dark MegaMan's family; the
+  same code at 0x0802B6DC, the DarkInvs drive's and the last stand's, and at 0x0802B908, a third family's,
+  0x0802B800, which the story's navi actors run, 0x080F2036 on: none in a netbattle) works out its place from the
+  target, calls the move lag's routine (0x0800E0BE) and then the step test (0x0800CAA0) before it takes the place
+  back off the stack (0x0802BC7E to 0x0802BC8E): the test is of what the lag's routine left in r0 and r1, by the
+  stats of the navi's side (NaviStats +0x29, the navi its player operates). For MegaMan's (navi 0) that is the lag
+  as the column and the lag again as the row (0x0800E0D8: 4 and 4; 0 and 0 in ShadowSoul); for a team navi's (1 to
+  12) the lag as the column (4; KnightMan's 10) and, as the row, the address of that navi's row of the lag table
+  (0x0801D462 + 11 × its number, 0x0800E0E8: the pointer at 0x0800E0F0), which is no row whatever the lag
+  (`pattern_place`: the side's navi's `forms`, as the ruleset asks whether a navi is MegaMan). The field's rows are
+  1 to 3 (0x0800B33C), so the test fails for every navi at every place, and the
   entry takes the other branch: a miss (+0xF4), the target's search moved on (+0xFC), a step to a random panel of
   its own area. The step that reads a pattern's chips (+0xF2 = 0x14) is set by the branch that never runs. So a
   pattern entry differs from an empty turn only in being an entry (it is counted, shuffled and turned), and its
@@ -1784,6 +1789,17 @@ seven saves (Tango's templates and three played ones):
   (`pattern_chips`, by `battle.tactic_pattern_read`); a halfword there that is no chip place's chip is an error
   naming the number (content names chips; the chip table's first record, chip 0, a blank record with the plus
   chips' own use and a damage of 1, and its other blank ones have no definition).
+- *Who is in auto battle in a netbattle, and whose stats it reads* (2026-10-05). Three ways in: the Dark MegaMan a
+  failed Chaos Unison brings (he stands on the other side and reads that side's stats by his alliance: its Attack,
+  its move lag, the pattern step's test above), a player under DarkInvs's drive, and a dark MegaMan in his last
+  stand. No team navi is itself in auto battle: a dark chip fizzles for any navi but MegaMan and navi 23
+  (0x08010056 tests NaviStats +0x29 for 0 and 23, else the use becomes the invalid chip's), so none uses DarkInvs;
+  the last stand is the player of AI index 0's alone (0x0802C17A; a team navi's AI index is its number), whatever
+  its mood; Chaos Unison is a soul's. But a team navi's stats are read by the Dark MegaMan that comes onto its
+  side: recorded as chaos-ai/colonel-side (side 0's Chaos Unison fails against a side that operates Colonel: a
+  pattern entry and Cannon in the data; 27 steps, 12 buster runs, Cannon twice, none of the pattern; every frame
+  and sound call match). With the games' navis the two reads of the pattern step's row can't be told apart (4 or 0,
+  or an address: none a row); the port keeps both as the game has them.
 - *A place holding 0* (the halfword 0, chip 0's number; `Tactic::Nothing`). The send packs only 0xFFFF away
   (0x0802C7BE), so a 0 is an entry. The decision tests the first place for 0 before it tests for 0xFFFF and takes
   both the same way (0x0802BAC6, 0x0802B55E): a miss and a buster run. So a 0 that comes first stays first, each
@@ -1856,6 +1872,18 @@ seven saves (Tango's templates and three played ones):
   places are 0xFFFF (the run's buffer is reset to it, 0x0802C3B2); the buffer's count has no bound and the copy
   into a record takes `dx`, `dy` and five chips (0x0802C3A0: 12 bytes), so a run of five chips or more gives a
   record all of whose places hold a chip.
+- *Which chips a battle's end can write among the 42 places* (2026-10-05): those the count tables count, numbers
+  under 368 (the writer's loops, 0x0802C584) of record class 0, 1, 2 or 4 (standard, mega, giga, program advance:
+  0x0802C1FC counts a use of the local player's by the record's byte 7, a special chip's, class 3, not at all, and
+  only a chip whose byte 14 has bit 2; the writer writes those four lists and never the class 3 one it builds).
+  Every one of them has a positioning class the AI's table has (byte 13: 0 to 32; checked over the four ROMs'
+  tables). The chips of positioning class 255, which the AI can't play (its table has 33 entries and no bound: for
+  255 it jumps to the word at 0x08029F64, 0x18809A0C, outside the ROM), are all of record class 3: the blank
+  records, the chips past the library (FtrSword to PnkCapsl, the invalid chip) and the team navis' own chips
+  (0x186 to 0x1A7: StepSwrd, C-Cannon, T-Swing). So no save the game wrote has one among its places, and only a
+  hand-made block can put one there. A pattern record can hold one (a run takes any used chip whose byte 14 has
+  bit 2, 0x0802C294: StepSwrd's has), where nothing plays it. rules/auto_battle/data.luau lists every chip with a
+  key, these among them (tools/exe5/gen_auto_battle.py, whose `--check` names a chip it lacks).
 
 ### 15.10 EXE5's emotions (as built)
 
