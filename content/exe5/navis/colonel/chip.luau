@@ -8,8 +8,8 @@
 -- recovery its parameters give (none) and the cannon let go. Its damage is by his level (the chips' damage formula
 -- 61: the damage rows' row 12, lib/navi_level).
 --
--- The action is his computer's too, with a wait. (Its wait's start also calls 0x080E9FD2, the operation battle's
--- mark, which isn't ported: lib/swords.)
+-- The action is also his in an auto battle, with a wait. (Its wait's start also calls 0x080E9FD2, the operation
+-- battle's mark, which isn't ported: lib/swords.)
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local attachment = require("../../objects/attachment")

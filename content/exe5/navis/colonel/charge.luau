@@ -4,12 +4,12 @@
 -- finds his target (0x080BA54C: the first enemy body ahead in his row; else three panels ahead, or none off the field)
 -- and starts his own action 7 (0x080F89AE; ColonelSoul's charged shot, action 0x43, is MegaMan's cut of it). He stands
 -- ready (animation 24) for the wait the attack gives, then draws his sword (the counter window open) and on its 10th
--- tick divides the screen on the target: a slash over it and the two panels diagonally behind it (a slash against
+-- tick divides the screen on the target: a slash over it and the two panels diagonally nearer him (a slash against
 -- navis, no spark) and its effect there. 21 ticks, then 5 of recovery, the sword put away.
 --
--- The action is his computer's too: with a wait, and warning of the panels it will cut (they flash four ticks in
--- eight) unless the attack says not to. The player's routine gives no wait and no warning. (Its start also calls
--- 0x080E9FD2, the operation battle's mark on the target, which isn't ported: lib/swords.)
+-- The action is also his in an auto battle: with a wait, and warning of the panels it will cut (they flash four
+-- ticks in eight) unless the attack says not to. The player's routine gives no wait and no warning. (Its start also
+-- calls 0x080E9FD2, the operation battle's mark on the target, which isn't ported: lib/swords.)
 
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
