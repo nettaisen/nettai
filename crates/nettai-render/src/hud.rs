@@ -430,8 +430,10 @@ pub fn draw<'a>(
     // the other side has (`sub_801C984`, `sub_801C9A4`: four '?' of the
     // HUD layer's tiles). The custom screen's opening takes them off
     // (`sub_801DACC(0x400)`), and they are back with the gauge, once the
-    // local result is sent.
-    if !open && !hide_boxes && !crate::custom::gauge_held(b) {
+    // local result is sent. A message takes them off too, for as long as it
+    // shows (`sub_801E1E4`: "COUNTER HIT!" is laid from column 7, over the
+    // local side's; the same routine in EXE5).
+    if !open && !hide_boxes && !crate::custom::gauge_held(b) && b.message.is_none() {
         let pal = &hud.hp_palettes[color.min(2)];
         for (side, column) in [(local, 6), (local ^ 1, 26)] {
             if b.linked[side as usize & 1].chip.is_none() {

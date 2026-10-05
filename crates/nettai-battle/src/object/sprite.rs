@@ -39,6 +39,11 @@ pub struct Look {
     pub vflip: bool,
     /// What the first part of each frame (the shadow) does.
     pub shadow: Shadow,
+    /// `sprite_setField0x3Bit5` (the sprite's flag 0x20, which nothing
+    /// clears): while the first part is a ground shadow, the rest of the
+    /// sprite is drawn as it is, under every object's sprite, and all of
+    /// it at the sprite's height: a mark on the floor.
+    pub under_objects: bool,
     /// `sprite_forceWhitePalette`: drawn solid white (a hit flash).
     pub white: bool,
     /// `sprite_setColorShader`: a palette tint (0 = none).
@@ -67,6 +72,7 @@ impl Default for Look {
             hflip: false,
             vflip: false,
             shadow: Shadow::Hidden,
+            under_objects: false,
             white: false,
             color_shader: 0,
             alpha: None,
