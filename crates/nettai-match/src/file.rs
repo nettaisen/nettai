@@ -732,7 +732,7 @@ mod tests {
         // others after it in an order the seed draws.
         let sent = &m.round(&content, 2).players[0].tactics;
         assert_eq!((sent.entries.len(), sent.entries[0]), (4, Tactic::Chip(chip("cannon"))));
-        assert_eq!(sent.patterns, [TacticPattern { dx: -2, dy: 1, chips: pattern.chips.clone() }]);
+        assert_eq!(sent.patterns, [TacticPattern::of(-2, 1, &pattern.chips, u32::MAX)]);
         assert!(m.round(&content, 2).players[1].tactics.entries.is_empty());
         // What a file gets wrong.
         let bad = |from: &str, to: &str| -> Vec<String> {
