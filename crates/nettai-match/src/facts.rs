@@ -206,16 +206,14 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
     out
 }
 
-/// Write a player's version into `player`'s setup, and with it what a save
-/// of that version unlocks on the custom screen, each fact by its name into
-/// the systems that take it (EXE6's cross and beast systems): every Cross
-/// of the version owned (a finished game's save), Beast Out as `beast_out`
+/// Write a player's version into `player`'s setup, and with it what the
+/// side says of the custom screen, each fact by its name into the systems
+/// that take it (EXE6's cross and beast systems): Beast Out as `beast_out`
 /// says, and the Cross list `crosses` in place of the version's own, if
-/// one is given.
+/// one is given. (The Crosses of the version it owns are the rules' own
+/// default: every one, a finished game's save.)
 pub fn write_version(content: &Content, player: &mut PlayerSetup, version: &str, beast_out: bool, crosses: Option<&crate::CrossList>) -> Result<(), String> {
     player.set_fact(content, VERSION_FIELD, &[Fact::Name(version)])?;
-    let owned = vec![Fact::Value(Value::Bool(true)); capacity(content, CROSSES_FIELD)];
-    player.set_fact(content, CROSSES_FIELD, &owned)?;
     player.set_fact(content, BEAST_OUT_FIELD, &[Fact::Value(Value::Bool(beast_out))])?;
     let list: Vec<Fact> = crosses.iter().flat_map(|l| l.forms()).map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
     player.set_fact(content, CROSS_LIST_FIELD, &list)?;
@@ -227,27 +225,22 @@ pub fn write_version(content: &Content, player: &mut PlayerSetup, version: &str,
 /// - its version, where it states one of the rules' (a side without one
 ///   leaves it unstated: the rules that take one start no round, and the
 ///   match's checks say so first);
-/// - what its save unlocks on the custom screen (EXE6's cross and beast
-///   systems'): every Cross of its version owned, Beast Out as the side
-///   says, and its Cross list, if it names one;
-/// - its karma, bug frags and souls; with souls, the save's Soul Unison
-///   and Chaos Unison (a finished save's event flags 0 and 0x236).
-pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerSetup) -> Result<(), String> {
-    // (No ruleset named: the game's own, its one.)
-    let game = arena.game.as_str();
+/// - what it says of the custom screen (EXE6's cross and beast systems'):
+///   Beast Out as the side says, and its Cross list, if it names one (the
+///   Crosses it owns are the rules' default: every one);
+/// - its karma and bug frags; its souls, if it lists any (none listed: the
+///   rules' default, every soul); with souls, the save's Soul Unison and
+///   Chaos Unison (a finished save's event flags 0 and 0x236).
+pub fn write(content: &Content, _arena: &Arena, side: &Side, player: &mut PlayerSetup) -> Result<(), String> {
     if let Some(version) = side.version.as_deref().filter(|v| versions(content).iter().any(|name| name == v)) {
         write_version(content, player, version, side.beast_out, side.crosses.as_ref())?;
     }
     player.set_fact(content, KARMA_FIELD, &[Fact::Value(Value::Int(side.karma as i64))])?;
     // (EXE6's: the dark-chips system's.)
     player.set_fact(content, BUG_FRAGS_FIELD, &[Fact::Value(Value::Int(side.bug_frags as i64))])?;
-    if takes(content, SOULS_FIELD) {
-        // (Every soul, as many as the rules hold.)
-        let souls: Vec<Fact> = owned_souls(content, game, side)
-            .iter()
-            .take(soul_capacity(content))
-            .map(|f| Fact::Value(Value::Def(Registry::Form, f.0)))
-            .collect();
+    // (A side that lists no souls has the rules' own default: every soul.)
+    if let Some(list) = side.souls.as_ref().filter(|_| takes(content, SOULS_FIELD)) {
+        let souls: Vec<Fact> = list.iter().take(soul_capacity(content)).map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
         player.set_fact(content, SOULS_FIELD, &souls)?;
     }
     // Soul Unison and Chaos Unison, where the rules take them (their

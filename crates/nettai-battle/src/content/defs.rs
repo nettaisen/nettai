@@ -354,7 +354,8 @@ pub struct SystemDef {
     pub state: StateId,
     pub setup: StateId,
     /// Its player setup when the player's setup says nothing of a field:
-    /// its `setup_defaults` (EXE5's light/dark value a fresh save's 500),
+    /// its `setup_defaults` (EXE5's light/dark value a fresh save's 500; an
+    /// array's, a list: EXE6's Crosses owned, every one),
     /// zero elsewhere, but an enum, which has no default unless
     /// `setup_defaults` gives it one: it is left unstated
     /// (`ContentState::unstate`: EXE6's player's version, gregar or falzar),
@@ -1991,21 +1992,51 @@ impl Defs {
                 Data::Nil => {}
                 Data::Map(entries) => {
                     let schema = &schemas[setup.0 as usize].schema;
+                    // One value of a field (an array's element): a flag,
+                    // a number, an enum's name, a definition by its id.
+                    let value_of = |v: &Data, ty: &nettai_content_api::FieldType| -> Result<nettai_content_api::Value, String> {
+                        use nettai_content_api::{FieldType, Value};
+                        Ok(match (v, ty) {
+                            (Data::Bool(b), _) => Value::Bool(*b),
+                            (Data::Int(n), _) => Value::Int(*n),
+                            (Data::Str(n), FieldType::Enum(names)) => {
+                                Value::Int(names.iter().position(|x| x == n).ok_or_else(|| format!("no variant {n:?}"))? as i64)
+                            }
+                            (Data::Str(key) | Data::Ref(_, key), FieldType::Ref(registry, _))
+                                if !matches!(v, Data::Ref(r, _) if r != registry) =>
+                            {
+                                let place = definitions.of(*registry).binary_search_by(|d| d.key.as_str().cmp(key));
+                                Value::Def(*registry, place.map_err(|_| format!("the content has no {registry} {key:?}"))? as u16)
+                            }
+                            (other, ty) => return Err(format!("{other:?} is no value of a {ty:?} field")),
+                        })
+                    };
                     for (k, v) in entries {
                         let name = k.to_string();
                         let at = |e: String| what(&format!("setup_defaults.{name}: {e}"));
                         let i = schema.index_of(&name).ok_or_else(|| at("the setup has no such field".into()))?;
-                        let value = match (v, &schema.field(i).ty) {
-                            (Data::Bool(b), _) => nettai_content_api::Value::Bool(*b),
-                            (Data::Int(n), _) => nettai_content_api::Value::Int(*n),
-                            (Data::Str(n), nettai_content_api::FieldType::Enum(names)) => nettai_content_api::Value::Int(
-                                names.iter().position(|x| x == n).ok_or_else(|| at(format!("no variant {n:?}")))? as i64,
-                            ),
-                            (other, ty) => return Err(at(format!("{other:?} is no value of a {ty:?} field"))),
-                        };
-                        setup_default.set(schema, i, value).map_err(|e| at(e.to_string()))?;
-                        if setup_default.get(schema, i).load() != value {
-                            return Err(at(format!("{value:?} doesn't fit the field")));
+                        match (v, &schema.field(i).ty) {
+                            // An array's, a list: its elements from the
+                            // first (the rest stay zero, none).
+                            (Data::List(items), nettai_content_api::FieldType::Array(elem, n)) => {
+                                if items.len() > *n as usize {
+                                    return Err(at(format!("{} values, and the field holds {n}", items.len())));
+                                }
+                                for (place, item) in items.iter().enumerate() {
+                                    let value = value_of(item, elem).map_err(&at)?;
+                                    setup_default.set_elem(schema, i, place, value).map_err(&at)?;
+                                    if setup_default.get_elem(schema, i, place).map(|x| x.load()) != Some(value) {
+                                        return Err(at(format!("{value:?} doesn't fit the field's elements")));
+                                    }
+                                }
+                            }
+                            (v, ty) => {
+                                let value = value_of(v, ty).map_err(&at)?;
+                                setup_default.set(schema, i, value).map_err(|e| at(e.to_string()))?;
+                                if setup_default.get(schema, i).load() != value {
+                                    return Err(at(format!("{value:?} doesn't fit the field")));
+                                }
+                            }
                         }
                     }
                 }

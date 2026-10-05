@@ -98,14 +98,19 @@ pub fn megaman(content: &Content, hp: u16) -> NaviStats {
 /// (its key), simulated from side 0's perspective, with these battle
 /// folders. The players are of [`VERSION`], stated where the content's
 /// rules take a version (a round assumes none), with the Crosses and Beast
-/// Out locked (the rest of EXE6's systems' setups zero: nothing unlocked);
-/// the players' buttons
+/// Out locked, stated too where the rules take them (a setup that says
+/// nothing has the rules' own defaults, a finished save's: everything
+/// unlocked); the players' buttons
 /// reach the fight at once (no link delay). Each player's console RNG is
 /// derived from the seed.
 pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [BattleFolder; 2]) -> RoundSetup {
+    use nettai_battle::rules::Fact;
     let player = |f: BattleFolder, side: u32| {
         let mut p = player_setup(f, seed, side);
-        p.set_fact(content, "version", &[nettai_battle::rules::Fact::Name(VERSION)]).expect("the stand-in's players' version");
+        p.set_fact(content, "version", &[Fact::Name(VERSION)]).expect("the stand-in's players' version");
+        // (No Cross owned: an array's elements past those given are zero.)
+        p.set_fact(content, "crosses", &[]).expect("the stand-in's players' Crosses");
+        p.set_fact(content, "beast_out", &[Fact::Value(nettai_content_api::Value::Bool(false))]).expect("the stand-in's players' Beast Out");
         p
     };
     let [a, b] = folders;
