@@ -1118,7 +1118,7 @@ byte): nothing fills one in (the engine itself starts no round whose
 player's setup leaves an enum of its rules' unstated: EXE6's `version` has
 no default), and a file without it is refused with where
 it is missing. A new match's sides have none until they are given theirs
-(the editor asks beside the game, with nothing chosen), and a random match
+(the editor asks on each side's navi pane, with nothing chosen), and a random match
 draws each side's from its seed and writes it. An EXE5 match has no
 version: Team ProtoMan and Team Colonel play alike (its rules take none: a
 side may hold either version's souls and chips), so a `version` in an EXE5
