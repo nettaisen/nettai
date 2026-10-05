@@ -179,12 +179,15 @@ fn record_line(e: &Editor, r: &Record) -> String {
 
 /// The chips an entry can be: the game's that a folder holds (those with a
 /// code) and its program advances, which are what the game writes into the
-/// data (its most used standard, mega and giga chips and program advance).
-fn chips(e: &Editor) -> Vec<ChipHandle> {
+/// data (its most used standard, mega and giga chips and program advance);
+/// for one of the 42 places (`place`), but those a navi in auto battle
+/// can't play (`data::unplayable`: a match's check refuses them there).
+fn chips(e: &Editor, place: bool) -> Vec<ChipHandle> {
     let c = &e.content;
     (0..c.defs.chips.len() as u16)
         .map(ChipHandle)
         .filter(|&h| nettai_match::ids::in_game(c, e.m.game(), &c.defs.chip(h).key))
+        .filter(|&h| !place || data::unplayable(c, h).is_none())
         .filter(|&h| {
             let d = c.chip(h);
             match d.class {
@@ -240,10 +243,17 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
             }
             .spacing(6)
             .align_y(Alignment::Center);
-            // (The quiet note, under the entry.)
-            let line: Element<Msg> = match unlike_the_game(c, list, entry) {
-                Some(note) => column![line, row![space().width(Length::Fixed(50.0)), text(note).size(11).color(DIM)]].into(),
-                None => line.into(),
+            // (Under the entry: why it can't be played, else the quiet
+            // note.)
+            let cant = match entry {
+                Entry::Chip(chip) => data::unplayable(c, chip),
+                _ => None,
+            };
+            let under = |note: String, color| row![space().width(Length::Fixed(50.0)), text(note).size(11).color(color).width(Length::Fill)];
+            let line: Element<Msg> = match (cant, unlike_the_game(c, list, entry)) {
+                (Some(why), _) => column![line, under(why.to_string(), RED)].into(),
+                (None, Some(note)) => column![line, under(note, DIM)].into(),
+                (None, None) => line.into(),
             };
             let b = button(line).width(Length::Fill).padding([1, 4]).on_press(msg(Edit::Select(Selected::Place(i))));
             places = places.push(b.style(pick(state.selected == Selected::Place(i))));
@@ -285,6 +295,16 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         let named: Vec<String> = d.places.iter().enumerate().filter(|(_, e)| **e == Entry::Pattern(n as u8)).map(|(i, _)| (i + 1).to_string()).collect();
         let named = if named.is_empty() { "no place names it".to_string() } else { format!("named by place {}", named.join(", ")) };
         let mut its = Row::new().spacing(2);
+        // (The quiet note for a chip of its that couldn't be played: no
+        // error, a save holds one, and a record never plays.)
+        let mut cant = Column::new();
+        for chip in &r.chips {
+            if let ChipPlace::Chip(chip) = chip
+                && let Some(why) = data::unplayable(c, *chip)
+            {
+                cant = cant.push(text(format!("{}: {why}; harmless in a record, which never plays", e.names.chip(c, *chip))).size(11).color(DIM));
+            }
+        }
         for (k, chip) in r.chips.iter().enumerate() {
             let label: Element<Msg> = match chip {
                 ChipPlace::Chip(chip) => row![icon(e, *chip), text(e.names.chip(c, *chip)).size(13)].spacing(4).align_y(Alignment::Center).into(),
@@ -310,6 +330,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
                 ]
                 .spacing(6),
                 its.wrap(),
+                cant,
                 row![
                     text("score").size(12).color(DIM),
                     text_input("0", &r.score.to_string()).size(12).on_input(move |t| msg(Edit::Score(n, t))).width(Length::Fixed(110.0)),
@@ -407,7 +428,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         _ => None,
     };
     let needle = e.search.to_lowercase();
-    let mut pool: Vec<(String, ChipHandle)> = chips(e)
+    let mut pool: Vec<(String, ChipHandle)> = chips(e, matches!(state.selected, Selected::Place(_)))
         .into_iter()
         .filter(|&h| wanted.is_none_or(|class| c.chip(h).class == class))
         .map(|h| (e.names.chip(c, h), h))
