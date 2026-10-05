@@ -36,6 +36,8 @@ export type BusterLook = {
     arm: AttachmentLook,
     navi_arm: AttachmentLook,
     recovery: { { number } },
+    -- The panel flags that stop a shot's panel count, by the shooter's side (0 and 1).
+    closed: { [number]: number },
     attachment: Kind,
 }
 

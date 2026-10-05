@@ -5,7 +5,7 @@ use crate::pictures::Pictures;
 use iced::Task;
 use nettai_battle::Content;
 use nettai_battle::content::ChipCode;
-use nettai_battle::custom::{FolderChip, GameVersion};
+use nettai_battle::custom::FolderChip;
 use nettai_battle::patch_cards::InstalledCard;
 use nettai_battle::setup::NaviStats;
 use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, PatchCardHandle, StageHandle};
@@ -93,7 +93,8 @@ pub enum Msg {
     Game(Choice<String>),
     // A side.
     Navi(usize, Choice<NaviHandle>),
-    Version(usize, Choice<GameVersion>),
+    /// A side's version, by its name (one the game's rules declare).
+    Version(usize, Choice<String>),
     Level(usize, String),
     BugFrags(usize, String),
     /// An SP navi's deletion time (by its slot), as typed.
@@ -555,13 +556,13 @@ impl Editor {
                     return Task::none();
                 }
                 let side = &mut self.m.sides[s];
-                let keep = stats::diff(&content, &Side::base_stats(&content, side.navi, side.version), &side.stats);
+                let keep = stats::diff(&content, &Side::base_stats(&content, side.navi, side.version.as_deref()), &side.stats);
                 side.navi = c.value;
                 // (Operating MegaMan again clears the navi code received,
                 // `sub_809CD60`.)
                 side.navi_level = nettai_match::default_navi_level(&content, c.value);
                 self.typed.remove(&(s, "level"));
-                side.stats = Side::base_stats(&content, c.value, side.version);
+                side.stats = Side::base_stats(&content, c.value, side.version.as_deref());
                 // The save's own fields carry over.
                 let carried: std::collections::BTreeMap<String, toml::Value> =
                     keep.into_iter().filter(|(k, _)| ["hp", "regular_memory", "mood", "sun", "beast_out_counter"].contains(&k.as_str())).collect();
@@ -573,8 +574,8 @@ impl Editor {
             }
             Msg::Version(s, c) => {
                 let side = &mut self.m.sides[s];
+                side.stats.version = nettai_match::version_byte(Some(&c.value));
                 side.version = Some(c.value);
-                side.stats.version = nettai_match::version_byte(side.version);
                 self.edited();
             }
             Msg::Level(s, t) => {

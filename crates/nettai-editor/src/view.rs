@@ -8,7 +8,6 @@ use crate::names::Lang;
 use iced::widget::{Column, Row, button, checkbox, column, container, image, pick_list, row, rule, scrollable, slider, space, text, text_input};
 use iced::{Alignment, Color, Element, Length, Theme};
 use nettai_battle::content::{ChipClass, ChipFlags};
-use nettai_battle::custom::GameVersion;
 use nettai_match::stats::{self, Kind, Value};
 use nettai_match::{FORMS_SYSTEM, NAVICUST_SYSTEM, PATCH_CARDS_SYSTEM};
 
@@ -269,11 +268,15 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     scrollable(col).into()
 }
 
-/// A side's version of the game (EXE6's Falzar or Gregar), with nothing
-/// chosen until the side has one: neither is a default.
+/// A side's version of the game: the versions the game's rules declare
+/// (`facts::versions`: EXE6's Falzar and Gregar), with nothing chosen until
+/// the side has one: none is a default.
 fn version_list(e: &Editor, s: usize) -> Element<'_, Msg> {
-    let versions = [Choice { label: "Falzar".into(), value: GameVersion::Falzar }, Choice { label: "Gregar".into(), value: GameVersion::Gregar }];
-    let version = versions.iter().find(|g| Some(g.value) == e.side(s).version).cloned();
+    let versions: Vec<Choice<String>> = nettai_match::facts::versions(&e.content)
+        .iter()
+        .map(|name| Choice { label: nettai_match::facts::version_title(name), value: name.clone() })
+        .collect();
+    let version = versions.iter().find(|g| Some(&g.value) == e.side(s).version.as_ref()).cloned();
     pick_list(versions, version, move |g| Msg::Version(s, g)).placeholder("choose one").into()
 }
 
@@ -594,11 +597,8 @@ fn crosses(e: &Editor, s: usize) -> Element<'_, Msg> {
         col = col.push(text(format!("{} of {} chosen; the window offers them in this order.", list.len(), nettai_battle::custom::screen::CROSSES)).size(13).color(DIM));
         for f in nettai_match::navi_crosses(c, side.navi).unwrap_or_default() {
             let on = list.contains(&f);
-            let version = match exe6_compat::forms::game(c, f) {
-                Some(GameVersion::Gregar) => "Gregar",
-                Some(GameVersion::Falzar) => "Falzar",
-                None => "",
-            };
+            // (Whose version's the Cross is: the form's own `version`.)
+            let version = c.form(f).version.as_deref().map_or(String::new(), nettai_match::facts::version_title);
             col = col.push(checkbox(on).label(format!("{} ({version})", e.names.form(c, f))).on_toggle(move |b| Msg::Cross(s, f, b)));
         }
     }
