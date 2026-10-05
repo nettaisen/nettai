@@ -131,9 +131,9 @@ end
 -- and the rest only after both.
 local function beast_over_effects(pos: Vec3, alliance: number, target: FormDef): Object?
     local which: number
-    if target.game == "gregar" then
+    if target.version == "gregar" then
         which = 0
-    elseif target.game == "falzar" then
+    elseif target.version == "falzar" then
         which = 1
     else
         error(string.format("form %s has no Beast Over effect (sub_80151D4)", target.id))
@@ -184,7 +184,7 @@ local function vanish(me: Object, s: State, seq: Sequence, target: FormDef)
             -- The roar is Gregar's for the Gregar beasts and Falzar's
             -- otherwise; the cameras shake at magnitude 2 (`sub_80302B6`),
             -- 60 ticks (75 for Beast Over).
-            battle.play_sound(if target.game == "gregar" then GREGAR_ROAR else FALZAR_ROAR)
+            battle.play_sound(if target.version == "gregar" then GREGAR_ROAR else FALZAR_ROAR)
             battle.shake_camera_secondary(2, if seq == "beast_over" then 0x4B else 0x3C)
         end
         s.timer = 0x36

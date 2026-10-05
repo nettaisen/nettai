@@ -30,6 +30,12 @@ pub struct NaviData {
     /// whose face is his form's. Presentation only.
     #[serde(default)]
     pub mugshot: Option<super::MugshotId>,
+    /// The version of its game a link navi belongs to (EXE6's Gregar's or
+    /// Falzar's link navis), by the name its game's pack keeps a version's
+    /// pictures under; none: every version's. Presentation only (a console
+    /// of another version has no portrait of it).
+    #[serde(default)]
+    pub version: Option<String>,
     /// Extra height, in whole pixels, of the navi's image as it merges
     /// with MegaMan in a Cross.
     #[serde(default)]
@@ -243,6 +249,19 @@ pub struct FormData {
     /// Presentation only.
     #[serde(default, deserialize_with = "faces")]
     pub mugshot: Option<Faces>,
+    /// The version of its game the form belongs to (EXE6's Gregar's or
+    /// Falzar's Crosses and Beast), by the name its game's pack keeps a
+    /// version's pictures under; none: every version's. Its game's systems
+    /// may read it (EXE6's: a Beast's roar, the Crosses a Beast goes with);
+    /// to the engine it is presentation only (whose pictures name it in its
+    /// window and show its Beast, which console has its face).
+    #[serde(default)]
+    pub version: Option<String>,
+    /// Its place among its version's forms in their window (EXE6's Cross
+    /// window): its name and colors there are the pack version's of that
+    /// number. Presentation only.
+    #[serde(default)]
+    pub window_order: Option<u8>,
     /// The lines of a Cross's description, which R shows in the Cross
     /// window (its text is the content's strings): the box takes keys a
     /// tick later for each, as for a chip's; none counts as three. The
