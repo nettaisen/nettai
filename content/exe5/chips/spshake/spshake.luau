@@ -56,8 +56,8 @@ local function move(me: Object, s: State)
     me.pos = Vec3.new(x, y, p.z)
     me:set_panel_from_coordinates()
     me:update_collision_panels()
-    local c = me.collision
-    field.highlight(c.panel_x, c.panel_y)
+    -- (0x0800B388: the panels of its region, so none while it has none: the tick after a hit.)
+    me:highlight_collision_panels()
 end
 
 -- 0x080D30E0.
