@@ -33,8 +33,9 @@ export type Spec = {
 }
 
 local VANISH_ANIM = 4
--- The shuriken's hit modifier.
+-- The shuriken's hit modifier, and the height it is thrown from.
 local HIT_MOD = 1
+local HEIGHT = 0xA0_0000
 -- An enemy's body (`byte_8016290`, by side).
 local ENEMY_BODY: { [number]: number } = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
 -- The rows `sub_8016218` looks at, by the navi's row (`byte_8016298`).
@@ -125,7 +126,7 @@ local function throw(me: Object, s: State, spec: Spec)
         end
         if x and y then
             local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-            shuriken.spawn(spec.shuriken, me, x, y, me.attack_element, HIT_MOD, damage, flip_toward(me, x))
+            shuriken.spawn(spec.shuriken, me, x, y, me.attack_element, HIT_MOD, damage, flip_toward(me, x), HEIGHT)
         end
         battle.play_sound(spec.throw_sound)
         s.timer = 0x1E
