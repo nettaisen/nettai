@@ -850,7 +850,8 @@ mod tests {
         assert_eq!((sent.entries.len(), sent.entries[0]), (12, Tactic::Chip(chip("areagrab"))));
         assert!(sent.entries.contains(&Tactic::Nothing) && sent.entries.contains(&Tactic::Pattern(2)));
         assert_eq!(sent.patterns.len(), 8);
-        assert_eq!(sent.patterns[0], TacticPattern { dx: -2, dy: 1, chips: vec![chip("sword"), chip("wideswrd")] });
+        assert_eq!(sent.patterns[0], TacticPattern::of(-2, 1, &[chip("sword"), chip("wideswrd")], 7));
+        assert_eq!((sent.patterns[1].score, sent.patterns[2].score, sent.patterns[3]), (0, 10, TacticPattern::UNUSED));
         assert!(m.round(&content, 2).players[1].tactics.entries.is_empty());
         // What a file gets wrong.
         let bad = |from: &str, to: &str| -> Vec<String> {
@@ -875,7 +876,6 @@ mod tests {
         has(bad("\"wideswrd\", {}, {}, {}]", "\"wideswrd\"]"), "left: computer_navi: record 1: chips states 2 places; a record has 5");
         has(bad("\"wideswrd\", {}, {}, {}]", "\"wideswrd\", 1, {}, {}]"), "left: computer_navi: record 1: 1 is no chip place (a chip's name, 0, or {} for an empty place)");
         has(bad("    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },\n", ""), "left: computer_navi: records states 7 pattern records; the data has 8, each stated");
-        has(bad("patterns = [1, 3,", "patterns = [1, 2,"), "left: the computer navi's pattern 2 has a 0 among its chips, which the engine doesn't play yet");
         has(bad(first, &format!("{first}\nrest = []")), "unknown field `rest`");
         // EXE6 has no computer navis: its match file takes no such data.
         let six = exe6_content();

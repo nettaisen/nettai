@@ -190,78 +190,24 @@ pub struct Content {
     pub strings: strings::Strings,
 }
 
-/// docs/design/content-model-v2.md §4.0: a game's inits are the whole truth
-/// about what the game has. Every definition of the registries a game
-/// holds ([`nettai_content_api::GAME_LISTS`]) is made by a module its
-/// folder's init.luau requires itself, a folder the game's top module
-/// requires itself (`packs::listed_by`: exe6/chips/init.luau requires
-/// chips/cannon, and exe6/init.luau requires chips); a support pack's
-/// module makes none. (Content whose scripts name no packs, a test's
-/// modules alone, has none.)
-fn check_init(scripts: &Scripts, definitions: &nettai_content_api::Definitions) -> Result<(), nettai_content_api::ContentError> {
-    use nettai_content_api::{ContentError, GAME_LISTS, PackKind, keys, packs};
-    if scripts.packs.is_empty() {
-        return Ok(());
-    }
-    let file = |module: &str| format!("{}.luau", keys::module_path(module));
-    const RULE: &str = "a folder's init.luau requires every module of the folder that defines what the game has, and the game's init.luau the folders";
-    // Whether index `index` requires `name` itself.
-    let mut required: std::collections::BTreeMap<String, Option<Vec<String>>> = Default::default();
-    let mut requires = |index: &str, name: &str| -> Result<Option<bool>, ContentError> {
-        if !required.contains_key(index) {
-            let read = scripts.required_by(index).transpose().map_err(ContentError::new)?;
-            required.insert(index.to_string(), read);
-        }
-        Ok(required[index].as_ref().map(|r| r.iter().any(|m| m == name)))
-    };
+/// docs/design/content-model-v2.md §4.0: a support pack defines nothing a
+/// game has ([`nettai_content_api::GAME_LISTS`]: its makers take the game's
+/// ids). (What a game has needs no check of its own: a module nothing
+/// requires never runs, so it defines nothing.)
+fn check_support(scripts: &Scripts, definitions: &nettai_content_api::Definitions) -> Result<(), nettai_content_api::ContentError> {
+    use nettai_content_api::{ContentError, GAME_LISTS, PackKind, keys};
     for d in &definitions.defs {
         if !GAME_LISTS.iter().any(|(_, rs)| rs.contains(&d.registry)) {
             continue;
         }
         let Some(pack) = keys::root_of(&d.module) else { continue };
-        match scripts.manifest(pack) {
-            None => {
-                return Err(ContentError::new(format!("{}: {} {}: its pack, {pack}, has no manifest", file(&d.module), d.registry, d.key)));
-            }
-            Some(p) if p.kind == PackKind::Support => {
-                return Err(ContentError::new(format!(
-                    "{}: {} {}: support pack {pack} defines nothing a game has (its makers take the game's ids)",
-                    file(&d.module),
-                    d.registry,
-                    d.key
-                )));
-            }
-            Some(_) => {
-                // Up from the module: its folder's init lists it, and the
-                // game's top module the folder.
-                let mut module = d.module.clone();
-                while let Some((index, name)) = packs::listed_by(&module) {
-                    match requires(&index, &name)? {
-                        Some(true) => {}
-                        Some(false) => {
-                            return Err(ContentError::new(format!(
-                                "{}: {} {} is {pack}'s, and {} doesn't require {} ({RULE})",
-                                file(&d.module),
-                                d.registry,
-                                d.key,
-                                file(&index),
-                                keys::local(&name)
-                            )));
-                        }
-                        None => {
-                            return Err(ContentError::new(format!(
-                                "{}: {} {} is {pack}'s, and there is no {} to require {} ({RULE})",
-                                file(&d.module),
-                                d.registry,
-                                d.key,
-                                file(&index),
-                                keys::local(&name)
-                            )));
-                        }
-                    }
-                    module = index;
-                }
-            }
+        if scripts.manifest(pack).is_some_and(|p| p.kind == PackKind::Support) {
+            return Err(ContentError::new(format!(
+                "{}.luau: {} {}: support pack {pack} defines nothing a game has (its makers take the game's ids)",
+                keys::module_path(&d.module),
+                d.registry,
+                d.key
+            )));
         }
     }
     Ok(())
@@ -272,7 +218,7 @@ impl Content {
     /// (docs/design/content-model-v2.md §7.3). A battle needs defined
     /// content; loaders call this once the data and scripts are in.
     pub fn define(&mut self) -> Result<(), nettai_content_api::ContentError> {
-        if self.scripts.modules.is_empty() {
+        if self.scripts.modules.is_empty() && self.scripts.packs.is_empty() {
             let definitions = Default::default();
             sections::build(self, &definitions)?;
             self.defs = Defs::build(self, definitions)?;
@@ -285,9 +231,16 @@ impl Content {
                 self.scripts.games().join(" and ")
             )));
         }
-        let (definitions, compiled) = nettai_luau::define(&self.scripts.pack(), &self.assets, nettai_luau::Options::default())?;
+        let (definitions, compiled) = nettai_luau::define(&self.scripts.pack_to_define(), &self.assets, nettai_luau::Options::default())?;
+        // What the load read is the content's modules from here on (those
+        // it read from the packs' folders with those held in memory).
+        for (name, source) in compiled.sources() {
+            if !self.scripts.modules.contains_key(name) {
+                self.scripts.modules.insert(name.to_string(), source.to_string());
+            }
+        }
         self.scripts.compiled = CompiledModules(compiled);
-        check_init(&self.scripts, &definitions)?;
+        check_support(&self.scripts, &definitions)?;
         // The rule sections into the ruleset's typed tables.
         sections::build(self, &definitions)?;
         self.defs = Defs::build(self, definitions)?;
