@@ -5,12 +5,14 @@
 
 -- Navis (a navi chip's navi is defined with its chips).
 require("@self/colonel")
+require("@self/meddy")
 require("@self/megaman")
 require("@self/protoman")
 require("@self/searchman")
 require("@self/tomahawkman")
 -- Chips: a module defining one, or a series module defining several.
 require("@self/colonel/chip")
+require("@self/meddy/chip")
 require("@self/protoman/chip")
 require("@self/searchman/chip")
 require("@self/tomahawkman/chip")

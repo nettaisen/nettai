@@ -9,6 +9,7 @@
 "protoman" = 1
 "colonel" = 7
 "searchman" = 3
+"meddy" = 6
 "tomahawkman" = 10
 
 # Weapons: the weapon routine numbers (0x0800F370, EXE6's `off_80117D4`) NaviStats +0x04 (buster), +0x05 (charged
@@ -65,6 +66,7 @@
 "protoman/back" = [0x0B]
 "colonel/charge" = [0x46]
 "searchman/charge" = [0x3F]
+"meddy/charge" = [0x3B]
 # TomahawkMan's thrown tomahawk, and his A charge (+0x39: an empty routine, his charged Wood chips').
 "tomahawkman/charge" = [0x3C]
 "tomahawkman/a-charge" = [0x2B]
