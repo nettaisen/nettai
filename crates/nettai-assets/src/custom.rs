@@ -125,6 +125,10 @@ pub struct CustomLayout {
     /// The cursor over OK and over the special slot under it.
     pub ok_cursor: CursorPlace,
     pub special_cursor: CursorPlace,
+    /// Whether the chip window shows the re-deal button's uses left, a
+    /// digit in the damage's last cell (BN5's Shuffle, 0x080245F2; BN6's
+    /// `sub_80287A4` reads the count and draws nothing).
+    pub button_uses: bool,
 }
 
 /// Where the cursor's corners go over a slot (`sub_8028820`): the slot's
@@ -170,6 +174,7 @@ impl CustomLayout {
                 [(3, 2, false, false), (3, 0x15, true, false), (0xD, 0x15, true, true), (0xD, 2, false, true)],
             ],
         },
+        button_uses: false,
     };
 }
 
@@ -197,6 +202,10 @@ pub struct ButtonPictures {
     /// (BN5's state 9).
     pub icons: Tiles,
     pub icon_palette: Palette,
+    /// The flying icon's palette on a console of another game version,
+    /// where it differs, by version (BN5: Team Colonel's has another
+    /// outline color, its ROM's 0x0874BDBC).
+    pub icon_palettes: Vec<(String, Palette)>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

@@ -79,8 +79,8 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
     let (chatbox, said, portrait, lookup) = match screen.phase {
         Phase::Description { window: None, chatbox, .. } => {
             // The chip under the cursor as the screen checked it (the chip
-            // window's).
-            let chip = screen.look.chip_window.last_chip.map(|c| c.id);
+            // window's), or the chip a button there shows (BN5's capsules).
+            let chip = screen.slots[screen.cursor as usize].face.or(screen.look.chip_window.last_chip.map(|c| c.id));
             let said = chip.and_then(|c| strings.chip_description(&b.content, c));
             (chatbox, said, None, chip.map(Lookup::ChipDescription))
         }
