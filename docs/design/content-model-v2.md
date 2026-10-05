@@ -343,8 +343,9 @@ of them by number, they say:
   from a Cross, the Gregar beast up to the Gregar Crosses in Beast Out, else the Falzar beast; none: it stays).
 - **What a form gives.** `palette` (`byte_80203EA`: `Rules::cross_palettes` went), `chip_bonus` and
   `null_bonus` (`sub_800EF34`: a family's damaging chips, EraseCross's dimming chips too; Beast Out's Null
-  chips), `charged_chips` (`sub_8013236`), `charged_bonus` (`sub_8012C7C`), `charge_doubles`
-  (`sub_8012AFA`), `chip_heals` (SpoutCross's Aqua chips heal), `fire_charge` (ChargeCross's, `sub_80F0608`),
+  chips), `charged_chips` (`sub_8013236`; each rule says whether the chip must be `damaging`: a Cross's true,
+  Beast Out's Null rule false, and one that leaves it out doesn't load), `charged_bonus` (`sub_8012C7C`),
+  `charge_doubles` (`sub_8012AFA`), `chip_heals` (SpoutCross's Aqua chips heal), `fire_charge` (ChargeCross's, `sub_80F0608`),
   `status_reset` and `navicust_refresh` (`sub_8014536`, `sub_801469C`: named effects, applied in the
   routines' order; the refresh defaults to the reset without the lock-on marker), `hover` (Falzar Beast
   Over's), `special_volley` (the Cross special's volley, `sub_802D4F0`: the form's number, which the original

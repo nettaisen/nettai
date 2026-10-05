@@ -30,7 +30,7 @@ return define.form {
     mugshot = { normal = asset.mugshot("chargecross"), tired = asset.mugshot("chargecross-tired") },
     -- What R shows in the Cross window.
     -- The chips A charges.
-    charged_chips = { { family = "fire" } },
+    charged_chips = { { family = "fire", damaging = true } },
     -- The A charge builds up the next Fire chip's damage, up to this much.
     fire_charge = 100,
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.

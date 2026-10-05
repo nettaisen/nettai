@@ -30,7 +30,7 @@ return define.form {
     -- Beast Out: its damaging Null chips' bonus, where the family's doesn't apply.
     null_bonus = 30,
     -- The chips A charges.
-    charged_chips = { { family = "sword", element_swords = true }, { family = "null", damaging = false } },
+    charged_chips = { { family = "sword", damaging = true, element_swords = true }, { family = "null", damaging = false } },
     -- A charged chip hits 40 harder.
     charged_bonus = { damage = 40 },
     -- What its status reset gives the navi (`sub_8014536`).

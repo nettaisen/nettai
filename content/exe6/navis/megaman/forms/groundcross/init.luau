@@ -32,7 +32,7 @@ return define.form {
     -- The damage it adds to its family's damaging chips.
     chip_bonus = { family = "break", damage = 10 },
     -- The chips A charges.
-    charged_chips = { { family = "break" } },
+    charged_chips = { { family = "break", damaging = true } },
     -- What its status reset gives the navi (`sub_8014536`).
     status_reset = { "super_armor" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
