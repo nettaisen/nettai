@@ -402,7 +402,7 @@ damage and status areas (and the first of the others), 130:
 | `object_breakPanel` | 2 | its callers pass a panel on the field and never an occupied one (CrakShot breaks only an empty panel, SunMoon's meteor only one holding nothing); a panel that isn't solid it does meet, from SunMoon's meteor over a hole (the chip families' second pass, batch 4) |
 | `sub_801A802` | 5 | barrier type 0xA and the weak elements of types 0xB-0xE: only a navi AI raises them |
 | `sub_80139F6`, `sub_801A4A6`, `sub_8019F44` | 8 | bug codes 0x54, 0xF4, 0xF9-0xFF: no hit a netbattle has carries them; the damage word's bit 0x800, whose test branches to its own fall-through |
-| `sub_801A2CC`, `sub_801A324`, `sub_80C532E` | 3 | collision rows 3, 8 and 9 (a chip-erasing hit, drain hits) are used by no attack; the region's report pointer is zeroed at its spawn and set by no caller |
+| `sub_801A2CC`, `sub_801A324`, `sub_80C532E` | 3 | collision rows 3, 8 and 9 (a chip destruction hit, drain hits) are used by no attack; the region's report pointer is zeroed at its spawn and set by no caller |
 | `sub_8010162`, `sub_8010198` | 3 | the timed submerged state: its one starter, actor #0x5D variant 1, is never spawned |
 | `sub_801AC6C` | 2 | a dead navi while the battle isn't over (one navi a side); NaviStats+0x52 has no writer and is 0 in all 10,072 lab stat blocks |
 | `sub_8017BC0`, `sub_802DD2A`, `applyDamageToPlayer_801ba12`, `sub_801AF44` | 11 | the Cross change, Cross death, volley and UNINTERRUPTIBLE: nothing in a netbattle raises them |

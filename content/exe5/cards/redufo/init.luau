@@ -8,7 +8,7 @@ return define.patch_card {
     id = "redufo",
     mb = 20,
     effects = {
-        cards.charge_shot_kind(variants.attack_90),
+        cards.charge_shot_kind(variants.chip_destruction),
         cards.bug(cards.chip_recovery(0)),
         cards.bug(cards.step_bug(1)),
     },
