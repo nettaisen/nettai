@@ -215,6 +215,12 @@ struct LockonSection {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
+struct LinkPickSection {
+    backgrounds: Vec<super::BackgroundId>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct SpChipsSection {
     /// BCD hours:minutes:seconds.hundredths.
     deletion_times: Vec<u32>,
@@ -247,6 +253,7 @@ pub(crate) const SECTIONS: &[&str] = &[
     "elements",
     "flow",
     "fresh_stats",
+    "link_pick",
     "lockon",
     "math",
     "navicust",
@@ -283,6 +290,7 @@ struct Stated {
     effects: Option<super::rules::EffectsRules>,
     fresh_stats: Option<super::rules::FreshStatsRules>,
     sp_chips: Option<SpChipsSection>,
+    link_pick: Option<LinkPickSection>,
 }
 
 impl Stated {
@@ -325,7 +333,8 @@ impl Stated {
             }),
             lockon: Some(r.lockon.clone()),
             chip_use: Some(r.chip_use),
-            flow: Some(r.flow.clone()),
+            flow: Some(r.flow),
+            link_pick: Some(LinkPickSection { backgrounds: r.link_pick.backgrounds.clone() }),
             effects: Some(r.effects),
             fresh_stats: Some(r.fresh_stats),
             sp_chips: Some(SpChipsSection { deletion_times: r.sp_deletion_times.clone(), slots: r.sp_slots.clone() }),
@@ -377,6 +386,8 @@ impl Stated {
             chaos_cycle: buster.chaos_cycle,
             sp_deletion_times: sp_chips.deletion_times,
             sp_slots: sp_chips.slots,
+            // (Its stages are `link`'s to resolve.)
+            link_pick: super::rules::LinkPick { stages: Vec::new(), backgrounds: self.link_pick.map(|s| s.backgrounds).unwrap_or_default() },
             sine: self.sine.unwrap_or_default(),
             push_vectors: reactions.push,
             push_reading: reactions.push_reading,
@@ -603,6 +614,16 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
             }
             "chip_use" => stated.chip_use = Some(r.read(spec, &at).map_err(e)?),
             "flow" => stated.flow = Some(r.read(spec, &at).map_err(e)?),
+            "link_pick" => {
+                // (Its stages are definitions, which `link` resolves once
+                // they have their handles; stated all the same.)
+                if matches!(spec.field("stages"), Data::Nil) {
+                    return Err(e(format!("{at}: missing field `stages`")));
+                }
+                let mut data = spec.clone();
+                super::reader::strip(&mut data, &["stages"]);
+                stated.link_pick = Some(r.read(&data, &at).map_err(e)?);
+            }
             "effects" => stated.effects = Some(r.read(spec, &at).map_err(e)?),
             "fresh_stats" => {
                 // (Its weapon is a definition, which `link` resolves once
@@ -636,11 +657,36 @@ pub fn build(content: &mut Content, definitions: &Definitions) -> Result<(), Con
 }
 
 /// The rules' references to definitions, once those have their handles
-/// (`Defs::build`): the fresh stats' `mode9_a`, a weapon. A ruleset that
-/// states no `fresh_stats` section (a test's, whose rules are Rust tables)
-/// keeps what the tables have.
+/// (`Defs::build`): the fresh stats' `mode9_a`, a weapon, and the link
+/// pick's `stages`. A ruleset that states no `fresh_stats` section (a
+/// test's, whose rules are Rust tables) keeps what the tables have.
 pub fn link(content: &mut Content) -> Result<(), ContentError> {
     let Some(d) = super::defs::ruleset(&content.defs.definitions) else { return Ok(()) };
+    let path = nettai_content_api::keys::module_path(&d.module);
+    match d.spec.field("link_pick").field("stages") {
+        Data::Nil => {}
+        list => {
+            let at = format!("{path}.luau: ruleset: link_pick.stages");
+            let items: &[Data] = match list {
+                Data::List(items) => items,
+                // (An empty table is an empty list.)
+                Data::Map(entries) if entries.is_empty() => &[],
+                other => return Err(ContentError::new(format!("{at}: a list of stages, not {other:?}"))),
+            };
+            let mut stages = Vec::with_capacity(items.len());
+            for (i, item) in items.iter().enumerate() {
+                let Data::Ref(nettai_content_api::Registry::Stage, key) = item else {
+                    return Err(ContentError::new(format!("{at}[{}]: a stage (a `define.stage`), not {item:?}", i + 1)));
+                };
+                stages.push(
+                    content.defs.stage_by_key(key).ok_or_else(|| ContentError::new(format!("{at}[{}]: the content has no stage {key:?}", i + 1)))?,
+                );
+            }
+            if let Some(rules) = content.rules.as_mut() {
+                rules.link_pick.stages = stages;
+            }
+        }
+    }
     let section = d.spec.field("fresh_stats");
     if matches!(section, Data::Nil) {
         return Ok(());

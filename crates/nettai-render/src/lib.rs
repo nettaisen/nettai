@@ -1,4 +1,4 @@
-//! Draws nettai's battles into frames.
+//! Picks nettai's battles into frames.
 //!
 //! Everything on screen is drawn from engine state (panels, objects with
 //! their sprite, animation frame and look, HP, the custom gauge) and the
