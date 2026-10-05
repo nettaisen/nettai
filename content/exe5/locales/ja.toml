@@ -223,6 +223,7 @@ language = "ja"
 "mrkcan3" = { name = "マークキャノン3", description = "前方3れつまでの\nてきをロックオンし\nキャノン攻撃!" }
 "mudwave" = { name = "ドロツナミホール", description = "あなパネルから\nドロツナミはっせい" }
 "muramasa" = { name = "ムラマサブレード", description = "へっているHP分が\n攻撃力になる\nのろいのカタナ!" }
+"napalm" = { name = "ナパームボム", description = "4マス前方のマスに\n9マス分にひろがる\nナパームボム!" }
 "napalmmn" = { name = "ナパームマン", description = "4マス前方に\n9マス分にひろがる\nナパームボム!" }
 "naplmmn-ds" = { name = "ナパームマン\uE008", description = "4マス前方に\n9マス分にひろがる\nナパームボム!" }
 "naplmmn-sp" = { name = "ナパームマン\uE003", description = "4マス前方に\n9マス分にひろがる\nナパームボム!" }
@@ -366,6 +367,7 @@ language = "ja"
 "knightman" = { name = "ナイトマン" }
 "meddy" = { name = "メディ" }
 "megaman" = { name = "ロックマン", variant_name = "FCロックマン" }
+"napalmman" = { name = "ナパームマン" }
 "numberman" = { name = "ナンバーマン" }
 "protoman" = { name = "ブルース" }
 "searchman" = { name = "サーチマン" }
