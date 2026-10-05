@@ -363,7 +363,7 @@ pub fn add_index(scripts: &mut Scripts, game: &str) {
         scripts.modules.iter().filter_map(|(name, source)| Some((name.strip_prefix(&prefix)?.to_string(), source.clone()))).collect();
     scripts.modules.insert(packs::top_module(game), Scripts::init_for(&own));
     let depends = scripts.packs.iter().filter(|p| p.kind == PackKind::Support).map(|p| p.id.clone()).collect();
-    scripts.set_manifest(PackManifest { id: game.to_string(), kind: PackKind::Game, depends, extract: None });
+    scripts.set_manifest(PackManifest { id: game.to_string(), kind: PackKind::Game, depends });
 }
 
 /// Every `.luau` module under `dir`, by path without `.luau`.
