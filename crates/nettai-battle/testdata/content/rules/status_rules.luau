@@ -21,7 +21,17 @@ return {
     drain_bug_flags = false,
     no_charge_drive = false,
     hp_loss = "hp_alone",
-    emotions = "exe6",
+    -- Worn out (exhausted, or a mood of 0) before anger, then held tired, Full
+    -- Synchro, else normal; a navi held tired or exhausted holds its mood, and
+    -- anger's end puts it at 0x80.
+    emotion = {
+        mood_held = "tired_or_exhausted",
+        anger_end = "resets_mood",
+        plain_in_battle_mode_1 = false,
+        normal_in_a_form = false,
+        anger_before_worn_out = false,
+        tired_and_exhausted = true,
+    },
     -- The weakness request breaks a Cross or a Beast to what it breaks to.
     form_break = "cross_or_beast",
 }

@@ -377,7 +377,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         palette_flash_order = "after_fades",
         overlays_run_while_paused = true,
         load_sets_part_palette = true,
-        obstacle_actions = "own_from_6","#,
+        obstacle_actions = "own_from_6",
+        full_synchro_aura = { follows_identity = true, steps_while_paused = true, stops_at_a_pause_in_the_fight = false },"#,
             ),
             (
                 "flow",
@@ -443,7 +444,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         drain_bug_flags = true,
         no_charge_drive = false,
         hp_loss = "hp_alone",
-        emotions = "exe5",
+        emotion = { mood_held = "at_zero", anger_end = "resets_mood", plain_in_battle_mode_1 = false, normal_in_a_form = true, anger_before_worn_out = false, tired_and_exhausted = true, worried_below = 40 },
         form_break = "cross_or_beast","#,
             ),
         ];
@@ -479,8 +480,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         let c = game(ruleset(None, None, None)).unwrap_or_else(|e| panic!("{e}"));
         let r = c.rules();
         use crate::content::{
-            DamageWordRule, Emotions, FormBreak, HpLoss, NaviWinBanner, ObstacleActions, OverlayRestart, PushReading, Reactions, Reservations,
-            RetypeRule, ShakeRule, StanceCounter,
+            AngerEnd, DamageWordRule, FormBreak, HpLoss, MoodHeld, NaviWinBanner, ObstacleActions, OverlayRestart, PushReading, Reactions,
+            Reservations, RetypeRule, ShakeRule, StanceCounter,
         };
         assert_eq!((r.flow.result_words, r.flow.escape_check, r.flow.navi_win_banner), (49, false, NaviWinBanner::OperationBattle));
         assert_eq!(
@@ -492,10 +493,12 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!((r.hit_test.float_shoe_needs_self_bit, r.hit_test.elec_reaches_submerged, r.hit_test.guard_breaks_to), (true, true, 0x1002));
         assert!(!r.obstacle_slide_bounds);
         assert_eq!((r.slide_speed.x, r.slide_speed.y), (0x30000, 0x20000));
-        assert_eq!(
-            (r.reactions, r.emotions, r.form_break, r.intake.hp_loss),
-            (Reactions::FlashTimerFirst, Emotions::Exe5, FormBreak::CrossOrBeast, HpLoss::HpAlone)
-        );
+        assert_eq!((r.reactions, r.form_break, r.intake.hp_loss), (Reactions::FlashTimerFirst, FormBreak::CrossOrBeast, HpLoss::HpAlone));
+        let m = r.emotion;
+        assert_eq!((m.mood_held, m.anger_end, m.worried_below), (MoodHeld::AtZero, AngerEnd::ResetsMood, Some(40)));
+        assert_eq!((m.plain_in_battle_mode_1, m.normal_in_a_form, m.anger_before_worn_out, m.tired_and_exhausted), (false, true, false, true));
+        let aura = r.effects.full_synchro_aura;
+        assert_eq!((aura.follows_identity, aura.steps_while_paused, aura.stops_at_a_pause_in_the_fight), (true, true, false));
         assert_eq!((r.form_tick, r.flash_hides_on_clear, r.missing_collision_status.0, r.intake.drain_bug_flags), (false, true, 7, true));
         assert_eq!((r.pools.slots(), r.panels.reservations), ([16, 32, 8], Reservations::Unmarked));
         let f = r.fresh_stats;
@@ -522,7 +525,15 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 56, "every field of every section");
+        assert_eq!(fields, 57, "every field of every section");
+        // A field of a table of settings, too; but one that is none unless
+        // stated.
+        let e = game(ruleset(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();
+        assert!(e.contains("ruleset: status.emotion: missing field `anger_end`"), "{e}");
+        let e = game(ruleset(None, None, Some((" steps_while_paused = true,", "")))).unwrap_err();
+        assert!(e.contains("ruleset: effects.full_synchro_aura: missing field `steps_while_paused`"), "{e}");
+        let c = game(ruleset(None, None, Some((", worried_below = 40", "")))).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(c.rules().emotion.worried_below, None, "no mood is worried");
         // A field of a table of settings, too.
         let e = game(ruleset(None, None, Some((" elec_reaches_submerged = true,", "")))).unwrap_err();
         assert!(e.contains("ruleset: reactions.hit_test: missing field `elec_reaches_submerged`"), "{e}");

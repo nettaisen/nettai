@@ -2585,6 +2585,9 @@ export type IdentitySpec = {
     overlay_hooks: { "death" | "refresh" | "flinch" | "flinch_checked" | "drag" | "lets_go" }?,
     -- The Full Synchro aura's animation around it (a player's has one).
     aura_anim: number?,
+    -- The anger tick passes over it (EXE5's actor records of AI index 23:
+    -- ShadowMan's SplitUp shadow's, which no navi a player operates has).
+    never_angers: boolean?,
     -- The ice block that fits it (none: small).
     ice: ("small" | "medium" | "large")?,
     -- What it is as a navi no player controls (actor type navi, which a

@@ -1889,7 +1889,7 @@ seven saves (Tango's templates and three played ones):
 ### 15.10 EXE5's emotions (as built)
 
 EXE5's emotion is its own routine (0x0801270C → 0x08012740; in battle mode 1, 0x080127C0: Full Synchro or normal),
-which the engine runs for a side whose rules say so (the status section's `emotions = "exe5"`: the one rule still named for its game, a whole emotion model):
+which the engine runs for a side whose rules say so (the status section's `emotion` table: each difference a rule of its own, named for what it does):
 
 | EXE5's | When | The engine's | Face (0x0801AFB4) |
 |---|---|---|---|
@@ -1903,7 +1903,10 @@ which the engine runs for a side whose rules say so (the status section's `emoti
 - **The mood setter** (0x080127D6, EXE6's `sub_8015BEC`) leaves a mood of 0 as it is (EXE6's leaves a held one): a dark
   MegaMan never reaches Full Synchro, and anger's 0x80 doesn't lift him.
 - **The anger tick** (0x08011A14) is EXE6's but passes over AI index 23, and ends anger on EXE5's 5 alone (EXE6's 5 and
-  1: worried doesn't).
+  1: worried doesn't). AI index 23 is no navi a player operates: the actor records of NameIDs 0x18E, 0x18F and 0x190
+  have it (a player's type; the table, 0x08014C94 by NameID, ends with them), and 0x18E is ShadowMan's SplitUp shadow
+  (navis/shadowman/shadow.luau, a kind of its own in content, which never runs the tick). In the engine it is an
+  identity's `never_angers`, which nothing states today.
 - **The starting mood** (0x08010EC8's, where EXE6's `sub_8013892` sets 0x80): by the light/dark value (0x0801283A):
   under 470 0, under 500 64, from 1000 190, else value / 20 + 103 (500 gives 0x80, so a light MegaMan's is EXE6's).
   Battle effect 0x20000 holds the value at 500 (0x08010EDC). The hook `starting_mood`, which the light and dark
@@ -2174,7 +2177,7 @@ knockback; RedFrut's broken and eaten recordings (side 0's buster, side 1's afte
 
 **EXE5's Full Synchro aura and guard** (found with RedFrut3, then built). The aura is actor object 0x5E (0x080C45E0):
 the role `sprites.full_synchro_aura` is EXE5's sprite 14-16 (`full-synchro-aura`), and the engine's aura, by the
-side's `emotions` rule, takes EXE5's ways: its sprite steps while paused (0x080C45E0), but once the fight is on it
+game's `effects.full_synchro_aura` rules (and the hit test's reading of the flag 0x80000000), takes EXE5's ways: its sprite steps while paused (0x080C45E0), but once the fight is on it
 stops running while paused (it clears its header's run-while-paused bit, 0x080C4648), it keeps the animation it
 started with (the navi's actor record's AI index, 0x0800D1C0), and it hides while its navi is bubbled too
 (0x80000004); like EXE6's it frees itself as Full Synchro ends. Its spawner (0x0801100C) allows AI indexes to 12. The
