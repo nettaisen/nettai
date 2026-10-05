@@ -366,7 +366,7 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             rules: Vec::new(),
             patch_cards: Default::default(),
             navicust: None,
-            tactics: Default::default(),
+            auto_battle: Default::default(),
         };
         Unlocks::everything(version).write(content, &mut player).expect("EXE6's setup");
         player
