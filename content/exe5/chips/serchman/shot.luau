@@ -30,7 +30,7 @@ local function init(me: Object)
     end
     local s = me.state :: State
     me:setup_collision(if s.powered then collision.collision_1d else collision.curse, collision.hits_navis, 3)
-    me.collision:set_hit_effect(if s.powered then sparks.shot else sparks.plain)
+    me.collision:set_hit_effect(if s.powered then sparks.chip_destruction else sparks.plain)
     me.collision:present()
     me:set_lifecycle("update")
 end

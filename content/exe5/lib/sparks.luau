@@ -30,8 +30,8 @@ sparks.heavy = define.spark { sprite = HIT_SPARKS, anim = 8, palette = 0 }
 sparks.impact = define.spark { sprite = asset.sprite("impact"), anim = 0, palette = 0 }
 -- A guarded hit's (8).
 sparks.guard = define.spark { sprite = asset.sprite("hit"), anim = 0, palette = 0 }
--- A shot's impact (9).
-sparks.shot = define.spark { sprite = asset.sprite("shot-impact"), anim = 0, palette = 0 }
+-- The chip destruction hit spark (9).
+sparks.chip_destruction = define.spark { sprite = asset.sprite("chip-destruction-spark"), anim = 0, palette = 0 }
 -- A breaking hit (0x0A).
 sparks.breaking = define.spark { sprite = HIT_SPARKS, anim = 1, palette = 0 }
 -- A blast (0x0B).

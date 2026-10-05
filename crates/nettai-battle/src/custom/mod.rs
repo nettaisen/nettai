@@ -539,7 +539,14 @@ impl Battle {
             // The screen's sounds, which only its player hears.
             if let Some(screen) = &s.screen {
                 for sound in screen.look.drawn.sounds() {
-                    self.sound_for(side, sound.role());
+                    // (The dark chip hover's is EXE5's alone.)
+                    if sound == look::ScreenSound::DarkHover {
+                        if let Some(id) = self.roles().try_sound(sound.role()) {
+                            self.play_sound_for(side, id);
+                        }
+                    } else {
+                        self.sound_for(side, sound.role());
+                    }
                 }
                 if let Some((music, screen)) = screen.look.drawn.volume {
                     self.play_sound_for(side, crate::sound::SoundCue::ScreenVolume { music, screen });

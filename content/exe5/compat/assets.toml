@@ -192,7 +192,7 @@ charge-glow = "14-08"
 blindness = "14-09"
 burst = "14-0a"
 confusion = "14-0b"
-shot-impact = "14-0c"
+chip-destruction-spark = "14-0c"
 puff = "14-0d"
 dust = "14-0e"
 vulcan-hit = "14-0f"
@@ -399,6 +399,7 @@ flame-hook-fire = 0x158
 rslash = 0x164
 magnet-pull = 0x166
 soul-primed = 0x167
+dark-hover = 0x16b
 telop = 0x173
 
 # Banners: banner ids (the records at 0x0801B810).
