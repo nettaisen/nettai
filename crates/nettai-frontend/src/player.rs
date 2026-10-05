@@ -7,10 +7,15 @@
 //! original's 59.7275 Hz clock and runs the ticks due) or asks for a tick
 //! outright ([`Player::tick`]: a host that paces itself). It takes back
 //! the picture ([`Player::frame`], or [`Player::present`] into a pixel
-//! buffer of any size), the sound as samples for its own output
-//! ([`Player::take_samples`]), and what there is to say ([`Player::lines`],
-//! and each part of it apart). Pause, speed and starting over are methods,
-//! refused while the battle runs in real time with another player.
+//! buffer of any size) and the sound as samples for its own output
+//! ([`Player::take_samples`]). The player draws nothing over the battle's
+//! picture and composes no text: where playback is, whether it is paused
+//! and how fast, why it stopped, a set's result, a difference from a
+//! recording and a netplay connection's figures are values
+//! ([`Player::position`], [`Player::stopped`], [`Player::result`],
+//! [`Player::diverged`], [`Player::net_status`]) for the host to show as it
+//! likes. Pause, speed and starting over are methods, refused while the
+//! battle runs in real time with another player.
 //!
 //! ```ignore
 //! let game = nettai_frontend::game::load("exe6", &Options::default())?;
@@ -28,12 +33,11 @@
 //! }
 //! ```
 
-use crate::driver::Driver;
+use crate::driver::{Driver, NetStatus};
 use crate::game::{Graphics, Loaded};
 use crate::session::Session;
 use nettai_audio::BattleAudio;
 use nettai_battle::{Battle, BattleResult};
-use nettai_render::compose::{HEIGHT, WIDTH};
 use nettai_render::vfont::TextRenderer;
 use nettai_render::{Frame, Renderer};
 use std::time::Duration;
@@ -69,8 +73,6 @@ pub struct Player {
     speed: usize,
     /// Ticks the clock owes, less than one.
     owed: f64,
-    /// Whether the status lines show ([`Player::show_status`]).
-    status: bool,
 }
 
 // (A player borrows nothing: a host's state of any lifetime holds one.)
@@ -100,7 +102,6 @@ impl Player {
             paused: false,
             speed: NORMAL,
             owed: 0.0,
-            status: true,
         };
         player.start_over();
         player
@@ -234,13 +235,11 @@ impl Player {
 
     /// The picture into the host's pixels: `buffer` holds `width` x
     /// `height` of them, 0x00RRGGBB each, row by row. The frame is scaled
-    /// up by the largest whole factor that fits and centered, the font
-    /// mode's text is drawn at the buffer's resolution, and what there is to
-    /// say ([`Player::lines`]) is written over the top left in a small
-    /// font.
+    /// up by the largest whole factor that fits and centered, and the font
+    /// mode's text (the game's own) is drawn at the buffer's resolution.
+    /// Nothing else is drawn.
     pub fn present(&mut self, buffer: &mut [u32], width: usize, height: usize) {
-        let mut frame = self.frame();
-        write_lines(&mut frame, &self.lines());
+        let frame = self.frame();
         nettai_render::present::present(&frame, self.text.as_mut(), buffer, width, height);
     }
 
@@ -264,43 +263,13 @@ impl Player {
         self.renderer.set_strings(graphics.strings.clone());
     }
 
-    // ---- What there is to say ----------------------------------------------
+    // ---- What a host may show ------------------------------------------------
 
-    /// Show the status lines or not (the driver's status line, and where
-    /// playback is while paused or stopped): [`Player::lines`] leaves them
-    /// out. They show at first.
-    pub fn show_status(&mut self, on: bool) {
-        self.status = on;
-    }
-
-    pub fn status_shown(&self) -> bool {
-        self.status
-    }
-
-    /// What to tell the player now, a line each, as [`Player::present`]
-    /// writes it over the picture: the driver's prompt (the custom screen
-    /// in words), its status line (netplay's connection), where playback is
-    /// while paused or stopped, and why it stopped.
-    pub fn lines(&self) -> Vec<String> {
-        let mut lines = Vec::new();
-        lines.extend(self.prompt());
-        lines.extend(self.status().filter(|_| self.status));
-        if self.status && (self.paused || self.session.stopped.is_some()) {
-            lines.push(format!("{}{}  x{}", if self.paused { "PAUSED  " } else { "" }, self.position(), self.speed()));
-        }
-        lines.extend(self.session.stopped.clone());
-        lines
-    }
-
-    /// Something to show the player now, if anything.
-    pub fn prompt(&self) -> Option<String> {
-        self.session.driver.prompt(&self.session.battle)
-    }
-
-    /// The driver's line to show all the time (netplay's connection and
-    /// rollbacks, and the set's result).
-    pub fn status(&self) -> Option<String> {
-        self.session.driver.status()
+    /// How the connection to the other player is doing, in a netplay match
+    /// (its ping, loss, delay and rollbacks); none for a battle without
+    /// one.
+    pub fn net_status(&self) -> Option<NetStatus> {
+        self.session.driver.net_status()
     }
 
     /// Where playback is, in a few words.
@@ -321,9 +290,11 @@ impl Player {
         self.session.finished
     }
 
-    /// A set's result for the local player, once it was played out.
+    /// A set's result for the local player, once it was played out (a
+    /// netplay match's as soon as it is over, while the players are still
+    /// connected).
     pub fn result(&self) -> Option<BattleResult> {
-        self.session.result
+        self.session.result.or_else(|| self.session.driver.result())
     }
 
     /// The first difference from what the driver's source recorded, once
@@ -359,29 +330,6 @@ impl Player {
     /// oneself (`nettai_render::present`).
     pub fn text(&mut self) -> Option<&mut TextRenderer> {
         self.text.as_mut()
-    }
-}
-
-/// Write `lines` over the top left of `frame` in the small font, in front
-/// of everything, the text layer's items too.
-fn write_lines(frame: &mut Frame, lines: &[String]) {
-    if lines.is_empty() {
-        return;
-    }
-    let text = lines.join("\n");
-    crate::text::draw(&mut frame.pixels, WIDTH, 0, 0, &text, 0x7FFF);
-    // Only the boxes the lines are drawn on (`text::draw`'s: four pixels a
-    // character and one more, six rows a line).
-    let cols = crate::text::columns(WIDTH).max(1);
-    let mut y = 0;
-    for line in text.lines() {
-        let chars = line.chars().count();
-        for n in (0..chars.max(1)).step_by(cols).map(|i| (chars - i.min(chars)).min(cols)) {
-            for row in y..(y + 6).min(HEIGHT) {
-                frame.depth[row * WIDTH..][..(n * 4 + 1).min(WIDTH)].fill(0);
-            }
-            y += 6;
-        }
     }
 }
 
@@ -440,10 +388,11 @@ mod tests {
     }
 
     /// The picture is the battle's, 240x160, and goes into a buffer of any
-    /// size; what there is to say is written over it, the status lines only
-    /// while they show.
+    /// size with nothing written over it: paused or not, the buffer is the
+    /// frame scaled up, and what a host might say is values.
     #[test]
-    fn the_player_gives_the_picture_and_the_lines() {
+    fn the_player_gives_the_picture_alone() {
+        use nettai_render::compose::{HEIGHT, WIDTH};
         let graphics = Arc::new(nettai_assets::Bundle::default());
         let mut p = Player::with(Renderer::new(graphics.clone()), None, None, live());
         for _ in 0..3 {
@@ -451,21 +400,17 @@ mod tests {
         }
         let frame = p.frame();
         assert_eq!(frame.pixels.len(), WIDTH * HEIGHT);
-        assert_eq!(p.lines(), Vec::<String>::new(), "nothing to say while it runs");
-        p.set_paused(true);
-        assert_eq!(p.lines(), ["PAUSED  live round 1 tick 30  x1"]);
-        // (The lines are drawn white over the top left; the picture under
-        // them is the frame's.)
         let (w, h) = (WIDTH * 2 + 7, HEIGHT * 2 + 3);
-        let mut with = vec![0u32; w * h];
-        p.present(&mut with, w, h);
-        p.show_status(false);
-        assert_eq!((p.lines(), p.status_shown()), (Vec::<String>::new(), false));
-        let mut without = vec![0u32; w * h];
-        p.present(&mut without, w, h);
-        assert!(with.contains(&0x00FF_FFFF) && with != without);
-        let plain = p.frame();
-        assert_eq!(plain.pixels, frame.pixels, "showing it changes nothing of the frame");
+        let mut running = vec![0u32; w * h];
+        p.present(&mut running, w, h);
+        let mut plain = vec![0u32; w * h];
+        nettai_render::present::present(&frame, None, &mut plain, w, h);
+        assert_eq!(running, plain, "the frame, and nothing over it");
+        p.set_paused(true);
+        let mut paused = vec![0u32; w * h];
+        p.present(&mut paused, w, h);
+        assert_eq!(paused, running, "a pause writes nothing on the picture");
+        assert_eq!((p.paused(), p.position().as_str(), p.speed(), p.stopped(), p.net_status()), (true, "live round 1 tick 30", 1.0, None, None));
     }
 
     /// A driver that runs in real time with another player (netplay's): it
@@ -482,8 +427,11 @@ mod tests {
         fn position(&self) -> String {
             self.0.position()
         }
-        fn status(&self) -> Option<String> {
-            Some("PING 3MS".into())
+        fn net_status(&self) -> Option<NetStatus> {
+            Some(NetStatus { ping_ms: Some(3.0), ..NetStatus::default() })
+        }
+        fn result(&self) -> Option<BattleResult> {
+            Some(BattleResult::Won)
         }
         fn real_time(&self) -> bool {
             true
@@ -491,8 +439,8 @@ mod tests {
     }
 
     /// In real time the player refuses a pause, another speed and starting
-    /// over, and goes on at the original's rate; the driver's status line
-    /// shows while the status lines do.
+    /// over, and goes on at the original's rate; the connection's figures
+    /// and the result the driver knows are the player's to give.
     #[test]
     fn a_real_time_battle_is_not_paused_or_restarted() {
         let graphics = Arc::new(nettai_assets::Bundle::default());
@@ -501,9 +449,8 @@ mod tests {
         assert!(!p.set_paused(true) && !p.faster() && !p.slower() && !p.restart());
         assert_eq!((p.paused(), p.speed()), (false, 1.0));
         assert_eq!(p.advance(time(5.1), 0), 5);
-        assert_eq!(p.lines(), ["PING 3MS"]);
-        p.show_status(false);
-        assert_eq!(p.lines(), Vec::<String>::new());
+        assert_eq!(p.net_status().and_then(|n| n.ping_ms), Some(3.0));
+        assert_eq!((p.result(), p.stopped()), (Some(BattleResult::Won), None));
     }
 
     /// Graphics whose panels are one solid tile of `color` (the field's

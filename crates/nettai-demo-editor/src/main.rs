@@ -3,6 +3,7 @@
 
 mod app;
 mod auto_battle;
+mod facts;
 mod levels;
 mod load;
 mod names;
@@ -10,7 +11,7 @@ mod navicust;
 mod pictures;
 mod view;
 
-use app::{App, Editor, Options, Tab};
+use app::{App, Editor, Options};
 use names::Lang;
 
 const USAGE: &str = "\
@@ -32,8 +33,9 @@ usage: nettai-demo-editor [OPTIONS] [MATCH.toml]
   --frontend PATH  the nettai-demo program Play runs (default: the one
                    beside this program, else nettai-demo on the PATH)
   --tab NAME       start on a pane: arena, or left- or right- and navi,
-                   folder, crosses, souls, auto-battle, cards, navicust,
-                   stats
+                   folder, auto-battle, cards, navicust, stats, or the
+                   name of a list the game's rules take of a side
+                   (exe6's cross_list, exe5's souls)
   --screenshot PNG write the window to PNG once it has drawn, and quit";
 
 fn fail(msg: impl std::fmt::Display) -> ! {
@@ -51,7 +53,7 @@ fn parse() -> Result<Options, String> {
         file: None,
         game: None,
         lang: Lang::En,
-        tab: Tab::Arena,
+        tab: None,
         screenshot: None,
     };
     let mut it = std::env::args().skip(1);
@@ -66,10 +68,7 @@ fn parse() -> Result<Options, String> {
                 o.lang = Lang::from_code(&l).ok_or_else(|| format!("no language {l:?} (en or ja)"))?;
             }
             "--frontend" => o.frontend = Some(value("--frontend")?.into()),
-            "--tab" => {
-                let t = value("--tab")?;
-                o.tab = Tab::from_name(&t).ok_or_else(|| format!("no pane {t:?}"))?;
-            }
+            "--tab" => o.tab = Some(value("--tab")?),
             "--screenshot" => o.screenshot = Some(value("--screenshot")?.into()),
             "-h" | "--help" => return Err(String::new()),
             s if s.starts_with('-') => return Err(format!("unknown option {s}")),

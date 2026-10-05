@@ -7,7 +7,7 @@
 use nettai_battle::battle::mode;
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::cues::CueAction;
-use nettai_battle::content::{ChipCode, Content, WindowView};
+use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::{self, BattleFolder, FolderChip, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState};
 use nettai_battle::input::keys;
 use nettai_battle::link::Link;
@@ -48,10 +48,6 @@ pub trait Driver {
     }
     /// A short description of where playback is.
     fn position(&self) -> String;
-    /// Something to show the player now, if anything (the custom screen).
-    fn prompt(&self, _b: &Battle) -> Option<String> {
-        None
-    }
     /// The region of the console whose screen this is: what the original
     /// would show of the assets only one region's ROMs have
     /// (`Renderer::console_region`).
@@ -77,8 +73,16 @@ pub trait Driver {
     fn run_frame(&mut self, _keys: u16, _shown: &mut Battle) -> Option<Result<Ran, String>> {
         None
     }
-    /// A line to show all the time (netplay's connection and rollbacks).
-    fn status(&self) -> Option<String> {
+    /// How the connection to the other player is doing, of a driver that
+    /// has one (netplay's): figures for a host to show as it likes.
+    fn net_status(&self) -> Option<NetStatus> {
+        None
+    }
+    /// The set's result for the local player, of a driver that knows it
+    /// while it still runs (netplay's: the match is over, and the players
+    /// are connected until one leaves). A driver that gives each tick's
+    /// inputs says it as the set ends (`round_ended`).
+    fn result(&self) -> Option<BattleResult> {
         None
     }
     /// The battle runs in real time with another player: no pause, no
@@ -86,6 +90,27 @@ pub trait Driver {
     fn real_time(&self) -> bool {
         false
     }
+}
+
+/// How a netplay match's connection and rollback are doing
+/// (`Driver::net_status`, `Player::net_status`): what a host shows of them
+/// is its own to compose.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct NetStatus {
+    /// The smoothed round trip, in milliseconds; none until one is
+    /// measured.
+    pub ping_ms: Option<f64>,
+    /// The share of the other player's datagrams lost, 0 to 1.
+    pub loss: f64,
+    /// The input delay, in ticks.
+    pub delay: u32,
+    /// The last rollback's depth in ticks, the deepest so far, and how many
+    /// there have been.
+    pub last_rollback: u32,
+    pub max_rollback: u32,
+    pub rollbacks: u64,
+    /// Frames the battle waited on the other player (stalled or parked).
+    pub waits: u64,
 }
 
 /// What a frame of a driver that runs the battle itself did
@@ -111,8 +136,9 @@ pub struct Ran {
 /// A round to play live on `content` with these battle settings: two
 /// MegaMen of `version` (one of the names the game's rules declare) at
 /// their fresh stats (`nettai_match::Side::base_stats`, as live play picks
-/// them), each bringing their folder, shuffled from the seed, with every
-/// Cross and Beast Out of that version (`nettai_match::facts`).
+/// them), each bringing their folder, shuffled from the seed, and of what
+/// the game's rules take besides, the version (the engine's version fact)
+/// and their defaults (EXE6's: every Cross of that version, Beast Out).
 pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFolder; 2], version: &str, seed: u32) -> RoundSetup {
     let megaman = content.form_changing_navi().expect("a navi that changes form");
     let stats = nettai_match::Side::base_stats(content, megaman, Some(version));
@@ -132,7 +158,8 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             navicust: None,
             auto_battle: Default::default(),
         };
-        nettai_match::facts::write_version(content, &mut player, version, true, None).expect("the rules take the version");
+        let field = nettai_battle::content::PlayerFact::Version.name();
+        player.set_fact(content, field, &[nettai_battle::rules::Fact::Name(version)]).expect("the rules take the version");
         player
     };
     RoundSetup {
@@ -239,111 +266,6 @@ impl Driver for LivePlayer {
     }
 }
 
-/// A plain-text custom screen for a player: the dealt chips in the grid's
-/// order with the cursor, the picks, OK and Beast Out, and the Cross
-/// window when it's open.
-pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
-    let s = &b.custom.sides[side];
-    let (screen, folder) = (s.screen.as_ref()?, &s.folder);
-    if b.round.mode != mode::CUSTOM {
-        return None;
-    }
-    let mut out = String::new();
-    if !s.in_custom {
-        out.push_str(if s.sent.is_some() { "CUSTOM: WAITING FOR THE OTHER PLAYER" } else { "CUSTOM: SENDING" });
-        return Some(out);
-    }
-    let title = match screen.phase {
-        Phase::Opening { .. } => "CUSTOM".to_string(),
-        Phase::Choosing => "CUSTOM: A PICK, B UNDO, START OK, UP CROSS, R INFO".to_string(),
-        Phase::Hidden { .. } => "CUSTOM (HIDDEN: ANY KEY)".to_string(),
-        Phase::Description { .. } => "CUSTOM: CHIP INFO (ANY KEY)".to_string(),
-        Phase::RunMessage { .. } => "CUSTOM: NO TIME TO RUN (A)".to_string(),
-        // A system's window: its name's words (EXE6's "BEAST OUT", EXE5's
-        // "SOUL UNISON"), and for a form list's what its keys do (its view).
-        Phase::Window { window, .. } => {
-            let d = b.content.defs.window(window);
-            let name = d.name.replace('_', " ").to_uppercase();
-            match d.view {
-                Some(WindowView::FormListOpening | WindowView::FormList | WindowView::FormListClosing) => {
-                    format!("CUSTOM: {name} (UP/DOWN, A CHOOSE, B BACK)")
-                }
-                _ => format!("CUSTOM: {name}!"),
-            }
-        }
-        _ => "CUSTOM".to_string(),
-    };
-    out.push_str(&title);
-    let names = |slot: u8| -> String {
-        let x = &screen.slots[slot as usize];
-        let label = match x.kind {
-            SlotKind::Ok => "OK".to_string(),
-            // A button that shows a chip (EXE5's capsules): the chip's name.
-            SlotKind::Button { .. } if x.face.is_some() => {
-                x.face.map(|c| nettai_render::strings::own_chip_name(&b.content, c).to_string()).unwrap_or_default()
-            }
-            // A system's button, by its name ("redeal": "REDEAL", EXE5's
-            // "soul": "SOUL").
-            SlotKind::Button { button, cell: nettai_battle::custom::ButtonCell::Only | nettai_battle::custom::ButtonCell::Left } => {
-                b.content.defs.button(button).name.replace('_', " ").to_uppercase()
-            }
-            SlotKind::Empty | SlotKind::Hidden | SlotKind::Button { .. } => return String::new(),
-            _ => screen.chip_in(slot, folder).map(|c| format!("{} {}", nettai_render::strings::own_chip_name(&b.content, c.id), c.code.letter())).unwrap_or_default(),
-        };
-        let mark = match x.state {
-            SlotState::Selected => "+",
-            SlotState::Unavailable => "-",
-            _ => " ",
-        };
-        let cursor = if screen.cursor == slot && matches!(screen.phase, Phase::Choosing) { ">" } else { " " };
-        format!("{cursor}{mark}{label}")
-    };
-    for row in [[0u8, 1, 2, 3, 4, 10], [5, 6, 7, 8, 9, 11]] {
-        let cells: Vec<String> = row.iter().map(|&s| names(s)).filter(|c| !c.is_empty()).collect();
-        if !cells.is_empty() {
-            out.push('\n');
-            out.push_str(&cells.join(" "));
-        }
-    }
-    let picks: Vec<String> = screen
-        .selection()
-        .iter()
-        .map(|&s| match (screen.chip_in(s, folder), screen.slots[s as usize].kind) {
-            (Some(c), _) => format!("{} {}", nettai_render::strings::own_chip_name(&b.content, c.id), c.code.letter()),
-            // (A button's pick, by its name's words: EXE6's "BEAST OUT".)
-            (None, SlotKind::Button { button, .. }) => b.content.defs.button(button).name.replace('_', " ").to_uppercase(),
-            (None, _) => String::new(),
-        })
-        .collect();
-    if !picks.is_empty() {
-        out.push_str(&format!("\nPICKED: {}", picks.join(", ")));
-    }
-    // A form list (EXE6's Cross window): its entries by the forms in their
-    // places (`custom::cross_at`).
-    let w = b.form_list(side as u8).unwrap_or_default();
-    let cross_name = |place: u8| match nettai_render::custom::cross_at(b, side as u8, place) {
-        Some(f) => nettai_render::strings::own_form_name(&b.content, f).to_uppercase(),
-        None => format!("CROSS {}", place + 1),
-    };
-    if matches!(screen.phase, Phase::Window { .. })
-        && nettai_render::custom::cross_stage(b, screen) == Some(nettai_render::custom::CrossStage::Up)
-    {
-        let entries: Vec<String> = (0..w.count)
-            .map(|i| {
-                let (cursor, marked) = (if w.cursor == i { ">" } else { " " }, if w.marked[i as usize] { "+" } else { "" });
-                format!("{cursor}{marked}{}", cross_name(w.offered[i as usize]))
-            })
-            .collect();
-        out.push_str(&format!("\n{}", entries.join(" ")));
-    }
-    if let Some(c) = w.chosen {
-        out.push_str(&format!("\n{} CHOSEN", cross_name(c)));
-    }
-    Some(out)
-}
-
-/// What the tests of a set play: a match a round of which is over at the
-/// first shot, and the buttons that fire it.
 #[cfg(test)]
 pub(crate) mod short_set {
     use super::*;
@@ -393,7 +315,7 @@ mod tests {
         for tick in 0..3000u32 {
             let s = &b.custom.sides[0];
             let choosing = s.in_custom && s.screen.as_ref().is_some_and(|x| x.phase == Phase::Choosing);
-            shown |= choosing && custom_screen_text(&b, 0).is_some_and(|t| t.contains("OK"));
+            shown |= choosing && s.screen.as_ref().is_some_and(|x| x.slots[custom::screen::OK_SLOT as usize].kind == SlotKind::Ok);
             let picked = s.screen.as_ref().is_some_and(|x| x.selected > 0);
             let on_ok = s.screen.as_ref().is_some_and(|x| x.cursor == custom::screen::OK_SLOT);
             // A press every other tick: A on the first chip, START, A on OK.
@@ -491,7 +413,7 @@ mod tests {
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 5);
-        nettai_match::facts::write_version(&content, &mut setup.players[0], "falzar", true, Some(&nettai_match::CrossList::new(&[heat]))).unwrap();
+        setup.players[0].set_fact(&content, "cross_list", &[form_fact(heat)]).unwrap();
         let mut live = LivePlayer::new(Set::new(content.clone(), setup, [folder, folder]));
         let mut b = live.start();
         // The first screen: UP opens the Cross window (a hold acts on its
@@ -509,7 +431,8 @@ mod tests {
                     // (The window up, past its first tick, which reads no
                     // keys.)
                     Phase::Window { window, tick: 1.. } if b.content.defs.window(window).name == "cross_window" && w.chosen.is_none() => {
-                        assert_eq!((w.count, custom_screen_text(b, 0).unwrap().contains(">HEATCROSS")), (1, true));
+                        let under_cursor = nettai_render::custom::cross_at(b, 0, w.offered[w.cursor as usize]);
+                        assert_eq!((w.count, under_cursor), (1, Some(heat)));
                         if tick % 2 == 1 { keys::A } else { 0 }
                     }
                     Phase::Choosing if tick % 2 == 1 => {
@@ -595,13 +518,21 @@ mod tests {
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 5);
-        let list = list.map(|l| nettai_match::CrossList::new(&l.iter().map(|k| form_of(&content, k)).collect::<Vec<_>>()));
-        nettai_match::facts::write_version(&content, &mut setup.players[0], version, true, list.as_ref()).unwrap();
+        setup.players[0].set_fact(&content, "version", &[nettai_battle::rules::Fact::Name(version)]).unwrap();
+        if let Some(list) = list {
+            let list: Vec<_> = list.iter().map(|k| form_fact(form_of(&content, k))).collect();
+            setup.players[0].set_fact(&content, "cross_list", &list).unwrap();
+        }
         tweak(&content, &mut setup.navi_stats[0]);
         let mut live = LivePlayer::new(Set::new(content.clone(), setup, [folder, folder]));
         let mut b = live.start();
         play_until(&mut live, &mut b, 3000, |_, _| 0, |b| choosing(b).is_some());
         (content, live, b)
+    }
+
+    /// A form as a setup's fact takes it (an entry of a form list).
+    fn form_fact(form: nettai_content_api::FormHandle) -> nettai_battle::rules::Fact<'static> {
+        nettai_battle::rules::Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, form.0))
     }
 
     /// The form `key` (EXE6's, without its prefix).

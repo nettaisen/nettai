@@ -90,51 +90,10 @@ impl PlayerSetup {
     /// (the rest zero), an enum's by its name (`Fact::Name`). How a tool
     /// writes what several systems read (EXE6's game version, which its
     /// cross and beast systems both take). The number of systems that took
-    /// it: none on a content without a ruleset.
+    /// it: none on a content without a ruleset. ([`set_fact`], on the
+    /// setup's own blocks.)
     pub fn set_fact(&mut self, content: &Content, field: &str, values: &[Fact]) -> Result<usize, String> {
-        if content.defs.ruleset().is_none() {
-            return Ok(0);
-        }
-        if self.rules.is_empty() {
-            self.rules = content.defs.ruleset_systems().iter().map(|&h| content.defs.system(h).setup_block()).collect();
-        }
-        let mut took = 0;
-        for block in &mut self.rules {
-            let schema = &content.defs.schemas[block.id().0 as usize].schema;
-            let Some(i) = schema.index_of(field) else { continue };
-            let ty = &schema.field(i).ty;
-            let value = |f: &Fact| -> Result<Value, String> {
-                match (f, ty) {
-                    (Fact::Value(v), _) => Ok(*v),
-                    (Fact::Name(n), FieldType::Enum(names)) => names
-                        .iter()
-                        .position(|x| x == n)
-                        .map(|i| Value::Int(i as i64))
-                        .ok_or_else(|| format!("setup field `{field}` has no variant {n:?}")),
-                    (Fact::Name(n), _) => Err(format!("setup field `{field}` isn't an enum, for {n:?}")),
-                }
-            };
-            if let FieldType::Array(elem, n) = ty {
-                if values.len() > *n as usize {
-                    return Err(format!("setup field `{field}` holds {n}, not {}", values.len()));
-                }
-                // (Past the values given, zero: false, 0, none.)
-                let zero = match **elem {
-                    FieldType::Bool => Value::Bool(false),
-                    FieldType::Ref(..) | FieldType::Asset(_) | FieldType::Object => Value::Nil,
-                    _ => Value::Int(0),
-                };
-                for k in 0..*n as usize {
-                    let v = values.get(k).map(value).transpose()?.unwrap_or(zero);
-                    block.set_elem(schema, i, k, v).map_err(|e| format!("setup field `{field}`: {e}"))?;
-                }
-            } else {
-                let [f] = values else { return Err(format!("setup field `{field}` takes one value, not {}", values.len())) };
-                block.set(schema, i, value(f)?).map_err(|e| format!("setup field `{field}`: {e}"))?;
-            }
-            took += 1;
-        }
-        Ok(took)
+        set_fact(&mut self.rules, content, field, values)
     }
 
     /// The setup block of system `system` (by key) of the game's ruleset,
@@ -161,6 +120,77 @@ impl PlayerSetup {
     }
 }
 
+/// The setup blocks of a player who says nothing: each system of the game's
+/// ruleset's defaults (`SystemDef::setup_block`), in the ruleset's order;
+/// none on a content without a ruleset.
+pub fn default_blocks(content: &Content) -> Vec<ContentState> {
+    match content.defs.ruleset() {
+        Some(_) => content.defs.ruleset_systems().iter().map(|&h| content.defs.system(h).setup_block()).collect(),
+        None => Vec::new(),
+    }
+}
+
+/// [`PlayerSetup::set_fact`] on setup blocks (`blocks`: a player's, one a
+/// system of the game's ruleset in its order; none yet: the defaults
+/// first): what a tool that holds a side's blocks writes a fact with.
+pub fn set_fact(blocks: &mut Vec<ContentState>, content: &Content, field: &str, values: &[Fact]) -> Result<usize, String> {
+    if content.defs.ruleset().is_none() {
+        return Ok(0);
+    }
+    if blocks.is_empty() {
+        *blocks = default_blocks(content);
+    }
+    let mut took = 0;
+    for block in blocks.iter_mut() {
+        let schema = &content.defs.schemas[block.id().0 as usize].schema;
+        let Some(i) = schema.index_of(field) else { continue };
+        let ty = &schema.field(i).ty;
+        let value = |f: &Fact| -> Result<Value, String> {
+            match (f, ty) {
+                (Fact::Value(v), _) => Ok(*v),
+                (Fact::Name(n), FieldType::Enum(names)) => names
+                    .iter()
+                    .position(|x| x == n)
+                    .map(|i| Value::Int(i as i64))
+                    .ok_or_else(|| format!("setup field `{field}` has no variant {n:?}")),
+                (Fact::Name(n), _) => Err(format!("setup field `{field}` isn't an enum, for {n:?}")),
+            }
+        };
+        if let FieldType::Array(elem, n) = ty {
+            if values.len() > *n as usize {
+                return Err(format!("setup field `{field}` holds {n}, not {}", values.len()));
+            }
+            // (Past the values given, zero: false, 0, none.)
+            let zero = match **elem {
+                FieldType::Bool => Value::Bool(false),
+                FieldType::Ref(..) | FieldType::Asset(_) | FieldType::Object => Value::Nil,
+                _ => Value::Int(0),
+            };
+            for k in 0..*n as usize {
+                let v = values.get(k).map(value).transpose()?.unwrap_or(zero);
+                block.set_elem(schema, i, k, v).map_err(|e| format!("setup field `{field}`: {e}"))?;
+            }
+        } else {
+            let [f] = values else { return Err(format!("setup field `{field}` takes one value, not {}", values.len())) };
+            block.set(schema, i, value(f)?).map_err(|e| format!("setup field `{field}`: {e}"))?;
+        }
+        took += 1;
+    }
+    Ok(took)
+}
+
+/// A fact read from setup blocks (`blocks`: as [`set_fact`] takes them) by
+/// its field's name: the first system of the game's ruleset whose setup has
+/// the field. None: no system has it, or the blocks aren't the ruleset's.
+pub fn fact_in<'a>(blocks: &'a [ContentState], content: &'a Content, field: &str) -> Option<SetupFact<'a>> {
+    content.defs.ruleset()?;
+    blocks.iter().zip(content.defs.ruleset_systems()).find_map(|(block, &h)| {
+        let schema = content.defs.schema(content.defs.system(h).setup);
+        (block.id() == content.defs.system(h).setup).then_some(())?;
+        Some(SetupFact { schema, block, index: schema.index_of(field)? })
+    })
+}
+
 /// A value [`PlayerSetup::set_fact`] writes: a field's value, or an enum
 /// variant by its name.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -182,6 +212,17 @@ impl<'a> SetupFact<'a> {
     /// Its value (an array's first element's).
     pub fn value(&self) -> nettai_content_api::FieldValue {
         self.block.get(self.schema, self.index)
+    }
+
+    /// The field's type.
+    pub fn ty(&self) -> &'a FieldType {
+        &self.schema.field(self.index).ty
+    }
+
+    /// Whether it holds a value: false of an enum nothing stated (a round
+    /// doesn't start with one).
+    pub fn stated(&self) -> bool {
+        self.block.stated(self.schema, self.index)
     }
 
     /// An enum's variant, by its name.

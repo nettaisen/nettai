@@ -137,9 +137,10 @@ own board section and its own compile system. **EXE5's is built** (exe5-map.md ย
 for routine, so the routines are shared (content/exelib/navicust/compile.luau, `compile.run(side, game)`), and each
 game's navicust system passes what is its own (`NaviCustGame`, content/exelib/types.d.luau): its board, its bugs in
 the order its bugs' routine runs them and what each writes by level, what a placed program counts besides (EXE5's
-HubBatc counts its own bug once more), whether any bug sets the emotion window's glitch (EXE6's flag 0x1720; EXE5's
-flag is read outside battle only), and whether the HP is left as it is (EXE5's compile in the cyberworld, the
-system's setup `cyberworld`). The programs' effects are shared constructors (@exelib/navicust/effects). EXE5's board
+HubBatc counts its own bug once more), and whether any bug sets the emotion window's glitch (EXE6's flag 0x1720; EXE5's
+flag is read outside battle only). (EXE5's compile leaves the HP for a console in the cyberworld; the rules have the
+real world's ending alone, which no link battle can tell from it: exe5-map.md ยง15.13.) The programs' effects are
+shared constructors (@exelib/navicust/effects). EXE5's board
 has no frame and grows as EXE6's does (4x4, 5x4, 5x5 by its ExpMemry, key item 0x61), on its 5x5 grid, the middle of
 the engine's 7x7. The engine's model, the match file and the editor take it
 as they are. The editor draws whichever board the side's game's section gives, and lists the content's programs. BN4's NaviCust has two command lines and no plus parts. `NaviCustRules::command_line` is
