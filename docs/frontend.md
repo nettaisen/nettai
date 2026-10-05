@@ -317,9 +317,11 @@ functions:
   the content defines, in every language it has strings in: every chip's
   icon, picture, name, its window's class,
   element and code pictures, its description in the dialogue font; every
-  navi's face, emblem on either game's console, name and no-running message
+  navi's face, emblem, name and no-running message
   with its portrait; every form's face for each emotion, every Cross's name
-  and description; and every asset of the loaded packs (each sprite with
+  and description; every custom-screen button's look (a button the pack
+  has none for is drawn as nothing, unless it shows a chip), on a console
+  of each of the pack's versions; and every asset of the loaded packs (each sprite with
   every animation, its frames and their own palettes; each song, banner,
   background, mugshot), the HUD's text lines, the custom screen, the
   chatbox. It checks the field too: each loaded game's pack must draw
@@ -488,18 +490,34 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   so every pick shows its code;
 - the scrap and the re-deal: the column losing the scrapped picks, the
   slots dealt again, the emblem and the Regular chip's frame throughout;
+- a button's look is the pack's, by the name its content registers the
+  button under (`lookups::button`; asset-formats.md, "Buttons"): its tiles
+  by set and which set a state shows, the cursor over it, its picture in
+  the chip window, its uses left and the chip it holds; its tiles a set are
+  its cells' (the content's `cells`), and a special slot with no button
+  shows the hidden set of the button its content registers there, if its
+  look has one (EXE6's Beast Out's). The renderer has no look of its own;
+  it names two buttons for what their systems draw besides (`soul`: the
+  offered soul's icon and the Chaos Unison's palette; `beast_out`: the
+  BeastOut chip's picture is that button's), which the content can't say
+  without fields;
+- the navi's emblem is the pack's under the navi's key (`lookups::emblem`),
+  its palette sprite palette 11 (the cursor's and the Regular chip's
+  frame's too); a navi with none shows none;
 - a console's own pictures by its version (`Versioned`: a Gregar console's
-  Beast and emblem, the pack's `-gregar` assets); a Cross's name and
+  Beast, the pack's `-gregar` assets); a Cross's name and
   colors in the Cross window are its own version's (`custom::cross_picture`:
   the pack's pictures of the form's `version`, numbered by the Cross's
   place among that version's Crosses in its navi's list,
   `forms.<version>.crosses`, which is the original's order;
-  for the form in the entry's place, `exe6_compat::Unlocks::cross_at` over
-  the cross system's setup), so a Gregar
+  for the form in the entry's place, `custom::cross_at`: the player's Cross
+  list's entry, else their version's Cross of that number, read as facts by
+  name, `Battle::fact`), so a Gregar
   Cross shows Gregar's name in any window, and a window a setup's Cross
   list mixes shows each game's own; the Beast Out button, its picture in
   the chip window and the BeastOut chip's picture are of the Beast the
-  navi goes into (`custom::beast_pictures`, `exe6_compat::Unlocks::beast_game`), so a
+  navi goes into (`custom::beast_pictures`: the player's version's, but
+  with a Cross list a form of another version goes into that version's), so a
   Falzar player in HeatCross sees Gregar's;
 - what the screen does to the rest: the HP box and the mugshot move right
   with the window and the field and the sprites 15 pixels down (the
@@ -565,23 +583,23 @@ What an EXE5 console does otherwise, by data, not by game:
     `CapsuleMix`) flies the chip's icon as the soul's choice flies the
     soul's;
   - the button look `arm_change` (ColonelSoul's Arm Change: the pack's
-    scrap button's tiles and picture, its second tile set for unavailable
+    look of that name, its second tile set for unavailable
     alone) with the chip it holds as a sprite over it in the HUD's icon
     palette, on the ticks the engine draws it (`Drawn::held`: while
     choosing, through a soul's choice, and in the blink's last 20 ticks
     when the column hides the icon); the column cell the chip left stays
     drawn for the tick it leaves (`ScreenLook::column_kept`);
   - the re-deal button's uses left, a digit in the chip window's damage
-    cells, where the pack's layout says (`button_uses`: EXE5's Shuffle;
+    cells, where the pack's look says (`uses_digit`: EXE5's Shuffle;
     EXE6's ChpShufl shows none);
 - its game's flow (rules `flow`, read of the console's own game): the
   custom screen's close starts the chip window as a Japanese EXE6 console's
   does (`chip_window_at_close`), the intro fades in from black
   (`intro_from_black`);
 - a version's own chip (its five Giga chips, DethPhnx or Phoenix) shows
-  its own version's ROM's icon and picture on either console (§5), and the
-  emblem is the console's version's (`Renderer::console_version`, which an
-  EXE5 recording names; live play, the pack's first version).
+  its own version's ROM's icon and picture on either console (§5; the
+  console's version is `Renderer::console_version`, which an EXE5 recording
+  names; live play, the pack's first version).
 
 The frame comparison against EXE5's consoles (verification's
 tools/frontend-compare/exe5.txt, chiplab's library-exe5) and what still
@@ -802,6 +820,17 @@ them).
   console shows HeatMan's message beside a black box). Listed with each
   frame as known, as the faces are; a Gregar console's Falzar faces in the
   emotion window are known differences the same way.
+- **Deliberate: the other version's link navis' emblems.** The custom
+  screen shows every navi's own emblem on either console (the same choice
+  as the faces and the version chips' art). A ROM has emblems for MegaMan,
+  ProtoMan and its own version's five link navis, and its table gives the
+  other version's five the same pictures in their own colors (`sub_802812C`:
+  a Falzar console's HeatMan has SpoutMan's emblem in HeatMan's palette).
+  The pack has each navi's own, from the ROM that has it, so a frame of the
+  custom screen with a link navi of the other version on the console
+  differs at the emblem on purpose; it is listed as known (`known.tsv`: the
+  emblem sprite's 32x32). EXE5's ROMs are the same (MegaMan's and their own
+  team's six navis', 0x08023F68), for the team navis the content has.
 - **Deliberate: what the US release cut, on a US console.** The pack has
   the Japanese ROMs' art where the US ROMs have a placeholder (six sprites,
   eleven chips' pictures: asset-formats.md §4), and the content draws Otenko's

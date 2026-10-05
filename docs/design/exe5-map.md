@@ -537,7 +537,8 @@ as exe6-extract takes EXE6's) writes a pack whose manifest says `game = "exe5"`:
   engine's; the re-deal and scrap buttons; the soul button (the souls system's; `buttons`: its states' tiles
   0x086FBB64, its picture
   0x087322E8 with Soul Unison's and Chaos Unison's palettes, the souls' 2x2 icons 0x08749FB8, 14 with Chaos's, in
-  sprite palette 13, 0x0874AAB8); the emblems by version (13, with 8 palettes).
+  sprite palette 13, 0x0874AAB8); the emblems (each ROM's seven, MegaMan's and its own team's six navis',
+  with the thirteen navis' palettes of 8).
 - **Versions:** 12 chips (0x12D–0x136, 0x139, 0x13A: each version's five Giga chips, and DethPhnx and Phoenix)
   are drawn differently by each version's ROM: a ROM holds the art of its own (the ones its library lists, the
   record's flag 0x40: Team ProtoMan's Bass, DeltaRay, BugCurse, HolyDrem, BigHook, DethPhnx; Team Colonel's
