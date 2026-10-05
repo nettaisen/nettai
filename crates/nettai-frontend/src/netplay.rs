@@ -20,7 +20,7 @@
 //! frame, drawn from the player's side, and the sound is the cue actions a
 //! tracker makes of every tick simulated (a cue played on a wrong
 //! prediction is taken back). A set's rounds follow each other on the same
-//! stream ([`nettai_match::next_round`]).
+//! stream, as the set says they do ([`nettai_match::Set`]).
 //!
 //! The sound's tracker is the peer's world's observer, which the world tells
 //! everything (ticks simulated, rewinds, ticks settled); the player reads
@@ -33,18 +33,16 @@ use std::time::{Duration, Instant};
 
 use nettai_battle::content::Content;
 use nettai_battle::cues::{CueAction, CueTracker};
-use nettai_battle::custom::SavedFolder;
-use nettai_battle::setup::RoundSetup;
-use nettai_battle::{Battle, BattleResult, RoundEnd};
+use nettai_battle::{Battle, BattleResult};
 use nettai_content_api::StageHandle;
 use nettai_match::file::{ArenaFile, SideFile};
-use nettai_match::{Arena, Picks, Match, Place, Side, ids};
+use nettai_match::{After, Arena, Match, Picks, Place, Set, Side, ids};
 use nettai_netplay::protocol::BUTTONS;
 use nettai_netplay::standin::StandInBattle;
 use nettai_netplay::transport::{Connection, Datagram, Hello, Role};
 use nettai_netplay::{BattleWorld, Game, Observer, Peer, PeerConfig};
 
-use crate::driver::{Driver, Ran, Step};
+use crate::driver::{Driver, Ran, Step, result_text};
 
 /// What a player brings to a netbattle: the match's game (a game is its
 /// rules), their side of the match (a match file's left side, or one drawn
@@ -160,11 +158,11 @@ impl Offer {
     }
 }
 
-/// The round both players of a match play, and the match: the host's arena
-/// (else one drawn from the match's seed, on the host's stage if it names
+/// The set both players of a match play, and the match: the host's arena
+/// (else one picked from the match's seed, on the host's stage if it names
 /// one), each player's side on their side (`offers` by side: the host's,
-/// then the joiner's).
-pub fn netplay_setup(content: &Content, seed: u32, offers: &[Offer; 2]) -> Result<(RoundSetup, Match), String> {
+/// then the joiner's; checked ones, their folders whole).
+pub fn netplay_setup(content: &Arc<Content>, seed: u32, offers: &[Offer; 2]) -> Result<(Set, Match), String> {
     let [host, join] = offers;
     if host.game != join.game {
         return Err(format!("the host plays {}, the joiner {}: a match is of one game", host.game, join.game));
@@ -174,7 +172,7 @@ pub fn netplay_setup(content: &Content, seed: u32, offers: &[Offer; 2]) -> Resul
         None => nettai_match::pick::arena(content, &host.game, &mut Picks::new(seed), host.stage)?,
     };
     let m = Match { seed: Some(seed), arena, sides: [host.side.clone(), join.side.clone()] };
-    Ok((m.round(content, seed), m))
+    Ok((Set::of(content, &m, seed), m))
 }
 
 /// How a netplay match plays.
@@ -243,15 +241,13 @@ const _: () = {
 
 /// Plays a match against another player over `D` (UDP, `nettai_netplay::transport::Udp`).
 pub struct NetPlayer<D: Datagram> {
-    content: Arc<Content>,
     conn: Connection<D>,
     side: usize,
     peer: NetPeer,
     /// The sound's actions of this round the player has taken.
     heard: usize,
-    /// The set's first round, and the players' folders by side.
-    first: RoundSetup,
-    folders: [SavedFolder; 2],
+    /// The set being played.
+    set: Set,
     options: NetOptions,
     start: Instant,
     /// The set's result for this player, once it is over.
@@ -259,13 +255,13 @@ pub struct NetPlayer<D: Datagram> {
 }
 
 impl<D: Datagram> NetPlayer<D> {
-    /// The match on `conn` (after the handshake), from `first`, its first
-    /// round, between these players' folders (by side).
-    pub fn new(content: Arc<Content>, conn: Connection<D>, first: RoundSetup, folders: [SavedFolder; 2], options: NetOptions) -> NetPlayer<D> {
+    /// The match on `conn` (after the handshake): the set both players
+    /// agreed on ([`agree`]).
+    pub fn new(conn: Connection<D>, set: Set, options: NetOptions) -> NetPlayer<D> {
         let side = conn.side();
         let config = PeerConfig::new(options.delay, options.max_lead);
-        let world = BattleWorld::with_observer(StandInBattle::new(Battle::new(first.clone(), content.clone())), side, Sound::new(side as u8));
-        NetPlayer { content, conn, side, peer: Peer::new(world, config), heard: 0, first, folders, options, start: Instant::now(), over: None }
+        let world = BattleWorld::with_observer(StandInBattle::new(set.start()), side, Sound::new(side as u8));
+        NetPlayer { conn, side, peer: Peer::new(world, config), heard: 0, set, options, start: Instant::now(), over: None }
     }
 
     /// The side this player plays.
@@ -341,31 +337,26 @@ impl<D: Datagram> NetPlayer<D> {
                 shown.setup.local_side = side;
             });
             ran.advanced = true;
-            // What settled: the round's end. (The world has told the sound.)
-            let (end, next) = {
-                let settled = self.peer.session().settled_state();
-                // (The next round's setup is the shared simulation's, side
-                // 0's; the result is this player's.)
-                let next = match settled.battle().round_end() {
-                    Some(&RoundEnd::NextRound { settings, score }) => {
-                        Some(nettai_match::next_round(&self.content, &self.first, &self.folders, settled.battle(), settings, score))
-                    }
-                    _ => None,
-                };
-                (settled.battle().round_end_for(side), next)
-            };
-            if let Some(RoundEnd::Over(result)) = end {
-                self.over = Some(result);
-            }
-            if let Some(next) = next {
-                let battle = Battle::new(next, self.content.clone());
-                self.take_sound(&mut ran.sound);
-                // A new round, a new tracker.
-                let world = BattleWorld::with_observer(StandInBattle::new(battle.clone()), self.side, Sound::new(side));
-                self.peer.end_round(world);
-                self.heard = 0;
-                self.show(&battle, shown);
-                ran.new_round = true;
+            // What settled: the round's end, and how the set goes on from
+            // it (the next round is the shared simulation's, side 0's; the
+            // result is this player's). (The world has told the sound.)
+            match self.set.after(self.peer.session().settled_state().battle(), side) {
+                None => {}
+                Some(After::Over(result)) => self.over = Some(result),
+                Some(After::Round(battle)) => {
+                    self.take_sound(&mut ran.sound);
+                    // A new round, a new tracker.
+                    let world = BattleWorld::with_observer(StandInBattle::new((*battle).clone()), self.side, Sound::new(side));
+                    self.peer.end_round(world);
+                    self.heard = 0;
+                    self.show(&battle, shown);
+                    ran.new_round = true;
+                }
+                // The engine stopped the settled battle: on both peers alike.
+                Some(After::Stopped(why)) => {
+                    self.take_sound(&mut ran.sound);
+                    return Err(format!("engine stopped at {}: {why}", self.position()));
+                }
             }
         }
         self.take_sound(&mut ran.sound);
@@ -373,18 +364,9 @@ impl<D: Datagram> NetPlayer<D> {
     }
 }
 
-fn result_text(r: BattleResult) -> &'static str {
-    match r {
-        BattleResult::Won => "you won",
-        BattleResult::Lost => "you lost",
-        BattleResult::Drawn => "a draw",
-        _ => "cut short",
-    }
-}
-
 impl<D: Datagram> Driver for NetPlayer<D> {
     fn start(&mut self) -> Battle {
-        let mut shown = Battle::new(self.first.clone(), self.content.clone());
+        let mut shown = self.set.start();
         shown.setup.local_side = self.side as u8;
         shown
     }
@@ -448,12 +430,12 @@ pub fn hello(role: Role, content: &Content, offer: &Offer) -> Hello {
 }
 
 /// After the handshake (which refused another game): both offers by side
-/// (the other's checked), and the round they play.
-pub fn agree<D: Datagram>(content: &Arc<Content>, conn: &Connection<D>, mine: &Offer) -> Result<([Offer; 2], RoundSetup, Match), String> {
+/// (the other's checked), the set they play and its match.
+pub fn agree<D: Datagram>(content: &Arc<Content>, conn: &Connection<D>, mine: &Offer) -> Result<([Offer; 2], Set, Match), String> {
     let theirs = Offer::from_bytes(content, &mine.game, &conn.theirs().setup)?;
     let offers = if conn.side() == 0 { [mine.clone(), theirs] } else { [theirs, mine.clone()] };
-    let (setup, m) = netplay_setup(content, conn.seed(), &offers)?;
-    Ok((offers, setup, m))
+    let (set, m) = netplay_setup(content, conn.seed(), &offers)?;
+    Ok((offers, set, m))
 }
 
 #[cfg(test)]
@@ -513,7 +495,7 @@ mod tests {
         assert_eq!(back, o);
         let (one, _) = netplay_setup(&content, 9, &[o.clone(), offer_of(&content, "exe5", 6)]).unwrap();
         let (two, _) = netplay_setup(&content, 9, &[back, offer_of(&content, "exe5", 6)]).unwrap();
-        assert_eq!(format!("{one:?}"), format!("{two:?}"));
+        assert_eq!(format!("{:?}", one.first()), format!("{:?}", two.first()));
         let mut bad = o.clone();
         bad.side.karma = 1200;
         assert!(Offer::from_bytes(&content, "exe5", &bad.to_bytes(&content)).unwrap_err().contains("karma 1200"));
@@ -524,7 +506,7 @@ mod tests {
         // Offers of two games make no match.
         let mut other = o.clone();
         other.game = "exe6".into();
-        let e = netplay_setup(&content, 9, &[o.clone(), other]).unwrap_err();
+        let Err(e) = netplay_setup(&content, 9, &[o.clone(), other]) else { panic!("offers of two games made a match") };
         assert_eq!(e, "the host plays exe5, the joiner exe6: a match is of one game");
     }
 
@@ -551,11 +533,11 @@ mod tests {
                 Role::Join => Connection::join(udp, hello(role, &content, &mine), timeout),
             }
             .unwrap();
-            let (offers, setup, m) = agree(&content, &conn, &mine).unwrap();
+            let (offers, set, m) = agree(&content, &conn, &mine).unwrap();
             let side = conn.side();
             assert_eq!(offers[side], mine);
-            let folders = offers.map(|o| o.side.folder.saved().expect("checked offers' folders are whole"));
-            let mut player = NetPlayer::new(content.clone(), conn, setup.clone(), folders, NetOptions::default());
+            let setup = set.first().clone();
+            let mut player = NetPlayer::new(conn, set, NetOptions::default());
             let mut shown = player.start();
             assert_eq!(shown.setup.local_side as usize, side);
             let mut masher = Masher::new(seed as u64);
@@ -625,6 +607,130 @@ mod tests {
     #[test]
     fn two_players_over_loopback() {
         pair(900, |content, role| offer(content, 11 + 11 * role as u32));
+    }
+
+    /// What one player of [`set_pair`] saw: the result, each new round's
+    /// start (the settled tick count it came at, and the simulation's score:
+    /// rounds played, side 0's wins and losses), the settled digests by
+    /// round and tick, the status line at the end, and why it stopped.
+    struct SetPlayed {
+        result: Option<BattleResult>,
+        rounds: Vec<(usize, (u8, u8, u8))>,
+        settled: Vec<(usize, u32, u64)>,
+        status: String,
+        left: Option<String>,
+        report: String,
+    }
+
+    /// Two players on loopback UDP play a set of `game` to its end: the
+    /// host's navi shoots, the joiner's has 1 HP and stands still (the
+    /// short set's sides, each player bringing theirs).
+    fn set_pair(game: &'static str) -> [SetPlayed; 2] {
+        use crate::driver::short_set;
+        let host = Udp::host_on("127.0.0.1:0").unwrap();
+        let addr = host.local_addr().unwrap();
+        let play = move |udp: Udp, role: Role| -> SetPlayed {
+            let content = if game == "exe5" { nettai_match::testing::exe5_content() } else { exe6_test_content() };
+            // The host brings the match's arena (the stages of every round:
+            // the match's seed is the handshake's, another each run) and
+            // its left side, the shooter's; the joiner the one with 1 HP.
+            let m = short_set::of(&content, game, 7);
+            let mine = match role {
+                Role::Host => Offer::of_match(m, true),
+                Role::Join => Offer::of_side(game, m.sides[1].clone(), None),
+            };
+            let timeout = Duration::from_secs(20);
+            let conn = match role {
+                Role::Host => Connection::host(udp, hello(role, &content, &mine), timeout),
+                Role::Join => Connection::join(udp, hello(role, &content, &mine), timeout),
+            }
+            .unwrap();
+            let (_, set, _) = agree(&content, &conn, &mine).unwrap();
+            let side = conn.side();
+            let mut player = NetPlayer::new(conn, set, NetOptions::default());
+            let mut shown = player.start();
+            let start = Instant::now();
+            let mut out = SetPlayed { result: None, rounds: Vec::new(), settled: Vec::new(), status: String::new(), left: None, report: String::new() };
+            let mut after = 0;
+            for frame in 1u32.. {
+                assert!(frame < 40_000, "{game} side {side}: the set doesn't end ({})", player.position());
+                let keys = if side == 0 { short_set::shooter(&shown, side, frame) } else { crate::driver::bot_buttons(&shown, side, frame) };
+                let ran = match player.run_frame(keys, &mut shown).unwrap() {
+                    Ok(ran) => ran,
+                    Err(why) => {
+                        out.left = Some(why);
+                        break;
+                    }
+                };
+                if ran.new_round {
+                    let r = &shown.round;
+                    assert_eq!((r.ticks, shown.setup.local_side as usize), (0, side), "{game}: the next round is shown at its start, from this side");
+                    out.rounds.push((out.settled.len(), (r.round, r.wins, r.losses)));
+                } else if ran.advanced {
+                    let (tick, digest) = player.settled();
+                    out.settled.push((out.rounds.len(), tick, digest));
+                }
+                out.result = player.result();
+                // Over: the host stays a little (the joiner settles the
+                // end from its last inputs), then leaves; the joiner hears it.
+                if out.result.is_some() {
+                    after += 1;
+                    if side == 0 && after > 200 {
+                        break;
+                    }
+                }
+                let next = start + Duration::from_millis(2) * frame;
+                std::thread::sleep(next.saturating_duration_since(Instant::now()));
+            }
+            out.status = player.status().unwrap_or_default();
+            let (s, _) = player.stats();
+            out.report = format!(
+                "{game} side {side}: {:?}, new rounds at {:?}, {} settled, rollbacks {} (deepest {}), waits {}; {}",
+                out.result,
+                out.rounds,
+                out.settled.len(),
+                s.rollbacks,
+                s.max_rollback,
+                s.stalls + s.parked,
+                out.left.as_deref().unwrap_or("left first"),
+            );
+            out
+        };
+        let host = std::thread::spawn(move || play(host, Role::Host));
+        let joined = play(Udp::join(addr).unwrap(), Role::Join);
+        let hosted = host.join().unwrap();
+        eprintln!("{}\n{}", hosted.report, joined.report);
+        [hosted, joined]
+    }
+
+    /// A netplay set goes on after a round and ends, on both peers alike:
+    /// round two starts on both with the score carried, the settled states
+    /// agree through both rounds, the host has won and the joiner lost, and
+    /// each is told so. Both games.
+    #[test]
+    fn a_netplay_set_goes_on_to_its_end() {
+        for game in ["exe6", "exe5"] {
+            let [hosted, joined] = set_pair(game);
+            assert_eq!((hosted.result, joined.result), (Some(BattleResult::Won), Some(BattleResult::Lost)), "{game}");
+            // One new round each (2-0 decides the set), with the score the
+            // simulation carries (side 0's).
+            for p in [&hosted, &joined] {
+                assert_eq!(p.rounds.iter().map(|r| r.1).collect::<Vec<_>>(), [(1, 1, 0)], "{game}");
+            }
+            assert!(hosted.status.ends_with("THE MATCH IS OVER: YOU WON"), "{game}: {}", hosted.status);
+            assert!(joined.status.ends_with("THE MATCH IS OVER: YOU LOST"), "{game}: {}", joined.status);
+            assert_eq!(joined.left.as_deref(), Some("the match is over (you lost); the other player left"), "{game}");
+            // The settled states agree, in the second round too.
+            let theirs: std::collections::HashMap<(usize, u32), u64> = joined.settled.iter().map(|&(r, t, d)| ((r, t), d)).collect();
+            let mut common = [0, 0];
+            for (round, tick, digest) in &hosted.settled {
+                if let Some(d) = theirs.get(&(*round, *tick)) {
+                    assert_eq!(d, digest, "{game}: the settled states differ in round {} at tick {tick}", round + 1);
+                    common[*round] += 1;
+                }
+            }
+            assert!(common[0] > 100 && common[1] > 100, "{game}: {common:?} ticks compared");
+        }
     }
 
     /// Netplay from match files (`--match`): each player brings their
