@@ -663,3 +663,12 @@ of the earlier games) gets three things on the screen, all ported though no chip
   dark-hover-hidden (library-exe5): every frame and every sound call, two screens of a round, through a
   description, Chaos Unison's choice and SELECT's hide. No other recording of the EXE5 lab has the call: none
   keeps the hover up over a wrap (the longest is 14 ticks).
+- **The order of a tick's calls.** The hover's routine runs after the tick's state, and runs its own state
+  before it steps its counter. So what a tick asks of the sound driver is, in order: the state's sounds (a
+  cursor move, a pick, a description), then the hover's two volume controls, then the hover's sound. The look
+  keeps them as one list in the order they were asked (`Drawn::calls`, a `ScreenCall` each: a sound or the
+  volumes), and the battle makes its cues in that order. A volume step and the counter's wrap fall on one tick
+  where the cursor comes back onto a dark chip a few ticks before a wrap: custom/dark-hover's frame 598, the
+  volumes 0x80 and 0xE0 and then 0x16B. (Until 2026-10-05 the look kept the volumes apart from the sounds and the
+  battle made their cue after all of the tick's sounds, the hover's among them: the same calls on the frame in
+  another order, which the EXE5 sound comparison did not report then.)
