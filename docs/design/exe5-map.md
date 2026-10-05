@@ -1872,7 +1872,12 @@ straight to the deletion test, which tries the stand first). AntiRecv's countera
 `Object:subtract_hp` (EXE6's the same), EXE5's its mood too (0x080E39DC: its damage word's high half, 0x08012820), and
 its mark sits where the trap's game puts it (`anti_navi_sparkle`). Also new: the request `drag` (flag2 0x100). Where a
 hit landed and which chips a side used are learned for the computer navis' tactics (0x0802C294, 0x0802C3C4, 0x0802C3E2:
-the battles after; nothing of a battle reads them), not ported.
+the battles after; nothing of a battle reads them), not ported. As drawn (2026-10-05, against the original's frames:
+tools/frontend-compare's dark-survival/holds, the console's own navi, and holds-side1, the other side's): the
+transformation's fades started outside the sequencer are drawn by the fade's own record (the renderer's `layer_fade`:
+the tile layers black behind the navis from the fade out to the fade back in), and a shade faces its object's way from
+its init (0x0801892E's end, 0x0800C896 and 0x08002DC0, after the sprite's load, which forgets the facing: set at the
+spawn it left side 1's dark self, and Chaos Unison's shade, facing right).
 
 **The obstacle chips** (from chips-a's range, 2026-10-03). RedFrut1–3 (action 0x1A's instant effect 15,
 0x080D818C, EXE5's own: chips/redfrut/fruit): a fruit (attack object 0x8D, NameID 0xE7) drops on a random free panel
