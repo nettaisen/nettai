@@ -22,7 +22,9 @@ tankcan.kind = shell.make_kind("tankcan/shell", {
     burst = define.effect { sprite = asset.sprite("shell-burst"), anim = 0, palette = 0 },
 })
 
+-- The tank cannon (the attachment table's row 0x25), which Colonel's C-Cannon holds too (navis/colonel/chip).
 local CANNON = attachment.look { sprite = asset.sprite("tank-cannon"), palette = 0, attach_point = 8 }
+tankcan.cannon = CANNON
 
 -- The TankCans' action keyed `id`, its shell flying as `flies` says (the attack's parameters: MegaMan's B↓Ccann
 -- loads TankCan1 and takes the cracking away, navis/megaman/weapons/chips).

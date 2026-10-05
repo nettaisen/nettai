@@ -216,8 +216,8 @@ fn flinch_hook(b: &mut Battle, r: ObjectRef) {
     }
     // A navi that wears its own overlay restarts it unchecked: without
     // it, sub_80F0700 jumps into the middle of sub_80F0728 with another
-    // stack frame.
-    if own_parts && b.objects.get(r).related[1].is_none() {
+    // stack frame. (EXE5's team navis' hooks test for it: `flinch_checked`.)
+    if own_parts && !hooks.flinch_checked && b.objects.get(r).related[1].is_none() {
         panic!("the flinch hook of a navi without the overlay it wears jumps into sub_80F0728 (sub_80F0700)");
     }
     reset_form_overlay(b, r);

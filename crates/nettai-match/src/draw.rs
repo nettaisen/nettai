@@ -164,8 +164,8 @@ impl Side {
     }
 }
 
-/// A plain side on `arena`: the game's first navi with fresh stats, its
-/// fresh stats, a version drawn from `draws` where the game's rules take
+/// A plain side on `arena`: the navi a new side operates (`first_navi`:
+/// MegaMan), its fresh stats, a version drawn from `draws` where the game's rules take
 /// one, and a folder of the rules' pool drawn from `draws` (else
 /// the game's first chip with a code, thirty times); where the game has
 /// navis in auto battle (EXE5's), the auto battle data the game would have
@@ -174,7 +174,7 @@ impl Side {
 /// navi in auto battle plays.
 fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Result<Side, String> {
     let game = &arena.game;
-    let navi = *crate::navis(content, game).first().ok_or_else(|| format!("{game} has no navi with fresh stats"))?;
+    let navi = crate::first_navi(content, game).ok_or_else(|| format!("{game} has no navi with fresh stats"))?;
     let chip = (0..content.defs.chips.len() as u16)
         .map(nettai_content_api::ChipHandle)
         .find(|&c| !content.chip(c).codes.is_empty() && ids::in_game(content, game, &content.defs.chip(c).key))

@@ -314,13 +314,7 @@ impl Side {
     /// A side of a match on `arena`, nothing chosen yet (`Match::empty`).
     pub fn fresh(content: &Content, arena: &Arena) -> Result<Side, String> {
         let game = &arena.game;
-        let navis: Vec<NaviHandle> = navis(content, game);
-        let navi = navis
-            .iter()
-            .copied()
-            .find(|&n| content.navi(n).forms.is_some())
-            .or_else(|| navis.first().copied())
-            .ok_or_else(|| format!("{game} has no navi with fresh stats"))?;
+        let navi = first_navi(content, game).ok_or_else(|| format!("{game} has no navi with fresh stats"))?;
         // (No version: a side of a game that takes one is given its own,
         // or the checks say it has none.)
         let mut side = Side {
@@ -468,6 +462,13 @@ pub fn navis(content: &Content, game: &str) -> Vec<NaviHandle> {
         .map(NaviHandle)
         .filter(|&n| content.navi(n).fresh.is_some() && ids::in_game(content, game, &content.defs.navi(n).key))
         .collect()
+}
+
+/// The navi a new side of `game` operates: its navi that changes form
+/// (MegaMan), else the first of its navis a side can play.
+pub fn first_navi(content: &Content, game: &str) -> Option<NaviHandle> {
+    let navis = navis(content, game);
+    navis.iter().copied().find(|&n| content.navi(n).forms.is_some()).or_else(|| navis.first().copied())
 }
 
 /// Patch cards of `game` from a list of their names, comma-separated, in

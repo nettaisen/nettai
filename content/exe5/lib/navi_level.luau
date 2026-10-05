@@ -6,9 +6,12 @@
 
 local navi_level = {}
 
--- `row`'s entry at `navi`'s side's level (a side that states none: 0, a new save's).
+-- `row`'s entry at `navi`'s side's level (a side that operates a team navi states it: the round's setup).
 function navi_level.damage(navi: Object, row: { number }): number
-    local level = battle.navi_level(navi.alliance) or 0
+    local level = battle.navi_level(navi.alliance)
+    if level == nil then
+        error("a team navi's side states no level (0x0800EBC4 reads its damage rows at it)")
+    end
     local damage = row[level + 1]
     if damage == nil then
         error(`a damage row of {#row} entries read at level {level}`)

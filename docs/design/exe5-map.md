@@ -2405,7 +2405,7 @@ SuprVulc rather than Roll (Roll also wants a light MegaMan), and Tango's navi st
 takes only 60 from side 0's navi in these saves, where side 0's takes 120 from side 1's: not looked into). Not
 reached: a Giga chip for Beat, Rush without the opponent's navi, a failed spawn.
 
-### 15.16 The team navis (in progress: the framework and ProtoMan)
+### 15.16 The team navis (in progress: the framework, ProtoMan and Colonel)
 
 EXE5's players operate thirteen navis: MegaMan (navi 0) and the twelve team navis, six a version in its souls'
 order (NaviStats +0x29, and a save's GameState +1, the navi the PET operates): Team ProtoMan's ProtoMan, GyroMan,
@@ -2504,10 +2504,20 @@ own (0x0800F234, 0x0802D544).
 `palette_step`; the shared cannon, AirShot and Spreader actions take their holders' animations from their game.
 exe5-compat names the navis by number (records.toml's `[navis]`) and reads the level from a recording's setup
 (`navi_levels`) and the B+Back special's damage from the stats block (+0x48). exe5-extract takes both versions'
-faces. The chip lab operates a team navi by name (`navi = "protoman"`: set in RAM as the init exchange starts, since
+faces, and an own chip's picture from its navi's team's ROM: the two US ROMs hold the twelve pictures alike but under
+different palettes, and a console shows its own team's in the palette its ROM has for them (StepSwrd on a Team
+ProtoMan console and C-Cannon on a Team Colonel one are both the yellow one). The chip lab operates a team navi by name (`navi = "protoman"`: set in RAM as the init exchange starts, since
 a save that operates a team navi doesn't reach the link battle), with `navi_level` (the save's story flags) and `hp`
 (the navi's block).
+
+A side that operates a team navi states its level: a round's setup without one doesn't start, and the reader refuses
+a recording whose setup has no `navi_levels` for such a side (MegaMan's side reads none). A navi that doesn't change
+form is in the game's base form, MegaMan's, but its actor record's hooks are its own: what its identity wears goes on
+at its start (`parts`: Colonel's cape), not the base form's put-on routine. `open_counter_window(ticks)` opens a
+counter window of a navi's own length (0x0800CCDA; 16 when none is given), and the overlay hook `flinch_checked` is
+a flinch hook that tests for what the navi wears first (EXE5's team navis'; EXE6's link navis' don't).
 
 | Navi | Weapons | Own chip | Checked |
 |---|---|---|---|
 | ProtoMan | the charged slash (0x1E, 0x0800F8CE: WideSwrd loaded as the attack, the damage rows' row 0, counter byte 0x94) and the B+Back guard (0x0B, 0x0800F6CC: EXE5's guard as the Reflect program's, the stats' damage, 40 ticks before the next chip) | StepSwrd (action 0x13 as WideSwrd's, row 1, its routine 2) | 40 recordings (navis/protoman): his own chip at levels 0, 3 and 6, from another row, out of reach, blocked, onto a panel the opponent steps to, on a Japanese console and over four custom screens; the charged slash at three levels and let go early; the guard reflecting a buster shot and a Cannon, and too early; AntiSwrd against both; a counter hit and Full Synchro (an AirShot's; StepSwrd's makes none); twelve plain chips, a held A, a dark chip; hits, his deletion, a win. Every frame and every sound call. |
+| Colonel | the Screen Divide (0x46, 0x0800FC0C: the damage rows' row 13, counter byte 0x94, its target the first enemy body ahead in his row, else three panels ahead; his own action 7, 0x080F89AE, which ColonelSoul's charged shot is MegaMan's cut of: he stands ready, draws his sword with a 16-tick counter window, and on the 10th tick cuts the target's panel and the two diagonally nearer him). No B+Back. He wears his cape (the body overlays' row 3), taken off at his deletion and restarted by an animation change or a flinch | C-Cannon (his own action 8, 0x080F8B30: the TankCans' cannon raised 8 ticks with a 15-tick counter window, then a TankCan shell from the panel ahead, 16 pixels up, without cracking; row 12, its routine 5 clears the wait) | 40 recordings (navis/colonel, him on side 1): the Screen Divide at three levels, at a panel's reach, on its diagonal, out of reach, let go early, and hit as he draws; C-Cannon at three levels, its blast at the far edge with and without the opponent in it, into a RockCube, into the opponent's start barrier, on a Japanese console, and over four custom screens traced on his own console; AntiSwrd against the Screen Divide; a counter hit and Full Synchro; twelve plain chips, a held A, a dark chip; hits, his deletion, two wins. Every frame and every sound call. |

@@ -2093,8 +2093,8 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn open_counter_window(&mut self, o: ObjectRef) {
-        kinds::player::actions::open_counter_window(self, o);
+    fn open_counter_window(&mut self, o: ObjectRef, ticks: u8) {
+        kinds::player::actions::open_counter_window(self, o, ticks);
     }
 
     fn check_reactive_abort(&mut self, o: ObjectRef) {
