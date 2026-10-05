@@ -29,7 +29,7 @@ return define.form {
     mugshot = { normal = asset.mugshot("tomahawkcross"), tired = asset.mugshot("tomahawkcross-tired") },
     -- What R shows in the Cross window.
     -- The chips A charges.
-    charged_chips = { { family = "wood" } },
+    charged_chips = { { family = "wood", damaging = true } },
     -- A charged Wood chip hits twice as hard.
     charge_doubles = { element = "wood" },
     -- What its status reset gives the navi (`sub_8014536`).

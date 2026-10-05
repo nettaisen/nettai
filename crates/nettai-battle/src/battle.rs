@@ -2289,7 +2289,7 @@ mod tests {
             let mut c: crate::content::Content = testing::build();
             c.define().unwrap_or_else(|e| panic!("{e}"));
             {
-            let rules = &mut c.rules;
+            let rules = c.rules_mut();
                 rules.flow.sequencer_before_custom = sequencer_before_custom;
             }
             let c = std::sync::Arc::new(c);

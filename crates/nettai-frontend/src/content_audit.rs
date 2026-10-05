@@ -428,7 +428,7 @@ mod tests {
         };
         assert_eq!(missing(&c), PanelType::ALL.len());
         for t in [PanelType::Metal, PanelType::Lava, PanelType::Sea] {
-            c.rules.panels.types[t as usize].named = false;
+            c.rules_mut().panels.types[t as usize].named = false;
         }
         assert_eq!(missing(&c), PanelType::ALL.len() - 3);
     }

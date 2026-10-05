@@ -53,9 +53,11 @@ which counts frames since the match began whatever the battle does
 makes the cue on those frames, for each console that shows it.
 
 The custom screen's own sounds are cues each player's own console makes
-(`Battle::sound_for`): the screen records what a tick played
-(`ScreenLook::drawn`, `ScreenSound`, in the order the original's states call
-`PlaySoundEffect`) and the battle plays each by its role (`sounds.custom_*`,
+(`Battle::sound_for`): the screen records what a tick asked of the sound
+driver (`ScreenLook::drawn`'s calls, each a `ScreenSound` or the dark chip
+hover's volumes, in the order the original asks: its states'
+`PlaySoundEffect`, then the hover's volume controls, then the hover's sound)
+and the battle makes its cues in that order, a sound by its role (`sounds.custom_*`,
 `program_advance*` in rules/roles.luau): the window sliding in 0x79
 (`sub_8026B04`); the cursor 0x7F (a move to another slot, START, the Cross
 window's cursor with more than one Cross); SELECT's hide and show 0x80; a

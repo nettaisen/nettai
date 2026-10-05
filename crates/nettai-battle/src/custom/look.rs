@@ -132,11 +132,22 @@ pub struct Drawn {
     /// The icon of the chip a button holds, over the button (EXE5's Arm
     /// Change, 0x080254F4).
     pub held: bool,
-    /// The volumes a dark chip's hover set this tick (music, the screen's
-    /// player), after the tick's sounds.
-    pub volume: Option<(u16, u16)>,
-    /// The sounds the tick made, in order (its player hears them).
-    pub sounds: [Option<ScreenSound>; 6],
+    /// What the tick asked of the sound driver, in the order it asked (its
+    /// player hears it): the sounds of the tick's state, then the dark
+    /// chip hover's, whose routine runs after the state's and sets its
+    /// volumes before it sounds.
+    pub calls: [Option<ScreenCall>; 8],
+}
+
+/// What a tick of the screen asks of the sound driver, which only its own
+/// player hears.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ScreenCall {
+    /// A sound (`PlaySoundEffect`).
+    Sound(ScreenSound),
+    /// The volumes a dark chip's hover sets (`sub_802A30C`, `sub_802A362`:
+    /// volume control on the music's player, 31, and the screen's, 22).
+    Volume { music: u16, screen: u16 },
 }
 
 impl ScreenSound {
@@ -172,8 +183,26 @@ impl ScreenSound {
 }
 
 impl Drawn {
+    /// What the tick asked of the sound driver, in order.
+    pub fn calls(&self) -> impl Iterator<Item = ScreenCall> + '_ {
+        self.calls.iter().flatten().copied()
+    }
+
+    /// The sounds the tick made, in order.
     pub fn sounds(&self) -> impl Iterator<Item = ScreenSound> + '_ {
-        self.sounds.iter().flatten().copied()
+        self.calls().filter_map(|c| match c {
+            ScreenCall::Sound(s) => Some(s),
+            ScreenCall::Volume { .. } => None,
+        })
+    }
+
+    /// The volumes a dark chip's hover set this tick (the music's, the
+    /// screen's player's), if it set them.
+    pub fn volume(&self) -> Option<(u16, u16)> {
+        self.calls().find_map(|c| match c {
+            ScreenCall::Volume { music, screen } => Some((music, screen)),
+            ScreenCall::Sound(_) => None,
+        })
     }
 }
 
@@ -261,8 +290,14 @@ const SPIN_STEPS: u8 = 0x14;
 impl ScreenLook {
     /// The screen makes a sound this tick.
     pub(crate) fn play(&mut self, sound: ScreenSound) {
-        if let Some(slot) = self.drawn.sounds.iter_mut().find(|s| s.is_none()) {
-            *slot = Some(sound);
+        self.call(ScreenCall::Sound(sound));
+    }
+
+    /// The screen asks the sound driver for something this tick, after
+    /// what it asked before.
+    fn call(&mut self, call: ScreenCall) {
+        if let Some(slot) = self.drawn.calls.iter_mut().find(|s| s.is_none()) {
+            *slot = Some(call);
         }
     }
 
@@ -316,7 +351,10 @@ impl ScreenLook {
     /// the same way. Its `+0x14` counter runs every tick from the screen's
     /// opening; each time it wraps (every 64 ticks) while the hover isn't
     /// clear, EXE5 plays the hover's sound (0x08025A8C; EXE6's routine
-    /// counts and plays nothing: its rules fill no role for it).
+    /// counts and plays nothing: its rules fill no role for it). The
+    /// routine runs its state first and steps the counter after (EXE5's
+    /// 0x08025A80), so on a tick with both, the volumes are set before the
+    /// sound is asked for.
     pub(crate) fn hover(&mut self, on_dark: bool) {
         self.hover_state(on_dark);
         self.hover_count = (self.hover_count + 1) & 63;
@@ -341,12 +379,12 @@ impl ScreenLook {
             }
             DarkHover::Darkening { step } => {
                 // sub_802A30C
-                self.drawn.volume = Some((VOLUME_DOWN[step as usize], VOLUME_UP[step as usize]));
+                self.call(ScreenCall::Volume { music: VOLUME_DOWN[step as usize], screen: VOLUME_UP[step as usize] });
                 if self.window_fade.active() { DarkHover::Darkening { step: step + 1 } } else { DarkHover::Dark }
             }
             DarkHover::Clearing { step } => {
                 // sub_802A362
-                self.drawn.volume = Some((VOLUME_UP[step as usize], VOLUME_DOWN[step as usize]));
+                self.call(ScreenCall::Volume { music: VOLUME_UP[step as usize], screen: VOLUME_DOWN[step as usize] });
                 if self.window_fade.active() { DarkHover::Clearing { step: step + 1 } } else { DarkHover::Clear }
             }
             d => d,
