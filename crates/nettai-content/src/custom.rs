@@ -244,12 +244,17 @@ pub struct ButtonDoc {
 }
 
 /// Another language's pictures with words: its own files, named with the
-/// language (`pictures/ok-ja.png`, `cross-names-falzar-ja.png`).
+/// language (`pictures/ok-ja.png`, `cross-names-falzar-ja.png`,
+/// `buttons/soul-ja.png`).
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CustomLanguageDoc {
     pub pictures: PicturesDoc,
     /// The Cross window's names by game version.
     pub cross_names: BTreeMap<String, TileImage>,
+    /// The named buttons' tiles by state where this language has its own
+    /// (`CustomDoc::buttons`' `tiles`), by the button's name.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub buttons: BTreeMap<String, TileImage>,
 }
 
 /// A version's own pictures: Beast Out's picture with its palettes, the
@@ -425,7 +430,16 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
             let doc = image(&file, names, CROSS_NAME, &own.cross_palettes, 0, &|i| ((i / CROSS_NAME_TILES).min(n.saturating_sub(1))) as u8);
             cross_names.insert(version.clone(), doc);
         }
-        languages.insert(lang.clone(), CustomLanguageDoc { pictures, cross_names });
+        let mut buttons = BTreeMap::new();
+        for (name, tiles) in &l.buttons {
+            // (Laid out as the button's own tiles are: a state a column.)
+            let Some((_, b)) = c.buttons.iter().find(|(n, _)| n == name) else { continue };
+            let (w, h) = (b.width as u32, b.height as u32);
+            let states = (tiles.len() as u32).div_ceil((w * h).max(1)).max(1);
+            let file = format!("buttons/{name}-{lang}.png");
+            buttons.insert(name.clone(), image(&file, tiles, Layout::Blocks { width: w, height: h, columns: states }, &[frame0], 0, &none));
+        }
+        languages.insert(lang.clone(), CustomLanguageDoc { pictures, cross_names, buttons });
     }
     let buttons = c
         .buttons
@@ -555,7 +569,11 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         for (version, i) in &d.cross_names {
             cross_names.push((version.clone(), img(i, report)?.0));
         }
-        languages.push((lang.clone(), CustomLettering { pictures, cross_names }));
+        let mut buttons = Vec::new();
+        for (name, i) in &d.buttons {
+            buttons.push((name.clone(), img(i, report)?.0));
+        }
+        languages.push((lang.clone(), CustomLettering { pictures, cross_names, buttons }));
     }
     let mut buttons = Vec::new();
     for b in &doc.buttons {

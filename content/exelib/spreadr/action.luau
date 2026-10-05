@@ -27,17 +27,15 @@ local ANIM = 0xB
 -- The bullet leaves once the count passes this; the recovery's ticks.
 local FIRE_AFTER, RECOVER_TICKS = 1, 0x14
 
--- `sub_80ECC86`: the gun's animation by the holder's AI index (the link
--- navis HeatMan, GroundMan and DustMan, 1, 9 and 10: 2; the others 0).
-local function gun_anim(me: Object): number
-    local ai = me.ai_index
-    if ai == 1 or ai == 9 or ai == 10 then
-        return 2
+-- `sub_80ECC86`: the gun's animation by the holder's AI index, from its
+-- game's table (`look.gun_anims`: EXE6's `off_80ECC94`, where the link
+-- navis HeatMan, GroundMan and DustMan hold their own, 2).
+local function gun_anim(me: Object, look: SpreaderLook): number
+    local anim = look.gun_anims[me.ai_index + 1]
+    if anim == nil then
+        error(string.format("AI index %d reads past the spreaders' table (`sub_80ECC86`)", me.ai_index))
     end
-    if ai > 27 then
-        error(string.format("AI index %d reads past off_80ECC94", ai))
-    end
-    return 0
+    return anim
 end
 
 -- A chip's spreader (a `SpreaderSpec`), of a game's `look`.
@@ -47,7 +45,7 @@ function spreader.action(spec: SpreaderSpec, look: SpreaderLook): Action
         if me.step_init == 0 then
             me:set_animation(ANIM)
             me:open_counter_window()
-            attachment.attach(look.attachment, me, spec.gun, "overlay", { anim = gun_anim(me) })
+            attachment.attach(look.attachment, me, spec.gun, "overlay", { anim = gun_anim(me, look) })
             me:set_status("using_action", true)
             me.step_init = 4
             s.timer = 0

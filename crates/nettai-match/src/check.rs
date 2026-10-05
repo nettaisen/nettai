@@ -88,11 +88,18 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
     }
     // The navi code's level: 0 to 14, and a link navi always has one (it
     // exists only through its code); MegaMan may have none.
-    match s.navi_level {
-        Some(l) if l > nettai_battle::custom::MAX_NAVI_LEVEL => {
+    // (A navi with a story, EXE5's team navis: its own levels, which its
+    // damage rows are read at.)
+    let last = crate::story::max_level(content, s.navi);
+    match (s.navi_level, last) {
+        (Some(l), Some(last)) if l > last => {
+            out.push(format!("level {l}: {}'s level is 0 to {last}", crate::names::navi(content, s.navi)))
+        }
+        (None, Some(last)) => out.push(format!("{} has no level (0 to {last})", crate::names::navi(content, s.navi))),
+        (Some(l), _) if l > nettai_battle::custom::MAX_NAVI_LEVEL => {
             out.push(format!("level {l}: a navi code's level is 0 to {}", nettai_battle::custom::MAX_NAVI_LEVEL))
         }
-        None if !content.navi(s.navi).changes_form() => {
+        (None, None) if !content.navi(s.navi).changes_form() => {
             out.push(format!("{} has no level: a link navi exists only through its navi code", crate::names::navi(content, s.navi)))
         }
         _ => {}

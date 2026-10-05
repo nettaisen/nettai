@@ -208,17 +208,23 @@ pub struct StageEntry {
     pub actor_list: u32,
 }
 
-/// What EXE5's NaviStats name by number (records.toml): weapons by routine
-/// number, projectile variants by row, barriers by type, each by its key.
+/// What EXE5's NaviStats name by number (records.toml): navis by navi
+/// number, weapons by routine number, projectile variants by row, barriers
+/// by type, MegaMan's forms by form number (+0x2C: 0 his base form, 1 to 12
+/// his souls), each by its key.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RecordNumbers {
+    #[serde(default)]
+    pub navis: BTreeMap<String, u8>,
     #[serde(default)]
     pub weapons: BTreeMap<String, Vec<u8>>,
     #[serde(default)]
     pub projectile_variants: BTreeMap<String, u8>,
     #[serde(default)]
     pub barriers: BTreeMap<String, u8>,
+    #[serde(default)]
+    pub forms: BTreeMap<String, u8>,
 }
 
 /// EXE5's NaviCust programs (navicust.toml): each program's number (a part
@@ -469,6 +475,12 @@ impl Compat {
         let stages: BTreeMap<String, StageEntry> = toml::from_str(&text("stages.toml")?).map_err(|e| format!("stages.toml: {e}"))?;
         let games: Games = toml::from_str(&text("games.toml")?).map_err(|e| format!("games.toml: {e}"))?;
         let records: RecordNumbers = toml::from_str(&text("records.toml")?).map_err(|e| format!("records.toml: {e}"))?;
+        let mut forms = BTreeMap::new();
+        for (k, n) in &records.forms {
+            if let Some(other) = forms.insert(*n, k) {
+                return Err(format!("records.toml: forms {k} and {other} are both {n}"));
+            }
+        }
         let kinds: BTreeMap<String, KindEntry> = toml::from_str(&text("kinds.toml")?).map_err(|e| format!("kinds.toml: {e}"))?;
         let navicust: NaviCustNumbers = toml::from_str(&text("navicust.toml")?).map_err(|e| format!("navicust.toml: {e}"))?;
         for (k, n) in &navicust.programs {
@@ -547,6 +559,17 @@ impl Compat {
         self.stages.iter().find(|(_, e)| e.layout == layout && e.actor_list == actor_list).map(|(k, _)| k.clone())
     }
 
+    /// The navi of a navi number (NaviStats +0x29): its id, if records.toml
+    /// has it (the navis the content has).
+    pub fn navi_key(&self, n: u8) -> Option<&str> {
+        self.records.navis.iter().find(|&(_, &v)| v == n).map(|(k, _)| k.as_str())
+    }
+
+    /// A navi's number (NaviStats +0x29), by its id.
+    pub fn navi_number(&self, key: &str) -> Option<u8> {
+        self.records.navis.get(key).copied()
+    }
+
     /// The weapon of a routine number: its id (None: 0xFF, no weapon; Err:
     /// a number records.toml lacks).
     pub fn weapon(&self, n: u8) -> Result<Option<String>, String> {
@@ -572,6 +595,17 @@ impl Compat {
             return Ok(None);
         }
         self.records.barriers.iter().find(|&(_, &v)| v == n).map(|(k, _)| Some(k.clone())).ok_or_else(|| format!("barrier type {n}"))
+    }
+
+    /// A form's number (NaviStats +0x2C: a soul's 1 to 12, the base form's
+    /// 0) by its id; none for a form the original hasn't.
+    pub fn form_number(&self, key: &str) -> Option<u8> {
+        self.records.forms.get(key).copied()
+    }
+
+    /// The form of a form number: its id (`protosoul` for soul 1).
+    pub fn form(&self, number: u8) -> Option<&str> {
+        self.records.forms.iter().find(|&(_, &n)| n == number).map(|(k, _)| k.as_str())
     }
 
     /// A status's id (`paralyze-90`) by a hit's status byte.

@@ -6,20 +6,27 @@
 -- Its status reset (0x08011C00) reveals the other side's invisible navis (./reveal); on a netbattle's console the
 -- other side's HP shows over its navi (by MegaMan's attach point 3: drawn only, which the engine has not).
 
-local attach_points = require("../attach_points")
+local attach_points = require("@self/attach_points")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged-shot")
 local darkcirc = require("../../../chips/darkcirc")
 local reveal = require("@self/reveal")
-local souls = require("../../../rules/souls")
+local shuffle = require("@self/shuffle")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "searchsoul",
-    soul = { number = 3, family = "cursor" },
-    change = souls.action,
-    revert = souls.revert,
+    soul = { family = "cursor" },
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- SearchMan's image as MegaMan unites with him (rules/souls/image).
+    image = soul_image.look { sprite = asset.sprite("searchman") },
+    -- What it adds to the custom screen (the souls system gathers it, rules/souls/custom): Shuffle (./shuffle).
+    custom = shuffle.custom,
     sprite = asset.sprite("searchsoul"),
     element = "null",
     buster_bonus = 0,
@@ -40,7 +47,8 @@ return define.form {
         normal = asset.mugshot("searchsoul"),
         variant = { normal = asset.mugshot("searchsoul-chaos") },
     },
-    buster_arm = { anim = 0 },
+    -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
+    buster_arm = { anim = 3 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 3 of category 0).
     identity = define.identity {
         class = "megaman",
@@ -48,6 +56,6 @@ return define.form {
         actor_type = "player",
         ai_index = 0,
         aura_anim = 0,
-        attach_points = attach_points[3],
+        attach_points = attach_points,
     },
 }

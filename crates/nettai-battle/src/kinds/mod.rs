@@ -284,6 +284,21 @@ pub fn chip_damage_formula(b: &Battle, id: nettai_content_api::ChipHandle, side:
         F::HpLastDigits => hp_last_digits(b, side),
         F::HalfOpponentMaxHp => half_opponent_max_hp(b, side),
         F::NaviLevel { base, per_level } => navi_chip_damage(b, side, *base, *per_level),
+        F::Level { by_level } => {
+            // 0x0800EBC4: the row's entry at the side's level (a word the
+            // init exchange set from the save's story flags: 0 in a new
+            // save, as a side that states none).
+            let level = match b.navi_levels[side as usize & 1] {
+                0xFF => 0,
+                level => level,
+            };
+            *by_level.get(level as usize).unwrap_or_else(|| {
+                panic!(
+                    "chip {:?}'s damage by level reads past its row at level {level:#04x} (0x0800EBC4)",
+                    b.content.defs.chip(id).key
+                )
+            })
+        }
         F::GaugeLevel { base } => gauge_level_damage(b, side, *base),
     }
 }

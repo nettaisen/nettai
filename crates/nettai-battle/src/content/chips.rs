@@ -215,12 +215,6 @@ impl ChipTraits {
     /// is M; EXE5's 0x080243C0: Muramasa, CustSwrd and the three CusVolts,
     /// of which CusVolt1 comes as an A).
     pub const HIDES_DAMAGE_AS_A: u16 = 0x400;
-    /// The Program Advance animation shows its name without its code: the
-    /// original prints a pick's code only for the chips below 0x160, its
-    /// chip table's own (`sub_802B80C`; EXE5's 0x08027BC6, the same number),
-    /// not for the chips past them (the special chips: a navi's own, the
-    /// supports', the capsules').
-    pub const HIDES_ADVANCE_CODE: u16 = 0x800;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x01, "no_chain"),
         (0x02, "aura_bonus"),
@@ -233,7 +227,6 @@ impl ChipTraits {
         (0x100, "goes_with_any"),
         (0x200, "not_navi_slot"),
         (0x400, "hides_damage_as_a"),
-        (0x800, "hides_advance_code"),
     ];
 
     pub fn has(self, bit: u16) -> bool {
@@ -304,6 +297,10 @@ pub enum DamageFormula {
     /// its user's buster attack up to 5 (`sub_8010C50`, a row of
     /// `byte_80212D4`; formulas 23 to 44).
     NaviLevel { base: u8, per_level: u8 },
+    /// EXE5's team navis' own chips' (its formulas 50 to 72, 0x0800EAF8, a
+    /// row of 0x0801D74F): `by_level[n]` at its user's side's navi level
+    /// (the setup's: EXE5's is its save's progress, 0 to 6).
+    Level { by_level: Vec<u16> },
     /// EXE5's CusVolt (its formulas 73 to 75, 0x0800EB0E): `base` plus 100
     /// by the custom gauge's level (its value >> 7): 100 × level / 95 below
     /// 96, 100 to 126, none from 127 (full); the side's own gauge in the

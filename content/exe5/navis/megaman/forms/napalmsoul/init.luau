@@ -7,20 +7,25 @@
 -- (0x37: DarkMetr); no B+Back (0xFF). Its Fire chips with damage, dimming chips too, hit 40 harder used uncharged
 -- with the A charge not full (0x0800D0A6).
 
-local attach_points = require("../attach_points")
+local attach_points = require("@self/attach_points")
+local body_overlays = require("../../../lib/body_overlays")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_chip = require("@self/charged-chip")
 local charged_chips = require("../weapons/charged-chip")
 local darkmetr = require("../../../chips/darkmetr")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "napalmsoul",
-    soul = { number = 4, family = "fire" },
-    change = souls.action,
-    revert = souls.revert,
+    soul = { family = "fire" },
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- NapalmMan's image as MegaMan unites with him (rules/souls/image), with his cannon (0x0800EDBC's routine for the soul).
+    image = soul_image.wearing(asset.sprite("napalmman"), "soul-image/napalmman", body_overlays.napalmman),
     sprite = asset.sprite("napalmsoul"),
     element = "fire",
     buster_bonus = 0,
@@ -43,7 +48,8 @@ return define.form {
         normal = asset.mugshot("napalmsoul"),
         variant = { normal = asset.mugshot("napalmsoul-chaos") },
     },
-    buster_arm = { anim = 0 },
+    -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
+    buster_arm = { anim = 4 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 4 of category 0).
     identity = define.identity {
         class = "megaman",
@@ -51,6 +57,6 @@ return define.form {
         actor_type = "player",
         ai_index = 0,
         aura_anim = 0,
-        attach_points = attach_points[4],
+        attach_points = attach_points,
     },
 }

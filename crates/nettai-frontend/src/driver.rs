@@ -51,7 +51,7 @@ pub trait Driver {
     /// names its versions' assets, for a game whose versions the engine
     /// doesn't tell apart (EXE5's "protoman" and "colonel": its emblems, the
     /// other version's chips; `Renderer::console_version`). None: the
-    /// engine's (EXE6's `Unlocks::version`).
+    /// version the console's player brought (the fact `version`).
     fn console_version(&self) -> Option<&'static str> {
         None
     }
@@ -531,10 +531,10 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
     if !picks.is_empty() {
         out.push_str(&format!("\nPICKED: {}", picks.join(", ")));
     }
-    // EXE6's Cross window (the cross system's).
+    // EXE6's Cross window (the cross system's): its entries by the forms
+    // in their places (`custom::cross_at`).
     let w = nettai_render::custom::CrossWindow::of(b, side).unwrap_or_default();
-    let unlocks = Unlocks::of_side(b, side as u8);
-    let cross_name = |place: u8| match unlocks.cross_at(&*b.content, b.stats[side].navi, place) {
+    let cross_name = |place: u8| match nettai_render::custom::cross_at(b, side as u8, place) {
         Some(f) => nettai_render::strings::own_form_name(&b.content, f).to_uppercase(),
         None => format!("CROSS {}", place + 1),
     };
