@@ -703,14 +703,19 @@ packs, games can only import from support and support can import from support, b
 games"; and on the declaration, "okay instead of init.luau it should be manifest.toml".
 
 And after packs landed: "instead of manifest.toml containing imports etc, there should really be a top-level init.luau
-file that imports everything, and then manifest.toml just declares id/kind/depends".
+file that imports everything, and then manifest.toml just declares id/kind/depends". And on that file: "in init.luau
+for each content pack, there's no need to return an object right? you can just require everything right and they have
+side effects? you should also not import everything in the base init.luau, e.g. chips/init.luau should import all
+chips, etc."
 
 ```text
 content/
   .luaurc                             the packs by name (`@exe6`, `@exelib`), for an editor's requires
   exe6/, exe5/                          the game packs: what a match plays
     manifest.toml                     the pack: its id, its kind, what it depends on
-    init.luau                         the game's top module: it requires what the game has (below)
+    init.luau                         the game's top module: it requires the game's rules and folders (below)
+    <folder>/init.luau                a folder's index: it requires the folder's modules that define what the
+                                      game has (chips/, navis/, stages/, cards/, navicust/, lib/)
     **/*.luau                         its scripts (the layout below, §4.1)
     types.d.luau                      its own declarations
     locales/<language>.toml           its display text by id
@@ -730,24 +735,30 @@ depends = ["exelib"]   # the support packs it requires from
 ```
 
 A game's top module, `<game>/init.luau` (`exe6:init`; the pack as a module, as a folder's init.luau is the folder,
-§4.1), requires what the game has:
+§4.1), requires the game's rules and its folders, and each folder's init.luau requires the folder's modules that
+define what the game has. They return nothing: a definition is made as its module loads.
 
 ```luau
-return {
-    rules = require("@self/rules"),                 -- rules/init.luau: the game's rules (§3.8)
-    chips = {
-        require("@self/chips/airhocky"),
-        require("@self/chips/cannon"),              -- a series' module stands for its chips
-        require("@self/navis/elecman/chip"),        -- a link navi's own chip
-        -- require("@self/chips/later"),            -- no use yet
-    },
-    navis = { require("@self/navis/megaman"), require("@self/navis/elecman") },
-    forms = { require("@self/navis/megaman/forms/heatcross") },
-    stages = { require("@self/stages/netbattle") },
-    patch_cards = { require("@self/cards/airman") },
-    navicust = { require("@self/navicust/airshoes") },
-    also = { require("@self/lib/instant/repair") },
-}
+-- exe6/init.luau
+require("@self/rules")                      -- rules/init.luau: the game's rules (§3.8), which people write
+require("@self/chips")
+require("@self/navis")
+require("@self/stages")
+require("@self/cards")
+require("@self/navicust")
+require("@self/lib")
+
+-- exe6/chips/init.luau
+require("@self/airhocky")
+require("@self/cannon")                     -- a series' module stands for its chips
+-- require("@self/later")  -- no use yet
+
+-- exe6/navis/init.luau: the navis, then what else of the folder the game has
+require("@self/megaman")
+require("@self/elecman")
+require("@self/megaman/forms/heatcross")    -- forms
+require("@self/elecman/chip")               -- a link navi's own chip
+require("@self/megaman/weapons/buster-2e")  -- defined for its id alone: nothing else requires it
 ```
 
 - **Kinds.** A game pack is what a match plays. A support pack defines nothing a game has (no chips, navis, forms,
@@ -780,31 +791,43 @@ return {
   No pack requires a game pack but itself, and a relative path never leaves its pack. The loader
   (`nettai_content::index::follow`), the runtime's `require` (`nettai_luau::Pack::with_packs`) and the content check
   refuse anything else, naming the module and the require (`packs::check_require`).
-- **What a game has.** Its init.luau requires, grouped by registry, the modules that define what a person picks or
-  the rules name: `rules` (rules/init.luau: its systems, rule sections and roles), `chips`, `navis`, `forms`,
-  `stages`, `patch_cards`, `navicust`. A series module stands for its chips. Weapons, kinds, actions and the rest
-  come in through requires. `also` requires a module that defines something nothing else requires (EXE6's alias
-  buster routines, an effect or a kind the original's tables number, which compat names). A chip the game defines
-  without a use yet isn't required, so it doesn't load: index.py keeps it as a commented require among the chips,
-  and uncomments it when the chip has its use (no list of them is kept anywhere else; neither game has one
-  today).
-- **The init is the whole truth.** A load of a game runs its init.luau, and what that requires, in turn, is what
-  loads. The define phase refuses a definition of these registries made by a module the init doesn't require
-  itself (`game/chips/sword/init.luau: chip sword is game's, and game/init.luau doesn't require chips/sword`;
-  `packs::required_by_init` reads the init's own requires), a game without its init.luau, and a support pack's
-  definition of any of them. The engine reads the requires, not the table: the groups are for a reader, and
-  index.py writes them.
+- **What a game has.** Its inits require the modules that define what a person picks or the rules name: its rules
+  (rules/init.luau: its systems, rule sections and roles, required by the top module), and its chips, navis,
+  forms, stages, patch cards and NaviCust programs, each required by the init of the folder of the pack it is in
+  (chips/init.luau the chips; navis/init.luau the navis, their forms and a link navi's own chip). A series module
+  stands for its chips. Weapons, kinds, actions and the rest come in through requires. A module that defines
+  something nothing else requires (EXE6's alias buster routines, an effect or a kind the original's tables number,
+  which compat names) is required by its folder's init too (lib/init.luau, navis/init.luau). A chip the game
+  defines without a use yet isn't required, so it doesn't load: index.py keeps it as a commented require in
+  chips/init.luau, and uncomments it when the chip has its use (no list of them is kept anywhere else; neither
+  game has one today).
+- **The inits are the whole truth.** A load of a game runs its init.luau, and what that requires, in turn, is what
+  loads.
+  - The define phase refuses a definition of these registries made by a module its folder's init doesn't require
+    itself, or whose folder the top module doesn't (`game/chips/sword/init.luau: chip sword is game's, and
+    game/chips/init.luau doesn't require chips/sword`; `packs::listed_by` says which init lists a module, a
+    module at the pack's top and a folder's own init, the rules', by the top module). So a chip a Program Advance
+    reaches, but chips/init.luau doesn't list, is refused. A game without its init.luau, and a support pack's
+    definition of any of them, are refused too.
+  - The content check refuses a game's module that defines something (`define.<registry>`) and that no init
+    reaches (`nettai_content_check::unloaded`): a chip added without its require would otherwise be missing
+    without a word. What a commented require names, and its folder, waits and is no problem.
+  - The registry says which kind a definition is; the folders group them for a reader.
+- **The inits are index.py's, whole.** It writes them from the modules that are there, in path order, and a hand
+  edit is lost (`index.py --check` names it). A merge conflict in an init is settled by running it: take either
+  side, run it, and the init is right for the tree.
 - **The order of the requires is the load order, and nothing more.** A named definition's key is its id; an
   anonymous one's counts the definitions its own module makes (§2.2), whenever the module loads; handles follow
   the keys (§2.3); asset handles are the asset pack's. So turning the requires round defines the same definitions
-  under the same keys with the same handles (nettai-content's test turns both games' round). The content hash
-  covers the modules' text, init.luau's too.
+  under the same keys with the same handles (nettai-content's test turns both games' inits round). The content
+  hash covers the modules' text, an init.luau's too.
 - **One game a match** (P3). A content is one game pack and the support packs it depends on: `Content::define` refuses two
   game packs, and every lookup sees only the loaded game's definitions. `nettai_content::pack::games` lists the game
   packs, each with its asset pack, and `load_game` loads one.
 - **Loading** (`nettai_content::index::read`). The loader reads the manifests of the games it loads and the support
   packs they depend on. The load order is the support packs, each after those it depends on, then the games. It
-  reads each game's init.luau and what that requires, in turn, and scans nothing. The games are the packs whose
+  reads each game's init.luau and what that requires, in turn (its folders' inits, and what they require), and
+  scans nothing. The games are the packs whose
   manifest says `kind = "game"` (`packs::games`). The content, and its hash, is what loaded. A game whose asset pack
   isn't found isn't loaded.
 - **Declarations, by pack** (`packs::declarations`). A pack's modules check against the engine's declarations, then
@@ -821,23 +844,26 @@ return {
   `exelib:swords/slash`). A game module's anonymous definition is keyed by its path (`chips/cannon/init#2`), a
   support pack's by its name (`exelib:regions#57`, which content never writes). Nothing refuses a `:` in a name:
   another game's names can't be loaded.
-- **The modules keep `define.*`.** The init only says which load and which are the game's.
+- **The modules keep `define.*`.** The inits only say which load and which are the game's.
 - **Kept up by scripts** in the verification workspace:
-  - tools/content/index.py writes each game's init.luau from the pack's modules, by `define.<registry>`, each
-    group in path order; each manifest; and content/.luaurc. A chip naming no use is a commented require, and so,
-    in turn, is a chip that requires such a chip's module.
+  - tools/content/index.py writes each game's inits from the pack's modules, by `define.<registry>`, in path
+    order; each manifest; and content/.luaurc. A chip naming no use is a commented require, and so, in turn, is a
+    chip that requires such a chip's module. `--check` fails when an init isn't what it writes.
   - gen_content.py runs index.py after writing.
 
 R5 (2026-10-03, never merged) had made content/ one namespace with explicit indices: content/exe6/init.luau and a
 root content/init.luau. The user asked for packs instead, whose manifests first held R5's lists; R6 moved the lists
-back into each game's init.luau as requires, with the manifest kept for the pack's identity. The whole-truth
-check, `also`, the loader that follows requires and index.py are R5's throughout.
+back into each game's init.luau as requires, with the manifest kept for the pack's identity; then the one init,
+which returned its requires in a table by kind, became plain requires in an init a folder. The whole-truth check,
+the modules required for what only an id names, the loader that follows requires and index.py are R5's throughout.
 
 ### 4.1 The rules
 
 ```text
 content/exe6/
-  init.luau                           the game's top module: it requires what the game has (§4.0)
+  init.luau                           the game's top module: it requires the rules and the folders (§4.0)
+  <folder>/init.luau                  a folder's index (chips/, navis/, stages/, cards/, navicust/, lib/): it
+                                      requires the folder's modules that define what the game has (§4.0)
   types.d.luau                        the game's shared types (the API: content/nettai/core.d.luau)
   chips/<id>/                         one chip: init.luau, and kinds only it uses
   chips/<series>/                     a series (X1-X3, Hi-/M-, EX/SP, Recov*, the upgrades of one chip): init.luau
