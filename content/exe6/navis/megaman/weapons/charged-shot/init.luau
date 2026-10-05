@@ -35,7 +35,7 @@ local charged_shot = {}
 -- The charged-shot programs that come on 1 draw in 8 (the others on 1 in
 -- 2): the original's rows 9 and 0x23.
 local RARE: { [ProjectileVariant]: boolean } = {
-    [variants.attack_90] = true,
+    [variants.chip_destruction] = true,
     [variants.charged_hp_bug_marked] = true,
 }
 
