@@ -1990,7 +1990,7 @@ fn fight_on_test_pack() -> (Battle, ObjectRef, ObjectRef) {
         ..megaman()
     };
     let mut setup = testing::round_setup(testing::LINK_BATTLE, stats);
-    setup.content = content.hash();
+    crate::content::testing::on(&mut setup, &content);
     setup.settings.stage = content.stage_by_key(testing::LINK_BATTLE);
     setup.settings.effects = 0xE8C;
     let mut b = Battle::new(setup, content);
