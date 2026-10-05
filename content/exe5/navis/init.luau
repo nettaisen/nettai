@@ -4,10 +4,12 @@
 -- the modules that are there: run it again rather than edit this, also to settle a merge conflict in it.
 
 -- Navis (a navi chip's navi is defined with its chips).
+require("@self/colonel")
 require("@self/megaman")
 require("@self/protoman")
 require("@self/tomahawkman")
 -- Chips: a module defining one, or a series module defining several.
+require("@self/colonel/chip")
 require("@self/protoman/chip")
 require("@self/tomahawkman/chip")
 -- Forms.

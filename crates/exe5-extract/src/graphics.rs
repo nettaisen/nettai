@@ -77,7 +77,7 @@ const PICTURE_BYTES: usize = 0x540;
 pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
     let rom = &roms.protoman;
     let mut hud = crate::hud::hud(roms, names, chip_icons(roms, names));
-    let mut custom = crate::custom::custom(roms, chip_art(roms, names));
+    let mut custom = crate::custom::custom(roms, names, chip_art(roms, names));
     // The US ROMs' words are English; the Japanese ROMs' lettering is the
     // pack's Japanese (`lettering`).
     let ja = crate::lettering::LANGUAGE.to_string();
@@ -411,15 +411,39 @@ fn version_of(versions: &[(u32, Version)], id: u32) -> Option<Version> {
     versions.iter().find(|(chip, _)| *chip == id).map(|&(_, v)| v)
 }
 
+/// The team navis' own chips (the custom screen's table of them,
+/// 0x08025EA0: two halfwords a navi, navis 1 to 12, each the chip's id
+/// under its code), each with its navi's team's version. The two US ROMs
+/// hold an own chip's picture and icon alike but under different palettes:
+/// a console shows its own team's navis' chips in the palette its ROM has
+/// for them, and never shows the other team's (their navis aren't its
+/// PET's). So an own chip's picture is its team's ROM's, on any console.
+const OWN_CHIPS: u32 = 0x0802_5EA0;
+
+fn own_chips(roms: &Roms) -> Vec<(u32, Version)> {
+    let rom = roms.us(Version::ProtoMan);
+    (0..12u32)
+        .map(|n| {
+            let id = (rom.u16(OWN_CHIPS + 4 * n) & 0x1FF) as u32;
+            (id, if n < 6 { Version::ProtoMan } else { Version::Colonel })
+        })
+        .collect()
+}
+
 /// The chips' pictures, each under its chip's key: a version chip's from
 /// its own version's ROM, marked with it (a console of the other version
-/// shows its counterpart's there); any other from Team ProtoMan's.
+/// shows its counterpart's there); a team navi's own chip's from its team's
+/// (`own_chips`); any other from Team ProtoMan's.
 fn chip_art(roms: &Roms, names: &AssetNames) -> Vec<ChipArt> {
     let versions = version_chips(roms);
+    let team = own_chips(roms);
     chip_ids(names)
         .map(|id| {
             let own = version_of(&versions, id);
-            let (picture, _) = chip_media(roms, own.unwrap_or(Version::ProtoMan), id);
+            // (A team navi's own chip's: its team's ROM's, with no
+            // counterpart on the other version's console.)
+            let from = own.or(version_of(&team, id)).unwrap_or(Version::ProtoMan);
+            let (picture, _) = chip_media(roms, from, id);
             ChipArt { key: names.chip_icon(id as u16), picture, region: None, version: own.map(|v| v.name().into()) }
         })
         .collect()

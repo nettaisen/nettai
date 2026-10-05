@@ -103,7 +103,7 @@ mod tests {
         let mut c: Content = testing::build();
         c.define().unwrap_or_else(|e| panic!("{e}"));
         {
-            let rules = &mut c.rules;
+            let rules = c.rules_mut();
             rules.effects.spark_steps_at_start = steps;
         }
         let c = Arc::new(c);
