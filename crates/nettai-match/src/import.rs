@@ -60,13 +60,14 @@ impl Side {
         self.version = Some(save.version().name().to_string());
         let unlocks = save.unlocks();
         self.beast_out = unlocks.beast_out;
-        self.crosses = match exe6_compat::forms::set(content, self.navi, save.version()) {
-            Some(set) if !unlocks.crosses.iter().all(|&c| c) => {
-                let own = &set.crosses;
-                let owned: Vec<_> = own.iter().zip(unlocks.crosses).filter(|(_, o)| *o).map(|(&f, _)| f).collect();
-                Some(CrossList::new(&owned))
-            }
-            _ => None,
+        // (The save's version's Crosses, by their number: the navi's
+        // listed forms of that version.)
+        let own = content.navi(self.navi).forms.as_ref().map_or(&[][..], |f| f.listed(save.version().name()));
+        self.crosses = if !own.is_empty() && !unlocks.crosses.iter().all(|&c| c) {
+            let owned: Vec<_> = own.iter().zip(unlocks.crosses).filter(|(_, o)| *o).map(|(&f, _)| f).collect();
+            Some(CrossList::new(&owned))
+        } else {
+            None
         };
         // The level is the save's operated navi's; a link navi always has
         // one (it exists through its code).
@@ -86,7 +87,7 @@ impl Side {
             *t = 0;
         }
         // The stats: the game's (NaviStats+0x20), a link navi's at its level.
-        self.stats.version = crate::version_byte(self.version.as_deref());
+        self.stats.version = crate::version_byte(content, self.version.as_deref());
         if let Some(s) = self.reloaded(content) {
             self.stats = s;
         }
