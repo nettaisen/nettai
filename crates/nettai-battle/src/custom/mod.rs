@@ -86,10 +86,10 @@ pub struct PlayerSetup {
     /// navicust system); none: the stats are the setup's as they are (a
     /// recording's, which the original's NaviCust has already made).
     pub navicust: Option<crate::navicust::NaviCust>,
-    /// The player's tactics (EXE5's auto battle data, `crate::tactics`),
+    /// The player's auto battle data (EXE5's, `crate::auto_battle`),
     /// which a navi in auto battle on the other side plays; none: empty. (A
     /// recording's; match files and netplay don't carry them yet.)
-    pub tactics: crate::tactics::Tactics,
+    pub auto_battle: crate::auto_battle::AutoBattleData,
 }
 
 impl Default for PlayerSetup {
@@ -103,7 +103,7 @@ impl Default for PlayerSetup {
             rules: Vec::new(),
             patch_cards: Default::default(),
             navicust: None,
-            tactics: Default::default(),
+            auto_battle: Default::default(),
         }
     }
 }

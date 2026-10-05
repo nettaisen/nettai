@@ -2,7 +2,7 @@
 //! navi in auto battle plays from that player's save.
 //!
 //! **What it is.** An EXE5 save keeps a block of 0xE0 bytes for its player
-//! (save +0x554C, the toolkit's +0x78; `nettai_battle::tactics`): 42
+//! (save +0x554C, the toolkit's +0x78; `nettai_battle::auto_battle`): 42
 //! places, each a chip, a pattern record's number, a 0 or empty, and eight
 //! pattern records, each a place by a target (`dx` columns toward the
 //! auto-battling navi's enemies, `dy` rows), five chip places and the pattern's
@@ -51,7 +51,7 @@
 //! all of it:
 //!
 //! - *Every place.* As a battle starts each console sends its block
-//!   shuffled (0x0802C7BE, `Tactics::sent`): the first three places
+//!   shuffled (0x0802C7BE, `AutoBattleData::sent`): the first three places
 //!   over three rounds and the other 39 over 39, two draws a round, the
 //!   entries then packed to the front: an empty place
 //!   between two entries changes what a seed sends.
@@ -87,7 +87,7 @@
 
 use crate::ids;
 use nettai_battle::content::{ChipClass, Content};
-use nettai_battle::tactics::{MAX_ENTRIES, MAX_PATTERNS, PATTERN_CHIPS, PatternChip, Tactic, TacticPattern, Tactics};
+use nettai_battle::auto_battle::{AutoBattleData, AutoBattleEntry, MAX_ENTRIES, MAX_PATTERNS, PATTERN_CHIPS, PatternChip, PatternRecord};
 use nettai_content_api::ChipHandle;
 
 /// The system that drives the navis in auto battle (EXE5's).
@@ -227,12 +227,12 @@ pub fn has(content: &Content) -> bool {
 }
 
 /// Why a navi in auto battle can't play `chip`, if it can't: what the
-/// game's rules say of it (their `unplayable_tactics`, from their own data:
+/// game's rules say of it (their `unplayable_in_auto_battle`, from their own data:
 /// EXE5's chips whose positioning class the original has no routine for,
 /// where it crashes). A match's check refuses such a chip among the data's
 /// 42 places (not in a pattern record, which never plays).
 pub fn unplayable(content: &Content, chip: ChipHandle) -> Option<&str> {
-    content.defs.unplayable_tactic(chip)
+    content.defs.unplayable_in_auto_battle(chip)
 }
 
 impl AutoBattle {
@@ -274,21 +274,21 @@ impl AutoBattle {
 
     /// The block the engine plays (its type, in place order): each place
     /// its entry, each record as it is.
-    pub fn tactics(&self) -> Tactics {
+    pub fn data(&self) -> AutoBattleData {
         let entries = self
             .places
             .iter()
             .map(|e| match *e {
-                Entry::Empty => Tactic::Empty,
-                Entry::Zero => Tactic::Nothing,
-                Entry::Chip(c) => Tactic::Chip(c),
-                Entry::Pattern(n) => Tactic::Pattern(n),
+                Entry::Empty => AutoBattleEntry::Empty,
+                Entry::Zero => AutoBattleEntry::Nothing,
+                Entry::Chip(c) => AutoBattleEntry::Chip(c),
+                Entry::Pattern(n) => AutoBattleEntry::Pattern(n),
             })
             .collect();
         let patterns = self
             .records
             .iter()
-            .map(|r| TacticPattern {
+            .map(|r| PatternRecord {
                 dx: r.dx,
                 dy: r.dy,
                 chips: r.chips.map(|c| match c {
@@ -299,7 +299,7 @@ impl AutoBattle {
                 score: r.score,
             })
             .collect();
-        Tactics { entries, patterns }
+        AutoBattleData { entries, patterns }
     }
 
     /// The data as the game writes it at a battle's end (0x0802C540) from
@@ -548,14 +548,14 @@ mod tests {
             (0..content.defs.chips.len() as u16).map(ChipHandle).filter(|&c| !content.chip(c).codes.is_empty()).take(39).collect();
         // Two chips in places 4 and 5, or in places 28 and 42: the same
         // entries in the same order, sent differently by some seeds.
-        let two = |a: usize, b: usize| data(&[(a, Entry::Chip(chips[0])), (b, Entry::Chip(chips[1]))]).tactics();
+        let two = |a: usize, b: usize| data(&[(a, Entry::Chip(chips[0])), (b, Entry::Chip(chips[1]))]).data();
         let differ = (0..200u32).filter(|&s| two(3, 4).sent(&mut Rng::new(s)).entries != two(27, 41).sent(&mut Rng::new(s)).entries).count();
         assert!(differ > 20, "{differ} of 200 seeds");
         // A 0 is an entry of what is sent; an empty place isn't.
-        let zero = data(&[(3, Entry::Zero), (9, Entry::Chip(chips[0]))]).tactics().sent(&mut Rng::new(7));
+        let zero = data(&[(3, Entry::Zero), (9, Entry::Chip(chips[0]))]).data().sent(&mut Rng::new(7));
         assert_eq!(zero.entries.len(), 2);
-        assert!(zero.entries.contains(&Tactic::Nothing));
-        assert_eq!(AutoBattle::default().tactics().sent(&mut Rng::new(3)).entries, Vec::new());
+        assert!(zero.entries.contains(&AutoBattleEntry::Nothing));
+        assert_eq!(AutoBattle::default().data().sent(&mut Rng::new(3)).entries, Vec::new());
     }
 
     /// What the engine plays of the data: each place its entry, each record
@@ -568,18 +568,18 @@ mod tests {
         d.records[0] = Record { dx: -2, dy: 1, chips: [ChipPlace::Chip(sword), ChipPlace::Chip(cannon), ChipPlace::Empty, ChipPlace::Chip(cannon), ChipPlace::Empty], score: 7 };
         d.records[2] = Record { dx: -1, dy: 0, chips: [ChipPlace::Chip(cannon); 5], score: 10 };
         d.records[3] = Record::ZERO;
-        let block = d.tactics();
+        let block = d.data();
         assert_eq!(block.entries.len(), PLACES);
-        let filled: Vec<(usize, Tactic)> = block.entries.iter().copied().enumerate().filter(|(_, e)| *e != Tactic::Empty).collect();
-        assert_eq!(filled, [(1, Tactic::Chip(cannon)), (5, Tactic::Nothing), (33, Tactic::Pattern(2)), (34, Tactic::Pattern(0)), (41, Tactic::Chip(sword))]);
+        let filled: Vec<(usize, AutoBattleEntry)> = block.entries.iter().copied().enumerate().filter(|(_, e)| *e != AutoBattleEntry::Empty).collect();
+        assert_eq!(filled, [(1, AutoBattleEntry::Chip(cannon)), (5, AutoBattleEntry::Nothing), (33, AutoBattleEntry::Pattern(2)), (34, AutoBattleEntry::Pattern(0)), (41, AutoBattleEntry::Chip(sword))]);
         assert_eq!(block.patterns.len(), RECORDS);
         let places = [PatternChip::Chip(sword), PatternChip::Chip(cannon), PatternChip::Empty, PatternChip::Chip(cannon), PatternChip::Empty];
-        assert_eq!(block.patterns[0], TacticPattern { dx: -2, dy: 1, chips: places, score: 7 });
-        assert_eq!(block.patterns[2], TacticPattern::of(-1, 0, &[cannon; 5], 10));
-        assert_eq!(block.patterns[3], TacticPattern { dx: 0, dy: 0, chips: [PatternChip::Nothing; 5], score: 0 });
+        assert_eq!(block.patterns[0], PatternRecord { dx: -2, dy: 1, chips: places, score: 7 });
+        assert_eq!(block.patterns[2], PatternRecord::of(-1, 0, &[cannon; 5], 10));
+        assert_eq!(block.patterns[3], PatternRecord { dx: 0, dy: 0, chips: [PatternChip::Nothing; 5], score: 0 });
         // (A blank record is the engine's unused one.)
-        assert_eq!(block.patterns[1], TacticPattern::UNUSED);
-        assert_eq!(AutoBattle::default().tactics().patterns, [TacticPattern::UNUSED; RECORDS]);
+        assert_eq!(block.patterns[1], PatternRecord::UNUSED);
+        assert_eq!(AutoBattle::default().data().patterns, [PatternRecord::UNUSED; RECORDS]);
         assert_eq!((d.entries(), d.chips().count()), (5, 2 + 3 + 5));
         assert_eq!(d.check(&content, "exe5"), Vec::<String>::new());
     }

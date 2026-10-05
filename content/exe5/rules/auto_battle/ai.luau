@@ -1,7 +1,7 @@
 --!strict
--- EXE5's auto battle AI, in the two families a netbattle runs. Dark MegaMan's (0x0802BA14: `ai.run`) plays the tactics
--- of the side across from it (the player whose Chaos Unison failed: their auto battle data, the battle's
--- `tactic`s); the one EXE5's story navis and DarkInvs's drive run (0x0802B4AC: `ai.run_own`, a player under DarkInvs
+-- EXE5's auto battle AI, in the two families a netbattle runs. Dark MegaMan's (0x0802BA14: `ai.run`) plays the auto
+-- battle data of the side across from it (the player whose Chaos Unison failed: `battle.auto_battle_entry`);
+-- the one EXE5's story navis and DarkInvs's drive run (0x0802B4AC: `ai.run_own`, a player under DarkInvs
 -- driving itself) plays the navi's own side's, and faces, as it steps, the target whose search starts at the step's
 -- column (where the other starts at the pattern's search place); its pick for a crowded front is real code. Entry by
 -- entry: an entry is a chip, which it gets in place for (./place) and uses, or a pattern: a place by its target and a
@@ -91,8 +91,8 @@ ai.layout = {
 -- What it fires between moves, its buster (weapon routine 0x3E: three shots, ./buster).
 local buster: Weapon = require("./buster").weapon
 
--- The two families (`ai.run`, `ai.run_own`): whose tactics they play, and where the target a step faces is searched
--- from.
+-- The two families (`ai.run`, `ai.run_own`): whose auto battle data they play, and where the target a step faces is
+-- searched from.
 export type Family = { own: boolean }
 local OTHER: Family = { own = false }
 local OWN: Family = { own = true }
@@ -153,44 +153,44 @@ end
 -- 0x0802BE06: the chip's search starts one further on (./place's, which its searches call too).
 ai.skip_target = place.skip_target
 
--- ---- Tactics ------------------------------------------------------------------------------------------------
+-- ---- The auto battle data ------------------------------------------------------------------------------------
 
--- The side whose tactics it plays: the other side's (0x0802BEEA, 0x0802BEFE, 0x0802BF1C, 0x0802C0DC), or its own
+-- The side whose auto battle data it plays: the other side's (0x0802BEEA, 0x0802BEFE, 0x0802BF1C, 0x0802C0DC), or its own
 -- (0x0802BEE6, 0x0802BEFA, 0x0802BF16, 0x0802C0D6).
-local function tactics_side(navi: Object, fam: Family): number
+local function auto_battle_side(navi: Object, fam: Family): number
     return if fam.own then navi.alliance else bit32.bxor(navi.alliance, 1)
 end
 
 -- 0x0802BF1C (0x0802BF16): the played entry goes last; nothing missed since.
 local function turn(navi: Object, s: State, fam: Family)
-    battle.turn_tactics(tactics_side(navi, fam))
+    battle.auto_battle_turn(auto_battle_side(navi, fam))
     s.misses = 0
 end
 
 -- 0x0802C0DC (0x0802C0D6): the first entry changes places with one of the others at random (a draw even with none).
 local function shuffle(navi: Object, fam: Family)
-    local side = tactics_side(navi, fam)
+    local side = auto_battle_side(navi, fam)
     local r = battle.rng_positive()
-    local n = battle.tactic_count(side) - 1
+    local n = battle.auto_battle_count(side) - 1
     if n > 0 then
-        battle.swap_tactics(side, r % n + 2)
+        battle.auto_battle_swap(side, r % n + 2)
     end
 end
 
--- 0x0802BE4E and 0x0802BE9A (the navi's own side's tactics), 0x0802BE54 and 0x0802BEA0 (the other side's): the
+-- 0x0802BE4E and 0x0802BE9A (the navi's own side's auto battle data), 0x0802BE54 and 0x0802BEA0 (the other side's): the
 -- first of side `side`'s first `n` entries that is a chip whose record's byte 14 has `bit` comes first (it and the
 -- first change places); none before an empty place: nil. (A place holding 0 is read as the chip table's first record,
 -- chip 0's, whose byte 14 is 0: passed over, as a pattern is.)
 local function pick_by(side: number, bit: number, n: number): Chip?
     for i = 1, n do
-        local e = battle.tactic(side, i)
+        local e = battle.auto_battle_entry(side, i)
         if e == nil then
             return nil
         end
         if e ~= false and type(e) ~= "number" then
             local chip = e :: Chip
             if bit32.band(data.chips[chip.id].picks, bit) ~= 0 then
-                battle.swap_tactics(side, i)
+                battle.auto_battle_swap(side, i)
                 return chip
             end
         end
@@ -250,7 +250,7 @@ local function decide(navi: Object, s: State, fam: Family)
         end
     end
     if hole_pressure(s) >= 50 then
-        -- (Its own side's tactics, where the rest of Dark MegaMan's decision plays the other side's.)
+        -- (Its own side's auto battle data, where the rest of Dark MegaMan's decision plays the other side's.)
         local chip = pick_by(navi.alliance, 2, 42)
         if chip then
             ai.use_chip(navi, chip)
@@ -269,7 +269,7 @@ local function decide(navi: Object, s: State, fam: Family)
     -- to play. But the send packs only the empty places away (0x0802C7BE), so a 0 is an entry, which comes first in
     -- its turn and stays there, each decision that reaches it a miss, until five in a row bring the shuffle above.
     -- No save the game wrote has one: a battle's end fills the places with chips' numbers, 0x0802C540.)
-    local e = battle.tactic(tactics_side(navi, fam), 1)
+    local e = battle.auto_battle_entry(auto_battle_side(navi, fam), 1)
     if e == nil or e == false then
         s.misses += 1
         return to_buster(s)
@@ -366,7 +366,7 @@ end
 -- a netbattle: a dark chip fizzles for any navi but MegaMan and navi 23 (0x08010056: DarkInvs), and the last stand
 -- is the player of AI index 0's alone (0x0802C17A: a team navi's is its number).
 local function pattern_place(navi: Object, s: State, fam: Family)
-    local dx, dy = battle.tactic_pattern(tactics_side(navi, fam), s.entry_pattern)
+    local dx, dy = battle.auto_battle_pattern(auto_battle_side(navi, fam), s.entry_pattern)
     local t, i = target_from(navi, s.target_index)
     if t ~= nil then
         s.target_index = i
@@ -392,12 +392,12 @@ end
 -- (`pattern_place` above never takes the place). As written the read has no end but an empty place and takes whatever
 -- else it finds for a chip's number (0x0802C094 with no test of it): a place holding 0, and past a record whose five
 -- places all hold a chip the two halves of its score, the next record's `dx` and `dy` as one halfword, that record's
--- places and score, and so on to the block's last eight bytes (`battle.tactic_pattern_read`). A chip's number names
+-- places and score, and so on to the block's last eight bytes (`battle.auto_battle_pattern_read`). A chip's number names
 -- none here (content names chips, and the chip table's first record, chip 0, and its blank ones have no
 -- definition): such a read is an error that says what the game would play.
 local function pattern_chips(navi: Object, s: State, fam: Family)
     s.pattern_chip += 1
-    local read = battle.tactic_pattern_read(tactics_side(navi, fam), s.entry_pattern, s.pattern_chip)
+    local read = battle.auto_battle_pattern_read(auto_battle_side(navi, fam), s.entry_pattern, s.pattern_chip)
     if read == nil then
         turn(navi, s, fam)
         s.step = 4
@@ -479,12 +479,12 @@ local function run(navi: Object, s: State, fam: Family)
     end
 end
 
--- 0x0802BA14: one decision of Dark MegaMan's AI, from the navi's idle (the other side's tactics).
+-- 0x0802BA14: one decision of Dark MegaMan's AI, from the navi's idle (the other side's auto battle data).
 function ai.run(navi: Object, s: State)
     run(navi, s, OTHER)
 end
 
--- 0x0802B4AC: one decision of a navi driving itself on its own side's tactics (DarkInvs's drive), from its idle.
+-- 0x0802B4AC: one decision of a navi driving itself on its own side's auto battle data (DarkInvs's drive), from its idle.
 function ai.run_own(navi: Object, s: State)
     run(navi, s, OWN)
 end

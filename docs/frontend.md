@@ -1213,8 +1213,8 @@ writer never puts one among the 42 places (it counts library chips only),
 so only a block made by hand holds one, and the check says where: "place 29
 of the auto battle data (`mega`, entry 2) holds StepSwrd: the original
 can't play it in auto battle (...)". Which chips those are is the content's
-to say (the auto battle system's `unplayable_tactics`, from its own data's
-classes: `Defs::unplayable_tactic`), so a navi's own chip is covered as it
+to say (the auto battle system's `unplayable_in_auto_battle`, from its own data's
+classes: `Defs::unplayable_in_auto_battle`), so a navi's own chip is covered as it
 lands. A pattern record may hold one (the game writes any chip used in a
 run there, and a record never plays): the editor notes it quietly, and its
 chip list for a place doesn't offer those chips.
