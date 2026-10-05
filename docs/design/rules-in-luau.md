@@ -2396,5 +2396,11 @@ recording shows changed (exe5-map.md §15.8 holds the layout).
 - **The capsule chips stay in chips/capsules**: they are entries of the game's chip table like any other (a compat
   number, strings, a record the generator writes), in the folder the user asked for; MeddySoul's module requires
   them.
-- **One difference inside the state, which nothing reads:** out of MeddySoul the system keeps the last screen's two
-  capsules, where its deal zeroed them every screen (the slots that show them are MeddySoul's alone).
+- **What a soul keeps of a screen starts fresh at each deal**, every soul's, whatever soul the navi is in (the
+  original zeroes the screen's record as it opens, 0x08022CA2): the system's deal sets each field of each soul's
+  `custom.state` to what a fresh state holds, from the field's declared type (`forget_screen`: 0, false, no
+  definition), and then runs the deal of the soul the navi is in. So out of MeddySoul there are no capsules, as
+  before the move (MeddySoul's deal zeroed them itself, for every navi), and the sequences' steps and counts
+  (`mix_capsule`, `mix_step`, `mix_count`, `arm_step`, `arm_timer`), which kept their last values until the next
+  press set them, are zero too. nettai-match's `what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal` plays two
+  screens and reads the state.

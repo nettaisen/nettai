@@ -1507,8 +1507,11 @@ them.
   name, and its `hand_size`, `deal`, `confirmed` and `turn_opened`). rules/souls/custom.luau gathers them from
   MegaMan's souls into the system's buttons, windows and state, and calls a soul's while the side's navi is in that
   soul, with the system's state (its buttons and its `deal` not in battle mode 1, where the routine reads no
-  soul). SearchSoul's Shuffle (kinds 4 and 5) and NumberSoul's hand of ten (0x08025BE4) are the two bullets after
-  this one; the two that change a chip are:
+  soul). What the souls keep of a screen starts fresh at each deal, every soul's and whatever soul the navi is in:
+  the system sets each field of each soul's `custom.state` to what a fresh state holds, by the field's declared
+  type, before the soul's deal runs (the original zeroes the screen's record as it opens, 0x08022CA2: out of
+  MeddySoul there are no capsules). SearchSoul's Shuffle (kinds 4 and 5) and NumberSoul's hand of ten
+  (0x08025BE4) are the two bullets after this one; the two that change a chip are:
   - **MeddySoul's capsules** (kinds 6 and 7; navis/megaman/forms/meddysoul/capsules.luau): two of five capsule chips a screen
     (0x17C YelCapsl, 0x17D BlkCapsl, 0x17E WhiCapsl, 0x17F PrpCapsl, 0x180 PnkCapsl: chips/capsules), one draw of
     the console's RNG1 as the slots are laid out (0x08023D30: bits 1 to 4 and 17 to 20 into a table of sixteen,
