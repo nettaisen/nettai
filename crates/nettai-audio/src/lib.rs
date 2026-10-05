@@ -11,7 +11,8 @@
 //!   the pinch effect's pitch and tempo, ...), as [`Request`]s.
 //! - [`BattleAudio`]: cues in, samples out, a frame at a time, with the
 //!   game's timing (calls queue up and run on the next frame).
-//! - [`AudioOut`] (feature `playback`): the same on the default output device.
+//! - [`AudioOut`] (feature `playback`): the same on the default output device;
+//!   [`Output`] is that device alone, playing samples it is given.
 //! - [`wav`]: writing rendered audio.
 //!
 //! A frontend drives it once per battle tick:
@@ -77,7 +78,7 @@ mod output;
 pub mod wav;
 
 #[cfg(feature = "playback")]
-pub use output::{AudioOut, OutputError};
+pub use output::{AudioOut, Output, OutputError};
 
 /// The music player EXE6's background music plays on.
 pub const MUSIC_PLAYER: PlayerId = PlayerId(31);

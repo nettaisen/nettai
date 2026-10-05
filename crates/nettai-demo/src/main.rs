@@ -4,9 +4,10 @@
 
 use nettai_demo::trace::trace_rounds;
 use nettai_demo::{app, headless};
-use nettai_frontend::driver::LivePlayer;
+use nettai_frontend::driver::{Driver, LivePlayer};
 use nettai_frontend::game::{Failed, Found, Game, LoadError, Sound};
-use nettai_frontend::{Session, TickHook, session};
+use nettai_frontend::player::Player;
+use nettai_frontend::session;
 use nettai_render::textlayer::TextMode;
 use nettai_render::vfont::TextRenderer;
 use std::path::{Path, PathBuf};
@@ -354,20 +355,6 @@ fn sound_of(game: &Game) -> Sound {
     sound
 }
 
-/// Sound: hand each tick's cues to the audio output.
-fn audio_hook(sound: Sound) -> Box<dyn TickHook> {
-    let mut out = nettai_audio::AudioOut::with_banks(sound.banks, sound.songs).unwrap_or_else(|e| fail(format!("no audio output: {e}")));
-    Box::new(move |s: &Session| {
-        match &s.sound {
-            // Netplay: what the player's tracker made of the frame (plays,
-            // and cancels of cues played on a wrong prediction).
-            Some(actions) => out.handle_actions(actions.iter().copied()),
-            None => out.handle(s.battle.sound_cues()),
-        }
-        out.tick();
-    })
-}
-
 /// A match file's text.
 fn match_text(path: &Path) -> String {
     std::fs::read_to_string(path).unwrap_or_else(|e| fail(format!("can't read {}: {e}", path.display())))
@@ -391,7 +378,7 @@ fn save_match(content: &nettai_battle::Content, m: &nettai_match::Match, seed: u
 /// agree the round; each player brings their side, a match file's left
 /// side or one drawn from their own `seed` with their patch cards, and the
 /// host its arena or stage.
-fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, game: &str, seed: u32, file: Option<nettai_match::Match>) -> Session {
+fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, game: &str, seed: u32, file: Option<nettai_match::Match>) -> Box<dyn Driver> {
     use nettai_frontend::netplay::{NetOptions, NetPlayer, Offer, agree, hello};
     use nettai_match::{Picks, Side, link_stage, patch_cards};
     use nettai_netplay::transport::{Connection, Role, Udp};
@@ -435,7 +422,7 @@ fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, game: &str, seed:
         save_match(content, &m, conn.seed(), path);
     }
     let options = NetOptions { delay: args.delay, ..NetOptions::default() };
-    Session::new(Box::new(NetPlayer::new(conn, set, options)))
+    Box::new(NetPlayer::new(conn, set, options))
 }
 
 /// `--audit-content`: every lookup for everything the content defines, in
@@ -616,7 +603,7 @@ fn main() {
     // The font mode's font, shared by the renderer (which strings it has)
     // and the text layer's drawing.
     let font = nettai_frontend::game::font(args.text, args.font.as_deref()).unwrap_or_else(|e| load_failed(e));
-    let mut renderer = graphics.renderer(args.text, font.clone());
+    let renderer = graphics.renderer(args.text, font.clone());
     if args.audit {
         let setup = headless::AuditSetup {
             packs: renderer.packs.clone(),
@@ -628,16 +615,18 @@ fn main() {
         };
         audit_traces(&args, &content, &setup);
     }
-    let mut text = font.map(TextRenderer::new);
+    let text = font.map(TextRenderer::new);
 
-    let mut sessions: Vec<Session> = Vec::new();
+    // What is played: live play's set or a netplay match, one driver; a
+    // recording's rounds, a driver each, in turn.
+    let mut drivers: Vec<Box<dyn Driver>> = Vec::new();
     if args.play {
         let file = args.match_file.as_deref().zip(file_text.as_deref()).map(|(path, text)| read_match(&content, path, text));
         let seed = args.seed.or(file.as_ref().and_then(|m| m.seed)).unwrap_or_else(|| {
             std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(1)
         });
         if args.host.is_some() || args.join.is_some() {
-            sessions.push(netplay(&args, &content, &game, seed, file));
+            drivers.push(netplay(&args, &content, &game, seed, file));
         } else {
             let m = match file {
                 Some(m) => m,
@@ -660,7 +649,7 @@ fn main() {
             if let Some(path) = &args.save_match {
                 save_match(&content, &m, seed, path);
             }
-            sessions.push(Session::new(Box::new(LivePlayer::new(nettai_match::Set::of(&content, &m, seed)))));
+            drivers.push(Box::new(LivePlayer::new(nettai_match::Set::of(&content, &m, seed))));
         }
     } else if let Some(path) = args.traces.first() {
         let rounds = trace_rounds(path, &content).unwrap_or_else(|e| fail(format!("can't play {}: {e}", path.display())));
@@ -668,29 +657,21 @@ fn main() {
             if let Some((a, b)) = r.frame_range() {
                 eprintln!("round {number}: frames {a}..={b}");
             }
-            sessions.push(Session::new(r));
+            drivers.push(r);
         }
     }
-    if sessions.is_empty() {
+    if drivers.is_empty() {
         fail("nothing to play");
     }
+    let first = drivers.remove(0);
 
     if let Some(list) = &args.headless {
         let wanted = headless::parse_frames(list).unwrap_or_else(|e| fail(e));
         let keys = headless::KeyScript::parse(args.keys.as_deref().unwrap_or("")).unwrap_or_else(|e| fail(e));
         let mut log = |s: &str| eprintln!("{s}");
-        let rendered =
-            headless::render_frames_with(
-                &mut renderer,
-                sessions,
-                &wanted,
-                &args.out,
-                args.png_scale,
-                args.objects,
-                &keys,
-                text.as_mut(),
-                &mut log,
-            );
+        // (Headless rendering plays no sound.)
+        let mut player = Player::with(renderer, text, None, first);
+        let rendered = headless::render_frames_with(&mut player, drivers, &wanted, &args.out, args.png_scale, args.objects, &keys, &mut log);
         match rendered {
             Ok(written) => {
                 eprintln!("wrote {} frames to {}", written.len(), args.out.display());
@@ -703,13 +684,19 @@ fn main() {
         return;
     }
 
-    let mut hooks: Vec<Box<dyn TickHook>> = Vec::new();
-    if !args.mute {
-        hooks.push(audio_hook(sound_of(&loaded)));
-    }
+    // The window: the player's sound as samples, played through the audio
+    // device.
+    let (audio, device) = if args.mute {
+        (None, None)
+    } else {
+        let sound = sound_of(&loaded);
+        let device = nettai_audio::Output::open().unwrap_or_else(|e| fail(format!("no audio output: {e}")));
+        (Some(nettai_audio::BattleAudio::with_banks(sound.banks, sound.songs)), Some(device))
+    };
     eprintln!("{}", app::HELP);
+    let mut player = Player::with(renderer, text, audio, first);
     let opts = app::Options { scale: args.scale, start_paused: args.paused, quit_after: args.quit_after };
-    if let Err(e) = app::run(&mut renderer, sessions, &mut hooks, &opts, text.as_mut()) {
+    if let Err(e) = app::run(&mut player, drivers, device.as_ref(), &opts) {
         fail(format!("window: {e}"));
     }
 }

@@ -33,8 +33,9 @@ netplay needs.
 - `nettai-render`: draws a battle into frames: the stage, the objects, the HUD, the custom screen and the text, from
   engine state and the packs' graphics; no window, sound or network.
 - `nettai-frontend`: plays battles for a host app to show, as a library with no window, audio device or command
-  line in it: it loads a game (its content, graphics, strings and sound), runs a set live or over the network a tick
-  at a time from the buttons, and the frames are `nettai-render`'s.
+  line in it: it loads a game (its content, graphics, strings and sound), and its player runs a set live or over the
+  network from the buttons, by the clock or a tick at a time, and gives the host the picture (`nettai-render`'s) and
+  the sound as samples ([docs/frontend.md](docs/frontend.md) §7, with the host loop).
 - `nettai-demo`: the desktop program over `nettai-frontend`: a window and its keys, the command line, headless
   frames, the audits, the replay of recorded matches, and the sound through the audio device.
 - `nettai-match`: match files, everything a round needs by content key, checked; live play's random pick.
