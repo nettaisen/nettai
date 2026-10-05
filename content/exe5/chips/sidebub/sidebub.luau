@@ -8,7 +8,7 @@
 -- attack that pops it (it has 1 HP) bursts it, and 20 ticks later it sends an aqua shot forward (EXE5's flying shot
 -- row 7) with the chip's damage.
 
-local arm_launch = require("../../lib/arm-launch")
+local arm_launch = require("../../lib/arm_launch")
 local collision = require("../../rules/collision")
 local flying_shot = require("../../objects/flying-shot")
 local sparks = require("../../lib/sparks")
@@ -236,7 +236,7 @@ end
 -- SideBub).
 local TRAVEL, BURST = 30, 0
 
--- 0x080EC84C: the arm raised; on the action's second tick the two bubbles (lib/arm-launch).
+-- 0x080EC84C: the arm raised; on the action's second tick the two bubbles (lib/arm_launch).
 sidebub.action = arm_launch.action("0x080EC844", function(me: Object, damage: number)
     local x = me.panel_x + me.facing
     local up = me.panel_y - 1

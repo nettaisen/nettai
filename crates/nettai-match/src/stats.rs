@@ -381,7 +381,7 @@ mod tests {
     fn a_block_gives_back_the_stats() {
         let content = crate::testing::exe6_content();
         let megaman = content.form_changing_navi().unwrap();
-        let base = crate::Side::base_stats(&content, megaman, nettai_battle::custom::GameVersion::Falzar);
+        let base = crate::Side::base_stats(&content, megaman, Some(nettai_battle::custom::GameVersion::Falzar));
         let mut live = base;
         (live.max_base_hp, live.max_hp, live.hp, live.reg_up, live.sun) = (1000, 1000, 1000, 50, true);
         (live.bugs.buster_blanks, live.bugs.buster_charged) = (6, 1);

@@ -178,11 +178,21 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
             .size(13)
             .color(DIM),
         text(format!("Its rules' systems: {}", if systems.is_empty() { "none".into() } else { systems.join(", ") })).size(13).color(DIM),
-        rule::horizontal(1),
-        place(0, &m.arena.first),
-        checkbox(same).label("The set's later rounds on the same place").on_toggle(Msg::LaterSame),
     ]
     .spacing(10);
+    // Each side's version, where the game's rules take one: asked here,
+    // beside the game, with nothing chosen for a new match.
+    if nettai_match::Side::takes_version(c) {
+        for (s, name) in SIDES.iter().enumerate() {
+            col = col.push(field(format!("{name}: version"), version_list(e, s)));
+        }
+        if m.sides.iter().any(|s| s.version.is_none()) {
+            col = col.push(text("Each side plays its own version of the game (its Beast, its own Crosses, its pictures): choose them. Neither is assumed.").size(13).color(RED));
+        }
+    }
+    col = col.push(rule::horizontal(1));
+    col = col.push(place(0, &m.arena.first));
+    col = col.push(checkbox(same).label("The set's later rounds on the same place").on_toggle(Msg::LaterSame));
     if !same {
         for (i, p) in m.arena.later.iter().enumerate() {
             col = col.push(text(format!("Round {}", i + 2)).size(14));
@@ -201,15 +211,17 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     // (The match's game's navis.)
     let navis: Vec<Choice<_>> = nettai_match::navis(c, e.m.game()).into_iter().map(|n| Choice { label: e.names.navi(c, n), value: n }).collect();
     let navi = Choice { label: e.names.navi(c, side.navi), value: side.navi };
-    let versions = [Choice { label: "Falzar".into(), value: GameVersion::Falzar }, Choice { label: "Gregar".into(), value: GameVersion::Gregar }];
-    let version = versions.iter().find(|g| g.value == side.game).cloned();
     let level = e.typed.get(&(s, "level")).cloned().unwrap_or(side.navi_level.map_or(String::new(), |l| l.to_string()));
     let frags = e.typed.get(&(s, "bug_frags")).cloned().unwrap_or(side.bug_frags.to_string());
     let mut col = column![heading(SIDES[s]), field("Navi", pick_list(navis, Some(navi), move |n| Msg::Navi(s, n)))].spacing(10);
     // What the rules and the navi take, alone: EXE6's version, a navi
-    // code's level (`nettai_match::facts`).
-    if nettai_match::Side::takes_game(c) {
-        col = col.push(field("Version", pick_list(versions, version, move |g| Msg::Version(s, g))));
+    // code's level (`nettai_match::facts`). The version has nothing chosen
+    // for a new side: neither is a default.
+    if nettai_match::Side::takes_version(c) {
+        col = col.push(field("Version", version_list(e, s)));
+        if side.version.is_none() {
+            col = col.push(text("The side's version of the game isn't chosen: its Beast, its own Crosses and its pictures go by it.").size(13).color(RED));
+        }
     }
     // (No navi code for EXE5's MegaMan.)
     let level_kind = side.takes_level(c).then(|| c.navi(side.navi).forms.is_none());
@@ -255,6 +267,14 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     col = col.push(rule::horizontal(1));
     col = col.push(round_stats(e, s));
     scrollable(col).into()
+}
+
+/// A side's version of the game (EXE6's Falzar or Gregar), with nothing
+/// chosen until the side has one: neither is a default.
+fn version_list(e: &Editor, s: usize) -> Element<'_, Msg> {
+    let versions = [Choice { label: "Falzar".into(), value: GameVersion::Falzar }, Choice { label: "Gregar".into(), value: GameVersion::Gregar }];
+    let version = versions.iter().find(|g| Some(g.value) == e.side(s).version).cloned();
+    pick_list(versions, version, move |g| Msg::Version(s, g)).placeholder("choose one").into()
 }
 
 /// EXE5's karma, the save's light/dark value: a slider from 0 to 1000 and

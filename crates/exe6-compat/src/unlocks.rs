@@ -84,12 +84,6 @@ impl Unlocks {
         Unlocks { version, crosses: [false; CROSSES], beast_out: false, cross_list: None }
     }
 
-    /// [`Unlocks::of`], or, for a side whose ruleset has none of EXE6's
-    /// systems (EXE5's), nothing unlocked, of Falzar's look.
-    pub fn of_side(b: &Battle, side: u8) -> Unlocks {
-        Unlocks::of(b, side).unwrap_or(Unlocks::nothing(GameVersion::Falzar))
-    }
-
     /// Write these into `player`'s setup: each fact into every system of
     /// the game's ruleset that takes it (EXE6's cross system the version,
     /// the Crosses and the list; its beast system the version, Beast Out
