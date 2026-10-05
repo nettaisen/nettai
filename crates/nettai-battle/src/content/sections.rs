@@ -188,7 +188,7 @@ struct StatusSection {
     drain_bug_flags: bool,
     no_charge_drive: bool,
     hp_loss: super::rules::HpLoss,
-    emotions: super::Emotions,
+    emotion: super::rules::EmotionRules,
     form_break: super::FormBreak,
 }
 
@@ -318,7 +318,7 @@ impl Stated {
                 drain_bug_flags: r.intake.drain_bug_flags,
                 no_charge_drive: r.intake.no_charge_drive,
                 hp_loss: r.intake.hp_loss,
-                emotions: r.emotions,
+                emotion: r.emotion,
                 form_break: r.form_break,
             }),
             lockon: Some(r.lockon.clone()),
@@ -362,7 +362,7 @@ impl Stated {
             flash_hides_on_clear: status.flash_hides_on_clear,
             missing_collision_status: super::rules::MissingCollisionStatus(status.missing_collision_status),
             reactions: status.reactions,
-            emotions: status.emotions,
+            emotion: status.emotion,
             form_break: status.form_break,
             intake: super::rules::IntakeRules {
                 bugs_before_drain: status.bugs_before_drain,
