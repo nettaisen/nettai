@@ -2301,3 +2301,28 @@ definition is what it was, under the id it had (content-model-v2.md §4.0, §4.1
   - The test content has one ruleset; a test that plays by other systems (the marker, the watcher, EXE6's
     patch-cards system) plays another content, the same but for the list (`testing::with_systems`). The mix's
     tests (a base's systems changed) went with the mixes.
+
+### Plain requires, an init a folder (2026-10-05)
+
+The user: "in init.luau for each content pack, there's no need to return an object right? you can just require
+everything right and they have side effects? you should also not import everything in the base init.luau, e.g.
+chips/init.luau should import all chips, etc." (content-model-v2.md §4.0 holds the rules.)
+
+- **A game's init.luau returns nothing.** It requires the game's rules and its folders (`@self/rules`,
+  `@self/chips`, `@self/navis`, `@self/stages`, `@self/cards`, `@self/navicust`, EXE6's `@self/lib`), and each
+  folder's init.luau requires the folder's modules that define what the game has: 13 new inits (EXE6's seven,
+  EXE5's six, counting the top modules that were there).
+  - A folder's init lists what is in the folder: navis/init.luau has the navis, their forms, the link navis' own
+    chips and EXE6's alias busters; chips/init.luau every chip but those eleven.
+  - What only an id names (the old `also` group) is required by its folder's init: lib/init.luau, navis/init.luau.
+  - Unported chips are commented requires in chips/init.luau.
+- **The whole truth, by folder** (`check_init`, `packs::listed_by`): a definition of what a game has is made by a
+  module its folder's init requires itself, and the top module requires the folder. The table's groups are gone;
+  the registry says the kind and the folder groups.
+- **A module that defines something and that no init reaches is a content-check error**
+  (`nettai_content_check::unloaded`): a chip added without its require was silently missing before.
+- **Same definitions**: both games define exactly what they did (nettai-content's `definitions` example prints
+  the counts by registry, a digest and every key: identical before and after), and the order of the requires
+  still moves no key and no handle (the test turns every init round).
+- **index.py** writes the inits whole and has `--check`; a merge conflict in an init is settled by running it.
+- Games held in memory (`Scripts::add_game`, `testing::add_index`) get the same shape (`Scripts::inits_for`).
