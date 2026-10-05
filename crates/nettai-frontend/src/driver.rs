@@ -4,13 +4,14 @@
 use nettai_battle::battle::{mode, top};
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::cues::CueAction;
-use nettai_battle::content::{ChipCode, Content};
+use nettai_battle::content::{ChipCode, Content, WindowView};
 use exe6_compat::Unlocks;
 use nettai_battle::custom::{self, BattleFolder, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState};
 use nettai_battle::input::keys;
 use nettai_battle::link::Link;
 use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
 use nettai_battle::{Battle, PlayerTick, Rng, TickEvents};
+use nettai_render::Region;
 use exe6_compat::trace::{self, Frame, Round};
 use exe6_compat::Compat;
 use std::sync::Arc;
@@ -41,11 +42,11 @@ pub trait Driver {
     fn prompt(&self, _b: &Battle) -> Option<String> {
         None
     }
-    /// The region of the console whose screen this is ("us" or "jp"): what
-    /// the original would show of the assets only one region's ROMs have
+    /// The region of the console whose screen this is: what the original
+    /// would show of the assets only one region's ROMs have
     /// (`Renderer::console_region`).
-    fn console_region(&self) -> &'static str {
-        "us"
+    fn console_region(&self) -> Region {
+        Region::Us
     }
     /// The game version of the console whose screen this is, as its pack
     /// names its versions' assets, for a game whose versions the engine
@@ -170,10 +171,10 @@ impl Driver for TracePlayer {
         self.current().map(|f| trace::compare(b, f, self.compat)).unwrap_or_default()
     }
 
-    fn console_region(&self) -> &'static str {
+    fn console_region(&self) -> Region {
         match self.round.console_game() {
-            exe6_compat::Game::JpFalzar | exe6_compat::Game::JpGregar => "jp",
-            exe6_compat::Game::Falzar | exe6_compat::Game::Gregar => "us",
+            exe6_compat::Game::JpFalzar | exe6_compat::Game::JpGregar => Region::Jp,
+            exe6_compat::Game::Falzar | exe6_compat::Game::Gregar => Region::Us,
         }
     }
 
@@ -253,7 +254,7 @@ pub struct Exe5TracePlayer {
     pos: usize,
     pub round_number: usize,
     /// The traced console's region and version (its setup line's).
-    region: &'static str,
+    region: Region,
     version: &'static str,
 }
 
@@ -267,7 +268,7 @@ impl Exe5TracePlayer {
             round.round_setup(content, compat).map_err(|e| format!("round {}: {e}", i + 1))?;
             let d = exe5_compat::trace::decode_setup(&round.setup)?;
             let local = d.battle_state[0x0D] as usize & 1;
-            let region = if d.japanese[local] { "jp" } else { "us" };
+            let region = if d.japanese[local] { Region::Jp } else { Region::Us };
             let version = match d.versions[local] {
                 exe5_compat::trace::Version::Protoman => "protoman",
                 exe5_compat::trace::Version::Colonel => "colonel",
@@ -317,7 +318,7 @@ impl Driver for Exe5TracePlayer {
         self.current().map(|f| exe5_compat::trace::compare(b, f, self.compat)).unwrap_or_default()
     }
 
-    fn console_region(&self) -> &'static str {
+    fn console_region(&self) -> Region {
         self.region
     }
 
@@ -471,25 +472,26 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         return Some(out);
     }
     let title = match screen.phase {
-        Phase::Opening { .. } => "CUSTOM",
-        Phase::Choosing => "CUSTOM: A PICK, B UNDO, START OK, UP CROSS, R INFO",
-        Phase::Hidden { .. } => "CUSTOM (HIDDEN: ANY KEY)",
-        Phase::Description { .. } => "CUSTOM: CHIP INFO (ANY KEY)",
-        Phase::RunMessage { .. } => "CUSTOM: NO TIME TO RUN (A)",
-        // A system's window, by its name (EXE6's Beast Out and Cross window,
-        // EXE5's soul's choice).
-        Phase::Window { window, .. } => match b.content.defs.window(window).name.as_str() {
-            "beast_out" => "CUSTOM: BEAST OUT!",
-            "cross_opening" | "cross_window" | "cross_closing" => "CUSTOM: CROSS (UP/DOWN, A CHOOSE, B BACK)",
-            "cross_chosen" => "CUSTOM: CROSS!",
-            "soul_unison" => "CUSTOM: SOUL UNISON!",
-            "capsule" => "CUSTOM: CAPSULE!",
-            "arm_change" => "CUSTOM: ARM CHANGE!",
-            _ => "CUSTOM",
-        },
-        _ => "CUSTOM",
+        Phase::Opening { .. } => "CUSTOM".to_string(),
+        Phase::Choosing => "CUSTOM: A PICK, B UNDO, START OK, UP CROSS, R INFO".to_string(),
+        Phase::Hidden { .. } => "CUSTOM (HIDDEN: ANY KEY)".to_string(),
+        Phase::Description { .. } => "CUSTOM: CHIP INFO (ANY KEY)".to_string(),
+        Phase::RunMessage { .. } => "CUSTOM: NO TIME TO RUN (A)".to_string(),
+        // A system's window: its name's words (EXE6's "BEAST OUT", EXE5's
+        // "SOUL UNISON"), and for a form list's what its keys do (its view).
+        Phase::Window { window, .. } => {
+            let d = b.content.defs.window(window);
+            let name = d.name.replace('_', " ").to_uppercase();
+            match d.view {
+                Some(WindowView::FormListOpening | WindowView::FormList | WindowView::FormListClosing) => {
+                    format!("CUSTOM: {name} (UP/DOWN, A CHOOSE, B BACK)")
+                }
+                _ => format!("CUSTOM: {name}!"),
+            }
+        }
+        _ => "CUSTOM".to_string(),
     };
-    out.push_str(title);
+    out.push_str(&title);
     let names = |slot: u8| -> String {
         let x = &screen.slots[slot as usize];
         let label = match x.kind {
@@ -524,17 +526,19 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
     let picks: Vec<String> = screen
         .selection()
         .iter()
-        .map(|&s| match screen.chip_in(s, folder) {
-            Some(c) => format!("{} {}", nettai_render::strings::own_chip_name(&b.content, c.id), c.code.letter()),
-            None => "BEAST OUT".to_string(),
+        .map(|&s| match (screen.chip_in(s, folder), screen.slots[s as usize].kind) {
+            (Some(c), _) => format!("{} {}", nettai_render::strings::own_chip_name(&b.content, c.id), c.code.letter()),
+            // (A button's pick, by its name's words: EXE6's "BEAST OUT".)
+            (None, SlotKind::Button { button, .. }) => b.content.defs.button(button).name.replace('_', " ").to_uppercase(),
+            (None, _) => String::new(),
         })
         .collect();
     if !picks.is_empty() {
         out.push_str(&format!("\nPICKED: {}", picks.join(", ")));
     }
-    // EXE6's Cross window (the cross system's): its entries by the forms
-    // in their places (`custom::cross_at`).
-    let w = nettai_render::custom::CrossWindow::of(b, side).unwrap_or_default();
+    // A form list (EXE6's Cross window): its entries by the forms in their
+    // places (`custom::cross_at`).
+    let w = b.form_list(side as u8).unwrap_or_default();
     let cross_name = |place: u8| match nettai_render::custom::cross_at(b, side as u8, place) {
         Some(f) => nettai_render::strings::own_form_name(&b.content, f).to_uppercase(),
         None => format!("CROSS {}", place + 1),
@@ -688,7 +692,7 @@ mod tests {
             |tick, b| {
                 let s = &b.custom.sides[0];
                 let Some(screen) = s.screen.as_ref().filter(|_| s.in_custom && b.round.mode == mode::CUSTOM) else { return 0 };
-                let w = nettai_render::custom::CrossWindow::of(b, 0).unwrap_or_default();
+                let w = b.form_list(0).unwrap_or_default();
                 match screen.phase {
                     Phase::Choosing if w.chosen.is_none() => [keys::UP, keys::UP, 0][tick as usize % 3],
                     // (The window up, past its first tick, which reads no
@@ -848,15 +852,14 @@ mod tests {
     #[test]
     fn a_cross_list_offers_crosses_of_either_game_once_a_round() {
         use nettai_battle::battle::battle_flags;
-        use nettai_render::custom::CrossWindow;
         let (content, mut live, mut b) = cross_battle(GameVersion::Falzar, Some(&["heatcross", "groundcross"]), |_, _| {});
         let heat = form_of(&content, "heatcross");
-        let w = CrossWindow::of(&b, 0).unwrap();
+        let w = b.form_list(0).unwrap();
         assert_eq!((w.count, &w.offered[..2]), (2, &[0, 1][..]));
         open_cross_window(&mut live, &mut b);
         choose_cross(&mut live, &mut b, 0);
         let screen = b.custom.sides[0].screen.unwrap();
-        assert_eq!((screen.look.face, CrossWindow::of(&b, 0).unwrap().chosen), (Some(heat), Some(0)));
+        assert_eq!((screen.look.face, b.form_list(0).unwrap().chosen), (Some(heat), Some(0)));
         assert_eq!(confirm(&mut live, &mut b).transform.form, Some(heat));
         assert_eq!(crosses_used(&b), [true, false, false, false, false]);
         // The round's next screen, opened with L once the gauge is full.
@@ -867,7 +870,7 @@ mod tests {
             |tick, b| if b.round.mode == mode::FIGHTING && b.round.flags & battle_flags::GAUGE_FULL != 0 && tick % 2 == 1 { keys::L } else { 0 },
             |b| b.round.turn >= 2 && choosing(b).is_some(),
         );
-        let w = CrossWindow::of(&b, 0).unwrap();
+        let w = b.form_list(0).unwrap();
         assert_eq!((w.count, w.offered[0]), (1, 1));
     }
 
@@ -906,7 +909,7 @@ mod tests {
                 stats.starting_form = stats.form;
             });
             assert_eq!(b.stats[0].form, form_of(&content, beast));
-            let w = nettai_render::custom::CrossWindow::of(&b, 0).unwrap();
+            let w = b.form_list(0).unwrap();
             assert_eq!((w.count, w.offered[0]), (1, place), "{beast}");
             open_cross_window(&mut live, &mut b);
             choose_cross(&mut live, &mut b, 0);
@@ -920,7 +923,7 @@ mod tests {
     fn a_cross_list_offers_crosses_only() {
         let list = ["spoutcross", "gregar-beast", "eleccross", "tomahawkcross"];
         let (_, _, b) = cross_battle(GameVersion::Gregar, Some(&list), |c, stats| stats.starting_form = form_of(c, "eleccross"));
-        let w = nettai_render::custom::CrossWindow::of(&b, 0).unwrap();
+        let w = b.form_list(0).unwrap();
         assert_eq!((w.count, &w.offered[..2]), (2, &[0, 3][..]));
     }
 
@@ -938,7 +941,7 @@ mod tests {
         let screen = b.custom.sides[0].screen.unwrap();
         assert_eq!((screen.form, screen.look.face), (None, None));
         assert_eq!(screen.slots[custom::screen::SPECIAL_SLOT as usize].state, SlotState::Selectable);
-        assert_eq!(nettai_render::custom::CrossWindow::of(&b, 0).unwrap().chosen, None);
+        assert_eq!(b.form_list(0).unwrap().chosen, None);
         assert_eq!(confirm(&mut live, &mut b).transform.form, None);
         assert_eq!(crosses_used(&b), [false; 5]);
     }
@@ -965,7 +968,7 @@ mod tests {
                 _ => None,
             };
             assert_eq!(button, if level.is_none() { Some("beast_out") } else { None }, "level {level:?}");
-            assert_eq!(nettai_render::custom::CrossWindow::of(&b, 0).unwrap().count, 5, "level {level:?}");
+            assert_eq!(b.form_list(0).unwrap().count, 5, "level {level:?}");
         }
     }
 
