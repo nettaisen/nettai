@@ -461,9 +461,39 @@ fn soul_place(b: &Battle, side: u8, soul: Option<FormHandle>) -> usize {
 /// pixels a tick for 8 ticks onto the first cell (0x0802337A), whitened by
 /// its flash (fades 0x34 and 0x30, the sprite palette's), until the soul
 /// takes the first cell (0x080233E0).
-fn soul_flight<'a>(a: &'a CustomScreen, v: &View, sub: u8, counter: u8) -> Option<SpritePart<'a>> {
+fn soul_flight<'a>(a: &'a CustomScreen, v: &View, sub: u8, counter: u8, problems: &mut Problems) -> Option<SpritePart<'a>> {
     let (tiles, first) = soul_icon(a, v)?;
-    flight(a, v, tiles, first, sub, counter)
+    let soul = SoulOffer::of(v.b, v.side as usize)?.soul;
+    flight(a, v, tiles, first, sub, counter, soul, problems)
+}
+
+/// Why a console draws a soul's flying icon otherwise than the frontend:
+/// the game draws every soul's in its own version's outline, the frontend
+/// each soul's in the soul's version's.
+pub const OTHER_VERSIONS_SOUL: &str = "a soul's icon in its own version's outline (the console's ROM draws every soul's in the console's)";
+
+/// The row of the soul button's icon palettes that is `soul`'s own
+/// version's, of `rows` (the pack's base version's, then each other
+/// version's: `icon_palettes`). A soul's version is its place's among its
+/// navi's souls, which `forms.souls` lists a version after another in
+/// equal runs (the original's soul numbers: Team ProtoMan's six, then Team
+/// Colonel's): no field restates it. No soul, or one the navi hasn't: the
+/// base version's.
+fn soul_palette_row(b: &Battle, side: u8, soul: Option<FormHandle>, rows: usize) -> usize {
+    let navi = b.stats[side as usize & 1].navi;
+    let Some(forms) = &b.content.navi(navi).forms else { return 0 };
+    version_run(soul.and_then(|f| forms.souls.iter().position(|&s| s == f)), forms.souls.len(), rows)
+}
+
+/// Which of `versions` equal runs of a list of `len` place `place` (from
+/// 0) is in: the version of a soul by its place among its navi's. No place:
+/// the first.
+fn version_run(place: Option<usize>, len: usize, versions: usize) -> usize {
+    let run = len / versions.max(1);
+    match place {
+        Some(place) if run > 0 => (place / run).min(versions - 1),
+        _ => 0,
+    }
 }
 
 /// EXE5's capsule's mix, as its souls system keeps it (MeddySoul's part of
@@ -511,13 +541,28 @@ fn capsule_flight<'a>(a: &'a CustomScreen, v: &View, packs: &crate::packs::Packs
         _ => None,
     })?;
     let (tiles, _) = crate::lookups::chip_icon(packs, &v.b.content, chip, problems)?;
-    flight(a, v, tiles, 0, mix.step, mix.count)
+    // (In the palette of the soul the side is in: the capsules' soul's.)
+    let soul = Some(v.b.stats[v.side as usize & 1].form);
+    flight(a, v, tiles, 0, mix.step, mix.count, soul, problems)
 }
 
 /// The sprite of EXE5's soul's choice and capsule's mix (0x080254D8): the
 /// icon `first` of `tiles`, at the sequence's step `sub` and count
-/// `counter`, in the soul button's icons' palette.
-fn flight<'a>(a: &'a CustomScreen, v: &View, tiles: &'a Tiles, first: usize, sub: u8, counter: u8) -> Option<SpritePart<'a>> {
+/// `counter`, in the soul button's icons' palette: `soul`'s own version's
+/// (`soul_palette_row`), where the game draws its console's version's, so
+/// on a console of another version (a recording's) it is a known
+/// difference.
+#[allow(clippy::too_many_arguments)]
+fn flight<'a>(
+    a: &'a CustomScreen,
+    v: &View,
+    tiles: &'a Tiles,
+    first: usize,
+    sub: u8,
+    counter: u8,
+    soul: Option<FormHandle>,
+    problems: &mut Problems,
+) -> Option<SpritePart<'a>> {
     let screen = v.screen;
     let rise = match sub {
         4 if counter > 0 => 0,
@@ -526,9 +571,11 @@ fn flight<'a>(a: &'a CustomScreen, v: &View, tiles: &'a Tiles, first: usize, sub
         _ => return None,
     };
     let b = a.button(SOUL_BUTTON)?;
-    // (The console's version's: Team Colonel's outline is another color.)
-    let own = v.packs.version().and_then(|version| b.icon_palettes.iter().find(|(name, _)| name == version));
-    let colors = own.map_or(b.icon_palette, |(_, p)| *p);
+    // (The soul's version's: Team Colonel's outline is another color.)
+    let row = soul_palette_row(v.b, v.side, soul, 1 + b.icon_palettes.len());
+    let colors = row.checked_sub(1).and_then(|i| b.icon_palettes.get(i)).map_or(b.icon_palette, |(_, p)| *p);
+    // The row a console of the recording's version draws every icon in.
+    let console = v.packs.version().map(|version| b.icon_palettes.iter().position(|(name, _)| name == version).map_or(0, |i| i + 1));
     let f = screen.look.fade;
     let palette = match f.mode {
         nettai_battle::battle::FadeMode::SoulFlash | nettai_battle::battle::FadeMode::SoulFlashBack => {
@@ -538,6 +585,9 @@ fn flight<'a>(a: &'a CustomScreen, v: &View, tiles: &'a Tiles, first: usize, sub
         _ => colors,
     };
     let y = 24 + 16 * screen.selection().len() as i32 - rise;
+    if console.is_some_and(|console| console != row) {
+        problems.known(0x60, y & 0xFF, 16, 16, OTHER_VERSIONS_SOUL);
+    }
     Some(SpritePart {
         x: 0x60,
         y: (y & 0xFF) as u8,
@@ -1708,7 +1758,7 @@ pub fn draw<'a>(
     if soul_window_up(b, screen)
         && let Some(o) = SoulOffer::of(b, v.side as usize)
     {
-        queue.extend(soul_flight(a, &v, o.step, o.count));
+        queue.extend(soul_flight(a, &v, o.step, o.count, problems));
     }
     // Its capsule's mix's (state 0x3C's).
     queue.extend(capsule_flight(a, &v, packs, problems));
@@ -1743,6 +1793,19 @@ pub fn draw<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A soul's version by its place among its navi's twelve souls: Team
+    /// ProtoMan's six (the pack's base version's palette, row 0), then
+    /// Team Colonel's (row 1); no soul, the base's; a pack with one
+    /// version's palette alone, that one.
+    #[test]
+    fn a_souls_version_is_its_places_run() {
+        let rows: Vec<usize> = (0..12).map(|place| version_run(Some(place), 12, 2)).collect();
+        assert_eq!(rows, [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]);
+        assert_eq!((version_run(None, 12, 2), version_run(Some(11), 12, 1), version_run(Some(3), 0, 2)), (0, 0, 0));
+        // (A list that doesn't divide evenly: the last run takes the rest.)
+        assert_eq!(version_run(Some(12), 13, 2), 1);
+    }
 
     #[test]
     fn the_window_slides_in_and_out_a_column_or_two_a_tick() {

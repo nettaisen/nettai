@@ -53,8 +53,8 @@ return define.navi {
             { hp = 600, attack = 4, rapid = 3, charge = 3, custom_level = 2, mega_level = 1, back_special = back_special.weapon_2 },
         },
     },
-    -- The chips A charges, from a navi level on, and those a charge doubles.
-    charged_chips = { family = "sword", from_level = 11 },
+    -- The chips A charges (its family's damaging chips, from a navi level on), and those a charge doubles.
+    charged_chips = { family = "sword", from_level = 11, damaging = true },
     charge_doubles = { family = "sword" },
     identity = define.identity {
         class = "link_navi",

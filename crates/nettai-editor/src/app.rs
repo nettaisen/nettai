@@ -550,13 +550,13 @@ impl Editor {
                     return Task::none();
                 }
                 let side = &mut self.m.sides[s];
-                let keep = stats::diff(&content, &Side::base_stats(&content, side.navi, side.game), &side.stats);
+                let keep = stats::diff(&content, &Side::base_stats(&content, side.navi, side.version), &side.stats);
                 side.navi = c.value;
                 // (Operating MegaMan again clears the navi code received,
                 // `sub_809CD60`.)
                 side.navi_level = nettai_match::default_navi_level(&content, c.value);
                 self.typed.remove(&(s, "level"));
-                side.stats = Side::base_stats(&content, c.value, side.game);
+                side.stats = Side::base_stats(&content, c.value, side.version);
                 // The save's own fields carry over.
                 let carried: std::collections::BTreeMap<String, toml::Value> =
                     keep.into_iter().filter(|(k, _)| ["hp", "regular_memory", "mood", "sun", "beast_out_counter"].contains(&k.as_str())).collect();
@@ -568,8 +568,8 @@ impl Editor {
             }
             Msg::Version(s, c) => {
                 let side = &mut self.m.sides[s];
-                side.game = c.value;
-                side.stats.version = nettai_match::version_byte(c.value);
+                side.version = Some(c.value);
+                side.stats.version = nettai_match::version_byte(side.version);
                 self.edited();
             }
             Msg::Level(s, t) => {

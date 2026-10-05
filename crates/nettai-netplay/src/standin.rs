@@ -66,8 +66,9 @@ pub fn folder(content: &Content, chips: &[(&str, u8)]) -> BattleFolder {
     f
 }
 
-/// A MegaMan (base form, Falzar Beast Out available) with `hp` HP, on
-/// `content`.
+/// A MegaMan (base form) with `hp` HP, on `content`: of no version (his
+/// stats' version byte 0; the stand-in's players bring no version, their
+/// EXE6 systems' setups zero).
 pub fn megaman(content: &Content, hp: u16) -> NaviStats {
     // MegaMan: the content's navi that changes form.
     let megaman = content.form_changing_navi().unwrap_or_else(|| panic!("the content has no navi that changes form"));

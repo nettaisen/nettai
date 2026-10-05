@@ -113,12 +113,16 @@ const TACTICS_SALT: u32 = 0x5441_4354;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Side {
     pub navi: NaviHandle,
-    /// The player's version of the game: their Beast (Beast Out and Beast
-    /// Over), their console's own pictures and Beast Out roar, and the
-    /// navi's version (NaviStats+0x20, which MstrCros reads).
-    pub game: GameVersion,
+    /// The player's version of the game, where the game's rules take one
+    /// (`Side::takes_version`: EXE6's Gregar or Falzar): their Beast (Beast
+    /// Out and Beast Over), their console's own pictures and Beast Out roar,
+    /// and the navi's version (NaviStats+0x20, which MstrCros reads). None
+    /// is no default of either: a side of such a game states its own (the
+    /// checks refuse a match until it does), and a side of a game whose
+    /// versions play alike (EXE5) has none.
+    pub version: Option<GameVersion>,
     /// The navi's stats as the round starts them (the version is the
-    /// game's).
+    /// side's).
     pub stats: NaviStats,
     /// The folder, its entries empty while it is being made (a round is
     /// played with a whole one: the checks refuse a match without).
@@ -167,23 +171,23 @@ pub struct Side {
 
 impl Side {
     /// `navi`'s stats as a fresh save gives them ([`NaviStats::fresh`]),
-    /// of `game`, as a battle starts them (`starting`): what a side's stats
-    /// block is written over.
-    pub fn base_stats(content: &Content, navi: NaviHandle, game: GameVersion) -> NaviStats {
+    /// of `version` (none: a side without one), as a battle starts them
+    /// (`starting`): what a side's stats block is written over.
+    pub fn base_stats(content: &Content, navi: NaviHandle, version: Option<GameVersion>) -> NaviStats {
         let s = NaviStats::fresh(navi, content).unwrap_or(NaviStats { navi, ..NaviStats::default() });
-        starting(content, s, game)
+        starting(content, s, version)
     }
 
     /// The side's stats as the battle starts them (`starting`).
     pub fn round_stats(&self, content: &Content) -> NaviStats {
-        starting(content, self.stats, self.game)
+        starting(content, self.stats, self.version)
     }
 
     /// The side's stats block: what differs from the navi's stats as a save
     /// gives them (a link navi's at its level: `Side::save_base`), but what
     /// the battle's start sets (MegaMan's variant).
     pub fn stats_block(&self, content: &Content) -> std::collections::BTreeMap<String, toml::Value> {
-        let base = Side::save_base(content, self.navi, self.game, self.navi_level);
+        let base = Side::save_base(content, self.navi, self.version, self.navi_level);
         let mut block = stats::diff(content, &base, &self.round_stats(content));
         if content.navi(self.navi).forms.is_some() {
             block.remove("navi_variant");
@@ -200,22 +204,24 @@ pub fn default_navi_level(content: &Content, navi: NaviHandle) -> Option<u8> {
 }
 
 /// What the console sets in the stats as a battle starts, whatever the
-/// save says: the navi's game (NaviStats+0x20) is the player's, and
+/// save says: the navi's version (NaviStats+0x20) is the player's, and
 /// MegaMan's variant (+0x2B, which picks his move lag) is his base HP in
 /// hundreds (`sub_800A2F8`).
-pub fn starting(content: &Content, mut s: NaviStats, game: GameVersion) -> NaviStats {
-    s.version = version_byte(game);
+pub fn starting(content: &Content, mut s: NaviStats, version: Option<GameVersion>) -> NaviStats {
+    s.version = version_byte(version);
     if content.navi(s.navi).forms.is_some() {
         s.navi_variant = (s.max_base_hp / 100) as u8;
     }
     s
 }
 
-/// The navi's game as NaviStats+0x20 has it (0 Gregar, 1 Falzar).
-pub fn version_byte(game: GameVersion) -> u8 {
-    match game {
-        GameVersion::Gregar => 0,
-        GameVersion::Falzar => 1,
+/// The navi's version as NaviStats+0x20 has it (EXE6's: 0 Gregar, 1
+/// Falzar); a side without a version has 0 there (EXE5's games write
+/// nothing a battle reads to it: the recordings' are 0).
+pub fn version_byte(version: Option<GameVersion>) -> u8 {
+    match version {
+        None | Some(GameVersion::Gregar) => 0,
+        Some(GameVersion::Falzar) => 1,
     }
 }
 
@@ -280,14 +286,16 @@ impl Match {
     /// A new match of `game`, nothing chosen yet: the game's first link
     /// battle stage (with its own background), and on each
     /// side its navi (MegaMan, the navi that changes form, else the first
-    /// with fresh stats) at its fresh stats, of Falzar; an empty folder, no
+    /// with fresh stats) at its fresh stats, of no version (where the game's
+    /// rules take one, each side's is to be chosen); an empty folder, no
     /// Regular or tag chips, the game's own Crosses, no patch cards, a
     /// NaviCust with no programs where the rules have one, and where they
     /// have computer navis the computer-navi data the game's battle end
     /// writes of a player it has learned nothing of
     /// (`ComputerNavi::nothing_learned`). No seed (the
     /// battle's is drawn when it is played). Its folders are none the
-    /// checks accept until they are made.
+    /// checks accept until they are made, nor is a side without the version
+    /// its game takes.
     pub fn empty(content: &Content, game: &str) -> Result<Match, String> {
         playable(content, game)?;
         let stage = *link_battle_stages(content, game).first().ok_or_else(|| format!("{game} has no link battle stage"))?;
@@ -313,11 +321,12 @@ impl Side {
             .find(|&n| content.navi(n).forms.is_some())
             .or_else(|| navis.first().copied())
             .ok_or_else(|| format!("{game} has no navi with fresh stats"))?;
-        let version = GameVersion::Falzar;
+        // (No version: a side of a game that takes one is given its own,
+        // or the checks say it has none.)
         let mut side = Side {
             navi,
-            game: version,
-            stats: Side::base_stats(content, navi, version),
+            version: None,
+            stats: Side::base_stats(content, navi, None),
             folder: Folder::EMPTY,
             crosses: None,
             beast_out: true,
@@ -377,11 +386,15 @@ impl Match {
                 // here runs).
                 tactics: s.computer_navi.tactics().sent(&mut Rng::new(seed ^ TACTICS_SALT ^ (side as u32).wrapping_mul(0x9E37_79B9))),
             };
-            // What the save unlocks, into its EXE6 systems' setup: every
-            // Cross of the game (or the side's list) and Beast Out as the
-            // side says.
-            let unlocks = Unlocks { beast_out: s.beast_out, cross_list: s.crosses, ..Unlocks::everything(s.game) };
-            unlocks.write(content, &mut player).expect("the game's rules take EXE6's setup as their systems declare it");
+            // What the save unlocks, into its EXE6 systems' setup: its
+            // version, every Cross of it (or the side's list) and Beast Out
+            // as the side says. A side without a version brings none of it
+            // (a game whose rules take none; one whose rules do is refused
+            // by the match's checks until its sides state theirs).
+            if let Some(version) = s.version {
+                let unlocks = Unlocks { beast_out: s.beast_out, cross_list: s.crosses, ..Unlocks::everything(version) };
+                unlocks.write(content, &mut player).expect("the game's rules take EXE6's setup as their systems declare it");
+            }
             // Its karma and souls, into the systems that take them.
             facts::write(content, &self.arena, s, &mut player).expect("a side's karma and souls fit its rules (the match's checks)");
             player
@@ -512,11 +525,11 @@ pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usi
             (false, 0) => "the left navi",
             (false, _) => "the right navi",
         };
-        let version = match s.game {
-            GameVersion::Gregar => " of Gregar",
-            GameVersion::Falzar => " of Falzar",
+        let version = match s.version {
+            Some(GameVersion::Gregar) => " of Gregar",
+            Some(GameVersion::Falzar) => " of Falzar",
+            None => "",
         };
-        let version = if Side::takes_game(content) { version } else { "" };
         let navi = names::navi(content, s.navi);
         out.push_str(&format!("\n  {navi}{version} ({who})"));
         if let Some(list) = &s.crosses {
