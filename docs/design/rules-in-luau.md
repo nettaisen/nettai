@@ -2088,7 +2088,8 @@ plain Luau library with a single definition.
   from the side's gauge; SELECT's Program Advance window). Fixed on the way: a non-link battle sets the flag only
   with a chip gate on the link port (the gate byte, 0x0200AD04); the link packet's +0xC is the gate's slotted chip;
   EXE5's setter tests NaviStats +0x2A; "Cross change mode" was never the flag's name. The chip lab's
-  `exe5-team-gauges` base is `exe5-operation-battle` (`operation_battle = true`).
+  `exe5-team-gauges` base became `exe5-operation-battle` (`operation_battle = true`), and is out of the library
+  since the user declined the mode (2026-10-05).
 - **A support pack has no game context** (`nettai_luau::define::environments`).
   - Each module is loaded with its pack's environment: a read-only, safeenv copy of the globals. A support pack's
     lacks `asset` and `system`; reaching for either fails naming the support module ("exelib:x: a support pack
