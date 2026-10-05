@@ -192,7 +192,10 @@ fn become_other_navi(b: &mut Battle, r: ObjectRef) {
         panic!("a navi switch without a navi reads 0xFF as one (sub_802DCCC)");
     };
     let kept = b.reserves[side].navi == target;
-    b.stats[side] = if kept { b.reserves[side] } else { fresh_stats(target, &b.content) };
+    // (A fresh block's version byte, +0x20, is the console's own in the
+    // original: here the side's, as the battle's start set it.)
+    let version = b.stats[side].version;
+    b.stats[side] = if kept { b.reserves[side] } else { NaviStats { version, ..fresh_stats(target, &b.content) } };
     super::super::refresh_navicust_state(b, r);
     take_identity(b, r);
     let s = *stats(b, r);
