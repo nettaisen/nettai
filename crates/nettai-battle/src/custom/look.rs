@@ -54,6 +54,8 @@ pub struct ScreenLook {
     /// Change, 0x080236C0, takes the pick without drawing; its blink draws
     /// the cell empty from the next tick, 0x08023712).
     pub column_kept: Option<u8>,
+    /// The hover's counter (the screen's `+0x14`): every tick, 0 to 63.
+    pub hover_count: u8,
     /// The chips the slots' tiles show, as checked when the screen last
     /// drew them (`sub_8028250`, on opening and after every pick or take
     /// back: the chips OK takes out of the folder stay drawn).
@@ -144,6 +146,7 @@ impl ScreenSound {
             ScreenSound::Open => SoundRole::CustomOpen,
             ScreenSound::Cursor => SoundRole::CustomCursor,
             ScreenSound::Hide => SoundRole::CustomHide,
+            ScreenSound::DarkHover => SoundRole::CustomDarkHover,
             ScreenSound::Pick => SoundRole::CustomPick,
             ScreenSound::Ok => SoundRole::CustomOk,
             ScreenSound::Back => SoundRole::CustomBack,
@@ -186,6 +189,9 @@ pub enum ScreenSound {
     Cursor,
     /// SELECT hides the window, and a key brings it back (`sub_8026D06`).
     Hide,
+    /// The hover over a dark chip, every 64 ticks while the screen isn't
+    /// clear of it (EXE5's 0x08025AA2; a game without the role plays none).
+    DarkHover,
     /// A chip, Beast Out, the scrap or a Cross picked.
     Pick,
     /// OK (`sub_8028D3A`).
@@ -283,6 +289,7 @@ impl ScreenLook {
             cross_tab,
             column: [None; 5],
             column_kept: None,
+            hover_count: 0,
             slot_chips: [None; 12],
             slot_picked: [false; 12],
             face: None,
@@ -306,8 +313,19 @@ impl ScreenLook {
     /// Resting on one (`on_dark`, `sub_802A394`) darkens the screen and
     /// the window and turns the music down and the screen's player up, a
     /// step a tick until the window's fade is done; leaving it undoes that
-    /// the same way. (Its `+0x14` counter changes nothing.)
+    /// the same way. Its `+0x14` counter runs every tick from the screen's
+    /// opening; each time it wraps (every 64 ticks) while the hover isn't
+    /// clear, EXE5 plays the hover's sound (0x08025A8C; EXE6's routine
+    /// counts and plays nothing: its rules fill no role for it).
     pub(crate) fn hover(&mut self, on_dark: bool) {
+        self.hover_state(on_dark);
+        self.hover_count = (self.hover_count + 1) & 63;
+        if self.hover_count == 0 && self.dark != DarkHover::Clear {
+            self.play(ScreenSound::DarkHover);
+        }
+    }
+
+    fn hover_state(&mut self, on_dark: bool) {
         self.dark = match self.dark {
             DarkHover::Clear if on_dark => {
                 // sub_802A2E8

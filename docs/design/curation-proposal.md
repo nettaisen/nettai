@@ -7,13 +7,15 @@ adds a few with numbers in them (`hit-6b`, `log-in-77`). This document proposes 
 evidence (where content and the engine use it, what the sprite shows, the docs, the disassembly) and a
 confidence, so the review is a matter of accepting groups. **Nothing is renamed yet.**
 
-It covers 1107 names: 217 proposed renames (38 high, 159 medium and
-20 low confidence), 637 names to keep as they are, and 253 numbered placeholders
-(`sprite-0c-26`, `sound-108`) to leave numbered. 26 names are flagged as wrong now: they say something
+It covers 1108 names: 219 proposed renames (42 high, 157 medium and
+20 low confidence), 636 names to keep as they are, and 253 numbered placeholders
+(`sprite-0c-26`, `sound-108`) to leave numbered. 28 names are flagged as wrong now: they say something
 their asset or definition isn't.
 
-**Applied so far: 60 renames** (accepted-1: the user's "High + flagged", every high-confidence
-rename and every row flagged wrong now), marked *applied* below. The rest wait for review.
+**Applied so far: 64 renames**, marked *applied* below (accepted-1, accepted-2). accepted-1 is the user's
+"High + flagged": every high-confidence rename and every row flagged wrong then. accepted-2 is chip destruction,
+the user's name for collision row 0x08, its shot and its hit spark ("attack-90 is chip destruction and the
+sparks.shot is also the chip destruction hitspark"), in both games. The rest wait for review.
 
 The machine-readable list is [curation-proposal.tsv](curation-proposal.tsv), one row per name: registry, current
 name, proposed name, confidence, flag (`wrong`, or `number` for a name carrying one of the original's numbers)
@@ -31,7 +33,8 @@ tools/curation/apply.py <checkout> <checkout>/docs/design/curation-proposal.tsv 
 tools/curation/apply.py <checkout> <checkout>/docs/design/curation-proposal.tsv --names accepted.txt --verify .
 ```
 
-An accepted list is committed in the verification workspace (`tools/curation/accepted-1.txt`) and can run again:
+An accepted list is committed in the verification workspace (`tools/curation/accepted-1.txt`) and can run again
+(`--game exe5` applies it to EXE5's content, which shares many of these names; EXE6's is the default):
 a rename applied before only has its remaining uses renamed. So a branch that merged main after a list was
 applied catches up its own new content with the same command, then reads the leftover list:
 
@@ -67,10 +70,12 @@ are garbage. Their renames are worth taking even where the proposed name is only
 | sprite | `reflected-shot` | `pink-flash` *applied* | medium | Shows a pink starburst. The effect `flash` (0x21), CrcusMan's sparkle, H-Burst's explosion and DblBeast's spark use it. |
 | sprite | `reflector-shield-2` | `dummy-shield` *applied* | low | The ROM's dummy sprite (a 16x16 dot). Rflectr's rows 4-6 name it, which nothing ported holds up. |
 | sprite | `rising-bubble` | `small-puff` *applied* | medium | Shows small gray puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble. |
+| sprite | `shot-impact` | `chip-destruction-spark` *applied* | high | 14-0c: the chip destruction hit spark (spark 0x09, lib/sparks). The user's name. |
 | sprite | `small-ring` | `wide-navi` *applied* | medium | The ROM's dummy sprite (a 16x16 dot, like 40 unused slots): it shows no ring. SumnBlk asks whether an actor wears it to know it stands two panels wide. |
 | sound | `copy-mark` | `mark` *applied* | medium | A mark set: BurnSqr's fire, CircGun's and CopyDmg's marks. CopyDmg is one user of three. |
 | effect | `bat_impact` | `cut_in_flash` *applied* | high | The role effects.cut_in_flash: the flash where a side cut in (effect 0x1E). |
 | effect | `small_ring_82` | `dummy_look` *applied* | low | Effect 0x4B reads animation 82, palette 16 of the dummy sprite: a row of the original's table that names no real look. |
+| spark | `shot` | `chip_destruction` *applied* | high | Spark 0x09 is the chip destruction hit spark (the chip destruction shot's, and EXE5's SerchMan's shot's). The user's name. |
 | status | `collision-panel-65535` | `after-table-1-past-freeze` *applied* | medium | Status 0x5C: the freeze group's entry 12, past the bubble rows it also reads, reads row 1 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
 | status | `collision-panel-65535-2` | `after-table-1-past-bubble` *applied* | medium | Status 0x66: the bubble group's entry 6 reads row 1 after the table (the same bytes as the freeze group's overflow, for the first four). |
 | status | `timer-00-150` | `after-table-5-past-bubble` *applied* | medium | Status 0x6A: the bubble group's entry 10 reads row 5 after the table (the same bytes as the freeze group's overflow, for the first four). |
@@ -98,11 +103,11 @@ Also found while reviewing (no rename needed):
   The registries differ, so it loads, but a reader or a search can't tell them apart: the rock variants table below
   proposes `rockcube/rock/cube` (and the other three variants alike).
 
-## High confidence: accept in bulk (38)
+## High confidence: accept in bulk (42)
 
 Each name follows from a single, clear use or from what the asset reads: a Cross's body overlay worn by that form alone, a banner's text, a sound's role, the disassembly's own name without its number.
 
-### Sprites (15)
+### Sprites (16)
 
 | current | proposed | evidence |
 |---|---|---|
@@ -121,6 +126,7 @@ Each name follows from a single, clear use or from what the asset reads: a Cross
 | `body-overlay-12` | `dustcross-overlay` *applied* | Only the dustcross form wears it (navis/megaman/forms/dustcross/init.luau, `parts`); named for the body overlay row it had. |
 | `burner-2` | `heatcross-burner` *applied* | HeatCross's burner (lib/burner/burn.luau, attachment row 0x1E); `burner` is FireBrn's. |
 | `copy-mark` | `hit-sparks` (wrong now) *applied* | Shows the hit sparks (plain, breaking, and one per element: sparks by element use its animations 0, 2-5) and the TRAP! mark (animation 7); 30 uses, CopyDmg's mark only one of them. |
+| `shot-impact` | `chip-destruction-spark` (wrong now) *applied* | 14-0c: the chip destruction hit spark (spark 0x09, lib/sparks). The user's name. |
 
 ### Sounds (9)
 
@@ -154,12 +160,25 @@ Each name follows from a single, clear use or from what the asset reads: a Cross
 | `beast_over_burst_45` | `beast_over_burst` *applied* | The role effects.beast_over_burst (effect 0x45). |
 | `copy_mark_7` | `trap_mark` *applied* | The role effects.trap_mark: the TRAP! mark over a navi whose trap sprang (effect 0x46). |
 
-### Sparks (lib/sparks.luau) (2)
+### Sparks (lib/sparks.luau) (3)
 
 | current | proposed | evidence |
 |---|---|---|
 | `hit` | `guard` *applied* | Spark 0x08 is the role sparks.guard: a blocked hit. |
+| `shot` | `chip_destruction` (wrong now) *applied* | Spark 0x09 is the chip destruction hit spark (the chip destruction shot's, and EXE5's SerchMan's shot's). The user's name. |
 | `spark_0e` | `uninstall` *applied* | Spark 0x0E is the role sparks.uninstall: a navi's programs uninstalled. |
+
+### Collision types (rules/collision.luau) (1)
+
+| current | proposed | evidence |
+|---|---|---|
+| `attack-90` | `chip-destruction` *applied* | Row 0x08: chip destruction, an attack that destroys the chip a navi holds (flag 0x10). The chip destruction shot uses it (shot/attack-90). The user's name. |
+
+### Projectile variants (objects/projectile/variants.luau) (1)
+
+| current | proposed | evidence |
+|---|---|---|
+| `shot/attack-90` | `shot/chip-destruction` *applied* | Projectile row 0x09: the chip destruction shot (collision row 0x08, whose flag 0x10 destroys the held chip). The user's name. |
 
 ### Rock variants (chips/rockcube/rock.luau, compat/records.toml) (4)
 
@@ -170,7 +189,7 @@ Each name follows from a single, clear use or from what the asset reads: a Cross
 | `rockcube/hard` | `rockcube/rock/hard` *applied* | The rock's variant (a hard cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
 | `rockcube/ice` | `rockcube/rock/ice` *applied* | The rock's variant (the ice block): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
 
-## Medium confidence (159)
+## Medium confidence (157)
 
 Named from several uses that agree, from the look (the effects named for sprite, animation and palette rather than the original's effect number), or from a definition's shape or flags (regions, collision types). Safe to accept; a better name may exist.
 
@@ -268,7 +287,7 @@ Named from several uses that agree, from the look (the effects named for sprite,
 | `sword_slash_66` | `sword_slash_p4` | Effect 0x66: sword-slash, palette 4. Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
 | `vulcan_hit_6a` | `vulcan_hit_p1` | Effect 0x6A: vulcan-hit, palette 1. Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
 
-### Regions (lib/regions.luau) (28)
+### Regions (content/exelib/regions.luau) (28)
 
 | current | proposed | evidence |
 |---|---|---|
@@ -301,13 +320,12 @@ Named from several uses that agree, from the look (the effects named for sprite,
 | `region_2d` | `column` | Region 0x2D: the anchor's column, five tall. Unused by content; named for its shape. |
 | `region_2e` | `column_ends` | Region 0x2E: the anchor's column, five tall, without the anchor. Unused by content; named for its shape. |
 
-### Collision types (rules/collision.luau) (33)
+### Collision types (rules/collision.luau) (32)
 
 | current | proposed | evidence |
 |---|---|---|
-| `attack-90` | `chip-erasing` | Row 0x08: an attack that erases the held chip (flag 0x10). A projectile variant uses it (shot/attack-90). |
-| `collision-1a` | `thrown-piercing-break-chip-erasing` | Row 0x1A: a thrown attack that pierces, breaks and erases the held chip (0x10). Unused by content; named for its flags. |
-| `collision-1d` | `thrown-piercing-chip-erasing` | Row 0x1D: a thrown attack that pierces and erases the held chip. Unused by content; named for its flags. |
+| `collision-1a` | `thrown-piercing-break-chip-destruction` | Row 0x1A: a thrown attack that pierces, breaks and destroys the held chip (chip destruction, 0x10). Unused by content; named for its flags. |
+| `collision-1d` | `thrown-piercing-chip-destruction` | Row 0x1D: a thrown attack that pierces and destroys the held chip. Unused by content; named for its flags. |
 | `collision-20` | `thrown-pushing` | Row 0x20: a thrown attack that pushes. Unused by content; named for its flags. |
 | `collision-23` | `blocker` | Row 0x23: only the blocker bit (0x00080000). Unused by content; named for its flags. |
 | `collision-26` | `both-sides-thrown` | Row 0x26: a thrown attack of both sides (with the bit 0x40000). Unused by content; named for its flags. |
@@ -329,14 +347,14 @@ Named from several uses that agree, from the look (the effects named for sprite,
 | `collision-3f` | `thrown-breaking-floating-navi` | Row 0x3F: a floating navi's body, thrown and breaking. Unused by content; named for its flags. |
 | `collision-40` | `own-slash-object` | Row 0x40: an object of its side that slashes, while dimmed too. Unused by content; named for its flags. |
 | `collision-41` | `other-side-body` | Row 0x41: only the body bit of side 1 (0x04000000) for side 0, and the reverse. Unused by content; named for its flags. |
-| `collision-42` | `chip-erasing-slash` | Row 0x42: a slash that erases the held chip. Unused by content; named for its flags. |
+| `collision-42` | `chip-destruction-slash` | Row 0x42: a slash that destroys the held chip. Unused by content; named for its flags. |
 | `collision-45` | `thrown-break-slash` | Row 0x45: a thrown breaking slash. Unused by content; named for its flags. |
 | `collision-4c` | `own-breaking-drain-body` | Row 0x4C: another body of its side, breaking and draining, while dimmed too. Unused by content; named for its flags. |
 | `collision-50` | `slash-navi` | Row 0x50: a navi's body that slashes. Unused by content; named for its flags. |
-| `collision-51` | `chip-erasing-breaking-navi` | Row 0x51: a navi's body that breaks and erases the held chip. Unused by content; named for its flags. |
+| `collision-51` | `chip-destruction-breaking-navi` | Row 0x51: a navi's body that breaks and destroys the held chip. Unused by content; named for its flags. |
 | `collision-53` | `breaking-slash-navi` | Row 0x53: a navi's body that slashes and breaks. Unused by content; named for its flags. |
-| `collision-54` | `chip-erasing-breaking-slash` | Row 0x54: a breaking slash that erases the held chip. Unused by content; named for its flags. |
-| `collision-55` | `thrown-chip-erasing-breaking-navi` | Row 0x55: a navi's body, thrown, breaking, erasing the held chip. Unused by content; named for its flags. |
+| `collision-54` | `chip-destruction-breaking-slash` | Row 0x54: a breaking slash that destroys the held chip. Unused by content; named for its flags. |
+| `collision-55` | `thrown-chip-destruction-breaking-navi` | Row 0x55: a navi's body, thrown, breaking, destroying the held chip. Unused by content; named for its flags. |
 | `collision-56` | `piercing-pushing` | Row 0x56: a piercing pushing attack. Unused by content; named for its flags. |
 
 ### Statuses (rules/status.luau) (14)
@@ -366,12 +384,6 @@ Named from several uses that agree, from the look (the effects named for sprite,
 | `firebrn1` | `firebrn` | Named for the first chip that uses it (firebrn1); its other levels use it too, so the level digit says nothing. |
 | `gundels1` | `gundels` | Named for the first chip that uses it (gundels1); its other levels use it too, so the level digit says nothing. |
 | `trnarrw1` | `trnarrw` | Named for the first chip that uses it (trnarrw1); its other levels use it too, so the level digit says nothing. |
-
-### Projectile variants (objects/projectile/variants.luau) (1)
-
-| current | proposed | evidence |
-|---|---|---|
-| `shot/attack-90` | `shot/chip-erasing` | Projectile row 0x09: its collision type erases the held chip (row 0x08's flag 0x10). |
 
 ## Low confidence (20)
 
@@ -412,16 +424,16 @@ The evidence is thin: a sound with mixed users, a look with no user. A proposal 
 | `spout_man_effect` | `water_ring` | Effect 0x2A: the water-ring sprite (SpoutMan's throw). Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
 | `swirl_1` | `swirl_1_p1` | Effect 0x41: swirl animation 1, palette 1. Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
 
-## Names to keep (637)
+## Names to keep (636)
 
 The rest read well for what they are: an asset named for its one user or what it shows, a definition named as
 its module's convention names it (a status by group and duration, a lock-on mode by its first chip, a weapon by its
 owner). Accepting them settles them; the evidence for each is in the .tsv. Those that carry a number, or keep a
 proposal-worthy name for lack of a better one, are listed with their reason.
 
-### Sprites (170)
+### Sprites (169)
 
-`air-raid-plane`, `air-shooter`, `air-spin`, `anubis`, `aqua-needle`, `aqua-surge`, `aqua-sword`, `aura-head`, `bass-anly`, `bass-anly-shot`, `bat-cannon`, `beast-head`, `beast-shot`, `beat`, `big-slash`, `black-bomb`, `blast`, `blast-fire`, `blindness`, `blizzard-ball`, `bomb`, `boomerang`, `boomerang-tomahawk`, `boulder`, `bow`, `bubble`, `bubble-star`, `bug`, `burner`, `burst`, `buster-arm`, `buster-up`, `cannon`, `charge-car`, `charge-glow`, `charge-glow-a`, `charge-wave`, `charged-slash`, `circusman`, `col-army`, `colonel`, `colonel-sword`, `confusion`, `corn-shooter`, `countdown-bomb`, `crack-shot`, `cross-slash`, `dark-aura`, `deletion`, `diveman`, `django`, `dragon`, `drill-arm`, `drip-shower`, `dust`, `dust-cloud`, `dust-storm-mote`, `eagle-tomahawk`, `elec-coil`, `elec-pulse`, `elec-sword`, `element-pillar-flames`, `element-pillar-lightning`, `elmnt-man`, `energy-burst`, `erase-beam`, `erase-drop`, `erase-mark`, `erase-ray`, `eruption`, `explosion`, `falling-rock`, `fan`, `fire-hit`, `fire-sword`, `flame`, `flame-hook-fire`, `flash-bomb`, `follow-effect`, `form-change`, `full-synchro-aura`, `golem`, `grab-shot`, `ground-drill`, `ground-drill-effect`, `guardian-statue`, `gun-del-sol`, `gust`, `hand-fan`, `heal`, `heat-flame`, `hive`, `hockey-puck`, `hub`, `ice-block`, `idle-overlay`, `impact`, `instrument`, `iron-shell`, `jet-flame`, `judgeman`, `junk-shot`, `justice-one`, `lance`, `land-mine`, `lil-boiler`, `lockon-marker`, `log-thrower`, `machine-gun`, `magnet`, `magnet-coil`, `meteor`, `moon-beam`, `moon-blade`, `muzzle-flash`, `number-ball`, `panel-strike`, `propeller`, `puff`, `reflector-shield`, `reticle`, `rock-debris`, `roll-heart`, `rolling-log`, `rush`, `sand-hole`, `sand-worm`, `sensor`, `shell-burst`, `shock-wave`, `shot-impact`, `shuriken`, `sight`, `slash-wave`, `snake`, `spout-geyser`, `spout-pillar`, `spout-splash`, `spreader`, `summon-black`, `sun-beam`, `sun-beam-ex`, `swirl`, `sword`, `sword-slash`, `tango`, `tango-heal`, `tank-blast`, `tank-cannon`, `tengu-fan`, `tengu-tornado`, `thunder-ball`, `thunder-doll`, `thunder-doll-hand`, `tornado`, `volcano-rock`, `voodoo-doll`, `vulcan`, `vulcan-hit`, `water-cannon`, `whirlwind`, `wide-shooter`, `wide-wave`, `wind-rack`, `yoyo`, `yoyo-arm`.
+`air-raid-plane`, `air-shooter`, `air-spin`, `anubis`, `aqua-needle`, `aqua-surge`, `aqua-sword`, `aura-head`, `bass-anly`, `bass-anly-shot`, `bat-cannon`, `beast-head`, `beast-shot`, `beat`, `big-slash`, `black-bomb`, `blast`, `blast-fire`, `blindness`, `blizzard-ball`, `bomb`, `boomerang`, `boomerang-tomahawk`, `boulder`, `bow`, `bubble`, `bubble-star`, `bug`, `burner`, `burst`, `buster-arm`, `buster-up`, `cannon`, `charge-car`, `charge-glow`, `charge-glow-a`, `charge-wave`, `charged-slash`, `circusman`, `col-army`, `colonel`, `colonel-sword`, `confusion`, `corn-shooter`, `countdown-bomb`, `crack-shot`, `cross-slash`, `dark-aura`, `deletion`, `diveman`, `django`, `dragon`, `drill-arm`, `drip-shower`, `dust`, `dust-cloud`, `dust-storm-mote`, `eagle-tomahawk`, `elec-coil`, `elec-pulse`, `elec-sword`, `element-pillar-flames`, `element-pillar-lightning`, `elmnt-man`, `energy-burst`, `erase-beam`, `erase-drop`, `erase-mark`, `erase-ray`, `eruption`, `explosion`, `falling-rock`, `fan`, `fire-hit`, `fire-sword`, `flame`, `flame-hook-fire`, `flash-bomb`, `follow-effect`, `form-change`, `full-synchro-aura`, `golem`, `grab-shot`, `ground-drill`, `ground-drill-effect`, `guardian-statue`, `gun-del-sol`, `gust`, `hand-fan`, `heal`, `heat-flame`, `hive`, `hockey-puck`, `hub`, `ice-block`, `idle-overlay`, `impact`, `instrument`, `iron-shell`, `jet-flame`, `judgeman`, `junk-shot`, `justice-one`, `lance`, `land-mine`, `lil-boiler`, `lockon-marker`, `log-thrower`, `machine-gun`, `magnet`, `magnet-coil`, `meteor`, `moon-beam`, `moon-blade`, `muzzle-flash`, `number-ball`, `panel-strike`, `propeller`, `puff`, `reflector-shield`, `reticle`, `rock-debris`, `roll-heart`, `rolling-log`, `rush`, `sand-hole`, `sand-worm`, `sensor`, `shell-burst`, `shock-wave`, `shuriken`, `sight`, `slash-wave`, `snake`, `spout-geyser`, `spout-pillar`, `spout-splash`, `spreader`, `summon-black`, `sun-beam`, `sun-beam-ex`, `swirl`, `sword`, `sword-slash`, `tango`, `tango-heal`, `tank-blast`, `tank-cannon`, `tengu-fan`, `tengu-tornado`, `thunder-ball`, `thunder-doll`, `thunder-doll-hand`, `tornado`, `volcano-rock`, `voodoo-doll`, `vulcan`, `vulcan-hit`, `water-cannon`, `whirlwind`, `wide-shooter`, `wide-wave`, `wind-rack`, `yoyo`, `yoyo-arm`.
 
 | name | confidence | why it stays |
 |---|---|---|
@@ -488,7 +500,7 @@ proposal-worthy name for lack of a better one, are listed with their reason.
 | `collision-46` | low | Row 0x46: a drain with the flag 0x20, while dimmed too. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row. |
 | `collision-4b` | low | Row 0x4B: the same flags as row 0x24: a second row. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row. |
 | `collision-4d` | low | Row 0x4D: what a navi hits, but the neutral objects (row 0x02 without 0x00800000). Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row. |
-| `collision-57` | low | Row 0x57: a breaking attack that erases the held chip, with the flag 0x20. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row. |
+| `collision-57` | low | Row 0x57: a breaking attack that destroys the held chip, with the flag 0x20. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row. |
 
 ### Statuses (rules/status.luau) (82)
 

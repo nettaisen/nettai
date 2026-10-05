@@ -166,6 +166,8 @@ return {
         custom_open = asset.sound("select-79"),
         custom_cursor = asset.sound("menu-cur-move"),
         custom_hide = asset.sound("cur-move-80"),
+        -- The hover over a dark chip, every 64 ticks while the screen is dark or fading (0x08025AA2: sound 0x16B).
+        custom_dark_hover = asset.sound("dark-hover"),
         custom_pick = asset.sound("menu-select"),
         custom_ok = asset.sound("select-82"),
         custom_back = asset.sound("exit-submenu"),

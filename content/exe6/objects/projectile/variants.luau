@@ -66,13 +66,13 @@ variants.cracking = v { id = "shot/cracking", collision = SHOT, hit_mod = 0, ele
 variants.poisoning = v { id = "shot/poisoning", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("poison") }
 variants.grass = v { id = "shot/grass", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("grass") }
 variants.ice = v { id = "shot/ice", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("ice") }
--- A shot of the attack type 0x90.
-variants.attack_90 = v {
-    id = "shot/attack-90",
-    collision = { is = collision.attack_90, hits = collision.hits_navis },
+-- The chip destruction shot (row 9): it destroys the chip the navi it hits holds.
+variants.chip_destruction = v {
+    id = "shot/chip-destruction",
+    collision = { is = collision.chip_destruction, hits = collision.hits_navis },
     hit_mod = 0,
     element = "null",
-    spark = sparks.shot,
+    spark = sparks.chip_destruction,
 }
 -- Shots with a status: confusion, blindness, paralysis.
 variants.confusing = v { id = "shot/confusing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = statuses.confuse_480 }

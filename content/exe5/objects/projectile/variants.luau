@@ -85,13 +85,13 @@ variants.poisoning = projectile.variant {
 variants.grass = projectile.variant { id = "shot/grass", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("grass") }
 variants.ice = projectile.variant { id = "shot/ice", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("ice") }
 variants.sea = projectile.variant { id = "shot/sea", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("sea") }
--- Row 9: a shot of the attack type 0x90, the shot's spark (CSchpdst).
-variants.attack_90 = projectile.variant {
-    id = "shot/attack-90",
-    collision = { is = collision.attack_90, hits = collision.hits_navis },
+-- Row 9: the chip destruction shot, with the chip destruction hit spark (CSchpdst).
+variants.chip_destruction = projectile.variant {
+    id = "shot/chip-destruction",
+    collision = { is = collision.chip_destruction, hits = collision.hits_navis },
     hit_mod = 0,
     element = "null",
-    spark = sparks.shot,
+    spark = sparks.chip_destruction,
 }
 -- Row 0x12: Hub Style's spread shot (0x0800F522), the erase beams' spark.
 variants.hub = projectile.variant { id = "shot/hub", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.erase }

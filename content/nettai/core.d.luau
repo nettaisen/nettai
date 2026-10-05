@@ -2678,6 +2678,7 @@ export type RolesSpec = {
         custom_open: Sound?,
         custom_cursor: Sound?,
         custom_hide: Sound?,
+        custom_dark_hover: Sound?,
         custom_pick: Sound?,
         custom_ok: Sound?,
         custom_back: Sound?,
