@@ -221,6 +221,10 @@ declare class Sprite
     hflip: boolean
     vflip: boolean
     shadow: Shadow
+    -- The original's sprite flag 0x20 (`sprite_setField0x3Bit5`): with a
+    -- "ground" shadow, the whole sprite is drawn as the shadow is, under
+    -- every object's sprite (a mark on the floor).
+    under_objects: boolean
     -- Drawn solid white (a hit flash).
     white: boolean
     color_shader: number

@@ -347,6 +347,13 @@ pub fn queue_objects<'a>(
             }
             let palette = palette.map(|c| crate::compose::apply_fade(c, view.fade));
 
+            // A sprite marked as under the objects (`Look::under_objects`,
+            // the sprite's flag 0x20) with a ground shadow: `sub_3006440`
+            // goes on drawing every part as it does the shadow (it doesn't
+            // clear its `r7` after the first), in the shadows' layer and
+            // bucket, and `sub_300638C` leaves the shadow's Y at the
+            // sprite's height.
+            let under = look.under_objects && look.shadow == Shadow::Ground;
             let mut group = Vec::new();
             for (i, part) in parts.iter().take(32).enumerate() {
                 let shadow = i == 0;
@@ -356,11 +363,11 @@ pub fn queue_objects<'a>(
                 if mask & (0x8000_0000 >> i) == 0 {
                     continue;
                 }
-                let on_ground = shadow && look.shadow == Shadow::Ground;
+                let as_shadow = under || (shadow && look.shadow == Shadow::Ground);
                 let (w, h) = (part.width as i32, part.height as i32);
                 let dx = if hflip { -(part.x as i32) - w } else { part.x as i32 };
                 let dy = if vflip { -(part.y as i32) - h } else { part.y as i32 };
-                let base_y = if on_ground { p.ground } else { p.y };
+                let base_y = if as_shadow && !under { p.ground } else { p.y };
                 let sprite = SpritePart {
                     x: ((p.x + dx) & 0x1FF) as u16,
                     y: ((base_y & 0xFF) + dy) as u8,
@@ -378,7 +385,7 @@ pub fn queue_objects<'a>(
                     affine: None,
                 };
                 // Ground shadows go one layer back, in the first bucket.
-                let (layer, bucket) = if on_ground { (3, 0) } else { (2, p.ground + 0x40) };
+                let (layer, bucket) = if as_shadow { (3, 0) } else { (2, p.ground + 0x40) };
                 group.push((layer, bucket, sprite));
             }
             if sheet.region.as_deref().is_some_and(|r| r != console_region.name()) {
