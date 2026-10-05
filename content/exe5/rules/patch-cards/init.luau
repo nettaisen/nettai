@@ -14,17 +14,15 @@
 -- no supports) sets event flag 0x10C4, the emotion window's glitch when the save has cards (0x0813F650: the card
 -- count, not the switched-on cards; without cards the NaviCust's flag, 0x10C1).
 --
--- The HP (0x0813F97C, after the cards): in the real world the maximum; in the cyberworld (the setup's `cyberworld`:
--- the save's area, 0x02002944, from 0x80, or event flag 0x10B2) no more than it.
+-- The HP (0x0813F97C, after the cards): the maximum, the original's in the real world. (In the cyberworld it leaves
+-- the HP, no more than the maximum; a link battle starts at the maximum either way, so the rules have the one
+-- ending: ../navicust.)
 --
 -- A side neither of whose NaviCust and cards the setup gives (a recording's: its stats are the original's after all
 -- this) is left as it is.
 
 local apply_cards = require("@exelib/patch-cards/apply")
 local cards = require("@self/cards")
-
--- What the player's save brings (the navicust system's too: one fact): whether it is in the cyberworld.
-type Setup = { cyberworld: boolean }
 
 -- The bug slots BugStop holds back (the copy's flags 0x71 to 0x79).
 local BUG_KINDS: { [string]: boolean } = {
@@ -152,16 +150,11 @@ local function apply(side: number)
     else
         stats.hub_style = 0
     end
-    -- 0x0813F97C's HP.
-    if (system.setup() :: Setup).cyberworld then
-        stats.hp = math.min(stats.hp, stats.max_hp)
-    else
-        stats.hp = stats.max_hp
-    end
+    -- 0x0813F97C's HP (the real world's).
+    stats.hp = stats.max_hp
 end
 
 return define.system {
     id = "patch-cards",
-    setup = { cyberworld = "bool" },
     hooks = { round_setup = apply },
 }

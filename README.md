@@ -76,7 +76,7 @@ folder for each side, and five Crosses of both versions in each Cross window (`-
 EXE5's MegaMan with a random folder). `--seed N` replays a setup, `--stage NAME` forces the stage (`netbattle-1` to `netbattle-96`)
 and `--show-folders` prints the folders. Keys: the arrows move, Z is A, X is B, A is L,
 S is R, Enter is START and Backspace is SELECT; Space pauses, `.` steps a frame while paused, `-` and `=` change
-the speed, F5 restarts the round, H toggles the status line and Esc quits. `--help` lists the options, and
+the speed, F5 restarts the round and Esc quits. `--help` lists the options, and
 [docs/frontend.md](docs/frontend.md) has the rest. A trace is the recorded inputs of a real match; the traces
 live with the verification workspace (below).
 
@@ -94,7 +94,7 @@ forwarded to the host's machine:
 
 Both need the same engine, game and content pack (the handshake checks, and says what differs). Each brings their own folder, version and Crosses, drawn from their own `--seed`, and their patch cards
 (`--cards`); the host's `--stage` picks the stage. Both play with rollback: inputs go out every frame, the other player's are predicted until they
-arrive, and the battle is simulated again when a prediction was wrong. The status line shows the round trip, the
+arrive, and the battle is simulated again when a prediction was wrong. The window's title shows the round trip, the
 loss, the input delay (`--delay N`, default 2), the rollbacks and the frames waited ([docs/frontend.md](docs/frontend.md)
 §2, [rollback.md](docs/design/rollback.md) §4). The netplay tests play netbattles between two rollback sessions over a
 simulated network at several latencies, with loss, duplication and reordering, and over UDP on loopback, and check that

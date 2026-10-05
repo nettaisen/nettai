@@ -37,7 +37,7 @@ const BUTTONS: [(Key, u16); 10] = [
 pub const HELP: &str = "\
 keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START, Backspace = SELECT
       Space pause, . step one frame (paused), - / = slower / faster, F5 restart
-      (not in netplay), H toggle the status line, Tab the next language, Esc quit";
+      (not in netplay), Tab the next language, Esc quit";
 
 /// The languages the window cycles through (Tab): the content's, each one's
 /// graphics loaded the first time it is shown and kept.
@@ -78,6 +78,20 @@ impl<'g> Languages<'g> {
         self.shown = at;
         Ok((&self.names[at], self.loaded[at].as_ref().expect("loaded above")))
     }
+}
+
+/// A netplay connection's figures, as the window's title says them.
+fn net_line(n: &nettai_frontend::driver::NetStatus) -> String {
+    let ping = n.ping_ms.map_or("-".to_string(), |ms| format!("{ms:.0}ms"));
+    format!(
+        "ping {ping} loss {:.0}% delay {} rollback {} (max {}, {} in all) waits {}",
+        n.loss * 100.0,
+        n.delay,
+        n.last_rollback,
+        n.max_rollback,
+        n.rollbacks,
+        n.waits
+    )
 }
 
 /// Show what `player` plays, then each of `rest` in turn (a recording's
@@ -123,7 +137,6 @@ pub fn run(
         let mut single_step = false;
         for k in window.get_keys_pressed(KeyRepeat::Yes) {
             match k {
-                Key::H => player.show_status(!player.status_shown()),
                 // (The language is the drawing's alone: it changes in
                 // netplay too, and the battle goes on.)
                 Key::Tab => match languages.next() {
@@ -179,8 +192,22 @@ pub fn run(
             buffer = vec![0u32; w * h];
         }
         player.present(&mut buffer, w, h);
+        // What the library leaves a host to say goes in the title: where
+        // playback is, its speed, a pause, a netplay connection's figures
+        // and the set's result. (Why it stopped, and a difference from a
+        // recording, are on stderr above.)
         if loops % 15 == 0 {
-            let t = format!("nettai-demo - {} - x{}{}", player.position(), player.speed(), if player.paused() { " (paused)" } else { "" });
+            let mut t = format!("nettai-demo - {} - x{}{}", player.position(), player.speed(), if player.paused() { " (paused)" } else { "" });
+            if let Some(n) = player.net_status() {
+                t.push_str(&format!(" - {}", net_line(&n)));
+            }
+            // (Why it stopped, its first line; a netplay match that is
+            // over goes on until a player leaves, and says its result.)
+            match (player.stopped().and_then(|s| s.lines().next()), player.result()) {
+                (Some(why), _) => t.push_str(&format!(" - {why}")),
+                (None, Some(r)) => t.push_str(&format!(" - the match is over: {}", nettai_frontend::driver::result_text(r))),
+                (None, None) => {}
+            }
             if t != title {
                 window.set_title(&t);
                 title = t;

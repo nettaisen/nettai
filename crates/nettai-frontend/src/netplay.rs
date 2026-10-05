@@ -42,7 +42,7 @@ use nettai_netplay::standin::StandInBattle;
 use nettai_netplay::transport::{Connection, Datagram, Hello, Role};
 use nettai_netplay::{BattleWorld, Game, Observer, Peer, PeerConfig};
 
-use crate::driver::{Driver, Ran, Step, result_text};
+use crate::driver::{Driver, NetStatus, Ran, Step, result_text};
 
 /// What a player brings to a netbattle: the match's game (a game is its
 /// rules), their side of the match (a match file's left side, or one drawn
@@ -385,23 +385,22 @@ impl<D: Datagram> Driver for NetPlayer<D> {
         format!("netplay round {} tick {} (settled {})", self.peer.round() + 1, s.local_frontier(), s.settled_state().tick())
     }
 
-    fn status(&self) -> Option<String> {
+    fn net_status(&self) -> Option<NetStatus> {
         let s = self.peer.stats();
         let l = self.peer.link_stats();
-        let ping = l.srtt.map_or("-".to_string(), |r| format!("{r:.0}MS"));
-        let mut line = format!(
-            "PING {ping} LOSS {:.0}% DELAY {} ROLLBACK {} MAX {} ({}) WAIT {}",
-            l.loss() * 100.0,
-            self.options.delay,
-            s.last_rollback,
-            s.max_rollback,
-            s.rollbacks,
-            s.stalls + s.parked,
-        );
-        if let Some(r) = self.over {
-            line.push_str(&format!("\nTHE MATCH IS OVER: {}", result_text(r).to_uppercase()));
-        }
-        Some(line)
+        Some(NetStatus {
+            ping_ms: l.srtt.map(|r| r as f64),
+            loss: l.loss() as f64,
+            delay: self.options.delay,
+            last_rollback: s.last_rollback,
+            max_rollback: s.max_rollback,
+            rollbacks: s.rollbacks,
+            waits: s.stalls + s.parked,
+        })
+    }
+
+    fn result(&self) -> Option<BattleResult> {
+        self.over
     }
 
     fn real_time(&self) -> bool {
@@ -617,12 +616,13 @@ mod tests {
     /// What one player of [`set_pair`] saw: the result, each new round's
     /// start (the settled tick count it came at, and the simulation's score:
     /// rounds played, side 0's wins and losses), the settled digests by
-    /// round and tick, the status line at the end, and why it stopped.
+    /// round and tick, the connection's figures at the end, and why it
+    /// stopped.
     struct SetPlayed {
         result: Option<BattleResult>,
         rounds: Vec<(usize, (u8, u8, u8))>,
         settled: Vec<(usize, u32, u64)>,
-        status: String,
+        status: NetStatus,
         left: Option<String>,
         report: String,
     }
@@ -655,7 +655,7 @@ mod tests {
             let mut player = NetPlayer::new(conn, set, NetOptions::default());
             let mut shown = player.start();
             let start = Instant::now();
-            let mut out = SetPlayed { result: None, rounds: Vec::new(), settled: Vec::new(), status: String::new(), left: None, report: String::new() };
+            let mut out = SetPlayed { result: None, rounds: Vec::new(), settled: Vec::new(), status: NetStatus::default(), left: None, report: String::new() };
             let mut after = 0;
             for frame in 1u32.. {
                 assert!(frame < 40_000, "{game} side {side}: the set doesn't end ({})", player.position());
@@ -687,7 +687,7 @@ mod tests {
                 let next = start + Duration::from_millis(2) * frame;
                 std::thread::sleep(next.saturating_duration_since(Instant::now()));
             }
-            out.status = player.status().unwrap_or_default();
+            out.status = player.net_status().expect("a netplay driver has a connection");
             let (s, _) = player.stats();
             out.report = format!(
                 "{game} side {side}: {:?}, new rounds at {:?}, {} settled, rollbacks {} (deepest {}), waits {}; {}",
@@ -722,8 +722,12 @@ mod tests {
             for p in [&hosted, &joined] {
                 assert_eq!(p.rounds.iter().map(|r| r.1).collect::<Vec<_>>(), [(1, 1, 0)], "{game}");
             }
-            assert!(hosted.status.ends_with("THE MATCH IS OVER: YOU WON"), "{game}: {}", hosted.status);
-            assert!(joined.status.ends_with("THE MATCH IS OVER: YOU LOST"), "{game}: {}", joined.status);
+            // (The connection's figures are values: the delay asked for,
+            // a round trip measured on loopback.)
+            for p in [&hosted, &joined] {
+                assert_eq!(p.status.delay, NetOptions::default().delay, "{game}");
+                assert!(p.status.ping_ms.is_some() && (0.0..=1.0).contains(&p.status.loss), "{game}: {:?}", p.status);
+            }
             assert_eq!(joined.left.as_deref(), Some("the match is over (you lost); the other player left"), "{game}");
             // The settled states agree, in the second round too.
             let theirs: std::collections::HashMap<(usize, u32), u64> = joined.settled.iter().map(|&(r, t, d)| ((r, t), d)).collect();
