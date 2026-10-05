@@ -431,7 +431,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         bubble_bob = row(32, 0),
         slide_speed = { x = 0x30000, y = 0x20000 },
         overlay_restart = "reload",
-        stance_counter = "next_tick","#,
+        stance_counter = "next_tick",
+        request_clears = { attack = { "mode9_a" }, paralysis = { "mode9_a" }, flinch = { "anti_sword_triggered" }, drag = { 0x400 } },"#,
             ),
             (
                 "status",

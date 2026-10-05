@@ -1,7 +1,7 @@
 --!strict
--- The engine's test navis: MegaMan with his base form, and a link navi
--- with an actor record of its own (AI index 4), each with the EXE6
--- overlay's buster and charged shot.
+-- The engine's test navis: MegaMan with his base form, a link navi with an
+-- actor record of its own (AI index 4), and one with hooks of its own (AI
+-- index 5), each with the EXE6 overlay's buster and charged shot.
 
 local buster = require("./megaman/weapons/buster")
 local charged_shot = require("./megaman/weapons/charged-shot")
@@ -20,10 +20,61 @@ end
 
 local WEAPONS: FormWeapons = { buster = buster.weapon, charge_shot = charged_shot.weapon }
 
+-- What the navi with hooks starts as it lands: three ticks, then out of the
+-- air and back to idle with the animation it has.
+local landing = define.action {
+    id = "test/landing",
+    state = { timer = "u16" },
+    update = function(me: Object, s: { timer: number })
+        if me.step_init == 0 then
+            me.step_init = 4
+            s.timer = 3
+            return
+        end
+        s.timer -= 1
+        if s.timer <= 0 then
+            me:set_navi_state("hovering", false)
+            me:end_attack()
+        end
+    end,
+}
+
+-- The hooks of the navi that has them, as a navi's own go (EXE5's GyroMan's
+-- over a panel that isn't solid; here the top row stands for one): its
+-- post-init marks it (it dives); its tick puts it in the air in the top row
+-- and asks to take off, and out of the top row asks to land; its idle
+-- answers a take-off with nothing more, and a landing with its action.
+type Hooks = { tick: (navi: Object) -> (), idle: (navi: Object) -> (), post_init: (navi: Object) -> () }
+local HOOKS: Hooks = {
+    post_init = function(navi: Object)
+        navi:set_navi_state("dives", true)
+    end,
+    tick = function(navi: Object)
+        local hovering = navi:navi_state("hovering")
+        if navi.panel_y == 1 and not hovering then
+            navi:set_navi_state("hovering", true)
+            navi:set_request("take_off", true)
+        elseif navi.panel_y ~= 1 and hovering then
+            navi:set_request("land", true)
+        end
+    end,
+    idle = function(navi: Object)
+        if navi:request("take_off") then
+            navi:set_request("take_off", false)
+        elseif navi:request("land") then
+            navi:set_request("land", false)
+            navi:set_attack(landing, 0)
+        end
+    end,
+}
+
 -- `megaman`: the navi that changes form (it has forms, though this content
 -- defines none but the base form).
-local function navi(id: string, sprite: string, class: IdentityClass, ai_index: number, megaman: boolean): NaviDef
+local function navi(id: string, sprite: string, class: IdentityClass, ai_index: number, megaman: boolean, hooks: Hooks?): NaviDef
     return define.navi {
+        tick = if hooks then hooks.tick else nil,
+        idle = if hooks then hooks.idle else nil,
+        post_init = if hooks then hooks.post_init else nil,
         id = id,
         sprite = asset.sprite(sprite),
         element = "null",
@@ -53,6 +104,7 @@ end
 return {
     megaman = navi("megaman", "test-megaman", "megaman", 0, true),
     link_navi = navi("test/link-navi", "test-navi", "link_navi", 4, false),
+    hooked_navi = navi("test/hooked-navi", "test-navi", "link_navi", 5, false, HOOKS),
     base = define.form {
         id = "base",
         base = true,

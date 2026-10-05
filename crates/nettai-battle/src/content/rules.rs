@@ -2,6 +2,7 @@
 
 use super::{BannerId, ChipFamily, CustomScreenLayout, PanelCondition, PanelOffset, SecondaryElements};
 use crate::field::PanelType;
+use super::flags::serde_flags;
 use serde::{Deserialize, Serialize};
 
 /// The rule section `flow` (docs/design/exe5-map.md §15.3 items 7 and 13,
@@ -310,6 +311,40 @@ pub enum OverlayRestart {
     Reload,
 }
 
+/// Requests an end clears, in a content file a list of their names: the
+/// anti-sword trigger, the mode-9 A press, the Chaos Unison releases.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct RequestSet(pub u32);
+
+impl RequestSet {
+    pub const NAMES: &'static [(u32, &'static str)] = &[
+        (crate::actor::request::ANTI_SWORD_TRIGGERED, "anti_sword_triggered"),
+        (crate::actor::request::MODE9_A, "mode9_a"),
+        (crate::actor::request::CHAOS_SUCCESS, "chaos_success"),
+        (crate::actor::request::CHAOS_FAILURE, "chaos_failure"),
+    ];
+}
+
+serde_flags!(RequestSet, u32);
+
+/// What the ends of a navi's actions clear of its requests besides the six
+/// attack requests (`request::ATTACKS`): the original's masks, which
+/// differ by game. EXE6's are 0x1000003F at an attack's end (`sub_801171C`)
+/// and a paralysis's, freeze's or bubble's, and 0x1000043F at a flinch's
+/// and a drag's: the mode-9 A press, and the anti-sword trigger. EXE5's are
+/// 0x1803F at an attack's end (0x0800F2DA) and 0x1843F at a paralysis's, a
+/// flinch's and a drag's (0x080142A6, 0x080141D0, 0x080144E0): the Chaos
+/// Unison releases, and the anti-sword trigger.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RequestClears {
+    pub attack: RequestSet,
+    /// A paralysis's end, and a freeze's and a bubble's.
+    pub paralysis: RequestSet,
+    pub flinch: RequestSet,
+    pub drag: RequestSet,
+}
+
 /// When the counter a stance's caught hit starts (`sub_80105F2`) runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -595,6 +630,9 @@ pub struct Rules {
     pub overlay_restart: OverlayRestart,
     /// When a stance's counter runs (the reactions section's).
     pub stance_counter: StanceCounter,
+    /// What the ends of a navi's actions clear of its requests (the
+    /// reactions section's).
+    pub request_clears: RequestClears,
     /// A bubbled navi's height, by bubble timer.
     pub bubble_bob: [i8; 32],
     pub lockon: Lockon,
