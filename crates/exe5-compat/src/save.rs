@@ -1,7 +1,7 @@
 //! An EXE5 save file (the .sav an emulator keeps), and what nettai reads of
 //! it for a player's setup: the version, the light/dark value, the souls it
 //! has, its NaviCust (the list, the compression flags, whether the compile
-//! leaves the HP) and its patch cards.
+//! leaves the HP), its patch cards and its computer-navi data.
 //!
 //! The file holds the save image at 0x100: 0x7C14 bytes, the game's EWRAM
 //! from 0x02000000 as the game saves it (an address's offset in the image
@@ -21,7 +21,9 @@
 //! 0x79D0 (a byte each: the card, bit 7 switched off), the area at 0x2944
 //! (the game state's +4: the cyberworld's from 0x80), the key items' counts
 //! at 0x3DB0 (the toolkit's +0x50, a byte an item: ExpMemry's, item 0x61,
-//! is the NaviCust board's expansions).
+//! is the NaviCust board's expansions), the computer-navi data at 0x554C
+//! (the toolkit's +0x78: seven blocks of 0xE0 bytes, the player's the
+//! first; docs/design/exe5-map.md §15.9).
 
 use crate::Version;
 
@@ -48,6 +50,96 @@ const AREA: usize = 0x2944;
 /// screen reads as it opens (0x08132928) to pick its board (0x0813F138).
 const KEY_ITEMS: usize = 0x3DB0;
 pub const EXP_MEMORY: u8 = 0x61;
+
+/// The player's computer-navi data: the first of seven blocks, which a
+/// battle's end writes from what the save has learned (0x0802C540) and a
+/// battle's start sends (0x08009B64).
+const COMPUTER_NAVI: usize = 0x554C;
+/// The block's size, its places (a halfword each), and its pattern records
+/// (16 bytes each from +0x58: `dx`, `dy`, five chip places, the score).
+/// Between them, at +0x54, a count that only the send writes; after the
+/// records, eight bytes nothing reads.
+pub const COMPUTER_NAVI_SIZE: usize = 0xE0;
+pub const COMPUTER_NAVI_PLACES: usize = 42;
+pub const COMPUTER_NAVI_PATTERNS: usize = 8;
+pub const COMPUTER_NAVI_PATTERN_CHIPS: usize = 5;
+const COMPUTER_NAVI_COUNT: usize = 0x54;
+const COMPUTER_NAVI_RECORDS: usize = 0x58;
+/// An empty place (of the block's 42, or of a record's five), and what
+/// marks a place of the 42 as a pattern record's number.
+pub const COMPUTER_NAVI_EMPTY: u16 = 0xFFFF;
+pub const COMPUTER_NAVI_PATTERN: u16 = 0x8000;
+
+/// A pattern record of a computer-navi data block, as it is: its place
+/// from a target (signed bytes), its five chip places (each a chip's
+/// number, 0, or 0xFFFF, empty: the AI reads them to the first 0xFFFF,
+/// and on past the fifth) and its score (the word at +12).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ComputerNaviPattern {
+    pub dx: i8,
+    pub dy: i8,
+    pub chips: [u16; COMPUTER_NAVI_PATTERN_CHIPS],
+    pub score: u32,
+}
+
+impl ComputerNaviPattern {
+    /// The record in `bytes`.
+    pub fn read(bytes: &[u8; 16]) -> ComputerNaviPattern {
+        let chips = std::array::from_fn(|k| u16::from_le_bytes([bytes[2 + k * 2], bytes[3 + k * 2]]));
+        let score = u32::from_le_bytes([bytes[12], bytes[13], bytes[14], bytes[15]]);
+        ComputerNaviPattern { dx: bytes[0] as i8, dy: bytes[1] as i8, chips, score }
+    }
+
+    /// The record's bytes.
+    pub fn bytes(&self) -> [u8; 16] {
+        let mut out = [0; 16];
+        (out[0], out[1]) = (self.dx as u8, self.dy as u8);
+        for (k, chip) in self.chips.iter().enumerate() {
+            out[2 + k * 2..4 + k * 2].copy_from_slice(&chip.to_le_bytes());
+        }
+        out[12..].copy_from_slice(&self.score.to_le_bytes());
+        out
+    }
+}
+
+/// A computer-navi data block by number, as it is but for its count and its
+/// last eight bytes: its 42 places in order, each a chip's number, 0,
+/// 0x8000 with a pattern record's number (from 0), or 0xFFFF (empty), and
+/// its eight pattern records.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ComputerNaviBlock {
+    pub places: [u16; COMPUTER_NAVI_PLACES],
+    pub patterns: [ComputerNaviPattern; COMPUTER_NAVI_PATTERNS],
+}
+
+impl ComputerNaviBlock {
+    /// The block in `bytes` (0xE0 of them).
+    pub fn read(bytes: &[u8]) -> Result<ComputerNaviBlock, String> {
+        if bytes.len() != COMPUTER_NAVI_SIZE {
+            return Err(format!("a computer-navi data block is {COMPUTER_NAVI_SIZE:#x} bytes, not {:#x}", bytes.len()));
+        }
+        let half = |o: usize| u16::from_le_bytes([bytes[o], bytes[o + 1]]);
+        let pattern = |i: usize| {
+            let at = COMPUTER_NAVI_RECORDS + i * 16;
+            ComputerNaviPattern::read(bytes[at..at + 16].try_into().expect("a record of the block"))
+        };
+        Ok(ComputerNaviBlock { places: std::array::from_fn(|i| half(i * 2)), patterns: std::array::from_fn(pattern) })
+    }
+
+    /// The block's bytes as a save holds them: its count 0xFFFFFFFF (the
+    /// send writes it) and its last eight bytes 0xFF.
+    pub fn bytes(&self) -> [u8; COMPUTER_NAVI_SIZE] {
+        let mut out = [0xFF; COMPUTER_NAVI_SIZE];
+        for (i, place) in self.places.iter().enumerate() {
+            out[i * 2..i * 2 + 2].copy_from_slice(&place.to_le_bytes());
+        }
+        out[COMPUTER_NAVI_COUNT..COMPUTER_NAVI_RECORDS].fill(0xFF);
+        for (i, p) in self.patterns.iter().enumerate() {
+            out[COMPUTER_NAVI_RECORDS + i * 16..COMPUTER_NAVI_RECORDS + (i + 1) * 16].copy_from_slice(&p.bytes());
+        }
+        out
+    }
+}
 
 /// The NaviCust list's room.
 pub const NAVICUST_PARTS: usize = 25;
@@ -172,6 +264,12 @@ impl Save {
         &self.image[NAVICUST..NAVICUST + NAVICUST_PARTS * 8]
     }
 
+    /// The player's computer-navi data: what a computer navi plays from
+    /// this save.
+    pub fn computer_navi(&self) -> ComputerNaviBlock {
+        ComputerNaviBlock::read(&self.image[COMPUTER_NAVI..COMPUTER_NAVI + COMPUTER_NAVI_SIZE]).expect("a block of the image")
+    }
+
     /// How many of key item `item` the save has.
     pub fn key_item(&self, item: u8) -> u8 {
         self.image[KEY_ITEMS + item as usize]
@@ -221,6 +319,47 @@ mod tests {
         }
         image[NAVI_STATS + LIGHT_DARK..NAVI_STATS + LIGHT_DARK + 2].copy_from_slice(&value.to_le_bytes());
         image
+    }
+
+    /// A save's computer-navi data is the first block at 0x554C, read as it
+    /// is: its places by number, and each pattern record's place, five chip
+    /// places (a chip's number, 0 or 0xFFFF) and score; and written back,
+    /// the same bytes.
+    #[test]
+    fn a_saves_computer_navi_data_is_its_first_block() {
+        let mut image = image(Version::Colonel, &[], 500);
+        // Two blocks: the player's, and the next (which nothing reads).
+        image[COMPUTER_NAVI..COMPUTER_NAVI + 2 * COMPUTER_NAVI_SIZE].fill(0xFF);
+        let put = |image: &mut [u8], at: usize, halves: &[u16]| {
+            for (i, h) in halves.iter().enumerate() {
+                image[COMPUTER_NAVI + at + i * 2..COMPUTER_NAVI + at + i * 2 + 2].copy_from_slice(&h.to_le_bytes());
+            }
+        };
+        put(&mut image, 6, &[0x51, 0x51, 0, 0xA2]);
+        put(&mut image, 66, &[0x8000, 0x8001]);
+        put(&mut image, 82, &[0x157]);
+        // Record 0: 3 columns short, 1 row down, chips 0xC9 and 0x28, score 7.
+        image[COMPUTER_NAVI + 0x58..COMPUTER_NAVI + 0x5A].copy_from_slice(&[0xFD, 0x01]);
+        put(&mut image, 0x5A, &[0xC9, 0x28]);
+        put(&mut image, 0x64, &[7, 0]);
+        // Record 1: a full one, a 0 among its chips, its score a long word.
+        image[COMPUTER_NAVI + 0x68..COMPUTER_NAVI + 0x6A].copy_from_slice(&[0xFF, 0xFE]);
+        put(&mut image, 0x6A, &[1, 2, 0, 4, 5, 0x000A, 0x0001]);
+        // Record 2: zeroed, as the game's write leaves one its learning hasn't filled.
+        image[COMPUTER_NAVI + 0x78..COMPUTER_NAVI + 0x88].fill(0);
+        put(&mut image, COMPUTER_NAVI_SIZE, &[0x99]);
+        let block = Save::from_image(&image).unwrap().computer_navi();
+        let mut places = [0xFFFFu16; COMPUTER_NAVI_PLACES];
+        (places[3], places[4], places[5], places[6], places[33], places[34], places[41]) = (0x51, 0x51, 0, 0xA2, 0x8000, 0x8001, 0x157);
+        assert_eq!(block.places, places);
+        let none = COMPUTER_NAVI_EMPTY;
+        assert_eq!(block.patterns[0], ComputerNaviPattern { dx: -3, dy: 1, chips: [0xC9, 0x28, none, none, none], score: 7 });
+        assert_eq!(block.patterns[1], ComputerNaviPattern { dx: -1, dy: -2, chips: [1, 2, 0, 4, 5], score: 0x0001_000A });
+        assert_eq!(block.patterns[2], ComputerNaviPattern { dx: 0, dy: 0, chips: [0; 5], score: 0 });
+        assert_eq!(block.patterns[3], ComputerNaviPattern { dx: -1, dy: -1, chips: [none; 5], score: 0xFFFF_FFFF });
+        assert_eq!(block.bytes()[..], image[COMPUTER_NAVI..COMPUTER_NAVI + COMPUTER_NAVI_SIZE]);
+        assert_eq!(ComputerNaviBlock::read(&block.bytes()), Ok(block));
+        assert!(ComputerNaviBlock::read(&[0; 4]).is_err());
     }
 
     /// A save's souls are its version's whose flags are set: flags 2 to 7
