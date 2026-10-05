@@ -30,7 +30,6 @@ fn a_require_reaches_only_its_pack_and_the_support_packs_it_depends_on() {
         id: id.into(),
         kind,
         depends: depends.iter().map(|u| u.to_string()).collect(),
-        extract: None,
     };
     let packs = [manifest("lib", PackKind::Support, &[]), manifest("a", PackKind::Game, &["lib"]), manifest("b", PackKind::Game, &["lib"])];
     let load = |entry: &str, modules: &[(&str, &str)]| {
@@ -57,7 +56,6 @@ fn a_support_pack_has_no_game_context() {
         id: id.into(),
         kind,
         depends: depends.iter().map(|u| u.to_string()).collect(),
-        extract: None,
     };
     let packs = [manifest("lib", PackKind::Support, &[]), manifest("game", PackKind::Game, &["lib"])];
     let load = |modules: &[(&str, &str)]| {
