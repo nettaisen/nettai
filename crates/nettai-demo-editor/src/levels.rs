@@ -28,7 +28,9 @@ pub fn switch_navi(content: &Content, side: &mut Side, navi: NaviHandle) -> bool
     };
     side.navi = navi;
     side.stats = stats;
-    side.crosses = None;
+    // (Its form list, if the rules take one, is none: the checks refuse
+    // one that isn't its navi's.)
+    side.facts.reset(content, nettai_battle::content::PlayerFact::CrossList.name());
     // (Only the navi that changes form has a NaviCust: MegaMan's compiles.)
     if content.navi(navi).forms.is_none() {
         side.navicust = None;
@@ -48,7 +50,7 @@ pub fn level_changed(content: &Content, side: &mut Side) {
 /// What "reset" gives the side: the navi's stats as a save gives them (a
 /// link navi's at its level).
 pub fn reset(content: &Content, side: &Side) -> NaviStats {
-    Side::save_base(content, side.navi, side.version.as_deref(), side.navi_level)
+    Side::save_base(content, side.navi, side.version(content), side.navi_level)
 }
 
 /// For a link navi, what its level gives stat `f` where the side's differs

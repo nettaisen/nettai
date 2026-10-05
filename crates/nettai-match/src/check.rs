@@ -4,11 +4,12 @@
 //!
 //! - **The arena**: the content's game, its link battle stages
 //!   (`crate::link_battle_stages`), and backgrounds its pack has.
-//! - **A side**: its navi, chips, patch cards, NaviCust programs and souls
+//! - **A side**: its navi, chips, patch cards and NaviCust programs
 //!   are the match's game's, its stats' forms the content's; its
-//!   auto battle data what the game can hold (`crate::auto_battle`); a Cross list
-//!   only with rules that have the forms system,
-//!   each a Cross of the navi's, at most five, none twice; patch cards only
+//!   auto battle data what the game can hold (`crate::auto_battle`); its
+//!   facts its game's rules' (`crate::facts::check`: an enum the rules
+//!   require stated, each definition the game's and once in its list, the
+//!   engine's form list forms of the navi's own lists); patch cards only
 //!   with rules that have the patch-cards system, each installed once, at
 //!   most [`MAX_CARDS`], their MB together at most [`CARD_MB`] (EXE6's menu
 //!   adds no card past 80 MB, `0x08141868`); a NaviCust only for MegaMan
@@ -108,36 +109,12 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
     // game has auto battle.
     out.extend(s.auto_battle.check(content, game));
     let foreign = |c: nettai_content_api::ChipHandle| c.index() >= defs.chips.len() || !of_game(&defs.chip(c).key);
-    // The karma and the souls.
+    // The facts its game's rules take.
     out.extend(crate::facts::check(content, arena, s));
     // The folder's chips, before its rules.
     if let Some((i, _)) = s.folder.chips.iter().enumerate().find(|(_, c)| c.is_some_and(|c| foreign(c.id))) {
         out.push(format!("folder entry {i}: a chip {game} hasn't"));
         return out;
-    }
-    // The Crosses.
-    if let Some(list) = &s.crosses {
-        if !crate::ruleset_has_system(content, crate::FORMS_SYSTEM) {
-            out.push(format!("a Cross list, but {game} has no Crosses (no forms system)"));
-        }
-        let forms: Vec<_> = list.forms().collect();
-        if forms.iter().any(|f| f.index() >= defs.forms.len()) {
-            out.push("a Cross the content hasn't".into());
-        } else {
-            match crate::navi_crosses(content, s.navi) {
-                None => out.push(format!("a Cross list, but {} doesn't change form", crate::names::navi(content, s.navi))),
-                Some(own) => {
-                    for (i, &f) in forms.iter().enumerate() {
-                        if !own.contains(&f) {
-                            out.push(format!("{} is no Cross of {}'s", crate::names::form(content, f), crate::names::navi(content, s.navi)));
-                        }
-                        if forms[..i].contains(&f) {
-                            out.push(format!("{} is in the Cross list twice", crate::names::form(content, f)));
-                        }
-                    }
-                }
-            }
-        }
     }
     // The patch cards.
     if !s.cards.is_empty() {
@@ -345,7 +322,7 @@ mod tests {
         let mut m = crate::pick::live(&content, "exe6", 3, None).unwrap();
         let s = &mut m.sides[0];
         s.navi_level = level;
-        s.stats = crate::Side::base_stats(&content, s.navi, s.version.as_deref());
+        s.stats = crate::Side::base_stats(&content, s.navi, s.version(&content));
         (s.stats.max_base_hp, s.stats.hp, s.stats.max_hp, s.stats.reg_up) = (600, 600, 600, 50);
         let placed: Vec<PlacedProgram> = parts
             .iter()
