@@ -916,6 +916,10 @@ mod tests {
             has(problems.clone(), &format!("{side}: no version: a side of exe6 states its own (falzar or gregar); none is assumed"));
         }
         assert!(!write(&six, &new).contains("version"));
+        // (Nor does the engine start its round: a player's setup states the
+        // version, and nothing fills one in.)
+        let refused = crate::check::start(&six, &new).err().expect("no round without the versions");
+        assert_eq!(refused, "the round doesn't start: a player's setup doesn't state the cross system's `version` (falzar or gregar): none is assumed");
         let drawn = write(&six, &crate::draw::live(&six, "exe6", 1, None).unwrap());
         assert_eq!(drawn.matches("\nversion = \"falzar\"\n").count() + drawn.matches("\nversion = \"gregar\"\n").count(), 2, "{drawn}");
         // EXE5.

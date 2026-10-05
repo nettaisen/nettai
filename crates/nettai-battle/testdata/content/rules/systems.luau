@@ -87,14 +87,30 @@ return {
     marker = marker,
     watcher = watcher,
     patch_cards = patch_cards,
-    -- The test content's rules: its systems, its rule sections (EXE6's
-    -- berserk, buster and math; the others are its Rust tables) and its
-    -- roles.
+    -- The test content's rules: its systems, its rule sections and its
+    -- roles. A ruleset states every rule of its game. The made-up tables
+    -- are its own (rules/panels, rules/reactions, rules/status_rules,
+    -- rules/custom_screen, rules/sp_chips, the lock-on's); where games
+    -- differ it plays as EXE6 does, and those sections are EXE6's own files
+    -- (a module the test content hasn't is EXE6's): berserk, buster,
+    -- chip-use, effects, elements, flow, math, pools. None of its banners
+    -- holds, and it has no NaviCust board.
     ruleset = define.ruleset {
         systems = SYSTEMS,
         berserk = require("./berserk"),
         buster = require("./buster"),
+        chip_use = require("./chip-use"),
+        custom_screen = require("./custom_screen"),
+        effects = require("./effects"),
+        elements = require("./elements"),
+        flow = require("./flow"),
+        lockon = require("./lockon").rules,
         math = require("./math"),
+        panels = require("./panels"),
+        pools = require("./pools"),
+        reactions = require("./reactions"),
         roles = require("./roles"),
+        sp_chips = require("./sp_chips"),
+        status = require("./status_rules"),
     },
 }
