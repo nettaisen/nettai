@@ -151,6 +151,8 @@ struct CustomScreenSection {
     #[serde(default)]
     redeal_kept: Vec<u8>,
     emblem_at_window_return: bool,
+    chatbox_commands_wait_for_text: bool,
+    talking_characters: super::custom::TalkingCharacters,
 }
 
 #[derive(Deserialize)]
@@ -572,6 +574,9 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
             }
             "custom_screen" => {
                 let s: CustomScreenSection = r.read(spec, &at).map_err(e)?;
+                if s.talking_characters.only.is_some() == s.talking_characters.all_but.is_some() {
+                    return Err(e(format!("{at}: talking_characters states `only` or `all_but`, one of the two")));
+                }
                 stated.custom_screen = Some(CustomScreenLayout {
                     slots: s.slots,
                     left_scan_top: s.left_scan_top,
@@ -582,6 +587,8 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     right_scan_start: s.right_scan_start,
                     redeal_kept: s.redeal_kept,
                     emblem_at_window_return: s.emblem_at_window_return,
+                    chatbox_commands_wait_for_text: s.chatbox_commands_wait_for_text,
+                    talking_characters: s.talking_characters,
                 });
             }
             "buster" => stated.buster = Some(r.read(spec, &at).map_err(e)?),

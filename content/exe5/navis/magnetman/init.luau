@@ -23,6 +23,12 @@ return define.navi {
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("magnetman-win"), lose = asset.banner("magnetman-deleted") },
     mugshot = asset.mugshot("magnetman"),
+    -- The no-running message's portrait: the speaker beside the box (L on the custom screen, 0x08023190: the run
+    -- dialog's script 0x1b, which script 3's navi check sends him to). Its words are locales/<lang>.toml's; the
+    -- content's own (en) time it.
+    run_message = {
+        portrait = asset.sprite("magnetman-portrait"),
+    },
     palette_step = 2,
     own_chip = { chip = nstackle, code = "M" },
     own_chip_draws = true,

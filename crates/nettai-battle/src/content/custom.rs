@@ -55,6 +55,46 @@ pub struct CustomScreenLayout {
     /// the choosing state's own draw, two ticks later (EXE5's 0x08023022
     /// has neither call).
     pub emblem_at_window_return: bool,
+    /// A command of a chatbox script waits out the character printed
+    /// before it, as the next character would: the print delay still
+    /// running holds it (EXE6's `chatbox_interpreteAndDrawDialogChar`
+    /// tests the delay before a command too). A screen whose interpreter
+    /// runs a command at once (EXE5's 0x0803EADC tests the delay before a
+    /// character alone) starts a message's wait for a key two ticks sooner
+    /// after its last character, and its speaker's mouth closes at a
+    /// line's end as much sooner. A description prints with no delay:
+    /// nothing of it waits either way.
+    pub chatbox_commands_wait_for_text: bool,
+    /// The characters of a message that move its speaker's mouth.
+    /// Presentation.
+    pub talking_characters: TalkingCharacters,
+}
+
+/// The characters of a message that move its speaker's mouth as they
+/// print, as the game's chatbox tests each (EXE6's `chatbox_8040C44`:
+/// ranges of its charmap do, the rest don't; EXE5's 0x0803F7CC: a range
+/// and two characters don't, the rest do). A game states one of the two;
+/// with neither none does. Presentation.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TalkingCharacters {
+    /// These, and no others.
+    #[serde(default)]
+    pub only: Option<String>,
+    /// Every character but these.
+    #[serde(default)]
+    pub all_but: Option<String>,
+}
+
+impl TalkingCharacters {
+    /// Whether `c` moves the mouth.
+    pub fn talks(&self, c: char) -> bool {
+        match (&self.only, &self.all_but) {
+            (Some(only), _) => only.contains(c),
+            (None, Some(all_but)) => !all_but.contains(c),
+            (None, None) => false,
+        }
+    }
 }
 
 impl Default for CustomScreenLayout {
@@ -70,6 +110,8 @@ impl Default for CustomScreenLayout {
             right_scan_start: [0; 12],
             redeal_kept: Vec::new(),
             emblem_at_window_return: false,
+            chatbox_commands_wait_for_text: false,
+            talking_characters: TalkingCharacters::default(),
         }
     }
 }

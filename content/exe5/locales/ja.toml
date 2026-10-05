@@ -364,19 +364,19 @@ language = "ja"
 "z-saver" = { name = "Zセイバー", description = "でんせつの あかい\nレプリロイドの\n3だんぎりソード" }
 
 [navis]
-"colonel" = { name = "カーネル" }
-"gyroman" = { name = "ジャイロマン" }
-"knightman" = { name = "ナイトマン" }
-"magnetman" = { name = "マグネットマン" }
-"meddy" = { name = "メディ" }
-"megaman" = { name = "ロックマン", variant_name = "FCロックマン" }
-"napalmman" = { name = "ナパームマン" }
-"numberman" = { name = "ナンバーマン" }
-"protoman" = { name = "ブルース" }
-"searchman" = { name = "サーチマン" }
-"shadowman" = { name = "シャドーマン" }
-"toadman" = { name = "トードマン" }
-"tomahawkman" = { name = "トマホークマン" }
+"colonel" = { name = "カーネル", run_message = "今は にげている\nばあいではないぞ" }
+"gyroman" = { name = "ジャイロマン", run_message = "おっと、今は にげている\nばあいじゃ ないぜ!" }
+"knightman" = { name = "ナイトマン", run_message = "今は にげているばあいでは\nありませんぞ!" }
+"magnetman" = { name = "マグネットマン", run_message = "今は にげている\nばあいじゃないぜ!!" }
+"meddy" = { name = "メディ", run_message = "ちょっと、今は にげている\nばあいじゃないでしょ!" }
+"megaman" = { name = "ロックマン", variant_name = "FCロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
+"napalmman" = { name = "ナパームマン", run_message = "オレは にげる\nつもりなんてないぜ!\nもっと たたかわせろ!" }
+"numberman" = { name = "ナンバーマン", run_message = "こ、こわいですけど、\n今は にげている\nばあいじゃないようです!" }
+"protoman" = { name = "ブルース", run_message = "今は にげている\nばあいじゃないぞ" }
+"searchman" = { name = "サーチマン", run_message = "今 にげるのは\nとくさくではない\nせんとうを つづけるぞ!" }
+"shadowman" = { name = "シャドーマン", run_message = "今は にげている\nばあいでは ござらんぞ・・・" }
+"toadman" = { name = "トードマン", run_message = "ケロロ!!\n今は にげちゃダメだケロ!" }
+"tomahawkman" = { name = "トマホークマン", run_message = "今は にげている\nばあいじゃないぜ!" }
 
 [forms]
 "colonelsoul" = { name = "カーネルソウル" }

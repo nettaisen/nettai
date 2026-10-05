@@ -364,19 +364,19 @@ language = "en"
 "z-saver" = { name = "Z Saver", description = "Repliroid\nswrd cuts\n3 times" }
 
 [navis]
-"colonel" = { name = "Colonel" }
-"gyroman" = { name = "GyroMan" }
-"knightman" = { name = "KnightMn" }
-"magnetman" = { name = "MagnetMn" }
-"meddy" = { name = "Meddy" }
-"megaman" = { name = "MegaMan", variant_name = "BCMegaMn" }
-"napalmman" = { name = "NapalmMn" }
-"numberman" = { name = "NumbrMan" }
-"protoman" = { name = "ProtoMan" }
-"searchman" = { name = "SerchMan" }
-"shadowman" = { name = "ShadoMan" }
-"toadman" = { name = "ToadMan" }
-"tomahawkman" = { name = "TmhkMan" }
+"colonel" = { name = "Colonel", run_message = "This is not the time\nto run away!" }
+"gyroman" = { name = "GyroMan", run_message = "Hey,this ain't the\ntime to run away!" }
+"knightman" = { name = "KnightMn", run_message = "Master,surely this\nis no time to\nretreat!" }
+"magnetman" = { name = "MagnetMn", run_message = "This is no time to\nrun away!" }
+"meddy" = { name = "Meddy", run_message = "Hey,this isn't the\ntime to run away!" }
+"megaman" = { name = "MegaMan", variant_name = "BCMegaMn", run_message = "Lan,this is no time\nto run away!" }
+"napalmman" = { name = "NapalmMn", run_message = "I ain't runnin' from\nthis fight! Let me\nat 'em!" }
+"numberman" = { name = "NumbrMan", run_message = "I'm scared,too,but\nWe can't run away\nfrom this one!" }
+"protoman" = { name = "ProtoMan", run_message = "This is no time to\nrun away!" }
+"searchman" = { name = "SerchMan", run_message = "We'd be wise to not\nrun away here! We\nmust fight!" }
+"shadowman" = { name = "ShadoMan", run_message = "This isn't the time\nto be running away⋯" }
+"toadman" = { name = "ToadMan", run_message = "*Ribbit!!!* We can't\nrun from this one!" }
+"tomahawkman" = { name = "TmhkMan", run_message = "This isn't the time\nto run away!" }
 
 [forms]
 "colonelsoul" = { name = "ColSoul" }
