@@ -3,12 +3,9 @@
 //! [`Battle`] steps on the engine's per-tick input record
 //! ([`TickInput`]). Each player contributes their share of it: their
 //! buttons, and the frame's events their console produced ([`PlayerInput`]):
-//! the link session closing at the end of a round, and, only when checking
-//! against a recording that lacks a player's folder, that player's
-//! recorded custom-screen results. Carrying the events in the inputs is
-//! what makes both peers step each frame with the same ones. On the wire
-//! (`WireInput`), the events are a tick's flags, and a recorded result the
-//! tick's payload.
+//! the link session closing at the end of a round. Carrying the events in
+//! the inputs is what makes both peers step each frame with the same ones.
+//! On the wire (`WireInput`), the events are a tick's flags.
 //!
 //! Both peers simulate from the same perspective (`RoundSetup::local_side`
 //! is part of the shared setup); each presents it for its own player
@@ -19,11 +16,9 @@ use std::collections::VecDeque;
 use std::io;
 
 use crate::protocol::WireInput;
-use crate::wire;
 use crate::world::{Game, Observer};
 use nettai_battle::cues::{CueAction, CueId, CueTracker};
-use nettai_battle::custom::Recorded;
-use nettai_battle::{Battle, CustomResult, PlayerTick, SoundCue, TickEvents, TickInput};
+use nettai_battle::{Battle, PlayerTick, SoundCue, TickEvents, TickInput};
 
 /// One player's share of a tick's input.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -38,55 +33,23 @@ pub struct PlayerInput {
 /// The engine's input record for a frame, from both players' shares by
 /// side: buttons by side, and both players' events together.
 pub fn tick_input(inputs: [&PlayerInput; 2]) -> TickInput {
-    let mut events = TickEvents::default();
-    for i in inputs {
-        events.link_closed |= i.events.link_closed;
-        for (merged, recorded) in events.recorded.iter_mut().zip(&i.events.recorded) {
-            if recorded.is_some() {
-                *merged = recorded.clone();
-            }
-        }
-    }
+    let events = TickEvents { link_closed: inputs.iter().any(|i| i.events.link_closed) };
     TickInput { players: [inputs[0].tick, inputs[1].tick], events }
 }
 
-/// A player's input on the wire: the buttons, the events as flags
-/// ([`flags`]), and a recorded result's bytes as the payload (only when
-/// checking against a recording, once a custom screen).
+/// A player's input on the wire: the buttons, and the events as flags
+/// ([`flags`]).
 impl WireInput for PlayerInput {
-    fn encode(&self, payload: &mut Vec<u8>) -> (u16, u8) {
-        let TickEvents { link_closed, recorded } = &self.events;
-        let mut f = if *link_closed { flags::LINK_CLOSED } else { 0 };
-        for (side, r) in recorded.iter().enumerate() {
-            let Some(Recorded { in_custom, result }) = r else { continue };
-            f |= flags::RECORDED[side];
-            if *in_custom {
-                f |= flags::IN_CUSTOM[side];
-            }
-            if let Some(result) = result {
-                f |= flags::RESULT[side];
-                wire::Writer(payload).put(&**result);
-            }
-        }
-        (self.tick.held, f)
+    fn encode(&self) -> (u16, u8) {
+        let TickEvents { link_closed } = &self.events;
+        (self.tick.held, if *link_closed { flags::LINK_CLOSED } else { 0 })
     }
 
-    fn decode(held: u16, f: u8, payload: &[u8]) -> io::Result<PlayerInput> {
+    fn decode(held: u16, f: u8) -> io::Result<PlayerInput> {
         if f & !flags::ALL != 0 {
             return Err(crate::protocol::invalid("unknown event flags"));
         }
-        let mut bytes = wire::Reader::new(payload);
-        let mut events = TickEvents { link_closed: f & flags::LINK_CLOSED != 0, ..TickEvents::default() };
-        for (side, recorded) in events.recorded.iter_mut().enumerate() {
-            let result = if f & flags::RESULT[side] != 0 { Some(Box::new(bytes.get::<CustomResult>()?)) } else { None };
-            if f & flags::RECORDED[side] != 0 {
-                *recorded = Some(Recorded { in_custom: f & flags::IN_CUSTOM[side] != 0, result });
-            } else if result.is_some() || f & flags::IN_CUSTOM[side] != 0 {
-                return Err(crate::protocol::invalid("a recorded result without its record"));
-            }
-        }
-        bytes.finish()?;
-        Ok(PlayerInput { tick: PlayerTick { held }, events })
+        Ok(PlayerInput { tick: PlayerTick { held }, events: TickEvents { link_closed: f & flags::LINK_CLOSED != 0 } })
     }
 }
 
@@ -94,13 +57,7 @@ impl WireInput for PlayerInput {
 pub mod flags {
     /// `TickEvents::link_closed`.
     pub const LINK_CLOSED: u8 = 1 << 0;
-    /// `TickEvents::recorded[side]` is there.
-    pub const RECORDED: [u8; 2] = [1 << 1, 1 << 2];
-    /// ... and says the side's custom screen is open.
-    pub const IN_CUSTOM: [u8; 2] = [1 << 3, 1 << 4];
-    /// ... and carries a result (in the tick's payload, side 0's first).
-    pub const RESULT: [u8; 2] = [1 << 5, 1 << 6];
-    pub const ALL: u8 = 0x7F;
+    pub const ALL: u8 = LINK_CLOSED;
 }
 
 impl Game for Battle {
@@ -193,29 +150,16 @@ impl<G: Game> Observer<G> for CueFeed {
 mod tests {
     use super::*;
     use crate::link::{Delivery, InputLink};
-    use nettai_battle::content::testing;
     use nettai_battle::input::keys;
 
-    /// A player's input with every kind of event goes through a link and
-    /// comes out the same: the buttons, the link closing, each side's
-    /// recorded screen status and a result (the tick's payload, in chunks).
+    /// A player's input goes through a link and comes out the same: the
+    /// buttons, and the link closing.
     #[test]
     fn a_player_input_crosses_the_link() {
-        let result = CustomResult {
-            hand: Some(nettai_battle::hand::ChipHand::empty(&testing::content())),
-            navi_stats: testing::stats(500),
-            transform: Default::default(),
-        };
         let inputs = [
             PlayerInput { tick: PlayerTick { held: keys::A | keys::LEFT }, events: TickEvents::default() },
-            PlayerInput { tick: PlayerTick { held: 0 }, events: TickEvents { link_closed: true, ..TickEvents::default() } },
-            PlayerInput {
-                tick: PlayerTick { held: keys::L },
-                events: TickEvents {
-                    link_closed: false,
-                    recorded: [Some(Recorded { in_custom: true, result: None }), Some(Recorded { in_custom: false, result: Some(Box::new(result)) })],
-                },
-            },
+            PlayerInput { tick: PlayerTick { held: 0 }, events: TickEvents { link_closed: true } },
+            PlayerInput { tick: PlayerTick { held: keys::L }, events: TickEvents::default() },
         ];
         let (mut a, mut b) = (InputLink::<PlayerInput>::new(64), InputLink::<PlayerInput>::new(64));
         for (i, input) in inputs.iter().enumerate() {
@@ -232,9 +176,9 @@ mod tests {
             })
             .collect();
         assert_eq!(got, inputs);
-        // The plain ticks are a byte each; the result is a few chunks.
-        let result = crate::wire::to_bytes(inputs[2].events.recorded[1].as_ref().unwrap().result.as_deref().unwrap());
-        eprintln!("a datagram of {} bytes, the result {} bytes", datagram.len(), result.len());
-        assert!(datagram.len() < 200, "{} bytes", datagram.len());
+        // A frame's header, then a byte or two a tick.
+        assert!(datagram.len() < 16, "{} bytes", datagram.len());
+        // A flag no event has is refused.
+        assert!(PlayerInput::decode(0, 2).is_err());
     }
 }

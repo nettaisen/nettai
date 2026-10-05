@@ -41,8 +41,7 @@ setup and both players' buttons (rollback netplay):
 | Save data: owned Crosses, Beast Out unlocked, game version | EXE6's cross and beast systems' setup (`PlayerSetup::rules`; `exe6_compat::Unlocks` writes and reads them); event flag 0x163 is the setup's navi code level (`PlayerSetup::navi_level`) |
 
 Nothing in the custom screen depends on which side is "local": which screen a frontend draws is presentation.
-`TickEvents` carries only `link_closed` (the end of the round) and, for checking against recordings that lack a
-player's folder, that player's recorded results (`TickEvents::recorded`, §7).
+`TickEvents` carries only `link_closed` (the end of the round).
 
 **RNG.** The custom screen never draws from RNG2 **[dumps]**. It draws from its console's RNG1 only for ChpShufl's
 re-deal (§3.7); the other RNG1 draws seen during screens are the emotion window's flicker (`sub_801CC94`) and the
@@ -492,22 +491,21 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
   HeatCross chosen by a Falzar player, its form, element, buster and charged flame, then Beast Out from it into
   HeatCross Beast with that form's weapons.
 - **Golden traces** (`trace::run_round`, verification workspace): the traces' recorded buttons drive the
-  engine; each player's custom screen runs when the trace has their folder (setup `folders`), otherwise that
-  player's results come from the recording (`TickEvents::recorded`). Each frame compares, besides the rest of the
-  battle, both hands and the received status bits. With the recording console's folder only (the current traces)
-  and with both consoles' folders added, every frame up to the existing floors matches (machgun 1074 and 1331;
-  soundmod 4513, 6284 and 2566), also under rollback at latencies 0-10.
+  engine; each player's custom screen runs on their folder (setup `folders`: every recording has both
+  consoles'). Each frame compares, besides the rest of the
+  battle, both hands and the received status bits; every frame up to the existing floors matches, also under
+  rollback at latencies 0-10.
 - **Every screen on its own** (`trace::check_custom_screens`): the custom screens alone, over the whole trace
   (the fight isn't simulated; each screen reads its navi's stats from the trace). With both consoles' folders all
   40 player-screens match: the OK tick, the hand as installed, the transformation, the status bit's clearing, and
   the tick the fight resumes. The check reads emotions from the mood only, so a tired navi isn't seen, and
   doesn't check damage from formulas. The recording console's RNG1 (a re-deal's) is the trace's, frame by frame;
   the other console's only has the draws the screens and the main loop make.
-- The recorded traces carry only the recording console's folder. `folders`, `joypad_phases` and `game_versions`
+- `folders`, `joypad_phases` and `game_versions`
   in setup lines come from recording both consoles.
 - Matches recorded by Tango's first netplay engine (2022) ran each console alone, with no link cable: each tick
   the console found both players' packets in its receive buffers a tick after they were built. Their traces have
-  the recording console only (no `folders`: the other player's screens come from the trace) and a `link_delay`
+  both consoles' folders like the rest, and a `link_delay`
   of 1 in the setup; every round of them matches at that delay (`RoundSetup::link_delay`), and none at the
   cable's 4.
 

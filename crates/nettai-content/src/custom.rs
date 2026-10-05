@@ -28,7 +28,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 pub const FORMAT: &str = "nettai-content/custom";
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 1;
 
 const GLYPHS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
 const ICONS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 2, height: 2, columns };
@@ -58,8 +58,6 @@ pub struct CustomDoc {
     pub cross_patches: PatchListDoc,
     /// Background palettes 11 (the slot icons), 12 (grayed out) and 14.
     pub icon_palette: Vec<String>,
-    /// (A pack extracted before the American spellings has the British key.)
-    #[serde(alias = "grey_palette")]
     pub gray_palette: Vec<String>,
     pub other_palette: Vec<String>,
     /// Chips' pictures by chip key, in the game's order, each with its
@@ -93,19 +91,15 @@ pub struct CustomDoc {
     pub emblem_palette_of: Vec<u8>,
     pub regular: TileImage,
     /// The Program Advance animation's names' first four colors, the sets
-    /// it steps through. (A pack extracted before the American spellings has
-    /// the British key.)
-    #[serde(alias = "advance_name_colours")]
+    /// it steps through.
     pub advance_name_colors: Vec<Vec<String>>,
     /// The other languages' pictures with words, by language (the HUD's
     /// `language` is the pack's own).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub languages: BTreeMap<String, CustomLanguageDoc>,
-    /// Where the blocks go among the HUD layer's tile numbers, for a game
-    /// whose window is laid out otherwise than EXE6's (none: EXE6's,
-    /// `CustomLayout::EXE6`).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub layout: Option<LayoutDoc>,
+    /// Where the blocks go among the HUD layer's tile numbers: the game's
+    /// own layout (every pack says its game's; none stands in).
+    pub layout: LayoutDoc,
     /// The buttons drawn by name (EXE5's soul button): each one's tiles by
     /// state and its picture in the chip window with that picture's
     /// palettes by state.
@@ -130,8 +124,7 @@ pub struct LayoutDoc {
     pub slot_blank: u8,
     pub ok_cursor: CursorDoc,
     pub special_cursor: CursorDoc,
-    /// (A pack from before the field: none shown.)
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    /// Whether the chip window shows the re-deal button's uses left (EXE5's).
     pub button_uses: bool,
 }
 
@@ -245,8 +238,8 @@ pub struct ButtonDoc {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icons: Option<TileImage>,
     /// The game versions whose consoles fly the icon in a palette of their
-    /// own: the icons' image's palette rows after the first, in order.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    /// own: the icons' image's palette rows after the first, in order (none:
+    /// an empty list).
     pub icon_versions: Vec<String>,
 }
 
@@ -483,21 +476,16 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         regular,
         advance_name_colors: c.advance_name_colors.iter().map(|s| s.iter().map(|&c| tiles::color_text(c)).collect()).collect(),
         languages,
-        layout: (c.layout != CustomLayout::EXE6).then(|| c.layout.into()),
+        layout: c.layout.into(),
         buttons,
     };
     files.push(("custom.json".into(), json_lines(&doc)));
     files
 }
 
-/// Read the custom screen's graphics. A pack without them (extracted before
-/// the custom screen was drawn) gets none, with a warning.
+/// Read the custom screen's graphics.
 pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScreen> {
     let name = format!("{prefix}/custom.json");
-    if !dir.join("custom.json").is_file() {
-        report.warn(&name, "the pack has no custom screen graphics (extract it again to see the custom screen)");
-        return Some(CustomScreen::default());
-    }
     let doc: CustomDoc = read_json(&dir.join("custom.json"), &name, report)?;
     if doc.format != FORMAT || doc.version != VERSION {
         report.error(&name, format!("not a {FORMAT} file of version {VERSION} (extract the pack again)"));
@@ -588,7 +576,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         ));
     }
     Some(CustomScreen {
-        layout: doc.layout.map_or(CustomLayout::EXE6, CustomLayout::from),
+        layout: doc.layout.into(),
         buttons,
         window_tiles,
         column_cells: img(&doc.column_cells, report)?.0,

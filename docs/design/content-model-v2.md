@@ -809,7 +809,7 @@ return {
   isn't found isn't loaded.
 - **Declarations, by pack** (`packs::declarations`). A pack's modules check against the engine's declarations, then
   those of the support packs it depends on (in load order), then its own. No pack sees another game's types. A game's type
-  that another pack's code names is the support pack's: packs.py moved 51 of EXE6's 105 to exelib/types.d.luau. The
+  that another pack's code names is the support pack's: 51 of EXE6's 105 moved to exelib/types.d.luau. The
   engine's patch card spec takes `effects: { any }`, since each game types its own effects (EXE6's
   `PatchCardEffect`). Luau's .luaurc has no field for definition files; content/.luaurc names the packs
   (`"aliases": { "exe6": "./exe6", "exelib": "./exelib" }`), so an editor resolves `@exelib/...` as the engine does.
@@ -826,13 +826,7 @@ return {
   - tools/content/index.py writes each game's init.luau from the pack's modules, by `define.<registry>`, each
     group in path order; each manifest; and content/.luaurc. A chip naming no use is a commented require, and so,
     in turn, is a chip that requires such a chip's module.
-  - gen_content.py runs index.py after writing, and layout.py's moves keep the init right.
-  - tools/content/packs.py is the porters' migration. It renames common to exelib, removes R5's layout, writes the
-    manifests and top modules, moves the shared types, lists the cross-game requires that are left, writes ids
-    local (step 6), rewrites the engine's Rust for one game a match and local ids (step 7), names flag 0x40's
-    modes (step 8), makes a game's rules one table (step 9), names each folder's main module init.luau and
-    rewrites the requires by Luau's rule (step 10, §4.1) and names a series' chips (step 11, §4.1).
-  - A porter merges main, runs `tools/content/packs.py <checkout>`, then builds and tests.
+  - gen_content.py runs index.py after writing.
 
 R5 (2026-10-03, never merged) had made content/ one namespace with explicit indices: content/exe6/init.luau and a
 root content/init.luau. The user asked for packs instead, whose manifests first held R5's lists; R6 moved the lists
@@ -941,10 +935,9 @@ builder its upgrades share: `tornado_chips.blow`) stay beside its chips.
 
 **content/exe5 follows these rules** (as built, 2026-10-03; the user: "you should consolidate the chips together
 where appropriate and move colocate objects with those chips, where appropriate like what bn6 does"). The
-verification workspace's `tools/exe5/layout.py <checkout>` computes the layout from the content (who requires what,
-the chips' records and names, EXE6's series) and moves it there with `git mv`, rewriting every `require` (a merged
-chip's `require("../hicannon")` becomes `require("../cannon").hicannon`); it changes no id. It is
-idempotent: a branch that gained chips or objects in the old layout runs it again after merging main (exe5-map.md
+layout was computed from the content (who requires what,
+the chips' records and names, EXE6's series) and the modules moved there with `git mv`, every `require` rewritten (a merged
+chip's `require("../hicannon")` became `require("../cannon").hicannon`) and no id changed (exe5-map.md
 §15.12). Its series are EXE6's where EXE6 has the same chips (chips/cannon, chips/recov, chips/vulcan with SuprVulc,
 chips/timebom with TimeBom+), a navi chip with its SP and DS (chips/blizman: BlizMan, BlizManSP, BlizManDS),
 numbered levels (chips/katana), a Program Advance whose ingredients are one series', and EXE5's own two that no
@@ -953,7 +946,7 @@ differs from EXE6's layout in two things the port and the ids impose:
 
 - **A chip without a use stays in its own folder**, chips/<key>/init.luau, until the port gives it one: the game's
   init.luau doesn't require such a chip (§4.0), nor any chip folder that requires one of its modules, so it can't
-  share a series file with chips that play; the next run takes it into its series.
+  share a series file with chips that play; it joins its series when it gets its use.
 - **A kind keyed for another place stays where it is.** The content check wants a kind in an owner's folder keyed
   under the owner (`<owner>/...`), and ids don't change with the layout, so a module whose `define.kind` key isn't
   the new folder's stays in objects/ until someone re-keys it: Meddy's capsule, NumberMan's dice, GyroMan's and
@@ -3249,7 +3242,7 @@ Numbers that remain for other reasons, and are not names of content:
 
 **Since:** a game being ported loads without its chips that have no use yet (§7.3, "Partial loading"), so
 EXE5's content plays beside EXE6's while its port goes on. content/exe5 is laid out by §4.1's rules (its series
-files, its kinds with their owners), kept so by the verification workspace's tools/exe5/layout.py.
+files, its kinds with their owners).
 
 **Left to others:**
 

@@ -485,9 +485,10 @@ The verification workspace traces EXE5 consoles as it does EXE6's, with the same
 
 - **oracle-trace** has the games `TeamProtoMan` (BRBE), `TeamColonel` (BRKE) and the Japanese `JpTeamOfBlues`
   (BRBJ) and `JpTeamOfColonel` (BRKJ), their hooks (§8; both link applets' returns are trapped) and a RAM
-  `Layout` per game (§3.4; the Japanese ROMs' RAM is the US ROMs'). EXE6's lines are byte-identical to before. An
-  EXE5 setup line says `"game":"exe5"`, has EXE5's 0x60-byte NaviStats blocks, says the regions when a side is
-  Japanese, and leaves out what is EXE6's alone (SP times, link navi levels, bug frags, event flags, Tag chips).
+  `Layout` per game (§3.4; the Japanese ROMs' RAM is the US ROMs'). Every setup line says the game it is of, first
+  (`"game":"exe6"`, `"game":"exe5"`), and both consoles' regions. An
+  EXE5 setup line has EXE5's 0x60-byte NaviStats blocks
+  and leaves out what is EXE6's alone (SP times, link navi levels, bug frags, event flags, Tag chips).
   It carries both consoles' NaviCusts (`navicusts`: each save's list, 0x02004D6C, the compression flags' bytes,
   event flags 0x1EC0 to 0x1FBF, whether the compile leaves the HP, `cyberworld`, and the board's memory
   `expansions`, key item 0x61's count) and, when a console has any, their patch cards (`patch_cards`, each list's
@@ -1852,7 +1853,7 @@ folder with the kinds it owns.
   timer at the intake's end, the idle's step asked of the systems' `controller`, the last 180 ticks' gray flicker; its
   end, EXE5's action 0x49, the roles' `stun_strike`, with its dark image, actor 10).
 
-tools/exe5/recipes.py finds chips wherever layout.py put them (`--check`).
+tools/exe5/recipes.py finds chips wherever they are defined (`--check`).
 
 **EXE5's dark MegaMan's last stand** (exe5-navichips, 2026-10-03, as built; its scenarios library-exe5/dark-survival:
 holds, antirecv, antirecv-mood, soul, every frame matching). A player MegaMan (AI index 0) of EXE5's emotion 5 (a mood
@@ -1962,8 +1963,8 @@ never holds. A unit test (`collision::tests`) shows the first under that rule.
 
 content/exe5 is laid out as content/exe6 is (content-model-v2.md §4.1; the user, 2026-10-03: "you should consolidate
 the chips together where appropriate and move colocate objects with those chips, where appropriate like what bn6
-does"). The verification workspace's `tools/exe5/layout.py <checkout>` computes the layout from the content and
-moves it there (git mv, every `require` rewired, no id changed); its `tools/exe5/gen_content.py` finds each chip's
+does"). The layout was computed from the content and the modules
+moved there (git mv, every `require` rewired, no id changed); the verification workspace's `tools/exe5/gen_content.py` finds each chip's
 definition by its id wherever it is. The move changed no recording's replay (§15.5's report the same, recording by
 recording).
 
@@ -1982,7 +1983,7 @@ recording).
   chips/<key>/chip.luau.
 - **A chip without a use keeps its own folder** until the port gives it one: the loader leaves it out by its
   folder, with every chip folder that requires one of its modules (content-model-v2.md §7.3), so it can't be in a
-  file with chips that play. The next run of layout.py takes it into its series.
+  file with chips that play. It joins its series when it gets its use.
 - **Kinds with their owners** (§4.1's rules 1 to 5). A kind one chip or series uses is in its folder
   (chips/vulcan/vulcan, chips/timebom/timebom, chips/widesht/wave and variants, chips/yoyo/yoyo). One with a
   natural owner and borrowers is the owner's: the dark chips borrow their light chip's (DarkDril
@@ -2004,17 +2005,6 @@ recording).
 | chips/ folders | 333 (a chip each) | 221: 53 series' (165 chips), 168 chips' own (68 without a use yet) |
 | objects/ folders | 53 | 13 |
 | lib/ | 18 modules | 15 modules, 5 family folders |
-
-**A branch from before the layout:** merge main and take main's moves; where main merged a chip you changed into a
-series, the merge reports your chips/<key>/chip.luau as modified and deleted: keep yours (`git add` it); where
-main only repointed `require` lines you also changed, keep yours. Commit the merge, then run
-`tools/exe5/layout.py <checkout>` from the verification workspace's main: it takes your version of the chip into
-its series file, moves your new chips and objects to their places, and repoints your requires of old paths (a
-chip's by its id, another module's by git's renames). Then build and test as usual. A series' new kinds are keyed
-under its folder (`exe5:<series>/...`), and a chip gets its series file's place by gaining a use. (Tried on
-exe5-chips-b at 3c524c21: the merge stopped at four chip files and one block of requires, as above; the run then took
-26 chips into 10 series files, moved 7 new kinds and repointed 22 old requires, and the branch's §15.5 report
-stayed the same, recording by recording: 1,250 matching, 871,358 frames.)
 
 ### 15.13 EXE5's NaviCust (as built)
 
@@ -2125,9 +2115,9 @@ rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   consoles' NaviCusts and cards (§10's setup line) is replayed by compiling them, and the compile's flag is checked
   against the console's: HubBatc's bug halves the HP programs and writes no bug stat, so only the compile knows it.
   A recording without them has the flag from its stats alone; one whose save had the flag with no bug stat
-  (`navicust/hubbatc` as first recorded) differs from the first flicker on (its console's RNG1), which exe5-compat
-  names (`GLITCH_UNSEEN`, listed in the replay report). No recording of the lab is one since the NaviCust and
-  patch-card scenarios were recorded again with their NaviCusts.
+  (`navicust/hubbatc` as first recorded) would differ from the first flicker on (its console's RNG1). No recording
+  of the lab is one since the NaviCust and patch-card scenarios were recorded again with their NaviCusts, so the
+  replay names no such difference.
 - **The weapons** (navis/megaman/weapons): the routines that load a chip (0x0800FE78: chips.luau, MettGuard's and
   CrsShld's B+Back waiting 40 ticks, Ccann's TankCan1 not cracking), the card Shield (0x62, guards.luau), TriBustr
   (0x65, the buster's routine), ChrgS (0x63, the charged shot without the draw, the program always: its 0, the

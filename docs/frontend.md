@@ -54,8 +54,13 @@ names the content gives them. Extract it once:
     cargo run -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/exe6
 
 (`data/content/` is gitignored.) **You play one game**, EXE6 or EXE5: a match
-is of one game (§6), which a match file names (`game = "exe6"`), else
-`--game GAME` (default `exe6`); with a trace, `--game`'s. The battle is that
+is of one game (§6), which a match file names (`game = "exe6"`) and a
+trace states (its setup line's `"game"`: one that states none, or another
+game than a `--game` given, is refused; nothing takes a recording for a
+game it doesn't name), else `--game GAME` says it. There is no default
+game: with no match file, no trace and no `--game`, the frontend lists the
+games it found a pack of ("say which game: --game exe5 or --game exe6") and
+stops. The battle is that
 game's content, drawn and heard from its pack: there is no mixing of games,
 no other game's chip, navi or field art. The frontend (and the editor)
 finds at start-up
@@ -64,9 +69,9 @@ finds at start-up
 says (`nettai_content::pack::find`); `exe5-extract content` writes EXE5's into
 `data/content/exe5` beside it. `--pack <dir>` names a pack elsewhere, in
 place of the found one of its game, and can be given again for another
-game's; `$EXE6_PACK`, the EXE6 pack's directory, still works the same way
-(deprecated: the verification's tools set it). Two packs of one game in the
-directory are an error. Each pack loads straight from its files: its asset
+game's. Two packs of one game in the directory are an error. A pack is of
+the format's one version (each file says it): an older one is refused, with
+a note to extract it again. Each pack loads straight from its files: its asset
 index into the engine's `Content`, the graphics through nettai-content's
 importer, and, when a window opens, the sound. `NETTAI_LOAD_TIMES=1` prints
 how long each part took. Each sprite, banner, mugshot, background and sound
@@ -115,8 +120,7 @@ The graphics load into the types of the `nettai-assets` crate, decoded
   `art_palette` colors it) and the buttons',
   chip codes, element icons and their colors, damage digits, the slots'
   codes and buttons, the cursor, the navis' emblems, the Regular chip's
-  frame. A pack extracted before it loads without them (with a warning),
-  and the screen isn't drawn.
+  frame.
 - **The chatbox** (in `graphics/hud`, and its portraits as sprites): the
   dialogue font with its advances, the box's tiles and maps, the key-wait
   arrow, the text's palette; each run message's speaker's portrait, the
@@ -134,16 +138,16 @@ are the link navis' faces, with their Full Synchro palettes.
 ## 2. Running
 
     cargo run -p nettai-frontend -- <trace.jsonl>              # watch a trace
-    cargo run -p nettai-frontend -- --play                     # play live
-    cargo run -p nettai-frontend -- --play --seed 42 --stage netbattle-43 --show-folders
+    cargo run -p nettai-frontend -- --play --game exe6          # play live
+    cargo run -p nettai-frontend -- --play --game exe6 --seed 42 --stage netbattle-43 --show-folders
     cargo run -p nettai-frontend -- --match match.toml           # play a match file (§6)
-    cargo run -p nettai-frontend -- --play --seed 42 --save-match match.toml   # keep the draw
+    cargo run -p nettai-frontend -- --play --game exe6 --seed 42 --save-match match.toml   # keep the draw
     cargo run -p nettai-frontend -- <trace.jsonl> --headless 150,300,600 --out <dir>
     cargo run -p nettai-frontend -- --audit-content            # what is missing?
     cargo run -p nettai-frontend -- --audit <trace.jsonl>...   # and in these traces?
-    cargo run -p nettai-frontend -- --play --pack <dir>        # a pack elsewhere
-    cargo run -p nettai-frontend -- --play --host 7777         # netplay: host...
-    cargo run -p nettai-frontend -- --play --join 192.0.2.10:7777   # ...and join
+    cargo run -p nettai-frontend -- --play --game exe6 --pack <dir>        # a pack elsewhere
+    cargo run -p nettai-frontend -- --play --game exe6 --host 7777         # netplay: host...
+    cargo run -p nettai-frontend -- --play --game exe6 --join 192.0.2.10:7777   # ...and join
 
 Options: `--pack <dir>` names a content pack elsewhere and `--content <dir>`
 the battle content (see above), `--mute` turns the sound off, `--round N`
@@ -159,7 +163,7 @@ how strings are drawn (default `font`; the frame comparison uses
 bundled one's place, `--lang en|ja` the language of the battle's words
 (default `en`; §3, "Languages"). For live play, `--seed N` gives the seed its
 setup and battle are drawn from (default: from the clock; each start
-prints it), `--game GAME` plays EXE6 (default) or EXE5, `--stage NAME`
+prints it), `--game GAME` says the game (`exe6` or `exe5`: required), `--stage NAME`
 forces a link battle stage by its name in the game (`netbattle-1` to
 `netbattle-96`), `--show-folders` prints both folders,
 `--cards` and `--their-cards` install your and the right navi's patch cards
@@ -182,7 +186,7 @@ input ends or the engine hits something it doesn't implement yet. Then it
 stops, shows the reason on screen and prints it; the first difference from
 the trace's recorded state is printed too. Frame numbers are the trace's.
 
-**Live play**: you are the left navi; the right one stands still. The round
+**Live play** (`--play --game GAME`): you are the left navi; the right one stands still. With `--game exe6` the round
 is a netbattle on EXE6's content between two MegaMen at their fresh stats
 (100 HP, as a new match's in the editor: `nettai_match::Side::fresh`) with
 no NaviCust programs (so roads carry them and holes stop them), set up at
@@ -256,8 +260,7 @@ frontend's side is `netplay`):
   their own `--seed` (as live play draws a player's) with their patch cards
   (`--cards`); the other player's is checked against the content as a match
   file's side is (`nettai_match::check_side`, §6). Both play by the game's
-  rules (a game has one ruleset, so an offer names none: protocol version
-  9). The language (`--lang`) is each player's own. The field
+  rules (a game has one ruleset, so an offer names none). The language (`--lang`) is each player's own. The field
   is the host's: its match file's arena, else drawn from both players'
   halves of the seed (on the host's `--stage`, if it names one); the
   battle's RNG comes from the halves of the seed. Both print what was
@@ -393,7 +396,7 @@ edges, the cycling panel palettes; the background's scroll and tile
 animations. The field is the match's game's pack's: a match is of one game,
 so its field draws its panels. `FieldArt` says, for each panel type and
 highlight, whether the field draws it (field.json's `panel_types`); one it
-doesn't (a pack extracted before it had it) is the owner's normal panel,
+doesn't is the owner's normal panel,
 tinted halfway to magenta, never a hole and never another pack's. A tinted
 panel is said in the audits, not counted.
 
@@ -799,7 +802,7 @@ them).
   another region's ROMs, and around an object drawn with a sprite of another
   region's ROMs, 48 pixels around it (`objects::OTHER_REGION_MARGIN`: the
   US's sprite there may reach past the Japanese one). The console's region is
-  the trace's (`game_regions`; US without it).
+  the trace's (`game_regions`).
 - **Deliberate: a version's own chips on the other version's console.**
   Each ROM draws its own version's chips and has their art again at the
   other version's counterparts: EXE6's five Giga chips a version (Bass and
@@ -1007,10 +1010,9 @@ facts), the round's setup writes it into whichever of the rules' systems
 declares the setup field (`PlayerSetup::set_fact`): EXE5's light and dark
 system's `karma`. A game whose rules take none refuses one other than 500.
 Hub Style (NaviStats +0x4C, which EXE5's patch card 111 sets) waits for
-EXE5's patch cards. A netplay offer carries the karma and the souls
-(protocol version 5), and a round's setup and the battle's digest hold
-them, so both peers start alike (protocol version 6 names them in the
-game).
+EXE5's patch cards. A netplay offer carries the karma and the souls,
+by their names in the game, and a round's setup and the battle's digest hold
+them, so both peers start alike.
 
 **The souls** (`souls`, `nettai_match::facts`) are the souls the side has,
 EXE5's Soul Unison, by name: those the custom screen's soul button may
@@ -1033,8 +1035,7 @@ save's event flags 0 and 0x236: the soul button at all, and a dark chip's
 Chaos Unison. Both are on unless a side says (`soul_unison = false`), as a
 finished save has them; the round's setup writes them into the souls
 system's setup (its defaults, on, for a setup that says nothing). A game
-whose rules take neither refuses one off. The netplay offer carries them
-(protocol version 7).
+whose rules take neither refuses one off. The netplay offer carries them.
 
 **An EXE5 save** (the editor's "Import from save…", `Match::import_save`,
 which reads a save that isn't EXE6's as EXE5's: a .sav, or a raw save image as
@@ -1055,7 +1056,7 @@ used there. As the round is set up each side's are sent as the console sends
 them (0x0802C7BE: the first three places and the next 39 shuffled, packed to
 the front), from a stream of the side's own from the seed. With none, Dark
 MegaMan only steps into an enemy's row and fires his buster (three shots)
-between rests. A netplay offer carries them (protocol version 3).
+between rests. A netplay offer carries them.
 
 **The checks** (`nettai_match::check`) run when a file loads, when a netplay
 offer arrives (the same `check_side`), and live in the editor; each problem

@@ -661,7 +661,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
     // (The match's game's.)
     let mut programs: Vec<(String, NaviCustProgramHandle)> = (0..c.defs.navicust_programs.len() as u16)
         .map(NaviCustProgramHandle)
-        .filter(|&h| nettai_match::ids::in_game(e.m.game(), &c.defs.navicust_program(h).key))
+        .filter(|&h| nettai_match::ids::in_game(c, e.m.game(), &c.defs.navicust_program(h).key))
         .map(|h| (e.names.navicust_program(c, h), h))
         .filter(|(name, _)| needle.is_empty() || name.to_lowercase().contains(&needle))
         .collect();

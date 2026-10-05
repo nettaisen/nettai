@@ -29,9 +29,7 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 pub const FORMAT: &str = "nettai-content/sound";
-/// Version 2 adds the PSG voices' sweep, fixed frequency and length, the
-/// byte after a sample's data and the DAC's resolution.
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 1;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SoundDoc {
@@ -384,8 +382,8 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<SoundBank
 pub fn import_with_versions(dir: &Path, prefix: &str, report: &mut Report) -> Option<(SoundBank, SongVersions)> {
     let f = |n: &str| format!("{prefix}/{n}");
     let doc: SoundDoc = read_toml(&dir.join("sound.toml"), &f("sound.toml"), report)?;
-    if doc.format != FORMAT || doc.version > VERSION {
-        report.error(f("sound.toml"), format!("not a {FORMAT} file of version {VERSION} or older"));
+    if doc.format != FORMAT || doc.version != VERSION {
+        report.error(f("sound.toml"), format!("not a {FORMAT} file of version {VERSION} (extract the pack again)"));
         return None;
     }
     let mixer = MixerConfig {
@@ -395,12 +393,6 @@ pub fn import_with_versions(dir: &Path, prefix: &str, report: &mut Report) -> Op
         reverb: doc.mixer.reverb,
         dac_resolution: doc.mixer.dac_resolution & 3,
     };
-    if doc.version < VERSION {
-        report.warn(
-            f("sound.toml"),
-            "a version 1 pack lacks the PSG sweeps, fixed frequencies and the DAC rate; extract it again for the game's sound",
-        );
-    }
     let players = doc
         .players
         .iter()

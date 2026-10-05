@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 pub const FORMAT: &str = "nettai-content/hud";
-pub const VERSION: u32 = 7;
+pub const VERSION: u32 = 1;
 
 const GLYPHS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
 
@@ -40,8 +40,7 @@ pub struct HudDoc {
     pub gauge_frame: Vec<String>,
     pub font: TileImage,
     /// What each glyph of the font draws, as text (the game's marks as
-    /// characters: U+E002 for the stacked EX, which Unicode has none for;
-    /// version 7 on).
+    /// characters: U+E002 for the stacked EX, which Unicode has none for).
     pub font_chars: Vec<String>,
     /// The opponent's HP digits: normal, dropping, rising (a row each),
     /// with their palette.
@@ -76,16 +75,12 @@ pub struct HudDoc {
     pub banner_digits: TileImage,
     /// "Cstmzing..." and its palette.
     pub waiting: TileImage,
-    /// The warning marker's two frames (2x2 tiles each) and its palette
-    /// (none in a pack extracted before it was).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub warning: Option<TileImage>,
-    /// The dialogue font (none in a pack extracted before it was).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub dialogue_font: Option<DialogueFontDoc>,
-    /// The chatbox (none in a pack extracted before it was).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub chatbox: Option<ChatboxDoc>,
+    /// The warning marker's two frames (2x2 tiles each) and its palette.
+    pub warning: TileImage,
+    /// The dialogue font.
+    pub dialogue_font: DialogueFontDoc,
+    /// The chatbox.
+    pub chatbox: ChatboxDoc,
     /// The language the fonts, the text lines and the pictures with words
     /// are in (none: `nettai_assets::BASE_LANGUAGE`), and the other
     /// languages' lettering, by language.
@@ -271,9 +266,8 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         .collect();
     let banner_digits = image("banner-digits.png", &h.banner_digits, GLYPHS(11), &[h.banner_palette], 0);
     let waiting = image("waiting.png", &h.waiting, Layout::Grid { columns: 8 }, &[h.waiting_palette], 1);
-    let warning = (!h.warning.is_empty())
-        .then(|| image("warning.png", &h.warning, Layout::Blocks { width: 2, height: 2, columns: 2 }, &[h.warning_palette], 1));
-    let chatbox = (!h.chatbox.is_empty()).then(|| {
+    let warning = image("warning.png", &h.warning, Layout::Blocks { width: 2, height: 2, columns: 2 }, &[h.warning_palette], 1);
+    let chatbox = {
         let c = &h.chatbox;
         let rows = |m: &[MapEntry]| m.chunks(Chatbox::COLUMNS).map(|r| r.iter().map(tiles::entry_text).collect::<Vec<_>>().join(" ")).collect();
         ChatboxDoc {
@@ -281,7 +275,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
             boxes: c.boxes.iter().map(|steps| steps.iter().map(|m| rows(m)).collect()).collect(),
             arrow: image("chatbox-arrow.png", &c.arrow, Layout::Blocks { width: 2, height: 2, columns: 3 }, &[c.text_palette], 1),
         }
-    });
+    };
     let mut dialogue_pngs = Vec::new();
     let mut languages = BTreeMap::new();
     for (lang, l) in &h.languages {
@@ -319,7 +313,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
             HudLanguageDoc { font, font_chars: l.font_chars.clone(), dialogue_font, texts: l.texts.clone(), banners, waiting, gauge },
         );
     }
-    let dialogue_font = (!h.dialogue_font.is_empty()).then(|| {
+    let dialogue_font = {
         let file = "dialogue-font.png".to_string();
         files.push((file.clone(), dialogue_image(&h.dialogue_font).to_png()));
         DialogueFontDoc {
@@ -329,7 +323,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
             advances: h.dialogue_font.advances.clone(),
             chars: h.dialogue_font.chars.clone(),
         }
-    });
+    };
     let texts = |m: &[MapEntry]| m.iter().map(tiles::entry_text).collect();
     let doc = HudDoc {
         format: FORMAT.into(),
@@ -403,10 +397,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
     }
     let (banner_digits, _) = img(&doc.banner_digits, report)?;
     let (waiting, waiting_pal) = img(&doc.waiting, report)?;
-    let (warning, warning_pal) = match &doc.warning {
-        Some(i) => img(i, report)?,
-        None => (Tiles::default(), vec![Palette::default()]),
-    };
+    let (warning, warning_pal) = img(&doc.warning, report)?;
     let mut mugshots = Vec::new();
     for m in &doc.mugshots {
         let (t, p) = img(m, report)?;
@@ -454,12 +445,10 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
             number_at: b.number_at.map(|[x, y]| (x, y)),
         })
         .collect();
-    let dialogue_font = match &doc.dialogue_font {
-        Some(d) => import_dialogue_font(dir, prefix, d, report)?,
-        None => DialogueFont::default(),
-    };
-    let chatbox = match &doc.chatbox {
-        Some(c) => {
+    let dialogue_font = import_dialogue_font(dir, prefix, &doc.dialogue_font, report)?;
+    let chatbox = {
+        let c = &doc.chatbox;
+        {
             let (tiles, palette) = img(&c.tiles, report)?;
             let (arrow, text_palette) = img(&c.arrow, report)?;
             let mut boxes = Vec::new();
@@ -480,7 +469,6 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
             }
             Chatbox { tiles, palette: palette[0], boxes, arrow, text_palette: text_palette[0] }
         }
-        None => Chatbox::default(),
     };
     Some(Hud {
         tiles,
@@ -499,8 +487,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         hidden_icon,
         icon_palette: icon_pal[0],
         mugshots,
-        // (The last is the box without a number, unless the game has none;
-        // a pack extracted before EXE5's counts has neither.)
+        // (The last is the box without a number, unless the game has none.)
         counts: (0..(counts.len() / 4).saturating_sub(!doc.no_count_box as usize)).map(|i| slice(&counts, 4 * i, 4)).collect(),
         count_box: if counts.len() >= 4 && !doc.no_count_box { slice(&counts, counts.len() - 4, 4) } else { Tiles::default() },
         mugshot_boxes,

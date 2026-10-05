@@ -14,9 +14,6 @@
 //! with the game's navis, chips, souls and patch cards, every one named in
 //! the game's namespace alone (`ids`). There is no mixing of games.
 
-/// The game a frontend plays without a match file: EXE6.
-pub const DEFAULT_GAME: &str = "exe6";
-
 #[cfg(test)]
 mod exe6_forms;
 pub mod check;
@@ -356,7 +353,7 @@ impl Match {
             let saved = s.folder.saved().expect("a whole folder (the match's checks refuse one being made; `check::start` fills one in)");
             let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, content);
             let mut player = PlayerSetup {
-                folder: Some(folder),
+                folder,
                 joypad_phase: 0,
                 navi_level: s.navi_level,
                 sp_times: s.sp_times,
@@ -411,7 +408,7 @@ pub fn next_round(content: &Content, first: &RoundSetup, folders: &[SavedFolder;
         let mut rng = console.rng;
         let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(folder, 0, &mut rng, content);
         let p = &mut next.players[side];
-        p.folder = Some(folder);
+        p.folder = folder;
         p.console = ConsoleSetup { rng: rng.state, tag_pair, frames: console.frames };
     }
     next
@@ -427,7 +424,7 @@ pub fn link_battle_stages(content: &Content, game: &str) -> Vec<StageHandle> {
         .map(StageHandle)
         .filter(|&s| {
             let e = content.stage(s).effects;
-            e & effects::LINK != 0 && e & effects::RANDOM == 0 && ids::in_game(game, &content.defs.stage(s).key)
+            e & effects::LINK != 0 && e & effects::RANDOM == 0 && ids::in_game(content, game, &content.defs.stage(s).key)
         })
         .collect()
 }
@@ -446,7 +443,7 @@ pub fn link_stage(content: &Content, game: &str, name: &str) -> Result<StageHand
 pub fn navis(content: &Content, game: &str) -> Vec<NaviHandle> {
     (0..content.defs.navis.len() as u16)
         .map(NaviHandle)
-        .filter(|&n| content.navi(n).fresh.is_some() && ids::in_game(game, &content.defs.navi(n).key))
+        .filter(|&n| content.navi(n).fresh.is_some() && ids::in_game(content, game, &content.defs.navi(n).key))
         .collect()
 }
 
@@ -462,7 +459,7 @@ pub fn patch_cards(content: &Content, game: &str, list: &str) -> Result<Vec<Inst
         };
         let card = ids::patch_card(content, game, name).ok_or_else(|| {
             let names: Vec<&str> =
-                content.defs.patch_cards.iter().map(|c| c.key.as_str()).filter(|k| ids::in_game(game, k)).map(ids::local).collect();
+                content.defs.patch_cards.iter().map(|c| c.key.as_str()).filter(|k| ids::in_game(content, game, k)).map(ids::local).collect();
             format!("no patch card {name:?} in {game} ({game}'s are {})", names.join(", "))
         })?;
         cards.push(InstalledCard { card, enabled });

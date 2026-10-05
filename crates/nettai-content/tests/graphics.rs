@@ -265,7 +265,7 @@ fn temp(name: &str) -> PathBuf {
 }
 
 fn write_pack(dir: &Path, b: &Bundle) {
-    let mut files = vec![pack::manifest("test", Some(b), false)];
+    let mut files = vec![pack::manifest("test", "test", Some(b), false)];
     files.extend(pack::export_graphics(b, &nettai_content::names::AssetNames::default()));
     pack::write_files(dir, &files).unwrap();
 }
@@ -292,35 +292,6 @@ fn graphics_read_back_exactly() {
     assert!(anims.contains(r#""flags":[4]"#));
 }
 
-/// A field.json from before `panel_types` (docs/design/rules-in-luau.md
-/// §7.4): 78 blocks are EXE6's 13 types in the engine's order, so the EXE6
-/// pack loads as it is; any other number draws no type, with a warning to
-/// extract it again.
-#[test]
-fn an_older_field_without_panel_types_still_loads() {
-    let without_types = |b: &Bundle, name: &str| {
-        let dir = temp(name);
-        write_pack(&dir, b);
-        let path = dir.join("graphics/field/field.json");
-        let mut doc: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
-        assert!(doc.as_object_mut().unwrap().remove("panel_types").is_some());
-        std::fs::write(&path, serde_json::to_string(&doc).unwrap()).unwrap();
-        import(&dir)
-    };
-    let mut exe6 = bundle();
-    exe6.field.panel_types = (0..13).collect();
-    exe6.field.panels = (0..13 * 6).map(|i| std::array::from_fn(|k| entry(10 + (k % 6) as u16, 1 + (i % 8) as u8, false, false))).collect();
-    let (back, report) = without_types(&exe6, "field-exe6");
-    assert!(!report.has_errors() && report.count(Level::Warning) == 0, "{report}");
-    assert_eq!(back.unwrap().field, exe6.field);
-
-    let (back, report) = without_types(&bundle(), "field-other");
-    assert!(!report.has_errors() && report.count(Level::Warning) == 1, "{report}");
-    let field = back.unwrap().field;
-    assert!(field.panel_types.is_empty() && !field.draws(nettai_battle::field::PanelType::Normal as u8));
-    assert_eq!(field.panels, bundle().field.panels);
-}
-
 /// Assets are written under the names given them; each file holds its
 /// number, so the names are free.
 #[test]
@@ -333,7 +304,7 @@ fn named_assets_read_back_by_their_numbers() {
     }
     names.backgrounds.insert(0, "clouds".into());
     names.mugshots.insert(0, "megaman".into());
-    let mut files = vec![pack::manifest("test", Some(&b), false)];
+    let mut files = vec![pack::manifest("test", "test", Some(&b), false)];
     files.extend(pack::export_graphics(&b, &names));
     pack::write_files(&dir, &files).unwrap();
     assert!(dir.join("graphics/sprites/sprite-named-0/sprite.json").is_file());
@@ -373,10 +344,10 @@ fn the_asset_index_lists_every_asset_by_name() {
     pack::write_files(&dir, &vec![nettai_content::names::index_file(&index)]).unwrap();
     let mut r = Report::default();
     assert_eq!(nettai_content::names::read_index(&dir, &mut r), Some(index), "{r}");
-    // Without an index a pack names no assets.
+    // A pack has its index.
     let mut r = Report::default();
-    assert_eq!(nettai_content::names::read_index(&temp("no-index"), &mut r), Some(nettai_content_api::PackIndex::default()));
-    assert_eq!(r.count(Level::Note), 1);
+    assert_eq!(nettai_content::names::read_index(&temp("no-index"), &mut r), None);
+    assert!(r.has_errors(), "{r}");
 }
 
 #[test]

@@ -35,22 +35,19 @@ pub struct Setup {
     /// The recording console's battle folder (0x50 bytes), hex, and both
     /// consoles' by side.
     pub folder: String,
-    #[serde(default)]
-    pub folders: Option<[String; 2]>,
+    pub folders: [String; 2],
     /// BattleState (0xF0 bytes), hex.
     pub battle_state: String,
     pub rng1: u32,
     pub rng2: u32,
     /// Both sides' versions ("protoman" or "colonel").
     pub game_versions: [String; 2],
-    /// Both sides' regions ("us" or "jp"); recordings of US consoles have
-    /// none.
-    #[serde(default)]
-    pub game_regions: Option<[String; 2]>,
-    #[serde(default)]
-    pub joypad_phases: Option<[u8; 2]>,
-    #[serde(default)]
-    pub frame_counter: Option<u16>,
+    /// Both sides' regions ("us" or "jp").
+    pub game_regions: [String; 2],
+    /// Both consoles' joypad repeat beats on the round's first frame.
+    pub joypad_phases: [u8; 2],
+    /// The recording console's frame counter on the setup's frame.
+    pub frame_counter: u16,
     /// Both players' computer-navi data as the link exchanged it (0xE0
     /// bytes each, side 0's first), hex: their tactics. Older recordings
     /// have none.
@@ -283,7 +280,7 @@ impl DecodedSetup {
 }
 
 pub fn decode_setup(s: &Setup) -> Result<DecodedSetup, String> {
-    if s.game != "exe5" {
+    if s.game != crate::ROOT {
         return Err(format!("an {} recording", s.game));
     }
     let version = |v: &str| match v {
@@ -296,15 +293,12 @@ pub fn decode_setup(s: &Setup) -> Result<DecodedSetup, String> {
         "jp" => Ok(true),
         r => Err(format!("region {r:?}")),
     };
-    let regions = match &s.game_regions {
-        Some([a, b]) => [region(a)?, region(b)?],
-        None => [false, false],
-    };
+    let regions = [region(&s.game_regions[0])?, region(&s.game_regions[1])?];
     let battle_state = unhex(&s.battle_state)?;
     if battle_state.len() != 0xF0 {
         return Err(format!("a BattleState of {:#x} bytes", battle_state.len()));
     }
-    for f in std::iter::once(&s.folder).chain(s.folders.iter().flatten()) {
+    for f in std::iter::once(&s.folder).chain(s.folders.iter()) {
         if unhex(f)?.len() != 0x50 {
             return Err("a battle folder that isn't 0x50 bytes".into());
         }
@@ -480,7 +474,7 @@ impl Round {
                 ids.push(v & 0x1FF);
             }
         };
-        for folder in std::iter::once(&self.setup.folder).chain(self.setup.folders.iter().flatten()) {
+        for folder in std::iter::once(&self.setup.folder).chain(self.setup.folders.iter()) {
             let b = unhex(folder)?;
             for i in 0..b.len() / 2 {
                 add(u16::from_le_bytes([b[2 * i], b[2 * i + 1]]));
@@ -626,27 +620,20 @@ impl Round {
             patch_cards(content, compat, d.versions[side], &list)
         };
         let players = [0u8, 1].map(|side| -> Result<PlayerSetup, String> {
-            let folder = match (&self.setup.folders, side == local) {
-                (Some(f), _) => Some(battle_folder(content, compat, &unhex(&f[side as usize])?, side == local && bs[0x17] != 0)?),
-                (None, true) => Some(battle_folder(content, compat, &unhex(&self.setup.folder)?, bs[0x17] != 0)?),
-                (None, false) => None,
-            };
-            let frames = match self.setup.frame_counter {
-                Some(c) => (c as u32).wrapping_sub(1) & 0xFFFF,
-                None => self.battle_frames().next().map_or(0, |f| f.frame + 1),
-            };
+            let folder = battle_folder(content, compat, &unhex(&self.setup.folders[side as usize])?, side == local && bs[0x17] != 0)?;
+            // (The console's counter before the round's first tick: one
+            // less than on the setup's frame.)
+            let frames = (self.setup.frame_counter as u32).wrapping_sub(1) & 0xFFFF;
             Ok(PlayerSetup {
                 folder,
-                joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
+                joypad_phase: self.setup.joypad_phases[side as usize],
                 navi_level: None,
                 sp_times: Default::default(),
                 // (The save's emotion window glitch, which a recording
                 // has, is no setup's: EXE5's rules make it. A compiled
                 // side's is its compile's and its cards', which `start`
                 // checks against the console's. A side without a recorded
-                // NaviCust has it from the stats' NaviCust bugs; a bug
-                // that writes no stat, HubBatc's, the rules can't see
-                // there: `GLITCH_UNSEEN`.)
+                // NaviCust has it from the stats' NaviCust bugs.)
                 console: ConsoleSetup {
                     rng: if side == local { self.setup.rng1 } else { self.setup.rng1s.map_or(0, |r| r[side as usize & 1]) },
                     tag_pair: None,
@@ -1110,22 +1097,7 @@ pub struct Replay {
     pub matched: usize,
     /// Why it stopped (none: every frame matched).
     pub stopped: Option<Stop>,
-    /// A difference the replay is known to have, and why (none: none):
-    /// [`GLITCH_UNSEEN`].
-    pub known: Option<&'static str>,
 }
-
-/// A known difference of a recording without its consoles' NaviCusts
-/// ([`Setup::navicusts`]: one with them is compiled, and its compile's
-/// glitch checked): the save had the emotion window's glitch (flag 0x10C1)
-/// and the stats it recorded have no NaviCust bug to make it from. The
-/// engine takes no glitch from a setup: EXE5's rules make it, from a
-/// NaviCust's compile or, of stats given as compiled, from the bugs in
-/// them. HubBatc's bug halves the HP programs and writes no bug stat, so
-/// without the NaviCust MegaMan's window doesn't flicker in the replay and
-/// the console's RNG1 draws differ (the recording console's a replay
-/// compares: `navicust/hubbatc` as first recorded stopped on it).
-pub const GLITCH_UNSEEN: &str = "the save's emotion window glitch with no bug in the stats (HubBatc's bug writes none; the recording carries no NaviCust)";
 
 #[derive(Clone, Debug)]
 pub enum Stop {
@@ -1141,7 +1113,7 @@ pub enum Stop {
 /// and compared, up to the first difference.
 pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Replay {
     let frames: Vec<&Frame> = round.battle_frames().collect();
-    let mut replay = Replay { frames: frames.len(), matched: 0, stopped: None, known: None };
+    let mut replay = Replay { frames: frames.len(), matched: 0, stopped: None };
     let mut b = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| round.start(content.clone(), compat))) {
         Ok(Ok(b)) => b,
         Ok(Err(e)) => {
@@ -1163,14 +1135,6 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
     // draw as the recording ends) has no frame left to agree on, and is
     // left.
     let local = b.setup.local_side as usize & 1;
-    // The recorded glitch of a navi whose window reads it (the navi that
-    // changes form), which the rules didn't make.
-    let unseen = |side: usize| {
-        round.setup.emotion_window_glitches.is_some_and(|g| g[side]) && !b.consoles[side].emotion_window_glitch && content.navi(b.stats[side].navi).changes_form()
-    };
-    if unseen(0) || unseen(1) {
-        replay.known = Some(GLITCH_UNSEEN);
-    }
     let mut rng1_since: Option<(u32, u32, u32)> = None;
     for i in 0..frames.len() {
         let (input, events) = round.tick_inputs(i, &frames);

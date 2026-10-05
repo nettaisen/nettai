@@ -3,7 +3,7 @@
 //! patch cards and stats; only what the game's rules have, every list the
 //! game's), and the problems, live.
 
-use crate::app::{Choice, Editor, Msg, Tab};
+use crate::app::{App, Choice, Editor, Msg, Tab};
 use crate::names::Lang;
 use iced::widget::{Column, Row, button, checkbox, column, container, image, pick_list, row, rule, scrollable, slider, space, text, text_input};
 use iced::{Alignment, Color, Element, Length, Theme};
@@ -40,6 +40,32 @@ fn icon<'a>(e: &'a Editor, chip: nettai_content_api::ChipHandle) -> Element<'a, 
         Some(h) => image(h).width(16).height(16).filter_method(image::FilterMethod::Nearest).into(),
         None => space().width(16).height(16).into(),
     }
+}
+
+/// The window: the match being edited, or the choice of a new match's game.
+pub fn window(a: &App) -> Element<'_, Msg> {
+    match &a.editor {
+        Some(e) => view(e),
+        None => choose(a),
+    }
+}
+
+/// Before there is a match: which game it is of. Nothing is selected: a
+/// match is of the game chosen for it, or of the file opened.
+fn choose(a: &App) -> Element<'_, Msg> {
+    let mut games = Row::new().spacing(12);
+    for game in &a.games {
+        games = games.push(button(text(game_label(game)).size(18)).padding(14).on_press(Msg::Choose(game.clone())));
+    }
+    let mut col = Column::new().spacing(16).push(heading("A new match")).push(text("Which game is it of?"));
+    col = if a.games.is_empty() {
+        col.push(text("No game has its pack: extract one into the packs directory ($NETTAI_PACKS, else data/content), or give it with --pack.").color(RED))
+    } else {
+        col.push(games)
+    };
+    col = col.push(row![text("Or").size(14), button("Open").on_press(Msg::Open), text("a match file: it is of the game it names.").size(14)].spacing(8).align_y(Alignment::Center));
+    col = col.push(text(a.status.as_str()).size(13).color(RED));
+    container(col).padding(24).into()
 }
 
 pub fn view(e: &Editor) -> Element<'_, Msg> {
@@ -605,7 +631,7 @@ fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
     // (The match's game's.)
     let mut all: Vec<(String, nettai_content_api::PatchCardHandle)> = (0..c.defs.patch_cards.len() as u16)
         .map(nettai_content_api::PatchCardHandle)
-        .filter(|&h| nettai_match::ids::in_game(e.m.game(), &c.defs.patch_card(h).key))
+        .filter(|&h| nettai_match::ids::in_game(c, e.m.game(), &c.defs.patch_card(h).key))
         .filter(|h| !side.cards.iter().any(|x| x.card == *h))
         .map(|h| (e.names.patch_card(c, h), h))
         .filter(|(n, _)| needle.is_empty() || n.to_lowercase().contains(&needle))
@@ -664,7 +690,7 @@ fn stats_pane<'a>(e: &'a Editor, s: usize, only: Option<&'static [&'static str]>
     // (Weapons, records and forms by their names in the match's game.)
     let game = e.m.game();
     let local = |key: &str| nettai_match::ids::local(key).to_string();
-    let ours = move |key: &str| nettai_match::ids::in_game(game, key);
+    let ours = move |key: &str| nettai_match::ids::in_game(c, game, key);
     let base = crate::levels::reset(c, side);
     let leveled = crate::levels::has_levels(c, side);
     let (title, about) = match only {
@@ -764,6 +790,6 @@ fn stats_pane<'a>(e: &'a Editor, s: usize, only: Option<&'static [&'static str]>
     scrollable(col).into()
 }
 
-pub fn theme(_: &Editor) -> Theme {
+pub fn theme(_: &App) -> Theme {
     Theme::Light
 }

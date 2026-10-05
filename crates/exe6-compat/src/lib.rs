@@ -166,9 +166,9 @@ pub struct SpawnerZDrop {
 }
 
 /// A console's game: the US Falzar or Gregar, or the Japanese ones (EXE6).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// (None is the default: a console's game is the one something states.)
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Game {
-    #[default]
     Falzar,
     Gregar,
     JpFalzar,
@@ -177,13 +177,15 @@ pub enum Game {
 
 impl Game {
     /// A trace's names for it: the version ("falzar", "gregar") and the
-    /// region ("us", "jp").
-    pub fn of_names(version: &str, region: &str) -> Game {
+    /// region ("us", "jp"). None for any other name: no game stands for
+    /// one a trace doesn't state.
+    pub fn of_names(version: &str, region: &str) -> Option<Game> {
         match (version, region) {
-            ("gregar", "jp") => Game::JpGregar,
-            ("gregar", _) => Game::Gregar,
-            (_, "jp") => Game::JpFalzar,
-            _ => Game::Falzar,
+            ("falzar", "us") => Some(Game::Falzar),
+            ("gregar", "us") => Some(Game::Gregar),
+            ("falzar", "jp") => Some(Game::JpFalzar),
+            ("gregar", "jp") => Some(Game::JpGregar),
+            _ => None,
         }
     }
 }
