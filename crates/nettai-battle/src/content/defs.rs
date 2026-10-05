@@ -1485,7 +1485,18 @@ impl Defs {
         // form's name theirs: each knows whose it is.
         let mut identities = Vec::new();
         for d in definitions.of(Registry::Identity) {
-            identities.push(super::identity::read(d, &content.assets, &definitions)?);
+            // (Its `parts.own` is a function: the identity's only one.)
+            let own_part = match d.spec.field("parts") {
+                parts @ Data::Map(_) => match parts.field("own") {
+                    Data::Nil => None,
+                    Data::Function => Some(functions.id(FnSource::slot(Registry::Identity, &d.key, "parts.own"))),
+                    other => {
+                        return Err(ContentError::new(format!("{}.luau: identity {}: `parts.own` is {other:?}, not a function", d.module, d.key)));
+                    }
+                },
+                _ => None,
+            };
+            identities.push(super::identity::read(d, &content.assets, &definitions, own_part)?);
         }
         if identities.windows(2).any(|w| w[0].key >= w[1].key) {
             return Err(ContentError::new("the identities are not in key order (the define phase sorts each registry)"));
