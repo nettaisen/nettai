@@ -94,6 +94,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let sprite = b.roles().sprite(sprite);
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
+    // (`sprite_loadAnimationData`, 0x080E0932 and BN5's 0x080E093A: the
+    // animation starts on its first frame, for that frame's time.)
+    s.set_animation(0, &b.content);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;

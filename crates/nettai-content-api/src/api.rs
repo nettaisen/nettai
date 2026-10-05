@@ -1402,6 +1402,9 @@ pub trait CoreApi {
     /// (`sub_8026840`).
     fn custom_draw_window(&mut self, side: u8) -> ApiResult<()>;
     fn custom_draw_regular(&mut self, side: u8) -> ApiResult<()>;
+    /// The icon of the chip a button holds (`custom_hold_last_pick`), over
+    /// the button (BN5's 0x080254F4): nothing while none holds one.
+    fn custom_draw_held(&mut self, side: u8) -> ApiResult<()>;
     fn custom_draw_cross_cursor(&mut self, side: u8) -> ApiResult<()>;
     fn custom_show_chip_window(&mut self, side: u8) -> ApiResult<()>;
     fn custom_set_cross_tab(&mut self, side: u8, on: bool) -> ApiResult<()>;
