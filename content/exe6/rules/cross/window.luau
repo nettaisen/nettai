@@ -133,7 +133,7 @@ local function listed_cross_fits(side: number, form: FormDef): boolean
         return true
     end
     local current = battle.navi(side).form
-    return form.kind == "cross" and not (kind.is_beast(current.kind) and form.game ~= current.game)
+    return form.kind == "cross" and not (kind.is_beast(current.kind) and form.version ~= current.version)
 end
 
 -- The form a Cross chosen (by its place) puts the navi in at the turn's

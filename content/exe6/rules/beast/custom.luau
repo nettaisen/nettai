@@ -51,8 +51,8 @@ end
 local function beast_game(side: number): "gregar" | "falzar"
     local setup = system.setup() :: Setup
     local form = battle.navi(side).form
-    if form.game ~= nil and setup.cross_list[1] ~= nil and not form.base then
-        return form.game :: "gregar" | "falzar"
+    if form.version ~= nil and setup.cross_list[1] ~= nil and not form.base then
+        return form.version :: "gregar" | "falzar"
     end
     return setup.version
 end

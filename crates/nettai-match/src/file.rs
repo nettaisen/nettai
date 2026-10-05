@@ -43,17 +43,22 @@
 //!     { program = "suprarmr", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
 //! ]
 //!
-//! [left.tactics]                     # optional: EXE5's computer-navi data, the save's (none: empty)
-//! entries = ["cannon", "pattern 1", "nothing", "empty"]   # up to 42: a chip, a pattern by its number, 0, 0xFFFF
-//! patterns = [{ dx = 1, dy = 0, chips = ["sword", "wideswrd"] }]   # up to 8, each up to 6 chips
-//!
 //! # In an EXE5 match ([left] of game = "exe5") a side may say besides:
 //! karma = 100                        # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
 //! souls = ["protosoul"]              # optional: the souls it has, either version's (none: every soul)
 //! soul_unison = false                # optional: no soul button (the save's event flag 0; default true)
 //! chaos_unison = false               # optional: no Chaos Unison (the save's event flag 0x236; default true)
+//!
+//! [left.computer_navi]               # optional: what a computer navi plays from the side's save (none: nothing learned)
+//! first = ["cannon"]                 # up to 3 entries it plays first, each a chip or a pattern
+//! rest = [                           # up to 39 more; a chip named several times is played that much more often
+//!     "sword",
+//!     "sword",
+//!     { dx = -2, dy = 0, chips = ["sword", "wideswrd"] },   # a pattern: a place from its target, up to 5 chips
+//! ]
 //! ```
 
+use crate::computer_navi::{ComputerNavi, Pattern, Play};
 use crate::{Arena, Folder, Match, Place, Side, ids, stats};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
@@ -62,7 +67,6 @@ use nettai_battle::custom::{FolderChip, GameVersion};
 use nettai_battle::navicust::{NaviCust, PlacedProgram};
 use nettai_battle::patch_cards::InstalledCard;
 use nettai_battle::setup::SpTimes;
-use nettai_battle::tactics::{Tactic, TacticPattern, Tactics};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -133,27 +137,28 @@ pub struct SideFile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub navicust: Option<NaviCustFile>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tactics: Option<TacticsFile>,
+    pub computer_navi: Option<ComputerNaviFile>,
 }
 
-/// A player's tactics (`nettai_battle::tactics`): the entries, each a chip's
-/// name, `pattern N` (from 1), `nothing` (a save's 0) or `empty` (0xFFFF), and
-/// the patterns.
+/// A player's computer-navi data (`crate::computer_navi`): the entries a
+/// computer navi plays first and the rest, each a chip's name (a string) or
+/// a pattern (a table: [`PatternFile`]).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct TacticsFile {
-    #[serde(default)]
-    pub entries: Vec<String>,
+pub struct ComputerNaviFile {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub patterns: Vec<PatternFile>,
+    pub first: Vec<toml::Value>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub rest: Vec<toml::Value>,
 }
 
+/// A pattern: its place from its target (`dx` columns toward the computer
+/// navi's enemies, `dy` rows down) and its chips' names.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PatternFile {
     pub dx: i8,
     pub dy: i8,
-    #[serde(default)]
     pub chips: Vec<String>,
 }
 
@@ -372,7 +377,7 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
             Err(e) => say(format!("sp_times: {name}: {e}")),
         }
     }
-    let tactics = s.tactics.as_ref().map(|t| resolve_tactics(content, game, t, &mut say)).unwrap_or_default();
+    let computer_navi = s.computer_navi.as_ref().map(|c| resolve_computer_navi(content, game, c, &mut say)).unwrap_or_default();
     // The souls, by name.
     let souls = s.souls.as_ref().map(|names| {
         names
@@ -409,7 +414,7 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
         bug_frags: s.bug_frags.unwrap_or(0),
         sp_times,
         navicust,
-        tactics,
+        computer_navi,
         karma: s.karma.unwrap_or(crate::facts::DEFAULT_KARMA),
         souls,
         soul_unison: s.soul_unison,
@@ -417,40 +422,40 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
     })
 }
 
-/// A file's tactics: what names nothing in `game` is said, and left out.
-fn resolve_tactics(content: &Content, game: &str, t: &TacticsFile, say: &mut impl FnMut(String)) -> Tactics {
-    let chip = |name: &str, say: &mut dyn FnMut(String)| {
-        let c = ids::chip(content, game, name);
-        if c.is_none() {
-            say(format!("tactics: {}", unknown("chip", name, game, &[])));
-        }
-        c
-    };
-    let mut entries = Vec::with_capacity(t.entries.len());
-    for e in &t.entries {
-        let e = e.trim();
-        let entry = match e {
-            "nothing" => Some(Tactic::Nothing),
-            "empty" => Some(Tactic::Empty),
-            _ => match e.strip_prefix("pattern ") {
-                Some(n) => match n.trim().parse::<u8>() {
-                    Ok(n) if n >= 1 => Some(Tactic::Pattern(n - 1)),
-                    _ => {
-                        say(format!("tactics: {e:?} is no pattern's number (from 1)"));
-                        None
+/// A file's computer-navi data: each entry a chip of `game` by name or a
+/// pattern of them. What is neither, and what names nothing in `game`, is
+/// said, and left out.
+fn resolve_computer_navi(content: &Content, game: &str, c: &ComputerNaviFile, say: &mut impl FnMut(String)) -> ComputerNavi {
+    let mut group = |name: &str, entries: &[toml::Value]| -> Vec<Play> {
+        let mut out = Vec::with_capacity(entries.len());
+        for (i, e) in entries.iter().enumerate() {
+            let at = format!("computer_navi: {name} entry {}", i + 1);
+            let mut chip = |n: &str| {
+                let c = ids::chip(content, game, n);
+                if c.is_none() {
+                    say(format!("{at}: {}", unknown("chip", n, game, &[])));
+                }
+                c
+            };
+            match e {
+                toml::Value::String(n) => out.extend(chip(n).map(Play::Chip)),
+                toml::Value::Table(_) => match e.clone().try_into::<PatternFile>() {
+                    // (A pattern missing a chip the game hasn't is another
+                    // pattern: the whole entry is left out.)
+                    Ok(p) => {
+                        let chips: Vec<_> = p.chips.iter().map(|n| chip(n)).collect();
+                        if chips.iter().all(Option::is_some) {
+                            out.push(Play::Pattern(Pattern { dx: p.dx, dy: p.dy, chips: chips.into_iter().flatten().collect() }));
+                        }
                     }
+                    Err(e) => say(format!("{at}: a pattern is {{ dx, dy, chips }}: {}", e.message())),
                 },
-                None => chip(e, say).map(Tactic::Chip),
-            },
-        };
-        entries.extend(entry);
-    }
-    let patterns = t
-        .patterns
-        .iter()
-        .map(|p| TacticPattern { dx: p.dx, dy: p.dy, chips: p.chips.iter().filter_map(|k| chip(k, say)).collect() })
-        .collect();
-    Tactics { entries, patterns }
+                other => say(format!("{at}: {other} is neither a chip's name nor a pattern ({{ dx, dy, chips }})")),
+            }
+        }
+        out
+    };
+    ComputerNavi { first: group("first", &c.first), rest: group("rest", &c.rest) }
 }
 
 /// A file side's folder: up to 30 entries, an empty one `[]` and those past
@@ -513,24 +518,16 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
         },
         regular: s.folder.regular,
         tags: s.folder.tags.map(|(a, b)| [a, b]),
-        tactics: (s.tactics != Tactics::default()).then(|| TacticsFile {
-            entries: s
-                .tactics
-                .entries
-                .iter()
-                .map(|e| match *e {
-                    Tactic::Chip(c) => name(&content.defs.chip(c).key),
-                    Tactic::Pattern(i) => format!("pattern {}", i as u16 + 1),
-                    Tactic::Nothing => "nothing".into(),
-                    Tactic::Empty => "empty".into(),
-                })
-                .collect(),
-            patterns: s
-                .tactics
-                .patterns
-                .iter()
-                .map(|p| PatternFile { dx: p.dx, dy: p.dy, chips: p.chips.iter().map(|&c| name(&content.defs.chip(c).key)).collect() })
-                .collect(),
+        // (Nothing learned is left out.)
+        computer_navi: (!s.computer_navi.is_empty()).then(|| {
+            let play = |p: &Play| match p {
+                Play::Chip(c) => toml::Value::String(name(&content.defs.chip(*c).key)),
+                Play::Pattern(p) => {
+                    let chips = p.chips.iter().map(|&c| name(&content.defs.chip(c).key)).collect();
+                    toml::Value::try_from(PatternFile { dx: p.dx, dy: p.dy, chips }).expect("a pattern serializes")
+                }
+            };
+            ComputerNaviFile { first: s.computer_navi.first.iter().map(play).collect(), rest: s.computer_navi.rest.iter().map(play).collect() }
         }),
         stats: s.stats_block(content),
         karma: (s.karma != crate::facts::DEFAULT_KARMA).then_some(s.karma),
@@ -599,30 +596,74 @@ pub fn game_of(text: &str) -> Result<String, String> {
 
 /// A match file's text.
 pub fn write(content: &Content, m: &Match) -> String {
-    let body = toml::to_string_pretty(&to_file(content, m)).expect("a match file serializes");
-    format!("# A nettai match (docs/frontend.md §6): play it with `nettai-frontend --match FILE`.\n\n{}", folders_inline(&body))
+    let file = to_file(content, m);
+    let body = toml::to_string_pretty(&file).expect("a match file serializes");
+    format!("# A nettai match (docs/frontend.md §6): play it with `nettai-frontend --match FILE`.\n\n{}", tidy(&body, &file))
 }
 
-/// `body` with each folder entry (`["cannon", "A"]`) on a line of its
-/// own: the pretty printer spreads every element of a nested array over
-/// lines.
-fn folders_inline(body: &str) -> String {
+/// `list`'s entries each on a line of its own.
+fn a_line_each(list: &mut toml_edit::Array) {
+    for entry in list.iter_mut() {
+        entry.decor_mut().set_prefix("\n    ");
+    }
+    list.set_trailing_comma(true);
+    list.set_trailing("\n");
+}
+
+/// A computer navi's entry as a file writes it: a chip's name, or a
+/// pattern on one line, its place then its chips.
+fn play_item(play: &toml::Value) -> toml_edit::Value {
+    match play {
+        toml::Value::Table(p) => {
+            let mut table = toml_edit::InlineTable::new();
+            for key in ["dx", "dy"] {
+                table.insert(key, p.get(key).and_then(toml::Value::as_integer).unwrap_or(0).into());
+            }
+            let chips: toml_edit::Array = p.get("chips").and_then(toml::Value::as_array).into_iter().flatten().filter_map(toml::Value::as_str).collect();
+            table.insert("chips", chips.into());
+            table.into()
+        }
+        other => other.as_str().unwrap_or_default().into(),
+    }
+}
+
+/// `body`, the pretty printer's text of `file`, as a person would lay it
+/// out: each folder entry (`["cannon", "A"]`) on a line of its own (the
+/// printer spreads every element of a nested array over lines), and the
+/// computer navi's entries a line each where there are more than a few, a
+/// pattern on one line.
+fn tidy(body: &str, file: &MatchFile) -> String {
     let mut doc: toml_edit::DocumentMut = body.parse().expect("a match file parses");
-    for side in ["left", "right"] {
-        let Some(folder) = doc.get_mut(side).and_then(|s| s.get_mut("folder")).and_then(|f| f.as_array_mut()) else { continue };
-        for entry in folder.iter_mut() {
-            if let Some(pair) = entry.as_array_mut() {
-                pair.set_trailing_comma(false);
-                pair.set_trailing("");
-                for (i, v) in pair.iter_mut().enumerate() {
-                    v.decor_mut().set_prefix(if i == 0 { "" } else { " " });
-                    v.decor_mut().set_suffix("");
+    for (side, of) in [("left", &file.left), ("right", &file.right)] {
+        if let Some(folder) = doc.get_mut(side).and_then(|s| s.get_mut("folder")).and_then(|f| f.as_array_mut()) {
+            for entry in folder.iter_mut() {
+                if let Some(pair) = entry.as_array_mut() {
+                    pair.set_trailing_comma(false);
+                    pair.set_trailing("");
+                    for (i, v) in pair.iter_mut().enumerate() {
+                        v.decor_mut().set_prefix(if i == 0 { "" } else { " " });
+                        v.decor_mut().set_suffix("");
+                    }
                 }
             }
-            entry.decor_mut().set_prefix("\n    ");
+            a_line_each(folder);
         }
-        folder.set_trailing_comma(true);
-        folder.set_trailing("\n");
+        // (Written over the printer's, which makes a list of patterns
+        // alone a table each.)
+        let (Some(data), Some(table)) = (&of.computer_navi, doc.get_mut(side).and_then(|s| s.get_mut("computer_navi")).and_then(|c| c.as_table_mut())) else {
+            continue;
+        };
+        table.set_implicit(false);
+        for (name, plays) in [("first", &data.first), ("rest", &data.rest)] {
+            if plays.is_empty() {
+                continue;
+            }
+            let mut list: toml_edit::Array = plays.iter().map(play_item).collect();
+            if plays.len() > crate::computer_navi::FIRST || plays.iter().any(|p| !p.is_str()) {
+                a_line_each(&mut list);
+            }
+            table.insert(name, toml_edit::value(list));
+        }
     }
     doc.to_string()
 }
@@ -656,31 +697,64 @@ mod tests {
         assert!(game_of("[arena]\nstage = \"x\"\n").is_err());
     }
 
-    /// A side's tactics (EXE5's computer-navi data) write and read back, and
-    /// what they get wrong is said.
+    /// A side's computer-navi data (EXE5's) writes and reads back, chips by
+    /// name and patterns as tables; the round sends it; and what a file gets
+    /// wrong is said, with where it is.
     #[test]
-    fn tactics_write_and_read_back() {
-        let content = exe6_content();
-        let mut m = crate::draw::live(&content, "exe6", 2, None).unwrap();
-        let chip = |name: &str| ids::chip(&content, "exe6", name).unwrap();
-        m.sides[0].tactics = Tactics {
-            entries: vec![Tactic::Chip(chip("cannon")), Tactic::Pattern(0), Tactic::Nothing, Tactic::Empty],
-            patterns: vec![TacticPattern { dx: 1, dy: -1, chips: vec![chip("sword"), chip("cannon")] }],
+    fn computer_navi_data_writes_and_reads_back() {
+        use nettai_battle::tactics::{Tactic, TacticPattern};
+        let content = crate::testing::exe5_content();
+        let mut m = crate::draw::live(&content, "exe5", 2, None).unwrap();
+        let chip = |name: &str| ids::chip(&content, "exe5", name).unwrap();
+        let pattern = Pattern { dx: -2, dy: 1, chips: vec![chip("sword"), chip("wideswrd")] };
+        m.sides[0].computer_navi = ComputerNavi {
+            first: vec![Play::Chip(chip("cannon"))],
+            rest: vec![Play::Chip(chip("sword")), Play::Pattern(pattern.clone()), Play::Chip(chip("sword"))],
         };
+        m.sides[1].computer_navi = ComputerNavi::default();
         let text = write(&content, &m);
-        assert!(text.contains("[left.tactics]") && text.contains("\"pattern 1\"") && !text.contains("[right.tactics]"), "{text}");
+        for line in ["[left.computer_navi]", "first = [\"cannon\"]", "    \"sword\",\n", "    { dx = -2, dy = 1, chips = [\"sword\", \"wideswrd\"] },\n"] {
+            assert!(text.contains(line), "{line}:\n{text}");
+        }
+        assert!(!text.contains("[right.computer_navi]") && !text.contains("tactics"), "{text}");
         let back = parse(&content, &text).unwrap_or_else(|e| panic!("{e:?}\n{text}"));
         assert_eq!(back, m);
-        // The round sends them: packed, the empty place gone.
+        // Patterns alone (which the printer would make a table each) are a
+        // list as any other.
+        let mut patterns = m.clone();
+        patterns.sides[1].computer_navi =
+            ComputerNavi { first: vec![Play::Pattern(pattern.clone())], rest: vec![Play::Pattern(Pattern { dx: 0, dy: 0, chips: vec![chip("cannon")] })] };
+        let listed = write(&content, &patterns);
+        let lines = "[right.computer_navi]\nfirst = [\n    { dx = -2, dy = 1, chips = [\"sword\", \"wideswrd\"] },\n]\nrest = [\n    { dx = 0, dy = 0, chips = [\"cannon\"] },\n]\n";
+        assert!(listed.contains(lines) && !listed.contains("[[right"), "{listed}");
+        assert_eq!(parse(&content, &listed).unwrap_or_else(|e| panic!("{e:?}\n{listed}")), patterns);
+        // The round sends it: the entry played first still first, the
+        // others after it in an order the seed draws.
         let sent = &m.round(&content, 2).players[0].tactics;
-        assert_eq!(sent.entries.len(), 3);
-        assert_eq!(sent.patterns, m.sides[0].tactics.patterns);
-        let bad = text.replacen("\"pattern 1\"", "\"pattern 2\"", 1);
-        let problems = parse(&content, &bad).unwrap_err();
-        assert!(problems.iter().any(|p| p.contains("the tactics name pattern 2")), "{problems:?}");
-        let bad = text.replacen("entries = [\n    \"cannon\"", "entries = [\n    \"nothing-at-all\"", 1);
-        let problems = parse(&content, &bad).unwrap_err();
-        assert!(problems.iter().any(|p| p.contains("tactics: no chip \"nothing-at-all\" in exe6")), "{problems:?}\n{text}");
+        assert_eq!((sent.entries.len(), sent.entries[0]), (4, Tactic::Chip(chip("cannon"))));
+        assert_eq!(sent.patterns, [TacticPattern { dx: -2, dy: 1, chips: pattern.chips.clone() }]);
+        assert!(m.round(&content, 2).players[1].tactics.entries.is_empty());
+        // What a file gets wrong.
+        let bad = |from: &str, to: &str| -> Vec<String> {
+            assert!(text.contains(from), "{from}:\n{text}");
+            parse(&content, &text.replacen(from, to, 1)).unwrap_err()
+        };
+        let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
+        has(bad("first = [\"cannon\"]", "first = [\"nothing-at-all\"]"), "left: computer_navi: first entry 1: no chip \"nothing-at-all\" in exe5");
+        has(bad("first = [\"cannon\"]", "first = [7]"), "left: computer_navi: first entry 1: 7 is neither a chip's name nor a pattern");
+        has(bad("first = [\"cannon\"]", "first = [\"cannon\", \"cannon\", \"cannon\", \"cannon\"]"), "left: the computer navi plays 4 entries first");
+        has(bad("dx = -2, dy = 1", "dx = -2, dy = 1, dz = 0"), "left: computer_navi: rest entry 2: a pattern is { dx, dy, chips }");
+        has(bad("dx = -2, dy = 1", "dx = -2"), "left: computer_navi: rest entry 2: a pattern is { dx, dy, chips }");
+        has(bad("chips = [\"sword\", \"wideswrd\"]", "chips = [\"sword\", \"wideswd\"]"), "left: computer_navi: rest entry 2: no chip \"wideswd\" in exe5");
+        has(bad("dx = -2", "dx = -6"), "left: the computer navi's pattern 1 is -6 columns and 1 rows from its target");
+        has(bad("chips = [\"sword\", \"wideswrd\"]", "chips = []"), "left: the computer navi's pattern 1 has no chips");
+        has(bad("first = [\"cannon\"]", "first = [\"cannon\"]\nentries = []"), "unknown field `entries`");
+        // EXE6 has no computer navis: its match file takes no such data.
+        let six = exe6_content();
+        let good = write(&six, &crate::draw::live(&six, "exe6", 2, None).unwrap());
+        assert!(!good.contains("computer_navi"), "{good}");
+        let problems = parse(&six, &format!("{good}\n[left.computer_navi]\nrest = [\"cannon\"]\n")).unwrap_err();
+        assert_eq!(problems, ["left: computer-navi data, but exe6 has no computer navis (no computer-navi system)"]);
     }
 
     /// What a file can get wrong is said, with where it is.

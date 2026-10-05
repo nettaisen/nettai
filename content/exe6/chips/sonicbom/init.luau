@@ -19,6 +19,7 @@ return define.chip {
     flags = { "has_damage", "library" },
     beast = { rush = false, lockon = lockon.widesht },
     library = { number = 371, index = 0, sort = 0 },
+    traits = { "hides_advance_code" },
     slot_in_limit = 1,
     action = sonic.actions.sonicbom,
 }
