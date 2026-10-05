@@ -1,8 +1,8 @@
 --!strict
--- Geddon's dimming controller, as BN5 and BN6 share it (BN6's effect object #0x1D, `sub_80E24E4`, BN5's 0x1D,
--- 0x080E275C): the usual dimming phases (BN6's lib/dimming), with an effect that sets off a quake over the field
--- and waits until it is done. BN6's holds the user's panel while the quake runs (it reserves it, so it counts as
--- occupied); BN5's doesn't (0x080E275C: no `object_reservePanel` or `object_removePanelReserve`).
+-- Geddon's dimming controller, as EXE5 and EXE6 share it (EXE6's effect object #0x1D, `sub_80E24E4`, EXE5's 0x1D,
+-- 0x080E275C): the usual dimming phases (EXE6's lib/dimming), with an effect that sets off a quake over the field
+-- and waits until it is done. EXE6's holds the user's panel while the quake runs (it reserves it, so it counts as
+-- occupied); EXE5's doesn't (0x080E275C: no `object_reservePanel` or `object_removePanelReserve`).
 --
 -- Each game makes its own kind (`controller.make`) with its quake's spawn; a chip's `dimming` hook is the made
 -- controller's `hook(change)`.
@@ -27,7 +27,7 @@ export type Spec = {
     name: string,
     -- Spawns the quake of `change` on `spawner`'s side, which clears `holder`'s `busy` when it is done.
     quake: (spawner: Object, change: Change, holder: Object) -> Object?,
-    -- Whether the user's panel is held while the quake runs (BN6's).
+    -- Whether the user's panel is held while the quake runs (EXE6's).
     hold_panel: boolean,
 }
 
@@ -38,7 +38,7 @@ export type Controller = {
 
 function controller.make(spec: Spec): Controller
     local hold = spec.hold_panel
-    -- BN6's `sub_80E2528`, BN5's 0x080E275C: (the user's panel held and) the quake; once it is done, (the panel
+    -- EXE6's `sub_80E2528`, EXE5's 0x080E275C: (the user's panel held and) the quake; once it is done, (the panel
     -- let go and) the effect is over.
     local function effect(me: Object)
         local s = me.state :: State
@@ -65,11 +65,11 @@ function controller.make(spec: Spec): Controller
         id = spec.id,
         pool = "effect",
         state = { change = { "crack", "break", "poison" }, busy = "bool" },
-        -- BN6's `sub_80E24E4`.
+        -- EXE6's `sub_80E24E4`.
         update = dimming_chips.phases { name = spec.name, effect = effect },
     }
 
-    -- BN6's `sub_80E2566`, BN5's 0x080E2786: a chip's `dimming` hook, for the quake's change. (The spawner copies
+    -- EXE6's `sub_80E2566`, EXE5's 0x080E2786: a chip's `dimming` hook, for the quake's change. (The spawner copies
     -- the user's side, not its facing.)
     local function hook(change: Change): (user: Object, dspec: DimmingChipSpec) -> Object?
         return function(user: Object, dspec: DimmingChipSpec): Object?

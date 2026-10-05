@@ -1,14 +1,14 @@
 --!strict
--- The Guardian statue, as BN5 and BN6 share it (BN6's attack object #0x7D, `sub_80D4C84`; BN5's #0x7D, 0x080D5EB4;
--- BN6's docs/engine/dimming-chip-effects.md §5): a field obstacle that stands for 6000 ticks. Broken by an attack
+-- The Guardian statue, as EXE5 and EXE6 share it (EXE6's attack object #0x7D, `sub_80D4C84`; EXE5's #0x7D, 0x080D5EB4;
+-- EXE6's docs/engine/dimming-chip-effects.md §5): a field obstacle that stands for 6000 ticks. Broken by an attack
 -- from one side only, it takes the other side's part: in a dimming of its own (the look's strike, which the other
 -- player can't cut in on) it strikes every panel the attacker's navi stands on. Broken otherwise (by a body, by hits
 -- from both sides, by its time running out) it just crumbles. The Guardian chip places one (with the user's side);
 -- stages can place one at the start (the kind's `place`, with its panel's side).
 --
--- Each game makes its own kind (`statue.make`) with its look: the sprite, identity, HP (BN6's 1, BN5's 10:
--- 0x080D5F12), sounds, effects, collision types, its strike's dimming, and how it leaves when removed (BN6's
--- `sub_80D4EFC`: absorbed, blinking out or a puff; BN5's 0x080D6124, which neither absorbs nor blinks obstacles
+-- Each game makes its own kind (`statue.make`) with its look: the sprite, identity, HP (EXE6's 1, EXE5's 10:
+-- 0x080D5F12), sounds, effects, collision types, its strike's dimming, and how it leaves when removed (EXE6's
+-- `sub_80D4EFC`: absorbed, blinking out or a puff; EXE5's 0x080D6124, which neither absorbs nor blinks obstacles
 -- out: a puff for any removal).
 --
 -- An obstacle: its update runs the obstacle framework's steps (the `obstacle` service) around its own actions.
@@ -53,10 +53,10 @@ export type Look = {
     strike_is: CollisionType,
     strike_hits: CollisionType,
     strike: Strike,
-    -- The damage word a stage's statues strike with (BN6's 200; BN5's 200 with the counter byte 0xA8: 0x0800694A).
+    -- The damage word a stage's statues strike with (EXE6's 200; EXE5's 200 with the counter byte 0xA8: 0x0800694A).
     stage_damage: number?,
-    -- How it looks absorbed (BN6's: absorbed, it flies to the absorber, and a removal may blink it out); none
-    -- (BN5's): a removal leaves a puff.
+    -- How it looks absorbed (EXE6's: absorbed, it flies to the absorber, and a removal may blink it out); none
+    -- (EXE5's): a removal leaves a puff.
     absorbed: AbsorbedLook?,
     -- The effects it leaves (the game's lib/effects).
     effects: { puff: Effect },
@@ -91,7 +91,7 @@ local STRIKE_REGION: { [number]: Region } = {
 local STRIKE_HIT_MOD = 3
 local STRIKE_ANIM = 1
 
--- Its actions (`off_80D4D60`; BN5's table has no frozen or bubbled rows: standing and striking back are its 6 and
+-- Its actions (`off_80D4D60`; EXE5's table has no frozen or bubbled rows: standing and striking back are its 6 and
 -- 7, the same actions).
 local APPEAR, STANDING, STRIKE_BACK = 0, 8, 9
 

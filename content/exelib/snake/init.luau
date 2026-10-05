@@ -1,9 +1,9 @@
 --!strict
--- Snake's snakes and the holes they come out of (BN6's attack objects #0x72, the nest, and #0x73, the snake,
--- `sub_80D2BDC` and `sub_80D2EBC`; BN5's #0x53 and #0x54, 0x080D03E4's nest and the same snake code but for its
+-- Snake's snakes and the holes they come out of (EXE6's attack objects #0x72, the nest, and #0x73, the snake,
+-- `sub_80D2BDC` and `sub_80D2EBC`; EXE5's #0x53 and #0x54, 0x080D03E4's nest and the same snake code but for its
 -- look and how it tells its nest it's gone). A snake rises out of its hole, waits, then leaps at its target panel
--- and strikes it, or flies on off the field when it has none. Each game's nest sends them out (BN6's
--- chips/snake/nest, BN5's chips/snake), from the holes the scan here finds, at the targets `target` picks.
+-- and strikes it, or flies on off the field when it has none. Each game's nest sends them out (EXE6's
+-- chips/snake/nest, EXE5's chips/snake), from the holes the scan here finds, at the targets `target` picks.
 --
 -- A game makes its snake kind with `snake.make_kind(id, look)`.
 

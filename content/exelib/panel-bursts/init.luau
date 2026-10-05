@@ -1,6 +1,6 @@
 --!strict
--- Panel bursts, as BN5 and BN6 share them (BN6's effect object #0x24,
--- `sub_80E2F56`; BN5's #0x24): each game makes its own kind
+-- Panel bursts, as EXE5 and EXE6 share them (EXE6's effect object #0x24,
+-- `sub_80E2F56`; EXE5's #0x24): each game makes its own kind
 -- (`panel_bursts.make_kind`):
 -- one-shot effects going off one panel at a time, every `interval` ticks,
 -- over a set of panels in a random order: the blasts a time bomb's

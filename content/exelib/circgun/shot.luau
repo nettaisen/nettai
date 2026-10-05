@@ -3,7 +3,7 @@
 -- docs/engine/dimming-chip-effects.md §8): the gun's mark on a panel that,
 -- 29 ticks later, hits it if it is solid, with a flash, and tells the gun
 -- it is done. Its sprite steps while dimmed. Another game's shot is a kind
--- of its look (`shot.make_kind`, with the gun's: ./gun; BN5's DarkCirc).
+-- of its look (`shot.make_kind`, with the gun's: ./gun; EXE5's DarkCirc).
 
 local regions = require("../regions")
 
@@ -32,7 +32,7 @@ function shot.place(me: Object)
     me.pos = Vec3.new(me.pos.x, me.pos.y + 0x8_0000, 0x8_0000)
 end
 
--- BN5's (0x080D76F0, and its gun's place): on its panel, at height 0.
+-- EXE5's (0x080D76F0, and its gun's place): on its panel, at height 0.
 function shot.place_on_floor(me: Object)
     me:set_coordinates_from_panel()
     me.pos = Vec3.new(me.pos.x, me.pos.y, 0)

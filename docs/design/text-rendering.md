@@ -19,7 +19,7 @@ definitions, `compat/text.toml`), [rollback.md](rollback.md) §3 (presentation u
 
 ## 0. Summary
 
-- **BN6 draws battle text with two fonts, and a lot of what looks like text is pictures.** The 8x16 font (224
+- **EXE6 draws battle text with two fonts, and a lot of what looks like text is pictures.** The 8x16 font (224
   glyphs, fixed 8-pixel advance, a face color and a shadow color) draws chip names, telops, the other player's
   used chip and the HUD's text lines. The dialogue font (16x12 cells, proportional advance from a width table,
   about 460 glyphs with kana and kanji) draws the chatbox: chip descriptions and the no-running message. Banners,
@@ -31,7 +31,7 @@ definitions, `compat/text.toml`), [rollback.md](rollback.md) §3 (presentation u
   Every string the frontend draws goes through `fonts.rs`: `cell_glyphs`, `cell_text`, `draw_cell_text` and
   `cell_glyph` for the 8x16 font (the HUD's sites too), `dialogue_glyphs` and `dialogue_text` for the dialogue
   font. (The paragraphs below describe the state before it.)
-- **The 8x16 font spells every BN6 chip name** (298 of 298, all within 8 glyphs). It has Latin letters, digits,
+- **The 8x16 font spells every EXE6 chip name** (298 of 298, all within 8 glyphs). It has Latin letters, digits,
   kana, two kanji and some signs: no accents, no kanji to speak of, nothing else. A character it lacks is dropped
   from the name and reported by `--audit`; glyphs past the eighth are cut silently.
 - **A font file rasterized into the 240x160 frame only looks right if it is a pixel font at its native size.**
@@ -46,7 +46,7 @@ definitions, `compat/text.toml`), [rollback.md](rollback.md) §3 (presentation u
   - Three modes: `original` (extracted fonts only: what the comparison uses), `font` (font files only: what a pack
     without a ROM uses), and `auto`, the default: the extracted font wherever it can spell the whole string in its
     box, a bundled open-license pixel font for the strings it can't.
-  - `auto` changes no pixel of BN6's own content, so the default stays comparable with the original, and mods,
+  - `auto` changes no pixel of EXE6's own content, so the default stays comparable with the original, and mods,
     translations and Japanese text with kanji stop losing characters.
   - Numbers and the picture labels stay pictures in every mode. Banners are out of scope.
 - **Rejected as the main line: a vector font on an output-resolution layer** (cosmic-text or similar). It is the
@@ -121,7 +121,7 @@ through a font.
   control codes begin); the kanji 熱 and 斗; and the eleven bracketed marks.
 - No accented letters, no kanji beyond those two, no Cyrillic, Greek, Hangul or anything else, and no `[`, `]`,
   `#`, `@`, `<`, `>`.
-- Every BN6 chip name is spelled within 8 glyphs: 210 names take all eight, 57 take seven, the rest fewer
+- Every EXE6 chip name is spelled within 8 glyphs: 210 names take all eight, 57 take seven, the rest fewer
   (`ElecMan[EX]` is eight: `[EX]` is one glyph). The 295 descriptions have at most 11 characters a line as
   written and use, beyond letters and digits, `! & ' + , - . / : =`, the mark `[A]` and a few katakana.
 
@@ -230,10 +230,10 @@ a font traced from the ROM's glyphs: that is ROM-derived media.
 
 | Source | For | Against |
 |---|---|---|
-| **A bundled open-license pixel font** | text always draws, the same on every machine; fits the frame; can be chosen to sit well beside BN6's art | no open font is BN6's; it needs choosing, and a CJK one is large (thousands of glyphs; not measured here) |
+| **A bundled open-license pixel font** | text always draws, the same on every machine; fits the frame; can be chosen to sit well beside EXE6's art | no open font is EXE6's; it needs choosing, and a CJK one is large (thousands of glyphs; not measured here) |
 | **A bundled general UI font** (Noto Sans, Inter, M PLUS) | wide coverage, familiar | only usable with option B |
 | **The user's system fonts** | nothing to bundle; covers the user's language | differs on every machine, so screenshots and tests don't reproduce; needs font discovery (`fontdb`, fontconfig on Linux); license unknown. Reasonable only as an explicit `--font <path>` |
-| **A font the content or the pack names** | a mod, a translation or a from-scratch pack brings its own look and coverage; BN6's pack is the case where the font happens to be extracted | the frontend still needs a fallback for a pack that names none |
+| **A font the content or the pack names** | a mod, a translation or a from-scratch pack brings its own look and coverage; EXE6's pack is the case where the font happens to be extracted | the frontend still needs a fallback for a pack that names none |
 
 These combine: the pack or the content root names fonts for the text roles, and the frontend bundles a fallback.
 
@@ -310,7 +310,7 @@ font but the extracted one differs wherever it draws.
   problem the audit reports, as today. The comparison in the verification workspace runs in this mode, passed
   explicitly, so a missing glyph fails loudly instead of falling back quietly.
 - **`auto` is the default for watching and playing**: each string is drawn with the extracted font if that font
-  spells all of it within its box, else with the font stack. On BN6's content every string takes the first
+  spells all of it within its box, else with the font stack. On EXE6's content every string takes the first
   branch, so `auto` and `original` produce identical frames there. That identity is cheap to assert: a test that
   renders the comparison's frames in both modes, or simply that `auto` reports no fallback over a trace.
 - **`font`** draws all text from font files. It is what a pack without extracted fonts gets, and what a user who
@@ -324,9 +324,9 @@ font but the extracted one differs wherever it draws.
   tested through its bitmap form, which is exact (§2.2).
 
 Why `auto` and not `font` as the default: the project measures itself by pixel-exactness, the extracted font is
-always there when BN6's pack is loaded (the frontend can't draw a sprite without the pack), and it is the look
+always there when EXE6's pack is loaded (the frontend can't draw a sprite without the pack), and it is the look
 players know. What a font file adds is the strings the extracted font can't draw. Making `font` the default would
-trade the original look for consistency in every frame, to fix a problem BN6's own content doesn't have.
+trade the original look for consistency in every frame, to fix a problem EXE6's own content doesn't have.
 
 ## 4. Content model
 
@@ -334,7 +334,7 @@ trade the original look for consistency in every frame, to fix a problem BN6's o
 
 - `name` and `description` in UTF-8 in the definitions, as the canonical text.
 - `description`'s `\n` as the line breaks. They are also the line-break hint: no new field.
-- The 8-glyph limit is BN6's box, not a rule of the content model. The content check can warn when a BN6 name
+- The 8-glyph limit is EXE6's box, not a rule of the content model. The content check can warn when an EXE6 name
   isn't spellable in 8 glyphs of `compat/text.toml` ("this name will be drawn with the fallback font"), without a
   pack.
 
@@ -347,7 +347,7 @@ trade the original look for consistency in every frame, to fix a problem BN6's o
   game text. They should be strings in the content root (a small strings module or table), with their centering
   done by the frontend instead of by padding spaces. The pack's `texts` then only checks them.
 - **Which fonts a pack or content root offers, and for which role.** Two roles exist: names (the cell font) and
-  dialogue. BN6's pack offers its extracted fonts for both; another pack names font files. This is the
+  dialogue. EXE6's pack offers its extracted fonts for both; another pack names font files. This is the
   frontend's data, never the engine's, like `compat/`: a `fonts` section of the pack's asset index and a small
   table in the content root that maps roles to fonts. No `define.*` and no place in `Content`.
 - **Optionally a full name** beside the 8-character one (`full_name = "GunDelSol 3"`), for places with room: a
@@ -368,7 +368,7 @@ have the same number of lines, because nothing in the simulation reads it.
 
 ### 4.4 What should stay out of content
 
-- Pixel positions, cell sizes and font sizes of BN6's HUD: that is the frontend's BN6 layout (`hud.json` and
+- Pixel positions, cell sizes and font sizes of EXE6's HUD: that is the frontend's EXE6 layout (`hud.json` and
   `hud.rs`).
 - The text mode and the user's font choice: a preference.
 - Rasterizer settings, the fallback order beyond what a pack names, the shadow's shape.
@@ -415,7 +415,7 @@ Text rendering is presentation only, and stays so under this design.
 ### 6.2 Why, and the alternative I rejected
 
 - It answers what a font file is actually needed for: strings the extracted font can't draw, and packs that have
-  no extracted font. It does so without giving up a pixel of the original on BN6's content.
+  no extracted font. It does so without giving up a pixel of the original on EXE6's content.
 - It needs no change to composition, so priority, fades, squash and the sprite limit can't regress.
 - It is small: one dependency for font files, or none if the bundled font is BDF.
 - The text layer is worth having on its own. The custom screen is about to add three more text sites and a second
@@ -464,12 +464,12 @@ pixel-identical, and steps 1, 3 and 5 should each end with the frame comparison 
 - `crates/nettai-content`: `font.rs` (the pack's fonts to bitmap fonts, the BDF reader, the `fontdue` loader behind
   a feature); `hud.rs` and `names.rs` for a `fonts` section of the asset index; a `hud.json` version bump when the
   dialogue font lands.
-- `crates/bn6-extract`: `hud.rs` for the dialogue font and its widths (step 0).
+- `crates/exe6-extract`: `hud.rs` for the dialogue font and its widths (step 0).
 - `crates/nettai-frontend`: `text.rs` becomes a `text/` module (layout, drawing, modes, the font stack; the 3x5
   status font moves beside it or is replaced by the bundled font); `hud.rs` and the custom screen's drawing call
   it; `main.rs` gets the options; `audit.rs` the fallback notes; `Cargo.toml` one dependency.
 - `crates/nettai-content-check`: the warnings of step 4.
-- `content/bn6`: the strings of step 5; `run_message` as text.
+- `content/exe6`: the strings of step 5; `run_message` as text.
 - `crates/nettai-battle`: only step 0's `run_message` reading (counts derived from text). Nothing else: the engine
   has no part in text.
 - A new `assets/fonts/<family>/` (or the frontend crate's own `assets/`) for the committed font and its license.
@@ -507,7 +507,7 @@ edited now.
 5. **Whether banners are in scope.** Recommended: no; step 8 if a pack ever adds navis.
 6. **Whether translations are wanted**, which decides whether step 5's strings tables are built now or the HUD's
    lines just move to content.
-7. **Where the committed font lives**: with the frontend (a fallback for any content) or in `content/bn6` (BN6's
+7. **Where the committed font lives**: with the frontend (a fallback for any content) or in `content/exe6` (EXE6's
    own choice). Recommended: the frontend's, with a pack or content root able to name its own over it.
 
 ## 7. Risks and open points
@@ -523,7 +523,7 @@ edited now.
   one to measure. It should be loaded from a file at run time rather than compiled into the binary, and its size
   checked before it is committed.
 - **The font candidates were not auditioned in the frame**, apart from the three pixel fonts of §8. Their licenses
-  and sizes are from their projects' pages; how each looks beside BN6's HUD is still to be seen (step 4).
+  and sizes are from their projects' pages; how each looks beside EXE6's HUD is still to be seen (step 4).
 - **`fontdue` has one maintainer and no hinting.** For pixel fonts at their native size neither matters. If it
   ever does, `ab_glyph` gave identical bitmaps in the spike and also reads embedded bitmap strikes, and a
   BDF-only path needs no crate at all.
@@ -538,7 +538,7 @@ Nothing from them is committed.
   font runs for about 460 glyphs, up to where the 8x16 font's data begins, in pixel values 0, 1 and 3; its first
   width table gives 8 for capitals, digits and the space, 6 for `I`, 6 to 8 for lowercase and 11 for kana and
   kanji.
-- **Coverage of the content** (§1.4): every `define.chip` in `content/bn6` spelled against `compat/text.toml`.
+- **Coverage of the content** (§1.4): every `define.chip` in `content/exe6` spelled against `compat/text.toml`.
 - **Pixel fonts shipped as outlines are exact at their native size.** Three fonts (a 16 px proportional one, its
   8 px cut, and an 8x8 arcade font) rasterized with `fontdue` 0.9.4 and `ab_glyph` 0.2.32 at their native sizes:
   every coverage value was 0 or 255, every advance a whole number of pixels (7, 5 and 8), and the two crates'
@@ -673,14 +673,14 @@ Murecho (Neil Summerour, Positype; SIL Open Font License 1.1, no Reserved Font N
 1,430,664 bytes, compiled into the binary.
 
 - **Coverage**: 4,450 characters: Latin, Latin Extended, Greek, Cyrillic, 189 kana and 2,337 kanji. Every character
-  of every name and description in `content/bn6` is in it, and of the 442 characters the pack's two fonts draw
+  of every name and description in `content/exe6` is in it, and of the 442 characters the pack's two fonts draw
   only 伊, 祐 and 綾 (story characters' names, which no battle string uses) are not. Japanese works as is: no
   shaping is needed, swash's shaper handles it, and the fitting's 70% squeeze sizes kana to the original's cells.
   A string with a kanji it lacks is drawn in the game's font (whose kanji are fewer still).
 - **Weights**: one variable file, 100 to 900. Names, telops and the HUD's lines use 700 (bold, the weight the
   8x16 font's glyphs have); the chatbox uses 300, the user's choice, near the dialogue font's thin strokes.
 - **The look**: a clean, slightly squared humanist sans with open shapes and a large x-height, legible at the
-  10-pixel capitals of the HUD; it sits well beside BN6's pixel art.
+  10-pixel capitals of the HUD; it sits well beside EXE6's pixel art.
 - **Size**: 1.4 MB of the frontend's 13 MB release binary. Not subset: every glyph a Japanese chip name or description
   could need stays in.
 - **Before it**: I had picked Saira (OFL), a squarish technical sans with a width axis, so that a name too wide
@@ -729,7 +729,7 @@ text should be stored via the locales file"; "why does ChipSpec even have descri
 the locale string?"; and to call it strings or display text, not "words".
 
 The frontend's `--lang en|ja` (default `en`) shows a battle's text in English, as the US games do, or in Japanese,
-as the Japanese games (EXE6 Falzar and Gregar) do, in either text mode. No definition holds display text: every
+as the Japanese games (JP Falzar and Gregar) do, in either text mode. No definition holds display text: every
 string is a content root's `locales/<lang>.toml`.
 
 ### 10.1 What a battle shows as text, and where each comes from
@@ -740,7 +740,7 @@ string is a content root's `locales/<lang>.toml`.
 | A chip's description (R on the custom screen) | `en.toml` | `ja.toml`, the Japanese ROMs' descriptions |
 | A Cross's description | `en.toml` `[forms]` | `ja.toml` `[forms]` |
 | The no-running message (L) | `en.toml` `[navis]` `run_message` | `ja.toml` `[navis]` `run_message` |
-| The enemy names (a round's first custom screen) | `en.toml` `[navis]` `name`, the ROM's name for the navi's NameID (ChrgeMan, GrndMan, TmhkMan, ProtoMan); `variant_name` when the side's rules ask (`battle.set_name_variant`: BN5's Hub Style, BCMegaMn) | `ja.toml` `[navis]` `name` (ロックマン, キラーマン, アクアマン, ブルース...), `variant_name` (FCロックマン) |
+| The enemy names (a round's first custom screen) | `en.toml` `[navis]` `name`, the ROM's name for the navi's NameID (ChrgeMan, GrndMan, TmhkMan, ProtoMan); `variant_name` when the side's rules ask (`battle.set_name_variant`: EXE5's Hub Style, BCMegaMn) | `ja.toml` `[navis]` `name` (ロックマン, キラーマン, アクアマン, ブルース...), `variant_name` (FCロックマン) |
 | A Cross's name (the frontend's own text: live play's terminal summary, the plain-text screen's Cross window) | `en.toml` `[forms]` | (English) |
 | A patch card's name (gen-content checks them; the frontend's `--cards` messages; no screen shows them yet) | `en.toml` `[patch-cards]`, the fan translation's | `ja.toml` `[patch-cards]`, the Japanese ROMs' card names |
 | The HUD's lines (the seconds, "TIME UP!", "COUNTER HIT!"), "VS", "????" | the pack's text script, in the US font's glyphs | the same words, in the Japanese font's glyphs (the pack's Japanese lettering) |
@@ -765,7 +765,7 @@ the US's (the user's choice).
   patch card's name). What reads each is §10.6. The engine's
   `content::strings::Strings` is one table; nettai-content's `locale` reads them. A definition holds none: the define
   phase refuses a `name`, `description` or `description_lines` field (core.d.luau's specs have none).
-- **The content's own language** (`locale::OWN`, English for BN6) is part of the content: the loader puts its table
+- **The content's own language** (`locale::OWN`, English for EXE6) is part of the content: the loader puts its table
   in `Content::strings`, and the define phase counts what the battle reads of it into the records: a description's
   lines (`ChipData::description_lines`, `FormData::description_lines`) and a no-running message's characters per line
   and which of them move the speaker's mouth (`RunMessage::counts`, `talking`). The hash covers the records, so it
@@ -781,7 +781,7 @@ the US's (the user's choice).
   since, and `gen-content check` compares them with the ROMs (one check for both languages, `locale::check_table`):
   every chip's name and description, every Cross's description, every navi's name (by its NameID) and no-running
   message, and that the two Japanese ROMs agree. The DblBeast, Gregar and Falzar chips' scripts print a gift's text
-  the save keeps (`FF 01 nn`); `ja.toml`'s are the text Tango's EXE6 netplay saves hold, with a comment saying so,
+  the save keeps (`FF 01 nn`); `ja.toml`'s are the text Tango's Japanese netplay saves hold, with a comment saying so,
   and the check only asks that the font can draw them.
 - **The Japanese ROMs' text encoding** is compat/text.toml's `[jp]`: what each byte of their 8x16 font and dialogue
   font draws (written once from the fonts: each glyph whose bitmap is one of the US fonts' is that glyph's character,
@@ -789,7 +789,7 @@ the US's (the user's choice).
   Japanese fonts' charmaps with it; gen-content decodes the Japanese text with it and checks that every Japanese chip
   name encodes back to the ROM's bytes.
 - **Pictures with text, and the fonts, are assets**: the pack's lettering in another language, extracted from the
-  Japanese ROMs as `-ja` files (asset-formats.md §4, "Languages"; bn6-extract `lettering`).
+  Japanese ROMs as `-ja` files (asset-formats.md §4, "Languages"; exe6-extract `lettering`).
 - **The HUD's lines stay the pack's text script** (§4.2 is still open): the Japanese ROMs' are the same English
   words, which the Japanese font draws with the same pictures.
 
@@ -858,7 +858,7 @@ character, so a string encodes and decodes the same way and a mark is one charac
 | M over B (`[MB]`) | dialogue E4 1B | U+E005 | drawn stacked |
 | The bat (`[bat]`, a picture) | 8x16 0xA0 (US), 0x81 (JP) | U+E006 | no |
 | End (`[End]`) | dialogue 0xE0; 8x16 0xC6 (JP) | U+E007 | no |
-| D over S (BN5's DS navi chips) | BN5's 8x16 0x9F (US), 0x85 (JP); BN5's dialogue 0x9F; BN6's fonts none (a BN6 match has no BN5 chip to name) | U+E008 | drawn stacked |
+| D over S (EXE5's DS navi chips) | EXE5's 8x16 0x9F (US), 0x85 (JP); EXE5's dialogue 0x9F; EXE6's fonts none (an EXE6 match has no EXE5 chip to name) | U+E008 | drawn stacked |
 
 - **Where they are written**: compat/text.toml (`"\uE002"`, as TOML escapes: a Private Use Area character shows as
   nothing in most editors), locales/{en,ja}.toml (`"Count\uE002"`, `"Press Ⓐ\nto burn a..."`), gen-content's

@@ -1,10 +1,10 @@
 --!strict
--- The yoyo chips' throw (BN6's action 0x18, `sub_80EC02A`; BN5's action 0x4A, 0x080EF1E4, the same code but for the
+-- The yoyo chips' throw (EXE6's action 0x18, `sub_80EC02A`; EXE5's action 0x4A, 0x080EF1E4, the same code but for the
 -- arm's attachment row): the navi holds out its yoyo arm (an attachment) and throws a yoyo (or GreatYo's
 -- controller) from the panel ahead, 27 pixels up, null-element. The navi waits until what it threw clears the
 -- navi's first related object, then puts the arm away over 6 ticks.
 --
--- Each game's chips throw their own yoyos: BN6's chips/yoyo, BN5's objects/yoyo.
+-- Each game's chips throw their own yoyos: EXE6's chips/yoyo, EXE5's objects/yoyo.
 
 local attachment = require("../attachment")
 

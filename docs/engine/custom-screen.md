@@ -1,4 +1,4 @@
-# The custom screen (BN6 US Falzar, link PvP)
+# The custom screen (EXE6 US Falzar, link PvP)
 
 Between turns each player deals chips from their folder, picks some with their joypad (and maybe Beast Out or a
 Cross), and presses OK. Their hand is built and sent over the link, and the fight resumes once both players'
@@ -38,7 +38,7 @@ setup and both players' buttons (rollback netplay):
 | The hand, NaviStats and transform record sent in 50 link words; committed when both magic words are in | `Side::sent` (the result and the tick its last word arrives); the fight resumes when both have arrived |
 | The folder shuffle at the round's init with the console's own RNG1 | `BattleFolder::shuffled` with the RNG it's given; `RoundSetup::players[p].folder` is the shuffled folder |
 | Each console's RNG1, which ChpShufl's re-deal draws from | `Battle::consoles[p]` (`crate::console`): each player's console RNG, seeded from `PlayerSetup::console` and advanced as that console's is (§8) |
-| Save data: owned Crosses, Beast Out unlocked, game version | BN6's cross and beast systems' setup (`PlayerSetup::rules`; `bn6_compat::Unlocks` writes and reads them); event flag 0x163 is the setup's navi code level (`PlayerSetup::navi_level`) |
+| Save data: owned Crosses, Beast Out unlocked, game version | EXE6's cross and beast systems' setup (`PlayerSetup::rules`; `exe6_compat::Unlocks` writes and reads them); event flag 0x163 is the setup's navi code level (`PlayerSetup::navi_level`) |
 
 Nothing in the custom screen depends on which side is "local": which screen a frontend draws is presentation.
 `TickEvents` carries only `link_closed` (the end of the round) and, for checking against recordings that lack a
@@ -317,9 +317,9 @@ all twelve player-screens of the three scenarios match there too. Unit tests: cu
 
 ## 4. Beast Out and Crosses
 
-BN6's Beast Out and its Cross window are its rules' (docs/design/rules-in-luau.md §4.4): the beast system's
-button and windows (content/bn6/rules/beast/custom.luau) and the cross system's windows
-(content/bn6/rules/cross/window.luau), whose state holds what this section's screen remembers.
+EXE6's Beast Out and its Cross window are its rules' (docs/design/rules-in-luau.md §4.4): the beast system's
+button and windows (content/exe6/rules/beast/custom.luau) and the cross system's windows
+(content/exe6/rules/cross/window.luau), whose state holds what this section's screen remembers.
 
 **Who gets what** (per player; the original reads the local save):
 
@@ -488,7 +488,7 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
   timeline from opening to sending, the selection rules, invalid chips, Beast Out and a Cross for both games,
   DustCross's scrap, hand sizes, SELECT), and a setup's Cross list (§4.1: either game's Crosses offered and
   chosen, Beast Out from the other game's Cross with its roar and Beast Over, the window in a Beast form, entries
-  that aren't Crosses). nettai-frontend's `a_falzar_player_plays_a_gregar_cross` plays one through on content/bn6:
+  that aren't Crosses). nettai-frontend's `a_falzar_player_plays_a_gregar_cross` plays one through on content/exe6:
   HeatCross chosen by a Falzar player, its form, element, buster and charged flame, then Beast Out from it into
   HeatCross Beast with that form's weapons.
 - **Golden traces** (`trace::run_round`, verification workspace): the traces' recorded buttons drive the
@@ -548,12 +548,12 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
     lab's `navicust/bug-support` has it set and keeps step (the three support scenarios had it, unintended, until
     their parts were moved off the grid's outer ring). The engine takes no flag from a setup: for a recording's
     side, whose stats are as the compile left them and which has no NaviCust, the navicust system sets the glitch
-    when the stats carry a NaviCust bug (@exelib/navicust/compile, `stats_bugged`), and bn6-compat holds that to
+    when the stats carry a NaviCust bug (@exelib/navicust/compile, `stats_bugged`), and exe6-compat holds that to
     the recorded flag for MegaMan as the round is set up (`setup_differences`). Of the 15,182 recorded sides with
     the flag, every MegaMan with it set (3,162) has such a stat and none without it (11,780) has one; 42 link-navi
     sides have it set without one (the gregar-console lab's `run-message-navi-*`: MegaMan's NaviCust left it in the
     save), which nothing reads, since the window reads the flag for MegaMan alone;
-  - the other console's RNG1 (and tag pair) isn't recorded either: bn6-compat gives it 0 (and none), which only a
+  - the other console's RNG1 (and tag pair) isn't recorded either: exe6-compat gives it 0 (and none), which only a
     re-deal on that player's screen would read;
   - shakes are the content's to start: it calls `battle.shake_camera` where the original calls
     `camera_initShakeEffect_80302a8`. The viruses' are missing with the viruses, which aren't a netbattle's;

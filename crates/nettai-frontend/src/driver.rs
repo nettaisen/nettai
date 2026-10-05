@@ -5,14 +5,14 @@ use nettai_battle::battle::{mode, top};
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::cues::CueAction;
 use nettai_battle::content::{ChipCode, Content};
-use bn6_compat::Unlocks;
+use exe6_compat::Unlocks;
 use nettai_battle::custom::{self, BattleFolder, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState};
 use nettai_battle::input::keys;
 use nettai_battle::link::Link;
 use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
 use nettai_battle::{Battle, PlayerTick, Rng, TickEvents};
-use bn6_compat::trace::{self, Frame, Round};
-use bn6_compat::{Compat, codec};
+use exe6_compat::trace::{self, Frame, Round};
+use exe6_compat::{Compat, codec};
 use std::sync::Arc;
 
 /// One tick's inputs.
@@ -49,9 +49,9 @@ pub trait Driver {
     }
     /// The game version of the console whose screen this is, as its pack
     /// names its versions' assets, for a game whose versions the engine
-    /// doesn't tell apart (BN5's "protoman" and "colonel": its emblems, the
+    /// doesn't tell apart (EXE5's "protoman" and "colonel": its emblems, the
     /// other version's chips; `Renderer::console_version`). None: the
-    /// engine's (BN6's `Unlocks::version`).
+    /// engine's (EXE6's `Unlocks::version`).
     fn console_version(&self) -> Option<&'static str> {
         None
     }
@@ -96,7 +96,7 @@ pub struct Ran {
 /// Replays one round of a golden trace.
 pub struct TracePlayer {
     round: Round,
-    /// The content the trace's battle runs on (BN6's).
+    /// The content the trace's battle runs on (EXE6's).
     content: Arc<Content>,
     /// The original's numbers for it, which the comparison reads.
     compat: &'static Compat,
@@ -117,7 +117,7 @@ impl TracePlayer {
             .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
             .map(|(i, _)| i)
             .collect();
-        TracePlayer { compat: Compat::bn6_for(&content), round, content, frames, pos: 0, round_number }
+        TracePlayer { compat: Compat::exe6_for(&content), round, content, frames, pos: 0, round_number }
     }
 
     /// Every round of a trace file, on `content`.
@@ -177,8 +177,8 @@ impl Driver for TracePlayer {
 
     fn console_region(&self) -> &'static str {
         match self.round.console_game() {
-            bn6_compat::Game::JpFalzar | bn6_compat::Game::JpGregar => "jp",
-            bn6_compat::Game::Falzar | bn6_compat::Game::Gregar => "us",
+            exe6_compat::Game::JpFalzar | exe6_compat::Game::JpGregar => "jp",
+            exe6_compat::Game::Falzar | exe6_compat::Game::Gregar => "us",
         }
     }
 
@@ -194,19 +194,19 @@ impl Driver for TracePlayer {
     }
 }
 
-/// Every round of a trace file, on `content`, each as a driver: a BN6
-/// recording's ([`TracePlayer`]), or a BN5 one's (its setup line says
-/// `"game":"bn5"`: [`Bn5TracePlayer`]), with its round's number.
+/// Every round of a trace file, on `content`, each as a driver: an EXE6
+/// recording's ([`TracePlayer`]), or an EXE5 one's (its setup line says
+/// `"game":"exe5"`: [`Exe5TracePlayer`]), with its round's number.
 pub fn trace_rounds(path: &std::path::Path, content: &Arc<Content>) -> Result<Vec<(usize, Box<dyn Driver>)>, String> {
-    if trace_game(path).map_err(|e| e.to_string())?.as_deref() == Some("bn5") {
-        let rounds = Bn5TracePlayer::load(path, content)?;
+    if trace_game(path).map_err(|e| e.to_string())?.as_deref() == Some("exe5") {
+        let rounds = Exe5TracePlayer::load(path, content)?;
         return Ok(rounds.into_iter().map(|r| (r.round_number, Box::new(r) as Box<dyn Driver>)).collect());
     }
     let rounds = TracePlayer::load(path, content).map_err(|e| e.to_string())?;
     Ok(rounds.into_iter().map(|r| (r.round_number, Box::new(r) as Box<dyn Driver>)).collect())
 }
 
-/// The game a trace's first setup line names (`"game"`; BN6's recordings
+/// The game a trace's first setup line names (`"game"`; EXE6's recordings
 /// name none).
 fn trace_game(path: &std::path::Path) -> std::io::Result<Option<String>> {
     use std::io::BufRead;
@@ -222,15 +222,15 @@ fn trace_game(path: &std::path::Path) -> std::io::Result<Option<String>> {
     Ok(None)
 }
 
-// ---- BN5's recordings -------------------------------------------------------
+// ---- EXE5's recordings -------------------------------------------------------
 
-/// Replays one round of a BN5 recording (the chip lab's BN5 library, read
-/// by bn5-compat): its setup on BN5's content, then each battle frame's
+/// Replays one round of an EXE5 recording (the chip lab's EXE5 library, read
+/// by exe5-compat): its setup on EXE5's content, then each battle frame's
 /// buttons.
-pub struct Bn5TracePlayer {
-    round: bn5_compat::trace::Round,
+pub struct Exe5TracePlayer {
+    round: exe5_compat::trace::Round,
     content: Arc<Content>,
-    compat: &'static bn5_compat::Compat,
+    compat: &'static exe5_compat::Compat,
     /// Indices of the frames the engine simulates.
     frames: Vec<usize>,
     pos: usize,
@@ -240,20 +240,20 @@ pub struct Bn5TracePlayer {
     version: &'static str,
 }
 
-impl Bn5TracePlayer {
-    /// Every round of a BN5 recording, on `content`: each round's setup
-    /// must be one the content defines (bn5-compat's `Round::needs`).
-    pub fn load(path: &std::path::Path, content: &Arc<Content>) -> Result<Vec<Bn5TracePlayer>, String> {
-        let compat = bn5_compat::Compat::bn5();
+impl Exe5TracePlayer {
+    /// Every round of an EXE5 recording, on `content`: each round's setup
+    /// must be one the content defines (exe5-compat's `Round::needs`).
+    pub fn load(path: &std::path::Path, content: &Arc<Content>) -> Result<Vec<Exe5TracePlayer>, String> {
+        let compat = exe5_compat::Compat::exe5();
         let mut out = Vec::new();
-        for (i, round) in bn5_compat::trace::rounds(path)?.into_iter().enumerate() {
+        for (i, round) in exe5_compat::trace::rounds(path)?.into_iter().enumerate() {
             round.round_setup(content, compat).map_err(|e| format!("round {}: {e}", i + 1))?;
-            let d = bn5_compat::trace::decode_setup(&round.setup)?;
+            let d = exe5_compat::trace::decode_setup(&round.setup)?;
             let local = d.battle_state[0x0D] as usize & 1;
             let region = if d.japanese[local] { "jp" } else { "us" };
             let version = match d.versions[local] {
-                bn5_compat::trace::Version::Protoman => "protoman",
-                bn5_compat::trace::Version::Colonel => "colonel",
+                exe5_compat::trace::Version::Protoman => "protoman",
+                exe5_compat::trace::Version::Colonel => "colonel",
             };
             let start = round.setup.frame;
             let frames = round
@@ -264,17 +264,17 @@ impl Bn5TracePlayer {
                 .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
                 .map(|(i, _)| i)
                 .collect();
-            out.push(Bn5TracePlayer { round, content: content.clone(), compat, frames, pos: 0, round_number: i + 1, region, version });
+            out.push(Exe5TracePlayer { round, content: content.clone(), compat, frames, pos: 0, round_number: i + 1, region, version });
         }
         Ok(out)
     }
 
-    fn current(&self) -> Option<&bn5_compat::trace::Frame> {
+    fn current(&self) -> Option<&exe5_compat::trace::Frame> {
         self.pos.checked_sub(1).and_then(|p| self.frames.get(p)).map(|&i| &self.round.frames[i])
     }
 }
 
-impl Driver for Bn5TracePlayer {
+impl Driver for Exe5TracePlayer {
     fn start(&mut self) -> Battle {
         self.pos = 0;
         // (`load` saw the setup define.)
@@ -297,7 +297,7 @@ impl Driver for Bn5TracePlayer {
     }
 
     fn check(&self, b: &Battle) -> Vec<String> {
-        self.current().map(|f| bn5_compat::trace::compare(b, f, self.compat)).unwrap_or_default()
+        self.current().map(|f| exe5_compat::trace::compare(b, f, self.compat)).unwrap_or_default()
     }
 
     fn console_region(&self) -> &'static str {
@@ -350,7 +350,7 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             navicust: None,
             tactics: Default::default(),
         };
-        Unlocks::everything(GameVersion::Falzar).write(content, &mut player).expect("BN6's setup");
+        Unlocks::everything(GameVersion::Falzar).write(content, &mut player).expect("EXE6's setup");
         player
     };
     RoundSetup {
@@ -458,8 +458,8 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         Phase::Hidden { .. } => "CUSTOM (HIDDEN: ANY KEY)",
         Phase::Description { .. } => "CUSTOM: CHIP INFO (ANY KEY)",
         Phase::RunMessage { .. } => "CUSTOM: NO TIME TO RUN (A)",
-        // A system's window, by its name (BN6's Beast Out and Cross window,
-        // BN5's soul's choice).
+        // A system's window, by its name (EXE6's Beast Out and Cross window,
+        // EXE5's soul's choice).
         Phase::Window { window, .. } => match b.content.defs.window(window).name.as_str() {
             "beast_out" => "CUSTOM: BEAST OUT!",
             "cross_opening" | "cross_window" | "cross_closing" => "CUSTOM: CROSS (UP/DOWN, A CHOOSE, B BACK)",
@@ -476,11 +476,11 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         let x = &screen.slots[slot as usize];
         let label = match x.kind {
             SlotKind::Ok => "OK".to_string(),
-            // A button that shows a chip (BN5's capsules): the chip's name.
+            // A button that shows a chip (EXE5's capsules): the chip's name.
             SlotKind::Button { .. } if x.face.is_some() => {
                 x.face.map(|c| nettai_render::strings::own_chip_name(&b.content, c).to_string()).unwrap_or_default()
             }
-            // A system's button, by its name ("redeal": "REDEAL", BN5's
+            // A system's button, by its name ("redeal": "REDEAL", EXE5's
             // "soul": "SOUL").
             SlotKind::Button { button, cell: nettai_battle::custom::ButtonCell::Only | nettai_battle::custom::ButtonCell::Left } => {
                 b.content.defs.button(button).name.replace('_', " ").to_uppercase()
@@ -514,7 +514,7 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
     if !picks.is_empty() {
         out.push_str(&format!("\nPICKED: {}", picks.join(", ")));
     }
-    // BN6's Cross window (the cross system's).
+    // EXE6's Cross window (the cross system's).
     let w = nettai_render::custom::CrossWindow::of(b, side).unwrap_or_default();
     let unlocks = Unlocks::of_side(b, side as u8);
     let cross_name = |place: u8| match unlocks.cross_at(&*b.content, b.stats[side].navi, place) {
@@ -586,9 +586,9 @@ mod tests {
     /// mashing, the right navi the stand-in).
     #[test]
     fn a_saved_match_plays_the_same_battle() {
-        let content = nettai_match::testing::bn6_content();
+        let content = nettai_match::testing::exe6_content();
         for seed in [5, 77] {
-            let mut drawn = nettai_match::draw::live(&content, "bn6", seed, None).unwrap();
+            let mut drawn = nettai_match::draw::live(&content, "exe6", seed, None).unwrap();
             // (1000 HP each, so the round lasts the test.)
             for s in &mut drawn.sides {
                 (s.stats.max_base_hp, s.stats.max_hp, s.stats.hp) = (1000, 1000, 1000);
@@ -639,7 +639,7 @@ mod tests {
         s.screen.as_ref().filter(|x| s.in_custom && b.round.mode == mode::CUSTOM && x.phase == Phase::Choosing)
     }
 
-    /// nettai's Cross list on BN6's content: a Falzar player offered
+    /// nettai's Cross list on EXE6's content: a Falzar player offered
     /// HeatCross, Gregar's, chooses it on the custom screen and fights in
     /// it (its form, element, buster and charged shot: HeatCross's flame);
     /// on the next screen Beast Out from it is HeatCross's Beast form, a
@@ -649,14 +649,14 @@ mod tests {
         use nettai_battle::battle::battle_flags;
         use nettai_battle::content::Element;
         use nettai_battle::kinds::player::{NaviAction, navi_action};
-        let content = nettai_match::testing::bn6_content();
+        let content = nettai_match::testing::exe6_content();
         let heat = content.defs.form_by_key("heatcross").unwrap();
         let heat_beast = content.defs.form_by_key("heatcross-beast").unwrap();
-        let stage = nettai_match::link_battle_stages(&content, "bn6")[0];
+        let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], 5);
-        Unlocks { cross_list: Some(bn6_compat::CrossList::new(&[heat])), ..Unlocks::everything(GameVersion::Falzar) }
+        Unlocks { cross_list: Some(exe6_compat::CrossList::new(&[heat])), ..Unlocks::everything(GameVersion::Falzar) }
             .write(&content, &mut setup.players[0])
             .unwrap();
         let mut live = LivePlayer::new(setup, content.clone());
@@ -743,13 +743,13 @@ mod tests {
         play_until(&mut live, &mut b, 1000, |_, _| 0, |b| b.stats[0].form == heat_beast && navi_action(b, p0) == NaviAction::Idle);
         let weapons = content.form(heat_beast).weapons;
         assert_eq!((b.actors.get(actor).buster, b.actors.get(actor).charge_shot), (weapons.buster, weapons.charge_shot));
-        assert_eq!(bn6_compat::forms::game(&content, heat_beast), Some(GameVersion::Gregar));
+        assert_eq!(exe6_compat::forms::game(&content, heat_beast), Some(GameVersion::Gregar));
     }
 
-    // BN6's Cross window (the cross system's: content/bn6/rules/cross/
+    // EXE6's Cross window (the cross system's: content/exe6/rules/cross/
     // window.luau) with nettai's Cross list, which no recording covers.
 
-    /// A link battle on BN6's content whose side 0 is a `version` player
+    /// A link battle on EXE6's content whose side 0 is a `version` player
     /// with the Cross list `list` (form keys; none: the version's Crosses),
     /// its stats changed by `tweak`, run to its first screen's choosing.
     fn cross_battle(
@@ -757,13 +757,13 @@ mod tests {
         list: Option<&[&str]>,
         tweak: impl FnOnce(&Content, &mut nettai_battle::setup::NaviStats),
     ) -> (Arc<Content>, LivePlayer, Battle) {
-        let content = nettai_match::testing::bn6_content();
-        let stage = nettai_match::link_battle_stages(&content, "bn6")[0];
+        let content = nettai_match::testing::exe6_content();
+        let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], 5);
         Unlocks {
-            cross_list: list.map(|l| bn6_compat::CrossList::new(&l.iter().map(|k| form_of(&content, k)).collect::<Vec<_>>())),
+            cross_list: list.map(|l| exe6_compat::CrossList::new(&l.iter().map(|k| form_of(&content, k)).collect::<Vec<_>>())),
             ..Unlocks::everything(version)
         }
         .write(&content, &mut setup.players[0])
@@ -775,7 +775,7 @@ mod tests {
         (content, live, b)
     }
 
-    /// The form `key` (BN6's, without its prefix).
+    /// The form `key` (EXE6's, without its prefix).
     fn form_of(content: &Content, key: &str) -> nettai_content_api::FormHandle {
         content.defs.form_by_key(&format!("{key}")).unwrap_or_else(|| panic!("no form {key}"))
     }
@@ -817,7 +817,7 @@ mod tests {
 
     /// The cross system's record of the Crosses used this round.
     fn crosses_used(b: &Battle) -> [bool; 5] {
-        let (schema, state) = b.system_state(0, "cross").expect("BN6's cross system");
+        let (schema, state) = b.system_state(0, "cross").expect("EXE6's cross system");
         let i = schema.index_of("crosses_used").unwrap();
         std::array::from_fn(|k| state.get_elem(schema, i, k) == Some(nettai_content_api::FieldValue::Bool(true)))
     }
@@ -932,8 +932,8 @@ mod tests {
     #[test]
     fn a_navi_code_seals_beast_out() {
         for level in [None, Some(3)] {
-            let content = nettai_match::testing::bn6_content();
-            let stage = nettai_match::link_battle_stages(&content, "bn6")[0];
+            let content = nettai_match::testing::exe6_content();
+            let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
             let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
             let folder = folder_of(&content, &[("cannon", 0)]);
             let mut setup = live_setup(&content, settings, [folder, folder], 5);

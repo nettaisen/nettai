@@ -1,7 +1,7 @@
 --!strict
--- The barrier chips' dimming controller, as BN5 and BN6 share it (BN6's effect object #0x2F, `sub_80E3AB8`; BN5's
--- #0x2F, 0x080E3CCC, the same code; BN6's docs/engine/dimming-chips.md §3.1): Barrier, Barr100, Barr200, BblWrap and
--- LifeAur. The usual dimming phases (BN6's lib/dimming), with an effect (`sub_80E3AFC`) that raises the chip's
+-- The barrier chips' dimming controller, as EXE5 and EXE6 share it (EXE6's effect object #0x2F, `sub_80E3AB8`; EXE5's
+-- #0x2F, 0x080E3CCC, the same code; EXE6's docs/engine/dimming-chips.md §3.1): Barrier, Barr100, Barr200, BblWrap and
+-- LifeAur. The usual dimming phases (EXE6's lib/dimming), with an effect (`sub_80E3AFC`) that raises the chip's
 -- barrier on the user with its visual, then waits 61 ticks. Each game makes its own (`controller.make`) with its
 -- barriers' raise; a chip's `dimming` hook is the made controller's `hook(barrier)`.
 
@@ -14,7 +14,7 @@ export type State = { barrier: Barrier }
 export type Spec = {
     -- The kind's id.
     id: string,
-    -- The game's barriers' raise (BN6's lib/barriers/barriers'): `b` on `navi`, with its visual.
+    -- The game's barriers' raise (EXE6's lib/barriers/barriers'): `b` on `navi`, with its visual.
     raise: (navi: Object, b: Barrier) -> (),
 }
 

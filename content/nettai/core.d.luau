@@ -1,9 +1,9 @@
 -- The battle engine's content API, as Luau content sees it. A definitions
 -- file for editors and the type checker (luau-lsp:
 -- `--definitions=content/nettai/core.d.luau`, with a root's own, as
--- `--definitions=content/bn6/types.d.luau`); every root checks against it
+-- `--definitions=content/exe6/types.d.luau`); every root checks against it
 -- (docs/design/rules-in-luau.md §7.2: content/nettai declares the engine's
--- API and defines nothing; BN6's own parts move to content/bn6 in slice
+-- API and defines nothing; EXE6's own parts move to content/exe6 in slice
 -- S8). The engine implements it in
 -- crates/nettai-luau/src/bind.rs over the Rust `CoreApi` trait
 -- (crates/nettai-content-api), and docs/design/scripting.md describes it.
@@ -18,7 +18,7 @@
 --
 -- Nothing is named by one of the original's numbers: content names
 -- content by its definitions and assets by name. The original's numbers
--- are compat's (content/bn6/compat), which only the tools outside the
+-- are compat's (content/exe6/compat), which only the tools outside the
 -- engine read (the trace harness, save import).
 --
 -- Functions keep nothing between calls: what an object or action keeps
@@ -55,7 +55,7 @@ export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out"
 -- A side's SELECT or Cross special in progress (each side its own gauge:
 -- `battle.own_gauges`).
 -- A side's special in progress: the SELECT special, or a system's takeover
--- of the side's navi (BN6's Cross special).
+-- of the side's navi (EXE6's Cross special).
 export type SideSpecial = "none" | "select" | "takeover"
 -- A HUD part a chip's effect hides and shows: the custom gauge (draw task
 -- 4), the emotion window (14), a side's own gauge drawn by its levels (17,
@@ -79,7 +79,7 @@ export type PanelType =
     | "road_down"
     | "road_left"
     | "road_right"
-    -- BN5's (docs/design/bn5-map.md §15.2).
+    -- EXE5's (docs/design/exe5-map.md §15.2).
     | "metal"
     | "lava"
     | "sea"
@@ -114,7 +114,7 @@ export type StatusFlag =
     -- A field object being carried to be thrown.
     | "carried"
     -- No hit reaches it and it hits nothing (Falzar Beast Over's form,
-    -- BN5's DarkInvs drive).
+    -- EXE5's DarkInvs drive).
     | "untouchable"
 -- Status timers of an object with collision data.
 export type StatusTimer =
@@ -143,7 +143,7 @@ export type Request =
     | "navi_switch"
     | "switch_knockout"
     | "mode9_a"
-    -- A system's takeover of the side's navi (BN6's Cross special).
+    -- A system's takeover of the side's navi (EXE6's Cross special).
     | "takeover"
     | "volley"
     | "weakness_hit"
@@ -173,8 +173,8 @@ export type NaviStateFlag =
     | "heat_trap"
     -- Gone from the field while its navi chip's navi acts.
     | "vanished"
-    -- It dives: a panel that submerges (BN5's sea) submerges it and doesn't
-    -- hold it at a move's end (BN5's ToadSoul). The status reset ends it.
+    -- It dives: a panel that submerges (EXE5's sea) submerges it and doesn't
+    -- hold it at a move's end (EXE5's ToadSoul). The status reset ends it.
     | "dives"
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
 -- A navi's drag reaction step.
@@ -367,7 +367,7 @@ declare class Object
     -- Holds an object's sprite (and more, by kind).
     prevent_anim: number
     -- BattleObject +0x1A (read-only): a player's chips left in its hand as
-    -- the HUD shows them; another actor's own count (BN5's Jealousy).
+    -- the HUD shows them; another actor's own count (EXE5's Jealousy).
     chips_held: number
     pos: Vec3
     vel: Vec3
@@ -421,7 +421,7 @@ declare class Object
     -- Which set_attack kind started it (read-only).
     attack_kind: number
     -- 1 while the action runs inside the side's wrapper (the role
-    -- `actions.wrapper`: BN6's Beast Out rush).
+    -- `actions.wrapper`: EXE6's Beast Out rush).
     wrapped: number
     -- The wrapper's state starts over (`sub_801011A` sets it with the
     -- attack's links); the wrapper clears it once it has.
@@ -430,11 +430,11 @@ declare class Object
     -- controller clears it once it has.
     controller_fresh: boolean
     -- Its mood is held (held tired or exhausted): what another side's rules
-    -- read (BN6's counter).
+    -- read (EXE6's counter).
     mood_held: boolean
     -- The side's systems' `navi_tick` runs for it each tick.
     ticked: boolean
-    -- Exhausted for the rest of the battle (BN6's after Beast Over): worn
+    -- Exhausted for the rest of the battle (EXE6's after Beast Over): worn
     -- out, the mood can't change, 1 HP lost per tick (never the last), no
     -- Full Synchro or anger.
     exhausted: boolean
@@ -462,7 +462,7 @@ declare class Object
     ai_index: number
     -- The sprite overlay attached for the current attack (writable).
     overlay: Object?
-    -- Writable links: the target marker (BN6's Beast Out lock-on marker),
+    -- Writable links: the target marker (EXE6's Beast Out lock-on marker),
     -- the charge glow, the
     -- Full Synchro aura.
     target_marker: Object?
@@ -482,28 +482,28 @@ declare class Object
     buster_weapon: Weapon?
     charge_shot_weapon: Weapon?
     back_special_weapon: Weapon?
-    -- Writable: held tired (AIData+0x32; BN6's "the Beast Out counter is
+    -- Writable: held tired (AIData+0x32; EXE6's "the Beast Out counter is
     -- spent"): emotion 1, the mood held, no anger.
     tired: boolean
     -- Writable: the barrier's visual (AIData+0x60), which hides and shows
     -- with the navi (its state's `shown`).
     barrier_visual: Object?
-    -- Writable: BN5's DarkPlus tint (AIData+0x3C; 0 none), which picks the
+    -- Writable: EXE5's DarkPlus tint (AIData+0x3C; 0 none), which picks the
     -- navi's status shader.
     plus_tint: number
-    -- Writable: BN5's Chaos Unison charge, armed (AIData+0x12; the chaos
+    -- Writable: EXE5's Chaos Unison charge, armed (AIData+0x12; the chaos
     -- change arms it, a weapons' load and the failure's end disarm it), and
     -- its level (AIData+0x6C: releases that succeeded, at most 4).
     chaos_armed: boolean
     chaos_level: number
-    -- Writable: BN5's priming (AIData+0x0D): a form's `priming` chip used,
+    -- Writable: EXE5's priming (AIData+0x0D): a form's `priming` chip used,
     -- its next doubling waiting.
     primed: boolean
-    -- Writable: the chip a weapon of the navi's loads (BN5's AIData+0x32:
+    -- Writable: the chip a weapon of the navi's loads (EXE5's AIData+0x32:
     -- ColonelSoul's arm chip, which its charged shot's routine 0x13 fires;
     -- nil: none).
     weapon_chip: Chip?
-    -- Writable: BN5's no-charge drive (DarkInvs): its ticks left
+    -- Writable: EXE5's no-charge drive (DarkInvs): its ticks left
     -- (AIData+0x36; counted down in the intake while the navi has the
     -- no-charge state, asking for the stun strike at 0; 0xFFFF holds), and
     -- the computer-navi AI driving it (AIData+0xF0, which VarSwrd's pick
@@ -597,10 +597,10 @@ declare class Object
     function chips_enabled(self): boolean
     -- `sub_8010332`: the ticks a step of its ends with.
     function move_lag(self): number
-    -- As a navi leaves (BN5's 0x081042E6): its status visuals forgotten and
+    -- As a navi leaves (EXE5's 0x081042E6): its status visuals forgotten and
     -- its chips off the HUD.
     function drop_links(self): ()
-    -- A navi no player controls leaves (BN5's 0x08104306): no HP, the
+    -- A navi no player controls leaves (EXE5's 0x08104306): no HP, the
     -- damage-carry record forgets it, its reservation goes, it leaves its
     -- side's lists and is destroyed.
     function leave(self): ()
@@ -687,7 +687,7 @@ declare class Object
     -- dimming ("keep": its Param3 1, flags 0x14) or steps like any object
     -- ("normal"). Nothing without an overlay.
     function overlay_stepping(self, mode: "keep" | "normal"): ()
-    -- BN5's 0x080C451A: the navi's body overlay (related2) adds `offset` to
+    -- EXE5's 0x080C451A: the navi's body overlay (related2) adds `offset` to
     -- its owner's animation (its depth read by the sum). Nothing without
     -- one.
     function set_overlay_anim_offset(self, offset: number): ()
@@ -706,15 +706,15 @@ declare class Object
     function load_form_sprite(self, form: FormDef): ()
     -- `sub_80144C0`: the full status reset.
     function reset_status(self): ()
-    -- Anger ends; the mood is back to 0x80 (BN5's: a mood of 0 stays).
+    -- Anger ends; the mood is back to 0x80 (EXE5's: a mood of 0 stays).
     function end_anger(self): ()
     -- The form the navi's side asked to change into at this turn's start
     -- (nil: none, or the base form).
     function form_change_target(self): FormDef?
-    -- BN5's Soul Unison: the turns the soul asked for lasts, and whether it
+    -- EXE5's Soul Unison: the turns the soul asked for lasts, and whether it
     -- is Chaos Unison.
     function form_change_soul(self): (number, boolean)
-    -- BN5's soul change's first step: no longer moving, flinching,
+    -- EXE5's soul change's first step: no longer moving, flinching,
     -- paralyzed or sliding (nor asked to slide).
     function stop_moving(self): ()
     -- `sub_80C4526(overlay, 1)`: an overlay on an image sits in front (an
@@ -762,7 +762,7 @@ declare class Object
     -- dimming, navi or instant chip's), in `set_attack` slot `kind`.
     function start_chip_attack(self, chip: Chip, kind: number): ()
     -- `sub_80116AE(5, end_lag, 2)`: a step straight to (x, y) (column 0: no
-    -- step), then `end_lag` ticks; with `face`, BN5's `sub_80116F6`'s (what
+    -- step), then `end_lag` ticks; with `face`, EXE5's `sub_80116F6`'s (what
     -- the step turns to face in the panel patterns 0x23, 0x31 and 0x33).
     function start_move_to(self, x: number, y: number, end_lag: number, face: Object?): ()
     -- `sub_80117BA`: `weapon`'s setup, and the action it names started in
@@ -808,7 +808,7 @@ declare class Object
     -- it into damage instead (true when it did).
     function heal(self, amount: number, anti_recovery: boolean): boolean
     -- `object_subtractHP`: the HP down by `amount`, to 0, by its side's
-    -- rules (BN5's drain a player's side's gauge too, and may hold a dark
+    -- rules (EXE5's drain a player's side's gauge too, and may hold a dark
     -- MegaMan at 1 HP: his last stand).
     function subtract_hp(self, amount: number): ()
     -- `sub_801265A`: the buster's damage.
@@ -883,7 +883,7 @@ declare class Navi
     float_shoes: boolean
     air_shoes: boolean
     undershirt: boolean
-    -- BN5's Hub Style (NaviStats +0x4C), which its patch card 111 sets: 1 Team ProtoMan's, 2 Team Colonel's; 0 none.
+    -- EXE5's Hub Style (NaviStats +0x4C), which its patch card 111 sets: 1 Team ProtoMan's, 2 Team Colonel's; 0 none.
     hub_style: number
     -- HP when the round starts, and its maximum.
     hp: number
@@ -925,7 +925,7 @@ declare class Navi
     encounters: number
     -- `sub_800FE52`: how many kinds of NaviCust bug the navi has.
     bug_kinds: number
-    -- BN5's NaviStats +0x32: the turns a soul lasts longer (SoulT+1), which the custom screen adds to a soul's three.
+    -- EXE5's NaviStats +0x32: the turns a soul lasts longer (SoulT+1), which the custom screen adds to a soul's three.
     soul_turn_bonus: number
 end
 
@@ -956,7 +956,7 @@ export type HitboxSpec = {
 -- by the game's flip value, for `lifetime` ticks, blinking unless
 -- `steady`; its shadow at its height unless said otherwise. It ends early
 -- with its `tether`: when its side leaves the forms whose afterimages stay
--- (the form trait `afterimages_stay`: BN6's Beast forms), or when its owner
+-- (the form trait `afterimages_stay`: EXE6's Beast forms), or when its owner
 -- stops attacking.
 export type AfterimageSpec = {
     sprite: SpriteAsset?,
@@ -1061,12 +1061,12 @@ declare battle: {
     -- The battle is dimmed (battle flag 4): objects that don't run while
     -- dimmed stand still.
     dimmed: () -> boolean,
-    -- Battle flag 4 alone, with none of a dimming's machinery (BN5's chaos
+    -- Battle flag 4 alone, with none of a dimming's machinery (EXE5's chaos
     -- failure).
     set_dimmed: (on: boolean) -> (),
     -- BattleState+0x40, `sub_800A704`: the fight's ticks so far (capped).
     battle_time: () -> number,
-    -- Player `side`'s tactics (BN5's computer-navi data, which a computer
+    -- Player `side`'s tactics (EXE5's computer-navi data, which a computer
     -- navi on the other side plays): how many entries they count; the entry
     -- in place `i` (from 1; past the count, an empty place): a chip, a
     -- pattern's number (from 1), false (nothing: chip 0, a block no save
@@ -1083,7 +1083,7 @@ declare battle: {
     -- up (0x0802BF1C).
     swap_tactics: (side: number, i: number) -> (),
     turn_tactics: (side: number) -> (),
-    -- BN5's 0x08006AAE: the navi `identity` (actor type navi, with a
+    -- EXE5's 0x08006AAE: the navi `identity` (actor type navi, with a
     -- `body`) comes onto (x, y) for `side`, brought by `summoner`, driven by
     -- `system` (its `controller`, with the navi's state its `navi_state`;
     -- of the summoner's side's ruleset): on the side's list of alive
@@ -1101,9 +1101,9 @@ declare battle: {
     link: () -> boolean,
     -- A battle against a ranked boss (battle effect 1).
     boss_rank: () -> boolean,
-    -- A battle whose dark chips fizzle (battle effect 0x100000: BN5's dark chip rule).
+    -- A battle whose dark chips fizzle (battle effect 0x100000: EXE5's dark chip rule).
     no_dark_chips: () -> boolean,
-    -- A battle that holds BN5's light/dark value at 500 (battle effect 0x20000, 0x08010EDC).
+    -- A battle that holds EXE5's light/dark value at 500 (battle effect 0x20000, 0x08010EDC).
     light_dark_held: () -> boolean,
     mode: () -> number,
     panel_pattern: () -> number,
@@ -1114,9 +1114,9 @@ declare battle: {
     -- Custom screens opened so far.
     turn: () -> number,
     -- Battle flag 0x40 (the engine's `OWN_GAUGES`): each side has its own
-    -- custom gauge. Each game's mode of its own: BN5's operation battle
-    -- (content/bn5/lib/operation_battle), BN6's chip gate battle
-    -- (content/bn6/lib/chip_gate_battle). Never in a netbattle without
+    -- custom gauge. Each game's mode of its own: EXE5's operation battle
+    -- (content/exe5/lib/operation_battle), EXE6's chip gate battle
+    -- (content/exe6/lib/chip_gate_battle). Never in a netbattle without
     -- chip gates.
     own_gauges: () -> boolean,
     -- Battle flag 1: the fight is on (collision is live).
@@ -1151,7 +1151,7 @@ declare battle: {
     -- the consoles' own RNGs, which ChpShufl's re-deal reads.
     shake_camera: (magnitude: number, ticks: number) -> (),
     -- `battle_setFlags(0x20)` / `battle_clearFlags(0x20)`: the cameras
-    -- shake even while the battle is paused (BN5's TomahawkSoul's change).
+    -- shake even while the battle is paused (EXE5's TomahawkSoul's change).
     set_shake_through_pause: (on: boolean) -> (),
     -- `sub_80302B6`: the cameras' second shake.
     shake_camera_secondary: (magnitude: number, ticks: number) -> (),
@@ -1165,14 +1165,14 @@ declare battle: {
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
     set_mood: (side: number, mood: number) -> (),
-    -- The mood rises by `n` to 254 at most; 0 and 0xFF stay (BN5's
+    -- The mood rises by `n` to 254 at most; 0 and 0xFF stay (EXE5's
     -- 0x08012802: its recovery chips).
     gain_mood: (side: number, n: number) -> (),
-    -- The mood falls by `n` to 1 at least; 0 stays (`sub_8015C12`, BN5's
+    -- The mood falls by `n` to 1 at least; 0 stays (`sub_8015C12`, EXE5's
     -- 0x08012820: its navi chips leaving).
     lose_mood: (side: number, n: number) -> (),
     -- Whether the side's console starts its emotion window glitching (the
-    -- save's NaviCust bug flag): a system decides it in `round_setup` (BN6's
+    -- save's NaviCust bug flag): a system decides it in `round_setup` (EXE6's
     -- patch cards do).
     set_emotion_window_glitch: (side: number, on: boolean) -> (),
     -- A side's installed patch cards in their list's order, each switched
@@ -1195,7 +1195,7 @@ declare battle: {
     -- rules ask it of the chips a system plays).
     side_has_system: (side: number, system: System) -> boolean,
     -- The level of the navi code a side's save received (0 to 14), nil
-    -- when none was (BN6's event flag 0x163).
+    -- when none was (EXE6's event flag 0x163).
     navi_level: (side: number) -> number?,
     -- `sub_802E4B8`: the side's SELECT or Cross special in progress.
     side_special: (side: number) -> SideSpecial,
@@ -1240,7 +1240,7 @@ declare battle: {
     -- console's RNG1) for NaviCust bugs only.
     clear_emotion_window_glitch: () -> (),
     fill_custom_gauge: () -> (),
-    -- `sub_801DFD0` (BN5's CusVolt): the custom gauge drops by `n`, to 0 at least.
+    -- `sub_801DFD0` (EXE5's CusVolt): the custom gauge drops by `n`, to 0 at least.
     drain_custom_gauge: (n: number) -> (),
     -- `sub_801DF8C`: the custom gauge fills `rate` a tick (full at 0x4000).
     set_gauge_rate: (rate: number) -> (),
@@ -1250,14 +1250,14 @@ declare battle: {
     -- when each side has one, `own_gauges`, else the shared one).
     gauge_damage: (side: number) -> number,
     -- A side's sword pick (`sub_802E070`+0x12): the swing a variable sword
-    -- makes for a navi no buttons drive (BN5's computer navi draws it).
+    -- makes for a navi no buttons drive (EXE5's computer navi draws it).
     sword_pick: (side: number) -> number,
     set_sword_pick: (side: number, pick: number) -> (),
     -- Presentation: whether the side's emotion window shows its base form's second set of faces (`mugshot.variant`:
-    -- BN5's Hub Style).
+    -- EXE5's Hub Style).
     set_face_variant: (side: number, variant: boolean) -> (),
     -- Presentation: whether the custom screen's enemy names show the side's navi by its variant name (the locale's
-    -- `variant_name`: BN5's Hub Style in a link battle).
+    -- `variant_name`: EXE5's Hub Style in a link battle).
     set_name_variant: (side: number, variant: boolean) -> (),
     -- `sub_802E032`: add to a side's own custom gauge, up to full.
     add_side_gauge: (side: number, n: number) -> (),
@@ -1314,12 +1314,12 @@ declare battle: {
     -- in, and adding to its Atk+ bonus.
     hand_turn: (side: number, i: number) -> number,
     add_hand_attack_bonus: (side: number, i: number, n: number) -> (),
-    -- BN5's DarkPlus: the Atk+ bonus of a hand's chip at i becomes n.
+    -- EXE5's DarkPlus: the Atk+ bonus of a hand's chip at i becomes n.
     set_hand_attack_bonus: (side: number, i: number, n: number) -> (),
     -- A side's hand has a chip at i and it does damage (its record's
     -- "has_damage" flag).
     hand_chip_damages: (side: number, i: number) -> boolean,
-    -- BN5's Jealousy (0x080E4596): the chips left in a side's hand, from
+    -- EXE5's Jealousy (0x080E4596): the chips left in a side's hand, from
     -- its cursor to the first empty slot.
     hand_left: (side: number) -> number,
     -- Subtype 8 (Wind and Fan): a side's wind (`sub_80E543C`) and who
@@ -1437,7 +1437,7 @@ declare dimming: {
     hide_user_sparing: (user: Object) -> (),
     -- `sub_80E146C` / `sub_80E14AC`: an actor that isn't a player vanishes
     -- (its barrier visual and its confusion and blindness visuals with it)
-    -- and comes back (BN5's Django's coffin).
+    -- and comes back (EXE5's Django's coffin).
     hide_actor: (o: Object) -> (),
     show_actor: (o: Object) -> (),
 }
@@ -1452,8 +1452,8 @@ declare navi_chip: {
     -- kind that brought the navi itself: its kind's `navi_left`).
     navi_left: (controller: Object) -> (),
     -- The last navi chip used, of either side, this battle (`byte_203C960`,
-    -- BN5's 0x0203C430: the navi chip controller keeps the chips of the navi
-    -- chips' block, as their navis come), or nil. BN5's DethPhnx brings its
+    -- EXE5's 0x0203C430: the navi chip controller keeps the chips of the navi
+    -- chips' block, as their navis come), or nil. EXE5's DethPhnx brings its
     -- navi again.
     last: () -> LastNaviChip?,
     -- `sub_80E1332`: the user warps out (`out`) or back in.
@@ -1512,7 +1512,7 @@ declare obstacle: {
     -- `sub_801AD9E`: pushed, its damage forgotten), "keeps_damage"
     -- (`sub_801AD12`: pushed, the damage lands), "any_hit" (`sub_801ADFA`:
     -- that, and any one side's hit but type 0x1000 pushes it a panel away;
-    -- BN5's, 0x08017A78, by the hitters' flips: its game's rules'
+    -- EXE5's, 0x08017A78, by the hitters' flips: its game's rules'
     -- `push_reading`), "ignored" (`sub_801AD6A`: never pushed). An
     -- obstacle's push reads its hits as its game's `push_reading` says.
     take_hits: (me: Object, push: ObstaclePush?) -> (),
@@ -1529,8 +1529,8 @@ declare obstacle: {
     -- While dimmed it holds the obstacle still once it has appeared
     -- ("after_appearing", the default) or always ("always", `sub_801B750`).
     react: (me: Object, crush: ObstacleCrush?, hold: ObstacleHold?) -> number?,
-    -- The framework's action numbers are BN6's (the kind's own from 8: its
-    -- idle, then the rest); the game may store others (BN5's obstacles
+    -- The framework's action numbers are EXE6's (the kind's own from 8: its
+    -- idle, then the rest); the game may store others (EXE5's obstacles
     -- have no frozen or bubbled entries: their own from 6). `react` returns
     -- the framework's number; `action_byte` gives the byte to store for
     -- one (as `me.action`, or to `me:set_action`), `current` the object's
@@ -1589,13 +1589,13 @@ declare obstacle: {
     -- `sub_800F486` excludes (`scrap = false`): what BlzrdBal's ball
     -- swallows.
     swallowable: (o: Object) -> boolean,
-    -- BN5's Poltergeist's test (0x080E8CA0): `o`'s identity is `throwable`.
+    -- EXE5's Poltergeist's test (0x080E8CA0): `o`'s identity is `throwable`.
     throwable: (o: Object) -> boolean,
     -- `sub_800F6AC`: ask the field object `o` to be picked up by `side` and
     -- thrown at panel (x, y) after shaking `shake` ticks, hitting with the
     -- damage word `damage`.
     throw: (o: Object, side: number, x: number, y: number, shake: number, damage: number) -> (),
-    -- BN5's ColonelSoul army (docs/design/bn5-map.md §15.11): arm side
+    -- EXE5's ColonelSoul army (docs/design/exe5-map.md §15.11): arm side
     -- `side` (BattleState+0x5C bit 0x10 or 0x20, 0x080CAC1E) with its
     -- soldiers' damage words (0x080CABF8): the sword soldier's and the gun
     -- soldier's. While it is armed, an obstacle of a game whose rules have
@@ -1709,7 +1709,7 @@ export type ButtonSpec = {
     pressed: (side: number) -> (),
     -- B took its pick back.
     taken_back: ((side: number) -> ())?,
-    -- As the screen lays it out: the chip it shows, if any (BN5's capsules:
+    -- As the screen lays it out: the chip it shows, if any (EXE5's capsules:
     -- the chip window shows the chip for it, and R describes it).
     chip: ((side: number) -> Chip?)?,
 }
@@ -1772,9 +1772,9 @@ export type SystemSpec = {
         -- Once per side, after the navis spawn.
         round_start: ((side: number) -> ())?,
         -- The turn-start sequencer's check begins (`sub_801486C`'s entry;
-        -- BN5's 0x08011DDC), each side in turn, before either side's
+        -- EXE5's 0x08011DDC), each side in turn, before either side's
         -- `turn_check` or change of form: the side's request for the turn is
-        -- read (BN5's ColonelSoul takes its arm chip).
+        -- read (EXE5's ColonelSoul takes its arm chip).
         turn_opened: ((side: number) -> ())?,
         -- The turn-start sequencer's check of a side that isn't changing
         -- form or asks for a navi switch (`sub_801486C`): a form whose time
@@ -1792,7 +1792,7 @@ export type SystemSpec = {
         -- each rule it breaks is `battle.folder_problem(rule, text)`.
         folder_check: ((side: number) -> ())?,
         -- Each tick of the fight, in the navi's intake after the standing
-        -- effects (`sub_801AC6C`; BN5's light and dark MegaMan clears a holy
+        -- effects (`sub_801AC6C`; EXE5's light and dark MegaMan clears a holy
         -- panel there).
         navi_intake: ((side: number, navi: Object) -> ())?,
         -- A chip's use is prepared (the end of `sub_80127C0`): nil lets it
@@ -1800,7 +1800,7 @@ export type SystemSpec = {
         -- that answers decides.
         chip_check: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
         -- Earlier in the preparation, before the hand bonus's panel is
-        -- spent (BN5's 0x08010030: a dark chip's use and the chip's cost):
+        -- spent (EXE5's 0x08010030: a dark chip's use and the chip's cost):
         -- as `chip_check`; a chip in the use's place skips the rest,
         -- `chip_check` too.
         chip_cost: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
@@ -1818,7 +1818,7 @@ export type SystemSpec = {
         -- form's weapon run instead of it (a charged use), else nil.
         chip_used: ((side: number, navi: Object, chip: Chip, weapon: Weapon?) -> ())?,
         -- Each tick of the idle action of a navi whose form is `controlled`
-        -- (BN6's Beast Over, `sub_802D322`), in place of the player's
+        -- (EXE6's Beast Over, `sub_802D322`), in place of the player's
         -- decisions: what it did ("nothing", "chip": a chip's use started,
         -- "buster": the buster is to fire, "moved": a step started), which
         -- the framework carries out as idle does. The first system that
@@ -1827,7 +1827,7 @@ export type SystemSpec = {
         -- The framework reverts the navi to its base form, its form not yet
         -- changed (`sub_80158CC`).
         form_reverted: ((side: number, navi: Object) -> ())?,
-        -- Idle finds the navi's takeover request (`sub_802E4E4`; BN6's
+        -- Idle finds the navi's takeover request (`sub_802E4E4`; EXE6's
         -- DarkInvs asks for its Cross special): a system starts it
         -- (`battle.take_over`).
         takeover_requested: ((side: number, navi: Object) -> ())?,
@@ -1837,14 +1837,14 @@ export type SystemSpec = {
         -- place), for a navi a system asked it for (its `ticked`).
         navi_tick: ((side: number, navi: Object) -> ())?,
         -- The mood the side's navi starts the round with (`sub_8015C2C`'s
-        -- 0x80, where `sub_8013892` sets it; BN5's by the light/dark value,
+        -- 0x80, where `sub_8013892` sets it; EXE5's by the light/dark value,
         -- 0x0801283A). The first system that answers decides.
         starting_mood: ((side: number) -> number?)?,
         -- Each tick, the sprite palette of the side's navi of a player's
-        -- kind (presentation; `sub_801002C`, BN5's 0x0800DD94). The first
-        -- system that answers decides; none, the framework's (BN6's).
+        -- kind (presentation; `sub_801002C`, EXE5's 0x0800DD94). The first
+        -- system that answers decides; none, the framework's (EXE6's).
         navi_palette: ((side: number, navi: Object) -> number?)?,
-        -- Before the navi takes its hit's NaviCust bug (`sub_80139F6`, BN5's 0x0801103E): a system may change the bug
+        -- Before the navi takes its hit's NaviCust bug (`sub_80139F6`, EXE5's 0x0801103E): a system may change the bug
         -- (`navi.collision.inflicted_bugs`), or answer true: the bug and the weapons' reload are skipped. The first
         -- system that answers true decides.
         navi_bug: ((side: number, navi: Object) -> boolean?)?,
@@ -1944,10 +1944,10 @@ export type Weapon = WeaponSpec
 -- A chip's damage by formula: the opponent's HP; an SP navi chip's, by its
 -- navi's deletion time (its slot of the rules' `sp-chips`, and the damage
 -- for each of that section's time steps); the custom gauge's; the HP the
--- user has lost (at most `cap`: BN6's 500 when none); the last two digits
+-- user has lost (at most `cap`: EXE6's 500 when none); the last two digits
 -- of the user's HP; half the opponent's max HP; a link navi's own chip's,
--- by its level; by a count of the user's side (BN5's DS navi chips, Roll
--- SP's, Django SP's: `by_count[n]`, the last for more). BN5's SP and count
+-- by its level; by a count of the user's side (EXE5's DS navi chips, Roll
+-- SP's, Django SP's: `by_count[n]`, the last for more). EXE5's SP and count
 -- formulas give `operation_battle` in its operation battle.
 export type DamageFormula =
     { formula: "opponent_hp" }
@@ -1997,7 +1997,7 @@ export type ChipSpec = {
     -- navi chip whose user isn't warped off the field), "navi_returns_user"
     -- (a navi chip whose navi brings the user back itself), "goes_with_any"
     -- (it goes with any selection on the custom screen, and leaves the
-    -- selection's rules alone: BN6's BeastOut chip), "hides_damage_as_a"
+    -- selection's rules alone: EXE6's BeastOut chip), "hides_damage_as_a"
     -- (the custom screen shows its damage as "???" on a copy of code A).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
@@ -2011,8 +2011,8 @@ export type ChipSpec = {
     dimming: ((user: Object, spec: DimmingChipSpec) -> Object?)?,
     navi: ((user: Object, controller: Object, spec: NaviChipSpec) -> Object?)?,
     instant: ((user: Object, spec: InstantChipSpec) -> ())?,
-    -- Its game's systems' fields (their `extends.chip`: BN6's `beast`,
-    -- `dark_substitute`, `hp_bug`; content/bn6/types.d.luau types them).
+    -- Its game's systems' fields (their `extends.chip`: EXE6's `beast`,
+    -- `dark_substitute`, `hp_bug`; content/exe6/types.d.luau types them).
     [string]: any,
 }
 export type Chip = ChipSpec
@@ -2047,7 +2047,7 @@ export type FaceSet = {
     tired: Mugshot?,
     full_synchro: Mugshot?,
     worn_out: Mugshot?,
-    -- BN5's mood under 65.
+    -- EXE5's mood under 65.
     worried: Mugshot?,
 }
 export type MugshotFaces = {
@@ -2057,8 +2057,8 @@ export type MugshotFaces = {
     full_synchro: Mugshot?,
     worn_out: Mugshot?,
     worried: Mugshot?,
-    -- A second set, shown while the navi's Chaos Unison charge is armed (BN5's soul's chaos look), or in the base form
-    -- when the side's rules ask (`battle.set_face_variant`: BN5's Hub Style).
+    -- A second set, shown while the navi's Chaos Unison charge is armed (EXE5's soul's chaos look), or in the base form
+    -- when the side's rules ask (`battle.set_face_variant`: EXE5's Hub Style).
     variant: FaceSet?,
 }
 
@@ -2086,7 +2086,7 @@ export type NaviDef = {
     -- Its damage bonus on its family's damaging chips, by its level.
     chip_bonus: { family: ChipFamily, dimming_chips: boolean?, by_level: { number } }?,
     -- MegaMan's bonus on a family's damaging chips used standing on a type
-    -- of panel, in a form with no `chip_bonus` (BN5's: Aqua chips on sea);
+    -- of panel, in a form with no `chip_bonus` (EXE5's: Aqua chips on sea);
     -- the use turns the panel Normal.
     panel_bonus: { panel: PanelType, family: ChipFamily, damage: number }?,
     -- The chips it charges with A: its family's damaging chips, from a
@@ -2101,10 +2101,10 @@ export type NaviDef = {
     traits: { "status_immune" }?,
     -- Its forms (MegaMan's): where the original asks whether a navi is
     -- MegaMan, the ruleset asks whether it has them. The engine reads
-    -- `souls` (BN5's Soul Unison: forms with a `soul`, which the custom
-    -- screen's soul button offers); the rest is its game's: BN6's sets by
+    -- `souls` (EXE5's Soul Unison: forms with a `soul`, which the custom
+    -- screen's soul button offers); the rest is its game's: EXE6's sets by
     -- game (`gregar`, `falzar`: the Crosses by their number on the custom
-    -- screen, Beast Out and Beast Over), which BN6's rules and bn6-compat
+    -- screen, Beast Out and Beast Over), which EXE6's rules and exe6-compat
     -- read.
     forms: { souls: { FormDef }?, [string]: any }?,
     identity: Identity,
@@ -2124,7 +2124,7 @@ export type NaviDef = {
         back_special_damage: number?,
     }?,
     cross_hp: { number }?,
-    -- What the save's reload gives it by its link navi level (BN6's
+    -- What the save's reload gives it by its link navi level (EXE6's
     -- `reloadCurNaviBaseStats`): its base HP by the story's progress, and
     -- what each level adds over its fresh stats. Tools fill a side's stats
     -- from it; no battle reads it.
@@ -2166,7 +2166,7 @@ export type FormWeapons = {
     a_charge: Weapon?,
     alt_a_charge: Weapon?,
     mode9_a: Weapon?,
-    -- A BN5 soul's Chaos Unison weapon: what an armed full B charge
+    -- An EXE5 soul's Chaos Unison weapon: what an armed full B charge
     -- released in the chaos cycle's window fires.
     chaos: Weapon?,
 }
@@ -2187,16 +2187,16 @@ export type FormEffect =
 --     (EraseCross);
 --   special_holds_buster: its held buster doesn't fire while its B+Back
 --     special is asked for (TenguCross and DustCross in Beast Out);
---   stands_on_metal: a metal panel doesn't slide the navi (BN5's soul 5);
---   controlled: the side's systems' `controller` decides its idle (BN6's
+--   stands_on_metal: a metal panel doesn't slide the navi (EXE5's soul 5);
+--   controlled: the side's systems' `controller` decides its idle (EXE6's
 --     Beast Over: the berserk), the player's buttons don't reach it, and a
 --     full gauge opens the custom screen;
---   shows_target_marker: the navi's target marker shows (BN6's Beast
+--   shows_target_marker: the navi's target marker shows (EXE6's Beast
 --     forms);
 --   afterimages_stay: an afterimage of the navi lasts while it stays in
---     such a form, not until its attack ends (BN6's Beast forms);
+--     such a form, not until its attack ends (EXE6's Beast forms);
 --   alt_charge_time: with a Null chip next, its A charge's time is the
---     alternative A-charge weapon's (BN6's Beast forms);
+--     alternative A-charge weapon's (EXE6's Beast forms);
 --   doubles_null: its damaging Null chips deal double, outside battle mode
 --     1 (Beast Over);
 --   mood_palette: its palette, and its buster arm's, follow the mood
@@ -2222,7 +2222,7 @@ export type FormDef = {
     -- Its game's base form: what the game's navis are in before they change
     -- form (one a game).
     base: boolean?,
-    -- The action that changes a navi into it (a game's form change: BN6's
+    -- The action that changes a navi into it (a game's form change: EXE6's
     -- forms', rules/forms), which the pause handler runs at a turn's start.
     -- Every form but the base form names one.
     change: Action?,
@@ -2243,7 +2243,7 @@ export type FormDef = {
     -- The chips it charges with A: a family's damaging chips that aren't
     -- dimming chips (`damaging = false`: any of the family), and with
     -- `element_swords` the chips with the `element_sword` trait; `plain`:
-    -- only those that are neither dimming nor dark chips (BN5's souls).
+    -- only those that are neither dimming nor dark chips (EXE5's souls).
     charged_chips: { { family: ChipFamily, damaging: boolean?, element_swords: boolean?, plain: boolean? } }?,
     -- What a charged chip gains in it.
     charged_bonus: { damage: number?, paralyzes: boolean? }?,
@@ -2268,44 +2268,44 @@ export type FormDef = {
     -- What primes it (a use of a chip it names, not a dimming chip, with
     -- a sound), and the damaging chips a primed use doubles (not dimming
     -- chips), spending it; while it is primed nothing else doubles a chip.
-    -- The status reset spends it (BN5's GyroSoul).
+    -- The status reset spends it (EXE5's GyroSoul).
     priming: { by: ChipMatch, sound: Sound, doubles: { ChipMatch } }?,
     -- The damaging chips (not dimming chips) that deal double while it
-    -- stands on grass, which the use turns normal (BN5's TomahawkSoul).
+    -- stands on grass, which the use turns normal (EXE5's TomahawkSoul).
     grass_doubles: ChipMatch?,
     -- The ticks a damaging chip (not a dimming chip) used with the panel
-    -- ahead not its side's keeps it invulnerable (BN5's KnightSoul).
+    -- ahead not its side's keeps it invulnerable (EXE5's KnightSoul).
     front_guard: number?,
-    -- The action its charged chips start in place of their own (BN5's
+    -- The action its charged chips start in place of their own (EXE5's
     -- NapalmSoul's).
     charged_action: Action?,
     -- What else the status reset does in it, after its `status_reset`
-    -- (BN5's souls' own routines: SearchSoul's reveal of invisible
+    -- (EXE5's souls' own routines: SearchSoul's reveal of invisible
     -- navis, TomahawkSoul's grass).
     reset: ((navi: Object) -> ())?,
     -- Its put-on and take-off routines (`sub_8011268`, `sub_8011384` by the
-    -- form; BN5's tables by soul), in place of the defaults
-    -- (`put_on_form_parts`, `take_off_form_parts`): BN5's base form's
+    -- form; EXE5's tables by soul), in place of the defaults
+    -- (`put_on_form_parts`, `take_off_form_parts`): EXE5's base form's
     -- shade in Hub Style (0x0800EE1C), NumberSoul's layer. A base form's
     -- `put_on` also runs as a player's init ends, in place of its navi's
-    -- init hook (`sub_8010DD0`: BN5's MegaMan's record names the same
+    -- init hook (`sub_8010DD0`: EXE5's MegaMan's record names the same
     -- routine).
     put_on: ((navi: Object) -> ())?,
     take_off: ((navi: Object) -> ())?,
-    -- Its own part of the per-form tick (BN5's MegaMan's, 0x080F04CE:
+    -- Its own part of the per-form tick (EXE5's MegaMan's, 0x080F04CE:
     -- GyroSoul's propeller by the priming), each tick.
     tick: ((navi: Object) -> ())?,
     traits: { FormTrait }?,
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.
     buster_arm: { anim: number, palette_add: number? }?,
-    -- A soul (BN5's Soul Unison): its number, the chip
+    -- A soul (EXE5's Soul Unison): its number, the chip
     -- family the custom screen's soul button gives up for it, and the
     -- chaos cycle's row its Chaos Unison charge keeps whatever the chaos
     -- level (MeddySoul's; none: the level's, at most 2).
     soul: { number: number, family: ChipFamily, chaos_cycle: number? }?,
-    -- Its game's systems' fields (their `extends.form`: BN6's `kind`,
-    -- `game`, `cross_of`, `beast`, ...; content/bn6/types.d.luau types them).
+    -- Its game's systems' fields (their `extends.form`: EXE6's `kind`,
+    -- `game`, `cross_of`, `beast`, ...; content/exe6/types.d.luau types them).
     [string]: any,
 }
 -- Something a stage places when the round starts: a navi of `side`, or a
@@ -2347,7 +2347,7 @@ export type StatusDef = {
     survives_counter: boolean?,
 }
 export type Status = StatusDef
--- A Beast Out lock-on mode (BN6's rules/lockon: a record of type "lockon",
+-- A Beast Out lock-on mode (EXE6's rules/lockon: a record of type "lockon",
 -- `define.record("lockon", { id = ..., ... })`): how the rush picks the panel to
 -- attack a target from. `stay`: the navi's own panel. `row`: along the
 -- target's row counting from the navi's own column (`same_row_offsets`
@@ -2357,13 +2357,13 @@ export type Status = StatusDef
 -- farthest ahead), then with the rules' column shifts, with a clear path
 -- to the target if asked; afterwards the middle row of that column, if
 -- preferred and free.
--- A patch card (BN4's, BN5's and BN6's Modification Cards, 改造カード;
+-- A patch card (BN4's, EXE5's and EXE6's Modification Cards, 改造カード;
 -- docs/engine/patch-cards.md): what every game's card is. Its key (compat's
--- patch-cards.toml gives its number), its capacity cost (BN6's MB, which
+-- patch-cards.toml gives its number), its capacity cost (EXE6's MB, which
 -- the installed cards' limit counts) and its effects in the card's order:
 -- each a table with its `kind` and whether the card shows it as a `bug`,
--- with the kind's own fields. What an effect does is a game's rules' (BN6's
--- patch-cards system, rules/patch-cards), and its type is the game's (BN6's
+-- with the kind's own fields. What an effect does is a game's rules' (EXE6's
+-- patch-cards system, rules/patch-cards), and its type is the game's (EXE6's
 -- `PatchCardEffect`, which its cards' constructors make). Its name is the
 -- locales' (locales/<lang>.toml's `patch-cards`).
 export type PatchCardSpec = {
@@ -2373,13 +2373,13 @@ export type PatchCardSpec = {
 }
 export type PatchCard = PatchCardSpec
 
--- A NaviCust program (BN4's, BN5's and BN6's Navi Customizer parts;
+-- A NaviCust program (BN4's, EXE5's and EXE6's Navi Customizer parts;
 -- docs/design/navicust.md): what every game's program is. Its key (compat's
 -- navicust.toml gives its number), the colors it comes in in its variants'
 -- order, whether it is a plus part, and its shape: seven rows of seven cells
 -- (`#` a cell it covers, `.` one it doesn't), centered on the middle cell, and
 -- compressed (nil: it doesn't compress). What it does is a game's rules'
--- (BN6's: `bug`, `exclusive`, `anywhere`, `effects`, read by rules/navicust). Its name is
+-- (EXE6's: `bug`, `exclusive`, `anywhere`, `effects`, read by rules/navicust). Its name is
 -- the locales' (locales/<lang>.toml's `navicust-programs`).
 export type NaviCustProgramSpec = {
     id: string,
@@ -2473,7 +2473,7 @@ export type IdentitySpec = {
     -- (`scrap = false`).
     absorbable: boolean?,
     scrap: boolean?,
-    -- BN5's Poltergeist takes it (`throwable = false`: BN5's NameIDs 0xDA,
+    -- EXE5's Poltergeist takes it (`throwable = false`: EXE5's NameIDs 0xDA,
     -- 0xD3, 0xD2, 0xE5, 0xE4 and 0xE7).
     throwable: boolean?,
     -- What its object wears (its actor record's init hook, `off_8010E0C`):
@@ -2592,7 +2592,7 @@ export type RolesSpec = {
         tango: Chip?,
     }?,
     -- The statuses the ruleset inflicts itself: what a damage word's
-    -- paralysis bit carries (and, with BN5's rule `effects.damage_word`,
+    -- paralysis bit carries (and, with EXE5's rule `effects.damage_word`,
     -- its confusion and blindness bits), what a counter hit lands, what an
     -- aqua hit gives a body on ice, and the NaviCust on-hit bug's.
     statuses: {
@@ -2748,7 +2748,7 @@ export type RolesSpec = {
         -- bubble becomes on its panel; its field-object registry class (nil:
         -- it wasn't registered).
         encased: ((obstacle: Object, ice: boolean, class: number?) -> ())?,
-        -- A navi no player controls is being deleted (BN5's 0x08013DA0):
+        -- A navi no player controls is being deleted (EXE5's 0x08013DA0):
         -- what sparkles over it while it flashes, which its deletion's end
         -- ends.
         navi_deleted: ((navi: Object) -> Object?)?,
@@ -2821,19 +2821,19 @@ declare custom: {
     -- of its player that isn't a system's setup (the emotion it reads, a
     -- random battle).
     -- The form takes, beside it, the transform record's turns and Chaos flag
-    -- (BN5's Soul Unison). The last pick, if it is a chip (dealt, or a link
+    -- (EXE5's Soul Unison). The last pick, if it is a chip (dealt, or a link
     -- navi's own), as the screen checked it; the system's button in the last
     -- pick's place, first in the selection (B puts the chip back; at OK the
     -- chip leaves the folder where the button stands): false when the last
     -- pick isn't a chip; whether the screen's fade is still running.
-    -- A button attached to the last pick (BN5's capsules): the last pick, a
+    -- A button attached to the last pick (EXE5's capsules): the last pick, a
     -- chip with no button attached yet (`last_pick`'s `attached`), carries
     -- `modifiers` into the hand (its modifier bits: 0x02, 0x04, 0x08 and
     -- 0x20 the damage word's 0x4000, 0x2000, 0x1000 and 0x0800, 0x10 a tenth
     -- of its user's HP healed at the use; the last three where the game's
     -- chip-use rules count them, `mixed_modifiers`), and the button is
     -- picked until B takes the chip back. A button holding the last pick
-    -- (BN5's Arm Change): the last pick, a chip dealt from the folder,
+    -- (EXE5's Arm Change): the last pick, a chip dealt from the folder,
     -- leaves the picks for the button, which is picked; B, with the picks as
     -- they were then, puts it back; at OK the chip leaves the folder. The
     -- chip a button holds, and its icon in the column cell it left, shown or
@@ -2903,7 +2903,7 @@ declare system: {
     -- That side (0 or 1).
     side: () -> number,
     -- Another system's state of side `side` (nil: the side's ruleset lacks
-    -- it), for a game's rules alone: its API module (BN6's rules/api.luau)
+    -- it), for a game's rules alone: its API module (EXE6's rules/api.luau)
     -- reaches what its systems keep for its chips, which never call this
     -- themselves (the content check holds to it, and the call refuses a
     -- module outside rules/).

@@ -12,11 +12,11 @@ local RECOVERIES = 5
 
 -- A chip's recovery of `hp`; `id`, the action's key when no chip
 -- definition holds it; `mood`, what the heal adds to the side's mood
--- (BN5's 0x080EC484 adds the use's +0x0A after a heal no AntiRecv turned;
--- BN6's none).
+-- (EXE5's 0x080EC484 adds the use's +0x0A after a heal no AntiRecv turned;
+-- EXE6's none).
 function heal.action(spec: { id: string?, hp: number, mood: number? }): Action
-    -- `sub_80EC844`. (BN6 tests the heal's result, whether the trap
-    -- sprang, and ignores it; BN5 gains no mood when it did.)
+    -- `sub_80EC844`. (EXE6 tests the heal's result, whether the trap
+    -- sprang, and ignores it; EXE5 gains no mood when it did.)
     local function update(me: Object, _s: any)
         local sprang = me:heal(spec.hp, true)
         if spec.mood and not sprang then

@@ -1,8 +1,8 @@
 --!strict
--- The engine's test statuses, under the BN6 statuses' names (the BN6
+-- The engine's test statuses, under the EXE6 statuses' names (the EXE6
 -- overlay's modules name them): each a made-up effect, no requests and 60
 -- ticks on the paralysis timer. The freezing ones cancel the flinch and the
--- bubbling ones survive a counter hit, as BN6's do.
+-- bubbling ones survive a counter hit, as EXE6's do.
 
 local PLAIN: { string } = {
     "paralyze-90", "paralyze-120", "paralyze-150", "paralyze-4", "paralyze-300", "paralyze-600",

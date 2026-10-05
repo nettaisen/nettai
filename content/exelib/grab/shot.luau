@@ -1,6 +1,6 @@
 --!strict
--- A grab shot, as BN5 and BN6 share it (BN6's attack object #0xF,
--- `sub_80C6414`; BN5's #0xF): AreaGrab's and PanelGrab's. Each game makes
+-- A grab shot, as EXE5 and EXE6 share it (EXE6's attack object #0xF,
+-- `sub_80C6414`; EXE5's #0xF): AreaGrab's and PanelGrab's. Each game makes
 -- its own kind (`shot.make_kind`: its sprite, sounds and collision types).
 -- It drops onto its panel from high up in 32 ticks, hits
 -- whatever stands there, and takes the panel for its side if it is the

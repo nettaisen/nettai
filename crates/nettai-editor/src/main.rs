@@ -15,8 +15,8 @@ use names::Lang;
 const USAGE: &str = "\
 usage: nettai-editor [OPTIONS] [MATCH.toml]
 
-  A match is of one game, BN6 or BN5, picked first in the arena pane: the
-  file's, else BN6. Its content and its pack (the chips' pictures) are
+  A match is of one game, EXE6 or EXE5, picked first in the arena pane: the
+  file's, else EXE6. Its content and its pack (the chips' pictures) are
   found as nettai-frontend finds them: the packs in the packs directory,
   $NETTAI_PACKS, else data/content, each by its game.
   --content DIR    the battle content directory (default: $NETTAI_CONTENT,
@@ -88,7 +88,7 @@ fn main() -> iced::Result {
     };
     let mut options = options;
     // The game's content, as the frontend loads it: the file's game, else
-    // BN6.
+    // EXE6.
     let game = match &options.file {
         Some(path) => std::fs::read_to_string(path)
             .map_err(|e| e.to_string())

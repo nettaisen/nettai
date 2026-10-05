@@ -1,6 +1,6 @@
 --!strict
 -- The engine's test chips: made-up records (damage, flags, codes) whose
--- uses are the BN6 overlay's own builders and actions, so the engine's
+-- uses are the EXE6 overlay's own builders and actions, so the engine's
 -- tests run the real scripts on data they can reason about. Each is
 -- `test/<name>` (crates/nettai-battle/src/content/testing.rs names them).
 
@@ -71,7 +71,7 @@ local function chip(key: string, n: number, fields: { [string]: any }): Chip
     return define.chip(spec :: any)
 end
 
--- The SunGuns: BN6's GunDelSols' actions (chips/gundels), each a GunDelSol's.
+-- The SunGuns: EXE6's GunDelSols' actions (chips/gundels), each a GunDelSol's.
 local function sun_gun(key: string, n: number, gundel: Chip): Chip
     return chip(key, n, { beast = { lockon = lockon.cannon }, action = gundel.action })
 end
@@ -123,7 +123,7 @@ local function spawning(key: string, n: number, instant: (user: Object, spec: In
     })
 end
 
--- A link navi's own chip (any navi can use it here): BN6's action
+-- A link navi's own chip (any navi can use it here): EXE6's action
 -- (navis/<navi>/chip), with made-up damage.
 local function link_chip(key: string, n: number, of: Chip): Chip
     return chip(key, n, {

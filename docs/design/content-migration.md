@@ -1,8 +1,8 @@
 # How to write content
 
-The engine is a content-independent core and the BN6 ruleset's frameworks, in Rust; everything specific (a
+The engine is a content-independent core and the EXE6 ruleset's frameworks, in Rust; everything specific (a
 chip's attack, a dimming chip's controller, a navi chip's navi, a weapon, a link navi's attacks, the objects
-they spawn, the stages, the rule tables) is Luau in the content root, content/bn6
+they spawn, the stages, the rule tables) is Luau in the content root, content/exe6
 (docs/design/content-pack.md). Content is **definitions with keys**, composed by builders, with assets by name
 and none of the original's numbers. This is how to write a piece of it: where it goes, what it is made of, the
 conventions, and how to test it. The runtime and the API's shape are in docs/design/scripting.md; where the
@@ -107,7 +107,7 @@ roles (rules/roles.luau: what it starts, spawns and shows itself), never by numb
 6. **API.** When a script needs something the API lacks, add it: a `CoreApi` method
    (crates/nettai-content-api/src/api.rs, documented with the routine it is), its implementation
    (crates/nettai-battle/src/behavior/core_api.rs), its binding (crates/nettai-luau/src/bind.rs), and its declaration
-   with a comment in content/nettai/core.d.luau (content/bn6/types.d.luau for the families' types). It takes definitions and
+   with a comment in content/nettai/core.d.luau (content/exe6/types.d.luau for the families' types). It takes definitions and
    names, not numbers: a new set of flags or states is an enum with names in the API and a string-literal type
    in core.d.luau, and gets a misuse case in nettai-content-check's type tests.
 7. **Test in the repository** (§5.1) and **against the traces and the chip lab** (§5.2).
@@ -186,13 +186,13 @@ nothing sets), say what the original does and why the port differs.
 
 In-repo tests never load game data. The test content (crates/nettai-battle/src/content/testing.rs) is its own
 modules (crates/nettai-battle/testdata/content: the test chips, navis, stages, statuses, lock-on modes and roles)
-plus content/bn6's modules, which it reads from the repository at test time, on made-up assets:
+plus content/exe6's modules, which it reads from the repository at test time, on made-up assets:
 
 - add the modules to `scripts()`'s list (what they `require` comes with them); the asset names they use
   resolve to made-up assets unless `numbered_assets()` gives one the number a test looks at; the sprites they
   load get short animations in `animations()`;
-- a chip is in the test content by its key: BN6's own by its module (`testing::chip_handle(testing::AREA_GRAB)`),
-  or a test chip of made-up data composing BN6's builders (testdata/content/chips/test/init.luau). Folders hold
+- a chip is in the test content by its key: EXE6's own by its module (`testing::chip_handle(testing::AREA_GRAB)`),
+  or a test chip of made-up data composing EXE6's builders (testdata/content/chips/test/init.luau). Folders hold
   it by handle (`scenario::setup_with`); a test uses it with `use_chip` or `use_instant_chip`;
 - test it: `behavior/tests.rs` plays duels (`duel_with`, `scenario::record_on`) and checks the kinds appear and
   roll back (`scripted_chips_roll_back`); `kinds/player/actions/tests.rs` runs one navi's action tick by tick
@@ -202,7 +202,7 @@ plus content/bn6's modules, which it reads from the repository at test time, on 
 Then:
 
 ```sh
-cargo run -p nettai-content-check -- content/bn6     # every module type-checks; the lints
+cargo run -p nettai-content-check -- content/exe6     # every module type-checks; the lints
 cargo build --workspace --all-targets             # no warnings
 cargo test --workspace                            # the engine, the rollback tests, the type check, the lints, the guards
 ```
@@ -214,10 +214,10 @@ repository's crates by path. Extract a pack from your checkout and run the works
 checkout on it:
 
 ```sh
-cargo run --release -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>
+cargo run --release -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>
 <verification>/tools/gen-content-against.sh <checkout> check
-BN6_PACK=<pack> <verification>/tools/traces-against.sh <checkout> --release
-BN6_PACK=<pack> <verification>/tools/traces-against.sh <checkout> --release --test lab -- --ignored
+EXE6_PACK=<pack> <verification>/tools/traces-against.sh <checkout> --release
+EXE6_PACK=<pack> <verification>/tools/traces-against.sh <checkout> --release --test lab -- --ignored
 ```
 
 `gen-content check` compares compat's numbers and what the definitions build with the ROM. The traces match

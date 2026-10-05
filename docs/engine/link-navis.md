@@ -8,7 +8,7 @@ as they are (the init exchange's NaviStats). So yes, the level gives HP: a level
 maximum HP, the base HP before it coming from the story's progress (300 to 800). It also gives the buster's
 levels, the custom and Mega levels, abilities and, for ProtoMan, the B+Back special.
 
-nettai has the tables in each navi's definition (`levels` in content/bn6/navis/*/navi.luau) and the reload in
+nettai has the tables in each navi's definition (`levels` in content/exe6/navis/*/navi.luau) and the reload in
 nettai-match (`link_navis`), which fills a side's stats from its level: a match file's stats block is what
 differs from them, and the editor fills them in as the level or the navi changes (§5).
 
@@ -125,7 +125,7 @@ in the internet, each block's HP is cut to its maximum.
 
 ## 5. nettai
 
-- **Data**: each navi's `levels` (content/bn6/navis/*/navi.luau, type `NaviLevels` in core.d.luau): `base_hp`, its
+- **Data**: each navi's `levels` (content/exe6/navis/*/navi.luau, type `NaviLevels` in core.d.luau): `base_hp`, its
   row of `off_8120F44`, and `by_level`, each level's script summed (`hp`, `attack`, `rapid`, `charge`,
   `custom_level`, `mega_level`, `super_armor`, `float_shoes`, `air_shoes`, `back_special` by weapon). Read into
   `NaviData::levels`; no battle reads it.
@@ -134,11 +134,11 @@ in the internet, each block's HP is cut to its maximum.
   then §4's HP for a link navi; `link_navis::add_level` is the level's script (`sub_8121154`, `sub_8123208`).
   `Reload` says the level (none: event 0x163 clear), the story's progress and whether the PET is in the real world;
   a match assumes the game cleared (progress 6, as the chip lab's saves and Tango's have it) and the real world.
-- **Why not a BN6 system**: the reload is the PET's, between battles. The rules framework calls a system inside a
+- **Why not an EXE6 system**: the reload is the PET's, between battles. The rules framework calls a system inside a
   battle, on a round's setup, whose stats are the save's already (a recording's carry the level's), so a
   `round_setup` hook would add the level a second time; and a match needs the stats before any battle exists (a
-  file read, the editor, a netplay offer). The tables are BN6's content; the routine stays a small Rust function
-  beside `NaviStats::fresh`, the other save-side routine, until BN6's systems own a player's setup (§2.4 of
+  file read, the editor, a netplay offer). The tables are EXE6's content; the routine stays a small Rust function
+  beside `NaviStats::fresh`, the other save-side routine, until EXE6's systems own a player's setup (§2.4 of
   docs/design/rules-in-luau.md plans a `link-navis` system).
 - **Match files and the editor**: a side's stats block is what differs from its navi's stats as a save gives them
   (`Side::save_base`: a link navi's reload at its level over its fresh stats). The editor fills a link navi's stats
@@ -149,7 +149,7 @@ in the internet, each block's HP is cut to its maximum.
   gains over what his NaviCust made (§4), and the HP is the maximum again; without a NaviCust in the setup his
   stats are as given (a recording's carry them). The editor offers him an optional level (empty: no code).
 - **The level in the setup** (`PlayerSetup::navi_level`, an option, docs/design/rules-in-luau.md S6c): none is
-  event 0x163 clear (0xFF in the battle), so BN6's rules read the flag from it (the custom screen's seal). A link
+  event 0x163 clear (0xFF in the battle), so EXE6's rules read the flag from it (the custom screen's seal). A link
   navi always has one: a match file without `level` gives a link navi 0 and MegaMan none, and the checks refuse a
   link navi without one and a level past 14.
 - **Not modeled**: the story's progress and the internet's HP are the reload's parameters but not a match's. §3 step 2 (MegaMan with event 0x163 clear)

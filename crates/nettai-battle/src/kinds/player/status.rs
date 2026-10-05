@@ -73,8 +73,8 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     if let Some(flow) = action_requests(b, r) {
         return flow;
     }
-    if b.game_rules().reactions == crate::content::Reactions::Bn5 {
-        return bn5_reactions(b, r);
+    if b.game_rules().reactions == crate::content::Reactions::Exe5 {
+        return exe5_reactions(b, r);
     }
     if flag2(b, r) & 0x100 != 0 {
         start_drag(b, r);
@@ -102,15 +102,15 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     tick_dive(b, r);
     tick_anger(b, r);
     drain_hp(b, r);
-    // sub_802E1D8: the side's takeover (BN6's Cross special) runs down.
+    // sub_802E1D8: the side's takeover (EXE6's Cross special) runs down.
     let side = &mut b.sides[b.objects.get(r).alliance as usize];
     side.takeover_ticks = side.takeover_ticks.saturating_sub(1);
     Flow::Tail
 }
 
-/// BN5's reactions (0x08017CC8 to 0x08017D88): the flash's timer, the
+/// EXE5's reactions (0x08017CC8 to 0x08017D88): the flash's timer, the
 /// slides, a drag, a flinch, then the status timers.
-fn bn5_reactions(b: &mut Battle, r: ObjectRef) -> Flow {
+fn exe5_reactions(b: &mut Battle, r: ObjectRef) -> Flow {
     tick_flash(b, r);
     if flag2(b, r) & 0x10 != 0 {
         clear_flag2(b, r, 0x10);
@@ -183,7 +183,7 @@ fn tail(b: &mut Battle, r: ObjectRef) {
 pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
     let action = navi_action(b, r);
     if action.is_attack() {
-        // The game's wrapper (BN6's Beast Out rush, `sub_80EAD9C`) runs
+        // The game's wrapper (EXE6's Beast Out rush, `sub_80EAD9C`) runs
         // instead, and runs the action when it chooses
         // (`CoreApi::run_wrapped`).
         // (A wrapper of a system a side's rules lack doesn't run.)
@@ -270,8 +270,8 @@ fn weakness_request(b: &mut Battle, r: ObjectRef) {
 /// keeps 1 HP), then the element-5 damage; at 0 HP request deletion
 /// (§4.5). Runs every tick, even once dead or after the battle ends.
 fn apply_damage(b: &mut Battle, r: ObjectRef) {
-    if b.game_rules().intake.hp_loss == crate::content::HpLoss::Bn5 {
-        return bn5_apply_damage(b, r);
+    if b.game_rules().intake.hp_loss == crate::content::HpLoss::Exe5 {
+        return exe5_apply_damage(b, r);
     }
     let mut d = coll(b, r).acc.final_damage;
     let mut dead = false;
@@ -309,14 +309,14 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
     counter_and_mood(b, r);
 }
 
-/// BN5's `applyDamageToPlayer` (0x080185A2): BN6's, but the hit shows
+/// EXE5's `applyDamageToPlayer` (0x080185A2): EXE6's, but the hit shows
 /// (white, then its sounds) only when the loss leaves r1 non-zero (the HP
 /// left, or what the last stand's check leaves: `kinds::subtract_hp`), a
 /// hit that doesn't goes straight to the deletion's test (no element-5
 /// damage), and that test first tries the last stand (0x0802C16C). (Where
 /// a hit landed is learned for the computer navis' tactics too, 0x0802C3E2:
 /// for the battles after, which nothing of a battle reads.)
-fn bn5_apply_damage(b: &mut Battle, r: ObjectRef) {
+fn exe5_apply_damage(b: &mut Battle, r: ObjectRef) {
     let mut d = coll(b, r).acc.final_damage;
     let mut fell = false;
     if d != 0 {
@@ -363,7 +363,7 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
     }
     let side = b.objects.get(r).alliance;
     let opp = side ^ 1;
-    // A counter: the counterer's side's rules (BN6's emotion system: Full
+    // A counter: the counterer's side's rules (EXE6's emotion system: Full
     // Synchro, unless this navi's mood is held).
     if coll(b, r).acc.counter & 0x8000 != 0 {
         b.systems_countered(opp, r);
@@ -400,10 +400,10 @@ fn action_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
     if f & request::WEAKNESS_HIT != 0 {
         ai_mut(b, r).requests &= !request::WEAKNESS_HIT;
         // A Cross, Beast Out or a Cross in Beast Out (NameIDs 0x1AC..=0x1C1);
-        // in BN5 (0x08017CAC) any navi.
+        // in EXE5 (0x08017CAC) any navi.
         use crate::content::IdentityClass;
         let class = b.content.identity(b.objects.get(r).identity).class;
-        let any = b.game_rules().form_break == crate::content::FormBreak::Bn5;
+        let any = b.game_rules().form_break == crate::content::FormBreak::Exe5;
         if any || matches!(class, IdentityClass::Cross | IdentityClass::Beast | IdentityClass::CrossBeast) {
             ai_mut(b, r).status |= ai_status::CROSS_BREAKING;
             exit_attack_state(b, r);
@@ -499,7 +499,7 @@ fn continue_slide(b: &mut Battle, r: ObjectRef) {
     let left = o.slide_timer as i32 - 1;
     o.slide_timer = left as u8;
     if left > 0 {
-        // (The arena's speed: BN5's goes 8 pixels a tick in depth.)
+        // (The arena's speed: EXE5's goes 8 pixels a tick in depth.)
         let speed = b.game_rules().slide_speed;
         let o = b.objects.get_mut(r);
         let (dx, dy) = (o.slide_dx as i8 as i32, o.slide_dy as i8 as i32);
@@ -514,8 +514,8 @@ fn continue_slide(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).panel = fp;
     set_coordinates_from_panel(b, r);
     let kind = panel_kind(b, fp);
-    // BN5's metal slides as BN6's roads do here (0x08013564: type 5 where
-    // BN6 tests 9 to 12), and its sea stops a slide (type 10): by the
+    // EXE5's metal slides as EXE6's roads do here (0x08013564: type 5 where
+    // EXE6 tests 9 to 12), and its sea stops a slide (type 10): by the
     // type's rule, its `slide` and its `holds`.
     let rule = b.game_rules().panels.types[kind as usize];
     let mut go_on = true;
@@ -624,9 +624,9 @@ fn flinch_request(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_801A5EE`: mercy invincibility: a flash request starts 120 ticks
 /// of FLASHING (not extended by new requests). Only while fighting in
-/// BN6's reactions (BN5's 0x080173C4 runs regardless).
+/// EXE6's reactions (EXE5's 0x080173C4 runs regardless).
 fn tick_flash(b: &mut Battle, r: ObjectRef) {
-    if b.round.flags & battle_flags::FIGHTING == 0 && b.game_rules().reactions == crate::content::Reactions::Bn6 {
+    if b.round.flags & battle_flags::FIGHTING == 0 && b.game_rules().reactions == crate::content::Reactions::Exe6 {
         return;
     }
     if coll(b, r).status_timers[timer::FLASH] == 0 && flag2(b, r) & 2 != 0 {
@@ -833,15 +833,15 @@ fn tick_submerged(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// Whether the arena has a panel that submerges (BN5's sea).
+/// Whether the arena has a panel that submerges (EXE5's sea).
 fn arena_submerges(b: &Battle) -> bool {
     b.game_rules().panels.types.iter().any(|t| t.submerges)
 }
 
-/// BN5's 0x0800DF5A, in an arena with a panel that submerges (its sea): a
+/// EXE5's 0x0800DF5A, in an arena with a panel that submerges (its sea): a
 /// body that dives is under the surface while on it (0x08017030: its dive
 /// timer held at 0xFFFF there, else 0), its flag 0x80000000 on (the bit
-/// BN6's bubble has) unless it is using an action, dragged, flinching or
+/// EXE6's bubble has) unless it is using an action, dragged, flinching or
 /// paralyzed (0x00500C00).
 fn tick_dive(b: &mut Battle, r: ObjectRef) {
     if !arena_submerges(b) {
@@ -871,9 +871,9 @@ fn tick_dive(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// BN5's 0x0800DEB2, in an arena with a panel that submerges: a body under
+/// EXE5's 0x0800DEB2, in an arena with a panel that submerges: a body under
 /// a surface (flags 0x80000004) is hidden, a ripple over it (the role
-/// `kinds.dive_ripple`, BN5's effect object #0x3E, kept in its collision's
+/// `kinds.dive_ripple`, EXE5's effect object #0x3E, kept in its collision's
 /// link); out of it, the ripple ends.
 fn dive_ripple(b: &mut Battle, r: ObjectRef) {
     if !arena_submerges(b) {
@@ -911,8 +911,8 @@ fn tick_anger(b: &mut Battle, r: ObjectRef) {
     if navi_record(b, r).actor_type != ActorType::Player {
         return;
     }
-    // (BN5's, 0x08011A14, passes over AI index 23.)
-    if b.game_rules().emotions == crate::content::Emotions::Bn5 && navi_record(b, r).ai_index == 23 {
+    // (EXE5's, 0x08011A14, passes over AI index 23.)
+    if b.game_rules().emotions == crate::content::Emotions::Exe5 && navi_record(b, r).ai_index == 23 {
         return;
     }
     let side = b.objects.get(r).alliance;
@@ -944,8 +944,8 @@ fn tick_anger(b: &mut Battle, r: ObjectRef) {
 /// `sub_80143A6`: calm down.
 pub(crate) fn end_anger(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
-    // (BN5's, 0x08011A94, through its setter: a mood of 0 stays.)
-    if b.game_rules().emotions == crate::content::Emotions::Bn6 || b.stats[side].mood != 0 {
+    // (EXE5's, 0x08011A94, through its setter: a mood of 0 stays.)
+    if b.game_rules().emotions == crate::content::Emotions::Exe6 || b.stats[side].mood != 0 {
         b.stats[side].mood = 0x80;
     }
     clear_flag1(b, r, f1::ANGER);
@@ -975,7 +975,7 @@ const GLOW: [u16; 32] = [
     0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0,
 ];
 
-/// BN5's DarkPlus tint's greens by its timer's low bits (0x080136D8).
+/// EXE5's DarkPlus tint's greens by its timer's low bits (0x080136D8).
 const PLUS_TINT: [u8; 8] = [0x00, 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1E];
 
 /// The navi's color shader for its statuses (presentation only;
@@ -1007,7 +1007,7 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
         let glow = GLOW[(t & 0x1F) as usize];
         shader = if super::battle_mode(b) == 1 { glow } else { glow << 5 };
     }
-    // BN5's 0x080136B8: DarkPlus's tint (BN6 has none).
+    // EXE5's 0x080136B8: DarkPlus's tint (EXE6 has none).
     let tint = ai(b, r).plus_tint;
     if tint != 0 {
         shader = (PLUS_TINT[(tint & 7) as usize] as u16) << 5;
@@ -1023,7 +1023,7 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
 
 /// The shaders after the visibility (presentation only; `sub_8016CA4`,
 /// `sub_801728E`): the other player's navi blinks blue while it can be
-/// countered, to a local player in Full Synchro; BN5's no-charge drive
+/// countered, to a local player in Full Synchro; EXE5's no-charge drive
 /// flickers gray its last 180 ticks (0x080136E0, between the two); in the
 /// own-gauges mode a navi glows yellow while its SELECT special
 /// runs.
@@ -1038,7 +1038,7 @@ fn counter_shader(b: &mut Battle, r: ObjectRef) {
     {
         b.objects.sprite_mut(r).look.color_shader = if t & 2 != 0 { 0x7C00 } else { 0 };
     }
-    // BN5's 0x080136E0: the no-charge drive's last 180 ticks, the navi
+    // EXE5's 0x080136E0: the no-charge drive's last 180 ticks, the navi
     // flickers gray by its ticks left.
     if b.game_rules().intake.no_charge_drive && navi_action(b, r) != NaviAction::Entry {
         let a = ai(b, r);
@@ -1059,7 +1059,7 @@ fn counter_shader(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_8016934`: visible unless flashing (2 ticks off, 2 on: off while
 /// the flash timer's bit 1 is set, or clear in a game whose status rules
-/// say `flash_hides_on_clear`, BN5's 0x080137B6), and hidden from a viewer
+/// say `flash_hides_on_clear`, EXE5's 0x080137B6), and hidden from a viewer
 /// whose navi is blind if it is the other side's (each console's rule,
 /// decided for both viewers).
 fn update_visibility(b: &mut Battle, r: ObjectRef) {
@@ -1092,7 +1092,7 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         return form_change(b, r);
     }
     if st & ai_status::REVERTING_FORM != 0 {
-        // A form's own revert (BN5's souls') runs as the navi's action.
+        // A form's own revert (EXE5's souls') runs as the navi's action.
         if let NaviAction::Content(h) = super::navi_action(b, r) {
             return crate::behavior::run_action(b, h, r);
         }
@@ -1105,7 +1105,7 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         return actions::navi_switch::knock_out(b, r);
     }
     let f = ai(b, r).requests;
-    // The form's own revert (BN5's 0x08014676 saves no state word).
+    // The form's own revert (EXE5's 0x08014676 saves no state word).
     let own_revert = super::form_of(b, r).revert;
     let (bit, state) = if f & request::FORM_CHANGE != 0 {
         (request::FORM_CHANGE, ai_status::FORM_CHANGE)
@@ -1137,8 +1137,8 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
 }
 
 /// The change into the form the side asked for at this turn's start
-/// (`sub_8014A38`'s place): the form's `change` (BN6's forms':
-/// content/bn6/rules/forms), run while paused. Without a form asked for (or
+/// (`sub_8014A38`'s place): the form's `change` (EXE6's forms':
+/// content/exe6/rules/forms), run while paused. Without a form asked for (or
 /// with the base form) the change is none.
 fn form_change(b: &mut Battle, r: ObjectRef) {
     match form_change_action(b, r) {

@@ -1,5 +1,5 @@
 //! Folders against their rules, which are each game's (its ruleset's
-//! `folder_check`: BN6's are content/bn6/rules/folder/init.luau): one
+//! `folder_check`: EXE6's are content/exe6/rules/folder/init.luau): one
 //! check that a match file, a netplay offer, the editor and live play's
 //! random folder all go through (`Battle::check_folder`). The rules read
 //! the side's stats as its round set them up (the NaviCust's and the patch
@@ -11,7 +11,7 @@
 //!
 //! A match keeps a folder as it is being made ([`Folder`]): entries may be
 //! empty (a new match's all are). The rules see the chips there, and say
-//! that a folder of fewer than 30 is no folder (BN6's `size`); a round is
+//! that a folder of fewer than 30 is no folder (EXE6's `size`); a round is
 //! played only with a whole one ([`Folder::saved`]).
 
 use crate::draw::Draws;
@@ -79,7 +79,7 @@ pub fn problems(b: &mut Battle, side: u8, folder: &Folder) -> Vec<FolderProblem>
 }
 
 /// The rule a folder rule's problem names when a chip is none a folder can
-/// hold (BN6's own name for it: the rules name their problems).
+/// hold (EXE6's own name for it: the rules name their problems).
 pub const CHIP_RULE: &str = "chip";
 
 /// The chips of `game` side `side`'s rules let a folder hold, in handle
@@ -152,20 +152,20 @@ pub fn describe(content: &Content, folder: &Folder) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::bn6_content;
+    use crate::testing::exe6_content;
 
-    /// A battle of the live navi on both sides, to ask BN6's rules.
+    /// A battle of the live navi on both sides, to ask EXE6's rules.
     fn rules(content: &std::sync::Arc<Content>) -> Battle {
-        crate::check::start(content, &crate::draw::live(content, "bn6", 1, None).unwrap()).unwrap()
+        crate::check::start(content, &crate::draw::live(content, "exe6", 1, None).unwrap()).unwrap()
     }
 
-    /// Random folders keep BN6's folder rules, with a Regular chip that
+    /// Random folders keep EXE6's folder rules, with a Regular chip that
     /// fits; the pool is the chip pack's folder chips.
     #[test]
     fn random_folders_are_legal() {
-        let content = bn6_content();
+        let content = exe6_content();
         let mut b = rules(&content);
-        let pool = pool(&content, "bn6", &mut b, 0);
+        let pool = pool(&content, "exe6", &mut b, 0);
         // The pack's folder chips: no Program Advance, no dark chip, none
         // past the pack's (the BeastOut chip). The JP-content chips are
         // folder chips in the Japanese games' records, which the content
@@ -183,7 +183,7 @@ mod tests {
         let memory = b.stats[0].reg_up;
         let mut regulars = 0;
         for seed in 0..20 {
-            let f = random_folder(&content, "bn6", &mut b, 0, &mut Draws::new(seed));
+            let f = random_folder(&content, "exe6", &mut b, 0, &mut Draws::new(seed));
             assert_eq!(problems(&mut b, 0, &f.into()), Vec::new(), "seed {seed}: {}", describe(&content, &f.into()));
             if let Some(r) = f.regular {
                 assert!(content.chip(f.chips[r as usize].id).mb <= memory);
@@ -192,15 +192,15 @@ mod tests {
         }
         assert!(regulars > 0, "no folder of twenty has a chip within the Regular memory ({memory} MB)");
         // Another seed, another folder; the same seed, the same.
-        let mut one = |seed| random_folder(&content, "bn6", &mut b, 0, &mut Draws::new(seed));
+        let mut one = |seed| random_folder(&content, "exe6", &mut b, 0, &mut Draws::new(seed));
         assert_ne!(one(1).chips, one(2).chips);
         assert_eq!(one(3).chips, one(3).chips);
     }
 
-    /// What BN6's rules refuse.
+    /// What EXE6's rules refuse.
     #[test]
     fn the_rules_refuse() {
-        let content = bn6_content();
+        let content = exe6_content();
         let mut b = rules(&content);
         let chip = |key: &str| {
             let id = content.defs.chip_by_key(key).unwrap();

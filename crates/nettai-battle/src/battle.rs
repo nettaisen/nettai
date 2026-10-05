@@ -33,16 +33,16 @@ pub mod battle_flags {
     /// A player asked to open the custom screen.
     pub const CUSTOM_REQUESTED: u16 = 0x10;
     /// The cameras shake even while the battle is paused
-    /// (`battle_isTimeStopPauseOrBattleFlags0x20_800a0a4`): BN5's
+    /// (`battle_isTimeStopPauseOrBattleFlags0x20_800a0a4`): EXE5's
     /// TomahawkSoul's change sets it (0x08012138), every soul change's end
-    /// clears it (0x080121B6); nothing in BN6 sets it.
+    /// clears it (0x080121B6); nothing in EXE6 sets it.
     pub const SHAKE_THROUGH_PAUSE: u16 = 0x20;
     /// Each side its own custom gauge: battle flag 0x40, in each game a
     /// mode of its own.
-    /// - BN5's operation battle (set at 0x0802D590 when the battle mode
+    /// - EXE5's operation battle (set at 0x0802D590 when the battle mode
     ///   isn't 1 and the navi's stats' +0x2A is set): both navis
     ///   computer-driven, the Tactics screen.
-    /// - BN6's chip gate battle (set once a battle by `sub_802E112` when a
+    /// - EXE6's chip gate battle (set once a battle by `sub_802E112` when a
     ///   chip gate is on the link port, 0x0200AD04, or in a link battle,
     ///   battle mode 0, whose consoles both have one, EVENT_1722): the
     ///   gate's slotted chips paid from the side's gauge, SELECT's Program
@@ -207,7 +207,7 @@ pub enum FadeMode {
     TransformIn = 0x40,
     /// 0x44: the transformation sequencer's fade out.
     TransformOut = 0x44,
-    /// 0x30: BN5's soul button's flash fades back (its custom screen's
+    /// 0x30: EXE5's soul button's flash fades back (its custom screen's
     /// state 9).
     SoulFlashBack = 0x30,
     /// 0x34: ... and its flash, to full.
@@ -464,10 +464,10 @@ pub struct Battle {
     pub looks: [SideLooks; 2],
     /// Per-side statistics counters (`byte_203EAE0`, `sub_800AB46`).
     pub side_stats: [[u8; 16]; 2],
-    /// Per side: BN5's ColonelSoul army, armed or not, and its soldiers'
+    /// Per side: EXE5's ColonelSoul army, armed or not, and its soldiers'
     /// damage words (`kinds::obstacle::Soldiers`).
     pub obstacle_soldiers: [crate::kinds::obstacle::Soldiers; 2],
-    /// The first four counters of BN5's per-player battle record
+    /// The first four counters of EXE5's per-player battle record
     /// (`sub_802D064`'s, 0x0802AEA6): the counter hits and inflicted bugs
     /// that land on the other side's navis no player controls, at most 10
     /// each.
@@ -480,9 +480,9 @@ pub struct Battle {
     pub linked: [LinkedRecord; 2],
     /// Per side: its dimming (`byte_203CF00`).
     pub dimming: [crate::dimming::DimmingRecord; 2],
-    /// The last navi chip used, of either side (`byte_203C960`, BN5's
-    /// 0x0203C430; cleared as the battle starts, `sub_800B75A`): BN5's
-    /// DethPhnx brings its navi again; nothing in BN6 reads it.
+    /// The last navi chip used, of either side (`byte_203C960`, EXE5's
+    /// 0x0203C430; cleared as the battle starts, `sub_800B75A`): EXE5's
+    /// DethPhnx brings its navi again; nothing in EXE6 reads it.
     pub last_navi_chip: Option<crate::kinds::navi_chip::LastNaviChip>,
     /// Per side: the player's rules, its ruleset and its systems' state
     /// (docs/design/rules-in-luau.md).
@@ -550,14 +550,14 @@ pub struct SideState {
     pub gauge: u16,
     /// +0x50: the SELECT special runs (`sub_802E4E4`).
     pub select_special: u8,
-    /// +0x54: a system's takeover of the side's navi runs (BN6's Cross
+    /// +0x54: a system's takeover of the side's navi runs (EXE6's Cross
     /// special, DarkInvs' auto-battle): idle asks the side's systems
     /// (`takeover`) instead of reading the buttons.
     pub takeover: u8,
     /// +2: ticks the SELECT special holds the navi (0xB4 when reset,
     /// `sub_802E07C`; `sub_802F068`).
     pub select_ticks: u8,
-    /// +0x30: ticks left of the takeover (BN6's Cross special starts it at
+    /// +0x30: ticks left of the takeover (EXE6's Cross special starts it at
     /// 0x1E0), counted down in the navi's stage B (`sub_802E1D8`).
     pub takeover_ticks: u16,
     /// +0x3C / +0x3A: ticks the side's gauge stays slow / fast (SloGauge,
@@ -565,7 +565,7 @@ pub struct SideState {
     pub slow_gauge_ticks: u16,
     pub fast_gauge_ticks: u16,
     /// +0x12: the swing a variable sword makes for a navi no buttons drive
-    /// (BN5's computer navi draws it before VarSwrd or NeoVari, 0x0802A330).
+    /// (EXE5's computer navi draws it before VarSwrd or NeoVari, 0x0802A330).
     pub sword_pick: u8,
     /// +0x44: the target the side tracks (an actor of the other side), which
     /// an obstacle leaving hands on (`sub_802EF74`).
@@ -586,11 +586,11 @@ pub struct SideState {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SideLooks {
     /// The emotion window shows the second set of the base form's faces
-    /// (BN5's Hub Style, NaviStats +0x4C: 0x0801AF8E adds 11 to the face;
+    /// (EXE5's Hub Style, NaviStats +0x4C: 0x0801AF8E adds 11 to the face;
     /// `battle.set_face_variant`, `kinds::player::shows_face_variant`).
     pub face_variant: bool,
     /// The custom screen's enemy names show the side's navi by its variant
-    /// name (BN5's Hub Style in a link battle: 0x0801AE3A's NameID 0xEA;
+    /// name (EXE5's Hub Style in a link battle: 0x0801AE3A's NameID 0xEA;
     /// `battle.set_name_variant`).
     pub name_variant: bool,
 }
@@ -783,7 +783,7 @@ impl Battle {
             setup,
         };
         // Each side's systems set the round up before anything reads the
-        // side's stats (BN6's patch cards change them); the battle-start
+        // side's stats (EXE6's patch cards change them); the battle-start
         // copy of the stats (`reserves`) is of the stats after them.
         b.notify_systems(nettai_content_api::SystemHook::RoundSetup);
         b.reserves = b.stats;
@@ -1601,7 +1601,7 @@ impl Battle {
             self.fight.sub = 4;
             return;
         }
-        // The turn starts: each side's rules (BN6's beast system spends a
+        // The turn starts: each side's rules (EXE6's beast system spends a
         // turn in Beast Out, `sub_8015A38`).
         for side in 0..2u8 {
             if self.player(side).is_some() {
@@ -1617,7 +1617,7 @@ impl Battle {
         for side in 0..2u8 {
             let Some(a) = self.player_actor(side) else { continue };
             let over = self.is_battle_over();
-            // (A controlled form, BN6's Beast Over: the controller decides.)
+            // (A controlled form, EXE6's Beast Over: the controller decides.)
             let berserk = self.form(side as usize).traits.has(crate::content::FormTraits::CONTROLLED);
             let held = self.inputs[side as usize].held;
             let dimmed = self.is_dimmed();
@@ -1746,7 +1746,7 @@ impl Battle {
     }
 
     /// Whether a custom-screen request goes through the reversions and the
-    /// sequencer (battle mode 5, or not the own-gauges mode; BN5's
+    /// sequencer (battle mode 5, or not the own-gauges mode; EXE5's
     /// 0x08007774 tests the flag alone).
     fn custom_request_transforms(&self) -> bool {
         let mode_5 = self.round.mode_copy == 5 && self.game_rules().flow.sequencer_before_custom;
@@ -1754,7 +1754,7 @@ impl Battle {
     }
 
     /// Fighting state 0x20 (`sub_8008452`): a custom screen was asked for:
-    /// wait for the navis' reversions, then state 0x24. BN5's (0x08007774,
+    /// wait for the navis' reversions, then state 0x24. EXE5's (0x08007774,
     /// the flow without `sequencer_before_custom`) opens the screen from
     /// this state, on the tick the reversions are done, as state 0x24 does
     /// a tick later.
@@ -1762,7 +1762,7 @@ impl Battle {
         if self.custom_request_transforms() {
             if self.fight.init == 0 {
                 self.start_custom_reversion();
-                // Each side's rules, for a side with its navi (BN6's beast
+                // Each side's rules, for a side with its navi (EXE6's beast
                 // system: a Beast Out check comes due, `sub_8015A16`).
                 for side in 0..2u8 {
                     if self.player_actor(side).is_some() {
@@ -1787,7 +1787,7 @@ impl Battle {
     /// Fighting state 0x24 (`sub_8008492`): the transformation sequencer
     /// runs once more from the start, then the custom screen opens.
     fn fight_custom_sequence(&mut self) {
-        // (BN5 opens the screen straight after the reversions: its flow has
+        // (EXE5 opens the screen straight after the reversions: its flow has
         // no state 0x24.)
         if self.custom_request_transforms() && self.game_rules().flow.sequencer_before_custom {
             if self.step_transform_sequencer() {
@@ -1833,7 +1833,7 @@ impl Battle {
         if self.is_dimmed() || self.is_battle_over() {
             return false;
         }
-        // (A controlled navi, BN6's Beast Over, can't ask for it: a full
+        // (A controlled navi, EXE6's Beast Over, can't ask for it: a full
         // gauge opens it.)
         let berserk = |side: usize| self.form(side).traits.has(crate::content::FormTraits::CONTROLLED);
         ((berserk(0) || berserk(1)) && self.round.flags & battle_flags::GAUGE_FULL != 0)
@@ -2183,7 +2183,7 @@ impl Battle {
     /// `sub_8009158`: the low-HP music switch (sound only, but it keeps a
     /// latch in the round state). Each console switches for its own navi;
     /// the engine keeps both sides' latches. (Where the arena's flow rules
-    /// have it: BN5 has none.)
+    /// have it: EXE5 has none.)
     fn low_hp_music(&mut self) {
         if self.setup.settings.effects & effects::LINK == 0 || !self.content.rules().flow.low_hp_music {
             return;
@@ -2244,12 +2244,12 @@ mod tests {
         assert_eq!(b.fight.judge.outcome, 1);
     }
 
-    /// docs/design/bn5-map.md §15.3 item 18: a custom screen asked for in
-    /// the fight opens a tick sooner in BN5's flow (0x08007774 sets the
-    /// result itself once the reversions are done) than in BN6's, which
+    /// docs/design/exe5-map.md §15.3 item 18: a custom screen asked for in
+    /// the fight opens a tick sooner in EXE5's flow (0x08007774 sets the
+    /// result itself once the reversions are done) than in EXE6's, which
     /// goes through state 0x24 first.
     #[test]
-    fn bn5s_custom_request_opens_from_its_own_state() {
+    fn exe5s_custom_request_opens_from_its_own_state() {
         let ticks = |sequencer_before_custom: bool| {
             let mut c: crate::content::Content = testing::build();
             c.define().unwrap_or_else(|e| panic!("{e}"));
@@ -2277,13 +2277,13 @@ mod tests {
             }
             (n, b.fight.state)
         };
-        let (bn6, bn6_state) = ticks(true);
-        let (bn5, bn5_state) = ticks(false);
-        assert_eq!((bn5_state, bn6_state), (fight::CUSTOM_REVERT, fight::CUSTOM_SEQUENCE));
-        assert!(bn5 < bn6, "BN5 {bn5} ticks, BN6 {bn6}");
+        let (exe6, exe6_state) = ticks(true);
+        let (exe5, exe5_state) = ticks(false);
+        assert_eq!((exe5_state, exe6_state), (fight::CUSTOM_REVERT, fight::CUSTOM_SEQUENCE));
+        assert!(exe5 < exe6, "EXE5 {exe5} ticks, EXE6 {exe6}");
     }
 
-    /// The looks a side's rules set as the round is set up (BN5's Hub
+    /// The looks a side's rules set as the round is set up (EXE5's Hub
     /// Style's faces and enemy name) outlast the player's init, which clears
     /// the side's block (`sub_802DFC8`).
     #[test]

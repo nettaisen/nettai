@@ -20,7 +20,7 @@ use nettai_content_api::FnId;
 pub struct Ran {
     /// The modules a function of which ran (returned, or reached an
     /// interrupt check: a call, a return or a loop's back edge), by name
-    /// (`bn6:chips/elemtrap/strike`). The define phase isn't counted
+    /// (`exe6:chips/elemtrap/strike`). The define phase isn't counted
     /// unless it ran while recording (a runtime loaded then).
     pub modules: BTreeSet<String>,
     /// The functions the engine called (a kind's or an action's update, a

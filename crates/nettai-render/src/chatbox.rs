@@ -79,13 +79,13 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
     let (chatbox, said, portrait, lookup) = match screen.phase {
         Phase::Description { window: None, chatbox, .. } => {
             // The chip under the cursor as the screen checked it (the chip
-            // window's), or the chip a button there shows (BN5's capsules).
+            // window's), or the chip a button there shows (EXE5's capsules).
             let chip = screen.slots[screen.cursor as usize].face.or(screen.look.chip_window.last_chip.map(|c| c.id));
             let said = chip.and_then(|c| strings.chip_description(&b.content, c));
             (chatbox, said, None, chip.map(Lookup::ChipDescription))
         }
         Phase::Description { window: Some(_), form, chatbox } => {
-            // A form a system's window describes (BN6's Cross window: the
+            // A form a system's window describes (EXE6's Cross window: the
             // Cross under its cursor, of whichever game it is).
             let said = form.and_then(|f| strings.form_description(&b.content, f));
             (chatbox, said, None, form.map(Lookup::CrossDescription))
@@ -122,7 +122,7 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
             let sheet = crate::lookups::sprite(packs, &b.content, id, &who, problems);
             if let Some(sheet) = sheet {
                 crate::lookups::animation(sheet, &b.content, id, look.anim, &who, problems);
-                note_true_face(b, navi, bn6_compat::Unlocks::of_side(b, b.setup.local_side).version, problems);
+                note_true_face(b, navi, exe6_compat::Unlocks::of_side(b, b.setup.local_side).version, problems);
             }
             sheet.map(|sheet| (sheet, look))
         }
@@ -217,8 +217,8 @@ fn text_tiles(assets: &Bundle, chatbox: &Chatbox, lines: &[Vec<u16>], translated
 /// shows; the frontend shows the true face (docs/frontend.md §5).
 fn note_true_face(b: &Battle, navi: nettai_content_api::NaviHandle, console: GameVersion, problems: &mut Problems) {
     let c = &b.content;
-    let cross = (0..c.defs.forms.len()).map(|i| FormHandle(i as u16)).find(|&f| bn6_compat::forms::cross_of(c, f) == Some(navi));
-    let game = cross.and_then(|f| bn6_compat::forms::game(c, f));
+    let cross = (0..c.defs.forms.len()).map(|i| FormHandle(i as u16)).find(|&f| exe6_compat::forms::cross_of(c, f) == Some(navi));
+    let game = cross.and_then(|f| exe6_compat::forms::game(c, f));
     if game.is_some_and(|g| g != console) {
         problems.known(5, 104, 40, 48, "another game's link navi's portrait (the true face)");
     }
@@ -455,11 +455,11 @@ mod tests {
         assert_eq!(shown(&c, &[5, 4, 6], false), vec![5, 4, 6]);
     }
 
-    /// Box graphics shaped as BN6's: a frame tile (the pack's tile 8: a
+    /// Box graphics shaped as EXE6's: a frame tile (the pack's tile 8: a
     /// clear column, the border's three, then the fill) on the left and,
     /// flipped, on the right, the message box's at column 29, the
     /// description box's at column 26, with columns 27 to 29 clear.
-    fn bn6_like_boxes() -> Graphics {
+    fn exe6_like_boxes() -> Graphics {
         let frame_row = [0u8, 11, 10, 10, 1, 1, 1, 1];
         let mut tiles = Tiles { pixels: vec![0; 64] };
         tiles.pixels.extend([1; 64]);
@@ -484,7 +484,7 @@ mod tests {
     /// message box), from the text's left at 51.
     #[test]
     fn a_line_has_the_room_of_its_boxs_inside() {
-        let g = bn6_like_boxes();
+        let g = exe6_like_boxes();
         assert_eq!(text_room(&g, MESSAGE_BOX), 236 - 1 - TEXT_X);
         assert_eq!(text_room(&g, DESCRIPTION_BOX), 212 - 1 - TEXT_X);
         // No graphics: the line buffer.
@@ -501,12 +501,12 @@ mod tests {
     #[test]
     fn every_chatbox_line_fits_its_box() {
         let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content"));
-        let g = bn6_like_boxes();
+        let g = exe6_like_boxes();
         let rooms = [text_room(&g, MESSAGE_BOX), text_room(&g, DESCRIPTION_BOX)];
         let mut r = crate::vfont::TextRenderer::new(std::sync::Arc::new(crate::vfont::VectorFont::bundled()));
         let (mut lines, mut fitted) = (0, Vec::new());
         for lang in ["en", "ja"] {
-            let table = nettai_content::locale::load(&dir.join("bn6"), lang).unwrap().expect("a table");
+            let table = nettai_content::locale::load(&dir.join("exe6"), lang).unwrap().expect("a table");
             let mut strings: Vec<(String, usize, &str)> = Vec::new();
             for (key, c) in &table.chips {
                 strings.extend(c.description.as_deref().map(|d| (format!("chips.{key}"), DESCRIPTION_BOX, d)));
@@ -543,13 +543,13 @@ mod tests {
     fn a_cross_shows_its_own_description() {
         let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content"));
         let mut report = nettai_content::report::Report::default();
-        let read = nettai_content::index::read(dir, &["bn6".to_string()], &mut report).expect("content/bn6 reads");
+        let read = nettai_content::index::read(dir, &["exe6".to_string()], &mut report).expect("content/exe6 reads");
         let mut c = Content::default();
         c.scripts = read.scripts();
         c.strings = read.strings;
         c.assets = nettai_battle::content::testing::asset_names_for(&c.scripts);
-        c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
-        let ja = nettai_content::locale::load(&dir.join("bn6"), "ja").unwrap().expect("ja.toml");
+        c.define().unwrap_or_else(|e| panic!("content/exe6: {e}"));
+        let ja = nettai_content::locale::load(&dir.join("exe6"), "ja").unwrap().expect("ja.toml");
         let form = |key: &str| c.defs.form_by_key(key).unwrap_or_else(|| panic!("no form {key}"));
         for (language, table) in [(None, &c.strings), (Some(&ja), &ja)] {
             let strings = DisplayText::new(language);

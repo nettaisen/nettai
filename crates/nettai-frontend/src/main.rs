@@ -68,17 +68,17 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
        nettai-frontend [OPTIONS] --audit-content
        nettai-frontend [OPTIONS] --audit TRACE.jsonl...
 
-  You play one game, BN6 or BN5: a match file names its game, else --game
-  does (default bn6). The battle is that game's: its content folder and the
+  You play one game, EXE6 or EXE5: a match file names its game, else --game
+  does (default exe6). The battle is that game's: its content folder and the
   support folders it uses, drawn and heard from its pack (graphics and
-  sound, written from your ROMs by `bn6-extract content <falzar-us>
-  <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6`, BN5's by
-  bn5-extract), found in the packs directory, $NETTAI_PACKS, else
+  sound, written from your ROMs by `exe6-extract content <falzar-us>
+  <gregar-us> <falzar-jp> <gregar-jp> data/content/exe6`, EXE5's by
+  exe5-extract), found in the packs directory, $NETTAI_PACKS, else
   data/content, each pack by the game it says.
-  --game GAME      the game played without a match file: bn6 (default) or
-                   bn5 (a match file's game is its own)
+  --game GAME      the game played without a match file: exe6 (default) or
+                   exe5 (a match file's game is its own)
   --pack DIR       a pack's directory, in place of the found pack of its game
-                   ($BN6_PACK, deprecated, is one)
+                   ($EXE6_PACK, deprecated, is one)
   --content DIR    the content directory (default: $NETTAI_CONTENT, else
                    this repository's content/)
   --mute           no sound (headless rendering never plays any)
@@ -545,7 +545,7 @@ fn main() {
             std::process::exit(2);
         }
     };
-    // The game played: the match file's, else --game's, else BN6.
+    // The game played: the match file's, else --game's, else EXE6.
     let file_text = args.match_file.as_deref().map(match_text);
     let game = match &file_text {
         Some(text) => nettai_match::file::game_of(text)
@@ -559,7 +559,7 @@ fn main() {
     let packs_dir = nettai_content::pack::packs_dir();
     let found = nettai_content::pack::find(&packs_dir, &args.packs, &mut found_report);
     show(&found_report);
-    let found = found.unwrap_or_else(|| fail("can't read the packs given (--pack, $BN6_PACK)"));
+    let found = found.unwrap_or_else(|| fail("can't read the packs given (--pack, $EXE6_PACK)"));
     let loaded = nettai_content::pack::load_game(args.content.as_deref(), &game, &found).unwrap_or_else(|r| {
         show(&r);
         fail(format!("can't load {game}'s battle content (--content, --pack, --game)"))

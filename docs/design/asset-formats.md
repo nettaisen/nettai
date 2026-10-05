@@ -5,10 +5,10 @@ widely supported files that ordinary tools edit, which loads into exactly the
 data the frontend and the audio use. This document describes the graphics and
 sound formats; the pack's battle data (chips, navis, rules, sprite timing:
 what the engine runs on) is described in [content-pack.md](content-pack.md).
-A pack is the only form this data takes: `bn6-extract content` writes it
+A pack is the only form this data takes: `exe6-extract content` writes it
 from the user's ROM, and everything loads it straight from its files.
 
-The code is the `nettai-content` crate, `bn6-extract content`, and pack
+The code is the `nettai-content` crate, `exe6-extract content`, and pack
 loading in `nettai-frontend` and the audio examples. Everything below was
 checked on the game's full battle graphics and all of its songs; the in-repo
 tests use synthetic assets.
@@ -36,7 +36,7 @@ timing matches the engine's former compiled table for all 3,176 animations;
 all 397 songs
 have identical timelines and render bit-identical PCM (60 s each, 780 million
 stereo samples), and the battle music with all 18 battle effects mixed in is
-bit-identical. Nothing in BN6's data needed an approximation. §7 lists
+bit-identical. Nothing in EXE6's data needed an approximation. §7 lists
 precisely what a format can't carry and how each case is handled.
 
 ## 1. Principles
@@ -49,7 +49,7 @@ precisely what a format can't carry and how each case is handled.
   goes in a small text sidecar rather than in a private binary.
 - **Exact by construction, then proved.** Export writes a file, and for songs
   immediately reads it back and compares, refusing anything that wouldn't
-  return the same. `bn6-extract content` reads the battle data back before it
+  return the same. `exe6-extract content` reads the battle data back before it
   finishes, and `nettai-content verify` checks a whole pack against another.
 - **Imports explain, never guess silently.** An import returns a report of
   errors (the pack can't be built as it is), warnings (it builds, but likely
@@ -61,8 +61,8 @@ precisely what a format can't carry and how each case is handled.
   importer points out what an editor probably damaged.
 - **Game-independent formats.** The format modules know GBA-shaped data
   (4bpp tiles, 16-color palettes, OAM parts, tile maps, M4A songs and
-  voicegroups) and no BN6 rule. Only the HUD layout and the field's panel
-  tables are BN6-shaped. They can sit under the core that the content sits
+  voicegroups) and no EXE6 rule. Only the HUD layout and the field's panel
+  tables are EXE6-shaped. They can sit under the core that the content sits
   on (see `docs/design/core-content-boundary.md`).
 
 ## 2. Pack layout
@@ -94,8 +94,8 @@ graphics/
     regular.png  chip-art/CHIP.png  pictures/NAME.png
     beast-buttons-V.png  emblems-V.png  cross-names-V.png
     pictures/beast-out-V.png  (V: falzar, gregar)
-    buttons/NAME.png  buttons/NAME-icons.png  (a game's own buttons: BN5's soul)
-    (a BN5 pack's HUD also: mugshots/NAME-box.png, the box a face brings)
+    buttons/NAME.png  buttons/NAME-icons.png  (a game's own buttons: EXE5's soul)
+    (an EXE5 pack's HUD also: mugshots/NAME-box.png, the box a face brings)
     (and another language's lettering, L: ja)
     hud/font-L.png  dialogue-font-L.png  waiting-L.png  gauge-L.png  banners/NAME-L.png
     custom/pictures/NAME-L.png  cross-names-V-L.png
@@ -110,7 +110,7 @@ sound/
   songs/NAME.toml                    its header (with its song id) and stamps
 ```
 
-BN6's pack is 2,759 files, 10.6 MiB (468 of the files, about 2 MiB, are
+EXE6's pack is 2,759 files, 10.6 MiB (468 of the files, about 2 MiB, are
 the battle data). Writing it from the ROM takes about 1 s.
 
 ## 3. Sprites
@@ -120,7 +120,7 @@ the battle data). Writing it from the ROM takes about 1 s.
 A battle sprite has animations; each frame names a tile set (a block of 8x8
 tiles the game copies to video memory for that frame), a palette set, a
 layout (the hardware sprites, "parts", the frame is built from) and a duration
-with flag bits. BN6's battle sprites: 298 sprites, 3,176 animations, 8,329
+with flag bits. EXE6's battle sprites: 298 sprites, 3,176 animations, 8,329
 frames each with its own layout, 2,005 tile sets (1,147 of them shared by
 several frames), 56,033 tiles, 35,645 parts in the 12 hardware sizes, one
 palette set per sprite (16 rows of 16 colors, of which the object picks one
@@ -181,7 +181,7 @@ set starts a new row of the atlas, so a row reads as one pose's pieces.
 - `tilesets[t].regions`: which atlas rectangle fills tiles `tile..` of tile
   set `t`, row by row as a sprite of that size reads them. Every tile of a
   tile set is in some region (tiles no part draws get an 8x8 region of their
-  own, so nothing is lost; BN6 has none). If two regions cover the same tile
+  own, so nothing is lost; EXE6 has none). If two regions cover the same tile
   they must agree.
 - `layouts[l]`: the parts of layout `l`, first part the shadow. `flip` is
   `h`, `v` or `hv`; `palette` is the part's palette offset (omitted when 0).
@@ -193,13 +193,13 @@ set starts a new row of the atlas, so a row reads as one pose's pieces.
   `more_palette_rows`, each row 16 BGR555 colors in hex. An object picks a
   row by number (`palette`), so the order is the data.
 - `palette_high_bits`: palette entries whose BGR555 value has bit 15 set.
-  The hardware ignores that bit and a PNG can't hold it. BN6 has 16,020 such
+  The hardware ignores that bit and a PNG can't hold it. EXE6 has 16,020 such
   entries, all in palette-set rows past the real palettes (the extractor keeps
   16 rows because the game reads whatever follows a palette).
 - `extra_palette_sets`: palette sets after the first, as BGR555 hex (none in
-  BN6).
+  EXE6).
 - `region`: the region whose ROMs the sprite comes from, when it isn't the
-  pack's base (BN6's US): `"jp"` for the six sprites the US release cut and
+  pack's base (EXE6's US): `"jp"` for the six sprites the US release cut and
   left a placeholder in. A console of another region draws something else
   there, which the frame comparison counts as a known difference. Omitted
   for the rest.
@@ -222,7 +222,7 @@ set starts a new row of the atlas, so a row reads as one pose's pieces.
 - `flags`: the flag byte, spelled out: `"last"` (0x80, the animation ends
   here), `"loop"` (0x40, with `last`: it starts over), and any other bits as
   numbers (`[4]`), which attack code reads as cues. Omitted when 0. Nothing is
-  derived: the byte is exactly what the list says. (In BN6 only the last frame
+  derived: the byte is exactly what the list says. (In EXE6 only the last frame
   of each animation has flags, 0x80 or 0xC0.) The importer warns when an
   animation's last frame lacks `last` or an earlier one has it.
 - `tileset`, `layout`, `palettes`: which tile set, layout and palette set the
@@ -301,14 +301,14 @@ the row it shows in). `field.json` holds:
 
 - `panel_types`: the panel types the field draws, by the engine's names
   (`"normal"`, `"cracked"`, ..., `"metal"`, `"lava"`, `"sea"`), in the order
-  of their blocks. BN6's pack lists its 13 in the engine's order, BN5's its
-  11 in BN5's order. A panel type a field doesn't list is drawn from another
+  of their blocks. EXE6's pack lists its 13 in the engine's order, EXE5's its
+  11 in EXE5's order. A panel type a field doesn't list is drawn from another
   loaded game's field, or tinted (docs/design/rules-in-luau.md §7.4).
 - the panel blocks, six for each listed type (5x3 map entries, the block of
   type `k` (its place in `panel_types`) for an owner and a row at
-  `6 * k + 3 * owner + row - 1`): BN6's 78, BN5's 66.
+  `6 * k + 3 * owner + row - 1`): EXE6's 78, EXE5's 66.
 - the two front edges;
-- one highlight or two (BN6 has two; BN5 draws one block for both, which its
+- one highlight or two (EXE6 has two; EXE5 draws one block for both, which its
   pack writes twice);
 - the cycling panel palettes (slot, start timer, frames of `ticks` and 16
   colors).
@@ -317,9 +317,9 @@ A map entry is text, `tile:palette` with `:h`, `:v` or `:hv` when flipped;
 a color is `#rrggbb`, or `0xNNNN` (raw BGR555) when it has bits RGB can't
 hold.
 
-A field.json written before 2026-10-03 has no `panel_types`. The reader takes 78 blocks as BN6's 13 types in the
-engine's order, so the BN6 pack loads as it is. With any other number of blocks the field draws no type, and the
-reader warns to extract the pack again (a BN5 pack from before then: run bn5-extract again).
+A field.json written before 2026-10-03 has no `panel_types`. The reader takes 78 blocks as EXE6's 13 types in the
+engine's order, so the EXE6 pack loads as it is. With any other number of blocks the field draws no type, and the
+reader warns to extract the pack again (an EXE5 pack from before then: run exe5-extract again).
 
 A pack extracted before 2026-10-02 spells three keys the British way (`custom.json`'s gray palette and
 Program Advance name colors, `field.json`'s palette frames' colors). The reader takes either spelling,
@@ -391,47 +391,47 @@ its chip's key, with the `region` and `version` of a picture from another
 ROM (below). The frontend composes the tile numbers the maps name from
 these blocks, as the original's VRAM holds them.
 
-**Another game's HUD and custom screen** (BN5's, docs/design/bn5-map.md §11)
+**Another game's HUD and custom screen** (EXE5's, docs/design/exe5-map.md §11)
 use the same files, with optional fields where its game lays them out
-otherwise; a BN6 pack writes none of them and is byte-identical to before:
+otherwise; an EXE6 pack writes none of them and is byte-identical to before:
 
 - `hud.json`: the tile numbers count from the HUD layer's and the gauge's
-  first tiles (`first_tile`, `gauge_first_tile`: BN5's 0x180 and 0x202,
-  BN6's 0x1A0 and 0x222). `mugshot_boxes` gives a face that brings its own
-  2x2 box beside it (`mugshots/NAME-box.png`: BN5's MegaMan, dark MegaMan
+  first tiles (`first_tile`, `gauge_first_tile`: EXE5's 0x180 and 0x202,
+  EXE6's 0x1A0 and 0x222). `mugshot_boxes` gives a face that brings its own
+  2x2 box beside it (`mugshots/NAME-box.png`: EXE5's MegaMan, dark MegaMan
   and Team Colonel's faces), by mugshot number; `no_count_box` says the
-  game has no box without a count (BN5's souls' faces show their turns
+  game has no box without a count (EXE5's souls' faces show their turns
   left: `counts.png`, by count).
-- `custom.json`: `layout` (written only when it isn't BN6's) puts the
+- `custom.json`: `layout` (written only when it isn't EXE6's) puts the
   window's parts at the game's tile numbers (the chip's name, picture,
   code, element and digits, the slots, the column's icons and cells, the
   turn limit, the name bar, the Cross names), says which tile a hidden slot
   is filled with, and where the cursor stands over OK and over the special
-  slot, with each one's corners (BN5's special slot is a 3x2 button, BN6's
+  slot, with each one's corners (EXE5's special slot is a 3x2 button, EXE6's
   Beast Out 2x2), and whether the chip window shows the re-deal button's
-  uses left (`button_uses`: BN5's Shuffle; left out when false). `buttons`
+  uses left (`button_uses`: EXE5's Shuffle; left out when false). `buttons`
   are the game's own buttons, drawn by name where
-  a system's button stands (BN5's `soul`: its states' tiles, its picture in
+  a system's button stands (EXE5's `soul`: its states' tiles, its picture in
   the chip window with a palette for Soul Unison and one for Chaos Unison,
   and the souls' 2x2 icons with their sprite palette, which the soul choice
   flies onto the column; `icon_versions` names the game versions whose
   consoles fly the icon in a palette of their own, the icons' image's
   palette rows after the first: Team Colonel's).
-- A version's own chip (BN5's and BN6's version Giga chips, BN5's Phoenix
+- A version's own chip (EXE5's and EXE6's version Giga chips, EXE5's Phoenix
   and DethPhnx), which the other version's ROM draws as its counterpart,
   has its icon and picture once, under the chip's key, from its own
   version's ROM, the picture with that `version`: the frontend shows it on
   either console, and a console of the other version's is a known
   difference there (docs/frontend.md §5).
 
-**Four ROMs, and what differs by version and region.** A BN6 pack is made
-from the two US ROMs and the two Japanese ones (`bn6-extract content
+**Four ROMs, and what differs by version and region.** An EXE6 pack is made
+from the two US ROMs and the two Japanese ones (`exe6-extract content
 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>`, all four, in that
 order, each checked by its header's game code: BR6E, BR5E, BR6J, BR5J): the
 US Falzar ROM's data, with what only the US Gregar ROM has right or of its
-own, read at the addresses the same code points at there (bn6-extract's
+own, read at the addresses the same code points at there (exe6-extract's
 `gregar`), and what the US release cut, from the Japanese ROMs
-(bn6-extract's `jp`):
+(exe6-extract's `jp`):
 
 - **What differs by version** is two assets, each named with its version:
   `cross-names-falzar` and `cross-names-gregar` (nettai-assets
@@ -484,7 +484,7 @@ or R"); `custom.json`'s `languages.ja` the chip window's pictures for OK,
 the re-deal and scrap (`pictures/ok-ja.png`...: "chip data transmission"
 in Japanese) and the Cross window's names by version
 (`cross-names-falzar-ja.png`, `cross-names-gregar-ja.png`). They come from
-the Japanese ROMs (bn6-extract's `lettering`); the fonts' characters from
+the Japanese ROMs (exe6-extract's `lettering`); the fonts' characters from
 compat/text.toml's `[jp]`, the Japanese ROMs' encoding. Everything else a
 battle shows is the same pictures in all four ROMs. A frontend in that
 language swaps them in (`Bundle::in_language`). The content's display text
@@ -514,7 +514,7 @@ A loop is then moved to a whole tick: `Timeline::loop_from` finds the earliest
 tick from which everything repeats with the loop's period, and `with_loop`
 re-cuts the timeline there. A song's tracks all get one loop: from the latest
 track's earliest start (rounded up to an eighth note) over the common period.
-In BN6, 26 of the 32 looping songs have tracks whose repeats settle at
+In EXE6, 26 of the 32 looping songs have tracks whose repeats settle at
 different points (a note that takes its key from the pass before), and every
 song has one period.
 
@@ -541,7 +541,7 @@ commands keep their order on each tick.
 What MIDI can't say, and how it is said (extensions use controllers General
 MIDI leaves undefined; mid2agb ignores them):
 
-| Case | Carried by | In BN6 |
+| Case | Carried by | In EXE6 |
 |---|---|---|
 | KEYSH (key shift; sounding notes follow it) | CC 102 = shift + 64 | 602 (one KEYSH 0 per track, mid2agb's boilerplate) |
 | a tie of 96 ticks or less; a gated note over 96 | CC 103 = 1 or 2 just before the note | none |
@@ -579,7 +579,7 @@ voice = 26
 a track's end, or drops every command of a kind, the importer warns (§8).
 
 Export writes the file and reads it straight back; a song whose file wouldn't
-read back as the same timelines isn't written (none in BN6). The importer
+read back as the same timelines isn't written (none in EXE6). The importer
 pairs note on and note off first in, first out per key, as most MIDI software
 does, and accepts any division that is a multiple of 24 (DAWs save at 480 or
 960); events between the 24-a-beat grid are refused with their positions.
@@ -591,7 +591,7 @@ writes a looping six-track song with every controller (it re-compresses
 repeats into PATT/PEND on its own). Differences: mid2agb quantizes
 velocities through its table (ours are exact), rounds gates unless given `-E`,
 re-sorts events on a tick by type, and ignores the extension controllers
-(harmless for BN6, which uses only KEYSH 0).
+(harmless for EXE6, which uses only KEYSH 0).
 
 **Compared with the arranger's song document.** bnmusic's arranger stores a
 song as a Protocol Buffers `.song` file: per track, notes (tick, key with
@@ -689,7 +689,7 @@ files are the instruments.
 
 ## 6. Fidelity results
 
-On BN6 (US Falzar), everything exported, imported and compared with the data
+On EXE6 (US Falzar), everything exported, imported and compared with the data
 it came from, the data decoded from the ROM:
 
 | Check | Result |
@@ -712,7 +712,7 @@ both navis: edits reach the game through the pipeline.
 
 ## 7. Lossy spots
 
-None were hit by BN6's data. What the formats can't carry, precisely:
+None were hit by EXE6's data. What the formats can't carry, precisely:
 
 **Graphics**
 
@@ -728,7 +728,7 @@ None were hit by BN6's data. What the formats can't carry, precisely:
 - 3.2: a flattened frame would lose hidden pixels, which is why parts are
   kept.
 
-**Songs** (export refuses these with the reason; none occur in BN6)
+**Songs** (export refuses these with the reason; none occur in EXE6)
 
 - Command values of 128 and up (VOL, PAN, LFOS, PRIO, ...: bytes in M4A, 7
   bits in MIDI). Would need a high-bit controller.
@@ -763,7 +763,7 @@ None were hit by BN6's data. What the formats can't carry, precisely:
 
 ## 8. Tooling
 
-Tested on BN6's pack (each tool re-saved every file of its kind in a copy of
+Tested on EXE6's pack (each tool re-saved every file of its kind in a copy of
 the pack, then `nettai-content check` and `verify`):
 
 | Tool | What it did | Result |
@@ -830,7 +830,7 @@ graphics and sound through the importers, each with a report of what it
 found. Nothing derived is stored: an edit shows up the next time the pack
 loads, and there is no cache to go stale.
 
-**What it costs.** BN6's full pack loads in about 0.75 s in a release
+**What it costs.** EXE6's full pack loads in about 0.75 s in a release
 build (three runs: 0.75, 0.76, 0.86 s): the battle data in 45-150 ms (the
 sprite timing is 10-100 ms of it), the graphics in 60-110 ms and the sound
 in 520-640 ms. Sound dominates: its MIDI songs are parsed and checked
@@ -843,22 +843,22 @@ total ever pass about a second, the sound import is where to look first.
 `Content::animations` (see [content-pack.md](content-pack.md)); nothing is
 compiled into the engine.
 
-**From the ROMs.** `bn6-extract content <falzar-us> <gregar-us> <falzar-jp>
+**From the ROMs.** `exe6-extract content <falzar-us> <gregar-us> <falzar-jp>
 <gregar-jp> <dir>` writes a pack in one step from the four ROMs (the graphics
 extraction, the sound extraction, the exporters, then reading it all back),
 a few seconds. It is the only extraction.
 
 ## 10. Commands
 
-    cargo run -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6    # ROMs -> pack
+    cargo run -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/exe6    # ROMs -> pack
     cargo run -p nettai-frontend -- <trace.jsonl>                      # every pack in data/content
-    cargo run -p nettai-content -- check data/content/bn6            # lint every file
-    cargo run -p nettai-content -- verify data/content/bn6 <reference-pack> [--seconds N]
-    cargo run -p nettai-content -- aseprite-export data/content/bn6 [NAME ...]
-    cargo run -p nettai-content -- aseprite-import data/content/bn6 [NAME ...]
+    cargo run -p nettai-content -- check data/content/exe6            # lint every file
+    cargo run -p nettai-content -- verify data/content/exe6 <reference-pack> [--seconds N]
+    cargo run -p nettai-content -- aseprite-export data/content/exe6 [NAME ...]
+    cargo run -p nettai-content -- aseprite-import data/content/exe6 [NAME ...]
     cargo run -p nettai-content --example midi_summary -- a.mid b.mid
-    cargo run -p nettai-content --example stats -- data/content/bn6
-    cargo run -p nettai-content --example audio_stats -- data/content/bn6
+    cargo run -p nettai-content --example stats -- data/content/exe6
+    cargo run -p nettai-content --example audio_stats -- data/content/exe6
 
 `verify` compares what two packs load: the battle data record by record,
 the graphics part by part, the sprite timing frame by frame, and the sound
@@ -882,14 +882,14 @@ holds the game's graphics and recordings and is never committed.
 - **Songs with some tracks looping and others ending**, command values of
   128 and up, velocity 0 and overlapping same-key ties: each needs a small
   extension (per-track loop markers, a high-bit controller, ...); none occurs
-  in BN6.
+  in EXE6.
 - **Same-tick order under DAWs**: a DAW that re-sorts events on a tick can
   change which note gets a channel. A lint could compare against the
   exported order when the notes are otherwise unchanged.
 - **DAWs untested**: REAPER, Logic, Cakewalk round trips should be run by
   hand; the importer's expectations (multiples of 24 per quarter, tempo in
   the first track, controllers kept) come from their documentation.
-- **The HUD layout and chip names** are BN6 schema; a game-independent HUD
+- **The HUD layout and chip names** are EXE6 schema; a game-independent HUD
   would describe its elements as data.
 - **SF2/SFZ export** for auditioning songs outside the game.
 - **Field panels in Tiled** would need one tile per (tile, palette) pair.

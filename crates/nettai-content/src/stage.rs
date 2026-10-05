@@ -79,7 +79,7 @@ pub struct FieldDoc {
     pub palette_anims: Vec<PaletteAnimDoc>,
     /// The panel types the field draws, by the engine's names, in the
     /// order of their blocks (docs/design/rules-in-luau.md §7.4). A field
-    /// without the list is an older pack's: 78 blocks are BN6's 13 types
+    /// without the list is an older pack's: 78 blocks are EXE6's 13 types
     /// in the engine's order, any other number types it can't tell.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub panel_types: Option<Vec<PanelType>>,
@@ -91,7 +91,7 @@ pub struct FieldDoc {
     pub highlights: Vec<Vec<String>>,
 }
 
-/// The panel types of an older pack's field (no `panel_types`): BN6's 13,
+/// The panel types of an older pack's field (no `panel_types`): EXE6's 13,
 /// in the engine's order, the only layout it had.
 const LEGACY_PANEL_TYPES: usize = 13;
 

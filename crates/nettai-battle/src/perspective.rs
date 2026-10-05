@@ -85,8 +85,8 @@ impl Battle {
     /// (`sub_80103BC`) is blind. A navi whose init hasn't run yet has no
     /// collision data: the game reads its status word through the null
     /// pointer, from the BIOS, which gives the opcode it last fetched (the
-    /// game's `missing_collision_status`: BN6's has the blind bit,
-    /// BN5's hasn't). It happens on a round's first tick when the other
+    /// game's `missing_collision_status`: EXE6's has the blind bit,
+    /// EXE5's hasn't). It happens on a round's first tick when the other
     /// side's navi inits first and its FirstBarrier's visual asks.
     pub fn sees(&self, viewer: u8, alliance: u8) -> bool {
         use crate::collision::f1;

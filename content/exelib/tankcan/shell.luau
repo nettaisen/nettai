@@ -1,11 +1,11 @@
 --!strict
--- TankCan's shell (BN6's attack object #0x3C, `sub_80CB6F8`; BN5's the same number and code, 0x080CC9EC, but for its
+-- TankCan's shell (EXE6's attack object #0x3C, `sub_80CB6F8`; EXE5's the same number and code, 0x080CC9EC, but for its
 -- look, its edge blast's collision type and an unshifted blast). Unseen, it steps a panel every two ticks from where
 -- it appears; its own hit ends it with a fiery burst. Off the far edge it blasts the last column it crossed (and
 -- cracks it), and 15, 20 and 25 ticks later explosions go off over that column's three panels in an order the RNG
 -- shuffles.
 --
--- Each game makes its kind with `shell.make_kind(id, look)` (BN6's chips/tankcan/shell, BN5's chips/tankcan1).
+-- Each game makes its kind with `shell.make_kind(id, look)` (EXE6's chips/tankcan/shell, EXE5's chips/tankcan1).
 
 local panels = require("../panels")
 local regions = require("../regions")
@@ -13,7 +13,7 @@ local regions = require("../regions")
 local shell = {}
 
 -- A shell's own hit and its blast (`ShellSpec`): its hit modifier, whether the blast cracks its panels, and the
--- blast's damage shift (BN5's: none).
+-- blast's damage shift (EXE5's: none).
 export type Spec = ShellSpec
 
 -- A game's shell: what it is and hits, its sounds (the shot, a hit or blast), the edge blast's look and collision
@@ -151,7 +151,7 @@ local function tick(me: Object, look: Look)
 end
 
 -- `sub_80CB71C`: on its panel, an attack of its side with its hit modifier and no spark; its first update; the
--- shot's sound. (BN5's also spawns effect object 0x83 there with battle flag 0x40, 0x080CCA5C: never in a
+-- shot's sound. (EXE5's also spawns effect object 0x83 there with battle flag 0x40, 0x080CCA5C: never in a
 -- netbattle, and not ported.)
 local function init(me: Object, look: Look)
     me:set_coordinates_from_panel()

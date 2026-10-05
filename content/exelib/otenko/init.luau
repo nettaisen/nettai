@@ -1,6 +1,6 @@
 --!strict
--- Otenko's statue and dimming controller, as BN5 and BN6 share them (BN6's attack object #0xAD, `sub_80DB0E4`, and
--- effect object #0x5F, `sub_80E7624`; BN5's #0xAD, 0x080DBB84, and #0x5F, 0x080E7518; BN6's
+-- Otenko's statue and dimming controller, as EXE5 and EXE6 share them (EXE6's attack object #0xAD, `sub_80DB0E4`, and
+-- effect object #0x5F, `sub_80E7624`; EXE5's #0xAD, 0x080DBB84, and #0x5F, 0x080E7518; EXE6's
 -- docs/engine/dimming-chip-effects.md §9): the controller places a statue in front of the user (if the panel is
 -- solid and free) and waits 60 ticks; the statue, a field obstacle with 100 HP, stands for its lifetime and, every 5
 -- ticks, adds 1 to the Atk+ bonus of the chip at the user's hand's cursor if it deals damage, up to 50 for each hand
@@ -9,11 +9,11 @@
 -- An obstacle: its update runs the obstacle framework's steps (the `obstacle` service) around its own actions.
 -- Bodies don't break it, and nothing pushes it.
 --
--- Each game makes its own (`otenko.make`) with its look: the sprite, identity, lifetime (BN6's 1800, BN5's 600),
--- the registry's class (BN6's 0, two a side; BN5's 1), the sounds, how it leaves (BN6's `sub_80DB252`: absorbed,
--- blinking out, or a puff or bubbles with the breaking sound; BN5's 0x080DBD1A: a puff with HP left, else bubbles,
+-- Each game makes its own (`otenko.make`) with its look: the sprite, identity, lifetime (EXE6's 1800, EXE5's 600),
+-- the registry's class (EXE6's 0, two a side; EXE5's 1), the sounds, how it leaves (EXE6's `sub_80DB252`: absorbed,
+-- blinking out, or a puff or bubbles with the breaking sound; EXE5's 0x080DBD1A: a puff with HP left, else bubbles,
 -- silent, whatever removed it), and whether its blessing goes to the side's special bonus with each side keeping its
--- own gauge (BN5's 0x080DBC78, battle flag 0x40).
+-- own gauge (EXE5's 0x080DBC78, battle flag 0x40).
 
 local dimming_chips = require("@exelib/dimming")
 local regions = require("@exelib/regions")
@@ -39,12 +39,12 @@ export type Look = {
     -- What it is and reaches: another body of its side, hit by the other side.
     is: CollisionType,
     hits: CollisionType,
-    -- How it looks absorbed (BN6's: absorbed, it flies to the absorber, and a removal may blink it out); none
-    -- (BN5's): a removal leaves a puff.
+    -- How it looks absorbed (EXE6's: absorbed, it flies to the absorber, and a removal may blink it out); none
+    -- (EXE5's): a removal leaves a puff.
     absorbed: AbsorbedLook?,
     -- The effects it leaves (the game's lib/effects).
     effects: { puff: Effect, bubbles: Effect },
-    -- BN5's: with each side keeping its own gauge, the side's special bonus gets the blessing.
+    -- EXE5's: with each side keeping its own gauge, the side's special bonus gets the blessing.
     special_bonus: boolean,
 }
 
@@ -88,12 +88,12 @@ function otenko.make(look: Look): Otenko
             return
         end
         me.collision:set_region(regions.single)
-        -- (BN5's action table has no frozen or bubbled rows: its blessing is its action 6.)
+        -- (EXE5's action table has no frozen or bubbled rows: its blessing is its action 6.)
         me:set_action(obstacle.action_byte(me, 8))
     end
 
     -- `sub_80DB1E0`: every 5 ticks (from the first), +1 to the Atk+ bonus of the user's next chip if it deals damage,
-    -- up to 50 an entry; (BN5's) with each side keeping its own gauge, +1 to the side's special bonus, up to 50.
+    -- up to 50 an entry; (EXE5's) with each side keeping its own gauge, +1 to the side's special bonus, up to 50.
     local function bless(me: Object)
         local special = look.special_bonus and battle.own_gauges()
         if me.phase_init == 0 then
@@ -110,7 +110,7 @@ function otenko.make(look: Look): Otenko
         local s = me.state :: State
         local side = me.alliance
         if special then
-            -- (BN5 also restarts the count when the side state's +0x53 is set, clearing it: unverified, nothing in
+            -- (EXE5 also restarts the count when the side state's +0x53 is set, clearing it: unverified, nothing in
             -- the engine models that byte, and battle flag 0x40 is never set in a netbattle.)
             if s.count >= MOST then
                 return
@@ -139,7 +139,7 @@ function otenko.make(look: Look): Otenko
         s.count += 1
     end
 
-    -- `sub_80DB252`: leave the field: (BN6's) absorbed, blinking out, or with a puff (with HP left) or bubbles
+    -- `sub_80DB252`: leave the field: (EXE6's) absorbed, blinking out, or with a puff (with HP left) or bubbles
     -- (broken).
     local function destroyed(me: Object)
         me.collision:set_region(nil)

@@ -1,5 +1,5 @@
 --!strict
--- Thunder's and DarkThnd's shot, as BN5 and BN6 share it (BN6's action
+-- Thunder's and DarkThnd's shot, as EXE5 and EXE6 share it (EXE6's action
 -- 0x1F, `sub_80EC7A6`), of a game's `ThunderShotLook` (its buster and
 -- ball's kind): the navi raises the buster arm and, on the second tick,
 -- sets a thunder ball (ball.luau) on the panel ahead, 10 pixels up: it

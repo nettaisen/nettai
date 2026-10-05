@@ -1,6 +1,6 @@
 --!strict
--- A follow effect, as BN6 and BN5 share it (BN6's effect object #0x31,
--- `sub_80E3D68`; BN5's #0x31, 0x080E3E3C): a sprite shown for its owner
+-- A follow effect, as EXE6 and EXE5 share it (EXE6's effect object #0x31,
+-- `sub_80E3D68`; EXE5's #0x31, 0x080E3E3C): a sprite shown for its owner
 -- (related1), and what it does by its look (a row of the game's looks and
 -- routines):
 --
@@ -18,8 +18,8 @@
 -- by number, each the action that spawns them; here the effect keeps the
 -- action its owner was in when it came. Those stand still while dimmed
 -- (their HP's bit 0 holds the sprite). Its flip and a palette to add are
--- its spawner's. Purely visual, but it holds an effect slot. BN6's copies
--- its owner's visibility each tick; BN5's doesn't. Each game makes its kind
+-- its spawner's. Purely visual, but it holds an effect slot. EXE6's copies
+-- its owner's visibility each tick; EXE5's doesn't. Each game makes its kind
 -- (`follow_effect.make_kind`: its id, its slide's sound, whether it copies
 -- the visibility). See docs/engine/chips.md §3.6.36.
 
@@ -42,7 +42,7 @@ export type State = {
     action: Action?,
 }
 
--- "slide"'s steps, pixels a tick (BN6's `dword_80E3EB0`).
+-- "slide"'s steps, pixels a tick (EXE6's `dword_80E3EB0`).
 local SLIDE = { [0] = 2, 3, 2, 0 }
 
 -- How long "flash" shows, and when it switches; how long "timed" lasts at
@@ -119,7 +119,7 @@ function follow_effect.make_kind(spec: KindSpec): Kind
         end
     end
 
-    -- `sub_80E3EB4` (BN5's 0x080E4024): shows for its timer, animation 1
+    -- `sub_80E3EB4` (EXE5's 0x080E4024): shows for its timer, animation 1
     -- below 55.
     local function flash(me: Object)
         if me.action == 0 then
@@ -187,7 +187,7 @@ function follow_effect.make_kind(spec: KindSpec): Kind
         timed = timed,
     }
 
-    -- `sub_80E3DE0`: what its look does, then (BN6's) shown as the owner is.
+    -- `sub_80E3DE0`: what its look does, then (EXE6's) shown as the owner is.
     local function tick(me: Object)
         BEHAVIORS[look_of(me).behavior](me)
         if spec.copies_visibility then

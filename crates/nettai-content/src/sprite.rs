@@ -17,7 +17,7 @@
 //!   simulation's data (effects and attacks end on it), readable without
 //!   touching any image ([`crate::timing`]).
 //!
-//! Parts are kept rather than baked into whole frames: in 40% of BN6's
+//! Parts are kept rather than baked into whole frames: in 40% of EXE6's
 //! frames parts overlap with different opaque pixels (an arm over a body),
 //! so a flattened frame loses pixels that show when a part is hidden, the
 //! shadow is drawn on the ground, or a part is culled.
@@ -76,7 +76,7 @@ pub struct SpriteDoc {
     pub tilesets: Vec<TilesetDoc>,
     pub layouts: Vec<Vec<PartDoc>>,
     /// The region whose ROMs the sprite comes from, when not the pack's
-    /// own (`SpriteSheet::region`: BN6's "jp", a sprite the US release cut).
+    /// own (`SpriteSheet::region`: EXE6's "jp", a sprite the US release cut).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub region: Option<String>,
 }

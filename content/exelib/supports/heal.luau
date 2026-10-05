@@ -1,5 +1,5 @@
 --!strict
--- Tango's heal, as BN5 and BN6 share it (BN6's attack object #0xC7, `sub_80DE000`; BN5's #0x9F, 0x080DA6AC, the same
+-- Tango's heal, as EXE5 and EXE6 share it (EXE6's attack object #0xC7, `sub_80DE000`; EXE5's #0x9F, 0x080DA6AC, the same
 -- code), of a game's `TangoHealLook` (`heal.make`): thrown by Tango (./tango), it arcs onto her navi's panel in 20
 -- ticks; landed, it tells her (her `healing` flag), leaves a sparkle, heals her navi 300 HP and gives it the game's
 -- 100-HP barrier with the barrier's visual (`raise_barrier`). See docs/engine/chips.md §2.10.
@@ -19,7 +19,7 @@ local HEAL = 300
 
 -- A game's heal, of `look`.
 function heal.make(look: TangoHealLook): TangoHeal
-    -- `sub_80DE024` (BN5's 0x080DA6D0): its look, and the arc onto the panel.
+    -- `sub_80DE024` (EXE5's 0x080DA6D0): its look, and the arc onto the panel.
     local function init(me: Object)
         me.visible = true
         local sprite = me.sprite
@@ -36,7 +36,7 @@ function heal.make(look: TangoHealLook): TangoHeal
         me.lifecycle = "update"
     end
 
-    -- `sub_80DE088` (BN5's 0x080DA734): the arc; landed, the heal.
+    -- `sub_80DE088` (EXE5's 0x080DA734): the arc; landed, the heal.
     local function tick(me: Object)
         if bit32.band(me.sprite.frame_flags, 0x80) ~= 0 then
             me.anim, me.anim_loaded = 1, 0
@@ -62,12 +62,12 @@ function heal.make(look: TangoHealLook): TangoHeal
         end
         navi.hp = math.min(navi.hp + HEAL, navi.max_hp)
         battle.play_sound(look.sound)
-        -- Barrier type 5 (BN6's `sub_801A7CC`, BN5's 0x080174DA), then the barrier's visual: the navi's old one (its
+        -- Barrier type 5 (EXE6's `sub_801A7CC`, EXE5's 0x080174DA), then the barrier's visual: the navi's old one (its
         -- AIData+0x60) goes (`sub_80E0DC0`) and a new one comes (effect object #7, `sub_80E0D98`).
         look.raise_barrier(navi)
     end
 
-    -- `sub_80DE000` (BN5's 0x080DA6AC): by state, then its sprite.
+    -- `sub_80DE000` (EXE5's 0x080DA6AC): by state, then its sprite.
     local function update(me: Object)
         local l = me.lifecycle
         if l == "init" then
@@ -87,7 +87,7 @@ function heal.make(look: TangoHealLook): TangoHeal
         update = update,
     }
 
-    -- `sub_80DE112` (BN5's 0x080DA7BE): the heal from `tango` at `pos`, for her navi's panel (x, y).
+    -- `sub_80DE112` (EXE5's 0x080DA7BE): the heal from `tango` at `pos`, for her navi's panel (x, y).
     local function spawn(tango: Object, pos: Vec3, x: number, y: number): Object?
         local o = battle.spawn(kind, pos)
         if not o then

@@ -1,6 +1,6 @@
 -- The shared types of content/exelib's modules (docs/design/rules-in-luau.md): what a game passes them (its looks,
--- kinds and constants) and what they hand back. Every content folder's definitions check together, so BN5's and
--- BN6's modules use these as their own.
+-- kinds and constants) and what they hand back. Every content folder's definitions check together, so EXE5's and
+-- EXE6's modules use these as their own.
 
 -- How an attachment (@exelib/attachment/attachment) animates: its animation, whether it animates while dimmed too,
 -- and what is added to its palette (drawn only).
@@ -20,12 +20,12 @@ export type SonicBoomLook = {
 }
 
 -- What a game's sword slash (@exelib/swords/slash) asks of the user's form: the blade's animation where a chip doesn't
--- say, and whether the user's side is in a form where a step sword neither steps nor steps back (BN6's Beast forms:
+-- say, and whether the user's side is in a form where a step sword neither steps nor steps back (EXE6's Beast forms:
 -- its lib/swords/slash).
 export type SlashGame = {
     blade_anim: ((Object) -> number)?,
     stays: ((side: number) -> boolean)?,
-    -- The game's step (BN5's by the attack's charge: lib/swords); none: BN6's, by the chip's `step`.
+    -- The game's step (EXE5's by the attack's charge: lib/swords); none: EXE6's, by the chip's `step`.
     steps: SlashSteps?,
 }
 
@@ -62,7 +62,7 @@ export type ShooterLook = {
     sound: Sound,
     attachment: Kind,
     projectiles: Projectiles,
-    -- A cannon's afterimages after its two (@exelib/cannon; BN5's Hub Style shade), by the navi's flip.
+    -- A cannon's afterimages after its two (@exelib/cannon; EXE5's Hub Style shade), by the navi's flip.
     more_afterimages: ((me: Object, flip: number) -> ())?,
 }
 
@@ -109,7 +109,7 @@ export type VulcanLook = { sound: Sound, arm: AttachmentLook, attachment: Kind, 
 
 -- What a chip's blow raises (@exelib/tornado/blow): one tornado (`single`), or one on each panel of `spread` at a
 -- level, by the navi's kinds of NaviCust bug or by its side's statistic 3 (`by`; `tornadoes`, by level, over
--- `tornado`: tornadoes that differ by level, BN5's Static's); and the fan it holds, with an addition to its palette.
+-- `tornado`: tornadoes that differ by level, EXE5's Static's); and the fan it holds, with an addition to its palette.
 export type TornadoBlow = {
     -- The action's key when no chip definition holds it.
     id: string?,
@@ -136,7 +136,7 @@ export type ThunderShot = { id: string?, ball: ThunderBall, kind: Kind? }
 -- A game's thunder shots (@exelib/thunder/shoot): its buster (the arm) and its ball's kind.
 export type ThunderShotLook = { buster: Buster, ball: Kind }
 
--- How a falling meteor's panel marker blinks (@exelib/meteors/marker; BN6's `byte_80E4334`, by the original's first
+-- How a falling meteor's panel marker blinks (@exelib/meteors/marker; EXE6's `byte_80E4334`, by the original's first
 -- parameter): its lifetime, its blink period, the ticks lit each period, and how much each period shrinks the next
 -- (doubling).
 export type MeteorMarkerLook = {
@@ -162,7 +162,7 @@ export type BoomerangLook = {
 -- column, whether it turns the other side's panels it crosses to grass,
 -- and whether it is the tomahawk (its own sprite and shadow, and its
 -- second animation off row 1); its sprite, collision type and spark where
--- a game's kind's aren't its (BN5's Boomer).
+-- a game's kind's aren't its (EXE5's Boomer).
 export type BoomerangVariant = {
     speed: number,
     turn_speed: number,
@@ -198,14 +198,14 @@ export type MegaManShotLook = {
     attachment: Kind,
     shot_sound: Sound,
     plain: ProjectileVariant,
-    -- Whether the charged shot waits before the buster comes up, asked on its first tick (none: always, BN6's; BN5's
+    -- Whether the charged shot waits before the buster comes up, asked on its first tick (none: always, EXE6's; EXE5's
     -- in the own-gauges mode alone, marking the panel in front).
     waits: ((me: Object) -> boolean)?,
 }
 
 -- A game's rapid buster (@exelib/megaman/rapid_buster): its action's key, its buster parts, projectiles, attachment
 -- kind and shot sound, the shot (the projectile table's row 6), and whether a restarted form overlay steps at once
--- (BN6's `sub_80C44D2`; BN5's has it reload its animation at its next step).
+-- (EXE6's `sub_80C44D2`; EXE5's has it reload its animation at its next step).
 export type RapidBusterLook = {
     id: string,
     buster: Buster,
@@ -217,7 +217,7 @@ export type RapidBusterLook = {
 }
 
 -- A game's buster shot (@exelib/megaman/buster): its shot's look, a throw's sound and its throw of the obstacle the
--- navi absorbed (none: the game throws none), and the spread's muzzle flash (none: the shot's; BN5's own, its
+-- navi absorbed (none: the game throws none), and the spread's muzzle flash (none: the shot's; EXE5's own, its
 -- attachment row 0x39).
 export type MegaManBusterLook = MegaManShotLook & {
     throw_sound: Sound,
@@ -225,9 +225,9 @@ export type MegaManBusterLook = MegaManShotLook & {
     spread_flash: AttachmentLook?,
 }
 
--- What a spreader fires (@exelib/spreadr/action): its gun (BN6's attachment rows 0x15 and 0x2F, by `dword_80ECC54`),
+-- What a spreader fires (@exelib/spreadr/action): its gun (EXE6's attachment rows 0x15 and 0x2F, by `dword_80ECC54`),
 -- the bullet's height (16.16, by `dword_80ECC5C`), and the bullet; its own bullet kind and shot sound (none: the
--- game's; BN5's Spreader's); the count the bullet leaves after (none: 1; BN5's by its variant, 0x080EC57C: its
+-- game's; EXE5's Spreader's); the count the bullet leaves after (none: 1; EXE5's by its variant, 0x080EC57C: its
 -- HeatS's and BubSht's 10).
 export type SpreaderSpec = {
     id: string?,
@@ -249,7 +249,7 @@ export type Trap = {
     set: (controller: Object, user: Object, chip: Chip?, bonus: number) -> Object?,
 }
 
--- A hockey puck's variant (@exelib/airhocky/puck: a row of BN6's `byte_80C9818`, BN5's 0x080CA3A4): the steps it
+-- A hockey puck's variant (@exelib/airhocky/puck: a row of EXE6's `byte_80C9818`, EXE5's 0x080CA3A4): the steps it
 -- lasts (0: no limit), how it bounces (1: off its own side too, once across), the ticks per step, and whether it
 -- leaves a trail.
 export type PuckVariant = { steps: number, own_side: number, ticks: number, trail: boolean? }
@@ -258,8 +258,8 @@ export type PuckVariant = { steps: number, own_side: number, ticks: number, trai
 -- weaker push; `unseen` hides it and lets it blow through any panel.
 export type GustHow = { pulls: boolean?, unseen: boolean? }
 
--- A game's gust (@exelib/gust/gust): its sprite, what it is and reaches, the hit flags that stop it (BN6's wind
--- stoppers; BN5's none, 0), whether an unseen gust pushes weaker too (BN5's: any first parameter), and the panels it
+-- A game's gust (@exelib/gust/gust): its sprite, what it is and reaches, the hit flags that stop it (EXE6's wind
+-- stoppers; EXE5's none, 0), whether an unseen gust pushes weaker too (EXE5's: any first parameter), and the panels it
 -- blows over by side (require, forbid; side 2 reads the code after the table).
 export type GustLook = {
     sprite: SpriteAsset,
@@ -331,7 +331,7 @@ export type SnakeLook = {
     left: (me: Object) -> (),
 }
 
--- A snake's state: the panel it leaps at (x 0xFF: none), its nest, and its place in its nest's flags (BN5's).
+-- A snake's state: the panel it leaps at (x 0xFF: none), its nest, and its place in its nest's flags (EXE5's).
 export type SnakeState = { target_x: number, target_y: number, nest: Object?, slot: number }
 
 -- A nest's scan: where it is (bytes, the column stepping off the field when the scan ends).
@@ -351,7 +351,7 @@ export type TankShellLook = {
 }
 
 -- A chip's tank cannon (@exelib/tankcan/action): the action's key, the cannon it holds and its game's attachment
--- kind, the shell kind and how its shell flies (`ShellSpec`: BN6's types).
+-- kind, the shell kind and how its shell flies (`ShellSpec`: EXE6's types).
 export type TankCanSpec = { id: string?, cannon: AttachmentLook, attachment: Kind, kind: Kind, shell: ShellSpec }
 
 -- A yoyo throw (@exelib/yoyo/throw): the action's key, the yoyo arm and its game's attachment kind, and what it
@@ -394,7 +394,7 @@ export type HyperBurstShotLook = {
 -- the shot's kind.
 export type HyperBurstLook = { spreader: AttachmentLook, attachment: Kind, sound: Sound, burst: Kind }
 
--- An H-Burst (BN6's action 0x34, BN5's 0x35): the bursts its shot makes where it hits.
+-- An H-Burst (EXE6's action 0x34, EXE5's 0x35): the bursts its shot makes where it hits.
 export type HyperBurstSpec = { id: string?, bursts: number }
 
 -- A game's BodyGrd striker (@exelib/bodygrd/striker): its kind's key, its identity, the shurikens' kind and the
@@ -417,7 +417,7 @@ export type DarkBall = {
 }
 
 -- A game's immobilizer (@exelib/instant/immobilizer): the mark it shows
--- (none: BN6's, unseen) and its animation, its sound, the status its hit
+-- (none: EXE6's, unseen) and its animation, its sound, the status its hit
 -- carries and its collision types.
 export type ImmobilizerLook = {
     sprite: SpriteAsset?,
@@ -428,7 +428,7 @@ export type ImmobilizerLook = {
     self_type: CollisionType,
 }
 
--- A game's step of its swords' slash (@exelib/swords/slash; none: BN6's, by
+-- A game's step of its swords' slash (@exelib/swords/slash; none: EXE6's, by
 -- the chip's `step`): whether a slash steps (its afterimages on the swing,
 -- its step back after it), where to (`set_off`: the move's start, refused
 -- while moving or sliding; "step" two panels ahead, "warp" behind the
@@ -461,9 +461,9 @@ export type NaviCustBoard = {
 
 -- What a game's NaviCust compile (@exelib/navicust/compile) is made of besides the shared routines: its name (for
 -- errors), its board, its bugs in the order the bugs' routine runs them and what each writes by its level (1 to 3;
--- `hp`, what the HP programs add), what a placed program counts besides (BN5's HubBatc), whether any bug sets the
--- emotion window's glitch, whether the side's HP is left as it is (`keeps_hp`: BN5's in the cyberworld; none,
--- never), and what stops the bugs or keeps them whatever BugStop says (`bug_stop`: BN5's patch cards; nil, nothing).
+-- `hp`, what the HP programs add), what a placed program counts besides (EXE5's HubBatc), whether any bug sets the
+-- emotion window's glitch, whether the side's HP is left as it is (`keeps_hp`: EXE5's in the cyberworld; none,
+-- never), and what stops the bugs or keeps them whatever BugStop says (`bug_stop`: EXE5's patch cards; nil, nothing).
 export type NaviCustGame = {
     name: string,
     board: NaviCustBoard,
@@ -476,17 +476,17 @@ export type NaviCustGame = {
 }
 
 -- What AirSpin sends from the panel ahead (@exelib/airspin/action): the
--- whirlwind top that rolls and spins there (its palette, its spins), BN6's
--- seeking whirlwind no chip sends, or BN5's AqWhirl whirlpool.
+-- whirlwind top that rolls and spins there (its palette, its spins), EXE6's
+-- seeking whirlwind no chip sends, or EXE5's AqWhirl whirlpool.
 export type AirSpinSender = {
     send: (user: Object, x: number, y: number, element: number, damage: number) -> Object?,
     palette: number?,
     spins: number?,
 }
 
--- AirSpin (@exelib/airspin/action: BN6's action 0x38, BN5's 0x47).
+-- AirSpin (@exelib/airspin/action: EXE6's action 0x38, EXE5's 0x47).
 -- A game's seeking whirlwind (@exelib/airspin/whirl): its kind's id, its sheet, the sound it comes with, what it is
--- and reaches, and the statuses that hide an enemy navi from it (BN6's invisible and submerged; BN5's bubbled too).
+-- and reaches, and the statuses that hide an enemy navi from it (EXE6's invisible and submerged; EXE5's bubbled too).
 export type SeekingWhirlLook = {
     id: string,
     sprite: SpriteAsset,
@@ -505,8 +505,8 @@ export type AirSpinSpec = {
 -- identity and HP; its collision (its body, what hits it); its gust (the
 -- effect, its palette offset, whether it faces its side's way, the hit's
 -- type and targets); the effects and sounds; and the games' differences:
--- BN6's set-down check, wind hits' extra spins and removal by chips (the
--- absorbed look), BN5's markers and spins counted on Timer 2.
+-- EXE6's set-down check, wind hits' extra spins and removal by chips (the
+-- absorbed look), EXE5's markers and spins counted on Timer 2.
 export type AirSpinTopLook = {
     id: string,
     sprite: SpriteAsset,
@@ -539,7 +539,7 @@ export type AirSpinTop = {
 -- A game's Z Saver (@exelib/zsaver/action): its action's id; its sounds
 -- (the swing, the command's); its blade (the attachment kind, the look,
 -- its animation by its holder); the slashes' hit types and their effects
--- (by index, 1 to 3); how it throws the fourth slash's boom; and BN5's
+-- (by index, 1 to 3); how it throws the fourth slash's boom; and EXE5's
 -- differences: the Katanas' step (its lib/stepsword), and the command's
 -- window shut once A isn't held.
 export type ZSaverLook = {
@@ -557,7 +557,7 @@ export type ZSaverLook = {
     a_held_window: boolean,
 }
 
--- BN5's step before a charged sword (bn5 lib/stepsword), as Z Saver takes
+-- EXE5's step before a charged sword (exe5 lib/stepsword), as Z Saver takes
 -- it.
 export type StepSword = {
     start: (me: Object, s: any, moving: boolean) -> (),
@@ -568,7 +568,7 @@ export type StepSword = {
 
 -- A game's NumbrBl ball (@exelib/numbrbl/ball): its kind's id, sprite, the
 -- ticks it sits, its sounds (set down, hitting), its explosion, its hit's
--- types, and the parts BN5's hides as it waits and rolls.
+-- types, and the parts EXE5's hides as it waits and rolls.
 export type NumberBallLook = {
     id: string,
     sprite: SpriteAsset,
@@ -629,7 +629,7 @@ export type CopyDamageSpec = {
 }
 
 -- A game's CopyDmg mark (@exelib/copydmg/mark): its kind's id, sprite and
--- animation, its hit's sound and types; BN5's reloads its animation at its
+-- animation, its hit's sound and types; EXE5's reloads its animation at its
 -- init and hits its panel each tick it marks in the own-gauges mode
 -- (the hit's spark and types).
 export type CopyDamageMarkLook = {
@@ -653,7 +653,7 @@ export type CopyDamageMark = {
 -- Fan's pulling gust from the far column rather than Wind's pushing one
 -- from the enemy's front column; ticks from becoming its side's wind to
 -- the first gust; HP; its identity (what it is taken for) and how it looks
--- absorbed (objects/absorbed-obstacle's `look`; BN6's, which absorbs it).
+-- absorbed (objects/absorbed-obstacle's `look`; EXE6's, which absorbs it).
 export type FanVariant = {
     palette: number,
     pulls: boolean,
@@ -664,7 +664,7 @@ export type FanVariant = {
 }
 
 -- A game's Wind and Fan fan (@exelib/wind/fan): its kind's id, look, sounds and effects, its collision types, the
--- game's gust, and BN5's differences.
+-- game's gust, and EXE5's differences.
 export type FanLook = {
     id: string,
     sprite: SpriteAsset,
@@ -682,10 +682,10 @@ export type FanLook = {
     -- The game's gust (`sub_80CD488`).
     spawn_gust: (x: number, y: number, alliance: number, flip: number, how: GustHow, damage: number, holder: Object?,
         slot: number) -> Object?,
-    -- BN6's: a chip's removal can make it blink out or be absorbed (`sub_800F8CE`, `sub_800F90E`); BN5's leaving
+    -- EXE6's: a chip's removal can make it blink out or be absorbed (`sub_800F8CE`, `sub_800F90E`); EXE5's leaving
     -- (0x080CE90E) has neither.
     absorbs: boolean,
-    -- BN5's Fan's gust (0x080CE96C) starts on the far column alone, none when another obstacle stands there; BN6's
+    -- EXE5's Fan's gust (0x080CE96C) starts on the far column alone, none when another obstacle stands there; EXE6's
     -- tries the panels toward the fan.
     far_column_only: boolean?,
 }
@@ -708,7 +708,7 @@ export type WindControllerLook = {
 
 export type WindController = {
     kind: Kind,
-    -- A chip's `dimming` hook (BN6's `sub_80E3128`, BN5's 0x080E32E4): the controller placing a fan of `variant`.
+    -- A chip's `dimming` hook (EXE6's `sub_80E3128`, EXE5's 0x080E32E4): the controller placing a fan of `variant`.
     hook: (variant: FanVariant) -> (user: Object, spec: DimmingChipSpec) -> Object?,
 }
 
@@ -813,8 +813,8 @@ export type WaveVariant = {
     collision: CollisionType,
     bug: number?,
     palette: number?,
-    -- Its sprite where a game's isn't BN6's wide wave (BN5's), and its
-    -- trail's where that isn't BN6's rock cubes (BN5's is its wave's).
+    -- Its sprite where a game's isn't EXE6's wide wave (EXE5's), and its
+    -- trail's where that isn't EXE6's rock cubes (EXE5's is its wave's).
     sprite: SpriteAsset?,
     trail_sprite: SpriteAsset?,
 }
@@ -1047,7 +1047,7 @@ export type Barrier = {
 -- its identity (what it is taken for) and palette,
 -- how long it plays and pauses, its tune, and the effect it has every
 -- third tick of playing (`off_80D4298`). Its HP and sprite where a game's
--- aren't the library's (60, `byte_80D4140`; BN6's `instrument`): BN5's
+-- aren't the library's (60, `byte_80D4140`; EXE6's `instrument`): EXE5's
 -- 100 and its own pack's; `absorbed` is `instrument.instrument`'s.
 export type Instrument = {
     identity: Identity,
@@ -1211,7 +1211,7 @@ export type Geyser = {
 -- How a game's gun and shots look and sound: their sprite, the sounds of a
 -- step, a mark and a hit, the shots' hit by the look (`dword_80D690C`:
 -- look 0 a thrown attack, look 1 another attacker's), and where the gun
--- and a shot sit (`on_floor`: BN5's, on the panel's center at height 0).
+-- and a shot sit (`on_floor`: EXE5's, on the panel's center at height 0).
 export type CircGunLook = {
     sprite: SpriteAsset,
     sounds: { step: Sound, mark: Sound, hit: Sound },
@@ -1232,7 +1232,7 @@ export type CountdownLook = {
     blast: { is: CollisionType, hits: CollisionType },
     -- How it looks absorbed (nil: nothing absorbs it).
     absorbed: AbsorbedLook?,
-    -- Any removal leaves a puff (BN5's): no absorbing, no blinking out.
+    -- Any removal leaves a puff (EXE5's): no absorbing, no blinking out.
     removal_puffs: boolean?,
     -- The blast's explosions and a removal's puff, and the panel bursts'
     -- kind.
@@ -1258,7 +1258,7 @@ export type LanceLook = { sprite: SpriteAsset, sound: Sound, hits: { [number]: L
 -- A row (`byte_80CF3AC`): what it is and reaches and its hit modifier; the
 -- camera shake it lands with (0 none, else the magnitude, 15 ticks); what
 -- it does to its panel (none, cracks it, cracks it on half the draws, or
--- breaks it); and the bug its hit carries (BN5's DarkMetr's).
+-- breaks it); and the bug its hit carries (EXE5's DarkMetr's).
 export type MeteorRow = {
     is: CollisionType,
     hits: CollisionType,
@@ -1281,9 +1281,9 @@ export type MeteorLook = {
 }
 
 -- How a game's drill is: its hit's spark, what the first and second are
--- and hit, what Param3 means ("light", BN6's; or the bug a dark one's hit
--- carries, BN5's), and whether its spawn keeps the user's element and the
--- second takes the first's running while dimmed (BN6's do; BN5's
+-- and hit, what Param3 means ("light", EXE6's; or the bug a dark one's hit
+-- carries, EXE5's), and whether its spawn keeps the user's element and the
+-- second takes the first's running while dimmed (EXE6's do; EXE5's
 -- 0x080D41C8 and 0x080D4100 don't).
 export type DrillLook = {
     spark: Spark,
@@ -1355,9 +1355,9 @@ export type SupportActor = {
 }
 
 -- A game's Rush (@exelib/supports/rush): his kind's key and sprite, his appearance's and bite's sounds, the dust he
--- digs in and out of (effect 0x14), what his bite is, reaches and carries; the chip he leaves in the hand (BN6's second
--- WhiCapsl; BN5's Rush has none), and what his bite does when the opponent's navi is gone (BN6's branch unbalances
--- the stack, BN5's skips the hand).
+-- digs in and out of (effect 0x14), what his bite is, reaches and carries; the chip he leaves in the hand (EXE6's second
+-- WhiCapsl; EXE5's Rush has none), and what his bite does when the opponent's navi is gone (EXE6's branch unbalances
+-- the stack, EXE5's skips the hand).
 export type RushLook = {
     id: string,
     sprite: SpriteAsset,

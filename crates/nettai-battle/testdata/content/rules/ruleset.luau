@@ -27,7 +27,7 @@ local WHILE_DIMMED = 0x00010000
 local REACHES_FLOATING = 0x0080
 
 -- A type whose flags `flags` gives for each side. `row` is the row the
--- type has in BN6's table: a bug code's high byte takes its offset.
+-- type has in EXE6's table: a bug code's high byte takes its offset.
 local function collision(id: string, row: number, flags: (side: number) -> number): CollisionType
     return define.collision { id = "test/" .. id, side0 = flags(0), side1 = flags(1), row_offset = row * 8 }
 end

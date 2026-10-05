@@ -2,7 +2,7 @@
 -- The test content's rules (docs/design/rules-in-luau.md): its made-up
 -- systems and its one ruleset, for the framework's tests of per-side state,
 -- player setups and hooks. A test that plays by other systems (the marker,
--- the watcher, BN6's patch-cards system) writes its list in place of
+-- the watcher, EXE6's patch-cards system) writes its list in place of
 -- `SYSTEMS` (testing.rs's `with_systems`).
 
 local patch_cards = require("./patch-cards")
@@ -69,17 +69,17 @@ local watcher = define.system {
     },
 }
 
--- BN6's own Beast Out turns (content/bn6/rules/beast), which the test
--- navis' forms go by as BN6's do, its emotions (content/bn6/rules/
+-- EXE6's own Beast Out turns (content/exe6/rules/beast), which the test
+-- navis' forms go by as EXE6's do, its emotions (content/exe6/rules/
 -- emotion: Full Synchro on a counter) and its dark chips' bug frags
--- (content/bn6/rules/dark-chips).
+-- (content/exe6/rules/dark-chips).
 local beast = require("./beast")
 local dark_chips = require("./dark-chips")
 local emotion = require("./emotion")
 local forms = require("./forms")
 
--- The systems the test content plays by (BN6's beast system first, then the
--- counter, then BN6's forms, emotion and dark-chips systems).
+-- The systems the test content plays by (EXE6's beast system first, then the
+-- counter, then EXE6's forms, emotion and dark-chips systems).
 local SYSTEMS: { System } = { beast, counter, forms.system, emotion.system, dark_chips }
 
 return {
@@ -87,7 +87,7 @@ return {
     marker = marker,
     watcher = watcher,
     patch_cards = patch_cards,
-    -- The test content's rules: its systems, its rule sections (BN6's
+    -- The test content's rules: its systems, its rule sections (EXE6's
     -- berserk, buster and math; the others are its Rust tables) and its
     -- roles.
     ruleset = define.ruleset {

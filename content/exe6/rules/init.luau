@@ -1,0 +1,56 @@
+--!strict
+-- EXE6's rules, its one ruleset (docs/design/rules-in-luau.md §2.2): the
+-- systems an EXE6 player plays by, in the order the framework calls them. The framework
+-- (Rust) still runs the EXE6 rules no system has taken over yet; the systems
+-- take them slice by slice (§8).
+
+local beast = require("@self/beast")
+local cross = require("@self/cross")
+local dark_chips = require("@self/dark-chips")
+local folder = require("@self/folder")
+local emotion = require("@self/emotion")
+local forms = require("@self/forms")
+local navicust = require("@self/navicust")
+local patch_cards = require("@self/patch-cards")
+
+return define.ruleset {
+    systems = {
+        -- The Crosses on the custom screen: ChargeCross's chips and the
+        -- hand size.
+        cross,
+        -- The NaviCust: the programs a player placed, compiled into the
+        -- navi's stats (docs/design/navicust.md); before the patch cards,
+        -- which apply to what it made.
+        navicust,
+        -- The Japanese games' patch cards (docs/engine/patch-cards.md).
+        patch_cards,
+        -- The form changes: the Crosses', Beast Out's and Beast Over's.
+        forms.system,
+        -- Beast Out's turns.
+        beast,
+        -- Its emotions: tired at the start, Full Synchro on a counter, the
+        -- NaviCust's swing bug.
+        emotion.system,
+        -- The folder's rules, which tools ask (the simulation never does).
+        folder,
+        -- The dark chips: their bug frag, substitute and HP bug.
+        dark_chips,
+    },
+    -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
+    banners = require("@self/banners"),
+    berserk = require("@self/berserk"),
+    buster = require("@self/buster"),
+    chip_use = require("@self/chip-use"),
+    custom_screen = require("@self/custom-screen"),
+    elements = require("@self/elements"),
+    flow = require("@self/flow"),
+    lockon = require("@self/lockon").rules,
+    math = require("@self/math"),
+    navicust = require("@self/navicust/section"),
+    panels = require("@self/panels"),
+    pools = require("@self/pools"),
+    reactions = require("@self/reactions"),
+    roles = require("@self/roles"),
+    sp_chips = require("@self/sp-chips"),
+    status = require("@self/status").rules,
+}

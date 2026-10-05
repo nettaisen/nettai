@@ -8,8 +8,8 @@
 //!
 //! cargo run --release -p nettai-netplay --example rollback_cost -- <trace.jsonl> <pack> [round] [--frames A..B]
 //!
-//! (`<pack>`: the BN6 content pack whose assets the trace's battle names,
-//! from `bn6-extract content`; the battle content is this repository's
+//! (`<pack>`: the EXE6 content pack whose assets the trace's battle names,
+//! from `exe6-extract content`; the battle content is this repository's
 //! content/, or `$NETTAI_CONTENT`. `--frames A..B`: those frames instead of
 //! the 2000 around the busiest; `--frames all`: the whole round. With the
 //! feature `luau-profile`, it also reports the calls into Luau per advance,
@@ -19,7 +19,7 @@
 
 use std::time::{Duration, Instant};
 
-use bn6_compat::trace;
+use exe6_compat::trace;
 use nettai_netplay::battle::PlayerInput;
 use nettai_netplay::getgud::World;
 use nettai_netplay::{BattleState, BattleWorld};
@@ -44,9 +44,9 @@ fn main() {
     let rounds = trace::rounds(path).expect("a readable trace");
     let round = &rounds[n - 1];
     let frames: Vec<&trace::Frame> = round.battle_frames().collect();
-    let compat = bn6_compat::Compat::bn6();
+    let compat = exe6_compat::Compat::exe6();
     let (limit, _) = trace::run_round(round, &content, compat);
-    let ids = bn6_compat::codec::Ids::new(&content, compat);
+    let ids = exe6_compat::codec::Ids::new(&content, compat);
     let inputs: Vec<[PlayerInput; 2]> = (0..limit)
         .map(|i| {
             let (players, events) = round.tick_inputs(i, &frames, &ids);

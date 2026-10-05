@@ -44,12 +44,12 @@ pub enum Registry {
     /// Data only content reads (a bomb variant, a projectile variant): the
     /// engine keeps its handle and its type name.
     Record,
-    /// A patch card (BN4's, BN5's and BN6's Modification Cards, 改造カード):
+    /// A patch card (BN4's, EXE5's and EXE6's Modification Cards, 改造カード):
     /// its capacity cost and its effects, which a game's rules apply
     /// (docs/engine/patch-cards.md); a player's installed cards are their
     /// setup's (`PlayerSetup::patch_cards`).
     PatchCard,
-    /// A NaviCust program (BN4's, BN5's and BN6's Navi Customizer parts):
+    /// A NaviCust program (BN4's, EXE5's and EXE6's Navi Customizer parts):
     /// its colors and shapes, which a player places on their NaviCust
     /// (`PlayerSetup::navicust`), and what a game's rules read of it
     /// (docs/design/navicust.md).

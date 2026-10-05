@@ -40,23 +40,23 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 
 /// The protocol's version: peers whose versions differ can't play together
 /// (the handshake refuses).
-/// 2: a transformation request carries BN5's soul turns and Chaos Unison.
-/// 3: a player's offer carries their tactics (BN5's computer-navi data).
+/// 2: a transformation request carries EXE5's soul turns and Chaos Unison.
+/// 3: a player's offer carries their tactics (EXE5's computer-navi data).
 /// 4: an offer's side carries the navi code's level as an option, Beast
-/// Out unlocked and the SP deletion times, and a player's BN6 setup is its
+/// Out unlocked and the SP deletion times, and a player's EXE6 setup is its
 /// systems' (the battle's digest differs).
-/// 5: an offer's side carries BN5's karma and the souls it has; NaviStats
-/// carries BN5's Hub Style (+0x4C); a system's setup starts from its
-/// defaults (BN5's karma 500).
+/// 5: an offer's side carries EXE5's karma and the souls it has; NaviStats
+/// carries EXE5's Hub Style (+0x4C); a system's setup starts from its
+/// defaults (EXE5's karma 500).
 /// 6: a match is of one game: the Hello says the game its side plays
 /// (peers of different games refuse), and an offer names the match's
 /// ruleset and everything of its side by name in that game.
-/// 7: an offer's side says BN5's Soul Unison and Chaos Unison (the save's
+/// 7: an offer's side says EXE5's Soul Unison and Chaos Unison (the save's
 /// event flags 0 and 0x236, now the souls system's setup), and NaviStats
-/// carries BN5's soul turns' bonus (+0x32).
+/// carries EXE5's soul turns' bonus (+0x32).
 /// 8: no setup carries the emotion window's glitch (an offer's side has no
 /// such key: the rules make it from the NaviCust and the patch cards), and
-/// BN6's drawn side is MegaMan at his fresh stats.
+/// EXE6's drawn side is MegaMan at his fresh stats.
 /// 9: a game has one ruleset: an offer names none (peers of one game play
 /// by its rules), and a round's setup names none.
 pub const VERSION: u16 = 9;

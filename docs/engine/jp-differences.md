@@ -26,7 +26,7 @@ The JP-only content is:
 - the Gregar and Falzar chips (handlers 34 and 35, five object kinds);
 - Count (HackJack in the US release: handler 18, two object kinds);
 - Django (handler 19, one object kind);
-- the patch cards' hook (the emotion window's glitch; the cards themselves are BN6's patch-cards system,
+- the patch cards' hook (the emotion window's glitch; the cards themselves are EXE6's patch-cards system,
   docs/engine/patch-cards.md).
 
 The other JP-only objects belong to code no netbattle runs: battle mode 1, battle modes 10 and 11, the Count
@@ -291,14 +291,14 @@ The art (icon, image, palette) is `chips.py`'s list:
   (tango-gamesupport-bn6, saves/g_jp.raw and f_jp.raw). Rendered with them, the pictures are the JP consoles'
   exactly (bn6battle-verify's JP-console recordings of both chips).
 
-`bn6-extract` takes the eleven pictures from the JP ROMs (GunDelEX, Otenko, Count (HackJack) ×3, Django ×3, DblBeast and
+`exe6-extract` takes the eleven pictures from the JP ROMs (GunDelEX, Otenko, Count (HackJack) ×3, Django ×3, DblBeast and
 Falzar from JP Falzar, Gregar from JP Gregar), each chip's own on either console: a JP Falzar console's Gregar
 chip shows Falzar's beast in the original, and a known difference in the frame comparison.
 
 ### 4.5 Sprites
 
 The sprite list's slots that are a placeholder in the US and the JP ROM's own archive (`sprites.py`; the same
-archive in both JP ROMs). `bn6-extract` takes these from JP Falzar, under the names in brackets:
+archive in both JP ROMs). `exe6-extract` takes these from JP Falzar, under the names in brackets:
 
 | Slot | What it is |
 |---|---|
@@ -488,22 +488,22 @@ behavior there, by the user's choice (§8.2).
 
 | # | Variant | Size | A JP trace shows | Where to switch |
 |---|---|---|---|---|
-| 1 | Charged shot of a worn-out navi (`sub_8011A7E`) | US: +7 instructions | the shot's damage (AIAttackVars+8) and the target's HP: (Attack + 1) × 10, not 10 | content/bn6/navis/megaman/weapons/charged-shot/init.luau (`setup`) |
-| 2 | SpoutCross's and SlashCross's charged shots keep the last bonus (`sub_8011C5E`, `sub_8011CD6`) | US: +2 and +1 instructions | AIAttackVars+6, the damage word | content/bn6/navis/megaman/forms/spoutcross/charge.luau and slashcross/charge.luau (`navi.extra = 0`) |
+| 1 | Charged shot of a worn-out navi (`sub_8011A7E`) | US: +7 instructions | the shot's damage (AIAttackVars+8) and the target's HP: (Attack + 1) × 10, not 10 | content/exe6/navis/megaman/weapons/charged-shot/init.luau (`setup`) |
+| 2 | SpoutCross's and SlashCross's charged shots keep the last bonus (`sub_8011C5E`, `sub_8011CD6`) | US: +2 and +1 instructions | AIAttackVars+6, the damage word | content/exe6/navis/megaman/forms/spoutcross/charge.luau and slashcross/charge.luau (`navi.extra = 0`) |
 | 3 | The weakness request survives a form change (`sub_8014CC0`, `sub_8014F04`, `sub_8015128`, `sub_80155CC`) | 3 literal words | AIData+0x44 bit 31 after the change, then the un-cross | crates/nettai-battle/src/kinds/player/actions/transform.rs (`finish`, for Cross, BeastOut, CrossBeast, BeastCross; not BeastOver) |
 | 4 | The drag's recovery keeps RskyHny's heat trap (`sub_8017A38`) | US: +2 instructions | AIData status 0x200000 after the drag; later non-fire hits swallowed | crates/nettai-battle/src/kinds/player/reactions.rs (`recover_from_drag`) |
 | 5 | The traps' order and 0-damage hits (`sub_802CEF4`) | about 20 instructions moved, 2 branches | which trap answers (requests 0x200/0x8000/0x400 against the heat trap's marker and sound 0x6E); a 0-damage hit landing | crates/nettai-battle/src/kinds/player/intake.rs (`anti_damage_traps`) |
-| 6 | LilBolr (`sub_801B878` US only, `sub_80D774C`) | US: a 324-byte routine and +10 instructions | the boiler's HP and destruction on a crushing touch while it erupts | content/bn6/chips/lilbolr/boiler.luau (its `obstacle.react` crush, the HP reset) |
-| 8 | ElmntMan when nobody picks (`sub_80BABAC`) | US: 9 instructions, JP 1 | no RNG2 draw (so every later draw shifts), action 0x18, no attack | content/bn6/chips/elmntman/navi.luau (`cycle`) |
-| 9 | Tornado's doubling on a special panel (`sub_80C9F98`) | US: +5 instructions | the tornado's damage word | content/bn6/chips/tornado/tornado.luau (`init`) |
-| 10 | AirSpin's top's HP | 1 word: 300 against 400 | the top's HP and MaxHP, how many hits break it | content/bn6/chips/airspin/top.luau (`HP`) |
-| 11 | The dash hit's reach (`sub_80DB684`) | 1 word: 60 against 58 px | the hit's X, and the tick it reaches a panel | content/bn6/navis/megaman/dash_hit.luau (`REACH`) |
+| 6 | LilBolr (`sub_801B878` US only, `sub_80D774C`) | US: a 324-byte routine and +10 instructions | the boiler's HP and destruction on a crushing touch while it erupts | content/exe6/chips/lilbolr/boiler.luau (its `obstacle.react` crush, the HP reset) |
+| 8 | ElmntMan when nobody picks (`sub_80BABAC`) | US: 9 instructions, JP 1 | no RNG2 draw (so every later draw shifts), action 0x18, no attack | content/exe6/chips/elmntman/navi.luau (`cycle`) |
+| 9 | Tornado's doubling on a special panel (`sub_80C9F98`) | US: +5 instructions | the tornado's damage word | content/exe6/chips/tornado/tornado.luau (`init`) |
+| 10 | AirSpin's top's HP | 1 word: 300 against 400 | the top's HP and MaxHP, how many hits break it | content/exe6/chips/airspin/top.luau (`HP`) |
+| 11 | The dash hit's reach (`sub_80DB684`) | 1 word: 60 against 58 px | the hit's X, and the tick it reaches a panel | content/exe6/navis/megaman/dash_hit.luau (`REACH`) |
 | 12 | The hand size under the hand-shrink bug (`sub_802A40C`) | US: +7 instructions | the custom screen's dealt count (+6), so the hand | crates/nettai-battle/src/custom/screen.rs (`hand_size`) |
-| 13 | DustMan's pull's collision type (`sub_80F20A0`) | 1 byte | the pull regions' self type (row 0x04 against 0x1E): what they reach and how a hit counts | content/bn6/navis/dustman/chip.luau (`pull`: `self_type`) |
-| 14 | GroundCross's drill burrows while moving (`sub_80EF004`) | US: +3 instructions | the drill's timing | content/bn6/navis/megaman/forms/groundcross/drill.luau |
-| 15 | SpoutMan's DripShwr flags (`sub_80F1694`) | JP: +5 instructions | SpoutMan's ObjectFlags1 0x40 and 0x80000 during the spray (what reads them then is **unverified**) | content/bn6/navis/spoutman/chip.luau |
-| 16 | Otenko's statue as DustMan's junk (`byte_8021220`, NameID 0xCF) | 5 data bytes | US: no junk (look none, freed); JP: a junk with sprite 0C-49, animation 1, shadow, which flies and hits | content/bn6/chips/otenko/statue.luau (the identity's `look`): **the content has the JP row on every console** (the user's call), so a US console's trace of it differs; bn6battle-verify records it on JP consoles (jp/chips/0x099-otenko/dustman), and gen-content's check expects the JP row |
-| 17 | The emotion window's glitch from patch cards (`sub_813BF1C`) | JP: +3 instructions | the console's emotion-window flicker | content/bn6/rules/patch-cards/init.luau: with cards installed (a JP save's), the glitch is the stats' NaviCust bugs after the cards (flag 0x1723), `battle.set_emotion_window_glitch`; without, the NaviCust's (0x1720: its compile's, or the stats' bugs'). Verified: chip lab jp/cards/ (the setup check compares it) |
+| 13 | DustMan's pull's collision type (`sub_80F20A0`) | 1 byte | the pull regions' self type (row 0x04 against 0x1E): what they reach and how a hit counts | content/exe6/navis/dustman/chip.luau (`pull`: `self_type`) |
+| 14 | GroundCross's drill burrows while moving (`sub_80EF004`) | US: +3 instructions | the drill's timing | content/exe6/navis/megaman/forms/groundcross/drill.luau |
+| 15 | SpoutMan's DripShwr flags (`sub_80F1694`) | JP: +5 instructions | SpoutMan's ObjectFlags1 0x40 and 0x80000 during the spray (what reads them then is **unverified**) | content/exe6/navis/spoutman/chip.luau |
+| 16 | Otenko's statue as DustMan's junk (`byte_8021220`, NameID 0xCF) | 5 data bytes | US: no junk (look none, freed); JP: a junk with sprite 0C-49, animation 1, shadow, which flies and hits | content/exe6/chips/otenko/statue.luau (the identity's `look`): **the content has the JP row on every console** (the user's call), so a US console's trace of it differs; bn6battle-verify records it on JP consoles (jp/chips/0x099-otenko/dustman), and gen-content's check expects the JP row |
+| 17 | The emotion window's glitch from patch cards (`sub_813BF1C`) | JP: +3 instructions | the console's emotion-window flicker | content/exe6/rules/patch-cards/init.luau: with cards installed (a JP save's), the glitch is the stats' NaviCust bugs after the cards (flag 0x1723), `battle.set_emotion_window_glitch`; without, the NaviCust's (0x1720: its compile's, or the stats' bugs'). Verified: chip lab jp/cards/ (the setup check compares it) |
 
 Not counted:
 
@@ -557,8 +557,8 @@ one ran. The region belongs in the setup:
     does (it jumps to address 0); in JP they run the ported behavior.
 - **Records and assets:** a chip whose record differs by region (Django, GunDelEX) takes its class and flags
   from a region-keyed table. JP's sprites are extracted from the JP ROM; an asset name says which.
-- **Compat:** bn6-compat reads the region from the ROM header (BR6J or BR5J is JP) for traces and sets the
-  setup's field. compat/games.toml gets `[exe6f]` and `[exe6]` sections, as `[gregar]`, with §10's values.
+- **Compat:** exe6-compat reads the region from the ROM header (BR6J or BR5J is JP) for traces and sets the
+  setup's field. compat/games.toml gets `[jp-falzar]` and `[jp-gregar]` sections, as `[gregar]`, with §10's values.
 
 ### 8.2 Chosen JP
 
@@ -569,9 +569,9 @@ variant's first frame and first differs on exactly that frame).
 
 | # | Variant | Size | A US trace shows | Where | Decided |
 |---|---|---|---|---|---|
-| 7 | ElemTrap's counterattack's list position (`sub_80E360E`; `sub_80033E4` US only) | 1 call | T4 0x2B's place in the update list: the US spawns it at the head, so its first update (the dimming) comes a tick after the engine's | content/bn6/chips/elemtrap/strike.luau (`strike.spawn`: `battle.spawn`, right after the trap, as JP's `object_spawnType4`) | the user, 2026-10-02: "you should use jp's elementtrap behavior instead of us's elementtrap behavior in bn6" |
+| 7 | ElemTrap's counterattack's list position (`sub_80E360E`; `sub_80033E4` US only) | 1 call | T4 0x2B's place in the update list: the US spawns it at the head, so its first update (the dimming) comes a tick after the engine's | content/exe6/chips/elemtrap/strike.luau (`strike.spawn`: `battle.spawn`, right after the trap, as JP's `object_spawnType4`) | the user, 2026-10-02: "you should use jp's elementtrap behavior instead of us's elementtrap behavior in bn6" |
 
-ElemTrap on Japanese consoles: the chip lab's jp/chips/0x0c5-elemtrap (21 scenarios on EXE6 Falzar and Gregar: every
+ElemTrap on Japanese consoles: the chip lab's jp/chips/0x0c5-elemtrap (21 scenarios on JP Falzar and Gregar: every
 US ElemTrap scenario, and the trap sprung by fire, aqua, elec and wood, in a dimming, with the counterattack
 hitting) match the engine on every frame, sounds included. The US consoles' recordings that spring it, the known
 deviations: chips/0x0c5-elemtrap/sprung-fire, sprung-elec and sprung-dimmed, and nine of the 2022 replays' rounds.
@@ -608,7 +608,7 @@ What the boundaries say:
   0x13..0x15, T4 0x17, 0x18) and battle modes 1, 10 and 11. They are not chip content.
 - **"count_native_aux_main" is Django's navi, not Count's.** Navi chip 18 spawns T1 0x11 (sprite 08-16); navi
   chip 19 spawns T1 0x12, whose init loads 0C-0F, the Django archive. bn6-lmao registers it as T1 0x12 under
-  Count and gives its Django chips a C reimplementation with BN5's art instead. The JP ROM's Django chip is
+  Count and gives its Django chips a C reimplementation with EXE5's art instead. The JP ROM's Django chip is
   complete: the handler, the navi, the sprite.
 - **bn6-lmao changes JP behavior in one place.** It adds the attack bonus to Falzar's Strike Feathers (a patch
   at `falzar_controller_main`+0x302). The JP original forwards the base power only; a faithful port keeps that.
@@ -638,8 +638,8 @@ Also for a JP trace:
 - Regions carry JP's +0x74 (§6).
 - The cosmetic rows marked *(trace)* in §5 apply.
 - The mode-1, mode-10 and mode-11 code never runs.
-- The JP-only navis' Z fractions are their spawners' addresses too: the content keeps EXE6 Falzar's (Count's
-  0x080BD237, Django's 0x080BD6A3), EXE6 Gregar has 0x080BEA97 and 0x080BEF03. Django drops from that Z, so on EXE6
+- The JP-only navis' Z fractions are their spawners' addresses too: the content keeps JP Falzar's (Count's
+  0x080BD237, Django's 0x080BD6A3), JP Gregar has 0x080BEA97 and 0x080BEF03. Django drops from that Z, so on JP
   Gregar his and his bike's Z differ until he lands (games.toml's `spawner_z_drops`).
 
 The kind and handler tables move too: JP Falzar's T1, T3 and T4 tables are at 0x08003C80, 0x08003EA8 and

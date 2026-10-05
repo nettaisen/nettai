@@ -25,7 +25,7 @@
 //!   (`Battle::warnings`) and HP numbers (`Battle::hp_numbers`);
 //! - the objects' `VISIBLE` header flag and who else sees them
 //!   (`Object::sight`);
-//! - the looks a side's rules set (`Battle::looks`: BN5's Hub Style's
+//! - the looks a side's rules set (`Battle::looks`: EXE5's Hub Style's
 //!   faces and enemy name);
 //! - the message of an engine error that stopped the battle
 //!   (`RoundEnd::Error`; that it stopped is hashed).

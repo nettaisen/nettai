@@ -15,7 +15,7 @@ const STAR: u8 = 26;
 const SHOT: ChipId = 1;
 const WAVE: ChipId = 2;
 const MEGA: ChipId = 3;
-/// A chip with the dark flag (no BN6 chip has it), in every code.
+/// A chip with the dark flag (no EXE6 chip has it), in every code.
 const DARK: ChipId = 4;
 
 fn library() -> TestLibrary {
@@ -46,7 +46,7 @@ fn folder(chips: &[(ChipId, u8)]) -> BattleFolder {
     f
 }
 
-/// BN6's scrap and re-deal buttons (its cross and navicust systems', in
+/// EXE6's scrap and re-deal buttons (its cross and navicust systems', in
 /// Luau), in Rust for the screen's own tests: button 0 the scrap, 1 the
 /// re-deal, two wide on slots 8 and 9.
 struct TestButtons {
@@ -139,11 +139,11 @@ impl Player {
         }
     }
 
-    /// BN6's buttons as its systems would show them.
+    /// EXE6's buttons as its systems would show them.
     fn buttons(&self) -> TestButtons {
         let megaman = self.lib.changes_form(self.stats.navi);
         TestButtons {
-            // (DustCross and DustCross Beast: BN6's cross system's
+            // (DustCross and DustCross Beast: EXE6's cross system's
             // `scrap_button`.)
             scrap: megaman && matches!(self.stats.form.0, 0x0A | 0x16),
             redeal: megaman && self.stats.chip_shuffle,
@@ -208,10 +208,10 @@ fn five_chips_are_dealt_into_the_top_row() {
     // Left of the first chip wraps to OK; OK's right to the first chip.
     assert_eq!((s.slots[0].left, s.slots[4].right), (Some(OK_SLOT), Some(OK_SLOT)));
     // (OK's up goes to the special slot when a system's button is there:
-    // BN6's Beast Out, which these tests have none of.)
+    // EXE6's Beast Out, which these tests have none of.)
     let ok = s.slots[OK_SLOT as usize];
     assert_eq!((ok.vertical, ok.left, ok.right), (None, Some(4), Some(0)));
-    // (The special slot holds a system's button, BN6's Beast Out, which
+    // (The special slot holds a system's button, EXE6's Beast Out, which
     // these tests have none of: it is absent.)
     assert!(matches!(s.slots[SPECIAL_SLOT as usize].kind, SlotKind::Empty | SlotKind::Hidden));
 }
@@ -718,7 +718,7 @@ fn confirm(p: &mut Player) -> crate::hand::ChipHand {
     p.side.sent.as_ref().expect("a result sent").result.hand.clone().expect("a hand")
 }
 
-/// `custom.attach_to_last_pick` (BN5's capsules): the last pick carries
+/// `custom.attach_to_last_pick` (EXE5's capsules): the last pick carries
 /// the button's modifier bits into the hand, one button a chip; B on the
 /// chip clears them and frees the button.
 #[test]
@@ -750,7 +750,7 @@ fn a_button_attached_to_a_pick_marks_it_into_the_hand() {
     assert_eq!((hand.ids[0], hand.modifiers[0]), (Some(ChipHandle(SHOT)), 0x04));
 }
 
-/// `custom.hold_last_pick` (BN5's Arm Change): the last pick leaves the
+/// `custom.hold_last_pick` (EXE5's Arm Change): the last pick leaves the
 /// picks for the button; B puts it back once the picks are as they were
 /// then, after any later pick; at OK it leaves the folder without being in
 /// the hand.
@@ -807,7 +807,7 @@ fn a_button_holding_a_pick_takes_it_out_of_the_picks_and_the_folder() {
     assert_eq!(f.chips[2], Some(FolderChip::new(ChipHandle(SHOT), ChipCode(0))));
 }
 
-/// A button that shows a chip (`ButtonPlace::chip`, BN5's capsules): the
+/// A button that shows a chip (`ButtonPlace::chip`, EXE5's capsules): the
 /// chip window keeps the frame of the last chip slot it showed (OK and a
 /// button's picture set the standard one), and R describes the chip.
 #[test]

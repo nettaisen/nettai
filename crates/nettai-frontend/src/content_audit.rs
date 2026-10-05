@@ -89,7 +89,7 @@ pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&
     for (k, (lang, strings)) in languages.iter().enumerate() {
         let b = std::mem::take(&mut bundles[own.index()]);
         // (A language the content has strings in but its pack no lettering
-        // for, as BN5's Japanese, which its extraction makes none of: its
+        // for, as EXE5's Japanese, which its extraction makes none of: its
         // consoles can't be shown, the language isn't checked; said, not a
         // problem.)
         if k > 0 && !b.hud.languages().contains(&lang.as_str()) {
@@ -131,7 +131,7 @@ pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&
             let pack = PackId(i as u8);
             if pack != own && is_loaded(&packs, pack) && !packs.bundle(pack).hud.languages().contains(&lang.as_str()) {
                 out.notes.push(format!(
-                    "{game}'s pack has no {lang} lettering: a {game} console draws {lang} names and descriptions in its own (not checked)"
+                    "{game}'s pack has no {lang} lettering: an {game} console draws {lang} names and descriptions in its own (not checked)"
                 ));
             }
         }
@@ -196,7 +196,7 @@ fn other_packs(c: &Content, packs: &Packs, lang: &str, text: &DisplayText) -> Ve
             let navi = NaviHandle(k as u16);
             for &version in &versions {
                 // (Each version's own run: the lookup is by the engine's
-                // version, which tells BN5's apart by none.)
+                // version, which tells EXE5's apart by none.)
                 let mut q = Problems::default();
                 lookups::emblem(a, c, navi, GameVersion::Falzar, Some(version), &mut q);
                 for (what, _) in q.iter() {
@@ -274,7 +274,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
         }
         if data.forms.is_some() {
             for version in [GameVersion::Falzar, GameVersion::Gregar] {
-                let crosses = bn6_compat::forms::set(c, navi, version).map(|s| s.crosses).unwrap_or_default();
+                let crosses = exe6_compat::forms::set(c, navi, version).map(|s| s.crosses).unwrap_or_default();
                 for &form in &crosses {
                     lookups::cross_name(a, c, navi, form, p);
                     if let Some(said) = text.form_description(c, form) {
@@ -332,7 +332,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
 
 /// The field (docs/design/rules-in-luau.md §7.4). Each loaded game's pack
 /// draws the panel types its game's `panels` section names, with their
-/// blocks (BN6's field none of BN5's metal, lava or sea). In an arena of
+/// blocks (EXE6's field none of EXE5's metal, lava or sea). In an arena of
 /// each loaded game, every panel type a loaded game names and both
 /// highlights are drawn as the stage draws them (`FieldArt`): from the
 /// arena's field, another pack's, or as a tinted normal panel, which is
@@ -417,8 +417,8 @@ mod tests {
     }
 
     /// The field's blocks are audited for the panel types the own pack's
-    /// game names, not for every type the engine has (BN5's metal, lava
-    /// and sea, which BN6's field has none of).
+    /// game names, not for every type the engine has (EXE5's metal, lava
+    /// and sea, which EXE6's field has none of).
     #[test]
     fn the_field_is_audited_for_the_panel_types_its_game_names() {
         let mut c = (*testing::content()).clone();
@@ -462,13 +462,13 @@ mod tests {
     }
 
     /// The Program Advance animation shows a chip's code by the chip's
-    /// number in its own game's compat (BN6's `sub_802B80C`, BN5's
+    /// number in its own game's compat (EXE6's `sub_802B80C`, EXE5's
     /// 0x08027BC6: below 0x160), each game's chips known to it.
     #[test]
     fn a_program_advance_code_is_by_its_games_number() {
         for (c, shows, hides) in [
-            (nettai_match::testing::bn6_content(), "cannon", "ftrsword"),
-            (nettai_match::testing::bn5_content(), "cannon", "ftrsword"),
+            (nettai_match::testing::exe6_content(), "cannon", "ftrsword"),
+            (nettai_match::testing::exe5_content(), "cannon", "ftrsword"),
         ] {
             let chip = |key: &str| c.defs.chip_by_key(key).unwrap_or_else(|| panic!("{} has no {key}", c.game()));
             let mut p = Problems::default();

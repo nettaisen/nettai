@@ -1,6 +1,6 @@
 --!strict
--- SloGauge's and FstGauge's dimming controller, as BN5 and BN6 share it
--- (BN6's effect object #0x1C, `sub_80E23A4`; BN5's #0x1C): each game makes
+-- SloGauge's and FstGauge's dimming controller, as EXE5 and EXE6 share it
+-- (EXE6's effect object #0x1C, `sub_80E23A4`; EXE5's #0x1C): each game makes
 -- its own (`gauge_speed.make`: its kind and its warning's sound). The usual
 -- dimming phases (@exelib/dimming),
 -- with an effect (`sub_80E23E8`) that makes the custom gauge fill slowly

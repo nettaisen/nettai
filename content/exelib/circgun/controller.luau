@@ -1,5 +1,5 @@
 --!strict
--- CircGun's dimming controller, as BN5 and BN6 share it (BN6's effect
+-- CircGun's dimming controller, as EXE5 and EXE6 share it (EXE6's effect
 -- object #0x5E, `sub_80E7568`; docs/engine/dimming-chip-effects.md §8): the
 -- usual dimming phases (@exelib/dimming), with an effect that puts the gun
 -- (./gun) on the

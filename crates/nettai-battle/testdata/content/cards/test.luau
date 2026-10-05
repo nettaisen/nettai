@@ -1,6 +1,6 @@
 --!strict
--- Made-up patch cards for the engine's tests of BN6's patch-cards system
--- (rules/patch-cards; BN6's cards are content/bn6/cards).
+-- Made-up patch cards for the engine's tests of EXE6's patch-cards system
+-- (rules/patch-cards; EXE6's cards are content/exe6/cards).
 
 local cards = require("../rules/patch-cards/cards")
 local barriers = require("../lib/barriers")

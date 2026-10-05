@@ -1,14 +1,14 @@
 --!strict
--- A boulder, as BN5 and BN6 share it (BN6's attack object #0x6E, `sub_80D2290`; BN5's #0x6E, 0x080D38C0, the same
--- code): the field obstacle some stages start with (the actor lists' entry type 3, BN6's `sub_8007450` and BN5's
+-- A boulder, as EXE5 and EXE6 share it (EXE6's attack object #0x6E, `sub_80D2290`; EXE5's #0x6E, 0x080D38C0, the same
+-- code): the field obstacle some stages start with (the actor lists' entry type 3, EXE6's `sub_8007450` and EXE5's
 -- 0x080068A0: the kind's `place`), 500 HP, on its panel's side. It stands through the round's start and takes its
 -- place once the fight is on; it has no lifetime. Broken, it leaves two chunks of rock debris and a splash of dust;
--- a chip can remove (or, in BN6, absorb) it. It is one of the field's two stage objects (the field-object registry's
--- stage slots, which it leaves when it goes). See BN6's docs/engine/field-objects.md §3.1.
+-- a chip can remove (or, in EXE6, absorb) it. It is one of the field's two stage objects (the field-object registry's
+-- stage slots, which it leaves when it goes). See EXE6's docs/engine/field-objects.md §3.1.
 --
 -- Each game makes its own kind (`boulder.make`) with its look: the sprite, its identity, the debris and effects it
--- leaves, how it looks absorbed (BN6's; BN5 neither absorbs nor blinks obstacles out: a removal leaves a puff,
--- 0x080D39C4) and the damage it is thrown for (BN6's 200, BN5's 100: 0x080068D0).
+-- leaves, how it looks absorbed (EXE6's; EXE5 neither absorbs nor blinks obstacles out: a removal leaves a puff,
+-- 0x080D39C4) and the damage it is thrown for (EXE6's 200, EXE5's 100: 0x080068D0).
 --
 -- An obstacle: its update runs the obstacle framework's steps (the `obstacle` service) around its own actions.
 
@@ -29,7 +29,7 @@ export type Look = {
     -- What it is and reaches (a neutral body that everything reaches, while dimmed too).
     is: CollisionType,
     hits: CollisionType,
-    -- How it looks absorbed (BN6's obstacle kind 5: its own sprite); none (BN5's): a removal leaves a puff.
+    -- How it looks absorbed (EXE6's obstacle kind 5: its own sprite); none (EXE5's): a removal leaves a puff.
     absorbed: AbsorbedLook?,
     -- The damage it does when thrown (its spawner's damage word).
     damage: number,
@@ -43,7 +43,7 @@ local HIT_MOD = 3
 local DEBRIS_PALETTE = 0
 -- A panel of side 1's.
 local SIDE_1 = 0x20
--- The header flags the spawner (BN6's `sub_80D2430`, BN5's 0x080D3A3E) leaves. It means to add the pause and
+-- The header flags the spawner (EXE6's `sub_80D2430`, EXE5's 0x080D3A3E) leaves. It means to add the pause and
 -- dimming bits (0x14) to the new object's flags, but reads the flags through the panel's column instead of the
 -- object: an address in the console's BIOS, which game code can't read. What comes back is a byte of the
 -- instruction word the BIOS last fetched (after a software interrupt, which the game's divisions are,
@@ -52,7 +52,7 @@ local SIDE_1 = 0x20
 -- bits (holds a reservation; on column 2 also 0x80, which nothing reads).
 local BIOS_WORD, RUNS_PAUSED_AND_DIMMED = 0xE3A02004, 0x14
 
--- Its actions (BN6's `jt_80D2348`; BN5's table has no frozen or bubbled rows and stands in its 6, the same
+-- Its actions (EXE6's `jt_80D2348`; EXE5's table has no frozen or bubbled rows and stands in its 6, the same
 -- actions).
 local WAIT, DESTROYED, STANDING = 0, 2, 8
 

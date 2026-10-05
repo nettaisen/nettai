@@ -63,9 +63,9 @@ pub mod f1 {
     /// (a null pointer): BIOS memory, which game code can't read, gives
     /// the opcode the BIOS last fetched (open bus). After a software
     /// interrupt, such as the object spawn's fill (`ZeroFillByWord`'s
-    /// CpuSet), that is 0xE3A02004: BN6's, the rule's default
+    /// CpuSet), that is 0xE3A02004: EXE6's, the rule's default
     /// (`content::MissingCollisionStatus`). An interrupt in between leaves
-    /// 0xE55EC002, which BN5's console reads there.
+    /// 0xE55EC002, which EXE5's console reads there.
     pub const NULL_READ: u32 = 0xE3A0_2004;
 }
 
@@ -79,10 +79,10 @@ pub struct Accumulators {
     /// What hit us (filtered), plus: 0x1 we were guarded, 0x40 counter
     /// hit, 0x20000 we blocked a hit.
     pub hit_flags: u32,
-    /// The same by the other collision's flip (BN5's +0x6C and +0x70: the
+    /// The same by the other collision's flip (EXE5's +0x6C and +0x70: the
     /// hit registration, 0x080169C8 to 0x08016A68, keeps them only so; an
     /// unflipped hitter's, of either side, and a flipped one's), which
-    /// BN5's obstacle push on any hit reads (0x08017AD8); BN6 keeps them
+    /// EXE5's obstacle push on any hit reads (0x08017AD8); EXE6 keeps them
     /// unread.
     pub hit_flags_by_flip: [u32; 2],
     pub exclamation: u8,
@@ -125,10 +125,10 @@ pub struct CollisionData {
     pub counter_timer: u8,
     pub hit_mod_base: u8,
     pub hit_mod_final: u8,
-    /// The hit modifiers of the hits it took by the hitter's flip (BN5's
+    /// The hit modifiers of the hits it took by the hitter's flip (EXE5's
     /// +0x18 and +0x19, 0x08016AA6: an unflipped hitter's, of either side,
-    /// and a flipped one's), which BN5's push reads (`PushReading::Bn5`);
-    /// BN6 keeps them unread.
+    /// and a flipped one's), which EXE5's push reads (`PushReading::Exe5`);
+    /// EXE6 keeps them unread.
     pub hit_mod_by_side: [u8; 2],
     /// The status its hits carry, and the one the hits it took landed.
     pub status_base: Option<StatusHandle>,
@@ -156,7 +156,7 @@ pub struct CollisionData {
     /// This slot's bit (`0x80000000 >> slot`).
     pub bit: u32,
     /// Status visual objects and other links (0x48..0x67).
-    /// BN5's +0x2C: how long a body stays under the sea's surface (0xFFFF
+    /// EXE5's +0x2C: how long a body stays under the sea's surface (0xFFFF
     /// while it dives on a panel that submerges: 0x08017030).
     pub dive_timer: u16,
     pub links: [Option<ObjectRef>; 5],
@@ -173,7 +173,7 @@ pub mod link {
     pub const FREEZE: usize = 2;
     /// +0x60: bubble.
     pub const BUBBLE: usize = 3;
-    /// BN5's +0x50: the ripple over a body under the sea's surface
+    /// EXE5's +0x50: the ripple over a body under the sea's surface
     /// (0x0800DEB2).
     pub const RIPPLE: usize = 4;
 }
@@ -346,20 +346,20 @@ impl Battle {
         let Some(id) = o.collision else { return };
         let (alliance, damage) = (o.alliance, o.damage);
         let dimmed = self.is_dimmed();
-        let bn5 = self.game_rules().effects.retype == crate::content::RetypeRule::Bn5;
+        let exe5 = self.game_rules().effects.retype == crate::content::RetypeRule::Exe5;
         let word = self.game_rules().effects.damage_word;
         let (target_flags, row_offset) = self.content.collision_type(target_type, alliance);
         let s = self.collision.get_mut(id);
         s.hit_mod_base = hit_mod;
         s.self_damage = damage;
-        s.self_flags = self.content.collision_type(self_type, alliance).0 | if dimmed && !bn5 { 0x1_0000 } else { 0 };
-        if !bn5 {
+        s.self_flags = self.content.collision_type(self_type, alliance).0 | if dimmed && !exe5 { 0x1_0000 } else { 0 };
+        if !exe5 {
             s.target_flags = target_flags;
         }
         // A bug code's garbage high byte is what `battle_isTimeStop` left in
-        // r1 (4, or 0x10000 while dimmed); BN5's, what the target lookup
+        // r1 (4, or 0x10000 while dimmed); EXE5's, what the target lookup
         // left.
-        let r1 = if bn5 {
+        let r1 = if exe5 {
             row_offset + alliance as u16 * 4
         } else if dimmed {
             0
@@ -375,7 +375,7 @@ impl Battle {
         let s = self.collision.get_mut(id);
         if !dimmed {
             s.hit_mod_final = 0;
-            // (BN5's clear, 0x08016B22, takes its two by-side bytes too.)
+            // (EXE5's clear, 0x08016B22, takes its two by-side bytes too.)
             s.hit_mod_by_side = [0; 2];
             s.guard_dirs = 0;
         }
@@ -462,18 +462,18 @@ impl Battle {
         if self.is_dimmed() && !(rd.f1 & f1::HIT_WHILE_DIMMED != 0 || hd.self_flags & 0x1_0000 != 0) {
             return;
         }
-        // (BN5's test, 0x0801691C: a bubbled body counts as submerged, elec
+        // (EXE5's test, 0x0801691C: a bubbled body counts as submerged, elec
         // reaching either; no FloatShoe test; the guard's own masks.)
-        let bn5 = self.content.rules().hit_test == HitTest::Bn5;
-        let submerged = if bn5 { f1::SUBMERGED | f1::BUBBLED } else { f1::SUBMERGED };
+        let exe5 = self.content.rules().hit_test == HitTest::Exe5;
+        let submerged = if exe5 { f1::SUBMERGED | f1::BUBBLED } else { f1::SUBMERGED };
         // The hitter's state against the receiver's type.
         let f = hd.f1;
         let rs = rd.self_flags;
         if (f & 0x202 != 0 && rs & 0x4 == 0)
-            || (f & submerged != 0 && rs & 0x1008 == 0 && !(bn5 && rd.element == 3))
+            || (f & submerged != 0 && rs & 0x1008 == 0 && !(exe5 && rd.element == 3))
             || (f & 0x0080_0000 != 0 && rs & 0x0C00_3000 == 0)
             || f & f1::UNTOUCHABLE != 0
-            || (!bn5 && f & 0x20 != 0 && rs & 0x80 == 0)
+            || (!exe5 && f & 0x20 != 0 && rs & 0x80 == 0)
         {
             return;
         }
@@ -481,22 +481,22 @@ impl Battle {
         let f = rd.f1;
         let hs = hd.self_flags;
         if (f & 0x202 != 0 && hs & 0x4 == 0)
-            || (f & submerged != 0 && hs & 0x1008 == 0 && !(bn5 && hd.element == 3))
+            || (f & submerged != 0 && hs & 0x1008 == 0 && !(exe5 && hd.element == 3))
             || (f & 0x0080_0000 != 0 && hs & 0x3000 == 0)
             || f & f1::UNTOUCHABLE != 0
-            || (!bn5 && f & 0x20 != 0 && hs & 0x80 == 0)
+            || (!exe5 && f & 0x20 != 0 && hs & 0x80 == 0)
         {
             return;
         }
         // Guard.
         if rd.f1 & f1::GUARD != 0 {
-            let brk = if bn5 || hs & 0x4000 != 0 { 0x1002 } else { 0x0002 };
+            let brk = if exe5 || hs & 0x4000 != 0 { 0x1002 } else { 0x0002 };
             if hs & brk == 0 {
                 let hm = self.collision.get_mut(h);
                 hm.acc.hit_flags |= 1;
                 hm.acc.hit_flags_by_flip[rd.flip as usize & 1] |= 1;
                 let mut flags = hs & !0x10;
-                if flags & (if bn5 { 0x0C00_4000 } else { 0x0C00_5000 }) == 0 {
+                if flags & (if exe5 { 0x0C00_4000 } else { 0x0C00_5000 }) == 0 {
                     self.collision.get_mut(r).guard_dirs |= 1 << hd.flip;
                     flags |= 0x2_0000;
                 }
@@ -522,8 +522,8 @@ impl Battle {
             rm.status_final = hd.status_base;
         }
         // Aqua on ice: freeze a body standing on ice (in a game that has
-        // the freeze: the arena's role `statuses.ice_freeze`; BN5 has none,
-        // docs/design/bn5-map.md §15.3 item 4).
+        // the freeze: the arena's role `statuses.ice_freeze`; EXE5 has none,
+        // docs/design/exe5-map.md §15.3 item 4).
         if let Some(freeze) = self.roles().try_status(StatusRole::IceFreeze)
             && rd.element == 2
             && hs & 0x0C00_0000 != 0
@@ -558,7 +558,7 @@ impl Battle {
             rm.acc.drain_hits = rm.acc.drain_hits.wrapping_add(1);
         }
         rm.hit_mod_final |= hd.hit_mod_base;
-        // BN5 also keeps it by the hitter's flip (0x08016AA6: the hitter's
+        // EXE5 also keeps it by the hitter's flip (0x08016AA6: the hitter's
         // collision's +5, not its side's +4).
         rm.hit_mod_by_side[hd.flip as usize & 1] |= hd.hit_mod_base;
         if hd.bugs & 0xFF != 0 {
@@ -582,9 +582,9 @@ impl Battle {
         if thaw {
             m += 1;
         }
-        // (BN6's bubble; BN5's kernel has none: its flag 0x80000000 is a
+        // (EXE6's bubble; EXE5's kernel has none: its flag 0x80000000 is a
         // body under the sea's surface, whose elec hits its panel doubles.)
-        if !bn5 && rd.f1 & f1::BUBBLED != 0 && hd.element == 3 {
+        if !exe5 && rd.f1 & f1::BUBBLED != 0 && hd.element == 3 {
             m += 1;
         }
         rm.acc.exclamation = m - 1;
@@ -593,7 +593,7 @@ impl Battle {
         }
         let e = (hd.element as usize).min(5);
         rm.acc.element_damage[e] = rm.acc.element_damage[e].wrapping_add(hd.self_damage.wrapping_mul(m as u16));
-        let bonus = self.panel_bonus(&rd, &hd, bn5);
+        let bonus = self.panel_bonus(&rd, &hd, exe5);
         let rm = self.collision.get_mut(r);
         if bonus {
             rm.acc.element_damage[0] = rm.acc.element_damage[0].wrapping_add(hd.self_damage);
@@ -606,14 +606,14 @@ impl Battle {
     }
 
     /// Whether a hit of `hd`'s counts once more as null damage on `rd`'s
-    /// panel: fire on grass (BN6's, and BN5's 0x08016AF6, which elec on its
+    /// panel: fire on grass (EXE6's, and EXE5's 0x08016AF6, which elec on its
     /// sea does too).
-    fn panel_bonus(&self, rd: &CollisionData, hd: &CollisionData, bn5: bool) -> bool {
+    fn panel_bonus(&self, rd: &CollisionData, hd: &CollisionData, exe5: bool) -> bool {
         let kind = self.field.panel(rd.panel.x, rd.panel.y).map(|p| p.kind);
-        (hd.element == 1 && kind == Some(PanelType::Grass)) || (bn5 && hd.element == 3 && kind == Some(PanelType::Sea))
+        (hd.element == 1 && kind == Some(PanelType::Grass)) || (exe5 && hd.element == 3 && kind == Some(PanelType::Sea))
     }
 
-    /// `sub_3007692`: the unfiltered channel barriers look at. (BN5's,
+    /// `sub_3007692`: the unfiltered channel barriers look at. (EXE5's,
     /// 0x08017494, has no FloatShoe test.)
     fn accumulate_raw(&mut self, r: CollisionId, h: CollisionId) {
         let hd = *self.collision.get(h);
@@ -621,11 +621,11 @@ impl Battle {
         if self.is_dimmed() && !(rd.f1 & f1::HIT_WHILE_DIMMED != 0 || hd.self_flags & 0x1_0000 != 0) {
             return;
         }
-        let bn5 = self.content.rules().hit_test == HitTest::Bn5;
-        if !bn5 && ((hd.f1 & 0x20 != 0 && rd.self_flags & 0x80 == 0) || (rd.f1 & 0x20 != 0 && hd.self_flags & 0x80 == 0)) {
+        let exe5 = self.content.rules().hit_test == HitTest::Exe5;
+        if !exe5 && ((hd.f1 & 0x20 != 0 && rd.self_flags & 0x80 == 0) || (rd.f1 & 0x20 != 0 && hd.self_flags & 0x80 == 0)) {
             return;
         }
-        let bonus = self.panel_bonus(&rd, &hd, bn5);
+        let bonus = self.panel_bonus(&rd, &hd, exe5);
         let rm = self.collision.get_mut(r);
         rm.acc.raw_hit_flags |= hd.self_flags;
         rm.acc.raw_elements |= hd.secondary_element;
@@ -647,7 +647,7 @@ impl Battle {
         }
         let e = s.element;
         let Some(p) = self.field.panel(x, y) else { return };
-        // (BN6: fire on grass, aqua on volcano, wood on roads; BN5's
+        // (EXE6: fire on grass, aqua on volcano, wood on roads; EXE5's
         // 0x08016D14 the same with lava and metal.)
         let cleared_by = self.content.rules().panels.types[p.kind as usize].cleared_by;
         if cleared_by == Some(e) {
@@ -690,15 +690,15 @@ pub fn move_direction(old: PanelPos, new: PanelPos, alliance: u8) -> u8 {
 }
 
 /// `sub_8019F44`: decode the flag bits of a damage word (the rule
-/// `effects.damage_word`: BN6's, or BN5's 0x080165EC).
+/// `effects.damage_word`: EXE6's, or EXE5's 0x080165EC).
 fn decode_damage_word(s: &mut CollisionData, r1: u16, rule: DamageWordRule, roles: &crate::content::Roles) {
     let d = s.self_damage;
     s.self_damage = d & 0x7FF;
     if d & 0x8000 != 0 {
         s.self_damage = s.self_damage.wrapping_mul(2);
     }
-    if rule == DamageWordRule::Bn5 {
-        // BN5's: a paralysis that doesn't flinch, a confusion, a blindness
+    if rule == DamageWordRule::Exe5 {
+        // EXE5's: a paralysis that doesn't flinch, a confusion, a blindness
         // (status bytes 0x10, 0x20, 0x30), and bug code 0x18 (high byte
         // 0x11: the two bytes at +0x12).
         if d & 0x4000 != 0 {
@@ -772,17 +772,17 @@ mod tests {
         b.collision.get(h).acc.hit_flags & 1 != 0
     }
 
-    /// docs/design/bn5-map.md §15.11: BN5's guard breaks on type 0x1000
-    /// whatever 0x4000 (BN6's only with it); with both, either breaks.
-    /// (BN5's guarded-direction mask, 0x0C004000 to BN6's 0x0C005000,
-    /// differs only for a hit of 0x1000, which BN5's guard never holds.)
+    /// docs/design/exe5-map.md §15.11: EXE5's guard breaks on type 0x1000
+    /// whatever 0x4000 (EXE6's only with it); with both, either breaks.
+    /// (EXE5's guarded-direction mask, 0x0C004000 to EXE6's 0x0C005000,
+    /// differs only for a hit of 0x1000, which EXE5's guard never holds.)
     #[test]
-    fn bn5_guard_breaks_on_0x1000() {
-        assert!(guarded(HitTest::Bn6, 0x8000_1000));
-        assert!(!guarded(HitTest::Bn5, 0x8000_1000));
-        assert!(!guarded(HitTest::Bn6, 0x8000_5000));
-        assert!(!guarded(HitTest::Bn5, 0x8000_5000));
-        assert!(guarded(HitTest::Bn6, 0x8000_0000));
-        assert!(guarded(HitTest::Bn5, 0x8000_0000));
+    fn exe5_guard_breaks_on_0x1000() {
+        assert!(guarded(HitTest::Exe6, 0x8000_1000));
+        assert!(!guarded(HitTest::Exe5, 0x8000_1000));
+        assert!(!guarded(HitTest::Exe6, 0x8000_5000));
+        assert!(!guarded(HitTest::Exe5, 0x8000_5000));
+        assert!(guarded(HitTest::Exe6, 0x8000_0000));
+        assert!(guarded(HitTest::Exe5, 0x8000_0000));
     }
 }

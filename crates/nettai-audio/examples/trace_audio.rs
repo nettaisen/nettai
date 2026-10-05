@@ -11,11 +11,11 @@
 //! panics on something it doesn't implement yet).
 //!
 //! The content pack (the assets, among them the sound) comes from
-//! `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>`; the battle content the engine runs
+//! `exe6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>`; the battle content the engine runs
 //! on is this repository's content/ (or `$NETTAI_CONTENT`).
 
 use nettai_audio::{AudioOut, BattleAudio, FPS, SAMPLE_RATE, SoundCue, wav};
-use bn6_compat::trace;
+use exe6_compat::trace;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -122,7 +122,7 @@ fn main() {
     let o = options();
     let fail = |r: nettai_content::report::Report| -> ! {
         eprintln!("{}: {r}
-(write a content pack with `bn6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>`)", o.pack);
+(write a content pack with `exe6-extract content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> <pack>`)", o.pack);
         std::process::exit(1);
     };
     let (bank, _) = nettai_content::pack::load_sound(Path::new(&o.pack)).unwrap_or_else(|r| fail(r));
@@ -152,8 +152,8 @@ fn main() {
             continue;
         }
         let frames: Vec<&trace::Frame> = round.battle_frames().collect();
-        let compat = bn6_compat::Compat::bn6();
-        let ids = bn6_compat::codec::Ids::new(&content, compat);
+        let compat = exe6_compat::Compat::exe6();
+        let ids = exe6_compat::codec::Ids::new(&content, compat);
         let mut b = round.start(content.clone(), compat);
         eprintln!("round {}: {} frames from frame {}", n + 1, frames.len(), round.setup.frame);
         for i in 0..frames.len() {
@@ -175,7 +175,7 @@ fn main() {
             }
             sink.frame(b.sound_cues());
             if !o.keep_going {
-                let diffs = trace::compare(&b, frames[i], bn6_compat::Compat::bn6());
+                let diffs = trace::compare(&b, frames[i], exe6_compat::Compat::exe6());
                 if let Some(d) = diffs.first() {
                     eprintln!("  frame {frame}: the engine leaves the recording ({})", d.lines().next().unwrap_or(""));
                     break;

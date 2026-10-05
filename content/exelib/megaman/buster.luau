@@ -1,6 +1,6 @@
 --!strict
--- MegaMan's buster shot, as BN5 and BN6 share it (BN6's action 0x11, `sub_80EB436`; BN5's 0x11, the same code but
--- for the muzzle flash's attachment row and the absorbed-obstacle throw, which BN5 hasn't), of a game's
+-- MegaMan's buster shot, as EXE5 and EXE6 share it (EXE6's action 0x11, `sub_80EB436`; EXE5's 0x11, the same code but
+-- for the muzzle flash's attachment row and the absorbed-obstacle throw, which EXE5 hasn't), of a game's
 -- `MegaManBusterLook` (`buster.shot_action`): the navi raises the buster; on its second tick the projectile flies
 -- from the panel in front (the spread adds shots a row up and down; a throw throws the obstacle the navi absorbed
 -- instead), with a muzzle flash in the navi's first related slot; after five ticks, the recovery, which a move may
@@ -33,7 +33,7 @@ local SHOT_Z = 0x18_0000
 
 -- `sub_8013D5E`: what this shot is. Of 16 slots, the first `buster_blanks`
 -- are blanks and the next `buster_charged` charged shots; one draw picks a
--- slot. (BN5's buster picks the same way.)
+-- slot. (EXE5's buster picks the same way.)
 function buster.pick(navi: Object): "buster" | "blank" | "charged"
     local stats = battle.navi(navi.alliance)
     local blanks, charged = stats.buster_blanks, stats.buster_charged
@@ -95,7 +95,7 @@ local function shoot(me: Object, s: State, look: MegaManBusterLook)
             if s.mode == "spread" then
                 projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z, row = 1 })
                 projectile.fire(me, { variant = variant, damage = damage, z = SHOT_Z, row = -1 })
-                -- (BN5's spread has its own flash: 0x080EBA30.)
+                -- (EXE5's spread has its own flash: 0x080EBA30.)
                 flash = look.spread_flash or flash
             end
         end

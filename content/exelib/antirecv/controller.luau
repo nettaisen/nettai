@@ -1,6 +1,6 @@
 --!strict
--- AntiRecv's counterattack, as BN5 and BN6 share it (BN6's effect object
--- #0x2C, `sub_80E3728`; BN5's #0x2C): the dimming controller of a sprung
+-- AntiRecv's counterattack, as EXE5 and EXE6 share it (EXE6's effect object
+-- #0x2C, `sub_80E3728`; EXE5's #0x2C): the dimming controller of a sprung
 -- AntiRecv. Each game makes its own (`controller.make`: its kind, its panel
 -- changer's and bubble's, the change's sounds). The ruleset
 -- spawns it (`sub_80E37D2`; the role `kinds.anti_recovery`,
@@ -32,8 +32,8 @@ local EFFECT_TICKS = 0x3C
 local BUBBLE_DX, BUBBLE_PALETTE = 0x10_0000, 1
 -- A game's counterattack: its kind's key, its panel changer's and bubble's
 -- kinds, the sounds of the change (its tick, and the poison), and whether
--- it takes the healer's mood too, by its damage word's high half (BN5's,
--- 0x080E39DC: 0x08012820, to 1 at least; BN6's doesn't).
+-- it takes the healer's mood too, by its damage word's high half (EXE5's,
+-- 0x080E39DC: 0x08012820, to 1 at least; EXE6's doesn't).
 export type Spec = {
     id: string,
     changer: Kind,
@@ -51,7 +51,7 @@ local function effect(me: Object, spec: Spec, POISON_OWN_PANEL: PanelChange)
     if me.phase_init == 0 then
         me.timer = EFFECT_TICKS
         -- object_subtractHP on the healer (down to 0, by its side's rules:
-        -- BN5's may hold a dark MegaMan at 1 HP).
+        -- EXE5's may hold a dark MegaMan at 1 HP).
         local healer = me.related1
         if not healer then
             error("AntiRecv's counterattack has no healer (object_subtractHP writes through a null pointer)")

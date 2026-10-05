@@ -1,7 +1,7 @@
 --!strict
--- The rapid buster, as BN5 and BN6 share it (BN6's action 0x5D, `sub_80F00F2`, and its weapon routines 0x39 and
--- 0x92, `sub_8012124`; BN5's action 0x2E, 0x080ED9B8, and its weapon routine 0x68, 0x0800FB32, the patch cards'
--- Sbustr: the same code but for the muzzle flash's attachment row, 13 for BN6's 5, and how the form overlay restarts),
+-- The rapid buster, as EXE5 and EXE6 share it (EXE6's action 0x5D, `sub_80F00F2`, and its weapon routines 0x39 and
+-- 0x92, `sub_8012124`; EXE5's action 0x2E, 0x080ED9B8, and its weapon routine 0x68, 0x0800FB32, the patch cards'
+-- Sbustr: the same code but for the muzzle flash's attachment row, 13 for EXE6's 5, and how the form overlay restarts),
 -- of a game's `RapidBusterLook` (`rapid_buster.make`): nine charged shots, six ticks apart, each from the panel in
 -- front and a row up, down or level in an order one draw picks. See docs/engine/shot-chips.md §11.
 
@@ -49,7 +49,7 @@ function rapid_buster.make(look: RapidBusterLook): { setup: (navi: Object) -> Ac
             if me.attack_count == 0 then
                 look.buster.raise_arm(me)
             else
-                -- `sub_80B8E7C`, `sub_80C44D2` (BN6's steps the overlay at once; BN5's has it reload its
+                -- `sub_80B8E7C`, `sub_80C44D2` (EXE6's steps the overlay at once; EXE5's has it reload its
                 -- animation at its next step).
                 local arm = me.overlay
                 if arm then

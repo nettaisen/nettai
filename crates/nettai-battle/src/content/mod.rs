@@ -18,8 +18,8 @@
 //! See docs/design/content-pack.md for the pack's files and this API.
 //!
 //! The engine does no file IO: a loader outside it (nettai-content) reads a
-//! content root (BN6's is the committed content/bn6) and an asset root
-//! (extracted from the user's ROM by `bn6-extract content`) into this
+//! content root (EXE6's is the committed content/exe6) and an asset root
+//! (extracted from the user's ROM by `exe6-extract content`) into this
 //! model, and tests build small content sets in code.
 //!
 //! Content has an identity, [`Content::hash`], which a round's setup
@@ -30,7 +30,7 @@
 //! What the content defines is by handle: each key interns to a dense
 //! handle at load ([`Defs`]). The engine has no navi, form or other
 //! content by the original's numbers (docs/design/content-model-v2.md
-//! §3.2, §12): compat's numbers are bn6-compat's.
+//! §3.2, §12): compat's numbers are exe6-compat's.
 
 mod chips;
 mod custom;
@@ -307,7 +307,7 @@ impl Content {
         &self.rules
     }
 
-    /// The game the content is: its game pack's id (`bn6`); "" for content
+    /// The game the content is: its game pack's id (`exe6`); "" for content
     /// without packs (a test's modules alone).
     pub fn game(&self) -> &str {
         self.scripts.packs.iter().find(|p| p.kind == nettai_content_api::PackKind::Game).map_or("", |p| p.id.as_str())

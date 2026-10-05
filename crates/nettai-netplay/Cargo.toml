@@ -19,6 +19,6 @@ luau-profile = ["nettai-battle/luau-profile"]
 
 [dev-dependencies]
 nettai-battle = { workspace = true, features = ["test-content"] }
-# rollback_cost loads the BN6 content pack and replays a golden trace.
+# rollback_cost loads the EXE6 content pack and replays a golden trace.
 nettai-content = { path = "../nettai-content" }
-bn6-compat = { workspace = true, features = ["trace"] }
+exe6-compat = { workspace = true, features = ["trace"] }

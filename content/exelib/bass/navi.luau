@@ -1,6 +1,6 @@
 --!strict
--- Bass, the navi of the Bass chips, as BN6 and BN5 share him (the original's actor object #0x4F: BN6's
--- `sub_80C3970`, BN5's 0x080C2948, the same code but for the parts each game passes), brought by the navi chip
+-- Bass, the navi of the Bass chips, as EXE6 and EXE5 share him (the original's actor object #0x4F: EXE6's
+-- `sub_80C3970`, EXE5's 0x080C2948, the same code but for the parts each game passes), brought by the navi chip
 -- controller. He appears on his user's panel with his cape (a form overlay), rises for 100 ticks, raises his arm,
 -- then fires 24 volleys of two shots, 8 ticks apart, at the columns ahead holding the other side's panels: each
 -- shot at a panel with an enemy navi five times in eight (else, or if there is none, any panel of those columns),
@@ -8,7 +8,7 @@
 -- docs/engine/chips.md §3.6.33.
 --
 -- Each game makes its own kind (`bass.make`): his sprite, his cape's animation offset, his wind-up's and volleys'
--- animations, how he ends (BN6: 12 ticks, his arm down, 30 more; BN5: his last volley's animation, then gone when
+-- animations, how he ends (EXE6: 12 ticks, his arm down, 30 more; EXE5: his last volley's animation, then gone when
 -- it ends), his shot (the game's panel strike) and its flash, and the smoke he leaves in.
 
 local panels = require("../panels")
@@ -33,8 +33,8 @@ export type Spec = {
     -- His arm going up (its end starts the volleys) and the volleys' animation.
     raise_anim: number,
     volley_anim: number,
-    -- How he ends: "timed" (BN6's `sub_80C3B06`) or, with the animation his last volley takes, when it ends
-    -- (BN5's 0x080C2AD6).
+    -- How he ends: "timed" (EXE6's `sub_80C3B06`) or, with the animation his last volley takes, when it ends
+    -- (EXE5's 0x080C2AD6).
     ending: "timed" | "animation",
     last_anim: number?,
     -- A shot on (x, y) with his damage word (the game's panel strike), and its flash at his hand.
@@ -207,7 +207,7 @@ function bass.make(spec: Spec): Bass
         end
     end
 
-    -- BN6's `sub_80C3B06`: the 12 ticks, then his arm down and 30 more; BN5's 0x080C2AD6: the last volley's
+    -- EXE6's `sub_80C3B06`: the 12 ticks, then his arm down and 30 more; EXE5's 0x080C2AD6: the last volley's
     -- animation's end. Then he goes.
     local function lower(me: Object)
         if spec.ending == "animation" then

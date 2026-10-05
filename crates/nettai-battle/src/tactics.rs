@@ -1,9 +1,9 @@
-//! A player's tactics: BN5's computer-navi data (0xE0 bytes a player at
+//! A player's tactics: EXE5's computer-navi data (0xE0 bytes a player at
 //! 0x02034C20), which each console builds from its save at its last
 //! battle's end (0x0802C540, from the chips its player used most and the
 //! runs of them it played from a place by its target) and the link
 //! exchanges as a battle starts (0x08009B9A). A computer navi on the other
-//! side plays them (BN5's Dark MegaMan, docs/design/bn5-map.md §15.9): the
+//! side plays them (EXE5's Dark MegaMan, docs/design/exe5-map.md §15.9): the
 //! entries in order, a chip or a pattern (a place by its target and a run
 //! of chips). Each side's tactics are battle state: the computer navi's AI
 //! turns their entries as it plays them.
@@ -63,7 +63,7 @@ impl Tactics {
         }
     }
 
-    /// BN5's 0x0802C7BE: the block a console sends as a battle starts, from
+    /// EXE5's 0x0802C7BE: the block a console sends as a battle starts, from
     /// its player's (the save's): the first three places shuffled by three
     /// swaps, the next 39 by 39 (each swap two places drawn from `rng`,
     /// RNG2 then: `sub_8000CDA`), the entries packed to the front
