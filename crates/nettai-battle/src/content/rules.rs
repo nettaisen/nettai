@@ -51,6 +51,24 @@ pub struct FlowRules {
     /// its lab's sound recordings calls one.
     #[serde(default = "yes")]
     pub low_hp_music: bool,
+    /// The battles whose win shows the winner's navi's banner (the navi's
+    /// `banners.win`); any other win shows the role `win`'s, or
+    /// `win_judged`'s on the judge's ruling. Each game states its own.
+    pub navi_win_banner: NaviWinBanner,
+}
+
+/// The battles whose win shows the winner's navi's banner
+/// (`FlowRules::navi_win_banner`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NaviWinBanner {
+    /// Every link battle (EXE6's `sub_80081A4`: `sub_800A8D4`'s table by
+    /// the navi, whatever the result).
+    LinkBattle,
+    /// The link battles that are operation battles, battle flag 0x40
+    /// (EXE5's 0x080074D2: 0x080090E8, then 0x080090C0's table by the
+    /// navi): a Team Battle's and a NetBattle's win shows the roles'.
+    OperationBattle,
 }
 
 fn yes() -> bool {
@@ -81,6 +99,7 @@ impl Default for FlowRules {
             chip_window_at_close: false,
             intro_from_black: false,
             low_hp_music: true,
+            navi_win_banner: NaviWinBanner::LinkBattle,
         }
     }
 }
