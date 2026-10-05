@@ -1089,8 +1089,10 @@ programs aren't the import's yet), and its computer-navi data (the block at
 save +0x554C, place for place and record for record, chips by their
 numbers' names). What a match can't state of a block is left empty and
 said: a chip number the game has no chip for, and an entry for a pattern
-past the eighth. (`nettai_match::computer_navi::of_save` reads that data
-alone from a save.) A side that operates a team navi takes
+past the eighth. The editor's computer navi pane takes that data alone from
+a save ("From a save…", `nettai_match::computer_navi::of_save`), and edits
+it: the 42 places in their six lists, the eight records, and the game's
+chips to put in them (README.md, "The match editor"). A side that operates a team navi takes
 the save's level (its story flags' count) and, where the save's version has
 the navi, the HP and the light/dark value of the navi's own block; a navi
 of the other version, the story's HP at the save's level.
@@ -1167,8 +1169,12 @@ into an enemy's row and fires its buster (three shots).
   are all filled it reads on: into the record's score, then the next
   record's place and chips, each as a chip's number. So a record's score,
   the record after it (named by an entry or not) and the records' order all
-  show. (The engine holds the block so; its AI still ends a pattern at its
-  first place that holds no chip, until its port reads on as the game does.)
+  show, to a navi that plays a pattern. None of the games' navis does: the
+  game's test of the pattern's place (0x0802BC48) reads what its move-lag
+  routine left behind, not the place, and always fails for them, so a
+  pattern entry only ever costs the computer navi a turn (it steps to a
+  panel of its own area) and its record's contents don't play. The records
+  are stated as the save has them all the same.
 
 **What the form leaves out of the save's block**: the count at +0x54, which
 the send writes, and the block's last eight bytes, which nothing reads.

@@ -1138,6 +1138,17 @@ pub enum TacticEntry {
     Empty,
 }
 
+/// What a computer navi's read of a pattern finds (EXE5's 0x0802BCD6): a
+/// chip place's chip, a halfword the game takes for a chip's number
+/// without its being a chip place's chip (a place holding 0, half of a
+/// pattern's score, a record's `dx` and `dy`), or the run's end (0xFFFF).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TacticPatternRead {
+    Chip(crate::ChipHandle),
+    Number(u16),
+    End,
+}
+
 /// A side's defensive-chip record (the linked registry).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LinkedChip {
@@ -1434,11 +1445,14 @@ pub trait CoreApi {
     fn alive_actor_slot(&self, side: u8, i: u8) -> Option<ObjectRef>;
     /// Player `side`'s tactics (EXE5's computer-navi data): how many entries
     /// they count, their entry in place `i` (from 0; past the count, an
-    /// empty place), and their pattern `i` (from 0): its place from the
-    /// target and its chips.
+    /// empty place), their pattern `i` (from 0)'s place from the target,
+    /// and the `k`th halfword (from 0) a computer navi reads of that
+    /// pattern's run, which goes on past a record whose five chip places
+    /// all hold one (0x0802BCD6).
     fn tactic_count(&self, side: u8) -> usize;
     fn tactic(&self, side: u8, i: usize) -> TacticEntry;
-    fn tactic_pattern(&self, side: u8, i: usize) -> ApiResult<(i8, i8, Vec<crate::ChipHandle>)>;
+    fn tactic_pattern(&self, side: u8, i: usize) -> ApiResult<(i8, i8)>;
+    fn tactic_pattern_read(&self, side: u8, i: usize, k: usize) -> TacticPatternRead;
     /// The first entry and the entry in place `i` (from 0) change places
     /// (0x0802C0DC's swap).
     fn swap_tactics(&mut self, side: u8, i: usize);

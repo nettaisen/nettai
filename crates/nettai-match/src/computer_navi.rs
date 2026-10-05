@@ -67,7 +67,11 @@
 //!   score's low half, its high half, the next record's place bytes and
 //!   that record's chip places, each as a chip's number. So a record's
 //!   score, the record after it (named by an entry or not) and the records'
-//!   order all show. A 0 in a chip place is played as chip 0.
+//!   order all show. A 0 in a chip place is played as chip 0. (To a navi
+//!   that plays a pattern: with the games' own navis the test of a
+//!   pattern's place, 0x0802BC48, always fails, so a pattern entry only
+//!   costs the computer navi a turn and its record never plays. A match
+//!   states the records as the save has them all the same.)
 //!
 //! The lists are named for what the game writes there; any entry may stand
 //! in any place, as in the block (a save made by hand can have a giga chip
