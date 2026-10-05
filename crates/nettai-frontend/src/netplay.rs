@@ -1,5 +1,5 @@
 //! Live play against another player over the network (docs/frontend.md):
-//! `--play --host PORT` or `--play --join ADDR:PORT`.
+//! `--match FILE --host PORT` or `--match FILE --join ADDR:PORT`.
 //!
 //! Each player's frontend runs the whole battle on nettai-netplay's
 //! [`Peer`]: a getgud rollback session whose inputs go to the other peer
@@ -47,7 +47,7 @@ use crate::driver::{Driver, NetStatus, Ran, Step, result_text};
 /// What a player brings to a netbattle: the match's game (a game is its
 /// rules), their side of the match (a match file's left side, or one drawn
 /// from their seed), and from the host the arena (a match file's, of the
-/// offer's game) or a stage the round must be fought on (`--stage`).
+/// offer's game) or a stage the round must be fought on.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Offer {
     pub game: String,
