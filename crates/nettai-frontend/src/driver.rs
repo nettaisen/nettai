@@ -1,7 +1,7 @@
 //! What drives the battle each tick: a golden trace's recorded inputs, or
 //! live input from the keyboard.
 
-use nettai_battle::battle::{mode, top};
+use nettai_battle::battle::mode;
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::cues::CueAction;
 use nettai_battle::content::{ChipCode, Content, WindowView};
@@ -9,7 +9,8 @@ use nettai_battle::custom::{self, BattleFolder, FolderChip, Phase, PlayerSetup, 
 use nettai_battle::input::keys;
 use nettai_battle::link::Link;
 use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
-use nettai_battle::{Battle, PlayerTick, Rng, TickEvents};
+use nettai_battle::{Battle, BattleResult, PlayerTick, Rng, TickEvents, TickInput};
+use nettai_match::{After, Set};
 use nettai_render::Region;
 use exe6_compat::trace::{self, Frame, Round};
 use exe6_compat::Compat;
@@ -34,6 +35,14 @@ pub trait Driver {
     /// what should have happened.
     fn check(&self, _b: &Battle) -> Vec<String> {
         Vec::new()
+    }
+    /// For a driver that plays a set by giving each tick's inputs (`next`):
+    /// how the set goes on after the tick that left the battle as `b` is,
+    /// if that ended the round (`nettai_match::Set::after`). The session
+    /// goes on with the next round's battle, or is finished with the
+    /// result. None: the round goes on (all a driver of one round says).
+    fn round_ended(&mut self, _b: &Battle) -> Option<After> {
+        None
     }
     /// A short description of where playback is.
     fn position(&self) -> String;
@@ -404,25 +413,38 @@ pub fn folder_of(content: &Content, chips: &[(&str, u8)]) -> SavedFolder {
     }
 }
 
-/// Plays a round from the keyboard: the local player is the left navi,
-/// with their own custom screen; the right navi stands still, and its
-/// custom screen picks the first chip it can and presses OK.
+/// Plays a set from the keyboard, round after round to its end: the local
+/// player is the left navi, with their own custom screen; the right navi
+/// stands still, and its custom screen picks the first chip it can and
+/// presses OK.
 pub struct LivePlayer {
-    pub setup: RoundSetup,
-    content: Arc<Content>,
+    set: Set,
+    /// Ticks played since the start, through every round (a frame's number).
     ticks: u32,
+    /// The round being played, from 1.
+    round: u8,
 }
 
 impl LivePlayer {
-    pub fn new(setup: RoundSetup, content: Arc<Content>) -> LivePlayer {
-        LivePlayer { setup, content, ticks: 0 }
+    pub fn new(set: Set) -> LivePlayer {
+        LivePlayer { set, ticks: 0, round: 1 }
+    }
+}
+
+/// A set's result as its player is told it.
+pub fn result_text(r: BattleResult) -> &'static str {
+    match r {
+        BattleResult::Won => "you won",
+        BattleResult::Lost => "you lost",
+        BattleResult::Drawn => "a draw",
+        _ => "cut short",
     }
 }
 
 /// The right navi's buttons: on its custom screen, A on the chip under the
 /// cursor (the first one) if it can be picked, then START and A, a press
 /// every other tick.
-fn bot_buttons(b: &Battle, side: usize, tick: u32) -> u16 {
+pub(crate) fn bot_buttons(b: &Battle, side: usize, tick: u32) -> u16 {
     let s = &b.custom.sides[side];
     let Some(screen) = s.screen.as_ref().filter(|_| b.round.mode == mode::CUSTOM && s.in_custom) else { return 0 };
     if screen.phase != Phase::Choosing || tick % 2 == 0 {
@@ -441,24 +463,30 @@ fn bot_buttons(b: &Battle, side: usize, tick: u32) -> u16 {
 impl Driver for LivePlayer {
     fn start(&mut self) -> Battle {
         self.ticks = 0;
-        Battle::new(self.setup.clone(), self.content.clone())
+        self.round = 1;
+        self.set.start()
     }
 
     fn next(&mut self, b: &Battle, keys: u16) -> Option<Step> {
         self.ticks += 1;
         let local = b.setup.local_side as usize;
-        let held = |side: usize| if side == local { keys & 0x3FF } else { bot_buttons(b, side, self.ticks) };
-        let input = [PlayerTick { held: held(0) }, PlayerTick { held: held(1) }];
-        // The end state asks the link session to close; it closes at once.
-        let r = &b.round;
-        let events = TickEvents { link_closed: r.top == top::END && r.mode == 0 && r.sub == 4 && r.init == 4, ..TickEvents::default() };
-        Some(Step { input, events, frame: Some(self.ticks) })
+        let buttons = [0, 1].map(|side| if side == local { keys } else { bot_buttons(b, side, self.ticks) });
+        // (The buttons are the whole input, as a netplay peer's are.)
+        let TickInput { players, events } = nettai_netplay::standin::tick_input(b, buttons);
+        Some(Step { input: players, events, frame: Some(self.ticks) })
+    }
+
+    fn round_ended(&mut self, b: &Battle) -> Option<After> {
+        let after = self.set.after(b, b.setup.local_side)?;
+        if matches!(after, After::Round(_)) {
+            self.round += 1;
+        }
+        Some(after)
     }
 
     fn position(&self) -> String {
-        format!("live tick {}", self.ticks)
+        format!("live round {} tick {}", self.round, self.ticks)
     }
-
 }
 
 /// A plain-text custom screen for a player: the dealt chips in the grid's
@@ -564,6 +592,37 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
     Some(out)
 }
 
+/// What the tests of a set play: a match a round of which is over at the
+/// first shot, and the buttons that fire it.
+#[cfg(test)]
+pub(crate) mod short_set {
+    use super::*;
+
+    /// A match of `game` picked from `seed` (two MegaMen, the first a
+    /// version's that has one), the right navi with 1 HP: a round is over
+    /// when the left one's buster hits.
+    pub fn of(content: &Arc<Content>, game: &str, seed: u32) -> nettai_match::Match {
+        let mut m = nettai_match::pick::live(content, game, seed, None).unwrap();
+        let right = &mut m.sides[1].stats;
+        (right.max_base_hp, right.max_hp, right.hp) = (1, 1, 1);
+        assert_eq!(nettai_match::check_match(content, &m), Vec::<String>::new());
+        m
+    }
+
+    /// The buttons of the player on `side` who wins it: on the custom
+    /// screen a chip and OK, as the standing navi's screen presses them; in
+    /// the fight the buster, again and again.
+    pub fn shooter(b: &Battle, side: usize, tick: u32) -> u16 {
+        if b.round.mode == mode::CUSTOM {
+            bot_buttons(b, side, tick)
+        } else if tick % 8 < 2 {
+            keys::B
+        } else {
+            0
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -578,7 +637,7 @@ mod tests {
         let settings = BattleSettings::on(&content, stage);
         // GunDelS3 N, which the test content has.
         let folder = folder_of(&content, &[("gundels3", 13)]);
-        let mut live = LivePlayer::new(live_setup(&content, settings, [folder, folder], "falzar", 7), content.clone());
+        let mut live = LivePlayer::new(Set::new(content.clone(), live_setup(&content, settings, [folder, folder], "falzar", 7), [folder, folder]));
         let mut b = live.start();
         let mut shown = false;
         for tick in 0..3000u32 {
@@ -621,8 +680,8 @@ mod tests {
             }
             let text = nettai_match::write(&content, &drawn);
             let read = nettai_match::parse(&content, &text).unwrap();
-            let mut a = LivePlayer::new(drawn.round(&content, seed), content.clone());
-            let mut b = LivePlayer::new(read.round(&content, read.seed.unwrap()), content.clone());
+            let mut a = LivePlayer::new(Set::of(&content, &drawn, seed));
+            let mut b = LivePlayer::new(Set::of(&content, &read, read.seed.unwrap()));
             let (mut x, mut y) = (a.start(), b.start());
             let mut masher = nettai_netplay::standin::Masher::new(seed as u64);
             for tick in 0..2500 {
@@ -683,7 +742,7 @@ mod tests {
         let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 5);
         nettai_match::facts::write_version(&content, &mut setup.players[0], "falzar", true, Some(&nettai_match::CrossList::new(&[heat]))).unwrap();
-        let mut live = LivePlayer::new(setup, content.clone());
+        let mut live = LivePlayer::new(Set::new(content.clone(), setup, [folder, folder]));
         let mut b = live.start();
         // The first screen: UP opens the Cross window (a hold acts on its
         // second tick), A chooses HeatCross, START and A press OK.
@@ -789,7 +848,7 @@ mod tests {
         let list = list.map(|l| nettai_match::CrossList::new(&l.iter().map(|k| form_of(&content, k)).collect::<Vec<_>>()));
         nettai_match::facts::write_version(&content, &mut setup.players[0], version, true, list.as_ref()).unwrap();
         tweak(&content, &mut setup.navi_stats[0]);
-        let mut live = LivePlayer::new(setup, content.clone());
+        let mut live = LivePlayer::new(Set::new(content.clone(), setup, [folder, folder]));
         let mut b = live.start();
         play_until(&mut live, &mut b, 3000, |_, _| 0, |b| choosing(b).is_some());
         (content, live, b)
@@ -957,7 +1016,7 @@ mod tests {
             let folder = folder_of(&content, &[("cannon", 0)]);
             let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 5);
             setup.players[0].navi_level = level;
-            let mut live = LivePlayer::new(setup, content.clone());
+            let mut live = LivePlayer::new(Set::new(content.clone(), setup, [folder, folder]));
             let mut b = live.start();
             play_until(&mut live, &mut b, 3000, |_, _| 0, |b| choosing(b).is_some());
             let screen = b.custom.sides[0].screen.unwrap();
