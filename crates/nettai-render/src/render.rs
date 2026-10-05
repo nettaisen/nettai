@@ -50,7 +50,8 @@ pub struct Renderer<'a> {
     /// whose versions the engine doesn't tell apart: what the console shows
     /// of its own (EXE5's emblems), and which chips are the other version's,
     /// whose art its ROM draws otherwise (`ChipArt::version`). None: the
-    /// engine's (EXE6's `Unlocks::version`), or the pack's base version.
+    /// version the console's player brought, or the pack's base version
+    /// (`custom::console_version`).
     pub console_version: Option<&'static str>,
     /// How text is drawn, and the font of the font mode.
     text_mode: TextMode,
@@ -168,8 +169,8 @@ impl<'a> Renderer<'a> {
         // (The local player's custom screen and chatbox: the game's pack's.)
         let local = b.setup.local_side as usize & 1;
         let own_game = self.packs.game(&b.content);
-        let version = exe6_compat::Unlocks::of_side(b, local as u8).version;
-        let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, version, self.console_version, &mut self.problems);
+        let version = crate::custom::console_version(b, &self.packs, local as u8);
+        let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, version, &mut self.problems);
         let chatbox = crate::chatbox::prepare(b, own_game, &self.packs, &text, &mut self.problems);
         let mut list = SpriteList::default();
         objects::queue_objects(b, &self.packs, &view, self.console_region, &mut list, &mut self.problems, !draw);
