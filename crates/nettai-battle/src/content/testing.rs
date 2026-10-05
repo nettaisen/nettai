@@ -206,8 +206,22 @@ fn shared() -> &'static (Arc<Content>, crate::content::ContentHash) {
     })
 }
 
+/// The version the test rounds' players are of: this content plays by
+/// EXE6's beast system, whose setup takes one, and a round states it (none
+/// is assumed: `SideRules::for_player`).
+pub const VERSION: &str = "falzar";
+
+/// A player who brings nothing but their version ([`VERSION`]), where a
+/// system of `content` takes one.
+pub fn player(content: &Content) -> crate::custom::PlayerSetup {
+    let mut p = crate::custom::PlayerSetup::default();
+    p.set_fact(content, "version", &[crate::rules::Fact::Name(VERSION)]).expect("the test content's version");
+    p
+}
+
 /// A round on this content on stage `stage` (its key), both navis with
-/// `stats`: RNG seed 1, side 0's perspective, no set score, no folders.
+/// `stats`: RNG seed 1, side 0's perspective, no set score, no folders,
+/// the players of [`VERSION`].
 pub fn round_setup(stage: &str, stats: crate::setup::NaviStats) -> crate::setup::RoundSetup {
     let (content, hash) = shared();
     crate::setup::RoundSetup {
@@ -219,8 +233,19 @@ pub fn round_setup(stage: &str, stats: crate::setup::NaviStats) -> crate::setup:
         score: Default::default(),
         later_stages: Default::default(),
         low_hp_music_latched: false,
-        players: Default::default(),
+        players: [player(content), player(content)],
         link_delay: 0,
+    }
+}
+
+/// Play `setup` on `content`, another build of the test content (its own
+/// ruleset and handles): the round names it, and its players' setups are
+/// remade for its systems (a setup's blocks are its content's): of
+/// [`VERSION`], and nothing else.
+pub fn on(setup: &mut crate::setup::RoundSetup, content: &Content) {
+    setup.content = content.hash();
+    for p in &mut setup.players {
+        p.rules = player(content).rules;
     }
 }
 
