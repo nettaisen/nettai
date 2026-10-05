@@ -276,6 +276,38 @@ fn karma_and_souls_write_and_read_back() {
     assert!(e.contains(&"left: souls: no soul \"heatcross\" in exe5".to_string()), "{e:?}");
 }
 
+/// What a setup that says nothing has is the rules' own to state (their
+/// systems' `setup_defaults`), and a match writes none of it: EXE6's, every
+/// Cross of the version owned and Beast Out; EXE5's, every soul of either
+/// version, Soul Unison, Chaos Unison and a fresh save's karma.
+#[test]
+fn a_setup_that_says_nothing_has_the_rules_defaults() {
+    use nettai_battle::custom::PlayerSetup;
+    use nettai_content_api::{FieldValue, Registry};
+    let nothing = PlayerSetup::default();
+    let six = exe6_content();
+    let (schema, block) = nothing.rule_block(&six, "cross").expect("EXE6's cross system");
+    let crosses = schema.index_of("crosses").unwrap();
+    assert!((0..5).all(|k| block.get_elem(schema, crosses, k) == Some(FieldValue::Bool(true))));
+    let (schema, block) = nothing.rule_block(&six, "beast").expect("EXE6's beast system");
+    assert_eq!(block.get(schema, schema.index_of("beast_out").unwrap()), FieldValue::Bool(true));
+    let five = exe5_content();
+    let (schema, block) = nothing.rule_block(&five, "souls").expect("EXE5's souls system");
+    let souls = schema.index_of("souls").unwrap();
+    let listed: Vec<_> = (0..16).filter_map(|k| block.get_elem(schema, souls, k)).take_while(|v| *v != FieldValue::Ref(None)).collect();
+    let all: Vec<_> = crate::facts::all_souls(&five, "exe5").into_iter().map(|f| FieldValue::Ref(Some((Registry::Form, f.0)))).collect();
+    assert_eq!(listed, all, "every soul the game has, in the forms' order");
+    assert_eq!(all.len(), 12);
+    for flag in ["soul_unison", "chaos_unison"] {
+        assert_eq!(block.get(schema, schema.index_of(flag).unwrap()), FieldValue::Bool(true), "{flag}");
+    }
+    // A side that says nothing of them plays with exactly that.
+    let plain = parse(&five, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
+    let setup = plain.round(&five, 3);
+    let (_, played) = setup.players[0].rule_block(&five, "souls").unwrap();
+    assert_eq!(played, block);
+}
+
 /// A round of `m` after `ticks` ticks of nothing pressed.
 fn started(content: &Arc<Content>, m: &Match, ticks: usize) -> nettai_battle::Battle {
     let mut b = nettai_battle::Battle::new(m.round(content, 0x5EED), content.clone());

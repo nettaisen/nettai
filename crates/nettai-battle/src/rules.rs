@@ -818,6 +818,49 @@ mod tests {
         assert_eq!((b.fact(0, PlayerFact::Version).and_then(|f| f.name()), b.fact(1, PlayerFact::Version).and_then(|f| f.name())), (Some("gregar"), Some("falzar")));
     }
 
+    /// A system's setup defaults may give an array field a list: its
+    /// elements from the first, the rest zero; a definition by its id. More
+    /// values than the field holds, a value of another type and an id the
+    /// content hasn't are content errors that name the field.
+    #[test]
+    fn a_setups_defaults_may_be_lists() {
+        let with = |defaults: &str| -> Result<Content, String> {
+            let mut c = testing::build();
+            let module = c.scripts.module_mut(testing::ROOT, "rules/systems").expect("the test content's rules");
+            let stock = "    setup = { bonus = \"u8\" },\n";
+            assert!(module.contains(stock), "rules/systems.luau's counter has `{stock}`");
+            let fields = "bonus = \"u8\", marks = \"u8[3]\", owned = \"bool[2]\", wears = \"form[2]\"";
+            *module = module.replace(stock, &format!("    setup = {{ {fields} }},\n    setup_defaults = {defaults},\n"));
+            c.define().map_err(|e| e.message)?;
+            Ok(c)
+        };
+        let c = with("{ bonus = 2, marks = { 4, 5 }, owned = { true }, wears = { \"base\" } }").unwrap_or_else(|e| panic!("{e}"));
+        let counter = c.defs.ruleset_systems().iter().map(|&h| c.defs.system(h)).find(|s| s.key == "test/counter").expect("the counter");
+        let (schema, block) = (c.defs.schema(counter.setup), counter.setup_block());
+        let at = |field: &str, k: usize| block.get_elem(schema, schema.index_of(field).unwrap(), k).unwrap();
+        assert_eq!(block.get(schema, schema.index_of("bonus").unwrap()), FieldValue::U8(2));
+        assert_eq!([at("marks", 0), at("marks", 1), at("marks", 2)], [FieldValue::U8(4), FieldValue::U8(5), FieldValue::U8(0)]);
+        assert_eq!([at("owned", 0), at("owned", 1)], [FieldValue::Bool(true), FieldValue::Bool(false)]);
+        let base = c.defs.form_by_key("base").expect("the test navi's base form");
+        assert_eq!([at("wears", 0), at("wears", 1)], [FieldValue::Ref(Some((nettai_content_api::Registry::Form, base.0))), FieldValue::Ref(None)]);
+        // (A player's setup that gives none starts from it.)
+        let mut player = crate::custom::PlayerSetup::default();
+        player.set_fact(&c, "bonus", &[Fact::Value(Value::Int(9))]).unwrap();
+        let (_, set) = player.rule_block(&c, "test/counter").unwrap();
+        assert_eq!(set.get_elem(schema, schema.index_of("marks").unwrap(), 1), Some(FieldValue::U8(5)));
+        let refused = |defaults: &str| with(defaults).err().unwrap_or_else(|| panic!("{defaults} is taken"));
+        let e = refused("{ marks = { 1, 2, 3, 4 } }");
+        assert!(e.ends_with("setup_defaults.marks: 4 values, and the field holds 3"), "{e}");
+        let e = refused("{ owned = { 1 } }");
+        assert!(e.contains("setup_defaults.owned: "), "{e}");
+        let e = refused("{ marks = { 300 } }");
+        assert!(e.contains("setup_defaults.marks: Int(300) doesn't fit the field's elements"), "{e}");
+        let e = refused("{ wears = { \"nothing\" } }");
+        assert!(e.ends_with("setup_defaults.wears: the content has no form \"nothing\""), "{e}");
+        let e = refused("{ bonus = { 1 } }");
+        assert!(e.contains("setup_defaults.bonus: "), "{e}");
+    }
+
     #[test]
     fn each_side_runs_the_rulesets_systems_for_itself() {
         let b = started(scenario::setup());
