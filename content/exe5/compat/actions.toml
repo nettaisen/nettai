@@ -73,3 +73,5 @@
 "knightman/charge/action" = 0x09
 # NumberMan's charged attack (his table's entry 7).
 "numberman/charge/action" = 0x07
+# ToadMan's charged attack (his table's entry 8).
+"toadman/charge/action" = 0x08

@@ -18,6 +18,7 @@
 "engine/spark" = { pool = "effect", index = 0x04 }
 "engine/status-visual" = { pool = "effect", index = 0x06 }
 "engine/afterimage" = { pool = "effect", index = 0x28 }
+"engine/hit-marker" = { pool = "effect", index = 0x6B }
 "attachment" = { pool = "actor", index = 0x05 }
 "widesht/wave" = { pool = "attack", index = 0x3B }
 "boomer/boomerang" = { pool = "attack", index = 0x32 }

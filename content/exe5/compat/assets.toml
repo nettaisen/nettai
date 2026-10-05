@@ -321,6 +321,7 @@ falling-rock = 0x0d9
 crack-shot = 0x0da
 shademan-call = 0x0de
 sand-worm = 0x0e1
+toad-dive = 0x0e2
 grid-dash = 0x0e4
 rockfall = 0x0e5
 voltz-drop = 0x0ea

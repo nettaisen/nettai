@@ -277,6 +277,7 @@ language = "en"
 "roll-ds" = { name = "Roll\uE008", description = "Attack an\nenmy,then\nheals you" }
 "roll-sp" = { name = "Roll\uE003", description = "Attack an\nenmy,then\nheals you" }
 "rush" = { name = "Rush", description = "" }
+"s-melody" = { name = "S-Melody", description = "Sing and\nparalyze\nthe enemy" }
 "satelity" = { name = "Satelity", description = "Stp cursr\nfor laser\nattack" }
 "seaseed" = { name = "SeaSeed", description = "Makes 9sq\nwtr zone\n3sq ahead" }
 "serchman" = { name = "SerchMan", description = "Aim\nand fire\n5 shots" }
@@ -374,6 +375,7 @@ language = "en"
 "protoman" = { name = "ProtoMan" }
 "searchman" = { name = "SerchMan" }
 "shadowman" = { name = "ShadoMan" }
+"toadman" = { name = "ToadMan" }
 "tomahawkman" = { name = "TmhkMan" }
 
 [forms]

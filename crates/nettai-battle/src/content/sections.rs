@@ -191,6 +191,7 @@ struct StatusSection {
     hp_loss: super::rules::HpLoss,
     emotion: super::rules::EmotionRules,
     form_break: super::FormBreak,
+    weakness_hit_breaks_form: bool,
 }
 
 /// The `fresh_stats` section but its weapon (`mode9_a`, a definition: the
@@ -330,6 +331,7 @@ impl Stated {
                 hp_loss: r.intake.hp_loss,
                 emotion: r.emotion,
                 form_break: r.form_break,
+                weakness_hit_breaks_form: r.weakness_hit_breaks_form,
             }),
             lockon: Some(r.lockon.clone()),
             chip_use: Some(r.chip_use),
@@ -376,6 +378,7 @@ impl Stated {
             reactions: status.reactions,
             emotion: status.emotion,
             form_break: status.form_break,
+            weakness_hit_breaks_form: status.weakness_hit_breaks_form,
             intake: super::rules::IntakeRules {
                 bugs_before_drain: status.bugs_before_drain,
                 drain_bug_flags: status.drain_bug_flags,
