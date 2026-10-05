@@ -197,8 +197,8 @@ MegaMan at his fresh stats with a folder its rules accept.)
 
 - **The field**: one of the 96 link battle stages the content defines (the
   settings records a link battle draws from, `sub_81209DC`: the stages with
-  the link effect and not the random battle's), with a background drawn as
-  a link battle draws one: from the table the game's `flow` rules state
+  the link effect and not the random battle's), with a background picked at
+  random as a link battle picks one: from the table the game's `flow` rules state
   (`link_backgrounds`: EXE6's `byte_8120A20`, which gen-content checks
   against the ROM). The set's later rounds get theirs the same way.
 - **A folder for each player**: 30 chips that keep EXE6's folder rules
@@ -383,7 +383,12 @@ enemy names).
 - the first part is the shadow: hidden, drawn on the ground one layer back
   (`sprite_hasShadow`), or drawn with the sprite (`sprite_noShadow`). Many
   sprites' first part is no shadow but part of the picture, so a kind that
-  leaves it hidden (the state after loading) draws incomplete, or nothing;
+  leaves it hidden (the state after loading) draws incomplete, or nothing.
+  A sprite with a ground shadow that the game marks with its flag 0x20
+  (`sprite_setField0x3Bit5`: `Look::under_objects`) has every part drawn as
+  the shadow is, one layer back and in the first bucket, at the sprite's
+  height: a mark on the floor, under every object (EXE5's immobilized mark,
+  its ripple over a dived navi, DethPhnx's fire);
 - order: parts go into depth buckets (ground y + 0x40) and come out
   deepest first, most recent first, so later and lower objects are in
   front; at most 128 parts;
