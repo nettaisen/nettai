@@ -346,12 +346,12 @@ impl Driver for Exe5TracePlayer {
 // ---- Live play -------------------------------------------------------------------
 //
 // What a live round is made of (the arena, each side's player) is a match
-// (`nettai_match`): live play's random draw of one (`nettai_match::draw`),
+// (`nettai_match`): live play's random pick of one (`nettai_match::pick`),
 // or a match file (`--match`).
 
 /// A round to play live on `content` with these battle settings: two
 /// MegaMen of `version` (one of the names the game's rules declare) at
-/// their fresh stats (`nettai_match::Side::base_stats`, as live play draws
+/// their fresh stats (`nettai_match::Side::base_stats`, as live play picks
 /// them), each bringing their folder, shuffled from the seed, with every
 /// Cross and Beast Out of that version (`nettai_match::facts`).
 pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFolder; 2], version: &str, seed: u32) -> RoundSetup {
@@ -614,7 +614,7 @@ mod tests {
     fn a_saved_match_plays_the_same_battle() {
         let content = nettai_match::testing::exe6_content();
         for seed in [5, 77] {
-            let mut drawn = nettai_match::draw::live(&content, "exe6", seed, None).unwrap();
+            let mut drawn = nettai_match::pick::live(&content, "exe6", seed, None).unwrap();
             // (1000 HP each, so the round lasts the test.)
             for s in &mut drawn.sides {
                 (s.stats.max_base_hp, s.stats.max_hp, s.stats.hp) = (1000, 1000, 1000);

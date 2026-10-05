@@ -96,3 +96,4 @@
 "netbattle-91" = { settings = [0x5c], layout = 0x20, actor_list = 0x0811B7C9 }
 "netbattle-92" = { settings = [0x5d], layout = 0x20, actor_list = 0x0811B7DA }
 "netbattle-93" = { settings = [0x5e], layout = 0x6a, actor_list = 0x0811B7EB }
+"netbattle-94" = { settings = [0x5f], layout = 0x6a, actor_list = 0x0811B7FC }

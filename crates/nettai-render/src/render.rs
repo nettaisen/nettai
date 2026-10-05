@@ -44,7 +44,7 @@ impl Region {
     }
 }
 
-/// Draws battles; keeps its layer buffers between frames.
+/// Picks battles; keeps its layer buffers between frames.
 pub struct Renderer<'a> {
     /// The content's own pack's graphics (the HUD's and the custom
     /// screen's frames).

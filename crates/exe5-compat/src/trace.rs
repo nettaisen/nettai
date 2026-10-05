@@ -1187,7 +1187,7 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
     };
     // The recording console's RNG1 (the trace's `rng1`), sampled after the
     // battle's update and before the main loop's draw: the engine after
-    // frame N is the trace at N + 1. Draws the console makes after the
+    // frame N is the trace at N + 1. Picks the console makes after the
     // sample (an emotion window's flicker, a camera shake's) make the two
     // differ for a frame or a few, then agree again; a difference still
     // there at the round's end is the model's, and stops the round at the
