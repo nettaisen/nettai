@@ -126,6 +126,9 @@ pub struct LayoutDoc {
     pub slot_blank: u8,
     pub ok_cursor: CursorDoc,
     pub special_cursor: CursorDoc,
+    /// (A pack from before the field: none shown.)
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub button_uses: bool,
 }
 
 /// `nettai_assets::CursorPlace`: the place, and each frame's four corners
@@ -165,6 +168,7 @@ impl From<CustomLayout> for LayoutDoc {
             slot_blank,
             ok_cursor,
             special_cursor,
+            button_uses,
         } = l;
         LayoutDoc {
             column_cells,
@@ -181,6 +185,7 @@ impl From<CustomLayout> for LayoutDoc {
             slot_blank,
             ok_cursor: ok_cursor.into(),
             special_cursor: special_cursor.into(),
+            button_uses,
         }
     }
 }
@@ -202,6 +207,7 @@ impl From<LayoutDoc> for CustomLayout {
             slot_blank,
             ok_cursor,
             special_cursor,
+            button_uses,
         } = l;
         CustomLayout {
             column_cells,
@@ -218,6 +224,7 @@ impl From<LayoutDoc> for CustomLayout {
             slot_blank,
             ok_cursor: ok_cursor.into(),
             special_cursor: special_cursor.into(),
+            button_uses,
         }
     }
 }
@@ -233,6 +240,10 @@ pub struct ButtonDoc {
     /// The column's icons for what it gives, with the flying icon's palette.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icons: Option<TileImage>,
+    /// The game versions whose consoles fly the icon in a palette of their
+    /// own: the icons' image's palette rows after the first, in order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub icon_versions: Vec<String>,
 }
 
 /// Another language's pictures with words: its own files, named with the
@@ -427,8 +438,11 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
             let states = (b.tiles.len() as u32).div_ceil((w * h).max(1)).max(1);
             let tiles = image(&format!("buttons/{name}.png"), &b.tiles, Layout::Blocks { width: w, height: h, columns: states }, &[frame0], 0, &none);
             let picture = image(&format!("pictures/{name}.png"), &b.picture.tiles, PICTURE, &b.palettes, b.palettes.len(), &none);
-            let icons = (!b.icons.is_empty()).then(|| image(&format!("buttons/{name}-icons.png"), &b.icons, ICONS(14), &[b.icon_palette], 1, &none));
-            ButtonDoc { name: name.clone(), size: [b.width, b.height], tiles, picture, icons }
+            let icon_rows: Vec<Palette> = std::iter::once(b.icon_palette).chain(b.icon_palettes.iter().map(|(_, p)| *p)).collect();
+            let icons =
+                (!b.icons.is_empty()).then(|| image(&format!("buttons/{name}-icons.png"), &b.icons, ICONS(14), &icon_rows, icon_rows.len(), &none));
+            let icon_versions = if icons.is_some() { b.icon_palettes.iter().map(|(v, _)| v.clone()).collect() } else { Vec::new() };
+            ButtonDoc { name: name.clone(), size: [b.width, b.height], tiles, picture, icons, icon_versions }
         })
         .collect();
     let maps =|m: &[Vec<MapEntry>]| m.iter().map(|m| m.iter().map(tiles::entry_text).collect()).collect();
@@ -551,14 +565,18 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         let (picture, palettes) = img(&b.picture, report)?;
         let picture = Picture { tiles: picture, palette: palettes.first().copied().unwrap_or([0; 16]) };
         let tiles = img(&b.tiles, report)?.0;
-        let (icons, icon_palette) = match &b.icons {
+        let (icons, icon_palette, icon_palettes) = match &b.icons {
             Some(i) => {
                 let (t, p) = img(i, report)?;
-                (t, p.first().copied().unwrap_or([0; 16]))
+                let own = b.icon_versions.iter().zip(p.iter().skip(1)).map(|(v, p)| (v.clone(), *p)).collect();
+                (t, p.first().copied().unwrap_or([0; 16]), own)
             }
-            None => (Tiles::default(), [0; 16]),
+            None => (Tiles::default(), [0; 16], Vec::new()),
         };
-        buttons.push((b.name.clone(), ButtonPictures { width: b.size[0], height: b.size[1], tiles, picture, palettes, icons, icon_palette }));
+        buttons.push((
+            b.name.clone(),
+            ButtonPictures { width: b.size[0], height: b.size[1], tiles, picture, palettes, icons, icon_palette, icon_palettes },
+        ));
     }
     Some(CustomScreen {
         layout: doc.layout.map_or(CustomLayout::BN6, CustomLayout::from),

@@ -610,6 +610,8 @@ impl Screen {
                 self.look.draw_cursor();
                 self.look.draw_emblem(0);
                 self.look.draw_regular(folder.regular_pending && !regular_taken);
+                // (BN5's 0x08023012: the chip a button holds, over it.)
+                self.look.draw_held(self.hold.is_some());
                 self.look.draw_turn_limit();
                 self.look.frame += 1;
                 request
@@ -1089,6 +1091,7 @@ impl Screen {
         let Some(last) = self.last_pick(folder, view).filter(|l| !l.navi_chip) else { return false };
         self.selected -= 1;
         self.hold = Some(Hold { button, chip: last.slot, at: self.selected });
+        self.look.column_kept = Some(self.selected);
         self.slots[button as usize].state = SlotState::Selected;
         true
     }
@@ -1104,6 +1107,8 @@ impl Screen {
     pub fn set_held_icon(&mut self, button: u8, shown: bool, folder: &BattleFolder, view: &PlayerView) -> bool {
         let Some(h) = self.hold.filter(|h| h.button == button) else { return false };
         self.look.column[h.at as usize] = if shown { self.chip_in(h.chip, folder).map(|c| checked(c, view)) } else { None };
+        // (0x08023712: the cell's frame drawn empty.)
+        self.look.column_kept = None;
         true
     }
 
@@ -1145,11 +1150,22 @@ impl Screen {
     /// `sub_8028476`: the chip window shows the slot under the cursor.
     pub(crate) fn show_chip_window(&mut self, folder: &BattleFolder, view: &PlayerView) {
         let chip = self.chip_in(self.cursor, folder).map(|c| checked(c, view));
+        let here = self.slots[self.cursor as usize];
         let w = &mut self.look.chip_window;
         w.slot = self.cursor;
         w.picks = self.selected;
         if chip.is_some() {
             w.last_chip = chip;
+        }
+        // The frame's colors: a chip's by its class (`sub_80284E2`), the
+        // standard ones for OK and a button's picture (`sub_80287D2`); a
+        // button that shows a chip sets none (BN5's 0x08024422), and an
+        // empty or hidden slot draws nothing.
+        match here.kind {
+            SlotKind::Chip { .. } | SlotKind::NaviChip(_) if chip.is_some() => w.framed = chip,
+            SlotKind::Ok => w.framed = None,
+            SlotKind::Button { .. } if here.face.is_none() => w.framed = None,
+            _ => {}
         }
     }
 
@@ -1168,6 +1184,7 @@ impl Screen {
             // button selectable.
             self.selection[h.at as usize] = h.chip;
             self.selected += 1;
+            self.look.column_kept = None;
             self.look.column[h.at as usize] = self.chip_in(h.chip, folder).map(|c| checked(c, view));
             self.slots[h.button as usize].state = SlotState::Selectable;
             self.hold = None;
