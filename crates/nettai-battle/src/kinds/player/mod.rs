@@ -89,7 +89,7 @@ pub(crate) use status::end_anger;
 
 pub(crate) use reactions::passed;
 
-use crate::content::Emotions;
+use crate::content::MoodHeld;
 use nettai_content_api::IdentityHandle;
 use crate::actor::{ActorData, ActorId, ActorType, request};
 use crate::battle::{Battle, battle_flags};
@@ -373,48 +373,43 @@ pub enum Emotion {
     Worried,
 }
 
-/// `sub_8015B54`: a side's emotion (EXE5's: `exe5_emotion`).
+/// `sub_8015B54` (EXE5's 0x0801270C): a side's emotion, read off its navi
+/// by the game's rules (`EmotionRules`, the status section's `emotion`).
+///
+/// EXE6's: worn out (exhausted, AIData +0x33, or a mood of 0), then angry
+/// (+0x34), held tired (+0x32), Full Synchro (a mood of 0xFF), else normal.
+///
+/// EXE5's (0x08012740; in battle mode 1, 0x080127C0: Full Synchro or
+/// normal): in a soul (NaviStats +0x2C) normal, the soul's own face (its
+/// emotion 4), which nothing doubles or ends; then angry, a mood of 0 (5: a
+/// dark MegaMan's), Full Synchro, normal (65 and up), else worried (1). It
+/// reads no held tired or exhausted state.
 pub fn emotion(b: &Battle, side: u8) -> Emotion {
+    let rules = b.game_rules().emotion;
     let mood = b.stats[side as usize].mood;
     let p = b.player(side).expect("side has a player");
-    if b.game_rules().emotions == Emotions::Exe5 {
-        return exe5_emotion(b, p, mood);
+    let full_synchro = mood == 0xFF;
+    if rules.plain_in_battle_mode_1 && battle_mode(b) == 1 {
+        return if full_synchro { Emotion::FullSynchro } else { Emotion::Normal };
+    }
+    if rules.normal_in_a_form && !form_of(b, p).base {
+        return Emotion::Normal;
     }
     let a = ai(b, p);
-    if a.exhausted || mood == 0 {
+    let worn_out = mood == 0 || (rules.tired_and_exhausted && a.exhausted);
+    let angry = a.anger != 0;
+    if worn_out && !(angry && rules.anger_before_worn_out) {
         Emotion::WornOut
-    } else if a.anger != 0 {
+    } else if angry {
         Emotion::Angry
-    } else if a.tired {
+    } else if rules.tired_and_exhausted && a.tired {
         Emotion::Tired
-    } else if mood == 0xFF {
+    } else if full_synchro {
         Emotion::FullSynchro
-    } else {
-        Emotion::Normal
-    }
-}
-
-/// EXE5's 0x0801270C (0x08012740; in battle mode 1, 0x080127C0: Full
-/// Synchro or normal): in a soul (NaviStats +0x2C), the soul's own face
-/// (its emotion 4), which nothing doubles or ends; then anger (AIData
-/// +0x34), a mood of 0 (5: a dark MegaMan's), Full Synchro (0xFF), normal
-/// (65 and up), else worried (1).
-fn exe5_emotion(b: &Battle, p: ObjectRef, mood: u8) -> Emotion {
-    if battle_mode(b) == 1 {
-        return if mood == 0xFF { Emotion::FullSynchro } else { Emotion::Normal };
-    }
-    if !form_of(b, p).base {
-        Emotion::Normal
-    } else if ai(b, p).anger != 0 {
-        Emotion::Angry
-    } else if mood == 0 {
-        Emotion::WornOut
-    } else if mood == 0xFF {
-        Emotion::FullSynchro
-    } else if mood >= 65 {
-        Emotion::Normal
-    } else {
+    } else if rules.worried_below.is_some_and(|below| mood < below) {
         Emotion::Worried
+    } else {
+        Emotion::Normal
     }
 }
 
@@ -532,15 +527,20 @@ pub(crate) fn mood_held(b: &Battle, r: ObjectRef) -> bool {
     a.tired || a.exhausted
 }
 
-/// `sub_8015BEC`: set a side's mood, unless its navi's mood is held
-/// (EXE5's 0x080127D6: unless the mood is 0).
+/// Whether a side's mood is held against the setter, by the game's rule
+/// (the status section's `emotion.mood_held`): its navi held tired or
+/// exhausted (`sub_8015BEC`'s test), or a mood of 0 (EXE5's 0x080127D6).
+pub(crate) fn mood_is_held(b: &Battle, side: u8) -> bool {
+    match b.game_rules().emotion.mood_held {
+        MoodHeld::TiredOrExhausted => b.player(side).is_some_and(|p| mood_held(b, p)),
+        MoodHeld::AtZero => b.stats[side as usize & 1].mood == 0,
+    }
+}
+
+/// `sub_8015BEC` (EXE5's 0x080127D6): set a side's mood, unless it is held
+/// ([`mood_is_held`]).
 pub(crate) fn set_mood(b: &mut Battle, side: u8, mood: u8) {
-    let Some(p) = b.player(side) else { return };
-    let held = match b.game_rules().emotions {
-        Emotions::Exe6 => mood_held(b, p),
-        Emotions::Exe5 => b.stats[side as usize].mood == 0,
-    };
-    if held {
+    if b.player(side).is_none() || mood_is_held(b, side) {
         return;
     }
     b.stats[side as usize].mood = mood;
@@ -657,6 +657,9 @@ pub(crate) fn exit_attack_state(b: &mut Battle, r: ObjectRef) {
 /// `sub_801171C`: leave the current attack for the idle action. A move
 /// (kind 4) keeps pending requests and the charge.
 pub(crate) fn end_attack(b: &mut Battle, r: ObjectRef) {
+    // What else the end clears of the requests is its game's (EXE6's
+    // 0x1000003F, EXE5's 0x1803F: the reactions section's).
+    let clears = b.game_rules().request_clears.attack.0;
     let a = ai_mut(b, r);
     a.attack.special_source = 0;
     let kind = a.attack.kind;
@@ -670,7 +673,7 @@ pub(crate) fn end_attack(b: &mut Battle, r: ObjectRef) {
             _ => {}
         }
         a.buffered_move = 0;
-        a.requests &= !(request::ATTACKS | request::MODE9_A | request::CHAOS);
+        a.requests &= !(request::ATTACKS | clears);
         reset_charge(b, r);
         clear_flag1(b, r, f1::USING_ACTION);
     }
@@ -919,51 +922,51 @@ fn init(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_800F378`: the post-init hook by actor type and AI index. For
-/// players (`off_80EAA04`) every entry is empty but DustMan's (AI index 10,
-/// `sub_80F22F8`), which in battle mode 9 spawns two objects he keeps
-/// (attack #0xD2 on the same side, running while dimmed, and actor #0x28).
-/// Viruses' and AI navis' hooks (`off_81092D0`, `off_80F2668`) belong to
-/// their AI.
+/// players (`off_80EAA04`; EXE5's 0x080EB2A8) it is the navi's
+/// `post_init`: every entry is empty but EXE6's DustMan's (`sub_80F22F8`)
+/// and EXE5's ToadMan's (0x080F199C). Viruses' and AI navis' hooks
+/// (`off_81092D0`, `off_80F2668`) belong to their AI.
 fn post_init_hook(b: &mut Battle, r: ObjectRef) {
-    let a = ai(b, r);
-    match a.actor_type {
+    match ai(b, r).actor_type {
         ActorType::Player => {}
         t => panic!("the post-init hooks of {t:?} actors (sub_800F378) belong to the virus and navi AI"),
     }
-    match a.ai_index {
-        10 => {
-            if battle_mode(b) != 9 {
-                return;
-            }
-            // sub_80DFD74 (at 0, 0, 0) and sub_80C02A6 (at the registers the
-            // first spawn left: garbage nothing is known to read).
-            let (alliance, flip) = {
-                let o = b.objects.get(r);
-                (o.alliance, o.flip)
-            };
-            let kind = b.roles().kind(crate::content::KindRole::Mode9Attack);
-            let junk = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
-            if let Some(j) = junk {
-                let o = b.objects.get_mut(j);
-                o.related[0] = Some(r);
-                o.alliance = alliance;
-                o.flip = flip;
-                o.element = 0;
-                o.flags |= flags::RUN_WHILE_DIMMED;
-            }
-            let kind = b.roles().kind(crate::content::KindRole::Mode9Actor);
-            let second = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
-            if let Some(s) = second {
-                let o = b.objects.get_mut(s);
-                o.related[0] = Some(r);
-                o.alliance = alliance;
-                o.flip = flip;
-            }
-            ai_mut(b, r).mode9_objects = [junk, second];
-        }
-        0..=24 => {}
-        i => panic!("the post-init hook for AI index {i} reads past its table (off_80EAA04)"),
+    let navi = stats(b, r).navi;
+    if let Some(f) = b.content.defs.navi(navi).post_init {
+        crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
     }
+}
+
+/// `sub_80F22F8`'s spawns (EXE6's DustMan's post-init hook in battle mode
+/// 9): two objects the navi keeps, the roles' `mode9_attack` (attack
+/// #0xD2, on the same side, running while dimmed) and `mode9_actor` (actor
+/// #0x28).
+pub(crate) fn spawn_mode9_objects(b: &mut Battle, r: ObjectRef) {
+    // sub_80DFD74 (at 0, 0, 0) and sub_80C02A6 (at the registers the
+    // first spawn left: garbage nothing is known to read).
+    let (alliance, flip) = {
+        let o = b.objects.get(r);
+        (o.alliance, o.flip)
+    };
+    let kind = b.roles().kind(crate::content::KindRole::Mode9Attack);
+    let junk = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
+    if let Some(j) = junk {
+        let o = b.objects.get_mut(j);
+        o.related[0] = Some(r);
+        o.alliance = alliance;
+        o.flip = flip;
+        o.element = 0;
+        o.flags |= flags::RUN_WHILE_DIMMED;
+    }
+    let kind = b.roles().kind(crate::content::KindRole::Mode9Actor);
+    let second = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
+    if let Some(s) = second {
+        let o = b.objects.get_mut(s);
+        o.related[0] = Some(r);
+        o.alliance = alliance;
+        o.flip = flip;
+    }
+    ai_mut(b, r).mode9_objects = [junk, second];
 }
 
 /// `sub_800FC9E`: a side's navi's battle sprite by its stats (MegaMan's by
@@ -1360,9 +1363,12 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
 /// level, `byte_802136D`: the navi's `fire_charge`; ChargeCross's 100:
 /// the form's), and the height clamp of a navi that changes form.
 fn per_form_tick(b: &mut Battle, r: ObjectRef) {
-    // The form's own part (EXE5's MegaMan's routine, 0x080F04CE: by soul).
-    let form = stats(b, r).form;
-    if let Some(f) = b.content.defs.form(form).tick {
+    // The form's own part (EXE5's MegaMan's routine, 0x080F04CE: by soul),
+    // or the navi's own, for one that doesn't change form (EXE5's
+    // GyroMan's, 0x080F09EC: the table's entry for his AI index).
+    let (navi, form) = (stats(b, r).navi, stats(b, r).form);
+    let own = if is_megaman(b, r) { b.content.defs.form(form).tick } else { b.content.defs.navi(navi).tick };
+    if let Some(f) = own {
         crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
     }
     // (EXE5's runs none of the rest: the status rules' `form_tick`.)
