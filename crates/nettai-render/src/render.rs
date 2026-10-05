@@ -47,9 +47,9 @@ pub struct Renderer<'a> {
     pub console_region: &'static str,
     /// The version of the console whose screen is drawn, as its game's
     /// pack names its versions (EXE5's "protoman", "colonel"), for a game
-    /// whose versions the engine doesn't tell apart: what the console shows
-    /// of its own (EXE5's emblems), and which chips are the other version's,
-    /// whose art its ROM draws otherwise (`ChipArt::version`). None: the
+    /// whose versions the engine doesn't tell apart: which chips are the
+    /// other version's, whose art its ROM draws otherwise
+    /// (`ChipArt::version`), and the soul icon's outline. None: the
     /// version the console's player brought, or the pack's base version
     /// (`custom::console_version`).
     pub console_version: Option<&'static str>,
@@ -169,8 +169,8 @@ impl<'a> Renderer<'a> {
         // (The local player's custom screen and chatbox: the game's pack's.)
         let local = b.setup.local_side as usize & 1;
         let own_game = self.packs.game(&b.content);
-        let version = crate::custom::console_version(b, &self.packs, local as u8);
-        let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, version, &mut self.problems);
+        let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, &mut self.problems);
+        let (emblem, emblem_palette) = (crate::custom::emblem_sprite(emblem), emblem.map_or([0; 16], |e| e.palette));
         let chatbox = crate::chatbox::prepare(b, own_game, &self.packs, &text, &mut self.problems);
         let mut list = SpriteList::default();
         objects::queue_objects(b, &self.packs, &view, self.console_region, &mut list, &mut self.problems, !draw);
@@ -179,6 +179,7 @@ impl<'a> Renderer<'a> {
             own_game,
             &self.packs,
             &emblem,
+            emblem_palette,
             self.console_region,
             &mut self.hud,
             &mut self.names,

@@ -10,7 +10,7 @@
 //! descriptions) aren't assets: their translations are the content root's
 //! (docs/design/text-rendering.md §10).
 
-use crate::{BannerLayout, Bundle, CustomScreen, DialogueFont, Hud, Palette, SlotPictures, Tiles};
+use crate::{BannerLayout, Bundle, CustomScreen, DialogueFont, Hud, Palette, Picture, SlotPictures, Tiles};
 
 /// The language of a pack that doesn't say (one extracted from the US
 /// ROMs).
@@ -42,15 +42,26 @@ pub struct HudLettering {
 /// The custom screen's lettering in a language other than the pack's own.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CustomLettering {
-    /// The chip window's pictures for OK, the re-deal and scrap buttons.
+    /// The chip window's pictures for the slots that are neither chips
+    /// nor buttons (OK's).
     pub pictures: SlotPictures,
     /// The Cross window's names (`VersionPictures::cross_names`) by game
     /// version; a version not listed keeps the pack's own.
     pub cross_names: Vec<(String, Tiles)>,
-    /// The named buttons' tiles where they say something
-    /// (`ButtonPictures::tiles`: EXE5's soul button, "UNITE" in English), by
-    /// the button's name; a button not listed keeps the pack's own.
-    pub buttons: Vec<(String, Tiles)>,
+    /// The named buttons that say something, by the button's name (in the
+    /// names' order, as a pack keeps them); a button not listed keeps the
+    /// pack's own.
+    pub buttons: Vec<(String, ButtonLettering)>,
+}
+
+/// What a language has of its own for a named button: its tiles
+/// (`ButtonPictures::tiles`: EXE5's soul button, "UNITE" in English) and
+/// its picture in the chip window (`ButtonPictures::picture`: the re-deal
+/// button's); none: the pack's own.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ButtonLettering {
+    pub tiles: Option<Tiles>,
+    pub picture: Option<Picture>,
 }
 
 impl Hud {
@@ -110,9 +121,13 @@ impl CustomScreen {
                 std::mem::swap(&mut p.cross_names, names);
             }
         }
-        for (name, tiles) in &mut l.buttons {
-            if let Some((_, b)) = self.buttons.iter_mut().find(|(n, _)| n == name) {
+        for (name, own) in &mut l.buttons {
+            let Some((_, b)) = self.buttons.iter_mut().find(|(n, _)| n == name) else { continue };
+            if let Some(tiles) = &mut own.tiles {
                 std::mem::swap(&mut b.tiles, tiles);
+            }
+            if let Some(picture) = &mut own.picture {
+                std::mem::swap(&mut b.picture, picture);
             }
         }
         self.languages.push((from.to_string(), l));
@@ -144,7 +159,7 @@ impl Bundle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ButtonPictures, Picture, VersionPictures, Versioned};
+    use crate::{ButtonPictures, VersionPictures, Versioned};
 
     fn tiles(v: u8, n: usize) -> Tiles {
         Tiles { pixels: vec![v; n * Tiles::TILE] }
@@ -184,12 +199,25 @@ mod tests {
                 CustomLettering {
                     pictures: SlotPictures { ok: Picture { tiles: tiles(2, 42), palette: [0; 16] }, ..Default::default() },
                     cross_names: vec![("falzar".into(), tiles(2, 18)), ("gregar".into(), tiles(3, 18))],
-                    buttons: vec![("soul".into(), tiles(2, 18))],
+                    buttons: vec![
+                        ("soul".into(), ButtonLettering { tiles: Some(tiles(2, 18)), picture: None }),
+                        ("redeal".into(), ButtonLettering { tiles: None, picture: Some(Picture { tiles: tiles(2, 42), palette: [3; 16] }) }),
+                    ],
                 },
             )],
             buttons: vec![
                 ("soul".into(), ButtonPictures { width: 3, height: 2, tiles: tiles(1, 18), ..Default::default() }),
                 ("other".into(), ButtonPictures { width: 3, height: 2, tiles: tiles(5, 18), ..Default::default() }),
+                (
+                    "redeal".into(),
+                    ButtonPictures {
+                        width: 2,
+                        height: 3,
+                        tiles: tiles(6, 36),
+                        picture: Picture { tiles: tiles(1, 42), palette: [1; 16] },
+                        ..Default::default()
+                    },
+                ),
             ],
             ..Default::default()
         };
@@ -205,6 +233,8 @@ mod tests {
         assert_eq!(ja.custom.versioned.base.cross_names, tiles(2, 18));
         assert_eq!(ja.custom.versioned.get("gregar").cross_names, tiles(3, 18));
         assert_eq!((&ja.custom.buttons[0].1.tiles, &ja.custom.buttons[1].1.tiles), (&tiles(2, 18), &tiles(5, 18)), "a button's own label, the others as they are");
+        let redeal = &ja.custom.buttons[2].1;
+        assert_eq!((&redeal.tiles, &redeal.picture), (&tiles(6, 36), &Picture { tiles: tiles(2, 42), palette: [3; 16] }), "a button's own picture, its tiles as they are");
         assert_eq!(ja.hud.languages(), ["ja", "en"]);
         // And back: the pack as it was, but for which language is its own.
         let back = ja.in_language("en").unwrap();

@@ -164,17 +164,17 @@ impl Side {
     }
 }
 
-/// A plain side on `arena`: the game's first navi with fresh stats, its
-/// fresh stats, a version drawn from `draws` where the game's rules take
+/// A plain side on `arena`: the navi a new side operates (`first_navi`:
+/// MegaMan), its fresh stats, a version drawn from `draws` where the game's rules take
 /// one, and a folder of the rules' pool drawn from `draws` (else
 /// the game's first chip with a code, thirty times); where the game has
-/// computer navis (EXE5's), the computer-navi data the game would have
+/// navis in auto battle (EXE5's), the auto battle data the game would have
 /// learned from a player who used each chip of that folder once
-/// (`ComputerNavi::of_folder`), so that a drawn match states what a
-/// computer navi plays.
+/// (`AutoBattle::of_folder`), so that a drawn match states what a
+/// navi in auto battle plays.
 fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Result<Side, String> {
     let game = &arena.game;
-    let navi = *crate::navis(content, game).first().ok_or_else(|| format!("{game} has no navi with fresh stats"))?;
+    let navi = crate::first_navi(content, game).ok_or_else(|| format!("{game} has no navi with fresh stats"))?;
     let chip = (0..content.defs.chips.len() as u16)
         .map(nettai_content_api::ChipHandle)
         .find(|&c| !content.chip(c).codes.is_empty() && ids::in_game(content, game, &content.defs.chip(c).key))
@@ -193,7 +193,7 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Resul
         bug_frags: 0,
         sp_times: Default::default(),
         navicust: None,
-        computer_navi: Default::default(),
+        auto_battle: Default::default(),
         karma: crate::facts::DEFAULT_KARMA,
         souls: None,
         soul_unison: true,
@@ -205,10 +205,10 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Resul
     {
         side.folder = folders::random_folder(content, game, &mut b, 0, draws).into();
     }
-    // What a computer navi plays from the side's save, where the game has
-    // computer navis: what the game would have learned from this folder.
-    if crate::computer_navi::has(content) {
-        side.computer_navi = crate::ComputerNavi::of_folder(content, &side.folder);
+    // What a navi in auto battle plays from the side's save, where the game has
+    // navis in auto battle: what the game would have learned from this folder.
+    if crate::auto_battle::has(content) {
+        side.auto_battle = crate::AutoBattle::of_folder(content, &side.folder);
     }
     Ok(side)
 }
@@ -344,27 +344,27 @@ mod tests {
         assert!(m.sides.iter().all(|s| s.version.is_none() && s.stats.version == 0));
         assert!(!crate::write(&content, &m).contains("version"));
         assert!(m.sides.iter().flat_map(|s| s.folder.chips()).all(|c| ids::in_game(&content, "exe5", &content.defs.chip(c.id).key)));
-        // An EXE5 match states what a computer navi plays: each side's
+        // An EXE5 match states what a navi in auto battle plays: each side's
         // folder's chips, as the game would have learned them (a folder's
         // own chips alone, none in the first three places and no
         // patterns), written in its file.
-        use crate::computer_navi::{Entry, LISTS, PATTERNS, Record};
+        use crate::auto_battle::{Entry, LISTS, PATTERNS, Record};
         for s in &m.sides {
-            assert!(s.computer_navi.entries() > 0);
-            assert!(s.computer_navi.list(&LISTS[0]).iter().chain(s.computer_navi.list(&PATTERNS)).all(|e| *e == Entry::Empty));
-            for e in s.computer_navi.places.iter().filter(|e| **e != Entry::Empty) {
+            assert!(s.auto_battle.entries() > 0);
+            assert!(s.auto_battle.list(&LISTS[0]).iter().chain(s.auto_battle.list(&PATTERNS)).all(|e| *e == Entry::Empty));
+            for e in s.auto_battle.places.iter().filter(|e| **e != Entry::Empty) {
                 let Entry::Chip(c) = e else { panic!("a drawn side has chips alone: {e:?}") };
                 assert!(s.folder.chips().any(|f| f.id == *c));
             }
-            assert_eq!(s.computer_navi.records, [Record::ZERO; 8]);
-            assert_eq!(s.computer_navi, crate::ComputerNavi::of_folder(&content, &s.folder));
+            assert_eq!(s.auto_battle.records, [Record::ZERO; 8]);
+            assert_eq!(s.auto_battle, crate::AutoBattle::of_folder(&content, &s.folder));
         }
-        assert_ne!(m.sides[0].computer_navi, m.sides[1].computer_navi);
+        assert_ne!(m.sides[0].auto_battle, m.sides[1].auto_battle);
         let text = crate::write(&content, &m);
-        assert!(text.contains("[left.computer_navi]\nfirst = [{}, {}, {}]\nstandard = [\n") && text.contains("[right.computer_navi]"), "{text}");
+        assert!(text.contains("[left.auto_battle]\nfirst = [{}, {}, {}]\nstandard = [\n") && text.contains("[right.auto_battle]"), "{text}");
         assert_eq!(crate::parse(&content, &text).unwrap(), m);
-        // EXE6 has no computer navis: a drawn match of it states none.
+        // EXE6 has no auto battle: a drawn match of it states none.
         let six = crate::testing::exe6_content();
-        assert!(live(&six, "exe6", 4, None).unwrap().sides.iter().all(|s| s.computer_navi.is_blank()));
+        assert!(live(&six, "exe6", 4, None).unwrap().sides.iter().all(|s| s.auto_battle.is_blank()));
     }
 }

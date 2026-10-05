@@ -24,7 +24,7 @@ end
 
 -- The status reset (`sub_80144C0`: the weapons too); 0x08011A94: the anger over, the mood back to 0x80 (EXE5's
 -- setter leaves a mood of 0); 0x0802C126: the soul's charge state cleared (and AIData +0x36 and +0xF0, the
--- computer navis' AI's, which a player's navi doesn't run); `sub_800EB08`: no longer invulnerable.
+-- auto-battling navis' AI's, which a player's navi doesn't run); `sub_800EB08`: no longer invulnerable.
 function hooks.settle(me: Object)
     me:reset_status()
     local stats = battle.navi(me.alliance)

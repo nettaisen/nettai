@@ -91,7 +91,7 @@ export type Setup = {
     karma: number,
 }
 
--- Dark MegaMan's AI index, and EXE5's navi 23's (0x0800DE40: a computer navi of either draws in palette 1).
+-- Dark MegaMan's AI index, and EXE5's navi 23's (0x0800DE40: a navi in auto battle of either draws in palette 1).
 local DARK_MEGAMAN = 0x16
 local NAVI_23 = 0x17
 
@@ -131,7 +131,7 @@ end
 -- 0x0800DD94 (EXE6's `sub_801002C`): the palette of a navi of the player's kind.
 local function palette(side: number, navi: Object): number?
     if navi.actor_type ~= "player" then
-        -- A computer navi: Dark MegaMan's (and navi 23's) 1, any other 0.
+        -- A navi in auto battle: Dark MegaMan's (and navi 23's) 1, any other 0.
         if navi.actor_type == "navi" and (navi.ai_index == DARK_MEGAMAN or navi.ai_index == NAVI_23) then
             return 1
         end

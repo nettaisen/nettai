@@ -216,8 +216,8 @@ fn flinch_hook(b: &mut Battle, r: ObjectRef) {
     }
     // A navi that wears its own overlay restarts it unchecked: without
     // it, sub_80F0700 jumps into the middle of sub_80F0728 with another
-    // stack frame.
-    if own_parts && b.objects.get(r).related[1].is_none() {
+    // stack frame. (EXE5's team navis' hooks test for it: `flinch_checked`.)
+    if own_parts && !hooks.flinch_checked && b.objects.get(r).related[1].is_none() {
         panic!("the flinch hook of a navi without the overlay it wears jumps into sub_80F0728 (sub_80F0700)");
     }
     reset_form_overlay(b, r);
@@ -488,7 +488,7 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
         0 => SlideVector::NONE,
         1 => match b.game_rules().push_reading {
             // sub_800E548: from the hit modifier bits.
-            PushReading::Exe6 => {
+            PushReading::TowardFront => {
                 let hm = coll(b, r).hit_mod_final;
                 let off = if hm & 0x80 != 0 { 5 } else { 0 };
                 let bits = (hm & 0x7F) >> 2;
@@ -498,7 +498,7 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
             // EXE5's 0x0800C9D8: the first of bits 2 to 5 of the unflipped
             // hitters' modifier, else of the flipped ones' with the
             // direction reversed; five rows (none past the fifth).
-            PushReading::Exe5 => {
+            PushReading::ByHitterFlip => {
                 let [from0, from1] = coll(b, r).hit_mod_by_side;
                 let first = |hm: u8| (0..4).find(|&i| (hm >> 2) & (1 << i) != 0).unwrap_or(4);
                 let (i, sign) = match first(from0) {
@@ -555,7 +555,7 @@ mod tests {
         let mut c: Content = testing::build();
         c.define().unwrap_or_else(|e| panic!("{e}"));
         {
-            let rules = &mut c.rules;
+            let rules = c.rules_mut();
             rules.push_reading = reading;
         }
         let c = Arc::new(c);
@@ -590,14 +590,14 @@ mod tests {
         // 1's is -1).
         let left = SlideVector { dx: -1, dy: 0, tiles: 6 };
         let right = SlideVector { dx: 1, dy: 0, tiles: 6 };
-        assert_eq!(push(PushReading::Exe6, 0x04, 0), left);
-        assert_eq!(push(PushReading::Exe6, 0, 0x04), left);
-        assert_eq!(push(PushReading::Exe5, 0x04, 0), left);
-        assert_eq!(push(PushReading::Exe5, 0, 0x04), right, "a flipped hitter's hit pushes it the other way");
+        assert_eq!(push(PushReading::TowardFront, 0x04, 0), left);
+        assert_eq!(push(PushReading::TowardFront, 0, 0x04), left);
+        assert_eq!(push(PushReading::ByHitterFlip, 0x04, 0), left);
+        assert_eq!(push(PushReading::ByHitterFlip, 0, 0x04), right, "a flipped hitter's hit pushes it the other way");
         // The unflipped hitters' hits come first.
-        assert_eq!(push(PushReading::Exe5, 0x04, 0x08), left);
+        assert_eq!(push(PushReading::ByHitterFlip, 0x04, 0x08), left);
         // EXE6's 0x80 picks the vertical rows; EXE5 has no such bit.
-        let v = push(PushReading::Exe6, 0x84, 0);
+        let v = push(PushReading::TowardFront, 0x84, 0);
         assert_eq!((v.dx, v.dy), (0, -1));
     }
 
@@ -606,7 +606,7 @@ mod tests {
     /// normal, with its burn's spark; a navi of fire it leaves be.
     #[test]
     fn lava_burns_a_grounded_navi() {
-        let (mut b, [_, r]) = fight(PushReading::Exe6);
+        let (mut b, [_, r]) = fight(PushReading::TowardFront);
         b.set_panel_type(5, 2, PanelType::Lava);
         let sparks = |b: &Battle| b.objects.in_order().filter(|&o| b.local_kind_key(o).contains("spark")).count();
         let before = sparks(&b);
@@ -628,7 +628,7 @@ mod tests {
     /// then up; after a move forward, down first.
     #[test]
     fn metal_slides_by_the_direction_of_the_move() {
-        let (mut b, [_, r]) = fight(PushReading::Exe6);
+        let (mut b, [_, r]) = fight(PushReading::TowardFront);
         b.set_panel_type(5, 2, PanelType::Metal);
         b.objects.get_mut(r).slide_type = 3;
         coll_mut(&mut b, r).direction = 1;
@@ -648,7 +648,7 @@ mod tests {
             let mut c: Content = testing::build();
             c.define().unwrap_or_else(|e| panic!("{e}"));
             {
-            let rules = &mut c.rules;
+            let rules = c.rules_mut();
                 rules.slide_speed.y = y;
             }
             let c = Arc::new(c);
@@ -673,7 +673,7 @@ mod tests {
     /// falls to 1 at least, and 0 (and, rising, 0xFF) stays.
     #[test]
     fn the_mood_rises_and_falls_within_its_bounds() {
-        let (mut b, _) = fight(PushReading::Exe6);
+        let (mut b, _) = fight(PushReading::TowardFront);
         let mood = |b: &Battle| b.stats[0].mood;
         b.stats[0].mood = 250;
         super::super::gain_mood(&mut b, 0, 10);
@@ -699,7 +699,7 @@ mod tests {
             let mut c: Content = testing::build();
             c.define().unwrap_or_else(|e| panic!("{e}"));
             {
-            let rules = &mut c.rules;
+            let rules = c.rules_mut();
                 rules.emotions = which;
             }
             let c = Arc::new(c);

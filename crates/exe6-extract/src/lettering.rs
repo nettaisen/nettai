@@ -25,7 +25,7 @@
 //! ROMs' own (their data moved against the US ROMs').
 
 use crate::Rom;
-use nettai_assets::{CustomLettering, Hud, HudLettering, SlotPictures};
+use nettai_assets::{ButtonLettering, CustomLettering, Hud, HudLettering, SlotPictures};
 use nettai_content::names::AssetNames;
 
 /// The language the Japanese ROMs' lettering is.
@@ -94,18 +94,20 @@ pub fn hud(jp: &Rom, base: &Hud, names: &AssetNames) -> HudLettering {
 
 /// The custom screen's Japanese lettering.
 pub fn custom(falzar: &Rom, gregar: &Rom) -> CustomLettering {
-    use crate::custom::{CROSS_NAMES, picture};
+    use crate::custom::{CROSS_NAMES, REDEAL_BUTTON, SCRAP_BUTTON, picture};
     let names = |rom: &Rom, a: u32| crate::hud::tiles(rom, a, CROSS_NAMES.0 * CROSS_NAMES.1);
     CustomLettering {
         pictures: SlotPictures {
             ok: picture(falzar, OK),
             ok_picked: picture(falzar, OK_PICKED),
-            redeal: picture(falzar, REDEAL),
-            scrap: picture(falzar, SCRAP),
             other: picture(falzar, OTHER),
         },
         cross_names: vec![("falzar".into(), names(falzar, CROSS_NAMES_FALZAR)), ("gregar".into(), names(gregar, CROSS_NAMES_GREGAR))],
-        // (EXE6 draws no named button: Beast Out's is its versions'.)
-        buttons: Vec::new(),
+        // The re-deal and scrap buttons' pictures in the chip window (their
+        // tiles in the slots' row, and Beast Out's, have no words).
+        buttons: vec![
+            (REDEAL_BUTTON.into(), ButtonLettering { tiles: None, picture: Some(picture(falzar, REDEAL)) }),
+            (SCRAP_BUTTON.into(), ButtonLettering { tiles: None, picture: Some(picture(falzar, SCRAP)) }),
+        ],
     }
 }

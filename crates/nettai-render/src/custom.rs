@@ -17,7 +17,7 @@ use crate::fonts;
 use crate::objects::SpriteList;
 use crate::textlayer::{Align, Plane, Rect, TextItem, TextSink};
 use crate::vfont::Role;
-use nettai_assets::{Bundle, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles, VersionPictures};
+use nettai_assets::{Bundle, ButtonPictures, ButtonSets, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles, VersionPictures};
 use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
 use nettai_battle::content::{ChipFlags, ChipTraits};
@@ -294,8 +294,13 @@ struct View<'a> {
     assets: &'a CustomScreen,
     /// The pictures of the Beast the navi goes into (`beast_pictures`):
     /// the console's version's, unless a setup's Cross list put the navi in
-    /// the other game's Cross.
+    /// the other game's Cross. A button's look is this version's own, if it
+    /// has one.
     beast: &'a VersionPictures,
+    /// The navi's emblem's palette (`lookups::emblem`; zeros: it has no
+    /// emblem), which is sprite palette 11: the cursor's and the Regular
+    /// chip's frame's too (`sub_802812C`).
+    emblem_palette: Palette,
     hud: &'a Hud,
     /// Every pack's graphics: a chip's icon and picture are its game's.
     packs: crate::packs::Packs<'a>,
@@ -304,133 +309,62 @@ struct View<'a> {
 }
 
 /// A system's button as the frontend draws it (docs/design/rules-in-luau.md
-/// §4.8: EXE6's, by name): its details picture (in a palette by its state, if
-/// it has palettes), its tiles (`count` a state, selectable then
-/// unavailable and picked), and the cursor over it.
+/// §4.8): the pack's look of the name its content registers it under
+/// (`ButtonPictures`: its tiles by set, which set a state shows, the cursor
+/// over it, its picture in the chip window), and its tiles a set, its
+/// cells' (the content's `cells`).
+#[derive(Clone, Copy)]
 struct ButtonLook<'a> {
-    details: std::borrow::Cow<'a, Picture>,
-    /// The details picture's palettes by the slot's state (none: its own).
-    palettes: &'a [Palette],
-    tiles: &'a Tiles,
-    /// Its tiles a state, and which set a state shows.
+    pack: &'a ButtonPictures,
     count: usize,
-    sets: Sets,
-    /// The tiles the slots after it start past (none: they overlap it).
-    advance: u16,
-    cursor: (i32, i32, CursorShape),
-    /// Whether the chip window shows its uses left, in the damage's last
-    /// cell (EXE5's Shuffle, 0x080245F2; the pack's layout says).
-    uses_digit: bool,
-    /// Where the icon of the chip it holds is drawn, a sprite over it
-    /// (EXE5's Arm Change, 0x080254F4).
-    held_at: Option<(i32, i32)>,
 }
 
-/// Which of a button's tile sets a slot in a state shows.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Sets {
-    /// One a state: selectable, unavailable, picked.
-    Each,
-    /// The second for unavailable and picked alike (the Beast Out button's
-    /// two, EXE5's soul button's).
-    Other,
-    /// The second for unavailable alone (EXE5's Arm Change, 0x0802415A:
-    /// picked, it looks on offer, the chip it holds drawn over it).
-    Unavailable,
-}
-
-impl Sets {
-    fn of(self, state: usize) -> usize {
-        match self {
-            Sets::Each => state,
-            Sets::Other => (state != 0) as usize,
-            Sets::Unavailable => (state == 1) as usize,
-        }
+impl<'a> ButtonLook<'a> {
+    /// The first tile of the set a slot in state `state` shows.
+    fn set(&self, state: usize) -> usize {
+        self.count
+            * match self.pack.sets {
+                ButtonSets::Each => state,
+                ButtonSets::Other => (state != 0) as usize,
+                ButtonSets::Unavailable => (state == 1) as usize,
+            }
     }
-}
 
-/// EXE5's Arm Change's chip over its button (0x08025508: the sprite's x
-/// 0x45, y 0x84).
-const HELD_CHIP: (i32, i32) = (0x45, 0x84);
+    /// Its picture in the chip window, in the `palette`th of its palettes
+    /// (0: its own).
+    fn details(&self, palette: usize) -> Picture {
+        let own = self.pack.picture.palette;
+        let palette = if palette == 0 { own } else { self.pack.palettes.get(palette).copied().unwrap_or(own) };
+        Picture { palette, ..self.pack.picture.clone() }
+    }
 
-impl ButtonLook<'_> {
-    /// Its details picture for a slot in state `state`.
-    fn details(&self, state: usize) -> Picture {
-        let palette = self.palettes.get(state).or(self.palettes.first()).copied().unwrap_or(self.details.palette);
-        Picture { palette, ..self.details.clone().into_owned() }
+    fn cursor(&self) -> (i32, i32, CursorShape) {
+        cursor_at(&self.pack.cursor)
     }
 }
 
 impl<'a> View<'a> {
-    /// The look of button `button`, by its name (`named_look`).
+    /// The look of button `button`: the pack's of its name (the Beast's
+    /// version's own first: `VersionPictures::buttons`). A name the pack
+    /// has no look for is drawn as nothing (`lookups::button` says so); a
+    /// button that shows a chip (`Slot::face`: EXE5's capsules) is drawn as
+    /// that chip's slot whatever its name.
     fn button_look(&self, button: nettai_battle::content::ButtonHandle) -> Option<ButtonLook<'a>> {
-        self.named_look(self.b.content.defs.button(button).name.as_str())
+        let d = self.b.content.defs.button(button);
+        let pack = crate::lookups::button_of(self.assets, self.beast, &d.name)?;
+        Some(ButtonLook { pack, count: pack.width as usize * pack.height as usize * d.cells.max(1) as usize })
     }
 
-    /// The look of the button named `name`: the pack's of that name
-    /// (`CustomScreen::buttons`: EXE5's "soul", the special slot's under OK,
-    /// its picture in a palette by its state), else EXE6's Beast Out (its
-    /// game's pictures), ChpShufl re-deal (EXE5's Shuffle) and DustCross
-    /// scrap, and EXE5's Arm Change. A name the frontend doesn't know is
-    /// drawn as nothing; a button that shows a chip (`Slot::face`: EXE5's
-    /// capsules) is drawn as that chip's slot whatever its name.
-    fn named_look(&self, name: &str) -> Option<ButtonLook<'a>> {
-        use std::borrow::Cow;
-        let a = self.assets;
-        if let Some(b) = a.button(name) {
-            // (EXE5's soul button: gray when unavailable or picked,
-            // 0x08024540.)
-            let count = b.width as usize * b.height as usize;
-            let cursor = cursor_at(&a.layout.special_cursor);
-            return Some(ButtonLook {
-                details: Cow::Borrowed(&b.picture),
-                palettes: &b.palettes,
-                tiles: &b.tiles,
-                count,
-                sets: Sets::Other,
-                advance: 0,
-                cursor,
-                uses_digit: false,
-                held_at: None,
-            });
-        }
-        let wide = |details: &'a Picture, tiles: &'a Tiles| ButtonLook {
-            details: Cow::Borrowed(details),
-            palettes: &[],
-            tiles,
-            count: 12,
-            sets: Sets::Each,
-            advance: 12,
-            cursor: (0x38, 0x80, BUTTON_CURSOR),
-            uses_digit: false,
-            held_at: None,
-        };
-        match name {
-            "beast_out" => {
-                let beast = self.beast;
-                let details = Picture { palette: beast.beast_out_palettes.first().copied().unwrap_or([0; 16]), ..beast.beast_out.clone() };
-                Some(ButtonLook {
-                    details: Cow::Owned(details),
-                    palettes: &[],
-                    tiles: &beast.beast_buttons,
-                    count: 8,
-                    sets: Sets::Other,
-                    advance: 0,
-                    cursor: cursor_at(&a.layout.special_cursor),
-                    uses_digit: false,
-                    held_at: None,
-                })
-            }
-            "redeal" => Some(ButtonLook { uses_digit: a.layout.button_uses, ..wide(&a.pictures.redeal, &a.redeal_buttons) }),
-            "scrap" => Some(wide(&a.pictures.scrap, &a.scrap_buttons)),
-            // EXE5's Arm Change (ColonelSoul's, 0x0802415A and 0x080245A0):
-            // the tiles and the picture its pack has in the scrap button's
-            // place.
-            "arm_change" => {
-                Some(ButtonLook { sets: Sets::Unavailable, held_at: Some(HELD_CHIP), ..wide(&a.pictures.scrap, &a.scrap_buttons) })
-            }
-            _ => None,
-        }
+    /// What the special slot shows with no button in it: the hidden set of
+    /// a button its content registers there, if the pack's look has one
+    /// (EXE6's Beast Out button's fourth; EXE5's soul button has none: the
+    /// window's fill, as its handler for no special button copies nothing
+    /// in, 0x080240D8).
+    fn hidden_special(&self) -> Option<(&'a ButtonPictures, usize)> {
+        self.b.content.defs.buttons.iter().filter(|d| d.slot == SPECIAL_SLOT).find_map(|d| {
+            let pack = crate::lookups::button_of(self.assets, self.beast, &d.name)?;
+            Some((pack, pack.hidden? as usize))
+        })
     }
 }
 
@@ -673,26 +607,28 @@ fn flight<'a>(
 }
 
 /// The name EXE5's soul button is drawn by (the souls system's button; the
-/// pack's `CustomScreen::buttons`).
+/// pack's `CustomScreen::buttons`). The renderer names it because what the
+/// soul's choice draws beside the button's look is this module's (the
+/// offered soul's icon in the column and in flight, the button's picture in
+/// a Chaos Unison's palette): the content has no way to say those of a
+/// button; it would take fields.
 const SOUL_BUTTON: &str = "soul";
+
+/// The name of EXE6's Beast Out button (the beast system's). The renderer
+/// names it because the BeastOut chip's picture in the chip window is that
+/// button's: the content says which chip the button puts in the column only
+/// in the button's own code (`custom.set_column_icon`); saying which
+/// button's picture a chip shows would take a field.
+const BEAST_OUT_BUTTON: &str = "beast_out";
 
 impl View<'_> {
     fn icon(&self, c: FolderChip, problems: &mut Problems) -> Option<&Tiles> {
         crate::lookups::chip_icon(&self.packs, &self.b.content, c.id, problems).map(|(icon, _)| icon)
     }
 
-    /// The navi's number: its emblem and its emblem's palette (the
-    /// cursor's too) are by it (`sub_802812C`), until the navi definitions
-    /// name their own: compat has the numbers of the content's keys.
-    fn navi_number(&self) -> usize {
-        navi_number(self.b, self.side)
-    }
-
     /// Sprite palette 11, as the second fade record leaves it.
     fn emblem_palette(&self) -> Palette {
-        let a = self.assets;
-        let i = a.emblem_palette_of.get(self.navi_number()).copied().unwrap_or(0) as usize;
-        let p = a.emblem_palettes.get(i).copied().unwrap_or([0; 16]);
+        let p = self.emblem_palette;
         match window_fade(self.b) {
             Some(f) => p.map(|c| crate::compose::apply_fade(c, f)),
             None => p,
@@ -765,10 +701,26 @@ pub fn console_version<'x, 'a: 'x>(b: &'x Battle, packs: &crate::packs::Packs<'a
     packs.version().or_else(|| version_name(b, side)).unwrap_or(&packs.game(&b.content).custom.versioned.base_version)
 }
 
-/// A side's navi's number (see `View::navi_number`; its lookup is
-/// `lookups::emblem`'s).
-pub fn navi_number(b: &Battle, side: u8) -> usize {
-    crate::lookups::navi_number_of(&b.content, b.stats[side as usize & 1].navi)
+/// The emblem's sprite (`sub_8029C08`): 4x4 tiles with a navi's emblem
+/// (2x2) in the middle four; empty for a navi with none.
+pub fn emblem_sprite(emblem: Option<&nettai_assets::Emblem>) -> Tiles {
+    let mut t = Tiles { pixels: vec![0; 16 * Tiles::TILE] };
+    for (k, place) in [5usize, 6, 9, 10].into_iter().enumerate() {
+        if let Some(src) = emblem.and_then(|e| e.tiles.get(k)) {
+            t.pixels[place * Tiles::TILE..(place + 1) * Tiles::TILE].copy_from_slice(src);
+        }
+    }
+    t
+}
+
+/// Why a navi's emblem isn't the one the console shows, if it isn't: a
+/// console has no emblem for another version's link navi (a navi that says
+/// its `version`) and shows its own counterpart's picture in the navi's
+/// colors; the pack has every navi's own (deliberately: docs/frontend.md).
+fn known_emblem(b: &Battle, packs: &crate::packs::Packs, side: u8) -> Option<&'static str> {
+    let navi = b.content.navi(b.stats[side as usize & 1].navi);
+    let console = console_version(b, packs, side);
+    navi.version.as_deref().is_some_and(|v| v != console).then_some("another version's link navi's emblem (its own)")
 }
 
 /// The window's map, the tiles and the palettes it draws with.
@@ -1122,7 +1074,6 @@ impl Window {
             w.tiles.fill(w.layout.element, 4, BLANK_7);
             w.tiles.fill(w.layout.digits, 6, BLANK_8);
         };
-        let state = state_number(v.screen.slots[slot as usize].state);
         match v.screen.slots[slot as usize].kind {
             SlotKind::Chip { .. } | SlotKind::NaviChip(_) => {
                 let Some(c) = cw.last_chip else { return };
@@ -1150,10 +1101,10 @@ impl Window {
                     let palette = if is_soul_button(v.b, v.screen, cw.slot) {
                         SoulOffer::of(v.b, v.side as usize).map_or(0, |o| o.chaos as usize)
                     } else {
-                        state
+                        0
                     };
                     blank_details(self, &look.details(palette));
-                    if look.uses_digit {
+                    if look.pack.uses_digit {
                         // 0x080245C8: the uses left (the button's first
                         // cell's, +4), over the damage's last cell.
                         let first = if cell == ButtonCell::Right { slot - 1 } else { slot };
@@ -1236,7 +1187,7 @@ impl Window {
         // shows its own in both. A version's own chip's is its own ROM's:
         // a console of the other version shows its counterpart's.
         let art = if beast_out {
-            Some((&v.beast.beast_out, None))
+            crate::lookups::button_of(v.assets, v.beast, BEAST_OUT_BUTTON).map(|b| (&b.picture, None))
         } else {
             crate::lookups::chip_art(&v.packs, &v.b.content, c, problems).map(|art| (&art.picture, Some(art)))
         };
@@ -1296,9 +1247,13 @@ impl Window {
                         }
                         self.tiles.fill(at + 4, 2, self.layout.slot_blank);
                         at += 6;
-                    } else if let Some(look) = v.button_look(button) {
-                        self.tiles.put_part(at, look.tiles, look.count * look.sets.of(state), look.count);
-                        at += look.advance;
+                    } else if crate::lookups::button(a, v.beast, &v.b.content, button, problems).is_some()
+                        && let Some(look) = v.button_look(button)
+                    {
+                        // (The slots after it start past its tiles; the
+                        // special slot is the last.)
+                        self.tiles.put_part(at, &look.pack.tiles, look.set(state), look.count);
+                        at += look.count as u16;
                     }
                 }
                 SlotKind::Empty => {
@@ -1306,14 +1261,15 @@ impl Window {
                     self.tiles.put_part(at + 4, &a.slot_codes, 2 * EMPTY_SLOT_CODE as usize, 2);
                     at += 6;
                 }
-                // (EXE6's Beast Out button's hidden look; a game without
-                // the button, EXE5, leaves its 3x2 the window's fill, as a
-                // hidden slot's: its handler for no special button,
-                // 0x080240D8, copies nothing in.)
-                SlotKind::Hidden if s as u8 == SPECIAL_SLOT && !v.beast.beast_buttons.is_empty() => {
-                    self.tiles.put_part(at, &v.beast.beast_buttons, 24, 8)
-                }
-                SlotKind::Hidden if s as u8 == SPECIAL_SLOT => self.tiles.fill(at, 6, self.layout.slot_blank),
+                // (The special slot's button's hidden look, if it has one;
+                // else the window's fill, as a hidden slot's.)
+                SlotKind::Hidden if s as u8 == SPECIAL_SLOT => match v.hidden_special() {
+                    Some((b, set)) => {
+                        let n = b.width as usize * b.height as usize;
+                        self.tiles.put_part(at, &b.tiles, n * set, n)
+                    }
+                    None => self.tiles.fill(at, 6, self.layout.slot_blank),
+                },
                 SlotKind::Hidden => {
                     self.tiles.fill(at, 6, self.layout.slot_blank);
                     at += 6;
@@ -1529,8 +1485,9 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
 
 /// The cursor's corners (`sub_8028820`): where its slot's frame is
 /// (`jt_802886C`'s routines, less 3) and the four 8x8 corners in each of
-/// its two frames (`byte_80288B0` and the others: y, x, flips). OK's and
-/// the special slot's are the pack's (`CustomLayout`: EXE5's sit otherwise).
+/// its two frames (`byte_80288B0` and the others: y, x, flips). OK's and a
+/// button's are the pack's (`CustomLayout::ok_cursor`,
+/// `ButtonPictures::cursor`: EXE5's sit otherwise).
 #[derive(Clone, Copy)]
 struct CursorShape {
     corners: [[(i32, i32, bool, bool); 4]; 2],
@@ -1543,18 +1500,11 @@ const CHIP_CURSOR: CursorShape = CursorShape {
     ],
 };
 
-/// The cursor at a place the pack gives (OK's, the special slot's).
+/// The cursor at a place the pack gives (OK's, a button's).
 fn cursor_at(p: &nettai_assets::CursorPlace) -> (i32, i32, CursorShape) {
     let corners = p.corners.map(|frame| frame.map(|(y, x, h, v)| (y as i32, x as i32, h, v)));
     (p.x as i32, p.y as i32, CursorShape { corners })
 }
-
-const BUTTON_CURSOR: CursorShape = CursorShape {
-    corners: [
-        [(2, 2, false, false), (2, 0x1C, true, false), (0x14, 0x1C, true, true), (0x14, 2, false, true)],
-        [(4, 4, false, false), (4, 0x1A, true, false), (0x12, 0x1A, true, true), (0x12, 4, false, true)],
-    ],
-};
 
 /// `sub_80289E4`: the Cross window's cursor, a box around the Cross under
 /// it: four corners, then seven edge pieces above and below (`byte_8028A30`:
@@ -1600,7 +1550,14 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             let (col, row) = ((slot % 5) as i32, (slot / 5) as i32);
             (16 * col + 8, 0x68 + 0x18 * row, CHIP_CURSOR)
         }
-        SlotKind::Button { button, .. } => v.button_look(button).map_or((0x38, 0x80, BUTTON_CURSOR), |l| l.cursor),
+        // (A button the pack has no look for: a chip's cursor on its slot.)
+        SlotKind::Button { button, .. } => match v.button_look(button) {
+            Some(look) => look.cursor(),
+            None => {
+                let (col, row) = ((slot % 5) as i32, (slot / 5) as i32);
+                (16 * col + 8, 0x68 + 0x18 * row, CHIP_CURSOR)
+            }
+        },
     };
     let palette = v.emblem_palette();
     // Queued last corner first (`sub_8028820`).
@@ -1677,7 +1634,7 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
 fn held_part<'a>(v: &View, packs: &crate::packs::Packs<'a>, problems: &mut Problems) -> Option<SpritePart<'a>> {
     let h = v.screen.hold?;
     let SlotKind::Button { button, .. } = v.screen.slots[h.button as usize].kind else { return None };
-    let (x, y) = v.button_look(button)?.held_at?;
+    let (x, y) = v.button_look(button)?.pack.held_at.map(|(x, y)| (x as i32, y as i32))?;
     let chip = v.screen.look.slot_chips[h.chip as usize]?;
     let (tiles, palette) = crate::lookups::chip_icon(packs, &v.b.content, chip.id, problems)?;
     Some(SpritePart {
@@ -1719,14 +1676,16 @@ fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
 
 /// Draw the local player's custom screen: the window on the HUD layer, the
 /// enemy names on `names_layer` (BG0), the sprites into `list`.
-/// `emblem` holds the emblem sprite's tiles (`lookups::emblem`); the font
-/// mode's strings go to `text`.
+/// `emblem` holds the emblem sprite's tiles (`emblem_sprite`) and
+/// `emblem_palette` the emblem's palette (`lookups::emblem`); the font mode's
+/// strings go to `text`.
 #[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
     b: &'a Battle,
     assets: &'a Bundle,
     packs: &crate::packs::Packs<'a>,
     emblem: &'a Tiles,
+    emblem_palette: Palette,
     region: &str,
     hud_layer: &mut Layer,
     names_layer: &mut Layer,
@@ -1746,6 +1705,7 @@ pub fn draw<'a>(
         screen,
         assets: a,
         beast: beast_pictures(b, a, side),
+        emblem_palette,
         hud: &assets.hud,
         packs: packs.clone(),
         region,
@@ -1806,7 +1766,14 @@ pub fn draw<'a>(
         queue.extend(cursor_parts(&v, a, frame));
     }
     if let Some((x, spin)) = drawn.emblem {
-        queue.push(emblem_part(&v, emblem, x, spin));
+        let part = emblem_part(&v, emblem, x, spin);
+        if let Some(why) = known_emblem(b, packs, side) {
+            // (Where the sprite is, its coordinates wrapped as the
+            // hardware's.)
+            let (x, y) = (part.x as i32, part.y as i32);
+            problems.known(if x >= 240 { x - 512 } else { x }, if y >= 160 { y - 256 } else { y }, 32, 32, why);
+        }
+        queue.push(part);
     }
     if drawn.regular {
         queue.push(regular_part(&v, a));
