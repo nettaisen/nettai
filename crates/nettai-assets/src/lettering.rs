@@ -2,7 +2,7 @@
 //! with what their glyphs draw, the HUD's text lines, and the pictures with
 //! words in them (banners, "Cstmzing...", the gauge's label, the chip
 //! window's pictures for the slots that aren't chips, the Cross window's
-//! names). The pack's own (its base language's, `Hud::language`) are in
+//! names, a named button's label). The pack's own (its base language's, `Hud::language`) are in
 //! the HUD's and the custom screen's fields; another language's are kept
 //! beside them (`Hud::languages`, `CustomScreen::languages`) and swapped
 //! in by [`Bundle::in_language`], so what draws the HUD draws whichever
@@ -47,6 +47,10 @@ pub struct CustomLettering {
     /// The Cross window's names (`VersionPictures::cross_names`) by game
     /// version; a version not listed keeps the pack's own.
     pub cross_names: Vec<(String, Tiles)>,
+    /// The named buttons' tiles where they say something
+    /// (`ButtonPictures::tiles`: EXE5's soul button, "UNITE" in English), by
+    /// the button's name; a button not listed keeps the pack's own.
+    pub buttons: Vec<(String, Tiles)>,
 }
 
 impl Hud {
@@ -106,6 +110,11 @@ impl CustomScreen {
                 std::mem::swap(&mut p.cross_names, names);
             }
         }
+        for (name, tiles) in &mut l.buttons {
+            if let Some((_, b)) = self.buttons.iter_mut().find(|(n, _)| n == name) {
+                std::mem::swap(&mut b.tiles, tiles);
+            }
+        }
         self.languages.push((from.to_string(), l));
         true
     }
@@ -135,7 +144,7 @@ impl Bundle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Picture, VersionPictures, Versioned};
+    use crate::{ButtonPictures, Picture, VersionPictures, Versioned};
 
     fn tiles(v: u8, n: usize) -> Tiles {
         Tiles { pixels: vec![v; n * Tiles::TILE] }
@@ -175,8 +184,13 @@ mod tests {
                 CustomLettering {
                     pictures: SlotPictures { ok: Picture { tiles: tiles(2, 42), palette: [0; 16] }, ..Default::default() },
                     cross_names: vec![("falzar".into(), tiles(2, 18)), ("gregar".into(), tiles(3, 18))],
+                    buttons: vec![("soul".into(), tiles(2, 18))],
                 },
             )],
+            buttons: vec![
+                ("soul".into(), ButtonPictures { width: 3, height: 2, tiles: tiles(1, 18), ..Default::default() }),
+                ("other".into(), ButtonPictures { width: 3, height: 2, tiles: tiles(5, 18), ..Default::default() }),
+            ],
             ..Default::default()
         };
         custom.versioned.versions.push(("gregar".into(), VersionPictures { cross_names: tiles(4, 18), ..Default::default() }));
@@ -190,11 +204,13 @@ mod tests {
         assert_eq!(ja.custom.pictures.ok.tiles, tiles(2, 42));
         assert_eq!(ja.custom.versioned.base.cross_names, tiles(2, 18));
         assert_eq!(ja.custom.versioned.get("gregar").cross_names, tiles(3, 18));
+        assert_eq!((&ja.custom.buttons[0].1.tiles, &ja.custom.buttons[1].1.tiles), (&tiles(2, 18), &tiles(5, 18)), "a button's own label, the others as they are");
         assert_eq!(ja.hud.languages(), ["ja", "en"]);
         // And back: the pack as it was, but for which language is its own.
         let back = ja.in_language("en").unwrap();
         assert_eq!((&back.hud.font, &back.hud.texts, &back.custom.pictures), (&en.hud.font, &en.hud.texts, &en.custom.pictures));
         assert_eq!(back.custom.versioned, en.custom.versioned);
+        assert_eq!(back.custom.buttons, en.custom.buttons);
         assert!(en.clone().in_language("en").is_ok());
         assert!(en.in_language("fr").unwrap_err().contains("en, ja"));
     }

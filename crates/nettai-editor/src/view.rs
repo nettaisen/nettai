@@ -1,7 +1,7 @@
 //! What the editor shows: a bar of file actions, the panes (the arena, with
-//! the match's game, then each side's navi, folder, Crosses,
-//! patch cards and stats; only what the game's rules have, every list the
-//! game's), and the problems, live.
+//! the match's game, then each side's navi, folder, Crosses, souls,
+//! computer-navi data, patch cards and stats; only what the game's rules
+//! have, every list the game's), and the problems, live.
 
 use crate::app::{App, Choice, Editor, Msg, Tab};
 use crate::names::Lang;
@@ -13,11 +13,11 @@ use nettai_match::stats::{self, Kind, Value};
 use nettai_match::{FORMS_SYSTEM, NAVICUST_SYSTEM, PATCH_CARDS_SYSTEM};
 
 pub const SIDES: [&str; 2] = ["Left (you)", "Right"];
-const RED: Color = Color::from_rgb(0.85, 0.2, 0.2);
-const GREEN: Color = Color::from_rgb(0.15, 0.6, 0.25);
-const DIM: Color = Color::from_rgb(0.5, 0.5, 0.55);
+pub(crate) const RED: Color = Color::from_rgb(0.85, 0.2, 0.2);
+pub(crate) const GREEN: Color = Color::from_rgb(0.15, 0.6, 0.25);
+pub(crate) const DIM: Color = Color::from_rgb(0.5, 0.5, 0.55);
 
-fn heading<'a>(s: impl text::IntoFragment<'a>) -> Element<'a, Msg> {
+pub(crate) fn heading<'a>(s: impl text::IntoFragment<'a>) -> Element<'a, Msg> {
     text(s).size(20).into()
 }
 
@@ -34,7 +34,7 @@ fn nav<'a>(name: &'a str, tab: Tab, now: Tab) -> Element<'a, Msg> {
     b.style(if tab == now { button::primary } else { button::text }).into()
 }
 
-fn icon<'a>(e: &'a Editor, chip: nettai_content_api::ChipHandle) -> Element<'a, Msg> {
+pub(crate) fn icon<'a>(e: &'a Editor, chip: nettai_content_api::ChipHandle) -> Element<'a, Msg> {
     let key = &e.content.defs.chip(chip).key;
     match e.pictures.chip(key).and_then(|p| p.icon.clone()) {
         Some(h) => image(h).width(16).height(16).filter_method(image::FilterMethod::Nearest).into(),
@@ -96,10 +96,17 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         if nettai_match::ruleset_has_system(&e.content, FORMS_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
             tabs = tabs.push(nav("  Crosses", Tab::Crosses(s), e.tab));
         }
-        if nettai_match::facts::takes(&e.content, nettai_match::facts::SOULS_FIELD) {
+        // (Souls and patch cards are the navi's that changes form: a team
+        // navi has no soul button, and the cards change MegaMan's stats.)
+        let changes_form = e.content.navi(side.navi).forms.is_some();
+        if changes_form && nettai_match::facts::takes(&e.content, nettai_match::facts::SOULS_FIELD) {
             tabs = tabs.push(nav("  Souls", Tab::Souls(s), e.tab));
         }
-        if nettai_match::ruleset_has_system(&e.content, PATCH_CARDS_SYSTEM) {
+        // (Where the game's rules have computer navis: EXE5's.)
+        if nettai_match::computer_navi::has(&e.content) {
+            tabs = tabs.push(nav("  Computer navi", Tab::ComputerNavi(s), e.tab));
+        }
+        if changes_form && nettai_match::ruleset_has_system(&e.content, PATCH_CARDS_SYSTEM) {
             tabs = tabs.push(nav("  Patch cards", Tab::Cards(s), e.tab));
         }
         if nettai_match::ruleset_has_system(&e.content, NAVICUST_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
@@ -114,6 +121,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         Tab::Folder(s) => folder(e, s),
         Tab::Crosses(s) => crosses(e, s),
         Tab::Souls(s) => souls(e, s),
+        Tab::ComputerNavi(s) => crate::computer_navi::view(e, s),
         Tab::Cards(s) => cards(e, s),
         Tab::NaviCust(s) => crate::navicust::view(e, s),
         Tab::Stats(s) => stats_pane(e, s, None),
@@ -207,7 +215,13 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     let level_kind = side.takes_level(c).then(|| c.navi(side.navi).forms.is_none());
     if level_kind == Some(true) {
         col = col.push(field("Navi level", text_input("0", &level).on_input(move |t| Msg::Level(s, t)).width(Length::Fixed(80.0))));
-        if crate::levels::has_levels(c, side) {
+        if let Some(last) = nettai_match::story::max_level(c, side.navi) {
+            col = col.push(
+                text(format!("0 to {last}: changing it fills in the HP the story gives at that level (the stats pane); at {last}, the story done."))
+                    .size(13)
+                    .color(DIM),
+            );
+        } else if crate::levels::has_levels(c, side) {
             col = col.push(text("0 to 14: changing it fills in the stats the save gives at that level, the game cleared (the stats pane).").size(13).color(DIM));
         }
     } else if level_kind == Some(false) {
@@ -223,7 +237,8 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     col = col.push(
         text(
             "From an EXE6 .sav: the version, Beast Out and the Crosses it owns, the navi code's level and the SP times. \
-             From an EXE5 .sav (or a raw save image): its karma, the souls it has (its version's) and its NaviCust board's size. \
+             From an EXE5 .sav (or a raw save image): its karma, the souls it has (its version's), its NaviCust board's size \
+             and what a computer navi plays from it. \
              A save of another game than the match's makes a new match of its game.",
         )
         .size(13)
@@ -519,7 +534,7 @@ fn game_label(game: &str) -> String {
     game.to_uppercase()
 }
 
-fn class_name(c: ChipClass) -> &'static str {
+pub(crate) fn class_name(c: ChipClass) -> &'static str {
     match c {
         ChipClass::Standard => "Standard",
         ChipClass::Mega => "Mega",
@@ -528,7 +543,7 @@ fn class_name(c: ChipClass) -> &'static str {
     }
 }
 
-fn class_letter(c: ChipClass) -> &'static str {
+pub(crate) fn class_letter(c: ChipClass) -> &'static str {
     match c {
         ChipClass::Standard => "S",
         ChipClass::Mega => "M",
@@ -590,7 +605,7 @@ fn souls(e: &Editor, s: usize) -> Element<'_, Msg> {
             Some(h) => image(h.clone()).width(64).height(32).filter_method(image::FilterMethod::Nearest).into(),
             None => space().width(64).height(32).into(),
         };
-        let about = form.soul.as_ref().map_or(String::new(), |x| format!("soul {}, for {:?} chips", x.number, x.family).to_lowercase());
+        let about = form.soul.as_ref().map_or(String::new(), |x| format!("for {:?} chips", x.family).to_lowercase());
         let on = owned.contains(&f);
         let mut tick = checkbox(on);
         if !every {
