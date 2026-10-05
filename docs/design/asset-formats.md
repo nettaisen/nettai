@@ -318,9 +318,9 @@ a color is `#rrggbb`, or `0xNNNN` (raw BGR555) when it has bits RGB can't
 hold.
 
 The reader takes the format as the extractors write it today, and nothing older: every file's version is the
-format's own (a pack of another is refused, with a note to extract it again), `panel_types`, the custom screen,
-the warning marker, the chatbox and the dialogue font are required, and so are the manifest's `game` and the
-asset index.
+format's own (a pack of another is refused, with a note to extract it again), `panel_types`, the custom screen
+(with its `layout`, its game's own: no pack leaves it to another game's), the warning marker, the chatbox and the
+dialogue font are required, and so are the manifest's `game` and the asset index.
 
 **Backgrounds** (`graphics/backgrounds/NAME/`): `tiles.png`; `map.tmj`, a Tiled
 JSON map (orthogonal, 8x8 tiles, one tile layer, the tileset being
@@ -344,7 +344,7 @@ navis' mugshots and which one a navi shows, the HUD's text lines as glyph
 numbers ("TIME UP!", the turn timer's seconds, "COUNTER HIT!"), banner
 layouts and the form emotions.
 
-The HUD's format version 6 adds the chatbox's graphics. `dialogue-font.png`
+The HUD holds the chatbox's graphics. `dialogue-font.png`
 is the dialogue font: 16x12 cells, 32 a row, palette index 0 clear (its
 palette only colors it for viewing: the chatbox draws it with the text's);
 `hud.json`'s `dialogue_font` gives each glyph's advance and what it draws
@@ -357,12 +357,10 @@ maps (30x8 entries, a row of text each, the tiles counted from the image's
 first) by kind (the message box, the description box) and opening step (0
 to 3, open).
 
-The HUD's format version 7 writes the game's marks as characters in
-`font_chars` and the dialogue font's `chars` (Ⓐ for the A button, U+E002
-for the stacked EX: `compat/text.toml`'s, text-rendering.md §10.5) where
-version 6 had bracketed names (`[A]`, `[EX]`); the files are otherwise
-version 6's, but a pack of version 6 can't spell content's strings, so the
-frontend asks for it to be extracted again.
+`font_chars` and the dialogue font's `chars` write the game's marks as
+characters (Ⓐ for the A button, U+E002
+for the stacked EX: `compat/text.toml`'s, text-rendering.md §10.5), so that
+content's strings are spelled in them.
 
 The chatbox's portraits are sprites (`graphics/sprites/NAME/`, category
 0x20, `mugshotSpritePtrs`): their animations are the speaker's faces (still,
@@ -371,7 +369,7 @@ portrait's one frame. Each US ROM has a black placeholder in place of the
 other game's link navis' portraits; the extractor takes each from the ROM
 that has it.
 
-**Custom screen** (`graphics/custom/`, format version 2): the same scheme.
+**Custom screen** (`graphics/custom/`): the same scheme.
 `window.png` holds the window frame's tiles with the window's four palettes
 (by the chip under the cursor's class: standard, Mega, Giga, dark), each
 chip's picture (`chip-art/CHIP.png`, 7x6 tiles) its own palette,
