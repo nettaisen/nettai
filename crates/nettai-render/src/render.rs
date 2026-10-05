@@ -24,6 +24,25 @@ pub struct Frame {
     pub text: Vec<TextItem>,
 }
 
+/// The region of a console (whose ROMs its game is of). A frontend says a
+/// console's (a recording names its game's); content doesn't.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Region {
+    Us,
+    Jp,
+}
+
+impl Region {
+    /// The name a pack marks an asset of the region's ROMs with
+    /// (`ChipArt::region`, a sprite's `region`).
+    pub fn name(self) -> &'static str {
+        match self {
+            Region::Us => "us",
+            Region::Jp => "jp",
+        }
+    }
+}
+
 /// Draws battles; keeps its layer buffers between frames.
 pub struct Renderer<'a> {
     /// The content's own pack's graphics (the HUD's and the custom
@@ -41,10 +60,10 @@ pub struct Renderer<'a> {
     pub hud_state: HudState,
     /// What the frames drawn so far named that the pack doesn't have.
     pub problems: Problems,
-    /// The region of the console whose screen is drawn ("us", "jp"): an
-    /// asset of another region's ROMs (a sprite or a chip's picture the US
-    /// release cut) is a known difference there (`Problems::known`).
-    pub console_region: &'static str,
+    /// The region of the console whose screen is drawn: an asset of another
+    /// region's ROMs (a sprite or a chip's picture the US release cut) is a
+    /// known difference there (`Problems::known`).
+    pub console_region: Region,
     /// The version of the console whose screen is drawn, as its game's
     /// pack names its versions (EXE5's "protoman", "colonel"), for a game
     /// whose versions the engine doesn't tell apart: which chips are the
@@ -85,7 +104,7 @@ impl<'a> Renderer<'a> {
             names: Layer { palettes: Palettes::Hud, ..Layer::new(0, 0) },
             hud_state: HudState::default(),
             problems: Problems::default(),
-            console_region: "us",
+            console_region: Region::Us,
             console_version: None,
             text_mode: TextMode::Original,
             font: None,

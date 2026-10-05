@@ -934,7 +934,7 @@ mod tests {
         has(crate::check_match(&five, &odd), "right: a version, but exe5 has none to state: its versions play alike");
         // (The round an EXE5 match starts brings its players no version.)
         let b = crate::check::start(&five, &m).unwrap();
-        assert!(b.fact(0, crate::facts::VERSION_FIELD).is_none() && b.stats[0].version == 0);
+        assert!(b.fact(0, nettai_battle::content::PlayerFact::Version).is_none() && b.stats[0].version == 0);
     }
 
     /// What a file can get wrong is said, with where it is.
