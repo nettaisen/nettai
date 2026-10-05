@@ -1,0 +1,36 @@
+[package]
+name = "nettai-demo"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "The desktop program over nettai-frontend: a window and its keys, the command line, headless frames, the audits, the replay of the original's recordings, and the audio device"
+
+[dependencies]
+# What plays the battles: the program is a host of this library.
+nettai-frontend = { path = "../nettai-frontend" }
+nettai-battle = { path = "../nettai-battle" }
+nettai-render = { path = "../nettai-render" }
+# The recording replay alone (src/trace.rs: `trace_rounds`): a recording is
+# the original's numbers, which a game's compat crate reads and compares.
+exe6-compat = { workspace = true, features = ["trace"] }
+# EXE5's recordings (the chip lab's EXE5 library), played as EXE6's are.
+exe5-compat = { path = "../exe5-compat", features = ["trace"] }
+nettai-assets = { path = "../nettai-assets" }
+# The audio device (`AudioOut`: the `playback` feature, cpal).
+nettai-audio = { path = "../nettai-audio" }
+nettai-netplay = { path = "../nettai-netplay" }
+nettai-content = { path = "../nettai-content" }
+nettai-match = { path = "../nettai-match" }
+nettai-content-api = { path = "../nettai-content-api" }
+m4a.workspace = true
+# The window.
+minifb = "0.28"
+# A recording's setup line, for the game it states.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+# Reading the headless test's PNGs back.
+png = "0.17"
+nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
+nettai-match = { path = "../nettai-match", features = ["testing"] }

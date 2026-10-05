@@ -3,7 +3,7 @@
 //! (`present`: resize it at will), with the font mode's text drawn at the
 //! window's resolution.
 
-use crate::session::{Session, TickHook};
+use nettai_frontend::{Session, TickHook};
 use nettai_render::Renderer;
 use nettai_render::compose::{HEIGHT, WIDTH};
 use nettai_render::present::{present, write_rgb_png};
@@ -61,7 +61,7 @@ pub fn run(
     let scale = opts.scale.max(1);
     let (mut w, mut h) = (WIDTH * scale, HEIGHT * scale);
     let options = WindowOptions { resize: true, ..WindowOptions::default() };
-    let mut window = Window::new("nettai-frontend", w, h, options).map_err(|e| e.to_string())?;
+    let mut window = Window::new("nettai-demo", w, h, options).map_err(|e| e.to_string())?;
     window.set_target_fps(120);
     let mut buffer = vec![0u32; w * h];
     let mut paused = opts.start_paused;
@@ -172,10 +172,10 @@ pub fn run(
             // (The status text is in front of everything, the text layer's
             // items too.)
             let text = lines.join("\n");
-            crate::text::draw(&mut frame.pixels, WIDTH, 0, 0, &text, 0x7FFF);
+            nettai_frontend::text::draw(&mut frame.pixels, WIDTH, 0, 0, &text, 0x7FFF);
             // Only the boxes the lines are drawn on (`text::draw`'s: four
             // pixels a character and one more, six rows a line).
-            let cols = crate::text::columns(WIDTH).max(1);
+            let cols = nettai_frontend::text::columns(WIDTH).max(1);
             let mut y = 0;
             for line in text.lines() {
                 let chars = line.chars().count();
@@ -194,7 +194,7 @@ pub fn run(
         }
         present(&frame, text.as_deref_mut(), &mut buffer, w, h);
         if loops % 15 == 0 {
-            let t = format!("nettai-frontend - {} - x{}{}", session.driver.position(), SPEEDS[speed], if paused { " (paused)" } else { "" });
+            let t = format!("nettai-demo - {} - x{}{}", session.driver.position(), SPEEDS[speed], if paused { " (paused)" } else { "" });
             if t != title {
                 window.set_title(&t);
                 title = t;

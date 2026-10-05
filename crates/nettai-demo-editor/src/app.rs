@@ -417,8 +417,8 @@ impl Editor {
         if let Some(p) = &self.options.frontend {
             return p.clone();
         }
-        let exe = std::env::current_exe().ok().map(|e| e.with_file_name(format!("nettai-frontend{}", std::env::consts::EXE_SUFFIX)));
-        exe.filter(|p| p.exists()).unwrap_or_else(|| PathBuf::from("nettai-frontend"))
+        let exe = std::env::current_exe().ok().map(|e| e.with_file_name(format!("nettai-demo{}", std::env::consts::EXE_SUFFIX)));
+        exe.filter(|p| p.exists()).unwrap_or_else(|| PathBuf::from("nettai-demo"))
     }
 
     fn play(&mut self) {

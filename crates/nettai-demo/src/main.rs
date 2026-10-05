@@ -1,11 +1,14 @@
-//! nettai-frontend: watch a golden trace replayed through the engine, or play.
-//! See docs/frontend.md.
+//! nettai-demo: watch a golden trace replayed through the engine, or play.
+//! The desktop program over the nettai-frontend library: this is its
+//! command line. See docs/frontend.md.
 
-use nettai_frontend::driver::{LivePlayer, trace_rounds};
-use nettai_frontend::{Renderer, Session, TickHook, app, headless, session};
-use nettai_render::packs::Packs;
+use nettai_demo::trace::trace_rounds;
+use nettai_demo::{app, headless};
+use nettai_frontend::driver::LivePlayer;
+use nettai_frontend::game::{Failed, Found, Game, LoadError, Sound};
+use nettai_frontend::{Session, TickHook, session};
 use nettai_render::textlayer::TextMode;
-use nettai_render::vfont::{TextRenderer, VectorFont};
+use nettai_render::vfont::TextRenderer;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -59,14 +62,14 @@ struct Args {
 const MAX_DELAY: u32 = 15;
 
 const USAGE: &str = "\
-usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
-       nettai-frontend [OPTIONS] --play          play live (you are the left navi)
-       nettai-frontend [OPTIONS] --match FILE    play a match file (you are its left side)
-       nettai-frontend [OPTIONS] --play --host PORT        play another player over the
-       nettai-frontend [OPTIONS] --play --join ADDR:PORT   network: host, or join the host
-       nettai-frontend [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-scale N]
-       nettai-frontend [OPTIONS] --audit-content
-       nettai-frontend [OPTIONS] --audit TRACE.jsonl...
+usage: nettai-demo [OPTIONS] TRACE.jsonl     watch a trace's rounds
+       nettai-demo [OPTIONS] --play          play live (you are the left navi)
+       nettai-demo [OPTIONS] --match FILE    play a match file (you are its left side)
+       nettai-demo [OPTIONS] --play --host PORT        play another player over the
+       nettai-demo [OPTIONS] --play --join ADDR:PORT   network: host, or join the host
+       nettai-demo [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-scale N]
+       nettai-demo [OPTIONS] --audit-content
+       nettai-demo [OPTIONS] --audit TRACE.jsonl...
 
   You play one game, EXE6 or EXE5: a match file names its game and a trace
   states its own, else --game says it (there is no default game: without
@@ -307,15 +310,32 @@ fn show(report: &nettai_content::report::Report) {
     }
 }
 
-/// Load one part of the pack, or stop with what is wrong with it.
+/// Stop with a step of loading that failed: what its loaders reported, then
+/// what failed, with the options that say where it is looked for.
+fn load_failed(e: LoadError) -> ! {
+    show(&e.report);
+    fail(match &e.what {
+        Failed::Packs => format!("{e} (--pack)"),
+        Failed::Content { .. } => format!("{e} (--content, --pack, --game)"),
+        _ => e.to_string(),
+    })
+}
+
+/// How long a part took to load, for whoever asks (`NETTAI_LOAD_TIMES`).
+fn load_time(what: &str, since: Instant) {
+    if std::env::var_os("NETTAI_LOAD_TIMES").is_some() {
+        eprintln!("loaded the {what} in {:.1?}", since.elapsed());
+    }
+}
+
+/// Load one part of the pack, or stop with what is wrong with it (the
+/// content audit's own loading: every language's, none chosen).
 fn load<T>(pack: &Path, what: &str, f: impl Fn(&Path) -> Result<(T, nettai_content::report::Report), nettai_content::report::Report>) -> T {
     let t = Instant::now();
     match f(pack) {
         Ok((v, r)) => {
             show(&r);
-            if std::env::var_os("NETTAI_LOAD_TIMES").is_some() {
-                eprintln!("loaded the {what} in {:.1?}", t.elapsed());
-            }
+            load_time(what, t);
             v
         }
         Err(r) => {
@@ -325,24 +345,18 @@ fn load<T>(pack: &Path, what: &str, f: impl Fn(&Path) -> Result<(T, nettai_conte
     }
 }
 
-/// The battle's display text in `lang`: the pack's lettering in it (fonts,
-/// HUD lines, pictures with text) and the content's strings table (content
-/// directory `dir`'s, of the games loaded), if the language isn't the
-/// content's own.
-fn language(assets: nettai_assets::Bundle, dir: &Path, games: &[String], lang: &str) -> (nettai_assets::Bundle, Option<nettai_content::locale::Strings>) {
-    let own = nettai_content::locale::OWN;
-    let strings = if lang == own { None } else { nettai_content::locale::load_for(dir, games, lang).unwrap_or_else(|e| fail(e)) };
-    if strings.is_none() && lang != own {
-        let have = nettai_content::locale::languages(dir);
-        fail(format!("the content has no strings in {lang:?} (it has {})", have.join(", ")));
-    }
-    let assets = assets.in_language(lang).unwrap_or_else(|e| fail(format!("{e} (extract the pack again with the Japanese ROMs)")));
-    (assets, strings)
+/// The game's sound, or stop with what is wrong with it.
+fn sound_of(game: &Game) -> Sound {
+    let t = Instant::now();
+    let sound = game.sound().unwrap_or_else(|e| load_failed(e));
+    show(&sound.report);
+    load_time("sound", t);
+    sound
 }
 
 /// Sound: hand each tick's cues to the audio output.
-fn audio_hook(banks: Vec<Arc<m4a::SoundBank>>, songs: nettai_audio::Songs) -> Box<dyn TickHook> {
-    let mut out = nettai_audio::AudioOut::with_banks(banks, songs).unwrap_or_else(|e| fail(format!("no audio output: {e}")));
+fn audio_hook(sound: Sound) -> Box<dyn TickHook> {
+    let mut out = nettai_audio::AudioOut::with_banks(sound.banks, sound.songs).unwrap_or_else(|e| fail(format!("no audio output: {e}")));
     Box::new(move |s: &Session| {
         match &s.sound {
             // Netplay: what the player's tracker made of the frame (plays,
@@ -426,18 +440,18 @@ fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, game: &str, seed:
 
 /// `--audit-content`: every lookup for everything the content defines, in
 /// each language the content has strings in; then exit.
-fn audit_content(args: &Args, content: &nettai_battle::Content, by_pack: &[PathBuf], own: nettai_battle::content::PackId, dir: &Path, games: &[String]) -> ! {
+fn audit_content(args: &Args, game: &Game) -> ! {
     let t = Instant::now();
-    let bundles = by_pack.iter().map(|p| load(p, "graphics", nettai_content::pack::load_graphics)).collect();
-    let banks: Option<Vec<Arc<m4a::SoundBank>>> =
-        (!args.mute).then(|| by_pack.iter().map(|p| Arc::new(load(p, "sound", nettai_content::pack::load_sound))).collect());
+    let (content, dir, games) = (&*game.content, &*game.dir, std::slice::from_ref(&game.name));
+    let bundles = game.packs.iter().map(|p| load(p, "graphics", nettai_content::pack::load_graphics)).collect();
+    let banks: Option<Vec<Arc<m4a::SoundBank>>> = (!args.mute).then(|| sound_of(game).banks);
     let own_lang = nettai_content::locale::OWN;
-    let mut languages: Vec<nettai_frontend::content_audit::Language> = vec![(own_lang.to_string(), None)];
+    let mut languages: Vec<nettai_demo::content_audit::Language> = vec![(own_lang.to_string(), None)];
     for lang in nettai_content::locale::languages(dir).into_iter().filter(|l| l != own_lang) {
         let strings = nettai_content::locale::load_for(dir, games, &lang).unwrap_or_else(|e| fail(e));
         languages.push((lang, strings.map(Arc::new)));
     }
-    let found = nettai_frontend::content_audit::audit(content, bundles, own, banks.as_deref(), &languages);
+    let found = nettai_demo::content_audit::audit(content, bundles, game.own, banks.as_deref(), &languages);
     for p in &found.problems {
         println!("{p}");
     }
@@ -537,8 +551,9 @@ fn audit_traces(args: &Args, content: &Arc<nettai_battle::Content>, setup: &head
 /// What the frontend says when nothing says the game (no match file, no
 /// trace, no `--game`): the games it found a pack of, each as the option
 /// that plays it.
-fn which_game(content: Option<&Path>, found: &[nettai_content::pack::Found], packs_dir: &Path) -> String {
-    let games: Vec<String> = match nettai_content::pack::games(content, found) {
+fn which_game(content: Option<&Path>, found: &Found) -> String {
+    let packs_dir = &found.dir;
+    let games: Vec<String> = match nettai_content::pack::games(content, &found.packs) {
         Ok(games) => games.into_iter().filter(|g| g.pack.is_some()).map(|g| format!("--game {}", g.game)).collect(),
         Err(_) => Vec::new(),
     };
@@ -562,77 +577,53 @@ fn main() {
     };
     // The packs found in the packs directory (and given by --pack).
     let t = Instant::now();
-    let mut found_report = nettai_content::report::Report::default();
-    let packs_dir = nettai_content::pack::packs_dir();
-    let found = nettai_content::pack::find(&packs_dir, &args.packs, &mut found_report);
-    show(&found_report);
-    let found = found.unwrap_or_else(|| fail("can't read the packs given (--pack)"));
+    let found = Found::find(&nettai_content::pack::packs_dir(), &args.packs).unwrap_or_else(|e| load_failed(e));
+    show(&found.report);
     // The game played: the match file's; a recording's own (the one its
     // setup states, which --game, if given, must be); else --game's. There
-    // is no default game: with none said, the frontend says which it could
+    // is no default game: with none said, the program says which it could
     // play and stops.
     let file_text = args.match_file.as_deref().map(match_text);
     let game = match (&file_text, args.traces.first()) {
         (Some(text), _) => nettai_match::file::game_of(text)
             .unwrap_or_else(|e| fail(format!("{} can't be played: {e}", args.match_file.as_ref().unwrap().display()))),
         (None, Some(trace)) => {
-            let stated = nettai_frontend::driver::trace_game(trace).unwrap_or_else(|e| fail(format!("can't play {}: {e}", trace.display())));
+            let stated = nettai_demo::trace::trace_game(trace).unwrap_or_else(|e| fail(format!("can't play {}: {e}", trace.display())));
             if let Some(given) = args.game.as_ref().filter(|g| **g != stated) {
                 fail(format!("{} is a recording of {stated}, not of {given} (--game)", trace.display()));
             }
             stated
         }
-        (None, None) => args.game.clone().unwrap_or_else(|| fail(which_game(args.content.as_deref(), &found, &packs_dir))),
+        (None, None) => args.game.clone().unwrap_or_else(|| fail(which_game(args.content.as_deref(), &found))),
     };
     // The game's content.
-    let loaded = nettai_content::pack::load_game(args.content.as_deref(), &game, &found).unwrap_or_else(|r| {
-        show(&r);
-        fail(format!("can't load {game}'s battle content (--content, --pack, --game)"))
-    });
+    let loaded = Game::load(&found, args.content.as_deref(), &game).unwrap_or_else(|e| load_failed(e));
     show(&loaded.report);
     if std::env::var_os("NETTAI_LOAD_TIMES").is_some() {
-        eprintln!("loaded the battle content in {:.1?} (pack {})", t.elapsed(), loaded.pack.display());
+        eprintln!("loaded the battle content in {:.1?} (pack {})", t.elapsed(), loaded.packs[loaded.own.index()].display());
     }
-    let content = Arc::new(loaded.content);
-    let (content_dir, games) = (loaded.dir, vec![loaded.game]);
-    // The game's pack's graphics, in the player's language.
-    let by_pack = vec![loaded.pack];
-    let own = content.assets.pack(&game).unwrap_or_else(|| fail(format!("no {game} pack is loaded")));
+    let content = loaded.content.clone();
+    // (The session reports an engine panic; the program keeps it off stderr.)
     session::quiet_engine_panics();
     if args.audit_content {
-        audit_content(&args, &content, &by_pack, own, &content_dir, &games);
+        audit_content(&args, &loaded);
     }
-    let mut bundles: Vec<nettai_assets::Bundle> = Vec::new();
-    let mut strings = None;
-    for (i, path) in by_pack.iter().enumerate() {
-        let b = load(path, "graphics", nettai_content::pack::load_graphics);
-        if i == own.index() {
-            let (b, s) = language(b, &content_dir, &games, &args.lang);
-            strings = s;
-            bundles.push(b);
-        } else {
-            bundles.push(b);
-        }
-    }
-    let mut renderer = Renderer::with_packs(Packs::new(bundles.iter().collect(), own));
-    let strings = strings.map(Arc::new);
-    renderer.set_strings(strings.clone());
+    // The game's pack's graphics, in the player's language.
+    let t = Instant::now();
+    let graphics = loaded.graphics(&args.lang).unwrap_or_else(|e| load_failed(e));
+    show(&graphics.report);
+    load_time("graphics", t);
     // The font mode's font, shared by the renderer (which strings it has)
     // and the text layer's drawing.
-    let font = (args.text == TextMode::Font).then(|| {
-        Arc::new(match &args.font {
-            Some(path) => VectorFont::load(path).unwrap_or_else(|e| fail(e)),
-            None => VectorFont::bundled(),
-        })
-    });
-    renderer.set_text(args.text, font.clone());
+    let font = nettai_frontend::game::font(args.text, args.font.as_deref()).unwrap_or_else(|e| load_failed(e));
+    let mut renderer = graphics.renderer(args.text, font.clone());
     if args.audit {
         let setup = headless::AuditSetup {
             packs: renderer.packs.clone(),
-            strings,
+            strings: graphics.strings.clone(),
             text: args.text,
             font,
-            sound: (!args.mute).then(|| by_pack.iter().map(|p| Arc::new(load(p, "sound", nettai_content::pack::load_sound))).collect()),
+            sound: (!args.mute).then(|| sound_of(&loaded).banks),
             draw: args.draw,
         };
         audit_traces(&args, &content, &setup);
@@ -714,8 +705,7 @@ fn main() {
 
     let mut hooks: Vec<Box<dyn TickHook>> = Vec::new();
     if !args.mute {
-        let banks = by_pack.iter().map(|p| Arc::new(load(p, "sound", nettai_content::pack::load_sound))).collect();
-        hooks.push(audio_hook(banks, nettai_audio::Songs::of(&content.assets)));
+        hooks.push(audio_hook(sound_of(&loaded)));
     }
     eprintln!("{}", app::HELP);
     let opts = app::Options { scale: args.scale, start_paused: args.paused, quit_after: args.quit_after };

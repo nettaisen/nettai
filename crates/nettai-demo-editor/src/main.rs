@@ -1,5 +1,5 @@
 //! nettai-demo-editor: edit a match file (docs/frontend.md §6) and play it with
-//! nettai-frontend. README.md, "The match editor".
+//! nettai-demo. README.md, "The match editor".
 
 mod app;
 mod auto_battle;
@@ -19,7 +19,7 @@ usage: nettai-demo-editor [OPTIONS] [MATCH.toml]
   A match is of one game, EXE6 or EXE5: an opened file's is the one it names,
   and a new match's is the one you choose (the editor asks first, with
   none selected; --game answers on the command line). Its content and its
-  pack (the chips' pictures) are found as nettai-frontend finds them: the
+  pack (the chips' pictures) are found as nettai-demo finds them: the
   packs in the packs directory, $NETTAI_PACKS, else data/content, each by
   its game.
   --game GAME      a new match's game (exe6 or exe5), in place of the
@@ -29,8 +29,8 @@ usage: nettai-demo-editor [OPTIONS] [MATCH.toml]
   --pack DIR       a pack's directory, in place of the found pack of its game
                    (again for another game's), handed to the frontend too
   --lang LANG      names in en (default) or ja
-  --frontend PATH  the nettai-frontend program Play runs (default: the one
-                   beside this program, else nettai-frontend on the PATH)
+  --frontend PATH  the nettai-demo program Play runs (default: the one
+                   beside this program, else nettai-demo on the PATH)
   --tab NAME       start on a pane: arena, or left- or right- and navi,
                    folder, crosses, souls, auto-battle, cards, navicust,
                    stats
