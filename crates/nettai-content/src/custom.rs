@@ -126,7 +126,8 @@ pub struct LayoutDoc {
     pub slot_blank: u8,
     pub ok_cursor: CursorDoc,
     pub special_cursor: CursorDoc,
-    /// (A pack from before the field: none shown.)
+    /// Whether the chip window shows the re-deal button's uses left (BN5's;
+    /// a game that doesn't leaves the key out).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub button_uses: bool,
 }
