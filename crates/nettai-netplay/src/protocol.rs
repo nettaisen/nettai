@@ -34,27 +34,22 @@ use nettai_battle::input::keys;
 use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 
 /// The protocol's version: peers whose versions differ can't play together
-/// (the handshake refuses).
-/// 2: a transformation request carries BN5's soul turns and Chaos Unison.
-/// 3: a player's offer carries their tactics (BN5's computer-navi data).
-/// 4: an offer's side carries the navi code's level as an option, Beast
-/// Out unlocked and the SP deletion times, and a player's BN6 setup is its
-/// systems' (the battle's digest differs).
-/// 5: an offer's side carries BN5's karma and the souls it has; NaviStats
-/// carries BN5's Hub Style (+0x4C); a system's setup starts from its
-/// defaults (BN5's karma 500).
-/// 6: a match is of one game: the Hello says the game its side plays
-/// (peers of different games refuse), and an offer names the match's
-/// ruleset and everything of its side by name in that game.
-/// 7: an offer's side says BN5's Soul Unison and Chaos Unison (the save's
-/// event flags 0 and 0x236, now the souls system's setup), and NaviStats
-/// carries BN5's soul turns' bonus (+0x32).
-/// 8: no setup carries the emotion window's glitch (an offer's side has no
-/// such key: the rules make it from the NaviCust and the patch cards), and
-/// BN6's drawn side is MegaMan at his fresh stats.
-/// 9: a game has one ruleset: an offer names none (peers of one game play
-/// by its rules), and a round's setup names none.
-pub const VERSION: u16 = 9;
+/// (the handshake refuses). It stands for everything two peers must agree
+/// on that the content's hash doesn't say:
+///
+/// - the stream's elements and their wire form (this module): a tick is its
+///   buttons and its flags (`battle::flags`: the link closing), and the
+///   round's and the match's end are markers;
+/// - the handshake's Hello (`transport`): the protocol's and the engine's
+///   versions, the game the side plays, its content's hash, the role, a
+///   nonce, and the side's offer;
+/// - the offer (the frontend's): a match file's side, and the host's stage
+///   or arena, by their names in the game, as text;
+/// - how a round is set up from the two offers and the nonces, which both
+///   peers must do alike.
+///
+/// A change to any of them is a new version.
+pub const VERSION: u16 = 1;
 
 /// The rollback horizon, in elements (ticks, besides the rare marker):
 /// the widest gap a player's stream may have at the other peer

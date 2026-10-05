@@ -29,9 +29,7 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 pub const FORMAT: &str = "nettai-content/sound";
-/// Version 2 adds the PSG voices' sweep, fixed frequency and length, the
-/// byte after a sample's data and the DAC's resolution.
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 1;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SoundDoc {

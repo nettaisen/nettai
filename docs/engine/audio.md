@@ -204,11 +204,10 @@ and every song renders the same samples from them as from the ROM.
 trusts it. The pack holds the game's recordings, so it is never committed
 (`data/content/` is gitignored), and nothing reads the ROM at run time.
 
-Every BN6 song reads (399). The sound files' version 2 carries what the
-exact driver needs beyond version 1: a PSG voice's sweep, its fixed
+Every BN6 song reads (399). The sound files carry what the
+exact driver needs: a PSG voice's sweep, its fixed
 frequency bit and length, the byte after a sample's data (one BN6 sample
-has another than the usual), and the DAC's resolution; a version 1 pack
-loads with a warning and plays without them. MEMACC's set, add and
+has another than the usual), and the DAC's resolution. MEMACC's set, add and
 subtract are mid2agb's controllers (CC 13 the operation, CC 14 the
 address, CC 12 the operand, which runs it); a conditional MEMACC jumps on
 what the game wrote, so a song with one can't be a timeline and is left

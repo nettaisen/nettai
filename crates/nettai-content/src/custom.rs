@@ -28,7 +28,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 pub const FORMAT: &str = "nettai-content/custom";
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 1;
 
 const GLYPHS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
 const ICONS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 2, height: 2, columns };
@@ -97,11 +97,9 @@ pub struct CustomDoc {
     /// `language` is the pack's own).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub languages: BTreeMap<String, CustomLanguageDoc>,
-    /// Where the blocks go among the HUD layer's tile numbers, for a game
-    /// whose window is laid out otherwise than BN6's (none: BN6's,
-    /// `CustomLayout::BN6`).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub layout: Option<LayoutDoc>,
+    /// Where the blocks go among the HUD layer's tile numbers: the game's
+    /// own layout (every pack says its game's; none stands in).
+    pub layout: LayoutDoc,
     /// The buttons drawn by name (BN5's soul button): each one's tiles by
     /// state and its picture in the chip window with that picture's
     /// palettes by state.
@@ -126,9 +124,7 @@ pub struct LayoutDoc {
     pub slot_blank: u8,
     pub ok_cursor: CursorDoc,
     pub special_cursor: CursorDoc,
-    /// Whether the chip window shows the re-deal button's uses left (BN5's;
-    /// a game that doesn't leaves the key out).
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    /// Whether the chip window shows the re-deal button's uses left (BN5's).
     pub button_uses: bool,
 }
 
@@ -242,8 +238,8 @@ pub struct ButtonDoc {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icons: Option<TileImage>,
     /// The game versions whose consoles fly the icon in a palette of their
-    /// own: the icons' image's palette rows after the first, in order.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    /// own: the icons' image's palette rows after the first, in order (none:
+    /// an empty list).
     pub icon_versions: Vec<String>,
 }
 
@@ -480,7 +476,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         regular,
         advance_name_colors: c.advance_name_colors.iter().map(|s| s.iter().map(|&c| tiles::color_text(c)).collect()).collect(),
         languages,
-        layout: (c.layout != CustomLayout::BN6).then(|| c.layout.into()),
+        layout: c.layout.into(),
         buttons,
     };
     files.push(("custom.json".into(), json_lines(&doc)));
@@ -580,7 +576,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         ));
     }
     Some(CustomScreen {
-        layout: doc.layout.map_or(CustomLayout::BN6, CustomLayout::from),
+        layout: doc.layout.into(),
         buttons,
         window_tiles,
         column_cells: img(&doc.column_cells, report)?.0,
