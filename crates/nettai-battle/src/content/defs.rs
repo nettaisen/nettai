@@ -29,6 +29,7 @@ use super::{
     ChipData, Content,
     FormData, NaviData,
 };
+use super::views::{ButtonView, PlayerFact, ViewFields, WindowView};
 use super::roles::{
     ActionRole, BannerRole, ChipRole, CollisionRole, EffectRole, HookRole, KindRole, MusicRole, RegionRole,
     Roles, SoundRole, SparkRole, SpriteRole, StatusRole,
@@ -355,6 +356,9 @@ pub struct SystemDef {
     /// Its custom-screen buttons and windows.
     pub buttons: Vec<ButtonHandle>,
     pub windows: Vec<WindowHandle>,
+    /// The fields of its state a frontend reads for its windows' and
+    /// buttons' views.
+    pub views: ViewFields,
     /// Its extensions of its game's definitions (`extends`).
     pub extends: Vec<Extension>,
     /// The chips its rules can't play of a player's tactics, each with why
@@ -384,8 +388,11 @@ impl SystemDef {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ButtonDef {
     pub system: SystemHandle,
-    /// Its name in the system's `buttons` (what the frontend draws it by).
+    /// Its name in the system's `buttons` (the key a pack has its look
+    /// under).
     pub name: String,
+    /// What a frontend draws of it besides its look (`view`), if it says.
+    pub view: Option<ButtonView>,
     /// Its first slot, and how many it takes (1 or 2).
     pub slot: u8,
     pub cells: u8,
@@ -408,8 +415,11 @@ pub struct ButtonDef {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct WindowDef {
     pub system: SystemHandle,
-    /// Its name in the system's `windows` (what the frontend draws it by).
+    /// Its name in the system's `windows` (what `custom.open_window` opens
+    /// it by).
     pub name: String,
+    /// What a frontend draws while it is up (`view`), if it says.
+    pub view: Option<WindowView>,
     pub update: FnId,
 }
 
@@ -577,6 +587,10 @@ pub struct Defs {
     /// The game's ruleset (none: content without one, whose sides have no
     /// systems).
     ruleset: Option<RulesetDef>,
+    /// Where each fact a player brings is ([`PlayerFact::ALL`]'s order): the
+    /// place among the ruleset's systems of the first whose setup has the
+    /// field, and the field.
+    facts: Vec<Option<(u8, u16)>>,
     /// Each action's system, if it is one's, by action handle.
     action_owner: Vec<Option<SystemHandle>>,
     /// Whether a form names the action as its change, by action handle.
@@ -651,6 +665,14 @@ impl Defs {
     /// The game's ruleset's systems, in its order (none without a ruleset).
     pub fn ruleset_systems(&self) -> &[SystemHandle] {
         self.ruleset.as_ref().map_or(&[], |r| &r.systems)
+    }
+
+    /// Where fact `fact` is: the place among the ruleset's systems of the
+    /// one that keeps it, and the field of its setup. None: no system of
+    /// the game's does.
+    pub fn fact_field(&self, fact: PlayerFact) -> Option<(usize, usize)> {
+        let k = PlayerFact::ALL.iter().position(|&f| f == fact).expect("every fact is listed");
+        self.facts.get(k).copied().flatten().map(|(slot, field)| (slot as usize, field as usize))
     }
 
     /// The game's roles.
@@ -1498,7 +1520,21 @@ impl Defs {
             record.forms = match d.spec.field("forms") {
                 Data::Nil => None,
                 forms @ Data::Map(_) => {
-                    // (The rest of the table is its game's: EXE6's sets.)
+                    // The forms a form list offers, by version: each set of
+                    // the table that lists them (`crosses`; the rest of a set
+                    // is its game's: EXE6's Beast Out and Beast Over).
+                    let mut by_version = Vec::new();
+                    if let Data::Map(sets) = forms {
+                        for (version, set) in sets {
+                            let Data::List(items) = set.field("crosses") else { continue };
+                            let version = version.to_string();
+                            let listed = items
+                                .iter()
+                                .map(|v| form_ref(d, v, &format!("forms.{version}.crosses")).map(|f| f.expect("a form")))
+                                .collect::<Result<Vec<_>, _>>()?;
+                            by_version.push((version, listed));
+                        }
+                    }
                     let souls = match forms.field("souls") {
                         Data::Nil => Vec::new(),
                         Data::List(items) => items
@@ -1508,7 +1544,7 @@ impl Defs {
                         Data::Map(m) if m.is_empty() => Vec::new(),
                         other => return Err(what(d, format!("forms.souls is {other:?}, not a list of forms"))),
                     };
-                    Some(super::NaviForms { souls })
+                    Some(super::NaviForms { souls, by_version })
                 }
                 other => return Err(what(d, format!("`forms` is {other:?}, not the forms by game"))),
             };
@@ -1787,10 +1823,18 @@ impl Defs {
                         let Data::Map(fields) = spec else { return Err(at("a table of its place and functions")) };
                         for (f, _) in fields {
                             let f = f.to_string();
-                            if !["slot", "cells", "uses", "right", "left", "shown", "state", "pressed", "taken_back", "chip"].contains(&f.as_str()) {
-                                return Err(at(&format!("`{f}` is no field of a button (slot, cells, uses, right, left, shown, state, pressed, taken_back, chip)")));
+                            if !["slot", "cells", "uses", "right", "left", "view", "shown", "state", "pressed", "taken_back", "chip"].contains(&f.as_str()) {
+                                return Err(at(&format!("`{f}` is no field of a button (slot, cells, uses, right, left, view, shown, state, pressed, taken_back, chip)")));
                             }
                         }
+                        let view = match spec.field("view") {
+                            Data::Nil => None,
+                            Data::Str(v) => Some(ButtonView::named(v).ok_or_else(|| {
+                                let known: Vec<&str> = ButtonView::ALL.iter().map(|v| v.name()).collect();
+                                at(&format!("`view` is {v:?}: a button's view is one of {}", known.join(", ")))
+                            })?),
+                            _ => return Err(at("`view` is a view's name")),
+                        };
                         let byte = |f: &str| -> Result<Option<u8>, ContentError> {
                             match spec.field(f) {
                                 Data::Nil => Ok(None),
@@ -1816,7 +1860,7 @@ impl Defs {
                         }
                         let (uses, right, left) = (byte("uses")?.unwrap_or(0), byte("right")?, byte("left")?);
                         own_buttons.push(ButtonHandle((buttons.len()) as u16));
-                        buttons.push(ButtonDef { system, name: name.clone(), slot, cells, uses, right, left, shown, state, pressed, taken_back, chip });
+                        buttons.push(ButtonDef { system, name: name.clone(), view, slot, cells, uses, right, left, shown, state, pressed, taken_back, chip });
                     }
                 }
                 _ => return Err(what("`buttons` is a table of buttons by name")),
@@ -1839,15 +1883,23 @@ impl Defs {
                         let Data::Map(fields) = spec else {
                             return Err(what(&format!("window `{name}`: a table with its `update`")));
                         };
-                        if let Some((f, _)) = fields.iter().find(|(f, _)| f.to_string() != "update") {
-                            return Err(what(&format!("window `{name}`: `{f}` is no field of a window (update)")));
+                        if let Some((f, _)) = fields.iter().find(|(f, _)| !["update", "view"].contains(&f.to_string().as_str())) {
+                            return Err(what(&format!("window `{name}`: `{f}` is no field of a window (view, update)")));
                         }
+                        let view = match spec.field("view") {
+                            Data::Nil => None,
+                            Data::Str(v) => Some(WindowView::named(v).ok_or_else(|| {
+                                let known: Vec<&str> = WindowView::ALL.iter().map(|v| v.name()).collect();
+                                what(&format!("window `{name}`: `view` is {v:?}: a window's view is one of {}", known.join(", ")))
+                            })?),
+                            _ => return Err(what(&format!("window `{name}`: `view` is a view's name"))),
+                        };
                         if !matches!(spec.field("update"), Data::Function) {
                             return Err(what(&format!("window `{name}`: `update` is a function")));
                         }
                         let update = functions.id(FnSource::slot(Registry::System, &d.key, &format!("windows.{name}.update")));
                         own_windows.push(WindowHandle(windows.len() as u16));
-                        windows.push(WindowDef { system, name, update });
+                        windows.push(WindowDef { system, name, view, update });
                     }
                 }
                 _ => return Err(what("`windows` is a table of windows by name")),
@@ -1922,9 +1974,18 @@ impl Defs {
                 }
                 _ => return Err(what("`setup_defaults` is a table of the setup's fields")),
             }
+            // What its windows' and buttons' views show of its state: the
+            // fields, each by the name the view gives it.
+            let state = layout("state")?;
+            let views = ViewFields::of(
+                &schemas[state.0 as usize].schema,
+                own_windows.iter().filter_map(|h| windows[h.0 as usize].view.map(|v| (windows[h.0 as usize].name.as_str(), v))),
+                own_buttons.iter().filter_map(|h| buttons[h.0 as usize].view.map(|v| (buttons[h.0 as usize].name.as_str(), v))),
+            )
+            .map_err(|e| what(&e))?;
             systems.push(SystemDef {
                 key: d.key.clone(),
-                state: layout("state")?,
+                state,
                 setup,
                 setup_default,
                 navi_state,
@@ -1932,6 +1993,7 @@ impl Defs {
                 actions: system_actions,
                 buttons: own_buttons,
                 windows: own_windows,
+                views,
                 extends,
                 unplayable_tactics: Vec::new(),
             });
@@ -1980,6 +2042,29 @@ impl Defs {
             }
         }
         let ruleset = read_ruleset(&definitions)?;
+        // What a player brings that a frontend reads by the engine's name
+        // for it: the first of the ruleset's systems whose setup has a
+        // field of the name; every system's field of the name must be of
+        // the fact's type (a setup writes the fact into each).
+        let mut facts = vec![None; PlayerFact::ALL.len()];
+        for (k, fact) in PlayerFact::ALL.iter().enumerate() {
+            let listed = ruleset.iter().flat_map(|r| r.systems.iter().enumerate());
+            for (slot, h) in listed {
+                let s = &systems[h.index()];
+                let schema = &schemas[s.setup.0 as usize].schema;
+                let Some(i) = schema.index_of(fact.name()) else { continue };
+                if let Err(want) = fact.fits(&schema.field(i).ty) {
+                    let module = &definitions.of(Registry::System)[h.index()].module;
+                    return Err(ContentError::new(format!(
+                        "{module}.luau: system {}: its setup field `{}` is the fact a player brings by that name, {want}: it is {:?}",
+                        s.key,
+                        fact.name(),
+                        schema.field(i).ty
+                    )));
+                }
+                facts[k].get_or_insert((slot as u8, i as u16));
+            }
+        }
 
         let records: Vec<RecordDef> = definitions
             .of(Registry::Record)
@@ -2111,6 +2196,7 @@ impl Defs {
             buttons,
             windows,
             ruleset,
+            facts,
             action_owner,
             change_actions,
             program_advances,
