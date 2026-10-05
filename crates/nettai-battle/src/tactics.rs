@@ -1,11 +1,11 @@
-//! A player's tactics: EXE5's computer-navi data (0xE0 bytes a player at
+//! A player's tactics: EXE5's auto battle data (0xE0 bytes a player at
 //! 0x02034C20), which each console builds from its save at its last
 //! battle's end (0x0802C540, from the chips its player used most and the
 //! runs of them it played from a place by its target) and the link
-//! exchanges as a battle starts (0x08009B9A). A computer navi on the other
+//! exchanges as a battle starts (0x08009B9A). A navi in auto battle on the other
 //! side plays them (EXE5's Dark MegaMan, docs/design/exe5-map.md §15.9): the
 //! entries in order, a chip or a pattern (a place by its target and a run
-//! of chips). Each side's tactics are battle state: the computer navi's AI
+//! of chips). Each side's tactics are battle state: the auto-battling navi's AI
 //! turns their entries as it plays them.
 //!
 //! The block: 42 halfword places, their count (+0x54), eight pattern
@@ -47,7 +47,7 @@ pub enum PatternChip {
 }
 
 /// A pattern record: where to stand from the target (`dx` columns toward
-/// the computer navi's enemies, `dy` rows), the chips to use there, in
+/// the auto-battling navi's enemies, `dy` rows), the chips to use there, in
 /// order, to the first empty place, and the pattern's score, which the
 /// game's learning keeps (a battle's end takes 1 off it, or adds 5 to one
 /// the battle saw again, and writes the eight highest: 0x0802C540) and
@@ -189,7 +189,7 @@ impl Tactics {
     /// stays). With no entries the original loops 2^32 times.
     pub fn turn(&mut self) -> Result<(), String> {
         if self.entries.is_empty() {
-            return Err("a computer navi turns empty tactics (0x0802BF1C: sub_8000EB6 counts 2^32 entries)".into());
+            return Err("a navi in auto battle turns empty tactics (0x0802BF1C: sub_8000EB6 counts 2^32 entries)".into());
         }
         let first = self.entries[0];
         self.entries[0] = Tactic::Empty;

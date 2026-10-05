@@ -3,16 +3,16 @@
 -- when an armed charge is released out of the chaos cycle's window: the navi uninterruptible, `set_attack` slot 6).
 -- The battle dims (battle flag 4 alone, once no dimming runs), MegaMan flashes white every other pair of ticks
 -- while he crouches (animation 12, 6 ticks) and fades (animation 1 and the fade sound, 25 ticks), and on the fade's
--- seventeenth tick the Dark MegaMen across from him leave (rules/computer-navi) and a new one comes onto a solid,
--- empty panel of the other side's area (navis/dark-megaman, driven by EXE5's computer navis, his summoner's side's
+-- seventeenth tick the Dark MegaMen across from him leave (rules/auto_battle) and a new one comes onto a solid,
+-- empty panel of the other side's area (navis/dark-megaman, driven by EXE5's auto battle, his summoner's side's
 -- system). Then MegaMan is back in his base form, as a soul's revert leaves him (./revert, but in place, with no
 -- flash or sound), his attack requests and his uninterruptibility are dropped, the battle undims and he idles.
 
 local base = require("../../navis/megaman/forms/base")
-local computer_navi = require("../computer-navi")
+local auto_battle = require("../auto_battle")
 local dark_megaman = require("../../navis/dark-megaman/identity")
 local hooks = require("./hooks")
-local panels = require("../computer-navi/panels")
+local panels = require("../auto_battle/panels")
 
 local chaos = {}
 
@@ -73,11 +73,11 @@ local function vanish(me: Object, s: State)
         me.step_init = 4
     end
     if s.timer == 8 then
-        computer_navi.dismiss(me.alliance)
+        auto_battle.dismiss(me.alliance)
         local x, y = landing(me)
         if x ~= nil then
             -- (EXE5's 0x08006AAE: NameID 0x18D for the other side; the navi type's tick runs for him from the start.)
-            local navi = battle.spawn_navi(dark_megaman, x, y :: number, bit32.bxor(me.alliance, 1), me, computer_navi.system)
+            local navi = battle.spawn_navi(dark_megaman, x, y :: number, bit32.bxor(me.alliance, 1), me, auto_battle.system)
             if navi then
                 navi.ticked = true
             end

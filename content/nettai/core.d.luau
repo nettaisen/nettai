@@ -506,10 +506,10 @@ declare class Object
     -- Writable: EXE5's no-charge drive (DarkInvs): its ticks left
     -- (AIData+0x36; counted down in the intake while the navi has the
     -- no-charge state, asking for the stun strike at 0; 0xFFFF holds), and
-    -- the computer-navi AI driving it (AIData+0xF0, which VarSwrd's pick
+    -- the auto battle AI driving it (AIData+0xF0, which VarSwrd's pick
     -- reads).
     no_charge_timer: number
-    computer_driven: boolean
+    in_auto_battle: boolean
 
     -- `sub_800F26C`: the look its NameID gives is `sprite` (an object's
     -- NameID look; a navi's or form's NameID gives its sprite). An error
@@ -1066,14 +1066,14 @@ declare battle: {
     set_dimmed: (on: boolean) -> (),
     -- BattleState+0x40, `sub_800A704`: the fight's ticks so far (capped).
     battle_time: () -> number,
-    -- Player `side`'s tactics (EXE5's computer-navi data, which a computer
-    -- navi on the other side plays): how many entries they count; the entry
+    -- Player `side`'s tactics (EXE5's auto battle data, which a navi in auto
+    -- battle on the other side plays): how many entries they count; the entry
     -- in place `i` (from 1; past the count, an empty place): a chip, a
     -- pattern's number (from 1), false (a place holding 0, the game's
     -- chip 0, which no save the game wrote has there) or nil (an empty
     -- place); pattern `i` (from 1)'s place from the target (`dx` columns
     -- toward the navi's enemies, `dy` rows); and read `k` (from 1) of that
-    -- pattern's run as EXE5's computer navi reads it (0x0802BCD6): a chip
+    -- pattern's run as EXE5's auto battle reads it (0x0802BCD6): a chip
     -- place's chip, nil at an empty place, the run's end, or a number, a
     -- halfword the game takes for a chip's number without its being a
     -- chip place's chip (a place holding 0; and, past the five places of a
@@ -1258,7 +1258,7 @@ declare battle: {
     -- when each side has one, `own_gauges`, else the shared one).
     gauge_damage: (side: number) -> number,
     -- A side's sword pick (`sub_802E070`+0x12): the swing a variable sword
-    -- makes for a navi no buttons drive (EXE5's computer navi draws it).
+    -- makes for a navi no buttons drive (EXE5's auto battle draws it).
     sword_pick: (side: number) -> number,
     set_sword_pick: (side: number, pick: number) -> (),
     -- Presentation: whether the side's emotion window shows its base form's second set of faces (`mugshot.variant`:

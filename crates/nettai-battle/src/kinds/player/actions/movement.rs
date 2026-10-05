@@ -100,7 +100,7 @@ pub(in crate::kinds::player) fn start(b: &mut Battle, r: ObjectRef, dir: u8, end
 
 /// `sub_80116AE(5, end_lag, 2)` after setting AIAttackVars+0x16/+0x17: a
 /// step straight to `target` (the berserk controller's), facing nothing;
-/// with `face`, EXE5's `sub_80116F6` (the computer navis' AI's), which keeps
+/// with `face`, EXE5's `sub_80116F6` (the auto-battling navis' AI's), which keeps
 /// the object to face. A target in column 0 means no step.
 pub(crate) fn start_absolute_facing(b: &mut Battle, r: ObjectRef, target: PanelPos, end_lag: u16, kind: MoveKind, face: Option<ObjectRef>) {
     let vars = Vars { dir: ABSOLUTE_DIRECTION, kind, end_lag, target, ..Vars::default() };

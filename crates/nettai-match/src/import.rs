@@ -3,7 +3,7 @@
 //! S6c's setup takes of it, the version, what it unlocks on the custom
 //! screen, the navi code's level and the SP navi deletion times; from an EXE5
 //! one, its karma, its souls, its NaviCust board's expansions and its
-//! computer-navi data (`import_exe5`). (The folder, the NaviCust's programs, patch cards and
+//! auto battle data (`import_exe5`). (The folder, the NaviCust's programs, patch cards and
 //! stats are a later import's.)
 
 use crate::{CrossList, Match, Side};

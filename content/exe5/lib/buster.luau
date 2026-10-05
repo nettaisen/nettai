@@ -17,7 +17,7 @@ local buster = common.make {
 }
 
 -- The arm EXE5's shots raise is EXE5's own (0x080EBAAE and 0x080EBABE: lib/arm), not EXE6's choices: an enemy navi's
--- arm and a computer navi's buster arm by its AI index, MegaMan's by his soul and NaviStats +0x4C.
+-- arm and an auto-battling navi's buster arm by its AI index, MegaMan's by his soul and NaviStats +0x4C.
 buster.raise_arm = arm.raise
 function buster.raise_arm_for(navi: Object, holder: Object, which: Slot, while_dimmed: boolean)
     arm.raise_for(navi, which, while_dimmed, holder)
