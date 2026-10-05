@@ -1402,7 +1402,7 @@ RedFrut1 to 3, Voltz1 to 3 and VDoll) are in §15.11.
   flash timer's bit 1 is clear, EXE6's `sub_8016934` while it is set): the status section's `flash_hides_on_clear`
   (EXE5 true). The engine asks a player's identity for a Full Synchro aura animation, which
   EXE5 has differently (EXE6's `sub_80C4C52` is absent): 0, EXE6's rule, until EXE5's emotions.
-- **Stages** (content/exe5/stages/netbattle.luau, compat stages.toml): a stage per distinct record of EXE5's
+- **Stages** (content/exe5/stages.luau, compat stages.toml): a stage per distinct record of EXE5's
   netbattle settings list (0x0811AF4C, 95 records), its layout (0x0800BD6C) and its actor list; the lab's
   settings (written to RAM by the Team Battle with its own background and effects) match the list's by layout,
   actor list, music, mode and panel pattern. Those with obstacles (actor types 3, 8, 9: EXE5's boulder, rock and
@@ -1980,7 +1980,7 @@ times the side into the next word. A hit's modifier goes into its side's slot by
 makers EXE6's chips/rockcube and objects/boulder wrap (same APIs). EXE5's rock (attack object 0x59, rows by
 variant), its debris (effect 0x38) and boulder (attack 0x6E) are in content/exe5/objects; the stage statue (the
 Guardian's, @exelib/guardian/statue) takes its stage damage word. The 25 netbattle stages that waited on them are
-in content/exe5/stages/netbattle.luau and compat/stages.toml (64 stage recordings match). The engine's obstacle
+in content/exe5/stages.luau and compat/stages.toml (64 stage recordings match). The engine's obstacle
 service gains `obstacle.throw` (`sub_800F6AC`: the request `sub_8018002` serves; nothing in EXE6 makes it) and
 `obstacle.throwable` (an identity's `throwable`, default true; EXE5's mine sets false: Poltergeist's 0x080E8CA0
 skips EXE5's NameIDs 0xDA, 0xD3, 0xD2, 0xE5, 0xE4 and 0xE7). A thrown obstacle's landing (`sub_80180EC`, EXE5's
