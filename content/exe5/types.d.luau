@@ -42,6 +42,10 @@ export type SoulWindow = {
 -- windows by name (what the frontend draws them by), and its part of the
 -- screen's routines, each called while the side's navi is in the soul.
 export type SoulCustom = {
+    -- What it keeps of one screen: as every screen deals, whatever soul the
+    -- navi is in, each field is back as a fresh state has it, by its
+    -- declared type (0, false, no definition: the original zeroes the
+    -- screen's record as it opens, 0x08022CA2).
     state: StateSchema?,
     buttons: { [string]: SoulButton }?,
     windows: { [string]: SoulWindow }?,
