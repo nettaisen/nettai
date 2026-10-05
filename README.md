@@ -35,7 +35,7 @@ netplay needs.
 - `nettai-frontend`: the desktop app that shows battles drawn by `nettai-render`: it replays recorded matches or
   plays live, alone or over the network, with sound.
 - `nettai-match`: match files, everything a round needs by content key, checked; live play's random pick.
-- `nettai-editor`: a desktop app that edits match files and plays them with the frontend.
+- `nettai-demo-editor`: a desktop app that edits match files and plays them with the frontend.
 - `exe6-extract`: extracts EXE6's graphics and sound from the four ROMs into a content pack.
 - `exe6-compat`: EXE6's original numbers for the content (`content/exe6/compat`): the codecs of the game's setup
   records, and the trace harness. The engine never depends on it.
@@ -110,8 +110,8 @@ and each side's navi, version, folder, Crosses, patch cards, NaviCust and stats,
 (`cannon`, `megaman`; [docs/frontend.md](docs/frontend.md) §6). The editor makes and edits them, checking them
 against the content as you go, and plays them:
 
-    cargo build --release -p nettai-frontend -p nettai-editor
-    cargo run --release -p nettai-editor -- [--game GAME] [match.toml]
+    cargo build --release -p nettai-frontend -p nettai-demo-editor
+    cargo run --release -p nettai-demo-editor -- [--game GAME] [match.toml]
     cargo run --release -p nettai-frontend -- --match match.toml     # what Play runs
 
 A match's game is chosen before anything else, and none is preselected: an opened file is of the game it names,

@@ -1090,7 +1090,7 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
   to the other's; one frame's samples). By hand: the scratch EXE6 pack with a copy of it as game `aaa` (sorting
   first, so EXE6 is `PackId(1)`): machgun's audit 0 problems with both, and frames 150 to 2000 rendered with one and
   with two packs are byte for byte the same.
-- **Not done**: the editor's chip pictures (`nettai-editor` `pictures.rs`) still load one pack (nettai-assets'
+- **Not done**: the editor's chip pictures (`nettai-demo-editor` `pictures.rs`) still load one pack (nettai-assets'
   API did not change); an EXE5 pack's own HUD and custom screen formats come with EXE5's extraction.
 - **The frontend audit is a gate** (verify's `tools/audit-against.sh`, in `checks-against.sh` and the brief's full
   set): every golden trace and the custom screen's lab scenarios drawn and played, 0 problems. Nothing else in the
@@ -1624,7 +1624,7 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   sea. An EXE6 pack loads as it is; extracting it again adds only the list.
 - **Gates** (merged with main e1c69bdf):
   - the build without warnings (all targets);
-  - the tests of nettai-render, nettai-frontend, nettai-content, nettai-assets, nettai-editor and both
+  - the tests of nettai-render, nettai-frontend, nettai-content, nettai-assets, nettai-demo-editor and both
     extractors;
   - the audit gate (`audit-against.sh`): the static audit 0 problems (6,965 lookups), 49 traces 0 problems;
   - identity.sh against main's frontend on the shared EXE6 pack: the sample and custom-screen lists identical in
@@ -2038,7 +2038,7 @@ is the only namespace its lookups see.
   - `FieldArt` is the game's pack's field: a panel type or highlight it doesn't draw is tinted.
   - Borrowing another pack's field (`FieldArt::borrowed`, `Stage::borrowed`) is gone, and `Stage::new` takes no
     arena.
-- **The editor agent's crates.** nettai-match, nettai-frontend, nettai-editor and nettai-netplay only got what they
+- **The editor agent's crates.** nettai-match, nettai-frontend, nettai-demo-editor and nettai-netplay only got what they
   need to compile. The frontend and the editor load `nettai_match::DEFAULT_GAME` with `load_game`. A match's
   `RoundSetup::ruleset` is side 0's ruleset (the one-game branch moves it to the arena). `facts::write` and
   `Unlocks::write` take the side's ruleset. The content audit reads the one game's roles and field.
@@ -2667,7 +2667,7 @@ data tell them apart. Everywhere else a version is the name the game's rules dec
 - **A match's side** holds the name (`Side::version: Option<String>`), checked against the names the rules declare
   (`nettai_match::facts::versions`: the version fact's enum, of the first of the ruleset's systems that declares
   it; a file's or a side's other name is refused, "no version \"azure\" (gregar or falzar)"). The editor's list
-  is those names, and a Cross's version there is the form's own `version`: nettai-editor depends on no compat crate.
+  is those names, and a Cross's version there is the form's own `version`: nettai-demo-editor depends on no compat crate.
 - **exe6-compat at the boundary**: a save's version and what it unlocks (`Unlocks`), a trace's `game_versions`, and
   NaviStats+0x20 (`stats_byte`: 0 Gregar, 1 Falzar, which `nettai_match::version_byte` asks it for by name).
   nettai-match still goes through the enum where it does EXE6's own things: the unlocks it writes into a side's
