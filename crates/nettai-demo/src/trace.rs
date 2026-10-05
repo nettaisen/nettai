@@ -122,7 +122,7 @@ impl Driver for TracePlayer {
 pub fn trace_rounds(path: &std::path::Path, content: &Arc<Content>) -> Result<Vec<(usize, Box<dyn Driver>)>, String> {
     let game = trace_game(path)?;
     if game != content.game() {
-        return Err(format!("an {game} recording, and the content loaded is {}'s (--game {game})", content.game()));
+        return Err(format!("an {game} recording, and the content loaded is {}'s", content.game()));
     }
     match game.as_str() {
         exe6_compat::ROOT => {

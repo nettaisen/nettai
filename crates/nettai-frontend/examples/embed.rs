@@ -8,8 +8,11 @@
 //! against a `BattleAudio` it feeds the battle's cues itself (the program's
 //! headless output has no sound to compare with).
 //!
+//! First save `nettai_match::pick::live(content, "exe6", 7, None)` to
+//! `match.toml` with `nettai_match::write`, then compare the same setup:
+//!
 //! ```text
-//! nettai-demo --play --game exe6 --seed 7 --mute --headless 100,400,700,900 --out DIR \
+//! nettai-demo --match match.toml --mute --headless 100,400,700,900 --out DIR \
 //!     --keys "$(cargo run -p nettai-frontend --example embed -- --keys)"
 //! cargo run -p nettai-frontend --example embed -- --game exe6 --seed 7 --frames DIR
 //! ```
@@ -79,7 +82,7 @@ fn run() -> Result<String, String> {
     // Loading: one call. What the loaders had to say is the host's to show.
     let game = game::load(&name, &Options::default()).map_err(|e| format!("{}\n{e}", e.report))?;
     let content = &game.game.content;
-    // The match the program picks for the seed, and a live driver of its set.
+    // The seeded random match saved for the program, and a live driver of its set.
     let m = nettai_match::pick::live(content, &name, seed, None)?;
     let driver = LivePlayer::new(nettai_match::Set::of(content, &m, seed));
     let mut player = Player::new(&game, Box::new(driver));
