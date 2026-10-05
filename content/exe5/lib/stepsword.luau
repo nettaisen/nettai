@@ -18,9 +18,6 @@ local PANEL_EXISTS, BODIES = 0x10000, 0x0F800000
 local ENEMY_BODIES = { [0] = 0x04000000, [1] = 0x08000000 }
 -- The rows it looks in, from its own (0x080125C8).
 local ROW_ORDER = { { 1, 2, 3 }, { 2, 1, 3 }, { 3, 1, 2 } }
--- The soul that steps behind the enemy.
-local SHADOW_SOUL = 8
-
 local AFTERIMAGE_SHADER = 0xFFE0
 
 -- What the step keeps (+0x34): whether it turned round to step behind the enemy.
@@ -69,8 +66,7 @@ function stepsword.kind(me: Object, set_off: (Object) -> boolean): ("step" | "wa
     if mode == 0 or not set_off(me) then
         return nil
     end
-    local soul = battle.navi(me.alliance).form.soul
-    if (soul and soul.number == SHADOW_SOUL) or mode == 2 then
+    if battle.navi(me.alliance).form.steps_behind == true or mode == 2 then
         return "warp"
     elseif mode == 1 then
         return "step"
@@ -104,9 +100,8 @@ function stepsword.start(me: Object, s: State, moving: boolean)
     end
     me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
     me:reserve_panel(me.panel_x, me.panel_y)
-    local soul = battle.navi(me.alliance).form.soul
     local x, y
-    if (soul and soul.number == SHADOW_SOUL) or mode == 2 then
+    if battle.navi(me.alliance).form.steps_behind == true or mode == 2 then
         s.turned = 1
         x, y = behind_enemy(me)
     elseif mode == 1 then

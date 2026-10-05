@@ -1453,12 +1453,32 @@ them.
 
 ### 15.8 Soul Unison (as built)
 
+- **Where it is.** A soul is a form of MegaMan's, named by its id (`colonelsoul`), never by the original's number.
+  - *The soul's own* is in its folder, navis/megaman/forms/<soul>/: the form (init.luau), its weapons, its sprite's
+    attach points (attach_points.luau) and what only it does. The form says what the rules ask of a soul: its
+    family (`soul = { family }`, the engine's), its buster arm's animation (`buster_arm`), and the souls system's
+    fields (the system's `extends`; content/exe5/types.d.luau types them): its navi's image at the change
+    (`image`, a `SoulImage`: the sprite, and what the image puts on and takes off), what it adds to the custom
+    screen (`custom`, a `SoulCustom`: below), its blade's animation (`blade_anim`), its charged sword's step behind
+    the enemy (`steps_behind`), VarSwrd's wait (`var_sword_waits`) and the cameras' shake at its change
+    (`emerge_shake`).
+  - *The system's* is rules/souls/: the soul button and the soul's choice (custom.luau), the turns (init.luau), the
+    change and the revert (change.luau, revert.luau, each defining its action, which every soul names), the image
+    and the shade (image.luau, shade.luau), Chaos Unison's failure (chaos.luau). It names no soul: custom.luau
+    gathers each soul's `custom` from MegaMan's `forms.souls` and asks the soul the side's navi is in.
+  - *The original's number* (NaviStats +0x2C: 1 to 12) is compat's: content/exe5/compat/records.toml's `[forms]`
+    (exe5-compat's `Compat::form_number`, `form`), which a recording's setup (each version's six souls, by the
+    save's flags) and the save import read. MegaMan lists his souls in that order (navis/megaman/init.luau's
+    `forms.souls`): the order of the soul button's icons in a pack, by which the frontend takes a soul's icon
+    (nettai-render's `soul_place`; nettai-match's `megamans_souls_are_in_the_order_of_their_numbers` holds the
+    list to compat's numbers).
 - **The soul button** (the souls system's button `soul`, rules/souls/custom.luau: EXE5's layout's slot 11,
   0x08023C54, 0x08024B28, 0x08024972): shown for MegaMan with souls, outside battle flag 0x40, with the save's
   Soul Unison (event flag 0, the setup's `soul_unison`), unless he is worried or dark (in a soul or angry he may);
-  lit for the last pick's family when the navi has a soul of it (a form naming its `soul = { number, family }`),
-  the save has the soul (the setup's `souls`, its flags by number: exe5-compat gives a finished save's six of the
-  version) and it isn't given this round (the system's `souls_used`: Soul Unison and Chaos Unison apart; a dark
+  lit for the last pick's family when the navi has a soul of it (a form naming its `soul = { family }`),
+  the save has the soul (the setup's `souls`, a list of forms: exe5-compat gives a recording's side its version's
+  six) and it isn't given this round (the system's `souls_used`, a bit a soul by its place among the navi's souls,
+  the original's word 0x02034E10: Soul Unison and Chaos Unison apart; a dark
   chip's is Chaos Unison, which needs the setup's `chaos_unison`, flag 0x236). Pressed: the window `soul_unison`
   (EXE5's state 9: the icon's flight, fades 0x34 and 0x30, then the white), whose white step puts the soul first in
   the selection in place of the chip given up (`custom.trade_last_pick`). At OK (`custom.confirmed`) the transform
@@ -1467,9 +1487,14 @@ them.
   `chaos`); the chip given up leaves the folder in the soul's place. B on the soul puts the chip back. (Until
   2026-10-04 this was the custom screen's Rust: `SlotKind::Soul`, `Phase::SoulChosen`, `SoulUnlocks`.)
 - **What a soul adds to the screen** (0x08023CF8, by the soul MegaMan is in, when the side's navi is MegaMan, the
-  screen's +0x10): its slots 8 and 9, over the hand's last two chips. SearchSoul's Shuffle (kinds 4 and 5) and
-  NumberSoul's hand of ten (0x08025BE4) are the two bullets after this one; the two that change a chip are:
-  - **MeddySoul's capsules** (soul 6, kinds 6 and 7; rules/souls/capsules.luau): two of five capsule chips a screen
+  screen's +0x10): its slots 8 and 9, over the hand's last two chips. Each soul's is its own, a module in its
+  folder that makes the form's `custom` (a `SoulCustom`: the state fields it keeps, its buttons and windows by
+  name, and its `hand_size`, `deal`, `confirmed` and `turn_opened`). rules/souls/custom.luau gathers them from
+  MegaMan's souls into the system's buttons, windows and state, and calls a soul's while the side's navi is in that
+  soul, with the system's state (its buttons and its `deal` not in battle mode 1, where the routine reads no
+  soul). SearchSoul's Shuffle (kinds 4 and 5) and NumberSoul's hand of ten (0x08025BE4) are the two bullets after
+  this one; the two that change a chip are:
+  - **MeddySoul's capsules** (kinds 6 and 7; navis/megaman/forms/meddysoul/capsules.luau): two of five capsule chips a screen
     (0x17C YelCapsl, 0x17D BlkCapsl, 0x17E WhiCapsl, 0x17F PrpCapsl, 0x180 PnkCapsl: chips/capsules), one draw of
     the console's RNG1 as the slots are laid out (0x08023D30: bits 1 to 4 and 17 to 20 into a table of sixteen,
     0x08025E60, or 0x08025E80 while MegaMan's HP is under a quarter of its maximum; the system's deal hook, after
@@ -1484,7 +1509,7 @@ them.
     The capsule chips never reach a hand; a slot shows its capsule as a chip (icon, and in the chip window the name
     and picture alone, 0x08024422), and R describes it. Their records' uses are leftovers (the cannon's action,
     Poltrgst's and RockCube's dimming routines, the supports' controller, routine 50: lib/supports/dimming).
-  - **ColonelSoul's Arm Change** (soul 7, kinds 8 and 9; rules/souls/arm-change.luau): on offer while the last pick
+  - **ColonelSoul's Arm Change** (kinds 8 and 9; navis/megaman/forms/colonelsoul/arm-change.luau): on offer while the last pick
     is a standard chip of no family that deals damage and neither dims nor is dark (0x08024C00). A on it
     (0x080249D6) runs the screen's state 0x38 (0x08023694: the window `arm_change`): the chip leaves the picks for
     the button (`custom.hold_last_pick`; five more can be picked) and its icon blinks in the column for 30 ticks.
@@ -1517,7 +1542,7 @@ them.
     pair by navi from 0x08025EA0 in slot 9, 0x08023EFE; the navi switch, state 0x40; battle mode 1's button in
     slot 11). A netbattle's navi is MegaMan.
 - **SearchSoul's Shuffle** (the souls system's button `redeal`, the name the frontend draws the pack's re-deal
-  button's tiles and picture for; rules/souls/shuffle.luau; the per-soul slots,
+  button's tiles and picture for; navis/megaman/forms/searchsoul/shuffle.luau; the per-soul slots,
   0x08023CF8, by the soul the emotion routine leaves in r1, so never in battle mode 1): slots 8 and 9 (types 4 and 5),
   its right neighbor the special slot, its left the eighth chip's; three uses a screen (3 less the screen's +0x16,
   which each open zeroes). A on it (0x080249B0, no sound of its own; EXE6's ChpShufl plays one, now its button's
@@ -1526,14 +1551,17 @@ them.
   in the hand (0x080253E8's table, 0x080254C8: the custom-screen rules' `redeal_kept`, by how many of the hand it
   deals again: 0, 0, 0, 1, 1, 2, 2, 3, 3): the hand's are shuffled among themselves, then all but the first kept
   with the rest of the folder. Its scenarios: souls/03-cursor/shuffle, shuffle-3, shuffle-picked-1 to 5.
-- **NumberSoul's hand of ten** (rules/souls/hand.luau, the souls system's `custom.hand_size`; 0x08025BE4): MegaMan
-  in soul 9 is dealt ten chips whatever his custom level, in battle modes 0 and 6 (mode 1 takes the same branch, but
+- **NumberSoul's hand of ten** (navis/megaman/forms/numbersoul/hand.luau, through the souls system's
+  `custom.hand_size`; 0x08025BE4): MegaMan
+  in NumberSoul is dealt ten chips whatever his custom level, in battle modes 0 and 6 (mode 1 takes the same branch, but
   its emotion routine, 0x080127C0, leaves the stats' address in r1, not the soul: the custom level's hand; any other
   mode deals five, which nothing answers yet). Its scenario: souls/09-plus/hand-of-ten.
 - **The change** (rules/souls/change.luau, the souls' `change`, EXE5's 0x08011F74, run by the shared turn-start
-  sequencer): onto the future panel, a flash, his moves stopped (`stop_moving`); the soul's image (objects/
-  soul-image, actor 0x2A, its navi's sprite 08-xx) spirals in, blinks and fades; MegaMan emerges in the soul (the
-  old form's end hook and the new one's start hook, `put_on/take_off_form_overlay`; TomahawkSoul's shake), the
+  sequencer): onto the future panel, a flash, his moves stopped (`stop_moving`); the soul's image (rules/souls/
+  image.luau, actor 0x2A, in the look its form's `image` gives: its navi's sprite 08-xx and what it wears) spirals
+  in, blinks and fades; MegaMan emerges in the soul (the
+  old form's end hook and the new one's start hook, `put_on/take_off_form_overlay`; TomahawkSoul's shake, its form's
+  `emerge_shake`), the
   status reset; Chaos Unison's 11 ticks arm the chaos charge (AIData +0x12, not yet modeled). The souls system
   (rules/souls/init.luau) keeps the soul's turns (AIData +0x0F), counts them down at a turn's start (0x0801248C)
   and asks for the revert when they run out (0x0801246C); the revert is the souls' own (`FormData::revert`, the
@@ -1541,7 +1569,8 @@ them.
 - **ProtoSoul** (soul 1, sword): sprite 00-01, weapons from 0x0801CA1C's row 1: the buster, the charged slash
   (routine 3: WideSwrd's slash, 80 + 10 × (Attack + 1), counter byte 0x94), Sword chips charged with A (routine
   5: any Sword chip but a dimming or dark one, `charged_chips`' `plain`, 0x0801090A; doubled, 0x080103D0). EXE5's
-  blade animation goes by the soul (0x080EC038: ProtoSoul 13, ColonelSoul 14, ShadowSoul 15; `blade_anim`).
+  blade animation goes by the soul (0x080EC038: ProtoSoul 13, ColonelSoul 14, ShadowSoul 15; each form's
+  `blade_anim`, which lib/swords' `blade_anim` reads).
   souls/01-sword/unison matches every frame; its B+Back shield is routine 4 (EXE5's guard as the Reflect program's).
 - **The other eleven** follow the pattern: a form file each under navis/megaman/forms (sprite 00-0n, image sprite
   08-0n, family, weapons from 0x0801CA1C: +5 the A-charge's routine, +6 the buster's, +7 the charged shot's, +8
@@ -2094,7 +2123,8 @@ recording).
   chips/anubis/anubis, ParaBom and ResetBom chips/crakbom/crakbom, MudWave and RedWave chips/wavepit/wavepit. A
   family's is in its lib/ folder, its builder with it: lib/bombs (bombs, seed), lib/guard (guard, the Guard chips'
   shock wave), lib/traps (traps, the Anti traps' anti_trap), lib/instruments (instrument), lib/navi-chips (the
-  navi chips' throw marker). The soul system's are rules/souls' (shade, image).
+  navi chips' throw marker). The soul system's are rules/souls' (shade, image); a soul's own are in its form's
+  folder (§15.8).
 - **objects/** keeps what several families share (attachment, bullet, flying-shot, panel-bursts, panel-changer,
   projectile with its variants, rising-bubble), and six modules whose `define.kind` keys name no owner, which
   can't move without new ids (the content check keys a kind in an owner's folder under the owner): capsule
