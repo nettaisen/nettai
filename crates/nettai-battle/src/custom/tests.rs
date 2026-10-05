@@ -698,7 +698,7 @@ fn the_cursor_stays_put_without_a_dark_chip() {
 /// with the side's folder and view.
 fn on_screen<R>(p: &mut Player, f: impl FnOnce(&mut Screen, &BattleFolder, &super::screen::PlayerView) -> R) -> R {
     let side = p.side.clone();
-    let folder = side.folder.expect("a folder");
+    let folder = side.folder;
     let mut screen = side.screen.expect("a screen");
     let r = {
         let ctx = p.context();
@@ -802,7 +802,7 @@ fn a_button_holding_a_pick_takes_it_out_of_the_picks_and_the_folder() {
     assert!(on_screen(&mut p, |s, f, v| s.hold_last_pick(8, f, v)));
     let hand = confirm(&mut p);
     assert_eq!(hand.ids[..2], [Some(ChipHandle(SHOT)), None]);
-    let f = p.side.folder.unwrap();
+    let f = p.side.folder;
     assert_eq!((f.chips[0], f.chips[1]), (None, None));
     assert_eq!(f.chips[2], Some(FolderChip::new(ChipHandle(SHOT), ChipCode(0))));
 }
