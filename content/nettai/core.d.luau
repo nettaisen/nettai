@@ -1073,8 +1073,8 @@ declare battle: {
     set_dimmed: (on: boolean) -> (),
     -- BattleState+0x40, `sub_800A704`: the fight's ticks so far (capped).
     battle_time: () -> number,
-    -- Player `side`'s tactics (EXE5's auto battle data, which a navi in auto
-    -- battle on the other side plays): how many entries they count; the entry
+    -- Player `side`'s auto battle data (EXE5's, which a navi in auto battle
+    -- on the other side plays): how many entries it counts; the entry
     -- in place `i` (from 1; past the count, an empty place): a chip, a
     -- pattern's number (from 1), false (a place holding 0, the game's
     -- chip 0, which no save the game wrote has there) or nil (an empty
@@ -1087,17 +1087,17 @@ declare battle: {
     -- record all of which hold a chip, the two halves of its score, then
     -- the next record's `dx` and `dy` as one halfword and that record's
     -- places, and so on to the block's end).
-    tactic_count: (side: number) -> number,
+    auto_battle_count: (side: number) -> number,
     -- Slot `i` (1 to 4) of a side's list of alive actors, filled or not.
     alive_actor_slot: (side: number, i: number) -> Object?,
-    tactic: (side: number, i: number) -> (Chip | number | false)?,
-    tactic_pattern: (side: number, i: number) -> (number, number),
-    tactic_pattern_read: (side: number, i: number, k: number) -> (Chip | number)?,
+    auto_battle_entry: (side: number, i: number) -> (Chip | number | false)?,
+    auto_battle_pattern: (side: number, i: number) -> (number, number),
+    auto_battle_pattern_read: (side: number, i: number, k: number) -> (Chip | number)?,
     -- The first entry and the entry in place `i` (from 1) change places
     -- (0x0802C0DC); the first entry goes last of the count, the rest move
     -- up (0x0802BF1C).
-    swap_tactics: (side: number, i: number) -> (),
-    turn_tactics: (side: number) -> (),
+    auto_battle_swap: (side: number, i: number) -> (),
+    auto_battle_turn: (side: number) -> (),
     -- EXE5's 0x08006AAE: the navi `identity` (actor type navi, with a
     -- `body`) comes onto (x, y) for `side`, brought by `summoner`, driven by
     -- `system` (its `controller`, with the navi's state its `navi_state`;
@@ -1703,11 +1703,33 @@ export type Kind = KindSpec
 -- §2.2): its state of each side and its player's setup (named fields, as a
 -- kind's state), and the hooks the framework calls, each for one side
 -- (§4.1). A system sees only its own state, of the side it is called for.
+-- What a frontend draws of a button besides its look, which is its pack's
+-- by the button's name (docs/design/rules-in-luau.md §4.8): "form_offer",
+-- it offers a form (the picked column shows the offered form's icon, and
+-- its picture is in its second palette for the form's alternate offer; its
+-- system's state keeps `offer`, a form, `offer_chaos`, a bool, and `turns`,
+-- the turns left in the form it gave, which the emotion window counts);
+-- "chip_picture", its picture in the chip window is also the picture of the
+-- chip the ruleset's role `beast_out` names.
+export type ButtonView = "form_offer" | "chip_picture"
+-- What a frontend draws while a window is up (§4.8). A list of forms to
+-- choose from, in its four windows: "form_list_opening", "form_list",
+-- "form_list_closing" and "form_chosen" (their system's state keeps
+-- `offered`, a u8 array of the places offered, `offered_count`, `marked`, a
+-- bool array, `window_cursor`, `cross_chosen`, a bool, and `chosen`).
+-- "offer_flight": the form a "form_offer" button offers flies to the picked
+-- column as its icon (the state keeps `unite_step` and `unite_count`).
+-- "chip_flight": the chip a button shows flies there (`mix_capsule`, which
+-- of the screen's buttons that show a chip, from 1, `mix_step` and
+-- `mix_count`).
+export type WindowView = "form_list_opening" | "form_list" | "form_list_closing" | "form_chosen" | "offer_flight" | "chip_flight"
 -- A system's custom-screen button (docs/design/rules-in-luau.md §4.4).
 export type ButtonSpec = {
     -- Its first slot, and how many it takes (1 or 2).
     slot: number,
     cells: number?,
+    -- What a frontend draws of it besides its look, if anything.
+    view: ButtonView?,
     -- Its uses on a screen (the machinery it starts counts them).
     uses: number?,
     -- Its first cell's right neighbor and its last cell's left one, over
@@ -1731,6 +1753,8 @@ export type ButtonSpec = {
 -- A system's custom-screen window (§4.4): its update, each tick it is up
 -- (`custom.window_tick` counts them from 1): whether it stays up.
 export type WindowSpec = {
+    -- What a frontend draws while it is up, if anything of its own.
+    view: WindowView?,
     update: (side: number) -> boolean,
 }
 export type SystemSpec = {
@@ -1747,8 +1771,8 @@ export type SystemSpec = {
     actions: { Action }?,
     -- Its custom screen's extras (docs/design/rules-in-luau.md §4.4): the
     -- side's screen asks them; the first system that answers decides.
-    -- Its custom-screen buttons, by name (what the frontend draws them by):
-    -- where each sits and its functions, which run as the system's.
+    -- Its custom-screen buttons, by name (the key a pack has each one's look
+    -- under): where each sits and its functions, which run as the system's.
     buttons: { [string]: ButtonSpec }?,
     -- Its custom-screen windows, by name (`custom.open_window`).
     windows: { [string]: WindowSpec }?,
@@ -1758,10 +1782,10 @@ export type SystemSpec = {
     -- and reads none of them.
     extends: { [string]: { [string]: any } }?,
     -- For tools, never the simulation: the chips of its game its rules
-    -- can't play of a player's tactics (`battle.tactic`), by id, each with
+    -- can't play of a player's auto battle data (`battle.auto_battle_entry`), by id, each with
     -- why, as a clause about "it" (EXE5's auto battle: a chip the original
-    -- crashes on). A match's check refuses them in a side's tactics.
-    unplayable_tactics: { [string]: string }?,
+    -- crashes on). A match's check refuses them in a side's auto battle data.
+    unplayable_in_auto_battle: { [string]: string }?,
     custom: {
         -- As the screen opens: how many chips it deals (`sub_802A40C`).
         -- None answering: the custom level (8 at most), NumbrOpn's 10, and
@@ -1891,28 +1915,35 @@ export type System = SystemSpec
 -- against its schemas when the ruleset is defined, and the game's roles
 -- (§7.4, `roles = require("@self/roles")`). The engine has no game's rules
 -- of its own: a ruleset states `chip_use`, `effects`, `flow`, `panels`,
--- `pools`, `reactions` and `status`, and every field of them (one left out
--- is a load error that names it). A section it may leave out is a feature
--- the game hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`)
--- or a table that is empty without it.
+-- `pools`, `reactions` and `status` (required here, so a ruleset without
+-- one doesn't type-check), and every field of them (one left out is a load
+-- error that names it). A section it may leave out is a feature the game
+-- hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`) or a
+-- table that is empty without it.
+--
+-- A section is a table of its rules by name, which the engine reads by its
+-- schema. (A table and not `any`: a field of type `any` may be left out.)
+export type RuleSection = { [string]: any }
 export type RulesetSpec = {
     systems: { System }?,
+    -- The sections every game states.
+    chip_use: RuleSection,
+    effects: RuleSection,
+    flow: RuleSection,
+    panels: RuleSection,
+    pools: RuleSection,
+    reactions: RuleSection,
+    status: RuleSection,
+    -- The sections a game may leave out.
     banners: any?,
     berserk: any?,
     buster: any?,
-    chip_use: any?,
     custom_screen: any?,
-    effects: any?,
     elements: any?,
-    flow: any?,
     lockon: any?,
     math: any?,
     navicust: any?,
-    panels: any?,
-    pools: any?,
-    reactions: any?,
     sp_chips: any?,
-    status: any?,
     roles: RolesSpec?,
 }
 export type Ruleset = RulesetSpec

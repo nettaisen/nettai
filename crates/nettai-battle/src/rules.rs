@@ -8,11 +8,12 @@
 //! (`system.state()` in a hook): a side's rules see the other side through
 //! the engine alone.
 
-use nettai_content_api::{ChipHandle, ContentState, FieldType, HookCall, ObjectRef, SystemHook, Value, WeaponHandle};
+use nettai_content_api::{ChipHandle, ContentState, FieldType, FieldValue, FormHandle, HookCall, ObjectRef, SystemHook, Value, WeaponHandle};
 
 use crate::battle::Battle;
-use crate::content::Content;
+use crate::content::{Content, PlayerFact, ViewFields};
 use crate::custom::PlayerSetup;
+use crate::custom::screen::CROSSES;
 
 /// A side's rules in a battle: each of the game's ruleset's systems' state
 /// of the side, in the ruleset's order (none: the content has no ruleset).
@@ -204,28 +205,128 @@ impl<'a> SetupFact<'a> {
     pub fn elem(&self, k: usize) -> Option<nettai_content_api::FieldValue> {
         self.block.get_elem(self.schema, self.index, k)
     }
+
+    /// Element `k` of an array of forms: the form, if it holds one.
+    pub fn form(&self, k: usize) -> Option<FormHandle> {
+        match self.elem(k)? {
+            nettai_content_api::FieldValue::Ref(Some((nettai_content_api::Registry::Form, h))) => Some(FormHandle(h)),
+            _ => None,
+        }
+    }
+}
+
+/// A form list as its system keeps it for its window (the window views
+/// `form_list_opening`, `form_list`, `form_list_closing` and `form_chosen`,
+/// [`Battle::form_list`]): the places of the forms offered among the
+/// player's (which form a place holds is the game's rule), how many, which
+/// entries are marked, the entry under the cursor, and the place chosen.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct FormList {
+    pub offered: [u8; CROSSES],
+    pub count: u8,
+    pub marked: [bool; CROSSES],
+    pub cursor: u8,
+    pub chosen: Option<u8>,
+}
+
+/// What a button that offers a form has on offer (the button view
+/// `form_offer`, [`Battle::offer`]): the form, none for no offer, and
+/// whether the offer is the form's alternate (EXE5's Chaos Unison).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Offer {
+    pub form: Option<FormHandle>,
+    pub alternate: bool,
+}
+
+/// Where an icon's flight to the picked column is (the window views
+/// `offer_flight` and `chip_flight`): its step and its count in the step.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Flight {
+    pub step: u8,
+    pub count: u8,
 }
 
 impl Battle {
-    /// A fact of what side `side`'s player brought, by its name (what
-    /// [`PlayerSetup::set_fact`] writes): the setup field `field` of the
-    /// first system of the game's ruleset that has one. For a reader of
-    /// what a console shows of its player (their game's version, what their
-    /// save unlocks), whichever system keeps it; none when no system does,
-    /// or the player's setup gives the systems none.
-    pub fn fact(&self, side: u8, field: &str) -> Option<SetupFact<'_>> {
-        let rules = &self.setup.players[side as usize & 1].rules;
-        self.content.defs.ruleset_systems().iter().enumerate().find_map(|(slot, &h)| {
-            let schema = self.content.defs.schema(self.content.defs.system(h).setup);
-            Some(SetupFact { schema, block: rules.get(slot)?, index: schema.index_of(field)? })
+    /// A fact of what side `side`'s player brought (what
+    /// [`PlayerSetup::set_fact`] writes under the fact's name): the setup
+    /// field of the system of the game's ruleset that keeps it, found as the
+    /// content loaded (`Defs::fact_field`). For a reader of what a console
+    /// shows of its player (their game's version, what their save unlocks);
+    /// none when no system keeps the fact, or the player's setup gives the
+    /// systems none.
+    pub fn fact(&self, side: u8, fact: PlayerFact) -> Option<SetupFact<'_>> {
+        let defs = &self.content.defs;
+        let (slot, index) = defs.fact_field(fact)?;
+        let schema = defs.schema(defs.system(defs.ruleset_systems()[slot]).setup);
+        Some(SetupFact { schema, block: self.setup.players[side as usize & 1].rules.get(slot)?, index })
+    }
+
+    /// The state of side `side`'s first system that has a view's fields
+    /// (`pick`, of its `ViewFields`), with them and the state's layout.
+    fn view_state<T>(&self, side: u8, pick: impl Fn(&ViewFields) -> Option<T>) -> Option<(T, &nettai_content_api::Schema, &ContentState)> {
+        let defs = &self.content.defs;
+        defs.ruleset_systems().iter().enumerate().find_map(|(slot, &h)| {
+            let def = defs.system(h);
+            Some((pick(&def.views)?, defs.schema(def.state), self.rules[side as usize & 1].states.get(slot)?))
         })
+    }
+
+    /// The form list side `side`'s system with a form-list window keeps
+    /// ([`FormList`]); none: no system of the side's has one.
+    pub fn form_list(&self, side: u8) -> Option<FormList> {
+        let (f, schema, state) = self.view_state(side, |v| v.form_list)?;
+        let mut list = FormList {
+            count: byte(state.get(schema, f.count)),
+            cursor: byte(state.get(schema, f.cursor)),
+            chosen: flag(state.get(schema, f.chosen_set)).then(|| byte(state.get(schema, f.chosen))),
+            ..FormList::default()
+        };
+        for k in 0..CROSSES {
+            list.offered[k] = state.get_elem(schema, f.offered, k).map_or(0, byte);
+            list.marked[k] = state.get_elem(schema, f.marked, k).is_some_and(flag);
+        }
+        Some(list)
+    }
+
+    /// What side `side`'s button that offers a form has on offer
+    /// ([`Offer`]); none: no system of the side's has such a button.
+    pub fn offer(&self, side: u8) -> Option<Offer> {
+        let (f, schema, state) = self.view_state(side, |v| v.offer)?;
+        let form = match state.get(schema, f.form) {
+            FieldValue::Ref(Some((nettai_content_api::Registry::Form, h))) => Some(FormHandle(h)),
+            _ => None,
+        };
+        Some(Offer { form, alternate: flag(state.get(schema, f.alternate)) })
+    }
+
+    /// The turns left in the form side `side`'s button that offers a form
+    /// gave (its system's `turns`), which the emotion window counts.
+    pub fn form_turns(&self, side: u8) -> Option<u8> {
+        let (f, schema, state) = self.view_state(side, |v| v.offer)?;
+        Some(byte(state.get(schema, f.turns)))
+    }
+
+    /// Where the flight of the form on offer is (the window view
+    /// `offer_flight`).
+    pub fn offer_flight(&self, side: u8) -> Option<Flight> {
+        let (f, schema, state) = self.view_state(side, |v| v.offer_flight)?;
+        Some(Flight { step: byte(state.get(schema, f.step)), count: byte(state.get(schema, f.count)) })
+    }
+
+    /// Where the flight of a button's chip is (the window view
+    /// `chip_flight`), and whose: which of the screen's buttons that show a
+    /// chip, counted from 1.
+    pub fn chip_flight(&self, side: u8) -> Option<(u8, Flight)> {
+        let (f, schema, state) = self.view_state(side, |v| v.chip_flight)?;
+        let flight = Flight { step: byte(state.get(schema, f.step)), count: byte(state.get(schema, f.count)) };
+        Some((byte(state.get(schema, f.button?)), flight))
     }
 
     /// Side `side`'s system `key`'s setup block (the player's, as the round
     /// started with it) and its layout, when the side's ruleset has that
     /// system: for a reader of what a player brought by the system that
-    /// keeps it (a game's tools; a frontend reads a fact by its name,
-    /// [`Battle::fact`]).
+    /// keeps it (a game's tools; a frontend reads a fact by the engine's
+    /// name for it, [`Battle::fact`]).
     pub fn system_setup(&self, side: u8, key: &str) -> Option<(&nettai_content_api::Schema, &ContentState)> {
         let systems = self.content.defs.ruleset_systems();
         let slot = systems.iter().position(|&h| self.content.defs.system(h).key == key)?;
@@ -482,8 +583,9 @@ impl Battle {
     }
 
     /// Side `side`'s system `key`'s state and its layout, when the side's
-    /// ruleset has that system: for a reader of what a system keeps (the
-    /// frontend's look of EXE6's Cross window reads the cross system's).
+    /// ruleset has that system: for a reader of what a system keeps by the
+    /// system's own name (a game's tools and tests; a frontend reads what a
+    /// view shows, [`Battle::form_list`] and the like).
     pub fn system_state(&self, side: u8, key: &str) -> Option<(&nettai_content_api::Schema, &ContentState)> {
         let systems = &self.content.defs.ruleset_systems();
         let slot = systems.iter().position(|&h| self.content.defs.system(h).key == key)?;
@@ -628,6 +730,19 @@ pub struct FolderProblem {
     pub text: String,
 }
 
+/// A view's byte field (its type was checked as the content loaded).
+fn byte(v: FieldValue) -> u8 {
+    match v {
+        FieldValue::U8(n) => n,
+        _ => 0,
+    }
+}
+
+/// A view's flag field.
+fn flag(v: FieldValue) -> bool {
+    matches!(v, FieldValue::Bool(true))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -700,7 +815,7 @@ mod tests {
         assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Battle::new(setup.clone(), content.clone()))).is_err());
         setup.players[1].set_fact(&content, "version", &[Fact::Name("falzar")]).unwrap();
         let b = Battle::new(setup, content);
-        assert_eq!((b.fact(0, "version").and_then(|f| f.name()), b.fact(1, "version").and_then(|f| f.name())), (Some("gregar"), Some("falzar")));
+        assert_eq!((b.fact(0, PlayerFact::Version).and_then(|f| f.name()), b.fact(1, PlayerFact::Version).and_then(|f| f.name())), (Some("gregar"), Some("falzar")));
     }
 
     #[test]
@@ -835,34 +950,94 @@ mod tests {
         );
     }
 
+    /// A window's and a button's `view` (docs/design/rules-in-luau.md §4.8)
+    /// is one of the engine's names, and what a view shows are fields of its
+    /// own system's state, of the view's types; a fact a player brings is a
+    /// setup field of the fact's type. Each is checked as the content is
+    /// defined, and said with the system's module.
+    #[test]
+    fn views_and_facts_are_checked_as_the_content_is_defined() {
+        use crate::content::{ButtonView, WindowView};
+        let marker = "    id = \"test/marker\",\n    state = { mark = \"u8\" },";
+        let patched = |from: &str, to: &str| {
+            let mut c = testing::build();
+            let src = c.scripts.module_mut(testing::ROOT, "rules/systems").expect("the module");
+            assert!(src.contains(from), "{from}");
+            *src = src.replacen(from, to, 1);
+            c.define().map(|_| c).map_err(|e| e.message)
+        };
+        let window = |state: &str, view: &str| {
+            format!(
+                "    id = \"test/marker\",\n    state = {{ {state} }},\n    windows = {{ w = {{ view = \"{view}\", update = function(side: number): boolean return false end }} }},"
+            )
+        };
+        let refused = |from: &str, to: &str, said: &[&str]| {
+            let e = patched(from, to).err().unwrap_or_else(|| panic!("{said:?}: defined"));
+            assert!(said.iter().all(|s| e.contains(s)), "{said:?}: {e}");
+        };
+        // A window's view: a name of the engine's, whose fields the system
+        // keeps as the view's types.
+        refused(marker, &window("mark = \"u8\"", "form_lst"), &["rules/systems.luau: system test/marker", "window `w`: `view` is \"form_lst\"", "form_list_opening"]);
+        refused(
+            marker,
+            &window("mark = \"u8\"", "offer_flight"),
+            &["window `w` has the view `offer_flight`", "the state field `unite_step` (a u8): the system's state has none"],
+        );
+        refused(marker, &window("unite_step = \"bool\", unite_count = \"u8\"", "offer_flight"), &["the state field `unite_step` as a u8: it is Bool"]);
+        let content = patched(marker, &window("unite_step = \"u8\", unite_count = \"u8\"", "offer_flight")).expect("a view with its fields");
+        let system = content.defs.systems.iter().find(|s| s.key == "test/marker").expect("the marker");
+        assert_eq!(content.defs.window(system.windows[0]).view, Some(WindowView::OfferFlight));
+        assert!(system.views.offer_flight.is_some() && system.views.form_list.is_none());
+        // A button's.
+        let button = |view: &str| {
+            format!(
+                "{marker}\n    buttons = {{ b = {{ slot = 8, view = \"{view}\", shown = function(side: number): boolean return false end, pressed = function(side: number) end }} }},"
+            )
+        };
+        refused(marker, &button("soul"), &["button `b`: `view` is \"soul\"", "form_offer, chip_picture"]);
+        refused(marker, &button("form_offer"), &["button `b` has the view `form_offer`", "the state field `offer` (a form)"]);
+        let content = patched(marker, &button("chip_picture")).expect("a view that shows no field");
+        let system = content.defs.systems.iter().find(|s| s.key == "test/marker").expect("the marker");
+        assert_eq!(content.defs.button(system.buttons[0]).view, Some(ButtonView::ChipPicture));
+        // A fact: the setup field of its name, of its type.
+        let setup = "    setup = { bonus = \"u8\" },";
+        refused(
+            setup,
+            "    setup = { bonus = \"u8\", cross_list = \"u8\" },",
+            &["rules/systems.luau: system test/counter", "its setup field `cross_list` is the fact a player brings by that name, an array of forms"],
+        );
+        let content = patched(setup, "    setup = { bonus = \"u8\", cross_list = \"form[5]\" },").expect("a fact of its type");
+        assert!(content.defs.fact_field(PlayerFact::CrossList).is_some());
+    }
+
     /// A system says, for tools, the chips its rules can't play of a
-    /// player's tactics, each with why (`unplayable_tactics`): the game's
-    /// ruleset answers for a chip (`Defs::unplayable_tactic`), a system out
+    /// player's auto battle data, each with why (`unplayable_in_auto_battle`): the game's
+    /// ruleset answers for a chip (`Defs::unplayable_in_auto_battle`), a system out
     /// of the ruleset doesn't, and an id that is no chip of the game is
     /// refused as the content is defined.
     #[test]
-    fn a_system_says_the_tactics_it_cant_play() {
+    fn a_system_says_the_chips_auto_battle_cant_play() {
         let with = |system: &str, entry: &str| {
             let mut c = testing::build();
             let src = c.scripts.module_mut(testing::ROOT, "rules/systems").expect("the module");
             let from = format!("    id = \"{system}\",");
             assert!(src.contains(&from), "{from}");
-            *src = src.replacen(&from, &format!("{from}\n    unplayable_tactics = {entry},"), 1);
+            *src = src.replacen(&from, &format!("{from}\n    unplayable_in_auto_battle = {entry},"), 1);
             c.define().map(|_| c).map_err(|e| e.message)
         };
         let chip = |c: &Content, key: &str| c.defs.chip_by_key(key).unwrap_or_else(|| panic!("no chip {key}"));
         let content = with("test/counter", "{ [\"test/veil\"] = \"it has no weight\" }").expect("defined");
-        assert_eq!(content.defs.unplayable_tactic(chip(&content, "test/veil")), Some("it has no weight"));
-        assert_eq!(content.defs.unplayable_tactic(chip(&content, testing::BOMB)), None);
+        assert_eq!(content.defs.unplayable_in_auto_battle(chip(&content, "test/veil")), Some("it has no weight"));
+        assert_eq!(content.defs.unplayable_in_auto_battle(chip(&content, testing::BOMB)), None);
         let stock = scenario::content();
-        assert_eq!(stock.defs.unplayable_tactic(chip(&stock, "test/veil")), None, "no system says any");
+        assert_eq!(stock.defs.unplayable_in_auto_battle(chip(&stock, "test/veil")), None, "no system says any");
         // (The marker isn't one of the stock ruleset's systems.)
         let unused = with("test/marker", "{ [\"test/veil\"] = \"it has no weight\" }").expect("defined");
-        assert_eq!(unused.defs.unplayable_tactic(chip(&unused, "test/veil")), None);
+        assert_eq!(unused.defs.unplayable_in_auto_battle(chip(&unused, "test/veil")), None);
         let e = with("test/counter", "{ [\"test/nothing\"] = \"it isn't\" }").map(|_| ()).expect_err("no such chip");
-        assert!(e.contains("`unplayable_tactics` names test/nothing, which is no chip of the game"), "{e}");
+        assert!(e.contains("`unplayable_in_auto_battle` names test/nothing, which is no chip of the game"), "{e}");
         let e = with("test/counter", "{ \"test/veil\" }").map(|_| ()).expect_err("a list");
-        assert!(e.contains("`unplayable_tactics` is a table of sentences by chip id"), "{e}");
+        assert!(e.contains("`unplayable_in_auto_battle` is a table of sentences by chip id"), "{e}");
     }
 
     mod patch_cards {

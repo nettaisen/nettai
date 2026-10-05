@@ -159,7 +159,7 @@ fn roll(shown: u16, target: u16, extra: u16) -> u16 {
 impl HudState {
     /// Follow one tick of the battle, as the console of `region` ("us",
     /// "jp") shows it.
-    pub fn tick(&mut self, b: &Battle, region: &str) {
+    pub fn tick(&mut self, b: &Battle, region: crate::render::Region) {
         // A Japanese console's custom screen, as it closes, starts the chip
         // window's HUD task too (`sub_8026DC4` calls `sub_801E012`: task
         // 0x40, besides the icons' task the US games' starts): the next
@@ -174,7 +174,7 @@ impl HudState {
         let fighting = b.round.mode == mode::FIGHTING;
         let icons = b.chip_hud_for(b.setup.local_side).icons;
         let own_game = b.content.rules();
-        let at_close = region == "jp" || own_game.flow.chip_window_at_close;
+        let at_close = region == crate::render::Region::Jp || own_game.flow.chip_window_at_close;
         if at_close && icons && !self.icons_were && (b.round.mode == mode::CUSTOM || self.mode_was == mode::CUSTOM) {
             (self.early_window, self.early_fight_ticks) = (true, 0);
         }
@@ -882,17 +882,10 @@ fn window_faded(b: &Battle, palette: Palette) -> Palette {
 
 /// The count a side's emotion window shows beside a face that brings no
 /// box, in a game whose faces bring their own (EXE5's souls': the turns
-/// left, AIData +0x0F, its souls system's `turns`): the side's rules'
-/// `turns`, if a system of theirs keeps one.
+/// left, AIData +0x0F): the turns left in the form the side's button that
+/// offers a form gave (`Battle::form_turns`), if it has such a button.
 fn window_count(b: &Battle, side: u8) -> Option<u8> {
-    let defs = &b.content.defs;
-    b.side_rules(side).states.iter().find_map(|state| {
-        let schema = &defs.schemas.get(state.id().0 as usize)?.schema;
-        match state.get(schema, schema.index_of("turns")?) {
-            nettai_content_api::FieldValue::U8(n) => Some(n),
-            _ => None,
-        }
-    })
+    b.form_turns(side)
 }
 
 /// A console shows every form's and navi's true face, where the original
@@ -909,8 +902,8 @@ fn note_true_face(b: &Battle, packs: &crate::packs::Packs, side: usize, owner: O
 
 /// `sub_801D814`: whether the emotion window shows the Beast Out count
 /// (else its empty box): always in battle mode 5, never in mode 1, and
-/// otherwise while the console's save has Beast Out (event flag 0xE0: the
-/// player's fact `beast_out`) and
+/// otherwise while the console's save has Beast Out (event flag 0xE0:
+/// `PlayerFact::BeastOut`) and
 /// hasn't sealed it (0x163: a navi code received, the setup's level), in a
 /// battle without a gauge for each player (battle flag 0x40) that isn't
 /// random (effects 0x200000).
@@ -921,7 +914,7 @@ fn beast_count_shown(b: &Battle, side: u8) -> bool {
         5 => true,
         1 => false,
         _ => {
-            b.fact(side, "beast_out").and_then(|f| f.flag()) == Some(true)
+            b.fact(side, nettai_battle::content::PlayerFact::BeastOut).and_then(|f| f.flag()) == Some(true)
                 && b.setup.players[side as usize & 1].navi_level.is_none()
                 && b.round.flags & battle_flags::OWN_GAUGES == 0
                 && b.setup.settings.effects & effects::RANDOM == 0

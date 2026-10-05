@@ -4,8 +4,9 @@
 -- to the target with the column shifts; `thunder` beside the target or
 -- diagonally behind it; `beast_lunge` a panel or two in front of it (only
 -- two away in the far column); `beast_claw` next to it; the rest stay.
--- (The column shifts and the clear-path condition are the test content's
--- rules.)
+-- `rules` is the ruleset's `lockon` section: the column shifts toward the
+-- user tried when no panel next to the target fits, and what every panel
+-- between the chosen one and the target must be for a clear path (free).
 
 local function stay(id: string): LockonDef
     local mode: LockonDef = { id = id, rule = "stay" }
@@ -37,4 +38,11 @@ return {
     gundelex = stay("gundelex"),
     elcpuls1 = stay("elcpuls1"),
     moonbld = stay("moonbld"),
+    rules = {
+        column_shifts = { -1, -2 },
+        clear_path = {
+            { require = 0x00000000, forbid = 0x0F880080 },
+            { require = 0x00000000, forbid = 0x0F880080 },
+        },
+    },
 }

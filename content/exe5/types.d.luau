@@ -33,14 +33,16 @@ export type SoulButton = {
 -- A window a soul adds (a `WindowSpec` of the souls system's): its update,
 -- each tick it is up: whether it stays up.
 export type SoulWindow = {
+    view: WindowView?,
     update: (side: number, s: any) -> boolean,
 }
 
 -- What a soul adds to the custom screen (a soul's form's `custom`; EXE5's
 -- screen asks the soul MegaMan is in, NaviStats +0x2C, in each of these
 -- places): the fields it keeps in the souls system's state, its buttons and
--- windows by name (what the frontend draws them by), and its part of the
--- screen's routines, each called while the side's navi is in the soul.
+-- windows by name (a button's is the key of its look in a pack), and its
+-- part of the screen's routines, each called while the side's navi is in the
+-- soul.
 export type SoulCustom = {
     -- What it keeps of one screen: as every screen deals, whatever soul the
     -- navi is in, each field is back as a fresh state has it, by its

@@ -468,9 +468,9 @@ pub struct Battle {
     /// that land on the other side's navis no player controls, at most 10
     /// each.
     pub navi_hit_counts: [[u8; 4]; 2],
-    /// Each player's tactics (`crate::tactics`), as the auto-battling navis'
+    /// Each player's auto battle data (`crate::auto_battle`), as the auto-battling navis'
     /// AI turns them: their setups' at the round's start.
-    pub tactics: [crate::tactics::Tactics; 2],
+    pub auto_battle: [crate::auto_battle::AutoBattleData; 2],
     /// Per-side registry of defensive chips and their linked objects
     /// (0x10 bytes per side at 0x02036720).
     pub linked: [LinkedRecord; 2],
@@ -782,7 +782,7 @@ impl Battle {
             side_stats: [[0; 16]; 2],
             obstacle_soldiers: Default::default(),
             navi_hit_counts: [[0; 4]; 2],
-            tactics: [setup.players[0].tactics.clone(), setup.players[1].tactics.clone()],
+            auto_battle: [setup.players[0].auto_battle.clone(), setup.players[1].auto_battle.clone()],
             linked: [LinkedRecord::default(); 2],
             dimming: Default::default(),
             last_navi_chip: None,

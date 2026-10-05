@@ -29,6 +29,7 @@ use super::{
     ChipData, Content,
     FormData, NaviData,
 };
+use super::views::{ButtonView, PlayerFact, ViewFields, WindowView};
 use super::roles::{
     ActionRole, BannerRole, ChipRole, CollisionRole, EffectRole, HookRole, KindRole, MusicRole, RegionRole,
     Roles, SoundRole, SparkRole, SpriteRole, StatusRole,
@@ -355,13 +356,16 @@ pub struct SystemDef {
     /// Its custom-screen buttons and windows.
     pub buttons: Vec<ButtonHandle>,
     pub windows: Vec<WindowHandle>,
+    /// The fields of its state a frontend reads for its windows' and
+    /// buttons' views.
+    pub views: ViewFields,
     /// Its extensions of its game's definitions (`extends`).
     pub extends: Vec<Extension>,
-    /// The chips its rules can't play of a player's tactics, each with why
-    /// (`unplayable_tactics`: EXE5's auto battle's chips whose positioning
+    /// The chips its rules can't play of a player's auto battle data, each with why
+    /// (`unplayable_in_auto_battle`: EXE5's auto battle's chips whose positioning
     /// class the original has no routine for): for tools (a match's check;
     /// the engine reads none, and its rules raise when one is played).
-    pub unplayable_tactics: Vec<(ChipHandle, String)>,
+    pub unplayable_in_auto_battle: Vec<(ChipHandle, String)>,
 }
 
 impl SystemDef {
@@ -384,8 +388,11 @@ impl SystemDef {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ButtonDef {
     pub system: SystemHandle,
-    /// Its name in the system's `buttons` (what the frontend draws it by).
+    /// Its name in the system's `buttons` (the key a pack has its look
+    /// under).
     pub name: String,
+    /// What a frontend draws of it besides its look (`view`), if it says.
+    pub view: Option<ButtonView>,
     /// Its first slot, and how many it takes (1 or 2).
     pub slot: u8,
     pub cells: u8,
@@ -408,8 +415,11 @@ pub struct ButtonDef {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct WindowDef {
     pub system: SystemHandle,
-    /// Its name in the system's `windows` (what the frontend draws it by).
+    /// Its name in the system's `windows` (what `custom.open_window` opens
+    /// it by).
     pub name: String,
+    /// What a frontend draws while it is up (`view`), if it says.
+    pub view: Option<WindowView>,
     pub update: FnId,
 }
 
@@ -577,6 +587,10 @@ pub struct Defs {
     /// The game's ruleset (none: content without one, whose sides have no
     /// systems).
     ruleset: Option<RulesetDef>,
+    /// Where each fact a player brings is ([`PlayerFact::ALL`]'s order): the
+    /// place among the ruleset's systems of the first whose setup has the
+    /// field, and the field.
+    facts: Vec<Option<(u8, u16)>>,
     /// Each action's system, if it is one's, by action handle.
     action_owner: Vec<Option<SystemHandle>>,
     /// Whether a form names the action as its change, by action handle.
@@ -616,11 +630,11 @@ impl Defs {
         &self.systems[h.index()]
     }
 
-    /// Why the game's rules can't play `chip` of a player's tactics, if
+    /// Why the game's rules can't play `chip` of a player's auto battle data, if
     /// they can't (the first of its ruleset's systems that says:
-    /// `SystemDef::unplayable_tactics`): for tools.
-    pub fn unplayable_tactic(&self, chip: ChipHandle) -> Option<&str> {
-        self.ruleset_systems().iter().find_map(|&s| self.system(s).unplayable_tactics.iter().find(|(c, _)| *c == chip).map(|(_, why)| why.as_str()))
+    /// `SystemDef::unplayable_in_auto_battle`): for tools.
+    pub fn unplayable_in_auto_battle(&self, chip: ChipHandle) -> Option<&str> {
+        self.ruleset_systems().iter().find_map(|&s| self.system(s).unplayable_in_auto_battle.iter().find(|(c, _)| *c == chip).map(|(_, why)| why.as_str()))
     }
 
     pub fn button(&self, h: ButtonHandle) -> &ButtonDef {
@@ -651,6 +665,14 @@ impl Defs {
     /// The game's ruleset's systems, in its order (none without a ruleset).
     pub fn ruleset_systems(&self) -> &[SystemHandle] {
         self.ruleset.as_ref().map_or(&[], |r| &r.systems)
+    }
+
+    /// Where fact `fact` is: the place among the ruleset's systems of the
+    /// one that keeps it, and the field of its setup. None: no system of
+    /// the game's does.
+    pub fn fact_field(&self, fact: PlayerFact) -> Option<(usize, usize)> {
+        let k = PlayerFact::ALL.iter().position(|&f| f == fact).expect("every fact is listed");
+        self.facts.get(k).copied().flatten().map(|(slot, field)| (slot as usize, field as usize))
     }
 
     /// The game's roles.
@@ -1498,7 +1520,21 @@ impl Defs {
             record.forms = match d.spec.field("forms") {
                 Data::Nil => None,
                 forms @ Data::Map(_) => {
-                    // (The rest of the table is its game's: EXE6's sets.)
+                    // The forms a form list offers, by version: each set of
+                    // the table that lists them (`crosses`; the rest of a set
+                    // is its game's: EXE6's Beast Out and Beast Over).
+                    let mut by_version = Vec::new();
+                    if let Data::Map(sets) = forms {
+                        for (version, set) in sets {
+                            let Data::List(items) = set.field("crosses") else { continue };
+                            let version = version.to_string();
+                            let listed = items
+                                .iter()
+                                .map(|v| form_ref(d, v, &format!("forms.{version}.crosses")).map(|f| f.expect("a form")))
+                                .collect::<Result<Vec<_>, _>>()?;
+                            by_version.push((version, listed));
+                        }
+                    }
                     let souls = match forms.field("souls") {
                         Data::Nil => Vec::new(),
                         Data::List(items) => items
@@ -1508,7 +1544,7 @@ impl Defs {
                         Data::Map(m) if m.is_empty() => Vec::new(),
                         other => return Err(what(d, format!("forms.souls is {other:?}, not a list of forms"))),
                     };
-                    Some(super::NaviForms { souls })
+                    Some(super::NaviForms { souls, by_version })
                 }
                 other => return Err(what(d, format!("`forms` is {other:?}, not the forms by game"))),
             };
@@ -1702,17 +1738,17 @@ impl Defs {
 
         // The systems and the ruleset.
         let mut systems = Vec::new();
-        // (Each system's `unplayable_tactics`, by chip id, with its module
+        // (Each system's `unplayable_in_auto_battle`, by chip id, with its module
         // and key: in the systems' order.)
-        let mut unplayable_tactics: Vec<(String, String, Vec<(String, String)>)> = Vec::new();
+        let mut unplayable_in_auto_battle: Vec<(String, String, Vec<(String, String)>)> = Vec::new();
         let mut buttons: Vec<ButtonDef> = Vec::new();
         let mut windows: Vec<WindowDef> = Vec::new();
         for d in definitions.of(Registry::System) {
             let what = |e: &str| ContentError::new(format!("{}.luau: system {}: {e}", d.module, d.key));
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
-                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions", "extends", "unplayable_tactics"].contains(&f.as_str())) {
-                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, setup_defaults, navi_state, hooks, custom, buttons, windows, actions, extends, unplayable_tactics)")));
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions", "extends", "unplayable_in_auto_battle"].contains(&f.as_str())) {
+                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, setup_defaults, navi_state, hooks, custom, buttons, windows, actions, extends, unplayable_in_auto_battle)")));
                     }
                 }
             }
@@ -1787,10 +1823,18 @@ impl Defs {
                         let Data::Map(fields) = spec else { return Err(at("a table of its place and functions")) };
                         for (f, _) in fields {
                             let f = f.to_string();
-                            if !["slot", "cells", "uses", "right", "left", "shown", "state", "pressed", "taken_back", "chip"].contains(&f.as_str()) {
-                                return Err(at(&format!("`{f}` is no field of a button (slot, cells, uses, right, left, shown, state, pressed, taken_back, chip)")));
+                            if !["slot", "cells", "uses", "right", "left", "view", "shown", "state", "pressed", "taken_back", "chip"].contains(&f.as_str()) {
+                                return Err(at(&format!("`{f}` is no field of a button (slot, cells, uses, right, left, view, shown, state, pressed, taken_back, chip)")));
                             }
                         }
+                        let view = match spec.field("view") {
+                            Data::Nil => None,
+                            Data::Str(v) => Some(ButtonView::named(v).ok_or_else(|| {
+                                let known: Vec<&str> = ButtonView::ALL.iter().map(|v| v.name()).collect();
+                                at(&format!("`view` is {v:?}: a button's view is one of {}", known.join(", ")))
+                            })?),
+                            _ => return Err(at("`view` is a view's name")),
+                        };
                         let byte = |f: &str| -> Result<Option<u8>, ContentError> {
                             match spec.field(f) {
                                 Data::Nil => Ok(None),
@@ -1816,7 +1860,7 @@ impl Defs {
                         }
                         let (uses, right, left) = (byte("uses")?.unwrap_or(0), byte("right")?, byte("left")?);
                         own_buttons.push(ButtonHandle((buttons.len()) as u16));
-                        buttons.push(ButtonDef { system, name: name.clone(), slot, cells, uses, right, left, shown, state, pressed, taken_back, chip });
+                        buttons.push(ButtonDef { system, name: name.clone(), view, slot, cells, uses, right, left, shown, state, pressed, taken_back, chip });
                     }
                 }
                 _ => return Err(what("`buttons` is a table of buttons by name")),
@@ -1839,15 +1883,23 @@ impl Defs {
                         let Data::Map(fields) = spec else {
                             return Err(what(&format!("window `{name}`: a table with its `update`")));
                         };
-                        if let Some((f, _)) = fields.iter().find(|(f, _)| f.to_string() != "update") {
-                            return Err(what(&format!("window `{name}`: `{f}` is no field of a window (update)")));
+                        if let Some((f, _)) = fields.iter().find(|(f, _)| !["update", "view"].contains(&f.to_string().as_str())) {
+                            return Err(what(&format!("window `{name}`: `{f}` is no field of a window (view, update)")));
                         }
+                        let view = match spec.field("view") {
+                            Data::Nil => None,
+                            Data::Str(v) => Some(WindowView::named(v).ok_or_else(|| {
+                                let known: Vec<&str> = WindowView::ALL.iter().map(|v| v.name()).collect();
+                                what(&format!("window `{name}`: `view` is {v:?}: a window's view is one of {}", known.join(", ")))
+                            })?),
+                            _ => return Err(what(&format!("window `{name}`: `view` is a view's name"))),
+                        };
                         if !matches!(spec.field("update"), Data::Function) {
                             return Err(what(&format!("window `{name}`: `update` is a function")));
                         }
                         let update = functions.id(FnSource::slot(Registry::System, &d.key, &format!("windows.{name}.update")));
                         own_windows.push(WindowHandle(windows.len() as u16));
-                        windows.push(WindowDef { system, name, update });
+                        windows.push(WindowDef { system, name, view, update });
                     }
                 }
                 _ => return Err(what("`windows` is a table of windows by name")),
@@ -1873,23 +1925,23 @@ impl Defs {
                 }
                 _ => return Err(what("`extends` is a table of fields by registry (chip, form, navi)")),
             }
-            // The chips it can't play of a player's tactics, by id, each
+            // The chips it can't play of a player's auto battle data, by id, each
             // with why (the ids are resolved once every chip is known).
             let mut unplayable = Vec::new();
-            match d.spec.field("unplayable_tactics") {
+            match d.spec.field("unplayable_in_auto_battle") {
                 Data::Nil => {}
                 Data::Map(entries) => {
                     for (k, why) in entries {
                         let (nettai_content_api::DataKey::Str(id), Data::Str(why)) = (k, why) else {
-                            return Err(what("`unplayable_tactics` is a table of sentences by chip id"));
+                            return Err(what("`unplayable_in_auto_battle` is a table of sentences by chip id"));
                         };
                         unplayable.push((id.clone(), why.clone()));
                     }
                 }
-                _ => return Err(what("`unplayable_tactics` is a table of sentences by chip id")),
+                _ => return Err(what("`unplayable_in_auto_battle` is a table of sentences by chip id")),
             }
             unplayable.sort();
-            unplayable_tactics.push((d.module.clone(), d.key.clone(), unplayable));
+            unplayable_in_auto_battle.push((d.module.clone(), d.key.clone(), unplayable));
             // Its setup's defaults: a value of a field of its setup each
             // (an enum's by name), which it must hold as given.
             let setup = layout("setup")?;
@@ -1922,9 +1974,18 @@ impl Defs {
                 }
                 _ => return Err(what("`setup_defaults` is a table of the setup's fields")),
             }
+            // What its windows' and buttons' views show of its state: the
+            // fields, each by the name the view gives it.
+            let state = layout("state")?;
+            let views = ViewFields::of(
+                &schemas[state.0 as usize].schema,
+                own_windows.iter().filter_map(|h| windows[h.0 as usize].view.map(|v| (windows[h.0 as usize].name.as_str(), v))),
+                own_buttons.iter().filter_map(|h| buttons[h.0 as usize].view.map(|v| (buttons[h.0 as usize].name.as_str(), v))),
+            )
+            .map_err(|e| what(&e))?;
             systems.push(SystemDef {
                 key: d.key.clone(),
-                state: layout("state")?,
+                state,
                 setup,
                 setup_default,
                 navi_state,
@@ -1932,8 +1993,9 @@ impl Defs {
                 actions: system_actions,
                 buttons: own_buttons,
                 windows: own_windows,
+                views,
                 extends,
-                unplayable_tactics: Vec::new(),
+                unplayable_in_auto_battle: Vec::new(),
             });
         }
         // The extensions: one system of the game owns a field of a registry,
@@ -1980,6 +2042,29 @@ impl Defs {
             }
         }
         let ruleset = read_ruleset(&definitions)?;
+        // What a player brings that a frontend reads by the engine's name
+        // for it: the first of the ruleset's systems whose setup has a
+        // field of the name; every system's field of the name must be of
+        // the fact's type (a setup writes the fact into each).
+        let mut facts = vec![None; PlayerFact::ALL.len()];
+        for (k, fact) in PlayerFact::ALL.iter().enumerate() {
+            let listed = ruleset.iter().flat_map(|r| r.systems.iter().enumerate());
+            for (slot, h) in listed {
+                let s = &systems[h.index()];
+                let schema = &schemas[s.setup.0 as usize].schema;
+                let Some(i) = schema.index_of(fact.name()) else { continue };
+                if let Err(want) = fact.fits(&schema.field(i).ty) {
+                    let module = &definitions.of(Registry::System)[h.index()].module;
+                    return Err(ContentError::new(format!(
+                        "{module}.luau: system {}: its setup field `{}` is the fact a player brings by that name, {want}: it is {:?}",
+                        s.key,
+                        fact.name(),
+                        schema.field(i).ty
+                    )));
+                }
+                facts[k].get_or_insert((slot as u8, i as u16));
+            }
+        }
 
         let records: Vec<RecordDef> = definitions
             .of(Registry::Record)
@@ -2111,6 +2196,7 @@ impl Defs {
             buttons,
             windows,
             ruleset,
+            facts,
             action_owner,
             change_actions,
             program_advances,
@@ -2124,13 +2210,13 @@ impl Defs {
         for (i, c) in defs.chips.iter().enumerate() {
             defs.chip_keys.insert(c.key.clone(), ChipHandle(i as u16));
         }
-        // (A system's `unplayable_tactics` names chips of its game.)
-        for (system, (module, key, unplayable)) in defs.systems.iter_mut().zip(unplayable_tactics) {
+        // (A system's `unplayable_in_auto_battle` names chips of its game.)
+        for (system, (module, key, unplayable)) in defs.systems.iter_mut().zip(unplayable_in_auto_battle) {
             for (id, why) in unplayable {
                 let chip = defs.chip_keys.get(&id).copied().ok_or_else(|| {
-                    ContentError::new(format!("{module}.luau: system {key}: `unplayable_tactics` names {id}, which is no chip of the game"))
+                    ContentError::new(format!("{module}.luau: system {key}: `unplayable_in_auto_battle` names {id}, which is no chip of the game"))
                 })?;
-                system.unplayable_tactics.push((chip, why));
+                system.unplayable_in_auto_battle.push((chip, why));
             }
         }
         defs.functions = functions.list;

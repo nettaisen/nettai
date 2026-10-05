@@ -8,7 +8,8 @@
 -- taking the Cross back (`sub_8029032`); the form it puts the navi in at
 -- the turn's start (`sub_802937A`); and the round's record of the Crosses
 -- used (`dword_20349A0`). Its state is the cross system's, which the
--- frontend draws the window from (by these fields' names).
+-- frontend draws the window from: its four windows are a form list's (their
+-- `view`), which shows these fields by their names.
 
 local kind = require("../forms/kind")
 local chip_gate_battle = require("../../lib/chip_gate_battle")
@@ -251,6 +252,7 @@ end
 -- `sub_8027834`: the window's map changes every 3 ticks (the frontend's);
 -- on the 12th the Cross window is up, and its first tick runs at once.
 window.opening = {
+    view = "form_list_opening",
     update = function(side: number): boolean
         local tick = custom.window_tick(side)
         if tick == 1 then
@@ -266,7 +268,7 @@ window.opening = {
         end
         return true
     end,
-}
+} :: WindowSpec
 
 -- `sub_8028A78`: the window's keys. Until a Cross is chosen, UP and DOWN
 -- move the cursor (wrapping) and A chooses the Cross under it (a chosen one
@@ -323,6 +325,7 @@ end
 -- `sub_802794A`: its first tick reads no keys; every tick draws, after the
 -- keys.
 window.window = {
+    view = "form_list",
     update = function(side: number): boolean
         if custom.window_tick(side) == 1 then
             custom.set_frame(side, 0)
@@ -332,11 +335,12 @@ window.window = {
         draw(side)
         return true
     end,
-}
+} :: WindowSpec
 
 -- `sub_802790C`: after 5 ticks the window is the chips' again
 -- (`sub_80279FC`, `sub_80279C8`, `sub_8028476`).
 window.closing = {
+    view = "form_list_closing",
     update = function(side: number): boolean
         local tick = custom.window_tick(side)
         if tick == 1 then
@@ -351,12 +355,13 @@ window.closing = {
         custom.draw_regular(side)
         return tick < 6
     end,
-}
+} :: WindowSpec
 
 -- `sub_8027A58`: 16 ticks, then the screen fades to white and back; when it
 -- is white the Cross is put on (`sub_8027AAE`: the face, the window, the
 -- sound), and when it is clear again the chips are chosen (`sub_8027ADE`).
 window.chosen = {
+    view = "form_chosen",
     update = function(side: number): boolean
         local s = system.state() :: State
         local tick = custom.window_tick(side)
@@ -383,6 +388,6 @@ window.chosen = {
         custom.draw_regular(side)
         return tick < 34
     end,
-}
+} :: WindowSpec
 
 return window
