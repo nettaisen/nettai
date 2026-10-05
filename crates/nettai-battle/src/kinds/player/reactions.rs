@@ -176,7 +176,9 @@ fn finish_reaction_entry(b: &mut Battle, r: ObjectRef) {
 
 /// Leave a reaction for the idle action.
 fn end_reaction(b: &mut Battle, r: ObjectRef) {
-    ai_mut(b, r).requests &= !(request::ATTACKS | request::MODE9_A);
+    // (EXE6's 0x1000003F, EXE5's 0x1843F: the reactions section's.)
+    let clears = b.game_rules().request_clears.paralysis.0;
+    ai_mut(b, r).requests &= !(request::ATTACKS | clears);
     clear_flag1(b, r, f1::USING_ACTION);
     let o = b.objects.get_mut(r);
     o.anim = 0;
@@ -289,7 +291,9 @@ pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
         return;
     }
     clear_flag1(b, r, f1::USING_ACTION | f1::FLINCHING);
-    ai_mut(b, r).requests &= !(request::ATTACKS | request::ANTI_SWORD_TRIGGERED | request::MODE9_A);
+    // (EXE6's 0x1000043F, EXE5's 0x1843F: the reactions section's.)
+    let clears = b.game_rules().request_clears.flinch.0;
+    ai_mut(b, r).requests &= !(request::ATTACKS | clears);
     let o = b.objects.get_mut(r);
     o.anim = 0;
     set_action(b, r, NaviAction::Idle);
@@ -492,8 +496,10 @@ fn recover_from_drag(b: &mut Battle, r: ObjectRef) {
         return;
     }
     clear_flag1(b, r, f1::USING_ACTION | f1::DRAG | f1::SLIDING | f1::PARALYZED);
+    // (EXE6's 0x1000043F, EXE5's 0x1843F: the reactions section's.)
+    let clears = b.game_rules().request_clears.drag.0;
     let a = ai_mut(b, r);
-    a.requests &= !(request::ATTACKS | request::ANTI_SWORD_TRIGGERED | request::MODE9_A);
+    a.requests &= !(request::ATTACKS | clears);
     a.status &= !ai_status::HEAT_TRAP;
     clear_flag2(b, r, 0x10);
     let o = b.objects.get_mut(r);

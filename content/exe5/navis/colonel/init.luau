@@ -7,7 +7,10 @@
 -- His weapons are his stats row's: the buster (routine 0, MegaMan's) and the Screen Divide (0x46, ./charge); no B+Back.
 -- His own chip is C-Cannon C (./chip). He wears his cape (his actor record's hook, 0x0800EE5E: the body overlays' row
 -- 3, sprite 10-1E, in front at every animation), which his deletion takes off (0x0800EFEC) and an animation change
--- (0x0800F13C's entry for him) or a flinch (0x080F88AA, which tests for it first) restarts.
+-- (0x0800F13C's entry for him) or a flinch (0x080F88AA, which tests for it first) restarts. (His flinch hook first
+-- clears his object's +0x60, a word nothing else of his touches: his routines, 0x080F8600 to 0x080F9000, access it
+-- nowhere else, and neither the shared actions nor the player's routines write a navi's. It is 0 whenever he
+-- flinches, so the clear has nothing to port.)
 
 local buster = require("./megaman/weapons/buster")
 local c_cannon = require("@self/chip")

@@ -657,6 +657,9 @@ pub(crate) fn exit_attack_state(b: &mut Battle, r: ObjectRef) {
 /// `sub_801171C`: leave the current attack for the idle action. A move
 /// (kind 4) keeps pending requests and the charge.
 pub(crate) fn end_attack(b: &mut Battle, r: ObjectRef) {
+    // What else the end clears of the requests is its game's (EXE6's
+    // 0x1000003F, EXE5's 0x1803F: the reactions section's).
+    let clears = b.game_rules().request_clears.attack.0;
     let a = ai_mut(b, r);
     a.attack.special_source = 0;
     let kind = a.attack.kind;
@@ -670,7 +673,7 @@ pub(crate) fn end_attack(b: &mut Battle, r: ObjectRef) {
             _ => {}
         }
         a.buffered_move = 0;
-        a.requests &= !(request::ATTACKS | request::MODE9_A | request::CHAOS);
+        a.requests &= !(request::ATTACKS | clears);
         reset_charge(b, r);
         clear_flag1(b, r, f1::USING_ACTION);
     }
@@ -919,51 +922,51 @@ fn init(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_800F378`: the post-init hook by actor type and AI index. For
-/// players (`off_80EAA04`) every entry is empty but DustMan's (AI index 10,
-/// `sub_80F22F8`), which in battle mode 9 spawns two objects he keeps
-/// (attack #0xD2 on the same side, running while dimmed, and actor #0x28).
-/// Viruses' and AI navis' hooks (`off_81092D0`, `off_80F2668`) belong to
-/// their AI.
+/// players (`off_80EAA04`; EXE5's 0x080EB2A8) it is the navi's
+/// `post_init`: every entry is empty but EXE6's DustMan's (`sub_80F22F8`)
+/// and EXE5's ToadMan's (0x080F199C). Viruses' and AI navis' hooks
+/// (`off_81092D0`, `off_80F2668`) belong to their AI.
 fn post_init_hook(b: &mut Battle, r: ObjectRef) {
-    let a = ai(b, r);
-    match a.actor_type {
+    match ai(b, r).actor_type {
         ActorType::Player => {}
         t => panic!("the post-init hooks of {t:?} actors (sub_800F378) belong to the virus and navi AI"),
     }
-    match a.ai_index {
-        10 => {
-            if battle_mode(b) != 9 {
-                return;
-            }
-            // sub_80DFD74 (at 0, 0, 0) and sub_80C02A6 (at the registers the
-            // first spawn left: garbage nothing is known to read).
-            let (alliance, flip) = {
-                let o = b.objects.get(r);
-                (o.alliance, o.flip)
-            };
-            let kind = b.roles().kind(crate::content::KindRole::Mode9Attack);
-            let junk = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
-            if let Some(j) = junk {
-                let o = b.objects.get_mut(j);
-                o.related[0] = Some(r);
-                o.alliance = alliance;
-                o.flip = flip;
-                o.element = 0;
-                o.flags |= flags::RUN_WHILE_DIMMED;
-            }
-            let kind = b.roles().kind(crate::content::KindRole::Mode9Actor);
-            let second = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
-            if let Some(s) = second {
-                let o = b.objects.get_mut(s);
-                o.related[0] = Some(r);
-                o.alliance = alliance;
-                o.flip = flip;
-            }
-            ai_mut(b, r).mode9_objects = [junk, second];
-        }
-        0..=24 => {}
-        i => panic!("the post-init hook for AI index {i} reads past its table (off_80EAA04)"),
+    let navi = stats(b, r).navi;
+    if let Some(f) = b.content.defs.navi(navi).post_init {
+        crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
     }
+}
+
+/// `sub_80F22F8`'s spawns (EXE6's DustMan's post-init hook in battle mode
+/// 9): two objects the navi keeps, the roles' `mode9_attack` (attack
+/// #0xD2, on the same side, running while dimmed) and `mode9_actor` (actor
+/// #0x28).
+pub(crate) fn spawn_mode9_objects(b: &mut Battle, r: ObjectRef) {
+    // sub_80DFD74 (at 0, 0, 0) and sub_80C02A6 (at the registers the
+    // first spawn left: garbage nothing is known to read).
+    let (alliance, flip) = {
+        let o = b.objects.get(r);
+        (o.alliance, o.flip)
+    };
+    let kind = b.roles().kind(crate::content::KindRole::Mode9Attack);
+    let junk = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
+    if let Some(j) = junk {
+        let o = b.objects.get_mut(j);
+        o.related[0] = Some(r);
+        o.alliance = alliance;
+        o.flip = flip;
+        o.element = 0;
+        o.flags |= flags::RUN_WHILE_DIMMED;
+    }
+    let kind = b.roles().kind(crate::content::KindRole::Mode9Actor);
+    let second = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
+    if let Some(s) = second {
+        let o = b.objects.get_mut(s);
+        o.related[0] = Some(r);
+        o.alliance = alliance;
+        o.flip = flip;
+    }
+    ai_mut(b, r).mode9_objects = [junk, second];
 }
 
 /// `sub_800FC9E`: a side's navi's battle sprite by its stats (MegaMan's by
@@ -1360,9 +1363,12 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
 /// level, `byte_802136D`: the navi's `fire_charge`; ChargeCross's 100:
 /// the form's), and the height clamp of a navi that changes form.
 fn per_form_tick(b: &mut Battle, r: ObjectRef) {
-    // The form's own part (EXE5's MegaMan's routine, 0x080F04CE: by soul).
-    let form = stats(b, r).form;
-    if let Some(f) = b.content.defs.form(form).tick {
+    // The form's own part (EXE5's MegaMan's routine, 0x080F04CE: by soul),
+    // or the navi's own, for one that doesn't change form (EXE5's
+    // GyroMan's, 0x080F09EC: the table's entry for his AI index).
+    let (navi, form) = (stats(b, r).navi, stats(b, r).form);
+    let own = if is_megaman(b, r) { b.content.defs.form(form).tick } else { b.content.defs.navi(navi).tick };
+    if let Some(f) = own {
         crate::behavior::call_hook(b, f, nettai_content_api::HookCall::FormNavi { navi: r });
     }
     // (EXE5's runs none of the rest: the status rules' `form_tick`.)
