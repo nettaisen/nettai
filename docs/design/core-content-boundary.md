@@ -68,7 +68,7 @@ crates/nettai-battle/src:
 The other crates: nettai-content-api (the contract below both sides), nettai-luau (the runtime), nettai-content (reading
 a content root and a pack), nettai-content-check (the type check, lints and guards), exe6-compat (the original's
 numbers, the setup codecs, the trace harness), exe6-extract (the pack's assets from a ROM), nettai-assets,
-nettai-frontend, nettai-audio and m4a (presentation), nettai-netplay (rollback).
+nettai-frontend, nettai-demo, nettai-audio and m4a (presentation), nettai-netplay (rollback).
 
 ## 2. How the two sides reach each other
 

@@ -1078,7 +1078,7 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
   `InPack`); stopping the music stops every driver's, and music of another pack stops the player that played the
   last; the drivers' outputs are added, one frame's samples whatever the number of packs. `BattleAudio::new`
   is one pack's; `driver_of(PackId)` reads a pack's driver.
-- **Loading** (nettai-frontend): `--pack` repeats, one pack a game (`--pack <exe6> --pack <exe5>`); the content
+- **Loading** (nettai-frontend then, nettai-demo's command line since): `--pack` repeats, one pack a game (`--pack <exe6> --pack <exe5>`); the content
   loads over all of them (`pack::load_battle_packs`), and `pack::pack_paths` puts the directories in the content's
   pack order for the graphics and the sound. (Since: the frontend and the editor load every pack in
   `data/content` or `$NETTAI_PACKS`, `--pack` only overriding one, and the roots beside EXE6's that load:

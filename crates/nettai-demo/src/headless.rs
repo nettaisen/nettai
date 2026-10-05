@@ -1,7 +1,7 @@
 //! Without a window: chosen frames of a session written to PNG files
 //! (`nettai_render::present::write_png`), and the trace audits.
 
-use crate::session::Session;
+use nettai_frontend::Session;
 use nettai_render::Renderer;
 use nettai_render::audit::Problems;
 use nettai_render::present::write_png;
@@ -245,7 +245,7 @@ pub fn audit_traces(
     let next = AtomicUsize::new(0);
     let out: Mutex<Vec<Option<TraceAudit>>> = Mutex::new(vec![None; traces.len()]);
     let one = |path: &std::path::Path| -> Result<Audit, String> {
-        let rounds = crate::driver::trace_rounds(path, content).map_err(|e| format!("can't play it: {e}"))?;
+        let rounds = crate::trace::trace_rounds(path, content).map_err(|e| format!("can't play it: {e}"))?;
         let sessions: Vec<Session> = rounds.into_iter().map(|(_, r)| Session::new(r)).collect();
         let mut renderer = Renderer::with_packs(setup.packs.clone());
         renderer.set_strings(setup.strings.clone());
