@@ -615,8 +615,9 @@ also be fully qualified as well".
   content/bn6/compat, bn5-compat content/bn5/compat), and a trace names only its game's content.
 - **Lookups are exact** (`Defs::*_by_key`): tools, tests, setups and match files write ids in full.
 - **No home.** What a battle reads is the arena's (the stage's game's) or a side's (its ruleset's, §2.3); a tool
-  with no battle takes the game that has the thing. A frontend's and the match tool's default game is BN6's, by name
-  (`nettai_match::DEFAULT_GAME`).
+  with no battle takes the game that has the thing. There is no default game: the frontend takes its game from a
+  match file, a trace or `--game` (and stops, listing the games it has a pack of, with none), and the editor asks
+  for a new match's game.
 - **content/exelib** is a folder of behavior only: modules the games' folders share by path
   (`require("@exelib/...")`), with no assets of their own, so it needs no pack, and no compat or locales. A common
   module holds no game's ids or asset names and requires only common modules: it exports the behavior as makers
@@ -1288,9 +1289,8 @@ are gone.
 - **The content check** (`nettai-content-check`, no argument) checks content/: every folder against content/nettai
   and every folder's own declarations, each module by its folder and path; a folder alone still checks alone. BN5's
   HolyDrem used two types of another module, which the checker reads as `any`: the casts say so.
-- **The rewrite** was verify's tools/r4-flat-ids.py (ids, section names and asset names in the modules; the locale
-  and compat tables), tools/r4-fix-ids.py (ids a module builds in code, from the loader's messages) and
-  tools/r4-rust-keys.py (Rust tests' lookups by id; the three scripts are deleted since), re-run on what landed since (the NaviCust programs, the folder
+- **The rewrite** covered the ids, section names and asset names in the modules, the locale
+  and compat tables, the ids a module builds in code and the Rust tests' lookups by id, done again on what landed since (the NaviCust programs, the folder
   system, BN5's third batch). Verify's generators write ids in full (tools/bn5/gen_content.py through the rewrite,
   tools/navicust/gen.py), gen-content reads compat by full id and checks compat's keys are BN6's ids. Its test of
   the roles and collision types had expected `collision type thrown`, unqualified since R1: `bn6:thrown`.
@@ -1813,7 +1813,6 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
 - **Fixed during the move:** the first lab run lost two DrkSword scenarios (`cross-slash-charged`, 638 of 753
   frames). The HP bug was in `chip_used`, which only the use's own path calls; `sub_80127C0` also prepares the rush's
   chained chip and the counter cut-in's, and each worsens the bug. Hence `chip_prepared`, called where the Rust was.
-- **Porter impact:** none. No BN5 content uses these fields, and BN6's chips keep their keys: no script to re-run.
 - **Verify:** gen-content reads the rush, the substitute and the HP bug through `Defs::extension`, and decodes the
   ROM's rush byte and lock-on mode into its own `RomChip`.
 - **Tests:** rules' `a_system_extends_its_games_definitions`, on a made-up extension of the test content's counter
@@ -1868,19 +1867,14 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
      may fill them (§6.4).
   4. The navis' form sets (`forms.gregar`/`falzar`: Crosses, Beast Out, Beast Over) stay common for now.
      `changes_form` is `forms.is_some()`, and BN5's `souls` share the table. They go with S7c's BN6 records.
-- **Porter impact:** verify's `tools/rules/s7.py <checkout>` (idempotent) rewrites:
-  - `kind = "base"` to `base = true` and drops `kind = "soul"` in forms;
-  - Luau reads of `<form>.kind == "base"` / `"soul"`;
-  - the tether `"beast_form"`.
-
-  It lists by hand what it can't rewrite: Rust `FormKind`, the navi stats `beast`/`beast_over`, the moved traits,
-  and kind reads through other names.
+- **What the content writes now:** `base = true` where a form said `kind = "base"`, no `kind = "soul"`, and no
+  read of a form's `kind`.
 - **Verify:** gen-content's `RomForm` carries the BN6 fields beside the record, and the check compares them through
   `Defs::extension`.
 - **Fixed after the gates:** the shared buster's `table.find` over a form's traits doesn't type-check (the content
   check's; the gate doesn't run it), so it is a loop now (`has_trait`), the same test.
-- **Merging main** (d3a547f7: BN5's RedFrut, BoyBomb, CopyDmg, Jealousy and more): s7.py rewrote one new read,
-  RedFrut's fruit's `stats.form.kind ~= "base"`, as a porter's run would.
+- **Merging main** (d3a547f7: BN5's RedFrut, BoyBomb, CopyDmg, Jealousy and more): one new read rewritten,
+  RedFrut's fruit's `stats.form.kind ~= "base"`.
 - **Gates** (on 1ac9231a, main 670f9c77 merged):
   - the full gate: the 189 legacy rounds (0 differ), the lab 6548 (all to the end or a known deviation), 0 sound
     rounds differing;
@@ -1951,8 +1945,6 @@ explicit indices; this slice keeps its lists and drops the namespace. What follo
     tests' rulesets are the base's pack's.
 - **Verify:**
   - tools/content/index.py writes the manifests.
-  - tools/content/packs.py is the porters' re-run script, with steps 1 (exelib), 2 (R5's layout), 3 (manifests), 4
-    (shared types) and 5 (cross-game requires, listed and left alone).
   - gen-content's sources read the manifest and exelib.
   - The BN5 tools, impact.py and the tests follow.
 - **Decisions** (for review):
@@ -1963,8 +1955,6 @@ explicit indices; this slice keeps its lists and drops the namespace. What follo
   3. The game packs are found by listing content/*/manifest.toml, in name order (main's order: bn5, then bn6).
   4. The declarations are found by folder, per pack, rather than listed.
   5. Module names keep the `<pack>:<path>` spelling, so no anonymous key, compat entry or coverage map moves.
-- **Porter re-run:** merge main, run `tools/content/packs.py <checkout>` (verify), then build and test. It prints a
-  line per step for the report. layout.py and gen_content.py run index.py after writing.
 
 ### P3, one game a match (2026-10-03)
 
@@ -2098,20 +2088,15 @@ plain Luau library with a single definition.
     sections, its own Cross special and its roles; the test pack's roles stand in for the content's
     (`with_test_pack`).
 - **Tools** (the verification workspace).
-  - packs.py: step 6 writes ids local (another pack's prefix refuses the run), step 7 the engine's Rust (P3's calls,
-    and the ids literals write, at a quote or in a list: `"canodumb,-bn6:shadow"`; a line marked `(written in
-    full)` is a test's deliberate name and stays), step 8 the flag's names, step 9 the rules in one table (a
-    section's `define.rules("x", T)` is T, wired into rules/init.luau by its name; the roles plain; the manifests
-    rewritten).
   - index.py lists a game's rules as `rules`. gen_rules.py writes plain sections and rules/init.luau. gen_content.py
-    and the other generators write ids local (the in-full rewrite is gone); layout.py and recipes.py read either.
+    and the other generators write ids local.
     gen-content checks compat's keys as local ids.
 - **Decisions** (for review):
   1. Variants keep the game's sections and roles (approved): per-ruleset tables would mean the battle carrying its
      ruleset's tables into the chips' links, the custom screen, the renderer and the tools. Additive later.
   2. A section field is snake_case (`sp_chips`), the module keeps its file name (rules/sp-chips.luau).
   3. The deliberate qualified names in tests (a name the content must refuse, a test pack's module name) are marked
-     `// (written in full)` so packs.py's step 7 leaves them.
+     `// (written in full)`.
   4. The content check's placeholder lint now sees BN5's 45 placeholder asset names (`sprite-0c-42`), which the
      `bn5:` prefix used to hide from it; they are content/bn5's to name (compat/assets.toml).
 
@@ -2139,8 +2124,7 @@ plain Luau library with a single definition.
   - nettai-content's strings check allows any form's strings. nettai-match's `bn6_crosses_have_their_strings`
     checks BN6's Crosses' names and descriptions, and that no other BN6 form has strings.
   - `bn6_forms_agree_with_their_kinds` checks the sets.
-- **Porter impact:** none. BN5 content defines no lock-on modes or sets. A branch that writes
-  `define.lockon {` writes `define.record("lockon", {` instead (with the closing `})`).
+- **BN5** content defines no lock-on modes or sets.
 
 ### S8, BN6's API (2026-10-04)
 
@@ -2297,13 +2281,10 @@ definition is what it was, under the id it had (content-model-v2.md §4.0, §4.1
   (86 chips named in 27 of BN6's series modules, which listed them by place; 36 uses by number named; 61 locals
   renamed across BN6, BN5 and the test content). BN5's recipes, which take one chip at the require
   (`local recipe_hicannon = require("./cannon").hicannon`), keep their names.
-- **Tools** (the verification workspace): tools/content/packs.py steps 10 (inits.py) and 11 (series.py), which run
-  over main's content as it was and give this tree exactly; index.py writes the top modules, the manifests and
-  .luaurc; layout.py, gen_content.py and its generators, navicust/gen.py and gen-content read and write the new
+- **Tools** (the verification workspace): index.py writes the top modules, the manifests and
+  .luaurc; gen_content.py and its generators, navicust/gen.py and gen-content read and write the new
   names.
-- **Porter impact:** after merging main, run `tools/content/packs.py <checkout>`: it names a branch's chip.luau,
-  chips.luau and the like init.luau, rewrites the requires, names a series' chips and writes the game's
-  init.luau. New modules: a folder's main module is `init.luau`; inside it `./x` is beside the folder and
+- **New modules:** a folder's main module is `init.luau`; inside it `./x` is beside the folder and
   `@self/x` inside it.
 - **One ruleset per game** (the user: "there should only be one ruleset per game").
   - `define.ruleset { systems = ..., <rule sections>, roles = ... }` keeps its name (the user's word, and the
@@ -2320,5 +2301,3 @@ definition is what it was, under the id it had (content-model-v2.md §4.0, §4.1
   - The test content has one ruleset; a test that plays by other systems (the marker, the watcher, BN6's
     patch-cards system) plays another content, the same but for the list (`testing::with_systems`). The mix's
     tests (a base's systems changed) went with the mixes.
-  - packs.py step 12 drops `id` and `stock` from a branch's `define.ruleset` and lists a variant or a second
-    ruleset for a hand edit.

@@ -578,7 +578,7 @@ NaviStats-like layout), so BN5's seams should fit it with less new work. The sam
 | Pack formats `nettai-content/hud`, `nettai-content/custom` | nettai-content hud.rs, custom.rs | BN6's layouts under generic names. |
 | `BN6_LOAD_TIMES` | nettai-frontend main.rs | Not BN6's: already `NETTAI_LOAD_TIMES` since the rename. |
 | `BN6_RATCHET_LOWER` | content-model-v2.md (history) | Dead since the ratchet was deleted; leave the history. |
-| The default pack path `data/content/bn6`, BN6 as the frontend's default game (`nettai_match::DEFAULT_GAME`) | nettai-frontend, nettai-content | BN6's defaults; fine while BN6 is the only game. A `--game` choice later. |
+| The default pack path `data/content/bn6`, BN6 as the frontend's default game (gone since: no command defaults to a game) | nettai-frontend, nettai-content | BN6's defaults; fine while BN6 is the only game. A `--game` choice later. |
 | docs/engine | docs | BN6's reverse-engineering record (275 files cite it). Keep it in place and say so, or move it to docs/bn6 when a second game's docs arrive (one mechanical commit). |
 
 ### 5.2 What stays BN6's

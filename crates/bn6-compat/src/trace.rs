@@ -157,9 +157,10 @@ pub struct Object {
 /// One battle frame of the original game.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Frame {
-    /// The traced console's game (its round's setup's; not in the line).
+    /// The traced console's game (its round's setup's; not in the line:
+    /// [`rounds`] gives a round's frames theirs).
     #[serde(skip)]
-    pub console: Game,
+    pub console: Option<Game>,
     pub frame: u32,
     /// BattleState bytes 0-3: top state, mode sub-state, and two sub-sub-states.
     pub state: [u8; 4],
@@ -193,12 +194,6 @@ pub struct Frame {
     pub chip_blocks: [String; 2],
 }
 
-#[derive(Clone, Debug)]
-pub enum Line {
-    Setup(Setup),
-    Frame(Box<Frame>),
-}
-
 #[derive(Deserialize)]
 struct SetupLine {
     setup: Setup,
@@ -227,25 +222,6 @@ fn setup_of(line: &str) -> Result<Setup, String> {
         Some(_) => {}
     }
     Ok(serde_json::from_str::<SetupLine>(line).unwrap_or_else(|e| panic!("parsing setup: {e}")).setup)
-}
-
-/// Read a trace file, one line at a time (a frame's console is the last
-/// setup's).
-pub fn read(path: impl AsRef<std::path::Path>) -> std::io::Result<impl Iterator<Item = Line>> {
-    let f = std::io::BufReader::new(std::fs::File::open(path)?);
-    let mut console = Game::Falzar;
-    Ok(f.lines().map(move |l| {
-        let l = l.expect("reading trace");
-        if l.starts_with("{\"setup\"") {
-            let setup = setup_of(&l).unwrap_or_else(|e| panic!("{e}"));
-            console = setup.console_game();
-            Line::Setup(setup)
-        } else {
-            let mut frame: Box<Frame> = Box::new(serde_json::from_str(&l).expect("parsing frame"));
-            frame.console = console;
-            Line::Frame(frame)
-        }
-    }))
 }
 
 /// Decode a hex string from a trace.
@@ -333,7 +309,7 @@ pub fn rounds(path: impl AsRef<std::path::Path>) -> std::io::Result<Vec<Round>> 
             }
         } else if let Some(r) = rounds.last_mut() {
             let mut frame: Frame = serde_json::from_str(&l).expect("frame");
-            frame.console = r.console_game();
+            frame.console = Some(r.console_game());
             r.frames.push(frame);
         }
     }
@@ -347,7 +323,7 @@ impl Setup {
         let local = unhex(&self.battle_state)[0x0D] as usize & 1;
         let version = self.game_versions[local].as_str();
         let region = self.game_regions[local].as_str();
-        Game::of_names(version, region)
+        Game::of_names(version, region).unwrap_or_else(|| panic!("a console of version {version:?} and region {region:?}"))
     }
 }
 
@@ -598,7 +574,7 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
     // The traced console's game (its round's setup's): a Gregar or a
     // Japanese console's objects keep its own ROM's addresses where the
     // content has the US Falzar's (games.toml).
-    let game = f.console;
+    let game = f.console.expect("a round's frame (trace::rounds gives it its console)");
     let ours: Vec<String> = order.iter().zip(&unknown).map(|(&o, &u)| describe(b, compat, o, u, game)).collect();
     let theirs: Vec<String> =
         f.objects.iter().enumerate().map(|(i, o)| describe_trace(compat, o, unknown.get(i).copied().unwrap_or_default())).collect();

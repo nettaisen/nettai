@@ -69,14 +69,16 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
        nettai-frontend [OPTIONS] --audit TRACE.jsonl...
 
   You play one game, BN6 or BN5: a match file names its game and a trace
-  states its own, else --game does (default bn6). The battle is that game's: its content folder and the
+  states its own, else --game says it (there is no default game: without
+  one the frontend lists those it found a pack of and stops). The battle
+  is that game's: its content folder and the
   support folders it uses, drawn and heard from its pack (graphics and
   sound, written from your ROMs by `bn6-extract content <falzar-us>
   <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6`, BN5's by
   bn5-extract), found in the packs directory, $NETTAI_PACKS, else
   data/content, each pack by the game it says.
-  --game GAME      the game played without a match file or a trace: bn6
-                   (default) or bn5 (a match file's game is its own, and so
+  --game GAME      the game played, bn6 or bn5: required without a match
+                   file or a trace (a match file's game is its own, and so
                    is a trace's: one of another game than GAME is refused)
   --pack DIR       a pack's directory, in place of the found pack of its game
   --content DIR    the content directory (default: $NETTAI_CONTENT, else
@@ -534,6 +536,21 @@ fn audit_traces(args: &Args, content: &Arc<nettai_battle::Content>, setup: &head
     std::process::exit(if problems == 0 { 0 } else { 1 })
 }
 
+/// What the frontend says when nothing says the game (no match file, no
+/// trace, no `--game`): the games it found a pack of, each as the option
+/// that plays it.
+fn which_game(content: Option<&Path>, found: &[nettai_content::pack::Found], packs_dir: &Path) -> String {
+    let games: Vec<String> = match nettai_content::pack::games(content, found) {
+        Ok(games) => games.into_iter().filter(|g| g.pack.is_some()).map(|g| format!("--game {}", g.game)).collect(),
+        Err(_) => Vec::new(),
+    };
+    if games.is_empty() {
+        format!("say which game with --game: none has its pack in {} (extract one there, or give it with --pack)", packs_dir.display())
+    } else {
+        format!("say which game: {}", games.join(" or "))
+    }
+}
+
 fn main() {
     let args = match parse() {
         Ok(a) => a,
@@ -545,9 +562,17 @@ fn main() {
             std::process::exit(2);
         }
     };
+    // The packs found in the packs directory (and given by --pack).
+    let t = Instant::now();
+    let mut found_report = nettai_content::report::Report::default();
+    let packs_dir = nettai_content::pack::packs_dir();
+    let found = nettai_content::pack::find(&packs_dir, &args.packs, &mut found_report);
+    show(&found_report);
+    let found = found.unwrap_or_else(|| fail("can't read the packs given (--pack)"));
     // The game played: the match file's; a recording's own (the one its
-    // setup states, which --game, if given, must be); else --game's, else
-    // BN6 (a live match with no file).
+    // setup states, which --game, if given, must be); else --game's. There
+    // is no default game: with none said, the frontend says which it could
+    // play and stops.
     let file_text = args.match_file.as_deref().map(match_text);
     let game = match (&file_text, args.traces.first()) {
         (Some(text), _) => nettai_match::file::game_of(text)
@@ -559,16 +584,9 @@ fn main() {
             }
             stated
         }
-        (None, None) => args.game.clone().unwrap_or_else(|| nettai_match::DEFAULT_GAME.to_string()),
+        (None, None) => args.game.clone().unwrap_or_else(|| fail(which_game(args.content.as_deref(), &found, &packs_dir))),
     };
-    // The packs found in the packs directory (and given by --pack), and the
-    // game's content.
-    let t = Instant::now();
-    let mut found_report = nettai_content::report::Report::default();
-    let packs_dir = nettai_content::pack::packs_dir();
-    let found = nettai_content::pack::find(&packs_dir, &args.packs, &mut found_report);
-    show(&found_report);
-    let found = found.unwrap_or_else(|| fail("can't read the packs given (--pack)"));
+    // The game's content.
     let loaded = nettai_content::pack::load_game(args.content.as_deref(), &game, &found).unwrap_or_else(|r| {
         show(&r);
         fail(format!("can't load {game}'s battle content (--content, --pack, --game)"))
