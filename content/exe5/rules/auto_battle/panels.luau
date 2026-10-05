@@ -1,5 +1,5 @@
 --!strict
--- The panel searches EXE5's computer-navi AI runs (./ai, ./place): where to step, where a chip reaches from. Most are
+-- The panel searches EXE5's auto battle AI runs (./ai, ./place): where to step, where a chip reaches from. Most are
 -- EXE6's routines (the same code in both games); the EXE5-only ones are named by their EXE5 address. A search that finds
 -- nothing returns nil; one that finds several picks one with a battle RNG draw (`GetPositiveSignedRNG2`, modulo
 -- how many), in the order the original lists them.
@@ -220,7 +220,7 @@ function panels.area_fronts(side: number, flip: number, require: number, forbid:
     return out
 end
 
--- The panels a side's front panel faces that a computer navi won't step behind (0x080131A0: a body of the side's own,
+-- The panels a side's front panel faces that a navi in auto battle won't step behind (0x080131A0: a body of the side's own,
 -- or a neutral one).
 local OWN_BODIES: { number } = { 0x01800000, 0x02800000 }
 

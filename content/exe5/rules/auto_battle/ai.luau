@@ -1,6 +1,6 @@
 --!strict
--- EXE5's computer-navi AI, in the two families a netbattle runs. Dark MegaMan's (0x0802BA14: `ai.run`) plays the tactics
--- of the side across from it (the player whose Chaos Unison failed: their computer-navi data, the battle's
+-- EXE5's auto battle AI, in the two families a netbattle runs. Dark MegaMan's (0x0802BA14: `ai.run`) plays the tactics
+-- of the side across from it (the player whose Chaos Unison failed: their auto battle data, the battle's
 -- `tactic`s); the one EXE5's story navis and DarkInvs's drive run (0x0802B4AC: `ai.run_own`, a player under DarkInvs
 -- driving itself) plays the navi's own side's, and faces, as it steps, the target whose search starts at the step's
 -- column (where the other starts at the pattern's search place); its pick for a crowded front is real code. Entry by
@@ -10,7 +10,7 @@
 -- (no entry, or a first place holding 0), it steps into the row
 -- of an enemy and fires its buster (three shots, ./buster), twice. Its state is AIData +0xF0 on (Dark MegaMan's the
 -- system's `navi_state`, a driven player's the system's state of its side), but +0xF0 itself, the navi's
--- `computer_driven`.
+-- `in_auto_battle`.
 
 local data = require("./data")
 local panels = require("./panels")
@@ -22,7 +22,7 @@ export type State = {
     -- AIData +0x83 and +0x88 (0x08104210): its time in the battle has started, and the ticks left of it.
     timed: boolean,
     lifetime: number,
-    -- (+0xF0, on, is the navi's `computer_driven`: what a player navi under the AI's control reads.)
+    -- (+0xF0, on, is the navi's `in_auto_battle`: what a player navi under the AI's control reads.)
     -- A player's drive (DarkInvs, the system's state of its side): its timer when it last stepped, which a new drive
     -- sets above (the system's bookkeeping: the game starts the state over at the drive's start, 0x0802C03A).
     drive_ticks: number,
@@ -115,7 +115,7 @@ local function target_at(navi: Object, i: number): Object?
     if word < 6 then
         return field.object_slot(word // 3, word % 3 + 1)
     end
-    error(string.format("the computer navi's target %d reads past the field-object registry (0x0802BDE0)", i))
+    error(string.format("the auto-battling navi's target %d reads past the field-object registry (0x0802BDE0)", i))
 end
 
 -- 0x0802BD92: the first target from `start` on (wrapping after 4), and its index; none: nil and `start`. (From past 4
@@ -137,7 +137,7 @@ local function target_from(navi: Object, start: number): (Object?, number)
         end
         looked += 1
         if looked > 5 then
-            error(string.format("the computer navi's target search from %d finds nothing and never ends (0x0802BD92)", start))
+            error(string.format("the auto-battling navi's target search from %d finds nothing and never ends (0x0802BD92)", start))
         end
     end
 end
@@ -238,7 +238,7 @@ local function decide(navi: Object, s: State, fam: Family)
         if not fam.own then
             -- (Its pick, 0x0802BA78, calls 0x081BC8AC, which is data, not code. The counters stay 0, so it never
             -- runs.)
-            error("the computer navi's front pressure reached 50: its pick (0x0802BA78) calls 0x081BC8AC, which is data")
+            error("the auto-battling navi's front pressure reached 50: its pick (0x0802BA78) calls 0x081BC8AC, which is data")
         end
         -- (0x0802B510: the first of its own side's first 30 entries for a crowded front, 0x0802BE4E.)
         local chip = pick_by(navi.alliance, 1, 30)
@@ -288,11 +288,11 @@ local function decide(navi: Object, s: State, fam: Family)
     s.mode, s.sub = 4, 0
 end
 
--- 0x0802BB20 (0x0802B5B8): a breath; one time in two it turns its activity off (+0xF0: `computer_driven`).
+-- 0x0802BB20 (0x0802B5B8): a breath; one time in two it turns its activity off (+0xF0: `in_auto_battle`).
 local function rest(navi: Object, s: State)
     s.step = 0
     if bit32.band(battle.rng_positive(), 1) ~= 0 then
-        navi.computer_driven = false
+        navi.in_auto_battle = false
     end
 end
 
@@ -314,7 +314,7 @@ local function buster_run(navi: Object, s: State, fam: Family)
             s.step = 0
         end
     else
-        error(string.format("the computer navi's buster run's step %#x reads past its table (0x0802BB48)", s.sub))
+        error(string.format("the auto-battling navi's buster run's step %#x reads past its table (0x0802BB48)", s.sub))
     end
 end
 
@@ -341,12 +341,12 @@ local function dodge(navi: Object, s: State, fam: Family)
         navi:reset_charge()
         local shot = navi.charge_shot_weapon
         if shot == nil then
-            error("the computer navi's dodge ends in its charged shot (sub_80117A4), and it has none")
+            error("the auto-battling navi's dodge ends in its charged shot (sub_80117A4), and it has none")
         end
         navi:start_weapon(shot :: Weapon, 1)
         s.step = 0
     else
-        error(string.format("the computer navi's dodge's step %#x reads past its table (0x0802BBC0)", s.sub))
+        error(string.format("the auto-battling navi's dodge's step %#x reads past its table (0x0802BBC0)", s.sub))
     end
 end
 
@@ -365,7 +365,7 @@ local function pattern_place(navi: Object, s: State, fam: Family)
         s.target_index = i
         local x = t.panel_x + dx * panels.enemy_direction(navi)
         local y = t.panel_y + dy
-        -- (The computer navis here all read a MegaMan's stats: the side's player's.)
+        -- (The navis in auto battle here all read a MegaMan's stats: the side's player's.)
         local lag = navi:move_lag()
         if navi:can_step(lag, lag) then
             step_to(navi, s, x, y, fam)
@@ -398,7 +398,7 @@ local function pattern_chips(navi: Object, s: State, fam: Family)
     if type(read) == "number" then
         error(
             string.format(
-                "the computer navi's read of a pattern found the number %#06x where a chip's would be: the game plays its chip table's record of that number (0x0801E214 + 0x2C × %d; 0x0802BCD6, 0x0802C094)",
+                "the auto-battling navi's read of a pattern found the number %#06x where a chip's would be: the game plays its chip table's record of that number (0x0801E214 + 0x2C × %d; 0x0802BCD6, 0x0802C094)",
                 read,
                 read
             )
@@ -433,7 +433,7 @@ local function deciding(navi: Object, s: State, fam: Family)
     elseif st == 0x18 then
         reposition(navi, s, fam)
     else
-        error(string.format("the computer navi's decision step %#x reads past its table (0x0802BA48)", st))
+        error(string.format("the auto-battling navi's decision step %#x reads past its table (0x0802BA48)", st))
     end
 end
 
@@ -467,7 +467,7 @@ local function run(navi: Object, s: State, fam: Family)
     elseif s.mode == 4 then
         playing(navi, s, fam)
     else
-        error(string.format("the computer navi's mode %#x reads past its table (0x0802BA2C)", s.mode))
+        error(string.format("the auto-battling navi's mode %#x reads past its table (0x0802BA2C)", s.mode))
     end
 end
 
@@ -481,10 +481,10 @@ function ai.run_own(navi: Object, s: State)
     run(navi, s, OWN)
 end
 
--- 0x0802C03A (0x0802BE3E's twin): AIData +0xF0 to +0x12F zeroed: the navi no longer computer driven, its decisions'
+-- 0x0802C03A (0x0802BE3E's twin): AIData +0xF0 to +0x12F zeroed: the navi no longer in auto battle, its decisions'
 -- state from the start (the time of AIData +0x83 and the placing of +0x130 on kept).
 function ai.reset(navi: Object, s: State)
-    navi.computer_driven = false
+    navi.in_auto_battle = false
     s.mode, s.step, s.sub, s.misses = 0, 0, 0, 0
     s.target_index, s.next_target, s.shots, s.pattern_chip = 0, 0, 0, 0
     s.entry_chip, s.entry_pattern, s.since = nil, 0, 0

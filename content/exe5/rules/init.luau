@@ -1,10 +1,10 @@
 --!strict
 -- EXE5's rules, its one ruleset (docs/design/rules-in-luau.md §2.2): the systems an EXE5 player plays by: light and dark
--- MegaMan, EXE5's emotions, Soul Unison, the computer navis Chaos Unison brings, the NaviCust, the patch cards and the
+-- MegaMan, EXE5's emotions, Soul Unison, the navis in auto battle Chaos Unison brings, the NaviCust, the patch cards and the
 -- folder rules so far; its Team Battle is still to come as a system (docs/design/exe5-map.md §15).
 -- Written by tools/exe5/gen_rules.py (bn6battle-verify) from the EXE5 ROM; people own it now.
 
-local computer_navi = require("@self/computer-navi")
+local auto_battle = require("@self/auto_battle")
 local emotion = require("@self/emotion")
 local folder = require("@self/folder")
 local light_dark = require("@self/light-dark")
@@ -24,9 +24,9 @@ return define.ruleset {
         emotion.system,
         -- Soul Unison: the soul's turns, the revert when they run out (the change is its souls' own action).
         souls.system,
-        -- The computer navis a battle brings (a failed Chaos Unison's Dark MegaMan): their AI, their time, their
+        -- The navis in auto battle a battle brings (a failed Chaos Unison's Dark MegaMan): their AI, their time, their
         -- leave.
-        computer_navi.system,
+        auto_battle.system,
         -- The folder rules: what EXE5's folder editor allows (a tool's question, never the simulation's).
         folder,
     },

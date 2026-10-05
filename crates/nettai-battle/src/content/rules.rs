@@ -324,7 +324,7 @@ pub struct IntakeRules {
     /// no-charge state counts its drive's ticks down at the intake's end
     /// (0x0800DBE0) and asks for the stun strike when they run out (EXE5's
     /// action 0x49 ends the drive); its idle hands the step it would take
-    /// to the side's systems' `controller` (0x080F03E4: the computer-navi
+    /// to the side's systems' `controller` (0x080F03E4: the auto battle
     /// AI, 0x0802B4AC, or the reset of its state); and its last 180 ticks
     /// it flickers gray (0x080136E0). EXE6 has none of it.
     pub no_charge_drive: bool,
