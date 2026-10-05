@@ -88,3 +88,22 @@
 "barrier/200" = 7
 "barrier/bubble" = 8
 "barrier/life-aura" = 9
+
+# MegaMan's forms: the number NaviStats +0x2C names (0: no soul, his base form; 1 to 12 his souls, in the order of the
+# navis he unites with, 0x0873BBC8's names). The original numbers a soul everywhere (its sprite 00-0n, its rows of
+# the weapon and attach point tables, its bit of the round's souls given, the save's soul flags by version); the
+# content names a soul by its form's id, and what reads a recording or a save finds the form here.
+[forms]
+"base" = 0
+"protosoul" = 1
+"gyrosoul" = 2
+"searchsoul" = 3
+"napalmsoul" = 4
+"magnetsoul" = 5
+"meddysoul" = 6
+"colonelsoul" = 7
+"shadowsoul" = 8
+"numbersoul" = 9
+"tomahawksoul" = 10
+"knightsoul" = 11
+"toadsoul" = 12

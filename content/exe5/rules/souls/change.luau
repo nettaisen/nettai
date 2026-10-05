@@ -36,10 +36,6 @@ local FLASH_SOUND = asset.sound("log-in")
 local UNISON_SOUND = asset.sound("cross-change")
 local CHAOS_SOUND = asset.sound("bug")
 
--- The souls whose change shakes the cameras (0x0801212C: TomahawkSoul's), with battle flag 0x20 set (0x08012138), which
--- has the cameras shake while the battle is paused, until the change's end clears it (0x080121B6).
-local SHAKES: { [number]: boolean } = { [10] = true }
-
 -- The steps, in the attack's step.
 local PREPARE, IMAGE, EMERGE, CHAOS, SETTLE = 0, 4, 8, 0xC, 0x10
 
@@ -70,7 +66,7 @@ local function prepare(me: Object)
 end
 
 -- 0x08012010
-local function show_image(me: Object, s: State, soul: number, chaos: boolean)
+local function show_image(me: Object, s: State, soul: FormDef, chaos: boolean)
     if me.step_init == 0 then
         image.spawn(me, soul)
         if chaos then
@@ -90,7 +86,7 @@ local function show_image(me: Object, s: State, soul: number, chaos: boolean)
 end
 
 -- 0x08012090
-local function emerge(me: Object, s: State, target: FormDef, soul: number, chaos: boolean)
+local function emerge(me: Object, s: State, target: FormDef, chaos: boolean)
     me.sprite.white = true
     if me.step_init == 0 then
         me:set_navi_state("form_change_sprite_held", false)
@@ -109,7 +105,10 @@ local function emerge(me: Object, s: State, target: FormDef, soul: number, chaos
         stats.form = target
         hooks.identity(me, target)
         hooks.start(me, target)
-        if SHAKES[soul] then
+        -- (0x0801212C: the souls whose change shakes the cameras, TomahawkSoul's `emerge_shake`, with battle flag
+        -- 0x20 set, 0x08012138, which has them shake while the battle is paused, until the change's end clears it,
+        -- 0x080121B6.)
+        if target.emerge_shake == true then
             battle.shake_camera(2, 30)
             battle.set_shake_through_pause(true)
         end
@@ -158,15 +157,14 @@ function change.update(me: Object, s: State)
     if target == nil or target.soul == nil then
         error("EXE5's soul change asked for no soul (0x08011F74)")
     end
-    local soul = (target.soul :: any).number :: number
     local _, chaos = me:form_change_soul()
     local step = me.step
     if step == PREPARE then
         prepare(me)
     elseif step == IMAGE then
-        show_image(me, s, soul, chaos)
+        show_image(me, s, target, chaos)
     elseif step == EMERGE then
-        emerge(me, s, target, soul, chaos)
+        emerge(me, s, target, chaos)
     elseif step == CHAOS then
         chaos_step(me, s)
     elseif step == SETTLE then

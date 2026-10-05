@@ -1,7 +1,7 @@
 --!strict
 -- The soul's image (actor object 0x2A, 0x080C0394; spawned by 0x080C0524, EXE6's `sub_80C02A6`, which spawns its
 -- own kind 0x28 for battle mode 9): the navi MegaMan unites with comes in on a spiral around him for 22 ticks
--- (tinted), blinks for 30 and fades out over 8. Its sprite is the soul's navi's (category 8 by the soul's number).
+-- (tinted), blinks for 30 and fades out over 8. Its sprite is the soul's navi's (category 8, by the soul).
 -- It puts on what the soul's navi wears as it comes (0x0800ED0E with 1: 0x0800EDBC's routines by soul, their parts
 -- stepping even while paused) and takes it off as it goes (0x0800EEBE with 1): GyroMan's propeller, NapalmMan's
 -- cannon, Colonel's cape and KnightMan's ball and chain (the body overlay rows 0, 4, 3 and 1), and NumberMan's face
@@ -14,37 +14,37 @@ local layer = require("../../navis/megaman/forms/numbersoul/layer")
 local image = {}
 
 export type State = {
-    -- The soul's number (Param1).
-    soul: number,
+    -- The soul (Param1, its number in the original), by its form.
+    soul: FormDef,
 }
 
--- The souls' navis' sprites, by soul number.
-local SPRITES: { [number]: SpriteAsset } = {
-    [1] = asset.sprite("protoman"),
-    [2] = asset.sprite("gyroman"),
-    [3] = asset.sprite("searchman"),
-    [4] = asset.sprite("napalmman"),
-    [5] = asset.sprite("magnetman"),
-    [6] = asset.sprite("meddy"),
-    [7] = asset.sprite("colonel"),
-    [8] = asset.sprite("shadowman"),
-    [9] = asset.sprite("numberman"),
-    [10] = asset.sprite("tomahawkman"),
-    [11] = asset.sprite("knightman"),
-    [12] = asset.sprite("toadman"),
+-- The souls' navis' sprites, by the soul's form's id.
+local SPRITES: { [string]: SpriteAsset } = {
+    protosoul = asset.sprite("protoman"),
+    gyrosoul = asset.sprite("gyroman"),
+    searchsoul = asset.sprite("searchman"),
+    napalmsoul = asset.sprite("napalmman"),
+    magnetsoul = asset.sprite("magnetman"),
+    meddysoul = asset.sprite("meddy"),
+    colonelsoul = asset.sprite("colonel"),
+    shadowsoul = asset.sprite("shadowman"),
+    numbersoul = asset.sprite("numberman"),
+    tomahawksoul = asset.sprite("tomahawkman"),
+    knightsoul = asset.sprite("knightman"),
+    toadsoul = asset.sprite("toadman"),
 }
--- What the souls' navis wear, by soul number (0x0800EDBC's routines; the others' wear nothing).
+-- What the souls' navis wear, by the soul's form's id (0x0800EDBC's routines; the others' wear nothing).
 local function wears(id: string, part: BodyPart): Identity
     return define.identity { id = id, class = "navi", parts = { body = part } }
 end
-local PARTS: { [number]: Identity } = {
-    [2] = wears("soul-image/gyroman", body_overlays.gyroman),
-    [4] = wears("soul-image/napalmman", body_overlays.napalmman),
-    [7] = wears("soul-image/colonel", body_overlays.colonel),
-    [11] = wears("soul-image/knightman", body_overlays.knightman),
+local PARTS: { [string]: Identity } = {
+    gyrosoul = wears("soul-image/gyroman", body_overlays.gyroman),
+    napalmsoul = wears("soul-image/napalmman", body_overlays.napalmman),
+    colonelsoul = wears("soul-image/colonel", body_overlays.colonel),
+    knightsoul = wears("soul-image/knightman", body_overlays.knightman),
 }
--- NumberMan's (soul 9): his face, a layer (row 0) in its second related slot.
-local NUMBER_SOUL, NUMBERMAN_FACE = 9, 0
+-- NumberMan's (NumberSoul's): his face, a layer (row 0) in its second related slot.
+local NUMBER_SOUL, NUMBERMAN_FACE = "numbersoul", 0
 local SOUND = asset.sound("cross-merge")
 -- The tint while it spirals in.
 local TINT = 0x2108
@@ -105,7 +105,7 @@ local function fade(me: Object)
     if int.i16(me.timer) < 0 then
         me.sprite.alpha = nil
         me.visible = false
-        local soul = (me.state :: State).soul
+        local soul = (me.state :: State).soul.id
         local parts = PARTS[soul]
         if parts then
             me:remove_parts(parts)
@@ -135,11 +135,11 @@ end
 
 -- 0x080C03B4
 local function init(me: Object)
-    local s = me.state :: State
+    local soul = (me.state :: State).soul.id
     local sprite = me.sprite
-    local look = SPRITES[s.soul]
+    local look = SPRITES[soul]
     if not look then
-        error(string.format("soul %d has no image's sprite (0x080C03B4)", s.soul))
+        error(string.format("%s has no image's sprite (0x080C03B4)", soul))
     end
     sprite:load(look)
     sprite.shadow = "hidden"
@@ -150,10 +150,10 @@ local function init(me: Object)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me.visible = true
     battle.play_sound(SOUND)
-    local parts = PARTS[s.soul]
+    local parts = PARTS[soul]
     if parts then
         me:add_parts(parts, 1)
-    elseif s.soul == NUMBER_SOUL then
+    elseif soul == NUMBER_SOUL then
         me.related2 = layer.spawn(me, NUMBERMAN_FACE)
     end
     me:set_lifecycle("update")
@@ -163,7 +163,7 @@ end
 image.kind = define.kind {
     id = "soul-image",
     pool = "actor",
-    state = { soul = "u8" },
+    state = { soul = "form" },
     -- 0x080C0394
     update = function(me: Object)
         local l = me.lifecycle
@@ -177,13 +177,13 @@ image.kind = define.kind {
     end,
 }
 
--- 0x080C0524: the image of soul `soul` for `owner`, on its side and facing.
+-- 0x080C0524: the image of the soul `soul` (its form) for `owner`, on its side and facing.
 --
 -- (It is spawned at the registers 0x0801201E's read of the side's transform record leaves (0x08012402): Chaos Unison
 -- (+1), the turn's arm chip by number (+6: 0xFFFF without one, which is what this has whatever the chip; a replay's
 -- comparison knows the number, exe5-compat) and the turns (+3), which its first tick overwrites but NumberMan's face,
 -- spawned before it, copies.)
-function image.spawn(owner: Object, soul: number): Object?
+function image.spawn(owner: Object, soul: FormDef): Object?
     local turns, chaos = owner:form_change_soul()
     local o = battle.spawn(image.kind, Vec3.new(if chaos then 1 else 0, 0xFFFF, turns))
     if o then

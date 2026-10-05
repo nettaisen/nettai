@@ -15,21 +15,20 @@ local custom_souls = {}
 
 -- The souls system's state fields the screen keeps (./init declares them).
 type State = {
-    -- 0x02034E10: the souls given this round: bit n Soul Unison with soul n, bit 16 + n its Chaos Unison (the
-    -- round's first screen forgets them).
+    -- 0x02034E10: the souls given this round, a bit a soul for its Soul Unison and another for its Chaos Unison
+    -- (`used_bit`; the round's first screen forgets them).
     souls_used: number,
-    -- The button's offer (slot 11's +5 and +6): the soul (none: no offer), its number, and whether a dark chip makes
-    -- it Chaos Unison. Once the soul is given, the soul given.
+    -- The button's offer (slot 11's +5 and +6): the soul (none: no offer), and whether a dark chip makes it Chaos
+    -- Unison. Once the soul is given, the soul given.
     offer: FormDef?,
-    offer_number: number,
     offer_chaos: boolean,
     -- The window's step (0x080232F0's offsets 0 to 0x18) and its count (+0x40).
     unite_step: number,
     unite_count: number,
 }
 
--- What the player's save brings (./init declares it): the souls it has (their flags, 0x08024BF0's, by each soul's
--- number), Soul Unison (event flag 0: the button) and Chaos Unison (event flag 0x236).
+-- What the player's save brings (./init declares it): the souls it has (the original's flags, 0x08024BF0's, one a
+-- soul), Soul Unison (event flag 0: the button) and Chaos Unison (event flag 0x236).
 type Setup = {
     souls: { FormDef? },
     soul_unison: boolean,
@@ -64,50 +63,53 @@ end
 -- The setup's souls' places (./init's `form[16]`).
 local SOUL_PLACES = 16
 
--- The save has soul `number` (its flag: one of the setup's souls of that number).
-local function owned(number: number): boolean
+-- The save has `soul` (its flag: it is one of the setup's souls).
+local function owned(soul: FormDef): boolean
     local setup = system.setup() :: Setup
     for i = 1, SOUL_PLACES do
-        local form = setup.souls[i]
-        if form ~= nil and form.soul ~= nil and form.soul.number == number then
+        if setup.souls[i] == soul then
             return true
         end
     end
     return false
 end
 
--- A soul's bit in the round's souls used.
-local function used_bit(number: number, chaos: boolean): number
-    return bit32.lshift(1, if chaos then 16 + number else number)
+-- A soul's bit in the round's souls given: by its place among the side's navi's souls for its Soul Unison, 16
+-- places on for its Chaos Unison.
+local function used_bit(side: number, soul: FormDef, chaos: boolean): number
+    local place = table.find(souls_of(side), soul)
+    if place == nil then
+        error(string.format("%s is none of the side's navi's souls", soul.id))
+    end
+    return bit32.lshift(1, if chaos then 16 + place else place)
 end
 
 -- 0x08024B28: the soul the last pick offers: a chip (not the Regular chip, not a link navi's, with no capsule mixed
 -- into it: the slot's +5) of a family one of the navi's souls is for, a soul the save has (a dark chip's Chaos
 -- Unison needs the save's Chaos Unison), not given yet this round (Soul Unison and Chaos Unison apart). None:
--- (nil, 0, false).
-local function offer(side: number): (FormDef?, number, boolean)
+-- (nil, false).
+local function offer(side: number): (FormDef?, boolean)
     local last = custom.last_pick(side)
     if last == nil or last.regular or last.navi_chip or last.attached then
-        return nil, 0, false
+        return nil, false
     end
     local chip = last.chip
     local chaos = table.find(chip.flags or {}, "dark") ~= nil
     if chaos and not (system.setup() :: Setup).chaos_unison then
-        return nil, 0, false
+        return nil, false
     end
     local family = chip.family
     local form = if family ~= nil then soul_for(side, family) else nil
     if form == nil or form.soul == nil then
-        return nil, 0, false
+        return nil, false
     end
-    local number = form.soul.number
-    if not owned(number) then
-        return nil, 0, false
+    if not owned(form) then
+        return nil, false
     end
-    if bit32.btest((system.state() :: State).souls_used, used_bit(number, chaos)) then
-        return nil, 0, false
+    if bit32.btest((system.state() :: State).souls_used, used_bit(side, form, chaos)) then
+        return nil, false
     end
-    return form, number, chaos
+    return form, chaos
 end
 
 -- The soul button (0x08023C54), in the special slot.
@@ -128,13 +130,9 @@ custom_souls.button = {
     -- 0x08024B28: unavailable until the last pick offers a soul, which the button keeps.
     state = function(side: number): "selectable" | "unavailable"
         local s = system.state() :: State
-        local form, number, chaos = offer(side)
-        if form == nil then
-            s.offer_number, s.offer_chaos = 0, false
-            return "unavailable"
-        end
-        s.offer, s.offer_number, s.offer_chaos = form, number, chaos
-        return "selectable"
+        local form, chaos = offer(side)
+        s.offer, s.offer_chaos = form, chaos
+        return if form == nil then "unavailable" else "selectable"
     end,
     -- 0x08024972: a soul on offer starts its sequence.
     pressed = function(side: number)
@@ -251,8 +249,9 @@ function custom_souls.confirmed(side: number)
     elseif turns < 0 then
         turns = 1
     end
-    custom.set_form(side, s.offer, turns, s.offer_chaos)
-    s.souls_used = bit32.bor(s.souls_used, used_bit(s.offer_number, s.offer_chaos))
+    local soul = s.offer :: FormDef
+    custom.set_form(side, soul, turns, s.offer_chaos)
+    s.souls_used = bit32.bor(s.souls_used, used_bit(side, soul, s.offer_chaos))
 end
 
 -- The turn's start, before either side's change of form (0x08011DDC).

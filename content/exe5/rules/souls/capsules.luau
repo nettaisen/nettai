@@ -34,8 +34,8 @@ type State = {
     mix_count: number,
 }
 
--- MeddySoul, by number (0x08023D20).
-local MEDDY = 6
+-- MeddySoul (0x08023D20), by its form's id.
+local MEDDY = "meddysoul"
 -- The slots the capsules take: the hand's last two.
 local SLOTS = { 8, 9 }
 local BUTTONS = { "capsule_1", "capsule_2" }
@@ -65,8 +65,7 @@ local OFFERED_LOW = {
 -- in r1 (0x08023C3C: NaviStats +0x2C), which in battle mode 1 is something else (0x080127C0): no capsules there.
 local function in_soul(side: number): boolean
     local stats = battle.navi(side)
-    local soul = stats.form.soul
-    return stats.navi.id == "megaman" and soul ~= nil and soul.number == MEDDY and battle.mode() ~= 1
+    return stats.navi.id == "megaman" and stats.form.id == MEDDY and battle.mode() ~= 1
 end
 
 -- 0x08023D30, as the screen lays its slots out (after its deal, 0x08025114: the systems' deal hooks in turn, which

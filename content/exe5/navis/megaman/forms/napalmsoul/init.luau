@@ -7,7 +7,7 @@
 -- (0x37: DarkMetr); no B+Back (0xFF). Its Fire chips with damage, dimming chips too, hit 40 harder used uncharged
 -- with the A charge not full (0x0800D0A6).
 
-local attach_points = require("../attach_points")
+local attach_points = require("@self/attach_points")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
@@ -18,7 +18,7 @@ local souls = require("../../../rules/souls")
 
 return define.form {
     id = "napalmsoul",
-    soul = { number = 4, family = "fire" },
+    soul = { family = "fire" },
     change = souls.action,
     revert = souls.revert,
     sprite = asset.sprite("napalmsoul"),
@@ -43,7 +43,8 @@ return define.form {
         normal = asset.mugshot("napalmsoul"),
         variant = { normal = asset.mugshot("napalmsoul-chaos") },
     },
-    buster_arm = { anim = 0 },
+    -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
+    buster_arm = { anim = 4 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 4 of category 0).
     identity = define.identity {
         class = "megaman",
@@ -51,6 +52,6 @@ return define.form {
         actor_type = "player",
         ai_index = 0,
         aura_anim = 0,
-        attach_points = attach_points[4],
+        attach_points = attach_points,
     },
 }

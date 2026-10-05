@@ -5,7 +5,7 @@
 -- (the charged shot's: no chip charges in MeddySoul, 0x0801090A), Chaos Unison's (0x36: DrkRecov), its charge cycle
 -- the chaos cycle's row 2 whatever the chaos level (0x080106BC); no B+Back (0xFF).
 
-local attach_points = require("../attach_points")
+local attach_points = require("@self/attach_points")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
@@ -15,7 +15,7 @@ local souls = require("../../../rules/souls")
 
 return define.form {
     id = "meddysoul",
-    soul = { number = 6, family = "recovery", chaos_cycle = 2 },
+    soul = { family = "recovery", chaos_cycle = 2 },
     change = souls.action,
     revert = souls.revert,
     sprite = asset.sprite("meddysoul"),
@@ -35,7 +35,8 @@ return define.form {
         normal = asset.mugshot("meddysoul"),
         variant = { normal = asset.mugshot("meddysoul-chaos") },
     },
-    buster_arm = { anim = 0 },
+    -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
+    buster_arm = { anim = 6 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 6 of category 0).
     identity = define.identity {
         class = "megaman",
@@ -43,6 +44,6 @@ return define.form {
         actor_type = "player",
         ai_index = 0,
         aura_anim = 0,
-        attach_points = attach_points[6],
+        attach_points = attach_points,
     },
 }

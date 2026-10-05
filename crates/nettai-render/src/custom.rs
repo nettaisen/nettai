@@ -439,12 +439,12 @@ impl<'a> View<'a> {
 
 /// EXE5's soul button's offer and choice, as its souls system keeps them
 /// (content/exe5/rules/souls/custom.luau, read by its fields' names): the
-/// soul it offers or gave (its number) and whether it is Chaos Unison
-/// (slot 11's +5 and +6), and the choice's step and count (the screen's
-/// state 9).
+/// soul it offers or gave (its form; none: no offer) and whether it is Chaos
+/// Unison (slot 11's +5 and +6), and the choice's step and count (the
+/// screen's state 9).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SoulOffer {
-    pub number: u8,
+    pub soul: Option<FormHandle>,
     pub chaos: bool,
     pub step: u8,
     pub count: u8,
@@ -468,8 +468,13 @@ impl SoulOffer {
             Some(FieldValue::Bool(b)) => Some(b),
             _ => None,
         };
+        let soul = match field("offer")? {
+            FieldValue::Ref(Some((nettai_content_api::Registry::Form, h))) => Some(FormHandle(h)),
+            FieldValue::Ref(None) => None,
+            _ => return None,
+        };
         Some(SoulOffer {
-            number: byte(field("offer_number"))?,
+            soul,
             chaos: flag(field("offer_chaos"))?,
             step: byte(field("unite_step"))?,
             count: byte(field("unite_count"))?,
@@ -491,19 +496,31 @@ fn soul_window_up(b: &Battle, screen: &Screen) -> bool {
 
 /// The icon of the soul EXE5's soul button offers or gave, if the special
 /// slot is the soul button: the pack's `icons` and the icon's first tile in
-/// them (by the soul's number, Chaos Unison's 13: 0x0802341C).
+/// them (the soul's, Chaos Unison's the 13th: 0x0802341C).
 fn soul_icon<'a>(a: &'a CustomScreen, v: &View) -> Option<(&'a Tiles, usize)> {
     if !is_soul_button(v.b, v.screen, SPECIAL_SLOT) {
         return None;
     }
     let b = a.button(SOUL_BUTTON)?;
     let soul = SoulOffer::of(v.b, v.side as usize)?;
-    let n = if soul.chaos { CHAOS_ICON } else { soul.number as usize };
+    let n = if soul.chaos { CHAOS_ICON } else { soul_place(v.b, v.side, soul.soul) };
     (b.icons.len() >= 4 * (n + 1)).then_some((&b.icons, 4 * n))
 }
 
 /// The Chaos Unison's icon among the soul button's.
 const CHAOS_ICON: usize = 13;
+
+/// A soul's icon among the pack's soul button's: its place among its
+/// side's navi's souls, from 1 (the navi's `forms.souls` lists them in the
+/// icons' order, the original's soul numbers'); 0, the empty icon, for no
+/// soul or one the navi hasn't.
+fn soul_place(b: &Battle, side: u8, soul: Option<FormHandle>) -> usize {
+    let navi = b.stats[side as usize & 1].navi;
+    match (soul, &b.content.navi(navi).forms) {
+        (Some(f), Some(forms)) => forms.souls.iter().position(|&s| s == f).map_or(0, |i| i + 1),
+        _ => 0,
+    }
+}
 
 /// EXE5's soul choice (its state 9, 0x080232D0: the souls system's window
 /// `soul_unison`, at its step `sub` and count `counter`): the soul's icon as
