@@ -24,4 +24,7 @@ return {
     right_scan_bottom = { 5, 6, 7, 8, 9, 11, 10 },
     left_scan_start = { 7, 6, 5, 4, 2, 17, 16, 15, 7, 1, 0, 0 },
     right_scan_start = { 1, 2, 3, 5, 7, 1, 2, 3, 4, 5, 0, 0 },
+    -- SELECT's hidden window, brought back by a key, draws the emblem on that tick and the next (`sub_8026D06`'s
+    -- two calls of `sub_8029C08`).
+    emblem_at_window_return = true,
 }

@@ -49,6 +49,12 @@ pub struct CustomScreenLayout {
     /// again, how many of them stay in the hand (`byte_80298C8`: EXE6's are
     /// all zeros, as none listed; EXE5's 0x080254C8).
     pub redeal_kept: Vec<u8>,
+    /// SELECT's hidden window, brought back by a key, draws the navi's
+    /// emblem on that tick and the next (EXE6's `sub_8026D06`, its two
+    /// calls of `sub_8029C08`); a screen that doesn't shows it again with
+    /// the choosing state's own draw, two ticks later (EXE5's 0x08023022
+    /// has neither call).
+    pub emblem_at_window_return: bool,
 }
 
 impl Default for CustomScreenLayout {
@@ -63,6 +69,7 @@ impl Default for CustomScreenLayout {
             left_scan_start: [0; 12],
             right_scan_start: [0; 12],
             redeal_kept: Vec::new(),
+            emblem_at_window_return: false,
         }
     }
 }

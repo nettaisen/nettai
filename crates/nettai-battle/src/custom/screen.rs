@@ -624,7 +624,11 @@ impl Screen {
             }
             Phase::Hidden { stage } => {
                 // sub_8026D06: hiding takes the last turns' block off;
-                // coming back draws the emblem on that tick and the next.
+                // coming back draws the emblem on that tick and the next,
+                // where the game's screen does (the layout's
+                // `emblem_at_window_return`: EXE5's 0x08023022 draws it on
+                // neither).
+                let emblem = view.library.layout().emblem_at_window_return;
                 self.phase = match stage {
                     HiddenStage::Hiding => {
                         self.look.turn_limit = false;
@@ -632,13 +636,17 @@ impl Screen {
                         Phase::Hidden { stage: HiddenStage::Waiting }
                     }
                     HiddenStage::Waiting if joy.pressed != 0 => {
-                        self.look.draw_emblem(0);
+                        if emblem {
+                            self.look.draw_emblem(0);
+                        }
                         self.look.play(ScreenSound::Hide);
                         Phase::Hidden { stage: HiddenStage::Restoring }
                     }
                     HiddenStage::Waiting => self.phase,
                     HiddenStage::Restoring => {
-                        self.look.draw_emblem(0);
+                        if emblem {
+                            self.look.draw_emblem(0);
+                        }
                         Phase::Choosing
                     }
                 };
