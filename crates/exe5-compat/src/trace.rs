@@ -111,10 +111,9 @@ impl NaviCustSetup {
 
 /// A player's computer-navi data block (0xE0 bytes, EXE5's 0x02034C20 by
 /// side) as the halfwords it holds: the entries in order (the count at
-/// +0x54) and, for each pattern an entry names, its record by its number
-/// (`save::ComputerNaviPattern`: its place, the chips of its five chip
-/// places to the first 0xFFFF, its score).
-pub fn tactic_block(block: &[u8]) -> Result<(Vec<u16>, Vec<(u8, crate::save::ComputerNaviPattern)>), String> {
+/// +0x54) and, for each pattern an entry names, its place (`dx`, `dy`) and
+/// chips (the halfwords after it to the first 0xFFFF, at most six).
+pub fn tactic_block(block: &[u8]) -> Result<(Vec<u16>, Vec<(u8, i8, i8, Vec<u16>)>), String> {
     if block.len() != 0xE0 {
         return Err(format!("a computer-navi data block is 0xE0 bytes, not {:#x}", block.len()));
     }
@@ -124,7 +123,7 @@ pub fn tactic_block(block: &[u8]) -> Result<(Vec<u16>, Vec<(u8, crate::save::Com
         return Err(format!("a computer-navi data block counts {count} entries, more than {}", nettai_battle::tactics::MAX_ENTRIES));
     }
     let entries: Vec<u16> = (0..count).map(|i| half(i * 2)).collect();
-    let mut patterns: Vec<(u8, crate::save::ComputerNaviPattern)> = Vec::new();
+    let mut patterns: Vec<(u8, i8, i8, Vec<u16>)> = Vec::new();
     for &e in &entries {
         if e & 0x8000 == 0 || e == 0xFFFF {
             continue;
@@ -136,7 +135,12 @@ pub fn tactic_block(block: &[u8]) -> Result<(Vec<u16>, Vec<(u8, crate::save::Com
         if patterns.iter().any(|(p, ..)| *p as usize == i) {
             continue;
         }
-        patterns.push((i as u8, crate::save::ComputerNaviBlock::pattern(block, i)));
+        let at = 0x58 + i * 16;
+        let chips: Vec<u16> = (1..8).map(|k| half(at + k * 2)).take_while(|&c| c != 0xFFFF).collect();
+        if chips.len() > nettai_battle::tactics::MAX_PATTERN_CHIPS {
+            return Err(format!("a computer-navi pattern runs {} chips with no end", chips.len()));
+        }
+        patterns.push((i as u8, block[at] as i8, block[at + 1] as i8, chips));
     }
     Ok((entries, patterns))
 }
@@ -540,7 +544,7 @@ impl Round {
                     .iter()
                     .filter(|&&e| e & 0x8000 == 0 && e != 0)
                     .copied()
-                    .chain(patterns.iter().flat_map(|(_, p)| p.chips.iter().copied()));
+                    .chain(patterns.iter().flat_map(|(.., c)| c.iter().copied()));
                 for id in chips {
                     match compat.chip(id) {
                         Some(key) if content.defs.chip_by_key(&key).is_some() => {}
@@ -750,8 +754,8 @@ fn tactics(content: &Content, compat: &Compat, block: &[u8]) -> Result<nettai_ba
     // The patterns in their places (the ones no entry names, empty).
     let n = patterns.iter().map(|(i, ..)| *i as usize + 1).max().unwrap_or(0);
     out.patterns = vec![TacticPattern::default(); n];
-    for (i, p) in patterns {
-        out.patterns[i as usize] = TacticPattern { dx: p.dx, dy: p.dy, chips: p.chips.into_iter().map(chip).collect::<Result<_, _>>()?, score: p.score };
+    for (i, dx, dy, chips) in patterns {
+        out.patterns[i as usize] = TacticPattern { dx, dy, chips: chips.into_iter().map(chip).collect::<Result<_, _>>()? };
     }
     Ok(out)
 }
