@@ -197,10 +197,15 @@ pub struct Graphics {
 }
 
 impl Graphics {
+    /// The packs' graphics, as a renderer holds them.
+    pub fn packs(&self) -> PackGraphics {
+        PackGraphics::new(self.bundles.clone(), self.own)
+    }
+
     /// A renderer of these graphics, its text drawn in `text` mode
     /// (`font`: the font mode's, [`font`]).
     pub fn renderer(&self, text: TextMode, font: Option<Arc<VectorFont>>) -> Renderer {
-        let mut renderer = Renderer::with_packs(PackGraphics::new(self.bundles.clone(), self.own));
+        let mut renderer = Renderer::with_packs(self.packs());
         renderer.set_strings(self.strings.clone());
         renderer.set_text(text, font);
         renderer

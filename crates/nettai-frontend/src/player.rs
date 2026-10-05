@@ -29,7 +29,7 @@
 //! ```
 
 use crate::driver::Driver;
-use crate::game::Loaded;
+use crate::game::{Graphics, Loaded};
 use crate::session::Session;
 use nettai_audio::BattleAudio;
 use nettai_battle::{Battle, BattleResult};
@@ -252,6 +252,18 @@ impl Player {
         out.append(&mut self.samples);
     }
 
+    /// Show the battle in another language from the next frame: `graphics`
+    /// are the game's in it (`Game::graphics(lang)`; the host loads each
+    /// language it offers and keeps it, and nothing is loaded here). Only the
+    /// drawing changes, the pack's lettering and the content's strings: the
+    /// battle doesn't know its language, what the renderer follows over
+    /// time (the HUD's rolling numbers, its timers) carries on, and the
+    /// console's region is the driver's still.
+    pub fn set_language(&mut self, graphics: &Graphics) {
+        self.renderer.set_graphics(graphics.packs());
+        self.renderer.set_strings(graphics.strings.clone());
+    }
+
     // ---- What there is to say ----------------------------------------------
 
     /// Show the status lines or not (the driver's status line, and where
@@ -377,6 +389,7 @@ fn write_lines(frame: &mut Frame, lines: &[String]) {
 mod tests {
     use super::*;
     use crate::driver::{LivePlayer, Step, folder_of, live_setup};
+    use crate::game::TextMode;
     use nettai_battle::content::testing;
     use std::sync::Arc;
 
@@ -491,6 +504,60 @@ mod tests {
         assert_eq!(p.lines(), ["PING 3MS"]);
         p.show_status(false);
         assert_eq!(p.lines(), Vec::<String>::new());
+    }
+
+    /// Graphics whose panels are one solid tile of `color` (the field's
+    /// alone: no sprite, no lettering), as a language's graphics.
+    fn graphics_of(color: u16) -> Graphics {
+        use nettai_assets::{Bundle, Field, MapEntry, Tiles};
+        let block = [MapEntry { tile: 0xA3, hflip: false, vflip: false, palette: 1 }; 15];
+        let mut palettes = vec![[0u16; 16]; 8];
+        palettes[0][1] = color;
+        let field = Field {
+            tiles: Tiles { pixels: vec![1; Tiles::TILE] },
+            first_tile: 0xA3,
+            palettes,
+            first_palette: 1,
+            panel_types: (0..13).collect(),
+            panels: (0..13 * 6).map(|_| block).collect(),
+            front_edges: [[MapEntry::default(); 5]; 2],
+            highlights: vec![[MapEntry::default(); 15]; 2],
+            ..Field::default()
+        };
+        Graphics {
+            bundles: vec![Arc::new(Bundle { field, ..Bundle::default() })],
+            strings: None,
+            own: nettai_battle::content::PackId(0),
+            report: Default::default(),
+        }
+    }
+
+    /// The language changes mid-battle without a reset: a player shown in
+    /// one language's graphics and then another's draws the first's frames
+    /// up to the change and, from it on, exactly the frames of a player
+    /// shown in the other from the start (what the renderer follows over
+    /// time carries across). The battle itself is the same in all three.
+    #[test]
+    fn the_language_changes_mid_battle() {
+        let (red, green) = (graphics_of(0x001F), graphics_of(0x03E0));
+        let player = |g: &Graphics| Player::with(g.renderer(TextMode::Original, None), None, None, live());
+        let (mut first, mut second, mut swapped) = (player(&red), player(&green), player(&red));
+        let mut differed = 0;
+        for tick in 1..=240u32 {
+            if tick == 150 {
+                swapped.set_language(&green);
+            }
+            for p in [&mut first, &mut second, &mut swapped] {
+                assert!(p.tick(0));
+            }
+            let (a, b, s) = (first.frame(), second.frame(), swapped.frame());
+            differed += (a.pixels != b.pixels) as u32;
+            let same = if tick < 150 { &a } else { &b };
+            assert!(s.pixels == same.pixels && s.depth == same.depth, "tick {tick}");
+            assert_eq!(swapped.battle().digest(), first.battle().digest(), "tick {tick}: the battle doesn't know its language");
+        }
+        assert!(differed > 100, "the two graphics draw alike ({differed} frames differ)");
+        assert_eq!((swapped.ticks(), swapped.position()), (first.ticks(), first.position()));
     }
 
     /// The sound comes as samples, a frame of them a tick, for the host to
