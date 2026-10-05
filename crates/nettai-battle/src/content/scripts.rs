@@ -374,6 +374,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         damage_word = "statuses_and_bug",
         obstacle_soldiers = false,
         palette_flash = "mode_runs_through_pause",
+        palette_flash_order = "after_fades",
         overlays_run_while_paused = true,
         load_sets_part_palette = true,
         obstacle_actions = "own_from_6","#,

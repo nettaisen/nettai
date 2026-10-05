@@ -16,6 +16,9 @@ return {
     damage_word = "paralysis_and_bugs",
     obstacle_soldiers = false,
     palette_flash = "mode_runs_through_pause",
+    -- Presentation: its flash is a palette transform in slot 20 (`sub_80E10C0`), after the fade system's first record's
+    -- (slots 18 and 19: a dimming's), so its white stands over a dimming.
+    palette_flash_order = "after_fades",
     -- Its afterimages (`sub_80E33FA`) and form overlays (`sub_80C4530`'s spawner) run while the battle is paused
     -- (their header flag 0x04).
     overlays_run_while_paused = true,
