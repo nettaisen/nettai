@@ -267,7 +267,7 @@ mod tests {
         (pool.sort(), listed.sort());
         assert_eq!(pool, listed, "every link battle stage, once");
         let backgrounds = link_backgrounds(&six);
-        assert_eq!((backgrounds.len(), backgrounds[0], backgrounds[1], backgrounds[2]), (21, "honeycomb", "statues", "statues"));
+        assert_eq!((backgrounds.len(), backgrounds[0], backgrounds[1], backgrounds[2]), (21, "lans-hp", "acdc-hp", "acdc-hp"));
         assert_eq!(backgrounds.iter().collect::<std::collections::BTreeSet<_>>().len(), 18);
 
         let five = crate::testing::exe5_content();

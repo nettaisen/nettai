@@ -144,12 +144,15 @@ pub enum Fade {
 
 /// Screen-wide fades. The original fades palettes: `stage` is a fade of the
 /// background palettes the stage draws with (the background, the field and
-/// the backdrop), `hud` one of the HUD layer's, `sprites` one of the
-/// sprites' palettes, `screen` one of every palette.
+/// the backdrop), `hud` one of the HUD layer's, `dialogue` one of the
+/// chatbox's (background palette 15, which the fades of a range of
+/// palettes leave out), `sprites` one of the sprites' palettes, `screen`
+/// one of every palette.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Fades {
     pub stage: Fade,
     pub hud: Fade,
+    pub dialogue: Fade,
     pub sprites: Fade,
     pub screen: Fade,
 }
@@ -160,6 +163,8 @@ pub enum Palettes {
     #[default]
     Stage,
     Hud,
+    /// The chatbox's box (background palette 15).
+    Dialogue,
 }
 
 /// Combine layers and sprite parts (in hardware order: earlier parts are
@@ -231,6 +236,7 @@ pub fn compose_with_depth(backdrop: u16, layers: &[&Layer], parts: &[SpritePart]
                 let fade = match l.palettes {
                     Palettes::Stage => fades.stage,
                     Palettes::Hud => fades.hud,
+                    Palettes::Dialogue => fades.dialogue,
                 };
                 consider((l.priority, 1 + l.order), apply_fade(c, fade), layer_depth(l));
             }

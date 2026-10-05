@@ -167,6 +167,7 @@ heart = "10-26"
 thrown-tomahawk = "10-29"
 tank-blast = "10-2c"
 immobilized = "10-2d"
+magnet-missile = "10-2f"
 cactus = "10-30"
 boulder = "10-31"
 follow-effect = "10-34"
@@ -461,37 +462,52 @@ tomahawkman-win = 0xb8
 knightman-win = 0xbc
 toadman-win = 0xc0
 
-# Backgrounds: battle background numbers (settings byte 4), named by their look: the 27 a link battle draws from
-# (0x08129F2C's table at 0x08129F6C, the numbers 0x00 to 0x1A). A number that draws another's picture in its
-# palette too has its name and a count (0x0C is 0x08 again, 0x0D 0x09, 0x0E 0x0A, 0x0F 0x12 and 0x14, 0x18 0x1A).
+# Backgrounds: battle background numbers (settings byte 4), each named for the area whose maps draw it: a battle
+# draws its map's (0x0808CA78: the table at 0x0808CAAC by map group and number; 0x06 for a real-world map) unless
+# its settings state one. The names are the menu's (0x08128B50), in full where its twelve characters cut one
+# short; the engine's docs/frontend.md §1 has the table of them, tools/backgrounds the names and their areas
+# from the ROM. A link battle draws one of 0x00 to 0x1a (0x08129F2C's table at 0x08129F6C). A liberation's map
+# draws its area's picture again (0x0c 0x08's, 0x0d 0x09's, 0x0e 0x0a's, 0x12 and 0x14 0x0f's, 0x1a 0x18's,
+# 0x1c 0x19's).
 [backgrounds]
-binary = 0x00
-drills = 0x01
-soccer-balls = 0x02
-rabbits-and-apples = 0x03
-faces-and-crosses = 0x04
-goldfish = 0x05
-calendar-squares = 0x06
-rings-blue = 0x07
-calendar-blue = 0x08
-calendar-gold = 0x09
-ones-and-zeros = 0x0a
-grid = 0x0b
-calendar-blue-2 = 0x0c
-calendar-gold-2 = 0x0d
-ones-and-zeros-2 = 0x0e
-numbers-3 = 0x0f
-ship-wheels = 0x10
-swirls = 0x11
-numbers = 0x12
-lions = 0x13
-numbers-2 = 0x14
-crests = 0x15
-shuriken = 0x16
-microchips = 0x17
-glyphs-2 = 0x18
-glyphs-blue = 0x19
-glyphs = 0x1a
+main-comp = 0x00  # MainComp1 and 2
+drill-comp = 0x01  # DrillComp1 to 4
+lans-hp = 0x02  # Lan's HP
+mayls-hp = 0x03  # Mayl's HP
+dexs-hp = 0x04  # Dex's HP
+yais-hp = 0x05  # Yai's HP
+# the default: 35 comps (DoghouseComp, the Kitchen, Engine and Armor comps, eleven of the SquirrelCmps and so on),
+# every real-world map, and what a link battle's settings state
+comp = 0x06
+# eleven comps (OldTrmnlComp, RadarComp, AirConComp, ScrewComp, ServerComp, MessageComp and SquirrelCmp2, 7, 9, 12 and
+# 14): 0x06's picture in another palette; the comps share their map tiles, and nothing else in the data sets these
+# apart
+comp-alt = 0x07
+acdc-area = 0x08  # ACDC Area1 and 2
+oran-area = 0x09  # Oran Area1 and 2
+scilab-area = 0x0a  # SciLab1, 2 and 4 ("SciLab Area" in dialogue)
+# the three VisionBursts (map group 0x8A): the menu names none of them; their own dialogue shows what they are, and
+# the game's word is the dialogue's ("VisionBurst of ACDC Town")
+visionburst = 0x0b
+acdc-area3 = 0x0c  # ACDC Area3, the first liberation's map
+oran-area3 = 0x0d  # Oran Area3, the second liberation's
+scilab-area3 = 0x0e  # SciLab3, the third liberation's
+end-area = 0x0f  # End Area1, 3 and 4
+ship-comp = 0x10  # ShipComp1 to 3
+scilab-hp = 0x11  # SciLab HP
+end-area2 = 0x12  # End Area2, the fourth liberation's
+gargcastle-hp = 0x13  # GargCastleHP
+end-area5 = 0x14  # End Area5, the fifth liberation's
+soulserv-comp = 0x15  # SoulServComp
+gargoyle-comp = 0x16  # GargoylComp1 to 3 ("Gargoyle" in dialogue)
+factory-comp = 0x17  # FactoryComp1 to 4
+undernet = 0x18  # Undernet1 to 3; NebulaArea6 too
+nebula-area = 0x19  # NebulaArea2 and 4
+undernet4 = 0x1a  # Undernet4, the sixth liberation's
+# no map's: the two NebulaGray battles' settings state it (0x081140E0, 0x08114270); the game's text places the fight
+# on the SoulServer, whose comp draws 0x15
+nebulagray = 0x1b
+nebula-area1 = 0x1c  # NebulaArea1, 3 and 5, the last three liberations'
 
 # Mugshots: the emotion window's faces, by the number exe5-extract gives them (its hud.rs: the face
 # table's pictures with their own palettes, then the version souls' with the palettes Chaos Unison
