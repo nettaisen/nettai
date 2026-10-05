@@ -296,6 +296,7 @@ language = "ja"
 "snake" = { name = "カモンスネーク", description = "自分のエリアの\nあなマスから\nこヘビがとんでいく" }
 "snctuary" = { name = "サンクチュアリ", description = "自分のエリアの\nすべてのマスを\nホーリーパネルに!" }
 "sonicbom" = { name = "ソニックブーム", description = "" }
+"splitup" = { name = "ブンシンギリ", description = "ブンシンがあらわれ\nちかいてきに\nロングソード!" }
 "spreader" = { name = "スプレッドガン", description = "ヒットすると\nまわりの1マスに\nゆうばく!" }
 "sprsonic" = { name = "スーパーソニック", description = "" }
 "spshake1" = { name = "スペースユラ1", description = "たて3マスはばで\nゆれながらすすむ\nユラをはっしゃ!" }
@@ -358,6 +359,7 @@ language = "ja"
 "colonel" = { name = "カーネル" }
 "megaman" = { name = "ロックマン", variant_name = "FCロックマン" }
 "protoman" = { name = "ブルース" }
+"shadowman" = { name = "シャドーマン" }
 "tomahawkman" = { name = "トマホークマン" }
 
 [forms]

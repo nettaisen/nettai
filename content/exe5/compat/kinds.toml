@@ -82,6 +82,7 @@
 "cloudman/navi" = { pool = "actor", index = 0x15 }
 "cloudman/cloud" = { pool = "attack", index = 0xB3, scratch_position = true }
 "tomahawkman/tomahawk" = { pool = "attack", index = 0xB4, scratch_z_fraction = true }
+"shadowman/shadow" = { pool = "actor", index = 0x04 }
 "gyroman/navi" = { pool = "actor", index = 0x0C }
 "napalmmn/navi" = { pool = "actor", index = 0x0E }
 "magnetmn/navi" = { pool = "actor", index = 0x0D }
