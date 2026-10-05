@@ -2,7 +2,6 @@
 -- The patch card Eleball (73, パラボール in the Japanese games), 14 MB.
 
 local cards = require("../rules/patch-cards/cards")
-local variants = require("../objects/projectile/variants")
 
 return define.patch_card {
     id = "eleball",
@@ -11,6 +10,6 @@ return define.patch_card {
         cards.body("elec"),
         cards.float_shoes(true),
         cards.encounter_element("battery"),
-        cards.bug(cards.buster_shot(variants.plain)),
+        cards.bug(cards.buster_shot(nil)),
     },
 }
