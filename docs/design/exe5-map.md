@@ -1102,14 +1102,15 @@ code, 6 the same but for constants, 34 similar, 1 differs and 8 absent. What dif
   Cybeasts, NameIDs 0x173 to 0x17E; EXE5's 0x173 to 0x176, 0x08008F6E) has neither music nor banner and holds 102
   ticks; a win in battle modes 4 and 5 (and 8 in EXE6) plays the special battle's song and holds its wait. As
   recorded (library-exe5/flow, each on both consoles): ko-win and ko-win-netbattle 4, judge-win 0x14, judge-lose
-  0x18, judge-draw 0x1C, double-ko 8 on side 0's console and 4 on side 1's (the round goes to side 1),
-  operation-win 0x38. The replays compare the banner's number with the traced console's record (its +1; a telop's
+  0x18, judge-draw 0x1C, double-ko 8 on side 0's console and 4 on side 1's (the round goes to side 1); an
+  operation battle's win, once recorded (below), 0x38. The replays compare the banner's number with the traced console's record (its +1; a telop's
   holds 0) on every frame, in both games.
-- The operation battle (battle flag 0x40), as seen and not yet read (2026-10-04; the engine doesn't run the mode:
-  a replay stops on the round's first frame, frame 162, the gauge 0x1500 where the engine's is 0). Recorded with
-  chiplab's `exe5-operation-battle` base (a trap at 0x0802D590 raises NaviStats +0x2A, which no Team Battle sets):
-  library-exe5/flow/operation-win and operation-win-side1, the recordings kept in the verification workspace's
-  data/staged/exe5-operation-battle-2026-10-04 (not in the lab while they can't replay).
+- The operation battle (battle flag 0x40), as seen and not read: the mode isn't supported, by the user's decision
+  of 2026-10-05 (the engine doesn't run it: a replay stops on the round's first frame, frame 162, the gauge 0x1500
+  where the engine's is 0). Recorded once (2026-10-04) with a chiplab base whose `operation_battle` raises
+  NaviStats +0x2A at 0x0802D590, which no Team Battle sets; the base and its two scenarios
+  (flow/operation-win, operation-win-side1) are out of the library since, the recordings kept in the verification
+  workspace's data/staged/exe5-operation-battle-2026-10-04.
   - No custom screen opens. The round's start shows "BATTLE 1 START!" (banner 0x30, frames 226 to 284) and the
     turn's start banner 0, "BATTLE START" (frames 386 to 444), where a Team Battle's shows 0x0C; the fight runs from
     frame 446. (The driver's `waitcustom` returns at once and its `fight` never does; five A presses 20 frames apart
