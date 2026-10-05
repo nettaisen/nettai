@@ -1,9 +1,9 @@
 //! Live play's random match (docs/frontend.md §2): a link battle's field,
 //! and for each side a legal random folder, five Crosses of both versions
 //! and a version, on MegaMan at his fresh stats (100 HP, as a new match's:
-//! `Side::fresh`) with no NaviCust programs, all drawn from a seed. That is
+//! `Side::fresh`) with no NaviCust programs, all picked from a seed. That is
 //! EXE6's (its Crosses and versions); another game's is a plain match
-//! ([`plain`]) of its own. The draw is the frontend's,
+//! ([`plain`]) of its own. The pick is the frontend's,
 //! made before the battle; the battle is then a function of its setup and
 //! the buttons, as rollback needs. The same seed gives the same match,
 //! which can be written out as a match file (`crate::file`) and played
@@ -18,14 +18,14 @@ use crate::CrossList;
 use nettai_battle::custom::{FolderChip, SavedFolder};
 use nettai_content_api::StageHandle;
 
-/// The frontend's own random draws for a setup (splitmix64): not the
+/// The frontend's own random picks for a setup (splitmix64): not the
 /// game's RNG, which the battle keeps.
 #[derive(Clone, Debug)]
-pub struct Draws(u64);
+pub struct Picks(u64);
 
-impl Draws {
-    pub fn new(seed: u32) -> Draws {
-        Draws(seed as u64 ^ 0x6E65_7474_6169_0000)
+impl Picks {
+    pub fn new(seed: u32) -> Picks {
+        Picks(seed as u64 ^ 0x6E65_7474_6169_0000)
     }
 
     pub fn next(&mut self) -> u64 {
@@ -51,62 +51,66 @@ impl Draws {
 
 
 /// The backgrounds a link battle of the game picks from at random, by
-/// name: its flow rules' (`link_backgrounds`: EXE6's table, some there
+/// name: its rules' (`link_pick.backgrounds`: EXE6's table, some there
 /// twice and so twice as likely). None: a link battle shows its stage's
 /// own.
 fn link_backgrounds(content: &Content) -> Vec<&str> {
-    content.rules().flow.link_backgrounds.iter().filter_map(|&b| ids::background_name(content, b)).collect()
+    content.rules().link_pick.backgrounds.iter().filter_map(|&b| ids::background_name(content, b)).collect()
 }
 
-/// Whether live play draws the game's match with a Cross list each side:
+/// Whether live play picks the game's match with a Cross list each side:
 /// its rules take one (a system's setup declares the engine's
 /// `PlayerFact::CrossList`: EXE6's cross system). A game whose rules take
 /// none gets a plain match ([`plain`]).
-fn draws_live(content: &Content) -> bool {
+fn picks_live(content: &Content) -> bool {
     content.defs.fact_field(nettai_battle::content::PlayerFact::CrossList).is_some()
 }
 
-/// A link battle's arena of `game`, drawn from `draws`: its stage and
-/// background, then the later rounds'; `stage` forces the first round's
-/// stage.
-pub fn arena(content: &Content, game: &str, draws: &mut Draws, stage: Option<StageHandle>) -> Result<Arena, String> {
+/// A link battle's arena of `game`, picked at random from `picks` as the
+/// game picks one: its stage and background, then the later rounds';
+/// `stage` forces the first round's stage. The stage is one of the game's
+/// rules' `link_pick.stages`, the stage for each index of the original's
+/// pick: a stage there twice is twice as likely, and a link battle stage
+/// that isn't there is never picked (EXE5's records 76 to 87; a match may
+/// still name one).
+pub fn arena(content: &Content, game: &str, picks: &mut Picks, stage: Option<StageHandle>) -> Result<Arena, String> {
     crate::playable(content, game)?;
-    let stages = crate::link_battle_stages(content, game);
+    let stages = &content.rules().link_pick.stages;
     if stages.is_empty() {
-        return Err(format!("{game} has no link battle stage"));
+        return Err(format!("{game}'s rules state no stage a link battle picks (link_pick.stages)"));
     }
     let backgrounds = link_backgrounds(content);
-    let place = |draws: &mut Draws| {
-        let stage = stages[draws.below(stages.len())];
-        let background = (!backgrounds.is_empty()).then(|| backgrounds[draws.below(backgrounds.len())].to_string());
+    let place = |picks: &mut Picks| {
+        let stage = stages[picks.below(stages.len())];
+        let background = (!backgrounds.is_empty()).then(|| backgrounds[picks.below(backgrounds.len())].to_string());
         Place { stage, background }
     };
-    let mut first = place(draws);
-    let later = [place(draws), place(draws)];
+    let mut first = place(picks);
+    let later = [place(picks), place(picks)];
     if let Some(s) = stage {
         first.stage = s;
     }
     Ok(Arena { game: game.to_string(), first, later })
 }
 
-/// A version drawn at random: one of those the game's rules declare
+/// A version picked at random: one of those the game's rules declare
 /// (`facts::versions`: EXE6's Gregar or Falzar), which take one.
-fn version(content: &Content, draws: &mut Draws) -> String {
+fn version(content: &Content, picks: &mut Picks) -> String {
     let versions = crate::facts::versions(content);
-    versions[draws.below(versions.len())].clone()
+    versions[picks.below(versions.len())].clone()
 }
 
-/// What live play's players' versions are drawn from, with the seed: a
-/// stream of their own, drawn before the folders (the rules a folder is
-/// drawn by are its player's).
+/// What live play's players' versions are picked from, with the seed: a
+/// stream of their own, picked before the folders (the rules a folder is
+/// picked by are its player's).
 const VERSION_SALT: u32 = 0x5645_5253;
 
-/// Five of `game`'s form-changing navi's Crosses of both versions, drawn at
+/// Five of `game`'s form-changing navi's Crosses of both versions, picked at
 /// random, listed in the versions' order (Gregar's, then Falzar's).
-fn crosses(content: &Content, game: &str, draws: &mut Draws) -> Result<CrossList, String> {
+fn crosses(content: &Content, game: &str, picks: &mut Picks) -> Result<CrossList, String> {
     let all = crate::all_crosses(content, game)?;
     let mut picked: Vec<usize> = (0..all.len()).collect();
-    draws.shuffle(&mut picked);
+    picks.shuffle(&mut picked);
     picked.truncate(crate::facts::cross_list_capacity(content));
     picked.sort();
     Ok(CrossList::new(&picked.iter().map(|&i| all[i]).collect::<Vec<_>>()))
@@ -125,34 +129,34 @@ impl Side {
         Ok(side)
     }
 
-    /// A player of a match of `game` drawn from `draws` as netplay draws
+    /// A player of a match of `game` picked from `picks` as netplay picks
     /// one. Where the game's rules take a Cross list (EXE6's): a version, a
     /// random folder the rules accept, five Crosses of both versions, no
     /// patch cards. Else a plain side ([`plain_side`]).
-    pub fn drawn(content: &Arc<Content>, game: &str, draws: &mut Draws) -> Result<Side, String> {
+    pub fn picked(content: &Arc<Content>, game: &str, picks: &mut Picks) -> Result<Side, String> {
         let stage = *crate::link_battle_stages(content, game).first().ok_or_else(|| format!("{game} has no link battle stage"))?;
         crate::playable(content, game)?;
         let arena = Arena::on(game, Place { stage, background: None });
-        if !draws_live(content) {
-            return plain_side(content, &arena, draws);
+        if !picks_live(content) {
+            return plain_side(content, &arena, picks);
         }
-        let version = version(content, draws);
+        let version = version(content, picks);
         let mut rules = rules_battle(content, &arena, [&version, &version])?;
-        let folder = folders::random_folder(content, game, &mut rules, 0, draws);
-        let crosses = crosses(content, game, draws)?;
+        let folder = folders::random_folder(content, game, &mut rules, 0, picks);
+        let crosses = crosses(content, game, picks)?;
         Side::live(content, &arena, folder, crosses, &version)
     }
 }
 
 /// A plain side on `arena`: the navi a new side operates (`first_navi`:
-/// MegaMan), its fresh stats, a version drawn from `draws` where the game's rules take
-/// one, and a folder of the rules' pool drawn from `draws` (else
+/// MegaMan), its fresh stats, a version picked from `picks` where the game's rules take
+/// one, and a folder of the rules' pool picked from `picks` (else
 /// the game's first chip with a code, thirty times); where the game has
 /// navis in auto battle (EXE5's), the auto battle data the game would have
 /// learned from a player who used each chip of that folder once
-/// (`AutoBattle::of_folder`), so that a drawn match states what a
+/// (`AutoBattle::of_folder`), so that a random match states what a
 /// navi in auto battle plays.
-fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Result<Side, String> {
+fn plain_side(content: &Arc<Content>, arena: &Arena, picks: &mut Picks) -> Result<Side, String> {
     let game = &arena.game;
     let navi = crate::first_navi(content, game).ok_or_else(|| format!("{game} has no navi with fresh stats"))?;
     let chip = (0..content.defs.chips.len() as u16)
@@ -160,7 +164,7 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Resul
         .find(|&c| !content.chip(c).codes.is_empty() && ids::in_game(content, game, &content.defs.chip(c).key))
         .ok_or_else(|| format!("{game} has no chip with a code"))?;
     let folder = SavedFolder { chips: [FolderChip::new(chip, content.chip(chip).codes[0]); 30], regular: None, tags: None };
-    let version = Side::takes_version(content).then(|| version(content, draws));
+    let version = Side::takes_version(content).then(|| version(content, picks));
     let mut side = Side {
         navi,
         stats: Side::base_stats(content, navi, version.as_deref()),
@@ -183,7 +187,7 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Resul
     if let Ok(mut b) = crate::check::start(content, &m)
         && !folders::pool(content, game, &mut b, 0).is_empty()
     {
-        side.folder = folders::random_folder(content, game, &mut b, 0, draws).into();
+        side.folder = folders::random_folder(content, game, &mut b, 0, picks).into();
     }
     // What a navi in auto battle plays from the side's save, where the game has
     // navis in auto battle: what the game would have learned from this folder.
@@ -193,17 +197,17 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Resul
     Ok(side)
 }
 
-/// A plain match of `game`, for a game live play draws none of (EXE5's): an arena drawn from `seed` (`stage` forces the first
+/// A plain match of `game`, for a game live play picks none of (EXE5's): an arena picked from `seed` (`stage` forces the first
 /// round's stage), and on both sides a plain side (`plain_side`), each its
 /// own folder.
 pub fn plain(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageHandle>) -> Result<Match, String> {
-    let mut draws = Draws::new(seed);
-    let arena = arena(content, game, &mut draws, stage)?;
-    let sides = [plain_side(content, &arena, &mut draws)?, plain_side(content, &arena, &mut draws)?];
+    let mut picks = Picks::new(seed);
+    let arena = arena(content, game, &mut picks, stage)?;
+    let sides = [plain_side(content, &arena, &mut picks)?, plain_side(content, &arena, &mut picks)?];
     Ok(Match { seed: Some(seed), arena, sides })
 }
 
-/// The battle live players' folders are drawn against: two live players
+/// The battle live players' folders are picked against: two live players
 /// on `arena`, of these versions (their folders anything: the rules read
 /// the stats).
 fn rules_battle(content: &Arc<Content>, arena: &Arena, versions: [&str; 2]) -> Result<Battle, String> {
@@ -212,27 +216,27 @@ fn rules_battle(content: &Arc<Content>, arena: &Arena, versions: [&str; 2]) -> R
     crate::check::start(content, &Match { seed: None, arena: arena.clone(), sides: [side(versions[0])?, side(versions[1])?] })
 }
 
-/// Live play's match of `game`, drawn from `seed`.
+/// Live play's match of `game`, picked from `seed`.
 /// Where the game's rules take a Cross list (EXE6's): a link battle's
 /// stage (`stage` forces one) and background, a random folder each
 /// player's rules accept (`crate::folders`), five of the Crosses of the
 /// navi that changes form (MegaMan's ten, of both versions) for each Cross
 /// window (the side's Cross list, docs/engine/custom-screen.md §4.1), and
-/// each player's version drawn too (from a stream of the versions' own
+/// each player's version picked too (from a stream of the versions' own
 /// from the seed: none is assumed); both players are that navi at its
 /// fresh stats (100 HP). Else it is [`plain`].
 pub fn live(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageHandle>) -> Result<Match, String> {
-    if !draws_live(content) {
+    if !picks_live(content) {
         return plain(content, game, seed, stage);
     }
-    let mut draws = Draws::new(seed);
-    let arena = arena(content, game, &mut draws, stage)?;
-    let mut own = Draws::new(seed ^ VERSION_SALT);
+    let mut picks = Picks::new(seed);
+    let arena = arena(content, game, &mut picks, stage)?;
+    let mut own = Picks::new(seed ^ VERSION_SALT);
     let versions = [version(content, &mut own), version(content, &mut own)];
     let mut rules = rules_battle(content, &arena, [&versions[0], &versions[1]])?;
     let folders =
-        [folders::random_folder(content, game, &mut rules, 0, &mut draws), folders::random_folder(content, game, &mut rules, 1, &mut draws)];
-    let crosses = [crosses(content, game, &mut draws)?, crosses(content, game, &mut draws)?];
+        [folders::random_folder(content, game, &mut rules, 0, &mut picks), folders::random_folder(content, game, &mut rules, 1, &mut picks)];
+    let crosses = [crosses(content, game, &mut picks)?, crosses(content, game, &mut picks)?];
     let side = |side: usize| Side::live(content, &arena, folders[side], crosses[side], &versions[side]);
     let sides = [side(0)?, side(1)?];
     Ok(Match { seed: Some(seed), arena, sides })
@@ -243,11 +247,61 @@ mod tests {
     use super::*;
     use nettai_battle::setup::effects;
 
+    /// A random match's arena is picked as the game picks a link battle's
+    /// (the rules' `link_pick`). EXE6's: its 96 link battle stages each
+    /// once, in the original's record order, and 21 backgrounds, three of
+    /// them twice. EXE5's: 96 indices over 82 stages, the first twelve
+    /// records' twice (the original takes 76 off an index from 76 to 87)
+    /// and the twelve those indices would have reached never, and 27
+    /// backgrounds each once. A stage the pick never reaches is still a
+    /// link battle stage a match may name.
+    #[test]
+    fn the_arena_is_picked_as_the_game_picks_it() {
+        let name = |c: &Content, s: StageHandle| ids::local(&c.defs.stage(s).key).to_string();
+        let six = crate::testing::exe6_content();
+        let pick = &six.rules().link_pick;
+        let names: Vec<String> = pick.stages.iter().map(|&s| name(&six, s)).collect();
+        assert_eq!(names, (1..=96).map(|n| format!("netbattle-{n}")).collect::<Vec<_>>());
+        let mut pool = crate::link_battle_stages(&six, "exe6");
+        let mut listed = pick.stages.clone();
+        (pool.sort(), listed.sort());
+        assert_eq!(pool, listed, "every link battle stage, once");
+        let backgrounds = link_backgrounds(&six);
+        assert_eq!((backgrounds.len(), backgrounds[0], backgrounds[1], backgrounds[2]), (21, "honeycomb", "statues", "statues"));
+        assert_eq!(backgrounds.iter().collect::<std::collections::BTreeSet<_>>().len(), 18);
+
+        let five = crate::testing::exe5_content();
+        let pick = &five.rules().link_pick;
+        let names: Vec<String> = pick.stages.iter().map(|&s| name(&five, s)).collect();
+        assert_eq!(names.len(), 96);
+        assert_eq!(names[76..88], names[..12], "an index from 76 to 87 is the record 76 before it");
+        assert_eq!((names[0].as_str(), names[75].as_str(), names[88].as_str(), names[95].as_str()), ("netbattle-1", "netbattle-74", "netbattle-87", "netbattle-94"));
+        let reached: std::collections::BTreeSet<&String> = names.iter().collect();
+        assert_eq!(reached.len(), 82);
+        let never: Vec<String> = crate::link_battle_stages(&five, "exe5").into_iter().map(|s| name(&five, s)).filter(|n| !reached.contains(n)).collect();
+        assert_eq!(never, (75..=86).map(|n| format!("netbattle-{n}")).collect::<Vec<_>>(), "records 76 to 87");
+        assert!(crate::link_stage(&five, "exe5", "netbattle-80").is_ok(), "a match may name one all the same");
+        let backgrounds = link_backgrounds(&five);
+        assert_eq!((backgrounds.len(), backgrounds.iter().collect::<std::collections::BTreeSet<_>>().len()), (27, 27));
+        // A random arena's rounds are of the pick's stages and backgrounds.
+        for (content, game) in [(&six, "exe6"), (&five, "exe5")] {
+            let pick = &content.rules().link_pick;
+            let backgrounds = link_backgrounds(content);
+            for seed in 0..40 {
+                let a = arena(content, game, &mut Picks::new(seed), None).unwrap();
+                for place in [&a.first, &a.later[0], &a.later[1]] {
+                    assert!(pick.stages.contains(&place.stage), "{game} seed {seed}");
+                    assert!(place.background.as_deref().is_some_and(|b| backgrounds.contains(&b)), "{game} seed {seed}: {:?}", place.background);
+                }
+            }
+        }
+    }
+
     /// Live play's match from a seed: a link battle's stage (the 96 the
-    /// original draws from), legal folders, five Crosses of both games per
+    /// original picks from), legal folders, five Crosses of both games per
     /// window; the same seed, the same match; a forced stage.
     #[test]
-    fn the_live_match_is_drawn_from_the_seed() {
+    fn the_live_match_is_picked_from_the_seed() {
         let content = crate::testing::exe6_content();
         // The navi: MegaMan at his fresh stats, as a new match's, with no
         // NaviCust programs (road panels carry him).
@@ -257,7 +311,7 @@ mod tests {
             let s = &side.stats;
             assert_eq!((side.navi, side.navicust, side.navi_level), (fresh.navi, fresh.navicust, fresh.navi_level));
             assert_eq!(*s, Side::base_stats(&content, side.navi, side.version.as_deref()));
-            assert!(side.version.is_some(), "a drawn EXE6 side states its version");
+            assert!(side.version.is_some(), "a picked EXE6 side states its version");
             assert_eq!((s.hp, s.max_hp), (100, 100));
             assert!(!s.float_shoes && !s.air_shoes && !s.undershirt && !s.super_armor && !s.chip_shuffle && !s.number_open);
         }
@@ -311,15 +365,15 @@ mod tests {
         assert!(crate::link_stage(&content, "exe6", "exe6:netbattle-43").is_err()); // (written in full)
     }
 
-    /// A plain match is one the checks accept (its folder the rules' draw),
+    /// A plain match is one the checks accept (its folder the rules' pick),
     /// and live play of EXE5 is one, of EXE5's alone.
     #[test]
     fn a_plain_match_is_legal() {
         let content = crate::testing::exe6_content();
         let m = plain(&content, "exe6", 4, None).unwrap();
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
-        assert_ne!(m.sides[0].folder.chips[0], m.sides[0].folder.chips[1], "a drawn folder");
-        // (Its sides' versions drawn: EXE6's rules take one.)
+        assert_ne!(m.sides[0].folder.chips[0], m.sides[0].folder.chips[1], "a picked folder");
+        // (Its sides' versions picked: EXE6's rules take one.)
         assert!(m.sides.iter().all(|s| s.version.is_some()));
         let content = crate::testing::exe5_content();
         let m = live(&content, "exe5", 4, None).unwrap();
@@ -339,7 +393,7 @@ mod tests {
             assert!(s.auto_battle.entries() > 0);
             assert!(s.auto_battle.list(&LISTS[0]).iter().chain(s.auto_battle.list(&PATTERNS)).all(|e| *e == Entry::Empty));
             for e in s.auto_battle.places.iter().filter(|e| **e != Entry::Empty) {
-                let Entry::Chip(c) = e else { panic!("a drawn side has chips alone: {e:?}") };
+                let Entry::Chip(c) = e else { panic!("a picked side has chips alone: {e:?}") };
                 assert!(s.folder.chips().any(|f| f.id == *c));
             }
             assert_eq!(s.auto_battle.records, [Record::ZERO; 8]);
@@ -349,7 +403,7 @@ mod tests {
         let text = crate::write(&content, &m);
         assert!(text.contains("[left.auto_battle]\nfirst = [{}, {}, {}]\nstandard = [\n") && text.contains("[right.auto_battle]"), "{text}");
         assert_eq!(crate::parse(&content, &text).unwrap(), m);
-        // EXE6 has no auto battle: a drawn match of it states none.
+        // EXE6 has no auto battle: a random match of it states none.
         let six = crate::testing::exe6_content();
         assert!(live(&six, "exe6", 4, None).unwrap().sides.iter().all(|s| s.auto_battle.is_blank()));
     }

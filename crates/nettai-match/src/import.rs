@@ -119,7 +119,7 @@ mod tests {
         let mut times = SpTimes(std::array::from_fn(|i| 600 + i as u16));
         times.0[19] = 0xFFFF;
         let save = file(GameVersion::Falzar, false, [false, true, false, true, false], 11, Some(5), &times);
-        let mut m = crate::draw::live(&content, "exe6", 1, None).unwrap();
+        let mut m = crate::pick::live(&content, "exe6", 1, None).unwrap();
         m.sides[0].version = Some("gregar".into());
         let notes = m.import_save(&content, 0, &save).unwrap();
         let s = &m.sides[0];
@@ -141,7 +141,7 @@ mod tests {
     fn a_link_navi_keeps_its_level_without_a_code() {
         let content = exe6_content();
         let protoman = crate::ids::navi(&content, "exe6", "protoman").unwrap();
-        let mut m = crate::draw::live(&content, "exe6", 1, None).unwrap();
+        let mut m = crate::pick::live(&content, "exe6", 1, None).unwrap();
         let s = &mut m.sides[1];
         s.navi = protoman;
         s.crosses = None;
