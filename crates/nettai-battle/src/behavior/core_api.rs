@@ -941,6 +941,12 @@ impl CoreApi for Battle {
         Ok(())
     }
 
+    fn custom_draw_held(&mut self, side: u8) -> ApiResult<()> {
+        let screen = self.custom_screen_mut(side)?;
+        screen.look.draw_held(screen.hold.is_some());
+        Ok(())
+    }
+
     fn custom_draw_cross_cursor(&mut self, side: u8) -> ApiResult<()> {
         self.custom_screen_mut(side)?.look.draw_cross_cursor();
         Ok(())

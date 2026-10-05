@@ -49,6 +49,11 @@ pub struct ScreenLook {
     /// each pick's chip as checked, Beast Out's the BeastOut chip's; a
     /// Beast Out puts the picks back in their new order, unchecked).
     pub column: [Option<super::FolderChip>; 5],
+    /// A column cell past the picks whose frame is still drawn filled: the
+    /// cell a button's held chip left, on the tick it leaves (BN5's Arm
+    /// Change, 0x080236C0, takes the pick without drawing; its blink draws
+    /// the cell empty from the next tick, 0x08023712).
+    pub column_kept: Option<u8>,
     /// The chips the slots' tiles show, as checked when the screen last
     /// drew them (`sub_8028250`, on opening and after every pick or take
     /// back: the chips OK takes out of the folder stay drawn).
@@ -102,6 +107,11 @@ pub struct ChipWindow {
     pub slot: u8,
     pub picks: u8,
     pub last_chip: Option<super::FolderChip>,
+    /// The chip whose class colors the window's frame (palette 9): the
+    /// last chip slot shown, or none (the standard colors) once OK or a
+    /// button's picture was. A button that shows a chip (`Slot::face`)
+    /// leaves the frame as it was (BN5's capsules, 0x08024422).
+    pub framed: Option<super::FolderChip>,
 }
 
 /// The sprites a tick of the screen queued.
@@ -117,6 +127,9 @@ pub struct Drawn {
     pub emblem: Option<(u32, u8)>,
     /// The Regular chip's frame (`sub_802899C`).
     pub regular: bool,
+    /// The icon of the chip a button holds, over the button (BN5's Arm
+    /// Change, 0x080254F4).
+    pub held: bool,
     /// The volumes a dark chip's hover set this tick (music, the screen's
     /// player), after the tick's sounds.
     pub volume: Option<(u16, u16)>,
@@ -266,9 +279,10 @@ impl ScreenLook {
             },
             dark: DarkHover::Clear,
             drawn: Drawn::default(),
-            chip_window: ChipWindow { slot: 0, picks: 0, last_chip },
+            chip_window: ChipWindow { slot: 0, picks: 0, last_chip, framed: None },
             cross_tab,
             column: [None; 5],
+            column_kept: None,
             slot_chips: [None; 12],
             slot_picked: [false; 12],
             face: None,
@@ -359,6 +373,12 @@ impl ScreenLook {
             self.regular_frame = ((self.frame >> 3) & 1) as u8;
         }
         self.drawn.regular = true;
+    }
+
+    /// The chip a button holds (`Screen::hold`), drawn over it (BN5's
+    /// 0x080254F4: slot 8 an Arm Change button, picked).
+    pub(crate) fn draw_held(&mut self, held: bool) {
+        self.drawn.held = held;
     }
 
     /// `sub_8029D34`: in the last turns the block blinks, off 4 frames of

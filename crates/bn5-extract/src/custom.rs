@@ -35,7 +35,8 @@ const MAP_CELLS: u32 = 15 * 20;
 /// two tiles narrower); the hidden slots' fill (0x08025D44: solid 2, BN6's
 /// solid 1); the cursor over OK (0x08024704: at (0x58, 0x70), BN6's
 /// (0x5B, 0x6E)) and over the soul button (0x08024734: at (0x58, 0x88)),
-/// their corners read from `CURSOR_CORNERS`.
+/// their corners read from `CURSOR_CORNERS`; the Shuffle button's uses left
+/// in the chip window (0x080245F2).
 const LAYOUT: CustomLayout = CustomLayout {
     column_cells: 0x47,
     turn_limit: 0x4B,
@@ -51,6 +52,7 @@ const LAYOUT: CustomLayout = CustomLayout {
     slot_blank: 2,
     ok_cursor: CursorPlace { x: 0x58, y: 0x70, corners: [[(0, 0, false, false); 4]; 2] },
     special_cursor: CursorPlace { x: 0x58, y: 0x88, corners: [[(0, 0, false, false); 4]; 2] },
+    button_uses: true,
 };
 /// The cursor's corners over OK and over the soul button (`sub_80288D0`'s
 /// and `sub_8028904`'s counterparts' tables: four words a frame, y in the
@@ -130,6 +132,9 @@ const SOUL_PALETTES: (u32, u32) = (0x0873_4D48, 2);
 /// 0x0802330C) first flies as a sprite in this palette (sprite palette 13).
 const SOUL_ICONS: (u32, usize) = (0x0874_9FB8, 14 * 0x80);
 const SOUL_ICON_PALETTE: u32 = 0x0874_AAB8;
+/// Team Colonel's ROM's (its 0x08023308's): color 9, the icons' outline,
+/// is another.
+const COLONEL_SOUL_ICON_PALETTE: u32 = 0x0874_BDBC;
 /// Sprites: the cursor's corner (two frames), the Regular chip's frame.
 const CURSOR: (u32, usize) = (0x086F_ACEC, 0x40);
 const REGULAR: (u32, usize) = (0x086F_72B0, 0x400);
@@ -199,6 +204,10 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
         palettes: (0..SOUL_PALETTES.1).map(|i| palette(rom, SOUL_PALETTES.0 + 0x20 * i)).collect(),
         icons: block(rom, SOUL_ICONS),
         icon_palette: palette(rom, SOUL_ICON_PALETTE),
+        icon_palettes: {
+            let colonel = palette(roms.us(Version::Colonel), COLONEL_SOUL_ICON_PALETTE);
+            if colonel == palette(rom, SOUL_ICON_PALETTE) { Vec::new() } else { vec![(Version::Colonel.name().into(), colonel)] }
+        },
     };
     let map = |a: u32| -> Vec<MapEntry> { (0..MAP_CELLS).map(|i| MapEntry::from_gba(rom.u16(a + 2 * i))).collect() };
     CustomScreen {
