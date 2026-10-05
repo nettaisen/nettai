@@ -211,6 +211,9 @@ fn player_hooks(b: &Battle, r: ObjectRef, table: &str) -> (crate::content::Overl
 /// (`sub_80F0700`, `sub_80C44D2`).
 fn flinch_hook(b: &mut Battle, r: ObjectRef) {
     let (hooks, own_parts) = player_hooks(b, r, "flinch hook (sub_800F3E8)");
+    if hooks.flinch_lets_go {
+        let_go_overlay(b, r);
+    }
     if !hooks.flinch {
         return;
     }
@@ -225,8 +228,30 @@ fn flinch_hook(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_800F404`: the per-form drag hook (`off_80EABF8`: MegaMan's only).
 fn drag_hook(b: &mut Battle, r: ObjectRef) {
-    if player_hooks(b, r, "drag hook (sub_800F404)").0.drag {
+    let hooks = player_hooks(b, r, "drag hook (sub_800F404)").0;
+    if hooks.drag_lets_go {
+        let_go_overlay(b, r);
+    }
+    if hooks.drag {
         reset_form_overlay(b, r);
+    }
+}
+
+/// `sub_800F394`: the per-form paralysis hook. EXE6's table has none;
+/// EXE5's (0x080EB308) has KnightMan's.
+fn paralysis_hook(b: &mut Battle, r: ObjectRef) {
+    if player_hooks(b, r, "paralysis hook (sub_800F394)").0.paralysis_lets_go {
+        let_go_overlay(b, r);
+    }
+}
+
+/// EXE5's 0x080FBA20, KnightMan's flinch, drag and paralysis hook: what the
+/// navi wears is let go where an attack held it shown or hidden
+/// (`sub_80C4510`: the overlay follows its wearer's visibility again), and
+/// nothing without it.
+fn let_go_overlay(b: &mut Battle, r: ObjectRef) {
+    if let Some(overlay) = b.objects.get(r).related[1] {
+        b.objects.get_mut(overlay).phase_init = 0;
     }
 }
 
@@ -289,7 +314,7 @@ fn mash(b: &mut Battle, r: ObjectRef, t: usize, flag: u32) -> bool {
 /// it.
 pub(super) fn paralysis(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).phase_init == 0 {
-        // sub_800F394: no per-form hook.
+        paralysis_hook(b, r);
         enter_reaction(b, r, 2);
         finish_reaction_entry(b, r);
     }
