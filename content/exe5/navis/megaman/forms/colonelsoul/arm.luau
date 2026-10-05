@@ -1,6 +1,6 @@
 --!strict
 -- ColonelSoul's charged shot with an arm chip (`colonelsoul/arm`): the original's weapon routine 0x13 (0x0800F7D8)
--- loads the turn's Arm Change chip (AIData +0x32, the navi's `weapon_chip`: rules/souls/arm-change sets it and this
+-- loads the turn's Arm Change chip (AIData +0x32, the navi's `weapon_chip`: ./arm-change sets it and this
 -- weapon at the turn's start, 0x080124AE) as the attack (0x0800FE78: the chip's record's damage, hit parameter,
 -- lockout and element; no bonus; not charged) and starts the chip's use. Its charge time is the charge table's row
 -- 0x13 (0x0801CA6C), Charge 5 reading on into the next row's first entry.

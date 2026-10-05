@@ -30,6 +30,12 @@ pub struct NaviData {
     /// whose face is his form's. Presentation only.
     #[serde(default)]
     pub mugshot: Option<super::MugshotId>,
+    /// The version of its game a link navi belongs to (EXE6's Gregar's or
+    /// Falzar's link navis), by the name its game's pack keeps a version's
+    /// pictures under; none: every version's. Presentation only (a console
+    /// of another version has no portrait of it).
+    #[serde(default)]
+    pub version: Option<String>,
     /// Extra height, in whole pixels, of the navi's image as it merges
     /// with MegaMan in a Cross.
     #[serde(default)]
@@ -244,13 +250,12 @@ pub enum ChipMatch {
     Family(ChipFamily),
 }
 
-/// A soul's place on EXE5's custom screen: its number (NaviStats +0x2C,
-/// the soul-used bits' and the save's soul flags' order) and the family
-/// of the chip given up for it (0x08024BE0's table).
+/// A soul on EXE5's custom screen: the family of the chip given up for it
+/// (0x08024BE0's table). A soul is named by its form's key; the original's
+/// number for it (NaviStats +0x2C) is compat's (exe5-compat's `forms`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SoulData {
-    pub number: u8,
     pub family: ChipFamily,
     /// The chaos cycle's row its Chaos Unison charges by whatever the
     /// chaos level (0x080106BC: MeddySoul's 2); none: the level's, at
@@ -269,7 +274,7 @@ pub struct FormData {
     /// change form, and what a revert takes them back to (one a game).
     #[serde(default)]
     pub base: bool,
-    /// A soul's number and family (EXE5's Soul Unison: the form is a soul).
+    /// A soul's family (EXE5's Soul Unison: the form is a soul).
     #[serde(default)]
     pub soul: Option<SoulData>,
     pub sprite: SpriteId,
@@ -287,6 +292,14 @@ pub struct FormData {
     /// Presentation only.
     #[serde(default, deserialize_with = "faces")]
     pub mugshot: Option<Faces>,
+    /// The version of its game the form belongs to (EXE6's Gregar's or
+    /// Falzar's Crosses and Beast), by the name its game's pack keeps a
+    /// version's pictures under; none: every version's. Its game's systems
+    /// may read it (EXE6's: a Beast's roar, the Crosses a Beast goes with);
+    /// to the engine it is presentation only (whose pictures name it in its
+    /// window and show its Beast, which console has its face).
+    #[serde(default)]
+    pub version: Option<String>,
     /// The lines of a Cross's description, which R shows in the Cross
     /// window (its text is the content's strings): the box takes keys a
     /// tick later for each, as for a chip's; none counts as three. The
@@ -636,8 +649,8 @@ impl FormTraits {
     /// Its held buster doesn't fire while its B+Back special is asked for
     /// (TenguCross and DustCross in Beast Out).
     pub const SPECIAL_HOLDS_BUSTER: u16 = 0x004;
-    /// A metal panel doesn't slide the navi (EXE5's soul 5, NaviStats
-    /// +0x2C: 0x08017216).
+    /// A metal panel doesn't slide the navi (EXE5's MagnetSoul:
+    /// 0x08017216).
     pub const STANDS_ON_METAL: u16 = 0x008;
     /// The side's systems' controller decides the navi's idle (Beast Over's
     /// berserk, `sub_802D322`): the player's buttons don't reach it

@@ -5,7 +5,8 @@
 //! - **The arena**: the content's game, its link battle stages
 //!   (`crate::link_battle_stages`), and backgrounds its pack has.
 //! - **A side**: its navi, chips, patch cards, NaviCust programs and souls
-//!   are the match's game's, its stats' forms the content's; a Cross list
+//!   are the match's game's, its stats' forms the content's; its
+//!   computer-navi data what the game can hold (`crate::computer_navi`); a Cross list
 //!   only with rules that have the forms system,
 //!   each a Cross of the navi's, at most five, none twice; patch cards only
 //!   with rules that have the patch-cards system, each installed once, at
@@ -103,36 +104,10 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
         }
         _ => {}
     }
-    // The tactics: as many entries, patterns and pattern chips as the
-    // block holds, a pattern entry one of its patterns, chips the
-    // content's.
-    let t = &s.tactics;
-    if t.entries.len() > nettai_battle::tactics::MAX_ENTRIES {
-        out.push(format!("the tactics have {} entries; the block holds {}", t.entries.len(), nettai_battle::tactics::MAX_ENTRIES));
-    }
-    if t.patterns.len() > nettai_battle::tactics::MAX_PATTERNS {
-        out.push(format!("the tactics have {} patterns; the block holds {}", t.patterns.len(), nettai_battle::tactics::MAX_PATTERNS));
-    }
-    for (i, p) in t.patterns.iter().enumerate() {
-        if p.chips.len() > nettai_battle::tactics::MAX_PATTERN_CHIPS {
-            out.push(format!("tactics pattern {}: {} chips; a pattern runs {}", i + 1, p.chips.len(), nettai_battle::tactics::MAX_PATTERN_CHIPS));
-        }
-    }
-    let chips = t.entries.iter().filter_map(|e| match e {
-        nettai_battle::tactics::Tactic::Chip(c) => Some(*c),
-        _ => None,
-    });
+    // The computer-navi data: what the game can hold of it, where the
+    // game has computer navis.
+    out.extend(s.computer_navi.check(content, game));
     let foreign = |c: nettai_content_api::ChipHandle| c.index() >= defs.chips.len() || !of_game(&defs.chip(c).key);
-    if chips.chain(t.patterns.iter().flat_map(|p| p.chips.iter().copied())).any(foreign) {
-        out.push(format!("the tactics name a chip {game} hasn't"));
-    }
-    for e in &t.entries {
-        if let nettai_battle::tactics::Tactic::Pattern(i) = e
-            && *i as usize >= t.patterns.len()
-        {
-            out.push(format!("the tactics name pattern {}, which they haven't", *i as u16 + 1));
-        }
-    }
     // The karma and the souls.
     out.extend(crate::facts::check(content, arena, s));
     // The folder's chips, before its rules.
