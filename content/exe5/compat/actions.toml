@@ -60,3 +60,6 @@
 "colonel/charge/action" = 0x07
 # A team navi's own actions are its state table's entries from 7 on (0x080EADA8 by navi): TomahawkMan's throw.
 "tomahawkman/charge/action" = 0x07
+# ShadowMan's charged attack (his table's entry 9) and his B+Back (the anti-damage stance, as ShadowSoul's).
+"shadowman/charge/action" = 0x09
+"shadowman/back/action" = 0x3D
