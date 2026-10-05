@@ -28,15 +28,17 @@ local function linger(me: Object, look: ImmobilizerLook)
     me.sprite:step()
 end
 
--- `sub_80CC064`: on its panel, on the ground (EXE5's showing its mark); the
--- hit (`dword_80CC0C8`, `dword_80CC0CC`: one panel, no spark, a
--- guard-breaking attack against navis, the status), then the wait.
+-- `sub_80CC064`: on its panel, on the ground (EXE5's showing its mark, all
+-- of it under the objects: 0x080CD30C); the hit (`dword_80CC0C8`,
+-- `dword_80CC0CC`: one panel, no spark, a guard-breaking attack against
+-- navis, the status), then the wait.
 local function init(me: Object, look: ImmobilizerLook)
     local mark = look.sprite
     if mark then
         local sprite = me.sprite
         sprite:load(mark)
         sprite.shadow = "ground"
+        sprite.under_objects = true
         me.anim, me.anim_loaded = look.anim or 0, look.anim or 0
         sprite:set_animation(look.anim or 0)
         sprite:step()

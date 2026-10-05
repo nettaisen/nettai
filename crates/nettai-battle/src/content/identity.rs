@@ -123,6 +123,11 @@ pub enum Parts {
     /// A beast's head (`sub_8011366`, `sub_8011352`): its palette, or
     /// none for the one that follows the side's mood.
     BeastHead { sprite: SpriteId, palette: Option<u8> },
+    /// A routine of its own, `own(wearer)`: the init hook of a record that
+    /// wears an object of the content's own kind, which the routine puts in
+    /// the wearer's second related slot itself (EXE5's NumberMan's face,
+    /// 0x0800EE6E: NumberSoul's layer).
+    Own(nettai_content_api::FnId),
 }
 
 /// Which of its object's hooks touch what the object wears (the overlay
@@ -266,11 +271,13 @@ impl Identity {
 }
 
 /// An identity definition as the engine holds it (its owner is set by the
-/// navi or form that names it).
+/// navi or form that names it). `own_part`: the function its `parts.own`
+/// is, when it has one.
 pub(crate) fn read(
     d: &nettai_content_api::Definition,
     assets: &nettai_content_api::AssetNames,
     definitions: &nettai_content_api::Definitions,
+    own_part: Option<nettai_content_api::FnId>,
 ) -> Result<Identity, nettai_content_api::ContentError> {
     use nettai_content_api::{AssetKind, ContentError, Data};
     let what = |m: String| ContentError::new(format!("{}.luau: identity {}: {m}", d.module, d.key));
@@ -386,18 +393,19 @@ pub(crate) fn read(
         Data::Nil => None,
         p @ Data::Map(_) => {
             let (b, second, idle, head) = (p.field("body"), p.field("second"), p.field("idle"), p.field("beast_head"));
-            Some(match (b.is_nil(), second.is_nil(), idle.is_nil(), head.is_nil()) {
-                (false, true, true, true) => Parts::Body(body(b, "parts.body")?),
-                (false, false, true, true) => Parts::Bodies(body(b, "parts.body")?, body(second, "parts.second")?),
-                (true, true, false, true) => Parts::Idle { sprite: sprite(idle.field("sprite"), "parts.idle.sprite")? },
-                (true, true, true, false) => Parts::BeastHead {
+            Some(match (b.is_nil(), second.is_nil(), idle.is_nil(), head.is_nil(), own_part) {
+                (false, true, true, true, None) => Parts::Body(body(b, "parts.body")?),
+                (false, false, true, true, None) => Parts::Bodies(body(b, "parts.body")?, body(second, "parts.second")?),
+                (true, true, false, true, None) => Parts::Idle { sprite: sprite(idle.field("sprite"), "parts.idle.sprite")? },
+                (true, true, true, false, None) => Parts::BeastHead {
                     sprite: sprite(head.field("sprite"), "parts.beast_head.sprite")?,
                     palette: match head.field("palette") {
                         Data::Nil => None,
                         v => Some(byte(v, "parts.beast_head.palette")?),
                     },
                 },
-                _ => return Err(what("`parts` is one of `body` (with a `second`), `idle` and `beast_head`".into())),
+                (true, true, true, true, Some(f)) => Parts::Own(f),
+                _ => return Err(what("`parts` is one of `body` (with a `second`), `idle`, `beast_head` and `own`".into())),
             })
         }
         other => return Err(what(format!("`parts` is {other:?}, not a table"))),
