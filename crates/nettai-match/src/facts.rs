@@ -87,9 +87,26 @@ pub fn no_versions(game: &str) -> String {
     format!("its versions play alike, so a match of {game} is of neither")
 }
 
-/// A fresh save's karma (0x08010C00), and the most there is.
-pub const DEFAULT_KARMA: u16 = 500;
+/// The most karma there is.
 pub const MAX_KARMA: u16 = 1000;
+
+/// A fresh save's karma, which a side that states none has: the default
+/// the game's rules give the `karma` field (EXE5's light and dark system's
+/// `setup_defaults.karma`: 500, 0x08010C00), stated there alone. 0: the
+/// rules take no karma (a side of such a game has none to state).
+pub fn default_karma(content: &Content) -> u16 {
+    crate::systems(content)
+        .iter()
+        .find_map(|&h| {
+            let system = content.defs.system(h);
+            let schema = content.defs.schema(system.setup);
+            match system.setup_default.get(schema, schema.index_of(KARMA_FIELD)?) {
+                nettai_content_api::FieldValue::U16(v) => Some(v),
+                _ => None,
+            }
+        })
+        .unwrap_or(0)
+}
 
 /// Whether a system of the game's rules declares setup field `field` (a
 /// side takes that fact).
@@ -157,7 +174,7 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
     if side.karma > MAX_KARMA {
         out.push(format!("karma {}: the light/dark value is 0 to {MAX_KARMA}", side.karma));
     }
-    if side.karma != DEFAULT_KARMA && !takes(content, KARMA_FIELD) {
+    if side.karma != default_karma(content) && !takes(content, KARMA_FIELD) {
         out.push(format!("karma, but {} has no light and dark MegaMan (no system takes `karma`)", arena.game));
     }
     for (on, field, what) in [
@@ -189,6 +206,22 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
     out
 }
 
+/// Write a player's version into `player`'s setup, and with it what a save
+/// of that version unlocks on the custom screen, each fact by its name into
+/// the systems that take it (EXE6's cross and beast systems): every Cross
+/// of the version owned (a finished game's save), Beast Out as `beast_out`
+/// says, and the Cross list `crosses` in place of the version's own, if
+/// one is given.
+pub fn write_version(content: &Content, player: &mut PlayerSetup, version: &str, beast_out: bool, crosses: Option<&crate::CrossList>) -> Result<(), String> {
+    player.set_fact(content, VERSION_FIELD, &[Fact::Name(version)])?;
+    let owned = vec![Fact::Value(Value::Bool(true)); capacity(content, CROSSES_FIELD)];
+    player.set_fact(content, CROSSES_FIELD, &owned)?;
+    player.set_fact(content, BEAST_OUT_FIELD, &[Fact::Value(Value::Bool(beast_out))])?;
+    let list: Vec<Fact> = crosses.iter().flat_map(|l| l.forms()).map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
+    player.set_fact(content, CROSS_LIST_FIELD, &list)?;
+    Ok(())
+}
+
 /// Write what `side` brings into `player`'s setup, each fact by its name
 /// into the systems of the game's rules that take it (none: nothing):
 /// - its version, where it states one of the rules' (a side without one
@@ -203,14 +236,7 @@ pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerS
     // (No ruleset named: the game's own, its one.)
     let game = arena.game.as_str();
     if let Some(version) = side.version.as_deref().filter(|v| versions(content).iter().any(|name| name == v)) {
-        player.set_fact(content, VERSION_FIELD, &[Fact::Name(version)])?;
-        // (A side's save is a finished game's: it owns its version's
-        // Crosses, all of them.)
-        let owned = vec![Fact::Value(Value::Bool(true)); capacity(content, CROSSES_FIELD)];
-        player.set_fact(content, CROSSES_FIELD, &owned)?;
-        player.set_fact(content, BEAST_OUT_FIELD, &[Fact::Value(Value::Bool(side.beast_out))])?;
-        let list: Vec<Fact> = side.crosses.iter().flat_map(|l| l.forms()).map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
-        player.set_fact(content, CROSS_LIST_FIELD, &list)?;
+        write_version(content, player, version, side.beast_out, side.crosses.as_ref())?;
     }
     player.set_fact(content, KARMA_FIELD, &[Fact::Value(Value::Int(side.karma as i64))])?;
     // (EXE6's: the dark-chips system's.)

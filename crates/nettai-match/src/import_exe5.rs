@@ -5,7 +5,8 @@
 //! `crate::auto_battle`); for a side that operates a team navi, the
 //! navi's level and HP. (Its folder, the NaviCust's programs and MegaMan's
 //! stats are a later import's.) `Match::import_save` comes here for a save
-//! that isn't EXE6's.
+//! that isn't EXE6's. (A boundary with exe5-compat, as `import` is with
+//! exe6-compat: a save's bytes and the original's numbers in them.)
 
 use crate::auto_battle::{ChipPlace, AutoBattle, Entry, RECORDS, Record};
 use crate::{Arena, Side, ids};
