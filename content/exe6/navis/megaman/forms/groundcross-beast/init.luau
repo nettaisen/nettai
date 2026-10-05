@@ -16,7 +16,7 @@ return define.form {
     traits = { "shows_target_marker", "afterimages_stay", "alt_charge_time" },
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
-    game = "falzar",
+    version = "falzar",
     cross_of = groundman,
     -- A weakness hit breaks the Cross: back to the Beast.
     breaks_to = falzar_beast,

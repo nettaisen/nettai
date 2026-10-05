@@ -10,7 +10,7 @@
 use crate::audit::{Graphics, Lookup, Problems, emotion_number};
 use crate::packs::Packs;
 use nettai_assets::{BannerLayout, ChipArt, CustomScreen, DialogueFont, Hud, Palette, SpriteFrame, SpritePart, SpriteSheet, Tiles};
-use nettai_battle::content::{BackgroundId, BannerId, ChipClass, ChipFlags, Content, MugshotId, PackId, SpriteId};
+use nettai_battle::content::{BackgroundId, BannerId, ChipClass, ChipFlags, ChipTraits, Content, MugshotId, PackId, SpriteId};
 use nettai_battle::custom::GameVersion;
 use nettai_battle::field::PanelType;
 use nettai_battle::kinds::player::Emotion;
@@ -244,31 +244,11 @@ pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, pr
 }
 
 /// Whether the Program Advance animation shows a chip's code after its
-/// name (EXE6's `sub_802B80C`, EXE5's 0x08027BC6: not for the original's
-/// chips from 0x160 on, its navi chips' and the like), by the chip's number
-/// in its game's compat (the match's: EXE6's or EXE5's); a support pack's
-/// chip shows none.
+/// name: not for a chip whose definition hides it (its trait
+/// `hides_advance_code`: the chips past the original's chip table).
 pub fn advance_code(c: &Content, chip: ChipHandle, problems: &mut Problems) -> bool {
-    let key = key(c, chip);
-    if nettai_content_api::keys::root_of(key).is_some() {
-        return false;
-    }
-    let number = chip_number(c, key);
-    if problems.lookup(Lookup::AdvanceName(chip)) && number.is_none() {
-        let game = c.game();
-        problems.note(format!("chip {key:?} has no number in {game}'s compat: the Program Advance animation can't tell whether its code shows"));
-    }
-    number.is_some_and(|n| n < crate::custom::ADVANCE_NO_CODE_FROM)
-}
-
-/// A chip's number in its game's compat (the content's game: EXE5's for
-/// EXE5, else EXE6's), by its local key.
-fn chip_number(c: &Content, key: &str) -> Option<u16> {
-    if c.game() == exe5_compat::ROOT {
-        exe5_compat::Compat::exe5().chips.get(key).map(|e| e.id)
-    } else {
-        exe6_compat::Compat::exe6_for(c).chips.get(key).map(|e| e.id)
-    }
+    problems.lookup(Lookup::AdvanceName(chip));
+    !c.chip(chip).traits.has(ChipTraits::HIDES_ADVANCE_CODE)
 }
 
 /// A name in the Program Advance animation (`name`, a chip's display
@@ -439,21 +419,15 @@ pub fn warning(hud: &Hud, problems: &mut Problems) -> bool {
     !hud.warning.is_empty()
 }
 
-/// A Cross's name and colors in the Cross window: its game's pictures and
-/// its number among that game's Crosses (`custom::cross_picture`), with
-/// its name's tiles and colors there.
-pub fn cross_name<'a>(
-    a: &'a CustomScreen,
-    c: &Content,
-    navi: NaviHandle,
-    form: FormHandle,
-    problems: &mut Problems,
-) -> Option<(&'a nettai_assets::VersionPictures, usize)> {
-    let found = crate::custom::cross_picture(c, a, navi, form);
+/// A Cross's name and colors in the Cross window: its version's pictures
+/// and its number among that version's Crosses (`custom::cross_picture`),
+/// with its name's tiles and colors there.
+pub fn cross_name<'a>(a: &'a CustomScreen, c: &Content, form: FormHandle, problems: &mut Problems) -> Option<(&'a nettai_assets::VersionPictures, usize)> {
+    let found = crate::custom::cross_picture(c, a, form);
     if problems.lookup(Lookup::CrossName(form)) {
         let key = &c.defs.form(form).key;
         match found {
-            None => problems.note(format!("form {key:?} is no Cross of its game's on the custom screen (no game, or not among its navi's five)")),
+            None => problems.note(format!("form {key:?} has no name on the custom screen (its definition says no `version` or no `window_order`)")),
             Some((own, number)) => {
                 let names = crate::custom::CROSS_NAME_TILES * (number + 5 + 1);
                 if own.cross_names.len() < names || own.cross_palettes.len() < number + 5 + 1 {

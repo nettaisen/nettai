@@ -15,6 +15,7 @@ return define.navi {
     banners = { win = asset.banner("tomahawkman-win"), lose = asset.banner("tomahawkman-deleted") },
     -- Its face in the emotion window (`byte_801CDDC`).
     mugshot = asset.mugshot("tomahawkman"),
+    version = "falzar",
     merge_height = 0,
     -- The no-running message's portrait: the speaker beside the box. Its
     -- words are locales/<lang>.toml's; the content's own (en) time it.

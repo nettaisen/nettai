@@ -272,16 +272,17 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
                 }
             }
         }
-        if data.forms.is_some() {
-            for version in [GameVersion::Falzar, GameVersion::Gregar] {
-                let crosses = exe6_compat::forms::set(c, navi, version).map(|s| s.crosses).unwrap_or_default();
-                for &form in &crosses {
-                    lookups::cross_name(a, c, navi, form, p);
-                    if let Some(said) = text.form_description(c, form) {
-                        lookups::dialogue(font, Lookup::CrossDescription(form), said.text, p);
-                    }
-                }
-            }
+    }
+    // The forms a window lists (EXE6's Crosses: the ones that say their
+    // place there): each one's name and colors, and its description.
+    for i in 0..c.defs.forms.len() {
+        let form = FormHandle(i as u16);
+        if c.form(form).window_order.is_none() {
+            continue;
+        }
+        lookups::cross_name(a, c, form, p);
+        if let Some(said) = text.form_description(c, form) {
+            lookups::dialogue(font, Lookup::CrossDescription(form), said.text, p);
         }
     }
     for i in 0..c.defs.forms.len() {
@@ -461,27 +462,26 @@ mod tests {
         assert_eq!(chips_without_icons(|key| format!("{}:{key}", testing::ROOT)), testing::content().defs.chips.len());
     }
 
-    /// The Program Advance animation shows a chip's code by the chip's
-    /// number in its own game's compat (EXE6's `sub_802B80C`, EXE5's
-    /// 0x08027BC6: below 0x160), each game's chips known to it.
+    /// The Program Advance animation shows a chip's code unless its
+    /// definition hides it (the trait `hides_advance_code`), and each game's
+    /// definitions hide it for the chips the original does: those numbered
+    /// 0x160 and up in the game's compat (EXE6's `sub_802B80C`, EXE5's
+    /// 0x08027BC6), no others.
     #[test]
-    fn a_program_advance_code_is_by_its_games_number() {
-        for (c, shows, hides) in [
-            (nettai_match::testing::exe6_content(), "cannon", "ftrsword"),
-            (nettai_match::testing::exe5_content(), "cannon", "ftrsword"),
-        ] {
-            let chip = |key: &str| c.defs.chip_by_key(key).unwrap_or_else(|| panic!("{} has no {key}", c.game()));
-            let mut p = Problems::default();
-            assert!(lookups::advance_code(&c, chip(shows), &mut p), "{}'s {shows}", c.game());
-            assert!(!lookups::advance_code(&c, chip(hides), &mut p), "{}'s {hides}", c.game());
-            let unknown: Vec<_> = (0..c.defs.chips.len())
-                .filter_map(|k| {
-                    let mut q = Problems::default();
-                    lookups::advance_code(&c, ChipHandle(k as u16), &mut q);
-                    q.iter().next().map(|(what, _)| what.to_string())
-                })
-                .collect();
-            assert!(unknown.is_empty(), "{}: {unknown:?}", c.game());
+    fn a_program_advance_code_is_hidden_by_the_chips_definition() {
+        let exe6 = |key: &str| exe6_compat::Compat::exe6().chips.get(key).map(|e| e.id);
+        let exe5 = |key: &str| exe5_compat::Compat::exe5().chips.get(key).map(|e| e.id);
+        let games: [(_, &dyn Fn(&str) -> Option<u16>); 2] =
+            [(nettai_match::testing::exe6_content(), &exe6), (nettai_match::testing::exe5_content(), &exe5)];
+        for (c, number) in games {
+            let mut hidden = 0;
+            for (k, d) in c.defs.chips.iter().enumerate() {
+                let shows = lookups::advance_code(&c, ChipHandle(k as u16), &mut Problems::default());
+                let number = number(&d.key).unwrap_or_else(|| panic!("{}'s {} has no number", c.game(), d.key));
+                assert_eq!(shows, number < 0x160, "{}'s {} ({number:#x})", c.game(), d.key);
+                hidden += !shows as usize;
+            }
+            assert!(hidden > 0, "{} hides none", c.game());
         }
     }
 }

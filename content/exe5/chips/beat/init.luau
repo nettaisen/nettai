@@ -19,5 +19,6 @@ return define.chip {
     lockout = 0,
     flags = {},
     slot_in_limit = 1,
+    traits = { "hides_advance_code" },
     action = cannon_chips.cannon.action,
 }
