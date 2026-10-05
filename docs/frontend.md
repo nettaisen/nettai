@@ -197,8 +197,8 @@ MegaMan at his fresh stats with a folder its rules accept.)
 
 - **The field**: one of the 96 link battle stages the content defines (the
   settings records a link battle draws from, `sub_81209DC`: the stages with
-  the link effect and not the random battle's), with a background drawn as
-  a link battle draws one: from the table the game's `flow` rules state
+  the link effect and not the random battle's), with a background picked at
+  random as a link battle picks one: from the table the game's `flow` rules state
   (`link_backgrounds`: EXE6's `byte_8120A20`, which gen-content checks
   against the ROM). The set's later rounds get theirs the same way.
 - **A folder for each player**: 30 chips that keep EXE6's folder rules

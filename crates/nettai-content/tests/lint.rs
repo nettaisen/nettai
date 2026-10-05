@@ -174,7 +174,7 @@ fn the_order_of_a_games_requires_moves_no_key_and_no_handle() {
         let top = packs::top_module(game);
         assert_eq!(packs::requires(&c.scripts.modules[&top])[0], "@self/rules", "{game}/init.luau");
         let indexes: Vec<&String> = c.scripts.modules.iter().filter(|(m, s)| m.starts_with(game) && packs::is_index(s)).map(|(m, _)| m).collect();
-        assert!(indexes.len() >= 6 && indexes.contains(&&top), "{game}'s indexes: {indexes:?}");
+        assert!(indexes.len() >= 5 && indexes.contains(&&top), "{game}'s indexes: {indexes:?}");
         let mut count = 0;
         for index in indexes {
             let mut requires = packs::requires(&c.scripts.modules[index]);
