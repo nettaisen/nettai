@@ -153,6 +153,11 @@ export type Request =
     | "takeover"
     | "volley"
     | "weakness_hit"
+    -- A navi's own requests, which its own `tick` sets and its own `idle`
+    -- reads; nothing else clears them (EXE5's GyroMan's: 0x10000000 and
+    -- 0x20000000 of his request word).
+    | "take_off"
+    | "land"
     -- The slide request (the collision's flag2 0x10).
     | "slide"
     -- The anger request (the collision's flag2 0x200): angry at the next
@@ -182,6 +187,9 @@ export type NaviStateFlag =
     -- It dives: a panel that submerges (EXE5's sea) submerges it and doesn't
     -- hold it at a move's end (EXE5's ToadSoul). The status reset ends it.
     | "dives"
+    -- In the air (EXE5's GyroMan over a panel that isn't solid): a step it
+    -- takes sets no animation and leaves the one it has.
+    | "hovering"
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
 -- A navi's drag reaction step.
 export type DragStep = "start" | "slide" | "recover"
@@ -664,6 +672,10 @@ declare class Object
     function open_counter_window(self, ticks: number?): ()
     -- `sub_801056A`, after each phase of an attack.
     function check_reactive_abort(self): ()
+    -- `sub_80F22F8`'s spawns: the two objects a navi keeps in battle mode 9
+    -- (the roles' `mode9_attack` and `mode9_actor`): EXE6's DustMan's
+    -- `post_init`.
+    function spawn_mode9_objects(self): ()
     -- `sub_80105F2`: the stance's own trap (the AntiDmg program's) caught a
     -- hit: its counter (the roles' `anti_damage_counter`, or
     -- `anti_sword_counter` for a sword hit) starts at the next tick with
@@ -2182,6 +2194,17 @@ export type NaviDef = {
     -- (1 when none is given): its Full Synchro palette is 4 of them, its
     -- can't-charge palette 1. Presentation only.
     palette_step: number?,
+    -- Its own hooks, the original's tables by AI index. `tick`: its part
+    -- of the per-tick pipeline, after its action, for a navi that doesn't
+    -- change form (one that does runs its form's `tick`): EXE5's
+    -- GyroMan's watches the panel under him. `idle`: its own idle, before
+    -- the common one, which doesn't run on a tick it starts an action
+    -- (`Navi:set_attack`): GyroMan's take-off and landing. `post_init`: as
+    -- a player's init ends and after a navi switch: EXE6's DustMan's
+    -- objects of battle mode 9, EXE5's ToadMan's dive.
+    tick: ((navi: Object) -> ())?,
+    idle: ((navi: Object) -> ())?,
+    post_init: ((navi: Object) -> ())?,
     -- Its forms (MegaMan's): where the original asks whether a navi is
     -- MegaMan, the ruleset asks whether it has them. The engine reads
     -- `souls` (EXE5's Soul Unison: forms with a `soul`, which the custom
@@ -2676,8 +2699,9 @@ export type RolesSpec = {
         falling_rock: Kind?,
         support: Kind?,
         anti_recovery: Kind?,
-        -- What the player whose AI index is 10 spawns in battle mode 9
-        -- (the original's attack object #0xD2 and actor object #0x28).
+        -- What `Navi:spawn_mode9_objects` spawns (EXE6's DustMan's
+        -- post-init hook in battle mode 9: the original's attack object
+        -- #0xD2 and actor object #0x28).
         mode9_attack: Kind?,
         mode9_actor: Kind?,
     }?,

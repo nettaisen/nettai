@@ -2563,6 +2563,21 @@ a flinch hook that tests for what the navi wears first (EXE5's team navis'; EXE6
 `lets_go` is KnightMan's entry in the flinch, drag and paralysis tables (one routine in the three): as the reaction
 starts, what the navi wears is let go where an attack held it shown or hidden.
 
+**A navi's own hooks** (the framework GyroMan and ToadMan need). The original has tables by AI index beside the
+state tables: a tick (0x080EB1E8, called each tick after the navi's action, 0x080EAD80: MegaMan's entry is his
+souls', GyroMan's his own, the rest empty), an idle by control mode (0x080EB068: GyroMan's entries run before the
+common idle, 0x080F0254) and the post-init hook (0x080EB2A8: ToadMan's sets the state bit 0x20, `dives`). A navi
+definition states them: `tick`, for a navi that doesn't change form (one that does runs its form's); `idle`, after
+which the common idle runs unless it started an action; `post_init`. GyroMan's tick (0x080F09EC) watches the panel
+under him: over one that isn't solid it sets the state bit 0x8000 (the navi state `hovering`) and the request
+0x10000000; with the bit set on a solid panel, the request 0x20000000; his idle (0x080F0978) answers them with his
+own action 9, variant 0 (take off) or 1 (land). Nothing else in the ROM sets or clears the bit or either request,
+and no end of an attack or a reaction clears them (their masks are 0x1803F and 0x1843F: the reactions section's
+`request_clears`). The engine keeps the two apart from the request word as a navi's own requests (`take_off`,
+`land`): the same bits are EXE6's mode-9 A press and takeover. While the bit is set a step sets no animation and
+its ends leave the one he has (0x080F01CA; the move's start also sets a byte for AI index 2, 0x0800F234, which the
+bit makes redundant).
+
 | Navi | Weapons | Own chip | Checked |
 |---|---|---|---|
 | ProtoMan | the charged slash (0x1E, 0x0800F8CE: WideSwrd loaded as the attack, the damage rows' row 0, counter byte 0x94) and the B+Back guard (0x0B, 0x0800F6CC: EXE5's guard as the Reflect program's, the stats' damage, 40 ticks before the next chip) | StepSwrd (action 0x13 as WideSwrd's, row 1, its routine 2) | 40 recordings (navis/protoman): his own chip at levels 0, 3 and 6, from another row, out of reach, blocked, onto a panel the opponent steps to, on a Japanese console and over four custom screens; the charged slash at three levels and let go early; the guard reflecting a buster shot and a Cannon, and too early; AntiSwrd against both; a counter hit and Full Synchro (an AirShot's; StepSwrd's makes none); twelve plain chips, a held A, a dark chip; hits, his deletion, a win. Every frame and every sound call. |

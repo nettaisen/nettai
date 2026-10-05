@@ -1193,6 +1193,13 @@ below: each game states them).
   change, a flinch and a drag restart what a navi wears (`sub_8011450`, `sub_80F06CE`). EXE6's restart
   (`sub_80C44D2`) reloads the overlay's animation and steps its sprite at once (`"step"`); EXE5's
   (0x080C374E) only has it reload at its next step (`"reload"`).
+- **What an end clears of a navi's requests.** The `reactions` section's `request_clears`, a list of names for
+  each of four ends, besides the six attack requests every one clears: an attack's (`sub_801171C`), a
+  paralysis's (EXE6's freeze's and bubble's too), a flinch's and a drag's. The original's masks differ by game:
+  EXE6's are 0x1000003F and, at a flinch's and a drag's, 0x1000043F (the mode-9 A press; the anti-sword trigger);
+  EXE5's are 0x1803F at an attack's end and 0x1843F at the three reactions' (the Chaos Unison releases; the
+  anti-sword trigger). A navi's own requests (EXE5's GyroMan's take-off and landing, exe5-map.md §15.16) are in
+  none: its own idle clears them.
 - **The souls' engine items (exe5-map.md §15.8).** The `reactions` section's `stance_counter`, the navi's game's:
   the counter a stance's caught hit starts runs from the next tick in EXE6 (`sub_80105F2`, `"next_tick"`), its
   first step at once in EXE5 (0x0800E340, `"at_once"`). (EXE5's hit kernel is the `reactions` section's
