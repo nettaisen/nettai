@@ -736,6 +736,10 @@ What an EXE5 console does otherwise, by data, not by game:
   custom screen's close starts the chip window as a Japanese EXE6 console's
   does (`chip_window_at_close`), the intro fades in from black
   (`intro_from_black`);
+- its game's custom screen (rules `custom_screen`): the emblem as SELECT's
+  hidden window comes back, on the tick of the key and the next
+  (`emblem_at_window_return`: EXE6's screen draws it on both, EXE5's on
+  neither; the engine's screen draws it or not, `ScreenLook::drawn`);
 - a version's own chip (its five Giga chips, DethPhnx or Phoenix) shows
   its own version's ROM's icon and picture on either console (§5; the
   console's version is `Renderer::console_version`, which an EXE5 recording
