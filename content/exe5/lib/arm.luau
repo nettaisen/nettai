@@ -8,7 +8,8 @@
 -- - a player of another AI index: the navi arm, its animation the AI index less 1, palette 25 less that when the
 --   charge is disabled; AI index 0x17 the buster arm in palette 14;
 -- - MegaMan (a player of AI index 0): in a soul, the buster arm in the soul's animation (row 0x33 while the chaos
---   charge is armed, AIData+0x12, palette 10 with the charge disabled); in none, by NaviStats +0x4C: 0, the buster
+--   charge is armed, AIData+0x12, palette 10 with the charge disabled; the animation is the soul's form's
+--   `buster_arm`); in none, by NaviStats +0x4C: 0, the buster
 --   arm (palette 14 with the charge disabled, else 0x1B plus his element); 1, the arm in animation 13; more, row
 --   0x33 in animation 13 (palette 1 with the charge disabled).
 --
@@ -59,9 +60,13 @@ function arm.raise_for(navi: Object, which: Slot, while_dimmed: boolean, holder:
             end
         else
             local stats = battle.navi(navi.alliance)
-            local soul = stats.form.soul
-            if soul then
-                anim = soul.number
+            local form = stats.form
+            if form.soul then
+                local raised = form.buster_arm
+                if raised == nil then
+                    error(string.format("%s names no buster arm (its `buster_arm`: 0x080EBABE takes the soul's animation)", form.id))
+                end
+                anim = raised.anim
                 if chaos_charge(navi) ~= 0 then
                     look = arm.looks.chaos
                     if navi:navi_state("no_charge") then

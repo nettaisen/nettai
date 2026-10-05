@@ -2191,7 +2191,7 @@ export type FormEffect =
 --     (EraseCross);
 --   special_holds_buster: its held buster doesn't fire while its B+Back
 --     special is asked for (TenguCross and DustCross in Beast Out);
---   stands_on_metal: a metal panel doesn't slide the navi (EXE5's soul 5);
+--   stands_on_metal: a metal panel doesn't slide the navi (EXE5's MagnetSoul);
 --   controlled: the side's systems' `controller` decides its idle (EXE6's
 --     Beast Over: the berserk), the player's buttons don't reach it, and a
 --     full gauge opens the custom screen;
@@ -2307,11 +2307,11 @@ export type FormDef = {
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.
     buster_arm: { anim: number, palette_add: number? }?,
-    -- A soul (EXE5's Soul Unison): its number, the chip
-    -- family the custom screen's soul button gives up for it, and the
-    -- chaos cycle's row its Chaos Unison charge keeps whatever the chaos
-    -- level (MeddySoul's; none: the level's, at most 2).
-    soul: { number: number, family: ChipFamily, chaos_cycle: number? }?,
+    -- A soul (EXE5's Soul Unison), named by its form's id: the chip family
+    -- the custom screen's soul button gives up for it, and the chaos
+    -- cycle's row its Chaos Unison charge keeps whatever the chaos level
+    -- (MeddySoul's; none: the level's, at most 2).
+    soul: { family: ChipFamily, chaos_cycle: number? }?,
     -- Its game's systems' fields (their `extends.form`: EXE6's `kind`,
     -- `game`, `cross_of`, `beast`, ...; content/exe6/types.d.luau types them).
     [string]: any,
