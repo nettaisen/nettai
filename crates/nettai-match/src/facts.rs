@@ -44,14 +44,23 @@ pub const SOULS_FIELD: &str = "souls";
 pub const SOUL_UNISON_FIELD: &str = "soul_unison";
 pub const CHAOS_UNISON_FIELD: &str = "chaos_unison";
 pub const VERSION_FIELD: &str = "version";
+/// What a save unlocks on the custom screen, and a side's Cross list (EXE6's
+/// cross and beast systems' setups): the Crosses of the side's version it
+/// owns, by their number; Beast Out; the forms its form list offers
+/// instead.
+pub const CROSSES_FIELD: &str = "crosses";
+pub const BEAST_OUT_FIELD: &str = "beast_out";
+pub const CROSS_LIST_FIELD: &str = "cross_list";
 /// EXE6's bug frags: its dark-chips system's setup (a dark chip spends one).
 pub const BUG_FRAGS_FIELD: &str = "bug_frags";
 
 /// The versions a side of the game states one of, by the names its rules
 /// declare, in their order: the names of the engine's version fact
 /// (`PlayerFact::Version`, the `version` enum of the first of the ruleset's
-/// systems whose setup declares it: EXE6's cross system's "falzar" and
-/// "gregar"). None: the rules take no version.
+/// systems whose setup declares it: EXE6's cross system's "gregar" and
+/// "falzar", the original's order). None: the rules take no version. Tools
+/// go by the order: they list and draw the versions in it, and a version's
+/// place is its number in a navi's stats (`crate::version_byte`).
 pub fn versions(content: &Content) -> &[String] {
     let defs = &content.defs;
     let Some((slot, field)) = defs.fact_field(nettai_battle::content::PlayerFact::Version) else { return &[] };
@@ -61,7 +70,7 @@ pub fn versions(content: &Content) -> &[String] {
     }
 }
 
-/// The game's versions in a phrase, for a message: "falzar or gregar".
+/// The game's versions in a phrase, for a message: "gregar or falzar".
 pub fn versions_phrase(content: &Content) -> String {
     versions(content).join(" or ")
 }
@@ -88,14 +97,27 @@ pub fn takes(content: &Content, field: &str) -> bool {
     crate::systems(content).iter().any(|&h| content.defs.schema(content.defs.system(h).setup).index_of(field).is_some())
 }
 
+/// How many forms a side's Cross list has room for (the `cross_list`
+/// field's elements: EXE6's Cross window's five), none when the game's
+/// rules take none.
+pub fn cross_list_capacity(content: &Content) -> usize {
+    capacity(content, CROSS_LIST_FIELD)
+}
+
 /// How many souls a side has room for (the `souls` field's elements:
 /// EXE5's souls system's 16), none when the game's rules take none.
 pub fn soul_capacity(content: &Content) -> usize {
+    capacity(content, SOULS_FIELD)
+}
+
+/// The elements of the setup array `field`, of the first system of the
+/// game's rules that declares it; 0: none does.
+fn capacity(content: &Content, field: &str) -> usize {
     crate::systems(content)
         .iter()
         .filter_map(|&h| {
             let schema = content.defs.schema(content.defs.system(h).setup);
-            match &schema.field(schema.index_of(SOULS_FIELD)?).ty {
+            match &schema.field(schema.index_of(field)?).ty {
                 nettai_content_api::FieldType::Array(_, n) => Some(*n as usize),
                 _ => None,
             }
@@ -167,13 +189,29 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
     out
 }
 
-/// Write `side`'s karma and souls into `player`'s setup, each into the
-/// systems of the game's rules that take it (none: nothing); with souls,
-/// the save's Soul Unison and Chaos Unison (a finished save's event flags
-/// 0 and 0x236).
+/// Write what `side` brings into `player`'s setup, each fact by its name
+/// into the systems of the game's rules that take it (none: nothing):
+/// - its version, where it states one of the rules' (a side without one
+///   leaves it unstated: the rules that take one start no round, and the
+///   match's checks say so first);
+/// - what its save unlocks on the custom screen (EXE6's cross and beast
+///   systems'): every Cross of its version owned, Beast Out as the side
+///   says, and its Cross list, if it names one;
+/// - its karma, bug frags and souls; with souls, the save's Soul Unison
+///   and Chaos Unison (a finished save's event flags 0 and 0x236).
 pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerSetup) -> Result<(), String> {
     // (No ruleset named: the game's own, its one.)
     let game = arena.game.as_str();
+    if let Some(version) = side.version.as_deref().filter(|v| versions(content).iter().any(|name| name == v)) {
+        player.set_fact(content, VERSION_FIELD, &[Fact::Name(version)])?;
+        // (A side's save is a finished game's: it owns its version's
+        // Crosses, all of them.)
+        let owned = vec![Fact::Value(Value::Bool(true)); capacity(content, CROSSES_FIELD)];
+        player.set_fact(content, CROSSES_FIELD, &owned)?;
+        player.set_fact(content, BEAST_OUT_FIELD, &[Fact::Value(Value::Bool(side.beast_out))])?;
+        let list: Vec<Fact> = side.crosses.iter().flat_map(|l| l.forms()).map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
+        player.set_fact(content, CROSS_LIST_FIELD, &list)?;
+    }
     player.set_fact(content, KARMA_FIELD, &[Fact::Value(Value::Int(side.karma as i64))])?;
     // (EXE6's: the dark-chips system's.)
     player.set_fact(content, BUG_FRAGS_FIELD, &[Fact::Value(Value::Int(side.bug_frags as i64))])?;
@@ -198,7 +236,7 @@ pub fn write(content: &Content, arena: &Arena, side: &Side, player: &mut PlayerS
 
 impl Side {
     /// Whether a side takes a version (one of [`versions`]: EXE6's cross
-    /// and beast systems' `version`, falzar or gregar). EXE5's rules don't:
+    /// and beast systems' `version`, gregar or falzar). EXE5's rules don't:
     /// its two versions play alike, and a match of it states none.
     pub fn takes_version(content: &Content) -> bool {
         !versions(content).is_empty()
