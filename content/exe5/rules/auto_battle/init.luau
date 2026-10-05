@@ -121,11 +121,11 @@ auto_battle.system = define.system {
     state = ai.layout,
     actions = { auto_battle.leave },
     -- What a match's check refuses in a side's auto battle data: the chips the AI can't place a navi for.
-    unplayable_tactics = place.unplayable(),
+    unplayable_in_auto_battle = place.unplayable(),
     hooks = {
         -- The navi type's idle (action 6) of a navi this system drives: its AI index's. And the side's player's
         -- idle where it would step (EXE5's no-charge drive, 0x080F03E4): with the no-charge state the AI decides
-        -- for it (0x0802B4AC: DarkInvs's drive, on its own side's tactics, its state the system's of the side);
+        -- for it (0x0802B4AC: DarkInvs's drive, on its own side's auto battle data, its state the system's of the side);
         -- without, that state starts over (0x0802C03A) and its idle goes on.
         controller = function(_side: number, navi: Object)
             if navi.actor_type == "player" then
