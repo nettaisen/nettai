@@ -763,19 +763,19 @@ mod tests {
     use super::*;
     use crate::testing::exe6_content;
 
-    /// Live play's draw, written as a match file and read back, is the same
+    /// Live play's random match, written as a match file and read back, is the same
     /// match, and starts the same round.
     #[test]
-    fn a_drawn_match_writes_and_reads_back() {
+    fn a_random_match_writes_and_reads_back() {
         let content = exe6_content();
         for seed in 0..6 {
-            let m = crate::draw::live(&content, "exe6", seed, None).unwrap();
+            let m = crate::pick::live(&content, "exe6", seed, None).unwrap();
             let text = write(&content, &m);
             let back = parse(&content, &text).unwrap_or_else(|e| panic!("seed {seed}: {e:?}\n{text}"));
             assert_eq!(back, m, "seed {seed}:\n{text}");
             assert_eq!(format!("{:?}", back.round(&content, seed)), format!("{:?}", m.round(&content, seed)));
         }
-        let text = write(&content, &crate::draw::live(&content, "exe6", 3, None).unwrap());
+        let text = write(&content, &crate::pick::live(&content, "exe6", 3, None).unwrap());
         for line in ["game = \"exe6\"", "[arena]", "[left]", "folder = [\n    [\"", "\", \"", "[left.navicust]", "expansions = 2", "programs = []"] {
             assert!(text.contains(line), "{line}:\n{text}");
         }
@@ -798,7 +798,7 @@ mod tests {
         use auto_battle::{GIGA, MEGA, PATTERNS, PROGRAM_ADVANCE, STANDARD};
         use nettai_battle::auto_battle::{AutoBattleEntry, PatternRecord};
         let content = crate::testing::exe5_content();
-        let mut m = crate::draw::live(&content, "exe5", 2, None).unwrap();
+        let mut m = crate::pick::live(&content, "exe5", 2, None).unwrap();
         let chip = |name: &str| ids::chip(&content, "exe5", name).unwrap();
         let mut data = AutoBattle::default();
         data.places[0] = Entry::Chip(chip("areagrab"));
@@ -871,7 +871,7 @@ mod tests {
         has(bad(first, &format!("{first}\nrest = []")), "unknown field `rest`");
         // EXE6 has no auto battle: its match file takes no such data.
         let six = exe6_content();
-        let good = write(&six, &crate::draw::live(&six, "exe6", 2, None).unwrap());
+        let good = write(&six, &crate::pick::live(&six, "exe6", 2, None).unwrap());
         assert!(!good.contains("auto_battle"), "{good}");
         let empties = |n: usize| vec!["{}"; n].join(", ");
         let blank = "{ dx = -1, dy = -1, chips = [{}, {}, {}, {}, {}], score = 4294967295 }";
@@ -893,8 +893,8 @@ mod tests {
 
     /// A version is stated where the game's rules take one, and nowhere
     /// else: a new EXE6 match's sides have none until each is given its own
-    /// (the checks refuse the match: none is assumed), a drawn one's are
-    /// drawn and written; an EXE5 match has none, its file takes no
+    /// (the checks refuse the match: none is assumed), a random one's are
+    /// picked and written; an EXE5 match has none, its file takes no
     /// `version` and says why.
     #[test]
     fn a_version_is_stated_where_the_game_takes_one() {
@@ -911,8 +911,8 @@ mod tests {
         // version, and nothing fills one in.)
         let refused = crate::check::start(&six, &new).err().expect("no round without the versions");
         assert_eq!(refused, "the round doesn't start: a player's setup doesn't state the cross system's `version` (gregar or falzar): none is assumed");
-        let drawn = write(&six, &crate::draw::live(&six, "exe6", 1, None).unwrap());
-        assert_eq!(drawn.matches("\nversion = \"falzar\"\n").count() + drawn.matches("\nversion = \"gregar\"\n").count(), 2, "{drawn}");
+        let picked = write(&six, &crate::pick::live(&six, "exe6", 1, None).unwrap());
+        assert_eq!(picked.matches("\nversion = \"falzar\"\n").count() + picked.matches("\nversion = \"gregar\"\n").count(), 2, "{picked}");
         // A version is its name, one of those the game's rules declare
         // (their `version` field's, in its order): a side made in code
         // with another is refused as a file's is.
@@ -920,7 +920,7 @@ mod tests {
         // byte a navi's stats carry is the version's place.)
         assert_eq!(crate::facts::versions(&six), ["gregar", "falzar"]);
         assert_eq!((crate::facts::versions_phrase(&six), crate::facts::version_title("falzar")), ("gregar or falzar".to_string(), "Falzar".to_string()));
-        let live = crate::draw::live(&six, "exe6", 1, None).unwrap();
+        let live = crate::pick::live(&six, "exe6", 1, None).unwrap();
         assert!(live.sides.iter().all(|s| crate::facts::versions(&six).contains(s.version.as_ref().unwrap())));
         let mut odd = live.clone();
         odd.sides[0].version = Some("azure".into());
@@ -930,7 +930,7 @@ mod tests {
         // EXE5.
         let five = crate::testing::exe5_content();
         assert!(crate::facts::versions(&five).is_empty());
-        let m = crate::draw::live(&five, "exe5", 1, None).unwrap();
+        let m = crate::pick::live(&five, "exe5", 1, None).unwrap();
         let text = write(&five, &m);
         assert!(!text.contains("version"), "{text}");
         let e = parse(&five, &text.replacen("navi = \"megaman\"", "navi = \"megaman\"\nversion = \"falzar\"", 1)).unwrap_err();
@@ -947,8 +947,8 @@ mod tests {
     #[test]
     fn problems_are_said() {
         let content = exe6_content();
-        let drawn = crate::draw::live(&content, "exe6", 1, None).unwrap();
-        let good = write(&content, &drawn);
+        let picked = crate::pick::live(&content, "exe6", 1, None).unwrap();
+        let good = write(&content, &picked);
         let bad = |from: &str, to: &str| -> Vec<String> {
             assert!(good.contains(from), "{from}");
             parse(&content, &good.replacen(from, to, 1)).unwrap_err()
@@ -970,13 +970,13 @@ mod tests {
         has(bad(version, "version = \"azure\""), "left: no version \"azure\" (gregar or falzar)");
         has(bad(&format!("{version}\n"), ""), "left: no version: a side of exe6 states its own (gregar or falzar); none is assumed");
         // Thirty copies of a chip.
-        let mut m = drawn.clone();
+        let mut m = picked.clone();
         m.sides[0].folder.chips = [m.sides[0].folder.chips[0]; 30];
         m.sides[0].folder.regular = None;
         has(crate::check_match(&content, &m), "left: folder: 30 copies of");
         // A Mega chip past the navi's Mega level (its stats set directly:
         // no NaviCust).
-        let mut m = drawn.clone();
+        let mut m = picked.clone();
         m.sides[1].navicust = None;
         m.sides[1].stats.mega_level = 0;
         let megas = m.sides[1].folder.chips().filter(|c| content.chip(c.id).class == nettai_battle::content::ChipClass::Mega).count();
@@ -984,10 +984,10 @@ mod tests {
             has(crate::check_match(&content, &m), "Mega chips, past the navi's 0");
         }
         // Patch cards past 80 MB; a Cross list for a navi without Crosses.
-        let mut m = drawn.clone();
+        let mut m = picked.clone();
         m.sides[0].cards = crate::patch_cards(&content, "exe6", "canodumb,amonicul,coldbear,megalian,mettfire,kilplant").unwrap();
         has(crate::check_match(&content, &m), "left: the patch cards are");
-        let mut m = drawn.clone();
+        let mut m = picked.clone();
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[1].navi = protoman;
         m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].version.as_deref());
@@ -1001,7 +1001,7 @@ mod tests {
         let content = exe6_content();
         assert!(crate::ruleset_has_system(&content, crate::FORMS_SYSTEM));
         assert!(!crate::ruleset_has_system(&content, "souls"));
-        let good = write(&content, &crate::draw::live(&content, "exe6", 1, None).unwrap());
+        let good = write(&content, &crate::pick::live(&content, "exe6", 1, None).unwrap());
         let e = parse(&content, &good.replacen("game = \"exe6\"\n", "game = \"exe6\"\nruleset = \"stock\"\n", 1)).unwrap_err();
         assert!(e[0].contains("unknown field `ruleset`"), "{e:?}");
     }
@@ -1012,7 +1012,7 @@ mod tests {
     #[test]
     fn sp_times_beast_out_and_levels_write_and_read_back() {
         let content = exe6_content();
-        let mut m = crate::draw::live(&content, "exe6", 2, None).unwrap();
+        let mut m = crate::pick::live(&content, "exe6", 2, None).unwrap();
         m.sides[0].beast_out = false;
         m.sides[0].navi_level = Some(3);
         m.sides[0].sp_times.0[0] = 721;
@@ -1046,7 +1046,7 @@ mod tests {
     #[test]
     fn the_level_is_checked() {
         let content = exe6_content();
-        let mut m = crate::draw::live(&content, "exe6", 2, None).unwrap();
+        let mut m = crate::pick::live(&content, "exe6", 2, None).unwrap();
         m.sides[0].navi_level = Some(15);
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
         has(crate::check_match(&content, &m), "left: level 15: a navi code's level is 0 to 14");

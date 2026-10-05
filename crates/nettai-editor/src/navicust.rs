@@ -728,7 +728,7 @@ mod tests {
     #[test]
     fn edits() {
         let content = nettai_match::testing::exe6_content();
-        let mut m = nettai_match::draw::live(&content, "exe6", 7, None).unwrap();
+        let mut m = nettai_match::pick::live(&content, "exe6", 7, None).unwrap();
         let mut state = State::default();
         let arena = m.arena.clone();
         let side = &mut m.sides[0];

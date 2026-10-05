@@ -101,7 +101,7 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    game; nettai-editor makes them), instead of a random one;
                    you are its left side. With --host or --join the left side
                    is what you bring, and the host's arena is the match's
-  --save-match FILE  write the match played (live play's random draw, or the
+  --save-match FILE  write the match played (live play's random pick, or the
                    one netplay agreed) to FILE as a match file, to play again
                    or edit
   --show-folders   print both players' live folders
@@ -379,12 +379,12 @@ fn save_match(content: &nettai_battle::Content, m: &nettai_match::Match, seed: u
 /// host its arena or stage.
 fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, game: &str, seed: u32, file: Option<nettai_match::Match>) -> Session {
     use nettai_frontend::netplay::{NetOptions, NetPlayer, Offer, agree, hello};
-    use nettai_match::{Draws, Side, link_stage, patch_cards};
+    use nettai_match::{Picks, Side, link_stage, patch_cards};
     use nettai_netplay::transport::{Connection, Role, Udp};
     let offer = match file {
         Some(m) => Offer::of_match(m, args.host.is_some()),
         None => {
-            let mut side = Side::drawn(content, game, &mut Draws::new(seed)).unwrap_or_else(|e| fail(e));
+            let mut side = Side::picked(content, game, &mut Picks::new(seed)).unwrap_or_else(|e| fail(e));
             if let Some(list) = &args.cards[0] {
                 side.cards = patch_cards(content, game, list).unwrap_or_else(|e| fail(e));
             }
@@ -654,7 +654,7 @@ fn main() {
                 Some(m) => m,
                 None => {
                     let stage = args.stage.as_deref().map(|name| nettai_match::link_stage(&content, &game, name).unwrap_or_else(|e| fail(e)));
-                    let mut m = nettai_match::draw::live(&content, &game, seed, stage).unwrap_or_else(|e| fail(e));
+                    let mut m = nettai_match::pick::live(&content, &game, seed, stage).unwrap_or_else(|e| fail(e));
                     for (side, list) in args.cards.iter().enumerate() {
                         if let Some(list) = list {
                             m.sides[side].cards = nettai_match::patch_cards(&content, &game, list).unwrap_or_else(|e| fail(e));
