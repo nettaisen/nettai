@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 pub const FORMAT: &str = "nettai-content/hud";
-pub const VERSION: u32 = 7;
+pub const VERSION: u32 = 1;
 
 const GLYPHS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
 
@@ -40,8 +40,7 @@ pub struct HudDoc {
     pub gauge_frame: Vec<String>,
     pub font: TileImage,
     /// What each glyph of the font draws, as text (the game's marks as
-    /// characters: U+E002 for the stacked EX, which Unicode has none for;
-    /// version 7 on).
+    /// characters: U+E002 for the stacked EX, which Unicode has none for).
     pub font_chars: Vec<String>,
     /// The opponent's HP digits: normal, dropping, rising (a row each),
     /// with their palette.

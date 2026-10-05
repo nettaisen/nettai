@@ -1853,7 +1853,7 @@ folder with the kinds it owns.
   timer at the intake's end, the idle's step asked of the systems' `controller`, the last 180 ticks' gray flicker; its
   end, BN5's action 0x49, the roles' `stun_strike`, with its dark image, actor 10).
 
-tools/bn5/recipes.py finds chips wherever layout.py put them (`--check`).
+tools/bn5/recipes.py finds chips wherever they are defined (`--check`).
 
 **BN5's dark MegaMan's last stand** (bn5-navichips, 2026-10-03, as built; its scenarios library-bn5/dark-survival:
 holds, antirecv, antirecv-mood, soul, every frame matching). A player MegaMan (AI index 0) of BN5's emotion 5 (a mood
@@ -1963,8 +1963,8 @@ never holds. A unit test (`collision::tests`) shows the first under that rule.
 
 content/bn5 is laid out as content/bn6 is (content-model-v2.md §4.1; the user, 2026-10-03: "you should consolidate
 the chips together where appropriate and move colocate objects with those chips, where appropriate like what bn6
-does"). The verification workspace's `tools/bn5/layout.py <checkout>` computes the layout from the content and
-moves it there (git mv, every `require` rewired, no id changed); its `tools/bn5/gen_content.py` finds each chip's
+does"). The layout was computed from the content and the modules
+moved there (git mv, every `require` rewired, no id changed); the verification workspace's `tools/bn5/gen_content.py` finds each chip's
 definition by its id wherever it is. The move changed no recording's replay (§15.5's report the same, recording by
 recording).
 
@@ -1983,7 +1983,7 @@ recording).
   chips/<key>/chip.luau.
 - **A chip without a use keeps its own folder** until the port gives it one: the loader leaves it out by its
   folder, with every chip folder that requires one of its modules (content-model-v2.md §7.3), so it can't be in a
-  file with chips that play. The next run of layout.py takes it into its series.
+  file with chips that play. It joins its series when it gets its use.
 - **Kinds with their owners** (§4.1's rules 1 to 5). A kind one chip or series uses is in its folder
   (chips/vulcan/vulcan, chips/timebom/timebom, chips/widesht/wave and variants, chips/yoyo/yoyo). One with a
   natural owner and borrowers is the owner's: the dark chips borrow their light chip's (DarkDril
@@ -2005,17 +2005,6 @@ recording).
 | chips/ folders | 333 (a chip each) | 221: 53 series' (165 chips), 168 chips' own (68 without a use yet) |
 | objects/ folders | 53 | 13 |
 | lib/ | 18 modules | 15 modules, 5 family folders |
-
-**A branch from before the layout:** merge main and take main's moves; where main merged a chip you changed into a
-series, the merge reports your chips/<key>/chip.luau as modified and deleted: keep yours (`git add` it); where
-main only repointed `require` lines you also changed, keep yours. Commit the merge, then run
-`tools/bn5/layout.py <checkout>` from the verification workspace's main: it takes your version of the chip into
-its series file, moves your new chips and objects to their places, and repoints your requires of old paths (a
-chip's by its id, another module's by git's renames). Then build and test as usual. A series' new kinds are keyed
-under its folder (`bn5:<series>/...`), and a chip gets its series file's place by gaining a use. (Tried on
-bn5-chips-b at 3c524c21: the merge stopped at four chip files and one block of requires, as above; the run then took
-26 chips into 10 series files, moved 7 new kinds and repointed 22 old requires, and the branch's §15.5 report
-stayed the same, recording by recording: 1,250 matching, 871,358 frames.)
 
 ### 15.13 BN5's NaviCust (as built)
 

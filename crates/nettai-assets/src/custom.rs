@@ -95,10 +95,11 @@ pub struct VersionPictures {
 }
 
 /// Where the screen's blocks go among the HUD layer's tile numbers, which
-/// its window map and patch list count with: BN6's (the default, a pack
-/// that says none), or a game's whose window is laid out otherwise (BN5's
-/// smaller frame puts everything after it lower).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// its window map and patch list count with: a game's own (BN6's is
+/// [`CustomLayout::BN6`]; BN5's smaller frame puts everything after it
+/// lower). A pack says its game's; the default is no layout (zeros: an
+/// empty bundle's), never a game's.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CustomLayout {
     /// The picked-chip column's cells and the late turns' block.
     pub column_cells: u16,
@@ -134,7 +135,7 @@ pub struct CustomLayout {
 /// Where the cursor's corners go over a slot (`sub_8028820`): the slot's
 /// place (`jt_802886C`'s routines) and the four 8x8 corners of each of its
 /// two frames, each (y, x, hflip, vflip) from the place less 3.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CursorPlace {
     pub x: i16,
     pub y: i16,
@@ -176,12 +177,6 @@ impl CustomLayout {
         },
         button_uses: false,
     };
-}
-
-impl Default for CustomLayout {
-    fn default() -> CustomLayout {
-        CustomLayout::BN6
-    }
 }
 
 /// A button the screen draws by its name (a system's button,
