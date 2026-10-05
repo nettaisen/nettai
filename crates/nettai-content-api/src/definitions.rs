@@ -32,9 +32,8 @@ pub struct Definitions {
 }
 
 /// What a game has (docs/design/content-model-v2.md §4.0), by kind, each
-/// with the registries whose definitions it is. Every definition of these
-/// registries is made by a module its folder's init.luau requires itself
-/// (`packs::listed_by`): a game's inits are the whole truth about them.
+/// with the registries whose definitions it is: what a game pack defines
+/// and a support pack never does.
 pub const GAME_LISTS: &[(&str, &[Registry])] = &[
     ("rules", &[Registry::Ruleset]),
     ("chips", &[Registry::Chip]),

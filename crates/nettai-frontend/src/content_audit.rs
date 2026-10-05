@@ -87,15 +87,11 @@ pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&
     let mut seen = BTreeSet::new();
     for (k, (lang, strings)) in languages.iter().enumerate() {
         let b = std::mem::take(&mut bundles[own.index()]);
-        // (A language the content has strings in but its pack no lettering
-        // for, as EXE5's Japanese, which its extraction makes none of: its
-        // consoles can't be shown, the language isn't checked; said, not a
-        // problem.)
+        // (A language the content has strings in and its pack no lettering
+        // for is a problem: a console in it can't be shown.)
+        let have = b.hud.languages().join(", ");
         if k > 0 && !b.hud.languages().contains(&lang.as_str()) {
-            let have = b.hud.languages().join(", ");
-            out.notes.push(format!(
-                "the pack has no lettering in {lang:?} (it has {have}): a {lang} console of the game can't be shown, and {lang} isn't checked"
-            ));
+            out.problems.push(format!("({lang}) the pack has no lettering in {lang:?} (it has {have}): extract it again"));
             bundles[own.index()] = b;
             continue;
         }
