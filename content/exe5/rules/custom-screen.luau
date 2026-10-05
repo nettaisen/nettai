@@ -31,4 +31,12 @@ return {
     -- neither of the calls EXE6's `sub_8026D06` makes of the emblem's routine, here 0x08025824): it is back with
     -- the choosing state's own draw.
     emblem_at_window_return = false,
+    -- A command of a chatbox script runs on the tick the script reaches it (0x0803EADC tests the print delay before a
+    -- character alone, where EXE6's `chatbox_interpreteAndDrawDialogChar` tests it before a command too): a
+    -- message's wait for a key starts with its last character, and its speaker's mouth closes with a line's last.
+    chatbox_commands_wait_for_text = false,
+    -- The characters of a message that don't move its speaker's mouth (0x0803F7CC: a space, the US charmap's 0x92 to
+    -- 0xB4, its punctuation and marks with ャ before them, and its ellipsis, 0x112); every other character does, the
+    -- asterisks of ToadMan's *Ribbit!!!* too.
+    talking_characters = { all_but = " ャ-×=:%?+█\u{E006}ー!\u{E003}\u{E008}&,。.・;'\"~/()「」αβΩ■_Ƶ周⋯" },
 }

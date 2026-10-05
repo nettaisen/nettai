@@ -92,7 +92,10 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
             b.region = Some("us".into());
         }
     }
-    Bundle { sprites: sprites(rom), field: field(rom), backgrounds, hud, custom }
+    let mut sprites = sprites(rom);
+    sprites.extend(portraits(roms, names));
+    sprites.sort_by_key(|s| (s.category, s.index));
+    Bundle { sprites, field: field(rom), backgrounds, hud, custom }
 }
 
 use crate::hud::{palette, tiles};
@@ -127,6 +130,46 @@ fn sprites(rom: &Rom) -> Vec<SpriteSheet> {
     let mut out: Vec<SpriteSheet> =
         archives(rom, SPRITE_LIST).into_iter().filter_map(|((c, i), data)| crate::sprite::sheet(&data, c, i)).collect();
     out.sort_by_key(|s| (s.category, s.index));
+    out
+}
+
+/// The portraits' category (the sprite list's byte offset 0x20, EXE6's
+/// `mugshotSpritePtrs`) and an entry every ROM has its placeholder in.
+const PORTRAITS: u8 = 0x20;
+const PLACEHOLDER_PORTRAIT: u32 = 0x2A;
+/// Team Colonel's US ROM's sprite list.
+const COLONEL_SPRITE_LIST: u32 = 0x0803_272C;
+
+/// The portraits content names (the chatbox's speakers: a no-running
+/// message's `F5 00 n`), each from the ROM that has its face: Team
+/// ProtoMan's unless it has the placeholder there, then Team Colonel's
+/// (the Japanese ROMs have the same pictures and the same placeholders).
+/// Team ProtoMan's ROM has the placeholder for four of Team Colonel's
+/// navis, Team Colonel's for five of Team ProtoMan's: a console operates
+/// its own team's navis alone (a save has a stats block for no other), so
+/// no placeholder is ever shown, and the pack keeps no mark of whose a
+/// face is.
+fn portraits(roms: &Roms, names: &AssetNames) -> Vec<SpriteSheet> {
+    let us = [(&roms.protoman, SPRITE_LIST), (&roms.colonel, COLONEL_SPRITE_LIST)];
+    let jp = [(&roms.protoman_jp, JP_SPRITE_LISTS[0]), (&roms.colonel_jp, JP_SPRITE_LISTS[1])];
+    let entry = |(rom, list): (&Rom, u32), i: u32| rom.u32(rom.u32(list + PORTRAITS as u32) + 4 * i);
+    let placeholder = |source: (&Rom, u32), i: u32| entry(source, i) == entry(source, PLACEHOLDER_PORTRAIT);
+    let sheet = |source: (&Rom, u32), category: u8, index: u8| {
+        crate::sprite::archive(source.0, entry(source, index as u32)).and_then(|data| crate::sprite::portrait_sheet(&data, category, index))
+    };
+    let mut out = Vec::new();
+    for &(category, index) in names.sprites.keys().filter(|(c, _)| *c == PORTRAITS) {
+        let i = index as u32;
+        let v = match (placeholder(us[0], i), placeholder(us[1], i)) {
+            (true, true) => panic!("neither team's ROM has portrait {index:#04x}"),
+            (true, false) => 1,
+            (false, _) => 0,
+        };
+        let picture = sheet(us[v], category, index).unwrap_or_else(|| panic!("portrait {index:#04x} doesn't decode"));
+        assert_eq!((placeholder(jp[0], i), placeholder(jp[1], i)), (placeholder(us[0], i), placeholder(us[1], i)), "portrait {index:#04x}'s placeholders in the Japanese ROMs");
+        assert_eq!(sheet(jp[v], category, index).as_ref(), Some(&picture), "portrait {index:#04x} in the Japanese ROM");
+        out.push(picture);
+    }
     out
 }
 
