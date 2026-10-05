@@ -1738,7 +1738,9 @@ export type SystemSpec = {
     state: StateSchema?,
     setup: StateSchema?,
     -- What a player's setup that says nothing of a field holds (else zero): a
-    -- value of each field given (an enum's by name).
+    -- value of each field given (an enum's by name). An enum of the setup
+    -- has no default but one given here: a player's setup states it, or the
+    -- round doesn't start (the engine picks none of its names).
     setup_defaults: { [string]: number | boolean | string }?,
     -- Its own actions, which reach its state (`system.state()`) for the
     -- side of the navi running them.
@@ -1755,6 +1757,11 @@ export type SystemSpec = {
     -- variants, or a table of such fields. The engine checks a definition's
     -- and reads none of them.
     extends: { [string]: { [string]: any } }?,
+    -- For tools, never the simulation: the chips of its game its rules
+    -- can't play of a player's tactics (`battle.tactic`), by id, each with
+    -- why, as a clause about "it" (EXE5's auto battle: a chip the original
+    -- crashes on). A match's check refuses them in a side's tactics.
+    unplayable_tactics: { [string]: string }?,
     custom: {
         -- As the screen opens: how many chips it deals (`sub_802A40C`).
         -- None answering: the custom level (8 at most), NumbrOpn's 10, and
@@ -1884,28 +1891,35 @@ export type System = SystemSpec
 -- against its schemas when the ruleset is defined, and the game's roles
 -- (§7.4, `roles = require("@self/roles")`). The engine has no game's rules
 -- of its own: a ruleset states `chip_use`, `effects`, `flow`, `panels`,
--- `pools`, `reactions` and `status`, and every field of them (one left out
--- is a load error that names it). A section it may leave out is a feature
--- the game hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`)
--- or a table that is empty without it.
+-- `pools`, `reactions` and `status` (required here, so a ruleset without
+-- one doesn't type-check), and every field of them (one left out is a load
+-- error that names it). A section it may leave out is a feature the game
+-- hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`) or a
+-- table that is empty without it.
+--
+-- A section is a table of its rules by name, which the engine reads by its
+-- schema. (A table and not `any`: a field of type `any` may be left out.)
+export type RuleSection = { [string]: any }
 export type RulesetSpec = {
     systems: { System }?,
+    -- The sections every game states.
+    chip_use: RuleSection,
+    effects: RuleSection,
+    flow: RuleSection,
+    panels: RuleSection,
+    pools: RuleSection,
+    reactions: RuleSection,
+    status: RuleSection,
+    -- The sections a game may leave out.
     banners: any?,
     berserk: any?,
     buster: any?,
-    chip_use: any?,
     custom_screen: any?,
-    effects: any?,
     elements: any?,
-    flow: any?,
     lockon: any?,
     math: any?,
     navicust: any?,
-    panels: any?,
-    pools: any?,
-    reactions: any?,
     sp_chips: any?,
-    status: any?,
     roles: RolesSpec?,
 }
 export type Ruleset = RulesetSpec
