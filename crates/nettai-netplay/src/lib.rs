@@ -41,7 +41,10 @@
 //!   duplication), seeded;
 //! - [`sim`]: two peers over the simulated network with clock sync,
 //!   checking their settled digests against each other and against a
-//!   plain lockstep run.
+//!   plain lockstep run;
+//! - [`cost`]: what rollback costs a world, measured (a step, a save, a
+//!   restore, a rollback of `k` ticks, a session's frames over a simulated
+//!   network), for the engine's world and any other on getgud.
 //!
 //! A session runs on any thread: a battle world, with its states, inputs
 //! and sound feed, is `Send` (checked below at compile time).
@@ -49,6 +52,7 @@
 //! See docs/design/rollback.md.
 
 pub mod battle;
+pub mod cost;
 pub mod link;
 pub mod network;
 pub mod peer;
