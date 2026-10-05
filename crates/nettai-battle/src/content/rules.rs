@@ -493,6 +493,26 @@ pub enum FormBreak {
     AnyForm,
 }
 
+/// What a navi's status routine tests to show the weakness mark
+/// (`Rules::weakness_mark`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WeaknessMark {
+    /// The multiplier of the last hit to reach the navi this tick, on a
+    /// tick with final damage (EXE6's `sub_801A42E`: the byte its hit
+    /// kernel stores at +0x74 of each hit, and the final damage at +0x80):
+    /// a weakness of either kind, a thaw, elec on a bubble. A hit after it
+    /// that nothing multiplies takes the mark away.
+    LastHitMultiplier,
+    /// The damage this tick's hits left of the element the navi's is weak
+    /// to (EXE5's 0x08017254, whose hit kernel stores no multiplier: the
+    /// accumulator the table 0x08017284 names by the navi's element, none
+    /// for null; the engine reads the element off the weakness table): any
+    /// hit of that element, whichever came last, and no test of the final
+    /// damage.
+    WeakElementDamage,
+}
+
 /// A side's emotions where games differ (the status section's `emotion`):
 /// how the emotion is read off the navi (`kinds::player::emotion`: EXE6's
 /// `sub_8015B54`, EXE5's 0x0801270C), what holds a mood and how anger
@@ -616,6 +636,10 @@ pub struct Rules {
     /// bookkeeping, the damage), and only a dark chip used in a soul asks
     /// (0x08010070): a weakness hit there shows its mark and breaks nothing.
     pub weakness_hit_breaks_form: bool,
+    /// What the status routine tests to show the weakness mark (rule
+    /// section `status`): EXE6's the last hit's multiplier, EXE5's the
+    /// damage of the element the navi is weak to.
+    pub weakness_mark: WeaknessMark,
     /// How a navi takes a hit's NaviCust bug (rule section `status`, the
     /// navi's game's).
     pub intake: IntakeRules,
