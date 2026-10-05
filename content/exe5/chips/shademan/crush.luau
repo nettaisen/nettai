@@ -1,7 +1,7 @@
 --!strict
 -- ShadeMan's crush (EXE5's attack object #0x34, 0x080CB4AC; EXE5's own): his figure (his sprite's animation 11) two
 -- panels ahead of him, 18 pixels up, that hits the panel ahead of him at once and, 10 ticks later, the column
--- beyond it (running while dimmed, no spark), highlighting where it hits, for 60 ticks. His command picks what
+-- beyond it (running while dimmed, no spark), highlighting both from its first tick, for 60 ticks. His command picks what
 -- the hits carry: paralysis without a flinch, or confusion.
 
 local collision = require("../../rules/collision")
@@ -14,7 +14,8 @@ export type Effect = "none" | "paralyze" | "confuse"
 
 export type State = {
     effect: Effect,
-    -- The region it highlights (+0x60: 1, then 0x15).
+    -- Whether the column's hit is out (+0x60: 1, then 0x15, the regions' numbers; nothing reads it: the highlight's
+    -- region is a literal).
     wide: boolean,
 }
 
@@ -57,8 +58,9 @@ local function highlight(me: Object, region: Region)
     end
 end
 
--- 0x080CB538: 60 ticks; at 50 the hit on the column ahead; the region highlighted each tick. (Its end clears a
--- hit region it never had: `object_clearCollisionRegion` through no collision data.)
+-- 0x080CB538: 60 ticks; at 50 the hit on the column ahead; its panel and that column highlighted each tick, from
+-- the first (0x080CB568: region 0x15, a literal, turned its way). (Its end clears a hit region it never had:
+-- `object_clearCollisionRegion` through no collision data.)
 local function tick(me: Object)
     if battle.over() then
         me:set_lifecycle("destroy")
@@ -75,7 +77,7 @@ local function tick(me: Object)
         hit(me, me.panel_x + me.facing, me.panel_y, regions.wide)
         s.wide = true
     end
-    highlight(me, if s.wide then regions.fan else regions.single)
+    highlight(me, regions.fan)
 end
 
 -- 0x080CB4D0: his figure (drawn with its sprite), its palette by the command; a panel further ahead than its own;

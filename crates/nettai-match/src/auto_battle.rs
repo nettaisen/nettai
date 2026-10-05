@@ -314,6 +314,10 @@ impl AutoBattle {
     /// count stays 0) or the patterns'; every record zeros. Chips used
     /// equally often come as the game's sort leaves them (0x0814301C: the
     /// higher chip number first).
+    ///
+    /// The one place outside the save import that asks exe5-compat
+    /// anything: the tie-break is by the original's chip numbers, which is
+    /// the game's own order by definition and compat's to know.
     pub fn learned(content: &Content, uses: &[(ChipHandle, u32)]) -> AutoBattle {
         let number = |c: ChipHandle| exe5_compat::Compat::exe5().chip_entry(ids::local(&content.defs.chip(c).key)).map_or(c.0, |e| e.id);
         let most = |class: ChipClass| -> Vec<ChipHandle> {
@@ -461,7 +465,8 @@ pub fn place(dx: i8, dy: i8) -> String {
 /// The auto battle data of the EXE5 save in `file` (a .sav's bytes, or a
 /// raw save image), for a side of a match of `game`: what the game has
 /// learned of the save's player (`crate::import_exe5`), and what is worth
-/// saying about it; or why the file gives none.
+/// saying about it; or why the file gives none. (The save import's: whose
+/// game's the file is picks compat's reader, as in `crate::import`.)
 pub fn of_save(content: &Content, game: &str, file: &[u8]) -> Result<(AutoBattle, Vec<String>), String> {
     if !has(content) {
         return Err(format!("{game} has no auto battle"));

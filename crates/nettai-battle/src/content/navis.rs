@@ -794,7 +794,10 @@ pub(crate) fn read_navi(
     let mut o = super::reader::fields(
         d,
         r,
-        &["id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "cross_hp", "levels", "story", "forms"],
+        &[
+            "id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "cross_hp", "levels", "story", "forms", "tick",
+            "idle", "post_init",
+        ],
     )?;
     let banners = d.spec.field("banners");
     for (field, which) in [("win_banner", "win"), ("lose_banner", "lose")] {

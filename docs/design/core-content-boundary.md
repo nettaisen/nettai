@@ -284,10 +284,12 @@ again; the frontend plays a cue once it is confirmed or first predicted and canc
 
 ## 6. Where the line isn't clean yet
 
-- **The post-init hook by AI index.** `sub_800F378`'s battle-mode-9 spawns are a Rust match on the actor
-  record's AI index (10); the flinch, drag and overlay-refresh hooks and the other tables by AI index are the
-  identity's (`parts`, `overlay_hooks`, `aura_anim`, `ice`: content-model-v2.md §3.2), and navis and forms are
-  definitions by handle whose fields and traits the ruleset asks.
+- **The tables by AI index** are definitions' fields now, none a match in Rust: the flinch, drag and
+  overlay-refresh hooks are the identity's (`parts`, `overlay_hooks`, `aura_anim`, `ice`: content-model-v2.md
+  §3.2); a navi's own tick, idle and post-init hook are its definition's (`tick`, `idle`, `post_init`: EXE5's
+  GyroMan's and ToadMan's, EXE6's DustMan's battle-mode-9 spawns, whose body stays the engine's as
+  `Navi:spawn_mode9_objects`); and navis and forms are definitions by handle whose fields and traits the ruleset
+  asks.
 - **The engine's kinds' spawn parameters.** The engine's own object kinds (the effect, the spark, the hitbox,
   the afterimage, the eruption) still read the four parameter bytes they are spawned with; content kinds have
   none.

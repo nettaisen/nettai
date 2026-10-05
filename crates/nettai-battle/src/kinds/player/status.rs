@@ -911,8 +911,11 @@ fn tick_anger(b: &mut Battle, r: ObjectRef) {
     if navi_record(b, r).actor_type != ActorType::Player {
         return;
     }
-    // (EXE5's, 0x08011A14, passes over AI index 23.)
-    if b.game_rules().emotions == crate::content::Emotions::Exe5 && navi_record(b, r).ai_index == 23 {
+    // A body that never angers (its identity's `never_angers`: EXE5's
+    // tick, 0x08011A14, passes over the actor records of AI index 23,
+    // ShadowMan's SplitUp shadow's and the two after it; EXE6's has no
+    // such test, and no EXE6 identity says so).
+    if b.content.identity(b.objects.get(r).identity).never_angers {
         return;
     }
     let side = b.objects.get(r).alliance;
@@ -944,8 +947,10 @@ fn tick_anger(b: &mut Battle, r: ObjectRef) {
 /// `sub_80143A6`: calm down.
 pub(crate) fn end_anger(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
-    // (EXE5's, 0x08011A94, through its setter: a mood of 0 stays.)
-    if b.game_rules().emotions == crate::content::Emotions::Exe6 || b.stats[side].mood != 0 {
+    // The mood back to 0x80: whatever holds it, or (EXE5's, 0x08011A94)
+    // through the setter, a held mood staying (`emotion.anger_end`).
+    let through_setter = b.game_rules().emotion.anger_end == crate::content::AngerEnd::ThroughSetter;
+    if !(through_setter && super::mood_is_held(b, side as u8)) {
         b.stats[side].mood = 0x80;
     }
     clear_flag1(b, r, f1::ANGER);

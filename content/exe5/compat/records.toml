@@ -12,6 +12,7 @@
 "meddy" = 6
 "shadowman" = 8
 "tomahawkman" = 10
+"knightman" = 11
 
 # Weapons: the weapon routine numbers (0x0800F370, EXE6's `off_80117D4`) NaviStats +0x04 (buster), +0x05 (charged
 # shot), +0x07 (B+Back) and +0x39 (A charge) name; 0xFF none.
@@ -74,6 +75,8 @@
 # TomahawkMan's thrown tomahawk, and his A charge (+0x39: an empty routine, his charged Wood chips').
 "tomahawkman/charge" = [0x3C]
 "tomahawkman/a-charge" = [0x2B]
+# KnightMan's wrecking ball's swing.
+"knightman/charge" = [0x10]
 
 # Projectile variants: the projectile table's rows (0x080C4718, EXE6's `off_80C4C78`) the buster-shot and
 # charged-shot programs (NaviStats +0x4D, +0x4F) name; the buster's and the charged shot's own, and the chips'.
