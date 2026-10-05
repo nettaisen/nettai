@@ -11,9 +11,7 @@ use nettai_battle::console::ConsoleSetup;
 use nettai_battle::custom::{BattleFolder, FolderChip, PlayerSetup};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::input::keys;
-use nettai_battle::setup::{
-    BattleSettings, GaugeSpeed, NaviCustBugs, NaviStats, NaviWeapons, RoundSetup, SetScore, Supports,
-};
+use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
 use nettai_battle::{Battle, PlayerTick, TickEvents, TickInput};
 
 /// A battle stepped on the players' buttons alone.
@@ -66,63 +64,26 @@ pub fn folder(content: &Content, chips: &[(&str, u8)]) -> BattleFolder {
     f
 }
 
-/// A MegaMan (base form) with `hp` HP, on `content` (his stats' version
-/// byte 0, as the stand-in's rounds have always had it).
+/// A MegaMan (base form) with `hp` HP, on `content`: his fresh stats
+/// (`NaviStats::fresh`: what his game's rules and his own definition
+/// state, as a new save's block has them), with what the stand-in changes:
+///
+/// - **his HP**, the match's;
+/// - **his variant**, 10: a battle's start sets it to his base HP in
+///   hundreds (`sub_800A2F8`), and it picks his move lag. The stand-in's
+///   is a MegaMan of 1000 base HP's whatever HP the match gives him, so
+///   matches of any HP move alike;
+/// - **FloatShoes and AirShoes**, so what a masher's steps do doesn't go by
+///   the stage's panels: none slides, cracks under or drops him.
+///
+/// (His stats' version byte stays the fresh block's, none: a battle's
+/// start gives a block its side's, and no stand-in match reads it.)
 pub fn megaman(content: &Content, hp: u16) -> NaviStats {
     // MegaMan: the content's navi that changes form.
     let megaman = content.form_changing_navi().unwrap_or_else(|| panic!("the content has no navi that changes form"));
-    let base = content.base_form_for(megaman);
-    // MegaMan's own weapons; the A button of battle mode 9 is his buster.
-    let own = content.navi(megaman).weapons;
-    NaviStats {
-        attack: 0,
-        rapid: 0,
-        charge: 0,
-        first_barrier: None,
-        gauge_speed: GaugeSpeed::Normal,
-        reg_up: 50,
-        custom_level: 5,
-        mega_level: 5,
-        giga_level: 1,
-        support: Some(Supports::default()),
-        mood: 0x80,
-        element: 0,
-        starting_form: base,
-        float_shoes: true,
-        air_shoes: true,
-        undershirt: false,
-        super_armor: false,
-        version: 0,
-        beast_out_counter: 3,
-        sun: false,
-        chip_drops: 0,
-        encounters: 0,
-        navi: megaman,
-        navi_variant: 10,
-        form: base,
-        folder: 0,
-        folder_reg: [0xFF; 2],
-        max_base_hp: hp,
-        hp,
-        max_hp: hp,
-        chip_recovery: 0,
-        folder_tags: [[0xFF; 2]; 2],
-        chip_shuffle: false,
-        number_open: false,
-        hub_style: 0,
-        soul_turn_bonus: 0,
-        weapons: NaviWeapons {
-            buster: own.buster,
-            charge_shot: own.charge_shot,
-            back_special: own.back_special,
-            a_charge: own.a_charge,
-            mode9_a: own.buster,
-            buster_shot: None,
-            charge_shot_kind: None,
-            back_special_damage: 0,
-        },
-        bugs: NaviCustBugs { panel_trail_kind: 0xFF, ..NaviCustBugs::default() },
-    }
+    let fresh = NaviStats::fresh(megaman, content)
+        .unwrap_or_else(|| panic!("{} has no fresh stats (its definition's `fresh`)", content.defs.navi(megaman).key));
+    NaviStats { max_base_hp: hp, hp, max_hp: hp, navi_variant: 10, float_shoes: true, air_shoes: true, ..fresh }
 }
 
 /// A one-round netbattle between two MegaMen on `content`'s stage `stage`

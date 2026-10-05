@@ -584,9 +584,16 @@ impl Compat {
             .ok_or_else(|| format!("weapon routine {n:#04x}"))
     }
 
-    /// The projectile variant of a row: its id.
-    pub fn projectile_variant(&self, n: u8) -> Result<String, String> {
-        self.records.projectile_variants.iter().find(|&(_, &v)| v == n).map(|(k, _)| k.clone()).ok_or_else(|| format!("projectile row {n:#04x}"))
+    /// The projectile variant a navi's shot program names (NaviStats +0x4D,
+    /// the buster shot's, and +0x4F, the charged shot's: the projectile
+    /// table's row); none for the byte 0, no program (the table's first
+    /// row is the plain shot, which a shot with no program is), as
+    /// exe6-compat reads EXE6's.
+    pub fn shot_program(&self, n: u8) -> Result<Option<String>, String> {
+        if n == 0 {
+            return Ok(None);
+        }
+        self.records.projectile_variants.iter().find(|&(_, &v)| v == n).map(|(k, _)| Some(k.clone())).ok_or_else(|| format!("projectile row {n:#04x}"))
     }
 
     /// The barrier of a type (None: 0, none).

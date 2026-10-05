@@ -250,6 +250,9 @@ impl Content {
         // The rule sections into the ruleset's typed tables.
         sections::build(self, &definitions)?;
         self.defs = Defs::build(self, definitions)?;
+        // (The rules' references to definitions, which have their handles
+        // now.)
+        sections::link(self)?;
         self.count_strings();
         Ok(())
     }
