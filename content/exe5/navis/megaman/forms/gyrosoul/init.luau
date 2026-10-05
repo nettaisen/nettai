@@ -9,23 +9,27 @@
 -- plays its spinning animations (MegaMan's per-form tick, 0x080F04CE: the overlay's animation 17 on, 0x080C451A).
 -- Its status reset and a NaviCust change give him FloatShoes, a floating body and AirShoes (0x08011BE4, 0x08011D0C).
 
-local attach_points = require("../attach_points")
+local attach_points = require("@self/attach_points")
 local body_overlays = require("../../../lib/body_overlays")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged-shot")
 local darktorn = require("../../../chips/darktorn")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 -- 0x080F04CE in soul 2: the propeller's animation offset by the priming.
 local PRIMED_ANIM = 17
 
 return define.form {
     id = "gyrosoul",
-    soul = { number = 2, family = "wind" },
-    change = souls.action,
-    revert = souls.revert,
+    soul = { family = "wind" },
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- GyroMan's image as MegaMan unites with him (rules/souls/image), in his propeller (0x0800EDBC's routine for the soul).
+    image = soul_image.wearing(asset.sprite("gyroman"), "soul-image/gyroman", body_overlays.gyroman),
     sprite = asset.sprite("gyrosoul"),
     element = "null",
     buster_bonus = 0,
@@ -52,7 +56,8 @@ return define.form {
         normal = asset.mugshot("gyrosoul"),
         variant = { normal = asset.mugshot("gyrosoul-chaos") },
     },
-    buster_arm = { anim = 0 },
+    -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
+    buster_arm = { anim = 2 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 2 of category 0), wearing the
     -- propeller.
     identity = define.identity {
@@ -61,7 +66,7 @@ return define.form {
         actor_type = "player",
         ai_index = 0,
         aura_anim = 0,
-        attach_points = attach_points[2],
+        attach_points = attach_points,
         parts = { body = body_overlays.gyrosoul },
     },
 }

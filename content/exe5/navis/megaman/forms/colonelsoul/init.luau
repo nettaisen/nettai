@@ -7,19 +7,27 @@
 -- arms its side's army: the obstacles on the other side's panels turn into its soldiers (objects/soldier, the
 -- obstacle framework's step; exe5-map.md §15.11), which strike with the damage words it sets.
 
-local attach_points = require("../attach_points")
+local arm_change = require("@self/arm-change")
+local attach_points = require("@self/attach_points")
+local body_overlays = require("../../../lib/body_overlays")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged-shot")
 local drksonic = require("../../../chips/drksonic")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "colonelsoul",
-    soul = { number = 7, family = "summon" },
-    change = souls.action,
-    revert = souls.revert,
+    soul = { family = "summon" },
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- Colonel's image as MegaMan unites with him (rules/souls/image), in his cape (0x0800EDBC's routine for the soul).
+    image = soul_image.wearing(asset.sprite("colonel"), "soul-image/colonel", body_overlays.colonel),
+    -- What it adds to the custom screen (the souls system gathers it, rules/souls/custom): Arm Change (./arm-change).
+    custom = arm_change.custom,
     sprite = asset.sprite("colonelsoul"),
     element = "null",
     buster_bonus = 0,
@@ -44,7 +52,10 @@ return define.form {
         normal = asset.mugshot("colonelsoul"),
         variant = { normal = asset.mugshot("colonelsoul-chaos") },
     },
-    buster_arm = { anim = 0 },
+    -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
+    buster_arm = { anim = 7 },
+    -- His sword's arm (lib/swords, 0x080EC038): the blade's animation.
+    blade_anim = 14,
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 7 of category 0).
     identity = define.identity {
         class = "megaman",
@@ -52,6 +63,6 @@ return define.form {
         actor_type = "player",
         ai_index = 0,
         aura_anim = 0,
-        attach_points = attach_points[7],
+        attach_points = attach_points,
     },
 }

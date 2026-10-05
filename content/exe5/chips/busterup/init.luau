@@ -6,9 +6,10 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local effects = require("../lib/effects")
-local souls = require("../navis/megaman/souls")
 
 local SOUND = asset.sound("hub")
+-- The soul whose navi gets AirShoes (0x0800E5B2 tests NaviStats +0x2C), by its form's id.
+local COLONELSOUL = "colonelsoul"
 
 local function raise(user: Object, _spec: InstantChipSpec)
     local stats = battle.navi(user.alliance)
@@ -20,7 +21,7 @@ local function raise(user: Object, _spec: InstantChipSpec)
     local x, y = field.center(user.panel_x, user.panel_y)
     battle.effect(Vec3.new(x, y, 0), effects.heal, 0, 1)
     battle.play_sound(SOUND)
-    if souls.of(user) == "colonel" then
+    if stats.form.id == COLONELSOUL then
         user:set_status("air_shoe", true)
     end
 end

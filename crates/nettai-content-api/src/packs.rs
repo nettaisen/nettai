@@ -34,10 +34,12 @@
 //!
 //! A load of a game runs its top module, and what that requires, in turn,
 //! is what loads (a support pack has no such module: its modules load when
-//! a game requires them). The define phase holds the inits to the whole
-//! truth: a definition of what a game has is made by a module its folder's
-//! init.luau requires itself, a folder the game's init.luau requires itself
-//! ([`listed_by`], [`required_by`]).
+//! a game requires them). Nothing is read ahead: a `require` finds its
+//! module when it runs ([`find`], the one place that knows how), and reads
+//! it then from where the load's modules are ([`Modules`]: a content
+//! directory's packs, modules held in memory, or both). A module nothing
+//! requires never runs, so it defines nothing; the inits are tools/content/
+//! index.py's, written from the modules that are there.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -116,39 +118,131 @@ pub fn top_module(id: &str) -> String {
     format!("{id}{}{INIT}", keys::SEPARATOR)
 }
 
-/// The modules module `module` (by name; source `source`) requires itself,
-/// by name, in order, each once; a folder by its name (`exe6:chips/cannon`,
-/// [`keys::listed_as`]). A require it can't resolve is an error naming it.
-pub fn required_by(module: &str, source: &str) -> Result<Vec<String>, String> {
-    let mut out: Vec<String> = Vec::new();
-    for written in requires(source) {
-        let target = keys::resolve(module, &written).map_err(|e| format!("{}.luau: {e}", keys::module_path(module)))?;
-        let target = keys::listed_as(&target).to_string();
-        if !out.contains(&target) {
-            out.push(target);
-        }
+/// Where a load reads its modules from: by name (`exe6:chips/cannon/init`),
+/// the text of each. A content directory's packs ([`Dirs`]), modules held
+/// in memory (a map by name: a test's, a tool's stand-ins), or the first of
+/// two that has it (a pair).
+pub trait Modules {
+    /// Module `name`'s text, if there is one.
+    fn read(&self, name: &str) -> Option<String>;
+
+    /// Whether there is a module `name`.
+    fn has(&self, name: &str) -> bool {
+        self.read(name).is_some()
     }
-    Ok(out)
 }
 
-/// The module that lists game module `module` (by name), and the name it
-/// requires it by: the init of the folder of the pack it is in
-/// (`exe6:chips/init` requires `exe6:chips/cannon`, the module
-/// `exe6:chips/cannon/init`); the game's top module for a module at the
-/// pack's top and for a folder's own init (`exe6:init` requires
-/// `exe6:rules`, the module `exe6:rules/init`, and `exe6:chips`). None for
-/// the top module itself.
-pub fn listed_by(module: &str) -> Option<(String, String)> {
-    let pack = keys::root_of(module)?;
-    let name = keys::listed_as(module);
-    let local = keys::local(name);
-    if local == INIT {
-        return None;
+impl Modules for BTreeMap<String, String> {
+    fn read(&self, name: &str) -> Option<String> {
+        self.get(name).cloned()
     }
-    Some(match local.split_once('/') {
-        Some((folder, _)) => (format!("{pack}{}{folder}/{INIT}", keys::SEPARATOR), name.to_string()),
-        None => (top_module(pack), name.to_string()),
-    })
+
+    fn has(&self, name: &str) -> bool {
+        self.contains_key(name)
+    }
+}
+
+impl<T: Modules + ?Sized> Modules for &T {
+    fn read(&self, name: &str) -> Option<String> {
+        (**self).read(name)
+    }
+
+    fn has(&self, name: &str) -> bool {
+        (**self).has(name)
+    }
+}
+
+impl<A: Modules, B: Modules> Modules for (A, B) {
+    fn read(&self, name: &str) -> Option<String> {
+        self.0.read(name).or_else(|| self.1.read(name))
+    }
+
+    fn has(&self, name: &str) -> bool {
+        self.0.has(name) || self.1.has(name)
+    }
+}
+
+/// Packs' folders on disk, by pack: module `<pack>:<path>` is the file
+/// `<its folder>/<path>.luau` (content/'s packs: `exe6` in content/exe6).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Dirs(pub BTreeMap<String, PathBuf>);
+
+impl Dirs {
+    /// The packs `packs` of content directory `dir`, each in its folder.
+    pub fn of_content<'a>(dir: &Path, packs: impl IntoIterator<Item = &'a str>) -> Dirs {
+        Dirs(packs.into_iter().map(|p| (p.to_string(), dir.join(p))).collect())
+    }
+
+    /// Module `name`'s file.
+    pub fn file(&self, name: &str) -> Option<PathBuf> {
+        let (pack, path) = name.split_once(keys::SEPARATOR)?;
+        if path.split('/').any(|s| s.is_empty() || s == "." || s == "..") {
+            return None;
+        }
+        Some(self.0.get(pack)?.join(format!("{path}.luau")))
+    }
+
+    /// Every module the folders hold, by name, in name order (definition
+    /// files, `.d.luau`, aside): what a tool lists, never what a load
+    /// reads.
+    pub fn names(&self) -> Vec<String> {
+        fn walk(pack: &str, root: &Path, dir: &Path, out: &mut Vec<String>) {
+            let Ok(entries) = std::fs::read_dir(dir) else { return };
+            for path in entries.flatten().map(|e| e.path()) {
+                if path.is_dir() {
+                    walk(pack, root, &path, out);
+                } else if let Some(stem) = path.to_str().and_then(|s| s.strip_suffix(".luau"))
+                    && !stem.ends_with(".d")
+                    && let Ok(rel) = Path::new(stem).strip_prefix(root)
+                {
+                    let rel = rel.components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/");
+                    out.push(format!("{pack}{}{rel}", keys::SEPARATOR));
+                }
+            }
+        }
+        let mut out = Vec::new();
+        for (pack, dir) in &self.0 {
+            walk(pack, dir, dir, &mut out);
+        }
+        out.sort();
+        out
+    }
+}
+
+impl Modules for Dirs {
+    fn read(&self, name: &str) -> Option<String> {
+        std::fs::read_to_string(self.file(name)?).ok()
+    }
+
+    fn has(&self, name: &str) -> bool {
+        self.file(name).is_some_and(|f| f.is_file())
+    }
+}
+
+/// The module the name `name` stands for among `modules`: itself, or, a
+/// folder's name, the folder's init (`exe6:rules` is `exe6:rules/init`,
+/// rules/init.luau), as Luau reads a folder.
+pub fn module(modules: &dyn Modules, name: &str) -> Option<String> {
+    if modules.has(name) {
+        return Some(name.to_string());
+    }
+    Some(keys::init_of(name)).filter(|init| modules.has(init))
+}
+
+/// The module a `require` of `written` in module `from` names, among
+/// `modules`: where every require is resolved, a load's as it runs and a
+/// check's of a module's text. Its path by Luau's rule ([`keys::resolve`]:
+/// relative, `@self/`, `@<pack>/`), a folder's name for its init
+/// ([`module`]); and whether `from`'s pack may require it
+/// ([`check_require`]; `packs` empty: any, a test's modules alone). An
+/// error names the requiring module and the path as written.
+pub fn find(modules: &dyn Modules, packs: &BTreeMap<String, PackManifest>, from: &str, written: &str) -> Result<String, String> {
+    let file = keys::module_path(from);
+    let target = keys::resolve(from, written).map_err(|e| format!("{file}.luau: {e}"))?;
+    if !packs.is_empty() {
+        check_require(packs, from, written, &target)?;
+    }
+    module(modules, &target).ok_or_else(|| format!("{file}.luau: require({written:?}): no module {}.luau", keys::module_path(&target)))
 }
 
 /// Whether module source `source` is an index: nothing but requires (and
@@ -170,21 +264,6 @@ pub fn is_index(source: &str) -> bool {
         found = true;
         rest = close;
     }
-}
-
-/// The modules an index's commented requires name (`-- require("@self/x")`:
-/// a chip with no use yet, which the game doesn't load), as written.
-pub fn commented_requires(source: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    for line in source.lines() {
-        let Some(comment) = line.trim_start().strip_prefix("--") else { continue };
-        let Some(rest) = comment.trim_start().strip_prefix("require(") else { continue };
-        let Some(quote) = rest.chars().next().filter(|q| *q == '"' || *q == '\'') else { continue };
-        if let Some(end) = rest[1..].find(quote) {
-            out.push(rest[1..1 + end].to_string());
-        }
-    }
-    out
 }
 
 /// Read pack `id`'s manifest in content `dir` (content/<id>/manifest.toml),
@@ -295,7 +374,7 @@ pub fn check_require(all: &BTreeMap<String, PackManifest>, from: &str, written: 
     let at = format!("{}.luau: require({written:?})", keys::module_path(from));
     let Some(p) = all.get(own) else { return Err(format!("{at}: {own} is no pack")) };
     match all.get(target) {
-        None => Err(format!("{at}: {target} is no pack")),
+        None => Err(format!("{at}: {target} is no pack of this load ({own} requires only itself and the support packs it depends on)")),
         Some(t) if t.kind == PackKind::Game => Err(format!(
             "{at}: {target} is a game pack, which no other pack requires ({own} requires only itself and the support packs it depends on)"
         )),
@@ -307,7 +386,9 @@ pub fn check_require(all: &BTreeMap<String, PackManifest>, from: &str, written: 
 }
 
 /// The literal paths module source `source` requires, as written (outside
-/// its line comments).
+/// its line comments): for a tool that reads a module's text (the content
+/// check, which checks every file's requires, loaded or not; a test that
+/// rewrites an index). A load scans nothing: its `require` runs.
 pub fn requires(source: &str) -> Vec<String> {
     let code: String = source.lines().map(|l| l.split("--").next().unwrap_or("")).collect::<Vec<_>>().join("\n");
     let mut out = Vec::new();
@@ -373,29 +454,56 @@ mod tests {
         assert!(PackManifest::parse("id = \"x\"\nkind = \"game\"\ndepends = [\"x\"]\n", "x").unwrap_err().contains("depends on itself"));
     }
 
-    /// A module's own requires: folders by name, each once, in order; a
-    /// line comment's aside. An index is nothing but requires, and its
-    /// commented requires name what the game doesn't load yet.
+    /// A require is found in one place: among modules in memory, in packs'
+    /// folders, or the first of the two that has it; a folder's name is its
+    /// init; and what the packs refuse, a missing module and a path out of
+    /// the pack each say where they are written.
     #[test]
-    fn an_index_requires_what_its_folder_has() {
+    fn a_require_finds_its_module() {
+        let memory: BTreeMap<String, String> =
+            [("g:init", "require(\"@self/rules\")"), ("g:rules/init", "return {}"), ("g:rules/turns", "return {}"), ("lib:x", "return {}")]
+                .into_iter()
+                .map(|(n, s)| (n.to_string(), s.to_string()))
+                .collect();
+        let all: BTreeMap<String, PackManifest> = [pack("g", PackKind::Game, &["lib"]), pack("h", PackKind::Game, &[]), pack("lib", PackKind::Support, &[])].into_iter().collect();
+        let found = |from: &str, written: &str| find(&memory, &all, from, written);
+        assert_eq!(found("g:init", "@self/rules").as_deref(), Ok("g:rules/init"), "a folder's name is its init");
+        assert_eq!(found("g:rules/init", "@self/turns").as_deref(), Ok("g:rules/turns"));
+        assert_eq!(found("g:rules/turns", "../rules").as_deref(), Ok("g:rules/init"));
+        assert_eq!(found("g:rules/turns", "@lib/x").as_deref(), Ok("lib:x"));
+        assert_eq!(found("g:init", "@self/gone").unwrap_err(), "g/init.luau: require(\"@self/gone\"): no module g/gone.luau");
+        assert!(found("g:init", "./rules").unwrap_err().starts_with("g/init.luau: require(\"./rules\") from g:init: leaves pack g"));
+        assert!(found("lib:x", "@g/rules").unwrap_err().starts_with("lib/x.luau: require(\"@g/rules\"): g is a game pack"));
+        assert!(found("g:init", "@h/x").unwrap_err().contains("h is a game pack, which no other pack requires"));
+        // Without packs (a test's modules alone), any module.
+        assert_eq!(find(&memory, &BTreeMap::new(), "g:init", "@lib/x").as_deref(), Ok("lib:x"));
+        // Packs' folders, and memory before them (a tool's stand-in).
+        let dir = std::env::temp_dir().join(format!("nettai-packs-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("g/chips/cannon")).unwrap();
+        std::fs::write(dir.join("g/chips/cannon/init.luau"), "return 1").unwrap();
+        std::fs::write(dir.join("g/chips/cannon/shot.luau"), "return 2").unwrap();
+        std::fs::write(dir.join("g/types.d.luau"), "").unwrap();
+        let dirs = Dirs::of_content(&dir, ["g"]);
+        assert_eq!(dirs.names(), ["g:chips/cannon/init", "g:chips/cannon/shot"]);
+        assert_eq!(dirs.read("g:chips/cannon/shot").as_deref(), Some("return 2"));
+        assert!(!dirs.has("g:chips/cannon") && !dirs.has("g:../g/chips/cannon/init") && !dirs.has("h:x"));
+        assert_eq!(find(&dirs, &all, "g:chips/cannon/shot", "../cannon").as_deref(), Ok("g:chips/cannon/init"));
+        let stand_in: BTreeMap<String, String> = [("g:chips/cannon/shot".to_string(), "return 3".to_string())].into();
+        let both = (stand_in, dirs);
+        assert_eq!(both.read("g:chips/cannon/shot").as_deref(), Some("return 3"));
+        assert_eq!(both.read("g:chips/cannon/init").as_deref(), Some("return 1"));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    /// An index is nothing but requires, and its commented requires name
+    /// what the game doesn't load yet.
+    #[test]
+    fn an_index_is_nothing_but_requires() {
         let top = "--!strict\n-- The game.\nrequire(\"@self/rules\")\nrequire(\"@self/chips\")\n";
-        assert_eq!(required_by("exe6:init", top).unwrap(), ["exe6:rules", "exe6:chips"]);
-        let chips = "-- Chips.\nrequire(\"@self/cannon\")\n-- require(\"@self/later\")  -- no use yet\nrequire(\"@self/cannon/init\")\nrequire(\"@exelib/x/init\")\n";
-        assert_eq!(required_by("exe6:chips/init", chips).unwrap(), ["exe6:chips/cannon", "exelib:x"]);
-        assert_eq!(commented_requires(chips), ["@self/later"]);
+        let chips = "-- Chips.\nrequire(\"@self/cannon\")\n-- require(\"@self/later\")  -- no use yet\nrequire(\"@exelib/x/init\")\n";
+        assert_eq!(requires(chips), ["@self/cannon", "@exelib/x/init"]);
         assert!(is_index(top) && is_index(chips));
         assert!(!is_index("local x = require(\"@self/x\")\n") && !is_index("return { require(\"@self/x\") }") && !is_index("-- nothing\n"));
-        // (Beside a pack is outside it.)
-        let e = required_by("exe6:init", "require(\"./exe5/chips/x\")").unwrap_err();
-        assert!(e.starts_with("exe6/init.luau: ") && e.contains("leaves pack exe6"), "{e}");
-        // Which init lists a module.
-        let by = |m: &str| listed_by(m).map(|(i, n)| format!("{i} {n}"));
-        assert_eq!(by("exe6:chips/cannon/init").as_deref(), Some("exe6:chips/init exe6:chips/cannon"));
-        assert_eq!(by("exe6:navis/elecman/chip").as_deref(), Some("exe6:navis/init exe6:navis/elecman/chip"));
-        assert_eq!(by("exe6:rules/init").as_deref(), Some("exe6:init exe6:rules"));
-        assert_eq!(by("exe6:chips/init").as_deref(), Some("exe6:init exe6:chips"));
-        assert_eq!(by("exe6:probe").as_deref(), Some("exe6:init exe6:probe"));
-        assert_eq!(by("exe6:init"), None);
     }
 
     /// A game requires itself and the support packs it depends on; a

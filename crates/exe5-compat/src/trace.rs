@@ -115,11 +115,23 @@ impl NaviCustSetup {
     }
 }
 
+/// A pattern record of a computer-navi data block: its place, its five
+/// chip places' halfwords and its score.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PatternRecord {
+    pub dx: i8,
+    pub dy: i8,
+    pub chips: [u16; nettai_battle::tactics::PATTERN_CHIPS],
+    pub score: u32,
+}
+
 /// A player's computer-navi data block (0xE0 bytes, EXE5's 0x02034C20 by
 /// side) as the halfwords it holds: the entries in order (the count at
-/// +0x54) and, for each pattern an entry names, its place (`dx`, `dy`) and
-/// chips (the halfwords after it to the first 0xFFFF, at most six).
-pub fn tactic_block(block: &[u8]) -> Result<(Vec<u16>, Vec<(u8, i8, i8, Vec<u16>)>), String> {
+/// +0x54) and its eight pattern records (16 bytes each from +0x58). An
+/// entry names one of the eight; the block's last eight bytes are 0xFF
+/// (nothing writes them, and the AI's read of a pattern, which can run
+/// through the records, 0x0802BCD6, ends there).
+pub fn tactic_block(block: &[u8]) -> Result<(Vec<u16>, Vec<PatternRecord>), String> {
     if block.len() != 0xE0 {
         return Err(format!("a computer-navi data block is 0xE0 bytes, not {:#x}", block.len()));
     }
@@ -129,24 +141,25 @@ pub fn tactic_block(block: &[u8]) -> Result<(Vec<u16>, Vec<(u8, i8, i8, Vec<u16>
         return Err(format!("a computer-navi data block counts {count} entries, more than {}", nettai_battle::tactics::MAX_ENTRIES));
     }
     let entries: Vec<u16> = (0..count).map(|i| half(i * 2)).collect();
-    let mut patterns: Vec<(u8, i8, i8, Vec<u16>)> = Vec::new();
     for &e in &entries {
-        if e & 0x8000 == 0 || e == 0xFFFF {
-            continue;
-        }
         let i = (e & 0x7FFF) as usize;
-        if i >= nettai_battle::tactics::MAX_PATTERNS {
+        if e & 0x8000 != 0 && e != 0xFFFF && i >= nettai_battle::tactics::MAX_PATTERNS {
             return Err(format!("a computer-navi data entry names pattern {i}, past the block's {}", nettai_battle::tactics::MAX_PATTERNS));
         }
-        if patterns.iter().any(|(p, ..)| *p as usize == i) {
-            continue;
-        }
-        let at = 0x58 + i * 16;
-        let chips: Vec<u16> = (1..8).map(|k| half(at + k * 2)).take_while(|&c| c != 0xFFFF).collect();
-        if chips.len() > nettai_battle::tactics::MAX_PATTERN_CHIPS {
-            return Err(format!("a computer-navi pattern runs {} chips with no end", chips.len()));
-        }
-        patterns.push((i as u8, block[at] as i8, block[at + 1] as i8, chips));
+    }
+    let patterns = (0..nettai_battle::tactics::MAX_PATTERNS)
+        .map(|i| {
+            let at = 0x58 + i * 16;
+            PatternRecord {
+                dx: block[at] as i8,
+                dy: block[at + 1] as i8,
+                chips: std::array::from_fn(|k| half(at + 2 + k * 2)),
+                score: u32::from_le_bytes(block[at + 12..at + 16].try_into().expect("four bytes")),
+            }
+        })
+        .collect();
+    if block[0xD8..] != [0xFF; 8] {
+        return Err(format!("a computer-navi data block's last eight bytes are {:02x?}, not 0xFF: what the AI's read of a pattern would end at", &block[0xD8..]));
     }
     Ok((entries, patterns))
 }
@@ -550,7 +563,7 @@ impl Round {
                     .iter()
                     .filter(|&&e| e & 0x8000 == 0 && e != 0)
                     .copied()
-                    .chain(patterns.iter().flat_map(|(.., c)| c.iter().copied()));
+                    .chain(patterns.iter().flat_map(|p| p.chips.iter().copied()).filter(|&c| c != 0 && c != 0xFFFF));
                 for id in chips {
                     match compat.chip(id) {
                         Some(key) if content.defs.chip_by_key(&key).is_some() => {}
@@ -670,14 +683,18 @@ impl Round {
             }
         }
         // Each side's souls: its version's six (Team ProtoMan's 1 to 6,
-        // Team Colonel's 7 to 12: 0x08024BF0's flags), those the content
-        // has, into the souls system's setup.
+        // Team Colonel's 7 to 12: 0x08024BF0's flags, by the forms'
+        // numbers, records.toml's), those the content has, into the souls
+        // system's setup.
         for (side, p) in [&mut p0, &mut p1].into_iter().enumerate() {
             if let Ok(p) = p {
                 let version = d.versions[side];
+                let has = |f: nettai_content_api::FormHandle| {
+                    compat.form_number(&content.defs.form(f).key).is_some_and(|n| version.soul_flag(n).is_some())
+                };
                 let souls: Vec<nettai_battle::rules::Fact> = (0..content.defs.forms.len() as u16)
                     .map(nettai_content_api::FormHandle)
-                    .filter(|&f| content.form(f).soul.as_ref().is_some_and(|s| version.soul_flag(s.number).is_some()))
+                    .filter(|&f| content.form(f).soul.is_some() && has(f))
                     .map(|f| nettai_battle::rules::Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, f.0)))
                     .collect();
                 p.set_fact(content, "souls", &souls)?;
@@ -744,7 +761,7 @@ impl Round {
 /// A player's tactics from their computer-navi data block (`tactic_block`):
 /// its chips by key.
 fn tactics(content: &Content, compat: &Compat, block: &[u8]) -> Result<nettai_battle::tactics::Tactics, String> {
-    use nettai_battle::tactics::{Tactic, TacticPattern, Tactics};
+    use nettai_battle::tactics::{PatternChip, Tactic, TacticPattern, Tactics};
     let (entries, patterns) = tactic_block(block)?;
     let chip = |id: u16| -> Result<nettai_content_api::ChipHandle, String> {
         compat
@@ -761,11 +778,18 @@ fn tactics(content: &Content, compat: &Compat, block: &[u8]) -> Result<nettai_ba
             e => Tactic::Chip(chip(e)?),
         });
     }
-    // The patterns in their places (the ones no entry names, empty).
-    let n = patterns.iter().map(|(i, ..)| *i as usize + 1).max().unwrap_or(0);
-    out.patterns = vec![TacticPattern::default(); n];
-    for (i, dx, dy, chips) in patterns {
-        out.patterns[i as usize] = TacticPattern { dx, dy, chips: chips.into_iter().map(chip).collect::<Result<_, _>>()? };
+    // The records in their places, used or not (the AI's read of a
+    // pattern can run on into the ones after it).
+    for p in patterns {
+        let mut chips = [PatternChip::Empty; nettai_battle::tactics::PATTERN_CHIPS];
+        for (place, &c) in chips.iter_mut().zip(&p.chips) {
+            *place = match c {
+                0 => PatternChip::Nothing,
+                0xFFFF => PatternChip::Empty,
+                c => PatternChip::Chip(chip(c)?),
+            };
+        }
+        out.patterns.push(TacticPattern { dx: p.dx, dy: p.dy, chips, score: p.score });
     }
     Ok(out)
 }
@@ -937,6 +961,21 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
     check("rng2", format!("{:#010x}", b.rng.state), format!("{:#010x}", f.rng2));
     check("paused", (b.paused as u8).to_string(), f.paused.to_string());
     check("gauge", format!("{:#x}", b.gauge.value), format!("{:#x}", f.gauge));
+    // The banner: its task (bit 15 of the HUD's tasks) and, while it shows,
+    // the number the traced console's record holds (its +1: the banner
+    // 0x0801B02E started, 0 for a telop), which for a result's is the
+    // console's own (0x080074D2, 0x0800758A).
+    let task = (f.hud_tasks >> 15) & 1 != 0;
+    check("banner", (b.banner.active as u8).to_string(), (task as u8).to_string());
+    if let (Some(id), true) = (b.banner_for(r.local_side), task) {
+        let ours = match b.telop_for(r.local_side) {
+            Some(_) => Some(0),
+            None => b.content.assets.number(nettai_content_api::AssetKind::Banner, id.0).map(|n| n.id as u8),
+        };
+        let theirs = unhex(&f.banner).ok().and_then(|x| x.get(1).copied());
+        let show = |n: Option<u8>| n.map_or("none".to_string(), |n| format!("{n:#04x}"));
+        check("banner number", show(ours), show(theirs));
+    }
     let number = |t: nettai_battle::field::PanelType| {
         compat.panels.keys().copied().find(|&n| compat.panel_type(n) == Ok(Some(t)))
     };

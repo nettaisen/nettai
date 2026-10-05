@@ -243,34 +243,6 @@ pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, pr
     frame
 }
 
-/// Whether the Program Advance animation shows a chip's code after its
-/// name (EXE6's `sub_802B80C`, EXE5's 0x08027BC6: not for the original's
-/// chips from 0x160 on, its navi chips' and the like), by the chip's number
-/// in its game's compat (the match's: EXE6's or EXE5's); a support pack's
-/// chip shows none.
-pub fn advance_code(c: &Content, chip: ChipHandle, problems: &mut Problems) -> bool {
-    let key = key(c, chip);
-    if nettai_content_api::keys::root_of(key).is_some() {
-        return false;
-    }
-    let number = chip_number(c, key);
-    if problems.lookup(Lookup::AdvanceName(chip)) && number.is_none() {
-        let game = c.game();
-        problems.note(format!("chip {key:?} has no number in {game}'s compat: the Program Advance animation can't tell whether its code shows"));
-    }
-    number.is_some_and(|n| n < crate::custom::ADVANCE_NO_CODE_FROM)
-}
-
-/// A chip's number in its game's compat (the content's game: EXE5's for
-/// EXE5, else EXE6's), by its local key.
-fn chip_number(c: &Content, key: &str) -> Option<u16> {
-    if c.game() == exe5_compat::ROOT {
-        exe5_compat::Compat::exe5().chips.get(key).map(|e| e.id)
-    } else {
-        exe6_compat::Compat::exe6_for(c).chips.get(key).map(|e| e.id)
-    }
-}
-
 /// A name in the Program Advance animation (`name`, a chip's display
 /// text) in the 8x16 font's glyphs.
 pub fn advance_name(hud: &Hud, chip: ChipHandle, name: &str, problems: &mut Problems) -> Vec<u16> {
@@ -439,9 +411,9 @@ pub fn warning(hud: &Hud, problems: &mut Problems) -> bool {
     !hud.warning.is_empty()
 }
 
-/// A Cross's name and colors in the Cross window: its game's pictures and
-/// its number among that game's Crosses (`custom::cross_picture`), with
-/// its name's tiles and colors there.
+/// A Cross's name and colors in the Cross window: its version's pictures
+/// and its number among that version's Crosses as `navi` lists them
+/// (`custom::cross_picture`), with its name's tiles and colors there.
 pub fn cross_name<'a>(
     a: &'a CustomScreen,
     c: &Content,
@@ -453,7 +425,10 @@ pub fn cross_name<'a>(
     if problems.lookup(Lookup::CrossName(form)) {
         let key = &c.defs.form(form).key;
         match found {
-            None => problems.note(format!("form {key:?} is no Cross of its game's on the custom screen (no game, or not among its navi's five)")),
+            None => {
+                let navi = &c.defs.navi(navi).key;
+                problems.note(format!("form {key:?} has no name on the custom screen (it says no `version`, or navi {navi:?} doesn't list it among that version's Crosses)"));
+            }
             Some((own, number)) => {
                 let names = crate::custom::CROSS_NAME_TILES * (number + 5 + 1);
                 if own.cross_names.len() < names || own.cross_palettes.len() < number + 5 + 1 {

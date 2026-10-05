@@ -35,10 +35,10 @@ pub mod verify;
 
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
-use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use nettai_content_api::packs::Modules;
 use nettai_content_api::{
     AssetKind, AssetNames, BindPlan, ContentError, ContentHost, CoreApi, Definitions, FnId, FnSource, HookCall, Manifest,
     ObjectRef, Registry, StateId, Value, keys,
@@ -51,17 +51,25 @@ use mlua::{Function, Lua, Table, Value as LuaValue, VmState};
 /// pack without `.luau` (`exe6:chips/minibomb/init`; docs/design/
 /// content-model-v2.md §4.0); the definitions a module makes are keyed
 /// local to the game (`minibomb`).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone)]
 pub struct Pack {
-    modules: BTreeMap<String, String>,
+    /// Where a module is read from when a load requires it (`packs::find`):
+    /// modules in memory, a content directory's packs, or both.
+    modules: Arc<dyn Modules>,
     /// The modules the define phase loads, in order (each game's top
-    /// module, its init.luau), which require the rest; none: every module,
-    /// in name order (a pack a test makes of modules alone).
+    /// module, its init.luau), which require the rest. (A pack a test makes
+    /// of modules alone: every one, in name order.)
     entries: Vec<String>,
     /// The packs the modules are of, by name: what a module may require
     /// (`packs::check_require`); none: any module (a test's modules alone).
     packs: BTreeMap<String, nettai_content_api::PackManifest>,
     compiled: Compiled,
+}
+
+impl std::fmt::Debug for Pack {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Pack {{ entries: {:?}, packs: {:?}, compiled: {} }}", self.entries, self.packs.keys().collect::<Vec<_>>(), self.compiled.len())
+    }
 }
 
 /// Modules' bytecode, each with the source it was compiled from: loading a
@@ -86,21 +94,38 @@ impl Compiled {
         self.modules.len()
     }
 
+    /// The modules a load read, by name, each with the text it had: what
+    /// the define phase's content is made of.
+    pub fn sources(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.modules.iter().map(|(name, (source, _))| (name.as_str(), &**source))
+    }
+
     pub fn is_empty(&self) -> bool {
         self.modules.is_empty()
     }
 }
 
 impl Pack {
-    /// Modules by name: their pack and their path in it
+    /// Modules in memory, by name: their pack and their path in it
     /// (`exe6:chips/minibomb/init`, `keys::module_name`;
-    /// docs/design/content-model-v2.md §4.0).
+    /// docs/design/content-model-v2.md §4.0). The define phase loads every
+    /// one, in name order, unless [`Pack::with_entries`] says where it
+    /// starts.
     pub fn new(modules: impl IntoIterator<Item = (String, String)>) -> Pack {
         let modules: BTreeMap<String, String> = modules.into_iter().collect();
         for name in modules.keys() {
             assert!(keys::root_of(name).is_some(), "module {name:?} names no pack (`<pack>:<path>`)");
         }
-        Pack { modules, entries: Vec::new(), packs: BTreeMap::new(), compiled: Compiled::default() }
+        let entries = modules.keys().cloned().collect();
+        Pack { modules: Arc::new(modules), entries, packs: BTreeMap::new(), compiled: Compiled::default() }
+    }
+
+    /// Modules read where `modules` has them, as a load requires them (a
+    /// content directory's packs, `packs::Dirs`; modules in memory before
+    /// them), the define phase starting from `entries` (each game's top
+    /// module, by name).
+    pub fn of(modules: impl Modules + 'static, entries: Vec<String>) -> Pack {
+        Pack { modules: Arc::new(modules), entries, packs: BTreeMap::new(), compiled: Compiled::default() }
     }
 
     /// The same pack, the define phase starting from these modules (each
@@ -126,35 +151,6 @@ impl Pack {
     pub fn with_compiled(mut self, compiled: Compiled) -> Pack {
         self.compiled = compiled;
         self
-    }
-
-    /// Every `.luau` file under `dir` (definition files, `.d.luau`,
-    /// excluded), as root `name`.
-    pub fn from_dir(name: &str, dir: &Path) -> std::io::Result<Pack> {
-        fn walk(root: &Path, dir: &Path, out: &mut BTreeMap<String, String>) -> std::io::Result<()> {
-            for entry in std::fs::read_dir(dir)? {
-                let path = entry?.path();
-                if path.is_dir() {
-                    walk(root, &path, out)?;
-                    continue;
-                }
-                let Some(name) = path.to_str().and_then(|s| s.strip_suffix(".luau")) else { continue };
-                if name.ends_with(".d") {
-                    continue;
-                }
-                let rel = Path::new(name).strip_prefix(root).expect("walked under the root");
-                let key = rel.components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/");
-                out.insert(key, std::fs::read_to_string(&path)?);
-            }
-            Ok(())
-        }
-        let mut modules = BTreeMap::new();
-        walk(dir, dir, &mut modules)?;
-        Ok(Pack::root(name, modules))
-    }
-
-    pub fn modules(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.modules.iter().map(|(k, v)| (k.as_str(), v.as_str()))
     }
 }
 
@@ -423,28 +419,19 @@ struct Loader {
     support: std::collections::HashSet<String>,
 }
 
+/// Load module `path` (by name, as `packs::find` or `packs::module` found
+/// it): read it where the pack's modules are, compile it and run it, once.
 fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Result<LuaValue> {
-    // (A folder names its `init` module, as a require does: `exe6:rules` is
-    // rules/init.luau.)
-    let folder = keys::init_of(path);
-    let path = if !loader.borrow().pack.modules.contains_key(path) && loader.borrow().pack.modules.contains_key(&folder) {
-        folder.as_str()
-    } else {
-        path
-    };
     let source = {
         let l = loader.borrow();
         if let Some(v) = l.loaded.get(path) {
             return Ok(v.clone());
         }
         if l.stack.iter().any(|p| p == path) {
-            return Err(mlua::Error::runtime(format!("require cycle: {} -> {path}", l.stack.join(" -> "))));
+            let chain: Vec<String> = l.stack.iter().map(|p| format!("{}.luau", keys::module_path(p))).collect();
+            return Err(mlua::Error::runtime(format!("require cycle: {} -> {}.luau", chain.join(" -> "), keys::module_path(path))));
         }
-        l.pack
-            .modules
-            .get(path)
-            .cloned()
-            .ok_or_else(|| mlua::Error::runtime(format!("no module {path}.luau in the content")))?
+        l.pack.modules.read(path).ok_or_else(|| mlua::Error::runtime(format!("no module {}.luau in the content", keys::module_path(path))))?
     };
     let cached = loader.borrow().pack.compiled.get(path, &source);
     let bytecode: Arc<[u8]> = match cached {
@@ -517,10 +504,8 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
                 .ok_or_else(|| mlua::Error::runtime("require is only available while content loads"))?;
             let from = loader.borrow().stack.last().cloned();
             let from = from.ok_or_else(|| mlua::Error::runtime("require is only available at the top of a module"))?;
-            let target = keys::resolve(&from, &path).map_err(mlua::Error::runtime)?;
-            if !packs.is_empty() {
-                nettai_content_api::packs::check_require(&packs, &from, &path, &target).map_err(mlua::Error::runtime)?;
-            }
+            // (Found as it is reached, and read then: `packs::find`.)
+            let target = nettai_content_api::packs::find(&*loader.borrow().pack.modules, &packs, &from, &path).map_err(mlua::Error::runtime)?;
             load_module(lua, &loader, &target)
         })
         .map_err(err)?
@@ -546,12 +531,14 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
         })
     });
     // Each game's top module, and what it requires (in the order it
-    // requires them, which no key depends on); without any, every module in
-    // name order.
-    let paths: Vec<String> = if pack.entries.is_empty() { pack.modules.keys().cloned().collect() } else { pack.entries.clone() };
-    for path in &paths {
+    // requires them, which no key depends on); a test's modules alone,
+    // every one in name order.
+    for path in &pack.entries {
         BUDGET.with(|b| b.set(options.budget.saturating_mul(16)));
-        let v = load_module(&lua, &loader, path);
+        let v = match nettai_content_api::packs::module(&*pack.modules, path) {
+            Some(module) => load_module(&lua, &loader, &module),
+            None => Err(mlua::Error::runtime(format!("no module {}.luau in the content", keys::module_path(path)))),
+        };
         loader.borrow_mut().stack.clear();
         v.map_err(err)?;
     }
