@@ -8,7 +8,7 @@
 -- entrance). RockCube and IceCube place one (./cube), and others use it
 -- too: an obstacle encased in ice becomes an ice block (the encasing's
 -- replacement, objects/encased-bubble), and some stages place them when
--- the round starts (stages/netbattle: the actor lists' entry type 8, the
+-- the round starts (stages.luau: the actor lists' entry type 8, the
 -- kind's `place`, with the variant the stage names). See
 -- docs/engine/field-objects.md. The behavior is EXE5's too
 -- (@exelib/rock/rock), made here with EXE6's look.
