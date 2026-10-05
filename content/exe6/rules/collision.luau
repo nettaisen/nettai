@@ -148,8 +148,8 @@ collision.pull = define.collision { id = "pull", side0 = 0x00004280, side1 = 0x0
 -- AuraHed's head).
 collision.breaking = define.collision { id = "breaking", side0 = 0x80000082, side1 = 0x40000082, row_offset = 0x30 }
 
--- An attack of row 0x08 (a projectile variant nothing names yet).
-collision.attack_90 = define.collision { id = "attack-90", side0 = 0x80000090, side1 = 0x40000090, row_offset = 0x40 }
+-- Chip destruction (row 0x08: an attack that destroys the chip a navi holds; the chip destruction shot's).
+collision.chip_destruction = define.collision { id = "chip-destruction", side0 = 0x80000090, side1 = 0x40000090, row_offset = 0x40 }
 
 -- A pushing attack (row 0x12: AirShot's shot, a tornado, WindRack's swing, AirSpin's spin).
 collision.pushing = define.collision { id = "pushing", side0 = 0x80000880, side1 = 0x40000880, row_offset = 0x90 }
