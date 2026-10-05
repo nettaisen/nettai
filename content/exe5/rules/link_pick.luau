@@ -36,14 +36,14 @@ return {
     -- 0x08129F6C: its backgrounds 0x00 to 0x1A, each once, in the table's order). A stage's own background (every
     -- record's is the same one) is what a match that names none shows.
     backgrounds = {
-        asset.background("binary"), asset.background("drills"), asset.background("soccer-balls"),
-        asset.background("rabbits-and-apples"), asset.background("faces-and-crosses"), asset.background("goldfish"),
-        asset.background("calendar-squares"), asset.background("rings-blue"), asset.background("calendar-blue"),
-        asset.background("calendar-gold"), asset.background("ones-and-zeros"), asset.background("grid"),
-        asset.background("calendar-blue-2"), asset.background("calendar-gold-2"), asset.background("ones-and-zeros-2"),
-        asset.background("numbers-3"), asset.background("ship-wheels"), asset.background("swirls"),
-        asset.background("numbers"), asset.background("lions"), asset.background("numbers-2"),
-        asset.background("crests"), asset.background("shuriken"), asset.background("microchips"),
-        asset.background("glyphs-2"), asset.background("glyphs-blue"), asset.background("glyphs"),
+        asset.background("main-comp"), asset.background("drill-comp"), asset.background("lans-hp"),
+        asset.background("mayls-hp"), asset.background("dexs-hp"), asset.background("yais-hp"),
+        asset.background("comp"), asset.background("comp-alt"), asset.background("acdc-area"),
+        asset.background("oran-area"), asset.background("scilab-area"), asset.background("visionburst"),
+        asset.background("acdc-area3"), asset.background("oran-area3"), asset.background("scilab-area3"),
+        asset.background("end-area"), asset.background("ship-comp"), asset.background("scilab-hp"),
+        asset.background("end-area2"), asset.background("gargcastle-hp"), asset.background("end-area5"),
+        asset.background("soulserv-comp"), asset.background("gargoyle-comp"), asset.background("factory-comp"),
+        asset.background("undernet"), asset.background("nebula-area"), asset.background("undernet4"),
     },
 }
