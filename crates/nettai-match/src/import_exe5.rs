@@ -12,6 +12,8 @@ use crate::auto_battle::{ChipPlace, AutoBattle, Entry, RECORDS, Record};
 use crate::{Arena, Side, ids};
 use exe5_compat::save::{AUTO_BATTLE_EMPTY, AUTO_BATTLE_PATTERN, AutoBattleBlock, Save};
 use nettai_battle::content::Content;
+use nettai_battle::rules::Fact;
+use nettai_content_api::{Registry, Value};
 
 /// A save's auto battle data block as a side states it, place for place
 /// and record for record: its chips by their numbers' names in `game`, a
@@ -81,25 +83,29 @@ impl Side {
     /// player) as the side's. What is worth saying about it.
     pub fn import_exe5_save(&mut self, content: &Content, arena: &Arena, save: &Save) -> Vec<String> {
         let mut notes = Vec::new();
-        self.karma = save.light_dark();
-        if !crate::facts::takes(content, crate::facts::KARMA_FIELD) {
-            notes.push(format!("{} has no light and dark MegaMan: the save's karma is kept, unused", arena.game));
-        }
-        let numbers = save.souls();
-        self.soul_unison = save.soul_unison();
-        self.chaos_unison = save.chaos_unison();
-        let all = crate::facts::all_souls(content, &arena.game);
-        let mut souls = Vec::new();
+        // (A fact the content's rules don't take is the save's alone: said,
+        // and left out.)
+        let mut state = |side: &mut Side, field: &str, values: &[Fact]| {
+            if let Err(e) = side.set_fact(content, field, values) {
+                notes.push(format!("the save's {field} is left out: {e}"));
+            }
+        };
+        state(self, "karma", &[Fact::Value(Value::Int(save.light_dark() as i64))]);
+        state(self, "soul_unison", &[Fact::Value(Value::Bool(save.soul_unison()))]);
+        state(self, "chaos_unison", &[Fact::Value(Value::Bool(save.chaos_unison()))]);
         // (A save's souls are by the original's number: compat names each
         // number's form.)
         let compat = exe5_compat::Compat::exe5();
-        for n in numbers {
-            match compat.form(n).and_then(|k| crate::ids::form(content, &arena.game, k)).filter(|f| all.contains(f)) {
-                Some(f) => souls.push(f),
-                None => notes.push(format!("the save has soul {n}, which {} hasn't", arena.game)),
+        let mut souls = Vec::new();
+        let mut missing = Vec::new();
+        for n in save.souls() {
+            match compat.form(n).and_then(|k| crate::ids::form(content, &arena.game, k)) {
+                Some(f) => souls.push(Fact::Value(Value::Def(Registry::Form, f.0))),
+                None => missing.push(n),
             }
         }
-        self.souls = Some(souls);
+        state(self, "souls", &souls);
+        notes.extend(missing.iter().map(|n| format!("the save has soul {n}, which {} hasn't", arena.game)));
         if let Some(n) = &mut self.navicust {
             let (had, sizes) = (save.expansions(), crate::navicust_rules(content).boards.len());
             if (had as usize) < sizes {
@@ -138,8 +144,11 @@ impl Side {
         match block.map(|b| exe5_compat::codec::navi_stats(&b)) {
             Some(Ok(b)) => {
                 (self.stats.max_base_hp, self.stats.max_hp, self.stats.hp) = (b.max_base_hp, b.max_hp, b.max_hp);
-                self.karma = b.light_dark.0;
-                vec![format!("{name}: the save's level {level} and its block's HP {}", b.max_hp)]
+                let mut notes = vec![format!("{name}: the save's level {level} and its block's HP {}", b.max_hp)];
+                if let Err(e) = self.set_fact(content, "karma", &[Fact::Value(Value::Int(b.light_dark.0 as i64))]) {
+                    notes.push(format!("{name}: its block's karma is left out: {e}"));
+                }
+                notes
             }
             Some(Err(e)) => vec![format!("{name}: the save's level {level}; the navi's block doesn't read ({e}): the story's HP at that level")],
             None => vec![format!("{name}: the save's level {level}; its version has no such navi: the story's HP at that level")],
@@ -183,8 +192,10 @@ mod tests {
         let s = &m.sides[0];
         assert_eq!(crate::ids::local(&content.defs.navi(s.navi).key), "megaman");
         assert!(crate::ids::in_game(&content, "exe5", &content.defs.navi(s.navi).key));
-        assert_eq!(s.karma, 100);
-        let souls: Vec<&str> = s.souls.as_ref().unwrap().iter().map(|&f| crate::ids::local(&content.defs.form(f).key)).collect();
+        use crate::facts::Stated;
+        assert_eq!(s.facts.get(&content, "karma"), Some(Stated::Number(100)));
+        let listed = s.facts.get(&content, "souls").unwrap().defs();
+        let souls: Vec<&str> = listed.iter().map(|&f| crate::ids::local(&content.defs.form(nettai_content_api::FormHandle(f)).key)).collect();
         assert!(souls.contains(&"protosoul") && !souls.contains(&"colonelsoul"), "{souls:?}");
         // (Its six souls: those the game hasn't yet are said.)
         assert_eq!(notes.len() - 1 + souls.len(), 6, "{notes:?}");
@@ -226,7 +237,8 @@ mod tests {
         assert_eq!((s.stats.max_hp, s.stats.hp), (200, 200));
         let notes = m.import_save(&content, 0, &image).unwrap();
         let s = &m.sides[0];
-        assert_eq!((s.navi_level, s.stats.max_base_hp, s.stats.max_hp, s.stats.hp, s.karma), (Some(4), 470, 470, 470, 519));
+        assert_eq!((s.navi_level, s.stats.max_base_hp, s.stats.max_hp, s.stats.hp), (Some(4), 470, 470, 470));
+        assert_eq!(s.facts.get(&content, "karma"), Some(crate::facts::Stated::Number(519)));
         assert!(notes.iter().any(|n| n.contains("level 4") && n.contains("470")), "{notes:?}");
         assert_eq!(crate::check::check_side_alone(&content, &m.arena, s), Vec::<String>::new());
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOK 20041006 US");

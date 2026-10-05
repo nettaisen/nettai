@@ -111,8 +111,9 @@ pub struct Ran {
 /// A round to play live on `content` with these battle settings: two
 /// MegaMen of `version` (one of the names the game's rules declare) at
 /// their fresh stats (`nettai_match::Side::base_stats`, as live play picks
-/// them), each bringing their folder, shuffled from the seed, with every
-/// Cross and Beast Out of that version (`nettai_match::facts`).
+/// them), each bringing their folder, shuffled from the seed, and of what
+/// the game's rules take besides, the version (the engine's version fact)
+/// and their defaults (EXE6's: every Cross of that version, Beast Out).
 pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFolder; 2], version: &str, seed: u32) -> RoundSetup {
     let megaman = content.form_changing_navi().expect("a navi that changes form");
     let stats = nettai_match::Side::base_stats(content, megaman, Some(version));
@@ -132,7 +133,8 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             navicust: None,
             auto_battle: Default::default(),
         };
-        nettai_match::facts::write_version(content, &mut player, version, true, None).expect("the rules take the version");
+        let field = nettai_battle::content::PlayerFact::Version.name();
+        player.set_fact(content, field, &[nettai_battle::rules::Fact::Name(version)]).expect("the rules take the version");
         player
     };
     RoundSetup {
@@ -491,7 +493,7 @@ mod tests {
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 5);
-        nettai_match::facts::write_version(&content, &mut setup.players[0], "falzar", true, Some(&nettai_match::CrossList::new(&[heat]))).unwrap();
+        setup.players[0].set_fact(&content, "cross_list", &[form_fact(heat)]).unwrap();
         let mut live = LivePlayer::new(Set::new(content.clone(), setup, [folder, folder]));
         let mut b = live.start();
         // The first screen: UP opens the Cross window (a hold acts on its
@@ -595,13 +597,21 @@ mod tests {
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 5);
-        let list = list.map(|l| nettai_match::CrossList::new(&l.iter().map(|k| form_of(&content, k)).collect::<Vec<_>>()));
-        nettai_match::facts::write_version(&content, &mut setup.players[0], version, true, list.as_ref()).unwrap();
+        setup.players[0].set_fact(&content, "version", &[nettai_battle::rules::Fact::Name(version)]).unwrap();
+        if let Some(list) = list {
+            let list: Vec<_> = list.iter().map(|k| form_fact(form_of(&content, k))).collect();
+            setup.players[0].set_fact(&content, "cross_list", &list).unwrap();
+        }
         tweak(&content, &mut setup.navi_stats[0]);
         let mut live = LivePlayer::new(Set::new(content.clone(), setup, [folder, folder]));
         let mut b = live.start();
         play_until(&mut live, &mut b, 3000, |_, _| 0, |b| choosing(b).is_some());
         (content, live, b)
+    }
+
+    /// A form as a setup's fact takes it (an entry of a form list).
+    fn form_fact(form: nettai_content_api::FormHandle) -> nettai_battle::rules::Fact<'static> {
+        nettai_battle::rules::Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, form.0))
     }
 
     /// The form `key` (EXE6's, without its prefix).

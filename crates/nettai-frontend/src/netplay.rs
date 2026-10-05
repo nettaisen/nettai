@@ -482,27 +482,32 @@ mod tests {
         assert!(Offer::from_bytes(&content, "exe6", &bytes[..10]).is_err());
     }
 
-    /// An EXE5 side's offer carries its karma and souls; both peers' rounds
-    /// start from them alike. Karma past 1000, or a soul list under rules
-    /// without souls, is refused.
+    /// An EXE5 side's offer carries its facts (its karma, its souls); both
+    /// peers' rounds start from them alike. A fact past its field's type,
+    /// or one the offer's game's rules don't take, is refused.
     #[test]
     fn offers_carry_karma_and_souls() {
+        use nettai_battle::rules::Fact;
+        use nettai_content_api::{Registry, Value};
         let content = nettai_match::testing::exe5_content();
         let mut o = offer_of(&content, "exe5", 5);
-        o.side.karma = 100;
-        o.side.souls = Some(vec![ids::form(&content, "exe5", "protosoul").unwrap()]);
+        o.side.set_fact(&content, "karma", &[Fact::Value(Value::Int(100))]).unwrap();
+        let proto = ids::form(&content, "exe5", "protosoul").unwrap();
+        o.side.set_fact(&content, "souls", &[Fact::Value(Value::Def(Registry::Form, proto.0))]).unwrap();
         let back = Offer::from_bytes(&content, "exe5", &o.to_bytes(&content)).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back, o);
         let (one, _) = netplay_setup(&content, 9, &[o.clone(), offer_of(&content, "exe5", 6)]).unwrap();
         let (two, _) = netplay_setup(&content, 9, &[back, offer_of(&content, "exe5", 6)]).unwrap();
         assert_eq!(format!("{:?}", one.first()), format!("{:?}", two.first()));
-        let mut bad = o.clone();
-        bad.side.karma = 1200;
-        assert!(Offer::from_bytes(&content, "exe5", &bad.to_bytes(&content)).unwrap_err().contains("karma 1200"));
+        let stated = String::from_utf8(o.to_bytes(&content)).unwrap();
+        assert!(stated.contains("karma = 100\n"), "{stated}");
+        let bad = stated.replacen("karma = 100\n", "karma = 70000\n", 1);
+        assert!(Offer::from_bytes(&content, "exe5", bad.as_bytes()).unwrap_err().contains("karma: 70000 is past a u16"));
         let six = exe6_test_content();
-        let mut bad = offer(&six, 6);
-        bad.side.souls = Some(Vec::new());
-        assert!(Offer::from_bytes(&six, "exe6", &bad.to_bytes(&six)).unwrap_err().contains("no Soul Unison"));
+        let plain = String::from_utf8(offer(&six, 6).to_bytes(&six)).unwrap();
+        let bad = plain.replacen("[side]\n", "[side]\nsouls = []\n", 1);
+        assert_ne!(bad, plain);
+        assert!(Offer::from_bytes(&six, "exe6", bad.as_bytes()).unwrap_err().contains("no field \"souls\" (a side of exe6 takes"));
         // Offers of two games make no match.
         let mut other = o.clone();
         other.game = "exe6".into();
