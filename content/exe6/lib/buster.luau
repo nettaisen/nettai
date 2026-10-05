@@ -20,5 +20,9 @@ return common.make {
     -- The buster's recovery in ticks (`byte_80209CC`), by Rapid, then the
     -- open panels ahead.
     recovery = require("../rules/buster").recovery,
+    -- What stops a shot's panel count (`byte_800FB4C`, by side): bodies,
+    -- neutral objects, blockers and reservations, and only the other side's
+    -- barrier bits.
+    closed = { [0] = 0x0D880080, [1] = 0x0E880080 },
     attachment = attachment.kind,
 }
