@@ -21,6 +21,6 @@ return define.chip {
     extra_flags = { "rush_cancels" },
     library = { number = 382, index = 0, sort = 0 },
     slot_in_limit = 1,
-    traits = { "no_cut_in", "hides_advance_code" },
+    traits = { "no_cut_in" },
     dimming = invisible.hook(120),
 }
