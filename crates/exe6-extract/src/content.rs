@@ -162,6 +162,8 @@ fn asset_names(compat: &Path) -> nettai_content::names::AssetNames {
     names.banners = c.assets.banners.iter().map(|(k, &v)| (v, k.clone())).collect();
     // (A chip's icon is named in the pack by its id: `cannon`.)
     names.chips = c.chips.iter().map(|(k, e)| (e.id, nettai_content_api::keys::local(k).to_string())).collect();
+    // (And a navi's emblem by its key: `heatman`.)
+    names.navis = c.navis.iter().map(|(k, e)| (e.navi, nettai_content_api::keys::local(k).to_string())).collect();
     names.glyphs = c.text.glyphs.clone();
     names.dialogue_glyphs = c.text.dialogue_glyphs.clone();
     // The Japanese ROMs' encoding is the pack's Japanese lettering's.

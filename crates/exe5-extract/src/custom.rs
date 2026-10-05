@@ -5,7 +5,8 @@
 //! picked column, with its own frame (0x44 tiles to EXE6's 0x87, so every
 //! block after it loads lower: `CustomLayout`), its own pictures and EXE5's
 //! element icons (13 to EXE6's 11). It has no Cross window and no Beast Out:
-//! its soul button is drawn by name (`CustomScreen::buttons`, "soul").
+//! its buttons (`CustomScreen::buttons`) are the soul button under OK and,
+//! over slots 8 and 9, Shuffle's re-deal and Arm Change.
 //! Read where the counterparts of the EXE6 routines exe6-extract reads load
 //! them (the HUD's load list at 0x0801B54C, the window's opening, the chip
 //! window's 0x080242FA and 0x080244F8 on, the emblems' 0x08023F68).
@@ -13,10 +14,10 @@
 use crate::hud::{palette, tiles};
 use crate::rom::{Rom, Roms, Version};
 use nettai_assets::{
-    ButtonPictures, ChipArt, CursorPlace, CustomLayout, CustomScreen, MapEntry, MapPatch, Palette, PatchList, Picture, SlotPictures, Tiles,
-    VersionPictures,
-    Versioned,
+    ButtonPictures, ButtonSets, ChipArt, CursorPlace, CustomLayout, CustomScreen, Emblem, MapEntry, MapPatch, PatchList, Picture, SlotPictures, Tiles,
+    VersionPictures, Versioned,
 };
+use nettai_content::names::AssetNames;
 
 /// The window frame's tiles, loaded at tile 1 (0x44 tiles), the picked
 /// column's cells (at 0x47), the late turns' block (0x4B) and the enemy
@@ -30,13 +31,11 @@ const NAME_BAR: (u32, usize) = (0x086F_B74C, 0x80);
 const WINDOW_MAP: u32 = 0x086F_B90C;
 const WINDOW_PATCHES: (u32, u16) = (0x0802_3938, 0x59);
 const MAP_CELLS: u32 = 15 * 20;
-/// Where the blocks load (EXE6's `CustomLayout::EXE6`, all lower by the
-/// frame's 0x42 tiles, the column's icons by 0x44: the special button is
-/// two tiles narrower); the hidden slots' fill (0x08025D44: solid 2, EXE6's
-/// solid 1); the cursor over OK (0x08024704: at (0x58, 0x70), EXE6's
-/// (0x5B, 0x6E)) and over the soul button (0x08024734: at (0x58, 0x88)),
-/// their corners read from `CURSOR_CORNERS`; the Shuffle button's uses left
-/// in the chip window (0x080245F2).
+/// Where the blocks load (EXE6's, all lower by the frame's 0x42 tiles, the
+/// column's icons by 0x44: the special button is two tiles narrower); the
+/// hidden slots' fill (0x08025D44: solid 2, EXE6's solid 1); the cursor
+/// over OK (0x08024704: at (0x58, 0x70), EXE6's (0x5B, 0x6E)), its corners
+/// read from `CURSOR_CORNERS`.
 const LAYOUT: CustomLayout = CustomLayout {
     column_cells: 0x47,
     turn_limit: 0x4B,
@@ -51,8 +50,19 @@ const LAYOUT: CustomLayout = CustomLayout {
     cross_names: 0,
     slot_blank: 2,
     ok_cursor: CursorPlace { x: 0x58, y: 0x70, corners: [[(0, 0, false, false); 4]; 2] },
-    special_cursor: CursorPlace { x: 0x58, y: 0x88, corners: [[(0, 0, false, false); 4]; 2] },
-    button_uses: true,
+};
+/// The cursor over the soul button (0x08024734: at (0x58, 0x88)), its
+/// corners read from `CURSOR_CORNERS`; and over a button two slots wide in
+/// the slots' row (Shuffle's and Arm Change's, over slots 8 and 9: EXE6's
+/// `sub_8028820`'s counterpart).
+const SOUL_CURSOR: CursorPlace = CursorPlace { x: 0x58, y: 0x88, corners: [[(0, 0, false, false); 4]; 2] };
+const ROW_BUTTON_CURSOR: CursorPlace = CursorPlace {
+    x: 0x38,
+    y: 0x80,
+    corners: [
+        [(2, 2, false, false), (2, 0x1C, true, false), (0x14, 0x1C, true, true), (0x14, 2, false, true)],
+        [(4, 4, false, false), (4, 0x1A, true, false), (0x12, 0x1A, true, true), (0x12, 4, false, true)],
+    ],
 };
 /// The cursor's corners over OK and over the soul button (`sub_80288D0`'s
 /// and `sub_8028904`'s counterparts' tables: four words a frame, y in the
@@ -126,8 +136,16 @@ const SCRAP_BUTTONS: (u32, usize) = (0x086F_A7CC, 0x600);
 /// (EXE6 `sub_802871C`'s counterpart, 0x08024540: by the slot's state).
 const SOUL_BUTTONS: (u32, usize) = (0x086F_BB64, SOUL_BUTTON_BYTES);
 pub(crate) const SOUL_BUTTON_BYTES: usize = 0x240;
-/// The soul button's name among the pack's buttons.
+/// The names EXE5's content registers its buttons under (the souls
+/// system's `soul`, SearchSoul's Shuffle as `redeal`, ColonelSoul's
+/// `arm_change`: content/exe5/rules/souls and the souls' own folders),
+/// which the pack has their looks by.
 pub(crate) const SOUL_BUTTON: &str = "soul";
+pub(crate) const REDEAL_BUTTON: &str = "redeal";
+pub(crate) const ARM_CHANGE_BUTTON: &str = "arm_change";
+/// Arm Change's chip over its button (0x08025508: the sprite's x 0x45, y
+/// 0x84).
+const ARM_CHANGE_HELD_AT: (i16, i16) = (0x45, 0x84);
 const SOUL_PICTURE: u32 = 0x0873_22E8;
 const SOUL_PALETTES: (u32, u32) = (0x0873_4D48, 2);
 /// The souls' icons in the picked column, by soul number (13: Chaos Unison's; the
@@ -141,9 +159,10 @@ const COLONEL_SOUL_ICON_PALETTE: u32 = 0x0874_BDBC;
 /// Sprites: the cursor's corner (two frames), the Regular chip's frame.
 const CURSOR: (u32, usize) = (0x086F_ACEC, 0x40);
 const REGULAR: (u32, usize) = (0x086F_72B0, 0x400);
-/// The emblems (0x08023F68: emblem n's four tiles at + 0x80 n: MegaMan's,
-/// then the twelve souls'), their palettes and which palette each shows
-/// (0x08023FC4), by version.
+/// The emblems (0x08023F68, EXE6 `sub_802812C`'s counterpart): a ROM's
+/// seven pictures (four tiles each: MegaMan's, then its own team's six
+/// navis'), the eight palettes, and which palette each of the thirteen
+/// navis shows (0x08023FC4), by version.
 struct Emblems {
     pictures: u32,
     palettes: u32,
@@ -151,7 +170,10 @@ struct Emblems {
 }
 const PROTOMAN_EMBLEMS: Emblems = Emblems { pictures: 0x0874_22B8, palettes: 0x086F_AE2C, palette_of: 0x0802_3FC4 };
 const COLONEL_EMBLEMS: Emblems = Emblems { pictures: 0x0874_35BC, palettes: 0x086F_C0E8, palette_of: 0x0802_3FC8 };
-const EMBLEM_COUNT: u32 = 13;
+/// The navis that operate (NaviStats +0x29): MegaMan (0), Team ProtoMan's
+/// six (1 to 6) and Team Colonel's (7 to 12).
+const NAVI_COUNT: u8 = 13;
+const TEAM_NAVIS: u8 = 6;
 const EMBLEM_PALETTE_COUNT: u32 = 8;
 /// The Program Advance animation's names' colors (EXE6 `byte_802BA48`'s
 /// counterpart: three sets of four).
@@ -177,32 +199,64 @@ fn patches(rom: &Rom, (mut a, first_tile): (u32, u16)) -> PatchList {
     PatchList { first_tile, patches }
 }
 
-/// A version's emblems and their palettes.
-fn emblems(rom: &Rom, e: &Emblems) -> (Tiles, Vec<Palette>, Vec<u8>) {
-    let pictures = tiles(rom, e.pictures, 0x80 * EMBLEM_COUNT as usize);
-    let palettes = (0..EMBLEM_PALETTE_COUNT).map(|i| palette(rom, e.palettes + 0x20 * i)).collect();
-    (pictures, palettes, rom.bytes(e.palette_of, EMBLEM_COUNT as usize).to_vec())
+/// The navis' emblems: navi n's picture is its ROM's nth (Team Colonel's
+/// routine takes 6 off a team navi's number, 0x08023F9C: a ROM has
+/// MegaMan's and its own team's six) and its palette the one the table
+/// gives n, the same table and palettes in both ROMs. The pack has each
+/// navi's own, from the ROM that has it, under the navi's key (`names`): a
+/// navi the content doesn't have yet has none.
+fn emblems(roms: &Roms, names: &AssetNames) -> Vec<Emblem> {
+    let (protoman, colonel) = (&roms.protoman, roms.us(Version::Colonel));
+    let palettes = |rom: &Rom, e: &Emblems| (0..EMBLEM_PALETTE_COUNT).map(|i| palette(rom, e.palettes + 0x20 * i)).collect::<Vec<_>>();
+    let colors = palettes(protoman, &PROTOMAN_EMBLEMS);
+    let palette_of = protoman.bytes(PROTOMAN_EMBLEMS.palette_of, NAVI_COUNT as usize);
+    assert_eq!(
+        (&colors, palette_of),
+        (&palettes(colonel, &COLONEL_EMBLEMS), colonel.bytes(COLONEL_EMBLEMS.palette_of, NAVI_COUNT as usize)),
+        "the versions' emblems' colors"
+    );
+    assert_eq!(tiles(protoman, PROTOMAN_EMBLEMS.pictures, 0x80), tiles(colonel, COLONEL_EMBLEMS.pictures, 0x80), "MegaMan's emblem in each version");
+    (0..NAVI_COUNT)
+        .filter_map(|n| {
+            let (rom, e, picture) = if n <= TEAM_NAVIS { (protoman, &PROTOMAN_EMBLEMS, n) } else { (colonel, &COLONEL_EMBLEMS, n - TEAM_NAVIS) };
+            Some(Emblem {
+                navi: names.navis.get(&n)?.clone(),
+                tiles: tiles(rom, e.pictures + 0x80 * picture as u32, 0x80),
+                palette: colors[palette_of[n as usize] as usize],
+            })
+        })
+        .collect()
 }
 
-/// The custom screen's graphics; `chip_art` the chips' pictures
-/// (graphics.rs).
-pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
+/// A button two slots wide in the slots' row (twelve tiles a state, the
+/// two slots' icons and codes), with its picture in the chip window.
+fn row_button(rom: &Rom, buttons: (u32, usize), details: (u32, u32)) -> ButtonPictures {
+    let picture = picture(rom, details);
+    ButtonPictures {
+        width: 2,
+        height: 3,
+        tiles: block(rom, buttons),
+        sets: ButtonSets::Each,
+        cursor: ROW_BUTTON_CURSOR,
+        palettes: vec![picture.palette],
+        picture,
+        ..ButtonPictures::default()
+    }
+}
+
+/// The custom screen's graphics; `names` gives the navis' emblems their
+/// navis' keys, `chip_art` is the chips' pictures (graphics.rs).
+pub fn custom(roms: &Roms, names: &AssetNames, chip_art: Vec<ChipArt>) -> CustomScreen {
     let rom = &roms.protoman;
     let palettes = |(a, n): (u32, usize)| (0..n as u32).map(|i| palette(rom, a + 32 * i)).collect::<Vec<_>>();
     let glyphs = |(a, n): (u32, usize)| tiles(rom, a, 0x40 * n);
-    // The emblems are each version's: Team Colonel's where they differ.
-    let (protoman_emblems, emblem_palettes, emblem_palette_of) = emblems(rom, &PROTOMAN_EMBLEMS);
-    let (colonel_emblems, colonel_palettes, colonel_palette_of) = emblems(roms.us(Version::Colonel), &COLONEL_EMBLEMS);
-    assert_eq!((&colonel_palettes, &colonel_palette_of), (&emblem_palettes, &emblem_palette_of), "the versions' emblems' colors");
-    let own = |emblems: Tiles| VersionPictures { emblems, ..VersionPictures::default() };
-    let mut versioned = Versioned::new(Version::ProtoMan.name(), own(protoman_emblems));
-    if colonel_emblems != versioned.base.emblems {
-        versioned.versions.push((Version::Colonel.name().into(), own(colonel_emblems)));
-    }
     let soul = ButtonPictures {
         width: 3,
         height: 2,
         tiles: block(rom, SOUL_BUTTONS),
+        // (0x08024540: gray when unavailable or picked.)
+        sets: ButtonSets::Other,
+        cursor: CursorPlace { corners: cursor_corners(rom, CURSOR_CORNERS.1), ..SOUL_CURSOR },
         picture: picture(rom, (SOUL_PICTURE, SOUL_PALETTES.0)),
         palettes: (0..SOUL_PALETTES.1).map(|i| palette(rom, SOUL_PALETTES.0 + 0x20 * i)).collect(),
         icons: block(rom, SOUL_ICONS),
@@ -211,15 +265,19 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
             let colonel = palette(roms.us(Version::Colonel), COLONEL_SOUL_ICON_PALETTE);
             if colonel == palette(rom, SOUL_ICON_PALETTE) { Vec::new() } else { vec![(Version::Colonel.name().into(), colonel)] }
         },
+        ..ButtonPictures::default()
     };
+    // SearchSoul's Shuffle (EXE6's re-deal button's counterpart, 0x080245C8:
+    // its uses left in the chip window, 0x080245F2) and ColonelSoul's Arm
+    // Change (0x0802415A and 0x080245A0, in EXE6's scrap button's place:
+    // picked, it looks on offer, the chip it holds drawn over it).
+    let redeal = ButtonPictures { uses_digit: true, ..row_button(rom, REDEAL_BUTTONS, REDEAL) };
+    let arm_change =
+        ButtonPictures { sets: ButtonSets::Unavailable, held_at: Some(ARM_CHANGE_HELD_AT), ..row_button(rom, SCRAP_BUTTONS, SCRAP) };
     let map = |a: u32| -> Vec<MapEntry> { (0..MAP_CELLS).map(|i| MapEntry::from_gba(rom.u16(a + 2 * i))).collect() };
     CustomScreen {
-        layout: CustomLayout {
-            ok_cursor: CursorPlace { corners: cursor_corners(rom, CURSOR_CORNERS.0), ..LAYOUT.ok_cursor },
-            special_cursor: CursorPlace { corners: cursor_corners(rom, CURSOR_CORNERS.1), ..LAYOUT.special_cursor },
-            ..LAYOUT
-        },
-        buttons: vec![(SOUL_BUTTON.into(), soul)],
+        layout: CustomLayout { ok_cursor: CursorPlace { corners: cursor_corners(rom, CURSOR_CORNERS.0), ..LAYOUT.ok_cursor }, ..LAYOUT },
+        buttons: vec![(SOUL_BUTTON.into(), soul), (REDEAL_BUTTON.into(), redeal), (ARM_CHANGE_BUTTON.into(), arm_change)],
         window_tiles: block(rom, WINDOW_TILES),
         column_cells: block(rom, COLUMN_CELLS),
         turn_limit: block(rom, TURN_LIMIT),
@@ -236,8 +294,6 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
         pictures: SlotPictures {
             ok: picture(rom, OK),
             ok_picked: picture(rom, OK_PICKED),
-            redeal: picture(rom, REDEAL),
-            scrap: picture(rom, SCRAP),
             other: picture(rom, OTHER),
         },
         codes: glyphs(CODES),
@@ -246,16 +302,13 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
         digits: glyphs(DIGITS),
         slot_codes: glyphs(SLOT_CODES),
         empty_icon: tiles(rom, EMPTY_ICON, 0x80),
-        redeal_buttons: block(rom, REDEAL_BUTTONS),
-        scrap_buttons: block(rom, SCRAP_BUTTONS),
-        versioned,
+        // (No version shows anything of its own here: the base's name is
+        // the game's base version's.)
+        versioned: Versioned::new(Version::ProtoMan.name(), VersionPictures::default()),
         cursor: block(rom, CURSOR),
         cross_cursor: Tiles::default(),
         cross_cursor_palette: [0; 16],
-        emblem_palettes,
-        // (The emblem shown is its number: MegaMan's 0, a soul's its own.)
-        emblem_of: (0..EMBLEM_COUNT as u8).collect(),
-        emblem_palette_of,
+        emblems: emblems(roms, names),
         regular: block(rom, REGULAR),
         advance_name_colors: (0..ADVANCE_NAME_COLORS.1)
             .map(|i| std::array::from_fn(|k| rom.u16(ADVANCE_NAME_COLORS.0 + 8 * i + 2 * k as u32) & 0x7FFF))
