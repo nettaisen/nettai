@@ -128,6 +128,7 @@
 "meddy/capsule" = { pool = "attack", index = 0x0C, scratch_position = true }
 "napalmmn/bomb" = { pool = "attack", index = 0x3A }
 "gyroman/bomb" = { pool = "attack", index = 0x1B, scratch_position = true }
+"gyroman/strike" = { pool = "attack", index = 0x1C }
 "shuriken" = { pool = "attack", index = 0x5C }
 "numbrman/dice" = { pool = "attack", index = 0x05 }
 "dice-marker" = { pool = "effect", index = 0x83, scratch_position = true }

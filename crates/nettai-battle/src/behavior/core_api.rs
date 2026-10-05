@@ -421,12 +421,21 @@ impl CoreApi for Battle {
     }
 
     fn show_hud(&mut self, part: HudPart, shown: bool) {
+        // (Each console's own navi's: the call runs on every console,
+        // whichever navi makes it.)
+        if part == HudPart::ChipIcons {
+            for hud in &mut self.chip_hud {
+                hud.icons = shown;
+            }
+            return;
+        }
         let h = &mut self.hud_hidden;
         let hidden = match part {
             HudPart::Gauge => &mut h.gauge,
             HudPart::EmotionWindow => &mut h.emotion_window,
             HudPart::LevelGauge => &mut h.level_gauge,
             HudPart::HpBox => &mut h.hp_box,
+            HudPart::ChipIcons => unreachable!("the chips' icons are each console's"),
         };
         *hidden = !shown;
     }

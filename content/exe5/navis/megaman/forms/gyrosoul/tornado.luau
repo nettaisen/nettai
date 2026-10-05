@@ -124,8 +124,9 @@ tornado.kind = define.kind {
     end,
 }
 
--- 0x080C828C: the tornado on panel (x, y) for `owner`, on its side, Null, of damage word `damage`.
-function tornado.spawn(owner: Object, x: number, y: number, damage: number): Object?
+-- 0x080C828C: the tornado on panel (x, y) for `owner`, on its side, Null, of damage word `damage`; `grounded`: its
+-- second parameter (GyroMan the navi's lies on the ground, navis/gyroman/charge).
+function tornado.spawn(owner: Object, x: number, y: number, damage: number, grounded: boolean?): Object?
     -- (Its position is the spawner's registers until its init places it.)
     local o = battle.spawn(tornado.kind, Vec3.new(y, 0, 0))
     if o then
@@ -134,6 +135,7 @@ function tornado.spawn(owner: Object, x: number, y: number, damage: number): Obj
         o:set_damage_word(damage)
         o.alliance, o.flip = owner.alliance, owner.flip
         o.related1 = owner
+        ;(o.state :: State).grounded = grounded == true
     end
     return o
 end
