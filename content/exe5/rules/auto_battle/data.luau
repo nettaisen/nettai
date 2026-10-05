@@ -420,6 +420,7 @@ data.chips = {
     ["invalid"] = { approach = false, class = 255, picks = 0, range = 16 },
     ["stepswrd"] = { approach = false, class = 255, picks = 4, range = 16 },
     ["c-cannon"] = { approach = false, class = 255, picks = 0, range = 16 },
+    ["t-swing"] = { approach = false, class = 255, picks = 0, range = 16 },
 } :: { [string]: ChipData }
 
 return data
