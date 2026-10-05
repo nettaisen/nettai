@@ -154,7 +154,7 @@ impl Side {
     /// side's stats (`from`: what the save keeps carries over, as the game's
     /// switch carries it). None for a navi without levels.
     pub fn reloaded_as(&self, content: &Content, navi: NaviHandle) -> Option<NaviStats> {
-        at_level(content, navi, &self.stats, self.navi_level).map(|s| crate::starting(content, s, self.version.as_deref()))
+        at_level(content, navi, &self.stats, self.navi_level).map(|s| crate::starting(content, s, self.version(content)))
     }
 }
 
@@ -266,7 +266,8 @@ mod tests {
         // (MegaMan's Regular memory, which the switch carries over.)
         s.stats.reg_up = 50;
         s.stats = s.reloaded_as(&content, heatman).unwrap();
-        (s.navi, s.crosses, s.navicust) = (heatman, None, None);
+        (s.navi, s.navicust) = (heatman, None);
+        s.facts.reset(&content, "cross_list");
         s.folder.regular = None;
         let text = crate::write(&content, &m);
         assert!(text.contains("level = 14") && text.ends_with("[right.stats]\nregular_memory = 50\n"), "{text}");

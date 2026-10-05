@@ -18,11 +18,12 @@
 //!
 //! [left]                             # you, side 0; then [right]
 //! navi = "megaman"
-//! version = "falzar"                 # or "gregar": an EXE6 side states its own (none is assumed); an EXE5 side has none
 //! level = 7                          # optional: the navi code's level, 0-14 (else a link navi's 0, MegaMan none)
-//! crosses = ["heatcross", "spoutcross"]   # optional: else the version's own five
-//! beast_out = false                  # optional: else Beast Out is unlocked
 //! cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
+//! version = "falzar"                 # the side's facts: what its game's rules take, each under its setup field's
+//! cross_list = ["heatcross", "spoutcross"]   # name (crate::facts). EXE6's: version (gregar or falzar: a side states
+//! beast_out = false                  # its own, none is assumed), cross_list (else the version's own five), crosses
+//! bug_frags = 9                      # (the five it owns: else all), beast_out (else unlocked), bug_frags (else 0)
 //! folder = [                         # 30 [chip, code] pairs ([] an empty entry, while it's being made)
 //!     ["cannon", "A"],
 //!     ["cannon", "A"],
@@ -43,12 +44,12 @@
 //!     { program = "suprarmr", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
 //! ]
 //!
-//! # In an EXE5 match ([left] of game = "exe5") a side may say besides:
+//! # An EXE5 side's facts ([left] of game = "exe5"; a fact left out is its rules' default):
 //! level = 3                          # optional: a team navi's level, 0 to 6 (default 0): its HP is the story's at it
-//! karma = 100                        # optional: the light/dark value, 0 to 1000 (default 500; dark under 470)
-//! souls = ["protosoul"]              # optional: the souls it has, either version's (none: every soul)
-//! soul_unison = false                # optional: no soul button (the save's event flag 0; default true)
-//! chaos_unison = false               # optional: no Chaos Unison (the save's event flag 0x236; default true)
+//! karma = 100                        # the light/dark value (default 500, a fresh save's; dark under 470)
+//! souls = ["protosoul"]              # the souls it has, either version's (default: every soul)
+//! soul_unison = false                # no soul button (the save's event flag 0; default true)
+//! chaos_unison = false               # no Chaos Unison (the save's event flag 0x236; default true)
 //!
 //! [left.auto_battle]               # optional: what a navi in auto battle plays from the side's save, whole (none: nothing learned)
 //! first = [{}, {}, {}]               # the data's places 1 to 3: each a chip, a pattern record's number, 0 or {} (an empty place)
@@ -64,11 +65,13 @@
 //! ```
 
 use crate::auto_battle::{self, ChipPlace, AutoBattle, Entry, Record};
-use crate::{Arena, Folder, Match, Place, Side, ids, stats};
+use crate::facts::Stated;
+use crate::{Arena, Facts, Folder, Match, Place, Side, ids, stats};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
-use crate::CrossList;
 use nettai_battle::custom::FolderChip;
+use nettai_battle::rules::Fact;
+use nettai_content_api::{FieldType, Value};
 use nettai_battle::navicust::{NaviCust, PlacedProgram};
 use nettai_battle::patch_cards::InstalledCard;
 use nettai_battle::setup::SpTimes;
@@ -104,30 +107,21 @@ pub struct PlaceFile {
     pub background: Option<String>,
 }
 
+/// A side as a file states it: the engine's parts under their own keys, and
+/// every other key a fact of the game's rules, under its setup field's name
+/// (`crate::facts`: a key no system declares is refused when the side is
+/// resolved, with the facts the game takes).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct SideFile {
     pub navi: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub level: Option<u8>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bug_frags: Option<u32>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub crosses: Option<Vec<String>>,
-    #[serde(default = "yes", skip_serializing_if = "is_yes")]
-    pub beast_out: bool,
+    /// The facts, in the order the file states them (written in the rules'
+    /// systems' order).
+    #[serde(flatten)]
+    pub facts: FactsFile,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cards: Vec<CardFile>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub karma: Option<u16>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub souls: Option<Vec<String>>,
-    #[serde(default = "yes", skip_serializing_if = "is_yes")]
-    pub soul_unison: bool,
-    #[serde(default = "yes", skip_serializing_if = "is_yes")]
-    pub chaos_unison: bool,
     /// The folder's entries, each `[chip, code]` (`[]` empty, while it is
     /// being made).
     pub folder: Vec<Vec<String>>,
@@ -143,6 +137,42 @@ pub struct SideFile {
     pub navicust: Option<NaviCustFile>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auto_battle: Option<AutoBattleFile>,
+}
+
+/// A side's facts as a file states them: each a key and its value, in
+/// order.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct FactsFile(pub Vec<(String, toml::Value)>);
+
+impl Serialize for FactsFile {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(Some(self.0.len()))?;
+        for (key, value) in &self.0 {
+            map.serialize_entry(key, value)?;
+        }
+        map.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for FactsFile {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<FactsFile, D::Error> {
+        struct Entries;
+        impl<'de> serde::de::Visitor<'de> for Entries {
+            type Value = FactsFile;
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a side's facts, each a key and its value")
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<FactsFile, A::Error> {
+                let mut out = Vec::new();
+                while let Some(entry) = map.next_entry::<String, toml::Value>()? {
+                    out.push(entry);
+                }
+                Ok(FactsFile(out))
+            }
+        }
+        deserializer.deserialize_map(Entries)
+    }
 }
 
 /// A player's auto battle data (`crate::auto_battle`), whole: its six
@@ -316,39 +346,24 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
         let have = names_in(content, game, content.defs.navis.iter().map(|n| n.key.as_str()));
         say(unknown("navi", &s.navi, game, &have));
     }
-    // The version: a side of a game whose rules take one states its own
-    // (one that states none is the checks' to refuse: nothing is filled
-    // in); a game whose rules take none has none to state.
-    let version = match (s.version.as_deref(), Side::takes_version(content)) {
-        (Some(g), true) if crate::facts::versions(content).iter().any(|v| v == g) => Some(g.to_string()),
-        (Some(g), true) => {
-            say(format!("no version {g:?} ({})", crate::facts::versions_phrase(content)));
-            None
+    // The facts: each key that is none of the side's own parts, a field of
+    // a system's setup, its value read by the field's type. A fact the file
+    // leaves out is the rules' default (an enum without one, unstated: the
+    // checks say a round needs it).
+    let mut facts = Facts::defaults(content);
+    for (key, value) in &s.facts.0 {
+        let Some(field) = crate::facts::field(content, key) else {
+            say(crate::facts::no_field(content, key));
+            continue;
+        };
+        match fact_values(content, game, field.ty, value).and_then(|values| {
+            let values: Vec<Fact> = values.into_iter().map(Fact::Value).collect();
+            facts.set(content, key, &values)
+        }) {
+            Ok(()) => {}
+            Err(e) => say(format!("{key}: {e}")),
         }
-        (Some(_), false) => {
-            say(format!("version: {game} has none to state ({})", crate::facts::no_versions(game)));
-            None
-        }
-        (None, _) => None,
-    };
-    let crosses = s.crosses.as_ref().map(|list| {
-        let forms: Vec<_> = list
-            .iter()
-            .filter_map(|n| {
-                let f = ids::form(content, game, n);
-                if f.is_none() {
-                    say(unknown("Cross", n, game, &[]));
-                }
-                f
-            })
-            .collect();
-        if forms.len() > crate::facts::cross_list_capacity(content) {
-            say(format!("{} Crosses: a Cross window offers {}", forms.len(), crate::facts::cross_list_capacity(content)));
-            CrossList::default()
-        } else {
-            CrossList::new(&forms)
-        }
-    });
+    }
     let mut cards = Vec::new();
     for c in &s.cards {
         match ids::patch_card(content, game, &c.card) {
@@ -397,22 +412,10 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
         }
     }
     let auto_battle = s.auto_battle.as_ref().map(|c| resolve_auto_battle(content, game, c, &mut say)).unwrap_or_default();
-    // The souls, by name.
-    let souls = s.souls.as_ref().map(|names| {
-        names
-            .iter()
-            .filter_map(|n| {
-                let f = ids::form(content, game, n);
-                if f.is_none() {
-                    say(format!("souls: {}", unknown("soul", n, game, &[])));
-                }
-                f
-            })
-            .collect()
-    });
     let navi = navi?;
     // (No level: a link navi's 0, MegaMan's none; the checks hold it.)
     let navi_level = s.level.or_else(|| crate::default_navi_level(content, navi));
+    let version = facts.version(content).map(str::to_string);
     let mut stats = Side::save_base(content, navi, version.as_deref(), navi_level);
     for p in stats::apply(content, game, &s.stats, &mut stats) {
         say(format!("stats: {p}"));
@@ -421,23 +424,56 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
     if problems.len() > start {
         return None;
     }
-    Some(Side {
-        navi,
-        version,
-        stats,
-        folder: folder?,
-        crosses,
-        beast_out: s.beast_out,
-        cards,
-        navi_level,
-        bug_frags: s.bug_frags.unwrap_or(0),
-        sp_times,
-        navicust,
-        auto_battle,
-        karma: s.karma.unwrap_or(crate::facts::default_karma(content)),
-        souls,
-        soul_unison: s.soul_unison,
-        chaos_unison: s.chaos_unison,
+    Some(Side { navi, stats, folder: folder?, cards, navi_level, sp_times, navicust, auto_battle, facts })
+}
+
+/// A fact's value as a file states it, read by the field's type `ty`: a
+/// flag, a whole number that fits the type, an enum's variant by its name,
+/// a definition by its name in `game` ("" none), an array's elements from
+/// the first.
+fn fact_values(content: &Content, game: &str, ty: &FieldType, v: &toml::Value) -> Result<Vec<Value>, String> {
+    let one = |ty: &FieldType, v: &toml::Value| -> Result<Value, String> {
+        match ty {
+            FieldType::Bool => v.as_bool().map(Value::Bool).ok_or_else(|| format!("{v} is neither true nor false")),
+            // (A number past its type is the facts' writer's to refuse.)
+            ty if crate::facts::range(ty).is_some() => v.as_integer().map(Value::Int).ok_or_else(|| format!("{v} is no whole number")),
+            FieldType::Enum(names) => match v.as_str().map(|n| names.iter().position(|x| x == n)) {
+                Some(Some(i)) => Ok(Value::Int(i as i64)),
+                _ => Err(format!("no {v} ({})", names.join(" or "))),
+            },
+            FieldType::Ref(registry, _) => match v.as_str() {
+                Some("") => Ok(Value::Nil),
+                Some(name) => {
+                    ids::handle_of(content, game, *registry, name).map(|h| Value::Def(*registry, h)).ok_or_else(|| unknown(&registry.to_string(), name, game, &[]))
+                }
+                None => Err(format!("{v} is no {registry}'s name")),
+            },
+            other => Err(format!("a match states no {other:?}")),
+        }
+    };
+    match (ty, v) {
+        (FieldType::Array(elem, n), toml::Value::Array(items)) if items.len() <= *n as usize => items.iter().map(|item| one(elem, item)).collect(),
+        (FieldType::Array(_, n), toml::Value::Array(items)) => Err(format!("{} entries, it holds {n}", items.len())),
+        (FieldType::Array(..), _) => Err(format!("{v} is no list")),
+        (ty, v) => Ok(vec![one(ty, v)?]),
+    }
+}
+
+/// A fact's value as a file writes it: a flag, a number, an enum's
+/// variant's name, a definition's name, a list's entries (a list of
+/// definitions up to its last one; a hole in it, ""). None: nothing to
+/// write (an enum nothing states, no definition).
+fn fact_toml(content: &Content, value: &Stated) -> Option<toml::Value> {
+    Some(match value {
+        Stated::Flag(b) => toml::Value::Boolean(*b),
+        Stated::Number(n) => toml::Value::Integer(*n),
+        Stated::Variant(name) => toml::Value::String(name.clone()?),
+        Stated::Def(registry, h) => toml::Value::String(ids::local(ids::key_of(content, *registry, (*h)?)?).to_string()),
+        Stated::List(items) => {
+            let last = items.iter().rposition(|v| !matches!(v, Stated::Def(_, None))).map_or(0, |i| i + 1);
+            toml::Value::Array(items[..last].iter().map(|v| fact_toml(content, v).unwrap_or_else(|| toml::Value::String(String::new()))).collect())
+        }
+        Stated::Other => return None,
     })
 }
 
@@ -545,12 +581,16 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
     let name = |key: &str| ids::local(key).to_string();
     SideFile {
         navi: name(&content.defs.navi(s.navi).key),
-        version: s.version.clone(),
         // (The navi's default level is left out.)
         level: s.navi_level.filter(|_| s.navi_level != crate::default_navi_level(content, s.navi)),
-        bug_frags: (s.bug_frags != 0).then_some(s.bug_frags),
-        crosses: s.crosses.map(|l| l.forms().map(|f| name(&content.defs.form(f).key)).collect()),
-        beast_out: s.beast_out,
+        // The facts that aren't the rules' defaults, in the rules' order.
+        facts: FactsFile(
+            crate::facts::fields(content)
+                .into_iter()
+                .filter(|f| !s.facts.is_default(content, f.name))
+                .filter_map(|f| Some((f.name.to_string(), fact_toml(content, &s.facts.get(content, f.name)?)?)))
+                .collect(),
+        ),
         sp_times: crate::sp_times::named(crate::sp_slots(content), &s.sp_times)
             .into_iter()
             .map(|(name, frames)| (name, crate::sp_times::format(frames)))
@@ -601,10 +641,6 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
             }
         }),
         stats: s.stats_block(content),
-        karma: (s.karma != crate::facts::default_karma(content)).then_some(s.karma),
-        souls: s.souls.as_ref().map(|l| l.iter().map(|&f| name(&content.defs.form(f).key)).collect()),
-        soul_unison: s.soul_unison,
-        chaos_unison: s.chaos_unison,
         navicust: s.navicust.map(|n| NaviCustFile {
             expansions: Some(n.expansions),
             programs: n
@@ -672,6 +708,9 @@ pub fn write(content: &Content, m: &Match) -> String {
     format!("# A nettai match (docs/frontend.md §6): play it with `nettai-demo --match FILE`.\n\n{}", tidy(&body, &file))
 }
 
+/// The most entries of a fact's list a file writes on one line.
+const SHORT_LIST: usize = 6;
+
 /// `list`'s entries each on a line of its own.
 fn a_line_each(list: &mut toml_edit::Array) {
     for entry in list.iter_mut() {
@@ -704,13 +743,26 @@ fn laid_out(mut items: toml_edit::Array) -> toml_edit::Array {
 }
 
 /// `body`, the pretty printer's text of `file`, as a person would lay it
-/// out: each folder entry (`["cannon", "A"]`) on a line of its own (the
+/// out: a fact's short list on its line (`crosses = [true, false, true,
+/// true, true]`; a longer one an entry a line, as the printer has it),
+/// each folder entry (`["cannon", "A"]`) on a line of its own (the
 /// printer spreads every element of a nested array over lines), and the
 /// auto-battling navi's data in the block's order, its lists on a line or four
 /// entries to one, its records a line each.
 fn tidy(body: &str, file: &MatchFile) -> String {
     let mut doc: toml_edit::DocumentMut = body.parse().expect("a match file parses");
     for (side, of) in [("left", &file.left), ("right", &file.right)] {
+        for (key, _) in &of.facts.0 {
+            let list = doc.get_mut(side).and_then(|s| s.get_mut(key)).and_then(|f| f.as_array_mut());
+            if let Some(list) = list.filter(|l| l.len() <= SHORT_LIST) {
+                list.set_trailing_comma(false);
+                list.set_trailing("");
+                for (i, v) in list.iter_mut().enumerate() {
+                    v.decor_mut().set_prefix(if i == 0 { "" } else { " " });
+                    v.decor_mut().set_suffix("");
+                }
+            }
+        }
         if let Some(folder) = doc.get_mut(side).and_then(|s| s.get_mut("folder")).and_then(|f| f.as_array_mut()) {
             for entry in folder.iter_mut() {
                 if let Some(pair) = entry.as_array_mut() {
@@ -894,14 +946,14 @@ mod tests {
     /// A version is stated where the game's rules take one, and nowhere
     /// else: a new EXE6 match's sides have none until each is given its own
     /// (the checks refuse the match: none is assumed), a random one's are
-    /// picked and written; an EXE5 match has none, its file takes no
-    /// `version` and says why.
+    /// picked and written; an EXE5 match has none, and its file takes no
+    /// `version`: its rules declare no such fact.
     #[test]
     fn a_version_is_stated_where_the_game_takes_one() {
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
         let six = exe6_content();
         let new = Match::empty(&six, "exe6").unwrap();
-        assert!(new.sides.iter().all(|s| s.version.is_none() && s.stats.version == 0));
+        assert!(new.sides.iter().all(|s| s.version(&six).is_none() && s.stats.version == 0));
         let problems = crate::check_match(&six, &new);
         for side in ["left", "right"] {
             has(problems.clone(), &format!("{side}: no version: a side of exe6 states its own (gregar or falzar); none is assumed"));
@@ -915,16 +967,19 @@ mod tests {
         assert_eq!(picked.matches("\nversion = \"falzar\"\n").count() + picked.matches("\nversion = \"gregar\"\n").count(), 2, "{picked}");
         // A version is its name, one of those the game's rules declare
         // (their `version` field's, in its order): a side made in code
-        // with another is refused as a file's is.
+        // takes no other, as a file's doesn't.
         // (EXE6's come in the original's order, which numbers them: the
         // byte a navi's stats carry is the version's place.)
         assert_eq!(crate::facts::versions(&six), ["gregar", "falzar"]);
-        assert_eq!((crate::facts::versions_phrase(&six), crate::facts::version_title("falzar")), ("gregar or falzar".to_string(), "Falzar".to_string()));
+        // (It is the one fact EXE6's rules require: the one enum no default
+        // states.)
+        assert_eq!(crate::facts::required(&six), [("version", &["gregar".to_string(), "falzar".to_string()][..])]);
         let live = crate::pick::live(&six, "exe6", 1, None).unwrap();
-        assert!(live.sides.iter().all(|s| crate::facts::versions(&six).contains(s.version.as_ref().unwrap())));
+        assert!(live.sides.iter().all(|s| crate::facts::versions(&six).iter().any(|v| Some(v.as_str()) == s.version(&six))));
         let mut odd = live.clone();
-        odd.sides[0].version = Some("azure".into());
-        has(crate::check_match(&six, &odd), "left: no version \"azure\" (gregar or falzar)");
+        let refused = odd.sides[0].set_fact(&six, "version", &[Fact::Name("azure")]).unwrap_err();
+        assert_eq!(refused, "setup field `version` has no variant \"azure\"");
+        assert_eq!(odd, live);
         let byte = |v| crate::version_byte(&six, v);
         assert_eq!((byte(Some("gregar")), byte(Some("falzar")), byte(None), byte(Some("azure"))), (0, 1, 0, 0));
         // EXE5.
@@ -933,11 +988,16 @@ mod tests {
         let m = crate::pick::live(&five, "exe5", 1, None).unwrap();
         let text = write(&five, &m);
         assert!(!text.contains("version"), "{text}");
+        assert!(crate::facts::required(&five).is_empty());
         let e = parse(&five, &text.replacen("navi = \"megaman\"", "navi = \"megaman\"\nversion = \"falzar\"", 1)).unwrap_err();
-        assert_eq!(e, ["left: version: exe5 has none to state (its versions play alike, so a match of exe5 is of neither)"]);
+        assert_eq!(e, [format!("left: no field \"version\" (a side of exe5 takes {})", crate::facts::names_phrase(&five))]);
         let mut odd = m.clone();
-        odd.sides[1].version = Some("gregar".into());
-        has(crate::check_match(&five, &odd), "right: a version, but exe5 has none to state: its versions play alike");
+        let refused = odd.sides[1].set_fact(&five, "version", &[Fact::Name("gregar")]).unwrap_err();
+        assert_eq!(refused, format!("no field \"version\" (a side of exe5 takes {})", crate::facts::names_phrase(&five)));
+        // (Nor are another game's facts a side's: an EXE6 side in an EXE5
+        // match is said.)
+        odd.sides[1].facts = live.sides[1].facts.clone();
+        has(crate::check_match(&five, &odd), "right: the side's facts aren't exe5's rules'");
         // (The round an EXE5 match starts brings its players no version.)
         let b = crate::check::start(&five, &m).unwrap();
         assert!(b.fact(0, nettai_battle::content::PlayerFact::Version).is_none() && b.stats[0].version == 0);
@@ -960,14 +1020,35 @@ mod tests {
         let stats = |block: &str| parse(&content, &format!("{good}\n[left.stats]\n{block}\n")).unwrap_err();
         has(stats("hp = 100000"), "stats: hp takes a whole number");
         has(stats("hp = 1000\natack = 1"), "no stat \"atack\"");
-        // No key takes the emotion window's glitch: the rules make it.
-        has(bad("navi = \"megaman\"", "navi = \"megaman\"\nemotion_window_glitch = true"), "unknown field `emotion_window_glitch`");
+        // No key takes the emotion window's glitch: the rules make it. (A
+        // key that is none of a side's own parts is a fact of its game's
+        // rules, by its setup field's name, or it is refused with those the
+        // game takes.)
+        has(
+            bad("navi = \"megaman\"", "navi = \"megaman\"\nemotion_window_glitch = true"),
+            "left: no field \"emotion_window_glitch\" (a side of exe6 takes cross_list, crosses, version, beast_out, bug_frags)",
+        );
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
         has(bad(stage, "stage = \"moon\""), "arena: no stage \"moon\" in exe6");
         has(bad("game = \"exe6\"", "game = \"bn7\""), "no game \"bn7\"");
         // The version: one of the game's two, stated (none is assumed).
         let version = good.lines().find(|l| l.starts_with("version = ")).unwrap();
-        has(bad(version, "version = \"azure\""), "left: no version \"azure\" (gregar or falzar)");
+        has(bad(version, "version = \"azure\""), "left: version: no \"azure\" (gregar or falzar)");
+        has(bad(version, "version = 1"), "left: version: no 1 (gregar or falzar)");
+        // A fact's value is its field's type's: a flag, a whole number in
+        // its range, a name of the game's, a list no longer than it holds.
+        let stated = |line: &str| bad("navi = \"megaman\"", &format!("navi = \"megaman\"\n{line}"));
+        has(stated("beast_out = 1"), "left: beast_out: 1 is neither true nor false");
+        has(stated("bug_frags = -1"), "left: bug_frags: -1 is past a u32 (0 to 4294967295)");
+        has(stated("bug_frags = \"many\""), "left: bug_frags: \"many\" is no whole number");
+        has(stated("crosses = [true, true, true, true, true, true]"), "left: crosses: 6 entries, it holds 5");
+        has(stated("crosses = true"), "left: crosses: true is no list");
+        let list = good.lines().find(|l| l.starts_with("cross_list = ")).unwrap();
+        has(bad(list, "cross_list = [\"heatcros\"]"), "left: cross_list: no form \"heatcros\" in exe6");
+        has(bad(list, "cross_list = [\"heatcross\", \"heatcross\"]"), "left: cross_list: HeatCross is there twice");
+        // (A Cross list holds forms of its navi's own lists: a Cross's
+        // Beast form is a form of EXE6's, and none of them.)
+        has(bad(list, "cross_list = [\"heatcross-beast\"]"), "left: cross_list: heatcross-beast is no form of MegaMan's lists");
         has(bad(&format!("{version}\n"), ""), "left: no version: a side of exe6 states its own (gregar or falzar); none is assumed");
         // Thirty copies of a chip.
         let mut m = picked.clone();
@@ -990,8 +1071,8 @@ mod tests {
         let mut m = picked.clone();
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[1].navi = protoman;
-        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].version.as_deref());
-        has(crate::check_match(&content, &m), "right: a Cross list, but ProtoMan doesn't change form");
+        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].version(&content));
+        has(crate::check_match(&content, &m), "right: cross_list: ProtoMan doesn't change form");
     }
 
     /// A game's rules have their systems, by name: EXE6's the forms system
@@ -1013,16 +1094,16 @@ mod tests {
     fn sp_times_beast_out_and_levels_write_and_read_back() {
         let content = exe6_content();
         let mut m = crate::pick::live(&content, "exe6", 2, None).unwrap();
-        m.sides[0].beast_out = false;
+        m.sides[0].set_fact(&content, "beast_out", &[Fact::Value(Value::Bool(false))]).unwrap();
         m.sides[0].navi_level = Some(3);
         m.sides[0].sp_times.0[0] = 721;
         m.sides[0].sp_times.0[11] = 1500;
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[1].navi = protoman;
-        m.sides[1].crosses = None;
+        m.sides[1].facts.reset(&content, "cross_list");
         m.sides[1].navicust = None;
         m.sides[1].navi_level = Some(0);
-        m.sides[1].stats = crate::Side::save_base(&content, protoman, m.sides[1].version.as_deref(), Some(0));
+        m.sides[1].stats = crate::Side::save_base(&content, protoman, m.sides[1].version(&content), Some(0));
         m.sides[1].folder.regular = None;
         let text = write(&content, &m);
         for line in ["beast_out = false", "level = 3", "[left.sp_times]", "\"sp/heatman\" = \"00:12.01\"", "\"sp/blastman\" = \"00:25.00\""] {
@@ -1053,9 +1134,9 @@ mod tests {
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[0].navi_level = None;
         m.sides[1].navi = protoman;
-        m.sides[1].crosses = None;
+        m.sides[1].facts.reset(&content, "cross_list");
         m.sides[1].navi_level = None;
-        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].version.as_deref());
+        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].version(&content));
         let problems = crate::check_match(&content, &m);
         has(problems.clone(), "right: ProtoMan has no level: a link navi exists only through its navi code");
         assert!(!problems.iter().any(|p| p.starts_with("left")), "MegaMan without a code is fine: {problems:?}");
