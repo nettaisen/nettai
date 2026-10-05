@@ -629,7 +629,7 @@ also be fully qualified as well".
 - **Lookups are exact** (`Defs::*_by_key`): tools, tests, setups and match files write ids in full.
 - **No home.** What a battle reads is the arena's (the stage's game's) or a side's (its ruleset's, §2.3); a tool
   with no battle takes the game that has the thing. There is no default game: the frontend takes its game from a
-  match file, a trace or `--game` (and stops, listing the games it has a pack of, with none), and the editor asks
+  match file or a trace (and requires one of them), and the editor asks
   for a new match's game.
 - **content/exelib** is a folder of behavior only: modules the games' folders share by path
   (`require("@exelib/...")`), with no assets of their own, so it needs no pack, and no compat or locales. A common
@@ -1308,8 +1308,8 @@ are gone.
   asset names read as `test:` ones (`testing::borrowed`); twin's modules are `twin:`. Tests compare objects' kinds
   by the id's own part (`Battle::local_kind_key`) where their expected tables name them so.
 - **The match file**: its ids were already full; a background is now in full (`exe6:lans-hp`), the stock ruleset
-  is `exe6:stock` (was `exe6:exe6`), a side with no ruleset plays EXE6's, and `--cards` takes ids in full
-  (`exe6:canodumb,-exe6:shadow`).
+  is `exe6:stock` (was `exe6:exe6`), a side with no ruleset plays EXE6's, and the former `--cards` option took ids in full
+  (`exe6:canodumb,-exe6:shadow`; cards are now configured in the match file).
 - **The content check** (`nettai-content-check`, no argument) checks content/: every folder against content/nettai
   and every folder's own declarations, each module by its folder and path; a folder alone still checks alone. EXE5's
   HolyDrem used two types of another module, which the checker reads as `any`: the casts say so.

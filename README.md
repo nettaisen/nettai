@@ -38,7 +38,7 @@ netplay needs.
   the sound as samples ([docs/frontend.md](docs/frontend.md) §7, with the host loop).
 - `nettai-demo`: the desktop program over `nettai-frontend`: a window and its keys, the command line, headless
   frames, the audits, the replay of recorded matches, and the sound through the audio device.
-- `nettai-match`: match files, everything a round needs by content key, checked; live play's random pick.
+- `nettai-match`: match files, everything a round needs by content key, checked; the editor's random pick.
 - `nettai-demo-editor`: a desktop app that edits match files and plays them with `nettai-demo`.
 - `exe6-extract`: extracts EXE6's graphics and sound from the four ROMs into a content pack.
 - `exe6-compat`: EXE6's original numbers for the content (`content/exe6/compat`): the codecs of the game's setup
@@ -60,21 +60,19 @@ An EXE5 pack is written the same way by its own extractor, from the four Mega Ma
 
 The frontend and the editor find the packs in `data/content` (or the directory `$NETTAI_PACKS` names), each by the
 game it says, with no options: an EXE5 pack written there (`exe5-extract content`) sits beside EXE6's. You play one game
-at a time, EXE6 or EXE5: a match file names its game and a trace states its own, else `--game` says it (there is no
-default game: without one the frontend lists the games it found a pack of and stops), and the battle is that
+at a time, EXE6 or EXE5: a match file names its game and a trace states its own (there is no default game), and the battle is that
 game's content on its pack. `--pack DIR` names a pack elsewhere, in place of the found one of its game.
 
-Then run the frontend:
+Create a match file with the match editor below, then run the frontend:
 
-    cargo run --release -p nettai-demo -- --play --game exe6                                # play live
+    cargo run --release -p nettai-demo -- --match match.toml                              # play live
     cargo run --release -p nettai-demo -- <trace.jsonl>                                    # replay a recorded match
-    cargo run --release -p nettai-demo -- --play --game exe6 --headless 1-120 --out <dir>   # render frames to PNG
+    cargo run --release -p nettai-demo -- --match match.toml --headless 1-120 --out <dir>  # render frames to PNG
 
-In live play alone you are the left navi, and the right one is a stand-in that stands still. Each start draws its setup from a seed, which
-it prints: a link battle stage and background, each side's version (Falzar's or Gregar's Beast), a legal random
-folder for each side, and five Crosses of both versions in each Cross window (`--game exe5`: an EXE5 match, its sides
-EXE5's MegaMan with a random folder). `--seed N` replays a setup, `--stage NAME` forces the stage (`netbattle-1` to `netbattle-96`)
-and `--show-folders` prints the folders. Keys: the arrows move, Z is A, X is B, A is L,
+In live play alone you are the left navi, and the right one is a stand-in that stands still. The match file sets
+the game, arena, each side's navi, folder, version, forms, patch cards and stats. Its optional `seed` sets the
+battle's RNG; without one, the seed comes from the clock. Each start prints it, and `--show-folders` prints the
+folders. The editor's Random button creates a random setup you can save and play. Keys: the arrows move, Z is A, X is B, A is L,
 S is R, Enter is START and Backspace is SELECT; Space pauses, `.` steps a frame while paused, `-` and `=` change
 the speed, F5 restarts the round and Esc quits. `--help` lists the options, and
 [docs/frontend.md](docs/frontend.md) has the rest. A trace is the recorded inputs of a real match; the traces
@@ -89,11 +87,12 @@ uses another TrueType or OpenType font ([text-rendering.md](docs/design/text-ren
 To play another player, one hosts and the other joins, over a LAN, or over the Internet with the host's UDP port
 forwarded to the host's machine:
 
-    cargo run --release -p nettai-demo -- --play --game exe6 --host 7777                    # host, the left navi
-    cargo run --release -p nettai-demo -- --play --game exe6 --join 192.0.2.10:7777         # join, the right navi
+    cargo run --release -p nettai-demo -- --match match.toml --host 7777                   # host, the left navi
+    cargo run --release -p nettai-demo -- --match match.toml --join 192.0.2.10:7777        # join, the right navi
 
-Both need the same engine, game and content pack (the handshake checks, and says what differs). Each brings their own folder, version and Crosses, drawn from their own `--seed`, and their patch cards
-(`--cards`); the host's `--stage` picks the stage. Both play with rollback: inputs go out every frame, the other player's are predicted until they
+Both need the same engine, game and content pack (the handshake checks, and says what differs). Each brings the
+left side of their own match file; the host's file supplies the arena. The battle's RNG comes from both players'
+randomly generated seed halves. Both play with rollback: inputs go out every frame, the other player's are predicted until they
 arrive, and the battle is simulated again when a prediction was wrong. The window's title shows the round trip, the
 loss, the input delay (`--delay N`, default 2), the rollbacks and the frames waited ([docs/frontend.md](docs/frontend.md)
 §2, [rollback.md](docs/design/rollback.md) §4). The netplay tests play netbattles between two rollback sessions over a
@@ -145,8 +144,8 @@ first link battle stage, and on each side its MegaMan at his fresh stats with an
 defaults (an EXE6 side has no version: its navi pane asks its own, falzar or gregar, with nothing chosen, since
 neither is assumed; an EXE5 match has none to state), no patch cards and no NaviCust programs (the problems list
 says the folders aren't whole and the versions aren't chosen until they are).
-Random picks a match of the game as live play does, and `nettai-demo --play --save-match FILE` writes live
-play's draw out to edit. `--lang ja` (or the language list) names the chips, navis, Crosses and patch cards in
+Random picks a match of the game to save or play, and `nettai-demo --match match.toml --save-match FILE` writes
+the match played with its seed (or the one netplay agreed) out to edit. `--lang ja` (or the language list) names the chips, navis, Crosses and patch cards in
 Japanese. The editor loads the match's game's content and pack as the frontend does (a game's chips with no use yet
 left out, with the frontend's warning), and Play hands the frontend the same: `--content` and `--pack` are the
 frontend's, and only what you give is passed on.
