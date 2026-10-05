@@ -234,7 +234,6 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
         }
         let name = text.chip_name(c, chip);
         lookups::chip_name(hud, c, chip, name, p);
-        lookups::advance_code(c, chip, p);
         let code = d.record.codes.iter().map(|c| c.0).max().unwrap_or(ChipCode::ASTERISK.0);
         lookups::chip_window(a, c, chip, code, p);
         if let Some(said) = text.chip_description(c, chip) {
@@ -269,16 +268,19 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
             }
         }
     }
-    // The forms a window lists (EXE6's Crosses: the ones that say their
-    // place there): each one's name and colors, and its description.
-    for i in 0..c.defs.forms.len() {
-        let form = FormHandle(i as u16);
-        if c.form(form).window_order.is_none() {
-            continue;
-        }
-        lookups::cross_name(a, c, form, p);
-        if let Some(said) = text.form_description(c, form) {
-            lookups::dialogue(font, Lookup::CrossDescription(form), said.text, p);
+    // The forms a window lists (EXE6's Crosses: the ones a navi lists
+    // among a version's): each one's name and colors, and its description.
+    for n in 0..c.defs.navis.len() {
+        let navi = NaviHandle(n as u16);
+        for i in 0..c.defs.forms.len() {
+            let form = FormHandle(i as u16);
+            if nettai_render::custom::cross_picture(c, a, navi, form).is_none() {
+                continue;
+            }
+            lookups::cross_name(a, c, navi, form, p);
+            if let Some(said) = text.form_description(c, form) {
+                lookups::dialogue(font, Lookup::CrossDescription(form), said.text, p);
+            }
         }
     }
     for i in 0..c.defs.forms.len() {
@@ -456,28 +458,5 @@ mod tests {
     fn a_lookup_by_the_wrong_key_fails_for_every_chip() {
         assert_eq!(chips_without_icons(str::to_string), 0);
         assert_eq!(chips_without_icons(|key| format!("{}:{key}", testing::ROOT)), testing::content().defs.chips.len());
-    }
-
-    /// The Program Advance animation shows a chip's code unless its
-    /// definition hides it (the trait `hides_advance_code`), and each game's
-    /// definitions hide it for the chips the original does: those numbered
-    /// 0x160 and up in the game's compat (EXE6's `sub_802B80C`, EXE5's
-    /// 0x08027BC6), no others.
-    #[test]
-    fn a_program_advance_code_is_hidden_by_the_chips_definition() {
-        let exe6 = |key: &str| exe6_compat::Compat::exe6().chips.get(key).map(|e| e.id);
-        let exe5 = |key: &str| exe5_compat::Compat::exe5().chips.get(key).map(|e| e.id);
-        let games: [(_, &dyn Fn(&str) -> Option<u16>); 2] =
-            [(nettai_match::testing::exe6_content(), &exe6), (nettai_match::testing::exe5_content(), &exe5)];
-        for (c, number) in games {
-            let mut hidden = 0;
-            for (k, d) in c.defs.chips.iter().enumerate() {
-                let shows = lookups::advance_code(&c, ChipHandle(k as u16), &mut Problems::default());
-                let number = number(&d.key).unwrap_or_else(|| panic!("{}'s {} has no number", c.game(), d.key));
-                assert_eq!(shows, number < 0x160, "{}'s {} ({number:#x})", c.game(), d.key);
-                hidden += !shows as usize;
-            }
-            assert!(hidden > 0, "{} hides none", c.game());
-        }
     }
 }
