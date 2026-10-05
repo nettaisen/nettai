@@ -353,11 +353,18 @@ end
 -- 0x0802BC48 (0x0802B6DC): to its pattern's place by its target, as written; as run, never: anywhere of its own area,
 -- nothing played, whatever the pattern. The step test (0x0800CAA0) is called after the move lag's routine (0x0800E0BE)
 -- and before the place is taken back off the stack (0x0802BC7E to 0x0802BC8E), so what it tests is what that routine
--- left in its registers: for MegaMan's stats the lag as the column and the lag again as the row (4 and 4; in
--- ShadowSoul 0 and 0), for another navi's the lag and the address of its row of the lag table. The field's rows are
--- 1 to 3 (0x0800B33C), so the test fails for every navi at every place: a pattern entry is a miss, the target's
--- search moved on, and a step, and nothing of a pattern (its place, its chips, its score, the record after it) shows
--- in a battle. (The lab's chaos-ai/pattern-reached: a pattern at a free panel of his own area, none of it played.)
+-- left in r0 and r1, by the stats of the navi's side (NaviStats +0x29, the navi its player operates):
+-- - MegaMan's (navi 0): the lag in both (0x0800E0D8 copies r1 into r0): the column 4 and the row 4, or 0 and 0 in
+--   ShadowSoul;
+-- - a team navi's (1 to 12): the lag in r0 (4; KnightMan's 10) and in r1 the address of that navi's row of the lag
+--   table (0x0801D462 + 11 × its number, 0x0800E0E8), which is no row whatever the lag.
+-- The field's rows are 1 to 3 (0x0800B33C), so the test fails for every navi at every place: a pattern entry is a
+-- miss, the target's search moved on, and a step, and nothing of a pattern (its place, its chips, its score, the
+-- record after it) shows in a battle. (The lab's chaos-ai/pattern-reached: a pattern at a free panel of his own
+-- area, none of it played; chaos-ai/colonel-side: Dark MegaMan on the side of a player who operates Colonel.)
+-- A team navi's stats are read by the Dark MegaMan that stands on its side; no team navi is itself in auto battle in
+-- a netbattle: a dark chip fizzles for any navi but MegaMan and navi 23 (0x08010056: DarkInvs), and the last stand
+-- is the player of AI index 0's alone (0x0802C17A: a team navi's is its number).
 local function pattern_place(navi: Object, s: State, fam: Family)
     local dx, dy = battle.tactic_pattern(tactics_side(navi, fam), s.entry_pattern)
     local t, i = target_from(navi, s.target_index)
@@ -365,9 +372,10 @@ local function pattern_place(navi: Object, s: State, fam: Family)
         s.target_index = i
         local x = t.panel_x + dx * panels.enemy_direction(navi)
         local y = t.panel_y + dy
-        -- (The navis in auto battle here all read a MegaMan's stats: the side's player's.)
+        -- (Whether the side's navi is MegaMan: whether it has forms, as the ruleset asks it.)
         local lag = navi:move_lag()
-        if navi:can_step(lag, lag) then
+        local megaman = battle.navi(navi.alliance).navi.forms ~= nil
+        if megaman and navi:can_step(lag, lag) then
             step_to(navi, s, x, y, fam)
             s.step = 0x14
             return
