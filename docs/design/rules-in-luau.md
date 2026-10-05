@@ -1307,7 +1307,7 @@ are gone.
 - **The test content is one game, `test`**: its own modules and the EXE6 modules it borrows, whose `exe6:` ids and
   asset names read as `test:` ones (`testing::borrowed`); twin's modules are `twin:`. Tests compare objects' kinds
   by the id's own part (`Battle::local_kind_key`) where their expected tables name them so.
-- **The match file**: its ids were already full; a background is now in full (`exe6:honeycomb`), the stock ruleset
+- **The match file**: its ids were already full; a background is now in full (`exe6:lans-hp`), the stock ruleset
   is `exe6:stock` (was `exe6:exe6`), a side with no ruleset plays EXE6's, and `--cards` takes ids in full
   (`exe6:canodumb,-exe6:shadow`).
 - **The content check** (`nettai-content-check`, no argument) checks content/: every folder against content/nettai
