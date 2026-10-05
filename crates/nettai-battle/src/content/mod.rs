@@ -190,22 +190,30 @@ pub struct Content {
     pub strings: strings::Strings,
 }
 
-/// docs/design/content-model-v2.md §4.0: a game's top module (its
-/// init.luau) is the whole truth about what the game has: every definition
-/// of the registries a game holds ([`nettai_content_api::GAME_LISTS`]) is
-/// made by a module its game's init.luau requires itself (a support pack's
-/// module makes none). (Content whose scripts name no packs, a test's
+/// docs/design/content-model-v2.md §4.0: a game's inits are the whole truth
+/// about what the game has. Every definition of the registries a game
+/// holds ([`nettai_content_api::GAME_LISTS`]) is made by a module its
+/// folder's init.luau requires itself, a folder the game's top module
+/// requires itself (`packs::listed_by`: exe6/chips/init.luau requires
+/// chips/cannon, and exe6/init.luau requires chips); a support pack's
+/// module makes none. (Content whose scripts name no packs, a test's
 /// modules alone, has none.)
 fn check_init(scripts: &Scripts, definitions: &nettai_content_api::Definitions) -> Result<(), nettai_content_api::ContentError> {
-    use nettai_content_api::{ContentError, GAME_LISTS, PackKind, keys, packs::INIT};
+    use nettai_content_api::{ContentError, GAME_LISTS, PackKind, keys, packs};
     if scripts.packs.is_empty() {
         return Ok(());
     }
     let file = |module: &str| format!("{}.luau", keys::module_path(module));
-    let mut required: std::collections::BTreeMap<&str, Vec<String>> = Default::default();
-    for p in scripts.packs.iter().filter(|p| p.kind == PackKind::Game) {
-        required.insert(&p.id, scripts.required_by_init(&p.id).map_err(ContentError::new)?);
-    }
+    const RULE: &str = "a folder's init.luau requires every module of the folder that defines what the game has, and the game's init.luau the folders";
+    // Whether index `index` requires `name` itself.
+    let mut required: std::collections::BTreeMap<String, Option<Vec<String>>> = Default::default();
+    let mut requires = |index: &str, name: &str| -> Result<Option<bool>, ContentError> {
+        if !required.contains_key(index) {
+            let read = scripts.required_by(index).transpose().map_err(ContentError::new)?;
+            required.insert(index.to_string(), read);
+        }
+        Ok(required[index].as_ref().map(|r| r.iter().any(|m| m == name)))
+    };
     for d in &definitions.defs {
         if !GAME_LISTS.iter().any(|(_, rs)| rs.contains(&d.registry)) {
             continue;
@@ -224,15 +232,34 @@ fn check_init(scripts: &Scripts, definitions: &nettai_content_api::Definitions) 
                 )));
             }
             Some(_) => {
-                let module = keys::listed_as(&d.module);
-                if !required.get(pack).is_some_and(|r| r.iter().any(|m| m == module)) {
-                    return Err(ContentError::new(format!(
-                        "{}: {} {} is {pack}'s, and {pack}/{INIT}.luau doesn't require {} (a game's {INIT}.luau requires every module that defines what the game has)",
-                        file(&d.module),
-                        d.registry,
-                        d.key,
-                        keys::local(module)
-                    )));
+                // Up from the module: its folder's init lists it, and the
+                // game's top module the folder.
+                let mut module = d.module.clone();
+                while let Some((index, name)) = packs::listed_by(&module) {
+                    match requires(&index, &name)? {
+                        Some(true) => {}
+                        Some(false) => {
+                            return Err(ContentError::new(format!(
+                                "{}: {} {} is {pack}'s, and {} doesn't require {} ({RULE})",
+                                file(&d.module),
+                                d.registry,
+                                d.key,
+                                file(&index),
+                                keys::local(&name)
+                            )));
+                        }
+                        None => {
+                            return Err(ContentError::new(format!(
+                                "{}: {} {} is {pack}'s, and there is no {} to require {} ({RULE})",
+                                file(&d.module),
+                                d.registry,
+                                d.key,
+                                file(&index),
+                                keys::local(&name)
+                            )));
+                        }
+                    }
+                    module = index;
                 }
             }
         }

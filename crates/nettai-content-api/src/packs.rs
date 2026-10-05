@@ -15,25 +15,29 @@
 //! without cycles ([`load_order`], [`check_require`]).
 //!
 //! What a game has is what its top module requires: `<game>/init.luau`
-//! ([`INIT`], the pack as a module, as a folder's init.luau is the folder),
-//! which requires every module that defines the game's rules, chips, navis,
-//! forms, stages, patch cards and NaviCust programs, and the modules that
-//! define what only an id names:
+//! ([`INIT`], the pack as a module, as a folder's init.luau is the folder).
+//! It returns nothing: it requires the game's rules and its folders, and
+//! each folder's init.luau requires the folder's modules that define the
+//! game's chips, navis, forms, stages, patch cards and NaviCust programs,
+//! and those that define what only an id names. A definition is made as
+//! its module loads:
 //!
 //! ```luau
-//! return {
-//!     rules = require("@self/rules"),
-//!     chips = { require("@self/chips/airshot"), require("@self/chips/cannon") },
-//!     also = { require("@self/lib/instant/repair") },
-//! }
+//! -- exe6/init.luau
+//! require("@self/rules")
+//! require("@self/chips")
+//! require("@self/navis")
+//! -- exe6/chips/init.luau
+//! require("@self/airshot")
+//! require("@self/cannon")
 //! ```
 //!
-//! A load of a game runs that module, and what it requires is what loads
-//! (a support pack has no such module: its modules load when a game
-//! requires them). The define phase holds a game's init.luau to the whole
-//! truth: a definition of what a game has is made by a module the init
-//! requires itself ([`required_by_init`]). The table it returns groups the
-//! requires for a reader; the engine reads the requires, not the groups.
+//! A load of a game runs its top module, and what that requires, in turn,
+//! is what loads (a support pack has no such module: its modules load when
+//! a game requires them). The define phase holds the inits to the whole
+//! truth: a definition of what a game has is made by a module its folder's
+//! init.luau requires itself, a folder the game's init.luau requires itself
+//! ([`listed_by`], [`required_by`]).
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -112,20 +116,75 @@ pub fn top_module(id: &str) -> String {
     format!("{id}{}{INIT}", keys::SEPARATOR)
 }
 
-/// The modules pack `id`'s top module (source `init`) requires itself, by
-/// name, in order, each once; a folder by its name (`exe6:chips/cannon`,
+/// The modules module `module` (by name; source `source`) requires itself,
+/// by name, in order, each once; a folder by its name (`exe6:chips/cannon`,
 /// [`keys::listed_as`]). A require it can't resolve is an error naming it.
-pub fn required_by_init(id: &str, init: &str) -> Result<Vec<String>, String> {
-    let name = top_module(id);
+pub fn required_by(module: &str, source: &str) -> Result<Vec<String>, String> {
     let mut out: Vec<String> = Vec::new();
-    for written in requires(init) {
-        let target = keys::resolve(&name, &written).map_err(|e| format!("{id}/{INIT}.luau: {e}"))?;
+    for written in requires(source) {
+        let target = keys::resolve(module, &written).map_err(|e| format!("{}.luau: {e}", keys::module_path(module)))?;
         let target = keys::listed_as(&target).to_string();
         if !out.contains(&target) {
             out.push(target);
         }
     }
     Ok(out)
+}
+
+/// The module that lists game module `module` (by name), and the name it
+/// requires it by: the init of the folder of the pack it is in
+/// (`exe6:chips/init` requires `exe6:chips/cannon`, the module
+/// `exe6:chips/cannon/init`); the game's top module for a module at the
+/// pack's top and for a folder's own init (`exe6:init` requires
+/// `exe6:rules`, the module `exe6:rules/init`, and `exe6:chips`). None for
+/// the top module itself.
+pub fn listed_by(module: &str) -> Option<(String, String)> {
+    let pack = keys::root_of(module)?;
+    let name = keys::listed_as(module);
+    let local = keys::local(name);
+    if local == INIT {
+        return None;
+    }
+    Some(match local.split_once('/') {
+        Some((folder, _)) => (format!("{pack}{}{folder}/{INIT}", keys::SEPARATOR), name.to_string()),
+        None => (top_module(pack), name.to_string()),
+    })
+}
+
+/// Whether module source `source` is an index: nothing but requires (and
+/// comments), as a game's top module and its folders' inits are.
+pub fn is_index(source: &str) -> bool {
+    let code: String = source.lines().map(|l| l.split("--").next().unwrap_or("")).collect::<Vec<_>>().join("\n");
+    let mut rest = code.as_str();
+    let mut found = false;
+    loop {
+        rest = rest.trim_start();
+        if rest.is_empty() {
+            return found;
+        }
+        let Some(after) = rest.strip_prefix("require(") else { return false };
+        let after = after.trim_start();
+        let Some(quote) = after.chars().next().filter(|q| *q == '"' || *q == '\'') else { return false };
+        let Some(end) = after[1..].find(quote) else { return false };
+        let Some(close) = after[2 + end..].trim_start().strip_prefix(')') else { return false };
+        found = true;
+        rest = close;
+    }
+}
+
+/// The modules an index's commented requires name (`-- require("@self/x")`:
+/// a chip with no use yet, which the game doesn't load), as written.
+pub fn commented_requires(source: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for line in source.lines() {
+        let Some(comment) = line.trim_start().strip_prefix("--") else { continue };
+        let Some(rest) = comment.trim_start().strip_prefix("require(") else { continue };
+        let Some(quote) = rest.chars().next().filter(|q| *q == '"' || *q == '\'') else { continue };
+        if let Some(end) = rest[1..].find(quote) {
+            out.push(rest[1..1 + end].to_string());
+        }
+    }
+    out
 }
 
 /// Read pack `id`'s manifest in content `dir` (content/<id>/manifest.toml),
@@ -314,15 +373,29 @@ mod tests {
         assert!(PackManifest::parse("id = \"x\"\nkind = \"game\"\ndepends = [\"x\"]\n", "x").unwrap_err().contains("depends on itself"));
     }
 
-    /// A game's top module's own requires are what the game has: folders by
-    /// name, each once, in order; a line comment's aside.
+    /// A module's own requires: folders by name, each once, in order; a
+    /// line comment's aside. An index is nothing but requires, and its
+    /// commented requires name what the game doesn't load yet.
     #[test]
-    fn a_games_init_requires_what_it_has() {
-        let init = "return {\n    rules = require(\"@self/rules\"),\n    chips = {\n        require(\"@self/chips/cannon\"),\n        -- require(\"@self/chips/later\"),\n        require(\"@self/navis/elecman/chip\"),\n    },\n    also = { require(\"@self/chips/cannon\"), require(\"@exelib/x/init\") },\n}\n";
-        assert_eq!(required_by_init("exe6", init).unwrap(), ["exe6:rules", "exe6:chips/cannon", "exe6:navis/elecman/chip", "exelib:x"]);
+    fn an_index_requires_what_its_folder_has() {
+        let top = "--!strict\n-- The game.\nrequire(\"@self/rules\")\nrequire(\"@self/chips\")\n";
+        assert_eq!(required_by("exe6:init", top).unwrap(), ["exe6:rules", "exe6:chips"]);
+        let chips = "-- Chips.\nrequire(\"@self/cannon\")\n-- require(\"@self/later\")  -- no use yet\nrequire(\"@self/cannon/init\")\nrequire(\"@exelib/x/init\")\n";
+        assert_eq!(required_by("exe6:chips/init", chips).unwrap(), ["exe6:chips/cannon", "exelib:x"]);
+        assert_eq!(commented_requires(chips), ["@self/later"]);
+        assert!(is_index(top) && is_index(chips));
+        assert!(!is_index("local x = require(\"@self/x\")\n") && !is_index("return { require(\"@self/x\") }") && !is_index("-- nothing\n"));
         // (Beside a pack is outside it.)
-        let e = required_by_init("exe6", "return { require(\"./exe5/chips/x\") }").unwrap_err();
+        let e = required_by("exe6:init", "require(\"./exe5/chips/x\")").unwrap_err();
         assert!(e.starts_with("exe6/init.luau: ") && e.contains("leaves pack exe6"), "{e}");
+        // Which init lists a module.
+        let by = |m: &str| listed_by(m).map(|(i, n)| format!("{i} {n}"));
+        assert_eq!(by("exe6:chips/cannon/init").as_deref(), Some("exe6:chips/init exe6:chips/cannon"));
+        assert_eq!(by("exe6:navis/elecman/chip").as_deref(), Some("exe6:navis/init exe6:navis/elecman/chip"));
+        assert_eq!(by("exe6:rules/init").as_deref(), Some("exe6:init exe6:rules"));
+        assert_eq!(by("exe6:chips/init").as_deref(), Some("exe6:init exe6:chips"));
+        assert_eq!(by("exe6:probe").as_deref(), Some("exe6:init exe6:probe"));
+        assert_eq!(by("exe6:init"), None);
     }
 
     /// A game requires itself and the support packs it depends on; a
