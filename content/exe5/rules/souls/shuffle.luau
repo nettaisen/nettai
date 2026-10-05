@@ -12,8 +12,8 @@
 
 local shuffle = {}
 
--- The soul's number (NaviStats +0x2C).
-local SEARCHSOUL = 3
+-- The soul (NaviStats +0x2C), by its form's id.
+local SEARCHSOUL = "searchsoul"
 
 shuffle.button = {
     slot = 8,
@@ -22,8 +22,7 @@ shuffle.button = {
     right = 11,
     left = 7,
     shown = function(side: number): boolean
-        local soul = battle.navi(side).form.soul
-        return soul ~= nil and soul.number == SEARCHSOUL and battle.mode() ~= 1
+        return battle.navi(side).form.id == SEARCHSOUL and battle.mode() ~= 1
     end,
     pressed = function(side: number)
         if custom.cursor_state(side) == "selectable" then

@@ -6,7 +6,7 @@
 -- NumberSoul, 0x0801090A), Chaos Unison's (0x32: DarkPlus); no B+Back (0xFF). Its damaging Null chips (dimming ones
 -- too) deal 10 more (0x0800D0B8).
 
-local attach_points = require("../attach_points")
+local attach_points = require("@self/attach_points")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
@@ -20,7 +20,7 @@ local ROW = 1
 
 return define.form {
     id = "numbersoul",
-    soul = { number = 9, family = "plus" },
+    soul = { family = "plus" },
     change = souls.action,
     revert = souls.revert,
     sprite = asset.sprite("numbersoul"),
@@ -50,7 +50,8 @@ return define.form {
         normal = asset.mugshot("numbersoul"),
         variant = { normal = asset.mugshot("numbersoul-chaos") },
     },
-    buster_arm = { anim = 0 },
+    -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
+    buster_arm = { anim = 9 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 9 of category 0).
     identity = define.identity {
         class = "megaman",
@@ -58,6 +59,6 @@ return define.form {
         actor_type = "player",
         ai_index = 0,
         aura_anim = 0,
-        attach_points = attach_points[9],
+        attach_points = attach_points,
     },
 }

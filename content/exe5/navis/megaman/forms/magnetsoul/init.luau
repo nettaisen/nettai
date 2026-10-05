@@ -5,7 +5,7 @@
 -- charged with A (0x16: any Elec chip but a dimming or dark one, 0x0801090A; their damage doubled, 0x080103D0),
 -- its B+Back (0x25, ./back: a glow and immobilizers on the enemies ahead), Chaos Unison's (0x35: DarkThnd).
 
-local attach_points = require("../attach_points")
+local attach_points = require("@self/attach_points")
 local back = require("@self/back")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
@@ -16,7 +16,7 @@ local souls = require("../../../rules/souls")
 
 return define.form {
     id = "magnetsoul",
-    soul = { number = 5, family = "elec" },
+    soul = { family = "elec" },
     change = souls.action,
     revert = souls.revert,
     sprite = asset.sprite("magnetsoul"),
@@ -40,7 +40,8 @@ return define.form {
         normal = asset.mugshot("magnetsoul"),
         variant = { normal = asset.mugshot("magnetsoul-chaos") },
     },
-    buster_arm = { anim = 0 },
+    -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
+    buster_arm = { anim = 5 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 5 of category 0).
     identity = define.identity {
         class = "megaman",
@@ -48,6 +49,6 @@ return define.form {
         actor_type = "player",
         ai_index = 0,
         aura_anim = 0,
-        attach_points = attach_points[5],
+        attach_points = attach_points,
     },
 }

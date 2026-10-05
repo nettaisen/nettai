@@ -7,7 +7,7 @@
 -- arms its side's army: the obstacles on the other side's panels turn into its soldiers (objects/soldier, the
 -- obstacle framework's step; exe5-map.md §15.11), which strike with the damage words it sets.
 
-local attach_points = require("../attach_points")
+local attach_points = require("@self/attach_points")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
@@ -17,7 +17,7 @@ local souls = require("../../../rules/souls")
 
 return define.form {
     id = "colonelsoul",
-    soul = { number = 7, family = "summon" },
+    soul = { family = "summon" },
     change = souls.action,
     revert = souls.revert,
     sprite = asset.sprite("colonelsoul"),
@@ -44,7 +44,10 @@ return define.form {
         normal = asset.mugshot("colonelsoul"),
         variant = { normal = asset.mugshot("colonelsoul-chaos") },
     },
-    buster_arm = { anim = 0 },
+    -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
+    buster_arm = { anim = 7 },
+    -- His sword's arm (lib/swords, 0x080EC038): the blade's animation.
+    blade_anim = 14,
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 7 of category 0).
     identity = define.identity {
         class = "megaman",
@@ -52,6 +55,6 @@ return define.form {
         actor_type = "player",
         ai_index = 0,
         aura_anim = 0,
-        attach_points = attach_points[7],
+        attach_points = attach_points,
     },
 }

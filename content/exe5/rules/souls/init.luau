@@ -40,7 +40,6 @@ local state: { [string]: string | { string } } = {
     -- The custom screen's (./custom): the round's souls given, the button's offer, the soul's choice's step.
     souls_used = "u32",
     offer = "form",
-    offer_number = "u8",
     offer_chaos = "bool",
     unite_step = "u8",
     unite_count = "u8",
@@ -56,12 +55,25 @@ souls.system = define.system {
     state = state,
     -- What the player's save brings: the souls it has (a match's side's `souls`, which nettai-match writes by this
     -- field's name; a recording's, its version's: exe5-compat), which the custom screen's soul button may offer, as the
-    -- save's soul flags (0x08024BF0's, by each soul's number; any souls of the game, either version's); Soul Unison
+    -- save's soul flags (0x08024BF0's, one a soul; any souls of the game, either version's); Soul Unison
     -- (event flag 0: the soul button) and Chaos Unison (event flag 0x236: a dark chip's soul). A finished save has
     -- both, as a setup that says nothing.
     setup = { souls = "form[16]", soul_unison = "bool", chaos_unison = "bool" },
     setup_defaults = { soul_unison = true, chaos_unison = true },
     actions = { souls.action, souls.revert },
+    -- What a soul's form says for the rules that ask (a soul is named by its form's id; the original tests its
+    -- number, NaviStats +0x2C, in each place): its sword's arm, the blade's animation (lib/swords, 0x080EC038); its
+    -- charged sword warping behind the enemy whatever the charge (lib/stepsword, 0x08012538); VarSwrd's wait for
+    -- its sequence while A is up (chips/varswrd, 0x080ED570); the cameras' shake as MegaMan emerges in it (./change,
+    -- 0x0801212C).
+    extends = {
+        form = {
+            blade_anim = "u8",
+            steps_behind = "bool",
+            var_sword_waits = "bool",
+            emerge_shake = "bool",
+        },
+    },
     -- Soul Unison on the custom screen, and what each soul adds to it (./custom).
     buttons = custom_souls.buttons,
     windows = custom_souls.windows,

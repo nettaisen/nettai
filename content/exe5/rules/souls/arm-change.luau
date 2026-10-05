@@ -25,16 +25,15 @@ type State = {
     arm_chip: Chip?,
 }
 
--- ColonelSoul, by number (0x08023D74, 0x080124BC).
-local COLONEL = 7
+-- ColonelSoul (0x08023D74, 0x080124BC), by its form's id.
+local COLONEL = "colonelsoul"
 -- The chip's icon blinks for this long.
 local BLINK = 30
 
 -- MegaMan is in ColonelSoul (the screen's +0x10: the side's navi is MegaMan; NaviStats +0x2C).
 local function in_soul(side: number): boolean
     local stats = battle.navi(side)
-    local soul = stats.form.soul
-    return stats.navi.id == "megaman" and soul ~= nil and soul.number == COLONEL
+    return stats.navi.id == "megaman" and stats.form.id == COLONEL
 end
 
 local function has(chip: Chip, flag: string): boolean

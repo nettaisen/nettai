@@ -6,7 +6,7 @@
 -- Chaos Unison's (AIData +0x11's routine 6, ./chaos: DrkSword), its B+Back shield (routine 4, ./back: EXE5's guard,
 -- action 0x1F, as the Reflect program's).
 
-local attach_points = require("../attach_points")
+local attach_points = require("@self/attach_points")
 local back = require("@self/back")
 local buster = require("../weapons/buster")
 local chaos = require("@self/chaos")
@@ -16,7 +16,7 @@ local souls = require("../../../rules/souls")
 
 return define.form {
     id = "protosoul",
-    soul = { number = 1, family = "sword" },
+    soul = { family = "sword" },
     change = souls.action,
     revert = souls.revert,
     sprite = asset.sprite("protosoul"),
@@ -38,7 +38,12 @@ return define.form {
         normal = asset.mugshot("protosoul"),
         variant = { normal = asset.mugshot("protosoul-chaos") },
     },
-    buster_arm = { anim = 0 },
+    -- The buster arm he raises in it (lib/arm, 0x080EBABE): its animation, the soul's.
+    buster_arm = { anim = 1 },
+    -- His sword's arm (lib/swords, 0x080EC038): the blade's animation.
+    blade_anim = 13,
+    -- VarSwrd and NeoVari wait for their sequence while A is up (chips/varswrd, 0x080ED570).
+    var_sword_waits = true,
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 1 of category 0: what a chip's icon
     -- over him and his attachments sit by).
     identity = define.identity {
@@ -47,6 +52,6 @@ return define.form {
         actor_type = "player",
         ai_index = 0,
         aura_anim = 0,
-        attach_points = attach_points[1],
+        attach_points = attach_points,
     },
 }
