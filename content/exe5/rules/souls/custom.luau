@@ -176,9 +176,10 @@ local function slots_of(side: number): SoulCustom?
     return if battle.mode() ~= 1 then united(side) else nil
 end
 
--- The soul button (0x08023C54), in the special slot.
+-- The soul button (0x08023C54), in the special slot: it offers a form (the state's `offer` and `offer_chaos`).
 custom_souls.button = {
     slot = 11,
+    view = "form_offer",
     -- MegaMan with souls, outside the operation battle, with the save's Soul Unison, unless his emotion is worried or
     -- dark (0x08012740: in a soul or angry he may; at mood 0 he is dark, below 65 worried, at 0xFF Full Synchro).
     shown = function(side: number): boolean
@@ -224,6 +225,7 @@ local function drawn(side: number)
 end
 
 custom_souls.window = {
+    view = "offer_flight",
     update = function(side: number): boolean
         local s = system.state() :: State
         local fading = custom.fading(side)
@@ -282,7 +284,7 @@ custom_souls.window = {
         drawn(side)
         return true
     end,
-}
+} :: WindowSpec
 
 -- The screen opens: the round's first forgets the round's souls, and there is no arm chip for the turn (0x080123D4:
 -- the transform record's +6 0xFFFF).
@@ -381,16 +383,17 @@ end
 -- A soul's window as the system's.
 local function window_of(window: SoulWindow): WindowSpec
     return {
+        view = window.view,
         update = function(side: number): boolean
             return window.update(side, system.state())
         end,
     }
 end
 
--- The system's buttons and windows, by name (what the frontend draws them by), and the state fields they keep
--- beside the soul button's (./init declares those): the soul button, and what each soul adds to the screen, gathered
--- from the souls of the navi that has them (MegaMan's `forms.souls`, each form's `custom`). A name is one of the
--- system's: two souls can't both add a button or a window of the same name. (`states`, above: `forget_screen` reads
+-- The system's buttons and windows, by name (a button's is the key of its look in a pack), and the state fields they
+-- keep beside the soul button's (./init declares those): the soul button, and what each soul adds to the screen,
+-- gathered from the souls of the navi that has them (MegaMan's `forms.souls`, each form's `custom`). A name is one of
+-- the system's: two souls can't both add a button or a window of the same name. (`states`, above: `forget_screen` reads
 -- it at each deal.)
 local buttons: { [string]: ButtonSpec } = { soul = custom_souls.button }
 local windows: { [string]: WindowSpec } = { soul_unison = custom_souls.window }

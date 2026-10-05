@@ -106,6 +106,7 @@ local FADE_SPEED = 32
 -- (0x080237B4), and the screen clears; then the picking goes on. Each step after the flash waits for the fade before
 -- it.
 local window: SoulWindow = {
+    view = "chip_flight",
     update = function(side: number, s: any): boolean
         local st = s :: State
         local fading = custom.fading(side)
