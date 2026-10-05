@@ -4,6 +4,7 @@
 language = "ja"
 
 [chips]
+"airforce" = { name = "Gエアフォース", description = "ヘリにへんけいして\nそのれつをとび\nばくげきしていく!" }
 "airhoc" = { name = "エアホッケー", description = "かべにはんしゃする\nエアホッケーを\nななめ右になげる!" }
 "airshot" = { name = "エアシュート", description = "ヒットしたあいてを\n1マスおくへおす\nくうきほう" }
 "airspin1" = { name = "エアホイール1", description = "しゅういをおそう\n風をおこすしゃりん\nを前方にすべらせる" }
@@ -360,6 +361,7 @@ language = "ja"
 
 [navis]
 "colonel" = { name = "カーネル" }
+"gyroman" = { name = "ジャイロマン" }
 "knightman" = { name = "ナイトマン" }
 "meddy" = { name = "メディ" }
 "megaman" = { name = "ロックマン", variant_name = "FCロックマン" }

@@ -819,10 +819,15 @@ impl PanelRules {
         self.numbers.get(n as usize).copied()
     }
 
-    /// The flag bits a panel type contributes to a panel's flags word
-    /// (with the type itself in the low nibble).
+    /// The flag bits a panel type contributes to a panel's flags word,
+    /// with the type itself in the low nibble: the game's number of it
+    /// (`numbers`: EXE5's holy is its 9, EXE6's its 5), which is what the
+    /// original's word holds and what content reading the word's low byte
+    /// reads (EXE5's GyroMan's Airforce, 0x080F0AD0). A type the game
+    /// doesn't number has the engine's own.
     pub fn type_flags(&self, t: PanelType) -> u32 {
-        t as u32 | self.types[t as usize].flags
+        let number = self.numbers.iter().position(|n| *n == t).unwrap_or(t as usize);
+        number as u32 | self.types[t as usize].flags
     }
 
     /// Where a road panel carries a navi.
