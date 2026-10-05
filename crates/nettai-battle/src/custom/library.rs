@@ -213,7 +213,8 @@ pub(crate) mod testing {
                 chips,
                 program_advances,
                 plain: chip(ChipClass::Standard, EVERY_CODE, 0, 10),
-                layout: crate::content::testing::custom_screen_layout(),
+                // (The test content's layout: testdata/content/rules/custom_screen.luau.)
+                layout: crate::content::testing::rules().custom_screen,
             }
         }
     }

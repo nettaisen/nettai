@@ -635,7 +635,9 @@ A field is a section by the engine's name (snake_case: `custom_screen`, `chip_us
 **A ruleset states every rule of its game**: the engine has no game's rules of its own (the user: "no default
 games anywhere please"). The sections `chip_use`, `effects`, `flow`, `panels`, `pools`, `reactions` and `status`
 are required, and so is every field of them; one left out is a load error that names it
-(`exe6/rules/init.luau: ruleset: flow: missing field `escape_check``), as is a game pack that defines no ruleset. What may be left out reads as nothing for
+(`exe6/rules/init.luau: ruleset: flow: missing field `escape_check``), as is a game pack that defines no ruleset.
+The ruleset's declared type requires the seven (`RulesetSpec`, each a `RuleSection`), so the content check reports
+a ruleset without one before any load; which field of a section is missing is the load's to say. What may be left out reads as nothing for
 every game: a feature's section the game hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`), a table
 that is empty without it (`elements`, `buster`, `math`, `custom_screen`), and in a section a list or an attribute
 of one entry that is none unless stated (a panel type's `burn`, the buster's `chaos_cycle`). A rule that picks
