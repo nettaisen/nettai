@@ -1043,43 +1043,43 @@ impl CoreApi for Battle {
         self.sides[side as usize & 1].tracked
     }
 
-    fn tactic_count(&self, side: u8) -> usize {
-        self.tactics[side as usize & 1].entries.len()
+    fn auto_battle_count(&self, side: u8) -> usize {
+        self.auto_battle[side as usize & 1].entries.len()
     }
 
-    fn tactic(&self, side: u8, i: usize) -> nettai_content_api::TacticEntry {
-        use crate::tactics::Tactic;
-        match self.tactics[side as usize & 1].get(i) {
-            Tactic::Chip(c) => nettai_content_api::TacticEntry::Chip(c),
-            Tactic::Pattern(p) => nettai_content_api::TacticEntry::Pattern(p),
-            Tactic::Nothing => nettai_content_api::TacticEntry::Nothing,
-            Tactic::Empty => nettai_content_api::TacticEntry::Empty,
+    fn auto_battle_entry(&self, side: u8, i: usize) -> nettai_content_api::AutoBattleEntry {
+        use crate::auto_battle::AutoBattleEntry;
+        match self.auto_battle[side as usize & 1].get(i) {
+            AutoBattleEntry::Chip(c) => nettai_content_api::AutoBattleEntry::Chip(c),
+            AutoBattleEntry::Pattern(p) => nettai_content_api::AutoBattleEntry::Pattern(p),
+            AutoBattleEntry::Nothing => nettai_content_api::AutoBattleEntry::Nothing,
+            AutoBattleEntry::Empty => nettai_content_api::AutoBattleEntry::Empty,
         }
     }
 
-    fn tactic_pattern(&self, side: u8, i: usize) -> ApiResult<(i8, i8)> {
-        if i >= crate::tactics::MAX_PATTERNS {
-            return Err(ApiError::Other(format!("side {side}'s tactics have no pattern {i}: the block has eight records (0x0802BEFE reads past them)")));
+    fn auto_battle_pattern(&self, side: u8, i: usize) -> ApiResult<(i8, i8)> {
+        if i >= crate::auto_battle::MAX_PATTERNS {
+            return Err(ApiError::Other(format!("side {side}'s auto battle data has no pattern {i}: the block has eight records (0x0802BEFE reads past them)")));
         }
-        let p = self.tactics[side as usize & 1].patterns.get(i).copied().unwrap_or_default();
+        let p = self.auto_battle[side as usize & 1].patterns.get(i).copied().unwrap_or_default();
         Ok((p.dx, p.dy))
     }
 
-    fn tactic_pattern_read(&self, side: u8, i: usize, k: usize) -> nettai_content_api::TacticPatternRead {
-        use crate::tactics::PatternRead;
-        match self.tactics[side as usize & 1].pattern_read(i, k) {
-            PatternRead::Chip(c) => nettai_content_api::TacticPatternRead::Chip(c),
-            PatternRead::Number(n) => nettai_content_api::TacticPatternRead::Number(n),
-            PatternRead::End => nettai_content_api::TacticPatternRead::End,
+    fn auto_battle_pattern_read(&self, side: u8, i: usize, k: usize) -> nettai_content_api::AutoBattlePatternRead {
+        use crate::auto_battle::PatternRead;
+        match self.auto_battle[side as usize & 1].pattern_read(i, k) {
+            PatternRead::Chip(c) => nettai_content_api::AutoBattlePatternRead::Chip(c),
+            PatternRead::Number(n) => nettai_content_api::AutoBattlePatternRead::Number(n),
+            PatternRead::End => nettai_content_api::AutoBattlePatternRead::End,
         }
     }
 
-    fn swap_tactics(&mut self, side: u8, i: usize) {
-        self.tactics[side as usize & 1].swap_first(i);
+    fn auto_battle_swap(&mut self, side: u8, i: usize) {
+        self.auto_battle[side as usize & 1].swap_first(i);
     }
 
-    fn turn_tactics(&mut self, side: u8) -> ApiResult<()> {
-        self.tactics[side as usize & 1].turn().map_err(ApiError::Other)
+    fn auto_battle_turn(&mut self, side: u8) -> ApiResult<()> {
+        self.auto_battle[side as usize & 1].turn().map_err(ApiError::Other)
     }
 
     fn objects_of_kind(&self, kind: u16) -> Vec<ObjectRef> {
