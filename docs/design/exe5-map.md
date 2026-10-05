@@ -1975,6 +1975,18 @@ which the engine runs for a side whose rules say so (the status section's `emoti
     +0x74 and +0x75). The mark's routine reads the accumulator of the one element the receiver's element is weak
     to (0x08017284 by element; none for Null). So a soul of no element has no weakness: ProtoSoul hit by a CannBall,
     a breaking chip, takes its 140 with no mark (souls/01-sword/break-hit).
+  - *The mark's test* (the status section's `weakness_mark`, a rule each game states). EXE6's routine
+    (`sub_801A42E`) tests the multiplier byte its hit kernel stores of each hit (+0x74: the last hit's is left) and
+    the final damage: `last_hit_multiplier`. EXE5's (0x08017254) reads the navi's element into the table at
+    0x08017284 (`FF 7E 80 82 7C`: no accumulator for Null, Aqua's for Fire, Elec's for Aqua, Wood's for Elec,
+    Fire's for Wood: the hit kernel's table read the other way, which is where the engine reads it) and tests that
+    accumulator alone: `weak_element_damage`. The two part when a plain hit follows a weakness hit on one tick:
+    ToadSoul hit by a Thunder and by a buster shot together, the shot the later of the two (the lab's
+    souls/12-aqua/weak-buster: 81 damage), shows the mark in EXE5, where the engine with EXE6's test showed none.
+    A barrier or a trap that takes the hit zeroes the five accumulators in both games (0x08017632, 0x08029AD2), so
+    no mark there by either test, and a guarded hit never reaches them. Nothing else of EXE5's reads a multiplier
+    byte: the engine's two (`exclamation`, `damage_multiplier`) are read by the mark's test and by EXE6's break
+    request (`weakness_hit_breaks_form`) alone.
 
 - **The light/dark bug codes** (0x0801103E, the navi's hit NaviCust bug; the hook `navi_bug`, the light and dark
   system's): a hit with hit flag 0x400 brings nothing to a value of 1000 or more (not even the weapons' reload); code

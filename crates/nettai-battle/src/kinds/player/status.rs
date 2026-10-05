@@ -221,10 +221,24 @@ fn spawn_marker(b: &mut Battle, r: ObjectRef, mark: crate::kinds::hit_marker::Ma
     crate::kinds::hit_marker::spawn(b, r, offset, mark);
 }
 
-/// `sub_801A42E`: a weakness hit that did damage shows "!!".
+/// `sub_801A42E`: a weakness hit shows "!!", by what the game's routine
+/// tests (the rule `weakness_mark`). EXE6's: the last hit's multiplier, on
+/// a tick with final damage. EXE5's (0x08017254): the damage of the element
+/// the navi's is weak to (the elements its row of the weakness table
+/// multiplies; EXE5's own table, 0x08017284, names the one accumulator),
+/// whichever hit came last.
 fn weakness_effect(b: &mut Battle, r: ObjectRef) {
+    use crate::content::WeaknessMark;
     let c = coll(b, r);
-    if c.acc.exclamation != 0 && c.acc.final_damage != 0 {
+    let rules = b.game_rules();
+    let shown = match rules.weakness_mark {
+        WeaknessMark::LastHitMultiplier => c.acc.exclamation != 0 && c.acc.final_damage != 0,
+        WeaknessMark::WeakElementDamage => rules
+            .element_weakness
+            .get(c.element as usize)
+            .is_some_and(|row| row.iter().zip(&c.acc.element_damage[..5]).any(|(&weak, &damage)| weak != 0 && damage != 0)),
+    };
+    if shown {
         spawn_marker(b, r, crate::kinds::hit_marker::Mark::Weakness);
     }
 }
@@ -1231,5 +1245,72 @@ fn while_dimmed(b: &mut Battle, r: ObjectRef) {
         let o = b.objects.get_mut(r);
         o.pos.x = (o.pos.x & 0xFFFF) | ((o.shake_origin_x as i32) << 16);
         o.pos.z = (o.pos.z & 0xFFFF) | ((o.shake_origin_z as i32) << 16);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::content::{Content, WeaknessMark, testing};
+    use std::sync::Arc;
+
+    /// Whether the weakness mark shows over a navi of `element` under the
+    /// rule `mark`, after a tick whose hits left `damage` by element, the
+    /// last of them multiplied by `last_multiplier` more. (Aqua is weak to
+    /// elec, element 2 to 3, and nothing else to anything.)
+    fn marked(mark: WeaknessMark, element: u8, damage: [u16; 6], last_multiplier: u8) -> bool {
+        let mut c: Content = testing::build();
+        c.define().unwrap_or_else(|e| panic!("{e}"));
+        {
+            let rules = c.rules_mut();
+            rules.weakness_mark = mark;
+            rules.element_weakness = [[0; 6]; 6];
+            rules.element_weakness[2][3] = 1;
+        }
+        let c = Arc::new(c);
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+        testing::on(&mut setup, &c);
+        let mut b = Battle::new(setup, c);
+        b.spawn_actors();
+        b.run_objects();
+        b.round.flags |= battle_flags::FIGHTING;
+        let r = b.player(1).unwrap();
+        let hit = coll_mut(&mut b, r);
+        hit.element = element;
+        hit.acc.element_damage = damage;
+        hit.acc.exclamation = last_multiplier;
+        hit.acc.final_damage = damage[..5].iter().sum();
+        let before = b.objects.in_order().count();
+        weakness_effect(&mut b, r);
+        b.objects.in_order().count() == before + 1
+    }
+
+    /// EXE6's mark (`sub_801A42E`) tests the last hit's multiplier and the
+    /// final damage; EXE5's (0x08017254) the damage of the element the
+    /// navi's is weak to. They part where a plain hit follows a weakness hit
+    /// on one tick (the lab's souls/12-aqua/weak-buster: a Thunder and a
+    /// buster shot onto ToadSoul), and where a hit is multiplied by anything
+    /// but the element's weakness.
+    #[test]
+    fn the_weakness_mark_by_each_games_test() {
+        use WeaknessMark::{LastHitMultiplier, WeakElementDamage};
+        // A weakness hit alone: both.
+        assert!(marked(LastHitMultiplier, 2, [0, 0, 0, 80, 0, 0], 1));
+        assert!(marked(WeakElementDamage, 2, [0, 0, 0, 80, 0, 0], 1));
+        // A plain hit after it on the tick: the last hit's multiplier is
+        // none, the weak element's damage is there.
+        assert!(!marked(LastHitMultiplier, 2, [1, 0, 0, 80, 0, 0], 0));
+        assert!(marked(WeakElementDamage, 2, [1, 0, 0, 80, 0, 0], 0));
+        // A hit of another element that something multiplied (EXE6's second
+        // weaknesses, a thaw): the multiplier alone.
+        assert!(marked(LastHitMultiplier, 2, [140, 0, 0, 0, 0, 0], 1));
+        assert!(!marked(WeakElementDamage, 2, [140, 0, 0, 0, 0, 0], 1));
+        // No damage left (a barrier took the hit): neither.
+        assert!(!marked(LastHitMultiplier, 2, [0; 6], 1));
+        assert!(!marked(WeakElementDamage, 2, [0; 6], 1));
+        // A navi of no element has no weak element; nor is the sixth
+        // accumulator (poison, a panel's drain) any element's.
+        assert!(!marked(WeakElementDamage, 0, [10, 10, 10, 10, 10, 0], 0));
+        assert!(!marked(WeakElementDamage, 2, [0, 0, 0, 0, 0, 3], 0));
     }
 }
