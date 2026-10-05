@@ -1801,7 +1801,7 @@ pub trait CoreApi {
     fn status_timer(&self, o: ObjectRef, t: StatusTimer) -> ApiResult<u16>;
     fn set_status_timer(&mut self, o: ObjectRef, t: StatusTimer, v: u16) -> ApiResult<()>;
     /// `object_setDefaultCounterTime`: open the attack's counter window.
-    fn open_counter_window(&mut self, o: ObjectRef);
+    fn open_counter_window(&mut self, o: ObjectRef, ticks: u8);
     /// `sub_801056A`: the reactive-defense abort attacks check after each
     /// phase.
     fn check_reactive_abort(&mut self, o: ObjectRef);

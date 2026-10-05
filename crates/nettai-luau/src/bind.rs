@@ -557,7 +557,9 @@ impl UserData for Object {
                 with(|api, _| api.key(this.0, pad, key).map_err(api_error))
             });
         }
-        methods.add_method("open_counter_window", |_, this, ()| with(|api, _| Ok(api.open_counter_window(this.0))));
+        methods.add_method("open_counter_window", |_, this, ticks: Option<u8>| {
+            with(|api, _| Ok(api.open_counter_window(this.0, ticks.unwrap_or(0x10))))
+        });
         methods.add_method("check_reactive_abort", |_, this, ()| with(|api, _| Ok(api.check_reactive_abort(this.0))));
         methods.add_method("start_stance_counter", |_, this, ()| with(|api, _| Ok(api.start_stance_counter(this.0))));
         methods.add_method("refresh_form_overlay", |_, this, ()| with(|api, _| Ok(api.refresh_form_overlay(this.0))));

@@ -653,8 +653,9 @@ declare class Object
     function dimmed_held(self, key: Key): boolean
     function dimmed_pressed(self, key: Key): boolean
     function dimmed_released(self, key: Key): boolean
-    -- `object_setDefaultCounterTime`.
-    function open_counter_window(self): ()
+    -- `object_setDefaultCounterTime`: a counter window of 16 ticks, or of
+    -- `ticks` (`object_setCounterTime`).
+    function open_counter_window(self, ticks: number?): ()
     -- `sub_801056A`, after each phase of an attack.
     function check_reactive_abort(self): ()
     -- `sub_80105F2`: the stance's own trap (the AntiDmg program's) caught a
@@ -2509,7 +2510,9 @@ export type IdentitySpec = {
     -- takes it off, an animation change, a flinch or a drag restarts it.
     -- By default the death hook takes its own parts off and an animation
     -- change restarts them (not an overlay worn only while standing).
-    overlay_hooks: { "death" | "refresh" | "flinch" | "drag" }?,
+    -- "flinch_checked" is a flinch hook that tests for what the navi wears
+    -- first (EXE5's team navis').
+    overlay_hooks: { "death" | "refresh" | "flinch" | "flinch_checked" | "drag" }?,
     -- The Full Synchro aura's animation around it (a player's has one).
     aura_anim: number?,
     -- The ice block that fits it (none: small).
