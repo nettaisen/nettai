@@ -7,6 +7,13 @@
 //! entries in order, a chip or a pattern (a place by its target and a run
 //! of chips). Each side's tactics are battle state: the computer navi's AI
 //! turns their entries as it plays them.
+//!
+//! A pattern's record is 16 bytes: its place (two signed bytes), five chip
+//! places (halfwords, to the first 0xFFFF) and its score (a word: what the
+//! save's learning ranks its patterns by, 0x0802C540). The AI reads a
+//! pattern's chips to the first 0xFFFF with no other end (0x0802BCD6), so
+//! from a record whose five chip places are all filled it reads on into
+//! the score: a pattern carries it.
 
 use nettai_content_api::ChipHandle;
 
@@ -14,9 +21,9 @@ use nettai_content_api::ChipHandle;
 pub const MAX_ENTRIES: usize = 42;
 /// Most patterns (the block's 16-byte records from +0x58: 8).
 pub const MAX_PATTERNS: usize = 8;
-/// Most chips a pattern runs (its record's seven halfwords after its
-/// place, the last its end).
-pub const MAX_PATTERN_CHIPS: usize = 6;
+/// Most chips a pattern runs (its record's five chip places, between its
+/// place and its score).
+pub const MAX_PATTERN_CHIPS: usize = 5;
 
 /// An entry of a player's tactics: a halfword of the block.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -32,13 +39,16 @@ pub enum Tactic {
 }
 
 /// A pattern: where to stand from the target (`dx` columns toward the
-/// computer navi's enemies, `dy` rows) and the chips to use there, in
-/// order.
+/// computer navi's enemies, `dy` rows), the chips to use there, in order,
+/// and the record's score (its word at +12, little-endian: its low half
+/// the halfword at +12, which follows the fifth chip place, its high half
+/// the one at +14).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct TacticPattern {
     pub dx: i8,
     pub dy: i8,
     pub chips: Vec<ChipHandle>,
+    pub score: u32,
 }
 
 /// A player's tactics.
