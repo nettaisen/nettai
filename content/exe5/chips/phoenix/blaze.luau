@@ -35,12 +35,14 @@ local function tick(me: Object)
     end
 end
 
--- 0x080EA520: on its panel, on the ground, animation 0, no shadow; then its first update.
+-- 0x080EA520: on its panel, on the ground, animation 0, no shadow, facing its object's way (0x0801892E's end); then
+-- its first update.
 local function init(me: Object)
     local sprite = me.sprite
     sprite:load(SPRITE)
     sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = 0, 0xFF
+    sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me.visible = true
     me:set_coordinates_from_panel()
     local p = me.pos
