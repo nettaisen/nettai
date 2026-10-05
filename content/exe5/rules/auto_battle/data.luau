@@ -1,10 +1,10 @@
 --!strict
--- EXE5's computer-navi AI's data (docs/design/exe5-map.md §15.9): the panel offset lists (0x080162A4, EXE6's
+-- EXE5's auto battle AI's data (docs/design/exe5-map.md §15.9): the panel offset lists (0x080162A4, EXE6's
 -- `PanelOffsetListsPointerTable`), the chips' reach lists (0x08022AFC) and what the AI reads of each chip's record:
 -- `approach` (byte 9 bit 0: it walks up to the target first), `class` (byte 13: how it gets in place, ./place),
 -- `picks` (byte 14: the bits the pickers 0x0802BE4E and 0x0802BE9A test) and `range` (byte 23: its reach list).
 -- Lists are { dx, dy } pairs, dx toward the navi's enemies.
--- Written by tools/exe5/gen_computer_navi.py (bn6battle-verify) from the EXE5 ROM; people own it now.
+-- Written by tools/exe5/gen_auto_battle.py (bn6battle-verify) from the EXE5 ROM; people own it now.
 
 export type ChipData = { approach: boolean, class: number, picks: number, range: number }
 
