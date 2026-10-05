@@ -156,7 +156,8 @@ local function init(me: Object)
     me:set_coordinates_from_panel()
     local sprite = me.sprite
     sprite:load(SPRITE)
-    sprite.shadow = "hidden"
+    -- (The setup's shadow byte is 0: `sprite_noShadow`, 0x0800F1C4, the first part drawn with the sprite.)
+    sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = ANIM, 0xFF
     if not me:create_collision() then
         error("ElcReel's reel has no collision: 0x080DABE0 goes on through a null pointer")
