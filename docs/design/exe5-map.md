@@ -1385,7 +1385,7 @@ timer raises) and its other console's chip name (`sub_801EB18`); lib/arm's NaviS
 0x080E9FA4: CrakBom's and Quake's bombs; never in a netbattle); Geyser's geyser (no recording throws it into a hole).
 (An auto-battling navi's VarSwrd pick, the side's sword pick, is DarkInvs's drive's: 0x0802C110 sets AIData
 +0xF0 for the story navis and DarkInvs, never Chaos Unison's Dark MegaMan, who takes the joypad path; the lab's
-chips/0x0bd-darkinvs/tactics-varswrd shows it.) EXE5's field obstacles' chips (Wind, Fan, RockCube, BoyBomb1 to 3,
+chips/0x0bd-darkinvs/auto-battle-varswrd shows it.) EXE5's field obstacles' chips (Wind, Fan, RockCube, BoyBomb1 to 3,
 RedFrut1 to 3, Voltz1 to 3 and VDoll) are in §15.11.
 
 ### 15.7 EXE5's MegaMan, stages and roles (as built)
@@ -1737,9 +1737,9 @@ chips walked up to, patterns, traps; 10,225 frames, each through Dark MegaMan's 
   is attack 0x16: three shots, rules/auto_battle/buster), the patterns (never played: below), the reposition, a
   chip's play; the
   pressure picks as written (the front one calls 0x081BC8AC, data: an error; the hole one reads the AI's own
-  side's tactics; their counters stay 0); getting in place for a chip by its positioning class
+  side's auto battle data; their counters stay 0); getting in place for a chip by its positioning class
   (rules/auto_battle/place: all 33 classes of 0x08029B3C, and the panel searches they share, ./panels).
-- *The tactics* (nettai_battle::tactics): the recordings' exchanged blocks (exe5-compat); a match file's
+- *The auto battle data* (nettai_battle::auto_battle): the recordings' exchanged blocks (exe5-compat); a match file's
   `[side.auto_battle]` (below), sent as the console sends it (0x0802C7BE); the netplay offer.
 - EXE5's shots raise EXE5's own arm (lib/arm, 0x080EBABE; lib/buster's), the arm a navi in auto battle of AI index 0x16
   raises.
@@ -1760,8 +1760,8 @@ seven saves (Tango's templates and three played ones):
   score (its lower half a chip's number, its upper half chip 0), the next record's `dx` and `dy` as one halfword,
   that record's places, and so through the records to the block's last eight bytes, which nothing writes (0xFF).
   As run, nothing of a pattern is ever read: see *A pattern is never played* below. The engine's type holds the
-  record whole all the same (`TacticPattern`: `dx`, `dy`, five places each a chip, 0 or empty, the score; eight
-  records in their places; `Tactics::pattern_read` is the read as written), and exe5-compat refuses a block whose
+  record whole all the same (`PatternRecord`: `dx`, `dy`, five places each a chip, 0 or empty, the score; eight
+  records in their places; `AutoBattleData::pattern_read` is the read as written), and exe5-compat refuses a block whose
   last eight bytes aren't 0xFF.
   A record the learning never filled is zeros (place 0, 0, five chip places of 0, score 0: the played saves'
   unused records), one nothing has written 0xFF.
@@ -1787,7 +1787,7 @@ seven saves (Tango's templates and three played ones):
   scenario till then, has both its places on side 0's area (dx 1 and 2), where the step fails either way;
   pattern-reached stopped at frame 908 of 1,658 (the miss's draw for the panel) and matches with the test as the
   game has it (`pattern_place`: `can_step(lag, lag)`). The chips' read stays as written behind it
-  (`pattern_chips`, by `battle.tactic_pattern_read`); a halfword there that is no chip place's chip is an error
+  (`pattern_chips`, by `battle.auto_battle_pattern_read`); a halfword there that is no chip place's chip is an error
   naming the number (content names chips; the chip table's first record, chip 0, a blank record with the plus
   chips' own use and a damage of 1, and its other blank ones have no definition).
 - *Who is in auto battle in a netbattle, and whose stats it reads* (2026-10-05). Three ways in: the Dark MegaMan a
@@ -1801,7 +1801,7 @@ seven saves (Tango's templates and three played ones):
   pattern entry and Cannon in the data; 27 steps, 12 buster runs, Cannon twice, none of the pattern; every frame
   and sound call match). With the games' navis the two reads of the pattern step's row can't be told apart (4 or 0,
   or an address: none a row); the port keeps both as the game has them.
-- *A place holding 0* (the halfword 0, chip 0's number; `Tactic::Nothing`). The send packs only 0xFFFF away
+- *A place holding 0* (the halfword 0, chip 0's number; `AutoBattleEntry::Nothing`). The send packs only 0xFFFF away
   (0x0802C7BE), so a 0 is an entry. The decision tests the first place for 0 before it tests for 0xFFFF and takes
   both the same way (0x0802BAC6, 0x0802B55E): a miss and a buster run. So a 0 that comes first stays first, each
   decision that reaches it a miss, until five in a row bring the swap with a random other place (0x0802C0DC); the
@@ -1861,7 +1861,7 @@ seven saves (Tango's templates and three played ones):
   (`exe5_compat::save::AutoBattleBlock`, the block by number as it is; `nettai_match::auto_battle::of_save`).
   A random match states what the game would write for a player who used each chip of the drawn folder once and
   learned no pattern (`AutoBattle::of_folder`: every record zeros). A match compiles to the engine's block
-  (`Tactics`) place for place and record for record. The learning itself (the tables and the runs during a battle)
+  (`AutoBattleData`) place for place and record for record. The learning itself (the tables and the runs during a battle)
   is not ported: nothing of a battle reads it.
 - *What a battle's end writes of the records* (0x0802C540's end, read 2026-10-05). The 42 places are built on the
   stack (0xFFFF, then the lists' chips and the pattern entries) and copied to the block's first 0x54 bytes; the
@@ -2071,7 +2071,7 @@ folder with the kinds it owns.
   gathering flames effect 0x4B on the sine table, the chaos strike attack 0x82; its landing's palette flash needs EXE5's
   `effects.palette_flash`: a pause holds either variant, dimming only a modeless one); DarkInvs (effect 0x18, its
   stand-in actor 9; the user driven for 600 ticks, untouchable, by the auto battle AI's other family, 0x0802B4AC, on
-  its own side's tactics, facing the target searched from a step's column; the status section's `no_charge_drive`: the
+  its own side's auto battle data, facing the target searched from a step's column; the status section's `no_charge_drive`: the
   timer at the intake's end, the idle's step asked of the systems' `controller`, the last 180 ticks' gray flicker; its
   end, EXE5's action 0x49, the roles' `stun_strike`, with its dark image, actor 10).
 
@@ -2093,7 +2093,7 @@ shows, white then its sounds, only by the register r1 the check leaves at 0 HP, 
 straight to the deletion test, which tries the stand first). AntiRecv's counterattack takes its HP through
 `Object:subtract_hp` (EXE6's the same), EXE5's its mood too (0x080E39DC: its damage word's high half, 0x08012820), and
 its mark sits where the trap's game puts it (`anti_navi_sparkle`). Also new: the request `drag` (flag2 0x100). Where a
-hit landed and which chips a side used are learned for the auto-battling navis' tactics (0x0802C294, 0x0802C3C4, 0x0802C3E2:
+hit landed and which chips a side used are learned for the auto-battling navis' auto battle data (0x0802C294, 0x0802C3C4, 0x0802C3E2:
 the battles after; nothing of a battle reads them), not ported. As drawn (2026-10-05, against the original's frames:
 tools/frontend-compare's dark-survival/holds, the console's own navi, and holds-side1, the other side's): the
 transformation's fades started outside the sequencer are drawn by the fade's own record (the renderer's `layer_fade`:
@@ -2435,7 +2435,7 @@ SuprVulc rather than Roll (Roll also wants a light MegaMan), and Tango's navi st
 takes only 60 from side 0's navi in these saves, where side 0's takes 120 from side 1's: not looked into). Not
 reached: a Giga chip for Beat, Rush without the opponent's navi, a failed spawn.
 
-### 15.16 The team navis (in progress: the framework, ProtoMan and Colonel)
+### 15.16 The team navis (in progress: the framework, and the navis of the table below)
 
 EXE5's players operate thirteen navis: MegaMan (navi 0) and the twelve team navis, six a version in its souls'
 order (NaviStats +0x29, and a save's GameState +1, the navi the PET operates): Team ProtoMan's ProtoMan, GyroMan,
@@ -2550,5 +2550,6 @@ a flinch hook that tests for what the navi wears first (EXE5's team navis'; EXE6
 | Navi | Weapons | Own chip | Checked |
 |---|---|---|---|
 | ProtoMan | the charged slash (0x1E, 0x0800F8CE: WideSwrd loaded as the attack, the damage rows' row 0, counter byte 0x94) and the B+Back guard (0x0B, 0x0800F6CC: EXE5's guard as the Reflect program's, the stats' damage, 40 ticks before the next chip) | StepSwrd (action 0x13 as WideSwrd's, row 1, its routine 2) | 40 recordings (navis/protoman): his own chip at levels 0, 3 and 6, from another row, out of reach, blocked, onto a panel the opponent steps to, on a Japanese console and over four custom screens; the charged slash at three levels and let go early; the guard reflecting a buster shot and a Cannon, and too early; AntiSwrd against both; a counter hit and Full Synchro (an AirShot's; StepSwrd's makes none); twelve plain chips, a held A, a dark chip; hits, his deletion, a win. Every frame and every sound call. |
+| SearchMan | the charged shot (0x3F, 0x0800FB1A: the damage rows' row 4, counter byte 0x8A, no element; it starts action 0x3B, the one SearchSoul's charged shot starts: the scope marks the enemy navi nearest ahead and five shots follow on its panel, the last flinching). No B+Back. His own action 8 (0x080F0E64: the same five shots at the panel of a target his attack is given) is his attack in an auto battle, which no weapon or chip starts: it comes with the gate navis' operation battle | Satelity (his own action 7, 0x080F0DFC: a dimming chip by his own action, not the dimming chips': he spawns its controller, effect object 0x3F, and starts the dimming himself with no cut-in, and since the cut-in tests the action, 0x0801454C, it cuts in on nothing either. The controller sends out SearchMan's scope as a sight, which its user stops with A or 300 ticks do; then he holds his animation 21 while a satellite, effect 0x61, hangs three panels behind that panel, opens and aims (8, 12 and 10 ticks) and fires: its beam, effect 0x62, cracks the panel and hits it for 60 ticks, and four flares, attack 0xAF, go out to the panels beside it, each hitting its panel until something is hit; row 5, 100 at every level, counter byte 0x94) | 51 recordings (navis/searchman): the charged shot at three levels, at an opponent in another row, as it steps away, let go early, interrupted, ending the round, and in a Cannon's windup (no counter hit); Satelity locked on the opponent's panel (with B, and with B late), on the panel below it (a flare's hit), on the first panel, left to its time limit at three levels and on a Japanese console, after the opponent's AreaGrab (the sight's columns; the satellite off the field's edge, a flare over his own panel), ending the round while dimmed, in a Cannon's windup, and against cut-ins both ways (the opponent's AreaGrab can't cut in on it, it can't cut in on an AreaGrab; an AreaGrab of his own does, and is cut in on); from the right on the lab's swapped base (Satelity twice, the charged shot, his custom screens); a counter hit and Full Synchro; twelve plain chips, a held A, a dark chip; hits, his deletion, a win. Every frame and every sound call; 6 of them frame for frame against the original's picture. |
 | Colonel | the Screen Divide (0x46, 0x0800FC0C: the damage rows' row 13, counter byte 0x94, its target the first enemy body ahead in his row, else three panels ahead; his own action 7, 0x080F89AE, which ColonelSoul's charged shot is MegaMan's cut of: he stands ready, draws his sword with a 16-tick counter window, and on the 10th tick cuts the target's panel and the two diagonally nearer him). No B+Back. He wears his cape (the body overlays' row 3), taken off at his deletion and restarted by an animation change or a flinch | C-Cannon (his own action 8, 0x080F8B30: the TankCans' cannon raised 8 ticks with a 15-tick counter window, then a TankCan shell from the panel ahead, 16 pixels up, without cracking; row 12, its routine 5 clears the wait) | 40 recordings (navis/colonel, him on side 1): the Screen Divide at three levels, at a panel's reach, on its diagonal, out of reach, let go early, and hit as he draws; C-Cannon at three levels, its blast at the far edge with and without the opponent in it, into a RockCube, into the opponent's start barrier, on a Japanese console, and over four custom screens traced on his own console; AntiSwrd against the Screen Divide; a counter hit and Full Synchro; twelve plain chips, a held A, a dark chip; hits, his deletion, two wins. Every frame and every sound call. |
 | TomahawkMan | the thrown tomahawk (0x3C, 0x0800FACA: the damage rows' row 18, counter byte 0x94, no element; his action 7, 0x080F1760, throws attack object 0xB4, 0x080DCB98: four pixels a tick along his row, a slash against navis once a panel; along the middle row it comes back from the first panel with an enemy's body or the last column, along an edge row it crosses the first column with an enemy's body, or the last, and comes back along the other edge row; it waits while dimmed) and the A charge of Wood chips (0x2B, 60 ticks: `charged_chips` and `charged_bonus`, above). SuperArmor and UnderShirt (his stats row) | T-Swing (his action 8, 0x080F17D0: EXE6's TomahawkMan's charged swing with hit modifier 3, Wood, row 19, counter byte 0x9E) | 57 recordings (navis/tomahawkman): the tomahawk along each row, turning at the opponent's panel, its column and the field's end, through a RockCube, across a dimming, two at once, at three levels, deleting the opponent, against AntiSwrd; T-Swing landing at two levels, from the front column, on grass, into a Cannon's windup (no counter hit), against AntiSwrd, with his SuperArmor hit; a charged Lance and Boomer (their damage again), and AntiWood, DrkLance and T-Swing, which don't charge; his deletion past UnderShirt; the set every team navi gets. Every frame and every sound call. The tools' stats for him are the recordings' in what his definition states (trace-tests' exe5_team_navis). Its picture is compared with the original's (tools/frontend-compare/exe5.txt: the throw through a dimming from the opponent's console, and along an edge row on his own; T-Swing and his deletion were compared once). |

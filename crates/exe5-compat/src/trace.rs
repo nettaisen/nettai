@@ -49,7 +49,7 @@ pub struct Setup {
     /// The recording console's frame counter on the setup's frame.
     pub frame_counter: u16,
     /// Both players' auto battle data as the link exchanged it (0xE0
-    /// bytes each, side 0's first), hex: their tactics. Older recordings
+    /// bytes each, side 0's first), hex: their auto battle data. Older recordings
     /// have none.
     #[serde(default)]
     pub ai_lists: Option<[String; 2]>,
@@ -123,7 +123,7 @@ impl NaviCustSetup {
 /// eight bytes are 0xFF (nothing writes them, and the AI's read of a
 /// pattern as written, which can run through the records, 0x0802BCD6,
 /// would end there).
-pub fn tactic_block(block: &[u8]) -> Result<(Vec<u16>, [crate::save::AutoBattlePattern; crate::save::AUTO_BATTLE_PATTERNS]), String> {
+pub fn auto_battle_block(block: &[u8]) -> Result<(Vec<u16>, [crate::save::AutoBattlePattern; crate::save::AUTO_BATTLE_PATTERNS]), String> {
     use crate::save::{AUTO_BATTLE_EMPTY, AUTO_BATTLE_PATTERN, AUTO_BATTLE_PATTERNS, AutoBattleBlock};
     let read = AutoBattleBlock::read(block)?;
     let count = u32::from_le_bytes(block[0x54..0x58].try_into().expect("four bytes")) as usize;
@@ -534,10 +534,10 @@ impl Round {
                 _ => {}
             }
         }
-        // The chips of both players' tactics.
+        // The chips of both players' auto battle data.
         if let Some(lists) = &self.setup.ai_lists {
             for (side, l) in lists.iter().enumerate() {
-                let (entries, patterns) = tactic_block(&unhex(l)?).map_err(|e| format!("side {side}'s tactics: {e}"))?;
+                let (entries, patterns) = auto_battle_block(&unhex(l)?).map_err(|e| format!("side {side}'s auto battle data: {e}"))?;
                 let chips = entries
                     .iter()
                     .filter(|&&e| e & 0x8000 == 0 && e != 0)
@@ -546,8 +546,8 @@ impl Round {
                 for id in chips {
                     match compat.chip(id) {
                         Some(key) if content.defs.chip_by_key(&key).is_some() => {}
-                        Some(key) => out.push(format!("chip {key} ({id:#05x}, side {side}'s tactics)")),
-                        None => out.push(format!("chip {id:#05x} (side {side}'s tactics: no key in compat)")),
+                        Some(key) => out.push(format!("chip {key} ({id:#05x}, side {side}'s auto battle data)")),
+                        None => out.push(format!("chip {id:#05x} (side {side}'s auto battle data: no key in compat)")),
                     }
                 }
             }
@@ -656,8 +656,8 @@ impl Round {
                 // start's: nothing is compiled over them.)
                 patch_cards: cards_of(side as usize)?,
                 navicust: navicust_of(side as usize)?,
-                tactics: match &self.setup.ai_lists {
-                    Some(lists) => tactics(content, compat, &unhex(&lists[side as usize])?)?,
+                auto_battle: match &self.setup.ai_lists {
+                    Some(lists) => auto_battle_data(content, compat, &unhex(&lists[side as usize])?)?,
                     None => Default::default(),
                 },
             })
@@ -744,30 +744,30 @@ impl Round {
     }
 }
 
-/// A player's tactics from their auto battle data block (`tactic_block`):
+/// A player's auto battle data from the block a recording carries (`auto_battle_block`):
 /// its chips by key.
-fn tactics(content: &Content, compat: &Compat, block: &[u8]) -> Result<nettai_battle::tactics::Tactics, String> {
-    use nettai_battle::tactics::{PatternChip, Tactic, TacticPattern, Tactics};
-    let (entries, patterns) = tactic_block(block)?;
+fn auto_battle_data(content: &Content, compat: &Compat, block: &[u8]) -> Result<nettai_battle::auto_battle::AutoBattleData, String> {
+    use nettai_battle::auto_battle::{AutoBattleData, AutoBattleEntry, PatternChip, PatternRecord};
+    let (entries, patterns) = auto_battle_block(block)?;
     let chip = |id: u16| -> Result<nettai_content_api::ChipHandle, String> {
         compat
             .chip(id)
             .and_then(|k| content.defs.chip_by_key(&k))
-            .ok_or_else(|| format!("the tactics' chip {id:#05x} isn't in the content"))
+            .ok_or_else(|| format!("the auto battle data's chip {id:#05x} isn't in the content"))
     };
-    let mut out = Tactics::default();
+    let mut out = AutoBattleData::default();
     for e in entries {
         out.entries.push(match e {
-            0 => Tactic::Nothing,
-            0xFFFF => Tactic::Empty,
-            e if e & 0x8000 != 0 => Tactic::Pattern((e & 0x7FFF) as u8),
-            e => Tactic::Chip(chip(e)?),
+            0 => AutoBattleEntry::Nothing,
+            0xFFFF => AutoBattleEntry::Empty,
+            e if e & 0x8000 != 0 => AutoBattleEntry::Pattern((e & 0x7FFF) as u8),
+            e => AutoBattleEntry::Chip(chip(e)?),
         });
     }
     // The records in their places, used or not (the AI's read of a
     // pattern can run on into the ones after it).
     for p in patterns {
-        let mut chips = [PatternChip::Empty; nettai_battle::tactics::PATTERN_CHIPS];
+        let mut chips = [PatternChip::Empty; nettai_battle::auto_battle::PATTERN_CHIPS];
         for (place, &c) in chips.iter_mut().zip(&p.chips) {
             *place = match c {
                 0 => PatternChip::Nothing,
@@ -775,7 +775,7 @@ fn tactics(content: &Content, compat: &Compat, block: &[u8]) -> Result<nettai_ba
                 c => PatternChip::Chip(chip(c)?),
             };
         }
-        out.patterns.push(TacticPattern { dx: p.dx, dy: p.dy, chips, score: p.score });
+        out.patterns.push(PatternRecord { dx: p.dx, dy: p.dy, chips, score: p.score });
     }
     Ok(out)
 }

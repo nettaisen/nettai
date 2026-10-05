@@ -15,7 +15,8 @@ use nettai_battle::Battle;
 use std::sync::Arc;
 use nettai_battle::content::Content;
 use exe6_compat::CrossList;
-use nettai_battle::custom::{FolderChip, GameVersion, SavedFolder};
+use exe6_compat::GameVersion;
+use nettai_battle::custom::{FolderChip, SavedFolder};
 use nettai_content_api::StageHandle;
 
 /// The frontend's own random draws for a setup (splitmix64): not the
@@ -111,9 +112,11 @@ pub fn arena(content: &Content, game: &str, draws: &mut Draws, stage: Option<Sta
     Ok(Arena { game: game.to_string(), first, later })
 }
 
-/// A version drawn at random, Gregar or Falzar.
+/// A version drawn at random, Gregar or Falzar: EXE6's two, in the
+/// original's order (compat's), so a seed draws the version it always has.
+/// (The names the rules declare come in another order: falzar, gregar.)
 fn version(draws: &mut Draws) -> GameVersion {
-    if draws.below(2) == 0 { GameVersion::Gregar } else { GameVersion::Falzar }
+    GameVersion::ALL[draws.below(2) as usize]
 }
 
 /// What live play's players' versions are drawn from, with the seed: a
@@ -138,8 +141,8 @@ impl Side {
     /// `version`, with this folder and Cross list.
     pub fn live(content: &Content, arena: &Arena, folder: SavedFolder, crosses: CrossList, version: GameVersion) -> Result<Side, String> {
         let mut side = Side::fresh(content, arena)?;
-        side.version = Some(version);
-        side.stats = Side::base_stats(content, side.navi, side.version);
+        side.version = Some(version.name().to_string());
+        side.stats = Side::base_stats(content, side.navi, side.version.as_deref());
         side.folder = folder.into();
         side.crosses = Some(crosses);
         Ok(side)
@@ -180,11 +183,11 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Resul
         .find(|&c| !content.chip(c).codes.is_empty() && ids::in_game(content, game, &content.defs.chip(c).key))
         .ok_or_else(|| format!("{game} has no chip with a code"))?;
     let folder = SavedFolder { chips: [FolderChip::new(chip, content.chip(chip).codes[0]); 30], regular: None, tags: None };
-    let version = Side::takes_version(content).then(|| version(draws));
+    let version = Side::takes_version(content).then(|| version(draws).name().to_string());
     let mut side = Side {
         navi,
+        stats: Side::base_stats(content, navi, version.as_deref()),
         version,
-        stats: Side::base_stats(content, navi, version),
         folder: folder.into(),
         crosses: None,
         beast_out: true,
@@ -275,7 +278,7 @@ mod tests {
         for side in &m.sides {
             let s = &side.stats;
             assert_eq!((side.navi, side.navicust, side.navi_level), (fresh.navi, fresh.navicust, fresh.navi_level));
-            assert_eq!(*s, Side::base_stats(&content, side.navi, side.version));
+            assert_eq!(*s, Side::base_stats(&content, side.navi, side.version.as_deref()));
             assert!(side.version.is_some(), "a drawn EXE6 side states its version");
             assert_eq!((s.hp, s.max_hp), (100, 100));
             assert!(!s.float_shoes && !s.air_shoes && !s.undershirt && !s.super_armor && !s.chip_shuffle && !s.number_open);
@@ -300,8 +303,8 @@ mod tests {
                     let crosses = |g| exe6_compat::forms::set(&content, navi, g).unwrap().crosses;
                     assert!(crosses(GameVersion::Gregar).contains(&f) || crosses(GameVersion::Falzar).contains(&f));
                 }
-                assert_eq!(Some(unlocks.version), m.sides[side].version);
-                assert_eq!(setup.navi_stats[side].version, crate::version_byte(m.sides[side].version));
+                assert_eq!(Some(unlocks.version.name()), m.sides[side].version.as_deref());
+                assert_eq!(setup.navi_stats[side].version, crate::version_byte(m.sides[side].version.as_deref()));
             }
             assert_eq!(live(&content, "exe6", seed, None).unwrap(), m);
             assert!(crate::check_match(&content, &m).is_empty(), "{:?}", crate::check_match(&content, &m));

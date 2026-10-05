@@ -452,9 +452,20 @@ pushes `mood_held`, and the counterer's reads it.
 
 ### 4.8 Presentation
 
-The frontend draws each viewer's HUD and custom screen with the module of that viewer's ruleset's game; that module
-reads its systems' state by field name through a small accessor on `Battle`. The opponent's navi, objects and HP
-are drawn as now. Making the drawing itself data or Luau is out of this design's scope.
+The frontend draws each viewer's HUD and custom screen. Where it has drawing of its own for something a system
+declares, the engine names the set and content states a value of it, as it fills roles: a window's `view` (a list
+of forms to choose from in its four windows, an offered form's or a button's chip's icon flying to the picked
+column) and a button's (it offers a form; its picture is a role chip's too), `WindowView` and `ButtonView`, which
+`core.d.luau` declares as unions of their names and the load reads into the enums, refusing another name with the
+module and the field. A view shows what its system keeps: the state fields the engine names for it (a form list's
+`offered`, `offered_count`, `marked`, `window_cursor`, `cross_chosen` and `chosen`; a form offer's `offer`,
+`offer_chaos` and `turns`; a flight's step and count), found by name once as the content loads and refused there
+if the system lacks one or keeps it as another type; the frontend reads them through typed reads on `Battle`
+(`form_list`, `offer`, `form_turns`, `offer_flight`, `chip_flight`). What a player brings that a console shows
+them by is a `PlayerFact` (their version, Beast Out, their Cross list): the setup field of that name, found and
+type-checked the same way (`Battle::fact`). The frontend names no system, window, button, state field or fact: a
+button's name is only the key of its look in a pack, as a chip's key is of its picture. The opponent's navi,
+objects and HP are drawn as now. Making the drawing itself data or Luau is out of this design's scope.
 
 ## 5. State
 
@@ -1770,7 +1781,7 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
 - **Match files**: no key renamed, so old files load; the new keys are `beast_out` and `[left.sp_times]`.
   docs/frontend.md says the level's default.
 - **`protocol::VERSION` 4**: the offer's level is an option and it gains Beast Out and the SP times, and the battle's
-  digest differs. (exe5-port-6 landed first with 3, its tactics in the offer; the offer carries both.)
+  digest differs. (exe5-port-6 landed first with 3, its auto battle data in the offer; the offer carries both.)
 - **Tests**:
   - exe6-compat: the save reader (a written save reads back; damaged, foreign and other-navi codes refused);
   - nettai-match: SP times, Beast Out and levels write and read back, the level checks, the import, MegaMan's
@@ -1823,16 +1834,16 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   ROM's rush byte and lock-on mode into its own `RomChip`.
 - **Tests:** rules' `a_system_extends_its_games_definitions`, on a made-up extension of the test content's counter
   system: the value kept, and a type, a range, a variant, a table field and a second owner refused.
-- **`unplayable_tactics`** (2026-10-05), a system's other statement for tools: the chips of its game its rules can't
-  play of a player's tactics, by id, each with why (`{ ["stepswrd"] = "the original can't play it in auto battle
+- **`unplayable_in_auto_battle`** (2026-10-05), a system's other statement for tools: the chips of its game its rules can't
+  play of a player's auto battle data, by id, each with why (`{ ["stepswrd"] = "the original can't play it in auto battle
   (...)" }`). EXE5's auto battle makes it from its own data (rules/auto_battle/place: a chip whose positioning class
   has no routine, where the original crashes and `place.step` raises), so no tool lists chips by name.
-  - The engine reads none of it: `Defs::unplayable_tactic(chip)` answers for the ruleset's systems, and a match's
+  - The engine reads none of it: `Defs::unplayable_in_auto_battle(chip)` answers for the ruleset's systems, and a match's
     check (`nettai_match::AutoBattle::check`) refuses such a chip among a side's 42 places.
   - Why data and not a hook like `folder_check`: nothing of the answer depends on a round (a folder's rules read
     the side's stats), so a tool without a battle (the save import, a side checked alone) can ask.
   - An id that is no chip of the game is refused as the content is defined. Test: rules'
-    `a_system_says_the_tactics_it_cant_play`.
+    `a_system_says_the_chips_auto_battle_cant_play`.
 
 ### S7b, `FormKind` and the forms' EXE6 fields (2026-10-03)
 
@@ -2577,3 +2588,51 @@ game-named switches without a hook.
 **Checks when it is done**: `kinds::player::reactions`'s emotion tests (both models over the same moods), the EXE6
 lab's `flow/synchro-*` and `flow/anger-*`, EXE5's `dark-survival/*`, `souls/*` and the patch cards that set the
 swing bug, and the rollback tests (the stored emotion is state).
+
+### Typed views and facts for the frontend (2026-10-05)
+
+The frontend matched on names content gave (a window `cross_opening` of system `cross`, a button `soul`, a state
+field `offered`, a fact `version`). It reads typed values now (§4.8):
+
+- **The engine** (`content/views.rs`): `WindowView` (`form_list_opening`, `form_list`, `form_list_closing`,
+  `form_chosen`, `offer_flight`, `chip_flight`) and `ButtonView` (`form_offer`, `chip_picture`), each a window's or
+  a button's `view` in its definition, read at load (`WindowDef::view`, `ButtonDef::view`; an unknown name is the
+  load's error, with the system's module and the window or button); `ViewFields`, the state fields a view shows,
+  found by name in the view's own system at load (`SystemDef::views`); `PlayerFact` (`version`, `beast_out`,
+  `cross_list`), found among the ruleset's systems' setups at load (`Defs::fact_field`) and read by
+  `Battle::fact(side, PlayerFact)`; the typed reads `Battle::form_list`, `offer`, `form_turns`, `offer_flight` and
+  `chip_flight`; and a navi's forms a form list offers by version (`NaviForms::by_version`, the table's
+  `<version>.crosses`), read at load. No state is added: every field read was a system's already.
+- **Content**: `view` on EXE6's Cross window's four windows and its Beast Out button, and on EXE5's soul button,
+  its soul's choice and MeddySoul's capsule's mix (a soul's window passes its `view` through the souls system's).
+  Nothing else changed; the fields a view shows keep their names, which are the view's contract now.
+- **The renderer** matches the enums (`cross_stage`, the soul's and the capsule's flight, the soul button's
+  palette and icon, the BeastOut chip's picture: the look of the button whose view is `chip_picture`). The chip a
+  capsule's mix flies is the one the flight's button shows, counted among the screen's buttons that show a chip:
+  no button's name. The console's region is an enum (`Region`), which a recording gives. The frontend's text screen
+  titles a window by its name's words and its view, and a button's pick by its name's words.
+- **Still strings**, as keys and never switches: asset names and definition keys (a navi's key for its emblem, a
+  button's name for its look, a chip's key for its picture), a version's name (a pack's versions' and a
+  definition's `version`, compared for equality), language codes, and the reasons written to `known.tsv`.
+
+### A version is its name: `GameVersion` leaves the engine (2026-10-05)
+
+The engine had one type that named a game's versions, `custom::GameVersion { Gregar, Falzar }`. It is exe6-compat's
+now (`exe6_compat::GameVersion`: `name`, `from_name`, `stats_byte`), the original's two as its saves, traces and link
+data tell them apart. Everywhere else a version is the name the game's rules declare for it:
+
+- **The engine** knows no version. Its last use was the custom screen's Beast Out sound, `ScreenSound::BeastOut(v)`
+  choosing between two roles. They are two screen sounds now (`BeastOutFalzar`, `BeastOutGregar`), a role each, and
+  the rules choose between them by name as they already did (`custom.play(side, "beast_out_" .. beast_game(side))`):
+  no field added, nothing declared anew. A version's name is declared and read as before: the `version` enum of the
+  cross and beast systems' setups, `PlayerFact::Version`, a form's and a navi's `version`.
+- **A match's side** holds the name (`Side::version: Option<String>`), checked against the names the rules declare
+  (`nettai_match::facts::versions`: the version fact's enum, of the first of the ruleset's systems that declares
+  it; a file's or a side's other name is refused, "no version \"azure\" (falzar or gregar)"). The editor's list
+  is those names, and a Cross's version there is the form's own `version`: nettai-editor depends on no compat crate.
+- **exe6-compat at the boundary**: a save's version and what it unlocks (`Unlocks`), a trace's `game_versions`, and
+  NaviStats+0x20 (`stats_byte`: 0 Gregar, 1 Falzar, which `nettai_match::version_byte` asks it for by name).
+  nettai-match still goes through the enum where it does EXE6's own things: the unlocks it writes into a side's
+  setup, the Cross sets, and the draw of a random side's version, which stays in the original's order (Gregar,
+  Falzar) so that a seed draws the match it always has; the rules' names come in another order.
+- No behavior changed: the same drawn matches, match files and recordings.
