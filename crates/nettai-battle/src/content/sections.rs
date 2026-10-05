@@ -6,8 +6,9 @@
 //!
 //! **The engine has no game's rules of its own.** A ruleset states every
 //! rule that has no neutral value: the sections [`REQUIRED`], and in them
-//! every field (a missing one is a load error that names it:
-//! `ruleset: flow: missing field `escape_check``). What may be left out
+//! every field but those that are none for a game without the feature (a
+//! missing one is a load error that names it: `ruleset: flow: missing
+//! field `escape_check``). What may be left out
 //! reads as nothing for every game: a feature's section a game hasn't
 //! (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`) and a table
 //! that is empty without it (`elements`, `buster`, `math`,
@@ -192,6 +193,19 @@ struct StatusSection {
     form_break: super::FormBreak,
 }
 
+/// The `fresh_stats` section but its weapon (`mode9_a`, a definition: the
+/// rules' [`link`] gives it its handle).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FreshStatsSection {
+    reg_up: u8,
+    custom_level: u8,
+    mood: u8,
+    /// (None stated: none, a game without Beast Out.)
+    #[serde(default)]
+    beast_out_counter: u8,
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct LockonSection {
@@ -232,6 +246,7 @@ pub(crate) const SECTIONS: &[&str] = &[
     "effects",
     "elements",
     "flow",
+    "fresh_stats",
     "lockon",
     "math",
     "navicust",
@@ -245,7 +260,7 @@ pub(crate) const SECTIONS: &[&str] = &[
 /// The rule sections a ruleset states, whatever else it does: those with a
 /// rule that has no neutral value (a choice between games' behaviors, a
 /// size, a speed). The engine has no game's to fall back on.
-pub(crate) const REQUIRED: &[&str] = &["chip_use", "effects", "flow", "panels", "pools", "reactions", "status"];
+pub(crate) const REQUIRED: &[&str] = &["chip_use", "effects", "flow", "fresh_stats", "panels", "pools", "reactions", "status"];
 
 /// What is stated of the rules, by section: a ruleset's sections, over
 /// the content's Rust tables when it has them.
@@ -266,6 +281,7 @@ struct Stated {
     chip_use: Option<super::rules::ChipUseRules>,
     flow: Option<super::rules::FlowRules>,
     effects: Option<super::rules::EffectsRules>,
+    fresh_stats: Option<super::rules::FreshStatsRules>,
     sp_chips: Option<SpChipsSection>,
 }
 
@@ -311,6 +327,7 @@ impl Stated {
             chip_use: Some(r.chip_use),
             flow: Some(r.flow),
             effects: Some(r.effects),
+            fresh_stats: Some(r.fresh_stats),
             sp_chips: Some(SpChipsSection { deletion_times: r.sp_deletion_times.clone(), slots: r.sp_slots.clone() }),
         }
     }
@@ -328,6 +345,7 @@ impl Stated {
         let chip_use = self.chip_use.ok_or_else(|| missing("chip_use"))?;
         let effects = self.effects.ok_or_else(|| missing("effects"))?;
         let flow = self.flow.ok_or_else(|| missing("flow"))?;
+        let fresh_stats = self.fresh_stats.ok_or_else(|| missing("fresh_stats"))?;
         let mut panels = self.panels.ok_or_else(|| missing("panels"))?;
         let pools = self.pools.ok_or_else(|| missing("pools"))?;
         let reactions = self.reactions.ok_or_else(|| missing("reactions"))?;
@@ -375,6 +393,7 @@ impl Stated {
             flow,
             effects,
             chip_use,
+            fresh_stats,
             custom_screen: self.custom_screen.unwrap_or_default(),
             pools,
             navicust: self.navicust.unwrap_or_default(),
@@ -585,6 +604,20 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
             "chip_use" => stated.chip_use = Some(r.read(spec, &at).map_err(e)?),
             "flow" => stated.flow = Some(r.read(spec, &at).map_err(e)?),
             "effects" => stated.effects = Some(r.read(spec, &at).map_err(e)?),
+            "fresh_stats" => {
+                // (Its weapon is a definition, which `link` resolves once
+                // the definitions have their handles.)
+                let mut data = spec.clone();
+                super::reader::strip(&mut data, &["mode9_a"]);
+                let s: FreshStatsSection = r.read(&data, &at).map_err(e)?;
+                stated.fresh_stats = Some(super::rules::FreshStatsRules {
+                    reg_up: s.reg_up,
+                    custom_level: s.custom_level,
+                    mood: s.mood,
+                    beast_out_counter: s.beast_out_counter,
+                    mode9_a: None,
+                });
+            }
             "sp_chips" => stated.sp_chips = Some(r.read(spec, &at).map_err(e)?),
             other => return Err(e(format!("{at}: the engine has no rule section `{other}` ({})", SECTIONS.join(", ")))),
         }
@@ -599,5 +632,29 @@ pub fn build(content: &mut Content, definitions: &Definitions) -> Result<(), Con
     let games = content.scripts.games();
     let rules = rules(content.base_rules.as_ref(), games.first().map(String::as_str), &r, definitions)?;
     content.rules = rules;
+    Ok(())
+}
+
+/// The rules' references to definitions, once those have their handles
+/// (`Defs::build`): the fresh stats' `mode9_a`, a weapon. A ruleset that
+/// states no `fresh_stats` section (a test's, whose rules are Rust tables)
+/// keeps what the tables have.
+pub fn link(content: &mut Content) -> Result<(), ContentError> {
+    let Some(d) = super::defs::ruleset(&content.defs.definitions) else { return Ok(()) };
+    let section = d.spec.field("fresh_stats");
+    if matches!(section, Data::Nil) {
+        return Ok(());
+    }
+    let at = format!("{}.luau: ruleset: fresh_stats.mode9_a", nettai_content_api::keys::module_path(&d.module));
+    let weapon = match section.field("mode9_a") {
+        Data::Nil => None,
+        Data::Ref(nettai_content_api::Registry::Weapon, key) => {
+            Some(content.defs.weapon_by_key(key).ok_or_else(|| ContentError::new(format!("{at}: the content has no weapon {key:?}")))?)
+        }
+        other => return Err(ContentError::new(format!("{at}: a weapon (a `define.weapon`), not {other:?}"))),
+    };
+    if let Some(rules) = content.rules.as_mut() {
+        rules.fresh_stats.mode9_a = weapon;
+    }
     Ok(())
 }
