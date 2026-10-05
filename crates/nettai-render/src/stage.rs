@@ -437,7 +437,7 @@ mod tests {
         let mut c = testing::build();
         c.define().unwrap_or_else(|e| panic!("{e}"));
         for t in PanelType::ALL {
-            c.rules.panels.types[t as usize].named = t != PanelType::Sea;
+            c.rules_mut().panels.types[t as usize].named = t != PanelType::Sea;
         }
         let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(100));
         setup.content = c.hash();

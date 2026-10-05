@@ -1032,7 +1032,7 @@ The smallest engine additions EXE5's data and rules need, for the rules agent (n
    and 10 to them (today: none, volcano, none).
 2. **Push.** EXE5's push reads the first of bits 2 to 5 of the hit modifier's first byte (+0x18), else of its
    second (+0x19) with the direction reversed (0x0800C9D8), five rows; EXE6's reads bits 2 to 5 and adds 5 for 0x80
-   (`sub_800E548`). A choice in the `reactions` section (`push = { rows, reading = "exe5" }`), the engine reading
+   (`sub_800E548`). A choice in the `reactions` section (`push_reading = "by_hitter_flip"`), the engine reading
    both ways.
 3. **Slide type 3** reads the panel's road direction in EXE6 and the move direction with fallbacks in EXE5 (§15.2):
    the same choice, or type 5's code in item 1.
@@ -1058,7 +1058,7 @@ The smallest engine additions EXE5's data and rules need, for the rules agent (n
 11. **AntiNavi's sparkle** (`sub_800ABC6`, EXE5's 0x080093A2): EXE5's sits on the panel's center 16 pixels up, EXE6's
    16 pixels down the field and 32 up (built: the chip-use rules' `anti_navi_sparkle`, by the trap's game, which
    AntiRecv's mark reads too).
-12. **The hit test** (built: the reactions section's `hit_test = "exe5"`): EXE5's (0x0801691C, ROM code where EXE6's
+12. **The hit test** (built: the reactions section's `hit_test`, a table of its differences): EXE5's (0x0801691C, ROM code where EXE6's
    `sub_3007218` is IWRAM's) counts a bubbled body (flag1 0x80000000) as submerged, elec reaching either; has no
    FloatShoe test (EXE6's: flag1 0x20 meets only the 0x80 self bit), nor its raw channel (0x08017494, EXE6's
    `sub_3007692`); breaks a guard with 0x1002 always (EXE6's 0x0002 but with 0x4000) and turns aside what lacks
@@ -1581,7 +1581,7 @@ them.
     0x080C76AC that also keeps it running while dimmed (chips/knightmn/ball's `spawn`). **ShadowSoul's Chaos
     Unison** loads DarkInvs (routine 0x31); DarkInvs's stand-in and drive end know MegaMan by his key, his navi's
     module reaching theirs through the soul.
-  - **The hit kernel** (0x0801691C, EXE6's IWRAM `sub_3007218`; the reactions section's `hit_test = "exe5"`): no
+  - **The hit kernel** (0x0801691C, EXE6's IWRAM `sub_3007218`; the reactions section's `hit_test`): no
     FloatShoe test (EXE5's collision types have no 0x80, so EXE6's test would keep every hit off a floating
     ShadowSoul or GyroSoul), the Elec element reaching a submerged or bubbled side (0x80000004), a guard broken by
     types 0x1002 and marked unless the hitter has 0x0C004000.
@@ -1731,7 +1731,7 @@ seven saves (Tango's templates and three played ones):
 ### 15.10 EXE5's emotions (as built)
 
 EXE5's emotion is its own routine (0x0801270C → 0x08012740; in battle mode 1, 0x080127C0: Full Synchro or normal),
-which the engine runs for a side whose rules say so (the status section's `emotions = "exe5"`):
+which the engine runs for a side whose rules say so (the status section's `emotions = "exe5"`: the one rule still named for its game, a whole emotion model):
 
 | EXE5's | When | The engine's | Face (0x0801AFB4) |
 |---|---|---|---|
@@ -1779,7 +1779,7 @@ which the engine runs for a side whose rules say so (the status section's `emoti
 - **Dark MegaMan's appearance** (EXE6's `sub_80164A0`, the shared mid-battle appearance): white, fading over its 30
   ticks (the color shader gray at the second timer's level), which the engine now draws.
   BugCurse's four recordings match through it.
-- **The soul break** (0x080122C8, EXE6's `sub_8015766`; the status section's `form_break = "exe5"`): a dark chip used in
+- **The soul break** (0x080122C8, EXE6's `sub_8015766`; the status section's `form_break = "any_form"`): a dark chip used in
   a soul (0x08010070) sets the weakness request, which breaks any form (EXE6's only a Cross or a Beast) to the base
   form: EXE6's Cross break without animation 2 and the overlay's refresh, the overlay's kept stepping, the collision
   region's removal and return, and the flags 0x80110000 and statuses 0x200800 it clears. (In a netbattle a light
@@ -1811,7 +1811,7 @@ netbattles' table (0x0802801C); only EXE5's operation battle (battle flag 0x40, 
 tools/exe5/recipes.py writes EXE5's recipes (and the flag) into the Program Advances' chip files, naming only chips
 that have a use; rerun it as chips get theirs.
 
-**Rules.** The `effects` section's `retype = "exe5"`: EXE5's retype (0x08016B9E, EXE6's `sub_801A9E8`'s counterpart)
+**Rules.** The `effects` section's `retype = "is_alone"`: EXE5's retype (0x08016B9E, EXE6's `sub_801A9E8`'s counterpart)
 sets the self type only (no dimmed bit), leaves the target type and writes the target's `row_offset` plus four
 times the side into the next word. A hit's modifier goes into its side's slot by its flip (`hit_mod_by_side`).
 
@@ -1929,7 +1929,7 @@ EXE5's action 0x30 (rules/emotion/dark-survival). The battle dims and the screen
 HUD part `hp_box`: draw task 7, the box's drawing only, its low-HP alarm sounding on), his dark self comes out and spirals back (actor 0x2E:
 rules/souls/shade's code, `shade.make`), the computer drives him for 720 ticks as DarkInvs's drive does (its end
 action 0x49), the HUD comes back (without the gauge in the last turns, `battle.late_turns`) and the screen fades in. The
-status section's `hp_loss = "exe5"` holds EXE5's object_subtractHP (a player's loss drains its side's gauge too: ×128,
+status section's `hp_loss = "gauge_and_last_stand"` holds EXE5's object_subtractHP (a player's loss drains its side's gauge too: ×128,
 in the operation battle 0, 0x555, 0xAAA or 0x2000 by its size, 0x0800C734) and EXE5's applyDamageToPlayer (a hit
 shows, white then its sounds, only by the register r1 the check leaves at 0 HP, and one that doesn't show goes
 straight to the deletion test, which tries the stand first). AntiRecv's counterattack takes its HP through
@@ -2234,7 +2234,7 @@ asking at once whether the local navi is blind, 0x0800CDF4), before the local na
 reads its status word through the null pointer, from the BIOS. EXE6's read gives the object spawn's CpuSet opcode,
 0xE3A02004, with the blind bit (the visual hidden for a tick); EXE5's console gives an interrupt's, 0xE55EC002 (read
 at 0x0800CE18 with a scratch trap in the chip lab), without it: the visual shows at once. The status section's
-`missing_collision_status` (the engine's `Rules::missing_collision_status`, EXE6's by default) says which; the
+`missing_collision_status` (the engine's `Rules::missing_collision_status`, which each game states) says which; the
 replays' full object comparison caught it (navicust-compile/bug-colors, patch-cards-stats/bugstop, cards-02, cards-03,
 cards-08, clamps-hp: both sides with first barriers).
 
