@@ -2370,7 +2370,12 @@ rules/patch-cards/cards.luau gives its kinds' order, its choices and tables: `Pa
   0xEA, BCMegaMn, in Hub Style; +0x53 is the reload's, 0x08135968, 1 exactly when 0x08137A58 finds no Hub Style:
   the light-dark system's `round_setup`, `battle.set_name_variant`, the locales' `variant_name`; checked against
   mGBA by verification's library-exe5 custom/hub-name). Battle effect 0x40000 names every entry 0xE6 (ChaosLrd): no
-  stage of EXE5's content has it, not built.
+  stage of EXE5's content has it, not built. A deliberate difference: the routine's names start as side 1's actors'
+  NameIDs (0x080091A2 reads the battle state's +0x90 list, whichever side the console is), and the link battle's
+  overrides above name only a MegaMan enemy. So the original's side-1 console facing a team navi on side 0 (a state
+  the game never reaches: a link battle's navis are both MegaMan) names its own navi for the custom screen's first
+  frames, where nettai names the enemy's, as a player expects (seen with the chip lab's swapped base, traced on
+  side 1; the team navis' from-the-left scenarios are traced on the navi's own console, where the two agree).
 - The emotion window's start keeps the glitch outside EXE5's battle modes 1 to 4; the engine's start keeps EXE6's rule
   (no random battles, not modes 1 to 5 and 8), the same for a netbattle.
 
