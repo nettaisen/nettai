@@ -1,0 +1,3 @@
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "panic=unwind", "-C", "target-feature=+exception-handling", "-C", "llvm-args=-wasm-use-legacy-eh=false"]
+runner = "wasm-bindgen-test-runner"
