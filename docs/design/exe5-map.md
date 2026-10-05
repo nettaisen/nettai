@@ -1749,7 +1749,9 @@ seven saves (Tango's templates and three played ones):
   `giga` 33, `patterns` 34 to 41, `program_advance` 42), each entry a chip by name, a pattern record's number (1 to
   8), `0` or `{}` (an empty place), any entry in any place as in the block, and `records`, the eight pattern records in order
   (`dx`, `dy`, five chip places of a name, `0` or `{}`, and `score`). Every place and record is stated; a side
-  without the section has a block nothing has written (0xFF throughout). Left out: the count and the last eight
+  without the section has a block nothing has written (0xFF throughout: a save that never finished a battle), and
+  a new match's side what the battle's end writes of nothing learned (empty places, zeroed records:
+  `ComputerNavi::nothing_learned`). Left out: the count and the last eight
   bytes. A test holds a block read into a side and written back, by itself and through a match file, to the same
   places and records (blocks as the game writes them; a full pattern before a zeroed record and before a blank one;
   a 0 among the places and in a record; patterns out of the records' order). The save import reads block 0 so

@@ -38,10 +38,14 @@
 //! - `program_advance`, place 42: the most used program advance;
 //!
 //! then its eight records, the highest scored of the patterns it remembers
-//! (one its learning never filled is zeros: [`Record::ZERO`]). A block
-//! nothing has written is 0xFF throughout ([`ComputerNavi::default`]: the
-//! save's six other blocks are, and its player's until its first battle
-//! ends): nothing learned.
+//! (a learned pattern's chip places past its chips are empty; a record its
+//! learning never filled is zeros, [`Record::ZERO`]). So after any finished
+//! battle a save's unused records are zeros
+//! ([`ComputerNavi::nothing_learned`] is what the write leaves of a player
+//! it has learned nothing of: a new match's side, and what a drawn one
+//! starts from). A block nothing has written is 0xFF throughout
+//! ([`ComputerNavi::default`]: the save's six other blocks are, and its
+//! player's until its first battle ends): a side that states no data.
 //!
 //! **What a battle reads of it** is nearly all of it, so a match states
 //! all of it:
@@ -201,8 +205,8 @@ impl Record {
 
 /// A player's computer-navi data: the block's 42 places and its eight
 /// pattern records, in order. The default is a block nothing has written
-/// (every place empty, every record blank): nothing learned, and the
-/// computer navi only fires its buster.
+/// (every place empty, every record blank), a save's that has never
+/// finished a battle: the computer navi only fires its buster.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ComputerNavi {
     pub places: [Entry; PLACES],
@@ -225,6 +229,13 @@ impl ComputerNavi {
     /// that states no data has).
     pub fn is_blank(&self) -> bool {
         *self == ComputerNavi::default()
+    }
+
+    /// What the game's battle end writes (0x0802C540) for a player it has
+    /// learned nothing of: every place empty, every record zeros. The
+    /// computer navi only fires its buster, as from a blank block.
+    pub fn nothing_learned() -> ComputerNavi {
+        ComputerNavi { places: [Entry::Empty; PLACES], records: [Record::ZERO; RECORDS] }
     }
 
     /// How many places aren't empty.
@@ -298,7 +309,7 @@ impl ComputerNavi {
             list.sort_by(|a, b| (b.0, b.1).cmp(&(a.0, a.1)));
             list.into_iter().map(|x| x.2).collect()
         };
-        let mut out = ComputerNavi { places: [Entry::Empty; PLACES], records: [Record::ZERO; RECORDS] };
+        let mut out = ComputerNavi::nothing_learned();
         let mut write = |list: &List, chips: &mut dyn Iterator<Item = ChipHandle>| {
             for (place, chip) in list.places().zip(chips) {
                 out.places[place] = Entry::Chip(chip);
@@ -583,7 +594,7 @@ mod tests {
         let counted = |chips: &[ChipHandle]| -> Vec<(ChipHandle, u32)> { chips.iter().enumerate().map(|(i, &c)| (c, (chips.len() - i) as u32)).collect() };
         let uses = [counted(&standard[..18]), counted(&mega[..6]), counted(&giga[..2]), counted(&advances[..2])].concat();
         let d = ComputerNavi::learned(&content, &uses);
-        let mut want = ComputerNavi { places: [Entry::Empty; PLACES], records: [Record::ZERO; RECORDS] };
+        let mut want = ComputerNavi::nothing_learned();
         let mut place = STANDARD.start;
         for (i, &c) in standard[..16].iter().enumerate() {
             for _ in 0..STANDARD_TIMES[i] {
@@ -607,7 +618,11 @@ mod tests {
         let tied = ComputerNavi::learned(&content, &[(cannon, 2), (hicannon, 2)]);
         assert_eq!(tied.places[3..11], [[Entry::Chip(hicannon); 4], [Entry::Chip(cannon); 4]].concat());
         assert_eq!(tied.entries(), 8);
-        assert_eq!(ComputerNavi::learned(&content, &[(cannon, 0)]).entries(), 0);
+        // No chip used: what the write leaves of nothing learned, which is
+        // no blank block (its records are zeros).
+        assert_eq!(ComputerNavi::learned(&content, &[(cannon, 0)]), ComputerNavi::nothing_learned());
+        assert!(!ComputerNavi::nothing_learned().is_blank() && ComputerNavi::nothing_learned().entries() == 0);
+        assert_eq!(ComputerNavi::nothing_learned().describe(&content), "nothing learned (its buster alone)");
     }
 
     /// The terminal's line: the lists with entries by name, an empty place

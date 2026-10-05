@@ -206,7 +206,8 @@ mod tests {
         want.records[1] = Record::ZERO;
         assert_eq!(m.sides[1].computer_navi, want);
         assert!(!notes.iter().any(|n| n.contains("computer-navi")), "{notes:?}");
-        assert!(m.sides[0].computer_navi.is_blank());
+        // (The other side: a new match's.)
+        assert_eq!(m.sides[0].computer_navi, ComputerNavi::nothing_learned());
         assert!(!crate::check_match(&content, &m).iter().any(|p| p.contains("computer navi")), "{:?}", crate::check_match(&content, &m));
         // What a match can't state: a chip number the game has no chip for
         // (among the places, and in a record), a pattern past the eighth.
@@ -306,7 +307,7 @@ mod tests {
             assert_eq!(ComputerNaviBlock::read(&original.bytes()), Ok(*original), "{name}");
             // Through a match file.
             let mut m = crate::Match::empty(&content, "exe5").unwrap();
-            m.sides[0].computer_navi = data;
+            (m.sides[0].computer_navi, m.sides[1].computer_navi) = (data, ComputerNavi::default());
             let text = crate::write(&content, &m);
             let file: crate::file::MatchFile = toml::from_str(&text).unwrap_or_else(|e| panic!("{name}: {e}\n{text}"));
             let back = crate::file::resolve(&content, &file).unwrap_or_else(|e| panic!("{name}: {e:?}\n{text}"));
