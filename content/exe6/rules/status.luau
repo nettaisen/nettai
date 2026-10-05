@@ -633,6 +633,8 @@ local status = {
             tired_and_exhausted = true,
         },
         form_break = "cross_or_beast",
+        -- A damaging weakness hit asks for that break (`sub_801A506`, a step of its status routine).
+        weakness_hit_breaks_form = true,
     },
 }
 

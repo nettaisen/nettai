@@ -258,8 +258,13 @@ fn counter_hit_bookkeeping(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_801A506`: note a damaging weakness hit.
+/// `sub_801A506`: note a damaging weakness hit, where the game's status
+/// routine has the step (the rule `weakness_hit_breaks_form`: EXE5's has
+/// none, 0x08017BF2).
 fn weakness_request(b: &mut Battle, r: ObjectRef) {
+    if !b.game_rules().weakness_hit_breaks_form {
+        return;
+    }
     let c = coll(b, r);
     if c.acc.damage_multiplier != 0 && c.acc.final_damage != 0 {
         ai_mut(b, r).requests |= request::WEAKNESS_HIT;
