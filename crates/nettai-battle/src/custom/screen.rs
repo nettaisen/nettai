@@ -1091,6 +1091,7 @@ impl Screen {
         let Some(last) = self.last_pick(folder, view).filter(|l| !l.navi_chip) else { return false };
         self.selected -= 1;
         self.hold = Some(Hold { button, chip: last.slot, at: self.selected });
+        self.look.column_kept = Some(self.selected);
         self.slots[button as usize].state = SlotState::Selected;
         true
     }
@@ -1106,6 +1107,8 @@ impl Screen {
     pub fn set_held_icon(&mut self, button: u8, shown: bool, folder: &BattleFolder, view: &PlayerView) -> bool {
         let Some(h) = self.hold.filter(|h| h.button == button) else { return false };
         self.look.column[h.at as usize] = if shown { self.chip_in(h.chip, folder).map(|c| checked(c, view)) } else { None };
+        // (0x08023712: the cell's frame drawn empty.)
+        self.look.column_kept = None;
         true
     }
 
@@ -1181,6 +1184,7 @@ impl Screen {
             // button selectable.
             self.selection[h.at as usize] = h.chip;
             self.selected += 1;
+            self.look.column_kept = None;
             self.look.column[h.at as usize] = self.chip_in(h.chip, folder).map(|c| checked(c, view));
             self.slots[h.button as usize].state = SlotState::Selectable;
             self.hold = None;
