@@ -19,8 +19,10 @@ wave.kind = common.make_kind {
     target = collision.hits_navis,
 }
 
--- EXE5's wide shooter (EXE6's row 0x23's look, EXE5's sprite).
+-- EXE5's wide shooter (EXE6's row 0x23's look, EXE5's sprite: its attachment row 0x11, sheet 0c-2a in palette 0 on
+-- point 12), and the action's subtype 2's, DarkWide's (0x080ECFDE: row 0x37, the same sheet in palette 3).
 local SHOOTER = attachment.look { sprite = asset.sprite("wide-shooter"), palette = 0, attach_point = 12 }
+wave.dark_shooter = attachment.look { sprite = asset.sprite("wide-shooter"), palette = 3, attach_point = 12 }
 
 local LOOK: WideShotLook = { shooter = SHOOTER, attachment = attachment.kind, wave = wave.kind }
 
