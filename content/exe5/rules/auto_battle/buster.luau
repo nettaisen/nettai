@@ -1,5 +1,5 @@
 --!strict
--- The computer navi's buster (./ai's buster run, 0x0802BB7A): the original's weapon routine 0x3E (0x0800FB06),
+-- The auto-battling navi's buster (./ai's buster run, 0x0802BB7A): the original's weapon routine 0x3E (0x0800FB06),
 -- Attack plus one, and the attack it names, action 0x16 (the attack table's row 6, 0x080EC3BC: EXE5's own; EXE6's
 -- action 0x16 is the charged shot): three shots. The navi raises its arm (lib/arm, EXE5's 0x080EBAAE) with a muzzle
 -- flash in its first related slot (the attachment table's row 13); each shot flies on the second tick from the panel
@@ -96,11 +96,11 @@ local function update(me: Object, s: State)
     elseif step == RECOVER then
         recover(me, s)
     else
-        error(string.format("the computer navi's shots' phase %#x reads past their phase table (0x080EC3D0)", step))
+        error(string.format("the auto-battling navi's shots' phase %#x reads past their phase table (0x080EC3D0)", step))
     end
 end
 
-buster.action = define.action { id = "computer-navi/buster", state = { timer = "u16" }, update = update }
+buster.action = define.action { id = "auto-battle/buster", state = { timer = "u16" }, update = update }
 
 -- 0x0800FB06: Attack plus one, no counter byte.
 function buster.setup(navi: Object): Action
@@ -110,7 +110,7 @@ function buster.setup(navi: Object): Action
 end
 
 buster.weapon = define.weapon {
-    id = "computer-navi/buster",
+    id = "auto-battle/buster",
     -- The charge table's row 0x3E (0x0801CCD8); Charge 5 reads on into row 0x3F's first entry.
     charge_ticks = { 60, 60, 60, 60, 60, 110 },
     setup = buster.setup,

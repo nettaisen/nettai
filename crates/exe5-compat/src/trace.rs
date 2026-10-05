@@ -48,7 +48,7 @@ pub struct Setup {
     pub joypad_phases: [u8; 2],
     /// The recording console's frame counter on the setup's frame.
     pub frame_counter: u16,
-    /// Both players' computer-navi data as the link exchanged it (0xE0
+    /// Both players' auto battle data as the link exchanged it (0xE0
     /// bytes each, side 0's first), hex: their tactics. Older recordings
     /// have none.
     #[serde(default)]
@@ -115,30 +115,30 @@ impl NaviCustSetup {
     }
 }
 
-/// A player's computer-navi data block as a battle has it (0xE0 bytes,
+/// A player's auto battle data block as a battle has it (0xE0 bytes,
 /// EXE5's 0x02034C20 by side: the block the other console sent,
-/// `save::ComputerNaviBlock` with its count written): the entries in
+/// `save::AutoBattleBlock` with its count written): the entries in
 /// order, as many of its places as the count at +0x54 says, and its eight
 /// pattern records. An entry names one of the eight; the block's last
 /// eight bytes are 0xFF (nothing writes them, and the AI's read of a
 /// pattern as written, which can run through the records, 0x0802BCD6,
 /// would end there).
-pub fn tactic_block(block: &[u8]) -> Result<(Vec<u16>, [crate::save::ComputerNaviPattern; crate::save::COMPUTER_NAVI_PATTERNS]), String> {
-    use crate::save::{COMPUTER_NAVI_EMPTY, COMPUTER_NAVI_PATTERN, COMPUTER_NAVI_PATTERNS, ComputerNaviBlock};
-    let read = ComputerNaviBlock::read(block)?;
+pub fn tactic_block(block: &[u8]) -> Result<(Vec<u16>, [crate::save::AutoBattlePattern; crate::save::AUTO_BATTLE_PATTERNS]), String> {
+    use crate::save::{AUTO_BATTLE_EMPTY, AUTO_BATTLE_PATTERN, AUTO_BATTLE_PATTERNS, AutoBattleBlock};
+    let read = AutoBattleBlock::read(block)?;
     let count = u32::from_le_bytes(block[0x54..0x58].try_into().expect("four bytes")) as usize;
     if count > read.places.len() {
-        return Err(format!("a computer-navi data block counts {count} entries, more than {}", read.places.len()));
+        return Err(format!("an auto battle data block counts {count} entries, more than {}", read.places.len()));
     }
     let entries = read.places[..count].to_vec();
     for &e in &entries {
-        let i = (e & !COMPUTER_NAVI_PATTERN) as usize;
-        if e & COMPUTER_NAVI_PATTERN != 0 && e != COMPUTER_NAVI_EMPTY && i >= COMPUTER_NAVI_PATTERNS {
-            return Err(format!("a computer-navi data entry names pattern {i}, past the block's {COMPUTER_NAVI_PATTERNS}"));
+        let i = (e & !AUTO_BATTLE_PATTERN) as usize;
+        if e & AUTO_BATTLE_PATTERN != 0 && e != AUTO_BATTLE_EMPTY && i >= AUTO_BATTLE_PATTERNS {
+            return Err(format!("an auto battle data entry names pattern {i}, past the block's {AUTO_BATTLE_PATTERNS}"));
         }
     }
     if block[0xD8..] != [0xFF; 8] {
-        return Err(format!("a computer-navi data block's last eight bytes are {:02x?}, not 0xFF: what the AI's read of a pattern would end at", &block[0xD8..]));
+        return Err(format!("an auto battle data block's last eight bytes are {:02x?}, not 0xFF: what the AI's read of a pattern would end at", &block[0xD8..]));
     }
     Ok((entries, read.patterns))
 }
@@ -737,7 +737,7 @@ impl Round {
     }
 }
 
-/// A player's tactics from their computer-navi data block (`tactic_block`):
+/// A player's tactics from their auto battle data block (`tactic_block`):
 /// its chips by key.
 fn tactics(content: &Content, compat: &Compat, block: &[u8]) -> Result<nettai_battle::tactics::Tactics, String> {
     use nettai_battle::tactics::{PatternChip, Tactic, TacticPattern, Tactics};

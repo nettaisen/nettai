@@ -10,7 +10,7 @@
 local aura = require("./aura")
 local gather = require("./gather")
 local navi_chips = require("@exelib/navi-chips/navi")
-local panels = require("../../rules/computer-navi/panels")
+local panels = require("../../rules/auto_battle/panels")
 local strike = require("./strike")
 local trajectory = require("../../lib/trajectory")
 
