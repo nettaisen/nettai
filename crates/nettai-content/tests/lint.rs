@@ -67,8 +67,8 @@ fn a_collision_type_defined_twice_is_an_error() {
 /// The repository's content directory.
 const CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content");
 
-/// content/'s games `games` (each game's top module and what it requires)
-/// on made-up asset indices, with their strings: not defined.
+/// content/'s games `games` (their packs: a load reads each module as it
+/// requires it) on made-up asset indices, with their strings: not defined.
 fn read(games: &[&str]) -> nettai_battle::Content {
     let mut r = Report::default();
     let games: Vec<String> = games.iter().map(|g| g.to_string()).collect();
@@ -168,26 +168,26 @@ fn the_order_of_a_games_requires_moves_no_key_and_no_handle() {
         let mut c = read(&[game]);
         let mut turned = c.clone();
         c.define().unwrap_or_else(|e| panic!("content/{game}: {e}"));
-        // The game's indexes: its top module, and each folder's init it
-        // requires that is nothing but requires.
+        // The game's indexes among what the load read: its top module, and
+        // each init that is nothing but requires. Turned round, they stand
+        // in for the folders' own.
         let top = packs::top_module(game);
-        let listed = packs::required_by(&top, &turned.scripts.modules[&top]).unwrap();
-        assert_eq!(listed[0], format!("{game}:rules"), "{game}/init.luau");
-        let mut indexes = vec![top];
-        indexes.extend(listed.iter().map(|m| nettai_content_api::keys::init_of(m)).filter(|m| turned.scripts.modules.get(m).is_some_and(|s| packs::is_index(s))));
-        assert!(indexes.len() >= 6, "{game}'s indexes: {indexes:?}");
+        assert_eq!(packs::requires(&c.scripts.modules[&top])[0], "@self/rules", "{game}/init.luau");
+        let indexes: Vec<&String> = c.scripts.modules.iter().filter(|(m, s)| m.starts_with(game) && packs::is_index(s)).map(|(m, _)| m).collect();
+        assert!(indexes.len() >= 6 && indexes.contains(&&top), "{game}'s indexes: {indexes:?}");
         let mut count = 0;
         for index in indexes {
-            let mut requires = packs::requires(&turned.scripts.modules[&index]);
+            let mut requires = packs::requires(&c.scripts.modules[index]);
             count += requires.len();
             requires.reverse();
             let lines: Vec<String> = requires.iter().map(|r| format!("require(\"{r}\")\n")).collect();
-            turned.scripts.modules.insert(index, lines.concat());
+            turned.scripts.modules.insert(index.clone(), lines.concat());
         }
         assert!(count > 300, "{game}'s inits: {count} requires");
         turned.define().unwrap_or_else(|e| panic!("content/{game}, turned round: {e}"));
         assert!(c.defs.definitions.defs.len() > 2000, "{game}: {} definitions", c.defs.definitions.defs.len());
         assert_eq!(c.defs.definitions, turned.defs.definitions, "{game}");
+        assert_eq!(c.scripts.modules.keys().collect::<Vec<_>>(), turned.scripts.modules.keys().collect::<Vec<_>>(), "{game}: the same modules read");
         assert_eq!(c.defs.chips.len(), turned.defs.chips.len());
         for key in ["cannon", "minibomb"] {
             assert_eq!(c.defs.chip_by_key(key), turned.defs.chip_by_key(key), "{game}: {key}'s handle");
@@ -197,15 +197,19 @@ fn the_order_of_a_games_requires_moves_no_key_and_no_handle() {
 }
 
 /// docs/design/content-model-v2.md §4.0: what loads is what the games'
-/// top modules (their init.luau) require, in turn. Each game reads none of
-/// the other's, and both read the support pack's modules their requires
-/// reach, no other.
+/// top modules (their init.luau) require, in turn, each module read as its
+/// require is reached. Each game reads none of the other's, and both read
+/// the support pack's modules their requires reach, no other.
 #[test]
 fn a_load_reads_what_its_games_inits_reach() {
-    let (six, five) = (read(&["exe6"]), read(&["exe5"]));
+    let (mut six, mut five) = (read(&["exe6"]), read(&["exe5"]));
+    assert!(six.scripts.modules.is_empty() && five.scripts.modules.is_empty(), "nothing is read before the load");
+    six.define().unwrap_or_else(|e| panic!("content/exe6: {e}"));
+    five.define().unwrap_or_else(|e| panic!("content/exe5: {e}"));
     assert!(six.scripts.modules.keys().all(|m| !m.starts_with("exe5")), "EXE6 reads none of EXE5's");
     assert!(five.scripts.modules.keys().all(|m| !m.starts_with("exe6")), "EXE5 reads none of EXE6's");
     for c in [&six, &five] {
+        assert!(c.scripts.modules.contains_key(&nettai_content_api::packs::top_module(c.game())), "its top module");
         assert!(c.scripts.modules.keys().any(|m| m.starts_with("exelib:")), "the support pack's modules its modules require");
         assert_eq!(c.scripts.packs[0].id, "exelib", "the support pack first");
     }
