@@ -32,16 +32,6 @@ use crate::setup::{NaviStats, effects};
 use crate::transform::TransformRequest;
 use builder::{ClassCounts, Pick, ProgramAdvancesUsed};
 
-/// Which version of EXE6 a player plays: it decides their Crosses and
-/// Beast form. Neither is a default: whoever makes a player says which. (A
-/// game whose versions play alike, EXE5, has none here.)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum GameVersion {
-    Gregar,
-    Falzar,
-}
-
 /// The highest level of a navi code (`sub_8121198`: a navi's 15 codes).
 pub const MAX_NAVI_LEVEL: u8 = 14;
 
@@ -86,10 +76,10 @@ pub struct PlayerSetup {
     /// navicust system); none: the stats are the setup's as they are (a
     /// recording's, which the original's NaviCust has already made).
     pub navicust: Option<crate::navicust::NaviCust>,
-    /// The player's tactics (EXE5's auto battle data, `crate::tactics`),
+    /// The player's auto battle data (EXE5's, `crate::auto_battle`),
     /// which a navi in auto battle on the other side plays; none: empty. (A
     /// recording's; match files and netplay don't carry them yet.)
-    pub tactics: crate::tactics::Tactics,
+    pub auto_battle: crate::auto_battle::AutoBattleData,
 }
 
 impl Default for PlayerSetup {
@@ -103,7 +93,7 @@ impl Default for PlayerSetup {
             rules: Vec::new(),
             patch_cards: Default::default(),
             navicust: None,
-            tactics: Default::default(),
+            auto_battle: Default::default(),
         }
     }
 }

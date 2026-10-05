@@ -11,7 +11,7 @@
 //! fields' names in content/exe6.
 
 use nettai_battle::content::Content;
-use nettai_battle::custom::GameVersion;
+use crate::GameVersion;
 use nettai_content_api::{Data, FormHandle, NaviHandle, Registry};
 
 /// An EXE6 form's kind (the forms system's `kind`). The base form, and any
@@ -69,11 +69,8 @@ pub fn is_beast(content: &Content, form: FormHandle) -> bool {
 /// another game's form): its `version`, the engine's field, which EXE6's
 /// forms name "gregar" or "falzar".
 pub fn game(content: &Content, form: FormHandle) -> Option<GameVersion> {
-    match content.form(form).version.as_deref()? {
-        "gregar" => Some(GameVersion::Gregar),
-        "falzar" => Some(GameVersion::Falzar),
-        other => panic!("form {}'s version is {other:?}, neither of EXE6's", content.defs.form(form).key),
-    }
+    let name = content.form(form).version.as_deref()?;
+    Some(GameVersion::from_name(name).unwrap_or_else(|| panic!("form {}'s version is {name:?}, neither of EXE6's", content.defs.form(form).key)))
 }
 
 /// The navi a Cross (and one in Beast Out) is made with.
@@ -124,11 +121,7 @@ pub struct Set {
 pub fn set(content: &Content, navi: NaviHandle, game: GameVersion) -> Option<Set> {
     let key = &content.defs.navi(navi).key;
     let d = content.defs.definitions.get(Registry::Navi, key)?;
-    let name = match game {
-        GameVersion::Gregar => "gregar",
-        GameVersion::Falzar => "falzar",
-    };
-    let g = d.spec.field("forms").field(name);
+    let g = d.spec.field("forms").field(game.name());
     if matches!(g, Data::Nil) {
         return None;
     }
