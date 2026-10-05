@@ -343,10 +343,10 @@ fn the_asset_index_lists_every_asset_by_name() {
     pack::write_files(&dir, &vec![nettai_content::names::index_file(&index)]).unwrap();
     let mut r = Report::default();
     assert_eq!(nettai_content::names::read_index(&dir, &mut r), Some(index), "{r}");
-    // Without an index a pack names no assets.
+    // A pack has its index.
     let mut r = Report::default();
-    assert_eq!(nettai_content::names::read_index(&temp("no-index"), &mut r), Some(nettai_content_api::PackIndex::default()));
-    assert_eq!(r.count(Level::Note), 1);
+    assert_eq!(nettai_content::names::read_index(&temp("no-index"), &mut r), None);
+    assert!(r.has_errors(), "{r}");
 }
 
 #[test]
