@@ -2684,14 +2684,14 @@ What the three crates had of the compat crates that was no boundary is gone:
   `Unlocks::write`. `CrossList` and `CROSSES` are nettai-match's own (`cross_list.rs`); a list's room is the rules'
   `cross_list` field's.
 - **The versions' order is the content's.** EXE6's cross and beast systems declare `version = { "gregar", "falzar" }`,
-  the original's order (Gregar 0, Falzar 1), and tools go by it: a random side's version is drawn among the declared
+  the original's order (Gregar 0, Falzar 1), and tools go by it: a random side's version is picked among the declared
   names, a navi's Crosses come version by version in it (`NaviForms::by_version`), and the version's number in a
-  navi's stats (NaviStats+0x20) is its place (`version_byte`). A seed draws the match it drew before the reorder.
-- **A question about the content, not a game's name.** A live draw with Crosses is for a game whose rules take a
-  Cross list (`PlayerFact::CrossList`). A link battle's background is drawn from the table the game's `flow` rules
+  navi's stats (NaviStats+0x20) is its place (`version_byte`). A seed gives the random match it gave before the reorder.
+- **A question about the content, not a game's name.** A random match with Crosses is for a game whose rules take a
+  Cross list (`PlayerFact::CrossList`). A link battle's background is picked at random from the table the game's `flow` rules
   state, `link_backgrounds` (EXE6's `sub_81209DC` table `byte_8120A20`, which was Rust in nettai-match; gen-content
   reads the ROM's table to check it). EXE5's is empty for now, which is not what the original does: its 0x08129F2C
-  draws from a table of 27 at 0x08129F6C, and its stage draw folds records 76 to 87 onto 0 to 11 (scheduled).
+  picks from a table of 27 at 0x08129F6C, and its stage pick folds records 76 to 87 onto 0 to 11 (scheduled).
 - **A value stated once.** A fresh save's karma is the light and dark system's `setup_defaults.karma`, which
   `facts::default_karma` reads; the constant is gone.
 - **The editor** depends on no compat crate (a Cross's version is its form's own `version`).

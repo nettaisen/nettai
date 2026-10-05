@@ -975,7 +975,8 @@ export type HitboxSpec = {
 }
 
 -- An afterimage (`battle.afterimage`): `anim` of `sprite` (or, without
--- one, a copy of the owner's sprite wearing its form's overlay), flipped
+-- one, a copy of the owner's sprite, wearing its form's overlay where the
+-- game's afterimages do: the effects rule `afterimages_wear_overlays`), flipped
 -- by the game's flip value, for `lifetime` ticks, blinking unless
 -- `steady`; its shadow at its height unless said otherwise. It ends early
 -- with its `tether`: when its side leaves the forms whose afterimages stay
@@ -2667,9 +2668,11 @@ export type Parts = {
     -- where what it wears is an object of the content's own kind, which
     -- the routine keeps in the wearer's second related slot (`related2`)
     -- itself. It runs wherever the record's init hook does: for a player,
-    -- for an afterimage of it, for its image. The death hook takes down
-    -- what is in that slot, as it does the others (EXE5's NumberMan's
-    -- face, NumberSoul's layer).
+    -- for its image, and for an afterimage of it where the game's
+    -- afterimages wear what their owner does (the effects rule
+    -- `afterimages_wear_overlays`). The death hook takes down what is in
+    -- that slot, as it does the others (EXE5's NumberMan's face,
+    -- NumberSoul's layer).
     own: ((wearer: Object) -> ())?,
 }
 export type Identity = IdentitySpec

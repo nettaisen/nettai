@@ -84,6 +84,9 @@
 "tomahawkman/tomahawk" = { pool = "attack", index = 0xB4, scratch_z_fraction = true }
 "shadowman/shadow" = { pool = "actor", index = 0x04 }
 "knightman/crusher" = { pool = "attack", index = 0x15 }
+"numberman/numtrap/controller" = { pool = "effect", index = 0x40 }
+"numberman/trap" = { pool = "attack", index = 0xC3 }
+"numberman/press" = { pool = "attack", index = 0x8C }
 "gyroman/navi" = { pool = "actor", index = 0x0C }
 "napalmmn/navi" = { pool = "actor", index = 0x0E }
 "magnetmn/navi" = { pool = "actor", index = 0x0D }
