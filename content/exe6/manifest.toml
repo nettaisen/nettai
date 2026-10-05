@@ -4,3 +4,4 @@
 id = "exe6"
 kind = "game"
 depends = ["exelib"]
+extract = "cargo run --release -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> {dir}"
