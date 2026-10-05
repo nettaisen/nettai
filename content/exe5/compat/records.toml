@@ -9,6 +9,7 @@
 "protoman" = 1
 "colonel" = 7
 "searchman" = 3
+"meddy" = 6
 "shadowman" = 8
 "tomahawkman" = 10
 
@@ -66,6 +67,7 @@
 "protoman/back" = [0x0B]
 "colonel/charge" = [0x46]
 "searchman/charge" = [0x3F]
+"meddy/charge" = [0x3B]
 # ShadowMan's shuriken from above, and his B+Back anti-damage stance.
 "shadowman/charge" = [0x24]
 "shadowman/back" = [0x0D]

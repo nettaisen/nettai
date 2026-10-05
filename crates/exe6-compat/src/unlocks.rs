@@ -11,7 +11,8 @@
 use nettai_battle::Battle;
 use crate::forms;
 use nettai_battle::content::Content;
-use nettai_battle::custom::{GameVersion, PlayerSetup};
+use crate::GameVersion;
+use nettai_battle::custom::PlayerSetup;
 use nettai_battle::rules::Fact;
 use nettai_content_api::{FieldType, FieldValue, FormHandle, NaviHandle, Registry, Value};
 
@@ -90,11 +91,7 @@ impl Unlocks {
     /// and the list). A ruleset with none of EXE6's systems takes none of
     /// it.
     pub fn write(&self, content: &Content, player: &mut PlayerSetup) -> Result<(), String> {
-        let version = match self.version {
-            GameVersion::Gregar => "gregar",
-            GameVersion::Falzar => "falzar",
-        };
-        player.set_fact(content, "version", &[Fact::Name(version)])?;
+        player.set_fact(content, "version", &[Fact::Name(self.version.name())])?;
         let crosses: Vec<Fact> = self.crosses.iter().map(|&b| Fact::Value(Value::Bool(b))).collect();
         player.set_fact(content, "crosses", &crosses)?;
         player.set_fact(content, "beast_out", &[Fact::Value(Value::Bool(self.beast_out))])?;
@@ -112,11 +109,7 @@ impl Unlocks {
         let field = |name: &str| schema.index_of(name);
         let version = match block.get(schema, field("version")?) {
             FieldValue::Enum(i) => match &schema.field(field("version")?).ty {
-                FieldType::Enum(names) => match names.get(i as usize).map(String::as_str) {
-                    Some("gregar") => GameVersion::Gregar,
-                    Some("falzar") => GameVersion::Falzar,
-                    _ => return None,
-                },
+                FieldType::Enum(names) => GameVersion::from_name(names.get(i as usize)?)?,
                 _ => return None,
             },
             _ => return None,
