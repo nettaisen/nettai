@@ -2257,6 +2257,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "nettai-demo"
+version = "0.1.0"
+dependencies = [
+ "exe5-compat",
+ "exe6-compat",
+ "m4a",
+ "minifb",
+ "nettai-assets",
+ "nettai-audio",
+ "nettai-battle",
+ "nettai-content",
+ "nettai-content-api",
+ "nettai-frontend",
+ "nettai-match",
+ "nettai-netplay",
+ "nettai-render",
+ "png",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "nettai-demo-editor"
 version = "0.1.0"
 dependencies = [
@@ -2276,10 +2298,7 @@ dependencies = [
 name = "nettai-frontend"
 version = "0.1.0"
 dependencies = [
- "exe5-compat",
- "exe6-compat",
  "m4a",
- "minifb",
  "nettai-assets",
  "nettai-audio",
  "nettai-battle",
@@ -2288,9 +2307,7 @@ dependencies = [
  "nettai-match",
  "nettai-netplay",
  "nettai-render",
- "png",
  "serde",
- "serde_json",
  "toml",
 ]
 

@@ -5,7 +5,7 @@
 //! the round it plays ([`Match::round`]). Live play's random pick of one
 //! is here too (`pick`), so a random setup can be written out and edited.
 //!
-//! nettai-frontend plays a match file (`--match`), and netplay's offers are
+//! nettai-demo plays a match file (`--match`), and netplay's offers are
 //! a side of one: the same checks refuse a bad file and a bad offer.
 //! nettai-demo-editor edits them.
 //!

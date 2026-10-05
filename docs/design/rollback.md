@@ -25,7 +25,7 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
   and the round and match markers; and the frame's meta, the sender's tick advantage. A frame costs 6 bytes at no
   latency, 9 at 2 frames, 17 at 5 and 28 at 10 (the unacknowledged window grows with the round trip) (§4.6).
 - **Transport**: a `Datagram` trait (send, and take what arrived, never waiting); UDP for direct play
-  (`nettai-frontend --play --host PORT` / `--join ADDR:PORT`), a WebRTC data channel later. A handshake checks
+  (`nettai-demo --play --host PORT` / `--join ADDR:PORT`), a WebRTC data channel later. A handshake checks
   the protocol, the engine and the content, swaps what each player brings and agrees the seed (§4.7).
 - **Snapshots**: `Battle` is plain data, `Clone`, `Send` and `Sync` (checked at compile time); a snapshot
   (`save_state` / `load_state`) is a boxed copy, `Send` as getgud requires, and a whole session on a battle world

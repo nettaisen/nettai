@@ -5,7 +5,8 @@
 use nettai_assets::{Bundle, Field, MapEntry, SpriteFrame, SpritePart, SpriteSheet, Tiles};
 use nettai_battle::content::testing;
 use nettai_frontend::driver::{LivePlayer, folder_of, live_setup};
-use nettai_frontend::{Renderer, Session, headless};
+use nettai_demo::headless;
+use nettai_frontend::{Renderer, Session};
 use std::collections::BTreeSet;
 
 const RED: u16 = 0x001F;
