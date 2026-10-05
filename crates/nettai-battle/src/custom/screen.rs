@@ -680,6 +680,7 @@ impl Screen {
                         self.look.play(ScreenSound::RunMessage);
                         let navi = view.stats.navi;
                         Chatbox::new(Script::RunMessage { lines: view.library.run_message(navi) })
+                            .commands_wait_for_text(view.library.layout().chatbox_commands_wait_for_text)
                             .talking(view.library.run_message_talking(navi))
                     }
                     Some(c) if !c.is_open() => {
@@ -909,7 +910,10 @@ impl Screen {
                 self.describe(joy, lines, None, None);
                 self.look.play(ScreenSound::Description);
             }
-        } else if p & keys::L != 0 {
+        } else if p & keys::L != 0 && view.library.run_message(view.stats.navi)[0] != 0 {
+            // (The navi's message: every navi of the originals has one. A
+            // navi whose content states none has no box to open; the
+            // frontend's audit lists it.)
             self.phase = Phase::RunMessage { chatbox: None };
         }
         None

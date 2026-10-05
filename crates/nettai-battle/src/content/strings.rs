@@ -146,14 +146,15 @@ pub fn message_counts(message: &str) -> Vec<u8> {
 }
 
 /// The characters that move the speaker's mouth, by line: bit k for the
-/// line's character k (`chatbox_8040C44`: the letters and digits, and four
-/// kana the Japanese charmap had beside them; a space, punctuation and the
-/// marks don't).
-pub fn talking(message: &str) -> [u32; 3] {
+/// line's character k, by the game's rule `custom_screen.talking_characters`
+/// (EXE6's `chatbox_8040C44`: the letters and digits, and four kana its
+/// charmap has in the tested range; EXE5's: all but a space, a range of
+/// punctuation and marks, and the ellipsis).
+pub fn talking(message: &str, rule: &super::custom::TalkingCharacters) -> [u32; 3] {
     let mut out = [0; 3];
     for (line, words) in message.split('\n').take(3).enumerate() {
         for (k, c) in words.chars().take(32).enumerate() {
-            if c.is_ascii_alphanumeric() || "ネノヌナ".contains(c) {
+            if rule.talks(c) {
                 out[line] |= 1 << k;
             }
         }
@@ -173,6 +174,13 @@ mod tests {
         // A mark is one character, and no letter: it doesn't talk.
         assert_eq!(message_counts("Press Ⓑ!"), [8]);
         assert_eq!(message_counts("Count\u{E002}"), [6]);
-        assert_eq!(talking("ab c\nⒷ1")[..2], [0b1011, 0b10]);
+        let only = |s: &str| crate::content::custom::TalkingCharacters { only: Some(s.into()), all_but: None };
+        let all_but = |s: &str| crate::content::custom::TalkingCharacters { only: None, all_but: Some(s.into()) };
+        assert_eq!(talking("ab c\nⒷ1", &only("abc1"))[..2], [0b1011, 0b10]);
+        // (Every character but those listed: a mark talks unless it is.)
+        assert_eq!(talking("ab c\nⒷ1", &all_but(" "))[..2], [0b1011, 0b11]);
+        assert_eq!(talking("*a!*", &all_but(" !"))[0], 0b1011);
+        // (No rule stated: none talks.)
+        assert_eq!(talking("ab c", &Default::default()), [0; 3]);
     }
 }
