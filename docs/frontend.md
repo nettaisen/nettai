@@ -307,7 +307,8 @@ Keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START,
 Backspace = SELECT; Space pauses, `.` steps one frame while paused, `-` and
 `=` change speed (1/8x to 16x of 59.73 Hz), F5 starts over (a recording's
 round; live play's set, from its first round) (none of these in netplay), H
-toggles the status line, Esc quits.
+toggles the status line, Tab shows the next of the content's languages (the
+battle goes on: the language is the drawing's alone), Esc quits.
 
 **Trace playback** runs at the original's 59.73 frames per second until the
 input ends or the engine hits something it doesn't implement yet. Then it
@@ -1557,6 +1558,14 @@ renderer, the font mode's text renderer and the battle's audio:
   549 samples a tick); a player made without sound gives none.
 - `play(driver)` goes on with another driver in the same picture and sound (a
   recording's next round).
+- `set_language(&graphics)` shows the battle in another language from the
+  next frame: the host loads the game's graphics in each language it offers
+  (`Game::graphics(lang)`) and keeps them. Only the drawing changes (the
+  pack's lettering, the content's strings); the battle doesn't know its
+  language, the HUD's rolling numbers and timers carry on, and the console's
+  region stays the driver's. `examples/language.rs` checks it on a game's
+  real graphics: after a change, every picture is the one a player shown in
+  that language from the start gives.
 
 The player owns everything it needs: the graphics it draws from are shared
 with the `Loaded` they came from (`Arc`), so a host keeps a player wherever
