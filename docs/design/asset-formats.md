@@ -477,11 +477,14 @@ others), "Cstmzing..." as wide as its words (`waiting-ja.png`: カスタム中�
 seven tiles where the US's are eight) and the gauge (`gauge-ja.png`, its "L
 or R"); `custom.json`'s `languages.ja` the chip window's pictures for OK,
 the re-deal and scrap (`pictures/ok-ja.png`...: "chip data transmission"
-in Japanese) and the Cross window's names by version
-(`cross-names-falzar-ja.png`, `cross-names-gregar-ja.png`). They come from
-the Japanese ROMs (exe6-extract's `lettering`); the fonts' characters from
-compat/text.toml's `[jp]`, the Japanese ROMs' encoding. Everything else a
-battle shows is the same pictures in all four ROMs. A frontend in that
+in Japanese), the Cross window's names by version
+(`cross-names-falzar-ja.png`, `cross-names-gregar-ja.png`) and, under
+`buttons`, a named button's tiles where they say something
+(`buttons/soul-ja.png`: EXE5's soul button, "uni son" for "UNITE"). They
+come from the Japanese ROMs (exe6-extract's and exe5-extract's
+`lettering`); the fonts' characters from compat/text.toml's `[jp]`, the
+Japanese ROMs' encoding. Everything else a battle shows is the same
+pictures in a game's four ROMs. A frontend in that
 language swaps them in (`Bundle::in_language`). The content's display text
 (names, descriptions, messages) is no asset: it is the content root's strings
 (`locales/<lang>.toml`, docs/design/text-rendering.md §10).

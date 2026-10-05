@@ -26,7 +26,6 @@ local yelcapsl = define.chip {
     lockout = 0,
     flags = {},
     slot_in_limit = 1,
-    traits = { "hides_advance_code" },
     action = cannon_chips.cannon.action,
 }
 
@@ -45,7 +44,6 @@ local blkcapsl = define.chip {
     lockout = 0,
     flags = {},
     slot_in_limit = 1,
-    traits = { "hides_advance_code" },
     dimming = poltergeist.hook(false),
 }
 
@@ -64,7 +62,6 @@ local whicapsl = define.chip {
     lockout = 0,
     flags = {},
     slot_in_limit = 1,
-    traits = { "hides_advance_code" },
     dimming = cube.ice,
 }
 
@@ -83,7 +80,6 @@ local prpcapsl = define.chip {
     lockout = 0,
     flags = {},
     slot_in_limit = 1,
-    traits = { "hides_advance_code" },
     dimming = supports.hook("rush"),
 }
 
@@ -103,7 +99,6 @@ local pnkcapsl = define.chip {
     lockout = 0,
     flags = {},
     slot_in_limit = 1,
-    traits = { "hides_advance_code" },
     dimming = supports.hook("beat"),
 }
 
