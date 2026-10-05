@@ -2074,8 +2074,8 @@ plain Luau library with a single definition.
     hit's spark, `me:run_wrapped()`'s wrapper role). exelib used none of what went, so no maker changed.
 - **A game's rules are one definition.**
   - content/<game>/rules/init.luau is the stock ruleset (`id = "stock"`), and the manifest lists it as `rules`: a
-    module name resolves to the folder's `init` when no module has the name (the loader, `index::follow`, the
-    manifests' checks, index.py).
+    module name resolves to the folder's `init` when no module has the name (`packs::module`, where the loader
+    and the manifests' checks find a module; index.py).
   - The ruleset names each rule section as a field by the engine's name (`panels`, `sp_chips`, `custom_screen`,
     `chip_use`, `cross_special`, ...; `sections::SECTIONS`) and the roles (`roles`). A section module returns a
     plain table (status.luau and lockon.luau keep their module tables, whose `.rules` the ruleset names), and
@@ -2268,9 +2268,10 @@ definition is what it was, under the id it had (content-model-v2.md §4.0, §4.1
     `packs::required_by_init`; `PackDefinitions` is gone.
   - A load of a game is a require of its top module (`Scripts::pack`'s entries, `index::read`'s start). A game
     without one is refused (`check_packs`, the content check). A support pack has none.
-  - The whole-truth check (`check_init`) is on the init's own requires, since everything that loads is reached by
-    it: a definition of what a game has in a module the init doesn't require itself is refused. The engine doesn't
-    read the returned table; the reverse check ("`chips` lists X, which defines no chip") went with the lists.
+  - The whole-truth check was on the init's own requires, since everything that loads is reached by it; it went
+    when the loader came to read its modules as it requires them (below): a module nothing requires never runs.
+    The engine doesn't read the returned table; the reverse check ("`chips` lists X, which defines no chip") went
+    with the lists.
   - Unported chips are commented requires in the chips group, which index.py keeps; nothing lists them for the
     engine (the strings check asks the disk for a chip folder that didn't load). Neither game has one today.
   - In-memory games (`Scripts::add_game`, `testing::add_index`) get a top module made the same way
@@ -2318,13 +2319,33 @@ chips/init.luau should import all chips, etc." (content-model-v2.md §4.0 holds 
     chips and EXE6's alias busters; chips/init.luau every chip but those eleven.
   - What only an id names (the old `also` group) is required by its folder's init: lib/init.luau, navis/init.luau.
   - Unported chips are commented requires in chips/init.luau.
-- **The whole truth, by folder** (`check_init`, `packs::listed_by`): a definition of what a game has is made by a
-  module its folder's init requires itself, and the top module requires the folder. The table's groups are gone;
-  the registry says the kind and the folder groups.
-- **A module that defines something and that no init reaches is a content-check error**
-  (`nettai_content_check::unloaded`): a chip added without its require was silently missing before.
-- **Same definitions**: both games define exactly what they did (nettai-content's `definitions` example prints
-  the counts by registry, a digest and every key: identical before and after), and the order of the requires
-  still moves no key and no handle (the test turns every init round).
+- **A load reads its modules as it requires them** (the user: "what's the deal with init_of? is nettai-content
+  enumerating all inits? why does it need to do that statically, can't it just import the root init.luau from the
+  pack and be done with it?").
+  - One resolver, `packs::find(modules, packs, from, written)`: Luau's rule for the path, a folder's name for
+    its init (`keys::init_of`'s one caller, `packs::module`), and the packs' import rule, with an error naming
+    the requiring module and the path as written. The VM's `require` calls it as it runs; the content check calls
+    it for each literal require of each file.
+  - `packs::Modules` is where a load reads from: a map in memory, the packs' folders (`packs::Dirs`), or one
+    before the other. `Scripts::dirs` holds the folders (no part of the content's equality or hash); the define
+    phase reads memory first (a tool's stand-in), then the folder, and what it read becomes `Scripts::modules`.
+    A runtime's VM loads from `Scripts::modules` alone.
+  - Gone: `index::follow` and its scan of literal requires, the loader's own folder-to-init fallback, the content
+    check's and the test content's followers (four implementations of how a require finds its module), and
+    `Read::modules`. `index::read` reads manifests and strings.
+  - The whole-truth check on the inits' own requires went with it: a module nothing requires never runs. No
+    check of the engine's lists the files a load didn't read (the user: "don't even bother with checking if
+    modules are unincluded or whatever. surely that's more of a linter check than a loader check?"): index.py
+    writes the inits from the files that are there, and its `--check` says when they are stale.
+  - Nothing needs the module set before a load. The content hash, the bytecode cache and netplay's comparison
+    all take the content after `define`, which has the modules read. The test content's made-up asset names are
+    the one thing that wants every module's text first, and they scan the folders' files (`Scripts::available`),
+    a tool's list, not a load's.
+  - The test content is its own modules and the EXE6 modules it names, in memory, over content/exe6 as its
+    game's folder: what those require is read as the load reaches it.
+- **Same content**: both games define exactly what they did (nettai-content's `definitions` example prints
+  the counts by registry, a digest and every key: identical before and after the inits' reshaping). The loader
+  read the same modules on demand as the scan found (EXE6 1044, EXE5 831) and the content hash is the same to the
+  bit. The order of the requires still moves no key and no handle (the test turns every init round).
 - **index.py** writes the inits whole and has `--check`; a merge conflict in an init is settled by running it.
 - Games held in memory (`Scripts::add_game`, `testing::add_index`) get the same shape (`Scripts::inits_for`).
