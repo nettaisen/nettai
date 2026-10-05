@@ -350,3 +350,4 @@
 "whicapsl" = { id = 0x17e, action = 0x15, subtype = 20 }
 "prpcapsl" = { id = 0x17f, action = 0x15, subtype = 50 }
 "pnkcapsl" = { id = 0x180, action = 0x15, subtype = 50 }
+"stepswrd" = { id = 0x191, action = 0x13, subtype = 1, damage_formula = 50 }

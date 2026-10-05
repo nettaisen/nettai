@@ -114,21 +114,29 @@ pub fn add_level(content: &Content, navi: NaviHandle, level: u8, stats: &mut Nav
     Some(())
 }
 
-/// Whether `navi` takes its stats from a link navi level (it has levels
-/// and doesn't change form).
+/// Whether `navi` takes its stats from its level: a link navi's (it has
+/// levels and doesn't change form), or the story's (EXE5's team navis,
+/// `story`).
 pub fn has_levels(content: &Content, navi: NaviHandle) -> bool {
     let data = content.navi(navi);
-    data.levels.is_some() && !data.changes_form()
+    data.levels.is_some() && !data.changes_form() || data.story.is_some()
+}
+
+/// The stats `navi` has at `level` over `from`: a link navi's reload, or
+/// the story's (`story::at`). None for a navi neither gives stats.
+fn at_level(content: &Content, navi: NaviHandle, from: &NaviStats, level: Option<u8>) -> Option<NaviStats> {
+    reloaded(content, navi, from, Reload::at(level)).or_else(|| crate::story::at(content, navi, from, level))
 }
 
 impl Side {
     /// `navi`'s stats as a save gives them, of `game`, as a battle starts
-    /// them: a link navi's at `level` (its reload over its fresh stats),
-    /// else its fresh stats ([`Side::base_stats`]). What a match file's
-    /// stats block is written over.
+    /// them: a link navi's at `level` (its reload over its fresh stats), a
+    /// team navi's as the story leaves them at `level`, else its fresh
+    /// stats ([`Side::base_stats`]). What a match file's stats block is
+    /// written over.
     pub fn save_base(content: &Content, navi: NaviHandle, game: GameVersion, level: Option<u8>) -> NaviStats {
         let fresh = Side::base_stats(content, navi, game);
-        match reloaded(content, navi, &fresh, Reload::at(level)) {
+        match at_level(content, navi, &fresh, level) {
             Some(s) => crate::starting(content, s, game),
             None => fresh,
         }
@@ -142,12 +150,12 @@ impl Side {
         self.reloaded_as(content, self.navi)
     }
 
-    /// The side's stats were it to switch to `navi` (a link navi), at its
-    /// level: the new navi's reload over the side's stats (`from`: what the
-    /// save keeps carries over, as the game's switch carries it). None for
-    /// a navi without levels.
+    /// The side's stats were it to switch to `navi` (a link navi, or a
+    /// navi with a story), at its level: the new navi's reload over the
+    /// side's stats (`from`: what the save keeps carries over, as the game's
+    /// switch carries it). None for a navi without levels.
     pub fn reloaded_as(&self, content: &Content, navi: NaviHandle) -> Option<NaviStats> {
-        reloaded(content, navi, &self.stats, Reload::at(self.navi_level)).map(|s| crate::starting(content, s, self.game))
+        at_level(content, navi, &self.stats, self.navi_level).map(|s| crate::starting(content, s, self.game))
     }
 }
 
