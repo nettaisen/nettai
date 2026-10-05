@@ -338,7 +338,11 @@ pub struct SystemDef {
     pub setup: StateId,
     /// Its player setup when the player's setup says nothing of a field:
     /// its `setup_defaults` (EXE5's light/dark value a fresh save's 500),
-    /// zero elsewhere ([`SystemDef::setup_block`]).
+    /// zero elsewhere, but an enum, which has no default unless
+    /// `setup_defaults` gives it one: it is left unstated
+    /// (`ContentState::unstate`: EXE6's player's version, falzar or gregar),
+    /// and a round doesn't start until the player's setup states it
+    /// ([`SystemDef::setup_block`], `SideRules::for_player`).
     pub setup_default: nettai_content_api::ContentState,
     /// The layout of its state of each navi no player controls that it
     /// drives (its `controller`: the navi object's own state), if it
@@ -357,7 +361,8 @@ pub struct SystemDef {
 
 impl SystemDef {
     /// A player's setup block for it when the player gives none: its
-    /// defaults (`setup_defaults`), the rest zero.
+    /// defaults (`setup_defaults`), the rest zero, an enum without a
+    /// default unstated.
     pub fn setup_block(&self) -> nettai_content_api::ContentState {
         self.setup_default
     }
@@ -1857,6 +1862,10 @@ impl Defs {
             // (an enum's by name), which it must hold as given.
             let setup = layout("setup")?;
             let mut setup_default = nettai_content_api::ContentState::new(setup);
+            // (An enum has no default but one given below: unstated.)
+            for i in 0..schemas[setup.0 as usize].schema.fields().len() {
+                setup_default.unstate(&schemas[setup.0 as usize].schema, i);
+            }
             match d.spec.field("setup_defaults") {
                 Data::Nil => {}
                 Data::Map(entries) => {

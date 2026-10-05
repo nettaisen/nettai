@@ -242,7 +242,12 @@ fn from_api(lua: &Lua, v: Value, ty: &FieldType) -> mlua::Result<LuaValue> {
         Value::Nil => LuaValue::Nil,
         Value::Bool(b) => LuaValue::Boolean(b),
         Value::Int(i) => match ty {
-            FieldType::Enum(names) => LuaValue::String(lua.create_string(&names[i as usize])?),
+            // (An enum nothing has stated is nil: a player's setup's, which
+            // no round starts with.)
+            FieldType::Enum(names) => match names.get(i as usize) {
+                Some(name) => LuaValue::String(lua.create_string(name)?),
+                None => LuaValue::Nil,
+            },
             _ => LuaValue::Number(i as f64),
         },
         Value::Object(o) => LuaValue::UserData(lua.create_userdata(Object(o))?),

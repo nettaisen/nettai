@@ -26,7 +26,10 @@ impl SideRules {
     /// state, zeroed (a game has one ruleset, which every match of it
     /// plays by). Their setup's blocks are made the systems' defaults
     /// (`setup_defaults`, the rest zero) for a setup that gives none, and
-    /// must otherwise be the ruleset's.
+    /// must otherwise be the ruleset's. An enum of a system's setup has no
+    /// default but its `setup_defaults`': the round doesn't start with one
+    /// the player's setup leaves unstated (EXE6's version: nothing fills in
+    /// falzar or gregar).
     pub fn for_player(content: &Content, player: &mut PlayerSetup) -> SideRules {
         if content.defs.ruleset().is_none() {
             assert!(player.rules.is_empty(), "a player's setup gives system setups, and the content has no ruleset");
@@ -38,6 +41,19 @@ impl SideRules {
         }
         let fits = player.rules.len() == systems.len() && player.rules.iter().zip(&systems).all(|(b, s)| b.id() == s.setup);
         assert!(fits, "a player's setup gives system setups that aren't the game's ruleset's");
+        for (block, system) in player.rules.iter().zip(&systems) {
+            let schema = content.defs.schema(system.setup);
+            for (i, field) in schema.fields().iter().enumerate() {
+                if let (FieldType::Enum(names), false) = (&field.ty, block.stated(schema, i)) {
+                    panic!(
+                        "a player's setup doesn't state the {} system's `{}` ({}): none is assumed",
+                        system.key,
+                        field.name,
+                        names.join(" or ")
+                    );
+                }
+            }
+        }
         SideRules { states: systems.iter().map(|s| ContentState::new(s.state)).collect() }
     }
 }
@@ -661,6 +677,32 @@ mod tests {
         assert_eq!((testing::bug_frags(&b, 0), testing::bug_frags(&b, 1)), (7, 0));
     }
 
+    /// An enum of a system's setup has no default: a player's setup that
+    /// says nothing leaves EXE6's beast system's `version` unstated, and the
+    /// round doesn't start (nothing fills in falzar, the enum's first name);
+    /// stated by name, it starts and the system reads it. An enum of a
+    /// system's state starts at its first variant as ever.
+    #[test]
+    fn a_setups_enum_has_no_default() {
+        let content = scenario::content();
+        let mut setup = scenario::setup();
+        for p in &mut setup.players {
+            p.rules.clear();
+        }
+        let (schema, block) = setup.players[0].rule_block(&content, "beast").expect("EXE6's beast system");
+        let version = schema.index_of("version").expect("its version");
+        assert!(!block.stated(schema, version) && block.stated(schema, schema.index_of("beast_out").unwrap()));
+        let refused = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Battle::new(setup.clone(), content.clone())));
+        let why = refused.err().and_then(|e| e.downcast_ref::<String>().cloned()).expect("the round doesn't start");
+        assert_eq!(why, "a player's setup doesn't state the beast system's `version` (falzar or gregar): none is assumed");
+        // One player's stated: the other's still stops it.
+        setup.players[0].set_fact(&content, "version", &[Fact::Name("gregar")]).unwrap();
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Battle::new(setup.clone(), content.clone()))).is_err());
+        setup.players[1].set_fact(&content, "version", &[Fact::Name("falzar")]).unwrap();
+        let b = Battle::new(setup, content);
+        assert_eq!((b.fact(0, "version").and_then(|f| f.name()), b.fact(1, "version").and_then(|f| f.name())), (Some("gregar"), Some("falzar")));
+    }
+
     #[test]
     fn each_side_runs_the_rulesets_systems_for_itself() {
         let b = started(scenario::setup());
@@ -680,7 +722,8 @@ mod tests {
     /// own state of them. (Another list of systems is another content's.)
     #[test]
     fn both_sides_play_by_the_games_ruleset() {
-        let b = started_on(scenario::setup(), testing::with_systems("marker, counter"));
+        let content = testing::with_systems("marker, counter");
+        let b = started_on(scenario::setup_on(&content), content);
         for side in 0..2u8 {
             assert_eq!(b.side_rules(side).states.len(), 2, "side {side} plays by the match's");
             assert_eq!(field(&b, side, 0, "mark"), FieldValue::U8(0x40 + side));
@@ -706,7 +749,7 @@ mod tests {
     #[test]
     fn a_systems_intake_and_chip_check_hooks() {
         let content = testing::with_systems("watcher");
-        let mut b = started_on(scenario::setup(), content.clone());
+        let mut b = started_on(scenario::setup_on(&content), content.clone());
         let navi = b.player(1).expect("side 1's navi");
         b.systems_navi_intake(1, navi);
         b.systems_navi_intake(1, navi);
@@ -744,7 +787,7 @@ mod tests {
         let defs = &content.defs;
         let names: Vec<&str> = defs.ruleset_systems().iter().map(|&h| defs.system(h).key.as_str()).collect();
         assert_eq!(names, ["beast", "test/counter", "emotion", "dark-chips", "test/marker"]);
-        let b = started_on(scenario::setup(), content.clone());
+        let b = started_on(scenario::setup_on(&content), content.clone());
         assert_eq!(b.side_rules(1).states.len(), 5);
         assert_eq!(field(&b, 1, 4, "mark"), FieldValue::U8(0x41), "the marker ran for its side");
         assert_eq!(field(&b, 1, 1, "starts"), FieldValue::U8(1));
@@ -802,8 +845,7 @@ mod tests {
         /// switched on), its stats changed by `tweak` first.
         fn with_cards(cards: &[(&str, bool)], tweak: impl FnOnce(&mut NaviStats)) -> Battle {
             let content = testing::with_systems("patch_cards, counter");
-            let mut s = scenario::setup();
-            s.content = content.hash();
+            let mut s = scenario::setup_on(&content);
             let p = &mut s.players[0];
             let list: Vec<InstalledCard> = cards
                 .iter()

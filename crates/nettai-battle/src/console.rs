@@ -362,7 +362,7 @@ mod tests {
         }
         let c = std::sync::Arc::new(c);
         let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
-        setup.content = c.hash();
+        crate::content::testing::on(&mut setup, &c);
         let mut b = Battle::new(setup, c);
         let consoles = [b.consoles[0].rng, b.consoles[1].rng];
         b.shake_camera(1, 3);

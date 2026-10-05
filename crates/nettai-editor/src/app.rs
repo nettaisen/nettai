@@ -361,7 +361,12 @@ impl Editor {
                 self.pool = [0u8, 1].map(|s| nettai_match::folders::pool(&self.content, self.m.game(), &mut b, s));
                 self.round = Ok(b.stats);
             }
-            Err(e) => self.round = Err(e),
+            // (No round: nothing says which chips its rules let a folder
+            // hold.)
+            Err(e) => {
+                self.pool = Default::default();
+                self.round = Err(e);
+            }
         }
     }
 
