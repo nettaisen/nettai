@@ -693,7 +693,13 @@ bytes), a restore and rollbacks of 1 to 16 ticks as a session makes them; a sess
 links (the median, the 99th percentile and the worst frame, the rollbacks and their depth); what the session's
 states hold; and what a saved state is made of, part by part. The verification workspace's tools/rollback-bench
 measures Tango's emulated pair beside the engine on the same match with the same loops; its tools/rollback-bench.md
-has the method and the results.
+has the method and the results. Measured there on 2026-10-05 (an Apple M1 Max, soundmod's first two minutes,
+medians): a tick is 1.3 µs in the custom screens and 1.6 µs in the fight (the fight's mean is 3.8 µs, about three
+quarters of it in the content's Luau), a save 2.7 µs for a state of 38 KB, a restore 4.1 µs, and a rollback of 8
+ticks 47 to 58 µs, 0.3% of a frame; a session's frame is 8 to 14 µs, 130 µs at the 99th percentile over a bad link.
+Tango's pair takes 1.1 ms a tick and 10 ms (60% of a frame) for the same rollback. Two thirds of the engine's
+rollback is copying states: `Battle` derives `Clone`, so a restore and `save_state_into` copy afresh, and
+`BattleWorld` recycles nothing.
 
 ## 7. Hazards
 
