@@ -1239,10 +1239,10 @@ content.
   only calls it and returns the problems (`FolderProblem {rule, text}`); the state it uses (`Battle::folder_check`)
   lives only during the call, and the digest leaves it out. Each side's folder is checked by its own ruleset's
   systems, with its navi's stats as the round set them up (`NaviStat::RegularMemory` is new, read-only). The
-  editor, `--match`, a netplay offer and live play's random draw go through it (`nettai_match::folders`). The draw
+  editor, `--match`, a netplay offer and live play's random pick go through it (`nettai_match::folders`). The draw
   makes a folder from the rules' pool (`rule = "chip"`: the chips the hook accepts one at a time) and keeps a
   chip only when the partial folder breaks nothing. Its draws are the same as the Rust rules': the same seed gives
-  the same folders (seed 42's drawn match file has the same folders as before the move).
+  the same folders (seed 42's random match file has the same folders as before the move).
 - **The editor's chip pictures** come from each chip's own game's pack (R3b's "not done"): `Pictures::load`
   takes the packs in `pack_paths` order and looks a chip's icon and art up in its root's `assets` pack, by its
   local key.
@@ -2673,7 +2673,7 @@ data tell them apart. Everywhere else a version is the name the game's rules dec
   nettai-match still goes through the enum where it does EXE6's own things: the unlocks it writes into a side's
   setup, the Cross sets, and the draw of a random side's version, which stays in the original's order (Gregar,
   Falzar) so that a seed draws the match it always has; the rules' names come in another order.
-- No behavior changed: the same drawn matches, match files and recordings.
+- No behavior changed: the same random matches, match files and recordings.
 
 ### nettai-match, the editor and the frontend use compat at its boundaries alone (2026-10-05)
 
@@ -2688,10 +2688,8 @@ What the three crates had of the compat crates that was no boundary is gone:
   names, a navi's Crosses come version by version in it (`NaviForms::by_version`), and the version's number in a
   navi's stats (NaviStats+0x20) is its place (`version_byte`). A seed gives the random match it gave before the reorder.
 - **A question about the content, not a game's name.** A random match with Crosses is for a game whose rules take a
-  Cross list (`PlayerFact::CrossList`). A link battle's background is picked at random from the table the game's `flow` rules
-  state, `link_backgrounds` (EXE6's `sub_81209DC` table `byte_8120A20`, which was Rust in nettai-match; gen-content
-  reads the ROM's table to check it). EXE5's is empty for now, which is not what the original does: its 0x08129F2C
-  picks from a table of 27 at 0x08129F6C, and its stage pick folds records 76 to 87 onto 0 to 11 (scheduled).
+  Cross list (`PlayerFact::CrossList`). A link battle's stage and background are picked at random from what the
+  game's rule section `link_pick` states (below).
 - **A value stated once.** A fresh save's karma is the light and dark system's `setup_defaults.karma`, which
   `facts::default_karma` reads; the constant is gone.
 - **The editor** depends on no compat crate (a Cross's version is its form's own `version`).
@@ -2699,3 +2697,31 @@ What the three crates had of the compat crates that was no boundary is gone:
   `auto_battle::of_save`), where whose game's a file is picks compat's reader; the frontend's recording replay
   (`driver::trace_rounds`), the same for a recording; and `AutoBattle::learned`'s tie-break by the original's chip
   numbers, the game's own order. The test of what EXE6's forms say of each other is exe6-compat's (`tests/forms.rs`).
+
+### A link battle's random pick, a rule section (2026-10-05)
+
+`link_pick` states what a link battle picks at random with its settings, for whoever makes a random match (the
+engine picks none: a round's settings state its stage and background):
+
+- **`stages`**: the stage for each index of the original's pick, a stage as often as an index reaches a record that
+  is it. EXE6's `sub_81209DC` takes `PosRNG1() % 0x60` into `BattleSettingsList1`: 96 stages, each once. EXE5's
+  0x08129F2C takes the same count (the counts by mode at 0x08129F64) and then takes 76 off an index from 76 to 87: its
+  first twelve records' stages are there twice and the twelve from 76 never; records 50 and 52, and 51 and 53, are
+  the same, so two more stages are there twice. The list is the original's as it stands. EXE5 got the stage of its
+  record 95 (netbattle-94), which the pick reaches and the content lacked.
+- **`backgrounds`**: EXE6's `byte_8120A20` (21, three of them twice); EXE5's 27 at 0x08129F6C, each once.
+- **A section of its own, and one a ruleset may leave out.** It was `flow.link_backgrounds` for a day. A module
+  that states stages requires the game's stages, and `flow.luau` is taken whole by other contents (the engine's
+  test content plays EXE6's flow), which then loaded all of EXE6's stages. The stages are references, resolved once
+  the definitions have their handles (`sections::link`, as the fresh stats' weapon is).
+- **nettai-match** (`pick::arena`) picks from both lists. A match may still name any link battle stage
+  (`link_battle_stages`) and any background.
+- **Checked against the original three ways:** gen-content reads EXE6's count and table off the ROM (and pins the
+  routine's bytes between the modulo and the record); `tools/exe5/gen_content.py check` reads EXE5's count, fold and
+  table off its ROM's code; and verify's `link_pick` test finds, in every EXE6 recording, the later rounds'
+  backgrounds as `backgrounds[PosRNG2() % 21]` from the setup's RNG2 and, in the link master's recordings, the two
+  stage indices as `PosRNG1() % 96` twice in a row before the setup's RNG1. EXE5's recordings hold neither the later
+  rounds' picks nor the RNG before the first round's, so its pick rests on the ROM's code.
+- **What moved for a seed:** EXE5's random matches are what the original picks now (they took an even pick among its
+  stages and the stage's own background). EXE6's keep their 96 stages each as likely, but a seed gives other stages
+  than before: the list is in the original's record order, where the pool was in the definitions' key order.

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 /// §15.4): the battle's flow where games differ, the arena's game's. A
 /// game states every one (no field has a default: the engine has no
 /// game's flow of its own).
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FlowRules {
     /// The words a custom screen's result takes on the link, one a tick
@@ -52,13 +52,29 @@ pub struct FlowRules {
     /// `banners.win`); any other win shows the role `win`'s, or
     /// `win_judged`'s on the judge's ruling. Each game states its own.
     pub navi_win_banner: NaviWinBanner,
-    /// The backgrounds a link battle picks one of at random with its
-    /// settings (EXE6's `sub_81209DC`: `byte_8120A20`, 21 entries, some
-    /// there twice and so twice as likely), in the table's order. For
-    /// whoever makes a random match: the engine picks none (a round's
-    /// settings state its background). None: a link battle shows its
-    /// stage's own.
-    pub link_backgrounds: Vec<super::BackgroundId>,
+}
+
+/// The rule section `link_pick`: what a link battle picks at random with
+/// its settings (EXE6's `sub_81209DC`, EXE5's 0x08129F2C: two numbers a
+/// round, the first RNG's for the stage and the second's for the
+/// background). For whoever makes a random match: the engine picks none (a
+/// round's settings state its stage and background). A game that states no
+/// section has no random pick.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct LinkPick {
+    /// The stages, by the pick's index: entry `i` is the stage of the
+    /// settings record index `i` reaches (EXE6: `PosRNG1() % 0x60` into
+    /// `BattleSettingsList1`, 96 stages each once; EXE5 picks the same way
+    /// and then takes 76 off an index from 76 to 87, so its first twelve
+    /// records are there twice and the twelve from 76 never). A stage is
+    /// there as often as an index reaches a record that is it. (The
+    /// section states stages, which `sections::link` resolves once they
+    /// have their handles.)
+    pub stages: Vec<nettai_content_api::StageHandle>,
+    /// The backgrounds, by the pick's index (EXE6's `byte_8120A20`, 21
+    /// entries, some there twice and so twice as likely; EXE5's 27, each
+    /// once). None: a link battle shows its stage's own.
+    pub backgrounds: Vec<super::BackgroundId>,
 }
 
 /// The battles whose win shows the winner's navi's banner
@@ -615,6 +631,9 @@ pub struct Rules {
     /// order (`RoundSetup::sp_times`): an SP navi chip's formula names its
     /// slot by these names.
     pub sp_slots: Vec<String>,
+    /// What a link battle picks at random (the section `link_pick`; none
+    /// stated: nothing).
+    pub link_pick: LinkPick,
     /// The sine table (`math_sinTable`, which `math_cosTable` continues):
     /// 256 steps a turn, 1.0 = 0x100, over a turn and a half, so that the
     /// cosine of step `a` is entry `a + 64`.

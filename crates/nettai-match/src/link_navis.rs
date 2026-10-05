@@ -259,7 +259,7 @@ mod tests {
     #[test]
     fn a_match_file_gives_a_link_navi_its_levels_stats() {
         let content = exe6_content();
-        let mut m = crate::draw::live(&content, "exe6", 3, None).unwrap();
+        let mut m = crate::pick::live(&content, "exe6", 3, None).unwrap();
         let heatman = navi(&content, "heatman");
         let s = &mut m.sides[1];
         s.navi_level = Some(14);

@@ -66,7 +66,7 @@ mod tests {
     fn a_match_with_a_team_navi() {
         let content = exe5_content();
         let protoman = crate::ids::navi(&content, "exe5", "protoman").unwrap();
-        let mut m = crate::draw::live(&content, "exe5", 3, None).unwrap();
+        let mut m = crate::pick::live(&content, "exe5", 3, None).unwrap();
         let s = &mut m.sides[0];
         s.navi_level = Some(3);
         s.stats = s.reloaded_as(&content, protoman).unwrap();

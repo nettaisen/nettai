@@ -174,7 +174,7 @@ fn an_unknown_name_is_refused() {
 
 /// A match's lookups see only its game: its stages, navis, chips (the
 /// rules' pool), souls and patch cards are its own, so an EXE5 match's
-/// sides, made or drawn, hold EXE5's alone and an EXE6 match's EXE6's.
+/// sides, made or picked, hold EXE5's alone and an EXE6 match's EXE6's.
 #[test]
 fn a_matchs_lookups_only_see_its_game() {
     for (game, content) in [("exe5", exe5_content()), ("exe6", exe6_content())] {
@@ -182,7 +182,7 @@ fn a_matchs_lookups_only_see_its_game() {
         assert!(crate::link_battle_stages(&content, game).iter().all(|&s| of(&content.defs.stage(s).key)));
         assert!(crate::navis(&content, game).iter().all(|&n| of(&content.defs.navi(n).key)));
         assert!(crate::facts::all_souls(&content, game).iter().all(|&f| of(&content.defs.form(f).key)));
-        let m = crate::draw::live(&content, game, 5, None).unwrap();
+        let m = crate::pick::live(&content, game, 5, None).unwrap();
         assert_eq!(check_match(&content, &m), Vec::<String>::new(), "{game}");
         let mut b = crate::check::start(&content, &m).unwrap();
         let pool = crate::folders::pool(&content, game, &mut b, 0);
@@ -469,7 +469,7 @@ fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
     assert!(choosing(&b, 0) && choosing(&b, 1));
     assert_eq!(b.stats[0].form, meddy);
     let a_capsule = |v: FieldValue| matches!(v, FieldValue::Ref(Some((Registry::Chip, _))));
-    assert!(a_capsule(field(&b, "capsule_1")) && a_capsule(field(&b, "capsule_2")), "MeddySoul's deal draws two capsules");
+    assert!(a_capsule(field(&b, "capsule_1")) && a_capsule(field(&b, "capsule_2")), "MeddySoul's deal picks two capsules");
     let screen = b.custom.sides[0].screen.unwrap();
     for slot in [8, 9] {
         assert!(matches!(screen.slots[slot].kind, SlotKind::Button { button, .. } if content.defs.button(button).name.starts_with("capsule_")));
@@ -539,7 +539,7 @@ fn karma_and_souls_reach_the_round() {
     assert_eq!((field("soul_unison"), field("chaos_unison")), (FieldValue::Bool(true), FieldValue::Bool(false)));
     // An EXE6 match's sides have no souls.
     let six_content = exe6_content();
-    let six = crate::draw::live(&six_content, "exe6", 1, None).unwrap();
+    let six = crate::pick::live(&six_content, "exe6", 1, None).unwrap();
     let b = started(&six_content, &six, 1);
     assert!(b.system_setup(1, "souls").is_none());
 }
@@ -551,7 +551,7 @@ fn karma_and_souls_reach_the_round() {
 #[test]
 fn a_sides_fields_are_its_rules() {
     let (c5, c6) = (exe5_content(), exe6_content());
-    let six = crate::draw::live(&c6, "exe6", 3, None).unwrap();
+    let six = crate::pick::live(&c6, "exe6", 3, None).unwrap();
     let five = parse(&c5, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
     assert!(crate::Side::takes_version(&c6) && six.sides[0].takes_level(&c6) && crate::Side::takes_sp_times(&c6));
     assert!(!crate::Side::takes_version(&c5) && !five.sides[0].takes_level(&c5) && crate::Side::takes_sp_times(&c5));
