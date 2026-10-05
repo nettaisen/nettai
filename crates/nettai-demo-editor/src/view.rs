@@ -1,6 +1,6 @@
 //! What the editor shows: a bar of file actions, the panes (the arena, with
 //! the match's game, then each side's navi, folder, the lists its game's
-//! rules take of it (`crate::facts`: EXE6's Cross list, EXE5's souls),
+//! rules take of it (`crate::facts`: EXE6's Crosses, EXE5's souls),
 //! auto battle data, patch cards and stats; only what the game's rules
 //! have, every list the game's), and the problems, live.
 
@@ -100,7 +100,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         tabs = tabs.push(nav("  Navi", Tab::Navi(s), e.tab));
         tabs = tabs.push(nav("  Folder", Tab::Folder(s), e.tab));
         // (The lists the game's rules take of a side, each a pane: EXE6's
-        // Cross list, where the navi has forms to list; EXE5's souls.)
+        // Crosses, where the navi has forms to list; EXE5's souls.)
         for (index, title) in crate::facts::lists(&e.content, e.m.game(), side) {
             tabs = tabs.push(nav_owned(format!("  {title}"), Tab::List(s, index), e.tab));
         }

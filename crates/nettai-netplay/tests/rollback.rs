@@ -684,8 +684,9 @@ fn mashed_battles_with_everything_never_stop() {
     quiet_stopped_ticks();
     for seed in [11u64, 12, 13] {
         let mut setup = netbattle(&c, LINK_BATTLE, 500, seed as u32, [folder(&c, &as_refs(&a)), folder(&c, &as_refs(&b))]);
-        for (p, version) in setup.players.iter_mut().zip([GameVersion::Falzar, GameVersion::Gregar]) {
-            Unlocks::everything(version).write(&c, p).expect("the unlocks");
+        let navis = setup.navi_stats.map(|s| s.navi);
+        for ((p, version), navi) in setup.players.iter_mut().zip([GameVersion::Falzar, GameVersion::Gregar]).zip(navis) {
+            Unlocks::everything(version).write(&c, navi, p).expect("the unlocks");
         }
         let start = StandInBattle::new(Battle::new(setup, c.clone()));
         let mut failures = [Failures::default(), Failures::default()];

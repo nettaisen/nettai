@@ -294,7 +294,7 @@ struct View<'a> {
     screen: &'a Screen,
     assets: &'a CustomScreen,
     /// The pictures of the Beast the navi goes into (`beast_pictures`):
-    /// the console's version's, unless a setup's Cross list put the navi in
+    /// the console's version's, unless the player's Crosses put the navi in
     /// the other game's Cross. A button's look is this version's own, if it
     /// has one.
     beast: &'a VersionPictures,
@@ -572,17 +572,16 @@ pub fn cross_picture<'a>(c: &Content, a: &'a CustomScreen, navi: NaviHandle, for
 
 /// The pictures of the Beast a side's navi goes into, or is in: the
 /// Beast Out button, its picture in the chip window and the BeastOut
-/// chip's. They are its version's (EXE6's beast system's rule): the
-/// player's version's, but with a setup's Cross list
-/// (`PlayerFact::CrossList`, given) a form of another version (the form's
-/// `version`) goes into that version's Beast (docs/engine/custom-screen.md
+/// chip's. They are its version's (EXE6's beast system's rule): a form
+/// that isn't the base form goes into its own version's Beast (the form's
+/// `version`: another's than the player's when their Crosses hold one of
+/// its), and the base form into the player's (docs/engine/custom-screen.md
 /// §4.1).
 pub fn beast_pictures<'a>(b: &Battle, a: &'a CustomScreen, side: u8) -> &'a VersionPictures {
     let side = side & 1;
-    let listed = b.fact(side, PlayerFact::CrossList).is_some_and(|l| l.form(0).is_some());
     let form = b.content.form(b.stats[side as usize].form);
     let version = match form.version.as_deref() {
-        Some(own) if listed && !form.base => Some(own),
+        Some(own) if !form.base => Some(own),
         _ => version_name(b, side),
     };
     version.map_or(&a.versioned.base, |v| a.versioned.get(v))
@@ -659,16 +658,11 @@ const CROSS_PUT_ON_TICK: u16 = 25;
 
 /// The Cross in place `place` of a side's Crosses, as EXE6's cross system
 /// finds it (content/exe6/rules/cross/window.luau's `cross_at`), from what
-/// the player brought: the entry of their Cross list
-/// (`PlayerFact::CrossList`, if it gives one: its first entry set), else
-/// the Cross of that number of their version (`PlayerFact::Version`) as
-/// their navi lists them (`navi_crosses`). None: no such Cross.
+/// the player brought: the entry of their form list
+/// (`PlayerFact::CrossList`: the Crosses they have, in the window's order).
+/// None: no Cross there.
 pub fn cross_at(b: &Battle, side: u8, place: u8) -> Option<FormHandle> {
-    if let Some(list) = b.fact(side, PlayerFact::CrossList).filter(|l| l.form(0).is_some()) {
-        return list.form(place as usize);
-    }
-    let navi = b.stats[side as usize & 1].navi;
-    navi_crosses(&b.content, navi, version_name(b, side)?).get(place as usize).copied()
+    b.fact(side, PlayerFact::CrossList)?.form(place as usize)
 }
 
 /// Where a form list's window is (EXE6's Cross window: the windows whose
@@ -868,9 +862,8 @@ impl Window {
     /// the Cross under the cursor's (`sub_8029EAC`: a used one's darker).
     fn cross_names(&mut self, v: &View, problems: &mut Problems) {
         let Some(w) = v.b.form_list(v.side) else { return };
-        // Each Cross's name and colors are its own version's (a setup's
-        // Cross list can offer another's: docs/engine/custom-screen.md
-        // §4.1).
+        // Each Cross's name and colors are its own version's (a player's
+        // Crosses can hold another's: docs/engine/custom-screen.md §4.1).
         let navi = v.b.stats[v.side as usize].navi;
         let mut picture = |slot: usize| {
             let form = cross_at(v.b, v.side, w.offered[slot])?;

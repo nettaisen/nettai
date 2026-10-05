@@ -35,7 +35,7 @@ usage: nettai-demo-editor [OPTIONS] [MATCH.toml]
   --tab NAME       start on a pane: arena, or left- or right- and navi,
                    folder, auto-battle, cards, navicust, stats, or the
                    name of a list the game's rules take of a side
-                   (exe6's cross_list, exe5's souls)
+                   (exe6's crosses, exe5's souls)
   --screenshot PNG write the window to PNG once it has drawn, and quit";
 
 fn fail(msg: impl std::fmt::Display) -> ! {
