@@ -3,10 +3,10 @@
 //! declarations (the engine's core.d.luau, the support packs' it depends
 //! on, its own; `packs::declarations`), with Luau's own analysis (strict
 //! mode, the new solver), in process; and check that each game has its top
-//! module (init.luau), that the packs' requires name only modules that are
-//! there, each require one its pack may make (a pack requires only itself
-//! and the support packs it depends on), and that a game loads every module
-//! of it that defines something (its inits require them).
+//! module (init.luau) and that every module's literal requires name a
+//! module that is there, each one its pack may make (a pack requires only
+//! itself and the support packs it depends on): each found as a load finds
+//! it (`packs::find`), in every file of the packs, loaded or not.
 //!
 //! Each module is checked on its own and `require` is typed `any`; an
 //! editor running luau-lsp with a `--definitions=` for each declaration
@@ -87,11 +87,9 @@ pub fn definitions(dir: &Path, pack: &str) -> Result<String, String> {
 /// What the packs of content `dir` refuse or can't find: a folder of
 /// content/ that is no pack (no manifest), a module outside the packs, a
 /// manifest that depends on what it can't, a game without its top module
-/// (init.luau), in every module (loaded or not) a require of no module
-/// and a require across packs that the packs refuse
-/// (`packs::check_require`), and a game's module that defines something
-/// and that the game doesn't load ([`unloaded`]); each with the path that
-/// names it.
+/// (init.luau), and in every module (loaded or not) a require of no module
+/// and a require across packs that the packs refuse (`packs::find`, as a
+/// load finds a module); each with the path that names it.
 pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
     use nettai_content_api::{keys, packs};
     let mut problems = Vec::new();
@@ -119,35 +117,23 @@ pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
             problems.push(format!("{name}: a module belongs to a pack (content/<pack>/...)"));
         }
     }
+    let files = packs::Dirs::of_content(dir, all.keys().map(String::as_str));
     for p in all.values() {
         if let Err(e) = packs::with_depends(&all, &p.id) {
             problems.push(e);
         }
-        if let Some(m) = p.entry() {
+        if let Some(m) = p.entry()
+            && packs::module(&files, &m).is_none()
+        {
             let file = format!("{}.luau", keys::module_path(&m));
-            if !dir.join(&file).is_file() {
-                problems.push(format!("{file}: game pack {} has no top module: its {}.luau requires what the game has", p.id, packs::INIT));
-            }
+            problems.push(format!("{file}: game pack {} has no top module: its {}.luau requires what the game has", p.id, packs::INIT));
         }
-        let sources = modules(&dir.join(&p.id)).map_err(|e| e.to_string())?;
-        if p.kind == nettai_content_api::PackKind::Game {
-            problems.extend(unloaded(p, &sources));
-        }
-        for (path, source) in sources {
+        for (path, source) in modules(&dir.join(&p.id)).map_err(|e| e.to_string())? {
             let name = p.module(path.trim_end_matches(".luau"));
             let file = format!("{}/{path}", p.id);
             for written in packs::requires(&source) {
-                match keys::resolve(&name, &written) {
-                    Ok(target) => {
-                        if let Err(e) = packs::check_require(&all, &name, &written, &target) {
-                            problems.push(e);
-                        } else if !dir.join(format!("{}.luau", keys::module_path(&target))).is_file()
-                            && !dir.join(format!("{}.luau", keys::module_path(&keys::init_of(&target)))).is_file()
-                        {
-                            problems.push(format!("{file}: require({written:?}): no module {}.luau", keys::module_path(&target)));
-                        }
-                    }
-                    Err(e) => problems.push(format!("{file}: {e}")),
+                if let Err(e) = packs::find(&files, &all, &name, &written) {
+                    problems.push(e);
                 }
             }
             if p.kind == nettai_content_api::PackKind::Support {
@@ -161,60 +147,6 @@ pub fn reach(dir: &Path) -> Result<Vec<Problem>, String> {
         }
     }
     Ok(problems)
-}
-
-/// The modules of game pack `p` (`sources`: its modules by path, with
-/// their text) that define something (`define.<registry>`) and that the
-/// game doesn't load: nothing its top module requires, in turn, requires
-/// them (docs/design/content-model-v2.md §4.0: a game's inits require what
-/// it has, and tools/content/index.py writes them). A chip with no use yet
-/// is none: its folder's init names it in a commented require
-/// (`-- require("@self/later")`), and what its folder holds waits with it.
-pub fn unloaded(p: &nettai_content_api::PackManifest, sources: &[(String, String)]) -> Vec<Problem> {
-    use nettai_content_api::{keys, packs};
-    use std::collections::{BTreeMap, BTreeSet};
-    let by_name: BTreeMap<String, &str> =
-        sources.iter().map(|(path, source)| (p.module(path.trim_end_matches(".luau")), source.as_str())).collect();
-    // (A folder names its init.)
-    let module_of = |name: &str| -> Option<String> {
-        if by_name.contains_key(name) {
-            return Some(name.to_string());
-        }
-        Some(keys::init_of(name)).filter(|init| by_name.contains_key(init))
-    };
-    let Some(top) = p.entry().and_then(|m| module_of(&m)) else { return Vec::new() };
-    let mut reached: BTreeSet<String> = BTreeSet::from([top.clone()]);
-    let mut waiting: Vec<String> = Vec::new();
-    let mut pending = vec![top];
-    while let Some(module) = pending.pop() {
-        let source = by_name[&module];
-        for written in packs::requires(source) {
-            let Some(target) = keys::resolve(&module, &written).ok().and_then(|t| module_of(&t)) else { continue };
-            if reached.insert(target.clone()) {
-                pending.push(target);
-            }
-        }
-        if packs::is_index(source) {
-            waiting.extend(packs::commented_requires(source).iter().filter_map(|w| keys::resolve(&module, w).ok()));
-        }
-    }
-    let defines = |source: &str| {
-        source.lines().map(|l| l.split("--").next().unwrap_or("")).any(|code| {
-            code.match_indices("define.").any(|(i, _)| code[i + "define.".len()..].chars().next().is_some_and(|c| c.is_ascii_lowercase()))
-        })
-    };
-    let mut out = Vec::new();
-    for (name, source) in &by_name {
-        let waits = waiting.iter().any(|w| name == w || name.strip_prefix(w.as_str()).is_some_and(|rest| rest.starts_with('/')));
-        if !reached.contains(name) && !waits && defines(source) {
-            out.push(format!(
-                "{}.luau: it defines something, and {} doesn't load it: no init.luau requires it, in turn (tools/content/index.py, the verification workspace's, writes a game's inits from its modules; a chip with no use yet is a commented require in its folder's)",
-                keys::module_path(name),
-                p.id
-            ));
-        }
-    }
-    out
 }
 
 /// Check the content directory `dir` (content/: packs,
