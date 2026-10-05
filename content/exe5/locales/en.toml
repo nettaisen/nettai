@@ -301,6 +301,7 @@ language = "en"
 "spshake2" = { name = "SpShake2", description = "Shakey\nshivers\n3sq ahead" }
 "spshake3" = { name = "SpShake3", description = "Shakey\nshivers\n3sq ahead" }
 "static" = { name = "Static", description = "A static\nblast 2sq\nahead" }
+"stepswrd" = { name = "StepSwrd", description = "Use\nWideSword\n2sq ahead" }
 "suprspr1" = { name = "SuprSpr1", description = "3-shot\npiercing\nWideSht" }
 "suprspr2" = { name = "SuprSpr2", description = "3-shot\npiercing\nWideSht" }
 "suprspr3" = { name = "SuprSpr3", description = "3-shot\npiercing\nWideSht" }
@@ -353,6 +354,7 @@ language = "en"
 
 [navis]
 "megaman" = { name = "MegaMan", variant_name = "BCMegaMn" }
+"protoman" = { name = "ProtoMan" }
 
 [forms]
 "colonelsoul" = { name = "ColSoul" }

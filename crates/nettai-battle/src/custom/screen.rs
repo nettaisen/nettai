@@ -416,6 +416,12 @@ impl Screen {
         // with ChargeCross's chips), else the framework's.
         screen.hand_size = extras.hand_size().unwrap_or_else(|| hand_size(view, turn));
         screen.lay_out(view, extras);
+        // EXE5's offer of a team navi's own chip (0x08023EFE) picks between
+        // its table's two entries for the navi, the same chip, with a draw
+        // of the console's RNG.
+        if matches!(screen.slots[9].kind, SlotKind::NaviChip(_)) && view.library.navi_chip_draws(view.stats.navi) {
+            console.rng.next();
+        }
         // sub_802806C: a cursor on the first slot goes to the first dark
         // chip dealt (as the class limits count it).
         if screen.cursor == 0 {
