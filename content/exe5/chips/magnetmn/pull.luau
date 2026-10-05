@@ -2,20 +2,26 @@
 -- A magnet's pull (EXE5's attack object #0x66, 0x080D2BE8; EXE5's own): an unseen collision (collision row 0x36, the
 -- pulling kind, hitting nothing itself) on the panel 20 pixels ahead of a sliding magnet (./magnet), following it
 -- until it crashes (its action 8) or the battle ends. The magnet's (its variant 1) runs while paused and while
--- dimmed. (Its variant 0, which follows a navi until its AIData+0xA0 reads 0x18 or its action leaves 0xB, belongs
--- to EXE5's MagnetMan as an enemy, which nothing ported spawns.)
+-- dimmed. Its variant 0 follows a navi, 40 pixels ahead, while the navi's action is 0xB and its attack's step isn't
+-- 0x18: EXE5's MagnetMan as an enemy's attack. MagnetMan the navi's own chip spawns one too
+-- (navis/magnetman/chip), and since a player runs that chip as another action, his pull sits on its panel for
+-- the tick it appears and goes on the next.
 
 local collision = require("../../rules/collision")
 
 export type State = {
     -- Which way it sits from the magnet (+0x40: 1 or -1).
     dir: number,
+    -- Its first parameter: 1 a magnet's, 0 a navi's.
+    variant: number,
 }
 
 local pull = {}
 
--- How far ahead of the magnet it sits (pixels).
-local AHEAD = 0x14
+-- How far ahead of the magnet it sits, and of a navi (pixels).
+local AHEAD, NAVI_AHEAD = 0x14, 0x28
+-- The action of a navi no player controls that a navi's pull follows it through, and the attack step that ends it.
+local NAVI_ACTION, NAVI_DONE = 0x0B, 0x18
 
 local function finish(me: Object)
     me.collision:set_region(nil)
@@ -33,15 +39,24 @@ local function tick(me: Object)
         return
     end
     if me.run_while_dimmed or not battle.dimmed() then
+        local s = me.state :: State
         local magnet = me.related2 :: Object
-        if magnet.action == 8 then
+        if s.variant == 0 then
+            -- 0x080D2C60: a navi's: gone once its attack's step reads 0x18 or its action isn't 0xB. (A player's
+            -- action byte is its own action's number, 8 for MagnetMan's NSTackle: never 0xB.)
+            if magnet.step == NAVI_DONE or magnet.actor_type == "player" or magnet.action ~= NAVI_ACTION then
+                finish(me)
+                return
+            end
+        elseif magnet.action == 8 then
             finish(me)
             return
         end
         local leader = me.related1 :: Object
         local p, lp = me.pos, leader.pos
         local y = bit32.bor(bit32.band(lp.y, 0xFFFF0000), bit32.band(p.y, 0xFFFF))
-        local hi = int.u16((me.state :: State).dir * AHEAD + bit32.rshift(lp.x, 16))
+        local ahead = if s.variant == 0 then NAVI_AHEAD else AHEAD
+        local hi = int.u16(s.dir * ahead + bit32.rshift(lp.x, 16))
         local x = bit32.bor(bit32.lshift(hi, 16), bit32.band(p.x, 0xFFFF))
         me.pos = Vec3.new(int.i32(x), int.i32(y), p.z)
         me:set_panel_from_coordinates()
@@ -66,7 +81,7 @@ end
 pull.kind = define.kind {
     id = "magnetmn/pull",
     pool = "attack",
-    state = { dir = "i8" },
+    state = { dir = "i8", variant = "u8" },
     -- 0x080D2BE8.
     update = function(me: Object)
         local l = me.lifecycle
@@ -90,13 +105,28 @@ pull.kind = define.kind {
 function pull.spawn(magnet: Object, x: number, y: number, element: number, dir: number): Object?
     local o = battle.spawn(pull.kind, Vec3.zero)
     if o then
-        (o.state :: State).dir = dir
+        local s = o.state :: State
+        s.dir, s.variant = dir, 1
         o.panel_x, o.panel_y = int.u8(x), y
         o.element = element
         o.alliance = magnet.alliance
         o.related1, o.related2 = magnet, magnet
         o.run_while_paused = true
         o.run_while_dimmed = true
+    end
+    return o
+end
+
+-- 0x080D2CBA with variant 0: a pull of `navi`'s side on (x, y) with `element`, `dir` of the navi, which it follows.
+function pull.spawn_for_navi(navi: Object, x: number, y: number, element: number, dir: number): Object?
+    local o = battle.spawn(pull.kind, Vec3.zero)
+    if o then
+        local s = o.state :: State
+        s.dir, s.variant = dir, 0
+        o.panel_x, o.panel_y = int.u8(x), y
+        o.element = element
+        o.alliance = navi.alliance
+        o.related1, o.related2 = navi, navi
     end
     return o
 end
