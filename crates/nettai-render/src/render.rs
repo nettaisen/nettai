@@ -11,6 +11,7 @@ use crate::vfont::VectorFont;
 use nettai_assets::Bundle;
 use nettai_battle::Battle;
 use nettai_battle::battle::{FadeMode, mode};
+use nettai_battle::content::PaletteFlashOrder;
 use nettai_battle::transform::{SequencerState, TransformPhase};
 use std::sync::Arc;
 
@@ -226,8 +227,17 @@ impl<'a> Renderer<'a> {
         let custom = crate::custom::fade(b).unwrap_or_default();
         let custom_hud = crate::custom::hud_fade(b).unwrap_or_default();
         let flash = objects::palette_flash(b);
+        // (A flash fills the stage's palettes with its white through a
+        // palette transform's slot, and a dimming is one of the fade
+        // system's transforms: where the game's flash comes before the
+        // fades, EXE5's, a dimming darkens the white with the rest, a
+        // quarter down; where it comes after, EXE6's, the white stands.)
+        let flash_order = b.content.rules().effects.palette_flash_order;
         let stage = if flash.is_some() {
-            Fade::White(16)
+            match (flash_order, dim_fade(b)) {
+                (PaletteFlashOrder::BeforeFades, Fade::Black(n)) => Fade::Flash(n),
+                _ => Fade::White(16),
+            }
         } else if transform != Fade::None {
             transform
         } else if custom != Fade::None {
