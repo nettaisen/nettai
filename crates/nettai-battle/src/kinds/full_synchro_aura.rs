@@ -7,7 +7,6 @@
 use crate::battle::Battle;
 use crate::collision::f1;
 use crate::kinds::common::{self, Progress};
-use crate::content::Emotions;
 use crate::kinds::player::{Emotion, emotion};
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Vec3, flags, state};
@@ -74,14 +73,15 @@ fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
     b.objects.get(r).related[0].expect("Full Synchro aura has a navi")
 }
 
-/// Whether `r`'s side has EXE5's emotions, and with them EXE5's aura (actor
-/// object #0x5E, 0x080C45E0: docs/design/exe5-map.md §15.11).
-fn exe5(b: &Battle) -> bool {
-    b.game_rules().emotions == Emotions::Exe5
+/// The game's aura (the effects section's `full_synchro_aura`: where
+/// EXE5's, actor object #0x5E, 0x080C45E0, differs from EXE6's;
+/// docs/design/exe5-map.md §15.11).
+fn rules(b: &Battle) -> crate::content::AuraRules {
+    b.game_rules().effects.full_synchro_aura
 }
 
 /// `sub_80C4B18`: the state's routine, then the sprite unless dimmed or
-/// paused (EXE5's, 0x080C45E0: paused or not).
+/// paused (EXE5's, 0x080C45E0: paused or not, `steps_while_paused`).
 pub fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).state {
         state::INIT => init(b, r),
@@ -89,7 +89,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         _ => return b.objects.free(r),
     }
     if b.objects.is_allocated(r) && !b.is_dimmed() {
-        if exe5(b) {
+        if rules(b).steps_while_paused {
             common::update_sprite_even_paused(b, r);
         } else if !b.paused {
             common::update_sprite(b, r);
@@ -128,21 +128,24 @@ fn init(b: &mut Battle, r: ObjectRef) {
 /// `sub_80C4B84`: follow the navi (hidden when hidden, when the navi is
 /// submerged, or from a viewer whose navi is blind when the navi is the
 /// other side's); go when unlinked or no longer in Full Synchro. EXE5's
-/// (0x080C4648) keeps the animation it started with, is hidden while the
-/// navi is bubbled too, and once the fight is on stops running while
-/// paused.
+/// (0x080C4648) keeps the animation it started with (`follows_identity`
+/// off), is hidden while the navi is under the sea's surface too (the
+/// collision flag 0x80000000, where the game's hit test reads it so:
+/// `hit_test.bubbled_as_submerged`), and once the fight is on stops running
+/// while paused (`stops_at_a_pause_in_the_fight`).
 fn tick(b: &mut Battle, r: ObjectRef) {
-    let exe5 = exe5(b);
+    let rules = rules(b);
     let navi = owner(b, r);
-    if !exe5 {
+    if rules.follows_identity {
         let anim = animation(b, r);
         b.objects.get_mut(r).anim = anim;
     }
     let alliance = b.objects.get(r).alliance;
     let shown = vars(b, r).shown;
-    let hiding = if exe5 { f1::SUBMERGED | f1::BUBBLED } else { f1::SUBMERGED };
+    let under_the_sea = b.game_rules().hit_test.bubbled_as_submerged;
+    let hiding = if under_the_sea { f1::SUBMERGED | f1::BUBBLED } else { f1::SUBMERGED };
     let submerged = b.objects.get(navi).collision.is_some_and(|c| b.collision.get(c).f1 & hiding != 0);
-    if exe5 && b.round.flags & crate::battle::battle_flags::FIGHTING != 0 {
+    if rules.stops_at_a_pause_in_the_fight && b.round.flags & crate::battle::battle_flags::FIGHTING != 0 {
         b.objects.get_mut(r).flags &= !flags::RUN_WHILE_PAUSED;
     }
     let (pos, flip) = {

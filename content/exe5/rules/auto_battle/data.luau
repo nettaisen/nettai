@@ -425,6 +425,7 @@ data.chips = {
     ["c-cannon"] = { approach = false, class = 255, picks = 0, range = 16 },
     ["splitup"] = { approach = false, class = 255, picks = 0, range = 16 },
     ["t-swing"] = { approach = false, class = 255, picks = 0, range = 16 },
+    ["kcrusher"] = { approach = false, class = 255, picks = 0, range = 16 },
 } :: { [string]: ChipData }
 
 return data
