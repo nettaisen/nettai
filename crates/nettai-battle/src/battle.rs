@@ -41,7 +41,7 @@ pub mod battle_flags {
     /// mode of its own.
     /// - EXE5's operation battle (set at 0x0802D590 when the battle mode
     ///   isn't 1 and the navi's stats' +0x2A is set): both navis
-    ///   computer-driven, the Tactics screen.
+    ///   in auto battle, the Tactics screen.
     /// - EXE6's chip gate battle (set once a battle by `sub_802E112` when a
     ///   chip gate is on the link port, 0x0200AD04, or in a link battle,
     ///   battle mode 0, whose consoles both have one, EVENT_1722): the
@@ -468,7 +468,7 @@ pub struct Battle {
     /// that land on the other side's navis no player controls, at most 10
     /// each.
     pub navi_hit_counts: [[u8; 4]; 2],
-    /// Each player's tactics (`crate::tactics`), as the computer navis'
+    /// Each player's tactics (`crate::tactics`), as the auto-battling navis'
     /// AI turns them: their setups' at the round's start.
     pub tactics: [crate::tactics::Tactics; 2],
     /// Per-side registry of defensive chips and their linked objects
@@ -561,7 +561,7 @@ pub struct SideState {
     pub slow_gauge_ticks: u16,
     pub fast_gauge_ticks: u16,
     /// +0x12: the swing a variable sword makes for a navi no buttons drive
-    /// (EXE5's computer navi draws it before VarSwrd or NeoVari, 0x0802A330).
+    /// (EXE5's auto battle draws it before VarSwrd or NeoVari, 0x0802A330).
     pub sword_pick: u8,
     /// +0x44: the target the side tracks (an actor of the other side), which
     /// an obstacle leaving hands on (`sub_802EF74`).
