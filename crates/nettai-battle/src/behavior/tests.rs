@@ -979,7 +979,7 @@ fn encase_rock(ice: bool) -> (Battle, crate::object::ObjectRef) {
     let mut setup = testing::round_setup(testing::ROCK_BATTLE, stats);
     setup.settings.effects = 0;
     let content = std::sync::Arc::new(testing::with_test_pack());
-    setup.content = content.hash();
+    crate::content::testing::on(&mut setup, &content);
     let mut b = Battle::new(setup, content);
     b.spawn_actors();
     b.round.flags |= crate::battle::battle_flags::FIGHTING;
@@ -1562,7 +1562,7 @@ impl Duel {
 fn duel_on(chips: &[nettai_content_api::ChipHandle], content: std::sync::Arc<Content>, ticks: usize, seed: u32) -> Duel {
     let setup = || {
         let mut s = scenario::setup_with_handles(chips);
-        s.content = content.hash();
+        crate::content::testing::on(&mut s, &content);
         s
     };
     let tape = scenario::record_on_content(setup(), content.clone(), ticks, seed);
@@ -1745,7 +1745,7 @@ fn the_support_dimming_chips_roll_back() {
         let chips = defined(keys);
         let setup = || {
             let mut s = scenario::setup_with_handles(&chips);
-            s.content = content.hash();
+            crate::content::testing::on(&mut s, &content);
             s
         };
         let tape = scenario::record_on_content(setup(), content.clone(), 2400, 11);
