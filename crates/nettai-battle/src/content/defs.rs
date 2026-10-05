@@ -361,11 +361,11 @@ pub struct SystemDef {
     pub views: ViewFields,
     /// Its extensions of its game's definitions (`extends`).
     pub extends: Vec<Extension>,
-    /// The chips its rules can't play of a player's tactics, each with why
-    /// (`unplayable_tactics`: EXE5's auto battle's chips whose positioning
+    /// The chips its rules can't play of a player's auto battle data, each with why
+    /// (`unplayable_in_auto_battle`: EXE5's auto battle's chips whose positioning
     /// class the original has no routine for): for tools (a match's check;
     /// the engine reads none, and its rules raise when one is played).
-    pub unplayable_tactics: Vec<(ChipHandle, String)>,
+    pub unplayable_in_auto_battle: Vec<(ChipHandle, String)>,
 }
 
 impl SystemDef {
@@ -630,11 +630,11 @@ impl Defs {
         &self.systems[h.index()]
     }
 
-    /// Why the game's rules can't play `chip` of a player's tactics, if
+    /// Why the game's rules can't play `chip` of a player's auto battle data, if
     /// they can't (the first of its ruleset's systems that says:
-    /// `SystemDef::unplayable_tactics`): for tools.
-    pub fn unplayable_tactic(&self, chip: ChipHandle) -> Option<&str> {
-        self.ruleset_systems().iter().find_map(|&s| self.system(s).unplayable_tactics.iter().find(|(c, _)| *c == chip).map(|(_, why)| why.as_str()))
+    /// `SystemDef::unplayable_in_auto_battle`): for tools.
+    pub fn unplayable_in_auto_battle(&self, chip: ChipHandle) -> Option<&str> {
+        self.ruleset_systems().iter().find_map(|&s| self.system(s).unplayable_in_auto_battle.iter().find(|(c, _)| *c == chip).map(|(_, why)| why.as_str()))
     }
 
     pub fn button(&self, h: ButtonHandle) -> &ButtonDef {
@@ -1738,17 +1738,17 @@ impl Defs {
 
         // The systems and the ruleset.
         let mut systems = Vec::new();
-        // (Each system's `unplayable_tactics`, by chip id, with its module
+        // (Each system's `unplayable_in_auto_battle`, by chip id, with its module
         // and key: in the systems' order.)
-        let mut unplayable_tactics: Vec<(String, String, Vec<(String, String)>)> = Vec::new();
+        let mut unplayable_in_auto_battle: Vec<(String, String, Vec<(String, String)>)> = Vec::new();
         let mut buttons: Vec<ButtonDef> = Vec::new();
         let mut windows: Vec<WindowDef> = Vec::new();
         for d in definitions.of(Registry::System) {
             let what = |e: &str| ContentError::new(format!("{}.luau: system {}: {e}", d.module, d.key));
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
-                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions", "extends", "unplayable_tactics"].contains(&f.as_str())) {
-                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, setup_defaults, navi_state, hooks, custom, buttons, windows, actions, extends, unplayable_tactics)")));
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions", "extends", "unplayable_in_auto_battle"].contains(&f.as_str())) {
+                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, setup_defaults, navi_state, hooks, custom, buttons, windows, actions, extends, unplayable_in_auto_battle)")));
                     }
                 }
             }
@@ -1925,23 +1925,23 @@ impl Defs {
                 }
                 _ => return Err(what("`extends` is a table of fields by registry (chip, form, navi)")),
             }
-            // The chips it can't play of a player's tactics, by id, each
+            // The chips it can't play of a player's auto battle data, by id, each
             // with why (the ids are resolved once every chip is known).
             let mut unplayable = Vec::new();
-            match d.spec.field("unplayable_tactics") {
+            match d.spec.field("unplayable_in_auto_battle") {
                 Data::Nil => {}
                 Data::Map(entries) => {
                     for (k, why) in entries {
                         let (nettai_content_api::DataKey::Str(id), Data::Str(why)) = (k, why) else {
-                            return Err(what("`unplayable_tactics` is a table of sentences by chip id"));
+                            return Err(what("`unplayable_in_auto_battle` is a table of sentences by chip id"));
                         };
                         unplayable.push((id.clone(), why.clone()));
                     }
                 }
-                _ => return Err(what("`unplayable_tactics` is a table of sentences by chip id")),
+                _ => return Err(what("`unplayable_in_auto_battle` is a table of sentences by chip id")),
             }
             unplayable.sort();
-            unplayable_tactics.push((d.module.clone(), d.key.clone(), unplayable));
+            unplayable_in_auto_battle.push((d.module.clone(), d.key.clone(), unplayable));
             // Its setup's defaults: a value of a field of its setup each
             // (an enum's by name), which it must hold as given.
             let setup = layout("setup")?;
@@ -1995,7 +1995,7 @@ impl Defs {
                 windows: own_windows,
                 views,
                 extends,
-                unplayable_tactics: Vec::new(),
+                unplayable_in_auto_battle: Vec::new(),
             });
         }
         // The extensions: one system of the game owns a field of a registry,
@@ -2210,13 +2210,13 @@ impl Defs {
         for (i, c) in defs.chips.iter().enumerate() {
             defs.chip_keys.insert(c.key.clone(), ChipHandle(i as u16));
         }
-        // (A system's `unplayable_tactics` names chips of its game.)
-        for (system, (module, key, unplayable)) in defs.systems.iter_mut().zip(unplayable_tactics) {
+        // (A system's `unplayable_in_auto_battle` names chips of its game.)
+        for (system, (module, key, unplayable)) in defs.systems.iter_mut().zip(unplayable_in_auto_battle) {
             for (id, why) in unplayable {
                 let chip = defs.chip_keys.get(&id).copied().ok_or_else(|| {
-                    ContentError::new(format!("{module}.luau: system {key}: `unplayable_tactics` names {id}, which is no chip of the game"))
+                    ContentError::new(format!("{module}.luau: system {key}: `unplayable_in_auto_battle` names {id}, which is no chip of the game"))
                 })?;
-                system.unplayable_tactics.push((chip, why));
+                system.unplayable_in_auto_battle.push((chip, why));
             }
         }
         defs.functions = functions.list;
