@@ -1133,8 +1133,17 @@ code, 6 the same but for constants, 34 similar, 1 differs and 8 absent. What dif
   mode isn't 1 and NaviStats +0x2A is set) around single-player steps; `sub_8009338` calls the custom screen's
   0x08022C5C/0x08022D70 there (EXE6's `sub_8026840` is absent).
 - `sub_8007CA0` (round end): EXE5 writes the light/dark value back (NaviStats +0x44, under battle effect 0x800)
-  and three EXE5 counters (0x0801289C, 0x0801288E, 0x0801299E); constants not read yet at 0x080070CE (5, EXE6 1)
-  and 0x080070EA (16 and 217, EXE6 23 and 51).
+  after three routines of its own, what a battle leaves in the save (called at 0x08007062 and 0x0800710C, as the
+  battle is left): 0x0801289C works out the light/dark value (down where the side took its last stand, its counter
+  1, set at 0x080EFEDC, or used a dark chip, counter 2, set by the dark chip rule at 0x0801007C; else it may go up,
+  by the stats' +0x20 and +0x21 and the battle's settings, not read through), 0x0801288E stores it, and 0x0801299E
+  is the permanent cost of the two: for MegaMan, where either counter
+  is set, the base maximum HP (+0x3E) goes down by one, once a battle (a tally at the toolkit's +0x40 block, +0x16,
+  stops it at 499), and the maximum is made again from it (0x0803C208: the base, the NaviCust's HP programs and the
+  patch cards' HP, 0x0813792C). The first and the third run only under battle effect 0x800 and not in a link battle
+  (effect 8: the recorded link battles' effects are 0x0E8C), so a link battle changes neither, and neither is in
+  the engine: both write the save after the battle, which nothing here keeps. Constants not read yet at 0x080070CE
+  (5, EXE6 1) and 0x080070EA (16 and 217, EXE6 23 and 51).
 - `sub_8017AB4` (a side's dimming): 65 where EXE6 tests 27, 120 for 128 (0x08014574, 0x080145CA), not read yet.
 - `sub_80107D4` (the navi's tick): EXE5 counts down four timers at +0x3C and an invulnerability timer at +0x16,
   and runs the lava-chip boost (0x08012602).
@@ -2325,6 +2334,47 @@ NaviCusts). EXE5's, content/exe5/rules/navicust:
   area, 0x02002944, from 0x80, or event flag 0x10B2) nothing, so the HP is the save's and the maximum the effects'
   (0x0803C1CC), Hub's halving standing. The navicust system's setup `cyberworld` says which; Tango's finished Team
   ProtoMan light save is in the cyberworld (area 0x8C, HP 850 of 1000).
+  - *Hub's halving is reached by no board the game builds.* The part table's shapes (16 bytes a part: +8 the shape,
+    +0xC the compressed one; the four ROMs agree): HP+50 a straight three, HP+100 a square of four, HP+200 six (two
+    over four), HP+300 seven (four over three), HP+400 two by four, HP+500 two by five, each in white, pink and
+    yellow, and each one's compressed shape the same 25 bytes as its shape: no HP program compresses. HubBatc is
+    thirteen cells (rows of one, three, five, three and one; its compressed shape the same), BugStop a straight
+    three, two compressed. HubBatc has no place on the 4x4 or the 5x4 board and one on the 5x5, the middle: the
+    whole command line is its own, and the twelve cells left are four corners of three in an L. No HP program fits
+    one, turned or not, so the sum the bug halves is zero on every board a save can hold; BugStop fits a corner
+    only compressed, off the command line, where it stops nothing. (nettai-match's check refuses a part over
+    another, as the original's placing does, 0x0813F2A4; its test `exe5s_hubbatc_shares_a_board_with_no_hp_program`
+    walks every placement.) The bug's routine (0x08140248) takes in nothing else: the maximum is the base (+0x3E,
+    whole) and half of one halfword, the HP programs' sum (the first of the block the toolkit's +0x68 points to),
+    which only the compile's clear (0x0813FA74), the NaviCust screen's (0x0813EEC6) and the six HP programs'
+    handlers (0x0813FF9C to 0x0813FFF4) write; the patch cards work on the maximum afterwards.
+  - *What the original makes of it, on a board laid by a poke*: HubBatc in the middle (part 108 at (2, 2)) and
+    HP+500 in pink over its top rows (part 189 at (2, 1)), off the command line, which the compile takes (it reads
+    the list and checks nothing). Both sides, side 0's patch cards taken off; the block as the compile left it,
+    and what a link battle's first frame has:
+
+    | Console | Block: base, HP, maximum | The battle starts at |
+    |---|---|---|
+    | Team ProtoMan light save, in the cyberworld (area 0x8C) | 1000, 850, 1250 | 1250 of 1250 |
+    | Team Colonel dark save, in the real world | 997, 1497, 1497 | 1497 of 1497 |
+    | Team ProtoMan dark save, in the real world | 997, 1497, 1497 | 1497 of 1497 |
+    | Team ProtoMan dark save, event flag 0x10B2 raised (image 0x2C0E, 0x08 to 0x28) | 997, 1247, 1247 | 1247 of 1247 |
+    | Team ProtoMan light save, its area byte (image 0x2944) poked to 0 | 1000, 1500, 1500 | 1500 of 1500 |
+    | The light save, BugStop besides (part 112, compressed, at (0, 2): over the command line's first two cells) | 1000, 850, 1500 | 1500 of 1500 |
+    | The light save, HP+500 alone (a board the game builds) | 1000, 850, 1500 | 1500 of 1500 |
+    | The light save, HubBatc alone (a board the game builds) | 1000, 850, 1000 | 1000 of 1000 |
+
+    So the original has the two endings as read here: where the compile leaves the HP, by the area or by the flag
+    on one and the same save, the halving stands (the base and 250), and in the real world the maximum is whole (the
+    base and 500). A link battle starts each navi at its maximum either way (the engine's `init_hp`, EXE6's
+    `sub_80141C8`: the block's HP only in a battle that keeps HP, its effects' bit 4 clear; the recorded link
+    battles' effects are 0x0E8C), so the block's HP word, the one other thing the two endings leave different, is
+    read by no link battle: on every board the game builds, the two endings start a link battle alike. Replayed
+    with each console's fact as recorded, the engine matched all eight recordings on every frame and their blocks
+    byte for byte. They are kept, unreplayed, with their scenario files in the verification workspace's
+    data/staged/exe5-hubbatc-overlapped-2026-10-05: an engine whose compile has the real-world ending alone can't
+    replay the three whose console keeps the halving (1250 twice, 1247). The library has the boards that can be
+    built (navicust-compile/hubbatc-hp-apart, hubbatc-bugstop).
 - **Compression** is an event flag (0x1EC0 + the part id, which 0x0813EEFC tests), not the list's +5 (the editor's
   mark): every finished save on hand has the flags of every program that compresses set.
 - The save's list: 25 parts of 8 bytes at 0x02004D6C (+0 the part id, +2 the column, +3 the row, +4 the quarter
