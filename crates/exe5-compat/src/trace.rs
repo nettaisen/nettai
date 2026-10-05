@@ -109,53 +109,32 @@ impl NaviCustSetup {
     }
 }
 
-/// A pattern record of a computer-navi data block: its place, its five
-/// chip places' halfwords and its score.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct PatternRecord {
-    pub dx: i8,
-    pub dy: i8,
-    pub chips: [u16; nettai_battle::tactics::PATTERN_CHIPS],
-    pub score: u32,
-}
-
-/// A player's computer-navi data block (0xE0 bytes, EXE5's 0x02034C20 by
-/// side) as the halfwords it holds: the entries in order (the count at
-/// +0x54) and its eight pattern records (16 bytes each from +0x58). An
-/// entry names one of the eight; the block's last eight bytes are 0xFF
-/// (nothing writes them, and the AI's read of a pattern, which can run
-/// through the records, 0x0802BCD6, ends there).
-pub fn tactic_block(block: &[u8]) -> Result<(Vec<u16>, Vec<PatternRecord>), String> {
-    if block.len() != 0xE0 {
-        return Err(format!("a computer-navi data block is 0xE0 bytes, not {:#x}", block.len()));
-    }
-    let half = |o: usize| u16::from_le_bytes([block[o], block[o + 1]]);
+/// A player's computer-navi data block as a battle has it (0xE0 bytes,
+/// EXE5's 0x02034C20 by side: the block the other console sent,
+/// `save::ComputerNaviBlock` with its count written): the entries in
+/// order, as many of its places as the count at +0x54 says, and its eight
+/// pattern records. An entry names one of the eight; the block's last
+/// eight bytes are 0xFF (nothing writes them, and the AI's read of a
+/// pattern as written, which can run through the records, 0x0802BCD6,
+/// would end there).
+pub fn tactic_block(block: &[u8]) -> Result<(Vec<u16>, [crate::save::ComputerNaviPattern; crate::save::COMPUTER_NAVI_PATTERNS]), String> {
+    use crate::save::{COMPUTER_NAVI_EMPTY, COMPUTER_NAVI_PATTERN, COMPUTER_NAVI_PATTERNS, ComputerNaviBlock};
+    let read = ComputerNaviBlock::read(block)?;
     let count = u32::from_le_bytes(block[0x54..0x58].try_into().expect("four bytes")) as usize;
-    if count > nettai_battle::tactics::MAX_ENTRIES {
-        return Err(format!("a computer-navi data block counts {count} entries, more than {}", nettai_battle::tactics::MAX_ENTRIES));
+    if count > read.places.len() {
+        return Err(format!("a computer-navi data block counts {count} entries, more than {}", read.places.len()));
     }
-    let entries: Vec<u16> = (0..count).map(|i| half(i * 2)).collect();
+    let entries = read.places[..count].to_vec();
     for &e in &entries {
-        let i = (e & 0x7FFF) as usize;
-        if e & 0x8000 != 0 && e != 0xFFFF && i >= nettai_battle::tactics::MAX_PATTERNS {
-            return Err(format!("a computer-navi data entry names pattern {i}, past the block's {}", nettai_battle::tactics::MAX_PATTERNS));
+        let i = (e & !COMPUTER_NAVI_PATTERN) as usize;
+        if e & COMPUTER_NAVI_PATTERN != 0 && e != COMPUTER_NAVI_EMPTY && i >= COMPUTER_NAVI_PATTERNS {
+            return Err(format!("a computer-navi data entry names pattern {i}, past the block's {COMPUTER_NAVI_PATTERNS}"));
         }
     }
-    let patterns = (0..nettai_battle::tactics::MAX_PATTERNS)
-        .map(|i| {
-            let at = 0x58 + i * 16;
-            PatternRecord {
-                dx: block[at] as i8,
-                dy: block[at + 1] as i8,
-                chips: std::array::from_fn(|k| half(at + 2 + k * 2)),
-                score: u32::from_le_bytes(block[at + 12..at + 16].try_into().expect("four bytes")),
-            }
-        })
-        .collect();
     if block[0xD8..] != [0xFF; 8] {
         return Err(format!("a computer-navi data block's last eight bytes are {:02x?}, not 0xFF: what the AI's read of a pattern would end at", &block[0xD8..]));
     }
-    Ok((entries, patterns))
+    Ok((entries, read.patterns))
 }
 
 /// A battle object as the recording has it (EXE6's fields).
