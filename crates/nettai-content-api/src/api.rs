@@ -711,6 +711,11 @@ named_flags! {
         Takeover = "takeover",
         Volley = "volley",
         WeaknessHit = "weakness_hit",
+        /// A navi's own requests, which its own tick sets and its own idle
+        /// reads (EXE5's GyroMan's take-off and landing, 0x10000000 and
+        /// 0x20000000 of his request word; EXE6 has neither).
+        TakeOff = "take_off",
+        Land = "land",
         /// The slide request (the collision's flag2 0x10, not an action
         /// request).
         Slide = "slide",
@@ -748,6 +753,9 @@ named_flags! {
         /// doesn't hold it at a move's end (EXE5's ToadSoul, 0x08011CB2).
         /// The status reset ends it.
         Dives = "dives",
+        /// In the air (EXE5's GyroMan over a panel that isn't solid): a
+        /// step it takes sets no animation.
+        Hovering = "hovering",
     }
 }
 
@@ -1819,6 +1827,9 @@ pub trait CoreApi {
     /// `sub_801056A`: the reactive-defense abort attacks check after each
     /// phase.
     fn check_reactive_abort(&mut self, o: ObjectRef);
+    /// `sub_80F22F8`'s spawns: the two objects a navi keeps in battle mode
+    /// 9 (the roles' `mode9_attack` and `mode9_actor`).
+    fn spawn_mode9_objects(&mut self, o: ObjectRef);
     /// `sub_80105F2`: a stance's own trap caught a hit (the AntiDmg
     /// program's action 0x5A): its counter starts at the next tick, AntiDmg's
     /// (0x47) or, for a sword hit, AntiSwrd's (0x48), with the stance's damage

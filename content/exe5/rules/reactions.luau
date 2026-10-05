@@ -50,4 +50,14 @@ return {
     slide_speed = { x = 0xA_0000, y = 0x8_0000 },
     overlay_restart = "reload",
     stance_counter = "at_once",
+    -- What the ends of a navi's actions clear of its requests besides the attacks' six: the Chaos Unison releases,
+    -- at an attack's end (0x0800F2DA: 0x1803F); at a paralysis's, a flinch's and a drag's (0x080142A6, 0x080141D0,
+    -- 0x080144E0: 0x1843F) the anti-sword trigger too. (A navi's own requests, GyroMan's take-off and landing,
+    -- are his idle's to clear.)
+    request_clears = {
+        attack = { "chaos_success", "chaos_failure" },
+        paralysis = { "anti_sword_triggered", "chaos_success", "chaos_failure" },
+        flinch = { "anti_sword_triggered", "chaos_success", "chaos_failure" },
+        drag = { "anti_sword_triggered", "chaos_success", "chaos_failure" },
+    },
 }
