@@ -1104,9 +1104,24 @@ code, 6 the same but for constants, 34 similar, 1 differs and 8 absent. What dif
   0x18, judge-draw 0x1C, double-ko 8 on side 0's console and 4 on side 1's (the round goes to side 1),
   operation-win 0x38. The replays compare the banner's number with the traced console's record (its +1; a telop's
   holds 0) on every frame, in both games.
-- The operation battle's turn starts with banner 0, "BATTLE START", where a Team Battle's shows 0x0C (as recorded:
-  library-exe5/flow/operation-win; not read yet, and the engine doesn't run the mode: its replay stops on the
-  round's first frame, the gauge 0x1500 where the engine's is 0).
+- The operation battle (battle flag 0x40), as seen and not yet read (2026-10-04; the engine doesn't run the mode:
+  a replay stops on the round's first frame, frame 162, the gauge 0x1500 where the engine's is 0). Recorded with
+  chiplab's `exe5-operation-battle` base (a trap at 0x0802D590 raises NaviStats +0x2A, which no Team Battle sets):
+  library-exe5/flow/operation-win and operation-win-side1, the recordings kept in the verification workspace's
+  data/staged/exe5-operation-battle-2026-10-04 (not in the lab while they can't replay).
+  - No custom screen opens. The round's start shows "BATTLE 1 START!" (banner 0x30, frames 226 to 284) and the
+    turn's start banner 0, "BATTLE START" (frames 386 to 444), where a Team Battle's shows 0x0C; the fight runs from
+    frame 446. (The driver's `waitcustom` returns at once and its `fight` never does; five A presses 20 frames apart
+    before the fight do nothing seen.)
+  - Each console shows its own three chips in a row along the bottom with a cursor over the middle one (side 0,
+    Team ProtoMan's save: AirShot, AirSpin1, WindRack; side 1, Team Colonel's: YoYo, BugBomb, Sword: neither the
+    folder's first chips nor the save's computer-navi data), its navi's HP top left, and the gauge along the top,
+    full and red from the start.
+  - Both navis stand idle (action 6) until their player presses A: the navi then goes through action 0x47 and its
+    chip's own. Side 0's first A deleted side 1's navi at 20 HP (frames 794 to 823); side 1's navi's first chip
+    took 10 HP of side 0's navi.
+  - The win shows the winner's navi's banner (0x38, "MEGAMAN WIN!", from frame 880 with side 0 the winner:
+    0x080090C0's table), the result's wait 102 ticks as a Team Battle's.
 - `sub_80080D2` (fighting): no Cross-special check (EXE6 +0x3A, `sub_800AAD6` absent) and no own-gauge
   decrement (0x2900) on a custom request; EXE5 calls 0x08025ED0 there.
 - `sub_8008452`, `sub_8008492`: after the reversions EXE5 opens the custom screen (result 6) directly: no
@@ -1493,8 +1508,11 @@ them.
   name, and its `hand_size`, `deal`, `confirmed` and `turn_opened`). rules/souls/custom.luau gathers them from
   MegaMan's souls into the system's buttons, windows and state, and calls a soul's while the side's navi is in that
   soul, with the system's state (its buttons and its `deal` not in battle mode 1, where the routine reads no
-  soul). SearchSoul's Shuffle (kinds 4 and 5) and NumberSoul's hand of ten (0x08025BE4) are the two bullets after
-  this one; the two that change a chip are:
+  soul). What the souls keep of a screen starts fresh at each deal, every soul's and whatever soul the navi is in:
+  the system sets each field of each soul's `custom.state` to what a fresh state holds, by the field's declared
+  type, before the soul's deal runs (the original zeroes the screen's record as it opens, 0x08022CA2: out of
+  MeddySoul there are no capsules). SearchSoul's Shuffle (kinds 4 and 5) and NumberSoul's hand of ten
+  (0x08025BE4) are the two bullets after this one; the two that change a chip are:
   - **MeddySoul's capsules** (kinds 6 and 7; navis/megaman/forms/meddysoul/capsules.luau): two of five capsule chips a screen
     (0x17C YelCapsl, 0x17D BlkCapsl, 0x17E WhiCapsl, 0x17F PrpCapsl, 0x180 PnkCapsl: chips/capsules), one draw of
     the console's RNG1 as the slots are laid out (0x08023D30: bits 1 to 4 and 17 to 20 into a table of sixteen,
@@ -1715,7 +1733,8 @@ chips walked up to, patterns, traps; 10,225 frames, each through Dark MegaMan's 
   idle (twelve seconds from his first, then his leave, the navi type's action 7), his tick (the time running down
   outside pauses and dimming, his last three seconds blinking, the battle's end ending it).
 - *The AI* (rules/computer-navi/ai, 0x0802BA14): its decisions, the buster runs (his buster, weapon routine 0x3E,
-  is attack 0x16: three shots, rules/computer-navi/buster), the patterns, the reposition, a chip's play; the
+  is attack 0x16: three shots, rules/computer-navi/buster), the patterns (never played: below), the reposition, a
+  chip's play; the
   pressure picks as written (the front one calls 0x081BC8AC, data: an error; the hole one reads the AI's own
   side's tactics; their counters stay 0); getting in place for a chip by its positioning class
   (rules/computer-navi/place: all 33 classes of 0x08029B3C, and the panel searches they share, ./panels).
@@ -1735,10 +1754,46 @@ seven saves (Tango's templates and three played ones):
 - *The block* (0xE0 bytes): 42 halfword places (a chip's number; 0x8000 with a pattern's index; 0xFFFF empty), a
   count at +0x54 that only the send writes (a save's is 0xFFFFFFFF), and from +0x58 eight pattern records of 16
   bytes: `dx`, `dy` (signed bytes), five chip places to the first 0xFFFF, and the pattern's score, a word at +12.
-  The AI reads a pattern's chips to the first 0xFFFF with no other end (0x0802BCD6), so a record with all five
-  places filled is read on into its score (a chip number), the score's upper half (chip 0) and the next record.
-  No save seen has a pattern of more than two chips. A record the learning never filled is zeros (place 0, 0, five
-  chip places of 0, score 0: the played saves' unused records), one nothing has written 0xFF.
+  As written the AI reads a pattern's chips to the first 0xFFFF with no other end and takes any other halfword
+  for a chip's number (0x0802BCD6, 0x0802C094), so a record with all five places filled would be read on into its
+  score (its lower half a chip's number, its upper half chip 0), the next record's `dx` and `dy` as one halfword,
+  that record's places, and so through the records to the block's last eight bytes, which nothing writes (0xFF).
+  As run, nothing of a pattern is ever read: see *A pattern is never played* below. The engine's type holds the
+  record whole all the same (`TacticPattern`: `dx`, `dy`, five places each a chip, 0 or empty, the score; eight
+  records in their places; `Tactics::pattern_read` is the read as written), and exe5-compat refuses a block whose
+  last eight bytes aren't 0xFF.
+  A record the learning never filled is zeros (place 0, 0, five chip places of 0, score 0: the played saves'
+  unused records), one nothing has written 0xFF.
+- *A pattern is never played* (2026-10-05). The step of a pattern entry (0x0802BC48; the same code at 0x0802B6DC
+  and around 0x0802B930) works out its place from the target, calls the move lag's routine (0x0800E0BE) and then
+  the step test (0x0800CAA0) before it takes the place back off the stack (0x0802BC7E to 0x0802BC8E): the test is of what
+  the lag's routine left in r0 and r1. For MegaMan's stats that is the lag as the column and the lag again as the
+  row (4 and 4; 0 and 0 in ShadowSoul), for another navi's the lag and the address of its row of the lag table
+  (0x0800E0F0). The field's rows are 1 to 3 (0x0800B33C), so the test fails for every navi at every place, and the
+  entry takes the other branch: a miss (+0xF4), the target's search moved on (+0xFC), a step to a random panel of
+  its own area. The step that reads a pattern's chips (+0xF2 = 0x14) is set by the branch that never runs. So a
+  pattern entry differs from an empty turn only in being an entry (it is counted, shuffled and turned), and its
+  place, chips, score and the record after it show in no battle. Recorded: library-exe5/chaos-ai/pattern-reached (a
+  two-chip pattern two columns back from its target in its row, a free panel of Dark MegaMan's own area: he steps
+  and punches, 36 steps and 10 buster runs, and plays no chip), pattern-full and pattern-full-zeroed (five chips
+  and a score of 3, the records after it 0xFF and zeroed: the same frames). The engine's port had tested the place
+  itself and played the pattern from it, which no recording had met: chaos-ai/pattern, the lab's one pattern
+  scenario till then, has both its places on side 0's area (dx 1 and 2), where the step fails either way;
+  pattern-reached stopped at frame 908 of 1,658 (the miss's draw for the panel) and matches with the test as the
+  game has it (`pattern_place`: `can_step(lag, lag)`). The chips' read stays as written behind it
+  (`pattern_chips`, by `battle.tactic_pattern_read`); a halfword there that is no chip place's chip is an error
+  naming the number (content names chips; the chip table's first record, chip 0, a blank record with the plus
+  chips' own use and a damage of 1, and its other blank ones have no definition).
+- *A place holding 0* (the halfword 0, chip 0's number; `Tactic::Nothing`). The send packs only 0xFFFF away
+  (0x0802C7BE), so a 0 is an entry. The decision tests the first place for 0 before it tests for 0xFFFF and takes
+  both the same way (0x0802BAC6, 0x0802B55E): a miss and a buster run. So a 0 that comes first stays first, each
+  decision that reaches it a miss, until five in a row bring the swap with a random other place (0x0802C0DC); the
+  pickers (0x0802BE4E, 0x0802BE9A) read it as chip 0's record, whose byte 14 is 0, and pass over it. No save the
+  game wrote has one: a battle's end fills the 42 places with 0xFFFF and then chips' numbers from its standard,
+  mega, giga and program advance lists and the pattern entries (chip 0 is class 3, a list it doesn't write).
+  Recorded: chaos-ai/zero-first (a 0 first, Cannon among the rest: his buster runs until the swap brings Cannon
+  first, once in his twelve seconds) and zero-later (Cannon first, a 0 and Sword among the rest). The engine had
+  given the AI `false` for it, which its decision then indexed as a chip.
 - *Where it is:* seven blocks at save +0x554C (0x0200554C, the toolkit's +0x78). A battle sends the first
   (0x08009B64: with battle flag 0x40, the operation battle, 0x0802C7A0 builds one from the player's folder instead,
   its 30 halfwords in places 4 to 33). Nothing writes the other six (0x0802C8C2, which copies a block into one by
@@ -1772,9 +1827,10 @@ seven saves (Tango's templates and three played ones):
   time where an even shuffle gives 2.6%, and where the empty places are changes what a seed sends. So a battle can
   tell where in the block an entry was.
 - *A match states the block whole* (`nettai_match::computer_navi`, docs/frontend.md §6), as a battle reads nearly
-  all of it: besides the places' order, a place holding 0 is packed with the entries by the send (only 0xFFFF is
-  packed away), and from a record with no empty chip place the AI reads on into its score and the next record
-  (above), so a record's score, the record after it and the records' order show. `[side.computer_navi]` is the 42
+  all of the places: besides their order, a place holding 0 is packed with the entries by the send (only 0xFFFF is
+  packed away). Of a pattern a battle shows only that its entry is one (*A pattern is never played*, above: not its
+  place, its chips, its score or the record after it); the file carries the records whole as the save has them all
+  the same. `[side.computer_navi]` is the 42
   places in the six lists the battle's end writes them in (`first` 1 to 3, `standard` 4 to 27, `mega` 28 to 32,
   `giga` 33, `patterns` 34 to 41, `program_advance` 42), each entry a chip by name, a pattern record's number (1 to
   8), `0` or `{}` (an empty place), any entry in any place as in the block, and `records`, the eight pattern records in order
@@ -1790,6 +1846,16 @@ seven saves (Tango's templates and three played ones):
   learned no pattern (`ComputerNavi::of_folder`: every record zeros). A match compiles to the engine's block
   (`Tactics`) place for place and record for record. The learning itself (the tables and the runs during a battle)
   is not ported: nothing of a battle reads it.
+- *What a battle's end writes of the records* (0x0802C540's end, read 2026-10-05). The 42 places are built on the
+  stack (0xFFFF, then the lists' chips and the pattern entries) and copied to the block's first 0x54 bytes; the
+  eight records are copied from the save's 24 learning records (+0x0000), sorted by score (0x0802C820), 0x80 bytes
+  to the block's +0x58. A new game zeroes the 24 (0x0802C1E0), and a record with a score of 0 is an unused one
+  (0x0802C62A stops at it), so after any finished battle a record the block has no pattern for is zeroed (`dx` 0,
+  `dy` 0, five places of 0, score 0: Team Colonel's played save), where a save that has finished no battle keeps
+  0xFF there. The count (+0x54) and the last eight bytes (+0xD8) are never written. A learned pattern's unused chip
+  places are 0xFFFF (the run's buffer is reset to it, 0x0802C3B2); the buffer's count has no bound and the copy
+  into a record takes `dx`, `dy` and five chips (0x0802C3A0: 12 bytes), so a run of five chips or more gives a
+  record all of whose places hold a chip.
 
 ### 15.10 EXE5's emotions (as built)
 
@@ -2339,3 +2405,99 @@ chips don't have (Roll `*`, M-Cannon `*`), which EXE5 makes the invalid chip; th
 SuprVulc rather than Roll (Roll also wants a light MegaMan), and Tango's navi starts at 80 HP (side 1's M-Cannon
 takes only 60 from side 0's navi in these saves, where side 0's takes 120 from side 1's: not looked into). Not
 reached: a Giga chip for Beat, Rush without the opponent's navi, a failed spawn.
+
+### 15.16 The team navis (in progress: the framework and ProtoMan)
+
+EXE5's players operate thirteen navis: MegaMan (navi 0) and the twelve team navis, six a version in its souls'
+order (NaviStats +0x29, and a save's GameState +1, the navi the PET operates): Team ProtoMan's ProtoMan, GyroMan,
+SearchMan, NapalmMan, MagnetMan and Meddy (1 to 6), Team Colonel's Colonel, ShadowMan, NumberMan, TomahawkMan,
+KnightMan and ToadMan (7 to 12). A save holds seven NaviStats blocks (MegaMan's at save +0x52A8, then its version's
+six, 0x60 bytes each: 0x0801165C by navi number). Every table below is the same in the four ROMs (each at its own
+address; Team ProtoMan US's are given).
+
+**Where the original lets one be operated.** The story (the Liberation missions and their areas) and the Battle
+Chip Gate's operation battle (its menu, 0x0813C2AC, sets the navi with NaviStats +0x2A raised: battle flag 0x40). The
+battle's init exchange (0x080098E0) sends the PET navi's block and the team navis' level; a plain NetBattle sets the
+PET navi to MegaMan for the battle (0x08135936) and puts it back. **In nettai a side of an EXE5 match may operate
+any of the twelve** (a match has no version; a side states its navi), in the netbattle's rules. Not built, and not
+planned here: the operation battle with a gate navi (the gate's own HP table, 0x0802FD74), the gate chip's
+mid-battle navi switch (§5), and the Liberation battles.
+
+**A navi's data** (content/exe5/navis/<navi>/init.luau, a `define.navi` without forms):
+
+| What | Where | Notes |
+|---|---|---|
+| Battle sprite | 0x0800DA65 by navi (08-NN) | the pack's `protoman` … `toadman` |
+| Element | 0x0800E634 | NapalmMan Fire, MagnetMan Elec, TomahawkMan Wood, ToadMan Aqua |
+| Buster bonus | 0x0800F5AC | 1; TomahawkMan 3 |
+| Move lag | 0x0801D462 (11 bytes a navi) | 4; KnightMan 10 |
+| Banners | 0x080090D8 (win, 0x94 + 4 (n − 1)), 0x080090B0 (deleted, 0x60 + 4 (n − 1)) | `<navi>-win`, `<navi>-deleted` |
+| Face | 0x08019724 (Team Colonel's 0x0801971C): the version's six pictures, two palettes each | the pack's navi mugshots, `<navi>` (0x80 + n − 1); the second palette in Full Synchro |
+| Actor record | 0x08014C94, NameID 0x180 + n | version 0, a player, AI index n |
+| Attach points | category 8's table, 0x08015C1C, row n | 30 points |
+| Stats row | 0x0801D55F (16 bytes, read by 0x080111AA) | the HP, SuperArmor, FloatShoes, AirShoes, UnderShirt, the Mega and Giga levels, the four weapons, the B+Back special's damage (+0x48) |
+| Palette step | 0x0801D737 | the sprite's palettes go by it (0x0800DA98: 4 steps in Full Synchro, 1 while it can't charge): 1; NapalmMan 3, MagnetMan, Meddy, Colonel and TomahawkMan 2 |
+| Own chip | 0x08025EA0 (a pair of the same chip and code) | below |
+| Story HP | 0x0804F960 (20 bytes a navi) | below |
+
+**Weapons.** The stats row names the weapon routines (0x0800F370's): every navi's buster is routine 0 (MegaMan's)
+but GyroMan's (0x43) and NapalmMan's (0x44); the charged attacks ProtoMan 0x1E, GyroMan 0x28, SearchMan 0x3F,
+MagnetMan 0x26, Meddy 0x3B, Colonel 0x46, ShadowMan 0x24, NumberMan 0x3D, TomahawkMan 0x3C, KnightMan 0x10, ToadMan
+0x2E (NapalmMan none); B+Back ProtoMan 0x0B and ShadowMan 0x0D; the A-charge routines of NapalmMan, MagnetMan,
+TomahawkMan and ToadMan (0x29 to 0x2C) are empty: their A charge is of their element's chips (0x0801090A: a chip of
+their family, neither their own chip nor past 0x190, charges, and a charged one hits twice as hard, 0x080103D0). Each
+navi's own actions are its state table's entries from 7 on (0x080EADA8 by navi number; GyroMan has a tick of his
+own, 0x080EB1E8's).
+
+**The level.** A team navi's attacks take their damage from the damage rows (0x0801D74F, seven entries a row,
+0x0800EBC4) at the side's level: a word a side (0x0203C870) the init exchange sends, which 0x0800EBE0 counts from the
+save's story flags, 0x300 on, up to 6. In content: `battle.navi_level(side)` through lib/navi_level for a weapon,
+and `damage = { formula = "level", by_level = { ... } }` for an own chip (the chips' damage formulas 50 to 72, each a
+row: 0x0800EAF8).
+
+**The own chips** (chips 0x191 to 0x1A6, past the library): StepSwrd B (ProtoMan), Airforce G (GyroMan), Satelity S
+(SearchMan), Napalm N (NapalmMan), NSTackle M (MagnetMan), MeddyCap M (Meddy), C-Cannon C (Colonel), SplitUp S
+(ShadowMan), NumTrap N (NumberMan), T-Swing T (TomahawkMan), KCrusher K (KnightMan), S-Melody T (ToadMan). The custom
+screen offers a team navi its chip in slot 9 until it is picked once a battle (0x08023EFE; the hand builder's
+0x08024E20 marks it), picking between its table's two entries, the same chip, with a draw of the console's RNG (the
+navi's `own_chip_draws`). A chip's record names a routine of its own (+0x1F: 0x0800EC68's table, 0x0800EC80), which
+the chip's use calls once the attack is loaded (0x080100CE): StepSwrd's sets the attack's charged byte, by which the
+sword's action steps two panels ahead; KCrusher's, S-Melody's and C-Cannon's set attack variables. In content it is
+the chip's `setup(navi)`. A team navi's own attacks carry a counter byte with bit 7 set (StepSwrd's 0x94): they make
+no counter hit.
+
+**The story's HP.** A team navi's HP is the story's, not its stats row's: a routine (0x08052E9C) sets every team
+navi's base, current and maximum HP from a table (0x0804F960: a row a navi) by the story's progress, the count of
+event flags set from 0x300 on (0 to 8), at a new game's start (0x08004C74) and from a map script as the story moves
+on; the level above is the same count up to 6. The rows, by navi pair (the two versions' tables are the same with
+their own navis): ProtoMan and Colonel 200, 300, 350, 400, 450, 500, 600, 700, 800; MagnetMan and KnightMan 400,
+400, 500, 550, 600, 650, 700, 800, 900; GyroMan and ShadowMan 250, 250, 250, 300, 350, 400, 500, 600, 700; NapalmMan
+and TomahawkMan 300, 300, 300, 300, 350, 400, 500, 600, 700; SearchMan and NumberMan 300, 300, 300, 300, 300, 350,
+450, 550, 650; Meddy and ToadMan 300, 300, 300, 300, 300, 300, 400, 500, 600. In content it is the navi's `story`
+(`hp` and `max_level`); nettai-match fills a side's stats from it (its `story` module, as its `link_navis` does an
+EXE6 link navi's): a level below the last is the progress, and at the last the story is taken as done. A new side
+of a team navi is at level 0; a match file's `level` and its stats block say otherwise; a save's import takes the
+save's level and, where its version has the navi, the HP and the light/dark value of the navi's own block.
+
+**What else goes by the navi.** No soul button (0x08023C90: the navi has no forms); a dark chip does nothing
+(0x08010056) and the light and dark chips' check lets any chip through (0x08010118); the patch cards and the
+NaviCust are MegaMan's (their rules pass a navi without forms). The Full Synchro aura's animation is its owner's AI
+index (0x080C4608: the identity's `aura_anim`). What a navi holds goes by its AI index: the cannon's, the air
+shooter's and the spreader's animations (0x080EC300, 0x080EC9B8, 0x080EC5B8: NapalmMan's, MagnetMan's and
+KnightMan's own; the shared actions take each game's table, lib/navi_arms), the buster arm's (lib/arm), the sword's
+blade (lib/swords), WindRack's rack and MrkCan's rows. The per-actor hooks (0x0800D30C's five tables, by actor type
+and AI index) have entries for GyroMan (three), Colonel (one), KnightMan (three) and ToadMan (one), and the
+animation-change hook (0x0800F13C) for GyroMan, NapalmMan, Colonel and KnightMan; GyroMan's move is a variant of its
+own (0x0800F234, 0x0802D544).
+
+**As built** (engine): a chip's `setup` hook and the `level` damage formula; a navi's `story`, `own_chip_draws` and
+`palette_step`; the shared cannon, AirShot and Spreader actions take their holders' animations from their game.
+exe5-compat names the navis by number (records.toml's `[navis]`) and reads the level from a recording's setup
+(`navi_levels`) and the B+Back special's damage from the stats block (+0x48). exe5-extract takes both versions'
+faces. The chip lab operates a team navi by name (`navi = "protoman"`: set in RAM as the init exchange starts, since
+a save that operates a team navi doesn't reach the link battle), with `navi_level` (the save's story flags) and `hp`
+(the navi's block).
+
+| Navi | Weapons | Own chip | Checked |
+|---|---|---|---|
+| ProtoMan | the charged slash (0x1E, 0x0800F8CE: WideSwrd loaded as the attack, the damage rows' row 0, counter byte 0x94) and the B+Back guard (0x0B, 0x0800F6CC: EXE5's guard as the Reflect program's, the stats' damage, 40 ticks before the next chip) | StepSwrd (action 0x13 as WideSwrd's, row 1, its routine 2) | 40 recordings (navis/protoman): his own chip at levels 0, 3 and 6, from another row, out of reach, blocked, onto a panel the opponent steps to, on a Japanese console and over four custom screens; the charged slash at three levels and let go early; the guard reflecting a buster shot and a Cannon, and too early; AntiSwrd against both; a counter hit and Full Synchro (an AirShot's; StepSwrd's makes none); twelve plain chips, a held A, a dark chip; hits, his deletion, a win. Every frame and every sound call. |

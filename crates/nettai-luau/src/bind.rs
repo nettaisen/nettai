@@ -1691,18 +1691,26 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             nettai_content_api::TacticEntry::Empty => Ok(LuaValue::Nil),
         }
     });
-    lib_fn!(lua, t, "tactic_pattern", |lua, (side, i): (LuaValue, LuaValue)| {
+    lib_fn!(lua, t, "tactic_pattern", |_, (side, i): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         let i = int(&i, "pattern")?;
         if i < 1 {
             return Err(mlua::Error::runtime("battle.tactic_pattern: patterns count from 1"));
         }
-        let (dx, dy, chips) = with(|api, _| api.tactic_pattern(side, (i - 1) as usize).map_err(api_error))?;
-        let list = lua.create_table()?;
-        for c in chips {
-            list.push(bound(|b| chip_value(b, Some(c)))?)?;
+        let (dx, dy) = with(|api, _| api.tactic_pattern(side, (i - 1) as usize).map_err(api_error))?;
+        Ok((dx as i64, dy as i64))
+    });
+    lib_fn!(lua, t, "tactic_pattern_read", |_, (side, i, k): (LuaValue, LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let (i, k) = (int(&i, "pattern")?, int(&k, "read")?);
+        if i < 1 || k < 1 {
+            return Err(mlua::Error::runtime("battle.tactic_pattern_read: patterns and reads count from 1"));
         }
-        Ok((dx as i64, dy as i64, list))
+        match with(|api, _| Ok(api.tactic_pattern_read(side, (i - 1) as usize, (k - 1) as usize)))? {
+            nettai_content_api::TacticPatternRead::Chip(c) => bound(|b| chip_value(b, Some(c))),
+            nettai_content_api::TacticPatternRead::Number(n) => Ok(LuaValue::Integer(n as i64)),
+            nettai_content_api::TacticPatternRead::End => Ok(LuaValue::Nil),
+        }
     });
     lib_fn!(lua, t, "swap_tactics", |_, (side, i): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;

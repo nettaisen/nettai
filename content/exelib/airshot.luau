@@ -32,18 +32,16 @@ type Look = ShooterLook
 local SHOT_TICK, FIRE_TICKS, RECOVER_TICKS = 5, 0xA, 0xA
 local SHOT_Z = 0x18_0000
 
--- `sub_80EC934`: the shooter's animation by the holder's AI index (the
--- link navis HeatMan, GroundMan and DustMan, 1, 9 and 10: 1; the others
--- 0). Unlike the cannon's it doesn't ask whether the holder is a player.
-local function arm_anim(me: Object): number
-    local ai = me.ai_index
-    if ai == 1 or ai == 9 or ai == 10 then
-        return 1
+-- `sub_80EC934`: the shooter's animation by the holder's AI index, from
+-- its game's table (`look.arm_anims`: EXE6's `off_80EC944`, where the link
+-- navis HeatMan, GroundMan and DustMan hold their own, 1). Unlike the
+-- cannon's it doesn't ask whether the holder is a player.
+local function arm_anim(me: Object, look: Look): number
+    local anim = look.arm_anims[me.ai_index + 1]
+    if anim == nil then
+        error(string.format("AI index %d reads past the air shooters' table (`sub_80EC934`)", me.ai_index))
     end
-    if ai > 27 then
-        error(string.format("AI index %d reads past off_80EC944", ai))
-    end
-    return 0
+    return anim
 end
 
 -- An AirShot: what the navi holds and what it fires, of a game's `look`.
@@ -58,7 +56,7 @@ function airshot.action(spec: AirShotSpec, look: Look): Action
             me:open_counter_window()
             s.timer = 0
             me:set_status("using_action", true)
-            attachment.attach(look.attachment, me, spec.shooter, "overlay", { anim = arm_anim(me) })
+            attachment.attach(look.attachment, me, spec.shooter, "overlay", { anim = arm_anim(me, look) })
             battle.play_sound(SOUND)
             me.step_init = 4
             return

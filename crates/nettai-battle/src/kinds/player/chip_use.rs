@@ -303,6 +303,11 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
             b.set_panel_type(p.x, p.y, PanelType::Normal);
         }
     }
+    // EXE5's 0x080100CE: the chip's own routine (its record's +0x1F,
+    // 0x0800EC68: a team navi's own chip's attack variables).
+    if let Some(setup) = e.chip.and_then(|c| b.content.defs.chip(c).setup) {
+        crate::behavior::call_hook(b, setup, nettai_content_api::HookCall::FormNavi { navi: r });
+    }
     if let Some(instead) = b.systems_chip_check(side, r, e.chip) {
         return refuse(b, instead);
     }

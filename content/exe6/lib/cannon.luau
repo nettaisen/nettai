@@ -6,6 +6,7 @@
 
 local attachment = require("../objects/attachment")
 local common = require("@exelib/cannon")
+local navi_arms = require("./navi_arms")
 local projectile = require("./projectile")
 
 local cannon = {}
@@ -22,7 +23,12 @@ cannon.arms = {
     m_cannon = attachment.look { sprite = CANNON, palette = 2, attach_point = 7 },
 }
 
-local LOOK: ShooterLook = { sound = asset.sound("cannon"), attachment = attachment.kind, projectiles = projectile }
+local LOOK: ShooterLook = {
+    sound = asset.sound("cannon"),
+    attachment = attachment.kind,
+    projectiles = projectile,
+    arm_anims = navi_arms.cannon,
+}
 
 -- A chip's cannon.
 function cannon.action(spec: CannonSpec): Action

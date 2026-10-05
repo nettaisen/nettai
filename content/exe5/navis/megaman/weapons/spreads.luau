@@ -7,11 +7,17 @@
 
 local attachment = require("../../../objects/attachment")
 local bullet = require("../../../objects/bullet")
+local navi_arms = require("../../../lib/navi_arms")
 local spreader = require("@exelib/spreadr/action")
 
 local spreads = {}
 
-local LOOK: SpreaderLook = { sound = asset.sound("h-burst"), attachment = attachment.kind, bullet_kind = bullet.kind }
+local LOOK: SpreaderLook = {
+    sound = asset.sound("h-burst"),
+    attachment = attachment.kind,
+    bullet_kind = bullet.kind,
+    gun_anims = navi_arms.spreader,
+}
 local GUN = attachment.look { sprite = asset.sprite("spreader"), palette = 0, attach_point = 11 }
 local FIRE_AFTER = 10
 
