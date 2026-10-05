@@ -42,6 +42,7 @@ return define.ruleset {
     buster = require("@self/buster"),
     chip_use = require("@self/chip-use"),
     custom_screen = require("@self/custom-screen"),
+    effects = require("@self/effects"),
     elements = require("@self/elements"),
     flow = require("@self/flow"),
     lockon = require("@self/lockon").rules,

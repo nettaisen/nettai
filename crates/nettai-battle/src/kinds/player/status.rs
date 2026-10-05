@@ -73,7 +73,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     if let Some(flow) = action_requests(b, r) {
         return flow;
     }
-    if b.game_rules().reactions == crate::content::Reactions::Exe5 {
+    if b.game_rules().reactions == crate::content::Reactions::FlashTimerFirst {
         return exe5_reactions(b, r);
     }
     if flag2(b, r) & 0x100 != 0 {
@@ -270,7 +270,7 @@ fn weakness_request(b: &mut Battle, r: ObjectRef) {
 /// keeps 1 HP), then the element-5 damage; at 0 HP request deletion
 /// (§4.5). Runs every tick, even once dead or after the battle ends.
 fn apply_damage(b: &mut Battle, r: ObjectRef) {
-    if b.game_rules().intake.hp_loss == crate::content::HpLoss::Exe5 {
+    if b.game_rules().intake.hp_loss == crate::content::HpLoss::GaugeAndLastStand {
         return exe5_apply_damage(b, r);
     }
     let mut d = coll(b, r).acc.final_damage;
@@ -403,7 +403,7 @@ fn action_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
         // in EXE5 (0x08017CAC) any navi.
         use crate::content::IdentityClass;
         let class = b.content.identity(b.objects.get(r).identity).class;
-        let any = b.game_rules().form_break == crate::content::FormBreak::Exe5;
+        let any = b.game_rules().form_break == crate::content::FormBreak::AnyForm;
         if any || matches!(class, IdentityClass::Cross | IdentityClass::Beast | IdentityClass::CrossBeast) {
             ai_mut(b, r).status |= ai_status::CROSS_BREAKING;
             exit_attack_state(b, r);
@@ -626,7 +626,7 @@ fn flinch_request(b: &mut Battle, r: ObjectRef) {
 /// of FLASHING (not extended by new requests). Only while fighting in
 /// EXE6's reactions (EXE5's 0x080173C4 runs regardless).
 fn tick_flash(b: &mut Battle, r: ObjectRef) {
-    if b.round.flags & battle_flags::FIGHTING == 0 && b.game_rules().reactions == crate::content::Reactions::Exe6 {
+    if b.round.flags & battle_flags::FIGHTING == 0 && b.game_rules().reactions == crate::content::Reactions::FlashTimerLast {
         return;
     }
     if coll(b, r).status_timers[timer::FLASH] == 0 && flag2(b, r) & 2 != 0 {
