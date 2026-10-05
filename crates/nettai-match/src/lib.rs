@@ -17,6 +17,7 @@
 #[cfg(test)]
 mod exe6_forms;
 pub mod check;
+pub mod computer_navi;
 pub mod draw;
 pub mod facts;
 pub mod file;
@@ -43,11 +44,11 @@ use nettai_battle::link::Link;
 use nettai_battle::navicust::NaviCust;
 use nettai_battle::patch_cards::{InstalledCard, PatchCards};
 use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, SpTimes, Stage, effects};
-use nettai_battle::tactics::Tactics;
 use nettai_battle::{Battle, Rng};
 use nettai_content_api::{NaviHandle, StageHandle, SystemHandle};
 
 pub use check::{check_match, check_side};
+pub use computer_navi::ComputerNavi;
 pub use draw::Draws;
 pub use file::{parse, write};
 pub use import::save_game;
@@ -98,7 +99,8 @@ pub fn systems(content: &Content) -> &[SystemHandle] {
     content.defs.ruleset_systems()
 }
 
-/// What a side's tactics' send draws from, with the seed and the side.
+/// What the send of a side's computer-navi data draws from, with the seed
+/// and the side.
 const TACTICS_SALT: u32 = 0x5441_4354;
 
 /// What a player brings to a match, all of it the match's game's: their
@@ -140,12 +142,13 @@ pub struct Side {
     /// directly). With one, the stats are the navi's fresh stats with what
     /// the save keeps (`stats::SAVE_FIELDS`).
     pub navicust: Option<NaviCust>,
-    /// EXE5's computer-navi data, the player's save's block (entries in place
-    /// order): what a computer navi across from them plays (EXE5's Dark
-    /// MegaMan, nettai_battle::tactics). Empty: none to play (he fires his
-    /// buster between rests). The round's setup sends them as the console
-    /// does (`Tactics::sent`).
-    pub tactics: Tactics,
+    /// EXE5's computer-navi data, the player's save's (`computer_navi`):
+    /// what a computer navi plays from it, the Dark MegaMan their failed
+    /// Chaos Unison brings and their own navi under DarkInvs. Empty: a save
+    /// that has learned nothing (the computer navi only fires its buster
+    /// between rests). The round's setup sends it as the console does
+    /// (`Tactics::sent`).
+    pub computer_navi: ComputerNavi,
     /// EXE5's karma, the save's light/dark value (0 to 1000; a fresh
     /// save's 500), and the souls the side has (EXE5's Soul Unison: none
     /// listed, every soul the content has): facts its systems take by name
@@ -318,7 +321,7 @@ impl Side {
             bug_frags: 0,
             sp_times: SpTimes::default(),
             navicust: None,
-            tactics: Tactics::default(),
+            computer_navi: ComputerNavi::default(),
             karma: facts::DEFAULT_KARMA,
             souls: None,
             soul_unison: true,
@@ -365,7 +368,7 @@ impl Match {
                 // stream of the side's own from the seed (the original's
                 // is the console's at the link's start, which nothing
                 // here runs).
-                tactics: s.tactics.sent(&mut Rng::new(seed ^ TACTICS_SALT ^ (side as u32).wrapping_mul(0x9E37_79B9))),
+                tactics: s.computer_navi.tactics().sent(&mut Rng::new(seed ^ TACTICS_SALT ^ (side as u32).wrapping_mul(0x9E37_79B9))),
             };
             // What the save unlocks, into its EXE6 systems' setup: every
             // Cross of the game (or the side's list) and Beast Out as the
@@ -484,7 +487,8 @@ pub fn navi_crosses(content: &Content, navi: NaviHandle) -> Option<Vec<nettai_co
 
 /// What a match is, for the terminal: its game and rules, the seed, the
 /// field, each side's navi, version (where the rules take one) and
-/// Crosses, and with `folders` the folders; `you` is the side the player
+/// Crosses, with `folders` the folders, and where the game has computer
+/// navis what one plays from the side's save; `you` is the side the player
 /// plays.
 pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usize) -> String {
     let place = |p: &Place| {
@@ -519,6 +523,11 @@ pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usi
         }
         if folders {
             out.push_str(&format!("\n  folder ({who}): {}", folders::describe(content, &s.folder)));
+        }
+        // What a computer navi plays from the side's save, where the game
+        // has computer navis.
+        if computer_navi::has(content) {
+            out.push_str(&format!("\n  a computer navi's plays ({who}): {}", s.computer_navi.describe(content)));
         }
     }
     out
