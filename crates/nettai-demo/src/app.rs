@@ -7,6 +7,7 @@
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use nettai_battle::input::keys;
 use nettai_frontend::driver::Driver;
+use nettai_frontend::game::{Game, Graphics};
 use nettai_frontend::player::Player;
 use nettai_render::compose::{HEIGHT, WIDTH};
 use nettai_render::present::write_rgb_png;
@@ -36,12 +37,60 @@ const BUTTONS: [(Key, u16); 10] = [
 pub const HELP: &str = "\
 keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START, Backspace = SELECT
       Space pause, . step one frame (paused), - / = slower / faster, F5 restart
-      (not in netplay), H toggle the status line, Esc quit";
+      (not in netplay), H toggle the status line, Tab the next language, Esc quit";
+
+/// The languages the window cycles through (Tab): the content's, each one's
+/// graphics loaded the first time it is shown and kept.
+pub struct Languages<'g> {
+    game: &'g Game,
+    names: Vec<String>,
+    loaded: Vec<Option<Graphics>>,
+    shown: usize,
+}
+
+impl<'g> Languages<'g> {
+    /// The languages `game`'s content has strings in, with its own, showing
+    /// `shown` (whose graphics these are).
+    pub fn new(game: &'g Game, shown: &str, graphics: Graphics) -> Languages<'g> {
+        let own = nettai_content::locale::OWN.to_string();
+        let mut names = vec![own];
+        for lang in nettai_content::locale::languages(&game.dir) {
+            if !names.contains(&lang) {
+                names.push(lang);
+            }
+        }
+        if !names.iter().any(|n| n == shown) {
+            names.push(shown.to_string());
+        }
+        let at = names.iter().position(|n| n == shown).expect("the language shown is listed");
+        let mut loaded: Vec<Option<Graphics>> = names.iter().map(|_| None).collect();
+        loaded[at] = Some(graphics);
+        Languages { game, names, loaded, shown: at }
+    }
+
+    /// The next language and its graphics; why it can't be shown (the pack
+    /// has no lettering in it) leaves the one shown.
+    fn next(&mut self) -> Result<(&str, &Graphics), String> {
+        let at = (self.shown + 1) % self.names.len();
+        if self.loaded[at].is_none() {
+            self.loaded[at] = Some(self.game.graphics(&self.names[at]).map_err(|e| e.to_string())?);
+        }
+        self.shown = at;
+        Ok((&self.names[at], self.loaded[at].as_ref().expect("loaded above")))
+    }
+}
 
 /// Show what `player` plays, then each of `rest` in turn (a recording's
 /// later rounds): one that comes to its end moves on to the next; one the
-/// engine stopped stays. `audio` plays the player's sound.
-pub fn run(player: &mut Player, rest: Vec<Box<dyn Driver>>, audio: Option<&nettai_audio::Output>, opts: &Options) -> Result<(), String> {
+/// engine stopped stays. `audio` plays the player's sound; Tab shows the
+/// next of `languages`.
+pub fn run(
+    player: &mut Player,
+    rest: Vec<Box<dyn Driver>>,
+    audio: Option<&nettai_audio::Output>,
+    languages: &mut Languages,
+    opts: &Options,
+) -> Result<(), String> {
     let mut rest = rest.into_iter();
     let scale = opts.scale.max(1);
     let (mut w, mut h) = (WIDTH * scale, HEIGHT * scale);
@@ -75,6 +124,15 @@ pub fn run(player: &mut Player, rest: Vec<Box<dyn Driver>>, audio: Option<&netta
         for k in window.get_keys_pressed(KeyRepeat::Yes) {
             match k {
                 Key::H => player.show_status(!player.status_shown()),
+                // (The language is the drawing's alone: it changes in
+                // netplay too, and the battle goes on.)
+                Key::Tab => match languages.next() {
+                    Ok((name, graphics)) => {
+                        player.set_language(graphics);
+                        eprintln!("language: {name}");
+                    }
+                    Err(e) => eprintln!("{e}"),
+                },
                 Key::Space => {
                     player.set_paused(!player.paused());
                 }
