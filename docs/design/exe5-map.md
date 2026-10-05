@@ -2504,7 +2504,9 @@ own (0x0800F234, 0x0802D544).
 `palette_step`; the shared cannon, AirShot and Spreader actions take their holders' animations from their game.
 exe5-compat names the navis by number (records.toml's `[navis]`) and reads the level from a recording's setup
 (`navi_levels`) and the B+Back special's damage from the stats block (+0x48). exe5-extract takes both versions'
-faces. The chip lab operates a team navi by name (`navi = "protoman"`: set in RAM as the init exchange starts, since
+faces, and an own chip's picture from its navi's team's ROM: the two US ROMs hold the twelve pictures alike but under
+different palettes, and a console shows its own team's in the palette its ROM has for them (StepSwrd on a Team
+ProtoMan console and C-Cannon on a Team Colonel one are both the yellow one). The chip lab operates a team navi by name (`navi = "protoman"`: set in RAM as the init exchange starts, since
 a save that operates a team navi doesn't reach the link battle), with `navi_level` (the save's story flags) and `hp`
 (the navi's block).
 
