@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 use nettai_battle::content::testing;
 
-/// The engine's hand-authored test content (made up, not BN6's data).
+/// The engine's hand-authored test content (made up, not EXE6's data).
 fn content() -> Arc<nettai_battle::Content> {
     testing::content()
 }
@@ -640,7 +640,7 @@ struct Failures {
 
 impl Observer<StandInBattle> for Failures {
     fn simulated(&mut self, frame: u32, game: &StandInBattle) {
-        use bn6_compat::forms::{Kind, kind};
+        use exe6_compat::forms::{Kind, kind};
         let b = &game.battle;
         if let Some(nettai_battle::RoundEnd::Error(message)) = b.round_end() {
             self.stopped += 1;
@@ -664,7 +664,7 @@ impl Observer<StandInBattle> for Failures {
 #[test]
 #[ignore]
 fn mashed_battles_with_everything_never_stop() {
-    use bn6_compat::Unlocks;
+    use exe6_compat::Unlocks;
     use nettai_battle::custom::GameVersion;
     use testing::*;
     let c = content();

@@ -1,15 +1,15 @@
-//! A link navi's stats as its save gives them at its level: BN6's reload
+//! A link navi's stats as its save gives them at its level: EXE6's reload
 //! (`reloadCurNaviBaseStats_8120df0`, with the HP as
 //! `reloadCurNaviStatBoosts_813c3ac` leaves it), which the PET runs when a
 //! navi code is received or the navi switched, before any battle. Its
-//! tables are the navi definitions' `levels` (content/bn6/navis/*/navi.luau);
+//! tables are the navi definitions' `levels` (content/exe6/navis/*/navi.luau);
 //! docs/engine/link-navis.md has the routines and how the level is set.
 //!
 //! Tools fill a side's stats from it: a match file's stats block is what
 //! differs from the navi's stats at its level ([`Side::save_base`]), and
 //! the editor fills them in as the level or the navi changes. The
 //! simulation never runs it: a round's stats are the save's, which already
-//! carry the level's (a recording's do). That is also why it is not a BN6
+//! carry the level's (a recording's do). That is also why it is not an EXE6
 //! system's hook: the rules framework calls its systems inside a battle,
 //! on a round's setup, whose stats a `round_setup` hook would raise a
 //! second time, while a match needs the stats before any battle exists.
@@ -154,7 +154,7 @@ impl Side {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::bn6_content;
+    use crate::testing::exe6_content;
 
     fn navi(content: &Content, key: &str) -> NaviHandle {
         content.defs.navi_by_key(key).unwrap()
@@ -164,7 +164,7 @@ mod tests {
     /// save editor writes (its table, taken from the game's own equips).
     #[test]
     fn level_14_is_tangos() {
-        let content = bn6_content();
+        let content = exe6_content();
         // (navi, attack, rapid, charge, custom, Mega, max HP, base HP.)
         let tango = [
             ("heatman", 3, 2, 2, 6, 6, 2000, 800),
@@ -200,7 +200,7 @@ mod tests {
     /// Attack, Rapid and Charge 1, 1150 HP over a base of 800.
     #[test]
     fn protoman_at_level_5() {
-        let content = bn6_content();
+        let content = exe6_content();
         let s = Side::save_base(&content, navi(&content, "protoman"), GameVersion::Falzar, Some(5));
         assert_eq!((s.attack, s.rapid, s.charge, s.custom_level, s.mega_level, s.max_hp, s.max_base_hp), (1, 1, 1, 5, 5, 1150, 800));
     }
@@ -211,7 +211,7 @@ mod tests {
     /// the maximum.
     #[test]
     fn what_the_reload_keeps() {
-        let content = bn6_content();
+        let content = exe6_content();
         let heatman = navi(&content, "heatman");
         let mut from = NaviStats::fresh(heatman, &content).unwrap();
         (from.reg_up, from.folder, from.folder_reg, from.hp) = (50, 2, [3, 0xFF], 2500);
@@ -236,7 +236,7 @@ mod tests {
     /// 10, the custom level at 8, even when the level adds nothing.
     #[test]
     fn a_levels_gains_clamp() {
-        let content = bn6_content();
+        let content = exe6_content();
         let megaman = navi(&content, "megaman");
         let mut s = NaviStats::fresh(megaman, &content).unwrap();
         (s.attack, s.rapid, s.charge, s.mega_level, s.custom_level, s.max_hp) = (3, 9, 4, 9, 8, 1000);
@@ -251,8 +251,8 @@ mod tests {
     /// stat.
     #[test]
     fn a_match_file_gives_a_link_navi_its_levels_stats() {
-        let content = bn6_content();
-        let mut m = crate::draw::live(&content, "bn6", 3, None).unwrap();
+        let content = exe6_content();
+        let mut m = crate::draw::live(&content, "exe6", 3, None).unwrap();
         let heatman = navi(&content, "heatman");
         let s = &mut m.sides[1];
         s.navi_level = Some(14);

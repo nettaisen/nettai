@@ -1,6 +1,6 @@
 --!strict
--- The snowball, as BN6 and BN5 share it (BN6's attack object #0xB2,
--- `sub_80DB994`, BlzrdBal's; BN5's #0xB2, 0x080DC880, BlizMan's;
+-- The snowball, as EXE6 and EXE5 share it (EXE6's attack object #0xB2,
+-- `sub_80DB994`, BlzrdBal's; EXE5's #0xB2, 0x080DC880, BlizMan's;
 -- docs/engine/dimming-chip-effects.md §10): it rolls 3 pixels a tick to
 -- the end of the field, hitting once in each column it enters, and stops
 -- on a panel that isn't solid. Its roller (./roller), a step ahead,

@@ -1,9 +1,9 @@
 --!strict
--- LifeSync's marker, as BN5 and BN6 share it (BN6's effect object #0x60, `sub_80E76F8`; BN5's #0x60, the same code
+-- LifeSync's marker, as EXE5 and EXE6 share it (EXE6's effect object #0x60, `sub_80E76F8`; EXE5's #0x60, the same code
 -- but for its sprite; docs/engine/dimming-chip-effects.md §14): a cursor over the panel two ahead of the user, then
 -- over the enemy there, for 81 ticks. Its sprite steps once, when it appears. Only drawn.
 --
--- Each game makes its kind with `marker.make_kind(id, sprite)` (BN6's chips/lifesync, BN5's chips/lifesync).
+-- Each game makes its kind with `marker.make_kind(id, sprite)` (EXE6's chips/lifesync, EXE5's chips/lifesync).
 
 local marker = {}
 

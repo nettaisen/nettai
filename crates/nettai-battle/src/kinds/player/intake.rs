@@ -24,16 +24,16 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     if b.is_battle_over() || flag1(b, r) & f1::DEAD != 0 {
         return;
     }
-    // (BN5's lava burns first: 0x080178EC.)
+    // (EXE5's lava burns first: 0x080178EC.)
     crate::kinds::common::panel_burn(b, r);
     barrier(b, r);
     standing_effects(b, r);
-    // The side's rules, each tick (BN5's light and dark: a dark MegaMan
-    // clears the holy panel he stands on, 0x08017136; BN6's call nothing).
+    // The side's rules, each tick (EXE5's light and dark: a dark MegaMan
+    // clears the holy panel he stands on, 0x08017136; EXE6's call nothing).
     let side = b.objects.get(r).alliance;
     b.systems_navi_intake(side, r);
     slide_triggers(b, r);
-    // (BN5's takes the hit's NaviCust bug before the HP bug drains: the
+    // (EXE5's takes the hit's NaviCust bug before the HP bug drains: the
     // navi's game's intake rules.)
     let bugs_first = b.game_rules().intake.bugs_before_drain;
     if bugs_first {
@@ -72,9 +72,9 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// BN5's 0x0800DBE0 (its intake's last step): with the no-charge state,
+/// EXE5's 0x0800DBE0 (its intake's last step): with the no-charge state,
 /// unless the battle is dimmed or paused, the drive's ticks run down (from
-/// any count but 0 and 0xFFFF); their end asks for the stun strike (BN5's
+/// any count but 0 and 0xFFFF); their end asks for the stun strike (EXE5's
 /// action 0x49: the drive's end).
 fn no_charge_timer(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).status & crate::actor::status::NO_CHARGE == 0 || b.is_dimmed() || b.paused {
@@ -91,7 +91,7 @@ fn no_charge_timer(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// The navi type's intake (BN5's 0x08017688, BN6's `sub_801A9B8`): a navi
+/// The navi type's intake (EXE5's 0x08017688, EXE6's `sub_801A9B8`): a navi
 /// no player controls takes its hits as a player does, without what only a
 /// player has (the NaviCust's HP drain, hit bug and stat edits, the stunned
 /// ticks and anger, the opponent's support Tango), with whatever status a
@@ -144,7 +144,7 @@ fn absorb_hit(c: &mut CollisionData) {
     c.acc.counter = 0;
     c.acc.drain_hits = 0;
     c.hit_mod_final = 0;
-    // (BN5's by-side modifiers go with it: an absorbed hit pushes nothing.)
+    // (EXE5's by-side modifiers go with it: an absorbed hit pushes nothing.)
     c.hit_mod_by_side = [0; 2];
     c.status_final = None;
     c.acc.inflicted_bugs = 0;
@@ -279,7 +279,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
 // ---- Panels ------------------------------------------------------------------
 
 /// `sub_801A186`: poison panels hurt 1 HP every 7 ticks (through
-/// element 5), and a panel that drains a body's element (BN5's sea, fire
+/// element 5), and a panel that drains a body's element (EXE5's sea, fire
 /// bodies: 0x08016C7E) the same; wood navis on grass heal.
 fn standing_effects(b: &mut Battle, r: ObjectRef) {
     if b.is_dimmed() || b.paused || coll(b, r).region.is_none() {
@@ -346,7 +346,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     super::clear_flag1(b, r, f1::MOVE_COMPLETE);
     let p = coll(b, r).panel;
     let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
-    // BN5's panels at a move's end (0x0801715E, after its own flag test):
+    // EXE5's panels at a move's end (0x0801715E, after its own flag test):
     // metal slides the body, sea holds it.
     let rule = b.game_rules().panels.types[kind as usize];
     if (rule.slide.is_some() || rule.holds.is_some()) && flag1(b, r) & 0x0010_0040 == 0 {
@@ -368,9 +368,9 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// BN5's 0x08017216: a move's end on metal slides the body (slide type
+/// EXE5's 0x08017216: a move's end on metal slides the body (slide type
 /// 3), unless it slid within the cooldown, is floating or slide-proof
-/// (flags 0x24), or is a navi whose form stands on metal (BN5's soul 5).
+/// (flags 0x24), or is a navi whose form stands on metal (EXE5's soul 5).
 fn metal_slide(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).road_cooldown != 0 || flag1(b, r) & 0x24 != 0 {
         return;
@@ -382,8 +382,8 @@ fn metal_slide(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).slide_type = 3;
 }
 
-/// BN5's 0x080171C2: a move's end on a panel that holds (sea) holds the
-/// body there for `ticks` (immobilized: BN6's `sub_800EB18`) with a splash
+/// EXE5's 0x080171C2: a move's end on a panel that holds (sea) holds the
+/// body there for `ticks` (immobilized: EXE6's `sub_800EB18`) with a splash
 /// (the arena's effect `panel_splash`), unless it floats, dives or is of
 /// aqua.
 fn panel_hold(b: &mut Battle, r: ObjectRef, ticks: u16) {
@@ -569,7 +569,7 @@ fn strip_programs(b: &mut Battle, r: ObjectRef, undershirt: bool) {
 /// the stat byte; a few codes are special); the weapon routines are
 /// reloaded every tick.
 fn bug_navicust(b: &mut Battle, r: ObjectRef) {
-    // The side's systems first (BN5's light and dark codes, its skip).
+    // The side's systems first (EXE5's light and dark codes, its skip).
     let side = b.objects.get(r).alliance;
     if b.systems_navi_bug(side, r) {
         return;
@@ -582,7 +582,7 @@ fn bug_navicust(b: &mut Battle, r: ObjectRef) {
     let s = stats_mut(b, r);
     match code {
         0 => {}
-        // BN5's 0x0801103E: the drain bugs' argument by its flags; a level
+        // EXE5's 0x0801103E: the drain bugs' argument by its flags; a level
         // that wouldn't rise is left, with nothing reloaded.
         0x18 | 0x19 if flags => {
             let level = if code == 0x18 { &mut s.bugs.hp_drain } else { &mut s.bugs.custom_drain };

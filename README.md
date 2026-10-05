@@ -5,9 +5,9 @@ battles are reimplemented frame for frame from the original, routine by routine 
 Battle Network games are meant to follow on the same core ([multi-game.md](docs/design/multi-game.md) surveys
 what that takes).
 
-The engine is a content-independent core with BN6's ruleset on it. The game's content (chips, navis and their
+The engine is a content-independent core with EXE6's ruleset on it. The game's content (chips, navis and their
 forms, weapons, stages, the rule tables) is Luau in [`content/`](content), committed here and named by
-keys rather than the original's numbers, in packs: the game packs content/bn6 and content/bn5, each with a manifest
+keys rather than the original's numbers, in packs: the game packs content/exe6 and content/exe5, each with a manifest
 listing its definitions, and the support pack content/exelib that both use. The graphics and sound are not in this
 repository: you extract them
 from a ROM you own into a content pack.
@@ -17,7 +17,7 @@ netplay needs.
 
 ## Crates
 
-- `nettai-battle`: the engine: the simulation core, BN6's ruleset, and the content model it runs on.
+- `nettai-battle`: the engine: the simulation core, EXE6's ruleset, and the content model it runs on.
 - `nettai-content-api`: the contract between the core and content: the API scripts call, definitions, handles.
 - `nettai-luau`: the Luau runtime for content (sandboxed scripts that keep no state of their own).
 - `nettai-content`: loads the content's game packs (by their manifests) and the asset packs into the engine; the
@@ -36,8 +36,8 @@ netplay needs.
   plays live, alone or over the network, with sound.
 - `nettai-match`: match files, everything a round needs by content key, checked; live play's random draw.
 - `nettai-editor`: a desktop app that edits match files and plays them with the frontend.
-- `bn6-extract`: extracts BN6's graphics and sound from the four ROMs into a content pack.
-- `bn6-compat`: BN6's original numbers for the content (`content/bn6/compat`): the codecs of the game's setup
+- `exe6-extract`: extracts EXE6's graphics and sound from the four ROMs into a content pack.
+- `exe6-compat`: EXE6's original numbers for the content (`content/exe6/compat`): the codecs of the game's setup
   records, and the trace harness. The engine never depends on it.
 
 ## Getting started
@@ -45,26 +45,26 @@ netplay needs.
 You need Rust with edition 2024, and four Mega Man Battle Network 6 ROMs of your own: the US Cybeast Falzar
 (`MEGAMAN6_FXXBR6E`) and Cybeast Gregar (`MEGAMAN6_GXXBR5E`), and the Japanese Rockman EXE 6 Dennoujuu Falzar
 (`ROCKEXE6_RXXBR6J`) and Dennoujuu Gregar (`ROCKEXE6_GXXBR5J`), which have what the US release cut. Extract a
-content pack from them, in that order, into `data/content/bn6` (the directory is gitignored):
+content pack from them, in that order, into `data/content/exe6` (the directory is gitignored):
 
-    cargo run --release -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6
+    cargo run --release -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/exe6
 
 The frontend and the editor find the packs in `data/content` (or the directory `$NETTAI_PACKS` names), each by the
-game it says, with no options: a BN5 pack written there (`bn5-extract content`) sits beside BN6's. You play one game
-at a time, BN6 or BN5: a match file names its game and a trace states its own, else `--game` says it (there is no
+game it says, with no options: an EXE5 pack written there (`exe5-extract content`) sits beside EXE6's. You play one game
+at a time, EXE6 or EXE5: a match file names its game and a trace states its own, else `--game` says it (there is no
 default game: without one the frontend lists the games it found a pack of and stops), and the battle is that
 game's content on its pack. `--pack DIR` names a pack elsewhere, in place of the found one of its game.
 
 Then run the frontend:
 
-    cargo run --release -p nettai-frontend -- --play --game bn6                                # play live
+    cargo run --release -p nettai-frontend -- --play --game exe6                                # play live
     cargo run --release -p nettai-frontend -- <trace.jsonl>                                    # replay a recorded match
-    cargo run --release -p nettai-frontend -- --play --game bn6 --headless 1-120 --out <dir>   # render frames to PNG
+    cargo run --release -p nettai-frontend -- --play --game exe6 --headless 1-120 --out <dir>   # render frames to PNG
 
 In live play alone you are the left navi, and the right one is a stand-in that stands still. Each start draws its setup from a seed, which
 it prints: a link battle stage and background, each side's version (Falzar's or Gregar's Beast), a legal random
-folder for each side, and five Crosses of both versions in each Cross window (`--game bn5`: a BN5 match, its sides
-BN5's MegaMan with a random folder). `--seed N` replays a setup, `--stage NAME` forces the stage (`netbattle-1` to `netbattle-96`)
+folder for each side, and five Crosses of both versions in each Cross window (`--game exe5`: an EXE5 match, its sides
+EXE5's MegaMan with a random folder). `--seed N` replays a setup, `--stage NAME` forces the stage (`netbattle-1` to `netbattle-96`)
 and `--show-folders` prints the folders. Keys: the arrows move, Z is A, X is B, A is L,
 S is R, Enter is START and Backspace is SELECT; Space pauses, `.` steps a frame while paused, `-` and `=` change
 the speed, F5 restarts the round, H toggles the status line and Esc quits. `--help` lists the options, and
@@ -80,8 +80,8 @@ uses another TrueType or OpenType font ([text-rendering.md](docs/design/text-ren
 To play another player, one hosts and the other joins, over a LAN, or over the Internet with the host's UDP port
 forwarded to the host's machine:
 
-    cargo run --release -p nettai-frontend -- --play --game bn6 --host 7777                    # host, the left navi
-    cargo run --release -p nettai-frontend -- --play --game bn6 --join 192.0.2.10:7777         # join, the right navi
+    cargo run --release -p nettai-frontend -- --play --game exe6 --host 7777                    # host, the left navi
+    cargo run --release -p nettai-frontend -- --play --game exe6 --join 192.0.2.10:7777         # join, the right navi
 
 Both need the same engine, game and content pack (the handshake checks, and says what differs). Each brings their own folder, version and Crosses, drawn from their own `--seed`, and their patch cards
 (`--cards`); the host's `--stage` picks the stage. Both play with rollback: inputs go out every frame, the other player's are predicted until they
@@ -100,7 +100,7 @@ These checks need no ROM:
 
 ## The match editor
 
-A match file sets up a round of one game, BN6 or BN5: the game (which is its rules), the arena (stage and background),
+A match file sets up a round of one game, EXE6 or EXE5: the game (which is its rules), the arena (stage and background),
 and each side's navi, version, folder, Crosses, patch cards, NaviCust and stats, each by its name in the game
 (`cannon`, `megaman`; [docs/frontend.md](docs/frontend.md) §6). The editor makes and edits them, checking them
 against the content as you go, and plays them:
@@ -121,7 +121,7 @@ its save gives at that level, as does switching to a link navi; an edited stat s
 optional navi code level); the SP navi deletion times; Import from save; the folder (the game's chips the rules
 allow, with their pictures from the game's pack, searchable; a code puts a chip in the selected entry; the Regular
 and tag chips; the copies and the Mega, Giga, Regular and tag limits live, as the game's folder rules count them:
-BN6's folder editor's, or BN5's, content/bn5/rules/folder); the Crosses; the patch cards (the game's; MB used of 80);
+EXE6's folder editor's, or EXE5's, content/exe5/rules/folder); the Crosses; the patch cards (the game's; MB used of 80);
 the NaviCust (the board as the game draws it, with its frame and command line, edited with the mouse as Tango's is:
 drag a program's color swatch onto the grid, or press a placed program to pick it up and drag it; while held it
 shows where it would land, lit if it fits and red if not; the wheel or R turns it, C compresses it, right-click,
@@ -129,7 +129,7 @@ Delete or a drag off the grid takes it off, Esc puts it back; right-clicking a p
 compiles to show beside it, and the stats-and-bugs block set directly is the pane's other view); every stat (its
 weapons, records and forms the game's). The problems with the match show at the bottom as you edit. Play saves the
 match and runs `nettai-frontend --match` (the one beside the editor's program, or `--frontend PATH`). A new match
-(the editor started without a file, or New) is an empty one of the game (BN6 to start with): its stock rules, its
+(the editor started without a file, or New) is an empty one of the game (EXE6 to start with): its stock rules, its
 first link battle stage, and on each side its MegaMan at his fresh stats with an empty folder, the version's own
 Crosses, no patch cards and no NaviCust programs (the problems list says the folders aren't whole until they are).
 Random draws a match of the game as live play does, and `nettai-frontend --play --save-match FILE` writes live
@@ -138,15 +138,15 @@ Japanese. The editor loads the match's game's content and pack as the frontend d
 left out, with the frontend's warning), and Play hands the frontend the same: `--content` and `--pack` are the
 frontend's, and only what you give is passed on.
 
-A BN5 match's navi pane has the side's karma (the light/dark value): a slider from 0 to 1000 with its number,
-presets (light 500, very light 1000, dark 0) and what BN5 makes of it (dark under 470, the starting mood's tiers at
-470, 500 and 1000, holy panels cleared at 499 or under). Its Souls pane has every soul of BN5 by default, or those
+An EXE5 match's navi pane has the side's karma (the light/dark value): a slider from 0 to 1000 with its number,
+presets (light 500, very light 1000, dark 0) and what EXE5 makes of it (dark under 470, the starting mood's tiers at
+470, 500 and 1000, holy panels cleared at 499 or under). Its Souls pane has every soul of EXE5 by default, or those
 checked, each with its face, of either version. A side's own fields show only when the rules and its navi take them
-(`nettai_match::facts`): the version (Gregar or Falzar) with rules whose systems take BN6's `version`, the navi
-code's level with a navi whose definition has `levels` (not BN5's MegaMan), the SP times with rules that have SP
+(`nettai_match::facts`): the version (Gregar or Falzar) with rules whose systems take EXE6's `version`, the navi
+code's level with a navi whose definition has `levels` (not EXE5's MegaMan), the SP times with rules that have SP
 navi slots (each named by the game's SP navi chip).
-"Import from save…" reads a BN6 .sav (its version, Beast Out and the Crosses it owns, the navi code's level and the
-SP times) or a BN5 one (a .sav or a raw save image: its karma, its souls and its NaviCust board's expansions) into a
+"Import from save…" reads an EXE6 .sav (its version, Beast Out and the Crosses it owns, the navi code's level and the
+SP times) or an EXE5 one (a .sav or a raw save image: its karma, its souls and its NaviCust board's expansions) into a
 match of the save's game: a save of the other game makes a new match of its game first.
 
 The editor is an [iced](https://iced.rs) app, drawn in software (tiny-skia), so it needs no GPU backend. On Linux it

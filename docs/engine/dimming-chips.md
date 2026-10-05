@@ -6,7 +6,7 @@ object they spawn, and AntiNavi in the dimming service. It is written from the d
 coverage report and traces (in the verification workspace) say which branches a scenario reaches, and those are
 marked **verified** or **unverified** in each section.
 
-| subtype | chips | controller | objects | section | port (content/bn6) |
+| subtype | chips | controller | objects | section | port (content/exe6) |
 |---|---|---|---|---|---|
 | (service) | AntiNavi 0xBA against navi chips 0xDD..0x118 | the navi chip controller T4#0x10 | effect #0 | §2 | crates/nettai-battle/src/dimming.rs |
 | 4 | 0xB2 Barrier, 0xB3 Barr100, 0xB4 Barr200, 0xB5 BblWrap, 0xB6 LifeAur | T4#0x2F | the barrier visual T4#7 | §3 | lib/barriers, chips/barrier, chips/bblwrap, chips/lifeaur; FirstBarrier: rules/roles |
@@ -215,7 +215,7 @@ AIData pointer for its later `sub_80E0F02` (the charge glow, effect #8): r7 = ty
 - the glow's EV+0 = type + 0x58, and its update's link test (`ldr r0, [EV]; ldr r0, [r0]`, `sub_80E0E20`) reads
   the BIOS open bus (never 0): it never ends itself, and stays for the round.
 
-Port: kinds/player/mod.rs `init_navicust` calls the role hook `hooks.first_barrier` (content/bn6/rules/roles.luau
+Port: kinds/player/mod.rs `init_navicust` calls the role hook `hooks.first_barrier` (content/exe6/rules/roles.luau
 raises the Barrier chip's barrier, lib/barriers), and `init` spawns the glow unlinked (kinds/charge_glow.rs: a
 glow whose link check always passes).
 
@@ -721,7 +721,7 @@ mask 0xF); `battle.clear_navicust_bugs` (§5.1); `Sprite:load_look_of`, `Object:
 `Sprite:part_offset` (`sub_80030BA`: where a part of the current frame sits, which the pack's sprite layouts
 give; the propeller, §7.3). AntiNavi is done (§2).
 
-The trace comparison (bn6-compat) skips the register garbage the original leaves: the controllers' positions
+The trace comparison (exe6-compat) skips the register garbage the original leaves: the controllers' positions
 (`scratch_position`), the Sensor scanner's, laser's and the points' Z fractions (`scratch_z_fraction`), and the
 Z fraction of a hit spark whose hitter's is garbage (Sensor's laser's sparks).
 

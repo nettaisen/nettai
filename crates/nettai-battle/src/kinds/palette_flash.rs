@@ -47,7 +47,7 @@ pub fn spawn_variant(b: &mut Battle, variant: u8, duration: u8, while_dimmed: bo
 /// battle is paused or dimmed (unless it keeps flashing then), it only
 /// holds the palette. Variant 1 (`sub_80E114C`) tests the pause bit where
 /// variant 0 tests the dimming bit, so it holds while dimmed whatever its
-/// parameters say, and it doesn't count its ticks up. BN5's (the arena's
+/// parameters say, and it doesn't count its ticks up. EXE5's (the arena's
 /// `effects.palette_flash`, 0x080E1030) holds either variant while paused,
 /// and while dimmed only with no mode bit set.
 pub fn update(b: &mut Battle, r: ObjectRef) {
@@ -58,8 +58,8 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         v => panic!("palette flash variant {v} reads past off_80E10B8"),
     };
     let held = match b.game_rules().effects.palette_flash {
-        crate::content::PaletteFlashRule::Bn6 => !while_paused && (b.paused || (!keeps_dimming && b.is_dimmed())),
-        crate::content::PaletteFlashRule::Bn5 => b.paused || (!while_dimmed && !while_paused && b.is_dimmed()),
+        crate::content::PaletteFlashRule::Exe6 => !while_paused && (b.paused || (!keeps_dimming && b.is_dimmed())),
+        crate::content::PaletteFlashRule::Exe5 => b.paused || (!while_dimmed && !while_paused && b.is_dimmed()),
     };
     if held {
         return;

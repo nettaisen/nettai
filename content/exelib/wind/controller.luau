@@ -1,5 +1,5 @@
 --!strict
--- Wind's and Fan's dimming controller (effect object #0x25, BN6's `sub_80E309C`, BN5's 0x080E329C: the same code;
+-- Wind's and Fan's dimming controller (effect object #0x25, EXE6's `sub_80E309C`, EXE5's 0x080E329C: the same code;
 -- docs/engine/dimming-chip-effects.md §1): the usual dimming phases, with an effect that places the chip's fan on the
 -- panel in front of the user if it is free solid ground, and waits 31 ticks. A maker taking a game's fan and where
 -- the controller spawns.

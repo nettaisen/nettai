@@ -54,11 +54,11 @@ pub struct HudDoc {
     pub mugshots: Vec<TileImage>,
     /// The count box showing 0..=10, then without a number.
     pub counts: TileImage,
-    /// The game has no box without a number (BN5: its faces bring their
+    /// The game has no box without a number (EXE5: its faces bring their
     /// own boxes): `counts` is the counts alone.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub no_count_box: bool,
-    /// The box a face brings for beside it, by mugshot (BN5's faces; null:
+    /// The box a face brings for beside it, by mugshot (EXE5's faces; null:
     /// none, the count box's place), each with its face's palette.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub mugshot_boxes: Vec<Option<TileImage>>,

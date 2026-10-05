@@ -1,6 +1,6 @@
 --!strict
--- ProtoMan, the navi of the ProtoMan chips, as BN5 and BN6 share him
--- (BN6's actor object #0x3C, `sub_80C26F0`; BN5's #0x3C), brought by their
+-- ProtoMan, the navi of the ProtoMan chips, as EXE5 and EXE6 share him
+-- (EXE6's actor object #0x3C, `sub_80C26F0`; EXE5's #0x3C), brought by their
 -- navi chip controller. He fades
 -- in on his user's panel (and leaves at once if it isn't solid); then,
 -- column by column ahead and row by row, he finds each enemy navi with a

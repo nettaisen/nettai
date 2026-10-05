@@ -43,7 +43,7 @@ local TURN_RIGHT = { [0] = 0x64_0000, 0x3C_0000, 0x14_0000 }
 local TOP, BOTTOM = 0x4_0000, 0x34_0000
 
 -- Its collision's hit modifier: 1, or 3 for a strong one. (What it is and
--- hits are the game's: BN6's an attack that hits navis.)
+-- hits are the game's: EXE6's an attack that hits navis.)
 local HIT_MOD, STRONG_HIT_MOD = 1, 3
 -- A hit registered by something (`dword_80CA540`).
 local HIT = 0xFF800000
@@ -252,7 +252,7 @@ end
 -- `sub_80CA4F6`, instant chip effect 1: a chip's `instant` hook that
 -- throws a boomerang (of `kind`) of `variant` from the user's back column,
 -- row 3, 16 pixels up, turning at the far column. Its parameters are what
--- the instant chip's dispatch left in r4: BN6's leaves 0, BN5's 0x01000005
+-- the instant chip's dispatch left in r4: EXE6's leaves 0, EXE5's 0x01000005
 -- (its lab's traces), whose Param4 makes the boomerang `strong` (hit
 -- modifier 3: a flash with the flinch).
 function boomerang.instant(kind: Kind, variant: Variant, strong: boolean?): (user: Object, spec: InstantChipSpec) -> ()

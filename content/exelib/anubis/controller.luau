@@ -1,7 +1,7 @@
 --!strict
--- Anubis's and PoisPhar's dimming controller, as BN5 and BN6 share it (BN6's effect object #0x33, `sub_80E40EC`;
--- BN5's #0x33, 0x080E411C, the same code; BN6's docs/engine/dimming-chip-effects.md §7): the usual dimming phases
--- (BN6's lib/dimming), with an effect that drops the chip's statue on the panel in front of the user, whatever is
+-- Anubis's and PoisPhar's dimming controller, as EXE5 and EXE6 share it (EXE6's effect object #0x33, `sub_80E40EC`;
+-- EXE5's #0x33, 0x080E411C, the same code; EXE6's docs/engine/dimming-chip-effects.md §7): the usual dimming phases
+-- (EXE6's lib/dimming), with an effect that drops the chip's statue on the panel in front of the user, whatever is
 -- there, and waits 120 ticks. Each game makes its own (`controller.make`) with its statue's spawn; a chip's
 -- `dimming` hook is the made controller's `hook(variant)`.
 

@@ -2,12 +2,12 @@
 -- Z Saver: three slashes with growing reach (the panel ahead and the next,
 -- the column of three, three in a row); pressing B and Left together
 -- (within three ticks) in the twelve ticks after the third slash's hit
--- gives a fourth, which throws a piercing sonic boom (BN6's action 0x5B,
--- `sub_80EFEE0`, docs/engine/shot-chips.md §13; BN5's 0x34, 0x080EE02A).
+-- gives a fourth, which throws a piercing sonic boom (EXE6's action 0x5B,
+-- `sub_80EFEE0`, docs/engine/shot-chips.md §13; EXE5's 0x34, 0x080EE02A).
 -- Left is the raw key, "back" for either side. Made for a game's look
 -- (`zsaver.make`).
 --
--- BN5's adds the Katanas' step (BN5's lib/stepsword): a soul's charged Z
+-- EXE5's adds the Katanas' step (EXE5's lib/stepsword): a soul's charged Z
 -- Saver steps first (phase 0, marking its holder moving) and back after
 -- (phase 0xC), and leaves two afterimages on each swing's sixth tick; and
 -- its command's window shuts for good once A isn't held (the third slash's
@@ -22,7 +22,7 @@ export type State = {
     -- The swing's countdown (AIAttackVars+0x10).
     timer: number,
     -- Slashes to make (AIAttackVars+0x40), and whether the command window
-    -- is open (+0x44: 1), or (BN5's) shut for good (0xFF).
+    -- is open (+0x44: 1), or (EXE5's) shut for good (0xFF).
     slashes: number,
     window: boolean,
     shut: boolean,
@@ -32,13 +32,13 @@ export type State = {
     slot: number,
     ticks: number,
     keys: { number },
-    -- BN5's step: it turned round to step behind the enemy (+0x28).
+    -- EXE5's step: it turned round to step behind the enemy (+0x28).
     turned: number,
 }
 
 local ANIM_SWING = 5
 local SLASHES = 3
--- The swing's ticks (less one), the count it hits on, BN5's afterimages'
+-- The swing's ticks (less one), the count it hits on, EXE5's afterimages'
 -- count, the recovery's.
 local SWING_TICKS, HIT_TICK, AFTERIMAGE_TICK, RECOVER_TICKS = 0x15, 0xC, 0x10, 5
 -- The command's ticks, and its keys (B and Left, as the game's bits).
@@ -46,7 +46,7 @@ local COMMAND_TICKS = 0xC
 local KEY_B, KEY_LEFT = 0x02, 0x20
 local HIT_MOD = 1
 local EFFECT_Z = 0x10_0000
--- The slashes by index (BN6's `byte_80F004C`, BN5's 0x080EE2D8): the
+-- The slashes by index (EXE6's `byte_80F004C`, EXE5's 0x080EE2D8): the
 -- region hit.
 local REGIONS = { [0] = regions.long, regions.wide, regions.line }
 -- The fourth slash's boom: it staggers and goes through.
@@ -87,14 +87,14 @@ end
 -- Z Saver's action in `look`'s game.
 function zsaver.make(look: ZSaverLook): Action
     local step_sword = look.step
-    -- The phases, on the attack's step: BN6's start, slash and recovery;
-    -- BN5's step first and the step back before the recovery.
+    -- The phases, on the attack's step: EXE6's start, slash and recovery;
+    -- EXE5's step first and the step back before the recovery.
     local START = if step_sword then 0x4 else 0x0
     local SLASH = if step_sword then 0x8 else 0x4
     local STEP_BACK = 0xC
     local RECOVER = if step_sword then 0x10 else 0x8
 
-    -- `sub_80EFF00` (BN5's 0x080EE110): the slash index (a byte store over
+    -- `sub_80EFF00` (EXE5's 0x080EE110): the slash index (a byte store over
     -- the shots word's low byte), three slashes, the command cleared.
     local function start(me: Object, s: State)
         me:set_status("using_action", true)
@@ -110,10 +110,10 @@ function zsaver.make(look: ZSaverLook): Action
         me.step, me.step_init = SLASH, 0
     end
 
-    -- `sub_80EFF28` (BN5's 0x080EE138): the command while its window is
+    -- `sub_80EFF28` (EXE5's 0x080EE138): the command while its window is
     -- open; a slash's swing; on the count's 0xC its hit and effect (index 2
     -- opens the window), or the fourth's boom; at the swing's end the next
-    -- slash, or the recovery (BN5's step back first, charged).
+    -- slash, or the recovery (EXE5's step back first, charged).
     local function slash(me: Object, s: State)
         if look.a_held_window and not me:held("a") then
             s.shut = true
@@ -193,7 +193,7 @@ function zsaver.make(look: ZSaverLook): Action
         end
     end
 
-    -- `sub_80F0068` (BN5's 0x080EE330): no longer moving; 6 ticks, then the
+    -- `sub_80F0068` (EXE5's 0x080EE330): no longer moving; 6 ticks, then the
     -- sword goes and back to idle.
     local function recover(me: Object, s: State)
         if me.step_init == 0 then
@@ -225,7 +225,7 @@ function zsaver.make(look: ZSaverLook): Action
     return define.action {
         id = look.id,
         state = state,
-        -- `sub_80EFEE0` (BN5's 0x080EE02A).
+        -- `sub_80EFEE0` (EXE5's 0x080EE02A).
         update = function(me: Object, s: State)
             local step = me.step
             if step_sword and step == 0 then

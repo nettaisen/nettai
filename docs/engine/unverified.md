@@ -195,7 +195,7 @@ standard chip action…), whichever section below the family belongs to:
 | RskyHny (§3.7) | the bee's end by battle over; a sting with no navi on the panel; steering in a column, reversing in a row; the destination fallbacks | the lab's bees always reach a standing target | yes | chips/0x025-rskyhny1/ko, invisible, moving-target, bee-shot: verified |
 | RskyHny | params byte 1, the fade (action 8), the bee without a collision slot | no chip, no setter, pool full | unreachable | |
 | Dragons (§3.8) | no enemy body ahead, either part's end at the battle's end, a blocked hit | | yes | chips/0x02e-heatdrgn/ko, invisible, barrier: verified |
-| Dragons | the head's swim animation for a fifth of 5 or more (`sub_810FA4C` turns a 5 into 4 and leaves anything larger) | every BN6 dragon swims a panel in 10 ticks, so the quotient stays below 5; a 6 needs a panel's ticks 5n + r with n < r <= 4 | unreachable with BN6's dragons | |
+| Dragons | the head's swim animation for a fifth of 5 or more (`sub_810FA4C` turns a 5 into 4 and leaves anything larger) | every EXE6 dragon swims a panel in 10 ticks, so the quotient stays below 5; a 6 needs a panel's ticks 5n + r with n < r <= 4 | unreachable with EXE6's dragons | |
 | Bombs and seeds (§3.9) | a bomb ending at the battle's end | | yes | chips/0x036-minibomb/ko: verified |
 | BlkBomb | set off by fire (its own side's, the other's), pushed, broken without fire, its lifetime, thrown at a hole | | yes | chips/0x03c-blkbomb/fire, enemy-fire, pushed, shot, lifetime, holes: verified |
 | BugBomb | its other bug choices; landed and broken | one RNG seed | yes | chips/0x043-bugbomb/seed-1 … seed-4, landed: verified |
@@ -219,10 +219,10 @@ standard chip action…), whichever section below the family belongs to:
 | CrosOver | a link navi user, no Django | a link navi can't hold the PA | unreachable | |
 | MstrCros | the Gregar tables (the beam, move 1) | the Falzar side always uses it | yes (the gregar base) | pa/0x15a-mstrcros/gregar: verified |
 | Bass, BigHook, Darkness | failed spawns, a missing flag pointer, the strike's MachGun branches | | unreachable | |
-| Count (§3.6.37, the Japanese games') | all of it: the rain, the targets (an enemy in the area, the rest shuffled), the lances, his leave, no footing | the US games' handler is null | yes (on a JP console) | jp/chips/0x113-count/* (plain, row, back, corner, adjacent, invisible, no-footing, ko-rain, ko-lance, side1, the stages...), 0x114-count-ex, 0x115-count-sp, on EXE6 Falzar and Gregar: verified |
+| Count (§3.6.37, the Japanese games') | all of it: the rain, the targets (an enemy in the area, the rest shuffled), the lances, his leave, no footing | the US games' handler is null | yes (on a JP console) | jp/chips/0x113-count/* (plain, row, back, corner, adjacent, invisible, no-footing, ko-rain, ko-lance, side1, the stages...), 0x114-count-ex, 0x115-count-sp, on JP Falzar and Gregar: verified |
 | Count | the empty target list; the enemy's panel alone | the flags' "solid" is the plain panels' kind | yes | jp/chips/0x113-count/stage-grass, stage-ice (no lance), stage-poison (one): verified |
 | Count | the lance's warning and stand-still-while-dimmed branches (Param3 not 2); two or more enemy panels | only the JP navi AI's attack 0x0C drops such lances; one enemy navi, and a RockCube has no enemy's body | unreachable | |
-| Django (§3.6.38, the Japanese games') | all of it: the drop, the ride's hits, a crash into a hole, the L L L A command, the slash, no target | the US games' handler is null | yes (on a JP console) | jp/chips/0x116-django/* (ride, ride-miss, hole-ride, hole-landing, command, command-row, -far, -adjacent, -invisible, -rock-front, -late, -wrong-key, side1...), 0x117-django2, 0x118-django3, on EXE6 Falzar and Gregar: verified |
+| Django (§3.6.38, the Japanese games') | all of it: the drop, the ride's hits, a crash into a hole, the L L L A command, the slash, no target | the US games' handler is null | yes (on a JP console) | jp/chips/0x116-django/* (ride, ride-miss, hole-ride, hole-landing, command, command-row, -far, -adjacent, -invisible, -rock-front, -late, -wrong-key, side1...), 0x117-django2, 0x118-django3, on JP Falzar and Gregar: verified |
 | Django | the command's 60 ticks running out | only the ride (48 ticks) checks the command | unreachable | jp/chips/0x116-django/command-late: the keys after the ride go unread |
 | Count, Django | a full pool (no navi, lance, bike or collision data) | pool full | unreachable | |
 
@@ -393,7 +393,7 @@ first only, and the second takes what the spawner leaves in that register, the e
 
 ## Patch cards (patch-cards.md)
 
-The Japanese games' patch cards are BN6's patch-cards system. Scenarios are the chip lab's `jp/cards/`, on
+The Japanese games' patch cards are EXE6's patch-cards system. Scenarios are the chip lab's `jp/cards/`, on
 Japanese consoles; each also checks the stats after the cards and the emotion window's glitch at the round's start.
 
 ### Covered
@@ -407,7 +407,7 @@ Japanese consoles; each also checks the stats after the cards and the emotion wi
 | A link navi with cards (the routine doesn't run) | `jp/cards/combos/link-navi` | match |
 | First barriers of types 7, 8, 9 under hits; Aqua and Fire bodies against their weakness; MegaMan's charged shot with each of the 13 programs the cards give; the custom screen's damage (NaviStats+0x54) | `jp/cards/combos/first-barrier-*`, `aqua-body-thunder`, `fire-body-wideshot`, `charged-program-*`, `custom-damage` | match |
 | The invisibility taken by the opponent's Rush (its weapon routine ends the attack: the navi idles a tick sooner than the original's attack, which no frame shows) | `jp/cards/combos/invisible-charge-rush` | match |
-| EXE6 Gregar: its own ROM's addresses (the meteor shower's X) | `jp/cards/combos/gregar-*` | match |
+| JP Gregar: its own ROM's addresses (the meteor shower's X) | `jp/cards/combos/gregar-*` | match |
 
 ### Not reached (no card has it; ported)
 
@@ -422,7 +422,7 @@ Japanese consoles; each also checks the stats after the cards and the emotion wi
 
 ## The NaviCust's compile (docs/design/navicust.md)
 
-BN6's NaviCust is compiled by the ruleset's `navicust` system (rules/navicust/init.luau) from a setup's placed
+EXE6's NaviCust is compiled by the ruleset's `navicust` system (rules/navicust/init.luau) from a setup's placed
 programs. The verification workspace's `trace-tests --test navicust` compiles every chip lab side that sets a
 NaviCust, and Tango's four raw saves, and compares the stats and the emotion window's glitch flag with the
 recording's setup.
@@ -442,7 +442,7 @@ recording's setup.
 
 | Branch | Why |
 |---|---|
-| A program that works anywhere (the part table's +1 = 2) | No BN6 part is one. |
+| A program that works anywhere (the part table's +1 = 2) | No EXE6 part is one. |
 | Bug group 10 (`unread`, NaviStats+0x62) | No part has the group and no color count brings it; nothing reads the stat. |
 | Bug groups 13 to 15 | No part has one; the original's bug table would read past its end. |
 | The smaller boards (4x4 and 5x4, key item 0x71 below 2), and a program on the frame of one | Every save the lab has is fully expanded; a match file can name a smaller board (`expansions`). |
@@ -528,7 +528,7 @@ alone, which no recording showed, since every earlier Falzar Beast Over navi had
 | The hand's builder (custom-screen.md §5): a code run with one `*` (first, middle, last: it forms), with two, shifted (`*`, A, B) or in one code (it doesn't); a recipe out of order; a recipe between two other chips; the same recipe on the next screen (once a round); a modifier on a Program Advance; modifiers chained, mixed, on a navi chip, picked first and after a chip they don't apply to | `custom/pa-star-first`, `-middle`, `-last`, `-shifted`, `pa-two-stars`, `pa-same-code`, `pa-wrong-order`, `pa-in-the-middle`, `pa-two-in-a-hand`, `pa-once-a-round`, `pa-modifier`, `custom/modifier-chain`, `-mixed`, `-navi`, `-whicapsl`, `-first`, `-wrong-chip` | match |
 | The Regular chip as a recipe's part (the Program Advance carries its bit); the tag pair and the Regular chip dealt together and forming a recipe; picks from the middle of the hand over four screens (the holes close up), picked in reverse on the last; a folder emptied five chips a screen (the sixth screen deals the last five, the next two none) | `custom/pa-regular`, `pa-tags`, `folder-odd-picks`, `folder-runs-out` | match |
 | The forms on every stage kind, without the lab's base NaviCust (its side 0 save has AirShoes, FlotShoe and BugStop, so panels don't act on a p0 that leaves `navicust` out): MegaMan with no programs (slides on ice, rides the roads, poison's drain, cracked panels breaking behind, a hole refusing the step), Beast Out (the form's own shoes: none of that, but the volcano's 50), the Crosses (Spout on poison and volcano, Ground on cracked and ice, Tengu over holes and cracked with its AirShoes, Tomahawk on ice and roads, Dust on poison and roads), a step into the enemy's column refused | `forms/falzar/bare-stage-*`, `beast-stage-*` (eight each), `cross-spout-stage-poison`, `-volcano`, `cross-ground-stage-cracked`, `-ice`, `cross-tengu-stage-holes`, `-cracked`, `cross-tomahawk-stage-ice`, `-roads`, `cross-dust-stage-poison`, `-roads` | match |
-| A body on its panels: TomahawkCross healing 1 HP every 20 ticks on grass, and hit there by FireBrn1 (210: the weakness and the grass add up to three times 70; MegaMan takes 140), the grass burning; SpoutCross not sliding on ice, hit there by Thunder (80, the weakness only; MegaMan takes 40: BN6's ice adds nothing to Elec) and by WideSht (frozen like MegaMan, the panel back to normal); TomahawkCross not paralyzed by a WhiCapsl hit (MegaMan is); TenguCross pulled by the enemy's Fan and pushed by its Wind like any navi | `forms/falzar/cross-tomahawk-grass`, `-grass-fire`, `base-grass-fire`, `cross-spout-ice`, `-ice-thunder`, `-ice-widesht`, `base-ice-thunder`, `base-ice-widesht`, `cross-tomahawk-paralysis`, `base-paralysis`, `cross-tengu-fan`, `-wind` | match |
+| A body on its panels: TomahawkCross healing 1 HP every 20 ticks on grass, and hit there by FireBrn1 (210: the weakness and the grass add up to three times 70; MegaMan takes 140), the grass burning; SpoutCross not sliding on ice, hit there by Thunder (80, the weakness only; MegaMan takes 40: EXE6's ice adds nothing to Elec) and by WideSht (frozen like MegaMan, the panel back to normal); TomahawkCross not paralyzed by a WhiCapsl hit (MegaMan is); TenguCross pulled by the enemy's Fan and pushed by its Wind like any navi | `forms/falzar/cross-tomahawk-grass`, `-grass-fire`, `base-grass-fire`, `cross-spout-ice`, `-ice-thunder`, `-ice-widesht`, `base-ice-thunder`, `base-ice-widesht`, `cross-tomahawk-paralysis`, `base-paralysis`, `cross-tengu-fan`, `-wind` | match |
 | The gregar base without its save's programs (its side 0 has SuprArmr, UnderSht, AttckMAX, ChargMAX and HP+1200 on a bugged grid: no flinch, blank buster shots, HP draining): MegaMan and Gregar Beast Out on every stage kind (the Beast slides on ice, takes poison and can't cross holes: it has SuperArmor, not shoes), the Crosses (Heat on volcano, where the eruption still hurts it, and on grass; Elec on ice and over holes; Slash on cracked and ice; Erase on poison and roads; Charge on roads and holy) | `forms/gregar/bare-stage-*`, `beast-stage-*` (eight each), `cross-heat-stage-volcano`, `-grass`, `cross-elec-stage-ice`, `-holes`, `cross-slash-stage-cracked`, `-ice`, `cross-erase-stage-poison`, `-roads`, `cross-charge-stage-roads`, `-holy` | match |
 | Gregar bodies on their panels and hit: HeatCross on grass under FireBrn1 (140, the grass burning) and WideSht (200, the Cross knocked out); ElecCross frozen on ice by WideSht and knocked out on grass by CornSht1; Gregar Beast under three Cannons (no flinch: the form's SuperArmor), MegaMan with no programs (flinches, buster 1) and with the save's (no flinch, blank shots, the HP bug's drain) | `forms/gregar/cross-heat-grass-firebrn`, `-widesht`, `cross-elec-ice-widesht`, `cross-elec-grass-cornsht`, `beast-hit`, `bare-hit`, `saved-hit` | match |
 | The Gregar forms' own busters and charge shots, and their weakness knock-outs with the flinch (re-recorded without the save's programs); the Gregar Giga chips' users hit back by a Reflector or a MiniBomb | `forms/gregar/base`, `beast`, `beast-over`, `cross-*`, `cross-*-beast`, `cross-*-weakness`; `chips/0x12d-bass`, `0x12e-bighook`, `0x12f-deltaray`, `0x130-colforce`, `0x131-bugrswrd` `/guard`, `/counter` | match |

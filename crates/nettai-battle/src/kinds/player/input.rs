@@ -23,7 +23,7 @@ pub(super) fn update(b: &mut Battle, r: ObjectRef) {
     chaos_cycle(b, r);
 }
 
-/// BN5's 0x080105F8: an armed Chaos Unison charge's cycle. While the B
+/// EXE5's 0x080105F8: an armed Chaos Unison charge's cycle. While the B
 /// charge is full a counter runs through the period of the rules' row (by
 /// the chaos level, at most 2; or the soul's own), and where it stands
 /// sets the window a release reads (2: it succeeds); otherwise the counter
@@ -107,7 +107,7 @@ fn chip_charges(b: &Battle, r: ObjectRef, chip: ChipHandle) -> bool {
     // The form's `charged_chips`: a family's damaging chips (ElecCross's
     // Null, SlashCross's Sword and the element swords, TomahawkCross's
     // Wood, SpoutCross's Aqua, GroundCross's Break, ChargeCross's Fire),
-    // and in Beast Out any Null chip; BN5's souls' (0x0801090A) a family's
+    // and in Beast Out any Null chip; EXE5's souls' (0x0801090A) a family's
     // chips that are neither dimming nor dark chips (`plain`).
     let plain = !c.flags.has(ChipFlags::DIMMING) && !c.flags.has(ChipFlags::DARK);
     let charges = form_of(b, r).charged_chips.iter().any(|rule| {
@@ -275,7 +275,7 @@ fn decode_buster(b: &mut Battle, r: ObjectRef, f0: u32) {
         return;
     }
     let bit = if a.charge_source == 2 && a.charge_level == 2 {
-        // BN5's armed Chaos Unison charge: released in the window, the
+        // EXE5's armed Chaos Unison charge: released in the window, the
         // chaos weapon; out of it, the failure (0x0801086E).
         match (a.chaos.armed, a.chaos.window) {
             (false, _) => request::CHARGED_SHOT,
@@ -345,7 +345,7 @@ fn accumulate_charge(b: &mut Battle, r: ObjectRef) {
 fn charge_threshold(b: &Battle, r: ObjectRef, source: u8) -> u16 {
     let s = stats(b, r);
     let a = ai(b, r);
-    // BN5's armed Chaos Unison charge (0x0801067E): the chaos weapon's
+    // EXE5's armed Chaos Unison charge (0x0801067E): the chaos weapon's
     // time by the chaos level (at most 4) in place of the Charge stat.
     if source == 2 && a.chaos.armed {
         let Some(routine) = a.chaos.weapon else { return 0xFF };

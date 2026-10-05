@@ -1,12 +1,12 @@
 --!strict
--- NumbrBl's dimming controller (effect object #0x69 in both games: BN6's
--- `sub_80E7F38`, docs/engine/dimming-chip-effects.md §15; BN5's
+-- NumbrBl's dimming controller (effect object #0x69 in both games: EXE6's
+-- `sub_80E7F38`, docs/engine/dimming-chip-effects.md §15; EXE5's
 -- 0x080E82DC), made with a game's effect (`controller.make`). It runs a
 -- navi chip's phases, not the dimming chips' (an AntiNavi check, which a
 -- chip that isn't a navi chip passes straight on, and the navi telop, which
 -- skips the effect only when the user was deleted), with an effect that
--- sends NumberMan out and waits until he is done: BN6's draws him as the
--- user, BN5's warps the user out and the real NumberMan in.
+-- sends NumberMan out and waits until he is done: EXE6's draws him as the
+-- user, EXE5's warps the user out and the real NumberMan in.
 --
 -- NumbrBl's `dimming` hook is `controller.hook(kind, balls)`.
 
@@ -20,7 +20,7 @@ export type State = {
     -- word.
     chip: Chip?,
     bonus: number,
-    -- The balls NumberMan sets down (the chip's first parameter; BN5's
+    -- The balls NumberMan sets down (the chip's first parameter; EXE5's
     -- NumberMan sets down three more).
     balls: number,
     -- NumberMan is out (the original's second parameter, whose address he
@@ -28,7 +28,7 @@ export type State = {
     busy: boolean,
 }
 
--- The controller's actions (BN6's `off_80E7F6C`, BN5's 0x080E8310).
+-- The controller's actions (EXE6's `off_80E7F6C`, EXE5's 0x080E8310).
 local DIM, ANTI_NAVI, TELOP, EFFECT, UNDIM = 0x0, 0x4, 0x8, 0xC, 0x10
 
 -- The action after the effect: the undim.
@@ -71,7 +71,7 @@ function controller.make(id: string, effect: (me: Object) -> ()): Kind
     }
 end
 
--- `sub_80E7FBA` (BN5's 0x080E83E6): NumbrBl's `dimming` hook, a controller
+-- `sub_80E7FBA` (EXE5's 0x080E83E6): NumbrBl's `dimming` hook, a controller
 -- of `kind` for `balls` balls.
 function controller.hook(kind: Kind, balls: number): (user: Object, spec: DimmingChipSpec) -> Object?
     return function(user: Object, spec: DimmingChipSpec): Object?

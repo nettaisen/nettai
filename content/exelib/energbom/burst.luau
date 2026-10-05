@@ -1,6 +1,6 @@
 --!strict
--- The energy burst, as BN5 and BN6 share it (BN6's attack object #0x11,
--- `sub_80C67F8`; BN5's #0x11): each game makes its own (`burst.make`: its
+-- The energy burst, as EXE5 and EXE6 share it (EXE6's attack object #0x11,
+-- `sub_80C67F8`; EXE5's #0x11): each game makes its own (`burst.make`: its
 -- kind, sprite, sound and collision types):
 -- what EnergBom's and MegEnBom's bomb leaves where it lands. It hits its
 -- panel three times, 7 ticks apart (the first at once), with hit

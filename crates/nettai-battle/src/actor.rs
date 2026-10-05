@@ -37,11 +37,11 @@ pub mod request {
     /// check found the Beast Out used up; the mid-battle custom screen
     /// asks too): pause-time action 0x1C with `status::REVERTING_FORM`.
     pub const REVERT_FORM: u32 = 0x40;
-    /// BN5's Chaos Unison: a full B charge released in the cycle's window
-    /// (BN5's request 0x8000): the soul's chaos weapon. BN6 has none.
+    /// EXE5's Chaos Unison: a full B charge released in the cycle's window
+    /// (EXE5's request 0x8000): the soul's chaos weapon. EXE6 has none.
     pub const CHAOS_SUCCESS: u32 = 0x80;
-    /// Released out of the window (BN5's 0x10000): the chaos failure
-    /// (BN5's action 0x39, the role `chaos_failure`).
+    /// Released out of the window (EXE5's 0x10000): the chaos failure
+    /// (EXE5's action 0x39, the role `chaos_failure`).
     pub const CHAOS_FAILURE: u32 = 0x100;
     /// AntiDmg (chip 0xBB) caught a hit: its counterattack runs next.
     pub const ANTI_DAMAGE_TRIGGERED: u32 = 0x200;
@@ -73,19 +73,19 @@ pub mod request {
     pub const SWITCH_KNOCKOUT: u32 = 0x0800_0000;
     /// Battle mode 9 A press.
     pub const MODE9_A: u32 = 0x1000_0000;
-    /// A system's takeover of the side's navi is asked for (BN6's Cross
+    /// A system's takeover of the side's navi is asked for (EXE6's Cross
     /// special, which DarkInvs asks for): idle's `sub_802E4E4` hands it to
     /// the side's systems (`takeover_requested`).
     pub const TAKEOVER: u32 = 0x2000_0000;
     /// Starts action 0x30 (the roles' `volley`, with `status::VOLLEY`). No
-    /// BN6 setter was found; BN5's loss of HP sets it for a dark MegaMan's
+    /// EXE6 setter was found; EXE5's loss of HP sets it for a dark MegaMan's
     /// last stand (0x0802C16C).
     pub const VOLLEY: u32 = 0x4000_0000;
     /// Hit by an element this navi is weak to (ends crosses).
     pub const WEAKNESS_HIT: u32 = 0x8000_0000;
     /// Every attack request.
     pub const ATTACKS: u32 = 0x3F;
-    /// The chaos charge's releases (BN5's attack's end clears them with
+    /// The chaos charge's releases (EXE5's attack's end clears them with
     /// the attacks: 0x1803F).
     pub const CHAOS: u32 = CHAOS_SUCCESS | CHAOS_FAILURE;
     /// The charge holds.
@@ -97,8 +97,8 @@ pub mod status {
     /// Direction bits of the last move (right, left, down, up).
     pub const MOVE_DIRECTIONS: u32 = 0xF;
     pub const CONTROLLABLE: u32 = 0x10;
-    /// It dives: a panel that submerges (BN5's sea) submerges it and
-    /// doesn't hold it at a move's end (`sub_801032C`'s 0x20: BN5's
+    /// It dives: a panel that submerges (EXE5's sea) submerges it and
+    /// doesn't hold it at a move's end (`sub_801032C`'s 0x20: EXE5's
     /// 0x08017030, 0x0801715E).
     pub const DIVES: u32 = 0x20;
     pub const CHIP_IN_PROGRESS: u32 = 0x40;
@@ -118,7 +118,7 @@ pub mod status {
     /// A navi switch took effect (set when `sub_802D714` ends). A link
     /// navi with it falls back instead of being deleted (`sub_802DD2A`).
     pub const SWITCHED: u32 = 0x4000;
-    /// Action 0x30 runs (the roles' `volley`: BN5's last stand). Takes
+    /// Action 0x30 runs (the roles' `volley`: EXE5's last stand). Takes
     /// over the action dispatch.
     pub const VOLLEY: u32 = 0x1_0000;
     /// Takes over the action dispatch like the two above; no setter was
@@ -150,7 +150,7 @@ pub struct AttackVars {
     pub element: u8,
     /// +3: the attack's variant, as the anti-damage counters read it (the
     /// shuriken's target, `sub_80EE996`): what a stance's weapon sets
-    /// (BN6's AntiDmg program 0, BN5's ShadowSoul 1) and a trap's catch
+    /// (EXE6's AntiDmg program 0, EXE5's ShadowSoul 1) and a trap's catch
     /// (`sub_801056A`: 0). The chips' variants are their definitions'.
     pub variant: u8,
     /// +4: the attack is charged (`sub_80127C0`'s argument).
@@ -168,7 +168,7 @@ pub struct AttackVars {
     /// Which `set_attack` slot started the action.
     pub kind: u8,
     /// 1 while the action runs inside the side's wrapper (`sub_801B9E6`
-    /// runs the role `actions.wrapper` instead): BN6's Beast Out lock-on
+    /// runs the role `actions.wrapper` instead): EXE6's Beast Out lock-on
     /// byte, which its beast system sets as a chip's use starts
     /// (`chip_used`) and the rush as it chains the next.
     pub wrapped: u8,
@@ -203,7 +203,7 @@ pub struct AttackVars {
     /// the chip's, or a weapon's that names one (TenguCross's wind).
     pub instant: Option<crate::kinds::player::actions::instant::Effect>,
     /// The wrapper's state starts over: `sub_801011A` clears its bytes
-    /// (+0x1E..+0x27, which the game's wrapper, BN6's Beast Out rush, now
+    /// (+0x1E..+0x27, which the game's wrapper, EXE6's Beast Out rush, now
     /// keeps in its system's state); the wrapper clears this once it has.
     pub wrapper_fresh: bool,
 }
@@ -251,11 +251,11 @@ pub struct ActorData {
     /// AIData+0x0A: ticks toward the next HP lost to the custom-screen HP
     /// drain bug (`sub_80102AC`).
     pub drain_counter: u8,
-    /// The side's systems' `navi_tick` runs for it each tick (BN6's
+    /// The side's systems' `navi_tick` runs for it each tick (EXE6's
     /// NaviCust emotion-swing bug, `sub_8013DA0`).
     pub ticked: bool,
-    // (AIData+0x0F, the turn-start Beast Out check's delay, is BN6's beast
-    // system's state: content/bn6/rules/beast/init.luau.)
+    // (AIData+0x0F, the turn-start Beast Out check's delay, is EXE6's beast
+    // system's state: content/exe6/rules/beast/init.luau.)
     /// AIData+0x10: drain hits this navi landed on the opponent, turned
     /// into healing (MaxHP/10 each) on its own next hit collection
     /// (`sub_801A308`, `sub_801A324`).
@@ -286,28 +286,28 @@ pub struct ActorData {
     pub pad: Pad,
     /// Mirror of `pad` maintained while dimmed.
     pub dimmed_pad: Pad,
-    /// AIData+0x32: held tired (the game stores 0xFFFF; BN6's "the Beast
+    /// AIData+0x32: held tired (the game stores 0xFFFF; EXE6's "the Beast
     /// Out counter is spent"): emotion 1, the mood held (`sub_8015BEC`)
-    /// and no anger (`sub_80143CE`). A game's systems set it: BN6's at the
+    /// and no anger (`sub_80143CE`). A game's systems set it: EXE6's at the
     /// round's start with a zero counter (`sub_8013892`), at the turn-start
     /// check (`sub_80159C6`), when a Beast Out reverts (`sub_80158CC`), and
     /// by the NaviCust emotion-swing bug (`sub_8013DA0`); `sub_8014446`
     /// clears it.
     pub tired: bool,
     pub anger: u16,
-    /// AIData+0x36: exhausted for the rest of the battle (BN6's after Beast
+    /// AIData+0x36: exhausted for the rest of the battle (EXE6's after Beast
     /// Over: `sub_80158CC` → `sub_8014466` stores 0x3C0, which nothing
     /// counts down; its beast system sets it, `form_reverted`): emotion 5,
     /// mood changes blocked, and 1 HP lost per tick, never the last one
     /// (`sub_8014498`).
     pub exhausted: bool,
-    /// BN5's AIData+0x36 (where BN6 keeps `exhausted`): the no-charge
+    /// EXE5's AIData+0x36 (where EXE6 keeps `exhausted`): the no-charge
     /// drive's ticks left (DarkInvs sets 600, 0x080E2318), counted down in
     /// the intake while the navi has the no-charge state and the battle is
     /// neither paused nor dimmed (0x0800DBE0); its end asks for the stun
-    /// strike (BN5's action 0x49, the drive's end). 0xFFFF holds.
+    /// strike (EXE5's action 0x49, the drive's end). 0xFFFF holds.
     pub no_charge_timer: u16,
-    /// BN5's AIData+0xF0: the computer-navi AI drives it (0x0802C110:
+    /// EXE5's AIData+0xF0: the computer-navi AI drives it (0x0802C110:
     /// DarkInvs); the AI's breath clears it one time in two (0x0802B5B8)
     /// and the idle's reset of its state when the drive is off
     /// (0x0802C03A). VarSwrd's pick reads it.
@@ -323,11 +323,11 @@ pub struct ActorData {
     /// restores when it pops (`sub_8016B72`, `sub_801A2B0`). Viruses
     /// record it every tick (`sub_8108F74`); nothing sets it for players.
     pub bubble_base_z: i16,
-    /// BN5's AIData+0x3C: DarkPlus's tint (0x0800E1DC sets 24; nothing
+    /// EXE5's AIData+0x3C: DarkPlus's tint (0x0800E1DC sets 24; nothing
     /// counts it down), which picks the navi's status shader after the
-    /// invulnerable glow (0x080136B8). BN6 has none.
+    /// invulnerable glow (0x080136B8). EXE6 has none.
     pub plus_tint: u16,
-    /// AIData+0x40: the target marker (effect #0xF, BN6's Beast Out lock-on marker:
+    /// AIData+0x40: the target marker (effect #0xF, EXE6's Beast Out lock-on marker:
     /// `sub_80E1620`), which `sub_80E1662` unfreezes.
     pub target_marker: Option<ObjectRef>,
     /// Action requests from input (`request::*`).
@@ -367,13 +367,13 @@ pub struct ActorData {
     /// (at most eight; the game keeps them at +0x6C with the count at
     /// +0x0D).
     pub absorbed: Vec<AbsorbedObstacle>,
-    /// BN5's Chaos Unison charge. BN6 never arms it.
+    /// EXE5's Chaos Unison charge. EXE6 never arms it.
     pub chaos: ChaosCharge,
-    /// BN5's AIData+0x0D: its form's priming is up (GyroSoul's, after a
-    /// Wind chip: `FormData::priming`). BN6 never primes.
+    /// EXE5's AIData+0x0D: its form's priming is up (GyroSoul's, after a
+    /// Wind chip: `FormData::priming`). EXE6 never primes.
     pub primed: bool,
-    /// BN5's AIData+0x32: the chip a weapon of the navi's loads
-    /// (ColonelSoul's arm chip; none: its 0xFFFF). BN6 has none.
+    /// EXE5's AIData+0x32: the chip a weapon of the navi's loads
+    /// (ColonelSoul's arm chip; none: its 0xFFFF). EXE6 has none.
     pub weapon_chip: Option<nettai_content_api::ChipHandle>,
     /// A navi no player controls (actor type navi): who brought it
     /// (AIData+0x54, `sub_80076A0`'s caller), its target (AIData+0x78: the
@@ -385,7 +385,7 @@ pub struct ActorData {
     pub deletion_sparkles: Option<ObjectRef>,
 }
 
-/// BN5's Chaos Unison charge: armed by the chaos change (0x0801216C), a
+/// EXE5's Chaos Unison charge: armed by the chaos change (0x0801216C), a
 /// full B charge cycles through a window (0x080105F8, by the rules'
 /// `chaos_cycle`); released in it, the soul's chaos weapon (AIData +0x11,
 /// its form's `chaos` slot) with its own charge time by `level`, else the
@@ -437,7 +437,7 @@ impl Actors {
 
     /// Allocate the lowest free slot, cleared. (The game leaves the last
     /// 0x10 bytes alone: the controllers' state, Beast Over's berserk and
-    /// the Cross special's, which are BN6's systems' now, by side.)
+    /// the Cross special's, which are EXE6's systems' now, by side.)
     pub fn allocate(&mut self) -> Option<ActorId> {
         let slot = (0..SLOTS as u8).find(|&i| self.in_use & (1 << i) == 0)?;
         self.in_use |= 1 << slot;

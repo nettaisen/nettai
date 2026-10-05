@@ -1,5 +1,5 @@
 --!strict
--- The plus chips' sparkle, as BN5 and BN6 share it (BN6's `loc_80104B6`, shared with `sub_80104E0`; BN5's
+-- The plus chips' sparkle, as EXE5 and EXE6 share it (EXE6's `loc_80104B6`, shared with `sub_80104E0`; EXE5's
 -- 0x0800E198's): a rising bubble (@exelib/rising-bubble, the game's kind) by the navi's panel, on the enemy's side of
 -- it, 4 pixels toward the enemy's side and 48 up; and its sound.
 

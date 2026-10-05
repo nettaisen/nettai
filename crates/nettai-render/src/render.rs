@@ -46,11 +46,11 @@ pub struct Renderer<'a> {
     /// release cut) is a known difference there (`Problems::known`).
     pub console_region: &'static str,
     /// The version of the console whose screen is drawn, as its game's
-    /// pack names its versions (BN5's "protoman", "colonel"), for a game
+    /// pack names its versions (EXE5's "protoman", "colonel"), for a game
     /// whose versions the engine doesn't tell apart: what the console shows
-    /// of its own (BN5's emblems), and which chips are the other version's,
+    /// of its own (EXE5's emblems), and which chips are the other version's,
     /// whose art its ROM draws otherwise (`ChipArt::version`). None: the
-    /// engine's (BN6's `Unlocks::version`), or the pack's base version.
+    /// engine's (EXE6's `Unlocks::version`), or the pack's base version.
     pub console_version: Option<&'static str>,
     /// How text is drawn, and the font of the font mode.
     text_mode: TextMode,
@@ -168,7 +168,7 @@ impl<'a> Renderer<'a> {
         // (The local player's custom screen and chatbox: the game's pack's.)
         let local = b.setup.local_side as usize & 1;
         let own_game = self.packs.game(&b.content);
-        let version = bn6_compat::Unlocks::of_side(b, local as u8).version;
+        let version = exe6_compat::Unlocks::of_side(b, local as u8).version;
         let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, version, self.console_version, &mut self.problems);
         let chatbox = crate::chatbox::prepare(b, own_game, &self.packs, &text, &mut self.problems);
         let mut list = SpriteList::default();
@@ -304,7 +304,7 @@ pub fn screen_fade(b: &Battle) -> Fade {
     if b.round.intro_bits & 0x01 == 0 {
         // The first battle of a set fades in from white, later ones from
         // black (`sub_80E0684`); a console whose game's flow says
-        // `intro_from_black` (BN5's), every battle from black.
+        // `intro_from_black` (EXE5's), every battle from black.
         let s = &b.setup.settings;
         let later = if s.effects & nettai_battle::setup::effects::SET != 0 {
             b.round.round > 1

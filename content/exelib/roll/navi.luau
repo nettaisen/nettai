@@ -1,6 +1,6 @@
 --!strict
--- Roll, the navi of the Roll chips, as BN6 and BN5 share her (the original's actor object #0x2C: BN6's `sub_80C07BC`,
--- BN5's 0x080C06A4, the same code but for the parts each game passes), brought by their navi chip controller. She
+-- Roll, the navi of the Roll chips, as EXE6 and EXE5 share her (the original's actor object #0x2C: EXE6's `sub_80C07BC`,
+-- EXE5's 0x080C06A4, the same code but for the parts each game passes), brought by their navi chip controller. She
 -- fades in over her user's panel; warps up and down in front of the nearest enemy navi ahead (`sub_80C0C9A`); whips
 -- it three times (a hit region 10 ticks apart, with her ribbon out); warps up and away; warps her user back in
 -- herself; and drops a heart on her user's panel (the game's heart) that heals three times her damage. Then she
@@ -8,14 +8,14 @@
 -- warp back in for her: she brings it herself.) See docs/engine/chips.md §3.6.20.
 --
 -- Each game makes its own kind (`roll.make`): her sprite and sounds, her warp's sparkle, her ribbon, her heart, and
--- the controller's address her position takes; and BN5's additions: what more she does as she appears, how she
+-- the controller's address her position takes; and EXE5's additions: what more she does as she appears, how she
 -- finds her target in the own-gauges mode, and what more she does as her heart drops.
 
 local panels = require("../panels")
 local regions = require("../regions")
 
 -- What a chip summons her with (the chips' first parameter picks them): her whip's rounds of three hits (1; 3 for
--- the parameter 5, which no chip has) and her palette (BN6's Roll3's, BN5's RollDS's is 1); BN5's: the parameter
+-- the parameter 5, which no chip has) and her palette (EXE6's Roll3's, EXE5's RollDS's is 1); EXE5's: the parameter
 -- (the chip's level: 0, 3 for SP, 4 for DS), which its additions read, and what her ribbon's palette adds (RollDS's
 -- 1).
 export type Summon = { rounds: number, palette: number, level: number?, ribbon_palette: number? }
@@ -44,7 +44,7 @@ export type Spec = {
     hit_type: CollisionType,
     -- Her hits' spark.
     spark: Spark,
-    -- BN5's: as she appears, after her sound (0x080C0794); her target in the own-gauges mode (0x080C0832; 0
+    -- EXE5's: as she appears, after her sound (0x080C0794); her target in the own-gauges mode (0x080C0832; 0
     -- if none); as her heart drops (0x080C0B66).
     appeared: ((me: Object) -> ())?,
     tracked_target: ((me: Object) -> (number, number))?,
@@ -77,7 +77,7 @@ export type State = {
     controller: Object?,
     -- Her ribbon (ExtraVars[3], the attachment's slot).
     held: Object?,
-    -- BN5's: her chip's level (Param1) and what her ribbon's palette adds.
+    -- EXE5's: her chip's level (Param1) and what her ribbon's palette adds.
     level: number,
     ribbon_palette: number,
 }

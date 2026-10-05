@@ -13,8 +13,8 @@
 -- when it comes, 0 when it goes); Thunder gives none.
 --
 -- Its look (sprites, animations, collision type, hit modifier, spark, sounds) is a
--- game's: BN6's below (`ball.kind`); another game's kind of it is
--- `ball.make_kind(id, look)` (BN5's).
+-- game's: EXE6's below (`ball.kind`); another game's kind of it is
+-- `ball.make_kind(id, look)` (EXE5's).
 
 local regions = require("../regions")
 

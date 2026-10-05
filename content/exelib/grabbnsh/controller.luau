@@ -1,6 +1,6 @@
 --!strict
--- GrabBnsh's and GrabRvng's dimming controller, as BN5 and BN6 share it
--- (BN6's effect object #0x22, `sub_80E2CA4`; BN5's #0x22;
+-- GrabBnsh's and GrabRvng's dimming controller, as EXE5 and EXE6 share it
+-- (EXE6's effect object #0x22, `sub_80E2CA4`; EXE5's #0x22;
 -- docs/engine/dimming-chip-effects.md §3): each game makes its own
 -- (`controller.make`: its kind, its hand's, the flash and the sound of the
 -- panels taken back). The usual dimming phases (@exelib/dimming), with an
@@ -23,7 +23,7 @@ export type State = {
 }
 
 -- A game's controller: its kind's key, its hand's kind, the flash on each
--- panel taken back (BN6's effect 0x3B) and the sound of the taking back.
+-- panel taken back (EXE6's effect 0x3B) and the sound of the taking back.
 export type Spec = { id: string, hand: Kind, returned: Effect, return_sound: Sound }
 
 local INTERVAL, AFTER = 0x1E, 0x3C

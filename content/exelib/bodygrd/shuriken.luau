@@ -1,11 +1,11 @@
 --!strict
--- BodyGrd's shuriken, as BN5 and BN6 share it (BN6's attack object #0x5C,
--- `sub_80CFEC4`; BN5's #0x5C, 0x080D14F0, ShadowMan's): it dives from 180
+-- BodyGrd's shuriken, as EXE5 and EXE6 share it (EXE6's attack object #0x5C,
+-- `sub_80CFEC4`; EXE5's #0x5C, 0x080D14F0, ShadowMan's): it dives from 180
 -- pixels up and behind onto its panel in 16 ticks, highlighting it,
 -- appearing with a puff halfway, hits it for two ticks, lies there 30
 -- ticks and blinks out over 20. Each game makes its own kind
 -- (`shuriken.make_kind`: its sprite, sound, puff, collision types, and
--- what more its dive's start does: BN5's marker over its panel).
+-- what more its dive's start does: EXE5's marker over its panel).
 
 local regions = require("../regions")
 
@@ -18,7 +18,7 @@ export type State = {
 
 -- A game's shuriken: its kind's key, its sprite, its landing's sound, the
 -- puff as it shows, what it is (row 0x1C: a thrown slash) and hits, and
--- what more its dive's start does (BN5's 0x080D15E6).
+-- what more its dive's start does (EXE5's 0x080D15E6).
 export type Look = {
     id: string,
     sprite: SpriteAsset,

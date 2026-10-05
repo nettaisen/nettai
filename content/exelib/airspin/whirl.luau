@@ -1,7 +1,7 @@
 --!strict
--- A seeking whirlwind, as BN5 and BN6 share it (BN6's attack object #0xD4, `sub_80DFFB8`; BN5's #0xC0, 0x080DE910,
+-- A seeking whirlwind, as EXE5 and EXE6 share it (EXE6's attack object #0xD4, `sub_80DFFB8`; EXE5's #0xC0, 0x080DE910,
 -- the same code but for its sheet and the enemies it doesn't see), of a game's `SeekingWhirlLook` (`whirl.make`):
--- what AirSpin's variant 1 (BN6's: no chip in its table) and variant 2 (BN5's) send, the patch cards' Hell's Rolling.
+-- what AirSpin's variant 1 (EXE6's: no chip in its table) and variant 2 (EXE5's) send, the patch cards' Hell's Rolling.
 -- It swoops down from behind and above onto its panel in 19 ticks, then moves a panel every 6 ticks toward the enemy:
 -- straight ahead, or diagonally when a visible enemy navi stands on a panel ahead one row up or down (and on
 -- diagonally from then on). On a panel with a visible enemy navi it stays, hitting up to 3 times there. It blows away

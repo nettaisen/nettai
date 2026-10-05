@@ -8,7 +8,7 @@
 //! <game>/init.luau                a game's top module: it requires every module that defines what
 //!                                 the game has (its rules, chips, navis, forms, stages, patch
 //!                                 cards, NaviCust programs, and what only an id names)
-//! <pack>/**/*.luau                the pack's scripts (bn6/chips/cannon/init.luau: a folder's main
+//! <pack>/**/*.luau                the pack's scripts (exe6/chips/cannon/init.luau: a folder's main
 //!                                 module, which the folder's name stands for); every id local to
 //!                                 the game (`minibomb`), every asset name its asset pack's (`bomb`)
 //! <pack>/**/*.d.luau              its API declarations, which its modules (and its users') check
@@ -158,7 +158,7 @@ pub fn follow(
     let mut seen: BTreeSet<String> = pending.iter().map(|(n, _)| n.clone()).collect();
     while let Some((name, from)) = pending.pop() {
         let mut path = keys::module_path(&name);
-        // (A folder names its `init` module: `bn6:rules` is rules/init.luau.)
+        // (A folder names its `init` module: `exe6:rules` is rules/init.luau.)
         let init = keys::init_of(&name);
         let name = if !modules.contains_key(&name)
             && !dir.join(format!("{path}.luau")).is_file()
@@ -243,10 +243,10 @@ mod tests {
     fn the_content_reads_from_its_games_inits() {
         let mut r = Report::default();
         let read = read_all(&content(), &mut r).unwrap_or_else(|| panic!("{r}"));
-        assert_eq!(read.games(), ["bn5", "bn6"]);
+        assert_eq!(read.games(), ["exe5", "exe6"]);
         assert_eq!(read.packs[0].id, "exelib", "the support pack first");
-        assert!(read.modules.contains_key("bn6:init") && read.modules.contains_key("bn5:init"), "each game's top module");
-        assert!(read.modules.contains_key("bn6:rules/init"), "`@self/rules` is the folder's init");
+        assert!(read.modules.contains_key("exe6:init") && read.modules.contains_key("exe5:init"), "each game's top module");
+        assert!(read.modules.contains_key("exe6:rules/init"), "`@self/rules` is the folder's init");
         assert!(!read.modules.contains_key("exelib:init"), "a support pack has none");
         assert!(read.modules.contains_key("exelib:swords/slash"), "the support pack's modules come in by their requires");
     }

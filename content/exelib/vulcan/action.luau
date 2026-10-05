@@ -1,6 +1,6 @@
 --!strict
--- The Vulcans' action, as BN5 and BN6 share it (BN6's action 0x17,
--- `sub_80EBF10`; BN5's 0x19, 0x080EC5D0), of a game's `VulcanLook` (its
+-- The Vulcans' action, as EXE5 and EXE6 share it (EXE6's action 0x17,
+-- `sub_80EBF10`; EXE5's 0x19, 0x080EC5D0), of a game's `VulcanLook` (its
 -- sound, vulcan, attachment kind and bullets' kind;
 -- docs/engine/shot-chips.md §4): a burst of bullets (objects/bullet) from
 -- the panel ahead, one every 11 ticks, each at a height the RNG picks. A

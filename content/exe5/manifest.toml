@@ -1,0 +1,6 @@
+# EXE5's manifest (docs/design/content-model-v2.md §4.0): a game pack: what a match plays. It requires only its own
+# modules and those of the support packs it depends on. What it has is what its top module, init.luau, requires.
+# tools/content/index.py (the verification workspace) keeps it.
+id = "exe5"
+kind = "game"
+depends = ["exelib"]

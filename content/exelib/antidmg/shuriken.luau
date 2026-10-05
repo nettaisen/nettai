@@ -1,6 +1,6 @@
 --!strict
--- AntiDmg's shuriken, as BN5 and BN6 share it (BN6's attack object #0xC2,
--- `sub_80DD764`; BN5's #0xC2): what its counter throws. Each game makes its
+-- AntiDmg's shuriken, as EXE5 and EXE6 share it (EXE6's attack object #0xC2,
+-- `sub_80DD764`; EXE5's #0xC2): what its counter throws. Each game makes its
 -- own kind (`shuriken.make_kind`: its sprite, sound, puff and collision
 -- types). It flies from the user, 160 pixels up, onto
 -- the target's panel in 15 ticks, highlighting it, hits it for two ticks,
@@ -23,7 +23,7 @@ export type State = {
 }
 
 -- A game's shuriken: its kind's key, its sprite, its landing's sound, the
--- puff as it starts, and what it is (BN6's row 0x1C: a thrown slash) and
+-- puff as it starts, and what it is (EXE6's row 0x1C: a thrown slash) and
 -- hits.
 export type Look = {
     id: string,

@@ -1,7 +1,7 @@
 //! The content API as Luau sees it: handles for objects, sprites,
 //! collision, content state and navi stats, the `Vec3` value type, and the
 //! libraries `battle`, `field`, `dimming`, `navi_chip` and `int` (declared
-//! for editors in content/bn6/core.d.luau).
+//! for editors in content/exe6/core.d.luau).
 //!
 //! Every call goes straight to the engine through [`CoreApi`]; nothing is
 //! cached or deferred, so later objects in the same tick see a change at
@@ -665,7 +665,7 @@ impl UserData for Object {
         });
         methods.add_method("lockon_panel", |_, this, (x, y, mode): (LuaValue, LuaValue, LuaValue)| {
             let p = panel(x, y)?;
-            // A lock-on mode (a record of type "lockon": BN6's rules/lockon), or
+            // A lock-on mode (a record of type "lockon": EXE6's rules/lockon), or
             // nil: the navi's own panel.
             let mode = bound(|b| match (&mode, b.def(&mode)) {
                 (LuaValue::Nil, _) => Ok(None),
@@ -1426,7 +1426,7 @@ fn system_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "side", |_, ()| Ok(system_ctx("system.side")?.side));
     // Another system's state of side `side`, for a game's rules alone (its
     // API module, docs/design/rules-in-luau.md, As built S8): the game's
-    // API reaches what its systems keep (BN6's bug frags, the dark-chips
+    // API reaches what its systems keep (EXE6's bug frags, the dark-chips
     // system's) for its chips, which never call it themselves. Nil when the
     // side's ruleset lacks the system.
     lib_fn!(lua, t, "state_of", |lua, (side, system): (LuaValue, LuaValue)| {

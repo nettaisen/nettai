@@ -1,6 +1,6 @@
 --!strict
--- H-Burst's shot, as BN5 and BN6 share it (BN6's attack object #0x9E,
--- `sub_80D8FC4`; BN5's #0x9E, the same code but for its probe's self type,
+-- H-Burst's shot, as EXE5 and EXE6 share it (EXE6's attack object #0x9E,
+-- `sub_80D8FC4`; EXE5's #0x9E, the same code but for its probe's self type,
 -- where its bursts come from and its explosions' row): each game makes its
 -- own kind (`burst.make_kind`, a `HyperBurstShotLook`). An unseen probe
 -- stepping a panel a tick along its row (status 0x10) until it hits
@@ -17,8 +17,8 @@ local burst = {}
 export type State = {
     -- It has hit something and bursts (BattleObject+0x0C).
     bursting: boolean,
-    -- The bursts it makes (BN6: the original's first two parameters, a
-    -- halfword; BN5: a row of 0x080DA514 by its parameters).
+    -- The bursts it makes (EXE6: the original's first two parameters, a
+    -- halfword; EXE5: a row of 0x080DA514 by its parameters).
     bursts: number,
 }
 

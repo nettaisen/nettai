@@ -1,12 +1,12 @@
 --!strict
--- AirShot's action, as BN5 and BN6 share it (BN6's action 0x21, `sub_80EC884`;
--- BN5's 0x1D, the same code but for the shooter's attachment row;
+-- AirShot's action, as EXE5 and EXE6 share it (EXE6's action 0x21, `sub_80EC884`;
+-- EXE5's 0x1D, the same code but for the shooter's attachment row;
 -- docs/engine/shot-chips.md §3): a shot from the panel ahead. The navi
 -- raises its air shooter and fires on the 7th tick; 11 ticks of recovery
 -- after the 11th. A chip gives what the navi holds and what it fires
 -- (`airshot.action({ shooter = ..., shot = ... }, look)`, with the game's
--- sound, attachment and projectiles): BN6's AirShot its shooter and wind
--- shot, BN5's its own.
+-- sound, attachment and projectiles): EXE6's AirShot its shooter and wind
+-- shot, EXE5's its own.
 
 local attachment = require("./attachment")
 

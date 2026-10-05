@@ -1,4 +1,4 @@
-# Field objects: rocks and shared obstacle behavior (BN6 US Falzar, BR6E)
+# Field objects: rocks and shared obstacle behavior (EXE6 US Falzar, BR6E)
 
 Obstacles are attack-pool (T3) objects without actor data that stand on a
 panel, take hits, and leave the field in several ways. The rock (T3#0x59)
@@ -279,14 +279,14 @@ action 0; BlkBomb), `sub_801B878` (LilBolr: crushing hits destroy without
 zeroing HP while its ExtraVars+4 is nonzero, i.e. "destroys" or "breaks"
 by the kind's own state).
 
-BN5's four reactions (0x08018000, 0x08018168, 0x080182D4, 0x08018404) add
+EXE5's four reactions (0x08018000, 0x08018168, 0x080182D4, 0x08018404) add
 a step between step 1's crushing hits and the destroy test: outside the
 dimming and past action 0, an obstacle on a solid panel whose other side
 has ColonelSoul's army armed turns into that side's soldier, its HP and
 max HP zeroed (`soldier_step`, behind the obstacle's own game's rule
 `effects.obstacle_soldiers`; the per-side state `obstacle::Soldiers`, the
 `obstacle.arm_soldiers` / `disarm_soldiers` / `soldiers` calls and the
-role `kinds.obstacle_soldier`; docs/design/bn5-map.md §15.11).
+role `kinds.obstacle_soldier`; docs/design/exe5-map.md §15.11).
 
 `sub_801823C` (dimming hold): `sub_80181F6`; first time (PreventAnim ==
 0) save X16/Z16 in Unk_30/Unk_32, Unk_19 = 0, PreventAnim = 4 (which also

@@ -1,7 +1,7 @@
 //! Survey a content pack's songs as timelines: what a MIDI file has to
 //! carry.
 //!
-//!     cargo run -p nettai-content --example audio_stats -- data/content/bn6
+//!     cargo run -p nettai-content --example audio_stats -- data/content/exe6
 
 use nettai_content::timeline::{Ending, encode, linearize};
 use m4a::bank::Command;

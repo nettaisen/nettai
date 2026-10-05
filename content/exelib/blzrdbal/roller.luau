@@ -1,13 +1,13 @@
 --!strict
--- The snowball's roller, as BN6 and BN5 share it (BN6's attack object
--- #0xB7, `sub_80DC260`; BN5's #0xB7, 0x080DD234; docs/engine/
+-- The snowball's roller, as EXE6 and EXE5 share it (EXE6's attack object
+-- #0xB7, `sub_80DC260`; EXE5's #0xB7, 0x080DD234; docs/engine/
 -- dimming-chip-effects.md §10): an invisible collision 20 pixels ahead of
 -- the snowball (./ball) that reaches every attack, object and body; of
 -- what it touches, the first field object it may swallow
 -- (`obstacle.swallowable`) is removed, and the ball grows. It goes with the
 -- ball, at the field's end, or when the battle is over. Each game makes its
 -- own kind (`roller.make_kind`: what it is and reaches, its table's rows:
--- BN6's 0x58 and 0x49, BN5's 0x48 and 0x49).
+-- EXE6's 0x58 and 0x49, EXE5's 0x48 and 0x49).
 
 local regions = require("../regions")
 

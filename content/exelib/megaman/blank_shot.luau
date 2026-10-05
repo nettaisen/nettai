@@ -1,5 +1,5 @@
 --!strict
--- The blank shot, as BN5 and BN6 share it (BN6's weapon routine 2, `sub_8011ADA`, and action 0x33, `sub_80ED748`):
+-- The blank shot, as EXE5 and EXE6 share it (EXE6's weapon routine 2, `sub_8011ADA`, and action 0x33, `sub_80ED748`):
 -- what the buster fires when the NaviCust's buster bug picks a blank. The navi raises the buster and it clicks, but
 -- nothing is fired; then the buster's recovery, counted from the navi's own panel (a shot's counts from the panel in
 -- front; the navi's body is off the field while it updates, so its own panel counts as open). Each game makes its

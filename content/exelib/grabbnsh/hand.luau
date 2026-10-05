@@ -1,6 +1,6 @@
 --!strict
--- GrabBnsh's and GrabRvng's hand, as BN5 and BN6 share it (BN6's attack
--- object #0x46, `sub_80CCC48`; BN5's #0x46;
+-- GrabBnsh's and GrabRvng's hand, as EXE5 and EXE6 share it (EXE6's attack
+-- object #0x46, `sub_80CCC48`; EXE5's #0x46;
 -- docs/engine/dimming-chip-effects.md §3): each game makes its own kind
 -- (`hand.make_kind`: its sprite, sounds and collision types). It drops from
 -- 192 pixels up onto an enemy navi's panel in 24 ticks, hits it, and goes
@@ -18,7 +18,7 @@ export type State = {
 
 -- A game's hand: its kind's key, its sprite, the sounds of its fall and
 -- its landing, and its hit's collision types (`dword_80CCD20`: an attack
--- that pierces invisibility, BN6's row 0x19, hitting navis).
+-- that pierces invisibility, EXE6's row 0x19, hitting navis).
 export type Look = {
     id: string,
     sprite: SpriteAsset,

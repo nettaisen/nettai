@@ -1,11 +1,11 @@
 --!strict
--- AirSpin's action (BN6's 0x38, `sub_80EDCC0`; BN5's 0x47, 0x080EF030, the
+-- AirSpin's action (EXE6's 0x38, `sub_80EDCC0`; EXE5's 0x47, 0x080EF030, the
 -- same code): the navi spins up a whirlwind on the panel ahead. On the
 -- third tick it sends what its chip composes (`action { whirlwind = ... }`,
 -- the original's variant and parameters): every AirSpin a whirlwind top
 -- (./top) that rolls forward to the first panel it can't enter or the
--- fourth one and spins there; BN6's variant no chip has, a seeking
--- whirlwind (bn6 chips/airspin/whirl); BN5's AqWhirl a whirlpool. The navi
+-- fourth one and spins there; EXE6's variant no chip has, a seeking
+-- whirlwind (exe6 chips/airspin/whirl); EXE5's AqWhirl a whirlpool. The navi
 -- is "moving" (it can't be pushed) for the 16 ticks of the spin, then
 -- recovers for 6.
 

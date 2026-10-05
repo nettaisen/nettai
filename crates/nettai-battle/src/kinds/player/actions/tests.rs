@@ -1,7 +1,7 @@
 //! Action timelines, as the original game runs them in a netbattle (tick
 //! offsets from the tick the action starts), on the hand-authored test
 //! content (`content::testing`): the timings that come from data are that
-//! content's, the rest are the engine's. The same timelines with BN6's own
+//! content's, the rest are the engine's. The same timelines with EXE6's own
 //! data are checked in the verification workspace.
 
 use super::super::ai_mut;
@@ -1808,7 +1808,7 @@ fn count_kind(b: &Battle, name: &str) -> usize {
 fn spawning_instant_chips_run_their_objects_and_roll_back() {
     // Each effect's object appears the tick the chip's effect runs, plays
     // out, rolls back at any point, and is gone within 200 ticks.
-    // BN6's definitions, and the test chips that compose FireHit's and
+    // EXE6's definitions, and the test chips that compose FireHit's and
     // FlmHook's effects.
     let chips = [
         (testing::chip_handle(testing::BOOMER), "boomer/boomerang"),
@@ -2054,7 +2054,7 @@ fn ticks_in(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, action: nettai_content
 }
 
 /// Where turning is enabled, L or R turns the navi round: the request
-/// starts the turn (the role `actions.turn`, BN6's megaman/turn), which
+/// starts the turn (the role `actions.turn`, EXE6's megaman/turn), which
 /// flips the navi two ticks later and ends.
 #[test]
 fn l_or_r_turns_the_navi_round_where_turning_is_enabled() {

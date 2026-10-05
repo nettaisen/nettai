@@ -5,7 +5,7 @@
 //! A definition holds no display text. A chip's name and description, a
 //! navi's name and no-running message, a Cross's name and description and
 //! a patch card's name are its language's table's. The
-//! content's own language (`OWN`, English for BN6) is part of the content:
+//! content's own language (`OWN`, English for EXE6) is part of the content:
 //! the loader puts its table in `Content::strings`, and the define phase
 //! counts what the battle reads of it (a description's lines, a message's
 //! characters per line).
@@ -56,7 +56,7 @@ pub const DIR: &str = "locales";
 /// The content's own language: its table is the content's words.
 pub const OWN: &str = "en";
 
-/// The table of `lang` in pack folder `pack` (content/bn6).
+/// The table of `lang` in pack folder `pack` (content/exe6).
 pub fn path(pack: &Path, lang: &str) -> PathBuf {
     pack.join(DIR).join(format!("{lang}.toml"))
 }
@@ -115,7 +115,7 @@ pub fn languages(dir: &Path) -> Vec<String> {
 /// definition has, a string with a combining mark (write the composed
 /// character); and in the own language's (`own`), a chip or navi without a
 /// name, which a frontend would show by its id. (Which forms' strings
-/// something shows is a game's: BN6's Crosses', which nettai-match's BN6
+/// something shows is a game's: EXE6's Crosses', which nettai-match's EXE6
 /// tests check.) (A string may be empty: the invalid chip's name is, and
 /// the Japanese games print no description for some chips.)
 pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {

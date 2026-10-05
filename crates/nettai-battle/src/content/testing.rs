@@ -4,17 +4,17 @@
 //! a few chips that use GunDelSol, two dimming chips (one grabs a column)
 //! and ten navi chips, rocks,
 //! sprites with short animations, and rules written from the engine's own
-//! flag semantics (docs/engine/field-collision-damage.md). It is not BN6's
+//! flag semantics (docs/engine/field-collision-damage.md). It is not EXE6's
 //! data, which comes only from a content pack extracted from the user's ROM
-//! (`bn6-extract content`), and its numbers are chosen for tests, not taken
+//! (`exe6-extract content`), and its numbers are chosen for tests, not taken
 //! from the game. It has just what battles of two such navis need:
 //! stepping, the chips below, custom screens, rocks and the round's flow.
 //!
-//! Its scripts are this repository's BN6 scripts (content/bn6, the source
+//! Its scripts are this repository's EXE6 scripts (content/exe6, the source
 //! overlay), read from the repository, and its own modules
 //! (testdata/content): the test chips are definitions there, made-up
-//! records whose uses are BN6's builders and actions, so the tests run the
-//! real scripts on data they can reason about. (The BN6 modules it loads
+//! records whose uses are EXE6's builders and actions, so the tests run the
+//! real scripts on data they can reason about. (The EXE6 modules it loads
 //! bring their own chip definitions too; tests name either by key.)
 
 use super::*;
@@ -23,7 +23,7 @@ use crate::field::{PanelType, pflags};
 use std::sync::Arc;
 
 // The test chips (testdata/content/chips/test/init.luau), by key: made-up
-// records whose uses are BN6's builders and actions.
+// records whose uses are EXE6's builders and actions.
 /// Three GunDelSol levels and an EX (two columns).
 pub const SUN_GUN_1: &str = "test/sun-gun-1";
 pub const SUN_GUN_2: &str = "test/sun-gun-2";
@@ -74,7 +74,7 @@ pub const TENGU: &str = "test/tengu";
 pub const BLAST: &str = "test/blast";
 pub const BASS: &str = "test/shooter";
 pub const SUN_MOON: &str = "test/sun-moon";
-/// The link navis' own chips: BN6's HeatPres, DElecSwd, RSlash, EDeletBm,
+/// The link navis' own chips: EXE6's HeatPres, DElecSwd, RSlash, EDeletBm,
 /// VolcChrg, DripShwr, ETomahwk, FTornado, RC Brakr and DustBrk's actions
 /// (navis/<navi>/chip.luau), as chips of made-up damage. Any navi can use
 /// them here.
@@ -273,16 +273,16 @@ pub fn weapon(key: &str) -> Option<nettai_content_api::WeaponHandle> {
 pub const TICKER_1: &str = "test/ticker1";
 pub const TICKER_2: &str = "test/ticker2";
 pub const TICKER_3: &str = "test/ticker3";
-/// BN6's AreaGrab and PanelGrab (chips/areagrab, chips/panlgrab): dimming
+/// EXE6's AreaGrab and PanelGrab (chips/areagrab, chips/panlgrab): dimming
 /// chips content defines, which grab a column and a panel.
 pub const AREA_GRAB: &str = "areagrab";
 pub const PANEL_GRAB: &str = "panlgrab";
-/// BN6's BusterUp, Atk+10 and Navi+20 (chips/busterup, chips/atk-10,
+/// EXE6's BusterUp, Atk+10 and Navi+20 (chips/busterup, chips/atk-10,
 /// chips/navi-20): instant chips content defines.
 pub const BUSTER_UP: &str = "busterup";
 pub const ATTACK_10: &str = "atk-10";
 pub const NAVI_20: &str = "navi-20";
-/// BN6's instant chips content defines whose effects fill the gauge, sync
+/// EXE6's instant chips content defines whose effects fill the gauge, sync
 /// the navi, and spawn objects: FullCust, SyncTrgr, Boomer, Lance,
 /// SandWrm1, JustcOne, GolmHit1 (chips/fullcust ... chips/golmhit).
 pub const FULL_CUST: &str = "fullcust";
@@ -292,30 +292,30 @@ pub const LANCE: &str = "lance";
 pub const SAND_WORM: &str = "sandwrm1";
 pub const JUSTICE_ONE: &str = "justcone";
 pub const GOLEM_HIT: &str = "golmhit1";
-/// BN6's RockCube (chips/rockcube): a dimming chip content defines, which
+/// EXE6's RockCube (chips/rockcube): a dimming chip content defines, which
 /// places a rock in front of its user.
 pub const ROCK_CUBE: &str = "rockcube";
 pub const TICK_SHOT: &str = "test/tick-shot";
-/// BN6's CrakShot, Rflectr1 and Recov50 (chips/crakshot, chips/rflectr,
+/// EXE6's CrakShot, Rflectr1 and Recov50 (chips/crakshot, chips/rflectr,
 /// chips/recov): standard chips content defines, which dig up the panel
 /// ahead, guard and reflect, and heal.
 pub const CRAK_SHOT: &str = "crakshot";
 pub const REFLECTOR_1: &str = "rflectr1";
 pub const RECOV_50: &str = "recov50";
-/// BN6's SloGauge and Mine (chips/slogauge, chips/mine): dimming chips
+/// EXE6's SloGauge and Mine (chips/slogauge, chips/mine): dimming chips
 /// content defines, which slow the custom gauge and lay a mine.
 pub const SLOW_GAUGE: &str = "slogauge";
 pub const MINE: &str = "mine";
-/// BN6's RskyHny2 and ElecDrgn (chips/rskyhny, chips/elecdrgn): chips
+/// EXE6's RskyHny2 and ElecDrgn (chips/rskyhny, chips/elecdrgn): chips
 /// content defines, which send bees and an elec dragon.
 pub const BEES: &str = "rskyhny2";
 pub const DRAGON: &str = "elecdrgn";
-/// BN6's Gregar and Falzar (chips/gregar, chips/falzar: the Japanese ROMs'
+/// EXE6's Gregar and Falzar (chips/gregar, chips/falzar: the Japanese ROMs'
 /// giga cut-in chips), which summon the cyber beasts.
 pub const GREGAR: &str = "gregar";
 pub const FALZAR: &str = "falzar";
 
-/// The test content's game: its own modules and the BN6 modules it borrows
+/// The test content's game: its own modules and the EXE6 modules it borrows
 /// are one game, `test` (its modules are `test:...`; what they define is
 /// keyed by its own name, as in any game).
 pub const ROOT: &str = "test";
@@ -327,7 +327,7 @@ const TEST_PACK: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/pack");
 /// The test content's own modules (its roles).
 const TEST_CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/content");
 
-/// The support pack (content/exelib) in `scripts`: what BN6's modules
+/// The support pack (content/exelib) in `scripts`: what EXE6's modules
 /// require by `@exelib/...`, for content that loads them.
 pub fn add_shared(scripts: &mut Scripts) {
     scripts.add_support(EXELIB_PACK, modules_under(EXELIB));
@@ -476,8 +476,8 @@ pub fn pack_index_used(modules: &std::collections::BTreeMap<String, String>) -> 
     a
 }
 
-/// The asset names the test content has: the BN6 names its modules use
-/// (with BN6's numbers where its tests look at them, made-up assets for
+/// The asset names the test content has: the EXE6 names its modules use
+/// (with EXE6's numbers where its tests look at them, made-up assets for
 /// the rest), a few made-up ones for the test pack, and a placeholder.
 fn assets() -> nettai_content_api::AssetNames {
     nettai_content_api::AssetNames::of_pack(ROOT, pack_index())
@@ -599,7 +599,7 @@ const ROLE_BANNERS: &[(&str, u8)] = &[
     ("program-advance-empty", 0x34),
 ];
 
-/// The test content's assets with BN6's numbers.
+/// The test content's assets with EXE6's numbers.
 fn numbered_assets() -> nettai_content_api::PackIndex {
     let mut a = nettai_content_api::PackIndex::default();
     for (role, id) in ROLE_SOUNDS {
@@ -839,7 +839,7 @@ fn numbered_assets() -> nettai_content_api::PackIndex {
 }
 
 /// The asset names MegaMan's weapon definitions and the forms' kinds use
-/// (content model v2, step 8e), with BN6's numbers.
+/// (content model v2, step 8e), with EXE6's numbers.
 fn form_weapon_assets(a: &mut nettai_content_api::PackIndex) {
     let sprite = |c, i| PackSprite { category: c, index: i };
     for (name, id) in [
@@ -877,7 +877,7 @@ fn form_weapon_assets(a: &mut nettai_content_api::PackIndex) {
 }
 
 /// The asset names the standard chip actions' modules use (content model
-/// v2, step 8g), with BN6's numbers.
+/// v2, step 8g), with EXE6's numbers.
 fn standard_chip_assets(a: &mut nettai_content_api::PackIndex) {
     let sprite = |c, i| PackSprite { category: c, index: i };
     for (name, id) in [
@@ -905,7 +905,7 @@ fn standard_chip_assets(a: &mut nettai_content_api::PackIndex) {
 }
 
 /// The asset names the navi chips' modules use (content model v2), with
-/// BN6's numbers.
+/// EXE6's numbers.
 fn navi_chip_assets(a: &mut nettai_content_api::PackIndex) {
     let sprite = |c, i| PackSprite { category: c, index: i };
     for (name, id) in [
@@ -962,10 +962,10 @@ fn navi_chip_assets(a: &mut nettai_content_api::PackIndex) {
     }
 }
 
-/// Where the BN6 scripts are (the source overlay in this repository).
-const OVERLAY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
+/// Where the EXE6 scripts are (the source overlay in this repository).
+const OVERLAY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/exe6");
 
-/// The behavior BN5 and BN6 share (content/exelib), which BN6's modules
+/// The behavior EXE5 and EXE6 share (content/exelib), which EXE6's modules
 /// require by `@exelib/...`: a support pack beside the test content.
 const EXELIB: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/exelib");
 
@@ -973,7 +973,7 @@ const EXELIB: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/exelib"
 pub const EXELIB_PACK: &str = "exelib";
 
 /// The test content's scripts: its own modules (testdata/content), these
-/// modules of the BN6 overlay, and whatever they `require` of it.
+/// modules of the EXE6 overlay, and whatever they `require` of it.
 pub fn scripts() -> Scripts {
     static SCRIPTS: std::sync::OnceLock<Scripts> = std::sync::OnceLock::new();
     SCRIPTS
@@ -1002,7 +1002,7 @@ pub fn scripts() -> Scripts {
                 ("objects/flying-shot/init", "objects/flying-shot/init"),
                 ("lib/buster", "lib/buster"),
                 // MegaMan's buster, charged and blank shots and HeatCross's
-                // charged shot are weapon definitions. (BN6's rules/roles
+                // charged shot are weapon definitions. (EXE6's rules/roles
                 // isn't here: the test pack fills the roles.)
                 ("navis/megaman/weapons/blank-shot/init", "navis/megaman/weapons/blank-shot/init"),
                 ("navis/megaman/weapons/charged-shot/init", "navis/megaman/weapons/charged-shot/init"),
@@ -1077,7 +1077,7 @@ pub fn scripts() -> Scripts {
                     "navis/megaman/forms/slashcross-beast/hit_flash",
                 ),
                 ("objects/absorbed-obstacle/init", "objects/absorbed-obstacle/init"),
-                // The instant chips: BN6's definitions, and the effects
+                // The instant chips: EXE6's definitions, and the effects
                 // the test chips compose (the plus chips', FireHit's fist,
                 // FlmHook's hook).
                 ("lib/instant/plus", "lib/instant/plus"),
@@ -1141,7 +1141,7 @@ pub fn scripts() -> Scripts {
                 ("lib/effects", "lib/effects"),
                 ("lib/sparks", "lib/sparks"),
                 ("rules/collision", "rules/collision"),
-                // BN6's Beast Out turns, a system of the test rules.
+                // EXE6's Beast Out turns, a system of the test rules.
                 ("rules/beast/init", "rules/beast/init"),
                 ("rules/emotion/init", "rules/emotion/init"),
                 ("rules/beast/rush", "rules/beast/rush"),
@@ -1149,11 +1149,11 @@ pub fn scripts() -> Scripts {
                 // (Its chips are the test content's own: testdata's
                 // rules/cross-special.luau.)
                 ("rules/beast/cross-special", "rules/beast/cross-special"),
-                // (Its tables are the test content's own, the same as BN6's.)
+                // (Its tables are the test content's own, the same as EXE6's.)
                 ("rules/berserk", "rules/berserk"),
                 ("lib/trajectory", "lib/trajectory"),
                 ("lib/hp", "lib/hp"),
-                // BN6's chip gate battle (battle flag 0x40), which the
+                // EXE6's chip gate battle (battle flag 0x40), which the
                 // Beast Out button and the beast buster test.
                 ("lib/chip_gate_battle", "lib/chip_gate_battle"),
                 // The bombs and seeds: the chips, whose actions the test
@@ -1239,7 +1239,7 @@ pub fn scripts() -> Scripts {
                 ("lib/supports/controller", "lib/supports/controller"),
                 // The trap chips, the navi-changing chips and the gauge
                 // chips: the test trap and boosts compose their hooks;
-                // SloGauge is BN6's.
+                // SloGauge is EXE6's.
                 ("lib/traps/controller", "lib/traps/controller"),
                 ("chips/antinavi/init", "chips/antinavi/init"),
                 ("chips/antidmg/init", "chips/antidmg/init"),
@@ -1281,7 +1281,7 @@ pub fn scripts() -> Scripts {
                 ("chips/slogauge/init", "chips/slogauge/init"),
                 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
                 ("objects/rising-bubble/init", "objects/rising-bubble/init"),
-                // ElemTrap, the time bombs and Mine: BN6's definitions,
+                // ElemTrap, the time bombs and Mine: EXE6's definitions,
                 // whose hooks the test traps and time bombs run.
                 ("chips/elemtrap/trap", "chips/elemtrap/trap"),
                 ("chips/elemtrap/strike", "chips/elemtrap/strike"),
@@ -1470,16 +1470,16 @@ fn rules() -> Rules {
                 PanelType::RoadDown => (pflags::SOLID | 0x200, Some(SlideVector { dx: 0, dy: 1, tiles: 1 })),
                 PanelType::RoadLeft => (pflags::SOLID | 0x200, Some(SlideVector { dx: -1, dy: 0, tiles: 1 })),
                 PanelType::RoadRight => (pflags::SOLID | 0x200, Some(SlideVector { dx: 1, dy: 0, tiles: 1 })),
-                // BN5's three (docs/design/bn5-map.md §15.2).
+                // EXE5's three (docs/design/exe5-map.md §15.2).
                 PanelType::Metal => (pflags::SOLID | 0x200, None),
                 PanelType::Lava => (pflags::SOLID | 0x1000, None),
                 PanelType::Sea => (pflags::SOLID | 0x20000, None),
             };
             // Every panel type is on the field (the step sword looks for
             // this bit). The roads last 0x708 ticks, lava and sea 960 as
-            // BN5's do; lava burns for 50, sea drains fire bodies and
+            // EXE5's do; lava burns for 50, sea drains fire bodies and
             // holds a body that ends a move on it for 20 ticks, and metal
-            // slides it as BN5's does.
+            // slides it as EXE5's does.
             let road = t.is_road();
             PanelTypeRule {
                 flags: flags | ON_FIELD,
@@ -1567,7 +1567,7 @@ fn rules() -> Rules {
             anti_navi_sparkle: crate::content::SparkleOffset { dy: 16, z: 32 },
             mixed_modifiers: false,
         },
-        // The SP navi chips BN6's modules bring: Count[SP].
+        // The SP navi chips EXE6's modules bring: Count[SP].
         sp_slots: vec!["sp/count".into()],
         push_vectors: [
             SlideVector { dx: 1, dy: 0, tiles: 6 },
@@ -1623,7 +1623,7 @@ fn rules() -> Rules {
     }
 }
 
-/// BN5's metal slide (0x0800C920, 0x0800C9C0): by the direction of the
+/// EXE5's metal slide (0x0800C920, 0x0800C9C0): by the direction of the
 /// move, the steps tried in turn (forward, back, up, down: dx toward the
 /// front).
 pub fn metal_slide() -> crate::content::PanelSlide {
@@ -1811,10 +1811,10 @@ fn pack_animations() -> std::collections::BTreeMap<PackSprite, Vec<Vec<AnimFrame
     sprites
 }
 
-/// Side `side`'s bug frags in battle `b`: BN6's dark-chips system's state
+/// Side `side`'s bug frags in battle `b`: EXE6's dark-chips system's state
 /// (the test content's ruleset plays it).
 pub fn bug_frags(b: &crate::Battle, side: u8) -> u32 {
-    let (schema, state) = b.system_state(side, "dark-chips").expect("the test content's ruleset plays BN6's dark-chips system");
+    let (schema, state) = b.system_state(side, "dark-chips").expect("the test content's ruleset plays EXE6's dark-chips system");
     match state.get(schema, schema.index_of("bug_frags").expect("its bug frags")) {
         nettai_content_api::FieldValue::U32(n) => n,
         other => panic!("bug frags {other:?}"),

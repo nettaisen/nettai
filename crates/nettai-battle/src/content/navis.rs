@@ -41,7 +41,7 @@ pub struct NaviData {
     #[serde(default)]
     pub chip_bonus: Option<NaviChipBonus>,
     /// MegaMan's bonus on a family's damaging chips used standing on a
-    /// type of panel, in a form with no `chip_bonus` of its own (BN5's: Aqua
+    /// type of panel, in a form with no `chip_bonus` of its own (EXE5's: Aqua
     /// chips on sea, 0x0800D0A6); the use turns the panel Normal.
     #[serde(default)]
     pub panel_bonus: Option<PanelChipBonus>,
@@ -145,9 +145,9 @@ serde_flags!(NaviTraits, u8);
 
 /// A navi's forms (`forms`): that it has any says the navi changes form
 /// (MegaMan: where the original asks whether a navi is MegaMan), and its
-/// souls are BN5's Soul Unison's. What else the table holds is its game's
-/// (BN6's sets by game, `gregar` and `falzar`: its Crosses, Beast Out and
-/// Beast Over, which BN6's rules and bn6-compat's `forms` read).
+/// souls are EXE5's Soul Unison's. What else the table holds is its game's
+/// (EXE6's sets by game, `gregar` and `falzar`: its Crosses, Beast Out and
+/// Beast Over, which EXE6's rules and exe6-compat's `forms` read).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviForms {
     /// The souls the custom screen's soul button offers (each a form with
@@ -200,7 +200,7 @@ pub enum ChipMatch {
     Family(ChipFamily),
 }
 
-/// A soul's place on BN5's custom screen: its number (NaviStats +0x2C,
+/// A soul's place on EXE5's custom screen: its number (NaviStats +0x2C,
 /// the soul-used bits' and the save's soul flags' order) and the family
 /// of the chip given up for it (0x08024BE0's table).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
@@ -216,7 +216,7 @@ pub struct SoulData {
 }
 
 /// One of MegaMan's forms. (What a game's systems say of their game's
-/// forms, BN6's kinds of form among it, is their extension:
+/// forms, EXE6's kinds of form among it, is their extension:
 /// `SystemDef::extends`.)
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -225,7 +225,7 @@ pub struct FormData {
     /// change form, and what a revert takes them back to (one a game).
     #[serde(default)]
     pub base: bool,
-    /// A soul's number and family (BN5's Soul Unison: the form is a soul).
+    /// A soul's number and family (EXE5's Soul Unison: the form is a soul).
     #[serde(default)]
     pub soul: Option<SoulData>,
     pub sprite: SpriteId,
@@ -289,20 +289,20 @@ pub struct FormData {
     /// (`sub_80100EC`) and no invulnerable glow (`sub_8016860`).
     #[serde(default)]
     pub glow: Option<Vec<u16>>,
-    /// The lag at the end of a move in it, in place of MegaMan's 4 (BN5's
+    /// The lag at the end of a move in it, in place of MegaMan's 4 (EXE5's
     /// ShadowSoul's 0: 0x0800E0D2).
     #[serde(default)]
     pub move_lag: Option<u8>,
-    /// What primes it, and what a primed use doubles (BN5's GyroSoul).
+    /// What primes it, and what a primed use doubles (EXE5's GyroSoul).
     #[serde(default)]
     pub priming: Option<Priming>,
     /// The damaging chips (not dimming chips) that deal double while it
-    /// stands on grass, which the use turns normal (BN5's TomahawkSoul's
+    /// stands on grass, which the use turns normal (EXE5's TomahawkSoul's
     /// Wood chips: 0x0801032A).
     #[serde(default)]
     pub grass_doubles: Option<ChipMatch>,
     /// The ticks a damaging chip (not a dimming chip) used with the panel
-    /// ahead not its side's keeps it invulnerable (BN5's KnightSoul's 50:
+    /// ahead not its side's keeps it invulnerable (EXE5's KnightSoul's 50:
     /// 0x08010392).
     #[serde(default)]
     pub front_guard: Option<u16>,
@@ -310,17 +310,17 @@ pub struct FormData {
     pub traits: FormTraits,
     /// (This and what follows are read from the definition by handle, not
     /// with the rest of the record.)
-    /// The action that changes a navi into it (a game's form change: BN6's
-    /// forms', content/bn6/rules/forms), which the pause handler runs at a
+    /// The action that changes a navi into it (a game's form change: EXE6's
+    /// forms', content/exe6/rules/forms), which the pause handler runs at a
     /// turn's start.
     #[serde(skip)]
     pub change: Option<nettai_content_api::ActionHandle>,
     /// The action that takes a navi out of it back to its base form when
-    /// its side asks (BN5's souls': 0x080121D8), run while paused; none:
-    /// the framework's revert (`sub_8015614`, BN6's forms).
+    /// its side asks (EXE5's souls': 0x080121D8), run while paused; none:
+    /// the framework's revert (`sub_8015614`, EXE6's forms).
     #[serde(skip)]
     pub revert: Option<nettai_content_api::ActionHandle>,
-    /// The action its charged chips start in place of their own (BN5's
+    /// The action its charged chips start in place of their own (EXE5's
     /// NapalmSoul's, action 0x4B: 0x08010442).
     #[serde(skip)]
     pub charged_action: Option<nettai_content_api::ActionHandle>,
@@ -334,7 +334,7 @@ pub struct FormData {
     pub identity: Option<IdentityHandle>,
 }
 
-/// A form's priming (BN5's GyroSoul: AIData +0x0D): the use of a chip it
+/// A form's priming (EXE5's GyroSoul: AIData +0x0D): the use of a chip it
 /// is primed by (not a dimming chip) primes it, with a sound (0x080102D2);
 /// primed, the next damaging chip it doubles (not a dimming chip) deals
 /// double and spends it, and nothing else doubles a chip meanwhile: not
@@ -350,9 +350,9 @@ pub struct Priming {
 
 /// A form's faces in the emotion window, by its navi's emotion
 /// (`sub_8015B54`): the mugshots' numbers. An emotion without a face of
-/// its own shows the normal one. (In BN6 the base form has MegaMan's five,
+/// its own shows the normal one. (In EXE6 the base form has MegaMan's five,
 /// a Cross a tired one besides, a Beast a Full Synchro one: `sub_801E6A8`
-/// adds 5 or 1 to `byte_801E700`'s picture. BN5's MegaMan has a worried
+/// adds 5 or 1 to `byte_801E700`'s picture. EXE5's MegaMan has a worried
 /// one besides, and a second set: his Hub Style's, 0x0801AF64.)
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize)]
 pub struct Faces {
@@ -489,7 +489,7 @@ pub struct FormChipBonus {
     /// Dimming chips of the family count too.
     #[serde(default)]
     pub dimming_chips: bool,
-    /// Only on a use that isn't charged, with the A charge not full (BN5's
+    /// Only on a use that isn't charged, with the A charge not full (EXE5's
     /// NapalmSoul, 0x0800D0A6).
     #[serde(default)]
     pub uncharged: bool,
@@ -516,7 +516,7 @@ pub struct ChargedChips {
     /// And the chips with the `element_sword` trait.
     #[serde(default)]
     pub element_swords: bool,
-    /// Only its chips that are neither dimming chips nor dark chips (BN5's
+    /// Only its chips that are neither dimming chips nor dark chips (EXE5's
     /// souls, 0x0801090A).
     #[serde(default)]
     pub plain: bool,
@@ -553,7 +553,7 @@ impl FormEffects {
     /// Untouchable (ObjectFlags1 0x08000000): no hit reaches it, and poison
     /// panels don't hurt it.
     pub const UNTOUCHABLE: u16 = 0x020;
-    /// The target marker (BN6's Beast forms' lock-on marker).
+    /// The target marker (EXE6's Beast forms' lock-on marker).
     pub const TARGET_MARKER: u16 = 0x040;
     /// Invulnerable for good.
     pub const INVULNERABLE: u16 = 0x080;
@@ -592,21 +592,21 @@ impl FormTraits {
     /// Its held buster doesn't fire while its B+Back special is asked for
     /// (TenguCross and DustCross in Beast Out).
     pub const SPECIAL_HOLDS_BUSTER: u16 = 0x004;
-    /// A metal panel doesn't slide the navi (BN5's soul 5, NaviStats
+    /// A metal panel doesn't slide the navi (EXE5's soul 5, NaviStats
     /// +0x2C: 0x08017216).
     pub const STANDS_ON_METAL: u16 = 0x008;
     /// The side's systems' controller decides the navi's idle (Beast Over's
     /// berserk, `sub_802D322`): the player's buttons don't reach it
     /// (`apply_actor_inputs`), and a full gauge opens the custom screen.
     pub const CONTROLLED: u16 = 0x010;
-    /// The navi's target marker shows (`sub_80E1566`: BN6's Beast forms,
+    /// The navi's target marker shows (`sub_80E1566`: EXE6's Beast forms,
     /// 0x0B to 0x18).
     pub const SHOWS_TARGET_MARKER: u16 = 0x020;
     /// An afterimage of the navi lasts while it stays in a form with this
-    /// trait, not until its attack ends (`sub_80E341E`: BN6's Beast forms).
+    /// trait, not until its attack ends (`sub_80E341E`: EXE6's Beast forms).
     pub const AFTERIMAGES_STAY: u16 = 0x040;
     /// With a Null chip next, its A charge's time is the alternative
-    /// A-charge routine's (`sub_8012F62`: BN6's Beast forms).
+    /// A-charge routine's (`sub_8012F62`: EXE6's Beast forms).
     pub const ALT_CHARGE_TIME: u16 = 0x080;
     /// Its damaging Null chips deal double, outside battle mode 1
     /// (`sub_8012ABC`: Beast Over).
@@ -650,7 +650,7 @@ pub struct FormWeapons {
     pub back_special: Option<WeaponHandle>,
     /// The A-button charge for Null-family chips in Beast forms.
     pub alt_a_charge: Option<WeaponHandle>,
-    /// A BN5 soul's Chaos Unison weapon (AIData +0x11): what a full B
+    /// An EXE5 soul's Chaos Unison weapon (AIData +0x11): what a full B
     /// charge released in the chaos cycle's window fires.
     pub chaos: Option<WeaponHandle>,
 }
@@ -941,10 +941,10 @@ mod tests {
         let cross = read(r#"{ "mugshot": { "normal": 5, "tired": 10 } }"#).unwrap();
         assert_eq!([Emotion::Normal, Emotion::Angry, Emotion::Tired].map(|e| cross.of(e).0), [5, 5, 10]);
         assert_eq!(read("{}"), None);
-        // BN5's MegaMan: a worried face, and a second set the side may show.
-        let bn5 = read(r#"{ "mugshot": { "normal": 0, "worried": 2, "variant": { "normal": 11, "worried": 13 } } }"#).unwrap();
-        assert_eq!([Emotion::Worried, Emotion::Angry].map(|e| bn5.shown(e, false).0), [2, 0]);
-        assert_eq!([Emotion::Worried, Emotion::Angry].map(|e| bn5.shown(e, true).0), [13, 11]);
+        // EXE5's MegaMan: a worried face, and a second set the side may show.
+        let exe5 = read(r#"{ "mugshot": { "normal": 0, "worried": 2, "variant": { "normal": 11, "worried": 13 } } }"#).unwrap();
+        assert_eq!([Emotion::Worried, Emotion::Angry].map(|e| exe5.shown(e, false).0), [2, 0]);
+        assert_eq!([Emotion::Worried, Emotion::Angry].map(|e| exe5.shown(e, true).0), [13, 11]);
         assert_eq!(cross.shown(Emotion::Tired, true).0, 10);
     }
 }
