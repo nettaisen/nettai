@@ -10,10 +10,11 @@
 //! - **a player** ([`Player`]) over **a driver** ([`driver`]: live play of
 //!   a set from the buttons; [`netplay`]: another player over the
 //!   network): the host gives it the GBA buttons held and the time that
-//!   passed, or asks for a tick, and takes the picture, the sound as
-//!   samples and what there is to say. Under it, the [`session`];
-//! - the drawing, which is nettai-render's ([`Renderer`], [`Frame`]), and
-//!   the status lines' text ([`text`]).
+//!   passed, or asks for a tick, and takes the picture and the sound as
+//!   samples. The library draws no text of its own over the picture: where
+//!   playback is, why it stopped, a result and a connection's figures are
+//!   values the host shows as it likes. Under it, the [`session`];
+//! - the drawing, which is nettai-render's ([`Renderer`], [`Frame`]).
 //!
 //! docs/frontend.md §7, and `examples/embed.rs`: a host with no window.
 
@@ -22,7 +23,6 @@ pub mod game;
 pub mod netplay;
 pub mod player;
 pub mod session;
-pub mod text;
 
 pub use nettai_render::{Frame, Renderer};
 pub use player::Player;

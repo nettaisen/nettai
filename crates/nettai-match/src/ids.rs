@@ -14,7 +14,7 @@
 
 use nettai_battle::content::Content;
 use nettai_content_api::{
-    AssetKind, ChipHandle, FormHandle, NaviCustProgramHandle, NaviHandle, PatchCardHandle, RecordHandle, StageHandle,
+    AssetKind, ChipHandle, FormHandle, NaviCustProgramHandle, NaviHandle, PatchCardHandle, RecordHandle, Registry, StageHandle,
     WeaponHandle, keys,
 };
 
@@ -68,6 +68,48 @@ pub fn weapon(content: &Content, game: &str, name: &str) -> Option<WeaponHandle>
 
 pub fn record(content: &Content, game: &str, name: &str) -> Option<RecordHandle> {
     key(content, game, name).and_then(|k| content.defs.record(k))
+}
+
+/// The content's key of definition `h` of `registry`, for the registries a
+/// side's fact may hold a definition of (a form, a chip, a navi, a stage, a
+/// weapon); none: the content has no such definition, or the registry is
+/// none of those.
+pub fn key_of(content: &Content, registry: Registry, h: u16) -> Option<&str> {
+    let defs = &content.defs;
+    let i = h as usize;
+    Some(match registry {
+        Registry::Form if i < defs.forms.len() => defs.form(FormHandle(h)).key.as_str(),
+        Registry::Chip if i < defs.chips.len() => defs.chip(ChipHandle(h)).key.as_str(),
+        Registry::Navi if i < defs.navis.len() => defs.navi(NaviHandle(h)).key.as_str(),
+        Registry::Stage if i < defs.stages.len() => defs.stage(StageHandle(h)).key.as_str(),
+        Registry::Weapon if i < defs.weapons.len() => defs.weapon(WeaponHandle(h)).key.as_str(),
+        _ => return None,
+    })
+}
+
+/// The definition of `registry` named `name` in `game` (its handle), for
+/// the registries [`key_of`] knows.
+pub fn handle_of(content: &Content, game: &str, registry: Registry, name: &str) -> Option<u16> {
+    match registry {
+        Registry::Form => form(content, game, name).map(|h| h.0),
+        Registry::Chip => chip(content, game, name).map(|h| h.0),
+        Registry::Navi => navi(content, game, name).map(|h| h.0),
+        Registry::Stage => stage(content, game, name).map(|h| h.0),
+        Registry::Weapon => weapon(content, game, name).map(|h| h.0),
+        _ => None,
+    }
+}
+
+/// Definition `h` of `registry` for a message: its name in the content's
+/// own strings where it has one, else its key, else its number.
+pub fn shown(content: &Content, registry: Registry, h: u16) -> String {
+    match (registry, key_of(content, registry, h)) {
+        (Registry::Form, Some(_)) => crate::names::form(content, FormHandle(h)).to_string(),
+        (Registry::Chip, Some(_)) => crate::names::chip(content, ChipHandle(h)).to_string(),
+        (Registry::Navi, Some(_)) => crate::names::navi(content, NaviHandle(h)).to_string(),
+        (_, Some(key)) => local(key).to_string(),
+        (_, None) => format!("{registry} {h}"),
+    }
 }
 
 /// A background of `game`'s pack by name.

@@ -317,9 +317,11 @@ impl Save {
         self.event_flag(COMPRESSED_FLAG + part as u16)
     }
 
-    /// Whether the NaviCust's compile leaves the HP (the EXE5 navicust
-    /// system's setup `cyberworld`): the save is in the cyberworld (its
-    /// area from 0x80), or has flag 0x10B2.
+    /// Whether the original's compile leaves this save's HP (its ending
+    /// outside the real world's, which the engine's rules don't have:
+    /// content/exe5/rules/navicust): the save is in the cyberworld (its
+    /// area from 0x80), or has flag 0x10B2. What verify's compile test
+    /// goes by for the bytes that ending wrote.
     pub fn cyberworld(&self) -> bool {
         self.image[AREA] >= 0x80 || self.event_flag(KEEPS_HP_FLAG)
     }
