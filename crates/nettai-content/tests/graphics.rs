@@ -191,7 +191,7 @@ fn custom() -> CustomScreen {
     let picture = |seed: u8| Picture { tiles: tiles(42, seed), palette: palette(seed as u16) };
     let patch = |x, y, w, h, by_column| MapPatch { x, y, width: w, height: h, palette: 9, by_column };
     CustomScreen {
-        layout: CustomLayout { name: 0x59, art: 0x69, ..CustomLayout::BN6 },
+        layout: CustomLayout { name: 0x59, art: 0x69, button_uses: true, ..CustomLayout::BN6 },
         buttons: vec![(
             "soul".into(),
             ButtonPictures {
@@ -202,6 +202,7 @@ fn custom() -> CustomScreen {
                 palettes: vec![palette(99), palette(100)],
                 icons: tiles(56, 101),
                 icon_palette: palette(102),
+                icon_palettes: vec![("colonel".into(), palette(103))],
             },
         )],
         window_tiles: tiles(0x87, 40),
