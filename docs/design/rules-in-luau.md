@@ -179,6 +179,8 @@ return define.system {
     state = { counter = "u8", used = "bool", spent = "bool", exhausted = "bool", check_delay = "u8" },
     -- What the player brings (the save's unlock), read-only in battle.
     setup = { unlocked = "bool", sealed = "bool" },
+    -- (An enum of the setup has no default: a player's setup states it, or the round doesn't start. EXE6's
+    -- `version = { "falzar", "gregar" }` is none of the engine's to pick. `setup_defaults` may give it one.)
     -- (`setup_defaults = { field = value }`: what a player's setup that says nothing of a field
     -- holds, else zero; EXE5's light and dark system's `{ karma = 500 }`, a fresh save's.)
     hooks = {
@@ -1821,6 +1823,16 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   ROM's rush byte and lock-on mode into its own `RomChip`.
 - **Tests:** rules' `a_system_extends_its_games_definitions`, on a made-up extension of the test content's counter
   system: the value kept, and a type, a range, a variant, a table field and a second owner refused.
+- **`unplayable_tactics`** (2026-10-05), a system's other statement for tools: the chips of its game its rules can't
+  play of a player's tactics, by id, each with why (`{ ["stepswrd"] = "the original can't play it in auto battle
+  (...)" }`). EXE5's auto battle makes it from its own data (rules/auto_battle/place: a chip whose positioning class
+  has no routine, where the original crashes and `place.step` raises), so no tool lists chips by name.
+  - The engine reads none of it: `Defs::unplayable_tactic(chip)` answers for the ruleset's systems, and a match's
+    check (`nettai_match::AutoBattle::check`) refuses such a chip among a side's 42 places.
+  - Why data and not a hook like `folder_check`: nothing of the answer depends on a round (a folder's rules read
+    the side's stats), so a tool without a battle (the save import, a side checked alone) can ask.
+  - An id that is no chip of the game is refused as the content is defined. Test: rules'
+    `a_system_says_the_tactics_it_cant_play`.
 
 ### S7b, `FormKind` and the forms' EXE6 fields (2026-10-03)
 

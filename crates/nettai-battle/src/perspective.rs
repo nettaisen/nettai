@@ -262,7 +262,7 @@ mod tests {
         };
         let with = |c: &std::sync::Arc<crate::content::Content>, link: bool| {
             let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(c));
-            setup.content = c.hash();
+            crate::content::testing::on(&mut setup, &c);
             if !link {
                 setup.settings.effects &= !crate::setup::effects::LINK;
             }
