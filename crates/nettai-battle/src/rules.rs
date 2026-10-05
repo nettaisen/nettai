@@ -815,7 +815,7 @@ mod tests {
         assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Battle::new(setup.clone(), content.clone()))).is_err());
         setup.players[1].set_fact(&content, "version", &[Fact::Name("falzar")]).unwrap();
         let b = Battle::new(setup, content);
-        assert_eq!((b.fact(0, "version").and_then(|f| f.name()), b.fact(1, "version").and_then(|f| f.name())), (Some("gregar"), Some("falzar")));
+        assert_eq!((b.fact(0, PlayerFact::Version).and_then(|f| f.name()), b.fact(1, PlayerFact::Version).and_then(|f| f.name())), (Some("gregar"), Some("falzar")));
     }
 
     #[test]
