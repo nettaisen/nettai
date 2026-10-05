@@ -9,7 +9,7 @@ A pack is the only form this data takes: `exe6-extract content` writes it
 from the user's ROM, and everything loads it straight from its files.
 
 The code is the `nettai-content` crate, `exe6-extract content`, and pack
-loading in `nettai-frontend` and the audio examples. Everything below was
+loading in `nettai-frontend` (`game`) and the audio examples. Everything below was
 checked on the game's full battle graphics and all of its songs; the in-repo
 tests use synthetic assets.
 
@@ -878,7 +878,7 @@ a few seconds. It is the only extraction.
 ## 10. Commands
 
     cargo run -p exe6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/exe6    # ROMs -> pack
-    cargo run -p nettai-frontend -- <trace.jsonl>                      # every pack in data/content
+    cargo run -p nettai-demo -- <trace.jsonl>                          # every pack in data/content
     cargo run -p nettai-content -- check data/content/exe6            # lint every file
     cargo run -p nettai-content -- verify data/content/exe6 <reference-pack> [--seconds N]
     cargo run -p nettai-content -- aseprite-export data/content/exe6 [NAME ...]
