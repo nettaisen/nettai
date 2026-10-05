@@ -1464,6 +1464,19 @@ them.
   - The lab's scenarios (souls/06-recovery/capsule-*, ten; souls/07-obstacle/arm-change*, five) match on every
     frame and every sound call: each capsule's effect, the low-HP table, the refusals, B, a soul after a capsule,
     the arm chip fired twice and gone the turn after, B's order through later picks, Arm Change with a soul.
+  - On screen (nettai-render `custom`; docs/frontend.md's BN5 console): a capsule's slot is drawn as a chip's
+    (0x08024114: its icon, the empty icon once used; code 0x1B, blank; palette 12 while unavailable, 0x08024200;
+    the chip cursor, 0x080246B8), its chip window the name and picture alone (0x08024422: no frame colors, no
+    code, element or damage), its mix the soul's choice's sprite with the chip's icon (the chip records' icons
+    are the table 0x0874A738 the state loads from). Arm Change's tiles are 0x086FA7CC, the second set for state 1
+    alone (0x0802415A), its picture 0x0874F5B8; the chip it holds is a sprite over it (0x080254F4: x 0x45, y 0x84,
+    sprite palette 10, the HUD's icons'), drawn by the choosing state, the soul's choice and the blink's hidden
+    ticks from 20 down; the blink redraws the column's cell from its second tick (0x08023712), so the cell stays
+    filled on the tick the chip leaves. Shuffle's chip window shows its uses left (0x080245F2: a digit at
+    0x060093A0), which BN6's routine reads and doesn't draw. All three states draw the emblem and the Regular
+    chip's frame after their step. The soul icon's sprite palette is the version's (0x0874AAB8, Team Colonel's
+    0x0874BDBC: color 9, the outline). Verified frame for frame against mGBA on 26 scenarios (every custom-screen
+    frame; bn5.txt keeps eight).
   - Not built: the Liberation Missions' team navis' part of the same routine (the screen's +0x10 nonzero: a chip
     pair by navi from 0x08025EA0 in slot 9, 0x08023EFE; the navi switch, state 0x40; battle mode 1's button in
     slot 11). A netbattle's navi is MegaMan.
