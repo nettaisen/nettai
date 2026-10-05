@@ -154,24 +154,37 @@ fn a_game_loads_alone_under_its_names() {
     assert!(e.contains("content holds one game"), "{e}");
 }
 
-/// docs/design/content-model-v2.md §4.0: the order of a game's init.luau's
+/// docs/design/content-model-v2.md §4.0: the order of a game's inits'
 /// requires is the order its modules load in, and nothing more. Each
-/// game's requires turned round (its rules last, its chips from the last
-/// to the first) define the same definitions under the same keys, in the
-/// same places: no handle moves. (An anonymous key counts its own module's
-/// definitions, whenever the module loads.)
+/// game's requires turned round (its top module's: its rules last; each
+/// folder's init's: its chips from the last to the first) define the same
+/// definitions under the same keys, in the same places: no handle moves.
+/// (An anonymous key counts its own module's definitions, whenever the
+/// module loads.)
 #[test]
 fn the_order_of_a_games_requires_moves_no_key_and_no_handle() {
+    use nettai_content_api::packs;
     for game in ["exe6", "exe5"] {
         let mut c = read(&[game]);
         let mut turned = c.clone();
         c.define().unwrap_or_else(|e| panic!("content/{game}: {e}"));
-        let top = nettai_content_api::packs::top_module(game);
-        let mut requires = nettai_content_api::packs::requires(&turned.scripts.modules[&top]);
-        assert!(requires.len() > 300 && requires[0] == "@self/rules", "{game}/init.luau: {} requires", requires.len());
-        requires.reverse();
-        let lines: Vec<String> = requires.iter().map(|r| format!("    require(\"{r}\"),\n")).collect();
-        turned.scripts.modules.insert(top, format!("return {{\n{}}}\n", lines.concat()));
+        // The game's indexes: its top module, and each folder's init it
+        // requires that is nothing but requires.
+        let top = packs::top_module(game);
+        let listed = packs::required_by(&top, &turned.scripts.modules[&top]).unwrap();
+        assert_eq!(listed[0], format!("{game}:rules"), "{game}/init.luau");
+        let mut indexes = vec![top];
+        indexes.extend(listed.iter().map(|m| nettai_content_api::keys::init_of(m)).filter(|m| turned.scripts.modules.get(m).is_some_and(|s| packs::is_index(s))));
+        assert!(indexes.len() >= 6, "{game}'s indexes: {indexes:?}");
+        let mut count = 0;
+        for index in indexes {
+            let mut requires = packs::requires(&turned.scripts.modules[&index]);
+            count += requires.len();
+            requires.reverse();
+            let lines: Vec<String> = requires.iter().map(|r| format!("require(\"{r}\")\n")).collect();
+            turned.scripts.modules.insert(index, lines.concat());
+        }
+        assert!(count > 300, "{game}'s inits: {count} requires");
         turned.define().unwrap_or_else(|e| panic!("content/{game}, turned round: {e}"));
         assert!(c.defs.definitions.defs.len() > 2000, "{game}: {} definitions", c.defs.definitions.defs.len());
         assert_eq!(c.defs.definitions, turned.defs.definitions, "{game}");
@@ -179,7 +192,7 @@ fn the_order_of_a_games_requires_moves_no_key_and_no_handle() {
         for key in ["cannon", "minibomb"] {
             assert_eq!(c.defs.chip_by_key(key), turned.defs.chip_by_key(key), "{game}: {key}'s handle");
         }
-        assert_ne!(c.hash(), turned.hash(), "the hash covers the modules' text, init.luau's too");
+        assert_ne!(c.hash(), turned.hash(), "the hash covers the modules' text, an init.luau's too");
     }
 }
 
