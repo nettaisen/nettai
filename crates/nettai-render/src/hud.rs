@@ -109,8 +109,9 @@ impl Face {
 
 /// The emotion window's face and, for 12 ticks after its picture changes,
 /// its blink (`sub_801CB38`): back to the picture (and count) before on
-/// two ticks of every four; to Full Synchro, white on those instead. The
-/// forms' pictures change at once.
+/// two ticks of every four; to Full Synchro, white on those instead; to
+/// Hub Style's Full Synchro, both, a tick of the twelve each. The forms'
+/// pictures change at once.
 #[derive(Clone, Copy, Debug)]
 struct Mood {
     now: Face,
@@ -221,7 +222,16 @@ impl HudState {
             if m.now.own && m.blink > 0 {
                 let on = m.blink & 2 != 0;
                 m.blink -= 1;
-                if m.now.full_synchro {
+                if m.now.full_synchro && m.now.hub {
+                    // Hub Style's Full Synchro face (EXE5's picture 14,
+                    // 0x08019614) is among the faces that blink back to
+                    // the picture before and among those that flash white,
+                    // and each takes a tick off the blink: six ticks,
+                    // white and the picture before by turns.
+                    m.flash = on;
+                    m.white = m.blink & 2 != 0;
+                    m.blink = m.blink.saturating_sub(1);
+                } else if m.now.full_synchro {
                     m.white = on;
                 } else {
                     m.flash = on;
