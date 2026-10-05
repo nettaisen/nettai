@@ -89,6 +89,7 @@
 "numberman/press" = { pool = "attack", index = 0x8C }
 "gyroman/navi" = { pool = "actor", index = 0x0C }
 "napalmmn/navi" = { pool = "actor", index = 0x0E }
+"magnetman/missile" = { pool = "attack", index = 0x63 }
 "magnetmn/navi" = { pool = "actor", index = 0x0D }
 "magnetmn/magnet" = { pool = "attack", index = 0x67, scratch_position = true }
 "magnetmn/pull" = { pool = "attack", index = 0x66, scratch_position = true }

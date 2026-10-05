@@ -5,8 +5,8 @@
 -- for MagnetMan (./navi) to send both (his action 8); then, with its pull (./pull) 20 pixels ahead, it slides 8
 -- pixels a tick: off the field, or, when it has a partner (pole 1 always), to 10 pixels short of the panel of
 -- MagnetMan's target, where the two meet. A navi it hits, or the meeting, stops it: it shakes (a sound) 11
--- ticks, waits 6 and goes. (Its variant 1, EXE5's MagnetMan as an enemy's, hits with modifier 3 and without the
--- immobilization, goes at once and stops while dimmed.)
+-- ticks, waits 6 and goes. Its variant 1 hits with modifier 3 and without the immobilization, goes at once and
+-- stops while dimmed: MagnetMan the navi's own chip's (navis/magnetman/chip), and EXE5's MagnetMan as an enemy's.
 
 local collision = require("../../rules/collision")
 local navi_chips = require("@exelib/navi-chips/navi")
@@ -264,18 +264,21 @@ export type Spec = {
     pole: number,
     paired: boolean,
     target_x: number,
+    -- Its variant (none: 0, the chips').
+    variant: number?,
     -- The chip's level, and the damage word.
     level: number,
     damage: number,
 }
 
--- 0x080D2FC0: a magnet of `navi`'s on (x, y) with `element` (variant 0), running while dimmed. (Its position is the
--- spawner's registers, which its init overwrites.)
+-- 0x080D2FC0: a magnet of `navi`'s on (x, y) with `element`, called while the battle is dimmed too. (Its position
+-- is the spawner's registers, which its init overwrites.)
 function magnet.spawn(navi: Object, x: number, y: number, element: number, spec: Spec): Object?
     local o = battle.spawn(magnet.kind, Vec3.zero)
     if o then
         local s = o.state :: State
-        s.pole, s.paired, s.target_x, s.variant = spec.pole, if spec.paired then 1 else 0, spec.target_x, 0
+        s.pole, s.paired, s.target_x = spec.pole, if spec.paired then 1 else 0, spec.target_x
+        s.variant = spec.variant or 0
         s.level = spec.level
         o.panel_x, o.panel_y = x, y
         o.element = element
