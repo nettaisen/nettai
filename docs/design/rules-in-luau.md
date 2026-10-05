@@ -2428,7 +2428,7 @@ enums' `#[default]`, `impl Default` for `FlowRules`, `EffectsRules`, `SlideSpeed
 stated none of them. And the choices were named for the games (`retype = "exe5"`).
 
 - **A ruleset states every rule.** `sections::REQUIRED` (`chip_use`, `effects`, `flow`, `panels`, `pools`,
-  `reactions`, `status`) and every field of them; a section or a field left out is a load error naming it
+  `reactions`, `status`; since the fresh stats, below, `fresh_stats` too) and every field of them; a section or a field left out is a load error naming it
   (`ruleset: it states no `effects` section`, `ruleset: flow: missing field `escape_check``), and so is a game
   pack with no ruleset at all (`game pack exe6 defines no ruleset`). content/exe6 gained
   rules/effects.luau and states its flow's, chip use's, status's, reactions' and panels' rules (31 settings it
@@ -2494,6 +2494,38 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
 - The verification workspace: gen-content's decode states EXE6's rules, and its check compares each stated rule
   with it; tools/exe5/gen_rules.py writes the ruleset, the reactions and the status section as content/exe5 has
   them.
+
+### A fresh navi's stats are the game's and the navi's (2026-10-05)
+
+`NaviStats::fresh` filled EXE6's init values whatever the game: a navi picked in the editor or drawn for a match
+started an EXE5 battle with EXE6's block. Each game's routine was read for what it writes
+(`initNaviStats_WithDefaultStatsMaybe_8013438` under `init_8013B64`; EXE5's 0x08010C00 under 0x080111AA, which a
+new game calls for all seven save blocks, MegaMan's and the team navis' alike).
+
+- **A required rule section, `fresh_stats`** (rules/fresh_stats.luau in each game): `reg_up` 4, `custom_level` 5
+  and `mood` 0x99 in both games, each stated; EXE6 also `beast_out_counter = 3` and `mode9_a`, MegaMan's buster
+  (the zero the routine leaves at +0x44 names weapon routine 0). Those two are optional: left out, no turns and no
+  weapon, which EXE5 has neither of. `NaviStats::fresh` has no constant left but the block's empty values (the
+  support byte with nothing on, the first folder, no Regular or tag chip, no panel trail, no shot program).
+- **The version byte, +0x20, is derived.** The routine writes its console's own: 0 in both Gregar ROMs, 1 in both
+  Falzar ROMs (read in the four). The fresh block leaves it none; a battle's start gives a block its side's
+  (nettai-match's `starting`), and the navi switch keeps the side's instead of writing 1.
+- **A shot program's byte 0 is no program in both games.** exe5-compat read it as `shot/plain`, exe6-compat as
+  none; EXE5's buster and charged shot already took none and the plain shot alike. exe5-compat reads none, and
+  the four EXE5 cards whose bug sets the plain buster shot (`fireman`, `eleball`, `woodman`, `elmperor`) say
+  `cards.buster_shot(nil)`, as EXE6's do.
+- **The mood is a save's.** Both routines write 0x99, but a save carries its mood from battle to battle (both
+  games' resets keep it): the recorded team navis' blocks have 0 or 78. The team navi check takes it from the
+  recording, as a scenario's HP.
+- **No second copy of a starting block.** exe5-compat's `codec::RESET` (a table of the bytes EXE5's reset leaves:
+  custom level 5, MegaMan's HP 100, Mega 5, Giga 1 ...) is gone; `trace::reset` is the navi's fresh stats with
+  what the save keeps, as the EXE6 NaviCust test's `before_compile` always was. Netplay's stand-in MegaMan is his
+  fresh stats with his HP, his variant and the two shoes.
+- **Checked**: EXE5's team navis against 138 recorded sides, every field (`exe5_team_navis`, now a failure where it
+  listed); MegaMan's fresh stats in both games through the NaviCust tests, which compile over them and compare
+  byte for byte with Tango's saves and the recordings (EXE5: 12 saves, 209 NaviCusts, among them the netplay
+  templates with nothing installed; EXE6: 4 saves, 1,274); the EXE6 link navis' reloads (`link_navis`); gen-content
+  reads EXE6's four bytes off the routine's instructions. No lab has a new game's save.
 
 ### To schedule: the emotion models into each game's `emotion` system
 

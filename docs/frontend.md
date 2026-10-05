@@ -1019,7 +1019,8 @@ records = [                                # the eight pattern records: a place 
 
 **The stats block** (`nettai_match::stats`) sets the navi's stats by name
 over its fresh stats (`NaviStats::fresh`, `init_8013B64`: what a new save
-gives the navi), of the side's version; a link navi's over its stats at its
+gives the navi, by its game's `fresh_stats` rules and its own definition),
+of the side's version; a link navi's over its stats at its
 `level`, as the PET's reload gives them (`nettai_match::link_navis`,
 docs/engine/link-navis.md: the base HP of the cleared game and the level's
 HP, buster levels, custom and Mega levels and abilities): `hp` (the base HP, which also sets the
