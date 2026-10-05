@@ -2,6 +2,12 @@
 # the EXE5 ROM: edit it when content is renamed or added. A key without a root is EXE5's own; a qualified one
 # (`exe6:...`) is EXE6's definition, which EXE5's code shares.
 
+# Navis: the navi numbers NaviStats +0x29 names (and a save's GameState +1, the navi its PET operates): MegaMan, then
+# the team navis the content has (Team ProtoMan's are 1 to 6, Team Colonel's 7 to 12, each team in its souls' order).
+[navis]
+"megaman" = 0
+"protoman" = 1
+
 # Weapons: the weapon routine numbers (0x0800F370, EXE6's `off_80117D4`) NaviStats +0x04 (buster), +0x05 (charged
 # shot), +0x07 (B+Back) and +0x39 (A charge) name; 0xFF none.
 [weapons]
@@ -50,6 +56,10 @@
 "megaman/hells-rolling" = [0x69]
 "megaman/guard1" = [0x6A]
 "megaman/crsshld1" = [0x6B]
+# The team navis' weapons (navis/<navi>: their stats rows' routines, 0x0801D55F's +0x05 and +0x07; their busters are
+# routine 0, MegaMan's).
+"protoman/charge" = [0x1E]
+"protoman/back" = [0x0B]
 
 # Projectile variants: the projectile table's rows (0x080C4718, EXE6's `off_80C4C78`) the buster-shot and
 # charged-shot programs (NaviStats +0x4D, +0x4F) name; the buster's and the charged shot's own, and the chips'.
