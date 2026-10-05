@@ -7,6 +7,11 @@
 -- and R as he takes off (a sound) sends him on a bombing run instead: he flies on to the first panel holding an
 -- enemy navi, stops over it and drops a bomb every 16 ticks, one for each enemy panel in his row, and 16 ticks on
 -- flies off the field.
+--
+-- GyroMan the navi's own chip, Airforce (navis/gyroman/chip), flies the same object in his place (its fourth
+-- parameter 1, by another spawner, 0x080BAE8A): it starts at the take-off, with no bombing run; it stands still
+-- while the battle is dimmed; its bombs are the variant that waits while dimmed too; its propeller's sprite doesn't
+-- step while paused; and it reports to no controller: the navi watches for it to go.
 
 local navi_chips = require("@exelib/navi-chips/navi")
 local bomb = require("./bomb")
@@ -20,6 +25,8 @@ export type State = {
     run: boolean,
     -- The bombs left to drop on his run (+6).
     bombs: number,
+    -- Its fourth parameter (+7): GyroMan the navi's own flight (Airforce).
+    airforce: boolean,
 }
 
 local gyroman = {}
@@ -51,8 +58,8 @@ local ENEMY_AREA = { [0] = 0x20, 0 }
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
 -- His speed (16.16 a tick, forward), and the ticks between bombs on his run.
 local SPEED, BETWEEN = 0x3_0000, 0xF
--- His bombs' variant (his +7 and 1).
-local BOMB_VARIANT = 1
+-- His bombs' variant (his +7 and 1): the chips' 1, Airforce's 2.
+local BOMB_VARIANT, AIRFORCE_BOMB_VARIANT = 1, 2
 
 local function damage_word(me: Object): number
     return bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
@@ -61,7 +68,8 @@ end
 -- A bomb on his panel (a sound).
 local function drop(me: Object)
     battle.play_sound(SOUND_DROP)
-    bomb.drop(me, me.panel_x, me.panel_y, me.element, BOMB_VARIANT, damage_word(me))
+    local variant = if (me.state :: State).airforce then AIRFORCE_BOMB_VARIANT else BOMB_VARIANT
+    bomb.drop(me, me.panel_x, me.panel_y, me.element, variant, damage_word(me))
 end
 
 -- The flight: forward one tick; whether he passed his panel's center (from off it) this tick.
@@ -78,10 +86,11 @@ local function at_edge(me: Object): boolean
     return me.panel_x == 0 or me.panel_x == 7
 end
 
--- 0x080BAEF4: as he takes off, L and R held (by his user, +0x4C) start his bombing run, with a sound.
+-- 0x080BAEF4: as he takes off, L and R held (by his user, +0x4C) start his bombing run, with a sound. (Not
+-- Airforce's flight.)
 local function check_run(me: Object)
     local s = me.state :: State
-    if s.run then
+    if s.airforce or s.run then
         return
     end
     local user = me.related1 :: Object
@@ -163,7 +172,7 @@ local function take_off(me: Object)
         return
     end
     battle.play_sound(SOUND_TAKEOFF)
-    me:set_action(if s.run then 0x14 else 0x10)
+    me:set_action(if s.run and not s.airforce then 0x14 else 0x10)
 end
 
 -- Action 0x10 (0x080BAC7A): he flies, dropping a bomb on each enemy panel whose center he passes, to the edge.
@@ -274,32 +283,38 @@ local ACTIONS = {
 }
 
 -- 0x080BAAA4: on his panel, on the ground; his sprite (animation 0, his shadow), his palette by the level, facing
--- his side's way; his propeller on.
+-- his side's way; his propeller on (its sprite stepping even while paused, but Airforce's). Airforce's flight
+-- starts at the take-off.
 local function init(me: Object)
     navi_chips.stand(me, SPRITE, "ground", true)
     local s = me.state :: State
     me.sprite.palette = PALETTES[s.level] or 0
-    me:add_parts(PROPELLER, 1)
+    me:add_parts(PROPELLER, if s.airforce then 0 else 1)
     s.run, s.bombs = false, 0
     me:set_lifecycle("update")
+    if s.airforce then
+        me.action = 0xC
+    end
 end
 
 gyroman.kind = define.kind {
     id = "gyroman/navi",
     pool = "actor",
-    state = { controller = "object", level = "u8", run = "bool", bombs = "u8" },
+    state = { controller = "object", level = "u8", run = "bool", bombs = "u8", airforce = "bool" },
     -- 0x080BAA80.
     update = function(me: Object)
         local l = me.lifecycle
         if l == "init" then
             init(me)
         elseif l == "update" then
-            -- 0x080BAB16.
-            local action = ACTIONS[me.action]
-            if not action then
-                error(string.format("GyroMan action %#x reads past his table (0x080BAB34)", me.action))
+            -- 0x080BAB16: Airforce's flight stands still while the battle is dimmed.
+            if not ((me.state :: State).airforce and battle.dimmed()) then
+                local action = ACTIONS[me.action]
+                if not action then
+                    error(string.format("GyroMan action %#x reads past his table (0x080BAB34)", me.action))
+                end
+                action(me)
             end
-            action(me)
         else
             me:free()
         end
@@ -319,6 +334,24 @@ function gyroman.summon_at(level: number): (user: Object, controller: Object, sp
         s.level = level
         return o
     end
+end
+
+-- 0x080BAE8A: GyroMan the navi's flight for `user` (himself), along row `y` from column `x`, with the element and
+-- the damage word: the same object with its fourth parameter 1, its first his user's (a player's: 0), and no
+-- controller.
+function gyroman.fly(user: Object, x: number, y: number, element: number, damage: number): Object?
+    local o = battle.spawn(gyroman.kind, Vec3.new(y, element, 0))
+    if o then
+        local s = o.state :: State
+        s.airforce = true
+        s.level = 0
+        o.panel_x, o.panel_y = x, y
+        o.element = element
+        o.related1 = user
+        o.alliance, o.flip = user.alliance, user.flip
+        o:set_damage_word(damage)
+    end
+    return o
 end
 
 -- GyroMan's (his Param1 0), GyroManSP's (3), GyroManDS's (4).

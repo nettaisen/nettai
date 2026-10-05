@@ -4,6 +4,7 @@
 language = "en"
 
 [chips]
+"airforce" = { name = "Airforce", description = "Helicoptr\nstrafes\na row" }
 "airhoc" = { name = "AirHoc", description = "Ricochet\nattack to\nright" }
 "airshot" = { name = "AirShot", description = "Knock\nenmy back\n1 square" }
 "airspin1" = { name = "AirSpin1", description = "Spits out\nhurricane\nattack" }
@@ -360,6 +361,7 @@ language = "en"
 
 [navis]
 "colonel" = { name = "Colonel" }
+"gyroman" = { name = "GyroMan" }
 "knightman" = { name = "KnightMn" }
 "meddy" = { name = "Meddy" }
 "megaman" = { name = "MegaMan", variant_name = "BCMegaMn" }
