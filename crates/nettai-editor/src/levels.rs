@@ -48,7 +48,7 @@ pub fn level_changed(content: &Content, side: &mut Side) {
 /// What "reset" gives the side: the navi's stats as a save gives them (a
 /// link navi's at its level).
 pub fn reset(content: &Content, side: &Side) -> NaviStats {
-    Side::save_base(content, side.navi, side.game, side.navi_level)
+    Side::save_base(content, side.navi, side.version, side.navi_level)
 }
 
 /// For a link navi, what its level gives stat `f` where the side's differs

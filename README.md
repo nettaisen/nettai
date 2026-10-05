@@ -129,9 +129,11 @@ Delete or a drag off the grid takes it off, Esc puts it back; right-clicking a p
 compiles to show beside it, and the stats-and-bugs block set directly is the pane's other view); every stat (its
 weapons, records and forms the game's). The problems with the match show at the bottom as you edit. Play saves the
 match and runs `nettai-frontend --match` (the one beside the editor's program, or `--frontend PATH`). A new match
-(the editor started without a file, or New) is an empty one of the game (EXE6 to start with): its stock rules, its
-first link battle stage, and on each side its MegaMan at his fresh stats with an empty folder, the version's own
-Crosses, no patch cards and no NaviCust programs (the problems list says the folders aren't whole until they are).
+(the editor started without a file, or New) is an empty one of the game the editor asks for: its stock rules, its
+first link battle stage, and on each side its MegaMan at his fresh stats with an empty folder, no version (an EXE6
+match's arena pane asks each side's, Falzar or Gregar, beside the game, with nothing chosen: neither is assumed; an
+EXE5 match has none), the version's own Crosses, no patch cards and no NaviCust programs (the problems list says the
+folders aren't whole and the versions aren't chosen until they are).
 Random draws a match of the game as live play does, and `nettai-frontend --play --save-match FILE` writes live
 play's draw out to edit. `--lang ja` (or the language list) names the chips, navis, Crosses and patch cards in
 Japanese. The editor loads the match's game's content and pack as the frontend does (a game's chips with no use yet
