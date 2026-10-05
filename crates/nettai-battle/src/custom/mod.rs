@@ -32,12 +32,13 @@ use crate::setup::{NaviStats, effects};
 use crate::transform::TransformRequest;
 use builder::{ClassCounts, Pick, ProgramAdvancesUsed};
 
-/// Which game a player plays: it decides their Crosses and Beast form.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Deserialize)]
+/// Which version of EXE6 a player plays: it decides their Crosses and
+/// Beast form. Neither is a default: whoever makes a player says which. (A
+/// game whose versions play alike, EXE5, has none here.)
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GameVersion {
     Gregar,
-    #[default]
     Falzar,
 }
 

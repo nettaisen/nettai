@@ -18,7 +18,7 @@
 //!
 //! [left]                             # you, side 0; then [right]
 //! navi = "megaman"
-//! version = "falzar"                 # optional: or "gregar" (else falzar)
+//! version = "falzar"                 # or "gregar": an EXE6 side states its own (none is assumed); an EXE5 side has none
 //! level = 7                          # optional: the navi code's level, 0-14 (else a link navi's 0, MegaMan none)
 //! crosses = ["heatcross", "spoutcross"]   # optional: else the version's own five
 //! beast_out = false                  # optional: else Beast Out is unlocked
@@ -107,8 +107,8 @@ pub struct PlaceFile {
 #[serde(deny_unknown_fields)]
 pub struct SideFile {
     pub navi: String,
-    #[serde(default = "falzar", skip_serializing_if = "is_falzar")]
-    pub version: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub level: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -213,14 +213,6 @@ pub struct ProgramFile {
 
 fn is_zero(n: &u8) -> bool {
     *n == 0
-}
-
-fn falzar() -> String {
-    "falzar".into()
-}
-
-fn is_falzar(s: &String) -> bool {
-    s == "falzar"
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -331,13 +323,21 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
         let have = names_in(content, game, content.defs.navis.iter().map(|n| n.key.as_str()));
         say(unknown("navi", &s.navi, game, &have));
     }
-    let version = match s.version.as_str() {
-        "falzar" => GameVersion::Falzar,
-        "gregar" => GameVersion::Gregar,
-        g => {
-            say(format!("no version {g:?} (falzar or gregar)"));
-            GameVersion::Falzar
+    // The version: a side of a game whose rules take one states its own
+    // (one that states none is the checks' to refuse: nothing is filled
+    // in); a game whose rules take none has none to state.
+    let version = match (s.version.as_deref(), Side::takes_version(content)) {
+        (Some("falzar"), true) => Some(GameVersion::Falzar),
+        (Some("gregar"), true) => Some(GameVersion::Gregar),
+        (Some(g), true) => {
+            say(format!("no version {g:?} ({})", crate::facts::VERSIONS));
+            None
         }
+        (Some(_), false) => {
+            say(format!("version: {game} has none to state ({})", crate::facts::no_versions(game)));
+            None
+        }
+        (None, _) => None,
     };
     let crosses = s.crosses.as_ref().map(|list| {
         let forms: Vec<_> = list
@@ -431,7 +431,7 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
     }
     Some(Side {
         navi,
-        game: version,
+        version,
         stats,
         folder: folder?,
         crosses,
@@ -553,7 +553,7 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
     let name = |key: &str| ids::local(key).to_string();
     SideFile {
         navi: name(&content.defs.navi(s.navi).key),
-        version: version_name(s.game).into(),
+        version: s.version.map(|v| version_name(v).to_string()),
         // (The navi's default level is left out.)
         level: s.navi_level.filter(|_| s.navi_level != crate::default_navi_level(content, s.navi)),
         bug_frags: (s.bug_frags != 0).then_some(s.bug_frags),
@@ -899,6 +899,39 @@ mod tests {
         assert_eq!(parse(&six, &format!("{good}\n[left.computer_navi]\n{nothing}")).unwrap(), parse(&six, &good).unwrap());
     }
 
+    /// A version is stated where the game's rules take one, and nowhere
+    /// else: a new EXE6 match's sides have none until each is given its own
+    /// (the checks refuse the match: none is assumed), a drawn one's are
+    /// drawn and written; an EXE5 match has none, its file takes no
+    /// `version` and says why.
+    #[test]
+    fn a_version_is_stated_where_the_game_takes_one() {
+        let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
+        let six = exe6_content();
+        let new = Match::empty(&six, "exe6").unwrap();
+        assert!(new.sides.iter().all(|s| s.version.is_none() && s.stats.version == 0));
+        let problems = crate::check_match(&six, &new);
+        for side in ["left", "right"] {
+            has(problems.clone(), &format!("{side}: no version: a side of exe6 states its own (falzar or gregar); none is assumed"));
+        }
+        assert!(!write(&six, &new).contains("version"));
+        let drawn = write(&six, &crate::draw::live(&six, "exe6", 1, None).unwrap());
+        assert_eq!(drawn.matches("\nversion = \"falzar\"\n").count() + drawn.matches("\nversion = \"gregar\"\n").count(), 2, "{drawn}");
+        // EXE5.
+        let five = crate::testing::exe5_content();
+        let m = crate::draw::live(&five, "exe5", 1, None).unwrap();
+        let text = write(&five, &m);
+        assert!(!text.contains("version"), "{text}");
+        let e = parse(&five, &text.replacen("navi = \"megaman\"", "navi = \"megaman\"\nversion = \"falzar\"", 1)).unwrap_err();
+        assert_eq!(e, ["left: version: exe5 has none to state (its versions play alike, so a match of exe5 is of neither)"]);
+        let mut odd = m.clone();
+        odd.sides[1].version = Some(GameVersion::Gregar);
+        has(crate::check_match(&five, &odd), "right: a version, but exe5 has none to state: its versions play alike");
+        // (The round an EXE5 match starts brings its players no version.)
+        let b = crate::check::start(&five, &m).unwrap();
+        assert!(b.fact(0, crate::facts::VERSION_FIELD).is_none() && b.stats[0].version == 0);
+    }
+
     /// What a file can get wrong is said, with where it is.
     #[test]
     fn problems_are_said() {
@@ -921,7 +954,10 @@ mod tests {
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
         has(bad(stage, "stage = \"moon\""), "arena: no stage \"moon\" in exe6");
         has(bad("game = \"exe6\"", "game = \"bn7\""), "no game \"bn7\"");
-        has(bad("navi = \"megaman\"", "navi = \"megaman\"\nversion = \"azure\""), "no version \"azure\"");
+        // The version: one of the game's two, stated (none is assumed).
+        let version = good.lines().find(|l| l.starts_with("version = ")).unwrap();
+        has(bad(version, "version = \"azure\""), "left: no version \"azure\" (falzar or gregar)");
+        has(bad(&format!("{version}\n"), ""), "left: no version: a side of exe6 states its own (falzar or gregar); none is assumed");
         // Thirty copies of a chip.
         let mut m = drawn.clone();
         m.sides[0].folder.chips = [m.sides[0].folder.chips[0]; 30];
@@ -943,7 +979,7 @@ mod tests {
         let mut m = drawn.clone();
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[1].navi = protoman;
-        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].game);
+        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].version);
         has(crate::check_match(&content, &m), "right: a Cross list, but ProtoMan doesn't change form");
     }
 
@@ -975,7 +1011,7 @@ mod tests {
         m.sides[1].crosses = None;
         m.sides[1].navicust = None;
         m.sides[1].navi_level = Some(0);
-        m.sides[1].stats = crate::Side::save_base(&content, protoman, m.sides[1].game, Some(0));
+        m.sides[1].stats = crate::Side::save_base(&content, protoman, m.sides[1].version, Some(0));
         m.sides[1].folder.regular = None;
         let text = write(&content, &m);
         for line in ["beast_out = false", "level = 3", "[left.sp_times]", "\"sp/heatman\" = \"00:12.01\"", "\"sp/blastman\" = \"00:25.00\""] {
@@ -1008,7 +1044,7 @@ mod tests {
         m.sides[1].navi = protoman;
         m.sides[1].crosses = None;
         m.sides[1].navi_level = None;
-        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].game);
+        m.sides[1].stats = crate::Side::base_stats(&content, protoman, m.sides[1].version);
         let problems = crate::check_match(&content, &m);
         has(problems.clone(), "right: ProtoMan has no level: a link navi exists only through its navi code");
         assert!(!problems.iter().any(|p| p.starts_with("left")), "MegaMan without a code is fine: {problems:?}");

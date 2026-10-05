@@ -338,7 +338,7 @@ mod tests {
         let mut m = crate::draw::live(&content, "exe6", 3, None).unwrap();
         let s = &mut m.sides[0];
         s.navi_level = level;
-        s.stats = crate::Side::base_stats(&content, s.navi, s.game);
+        s.stats = crate::Side::base_stats(&content, s.navi, s.version);
         (s.stats.max_base_hp, s.stats.hp, s.stats.max_hp, s.stats.reg_up) = (600, 600, 600, 50);
         let placed: Vec<PlacedProgram> = parts
             .iter()
