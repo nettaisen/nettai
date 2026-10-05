@@ -845,6 +845,8 @@ named_flags! {
         /// The HP box (draw task 7; its drawing only: the low-HP alarm
         /// sounds on).
         HpBox = "hp_box",
+        /// The chips' icons over each console's own navi (draw task 1).
+        ChipIcons = "chip_icons",
     }
 }
 
