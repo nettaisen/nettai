@@ -12,6 +12,7 @@
 "meddy" = 6
 "gyroman" = 2
 "shadowman" = 8
+"numberman" = 9
 "tomahawkman" = 10
 "knightman" = 11
 
@@ -80,6 +81,8 @@
 "tomahawkman/a-charge" = [0x2B]
 # KnightMan's wrecking ball's swing.
 "knightman/charge" = [0x10]
+# NumberMan's die throw.
+"numberman/charge" = [0x3D]
 
 # Projectile variants: the projectile table's rows (0x080C4718, EXE6's `off_80C4C78`) the buster-shot and
 # charged-shot programs (NaviStats +0x4D, +0x4F) name; the buster's and the charged shot's own, and the chips'.
