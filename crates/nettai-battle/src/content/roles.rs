@@ -476,7 +476,8 @@ definition_roles! {
 
 definition_roles! {
     /// The banners the ruleset shows itself, by role (`banners`): assets
-    /// (`asset.banner`). (The win and lose banners are the navi's.)
+    /// (`asset.banner`). (A loss's banner is the navi's, and a win's where
+    /// the flow's `navi_win_banner` says so.)
     BannerRole {
         /// A round's start (the battle's number).
         RoundStart = "round_start",
@@ -485,6 +486,12 @@ definition_roles! {
         FinalTurn = "final_turn",
         /// A draw.
         Draw = "draw",
+        /// A win's where it isn't the winner's navi's ("ENEMY DELETED"),
+        /// and a win and a loss on the judge's ruling ("YOU WIN", "YOU
+        /// LOSE": time up with navis left on both sides).
+        Win = "win",
+        WinJudged = "win_judged",
+        LoseJudged = "lose_judged",
         /// The damage judge's.
         Judge = "judge",
         /// A telop on the local player's side, and on the other's.

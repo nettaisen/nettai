@@ -18,4 +18,8 @@ return {
     intro_from_black = true,
     -- No low-HP music: EXE5's ROM has no tempo or pitch control (EXE6's `sub_8009158` switch is absent).
     low_hp_music = false,
+    -- A win shows the winner's navi's banner only in a link battle that is an operation battle (0x080074D2: battle
+    -- flag 0x40, 0x080090E8, then 0x080090C0's table); a Team Battle's and a NetBattle's shows "ENEMY DELETED", or
+    -- "YOU WIN" on the judge's ruling (the roles `win` and `win_judged`). EXE6's link battles all show the navi's.
+    navi_win_banner = "operation_battle",
 }

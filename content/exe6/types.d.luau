@@ -497,10 +497,10 @@ export type Exe6ChipFields = {
     hp_bug: number?,
 }
 
--- A form's: its kind (rules/forms/kind), whose game's form it is (the
--- Beast's roar), the navi a Cross (and one in Beast Out) is made with, and
--- the animation a change into a Cross lets the navi go of (the forms
--- system's); a Cross's form in Beast Out, the Cross special's buster volley
+-- A form's: its kind (rules/forms/kind), the navi a Cross (and one in
+-- Beast Out) is made with, and the animation a change into a Cross lets the
+-- navi go of (the forms system's; whose game's form it is, the Beast's
+-- roar, is its `version`, the engine's field); a Cross's form in Beast Out, the Cross special's buster volley
 -- in it (the original stores the form's number where it meant 6), and
 -- whether its charged sword runs inside the Beast Out rush (SlashCross in
 -- Beast Out; the beast system's); the custom screen dealing one more chip
@@ -508,7 +508,6 @@ export type Exe6ChipFields = {
 -- button (DustCross; the cross system's).
 export type Exe6FormFields = {
     kind: ("cross" | "beast" | "cross_beast" | "beast_over")?,
-    game: ("gregar" | "falzar")?,
     cross_of: NaviDef?,
     cross_release_anim: number?,
     beast: FormDef?,
