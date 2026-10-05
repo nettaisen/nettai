@@ -15,7 +15,8 @@ return define.form {
     kind = "cross",
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
-    game = "gregar",
+    version = "gregar",
+    window_order = 2,
     cross_of = slashman,
     beast = slashcross_beast,
     -- A weakness hit breaks the Cross: back to the base form.

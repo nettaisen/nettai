@@ -15,7 +15,7 @@ use crate::link::{Link, Packet};
 use crate::object::{ObjectRef, Objects};
 use crate::console::Console;
 use crate::rng::Rng;
-use crate::content::{BannerId, BannerRole, Content, FormData, MusicRole, NaviData, SoundRole};
+use crate::content::{BannerId, BannerRole, Content, FormData, MusicRole, NaviData, NaviWinBanner, SoundRole};
 use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, effects};
 use crate::transform::{TransformRequest, TransformSequencer};
 use crate::sound::SoundCue;
@@ -1881,41 +1881,88 @@ impl Battle {
             self.stop_emotion_windows();
             let win = self.fight.state == fight::WIN;
             self.round.winner = if win { self.round.local_side } else { self.round.local_side ^ 1 };
-            // The winner's console plays the victory music; in link
-            // battles the other one plays the defeat music.
-            let special = self.setup.settings.effects & 2 != 0;
-            let link = self.setup.settings.effects & effects::LINK != 0;
-            // (Each console's music is its player's game's.)
-            for side in 0..2 {
-                let roles = self.roles();
-                let winner = roles.music(if special { MusicRole::WinnerSpecial } else { MusicRole::Winner });
-                let loser = roles.music(MusicRole::Loser);
-                if side == self.round.winner {
-                    self.play_sound_for(side, SoundCue::Music(winner));
-                } else if link {
-                    self.play_sound_for(side, SoundCue::Music(loser));
-                }
-            }
             self.fight.init = 4;
-            // (A special battle's wait, and the win's in battle modes 4, 5
-            // and 8, is the shorter: `sub_80081A4`, `sub_800825A`.)
             let wait = self.game_rules().flow.result_wait;
-            let short = special || (win && matches!(self.round.mode_copy, 4 | 5 | 8));
-            self.fight.timer = if short { wait.special } else { wait.normal } as _;
-            // Netbattle win/lose banners are the navi's; a round lost on
-            // time (the judge's ruling) says "YOU LOSE" (`sub_800825A`).
-            let navi = self.content.navi(self.stats[self.round.local_side as usize].navi);
-            let id = match win {
-                true => navi.win_banner,
-                false if self.round_result() == 7 => BannerId(0x18),
-                false => navi.lose_banner,
-            };
-            self.start_banner(id);
+            // A win with one of the Cybeasts on the other side has neither
+            // music nor banner, and holds the plain wait (`sub_80081A4`'s
+            // `sub_800A7A6` test, 102 ticks; EXE5's 0x080074D2 counts its
+            // own with 0x08008F6E).
+            if win && self.cybeasts() != 0 {
+                self.fight.timer = wait.normal as _;
+            } else {
+                // The winner's console plays the victory music; in link
+                // battles the other one plays the defeat music. A special
+                // battle's (effect 2) are the winner's music and the wait
+                // in battle modes 4, 5 and 8 too (`sub_80081A4`; EXE5's
+                // tests 4 and 5, and nothing of it tests a mode 8); the
+                // loser's wait is a special battle's alone (`sub_800825A`).
+                let special = self.setup.settings.effects & 2 != 0;
+                let link = self.setup.settings.effects & effects::LINK != 0;
+                let special_win = special || matches!(self.round.mode_copy, 4 | 5 | 8);
+                // (Each console's music is its player's game's.)
+                for side in 0..2 {
+                    let roles = self.roles();
+                    let winner = roles.music(if special_win { MusicRole::WinnerSpecial } else { MusicRole::Winner });
+                    let loser = roles.music(MusicRole::Loser);
+                    if side == self.round.winner {
+                        self.play_sound_for(side, SoundCue::Music(winner));
+                    } else if link {
+                        self.play_sound_for(side, SoundCue::Music(loser));
+                    }
+                }
+                let short = if win { special_win } else { special };
+                self.fight.timer = if short { wait.special } else { wait.normal } as _;
+                let id = self.result_banner(self.round.local_side, win);
+                self.start_banner(id);
+            }
         }
         self.fight.timer -= 1;
         if self.banner.status() == BannerStatus::Done && self.fight.timer <= 0 {
             self.fight.result = if self.fight.state == fight::WIN { 1 } else { 2 };
         }
+    }
+
+    /// The banner a round's result starts on `side`'s console, which won
+    /// it or lost it (`sub_80081A4` and `sub_800825A`; EXE5's 0x080074D2
+    /// and 0x0800758A).
+    /// - A loss's is the navi's (`sub_800A8B2`'s table by the navi; EXE5's
+    ///   0x08009098), or "YOU LOSE" on the judge's ruling (the round's
+    ///   result 7: time up with navis left on both sides).
+    /// - A win's is the navi's (`sub_800A8D4`'s table; EXE5's 0x080090C0)
+    ///   in the link battles the flow's `navi_win_banner` names: every one
+    ///   of EXE6's, whatever the result; of EXE5's the operation battles
+    ///   alone.
+    /// - Any other win's is "ENEMY DELETED", or "YOU WIN" on the judge's
+    ///   ruling.
+    pub fn result_banner(&self, side: u8, won: bool) -> BannerId {
+        let navi = self.content.navi(self.stats[side as usize].navi);
+        let roles = self.roles();
+        let judged = self.round_result() == 7;
+        if !won {
+            return if judged { roles.banner(BannerRole::LoseJudged) } else { navi.lose_banner };
+        }
+        let link = self.setup.settings.effects & effects::LINK != 0;
+        let navis = link
+            && match self.game_rules().flow.navi_win_banner {
+                NaviWinBanner::LinkBattle => true,
+                NaviWinBanner::OperationBattle => self.round.flags & battle_flags::OWN_GAUGES != 0,
+            };
+        if navis {
+            navi.win_banner
+        } else {
+            roles.banner(if judged { BannerRole::WinJudged } else { BannerRole::Win })
+        }
+    }
+
+    /// The Cybeasts among side 1's actors (`sub_800A7A6` with NameIDs
+    /// 0x173..=0x17E; EXE5's 0x08008F6E with its 0x173..=0x176): a win over
+    /// one ends without music or banner, and fades to white.
+    fn cybeasts(&self) -> usize {
+        self.round.alive_actors[1]
+            .iter()
+            .flatten()
+            .filter(|&&r| self.content.identity(self.objects.get(r).identity).class.is_cybeast())
+            .count()
     }
 
     fn busting_level(&self) -> u8 {
@@ -1930,12 +1977,7 @@ impl Battle {
             // the Cybeasts (NameIDs 0x173..=0x17E; `sub_800A7A6` over side 1's actors,
             // `sub_800A832`'s result code 1), otherwise to black; either
             // takes 16 ticks.
-            let bosses = self.round.alive_actors[1]
-                .iter()
-                .flatten()
-                .filter(|&&r| self.content.identity(self.objects.get(r).identity).class.is_cybeast())
-                .count();
-            let white = bosses != 0 && self.round.result & 0xF == 1;
+            let white = self.cybeasts() != 0 && self.round.result & 0xF == 1;
             self.fade.start(if white { FadeMode::EndToWhite } else { FadeMode::EndToBlack }, 0x10);
             self.round.init = 4;
             return;

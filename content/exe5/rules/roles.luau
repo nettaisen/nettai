@@ -215,8 +215,12 @@ return {
         round_start = asset.banner("battle-number-start"),
         turn_start = asset.banner("turn-start"),
         final_turn = asset.banner("final-turn"),
-        -- A draw; the damage judge's.
+        -- A draw; a win's where it isn't the winner's navi's (every battle but an operation battle:
+        -- 0x080074D2), and a win and a loss on the judge's ruling (0x0800758A); the damage judge's.
         draw = asset.banner("draw"),
+        win = asset.banner("enemy-deleted"),
+        win_judged = asset.banner("you-win"),
+        lose_judged = asset.banner("you-lose"),
         judge = asset.banner("hit-damage-judge"),
         -- A telop on the local player's side, and on the other's.
         telop = asset.banner("telop"),
