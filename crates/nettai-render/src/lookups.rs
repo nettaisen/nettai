@@ -419,21 +419,15 @@ pub fn warning(hud: &Hud, problems: &mut Problems) -> bool {
     !hud.warning.is_empty()
 }
 
-/// A Cross's name and colors in the Cross window: its game's pictures and
-/// its number among that game's Crosses (`custom::cross_picture`), with
-/// its name's tiles and colors there.
-pub fn cross_name<'a>(
-    a: &'a CustomScreen,
-    c: &Content,
-    navi: NaviHandle,
-    form: FormHandle,
-    problems: &mut Problems,
-) -> Option<(&'a nettai_assets::VersionPictures, usize)> {
-    let found = crate::custom::cross_picture(c, a, navi, form);
+/// A Cross's name and colors in the Cross window: its version's pictures
+/// and its number among that version's Crosses (`custom::cross_picture`),
+/// with its name's tiles and colors there.
+pub fn cross_name<'a>(a: &'a CustomScreen, c: &Content, form: FormHandle, problems: &mut Problems) -> Option<(&'a nettai_assets::VersionPictures, usize)> {
+    let found = crate::custom::cross_picture(c, a, form);
     if problems.lookup(Lookup::CrossName(form)) {
         let key = &c.defs.form(form).key;
         match found {
-            None => problems.note(format!("form {key:?} is no Cross of its game's on the custom screen (no game, or not among its navi's five)")),
+            None => problems.note(format!("form {key:?} has no name on the custom screen (its definition says no `version` or no `window_order`)")),
             Some((own, number)) => {
                 let names = crate::custom::CROSS_NAME_TILES * (number + 5 + 1);
                 if own.cross_names.len() < names || own.cross_palettes.len() < number + 5 + 1 {

@@ -23,7 +23,7 @@ use nettai_battle::battle::{FadeMode, mode};
 use nettai_battle::content::{ChipFlags, ChipTraits};
 use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
 use nettai_battle::custom::{ButtonCell, FolderChip, GameVersion, Phase, Screen, Side, SlotKind, SlotState};
-use nettai_content_api::{ChipHandle, FieldValue, FormHandle, NaviHandle};
+use nettai_content_api::{ChipHandle, FieldValue, FormHandle};
 
 /// The window: 15 columns of 20 rows at the HUD layer's top left.
 const COLUMNS: usize = 15;
@@ -960,7 +960,7 @@ impl Window {
         let navi = v.b.stats[v.side as usize].navi;
         let mut picture = |slot: usize| {
             let form = unlocks.cross_at(&*v.b.content, navi, w.offered[slot])?;
-            crate::lookups::cross_name(v.assets, &v.b.content, navi, form, problems)
+            crate::lookups::cross_name(v.assets, &v.b.content, form, problems)
         };
         for slot in 0..w.count.min(5) as usize {
             let Some((own, number)) = picture(slot) else { continue };
