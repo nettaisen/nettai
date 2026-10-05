@@ -58,3 +58,5 @@
 # The team navis' weapons' actions (navis/<navi>): ProtoMan's B+Back (the guard's action, as the Reflect program's).
 "protoman/back/action" = 0x1F
 "colonel/charge/action" = 0x07
+# A team navi's own actions are its state table's entries from 7 on (0x080EADA8 by navi): TomahawkMan's throw.
+"tomahawkman/charge/action" = 0x07
