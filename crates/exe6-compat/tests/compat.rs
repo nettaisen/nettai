@@ -23,7 +23,7 @@ fn compat_numbers_what_the_engine_runs_by_handle() {
 
     let content = std::sync::Arc::new(testing::with_test_pack());
     let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(1000));
-    setup.content = content.hash();
+    testing::on(&mut setup, &content);
     let mut b = nettai_battle::Battle::new(setup, content);
     b.spawn_actors();
     let player = b.player(0).unwrap();

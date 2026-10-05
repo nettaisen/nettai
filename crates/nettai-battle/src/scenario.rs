@@ -54,10 +54,17 @@ pub fn content() -> Arc<Content> {
 /// The round: a link battle with the usual two-navi list (side 1 first),
 /// on a field of plain panels (no roads or ice to slide on).
 pub fn setup() -> RoundSetup {
-    let content = testing::build();
+    setup_on(&testing::build())
+}
+
+/// The same round for `content` (the test content with another list of
+/// systems, `testing::with_systems`: a player's setup is its ruleset's):
+/// both players of the test content's version (`testing::VERSION`), where a
+/// system of the content takes one.
+pub fn setup_on(content: &Content) -> RoundSetup {
     let mut folder = BattleFolder::empty();
-    folder.chips = [Some(FolderChip::new(testing::chip_in(&content, testing::SUN_GUN_3), ChipCode(0))); 30];
-    let player = PlayerSetup {
+    folder.chips = [Some(FolderChip::new(testing::chip_in(content, testing::SUN_GUN_3), ChipCode(0))); 30];
+    let mut player = PlayerSetup {
         folder,
         joypad_phase: 0,
         navi_level: None,
@@ -68,10 +75,11 @@ pub fn setup() -> RoundSetup {
         navicust: None,
         tactics: Default::default(),
     };
+    player.set_fact(content, "version", &[crate::rules::Fact::Name(testing::VERSION)]).expect("the test content's version");
     RoundSetup {
         content: content.hash(),
-        settings: BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE)),
-        navi_stats: [megaman(&content); 2],
+        settings: BattleSettings::on(content, content.stage_by_key(testing::LINK_BATTLE)),
+        navi_stats: [megaman(content); 2],
         rng: 0x1234_5678,
         local_side: 0,
         score: SetScore::default(),
