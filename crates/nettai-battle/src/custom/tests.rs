@@ -653,7 +653,7 @@ fn a_dark_chip_takes_the_cursor_and_darkens_the_screen() {
         (0..n)
             .map(|_| {
                 p.step(0);
-                p.screen().look.drawn.volume
+                p.screen().look.drawn.volume()
             })
             .collect::<Vec<_>>()
     };
@@ -690,7 +690,7 @@ fn the_cursor_stays_put_without_a_dark_chip() {
     assert_eq!(p.screen().cursor, 0);
     for _ in 0..20 {
         p.step(0);
-        assert_eq!((p.screen().look.dark, p.screen().look.drawn.volume), (DarkHover::Clear, None));
+        assert_eq!((p.screen().look.dark, p.screen().look.drawn.volume()), (DarkHover::Clear, None));
     }
 }
 
@@ -870,4 +870,38 @@ fn the_dark_hover_sounds_every_64_ticks() {
     assert_eq!(ticks.len(), 3, "{ticks:?}");
     assert!(ticks.windows(2).all(|w| w[1] - w[0] == 64), "{ticks:?}");
     assert_eq!(sounded(&[(SHOT, 0), (MEGA, 0)]), Vec::<u32>::new());
+}
+
+/// The hover's routine runs its state before it steps its counter (EXE5's
+/// 0x08025A80), so on a tick where a volume step and the counter's wrap
+/// fall together, the volumes are asked for before the sound (the chip
+/// lab's custom/dark-hover has one: its frame 598).
+#[test]
+fn the_dark_hover_sets_its_volumes_before_it_sounds() {
+    use super::look::{ScreenCall, ScreenLook, ScreenSound};
+    let mut look = ScreenLook::new(false, false, None);
+    // A tick of the look as the screen's tick runs it: the hover, then the
+    // fades' steps; what it asked of the sound driver, in order.
+    let tick = |look: &mut ScreenLook, on_dark: bool| {
+        look.drawn = Default::default();
+        look.hover(on_dark);
+        look.fade.step();
+        look.window_fade.step();
+        look.drawn.calls().collect::<Vec<_>>()
+    };
+    // Off a dark chip for 60 ticks: nothing asked.
+    for _ in 0..60 {
+        assert_eq!(tick(&mut look, false), []);
+    }
+    // Onto one: the hover starts, a volume step a tick follows, and the
+    // third falls on the counter's wrap.
+    assert_eq!(tick(&mut look, true), []);
+    assert_eq!(tick(&mut look, true), [ScreenCall::Volume { music: 0x100, screen: 0x80 }]);
+    assert_eq!(tick(&mut look, true), [ScreenCall::Volume { music: 0xE0, screen: 0x80 }]);
+    assert_eq!(look.hover_count, 63);
+    assert_eq!(
+        tick(&mut look, true),
+        [ScreenCall::Volume { music: 0xC0, screen: 0xA0 }, ScreenCall::Sound(ScreenSound::DarkHover)]
+    );
+    assert_eq!(look.hover_count, 0);
 }

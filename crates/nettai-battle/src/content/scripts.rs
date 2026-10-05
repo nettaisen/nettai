@@ -258,6 +258,13 @@ mod tests {
 
     type Game = (String, BTreeMap<String, String>);
 
+    /// A content whose rules are stated as Rust tables (the test content's:
+    /// `testing::rules`), for a test whose small ruleset names its systems
+    /// alone: a ruleset states every rule, or the content's tables do.
+    fn stated() -> Content {
+        Content { base_rules: Some(crate::content::testing::rules()), ..Default::default() }
+    }
+
     fn folder(name: &str, modules: &[(&str, &str)]) -> Game {
         (name.to_string(), modules.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect())
     }
@@ -265,7 +272,7 @@ mod tests {
     /// Content of these game packs (each with a manifest that loads all its
     /// modules), defined.
     fn content(games: Vec<Game>) -> Result<Content, String> {
-        let mut c = Content::default();
+        let mut c = stated();
         for (name, modules) in games {
             c.scripts.add_game(&name, modules);
         }
@@ -303,7 +310,7 @@ mod tests {
         let e = content(vec![folder("mix", mix), folder("game", GAME)]).unwrap_err();
         assert!(e.contains("content holds one game, and these are mix and game"), "{e}");
         // One game pack requires nothing of another's.
-        let mut c = Content::default();
+        let mut c = stated();
         c.scripts.add_dir("game", GAME.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect());
         c.scripts.set_manifest(PackManifest { id: "game".into(), kind: PackKind::Game, ..Default::default() });
         c.scripts.add_game("mix", [("rules/ruleset".to_string(), "return define.ruleset { systems = { require('@game/rules/turns') } }".to_string())].into());
@@ -320,11 +327,214 @@ mod tests {
         let e = content(vec![folder("game", &[("rules/x", "return define.ruleset { Pools = { actor = 16 } }")])]).unwrap_err();
         assert!(e.contains("`Pools` is no field of a ruleset"), "{e}");
         let e = content(vec![folder("game", &[("rules/x", "return define.ruleset { pools = { actor = 0, attack = 32, effect = 32 } }")])]).unwrap_err();
-        assert!(e.contains("game:rules/x.luau: ruleset: pools: a pool holds 1 to"), "{e}");
+        assert!(e.contains("game/rules/x.luau: ruleset: pools: a pool holds 1 to"), "{e}");
         let e = content(vec![folder("game", &[("rules/x", "return define.ruleset { pools = { actor = 'many', attack = 32, effect = 32 } }")])]).unwrap_err();
         assert!(e.contains("ruleset: pools.actor: invalid type"), "{e}");
         let e = content(vec![folder("Game", GAME)]).unwrap_err();
         assert!(e.contains("not lowercase words"), "{e}");
+    }
+
+    /// The user: "no default games anywhere please". The engine has no
+    /// game's rules of its own: a ruleset states every rule that has no
+    /// neutral value (`sections::REQUIRED`, and every field of them), and
+    /// one that leaves a rule out is a load error naming it. Content with
+    /// no ruleset has no rules.
+    #[test]
+    fn a_ruleset_states_every_rule() {
+        const HEAD: &str = r#"
+local function row(n: number, v: any): { any }
+    local t = {}
+    for i = 1, n do
+        t[i] = v
+    end
+    return t
+end
+local none = { dx = 0, dy = 0, panels = 0 }
+local any_panel = { require = 0, forbid = 0 }
+local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, any_panel } }
+"#;
+        // The sections a ruleset states, a field a line.
+        const STATED: &[(&str, &str)] = &[
+            (
+                "chip_use",
+                r#"
+        leave_on_use = true,
+        anti_navi_sparkle = { dy = 0, z = 16 },
+        mixed_modifiers = false,"#,
+            ),
+            (
+                "effects",
+                r#"
+        shake = "battle_rng",
+        spark_steps_at_start = true,
+        retype = "is_and_hits",
+        damage_word = "statuses_and_bug",
+        obstacle_soldiers = false,
+        palette_flash = "mode_runs_through_pause",
+        overlays_run_while_paused = true,
+        load_sets_part_palette = true,
+        obstacle_actions = "own_from_6","#,
+            ),
+            (
+                "flow",
+                r#"
+        result_words = 49,
+        sequencer_before_custom = true,
+        escape_check = false,
+        result_wait = { normal = 100, special = 90 },
+        chip_window_at_close = false,
+        intro_from_black = false,
+        low_hp_music = true,
+        navi_win_banner = "operation_battle","#,
+            ),
+            (
+                "panels",
+                r#"
+        types = { normal = { flags = 0x10 } },
+        mend = { normal = 600, battle_mode_1 = 480 },
+        start_visible = row(5, row(8, true)),
+        front_edges = row(5, row(8, false)),
+        numbers = { "missing", "broken", "normal" },
+        step = step,
+        dash_step = step,
+        any_side_step = step,
+        reservations = "unmarked","#,
+            ),
+            (
+                "pools",
+                r#"
+        actor = 16,
+        attack = 32,
+        effect = 8,"#,
+            ),
+            (
+                "reactions",
+                r#"
+        push = row(10, none),
+        push_reading = "by_hitter_flip",
+        hit_test = { float_shoe_needs_self_bit = true, bubbled_as_submerged = false, elec_reaches_submerged = true, guard_breaks_to = 0x1002, elec_bonus_on_sea = false },
+        obstacle_slide_bounds = false,
+        ice = row(6, none),
+        bubble_bob = row(32, 0),
+        slide_speed = { x = 0x30000, y = 0x20000 },
+        overlay_restart = "reload",
+        stance_counter = "next_tick","#,
+            ),
+            (
+                "status",
+                r#"
+        hp_bug_periods = row(8, 30),
+        form_tick = false,
+        flash_hides_on_clear = true,
+        missing_collision_status = 7,
+        reactions = "flash_timer_first",
+        bugs_before_drain = false,
+        drain_bug_flags = true,
+        no_charge_drive = false,
+        hp_loss = "hp_alone",
+        emotions = "exe5",
+        form_break = "cross_or_beast","#,
+            ),
+        ];
+        assert_eq!(STATED.iter().map(|(name, _)| *name).collect::<Vec<_>>(), crate::content::sections::REQUIRED);
+        // The ruleset, without a section or a field of one, or with a
+        // field's value another.
+        let ruleset = |without: Option<&str>, field: Option<(&str, &str)>, other: Option<(&str, &str)>| -> String {
+            let mut out = format!("{HEAD}return define.ruleset {{\n    systems = {{}},\n");
+            for (name, body) in STATED {
+                if without == Some(*name) {
+                    continue;
+                }
+                let lines: Vec<String> = body
+                    .lines()
+                    .filter(|l| !matches!(field, Some((s, f)) if s == *name && l.trim_start().starts_with(&format!("{f} = "))))
+                    .map(|l| match other {
+                        Some((from, to)) => l.replace(from, to),
+                        None => l.to_string(),
+                    })
+                    .collect();
+                out += &format!("    {name} = {{{}\n    }},\n", lines.join("\n"));
+            }
+            out + "}\n"
+        };
+        let game = |ruleset: String| -> Result<Content, String> {
+            let mut c = Content::default();
+            c.scripts.add_game("game", [("rules/init".to_string(), ruleset)].into());
+            c.define().map_err(|e| e.message)?;
+            Ok(c)
+        };
+        // Every rule stated: the game's rules are what it states, each a
+        // choice of its own (no game has these together).
+        let c = game(ruleset(None, None, None)).unwrap_or_else(|e| panic!("{e}"));
+        let r = c.rules();
+        use crate::content::{
+            DamageWordRule, Emotions, FormBreak, HpLoss, NaviWinBanner, ObstacleActions, OverlayRestart, PushReading, Reactions, Reservations,
+            RetypeRule, ShakeRule, StanceCounter,
+        };
+        assert_eq!((r.flow.result_words, r.flow.escape_check, r.flow.navi_win_banner), (49, false, NaviWinBanner::OperationBattle));
+        assert_eq!(
+            (r.effects.shake, r.effects.damage_word, r.effects.retype, r.effects.obstacle_actions),
+            (ShakeRule::BattleRng, DamageWordRule::StatusesAndBug, RetypeRule::IsAndHits, ObstacleActions::OwnFrom6)
+        );
+        assert_eq!((r.chip_use.leave_on_use, r.chip_use.anti_navi_sparkle.z), (true, 16));
+        assert_eq!((r.push_reading, r.overlay_restart, r.stance_counter), (PushReading::ByHitterFlip, OverlayRestart::Reload, StanceCounter::NextTick));
+        assert_eq!((r.hit_test.float_shoe_needs_self_bit, r.hit_test.elec_reaches_submerged, r.hit_test.guard_breaks_to), (true, true, 0x1002));
+        assert!(!r.obstacle_slide_bounds);
+        assert_eq!((r.slide_speed.x, r.slide_speed.y), (0x30000, 0x20000));
+        assert_eq!(
+            (r.reactions, r.emotions, r.form_break, r.intake.hp_loss),
+            (Reactions::FlashTimerFirst, Emotions::Exe5, FormBreak::CrossOrBeast, HpLoss::HpAlone)
+        );
+        assert_eq!((r.form_tick, r.flash_hides_on_clear, r.missing_collision_status.0, r.intake.drain_bug_flags), (false, true, 7, true));
+        assert_eq!((r.pools.slots(), r.panels.reservations), ([16, 32, 8], Reservations::Unmarked));
+        assert_eq!((r.panels.numbered(2), r.panels.numbered(3)), (Some(crate::field::PanelType::Normal), None), "its own numbers, no others");
+        // What it may leave out reads as nothing, for every game.
+        assert!(r.navicust.boards.is_empty() && r.lockon.column_shifts.is_empty() && r.chaos_cycle.is_empty() && r.holding_banners.is_empty());
+        assert!(r.sp_deletion_times.is_empty() && r.sine.is_empty() && r.buster_recovery.is_empty());
+        assert_eq!(r.element_weakness, [[0; 6]; 6]);
+        // A section left out is a load error that names it.
+        for (section, _) in STATED {
+            let e = game(ruleset(Some(section), None, None)).expect_err(section);
+            assert!(e.contains(&format!("game/rules/init.luau: ruleset: it states no `{section}` section")), "{section}: {e}");
+            assert!(e.contains("the engine has no game's rules of its own"), "{e}");
+        }
+        // So is any field of one.
+        let mut fields = 0;
+        for (section, body) in STATED {
+            for line in body.lines().filter(|l| !l.trim().is_empty()) {
+                let field = line.trim_start().split(' ').next().unwrap();
+                let e = game(ruleset(None, Some((section, field)), None)).expect_err(field);
+                assert!(e.contains(&format!("game/rules/init.luau: ruleset: {section}: missing field `{field}`")), "{section}.{field}: {e}");
+                fields += 1;
+            }
+        }
+        assert_eq!(fields, 52, "every field of every section");
+        // A field of a table of settings, too.
+        let e = game(ruleset(None, None, Some((" elec_reaches_submerged = true,", "")))).unwrap_err();
+        assert!(e.contains("ruleset: reactions.hit_test: missing field `elec_reaches_submerged`"), "{e}");
+        // A rule is one of the engine's, by name.
+        let e = game(ruleset(None, None, Some(("shake = \"battle_rng\"", "shake = \"exe5\"")))).unwrap_err();
+        assert!(e.contains("ruleset: effects.shake: unknown variant `exe5`, expected `console_rng` or `battle_rng`"), "{e}");
+        let e = game(ruleset(None, None, Some(("form_break = \"cross_or_beast\"", "form_break = \"exe6\"")))).unwrap_err();
+        assert!(e.contains("ruleset: status.form_break: unknown variant `exe6`, expected `cross_or_beast` or `any_form`"), "{e}");
+        // A game with no ruleset states no rules: a load error too. (Modules
+        // of no game, a test's, have no rules, and no battle is made of
+        // them.) Rust tables state them for a content that has those (the
+        // test content's), and its ruleset's sections replace them.
+        let mut none = Content::default();
+        none.scripts.add_game("game", [("cards".to_string(), "return define.record('card', {})".to_string())].into());
+        let e = none.define().unwrap_err().message;
+        assert!(e.contains("game/init.luau: game pack game defines no ruleset"), "{e}");
+        let mut loose = Content::default();
+        loose.scripts.add_dir("loose", [("cards".to_string(), "return define.record('card', {})".to_string())].into());
+        loose.define().unwrap_or_else(|e| panic!("{}", e.message));
+        assert!(loose.rules.is_none());
+        let mut tables = stated();
+        let pools = "return define.ruleset { pools = { actor = 4, attack = 5, effect = 6 } }";
+        tables.scripts.add_game("game", [("rules/init".to_string(), pools.to_string())].into());
+        tables.define().unwrap_or_else(|e| panic!("{}", e.message));
+        assert_eq!(tables.rules().pools.slots(), [4, 5, 6]);
+        assert_eq!(tables.rules().flow, crate::content::testing::rules().flow);
     }
 
     /// The user: "there should only be one ruleset per game". A game
@@ -389,7 +599,7 @@ mod tests {
         .collect();
         // The game with these inits (by path), and a support pack `lib`.
         let with_inits = |inits: &[(&str, &str)]| -> Result<Content, String> {
-            let mut c = Content::default();
+            let mut c = stated();
             c.scripts.add_dir("game", modules.clone());
             for (path, source) in inits {
                 c.scripts.modules.insert(Scripts::name("game", path), source.to_string());
@@ -443,7 +653,7 @@ mod tests {
         held.remove("never");
         let init = Scripts::init_for(&held);
         assert!(init.ends_with("require(\"@self/chips/cannon\")\nrequire(\"@self/chips/sword/edge\")\nrequire(\"@self/chips/sword\")\nrequire(\"@self/lib/pa\")\nrequire(\"@self/rules\")\nrequire(\"@self/rules/turns\")\n"), "{init}");
-        let mut c = Content::default();
+        let mut c = stated();
         c.scripts.add_game("game", held);
         c.define().unwrap_or_else(|e| panic!("{}", e.message));
         assert_eq!(c.defs.definitions, d.defs.definitions);
@@ -471,7 +681,7 @@ mod tests {
         write("lib/hit.luau", "return function(u) end\n");
         write("lib/unread.luau", "error(\"nothing requires this\")\n");
         let on_disk = || {
-            let mut c = Content::default();
+            let mut c = stated();
             c.scripts.add_support_dir("lib", dir.join("lib"));
             c.scripts.set_manifest(PackManifest { id: "game".into(), kind: PackKind::Game, depends: vec!["lib".into()] });
             c.scripts.read_from("game", dir.join("game"));
@@ -487,7 +697,7 @@ mod tests {
         );
         assert!(c.defs.chip_by_key("sword").is_some());
         // The same content from memory alone is the same content.
-        let mut held = Content::default();
+        let mut held = stated();
         held.scripts.modules = c.scripts.modules.clone();
         held.scripts.packs = c.scripts.packs.clone();
         held.define().unwrap_or_else(|e| panic!("{}", e.message));
@@ -508,7 +718,7 @@ mod tests {
     /// A support pack defines nothing a game has.
     #[test]
     fn a_support_pack_defines_nothing_a_game_has() {
-        let mut c = Content::default();
+        let mut c = stated();
         c.scripts.add_support("lib", [("x".to_string(), "return define.ruleset {}".to_string())].into());
         c.scripts.add_game("game", [("chips/y".to_string(), "local _ = require('@lib/x')\nreturn define.record('y', {})".to_string())].into());
         let e = c.define().unwrap_err().message;

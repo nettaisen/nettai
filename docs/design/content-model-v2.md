@@ -343,8 +343,9 @@ of them by number, they say:
   from a Cross, the Gregar beast up to the Gregar Crosses in Beast Out, else the Falzar beast; none: it stays).
 - **What a form gives.** `palette` (`byte_80203EA`: `Rules::cross_palettes` went), `chip_bonus` and
   `null_bonus` (`sub_800EF34`: a family's damaging chips, EraseCross's dimming chips too; Beast Out's Null
-  chips), `charged_chips` (`sub_8013236`), `charged_bonus` (`sub_8012C7C`), `charge_doubles`
-  (`sub_8012AFA`), `chip_heals` (SpoutCross's Aqua chips heal), `fire_charge` (ChargeCross's, `sub_80F0608`),
+  chips), `charged_chips` (`sub_8013236`; each rule says whether the chip must be `damaging`: a Cross's true,
+  Beast Out's Null rule false, and one that leaves it out doesn't load), `charged_bonus` (`sub_8012C7C`),
+  `charge_doubles` (`sub_8012AFA`), `chip_heals` (SpoutCross's Aqua chips heal), `fire_charge` (ChargeCross's, `sub_80F0608`),
   `status_reset` and `navicust_refresh` (`sub_8014536`, `sub_801469C`: named effects, applied in the
   routines' order; the refresh defaults to the reset without the lock-on marker), `hover` (Falzar Beast
   Over's), `special_volley` (the Cross special's volley, `sub_802D4F0`: the form's number, which the original
@@ -630,8 +631,16 @@ return define.ruleset {
 }
 ```
 
-A field is a section by the engine's name (snake_case: `custom_screen`, `chip_use`, `sp_chips`);
-one the ruleset doesn't name keeps the engine's table. **A game has one ruleset** (the user: "there should only be
+A field is a section by the engine's name (snake_case: `custom_screen`, `chip_use`, `sp_chips`).
+**A ruleset states every rule of its game**: the engine has no game's rules of its own (the user: "no default
+games anywhere please"). The sections `chip_use`, `effects`, `flow`, `panels`, `pools`, `reactions` and `status`
+are required, and so is every field of them; one left out is a load error that names it
+(`exe6/rules/init.luau: ruleset: flow: missing field `escape_check``), as is a game pack that defines no ruleset. What may be left out reads as nothing for
+every game: a feature's section the game hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`), a table
+that is empty without it (`elements`, `buster`, `math`, `custom_screen`), and in a section a list or an attribute
+of one entry that is none unless stated (a panel type's `burn`, the buster's `chaos_cycle`). A rule that picks
+between behaviors is named for what it does, not for a game (`shake = "console_rng"`, `retype = "is_alone"`,
+`obstacle_actions = "own_from_8"`). **A game has one ruleset** (the user: "there should only be
 one ruleset per game"): `define.ruleset` takes no `id` and no `stock` flag, a second in a game is a load error, and
 there are no variants (`base`, `add`, `remove` are refused). The engine reads the sections and roles game-wide
 (the chips' links read the SP slots as the content is defined; the custom screen, the renderer and the tools read
