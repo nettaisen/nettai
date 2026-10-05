@@ -18,7 +18,7 @@ use std::marker::PhantomData;
 
 use rennet::{InStream, OutStream};
 
-use crate::protocol::{CHUNK, Chunk, Element, Frame, HORIZON, Meta, Netplay, WireInput};
+use crate::protocol::{Element, Frame, HORIZON, Meta, Netplay, WireInput};
 
 /// What the other player's stream delivered, in order.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -103,10 +103,6 @@ pub struct InputLink<I> {
     out: OutStream<Netplay>,
     inn: InStream<Netplay>,
     horizon: u32,
-    /// The bytes of the other player's next tick so far.
-    payload: Vec<u8>,
-    /// This player's next payload, while it is cut into chunks.
-    scratch: Vec<u8>,
     stats: LinkStats,
     /// The newest element of each datagram sent, the first time it went
     /// out, and when: an ack covering it times the round trip.
@@ -127,8 +123,6 @@ impl<I: WireInput> InputLink<I> {
             out: OutStream::new(horizon),
             inn: InStream::new(horizon),
             horizon,
-            payload: Vec::new(),
-            scratch: Vec::new(),
             stats: LinkStats::default(),
             sent_at: VecDeque::new(),
             newest: None,
@@ -141,14 +135,9 @@ impl<I: WireInput> InputLink<I> {
         self.horizon
     }
 
-    /// This player's next tick: its payload's chunks, then the tick, which
-    /// carries the tick advantage.
+    /// This player's next tick, which carries the tick advantage.
     pub fn push(&mut self, input: &I, tick_advantage: i16) {
-        self.scratch.clear();
-        let (held, flags) = input.encode(&mut self.scratch);
-        for chunk in self.scratch.chunks(CHUNK) {
-            self.out.push(Element::Payload(Chunk::new(chunk)));
-        }
+        let (held, flags) = input.encode();
         self.out.push_with_meta(Element::Tick { held, flags }, Meta { tick_advantage });
     }
 
@@ -207,14 +196,9 @@ impl<I: WireInput> InputLink<I> {
         self.stats.delivered += window.entries.len() as u64;
         for e in window.entries {
             match e {
-                Element::Payload(chunk) => self.payload.extend_from_slice(chunk.bytes()),
                 Element::Tick { held, flags } => {
-                    let input = I::decode(held, flags, &self.payload).map_err(LinkError::Malformed)?;
-                    self.payload.clear();
+                    let input = I::decode(held, flags).map_err(LinkError::Malformed)?;
                     delivered.push(Delivery::Input { input, tick_advantage: window.meta.tick_advantage });
-                }
-                Element::RoundEnd | Element::MatchEnd if !self.payload.is_empty() => {
-                    return Err(LinkError::Malformed(crate::protocol::invalid("a payload without its tick")));
                 }
                 Element::RoundEnd => delivered.push(Delivery::RoundEnd),
                 Element::MatchEnd => delivered.push(Delivery::MatchEnd),

@@ -2290,6 +2290,7 @@ dependencies = [
  "nettai-render",
  "png",
  "serde",
+ "serde_json",
  "toml",
 ]
 

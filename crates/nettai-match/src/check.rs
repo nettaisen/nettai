@@ -30,7 +30,7 @@ use std::sync::Arc;
 pub const CARD_MB: u32 = 80;
 
 fn check_place(content: &Content, game: &str, p: &Place, at: &str, out: &mut Vec<String>) {
-    if p.stage.index() >= content.defs.stages.len() || !ids::in_game(game, &content.defs.stage(p.stage).key) {
+    if p.stage.index() >= content.defs.stages.len() || !ids::in_game(content, game, &content.defs.stage(p.stage).key) {
         out.push(format!("{at}: a stage {game} hasn't"));
         return;
     }
@@ -65,7 +65,7 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
     let defs = &content.defs;
     let game = arena.game.as_str();
     // Everything the side names is the game's.
-    let of_game = |key: &str| ids::in_game(game, key);
+    let of_game = |key: &str| ids::in_game(content, game, key);
     if s.navi.index() >= defs.navis.len() || !of_game(&defs.navi(s.navi).key) {
         out.push(format!("a navi {game} hasn't"));
         return out;
@@ -223,7 +223,7 @@ pub fn check_navicust(content: &Content, arena: &Arena, s: &Side, n: &nettai_bat
     let mut grid = [[None; SIZE]; SIZE];
     let mut compression: Vec<((u16, u8), bool)> = Vec::new();
     for (i, p) in n.iter().enumerate() {
-        if p.program.index() >= defs.navicust_programs.len() || !ids::in_game(&arena.game, &defs.navicust_program(p.program).key) {
+        if p.program.index() >= defs.navicust_programs.len() || !ids::in_game(content, &arena.game, &defs.navicust_program(p.program).key) {
             out.push(format!("navicust program {}: a program {} hasn't", i + 1, arena.game));
             continue;
         }

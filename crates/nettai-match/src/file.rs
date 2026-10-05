@@ -231,8 +231,8 @@ fn unknown(what: &str, name: &str, game: &str, have: &[&str]) -> String {
 }
 
 /// The local names of `game`'s definitions among `keys`.
-fn names_in<'k>(game: &str, keys: impl Iterator<Item = &'k str>) -> Vec<&'k str> {
-    keys.filter(|k| ids::in_game(game, k)).map(ids::local).collect()
+fn names_in<'k>(content: &Content, game: &str, keys: impl Iterator<Item = &'k str>) -> Vec<&'k str> {
+    keys.filter(|k| ids::in_game(content, game, k)).map(ids::local).collect()
 }
 
 /// Each name a file says, resolved in its game: the match, or every
@@ -296,7 +296,7 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
     let mut say = |p: String| problems.push(format!("{at}: {p}"));
     let navi = ids::navi(content, game, &s.navi);
     if navi.is_none() {
-        let have = names_in(game, content.defs.navis.iter().map(|n| n.key.as_str()));
+        let have = names_in(content, game, content.defs.navis.iter().map(|n| n.key.as_str()));
         say(unknown("navi", &s.navi, game, &have));
     }
     let version = match s.version.as_str() {

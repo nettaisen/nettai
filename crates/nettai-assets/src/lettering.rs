@@ -123,8 +123,8 @@ impl Bundle {
         if !self.hud.in_language(lang) {
             return Err(format!("the pack has no lettering in {lang:?} (it has {})", self.hud.languages().join(", ")));
         }
-        // A pack without the custom screen's graphics has no lettering of
-        // them either.
+        // A bundle without the custom screen's graphics (a test's) has no
+        // lettering of them either.
         if !self.custom.is_empty() && !self.custom.in_language(&own, lang) {
             return Err(format!("the pack has the HUD in {lang:?} but not the custom screen (extract it again)"));
         }

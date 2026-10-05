@@ -95,10 +95,11 @@ pub struct VersionPictures {
 }
 
 /// Where the screen's blocks go among the HUD layer's tile numbers, which
-/// its window map and patch list count with: EXE6's (the default, a pack
-/// that says none), or a game's whose window is laid out otherwise (EXE5's
-/// smaller frame puts everything after it lower).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// its window map and patch list count with: a game's own (EXE6's is
+/// [`CustomLayout::EXE6`]; EXE5's smaller frame puts everything after it
+/// lower). A pack says its game's; the default is no layout (zeros: an
+/// empty bundle's), never a game's.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CustomLayout {
     /// The picked-chip column's cells and the late turns' block.
     pub column_cells: u16,
@@ -134,7 +135,7 @@ pub struct CustomLayout {
 /// Where the cursor's corners go over a slot (`sub_8028820`): the slot's
 /// place (`jt_802886C`'s routines) and the four 8x8 corners of each of its
 /// two frames, each (y, x, hflip, vflip) from the place less 3.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CursorPlace {
     pub x: i16,
     pub y: i16,
@@ -176,12 +177,6 @@ impl CustomLayout {
         },
         button_uses: false,
     };
-}
-
-impl Default for CustomLayout {
-    fn default() -> CustomLayout {
-        CustomLayout::EXE6
-    }
 }
 
 /// A button the screen draws by its name (a system's button,
@@ -296,8 +291,8 @@ impl CustomScreen {
         self.chip_art.iter().find(|a| a.key == key).filter(|a| !a.picture.tiles.is_empty())
     }
 
-    /// Whether the pack has the custom screen's graphics (an older pack
-    /// doesn't).
+    /// Whether the bundle has no custom screen graphics (a pack always
+    /// has them; a bundle made in a test may not).
     pub fn is_empty(&self) -> bool {
         self.window_tiles.is_empty()
     }

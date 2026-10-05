@@ -78,7 +78,7 @@ pub fn soul_capacity(content: &Content) -> usize {
 pub fn all_souls(content: &Content, game: &str) -> Vec<FormHandle> {
     (0..content.defs.forms.len() as u16)
         .map(FormHandle)
-        .filter(|&f| content.form(f).soul.is_some() && ids::in_game(game, &content.defs.form(f).key))
+        .filter(|&f| content.form(f).soul.is_some() && ids::in_game(content, game, &content.defs.form(f).key))
         .collect()
 }
 
@@ -114,7 +114,7 @@ pub fn check(content: &Content, arena: &Arena, side: &Side) -> Vec<String> {
         out.push(format!("{} souls; the rules hold {}", list.len(), soul_capacity(content)));
     }
     for (i, &f) in list.iter().enumerate() {
-        if f.index() >= content.defs.forms.len() || !ids::in_game(&arena.game, &content.defs.form(f).key) {
+        if f.index() >= content.defs.forms.len() || !ids::in_game(content, &arena.game, &content.defs.form(f).key) {
             out.push(format!("a soul {} hasn't", arena.game));
             continue;
         }
@@ -183,5 +183,5 @@ impl Side {
 pub fn sp_chip(content: &Content, arena: &Arena, slot: usize) -> Option<ChipHandle> {
     (0..content.defs.chips.len() as u16)
         .map(ChipHandle)
-        .find(|&h| content.chip_links(h).sp_slot == Some(slot as u8) && ids::in_game(&arena.game, &content.defs.chip(h).key))
+        .find(|&h| content.chip_links(h).sp_slot == Some(slot as u8) && ids::in_game(content, &arena.game, &content.defs.chip(h).key))
 }

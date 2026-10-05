@@ -146,14 +146,9 @@ struct IndexFile {
     mugshots: BTreeMap<String, u8>,
 }
 
-/// A pack's asset index (its own names, unqualified); empty (with a note)
-/// for a pack without one, whose content can name no asset.
+/// A pack's asset index (its own names, unqualified).
 pub fn read_index(root: &Path, report: &mut Report) -> Option<nettai_content_api::PackIndex> {
     let path = root.join(INDEX);
-    if !path.is_file() {
-        report.note(INDEX, "the pack has no asset index: content can name no asset");
-        return Some(Default::default());
-    }
     let text = match std::fs::read_to_string(&path) {
         Ok(t) => t,
         Err(e) => {

@@ -58,7 +58,7 @@ pub fn main(args: &[String]) {
     for (song, e) in &failures {
         eprintln!("song {:#05x} left out (it uses a command the driver port doesn't play): {e}", song.0);
     }
-    let mut files = vec![nettai_content::pack::manifest_of("EXE6 (US Falzar) battle assets", Some("exe6"), Some(&bundle), true)];
+    let mut files = vec![nettai_content::pack::manifest("EXE6 (US Falzar) battle assets", "exe6", Some(&bundle), true)];
     files.extend(nettai_content::pack::export_graphics(&bundle, &names));
     let (sound, left_out) = nettai_content::pack::export_sound(&bank, &names);
     files.extend(sound);

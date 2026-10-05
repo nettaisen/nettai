@@ -370,14 +370,12 @@ pub struct Hud {
     pub waiting_palette: Palette,
     /// The warning marker (`sub_800AE90`: a blinking arrow over the custom
     /// gauge or a place on the field): two 16x16 frames of 2x2 tiles, and
-    /// its palette. Empty in a pack extracted before it was.
+    /// its palette.
     pub warning: Tiles,
     pub warning_palette: Palette,
-    /// The dialogue font (the chatbox's). Empty in a pack extracted before
-    /// it was.
+    /// The dialogue font (the chatbox's).
     pub dialogue_font: DialogueFont,
-    /// The chatbox's box and key-wait arrow. Empty in a pack extracted
-    /// before it was.
+    /// The chatbox's box and key-wait arrow.
     pub chatbox: Chatbox,
     /// The language the lettering above is in (the fonts, the text lines,
     /// the banners' and "Cstmzing..."'s words; empty: `BASE_LANGUAGE`),
