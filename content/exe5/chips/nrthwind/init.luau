@@ -10,9 +10,10 @@ local collision = require("../rules/collision")
 local dimming_chips = require("@exelib/dimming")
 local regions = require("@exelib/regions")
 
--- A streak (effect object #0x3A, EXE6's `sub_80E4848`): sheet 0c-00's animation 0 (in palette 0), blown forward
--- 16 pixels a tick, thrown up and falling, for 30 ticks.
-local STREAK_SPRITE = asset.sprite("sword")
+-- A streak (effect object #0x3A, EXE6's `sub_80E4848`; EXE5's 0x080E4898 loads its own sheet, 0c-2e, a gust of
+-- white wind, where EXE6's leftover code names 0c-00): its animation 0 (in palette 0), blown forward 16 pixels a
+-- tick, thrown up and falling, for 30 ticks.
+local STREAK_SPRITE = asset.sprite("gust")
 local STREAK_SPEED, STREAK_RISE, STREAK_GRAVITY, STREAK_TICKS = 0x10_0000, int.i32(0xFFF98000), 0x3C00, 0x1E
 
 local function streak_tick(me: Object)
@@ -37,7 +38,8 @@ local STREAK = define.kind {
             me.visible = true
             local sprite = me.sprite
             sprite:load(STREAK_SPRITE)
-            sprite.shadow = "hidden"
+            -- (`sprite_noShadow`, 0x08002DF4: the first part is drawn with the sprite.)
+            sprite.shadow = "with_sprite"
             me.anim, me.anim_loaded = 0, 0
             sprite:set_animation(0)
             sprite.palette = 0
