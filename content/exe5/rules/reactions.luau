@@ -11,11 +11,21 @@
 -- Written by tools/exe5/gen_rules.py (bn6battle-verify) from the EXE5 ROM; people own it now.
 
 return {
-    push_reading = "exe5",
-    -- The hit test (0x0801691C): a bubbled body counts as submerged, elec reaching either; a FloatShoe body is hit by
-    -- all (EXE5's collision types have no 0x80 self bit); a guard breaks to 0x1002 and turns aside what lacks
-    -- 0x0C004000.
-    hit_test = "exe5",
+    push_reading = "by_hitter_flip",
+    -- The hit test (0x0801691C), where games differ: a FloatShoe body is hit by all (EXE5's collision types have no
+    -- 0x80 self bit); the flag 0x80000000 is a body under the sea's surface, tested as a submerged one, and elec
+    -- reaches either; a guard breaks to types with 0x1002 (so its own turn-aside mask, 0x0C004000, is the engine's
+    -- 0x0C005000 here); an elec hit counts once more on a body standing on a sea panel (0x08016AF6), as fire's on
+    -- grass.
+    hit_test = {
+        float_shoe_needs_self_bit = false,
+        bubbled_as_submerged = true,
+        elec_reaches_submerged = true,
+        guard_breaks_to = 0x1002,
+        elec_bonus_on_sea = true,
+    },
+    -- An obstacle's slide keeps no bounds: it goes anywhere open (0x08014894).
+    obstacle_slide_bounds = false,
     push = {
         { dx = 1, dy = 0, panels = 6 },
         { dx = -1, dy = 0, panels = 6 },

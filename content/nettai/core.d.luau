@@ -1875,8 +1875,12 @@ export type System = SystemSpec
 -- §3.8: tables of rules no entity owns, each a plain table its module
 -- returns, `panels = require("@self/panels")`), which the engine reads
 -- against its schemas when the ruleset is defined, and the game's roles
--- (§7.4, `roles = require("@self/roles")`). A section the ruleset doesn't
--- name keeps the engine's table.
+-- (§7.4, `roles = require("@self/roles")`). The engine has no game's rules
+-- of its own: a ruleset states `chip_use`, `effects`, `flow`, `panels`,
+-- `pools`, `reactions` and `status`, and every field of them (one left out
+-- is a load error that names it). A section it may leave out is a feature
+-- the game hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`)
+-- or a table that is empty without it.
 export type RulesetSpec = {
     systems: { System }?,
     banners: any?,

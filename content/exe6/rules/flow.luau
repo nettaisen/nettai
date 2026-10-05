@@ -13,5 +13,14 @@ return {
     sequencer_before_custom = true,
     escape_check = true,
     result_wait = { normal = 0x66, special = 0x5E },
+    -- What an EXE6 console shows otherwise (presentation, which the frontend reads of a console's own game): its
+    -- HUD's chip window waits for the navi's first decision (a Japanese console's starts as the custom screen
+    -- closes, `sub_8026DC4`: the frontend's, by the console's region), and a set's first battle's intro fades in
+    -- from white.
+    chip_window_at_close = false,
+    intro_from_black = false,
+    -- The low-HP music switch (`sub_8009158`): while a console's navi is at a quarter of its HP or less, the music
+    -- plays a semitone higher and 282/256 as fast.
+    low_hp_music = true,
     navi_win_banner = "link_battle",
 }
