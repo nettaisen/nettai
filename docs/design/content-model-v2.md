@@ -642,7 +642,7 @@ A field is a section by the engine's name (snake_case: `custom_screen`, `chip_us
 games anywhere please"). The sections `chip_use`, `effects`, `flow`, `fresh_stats`, `link_pick`, `panels`, `pools`,
 `reactions` and `status` are required, and so is every field of them that has no neutral value; one left out is a
 load error that names it (`exe6/rules/init.luau: ruleset: flow: missing field `escape_check``), as is a game pack
-that defines no ruleset. The ruleset's declared type requires the eight (`RulesetSpec`, each a `RuleSection`), so
+that defines no ruleset. The ruleset's declared type requires the nine (`RulesetSpec`, each a `RuleSection`), so
 the content check reports a ruleset without one before any load; which field of a section is missing is the
 load's to say. `fresh_stats` is what a navi's stats hold when made fresh beyond its own row (`NaviStats::fresh`):
 the Regular memory, the custom level and the mood, and for a game that has them the Beast Out turns and the weapon
