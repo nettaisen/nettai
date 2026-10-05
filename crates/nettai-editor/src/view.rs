@@ -232,7 +232,8 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     col = col.push(
         text(
             "From an EXE6 .sav: the version, Beast Out and the Crosses it owns, the navi code's level and the SP times. \
-             From an EXE5 .sav (or a raw save image): its karma, the souls it has (its version's) and its NaviCust board's size. \
+             From an EXE5 .sav (or a raw save image): its karma, the souls it has (its version's), its NaviCust board's size \
+             and what a computer navi plays from it. \
              A save of another game than the match's makes a new match of its game.",
         )
         .size(13)
@@ -599,7 +600,7 @@ fn souls(e: &Editor, s: usize) -> Element<'_, Msg> {
             Some(h) => image(h.clone()).width(64).height(32).filter_method(image::FilterMethod::Nearest).into(),
             None => space().width(64).height(32).into(),
         };
-        let about = form.soul.as_ref().map_or(String::new(), |x| format!("soul {}, for {:?} chips", x.number, x.family).to_lowercase());
+        let about = form.soul.as_ref().map_or(String::new(), |x| format!("for {:?} chips", x.family).to_lowercase());
         let on = owned.contains(&f);
         let mut tick = checkbox(on);
         if !every {

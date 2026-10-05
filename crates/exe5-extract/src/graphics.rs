@@ -76,13 +76,15 @@ const PICTURE_BYTES: usize = 0x540;
 /// fonts their characters and the faces their names.
 pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
     let rom = &roms.protoman;
-    Bundle {
-        sprites: sprites(rom),
-        field: field(rom),
-        backgrounds: backgrounds(rom),
-        hud: crate::hud::hud(roms, names, chip_icons(roms, names)),
-        custom: crate::custom::custom(roms, chip_art(roms, names)),
-    }
+    let mut hud = crate::hud::hud(roms, names, chip_icons(roms, names));
+    let mut custom = crate::custom::custom(roms, chip_art(roms, names));
+    // The US ROMs' words are English; the Japanese ROMs' lettering is the
+    // pack's Japanese (`lettering`).
+    let ja = crate::lettering::LANGUAGE.to_string();
+    hud.languages.push((ja.clone(), crate::lettering::hud(roms, &hud, names)));
+    hud.language = nettai_assets::BASE_LANGUAGE.into();
+    custom.languages.push((ja, crate::lettering::custom(roms)));
+    Bundle { sprites: sprites(rom), field: field(rom), backgrounds: backgrounds(rom), hud, custom }
 }
 
 use crate::hud::{palette, tiles};
@@ -121,8 +123,9 @@ fn sprites(rom: &Rom) -> Vec<SpriteSheet> {
 }
 
 /// The sprites a Japanese ROM draws otherwise than the US Team ProtoMan's
-/// (one, 14-17, which has text on it): the pack keeps the US's, which the
-/// US release localized rather than cut.
+/// (one, 14-17, the "BLOCK!" label a blocked hit shows in a mode no
+/// netbattle is, which says ブロック! there): the pack keeps the US's, which
+/// the US release localized rather than cut, and no content draws it.
 pub fn japanese_differences(roms: &Roms) -> Vec<(u8, u8)> {
     // Decoded, not raw: an uncompressed archive is read up to a limit, past
     // its end, where the ROMs differ.
@@ -193,34 +196,62 @@ fn field(rom: &Rom) -> Field {
 
 // ---- Backgrounds -------------------------------------------------------------------
 
+/// A background's picture from its load data at `d`: its tiles, the tile
+/// number they load at, its map with its size, and its palette.
+type BackgroundPicture = (Tiles, u16, Vec<MapEntry>, u16, u16, Option<Palette>);
+
+fn background_picture(rom: &Rom, d: u32) -> Option<BackgroundPicture> {
+    if d == 0 {
+        return None;
+    }
+    let gfx = rom.u32(d);
+    if gfx == 0 {
+        return None;
+    }
+    let size = rom.u32(gfx) as usize * 4;
+    let raw = rom.lz77(gfx + rom.u32(gfx + 4))?;
+    let tiles = Tiles::from_4bpp(&raw[..size.min(raw.len())]);
+    let first_tile = ((rom.u32(d + 4) & 0xFFFF) / 32) as u16;
+    let map_src = rom.u32(d + 8);
+    let (w, h) = (rom.u8(map_src) as u16, rom.u8(map_src + 1) as u16);
+    let map_raw = rom.lz77(map_src + 0xC)?;
+    let map = (0..(w * h) as usize).map(|i| MapEntry::from_gba(u16::from_le_bytes([map_raw[2 * i], map_raw[2 * i + 1]]))).collect();
+    let pal_src = rom.u32(d + 0x10);
+    let palette = (pal_src != 0).then(|| palettes_from_bytes(rom.bytes(pal_src + 4, 32))[0]);
+    Some((tiles, first_tile, map, w, h, palette))
+}
+
 fn backgrounds(rom: &Rom) -> Vec<Option<Background>> {
     (0..BACKGROUND_COUNT)
         .map(|id| {
-            let d = rom.u32(BACKGROUNDS + 4 * id);
-            if d == 0 {
-                return None;
-            }
-            let gfx = rom.u32(d);
-            if gfx == 0 {
-                return None;
-            }
-            let size = rom.u32(gfx) as usize * 4;
-            let raw = rom.lz77(gfx + rom.u32(gfx + 4))?;
-            let tiles = Tiles::from_4bpp(&raw[..size.min(raw.len())]);
-            let first_tile = ((rom.u32(d + 4) & 0xFFFF) / 32) as u16;
-            let map_src = rom.u32(d + 8);
-            let (w, h) = (rom.u8(map_src) as u16, rom.u8(map_src + 1) as u16);
-            let map_raw = rom.lz77(map_src + 0xC)?;
-            let map = (0..(w * h) as usize)
-                .map(|i| MapEntry::from_gba(u16::from_le_bytes([map_raw[2 * i], map_raw[2 * i + 1]])))
-                .collect();
-            let pal_src = rom.u32(d + 0x10);
-            let palette = (pal_src != 0).then(|| palettes_from_bytes(rom.bytes(pal_src + 4, 32))[0]);
+            let (tiles, first_tile, map, map_width, map_height, palette) = background_picture(rom, rom.u32(BACKGROUNDS + 4 * id))?;
             let cb = rom.u32(BACKGROUND_SCROLL + 16 * id + 4) & !1;
             let scroll = SCROLLERS.iter().find(|(a, _)| *a == cb).map(|(_, v)| *v).unwrap_or((0, 0));
             let anims = gfx_anims(rom, rom.u32(BACKGROUND_ANIMS + 4 * id));
-            Some(Background { tiles, first_tile, map, map_width: w, map_height: h, palette, scroll, anims })
+            Some(Background { tiles, first_tile, map, map_width, map_height, palette, scroll, anims })
         })
+        .collect()
+}
+
+/// The Japanese ROMs' backgrounds' load data (Team of Blues, Team of
+/// Colonel).
+const JP_BACKGROUNDS: [u32; 2] = [0x0808_BEC4, 0x0808_BF34];
+
+/// The backgrounds whose picture a Japanese ROM has another of than the US
+/// Team ProtoMan's (one, 0x05: the US ROMs' goldfish, the Japanese ROMs'
+/// bubbles in the dark). No netbattle shows it, and the pack keeps the
+/// US's.
+pub fn japanese_backgrounds(roms: &Roms) -> Vec<u8> {
+    let us = &roms.protoman;
+    (0..BACKGROUND_COUNT)
+        .filter(|&id| {
+            let own = background_picture(us, us.u32(BACKGROUNDS + 4 * id));
+            [Version::ProtoMan, Version::Colonel].into_iter().zip(JP_BACKGROUNDS).any(|(v, table)| {
+                let rom = roms.jp(v);
+                background_picture(rom, rom.u32(table + 4 * id)) != own
+            })
+        })
+        .map(|id| id as u8)
         .collect()
 }
 

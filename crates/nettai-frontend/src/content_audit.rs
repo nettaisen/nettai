@@ -88,15 +88,11 @@ pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&
     let mut seen = BTreeSet::new();
     for (k, (lang, strings)) in languages.iter().enumerate() {
         let b = std::mem::take(&mut bundles[own.index()]);
-        // (A language the content has strings in but its pack no lettering
-        // for, as EXE5's Japanese, which its extraction makes none of: its
-        // consoles can't be shown, the language isn't checked; said, not a
-        // problem.)
+        // (A language the content has strings in and its pack no lettering
+        // for is a problem: a console in it can't be shown.)
+        let have = b.hud.languages().join(", ");
         if k > 0 && !b.hud.languages().contains(&lang.as_str()) {
-            let have = b.hud.languages().join(", ");
-            out.notes.push(format!(
-                "the pack has no lettering in {lang:?} (it has {have}): a {lang} console of the game can't be shown, and {lang} isn't checked"
-            ));
+            out.problems.push(format!("({lang}) the pack has no lettering in {lang:?} (it has {have}): extract it again"));
             bundles[own.index()] = b;
             continue;
         }
@@ -238,7 +234,6 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
         }
         let name = text.chip_name(c, chip);
         lookups::chip_name(hud, c, chip, name, p);
-        lookups::advance_code(c, chip, p);
         let code = d.record.codes.iter().map(|c| c.0).max().unwrap_or(ChipCode::ASTERISK.0);
         lookups::chip_window(a, c, chip, code, p);
         if let Some(said) = text.chip_description(c, chip) {
@@ -272,15 +267,19 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
                 }
             }
         }
-        if data.forms.is_some() {
-            for version in [GameVersion::Falzar, GameVersion::Gregar] {
-                let crosses = exe6_compat::forms::set(c, navi, version).map(|s| s.crosses).unwrap_or_default();
-                for &form in &crosses {
-                    lookups::cross_name(a, c, navi, form, p);
-                    if let Some(said) = text.form_description(c, form) {
-                        lookups::dialogue(font, Lookup::CrossDescription(form), said.text, p);
-                    }
-                }
+    }
+    // The forms a window lists (EXE6's Crosses: the ones a navi lists
+    // among a version's): each one's name and colors, and its description.
+    for n in 0..c.defs.navis.len() {
+        let navi = NaviHandle(n as u16);
+        for i in 0..c.defs.forms.len() {
+            let form = FormHandle(i as u16);
+            if nettai_render::custom::cross_picture(c, a, navi, form).is_none() {
+                continue;
+            }
+            lookups::cross_name(a, c, navi, form, p);
+            if let Some(said) = text.form_description(c, form) {
+                lookups::dialogue(font, Lookup::CrossDescription(form), said.text, p);
             }
         }
     }
@@ -459,29 +458,5 @@ mod tests {
     fn a_lookup_by_the_wrong_key_fails_for_every_chip() {
         assert_eq!(chips_without_icons(str::to_string), 0);
         assert_eq!(chips_without_icons(|key| format!("{}:{key}", testing::ROOT)), testing::content().defs.chips.len());
-    }
-
-    /// The Program Advance animation shows a chip's code by the chip's
-    /// number in its own game's compat (EXE6's `sub_802B80C`, EXE5's
-    /// 0x08027BC6: below 0x160), each game's chips known to it.
-    #[test]
-    fn a_program_advance_code_is_by_its_games_number() {
-        for (c, shows, hides) in [
-            (nettai_match::testing::exe6_content(), "cannon", "ftrsword"),
-            (nettai_match::testing::exe5_content(), "cannon", "ftrsword"),
-        ] {
-            let chip = |key: &str| c.defs.chip_by_key(key).unwrap_or_else(|| panic!("{} has no {key}", c.game()));
-            let mut p = Problems::default();
-            assert!(lookups::advance_code(&c, chip(shows), &mut p), "{}'s {shows}", c.game());
-            assert!(!lookups::advance_code(&c, chip(hides), &mut p), "{}'s {hides}", c.game());
-            let unknown: Vec<_> = (0..c.defs.chips.len())
-                .filter_map(|k| {
-                    let mut q = Problems::default();
-                    lookups::advance_code(&c, ChipHandle(k as u16), &mut q);
-                    q.iter().next().map(|(what, _)| what.to_string())
-                })
-                .collect();
-            assert!(unknown.is_empty(), "{}: {unknown:?}", c.game());
-        }
     }
 }

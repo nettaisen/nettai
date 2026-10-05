@@ -2082,6 +2082,10 @@ export type NaviDef = {
     -- A link navi's face in the emotion window (shown in its second palette
     -- in Full Synchro); MegaMan's face is his form's.
     mugshot: Mugshot?,
+    -- The version of its game a link navi belongs to (EXE6's "gregar" or
+    -- "falzar"), by the name the game's pack keeps a version's pictures
+    -- under; none: every version's.
+    version: string?,
     -- Extra height of its image as it merges with MegaMan in a Cross.
     merge_height: number?,
     -- The no-running message (L on the custom screen in a netbattle).
@@ -2204,7 +2208,7 @@ export type FormEffect =
 --     (EraseCross);
 --   special_holds_buster: its held buster doesn't fire while its B+Back
 --     special is asked for (TenguCross and DustCross in Beast Out);
---   stands_on_metal: a metal panel doesn't slide the navi (EXE5's soul 5);
+--   stands_on_metal: a metal panel doesn't slide the navi (EXE5's MagnetSoul);
 --   controlled: the side's systems' `controller` decides its idle (EXE6's
 --     Beast Over: the berserk), the player's buttons don't reach it, and a
 --     full gauge opens the custom screen;
@@ -2249,6 +2253,10 @@ export type FormDef = {
     palette: number?,
     -- Its face in the emotion window, or its faces by its navi's emotion.
     mugshot: (Mugshot | MugshotFaces)?,
+    -- The version of its game it belongs to (EXE6's "gregar" or "falzar":
+    -- a version's Crosses and Beast), by the name the game's pack keeps a
+    -- version's pictures under.
+    version: string?,
     weapons: FormWeapons?,
     identity: Identity?,
     -- The damage it adds to a family's damaging chips (`uncharged`: only
@@ -2316,11 +2324,11 @@ export type FormDef = {
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.
     buster_arm: { anim: number, palette_add: number? }?,
-    -- A soul (EXE5's Soul Unison): its number, the chip
-    -- family the custom screen's soul button gives up for it, and the
-    -- chaos cycle's row its Chaos Unison charge keeps whatever the chaos
-    -- level (MeddySoul's; none: the level's, at most 2).
-    soul: { number: number, family: ChipFamily, chaos_cycle: number? }?,
+    -- A soul (EXE5's Soul Unison), named by its form's id: the chip family
+    -- the custom screen's soul button gives up for it, and the chaos
+    -- cycle's row its Chaos Unison charge keeps whatever the chaos level
+    -- (MeddySoul's; none: the level's, at most 2).
+    soul: { family: ChipFamily, chaos_cycle: number? }?,
     -- Its game's systems' fields (their `extends.form`: EXE6's `kind`,
     -- `game`, `cross_of`, `beast`, ...; content/exe6/types.d.luau types them).
     [string]: any,
@@ -2745,13 +2753,18 @@ export type RolesSpec = {
     }?,
     -- The banners the ruleset shows itself: a round's start, a turn's, the
     -- final turns', a draw, the damage judge's, a telop's on either side,
-    -- a Program Advance's and an empty selection's. The win and lose
-    -- banners are the navi's.
+    -- a Program Advance's and an empty selection's; a win's where it
+    -- isn't the winner's navi's (the flow's `navi_win_banner`), and a
+    -- win's and a loss's on the judge's ruling. A loss's otherwise is the
+    -- navi's.
     banners: {
         round_start: Banner?,
         turn_start: Banner?,
         final_turn: Banner?,
         draw: Banner?,
+        win: Banner?,
+        win_judged: Banner?,
+        lose_judged: Banner?,
         judge: Banner?,
         telop: Banner?,
         telop_remote: Banner?,

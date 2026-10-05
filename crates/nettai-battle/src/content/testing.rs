@@ -328,31 +328,23 @@ const TEST_PACK: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/pack");
 const TEST_CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/content");
 
 /// The support pack (content/exelib) in `scripts`: what EXE6's modules
-/// require by `@exelib/...`, for content that loads them.
+/// require by `@exelib/...`, for content that loads them; each read from
+/// its folder as a load requires it.
 pub fn add_shared(scripts: &mut Scripts) {
-    scripts.add_support(EXELIB_PACK, modules_under(EXELIB));
+    scripts.add_support_dir(EXELIB_PACK, EXELIB);
 }
 
 /// A manifest for game `game`, whose modules `scripts` holds under its
-/// name, that depends on the support packs `scripts` holds; and inits that
-/// load every one of them (`Scripts::inits_for`, in place of the game's
-/// own indexes and of those made before): for tests that load a game's
-/// directory as it is, or add modules to a game.
+/// name, that depends on the support packs `scripts` holds; and a top
+/// module that loads every one of them (`Scripts::init_for`, in place of
+/// its own): for tests that load a game's directory as it is, or add
+/// modules to a game.
 pub fn add_index(scripts: &mut Scripts, game: &str) {
     use nettai_content_api::{PackKind, PackManifest, packs};
     let prefix = format!("{game}{}", nettai_content_api::keys::SEPARATOR);
-    // (The indexes go: the top module, and a folder's init that only requires.)
-    scripts.modules.retain(|name, source| {
-        name.strip_prefix(&prefix).is_none_or(|path| {
-            let folder_init = path.split_once('/').is_some_and(|(_, rest)| rest == packs::INIT);
-            !(path == packs::INIT || (folder_init && packs::is_index(source)))
-        })
-    });
     let own: std::collections::BTreeMap<String, String> =
         scripts.modules.iter().filter_map(|(name, source)| Some((name.strip_prefix(&prefix)?.to_string(), source.clone()))).collect();
-    for (path, source) in Scripts::inits_for(&own) {
-        scripts.modules.insert(Scripts::name(game, &path), source);
-    }
+    scripts.modules.insert(packs::top_module(game), Scripts::init_for(&own));
     let depends = scripts.packs.iter().filter(|p| p.kind == PackKind::Support).map(|p| p.id.clone()).collect();
     scripts.set_manifest(PackManifest { id: game.to_string(), kind: PackKind::Game, depends });
 }
@@ -442,11 +434,14 @@ pub fn asset_names_used(game: &str, modules: &std::collections::BTreeMap<String,
     nettai_content_api::AssetNames::of_pack(game, pack_index_used(modules))
 }
 
-/// [`asset_names_used`] for the modules of `scripts`: the game's pack's (a
-/// match plays one game; content without packs, a pack of no name).
+/// [`asset_names_used`] for the modules `scripts` could load (those in
+/// memory, and every file of its packs' folders: a load reads its modules
+/// as it requires them, so which it will read isn't known before): the
+/// game's pack's (a match plays one game; content without packs, a pack of
+/// no name).
 pub fn asset_names_for(scripts: &Scripts) -> nettai_content_api::AssetNames {
     let game = scripts.games().first().cloned().unwrap_or_default();
-    asset_names_used(&game, &scripts.modules)
+    asset_names_used(&game, &scripts.available())
 }
 
 /// [`asset_names_used`]'s pack index (its own, unqualified names).
@@ -495,7 +490,7 @@ fn assets() -> nettai_content_api::AssetNames {
 /// [`assets`]' pack index.
 fn pack_index() -> nettai_content_api::PackIndex {
     let mut a = numbered_assets();
-    let used = pack_index_used(&scripts().modules);
+    let used = pack_index_used(&scripts().available());
     for (name, id) in used.sprites {
         a.sprites.entry(name).or_insert(id);
     }
@@ -601,6 +596,9 @@ const ROLE_BANNERS: &[(&str, u8)] = &[
     ("turn-start", 0xc),
     ("final-turn", 0x10),
     ("draw", 0x1c),
+    ("win", 0x04),
+    ("win-judged", 0x14),
+    ("lose-judged", 0x18),
     ("judge", 0x28),
     ("telop", 0x4c),
     ("telop-remote", 0x50),
@@ -981,8 +979,10 @@ const EXELIB: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/exelib"
 /// The support pack's name.
 pub const EXELIB_PACK: &str = "exelib";
 
-/// The test content's scripts: its own modules (testdata/content), these
-/// modules of the EXE6 overlay, and whatever they `require` of it.
+/// The test content's scripts: its own modules (testdata/content) and these
+/// modules of the EXE6 overlay, in memory; whatever they `require` of the
+/// overlay is read from it as the load reaches it (the game's folder is
+/// content/exe6: a module the test content hasn't is EXE6's).
 pub fn scripts() -> Scripts {
     static SCRIPTS: std::sync::OnceLock<Scripts> = std::sync::OnceLock::new();
     SCRIPTS
@@ -1421,44 +1421,16 @@ pub fn scripts() -> Scripts {
             ];
             let modules = modules.iter().map(|&(to, from)| (to.to_string(), from.to_string()));
             let own = modules_under(TEST_CONTENT);
-            let mut all: std::collections::BTreeMap<String, String> =
-                modules.map(|(to, from)| (to, read(&from))).chain(own).collect();
-            // What they require of the overlay comes with them (what they
-            // require of content/exelib is the support pack's).
-            let mut pending: Vec<String> = all.keys().cloned().collect();
-            while let Some(module) = pending.pop() {
-                for required in requires(&module, &all[&module]) {
-                    // (A folder names its init.)
-                    let init = nettai_content_api::keys::init_of(&required);
-                    if all.contains_key(&required) || all.contains_key(&init) {
-                        continue;
-                    }
-                    let required = if std::path::Path::new(&format!("{OVERLAY}/{required}.luau")).is_file() { required } else { init };
-                    all.insert(required.clone(), read(&required));
-                    pending.push(required);
-                }
-            }
+            let all: std::collections::BTreeMap<String, String> = modules.map(|(to, from)| (to, read(&from))).chain(own).collect();
+            // (What they require of the overlay is read as it is required;
+            // what they require of content/exelib is the support pack's.)
             let mut scripts = Scripts::default();
             add_shared(&mut scripts);
             scripts.add_game(ROOT, all);
+            scripts.read_from(ROOT, OVERLAY);
             scripts
         })
         .clone()
-}
-
-/// The modules of the test content `source` (its module `module`)
-/// requires, as module paths (a folder's name for its init: Luau's rule,
-/// `keys::resolve`). (A require of another pack, `@exelib/...`, is that
-/// pack's.)
-fn requires(module: &str, source: &str) -> Vec<String> {
-    use nettai_content_api::{keys, packs};
-    let name = Scripts::name(ROOT, module);
-    packs::requires(source)
-        .iter()
-        .map(|written| keys::resolve(&name, written).unwrap_or_else(|e| panic!("{module}.luau: {e}")))
-        .filter(|target| keys::root_of(target) == Some(ROOT))
-        .map(|target| keys::local(&target).to_string())
-        .collect()
 }
 
 fn rules() -> Rules {

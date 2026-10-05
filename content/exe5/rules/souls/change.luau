@@ -2,13 +2,13 @@
 -- EXE5's Soul Unison change (0x08011F74, EXE6's `sub_8014A38`'s place): while the battle is paused at a turn's start,
 -- MegaMan unites with the soul his side asked for (the turn's transform record: `navi:form_change_target()`, its
 -- turns and Chaos Unison `navi:form_change_soul()`). The turn-start sequencer (the framework's) waits for it. Every
--- soul names this action as its `change` (./init).
+-- soul names this module's action as its `change`.
 --
 -- Its steps (0x08011F94, on the attack's step):
 --
 -- - 0 (0x08011FAC): onto his future panel, facing the default way, the charge dropped, his moves stopped; a flash
 --   (effect 3) and a sound; his sprite held.
--- - 4 (0x08012010): the soul's image comes in (rules/souls/image), with Chaos Unison the dark shade too (objects/
+-- - 4 (0x08012010): the soul's image comes in (./image: its form's `image`), with Chaos Unison the dark shade too (objects/
 --   chaos-shade); 50 ticks later another flash and the soul's sound (Chaos Unison's its own); 61 ticks.
 -- - 8 (0x08012090): MegaMan in the soul: the old form's end hook, his sprite by the soul, his statuses ended, the
 --   soul's turns, his form, the new form's start hook (./hooks); in TomahawkSoul the cameras shake; 10 ticks later
@@ -35,10 +35,6 @@ type Souls = { turns: number, chaos: boolean, arm_chip: Chip? }
 local FLASH_SOUND = asset.sound("log-in")
 local UNISON_SOUND = asset.sound("cross-change")
 local CHAOS_SOUND = asset.sound("bug")
-
--- The souls whose change shakes the cameras (0x0801212C: TomahawkSoul's), with battle flag 0x20 set (0x08012138), which
--- has the cameras shake while the battle is paused, until the change's end clears it (0x080121B6).
-local SHAKES: { [number]: boolean } = { [10] = true }
 
 -- The steps, in the attack's step.
 local PREPARE, IMAGE, EMERGE, CHAOS, SETTLE = 0, 4, 8, 0xC, 0x10
@@ -70,7 +66,7 @@ local function prepare(me: Object)
 end
 
 -- 0x08012010
-local function show_image(me: Object, s: State, soul: number, chaos: boolean)
+local function show_image(me: Object, s: State, soul: FormDef, chaos: boolean)
     if me.step_init == 0 then
         image.spawn(me, soul)
         if chaos then
@@ -90,7 +86,7 @@ local function show_image(me: Object, s: State, soul: number, chaos: boolean)
 end
 
 -- 0x08012090
-local function emerge(me: Object, s: State, target: FormDef, soul: number, chaos: boolean)
+local function emerge(me: Object, s: State, target: FormDef, chaos: boolean)
     me.sprite.white = true
     if me.step_init == 0 then
         me:set_navi_state("form_change_sprite_held", false)
@@ -104,12 +100,15 @@ local function emerge(me: Object, s: State, target: FormDef, soul: number, chaos
         local turns, is_chaos = me:form_change_soul()
         local souls = system.state() :: Souls
         souls.turns, souls.chaos = turns, is_chaos
-        -- (0x08012102: the record's arm chip, +6, into AIData +0x32: Arm Change's, ./arm-change.)
+        -- (0x08012102: the record's arm chip, +6, into AIData +0x32: ColonelSoul's Arm Change fills it.)
         me.weapon_chip = souls.arm_chip
         stats.form = target
         hooks.identity(me, target)
         hooks.start(me, target)
-        if SHAKES[soul] then
+        -- (0x0801212C: the souls whose change shakes the cameras, TomahawkSoul's `emerge_shake`, with battle flag
+        -- 0x20 set, 0x08012138, which has them shake while the battle is paused, until the change's end clears it,
+        -- 0x080121B6.)
+        if target.emerge_shake == true then
             battle.shake_camera(2, 30)
             battle.set_shake_through_pause(true)
         end
@@ -158,15 +157,14 @@ function change.update(me: Object, s: State)
     if target == nil or target.soul == nil then
         error("EXE5's soul change asked for no soul (0x08011F74)")
     end
-    local soul = (target.soul :: any).number :: number
     local _, chaos = me:form_change_soul()
     local step = me.step
     if step == PREPARE then
         prepare(me)
     elseif step == IMAGE then
-        show_image(me, s, soul, chaos)
+        show_image(me, s, target, chaos)
     elseif step == EMERGE then
-        emerge(me, s, target, soul, chaos)
+        emerge(me, s, target, chaos)
     elseif step == CHAOS then
         chaos_step(me, s)
     elseif step == SETTLE then
@@ -178,5 +176,12 @@ function change.update(me: Object, s: State)
         me:step_sprite()
     end
 end
+
+-- The soul change, as the pause handler runs it: one of the souls system's actions (./init).
+change.action = define.action {
+    id = "souls/change",
+    state = { timer = "u16" },
+    update = change.update,
+}
 
 return change

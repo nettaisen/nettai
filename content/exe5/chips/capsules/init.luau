@@ -1,6 +1,7 @@
 --!strict
 -- YelCapsl, BlkCapsl, WhiCapsl, PrpCapsl and PnkCapsl (EXE5's chips 0x17C to 0x180, past the library): MeddySoul's
--- capsules (rules/souls/capsules: the custom screen offers two of the five a screen, 0x08023D20, and mixes one into a
+-- capsules (navis/megaman/forms/meddysoul/capsules: the custom screen offers two of the five a screen, 0x08023D20, and
+-- mixes one into a
 -- chip picked). The screen shows a capsule's icon, name and picture, and R its description; none ever reaches a hand,
 -- so nothing starts the use its record names (each chip's own comment above its definition).
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.

@@ -797,8 +797,8 @@ require("@self/megaman/weapons/buster-2e")  -- defined for its id alone: nothing
   | support | itself, and the support packs in its `depends` |
 
   No pack requires a game pack but itself, and a relative path never leaves its pack. The loader
-  (`nettai_content::index::follow`), the runtime's `require` (`nettai_luau::Pack::with_packs`) and the content check
-  refuse anything else, naming the module and the require (`packs::check_require`).
+  (`packs::find`, where a load's `require` and the content check's reading of a module's text both find a
+  module) refuses anything else, naming the requiring module and the require as written.
 - **What a game has.** Its inits require the modules that define what a person picks or the rules name: its rules
   (rules/init.luau: its systems, rule sections and roles, required by the top module), and its chips, navis,
   forms, stages, patch cards and NaviCust programs, each required by the init of the folder of the pack it is in
@@ -809,17 +809,19 @@ require("@self/megaman/weapons/buster-2e")  -- defined for its id alone: nothing
   defines without a use yet isn't required, so it doesn't load: index.py keeps it as a commented require in
   chips/init.luau, and uncomments it when the chip has its use (no list of them is kept anywhere else; neither
   game has one today).
-- **The inits are the whole truth.** A load of a game runs its init.luau, and what that requires, in turn, is what
-  loads.
-  - The define phase refuses a definition of these registries made by a module its folder's init doesn't require
-    itself, or whose folder the top module doesn't (`game/chips/sword/init.luau: chip sword is game's, and
-    game/chips/init.luau doesn't require chips/sword`; `packs::listed_by` says which init lists a module, a
-    module at the pack's top and a folder's own init, the rules', by the top module). So a chip a Program Advance
-    reaches, but chips/init.luau doesn't list, is refused. A game without its init.luau, and a support pack's
-    definition of any of them, are refused too.
-  - The content check refuses a game's module that defines something (`define.<registry>`) and that no init
-    reaches (`nettai_content_check::unloaded`): a chip added without its require would otherwise be missing
-    without a word. What a commented require names, and its folder, waits and is no problem.
+- **A load reads what it requires, as it requires it.** A load of a game runs its init.luau; each `require` finds
+  its module when it is reached and reads it then (`packs::find`: the one place that knows how a require finds
+  its module, by Luau's rule for a relative path, `@self/` and `@<pack>/`, a folder's name for its init), from the
+  modules held in memory, else from the packs' folders (`Scripts::dirs`; `packs::Modules`). Nothing is read ahead
+  and no module's text is scanned for its requires. The user: "can't it just import the root init.luau from the
+  pack and be done with it?"
+  - What the load read is the content's modules from then on (`Scripts::modules`): the content hash covers them,
+    and a runtime's VM loads them again from memory, never from a folder.
+  - So the whole truth needs no check: a module nothing requires never runs, and so defines nothing. A support
+    pack's definition of what a game has is still refused, and a game without its init.luau.
+  - Nothing in the engine says which files of a pack no load reads (the user: "surely that's more of a linter
+    check than a loader check?"). A game's inits are index.py's, written from the modules that are there, and
+    its `--check` names a module that defines something and isn't required yet.
   - The registry says which kind a definition is; the folders group them for a reader.
 - **The inits are index.py's, whole.** It writes them from the modules that are there, in path order, and a hand
   edit is lost (`index.py --check` names it). A merge conflict in an init is settled by running it: take either
@@ -833,9 +835,9 @@ require("@self/megaman/weapons/buster-2e")  -- defined for its id alone: nothing
   game packs, and every lookup sees only the loaded game's definitions. `nettai_content::pack::games` lists the game
   packs, each with its asset pack, and `load_game` loads one.
 - **Loading** (`nettai_content::index::read`). The loader reads the manifests of the games it loads and the support
-  packs they depend on. The load order is the support packs, each after those it depends on, then the games. It
-  reads each game's init.luau and what that requires, in turn (its folders' inits, and what they require), and
-  scans nothing. The games are the packs whose
+  packs they depend on, and no module: the define phase reads each game's init.luau and what that requires, in
+  turn (its folders' inits, and what they require), from the packs' folders, as each require is reached. The load
+  order is the support packs, each after those it depends on, then the games. The games are the packs whose
   manifest says `kind = "game"` (`packs::games`). The content, and its hash, is what loaded. A game whose asset pack
   isn't found isn't loaded.
 - **Declarations, by pack** (`packs::declarations`). A pack's modules check against the engine's declarations, then
@@ -2271,7 +2273,9 @@ resolved against `Content::names`; netplay peers exchange handles once their con
 1. A fresh sandboxed VM (`sandbox::new_vm`), with `define`, `asset` and `require` installed before
    `lua.sandbox(true)`.
 2. Each game's top module (its init.luau, §4.0) and what it requires, loaded as `require` loads a module
-   (compile, `verify::check`, run once, deep freeze): a module loads once, when first required.
+   (found by `packs::find`, read where the pack's modules are, compile, `verify::check`, run once, deep
+   freeze): a module loads once, when first required. The modules read, with their text and bytecode, are the
+   phase's result beside the definitions.
 3. Each definer records `(registry, defining module, ordinal, spec table)` and returns the spec with its
    registry's metatable. Definers and `asset` fail once loading ends.
 4. Keys (§2.2): explicit ids; derived keys for anonymous definitions nested in a keyed definition of the same

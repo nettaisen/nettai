@@ -1062,7 +1062,7 @@ impl CoreApi for Battle {
             .patterns
             .get(i)
             .ok_or_else(|| ApiError::Other(format!("side {side}'s tactics have no pattern {i}")))?;
-        Ok((p.dx, p.dy, p.chips.clone()))
+        Ok((p.dx, p.dy, p.run()))
     }
 
     fn swap_tactics(&mut self, side: u8, i: usize) {

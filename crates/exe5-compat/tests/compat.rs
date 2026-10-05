@@ -45,6 +45,10 @@ fn exe5_compat_reads() {
     // The statuses' bytes.
     assert_eq!(built_in.status(0x10).as_deref(), Some("paralyze-90"));
     assert_eq!(built_in.status(0x32).as_deref(), Some("blind-1200"));
+    // MegaMan's forms' numbers (NaviStats +0x2C): his souls', which the
+    // content names by their forms' ids.
+    assert_eq!((built_in.form_number("base"), built_in.form_number("protosoul"), built_in.form_number("toadsoul")), (Some(0), Some(1), Some(12)));
+    assert_eq!((built_in.form(7), built_in.form(13), built_in.form_number("heatcross")), (Some("colonelsoul"), None, None));
 }
 
 /// Team ProtoMan's NaviStats block as the chip lab's team-plain recording
