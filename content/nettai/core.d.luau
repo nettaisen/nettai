@@ -2740,13 +2740,18 @@ export type RolesSpec = {
     }?,
     -- The banners the ruleset shows itself: a round's start, a turn's, the
     -- final turns', a draw, the damage judge's, a telop's on either side,
-    -- a Program Advance's and an empty selection's. The win and lose
-    -- banners are the navi's.
+    -- a Program Advance's and an empty selection's; a win's where it
+    -- isn't the winner's navi's (the flow's `navi_win_banner`), and a
+    -- win's and a loss's on the judge's ruling. A loss's otherwise is the
+    -- navi's.
     banners: {
         round_start: Banner?,
         turn_start: Banner?,
         final_turn: Banner?,
         draw: Banner?,
+        win: Banner?,
+        win_judged: Banner?,
+        lose_judged: Banner?,
         judge: Banner?,
         telop: Banner?,
         telop_remote: Banner?,

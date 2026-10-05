@@ -4,11 +4,14 @@
 -- tick after both results are in (`sub_8026A28`); before it opens, the transformation
 -- sequencer runs once more after the reversions (state 0x24, `sub_8008492`); the fight checks for an escape
 -- (`sub_800AAD6`); the result's banner holds at least 102 ticks, 94 in a special battle and for a win in battle
--- modes 4, 5 and 8 (`sub_80081A4`, `sub_800825A`).
+-- modes 4, 5 and 8 (`sub_80081A4`, `sub_800825A`); a link battle's win shows the winner's navi's banner
+-- (`sub_80081A4`: `sub_800A8D4`'s table, whatever the result), any other "ENEMY DELETED", or "YOU WIN" on the judge's
+-- ruling (the roles `win` and `win_judged`).
 
 return {
     result_words = 50,
     sequencer_before_custom = true,
     escape_check = true,
     result_wait = { normal = 0x66, special = 0x5E },
+    navi_win_banner = "link_battle",
 }
