@@ -8,19 +8,24 @@
 -- with the A charge not full (0x0800D0A6).
 
 local attach_points = require("@self/attach_points")
+local body_overlays = require("../../../lib/body_overlays")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_chip = require("@self/charged-chip")
 local charged_chips = require("../weapons/charged-chip")
 local darkmetr = require("../../../chips/darkmetr")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "napalmsoul",
     soul = { family = "fire" },
-    change = souls.action,
-    revert = souls.revert,
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- NapalmMan's image as MegaMan unites with him (rules/souls/image), with his cannon (0x0800EDBC's routine for the soul).
+    image = soul_image.wearing(asset.sprite("napalmman"), "soul-image/napalmman", body_overlays.napalmman),
     sprite = asset.sprite("napalmsoul"),
     element = "fire",
     buster_bonus = 0,

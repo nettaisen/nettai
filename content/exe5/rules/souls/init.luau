@@ -4,6 +4,11 @@
 -- `soul` naming its `family`) asks for it in the turn's transform record; at the turn's start the sequencer runs the
 -- soul's change (./change). The system keeps the side's soul turns (AIData +0x0F) and whether it is Chaos Unison,
 -- counts the turns down as each later custom screen is asked for and asks for the revert when they run out.
+--
+-- A soul is a form, named by its id, and what is one soul's is in its folder (navis/megaman/forms/<soul>): its
+-- weapons, its navi's image at the change (its `image`) and what it adds to the custom screen (its `custom`: its
+-- buttons, windows and part of the screen's routines, which ./custom gathers from the forms). What is here is the
+-- system's: the button and the soul's choice, the turns, the change, the revert, Chaos Unison's failure.
 
 local change = require("@self/change")
 local custom_souls = require("@self/custom")
@@ -18,25 +23,13 @@ export type State = {
     chaos: boolean,
 }
 
--- The soul change, as the pause handler runs it.
-souls.action = define.action {
-    id = "souls/change",
-    state = { timer = "u16" },
-    update = change.update,
-}
-
--- The revert out of a soul (./revert), as the pause handler runs it.
-souls.revert = define.action {
-    id = "souls/revert",
-    state = { timer = "u16" },
-    update = revert.update,
-}
-
 -- The system's state: its own fields, the soul button's, and what each soul's addition to the custom screen keeps
 -- (./custom's `states`).
 local state: { [string]: string | { string } } = {
     turns = "u8",
     chaos = "bool",
+    -- The turn's arm chip (the transform record's +6; none: its 0xFFFF).
+    arm_chip = "chip",
     -- The custom screen's (./custom): the round's souls given, the button's offer, the soul's choice's step.
     souls_used = "u32",
     offer = "form",
@@ -60,14 +53,17 @@ souls.system = define.system {
     -- both, as a setup that says nothing.
     setup = { souls = "form[16]", soul_unison = "bool", chaos_unison = "bool" },
     setup_defaults = { soul_unison = true, chaos_unison = true },
-    actions = { souls.action, souls.revert },
+    actions = { change.action, revert.action },
     -- What a soul's form says for the rules that ask (a soul is named by its form's id; the original tests its
-    -- number, NaviStats +0x2C, in each place): its sword's arm, the blade's animation (lib/swords, 0x080EC038); its
-    -- charged sword warping behind the enemy whatever the charge (lib/stepsword, 0x08012538); VarSwrd's wait for
-    -- its sequence while A is up (chips/varswrd, 0x080ED570); the cameras' shake as MegaMan emerges in it (./change,
-    -- 0x0801212C).
+    -- number, NaviStats +0x2C, in each place; the pack's types.d.luau types them): its navi's image at the change
+    -- (./image, a `SoulImage`) and what it adds to the custom screen (./custom, a `SoulCustom`); its sword's arm, the
+    -- blade's animation (lib/swords, 0x080EC038); its charged sword warping behind the enemy whatever the charge
+    -- (lib/stepsword, 0x08012538); VarSwrd's wait for its sequence while A is up (chips/varswrd, 0x080ED570); the
+    -- cameras' shake as MegaMan emerges in it (./change, 0x0801212C).
     extends = {
         form = {
+            image = "record:soul-image",
+            custom = "record:soul-custom",
             blade_anim = "u8",
             steps_behind = "bool",
             var_sword_waits = "bool",

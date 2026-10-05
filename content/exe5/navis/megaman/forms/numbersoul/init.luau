@@ -12,17 +12,34 @@ local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged-shot")
 local darkplus = require("../../../chips/darkplus")
+local hand = require("@self/hand")
 local layer = require("@self/layer")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
--- His layer's row.
-local ROW = 1
+-- His layer's row, and NumberMan's face's on his image.
+local ROW, NUMBERMAN_FACE = 1, 0
 
 return define.form {
     id = "numbersoul",
     soul = { family = "plus" },
-    change = souls.action,
-    revert = souls.revert,
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- NumberMan's image as MegaMan unites with him (rules/souls/image): he wears his face, a layer (./layer, row 0)
+    -- in the image's second related slot (0x0800EE6E), taken off as the image goes (0x0800EFFA).
+    image = soul_image.look {
+        sprite = asset.sprite("numberman"),
+        put_on = function(image: Object)
+            image.related2 = layer.spawn(image, NUMBERMAN_FACE)
+        end,
+        take_off = function(image: Object)
+            layer.take_off(image.related2)
+            image.related2 = nil
+        end,
+    },
+    -- What it adds to the custom screen (the souls system gathers it, rules/souls/custom): the hand of ten (./hand).
+    custom = hand.custom,
     sprite = asset.sprite("numbersoul"),
     element = "null",
     buster_bonus = 0,

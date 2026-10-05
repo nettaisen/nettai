@@ -14,13 +14,17 @@ local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged-shot")
 local drklance = require("../../../chips/drklance")
 local grass = require("@self/grass")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "tomahawksoul",
     soul = { family = "wood" },
-    change = souls.action,
-    revert = souls.revert,
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- TomahawkMan's image as MegaMan unites with him (rules/souls/image).
+    image = soul_image.look { sprite = asset.sprite("tomahawkman") },
     sprite = asset.sprite("tomahawksoul"),
     element = "wood",
     buster_bonus = 0,

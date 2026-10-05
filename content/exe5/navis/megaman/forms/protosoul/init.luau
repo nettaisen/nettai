@@ -12,13 +12,17 @@ local buster = require("../weapons/buster")
 local chaos = require("@self/chaos")
 local charge = require("@self/charge")
 local charged_chip = require("../weapons/charged-chip")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "protosoul",
     soul = { family = "sword" },
-    change = souls.action,
-    revert = souls.revert,
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- ProtoMan's image as MegaMan unites with him (rules/souls/image).
+    image = soul_image.look { sprite = asset.sprite("protoman") },
     sprite = asset.sprite("protosoul"),
     element = "null",
     buster_bonus = 0,

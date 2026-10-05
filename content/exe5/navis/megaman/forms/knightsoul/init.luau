@@ -8,18 +8,23 @@
 -- invulnerable for 50 ticks (0x08010392).
 
 local attach_points = require("@self/attach_points")
+local body_overlays = require("../../../lib/body_overlays")
 local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_chips = require("../weapons/charged-chip")
 local darkdril = require("../../../chips/darkdril")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "knightsoul",
     soul = { family = "break" },
-    change = souls.action,
-    revert = souls.revert,
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- KnightMan's image as MegaMan unites with him (rules/souls/image), with his ball and chain (0x0800EDBC's routine for the soul).
+    image = soul_image.wearing(asset.sprite("knightman"), "soul-image/knightman", body_overlays.knightman),
     sprite = asset.sprite("knightsoul"),
     element = "null",
     buster_bonus = 0,

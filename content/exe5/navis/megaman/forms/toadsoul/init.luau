@@ -12,13 +12,17 @@ local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_chips = require("../weapons/charged-chip")
 local darkwide = require("../../../chips/darkwide")
-local souls = require("../../../rules/souls")
+local soul_change = require("../../../rules/souls/change")
+local soul_image = require("../../../rules/souls/image")
+local soul_revert = require("../../../rules/souls/revert")
 
 return define.form {
     id = "toadsoul",
     soul = { family = "aqua" },
-    change = souls.action,
-    revert = souls.revert,
+    change = soul_change.action,
+    revert = soul_revert.action,
+    -- ToadMan's image as MegaMan unites with him (rules/souls/image).
+    image = soul_image.look { sprite = asset.sprite("toadman") },
     sprite = asset.sprite("toadsoul"),
     element = "aqua",
     buster_bonus = 0,

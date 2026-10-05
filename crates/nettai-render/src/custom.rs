@@ -535,8 +535,9 @@ fn soul_flight<'a>(a: &'a CustomScreen, v: &View, sub: u8, counter: u8) -> Optio
     flight(a, v, tiles, first, sub, counter)
 }
 
-/// EXE5's capsule's mix, as its souls system keeps it (content/exe5/rules/
-/// souls/capsules.luau, read by its fields' names): the capsule being mixed
+/// EXE5's capsule's mix, as its souls system keeps it (MeddySoul's part of
+/// it: content/exe5/navis/megaman/forms/meddysoul/capsules.luau, read by its
+/// fields' names): the capsule being mixed
 /// (1 or 2: the button `capsule_1` or `capsule_2`), and the sequence's step
 /// and count (the screen's state 0x3C).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
