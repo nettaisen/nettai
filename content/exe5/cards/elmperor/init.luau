@@ -10,6 +10,6 @@ return define.patch_card {
     effects = {
         cards.charge_shot_kind(variants.charged_poisoning),
         cards.status_bug(0),
-        cards.bug(cards.buster_shot(variants.plain)),
+        cards.bug(cards.buster_shot(nil)),
     },
 }

@@ -3,19 +3,21 @@
 //! a Cross's navi and form in Beast Out, the navis' form sets, and the
 //! framework's behavior traits that follow from the kinds (the original's
 //! tests of the form's number). The engine checks only the extensions'
-//! types; these are EXE6's own rules.
+//! types; these are EXE6's own rules, checked of content/exe6 as compat
+//! reads it (`exe6_compat::forms`).
 
-use crate::testing::exe6_content;
+use exe6_compat::GameVersion;
 use exe6_compat::forms::{self, Kind};
 use nettai_battle::content::FormTraits;
-use nettai_battle::custom::GameVersion;
 use nettai_content_api::FormHandle;
+use nettai_match::ids::in_game;
+use nettai_match::testing::exe6_content;
 
 #[test]
 fn exe6_forms_agree_with_their_kinds() {
     let c = exe6_content();
     let mut problems = Vec::new();
-    for (i, d) in c.defs.forms.iter().enumerate().filter(|(_, d)| crate::ids::in_game(&c, "exe6", &d.key)) {
+    for (i, d) in c.defs.forms.iter().enumerate().filter(|(_, d)| in_game(&c, "exe6", &d.key)) {
         let f = FormHandle(i as u16);
         let (kind, form) = (forms::kind(&c, f), &d.record);
         let mut say = |what: &str| problems.push(format!("{}: {what}", d.key));
@@ -55,7 +57,7 @@ fn exe6_forms_agree_with_their_kinds() {
             }
         }
     }
-    for (i, n) in c.defs.navis.iter().enumerate().filter(|(_, n)| crate::ids::in_game(&c, "exe6", &n.key)) {
+    for (i, n) in c.defs.navis.iter().enumerate().filter(|(_, n)| in_game(&c, "exe6", &n.key)) {
         let navi = nettai_content_api::NaviHandle(i as u16);
         let sets = [GameVersion::Gregar, GameVersion::Falzar].map(|g| forms::set(&c, navi, g));
         if n.record.forms.is_some() != sets.iter().any(Option::is_some) {
@@ -92,7 +94,7 @@ fn exe6_crosses_have_their_strings() {
     let c = exe6_content();
     let crosses: Vec<FormHandle> = (0..c.defs.forms.len() as u16)
         .map(FormHandle)
-        .filter(|&f| crate::ids::in_game(&c, "exe6", &c.defs.form(f).key) && forms::kind(&c, f) == Some(Kind::Cross))
+        .filter(|&f| in_game(&c, "exe6", &c.defs.form(f).key) && forms::kind(&c, f) == Some(Kind::Cross))
         .collect();
     assert_eq!(crosses.len(), 10);
     for &f in &crosses {

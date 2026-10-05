@@ -123,6 +123,10 @@ pub struct EffectsRules {
     /// What holds a screen palette flash (effect object #0x0A,
     /// `kinds::palette_flash`) by its mode.
     pub palette_flash: PaletteFlashRule,
+    /// Where that flash sits among the palette transforms a frame
+    /// applies, which a dimming's fade is one of. Presentation: the
+    /// renderer's (`Fade::Flash`); the simulation reads none of it.
+    pub palette_flash_order: PaletteFlashOrder,
     /// An afterimage (`sub_80E33FA`) and a form overlay (`sub_80C4530`'s
     /// spawner) run while the battle is paused: EXE6's spawners set their
     /// header flag 0x04; EXE5's (0x080E35F4, and its overlays', whose flags
@@ -192,6 +196,28 @@ pub enum PaletteFlashRule {
     PauseHolds,
 }
 
+/// Where a screen palette flash (effect object #0x0A) sits among the
+/// palette transforms. Each frame the game copies its palettes and applies
+/// the transforms set in a table of slots, in the slots' order (EXE6's
+/// `sub_80023E0`'s table, EXE5's 0x08002350's); the fade system's level
+/// fades take slots 18 and 19 for its first record, a dimming's and a
+/// transformation's, and 20 and 21 for its second (EXE6's 0x08006396,
+/// EXE5's 0x08005B42: the record's number plus 18 and 19). A flash fills
+/// the stage's palettes with its white through a slot of its own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PaletteFlashOrder {
+    /// Before the fades: EXE5's flash takes slot 9 (0x080E104C; its
+    /// two-layer one 9 and 10, 0x080E10D0), so a dimming darkens the white
+    /// it put there with the rest: a flash under a dimming is white a
+    /// quarter down (Blinder's, Colonel's, OmegaRkt's, LeadRaid's).
+    BeforeFades,
+    /// After the first record's: EXE6's takes slot 20 (`sub_80E10C0`; its
+    /// two-layer one 20 and 21, `sub_80E114C`), so its white stands over a
+    /// dimming (Colonel's, DeltaRay's, CrossDiv's, the navi advances').
+    AfterFades,
+}
+
 /// How `sub_801A082` (an object's damage, hit modifier and collision types
 /// set again: `reset_collision_types`) goes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
@@ -230,6 +256,30 @@ pub enum ShakeRule {
 pub struct SlideSpeed {
     pub x: i32,
     pub y: i32,
+}
+
+/// The rule section `fresh_stats`: what a navi's stats hold when they are
+/// made fresh (`NaviStats::fresh`), beyond what the navi's own row states
+/// (its `fresh` and `weapons`): what the game's routine writes for every
+/// navi (EXE6's `initNaviStats_WithDefaultStatsMaybe_8013438`, EXE5's
+/// 0x08010C00). A game states the first three; the engine has none of its
+/// own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct FreshStatsRules {
+    /// NaviStats +0x09: the Regular memory.
+    pub reg_up: u8,
+    /// +0x0A: the custom level.
+    pub custom_level: u8,
+    /// +0x0E: the mood.
+    pub mood: u8,
+    /// +0x21: EXE6's Beast Out turns (3). None stated: none (a game
+    /// without Beast Out).
+    pub beast_out_counter: u8,
+    /// +0x44: the weapon of the A button in battle mode 9 (EXE6's zeroed
+    /// byte names weapon routine 0, MegaMan's buster). None stated: none
+    /// (EXE5's block has the light/dark value there, its light and dark
+    /// system's).
+    pub mode9_a: Option<nettai_content_api::WeaponHandle>,
 }
 
 /// A sparkle's place from a panel's center, in pixels.
@@ -497,6 +547,9 @@ pub struct Rules {
     /// docs/design/rules-in-luau.md §7.5: a chip runs as its game wrote
     /// it).
     pub chip_use: ChipUseRules,
+    /// What a navi's stats hold when made fresh, beyond its own row (rule
+    /// section `fresh_stats`).
+    pub fresh_stats: FreshStatsRules,
     /// The custom screen's slot layout.
     pub custom_screen: CustomScreenLayout,
     /// The object pools' sizes (rule section `pools`): a capacity-only

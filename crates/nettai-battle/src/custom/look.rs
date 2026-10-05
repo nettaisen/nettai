@@ -6,7 +6,6 @@
 
 use crate::battle::{Fade, FadeMode};
 use crate::content::SoundRole;
-use crate::custom::GameVersion;
 
 /// The original's presentation state of a screen (the control block at
 /// `0x020364C0`).
@@ -168,8 +167,8 @@ impl ScreenSound {
             ScreenSound::RunMessage => SoundRole::CustomRunMessage,
             ScreenSound::Description => SoundRole::CustomDescription,
             ScreenSound::DescriptionClose => SoundRole::CustomDescriptionClose,
-            ScreenSound::BeastOut(GameVersion::Falzar) => SoundRole::CustomBeastOutFalzar,
-            ScreenSound::BeastOut(GameVersion::Gregar) => SoundRole::CustomBeastOutGregar,
+            ScreenSound::BeastOutFalzar => SoundRole::CustomBeastOutFalzar,
+            ScreenSound::BeastOutGregar => SoundRole::CustomBeastOutGregar,
             ScreenSound::BeastOutFlash => SoundRole::CustomBeastOutFlash,
             ScreenSound::Cancel => SoundRole::CustomCancel,
             ScreenSound::Redeal => SoundRole::CustomRedeal,
@@ -240,9 +239,12 @@ pub enum ScreenSound {
     Description,
     DescriptionClose,
     /// Beast Out chosen (`sub_802774C`, and the BeastOut chip's
-    /// `sub_8027624`): its two sounds with the pick's. The first is the
-    /// version's (the console's own: Gregar's on a Gregar console).
-    BeastOut(GameVersion),
+    /// `sub_8027624`): its two sounds with the pick's. The first is one of
+    /// two, a role each, which the rules choose between by name
+    /// (`custom.play`: EXE6's by the player's version, Gregar's on a Gregar
+    /// console); the engine knows no version.
+    BeastOutFalzar,
+    BeastOutGregar,
     BeastOutFlash,
     /// A Beast Out or a Cross taken back.
     Cancel,
