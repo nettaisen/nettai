@@ -16,6 +16,10 @@
 //!   every `speed + 1` ticks, and at once from the tick B is held or A is
 //!   pressed (`chatbox_8040154`), which the box only looks for once it has
 //!   run four ticks without waiting on a command;
+//! - a command after a character, which waits out the character's delay
+//!   where the game's interpreter has it wait (the rule
+//!   `custom_screen.chatbox_commands_wait_for_text`: EXE6's does, EXE5's
+//!   runs it on the character's own tick);
 //! - a line break (`E9`), which ends the tick's printing;
 //! - the wait for a key (`E7`): six ticks before it takes one, then A or B
 //!   (or any key) pressed, or B held for eleven ticks;
@@ -249,12 +253,17 @@ pub struct Chatbox {
     count: u16,
     /// The wait for a key: 0 not begun, 1 its delay, 2 taking keys.
     halt: u8,
+    /// A command waits out the character printed before it (the game's
+    /// rule, `CustomScreenLayout::chatbox_commands_wait_for_text`).
+    commands_wait: bool,
     /// What it shows (presentation).
     look: ChatboxLook,
 }
 
 impl Chatbox {
-    /// `chatbox_runScript`.
+    /// `chatbox_runScript`. Its commands run on the tick the script
+    /// reaches them, unless [`Chatbox::commands_wait_for_text`] says the
+    /// game's wait out a character's delay.
     pub fn new(script: Script) -> Chatbox {
         Chatbox {
             script,
@@ -273,8 +282,16 @@ impl Chatbox {
             steps: 0,
             count: 1,
             halt: 0,
+            commands_wait: false,
             look: ChatboxLook::default(),
         }
+    }
+
+    /// Whether a command waits out the character printed before it (the
+    /// game's rule `custom_screen.chatbox_commands_wait_for_text`).
+    pub fn commands_wait_for_text(mut self, wait: bool) -> Chatbox {
+        self.commands_wait = wait;
+        self
     }
 
     /// Which of the message's characters move the speaker's mouth, by line
@@ -398,8 +415,11 @@ impl Chatbox {
                         false
                     }
                 }
-                // A command waits out the last character too.
-                _ if self.char_wait != 0 => {
+                // A command waits out the last character too, where the
+                // game's interpreter tests the delay before a command
+                // (EXE6's); else it runs now, and the delay is the next
+                // character's to wait out (EXE5's 0x0803EADC).
+                _ if self.commands_wait && self.char_wait != 0 => {
                     self.char_wait -= 1;
                     false
                 }
@@ -609,9 +629,16 @@ mod tests {
     use super::*;
 
     /// The tick (0 = the script's first) the box closes on, with the keys
-    /// `keys(tick)` gives as (held, pressed).
+    /// `keys(tick)` gives as (held, pressed), where a command waits out the
+    /// character before it (EXE6's interpreter).
     fn closes(script: Script, keys: impl Fn(u32) -> (u16, u16)) -> Option<u32> {
-        let mut c = Chatbox::new(script);
+        closes_with(script, true, keys)
+    }
+
+    /// [`closes`], with a command waiting out the character before it or
+    /// not (the rule `custom_screen.chatbox_commands_wait_for_text`).
+    fn closes_with(script: Script, commands_wait: bool, keys: impl Fn(u32) -> (u16, u16)) -> Option<u32> {
+        let mut c = Chatbox::new(script).commands_wait_for_text(commands_wait);
         (0..600).find(|&t| {
             let (held, pressed) = keys(t);
             c.update(held, pressed);
@@ -668,10 +695,50 @@ mod tests {
         assert_eq!(closes(one, press(keys::A, 56)), Some(63));
     }
 
+    /// Where a command runs on the tick the script reaches it (EXE5's
+    /// interpreter, 0x0803EADC: the lab's custom/run-message*), the wait for
+    /// a key starts on the last character's tick, two sooner; a line break
+    /// moves nothing (the next line's first character waits the delay out
+    /// itself); and no leftover delay holds the wait up after a rush.
+    #[test]
+    fn a_command_that_doesnt_wait_starts_the_key_wait_two_ticks_sooner() {
+        let megaman = Script::RunMessage { lines: [19, 12, 0] };
+        assert_eq!(closes_with(megaman, false, press(keys::A, 76)), None);
+        assert_eq!(closes_with(megaman, false, press(keys::A, 77)), Some(84));
+        assert_eq!(closes_with(megaman, true, press(keys::A, 77)), None);
+        let one = Script::RunMessage { lines: [20, 0, 0] };
+        assert_eq!(closes_with(one, false, press(keys::A, 53)), None);
+        assert_eq!(closes_with(one, false, press(keys::A, 54)), Some(61));
+        // A on every even tick rushes it on tick 14 either way; on every odd
+        // tick, tick 15's rush is a tick after a character, whose delay
+        // holds the wait up a tick only where commands wait.
+        let even = |t: u32| if t % 2 == 0 { (keys::A, keys::A) } else { (0, 0) };
+        let odd = |t: u32| if t % 2 == 1 { (keys::A, keys::A) } else { (0, 0) };
+        assert_eq!(closes_with(megaman, false, even), Some(27));
+        assert_eq!(closes_with(megaman, false, odd), Some(28));
+        assert_eq!(closes_with(megaman, true, odd), Some(30));
+        // The mouth closes at a line's end as the break runs: with the last
+        // character's tick, not two after.
+        let idle_at = |commands_wait: bool| {
+            let mut c = Chatbox::new(Script::RunMessage { lines: [2, 2, 0] }).commands_wait_for_text(commands_wait).talking([0b11, 0b11, 0]);
+            let mut faces = Vec::new();
+            for _ in 0..24 {
+                c.update(0, 0);
+                faces.push((c.look().text, c.look().portrait.map(|p| p.anim)));
+            }
+            let last = faces.iter().position(|f| f.0 == Some((1, 0))).expect("the first line done");
+            let idle = faces[last..].iter().position(|f| f.1 == Some(FACE_IDLE)).expect("the mouth closes");
+            let next = faces.iter().position(|f| f.0 == Some((1, 1))).expect("the second line's character");
+            (idle, next - last)
+        };
+        assert_eq!(idle_at(true), (2, 3));
+        assert_eq!(idle_at(false), (0, 3));
+    }
+
     #[test]
     fn the_message_shows_its_text_face_and_arrow_as_it_prints() {
         // "Lan,th": L, a, n talk, the comma doesn't.
-        let mut c = Chatbox::new(Script::RunMessage { lines: [6, 0, 0] }).talking([0b11_0111, 0, 0]);
+        let mut c = Chatbox::new(Script::RunMessage { lines: [6, 0, 0] }).commands_wait_for_text(true).talking([0b11_0111, 0, 0]);
         let mut shown = Vec::new();
         for _ in 0..40 {
             c.update(0, 0);
@@ -701,7 +768,7 @@ mod tests {
         let megaman = Script::RunMessage { lines: [19, 12, 0] };
         // A pressed: the end runs a tick later, and the sprites keep the
         // text while the portrait fades out.
-        let mut c = Chatbox::new(megaman);
+        let mut c = Chatbox::new(megaman).commands_wait_for_text(true);
         let texts: Vec<_> = (0..90u32)
             .map(|t| {
                 let k = if t == 79 { keys::A } else { 0 };
@@ -713,7 +780,7 @@ mod tests {
         assert_eq!(texts[82], (Some((2, 0)), Some(3)));
         // B held: the end runs on a tick that prints all at once, which
         // copies the cleared buffer.
-        let mut c = Chatbox::new(megaman);
+        let mut c = Chatbox::new(megaman).commands_wait_for_text(true);
         let mut ended = None;
         for t in 0..90u32 {
             c.update(keys::B, if t == 0 { keys::B } else { 0 });

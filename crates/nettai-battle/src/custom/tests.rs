@@ -632,6 +632,19 @@ fn b_held_closes_a_description() {
     assert_eq!(p.phase(), Phase::Choosing);
 }
 
+/// A navi whose content states no no-running message has no box to open:
+/// L does nothing, and the grid takes the next key.
+#[test]
+fn l_opens_no_message_for_a_navi_without_one() {
+    let mut p = describing(3);
+    p.stats.navi = library::testing::SILENT_NAVI;
+    p.step(keys::L);
+    assert_eq!(p.phase(), Phase::Choosing);
+    p.step(0);
+    p.step(keys::A);
+    assert_eq!(p.screen().selection(), [0]);
+}
+
 #[test]
 fn the_no_running_message_starts_a_tick_after_l() {
     let mut p = describing(3);

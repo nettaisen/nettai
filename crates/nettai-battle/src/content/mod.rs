@@ -273,10 +273,14 @@ impl Content {
             let description = w.form(&d.key).and_then(|f| f.description.as_deref());
             d.record.description_lines = strings::description_lines(description);
         }
+        // (Which characters move a speaker's mouth is the game's rule; a
+        // content with no rules has no chatbox to show one.)
+        let talks = self.rules.as_ref().map(|r| r.custom_screen.talking_characters.clone()).unwrap_or_default();
         for d in &mut self.defs.navis {
             let message = w.navi(&d.key).and_then(|n| n.run_message.as_deref()).unwrap_or("");
             let m = &mut d.record.run_message;
-            (m.counts, m.talking) = if message.is_empty() { (Vec::new(), [0; 3]) } else { (strings::message_counts(message), strings::talking(message)) };
+            (m.counts, m.talking) =
+                if message.is_empty() { (Vec::new(), [0; 3]) } else { (strings::message_counts(message), strings::talking(message, &talks)) };
         }
     }
 
