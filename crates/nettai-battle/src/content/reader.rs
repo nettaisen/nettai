@@ -72,7 +72,7 @@ impl<'a> SpecReader<'a> {
 }
 
 /// Remove fields from a table.
-fn strip(spec: &mut Data, fields: &[&str]) {
+pub(crate) fn strip(spec: &mut Data, fields: &[&str]) {
     if let Data::Map(entries) = spec {
         entries.retain(|(k, _)| !matches!(k, DataKey::Str(s) if fields.contains(&s.as_str())));
     }
