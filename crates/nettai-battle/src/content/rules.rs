@@ -123,6 +123,10 @@ pub struct EffectsRules {
     /// What holds a screen palette flash (effect object #0x0A,
     /// `kinds::palette_flash`) by its mode.
     pub palette_flash: PaletteFlashRule,
+    /// Where that flash sits among the palette transforms a frame
+    /// applies, which a dimming's fade is one of. Presentation: the
+    /// renderer's (`Fade::Flash`); the simulation reads none of it.
+    pub palette_flash_order: PaletteFlashOrder,
     /// An afterimage (`sub_80E33FA`) and a form overlay (`sub_80C4530`'s
     /// spawner) run while the battle is paused: EXE6's spawners set their
     /// header flag 0x04; EXE5's (0x080E35F4, and its overlays', whose flags
@@ -190,6 +194,28 @@ pub enum PaletteFlashRule {
     /// A pause holds either variant whatever its mode (EXE5's 0x080E104C,
     /// 0x080E10D0); dimming holds it only with a mode of 0.
     PauseHolds,
+}
+
+/// Where a screen palette flash (effect object #0x0A) sits among the
+/// palette transforms. Each frame the game copies its palettes and applies
+/// the transforms set in a table of slots, in the slots' order (EXE6's
+/// `sub_80023E0`'s table, EXE5's 0x08002350's); the fade system's level
+/// fades take slots 18 and 19 for its first record, a dimming's and a
+/// transformation's, and 20 and 21 for its second (EXE6's 0x08006396,
+/// EXE5's 0x08005B42: the record's number plus 18 and 19). A flash fills
+/// the stage's palettes with its white through a slot of its own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PaletteFlashOrder {
+    /// Before the fades: EXE5's flash takes slot 9 (0x080E104C; its
+    /// two-layer one 9 and 10, 0x080E10D0), so a dimming darkens the white
+    /// it put there with the rest: a flash under a dimming is white a
+    /// quarter down (Blinder's, Colonel's, OmegaRkt's, LeadRaid's).
+    BeforeFades,
+    /// After the first record's: EXE6's takes slot 20 (`sub_80E10C0`; its
+    /// two-layer one 20 and 21, `sub_80E114C`), so its white stands over a
+    /// dimming (Colonel's, DeltaRay's, CrossDiv's, the navi advances').
+    AfterFades,
 }
 
 /// How `sub_801A082` (an object's damage, hit modifier and collision types
