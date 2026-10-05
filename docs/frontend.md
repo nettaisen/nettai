@@ -539,7 +539,29 @@ What a BN5 console does otherwise, by data, not by game:
   souls system's window `soul_unison`, BN5's state 9) flies the soul's icon
   up onto the column's first cell under its flash, and the cell keeps it
   (nettai-render's `SoulOffer`: the offer and the window's step, read of the
-  system's state by name);
+  system's state by name), in the console's version's palette (Team
+  Colonel's icon has another outline color: the pack's `icon_versions`);
+- what a soul adds to the screen, drawn by what the engine's screen says,
+  not by soul (verified frame for frame, bn5.txt's custom/capsules,
+  custom/capsule-frame, custom/arm-change and five souls/ scenarios):
+  - a button that shows a chip (`Slot::face`: MeddySoul's capsules) is a
+    chip's slot: the chip's icon (the empty icon once used), a blank code,
+    gray while unavailable, the chip cursor; its chip window is the chip's
+    name and picture alone, over the frame colors the last chip slot left
+    (`ChipWindow::framed`: a capsule after a Mega chip keeps the Mega
+    frame); R describes the chip; its mix (the window `capsule`,
+    `CapsuleMix`) flies the chip's icon as the soul's choice flies the
+    soul's;
+  - the button look `arm_change` (ColonelSoul's Arm Change: the pack's
+    scrap button's tiles and picture, its second tile set for unavailable
+    alone) with the chip it holds as a sprite over it in the HUD's icon
+    palette, on the ticks the engine draws it (`Drawn::held`: while
+    choosing, through a soul's choice, and in the blink's last 20 ticks
+    when the column hides the icon); the column cell the chip left stays
+    drawn for the tick it leaves (`ScreenLook::column_kept`);
+  - the re-deal button's uses left, a digit in the chip window's damage
+    cells, where the pack's layout says (`button_uses`: BN5's Shuffle;
+    BN6's ChpShufl shows none);
 - its game's flow (rules `flow`, read of the console's own game): the
   custom screen's close starts the chip window as a Japanese BN6 console's
   does (`chip_window_at_close`), the intro fades in from black

@@ -405,11 +405,15 @@ otherwise; a BN6 pack writes none of them and is byte-identical to before:
   turn limit, the name bar, the Cross names), says which tile a hidden slot
   is filled with, and where the cursor stands over OK and over the special
   slot, with each one's corners (BN5's special slot is a 3x2 button, BN6's
-  Beast Out 2x2). `buttons` are the game's own buttons, drawn by name where
+  Beast Out 2x2), and whether the chip window shows the re-deal button's
+  uses left (`button_uses`: BN5's Shuffle; left out when false). `buttons`
+  are the game's own buttons, drawn by name where
   a system's button stands (BN5's `soul`: its states' tiles, its picture in
   the chip window with a palette for Soul Unison and one for Chaos Unison,
   and the souls' 2x2 icons with their sprite palette, which the soul choice
-  flies onto the column).
+  flies onto the column; `icon_versions` names the game versions whose
+  consoles fly the icon in a palette of their own, the icons' image's
+  palette rows after the first: Team Colonel's).
 - A version's own chip (BN5's and BN6's version Giga chips, BN5's Phoenix
   and DethPhnx), which the other version's ROM draws as its counterpart,
   has its icon and picture once, under the chip's key, from its own

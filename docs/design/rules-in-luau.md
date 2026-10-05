@@ -2244,6 +2244,10 @@ generic:
   BN6 must not read them).
 - **`turn_opened(side)`**, a system hook: the turn-start sequencer's check begins, each side in turn, before either
   side's `turn_check` or change.
+- **`custom.draw_held(side)`**, for a window: the icon of the chip a button holds, over that button (the choosing
+  state draws it itself). With `ChipWindow::framed` (the chip whose class colors the chip window's frame, which a
+  button's chip leaves alone) and `ScreenLook::column_kept`, it is the look the frontend draws these buttons by;
+  none of it is in the state digest.
 - **`weapon_chip`**, a navi's field (BN5's AIData +0x32): the chip a weapon of its loads, for a weapon whose setup
   reads it.
 
