@@ -865,4 +865,20 @@ function place.step(navi: Object, s: State): boolean
     return s.place_busy
 end
 
+-- For tools (the system's `unplayable_tactics`), never the simulation: the chips of the AI's data it has no way to get
+-- a navi in place for, by id, each with why. A positioning class past the classes' table (0x08029B68 has no entry for
+-- it: the original jumps wherever the memory after the table says, and crashes; `run` raises there).
+function place.unplayable(): { [string]: string }
+    local out: { [string]: string } = {}
+    for id, r in data.chips do
+        if r.class ~= 7 and CLASSES[r.class] == nil then
+            out[id] = string.format(
+                "the original can't play it in auto battle (positioning class %d is past the game's table of them: the game crashes)",
+                r.class
+            )
+        end
+    end
+    return out
+end
+
 return place
