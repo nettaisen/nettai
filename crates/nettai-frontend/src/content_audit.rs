@@ -272,16 +272,17 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
                 }
             }
         }
-        if data.forms.is_some() {
-            for version in [GameVersion::Falzar, GameVersion::Gregar] {
-                let crosses = exe6_compat::forms::set(c, navi, version).map(|s| s.crosses).unwrap_or_default();
-                for &form in &crosses {
-                    lookups::cross_name(a, c, navi, form, p);
-                    if let Some(said) = text.form_description(c, form) {
-                        lookups::dialogue(font, Lookup::CrossDescription(form), said.text, p);
-                    }
-                }
-            }
+    }
+    // The forms a window lists (EXE6's Crosses: the ones that say their
+    // place there): each one's name and colors, and its description.
+    for i in 0..c.defs.forms.len() {
+        let form = FormHandle(i as u16);
+        if c.form(form).window_order.is_none() {
+            continue;
+        }
+        lookups::cross_name(a, c, form, p);
+        if let Some(said) = text.form_description(c, form) {
+            lookups::dialogue(font, Lookup::CrossDescription(form), said.text, p);
         }
     }
     for i in 0..c.defs.forms.len() {
