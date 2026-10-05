@@ -32,12 +32,12 @@ return {
     -- entries, in the table's order; three are there twice, so twice as likely). Whoever makes a random match picks
     -- from them (the engine picks none: a round's settings state its background).
     backgrounds = {
-        asset.background("honeycomb"), asset.background("statues"), asset.background("statues"),
-        asset.background("seals"), asset.background("clouds"), asset.background("sprouts"),
-        asset.background("calendar-checkers"), asset.background("calendar-mint"), asset.background("calendar-lavender"),
-        asset.background("calendar-navy"), asset.background("calendar-blue"), asset.background("calendar-cyan"),
-        asset.background("trees"), asset.background("calendar-green"), asset.background("calendar-bright-blue"),
-        asset.background("code"), asset.background("globes"), asset.background("code-2"),
-        asset.background("code-2"), asset.background("calendar-purple"), asset.background("calendar-purple"),
+        asset.background("lans-hp"), asset.background("acdc-hp"), asset.background("acdc-hp"),
+        asset.background("aquarium-hp"), asset.background("sky-hp"), asset.background("green-hp"),
+        asset.background("robot-control-comp"), asset.background("comp"), asset.background("comp-alt"),
+        asset.background("central-area"), asset.background("aquarium-comp"), asset.background("seaside-area"),
+        asset.background("judgetree-comp"), asset.background("green-area"), asset.background("sky-area"),
+        asset.background("undernet"), asset.background("mr-weather-comp"), asset.background("underground"),
+        asset.background("underground"), asset.background("acdc-area"), asset.background("acdc-area"),
     },
 }
