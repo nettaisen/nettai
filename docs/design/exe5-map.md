@@ -2561,7 +2561,13 @@ at its start (`parts`: Colonel's cape), not the base form's put-on routine. `ope
 counter window of a navi's own length (0x0800CCDA; 16 when none is given), and the overlay hook `flinch_checked` is
 a flinch hook that tests for what the navi wears first (EXE5's team navis'; EXE6's link navis' don't). The overlay hook
 `lets_go` is KnightMan's entry in the flinch, drag and paralysis tables (one routine in the three): as the reaction
-starts, what the navi wears is let go where an attack held it shown or hidden.
+starts, what the navi wears is let go where an attack held it shown or hidden. An identity's `parts.own` is a routine
+of its own in place of the engine's overlays: NumberMan's record's init hook (0x0800EE6E) puts on NumberSoul's layer,
+a content kind, and since afterimages, images and the navi switch call the same table by actor record (0x0800ED90),
+the routine is the identity's and not the navi's. A player's init calls the post-init hook and then the record's init
+hook in both games (EXE5's 0x0801400E and 0x08014012; EXE6's `sub_80172F0`, where the init hook is the base form's
+alone); the init of a navi no player controls and the navi switch have them the other way round, in both games too
+(0x08013CF0 then 0x08013D16, EXE6's `sub_8016F56`; 0x0802CC54 then 0x0802CC58).
 
 **A navi's own hooks** (the framework GyroMan and ToadMan need). The original has tables by AI index beside the
 state tables: a tick (0x080EB1E8, called each tick after the navi's action, 0x080EAD80: MegaMan's entry is his

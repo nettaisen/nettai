@@ -49,37 +49,12 @@ impl Draws {
     }
 }
 
-/// The backgrounds an EXE6 link battle draws from (`sub_81209DC`'s
-/// `byte_8120A20`, by name in EXE6's pack; some are there twice, so twice
-/// as likely).
-const EXE6_LINK_BACKGROUNDS: [&str; 21] = [
-    "honeycomb",
-    "statues",
-    "statues",
-    "seals",
-    "clouds",
-    "sprouts",
-    "calendar-checkers",
-    "calendar-mint",
-    "calendar-lavender",
-    "calendar-navy",
-    "calendar-blue",
-    "calendar-cyan",
-    "trees",
-    "calendar-green",
-    "calendar-bright-blue",
-    "code",
-    "globes",
-    "code-2",
-    "code-2",
-    "calendar-purple",
-    "calendar-purple",
-];
 
-/// The backgrounds a link battle of `game` draws from (EXE6's; another
-/// game's shows its stage's own).
-fn link_backgrounds(game: &str) -> &'static [&'static str] {
-    if game == exe6_compat::ROOT { &EXE6_LINK_BACKGROUNDS } else { &[] }
+/// The backgrounds a link battle of the game draws from, by name: its flow
+/// rules' (`link_backgrounds`: EXE6's table, some there twice and so twice
+/// as likely). None: a link battle shows its stage's own.
+fn link_backgrounds(content: &Content) -> Vec<&str> {
+    content.rules().flow.link_backgrounds.iter().filter_map(|&b| ids::background_name(content, b)).collect()
 }
 
 /// Whether live play draws the game's match with a Cross list each side:
@@ -99,7 +74,7 @@ pub fn arena(content: &Content, game: &str, draws: &mut Draws, stage: Option<Sta
     if stages.is_empty() {
         return Err(format!("{game} has no link battle stage"));
     }
-    let backgrounds: Vec<&str> = link_backgrounds(game).iter().copied().filter(|b| crate::background(content, game, b).is_some()).collect();
+    let backgrounds = link_backgrounds(content);
     let place = |draws: &mut Draws| {
         let stage = stages[draws.below(stages.len())];
         let background = (!backgrounds.is_empty()).then(|| backgrounds[draws.below(backgrounds.len())].to_string());
@@ -198,7 +173,7 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, draws: &mut Draws) -> Resul
         sp_times: Default::default(),
         navicust: None,
         auto_battle: Default::default(),
-        karma: crate::facts::DEFAULT_KARMA,
+        karma: crate::facts::default_karma(content),
         souls: None,
         soul_unison: true,
         chaos_unison: true,

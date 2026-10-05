@@ -1,7 +1,8 @@
 --!strict
 -- The engine's test navis: MegaMan with his base form, a link navi with an
 -- actor record of its own (AI index 4), and one with hooks of its own (AI
--- index 5), each with the EXE6 overlay's buster and charged shot.
+-- index 5) that wears an object of this content's own kind, each with the
+-- EXE6 overlay's buster and charged shot.
 
 local buster = require("./megaman/weapons/buster")
 local charged_shot = require("./megaman/weapons/charged-shot")
@@ -39,13 +40,42 @@ local landing = define.action {
     end,
 }
 
+-- What the navi with hooks wears: an object of the content's own kind, which
+-- goes at its next update once it is taken down.
+local worn = define.kind {
+    id = "test/worn",
+    pool = "actor",
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            me:set_lifecycle("update")
+        elseif l ~= "update" then
+            me:free()
+        end
+    end,
+}
+
 -- The hooks of the navi that has them, as a navi's own go (EXE5's GyroMan's
 -- over a panel that isn't solid; here the top row stands for one): its
 -- post-init marks it (it dives); its tick puts it in the air in the top row
 -- and asks to take off, and out of the top row asks to land; its idle
--- answers a take-off with nothing more, and a landing with its action.
-type Hooks = { tick: (navi: Object) -> (), idle: (navi: Object) -> (), post_init: (navi: Object) -> () }
+-- answers a take-off with nothing more, and a landing with its action. Its
+-- identity's own part routine (its record's init hook, as EXE5's NumberMan's
+-- goes) puts on what it wears and keeps it in its second related slot.
+type Hooks = {
+    tick: (navi: Object) -> (),
+    idle: (navi: Object) -> (),
+    post_init: (navi: Object) -> (),
+    put_on: (wearer: Object) -> (),
+}
 local HOOKS: Hooks = {
+    put_on = function(wearer: Object)
+        local o = battle.spawn(worn, wearer.pos)
+        if o then
+            o.related1 = wearer
+        end
+        wearer.related2 = o
+    end,
     post_init = function(navi: Object)
         navi:set_navi_state("dives", true)
     end,
@@ -97,6 +127,7 @@ local function navi(id: string, sprite: string, class: IdentityClass, ai_index: 
             ai_index = ai_index,
             aura_anim = ai_index,
             ice = "medium",
+            parts = if hooks then { own = hooks.put_on } else nil,
             overlay_hooks = if megaman then { "death", "refresh", "flinch", "drag" } else nil,
             attach_points = attach_points(),
         },

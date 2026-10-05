@@ -75,6 +75,12 @@ pub fn background(content: &Content, game: &str, name: &str) -> Option<nettai_ba
     key(content, game, name).and_then(|k| content.assets.handle(AssetKind::Background, k)).map(nettai_battle::content::BackgroundId)
 }
 
+/// The name of background `id` in its game's pack (a match names a
+/// background by it); none: no background of the content's game.
+pub fn background_name(content: &Content, id: nettai_battle::content::BackgroundId) -> Option<&str> {
+    content.assets.backgrounds.keys().find(|k| content.assets.handle(AssetKind::Background, k) == Some(id.0)).map(|k| local(k))
+}
+
 /// The names of `game`'s backgrounds, in order.
 pub fn backgrounds<'c>(content: &'c Content, game: &str) -> Vec<&'c str> {
     (content.game() == game).then(|| content.assets.backgrounds.keys().map(|k| local(k)).collect()).unwrap_or_default()
