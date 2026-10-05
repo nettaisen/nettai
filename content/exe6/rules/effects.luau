@@ -25,4 +25,11 @@ return {
     -- Its obstacles' action tables have the actors' frozen and bubbled entries at 6 and 7: a kind's own actions
     -- from 8.
     obstacle_actions = "own_from_8",
+    -- Its Full Synchro aura (actor object 0x5E, `sub_80C4B18`) takes its navi's identity's animation each tick (a
+    -- Cross's or a Beast's own as the navi changes form), and runs through every pause with its sprite still.
+    full_synchro_aura = {
+        follows_identity = true,
+        steps_while_paused = false,
+        stops_at_a_pause_in_the_fight = false,
+    },
 }
