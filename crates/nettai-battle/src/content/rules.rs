@@ -258,6 +258,30 @@ pub struct SlideSpeed {
     pub y: i32,
 }
 
+/// The rule section `fresh_stats`: what a navi's stats hold when they are
+/// made fresh (`NaviStats::fresh`), beyond what the navi's own row states
+/// (its `fresh` and `weapons`): what the game's routine writes for every
+/// navi (EXE6's `initNaviStats_WithDefaultStatsMaybe_8013438`, EXE5's
+/// 0x08010C00). A game states the first three; the engine has none of its
+/// own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct FreshStatsRules {
+    /// NaviStats +0x09: the Regular memory.
+    pub reg_up: u8,
+    /// +0x0A: the custom level.
+    pub custom_level: u8,
+    /// +0x0E: the mood.
+    pub mood: u8,
+    /// +0x21: EXE6's Beast Out turns (3). None stated: none (a game
+    /// without Beast Out).
+    pub beast_out_counter: u8,
+    /// +0x44: the weapon of the A button in battle mode 9 (EXE6's zeroed
+    /// byte names weapon routine 0, MegaMan's buster). None stated: none
+    /// (EXE5's block has the light/dark value there, its light and dark
+    /// system's).
+    pub mode9_a: Option<nettai_content_api::WeaponHandle>,
+}
+
 /// A sparkle's place from a panel's center, in pixels.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -523,6 +547,9 @@ pub struct Rules {
     /// docs/design/rules-in-luau.md §7.5: a chip runs as its game wrote
     /// it).
     pub chip_use: ChipUseRules,
+    /// What a navi's stats hold when made fresh, beyond its own row (rule
+    /// section `fresh_stats`).
+    pub fresh_stats: FreshStatsRules,
     /// The custom screen's slot layout.
     pub custom_screen: CustomScreenLayout,
     /// The object pools' sizes (rule section `pools`): a capacity-only

@@ -14,8 +14,7 @@
 //! with the game's navis, chips, souls and patch cards, every one named in
 //! the game's namespace alone (`ids`). There is no mixing of games.
 
-#[cfg(test)]
-mod exe6_forms;
+mod cross_list;
 pub mod check;
 pub mod auto_battle;
 pub mod draw;
@@ -37,10 +36,7 @@ pub mod testing;
 
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::content::Content;
-pub use exe6_compat::CrossList;
-pub use exe6_compat::unlocks::CROSSES;
-use exe6_compat::Unlocks;
-use exe6_compat::GameVersion;
+pub use cross_list::{CROSSES, CrossList};
 use nettai_battle::custom::{BattleFolder, PlayerSetup, SavedFolder};
 use nettai_battle::link::Link;
 use nettai_battle::navicust::NaviCust;
@@ -210,7 +206,7 @@ pub fn default_navi_level(content: &Content, navi: NaviHandle) -> Option<u8> {
 /// MegaMan's variant (+0x2B, which picks his move lag) is his base HP in
 /// hundreds (`sub_800A2F8`).
 pub fn starting(content: &Content, mut s: NaviStats, version: Option<&str>) -> NaviStats {
-    s.version = version_byte(version);
+    s.version = version_byte(content, version);
     if content.navi(s.navi).forms.is_some() {
         s.navi_variant = (s.max_base_hp / 100) as u8;
     }
@@ -218,11 +214,12 @@ pub fn starting(content: &Content, mut s: NaviStats, version: Option<&str>) -> N
 }
 
 /// The navi's version as NaviStats+0x20 has it, for a side of the version
-/// named `version` (EXE6's, which compat numbers: 0 Gregar, 1 Falzar); a
-/// side without a version has 0 there (EXE5's games write nothing a battle
-/// reads to it: the recordings' are 0).
-pub fn version_byte(version: Option<&str>) -> u8 {
-    version.and_then(GameVersion::from_name).map_or(0, GameVersion::stats_byte)
+/// named `version`: the version's place among those the game's rules
+/// declare (`facts::versions`, which come in the original's order: EXE6's
+/// Gregar 0, Falzar 1). A side without a version has 0 there (EXE5's games
+/// write nothing a battle reads to it: the recordings' are 0).
+pub fn version_byte(content: &Content, version: Option<&str>) -> u8 {
+    version.and_then(|v| facts::versions(content).iter().position(|name| name == v)).map_or(0, |place| place as u8)
 }
 
 /// Whether the game's rules have a system named `system` (`forms`,
@@ -380,19 +377,11 @@ impl Match {
                 // here runs).
                 auto_battle: s.auto_battle.data().sent(&mut Rng::new(seed ^ AUTO_BATTLE_SALT ^ (side as u32).wrapping_mul(0x9E37_79B9))),
             };
-            // What the save unlocks, into its EXE6 systems' setup: its
-            // version, every Cross of it (or the side's list) and Beast Out
-            // as the side says. A side without a version brings none of it
-            // (a game whose rules take none; one whose rules do is refused
-            // by the match's checks until its sides state theirs).
-            // (The unlocks are EXE6's: compat knows the version by its
-            // name.)
-            if let Some(version) = s.version.as_deref().and_then(GameVersion::from_name) {
-                let unlocks = Unlocks { beast_out: s.beast_out, cross_list: s.crosses, ..Unlocks::everything(version) };
-                unlocks.write(content, &mut player).expect("the game's rules take EXE6's setup as their systems declare it");
-            }
-            // Its karma and souls, into the systems that take them.
-            facts::write(content, &self.arena, s, &mut player).expect("a side's karma and souls fit its rules (the match's checks)");
+            // What the side brings that its rules' systems take, each fact
+            // by its name: its version and what its save unlocks (EXE6's
+            // Crosses, Beast Out, the side's Cross list), its karma and
+            // souls (EXE5's).
+            facts::write(content, &self.arena, s, &mut player).expect("a side's facts fit its rules (the match's checks)");
             player
         };
         RoundSetup {
@@ -501,11 +490,12 @@ pub fn all_crosses(content: &Content, game: &str) -> Result<Vec<nettai_content_a
     navi_crosses(content, navi).ok_or_else(|| "the navi that changes form has no forms".into())
 }
 
-/// `navi`'s Crosses of both games (none: it doesn't change form).
+/// The forms `navi`'s form list offers, of every version (EXE6's Crosses of
+/// both), in the versions' order as the rules declare them, each version's
+/// in its list's (`NaviForms::by_version`); none: it doesn't change form.
 pub fn navi_crosses(content: &Content, navi: NaviHandle) -> Option<Vec<nettai_content_api::FormHandle>> {
-    content.navi(navi).forms.as_ref()?;
-    let crosses = |g| exe6_compat::forms::set(content, navi, g).map(|s| s.crosses).unwrap_or_default();
-    Some(GameVersion::ALL.into_iter().flat_map(crosses).collect())
+    let forms = content.navi(navi).forms.as_ref()?;
+    Some(facts::versions(content).iter().flat_map(|version| forms.listed(version).iter().copied()).collect())
 }
 
 /// What a match is, for the terminal: its game and rules, the seed, the
