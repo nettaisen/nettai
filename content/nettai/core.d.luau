@@ -1891,28 +1891,35 @@ export type System = SystemSpec
 -- against its schemas when the ruleset is defined, and the game's roles
 -- (§7.4, `roles = require("@self/roles")`). The engine has no game's rules
 -- of its own: a ruleset states `chip_use`, `effects`, `flow`, `panels`,
--- `pools`, `reactions` and `status`, and every field of them (one left out
--- is a load error that names it). A section it may leave out is a feature
--- the game hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`)
--- or a table that is empty without it.
+-- `pools`, `reactions` and `status` (required here, so a ruleset without
+-- one doesn't type-check), and every field of them (one left out is a load
+-- error that names it). A section it may leave out is a feature the game
+-- hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`) or a
+-- table that is empty without it.
+--
+-- A section is a table of its rules by name, which the engine reads by its
+-- schema. (A table and not `any`: a field of type `any` may be left out.)
+export type RuleSection = { [string]: any }
 export type RulesetSpec = {
     systems: { System }?,
+    -- The sections every game states.
+    chip_use: RuleSection,
+    effects: RuleSection,
+    flow: RuleSection,
+    panels: RuleSection,
+    pools: RuleSection,
+    reactions: RuleSection,
+    status: RuleSection,
+    -- The sections a game may leave out.
     banners: any?,
     berserk: any?,
     buster: any?,
-    chip_use: any?,
     custom_screen: any?,
-    effects: any?,
     elements: any?,
-    flow: any?,
     lockon: any?,
     math: any?,
     navicust: any?,
-    panels: any?,
-    pools: any?,
-    reactions: any?,
     sp_chips: any?,
-    status: any?,
     roles: RolesSpec?,
 }
 export type Ruleset = RulesetSpec
