@@ -58,8 +58,8 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         v => panic!("palette flash variant {v} reads past off_80E10B8"),
     };
     let held = match b.game_rules().effects.palette_flash {
-        crate::content::PaletteFlashRule::Exe6 => !while_paused && (b.paused || (!keeps_dimming && b.is_dimmed())),
-        crate::content::PaletteFlashRule::Exe5 => b.paused || (!while_dimmed && !while_paused && b.is_dimmed()),
+        crate::content::PaletteFlashRule::ModeRunsThroughPause => !while_paused && (b.paused || (!keeps_dimming && b.is_dimmed())),
+        crate::content::PaletteFlashRule::PauseHolds => b.paused || (!while_dimmed && !while_paused && b.is_dimmed()),
     };
     if held {
         return;

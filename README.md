@@ -143,8 +143,8 @@ frontend's, and only what you give is passed on.
 An EXE5 match's navi pane has the side's karma (the light/dark value): a slider from 0 to 1000 with its number,
 presets (light 500, very light 1000, dark 0) and what EXE5 makes of it (dark under 470, the starting mood's tiers at
 470, 500 and 1000, holy panels cleared at 499 or under). Its Souls pane has every soul of EXE5 by default, or those
-checked, each with its face, of either version. Its Computer navi pane (shown where the game's rules have computer
-navis: not for EXE6) is what a computer navi plays from the side's save, the Dark MegaMan its failed Chaos Unison
+checked, each with its face, of either version. Its Auto battle pane (shown where the game's rules have auto
+battle: not for EXE6) is what a navi in auto battle plays from the side's save, the Dark MegaMan its failed Chaos Unison
 brings and its own navi under DarkInvs, whole (docs/frontend.md §6): on the left the save's 42 places in the six lists
 the game writes them in, each a chip, a pattern's number, a 0 or empty; in the middle its eight pattern records, each
 where the navi stands from its target, its five chip places and its score; on the right the game's chips, searched
@@ -159,7 +159,7 @@ code's level with a navi whose definition has `levels` (not EXE5's MegaMan), the
 navi slots (each named by the game's SP navi chip).
 "Import from save…" reads an EXE6 .sav (its version, Beast Out and the Crosses it owns, the navi code's level and the
 SP times) or an EXE5 one (a .sav or a raw save image: its karma, its souls, its NaviCust board's expansions and its
-computer-navi data) into a match of the save's game: a save of the other game makes a new match of its game first.
+auto battle data) into a match of the save's game: a save of the other game makes a new match of its game first.
 
 The editor is an [iced](https://iced.rs) app, drawn in software (tiny-skia), so it needs no GPU backend. On Linux it
 needs the usual windowing libraries (X11 or Wayland, and `libxkbcommon`), and its Open and Save As dialogs use

@@ -7,4 +7,6 @@
 return {
     leave_on_use = false,
     anti_navi_sparkle = { dy = 16, z = 32 },
+    -- A chip's use knows the hand's modifier bits 0x02 and 0x04 alone (`sub_8012C34`): none of EXE5's capsules'.
+    mixed_modifiers = false,
 }

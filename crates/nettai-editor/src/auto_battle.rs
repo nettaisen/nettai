@@ -1,6 +1,6 @@
-//! The computer navi pane (EXE5's): what a computer navi plays from the
+//! The Auto battle pane (EXE5's): what a navi in auto battle plays from the
 //! side's save, the Dark MegaMan the side's failed Chaos Unison brings and
-//! the side's own navi under DarkInvs (`nettai_match::computer_navi`).
+//! the side's own navi under DarkInvs (`nettai_match::auto_battle`).
 //!
 //! It shows the save's block whole, as a match states it: on the left its
 //! 42 places, in the six lists the game writes them in (the first three,
@@ -8,7 +8,7 @@
 //! program advance), each place a chip, a pattern record's number, a 0 or
 //! empty; in the middle its eight pattern records, each its place from the
 //! target, its five chip places and its score (a plain table: with the
-//! games' navis a pattern entry only costs the computer navi a turn, and
+//! games' navis a pattern entry only costs the navi in auto battle a turn, and
 //! its record's contents don't play); on the right the game's chips,
 //! searched, where a chip is put into the selected place (of the 42, or of
 //! a record), as the folder pane fills a folder. Any entry may stand
@@ -24,7 +24,7 @@ use nettai_battle::Content;
 use nettai_battle::content::{ChipClass, ChipFlags};
 use nettai_content_api::ChipHandle;
 use nettai_match::Side;
-use nettai_match::computer_navi::{self as data, ChipPlace, ComputerNavi, Entry, Holds, List, Record};
+use nettai_match::auto_battle::{self as data, ChipPlace, AutoBattle, Entry, Holds, List, Record};
 
 /// What is selected: one of the 42 places (from 0), or a chip place of a
 /// record (the record, then the place, from 0).
@@ -78,8 +78,8 @@ pub enum Edit {
 
 /// Apply `edit` to the side's data: whether the match changed.
 pub fn update(content: &Content, side: &mut Side, state: &mut State, edit: Edit) -> bool {
-    let d = &mut side.computer_navi;
-    let set = |d: &mut ComputerNavi, selected: Selected, place: Entry, chip: ChipPlace| match selected {
+    let d = &mut side.auto_battle;
+    let set = |d: &mut AutoBattle, selected: Selected, place: Entry, chip: ChipPlace| match selected {
         Selected::Place(i) => d.places.get_mut(i).is_some_and(|p| std::mem::replace(p, place) != place),
         Selected::Chip(r, k) => d.records.get_mut(r).and_then(|r| r.chips.get_mut(k)).is_some_and(|p| std::mem::replace(p, chip) != chip),
     };
@@ -116,12 +116,12 @@ pub fn update(content: &Content, side: &mut Side, state: &mut State, edit: Edit)
         },
         Edit::Record(r, record) => d.records.get_mut(r).is_some_and(|r| std::mem::replace(r, record) != record),
         Edit::FromFolder => {
-            *d = ComputerNavi::of_folder(content, &side.folder);
+            *d = AutoBattle::of_folder(content, &side.folder);
             state.selected = Selected::Place(data::STANDARD.start);
             true
         }
-        Edit::NothingLearned => std::mem::replace(d, ComputerNavi::nothing_learned()) != ComputerNavi::nothing_learned(),
-        Edit::NoData => std::mem::replace(d, ComputerNavi::default()) != ComputerNavi::default(),
+        Edit::NothingLearned => std::mem::replace(d, AutoBattle::nothing_learned()) != AutoBattle::nothing_learned(),
+        Edit::NoData => std::mem::replace(d, AutoBattle::default()) != AutoBattle::default(),
         // (The window's: it asks for the file.)
         Edit::FromSave => false,
     }
@@ -216,9 +216,9 @@ const MAX_DY: i8 = 2;
 
 pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &e.content;
-    let d = &e.side(s).computer_navi;
-    let state = e.computer_navi[s];
-    let msg = move |edit: Edit| Msg::ComputerNavi(s, edit);
+    let d = &e.side(s).auto_battle;
+    let state = e.auto_battle[s];
+    let msg = move |edit: Edit| Msg::AutoBattle(s, edit);
     let pick = |selected: bool| if selected { button::secondary } else { button::text };
 
     // The 42 places, by list.
@@ -251,9 +251,9 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         places = places.push(space().height(Length::Fixed(6.0)));
     }
     let left = column![
-        heading(format!("{}: computer navi", SIDES[s])),
+        heading(format!("{}: auto battle", SIDES[s])),
         text(
-            "What a computer navi plays from this player's save: the Dark MegaMan their failed Chaos Unison brings, and their own navi \
+            "What a navi in auto battle plays from this player's save: the Dark MegaMan their failed Chaos Unison brings, and their own navi \
              under DarkInvs. EXE5 learns it from the chips its player uses, and keeps it as these 42 places and eight pattern records."
         )
         .size(13)
@@ -323,8 +323,8 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
     let middle = column![
         text("The eight pattern records").size(16),
         text(format!(
-            "A record is where the computer navi would stand from its target, the chips it would use there in a row and how the game ranks \
-             the pattern (a new one's score is {}). With the games' navis a pattern entry only ever costs the computer navi a turn (the \
+            "A record is where the navi in auto battle would stand from its target, the chips it would use there in a row and how the game ranks \
+             the pattern (a new one's score is {}). With the games' navis a pattern entry only ever costs the navi in auto battle a turn (the \
              game's test of the place always fails), so a record's contents don't play: they are the save's, kept as they are.",
             data::NEW_SCORE
         ))
@@ -478,11 +478,11 @@ mod tests {
         assert!(!edit(side, &mut state, Edit::NothingLearned));
         assert_eq!(state.selected, Selected::Place(data::STANDARD.start));
         assert!(edit(side, &mut state, Edit::Put(sword)) && edit(side, &mut state, Edit::Put(cannon)));
-        assert_eq!((side.computer_navi.places[3], side.computer_navi.places[4], state.selected), (Entry::Chip(sword), Entry::Chip(cannon), Selected::Place(5)));
+        assert_eq!((side.auto_battle.places[3], side.auto_battle.places[4], state.selected), (Entry::Chip(sword), Entry::Chip(cannon), Selected::Place(5)));
         // Place 34 names pattern 2; its record's chips, place and score.
         edit(side, &mut state, Edit::Select(Selected::Place(33)));
         assert!(edit(side, &mut state, Edit::Pattern(1)) && !edit(side, &mut state, Edit::Pattern(8)));
-        assert_eq!(side.computer_navi.places[33], Entry::Pattern(1));
+        assert_eq!(side.auto_battle.places[33], Entry::Pattern(1));
         edit(side, &mut state, Edit::Select(Selected::Chip(1, 0)));
         assert!(edit(side, &mut state, Edit::Put(sword)));
         assert_eq!(state.selected, Selected::Chip(1, 1));
@@ -490,26 +490,26 @@ mod tests {
         assert!(edit(side, &mut state, Edit::Dx(1, -2)) && edit(side, &mut state, Edit::Dy(1, 1)) && edit(side, &mut state, Edit::Score(1, " 12 ".into())));
         assert!(!edit(side, &mut state, Edit::Score(1, "twelve".into())) && !edit(side, &mut state, Edit::Dx(1, -2)));
         let places = [ChipPlace::Chip(sword), ChipPlace::Zero, ChipPlace::Zero, ChipPlace::Zero, ChipPlace::Zero];
-        assert_eq!(side.computer_navi.records[1], Record { dx: -2, dy: 1, chips: places, score: 12 });
+        assert_eq!(side.auto_battle.records[1], Record { dx: -2, dy: 1, chips: places, score: 12 });
         assert!(edit(side, &mut state, Edit::Score(1, String::new())));
-        assert_eq!(side.computer_navi.records[1].score, 0);
+        assert_eq!(side.auto_battle.records[1].score, 0);
         assert!(edit(side, &mut state, Edit::Record(1, Record::BLANK)) && !edit(side, &mut state, Edit::Record(1, Record::BLANK)));
-        assert_eq!(side.computer_navi.records[1], Record::BLANK);
+        assert_eq!(side.auto_battle.records[1], Record::BLANK);
         // A place made a 0, then empty.
         edit(side, &mut state, Edit::Select(Selected::Place(3)));
         assert!(edit(side, &mut state, Edit::Zero));
-        assert_eq!(side.computer_navi.places[3], Entry::Zero);
+        assert_eq!(side.auto_battle.places[3], Entry::Zero);
         assert!(edit(side, &mut state, Edit::Empty) && !edit(side, &mut state, Edit::Empty));
         // A chip put into the last place stays there.
         edit(side, &mut state, Edit::Select(Selected::Place(data::PLACES - 1)));
         assert!(edit(side, &mut state, Edit::Put(cannon)));
         assert_eq!(state.selected, Selected::Place(data::PLACES - 1));
-        assert_eq!(side.computer_navi.check(&content, "exe5"), Vec::<String>::new());
+        assert_eq!(side.auto_battle.check(&content, "exe5"), Vec::<String>::new());
         // From the folder: what a drawn match states; no data: none.
-        let drawn = ComputerNavi::of_folder(&content, &side.folder);
+        let drawn = AutoBattle::of_folder(&content, &side.folder);
         assert!(edit(side, &mut state, Edit::FromFolder));
-        assert_eq!((side.computer_navi, state.selected), (drawn, Selected::Place(data::STANDARD.start)));
-        assert!(edit(side, &mut state, Edit::NoData) && side.computer_navi.is_blank());
+        assert_eq!((side.auto_battle, state.selected), (drawn, Selected::Place(data::STANDARD.start)));
+        assert!(edit(side, &mut state, Edit::NoData) && side.auto_battle.is_blank());
         assert!(!edit(side, &mut state, Edit::FromSave) && !edit(side, &mut state, Edit::EveryChip(true)) && state.every_chip);
     }
 }

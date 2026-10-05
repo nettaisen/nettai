@@ -6,7 +6,7 @@
 -- - **Full Synchro on a counter** (0x08016FDC, EXE6's `sub_801A200`): the counterer's side, in no soul (NaviStats
 --   +0x2C 0), to mood 0xFF through EXE5's setter, which leaves a mood of 0 (a dark MegaMan's) as it is.
 -- - **The emotion-swing bug** (0x080113F8, EXE6's `sub_8013DA0`, from the tick of every navi of the player's kind,
---   0x080EAD6A; a computer navi's tick, 0x080F224C, has none): while the side's NaviStats +0x24 is set, out of battle
+--   0x080EAD6A; an auto-battling navi's tick, 0x080F224C, has none): while the side's NaviStats +0x24 is set, out of battle
 --   flag 0x40's mode and out of a soul, every 60 ticks the anger ends and the mood goes back to 0x80 (0x08011A94), then
 --   the emotion swings to one of the table's (0x0801147C: seven normal, seven worried, one angry, one Full Synchro) but
 --   the one it last swung to (every entry of it taken out), drawn from RNG2: angry asks for anger (0x08011ABA: the
@@ -40,7 +40,7 @@ local function slot(side: number, navi: Object): number
     error("a navi of the player's kind on no slot of its side's list")
 end
 
--- 0x080113F8 (the framework skips it while paused). A computer navi's tick reaches the side's systems too: it has no
+-- 0x080113F8 (the framework skips it while paused). An auto-battling navi's tick reaches the side's systems too: it has no
 -- swing.
 local function swing(side: number, navi: Object)
     if navi.actor_type ~= "player" then

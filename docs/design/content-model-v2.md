@@ -631,8 +631,16 @@ return define.ruleset {
 }
 ```
 
-A field is a section by the engine's name (snake_case: `custom_screen`, `chip_use`, `sp_chips`);
-one the ruleset doesn't name keeps the engine's table. **A game has one ruleset** (the user: "there should only be
+A field is a section by the engine's name (snake_case: `custom_screen`, `chip_use`, `sp_chips`).
+**A ruleset states every rule of its game**: the engine has no game's rules of its own (the user: "no default
+games anywhere please"). The sections `chip_use`, `effects`, `flow`, `panels`, `pools`, `reactions` and `status`
+are required, and so is every field of them; one left out is a load error that names it
+(`exe6/rules/init.luau: ruleset: flow: missing field `escape_check``), as is a game pack that defines no ruleset. What may be left out reads as nothing for
+every game: a feature's section the game hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`), a table
+that is empty without it (`elements`, `buster`, `math`, `custom_screen`), and in a section a list or an attribute
+of one entry that is none unless stated (a panel type's `burn`, the buster's `chaos_cycle`). A rule that picks
+between behaviors is named for what it does, not for a game (`shake = "console_rng"`, `retype = "is_alone"`,
+`obstacle_actions = "own_from_8"`). **A game has one ruleset** (the user: "there should only be
 one ruleset per game"): `define.ruleset` takes no `id` and no `stock` flag, a second in a game is a load error, and
 there are no variants (`base`, `add`, `remove` are refused). The engine reads the sections and roles game-wide
 (the chips' links read the SP slots as the content is defined; the custom screen, the renderer and the tools read

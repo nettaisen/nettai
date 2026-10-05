@@ -1890,7 +1890,7 @@ impl CoreApi for Battle {
             ActorField::WeaponChip => a.weapon_chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
             ActorField::ChaosLevel => i(a.chaos.level as i64),
             ActorField::NoChargeTimer => i(a.no_charge_timer as i64),
-            ActorField::ComputerDriven => Value::Bool(a.computer_driven),
+            ActorField::InAutoBattle => Value::Bool(a.in_auto_battle),
         })
     }
 
@@ -1984,7 +1984,7 @@ impl CoreApi for Battle {
             (ActorField::WeaponChip, FieldValue::Ref(_)) => a.weapon_chip = weapon_chip,
             (ActorField::ChaosLevel, FieldValue::U8(x)) => a.chaos.level = x.min(4),
             (ActorField::NoChargeTimer, FieldValue::U16(x)) => a.no_charge_timer = x,
-            (ActorField::ComputerDriven, FieldValue::Bool(x)) => a.computer_driven = x,
+            (ActorField::InAutoBattle, FieldValue::Bool(x)) => a.in_auto_battle = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -2093,8 +2093,8 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn open_counter_window(&mut self, o: ObjectRef) {
-        kinds::player::actions::open_counter_window(self, o);
+    fn open_counter_window(&mut self, o: ObjectRef, ticks: u8) {
+        kinds::player::actions::open_counter_window(self, o, ticks);
     }
 
     fn check_reactive_abort(&mut self, o: ObjectRef) {

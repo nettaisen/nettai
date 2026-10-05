@@ -307,11 +307,11 @@ pub struct ActorData {
     /// neither paused nor dimmed (0x0800DBE0); its end asks for the stun
     /// strike (EXE5's action 0x49, the drive's end). 0xFFFF holds.
     pub no_charge_timer: u16,
-    /// EXE5's AIData+0xF0: the computer-navi AI drives it (0x0802C110:
+    /// EXE5's AIData+0xF0: the auto battle AI drives it (0x0802C110:
     /// DarkInvs); the AI's breath clears it one time in two (0x0802B5B8)
     /// and the idle's reset of its state when the drive is off
     /// (0x0802C03A). VarSwrd's pick reads it.
-    pub computer_driven: bool,
+    pub in_auto_battle: bool,
     /// The controller's state starts over (a form's `berserk` effect,
     /// `sub_802D310`); the controller clears it once it has.
     pub controller_fresh: bool,
