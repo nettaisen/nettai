@@ -2,7 +2,7 @@
 //! chips.
 
 use super::library::testing::{EVERY_CODE, TestLibrary, chip};
-use super::screen::{OK_SLOT, SPECIAL_SLOT};
+use super::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
 use super::*;
 use crate::content::{ButtonHandle, ChipClass, ChipCode, ChipFlags};
 use crate::custom::library::testing::ChipId;
@@ -410,6 +410,34 @@ fn select_hides_the_window_until_a_key() {
     assert_eq!(p.phase(), Phase::Choosing);
     p.step(keys::RIGHT);
     assert_eq!(p.screen().cursor, 0);
+}
+
+/// The emblem as the hidden window comes back is the game's screen's: one
+/// whose layout says `emblem_at_window_return` draws it on the tick of the
+/// key and the next (EXE6's `sub_8026D06`), one that doesn't on neither
+/// (EXE5's 0x08023022): it is back with the choosing state's own draw.
+#[test]
+fn the_returning_window_draws_the_emblem_where_the_screen_does() {
+    for at_return in [true, false] {
+        let mut p = Player::new(&[]);
+        p.lib.layout.emblem_at_window_return = at_return;
+        p.open();
+        p.wait(10);
+        p.step(0);
+        assert!(p.screen().look.drawn.emblem.is_some(), "the choosing state draws it");
+        p.press(keys::SELECT);
+        p.step(0);
+        assert!(matches!(p.phase(), Phase::Hidden { stage: HiddenStage::Waiting }));
+        assert!(p.screen().look.drawn.emblem.is_none(), "hidden");
+        p.step(keys::RIGHT);
+        assert!(matches!(p.phase(), Phase::Hidden { stage: HiddenStage::Restoring }));
+        assert_eq!(p.screen().look.drawn.emblem.is_some(), at_return, "the tick of the key");
+        p.step(keys::RIGHT);
+        assert_eq!(p.phase(), Phase::Choosing);
+        assert_eq!(p.screen().look.drawn.emblem.is_some(), at_return, "the next");
+        p.step(0);
+        assert!(p.screen().look.drawn.emblem.is_some(), "choosing again");
+    }
 }
 
 #[test]
