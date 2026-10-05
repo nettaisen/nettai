@@ -450,9 +450,20 @@ pushes `mood_held`, and the counterer's reads it.
 
 ### 4.8 Presentation
 
-The frontend draws each viewer's HUD and custom screen with the module of that viewer's ruleset's game; that module
-reads its systems' state by field name through a small accessor on `Battle`. The opponent's navi, objects and HP
-are drawn as now. Making the drawing itself data or Luau is out of this design's scope.
+The frontend draws each viewer's HUD and custom screen. Where it has drawing of its own for something a system
+declares, the engine names the set and content states a value of it, as it fills roles: a window's `view` (a list
+of forms to choose from in its four windows, an offered form's or a button's chip's icon flying to the picked
+column) and a button's (it offers a form; its picture is a role chip's too), `WindowView` and `ButtonView`, which
+`core.d.luau` declares as unions of their names and the load reads into the enums, refusing another name with the
+module and the field. A view shows what its system keeps: the state fields the engine names for it (a form list's
+`offered`, `offered_count`, `marked`, `window_cursor`, `cross_chosen` and `chosen`; a form offer's `offer`,
+`offer_chaos` and `turns`; a flight's step and count), found by name once as the content loads and refused there
+if the system lacks one or keeps it as another type; the frontend reads them through typed reads on `Battle`
+(`form_list`, `offer`, `form_turns`, `offer_flight`, `chip_flight`). What a player brings that a console shows
+them by is a `PlayerFact` (their version, Beast Out, their Cross list): the setup field of that name, found and
+type-checked the same way (`Battle::fact`). The frontend names no system, window, button, state field or fact: a
+button's name is only the key of its look in a pack, as a chip's key is of its picture. The opponent's navi,
+objects and HP are drawn as now. Making the drawing itself data or Luau is out of this design's scope.
 
 ## 5. State
 
@@ -2473,3 +2484,29 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
 - The verification workspace: gen-content's decode states EXE6's rules, and its check compares each stated rule
   with it; tools/exe5/gen_rules.py writes the ruleset, the reactions and the status section as content/exe5 has
   them.
+
+### Typed views and facts for the frontend (2026-10-05)
+
+The frontend matched on names content gave (a window `cross_opening` of system `cross`, a button `soul`, a state
+field `offered`, a fact `version`). It reads typed values now (§4.8):
+
+- **The engine** (`content/views.rs`): `WindowView` (`form_list_opening`, `form_list`, `form_list_closing`,
+  `form_chosen`, `offer_flight`, `chip_flight`) and `ButtonView` (`form_offer`, `chip_picture`), each a window's or
+  a button's `view` in its definition, read at load (`WindowDef::view`, `ButtonDef::view`; an unknown name is the
+  load's error, with the system's module and the window or button); `ViewFields`, the state fields a view shows,
+  found by name in the view's own system at load (`SystemDef::views`); `PlayerFact` (`version`, `beast_out`,
+  `cross_list`), found among the ruleset's systems' setups at load (`Defs::fact_field`) and read by
+  `Battle::fact(side, PlayerFact)`; the typed reads `Battle::form_list`, `offer`, `form_turns`, `offer_flight` and
+  `chip_flight`; and a navi's forms a form list offers by version (`NaviForms::by_version`, the table's
+  `<version>.crosses`), read at load. No state is added: every field read was a system's already.
+- **Content**: `view` on EXE6's Cross window's four windows and its Beast Out button, and on EXE5's soul button,
+  its soul's choice and MeddySoul's capsule's mix (a soul's window passes its `view` through the souls system's).
+  Nothing else changed; the fields a view shows keep their names, which are the view's contract now.
+- **The renderer** matches the enums (`cross_stage`, the soul's and the capsule's flight, the soul button's
+  palette and icon, the BeastOut chip's picture: the look of the button whose view is `chip_picture`). The chip a
+  capsule's mix flies is the one the flight's button shows, counted among the screen's buttons that show a chip:
+  no button's name. The console's region is an enum (`Region`), which a recording gives. The frontend's text screen
+  titles a window by its name's words and its view, and a button's pick by its name's words.
+- **Still strings**, as keys and never switches: asset names and definition keys (a navi's key for its emblem, a
+  button's name for its look, a chip's key for its picture), a version's name (a pack's versions' and a
+  definition's `version`, compared for equality), language codes, and the reasons written to `known.tsv`.
