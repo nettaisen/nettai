@@ -367,10 +367,31 @@ fn pack(ch: [u16; 3]) -> u16 {
     ch[0] | ch[1] << 5 | ch[2] << 10
 }
 
-/// Alpha blend: a * eva/16 + b * (16 - eva)/16, per channel, saturating.
-pub fn blend(a: u16, b: u16, eva: u8) -> u16 {
+/// A semi-transparent sprite's color `a` over the color `b` behind it, as
+/// the hardware blends them with what `sprite_setAlpha` writes (EXE6's
+/// 0x08002C7A, EXE5's 0x08002AE6, the same code: the sprite's mode
+/// semi-transparent, and BLDALPHA's two bytes the alpha and 16 less the
+/// alpha, as bytes).
+///
+/// BLDALPHA holds two weights of five bits each, EVA in bits 0 to 4 for
+/// the sprite and EVB in bits 8 to 12 for what is behind, and a weight
+/// over 16 counts as 16; the pixel is a * EVA/16 + b * EVB/16 a channel,
+/// no more than 31. So an alpha of 0 to 16 is that many sixteenths of the
+/// sprite over the rest, and one past 16, which the routine doesn't
+/// bound, wraps in its five bits:
+/// - 17 to 31: EVA is 16 (17 to 31, over 16) and EVB is 16 too (16 less
+///   the alpha is -1 to -15, as five bits 31 to 17): the two are added in
+///   full;
+/// - 32 to 48: EVA is the alpha less 32 (its five bits), EVB 16 less
+///   that: the fade starts over from the sprite's 0.
+///
+/// (EXE5's BoyBomb's bomb fades in from 21 to 35: what counts its alpha
+/// up is the timer its first tick's HP change sets to 20. Eleven frames
+/// added to the panel in full, four nearly clear, then opaque.)
+pub fn blend(a: u16, b: u16, alpha: u8) -> u16 {
     let (a, b) = (channels(a), channels(b));
-    let (ea, eb) = (eva.min(16) as u16, 16 - eva.min(16) as u16);
+    let weight = |byte: u8| (byte & 0x1F).min(16) as u16;
+    let (ea, eb) = (weight(alpha), weight(16u8.wrapping_sub(alpha)));
     pack(std::array::from_fn(|k| ((a[k] * ea + b[k] * eb) >> 4).min(31)))
 }
 
@@ -501,6 +522,29 @@ mod tests {
         assert_eq!(out[3 * WIDTH + 3], 0x001F);
         assert_eq!(out[4 * WIDTH], 0);
         assert_eq!(out[4], 0);
+    }
+
+    /// `blend`'s weights at the edges of BLDALPHA's five bits, as the
+    /// hardware has them: a sprite of (16, 8, 0) over (8, 8, 24).
+    #[test]
+    fn an_alpha_past_16_wraps_as_bldalphas_fields_do() {
+        let color = |r: u16, g: u16, b: u16| r | g << 5 | b << 10;
+        let (sprite, behind) = (color(16, 8, 0), color(8, 8, 24));
+        // 0: all of what is behind; 16: all of the sprite.
+        assert_eq!(blend(sprite, behind, 0), behind);
+        assert_eq!(blend(sprite, behind, 16), sprite);
+        // 8: half of each.
+        assert_eq!(blend(sprite, behind, 8), color(12, 8, 12));
+        // 17 and 31: both weights 16 (EVA 17 and 31; EVB -1 and -15, as
+        // five bits 31 and 17): added in full.
+        assert_eq!(blend(sprite, behind, 17), color(24, 16, 24));
+        assert_eq!(blend(sprite, behind, 31), color(24, 16, 24));
+        // (No more than 31 a channel.)
+        assert_eq!(blend(color(20, 20, 20), color(20, 20, 20), 20), color(31, 31, 31));
+        // 32: EVA 0, EVB 16 (-16 as five bits): what is behind again.
+        assert_eq!(blend(sprite, behind, 32), behind);
+        // 35: EVA 3, EVB 13.
+        assert_eq!(blend(sprite, behind, 35), color((16 * 3 + 8 * 13) / 16, 8, 24 * 13 / 16));
     }
 
     #[test]
