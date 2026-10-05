@@ -2006,9 +2006,7 @@ export type ChipSpec = {
     -- (a navi chip whose navi brings the user back itself), "goes_with_any"
     -- (it goes with any selection on the custom screen, and leaves the
     -- selection's rules alone: EXE6's BeastOut chip), "hides_damage_as_a"
-    -- (the custom screen shows its damage as "???" on a copy of code A),
-    -- "hides_advance_code" (the Program Advance animation shows its name
-    -- without its code: the chips past the original's chip table).
+    -- (the custom screen shows its damage as "???" on a copy of code A).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
@@ -2201,7 +2199,7 @@ export type FormEffect =
 --     (EraseCross);
 --   special_holds_buster: its held buster doesn't fire while its B+Back
 --     special is asked for (TenguCross and DustCross in Beast Out);
---   stands_on_metal: a metal panel doesn't slide the navi (EXE5's soul 5);
+--   stands_on_metal: a metal panel doesn't slide the navi (EXE5's MagnetSoul);
 --   controlled: the side's systems' `controller` decides its idle (EXE6's
 --     Beast Over: the berserk), the player's buttons don't reach it, and a
 --     full gauge opens the custom screen;
@@ -2248,10 +2246,8 @@ export type FormDef = {
     mugshot: (Mugshot | MugshotFaces)?,
     -- The version of its game it belongs to (EXE6's "gregar" or "falzar":
     -- a version's Crosses and Beast), by the name the game's pack keeps a
-    -- version's pictures under; and its place among its version's forms in
-    -- their window (EXE6's Cross window: its name and colors there).
+    -- version's pictures under.
     version: string?,
-    window_order: number?,
     weapons: FormWeapons?,
     identity: Identity?,
     -- The damage it adds to a family's damaging chips (`uncharged`: only
@@ -2319,11 +2315,11 @@ export type FormDef = {
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.
     buster_arm: { anim: number, palette_add: number? }?,
-    -- A soul (EXE5's Soul Unison): its number, the chip
-    -- family the custom screen's soul button gives up for it, and the
-    -- chaos cycle's row its Chaos Unison charge keeps whatever the chaos
-    -- level (MeddySoul's; none: the level's, at most 2).
-    soul: { number: number, family: ChipFamily, chaos_cycle: number? }?,
+    -- A soul (EXE5's Soul Unison), named by its form's id: the chip family
+    -- the custom screen's soul button gives up for it, and the chaos
+    -- cycle's row its Chaos Unison charge keeps whatever the chaos level
+    -- (MeddySoul's; none: the level's, at most 2).
+    soul: { family: ChipFamily, chaos_cycle: number? }?,
     -- Its game's systems' fields (their `extends.form`: EXE6's `kind`,
     -- `game`, `cross_of`, `beast`, ...; content/exe6/types.d.luau types them).
     [string]: any,

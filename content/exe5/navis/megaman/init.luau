@@ -37,7 +37,10 @@ return define.navi {
     -- His fresh stats, as a navi's stats start (0x080111BA from the table 0x0801D55F: his row, EXE6's):
     -- the stats a match's side starts him at.
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },
-    -- His souls, which the custom screen's soul button offers (rules/souls).
+    -- His souls, which the custom screen's soul button offers (rules/souls), in the original's order of the navis he
+    -- unites with (0x0873BBC8's names: compat's records.toml has each form's number): the order of the soul button's
+    -- icons in a pack, where a frontend finds a soul's icon by its place here, and the place the round's souls given
+    -- are counted by (rules/souls/custom's `used_bit`).
     forms = {
         souls = {
             protosoul,
@@ -65,6 +68,6 @@ return define.navi {
         -- He wears what his soul does: his death hook takes it off (0x0800EFCC, his record's category 2), and an
         -- animation change (0x0800F11C by AI index 0), a flinch and a drag (0x080F0500) restart it.
         overlay_hooks = { "death", "refresh", "flinch", "drag" },
-        attach_points = attach_points[0],
+        attach_points = attach_points,
     },
 }
