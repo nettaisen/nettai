@@ -7,6 +7,11 @@
 //! entries in order, a chip or a pattern (a place by its target and a run
 //! of chips). Each side's tactics are battle state: the computer navi's AI
 //! turns their entries as it plays them.
+//!
+//! The block: 42 halfword places, their count (+0x54), eight pattern
+//! records of 16 bytes from +0x58 (`dx`, `dy`, five chip places, the
+//! pattern's score, a word) and eight bytes more, which nothing writes
+//! (0xFF in every save and every block a battle exchanged).
 
 use nettai_content_api::ChipHandle;
 
@@ -14,9 +19,8 @@ use nettai_content_api::ChipHandle;
 pub const MAX_ENTRIES: usize = 42;
 /// Most patterns (the block's 16-byte records from +0x58: 8).
 pub const MAX_PATTERNS: usize = 8;
-/// Most chips a pattern runs (its record's seven halfwords after its
-/// place, the last its end).
-pub const MAX_PATTERN_CHIPS: usize = 6;
+/// The chip places of a pattern's record.
+pub const PATTERN_CHIPS: usize = 5;
 
 /// An entry of a player's tactics: a halfword of the block.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -31,14 +35,77 @@ pub enum Tactic {
     Empty,
 }
 
-/// A pattern: where to stand from the target (`dx` columns toward the
-/// computer navi's enemies, `dy` rows) and the chips to use there, in
-/// order.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+/// A chip place of a pattern's record: a halfword.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PatternChip {
+    Chip(ChipHandle),
+    /// The halfword 0, which the AI plays as the game's chip 0 (a zeroed
+    /// record's: a played save's unused ones can be).
+    Nothing,
+    /// An empty place (0xFFFF): the run's end.
+    Empty,
+}
+
+/// A pattern record: where to stand from the target (`dx` columns toward
+/// the computer navi's enemies, `dy` rows), the chips to use there, in
+/// order, to the first empty place, and the pattern's score, which the
+/// game's learning keeps (a battle's end takes 1 off it, or adds 5 to one
+/// the battle saw again, and writes the eight highest: 0x0802C540) and
+/// nothing of a battle means to read. The AI's read of a record all of
+/// whose places hold a chip reaches it all the same
+/// ([`Tactics::pattern_read`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct TacticPattern {
     pub dx: i8,
     pub dy: i8,
-    pub chips: Vec<ChipHandle>,
+    pub chips: [PatternChip; PATTERN_CHIPS],
+    pub score: u32,
+}
+
+impl TacticPattern {
+    /// A record nothing has written (0xFF throughout): a save's that has
+    /// learned no pattern for it.
+    pub const UNUSED: TacticPattern = TacticPattern { dx: -1, dy: -1, chips: [PatternChip::Empty; PATTERN_CHIPS], score: u32::MAX };
+
+    /// A pattern of `chips` (the first [`PATTERN_CHIPS`] of them), the
+    /// places after them empty.
+    pub fn of(dx: i8, dy: i8, chips: &[ChipHandle], score: u32) -> TacticPattern {
+        let mut places = [PatternChip::Empty; PATTERN_CHIPS];
+        for (place, &c) in places.iter_mut().zip(chips) {
+            *place = PatternChip::Chip(c);
+        }
+        TacticPattern { dx, dy, chips: places, score }
+    }
+
+    /// The chips of its run: those before its first place that holds none.
+    pub fn run(&self) -> Vec<ChipHandle> {
+        self.chips
+            .iter()
+            .map_while(|c| match c {
+                PatternChip::Chip(h) => Some(*h),
+                _ => None,
+            })
+            .collect()
+    }
+}
+
+impl Default for TacticPattern {
+    fn default() -> TacticPattern {
+        TacticPattern::UNUSED
+    }
+}
+
+/// What the AI's read of a pattern finds ([`Tactics::pattern_read`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PatternRead {
+    /// A chip place's chip.
+    Chip(ChipHandle),
+    /// A halfword that is no chip place's chip, which the game takes for a
+    /// chip's number all the same (its chip table's record of that number):
+    /// a place holding 0, half of a score, a record's `dx` and `dy`.
+    Number(u16),
+    /// An empty place (0xFFFF): the run's end.
+    End,
 }
 
 /// A player's tactics.
@@ -46,10 +113,42 @@ pub struct TacticPattern {
 pub struct Tactics {
     /// The entries (their count is the block's +0x54).
     pub entries: Vec<Tactic>,
+    /// The pattern records in their places, from the first (those past the
+    /// last here, unused).
     pub patterns: Vec<TacticPattern>,
 }
 
 impl Tactics {
+    /// 0x0802BCD6: the `k`th halfword (from 0) the AI reads of pattern
+    /// `pattern`'s run, the one after its record's `dx` and `dy` being the
+    /// first. The read has no end but a halfword of 0xFFFF and takes any
+    /// other for a chip's number (0x0802C094), so past a record's five
+    /// chip places it goes on: the two halves of its score, the next
+    /// record's `dx` and `dy` as one halfword, that record's places and
+    /// score, and so through the records to the block's last eight bytes,
+    /// which are 0xFF.
+    pub fn pattern_read(&self, pattern: usize, k: usize) -> PatternRead {
+        /// The halfwords of a record: its place, its chip places, its score.
+        const RECORD: usize = 3 + PATTERN_CHIPS;
+        let at = pattern * RECORD + 1 + k;
+        let (record, field) = (at / RECORD, at % RECORD);
+        if record >= MAX_PATTERNS {
+            return PatternRead::End;
+        }
+        let p = self.patterns.get(record).copied().unwrap_or(TacticPattern::UNUSED);
+        let number = |n: u16| if n == 0xFFFF { PatternRead::End } else { PatternRead::Number(n) };
+        match field {
+            0 => number(u16::from_le_bytes([p.dx as u8, p.dy as u8])),
+            f if f <= PATTERN_CHIPS => match p.chips[f - 1] {
+                PatternChip::Chip(c) => PatternRead::Chip(c),
+                PatternChip::Nothing => PatternRead::Number(0),
+                PatternChip::Empty => PatternRead::End,
+            },
+            f if f == PATTERN_CHIPS + 1 => number(p.score as u16),
+            _ => number((p.score >> 16) as u16),
+        }
+    }
+
     /// The entry in place `i` (from 0): past the count, an empty place.
     pub fn get(&self, i: usize) -> Tactic {
         self.entries.get(i).copied().unwrap_or(Tactic::Empty)
@@ -126,5 +225,46 @@ mod tests {
             assert!(sent.entries.contains(&e), "{e:?} in {:?}", sent.entries);
         }
         assert_eq!(Tactics::default().sent(&mut Rng::new(7)), Tactics::default());
+    }
+
+    /// 0x0802BCD6's read ends at an empty place alone: a record of five
+    /// chips is read on into its score and the records after it.
+    #[test]
+    fn a_patterns_read_ends_at_an_empty_place_alone() {
+        use PatternRead::{Chip, End, Number};
+        let c = ChipHandle;
+        let reads = |t: &Tactics, pattern: usize| -> Vec<PatternRead> {
+            (0..).map(|k| t.pattern_read(pattern, k)).take_while(|r| *r != End).collect()
+        };
+        // Two chips: its run, and no more.
+        let short = TacticPattern::of(1, 0, &[c(7), c(8)], 3);
+        let t = Tactics { entries: Vec::new(), patterns: vec![short] };
+        assert_eq!(reads(&t, 0), [Chip(c(7)), Chip(c(8))]);
+        // Five: then the score's halves; an unused record after it ends
+        // the read at its place (0xFF, 0xFF).
+        let full = TacticPattern::of(1, 0, &[c(1), c(2), c(3), c(4), c(5)], 3);
+        let t = Tactics { entries: Vec::new(), patterns: vec![full] };
+        assert_eq!(reads(&t, 0), [Chip(c(1)), Chip(c(2)), Chip(c(3)), Chip(c(4)), Chip(c(5)), Number(3), Number(0)]);
+        // A pattern after it: its place as a number (dx the low byte), then
+        // its chips.
+        let t = Tactics { entries: Vec::new(), patterns: vec![full, TacticPattern::of(2, -1, &[c(9)], 1)] };
+        assert_eq!(reads(&t, 0)[5..], [Number(3), Number(0), Number(0xFF02), Chip(c(9))]);
+        assert_eq!(reads(&t, 1), [Chip(c(9))]);
+        // A score of 0xFFFFFFFF ends it after the chips; one whose upper
+        // half alone is 0xFFFF, after its lower half.
+        let t = Tactics { entries: Vec::new(), patterns: vec![TacticPattern { score: u32::MAX, ..full }] };
+        assert_eq!(reads(&t, 0).len(), 5);
+        let t = Tactics { entries: Vec::new(), patterns: vec![TacticPattern { score: 0xFFFF_0004, ..full }] };
+        assert_eq!(reads(&t, 0)[5..], [Number(4)]);
+        // Zeroed records after it (a played save's unused ones): chip 0 a
+        // halfword, to the block's last bytes past the eighth record.
+        let zeroed = TacticPattern { dx: 0, dy: 0, chips: [PatternChip::Nothing; PATTERN_CHIPS], score: 0 };
+        let mut patterns = vec![zeroed; MAX_PATTERNS];
+        patterns[6] = full;
+        let t = Tactics { entries: Vec::new(), patterns };
+        let r = reads(&t, 6);
+        assert_eq!(r.len(), 5 + 2 + 8);
+        assert!(r[7..].iter().all(|x| *x == Number(0)));
+        assert_eq!(t.pattern_read(7, 7), End);
     }
 }

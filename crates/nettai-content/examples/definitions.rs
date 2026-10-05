@@ -43,4 +43,6 @@ fn main() {
             println!("{i}\t{}\t{}\t{}", d.registry.name(), d.key, d.module);
         }
     }
+    // (What the load read, and the content's hash, which covers its text.)
+    eprintln!("{} modules read; content hash {}", content.scripts.modules.len(), content.hash());
 }
