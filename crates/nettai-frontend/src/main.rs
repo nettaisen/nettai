@@ -580,7 +580,7 @@ fn main() {
         (None, Some(trace)) => {
             let stated = nettai_frontend::driver::trace_game(trace).unwrap_or_else(|e| fail(format!("can't play {}: {e}", trace.display())));
             if let Some(given) = args.game.as_ref().filter(|g| **g != stated) {
-                fail(format!("{} is a {stated} recording, not a {given} one (--game)", trace.display()));
+                fail(format!("{} is a recording of {stated}, not of {given} (--game)", trace.display()));
             }
             stated
         }

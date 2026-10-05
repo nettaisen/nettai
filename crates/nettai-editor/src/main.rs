@@ -102,7 +102,7 @@ fn main() -> iced::Result {
                 .and_then(|t| nettai_match::file::game_of(&t))
                 .unwrap_or_else(|e| fail(format!("{}: {e}", path.display())));
             if let Some(given) = given.as_ref().filter(|g| **g != stated) {
-                fail(format!("{} is a {stated} match, not a {given} one (--game)", path.display()));
+                fail(format!("{} is a match of {stated}, not of {given} (--game)", path.display()));
             }
             Some(stated)
         }
