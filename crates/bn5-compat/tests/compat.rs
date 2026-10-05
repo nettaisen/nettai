@@ -124,7 +124,7 @@ fn a_rounds_setup_names_what_the_content_lacks() {
     // Cannon A (0x001, code 0) and a zeroed field (no chip).
     let folder = "0100".to_string() + "0000" + &"ffff".repeat(38);
     let line = format!(
-        r#"{{"setup": {{"frame": 10, "game": "bn5", "settings_ptr": 0, "settings": "{}", "navi_stats": ["{stats}", "{stats}"], "folder": "{folder}", "battle_state": "{}", "rng1": 1, "rng2": 2, "game_versions": ["protoman", "colonel"], "folders": ["{folder}", "{folder}"], "joypad_phases": [0, 0], "frame_counter": 11}}}}"#,
+        r#"{{"setup": {{"frame": 10, "game": "bn5", "settings_ptr": 0, "settings": "{}", "navi_stats": ["{stats}", "{stats}"], "folder": "{folder}", "battle_state": "{}", "rng1": 1, "rng2": 2, "game_versions": ["protoman", "colonel"], "game_regions": ["us", "us"], "folders": ["{folder}", "{folder}"], "joypad_phases": [0, 0], "frame_counter": 11}}}}"#,
         "00".repeat(0x10),
         "00".repeat(0xF0)
     );
