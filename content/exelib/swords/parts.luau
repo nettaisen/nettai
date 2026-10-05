@@ -1,8 +1,8 @@
 --!strict
--- What the swords share, as BN5 and BN6 share it
+-- What the swords share, as EXE5 and EXE6 share it
 -- (docs/design/content-model-v2.md §5.2): the blade the user holds while it
 -- swings (its animation follows the user's form). The blades, slashes and
--- sounds themselves are each game's (BN6's lib/swords/parts, BN5's
+-- sounds themselves are each game's (EXE6's lib/swords/parts, EXE5's
 -- lib/swords).
 
 local attachment = require("../attachment")
@@ -11,7 +11,7 @@ local parts = {}
 
 -- `sub_80EBAE8`: the blade's animation, which matches the user's arm: a
 -- navi AI's (under 0xD), a form's (AI index 0x13 has animation 0xE), or
--- for MegaMan's base AI, `base`'s by the user's side (none: 0; BN6's gives
+-- for MegaMan's base AI, `base`'s by the user's side (none: 0; EXE6's gives
 -- its Beast forms' arms, its lib/swords/parts).
 function parts.arm_anim(me: Object, base: ((side: number) -> number)?): number
     local kind, ai = me.actor_type, me.ai_index

@@ -1,7 +1,0 @@
---!strict
--- BN5's Invisibl's dimming controller (effect object #0x5D, BN6's code: @exelib/invisibl/controller), BN5's kind;
--- its sound BN6's number.
-
-local common = require("@exelib/invisibl/controller")
-
-return common.make { id = "invisibl/controller", sound = asset.sound("invisible") }

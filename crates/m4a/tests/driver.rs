@@ -294,7 +294,7 @@ fn tempo_control_scales_the_tick_rate() {
     d.set_tempo(PlayerId(2), 0x200);
     frames(&mut d, 10);
     assert_eq!(d.player(PlayerId(2)).unwrap().clock(), 30);
-    // BN6's pinch tempo: 150 * 0x11A / 0x100 = 165 per frame.
+    // EXE6's pinch tempo: 150 * 0x11A / 0x100 = 165 per frame.
     d.set_tempo(PlayerId(2), 0x11A);
     assert_eq!(d.player(PlayerId(2)).unwrap().tempo_step(), 165);
 }

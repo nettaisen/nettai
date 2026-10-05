@@ -174,7 +174,7 @@ pub struct Hello {
     /// The engine's version: peers must run the same engine (the state's
     /// digest covers its layout, and the simulation must be the same code).
     pub engine: String,
-    /// The game the side plays (`bn6`, `bn5`): a match is of one game, so
+    /// The game the side plays (`exe6`, `exe5`): a match is of one game, so
     /// both sides must play the same.
     pub game: String,
     /// The content the side plays ([`nettai_battle::Content::hash`]): both
@@ -453,7 +453,7 @@ mod tests {
     use super::*;
 
     fn hello(role: Role, content: u64, setup: &[u8]) -> Hello {
-        Hello::new(role, "bn6", ContentHash(content), setup.to_vec(), content ^ role as u64)
+        Hello::new(role, "exe6", ContentHash(content), setup.to_vec(), content ^ role as u64)
     }
 
     fn both(a: Hello, b: Hello) -> (Result<Connection<Memory>, HandshakeError>, Result<Connection<Memory>, HandshakeError>) {
@@ -488,11 +488,11 @@ mod tests {
     #[test]
     fn another_game_is_refused_on_both_sides() {
         let mut joiner = hello(Role::Join, 8, b"");
-        joiner.game = "bn5".into();
+        joiner.game = "exe5".into();
         let (h, j) = both(hello(Role::Host, 7, b""), joiner);
         let (h, j) = (h.err().unwrap().to_string(), j.err().unwrap().to_string());
-        assert_eq!(h, "can't play: the other side plays bn5, this one bn6: a match is of one game, both sides playing it");
-        assert_eq!(j, "the other side refused: the other side plays bn5, this one bn6: a match is of one game, both sides playing it");
+        assert_eq!(h, "can't play: the other side plays exe5, this one exe6: a match is of one game, both sides playing it");
+        assert_eq!(j, "the other side refused: the other side plays exe5, this one exe6: a match is of one game, both sides playing it");
     }
 
     #[test]

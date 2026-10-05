@@ -1,9 +1,9 @@
 --!strict
--- A MetrKnuk fist, as BN6 and BN5 share it (BN6's attack object #0xB4,
--- `sub_80DBCEC`; BN5's #0x76, 0x080D4C58; docs/engine/dimming-chip-effects.md
+-- A MetrKnuk fist, as EXE6 and EXE5 share it (EXE6's attack object #0xB4,
+-- `sub_80DBCEC`; EXE5's #0x76, 0x080D4C58; docs/engine/dimming-chip-effects.md
 -- §18): it falls from high up behind its panel onto it, hits it with a
 -- burst, cracks it and shakes the camera, then bounces back up and goes.
--- BN5's falls without a sound, and goes when the battle ends. Each game
+-- EXE5's falls without a sound, and goes when the battle ends. Each game
 -- makes its kind (`fist.make`: its kind and its spawn).
 
 local regions = require("../regions")
@@ -14,14 +14,14 @@ local fist = {}
 export type Look = {
     id: string,
     sprite: SpriteAsset,
-    -- The sound it falls with (BN6's; BN5's falls without one).
+    -- The sound it falls with (EXE6's; EXE5's falls without one).
     sound: Sound?,
     -- Its landing's burst, and its hit: what it is and hits, its spark.
     burst: Effect,
     self_type: CollisionType,
     target: CollisionType,
     spark: Spark,
-    -- BN5's: it goes when the battle ends (0x080D4D08).
+    -- EXE5's: it goes when the battle ends (0x080D4D08).
     ends_with_battle: boolean,
 }
 
@@ -35,7 +35,7 @@ export type State = {
 -- spawner's height.
 local BEHIND, DOWN = 0x86_0000, 0x10_0000
 -- By Param2 (0, 4): the fall's first speed, the speed forward and the
--- gravity (BN6's `byte_80DBD8C`, `byte_80DBD98`, `byte_80DBE44`).
+-- gravity (EXE6's `byte_80DBD8C`, `byte_80DBD98`, `byte_80DBE44`).
 local FALL: { slow: number, fast: number } = { slow = 0x6_0000, fast = 0xE_0000 }
 local FORWARD: { slow: number, fast: number } = { slow = 0xA_0000, fast = 0x11_8000 }
 local GRAVITY: { slow: number, fast: number } = { slow = 0x7800, fast = 0xD200 }
@@ -119,7 +119,7 @@ function fist.make(look: Look): {
         end
     end
 
-    -- `sub_80DBD10`: behind its panel, its speeds, its look, (BN6's) its
+    -- `sub_80DBD10`: behind its panel, its speeds, its look, (EXE6's) its
     -- sound. (Its update first runs next tick.)
     local function init(me: Object)
         me:set_coordinates_from_panel()

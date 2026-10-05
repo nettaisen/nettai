@@ -14,11 +14,11 @@
 //! with the game's navis, chips, souls and patch cards, every one named in
 //! the game's namespace alone (`ids`). There is no mixing of games.
 
-/// The game a frontend plays without a match file: BN6.
-pub const DEFAULT_GAME: &str = "bn6";
+/// The game a frontend plays without a match file: EXE6.
+pub const DEFAULT_GAME: &str = "exe6";
 
 #[cfg(test)]
-mod bn6_forms;
+mod exe6_forms;
 pub mod check;
 pub mod draw;
 pub mod facts;
@@ -28,7 +28,7 @@ pub mod folders;
 mod games;
 pub mod ids;
 mod import;
-mod import_bn5;
+mod import_exe5;
 pub mod link_navis;
 pub mod names;
 pub mod sp_times;
@@ -38,9 +38,9 @@ pub mod testing;
 
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::content::Content;
-pub use bn6_compat::CrossList;
-pub use bn6_compat::unlocks::CROSSES;
-use bn6_compat::Unlocks;
+pub use exe6_compat::CrossList;
+pub use exe6_compat::unlocks::CROSSES;
+use exe6_compat::Unlocks;
 use nettai_battle::custom::{BattleFolder, GameVersion, PlayerSetup, SavedFolder};
 use nettai_battle::link::Link;
 use nettai_battle::navicust::NaviCust;
@@ -64,8 +64,8 @@ pub struct Place {
     pub background: Option<String>,
 }
 
-/// The arena, which decides everything else: the match's game (`bn6`,
-/// `bn5`: everything else a match names is that game's, and its rules are
+/// The arena, which decides everything else: the match's game (`exe6`,
+/// `exe5`: everything else a match names is that game's, and its rules are
 /// the game's: a game has one ruleset), the first round's place and the
 /// set's later rounds' (the original's init exchange carries those), its
 /// stages the game's.
@@ -143,19 +143,19 @@ pub struct Side {
     /// directly). With one, the stats are the navi's fresh stats with what
     /// the save keeps (`stats::SAVE_FIELDS`).
     pub navicust: Option<NaviCust>,
-    /// BN5's computer-navi data, the player's save's block (entries in place
-    /// order): what a computer navi across from them plays (BN5's Dark
+    /// EXE5's computer-navi data, the player's save's block (entries in place
+    /// order): what a computer navi across from them plays (EXE5's Dark
     /// MegaMan, nettai_battle::tactics). Empty: none to play (he fires his
     /// buster between rests). The round's setup sends them as the console
     /// does (`Tactics::sent`).
     pub tactics: Tactics,
-    /// BN5's karma, the save's light/dark value (0 to 1000; a fresh
-    /// save's 500), and the souls the side has (BN5's Soul Unison: none
+    /// EXE5's karma, the save's light/dark value (0 to 1000; a fresh
+    /// save's 500), and the souls the side has (EXE5's Soul Unison: none
     /// listed, every soul the content has): facts its systems take by name
     /// (`facts`).
     pub karma: u16,
     pub souls: Option<Vec<nettai_content_api::FormHandle>>,
-    /// BN5's Soul Unison and Chaos Unison (the save's event flags 0 and
+    /// EXE5's Soul Unison and Chaos Unison (the save's event flags 0 and
     /// 0x236): the custom screen's soul button, and a dark chip's Chaos
     /// Unison. A finished save has both (the default); facts its souls
     /// system takes by name (`facts`).
@@ -223,11 +223,11 @@ pub fn ruleset_has_system(content: &Content, system: &str) -> bool {
     systems(content).iter().any(|&s| ids::local(&content.defs.system(s).key) == system)
 }
 
-/// The system that brings the Cross window and the form changes (BN6's).
+/// The system that brings the Cross window and the form changes (EXE6's).
 pub const FORMS_SYSTEM: &str = "forms";
-/// The system that applies patch cards (BN6's).
+/// The system that applies patch cards (EXE6's).
 pub const PATCH_CARDS_SYSTEM: &str = "patch-cards";
-/// The system that compiles the NaviCust (BN6's).
+/// The system that compiles the NaviCust (EXE6's).
 pub const NAVICUST_SYSTEM: &str = "navicust";
 
 /// The NaviCust board of the content's game (its rule section
@@ -237,7 +237,7 @@ pub fn navicust_rules(content: &Content) -> &nettai_battle::content::NaviCustRul
 }
 
 /// The SP navis whose deletion times a side's setup carries, by slot
-/// (the game's rules' `sp_slots`: BN6's `sp/heatman` ...).
+/// (the game's rules' `sp_slots`: EXE6's `sp/heatman` ...).
 pub fn sp_slots(content: &Content) -> &[String] {
     &content.rules().sp_slots
 }
@@ -370,11 +370,11 @@ impl Match {
                 // here runs).
                 tactics: s.tactics.sent(&mut Rng::new(seed ^ TACTICS_SALT ^ (side as u32).wrapping_mul(0x9E37_79B9))),
             };
-            // What the save unlocks, into its BN6 systems' setup: every
+            // What the save unlocks, into its EXE6 systems' setup: every
             // Cross of the game (or the side's list) and Beast Out as the
             // side says.
             let unlocks = Unlocks { beast_out: s.beast_out, cross_list: s.crosses, ..Unlocks::everything(s.game) };
-            unlocks.write(content, &mut player).expect("the game's rules take BN6's setup as their systems declare it");
+            unlocks.write(content, &mut player).expect("the game's rules take EXE6's setup as their systems declare it");
             // Its karma and souls, into the systems that take them.
             facts::write(content, &self.arena, s, &mut player).expect("a side's karma and souls fit its rules (the match's checks)");
             player
@@ -481,7 +481,7 @@ pub fn all_crosses(content: &Content, game: &str) -> Result<Vec<nettai_content_a
 /// `navi`'s Crosses of both games (none: it doesn't change form).
 pub fn navi_crosses(content: &Content, navi: NaviHandle) -> Option<Vec<nettai_content_api::FormHandle>> {
     content.navi(navi).forms.as_ref()?;
-    let crosses = |g| bn6_compat::forms::set(content, navi, g).map(|s| s.crosses).unwrap_or_default();
+    let crosses = |g| exe6_compat::forms::set(content, navi, g).map(|s| s.crosses).unwrap_or_default();
     Some([GameVersion::Gregar, GameVersion::Falzar].into_iter().flat_map(crosses).collect())
 }
 

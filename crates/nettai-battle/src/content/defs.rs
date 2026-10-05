@@ -12,7 +12,7 @@
 //!
 //! The engine never learns the original's numbers for what content
 //! defines: an object records its kind's handle, a navi its content
-//! action's, and the validator (`bn6-compat`) maps them to the original's
+//! action's, and the validator (`exe6-compat`) maps them to the original's
 //! numbers with compat (docs/design/content-model-v2.md §7.3).
 
 use std::collections::BTreeMap;
@@ -56,7 +56,7 @@ pub struct KindDef {
     /// What places it when a stage names it (`kind.place`).
     pub place: Option<FnId>,
     /// What the leaving of a navi chip's navi one of its objects brought
-    /// does to it (`kind.navi_left`; BN5's DethPhnx): the navi calls
+    /// does to it (`kind.navi_left`; EXE5's DethPhnx): the navi calls
     /// `navi_chip.navi_left` with the object.
     pub navi_left: Option<FnId>,
 }
@@ -175,23 +175,23 @@ pub struct FormDef {
     pub key: String,
     pub record: FormData,
     /// `reset(navi)`: what else the status reset does in it, after its
-    /// `status_reset` (BN5's souls' routines, 0x08011B92: SearchSoul's
+    /// `status_reset` (EXE5's souls' routines, 0x08011B92: SearchSoul's
     /// reveal, ColonelSoul's, TomahawkSoul's grass).
     pub reset: Option<FnId>,
     /// `put_on(navi)`: the form's put-on routine (`sub_8011268`'s by the
-    /// form; BN5's table 0x0800F038, by soul), in place of the default, its
+    /// form; EXE5's table 0x0800F038, by soul), in place of the default, its
     /// identity's parts (`Navi:put_on_form_parts`). A base form's also runs
     /// as a player's init ends, in place of its navi's init hook
-    /// (`sub_8010DD0`: BN5's MegaMan's record names the base form's
-    /// routine, 0x0800EE1C, Hub Style's shade). BN5's NumberSoul's puts on
+    /// (`sub_8010DD0`: EXE5's MegaMan's record names the base form's
+    /// routine, 0x0800EE1C, Hub Style's shade). EXE5's NumberSoul's puts on
     /// its layer (0x0800F07C).
     pub put_on: Option<FnId>,
-    /// `take_off(navi)`: the form's take-off routine (`sub_8011384`'s; BN5's
+    /// `take_off(navi)`: the form's take-off routine (`sub_8011384`'s; EXE5's
     /// table 0x0800F09C), in place of the default, taking down what its
-    /// identity's death hook does (`Navi:take_off_form_parts`). BN5's
+    /// identity's death hook does (`Navi:take_off_form_parts`). EXE5's
     /// NumberSoul's takes its layer off (0x0800F0DE).
     pub take_off: Option<FnId>,
-    /// `tick(navi)`: the form's own part of the per-form tick (BN5's
+    /// `tick(navi)`: the form's own part of the per-form tick (EXE5's
     /// MegaMan's, 0x080F04CE: GyroSoul's propeller by the priming).
     pub tick: Option<FnId>,
 }
@@ -236,7 +236,7 @@ pub struct CollisionTypeDef {
 
 /// A system's extension of a registry's definitions
 /// (docs/design/rules-in-luau.md §7.5, S7): a field its game's definitions
-/// may carry for it (BN6's dark-chips system's `hp_bug` on a chip), of a
+/// may carry for it (EXE6's dark-chips system's `hp_bug` on a chip), of a
 /// type. The engine checks it as the content is defined and reads none of
 /// it: Luau reads it on the definition, tools through [`Defs::extension`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -332,7 +332,7 @@ pub struct SystemDef {
     pub state: StateId,
     pub setup: StateId,
     /// Its player setup when the player's setup says nothing of a field:
-    /// its `setup_defaults` (BN5's light/dark value a fresh save's 500),
+    /// its `setup_defaults` (EXE5's light/dark value a fresh save's 500),
     /// zero elsewhere ([`SystemDef::setup_block`]).
     pub setup_default: nettai_content_api::ContentState,
     /// The layout of its state of each navi no player controls that it
@@ -425,16 +425,16 @@ pub struct RecordDef {
     pub record_type: String,
 }
 
-/// A patch card (`define.patch_card`; BN4's, BN5's and BN6's Modification
+/// A patch card (`define.patch_card`; BN4's, EXE5's and EXE6's Modification
 /// Cards, docs/engine/patch-cards.md): what every game's card is. A game's
-/// rules give its effects their meaning (BN6's patch-cards system applies a
+/// rules give its effects their meaning (EXE6's patch-cards system applies a
 /// player's cards as the round is set up); the engine keeps the card's
 /// capacity cost and its effects' kinds, and the effects' own fields stay
 /// the definition's data, which the rules read. Its name is the locales'.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PatchCardDef {
     pub key: String,
-    /// Its capacity cost (BN6's MB): what the installed cards' limit counts.
+    /// Its capacity cost (EXE6's MB): what the installed cards' limit counts.
     pub mb: u8,
     /// Its effects in the card's order.
     pub effects: Vec<PatchCardEffect>,
@@ -449,21 +449,21 @@ pub struct PatchCardEffect {
     pub bug: bool,
 }
 
-/// A NaviCust program (`define.navicust_program`; BN4's, BN5's and BN6's
+/// A NaviCust program (`define.navicust_program`; BN4's, EXE5's and EXE6's
 /// Navi Customizer parts, docs/design/navicust.md): what every game's
 /// program is. The engine keeps what a NaviCust's board needs of it, its
-/// colors and shapes and whether it is a plus part; the rest (BN6's: what it
+/// colors and shapes and whether it is a plus part; the rest (EXE6's: what it
 /// does, which bug it brings, which programs it excludes) is the
 /// definition's data, which the game's rules read. Its name is the
 /// locales'.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NaviCustProgramDef {
     pub key: String,
-    /// The colors it comes in (BN6's `white`, `yellow`, `pink`, `red`,
+    /// The colors it comes in (EXE6's `white`, `yellow`, `pink`, `red`,
     /// `blue`, `green`), in its variants' order: a placed program's color
     /// is an index into them.
     pub colors: Vec<String>,
-    /// A plus part (BN6: one that belongs off the command line).
+    /// A plus part (EXE6: one that belongs off the command line).
     pub plus: bool,
     /// Its shape, centered on the grid's middle cell, and compressed (none:
     /// it doesn't compress).
@@ -577,7 +577,7 @@ pub struct Defs {
     /// The engine's kinds, in [`ENGINE_KINDS`]' order.
     engine: Vec<KindHandle>,
     /// The game's base form: what its navis are in before they change form
-    /// (rules-in-luau.md P1 item 12: BN5's MegaMan's is BN5's own); None
+    /// (rules-in-luau.md P1 item 12: EXE5's MegaMan's is EXE5's own); None
     /// for a game that defines none.
     pub base_form: Option<FormHandle>,
     /// Keys by registry, for the codecs.
@@ -933,7 +933,7 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
         other => return Err(what(format!("`damage` is {other}: a number below 1000, or a formula"))),
     }
     // What the ruleset asks of this chip: its traits and the trap it is.
-    // (A system's own fields, BN6's dark chips' cost and substitute and its
+    // (A system's own fields, EXE6's dark chips' cost and substitute and its
     // Beast rush's lock-on, are its extension: SystemDef::extends.)
     for field in ["traits", "trap"] {
         let v = json(field)?;
@@ -1394,7 +1394,7 @@ impl Defs {
             }
             if !c.record.program_advances.is_empty() {
                 // (A player's record of the round's formed ones is 64 bits:
-                // BN6's 30 and BN5's 30 fit.)
+                // EXE6's 30 and EXE5's 30 fit.)
                 if results >= 64 {
                     return Err(ContentError::new(format!("{whose}: more than 64 chips are Program Advances")));
                 }
@@ -1471,7 +1471,7 @@ impl Defs {
             record.forms = match d.spec.field("forms") {
                 Data::Nil => None,
                 forms @ Data::Map(_) => {
-                    // (The rest of the table is its game's: BN6's sets.)
+                    // (The rest of the table is its game's: EXE6's sets.)
                     let souls = match forms.field("souls") {
                         Data::Nil => Vec::new(),
                         Data::List(items) => items
@@ -1567,7 +1567,7 @@ impl Defs {
             base_form = Some(FormHandle(i as u16));
         }
         // (What a game's forms and its navis' sets say of each other is its
-        // systems': BN6's are checked by bn6-compat's tests.)
+        // systems': EXE6's are checked by exe6-compat's tests.)
         for f in &forms {
             if f.record.glow.as_ref().is_some_and(|g| g.is_empty()) {
                 return Err(ContentError::new(format!("form {}'s `glow` has no shaders", f.key)));
@@ -1920,7 +1920,7 @@ impl Defs {
         }
         // The actions forms name as their change (and their revert):
         // unpaused, they are the instant chips' action (the original's
-        // CurAction 0x1C, BN5's 0x1A).
+        // CurAction 0x1C, EXE5's 0x1A).
         let mut change_actions = vec![false; actions.len()];
         for f in &forms {
             for a in [f.record.change, f.record.revert].into_iter().flatten() {
@@ -2131,21 +2131,21 @@ fn read_ruleset(definitions: &Definitions) -> Result<Option<RulesetDef>, Content
 mod tests {
     use super::*;
 
-    /// Every module of the BN6 content (content/bn6) loads in the define
+    /// Every module of the EXE6 content (content/exe6) loads in the define
     /// phase: it passes the bytecode check, runs, and what it defines reads
     /// back as data.
     #[test]
-    fn every_bn6_module_loads_in_the_define_phase() {
-        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
+    fn every_exe6_module_loads_in_the_define_phase() {
+        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/exe6");
         let mut c = Content::default();
-        c.scripts = crate::content::Scripts::dir("bn6", crate::content::testing::modules_under(dir));
-        // (With a manifest for BN6 and the support pack its modules
+        c.scripts = crate::content::Scripts::dir("exe6", crate::content::testing::modules_under(dir));
+        // (With a manifest for EXE6 and the support pack its modules
         // require, content/exelib.)
         crate::content::testing::add_shared(&mut c.scripts);
-        crate::content::testing::add_index(&mut c.scripts, "bn6");
+        crate::content::testing::add_index(&mut c.scripts, "exe6");
         c.assets = crate::content::testing::asset_names_for(&c.scripts);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
-        c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
+        c.define().unwrap_or_else(|e| panic!("content/exe6: {e}"));
         // Every chip is a definition with its own use.
         assert!(c.defs.chips.len() > 300, "{} chips", c.defs.chips.len());
         // Effects, sparks, regions and collision types are definitions

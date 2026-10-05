@@ -85,7 +85,7 @@ pub struct SongDoc {
     /// FNV-1a of the MIDI file as exported.
     pub midi_stamp: String,
     /// The game version whose song this is, for a song each version's ROM
-    /// has its own of at the same number (BN5's Team ProtoMan and Team
+    /// has its own of at the same number (EXE5's Team ProtoMan and Team
     /// Colonel: `crate::sound::SongVersions`); absent for every other song.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,

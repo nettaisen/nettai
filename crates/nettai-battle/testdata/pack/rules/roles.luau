@@ -2,7 +2,7 @@
 -- What the ruleset needs from the test pack by role
 -- (docs/design/content-model-v2.md §7.4): AntiDmg's counter and the
 -- charged shot a navi's request starts are the pack's own tickers; the
--- rest is the test content's (BN6's modules), which this pack's content
+-- rest is the test content's (EXE6's modules), which this pack's content
 -- comes with.
 
 local absorbed_obstacle = require("../../objects/absorbed-obstacle")

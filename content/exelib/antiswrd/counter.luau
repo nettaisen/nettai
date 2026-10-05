@@ -1,6 +1,6 @@
 --!strict
--- AntiSwrd's counter, as BN5 and BN6 share it (BN6's navi action 0x48,
--- `sub_80EEA3C`; BN5's 0x48): each game makes its own (`counter.action_with`:
+-- AntiSwrd's counter, as EXE5 and EXE6 share it (EXE6's navi action 0x48,
+-- `sub_80EEA3C`; EXE5's 0x48): each game makes its own (`counter.action_with`:
 -- its key, blade, booms, sounds and attachment kind). When
 -- an AntiSwrd trap (or the AntiDmg program's stance, struck by a sword)
 -- catches a hit, the navi, invulnerable, swings a blade three times, each
@@ -29,11 +29,11 @@ export type Spec = {
     swing_sound: Sound,
     attachment: Kind,
     -- The blade's animation by its holder (none: the shared one's,
-    -- @exelib/swords/parts; BN6's gives its Beast forms' arms).
+    -- @exelib/swords/parts; EXE6's gives its Beast forms' arms).
     blade_anim: ((Object) -> number)?,
-    -- BN6's counter makes the navi invulnerable from its start to its end
+    -- EXE6's counter makes the navi invulnerable from its start to its end
     -- (`sub_80EEA5C`, `sub_800EB08` in `sub_80EEB18`) and restarts what his
-    -- form wears at each swing (`sub_8011450`); BN5's (action 0x2D,
+    -- form wears at each swing (`sub_8011450`); EXE5's (action 0x2D,
     -- 0x080EDAF4, 0x080EDB0A, 0x080EDBA8) does neither (`plain = true`).
     plain: boolean?,
 }

@@ -1,7 +1,7 @@
 --!strict
--- Tango, as BN5 and BN6 share her (actor object #0x4D in both: BN6's `sub_80C3734`, BN5's 0x080C2714, the same code),
+-- Tango, as EXE5 and EXE6 share her (actor object #0x4D in both: EXE6's `sub_80C3734`, EXE5's 0x080C2714, the same code),
 -- of a game's `TangoLook` (`tango.make`): the NaviCust support that heals her navi once, in link battles, when its HP
--- drops to a quarter (BN6's `sub_8010660`, BN5's 0x0800E3B6): summoned through the supports' controller
+-- drops to a quarter (EXE6's `sub_8010660`, EXE5's 0x0800E3B6): summoned through the supports' controller
 -- (./controller), she drops in 33 pixels in front of her navi, lands, sings, and throws a heal (./heal) that arcs onto
 -- her navi's panel; once it has landed she waits 10 ticks, bows, and rises away. Then the controller moves on. See
 -- docs/engine/chips.md §2.10.
@@ -28,7 +28,7 @@ local function enemy_direction(me: Object): number
     return 1 - 2 * me.alliance
 end
 
--- `sub_80C390E` (BN5's 0x080C28E6): in front of her navi, up high (and a
+-- `sub_80C390E` (EXE5's 0x080C28E6): in front of her navi, up high (and a
 -- pixel down the field).
 local function place(me: Object)
     local navi = battle.player(me.alliance)
@@ -56,7 +56,7 @@ end
 
 -- A game's Tango, of `look`.
 function tango.make(look: TangoLook): SupportActor
-    -- `loc_80C37BC` (BN5's 0x080C2794), by phase.
+    -- `loc_80C37BC` (EXE5's 0x080C2794), by phase.
     local function tick(me: Object)
         local p = me.phase
         local s = me.state :: State
@@ -140,7 +140,7 @@ function tango.make(look: TangoLook): SupportActor
         end
     end
 
-    -- `sub_80C3758` (BN5's 0x080C2738, without BN6's `sprite_decompress`):
+    -- `sub_80C3758` (EXE5's 0x080C2738, without EXE6's `sprite_decompress`):
     -- her look and her place; her first update at once.
     local function init(me: Object)
         local sprite = me.sprite
@@ -182,7 +182,7 @@ function tango.make(look: TangoLook): SupportActor
         update = update,
     }
 
-    -- `sub_80C3946` (BN5's 0x080C291E): Tango, for `controller` (whose
+    -- `sub_80C3946` (EXE5's 0x080C291E): Tango, for `controller` (whose
     -- `out` flag she sets, and clears when she goes).
     local function spawn(controller: Object): Object?
         local o = battle.spawn(kind, Vec3.zero)

@@ -1,6 +1,6 @@
 --!strict
--- The cannons' action, as BN5 and BN6 share it (BN6's action 0x14,
--- `sub_80EBC0E`; BN5's 0x14, the same code): each game makes its own
+-- The cannons' action, as EXE5 and EXE6 share it (EXE6's action 0x14,
+-- `sub_80EBC0E`; EXE5's 0x14, the same code): each game makes its own
 -- (`cannon.make`: its sound, attachment and projectile). Cannon,
 -- HiCannon, M-Cannon and the GigaCans. The navi raises its cannon (an
 -- attachment in its first related slot), and on the 17th tick fires a
@@ -42,7 +42,7 @@ local CANNON_POINT, NAVI_ANIM = 7, 8
 
 -- (A game's cannons are a `ShooterLook`: the shot's sound, its attachment
 -- kind, the arm's, and its projectiles. The arms themselves are the chips':
--- BN6's attachment rows 0 to 2, by `byte_80EBD2C`, at the navi's attach
+-- EXE6's attachment rows 0 to 2, by `byte_80EBD2C`, at the navi's attach
 -- point 7.)
 type Look = ShooterLook
 
@@ -98,7 +98,7 @@ function cannon.action(spec: CannonSpec, look: Look): Action
             color_shader = AFTERIMAGE_SHADER,
             shadow = "ground",
         })
-        -- (The game's more: BN5's Hub Style shade.)
+        -- (The game's more: EXE5's Hub Style shade.)
         local more = look.more_afterimages
         if more ~= nil then
             more(me, flip)

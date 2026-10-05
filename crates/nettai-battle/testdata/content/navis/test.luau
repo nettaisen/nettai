@@ -1,12 +1,12 @@
 --!strict
 -- The engine's test navis: MegaMan with his base form, and a link navi
--- with an actor record of its own (AI index 4), each with the BN6
+-- with an actor record of its own (AI index 4), each with the EXE6
 -- overlay's buster and charged shot.
 
 local buster = require("./megaman/weapons/buster")
 local charged_shot = require("./megaman/weapons/charged-shot")
 
--- A sprite's attach points: the blade's point and the gun's (BN6's gun
+-- A sprite's attach points: the blade's point and the gun's (EXE6's gun
 -- sits at point 0x0D) ahead of the rest.
 local function attach_points(): { { number } }
     local points = {}

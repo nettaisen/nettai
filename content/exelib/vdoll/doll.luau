@@ -1,5 +1,5 @@
 --!strict
--- VDoll's doll (attack object #0x7A: BN6's `sub_80D46B8`, BN5's 0x080D5618; the same code but where the look says):
+-- VDoll's doll (attack object #0x7A: EXE6's `sub_80D46B8`, EXE5's 0x080D5618; the same code but where the look says):
 -- a field object with 50 HP thrown three panels ahead in a 60-tick arc, which can hit in its last five ticks. Where
 -- it lands the panel turns to poison. The first damage it takes after landing curses the other side (the game's
 -- curse): a dimming that hits the other side with that damage. See docs/engine/shot-chips.md §14.2. A maker taking
@@ -11,15 +11,15 @@ local regions = require("@exelib/regions")
 
 local doll = {}
 
--- BN5's leaving (0x080D57F0): the curse's flash where no chip removed it (BN5's effect 0x24, 16 pixels up) and its
+-- EXE5's leaving (0x080D57F0): the curse's flash where no chip removed it (EXE5's effect 0x24, 16 pixels up) and its
 -- sound.
-export type DollBn5Leaving = { flash: Effect, sound: Sound }
+export type DollExe5Leaving = { flash: Effect, sound: Sound }
 
--- A game's doll: its kind's id, sheet and identity; how it looks absorbed (BN6's, which absorbs it); its collision
--- types and hit modifier from the start, and its spark; the ones it takes as it sets down (BN6's: an obstacle of no
--- side that anything can hit; BN5's has them from the start); the hits whose types break it at no damage (BN5's
--- 0x0C800002, 0x080D56D4); the poisoning's sound; the puff (effect 0x14); the game's aim; its curse; and BN5's
--- leaving (none: BN6's, `sub_80D48AE`).
+-- A game's doll: its kind's id, sheet and identity; how it looks absorbed (EXE6's, which absorbs it); its collision
+-- types and hit modifier from the start, and its spark; the ones it takes as it sets down (EXE6's: an obstacle of no
+-- side that anything can hit; EXE5's has them from the start); the hits whose types break it at no damage (EXE5's
+-- 0x0C800002, 0x080D56D4); the poisoning's sound; the puff (effect 0x14); the game's aim; its curse; and EXE5's
+-- leaving (none: EXE6's, `sub_80D48AE`).
 export type DollLook = {
     id: string,
     sprite: SpriteAsset,
@@ -35,7 +35,7 @@ export type DollLook = {
     puff: Effect,
     trajectory: Trajectory,
     curse: { spawn: (doll: Object, damage: number) -> Object?, telop: DimmingTelop },
-    bn5_leaving: DollBn5Leaving?,
+    exe5_leaving: DollExe5Leaving?,
 }
 
 -- The doll made for a game.
@@ -63,10 +63,10 @@ local PUFF_UP, CURSE_PUFF_UP = 0x10_0000, 0xC_0000
 local DESTROYED, SET = 2, 8
 
 function doll.make(look: DollLook): Doll
-    -- The destroyed action's phases: BN6's start, leaving and cursing (`JumpTable80D489C`); BN5's leaving (its
+    -- The destroyed action's phases: EXE6's start, leaving and cursing (`JumpTable80D489C`); EXE5's leaving (its
     -- first tick a wait) and cursing (0x080D57E8).
     local LEAVING, CURSING = 0x4, 0x8
-    if look.bn5_leaving then
+    if look.exe5_leaving then
         LEAVING, CURSING = 0x0, 0x4
     end
 
@@ -116,7 +116,7 @@ function doll.make(look: DollLook): Doll
         me.phase, me.phase_init = 0, 0
     end
 
-    -- Action 8 (BN6's `sub_80D4870`; BN5's 6, 0x080D57D0, nothing): set down, BN6's an obstacle of no side that
+    -- Action 8 (EXE6's `sub_80D4870`; EXE5's 6, 0x080D57D0, nothing): set down, EXE6's an obstacle of no side that
     -- anything can hit.
     local function set_down(me: Object)
         local set = look.set_down
@@ -156,9 +156,9 @@ function doll.make(look: DollLook): Doll
         obstacle.release_tracking(me)
     end
 
-    -- BN6's `sub_80D48AE`: how it leaves: blinking out; carried off; a chip's removal (absorbed, or a puff); or,
+    -- EXE6's `sub_80D48AE`: how it leaves: blinking out; carried off; a chip's removal (absorbed, or a puff); or,
     -- hurt after landing, the curse.
-    local function leave_bn6(me: Object)
+    local function leave_exe6(me: Object)
         local s = me.state :: State
         local blink = obstacle.blink_out(me)
         if blink == "blinking" then
@@ -199,12 +199,12 @@ function doll.make(look: DollLook): Doll
         start_curse(me)
     end
 
-    -- BN5's 0x080D57F0: a tick's wait; then carried off, or not hurt, not hit, the battle over (a puff), or flying
-    -- (gone); else the curse, with a puff 12 pixels up if a chip removed it, else BN5's look's flash 16 up and its
+    -- EXE5's 0x080D57F0: a tick's wait; then carried off, or not hurt, not hit, the battle over (a puff), or flying
+    -- (gone); else the curse, with a puff 12 pixels up if a chip removed it, else EXE5's look's flash 16 up and its
     -- sound. (No blinking out, no absorbing.)
-    local function leave_bn5(me: Object)
+    local function leave_exe5(me: Object)
         local s = me.state :: State
-        local bn5 = look.bn5_leaving :: DollBn5Leaving
+        local exe5 = look.exe5_leaving :: DollExe5Leaving
         if me.phase_init == 0 then
             me.phase_init = 4
             return
@@ -233,13 +233,13 @@ function doll.make(look: DollLook): Doll
         if obstacle.removal(me) ~= "broken" then
             effect_up(me, look.puff, CURSE_PUFF_UP)
         else
-            effect_up(me, bn5.flash, PUFF_UP)
-            battle.play_sound(bn5.sound)
+            effect_up(me, exe5.flash, PUFF_UP)
+            battle.play_sound(exe5.sound)
         end
         start_curse(me)
     end
 
-    -- BN6's `sub_80D49A0`, BN5's 0x080D58D0: hidden; once the dimming is over, gone.
+    -- EXE6's `sub_80D49A0`, EXE5's 0x080D58D0: hidden; once the dimming is over, gone.
     local function cursing(me: Object)
         me.visible = false
         if battle.dimmed() then
@@ -251,26 +251,26 @@ function doll.make(look: DollLook): Doll
         me:set_lifecycle("destroy")
     end
 
-    -- Action 2 (BN6's `sub_80D4888`, BN5's 0x080D57D4): by phase.
+    -- Action 2 (EXE6's `sub_80D4888`, EXE5's 0x080D57D4): by phase.
     local function destroyed(me: Object)
         local phase = me.phase
         if phase == LEAVING then
-            if look.bn5_leaving then
-                leave_bn5(me)
+            if look.exe5_leaving then
+                leave_exe5(me)
             else
-                leave_bn6(me)
+                leave_exe6(me)
             end
         elseif phase == CURSING then
             cursing(me)
-        elseif phase == 0 and not look.bn5_leaving then
-            -- (BN6's start.)
+        elseif phase == 0 and not look.exe5_leaving then
+            -- (EXE6's start.)
             me.phase, me.phase_init = LEAVING, 0
         else
             error(string.format("VDoll destroyed phase %#x reads past its table", phase))
         end
     end
 
-    -- Its action table (BN6's `off_80D479C`; BN5's 0x080D5704, BN6's numbers here): its own actions and the
+    -- Its action table (EXE6's `off_80D479C`; EXE5's 0x080D5704, EXE6's numbers here): its own actions and the
     -- framework's shared ones.
     local ACTIONS: { [number]: (Object) -> () } = {
         [0] = fly,
@@ -284,8 +284,8 @@ function doll.make(look: DollLook): Doll
         [8] = set_down,
     }
 
-    -- BN6's `sub_80D4754`, BN5's 0x080D56B4: any damage it takes this tick breaks it, and is kept for the curse
-    -- (BN5's: a hit of the look's breaking types breaks it too, as damage 0).
+    -- EXE6's `sub_80D4754`, EXE5's 0x080D56B4: any damage it takes this tick breaks it, and is kept for the curse
+    -- (EXE5's: a hit of the look's breaking types breaks it too, as damage 0).
     local function tick(me: Object)
         local s = me.state :: State
         me.visible = true
@@ -313,7 +313,7 @@ function doll.make(look: DollLook): Doll
         c:present()
     end
 
-    -- BN6's `sub_80D46D8`, BN5's 0x080D5638: shown in its second animation, with 50 HP, of the look's collision
+    -- EXE6's `sub_80D46D8`, EXE5's 0x080D5638: shown in its second animation, with 50 HP, of the look's collision
     -- types (its region off until it comes down).
     local function init(me: Object)
         me.visible = true
@@ -351,7 +351,7 @@ function doll.make(look: DollLook): Doll
             damage_taken = "u32",
             flying = "bool",
         },
-        -- BN6's `sub_80D46B8`, BN5's 0x080D5618.
+        -- EXE6's `sub_80D46B8`, EXE5's 0x080D5618.
         update = function(me: Object)
             local l = me.lifecycle
             if l == "init" then
@@ -364,9 +364,9 @@ function doll.make(look: DollLook): Doll
         end,
     }
 
-    -- BN6's `sub_80D49F6`, BN5's 0x080D5926: a thrower for the throw action that throws a doll at the panel three
+    -- EXE6's `sub_80D49F6`, EXE5's 0x080D5926: a thrower for the throw action that throws a doll at the panel three
     -- ahead of the user (the original adds the column into a word over the row, so a column below 0 would borrow from
-    -- it). It runs while dimmed and is one of its side's field objects (BN6's `sub_80D49CC`, BN5's 0x080D58FC).
+    -- it). It runs while dimmed and is one of its side's field objects (EXE6's `sub_80D49CC`, EXE5's 0x080D58FC).
     local function thrower(): Thrower
         return {
             throw = function(user: Object, pos: Vec3, damage: number): Object?

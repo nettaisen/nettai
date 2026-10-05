@@ -54,7 +54,7 @@ pub struct Look {
     pub hidden_parts: u32,
     /// The frame (animation, frame) whose first part's palette offset the
     /// sprite is drawn with, added to `palette` (the sprite's +5,
-    /// `oObjectSprite_Unk_05`): the frame each step ends on, and in BN6
+    /// `oObjectSprite_Unk_05`): the frame each step ends on, and in EXE6
     /// the frame an animation starts on too (the arena's
     /// `effects.load_sets_part_palette`). None after loading: 0.
     pub part_palette: Option<(u8, u16)>,
@@ -116,8 +116,8 @@ impl Sprite {
     }
 
     /// Start animation `anim` from its first frame (timing from
-    /// `content`): `sprite_loadAnimationData`, which in BN6 (`sub_3006730`)
-    /// also takes the frame's palette offset and in BN5 (0x03006898)
+    /// `content`): `sprite_loadAnimationData`, which in EXE6 (`sub_3006730`)
+    /// also takes the frame's palette offset and in EXE5 (0x03006898)
     /// leaves it to the next step.
     pub fn set_animation(&mut self, anim: u8, content: &Content) {
         self.anim = anim;
@@ -131,7 +131,7 @@ impl Sprite {
     }
 
     /// Advance one tick (timing from `content`), ending on the palette
-    /// offset of the frame it is on (`sub_3006792`'s end, BN5's 0x03006948).
+    /// offset of the frame it is on (`sub_3006792`'s end, EXE5's 0x03006948).
     pub fn update(&mut self, content: &Content) {
         self.step(content);
         self.look.part_palette = Some((self.anim, self.frame));

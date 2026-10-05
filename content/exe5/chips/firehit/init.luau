@@ -1,0 +1,61 @@
+--!strict
+-- FireHit1, FireHit2 and FireHit3: the firehit series (each chip's own comment above its definition).
+-- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
+
+local fist = require("@self/fist")
+
+-- FireHit1 (EXE5 chip 0x097): action 0x1A's effect 9, EXE6's FireHit (chips/firehit/fist: a fist on each row where
+-- the first column ahead with one of the other side's has one, at most three panels ahead).
+local firehit1 = define.chip {
+    id = "firehit1",
+    codes = { "O", "P", "Q" },
+    element = "fire",
+    family = "fire",
+    class = "standard",
+    rarity = 0,
+    mb = 12,
+    damage = 60,
+    hit_param = 20,
+    lockout = 20,
+    flags = { "has_damage", "library" },
+    slot_in_limit = 3,
+    instant = fist.instant,
+}
+
+-- FireHit2 (EXE5 chip 0x098): action 0x1A's effect 9, EXE6's FireHit (chips/firehit/fist: a fist on each row where
+-- the first column ahead with one of the other side's has one, at most three panels ahead).
+local firehit2 = define.chip {
+    id = "firehit2",
+    codes = { "H", "I", "J" },
+    element = "fire",
+    family = "fire",
+    class = "standard",
+    rarity = 1,
+    mb = 28,
+    damage = 100,
+    hit_param = 20,
+    lockout = 20,
+    flags = { "has_damage", "library" },
+    slot_in_limit = 3,
+    instant = fist.instant,
+}
+
+-- FireHit3 (EXE5 chip 0x099): action 0x1A's effect 9, EXE6's FireHit (chips/firehit/fist: a fist on each row where
+-- the first column ahead with one of the other side's has one, at most three panels ahead).
+local firehit3 = define.chip {
+    id = "firehit3",
+    codes = { "E", "F", "G" },
+    element = "fire",
+    family = "fire",
+    class = "standard",
+    rarity = 2,
+    mb = 44,
+    damage = 140,
+    hit_param = 20,
+    lockout = 20,
+    flags = { "has_damage", "library" },
+    slot_in_limit = 3,
+    instant = fist.instant,
+}
+
+return { firehit1 = firehit1, firehit2 = firehit2, firehit3 = firehit3 }

@@ -1,6 +1,6 @@
 --!strict
 -- What the ruleset needs from the engine's test content by role
--- (docs/design/content-model-v2.md §7.4): the BN6 overlay's modules the
+-- (docs/design/content-model-v2.md §7.4): the EXE6 overlay's modules the
 -- test content has. (The test pack, crates/nettai-battle/testdata/pack,
 -- brings its own.)
 
@@ -34,8 +34,8 @@ return {
         turn = turn.action,
         -- A switched-in navi's knock-out (SlashCross Beast's lunge).
         switch_knockout = slash_beast_lunge.action,
-        -- (The volley's role isn't filled, as in BN6.)
-        -- BN6's Beast Out rush.
+        -- (The volley's role isn't filled, as in EXE6.)
+        -- EXE6's Beast Out rush.
         wrapper = beast_rush.action,
         -- DustCross Beast's scatter, during which the navi isn't grounded.
         dust_beast_scatter = dust_beast_scatter.action,
@@ -51,7 +51,7 @@ return {
         -- What a zeroed chip field reads: the blank chip.
         zeroed = test_chips.blank,
         -- The custom screen's Beast Out button, as a chip in the hand, and
-        -- what a selection the custom screen can't allow becomes: BN6's.
+        -- what a selection the custom screen can't allow becomes: EXE6's.
         beast_out = beast_out,
         invalid = invalid,
     },
@@ -71,7 +71,7 @@ return {
     sprites = ruleset.sprites,
     banners = ruleset.banners,
     hooks = {
-        -- The first barrier, as BN6's roles fill it: the barrier the
+        -- The first barrier, as EXE6's roles fill it: the barrier the
         -- navi's stats name, and its visual.
         first_barrier = function(navi: Object)
             local barrier = battle.navi(navi.alliance).first_barrier

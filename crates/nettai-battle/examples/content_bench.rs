@@ -1,6 +1,6 @@
 //! Costs of running content scripts: the synthetic GunDelSol duel
 //! (`nettai_battle::scenario`, on the test content, whose scripts are this
-//! repository's BN6 scripts), scripted objects in bulk, and snapshots, with
+//! repository's EXE6 scripts), scripted objects in bulk, and snapshots, with
 //! the Luau interpreter and, where available, native code. Self-contained.
 //!
 //! cargo run --release -p nettai-battle --example content_bench --features test-content

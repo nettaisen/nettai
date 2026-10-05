@@ -1,0 +1,57 @@
+# EXE5's navi action numbers (a navi's CurAction, +9, which the traces compare) that chips.toml doesn't give: the
+# engine's own actions and content's actions of no chip, by key. A chip's action is its record's (chips.toml's
+# `action`). EXE5's action table is at 0x080EB42C (action 0x10 its first entry).
+
+"engine/move" = 0x10
+"engine/dimming-chip" = 0x15
+"engine/instant-chip" = 0x1A
+"engine/form-change" = 0x1A
+"engine/navi-chip" = 0x41
+# Soul Unison's change (the instant chips' number, as EXE6's form change is).
+"souls/change" = 0x1A
+# The buster's shot (EXE5's table's entry 1, 0x080EB9B2).
+"megaman/buster/shot" = 0x11
+# Chaos Unison's failure (the dark MegaMan's turn).
+"souls/chaos-failure" = 0x39
+# MegaMan's charged shot (EXE6's action 0x16; EXE5's 0x1E).
+"megaman/charged-shot/action" = 0x1E
+# A computer navi's buster attack (the attack table's row 6, 0x080EC3BC: EXE5's own).
+"computer-navi/buster" = 0x16
+# ProtoSoul's B+Back (the guard's action, as the Reflect program's).
+"protosoul/back/action" = 0x1F
+# The trap chips' counters, which a sprung trap starts.
+"antidmg/counter" = 0x2C
+"antiswrd/counter" = 0x2D
+# The souls' charged weapons (each soul's charge.luau) and NapalmSoul's charged Fire chips.
+"searchsoul/charge/action" = 0x3B
+"gyrosoul/charge/action" = 0x3C
+"magnetsoul/charge/action" = 0x42
+"colonelsoul/charge/action" = 0x43
+"napalmsoul/charge/action" = 0x44
+"napalmsoul/charged-chip" = 0x4B
+# A computer navi's leave (its state table's own entry 7, past EXE5's idle).
+"computer-navi/leave" = 0x07
+# Soul Unison's revert (the instant chips' number, as the change).
+"souls/revert" = 0x1A
+# MegaMan's weapons (the NaviCust's, the patch cards' charged chips and Hub Style's): their actions' numbers, the chip
+# actions they share where they share one.
+"megaman/blank-shot/action" = 0x38
+"megaman/bubble-shot/action" = 0x18
+"megaman/fire-arm/action" = 0x57
+"megaman/heat-shot/action" = 0x18
+"megaman/hells-rolling/action" = 0x47
+"megaman/rapid-buster/action" = 0x2E
+"megaman/reflect/action" = 0x1F
+"megaman/shield/action" = 0x1F
+"megaman/anti-damage/action" = 0x3D
+"megaman/tankcan1/action" = 0x46
+"megaman/zap-ring/action" = 0x32
+# The souls' charged weapons and B+Back.
+"numbersoul/charge/action" = 0x3A
+"shadowsoul/back/action" = 0x3D
+"meddysoul/charge/action" = 0x3E
+"knightsoul/charge/action" = 0x40
+# DarkInvs's drive's end (its computer-navi drive on the user's own tactics).
+"darkinvs/drive-end" = 0x49
+# A dark MegaMan's last stand (the request 0x40000000's: the roles' volley).
+"dark-survival" = 0x30

@@ -1,9 +1,9 @@
 --!strict
--- The hockey chips' flick (BN6's action 0x26, `sub_80ECCB0`: AirHocky's and PitHocky's; BN5's action 0x21,
+-- The hockey chips' flick (EXE6's action 0x26, `sub_80ECCB0`: AirHocky's and PitHocky's; EXE5's action 0x21,
 -- 0x080ECCB4: AirHoc's): the navi flicks a puck (@exelib/airhocky/puck) from the panel ahead on the third tick,
 -- slanting down the field or up; it bounces around the field, a panel per 6 ticks. 31 ticks in all.
 --
--- BN5's recovery sets its 16 ticks when it starts (0x080ECD28) where BN6's flick sets them as it ends: the same
+-- EXE5's recovery sets its 16 ticks when it starts (0x080ECD28) where EXE6's flick sets them as it ends: the same
 -- ticks.
 
 local puck = require("./puck")

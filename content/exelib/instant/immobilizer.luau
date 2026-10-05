@@ -1,17 +1,17 @@
 --!strict
--- An immobilizing hit, as BN5 and BN6 share it (BN6's attack object #0x3F,
--- `sub_80CC044`; BN5's #0x3F, 0x080CD2D8, the same code but that it shows
+-- An immobilizing hit, as EXE5 and EXE6 share it (EXE6's attack object #0x3F,
+-- `sub_80CC044`; EXE5's #0x3F, 0x080CD2D8, the same code but that it shows
 -- the immobilized mark): on its first update a one-tick hit on its panel
 -- that deals nothing but immobilizes (status 0x42, the game's), then 20
 -- ticks before it goes. Each game makes its kind
--- (`immobilizer.make_kind(id, look)`); BN6's instant chip effect 9
--- (lib/instant/immobilize) and BN5's MagnetSoul's B+Back spawn it.
+-- (`immobilizer.make_kind(id, look)`); EXE6's instant chip effect 9
+-- (lib/instant/immobilize) and EXE5's MagnetSoul's B+Back spawn it.
 
 local regions = require("@exelib/regions")
 
 local immobilizer = {}
 
--- `sub_80CC090`: 20 ticks, then gone (BN5's hidden first).
+-- `sub_80CC090`: 20 ticks, then gone (EXE5's hidden first).
 local function linger(me: Object, look: ImmobilizerLook)
     if me.phase_init == 0 then
         me.timer = 0x14
@@ -28,7 +28,7 @@ local function linger(me: Object, look: ImmobilizerLook)
     me.sprite:step()
 end
 
--- `sub_80CC064`: on its panel, on the ground (BN5's showing its mark); the
+-- `sub_80CC064`: on its panel, on the ground (EXE5's showing its mark); the
 -- hit (`dword_80CC0C8`, `dword_80CC0CC`: one panel, no spark, a
 -- guard-breaking attack against navis, the status), then the wait.
 local function init(me: Object, look: ImmobilizerLook)

@@ -6,7 +6,7 @@ use m4a::bank::*;
 const VIRUS_BATTLE: SoundId = SoundId(0x15);
 const WINNER: SoundId = SoundId(0x1F);
 
-/// BN6's player layout with two songs: the battle music (0x15) on the
+/// EXE6's player layout with two songs: the battle music (0x15) on the
 /// music player and an effect (0x94) on player 16.
 fn bank() -> Arc<SoundBank> {
     let square = Voice {

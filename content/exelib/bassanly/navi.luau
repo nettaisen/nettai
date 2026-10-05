@@ -1,11 +1,11 @@
 --!strict
--- BassAnly, the navi of the BassAnly chip, as BN6 and BN5 share him (BN6's
--- actor object #0x50, `sub_80C3CE8`; BN5's #0x50, 0x080C2C9C), brought by
+-- BassAnly, the navi of the BassAnly chip, as EXE6 and EXE5 share him (EXE6's
+-- actor object #0x50, `sub_80C3CE8`; EXE5's #0x50, 0x080C2C9C), brought by
 -- its navi chip controller. He appears (with his cloak, a form overlay) on
 -- his user's panel, waits 51 ticks, raises his arm, and fires four dark
 -- balls in turn, up and down the slant, that home in on enemy navis
 -- (./shot). Then he goes in a burst, and the controller moves on. He goes
--- at once if his panel is off the field. BN5's code is BN6's with other
+-- at once if his panel is off the field. EXE5's code is EXE6's with other
 -- animations, an arm on him (an attachment) while he takes aim, and his
 -- firing animation moving on to its loop. See docs/engine/chips.md §3.6.35.
 --
@@ -19,9 +19,9 @@ export type Spec = {
     cloak: FormOverlaySpec,
     sounds: { appear: Sound, raise: Sound },
     -- His animations: his arm rising, his stance once it is up, firing, the
-    -- firing loop it goes on to when it ends (BN5's), and after.
+    -- firing loop it goes on to when it ends (EXE5's), and after.
     anims: { raise: number, stance: number, fire: number, fire_loop: number?, rest: number },
-    -- BN5's arm while he takes aim (an attachment in his `held` slot): the
+    -- EXE5's arm while he takes aim (an attachment in his `held` slot): the
     -- game's attach, its look and animation.
     arm: {
         attach: (owner: Object, look: AttachmentLook, which: Slot, options: AttachmentOptions?) -> Object?,
@@ -39,7 +39,7 @@ export type State = {
     -- The controller waiting for him (its pointer sits in his
     -- XVelocity).
     controller: Object?,
-    -- BN5's arm (+0x60).
+    -- EXE5's arm (+0x60).
     held: Object?,
 }
 
@@ -66,7 +66,7 @@ function bassanly.make(spec: Spec): { kind: Kind, summon: (user: Object, control
     end
 
     -- `sub_80C3E00`: raising his arm until its last frame ends; then his
-    -- stance (BN5's arm on him), 31 ticks.
+    -- stance (EXE5's arm on him), 31 ticks.
     local function raise(me: Object)
         if me.phase_init == 0 then
             me.phase_init = 1
@@ -85,7 +85,7 @@ function bassanly.make(spec: Spec): { kind: Kind, summon: (user: Object, control
         me.phase, me.phase_init = 4, 0
     end
 
-    -- `sub_80C3E2E`: 31 ticks (to -1), then (BN5's arm gone) firing, 121
+    -- `sub_80C3E2E`: 31 ticks (to -1), then (EXE5's arm gone) firing, 121
     -- ticks.
     local function aim(me: Object)
         local left = me.timer - 1
@@ -104,7 +104,7 @@ function bassanly.make(spec: Spec): { kind: Kind, summon: (user: Object, control
         me.phase, me.phase_init = 8, 0
     end
 
-    -- `sub_80C3E46`: (BN5's firing moving on to its loop as it ends) the
+    -- `sub_80C3E46`: (EXE5's firing moving on to its loop as it ends) the
     -- shots, at 105, 85, 65 and 45 left; then 21 ticks.
     local function fire(me: Object)
         local fire_loop = spec.anims.fire_loop

@@ -95,7 +95,7 @@ impl<'a> DisplayText<'a> {
     }
 
     /// A navi's variant name (the enemy names' when its side's rules ask:
-    /// BN5's Hub Style), if it has one.
+    /// EXE5's Hub Style), if it has one.
     pub fn navi_variant_name<'b>(&self, content: &'b Content, navi: NaviHandle) -> Option<&'b str>
     where
         'a: 'b,

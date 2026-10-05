@@ -24,11 +24,11 @@ the original's numbers (§6). Routine names are the original's. "Dimming", "cut-
 ## 0. Summary
 
 - **The content pack is committed Luau, and it is the source of truth for all game data.** Chip records,
-  navis, forms, weapons, stages and every rule table are definitions in content/bn6, next to the code that uses
+  navis, forms, weapons, stages and every rule table are definitions in content/exe6, next to the code that uses
   them: a chip's numbers in its module, a rule in the `rules/` module that holds it. From the ROM come only
   assets, with the animation timing that belongs to the sprites.
 - **Extraction yields only assets**: sprites (with their animation timing), backgrounds, the field, the HUD's
-  graphics and font, songs, sound effects, voicegroups and samples. `bn6-extract` loses its battle data. The
+  graphics and font, songs, sound effects, voicegroups and samples. `exe6-extract` loses its battle data. The
   committed Luau data is written once from the ROM by a generator that lives in the verification workspace and
   stays there as the cross-check (§9).
 - **Content refers to content by value and by key, never by an original number.** A module `require`s what it
@@ -43,10 +43,10 @@ the original's numbers (§6). Routine names are the original's. "Dimming", "cut-
 - **Colocation.** A kind used by one chip, navi or form lives in its folder; kinds a family shares live in the
   family's `lib/` folder; `objects/` keeps only the 13 kinds that several families share. Folders are named by
   name (`chips/minibomb/`), with no index prefixes (§4).
-- **The original's numbers are compat metadata** in content/bn6/compat, TOML files that no Luau module can load
+- **The original's numbers are compat metadata** in content/exe6/compat, TOML files that no Luau module can load
   and no engine crate can reach (§6). The golden-trace harness, the setup codecs (real saves, folders, NaviCust,
   link navis), the extractor's asset naming and the sound comparison read them through a new crate,
-  `bn6-compat`, which depends on the engine; the engine cannot depend on it.
+  `exe6-compat`, which depends on the engine; the engine cannot depend on it.
 - **Handles.** Keys intern to dense `u16` handles per registry, in byte-wise sorted key order, when content
   loads. Battle state, setups and inputs carry handles; the content hash covers every definition and script, so
   two peers whose setups agree run the same content with the same handles (§8).
@@ -70,16 +70,16 @@ the original's numbers (§6). Routine names are the original's. "Dimming", "cut-
 
 | | v1 (today) | v2 |
 |---|---|---|
-| Game data | Extracted from the ROM into pack TOML (chip.toml, navi.toml, form.toml, rules/, registries/) | Committed Luau definitions in content/bn6, written once by a generator |
-| Scripts | Overlay in content/bn6, merged into the pack | The same Luau is the data and the code |
+| Game data | Extracted from the ROM into pack TOML (chip.toml, navi.toml, form.toml, rules/, registries/) | Committed Luau definitions in content/exe6, written once by a generator |
+| Scripts | Overlay in content/exe6, merged into the pack | The same Luau is the data and the code |
 | Registration | `[kind] pool/index`, chip `script` by action and subtype, `weapon.toml` by routine number | Definitions: `define.kind`, a chip's `action`/`dimming`/`navi`/`instant`, `define.weapon` |
 | Identity | Original numbers (chip 0x36, T3#0x08, form 1, weapon 0x06, NameID 0x1AC) | Keys (`"minibomb"`, `"bomb"`, `"heatcross"`, `"heatcross/charge"`) and handles |
 | References | `data.chips[id]`, `spawn_kind("bomb")`, `me:param(1)`, `play_sound(0x70)`, `battle.effect(pos, 0x14)` | `require`, definition values, typed state, `asset.sound("bomb-hit")`, effect definitions |
-| Original ids | Everywhere | content/bn6/compat, read only by `bn6-compat` |
+| Original ids | Everywhere | content/exe6/compat, read only by `exe6-compat` |
 | Folders | `chips/036-minibomb`, 139 kinds in `objects/` | `chips/minibomb`, kinds colocated with their owner, 13 in `objects/` |
 | Assets | `graphics/sprites/CC-II`, `sound/songs/song-XXX` | Named: `graphics/sprites/bomb`, `sound/songs/bomb-hit` |
 | The ruleset | Reads content by number (`form.0 == 0x0F`, chip `0xBB`, `SoundId(0x6B)`, `(Pool::Effect, 0x0A)`) | Reads roles, traits and handles |
-| Tests in the repository | Hand-written made-up content (content/testing.rs) | The real BN6 definitions with synthetic animation timing, plus a small test pack |
+| Tests in the repository | Hand-written made-up content (content/testing.rs) | The real EXE6 definitions with synthetic animation timing, plus a small test pack |
 
 What does not change: the core and the ruleset stay Rust; Luau stays the only content runtime, stateless over
 engine-owned typed state; the sandbox, the verifier and freezing; `Battle: Clone`, snapshots and the digest;
@@ -122,30 +122,30 @@ the content state store is keyed by.
 
 A key is a string unique within its registry. The content is one namespace (rules-in-luau.md §7.2, the user,
 2026-10-02: "maybe you should just have it all in a flat namespace and then in the chip ids directly have
-bn6:cannon or whatever"): every key is written in full, its game first and then its own part, `bn6:minibomb`,
+bn6:cannon or whatever"): every key is written in full, its game first and then its own part, `exe6:minibomb`,
 wherever it is written (modules, compat, locale tables, setups, match files, tests). The loader refuses an id
 without its game. The rules below are for the part after the game.
 
-- **Required keys** (`id = "bn6:..."`) for what is named from outside content: setups, folders, compat, tools,
+- **Required keys** (`id = "exe6:..."`) for what is named from outside content: setups, folders, compat, tools,
   the frontend. Lowercase ASCII letters and digits in `-`-separated words, optionally qualified with `/` by an
-  owner: `bn6:minibomb`, `bn6:atk-10`, `bn6:erasemn-ex`, `bn6:heatcross-beast`, `bn6:megaman/buster`,
-  `bn6:eraseman/mark`. The generator (§9) makes chip keys from the in-game name (`M-Cannon` is `m-cannon`,
+  owner: `exe6:minibomb`, `exe6:atk-10`, `exe6:erasemn-ex`, `exe6:heatcross-beast`, `exe6:megaman/buster`,
+  `exe6:eraseman/mark`. The generator (§9) makes chip keys from the in-game name (`M-Cannon` is `m-cannon`,
   `GrndMan[EX]` is `grndman-ex`, `Atk+10` is `atk-10`); where two records share a name (StepSwrd, WhiCapsl,
   BeastOut) or have none, it picks a key from the record's use and lists them in compat/curation.toml for review
   (§13).
 - **Derived keys** for definitions made inside another definition's module and nested in it: `<owner key>/<field
-  path>`. MiniBomb's action is `bn6:minibomb/action`; the bomb variant it throws is
-  `bn6:minibomb/action/args/thrown`. A definition made while module `M` loads and not nested in a keyed definition
-  of `M` is `M#n`, its place among `M`'s definitions (`bn6:lib/bombs/throw#1`, the module named by its folder). Owner-derived keys are stable under edits elsewhere and readable in
+  path>`. MiniBomb's action is `exe6:minibomb/action`; the bomb variant it throws is
+  `exe6:minibomb/action/args/thrown`. A definition made while module `M` loads and not nested in a keyed definition
+  of `M` is `M#n`, its place among `M`'s definitions (`exe6:lib/bombs/throw#1`, the module named by its folder). Owner-derived keys are stable under edits elsewhere and readable in
   messages and trace diffs; `M#n` keys shift when `M` gains a definition, which matters only to compat (an
   action compat maps takes an explicit `id`, §3.5). Nothing else stores a derived key.
 - Kind keys follow a convention the checker warns about: a kind colocated with an owner is qualified by it
-  (`bn6:eraseman/mark`, `bn6:grab/shot`); a kind in `objects/` or a family library is plain (`bn6:projectile`,
-  `bn6:bomb`).
+  (`exe6:eraseman/mark`, `exe6:grab/shot`); a kind in `objects/` or a family library is plain (`exe6:projectile`,
+  `exe6:bomb`).
 - The engine's own kinds and navi actions have keys in the `engine/` namespace (`engine/hitbox`, `engine/effect`,
   `engine/player`, `engine/move`, `engine/dimming-chip`), registered by the ruleset, not by content: of no game.
 - **Asset names are written in full too** (the user: "so loading assets must also be fully qualified as well"):
-  `asset.sprite("bn6:bomb")`, the pack's game and the pack's own name for the asset.
+  `asset.sprite("exe6:bomb")`, the pack's game and the pack's own name for the asset.
 
 ### 2.3 Handles and the intern order
 
@@ -213,7 +213,7 @@ export type ChipSpec = {
   by_time = {...} }` (the SP chips' damage by the user's deletion time of that navi; the slot is one of
   rules/sp-chips.luau's `slots`, the save's deletion times in the setup's order), `{ formula = "hp_lost" }`
   (Muramasa), `{ formula = "hp_last_digits" }` (NumbrBl), `{ formula = "navi_level", base = 60, per_level =
-  10 }` (the link navis' chips), and the ones no BN6 chip uses (`opponent_hp`, `gauge`,
+  10 }` (the link navis' chips), and the ones no EXE6 chip uses (`opponent_hp`, `gauge`,
   `half_opponent_max_hp`). The original's "1000 + n selects formula n" encoding is gone; the hand holds the
   evaluated damage, as it does today.
 - `program_advances` refers to its ingredients by value: `{ order = 13, code_run = { chip = cannon, count = 3
@@ -364,9 +364,9 @@ of them by number, they say:
   and `remove_navi_parts` (now `me:add_parts(identity, arg)`, `me:remove_parts(identity)`: the navi chips' navis
   define identities for their parts, which compat's `[identities]` numbers), and the generator's body-overlay
   rows. Content reads a side's navi and form as definitions (`battle.navi(side).form.base`, `.navi.forms`;
-  BN6's kinds are its forms system's extension, which rules/forms/kind.luau reads: S7b).
+  EXE6's kinds are its forms system's extension, which rules/forms/kind.luau reads: S7b).
 - **Compat** keeps navis.toml and forms.toml: the trace harness and the save codecs map numbers to handles
-  through their keys (`bn6_compat::codec::Ids`; a bug code may write the base form, 0, to a form byte and
+  through their keys (`exe6_compat::codec::Ids`; a bug code may write the base form, 0, to a form byte and
   nothing to the navi byte), and the frontend's emotion window draws the pack's faces by the original's form
   and navi numbers until a form's `mugshot` names its own. `gen-content check` compares each navi and form
   definition with the ROM's of its compat number field by field (the tables, and what the original's routines
@@ -424,7 +424,7 @@ chips' own weapons, beside the chip that gives them (`bugrswrd/charge`, `bgdthth
 arguments of its own (a sword's slash, Thunder's shot, AquaNdl1's volley, an electric pulse no chip has) or
 names a chip's instant effect (FireHit's fists, Boomer's boomerang: `instant`, without `instant_waits`, which
 only an effect no chip has sets: TenguCross's wind), and the two bug chips' spend a bug frag
-(BN6's API since rules-in-luau.md S8: `bn6.spend_bug_frags(side, n)`, the dark-chips system's state). A form's `weapons` and a navi's are handles (`FormWeapons` of
+(EXE6's API since rules-in-luau.md S8: `exe6.spend_bug_frags(side, n)`, the dark-chips system's state). A form's `weapons` and a navi's are handles (`FormWeapons` of
 `Option<WeaponHandle>`); a navi's definition also carries what a Cross change brings it with (`fresh`: HP, the
 body's programs, the first barrier, the Mega and Giga levels, the B+Back special's damage) and its HP after one
 (`cross_hp`, by side), which were tables in the engine (`byte_80210DD`, `byte_802DD88`). The content API's
@@ -642,7 +642,7 @@ there are no variants (`base`, `add`, `remove` are refused). The engine reads th
 | `custom_screen` | rules/custom-screen.luau | the slot grid and neighbor scans (rules/custom-screen.toml) |
 | `buster` | rules/buster.luau | recovery by Rapid and open panels; the empty hand's chip (rules/weapons.toml) |
 | `banners` | rules/banners.luau | which banners hold until removed, by banner asset (rules/banners.toml) |
-| `pools`, `flow`, `chip_use`, `sp_chips`, `navicust`, `effects` | rules/<name>.luau (rules/navicust/section.luau) | the object pools' sizes, the flow's timings, chip use, the SP navis' deletion times and slots, the NaviCust boards, BN5's effect rules |
+| `pools`, `flow`, `chip_use`, `sp_chips`, `navicust`, `effects` | rules/<name>.luau (rules/navicust/section.luau) | the object pools' sizes, the flow's timings, chip use, the SP navis' deletion times and slots, the NaviCust boards, EXE5's effect rules |
 
 Where v1 kept per-entity rows in a shared table, they move to the entity: charge times into weapons, the Cross
 palettes into forms, the SP chips' deletion-time steps into `lib/navi-chips/sp.luau` next to the formula,
@@ -685,10 +685,10 @@ a weapon set; the dimming and navi chip actions read the chip's usage. Content's
 
 ### 3.11 Patch cards
 
-`define.patch_card { id, mb, effects }` (content/bn6/cards/<name>/card.luau) is a patch card, BN4's, BN5's and BN6's
+`define.patch_card { id, mb, effects }` (content/exe6/cards/<name>/card.luau) is a patch card, BN4's, EXE5's and EXE6's
 Modification Card (docs/engine/patch-cards.md): the engine keeps its capacity cost and its effects' kinds and bug
 flags (`PatchCardDef`), and a player's installed cards are their setup's (`PlayerSetup::patch_cards`). What an
-effect does is a game's rules' (BN6's patch-cards system, rules/patch-cards), which read the effects' own fields
+effect does is a game's rules' (EXE6's patch-cards system, rules/patch-cards), which read the effects' own fields
 from the definition. Its name is the locales' (`[patch-cards]`).
 
 ## 4. Folder layout
@@ -707,8 +707,8 @@ file that imports everything, and then manifest.toml just declares id/kind/depen
 
 ```text
 content/
-  .luaurc                             the packs by name (`@bn6`, `@exelib`), for an editor's requires
-  bn6/, bn5/                          the game packs: what a match plays
+  .luaurc                             the packs by name (`@exe6`, `@exelib`), for an editor's requires
+  exe6/, exe5/                          the game packs: what a match plays
     manifest.toml                     the pack: its id, its kind, what it depends on
     init.luau                         the game's top module: it requires what the game has (below)
     **/*.luau                         its scripts (the layout below, §4.1)
@@ -724,12 +724,12 @@ content/
 A manifest (`nettai_content_api::packs::PackManifest`) says what the pack is, and nothing of what it holds:
 
 ```toml
-id = "bn6"
+id = "exe6"
 kind = "game"          # or "support"
 depends = ["exelib"]   # the support packs it requires from
 ```
 
-A game's top module, `<game>/init.luau` (`bn6:init`; the pack as a module, as a folder's init.luau is the folder,
+A game's top module, `<game>/init.luau` (`exe6:init`; the pack as a module, as a folder's init.luau is the folder,
 §4.1), requires what the game has:
 
 ```luau
@@ -783,7 +783,7 @@ return {
 - **What a game has.** Its init.luau requires, grouped by registry, the modules that define what a person picks or
   the rules name: `rules` (rules/init.luau: its systems, rule sections and roles), `chips`, `navis`, `forms`,
   `stages`, `patch_cards`, `navicust`. A series module stands for its chips. Weapons, kinds, actions and the rest
-  come in through requires. `also` requires a module that defines something nothing else requires (BN6's alias
+  come in through requires. `also` requires a module that defines something nothing else requires (EXE6's alias
   buster routines, an effect or a kind the original's tables number, which compat names). A chip the game defines
   without a use yet isn't required, so it doesn't load: index.py keeps it as a commented require among the chips,
   and uncomments it when the chip has its use (no list of them is kept anywhere else; neither game has one
@@ -809,15 +809,15 @@ return {
   isn't found isn't loaded.
 - **Declarations, by pack** (`packs::declarations`). A pack's modules check against the engine's declarations, then
   those of the support packs it depends on (in load order), then its own. No pack sees another game's types. A game's type
-  that another pack's code names is the support pack's: packs.py moved 51 of BN6's 105 to exelib/types.d.luau. The
-  engine's patch card spec takes `effects: { any }`, since each game types its own effects (BN6's
+  that another pack's code names is the support pack's: packs.py moved 51 of EXE6's 105 to exelib/types.d.luau. The
+  engine's patch card spec takes `effects: { any }`, since each game types its own effects (EXE6's
   `PatchCardEffect`). Luau's .luaurc has no field for definition files; content/.luaurc names the packs
-  (`"aliases": { "bn6": "./bn6", "exelib": "./exelib" }`), so an editor resolves `@exelib/...` as the engine does.
+  (`"aliases": { "exe6": "./exe6", "exelib": "./exelib" }`), so an editor resolves `@exelib/...` as the engine does.
 - **Names.** Ids are local to their game (the user: "no i don't want qualified ids since you can't cross between
   games anymore"; "once a game is selected for the match, the rest of the configuration becomes completely
   namespaced for that side. so it's not possible to name another game's stuff"): `cannon`, `megaman`,
   `heatcross/charge/action`, and an asset by its pack's name (`asset.sprite("bomb")`); compat, the locales and match
-  files write them so. A module's name is its pack and its path in it (`bn6:chips/cannon/init`,
+  files write them so. A module's name is its pack and its path in it (`exe6:chips/cannon/init`,
   `exelib:swords/slash`). A game module's anonymous definition is keyed by its path (`chips/cannon/init#2`), a
   support pack's by its name (`exelib:regions#57`, which content never writes). Nothing refuses a `:` in a name:
   another game's names can't be loaded.
@@ -834,7 +834,7 @@ return {
     rewrites the requires by Luau's rule (step 10, §4.1) and names a series' chips (step 11, §4.1).
   - A porter merges main, runs `tools/content/packs.py <checkout>`, then builds and tests.
 
-R5 (2026-10-03, never merged) had made content/ one namespace with explicit indices: content/bn6/init.luau and a
+R5 (2026-10-03, never merged) had made content/ one namespace with explicit indices: content/exe6/init.luau and a
 root content/init.luau. The user asked for packs instead, whose manifests first held R5's lists; R6 moved the lists
 back into each game's init.luau as requires, with the manifest kept for the pack's identity. The whole-truth
 check, `also`, the loader that follows requires and index.py are R5's throughout.
@@ -842,7 +842,7 @@ check, `also`, the loader that follows requires and index.py are R5's throughout
 ### 4.1 The rules
 
 ```text
-content/bn6/
+content/exe6/
   init.luau                           the game's top module: it requires what the game has (§4.0)
   types.d.luau                        the game's shared types (the API: content/nettai/core.d.luau)
   chips/<id>/                         one chip: init.luau, and kinds only it uses
@@ -892,7 +892,7 @@ Every other module keeps its name, and says what it is: action.luau, charge.luau
 module. Where a folder holds two things, the folder's own is the init:
 
 - a navi chip's folder is the chip's (chips/elecman/init.luau), and its navi object stays chips/elecman/navi.luau
-  (52 folders: 28 of BN6's, 24 of BN5's);
+  (52 folders: 28 of EXE6's, 24 of EXE5's);
 - a link navi's folder is the navi's (navis/elecman/init.luau), and its own chip stays navis/elecman/chip.luau
   (11: ChargeMan, DustMan, ElecMan, EraseMan, GroundMan, HeatMan, ProtoMan, SlashMan, SpoutMan, TenguMan,
   TomahawkMan), which the game's init requires by that path;
@@ -902,7 +902,7 @@ module. Where a folder holds two things, the folder's own is the init:
   projectile/projectile.luau: both can't be `projectile`);
 - a folder whose only module says what it is keeps it (exelib's antirecv/controller.luau), and so do the modules
   with a main module's name out of its place (lib/weapon.luau, lib/navi-chips/navi.luau,
-  objects/falling-rock/chip.luau, BN5's navis/megaman/weapons/chips.luau, exelib's bass/navi.luau and the other
+  objects/falling-rock/chip.luau, EXE5's navis/megaman/weapons/chips.luau, exelib's bass/navi.luau and the other
   navi makers: exelib has no chips/ or navis/).
 
 **Requires follow Luau's own rule** (`keys::resolve`, the Luau require navigator's), so an editor resolves them
@@ -912,10 +912,10 @@ module. Where a folder holds two things, the folder's own is the init:
 |---|---|---|
 | chips/cannon/init.luau (a folder as a module) | the folder's place, chips/: `./hicannon` is chips/hicannon, `../lib/slot` is lib/slot | `@self/action` |
 | chips/cannon/action.luau (any other module) | its directory: `./shot`, `../hicannon`, `../../lib/slot` | `./shot` |
-| bn6/init.luau (the pack as a module) | content/, outside the pack: refused | `@self/chips/cannon` |
+| exe6/init.luau (the pack as a module) | content/, outside the pack: refused | `@self/chips/cannon` |
 
 A require of a folder names its init (`../cannon` from chips/cannon/action.luau is chips/cannon/init.luau), and
-`@<pack>/<path>` is a pack's module from its top. A module's name stays its file's (`bn6:chips/cannon/init`), and
+`@<pack>/<path>` is a pack's module from its top. A module's name stays its file's (`exe6:chips/cannon/init`), and
 an anonymous definition's key with it (`chips/cannon/init#2`, which was `chips/cannon/chips#2`: the renaming gave
 the anonymous definitions new keys, and so, within a registry, possibly other handles; every id stayed).
 
@@ -936,20 +936,20 @@ local aquandl_chips = require("./aquandl")
 ```
 
 A local that holds one chip of a series takes it at the require and is named for the chip
-(`local recipe_hicannon = require("./cannon").hicannon`, BN5's recipes). A series' other fields (a state, a
+(`local recipe_hicannon = require("./cannon").hicannon`, EXE5's recipes). A series' other fields (a state, a
 builder its upgrades share: `tornado_chips.blow`) stay beside its chips.
 
-**content/bn5 follows these rules** (as built, 2026-10-03; the user: "you should consolidate the chips together
+**content/exe5 follows these rules** (as built, 2026-10-03; the user: "you should consolidate the chips together
 where appropriate and move colocate objects with those chips, where appropriate like what bn6 does"). The
-verification workspace's `tools/bn5/layout.py <checkout>` computes the layout from the content (who requires what,
-the chips' records and names, BN6's series) and moves it there with `git mv`, rewriting every `require` (a merged
+verification workspace's `tools/exe5/layout.py <checkout>` computes the layout from the content (who requires what,
+the chips' records and names, EXE6's series) and moves it there with `git mv`, rewriting every `require` (a merged
 chip's `require("../hicannon")` becomes `require("../cannon").hicannon`); it changes no id. It is
-idempotent: a branch that gained chips or objects in the old layout runs it again after merging main (bn5-map.md
-§15.12). Its series are BN6's where BN6 has the same chips (chips/cannon, chips/recov, chips/vulcan with SuprVulc,
+idempotent: a branch that gained chips or objects in the old layout runs it again after merging main (exe5-map.md
+§15.12). Its series are EXE6's where EXE6 has the same chips (chips/cannon, chips/recov, chips/vulcan with SuprVulc,
 chips/timebom with TimeBom+), a navi chip with its SP and DS (chips/blizman: BlizMan, BlizManSP, BlizManDS),
-numbered levels (chips/katana), a Program Advance whose ingredients are one series', and BN5's own two that no
+numbered levels (chips/katana), a Program Advance whose ingredients are one series', and EXE5's own two that no
 name shows (chips/crakout: CrakOut, DublCrak, TripCrak; chips/cannmode: the Liberation Missions' mode chips). It
-differs from BN6's layout in two things the port and the ids impose:
+differs from EXE6's layout in two things the port and the ids impose:
 
 - **A chip without a use stays in its own folder**, chips/<key>/init.luau, until the port gives it one: the game's
   init.luau doesn't require such a chip (§4.0), nor any chip folder that requires one of its modules, so it can't
@@ -960,16 +960,16 @@ differs from BN6's layout in two things the port and the ids impose:
   NapalmMan's bombs, CrakOut's crack and the Meteors' shower with its marker (objects/capsule, dice, gyro-bomb,
   napalm-bomb, crack, meteors). The script lists them.
 
-Where BN5's shared kinds went: the families' to lib/ (lib/bombs/seed for the seeds, as BN6's; lib/instruments;
+Where EXE5's shared kinds went: the families' to lib/ (lib/bombs/seed for the seeds, as EXE6's; lib/instruments;
 the Anti traps' in lib/traps; the Guard chips' shock wave in lib/guard; the navi chips' throw marker in
-lib/navi-chips), each family's builder moving into its folder with them (lib/bombs/init.luau, as BN6's
-lib/barriers/init.luau); the soul system's (Chaos Unison's shade, the soul's image) to rules/souls, as BN6's
+lib/navi-chips), each family's builder moving into its folder with them (lib/bombs/init.luau, as EXE6's
+lib/barriers/init.luau); the soul system's (Chaos Unison's shade, the soul's image) to rules/souls, as EXE6's
 Cross merge is rules/forms'; a kind with a natural owner and borrowers to the owner (the Vulcans' gun, which the
 InfVulcs borrow; DrilArm's drill, DarkDril's too; CrakBom's bomb, ParaBom's and ResetBom's too). objects/ keeps
 what several families share (attachment, bullet, flying-shot, panel-bursts, panel-changer, projectile,
 rising-bubble) and the six held above: 13 folders from 53, and chips/ 221 folders from 333 (53 series files for
 165 chips; 168 chips in their own folders, 68 of them waiting for a use). content/exelib needed no change: its
-folders are already named by BN6's owners and families (common/vulcan, common/bombs), and it defines nothing.
+folders are already named by EXE6's owners and families (common/vulcan, common/bombs), and it defines nothing.
 
 ### 4.2 Every current `objects/` entry
 
@@ -990,7 +990,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | black-bomb | BlkBomb | chips/blkbomb/ |
 | blast-man, blast-fire | BlastMan series | chips/blastman/ |
 | bomb | MiniBomb, EnergBom, MegEnBom, BigBomb | lib/bombs/ |
-| bomb-slash | bomb's after-blast no BN6 chip uses | lib/bombs/ |
+| bomb-slash | bomb's after-blast no EXE6 chip uses | lib/bombs/ |
 | boomerang | Boomer, HiBoomer, M-Boomer; TomahawkCross's throw | chips/boomer/boomerang (as built; TomahawkCross Beast's throw requires it) |
 | bubble-star | BblStar1-3 | chips/bblstar/ |
 | bug-bomb | BugBomb | chips/bugbomb/ |
@@ -1259,7 +1259,7 @@ return define.chip {
 These are v1's `KINDS[0]` and `KINDS[3]` rows (`byte_80C5BA0` with the blast regions of `dword_80C5D7C`) and
 `THROWS[0x0]` and `THROWS[0xF]`, now written where they are used.
 
-**As built** (step 7, the bombs exemplar): content/bn6/lib/bombs/ (`throw`, `bomb`, `seed`, `slash`),
+**As built** (step 7, the bombs exemplar): content/exe6/lib/bombs/ (`throw`, `bomb`, `seed`, `slash`),
 chips/{minibomb, bigbomb, energbom, flshbom, blkbomb, bugbomb, grasseed, iceseed, poisseed}/, the attachment
 (objects/attachment) and the shared definitions they need (rules/collision.luau, lib/effects.luau,
 lib/sparks.luau, lib/regions.luau). What it settled:
@@ -1358,7 +1358,7 @@ the family shares. MchnSwrd/ElemSwrd/AssnSwrd (action 0x49) and VarSwrd/NeoVari 
 `lib/swords/` builders the same way; `VariSwordSpec.choices`, today a list of chip numbers, becomes a list of
 chips (as built since step 10: `picks` and `sword` are the chips, and the attack's chip becomes the pick).
 
-**As built** (step 7, the swords exemplar): content/bn6/lib/swords/ (`parts`: the blades, slashes and sounds
+**As built** (step 7, the swords exemplar): content/exe6/lib/swords/ (`parts`: the blades, slashes and sounds
 the family shares, and the blade's animation and palette by the navi's arm; `slash`: action 0x13's builder;
 `strike`: action 0x49's; `vari`: the variable swords' library, moved from lib/vari_sword), and a folder per
 chip. `SlashSpec` and `StrikeSpec` are in types.d.luau; DblDream's two swings, CrosSwrd's second hit,
@@ -1485,7 +1485,7 @@ calls the dimming service's steps in the original's order (`object_timefreezeBeg
 `object_timefreezeEnd`), and `dimming.spawn_controller` does the spawn every `off_802CCB4` entry does. The
 spec's `chip` field is a chip handle now, so the telop draws the chip by name.
 
-**As built** (step 7): content/bn6/lib/dimming.luau (`dimming_chips.phases { name, effect }`,
+**As built** (step 7): content/exe6/lib/dimming.luau (`dimming_chips.phases { name, effect }`,
 `dimming_chips.done(me)` when the effect is over, `dimming_chips.spawn(kind, user, spec)`; a file, named so it
 doesn't shadow the `dimming` service global), lib/grab/controller.luau (the `grab/controller` kind, state
 `{ bonus, whole_column }`, and the hooks `grab.area` and `grab.panel`), lib/grab/shot.luau (the `grab/shot`
@@ -1800,7 +1800,7 @@ buster alias folders) went. What it settled:
 - **Charge times are the definition's own**: the charge table's row, plus the next row's first entry for
   Charge 5, which the original's table reads on into (written out and commented in each definition).
 - **A role for the forced charged shot**: idle.rs's request 0x20 starts `roles.actions.forced_charged_shot`
-  (rules/roles.luau, BN6's first roles file: the charged shot's action), not action 0x16 by number. The trap
+  (rules/roles.luau, EXE6's first roles file: the charged shot's action), not action 0x16 by number. The trap
   counters' roles stay unfilled until those chips convert. DustCross's throws (weapons 0x2B, 0x2C) return the
   buster's shot definition.
 - **The muzzle flash and the arm a throw leaves are looks** in lib/buster (`buster.flash`, `buster.arm`), on the
@@ -1942,7 +1942,7 @@ What it settled:
   class since step 11): statuses
   and bug codes, forms and navis by number in the variable
   swords, the charged sword's action (0x41, a v1 weapon action) a charged pick becomes.
-- **The test content** runs BN6's GunDelSol through its numbered SunGuns (chips/010-gundels2's registration),
+- **The test content** runs EXE6's GunDelSol through its numbered SunGuns (chips/010-gundels2's registration),
   and takes RskyHny2 and ElecDrgn as the definitions they are (`testing::BEES`, `testing::DRAGON`). The pack's
   `gun_del_sol` chip data and `sun_beam_looks` are read by no script any more; they go with the pack's battle
   data (step 5).
@@ -2051,9 +2051,9 @@ entry reaches the rock's `actor_list_entry` by its type number, and the other ty
   spawn parameters; it sets the controller's state instead (`support`, an enum it sets by name:
   `set_state_variant`; `eaten`; `telop_chip`), and the support's out flag (the original's second parameter,
   which the support sets and clears) is the controller's `out`. Rush leaves the second WhiCapsl in the hand by
-  its chip number still (that chip is a record, §5.4): the one chip number left in these modules. (Since BN5's
-  supports, the code is content/exelib/supports, made of each game's look: BN6's lib/supports and BN5's make them,
-  Rush's spared chip BN6's look's; docs/design/bn5-map.md §15.15.)
+  its chip number still (that chip is a record, §5.4): the one chip number left in these modules. (Since EXE5's
+  supports, the code is content/exelib/supports, made of each game's look: EXE6's lib/supports and EXE5's make them,
+  Rush's spared chip EXE6's look's; docs/design/exe5-map.md §15.15.)
 - **SlashCross's sword wave** (navis/megaman/forms/slashcross/sword_wave): its rows (`byte_80D7F4C`) are
   `SwordWaveVariant` records, `sword_wave.spawn(owner, variant, x, y, element, damage, hidden?)`, named by the
   sword each is of (`sword_wave.waves`; each charged slash's record names its own since step 8e, §5.7). The
@@ -2072,7 +2072,7 @@ entry reaches the rock's `actor_list_entry` by its type number, and the other ty
 
 ### 6.1 What it holds
 
-content/bn6/compat/ is a folder of TOML files, written by the generator and edited by hand when content is
+content/exe6/compat/ is a folder of TOML files, written by the generator and edited by hand when content is
 renamed or added. It maps keys to the original's numbers, and holds the comparison hints that only the traces
 need.
 
@@ -2105,16 +2105,16 @@ bomb = { pool = "attack", index = 0x08 }
 ```
 
 Every file maps a key to its numbers, and many-to-one maps are allowed (aliases, deduplicated stages). Every entry
-must name a key that exists; every chip, navi, form, weapon, kind and action of the BN6 content must have an entry
+must name a key that exists; every chip, navi, form, weapon, kind and action of the EXE6 content must have an entry
 (the checker enforces both, §7.7). A chip record with no name (or `????`) that nothing reaches has none: the blank
 library slots 0xCB..0xDC and 0x160..0x170 and the nameless copies of the plus chips' record.
 
 ### 6.2 Who reads it
 
-Compat is read by `bn6-compat`, a new crate that depends on `nettai-battle` (so the engine can't depend on it), and
+Compat is read by `exe6-compat`, a new crate that depends on `nettai-battle` (so the engine can't depend on it), and
 by the tools that interoperate with the real game:
 
-- **the golden-trace harness** (§10): `trace.rs` moves from `nettai-battle` into `bn6-compat` behind its `trace`
+- **the golden-trace harness** (§10): `trace.rs` moves from `nettai-battle` into `exe6-compat` behind its `trace`
   feature;
 - **the setup codecs**: `NaviStats`, `BattleFolder`, `ChipHand`, `TransformRequest`, battle settings and SP times
   from the game's bytes and back, for traces, real saves, folders, NaviCust setups and link navis;
@@ -2125,8 +2125,8 @@ by the tools that interoperate with the real game:
 ### 6.3 Assets and their names
 
 Content refers to an asset by name, written in full (its pack's game first, rules-in-luau.md §7.2), resolved
-while loading: `asset.sprite("bn6:bomb")`, `asset.sound("bn6:bomb-hit")`, `asset.banner("bn6:program-advance")`,
-`asset.background("bn6:netbattle-blue")`, `asset.mugshot("bn6:heatcross")`. An unknown name, or one without its
+while loading: `asset.sprite("exe6:bomb")`, `asset.sound("exe6:bomb-hit")`, `asset.banner("exe6:program-advance")`,
+`asset.background("exe6:netbattle-blue")`, `asset.mugshot("exe6:heatcross")`. An unknown name, or one without its
 game, is a load error naming the module. (The examples elsewhere in this document predate the flat namespace and
 write ids and names without their game.) The resolved value is a handle into the asset registry; state holds it
 (`sprite:load(BOMB)`), and a cue carries it (`battle.play_sound(SOUND)`).
@@ -2141,7 +2141,7 @@ write ids and names without their game.) The resolved value is a handle into the
   the table gives, and the pack's other assets under their placeholders, each with the engine's identity for it),
   from which the loader fills `Content::assets` (done with step 6's first part). An asset the table doesn't list (one a newer table left out)
   is written under its placeholder, so nothing the ROM has is lost.
-- **The checker** validates asset names without a ROM: compat/assets.toml is the list of names the BN6 content can
+- **The checker** validates asset names without a ROM: compat/assets.toml is the list of names the EXE6 content can
   use. A modded pack without compat lists its own assets' folders.
 - **Animation numbers stay numbers.** An animation is an index into its sprite's own list, observable in the traces
   (`anim`), with no identity outside its sprite; modules name them as constants (`local ANIM_THROW = 6`), as
@@ -2157,9 +2157,9 @@ write ids and names without their game.) The resolved value is a handle into the
 
 - **Luau can't.** Compat is TOML. The loader discovers modules by `.luau`, `require` resolves modules only, and the
   define phase never exposes compat. No Luau API returns an original number (the numeric API is removed, §7.6).
-- **The engine can't.** `bn6-compat` depends on `nettai-battle`; a dependency the other way is a cycle. `Content`
+- **The engine can't.** `exe6-compat` depends on `nettai-battle`; a dependency the other way is a cycle. `Content`
   has no compat fields at any step: the validator maps the engine's handles to the original's numbers, and no
-  bridge carries them into the engine (§7.3, the user's decision). A test in `bn6-compat` asserts `nettai-battle`'s
+  bridge carries them into the engine (§7.3, the user's decision). A test in `exe6-compat` asserts `nettai-battle`'s
   dependency list doesn't contain it, and a source guard in `nettai-battle`'s tests fails on the word `compat`
   outside comments in the engine and the crates it runs content through.
 - **The checker enforces the rest** (§7.7): no deprecated numeric API use, no `legacy { }` markers, no placeholder
@@ -2295,7 +2295,7 @@ number, a weapon's routine numbers), filled from that registration's own data (`
 **The engine never reads compat (user decision, 2026-09-30).** "the validator maps the ids and the engine itself
 doesn't know about them, so the engine can be clean of validation code". There is no bridge from compat into the
 engine, at any step: definitions are never given the original's numbers inside it. The engine runs on its own
-identities (handles), and the validator, `bn6-compat` (the golden-trace comparison and the setup codecs), maps
+identities (handles), and the validator, `exe6-compat` (the golden-trace comparison and the setup codecs), maps
 them to and from the original's numbers with compat. Where the engine's state still holds a number, what content
 defines needs a handle there instead, which is §7.2's table brought forward:
 
@@ -2320,7 +2320,7 @@ defines needs a handle there instead, which is §7.2's table brought forward:
   defined chip gets none of the ruleset's by-number cases until phase C gives them traits and roles). What the
   original zeroes and the engine now holds as none reads as the pack's chip 0 where the game reads it
   (`Content::chip_field`: the attack's cleared chip, a non-player's carried chip, the side's special chip, a
-  never-built hand's selection). `bn6_compat::codec::Ids` maps the original's numbers to handles through
+  never-built hand's selection). `exe6_compat::codec::Ids` maps the original's numbers to handles through
   compat's keys: a definition with the key compat gives a number is the thing (so a v2-defined chip or weapon is
   reached from a recorded folder or navi stats), else the pack's record by number; back, a record gives its own
   number and a definition compat's (a weapon's first routine number). A trace's 16-byte battle settings name the
@@ -2344,7 +2344,7 @@ key), and derived keys are claimed only within the defining module (a library's 
 the first chip's key).
 
 **Partial loading: an unported chip isn't listed.** Every chip is a definition with its own use (§4.2), and the
-define phase refuses a chip without one. A game being ported (BN5) defines every chip's record first, from its
+define phase refuses a chip without one. A game being ported (EXE5) defines every chip's record first, from its
 ROM, and gives each its use as the port writes it. Meanwhile its index lists the chip under `unported` (§4.0), and
 nothing loads it. tools/content/index.py moves a chip there or back by the rule the loaders once applied:
 
@@ -2495,8 +2495,8 @@ gone. What replaced each number:
 - The numeric API's chip (a dimming spec's, a defensive-chip record's) is an opaque number, `DEFINED_CHIPS`
   plus the handle; the supports' controller holds its chips as references.
 The engine's test chips are definitions too (crates/nettai-battle/testdata/content/chips/test: made-up records
-composing BN6's builders), and tests name chips by key. compat's chips.toml has the original's numbers by key,
-for the trace harness and save import (`bn6_compat::codec::Ids`); `gen-content check` compares each definition
+composing EXE6's builders), and tests name chips by key. compat's chips.toml has the original's numbers by key,
+for the trace harness and save import (`exe6_compat::codec::Ids`); `gen-content check` compares each definition
 with the ROM's chip of its number, including the traits, traps and HP bug its number gives it in the
 original's routines.
 
@@ -2561,7 +2561,7 @@ without music has none), is the audio player's (`nettai_audio::NO_MUSIC`): there
 **Stages and setup.**
 - `BattleSettings::netbattle_from_bytes`, `actor_list_at(address)`, `Stage { settings: u8 }`, `settings(index)`,
   `ActorKind::{Rock { variant }, Object6E, Object7D}` and their entry types. → `StageHandle`s; the codec in
-  `bn6-compat`; actor entries name kinds and variant records.
+  `exe6-compat`; actor entries name kinds and variant records.
 - The music by settings byte, `SoundId::VIRUS_BATTLE` in a link battle. → the stage's music and
   `roles.music.link_battle`.
 - `enable_turning`'s panel patterns 0x38, 0x30, 0x3C and battle mode 0x0B. → panel patterns stay (they are the
@@ -2638,7 +2638,7 @@ kind's own state-machine byte, which the traces compare.
   (`regions.anchor`).
 - **Roles.** `define.roles { actions = { ... } }`, once, keyed `roles`. The ruleset starts AntiDmg's, AntiSwrd's
   and BodyGrd's counters by role (`anti_damage_counter`, `anti_sword_counter`, `body_guard_counter`); an
-  unfilled role panics naming itself where it is needed and `nettai-content check` warns, until the BN6 content
+  unfilled role panics naming itself where it is needed and `nettai-content check` warns, until the EXE6 content
   fills every role (then an unfilled one is a load error). Their compat keys are the role actions' ids, which
   the chips' conversion chooses (proposed: `antidmg/counter`, `antiswrd/counter`, `bodygrd/counter`, numbers
   0x47, 0x48, 0x4B in actions.toml).
@@ -2658,8 +2658,8 @@ kind's own state-machine byte, which the traces compare.
 - **`nettai-content check <content> [<assets>]`** (links the runtime) runs the define phase and reports: duplicate
   keys, references to the wrong registry, unfilled roles, rule sections missing or defined twice, unknown asset
   names, chips with no usage or two, kinds in `objects/` used by one owner (colocation). Compat entries that
-  don't resolve and definitions compat doesn't cover are `bn6-compat`'s check, not the engine's (§7.3).
-  `cargo test --workspace` runs both on content/bn6.
+  don't resolve and definitions compat doesn't cover are `exe6-compat`'s check, not the engine's (§7.3).
+  `cargo test --workspace` runs both on content/exe6.
 
 As built in step 4: the lints and the ratchet read the source through a small scanner (comments dropped, string
 contents masked), in `nettai-content-check`'s `lints` module. A deprecated use is a call that exists only in the
@@ -2667,15 +2667,15 @@ numeric API (`battle.spawn_kind`, `me:param`, `data.`, ...), `battle.spawn` with
 definition-taking argument is a number literal or a module-level numeric constant (`battle.play_sound(SOUND)`
 with `local SOUND = 0x1A6`); it is a count, so an approximate one serves. `tests/deprecated.txt` holds each
 module's allowance (1,263 uses in 221 modules at the start); the test fails on more, and on fewer until the
-allowance is lowered (`BN6_RATCHET_LOWER=1`); `nettai-content-check --deprecated [--list]` prints the counts.
+allowance is lowered (`EXE6_RATCHET_LOWER=1`); `nettai-content-check --deprecated [--list]` prints the counts.
 `nettai-content check` warns on unfilled roles and single-owner kinds (`nettai_content::lint`). The engine's test pack
-type-checks against content/bn6's core.d.luau in nettai-content-check's tests.
+type-checks against content/exe6's core.d.luau in nettai-content-check's tests.
 
 ### 7.8 Tests in the repository
 
 `content/testing.rs` (1,447 lines of made-up chips, kinds and tables) goes:
 
-- `content::testing::bn6()` loads content/bn6, the real BN6 definitions, with a synthetic asset index: every asset
+- `content::testing::exe6()` loads content/exe6, the real EXE6 definitions, with a synthetic asset index: every asset
   name compat/assets.toml lists, and every sprite's animations as short fixed timings (four frames of two ticks,
   the last flagged). Nothing ROM-derived: timing is invented, names are the committed table. The engine's,
   netplay's, the frontend's and the audio's tests use it, choosing chips by key (`"gundels3"`, `"invisibl"`,
@@ -2718,7 +2718,7 @@ type-checks against content/bn6's core.d.luau in nettai-content-check's tests.
 
 ### 9.1 The extractor
 
-`bn6-extract content <rom> <assets-dir> --names <content>/compat` writes only assets: sprites (atlas, layout,
+`exe6-extract content <rom> <assets-dir> --names <content>/compat` writes only assets: sprites (atlas, layout,
 `animations.json`) under their names, the field, backgrounds, the HUD's graphics (with chip icons named by chip
 key, mugshots and banners by name) and the font with its charmap, songs, sound effects, voicegroups and samples.
 `battle.rs` (1,077 lines) and the HUD's chip-name decoding leave the crate; `check_timing` compares the
@@ -2727,11 +2727,11 @@ deleted.
 
 ### 9.2 The pack: content and assets as two roots
 
-A battle loads from two roots: the **content** (content/bn6, the committed Luau, with compat) and the **assets**
+A battle loads from two roots: the **content** (content/exe6, the committed Luau, with compat) and the **assets**
 (the extractor's output). `nettai_content::pack::load(content, assets)` reads the modules and the asset index,
-runs the define phase, and returns `Content` (plus `Compat` when asked, through `bn6-compat`). The frontend and
+runs the define phase, and returns `Content` (plus `Compat` when asked, through `exe6-compat`). The frontend and
 the tools take `--content` and `--assets`; the verification workspace points `--content` at the engine
-checkout's content/bn6 and `--assets` at its extracted assets, so a content change needs no re-extraction.
+checkout's content/exe6 and `--assets` at its extracted assets, so a content change needs no re-extraction.
 A distributable pack can be both in one folder (the same path twice). The pack's TOML battle data, `registries/`,
 `rules/*.toml`, `chip.toml`, `object.toml`, `weapon.toml` and `nettai_content::battle` (1,609 lines of TOML IO)
 are deleted.
@@ -2740,7 +2740,7 @@ are deleted.
 
 The committed Luau data is generated once, from the ROM, by a tool in the verification workspace,
 `tools/gen-content`. It depends on this repository's crates by path, as the workspace's other crates do, and it
-takes over the ROM decoders `bn6-extract` gives up (the chip table, navis, forms, weapons, rules, stages,
+takes over the ROM decoders `exe6-extract` gives up (the chip table, navis, forms, weapons, rules, stages,
 registries, the object tables, the text). It is not committed here.
 
 - `gen-content write <rom> <content>` writes compat/*.toml and the definition modules for data: a module per chip
@@ -2761,7 +2761,7 @@ registries, the object tables, the text). It is not committed here.
 generator can't run over a content root that has people's modules at its paths, so a writer whose modules
 people have since reshaped is dead code. With step 12 the stages', the lock-on modes' and the statuses'
 writers are retired (`gen_stages`, `gen_lockon`, `gen_status`: the definitions lost their legacy markers and
-name kinds, variants and each other in forms the generator never wrote): content/bn6/stages/netbattle.luau,
+name kinds, variants and each other in forms the generator never wrote): content/exe6/stages/netbattle.luau,
 rules/lockon.luau and rules/status.luau are edited by hand, and `gen-content check` compares them with the ROM through compat. `gen-content write` still writes
 compat's numbers for them (stages.toml, records.toml, rules.toml), keeping the committed keys.
 
@@ -2778,7 +2778,7 @@ writes from its own list).
 its own lists of the engine's kinds, actions, sounds and roles, which every new kind or role had to be added
 to), `luau` (step 5's definitions) and `describe` (the chips' descriptions) are gone, since each would rewrite
 what people now own. Compat is edited by hand like the modules, and `gen-content check <rom> <content>` is
-what keeps both honest: it reads compat as `bn6-compat` reads it (a number under two keys is refused), checks
+what keeps both honest: it reads compat as `exe6-compat` reads it (a number under two keys is refused), checks
 compat's numbers against the ROM (chips and their actions, navis, forms, weapons and their aliases, the kinds'
 slots, stages, records, assets, curation's entries naming something), and defines the content root as the
 engine does and compares every table the definitions make with the ROM's, field by field.
@@ -2789,7 +2789,7 @@ engine does and compares every table the definitions make with the ROM's, field 
 by chip id) and `chip_shows_damage` go, the HUD drawing a chip's name from its definition through the font's
 charmap and its damage from the `has_damage` flag. The frontend draws an object's sprite by its handle's name,
 recognizes the palette flash and the form overlay by `EngineKind`, reads attach points from the navi's identity,
-and plays trace files through `bn6-compat`. Its live-play driver picks its hand and navi by key. `nettai-audio`
+and plays trace files through `exe6-compat`. Its live-play driver picks its hand and navi by key. `nettai-audio`
 maps a cue's sound handle to the song of that name in the sound bank; the bank's internal numbering (voicegroups,
 samples, music players) stays the bank's.
 
@@ -2822,24 +2822,24 @@ Fields that stop existing in the engine, and how the harness treats them:
 
 ### 10.2 The harness's code
 
-- `trace.rs` moves to `bn6-compat` (feature `trace`): `trace::rounds`, `Round::round_setup(&content, &compat)`,
+- `trace.rs` moves to `exe6-compat` (feature `trace`): `trace::rounds`, `Round::round_setup(&content, &compat)`,
   `Round::start`, `run_round(round, &content, &compat)`, `check_custom_screens(round, &content, &compat)`,
   `compare(b, frame, &compat)`. The setup codecs (`NaviStats::from_bytes`, `BattleFolder::from_bytes`,
   `ChipHand::from_bytes`/`to_bytes`, `TransformRequest::from_bytes`, battle settings, SP times) move with it and
   resolve numbers to handles through compat; a number compat doesn't know is an error naming it. The custom-screen
   check's "damage below 1000" test becomes "a fixed damage" (a formula chip's hand damage comes from the trace, as
-  today). *Step 2 did the move:* the codecs are `bn6_compat::codec`'s functions (`navi_stats`/`navi_stats_bytes`,
+  today). *Step 2 did the move:* the codecs are `exe6_compat::codec`'s functions (`navi_stats`/`navi_stats_bytes`,
   `battle_folder`/`battle_folder_bytes`, `chip_hand`/`chip_hand_bytes`, `transform_request`, `battle_settings`,
   `later_stages`, `sp_times`) and still produce numbers; `compare` and `run_round` take compat (the kinds'
   comparison flags, the engine's included, come from kinds.toml); `round_setup`, `start` and
-  `check_custom_screens` take it when the codecs resolve handles (phase C). `Compat::bn6()` is this repository's
-  content/bn6/compat, built in. NaviStats's bug-code byte writes (`sub_80139F6`) are a typed match in the
-  engine, checked against the codec in bn6-compat.
-- **trace-tests**: `trace_tests::content()` becomes `load(content, assets)` (the engine checkout's content/bn6
+  `check_custom_screens` take it when the codecs resolve handles (phase C). `Compat::exe6()` is this repository's
+  content/exe6/compat, built in. NaviStats's bug-code byte writes (`sub_80139F6`) are a typed match in the
+  engine, checked against the codec in exe6-compat.
+- **trace-tests**: `trace_tests::content()` becomes `load(content, assets)` (the engine checkout's content/exe6
   and the workspace's extracted assets) plus compat. traces.rs, lab.rs, custom_screen.rs and rollback.rs change
   only their calls. rock_trace.rs's `(Pool::Attack, 0x59)`, `(Pool::Effect, 0x38)` and `0x87` become kind keys
   (`rock`, `rock/debris`, `absorbed-obstacle`); `actor_list_at(0x080B_1AAD)` becomes the compat stage lookup.
-  bn6_data.rs's effect ids become effect keys, chip `0x11` becomes `chip_by_key("gundels3")`, and
+  exe6_data.rs's effect ids become effect keys, chip `0x11` becomes `chip_by_key("gundels3")`, and
   `object_kind("attachment")` becomes `kind("attachment")`.
 - **sound-tests** map cue handles to song numbers through compat assets.
 - **chiplab** (the recorder) is on the original's side and unchanged. The lab summary's blockers name keys now
@@ -2852,7 +2852,7 @@ fully matched and 1,997,288 of 2,314,021 frames; the rollback test at every late
 
 ## 11. How the ~650 content files convert
 
-content/bn6 has 656 files: 421 TOML, 235 Luau.
+content/exe6 has 656 files: 421 TOML, 235 Luau.
 
 - **253 `chip.toml`** (a `script` line): folded into the generated chip modules (step 5). Their content is the
   `legacy { }` marker's `script` until the family converts.
@@ -2877,7 +2877,7 @@ to five.
 the v1 registration files and the `data` global keep v1 modules working while families convert. A test counts
 their uses per module against an allowlist in `nettai-content-check`'s tests that may only shrink; step 13 deletes
 the allowlist with the last use. The engine never reads compat, at any step (§7.3): what content defines
-reaches the traces and the game's setups through `bn6-compat`, which maps the engine's handles.
+reaches the traces and the game's setups through `exe6-compat`, which maps the engine's handles.
 
 **Transitional, and when it goes** (from the exemplars, step 7, and step 9):
 - **The roles' legacy markers.** rules/roles.luau names the v1 actions and kinds the ruleset needs by their
@@ -2891,7 +2891,7 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   original's subtype and parameter bytes in its record, for what reads them of a chip besides its own use.
   Counted by the ratchet (the lint matches `legacy = {` and `legacy {`). StepSwrd, FtrSword, CrosSwrd and
   DblDream carried it for SlashCross's charged slash, which read a chip's subtype and first parameter; since
-  step 8e the sword chips' slashes say what the charge needs in a spec field (`charged`, §5.7) and no BN6 chip
+  step 8e the sword chips' slashes say what the charge needs in a spec field (`charged`, §5.7) and no EXE6 chip
   carries the marker (the test pack's tickers do). The marker's `action` and `script` (a behavior still a v1
   module) are step 5's; the reader refuses them until then.
 - **The weapon legacy marker.** A weapon definition carried `legacy = { routines = { ... } }`, the routine
@@ -2988,9 +2988,9 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
 ### Phase A: foundations (the model-v2 agent; steps 1 and 2 can run in parallel)
 
 1. **Compat and the generator** (verification workspace, then this repository). gen-content with the ROM
-   decoders copied from bn6-extract; `write` emits compat/*.toml with keys, assets.toml with names, text.toml;
+   decoders copied from exe6-extract; `write` emits compat/*.toml with keys, assets.toml with names, text.toml;
    `check` compares against the ROM. Commit compat/ here. No engine change. **M.**
-2. **`bn6-compat` and the trace move.** The new crate; trace.rs and the setup codecs move into it; the harness,
+2. **`exe6-compat` and the trace move.** The new crate; trace.rs and the setup codecs move into it; the harness,
    the frontend's trace playback, netplay's `rollback_cost` and the verification workspace switch to it. The
    codecs still produce today's numbers. **M.**
 3. **The define phase and handles.** `nettai_luau::define`, `nettai_battle::content::define`, `Content` with registries
@@ -2998,11 +2998,11 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    `define.chip`/`define.weapon` accepted alongside v1 registration (a v1 file and a definition claiming the same
    thing is an error); the test pack. v1 registrations get transitional keys (a kind's folder name, an action's
    and a weapon's number) so everything has a handle from here on. Objects record their kind's handle and a navi
-   runs a defined action by handle; `bn6-compat` maps both to the original's numbers (§7.3). No bridge from
+   runs a defined action by handle; `exe6-compat` maps both to the original's numbers (§7.3). No bridge from
    compat into the engine (the user's decision). No content changes. **L.**
 3b. **Setups and hands on handles** (new with that decision; done, §7.3). Hands, folders, the linked chips, the attack
    header's chip, `NaviStats` (navi, form, weapons) and battle settings (stage) hold handles, §7.2's table; the
-   records content doesn't define yet get transitional keys (a chip `v1/chip-036`); `bn6-compat`'s codecs map the
+   records content doesn't define yet get transitional keys (a chip `v1/chip-036`); `exe6-compat`'s codecs map the
    game's bytes to handles and back (traces, saves, link data), and the comparison maps hands. The ruleset's
    numeric *logic* stays for phase C: this step changes what state holds, not what the ruleset asks of it. Before
    it, a defined chip or weapon can't be reached from a setup the original recorded. **M.**
@@ -3013,7 +3013,7 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    chip record names), with their keys in compat actions.toml. **M.**
 5. **Data to Luau.** gen-content writes every chip, navi, form, weapon, rule section, stage and registry entry
    as v2 definitions in the v2 folders (§4), with `legacy { action, subtype, params, script }` markers where a
-   chip's behavior is still a v1 module; the pack's TOML battle data and bn6-extract's battle.rs go;
+   chip's behavior is still a v1 module; the pack's TOML battle data and exe6-extract's battle.rs go;
    `nettai_content::battle` goes; the loader takes the content and assets roots. Needs step 3b. Gate: the `Content`
    the definitions build equals the one v1 extracted (a one-off field-by-field check, as in the v1 move), `gen-content check`
    passes, the traces hold. Mostly generated. **L.**
@@ -3046,7 +3046,7 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    rules/weapons.toml had 50 of the 148; a routine a navi's or form's stats name and nothing implements, like
    ProtoMan's 0x32, now charges as the game does). Content may not use a placeholder asset
    name, so compat names what the tables use for its first user (`effect-0e`, `held-28`, since curated as `hit-damage-judge`), for curation. The loader is
-   `nettai_content::pack::load_battle(content, assets)`; bn6-extract writes assets only. The check: `gen-content
+   `nettai_content::pack::load_battle(content, assets)`; exe6-extract writes assets only. The check: `gen-content
    check` defines the content root and compares every table with the ROM's (§3 of content-pack.md).
    A chip's `description` (what R shows on the custom screen: the battle reads its line count) and a navi's
    `run_message` (the no-running message's lines) were the definitions' alone once the extractor's battle data
@@ -3079,7 +3079,7 @@ chips on `lib/navi-chips`). To start them earlier, step 3b lets a chip definitio
 its use) wherever a setup names its compat id, so a family can be written in v2 before step 5 lands; that saves
 about four agent-days on their critical path at the cost of a merge-ordering rule (step 5's generator skips
 chips already defined). (The first plan did this with an engine-side bridge from compat; the user's decision
-of §7.3 moves the mapping to `bn6-compat`, which needs step 3b's handles.)
+of §7.3 moves the mapping to `exe6-compat`, which needs step 3b's handles.)
 
 ### Phase B: conversion by family (parallel)
 
@@ -3169,7 +3169,7 @@ disturbed. Each deletes registration by number's use for its category.
     `nettai-content-check --deprecated`. The guards have no exception lists: no folder under the content roots
     named with an original number, no `legacy` marker or field in any module (the `.d.luau` files included);
     the `no_compat` source guard needed none. Two last original numbers left the engine for the tools:
-    `Pool::type_number` (the `T1`/`T3`/`T4` the traces print) is bn6-compat's `pool_type`, and
+    `Pool::type_number` (the `T1`/`T3`/`T4` the traces print) is exe6-compat's `pool_type`, and
     `ChipFamily::from_number` (a ROM record's family byte) the ROM decoder's in gen-content. Measured after the
     step, as §8 asks: see §14.
 
@@ -3191,10 +3191,10 @@ to 12 (by category). **Not mechanical**: steps 3, 4 and 7, and each family's dec
 
 ## 13. Open questions
 
-1. **Two roots or one pack.** This design loads content (content/bn6) and assets (extracted) as two roots, so a
+1. **Two roots or one pack.** This design loads content (content/exe6) and assets (extracted) as two roots, so a
    content edit needs no re-extraction and the verification workspace always runs the checkout's content. The
    alternative keeps one folder with the content copied in by the extractor, as today. Two roots is recommended.
-2. **The real content in the repository's tests.** Replacing the made-up test content with the real BN6
+2. **The real content in the repository's tests.** Replacing the made-up test content with the real EXE6
    definitions and synthetic timing (§7.8) makes content errors fail `cargo test` and lets `every_chip_runs`
    cover every chip, but ties the engine's tests to the content's state. Recommended, with the small test pack
    for the loader itself.
@@ -3210,7 +3210,7 @@ to 12 (by category). **Not mechanical**: steps 3, 4 and 7, and each family's dec
 
 ## 14. Status
 
-**The migration is complete** (step 13, 2026-10-01). Game data is committed Luau in content/bn6; content names
+**The migration is complete** (step 13, 2026-10-01). Game data is committed Luau in content/exe6; content names
 content by its definitions and assets by name; the extractor yields only assets. The engine runs on handles: it
 has no chip, kind, action, weapon, navi, form, stage, identity, effect, spark, region, collision type, status or
 lock-on mode by one of the original's numbers, and nothing carries those numbers into it. The guards keep it
@@ -3219,7 +3219,7 @@ marker or field) and nettai-battle's `no_compat` (compat appears in the engine's
 golden traces, their sound calls and every recorded chip-lab scenario match every frame, as before the
 migration began.
 
-The open questions (§13) went as recommended: two roots; the repository's tests run BN6's own modules on
+The open questions (§13) went as recommended: two roots; the repository's tests run EXE6's own modules on
 made-up assets (content-migration.md §5.1); the generated names were accepted and are curated as people get to
 them (compat/curation.toml is the review list); animation numbers stay numbers.
 
@@ -3227,11 +3227,11 @@ them (compat/curation.toml is the review list); animation numbers stay numbers.
 
 - **Animation numbers within a sprite** (§13, question 4): an animation is an index into its sprite, a named
   constant in the module that plays it.
-- **Compat** (content/bn6/compat, §6): the original's numbers by key, read only by the tools outside the engine:
-  bn6-compat's trace harness and setup codecs (save, folder and link-data import), the extractor's asset names
+- **Compat** (content/exe6/compat, §6): the original's numbers by key, read only by the tools outside the engine:
+  exe6-compat's trace harness and setup codecs (save, folder and link-data import), the extractor's asset names
   and the verification workspace's `gen-content check`, which keeps every number in it the ROM's. It is edited
   by hand (§9.3).
-- **The trace harness** (bn6-compat's `trace`, §10): it compares the engine with the original frame by frame,
+- **The trace harness** (exe6-compat's `trace`, §10): it compares the engine with the original frame by frame,
   so it maps the engine's identities to the original's numbers (a kind to its object slot, a navi's action to
   its action number, a pool to its type).
 
@@ -3248,8 +3248,8 @@ Numbers that remain for other reasons, and are not names of content:
   framework's states), which the traces compare as the original numbers them.
 
 **Since:** a game being ported loads without its chips that have no use yet (§7.3, "Partial loading"), so
-BN5's content plays beside BN6's while its port goes on. content/bn5 is laid out by §4.1's rules (its series
-files, its kinds with their owners), kept so by the verification workspace's tools/bn5/layout.py.
+EXE5's content plays beside EXE6's while its port goes on. content/exe5 is laid out by §4.1's rules (its series
+files, its kinds with their owners), kept so by the verification workspace's tools/exe5/layout.py.
 
 **Left to others:**
 

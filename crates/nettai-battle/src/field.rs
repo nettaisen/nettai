@@ -25,13 +25,13 @@ pub enum PanelType {
     RoadDown = 10,
     RoadLeft = 11,
     RoadRight = 12,
-    /// BN5's type 5 (docs/design/bn5-map.md §15.2): BN6's road flags and
+    /// EXE5's type 5 (docs/design/exe5-map.md §15.2): EXE6's road flags and
     /// a plate's look; a move's end on it starts a slide.
     Metal = 13,
-    /// BN5's type 8: the volcano's flags and sound, but it burns a body
+    /// EXE5's type 8: the volcano's flags and sound, but it burns a body
     /// that stands on it and turns normal, and it doesn't erupt.
     Lava = 14,
-    /// BN5's type 10: drains fire bodies, holds a body that ends a move on
+    /// EXE5's type 10: drains fire bodies, holds a body that ends a move on
     /// it, submerges what can dive.
     Sea = 15,
 }
@@ -100,8 +100,8 @@ pub struct Panel {
     /// Hole timer: counts down while broken.
     pub hole_timer: u16,
     pub return_blink: u16,
-    /// Counts down while the panel is a type that expires (BN6's roads,
-    /// BN5's lava and sea: `PanelTypeRule::expires`), set to the type's
+    /// Counts down while the panel is a type that expires (EXE6's roads,
+    /// EXE5's lava and sea: `PanelTypeRule::expires`), set to the type's
     /// ticks as the panel becomes it.
     pub expire_timer: u16,
     /// Cached flags: type bits, owner, reservation and the collision types
@@ -263,7 +263,7 @@ impl Field {
     /// `rules` are the arena's game's panel rules (docs/design/
     /// rules-in-luau.md §2.3: the field is the battle's).
     pub fn new(rules: &crate::content::PanelRules, layout: &crate::content::PanelLayout, pattern: u8, battle_mode: u8) -> Field {
-        // (BN6: 0x258 ticks, 0x1E0 in battle mode 1; BN5 600 in every
+        // (EXE6: 0x258 ticks, 0x1E0 in battle mode 1; EXE5 600 in every
         // battle, 0x0800A998.)
         let hole_ticks = if battle_mode == 1 { rules.mend_in_battle_mode_1 } else { rules.mend };
         let rows = layout.rows;
@@ -419,7 +419,7 @@ impl Battle {
         }
     }
 
-    /// `sub_800C380` (BN5's 0x0800A998: its lava and sea expire as BN6's
+    /// `sub_800C380` (EXE5's 0x0800A998: its lava and sea expire as EXE6's
     /// roads do, each with its own timer, which a panel's new type sets).
     fn tick_panel(&mut self, x: u8, y: u8) {
         let h = self.field.hole_ticks;
@@ -459,7 +459,7 @@ impl Battle {
                     self.erupt(x, y);
                 }
             }
-            // A type that expires (BN6's roads, BN5's lava and sea): normal
+            // A type that expires (EXE6's roads, EXE5's lava and sea): normal
             // when its ticks are up, blinking back in its last second.
             kind if let Some(ticks) = expires => {
                 let p = &mut self.field.panels[y as usize][x as usize];
@@ -595,7 +595,7 @@ impl Battle {
     }
 
     /// `sub_801BB78`: release every reservation `obj` holds (none where
-    /// reservations don't mark their holder: BN5's destroys release none).
+    /// reservations don't mark their holder: EXE5's destroys release none).
     pub fn release_reservations(&mut self, obj: ObjectRef) {
         if self.objects.get(obj).flags & crate::object::flags::HOLDS_RESERVATION == 0 {
             return;
@@ -614,8 +614,8 @@ impl Battle {
             return;
         }
         p.kind = t;
-        // (A type that expires starts its count: BN6's roads,
-        // `_object_setPanelType`; BN5's lava and sea, 0x0800B2AE.)
+        // (A type that expires starts its count: EXE6's roads,
+        // `_object_setPanelType`; EXE5's lava and sea, 0x0800B2AE.)
         if let Some(ticks) = self.content.rules().panels.types[t as usize].expires {
             p.expire_timer = ticks;
         }
@@ -703,7 +703,7 @@ impl Battle {
     }
 
     /// The same with `sound` in place of the panel crack's (the role
-    /// `panel_crack`): `object_breakPanelLoud` (BN6's 0xDA; BN5's crack's,
+    /// `panel_crack`): `object_breakPanelLoud` (EXE6's 0xDA; EXE5's crack's,
     /// 0x080C7768).
     pub fn break_panel_sounding(&mut self, x: u8, y: u8, sound: Option<SoundId>) -> bool {
         let Some(p) = self.field.panel_mut(x, y) else { return false };
@@ -786,9 +786,9 @@ mod tests {
         assert_eq!(held(&b), (1, 1, 1), "column 5 a tick later");
     }
 
-    /// docs/design/bn5-map.md §15.2: a type that expires counts its own
+    /// docs/design/exe5-map.md §15.2: a type that expires counts its own
     /// ticks from when the panel becomes it (the test content's lava and
-    /// sea last 960, as BN5's do; its roads 0x708, as BN6's), blinking back
+    /// sea last 960, as EXE5's do; its roads 0x708, as EXE6's), blinking back
     /// to normal in its last second, then turns normal.
     #[test]
     fn expiring_panels_turn_normal_when_their_ticks_are_up() {

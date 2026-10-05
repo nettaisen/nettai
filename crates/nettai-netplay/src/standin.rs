@@ -127,7 +127,7 @@ pub fn megaman(content: &Content, hp: u16) -> NaviStats {
 
 /// A one-round netbattle between two MegaMen on `content`'s stage `stage`
 /// (its key), simulated from side 0's perspective, with these battle
-/// folders. The Crosses and Beast Out are locked (BN6's systems' setups
+/// folders. The Crosses and Beast Out are locked (EXE6's systems' setups
 /// left zero: nothing unlocked); the players' buttons
 /// reach the fight at once (no link delay). Each player's console RNG is
 /// derived from the seed.

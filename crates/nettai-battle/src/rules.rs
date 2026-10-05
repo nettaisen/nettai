@@ -71,7 +71,7 @@ impl PlayerSetup {
     /// game's ruleset whose setup has a
     /// field `field`: one value for a field, an element each for an array
     /// (the rest zero), an enum's by its name (`Fact::Name`). How a tool
-    /// writes what several systems read (BN6's game version, which its
+    /// writes what several systems read (EXE6's game version, which its
     /// cross and beast systems both take). The number of systems that took
     /// it: none on a content without a ruleset.
     pub fn set_fact(&mut self, content: &Content, field: &str, values: &[Fact]) -> Result<usize, String> {
@@ -155,7 +155,7 @@ pub enum Fact<'a> {
 impl Battle {
     /// Side `side`'s system `key`'s setup block (the player's, as the round
     /// started with it) and its layout, when the side's ruleset has that
-    /// system: for a reader of what a player brought (the frontend's BN6
+    /// system: for a reader of what a player brought (the frontend's EXE6
     /// look reads the cross system's version and Cross list).
     pub fn system_setup(&self, side: u8, key: &str) -> Option<(&nettai_content_api::Schema, &ContentState)> {
         let systems = self.content.defs.ruleset_systems();
@@ -187,7 +187,7 @@ impl Battle {
     }
 
     /// What side `side`'s rules say of a folder (their systems'
-    /// `folder_check`: BN6's folder rules), each rule it breaks named and
+    /// `folder_check`: EXE6's folder rules), each rule it breaks named and
     /// said; nothing when it keeps them, or when the rules have none. The
     /// folder's chips in order, its Regular and tag chips (entries of
     /// `chips`); `complete`: all of a folder, else the chips so far (the
@@ -229,7 +229,7 @@ impl Battle {
 
     /// Side `side`'s systems' `navi_intake(side, navi)`, each tick of the
     /// fight in the navi's intake. (A ruleset without the hook calls
-    /// nothing: BN6's.)
+    /// nothing: EXE6's.)
     pub(crate) fn systems_navi_intake(&mut self, side: u8, navi: ObjectRef) {
         let content = self.content.clone();
         for (slot, &h) in content.defs.ruleset_systems().iter().enumerate() {
@@ -282,7 +282,7 @@ impl Battle {
     }
 
     /// Side `side`'s systems' `controller(side, navi)`, asked of the side's
-    /// own navi (BN5's no-charge drive): the outcome the first system that
+    /// own navi (EXE5's no-charge drive): the outcome the first system that
     /// answers gives; None when none answers.
     pub(crate) fn systems_controller_answer(&mut self, side: u8, navi: ObjectRef) -> Option<u8> {
         let content = self.content.clone();
@@ -414,7 +414,7 @@ impl Battle {
 
     /// Side `side`'s system `key`'s state and its layout, when the side's
     /// ruleset has that system: for a reader of what a system keeps (the
-    /// frontend's look of BN6's Cross window reads the cross system's).
+    /// frontend's look of EXE6's Cross window reads the cross system's).
     pub fn system_state(&self, side: u8, key: &str) -> Option<(&nettai_content_api::Schema, &ContentState)> {
         let systems = &self.content.defs.ruleset_systems();
         let slot = systems.iter().position(|&h| self.content.defs.system(h).key == key)?;
@@ -523,7 +523,7 @@ impl Battle {
 
     /// Side `side`'s systems' `chip_substitute(side, navi, chip)` before a
     /// chip's record is loaded: the chip the first system that answers
-    /// puts in its place (BN6's dark chips' substitute), or none.
+    /// puts in its place (EXE6's dark chips' substitute), or none.
     pub(crate) fn systems_chip_substitute(&mut self, side: u8, navi: ObjectRef, chip: ChipHandle) -> Option<ChipHandle> {
         self.systems_chip_answer(side, navi, Some(chip), SystemHook::ChipSubstitute)
     }
@@ -550,7 +550,7 @@ pub struct FolderCheck {
     pub problems: Vec<FolderProblem>,
 }
 
-/// A folder rule broken: the rule's name (the game's own: BN6's `chip`,
+/// A folder rule broken: the rule's name (the game's own: EXE6's `chip`,
 /// `code`, `copies`, `mega`, `giga`, `dark`, `regular`, `tags`, `size`) and
 /// what to say.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -592,10 +592,10 @@ mod tests {
         s.get(schema, schema.index_of(field).expect("a field"))
     }
 
-    /// BN6's bug frags are its dark-chips system's (docs/design/
+    /// EXE6's bug frags are its dark-chips system's (docs/design/
     /// rules-in-luau.md, As built S8): the player brings them in the
     /// system's setup (a tool writes them as a fact), and the round starts
-    /// with them in its state, which the chips spend through BN6's API.
+    /// with them in its state, which the chips spend through EXE6's API.
     #[test]
     fn the_bug_frags_are_the_dark_chips_systems() {
         let content = scenario::content();
@@ -614,7 +614,7 @@ mod tests {
         let content = &b.content;
         assert_eq!(content.defs.ruleset().expect("the test content's rules").systems.len(), 5);
         for side in 0..2u8 {
-            // (BN6's beast system first, then the counter, then BN6's forms,
+            // (EXE6's beast system first, then the counter, then EXE6's forms,
             // emotion and dark-chips systems.)
             assert_eq!(b.side_rules(side).states.len(), 5);
             assert_eq!(field(&b, side, 1, "starts"), FieldValue::U8(1), "round_start ran once for side {side}");
@@ -646,7 +646,7 @@ mod tests {
         assert_eq!(field(&b, 1, 1, "bonus"), FieldValue::U16(0), "the other player's setup is its own");
     }
 
-    /// The per-tick and chip-use hooks (docs/design/bn5-map.md §15.3 item
+    /// The per-tick and chip-use hooks (docs/design/exe5-map.md §15.3 item
     /// 14): a system's `navi_intake` is called with the side and its navi,
     /// and its `chip_check` with the chip about to be used, whose answer
     /// takes the chip's place; a side whose rules lack them calls nothing.
@@ -683,8 +683,8 @@ mod tests {
         assert_ne!(changed.digest(), b.digest());
     }
 
-    /// A game without one of BN6's systems: the test content's rules less
-    /// BN6's forms system, the marker after them.
+    /// A game without one of EXE6's systems: the test content's rules less
+    /// EXE6's forms system, the marker after them.
     #[test]
     fn a_ruleset_lists_the_systems_its_game_plays_by() {
         let content = testing::with_systems("beast, counter, emotion.system, dark_chips, marker");
@@ -697,7 +697,7 @@ mod tests {
         assert_eq!(field(&b, 1, 1, "starts"), FieldValue::U8(1));
     }
 
-    /// BN6's patch-cards system (content/bn6/rules/patch-cards) with the
+    /// EXE6's patch-cards system (content/exe6/rules/patch-cards) with the
     /// test content's made-up cards: its `round_setup` changes the stats
     /// before anything reads them.
     /// A system's extension of its game's definitions
@@ -744,7 +744,7 @@ mod tests {
         use crate::patch_cards::{InstalledCard, PatchCards};
         use crate::setup::{GaugeSpeed, NaviStats, Supports};
 
-        /// A battle on the test content with BN6's patch-cards system
+        /// A battle on the test content with EXE6's patch-cards system
         /// (then the counter), side 0 with `cards` installed (key,
         /// switched on), its stats changed by `tweak` first.
         fn with_cards(cards: &[(&str, bool)], tweak: impl FnOnce(&mut NaviStats)) -> Battle {

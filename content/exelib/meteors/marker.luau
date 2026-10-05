@@ -1,6 +1,6 @@
 --!strict
--- A falling meteor's panel marker, as BN5 and BN6 share it (BN6's effect
--- object #0x35, `sub_80E4344`; BN5's #0x35; docs/engine/dimming-chip-effects.md
+-- A falling meteor's panel marker, as EXE5 and EXE6 share it (EXE6's effect
+-- object #0x35, `sub_80E4344`; EXE5's #0x35; docs/engine/dimming-chip-effects.md
 -- §6): each game makes its own kind (`marker.make_kind`). The meteor
 -- (./falling_meteor) spawns, whoever drops it: it highlights a region
 -- around its panel in blinks that come faster (by its look's shrink), for

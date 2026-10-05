@@ -1,4 +1,4 @@
-# BN6 Falzar (BR6E) chip inventory
+# US Falzar (BR6E) chip inventory
 
 Generated from the US Falzar ROM (sha1 0676ecd4…). Names come from the chip name text archives
 (`TextScriptChipNames0` for ids ≤ 0xFF, `TextScriptChipNames1[id & 0xFF]` otherwise, per `sub_8027D10`).

@@ -6,7 +6,7 @@
 //!     nettai-content aseprite-export <pack> [NAME ...]
 //!     nettai-content aseprite-import <pack> [NAME ...]
 //!
-//! A pack exported from a ROM (`bn6-extract content`) holds the game's own
+//! A pack exported from a ROM (`exe6-extract content`) holds the game's own
 //! data: keep it out of version control (data/ is ignored).
 
 use nettai_content::report::{Level, Report};
@@ -153,7 +153,7 @@ fn aseprite(a: &Args) {
     eprintln!("{} {done} of {} sprites", if a.command == "aseprite-export" { "wrote the views of" } else { "read back" }, dirs.len());
 }
 
-/// BN6's battle music and the effects the battle engine plays.
+/// EXE6's battle music and the effects the battle engine plays.
 const BATTLE_MUSIC: [u16; 4] = [0x15, 0x19, 0x1A, 0x1F];
 const BATTLE_EFFECTS: [u16; 18] = [
     0x94, 0x6B, 0x6D, 0x86, 0x6C, 0x118, 0x12D, 0x124, 0x8E, 0x6E, 0x8A, 0x69, 0x71, 0x72, 0x8F, 0x97, 0x85, 0xC0,

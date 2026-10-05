@@ -8,20 +8,20 @@ description = "Match files: everything a round needs (the game and its ruleset, 
 [dependencies]
 nettai-battle.workspace = true
 nettai-content-api = { path = "../nettai-content-api" }
-# BN6's folder rules read which chips the chip pack lists (by the
+# EXE6's folder rules read which chips the chip pack lists (by the
 # original's number), and live play's navi is a NaviStats record.
-bn6-compat.workspace = true
-# A BN5 save's light/dark value and souls (`import`).
-bn5-compat = { path = "../bn5-compat" }
+exe6-compat.workspace = true
+# An EXE5 save's light/dark value and souls (`import`).
+exe5-compat = { path = "../exe5-compat" }
 serde ={ version = "1", features = ["derive"] }
 toml = "0.8"
 # A match file's folder entries written one a line.
 toml_edit = "0.22"
-# `testing`: BN6's content for other crates' tests (its strings).
+# `testing`: EXE6's content for other crates' tests (its strings).
 nettai-content = { path = "../nettai-content", optional = true }
 
 [features]
-# `testing::bn6_content`: content/bn6's definitions on a made-up asset index,
+# `testing::exe6_content`: content/exe6's definitions on a made-up asset index,
 # for this and other crates' tests (nothing from a ROM).
 testing = ["dep:nettai-content", "nettai-battle/test-content"]
 

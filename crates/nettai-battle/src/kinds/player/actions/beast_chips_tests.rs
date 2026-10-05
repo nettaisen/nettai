@@ -1,5 +1,5 @@
 //! The Gregar and Falzar chips (chips/gregar, chips/falzar: the Japanese
-//! ROMs' routines, docs/engine/beast-chips.md) on BN6's definitions over the
+//! ROMs' routines, docs/engine/beast-chips.md) on EXE6's definitions over the
 //! test content's made-up assets: each phase's timing, where the summons and
 //! their attacks are, what they hit for, how the screen and the HUD go, and
 //! that a copy of the battle plays on the same. No Japanese recording checks

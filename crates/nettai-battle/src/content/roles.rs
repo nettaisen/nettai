@@ -41,10 +41,10 @@ pub enum ActionRole {
     /// it replaced.
     SwitchKnockout,
     /// What the navi's volley request starts (the original's action 0x30,
-    /// on whatever the attack's parameter bytes hold). No BN6 routine
-    /// raises the request, and BN6's content leaves the role unfilled;
-    /// BN5's loss of HP raises it for a dark MegaMan's last stand
-    /// (0x0802C16C), BN5's action 0x30.
+    /// on whatever the attack's parameter bytes hold). No EXE6 routine
+    /// raises the request, and EXE6's content leaves the role unfilled;
+    /// EXE5's loss of HP raises it for a dark MegaMan's last stand
+    /// (0x0802C16C), EXE5's action 0x30.
     Volley,
     /// DustCross Beast's scatter (0x50), during which the ruleset doesn't
     /// ground a MegaMan navi.
@@ -53,10 +53,10 @@ pub enum ActionRole {
     /// doesn't glow (`sub_8016860`).
     ChargeTackle,
     /// The wrapper an attack runs inside while its `wrapped` is 1
-    /// (`sub_801B9E6`): BN6's Beast Out rush (`sub_80EAD9C`). Unfilled, the
+    /// (`sub_801B9E6`): EXE6's Beast Out rush (`sub_80EAD9C`). Unfilled, the
     /// attack runs as it is.
     Wrapper,
-    /// BN5's Chaos Unison charge released out of its window (0x39): the
+    /// EXE5's Chaos Unison charge released out of its window (0x39): the
     /// battle dims, a Dark MegaMan comes for the other side, and the navi
     /// is back in its base form.
     ChaosFailure,
@@ -123,12 +123,12 @@ pub enum KindRole {
     Mode9Attack,
     Mode9Actor,
     /// What an obstacle turns into where an armed side's ColonelSoul can
-    /// use it (BN5's attack object #0x30, 0x080CA834: the step
+    /// use it (EXE5's attack object #0x30, 0x080CA834: the step
     /// `effects.obstacle_soldiers` enables, `kinds::obstacle::Soldiers`).
     /// The engine sets its state field `gun` (0 the sword's soldier, 1 the
     /// gun's: its Param1).
     ObstacleSoldier,
-    /// The ripple over a body under the sea's surface (BN5's effect object
+    /// The ripple over a body under the sea's surface (EXE5's effect object
     /// #0x3E, 0x080E4B64), which the navi's status tick keeps
     /// (0x0800DEB2): the engine gives it the body as its first related.
     DiveRipple,
@@ -171,7 +171,7 @@ pub enum StatusRole {
     /// What a damage word's paralysis bit (0x4000) makes its hits carry
     /// (`sub_8019F44`).
     DamageWordParalysis,
-    /// What BN5's damage words' bits 0x2000 and 0x1000 make their hits
+    /// What EXE5's damage words' bits 0x2000 and 0x1000 make their hits
     /// carry (0x080165EC: status bytes 0x20 and 0x30; the rule
     /// `effects.damage_word`).
     DamageWordConfusion,
@@ -261,10 +261,10 @@ definition_roles! {
         /// What an obstacle encased in ice or a bubble flickers with
         /// (`sub_8018186`).
         Encased = "encased",
-        /// One of the burst's (`sub_80E7D0C`; BN6's around a navi going
+        /// One of the burst's (`sub_80E7D0C`; EXE6's around a navi going
         /// Beast Over).
         Burst = "burst",
-        /// The splash of a body held by a panel at a move's end (BN5's sea,
+        /// The splash of a body held by a panel at a move's end (EXE5's sea,
         /// effect 0x63: 0x0801715E). Only a game whose panels hold needs
         /// it.
         PanelSplash = "panel_splash",
@@ -285,7 +285,7 @@ definition_roles! {
         ThrownObstacle = "thrown_obstacle",
         /// A navi's programs uninstalled (`sub_80140EE`).
         Uninstall = "uninstall",
-        /// A panel's burn (BN5's lava, the sparks' row 1: 0x08016D80). Only
+        /// A panel's burn (EXE5's lava, the sparks' row 1: 0x08016D80). Only
         /// a game whose panels burn needs it.
         PanelBurn = "panel_burn",
     }
@@ -378,7 +378,7 @@ definition_roles! {
         /// A thrown obstacle is lifted, and flies.
         ObstacleLift = "obstacle_lift",
         ObstacleThrow = "obstacle_throw",
-        /// Each of the burst's (BN6's around a navi going Beast Over).
+        /// Each of the burst's (EXE6's around a navi going Beast Over).
         Burst = "burst",
         /// SELECT pressed with too little gauge: its player hears that it
         /// can't (and what can't be picked or taken back on the custom
@@ -447,7 +447,7 @@ definition_roles! {
         /// (`sub_80E0F2E`).
         ChargeGlow = "charge_glow",
         ChargeGlowA = "charge_glow_a",
-        /// BN5's: the glow of an armed Chaos Unison charge (0x080E0EA4),
+        /// EXE5's: the glow of an armed Chaos Unison charge (0x080E0EA4),
         /// whose animation shows the chaos cycle's window.
         ChargeGlowChaos = "charge_glow_chaos",
         /// The Full Synchro aura.
@@ -466,7 +466,7 @@ definition_roles! {
         HitMarker = "hit_marker",
         /// A volcano panel's eruption.
         Eruption = "eruption",
-        /// The target marker (BN6's Beast forms' lock-on marker).
+        /// The target marker (EXE6's Beast forms' lock-on marker).
         TargetMarker = "target_marker",
     }
 }
@@ -506,7 +506,7 @@ pub enum HookRole {
     /// `sub_80D99EC`).
     Encased,
     /// `(navi) -> Object?`: a navi no player controls is being deleted:
-    /// what sparkles over it while it flashes (BN5's 0x08013DA0: effect
+    /// what sparkles over it while it flashes (EXE5's 0x08013DA0: effect
     /// object 0x11, `sub_80E1A6A`, for 90 ticks), which the deletion's end
     /// ends (`sub_80E1A86`).
     NaviDeleted,
@@ -629,13 +629,13 @@ impl Roles {
     }
 
     /// The hook of `role`, if content filled it: an optional role's
-    /// absence says the game has no such thing (BN5's `hooks.encased`:
-    /// docs/design/bn5-map.md §15.3 item 4).
+    /// absence says the game has no such thing (EXE5's `hooks.encased`:
+    /// docs/design/exe5-map.md §15.3 item 4).
     pub fn try_hook(&self, role: HookRole) -> Option<FnId> {
         self.hooks.get(&role).copied()
     }
 
-    /// The status of `role`, if content filled it (BN5 has no
+    /// The status of `role`, if content filled it (EXE5 has no
     /// `statuses.ice_freeze`: no freeze).
     pub fn try_status(&self, role: StatusRole) -> Option<StatusHandle> {
         self.statuses.get(&role).copied()

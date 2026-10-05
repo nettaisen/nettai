@@ -102,11 +102,11 @@ pub struct CustomDoc {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub languages: BTreeMap<String, CustomLanguageDoc>,
     /// Where the blocks go among the HUD layer's tile numbers, for a game
-    /// whose window is laid out otherwise than BN6's (none: BN6's,
-    /// `CustomLayout::BN6`).
+    /// whose window is laid out otherwise than EXE6's (none: EXE6's,
+    /// `CustomLayout::EXE6`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub layout: Option<LayoutDoc>,
-    /// The buttons drawn by name (BN5's soul button): each one's tiles by
+    /// The buttons drawn by name (EXE5's soul button): each one's tiles by
     /// state and its picture in the chip window with that picture's
     /// palettes by state.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -483,7 +483,7 @@ pub fn export(c: &CustomScreen) -> Vec<(String, Vec<u8>)> {
         regular,
         advance_name_colors: c.advance_name_colors.iter().map(|s| s.iter().map(|&c| tiles::color_text(c)).collect()).collect(),
         languages,
-        layout: (c.layout != CustomLayout::BN6).then(|| c.layout.into()),
+        layout: (c.layout != CustomLayout::EXE6).then(|| c.layout.into()),
         buttons,
     };
     files.push(("custom.json".into(), json_lines(&doc)));
@@ -588,7 +588,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<CustomScr
         ));
     }
     Some(CustomScreen {
-        layout: doc.layout.map_or(CustomLayout::BN6, CustomLayout::from),
+        layout: doc.layout.map_or(CustomLayout::EXE6, CustomLayout::from),
         buttons,
         window_tiles,
         column_cells: img(&doc.column_cells, report)?.0,

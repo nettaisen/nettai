@@ -1,6 +1,6 @@
 --!strict
--- The countdown bomb, as BN5 and BN6 share it (BN6's attack object #0x4B,
--- `sub_80CD8EC`; BN5's)
+-- The countdown bomb, as EXE5 and EXE6 share it (EXE6's attack object #0x4B,
+-- `sub_80CD8EC`; EXE5's)
 -- the TimeBom chips set (./controller): a field obstacle that counts 3, 2,
 -- 1 and blows up the whole enemy area (a hit over it and bursts over its
 -- panels: objects/panel-bursts), unless it is broken first (a small puff,
@@ -209,7 +209,7 @@ function countdown.make_kind(id: string, look: CountdownLook): Kind
                 battle.effect(me.pos, look.explosion)
             end
         elseif look.removal_puffs then
-            -- (BN5's 0x080CF21C: removed any way, a puff.)
+            -- (EXE5's 0x080CF21C: removed any way, a puff.)
             local p = me.pos
             battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), look.puff)
         elseif how == "absorbed" then

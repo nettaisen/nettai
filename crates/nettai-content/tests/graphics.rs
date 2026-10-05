@@ -60,7 +60,7 @@ fn bundle() -> Bundle {
         palettes: (1..=8).map(palette).collect(),
         first_palette: 1,
         palette_anims: vec![PaletteAnim { slot: 2, frames: vec![(palette(20), 16), (palette(21), 8)], initial_timer: 14 }],
-        // (In another game's order, as BN5's: the types round-trip by name.)
+        // (In another game's order, as EXE5's: the types round-trip by name.)
         panel_types: vec![0, 1, 2, 3, 4, 13, 6, 7, 14, 5, 15],
         panels: (0..11 * 6).map(|i| std::array::from_fn(|k| entry(10 + (k % 6) as u16, 1 + (i % 8) as u8, k % 2 == 0, false))).collect(),
         front_edges: [std::array::from_fn(|k| entry(11, 1, false, k == 0)), std::array::from_fn(|_| entry(12, 5, true, true))],
@@ -191,7 +191,7 @@ fn custom() -> CustomScreen {
     let picture = |seed: u8| Picture { tiles: tiles(42, seed), palette: palette(seed as u16) };
     let patch = |x, y, w, h, by_column| MapPatch { x, y, width: w, height: h, palette: 9, by_column };
     CustomScreen {
-        layout: CustomLayout { name: 0x59, art: 0x69, button_uses: true, ..CustomLayout::BN6 },
+        layout: CustomLayout { name: 0x59, art: 0x69, button_uses: true, ..CustomLayout::EXE6 },
         buttons: vec![(
             "soul".into(),
             ButtonPictures {
@@ -258,7 +258,7 @@ fn custom() -> CustomScreen {
 
 /// A fresh directory for one test.
 fn temp(name: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("bn6-content-{name}-{}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("exe6-content-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d
@@ -293,7 +293,7 @@ fn graphics_read_back_exactly() {
 }
 
 /// A field.json from before `panel_types` (docs/design/rules-in-luau.md
-/// §7.4): 78 blocks are BN6's 13 types in the engine's order, so the BN6
+/// §7.4): 78 blocks are EXE6's 13 types in the engine's order, so the EXE6
 /// pack loads as it is; any other number draws no type, with a warning to
 /// extract it again.
 #[test]
@@ -307,12 +307,12 @@ fn an_older_field_without_panel_types_still_loads() {
         std::fs::write(&path, serde_json::to_string(&doc).unwrap()).unwrap();
         import(&dir)
     };
-    let mut bn6 = bundle();
-    bn6.field.panel_types = (0..13).collect();
-    bn6.field.panels = (0..13 * 6).map(|i| std::array::from_fn(|k| entry(10 + (k % 6) as u16, 1 + (i % 8) as u8, false, false))).collect();
-    let (back, report) = without_types(&bn6, "field-bn6");
+    let mut exe6 = bundle();
+    exe6.field.panel_types = (0..13).collect();
+    exe6.field.panels = (0..13 * 6).map(|i| std::array::from_fn(|k| entry(10 + (k % 6) as u16, 1 + (i % 8) as u8, false, false))).collect();
+    let (back, report) = without_types(&exe6, "field-exe6");
     assert!(!report.has_errors() && report.count(Level::Warning) == 0, "{report}");
-    assert_eq!(back.unwrap().field, bn6.field);
+    assert_eq!(back.unwrap().field, exe6.field);
 
     let (back, report) = without_types(&bundle(), "field-other");
     assert!(!report.has_errors() && report.count(Level::Warning) == 1, "{report}");

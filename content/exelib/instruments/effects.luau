@@ -2,7 +2,7 @@
 -- The instruments' effects (`off_80D4298`), every third tick of playing:
 -- Discord's, Timpani's and Silence's, each a one-tick hit of the sixth
 -- element's damage 0 that gives a status. A game gives its status and
--- collision types (BN6's rules/status and rules/collision; BN5's own).
+-- collision types (EXE6's rules/status and rules/collision; EXE5's own).
 
 local regions = require("@exelib/regions")
 

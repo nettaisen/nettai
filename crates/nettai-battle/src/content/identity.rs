@@ -150,8 +150,8 @@ pub enum IceSize {
 }
 
 /// What a navi no player controls is (an identity of actor type navi,
-/// spawned mid-battle: BN5's Dark MegaMan): the original's enemy structs
-/// by NameID (`enemy_getStruct1`, `enemy_getStruct2`: BN5's 0x0800D138,
+/// spawned mid-battle: EXE5's Dark MegaMan): the original's enemy structs
+/// by NameID (`enemy_getStruct1`, `enemy_getStruct2`: EXE5's 0x0800D138,
 /// 0x0800D160) and the constants of its AI index's post-init hook.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ActorBody {
@@ -162,7 +162,7 @@ pub struct ActorBody {
     /// Struct 1 byte 2 (AIData+3): the multiplier of its palette by
     /// version (`sub_800F334`).
     pub palette_scale: u8,
-    /// Its palette once in (its post-init hook's: BN5's Dark MegaMan's 1,
+    /// Its palette once in (its post-init hook's: EXE5's Dark MegaMan's 1,
     /// 0x08104270); none: `sub_800F334`'s.
     pub palette: Option<u8>,
     /// Struct 2: its HP (the low 12 bits) and element (the high 4).
@@ -172,12 +172,12 @@ pub struct ActorBody {
     pub body_damage: u16,
     /// Its body's collision: what it is, what it reacts to and its hit
     /// modifier (`object_setupCollisionData`'s, which struct 2 byte 3 and
-    /// the NameID pick: BN5's 0x08013C5A).
+    /// the NameID pick: EXE5's 0x08013C5A).
     pub collision: (nettai_content_api::CollisionHandle, nettai_content_api::CollisionHandle, u8),
     /// The flag-1 bits it starts with (struct 2 byte 3's: superarmor,
     /// airshoe, floatshoe, affected by ice, untouchable; and its hook's).
     pub flags: u32,
-    /// Its HP number never shows (BN5's NameID 0x18D: 0x0801339C,
+    /// Its HP number never shows (EXE5's NameID 0x18D: 0x0801339C,
     /// 0x08104270).
     pub hides_hp: bool,
 }
@@ -207,7 +207,7 @@ pub struct Identity {
     /// It can be swallowed or left as junk (`sub_800F486`: not a mine, not
     /// BodyGrd's striker).
     pub scrap: bool,
-    /// BN5's Poltergeist takes it (0x080E8CA0, 0x080E8D1C: not BN5's
+    /// EXE5's Poltergeist takes it (0x080E8CA0, 0x080E8D1C: not EXE5's
     /// NameIDs 0xDA, 0xD3, 0xD2, 0xE5, 0xE4 and 0xE7).
     pub throwable: bool,
     /// What its object wears.

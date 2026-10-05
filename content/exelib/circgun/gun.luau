@@ -1,5 +1,5 @@
 --!strict
--- CircGun's gun, as BN5 and BN6 share it (BN6's attack object #0x89, `sub_80D655C`;
+-- CircGun's gun, as EXE5 and EXE6 share it (EXE6's attack object #0x89, `sub_80D655C`;
 -- docs/engine/dimming-chip-effects.md §8): a sight that circles the enemy's
 -- area, a step every period + 1 ticks (down and up the far column, along
 -- the rows, turning at the enemy's front and before a column wholly the
@@ -114,7 +114,7 @@ end
 
 -- A gun kind (`id`) of `look` (./shot's), firing shots of `shot_kind`.
 function gun.make_kind(id: string, look: CircGunLook, shot_kind: Kind): Kind
-    -- `sub_80D67D2`: on its panel, 8 pixels down and up (BN5's on it).
+    -- `sub_80D67D2`: on its panel, 8 pixels down and up (EXE5's on it).
     local place = if look.on_floor then shot.place_on_floor else shot.place
 
     -- `sub_80D65FC`: aim until A (the side's player's, in the dimming's key

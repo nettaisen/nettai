@@ -1,6 +1,6 @@
 --!strict
--- The sonic boom, as BN5 and BN6 share it (BN6's attack object #0x58,
--- `sub_80CF7F0`; BN5's #0x58, 0x080D0E64, the same code but for its look): a
+-- The sonic boom, as EXE5 and EXE6 share it (EXE6's attack object #0x58,
+-- `sub_80CF7F0`; EXE5's #0x58, 0x080D0E64, the same code but for its look): a
 -- slash that flies forward 16 pixels up over a column of three panels,
 -- from the sword chips that throw one (SonicBom, SprSonic and the chips
 -- sharing their action; Z Saver's fourth slash). It ends on what it hits,

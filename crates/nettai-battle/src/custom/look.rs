@@ -50,7 +50,7 @@ pub struct ScreenLook {
     /// Beast Out puts the picks back in their new order, unchecked).
     pub column: [Option<super::FolderChip>; 5],
     /// A column cell past the picks whose frame is still drawn filled: the
-    /// cell a button's held chip left, on the tick it leaves (BN5's Arm
+    /// cell a button's held chip left, on the tick it leaves (EXE5's Arm
     /// Change, 0x080236C0, takes the pick without drawing; its blink draws
     /// the cell empty from the next tick, 0x08023712).
     pub column_kept: Option<u8>,
@@ -110,7 +110,7 @@ pub struct ChipWindow {
     /// The chip whose class colors the window's frame (palette 9): the
     /// last chip slot shown, or none (the standard colors) once OK or a
     /// button's picture was. A button that shows a chip (`Slot::face`)
-    /// leaves the frame as it was (BN5's capsules, 0x08024422).
+    /// leaves the frame as it was (EXE5's capsules, 0x08024422).
     pub framed: Option<super::FolderChip>,
 }
 
@@ -127,7 +127,7 @@ pub struct Drawn {
     pub emblem: Option<(u32, u8)>,
     /// The Regular chip's frame (`sub_802899C`).
     pub regular: bool,
-    /// The icon of the chip a button holds, over the button (BN5's Arm
+    /// The icon of the chip a button holds, over the button (EXE5's Arm
     /// Change, 0x080254F4).
     pub held: bool,
     /// The volumes a dark chip's hover set this tick (music, the screen's
@@ -375,7 +375,7 @@ impl ScreenLook {
         self.drawn.regular = true;
     }
 
-    /// The chip a button holds (`Screen::hold`), drawn over it (BN5's
+    /// The chip a button holds (`Screen::hold`), drawn over it (EXE5's
     /// 0x080254F4: slot 8 an Arm Change button, picked).
     pub(crate) fn draw_held(&mut self, held: bool) {
         self.drawn.held = held;

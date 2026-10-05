@@ -1,6 +1,6 @@
 --!strict
--- Tornado's and Static's blow, as BN5 and BN6 share it (BN6's action 0x2F,
--- `sub_80ED454`; BN5's 0x22, 0x080ECD46), of a game's `TornadoBlowLook`
+-- Tornado's and Static's blow, as EXE5 and EXE6 share it (EXE6's action 0x2F,
+-- `sub_80ED454`; EXE5's 0x22, 0x080ECD46), of a game's `TornadoBlowLook`
 -- (its attachment kind and tornadoes' kind): the navi holds out a fan (an
 -- attachment) and, ten ticks in, raises tornadoes (@exelib/tornado/tornado)
 -- two panels ahead; the fan turns while they blow. Tornado raises one on

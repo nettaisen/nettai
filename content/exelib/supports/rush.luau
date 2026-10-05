@@ -1,10 +1,10 @@
 --!strict
--- Rush, as BN5 and BN6 share him (actor object #0x4B in both: BN6's `sub_80C3218`, BN5's 0x080C2214, the same code
+-- Rush, as EXE5 and EXE6 share him (actor object #0x4B in both: EXE6's `sub_80C3218`, EXE5's 0x080C2214, the same code
 -- but for his bite), of a game's `RushLook` (`rush.make`): the NaviCust support that stops a chip: the opponent used a
--- chip Rush cancels (its record's flag `rush_cancels`), the ruleset turned the use back (BN6's `sub_8010740`, BN5's
+-- chip Rush cancels (its record's flag `rush_cancels`), the ruleset turned the use back (EXE6's `sub_8010740`, EXE5's
 -- 0x0800E498) and summoned him through the supports' controller (./controller). He appears by his navi (or at his
 -- side's middle), barks for a second, digs in, pops up under the opponent's navi and eats the chip (the opponent's hand
--- moves on, unless the chip is the game's spared one: BN6's second WhiCapsl, which doesn't come from the hand), with a
+-- moves on, unless the chip is the game's spared one: EXE6's second WhiCapsl, which doesn't come from the hand), with a
 -- bite that hits for one tick; a second later he digs away. Then the controller moves on. See docs/engine/chips.md
 -- §2.10.
 
@@ -12,7 +12,7 @@ local regions = require("../regions")
 
 export type State = {
     -- The chip he eats (the original's third and fourth parameters), if
-    -- any: kept only by a game whose Rush spares a chip (BN6's). BN5's
+    -- any: kept only by a game whose Rush spares a chip (EXE6's). EXE5's
     -- ruleset hands him none (0x0800E498 passes 0, and its controller a
     -- stale register), and his bite reads none.
     eaten: Chip?,
@@ -20,7 +20,7 @@ export type State = {
 
 local rush = {}
 
--- `byte_80C34A8` (BN5's 0x080C2494, the same words): what his navi's
+-- `byte_80C34A8` (EXE5's 0x080C2494, the same words): what his navi's
 -- panel must be for him to appear there, by side (else at his side's
 -- middle).
 local STAND = {
@@ -28,7 +28,7 @@ local STAND = {
     [1] = { require = 0x0001_0020, forbid = 0 },
 }
 
--- `sub_80C3460` (BN5's 0x080C244C): on his navi's panel if it will do,
+-- `sub_80C3460` (EXE5's 0x080C244C): on his navi's panel if it will do,
 -- else at (1 or 6, 2); on the ground.
 local function place(me: Object)
     local navi = battle.player(me.alliance)
@@ -75,7 +75,7 @@ function rush.make(look: RushLook): Rush
         battle.effect(at, look.dust)
     end
 
-    -- `sub_80C33CA` (BN5's 0x080C23BE): the chip goes from the opponent's
+    -- `sub_80C33CA` (EXE5's 0x080C23BE): the chip goes from the opponent's
     -- hand.
     local function eat(me: Object)
         local spared = look.spared
@@ -86,11 +86,11 @@ function rush.make(look: RushLook): Rush
         if target then
             battle.advance_hand(target.alliance)
         elseif look.lost_target == "unbalances" then
-            -- BN6's branch skips the `pop {r5}`: the game goes on with a
+            -- EXE6's branch skips the `pop {r5}`: the game goes on with a
             -- null object and returns into Rush's own memory.
             error("Rush lost the opponent's navi before biting (loc_80C33F4 unbalances the stack)")
         end
-        -- (BN5's branch pops what it pushed: without the navi, no hand
+        -- (EXE5's branch pops what it pushed: without the navi, no hand
         -- moves on.)
     end
 
@@ -175,7 +175,7 @@ function rush.make(look: RushLook): Rush
         me.collision:present()
     end
 
-    -- `sub_80C323C` (BN5's 0x080C2238, without BN6's `sprite_decompress`):
+    -- `sub_80C323C` (EXE5's 0x080C2238, without EXE6's `sprite_decompress`):
     -- his look, his place, his collision (off until he bites); his first
     -- update at once. (Out of collision slots, he frees himself.)
     local function init(me: Object)
@@ -233,7 +233,7 @@ function rush.make(look: RushLook): Rush
         update = update,
     }
 
-    -- `sub_80C34B8` (BN5's 0x080C24A4): Rush, for `controller` (whose `out`
+    -- `sub_80C34B8` (EXE5's 0x080C24A4): Rush, for `controller` (whose `out`
     -- flag he sets, and clears when he goes), eating chip `eaten`.
     local function spawn(controller: Object, eaten: Chip?): Object?
         local o = battle.spawn(kind, Vec3.zero)

@@ -720,22 +720,22 @@ fn placed_at(side: &Side, i: usize) -> Option<PlacedProgram> {
 mod tests {
     use super::*;
 
-    /// The pane's edits on BN6's content: a grid takes the stats back to
+    /// The pane's edits on EXE6's content: a grid takes the stats back to
     /// what the save keeps; programs are held from the list and put down
     /// where they fit (not over another), picked up by a cell and put back
     /// or down elsewhere, turned with the held cell, compressed by program
     /// and color, taken off; and the match stays one the checks accept.
     #[test]
     fn edits() {
-        let content = nettai_match::testing::bn6_content();
-        let mut m = nettai_match::draw::live(&content, "bn6", 7, None).unwrap();
+        let content = nettai_match::testing::exe6_content();
+        let mut m = nettai_match::draw::live(&content, "exe6", 7, None).unwrap();
         let mut state = State::default();
         let arena = m.arena.clone();
         let side = &mut m.sides[0];
         assert!(update(&content, &arena, side, &mut state, Edit::UseGrid(true)));
         assert_eq!(side.navicust.unwrap().expansions, 2);
         assert!(side.stats_block(&content).keys().all(|k| nettai_match::stats::SAVE_FIELDS.contains(&k.as_str())));
-        let program = |name: &str| nettai_match::ids::navicust_program(&content, "bn6", name).unwrap();
+        let program = |name: &str| nettai_match::ids::navicust_program(&content, "exe6", name).unwrap();
         // Held from the list: nothing changes until it is put down.
         assert!(!update(&content, &arena, side, &mut state, Edit::Hold(program("suprarmr"), 0)));
         assert!(update(&content, &arena, side, &mut state, Edit::Place(2, 3)));

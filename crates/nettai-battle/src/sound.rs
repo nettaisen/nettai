@@ -10,7 +10,7 @@
 //! See docs/engine/audio.md and docs/design/rollback.md.
 
 /// A sound asset: its handle over the loaded packs' sounds (`AssetNames`:
-/// what its pack numbers it, for BN6's pack an entry of the game's song
+/// what its pack numbers it, for EXE6's pack an entry of the game's song
 /// table, is the audio's and compat's to look up). The engine names none
 /// itself: content does (`asset.sound`), and what the ruleset plays it gets
 /// by role (`Roles::sound`, `Roles::music`) or from a definition (a stage's

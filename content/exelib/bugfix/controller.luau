@@ -1,10 +1,10 @@
 --!strict
--- BugFix's dimming controller, as BN5 and BN6 share it (BN6's effect object #0x3B, `sub_80E4910`; BN5's #0x3B,
--- 0x080E4940, the same code but for its effect; BN6's docs/engine/dimming-chips.md §5.1): the usual dimming phases
--- (@exelib/dimming), with an effect (BN6's `sub_80E4954`, BN5's 0x080E4984) that puts the glow over the user's
--- side's navi (@exelib/bugfix/glow), fixes the user's side's NaviCust bugs, and waits for the glow. BN6's also spends
--- the Beast Out counter again unless the navi has one (`sub_8014446` / `sub_801443C`); BN5 has no Beast Out. (BN5's
--- fix, 0x080E49DA, leaves NaviStats +0x63 alone, the hand's shrink turn: a bug BN5 hasn't, which stays 0.)
+-- BugFix's dimming controller, as EXE5 and EXE6 share it (EXE6's effect object #0x3B, `sub_80E4910`; EXE5's #0x3B,
+-- 0x080E4940, the same code but for its effect; EXE6's docs/engine/dimming-chips.md §5.1): the usual dimming phases
+-- (@exelib/dimming), with an effect (EXE6's `sub_80E4954`, EXE5's 0x080E4984) that puts the glow over the user's
+-- side's navi (@exelib/bugfix/glow), fixes the user's side's NaviCust bugs, and waits for the glow. EXE6's also spends
+-- the Beast Out counter again unless the navi has one (`sub_8014446` / `sub_801443C`); EXE5 has no Beast Out. (EXE5's
+-- fix, 0x080E49DA, leaves NaviStats +0x63 alone, the hand's shrink turn: a bug EXE5 hasn't, which stays 0.)
 --
 -- Each game makes its own kind (`controller.make`) with its glow and whether it has Beast Out.
 
@@ -22,7 +22,7 @@ export type Look = {
     id: string,
     -- The game's glow's spawn (@exelib/bugfix/glow).
     glow: (spawner: Object, variant: number, holder: Object) -> Object?,
-    -- BN6's: the Beast Out counter is spent again.
+    -- EXE6's: the Beast Out counter is spent again.
     beast_out: boolean,
 }
 

@@ -1,6 +1,6 @@
 --!strict
--- The bombs' and seeds' throw, as BN5 and BN6 share it (BN6's action 0x12,
--- `sub_80EB628`; BN5's 0x12), of a game's `ThrowLook` (its sound and
+-- The bombs' and seeds' throw, as EXE5 and EXE6 share it (EXE6's action 0x12,
+-- `sub_80EB628`; EXE5's 0x12), of a game's `ThrowLook` (its sound and
 -- attachment kind):
 -- the navi winds up with the thing in hand (an attachment), throws it on
 -- the tenth tick (it leaves from 4 pixels ahead, 48 up), and stands for 11

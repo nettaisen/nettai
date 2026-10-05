@@ -59,7 +59,7 @@ fn spring_anti_recovery(b: &mut Battle, r: ObjectRef, amount: u16) {
 }
 
 /// `sub_80E37D2`: AntiRecv's counterattack (the role `kinds.anti_recovery`:
-/// BN6's chips/antirecv/controller, the original's effect #0x2C) against
+/// EXE6's chips/antirecv/controller, the original's effect #0x2C) against
 /// `healer`, on its panel and side, dealing the damage word `damage`
 /// (damage | hit parameter << 16). Its telop is AntiRecv's (object +0x30).
 /// None when the effect pool is full. Its position is the spawner's
@@ -88,8 +88,8 @@ pub(crate) fn spawn_counterattack(b: &mut Battle, healer: ObjectRef, damage: u32
 
 /// `sub_800ABC6`: the trap's mark over `r`'s panel (for the local side's
 /// look, Param2), with its sound, where the game puts it from the panel's
-/// center (the chip-use rules' `anti_navi_sparkle`: BN6's 16 pixels down
-/// the field and 32 up, BN5's 16 up). Its height (which the routine leaves
+/// center (the chip-use rules' `anti_navi_sparkle`: EXE6's 16 pixels down
+/// the field and 32 up, EXE5's 16 up). Its height (which the routine leaves
 /// in r3).
 pub(crate) fn trap_mark(b: &mut Battle, r: ObjectRef) -> i32 {
     let panel = b.objects.get(r).panel;
