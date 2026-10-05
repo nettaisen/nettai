@@ -12,25 +12,20 @@
 //!   and a few flags for the tick's events. A tick with no flags and only A,
 //!   B and the directions held is one byte; any other buttons, two; flags,
 //!   up to three.
-//! - [`Element::Payload`]: bytes the next tick carries besides (the rare
-//!   event with data, such as a recorded custom-screen result), up to
-//!   [`CHUNK`] per element, in order before that tick.
 //! - [`Element::RoundEnd`] and [`Element::MatchEnd`]: the in-band markers.
 //!   The sender's round is over, and what follows is the next round's
 //!   input; the sender left the match.
 //! - [`Meta`]: the sender's tick advantage (getgud's
 //!   `local_tick_advantage`) as of its newest input, for clock sync.
 //!
-//! A game's input goes on the wire through [`WireInput`]: its buttons, its
-//! flags and its payload.
+//! A game's input goes on the wire through [`WireInput`]: its buttons and
+//! its flags.
 //!
-//! The element's wire form is a LEB128 head, then a payload element's
-//! bytes:
+//! The element's wire form is a LEB128 head:
 //!
 //! ```text
 //! head & 1 == 0   a tick: head >> 1 = buttons (10 bits, in WIRE_ORDER) | flags << 10
-//! head & 1 == 1   head >> 1: 0 the round's end, 1 the match's end,
-//!                 2 + n - 1 a payload of n bytes (1..=CHUNK), which follow
+//! head & 1 == 1   head >> 1: 0 the round's end, 1 the match's end
 //! ```
 
 use std::io::{self, Read, Write};
@@ -61,8 +56,8 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// by its rules), and a round's setup names none.
 pub const VERSION: u16 = 9;
 
-/// The rollback horizon, in elements (ticks, besides the rare payload or
-/// marker): the widest gap a player's stream may have at the other peer
+/// The rollback horizon, in elements (ticks, besides the rare marker):
+/// the widest gap a player's stream may have at the other peer
 /// before that peer gives up on it ([`rennet::HorizonExceeded`]), and the
 /// most unconfirmed elements a sender keeps to send again. getgud itself
 /// has no limit; a peer's stall guard (`max_lead`) bounds how far its
@@ -72,16 +67,13 @@ pub const VERSION: u16 = 9;
 pub const HORIZON: u32 = 240;
 
 /// The largest stall guard a horizon allows: a gap reaches up to twice the
-/// stall guard, plus the payloads and markers in it.
+/// stall guard, plus the markers in it.
 pub fn max_lead(horizon: u32) -> u32 {
     horizon.saturating_sub(MARGIN) / 2
 }
 
-/// The elements a horizon leaves for payloads and markers in a gap.
+/// The elements a horizon leaves for markers in a gap.
 const MARGIN: u32 = 16;
-
-/// The most bytes one payload element carries.
-pub const CHUNK: usize = 32;
 
 /// The protocol: rennet's `Protocol` for nettai's input streams.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -104,40 +96,11 @@ pub enum Element {
     /// bits, `nettai_battle::input::keys`) and the game's flags for the
     /// tick's events ([`WireInput`]).
     Tick { held: u16, flags: u8 },
-    /// Bytes the next tick carries besides, in order.
-    Payload(Chunk),
     /// The sender's round is over: the elements after it are the next
     /// round's.
     RoundEnd,
     /// The sender left the match.
     MatchEnd,
-}
-
-/// Up to [`CHUNK`] bytes of a tick's payload.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct Chunk {
-    len: u8,
-    bytes: [u8; CHUNK],
-}
-
-impl Chunk {
-    /// The first [`CHUNK`] bytes of `bytes` (at least one).
-    pub fn new(bytes: &[u8]) -> Chunk {
-        assert!(!bytes.is_empty() && bytes.len() <= CHUNK, "a chunk holds 1 to {CHUNK} bytes, not {}", bytes.len());
-        let mut c = Chunk { len: bytes.len() as u8, bytes: [0; CHUNK] };
-        c.bytes[..bytes.len()].copy_from_slice(bytes);
-        c
-    }
-
-    pub fn bytes(&self) -> &[u8] {
-        &self.bytes[..self.len as usize]
-    }
-}
-
-impl std::fmt::Debug for Chunk {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Chunk({:02x?})", self.bytes())
-    }
 }
 
 /// The buttons' order on the wire, lowest bit first: A, B and the
@@ -161,7 +124,6 @@ pub const BUTTONS: u16 = 0x3FF;
 
 const ROUND_END: u64 = 0;
 const MATCH_END: u64 = 1;
-const PAYLOAD: u64 = 2;
 
 impl rennet::Codec for Element {
     fn encode<W: Write>(&self, w: &mut W) -> io::Result<()> {
@@ -170,10 +132,6 @@ impl rennet::Codec for Element {
                 assert_eq!(held & !BUTTONS, 0, "a tick carries the ten buttons only: {held:#06x}");
                 let value = buttons_to_wire(held) as u64 | (flags as u64) << 10;
                 write_uvarint(w, value << 1)
-            }
-            Element::Payload(chunk) => {
-                write_uvarint(w, (PAYLOAD + chunk.len as u64 - 1) << 1 | 1)?;
-                w.write_all(chunk.bytes())
             }
             Element::RoundEnd => write_uvarint(w, ROUND_END << 1 | 1),
             Element::MatchEnd => write_uvarint(w, MATCH_END << 1 | 1),
@@ -204,12 +162,6 @@ impl rennet::Codec for Element {
             match kind {
                 ROUND_END => Element::RoundEnd,
                 MATCH_END => Element::MatchEnd,
-                k if k >= PAYLOAD && k < PAYLOAD + CHUNK as u64 => {
-                    let len = (k - PAYLOAD + 1) as usize;
-                    let mut bytes = [0u8; CHUNK];
-                    r.read_exact(&mut bytes[..len])?;
-                    Element::Payload(Chunk { len: len as u8, bytes })
-                }
                 k => return Err(invalid(&format!("unknown element kind {k}"))),
             }
         };
@@ -237,27 +189,25 @@ impl rennet::Codec for Meta {
     }
 }
 
-/// A game's per-tick input on the wire: the buttons held, a few flags for
-/// the tick's events, and the bytes of the rare event that carries data.
-/// `decode` must give back the input `encode` wrote.
+/// A game's per-tick input on the wire: the buttons held, and a few flags
+/// for the tick's events. `decode` must give back the input `encode` wrote.
 pub trait WireInput: Sized {
-    /// Write the input's payload, if it has one, and return its buttons
-    /// and flags.
-    fn encode(&self, payload: &mut Vec<u8>) -> (u16, u8);
+    /// The input's buttons and flags.
+    fn encode(&self) -> (u16, u8);
 
-    /// The input from its buttons, flags and payload.
-    fn decode(held: u16, flags: u8, payload: &[u8]) -> io::Result<Self>;
+    /// The input from its buttons and flags.
+    fn decode(held: u16, flags: u8) -> io::Result<Self>;
 }
 
 /// Buttons alone (the stand-in battle's input).
 impl WireInput for u16 {
-    fn encode(&self, _: &mut Vec<u8>) -> (u16, u8) {
+    fn encode(&self) -> (u16, u8) {
         (*self & BUTTONS, 0)
     }
 
-    fn decode(held: u16, flags: u8, payload: &[u8]) -> io::Result<u16> {
-        if flags != 0 || !payload.is_empty() {
-            return Err(invalid("buttons carry no flags or payload"));
+    fn decode(held: u16, flags: u8) -> io::Result<u16> {
+        if flags != 0 {
+            return Err(invalid("buttons carry no flags"));
         }
         Ok(held)
     }
@@ -294,7 +244,7 @@ mod tests {
     }
 
     /// Ticks with A, B and the directions are a byte, other buttons two,
-    /// flags up to three; markers one; a payload its length and one.
+    /// flags up to three; markers one.
     #[test]
     fn element_sizes() {
         assert_eq!(bytes(Element::Tick { held: 0, flags: 0 }), [0x00]);
@@ -305,8 +255,6 @@ mod tests {
         assert_eq!(bytes(Element::Tick { held: BUTTONS, flags: 0xFF }).len(), 3);
         assert_eq!(bytes(Element::RoundEnd), [0x01]);
         assert_eq!(bytes(Element::MatchEnd), [0x03]);
-        assert_eq!(bytes(Element::Payload(Chunk::new(&[7; 5]))).len(), 6);
-        assert_eq!(bytes(Element::Payload(Chunk::new(&[7; CHUNK]))).len(), CHUNK + 1);
     }
 
     #[test]
@@ -318,9 +266,6 @@ mod tests {
         }
         roundtrip(Element::RoundEnd);
         roundtrip(Element::MatchEnd);
-        for n in [1, 2, 31, CHUNK] {
-            roundtrip(Element::Payload(Chunk::new(&(0..n as u8).collect::<Vec<_>>())));
-        }
     }
 
     /// A frame: base, ack, meta and the run, byte for byte.
@@ -340,8 +285,8 @@ mod tests {
 
     #[test]
     fn malformed_elements_are_errors() {
-        // An unknown kind, a payload cut short, a head cut short.
-        for b in [&[0x05 + 2 * CHUNK as u8][..], &[0x07, 0xAA], &[0x80]] {
+        // An unknown kind, a head cut short.
+        for b in [&[0x05][..], &[0x80]] {
             assert!(Element::decode(&mut &b[..]).is_err(), "{b:02x?}");
         }
         // Flags past a byte.
