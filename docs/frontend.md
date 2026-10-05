@@ -333,8 +333,8 @@ functions:
   not counted; so is a language the content has strings in but its pack no
   lettering for (EXE5's Japanese, which its extraction makes none of): such
   a console can't be shown, and the language isn't checked. It audits the
-  match's one game (`--game`): a chip's Program Advance code by its number
-  in that game's compat (EXE6's or EXE5's).
+  match's one game (`--game`): a chip's Program Advance code shows unless
+  its definition hides it (the trait `hides_advance_code`).
 - `--audit <trace.jsonl>...` runs traces, several at a time (`--jobs N`,
   default one a core), and makes the lookups their frames and sound cues
   make, without drawing: no stage, no composing, no sound synthesis

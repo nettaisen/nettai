@@ -19,5 +19,6 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
+    traits = { "hides_advance_code" },
     action = sonicbom.make("curse/action", 0, false),
 }

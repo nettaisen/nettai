@@ -16,6 +16,7 @@ return define.chip {
     hit_param = 148,
     lockout = 0,
     library = { number = 381, index = 0, sort = 0 },
+    traits = { "hides_advance_code" },
     slot_in_limit = 1,
     action = zsaver.action,
 }
