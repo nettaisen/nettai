@@ -58,8 +58,8 @@ pub struct FlowRules {
 /// its settings (EXE6's `sub_81209DC`, EXE5's 0x08129F2C: two numbers a
 /// round, the first RNG's for the stage and the second's for the
 /// background). For whoever makes a random match: the engine picks none (a
-/// round's settings state its stage and background). A game that states no
-/// section has no random pick.
+/// round's settings state its stage and background). Every ruleset states
+/// it; one whose `stages` is empty has no random pick.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct LinkPick {
     /// The stages, by the pick's index: entry `i` is the stage of the
