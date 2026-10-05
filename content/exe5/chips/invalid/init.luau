@@ -21,6 +21,5 @@ return define.chip {
     lockout = 20,
     flags = {},
     slot_in_limit = 1,
-    traits = { "hides_advance_code" },
     instant = plus.sparkle_alone,
 }

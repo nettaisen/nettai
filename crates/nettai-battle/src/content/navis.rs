@@ -257,11 +257,6 @@ pub struct FormData {
     /// window and show its Beast, which console has its face).
     #[serde(default)]
     pub version: Option<String>,
-    /// Its place among its version's forms in their window (EXE6's Cross
-    /// window): its name and colors there are the pack version's of that
-    /// number. Presentation only.
-    #[serde(default)]
-    pub window_order: Option<u8>,
     /// The lines of a Cross's description, which R shows in the Cross
     /// window (its text is the content's strings): the box takes keys a
     /// tick later for each, as for a chip's; none counts as three. The
