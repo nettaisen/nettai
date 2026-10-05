@@ -122,14 +122,15 @@ pub fn has_levels(content: &Content, navi: NaviHandle) -> bool {
 }
 
 impl Side {
-    /// `navi`'s stats as a save gives them, of `game`, as a battle starts
-    /// them: a link navi's at `level` (its reload over its fresh stats),
-    /// else its fresh stats ([`Side::base_stats`]). What a match file's
-    /// stats block is written over.
-    pub fn save_base(content: &Content, navi: NaviHandle, game: GameVersion, level: Option<u8>) -> NaviStats {
-        let fresh = Side::base_stats(content, navi, game);
+    /// `navi`'s stats as a save gives them, of `version` (none: a side
+    /// without one), as a battle starts them: a link navi's at `level` (its
+    /// reload over its fresh stats), else its fresh stats
+    /// ([`Side::base_stats`]). What a match file's stats block is written
+    /// over.
+    pub fn save_base(content: &Content, navi: NaviHandle, version: Option<GameVersion>, level: Option<u8>) -> NaviStats {
+        let fresh = Side::base_stats(content, navi, version);
         match reloaded(content, navi, &fresh, Reload::at(level)) {
-            Some(s) => crate::starting(content, s, game),
+            Some(s) => crate::starting(content, s, version),
             None => fresh,
         }
     }
@@ -147,7 +148,7 @@ impl Side {
     /// save keeps carries over, as the game's switch carries it). None for
     /// a navi without levels.
     pub fn reloaded_as(&self, content: &Content, navi: NaviHandle) -> Option<NaviStats> {
-        reloaded(content, navi, &self.stats, Reload::at(self.navi_level)).map(|s| crate::starting(content, s, self.game))
+        reloaded(content, navi, &self.stats, Reload::at(self.navi_level)).map(|s| crate::starting(content, s, self.version))
     }
 }
 
@@ -181,17 +182,17 @@ mod tests {
         ];
         for (key, attack, rapid, charge, custom, mega, max_hp, base_hp) in tango {
             let n = navi(&content, key);
-            let s = Side::save_base(&content, n, GameVersion::Falzar, Some(14));
+            let s = Side::save_base(&content, n, Some(GameVersion::Falzar), Some(14));
             assert_eq!(
                 (s.attack, s.rapid, s.charge, s.custom_level, s.mega_level, s.giga_level, s.max_hp, s.hp, s.max_base_hp),
                 (attack, rapid, charge, custom, mega, 1, max_hp, max_hp, base_hp),
                 "{key}"
             );
         }
-        let tengu = Side::save_base(&content, navi(&content, "tenguman"), GameVersion::Falzar, Some(14));
+        let tengu = Side::save_base(&content, navi(&content, "tenguman"), Some(GameVersion::Falzar), Some(14));
         assert!(tengu.float_shoes && tengu.air_shoes);
         let protoman = navi(&content, "protoman");
-        let back = |level| Side::save_base(&content, protoman, GameVersion::Falzar, Some(level)).weapons.back_special.map(|w| content.defs.weapon(w).key.clone());
+        let back = |level| Side::save_base(&content, protoman, Some(GameVersion::Falzar), Some(level)).weapons.back_special.map(|w| content.defs.weapon(w).key.clone());
         assert_eq!(back(14).as_deref(), Some("protoman/back-special-2"), "the reflecting guard from level 10");
         assert_eq!(back(9).as_deref(), Some("protoman/back-special"), "the guard that only guards below");
     }
@@ -201,7 +202,7 @@ mod tests {
     #[test]
     fn protoman_at_level_5() {
         let content = exe6_content();
-        let s = Side::save_base(&content, navi(&content, "protoman"), GameVersion::Falzar, Some(5));
+        let s = Side::save_base(&content, navi(&content, "protoman"), Some(GameVersion::Falzar), Some(5));
         assert_eq!((s.attack, s.rapid, s.charge, s.custom_level, s.mega_level, s.max_hp, s.max_base_hp), (1, 1, 1, 5, 5, 1150, 800));
     }
 
