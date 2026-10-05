@@ -19,6 +19,7 @@ return define.chip {
     flags = { "has_damage", "library" },
     beast = { rush = false, lockon = lockon.sprsonic },
     library = { number = 375, index = 0, sort = 0 },
+    traits = { "hides_advance_code" },
     slot_in_limit = 1,
     action = sonic.actions.sprsonic,
 }

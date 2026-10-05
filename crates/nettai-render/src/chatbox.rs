@@ -10,7 +10,6 @@
 //! language), drawn in the dialogue font.
 //! docs/frontend.md §3.
 
-use nettai_content_api::FormHandle;
 use crate::audit::{Lookup, Problems};
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
@@ -19,7 +18,7 @@ use crate::textlayer::{Plane, Rect, TextItem, TextSink};
 use crate::vfont::Role;
 use nettai_assets::{Bundle, Chatbox as Graphics, Palette, SpriteSheet, Tiles};
 use nettai_battle::custom::chatbox::{Chatbox, PortraitLook, Script};
-use nettai_battle::custom::{GameVersion, Phase};
+use nettai_battle::custom::Phase;
 use nettai_battle::Battle;
 
 /// The box's map on BG0 (`CurTileYBlockPos`): from row 12, 30 columns of
@@ -122,7 +121,7 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
             let sheet = crate::lookups::sprite(packs, &b.content, id, &who, problems);
             if let Some(sheet) = sheet {
                 crate::lookups::animation(sheet, &b.content, id, look.anim, &who, problems);
-                note_true_face(b, navi, exe6_compat::Unlocks::of_side(b, b.setup.local_side).version, problems);
+                note_true_face(b, navi, crate::custom::version_name(b, b.setup.local_side), problems);
             }
             sheet.map(|sheet| (sheet, look))
         }
@@ -212,14 +211,12 @@ fn text_tiles(assets: &Bundle, chatbox: &Chatbox, lines: &[Vec<u16>], translated
     tiles
 }
 
-/// A link navi of the other game (whose Cross is that game's) has a black
-/// placeholder for a portrait in this console's ROM, which the original
-/// shows; the frontend shows the true face (docs/frontend.md §5).
-fn note_true_face(b: &Battle, navi: nettai_content_api::NaviHandle, console: GameVersion, problems: &mut Problems) {
-    let c = &b.content;
-    let cross = (0..c.defs.forms.len()).map(|i| FormHandle(i as u16)).find(|&f| exe6_compat::forms::cross_of(c, f) == Some(navi));
-    let game = cross.and_then(|f| exe6_compat::forms::game(c, f));
-    if game.is_some_and(|g| g != console) {
+/// A link navi of another version than the console's (its definition's
+/// `version`) has a black placeholder for a portrait in this console's ROM,
+/// which the original shows; the frontend shows the true face
+/// (docs/frontend.md §5).
+fn note_true_face(b: &Battle, navi: nettai_content_api::NaviHandle, console: &str, problems: &mut Problems) {
+    if b.content.navi(navi).version.as_deref().is_some_and(|v| v != console) {
         problems.known(5, 104, 40, 48, "another game's link navi's portrait (the true face)");
     }
 }

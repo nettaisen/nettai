@@ -1998,7 +1998,9 @@ export type ChipSpec = {
     -- (a navi chip whose navi brings the user back itself), "goes_with_any"
     -- (it goes with any selection on the custom screen, and leaves the
     -- selection's rules alone: EXE6's BeastOut chip), "hides_damage_as_a"
-    -- (the custom screen shows its damage as "???" on a copy of code A).
+    -- (the custom screen shows its damage as "???" on a copy of code A),
+    -- "hides_advance_code" (the Program Advance animation shows its name
+    -- without its code: the chips past the original's chip table).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
@@ -2077,6 +2079,10 @@ export type NaviDef = {
     -- A link navi's face in the emotion window (shown in its second palette
     -- in Full Synchro); MegaMan's face is his form's.
     mugshot: Mugshot?,
+    -- The version of its game a link navi belongs to (EXE6's "gregar" or
+    -- "falzar"), by the name the game's pack keeps a version's pictures
+    -- under; none: every version's.
+    version: string?,
     -- Extra height of its image as it merges with MegaMan in a Cross.
     merge_height: number?,
     -- The no-running message (L on the custom screen in a netbattle).
@@ -2232,6 +2238,12 @@ export type FormDef = {
     palette: number?,
     -- Its face in the emotion window, or its faces by its navi's emotion.
     mugshot: (Mugshot | MugshotFaces)?,
+    -- The version of its game it belongs to (EXE6's "gregar" or "falzar":
+    -- a version's Crosses and Beast), by the name the game's pack keeps a
+    -- version's pictures under; and its place among its version's forms in
+    -- their window (EXE6's Cross window: its name and colors there).
+    version: string?,
+    window_order: number?,
     weapons: FormWeapons?,
     identity: Identity?,
     -- The damage it adds to a family's damaging chips (`uncharged`: only
