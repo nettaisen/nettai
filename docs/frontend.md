@@ -496,11 +496,12 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   the chip window, its uses left and the chip it holds; its tiles a set are
   its cells' (the content's `cells`), and a special slot with no button
   shows the hidden set of the button its content registers there, if its
-  look has one (EXE6's Beast Out's). The renderer has no look of its own;
-  it names two buttons for what their systems draw besides (`soul`: the
-  offered soul's icon and the Chaos Unison's palette; `beast_out`: the
-  BeastOut chip's picture is that button's), which the content can't say
-  without fields;
+  look has one (EXE6's Beast Out's). The renderer has no look of its own,
+  and names no button: what it draws of one besides its look goes by the
+  button's `view` (`ButtonView`: one that offers a form shows the offered
+  form's icon in the column and its picture in its second palette for the
+  alternate offer, EXE5's soul button; one whose picture is a chip's too
+  gives the BeastOut chip its picture, EXE6's Beast Out button);
 - the navi's emblem is the pack's under the navi's key (`lookups::emblem`),
   its palette sprite palette 11 (the cursor's and the Regular chip's
   frame's too); a navi with none shows none;
@@ -511,8 +512,8 @@ docs/engine/custom-screen.md §9) and the pack's `graphics/custom`:
   place among that version's Crosses in its navi's list,
   `forms.<version>.crosses`, which is the original's order;
   for the form in the entry's place, `custom::cross_at`: the player's Cross
-  list's entry, else their version's Cross of that number, read as facts by
-  name, `Battle::fact`), so a Gregar
+  list's entry, else their version's Cross of that number, read as the
+  facts the engine names, `Battle::fact` and `PlayerFact`), so a Gregar
   Cross shows Gregar's name in any window, and a window a setup's Cross
   list mixes shows each game's own; the Beast Out button, its picture in
   the chip window and the BeastOut chip's picture are of the Beast the
@@ -556,15 +557,18 @@ What an EXE5 console does otherwise, by data, not by game:
 
 - the emotion window: the faces EXE5's forms name bring their own box
   (MegaMan's five, Team Colonel's), and a soul's face shows the soul's
-  turns left beside it (the souls system's `turns`, read by name);
-- the custom screen: the special slot's button is the one the pack names
-  for the system's button (`soul`: Soul Unison's, its picture in the chip
-  window in Chaos Unison's palette for Chaos), the cursor over OK and over
-  the button where the pack's layout puts them; the soul choice (the
-  souls system's window `soul_unison`, EXE5's state 9) flies the soul's icon
+  turns left beside it (`Battle::form_turns`: the turns the system of the
+  button that offers a form keeps);
+- the custom screen: the special slot's button is drawn by the pack's look
+  of its name (Soul Unison's, its picture in the chip
+  window in Chaos Unison's palette for Chaos, as a button whose view is
+  `form_offer`), the cursor over OK and over
+  the button where the pack puts them; the soul choice (the window whose
+  view is `offer_flight`, EXE5's state 9) flies the soul's icon
   up onto the column's first cell under its flash, and the cell keeps it
-  (nettai-render's `SoulOffer`: the offer, a soul's form, and the window's
-  step, read of the system's state by name; the icon is the soul's place
+  (`Battle::offer` and `Battle::offer_flight`: the offer, a soul's form, and
+  the window's step, typed reads of what the view shows of its system's
+  state; the icon is the soul's place
   among its navi's souls, `soul_place`: a pack's soul icons are in the order
   the navi lists its souls, the original's soul numbers'), in the palette of
   the soul's own version on any console (Team Colonel's icons have another
@@ -579,9 +583,9 @@ What an EXE5 console does otherwise, by data, not by game:
     gray while unavailable, the chip cursor; its chip window is the chip's
     name and picture alone, over the frame colors the last chip slot left
     (`ChipWindow::framed`: a capsule after a Mega chip keeps the Mega
-    frame); R describes the chip; its mix (the window `capsule`,
-    `CapsuleMix`) flies the chip's icon as the soul's choice flies the
-    soul's;
+    frame); R describes the chip; its mix (the window whose view is
+    `chip_flight`, `Battle::chip_flight`) flies the chip's icon as the
+    soul's choice flies the soul's;
   - the button look `arm_change` (ColonelSoul's Arm Change: the pack's
     look of that name, its second tile set for unavailable
     alone) with the chip it holds as a sprite over it in the HUD's icon
@@ -889,6 +893,16 @@ them).
   draws its Japanese names in the US font (the font mode draws them); the
   static audit says so, not counted.
 - Live play shows the custom screen as text.
+- One blend register for every semi-transparent sprite. `sprite_setAlpha`
+  (EXE6's 0x08002C7A, EXE5's 0x08002AE6) writes the sprite's alpha straight
+  into BLDALPHA, which the whole screen shares: on the original every
+  semi-transparent sprite on a frame is blended by the alpha written last
+  that tick (the last such sprite's object to update), whatever its own. The
+  renderer blends each sprite by its own alpha (`compose::blend`, with the
+  register's five-bit weights). The two differ only on a frame that shows
+  two semi-transparent sprites whose alphas differ; no recording compared
+  so far has one (the frame comparisons would show it as one of the two
+  sprites too faint or too strong for as long as both are up).
 - Affine (rotated or scaled) object sprites (`sprite_makeScalable`: no kind
   in the engine or the content uses one yet; compose draws affine parts, the
   custom screen's emblem is one), the per-part palette override

@@ -88,8 +88,10 @@ local function available(side: number): boolean
 end
 
 -- The Beast Out button (`sub_8029FB4`, battle mode 0), in the special slot.
+-- The BeastOut chip shows its picture in the chip window (`sub_802871C`).
 custom_beast.button = {
     slot = 11,
+    view = "chip_picture",
     shown = function(side: number): boolean
         return megaman(side)
             and not sealed(side)
