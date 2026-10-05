@@ -247,6 +247,8 @@ export type NaviSpec = {
     story: { hp: { number }, max_level: number }?,  -- EXE5's team navis: the HP by the story's progress,
                                                   -- the last level (tools fill a side's stats from it)
     palette_step: number?,                        -- what its palettes go by (EXE5's team navis')
+    charge_glow_lift: { anims: { number }, pixels: number }?,  -- its animations that lift its charge glow
+                                                  -- (EXE5's GyroMan's in the air)
     chip_bonus: { family: ChipFamily, dimming_chips: boolean?, by_level: { number } }?,
     identity: Identity,                           -- the NameID record: attach points, actor type, parts
     actions: { [string]: Action }?,               -- a link navi's own actions
