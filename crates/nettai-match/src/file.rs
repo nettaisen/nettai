@@ -10,9 +10,9 @@
 //!
 //! [arena]
 //! stage = "netbattle-43"
-//! background = "honeycomb"           # optional: else the stage's own
+//! background = "lans-hp"             # optional: else the stage's own
 //! later = [                          # optional: the set's later rounds (else the first's)
-//!     { stage = "netbattle-12", background = "code" },
+//!     { stage = "netbattle-12", background = "undernet" },
 //!     { stage = "netbattle-7" },
 //! ]
 //!

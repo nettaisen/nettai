@@ -135,6 +135,123 @@ for its emotion (`mugshot`, `FormData::mugshot`), or a link navi's own
 (`NaviData::mugshot`); mugshot numbers from `nettai_assets::NAVI_MUGSHOTS`
 are the link navis' faces, with their Full Synchro palettes.
 
+### The battle backgrounds, by area
+
+A background is named for the area whose maps draw it, in the game's own words. The link is the ROM's. A battle
+draws the background its settings state (their byte 4), or with 0xFF there its map's, which the game looks up by
+map group and number; the same number is the net map's own backdrop.
+
+| | The routine | Its table (pointers by map group from 0x80, each a byte array by map number) | A real-world map's |
+|---|---|---|---|
+| EXE6 | `sub_8081308` | 0x0808139C (`pt_808139C`) | 0x07 |
+| EXE5 | 0x0808CA78 | 0x0808CAAC | 0x06 |
+
+A map's name is the one the menu shows: EXE6's `sub_811F290` and EXE5's 0x08128B50 turn the group and number
+into a name's number in the names' text archive (EXE6's at 0x086CB360, EXE5's at 0x086E2B6C). A background's name
+is that name in lower case with hyphens, a possessive's apostrophe dropped (`lans-hp`), and a word the menu's
+twelve characters cut short spelled as the game's dialogue spells it (`robot-control-comp` for RobCtrlComp).
+
+- One background of an area's numbered parts has the area's name once (`central-area`).
+- One background that another place draws too has its own area's name, the other place in the comment beside it
+  in compat/assets.toml (`robot-control-comp` is PavilonComp4's too; EXE5's `undernet` is NebulaArea6's too).
+- The two that dozens of unrelated comps share have no one area. `comp` is the default the game's table falls
+  back to: the comps without a backdrop of their own, every real-world map, and what a link battle's settings
+  state. `comp-alt` is the same picture in its second palette, which some comps draw instead. In EXE6 those are
+  the six comps of the second of the two maps the small comps are built on (the 26 others are on the first:
+  `initMapTilesState_803037c`'s descriptors and `decompressCoordEventData_8030aa4`'s collision data, one of each
+  per set). In EXE5 every such comp draws the same map tiles, and each of the two collision maps (the
+  SquirrelCmps', the others') holds comps of both: nothing else in the data sets the eleven apart.
+- Two backgrounds of one area are told apart by a part's number (`end-area2`) or a story state
+  (`mr-weather-comp-storm`).
+- EXE5 has two that no menu name gives: the VisionBursts' maps, which the menu leaves blank and their own
+  dialogue names (`visionburst`), and one no map draws, named for the battles whose settings state it
+  (`nebulagray`).
+
+"Named from" says which of these a name is, in bold where it isn't a menu name alone: those carry a judgment
+(`comp`, `comp-alt`, `visionburst` and `nebulagray` the most).
+"Was" is the look-name it had before.
+
+The tables are the verification workspace's (tools/backgrounds): `areas.py` reads the areas from the ROMs,
+`names.tsv` holds the names, and `rename.py` puts a changed name into the content, the generators and these
+tables.
+
+**EXE6** has 21. A link battle draws one of `sub_81209DC`'s table (`byte_8120A20`), which its `link_pick` rules
+state as `backgrounds`.
+
+<!-- backgrounds:exe6 -->
+| Number | Name | The maps that draw it (the menu's names; map group:numbers) | Named from | Also | Was (its picture) |
+|---|---|---|---|---|---|
+| 0x00 | `lans-hp` | Lan's HP (0x88:0) | the menu | a link battle | `honeycomb` |
+| 0x01 | `acdc-hp` | ACDC HP (0x88:1) | the menu | a link battle (2 of 21) | `statues` |
+| 0x03 | `aquarium-hp` | Aquarium HP (0x88:3) | the menu | a link battle | `seals` |
+| 0x04 | `sky-hp` | Sky HP (0x88:6) | the menu | a link battle | `clouds` |
+| 0x05 | `green-hp` | Green HP (0x88:5) | the menu | a link battle | `sprouts` |
+| 0x06 | `robot-control-comp` | RobCtrlComp1, 2 (0x80:0, 1); PavilonComp4 (0x85:3) | **the menu, spelled out as the dialogue has it** | a link battle | `calendar-checkers` |
+| 0x07 | `comp` | Stg6Dungeon1, 2, 3 (0x84:0, 1, 2); Extra (0x88:2, 4, 7, 8); RoboDogComp (0x8c:0); Class6-1Comp (0x8c:2); Class6-2Comp (0x8c:3); Class1-1Comp (0x8c:4); Class1-2Comp (0x8c:5); BathroomComp (0x8c:6); ElevatorComp (0x8c:7); FshStkSpComp (0x8c:8); SecurCamComp (0x8c:9); Fan Comp (0x8c:11); AirCndtrComp (0x8c:12); Heater Comp (0x8c:13); Shower Comp (0x8c:14); PunshChrComp (0x8d:2); WaterMchComp (0x8d:3); Symbol Comp (0x8d:4); Monitor Comp (0x8d:5); PopcrnShpCmp (0x8d:6); TeachrRmComp (0x8d:7); ObservtnComp (0x8d:9); OxygnTnkComp (0x8d:10); PrcplOfcComp (0x8d:11); Mascot Comp (0x8d:12); StfToySpComp (0x8d:13); DogHouseComp (0x8d:14); GuidPanlComp (0x8d:15); the default: every real-world map | **no one area: the default, which the comps without their own draw** | 192 battle settings state it; a link battle | `calendar-mint` |
+| 0x08 | `comp-alt` | Extra (0x88:9); Lab'sComp1 (0x8c:1); BookComp (0x8c:10); HeliportComp (0x8c:15); Lab'sComp2 (0x8d:0); VendngMcComp (0x8d:1); Pipe Comp (0x8d:8) | **no one area: the default's picture in its second palette** | 1 battle settings state it (0x080aee70); a link battle | `calendar-lavender` |
+| 0x09 | `central-area` | CentralArea1, 2, 3 (0x90:0, 1, 2) | the menu | a link battle | `calendar-navy` |
+| 0x0a | `aquarium-comp` | AquarumComp1, 2, 3 (0x81:0, 1, 2); PavilonComp1 (0x85:0) | **the menu, spelled out as the dialogue has it** | a link battle | `calendar-blue` |
+| 0x0b | `seaside-area` | SeasideArea1, 2, 3 (0x91:0, 1, 2) | the menu | a link battle | `calendar-cyan` |
+| 0x0c | `judgetree-comp` | JdgTreeComp1, 2, 3 (0x82:0, 1, 2); PavilonComp2 (0x85:1) | **the menu, spelled out as the dialogue has it** | a link battle | `trees` |
+| 0x0d | `green-area` | Green Area1, 2 (0x92:0, 1) | the menu | a link battle | `calendar-green` |
+| 0x0e | `sky-area` | Sky Area1, 2 (0x94:0, 1) | the menu | a link battle | `calendar-bright-blue` |
+| 0x0f | `undernet` | Undernet1, 2, 3 (0x95:0, 2, 3); UndernetZero (0x95:1) | the menu | a link battle | `code` |
+| 0x10 | `mr-weather-comp` | MrWeathrCmp1, 2, 3 (0x83:0, 1, 2); PavilonComp3 (0x85:2) | **the menu, spelled out as the dialogue has it** | a link battle | `globes` |
+| 0x11 | `underground` | Underground1, 2 (0x93:0, 1); unnamed maps (0x93:2) | the menu | a link battle (2 of 21) | `code-2` |
+| 0x12 | `copybot-comp` | CopyBotComp (0x85:4) | the menu |  | `swirls` |
+| 0x13 | `acdc-area` | ACDC Area (0x94:2) | the menu | a link battle (2 of 21) | `calendar-purple` |
+| 0x14 | `graveyard` | Graveyard1 (0x96:0); Graveyard (0x96:1); ImmortalArea (0x96:2) | the menu |  | `storm-clouds` |
+| 0x15 | `mr-weather-comp-storm` | MrWeathrCmp1 (0x83:0) until event flag 0x0be1 is set; MrWeathrCmp2 (0x83:1) until event flag 0x0be2 is set; MrWeathrCmp3 (0x83:2) until event flag 0x0be3 is set; PavilonComp3 (0x85:2) until event flag 0x0fd2 is set | **the menu, and the story state** |  | `globes-2` |
+<!-- /backgrounds:exe6 -->
+
+Mr.Weather's comps are the one place the story changes it (`sub_8081308`'s `word_8081368`: a map and an event
+flag): each draws 0x15 until its typhoon virus is beaten, then 0x10.
+
+**EXE5** has 29. A link battle draws one of 0x00 to 0x1A (0x08129F2C's table at 0x08129F6C, its `link_pick`
+rules' `backgrounds`).
+
+<!-- backgrounds:exe5 -->
+| Number | Name | The maps that draw it (the menu's names; map group:numbers) | Named from | Also | Was (its picture) |
+|---|---|---|---|---|---|
+| 0x00 | `main-comp` | MainComp1, 2 (0x80:0, 1) | the menu | a link battle | `binary` (green 01s and dotted lines on black) |
+| 0x01 | `drill-comp` | DrillComp1, 2, 3, 4 (0x81:0, 1, 2, 3) | the menu | a link battle | `drills` (drills boring through layers of earth) |
+| 0x02 | `lans-hp` | Lan's HP (0x88:0) | the menu | a link battle | `soccer-balls` (soccer balls) |
+| 0x03 | `mayls-hp` | Mayl's HP (0x88:1) | the menu | a link battle | `rabbits-and-apples` (rabbits and apples with hearts, on pink) |
+| 0x04 | `dexs-hp` | Dex's HP (0x88:2) | the menu | a link battle | `faces-and-crosses` (faces and crosses) |
+| 0x05 | `yais-hp` | Yai's HP (0x88:3) | the menu | a link battle | `goldfish` (goldfish (the Japanese ROMs': bubbles in the dark)) |
+| 0x06 | `comp` | DoghouseComp (0x8c:0); KitchenComp (0x8c:2); ElctLockComp (0x8c:3); EngineComp (0x8c:7); ViewComp (0x8c:8); ChipMkrComp (0x8c:9); AirFilterCmp (0x8c:10); ArmorComp (0x8c:11); HelmetComp (0x8c:12); KatanaComp (0x8c:13); FurnaceComp (0x8c:15); ElevatorComp (0x8d:0); CraneComp (0x8d:1); TreeComp (0x8d:2); OldComp (0x8d:3); Dad'sComp (0x8d:4); SculptureCmp (0x8d:5); TerminalComp (0x8d:6); NetBattleCmp (0x8d:7); WineCaseComp (0x8d:8); DumplingComp (0x8d:9); ExpServComp (0x8d:10); WindGodComp (0x8d:11); PipeComp (0x8d:12); SquirrelCmp1, 3, 4, 5, 6, 8 (0x8e:0, 2, 3, 4, 5, 7); SquirelCmp10, 11, 13, 15, 16 (0x8e:9, 10, 12, 14, 15); the default: every real-world map | **no one area: the default, which the comps without their own draw** | 108 battle settings state it; a link battle | `calendar-squares` (yellow turning rings) |
+| 0x07 | `comp-alt` | OldTrmnlComp (0x8c:1); RadarComp (0x8c:4); AirConComp (0x8c:5); ScrewComp (0x8c:6); ServerComp (0x8c:14); MessageComp (0x8d:13); SquirrelCmp2, 7, 9 (0x8e:1, 6, 8); SquirelCmp12, 14 (0x8e:11, 13) | **no one area: the default's picture in its second palette** | 1 battle settings state it (0x08113bf0); a link battle | `rings-blue` (0x06's turning rings in light blue) |
+| 0x08 | `acdc-area` | ACDC Area1, 2 (0x90:0, 1) | the menu | a link battle | `calendar-blue` (blue diamonds rising on black) |
+| 0x09 | `oran-area` | Oran Area1, 2 (0x91:0, 1) | the menu | a link battle | `calendar-gold` (red diamonds rising on black) |
+| 0x0a | `scilab-area` | SciLab1, 2, 4 (0x92:0, 1, 2) | **the menu, spelled out as the dialogue has it** | a link battle | `ones-and-zeros` (slanted 01s and 10s on bright blue) |
+| 0x0b | `visionburst` | unnamed maps (0x8a:0, 0x8a:1, 0x8a:2) | **the dialogue: the menu names none** | a link battle | `grid` (a green grid on black, warping) |
+| 0x0c | `acdc-area3` | ACDC Area3 (0x86:0) | the menu | a link battle | `calendar-blue-2` (0x08's again) |
+| 0x0d | `oran-area3` | Oran Area3 (0x86:1) | the menu | a link battle | `calendar-gold-2` (0x09's again) |
+| 0x0e | `scilab-area3` | SciLab3 (0x86:2) | the menu | a link battle | `ones-and-zeros-2` (0x0a's again) |
+| 0x0f | `end-area` | End Area1, 3, 4 (0x93:0, 1, 2) | the menu | a link battle | `numbers-3` (red and green diamonds on dark red) |
+| 0x10 | `ship-comp` | ShipComp1, 1, 2, 3 (0x82:0, 1, 2, 3) | the menu | a link battle | `ship-wheels` (ship's wheels on blue) |
+| 0x11 | `scilab-hp` | SciLab HP (0x88:4) | the menu | a link battle | `swirls` (swirls) |
+| 0x12 | `end-area2` | End Area2 (0x86:3) | the menu | a link battle | `numbers` (0x0f's again) |
+| 0x13 | `gargcastle-hp` | GargCastleHP (0x88:5) | the menu | a link battle | `lions` (pale lion masks on cream, one lit at a time) |
+| 0x14 | `end-area5` | End Area5 (0x86:4) | the menu | a link battle | `numbers-2` (0x0f's again) |
+| 0x15 | `soulserv-comp` | SoulServComp (0x84:4) | the menu | a link battle | `crests` (dark red crests on black) |
+| 0x16 | `gargoyle-comp` | GargoylComp1, 2, 2, 3 (0x83:0, 1, 2, 3) | **the menu, spelled out as the dialogue has it** | a link battle | `shuriken` (shuriken turning on purple) |
+| 0x17 | `factory-comp` | FactoryComp1, 2, 3, 4 (0x84:0, 1, 2, 3) | the menu | a link battle | `microchips` (gray chips with a magenta core, coming apart) |
+| 0x18 | `undernet` | Undernet1, 2, 3 (0x94:0, 1, 2); NebulaArea6 (0x94:5) | the menu | a link battle | `glyphs-2` (brown speckles) |
+| 0x19 | `nebula-area` | NebulaArea2, 4 (0x94:3, 4) | the menu | a link battle | `glyphs-blue` (0x18's speckles in dark blue) |
+| 0x1a | `undernet4` | Undernet4 (0x86:5) | the menu | a link battle | `glyphs` (0x18's again) |
+| 0x1b | `nebulagray` | none | **the battles that state it: no map draws it** | 2 battle settings state it (0x081140e0, 0x08114270) | unnamed (not looked at) |
+| 0x1c | `nebula-area1` | NebulaArea1, 3, 5 (0x86:6, 7, 8) | the menu |  | unnamed (0x19's again) |
+<!-- /backgrounds:exe5 -->
+
+- A liberation's map (group 0x86) draws its area's picture again: the same load data as the area's other parts
+  (0x0C as 0x08, 0x0D as 0x09, 0x0E as 0x0A, 0x12 and 0x14 as 0x0F, 0x1A as 0x18, 0x1C as 0x19).
+- While its liberation runs, such a map draws another picture. The loader (0x0808C2C8) takes the load data from a
+  second table (0x0808C500, where the usual one is 0x0808C578) when the map is the running mission's (0x08051982)
+  and the battle isn't a link battle; the two tables differ for those seven numbers alone. The pack has the usual
+  table's pictures, which are a link battle's.
+- 0x1B and 0x1C are not among a link battle's, and no recording has shown them: their drawing isn't compared.
+
 ## 2. Running
 
     cargo run -p nettai-frontend -- <trace.jsonl>              # watch a trace
@@ -956,9 +1073,9 @@ seed = 42                                  # optional: the setup's and battle's 
 
 [arena]
 stage = "netbattle-43"                     # a link battle stage of the game's
-background = "honeycomb"                   # optional: else the stage's own
+background = "lans-hp"                     # optional: else the stage's own
 later = [                                  # optional: the set's later rounds (else the first's)
-    { stage = "netbattle-12", background = "code" },
+    { stage = "netbattle-12", background = "undernet" },
     { stage = "netbattle-7" },
 ]
 
