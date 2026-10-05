@@ -6,7 +6,7 @@ recorded case. This note covers what is the engine's, what is content, and how E
 routine. It also covers how EXE5 or BN4 would slot in, how the compile is verified, and what no recording reaches.
 
 The request came from the match editor ("it configures e.g. ruleset, arena, chips, navicust, patch cards"). A match
-file gives each side its NaviCust (docs/frontend.md §6), and nettai-editor edits it as the game does.
+file gives each side its NaviCust (docs/frontend.md §6), and nettai-demo-editor edits it as the game does.
 
 ## 1. The model
 
