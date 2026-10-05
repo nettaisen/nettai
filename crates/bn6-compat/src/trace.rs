@@ -13,6 +13,9 @@ use std::sync::Arc;
 /// starts running.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Setup {
+    /// The game the recording is of: this crate's ([`crate::ROOT`]; another
+    /// game's recording is refused, one that says none doesn't parse).
+    pub game: String,
     pub frame: u32,
     pub settings_ptr: u32,
     /// BattleSettings (0x10 bytes), hex.
@@ -38,10 +41,8 @@ pub struct Setup {
     pub joypad_phases: [u8; 2],
     /// Both players' games ("gregar" or "falzar"), by side.
     pub game_versions: [String; 2],
-    /// Both consoles' regions ("us" or "jp"), by side, when the recorder
-    /// says them (it does when one is Japanese); else both are the US's.
-    #[serde(default)]
-    pub game_regions: Option<[String; 2]>,
+    /// Both consoles' regions ("us" or "jp"), by side.
+    pub game_regions: [String; 2],
     /// Both players' bug frags (`dword_203F7E0`).
     pub bug_frags: [u32; 2],
     /// Both players' link navi levels (`dword_203CFA0`; 0xFF: no navi
@@ -203,6 +204,26 @@ struct SetupLine {
     setup: Setup,
 }
 
+/// A setup line's setup. Another game's recording is refused (its game is
+/// read first: its line hasn't this game's keys); a line that doesn't
+/// parse panics, like any malformed line, and one that states no game is
+/// such a line (`game` is required: nothing takes it for this game's).
+fn setup_of(line: &str) -> Result<Setup, String> {
+    #[derive(Deserialize)]
+    struct Stated {
+        game: Option<String>,
+    }
+    #[derive(Deserialize)]
+    struct StatedLine {
+        setup: Stated,
+    }
+    let stated = serde_json::from_str::<StatedLine>(line).unwrap_or_else(|e| panic!("parsing setup: {e}")).setup.game;
+    if let Some(game) = stated.filter(|g| g != crate::ROOT) {
+        return Err(format!("a {game} recording"));
+    }
+    Ok(serde_json::from_str::<SetupLine>(line).unwrap_or_else(|e| panic!("parsing setup: {e}")).setup)
+}
+
 /// Read a trace file, one line at a time (a frame's console is the last
 /// setup's).
 pub fn read(path: impl AsRef<std::path::Path>) -> std::io::Result<impl Iterator<Item = Line>> {
@@ -211,7 +232,7 @@ pub fn read(path: impl AsRef<std::path::Path>) -> std::io::Result<impl Iterator<
     Ok(f.lines().map(move |l| {
         let l = l.expect("reading trace");
         if l.starts_with("{\"setup\"") {
-            let setup = serde_json::from_str::<SetupLine>(&l).expect("parsing setup").setup;
+            let setup = setup_of(&l).unwrap_or_else(|e| panic!("{e}"));
             console = setup.console_game();
             Line::Setup(setup)
         } else {
@@ -288,7 +309,8 @@ pub struct Round {
     pub frames: Vec<Frame>,
 }
 
-/// Split a trace into rounds.
+/// Split a trace into rounds. Another game's recording is an error
+/// ("a bn5 recording").
 pub fn rounds(path: impl AsRef<std::path::Path>) -> std::io::Result<Vec<Round>> {
     let f = std::io::BufReader::new(std::fs::File::open(path)?);
     let mut rounds: Vec<Round> = Vec::new();
@@ -296,7 +318,7 @@ pub fn rounds(path: impl AsRef<std::path::Path>) -> std::io::Result<Vec<Round>> 
     for l in f.lines() {
         let l = l?;
         if l.starts_with("{\"setup\"") {
-            let setup = serde_json::from_str::<SetupLine>(&l).expect("setup").setup;
+            let setup = setup_of(&l).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
             rounds.push(Round { setup, exchanges: std::mem::take(&mut pending_exchanges), frames: Vec::new() });
         } else if l.starts_with("{\"exchange\"") {
             let e = serde_json::from_str::<ExchangeLine>(&l).expect("exchange").exchange;
@@ -319,7 +341,7 @@ impl Setup {
     pub fn console_game(&self) -> Game {
         let local = unhex(&self.battle_state)[0x0D] as usize & 1;
         let version = self.game_versions[local].as_str();
-        let region = self.game_regions.as_ref().map_or("us", |r| r[local].as_str());
+        let region = self.game_regions[local].as_str();
         Game::of_names(version, region)
     }
 }
@@ -963,6 +985,22 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A recording is this game's when its setup says so: another game's
+    /// is refused by name.
+    #[test]
+    fn another_games_recording_is_refused() {
+        let e = setup_of(r#"{"setup": {"game": "bn5", "frame": 10}}"#).unwrap_err();
+        assert_eq!(e, "a bn5 recording");
+    }
+
+    /// A setup that states no game is no recording of this game's: nothing
+    /// takes it for one.
+    #[test]
+    #[should_panic(expected = "missing field `game`")]
+    fn a_setup_states_its_game() {
+        let _ = setup_of(r#"{"setup": {"frame": 72, "game_versions": ["falzar", "falzar"]}}"#);
+    }
 
     #[test]
     fn unlocks_from_event_flags() {

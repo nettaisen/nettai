@@ -189,32 +189,54 @@ impl Driver for TracePlayer {
     }
 }
 
-/// Every round of a trace file, on `content`, each as a driver: a BN6
-/// recording's ([`TracePlayer`]), or a BN5 one's (its setup line says
-/// `"game":"bn5"`: [`Bn5TracePlayer`]), with its round's number.
+/// Every round of a trace file, on `content`, each as a driver, with its
+/// round's number: the recording is of the game its setup line states
+/// ([`trace_game`]), which is `content`'s; a BN6 recording's rounds are
+/// [`TracePlayer`]s, a BN5 one's [`Bn5TracePlayer`]s. A recording that
+/// states no game, another game than the content's, or a game no player
+/// here replays is refused.
 pub fn trace_rounds(path: &std::path::Path, content: &Arc<Content>) -> Result<Vec<(usize, Box<dyn Driver>)>, String> {
-    if trace_game(path).map_err(|e| e.to_string())?.as_deref() == Some("bn5") {
-        let rounds = Bn5TracePlayer::load(path, content)?;
-        return Ok(rounds.into_iter().map(|r| (r.round_number, Box::new(r) as Box<dyn Driver>)).collect());
+    let game = trace_game(path)?;
+    if game != content.game() {
+        return Err(format!("a {game} recording, and the content loaded is {}'s (--game {game})", content.game()));
     }
-    let rounds = TracePlayer::load(path, content).map_err(|e| e.to_string())?;
-    Ok(rounds.into_iter().map(|r| (r.round_number, Box::new(r) as Box<dyn Driver>)).collect())
+    match game.as_str() {
+        bn6_compat::ROOT => {
+            let rounds = TracePlayer::load(path, content).map_err(|e| e.to_string())?;
+            Ok(rounds.into_iter().map(|r| (r.round_number, Box::new(r) as Box<dyn Driver>)).collect())
+        }
+        bn5_compat::ROOT => {
+            let rounds = Bn5TracePlayer::load(path, content)?;
+            Ok(rounds.into_iter().map(|r| (r.round_number, Box::new(r) as Box<dyn Driver>)).collect())
+        }
+        other => Err(format!("a {other} recording: no game this frontend replays recordings of")),
+    }
 }
 
-/// The game a trace's first setup line names (`"game"`; BN6's recordings
-/// name none).
-fn trace_game(path: &std::path::Path) -> std::io::Result<Option<String>> {
+/// The game a recording is of: the one its first setup line states
+/// (`"game"`). A recording without a setup line, or whose setup states no
+/// game, is an error: nothing here takes a recording for a game it doesn't
+/// name.
+pub fn trace_game(path: &std::path::Path) -> Result<String, String> {
     use std::io::BufRead;
-    let file = std::io::BufReader::new(std::fs::File::open(path)?);
+    #[derive(serde::Deserialize)]
+    struct Line {
+        setup: Stated,
+    }
+    #[derive(serde::Deserialize)]
+    struct Stated {
+        game: Option<String>,
+    }
+    let file = std::io::BufReader::new(std::fs::File::open(path).map_err(|e| e.to_string())?);
     for line in file.lines() {
-        let line = line?;
+        let line = line.map_err(|e| e.to_string())?;
         if !line.starts_with("{\"setup\"") {
             continue;
         }
-        let game = line.split_once("\"game\":\"").and_then(|(_, rest)| rest.split_once('"')).map(|(g, _)| g.to_string());
-        return Ok(game);
+        let stated: Line = serde_json::from_str(&line).map_err(|e| format!("its setup line: {e}"))?;
+        return stated.setup.game.ok_or_else(|| "its setup line states no game (`\"game\"`)".to_string());
     }
-    Ok(None)
+    Err("it has no setup line".into())
 }
 
 // ---- BN5's recordings -------------------------------------------------------
@@ -938,5 +960,35 @@ mod tests {
             assert_eq!(button, if level.is_none() { Some("beast_out") } else { None }, "level {level:?}");
             assert_eq!(nettai_render::custom::CrossWindow::of(&b, 0).unwrap().count, 5, "level {level:?}");
         }
+    }
+
+    /// A recording is of the game its setup line states, and of no game
+    /// when it states none: nothing takes it for BN6's.
+    #[test]
+    fn a_recording_is_of_the_game_it_states() {
+        let dir = std::env::temp_dir().join(format!("nettai-frontend-trace-game-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let write = |name: &str, text: &str| {
+            let path = dir.join(name);
+            std::fs::write(&path, text).unwrap();
+            path
+        };
+        let exchange = "{\"exchange\":{\"frame\":1}}\n";
+        let six = write("six.jsonl", &format!("{exchange}{{\"setup\":{{\"game\":\"bn6\",\"frame\":72}}}}\n"));
+        assert_eq!(trace_game(&six).as_deref(), Ok("bn6"));
+        // (Written by hand, with spaces.)
+        let five = write("five.jsonl", "{\"setup\": {\"frame\": 10, \"game\": \"bn5\"}}\n");
+        assert_eq!(trace_game(&five).as_deref(), Ok("bn5"));
+        let none = write("none.jsonl", "{\"setup\":{\"frame\":72,\"game_versions\":[\"falzar\",\"falzar\"]}}\n");
+        assert!(trace_game(&none).unwrap_err().contains("states no game"));
+        let empty = write("empty.jsonl", exchange);
+        assert!(trace_game(&empty).unwrap_err().contains("no setup line"));
+        // A recording of another game than the content's, or of none, plays
+        // on no content.
+        let content = nettai_match::testing::bn6_content();
+        let refused = |path: &std::path::Path| trace_rounds(path, &content).err().expect("refused");
+        assert!(refused(&five).contains("a bn5 recording, and the content loaded is bn6's"), "{}", refused(&five));
+        assert!(refused(&none).contains("states no game"));
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

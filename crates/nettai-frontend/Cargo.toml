@@ -29,6 +29,8 @@ minifb = "0.28"
 # A netplay offer: a match file's names, in TOML.
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
+# A recording's setup line, for the game it states.
+serde_json = "1"
 
 [dev-dependencies]
 # Reading the headless test's PNGs back.

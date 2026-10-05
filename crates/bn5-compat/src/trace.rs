@@ -282,7 +282,7 @@ impl DecodedSetup {
 }
 
 pub fn decode_setup(s: &Setup) -> Result<DecodedSetup, String> {
-    if s.game != "bn5" {
+    if s.game != crate::ROOT {
         return Err(format!("a {} recording", s.game));
     }
     let version = |v: &str| match v {

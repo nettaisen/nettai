@@ -68,15 +68,16 @@ usage: nettai-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
        nettai-frontend [OPTIONS] --audit-content
        nettai-frontend [OPTIONS] --audit TRACE.jsonl...
 
-  You play one game, BN6 or BN5: a match file names its game, else --game
-  does (default bn6). The battle is that game's: its content folder and the
+  You play one game, BN6 or BN5: a match file names its game and a trace
+  states its own, else --game does (default bn6). The battle is that game's: its content folder and the
   support folders it uses, drawn and heard from its pack (graphics and
   sound, written from your ROMs by `bn6-extract content <falzar-us>
   <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6`, BN5's by
   bn5-extract), found in the packs directory, $NETTAI_PACKS, else
   data/content, each pack by the game it says.
-  --game GAME      the game played without a match file: bn6 (default) or
-                   bn5 (a match file's game is its own)
+  --game GAME      the game played without a match file or a trace: bn6
+                   (default) or bn5 (a match file's game is its own, and so
+                   is a trace's: one of another game than GAME is refused)
   --pack DIR       a pack's directory, in place of the found pack of its game
   --content DIR    the content directory (default: $NETTAI_CONTENT, else
                    this repository's content/)
@@ -544,12 +545,21 @@ fn main() {
             std::process::exit(2);
         }
     };
-    // The game played: the match file's, else --game's, else BN6.
+    // The game played: the match file's; a recording's own (the one its
+    // setup states, which --game, if given, must be); else --game's, else
+    // BN6 (a live match with no file).
     let file_text = args.match_file.as_deref().map(match_text);
-    let game = match &file_text {
-        Some(text) => nettai_match::file::game_of(text)
+    let game = match (&file_text, args.traces.first()) {
+        (Some(text), _) => nettai_match::file::game_of(text)
             .unwrap_or_else(|e| fail(format!("{} can't be played: {e}", args.match_file.as_ref().unwrap().display()))),
-        None => args.game.clone().unwrap_or_else(|| nettai_match::DEFAULT_GAME.to_string()),
+        (None, Some(trace)) => {
+            let stated = nettai_frontend::driver::trace_game(trace).unwrap_or_else(|e| fail(format!("can't play {}: {e}", trace.display())));
+            if let Some(given) = args.game.as_ref().filter(|g| **g != stated) {
+                fail(format!("{} is a {stated} recording, not a {given} one (--game)", trace.display()));
+            }
+            stated
+        }
+        (None, None) => args.game.clone().unwrap_or_else(|| nettai_match::DEFAULT_GAME.to_string()),
     };
     // The packs found in the packs directory (and given by --pack), and the
     // game's content.

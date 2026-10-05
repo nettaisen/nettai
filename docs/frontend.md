@@ -54,8 +54,10 @@ names the content gives them. Extract it once:
     cargo run -p bn6-extract -- content <falzar-us> <gregar-us> <falzar-jp> <gregar-jp> data/content/bn6
 
 (`data/content/` is gitignored.) **You play one game**, BN6 or BN5: a match
-is of one game (§6), which a match file names (`game = "bn6"`), else
-`--game GAME` (default `bn6`); with a trace, `--game`'s. The battle is that
+is of one game (§6), which a match file names (`game = "bn6"`) and a
+trace states (its setup line's `"game"`: one that states none, or another
+game than a `--game` given, is refused; nothing takes a recording for a
+game it doesn't name), else `--game GAME` (default `bn6`). The battle is that
 game's content, drawn and heard from its pack: there is no mixing of games,
 no other game's chip, navi or field art. The frontend (and the editor)
 finds at start-up
@@ -776,7 +778,7 @@ them).
   another region's ROMs, and around an object drawn with a sprite of another
   region's ROMs, 48 pixels around it (`objects::OTHER_REGION_MARGIN`: the
   US's sprite there may reach past the Japanese one). The console's region is
-  the trace's (`game_regions`; US without it).
+  the trace's (`game_regions`).
 - **Deliberate: a version's own chips on the other version's console.**
   Each ROM draws its own version's chips and has their art again at the
   other version's counterparts: BN6's five Giga chips a version (Bass and
