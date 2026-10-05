@@ -19,6 +19,9 @@ return {
     damage_word = "statuses_and_bug",
     obstacle_soldiers = true,
     palette_flash = "pause_holds",
+    -- Presentation: its flash is a palette transform in slot 9 (0x080E104C), before the fade system's (slots 18 on), so
+    -- a dimming darkens the white it put in the stage's palettes: a flash under a dimming is white a quarter down.
+    palette_flash_order = "before_fades",
     -- Its afterimages (0x080E35F4) and form overlays don't run while paused (no header flag 0x04).
     overlays_run_while_paused = false,
     -- Its sprites' frame load (0x03006898) leaves the palette offset of a frame's first part to the next step
