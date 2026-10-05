@@ -708,6 +708,30 @@ impl Battle {
         let objects = Objects::with_capacity(content.rules().pools.slots());
         let hands = [ChipHand::empty(&content), ChipHand::empty(&content)];
         let rules = [0, 1].map(|p| crate::rules::SideRules::for_player(&content, &mut setup.players[p]));
+        let navi_levels: [u8; 2] = std::array::from_fn(|side| {
+            // (A setup's checks refuse a level past the navi codes:
+            // the tables a level reads stop there.)
+            let p = &setup.players[side];
+            let level = p.navi_level.unwrap_or(0xFF);
+            assert!(
+                p.navi_level.is_none_or(|l| l <= crate::custom::MAX_NAVI_LEVEL),
+                "a navi code's level is 0 to {}, not {level}",
+                crate::custom::MAX_NAVI_LEVEL
+            );
+            // A navi with a story (EXE5's team navis) has its side's
+            // level, up to its last: its attacks' damage is read at it.
+            let navi = setup.navi_stats[side].navi;
+            if let Some(story) = &content.navi(navi).story {
+                assert!(
+                    p.navi_level.is_some_and(|l| l <= story.max_level),
+                    "side {side} operates {}, whose level is 0 to {}: its setup states {:?}",
+                    content.defs.navi(navi).key,
+                    story.max_level,
+                    p.navi_level
+                );
+            }
+            level
+        });
         let mut b = Battle {
             content,
             stats: setup.navi_stats,
@@ -743,17 +767,7 @@ impl Battle {
             turn_transforms: [TransformRequest::NONE; 2],
             transform_seq: TransformSequencer::default(),
             custom_reversion: Default::default(),
-            navi_levels: setup.players.each_ref().map(|p| {
-                // (A setup's checks refuse a level past the navi codes:
-                // the tables a level reads stop there.)
-                let level = p.navi_level.unwrap_or(0xFF);
-                assert!(
-                    p.navi_level.is_none_or(|l| l <= crate::custom::MAX_NAVI_LEVEL),
-                    "a navi code's level is 0 to {}, not {level}",
-                    crate::custom::MAX_NAVI_LEVEL
-                );
-                level
-            }),
+            navi_levels,
             objects,
             actors: Actors::default(),
             collision: Collision::new(),

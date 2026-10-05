@@ -57,3 +57,4 @@
 "dark-survival" = 0x30
 # The team navis' weapons' actions (navis/<navi>): ProtoMan's B+Back (the guard's action, as the Reflect program's).
 "protoman/back/action" = 0x1F
+"colonel/charge/action" = 0x07
