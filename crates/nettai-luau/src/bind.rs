@@ -2691,7 +2691,8 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
                 | RulesHook::WindowUpdate
                 | RulesHook::CustomKeys
                 | RulesHook::CustomTakeBack
-                | RulesHook::NaviBug,
+                | RulesHook::NaviBug
+                | RulesHook::HpEmptied,
             ..
         } => Ok(Value::Bool(v == LuaValue::Boolean(true))),
         // A button's chip.

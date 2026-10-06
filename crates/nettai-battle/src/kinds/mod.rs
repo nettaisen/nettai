@@ -211,13 +211,13 @@ pub fn generic_destroy(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `object_subtractHP`: the HP down by `amount`, to 0; by EXE5's rules
-/// also its side's gauge and its last stand (`player::lose_hp_gauge_and_last_stand`).
-/// Whether the register its callers read next (r1) is left non-zero: the
-/// HP left, or at 0 what EXE5's check leaves there (EXE5's
-/// `applyDamageToPlayer` shows the hit by it).
+/// also its side's gauge, and at 0 the side's rules asked
+/// (`player::lose_hp_and_gauge`). Whether the register its callers read
+/// next (r1) is left non-zero: the HP left, or at 0 the rules' answer
+/// (EXE5's `applyDamageToPlayer` shows the hit by it).
 pub fn subtract_hp(b: &mut Battle, r: ObjectRef, amount: u16) -> bool {
-    if b.game_rules().intake.hp_loss == crate::content::HpLoss::GaugeAndLastStand {
-        return player::lose_hp_gauge_and_last_stand(b, r, amount);
+    if b.game_rules().intake.hp_loss == crate::content::HpLoss::Gauge {
+        return player::lose_hp_and_gauge(b, r, amount);
     }
     let o = b.objects.get_mut(r);
     o.hp = o.hp.saturating_sub(amount);

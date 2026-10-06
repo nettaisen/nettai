@@ -1576,11 +1576,10 @@ fn navi_chip(view: &PlayerView) -> Option<FolderChip> {
     view.library.navi_chip(view.stats.navi)
 }
 
-/// `sub_802A40C` without a form's share (EXE6's: ChargeCross's chips, and
-/// NumbrOpn not in DustCross, which rules/cross's
-/// `custom.hand_size` adds): how many chips a screen deals by the custom
-/// level, NumbrOpn and the hand-shrink bug, when the side's rules don't
-/// say.
+/// `sub_802A40C`'s framework part, when the side's rules don't say (a
+/// game's own, ChargeCross's chips and NumbrOpn's ten, is its rules'
+/// `custom.hand_size`: EXE6's rules/cross): how many chips a screen deals
+/// by the custom level and the hand-shrink bug.
 fn hand_size(view: &PlayerView, turn: u8) -> u8 {
     let s = view.stats;
     let mut extra: i16 = 0;
@@ -1588,10 +1587,6 @@ fn hand_size(view: &PlayerView, turn: u8) -> u8 {
     if n > 8 {
         extra = n - 8;
         n = 8;
-    }
-    if s.number_open {
-        n = 10;
-        extra = 0;
     }
     let bug = s.bugs.hand_shrink_turn;
     if bug != 0 && turn >= bug {

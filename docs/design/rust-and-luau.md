@@ -53,17 +53,17 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 |---|---|---|---|---|---|
 | Beast Out and Beast Over | | 2 | 1 | | 3 |
 | Crosses and the form framework | | | 2 | | 2 |
-| Emotions | | 2 | 1 | 3 | 6 |
+| Emotions | | 1 | 1 | 3 | 5 |
 | NaviCust | | 2 | | 2 | 4 |
 | Souls and Chaos Unison | 1 | 1 | 1 | | 3 |
 | The stat block and versions | | 1 | 1 | | 2 |
-| Tools | | 1 | 1 | | 2 |
-| Across features | | 1 | | | 1 |
-| **All** | **1** | **10** | **7** | **5** | **23** |
+| Tools | | | 1 | | 1 |
+| **All** | **1** | **7** | **7** | **5** | **20** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
-dead code; the library agent's steps did N5, T2 and T4. They are listed under [Done](#done) with their new names.
-X5 is new: what X4's rename left of EXE5's logic.
+dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
+the kind (b) entries one at a time. They are listed under [Done](#done) with their new names. X5 is new: what X4's
+rename left of EXE5's logic.
 
 ### Beast Out and Beast Over (EXE6)
 
@@ -142,10 +142,6 @@ X5 is new: what X4's rename left of EXE5's logic.
 
   *(c)* Faces keyed by the game's emotion names once E1 is done. The second set of faces is a look the rules push
   (`face_hub` already is; `face_chaos` follows S1).
-- **E6. EXE5's last stand** (`last_stand`, `hold_last_stand`, player/mod.rs:427–460, from `lose_hp_gauge_and_last_stand`,
-  :477, and `apply_damage_gauge_and_last_stand`, status.rs:339; `HpLoss::GaugeAndLastStand`, rules.rs:471). A dark MegaMan holds at 1 HP once a
-  battle. *(b)* A hook when a player's HP reaches 0. EXE5's rules/emotion/dark_survival.luau already plays the volley.
-  About 40 lines, and the hook is rare. The side gauge's drain on HP loss is a rule variant (X2's kind).
 
 ### NaviCust (both games)
 
@@ -209,24 +205,8 @@ X5 is new: what X4's rename left of EXE5's logic.
 
 ### Tools (nettai-match)
 
-- **T1. The save importers** (import.rs: EXE6's version, Beast Out, owned Crosses, level and SP times, with fact names
-  as strings, 97 lines; import_exe5.rs: karma, souls, the unisons, ExpMemry, auto battle data and the team navi, 166
-  lines). *(b)* A game's save is its Luau's (the line above). Each compat crate keeps decoding the bytes; turning the
-  save into facts moves to a rules hook (`import_save`, given the decoded save as a table). Tool-only. **Settled**
-  by a move (the user: "import code should move out of nettai-match i think and into compat"): the import belongs
-  to the compat boundary, not the rules or nettai-match. `exe6_compat::import` and `exe5_compat::import` each give a
-  whole side by field name; nettai-match depends on no compat crate; the caller (nettai-demo's `save_import`)
-  imports a save into the arena's game, refusing one of another game. No rules hook.
 - **T3. The stats pane and navi views** (stats.rs: every `NaviStats` field by name, the per-game ones among them;
   link_navis.rs; story.rs). *(c)* Follows V1: the stats by role, and a game's own from its rules state's schema.
-
-### Across features
-
-- **X5. The obstacles' conversion** (`conversion_step`, `conversion_call`, kinds/obstacle.rs:525–620): EXE5's
-  ColonelSoul army's step in an obstacle's reactions (0x080CAB02), which looks for where an armed side can use the
-  obstacle and turns it into the side's converted obstacle (the role `converted_obstacle`, its `ranged` state set by
-  the engine). Renamed in step 1 (X4); the search is still EXE5's logic. *(b)* A hook on an obstacle's reaction in
-  EXE5's rules, with the search in Luau. About 100 lines; it runs on an obstacle's reaction while a side is armed.
 
 ### Done
 
@@ -265,12 +245,21 @@ Each with what it was and what it is now.
 - **D2.** `dark_substitute` is `rules_substitute`.
 - **D3.** `BattleInfo::{NoDarkChips, LightDarkHeld}` and `effects::{NO_DARK_CHIPS, LIGHT_DARK_HELD}` are
   `BattleInfo::Effects` (`battle.effects()`), whose bits EXE5's rules/light_dark names.
+- **E6.** EXE5's last stand is its rules' `hp_emptied(side, navi)` hook (EXE5's rules/emotion/dark_survival: the check
+  0x0802C16C, the hold at 1 HP and the volley's request), which a loss of HP to 0 asks under `status.hp_loss =
+  "gauge"` (was `gauge_and_last_stand`), an object with actor data's, and whose answer says whether the hit shows.
+  `LastStand`, `last_stand` and `hold_last_stand` are gone; the HP loss is `lose_hp_and_gauge` and
+  `apply_damage_shown_by_hp` (X2's names before). A Luau call per navi whose HP reaches 0, only in EXE5.
 - **N5** (step c3b). The NaviCust section, `NaviCustRules` and navicust.rs are gone; the board is the game's
   rules/navicust/board.luau, which the editor reads as data.
 - **N6.** `clear_bugs`, `init_round_state`, `reset_abilities`, `refresh_abilities`, `apply_ability_flags`,
   `low_hp_support`, and the form's `ability_refresh` (was `navicust_refresh`).
 - **S2, its record's names.** `TransformRequest::alternate`, `form_change_terms`, `custom_set_form`'s `alternate`
   and `Screen::form_alternate` (were `chaos`, `form_change_soul`, `form_chaos`).
+- **T1.** The save importers are the compat crates' (the user: "import code should move out of nettai-match i think
+  and into compat"): `exe6_compat::import` and `exe5_compat::import` each give a whole side by field name, from the
+  save's decoded bytes; nettai-match depends on no compat crate, and the caller (nettai-demo's `save_import`) imports
+  a save into the arena's game, refusing one of another game. No rules hook: the import is the boundary's.
 - **T2.** EXE5's auto battle view is gone, by removal: nettai-match's view, the learner and its exe5_compat call
   (the user: "i don't think you need learning right? since the battles are one-off"). A random EXE5 match states no
   auto battle data; the editor's pane reads the two facts by field name, laid out by EXE5's rules/auto_battle/block
@@ -291,6 +280,12 @@ Each with what it was and what it is now.
   `KindRole::ConvertedObstacle` (`converted_obstacle`) and its state field `ranged`. DustMan's junk is the absorbed
   look: `absorbed_look`, `wear_absorbed_look`. `spawn_mode9_objects` and `start_stance_counter` stay: they name the
   original's battle mode 9 and a stance's counter, not a feature.
+
+- **X5.** The obstacles' conversion is EXE5's rules' `obstacle_reaction(side, obstacle)` hook (objects/soldier's: the
+  search 0x080CAB02 and the soldier's spawn 0x080CAAE2), which an obstacle's reaction asks outside the dimming and
+  past its first action while a side is armed (`obstacle.arm_conversion`, which stays the framework's).
+  `conversion_call`, the rule `effects.obstacle_conversion` and the role `KindRole::ConvertedObstacle` are gone. A Luau
+  call per obstacle reaction while a side is armed.
 
 The [stated rule](#the-line) still holds as the goal: when B1–B9, C1–C10 and the rest are done, Rust knows no
 "beast", no "cross", no "soul" and no "exe5".

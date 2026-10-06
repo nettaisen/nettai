@@ -377,21 +377,19 @@ fn dust_cross_scrapping_the_regular_chip_ends_it() {
 
 #[test]
 fn hand_size() {
-    let size = |custom_level: u8, shrink: u8, turn: u8, number_open: bool| {
+    let size = |custom_level: u8, shrink: u8, turn: u8| {
         let mut p = Player::new(&[]);
         p.stats.custom_level = custom_level;
         p.stats.bugs.hand_shrink_turn = shrink;
-        p.stats.number_open = number_open;
         let ctx = Context { turn, ..p.context() };
         let mut side = p.side.clone();
         side.open(&ctx, &mut p.console.clone());
         side.screen.unwrap().hand_size
     };
-    assert_eq!(size(5, 0, 1, false), 5);
-    assert_eq!(size(10, 0, 1, false), 8);
-    assert_eq!(size(6, 2, 2, false), 5);
-    assert_eq!(size(6, 2, 5, false), 2);
-    assert_eq!(size(5, 0, 1, true), 10);
+    assert_eq!(size(5, 0, 1), 5);
+    assert_eq!(size(10, 0, 1), 8);
+    assert_eq!(size(6, 2, 2), 5);
+    assert_eq!(size(6, 2, 5), 2);
 }
 
 #[test]

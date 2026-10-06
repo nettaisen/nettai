@@ -1598,10 +1598,10 @@ declare obstacle: {
     -- EXE5's ColonelSoul army (docs/design/exe5-map.md §15.11): arm side
     -- `side` (BattleState+0x5C bit 0x10 or 0x20, 0x080CAC1E) with its
     -- soldiers' damage words (0x080CABF8): the sword soldier's and the gun
-    -- soldier's. While it is armed, an obstacle of a game whose rules have
-    -- `effects.obstacle_conversion`, standing on a panel of the side's enemy
-    -- with one of the enemy's bodies on its row, turns into the side's
-    -- soldier (the role `kinds.converted_obstacle`).
+    -- soldier's. While a side is armed, an obstacle's reaction asks the
+    -- rules (`obstacle_reaction`: EXE5's turns one standing on a panel of
+    -- the side's enemy, with one of the enemy's bodies on its row, into the
+    -- side's soldier).
     arm_conversion: (side: number, melee: number, ranged: number) -> (),
     -- 0x080CAC30: disarm side `side`; its words stay.
     disarm_conversion: (side: number) -> (),
@@ -1933,6 +1933,15 @@ export type RulesSpec = {
         -- Before the navi takes its hit's NaviCust bug (`sub_80139F6`, EXE5's 0x0801103E): the rules may change the bug
         -- (`navi.collision.inflicted_bugs`), or answer true: the bug and the weapons' reload are skipped.
         navi_bug: ((side: number, navi: Object) -> boolean?)?,
+        -- A loss of HP brought the side's navi to 0, by a game whose HP loss asks (`status.hp_loss = "gauge"`: EXE5's
+        -- object_subtractHP, 0x0800C6E0, calling 0x0802C16C): the rules may hold it (EXE5's last stand), and answer
+        -- true: the hit shows (white, its sounds: EXE5's applyDamageToPlayer, 0x080185A2); none, it doesn't.
+        hp_emptied: ((side: number, navi: Object) -> boolean?)?,
+        -- An obstacle's reaction (after the damage and the crushing hits) leaves it standing, outside the dimming and
+        -- past its first action, while a side is armed (`obstacle.arm_conversion`): the rules may turn it into
+        -- something else and break it (its HP and max HP to 0: EXE5's ColonelSoul army, 0x080CAB02). `side` is the
+        -- obstacle's.
+        obstacle_reaction: ((side: number, obstacle: Object) -> ())?,
         -- Each tick of the idle action of a navi whose side's takeover runs
         -- (`sub_802D4C6`), in place of the player's decisions: what it did,
         -- as `controller` answers, or "own_chip" (an attack of its own

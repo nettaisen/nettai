@@ -2563,7 +2563,7 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   | `reactions.hit_test` | `exe6`, `exe5` | a table: `float_shoe_needs_self_bit`, `bubbled_as_submerged`, `elec_reaches_submerged`, `guard_breaks_to`, `elec_bonus_on_sea` |
   | `reactions.obstacle_slide_bounds` | part of `push_reading` | a setting of its own |
   | `status.reactions` | `exe6`, `exe5` | `flash_timer_last`, `flash_timer_first` |
-  | `status.hp_loss` | `exe6`, `exe5` | `hp_alone`, `gauge_and_last_stand` |
+  | `status.hp_loss` | `exe6`, `exe5` | `hp_alone`, `gauge` |
   | `status.form_break` | `exe6`, `exe5` | `cross_or_beast`, `any_form` |
   | `status.emotions` | `exe6`, `exe5` | split since (below): `status.emotion`'s seven rules and `effects.full_synchro_aura`'s three |
 
@@ -2571,7 +2571,7 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   `retype` (what is set, the dimmed mark, a bug code's high byte), `damage_word` (the whole decode of the flag
   bits), `palette_flash` (the pause, and for variant 1 the dimming), `push_reading` (a navi's push and an
   obstacle's), `status.reactions` (the order, when the flash's timer runs, what a drag or a flinch resets),
-  `hp_loss` (the gauge, the last stand, how a hit shows), `form_break` (which forms break, and the break's
+  `hp_loss` (the gauge, asking the rules at 0 HP, how a hit shows), `form_break` (which forms break, and the break's
   animation, overlay and collision region).
 - **`status.emotions` had no honest short name** as one rule: it picked one of two whole emotion models. It has
   since been split into what it switched, each named for what it does ("`status.emotions`, split", below); no rule
