@@ -82,7 +82,7 @@ Create a match file with the match editor below, then run the frontend:
     cargo run --release -p nettai-demo -- --match match.toml --headless 1-120 --out <dir>  # render frames to PNG
 
 In live play alone you are the left navi, and the right one is a stand-in that stands still. The match file sets
-the game, arena, each side's navi, folder, version, forms, patch cards, NaviCust and what its save brings to the
+the game, its rounds (one `[[round]]` each: the set is as many rounds, three for the original's best of three), each side's navi, folder, version, forms, patch cards, NaviCust and what its save brings to the
 stats (the rules build the rest). Its optional `seed` sets the
 battle's RNG; without one, the seed comes from the clock. Each start prints it, and `--show-folders` prints the
 folders. The editor's Random button creates a random setup you can save and play. Keys: the arrows move, Z is A, X is B, A is L,
@@ -104,7 +104,7 @@ forwarded to the host's machine:
     cargo run --release -p nettai-demo -- --match match.toml --join 192.0.2.10:7777        # join, the right navi
 
 Both need the same engine, game and content pack (the handshake checks, and says what differs). Each brings the
-left side of their own match file; the host's file supplies the arena. The battle's RNG comes from both players'
+left side of their own match file; the host's file supplies the rounds (both files list as many). The battle's RNG comes from both players'
 randomly generated seed halves. Both play with rollback: inputs go out every frame, the other player's are predicted until they
 arrive, and the battle is simulated again when a prediction was wrong. The window's title shows the round trip, the
 loss, the present delay (`--present-delay N`, default 0, and `[` and `]` during the match: how far behind your newest
@@ -126,7 +126,8 @@ These checks need no ROM:
 
 ## The match editor
 
-A match file sets up a round of one game, EXE6 or EXE5: the game (which is its rules), the arena (stage and background),
+A match file sets up a set of one game, EXE6 or EXE5: the game (which is its rules), its rounds (each a stage and
+background, a part left out picked from the seed),
 and each side's navi, folder, patch cards and NaviCust, and what the game's rules take of a side besides (its
 facts: EXE6's version and Crosses, EXE5's karma and souls, and what a save brings to the stats, the base HP and the
 Regular memory), each by its name in the game. A side states no stats: the game's rules build them as the round is

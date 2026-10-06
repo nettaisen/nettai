@@ -360,7 +360,7 @@ mod tests {
             assert!(apply(&six, "exe6", side, name, &Edit::Default), "{name}");
             assert!(side.facts.is_default(&six, name), "{name}");
         }
-        assert_eq!(nettai_match::check::check_side_alone(&six, &m.arena, &m.sides[0]).iter().filter(|p| !p.contains("folder")).count(), 0);
+        assert_eq!(nettai_match::check::check_side_alone(&six, &m.game, &m.sides[0]).iter().filter(|p| !p.contains("folder")).count(), 0);
         // A navi that doesn't change form is offered no form list.
         let side = &mut m.sides[0];
         side.set_navi(&six, nettai_match::ids::navi(&six, "exe6", "protoman").unwrap()).unwrap();
