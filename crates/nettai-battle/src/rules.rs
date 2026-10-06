@@ -8,7 +8,7 @@
 //! (`system.state()` in a hook): a side's rules see the other side through
 //! the engine alone.
 
-use nettai_content_api::{ChipHandle, ContentState, FieldType, FieldValue, FormHandle, HookCall, ObjectRef, SystemHook, Value, WeaponHandle};
+use nettai_content_api::{Block, ChipHandle, FieldType, FieldValue, FormHandle, HookCall, ObjectRef, SystemHook, Value, WeaponHandle};
 
 use crate::battle::Battle;
 use crate::content::{Content, PlayerFact, ViewFields};
@@ -19,7 +19,7 @@ use crate::custom::screen::CROSSES;
 /// of the side, in the ruleset's order (none: the content has no ruleset).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SideRules {
-    pub states: Vec<ContentState>,
+    pub states: Vec<Block>,
 }
 
 impl SideRules {
@@ -53,7 +53,7 @@ impl SideRules {
                 panic!("a player's setup doesn't state the {} system's `{}` ({what}): none is assumed", system.key, field.name);
             }
         }
-        SideRules { states: systems.iter().map(|s| ContentState::new(s.state)).collect() }
+        SideRules { states: systems.iter().map(|s| Block::new(s.state, content.defs.schema(s.state))).collect() }
     }
 }
 
@@ -74,11 +74,11 @@ impl PlayerSetup {
     /// The setup block of system `system` (by key) of the game's ruleset
     /// and its layout, as the round will start with it (the systems'
     /// defaults where the setup gives none): what a tool shows of it.
-    pub fn rule_block<'a>(&self, content: &'a Content, system: &str) -> Option<(&'a nettai_content_api::Schema, ContentState)> {
+    pub fn rule_block<'a>(&self, content: &'a Content, system: &str) -> Option<(&'a nettai_content_api::Schema, Block)> {
         let systems = content.defs.ruleset_systems();
         let slot = systems.iter().position(|&h| content.defs.system(h).key == system)?;
         let def = content.defs.system(systems[slot]);
-        let block = self.rules.get(slot).copied().unwrap_or_else(|| def.setup_block());
+        let block = self.rules.get(slot).cloned().unwrap_or_else(|| def.setup_block());
         Some((content.defs.schema(def.setup), block))
     }
 
@@ -102,7 +102,7 @@ impl PlayerSetup {
         content: &'a Content,
         system: &str,
         field: &str,
-    ) -> Result<(&'a mut ContentState, &'a nettai_content_api::Schema, usize), String> {
+    ) -> Result<(&'a mut Block, &'a nettai_content_api::Schema, usize), String> {
         let systems = content.defs.ruleset().ok_or("the content has no ruleset")?.systems.as_slice();
         if self.rules.is_empty() {
             self.rules = systems.iter().map(|&h| content.defs.system(h).setup_block()).collect();
@@ -121,7 +121,7 @@ impl PlayerSetup {
 /// The setup blocks of a player who says nothing: each system of the game's
 /// ruleset's defaults (`SystemDef::setup_block`), in the ruleset's order;
 /// none on a content without a ruleset.
-pub fn default_blocks(content: &Content) -> Vec<ContentState> {
+pub fn default_blocks(content: &Content) -> Vec<Block> {
     match content.defs.ruleset() {
         Some(_) => content.defs.ruleset_systems().iter().map(|&h| content.defs.system(h).setup_block()).collect(),
         None => Vec::new(),
@@ -131,7 +131,7 @@ pub fn default_blocks(content: &Content) -> Vec<ContentState> {
 /// [`PlayerSetup::set_fact`] on setup blocks (`blocks`: a player's, one a
 /// system of the game's ruleset in its order; none yet: the defaults
 /// first): what a tool that holds a side's blocks writes a fact with.
-pub fn set_fact(blocks: &mut Vec<ContentState>, content: &Content, field: &str, values: &[Fact]) -> Result<usize, String> {
+pub fn set_fact(blocks: &mut Vec<Block>, content: &Content, field: &str, values: &[Fact]) -> Result<usize, String> {
     if content.defs.ruleset().is_none() {
         return Ok(0);
     }
@@ -180,7 +180,7 @@ pub fn set_fact(blocks: &mut Vec<ContentState>, content: &Content, field: &str, 
 /// A fact read from setup blocks (`blocks`: as [`set_fact`] takes them) by
 /// its field's name: the first system of the game's ruleset whose setup has
 /// the field. None: no system has it, or the blocks aren't the ruleset's.
-pub fn fact_in<'a>(blocks: &'a [ContentState], content: &'a Content, field: &str) -> Option<SetupFact<'a>> {
+pub fn fact_in<'a>(blocks: &'a [Block], content: &'a Content, field: &str) -> Option<SetupFact<'a>> {
     content.defs.ruleset()?;
     blocks.iter().zip(content.defs.ruleset_systems()).find_map(|(block, &h)| {
         let schema = content.defs.schema(content.defs.system(h).setup);
@@ -202,7 +202,7 @@ pub enum Fact<'a> {
 #[derive(Clone, Copy)]
 pub struct SetupFact<'a> {
     schema: &'a nettai_content_api::Schema,
-    block: &'a ContentState,
+    block: &'a Block,
     index: usize,
 }
 
@@ -302,7 +302,7 @@ impl Battle {
 
     /// The state of side `side`'s first system that has a view's fields
     /// (`pick`, of its `ViewFields`), with them and the state's layout.
-    fn view_state<T>(&self, side: u8, pick: impl Fn(&ViewFields) -> Option<T>) -> Option<(T, &nettai_content_api::Schema, &ContentState)> {
+    fn view_state<T>(&self, side: u8, pick: impl Fn(&ViewFields) -> Option<T>) -> Option<(T, &nettai_content_api::Schema, &Block)> {
         let defs = &self.content.defs;
         defs.ruleset_systems().iter().enumerate().find_map(|(slot, &h)| {
             let def = defs.system(h);
@@ -366,7 +366,7 @@ impl Battle {
     /// system: for a reader of what a player brought by the system that
     /// keeps it (a game's tools; a frontend reads a fact by the engine's
     /// name for it, [`Battle::fact`]).
-    pub fn system_setup(&self, side: u8, key: &str) -> Option<(&nettai_content_api::Schema, &ContentState)> {
+    pub fn system_setup(&self, side: u8, key: &str) -> Option<(&nettai_content_api::Schema, &Block)> {
         let systems = self.content.defs.ruleset_systems();
         let slot = systems.iter().position(|&h| self.content.defs.system(h).key == key)?;
         let def = self.content.defs.system(systems[slot]);
@@ -625,7 +625,7 @@ impl Battle {
     /// ruleset has that system: for a reader of what a system keeps by the
     /// system's own name (a game's tools and tests; a frontend reads what a
     /// view shows, [`Battle::form_list`] and the like).
-    pub fn system_state(&self, side: u8, key: &str) -> Option<(&nettai_content_api::Schema, &ContentState)> {
+    pub fn system_state(&self, side: u8, key: &str) -> Option<(&nettai_content_api::Schema, &Block)> {
         let systems = &self.content.defs.ruleset_systems();
         let slot = systems.iter().position(|&h| self.content.defs.system(h).key == key)?;
         let def = self.content.defs.system(systems[slot]);
