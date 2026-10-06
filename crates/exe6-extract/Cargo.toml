@@ -10,5 +10,5 @@ m4a.workspace = true
 nettai-assets = { path = "../nettai-assets" }
 nettai-content = { path = "../nettai-content" }
 # The assets' names (content/exe6/compat/assets.toml).
-exe6-compat.workspace = true
+exe6-compat = { path = "../exe6-compat" }
 nettai-content-api = { path = "../nettai-content-api" }
