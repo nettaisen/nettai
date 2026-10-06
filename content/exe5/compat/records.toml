@@ -1,5 +1,5 @@
-# EXE5's numbers of what its NaviStats name (exe5-compat's NaviStats conversion reads them). Written by hand from
-# the EXE5 ROM: edit it when content is renamed or added. A key without a root is EXE5's own; a qualified one
+# EXE5's numbers of what its NaviStats and its save name (exe5-compat's NaviStats conversion and save import read
+# them). Written by hand from the EXE5 ROM: edit it when content is renamed or added. A key without a root is EXE5's own; a qualified one
 # (`exe6:...`) is EXE6's definition, which EXE5's code shares.
 
 # Navis: the navi numbers NaviStats +0x29 names (and a save's GameState +1, the navi its PET operates): MegaMan, then
@@ -151,3 +151,26 @@
 "tomahawksoul" = 10
 "knightsoul" = 11
 "toadsoul" = 12
+
+# The save's SP navi deletion times (0x2670, 22 halfwords: a chip's slot is its chip record's +0x1A less 0x3E9, the
+# same in the four ROMs), by the SP chip whose damage goes by each slot's time (the rules' `sp_times`). Roll SP's slot
+# (0) and Django SP's (21) hold times no damage reads (theirs is a count); no chip's record names 19 or 20.
+[sp_slots]
+"protomn-sp" = 1
+"gyroman-sp" = 2
+"serchmn-sp" = 3
+"naplmmn-sp" = 4
+"magntmn-sp" = 5
+"meddy-sp" = 6
+"colonel-sp" = 7
+"shadomn-sp" = 8
+"numbrmn-sp" = 9
+"tmhwkmn-sp" = 10
+"knigtmn-sp" = 11
+"toadman-sp" = 12
+"shademn-sp" = 13
+"blizman-sp" = 14
+"cloudmn-sp" = 15
+"cosmomn-sp" = 16
+"larkman-sp" = 17
+"gridman-sp" = 18
