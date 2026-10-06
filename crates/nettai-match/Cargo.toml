@@ -8,10 +8,8 @@ description = "Match files: everything a round needs (the game and its rules, th
 [dependencies]
 nettai-battle.workspace = true
 nettai-content-api = { path = "../nettai-content-api" }
-# The save importers alone (src/import.rs, src/import_exe5.rs): a save file
-# is the original's bytes, which a game's compat crate reads. EXE5's also
-# gives the original's chip numbers, the tie-break of the auto battle data
-# the game's writer would make (src/auto_battle.rs).
+# The save importers alone (src/import/: exe6.rs, exe5.rs): a save file
+# is the original's bytes, which a game's compat crate reads.
 exe6-compat = { path = "../exe6-compat" }
 exe5-compat = { path = "../exe5-compat" }
 serde ={ version = "1", features = ["derive"] }
