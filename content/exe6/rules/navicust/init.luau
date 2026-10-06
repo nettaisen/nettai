@@ -25,8 +25,8 @@
 -- 5. The HP (`sub_803CE44`): the maximum again, and the HP the round starts
 --    with (in the real world, the maximum).
 --
--- A MegaMan received from a navi code (event flag 0x163, the setup's
--- `navi_level`) then gets his level's gains over what his NaviCust made
+-- A MegaMan received from a navi code (event flag 0x163, the save system's
+-- `level`) then gets his level's gains over what his NaviCust made
 -- (`reloadCurNaviStatBoosts`: `sub_8121154` after `sub_813C458`;
 -- docs/engine/link-navis.md §4), and the HP its maximum again.
 --

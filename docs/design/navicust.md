@@ -29,10 +29,11 @@ read through `battle.navicust(side)`. A game without a NaviCust has no `navicust
 one.
 
 **None means none.** `PlayerSetup::navicust` is `None` when the setup's stats are already the NaviCust's: a
-recording's, or a match file's stats block. The system then does nothing, so the golden traces and the lab are
-unchanged. `Some` means the stats are the navi's before the NaviCust: its fresh stats with what the save keeps,
-which is what the original's reset leaves (§3, step 3). A match side with a NaviCust starts from exactly that
-(nettai-match's `Side::base_stats`, `stats::SAVE_FIELDS`).
+recording's. The system then does nothing, so the golden traces and the lab are unchanged. `Some` means the stats
+are the navi's before the NaviCust: its fresh stats with what the save keeps, which is what the original's reset
+leaves (§3, step 3). A match states no stats: every side starts from its navi's fresh stats (nettai-match's
+`Side::fresh_stats`), the game's save system writes what the save keeps (its `hp`, `reg_up` and, in EXE6, `sun`),
+and MegaMan's side always has a NaviCust (an empty one where it states none), which the system compiles over them.
 
 **The NaviCust is MegaMan's.** The original compiles the PET's own navi's NaviCust, navi 0's. The system compiles
 a NaviCust only for the navi that changes form, and a match refuses one for another navi.

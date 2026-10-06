@@ -1075,10 +1075,11 @@ them).
 
 A match file is everything a round needs, chosen before the battle: the
 game (which is its rules: a game has one ruleset, so a match names none),
-the arena, and each side's navi, navi code level, stats, folder, SP deletion
-times, patch cards and NaviCust, and what its game's rules take of it
-besides (its facts: EXE6's version, Crosses and Beast Out, EXE5's karma
-and souls), in TOML. **A match is of one game**, named
+the arena, and each side's navi, folder, SP deletion times, patch cards and
+NaviCust, and what its game's rules take of it besides (its facts: what the
+save brings, the base HP, the Regular memory and the navi's level; EXE6's
+version, Crosses and Beast Out; EXE5's karma and souls), in TOML. A side
+states no stats: the rules build them. **A match is of one game**, named
 once at the file's top: everything else is a name in that game's namespace
 (`cannon`, `megaman`, `netbattle-43`), looked up there alone
 (`nettai_match::ids`), so a match can't name another game's chip, navi,
@@ -1155,6 +1156,14 @@ match files, its descriptions and the editor without a line of Rust.
   has (`setup_defaults`: EXE6's Beast Out; EXE5's
   every soul, both unisons and a fresh save's karma, 500), else zero. A
   file is written with only the facts that differ from that.
+- **The facts' order is the rules'**: the ruleset's systems in its order,
+  and each system's setup fields by name (a setup's layout keeps its
+  fields sorted by name, whatever order its `setup` table writes them in).
+  A file writes its facts in that order, `describe` says them in it, and
+  a round's setup holds the blocks in it. So renaming a setup field can
+  move it within its block: anything that lays a block out by position
+  (a binary form of a match, docs/design/match-binary.md when it comes)
+  changes with it, and the content hash (which covers every key) says so.
 - An enum without a default is **required**: nothing fills one in.
   EXE6's `version`, `falzar` or `gregar` (its Beast, its pictures and its
   navi's version byte), is one. The engine itself starts no round whose
@@ -1387,9 +1396,9 @@ past the eighth. The editor's Auto battle pane takes that data alone from
 a save ("From a save…", `nettai_match::auto_battle::of_save`), and edits
 it: the 42 places in their six lists, the eight records, and the game's
 chips to put in them (README.md, "The match editor"). A side that operates a team navi takes
-the save's level (its story flags' count) and, where the save's version has
-the navi, the HP and the light/dark value of the navi's own block; a navi
-of the other version, the story's HP at the save's level.
+the save's level (its story flags' count), whose HP the story gives (EXE5's
+save system), and, where the save's version has the navi, the light/dark
+value of the navi's own block.
 
 **The auto battle data** (`[left.auto_battle]`,
 `nettai_match::auto_battle`, docs/design/exe5-map.md §15.9) is what a

@@ -2652,10 +2652,10 @@ their own navis): ProtoMan and Colonel 200, 300, 350, 400, 450, 500, 600, 700, 8
 400, 500, 550, 600, 650, 700, 800, 900; GyroMan and ShadowMan 250, 250, 250, 300, 350, 400, 500, 600, 700; NapalmMan
 and TomahawkMan 300, 300, 300, 300, 350, 400, 500, 600, 700; SearchMan and NumberMan 300, 300, 300, 300, 300, 350,
 450, 550, 650; Meddy and ToadMan 300, 300, 300, 300, 300, 300, 400, 500, 600. In content it is the navi's `story`
-(`hp` and `max_level`); nettai-match fills a side's stats from it (its `story` module, as its `link_navis` does an
-EXE6 link navi's): a level below the last is the progress, and at the last the story is taken as done. A new side
-of a team navi is at level 0; a match file's `level` and its stats block say otherwise; a save's import takes the
-save's level and, where its version has the navi, the HP and the light/dark value of the navi's own block.
+(`hp` and `max_level`), which EXE5's save system reads as the round is set up (its HP, current, maximum and base,
+at the side's `level`): a level below the last is the progress, and at the last the story is taken as done. A side
+of a team navi states its level (a new one's is 0, a tool's statement); a save's import takes the save's level and,
+where its version has the navi, the light/dark value of the navi's own block.
 
 **The buster's recovery, found with Meddy.** A buster shot's recovery goes by the open panels ahead of the shooter
 (0x0800D97A). EXE5 stops the count at one mask whichever side shoots (0x0F880080: bodies, neutral objects, blockers,
