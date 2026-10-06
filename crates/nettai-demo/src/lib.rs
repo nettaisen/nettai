@@ -4,8 +4,8 @@
 //! headless output ([`headless`]), the audits
 //! ([`content_audit`], [`headless::audit_traces`], and the audio's lookups,
 //! [`sound_lookups`]), the replay of the original's recordings ([`trace`],
-//! with the compat crates), and netplay's transport ([`net`]: the UDP
-//! socket and the handshake). The sound goes to the audio device
+//! with the compat crates), and netplay's transport ([`net`]: a WebRTC
+//! link, nettai-rtc's, and the handshake). The sound goes to the audio device
 //! (nettai-audio's `AudioOut`). docs/frontend.md.
 
 // (Whether the picture's wgpu state may go to another thread is deeper than
