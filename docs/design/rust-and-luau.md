@@ -57,12 +57,12 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 | NaviCust | | 2 | | 2 | 4 |
 | Souls and Chaos Unison | 1 | 1 | 1 | | 3 |
 | The stat block and versions | | 1 | 1 | | 2 |
-| Tools | | 1 | 1 | | 2 |
+| Tools | | | 1 | | 1 |
 | Across features | | 1 | | | 1 |
-| **All** | **1** | **10** | **7** | **5** | **23** |
+| **All** | **1** | **9** | **7** | **5** | **22** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
-dead code; the library agent's steps did N5, T2 and T4. They are listed under [Done](#done) with their new names.
+dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1. They are listed under [Done](#done) with their new names.
 X5 is new: what X4's rename left of EXE5's logic.
 
 ### Beast Out and Beast Over (EXE6)
@@ -209,14 +209,6 @@ X5 is new: what X4's rename left of EXE5's logic.
 
 ### Tools (nettai-match)
 
-- **T1. The save importers** (import.rs: EXE6's version, Beast Out, owned Crosses, level and SP times, with fact names
-  as strings, 97 lines; import_exe5.rs: karma, souls, the unisons, ExpMemry, auto battle data and the team navi, 166
-  lines). *(b)* A game's save is its Luau's (the line above). Each compat crate keeps decoding the bytes; turning the
-  save into facts moves to a rules hook (`import_save`, given the decoded save as a table). Tool-only. **Settled**
-  by a move (the user: "import code should move out of nettai-match i think and into compat"): the import belongs
-  to the compat boundary, not the rules or nettai-match. `exe6_compat::import` and `exe5_compat::import` each give a
-  whole side by field name; nettai-match depends on no compat crate; the caller (nettai-demo's `save_import`)
-  imports a save into the arena's game, refusing one of another game. No rules hook.
 - **T3. The stats pane and navi views** (stats.rs: every `NaviStats` field by name, the per-game ones among them;
   link_navis.rs; story.rs). *(c)* Follows V1: the stats by role, and a game's own from its rules state's schema.
 
@@ -271,6 +263,10 @@ Each with what it was and what it is now.
   `low_hp_support`, and the form's `ability_refresh` (was `navicust_refresh`).
 - **S2, its record's names.** `TransformRequest::alternate`, `form_change_terms`, `custom_set_form`'s `alternate`
   and `Screen::form_alternate` (were `chaos`, `form_change_soul`, `form_chaos`).
+- **T1.** The save importers are the compat crates' (the user: "import code should move out of nettai-match i think
+  and into compat"): `exe6_compat::import` and `exe5_compat::import` each give a whole side by field name, from the
+  save's decoded bytes; nettai-match depends on no compat crate, and the caller (nettai-demo's `save_import`) imports
+  a save into the arena's game, refusing one of another game. No rules hook: the import is the boundary's.
 - **T2.** EXE5's auto battle view is gone, by removal: nettai-match's view, the learner and its exe5_compat call
   (the user: "i don't think you need learning right? since the battles are one-off"). A random EXE5 match states no
   auto battle data; the editor's pane reads the two facts by field name, laid out by EXE5's rules/auto_battle/block
