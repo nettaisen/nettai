@@ -108,7 +108,7 @@ Jungle, Search, and the ten Crosses' names) are written but never copied, and no
 
 | Slot | Effect ids | Written | NaviStats |
 |---|---|---|---|
-| HP (+0x02) | 0x00 +p×10, 0x01 +p%, 0x02 −p×10, 0x03 −p% | clamp 1..9999 after each | +0x42 MaxHP |
+| HP (+0x02) | 0x00 +p×10, 0x01 +p%, 0x02 −p×10, 0x03 −p% (the content's `amount` is p×10, the HP) | clamp 1..9999 after each | +0x42 MaxHP |
 | +0x04 | 0x09 +p, 0x0A −p, 0x0B (a+1)×p−1 | clamp 0..9 | +0x01 Attack |
 | +0x05 | 0x0C +p, 0x0D −p | clamp 0..4 | +0x02 Rapid |
 | +0x06 | 0x0E +p, 0x0F −p | clamp 0..4 | +0x03 Charge |
