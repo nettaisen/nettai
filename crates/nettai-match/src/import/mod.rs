@@ -12,13 +12,12 @@ pub mod exe5;
 pub mod exe6;
 
 use crate::Match;
-use exe6_compat::save::Save;
 use nettai_battle::content::Content;
 
-/// The game of the save in `file` (a .sav's bytes, or a raw EXE5 save
-/// image): `exe6` or `exe5`, or why it is neither's.
+/// The game of the save in `file` (a .sav's bytes, or a raw save image as
+/// Tango's netplay templates hold): `exe6` or `exe5`, or why it is neither's.
 pub fn save_game(file: &[u8]) -> Result<&'static str, String> {
-    match Save::read(file) {
+    match exe6::read(file) {
         Ok(_) => Ok(exe6_compat::ROOT),
         Err(six) => exe5::read(file).map(|_| exe5_compat::ROOT).map_err(|five| format!("{six}; {five}")),
     }
@@ -26,7 +25,7 @@ pub fn save_game(file: &[u8]) -> Result<&'static str, String> {
 
 impl Match {
     /// Fill side `side` from the save in `file` (a .sav's bytes, or a raw
-    /// EXE5 save image) of the content's game ([`save_game`]: a frontend
+    /// save image) of the content's game ([`save_game`]: a frontend
     /// loads that game's first): the match is the save's game's, so a save
     /// of another game than the match's makes the match a new one of that
     /// game (`Match::empty`, the seed kept) first. What is worth saying
@@ -45,7 +44,7 @@ impl Match {
         let s = &mut self.sides[side];
         notes.extend(match five {
             Some(save) => s.import_exe5_save(content, &game, &save),
-            None => s.import_exe6_save(content, &Save::read(file).expect("read above"))?,
+            None => s.import_exe6_save(content, &exe6::read(file)?)?,
         });
         Ok(notes)
     }

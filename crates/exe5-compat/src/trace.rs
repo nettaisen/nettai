@@ -1096,58 +1096,9 @@ pub fn team_navi_reset(content: &Content, recorded: &EngineNaviStats) -> Result<
     })
 }
 
-/// A save's NaviCust in the engine's terms (EXE5's list: [`crate::save::NAVICUST_PARTS`]
-/// parts of 8 bytes, +0 the part id, +2 the center's column, +3 its row, +4
-/// the quarter turns clockwise; +5, the editor's compression mark, isn't
-/// what the compile reads). EXE5's 5x5 board is the middle of the engine's
-/// 7x7 grid (content/exe5/rules/navicust/board.luau), a cell one column and
-/// one row on. A part is compressed when `compressed` says so of its part id
-/// (event flag 0x1EC0 + the id, which 0x0813EEFC reads). The list's empty
-/// entries (id 0) are left out, the others kept in order: the rules' setup's
-/// `navicust_programs`, `{ program, color, x, y, rotation, compressed }`
-/// each, the color its variant's name. (The board, the save's ExpMemry
-/// [`crate::save::Save::expansions`], is `navicust_expansions`.)
-pub fn navicust<'c>(content: &'c Content, compat: &Compat, list: &[u8], compressed: impl Fn(u8) -> bool) -> Result<Vec<Fact<'c>>, String> {
-    let mut parts = Vec::new();
-    for e in list.chunks_exact(8) {
-        let Some((key, color)) = compat.navicust_part(e[0])? else { continue };
-        let program = content.defs.entry_in("navicust_programs", key).ok_or_else(|| format!("the content has no NaviCust program {key}"))?;
-        if e[2] > 4 || e[3] > 4 || e[4] > 3 {
-            return Err(format!("NaviCust part {:#04x} at column {}, row {}, turned {}: off EXE5's 5x5 board", e[0], e[2], e[3], e[4]));
-        }
-        let colors = match content.defs.definitions.get(Registry::Entry, &content.defs.entry(program).key).map(|d| d.spec.field("colors")) {
-            Some(nettai_content_api::Data::List(colors)) => colors.iter().filter_map(|c| c.str()).collect(),
-            _ => Vec::new(),
-        };
-        let color = colors.get(color as usize).copied().ok_or_else(|| format!("NaviCust part {:#04x}: {key} has no color {color}", e[0]))?;
-        parts.push(Fact::Record(vec![
-            ("program", Fact::Value(Value::Def(Registry::Entry, program.0))),
-            ("color", Fact::Name(color)),
-            ("x", Fact::Value(Value::Int(e[2] as i64 + 1))),
-            ("y", Fact::Value(Value::Int(e[3] as i64 + 1))),
-            ("rotation", Fact::Value(Value::Int(e[4] as i64))),
-            ("compressed", Fact::Value(Value::Bool(compressed(e[0])))),
-        ]));
-    }
-    Ok(parts)
-}
-
-/// A save's patch cards (each card's number and whether it is switched on,
-/// in the list's order: [`crate::save::Save::patch_cards`]) as the rules'
-/// setup's `patch_cards`: the cards switched on, by `version`'s numbers
-/// (compat's patch-cards.toml). (A card switched off does nothing in battle:
-/// a side's cards are the ones that apply.)
-pub fn patch_cards(content: &Content, compat: &Compat, version: crate::Version, list: &[(u8, bool)]) -> Result<Vec<Fact<'static>>, String> {
-    let mut cards = Vec::new();
-    for &(n, on) in list {
-        let key = compat.patch_card(n, version)?;
-        let card = content.defs.entry_in("patch_cards", key).ok_or_else(|| format!("the content has no patch card {key}"))?;
-        if on {
-            cards.push(Fact::Value(Value::Def(Registry::Entry, card.0)));
-        }
-    }
-    Ok(cards)
-}
+// (A save's NaviCust and patch cards as setup facts are the codec's, which a
+// save's import reads too.)
+pub use crate::codec::{navicust, patch_cards};
 
 /// Differences between the engine and an EXE5 frame: the state machine and
 /// its counters, the simulation RNG, the gauge, the panels (by EXE5's
