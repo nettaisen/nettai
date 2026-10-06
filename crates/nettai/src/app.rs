@@ -9,7 +9,7 @@ use crate::replays;
 use crate::sound::Sound;
 use crate::stage::{self, Stage};
 use crate::{
-    AppWindow, BattleKind, GameCard, GameState, Input, LinkState, MatchPreview, NavAction, Peer, Playback, ReplayRow, Screen, Side, Strings,
+    AppWindow, BattleKind, GameCard, GameState, Input, MatchPreview, NavAction, Playback, ReplayRow, Screen, Side, Strings,
     UiSound, lang,
 };
 use nettai_battle::BattleResult;
@@ -33,12 +33,14 @@ pub enum Kind {
     Live { game: String, m: nettai_match::Match },
     /// A replay, watched from a side.
     Replay { game: String, replay: Box<Replay>, side: u8, starts: Vec<usize> },
+    /// A match with another player, over the link the lobby made.
+    Netplay { game: String },
 }
 
 impl Kind {
     fn game(&self) -> &str {
         match self {
-            Kind::Live { game, .. } | Kind::Replay { game, .. } => game,
+            Kind::Live { game, .. } | Kind::Replay { game, .. } | Kind::Netplay { game } => game,
         }
     }
 }
@@ -60,6 +62,11 @@ pub struct Battle {
 }
 
 impl Battle {
+    /// A battle on the screen, nothing over it yet.
+    pub fn new(stage: Stage, kind: Kind, recorded: Option<PathBuf>, rounds: usize) -> Battle {
+        Battle { stage, kind, paused: false, recorded, shown_result: 0, shown_stopped: false, rounds, autoplay: false }
+    }
+
     /// Whether the battle has the keys (it runs, nothing is over it).
     pub fn playing(&self) -> bool {
         !self.paused && self.shown_result == 0 && !self.shown_stopped
@@ -84,17 +91,6 @@ struct PlayChoice {
     files: Vec<PathBuf>,
 }
 
-/// The lobby's choices (the link is netplay's, which this build hasn't).
-#[derive(Default)]
-struct LobbyChoice {
-    /// 0 make a room, 1 join one.
-    mode: i32,
-    made: String,
-    joined: String,
-    game: usize,
-    ready: bool,
-}
-
 pub struct App {
     pub ui: slint::Weak<AppWindow>,
     pub games: Games,
@@ -107,7 +103,7 @@ pub struct App {
     pub battle: Option<Battle>,
     attract: Option<Attract>,
     play: PlayChoice,
-    lobby: LobbyChoice,
+    pub lobby: crate::lobby::LobbyState,
     replays: Vec<replays::Entry>,
     replay_rows: Rc<VecModel<ReplayRow>>,
     transition: Option<(Instant, Screen, bool)>,
@@ -137,7 +133,7 @@ pub fn matches_dir() -> PathBuf {
 }
 
 /// A game's short name and its number, from its id (`exe6`: EXE6, 6).
-fn game_names(id: &str) -> (String, String) {
+pub fn game_names(id: &str) -> (String, String) {
     let number: String = id.chars().filter(|c| c.is_ascii_digit()).collect();
     (id.to_ascii_uppercase(), number)
 }
@@ -160,7 +156,7 @@ impl App {
             battle: None,
             attract: None,
             play: PlayChoice { seed: clock_seed(), ..PlayChoice::default() },
-            lobby: LobbyChoice { made: crate::netplay::room_code(clock_seed() as u64), ..LobbyChoice::default() },
+            lobby: crate::lobby::LobbyState::default(),
             replays: Vec::new(),
             replay_rows,
             transition: None,
@@ -174,7 +170,7 @@ impl App {
         app
     }
 
-    fn ui(&self) -> AppWindow {
+    pub fn ui(&self) -> AppWindow {
         self.ui.upgrade().expect("the window outlives the app's state")
     }
 
@@ -211,6 +207,9 @@ impl App {
         if ui.get_screen() == Screen::Battle && screen != Screen::Battle {
             self.battle = None;
             ui.set_playing(false);
+        }
+        if screen != Screen::Lobby {
+            self.leave_room();
         }
         ui.set_screen(screen);
         ui.invoke_focus_keys();
@@ -249,6 +248,7 @@ impl App {
                         app.play_game(app.games.list.iter().position(|e| e.id == id).unwrap_or(0));
                         app.play_fight();
                     }
+                    app.auto_netplay(&id);
                     match app.ui().get_screen() {
                         Screen::Replays => app.check_replays(),
                         Screen::Lobby => app.show_lobby(),
@@ -282,7 +282,7 @@ impl App {
     }
 
     /// The games ready to play, by id.
-    fn ready_games(&self) -> Vec<String> {
+    pub fn ready_games(&self) -> Vec<String> {
         self.games.list.iter().filter(|e| matches!(e.state, State::Ready(_))).map(|e| e.id.clone()).collect()
     }
 
@@ -376,7 +376,7 @@ impl App {
     // ---- The battle -----------------------------------------------------
 
     /// A player of `driver` on `ready`'s game, shown in the language.
-    fn player(&self, ready: &Ready, driver: Box<dyn Driver>, sound: bool) -> Player {
+    pub fn player(&self, ready: &Ready, driver: Box<dyn Driver>, sound: bool) -> Player {
         let graphics = ready.graphics(self.lang);
         let font = ready.loaded.font.clone().filter(|_| self.text == TextMode::Font);
         let renderer = graphics.renderer(self.text, font.clone());
@@ -389,7 +389,7 @@ impl App {
         let driver = LivePlayer::new(nettai_match::Set::of(content, &m, seed));
         let mut player = self.player(ready, Box::new(driver), true);
         // Recorded, to watch again.
-        let recorded = self.recorder(content, &m, seed, game).and_then(|(r, path)| player.record(r).ok().map(|_| path));
+        let recorded = self.recorder(content, &m, seed, game, 0).and_then(|(r, path)| player.record(r).ok().map(|_| path));
         let graphics = ready.graphics(self.lang);
         let names = Names::of(content, &graphics);
         let ui = self.ui();
@@ -456,7 +456,7 @@ impl App {
     }
 
     /// Put `battle` on the battle screen, nothing over it.
-    fn show_battle(&mut self, battle: Battle) {
+    pub fn show_battle(&mut self, battle: Battle) {
         self.battle = Some(battle);
         let ui = self.ui();
         ui.set_battle_paused(false);
@@ -471,14 +471,16 @@ impl App {
     }
 
     /// A recorder of the set to a new file in the replays folder.
-    fn recorder(&self, content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, game: &str) -> Option<(Recorder, PathBuf)> {
+    pub fn recorder(&self, content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, game: &str, side: u8) -> Option<(Recorder, PathBuf)> {
         let dir = replays_dir();
         std::fs::create_dir_all(&dir).ok()?;
         let when = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
         let stamp = chrono::DateTime::from_timestamp(when as i64, 0).map(|t| t.with_timezone(&chrono::Local).format("%Y%m%d-%H%M%S").to_string()).unwrap_or_default();
         let path = dir.join(format!("{stamp}-{game}.ntrp"));
         let file = std::fs::File::create(&path).ok()?;
-        let info = Info { when, side: 0, names: [self.name.clone(), String::new()] };
+        let mut names = [String::new(), String::new()];
+        names[side as usize] = self.name.clone();
+        let info = Info { when, side, names };
         let m = nettai_match::Match { seed: Some(seed), ..m.clone() };
         let r = Recorder::new(Box::new(std::io::BufWriter::new(file)), content, &m, &info).ok()?;
         Some((r, path))
@@ -546,6 +548,10 @@ impl App {
                 let Some(ready) = self.games.ready(&game) else { return };
                 self.start_live(&game, &ready, m, clock_seed());
             }
+            Some(Battle { kind: Kind::Netplay { .. }, .. }) => {
+                self.go(Screen::Lobby);
+                return;
+            }
             Some(mut b) => {
                 b.stage.player.restart();
                 b.stage.stale = true;
@@ -559,6 +565,7 @@ impl App {
     pub fn battle_quit(&mut self) {
         let back = match self.battle.as_ref().map(|b| &b.kind) {
             Some(Kind::Replay { .. }) => Screen::Replays,
+            Some(Kind::Netplay { .. }) => Screen::Lobby,
             _ => Screen::Title,
         };
         self.go(back);
@@ -689,63 +696,6 @@ impl App {
         }
     }
 
-    // ---- The lobby ------------------------------------------------------
-
-    fn show_lobby(&mut self) {
-        let ui = self.ui();
-        let ready = self.ready_games();
-        self.lobby.game = self.lobby.game.min(ready.len().saturating_sub(1));
-        ui.set_lobby_games(ModelRc::new(VecModel::from(ready.iter().map(|g| SharedString::from(game_names(g).0)).collect::<Vec<_>>())));
-        ui.set_lobby_game_index(self.lobby.game as i32);
-        ui.set_lobby_mode_index(self.lobby.mode);
-        ui.set_lobby_code_text(if self.lobby.mode == 0 { self.lobby.made.as_str() } else { self.lobby.joined.as_str() }.into());
-        // Your navi: the game's first navi with fresh stats (what a random
-        // side of it plays).
-        let navi = ready
-            .get(self.lobby.game)
-            .and_then(|g| self.games.ready(g).map(|r| (g.clone(), r)))
-            .and_then(|(g, r)| {
-                let graphics = r.graphics(self.lang);
-                let content = r.content();
-                nettai_match::first_navi(content, &g).map(|n| Names::of(content, &graphics).navi(n))
-            })
-            .unwrap_or_default();
-        ui.set_lobby_me(Peer { present: true, name: self.name.as_str().into(), navi: navi.into(), ready: self.lobby.ready });
-        ui.set_lobby_them(Peer::default());
-        ui.set_lobby_link(LinkState::Unavailable);
-    }
-
-    pub fn lobby_mode(&mut self, mode: i32) {
-        self.lobby.mode = mode.clamp(0, 1);
-        self.lobby.ready = false;
-        self.show_lobby();
-    }
-
-    pub fn lobby_code(&mut self, code: &str) {
-        // (A room's code: its letters in capitals, six at most.)
-        self.lobby.joined = code.chars().filter(|c| c.is_ascii_alphanumeric()).take(6).collect::<String>().to_ascii_uppercase();
-        if self.lobby.joined != code {
-            self.ui().set_lobby_code_text(self.lobby.joined.as_str().into());
-        }
-    }
-
-    pub fn lobby_game(&mut self, game: usize) {
-        self.lobby.game = game;
-        self.lobby.ready = false;
-        self.show_lobby();
-    }
-
-    pub fn lobby_ready(&mut self) {
-        self.lobby.ready = !self.lobby.ready;
-        self.show_lobby();
-    }
-
-    pub fn lobby_copy(&mut self) {
-        // (The clipboard is the window's: Slint's text input copies. The
-        // code is shown to read out, and selected for copying.)
-        let _ = &self.lobby.made;
-    }
-
     pub fn set_name(&mut self, name: &str) {
         self.name = name.chars().take(16).collect();
         let ui = self.ui();
@@ -871,6 +821,10 @@ impl App {
                 }
                 let mut buttons = self.keys.held | self.pad.held() | self.touch;
                 let b = self.battle.as_mut().expect("matched");
+                if b.paused {
+                    // (Netplay goes on under its pause: nothing held.)
+                    buttons = 0;
+                }
                 if b.autoplay {
                     buttons = demo_buttons(b.stage.player.battle(), b.stage.player.ticks() as u32);
                 }
@@ -883,11 +837,17 @@ impl App {
                 std::mem::swap(&mut samples, &mut b.stage.samples);
                 b.stage.report(now);
                 self.follow_battle();
+                self.show_connection();
             }
             Screen::Title => {
                 nav = pad.nav;
                 self.keys.pressed.clear();
                 self.attract(now, area, factor);
+            }
+            Screen::Lobby => {
+                nav = pad.nav;
+                self.keys.pressed.clear();
+                self.poll_lobby(now);
             }
             _ => {
                 nav = pad.nav;
