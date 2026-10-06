@@ -3063,3 +3063,17 @@ block.luau); the engine has no auto battle code.
 - **Checked**: the setup dump is the same but for where the data is; EXE5's auto battle recordings (chaos-ai,
   dark-survival, DarkInvs: 28) and the usual ones match; a test holds the send to its 84 draws a side and its
   packing.
+
+### The arena's stages are the game's (2026-10-06, branch nettai-player, step c4b)
+
+The coordinator's (A): the arena's shape stays the core's (a first round's stage and background, the set's two
+later rounds'; `RoundSetup` carries them, and the binary encodes them in that fixed layout), and what is the game's
+is its rules'.
+
+- **The stages a match may name** are the rules' `link_pick.match_stages` (EXE6's and EXE5's rules/link_pick.luau
+  compute them from the stages: each with the link effect that isn't the random battle's), which nettai-match's
+  `link_battle_stages` reads in place of testing the effect bits itself. A test holds them to the bits (EXE6's 96,
+  EXE5's 94, those the pick never reaches among them).
+- **The random pick** was the rules' data already (`link_pick.stages`, `first_round_stages`, `backgrounds`).
+- Still nettai-match's: `MATCH_EFFECTS` (0x600, the match type a random match is), which the coordinator's (A)
+  leaves as it is.

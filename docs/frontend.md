@@ -1528,7 +1528,10 @@ is said with where it is:
   record, a form), and every stat is in range; a match made in memory
   holding another game's (no file or offer can) is refused the same way
   ("right: a navi exe5 hasn't");
-- the arena's stages are the game's link battle stages (`link_battle_stages`);
+- the arena's stages are ones a match of the game may name (its rules'
+  `link_pick.match_stages`: EXE6's and EXE5's link battle stages, each a
+  settings record with the link effect that isn't the random battle's;
+  `link_battle_stages`);
 - what the game's rules say of the side (their `validate` hook,
   `Battle::validate`, once the round is set up; nettai-match reports what it
   says and knows none of it). EXE6's and EXE5's say:
