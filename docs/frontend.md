@@ -1525,12 +1525,14 @@ pattern number past 8 and a place that is two things at once.
 the played one going last: three times in four the first, otherwise it steps
 into an enemy's row and fires its buster (three shots).
 
-- *The places.* The order it starts with is the console's send of the data
+- *The places.* The order it starts with is the consoles' send of the data
   as the round is set up (0x0802C7BE, EXE5's rules' `send`): three swaps
   among places 1 to 3, 39 swaps among the other 39 (each swap two places
   drawn at random), then the entries packed to the front, here from the
-  battle's RNG before its first tick (84 draws a side; a recording's places,
-  `auto_battle_sent`, are as its console sent them, and draw none). That is no even shuffle: a place is in none of the 39 swaps about
+  battle's RNG before its first tick: 84 draws, the same swaps for both
+  sides' places, as each console shuffles its own with the RNG2 they share
+  (a recording states its saves' blocks and the RNG2 the send started
+  from, so the send gives back what its consoles sent). That is no even shuffle: a place is in none of the 39 swaps about
   one time in eight, so the entry in place 4 leads what is sent about six
   times as often as another, and an empty place between two entries changes
   what a seed sends. A chip in several places is played that much more

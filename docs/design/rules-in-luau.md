@@ -3042,7 +3042,8 @@ block.luau); the engine has no auto battle code.
 - **The facts**: `auto_battle_places = schema.list(PLACE, 42)` (a place `{ chip, pattern, zero }`: a chip, a
   pattern record by number from 1, a 0, or `{}` empty; past the list, empty), `auto_battle_records =
   schema.list(RECORD, 8)` (`{ dx, dy, chips = schema.list({ chip, zero }, 5), score }`; past the list, blank, 0xFF
-  throughout) and `auto_battle_sent = "bool"` (new: the places are as a console sent them, a recording's). A side
+  throughout) and `auto_battle_sent = "bool"` (new: the places are as a console sent them, a recording's; gone since:
+  a recording states its saves' blocks and the send's RNG2, exe5-map.md §15.9). A side
   that says nothing has every place empty and every record zeros (nothing learned).
 - **The send** (0x0802C7BE) is the rules' `round_setup`: the 42 places, three swaps among the first three and 39
   among the rest, two draws a swap from the battle's RNG (84 a side, standing in for the console's RNG2 at the
@@ -3061,7 +3062,8 @@ block.luau); the engine has no auto battle code.
   (`learned`, `of_folder`), until c3b and the tie-break.
 - **Match files**: `auto_battle_places` and `auto_battle_records`, inline tables a line each; a side that stated no
   data had a blank block, which is now `auto_battle_records = []` (verify's tools/matches are converted).
-- **exe5-compat**: a recording's sent block is the facts with `auto_battle_sent`.
+- **exe5-compat**: a recording's sent block is the facts with `auto_battle_sent`. (Since: the saves' blocks, and the
+  send runs for a recording as for any match, drawing 84 numbers once for both sides, as the consoles do.)
 - **Checked**: the setup dump is the same but for where the data is; EXE5's auto battle recordings (chaos-ai,
   dark-survival, DarkInvs: 28) and the usual ones match; a test holds the send to its 84 draws a side and its
   packing.
