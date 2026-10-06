@@ -25,6 +25,7 @@ local chip: Chip = {
         held_anim = 8,
         thrower = seed.thrower(seed.variants.lava),
     },
+    auto_battle = { class = "into_reach", range = "columns_two_to_four" },
 }
 
 return { lavaseed = chip }

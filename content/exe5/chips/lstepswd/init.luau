@@ -19,6 +19,7 @@ local chip: Chip = {
     flags = { "dimming" },
     slot_in_limit = 1,
     dimming = bugfix.liberation("stepswd"),
+    auto_battle = { class = "at_once" },
 }
 
 return { lstepswd = chip }

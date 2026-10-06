@@ -23,6 +23,7 @@ local chip: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     dimming = controller.hook,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { holydrem = chip }

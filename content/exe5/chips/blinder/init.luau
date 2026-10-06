@@ -107,6 +107,7 @@ local chip: Chip = {
     dimming = function(user: Object, spec: DimmingChipSpec): Object?
         return dimming_chips.spawn(CONTROLLER, user, spec, true)
     end,
+    auto_battle = { class = "at_once" },
 }
 
 return { blinder = chip }

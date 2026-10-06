@@ -29,6 +29,7 @@ local chip: Chip = {
         effect = swords.effects.custom,
         sound = swords.swing,
     },
+    auto_battle = { class = "gauge_into_reach" },
 }
 
 return { custswrd = chip }

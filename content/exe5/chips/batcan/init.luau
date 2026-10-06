@@ -19,6 +19,7 @@ local batcan1: Chip = {
     flags = { "has_damage" },
     slot_in_limit = 1,
     action = batcan.action { shots = { 3 } },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- BatCan2 (EXE5 chip 0x13c): the navi raises its bat cannon and fires an unseen shot from the panel ahead on the 7th
@@ -36,6 +37,7 @@ local batcan2: Chip = {
     flags = { "has_damage" },
     slot_in_limit = 1,
     action = batcan.action { shots = { 3 } },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- BatCan3 (EXE5 chip 0x13d): the navi raises its bat cannon and fires an unseen shot from the panel ahead on the 7th
@@ -53,6 +55,7 @@ local batcan3: Chip = {
     flags = { "has_damage" },
     slot_in_limit = 1,
     action = batcan.action { shots = { 3 } },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- BatCan4 (EXE5 chip 0x13e): the navi raises its bat cannon and fires three unseen shots from the panel ahead, 16
@@ -70,6 +73,7 @@ local batcan4: Chip = {
     flags = { "has_damage" },
     slot_in_limit = 1,
     action = batcan.action { shots = { 1, 1, 3 } },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { batcan1 = batcan1, batcan2 = batcan2, batcan3 = batcan3, batcan4 = batcan4 }

@@ -32,6 +32,7 @@ local infvulc1: Chip = {
         { order = 42, code_run = { chip = recipe_vulcan1, count = 3 } },
     },
     action = vulcan.infinite(20),
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- InfVulc2 (EXE5 chip 0x144): the Program Advance of three Vulcan2s with consecutive codes: action 0x19 with subtype
@@ -56,6 +57,7 @@ local infvulc2: Chip = {
         { order = 43, code_run = { chip = recipe_vulcan2, count = 3 } },
     },
     action = vulcan.infinite(24),
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- InfVulc3 (EXE5 chip 0x145): the Program Advance of three Vulcan3s with consecutive codes: action 0x19 with subtype
@@ -80,6 +82,7 @@ local infvulc3: Chip = {
         { order = 44, code_run = { chip = recipe_vulcan3, count = 3 } },
     },
     action = vulcan.infinite(28),
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { infvulc1 = infvulc1, infvulc2 = infvulc2, infvulc3 = infvulc3 }

@@ -20,6 +20,7 @@ local sidebub1: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = sidebub.action,
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 -- SideBub2 (EXE5 chip 0x0a1): the navi sends two bubbles to the column ahead, in the rows above and below its own,
@@ -38,6 +39,7 @@ local sidebub2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = sidebub.action,
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 -- SideBub3 (EXE5 chip 0x0a2): the navi sends two bubbles to the column ahead, in the rows above and below its own,
@@ -56,6 +58,7 @@ local sidebub3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = sidebub.action,
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 return { sidebub1 = sidebub1, sidebub2 = sidebub2, sidebub3 = sidebub3 }

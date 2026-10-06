@@ -23,6 +23,7 @@ local django: Chip = {
     -- as the last navi chip.)
     traits = { "navi_slot" },
     navi = navi.summon,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- DjangoSP (EXE5 chip 0x117): Django cuts in, shuts the first enemy navi ahead in his row in his coffin and purifies
@@ -45,6 +46,7 @@ local django_sp: Chip = {
     -- as the last navi chip.)
     traits = { "navi_slot" },
     navi = navi.summon_sp,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- DjangoDS (EXE5 chip 0x118): Django, dark, cuts in, shuts the first enemy navi ahead in his row in his coffin and
@@ -67,6 +69,7 @@ local django_ds: Chip = {
     -- as the last navi chip.)
     traits = { "navi_slot" },
     navi = navi.summon_dark,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { django = django, ["django-sp"] = django_sp, ["django-ds"] = django_ds }

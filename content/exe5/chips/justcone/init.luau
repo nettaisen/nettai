@@ -37,6 +37,7 @@ local chip: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     instant = STRIKE.instant,
+    auto_battle = { class = "at_once" },
 }
 
 return { justcone = chip }

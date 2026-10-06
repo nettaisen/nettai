@@ -33,6 +33,7 @@ local chip: Chip = {
     slot_in_limit = 3,
     -- (Strong: EXE5's instant chip dispatch leaves 0x01000005 in the boomerang's parameters, its Param4 1.)
     instant = boomerang.instant(kind, VARIANT, true),
+    auto_battle = { class = "spot_test", range = "target_at_back_or_edge" },
 }
 
 return { boomer = chip }

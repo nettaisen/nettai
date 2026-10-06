@@ -22,6 +22,7 @@ local cusvolt1: Chip = {
     slot_in_limit = 3,
     damage = { formula = "gauge_level", base = 10 },
     action = cusvolt.action(),
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 -- CusVolt2 (EXE5 chip 0x0a7): an electric beam over the panel and the column ahead that follows the navi for 25 ticks
@@ -42,6 +43,7 @@ local cusvolt2: Chip = {
     slot_in_limit = 3,
     damage = { formula = "gauge_level", base = 30 },
     action = cusvolt.action(),
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 -- CusVolt3 (EXE5 chip 0x0a8): an electric beam over the panel and the column ahead that follows the navi for 25 ticks
@@ -62,6 +64,7 @@ local cusvolt3: Chip = {
     slot_in_limit = 3,
     damage = { formula = "gauge_level", base = 50 },
     action = cusvolt.action(),
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { cusvolt1 = cusvolt1, cusvolt2 = cusvolt2, cusvolt3 = cusvolt3 }

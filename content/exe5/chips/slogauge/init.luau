@@ -19,6 +19,7 @@ local chip: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 1,
     dimming = gauge_speed.slow,
+    auto_battle = { class = "at_once" },
 }
 
 return { slogauge = chip }

@@ -20,6 +20,7 @@ local gyroman: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- GyroManSP (EXE5 chip 0x0e1): GyroMan cuts in and flies along his row, dropping bombs on the enemy panels
@@ -39,6 +40,7 @@ local gyroman_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_sp,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- GyroManDS (EXE5 chip 0x0e2): GyroMan, dark, cuts in and flies along his row, dropping bombs on the enemy panels
@@ -57,6 +59,7 @@ local gyroman_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { gyroman = gyroman, ["gyroman-sp"] = gyroman_sp, ["gyroman-ds"] = gyroman_ds }

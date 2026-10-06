@@ -29,6 +29,7 @@ local chip: Chip = {
             blast = regions.single,
         }),
     },
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 return { minibomb = chip }

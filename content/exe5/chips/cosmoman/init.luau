@@ -21,6 +21,7 @@ local cosmoman: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "at_once" },
 }
 
 -- CosmoMnSP (EXE5 chip 0x10e): CosmoMan cuts in, takes the field objects around him and calls meteors down on the
@@ -41,6 +42,7 @@ local cosmomn_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "at_once" },
 }
 
 -- CosmoMnDS (EXE5 chip 0x10f): CosmoMan, dark, cuts in, takes the field objects around him and calls meteors down on
@@ -59,6 +61,7 @@ local cosmomn_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "at_once" },
 }
 
 return { cosmoman = cosmoman, ["cosmomn-sp"] = cosmomn_sp, ["cosmomn-ds"] = cosmomn_ds }

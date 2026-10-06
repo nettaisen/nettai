@@ -25,6 +25,7 @@ local chip: Chip = {
         effect = swords.effects.slash,
         sound = swords.swing,
     },
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 return { sword = chip }

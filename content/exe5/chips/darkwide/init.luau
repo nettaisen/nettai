@@ -20,6 +20,7 @@ local chip: Chip = {
     flags = { "has_damage", "dark" },
     slot_in_limit = 1,
     action = widesht.action { wave = wave.dark, waves = 1, z = 0, shooter = widesht.dark_shooter },
+    auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
 return { darkwide = chip }
