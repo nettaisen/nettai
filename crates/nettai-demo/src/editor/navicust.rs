@@ -23,8 +23,72 @@ use iced::{Alignment, Color, Element, Length, Point, Rectangle, Renderer, Size, 
 use nettai_battle::Content;
 use nettai_battle::content::{Board, BoardCell, NaviCustRules};
 use nettai_battle::navicust::{SIZE, Shape, cells};
-use nettai_content_api::NaviCustProgramHandle;
+use nettai_content_api::EntryHandle as NaviCustProgramHandle;
 use nettai_match::{Arena, Side};
+
+// ---- The programs' data ----------------------------------------------------------------
+//
+// (Until the editor draws a side's facts by the views its rules declare, it
+// reads the programs' shapes and colors from their data, the game's root's
+// `navicust_programs`.)
+
+/// The game's collection of NaviCust programs (its root's key).
+pub const PROGRAMS: &str = "navicust_programs";
+
+/// An entry's data (one of the game's collections').
+pub fn entry_data(c: &Content, h: NaviCustProgramHandle) -> &nettai_content_api::Data {
+    let key = &c.defs.entry(h).key;
+    c.defs.definitions.get(nettai_content_api::Registry::Entry, key).map(|d| &d.spec).unwrap_or(&nettai_content_api::Data::Nil)
+}
+
+/// A whole number of an entry's data, 0 without one.
+pub fn entry_int(c: &Content, h: NaviCustProgramHandle, field: &str) -> i64 {
+    entry_data(c, h).field(field).int().unwrap_or(0)
+}
+
+/// Program `h`'s colors (in its variants' order), as its data names them.
+pub fn program_colors(c: &Content, h: NaviCustProgramHandle) -> Vec<&str> {
+    match entry_data(c, h).field("colors") {
+        nettai_content_api::Data::List(l) => l.iter().filter_map(|x| x.str()).collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// What the board draws of a program: its colors, whether it is a plus
+/// part, its shape and its compressed one.
+pub struct Program {
+    pub key: String,
+    pub colors: Vec<String>,
+    pub plus: bool,
+    pub shape: nettai_battle::navicust::Shape,
+    pub compressed: Option<nettai_battle::navicust::Shape>,
+}
+
+impl Program {
+    /// Its shape as placed: compressed or not, turned.
+    pub fn placed_shape(&self, compressed: bool, rotation: u8) -> nettai_battle::navicust::Shape {
+        let s = if compressed { self.compressed.as_ref().unwrap_or(&self.shape) } else { &self.shape };
+        nettai_battle::navicust::rotate(s, rotation)
+    }
+}
+
+/// Program `h`'s data, read.
+pub fn program_of(c: &Content, h: NaviCustProgramHandle) -> Program {
+    use nettai_content_api::Data;
+    let d = entry_data(c, h);
+    let colors = match d.field("colors") {
+        Data::List(l) => l.iter().filter_map(|x| x.str().map(str::to_string)).collect(),
+        _ => Vec::new(),
+    };
+    let shape = |f: &str| nettai_battle::navicust::read_shape(d.field(f)).ok();
+    Program {
+        key: c.defs.entry(h).key.clone(),
+        colors,
+        plus: *d.field("plus") == Data::Bool(true),
+        shape: shape("shape").unwrap_or_default(),
+        compressed: shape("compressed"),
+    }
+}
 
 /// A cell's size on the screen.
 const CELL: f32 = 46.0;
@@ -128,7 +192,7 @@ pub fn navicust_of(content: &Content, side: &Side) -> Option<(u8, Vec<PlacedProg
             let Stated::Record(fields) = item else { return None };
             let get = |name: &str| fields.iter().find(|(n, _)| n == name).map(|(_, v)| v);
             let program = match get("program")? {
-                Stated::Def(Registry::NaviCustProgram, Some(h)) => NaviCustProgramHandle(*h),
+                Stated::Def(Registry::Entry, Some(h)) => NaviCustProgramHandle(*h),
                 _ => return None,
             };
             let number = |name: &str| match get(name) {
@@ -136,7 +200,7 @@ pub fn navicust_of(content: &Content, side: &Side) -> Option<(u8, Vec<PlacedProg
                 _ => 0,
             };
             let color = match get("color")? {
-                Stated::Variant(Some(name)) => content.navicust_program(program).colors.iter().position(|c| c == name).unwrap_or(0) as u8,
+                Stated::Variant(Some(name)) => program_of(content, program).colors.iter().position(|c| c == name).unwrap_or(0) as u8,
                 _ => 0,
             };
             let compressed = matches!(get("compressed"), Some(Stated::Flag(true)));
@@ -153,9 +217,9 @@ fn set(content: &Content, side: &mut Side, parts: Vec<PlacedProgram>, expansions
     let records: Vec<Fact> = parts
         .iter()
         .map(|p| {
-            let color = content.navicust_program(p.program).colors.get(p.color as usize).map_or("white", String::as_str);
+            let color = program_colors(content, p.program).get(p.color as usize).copied().unwrap_or("white");
             Fact::Record(vec![
-                ("program", Fact::Value(Value::Def(Registry::NaviCustProgram, p.program.0))),
+                ("program", Fact::Value(Value::Def(Registry::Entry, p.program.0))),
                 ("color", Fact::Name(color)),
                 ("x", Fact::Value(Value::Int(p.x as i64))),
                 ("y", Fact::Value(Value::Int(p.y as i64))),
@@ -192,7 +256,7 @@ fn fits(content: &Content, board: Option<&Board>, parts: &[PlacedProgram], shape
     }
     let taken: std::collections::HashSet<(i32, i32)> = parts
         .iter()
-        .flat_map(|p| cells(&content.navicust_program(p.program).placed_shape(p.compressed, p.rotation), p.x, p.y).collect::<Vec<_>>())
+        .flat_map(|p| cells(&program_of(content, p.program).placed_shape(p.compressed, p.rotation), p.x, p.y).collect::<Vec<_>>())
         .collect();
     cells(shape, x as u8, y as u8).all(|c| !taken.contains(&c))
 }
@@ -259,7 +323,7 @@ pub fn update(content: &Content, _arena: &Arena, side: &mut Side, state: &mut St
         }
         Edit::Place(x, y) => {
             let Some(h) = state.held else { return false };
-            let shape = content.navicust_program(h.program).placed_shape(h.compressed, h.rotation);
+            let shape = program_of(content, h.program).placed_shape(h.compressed, h.rotation);
             if !fits(content, rules.board(expansions), &parts, &shape, x as i32, y as i32) {
                 return false;
             }
@@ -293,7 +357,7 @@ pub fn update(content: &Content, _arena: &Arena, side: &mut Side, state: &mut St
         }
         Edit::Compress(on) => {
             if let Some(h) = state.held.as_mut() {
-                if content.navicust_program(h.program).compressed.is_some() {
+                if program_of(content, h.program).compressed.is_some() {
                     h.compressed = on;
                     // Its shape is another: held by its center.
                     h.grab = (0, 0);
@@ -625,7 +689,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         .iter()
         .enumerate()
         .map(|(i, p)| {
-            let def = c.navicust_program(p.program);
+            let def = program_of(c, p.program);
             let cells: Vec<(i32, i32)> = cells(&def.placed_shape(p.compressed, p.rotation), p.x, p.y).collect();
             for &(x, y) in &cells {
                 if let Some(o) = occupied.get_mut(y as usize).and_then(|r| r.get_mut(x as usize)) {
@@ -637,7 +701,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         })
         .collect();
     let held = state.held.map(|h| {
-        let def = c.navicust_program(h.program);
+        let def = program_of(c, h.program);
         Ghost {
             shape: def.placed_shape(h.compressed, h.rotation),
             grab: h.grab,
@@ -651,13 +715,13 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         .width(Length::Fixed(CELL * SIZE as f32))
         .height(Length::Fixed(CELL * SIZE as f32));
     let colors = |program: NaviCustProgramHandle, current: u8| {
-        c.navicust_program(program).colors.iter().enumerate().fold(row![].spacing(4), move |r, (k, name)| {
-            let b = button(text(name.as_str()).size(12)).on_press(Msg::NaviCust(s, Edit::Color(k as u8)));
+        program_of(c, program).colors.into_iter().enumerate().fold(row![].spacing(4), move |r, (k, name)| {
+            let b = button(text(name).size(12)).on_press(Msg::NaviCust(s, Edit::Color(k as u8)));
             r.push(if k == current as usize { b.style(button::primary) } else { b.style(button::secondary) })
         })
     };
     let compress = |program: NaviCustProgramHandle, on: bool| -> Element<Msg> {
-        if c.navicust_program(program).compressed.is_some() {
+        if program_of(c, program).compressed.is_some() {
             iced::widget::checkbox(on).label("Compressed").on_toggle(move |b| Msg::NaviCust(s, Edit::Compress(b))).into()
         } else {
             space().into()
@@ -671,7 +735,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         }
         buttons = buttons.push(button("Take off").on_press(Msg::NaviCust(s, Edit::Remove)).style(button::danger));
         column![
-            text(format!("Holding {}, turned {}", e.names.navicust_program(c, h.program), h.rotation)).size(15),
+            text(format!("Holding {}, turned {}", e.names.entry(c, h.program), h.rotation)).size(15),
             colors(h.program, h.color),
             row![buttons, compress(h.program, h.compressed)].spacing(12).align_y(Alignment::Center),
             text("Click a cell (or let go of a drag over one) to put it down where it shows lit. The wheel or R turns it, C compresses it; right-click, Delete or a drag off the grid takes it off; Esc puts it back.")
@@ -681,7 +745,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         .into()
     } else if let Some(p) = state.selected.and_then(|i| placed_at(c, side, i)) {
         column![
-            text(format!("{} at ({}, {}), turned {}", e.names.navicust_program(c, p.program), p.x, p.y, p.rotation)).size(15),
+            text(format!("{} at ({}, {}), turned {}", e.names.entry(c, p.program), p.x, p.y, p.rotation)).size(15),
             colors(p.program, p.color),
             row![
                 row![
@@ -708,19 +772,22 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
     // The programs to pick up, searched.
     let needle = state.search.to_lowercase();
     // (The match's game's.)
-    let mut programs: Vec<(String, NaviCustProgramHandle)> = (0..c.defs.navicust_programs.len() as u16)
-        .map(NaviCustProgramHandle)
-        .filter(|&h| nettai_match::ids::in_game(c, e.m.game(), &c.defs.navicust_program(h).key))
-        .map(|h| (e.names.navicust_program(c, h), h))
+    let mut programs: Vec<(String, NaviCustProgramHandle)> = c
+        .defs
+        .entries_of(PROGRAMS)
+        .into_iter()
+        .filter(|&h| nettai_match::ids::in_game(c, e.m.game(), &c.defs.entry(h).key))
+        .map(|h| (e.names.entry(c, h), h))
         .filter(|(name, _)| needle.is_empty() || name.to_lowercase().contains(&needle))
         .collect();
-    e.order.navicust_programs(c, &mut programs);
+    e.order.entries(c, PROGRAMS, &mut programs);
     let list = programs.into_iter().fold(Column::new().spacing(2), |col, (name, h)| {
-        let def = c.navicust_program(h);
+        let def = program_of(c, h);
         let swatches = def.colors.iter().enumerate().fold(row![].spacing(3), |r, (k, cname)| {
             let holding = state.held.is_some_and(|x| x.origin.is_none() && x.program == h && x.color == k as u8);
+            let shown = color(cname);
             let swatch = container(space().width(Length::Fixed(18.0)).height(Length::Fixed(18.0))).style(move |_: &Theme| container::Style {
-                background: Some(color(cname).into()),
+                background: Some(shown.into()),
                 border: iced::Border { color: if holding { Color::BLACK } else { Color::TRANSPARENT }, width: 2.0, radius: 3.0.into() },
                 ..container::Style::default()
             });
@@ -781,7 +848,7 @@ mod tests {
         let side = &mut m.sides[0];
         let navicust = |side: &Side| navicust_of(&content, side).unwrap().1;
         assert_eq!(navicust_of(&content, side).unwrap().0, 2);
-        let program = |name: &str| nettai_match::ids::navicust_program(&content, "exe6", name).unwrap();
+        let program = |name: &str| nettai_match::ids::entry(&content, "exe6", PROGRAMS, name).unwrap();
         // Held from the list: nothing changes until it is put down.
         assert!(!update(&content, &arena, side, &mut state, Edit::Hold(program("suprarmr"), 0)));
         assert!(update(&content, &arena, side, &mut state, Edit::Place(2, 3)));

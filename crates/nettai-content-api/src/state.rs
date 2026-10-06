@@ -104,10 +104,14 @@ impl FieldType {
                 let t = &name["record:".len()..];
                 return (!t.is_empty()).then(|| FieldType::Ref(Registry::Record, Some(t.to_string())));
             }
-            _ if Registry::from_name(name).is_some_and(|r| !matches!(r, Registry::Schema)) => {
+            _ if Registry::from_name(name).is_some_and(|r| !matches!(r, Registry::Schema | Registry::Entry)) => {
                 FieldType::Ref(Registry::from_name(name).expect("a registry"), None)
             }
             _ if AssetKind::from_name(name).is_some() => FieldType::Asset(AssetKind::from_name(name).expect("an asset kind")),
+            // An entry of the collection the game's root holds under this
+            // key (`patch_cards`): which collections there are, the define
+            // phase checks.
+            _ if name != "entry" && is_collection_name(name) => FieldType::Ref(Registry::Entry, Some(name.to_string())),
             _ => return None,
         })
     }
@@ -243,6 +247,13 @@ impl FieldType {
     }
 }
 
+/// Whether `name` may name a collection of a game's root (a field type that
+/// is an entry of it, [`Registry::Entry`]): lowercase words joined by `_`.
+pub fn is_collection_name(name: &str) -> bool {
+    !name.is_empty() && name.split('_').all(|w| !w.is_empty() && w.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()))
+        && name.as_bytes()[0].is_ascii_lowercase()
+}
+
 /// Whether `c` is a chip code: a letter A to Z, or `*`.
 pub fn is_code(c: u8) -> bool {
     c.is_ascii_uppercase() || c == b'*'
@@ -352,6 +363,7 @@ impl fmt::Display for FieldType {
             FieldType::OptionalU8 => f.write_str("u8?"),
             FieldType::Array(elem, n) => write!(f, "{elem}[{n}]"),
             FieldType::Ref(r, None) => write!(f, "{r}"),
+            FieldType::Ref(Registry::Entry, Some(c)) => write!(f, "{c}"),
             FieldType::Ref(r, Some(t)) => write!(f, "{r}:{t}"),
             FieldType::Asset(k) => write!(f, "{k}"),
             FieldType::Code => f.write_str("code"),
@@ -1292,7 +1304,12 @@ mod tests {
         assert_eq!((b.len_at(many), b.get_at(many.elem(299).unwrap())), (Some(300), FieldValue::U16(9)));
         // What a declaration may not be.
         assert!(Schema::from_data(&map(vec![("l", list(str_("u8"), 0))])).is_err());
-        assert!(Schema::from_data(&map(vec![("l", list(str_("u9"), 2))])).is_err());
+        assert!(Schema::from_data(&map(vec![("l", list(str_("U8"), 2))])).is_err());
+        // (A lowercase name no type has is a collection's: whether the
+        // game's root holds it is the define phase's to check.)
+        assert_eq!(FieldType::scalar("u9"), Some(FieldType::Ref(Registry::Entry, Some("u9".into()))));
+        assert_eq!(FieldType::scalar("patch_cards").map(|t| t.to_string()).as_deref(), Some("patch_cards"));
+        assert_eq!(FieldType::scalar("entry"), None);
         assert!(Schema::from_data(&map(vec![("r", map(vec![("1x", str_("u8"))]))])).is_err());
         // A field by its name, the schema's or a record's; cleared whole.
         let y = s.find("y").unwrap().expect("the record's field");
