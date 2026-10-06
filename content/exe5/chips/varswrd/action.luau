@@ -43,7 +43,7 @@ local KEYS: { { key: Key, bit: number } } = {
 }
 
 export type Spec = {
-    id: string,
+    id: string?,
     -- The sequences by direction flip (0x080ED4E4: facing right, then mirrored), as joypad words with A held, each
     -- ending in 0.
     sequences: { [number]: { { number } } },

@@ -15,7 +15,7 @@ local NEIGHBORS = { { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }
 -- `sub_80E5A8A`: one of the other side's navis still standing, at random
 -- (a draw only if there is one).
 function shower.pick(me: Object): Object?
-    local standing = {}
+    local standing: { Object } = {}
     for _, o in battle.alive_actors(bit32.bxor(me.alliance, 1)) do
         if o.hp ~= 0 then
             table.insert(standing, o)

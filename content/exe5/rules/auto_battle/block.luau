@@ -1,8 +1,8 @@
 --!strict
 -- EXE5's auto battle data (0xE0 bytes a player at 0x02034C20; docs/design/exe5-map.md §15.9): what a navi in auto
 -- battle plays of a player. A player's setup states it as their save holds it (`auto_battle_places`, the block's 42
--- places; `auto_battle_records`, its eight pattern records), and the console sends it as a battle starts (0x0802C7BE:
--- `send`, into the side's `auto_battle_places` of the rules' state), which the AI (./ai) reads and turns as it plays
+-- places; `auto_battle_records`, its eight pattern records), and the consoles send it as a battle starts (0x0802C7BE:
+-- `send`, into each side's `auto_battle_places` of the rules' state), which the AI (./ai) reads and turns as it plays
 -- the entries. A navi in auto battle on the other side plays it (the Dark MegaMan a failed Chaos Unison brings), and
 -- a side's own drive under DarkInvs its own.
 --
@@ -26,9 +26,13 @@ block.RECORDS = 8
 block.RECORD_CHIPS = 5
 
 -- The setup's and the state's types.
-block.PLACE = { chip = "chip", pattern = "u8", zero = "bool" }
-block.CHIP_PLACE = { chip = "chip", zero = "bool" }
-block.RECORD = { dx = "i8", dy = "i8", chips = schema.list(block.CHIP_PLACE, block.RECORD_CHIPS), score = "u32" }
+local PLACE: StateSchema = { chip = "chip", pattern = "u8", zero = "bool" }
+local CHIP_PLACE: StateSchema = { chip = "chip", zero = "bool" }
+local RECORD: StateSchema = { dx = "i8", dy = "i8", chips = schema.list(CHIP_PLACE, block.RECORD_CHIPS), score = "u32" }
+
+block.PLACE = PLACE
+block.CHIP_PLACE = CHIP_PLACE
+block.RECORD = RECORD
 
 -- A place as the setup and the state hold it.
 export type Place = { chip: Chip?, pattern: number, zero: boolean }
@@ -36,7 +40,7 @@ export type ChipPlace = { chip: Chip?, zero: boolean }
 export type Record = { dx: number, dy: number, chips: { ChipPlace }, score: number }
 
 -- The lists the game writes the places in (0x0802C692 to 0x0802C6E6): their names, first places (from 1) and sizes.
-block.LISTS = {
+local LISTS: { { name: string, start: number, len: number } } = {
     { name = "first", start = 1, len = 3 },
     { name = "standard", start = 4, len = 24 },
     { name = "mega", start = 28, len = 5 },
@@ -44,6 +48,8 @@ block.LISTS = {
     { name = "patterns", start = 34, len = 8 },
     { name = "program_advance", start = 42, len = 1 },
 }
+
+block.LISTS = LISTS
 
 -- What the game's battle end writes of a player it has learned nothing of (0x0802C540), the records of a setup
 -- that says nothing: every record zeros (its places are none: empty).
@@ -70,38 +76,40 @@ end
 
 local EMPTY: Place = { chip = nil, pattern = 0, zero = false }
 
--- `round_setup`: side `side`'s data as its console sends it as the battle starts (0x0802C7BE), into the side's state:
--- the save's 42 places, the first three shuffled over three rounds and the other 39 over 39 (two draws a round
--- from the battle's RNG, which stands in for the console's RNG2 at the link's start), the entries then packed to the
--- front (`sub_8000EB6`) and counted to the first empty place. A setup whose places are as a console sent them
--- (`auto_battle_sent`: a recording's) is the state as it is.
-function block.send(side: number)
-    local setup = rules.setup_of(side)
-    local given = setup.auto_battle_places
-    if setup.auto_battle_sent then
-        local out: { Place } = {}
-        for i, p in given do
-            out[i] = copy(p)
+-- `round_setup`, once for the round: both sides' data as their consoles send it as the battle starts (0x0802C7BE), into
+-- each side's state. Each console shuffles its own player's 42 places with the same draws, from the RNG2 the link
+-- shares (the battle's RNG here), so both sides' places get the same order: the first three places shuffled over
+-- three rounds and the other 39 over 39, two draws a round, 84 draws in all, after which the battle's RNG goes
+-- on from where the send left it (the EXE5 lab's recordings: each sent block is its save's places sent from the
+-- fight's RNG2 84 draws back). The entries are then packed to the front (`sub_8000EB6`) and counted to the first
+-- empty place. (exe5-compat's recordings state the places as the saves hold them and the RNG2 the send starts from.)
+function block.send()
+    local places: { { Place } } = {}
+    for side = 0, 1 do
+        local given = rules.setup_of(side).auto_battle_places
+        local p: { Place } = {}
+        for i = 1, block.PLACES do
+            p[i] = if i <= #given then copy(given[i]) else EMPTY
         end
-        rules.state_of(side).auto_battle_places = out
-        return
-    end
-    local places: { Place } = {}
-    for i = 1, block.PLACES do
-        places[i] = if i <= #given then copy(given[i]) else EMPTY
+        places[side + 1] = p
     end
     local function shuffle(from: number, n: number, swaps: number)
-        order.apply(places, from - 1, battle.shuffle_order(n, swaps))
+        local new = battle.shuffle_order(n, swaps)
+        for _, p in places do
+            order.apply(p, from - 1, new)
+        end
     end
     shuffle(1, block.FIRST, block.FIRST)
     shuffle(block.FIRST + 1, block.PLACES - block.FIRST, block.PLACES - block.FIRST)
-    local sent: { Place } = {}
-    for _, p in places do
-        if not empty(p) then
-            table.insert(sent, p)
+    for side = 0, 1 do
+        local sent: { Place } = {}
+        for _, p in places[side + 1] do
+            if not empty(p) then
+                table.insert(sent, p)
+            end
         end
+        rules.state_of(side).auto_battle_places = sent
     end
-    rules.state_of(side).auto_battle_places = sent
 end
 
 -- How many entries side `side`'s sent data has.
@@ -231,7 +239,7 @@ local UNPLAYABLE = place.unplayable()
 -- play one, and the game's own writer never puts one there; a record's chip place may hold one, as the game writes
 -- them there and a record never plays).
 function block.validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
-    local places = rules.setup_of(side).auto_battle_places
+    local places: { Place } = rules.setup_of(side).auto_battle_places
     for i, p in places do
         local list = block.LISTS[#block.LISTS]
         for _, l in block.LISTS do

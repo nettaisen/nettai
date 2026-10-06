@@ -19,7 +19,7 @@ local ANIM = 0x0E
 local FIRE_AT, FIRE_TICKS, RECOVER_TICKS = 1, 4, 5
 
 -- A chip's shot: the action's key, and what it fires from (x, y) with the damage word.
-export type Spec = { id: string, fire: (me: Object, x: number, y: number, damage: number) -> () }
+export type Spec = { id: string?, fire: (me: Object, x: number, y: number, damage: number) -> () }
 
 function armshot.action(spec: Spec): Action
     local function fire(me: Object, s: State)

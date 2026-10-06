@@ -407,22 +407,26 @@ end
 -- `forget_screen` reads it at each deal.)
 local buttons: { [string]: ButtonSpec } = { soul = custom_souls.button }
 local windows: { [string]: WindowSpec } = { soul_unison = custom_souls.window }
-for _, soul in megaman.forms.souls do
+local forms = assert(megaman.forms)
+for _, soul in assert(forms.souls) do
     local part: SoulCustom? = soul.custom
     if part ~= nil then
-        for name, button in part.buttons or {} do
+        local soul_buttons: { [string]: SoulButton } = part.buttons or {}
+        for name, button in soul_buttons do
             if buttons[name] ~= nil then
-                error(string.format("%s's button `%s` is another's too: a button's name is one of rules/souls's", soul.id, name))
+                error(string.format("%s's button `%s` is another's too: a button's name is one of rules/souls's", tostring(soul.id), name))
             end
             buttons[name] = button_of(part, button)
         end
-        for name, window in part.windows or {} do
+        local soul_windows: { [string]: SoulWindow } = part.windows or {}
+        for name, window in soul_windows do
             if windows[name] ~= nil then
-                error(string.format("%s's window `%s` is another's too: a window's name is one of rules/souls's", soul.id, name))
+                error(string.format("%s's window `%s` is another's too: a window's name is one of rules/souls's", tostring(soul.id), name))
             end
             windows[name] = window_of(window)
         end
-        for name, kind in part.state or {} do
+        local state: StateSchema = part.state or {}
+        for name, kind in state do
             if screen[name] ~= nil then
                 error(string.format("%s's screen field `%s` is another's too: a field's name is one of rules/souls's", tostring(soul.id), name))
             end

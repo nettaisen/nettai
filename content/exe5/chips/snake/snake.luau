@@ -70,7 +70,7 @@ local function nest_tick(me: Object)
         return
     end
     while true do
-        local hx, hy, tx, ty
+        local hx: number?, hy: number, tx: number, ty: number
         if field.valid(s.scan_x, s.scan_y) then
             hx, hy, tx, ty = common.next_hole(me, s)
         end
