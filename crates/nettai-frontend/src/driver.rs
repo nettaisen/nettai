@@ -141,7 +141,7 @@ pub struct Ran {
 
 // ---- Live play -------------------------------------------------------------------
 //
-// What a live round is made of (the arena, each side's player) is a match
+// What a live round is made of (its place, each side's player) is a match
 // (`nettai_match`): live play's random pick of one (`nettai_match::pick`),
 // or a match file (`--match`).
 
@@ -313,6 +313,54 @@ pub(crate) mod short_set {
             keys::B
         } else {
             0
+        }
+    }
+
+    /// A match of `game` of `rounds` rounds (each left to `seed`), picked
+    /// as [`of`] picks one, both navis with 1 HP: a round is over when the
+    /// shooter's buster hits.
+    pub fn duel(content: &Arc<Content>, game: &str, seed: u32, rounds: usize) -> nettai_match::Match {
+        let mut m = of(content, game, seed);
+        m.rounds = vec![nettai_match::RoundSettings::default(); rounds];
+        let base_hp = nettai_battle::content::PlayerFact::BaseHp.name();
+        m.sides[0].set_fact(content, base_hp, &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(1))]).unwrap();
+        assert_eq!(nettai_match::check_match(content, &m), Vec::<String>::new());
+        m
+    }
+
+    /// Live play of a set by both players, each round won as `winners`
+    /// says: in round `n` the side `winners[n - 1]` shoots and the other
+    /// only presses through its custom screen (past the list, side 0
+    /// shoots). The local player's buttons are not asked.
+    pub struct Scripted {
+        pub live: LivePlayer,
+        pub winners: Vec<usize>,
+    }
+
+    impl Driver for Scripted {
+        fn start(&mut self) -> Battle {
+            self.live.start()
+        }
+
+        fn next(&mut self, b: &Battle, _keys: u16) -> Option<Step> {
+            self.live.ticks += 1;
+            let ticks = self.live.ticks;
+            let winner = self.winners.get(self.live.round as usize - 1).copied().unwrap_or(0);
+            let buttons = [0, 1].map(|side| if side == winner { shooter(b, side, ticks) } else { bot_buttons(b, side, ticks) });
+            let TickInput { players, events } = nettai_netplay::standin::tick_input(b, buttons);
+            Some(Step { input: players, events, frame: Some(ticks) })
+        }
+
+        fn round_ended(&mut self, b: &Battle) -> Option<After> {
+            self.live.round_ended(b)
+        }
+
+        fn position(&self) -> String {
+            self.live.position()
+        }
+
+        fn record(&mut self) -> bool {
+            self.live.record()
         }
     }
 }

@@ -623,9 +623,9 @@ pub fn battle_settings_of(game: Game, b: &[u8], ids: &Ids) -> BattleSettings {
 }
 
 /// The init exchange's two stage pairs (`byte_203CA50`: settings index,
-/// then background, per round).
-pub fn later_stages(b: &[u8], ids: &Ids) -> [Stage; 2] {
-    [Stage { stage: ids.stage(b[0]), background: ids.background(b[1]) }, Stage { stage: ids.stage(b[2]), background: ids.background(b[3]) }]
+/// then background, per round): a triple battle's rounds after the first.
+pub fn later_stages(b: &[u8], ids: &Ids) -> Vec<Stage> {
+    vec![Stage { stage: ids.stage(b[0]), background: ids.background(b[1]) }, Stage { stage: ids.stage(b[2]), background: ids.background(b[3]) }]
 }
 
 /// A player's SP navi deletion times (`byte_203EB00`, 0x28 bytes): 20
