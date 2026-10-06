@@ -1,0 +1,521 @@
+// Play: choose the game and the match (a random one, or a match file's),
+// see who fights where, and fight the stand-in.
+
+import { Theme, NavAction, UiSound } from "theme.slint";
+import { Slant, Label, Heading, Hints, Hint, Button, OptionRow, Versus, Input } from "widgets.slint";
+
+export enum GameState {
+    // No asset pack of it is found.
+    no-pack,
+    loading,
+    ready,
+    failed,
+}
+
+export struct GameCard {
+    id: string,
+    // Its short name (EXE6), and the larger number on its card.
+    name: string,
+    number: string,
+    state: GameState,
+    // Why it can't be played, in the library's words (a command to run).
+    detail: string,
+}
+
+export struct RoundCard {
+    // The arena, drawn as the round opens, if it could be.
+    picture: image,
+    stage: string,
+    background: string,
+}
+
+export struct MatchPreview {
+    ready: bool,
+    left: string,
+    left-sub: string,
+    right: string,
+    right-sub: string,
+    rounds: [RoundCard],
+    seed: string,
+    // Why this match can't be played (the checks' words).
+    problem: string,
+}
+
+component GameTile {
+    in property <GameCard> card;
+    in property <bool> chosen;
+    in property <bool> focused;
+    callback activate();
+    callback hover();
+    property <bool> playable: root.card.state == GameState.ready;
+
+    Slant {
+        lean: 22px;
+        color: root.chosen ? @linear-gradient(135deg, Theme.cyan-deep 0%, Theme.panel 75%) : root.focused ? Theme.raised : Theme.panel.with-alpha(0.7);
+        stroke: root.chosen ? Theme.cyan : root.focused ? Theme.line-bright : Theme.line;
+        stroke-width: root.chosen || root.focused ? 2px : 1px;
+    }
+
+    // The game's number, large and faint behind its name.
+    Text {
+        x: parent.width - self.preferred-width - 30px;
+        y: (parent.height - self.preferred-height) / 2;
+        text: root.card.number;
+        color: root.chosen ? Theme.cyan.with-alpha(0.32) : Theme.line-bright.with-alpha(0.5);
+        font-size: parent.height * 0.95;
+        font-weight: Theme.black;
+    }
+
+    VerticalLayout {
+        x: 34px;
+        width: parent.width - 60px;
+        alignment: center;
+        spacing: 4px;
+        Text {
+            text: root.card.name;
+            color: root.playable ? white : Theme.text-dim;
+            font-size: Theme.heading * 0.8;
+            font-weight: Theme.black;
+            font-italic: true;
+        }
+
+        Label {
+            text: root.card.state == GameState.ready ? (root.chosen ? @tr("CHOSEN") : @tr("READY")) : root.card.state == GameState.loading ? @tr("LOADING…") : root.card.state == GameState.no-pack ? @tr("NO ASSET PACK") : @tr("CAN'T LOAD");
+            color: root.card.state == GameState.ready ? (root.chosen ? Theme.cyan : Theme.ready) : root.card.state == GameState.loading ? Theme.text-dim : Theme.warn;
+        }
+    }
+
+    TouchArea {
+        clicked => {
+            root.activate();
+        }
+        changed has-hover => {
+            if self.has-hover {
+                root.hover();
+            }
+        }
+    }
+}
+
+// The choices: the game and the match.
+component Choices {
+    in property <[GameCard]> games;
+    in property <int> game;
+    in property <[string]> sources;
+    in property <int> source;
+    in property <string> seed;
+    in property <int> cursor;
+    in property <int> game-cursor;
+    // Focus row `r` (and card `card`), with a cursor sound if it moved.
+    callback point(int, int);
+    callback nav(NavAction);
+
+    VerticalLayout {
+        spacing: Theme.gap;
+        alignment: start;
+        Label {
+            text: @tr("GAME");
+            color: root.cursor == 0 ? Theme.cyan : Theme.text-dim;
+        }
+
+        HorizontalLayout {
+            spacing: Theme.gap;
+            height: Theme.compact ? 92px : 132px;
+            for g[i] in root.games: GameTile {
+                card: g;
+                chosen: root.game == i;
+                focused: root.cursor == 0 && root.game-cursor == i;
+                activate => {
+                    root.point(0, i);
+                    root.nav(NavAction.confirm);
+                }
+                hover => {
+                    root.point(0, i);
+                }
+            }
+        }
+
+        if root.games.length > 0 && root.games[root.game-cursor].detail != "" && root.cursor == 0: Text {
+            text: root.games[root.game-cursor].detail;
+            color: Theme.warn;
+            font-size: 12px;
+            wrap: word-wrap;
+        }
+
+        if root.games.length == 0: Text {
+            text: @tr("No games found: the content folder or the packs folder is missing.");
+            color: Theme.warn;
+            wrap: word-wrap;
+        }
+
+        Rectangle {
+            height: 4px;
+        }
+
+        OptionRow {
+            text: @tr("MATCH");
+            value: root.sources.length > 0 ? root.sources[root.source] : "—";
+            note: root.source == 0 ? @tr("Seed {0} · confirm for another", root.seed) : @tr("A match file from the matches folder");
+            focused: root.cursor == 1;
+            enabled: root.game >= 0;
+            step(d) => {
+                root.point(1, root.game-cursor);
+                root.nav(d < 0 ? NavAction.left : NavAction.right);
+            }
+            activate => {
+                root.point(1, root.game-cursor);
+                root.nav(NavAction.confirm);
+            }
+            hover => {
+                if root.game >= 0 {
+                    root.point(1, root.game-cursor);
+                }
+            }
+        }
+    }
+}
+
+// FIGHT.
+component Fight {
+    in property <int> cursor;
+    in property <int> game-cursor;
+    in property <bool> can-fight;
+    callback point(int, int);
+    callback nav(NavAction);
+
+    HorizontalLayout {
+        alignment: start;
+        Button {
+            text: @tr("FIGHT");
+            primary: true;
+            enabled: root.can-fight;
+            focused: root.cursor == 2;
+            width: 260px;
+            activate => {
+                root.point(2, root.game-cursor);
+                root.nav(NavAction.confirm);
+            }
+            hover => {
+                if root.can-fight {
+                    root.point(2, root.game-cursor);
+                }
+            }
+        }
+    }
+}
+
+// The preview: who fights, and where each round is fought. Its panel is as
+// tall as what it holds.
+component Preview {
+    in property <MatchPreview> preview;
+    in property <bool> chosen;
+    // (`room`: the width it is given, from outside the layout.)
+    in property <length> room;
+    // The arenas' pictures, each a whole multiple of the display's pixels
+    // (as the battle is drawn): three in a row, or two (and the third
+    // under them) when two are drawn larger and three would be at one.
+    property <length> inside: root.room - 2 * (Theme.compact ? 24px : 40px);
+    property <int> by-three: floor((root.inside - 2 * Theme.gap) / 3 / 240phx);
+    property <int> by-two: floor((root.inside - Theme.gap) / 2 / 240phx);
+    // (Two rows of two only where the window has the height for them.)
+    property <bool> two-fit: 2 * (root.by-two * 160phx + 44px + Theme.gap) + 300px <= Theme.window-height - 200px;
+    property <int> columns: root.by-three >= 1 && (root.by-three >= root.by-two || !root.two-fit) ? 3 : root.by-two >= 1 ? 2 : 1;
+    property <length> thumb: max(1, root.columns == 3 ? root.by-three : root.columns == 2 ? root.by-two : floor(root.inside / 240phx)) * 240phx;
+    property <length> card-height: root.thumb * 2 / 3 + 44px;
+
+    VerticalLayout {
+        alignment: start;
+        Rectangle {
+            height: inner.preferred-height;
+            Slant {
+                lean: 26px;
+                color: Theme.panel.with-alpha(0.55);
+                stroke: Theme.line;
+                stroke-width: 1px;
+            }
+
+            inner := VerticalLayout {
+                padding: Theme.gap * 1.5;
+                padding-left: Theme.compact ? 24px : 40px;
+                padding-right: Theme.compact ? 24px : 40px;
+                spacing: Theme.gap;
+                if !root.chosen: Text {
+                    text: @tr("Choose a game");
+                    color: Theme.text-faint;
+                    font-size: Theme.title-size;
+                    font-weight: Theme.bold;
+                    horizontal-alignment: center;
+                    height: 160px;
+                    vertical-alignment: center;
+                }
+                if root.chosen: Versus {
+                    left-name: root.preview.left;
+                    left-sub: @tr("YOU");
+                    right-name: root.preview.right;
+                    right-sub: @tr("STAND-IN");
+                }
+
+                if root.chosen && root.preview.problem != "": Text {
+                    text: root.preview.problem;
+                    color: Theme.warn;
+                    wrap: word-wrap;
+                    font-size: 13px;
+                }
+
+                if root.chosen: Label {
+                    text: @tr("THE ARENAS");
+                }
+
+                if root.chosen: Rectangle {
+                    height: ceil(root.preview.rounds.length / root.columns) * (root.card-height + Theme.gap);
+                    for r[i] in root.preview.rounds: VerticalLayout {
+                        x: mod(i, root.columns) * (root.thumb + Theme.gap);
+                        y: floor(i / root.columns) * (root.card-height + Theme.gap);
+                        height: root.card-height;
+                        spacing: 6px;
+                        alignment: start;
+                        width: root.thumb;
+                        Rectangle {
+                            height: root.thumb * 2 / 3;
+                            background: Theme.ink;
+                            Image {
+                                width: parent.width;
+                                height: parent.height;
+                                source: r.picture;
+                                image-fit: fill;
+                                image-rendering: pixelated;
+                            }
+
+                            Rectangle {
+                                x: 0;
+                                y: 0;
+                                width: badge.preferred-width + 14px;
+                                height: 18px;
+                                background: Theme.ink.with-alpha(0.85);
+                                badge := Text {
+                                    text: @tr("ROUND {0}", i + 1);
+                                    color: Theme.cyan;
+                                    font-size: 10px;
+                                    font-weight: Theme.black;
+                                }
+                            }
+                        }
+
+                        Text {
+                            text: r.background;
+                            color: Theme.text;
+                            font-size: 13px;
+                            font-weight: Theme.bold;
+                            overflow: elide;
+                        }
+
+                        Text {
+                            text: r.stage;
+                            color: Theme.text-faint;
+                            font-size: 11px;
+                            overflow: elide;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component PlayScreen {
+    in property <[GameCard]> games;
+    // The game chosen (none yet: -1; the player chooses, nothing is assumed).
+    in-out property <int> game: -1;
+    // The match: 0 random, then each match file of the game.
+    in property <[string]> sources;
+    in-out property <int> source;
+    in property <MatchPreview> preview;
+    // The row focused: 0 the games, 1 the match, 2 FIGHT.
+    in-out property <int> cursor;
+    // The game card focused on the first row.
+    in-out property <int> game-cursor;
+    property <bool> portrait: Theme.portrait;
+    property <bool> can-fight: root.game >= 0 && root.preview.ready && root.preview.problem == "";
+
+    callback choose-game(int);
+    callback choose-source(int);
+    callback reroll();
+    callback fight();
+    callback back();
+    callback sound(UiSound);
+
+    public function nav(a: NavAction) {
+        if a == NavAction.back {
+            root.sound(UiSound.back);
+            root.back();
+        } else if a == NavAction.up {
+            if root.cursor > 0 {
+                root.cursor -= 1;
+                root.sound(UiSound.cursor);
+            }
+        } else if a == NavAction.down {
+            if root.cursor < 2 && root.game >= 0 {
+                root.cursor += 1;
+                root.sound(UiSound.cursor);
+            }
+        } else if root.cursor == 0 && (a == NavAction.left || a == NavAction.right) {
+            root.game-cursor = mod(root.game-cursor + (a == NavAction.left ? root.games.length - 1 : 1), max(1, root.games.length));
+            root.sound(UiSound.cursor);
+        } else if root.cursor == 0 && a == NavAction.confirm {
+            if root.games.length > 0 && root.games[root.game-cursor].state == GameState.ready {
+                root.sound(UiSound.pick);
+                root.choose-game(root.game-cursor);
+                root.cursor = 1;
+            } else {
+                root.sound(UiSound.refused);
+            }
+        } else if root.cursor == 1 && (a == NavAction.left || a == NavAction.right || a == NavAction.previous || a == NavAction.next) {
+            root.sound(UiSound.cursor);
+            root.choose-source(mod(root.source + (a == NavAction.left || a == NavAction.previous ? root.sources.length - 1 : 1), max(1, root.sources.length)));
+        } else if root.cursor == 1 && a == NavAction.confirm {
+            if root.source == 0 {
+                root.sound(UiSound.pick);
+                root.reroll();
+            } else {
+                root.cursor = 2;
+                root.sound(UiSound.cursor);
+            }
+        } else if root.cursor == 2 && a == NavAction.confirm {
+            if root.can-fight {
+                root.sound(UiSound.pick);
+                root.fight();
+            } else {
+                root.sound(UiSound.refused);
+            }
+        }
+    }
+
+    function point(row: int, card: int) {
+        if root.cursor != row || (row == 0 && root.game-cursor != card) {
+            root.cursor = row;
+            root.game-cursor = card;
+            root.sound(UiSound.cursor);
+        }
+    }
+
+    VerticalLayout {
+        padding-left: Theme.gutter;
+        padding-right: Theme.gutter;
+        padding-top: Theme.gutter * 0.6;
+        spacing: Theme.gap;
+
+        Heading {
+            text: @tr("heading" => "PLAY");
+            sub: @tr("OFFLINE · AGAINST THE STAND-IN");
+            back => {
+                root.nav(NavAction.back);
+            }
+        }
+
+        // Side by side, or one over the other on a phone held upright (its
+        // FIGHT at the foot, under the thumb).
+        if !root.portrait: HorizontalLayout {
+            spacing: Theme.gap * 2;
+            vertical-stretch: 1;
+            VerticalLayout {
+                width: (Theme.window-width - 2 * Theme.gutter - Theme.gap * 2) * 0.42;
+                spacing: Theme.gap * 2;
+                Choices {
+                    vertical-stretch: 0;
+                    games: root.games;
+                    game: root.game;
+                    sources: root.sources;
+                    source: root.source;
+                    seed: root.preview.seed;
+                    cursor: root.cursor;
+                    game-cursor: root.game-cursor;
+                    point(r, c) => {
+                        root.point(r, c);
+                    }
+                    nav(a) => {
+                        root.nav(a);
+                    }
+                }
+
+                Fight {
+                    vertical-stretch: 0;
+                    cursor: root.cursor;
+                    game-cursor: root.game-cursor;
+                    can-fight: root.can-fight;
+                    point(r, c) => {
+                        root.point(r, c);
+                    }
+                    nav(a) => {
+                        root.nav(a);
+                    }
+                }
+
+                Rectangle {
+                    vertical-stretch: 1;
+                }
+            }
+
+            Preview {
+                horizontal-stretch: 1;
+                room: (Theme.window-width - 2 * Theme.gutter - Theme.gap * 2) * 0.58;
+                preview: root.preview;
+                chosen: root.game >= 0;
+            }
+        }
+        if root.portrait: VerticalLayout {
+            spacing: Theme.gap * 1.5;
+            vertical-stretch: 1;
+            Choices {
+                games: root.games;
+                game: root.game;
+                sources: root.sources;
+                source: root.source;
+                seed: root.preview.seed;
+                cursor: root.cursor;
+                game-cursor: root.game-cursor;
+                point(r, c) => {
+                    root.point(r, c);
+                }
+                nav(a) => {
+                    root.nav(a);
+                }
+            }
+
+            Preview {
+                room: Theme.window-width - 2 * Theme.gutter;
+                preview: root.preview;
+                chosen: root.game >= 0;
+            }
+
+            Rectangle {
+                vertical-stretch: 1;
+            }
+
+            Fight {
+                cursor: root.cursor;
+                game-cursor: root.game-cursor;
+                can-fight: root.can-fight;
+                point(r, c) => {
+                    root.point(r, c);
+                }
+                nav(a) => {
+                    root.nav(a);
+                }
+            }
+
+            Rectangle {
+                height: Theme.gap;
+            }
+        }
+
+        Hints {
+            visible: !root.portrait;
+            hints: [
+                { key: "↑↓", button: "✚", text: @tr("Choose") },
+                { key: "←→", button: "✚", text: @tr("Change") },
+                { key: "Enter", button: "A", text: @tr("Confirm") },
+                { key: "Esc", button: "B", text: @tr("Back") },
+            ];
+        }
+    }
+}

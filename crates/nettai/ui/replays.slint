@@ -1,0 +1,400 @@
+// The replays: the sets recorded, newest first, each played out to tell
+// who won and whether it plays back as it was played; one chosen to watch,
+// from either console.
+
+import { Theme, NavAction, UiSound } from "theme.slint";
+import { Slant, Label, Heading, Hints, Hint, Button, Pip, Versus, Input } from "widgets.slint";
+import { Format } from "format.slint";
+
+export enum ReplayCheck {
+    // Being played out.
+    checking,
+    // It plays back as it was played.
+    reproduces,
+    // It plays back otherwise from some tick (another build's, or broken).
+    differs,
+    // It can't be played here (another engine or content, a file that
+    // doesn't read).
+    unplayable,
+}
+
+export struct ReplayRow {
+    file: string,
+    game: string,
+    // When it was recorded, in local time.
+    year: int,
+    month: int,
+    day: int,
+    hour: int,
+    minute: int,
+    // The players' names and navis, by side.
+    left-name: string,
+    right-name: string,
+    left-navi: string,
+    right-navi: string,
+    // Its length, in seconds of play.
+    seconds: int,
+    // Each round's winner: 1 the left side, 2 the right, 3 a draw.
+    rounds: [int],
+    // The set's result for the left side: 0 not played to its end, 1 won,
+    // 2 lost, 3 drawn.
+    result: int,
+    check: ReplayCheck,
+    // Why it can't be played, or where it differs (the library's words).
+    note: string,
+    // The side that recorded it: 0 left, 1 right.
+    recorder: int,
+}
+
+component Row {
+    in property <ReplayRow> entry;
+    in property <bool> focused;
+    callback activate();
+    callback hover();
+    height: Theme.compact ? 62px : 70px;
+
+    Slant {
+        lean: 14px;
+        color: root.focused ? Theme.raised : Theme.panel.with-alpha(0.55);
+        animate color { duration: Theme.quick; }
+    }
+
+    Slant {
+        x: 0;
+        width: root.focused ? 20px : 0px;
+        lean: 14px;
+        color: Theme.cyan;
+        animate width { duration: Theme.quick; easing: ease-out-expo; }
+    }
+
+    HorizontalLayout {
+        padding-left: 30px;
+        padding-right: 26px;
+        spacing: 16px;
+        // (On a phone the game and the date go over the navis.)
+        if !Theme.compact: VerticalLayout {
+            alignment: center;
+            width: 92px;
+            Text {
+                text: root.entry.game;
+                color: Theme.gold;
+                font-size: 13px;
+                font-weight: Theme.black;
+                letter-spacing: 1px * Theme.tracking;
+            }
+
+            Text {
+                text: Format.date(root.entry.year, root.entry.month, root.entry.day, root.entry.hour, root.entry.minute);
+                color: Theme.text-faint;
+                font-size: 11px;
+                overflow: elide;
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            spacing: 2px;
+            if Theme.compact: Text {
+                text: root.entry.game + "  ·  " + Format.date(root.entry.year, root.entry.month, root.entry.day, root.entry.hour, root.entry.minute);
+                color: Theme.gold;
+                font-size: 10px;
+                font-weight: Theme.bold;
+                overflow: elide;
+            }
+            HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: root.entry.left-navi;
+                    color: Theme.cyan;
+                    font-weight: Theme.black;
+                    font-size: Theme.body;
+                    overflow: elide;
+                }
+
+                Text {
+                    text: @tr("versus" => "VS");
+                    color: Theme.text-faint;
+                    font-weight: Theme.black;
+                    font-size: 11px;
+                    vertical-alignment: center;
+                }
+
+                Text {
+                    text: root.entry.right-navi;
+                    color: Theme.magenta;
+                    font-weight: Theme.black;
+                    font-size: Theme.body;
+                    overflow: elide;
+                }
+            }
+
+            Text {
+                text: root.entry.check == ReplayCheck.unplayable ? root.entry.note : (root.entry.left-name != "" || root.entry.right-name != "" ? (root.entry.left-name != "" ? root.entry.left-name : "—") + "  ·  " + (root.entry.right-name != "" ? root.entry.right-name : "—") : root.entry.file);
+                color: root.entry.check == ReplayCheck.unplayable ? Theme.warn : Theme.text-dim;
+                font-size: 12px;
+                overflow: elide;
+            }
+        }
+
+        if !Theme.compact: HorizontalLayout {
+            spacing: 3px;
+            alignment: end;
+            for r in root.entry.rounds: Pip {
+                y: (parent.height - self.height) / 2;
+                state: r == 3 ? 3 : 1;
+                color: r == 1 ? Theme.cyan : Theme.magenta;
+            }
+        }
+
+        Text {
+            text: Format.clock(root.entry.seconds);
+            color: Theme.text;
+            font-weight: Theme.bold;
+            vertical-alignment: center;
+            width: 56px;
+            horizontal-alignment: right;
+        }
+
+        // Whether it plays back as it was played.
+        Text {
+            width: 18px;
+            text: root.entry.check == ReplayCheck.checking ? "·" : root.entry.check == ReplayCheck.reproduces ? "✓" : "!";
+            color: root.entry.check == ReplayCheck.reproduces ? Theme.ready : root.entry.check == ReplayCheck.checking ? Theme.text-faint : Theme.warn;
+            font-weight: Theme.black;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+
+    TouchArea {
+        clicked => {
+            root.activate();
+        }
+        changed has-hover => {
+            if self.has-hover {
+                root.hover();
+            }
+        }
+    }
+}
+
+export component ReplaysScreen {
+    in property <[ReplayRow]> rows;
+    in-out property <int> cursor;
+    // The console to watch from: 0 left, 1 right.
+    in-out property <int> side;
+    in property <string> folder;
+    property <bool> any: root.rows.length > 0;
+    property <ReplayRow> chosen: root.any ? root.rows[root.cursor] : { };
+    property <length> row-height: Theme.compact ? 62px : 70px;
+
+    callback watch(int, int);
+    callback back();
+    callback sound(UiSound);
+
+    public function nav(a: NavAction) {
+        if a == NavAction.back {
+            root.sound(UiSound.back);
+            root.back();
+        } else if !root.any {
+            return;
+        } else if a == NavAction.up || a == NavAction.down {
+            root.cursor = mod(root.cursor + (a == NavAction.up ? root.rows.length - 1 : 1), root.rows.length);
+            root.sound(UiSound.cursor);
+            root.show-cursor();
+        } else if a == NavAction.previous || a == NavAction.next {
+            root.cursor = max(0, min(root.rows.length - 1, root.cursor + (a == NavAction.previous ? -6 : 6)));
+            root.sound(UiSound.cursor);
+            root.show-cursor();
+        } else if a == NavAction.left || a == NavAction.right {
+            root.side = 1 - root.side;
+            root.sound(UiSound.cursor);
+        } else if a == NavAction.confirm {
+            if root.chosen.check == ReplayCheck.unplayable {
+                root.sound(UiSound.refused);
+            } else {
+                root.sound(UiSound.pick);
+                root.watch(root.cursor, root.side);
+            }
+        }
+    }
+
+    // Scroll the list to keep the row focused in view.
+    function show-cursor() {
+        let top = root.cursor * (root.row-height + 8px);
+        if top < -list.content-y {
+            list.content-y = -top;
+        } else if top + root.row-height > -list.content-y + list.height {
+            list.content-y = -(top + root.row-height - list.height);
+        }
+    }
+
+    VerticalLayout {
+        padding-left: Theme.gutter;
+        padding-right: Theme.gutter;
+        padding-top: Theme.gutter * 0.6;
+        spacing: Theme.gap;
+
+        Heading {
+            text: @tr("heading" => "REPLAYS");
+            sub: root.any ? @tr("{n} SET RECORDED" | "{n} SETS RECORDED" % root.rows.length) : "";
+            accent: Theme.gold;
+            back => {
+                root.nav(NavAction.back);
+            }
+        }
+
+        HorizontalLayout {
+            spacing: Theme.gap * 2;
+            vertical-stretch: 1;
+
+            list := Flickable {
+                horizontal-stretch: 1.4;
+                content-height: root.rows.length * (root.row-height + 8px);
+                for r[i] in root.rows: Row {
+                    y: i * (root.row-height + 8px);
+                    width: parent.width;
+                    entry: r;
+                    focused: root.cursor == i;
+                    activate => {
+                        root.cursor = i;
+                        root.nav(NavAction.confirm);
+                    }
+                    hover => {
+                        if root.cursor != i {
+                            root.cursor = i;
+                            root.sound(UiSound.cursor);
+                        }
+                    }
+                }
+            }
+
+            if !root.any: Rectangle {
+                horizontal-stretch: 1;
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 10px;
+                    Text {
+                        text: @tr("No replays yet");
+                        color: Theme.text;
+                        font-size: Theme.title-size;
+                        font-weight: Theme.black;
+                        horizontal-alignment: center;
+                    }
+
+                    Text {
+                        text: @tr("Every set you play is recorded to {0}.", root.folder);
+                        color: Theme.text-dim;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+
+            // The one chosen.
+            if root.any && !Theme.portrait: Rectangle {
+                horizontal-stretch: 1;
+                Slant {
+                    lean: 26px;
+                    color: Theme.panel.with-alpha(0.55);
+                    stroke: Theme.line;
+                    stroke-width: 1px;
+                }
+
+                VerticalLayout {
+                    padding: Theme.gap * 1.5;
+                    padding-left: 44px;
+                    padding-right: 44px;
+                    spacing: Theme.gap;
+                    Label {
+                        text: root.chosen.game + "  ·  " + Format.date(root.chosen.year, root.chosen.month, root.chosen.day, root.chosen.hour, root.chosen.minute);
+                        color: Theme.gold;
+                    }
+
+                    Versus {
+                        left-name: root.chosen.left-navi;
+                        left-sub: root.chosen.left-name;
+                        right-name: root.chosen.right-navi;
+                        right-sub: root.chosen.right-name;
+                        stacked: true;
+                    }
+
+                    Text {
+                        text: root.chosen.result == 0 ? @tr("Not played to its end") : root.chosen.result == 3 ? @tr("A draw") : @tr("{0} won", root.chosen.result == 1 ? root.chosen.left-navi : root.chosen.right-navi);
+                        color: root.chosen.result == 1 ? Theme.cyan : root.chosen.result == 2 ? Theme.magenta : Theme.text-dim;
+                        font-size: Theme.title-size;
+                        font-weight: Theme.black;
+                        horizontal-alignment: center;
+                    }
+
+                    Text {
+                        text: Format.rounds(root.chosen.rounds.length) + "  ·  " + Format.clock(root.chosen.seconds);
+                        color: Theme.text-dim;
+                        horizontal-alignment: center;
+                    }
+
+                    Text {
+                        text: root.chosen.check == ReplayCheck.checking ? @tr("Checking that it plays back…") : root.chosen.check == ReplayCheck.reproduces ? @tr("It plays back as it was played.") : root.chosen.note;
+                        color: root.chosen.check == ReplayCheck.reproduces ? Theme.ready : root.chosen.check == ReplayCheck.checking ? Theme.text-faint : Theme.warn;
+                        font-size: 13px;
+                        wrap: word-wrap;
+                        horizontal-alignment: center;
+                    }
+
+                    Rectangle {
+                        vertical-stretch: 1;
+                    }
+
+                    // The console to watch from.
+                    HorizontalLayout {
+                        spacing: 10px;
+                        height: 40px;
+                        for t[i] in [@tr("side" => "Left console"), @tr("side" => "Right console")]: Rectangle {
+                            horizontal-stretch: 1;
+                            Slant {
+                                lean: 10px;
+                                color: root.side == i ? (i == 0 ? Theme.cyan-deep : Theme.magenta-deep) : Theme.raised.with-alpha(0.6);
+                                animate color { duration: Theme.quick; }
+                            }
+
+                            Text {
+                                text: t + (root.chosen.recorder == i ? " ●" : "");
+                                color: root.side == i ? white : Theme.text-dim;
+                                font-size: 13px;
+                                font-weight: Theme.bold;
+                            }
+
+                            TouchArea {
+                                clicked => {
+                                    root.side = i;
+                                    root.sound(UiSound.cursor);
+                                }
+                            }
+                        }
+                    }
+
+                    Button {
+                        text: @tr("WATCH");
+                        primary: true;
+                        focused: true;
+                        enabled: root.chosen.check != ReplayCheck.unplayable;
+                        activate => {
+                            root.nav(NavAction.confirm);
+                        }
+                    }
+                }
+            }
+        }
+
+        Hints {
+            visible: !Theme.portrait;
+            hints: [
+                { key: "↑↓", button: "✚", text: @tr("Choose") },
+                { key: "←→", button: "✚", text: @tr("Console") },
+                { key: "Enter", button: "A", text: @tr("Watch") },
+                { key: "Esc", button: "B", text: @tr("Back") },
+            ];
+        }
+    }
+}

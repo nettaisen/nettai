@@ -1,0 +1,648 @@
+// The app's own widgets, drawn from shapes: the backdrop, slanted panels and
+// bars, menu items, option rows, fields and the key hints. Nothing of the
+// standard widgets: the app looks like a game's, not like an app's.
+
+import { Theme, NavAction } from "theme.slint";
+
+// Which device the player last used: the hints show its buttons.
+export global Input {
+    in-out property <bool> pad;
+    // A text field has the keyboard (the window's navigation keys go to it,
+    // but up, down and Esc, which leave it).
+    in-out property <bool> editing;
+}
+
+// The arena's backdrop: night, the net's grid drifting across it, a glow of
+// each player's color.
+export component Backdrop inherits Rectangle {
+    // How much it steps back (the battle: the picture is what's seen).
+    in property <float> calm: 0;
+    property <length> cell: Theme.compact ? 36px : 48px;
+    // (Still behind the battle: nothing of it is re-evaluated each frame.)
+    property <float> drift: root.calm >= 1 ? 0 : mod(animation-tick() / 1ms, 6000) / 6000;
+    background: @linear-gradient(170deg, Theme.night 0%, Theme.ink 85%);
+    clip: true;
+
+    Rectangle {
+        x: -root.width * 0.2;
+        y: -root.height * 0.3;
+        width: root.width * 0.9;
+        height: root.width * 0.9;
+        background: @radial-gradient(circle, Theme.cyan.with-alpha(0.13 * (1 - root.calm)) 0%, transparent 70%);
+    }
+
+    Rectangle {
+        x: root.width * 0.45;
+        y: root.height * 0.35;
+        width: root.width * 0.9;
+        height: root.width * 0.9;
+        background: @radial-gradient(circle, Theme.magenta.with-alpha(0.09 * (1 - root.calm)) 0%, transparent 70%);
+    }
+
+    grid := Rectangle {
+        x: -root.drift * root.cell;
+        y: -root.drift * root.cell;
+        width: root.width + root.cell;
+        height: root.height + root.cell;
+        opacity: 1 - root.calm * 0.75;
+        for i in ceil(self.width / root.cell) + 1: Rectangle {
+            x: i * root.cell;
+            width: 1px;
+            background: mod(i, 4) == 0 ? Theme.line-bright.with-alpha(0.55) : Theme.line.with-alpha(0.55);
+        }
+        for i in ceil(self.height / root.cell) + 1: Rectangle {
+            y: i * root.cell;
+            height: 1px;
+            background: mod(i, 4) == 0 ? Theme.line-bright.with-alpha(0.55) : Theme.line.with-alpha(0.55);
+        }
+    }
+
+    // A streak of light that crosses now and then, along the net.
+    property <float> streak: root.calm >= 1 ? 0 : mod(animation-tick() / 1ms, 7000) / 7000;
+    Rectangle {
+        x: (root.streak * 1.6 - 0.3) * root.width;
+        y: root.height * 0.72;
+        width: root.width * 0.25;
+        height: 2px;
+        opacity: 1 - root.calm;
+        background: @linear-gradient(90deg, transparent 0%, Theme.cyan.with-alpha(0.7) 80%, white 100%);
+    }
+
+    // The bottom edge falls into ink.
+    Rectangle {
+        y: root.height * 0.6;
+        height: root.height * 0.4;
+        background: @linear-gradient(180deg, transparent 0%, Theme.ink.with-alpha(0.85) 100%);
+    }
+}
+
+// A parallelogram leaning right: the shape of every bar and panel here.
+export component Slant inherits Path {
+    in property <length> lean: Theme.slant;
+    in property <brush> color: Theme.panel;
+    fill: root.color;
+    viewbox-width: max(1, root.width / 1px);
+    viewbox-height: max(1, root.height / 1px);
+    MoveTo {
+        x: min(root.lean, root.width) / 1px;
+        y: 0;
+    }
+
+    LineTo {
+        x: root.width / 1px;
+        y: 0;
+    }
+
+    LineTo {
+        x: max(0px, root.width - root.lean) / 1px;
+        y: root.height / 1px;
+    }
+
+    LineTo {
+        x: 0;
+        y: root.height / 1px;
+    }
+
+    Close { }
+}
+
+// A small label in tracked capitals: a section's name.
+export component Label inherits Text {
+    overflow: elide;
+    color: Theme.text-dim;
+    font-size: Theme.label;
+    font-weight: Theme.bold;
+    letter-spacing: 2.5px * Theme.tracking;
+}
+
+// One of a menu's items: its number, its name and what it does; the focused
+// one has the bar behind it and slides out.
+export component MenuItem {
+    in property <string> number;
+    in property <string> text;
+    in property <string> caption;
+    in property <bool> focused;
+    in property <bool> enabled: true;
+    callback activate();
+    callback hover();
+    height: Theme.compact ? 54px : 68px;
+
+    bar := Slant {
+        y: 8px;
+        height: parent.height - 16px;
+        x: 0;
+        width: root.focused ? parent.width : 0px;
+        lean: parent.height * 0.32;
+        color: @linear-gradient(90deg, Theme.cyan.with-alpha(0.32) 0%, Theme.cyan.with-alpha(0.10) 55%, transparent 100%);
+        animate width { duration: Theme.settle; easing: ease-out-expo; }
+    }
+
+    edge := Slant {
+        y: 8px;
+        height: parent.height - 16px;
+        x: 0;
+        width: root.focused ? 9px + parent.height * 0.32 : 0px;
+        lean: parent.height * 0.32;
+        color: Theme.cyan;
+        animate width { duration: Theme.quick; easing: ease-out-expo; }
+    }
+
+    Text {
+        x: root.focused ? 32px : 18px;
+        y: (parent.height - self.height) / 2 - 1px;
+        text: root.number;
+        color: root.focused ? Theme.cyan : Theme.text-faint;
+        font-size: Theme.label + 1px;
+        font-weight: Theme.bold;
+        animate x { duration: Theme.settle; easing: ease-out-expo; }
+    }
+
+    Text {
+        x: root.focused ? 72px : 56px;
+        y: (parent.height - self.height) / 2 - 2px;
+        text: root.text;
+        color: !root.enabled ? Theme.text-faint : root.focused ? white : Theme.text.with-alpha(0.78);
+        font-size: Theme.compact ? 26px : 34px;
+        font-weight: Theme.black;
+        letter-spacing: 1px * Theme.tracking;
+        animate x { duration: Theme.settle; easing: ease-out-expo; }
+        animate color { duration: Theme.quick; }
+    }
+
+    TouchArea {
+        clicked => {
+            root.activate();
+        }
+        changed has-hover => {
+            if self.has-hover {
+                root.hover();
+            }
+        }
+    }
+}
+
+// A button: a slanted plate, gold when it is the screen's main action.
+export component Button {
+    in property <string> text;
+    in property <bool> focused;
+    in property <bool> primary;
+    in property <bool> enabled: true;
+    callback activate();
+    callback hover();
+    min-width: label.preferred-width + 64px;
+    height: Theme.compact ? 46px : 54px;
+
+    plate := Slant {
+        lean: parent.height * 0.3;
+        color: !root.enabled ? Theme.panel : root.primary ? (root.focused ? Theme.gold : Theme.gold-deep) : (root.focused ? Theme.cyan : Theme.raised);
+        animate color { duration: Theme.quick; }
+    }
+
+    // The focus ring: a second plate outlined, a little out.
+    Slant {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        lean: (parent.height + 8px) * 0.3;
+        color: transparent;
+        stroke: root.primary ? Theme.gold : Theme.cyan;
+        stroke-width: 2px;
+        opacity: root.focused ? 1 : 0;
+        animate opacity { duration: Theme.quick; }
+    }
+
+    label := Text {
+        text: root.text;
+        color: !root.enabled ? Theme.text-faint : root.focused || root.primary ? Theme.ink : Theme.text;
+        font-size: Theme.compact ? 17px : 20px;
+        font-weight: Theme.black;
+        letter-spacing: 2px * Theme.tracking;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    TouchArea {
+        enabled: root.enabled;
+        clicked => {
+            root.activate();
+        }
+        changed has-hover => {
+            if self.has-hover {
+                root.hover();
+            }
+        }
+    }
+}
+
+// A row of a form: its label, and its value picked with left and right.
+export component OptionRow {
+    in property <string> text;
+    in property <string> value;
+    in property <string> note;
+    in property <bool> focused;
+    in property <bool> enabled: true;
+    // The value can be stepped (draws the arrows).
+    in property <bool> steps: true;
+    callback step(int);
+    callback activate();
+    callback hover();
+    height: Theme.compact ? 56px : 64px;
+    property <length> lean: root.height * 0.25;
+
+    Slant {
+        lean: root.lean;
+        color: root.focused ? Theme.raised : Theme.panel.with-alpha(0.55);
+        animate color { duration: Theme.quick; }
+    }
+
+    Slant {
+        x: 0;
+        width: root.focused ? 6px + root.lean : 0px;
+        lean: root.lean;
+        color: Theme.cyan;
+        animate width { duration: Theme.quick; easing: ease-out-expo; }
+    }
+
+    TouchArea {
+        clicked => {
+            root.activate();
+        }
+        changed has-hover => {
+            if self.has-hover {
+                root.hover();
+            }
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: root.lean + 18px;
+        padding-right: root.lean + 12px;
+        spacing: 14px;
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: 2px;
+            Label {
+                text: root.text;
+                color: root.focused ? Theme.cyan : Theme.text-dim;
+                overflow: elide;
+            }
+
+            if root.note != "": Text {
+                text: root.note;
+                color: Theme.text-faint;
+                font-size: Theme.label;
+                overflow: elide;
+            }
+        }
+
+        if root.steps: Text {
+            text: "◀";
+            color: root.focused ? Theme.cyan : Theme.text-faint;
+            font-size: 14px;
+            vertical-alignment: center;
+            TouchArea {
+                clicked => {
+                    root.step(-1);
+                }
+            }
+        }
+        Text {
+            text: root.value;
+            color: root.enabled ? Theme.text : Theme.text-faint;
+            font-size: Theme.compact ? 17px : 20px;
+            font-weight: Theme.bold;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+            overflow: elide;
+        }
+
+        if root.steps: Text {
+            text: "▶";
+            color: root.focused ? Theme.cyan : Theme.text-faint;
+            font-size: 14px;
+            vertical-alignment: center;
+            TouchArea {
+                clicked => {
+                    root.step(1);
+                }
+            }
+        }
+    }
+}
+
+// A text field: a slanted box with the text, the OS's input method (IME) on
+// the desktop. `edit` gives it the keyboard.
+export component Field {
+    in property <string> text-label;
+    in property <string> placeholder;
+    in-out property <string> text <=> input.text;
+    in property <bool> focused;
+    in property <bool> large;
+    // The field has the keyboard.
+    out property <bool> focused-input: input.has-focus;
+    callback edited(string);
+    callback hover();
+    callback done();
+    height: (root.large ? 2 : 1) * (Theme.compact ? 30px : 36px) + 34px;
+
+    public function edit() {
+        input.focus();
+    }
+
+    public function leave() {
+        input.clear-focus();
+    }
+
+    VerticalLayout {
+        spacing: 6px;
+        Label {
+            text: root.text-label;
+            color: root.focused ? Theme.cyan : Theme.text-dim;
+        }
+
+        box := Rectangle {
+            Slant {
+                lean: 12px;
+                color: input.has-focus ? Theme.deep : Theme.panel.with-alpha(0.7);
+                stroke: root.focused ? Theme.cyan : Theme.line-bright;
+                stroke-width: root.focused ? 2px : 1px;
+            }
+
+            if input.text == "" && !input.has-focus: Text {
+                x: 22px;
+                text: root.placeholder;
+                color: Theme.text-faint;
+                font-size: input.font-size;
+                vertical-alignment: center;
+                height: parent.height;
+            }
+
+            input := TextInput {
+                x: 22px;
+                width: parent.width - 44px;
+                color: Theme.text;
+                font-size: (root.large ? 2 : 1) * (Theme.compact ? 17px : 20px);
+                font-weight: root.large ? Theme.black : Theme.bold;
+                letter-spacing: root.large ? 8px : 0.5px;
+                vertical-alignment: center;
+                single-line: true;
+                selection-background-color: Theme.cyan-deep;
+                selection-foreground-color: white;
+                edited => {
+                    root.edited(self.text);
+                }
+                accepted => {
+                    root.done();
+                }
+                changed has-focus => {
+                    Input.editing = self.has-focus;
+                }
+            }
+
+            TouchArea {
+                z: -1;
+                clicked => {
+                    input.focus();
+                }
+                changed has-hover => {
+                    if self.has-hover {
+                        root.hover();
+                    }
+                }
+            }
+        }
+    }
+}
+
+// A button's glyph: a key's name on a keycap, or the gamepad's button.
+export component Glyph {
+    in property <string> key;
+    in property <string> button;
+    property <string> shown: Input.pad && root.button != "" ? root.button : root.key;
+    // A face button: a colored disc, as the pads draw them.
+    property <bool> face: Input.pad && (root.button == "A" || root.button == "B" || root.button == "X" || root.button == "Y");
+    height: 22px;
+    width: root.face ? 22px : max(22px, cap.preferred-width + 14px);
+
+    Rectangle {
+        border-radius: root.face ? 11px : 4px;
+        border-width: root.face ? 0px : 1px;
+        border-color: Theme.text-dim;
+        background: !root.face ? Theme.raised : root.button == "A" ? #2fbf5a : root.button == "B" ? #e6463c : root.button == "X" ? #3c7be6 : #e6c13c;
+        cap := Text {
+            text: root.shown;
+            color: root.face ? white : Theme.text;
+            font-size: 11px;
+            font-weight: root.face ? Theme.black : Theme.bold;
+        }
+    }
+}
+
+export struct Hint {
+    key: string,
+    button: string,
+    text: string,
+}
+
+// The key hints along a screen's foot.
+export component Hints {
+    in property <[Hint]> hints;
+    height: 40px;
+    HorizontalLayout {
+        alignment: start;
+        spacing: 22px;
+        for h in root.hints: HorizontalLayout {
+            spacing: 8px;
+            alignment: start;
+            Glyph {
+                key: h.key;
+                button: h.button;
+                y: (parent.height - self.height) / 2;
+            }
+
+            Text {
+                text: h.text;
+                color: Theme.text-dim;
+                font-size: 13px;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
+
+// A screen's heading: a back mark, its name and a line under it.
+export component Heading {
+    in property <string> text;
+    in property <string> sub;
+    in property <color> accent: Theme.cyan;
+    callback back();
+    height: Theme.compact ? 64px : 92px;
+
+    HorizontalLayout {
+        spacing: 16px;
+        alignment: start;
+        Rectangle {
+            width: Theme.compact ? 34px : 42px;
+            Slant {
+                y: (parent.height - self.height) / 2;
+                height: parent.width;
+                lean: 8px;
+                color: Theme.raised;
+            }
+
+            Text {
+                text: "◀";
+                color: Theme.text-dim;
+                font-size: 14px;
+            }
+
+            TouchArea {
+                clicked => {
+                    root.back();
+                }
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            spacing: 0px;
+            Text {
+                text: root.text;
+                color: white;
+                font-size: Theme.heading;
+                font-weight: Theme.black;
+                letter-spacing: 1px * Theme.tracking;
+            }
+
+            if root.sub != "": Label {
+                text: root.sub;
+            }
+        }
+    }
+
+    Rectangle {
+        y: parent.height - 2px;
+        height: 2px;
+        background: @linear-gradient(90deg, root.accent 0%, root.accent.with-alpha(0.25) 30%, transparent 100%);
+    }
+}
+
+// A round's mark: won (gold), lost (dim), drawn, or not yet played.
+export component Pip {
+    in property <int> state; // 0 not played, 1 won, 2 lost, 3 drawn
+    in property <color> color: Theme.gold;
+    width: 14px;
+    height: 14px;
+    Rectangle {
+        width: 10px;
+        height: 10px;
+        transform-rotation: 45deg;
+        background: root.state == 1 ? root.color : root.state == 3 ? Theme.text-dim : transparent;
+        border-width: 1.5px;
+        border-color: root.state == 0 ? Theme.text-faint : root.state == 2 ? Theme.text-faint : root.color;
+    }
+}
+
+// The navis facing each other: player one's in cyan, VS, player two's in
+// magenta.
+export component Versus {
+    in property <string> left-name;
+    in property <string> left-sub;
+    in property <string> right-name;
+    in property <string> right-sub;
+    in property <bool> stacked;
+    height: root.stacked ? 150px : 96px;
+
+    if !root.stacked: HorizontalLayout {
+        spacing: 12px;
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            Text {
+                text: root.left-name;
+                color: Theme.cyan;
+                font-size: Theme.compact ? 19px : Theme.title-size + 4px;
+                font-weight: Theme.black;
+                horizontal-alignment: right;
+                overflow: elide;
+            }
+
+            Text {
+                text: root.left-sub;
+                color: Theme.text-dim;
+                font-size: Theme.label + 1px;
+                horizontal-alignment: right;
+                overflow: elide;
+            }
+        }
+
+        Rectangle {
+            width: 76px;
+            Slant {
+                height: 52px;
+                y: (parent.height - self.height) / 2;
+                lean: 14px;
+                color: @linear-gradient(90deg, Theme.cyan-deep 0%, Theme.magenta-deep 100%);
+            }
+
+            Text {
+                text: @tr("versus" => "VS");
+                color: white;
+                font-size: 26px;
+                font-weight: Theme.black;
+                font-italic: true;
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            Text {
+                text: root.right-name;
+                color: Theme.magenta;
+                font-size: Theme.compact ? 19px : Theme.title-size + 4px;
+                font-weight: Theme.black;
+                overflow: elide;
+            }
+
+            Text {
+                text: root.right-sub;
+                color: Theme.text-dim;
+                font-size: Theme.label + 1px;
+                overflow: elide;
+            }
+        }
+    }
+    if root.stacked: VerticalLayout {
+        alignment: center;
+        spacing: 2px;
+        Text {
+            text: root.left-name;
+            color: Theme.cyan;
+            font-size: Theme.title-size + 2px;
+            font-weight: Theme.black;
+            horizontal-alignment: center;
+            overflow: elide;
+        }
+
+        Text {
+            text: @tr("versus" => "VS");
+            color: white;
+            font-size: 18px;
+            font-weight: Theme.black;
+            font-italic: true;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: root.right-name;
+            color: Theme.magenta;
+            font-size: Theme.title-size + 2px;
+            font-weight: Theme.black;
+            horizontal-alignment: center;
+            overflow: elide;
+        }
+    }
+}

@@ -1,0 +1,429 @@
+// The netplay lobby: a room of the signaling server (made here, or joined
+// by its code), your name, the game, and both players' readiness, over
+// nettai-rtc's link; the match starts when both are ready.
+
+import { Theme, NavAction, UiSound } from "theme.slint";
+import { Slant, Label, Heading, Hints, Hint, Button, OptionRow, Field, Input } from "widgets.slint";
+import { Format } from "format.slint";
+
+export enum LinkState {
+    // In no room yet (a code being typed).
+    unavailable,
+    // No signaling server is set.
+    no-server,
+    // The last room ended (`problem` says why).
+    failed,
+    // In the room, waiting for the other player.
+    waiting,
+    connecting,
+    open,
+    reconnecting,
+}
+
+export struct Peer {
+    // Nobody there yet.
+    present: bool,
+    name: string,
+    navi: string,
+    ready: bool,
+}
+
+component PlayerCard {
+    in property <Peer> peer;
+    in property <bool> you;
+    in property <bool> mirrored;
+    property <color> accent: root.mirrored ? Theme.magenta : Theme.cyan;
+    height: Theme.compact ? 120px : 170px;
+
+    Slant {
+        lean: 24px;
+        color: @linear-gradient(root.mirrored ? 270deg : 90deg, root.accent.with-alpha(root.peer.present ? 0.22 : 0.06) 0%, Theme.panel.with-alpha(0.6) 70%);
+        stroke: root.peer.ready ? Theme.ready : root.peer.present ? root.accent : Theme.line;
+        stroke-width: root.peer.ready ? 2px : 1px;
+        animate stroke { duration: Theme.settle; }
+    }
+
+    VerticalLayout {
+        padding-left: 44px;
+        padding-right: 44px;
+        alignment: center;
+        spacing: 4px;
+        Label {
+            text: root.you ? @tr("YOU") : @tr("OPPONENT");
+            color: root.accent;
+        }
+
+        if root.peer.present: Text {
+            text: root.peer.name != "" ? root.peer.name : @tr("Player");
+            color: white;
+            font-size: Theme.title-size + 4px;
+            font-weight: Theme.black;
+            overflow: elide;
+        }
+        if root.peer.present && root.peer.navi != "": Text {
+            text: root.peer.navi;
+            color: Theme.text-dim;
+            font-size: Theme.body;
+            overflow: elide;
+        }
+        if !root.peer.present: Text {
+            // (Three dots, one more each beat.)
+            text: @tr("Waiting for a player") + ["", ".", "..", "..."][mod(floor(animation-tick() / 450ms), 4)];
+            color: Theme.text-faint;
+            font-size: Theme.title-size;
+            font-weight: Theme.bold;
+        }
+    }
+
+    // The ready mark.
+    Rectangle {
+        x: parent.width - self.width - 36px;
+        y: (parent.height - self.height) / 2;
+        width: ready-text.preferred-width + 30px;
+        height: 30px;
+        visible: root.peer.present;
+        Slant {
+            lean: 8px;
+            color: root.peer.ready ? Theme.ready : Theme.raised;
+            animate color { duration: Theme.quick; }
+        }
+
+        ready-text := Text {
+            text: root.peer.ready ? @tr("READY") : @tr("NOT READY");
+            color: root.peer.ready ? Theme.ink : Theme.text-dim;
+            font-size: 12px;
+            font-weight: Theme.black;
+            letter-spacing: 1.5px * Theme.tracking;
+        }
+    }
+}
+
+export component LobbyScreen {
+    // 0 make a room, 1 join one by its code.
+    in-out property <int> mode;
+    in property <string> code;
+    in-out property <string> name;
+    in property <[string]> games;
+    in-out property <int> game;
+    in property <Peer> me;
+    in property <Peer> them;
+    in property <LinkState> link;
+    in property <int> ping: -1;
+    // Why the room ended, or what keeps the link from connecting.
+    in property <string> problem;
+    // The signaling server.
+    in property <string> server;
+    in-out property <int> cursor;
+    // The rows: 0 the room, 1 the code, 2 the name, 3 the game, 4 READY.
+    property <int> rows: 5;
+
+    callback set-mode(int);
+    callback set-code(string);
+    callback set-name(string);
+    callback set-game(int);
+    callback ready();
+    callback copy-code();
+    callback back();
+    callback sound(UiSound);
+
+    public function nav(a: NavAction) {
+        if a == NavAction.back {
+            if code-field.focused-input || name-field.focused-input {
+                code-field.leave();
+                name-field.leave();
+                return;
+            }
+            root.sound(UiSound.back);
+            root.back();
+        } else if a == NavAction.up || a == NavAction.down {
+            root.cursor = mod(root.cursor + (a == NavAction.up ? root.rows - 1 : 1), root.rows);
+            root.sound(UiSound.cursor);
+            root.follow();
+        } else if (a == NavAction.left || a == NavAction.right) && root.cursor == 0 {
+            root.set-mode(1 - root.mode);
+            root.sound(UiSound.cursor);
+        } else if (a == NavAction.left || a == NavAction.right) && root.cursor == 3 {
+            root.set-game(mod(root.game + (a == NavAction.left ? root.games.length - 1 : 1), max(1, root.games.length)));
+            root.sound(UiSound.cursor);
+        } else if a == NavAction.confirm {
+            if root.cursor == 1 && root.mode == 0 {
+                root.copy-code();
+                root.sound(UiSound.pick);
+            } else if root.cursor == 1 || root.cursor == 2 {
+                root.follow();
+            } else if root.cursor == 4 {
+                root.sound(UiSound.pick);
+                root.ready();
+            } else if root.cursor == 0 {
+                root.set-mode(1 - root.mode);
+                root.sound(UiSound.cursor);
+            }
+        }
+    }
+
+    // The keyboard goes to a field while it's the row focused.
+    function follow() {
+        if root.cursor == 1 && root.mode == 1 {
+            code-field.edit();
+        } else if root.cursor == 2 {
+            name-field.edit();
+        } else {
+            code-field.leave();
+            name-field.leave();
+        }
+    }
+
+    function point(row: int) {
+        if root.cursor != row {
+            root.cursor = row;
+            root.sound(UiSound.cursor);
+            root.follow();
+        }
+    }
+
+    VerticalLayout {
+        padding-left: Theme.gutter;
+        padding-right: Theme.gutter;
+        padding-top: Theme.gutter * 0.6;
+        spacing: Theme.gap;
+
+        Heading {
+            text: @tr("heading" => "NETPLAY");
+            sub: @tr("ROLLBACK · ROOM CODES OR A DIRECT LINK");
+            accent: Theme.magenta;
+            back => {
+                root.nav(NavAction.back);
+            }
+        }
+
+        // What keeps netplay from working, said plainly.
+        if root.link == LinkState.no-server || root.problem != "": Rectangle {
+            height: warn-text.preferred-height + 18px;
+            Slant {
+                lean: 10px;
+                color: Theme.warn.with-alpha(0.15);
+                stroke: Theme.warn.with-alpha(0.6);
+                stroke-width: 1px;
+            }
+
+            warn-text := Text {
+                x: 30px;
+                width: parent.width - 60px;
+                text: root.link == LinkState.no-server ? @tr("No signaling server: set NETTAI_SIGNAL to one (ws://127.0.0.1:8787 for signaling/ run with `npx wrangler dev`).") : root.problem;
+                color: Theme.warn;
+                font-size: 13px;
+                vertical-alignment: center;
+                wrap: word-wrap;
+            }
+        }
+
+        HorizontalLayout {
+            spacing: Theme.gap * 2;
+            vertical-stretch: 1;
+
+            // The room and you.
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: Theme.gap;
+                // The room: made, or joined.
+                HorizontalLayout {
+                    spacing: 10px;
+                    height: 46px;
+                    for t[i] in [@tr("MAKE A ROOM"), @tr("JOIN A ROOM")]: Rectangle {
+                        horizontal-stretch: 1;
+                        Slant {
+                            lean: 12px;
+                            color: root.mode == i ? (root.cursor == 0 ? Theme.cyan : Theme.cyan-deep) : Theme.panel.with-alpha(0.7);
+                            stroke: root.cursor == 0 ? Theme.cyan : Theme.line;
+                            stroke-width: 1px;
+                            animate color { duration: Theme.quick; }
+                        }
+
+                        Text {
+                            text: t;
+                            color: root.mode == i ? Theme.ink : Theme.text-dim;
+                            font-size: 15px;
+                            font-weight: Theme.black;
+                            letter-spacing: 1.5px * Theme.tracking;
+                        }
+
+                        TouchArea {
+                            clicked => {
+                                root.point(0);
+                                root.set-mode(i);
+                            }
+                        }
+                    }
+                }
+
+                code-field := Field {
+                    text-label: root.mode == 0 ? @tr("YOUR ROOM'S CODE · CONFIRM TO COPY") : @tr("THE ROOM'S CODE");
+                    placeholder: root.mode == 0 ? "" : "ABC123";
+                    text: root.code;
+                    large: true;
+                    focused: root.cursor == 1;
+                    edited(t) => {
+                        root.set-code(t);
+                    }
+                    hover => {
+                        root.point(1);
+                    }
+                    done => {
+                        root.cursor = 2;
+                        root.follow();
+                    }
+                }
+
+                name-field := Field {
+                    text-label: @tr("YOUR NAME");
+                    placeholder: @tr("Type your name");
+                    text <=> root.name;
+                    focused: root.cursor == 2;
+                    edited(t) => {
+                        root.set-name(t);
+                    }
+                    hover => {
+                        root.point(2);
+                    }
+                    done => {
+                        root.cursor = 3;
+                        root.follow();
+                    }
+                }
+
+                OptionRow {
+                    text: @tr("GAME");
+                    value: root.games.length > 0 ? root.games[root.game] : "—";
+                    note: @tr("Both players play the same game");
+                    focused: root.cursor == 3;
+                    step(d) => {
+                        root.point(3);
+                        root.nav(d < 0 ? NavAction.left : NavAction.right);
+                    }
+                    hover => {
+                        root.point(3);
+                    }
+                }
+
+                // (On a phone: both players in a line.)
+                if Theme.portrait: HorizontalLayout {
+                    spacing: 10px;
+                    height: 56px;
+                    for p[i] in [root.me, root.them]: Rectangle {
+                        horizontal-stretch: 1;
+                        Slant {
+                            lean: 12px;
+                            color: (i == 0 ? Theme.cyan : Theme.magenta).with-alpha(p.present ? 0.18 : 0.06);
+                            stroke: p.ready ? Theme.ready : Theme.line;
+                            stroke-width: 1px;
+                        }
+
+                        VerticalLayout {
+                            padding-left: 22px;
+                            padding-right: 16px;
+                            alignment: center;
+                            Label {
+                                text: i == 0 ? @tr("YOU") : @tr("OPPONENT");
+                                color: i == 0 ? Theme.cyan : Theme.magenta;
+                            }
+
+                            Text {
+                                text: !p.present ? @tr("Waiting for a player") : p.ready ? @tr("READY") : (p.name != "" ? p.name : @tr("Player"));
+                                color: p.ready ? Theme.ready : p.present ? Theme.text : Theme.text-faint;
+                                font-weight: Theme.bold;
+                                overflow: elide;
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    vertical-stretch: 1;
+                }
+
+                HorizontalLayout {
+                    alignment: start;
+                    Button {
+                        text: root.me.ready ? @tr("NOT READY") : @tr("READY");
+                        primary: !root.me.ready;
+                        focused: root.cursor == 4;
+                        width: 260px;
+                        activate => {
+                            root.point(4);
+                            root.nav(NavAction.confirm);
+                        }
+                        hover => {
+                            root.point(4);
+                        }
+                    }
+                }
+            }
+
+            // The two players, and the link between them.
+            if !Theme.portrait: VerticalLayout {
+                horizontal-stretch: 1.1;
+                spacing: Theme.gap;
+                PlayerCard {
+                    peer: root.me;
+                    you: true;
+                }
+
+                HorizontalLayout {
+                    alignment: center;
+                    height: 40px;
+                    Text {
+                        text: @tr("versus" => "VS");
+                        color: white;
+                        font-size: 26px;
+                        font-weight: Theme.black;
+                    }
+                }
+
+                PlayerCard {
+                    peer: root.them;
+                    mirrored: true;
+                }
+
+                // The link.
+                HorizontalLayout {
+                    spacing: 10px;
+                    height: 30px;
+                    Rectangle {
+                        width: 10px;
+                        height: 10px;
+                        y: (parent.height - self.height) / 2;
+                        border-radius: 5px;
+                        background: root.link == LinkState.open ? Theme.ready : root.link == LinkState.unavailable || root.link == LinkState.no-server ? Theme.text-faint : Theme.warn;
+                        opacity: root.link == LinkState.connecting || root.link == LinkState.reconnecting ? (mod(animation-tick() / 1ms, 800) < 400 ? 1 : 0.3) : 1;
+                    }
+
+                    Text {
+                        text: root.link == LinkState.unavailable || root.link == LinkState.no-server || root.link == LinkState.failed ? @tr("No link") : root.link == LinkState.waiting ? @tr("In the room, waiting") : root.link == LinkState.connecting ? @tr("Connecting…") : root.link == LinkState.open ? @tr("Connected") : @tr("Reconnecting…");
+                        color: Theme.text-dim;
+                        vertical-alignment: center;
+                    }
+
+                    if root.ping >= 0: Text {
+                        text: @tr("ping {0}", Format.ms(root.ping));
+                        color: Theme.text-faint;
+                        vertical-alignment: center;
+                    }
+                }
+
+                Rectangle {
+                    vertical-stretch: 1;
+                }
+            }
+        }
+
+        Hints {
+            visible: !Theme.portrait;
+            hints: [
+                { key: "↑↓", button: "✚", text: @tr("Choose") },
+                { key: "←→", button: "✚", text: @tr("Change") },
+                { key: "Enter", button: "A", text: @tr("Confirm") },
+                { key: "Esc", button: "B", text: @tr("Back") },
+            ];
+        }
+    }
+}
