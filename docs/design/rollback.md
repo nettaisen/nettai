@@ -328,8 +328,6 @@ The inputs go between the peers on rennet (Tango's netplay transport, §4.6), ov
   copies, reordering, the round trip, the other's loss as the receiver sees it).
 - `peer`: `Peer`, a getgud session and its link, and the host's frame (below): clock sync, the stall guard, and a
   set's rounds on one stream (§4.6).
-- `transport`: the `Datagram` trait, UDP, the handshake and the `Connection` it makes (§4.7), and an in-memory pair
-  for tests.
 - `network`: a seeded datagram network, one direction of it: latency, jitter (each datagram on its own, so jitter
   reorders), loss alone or in bursts, duplication, outages.
 - `sim::Match`: two peers over two networks plus a lockstep reference run (§4.3).
@@ -495,19 +493,26 @@ that a player left (`Peer::leave`).
 
 ### 4.7 The transport and the handshake
 
-`transport::Datagram` is all a peer needs of a channel: send a datagram to the other peer, and take the next one
-that arrived, neither ever waiting; nothing is assumed of delivery. `transport::Udp` is direct play: a host binds a
-UDP port on every IPv4 interface and takes the first Hello's sender as the other peer (connecting the socket to it,
-so that nothing else is read); a joiner connects to the host's address. The "port unreachable" a UDP socket reports
-for a datagram the other end didn't take (the host isn't up yet) is not an error.
+The transport is the host's: nettai-netplay and nettai-frontend have no socket and no handshake. The frontend's
+`NetPlayer` plays on a `netplay::Channel` the host implements (send a frame to the other player, take the next one
+that came, neither ever waiting; nothing is assumed of delivery), and the host agrees the match before it
+(`netplay::agree`, from both offers and the seed). The program's transport is nettai-demo's `net`, below; a larger
+app brings its own (a signaling server and WebRTC, §4.8) and hands the library the agreed match and the frames.
 
-Every datagram on the channel starts with a byte that says what it is (`transport::Kind`): a protocol frame, a
+`net::Datagram` is all the program's handshake needs of a socket: send a datagram to the other peer, and take the
+next one that arrived, neither ever waiting. `net::Udp` is direct play: a host binds a UDP port on every IPv4
+interface and takes the first Hello's sender as the other peer (connecting the socket to it, so that nothing else
+is read); a joiner connects to the host's address. The "port unreachable" a UDP socket reports for a datagram the
+other end didn't take (the host isn't up yet) is not an error.
+
+Every datagram on the channel starts with a byte that says what it is (`net::Kind`): a protocol frame, a
 Hello, or a refusal. A frame needs that byte because a handshake message can come late or twice, into the match,
 and must not be read as a frame. (A WebRTC peer could keep the handshake on a reliable channel of its own and do
 without the byte.)
 
-**The handshake** (`Connection::host`, `Connection::join`): the joiner sends its `Hello` every 100 ms until it has
-the host's; the host answers each Hello with its own. A Hello says:
+**The handshake** (`net::Handshake`, which the window polls each frame, so it never waits and the window stays
+responsive; `net::NetHandshake` is it and then the agreement): the joiner sends its `Hello` every 100 ms until it
+has the host's; the host answers each Hello with its own. A Hello says:
 
 - the protocol's version (`protocol::VERSION`) and the engine's (the crate version: peers must run the same engine,
   since the digest covers the state's layout and the simulation must be the same code);
@@ -519,26 +524,28 @@ the host's; the host answers each Hello with its own. A Hello says:
 
 A side that gets a Hello it can't play with (another protocol or engine, other content, the same role) sends a
 refusal with the reason three times and stops; the other stops on reading it, so both say what differs. Once a
-side has the other's Hello the match is on: both have the seed (`Connection::seed`, mixed from both halves) and
-both players' setups, and build the same round. If the host's answer was lost, the joiner keeps sending its Hello,
-and the host, in the match, answers it again; the first frame from the other side is the sign it has ours. The
-frontend checks the other player's setup against the content (`netplay::Offer::check`: a legal folder of the
-content's chips, Crosses of MegaMan's, the content's patch cards, a link battle stage) before building the round.
+side has the other's Hello the match is on: both have the seed (`net::Connection::seed`, mixed from both halves)
+and both players' setups, and build the same round. If the host's answer was lost, the joiner keeps sending its
+Hello, and the host, in the match, answers it again (its `Connection`, the player's channel, does); the first frame
+from the other side is the sign it has ours. The frontend checks the other player's setup against the content
+(`netplay::agree`, `netplay::Offer::check`: a legal folder of the content's chips, Crosses of MegaMan's, the
+content's patch cards, a link battle stage) before building the round.
 
 ### 4.8 What WebRTC would need
 
 Tango plays its matches over a WebRTC data channel opened unordered and without retransmits, set up through a
 signaling server (matchmaking by a link code). To plug in here:
 
-- a `Datagram` on such a channel: `send` posts a message on the channel; `try_recv` takes one from a queue the
-  channel's message callback fills (the channel's library is asynchronous; the peer and its session stay on the
+- a `netplay::Channel` on such a channel: `send` posts a message on the channel; `recv` takes one from a queue
+  the channel's message callback fills (the channel's library is asynchronous; the peer and its session stay on the
   frontend's thread, which polls the queue every frame);
 - the signaling: an offer and an answer (SDP) and ICE candidates exchanged through a server, before the channel
   opens; the host and joiner roles follow who made the link code;
-- the handshake as it is, over the channel (or on a second, reliable channel, without the kind byte on frames);
+- a handshake that swaps the Hellos' facts (the program's as it is, over the channel, or on a second, reliable
+  channel, without the kind byte on frames), then `netplay::agree`;
 - NAT traversal (STUN, and TURN when that fails) comes with WebRTC; UDP direct play needs a forwarded port instead.
 
-Nothing above the `Datagram` changes: the protocol, the peer and the frontend's driver are the same.
+Nothing above the `Channel` changes: the protocol, the peer and the frontend's driver are the same.
 
 ## 5. Results
 
@@ -600,12 +607,12 @@ clock sync (a peer that starts 6 or 20 frames ahead), the two negative tests bel
 An ignored test mashes with everything the test content has on both sides (cut-ins, giga cut-in chips, navi chips,
 bombs, swords, traps, grabs, 500 HP): no tick stops, settled or speculated (§7.1).
 
-**Over real UDP** (`tests/udp.rs`): two peers on loopback, each with its own socket, shake hands and play 600 ticks of
-a mashed battle at their own pace (a frame each 4 to 5 ms), once in two threads and once in two processes (the test
-binary run again as each peer); their settled states agree at every tick both settled. The frontend's test plays two
-`NetPlayer`s on loopback on EXE6's content (the handshake, each player's own loadout, 900 ticks of mashing), and they
-agree too. Two frontends in their windows, one hosting and one joining on loopback, play with a 18 ms round trip; the
-joiner sees the battle from its side, with its own custom screen.
+**Over a channel, and over UDP**: the frontend's tests play two `NetPlayer`s on EXE6's content over a channel the
+test shuttles by hand, each frame arriving three frames after it was sent (the agreement from both offers, each
+player's own loadout, 900 ticks of mashing; and a set to its end, in both games), and their settled states agree.
+nettai-demo's `net` tests shake hands over UDP on localhost, both sides polled on one thread, and agree the match.
+Two frontends in their windows, one hosting and one joining on loopback, play with a 18 ms round trip; the joiner
+sees the battle from its side, with its own custom screen.
 
 ### 5.2 How long before a divergence, and why
 

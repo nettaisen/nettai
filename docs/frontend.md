@@ -37,16 +37,17 @@ them. The commands in this document are the program's (`nettai-demo`).
   sound, each step a `Result`); its player (`player`) owns the session
   (`session`), the renderer and the audio, and gives a host the picture and
   the sound as it is driven; what drives a session is a driver (`driver`:
-  live play of a set from the GBA button mask; `netplay`: another player
-  over the network). It draws the battle's picture and nothing over it: it
-  has no text of its own.
+  live play of a set from the GBA button mask; `netplay`: another player,
+  over a channel the host provides: it has no socket). It draws the
+  battle's picture and nothing over it: it has no text of its own.
 - **nettai-demo** is the desktop program, a host of that library: the
   window and the keys, a loop over the player (`app`); the command line
   (`main`); the audio device the player's samples go to, and the audio's
   own lookups (`sound_lookups`); headless output (`headless`) and the audits
-  (`content_audit`, `headless::audit_traces`); and the replay of the
+  (`content_audit`, `headless::audit_traces`); the replay of the
   original's recordings (`trace`, the one place that depends on the compat
-  crates).
+  crates); and netplay's transport, the UDP socket and the handshake
+  (`net`).
 
 ## 1. The content pack
 
@@ -372,7 +373,9 @@ player over the network, with rollback (docs/design/rollback.md §4; the
 frontend's side is `netplay`):
 
 - **Hosting**: `--host 7777` listens on UDP port 7777 of every IPv4
-  interface and waits for a player (`--wait SECONDS`, default 300). On a LAN
+  interface and waits for a player (`--wait SECONDS`, default 300), the
+  window open and blank meanwhile, its title saying what it waits for (Esc
+  gives up). On a LAN
   the other player joins this machine's address; over the Internet, forward
   the UDP port on the host's router to the host's machine, and the other
   player joins the router's public address. The host is the left navi
@@ -1573,8 +1576,13 @@ sound for frames it only writes.
 (`nettai_match::Set::of(&content, &m, seed)`: a match file's, or a random
 pick's, `nettai_match::pick::live`) from the local player's buttons, round
 after round to the set's end; `netplay::NetPlayer` plays one against another
-player (the offer and the handshake are in `netplay`; the handshake waits for
-the other side, so a host runs it off its UI thread). A host may bring a
+player over a channel the host provides (`netplay::Channel`: it sends the
+frames and takes those that came, never waiting; the library has no socket).
+The offer and the match agreed from both offers are the library's
+(`netplay::Offer`, `netplay::agree`); the transport and the handshake that
+swaps the offers and the halves of the seed are the host's. The program's
+are nettai-demo's `net`: UDP, and a handshake the window polls each frame,
+so it stays responsive while it waits. A host may bring a
 driver of its own (`Driver`): the program's replays the original's
 recordings.
 
