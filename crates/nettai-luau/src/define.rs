@@ -1,7 +1,9 @@
 //! The define phase (docs/design/content-model-v2.md §7.3): a game's top
 //! module returns its root, one table whose sections hold what a match
-//! names, keyed by id (`chips`, `navis`, `forms`, `stages`, `patch_cards`,
-//! `navicust_programs`), and its `rules`. Loading has no side effect: the
+//! names, keyed by id (the core's: `chips`, `navis`, `forms`, `stages`; and
+//! the game's own collections, any other key: EXE6's `patch_cards`,
+//! `navicust_programs`, whose entries are data, `Registry::Entry`, keyed
+//! `<collection>/<id>`), and its `rules`. Loading has no side effect: the
 //! loader walks from the root, through tables and through what functions
 //! capture, and what it reaches is what the game has. Everything else is a
 //! table only code reaches (a kind a chip's action spawns, an effect a
@@ -13,7 +15,8 @@
 //!
 //! Keys (§2.2), local to the game:
 //!
-//! - a root section's: its id there; the rules', `rules` (`RULESET_KEY`);
+//! - a root section's: its id there; a collection's entry's,
+//!   `<collection>/<id>`; the rules', `rules` (`RULESET_KEY`);
 //! - a tagged table's: its `id`, where it states one (what a compat map
 //!   names it by); else, where a module's result holds it through plain
 //!   tables, the module's name and the fields (`rules/collision/attack`,
@@ -68,15 +71,10 @@ impl Tags {
 }
 
 /// The registries a root's sections hold, by the section's name
-/// (`packs::SECTIONS`' names): what a match names, by id.
-pub const SECTIONS: [(&str, Registry); 6] = [
-    ("chips", Registry::Chip),
-    ("navis", Registry::Navi),
-    ("forms", Registry::Form),
-    ("stages", Registry::Stage),
-    ("patch_cards", Registry::PatchCard),
-    ("navicust_programs", Registry::NaviCustProgram),
-];
+/// (`packs::SECTIONS`' names): what a match names, by id. (A game's own
+/// collections, its root's other keys, hold entries: `Registry::Entry`.)
+pub const SECTIONS: [(&str, Registry); 4] =
+    [("chips", Registry::Chip), ("navis", Registry::Navi), ("forms", Registry::Form), ("stages", Registry::Stage)];
 
 /// The root's field the game's rules are.
 pub const RULES_SECTION: &str = nettai_content_api::packs::RULES;
@@ -482,22 +480,34 @@ pub(crate) fn finish(
         // (A game's top module is its root; any other entry is a module
         // walked loose, unless what it returns is a root: a test's.)
         let top = keys::root_of(module).is_some_and(|p| games.contains(p)) && keys::local(module) == nettai_content_api::packs::INIT;
-        let is_root = (top || !entries_.is_empty()) && entries_.iter().all(|(k, _)| matches!(k, DataKey::Str(s) if named(s)));
+        // (A top module's result is its game's root, whose other keys are
+        // its collections; a loose module's is a root where every key is a
+        // section's or the rules'.)
+        let is_root = top || (!entries_.is_empty() && entries_.iter().all(|(k, _)| matches!(k, DataKey::Str(s) if named(s))));
         if !is_root {
-            if !top {
-                queue.push_back((value.clone(), module_key(module, games), false));
-                continue;
-            }
-            let unknown: Vec<String> = entries_.iter().map(|(k, _)| k.to_string()).filter(|k| !named(k)).collect();
-            return Err(format!(
-                "{}.luau: a game's root holds {} and `{RULES_SECTION}`, not {}",
-                keys::module_path(module),
-                SECTIONS.iter().map(|(s, _)| format!("`{s}`")).collect::<Vec<_>>().join(", "),
-                if unknown.is_empty() { "nothing".into() } else { unknown.iter().map(|k| format!("`{k}`")).collect::<Vec<_>>().join(", ") }
-            ));
+            queue.push_back((value.clone(), module_key(module, games), false));
+            continue;
+        }
+        if let Some((k, _)) = entries_.iter().find(|(k, _)| !matches!(k, DataKey::Str(_))) {
+            return Err(format!("{}.luau: a game's root's keys are names, not {k}", keys::module_path(module)));
         }
         roots += 1;
-        for (section, registry) in SECTIONS {
+        // The core's sections, then the game's own collections (the root's
+        // other keys, but its rules), each entry keyed `<collection>/<id>`.
+        let collections: Vec<String> = entries_
+            .iter()
+            .filter_map(|(k, _)| match k {
+                DataKey::Str(s) if !SECTIONS.iter().any(|(c, _)| c == s) && s != RULES_SECTION => Some(s.clone()),
+                _ => None,
+            })
+            .collect();
+        for c in &collections {
+            if !nettai_content_api::is_collection_name(c) {
+                return Err(format!("{}.luau: `{c}` names no collection (lowercase words joined by _)", keys::module_path(module)));
+            }
+        }
+        let parts = SECTIONS.iter().map(|&(s, r)| (s, r, false)).chain(collections.iter().map(|c| (c.as_str(), Registry::Entry, true)));
+        for (section, registry, collection) in parts {
             match root.raw_get::<LuaValue>(section).map_err(|e| e.to_string())? {
                 LuaValue::Nil => {}
                 LuaValue::Table(defs) => {
@@ -521,11 +531,16 @@ pub(crate) fn finish(
                         }
                         by_ptr.insert(table.to_pointer(), found.len());
                         let module = written.get(&table.to_pointer()).cloned().unwrap_or_else(|| module.clone());
-                        found.push(Found { registry, key: id.clone(), module, record_type: None, table: table.clone() });
-                        queue.push_back((LuaValue::Table(table), id, false));
+                        let (key, record_type) =
+                            if collection { (nettai_content_api::entry_key(section, &id), Some(section.to_string())) } else { (id.clone(), None) };
+                        found.push(Found { registry, key: key.clone(), module, record_type, table: table.clone() });
+                        queue.push_back((LuaValue::Table(table), key, false));
                     }
                 }
-                v => return Err(format!("{}.luau: `{section}` is a table of {} by id, not {}", keys::module_path(module), registry.name(), v.type_name())),
+                v => {
+                    let what = if collection { "entries".to_string() } else { format!("{}s", registry.name()) };
+                    return Err(format!("{}.luau: `{section}` is a table of {what} by id, not {}", keys::module_path(module), v.type_name()));
+                }
             }
         }
         match root.raw_get::<LuaValue>(RULES_SECTION).map_err(|e| e.to_string())? {
@@ -675,9 +690,12 @@ pub(crate) fn finish(
     // A root's definition reads its id, its key there (`chip.id`), which no
     // table of the content's writes: a view, not a field of its data.
     for f in &found {
-        if SECTIONS.iter().any(|&(_, r)| r == f.registry) {
+        if SECTIONS.iter().any(|&(_, r)| r == f.registry) || f.registry == Registry::Entry {
             let id = lua.create_table().map_err(|e| e.to_string())?;
-            id.raw_set("id", f.key.as_str()).map_err(|e| e.to_string())?;
+            // (An entry's id is its key's last part: `canodumb` of
+            // `patch_cards/canodumb`.)
+            let own = if f.registry == Registry::Entry { nettai_content_api::entry_parts(&f.key).1 } else { f.key.as_str() };
+            id.raw_set("id", own).map_err(|e| e.to_string())?;
             let meta = lua.create_table().map_err(|e| e.to_string())?;
             id.set_readonly(true);
             meta.raw_set("__index", id).map_err(|e| e.to_string())?;
@@ -734,7 +752,7 @@ pub(crate) fn finish(
             registry,
             key: key.to_string(),
             module: f.module.clone(),
-            record_type: f.record_type.clone().filter(|_| registry == Registry::Record),
+            record_type: f.record_type.clone().filter(|_| matches!(registry, Registry::Record | Registry::Entry)),
             spec,
         });
         tables.push(f.table.clone());

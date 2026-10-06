@@ -205,8 +205,8 @@ pub(crate) struct Bound {
     /// Each definition's table by registry and handle; for an entry that is
     /// no definition (an engine kind), a stand-in `{ id = key }`.
     tables: HashMap<(Registry, u16), Table>,
-    /// Records' types, by handle.
-    record_types: HashMap<u16, String>,
+    /// Records' types and entries' collections, by registry and handle.
+    record_types: HashMap<(Registry, u16), String>,
     assets: RefCell<define::AssetTables>,
 }
 
@@ -224,9 +224,9 @@ impl Bound {
         self.tables.get(&(registry, h)).cloned().ok_or_else(|| mlua::Error::runtime(format!("no {registry} has handle {h}")))
     }
 
-    /// Record `h`'s type.
-    pub fn record_type(&self, h: u16) -> Option<&str> {
-        self.record_types.get(&h).map(String::as_str)
+    /// Record `h`'s type, or entry `h`'s collection (`registry`'s).
+    pub fn record_type(&self, registry: Registry, h: u16) -> Option<&str> {
+        self.record_types.get(&(registry, h)).map(String::as_str)
     }
 
     /// The asset `v` is, if it is one.
@@ -273,7 +273,7 @@ impl LuauContent {
             defs.insert(t.to_pointer() as usize, (d.registry, h));
             tables.insert((d.registry, h), t.clone());
             if let Some(ty) = &d.record_type {
-                record_types.insert(h, ty.clone());
+                record_types.insert((d.registry, h), ty.clone());
             }
         }
         // Stand-ins for the entries that are no definition.

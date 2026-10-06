@@ -143,7 +143,9 @@ impl Scripts {
     /// `modules` (by path in its directory): it returns the game's root,
     /// each section ([`packs::SECTIONS`]) the tables of the modules that
     /// give it ([`packs::sections_of`]) as one, in path order, a folder by
-    /// its name; and the rules, `rules` (or `rules/init`), where there are.
+    /// its name; each collection of the game's own a folder's init at the
+    /// top gives (`patch_cards/init`: `patch_cards`); and the rules,
+    /// `rules` (or `rules/init`), where there are.
     pub fn init_for(modules: &BTreeMap<String, String>) -> String {
         let mut body = String::new();
         for (section, _) in packs::SECTIONS {
@@ -154,6 +156,12 @@ impl Scripts {
                 .collect();
             if !parts.is_empty() {
                 body += &format!("    {section} = merge {{\n{parts}    }},\n");
+            }
+        }
+        for path in modules.keys() {
+            let Some(dir) = path.strip_suffix("/init").filter(|d| !d.contains('/')) else { continue };
+            if dir != packs::RULES && !packs::SECTIONS.iter().any(|(s, _)| *s == dir) && nettai_content_api::is_collection_name(dir) {
+                body += &format!("    {dir} = require(\"@self/{dir}\"),\n");
             }
         }
         if modules.contains_key(packs::RULES) || modules.contains_key(&format!("{}/{}", packs::RULES, packs::INIT)) {
@@ -754,7 +762,13 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         refused(&[("init", "local _ = require('@self/gone')\nreturn { rules = require('@self/rules') }")], "game/init.luau: require(\"@self/gone\"): no module game/gone.luau");
         refused(&[("init", "return { rules = require('./rules') }")], "game/init.luau: require(\"./rules\") from game:init: leaves pack game");
         refused(&[], "game/init.luau: game pack game has no top module");
-        refused(&[("init", "return { rules = require('@self/rules'), cards = {} }")], "game/init.luau: a game's root holds");
+        // The root's other keys are the game's own collections, each a
+        // table of entries by id (data, keyed `<collection>/<id>`).
+        let held_cards = with_inits(&[("init", "return { rules = require('@self/rules'), cards = { joker = { power = 1 } } }")]).unwrap();
+        let joker = held_cards.defs.entry_in("cards", "joker").expect("an entry of the collection");
+        assert_eq!((held_cards.defs.entry(joker).key.as_str(), held_cards.defs.collections()), ("cards/joker", vec!["cards"]));
+        refused(&[("init", "return { rules = require('@self/rules'), cards = 3 }")], "game/init.luau: `cards` is a table of entries by id, not integer");
+        refused(&[("init", "return { rules = require('@self/rules'), Cards = {} }")], "game/init.luau: `Cards` names no collection");
         // A cycle, by the files it goes through.
         refused(
             &[("init", "return require('@self/a')"), ("a", "return require('./b')"), ("b", "return require('./a')")],

@@ -12,12 +12,12 @@ file gives each side its NaviCust (docs/frontend.md §6), and the editor (nettai
 
 | What | Whose | Where |
 |---|---|---|
-| A program: its colors, shape, compressed shape, whether it is a plus part | the engine's record of every game's program | `define.navicust_program`, `Registry::NaviCustProgram`, `NaviCustProgramDef` |
+| A program: its colors, shape, compressed shape, whether it is a plus part | an entry of the game's root's collection `navicust_programs` (data the core reads none of, `Registry::Entry`; content-model-v2.md §3.11) | content/exe6/navicust/<name>/init.luau |
 | What a program does, which bug it brings, which programs it excludes | the game's rules' data on the definition | EXE6: `effects`, `bug`, `exclusive` (and `anywhere`), read by rules/navicust |
 | A player's NaviCust: the programs placed (program, color, center, quarter turns, compressed) and the board's expansions | the player's setup | `PlayerSetup::navicust: Option<NaviCust>` (`crate::navicust`) |
 | The board: which cells a program may cover, its frame, the command line | the game's rule section | the stock ruleset's `navicust` (rules/navicust/section.luau), `Rules::navicust` (`NaviCustRules`) |
 | The compile: placement into stats and bugs | the game's rules | EXE6's `navicust` part (`round_setup`) |
-| A program's name | the locales | `[navicust-programs]` in locales/<lang>.toml |
+| A program's name | the locales | `[navicust_programs]` in locales/<lang>.toml |
 | A program's number (a save's part id is 4 × it + the color variant) | compat | content/exe6/compat/navicust.toml |
 
 So the engine knows a NaviCust's geometry, which is generic: a 7x7 grid (`navicust::SIZE`), a program's shape

@@ -697,13 +697,9 @@ impl CoreApi for Battle {
                 let key = &defs.form(nettai_content_api::FormHandle(handle)).key;
                 (key, strings.form(key).and_then(|s| s.name.clone()))
             }
-            Registry::PatchCard => {
-                let key = &defs.patch_card(nettai_content_api::PatchCardHandle(handle)).key;
-                (key, strings.patch_card(key).and_then(|s| s.name.as_ref().map(|n| n.replace('\n', " "))))
-            }
-            Registry::NaviCustProgram => {
-                let key = &defs.navicust_program(nettai_content_api::NaviCustProgramHandle(handle)).key;
-                (key, strings.navicust_program(key).and_then(|s| s.name.clone()))
+            Registry::Entry => {
+                let e = defs.entry(nettai_content_api::EntryHandle(handle));
+                (&e.key, strings.entry(&e.collection, e.id()).and_then(|s| s.name.as_ref().map(|n| n.replace('\n', " "))))
             }
             _ => return format!("{registry} {handle}"),
         };
