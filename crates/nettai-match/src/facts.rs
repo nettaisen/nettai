@@ -25,12 +25,12 @@
 use crate::{Arena, Side, ids};
 use nettai_battle::content::{Content, PlayerFact};
 use nettai_battle::rules::{self, Fact, SetupFact};
-use nettai_content_api::{ChipHandle, ContentState, FieldType, FieldValue, FormHandle, Registry, Value};
+use nettai_content_api::{Block, ChipHandle, FieldType, FieldValue, FormHandle, Registry, Value};
 
 /// A side's facts: a setup block for each system of its game's ruleset, in
 /// the ruleset's order (none on a content without a ruleset).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Facts(Vec<ContentState>);
+pub struct Facts(Vec<Block>);
 
 /// A fact a side of the content's game takes: a setup field's name and type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -124,7 +124,7 @@ impl Facts {
     }
 
     /// The setup blocks, as a round's setup carries them.
-    pub fn blocks(&self) -> &[ContentState] {
+    pub fn blocks(&self) -> &[Block] {
         &self.0
     }
 

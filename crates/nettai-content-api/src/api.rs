@@ -12,7 +12,7 @@
 use std::fmt;
 
 use crate::registry::{ChipHandle, Registry};
-use crate::state::{ContentState, FieldType, StateId, TypeError, Value};
+use crate::state::{Block, ContentState, FieldType, StateId, TypeError, Value};
 use crate::types::{ObjectRef, PanelPos, SpriteId, Vec3};
 
 /// What a navi runs (`CoreApi::navi_action`).
@@ -1743,10 +1743,10 @@ pub trait CoreApi {
     fn state_mut(&mut self, o: ObjectRef) -> Option<&mut ContentState>;
     /// The state of the system in place `slot` of side `side`'s ruleset
     /// (docs/design/rules-in-luau.md §5).
-    fn system_state_mut(&mut self, side: u8, slot: u8) -> ApiResult<&mut ContentState>;
+    fn system_state_mut(&mut self, side: u8, slot: u8) -> ApiResult<&mut Block>;
     /// The player setup of that system: what the player brought, read-only
     /// in battle.
-    fn system_setup(&self, side: u8, slot: u8) -> ApiResult<&ContentState>;
+    fn system_setup(&self, side: u8, slot: u8) -> ApiResult<&Block>;
     /// The place of system `system` in side `side`'s ruleset, if the
     /// ruleset has it (`system.state_of`, `battle.side_has_system`).
     fn system_slot_of(&self, side: u8, system: crate::SystemHandle) -> Option<u8>;
