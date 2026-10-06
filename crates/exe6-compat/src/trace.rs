@@ -604,8 +604,10 @@ impl Round {
     /// How many frames late the engine's custom screen of the recording
     /// console's side is on the `i`th of `frames`: `link_delay` from its OK
     /// until the fight resumes ([`Round::fed`]: its OK came that late), else
-    /// none. What the screen does then (its sounds) is the original's that
-    /// many frames earlier.
+    /// none. What the screen does then from its OK on (the OK's sound, the
+    /// slide-out) is the original's that many frames earlier; what it began
+    /// before (a dark chip's fade, stepping on) the original's on the same
+    /// frame.
     pub fn screen_late(&self, i: usize, frames: &[&Frame]) -> u32 {
         let d = self.link_delay() as u32;
         let frame = frames[i].frame;
