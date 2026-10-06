@@ -209,6 +209,13 @@ fn to_api(v: LuaValue, ty: &FieldType, what: &str) -> mlua::Result<Value> {
         })?,
         LuaValue::Boolean(b) => Value::Bool(b),
         LuaValue::String(s) => match ty {
+            FieldType::Code => {
+                let s = s.to_str()?;
+                match s.as_bytes() {
+                    [c] if nettai_content_api::is_code(*c) => Value::Code(*c),
+                    _ => return Err(mlua::Error::runtime(format!("{what}: {:?} is no chip code (a letter A to Z, or *)", &*s))),
+                }
+            }
             FieldType::Enum(names) => {
                 let s = s.to_str()?;
                 let i = names.iter().position(|n| *n == *s).ok_or_else(|| {
@@ -253,6 +260,7 @@ fn from_api(lua: &Lua, v: Value, ty: &FieldType) -> mlua::Result<LuaValue> {
         Value::Vec3(p) => LuaValue::UserData(lua.create_userdata(LVec3(p))?),
         Value::Def(r, h) => LuaValue::Table(bound(|b| b.def_value(r, h))?),
         Value::Asset(k, h) => LuaValue::Table(bound(|b| b.asset_value(lua, k, h))?),
+        Value::Code(c) => LuaValue::String(lua.create_string([c])?),
     })
 }
 
@@ -989,62 +997,205 @@ impl UserData for State {
             let key = key.to_str()?;
             let got = this.with_state(&key, false, |s, schema, i| {
                 let ty = schema.field(i).ty.clone();
-                Ok(match ty {
-                    FieldType::Array(..) => None,
-                    _ => Some((s.get(schema, i).load(), ty)),
-                })
+                Ok(ty.is_scalar().then(|| (s.get(schema, i).load(), ty)))
             })?;
             match got {
                 Some((v, ty)) => from_api(lua, v, &ty),
-                None => Ok(LuaValue::UserData(lua.create_userdata(StateArray { state: State(this.0), field: key.to_string() })?)),
+                None => Ok(LuaValue::UserData(lua.create_userdata(StatePart {
+                    state: State(this.0),
+                    field: key.to_string(),
+                    path: Vec::new(),
+                })?)),
             }
         });
         methods.add_meta_method(MetaMethod::NewIndex, |_, this, (key, v): (mlua::LuaString, LuaValue)| {
             let key = key.to_str()?;
-            this.with_state(&key, true, |s, schema, i| {
-                let v = to_api(v, &schema.field(i).ty, &key)?;
-                s.set(schema, i, v).map_err(|e| mlua::Error::runtime(format!("state field `{}`: {e}", &*key)))
-            })
+            this.with_state(&key, true, |s, schema, i| assign(s, schema.place(i), v, &format!("state field `{}`", &*key)))
         });
     }
 }
 
-/// An array field of a content state: `s.targets[i]`, 1-based like Luau
-/// arrays, and `#s.targets`.
-pub struct StateArray {
-    state: State,
-    field: String,
+/// Store `v` at `place` of state `s`, as the place's type takes it: a
+/// value; a record from a table of its fields (those it leaves out zero);
+/// an array or a list from a table of its elements, from the first (a
+/// list's length the table's, an array's rest zero). `name` says the place
+/// in a message.
+fn assign(s: &mut dyn nettai_content_api::Fields, place: nettai_content_api::Place, v: LuaValue, name: &str) -> mlua::Result<()> {
+    let ty = place.ty();
+    if ty.is_scalar() {
+        let v = to_api(v, ty, name)?;
+        return s.set_at(place, v).map_err(|e| mlua::Error::runtime(format!("{name}: {e}")));
+    }
+    let LuaValue::Table(t) = v else {
+        return Err(mlua::Error::runtime(format!("{name} is a {ty}: give it a table, not a {}", v.type_name())));
+    };
+    match ty {
+        FieldType::Record(fields) => {
+            for pair in t.clone().pairs::<LuaValue, LuaValue>() {
+                let (k, _) = pair?;
+                let known = match &k {
+                    LuaValue::String(k) => fields.index_of(&k.to_str()?).is_some(),
+                    _ => false,
+                };
+                if !known {
+                    let names: Vec<&str> = fields.fields().iter().map(|f| f.name.as_str()).collect();
+                    return Err(mlua::Error::runtime(format!("{name} has no field {k:?} ({})", names.join(", "))));
+                }
+            }
+            s.clear_at(place);
+            for (i, f) in fields.fields().iter().enumerate() {
+                let x: LuaValue = t.raw_get(f.name.as_str())?;
+                if !x.is_nil() {
+                    assign(s, place.field_at(i), x, &format!("{name}.{}", f.name))?;
+                }
+            }
+            Ok(())
+        }
+        FieldType::Array(..) | FieldType::List(..) => {
+            let n = t.raw_len();
+            let room = place.capacity().expect("an array or a list");
+            if n > room {
+                return Err(mlua::Error::runtime(format!("{name} holds {room}, not {n}")));
+            }
+            s.clear_at(place);
+            if matches!(ty, FieldType::List(..)) {
+                s.set_len_at(place, n).map_err(mlua::Error::runtime)?;
+            }
+            for k in 0..n {
+                let x: LuaValue = t.raw_get(k + 1)?;
+                assign(s, place.elem(k).expect("within its room"), x, &format!("{name}[{}]", k + 1))?;
+            }
+            Ok(())
+        }
+        _ => unreachable!("a scalar"),
+    }
 }
 
-impl UserData for StateArray {
+/// A step into a part of a state field: a record's field, an element.
+#[derive(Clone, Debug)]
+enum Step {
+    Field(String),
+    Elem(usize),
+}
+
+/// A part of a content state field that holds parts: an array's elements
+/// (`s.targets[i]`), a list's (`s.folder[i]`, `#s.folder`), a record's
+/// fields (`s.folder[i].code`), as deep as the schema nests them. Indexes
+/// are 1-based like Luau arrays. A list grows by its next element
+/// (`s.list[#s.list + 1] = v`); a record, a list or an array takes a table
+/// whole (`s.folder[2] = { chip = c, code = "A" }`, [`assign`]).
+pub struct StatePart {
+    state: State,
+    field: String,
+    path: Vec<Step>,
+}
+
+impl StatePart {
+    /// What it is called in a message: `folder[2].code`.
+    fn name(&self, next: Option<&Step>) -> String {
+        let mut out = self.field.clone();
+        for step in self.path.iter().chain(next) {
+            match step {
+                Step::Field(f) => out.push_str(&format!(".{f}")),
+                Step::Elem(k) => out.push_str(&format!("[{}]", k + 1)),
+            }
+        }
+        out
+    }
+
+    /// Run `f` on the state with this part's place.
+    fn with_place<R>(
+        &self,
+        write: bool,
+        f: impl FnOnce(&mut dyn nettai_content_api::Fields, nettai_content_api::Place) -> mlua::Result<R>,
+    ) -> mlua::Result<R> {
+        self.state.with_state(&self.field, write, |s, schema, i| {
+            let mut place = schema.place(i);
+            for (n, step) in self.path.iter().enumerate() {
+                place = match step {
+                    Step::Field(name) => place.field(name),
+                    Step::Elem(k) => place.elem(*k),
+                }
+                .ok_or_else(|| mlua::Error::runtime(format!("{}: no such part", self.name(self.path.get(n)))))?;
+            }
+            f(s, place)
+        })
+    }
+
+    /// The step `key` names into this part (a record's field by name, an
+    /// element by its 1-based index), and whether the element is one the
+    /// list may take next (one past its end, for a write).
+    fn step(&self, key: &LuaValue, s: &dyn nettai_content_api::Fields, place: nettai_content_api::Place, write: bool) -> mlua::Result<Step> {
+        match place.ty() {
+            FieldType::Record(fields) => {
+                let LuaValue::String(name) = key else {
+                    return Err(mlua::Error::runtime(format!("{}: a record's fields have names", self.name(None))));
+                };
+                let name = name.to_str()?.to_string();
+                if fields.index_of(&name).is_none() {
+                    let names: Vec<&str> = fields.fields().iter().map(|f| f.name.as_str()).collect();
+                    return Err(mlua::Error::runtime(format!("{} has no field `{name}` ({})", self.name(None), names.join(", "))));
+                }
+                Ok(Step::Field(name))
+            }
+            FieldType::Array(..) | FieldType::List(..) => {
+                let k = int(key, &self.name(None))?;
+                let len = s.len_at(place).expect("an array or a list") as i64;
+                let room = place.capacity().expect("an array or a list") as i64;
+                let last = if write && matches!(place.ty(), FieldType::List(..)) { (len + 1).min(room) } else { len };
+                if k < 1 || k > last {
+                    let what = if matches!(place.ty(), FieldType::List(..)) { "list" } else { "array" };
+                    return Err(mlua::Error::runtime(format!("{}[{k}] is past the {what}'s end ({len})", self.name(None))));
+                }
+                Ok(Step::Elem(k as usize - 1))
+            }
+            ty => Err(mlua::Error::runtime(format!("{}: a {ty} has no parts", self.name(None)))),
+        }
+    }
+}
+
+impl UserData for StatePart {
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
-        methods.add_meta_method(MetaMethod::Index, |lua, this, i: LuaValue| {
-            let k = int(&i, &this.field)?;
-            let (v, ty) = this.state.with_state(&this.field, false, |s, schema, f| {
-                let FieldType::Array(elem, _) = &schema.field(f).ty else { unreachable!("an array field") };
-                let v = (k >= 1).then(|| s.get_elem(schema, f, k as usize - 1)).flatten();
-                Ok((v, (**elem).clone()))
+        methods.add_meta_method(MetaMethod::Index, |lua, this, key: LuaValue| {
+            let got = this.with_place(false, |s, place| {
+                let step = this.step(&key, s, place, false)?;
+                let at = match &step {
+                    Step::Field(name) => place.field(name),
+                    Step::Elem(k) => place.elem(*k),
+                }
+                .expect("a step into the part");
+                let ty = at.ty().clone();
+                Ok((step, ty.is_scalar().then(|| (s.get_at(at).load(), ty))))
             })?;
-            match v {
-                Some(v) => from_api(lua, v.load(), &ty),
-                None => Err(mlua::Error::runtime(format!("{}[{k}] is past the array's end", this.field))),
+            match got {
+                (_, Some((v, ty))) => from_api(lua, v, &ty),
+                (step, None) => {
+                    let mut path = this.path.clone();
+                    path.push(step);
+                    Ok(LuaValue::UserData(lua.create_userdata(StatePart { state: State(this.state.0), field: this.field.clone(), path })?))
+                }
             }
         });
-        methods.add_meta_method(MetaMethod::NewIndex, |_, this, (i, v): (LuaValue, LuaValue)| {
-            let k = int(&i, &this.field)?;
-            this.state.with_state(&this.field, true, |s, schema, f| {
-                let FieldType::Array(elem, _) = &schema.field(f).ty else { unreachable!("an array field") };
-                let v = to_api(v, elem, &this.field)?;
-                if k < 1 {
-                    return Err(mlua::Error::runtime(format!("{}[{k}]: arrays start at 1", this.field)));
+        methods.add_meta_method(MetaMethod::NewIndex, |_, this, (key, v): (LuaValue, LuaValue)| {
+            this.with_place(true, |s, place| {
+                let step = this.step(&key, s, place, true)?;
+                let name = this.name(Some(&step));
+                if let (Step::Elem(k), FieldType::List(..)) = (&step, place.ty())
+                    && Some(*k) == s.len_at(place)
+                {
+                    s.set_len_at(place, k + 1).map_err(mlua::Error::runtime)?;
                 }
-                s.set_elem(schema, f, k as usize - 1, v).map_err(mlua::Error::runtime)
+                let at = match &step {
+                    Step::Field(f) => place.field(f),
+                    Step::Elem(k) => place.elem(*k),
+                }
+                .expect("a step into the part");
+                assign(s, at, v, &name)
             })
         });
         methods.add_meta_method(MetaMethod::Len, |_, this, ()| {
-            this.state.with_state(&this.field, false, |_, schema, f| match &schema.field(f).ty {
-                FieldType::Array(_, n) => Ok(*n as i64),
-                _ => unreachable!("an array field"),
+            this.with_place(false, |s, place| {
+                s.len_at(place).map(|n| n as i64).ok_or_else(|| mlua::Error::runtime(format!("{}: a record has no length", this.name(None))))
             })
         });
     }
@@ -1172,9 +1323,33 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     g.set("Vec3", vec3)?;
 
     g.set("int", int_lib(lua)?)?;
+    g.set("schema", schema_lib(lua)?)?;
     g.set("rules", rules_lib(lua)?)?;
     g.set("custom", custom_lib(lua)?)?;
     Ok(())
+}
+
+/// `schema`: what a state's or a setup's declaration takes beside type
+/// names, variants and records (docs/design/rust-and-luau.md, step c1):
+/// `schema.list(T, n)`, a list of up to `n` elements of type `T` (a type
+/// name, a list of variants, a record's table or another list).
+fn schema_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
+    let t = lua.create_table()?;
+    lib_fn!(lua, t, "list", |lua, (of, max): (LuaValue, LuaValue)| {
+        let max = int(&max, "schema.list's length")?;
+        if !(1..=nettai_content_api::MAX_LIST as i64).contains(&max) {
+            return Err(mlua::Error::runtime(format!("schema.list holds 1 to {} elements, not {max}", nettai_content_api::MAX_LIST)));
+        }
+        if !matches!(of, LuaValue::String(_) | LuaValue::Table(_)) {
+            return Err(mlua::Error::runtime(format!("schema.list's elements are a type, not a {}", of.type_name())));
+        }
+        let list = lua.create_table()?;
+        list.raw_set(nettai_content_api::LIST_MARK, true)?;
+        list.raw_set("of", of)?;
+        list.raw_set("max", max)?;
+        Ok(list)
+    });
+    Ok(t)
 }
 
 /// `custom`: a side's custom screen, in the rules' custom hooks

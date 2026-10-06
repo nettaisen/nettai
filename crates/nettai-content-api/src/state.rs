@@ -15,6 +15,12 @@
 //! schema decides where each field lives in a block. That layout is
 //! private to this module: content and engine code read and write fields
 //! by name (or by the schema's field index), never by offset.
+//!
+//! A field may be a record of fields of its own (`{ chip = "chip", code =
+//! "code" }`) or a bounded list of a type (`schema.list(T, n)`: how many it
+//! holds, then room for `n`), nested as deep as a schema says. A part of a
+//! block is reached through its [`Place`]: a field's, a record's field's,
+//! an element's.
 
 use std::fmt;
 
@@ -25,6 +31,9 @@ use crate::types::{ObjectRef, Pool, Vec3};
 
 /// Most elements an array field may have.
 pub const MAX_ARRAY: usize = 64;
+
+/// Most elements a list may hold (`schema.list(T, n)`).
+pub const MAX_LIST: usize = u16::MAX as usize;
 
 /// The type of a state field.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -53,12 +62,22 @@ pub enum FieldType {
     Ref(Registry, Option<String>),
     /// An asset of a kind, or none (`"sprite"`, `"sound"`): §3.4.
     Asset(AssetKind),
+    /// A chip code (`"code"`): a letter A to Z or `*`, or none.
+    Code,
+    /// A record: fields of their own, in their names' order (a table of
+    /// field names to types).
+    Record(Box<Schema>),
+    /// A list of up to `n` elements of a type, and how many it holds
+    /// (`schema.list(T, n)`): read and written element by element, its
+    /// length its own.
+    List(Box<FieldType>, u16),
 }
 
 impl FieldType {
     /// A type by name: `bool`, `u8`, `u16`, `u32`, `i8`, `i16`, `i32`,
     /// `u8?` (a byte or none: a setup's fact that may be stated as none, as
-    /// a navi code's level), `object`, `vec3`, or an array of one of the
+    /// a navi code's level), `object`, `vec3`, `code` (a chip code), a
+    /// registry's or an asset kind's name, or an array of one of the
     /// scalars, `"u8[18]"`.
     pub fn scalar(name: &str) -> Option<FieldType> {
         if let Some((elem, len)) = name.strip_suffix(']').and_then(|s| s.split_once('[')) {
@@ -80,6 +99,7 @@ impl FieldType {
             "i32" => FieldType::I32,
             "object" => FieldType::Object,
             "vec3" => FieldType::Vec3,
+            "code" => FieldType::Code,
             _ if name.starts_with("record:") => {
                 let t = &name["record:".len()..];
                 return (!t.is_empty()).then(|| FieldType::Ref(Registry::Record, Some(t.to_string())));
@@ -95,12 +115,20 @@ impl FieldType {
     /// Bytes a value of this type takes in a state.
     pub fn size(&self) -> usize {
         match self {
-            FieldType::Bool | FieldType::U8 | FieldType::I8 | FieldType::Object | FieldType::Enum(_) => 1,
+            FieldType::Bool | FieldType::U8 | FieldType::I8 | FieldType::Object | FieldType::Enum(_) | FieldType::Code => 1,
             FieldType::U16 | FieldType::I16 | FieldType::OptionalU8 | FieldType::Ref(..) | FieldType::Asset(_) => 2,
             FieldType::U32 | FieldType::I32 => 4,
             FieldType::Vec3 => 12,
             FieldType::Array(elem, n) => elem.size() * *n as usize,
+            FieldType::Record(fields) => fields.size(),
+            FieldType::List(elem, n) => list_count_size(*n) + elem.size() * *n as usize,
         }
+    }
+
+    /// Whether a value of this type is one value (not a record, a list or
+    /// an array, whose parts are read and written each by its place).
+    pub fn is_scalar(&self) -> bool {
+        !matches!(self, FieldType::Array(..) | FieldType::Record(_) | FieldType::List(..))
     }
 
     /// The value a fresh state holds (all zero, like the game's scratch).
@@ -120,6 +148,8 @@ impl FieldType {
             FieldType::Array(elem, _) => elem.zero(),
             FieldType::Ref(..) => FieldValue::Ref(None),
             FieldType::Asset(kind) => FieldValue::Asset(*kind, None),
+            FieldType::Code => FieldValue::Code(None),
+            FieldType::Record(_) | FieldType::List(..) => FieldValue::Nested,
         }
     }
 
@@ -148,6 +178,8 @@ impl FieldType {
             (FieldType::Ref(..), Value::Nil) => FieldValue::Ref(None),
             (FieldType::Asset(k), Value::Asset(a, h)) if *k == a => FieldValue::Asset(a, Some(h)),
             (FieldType::Asset(k), Value::Nil) => FieldValue::Asset(*k, None),
+            (FieldType::Code, Value::Code(c)) if is_code(c) => FieldValue::Code(Some(c)),
+            (FieldType::Code, Value::Nil) => FieldValue::Code(None),
             (ty, v) => return Err(TypeError { expected: ty.clone(), got: v }),
         })
     }
@@ -176,6 +208,10 @@ impl FieldType {
             // The handle plus one; 0 is none.
             FieldValue::Ref(d) => out[..2].copy_from_slice(&d.map_or(0, |(_, h)| h.wrapping_add(1)).to_le_bytes()),
             FieldValue::Asset(_, h) => out[..2].copy_from_slice(&h.map_or(0, |h| h.wrapping_add(1)).to_le_bytes()),
+            // (The letter itself; 0 is none.)
+            FieldValue::Code(c) => out[0] = c.unwrap_or(0),
+            // (A record's or a list's parts are written each by its place.)
+            FieldValue::Nested => {}
         }
     }
 
@@ -201,6 +237,101 @@ impl FieldType {
             FieldType::Array(elem, _) => elem.decode(b),
             FieldType::Ref(r, _) => FieldValue::Ref(u16::from_le_bytes([b[0], b[1]]).checked_sub(1).map(|h| (*r, h))),
             FieldType::Asset(k) => FieldValue::Asset(*k, u16::from_le_bytes([b[0], b[1]]).checked_sub(1)),
+            FieldType::Code => FieldValue::Code((b[0] != 0).then_some(b[0])),
+            FieldType::Record(_) | FieldType::List(..) => FieldValue::Nested,
+        }
+    }
+}
+
+/// Whether `c` is a chip code: a letter A to Z, or `*`.
+pub fn is_code(c: u8) -> bool {
+    c.is_ascii_uppercase() || c == b'*'
+}
+
+/// The bytes a list of up to `n` elements counts them in.
+fn list_count_size(n: u16) -> usize {
+    if n <= u8::MAX as u16 { 1 } else { 2 }
+}
+
+/// The key a list's declaration (`schema.list(T, n)`) marks its table with.
+pub const LIST_MARK: &str = "__list";
+
+impl FieldType {
+    /// A field's type as data: a type name, a list of variant names (an
+    /// enum), a table of fields (a record), or a list's declaration.
+    pub fn from_data(d: &Data) -> Result<FieldType, String> {
+        Ok(match d {
+            Data::Str(t) => FieldType::scalar(t).ok_or_else(|| format!("unknown type {t:?}"))?,
+            Data::List(variants) => FieldType::Enum(
+                variants.iter().map(|v| v.str().map(str::to_string).ok_or_else(|| "variants are names".to_string())).collect::<Result<_, _>>()?,
+            ),
+            Data::Map(_) if *d.field(LIST_MARK) == Data::Bool(true) => {
+                let max = d.field("max").int().ok_or("a list's `max` is a whole number")?;
+                if !(1..=MAX_LIST as i64).contains(&max) {
+                    return Err(format!("a list holds 1 to {MAX_LIST} elements, not {max}"));
+                }
+                let of = FieldType::from_data(d.field("of")).map_err(|e| format!("a list's elements: {e}"))?;
+                FieldType::List(Box::new(of), max as u16)
+            }
+            Data::Map(_) => FieldType::Record(Box::new(Schema::from_data(d)?)),
+            _ => return Err("needs a type name, a list of variants, a table of fields or a list (`schema.list`)".into()),
+        })
+    }
+}
+
+/// Where a part of a block is: its type and its offset. A schema's field's
+/// ([`Schema::place`]), a record's field's ([`Place::field`]), an array's
+/// or a list's element's ([`Place::elem`]).
+#[derive(Clone, Copy, Debug)]
+pub struct Place<'s> {
+    ty: &'s FieldType,
+    at: usize,
+}
+
+impl<'s> Place<'s> {
+    pub fn ty(self) -> &'s FieldType {
+        self.ty
+    }
+
+    /// A record's fields' schema (none: not a record).
+    pub fn record(self) -> Option<&'s Schema> {
+        match self.ty {
+            FieldType::Record(fields) => Some(fields),
+            _ => None,
+        }
+    }
+
+    /// A record's field `name`.
+    pub fn field(self, name: &str) -> Option<Place<'s>> {
+        let fields = self.record()?;
+        let i = fields.index_of(name)?;
+        Some(self.field_at(i))
+    }
+
+    /// A record's field `i` (by its schema's index).
+    pub fn field_at(self, i: usize) -> Place<'s> {
+        let fields = self.record().expect("a record");
+        Place { ty: &fields.field(i).ty, at: self.at + fields.at(i) }
+    }
+
+    /// Element `k` of an array or of a list (within its room: whether it is
+    /// one the list holds is its length's).
+    pub fn elem(self, k: usize) -> Option<Place<'s>> {
+        match self.ty {
+            FieldType::Array(elem, n) => (k < *n as usize).then(|| Place { ty: elem, at: self.at + k * elem.size() }),
+            FieldType::List(elem, n) => {
+                (k < *n as usize).then(|| Place { ty: elem, at: self.at + list_count_size(*n) + k * elem.size() })
+            }
+            _ => None,
+        }
+    }
+
+    /// How many elements an array has, or a list has room for.
+    pub fn capacity(self) -> Option<usize> {
+        match self.ty {
+            FieldType::Array(_, n) => Some(*n as usize),
+            FieldType::List(_, n) => Some(*n as usize),
+            _ => None,
         }
     }
 }
@@ -223,6 +354,18 @@ impl fmt::Display for FieldType {
             FieldType::Ref(r, None) => write!(f, "{r}"),
             FieldType::Ref(r, Some(t)) => write!(f, "{r}:{t}"),
             FieldType::Asset(k) => write!(f, "{k}"),
+            FieldType::Code => f.write_str("code"),
+            FieldType::Record(fields) => {
+                f.write_str("{ ")?;
+                for (i, d) in fields.fields().iter().enumerate() {
+                    if i > 0 {
+                        f.write_str(", ")?;
+                    }
+                    write!(f, "{}: {}", d.name, d.ty)?;
+                }
+                f.write_str(" }")
+            }
+            FieldType::List(elem, n) => write!(f, "list of {n} {elem}"),
         }
     }
 }
@@ -241,6 +384,8 @@ pub enum Value {
     Def(Registry, u16),
     /// An asset, by kind and handle (§6.3).
     Asset(AssetKind, u16),
+    /// A chip code: its letter (`b'A'` to `b'Z'`, or `b'*'`).
+    Code(u8),
 }
 
 impl Value {
@@ -282,6 +427,10 @@ pub enum FieldValue {
     Ref(Option<(Registry, u16)>),
     /// An asset of a kind (its handle), or none.
     Asset(AssetKind, Option<u16>),
+    /// A chip code's letter, or none.
+    Code(Option<u8>),
+    /// A record or a list: read its parts by their places.
+    Nested,
 }
 
 impl FieldValue {
@@ -300,6 +449,8 @@ impl FieldValue {
             FieldValue::OptionalU8(v) => v.map_or(Value::Nil, |v| Value::Int(v as i64)),
             FieldValue::Ref(d) => d.map_or(Value::Nil, |(r, h)| Value::Def(r, h)),
             FieldValue::Asset(k, h) => h.map_or(Value::Nil, |h| Value::Asset(k, h)),
+            FieldValue::Code(c) => c.map_or(Value::Nil, Value::Code),
+            FieldValue::Nested => Value::Nil,
         }
     }
 }
@@ -368,8 +519,10 @@ impl Schema {
     }
 
     /// A schema from a `state` table as data: field name to a type name
-    /// (`"u16"`, `"u8[18]"`, `"object"`) or to a list of variant names (an
-    /// enum). Fields are stored in name order.
+    /// (`"u16"`, `"u8[18]"`, `"object"`, `"code"`), to a list of variant
+    /// names (an enum), to a table of fields (a record) or to a list
+    /// (`schema.list(T, n)`, a table of [`LIST_MARK`], `of` and `max`).
+    /// Fields are stored in name order.
     pub fn from_data(d: &Data) -> Result<Schema, String> {
         let Data::Map(entries) = d else {
             return match d {
@@ -382,18 +535,7 @@ impl Schema {
             let Key::Str(name) = k else {
                 return Err(format!("state field names are strings, not {k}"));
             };
-            let ty = match v {
-                Data::Str(t) => {
-                    FieldType::scalar(t).ok_or_else(|| format!("state field `{name}` has unknown type {t:?}"))?
-                }
-                Data::List(variants) => FieldType::Enum(
-                    variants
-                        .iter()
-                        .map(|v| v.str().map(str::to_string).ok_or_else(|| format!("state field `{name}`: variants are names")))
-                        .collect::<Result<_, _>>()?,
-                ),
-                _ => return Err(format!("state field `{name}` needs a type name or a list of variants")),
-            };
+            let ty = FieldType::from_data(v).map_err(|e| format!("state field `{name}`: {e}"))?;
             fields.push(FieldDef { name: name.clone(), ty });
         }
         fields.sort_by(|a, b| a.name.cmp(&b.name));
@@ -414,6 +556,91 @@ impl Schema {
 
     fn at(&self, i: usize) -> usize {
         self.offsets[i]
+    }
+
+    /// Where field `i` is in a block of this schema.
+    pub fn place(&self, i: usize) -> Place<'_> {
+        Place { ty: &self.fields[i].ty, at: self.offsets[i] }
+    }
+
+    /// The field named `name`: one of this schema's, else one of its
+    /// records', at any depth ([`FieldPath::DEPTH`]), the one field of the
+    /// name there is (several: an error naming their paths). For a reader
+    /// that knows a field by its name wherever the content keeps it (the
+    /// rules' views).
+    pub fn find(&self, name: &str) -> Result<Option<FieldPath>, String> {
+        fn walk(schema: &Schema, name: &str, at: FieldPath, out: &mut Vec<FieldPath>) {
+            for (i, f) in schema.fields.iter().enumerate() {
+                let Some(here) = at.then(i) else { continue };
+                if f.name == name {
+                    out.push(here);
+                }
+                if let FieldType::Record(fields) = &f.ty {
+                    walk(fields, name, here, out);
+                }
+            }
+        }
+        let mut found = Vec::new();
+        walk(self, name, FieldPath::default(), &mut found);
+        match found[..] {
+            [] => Ok(None),
+            [one] => Ok(Some(one)),
+            _ => Err(format!(
+                "`{name}` is {}",
+                found.iter().map(|p| format!("`{}`", self.path_name(*p))).collect::<Vec<_>>().join(" and ")
+            )),
+        }
+    }
+
+    /// Where the field at `path` is in a block of this schema.
+    pub fn place_of(&self, path: FieldPath) -> Place<'_> {
+        let steps = &path.steps[..path.len as usize];
+        let mut place = self.place(steps[0] as usize);
+        for &i in &steps[1..] {
+            place = place.field_at(i as usize);
+        }
+        place
+    }
+
+    /// The field at `path` as a message names it: `screen.mix_step`.
+    pub fn path_name(&self, path: FieldPath) -> String {
+        let mut schema = self;
+        let mut out = Vec::new();
+        for &i in &path.steps[..path.len as usize] {
+            let f = schema.field(i as usize);
+            out.push(f.name.clone());
+            if let FieldType::Record(fields) = &f.ty {
+                schema = fields;
+            }
+        }
+        out.join(".")
+    }
+}
+
+/// A field by its place in a schema's records: a field's index, then its
+/// record's field's, as deep as [`FieldPath::DEPTH`] (`Schema::find`,
+/// `Schema::place_of`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct FieldPath {
+    steps: [u16; FieldPath::DEPTH],
+    len: u8,
+}
+
+impl FieldPath {
+    /// The most records a path goes through, and one.
+    pub const DEPTH: usize = 4;
+
+    /// A schema's field `i`, at the top.
+    pub fn top(i: usize) -> FieldPath {
+        FieldPath::default().then(i).expect("a path's first step")
+    }
+
+    /// This path's record's field `i` (none: past [`FieldPath::DEPTH`]).
+    fn then(self, i: usize) -> Option<FieldPath> {
+        let mut out = self;
+        *out.steps.get_mut(out.len as usize)? = i as u16;
+        out.len += 1;
+        Some(out)
     }
 }
 
@@ -439,6 +666,24 @@ macro_rules! codec_read {
     pub fn get_elem(&self, schema: &Schema, i: usize, k: usize) -> Option<FieldValue> {
         let FieldType::Array(elem, n) = &schema.field(i).ty else { return None };
         (k < *n as usize).then(|| elem.decode(&self.bytes[schema.at(i) + k * elem.size()..]))
+    }
+
+    /// The value at `place` (a record or a list: [`FieldValue::Nested`],
+    /// whose parts have places of their own).
+    pub fn get_at(&self, place: Place) -> FieldValue {
+        place.ty.decode(&self.bytes[place.at..])
+    }
+
+    /// How many elements the list at `place` holds (an array: all of them).
+    pub fn len_at(&self, place: Place) -> Option<usize> {
+        match place.ty {
+            FieldType::Array(_, n) => Some(*n as usize),
+            FieldType::List(_, n) => Some(match list_count_size(*n) {
+                1 => self.bytes[place.at] as usize,
+                _ => u16::from_le_bytes([self.bytes[place.at], self.bytes[place.at + 1]]) as usize,
+            }),
+            _ => None,
+        }
     }
     };
 }
@@ -480,6 +725,41 @@ macro_rules! codec_write {
         }
         let stored = elem.store(v).map_err(|e| e.to_string())?;
         elem.encode(stored, &mut self.bytes[schema.at(i) + k * elem.size()..]);
+        Ok(())
+    }
+
+    /// Store `v` at `place`, converted by its type (one value: not a
+    /// record's, a list's or an array's whole).
+    pub fn set_at(&mut self, place: Place, v: Value) -> Result<(), TypeError> {
+        if !place.ty.is_scalar() {
+            return Err(TypeError { expected: place.ty.clone(), got: v });
+        }
+        let stored = place.ty.store(v)?;
+        place.ty.encode(stored, &mut self.bytes[place.at..]);
+        Ok(())
+    }
+
+    /// Zero the part at `place`, whole (a record's every field, a list's
+    /// length and elements): as a fresh state has it.
+    pub fn clear_at(&mut self, place: Place) {
+        self.bytes[place.at..place.at + place.ty.size()].fill(0);
+    }
+
+    /// Make the list at `place` hold `n` elements: the ones past `n` are
+    /// zeroed (so a list's bytes are what its elements say), the ones it
+    /// gains zero.
+    pub fn set_len_at(&mut self, place: Place, n: usize) -> Result<(), String> {
+        let FieldType::List(elem, max) = place.ty else { return Err(format!("a {} is not a list", place.ty)) };
+        if n > *max as usize {
+            return Err(format!("a list of {max} holds no {n}"));
+        }
+        let count = list_count_size(*max);
+        let items = place.at + count;
+        self.bytes[items + n * elem.size()..items + *max as usize * elem.size()].fill(0);
+        match count {
+            1 => self.bytes[place.at] = n as u8,
+            _ => self.bytes[place.at..place.at + 2].copy_from_slice(&(n as u16).to_le_bytes()),
+        }
         Ok(())
     }
     };
@@ -631,6 +911,11 @@ pub trait Fields {
     fn set(&mut self, schema: &Schema, i: usize, v: Value) -> Result<(), TypeError>;
     fn get_elem(&self, schema: &Schema, i: usize, k: usize) -> Option<FieldValue>;
     fn set_elem(&mut self, schema: &Schema, i: usize, k: usize, v: Value) -> Result<(), String>;
+    fn get_at(&self, place: Place) -> FieldValue;
+    fn set_at(&mut self, place: Place, v: Value) -> Result<(), TypeError>;
+    fn len_at(&self, place: Place) -> Option<usize>;
+    fn set_len_at(&mut self, place: Place, n: usize) -> Result<(), String>;
+    fn clear_at(&mut self, place: Place);
 }
 
 macro_rules! fields {
@@ -650,6 +935,21 @@ macro_rules! fields {
             }
             fn set_elem(&mut self, schema: &Schema, i: usize, k: usize, v: Value) -> Result<(), String> {
                 <$t>::set_elem(self, schema, i, k, v)
+            }
+            fn get_at(&self, place: Place) -> FieldValue {
+                <$t>::get_at(self, place)
+            }
+            fn set_at(&mut self, place: Place, v: Value) -> Result<(), TypeError> {
+                <$t>::set_at(self, place, v)
+            }
+            fn len_at(&self, place: Place) -> Option<usize> {
+                <$t>::len_at(self, place)
+            }
+            fn set_len_at(&mut self, place: Place, n: usize) -> Result<(), String> {
+                <$t>::set_len_at(self, place, n)
+            }
+            fn clear_at(&mut self, place: Place) {
+                <$t>::clear_at(self, place)
             }
         }
     };
@@ -770,6 +1070,73 @@ mod tests {
         assert_eq!(block.get(&large, 399).load(), Value::Vec3(Vec3 { x: 1, y: 2, z: 3 }));
         assert!(FieldType::scalar("vec3[2]").is_none());
         assert!(FieldType::scalar("u8[0]").is_none());
+    }
+
+    /// docs/design/rust-and-luau.md, step c1: a record's fields and a
+    /// list's elements are read and written by their places, a list holds
+    /// what its length says (the rest zero), and a code is its letter.
+    #[test]
+    fn records_lists_and_codes() {
+        use crate::data::Key;
+        let str_ = |s: &str| Data::Str(s.into());
+        let map = |kv: Vec<(&str, Data)>| Data::Map(kv.into_iter().map(|(k, v)| (Key::Str(k.into()), v)).collect());
+        let list = |of: Data, max: i64| map(vec![(LIST_MARK, Data::Bool(true)), ("max", Data::Int(max)), ("of", of)]);
+        let d = map(vec![
+            ("folder", list(map(vec![("code", str_("code")), ("chip", str_("chip"))]), 30)),
+            ("tags", list(str_("u8"), 2)),
+            ("at", map(vec![("x", str_("u8")), ("y", str_("i8"))])),
+            ("many", list(str_("u16"), 300)),
+        ]);
+        let s = Schema::from_data(&d).unwrap();
+        // In name order, within a record too: { chip, code }.
+        let names: Vec<&str> = s.fields().iter().map(|f| f.name.as_str()).collect();
+        assert_eq!(names, ["at", "folder", "many", "tags"]);
+        let folder = s.place(s.index_of("folder").unwrap());
+        assert_eq!(folder.ty().to_string(), "list of 30 { chip: chip, code: code }");
+        // A count byte, then room for 30 of (a chip, 2 bytes; a code, 1).
+        assert_eq!(folder.ty().size(), 1 + 30 * 3);
+        assert_eq!(s.place(s.index_of("many").unwrap()).ty().size(), 2 + 300 * 2, "a count of two bytes past 255");
+        let mut b = Block::new(StateId(0), &s);
+        assert_eq!(b.len_at(folder), Some(0));
+        b.set_len_at(folder, 2).unwrap();
+        let second = folder.elem(1).unwrap();
+        b.set_at(second.field("chip").unwrap(), Value::Def(Registry::Chip, 7)).unwrap();
+        b.set_at(second.field("code").unwrap(), Value::Code(b'*')).unwrap();
+        assert_eq!(b.get_at(second.field("chip").unwrap()), FieldValue::Ref(Some((Registry::Chip, 7))));
+        assert_eq!(b.get_at(second.field("code").unwrap()).load(), Value::Code(b'*'));
+        assert_eq!(b.get_at(folder.elem(0).unwrap().field("code").unwrap()), FieldValue::Code(None));
+        assert!(b.set_at(second.field("code").unwrap(), Value::Code(b'a')).is_err(), "a lowercase letter is no code");
+        assert!(b.set_at(folder, Value::Int(1)).is_err(), "a list isn't one value");
+        assert_eq!(b.get_at(folder), FieldValue::Nested);
+        assert!(folder.elem(30).is_none());
+        // Shortened, what it drops is zero: the same block as one never longer.
+        b.set_len_at(folder, 1).unwrap();
+        let mut fresh = Block::new(StateId(0), &s);
+        fresh.set_len_at(folder, 1).unwrap();
+        assert_eq!(b, fresh);
+        assert!(b.set_len_at(folder, 31).is_err());
+        let at = s.place(s.index_of("at").unwrap());
+        b.set_at(at.field("y").unwrap(), Value::Int(-2)).unwrap();
+        assert_eq!(b.get_at(at.field("y").unwrap()).load(), Value::Int(-2));
+        assert_eq!(b.get_at(at.field("x").unwrap()), FieldValue::U8(0));
+        assert!(at.field("z").is_none());
+        let many = s.place(s.index_of("many").unwrap());
+        b.set_len_at(many, 300).unwrap();
+        b.set_at(many.elem(299).unwrap(), Value::Int(9)).unwrap();
+        assert_eq!((b.len_at(many), b.get_at(many.elem(299).unwrap())), (Some(300), FieldValue::U16(9)));
+        // What a declaration may not be.
+        assert!(Schema::from_data(&map(vec![("l", list(str_("u8"), 0))])).is_err());
+        assert!(Schema::from_data(&map(vec![("l", list(str_("u9"), 2))])).is_err());
+        assert!(Schema::from_data(&map(vec![("r", map(vec![("1x", str_("u8"))]))])).is_err());
+        // A field by its name, the schema's or a record's; cleared whole.
+        let y = s.find("y").unwrap().expect("the record's field");
+        assert_eq!((s.path_name(y), s.place_of(y).ty().clone()), ("at.y".to_string(), FieldType::I8));
+        assert_eq!(s.place_of(s.find("tags").unwrap().unwrap()).ty().to_string(), "list of 2 u8");
+        assert_eq!(s.find("code"), Ok(None), "a list's elements' fields have a place each");
+        b.clear_at(at);
+        assert_eq!(b.get_at(at.field("y").unwrap()), FieldValue::I8(0));
+        let twice = Schema::from_data(&map(vec![("a", map(vec![("n", str_("u8"))])), ("b", map(vec![("n", str_("u8"))]))])).unwrap();
+        assert_eq!(twice.find("n"), Err("`n` is `a.n` and `b.n`".to_string()));
     }
 
     fn arena_schemas() -> (Schema, Schema) {
