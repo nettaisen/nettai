@@ -16,7 +16,6 @@ local colonel = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 272, index = 37, sort = 105 },
     slot_in_limit = 1,
     navi = navi.summon { palette = 0, cross = false },
 }
@@ -33,7 +32,6 @@ local colonel_ex = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 273, index = 38, sort = 106 },
     slot_in_limit = 1,
     navi = navi.summon { palette = 0, cross = false },
 }
@@ -50,7 +48,6 @@ local colonel_sp = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 274, index = 39, sort = 107 },
     slot_in_limit = 1,
     navi = navi.summon { palette = 3, cross = false },
 }

@@ -13,7 +13,6 @@ return define.chip {
     element = "wood", family = "wood", class = "standard",
     rarity = 3, mb = 48, damage = 130, hit_param = 30, lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    library = { number = 126, index = 126, sort = 512 },
     slot_in_limit = 3,
     -- No Beast rush; its lock-on mode (rules/lockon).
     beast = { rush = false, lockon = lockon.cannon },

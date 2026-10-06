@@ -21,7 +21,6 @@ return define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "library" },
-    library = { number = 344, index = 25, sort = 0 },
     slot_in_limit = 1,
     program_advances = { { order = 5, sequence = { wideblde, longblde, protoman_chips.protomn_sp } } },
     dimming = controller.hook,

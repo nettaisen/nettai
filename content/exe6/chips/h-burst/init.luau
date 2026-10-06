@@ -19,7 +19,6 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     beast = { lockon = lockon.cannon },
-    library = { number = 338, index = 19, sort = 0 },
     slot_in_limit = 1,
     program_advances = {
         { order = 23, code_run = { chip = spreadr_chips.spreadr1, count = 3 } },

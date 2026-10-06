@@ -11,7 +11,6 @@ return define.chip {
     element = "null", family = "null", class = "standard",
     rarity = 2, mb = 47, damage = 0, hit_param = 0, lockout = 0,
     flags = { "dimming", "standard_library", "library" },
-    library = { number = 169, index = 169, sort = 215 },
     slot_in_limit = 1,
     dimming = controller.hook("break"),
 }

@@ -26,7 +26,6 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     beast = { lockon = lockon.drksword },
-    library = { number = 339, index = 20, sort = 0 },
     slot_in_limit = 1,
     program_advances = {
         { order = 0, sequence = { sword, wideswrd, longswrd } },

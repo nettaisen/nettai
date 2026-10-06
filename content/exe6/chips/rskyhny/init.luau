@@ -15,7 +15,6 @@ return {
         element = "wood", family = "wood", class = "standard",
         rarity = 0, mb = 21, damage = 10, hit_param = 30, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
-        library = { number = 39, index = 39, sort = 351 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },
@@ -27,7 +26,6 @@ return {
         element = "wood", family = "wood", class = "standard",
         rarity = 1, mb = 28, damage = 15, hit_param = 30, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
-        library = { number = 40, index = 40, sort = 399 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },
@@ -46,7 +44,6 @@ return {
         lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
         beast = { lockon = lockon.cannon },
-        library = { number = 41, index = 41, sort = 400 },
         slot_in_limit = 3,
         action = action.action { id = "rskyhny3/action", bee = BEES[3] },
     },

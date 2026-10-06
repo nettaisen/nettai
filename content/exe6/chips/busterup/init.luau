@@ -33,7 +33,6 @@ return define.chip {
     element = "null", family = "plus", class = "standard",
     rarity = 1, mb = 11, damage = 0, hit_param = 0, lockout = 20,
     flags = { "standard_library", "library" },
-    library = { number = 177, index = 177, sort = 51 },
     slot_in_limit = 3,
     instant = raise(1),
 }

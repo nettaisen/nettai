@@ -17,7 +17,6 @@ return define.chip {
     lockout = 20,
     flags = { "standard_library", "library" },
     extra_flags = { "modifier" },
-    library = { number = 197, index = 197, sort = 22 },
     slot_in_limit = 1,
     modifier = "attack_plus",
     instant = plus.attack,

@@ -20,7 +20,6 @@ return define.chip {
     hit_param = 128,
     lockout = 0,
     flags = { "dimming", "library" },
-    library = { number = 342, index = 23, sort = 0 },
     slot_in_limit = 1,
     program_advances = { { order = 2, sequence = { poisseed, poisseed, anubis } } },
     dimming = controller.hook(statue.poisphar),

@@ -27,7 +27,6 @@ local firebrn1 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.firebrn1 },
-    library = { number = 19, index = 19, sort = 203 },
     slot_in_limit = 3,
     action = fire_burn("firebrn1/action"),
 }
@@ -45,7 +44,6 @@ local firebrn2 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.firebrn1 },
-    library = { number = 20, index = 20, sort = 204 },
     slot_in_limit = 3,
     action = fire_burn("firebrn2/action"),
 }
@@ -63,7 +61,6 @@ local firebrn3 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.firebrn1 },
-    library = { number = 21, index = 21, sort = 205 },
     slot_in_limit = 3,
     action = fire_burn("firebrn3/action"),
 }

@@ -13,7 +13,6 @@ return define.chip {
     element = "elec", family = "elec", class = "giga",
     rarity = 4, mb = 80, damage = 0, hit_param = 138, lockout = 0,
     flags = { "dimming", "library" },
-    library = { number = 310, index = 5, sort = 36 },
     slot_in_limit = 1,
     dimming = navi_boost.bug(charge.weapon),
 }
