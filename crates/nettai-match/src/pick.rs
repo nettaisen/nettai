@@ -62,10 +62,10 @@ fn link_backgrounds(content: &Content) -> Vec<&str> {
 
 /// Whether live play picks the game's match with a form list each side:
 /// its rules take one (the rules' setup declares the engine's
-/// `PlayerFact::CrossList`: EXE6's rules/cross). A game whose rules take
+/// `PlayerFact::FormList`: EXE6's rules/cross). A game whose rules take
 /// none gets a plain match ([`plain`]).
 fn picks_live(content: &Content) -> bool {
-    content.defs.fact_field(PlayerFact::CrossList).is_some()
+    content.defs.fact_field(PlayerFact::FormList).is_some()
 }
 
 /// Every round's place of a match of `game` that states `rounds`, a round
@@ -160,7 +160,7 @@ impl Side {
         }
         side.set_folder(content, &folder.into())?;
         let list: Vec<Fact> = forms.iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
-        side.set_fact(content, PlayerFact::CrossList.name(), &list)?;
+        side.set_fact(content, content.defs.fact_name(PlayerFact::FormList).ok_or("the rules take no form list")?, &list)?;
         Ok(side)
     }
 
@@ -408,7 +408,7 @@ mod tests {
                 // (What the round's player brought, as the engine reads
                 // it back: the side's list and version.)
                 use nettai_battle::content::PlayerFact;
-                let brought = b.fact(side as u8, PlayerFact::CrossList).unwrap();
+                let brought = b.fact(side as u8, PlayerFact::FormList).unwrap();
                 let list: Vec<_> = (0..crate::facts::form_list_capacity(&content)).filter_map(|k| brought.form(k)).collect();
                 assert_eq!(list, m.sides[side].facts.form_list(&content));
                 assert_eq!(list.len(), 5);

@@ -585,12 +585,10 @@ named_fields! {
         /// A battle against a ranked boss (battle effect 1: LifeSync does
         /// nothing in one, `sub_80E72C8`).
         BossRank = "boss_rank", Bool, ro;
-        /// A battle whose dark chips fizzle (battle effect 0x100000: EXE5's
-        /// dark chip rule, 0x0801003C).
-        NoDarkChips = "no_dark_chips", Bool, ro;
-        /// A battle that holds EXE5's light/dark value at 500 (battle effect
-        /// 0x20000, 0x08010EDC).
-        LightDarkHeld = "light_dark_held", Bool, ro;
+        /// The battle's effects (its settings' word), whose bits a game's
+        /// rules read by their own names (EXE5's 0x20000, a held light/dark
+        /// value; 0x100000, dark chips fizzle).
+        Effects = "effects", U32, ro;
         Mode = "mode", U8, ro;
         PanelPattern = "panel_pattern", U8, ro;
         /// Every navi is in (the intro's bit 2).
@@ -746,12 +744,12 @@ named_flags! {
         NoCharge = "no_charge",
         CanTurn = "can_turn",
         TrapArmed = "trap_armed",
-        ChangingCross = "switching_navi",
-        CrossKnockout = "switch_knockout",
-        Crossed = "switched",
+        SwitchingNavi = "switching_navi",
+        SwitchKnockout = "switch_knockout",
+        Switched = "switched",
         Volley = "volley",
         Uninterruptible = "uninterruptible",
-        CrossBreaking = "cross_breaking",
+        FormBreaking = "form_breaking",
         FormChangeSpriteHeld = "form_change_sprite_held",
         HeatTrap = "heat_trap",
         /// Gone from the field while its navi chip's navi acts
@@ -1328,6 +1326,10 @@ pub trait CoreApi {
     /// button's or window's name, whose pick holds the turn's form.
     fn custom_pick(&mut self, side: u8) -> ApiResult<()>;
     fn custom_play(&mut self, side: u8, sound: &str) -> ApiResult<()>;
+    /// A sound of the rules' own the screen plays in its order, which only
+    /// `side`'s player hears (a window's or a button's: EXE6's Cross
+    /// window's, Beast Out's).
+    fn custom_play_sound(&mut self, side: u8, sound: u16) -> ApiResult<()>;
     fn custom_set_column_icon(&mut self, side: u8, chip: Option<crate::ChipHandle>) -> ApiResult<()>;
     /// `ticks`: the ticks it has had already (EXE6's Cross window, whose
     /// first tick its opening's last runs).
@@ -1347,7 +1349,7 @@ pub trait CoreApi {
     /// record's turns and Chaos flag (EXE5's Soul Unison; 0 and false
     /// elsewhere), and which of the rules' buttons or windows (`by`, its
     /// name) made the pick.
-    fn custom_set_form(&mut self, side: u8, by: &str, form: Option<crate::FormHandle>, turns: u8, chaos: bool) -> ApiResult<()>;
+    fn custom_set_form(&mut self, side: u8, by: &str, form: Option<crate::FormHandle>, turns: u8, alternate: bool) -> ApiResult<()>;
     /// Whether a pick another button or window than `by` made holds the
     /// turn's form.
     fn custom_form_taken(&self, side: u8, by: &str) -> ApiResult<bool>;
@@ -1398,9 +1400,9 @@ pub trait CoreApi {
     /// The icon of the chip a button holds (`custom_hold_last_pick`), over
     /// the button (EXE5's 0x080254F4): nothing while none holds one.
     fn custom_draw_held(&mut self, side: u8) -> ApiResult<()>;
-    fn custom_draw_cross_cursor(&mut self, side: u8) -> ApiResult<()>;
+    fn custom_draw_form_list_cursor(&mut self, side: u8) -> ApiResult<()>;
     fn custom_show_chip_window(&mut self, side: u8) -> ApiResult<()>;
-    fn custom_set_cross_tab(&mut self, side: u8, on: bool) -> ApiResult<()>;
+    fn custom_set_form_list_tab(&mut self, side: u8, on: bool) -> ApiResult<()>;
     /// R in a window of the rules: `form`'s description (`sub_8026E78`; three
     /// lines without one), back to the window when it closes.
     fn custom_describe(&mut self, side: u8, form: Option<crate::FormHandle>) -> ApiResult<()>;
@@ -1839,9 +1841,10 @@ pub trait CoreApi {
     /// The form the navi's side asked to change into at this turn's start
     /// (none: none, or the base form).
     fn form_change_target(&self, o: ObjectRef) -> Option<crate::FormHandle>;
-    /// EXE5's Soul Unison: the turns the soul the side asked for lasts, and
-    /// whether it is Chaos Unison (the turn's transform record's +3, +1).
-    fn form_change_soul(&self, o: ObjectRef) -> (u8, bool);
+    /// The terms of the form change the side asked for: its turns, and
+    /// whether it is the alternate (the turn's transform record's +3, +1:
+    /// EXE5's soul's turns, and Chaos Unison).
+    fn form_change_terms(&self, o: ObjectRef) -> (u8, bool);
     /// EXE5's soul change's first step (0x08011FAC): the navi stops moving,
     /// flinching, being paralyzed and sliding, and forgets a slide request
     /// and its slide's step (a part of EXE6's `sub_80158FA`).
@@ -2031,7 +2034,7 @@ pub trait CoreApi {
     /// processing, the panel trail's level, the buster's blanks, the
     /// on-hit status, the custom damage, the emotion, the custom and HP
     /// drains, the battle-start bug and the hand-shrink turn are zeroed.
-    fn clear_navicust_bugs(&mut self, side: u8);
+    fn clear_bugs(&mut self, side: u8);
     /// `sub_801E658` (BugFix): the save's emotion window glitch is gone
     /// from every console's emotion window, which then flickers (and
     /// draws its console's RNG1) for NaviCust bugs only.
@@ -2104,7 +2107,7 @@ pub trait CoreApi {
     /// have thrown back as junk, which its taker keeps: the object's
     /// identity (`sub_800F26C`'s argument); None for the objects DustMan
     /// leaves (`sub_800F486`) and for one with no identity.
-    fn junk_look(&self, o: ObjectRef) -> Option<crate::IdentityHandle>;
+    fn absorbed_look(&self, o: ObjectRef) -> Option<crate::IdentityHandle>;
     /// The r3 the object update loop (`object_800372A`) leaves for the
     /// object updating now: 4 × how many objects of the previous object's
     /// pool it passed before that one this tick. Routines that never set
@@ -2133,7 +2136,7 @@ pub trait CoreApi {
     /// one, its animation and palette; flipped by `o`'s side unless the
     /// look keeps its own); false when the look shows nothing (the table's
     /// category 0xFF).
-    fn wear_junk_look(&mut self, o: ObjectRef, look: crate::IdentityHandle) -> ApiResult<bool>;
+    fn wear_absorbed_look(&mut self, o: ObjectRef, look: crate::IdentityHandle) -> ApiResult<bool>;
     /// `sub_80DC3B2`'s test: a field object by its identity (the
     /// original's NameID word 0xCD to 0xFF, its +0x2A half 0) but those
     /// `sub_800F486` excludes, which BlzrdBal's ball swallows.
@@ -2149,14 +2152,14 @@ pub trait CoreApi {
     /// `side` (BattleState+0x5C bit 0x10 or 0x20, 0x080CAC1E) with its
     /// soldiers' damage words (0x080CABF8): the sword soldier's and the gun
     /// soldier's. While it is armed, an obstacle of a game whose rules have
-    /// `effects.obstacle_soldiers`, standing on a panel of the side's enemy,
+    /// `effects.obstacle_conversion`, standing on a panel of the side's enemy,
     /// turns into the side's soldier.
-    fn obstacle_arm_soldiers(&mut self, side: u8, sword: u32, gun: u32);
+    fn obstacle_arm_conversion(&mut self, side: u8, melee: u32, ranged: u32);
     /// 0x080CAC30: disarm side `side`; its words stay.
-    fn obstacle_disarm_soldiers(&mut self, side: u8);
+    fn obstacle_disarm_conversion(&mut self, side: u8);
     /// Whether side `side` is armed, and its words (0x080CAC06,
     /// 0x080CAC12): what its soldiers strike with as they read them.
-    fn obstacle_soldiers(&self, side: u8) -> (bool, u32, u32);
+    fn obstacle_conversion(&self, side: u8) -> (bool, u32, u32);
     // ---- Field objects (obstacles) -------------------------------------------
 
     /// Whether another object asked `flag` of the field object `o`.

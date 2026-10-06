@@ -567,7 +567,7 @@ fn the_soul_takes_the_chips_place() {
     b.custom.sides[0].screen.as_mut().unwrap().cursor = nettai_battle::custom::screen::OK_SLOT;
     b.tick(&[PlayerTick { held: keys::A }, Default::default()], Default::default());
     let (hand, transform) = b.custom.sides[0].built.clone().expect("OK built the hand");
-    assert_eq!((transform.form, transform.turns, transform.chaos), (Some(proto), 3, false));
+    assert_eq!((transform.form, transform.turns, transform.alternate), (Some(proto), 3, false));
     assert!(hand.is_some(), "the soul is a pick");
     let folder = b.custom.sides[0].folder;
     assert_eq!(folder.chips[0], None, "the Sword given up left the folder");
@@ -716,13 +716,12 @@ fn a_sides_fields_are_its_rules() {
     let (c5, c6) = (exe5_content(), exe6_content());
     let six = crate::pick::live(&c6, "exe6", 3, None).unwrap();
     let five = parse(&c5, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
-    assert!(crate::Side::takes_version(&c6) && six.sides[0].takes_level(&c6) && crate::Side::takes_sp_times(&c6));
-    assert!(!crate::Side::takes_version(&c5) && !five.sides[0].takes_level(&c5) && crate::Side::takes_sp_times(&c5));
+    let sp_times = |c: &nettai_battle::Content| crate::facts::field(c, "sp_times").is_some();
+    assert!(crate::Side::takes_version(&c6) && six.sides[0].takes_level(&c6) && sp_times(&c6));
+    assert!(!crate::Side::takes_version(&c5) && !five.sides[0].takes_level(&c5) && sp_times(&c5));
     // A side that says nothing has every SP chip of its game deleted in no
     // time.
-    let times = |c: &nettai_battle::Content, m: &Match| -> Vec<(String, u16)> {
-        m.sides[0].facts.sp_times(c).iter().map(|&(h, f)| (crate::ids::local(&c.defs.chip(h).key).to_string(), f)).collect()
-    };
+    let times = |c: &nettai_battle::Content, m: &Match| -> Vec<(String, u16)> { crate::testing::sp_times(c, &m.sides[0].facts) };
     let (t6, t5) = (times(&c6, &six), times(&c5, &five));
     assert_eq!((t6.len(), &t6[0]), (18, &("heatman-sp".to_string(), 0)), "{t6:?}");
     assert_eq!((t5.len(), &t5[0]), (18, &("protomn-sp".to_string(), 0)), "{t5:?}");

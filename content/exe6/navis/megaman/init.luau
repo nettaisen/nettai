@@ -35,7 +35,7 @@ local navi: NaviDef = {
     -- (`byte_802DD88`).
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },
-    cross_hp = { 999, 999 },
+    switch_hp = { 999, 999 },
     -- What his link navi level adds over his NaviCust (a navi code of his
     -- received over the link cable; `pt_8121200`'s scripts,
     -- docs/engine/link-navis.md). His row of `off_8120F44` is zeros: what
@@ -63,11 +63,12 @@ local navi: NaviDef = {
     -- His forms, by game: the Crosses by their number on the custom screen, Beast Out and
     -- Beast Over.
     forms = {
-        gregar = { crosses = { heatcross, eleccross, slashcross, erasecross, chargecross }, beast_out = gregar_beast, beast_over = gregar_beast_over },
-        falzar = { crosses = { spoutcross, tomahawkcross, tengucross, groundcross, dustcross }, beast_out = falzar_beast, beast_over = falzar_beast_over },
+        gregar = { form_list = { heatcross, eleccross, slashcross, erasecross, chargecross }, beast_out = gregar_beast, beast_over = gregar_beast_over },
+        falzar = { form_list = { spoutcross, tomahawkcross, tengucross, groundcross, dustcross }, beast_out = falzar_beast, beast_over = falzar_beast_over },
     },
     identity = new.identity {
-        class = "megaman",
+        class = "player",
+        changes_form = true,
         -- Where a held thing with no attach point sits (BatCan's cannon).
         held_offset = { 0, 0 },
         version = 0,

@@ -5,6 +5,7 @@
 //! (nettai-render `custom`). See docs/engine/custom-screen.md §9.
 
 use crate::battle::{Fade, FadeMode};
+use crate::SoundId;
 use crate::content::SoundRole;
 
 /// The original's presentation state of a screen (the control block at
@@ -35,15 +36,15 @@ pub struct ScreenLook {
     /// chip's hover runs: the window and the screen's sprites.
     pub window_fade: Fade,
     /// `+0x12`, `+0x13`: the cursor's dark-chip hover (`sub_802A2B0`).
-    pub dark: DarkHover,
+    pub shade: ChipShade,
     /// What this tick drew.
     pub drawn: Drawn,
     /// What the chip window shows: what it was drawn for last
     /// (`sub_8028476`).
     pub chip_window: ChipWindow,
-    /// The window has the Cross tab (MegaMan, with a Cross he owns and
-    /// hasn't used this round: `sub_8029EC8`).
-    pub cross_tab: bool,
+    /// The window has the form list's tab (EXE6's Cross tab: MegaMan, with
+    /// a Cross he owns and hasn't used this round, `sub_8029EC8`).
+    pub form_list_tab: bool,
     /// The picked column's icons, as the screen copied them (`sub_80281D4`:
     /// each pick's chip as checked, Beast Out's the BeastOut chip's; a
     /// Beast Out puts the picks back in their new order, unchecked).
@@ -75,22 +76,23 @@ pub struct ScreenLook {
     pub pa_palette: u8,
 }
 
-/// The cursor's dark-chip hover (`sub_802A2B0`, `+0x12`), with the step
-/// of its volume ramp (`+0x13`, a halfword's offset in the original).
+/// The shade the cursor's hover over a dark chip casts on the screen
+/// (`sub_802A2B0`, `+0x12`), with the step of its volume ramp (`+0x13`, a
+/// halfword's offset in the original).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DarkHover {
+pub enum ChipShade {
     /// 0: not on a dark chip.
     Clear,
-    /// 4: the fades run toward dark.
-    Darkening { step: u8 },
-    /// 8: dark.
-    Dark,
+    /// 4: the fades run toward the shade.
+    Shading { step: u8 },
+    /// 8: shaded.
+    Shaded,
     /// 0xC: the fades run back.
     Clearing { step: u8 },
 }
 
 /// The dark-chip hover's fades' speed.
-const DARK_FADE_SPEED: u8 = 0xA;
+const SHADE_FADE_SPEED: u8 = 0xA;
 
 /// The hover's volume ramps (`byte_802A3F4`, `byte_802A400`): down for the
 /// music and up for the screen's player while darkening, the other way
@@ -120,9 +122,9 @@ pub struct ChipWindow {
 pub struct Drawn {
     /// The cursor (`sub_8028820`), in its first or second frame.
     pub cursor: Option<u8>,
-    /// The Cross window's cursor (`sub_80289E4`), in its first or second
-    /// frame.
-    pub cross_cursor: Option<u8>,
+    /// The form list window's cursor (EXE6's Cross window's, `sub_80289E4`),
+    /// in its first or second frame.
+    pub form_list_cursor: Option<u8>,
     /// The emblem (`sub_8029C08`): the window's offset it was drawn at, and
     /// the spin it was drawn with.
     pub emblem: Option<(u32, u8)>,
@@ -150,26 +152,20 @@ pub enum ScreenCall {
 }
 
 impl ScreenSound {
-    /// The rules' role for it.
-    pub fn role(self) -> SoundRole {
-        match self {
+    /// The rules' role for it; none for a sound the rules give themselves.
+    pub fn role(self) -> Option<SoundRole> {
+        Some(match self {
             ScreenSound::Open => SoundRole::CustomOpen,
             ScreenSound::Cursor => SoundRole::CustomCursor,
             ScreenSound::Hide => SoundRole::CustomHide,
-            ScreenSound::DarkHover => SoundRole::CustomDarkHover,
+            ScreenSound::Shade => SoundRole::CustomShade,
             ScreenSound::Pick => SoundRole::CustomPick,
             ScreenSound::Ok => SoundRole::CustomOk,
             ScreenSound::Back => SoundRole::CustomBack,
             ScreenSound::Refused => SoundRole::Refused,
-            ScreenSound::CrossWindowOpen => SoundRole::CustomCrossOpen,
-            ScreenSound::CrossWindowClose => SoundRole::CustomCrossClose,
-            ScreenSound::CrossChosen => SoundRole::CustomCrossChosen,
             ScreenSound::RunMessage => SoundRole::CustomRunMessage,
             ScreenSound::Description => SoundRole::CustomDescription,
             ScreenSound::DescriptionClose => SoundRole::CustomDescriptionClose,
-            ScreenSound::BeastOutFalzar => SoundRole::CustomBeastOutFalzar,
-            ScreenSound::BeastOutGregar => SoundRole::CustomBeastOutGregar,
-            ScreenSound::BeastOutFlash => SoundRole::CustomBeastOutFlash,
             ScreenSound::Cancel => SoundRole::CustomCancel,
             ScreenSound::Redeal => SoundRole::CustomRedeal,
             ScreenSound::RedealShuffle => SoundRole::CustomRedealShuffle,
@@ -177,7 +173,8 @@ impl ScreenSound {
             ScreenSound::ScrapDone => SoundRole::CustomScrapDone,
             ScreenSound::ProgramAdvancePart => SoundRole::ProgramAdvancePart,
             ScreenSound::ProgramAdvance => SoundRole::ProgramAdvance,
-        }
+            ScreenSound::Rules(_) => return None,
+        })
     }
 }
 
@@ -212,15 +209,16 @@ impl Drawn {
 pub enum ScreenSound {
     /// The window starts sliding in (`sub_8026B04`).
     Open,
-    /// The cursor moves to another slot (`sub_8028B74`), or in the Cross
+    /// The cursor moves to another slot (`sub_8028B74`), or in a rules'
     /// window.
     Cursor,
     /// SELECT hides the window, and a key brings it back (`sub_8026D06`).
     Hide,
     /// The hover over a dark chip, every 64 ticks while the screen isn't
-    /// clear of it (EXE5's 0x08025AA2; a game without the role plays none).
-    DarkHover,
-    /// A chip, Beast Out, the scrap or a Cross picked.
+    /// clear of its shade (EXE5's 0x08025AA2; a game without the role plays
+    /// none).
+    Shade,
+    /// A chip or a button's pick (EXE6's Beast Out, the scrap, a Cross).
     Pick,
     /// OK (`sub_8028D3A`).
     Ok,
@@ -228,25 +226,12 @@ pub enum ScreenSound {
     Back,
     /// What can't be picked or taken back.
     Refused,
-    /// The Cross window opens (`sub_8027834`) and closes (`sub_802790C`);
-    /// a Cross is put on (`sub_8027AAE`).
-    CrossWindowOpen,
-    CrossWindowClose,
-    CrossChosen,
     /// L: the no-running message (`sub_8026EC8`).
     RunMessage,
     /// R: a description opens, and closes (`sub_8026E4C`).
     Description,
     DescriptionClose,
-    /// Beast Out chosen (`sub_802774C`, and the BeastOut chip's
-    /// `sub_8027624`): its two sounds with the pick's. The first is one of
-    /// two, a role each, which the rules choose between by name
-    /// (`custom.play`: EXE6's by the player's version, Gregar's on a Gregar
-    /// console); the engine knows no version.
-    BeastOutFalzar,
-    BeastOutGregar,
-    BeastOutFlash,
-    /// A Beast Out or a Cross taken back.
+    /// A button's pick taken back (EXE6's Beast Out or Cross).
     Cancel,
     /// ChpShufl's re-deal pressed, and each of its shuffles
     /// (`sub_802723A`).
@@ -259,6 +244,9 @@ pub enum ScreenSound {
     /// (`sub_802B80C`), and the Program Advance (`sub_802B920`).
     ProgramAdvancePart,
     ProgramAdvance,
+    /// A sound of the rules' own (`custom.play_sound`): a window's or a
+    /// button's (EXE6's Cross window's, Beast Out's).
+    Rules(SoundId),
 }
 
 /// The emblem's spin (`byte_8029CAC`): per step, the angle and the scale
@@ -303,7 +291,7 @@ impl ScreenLook {
         }
     }
 
-    pub fn new(late_turns: bool, cross_tab: bool, last_chip: Option<super::FolderChip>) -> ScreenLook {
+    pub fn new(late_turns: bool, form_list_tab: bool, last_chip: Option<super::FolderChip>) -> ScreenLook {
         ScreenLook {
             frame: 0,
             spin: 0,
@@ -311,19 +299,19 @@ impl ScreenLook {
             emblem_matrix: (0, 0x40),
             turn_limit: false,
             regular_frame: 0,
-            fade: Fade { mode: FadeMode::BeastOutBack, level: 0, speed: 0, target: 0, active: false, stepped: false },
+            fade: Fade { mode: FadeMode::HalfOutBack, level: 0, speed: 0, target: 0, active: false, stepped: false },
             window_fade: Fade {
-                mode: FadeMode::DarkChipWindowBack,
+                mode: FadeMode::ShadeWindowBack,
                 level: 0,
                 speed: 0,
                 target: 0,
                 active: false,
                 stepped: false,
             },
-            dark: DarkHover::Clear,
+            shade: ChipShade::Clear,
             drawn: Drawn::default(),
             chip_window: ChipWindow { slot: 0, picks: 0, last_chip, framed: None },
-            cross_tab,
+            form_list_tab,
             column: [None; 5],
             column_kept: None,
             hover_count: 0,
@@ -347,7 +335,7 @@ impl ScreenLook {
     }
 
     /// `sub_802A2B0`, after every tick's state: the hover over a dark chip.
-    /// Resting on one (`on_dark`, `sub_802A394`) darkens the screen and
+    /// Resting on one (`on_shading`, `sub_802A394`) darkens the screen and
     /// the window and turns the music down and the screen's player up, a
     /// step a tick until the window's fade is done; leaving it undoes that
     /// the same way. Its `+0x14` counter runs every tick from the screen's
@@ -357,37 +345,37 @@ impl ScreenLook {
     /// routine runs its state first and steps the counter after (EXE5's
     /// 0x08025A80), so on a tick with both, the volumes are set before the
     /// sound is asked for.
-    pub(crate) fn hover(&mut self, on_dark: bool) {
-        self.hover_state(on_dark);
+    pub(crate) fn hover(&mut self, on_shading: bool) {
+        self.hover_state(on_shading);
         self.hover_count = (self.hover_count + 1) & 63;
-        if self.hover_count == 0 && self.dark != DarkHover::Clear {
-            self.play(ScreenSound::DarkHover);
+        if self.hover_count == 0 && self.shade != ChipShade::Clear {
+            self.play(ScreenSound::Shade);
         }
     }
 
-    fn hover_state(&mut self, on_dark: bool) {
-        self.dark = match self.dark {
-            DarkHover::Clear if on_dark => {
+    fn hover_state(&mut self, on_shading: bool) {
+        self.shade = match self.shade {
+            ChipShade::Clear if on_shading => {
                 // sub_802A2E8
-                self.fade.start(FadeMode::DarkChip, DARK_FADE_SPEED);
-                self.window_fade.start(FadeMode::DarkChipWindow, DARK_FADE_SPEED);
-                DarkHover::Darkening { step: 0 }
+                self.fade.start(FadeMode::Shade, SHADE_FADE_SPEED);
+                self.window_fade.start(FadeMode::ShadeWindow, SHADE_FADE_SPEED);
+                ChipShade::Shading { step: 0 }
             }
-            DarkHover::Dark if !on_dark => {
+            ChipShade::Shaded if !on_shading => {
                 // sub_802A33E
-                self.fade.start(FadeMode::DarkChipBack, DARK_FADE_SPEED);
-                self.window_fade.start(FadeMode::DarkChipWindowBack, DARK_FADE_SPEED);
-                DarkHover::Clearing { step: 0 }
+                self.fade.start(FadeMode::ShadeBack, SHADE_FADE_SPEED);
+                self.window_fade.start(FadeMode::ShadeWindowBack, SHADE_FADE_SPEED);
+                ChipShade::Clearing { step: 0 }
             }
-            DarkHover::Darkening { step } => {
+            ChipShade::Shading { step } => {
                 // sub_802A30C
                 self.call(ScreenCall::Volume { music: VOLUME_DOWN[step as usize], screen: VOLUME_UP[step as usize] });
-                if self.window_fade.active() { DarkHover::Darkening { step: step + 1 } } else { DarkHover::Dark }
+                if self.window_fade.active() { ChipShade::Shading { step: step + 1 } } else { ChipShade::Shaded }
             }
-            DarkHover::Clearing { step } => {
+            ChipShade::Clearing { step } => {
                 // sub_802A362
                 self.call(ScreenCall::Volume { music: VOLUME_UP[step as usize], screen: VOLUME_DOWN[step as usize] });
-                if self.window_fade.active() { DarkHover::Clearing { step: step + 1 } } else { DarkHover::Clear }
+                if self.window_fade.active() { ChipShade::Clearing { step: step + 1 } } else { ChipShade::Clear }
             }
             d => d,
         };
@@ -416,9 +404,9 @@ impl ScreenLook {
         self.drawn.cursor = Some(((self.frame >> 3) & 1) as u8);
     }
 
-    /// `sub_80289E4`: the Cross window's cursor, by the same counter.
-    pub(crate) fn draw_cross_cursor(&mut self) {
-        self.drawn.cross_cursor = Some(((self.frame >> 3) & 1) as u8);
+    /// `sub_80289E4`: the form list window's cursor, by the same counter.
+    pub(crate) fn draw_form_list_cursor(&mut self) {
+        self.drawn.form_list_cursor = Some(((self.frame >> 3) & 1) as u8);
     }
 
     /// `sub_802899C`: the Regular chip's frame while the folder still has

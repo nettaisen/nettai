@@ -1364,7 +1364,7 @@ fn gc_timing_does_not_reach_the_battle() {
 
 /// EXE5's dark chips' writes (content/exe5/rules/light_dark): `sub_800AB2E`
 /// sets a side's statistic (where `sub_800AB46` adds), the mood is
-/// writable, and battle effect 0x100000 reads as `no_dark_chips`.
+/// writable, and the battle effects read as they are (`effects`).
 #[test]
 fn a_side_stat_and_the_mood_are_set() {
     use nettai_content_api::api::{BattleInfo, CoreApi, NaviStat};
@@ -1376,9 +1376,10 @@ fn a_side_stat_and_the_mood_are_set() {
     assert_eq!(CoreApi::side_stat(&b, 0, 2), 0);
     CoreApi::set_navi_stat(&mut b, 0, NaviStat::Mood, Value::Int(0)).unwrap();
     assert_eq!(b.stats[0].mood, 0);
-    assert_eq!(CoreApi::battle_info(&b, BattleInfo::NoDarkChips), Value::Bool(false));
-    b.setup.settings.effects |= crate::setup::effects::NO_DARK_CHIPS;
-    assert_eq!(CoreApi::battle_info(&b, BattleInfo::NoDarkChips), Value::Bool(true));
+    let effects = b.setup.settings.effects;
+    assert_eq!(CoreApi::battle_info(&b, BattleInfo::Effects), Value::Int(effects as i64));
+    b.setup.settings.effects |= 0x10_0000;
+    assert_eq!(CoreApi::battle_info(&b, BattleInfo::Effects), Value::Int((effects | 0x10_0000) as i64));
 }
 
 // ---- Dimming chip subtypes 2, 3, 5, 15 and 27 (the panel changes) ---------------------------

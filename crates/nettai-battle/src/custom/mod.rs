@@ -19,7 +19,7 @@ pub mod screen;
 
 pub use folder::{BattleFolder, FolderChip, SavedFolder};
 pub use library::Library;
-pub use look::{DarkHover, Drawn, ScreenLook};
+pub use look::{ChipShade, Drawn, ScreenLook};
 pub use screen::{ButtonCell, ButtonPlace, Phase, PlayerView, Request, RoundMemory, Screen, Slot, SlotKind, SlotState};
 
 use crate::battle::{Battle, CustomResult, battle_flags};
@@ -380,7 +380,7 @@ impl Side {
         if screen.form.is_some() {
             transform.form = screen.form;
             transform.turns = screen.form_turns;
-            transform.chaos = screen.form_chaos;
+            transform.alternate = screen.form_alternate;
         }
         for &slot in screen.selection() {
             // (A button picked in a chip's place takes the chip out of the
@@ -498,12 +498,13 @@ impl Battle {
                 for call in screen.look.drawn.calls() {
                     match call {
                         // (The dark chip hover's is EXE5's alone.)
-                        look::ScreenCall::Sound(sound @ look::ScreenSound::DarkHover) => {
-                            if let Some(id) = self.roles().try_sound(sound.role()) {
+                        look::ScreenCall::Sound(look::ScreenSound::Shade) => {
+                            if let Some(id) = self.roles().try_sound(crate::content::SoundRole::CustomShade) {
                                 self.play_sound_for(side, id);
                             }
                         }
-                        look::ScreenCall::Sound(sound) => self.sound_for(side, sound.role()),
+                        look::ScreenCall::Sound(look::ScreenSound::Rules(id)) => self.play_sound_for(side, id),
+                        look::ScreenCall::Sound(sound) => self.sound_for(side, sound.role().expect("a screen sound of a role")),
                         look::ScreenCall::Volume { music, screen } => {
                             self.play_sound_for(side, crate::sound::SoundCue::ScreenVolume { music, screen });
                         }

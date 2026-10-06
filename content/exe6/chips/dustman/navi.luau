@@ -64,7 +64,7 @@ local function take(me: Object): number
     local s = me.state :: State
     local n = 0
     for _, o in field.all_objects() do
-        local look = obstacle.junk_look(o)
+        local look = obstacle.absorbed_look(o)
         if look then
             n += 1
             s.taken[n] = look

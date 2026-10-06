@@ -67,7 +67,7 @@ return {
         anti_recovery = anti_recovery.kind,
         -- What an obstacle turns into where an armed side's ColonelSoul can use it (attack object 0x30: EXE5's own,
         -- objects/soldier).
-        obstacle_soldier = soldier.kind,
+        converted_obstacle = soldier.kind,
         -- The NaviCust supports' controller (Rush's, Beat's and Tango's: EXE5's effect object 0x74, EXE6's code,
         -- lib/supports).
         support = supports.kind,
@@ -167,7 +167,7 @@ return {
         custom_cursor = asset.sound("menu-cur-move"),
         custom_hide = asset.sound("cur-move-80"),
         -- The hover over a dark chip, every 64 ticks while the screen is dark or fading (0x08025AA2: sound 0x16B).
-        custom_dark_hover = asset.sound("dark-hover"),
+        custom_shade = asset.sound("dark-hover"),
         custom_pick = asset.sound("menu-select"),
         custom_ok = asset.sound("select-82"),
         custom_back = asset.sound("exit-submenu"),

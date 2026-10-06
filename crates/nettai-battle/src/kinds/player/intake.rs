@@ -5,7 +5,7 @@
 
 use super::{
     ActorType, ai, ai_mut, battle_mode, clear_flag2, coll, coll_id, coll_mut, flag1, flag2, panel_kind,
-    form_of, navi_of, refresh_navicust_state, reload_base_weapons, set_flag2, stats, stats_mut,
+    form_of, navi_of, refresh_abilities, reload_base_weapons, set_flag2, stats, stats_mut,
 };
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionData, f1, timer};
@@ -531,8 +531,8 @@ fn bug_paralyze_blind(b: &mut Battle, r: ObjectRef) {
     // sub_801A77A
     set_flag2(b, r, 0x8);
     coll_mut(b, r).status_timers[timer::PARALYZE] = 150;
-    // (Not the Cybeasts.)
-    if !b.content.identity(b.objects.get(r).identity).class.is_cybeast() {
+    // (Not the Cybeasts: `bug_blind_immune`.)
+    if !b.content.identity(b.objects.get(r).identity).bug_blind_immune {
         set_flag2(b, r, 0x20);
         coll_mut(b, r).status_timers[timer::BLIND] = 1200;
     }
@@ -643,7 +643,7 @@ fn bug_navicust(b: &mut Battle, r: ObjectRef) {
         }
     }
     if edited {
-        refresh_navicust_state(b, r);
+        refresh_abilities(b, r);
         super::form::refresh_form_flags(b, r);
     }
     reload_base_weapons(b, r);

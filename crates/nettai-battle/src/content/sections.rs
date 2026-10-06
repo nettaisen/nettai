@@ -10,7 +10,7 @@
 //! missing one is a load error that names it: `rules: flow: missing
 //! field `escape_check``). What may be left out
 //! reads as nothing for every game: a feature's section a game hasn't
-//! (`berserk`, `lockon`, `banners`) and a table
+//! (`lockon`, `banners`) and a table
 //! that is empty without it (`elements`, `buster`, `math`,
 //! `custom_screen`); in a section, a list or an attribute of one entry
 //! that is none unless stated (a panel type's `burn`, `chaos_cycle`).
@@ -124,15 +124,6 @@ struct ReactionsSection {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct BerserkSection {
-    step: StepSection,
-    opponent: [PanelCondition; 2],
-    blocking: [u32; 2],
-    opposing_player: [u32; 2],
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 struct MathSection {
     sine: Vec<i16>,
 }
@@ -233,7 +224,6 @@ fn serde_name<T: serde::Serialize>(v: &T) -> String {
 /// schemas).
 pub(crate) const SECTIONS: &[&str] = &[
     "banners",
-    "berserk",
     "buster",
     "chip_use",
     "custom_screen",
@@ -262,7 +252,6 @@ struct Stated {
     elements: Option<([[u8; 6]; 6], [SecondaryElements; 15])>,
     panels: Option<PanelRules>,
     reactions: Option<ReactionsSection>,
-    berserk: Option<BerserkRules>,
     sine: Option<Vec<i16>>,
     pools: Option<PoolSizes>,
     custom_screen: Option<CustomScreenLayout>,
@@ -295,7 +284,6 @@ impl Stated {
                 stance_counter: r.stance_counter,
                 request_clears: r.request_clears,
             }),
-            berserk: Some(r.berserk),
             sine: Some(r.sine.clone()),
             pools: Some(r.pools),
             custom_screen: Some(r.custom_screen.clone()),
@@ -389,7 +377,6 @@ impl Stated {
             request_clears: reactions.request_clears,
             bubble_bob: reactions.bubble_bob,
             lockon: self.lockon.unwrap_or_default(),
-            berserk: self.berserk.unwrap_or_default(),
             flow,
             effects,
             chip_use,
@@ -537,11 +524,6 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 });
             }
             "reactions" => stated.reactions = Some(r.read(spec, &at).map_err(e)?),
-            "berserk" => {
-                let s: BerserkSection = r.read(spec, &at).map_err(e)?;
-                stated.berserk =
-                    Some(BerserkRules { step: s.step.rules(), opponent: s.opponent, blocking: s.blocking, opposing_player: s.opposing_player });
-            }
             "math" => stated.sine = Some(r.read::<MathSection>(spec, &at).map_err(e)?.sine),
             "pools" => {
                 let s: PoolSizes = r.read(spec, &at).map_err(e)?;
