@@ -186,6 +186,25 @@ pub struct NaviDef {
     /// and after a navi switch: EXE6's DustMan's two objects of battle
     /// mode 9, EXE5's ToadMan's dive.
     pub post_init: Option<FnId>,
+    /// Its functions of its side, which the round's setup asks for the side
+    /// it is the navi of (`Battle::given`).
+    pub given: NaviGivenFns,
+}
+
+/// A navi's functions of its side (`HookCall::Given`): what its level gives
+/// it, as its game's rules read the level (EXE6's link navis', by their
+/// navi code's level: content/exe6/rules/by_level.luau).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct NaviGivenFns {
+    /// `chip_bonus.damage`: its bonus on its family's chips
+    /// (`NaviData::chip_bonus`; nil none).
+    pub chip_bonus: Option<FnId>,
+    /// `charged_chips.when`: whether its `charged_chips` charge (without
+    /// it, always).
+    pub charges: Option<FnId>,
+    /// `fire_charge`: how far its A charge builds up the next Fire chip's
+    /// damage (`sub_80F0608`; nil none).
+    pub fire_charge: Option<FnId>,
 }
 
 /// The record type of a lock-on mode (`define.record("lockon", ...)`).
@@ -979,10 +998,17 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
         ("modifier", Json::Null),
     ];
     for (field, default) in defaults {
+        // (A damage a function of the side gives is the chip's function:
+        // `Defs::build` takes it.)
+        if field == "damage" && matches!(spec.field(field), Data::Function) {
+            o.insert(field.into(), default);
+            continue;
+        }
         let v = json(field)?;
         o.insert(field.into(), if v.is_null() { default } else { v });
     }
-    // `damage`: a number, or a formula (`{ formula = "hp_lost" }`).
+    // `damage`: a number, or a formula (`{ formula = "hp_lost" }`), or a
+    // function of the side.
     match o["damage"].take() {
         formula @ Json::Object(_) => {
             o.insert("formula".into(), formula);
@@ -1407,7 +1433,10 @@ impl Defs {
                     d.module, d.key
                 )));
             };
-            let record = chip_record(d, &reader)?;
+            let mut record = chip_record(d, &reader)?;
+            if matches!(d.spec.field("damage"), Data::Function) {
+                record.formula = Some(super::DamageFormula::Given(functions.id(slot(d, "damage")?)));
+            }
             let setup = match d.spec.field("setup") {
                 Data::Nil => None,
                 _ => Some(functions.id(slot(d, "setup")?)),
@@ -1582,11 +1611,24 @@ impl Defs {
                     _ => Some(functions.id(slot(d, field)?)),
                 })
             };
-            let (tick, idle, post_init) = (hook("tick")?, hook("idle")?, hook("post_init")?);
+            let (tick, idle, post_init, fire_charge) = (hook("tick")?, hook("idle")?, hook("post_init")?, hook("fire_charge")?);
             if record.forms.is_some() && tick.is_some() {
                 return Err(what(d, "a navi that changes form has no `tick` of its own: its forms' `tick` run".into()));
             }
-            navis.push(NaviDef { key: d.key.clone(), record, own_chip, tick, idle, post_init });
+            let given = NaviGivenFns {
+                chip_bonus: match d.spec.field("chip_bonus").field("damage") {
+                    Data::Function => Some(functions.id(FnSource::slot(d.registry, &d.key, "chip_bonus.damage"))),
+                    _ if record.chip_bonus.is_some() => return Err(what(d, "`chip_bonus.damage` is a function of the side".into())),
+                    _ => None,
+                },
+                charges: match d.spec.field("charged_chips").field("when") {
+                    Data::Nil => None,
+                    Data::Function => Some(functions.id(FnSource::slot(d.registry, &d.key, "charged_chips.when"))),
+                    _ => return Err(what(d, "`charged_chips.when` is a function of the side".into())),
+                },
+                fire_charge,
+            };
+            navis.push(NaviDef { key: d.key.clone(), record, own_chip, tick, idle, post_init, given });
         }
         // (A round's record of the link navis' chips used is 32 bits.)
         if navis.len() > 32 {

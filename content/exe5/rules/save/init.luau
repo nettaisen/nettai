@@ -2,7 +2,8 @@
 -- What an EXE5 player's save brings to the navi's stats, which nothing else gives (docs/frontend.md §6): MegaMan's
 -- base HP (HP Memories raise it, +0x3E), the Regular memory (RegUps, +0x09), and a team navi's level (`level`: the
 -- count of the save's story flags 0x300 to 0x305, 0 to the navi's story's last, which the init exchange sends; none
--- for MegaMan, who takes none). The engine reads the level by its role (the team navis' attacks' damage rows). (EXE5's
+-- for MegaMan, who takes none). The engine knows no level: EXE5's rules read it (exe5.navi_level, ../api: the team
+-- navis' damage rows, lib/navi_level). (EXE5's
 -- block has no sun: its sun is none of the save's.) The rest of a round's stats are derived as the round is set up,
 -- from the navi's fresh stats
 -- (`fresh_stats`, its definition): this system first, then the NaviCust's compile (../navicust) and the patch cards
@@ -23,7 +24,7 @@
 
 local fresh_stats = require("./fresh_stats")
 
-type Setup = { hp: number, reg_up: number }
+type Setup = { hp: number, reg_up: number, level: number? }
 
 -- A team navi's HP at `level` by its story (none past its last level).
 local function story_hp(story: { hp: { number }, max_level: number }, level: number): number?
@@ -39,7 +40,7 @@ local function round_setup(side: number)
     local stats = battle.navi(side)
     local setup = system.setup() :: Setup
     local story = stats.navi.story
-    local level = battle.navi_level(side)
+    local level = setup.level
     local compiles = battle.navicust(side) ~= nil
     local team_navi = story ~= nil and level ~= nil
     if not compiles and not team_navi then

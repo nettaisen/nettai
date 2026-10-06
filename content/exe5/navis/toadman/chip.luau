@@ -10,6 +10,7 @@
 -- its own routine (+0x1F: routine 4 of 0x0800EC80) the target (0x080BC92C: ToadMan's, the enemy combatant nearest
 -- the panel ahead in his cone), no wait before he sings and the 10 ticks he does.
 
+local navi_level = require("../../lib/navi_level")
 local note = require("../../chips/toadman/note")
 local toadman = require("../../chips/toadman/navi")
 
@@ -91,7 +92,7 @@ return define.chip {
     class = "special",
     rarity = 0,
     mb = 99,
-    damage = { formula = "level", by_level = { 80, 80, 80, 80, 80, 80, 80 } },
+    damage = navi_level.row({ 80, 80, 80, 80, 80, 80, 80 }),
     hit_param = 148,
     lockout = 0,
     flags = { "has_damage", "library", "variable_damage" },

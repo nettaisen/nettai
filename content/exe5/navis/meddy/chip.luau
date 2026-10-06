@@ -5,6 +5,7 @@
 -- (its third parameter is 1). Its damage is by her level (the chips' damage formula 60: the damage rows' row 11).
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
+local navi_level = require("../../lib/navi_level")
 local throw = require("./throw")
 
 return define.chip {
@@ -15,7 +16,7 @@ return define.chip {
     class = "special",
     rarity = 0,
     mb = 99,
-    damage = { formula = "level", by_level = { 80, 80, 80, 80, 80, 80, 100 } },
+    damage = navi_level.row({ 80, 80, 80, 80, 80, 80, 100 }),
     hit_param = 148,
     lockout = 0,
     flags = { "has_damage", "library", "variable_damage" },

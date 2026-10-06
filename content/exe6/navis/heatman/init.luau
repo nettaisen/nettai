@@ -1,6 +1,7 @@
 --!strict
 -- heatman: a link navi.
 
+local by_level = require("../rules/by_level")
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
 local heatman = require("@self/chip")
@@ -26,7 +27,7 @@ return define.navi {
     chip_bonus = {
         family = "fire",
         dimming_chips = false,
-        by_level = { 0, 0, 0, 0, 0, 0, 0, 30, 30, 30, 30, 40, 40, 40, 50 },
+        damage = by_level.row({ 0, 0, 0, 0, 0, 0, 0, 30, 30, 30, 30, 40, 40, 40, 50 }),
     },
     -- What a navi switch brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side
