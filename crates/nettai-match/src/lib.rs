@@ -117,7 +117,7 @@ pub struct Side {
     /// The folder, its entries empty while it is being made (a round is
     /// played with a whole one: the checks refuse a match without).
     pub folder: Folder,
-    pub cards: Vec<InstalledCard>,
+    pub patch_cards: Vec<InstalledCard>,
     /// The level of the navi code the save received (0 to 14: a link
     /// navi's chip bonus and stats, MegaMan's gains over his NaviCust);
     /// none, MegaMan without a code (a link navi always has one:
@@ -272,7 +272,7 @@ impl Side {
         let mut side = Side {
             navi,
             folder: Folder::EMPTY,
-            cards: Vec::new(),
+            patch_cards: Vec::new(),
             navi_level: default_navi_level(content, navi),
             sp_times: SpTimes::default(),
             navicust: None,
@@ -315,7 +315,7 @@ impl Match {
                 // What the side brings that its rules' systems take: their
                 // setup blocks, as the side holds them.
                 rules: s.facts.blocks().to_vec(),
-                patch_cards: PatchCards::new(&s.cards).unwrap_or_default(),
+                patch_cards: PatchCards::new(&s.patch_cards).unwrap_or_default(),
                 // (The navi that changes form compiles a NaviCust where the
                 // rules have one: an empty one on the largest board when the
                 // side places none.)
@@ -451,9 +451,9 @@ pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usi
                 out.push_str(&format!("; {}: {}", f.name, facts::shown(content, &value)));
             }
         }
-        if !s.cards.is_empty() {
+        if !s.patch_cards.is_empty() {
             let cards: Vec<String> =
-                s.cards.iter().map(|c| format!("{}{}", if c.enabled { "" } else { "-" }, names::patch_card(content, c.card))).collect();
+                s.patch_cards.iter().map(|c| format!("{}{}", if c.enabled { "" } else { "-" }, names::patch_card(content, c.card))).collect();
             out.push_str(&format!("; patch cards: {}", cards.join(", ")));
         }
         if folders {

@@ -196,7 +196,7 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, picks: &mut Picks) -> Resul
     let mut side = Side {
         navi,
         folder: folder.into(),
-        cards: Vec::new(),
+        patch_cards: Vec::new(),
         navi_level: crate::default_navi_level(content, navi),
         sp_times: Default::default(),
         navicust: None,
