@@ -232,6 +232,11 @@ impl PeerConnection {
         self.found.borrow_mut().events.pop_front()
     }
 
+    /// Whether a datagram came that wasn't taken.
+    pub(crate) fn has_datagram(&self) -> bool {
+        !self.found.borrow().inbox.is_empty()
+    }
+
     pub(crate) fn next_datagram(&mut self) -> Option<Vec<u8>> {
         self.found.borrow_mut().inbox.pop_front()
     }

@@ -293,6 +293,10 @@ impl Link {
         while let Some(e) = self.pc.as_mut().and_then(|pc| pc.next_event()) {
             self.peer_event(now, e);
         }
+        // (Heard when it comes, taken or not.)
+        if self.open && self.pc.as_ref().is_some_and(PeerConnection::has_datagram) {
+            self.heard = now;
+        }
         if self.open && now.duration_since(self.heard) >= self.config.silence {
             let secs = self.config.silence.as_secs_f32();
             self.lost(now, format!("nothing from the other player for {secs} seconds"));
