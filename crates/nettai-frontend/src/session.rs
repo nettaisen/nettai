@@ -1,6 +1,7 @@
 //! A running battle: its driver, the engine state, and why it stopped.
 
 use crate::driver::{Driver, Ran, result_text};
+use crate::replay::Recorder;
 use nettai_battle::cues::CueAction;
 use nettai_battle::{Battle, BattleResult};
 use nettai_match::After;
@@ -30,6 +31,8 @@ pub struct Session {
     /// ended round's last cues: `battle` is the next round's by then);
     /// none: the battle's own cues (`Battle::sound_cues`).
     pub sound: Option<Vec<CueAction>>,
+    /// The replay being written of what is played, if one is.
+    pub recorder: Option<Recorder>,
 }
 
 impl Session {
@@ -47,11 +50,24 @@ impl Session {
             fresh: false,
             new_round: false,
             sound: None,
+            recorder: None,
         }
     }
 
-    /// Start over.
+    /// Record what is played from here as a replay: refused once a tick
+    /// has run, or for a driver whose ticks can't be (`Driver::record`).
+    pub fn record(&mut self, recorder: Recorder) -> Result<(), String> {
+        if self.ticks > 0 || !self.driver.record() {
+            return Err("only a set played on buttons alone is recorded, from its start".into());
+        }
+        self.recorder = Some(recorder);
+        Ok(())
+    }
+
+    /// Start over (a recording stops: the replay holds what was played
+    /// before).
     pub fn restart(&mut self) {
+        self.recorder = None;
         self.battle = self.driver.start();
         self.stopped = None;
         self.finished = false;
@@ -72,6 +88,13 @@ impl Session {
         IN_ENGINE.with(|f| f.set(true));
         let ran = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.driver.run_frame(keys, &mut self.battle)));
         IN_ENGINE.with(|f| f.set(false));
+        if let Some(r) = &mut self.recorder {
+            let mut settled = Vec::new();
+            self.driver.take_recorded(&mut settled);
+            for t in &settled {
+                r.tick(t);
+            }
+        }
         match ran {
             Ok(None) => {}
             Ok(Some(Ok(Ran { advanced, new_round, sound }))) => {
@@ -118,7 +141,17 @@ impl Session {
         }
         // A set's round ended on this tick: on with the next one, or the
         // set is over.
-        match self.driver.round_ended(&self.battle) {
+        let after = self.driver.round_ended(&self.battle);
+        if let Some(r) = &mut self.recorder {
+            let (round_ended, set_ended) = match &after {
+                Some(After::Round(_)) => (true, false),
+                Some(After::Over(_)) => (true, true),
+                _ => (false, false),
+            };
+            let digest = (round_ended || r.digest_due()).then(|| self.battle.digest());
+            r.tick(&nettai_replay::Tick { buttons: step.input.map(|p| p.held), digest, round_ended, set_ended });
+        }
+        match after {
             None => {}
             Some(After::Round(next)) => {
                 // (The ended round's last tick is still heard; what is

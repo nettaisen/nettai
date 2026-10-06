@@ -21,6 +21,8 @@ nettai-content = { path = "../nettai-content" }
 # A match: the setup a set is played from, checked; live play's random pick
 # of one; how a set goes on.
 nettai-match = { path = "../nettai-match" }
+# The replay file a set is recorded to and played back from.
+nettai-replay = { path = "../nettai-replay" }
 # The handles the engine names content by (a chip in a hand).
 nettai-content-api = { path = "../nettai-content-api" }
 m4a.workspace = true

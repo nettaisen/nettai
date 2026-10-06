@@ -191,42 +191,100 @@ impl Default for NetOptions {
     }
 }
 
-/// What the player hears: every tick the peer simulates, through a cue
-/// tracker for their side. The peer's world owns it.
-struct Sound {
+/// What a round's simulation tells the player: what they hear (every tick
+/// the peer simulates, through a cue tracker for their side), the tick the
+/// round ended on once it settles (the battle the set goes on from: the
+/// same on both peers, whenever each sees it settle), and for a recording
+/// each tick that settles. The peer's world owns it.
+struct Watch {
     viewer: u8,
     tracker: CueTracker,
     /// Every action of the round so far, in order: the player takes the
     /// ones after those it took the frame before.
     actions: Vec<CueAction>,
+    /// The first frame simulated so far whose state has the round over,
+    /// and that state.
+    end: Option<(u32, Battle)>,
+    /// The round's end, settled: its frame and its battle, for the set to
+    /// go on from. Frames that settle after it are none of the set's.
+    settled_end: Option<(u32, Battle)>,
+    /// The ticks that settle, for a recording.
+    record: Option<Record>,
+}
+
+/// What a recording takes of a round's settled ticks.
+struct Record {
+    /// The set's ticks before this round's (a digest's cadence counts
+    /// the set's).
+    before: u64,
+    /// The digests of frames the latest simulation of which took one, by
+    /// frame (a frame due one, and the round's end).
+    digests: std::collections::BTreeMap<u32, u64>,
+    /// The ticks settled since the player last took them.
+    settled: Vec<nettai_replay::Tick>,
 }
 
 /// Frames a cue a re-simulation makes again may move and still be the one
 /// played (docs/design/rollback.md §3.2).
 const CUE_TOLERANCE: u32 = 3;
 
-impl Sound {
-    fn new(viewer: u8) -> Sound {
-        Sound { viewer, tracker: CueTracker::new(CUE_TOLERANCE), actions: Vec::new() }
+impl Watch {
+    /// A round's, for the player of `viewer`'s side; recording it after
+    /// the set's ticks `before` (none: not recording).
+    fn new(viewer: u8, before: Option<u64>) -> Watch {
+        Watch {
+            viewer,
+            tracker: CueTracker::new(CUE_TOLERANCE),
+            actions: Vec::new(),
+            end: None,
+            settled_end: None,
+            record: before.map(|before| Record { before, digests: Default::default(), settled: Vec::new() }),
+        }
     }
 }
 
-impl<G: Game> Observer<G> for Sound {
+impl Observer<StandInBattle> for Watch {
     fn rolled_back(&mut self, frame: u32) {
         self.tracker.rolled_back(frame);
+        if self.end.as_ref().is_some_and(|(f, _)| *f >= frame) {
+            self.end = None;
+        }
     }
 
-    fn simulated(&mut self, frame: u32, game: &G) {
-        self.tracker.simulated(frame, game.battle().sound_cues_for(self.viewer));
+    fn simulated(&mut self, frame: u32, game: &StandInBattle) {
+        let battle = game.battle();
+        self.tracker.simulated(frame, battle.sound_cues_for(self.viewer));
         self.actions.extend(self.tracker.drain());
+        let ends = self.end.is_none() && battle.round_end().is_some();
+        if ends {
+            self.end = Some((frame, battle.clone()));
+        }
+        if let Some(r) = &mut self.record
+            && (ends || crate::replay::digest_due(r.before + frame as u64))
+        {
+            r.digests.insert(frame, battle.digest());
+        }
     }
 
-    fn confirmed(&mut self, frame: u32, _: Option<&Battle>) {
+    fn confirmed(&mut self, frame: u32, inputs: [&u16; 2], _: Option<&Battle>) {
         self.tracker.confirmed(frame + 1);
+        if self.settled_end.is_some() {
+            return;
+        }
+        let ended = self.end.as_ref().is_some_and(|(f, _)| *f == frame);
+        if let Some(r) = &mut self.record {
+            let due = ended || crate::replay::digest_due(r.before + frame as u64);
+            let digest = r.digests.remove(&frame).filter(|_| due);
+            let buttons = inputs.map(|&b| b & nettai_replay::BUTTON_MASK);
+            r.settled.push(nettai_replay::Tick { buttons, digest, round_ended: ended, set_ended: false });
+        }
+        if ended {
+            self.settled_end = self.end.take();
+        }
     }
 }
 
-type NetPeer = Peer<StandInBattle, Sound>;
+type NetPeer = Peer<StandInBattle, Watch>;
 
 // A peer, its world and its sound go to another thread, and a player over
 // a channel that goes too with them.
@@ -260,6 +318,9 @@ pub struct NetPlayer<C: Channel> {
     start: Instant,
     /// The set's result for this player, once it is over.
     over: Option<BattleResult>,
+    /// Recording: the set's ticks before this round's, and the settled
+    /// ticks the session hasn't taken.
+    recording: Option<(u64, Vec<nettai_replay::Tick>)>,
 }
 
 impl<C: Channel> NetPlayer<C> {
@@ -268,9 +329,9 @@ impl<C: Channel> NetPlayer<C> {
     /// ([`agree`]).
     pub fn new(channel: C, side: usize, set: Set, options: NetOptions) -> NetPlayer<C> {
         let config = PeerConfig::new(options.present_delay, options.max_lead);
-        let world = BattleWorld::with_observer(StandInBattle::new(set.start()), side, Sound::new(side as u8));
+        let world = BattleWorld::with_observer(StandInBattle::new(set.start()), side, Watch::new(side as u8, None));
         let start = Instant::now();
-        NetPlayer { channel, side, peer: Peer::new(world, config), heard: 0, last_frame: start, set, options, start, over: None }
+        NetPlayer { channel, side, peer: Peer::new(world, config), heard: 0, last_frame: start, set, options, start, over: None, recording: None }
     }
 
     /// The side this player plays.
@@ -356,25 +417,49 @@ impl<C: Channel> NetPlayer<C> {
                 shown.setup.local_side = side;
             });
             ran.advanced = true;
-            // What settled: the round's end, and how the set goes on from
-            // it (the next round is the shared simulation's, side 0's; the
-            // result is this player's). (The world has told the sound.)
-            match self.set.after(self.peer.session().settled_state().battle(), side) {
-                None => {}
-                Some(After::Over(result)) => self.over = Some(result),
-                Some(After::Round(battle)) => {
-                    self.take_sound(&mut ran.sound);
-                    // A new round, a new tracker.
-                    let world = BattleWorld::with_observer(StandInBattle::new((*battle).clone()), self.side, Sound::new(side));
-                    self.peer.end_round(world);
-                    self.heard = 0;
-                    self.show(&battle, shown);
-                    ran.new_round = true;
-                }
-                // The engine stopped the settled battle: on both peers alike.
-                Some(After::Stopped(why)) => {
-                    self.take_sound(&mut ran.sound);
-                    return Err(format!("engine stopped at {}: {why}", self.position()));
+            // What settled: the ticks, for a recording; the round's end at
+            // the tick it ended on, and how the set goes on from it (the
+            // next round is the shared simulation's, side 0's; the result
+            // is this player's). (The world has told the sound.)
+            let watch = self.peer.session_mut().world_mut().observer_mut();
+            if let (Some(r), Some((_, recorded))) = (&mut watch.record, &mut self.recording) {
+                recorded.append(&mut r.settled);
+            }
+            let ended = watch.settled_end.take();
+            if let Some((frame, ended)) = ended {
+                let after = self.set.after(&ended, side).expect("the round is over");
+                let last = self.recording.as_mut().and_then(|(_, r)| r.last_mut());
+                match after {
+                    After::Over(result) => {
+                        self.over = Some(result);
+                        if let Some(t) = last {
+                            t.set_ended = true;
+                        }
+                    }
+                    After::Round(battle) => {
+                        self.take_sound(&mut ran.sound);
+                        // A new round, a new tracker; a recording's ticks
+                        // counted on.
+                        let before = self.recording.as_mut().map(|(before, _)| {
+                            *before += frame as u64 + 1;
+                            *before
+                        });
+                        let world = BattleWorld::with_observer(StandInBattle::new((*battle).clone()), self.side, Watch::new(side, before));
+                        self.peer.end_round(world);
+                        self.heard = 0;
+                        self.show(&battle, shown);
+                        ran.new_round = true;
+                    }
+                    // The engine stopped the settled battle: on both peers
+                    // alike (a recording marks no end: the set goes no
+                    // further).
+                    After::Stopped(why) => {
+                        if let Some(t) = last {
+                            t.round_ended = false;
+                        }
+                        self.take_sound(&mut ran.sound);
+                        return Err(format!("engine stopped at {}: {why}", self.position()));
+                    }
                 }
             }
         }
@@ -397,6 +482,23 @@ impl<C: Channel> Driver for NetPlayer<C> {
 
     fn run_frame(&mut self, keys: u16, shown: &mut Battle) -> Option<Result<Ran, String>> {
         Some(self.frame(keys, shown))
+    }
+
+    /// From the set's start: each tick as it settles (both peers' files
+    /// alike, but for their info).
+    fn record(&mut self) -> bool {
+        if self.peer.round() > 0 || self.peer.session().local_frontier() > 0 {
+            return false;
+        }
+        self.recording = Some((0, Vec::new()));
+        self.peer.session_mut().world_mut().observer_mut().record = Some(Record { before: 0, digests: Default::default(), settled: Vec::new() });
+        true
+    }
+
+    fn take_recorded(&mut self, out: &mut Vec<nettai_replay::Tick>) {
+        if let Some((_, recorded)) = &mut self.recording {
+            out.append(recorded);
+        }
     }
 
     fn position(&self) -> String {
@@ -532,6 +634,56 @@ mod tests {
         other.game = "exe6".into();
         let Err(e) = netplay_setup(&content, 9, &[o.clone(), other]) else { panic!("offers of two games made a match") };
         assert_eq!(e, "the host plays exe5, the joiner exe6: a match is of one game");
+    }
+
+    /// Both players record the set as it settles, over a link with
+    /// latency and rollback: their replays are the same but for the side
+    /// that recorded, the rounds end on the tick each ended on (whenever
+    /// each peer saw it settle), and either plays back to the set's end
+    /// with no difference. (Each player shoots; side 1's navi has 1 HP.)
+    #[test]
+    fn both_players_record_the_same_set() {
+        use crate::driver::short_set::shooter;
+        use crate::replay::{End, Recorder, play_out, testing::Shared};
+        use crate::session::Session;
+        let content = exe6_test_content();
+        let base_hp = nettai_battle::content::PlayerFact::BaseHp.name();
+        let mine = [0, 1].map(|side| {
+            let mut o = offer(&content, 3 + side as u32);
+            if side == 1 {
+                o.side.set_fact(&content, base_hp, &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(1))]).unwrap();
+            }
+            o
+        });
+        let (mut shuttle, hands) = Shuttle::new();
+        let sinks = [Shared::default(), Shared::default()];
+        let mut playing: Vec<Session> = Vec::new();
+        for (side, (hand, (_, set, m))) in hands.into_iter().zip(agreed(&content, &mine, 0x5eed)).enumerate() {
+            let mut s = Session::new(Box::new(NetPlayer::new(hand, side, set, NetOptions::default())));
+            let info = nettai_replay::Info { when: 0, side: side as u8, names: Default::default() };
+            s.record(Recorder::new(Box::new(sinks[side].clone()), &content, &m, &info).unwrap()).unwrap();
+            playing.push(s);
+        }
+        let start = Instant::now();
+        for frame in 1..40_000u32 {
+            shuttle.carry(frame);
+            for (side, s) in playing.iter_mut().enumerate() {
+                let keys = shooter(&s.battle, side, frame);
+                assert!(s.step(keys), "side {side}: {:?}", s.stopped);
+            }
+            if playing.iter().all(|s| s.driver.result().is_some()) {
+                break;
+            }
+            let next = start + Duration::from_micros(500) * frame;
+            std::thread::sleep(next.saturating_duration_since(Instant::now()));
+        }
+        assert_eq!(playing.iter().map(|s| s.driver.result()).collect::<Vec<_>>(), [Some(BattleResult::Won), Some(BattleResult::Lost)]);
+        let [a, b] = sinks.map(|s| nettai_replay::Replay::read(&s.bytes()).unwrap());
+        assert_eq!((a.end, a.rounds().len()), (End::Set, 2));
+        assert_eq!((&a.head, &a.match_bytes, &a.ticks), (&b.head, &b.match_bytes, &b.ticks));
+        assert_eq!((a.info.side, b.info.side), (0, 1));
+        let out = play_out(&content, &a).unwrap();
+        assert_eq!((out.diverged, out.stopped, out.result, out.rounds), (None, None, Some(BattleResult::Won), vec![Some(0), Some(0)]));
     }
 
     type Queue = Rc<RefCell<VecDeque<Vec<u8>>>>;
