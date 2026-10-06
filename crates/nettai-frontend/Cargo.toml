@@ -34,3 +34,6 @@ sha2 = "0.10"
 [dev-dependencies]
 nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
 nettai-match = { path = "../nettai-match", features = ["testing"] }
+# A set played over WebRTC links that drop and come back (the library
+# itself has no transport).
+nettai-rtc = { path = "../nettai-rtc", features = ["testing"] }

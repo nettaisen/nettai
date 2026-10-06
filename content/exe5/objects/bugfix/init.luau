@@ -22,7 +22,6 @@ bugfix.glow = common_glow.make {
     sounds = {
         flash = asset.sound("bugfix-flash"),
         log_in = asset.sound("log-in"),
-        submerge = asset.sound("invisible"),
     },
     offset = -1,
     exe5_parts = true,
@@ -46,7 +45,7 @@ local TIMER = 60
 local function liberation(me: Object)
     if me.phase_init == 0 then
         -- sub_80C4AEC
-        bugfix.glow.spawn(me, common_glow.LOG_IN, me)
+        bugfix.glow.spawn(me, "log_in", me)
         me.timer = TIMER
         me.phase_init = 4
     end

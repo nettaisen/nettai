@@ -6,6 +6,7 @@
 
 pub mod app;
 pub mod auto_battle;
+pub mod card_effects;
 pub mod facts;
 pub mod levels;
 pub mod load;

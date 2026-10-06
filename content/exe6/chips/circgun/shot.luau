@@ -27,17 +27,8 @@ shot.look = {
     spark = sparks.of_element(0),
     target = collision.hits_navis,
     flash = effects.flash,
-    hits = {
-        [0] = collision.thrown,
-        [1] = new.collision { side0 = 0x80000488, side1 = 0x40000488, row_offset = 0x158 },
-    },
 } :: CircGunLook
 
 shot.kind = shot.make_kind("circgun/shot", shot.look)
-
--- EXE6's shot.
-function shot.spawn(gun: Object, x: number, y: number, element: number, damage: number, ticks: number, look: number, slot: number): Object?
-    return common.spawn_kind(shot.kind, gun, x, y, element, damage, ticks, look, slot)
-end
 
 return shot

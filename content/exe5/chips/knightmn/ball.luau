@@ -4,8 +4,9 @@
 -- parameter) a tick, its position on a circle of its radius around its owner's, turned to the owner's side (x back,
 -- toward its own side's end, at angle 0); after its turns (its second parameter) it goes. It hits each panel it
 -- comes to (breaking, hitting navis, hit modifier 3, the breaking spark, its status from its third parameter),
--- lighting it; a hit clears its region until it moves on. Its variant (its fourth parameter) picks its sprite, its
--- height and its radius: 0, KnightMan's, his ball 16 pixels up at 30 pixels; 1 another sprite on the ground at 35.
+-- lighting it; a hit clears its region until it moves on. Its look (its fourth parameter, a variant: its swinger
+-- names it) is its sprite, its height and its radius: KnightMan's, his ball 16 pixels up at 30 pixels (variant 0,
+-- `ball.knightman`); KnightSoul's, another sprite on the ground at 35 (variant 1).
 -- (Its sprite is never stepped: the update that would, for its +0x60, never runs. Nor does the check of its +0x68,
 -- which nothing sets, ever skip its relighting.)
 
@@ -17,27 +18,27 @@ local sparks = require("../../lib/sparks")
 
 export type State = {
     -- How far it turns a tick (its first parameter), the turns it has left (its second), its status (its third)
-    -- and its variant (its fourth).
+    -- and its look (its fourth).
     speed: number,
     turns: number,
     status: Status?,
-    variant: number,
+    look: KnightBallLook,
     -- Its radius in pixels (+0x64).
     radius: number,
 }
 
 local ball = {}
 
--- By the variant: its sprite, its height and its radius.
-type Look = { sprite: SpriteAsset, z: number, radius: number }
-local LOOKS: { [number]: Look } = {
-    [0] = { sprite = asset.sprite("knightman-ball"), z = 0x10_0000, radius = 0x1E },
-    [1] = { sprite = asset.sprite("knightsoul-ball"), z = 0, radius = 0x23 },
-}
+-- A ball's look.
+function ball.look(l: KnightBallLook): KnightBallLook
+    return new.record("knightman-ball-look", l)
+end
 
-local function look_of(me: Object): Look
-    local v = (me.state :: State).variant
-    return LOOKS[if v == 1 then 1 else 0]
+-- KnightMan's (variant 0; any but 1 reads as it).
+ball.knightman = ball.look { sprite = asset.sprite("knightman-ball"), z = 0x10_0000, radius = 0x1E }
+
+local function look_of(me: Object): KnightBallLook
+    return (me.state :: State).look
 end
 
 -- 0x080C76C4: on its circle around its owner: x by the cosine, turned back toward its own side; y by the sine.
@@ -127,7 +128,7 @@ end
 ball.kind = new.kind {
     id = "knightmn/ball",
     pool = "attack",
-    state = { speed = "u8", turns = "u8", status = "status", variant = "u8", radius = "u32" },
+    state = { speed = "u8", turns = "u8", status = "status", look = "record:knightman-ball-look", radius = "u32" },
     -- 0x080C7568.
     update = function(me: Object)
         local l = me.lifecycle
@@ -141,7 +142,7 @@ ball.kind = new.kind {
     end,
 }
 
-export type Swing = { speed: number, turns: number, status: Status?, variant: number }
+export type Swing = KnightBallSwing
 
 -- 0x080C768A: a ball around `owner`, of its side, null, with the damage word (KnightSoul's charged shot's, 0x080EEB48).
 -- (Its position is the spawner's registers, which its init overwrites.)
@@ -149,7 +150,7 @@ function ball.spawn(owner: Object, damage: number, swing: Swing): Object?
     local o = battle.spawn(ball.kind, Vec3.zero)
     if o then
         local s = o.state :: State
-        s.speed, s.turns, s.status, s.variant = swing.speed, swing.turns, swing.status, swing.variant
+        s.speed, s.turns, s.status, s.look = swing.speed, swing.turns, swing.status, swing.look
         o.related1 = owner
         o:set_damage_word(damage)
         o.alliance = owner.alliance

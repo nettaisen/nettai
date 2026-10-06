@@ -24,14 +24,6 @@ local SPRITE = asset.sprite("dust")
 local SOUND = asset.sound("bblstar1")
 local BREAK_SOUND = asset.sound("crack-shot")
 
--- The patterns (0x080C7818's rows, by the chip's subtype): { dx, dy } from the panel ahead, dx toward the navi's
--- front.
-local PATTERNS: { [number]: { { number } } } = {
-    [0] = { { 0, 0 } },
-    [1] = { { 0, 0 }, { 1, 0 } },
-    [2] = { { 0, 0 }, { 0, -1 }, { 0, 1 } },
-}
-
 -- 0x080C7768 (EXE6's `sub_80C70D8`): the hit and the break, then 19 ticks.
 local function tick(me: Object)
     if me.phase_init == 0 then
@@ -106,9 +98,9 @@ end
 -- The action's phases, on the attack's step.
 local POINT, RECOVER = 0x0, 0x4
 
--- The action of the chip with pattern `pattern` (its subtype: 0 CrakOut, 1 DublCrak, 2 TripCrak).
-function crack.action(pattern: number): Action
-    local panels = PATTERNS[pattern]
+-- The action of a chip that cracks the panels of `panels` (its pattern, a row of 0x080C7818 by its subtype: { dx, dy }
+-- from the panel ahead, dx toward the navi's front).
+function crack.action(panels: { { number } }): Action
 
     -- 0x080EC7B8: point; on the second tick, the cracks.
     local function point(me: Object, s: State)
@@ -153,7 +145,7 @@ function crack.action(pattern: number): Action
 
     return new.action {
         state = { timer = "u16" },
-        args = { pattern = pattern },
+        args = { panels = panels },
         -- 0x080EC79C.
         update = function(me: Object, s: State)
             local step = me.step

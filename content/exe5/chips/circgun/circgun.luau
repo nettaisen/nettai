@@ -21,7 +21,6 @@ local LOOK: CircGunLook = {
         mark = asset.sound("mark"),
         hit = asset.sound("col-army-2"),
     },
-    hits = { [0] = collision.thrown, [1] = collision.collision_2b },
     -- (What the hit reaches and its flash EXE6's.)
     target = collision.hits_navis,
     flash = effects.flash,

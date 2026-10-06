@@ -8,6 +8,26 @@
 local navi_chips = require("@exelib/navi_chips/navi")
 local swoop = require("./swoop")
 
+-- His swoop's variants: the navi chip's (5), and WildBird's (6): faster, a longer turn of its own, no command.
+local SWOOP = swoop.variant {
+    speed_x = 0x8_0000,
+    speed_y = 0x4_CCCC,
+    turn_step = 0xD_AC50,
+    shorter = 1,
+    longer = 0,
+    wild_turn = false,
+    commanded = true,
+}
+local WILD_SWOOP = swoop.variant {
+    speed_x = 0xC_0000,
+    speed_y = 0x7_3333,
+    turn_step = 0x14_8278,
+    shorter = 0,
+    longer = 25,
+    wild_turn = true,
+    commanded = false,
+}
+
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).
     controller: Object?,
@@ -135,7 +155,7 @@ local function attack(me: Object)
     local left = me.timer - 1
     me.timer = left
     if left == 0x50 then
-        swoop.spawn(me, s.level, me.element, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)), if s.wild then 6 else 5)
+        swoop.spawn(me, s.level, me.element, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)), if s.wild then WILD_SWOOP else SWOOP)
     elseif left <= 0 then
         local controller = s.controller
         if controller then

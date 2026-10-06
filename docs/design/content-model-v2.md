@@ -2115,7 +2115,9 @@ What it settled:
 - **A table's rows no chip has** stay where the table is, as the original has them: a variant table keeps
   its rows by number privately and exports the chips' by name (`puck.variants.airhocky`,
   `wave.variants.pwrwave`, `shield.looks.rflectr2`), and an action's form no chip has is a definition with
-  its own compat key (`tornado/back-spread`, `recov/none`).
+  its own compat key (`tornado/back-spread`, `recov/none`). (Since 2026-10-06, at the user's word, no table by
+  the original's number: each variant is defined where its user fires it, a variant several users share is the
+  kind's by name, and rows no user has went with their tables.)
 - **Asset names**: the sprites `yoyo-arm`, `burner`, `heatcross-burner`, `drill-arm`, `hand-fan` and `shock-wave`
   (compat/assets.toml and curation.toml).
 - **What stays numeric**: statuses and bug codes, elements (the attack's element byte), Beast forms by number

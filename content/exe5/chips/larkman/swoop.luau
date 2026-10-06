@@ -1,12 +1,11 @@
 --!strict
 -- LarkMan's swoop (EXE5's attack object #0xBA, 0x080DD738; EXE5's own): LarkMan's body as a hit, which flies in from
 -- below the field two columns behind its navi, diagonally up across three columns, circles back round a center 20
--- pixels ahead of where it turns, and flies off backward. The navi chip's (variant 5, from LarkMan's navi) acts
--- and animates while the battle is dimmed. With the navi's command entered (./navi), its body hits for nothing and
--- a follower (./follower) carries its damage.
---
--- WildBird's (variant 6, from the summon table's entry 23's LarkMan) flies faster (row 6), turns faster for 25 more
--- ticks with its own animations by its side (0x080DDC44), and takes no command.
+-- pixels ahead of where it turns, and flies off backward. It acts and animates while the battle is dimmed. Its
+-- variant (Param1: `swoop.variant { ... }`, its navi's) is the navi chip's (5) or WildBird's (6, from the summon
+-- table's entry 23's LarkMan), which flies faster, turns faster for 25 more ticks with its own animations by its side
+-- (0x080DDC44), and takes no command. With the navi's command entered (./navi), the navi chip's body hits for nothing
+-- and a follower (./follower) carries its damage.
 --
 -- Not ported: the variants LarkMan the virus's AI spawns (0 to 4, 0x08100942: its own start panels, speeds and
 -- turn, a warning effect, waiting on the dimming and on its owner's attack).
@@ -21,9 +20,9 @@ local follower = require("./follower")
 local swoop = {}
 
 export type State = {
-    -- The navi chip's level, which picks the palette (+0x30), and its variant (Param1: 5, or WildBird's 6).
+    -- The navi chip's level, which picks the palette (+0x30), and its variant (Param1).
     level: number,
-    variant: number,
+    variant: LarkSwoopVariant,
     -- It faces left (+5: its side ^ flip).
     left: boolean,
     -- Its column at the start (+6), and its look: 1 facing right, 3 left (+7: from below the field).
@@ -50,19 +49,12 @@ local HIT_MOD = 3
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 0, 4 }
 -- By look (0x080DD850: 0 and 2, from above the field, are the virus's).
 local ANIMS: { [number]: number } = { [0] = 8, 6, 9, 0xB }
--- By variant (5 the navi chip's, 6 WildBird's): the speed (0x080DD858's rows), the turn's step (0x080DDB7C's rows:
--- 16.16 of 256 steps), the ticks it lasts less (0x080DDB9C's rows) and more (WildBird's 25).
-type Variant = { speed_x: number, speed_y: number, turn_step: number, shorter: number, longer: number }
-local VARIANTS: { [number]: Variant } = {
-    [5] = { speed_x = 0x8_0000, speed_y = 0x4_CCCC, turn_step = 0xD_AC50, shorter = 1, longer = 0 },
-    [6] = { speed_x = 0xC_0000, speed_y = 0x7_3333, turn_step = 0x14_8278, shorter = 0, longer = 25 },
-}
-local function variant(s: State): Variant
-    local v = VARIANTS[s.variant]
-    if not v then
-        error(string.format("LarkMan's swoop variant %d is a virus's (0x08100942), not ported", s.variant))
-    end
-    return v
+-- A swoop's variant.
+function swoop.variant(v: LarkSwoopVariant): LarkSwoopVariant
+    return new.record("larkman-swoop-variant", v)
+end
+local function variant(s: State): LarkSwoopVariant
+    return s.variant
 end
 -- WildBird's turn animations and the angles each waits for, by its side (0x080DDC88, 0x080DDCA4: eleven each).
 local WILD_TURN_ANIMS: { [number]: { number } } = {
@@ -246,7 +238,7 @@ local function turn(me: Object)
         p.z
     )
     moved(me, x, y)
-    if s.variant == 6 then
+    if s.variant.wild_turn then
         wild_turn_anim(me, s)
     else
         turn_anim(me, s)
@@ -302,7 +294,7 @@ local function tick(me: Object)
         return
     end
     local s = me.state :: State
-    if s.variant == 5 then
+    if s.variant.commanded then
         power_up(me, s)
     end
     if c.hit_flags ~= 0 then
@@ -321,7 +313,7 @@ swoop.kind = new.kind {
     pool = "attack",
     state = {
         level = "u8",
-        variant = "u8",
+        variant = "record:larkman-swoop-variant",
         left = "bool",
         start_x = "u8",
         dir = "u8",
@@ -348,9 +340,8 @@ swoop.kind = new.kind {
     end,
 }
 
--- 0x080DDA60: LarkMan's swoop from `navi` of `variant` (the navi chip's 5, WildBird's 6), the chip's level, element
--- and damage word.
-function swoop.spawn(navi: Object, level: number, element: number, damage: number, variant: number): Object?
+-- 0x080DDA60: LarkMan's swoop from `navi` of `variant`, the chip's level, element and damage word.
+function swoop.spawn(navi: Object, level: number, element: number, damage: number, variant: LarkSwoopVariant): Object?
     local o = battle.spawn(swoop.kind, Vec3.zero)
     if o then
         local s = o.state :: State

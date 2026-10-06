@@ -4,11 +4,12 @@
 //! `validate` ties to a field and an entry shows beside its row.
 
 use crate::editor::app::{Choice, Editor, Msg};
+use crate::editor::card_effects;
 use crate::editor::layout::{FieldPane, List, Pick, View, default_view, element, record_field, room};
 use crate::editor::navicust::GridEdit;
 use crate::editor::view::{DIM, RED, SIDES, heading};
-use iced::widget::{Column, Row, button, checkbox, column, pick_list, row, scrollable, space, text, text_input};
-use iced::{Alignment, Element, Length};
+use iced::widget::{Column, Row, button, checkbox, column, container, pick_list, row, scrollable, space, text, text_input};
+use iced::{Alignment, Element, Length, Padding};
 use nettai_battle::rules::Fact;
 use nettai_content_api::{FieldType, Registry, Value};
 use nettai_match::Side;
@@ -394,7 +395,12 @@ fn list_view<'a>(e: &'a Editor, s: usize, f: &'a FieldPane, l: &'a List, ty: &Fi
                         .push(button(text("↓").size(12)).on_press(msg(Edit::Move(i, false))).style(button::text))
                         .push(button(text("remove").size(12)).on_press(msg(Edit::Remove(i))).style(button::danger));
                 }
-                col = row_said(col.push(line), i);
+                col = col.push(line);
+                // (An entry's effects, a patch card's, under its name.)
+                if let Some(lines) = item.defs().first().filter(|_| *registry == Registry::Entry).and_then(|&h| card_effects::lines(e, nettai_content_api::EntryHandle(h))) {
+                    col = col.push(container(effect_lines(lines, 13.0)).padding(Padding::default().left(14)));
+                }
+                col = row_said(col, i);
             }
             if !l.fixed && items.len() < room {
                 let needle = e.search.to_lowercase();
@@ -405,7 +411,11 @@ fn list_view<'a>(e: &'a Editor, s: usize, f: &'a FieldPane, l: &'a List, ty: &Fi
                     if held.contains(&h) || !(needle.is_empty() || name.to_lowercase().contains(&needle)) {
                         continue;
                     }
-                    add = add.push(row![button(text("add").size(12)).on_press(msg(Edit::Add(h))).style(button::secondary), text(name).size(14)].spacing(6).align_y(Alignment::Center));
+                    let mut entry = column![text(name).size(14)];
+                    if let Some(lines) = (*registry == Registry::Entry).then(|| card_effects::lines(e, nettai_content_api::EntryHandle(h))).flatten() {
+                        entry = entry.push(effect_lines(lines, 12.0));
+                    }
+                    add = add.push(row![button(text("add").size(12)).on_press(msg(Edit::Add(h))).style(button::secondary), entry].spacing(6).align_y(Alignment::Center));
                 }
                 col = col.push(text_input("search", &e.search).on_input(move |t| Msg::Pane(s, f.path.clone(), Edit::Search(t))));
                 col = col.push(scrollable(add).height(Length::Fixed(260.0)));
@@ -480,4 +490,21 @@ mod tests {
         assert_eq!(number(" 12 ", false, &FieldType::U8), Some(Value::Int(12)));
         assert_eq!(number("", false, &FieldType::OptionalU8), Some(Value::Nil));
     }
+}
+
+/// An entry's effect lines (a patch card's: `card_effects`), one run of
+/// text: each line apart, a bug red and marked.
+fn effect_lines<'a>(lines: Vec<card_effects::Line>, size: f32) -> Element<'a, Msg> {
+    let mut spans: Vec<iced::widget::text::Span<'a, ()>> = Vec::new();
+    for (i, l) in lines.into_iter().enumerate() {
+        if i > 0 {
+            spans.push(iced::widget::span("  ·  ").color(DIM));
+        }
+        if l.bug {
+            spans.push(iced::widget::span(format!("{} (bug)", l.text)).color(RED));
+        } else {
+            spans.push(iced::widget::span(l.text));
+        }
+    }
+    iced::widget::rich_text(spans).size(size).into()
 }

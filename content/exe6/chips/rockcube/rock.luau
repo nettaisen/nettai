@@ -43,12 +43,13 @@ local ICE = new.identity {
     look = { sprite = SPRITE, anim = 2, palette = 0, shadow = true },
 }
 
--- The rows of `byte_80CF934` (animation, HP in twos, debris palette, break
--- sound, identity; a row past the second is aqua, and a row without HP has
--- 1).
-local ROWS: { [number]: RockVariant } = {
+-- The variants, `byte_80CF934`'s rows (animation, HP in twos, debris
+-- palette, break sound, identity; a row past the second is aqua, and a row
+-- without HP has 1), by their keys (compat's records.toml gives each its
+-- row).
+rock.variants = {
     -- A rock cube anything breaks (no chip or stage places it).
-    [0] = common.variant {
+    brittle = common.variant {
         id = "rockcube/rock/brittle",
         anim = 1,
         hp = 1,
@@ -58,7 +59,7 @@ local ROWS: { [number]: RockVariant } = {
         identity = ROCK,
     },
     -- RockCube's, and the stages'.
-    [1] = common.variant {
+    cube = common.variant {
         id = "rockcube/rock/cube",
         anim = 1,
         hp = 200,
@@ -68,7 +69,7 @@ local ROWS: { [number]: RockVariant } = {
         identity = ROCK,
     },
     -- A hard one (no chip or stage places it).
-    [2] = common.variant {
+    hard = common.variant {
         id = "rockcube/rock/hard",
         anim = 1,
         hp = 500,
@@ -79,7 +80,7 @@ local ROWS: { [number]: RockVariant } = {
     },
     -- The ice block: IceCube's, the stages', and what an obstacle encased
     -- in ice becomes.
-    [3] = common.variant {
+    ice = common.variant {
         id = "rockcube/rock/ice",
         anim = 2,
         hp = 200,
@@ -89,7 +90,6 @@ local ROWS: { [number]: RockVariant } = {
         identity = ICE,
     },
 }
-rock.variants = { brittle = ROWS[0], cube = ROWS[1], hard = ROWS[2], ice = ROWS[3] }
 
 local made = common.make {
     id = "rockcube/rock",

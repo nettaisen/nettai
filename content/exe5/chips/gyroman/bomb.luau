@@ -1,40 +1,24 @@
 --!strict
 -- GyroMan's bomb (EXE5's attack object #0x1B, 0x080C7C6C; EXE6's `sub_80C793C` is like it, though no EXE6 content drops
--- it): dropped on a panel from high up. Its variant (its first parameter) gives its height, its fall and its wait:
--- 0 (a virus's) 64 pixels up, falling 4 a tick, after a wait by its row; 1 (GyroMan's chip's) and 2 40 up, falling
--- 6, at once, and running while dimmed. Hidden while it waits, it lights its panel as it falls; on a panel that
--- isn't solid it lands with nothing, else it bursts there (an explosion, a sound) and hits for 4 ticks: thrown,
--- hitting navis, hit modifier 3, no spark.
+-- it): dropped on a panel from 40 pixels up, falling 6 a tick (its variant's, its first parameter: GyroMan's chip's 1
+-- and Airforce's 2; the chip's runs while dimmed). Hidden for its first tick, it lights its panel as it falls; on a
+-- panel that isn't solid it lands with nothing, else it bursts there (an explosion, a sound) and hits for 4 ticks:
+-- thrown, hitting navis, hit modifier 3, no spark. (Variant 0, a virus's, 64 up, falling 4, after a wait by its row,
+-- nothing drops.)
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local regions = require("@exelib/regions")
 
-export type State = {
-    -- Its variant (its first parameter: 0, 1 or 2).
-    variant: number,
-}
-
 local bomb = {}
 
 local SPRITE = asset.sprite("gyro-bomb")
 local SOUND_BURST = asset.sound("hit-bomb-1")
--- By the variant (0x080C7D1C and 0x080C7D0C): its height, and how far it falls a tick.
-local HEIGHTS: { [number]: number } = { [0] = 0x40_0000, 0x28_0000, 0x28_0000 }
-local FALLS: { [number]: number } = { [0] = 0x4_0000, 0x6_0000, 0x6_0000 }
--- Variant 0's wait by its row (0x080C7DC8: rows 1 to 3).
-local DELAYS: { [number]: number } = { 1, 1, 1 }
+-- Its height, and how far it falls a tick (0x080C7D1C and 0x080C7D0C, by its variant: 1's and 2's).
+local HEIGHT, FALL = 0x28_0000, 0x6_0000
 local SOLID = 0x10
 -- How long it hits.
 local BURST = 4
-
-local function by_variant(t: { [number]: number }, variant: number, what: string): number
-    local v = t[variant]
-    if v == nil then
-        error(string.format("GyroMan's bomb: variant %d reads past its %s table", variant, what))
-    end
-    return v
-end
 
 -- Its panel lit, if solid (`object_highlightPanel`). Drawn only.
 local function light(me: Object)
@@ -43,16 +27,11 @@ local function light(me: Object)
     end
 end
 
--- Action 0 (0x080C7D74): hidden, it waits (variant 0 by its row; else not at all), then shows; its panel lit after
--- the first tick.
+-- Action 0 (0x080C7D74): hidden for a tick (no wait), then shown; its panel lit after the first tick.
 local function wait(me: Object)
     if me.phase == 0 then
         me.phase = 4
-        local ticks = 0
-        if (me.state :: State).variant == 0 then
-            ticks = DELAYS[me.panel_y] or error(string.format("GyroMan's bomb: row %d reads past 0x080C7DC8", me.panel_y))
-        end
-        me.timer = ticks
+        me.timer = 0
         return
     end
     local left = me.timer - 1
@@ -127,10 +106,9 @@ local function tick(me: Object)
     c:present()
 end
 
--- 0x080C7C90: its sprite (animation 0, its shadow), hidden; its height and fall by the variant; on its panel; its
--- collision (thrown, hitting navis, hit modifier 3, no spark), no region yet.
+-- 0x080C7C90: its sprite (animation 0, its shadow), hidden; its height and fall; on its panel; its collision (thrown,
+-- hitting navis, hit modifier 3, no spark), no region yet.
 local function init(me: Object)
-    local variant = (me.state :: State).variant
     local sprite = me.sprite
     sprite:load(SPRITE)
     sprite.shadow = "ground"
@@ -138,9 +116,9 @@ local function init(me: Object)
     me.anim, me.anim_loaded = 0, 0
     sprite:set_animation(0)
     local p = me.pos
-    me.pos = Vec3.new(p.x, p.y, by_variant(HEIGHTS, variant, "height"))
+    me.pos = Vec3.new(p.x, p.y, HEIGHT)
     local v = me.vel
-    me.vel = Vec3.new(v.x, v.y, by_variant(FALLS, variant, "fall"))
+    me.vel = Vec3.new(v.x, v.y, FALL)
     sprite.palette = 0
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me:set_coordinates_from_panel()
@@ -159,7 +137,6 @@ end
 bomb.kind = new.kind {
     id = "gyroman/bomb",
     pool = "attack",
-    state = { variant = "u8" },
     -- 0x080C7C6C.
     update = function(me: Object)
         local l = me.lifecycle
@@ -178,17 +155,16 @@ bomb.kind = new.kind {
     end,
 }
 
--- 0x080C7E72: a bomb of `owner`'s side on (x, y) with `element`, of `variant`, with the damage word; variant 1 runs
--- while dimmed. (Its position is the spawner's registers, which its init overwrites.)
-function bomb.drop(owner: Object, x: number, y: number, element: number, variant: number, damage: number): Object?
+-- 0x080C7E72: a bomb of `owner`'s side on (x, y) with `element` and the damage word, running while dimmed if
+-- `while_dimmed` (its variant's: the chip's 1). (Its position is the spawner's registers, which its init overwrites.)
+function bomb.drop(owner: Object, x: number, y: number, element: number, while_dimmed: boolean, damage: number): Object?
     local o = battle.spawn(bomb.kind, Vec3.zero)
     if o then
-        (o.state :: State).variant = variant
         o.panel_x, o.panel_y = x, y
         o.element = element
         o:set_damage_word(damage)
         o.alliance = owner.alliance
-        if variant == 1 then
+        if while_dimmed then
             o.run_while_dimmed = true
         end
     end
