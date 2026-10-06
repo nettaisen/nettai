@@ -96,7 +96,7 @@ ruleset (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch
   after. exe6-compat builds the setup from the first (the bytes the cards write; the rest from the exchange) and
   the card list, and checks the engine's result against the second and the glitch against flag 0x1723.
 - **Tools write the setup**: exe6-compat's `codec::patch_cards` (a save's or a trace's list), the frontend's
-  match file (each side's `cards`).
+  match file (each side's `patch_cards`).
 
 ## 4. Verification as built
 

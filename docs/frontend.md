@@ -1113,7 +1113,7 @@ bug_frags = 0                              # else 0
 hp = 1000                                  # what the save brings to the stats: MegaMan's base HP (else 100), the
 reg_up = 50                                # Regular memory (else the fresh stats' 4), the sun (else none); the rules
 sun = true                                 # build the rest (below)
-cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
+patch_cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
 level = 0                                  # optional: the navi code's level, 0-14 (see below)
 folder = [                                 # 30 entries, [chip, code] ([] empty: a folder being made)
     ["cannon", "A"],
