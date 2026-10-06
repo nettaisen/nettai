@@ -141,8 +141,8 @@ the chip/patch card/navicust program/etc definitions, they should be indicated b
   (`chips`, `navis`, `forms`, `stages`, `patch_cards`, `navicust_programs`), and its `rules`
   (`nettai_content_api::packs::SECTIONS`); nothing else. Each section is a module that returns it: the init of the
   folder named for it (chips/init.luau; for the forms, the folder holding them, navis/megaman/forms/init.luau),
-  which merges its modules' tables by their paths (`merge { ["chips/cannon"] = require("@self/cannon"), ... }`,
-  content/exelib/merge.luau: an id two modules give is an error naming both), or the one module that has them all
+  which merges its modules' tables (`merge { require("@self/airshot"), require("@self/cannon"), ... }`,
+  content/exelib/merge.luau: an id two modules give is an error naming it), or the one module that has them all
   (stages.luau). tools/content/index.py writes the root and the section inits from the modules there.
 - **What a match names is a plain table, with no `id`.** A module makes its chips as typed locals (`local chip:
   Chip = { ... }`) and returns them by key (`return { minibomb = chip }`, a series `return { cannon = cannon,
