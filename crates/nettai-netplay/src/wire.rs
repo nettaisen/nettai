@@ -1,7 +1,7 @@
-//! Byte codecs for what the handshake carries between peers
-//! (`transport::Hello`): its versions, the game, the content's hash, the
-//! nonce. (What a player brings to the match is the frontend's to encode: a
-//! match file's side, as text.)
+//! Byte codecs for what the handshake carries between peers (the
+//! program's `Hello`, nettai-demo's `net`): its versions, the game, the
+//! content's hash, the nonce. (What a player brings to the match is the
+//! frontend's to encode: a match file's side, as text.)
 //!
 //! Integers above a byte are LEB128 (rennet's varints).
 
