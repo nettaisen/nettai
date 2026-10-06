@@ -4,25 +4,24 @@
 -- by its variant), it hits whatever stands on the target as it comes down there (its last 4 ticks). It bursts (an
 -- explosion, a sound) when its HP runs out, when the other side's navi is hit, or when it lands on one; on a panel
 -- that isn't solid it is gone; else it sits 20 ticks (50 when running while dimmed), blinking, then bursts: a
--- one-tick hit along its line (its second parameter: 0 its column, 1 its row; thrown, hitting nothing, its
--- variant's hit modifier and status) and an explosion on each of the line's panels. Its variant (its first
--- parameter, 0 to 5) gives its palette, its explosions' palette, its hit modifier and its status (none, confusion,
--- blindness, immobilization, paralysis 90 and 150 ticks); one not running while dimmed (its third parameter not 2)
--- of variant 1 and up hits half as hard. Its target is marked in the operation battle (lib/navi_chips/marker).
+-- one-tick hit along its line (its second parameter: its column or its row; thrown, hitting nothing, its variant's
+-- hit modifier and status) and an explosion on each of the line's panels. Its variant (its first parameter:
+-- `capsule.variant { ... }`, its thrower's) gives its palette, its explosions' palette, its hit modifier and its
+-- status: the plain one's (0, `capsule.plain`) none, MeddyCap's (5) paralysis for 150 ticks. (Variants 1 to 4, and
+-- a variant past 0 not running while dimmed with its third parameter 0, which hits half as hard, nothing throws.)
+-- Its target is marked in the operation battle (lib/navi_chips/marker).
 
 local collision = require("../../rules/collision")
 local marker = require("../../lib/navi_chips/marker")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
-local statuses = require("../../rules/status")
 local trajectory = require("../../lib/trajectory")
 
 export type State = {
-    -- Its variant (its first parameter: 0 to 5), its line (its second: 0 its column, 1 its row), and its third (2:
-    -- it runs while dimmed).
-    variant: number,
-    line: number,
-    mode: number,
+    -- Its variant (its first parameter), its line (its second), and whether it runs while dimmed (its third, 2).
+    variant: CapsuleVariant,
+    line: CapsuleLine,
+    while_dimmed: boolean,
 }
 
 local capsule = {}
@@ -31,38 +30,24 @@ local SPRITE = asset.sprite("meddy-capsule")
 local EXPLOSION = asset.sprite("explosion")
 local SOUND_BURST = asset.sound("hit-bomb-1")
 
-type Variant = {
-    -- Its palette (0x080C5FE8), the hit modifier of its body and of its burst (0x080C5FF4, 0x080C62A8), its
-    -- status (0x080C6010, the same as its burst's), and its explosions (the effect table's row 0, its palette
-    -- raised by 0x080C62C4's).
-    palette: number,
-    hit_mod: number,
-    burst_hit_mod: number,
-    status: Status?,
-    explosion: Effect,
-}
+-- The effect table's row 0 (an explosion), its palette raised by a variant's.
+capsule.explosion = EXPLOSION
+-- Its burst where it is: the explosion in palette 0.
+local BLOW_UP = new.effect { sprite = EXPLOSION, anim = 0, palette = 0 }
 
--- The effect table's row 0 (an explosion), its palette raised.
-local EXPLOSIONS: { [number]: Effect } = {}
-for palette = 0, 4 do
-    EXPLOSIONS[palette] = new.effect { sprite = EXPLOSION, anim = 0, palette = palette }
+-- A capsule's variant, and a line.
+function capsule.variant(v: CapsuleVariant): CapsuleVariant
+    return new.record("capsule-variant", v)
+end
+local function line(l: CapsuleLine): CapsuleLine
+    return new.record("capsule-line", l)
 end
 
-local VARIANTS: { [number]: Variant } = {
-    [0] = { palette = 0, hit_mod = 3, burst_hit_mod = 3, status = nil, explosion = EXPLOSIONS[0] },
-    [1] = { palette = 1, hit_mod = 3, burst_hit_mod = 3, status = statuses.confuse_480, explosion = EXPLOSIONS[4] },
-    [2] = { palette = 2, hit_mod = 3, burst_hit_mod = 3, status = statuses.blind_480, explosion = EXPLOSIONS[1] },
-    [3] = { palette = 3, hit_mod = 1, burst_hit_mod = 1, status = statuses.immobilize_60, explosion = EXPLOSIONS[2] },
-    [4] = { palette = 4, hit_mod = 0, burst_hit_mod = 0, status = statuses.paralyze_90, explosion = EXPLOSIONS[3] },
-    [5] = { palette = 4, hit_mod = 0, burst_hit_mod = 0, status = statuses.paralyze_150, explosion = EXPLOSIONS[3] },
-}
--- By its line (0x080C628C, 0x080C6298, 0x080C633C): its burst's region, the panels it explodes on, and its
--- target's marker style.
-type Line = { region: Region, panels: { { number } }, style: number }
-local LINES: { [number]: Line } = {
-    [0] = { region = regions.wide, panels = { { 0, 0 }, { 0, 1 }, { 0, -1 } }, style = 4 },
-    [1] = { region = regions.region_1d, panels = { { 0, 0 }, { -1, 0 }, { 1, 0 } }, style = 0x1D },
-}
+-- The plain capsule (variant 0): no status, hit modifier 3.
+capsule.plain = capsule.variant { palette = 0, hit_mod = 3, status = nil, explosion = BLOW_UP }
+-- Its lines: its column (0) and its row (1).
+capsule.column = line { region = regions.wide, panels = { { 0, 0 }, { 0, 1 }, { 0, -1 } }, style = 4, anim = 0 }
+capsule.row = line { region = regions.region_1d, panels = { { 0, 0 }, { -1, 0 }, { 1, 0 } }, style = 0x1D, anim = 1 }
 -- The other side's navi's body among what hit it, by side (0x080C60A8), and a navi's body on a panel (0x080C61B0).
 local NAVI_HIT = { [0] = 0x0580_0000, 0x0A80_0000 }
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
@@ -73,24 +58,16 @@ local GRAVITY = -0xC000
 -- Its color while it blinks (0x080C61FC).
 local BLINK = { [0] = 0, [4] = 0x3DEF }
 
-local function variant_of(me: Object): Variant
-    local v = VARIANTS[(me.state :: State).variant]
-    if not v then
-        error(string.format("a capsule's variant %d reads past its tables (0x080C5FE8)", (me.state :: State).variant))
-    end
-    return v
+local function variant_of(me: Object): CapsuleVariant
+    return (me.state :: State).variant
 end
 
-local function line_of(me: Object): Line
-    local l = LINES[(me.state :: State).line]
-    if not l then
-        error(string.format("a capsule's line %d reads past its tables (0x080C628C)", (me.state :: State).line))
-    end
-    return l
+local function line_of(me: Object): CapsuleLine
+    return (me.state :: State).line
 end
 
 local function while_dimmed(me: Object): boolean
-    return (me.state :: State).mode == 2
+    return (me.state :: State).while_dimmed
 end
 
 -- Gone at its next update (the lifecycle and action halfword stored together).
@@ -106,7 +83,7 @@ end
 -- It bursts where it is: an explosion, a sound; gone.
 local function blow_up(me: Object)
     battle.play_sound(SOUND_BURST)
-    battle.effect(me.pos, EXPLOSIONS[0])
+    battle.effect(me.pos, BLOW_UP)
 end
 
 -- Action 0 (0x080C60B0; its phase byte the entry flag): aimed on the first tick to come down 8 pixels below its
@@ -132,7 +109,7 @@ local function fly(me: Object)
         local flags = field.flags(me.panel_x, me.panel_y)
         if bit32.band(flags, SOLID) ~= 0 then
             if bit32.band(flags, ENEMY_NAVI[me.alliance]) == 0 then
-                me.anim = (me.state :: State).line
+                me.anim = line_of(me).anim
                 local p = me.pos
                 me.pos = Vec3.new(p.x, p.y, 0)
                 me.action = 4
@@ -191,7 +168,7 @@ local function burst(me: Object)
         self_type = collision.thrown,
         damage = me.damage,
         stamina = me.stamina,
-        hit_mod = v.burst_hit_mod,
+        hit_mod = v.hit_mod,
         status = v.status,
     })
     if box then
@@ -252,10 +229,9 @@ local function tick(me: Object)
 end
 
 -- 0x080C5F4C: on its thrower's panel, 32 pixels up; its sprite (animation 2, its shadow), shown, its variant's
--- palette, facing its way; its damage halved (variant 1 and up, not running while dimmed); 20 HP; its collision
+-- palette, facing its way; 20 HP; its collision
 -- (hit by the other side, hitting it back, its variant's hit modifier and status, no spark), no region yet.
 local function init(me: Object)
-    local s = me.state :: State
     local v = variant_of(me)
     me:set_coordinates_from_panel()
     local p = me.pos
@@ -268,9 +244,6 @@ local function init(me: Object)
     sprite:set_animation(2)
     sprite.palette = v.palette
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    if s.mode == 0 and s.variant ~= 0 then
-        me.damage = bit32.rshift(me.damage, 1)
-    end
     if not me:create_collision() then
         me:free()
         return
@@ -288,7 +261,7 @@ end
 capsule.kind = new.kind {
     id = "meddy/capsule",
     pool = "attack",
-    state = { variant = "u8", line = "u8", mode = "u8" },
+    state = { variant = "record:capsule-variant", line = "record:capsule-line", while_dimmed = "bool" },
     -- 0x080C5F18.
     update = function(me: Object)
         local l = me.lifecycle
@@ -314,16 +287,16 @@ capsule.kind = new.kind {
 }
 
 export type Throw = {
-    -- Its variant (0 to 5) and its line (0 its column, 1 its row).
-    variant: number,
-    line: number,
+    -- Its variant and its line.
+    variant: CapsuleVariant,
+    line: CapsuleLine,
     -- The panel it lands on.
     target_x: number,
     target_y: number,
     -- The damage word.
     damage: number,
-    -- Its third parameter (2, the default: it runs while dimmed, as a navi chip's; MeddySoul's 0).
-    mode: number?,
+    -- It runs while dimmed (its third parameter 2: the default, as a navi chip's; MeddySoul's 0, MeddyCap's 1).
+    while_dimmed: boolean?,
 }
 
 -- 0x080C62D8: a capsule of `thrower`'s side and facing from its panel, with `element`, its flags running it while
@@ -333,7 +306,8 @@ function capsule.throw(thrower: Object, element: number, throw: Throw): Object?
     local o = battle.spawn(capsule.kind, Vec3.zero)
     if o then
         local s = o.state :: State
-        s.variant, s.line, s.mode = throw.variant, throw.line, throw.mode or 2
+        s.variant, s.line = throw.variant, throw.line
+        s.while_dimmed = throw.while_dimmed ~= false
         o.future_panel_x, o.future_panel_y = throw.target_x, throw.target_y
         o.panel_x, o.panel_y = thrower.panel_x, thrower.panel_y
         o.element = element

@@ -6,6 +6,17 @@
 
 local bombs = require("../lib/bombs")
 local crakbom = require("./crakbom/crakbom")
+local statuses = require("../rules/status")
+
+-- Its bomb (kind 2): the burst in palette 2, the poison panel's sound, paralysis (status 0x10).
+local BOMB = crakbom.variant {
+    burst = new.effect { sprite = crakbom.burst, anim = 0, palette = 2 },
+    sound = asset.sound("panel-poison"),
+    hit_mod = 0,
+    status = statuses.paralyze_90,
+    bug = 0,
+    cracks = false,
+}
 
 local chip: Chip = {
     codes = { "H", "N", "P" },
@@ -19,7 +30,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = bombs.throw { held = bombs.held, held_anim = 6, thrower = crakbom.thrower(2) },
+    action = bombs.throw { held = bombs.held, held_anim = 6, thrower = crakbom.thrower(BOMB) },
 }
 
 return { parabom = chip }

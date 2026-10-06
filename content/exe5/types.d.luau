@@ -36,6 +36,50 @@ export type FlyingShotVariant = {
 export type KnightBallLook = { sprite: SpriteAsset, z: number, radius: number }
 export type KnightBallSwing = { speed: number, turns: number, status: Status?, look: KnightBallLook }
 
+-- A bomb of CrakBom's kind (chips/crakbom/crakbom: the original's Param1, its
+-- kind): its burst on each panel of the column (effects 0x50 to 0x53 by the
+-- kind's low bits) and its landing's sound (0x080C932C), its hit (0x080C93C8:
+-- hit modifier, status, bug), and whether it cracks the column (CrakBom's).
+export type CrakBomVariant = {
+    burst: Effect,
+    sound: Sound,
+    hit_mod: number,
+    status: Status?,
+    bug: number,
+    cracks: boolean,
+}
+
+-- LarkMan's swoop (chips/larkman/swoop: its variant, the original's Param1):
+-- its speed (0x080DD858's rows), its turn's step (0x080DDB7C's rows: 16.16
+-- of 256 steps), the ticks its turn lasts less (0x080DDB9C's rows) and more;
+-- whether it turns with WildBird's own animations (0x080DDC44), and whether
+-- its navi's command powers it (0x080DDCD0).
+export type LarkSwoopVariant = {
+    speed_x: number,
+    speed_y: number,
+    turn_step: number,
+    shorter: number,
+    longer: number,
+    wild_turn: boolean,
+    commanded: boolean,
+}
+
+-- A magnet's variant (chips/magnetmn/magnet: the original's fourth
+-- parameter, 0x080D2DE0 and 0x080D2DEC): its hit modifier and status; whether
+-- it waits for MagnetMan to be done sending (else it goes at once), and
+-- whether it acts and animates while the battle is dimmed.
+export type MagnetVariant = { hit_mod: number, status: Status?, waits_for_navi: boolean, runs_while_dimmed: boolean }
+
+-- A Meddy capsule's variant (chips/meddy/capsule: the original's first
+-- parameter): its palette (0x080C5FE8), its body's and its burst's hit
+-- modifier (0x080C5FF4, 0x080C62A8), its status (0x080C6010) and its
+-- explosions (the effect table's row 0, its palette raised by 0x080C62C4's);
+-- and its line (its second parameter: 0x080C628C, 0x080C6298, 0x080C633C):
+-- its burst's region, the panels it explodes on, its target's marker style
+-- and its animation as it sits.
+export type CapsuleVariant = { palette: number, hit_mod: number, status: Status?, explosion: Effect }
+export type CapsuleLine = { region: Region, panels: { { number } }, style: number, anim: number }
+
 -- A soul's navi's image as MegaMan unites with it (rules/souls/image, actor
 -- object 0x2A; a soul's form's `image`): the navi's sprite, and what the
 -- image puts on as it comes in and takes off as it goes (0x0800EDBC's and
