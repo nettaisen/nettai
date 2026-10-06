@@ -410,8 +410,8 @@ pub struct SetScore {
     pub max_combo: u8,
 }
 
-/// Where a later round of a set is fought: a stage and the background to
-/// show (one pair of `byte_203CA50`).
+/// Where a round of a set is fought: a stage and the background to show
+/// (a later round's is one pair of `byte_203CA50`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Stage {
     pub stage: StageHandle,
@@ -439,10 +439,12 @@ pub struct RoundSetup {
     /// (docs/design/rollback.md).
     pub local_side: u8,
     pub score: SetScore,
-    /// The stages of the set's next rounds, as player 0 drew them for
-    /// this round's init exchange: when round `n` ends and the set goes
-    /// on, round `n + 1` is fought on `later_stages[n - 1]`.
-    pub later_stages: [Stage; 2],
+    /// The stages of the set's rounds after the first, in order (the
+    /// original's, which player 0 drew for the round's init exchange, are
+    /// two: a triple battle's): when round `n` ends and the set goes on,
+    /// round `n + 1` is fought on `later_stages[n - 1]`. The set is of one
+    /// round more than it lists ([`RoundSetup::rounds`]).
+    pub later_stages: Vec<Stage>,
     /// The local side's low-HP music latch starts set. The round's init counts the
     /// frames it waits for the link in the halfword the latch later uses
     /// (BattleState+0x20), so a round whose init had to wait starts with
@@ -454,6 +456,12 @@ pub struct RoundSetup {
 }
 
 impl RoundSetup {
+    /// The set's rounds: the first and those it lists after it (a set of
+    /// one round lists none).
+    pub fn rounds(&self) -> usize {
+        1 + self.later_stages.len()
+    }
+
     /// The settings of the set's next round, fought on `stage` after this
     /// one (`battleSettings_802D2B2`): that table entry, with this
     /// round's effects and the stage's background.

@@ -13,9 +13,9 @@
 //! against the content both play; the language is each player's own) and
 //! their halves of the seed. Both
 //! then agree the same round ([`agree`], [`netplay_setup`]): the host's
-//! arena (a match file's, else picked from the seed on the host's stage, if
-//! it names one), each player's side on their side (the host's is side 0,
-//! the left navi), by the game's rules.
+//! rounds (a match file's: each part it leaves picked from the seed; both
+//! offers state as many), each player's side on their side (the host's is
+//! side 0, the left navi), by the game's rules.
 //!
 //! Every frame the driver takes what arrived, decides the player's buttons
 //! for the next tick (unless clock sync or the stall guard holds it), sends
@@ -36,9 +36,7 @@ use std::time::{Duration, Instant};
 use nettai_battle::content::Content;
 use nettai_battle::cues::{CueAction, CueTracker};
 use nettai_battle::{Battle, BattleResult};
-use nettai_content_api::StageHandle;
-use nettai_match::binary::Brings;
-use nettai_match::{After, Arena, Match, Picks, Place, Set, Side};
+use nettai_match::{After, Match, RoundSettings, Set, Side};
 use nettai_netplay::protocol::BUTTONS;
 use nettai_netplay::standin::StandInBattle;
 use nettai_netplay::{BattleWorld, Game, Observer, Peer, PeerConfig};
@@ -46,108 +44,89 @@ use nettai_netplay::{BattleWorld, Game, Observer, Peer, PeerConfig};
 use crate::driver::{Driver, NetStatus, Ran, Step, result_text};
 
 /// What a player brings to a netbattle: the match's game (a game is its
-/// rules), their side of the match (a match file's left side, or one drawn
-/// from their seed), and from the host the arena (a match file's, of the
-/// offer's game) or a stage the round must be fought on.
+/// rules), its rounds as the player states them (a match file's: each a
+/// round's place, a part left out picked from the match's seed; the set
+/// has as many), and their side of the match (a match file's left side, or
+/// one drawn from their seed). Both players' offers state the same number
+/// of rounds; the host's rounds are the match's.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Offer {
     pub game: String,
+    pub rounds: Vec<RoundSettings>,
     pub side: Side,
-    pub stage: Option<StageHandle>,
-    pub arena: Option<Arena>,
 }
 
 impl Offer {
-    /// An offer of `side` for a match of `game` (and the host's `stage`,
-    /// if it names one).
-    pub fn of_side(game: &str, side: Side, stage: Option<StageHandle>) -> Offer {
-        Offer { game: game.to_string(), side, stage, arena: None }
+    /// An offer of `side` for a match of `game` on `rounds`.
+    pub fn of_side(game: &str, rounds: Vec<RoundSettings>, side: Side) -> Offer {
+        Offer { game: game.to_string(), rounds, side }
     }
 
-    /// An offer of a match file's: its left side, and its arena if this
-    /// player hosts.
-    pub fn of_match(m: Match, host: bool) -> Offer {
+    /// An offer of a match file's: its rounds and its left side.
+    pub fn of_match(m: Match) -> Offer {
         let [side, _] = m.sides;
-        Offer { game: m.arena.game.clone(), side, stage: None, arena: host.then_some(m.arena) }
+        Offer { game: m.game, rounds: m.rounds, side }
     }
 
     /// The offer as the handshake carries it: nettai-match's binary
     /// (`binary::offer_bytes`), against the content both players play,
     /// which the handshake names beside it (the game and the content's
-    /// hash). An offer's arena is a checked match's: its backgrounds are
+    /// hash). An offer's rounds are a checked match's: its backgrounds are
     /// its game's pack's.
     pub fn to_bytes(&self, content: &Content) -> Vec<u8> {
-        let brings = match (&self.arena, self.stage) {
-            (Some(a), _) => Brings::Arena(a.clone()),
-            (None, Some(s)) => Brings::Stage(s),
-            (None, None) => Brings::Nothing,
-        };
-        nettai_match::binary::offer_bytes(content, &brings, &self.side).expect("an offer's arena is a checked match's")
+        nettai_match::binary::offer_bytes(content, &self.rounds, &self.side).expect("an offer's rounds are a checked match's")
     }
 
     /// An offer from the other side for a match of `game` on `content`
     /// (the handshake refused another game or content before), read
     /// and checked as a match file's side is (`nettai_match::check_side`),
-    /// its arena or stage a link battle's.
+    /// its rounds as a match file's are.
     pub fn from_bytes(content: &Arc<Content>, game: &str, bytes: &[u8]) -> Result<Offer, String> {
         if content.game() != game {
             return Err(format!("the content is {}'s, this match {game}'s", content.game()));
         }
-        let (brings, side) = nettai_match::binary::read_offer(content, bytes).map_err(|e| format!("the other player's setup doesn't decode ({e})"))?;
-        let (stage, arena) = match brings {
-            Brings::Nothing => (None, None),
-            Brings::Stage(s) => (Some(s), None),
-            Brings::Arena(a) => (None, Some(a)),
-        };
-        let offer = Offer { game: game.to_string(), side, stage, arena };
+        let (rounds, side) = nettai_match::binary::read_offer(content, bytes).map_err(|e| format!("the other player's setup doesn't decode ({e})"))?;
+        let offer = Offer { game: game.to_string(), rounds, side };
         offer.check(content)?;
         Ok(offer)
     }
 
     /// The offer is one this content can play.
     pub fn check(&self, content: &Arc<Content>) -> Result<(), String> {
-        let arena = match &self.arena {
-            Some(a) => a.clone(),
-            None => {
-                let first = *nettai_match::link_battle_stages(content, &self.game).first().ok_or_else(|| format!("{} has no link battle stage", self.game))?;
-                Arena::on(&self.game, Place { stage: first, background: None })
-            }
-        };
-        if arena.game != self.game {
-            return Err("the other player's arena is of another game than their setup".into());
-        }
-        let broken = nettai_match::check::check_arena(content, &arena);
+        let broken = nettai_match::check::check_rounds(content, &self.game, &self.rounds);
         if !broken.is_empty() {
-            return Err(format!("the other player's arena breaks the rules: {}", broken.join("; ")));
+            return Err(format!("the other player's rounds break the rules: {}", broken.join("; ")));
         }
-        let broken = nettai_match::check_side(content, &arena, &self.side);
+        let broken = nettai_match::check_side(content, &self.game, &self.rounds, &self.side);
         if !broken.is_empty() {
             return Err(format!("the other player's setup breaks the rules: {}", broken.join("; ")));
         }
         if self.side.folder(content).saved().is_none() {
             return Err("the other player's folder isn't whole".into());
         }
-        if self.stage.is_some_and(|s| !nettai_match::link_battle_stages(content, &self.game).contains(&s)) {
-            return Err("the other player's stage isn't a link battle stage".into());
-        }
         Ok(())
     }
 }
 
-/// The set both players of a match play, and the match: the host's arena
-/// (else one picked from the match's seed, on the host's stage if it names
-/// one), each player's side on their side (`offers` by side: the host's,
-/// then the joiner's; checked ones, their folders whole).
+/// The set both players of a match play, and the match: the host's rounds,
+/// every place stated as the match's seed picks those they leave (as a
+/// replay keeps them), each player's side on their side (`offers` by side:
+/// the host's, then the joiner's; checked ones, their folders whole).
+/// Refused: offers of two games, or of two numbers of rounds.
 pub fn netplay_setup(content: &Arc<Content>, seed: u32, offers: &[Offer; 2]) -> Result<(Set, Match), String> {
     let [host, join] = offers;
     if host.game != join.game {
         return Err(format!("the host plays {}, the joiner {}: a match is of one game", host.game, join.game));
     }
-    let arena = match &host.arena {
-        Some(a) => a.clone(),
-        None => nettai_match::pick::arena(content, &host.game, &mut Picks::new(seed), host.stage)?,
-    };
-    let m = Match { seed: Some(seed), arena, sides: [host.side.clone(), join.side.clone()] };
+    if host.rounds.len() != join.rounds.len() {
+        return Err(format!(
+            "the host's match has {} rounds, the joiner's {}: both players' matches have as many",
+            host.rounds.len(),
+            join.rounds.len()
+        ));
+    }
+    let m = Match { game: host.game.clone(), seed: Some(seed), rounds: host.rounds.clone(), sides: [host.side.clone(), join.side.clone()] };
+    let m = m.stated(content, seed)?;
     Ok((Set::of(content, &m, seed), m))
 }
 
@@ -568,8 +547,11 @@ mod tests {
     use std::collections::VecDeque;
     use std::rc::Rc;
 
+    use nettai_content_api::StageHandle;
+    use nettai_match::{Picks, TRIPLE_BATTLE};
+
     fn offer_of(content: &Arc<Content>, game: &str, seed: u32) -> Offer {
-        Offer::of_side(game, Side::picked(content, game, &mut Picks::new(seed)).unwrap(), None)
+        Offer::of_side(game, vec![RoundSettings::default(); TRIPLE_BATTLE], Side::picked(content, game, &mut Picks::new(seed)).unwrap())
     }
 
     fn offer(content: &Arc<Content>, seed: u32) -> Offer {
@@ -583,15 +565,16 @@ mod tests {
     fn offers_roundtrip_and_bad_ones_are_refused() {
         let content = exe6_test_content();
         let mut o = offer(&content, 5);
-        o.stage = Some(nettai_match::link_battle_stages(&content, "exe6")[3]);
+        o.rounds[1].stage = Some(nettai_match::link_battle_stages(&content, "exe6")[3]);
         let cards = nettai_match::testing::patch_cards(&content, "exe6", "canodumb,shadow");
         o.side.set_fact(&content, "patch_cards", &cards).unwrap();
         let bytes = o.to_bytes(&content);
         assert_eq!(Offer::from_bytes(&content, "exe6", &bytes).unwrap(), o);
-        // A match file's arena goes too.
+        // A match file's rounds go too, every part stated, and five.
         let mut a = o.clone();
-        a.arena = Some(nettai_match::pick::live(&content, "exe6", 9, None).unwrap().arena);
-        a.stage = None;
+        a.rounds = nettai_match::pick::live(&content, "exe6", 9, None).unwrap().rounds;
+        assert_eq!(Offer::from_bytes(&content, "exe6", &a.to_bytes(&content)).unwrap(), a);
+        a.rounds.extend([RoundSettings::default(), o.rounds[1].clone()]);
         assert_eq!(Offer::from_bytes(&content, "exe6", &a.to_bytes(&content)).unwrap(), a);
         let mut bad = o.clone();
         let mut folder = bad.side.folder(&content);
@@ -601,9 +584,14 @@ mod tests {
         assert!(Offer::from_bytes(&content, "exe6", &bad.to_bytes(&content)).unwrap_err().contains("breaks the rules"));
         // A stage that isn't a link battle's.
         let mut stage = o.clone();
-        stage.stage = (0..content.defs.stages.len() as u16).map(StageHandle).find(|s| !nettai_match::link_battle_stages(&content, "exe6").contains(s));
-        assert!(stage.stage.is_some());
-        assert_eq!(Offer::from_bytes(&content, "exe6", &stage.to_bytes(&content)).unwrap_err(), "the other player's stage isn't a link battle stage");
+        stage.rounds[2].stage = (0..content.defs.stages.len() as u16).map(StageHandle).find(|s| !nettai_match::link_battle_stages(&content, "exe6").contains(s));
+        assert!(stage.rounds[2].stage.is_some());
+        let e = Offer::from_bytes(&content, "exe6", &stage.to_bytes(&content)).unwrap_err();
+        assert!(e.starts_with("the other player's rounds break the rules: round 3: ") && e.ends_with(" is no link battle stage"), "{e}");
+        // No rounds.
+        let mut none = o.clone();
+        none.rounds.clear();
+        assert_eq!(Offer::from_bytes(&content, "exe6", &none.to_bytes(&content)).unwrap_err(), "the other player's rounds break the rules: 0 rounds: a match has 1 to 99");
         // Another game's content, and bytes that aren't an offer.
         assert_eq!(Offer::from_bytes(&content, "exe5", &bytes).unwrap_err(), "the content is exe6's, this match exe5's");
         let e = Offer::from_bytes(&content, "exe6", &bytes[..10]).unwrap_err();
@@ -634,6 +622,11 @@ mod tests {
         other.game = "exe6".into();
         let Err(e) = netplay_setup(&content, 9, &[o.clone(), other]) else { panic!("offers of two games made a match") };
         assert_eq!(e, "the host plays exe5, the joiner exe6: a match is of one game");
+        // Nor do offers of two numbers of rounds: the handshake stops.
+        let mut five = o.clone();
+        five.rounds = vec![RoundSettings::default(); 5];
+        let e = agree(&content, 1, 9, &offer_of(&content, "exe5", 6), &five.to_bytes(&content)).map(|_| ()).unwrap_err();
+        assert_eq!(e, "the host's match has 5 rounds, the joiner's 3: both players' matches have as many");
     }
 
     /// Both players record the set as it settles, over a link with
@@ -873,15 +866,18 @@ mod tests {
     }
 
     /// Two players on a channel the test shuttles by hand play a set of
-    /// `game` to its end: the host's navi shoots, the joiner's has 1 HP and
-    /// stands still (the short set's sides, each player bringing theirs).
-    fn set_pair(game: &'static str) -> [SetPlayed; 2] {
+    /// `game` of `rounds` rounds to its end: the host's navi shoots, the
+    /// joiner's has 1 HP and stands still (the short set's sides, each
+    /// player bringing theirs).
+    fn set_pair(game: &'static str, rounds: usize) -> [SetPlayed; 2] {
         use crate::driver::short_set;
         let content = if game == "exe5" { nettai_match::testing::exe5_content() } else { exe6_test_content() };
-        // The host brings the match's arena (the stages of every round)
-        // and its left side, the shooter's; the joiner the one with 1 HP.
-        let m = short_set::of(&content, game, 7);
-        let offers = [Offer::of_match(m.clone(), true), Offer::of_side(game, m.sides[1].clone(), None)];
+        // The host brings the match's rounds (the stages of every round)
+        // and its left side, the shooter's; the joiner as many rounds, all
+        // left to the seed (the host's are played), and the side with 1 HP.
+        let mut m = short_set::of(&content, game, 7);
+        m.rounds.resize(rounds, RoundSettings::default());
+        let offers = [Offer::of_match(m.clone()), Offer::of_side(game, vec![RoundSettings::default(); rounds], m.sides[1].clone())];
         let (mut shuttle, hands) = Shuttle::new();
         let mut hands = hands.into_iter().enumerate();
         let mut playing = agreed(&content, &offers, 0x5e7).map(|(_, set, _)| {
@@ -965,7 +961,7 @@ mod tests {
     #[test]
     fn a_netplay_set_goes_on_to_its_end() {
         for game in ["exe6", "exe5"] {
-            let [hosted, joined] = set_pair(game);
+            let [hosted, joined] = set_pair(game, TRIPLE_BATTLE);
             assert_eq!((hosted.result, joined.result), (Some(BattleResult::Won), Some(BattleResult::Lost)), "{game}");
             // One new round each (2-0 decides the set), with the score the
             // simulation carries (side 0's).
@@ -995,8 +991,31 @@ mod tests {
         }
     }
 
+    /// A netplay set of five rounds, best of five: the host wins three
+    /// straight, which decides it, on both peers alike (rounds two and three
+    /// start with the score carried, the settled states agree in every
+    /// round).
+    #[test]
+    fn a_netplay_set_of_five_rounds() {
+        let [hosted, joined] = set_pair("exe6", 5);
+        assert_eq!((hosted.result, joined.result), (Some(BattleResult::Won), Some(BattleResult::Lost)));
+        for p in [&hosted, &joined] {
+            assert_eq!(p.rounds.iter().map(|r| r.1).collect::<Vec<_>>(), [(1, 1, 0), (2, 2, 0)]);
+        }
+        let theirs: std::collections::HashMap<(usize, u32), u64> = joined.settled.iter().map(|&(r, t, d)| ((r, t), d)).collect();
+        let mut common = [0; 3];
+        for (round, tick, digest) in &hosted.settled {
+            if let Some(d) = theirs.get(&(*round, *tick)) {
+                assert_eq!(d, digest, "the settled states differ in round {} at tick {tick}", round + 1);
+                common[*round] += 1;
+            }
+        }
+        assert!(common.iter().all(|&n| n > 100), "{common:?} ticks compared");
+    }
+
     /// Netplay from match files (`--match`): each player brings their
-    /// file's left side, and the host its arena; both play that match.
+    /// file's rounds and left side; both play that match, on the host's
+    /// rounds.
     #[test]
     fn two_players_with_match_files() {
         // Each player's file, as the editor or --save-match writes one.
@@ -1004,11 +1023,11 @@ mod tests {
             let text = nettai_match::write(content, &nettai_match::pick::live(content, "exe6", seed, None).unwrap());
             nettai_match::parse(content, &text).unwrap()
         }
-        let offers = |content: &Arc<Content>, role: usize| Offer::of_match(file(content, 40 + role as u32), role == 0);
+        let offers = |content: &Arc<Content>, role: usize| Offer::of_match(file(content, 40 + role as u32));
         let [hosted, _] = pair(600, offers);
         let content = exe6_test_content();
         let m = &hosted.1;
-        assert_eq!(m.arena, file(&content, 40).arena, "the host's arena");
+        assert_eq!(m.rounds, file(&content, 40).rounds, "the host's rounds");
         assert_eq!(m.sides[0], file(&content, 40).sides[0]);
         assert_eq!(m.sides[1], file(&content, 41).sides[0], "the joiner's left side, on the right");
     }
