@@ -1,13 +1,13 @@
 //! The rule sections as the game's typed tables (`Rules`): the fields of
-//! its ruleset (rules/init.luau: `panels = require("@self/panels")`,
+//! its rules (rules/init.luau: `panels = require("@self/panels")`,
 //! each a plain table its module returns; docs/design/content-model-v2.md
 //! §3.8), each read against its schema when the content is defined (a
-//! message names the place: `ruleset: panels.types.grass.flags`).
+//! message names the place: `rules: panels.types.grass.flags`).
 //!
-//! **The engine has no game's rules of its own.** A ruleset states every
+//! **The engine has no game's rules of its own.** The rules state every
 //! rule that has no neutral value: the sections [`REQUIRED`], and in them
 //! every field but those that are none for a game without the feature (a
-//! missing one is a load error that names it: `ruleset: flow: missing
+//! missing one is a load error that names it: `rules: flow: missing
 //! field `escape_check``). What may be left out
 //! reads as nothing for every game: a feature's section a game hasn't
 //! (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`) and a table
@@ -16,8 +16,8 @@
 //! that is none unless stated (a panel type's `burn`, `chaos_cycle`).
 //! Content whose rules are Rust tables (`Content::base_rules`: a tool's
 //! decode of a ROM, a test's content of a few modules) states them there,
-//! and its ruleset's sections replace those. (The engine's test content
-//! states its rules in its ruleset, as a game does.)
+//! and its rules' sections replace those. (The engine's test content
+//! states its rules in its rules, as a game does.)
 
 use std::collections::BTreeMap;
 
@@ -247,7 +247,7 @@ fn serde_name<T: serde::Serialize>(v: &T) -> String {
     }
 }
 
-/// The rule sections a ruleset may name, by field (the engine's
+/// The rule sections rules may name, by field (the engine's
 /// schemas).
 pub(crate) const SECTIONS: &[&str] = &[
     "banners",
@@ -270,12 +270,12 @@ pub(crate) const SECTIONS: &[&str] = &[
     "status",
 ];
 
-/// The rule sections a ruleset states, whatever else it does: those with a
+/// The rule sections the rules state, whatever else they do: those with a
 /// rule that has no neutral value (a choice between games' behaviors, a
 /// size, a speed). The engine has no game's to fall back on.
 pub(crate) const REQUIRED: &[&str] = &["chip_use", "effects", "flow", "fresh_stats", "link_pick", "panels", "pools", "reactions", "status"];
 
-/// What is stated of the rules, by section: a ruleset's sections, over
+/// What is stated of the rules, by section: a rules' sections, over
 /// the content's Rust tables when it has them.
 #[derive(Default)]
 struct Stated {
@@ -355,7 +355,7 @@ impl Stated {
     fn rules(self, at: &str) -> Result<Rules, ContentError> {
         let missing = |name: &str| {
             ContentError::new(format!(
-                "{at}: it states no `{name}` section: a ruleset states every rule of its game ({}), and the engine has no game's rules of its own",
+                "{at}: it states no `{name}` section: the rules state every rule of their game ({}), and the engine has no game's rules of its own",
                 REQUIRED.join(", ")
             ))
         };
@@ -423,14 +423,14 @@ impl Stated {
     }
 }
 
-/// The content's rules: what its ruleset states over its Rust tables
-/// (`base`), if it has either. A ruleset that leaves out a section of
+/// The content's rules: what its rules state over its Rust tables
+/// (`base`), if it has either. Rules that leaves out a section of
 /// [`REQUIRED`] that no Rust table states, or a field of one, is an error
-/// naming it. Without a ruleset, the Rust tables alone; without either, a
+/// naming it. Without rules, the Rust tables alone; without either, a
 /// game pack (`game`) is an error too, and modules of no game have no
 /// rules (a test's: no battle can be made of them).
 fn rules(base: Option<&Rules>, game: Option<&str>, r: &SpecReader, definitions: &Definitions) -> Result<Option<Rules>, ContentError> {
-    let Some(d) = super::defs::ruleset(definitions) else {
+    let Some(d) = super::defs::rules_definition(definitions) else {
         return match (base, game) {
             (None, Some(game)) => Err(ContentError::new(format!(
                 "{game}/{}.luau: game pack {game} defines no rules (`define.rules`, its rules/init.luau): a game states its rules, and the engine has no game's rules of its own",
@@ -440,7 +440,7 @@ fn rules(base: Option<&Rules>, game: Option<&str>, r: &SpecReader, definitions: 
         };
     };
     let mut stated = base.map(Stated::of).unwrap_or_default();
-    let at = format!("{}.luau: ruleset", nettai_content_api::keys::module_path(&d.module));
+    let at = format!("{}.luau: rules", nettai_content_api::keys::module_path(&d.module));
     if let Data::Map(fields) = &d.spec {
         for (field, spec) in fields {
             let DataKey::Str(name) = field else { continue };
@@ -667,7 +667,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
     Ok(())
 }
 
-/// The content's rules (`Content::rules`): what its ruleset states, over
+/// The content's rules (`Content::rules`): what its rules state, over
 /// its Rust tables when it has them.
 pub fn build(content: &mut Content, definitions: &Definitions) -> Result<(), ContentError> {
     let r = SpecReader::new(&content.assets, definitions);
@@ -679,15 +679,15 @@ pub fn build(content: &mut Content, definitions: &Definitions) -> Result<(), Con
 
 /// The rules' references to definitions, once those have their handles
 /// (`Defs::build`): the fresh stats' `mode9_a`, a weapon, and the link
-/// pick's `stages`. A ruleset that states no `fresh_stats` section (a
+/// pick's `stages`. Rules that states no `fresh_stats` section (a
 /// test's, whose rules are Rust tables) keeps what the tables have.
 pub fn link(content: &mut Content) -> Result<(), ContentError> {
-    let Some(d) = super::defs::ruleset(&content.defs.definitions) else { return Ok(()) };
+    let Some(d) = super::defs::rules_definition(&content.defs.definitions) else { return Ok(()) };
     let path = nettai_content_api::keys::module_path(&d.module);
     match d.spec.field("link_pick").field("stages") {
         Data::Nil => {}
         list => {
-            let at = format!("{path}.luau: ruleset: link_pick.stages");
+            let at = format!("{path}.luau: rules: link_pick.stages");
             let items: &[Data] = match list {
                 Data::List(items) => items,
                 // (An empty table is an empty list.)
@@ -709,7 +709,7 @@ pub fn link(content: &mut Content) -> Result<(), ContentError> {
                 let first = rules.link_pick.first_round_stages;
                 if first > stages.len() || (first == 0) != stages.is_empty() {
                     return Err(ContentError::new(format!(
-                        "{path}.luau: ruleset: link_pick.first_round_stages is {first}: how many of its {} stages, from the first, a set's first round picks among",
+                        "{path}.luau: rules: link_pick.first_round_stages is {first}: how many of its {} stages, from the first, a set's first round picks among",
                         stages.len()
                     )));
                 }
@@ -721,7 +721,7 @@ pub fn link(content: &mut Content) -> Result<(), ContentError> {
     if matches!(section, Data::Nil) {
         return Ok(());
     }
-    let at = format!("{}.luau: ruleset: fresh_stats.mode9_a", nettai_content_api::keys::module_path(&d.module));
+    let at = format!("{}.luau: rules: fresh_stats.mode9_a", nettai_content_api::keys::module_path(&d.module));
     let weapon = match section.field("mode9_a") {
         Data::Nil => None,
         Data::Ref(nettai_content_api::Registry::Weapon, key) => {

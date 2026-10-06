@@ -479,7 +479,7 @@ pub struct Battle {
     /// 0x0203C430; cleared as the battle starts, `sub_800B75A`): EXE5's
     /// DethPhnx brings its navi again; nothing in EXE6 reads it.
     pub last_navi_chip: Option<crate::kinds::navi_chip::LastNaviChip>,
-    /// Per side: the player's rules, its ruleset and its systems' state
+    /// Per side: the player's rules, its rules and its systems' state
     /// (docs/design/rules-in-luau.md).
     pub rules: [crate::rules::SideRules; 2],
     /// Sound calls made this tick, as each side's player hears them
@@ -782,7 +782,7 @@ impl Battle {
             }
         }
         // Each side's rules set the round up before anything reads the
-        // side's stats (EXE6's save part builds them from what the save
+        // side's stats (EXE6's rules/save builds them from what the save
         // brings, its NaviCust compiles into them and its patch cards change
         // them); the battle-start copy of the stats (`reserves`) is of the
         // stats after them.
@@ -1602,7 +1602,7 @@ impl Battle {
             self.fight.sub = 4;
             return;
         }
-        // The turn starts: each side's rules (EXE6's beast part spends a
+        // The turn starts: each side's rules (EXE6's rules/beast spends a
         // turn in Beast Out, `sub_8015A38`).
         for side in 0..2u8 {
             if self.player(side).is_some() {

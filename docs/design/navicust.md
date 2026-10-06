@@ -32,7 +32,7 @@ one.
 recording's. The part then does nothing, so the golden traces and the lab are unchanged. `Some` means the stats
 are the navi's before the NaviCust: its fresh stats with what the save keeps, which is what the original's reset
 leaves (§3, step 3). A match states no stats: every side starts from its navi's fresh stats (nettai-match's
-`Side::fresh_stats`), the game's save part writes what the save keeps (its `hp`, `reg_up` and, in EXE6, `sun`),
+`Side::fresh_stats`), the game's save module writes what the save keeps (its `hp`, `reg_up` and, in EXE6, `sun`),
 and MegaMan's side always has a NaviCust (an empty one where it states none), which the part compiles over them.
 
 **The NaviCust is MegaMan's.** The original compiles the PET's own navi's NaviCust, navi 0's. The part compiles
@@ -123,7 +123,7 @@ The original's `reloadCurNaviStatBoosts` calls `sub_813C458` when the PET's navi
    | `status-strong` | a stronger one (+0x1A = 10) |
 
    Any bug sets the save's flag 0x1720, the emotion window's glitch (`battle.set_emotion_window_glitch`). With
-   patch cards installed, the cards' part then sets the flag the Japanese console reads instead (0x1723).
+   patch cards installed, the cards' module then sets the flag the Japanese console reads instead (0x1723).
 6. **The HP** (`sub_803CE44`). The maximum is the base plus the HP programs, and the round starts at the maximum, as
    it does in the real world.
 
@@ -136,7 +136,7 @@ setup gives both (nettai-match's `starting`).
 A game brings its own programs (its root's `define.navicust_program`s, with its own names in its own colors), its
 own board section and its own compile part. **EXE5's is built** (exe5-map.md §15.13): its compile is EXE6's routine
 for routine, so the routines are shared (content/exelib/navicust/compile.luau, `compile.run(side, game)`), and each
-game's navicust part passes what is its own (`NaviCustGame`, content/exelib/types.d.luau): its board, its bugs in
+game's navicust module passes what is its own (`NaviCustGame`, content/exelib/types.d.luau): its board, its bugs in
 the order its bugs' routine runs them and what each writes by level, what a placed program counts besides (EXE5's
 HubBatc counts its own bug once more), and whether any bug sets the emotion window's glitch (EXE6's flag 0x1720; EXE5's
 flag is read outside battle only). (EXE5's compile leaves the HP for a console in the cyberworld; the rules have the

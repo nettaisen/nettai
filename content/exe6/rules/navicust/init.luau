@@ -25,7 +25,7 @@
 -- 5. The HP (`sub_803CE44`): the maximum again, and the HP the round starts
 --    with (in the real world, the maximum).
 --
--- A MegaMan received from a navi code (event flag 0x163, the save part's
+-- A MegaMan received from a navi code (event flag 0x163, rules/save's
 -- `level`) then gets his level's gains over what his NaviCust made
 -- (`reloadCurNaviStatBoosts`: `sub_8121154` after `sub_813C458`;
 -- docs/engine/link-navis.md §4), and the HP its maximum again.
@@ -134,6 +134,6 @@ local redeal: ButtonSpec = {
 }
 
 return {
-    buttons = { redeal = redeal },
-    hooks = { round_setup = run },
+    round_setup = run,
+    redeal = redeal,
 }

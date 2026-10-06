@@ -720,7 +720,7 @@ impl Compat {
     /// traces record it: any object's but a navi's its own byte; a navi's
     /// NaviAction as EXE5 numbers it: the framework's states by EXE5's state
     /// table (`EXE5_STATES`), a chip's action by its record (chips.toml's
-    /// `action`: the action of the chip whose use it is), the ruleset's
+    /// `action`: the action of the chip whose use it is), the rules'
     /// actions and content's others by key (actions.toml).
     pub fn navi_action(&self, b: &nettai_battle::Battle, r: nettai_battle::object::ObjectRef) -> Result<u8, String> {
         use nettai_battle::content::ChipUsage;

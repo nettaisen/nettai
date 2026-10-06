@@ -259,8 +259,8 @@ mod tests {
     type Game = (String, BTreeMap<String, String>);
 
     /// A content whose rules are stated as Rust tables (the test content's:
-    /// `testing::rules`), for a test whose small ruleset names its systems
-    /// alone: a ruleset states every rule, or the content's tables do.
+    /// `testing::rules`), for a test whose small rules name their state
+    /// alone: the rules state every rule, or the content's tables do.
     fn stated() -> Content {
         let mut rules = crate::content::testing::rules();
         // (Its fresh stats' weapon is a handle of the test content's.)
@@ -285,7 +285,7 @@ mod tests {
 
     const GAME: &[(&str, &str)] = &[
         ("rules/turns", "return { state = { n = 'u8' } }"),
-        ("rules/ruleset", "return define.rules { state = require('./turns').state }"),
+        ("rules/definition", "return define.rules { state = require('./turns').state }"),
         ("cards", "return define.record('card', { power = 1 })"),
         ("chips/cannon", "return define.record('chip-ish', { power = 3 })"),
     ];
@@ -297,7 +297,7 @@ mod tests {
     fn content_holds_one_game() {
         let mix: &[(&str, &str)] = &[
             ("rules/extra", "return { state = { e = 'u8' } }"),
-            ("rules/ruleset", "return define.rules { state = require('./extra').state }"),
+            ("rules/definition", "return define.rules { state = require('./extra').state }"),
             ("cards", "return define.record('card', { power = 2 })"),
         ];
         let c = content(vec![folder("game", GAME)]).unwrap();
@@ -315,10 +315,10 @@ mod tests {
         let mut c = stated();
         c.scripts.add_dir("game", GAME.iter().map(|(p, s)| (p.to_string(), s.to_string())).collect());
         c.scripts.set_manifest(PackManifest { id: "game".into(), kind: PackKind::Game, ..Default::default() });
-        c.scripts.add_game("mix", [("rules/ruleset".to_string(), "return define.rules { state = require('@game/rules/turns').state }".to_string())].into());
+        c.scripts.add_game("mix", [("rules/definition".to_string(), "return define.rules { state = require('@game/rules/turns').state }".to_string())].into());
         c.scripts.packs.retain(|p| p.id == "mix");
         let e = c.define().unwrap_err().message;
-        assert!(e.contains("mix/rules/ruleset.luau: require(\"@game/rules/turns\"): game is no pack") || e.contains("game is a game pack"), "{e}");
+        assert!(e.contains("mix/rules/definition.luau: require(\"@game/rules/turns\"): game is no pack") || e.contains("game is a game pack"), "{e}");
     }
 
     #[test]
@@ -329,20 +329,20 @@ mod tests {
         let e = content(vec![folder("game", &[("rules/x", "return define.rules { Pools = { actor = 16 } }")])]).unwrap_err();
         assert!(e.contains("`Pools` is no field of the rules"), "{e}");
         let e = content(vec![folder("game", &[("rules/x", "return define.rules { pools = { actor = 0, attack = 32, effect = 32 } }")])]).unwrap_err();
-        assert!(e.contains("game/rules/x.luau: ruleset: pools: a pool holds 1 to"), "{e}");
+        assert!(e.contains("game/rules/x.luau: rules: pools: a pool holds 1 to"), "{e}");
         let e = content(vec![folder("game", &[("rules/x", "return define.rules { pools = { actor = 'many', attack = 32, effect = 32 } }")])]).unwrap_err();
-        assert!(e.contains("ruleset: pools.actor: invalid type"), "{e}");
+        assert!(e.contains("rules: pools.actor: invalid type"), "{e}");
         let e = content(vec![folder("Game", GAME)]).unwrap_err();
         assert!(e.contains("not lowercase words"), "{e}");
     }
 
     /// The user: "no default games anywhere please". The engine has no
-    /// game's rules of its own: a ruleset states every rule that has no
+    /// game's rules of its own: the rules state every rule that has no
     /// neutral value (`sections::REQUIRED`, and every field of them), and
-    /// one that leaves a rule out is a load error naming it. Content with
-    /// no ruleset has no rules.
+    /// rules that leave a rule out are a load error naming it. Content with
+    /// no rules definition has no rules.
     #[test]
-    fn a_ruleset_states_every_rule() {
+    fn the_rules_state_every_rule() {
         const HEAD: &str = r#"
 local function row(n: number, v: any): { any }
     local t = {}
@@ -355,7 +355,7 @@ local none = { dx = 0, dy = 0, panels = 0 }
 local any_panel = { require = 0, forbid = 0 }
 local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, any_panel } }
 "#;
-        // The sections a ruleset states, a field a line.
+        // The sections the rules state, a field a line.
         const STATED: &[(&str, &str)] = &[
             (
                 "chip_use",
@@ -459,9 +459,9 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
             ),
         ];
         assert_eq!(STATED.iter().map(|(name, _)| *name).collect::<Vec<_>>(), crate::content::sections::REQUIRED);
-        // The ruleset, without a section or a field of one, or with a
+        // The rules, without a section or a field of one, or with a
         // field's value another.
-        let ruleset = |without: Option<&str>, field: Option<(&str, &str)>, other: Option<(&str, &str)>| -> String {
+        let rules = |without: Option<&str>, field: Option<(&str, &str)>, other: Option<(&str, &str)>| -> String {
             let mut out = format!("{HEAD}return define.rules {{\n");
             for (name, body) in STATED {
                 if without == Some(*name) {
@@ -479,15 +479,15 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
             }
             out + "}\n"
         };
-        let game = |ruleset: String| -> Result<Content, String> {
+        let game = |rules: String| -> Result<Content, String> {
             let mut c = Content::default();
-            c.scripts.add_game("game", [("rules/init".to_string(), ruleset)].into());
+            c.scripts.add_game("game", [("rules/init".to_string(), rules)].into());
             c.define().map_err(|e| e.message)?;
             Ok(c)
         };
         // Every rule stated: the game's rules are what it states, each a
         // choice of its own (no game has these together).
-        let c = game(ruleset(None, None, None)).unwrap_or_else(|e| panic!("{e}"));
+        let c = game(rules(None, None, None)).unwrap_or_else(|e| panic!("{e}"));
         let r = c.rules();
         use crate::content::{
             AngerEnd, DamageWordRule, FormBreak, HpLoss, MoodHeld, NaviWinBanner, ObstacleActions, OverlayRestart, PushReading, Reactions,
@@ -522,8 +522,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!(r.element_weakness, [[0; 6]; 6]);
         // A section left out is a load error that names it.
         for (section, _) in STATED {
-            let e = game(ruleset(Some(section), None, None)).expect_err(section);
-            assert!(e.contains(&format!("game/rules/init.luau: ruleset: it states no `{section}` section")), "{section}: {e}");
+            let e = game(rules(Some(section), None, None)).expect_err(section);
+            assert!(e.contains(&format!("game/rules/init.luau: rules: it states no `{section}` section")), "{section}: {e}");
             assert!(e.contains("the engine has no game's rules of its own"), "{e}");
         }
         // So is any field of one.
@@ -531,27 +531,27 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         for (section, body) in STATED {
             for line in body.lines().filter(|l| !l.trim().is_empty()) {
                 let field = line.trim_start().split(' ').next().unwrap();
-                let e = game(ruleset(None, Some((section, field)), None)).expect_err(field);
-                assert!(e.contains(&format!("game/rules/init.luau: ruleset: {section}: missing field `{field}`")), "{section}.{field}: {e}");
+                let e = game(rules(None, Some((section, field)), None)).expect_err(field);
+                assert!(e.contains(&format!("game/rules/init.luau: rules: {section}: missing field `{field}`")), "{section}.{field}: {e}");
                 fields += 1;
             }
         }
         assert_eq!(fields, 64, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
-        let e = game(ruleset(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();
-        assert!(e.contains("ruleset: status.emotion: missing field `anger_end`"), "{e}");
-        let e = game(ruleset(None, None, Some((" steps_while_paused = true,", "")))).unwrap_err();
-        assert!(e.contains("ruleset: effects.full_synchro_aura: missing field `steps_while_paused`"), "{e}");
-        let c = game(ruleset(None, None, Some((", worried_below = 40", "")))).unwrap_or_else(|e| panic!("{e}"));
+        let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();
+        assert!(e.contains("rules: status.emotion: missing field `anger_end`"), "{e}");
+        let e = game(rules(None, None, Some((" steps_while_paused = true,", "")))).unwrap_err();
+        assert!(e.contains("rules: effects.full_synchro_aura: missing field `steps_while_paused`"), "{e}");
+        let c = game(rules(None, None, Some((", worried_below = 40", "")))).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(c.rules().emotion.worried_below, None, "no mood is worried");
         // A field of a table of settings, too.
-        let e = game(ruleset(None, None, Some((" elec_reaches_submerged = true,", "")))).unwrap_err();
-        assert!(e.contains("ruleset: reactions.hit_test: missing field `elec_reaches_submerged`"), "{e}");
+        let e = game(rules(None, None, Some((" elec_reaches_submerged = true,", "")))).unwrap_err();
+        assert!(e.contains("rules: reactions.hit_test: missing field `elec_reaches_submerged`"), "{e}");
         // The fresh stats' weapon is a weapon the content defines.
         let with_weapon = |weapon: &str| -> Result<Content, String> {
             let mut c = Content::default();
-            let text = ruleset(None, None, Some(("mood = 0x70,", &format!("mood = 0x70,\n        mode9_a = {weapon},"))));
+            let text = rules(None, None, Some(("mood = 0x70,", &format!("mood = 0x70,\n        mode9_a = {weapon},"))));
             let weapon = "define.weapon { id = 'shot', charge_ticks = { 0, 0, 0, 0, 0 }, setup = function(navi) return nil :: any end }";
             let text = format!("local shot = {weapon}\n{text}");
             c.scripts.add_game("game", [("rules/init".to_string(), text)].into());
@@ -562,16 +562,16 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!(c.rules().fresh_stats.mode9_a, c.defs.weapon_by_key("shot"));
         assert!(c.rules().fresh_stats.mode9_a.is_some());
         let e = with_weapon("3").unwrap_err();
-        assert!(e.contains("game/rules/init.luau: ruleset: fresh_stats.mode9_a: a weapon (a `define.weapon`), not"), "{e}");
+        assert!(e.contains("game/rules/init.luau: rules: fresh_stats.mode9_a: a weapon (a `define.weapon`), not"), "{e}");
         // A rule is one of the engine's, by name.
-        let e = game(ruleset(None, None, Some(("shake = \"battle_rng\"", "shake = \"exe5\"")))).unwrap_err();
-        assert!(e.contains("ruleset: effects.shake: unknown variant `exe5`, expected `console_rng` or `battle_rng`"), "{e}");
-        let e = game(ruleset(None, None, Some(("form_break = \"cross_or_beast\"", "form_break = \"exe6\"")))).unwrap_err();
-        assert!(e.contains("ruleset: status.form_break: unknown variant `exe6`, expected `cross_or_beast` or `any_form`"), "{e}");
-        // A game with no ruleset states no rules: a load error too. (Modules
+        let e = game(rules(None, None, Some(("shake = \"battle_rng\"", "shake = \"exe5\"")))).unwrap_err();
+        assert!(e.contains("rules: effects.shake: unknown variant `exe5`, expected `console_rng` or `battle_rng`"), "{e}");
+        let e = game(rules(None, None, Some(("form_break = \"cross_or_beast\"", "form_break = \"exe6\"")))).unwrap_err();
+        assert!(e.contains("rules: status.form_break: unknown variant `exe6`, expected `cross_or_beast` or `any_form`"), "{e}");
+        // A game with no rules states no rules: a load error too. (Modules
         // of no game, a test's, have no rules, and no battle is made of
         // them.) Rust tables state them for a content that has those (the
-        // test content's), and its ruleset's sections replace them.
+        // test content's), and its rules' sections replace them.
         let mut none = Content::default();
         none.scripts.add_game("game", [("cards".to_string(), "return define.record('card', {})".to_string())].into());
         let e = none.define().unwrap_err().message;
@@ -588,7 +588,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!(tables.rules().flow, crate::content::testing::rules().flow);
     }
 
-    /// The user: "there should only be one ruleset per game", then "collapse
+    /// The user: "there should only be one rules definition per game", then "collapse
     /// systems into one rules definition". A game defines one, with no name
     /// and no variants: a second, an `id`, and a field that is none of the
     /// rules' (a `stock` flag, a variant's `base`, `add` and `remove`) are
@@ -604,14 +604,14 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         let c = with(&[]).unwrap();
         let d = &c.defs;
         assert!(d.rules().is_some());
-        assert_eq!(d.definitions.of(nettai_content_api::Registry::Ruleset)[0].key, nettai_content_api::RULESET_KEY);
+        assert_eq!(d.definitions.of(nettai_content_api::Registry::Rules)[0].key, nettai_content_api::RULESET_KEY);
         // Content without one: its sides have no rules.
         let none = content(vec![folder("game", &[("cards", "return define.record('card', {})")])]).unwrap();
         assert!(none.defs.rules().is_none());
         // A second.
         let e = with(&[("rules/other", "return define.rules {}")]).unwrap_err();
-        assert!(e.contains("a game has one rules definition: game/rules/other.luau defines one, and game/rules/ruleset.luau another"), "{e}");
-        let bad = |source: &str| -> String { with(&[("rules/ruleset", source)]).unwrap_err() };
+        assert!(e.contains("a game has one rules definition: game/rules/definition.luau defines one, and game/rules/other.luau another"), "{e}");
+        let bad = |source: &str| -> String { with(&[("rules/definition", source)]).unwrap_err() };
         let cases = [
             ("return define.rules { id = 'stock' }", "define.rules takes no `id`: a game has one rules definition"),
             ("return define.rules { stock = true }", "`stock` is no field of the rules"),

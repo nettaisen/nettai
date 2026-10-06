@@ -10,7 +10,7 @@
 //! the editor (nettai-demo) edits them.
 //!
 //! A match is of one game, which its arena chooses (`Arena::game`): a
-//! game is its rules (it has one ruleset), and both sides play by them
+//! game is its rules (it has one rules definition), and both sides play by them
 //! with the game's navis, chips, forms and patch cards, every one named in
 //! the game's namespace alone (`ids`). There is no mixing of games.
 
@@ -63,7 +63,7 @@ pub struct Place {
 
 /// The arena, which decides everything else: the match's game (`exe6`,
 /// `exe5`: everything else a match names is that game's, and its rules are
-/// the game's: a game has one ruleset), the first round's place and the
+/// the game's: a game has one rules definition), the first round's place and the
 /// set's later rounds' (the original's init exchange carries those), its
 /// stages the game's.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -118,7 +118,7 @@ pub struct Side {
     /// The NaviCust, which the side's rules compile into the stats as the
     /// round is set up: its programs and its board. None: no programs, on
     /// the rules' largest board (the round compiles an empty one, for the
-    /// navi that changes form where the rules have the navicust part).
+    /// navi that changes form where the rules have rules/navicust).
     pub navicust: Option<NaviCust>,
     /// EXE5's auto battle data, the player's save's block whole
     /// (`auto_battle`): what a navi in auto battle plays from it, the Dark

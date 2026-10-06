@@ -819,7 +819,7 @@ mod tests {
         // (No stats: a side states none.)
         assert!(!text.contains("stats"), "{text}");
         // Every name is the game's own, written once with the game.
-        assert!(!text.contains("exe6:") && !text.contains("ruleset"), "{text}");
+        assert!(!text.contains("exe6:") && !text.contains("rules"), "{text}");
         assert_eq!(game_of(&text).unwrap(), "exe6");
         assert!(game_of("[arena]\nstage = \"x\"\n").is_err());
     }
@@ -1089,16 +1089,16 @@ mod tests {
         has(crate::check_match(&content, &m), "right: crosses: ProtoMan doesn't change form");
     }
 
-    /// A game's rules have their systems, by name: EXE6's the forms part
-    /// (its Crosses), and no key names another ruleset.
+    /// A match plays its game's rules: EXE6's take a Cross list and no
+    /// souls, and no key of a match names other rules.
     #[test]
     fn a_game_is_its_rules() {
         let content = exe6_content();
         assert!(content.defs.fact_field(nettai_battle::content::PlayerFact::CrossList).is_some());
         assert!(!crate::facts::takes(&content, "souls"));
         let good = write(&content, &crate::pick::live(&content, "exe6", 1, None).unwrap());
-        let e = parse(&content, &good.replacen("game = \"exe6\"\n", "game = \"exe6\"\nruleset = \"stock\"\n", 1)).unwrap_err();
-        assert!(e[0].contains("unknown field `ruleset`"), "{e:?}");
+        let e = parse(&content, &good.replacen("game = \"exe6\"\n", "game = \"exe6\"\nrules = \"stock\"\n", 1)).unwrap_err();
+        assert!(e[0].contains("unknown field `rules`"), "{e:?}");
     }
 
     /// The SP deletion times, Beast Out locked and a level write and read

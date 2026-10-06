@@ -588,7 +588,7 @@ impl Round {
     /// NaviStats ([`navi_stats`]), the folders, the RNGs, the set's score,
     /// both players on EXE5's rules.
     pub fn round_setup(&self, content: &Content, compat: &Compat) -> Result<RoundSetup, String> {
-        // EXE5's light and dark part (content/exe5/rules/light_dark).
+        // EXE5's rules/light_dark (content/exe5/rules/light_dark).
         let needs = self.needs(content, compat)?;
         if !needs.is_empty() {
             return Err(format!("content lacks {}", needs.join(", ")));
@@ -636,7 +636,7 @@ impl Round {
             // (The console's counter before the round's first tick: one
             // less than on the setup's frame.)
             let frames = (self.setup.frame_counter as u32).wrapping_sub(1) & 0xFFFF;
-            // The side's level (EXE5's save part's `level`): a team navi's
+            // The side's level (the rules' `level`): a team navi's
             // attacks go by it. (Nothing reads MegaMan's side's: an older
             // recording, which has none, replays.)
             let level = match self.setup.navi_levels.map(|l| l[side as usize]) {
@@ -681,7 +681,7 @@ impl Round {
         });
         let [mut p0, mut p1] = players;
         // Each side's light and dark MegaMan: his save's value (NaviStats
-        // +0x44), EXE5's light and dark part's setup. (Hub Style, +0x4C,
+        // +0x44), the rules' setup. (Hub Style, +0x4C,
         // is the stats': `navi_stats`.)
         for (p, stats) in [(&mut p0, &d.navi_stats[0]), (&mut p1, &d.navi_stats[1])] {
             if let Ok(p) = p {
@@ -706,7 +706,7 @@ impl Round {
                 p.set_fact(content, "souls", &souls)?;
             }
         }
-        // What each save brings to its navi's stats (EXE5's save part's
+        // What each save brings to its navi's stats (EXE5's rules/save's
         // setup), from the recorded block: the rules write it into a side
         // whose stats they build (a compiled MegaMan, a team navi), which
         // then comes out as recorded.
@@ -719,7 +719,7 @@ impl Round {
             }
         }
         // A team navi's stats are the rules' to build from its level (EXE5's
-        // save part: its story's HP), from its fresh stats with what the
+        // rules/save: its story's HP), from its fresh stats with what the
         // save keeps, which the replay then compares with the recorded block.
         let stats = |side: usize| -> Result<EngineNaviStats, String> {
             let recorded = navi_stats(content, compat, &d.navi_stats[side])?;
@@ -951,9 +951,9 @@ pub fn reset(content: &Content, recorded: &EngineNaviStats) -> Result<EngineNavi
 }
 
 /// The stats a team navi's are built from (a navi with a `story`: EXE5's
-/// save part sets its HP by its level), of `recorded`: its fresh stats
+/// rules/save sets its HP by its level), of `recorded`: its fresh stats
 /// (`NaviStats::fresh`) with what the save keeps (the folder, its Regular
-/// and tag chips; the Regular memory, the save part's to write) and the
+/// and tag chips; the Regular memory, rules/save's to write) and the
 /// recording's own mood and variant (the battle's start's, as [`reset`]
 /// keeps them).
 pub fn team_navi_reset(content: &Content, recorded: &EngineNaviStats) -> Result<EngineNaviStats, String> {

@@ -24,11 +24,12 @@ still to remove.
 
 ## How a game's rules reach Rust
 
-A game has one rules definition (`define.rules`, its rules/init.luau; [rules-in-luau.md](rules-in-luau.md) §2.3 "One
-rules definition"). Its parts (the save, Beast Out, Soul Unison, the NaviCust, ...) are plain Luau tables that
-@exelib/rules/compose makes one of: one state, one player setup, one hook for each event. The engine sees only the
-result: it calls a hook by its name and reads its answer, keeps one state block and one setup block per side, and
-reads a setup field it needs by its role. Which part answered, and in what order the parts were asked, is Luau's.
+A game has one rules definition (`define.rules`, its rules/init.luau; [rules-in-luau.md](rules-in-luau.md) §2.5),
+written by hand as a whole: a side's state and a player's setup stated in one place, each hook a plain function that
+calls the game's modules (the save, Beast Out, Soul Unison, the NaviCust, ...: ordinary modules of functions) in the
+order its code says. The engine calls a hook by its name and reads its answer, keeps one state block and one setup
+block per side, and reads a setup field it needs by its role. Which module answers, and in what order they run, is
+the rules' code.
 
 ## Known crossings
 

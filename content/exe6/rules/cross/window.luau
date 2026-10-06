@@ -4,10 +4,10 @@
 -- (`sub_8026840`) as the screen opens; UP opening the window (`sub_8028B74`);
 -- its opening (`sub_8027834`), the window and its keys (`sub_802794A`,
 -- `sub_8028A78`), its closing (`sub_802790C`) and a Cross chosen
--- (`sub_8027A58`, `sub_8027AAE`, `sub_8027ADE`) as the part's windows; B
+-- (`sub_8027A58`, `sub_8027AAE`, `sub_8027ADE`) as the rules' windows; B
 -- taking the Cross back (`sub_8029032`); the form it puts the navi in at
 -- the turn's start (`sub_802937A`); and the round's record of the Crosses
--- used (`dword_20349A0`). Its state is the cross part's, which the
+-- used (`dword_20349A0`). Its state is the rules', which the
 -- frontend draws the window from: its four windows are a form list's (their
 -- `view`), which shows these fields by their names.
 
@@ -17,7 +17,7 @@ local chip_gate_battle = require("../../lib/chip_gate_battle")
 
 local window = {}
 
--- The cross part's setup (rules/cross/init.luau declares it): the
+-- The rules' setup (rules/init.luau declares it): the
 -- player's game, and the Crosses they have: up to five forms of either
 -- game, in the window's order, filled from the front
 -- (docs/engine/custom-screen.md §4.1). The original's window offers those
@@ -35,8 +35,8 @@ local function sealed(side: number): boolean
     return exe6.navi_level(side) ~= nil
 end
 
--- The cross part's state fields the window keeps (rules/cross/init.luau
--- declares them).
+-- The rules' state fields the window keeps (rules/init.luau declares
+-- them).
 export type State = {
     -- `dword_20349A0`: the Crosses used this round, by their place among
     -- the player's Crosses (0-4: the place in the setup's list, which is a

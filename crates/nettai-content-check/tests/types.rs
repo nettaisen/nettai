@@ -81,23 +81,23 @@ fn the_test_pack_and_test_content_type_check() {
     assert!(problems.is_empty(), "problems:\n{}", problems.join("\n"));
 }
 
-/// A small ruleset for a test: the sections every game states (each any
+/// Small rules for a test: the sections every game states (each any
 /// table, to the type), then `more` (its fields, each ending in a comma).
-fn ruleset(more: &str) -> String {
+fn rules(more: &str) -> String {
     format!(
         "local _ = define.rules {{ chip_use = {{}}, effects = {{}}, flow = {{}}, fresh_stats = {{}}, link_pick = {{}}, panels = {{}}, pools = {{}}, reactions = {{}}, status = {{}}, {more} }}"
     )
 }
 
-/// docs/design/content-model-v2.md §3.8: a ruleset states `chip_use`,
+/// docs/design/content-model-v2.md §3.8: the rules state `chip_use`,
 /// `effects`, `flow`, `fresh_stats`, `link_pick`, `panels`, `pools`, `reactions` and
-/// `status`, and the type says so: one without any of them doesn't type-check, whatever else
+/// `status`, and the type says so: rules without any of them don't type-check, whatever else
 /// it states (the load says which field of one is missing).
 #[test]
-fn a_ruleset_without_a_required_section_is_a_type_error() {
+fn rules_without_a_required_section_are_a_type_error() {
     let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();
     let mut check = |source: &str| checker.check("rules/init.luau", &format!("--!strict\n{source}\n")).unwrap();
-    let whole = ruleset("math = { sine = {} },");
+    let whole = rules("math = { sine = {} },");
     assert_eq!(check(&whole), Vec::<String>::new(), "every required section stated");
     for section in ["chip_use", "effects", "flow", "fresh_stats", "link_pick", "panels", "pools", "reactions", "status"] {
         let without = whole.replace(&format!("{section} = {{}}, "), "");
@@ -106,7 +106,7 @@ fn a_ruleset_without_a_required_section_is_a_type_error() {
         assert!(problems.iter().any(|p| p.contains(section)), "without `{section}`: {problems:?}");
     }
     // A section a game may leave out is no problem, nor are no parts.
-    assert_eq!(check(&ruleset("")), Vec::<String>::new());
+    assert_eq!(check(&rules("")), Vec::<String>::new());
 }
 
 #[test]
@@ -124,8 +124,8 @@ fn misuse_of_the_v2_api_is_a_type_error() {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
     }
-    // (A ruleset with its sections, so the role is what is wrong.)
-    let bad = ruleset("roles = { actions = { anti_damage_counter = 3 } },");
+    // (Rules with its sections, so the role is what is wrong.)
+    let bad = rules("roles = { actions = { anti_damage_counter = 3 } },");
     let problems = checker.check("a role that isn't an action", &format!("--!strict\n{bad}\n")).unwrap();
     assert!(problems.len() == 1 && problems[0].contains("Action"), "`{bad}`: {problems:?}");
 }
@@ -158,12 +158,12 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
     }
-    // (Rulesets with their sections, so the role is what is wrong.)
+    // (Rules with their sections, so the role is what is wrong.)
     for (roles, why) in [
         ("roles = { actions = { turn = { legacy = { action = 0x3B } } } },", "a role by action number"),
         ("roles = { kinds = { support = { legacy = { kind = \"support\" } } } },", "a role by kind key"),
     ] {
-        let bad = ruleset(roles);
+        let bad = rules(roles);
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(problems.len() == 1 && !problems[0].contains("chip_use"), "{why}: `{bad}`: {problems:?}");
     }
