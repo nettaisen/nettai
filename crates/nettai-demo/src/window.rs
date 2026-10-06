@@ -26,7 +26,7 @@ use iced::{Color, Element, Length, Size, Subscription, Task, keyboard, window};
 use nettai_battle::input::keys;
 use nettai_frontend::replay::Recorder;
 use nettai_frontend::driver::{Driver, LivePlayer, NetStatus};
-use nettai_frontend::game::{Game, Graphics, TextMode};
+use nettai_frontend::game::{Game, TextMode};
 use nettai_frontend::player::Player;
 use nettai_render::compose::{HEIGHT, WIDTH};
 use nettai_render::vfont::TextRenderer;
@@ -37,8 +37,8 @@ use std::time::{Duration, Instant};
 pub const HELP: &str = "\
 keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START, Backspace = SELECT
       Space pause, . step one frame (paused), - / = slower / faster, F5 restart
-      (not in netplay), [ / ] less / more present delay (netplay), Tab the next
-      language, Esc stop (back to the editor, or quit)";
+      (not in netplay), [ / ] less / more present delay (netplay), Esc stop
+      (back to the editor, or quit)";
 
 /// The most present delay netplay takes (a quarter of a second).
 pub const MAX_PRESENT_DELAY: u32 = 15;
@@ -75,53 +75,11 @@ pub enum Start {
     Net(Box<Waiting>),
 }
 
-/// The languages the window cycles through (Tab): the content's, each one's
-/// graphics loaded the first time it is shown and kept.
-pub struct Languages {
-    game: Game,
-    names: Vec<String>,
-    loaded: Vec<Option<Graphics>>,
-    shown: usize,
-}
-
-impl Languages {
-    /// The languages `game`'s content has strings in, with its own, showing
-    /// `shown` (whose graphics these are).
-    pub fn new(game: Game, shown: &str, graphics: Graphics) -> Languages {
-        let own = nettai_content::locale::OWN.to_string();
-        let mut names = vec![own];
-        for lang in nettai_content::locale::languages(&game.dir) {
-            if !names.contains(&lang) {
-                names.push(lang);
-            }
-        }
-        if !names.iter().any(|n| n == shown) {
-            names.push(shown.to_string());
-        }
-        let at = names.iter().position(|n| n == shown).expect("the language shown is listed");
-        let mut loaded: Vec<Option<Graphics>> = names.iter().map(|_| None).collect();
-        loaded[at] = Some(graphics);
-        Languages { game, names, loaded, shown: at }
-    }
-
-    /// The next language and its graphics; why it can't be shown (the pack
-    /// has no lettering in it) leaves the one shown.
-    fn next(&mut self) -> Result<(&str, &Graphics), String> {
-        let at = (self.shown + 1) % self.names.len();
-        if self.loaded[at].is_none() {
-            self.loaded[at] = Some(self.game.graphics(&self.names[at]).map_err(|e| e.to_string())?);
-        }
-        self.shown = at;
-        Ok((&self.names[at], self.loaded[at].as_ref().expect("loaded above")))
-    }
-}
-
 /// A battle being played in the window.
 pub struct Play {
     player: Player,
     /// What plays after (a recording's later rounds).
     rest: std::vec::IntoIter<Box<dyn Driver>>,
-    languages: Languages,
     /// The GBA buttons the keys hold.
     held: u16,
     last: Option<Instant>,
@@ -130,8 +88,8 @@ pub struct Play {
     size: (usize, usize),
     /// The picture shown (the buffer's, as of the last present).
     picture: Option<Arc<Picture>>,
-    /// The picture is out of date: a tick ran, the window or the language
-    /// changed (a display faster than the battle shows the last one again).
+    /// The picture is out of date: a tick ran or the window changed (a
+    /// display faster than the battle shows the last one again).
     stale: bool,
     /// Whether the divergence, the stop and a recording's failure were
     /// said.
@@ -150,12 +108,11 @@ pub struct Play {
 
 impl Play {
     /// Play `first`, then each of `rest`, from `player`'s parts.
-    pub fn new(mut player: Player, rest: Vec<Box<dyn Driver>>, languages: Languages, opts: &PlayOptions) -> Play {
+    pub fn new(mut player: Player, rest: Vec<Box<dyn Driver>>, opts: &PlayOptions) -> Play {
         player.set_paused(opts.start_paused);
         Play {
             player,
             rest: rest.into_iter(),
-            languages,
             held: 0,
             last: None,
             buffer: Vec::new(),
@@ -186,7 +143,7 @@ impl Play {
         };
         let driver = LivePlayer::new(nettai_match::Set::of(&game.content, m, seed));
         let player = Player::with(renderer, font.map(TextRenderer::new), audio, Box::new(driver));
-        Ok(Play::new(player, Vec::new(), Languages::new(game, lang, graphics), opts))
+        Ok(Play::new(player, Vec::new(), opts))
     }
 }
 
@@ -200,7 +157,6 @@ pub struct Waiting {
     /// The player's parts: the renderer, the font mode's text renderer and
     /// the audio.
     pub parts: (nettai_render::Renderer, Option<TextRenderer>, Option<nettai_audio::BattleAudio>),
-    pub languages: Languages,
 }
 
 /// What `NETTAI_PLAY_STATS` counts: frames shown, the time each took to
@@ -216,6 +172,10 @@ struct Stats {
     worst_gap: Duration,
     /// From a key's event to the tick that saw it.
     key_to_tick: picture::Times,
+    /// The ticks' time each frame (`Player::advance`), and the frame's own
+    /// work besides presenting.
+    advance: picture::Times,
+    frame_work: picture::Times,
 }
 
 enum Screen {
@@ -434,16 +394,6 @@ impl Demo {
                 // player refuses a pause, another speed and a restart.)
                 match key.as_ref() {
                     keyboard::Key::Named(Named::Escape) if !repeat => return self.stop(),
-                    // (The language is the drawing's alone: it changes in
-                    // netplay too, and the battle goes on.)
-                    keyboard::Key::Named(Named::Tab) => match p.languages.next() {
-                        Ok((name, graphics)) => {
-                            p.player.set_language(graphics);
-                            p.stale = true;
-                            eprintln!("language: {name}");
-                        }
-                        Err(e) => eprintln!("{e}"),
-                    },
                     keyboard::Key::Named(Named::Space) => {
                         let paused = p.player.paused();
                         p.player.set_paused(!paused);
@@ -500,7 +450,7 @@ impl Demo {
                 }
                 Progress::Agreed(agreed) => {
                     let Screen::Waiting(w) = std::mem::replace(&mut self.screen, Screen::Editor) else { unreachable!() };
-                    let Waiting { then, parts: (renderer, text, audio), languages, .. } = *w;
+                    let Waiting { then, parts: (renderer, text, audio), .. } = *w;
                     let (driver, recorder) = then(agreed);
                     let mut player = Player::with(renderer, text, audio, driver);
                     if let Some(r) = recorder
@@ -508,7 +458,7 @@ impl Demo {
                     {
                         eprintln!("netplay: not recorded: {e}");
                     }
-                    self.screen = Screen::Play(Box::new(Play::new(player, Vec::new(), languages, &self.options)));
+                    self.screen = Screen::Play(Box::new(Play::new(player, Vec::new(), &self.options)));
                 }
             }
         }
@@ -522,7 +472,12 @@ impl Demo {
         }
         let elapsed = p.last.map_or(Duration::ZERO, |last| now.saturating_duration_since(last));
         p.last = Some(now);
-        if p.player.advance(elapsed, p.held) > 0 {
+        let work = Instant::now();
+        let ran = p.player.advance(elapsed, p.held);
+        if let Some(s) = &mut p.stats {
+            s.advance.add(work.elapsed());
+        }
+        if ran > 0 {
             p.stale = true;
             // (The keys pressed since the last tick: this one saw them.)
             if let Some(s) = &mut p.stats {
@@ -573,6 +528,7 @@ impl Demo {
             }
         }
         if let Some(s) = &mut p.stats {
+            s.frame_work.add(work.elapsed());
             let took = started.elapsed();
             s.frames += 1;
             s.present += took;
@@ -600,6 +556,31 @@ impl Demo {
                     keys.mean(),
                     keys.worst,
                 );
+                eprintln!(
+                    "frame stats: advance {:.2?} mean (worst {:.2?}), the frame's work {:.2?} mean (worst {:.2?})",
+                    s.advance.mean(),
+                    s.advance.worst,
+                    s.frame_work.mean(),
+                    s.frame_work.worst
+                );
+                if let Some(out) = &self.device {
+                    let a = out.take_stats();
+                    eprintln!(
+                        "audio stats: {} device buffers of up to {} frames; queued {}..{} samples (target {}), rate {:+.3}%; \
+                         {} times dry ({} frames silent), {} skips back ({} samples), {} dropped",
+                        a.callbacks,
+                        a.most_frames,
+                        a.least_fill.unwrap_or(0),
+                        a.most_fill,
+                        nettai_audio::TARGET_FILL,
+                        a.rate_shift * 100.0,
+                        a.underruns,
+                        a.silent_frames,
+                        a.skips,
+                        a.skipped,
+                        a.dropped,
+                    );
+                }
                 *s = Stats { since: Some(now), ..Stats::default() };
             }
         }
