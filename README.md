@@ -42,6 +42,9 @@ netplay needs.
 - `nettai-demo`: the desktop program over `nettai-frontend`: the match editor and the battle played in its window
   (iced) with its keys, the command line, headless frames, the audits, the replay of recorded matches, and the sound
   through the audio device.
+- `nettai`: the app (Slint, a prototype): a title, offline play against the stand-in, the netplay lobby (rooms
+  through `nettai-rtc`) and the replays around the battle, navigated by keys, a gamepad or touch, in each
+  language its catalogs have ([docs/app.md](docs/app.md)).
 - `nettai-match`: match files, everything a round needs by content key, checked; the editor's random pick.
 - `nettai-extract`: shared EXE5/EXE6 asset extraction library and CLI, including placeholders for missing ROMs.
 - `exe6-compat`: EXE6's original numbers for the content (`content/exe6/compat`): the codecs of the game's setup

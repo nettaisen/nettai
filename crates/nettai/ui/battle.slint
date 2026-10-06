@@ -562,6 +562,41 @@ export component BattleScreen {
             horizontal-alignment: center;
             font-size: 13px;
         }
+        // The score: each navi and the rounds it won.
+        if root.stopped == "": HorizontalLayout {
+            alignment: center;
+            spacing: 12px;
+            height: 30px;
+            Text {
+                text: root.left-side.navi;
+                color: Theme.cyan;
+                font-weight: Theme.black;
+                vertical-alignment: center;
+            }
+
+            for p in root.left-pips: Pip {
+                y: (parent.height - self.height) / 2;
+                state: p;
+                color: Theme.cyan;
+            }
+            Text {
+                text: "—";
+                color: Theme.text-faint;
+                vertical-alignment: center;
+            }
+
+            for p in root.right-pips: Pip {
+                y: (parent.height - self.height) / 2;
+                state: p;
+                color: Theme.magenta;
+            }
+            Text {
+                text: root.right-side.navi;
+                color: Theme.magenta;
+                font-weight: Theme.black;
+                vertical-alignment: center;
+            }
+        }
         if root.recorded != "": Text {
             text: @tr("Recorded to {0}", root.recorded);
             color: Theme.text-dim;
