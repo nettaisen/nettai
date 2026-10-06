@@ -32,9 +32,6 @@ use crate::setup::{NaviStats, effects};
 use crate::transform::TransformRequest;
 use builder::{ClassCounts, Pick, ProgramAdvancesUsed};
 
-/// The highest level of a navi code (`sub_8121198`: a navi's 15 codes).
-pub const MAX_NAVI_LEVEL: u8 = 14;
-
 /// What a player brings to a round that only their own console knows in
 /// the original: the battle folder (shuffled at the round's init), what
 /// their save holds that the battle reads, and what their ruleset's

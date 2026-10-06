@@ -10,6 +10,7 @@
 -- the shadow no hit reaches that slashes where it is sent). The action's other variant, 1 (the panel before the
 -- attack's target object), is his auto battle's.
 
+local navi_level = require("../../lib/navi_level")
 local aim = require("./aim")
 local shadow = require("./shadow")
 
@@ -37,7 +38,7 @@ return define.chip {
     class = "special",
     rarity = 0,
     mb = 99,
-    damage = { formula = "level", by_level = { 80, 80, 80, 80, 80, 100, 100 } },
+    damage = navi_level.row({ 80, 80, 80, 80, 80, 100, 100 }),
     hit_param = 148,
     lockout = 0,
     flags = { "has_damage", "library", "variable_damage" },

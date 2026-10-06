@@ -253,7 +253,7 @@ pub fn lints(path: &str, source: &str) -> Vec<Problem> {
     // A system's state is its own (docs/design/rules-in-luau.md §4.5): only
     // a game's rules (modules under rules/) reach it.
     if !path.starts_with("rules/") {
-        for call in ["system.state(", "system.setup(", "system.side(", "system.state_of("] {
+        for call in ["system.state(", "system.setup(", "system.side(", "system.state_of(", "system.setup_of("] {
             for at in s.find(call) {
                 out.push(format!(
                     "{path}:{}: `{}` is a system's own: only modules under rules/ call it; content reaches a game's rules \
