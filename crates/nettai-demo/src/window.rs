@@ -19,7 +19,7 @@
 //! then to measure it); docs/frontend.md §7 has the measurements.
 
 use crate::editor;
-use crate::net::{Agreed, NetHandshake, Progress, Udp};
+use crate::net::{Agreed, Link, NetHandshake, Progress};
 use crate::picture::{self, Picture};
 use iced::widget::{container, text};
 use iced::{Color, Element, Length, Size, Subscription, Task, keyboard, window};
@@ -144,6 +144,8 @@ pub struct Play {
     pressed: Vec<Instant>,
     /// When the first of those a tick since the last picture saw came.
     seen: Option<Instant>,
+    /// Netplay: the connection was down at the last frame.
+    reconnecting: bool,
 }
 
 impl Play {
@@ -167,6 +169,7 @@ impl Play {
             stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()),
             pressed: Vec::new(),
             seen: None,
+            reconnecting: false,
         }
     }
 
@@ -189,11 +192,11 @@ impl Play {
 
 /// A netplay match being agreed, and what plays it once it is.
 pub struct Waiting {
-    pub handshake: NetHandshake<Udp>,
+    pub handshake: NetHandshake<Link>,
     /// What the window says meanwhile.
     pub text: String,
     /// The agreed match's driver, and its recording if one is made.
-    pub then: Box<dyn FnOnce(Agreed<Udp>) -> (Box<dyn Driver>, Option<Recorder>)>,
+    pub then: Box<dyn FnOnce(Agreed<Link>) -> (Box<dyn Driver>, Option<Recorder>)>,
     /// The player's parts: the renderer, the font mode's text renderer and
     /// the audio.
     pub parts: (nettai_render::Renderer, Option<TextRenderer>, Option<nettai_audio::BattleAudio>),
@@ -276,8 +279,9 @@ fn button(key: &keyboard::Key) -> Option<u16> {
 /// A netplay connection's figures, as the window's title says them.
 fn net_line(n: &NetStatus) -> String {
     let ping = n.ping_ms.map_or("-".to_string(), |ms| format!("{ms:.0}ms"));
+    let down = n.reconnecting.map_or(String::new(), |d| format!("the connection dropped: reconnecting ({}s) - ", d.as_secs()));
     format!(
-        "ping {ping} loss {:.0}% present delay {} rollback {} (max {}, {} in all) waits {}",
+        "{down}ping {ping} loss {:.0}% present delay {} rollback {} (max {}, {} in all) waits {}",
         n.loss * 100.0,
         n.present_delay,
         n.last_rollback,
@@ -606,6 +610,12 @@ impl Demo {
         let mut t = format!("nettai-demo - {} - x{}{}", p.player.position(), p.player.speed(), if p.player.paused() { " (paused)" } else { "" });
         if let Some(n) = p.player.net_status() {
             t.push_str(&format!(" - {}", net_line(&n)));
+            match (n.reconnecting, p.reconnecting) {
+                (Some(_), false) => eprintln!("netplay: the connection dropped; reconnecting (the battle waits)"),
+                (None, true) => eprintln!("netplay: reconnected; the battle goes on"),
+                _ => {}
+            }
+            p.reconnecting = n.reconnecting.is_some();
         }
         match (p.player.stopped().and_then(|s| s.lines().next()), p.player.result()) {
             (Some(why), _) => t.push_str(&format!(" - {why}")),
