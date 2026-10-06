@@ -1,20 +1,19 @@
 //! The content the editor makes matches of: one game's, loaded as the
-//! frontend loads it (`nettai_content::pack::load_game`: the game pack, the
-//! support packs it depends on, its asset pack), and the games there are to
+//! player loads it (nettai-frontend's `Found::find` and `Game::load`: the
+//! game pack, the support packs it depends on, its asset pack), so a match
+//! is played on the content it was edited on; and the games there are to
 //! choose from (`nettai_content::pack::games`).
 
-use crate::pictures::Pictures;
+use crate::editor::pictures::Pictures;
 use nettai_battle::Content;
+use nettai_frontend::game::{Found, Game};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
-/// A game's content, its chips' pictures (from its asset pack), and the
-/// content directory it came from (its strings tables).
+/// A game's content and where its packs are, and its chips' pictures (from
+/// its asset pack).
 pub struct Loaded {
-    pub content: Arc<Content>,
+    pub game: Game,
     pub pictures: Pictures,
-    pub dir: PathBuf,
-    pub game: String,
 }
 
 /// Show what loading found (warnings and errors).
@@ -26,35 +25,36 @@ fn show(report: &nettai_content::report::Report) {
 
 /// The packs found (`packs`: `--pack`, in place of the found one of its
 /// game).
-fn found(packs: &[PathBuf]) -> Result<Vec<nettai_content::pack::Found>, String> {
-    let mut report = nettai_content::report::Report::default();
-    let found = nettai_content::pack::find(&nettai_content::pack::packs_dir(), packs, &mut report);
-    show(&report);
-    found.ok_or_else(|| "can't read the packs given (--pack)".into())
+fn found(packs: &[PathBuf]) -> Result<Found, String> {
+    let found = Found::find(&nettai_content::pack::packs_dir(), packs).map_err(|e| {
+        show(&e.report);
+        format!("{e} (--pack)")
+    })?;
+    show(&found.report);
+    Ok(found)
 }
 
 /// The content of `game` (`content_dir`: `--content`; `packs`: `--pack`),
 /// with what loading found shown on the terminal.
 pub fn load_game(content_dir: Option<&Path>, packs: &[PathBuf], game: &str) -> Result<Loaded, String> {
     let found = found(packs)?;
-    let loaded = nettai_content::pack::load_game(content_dir, game, &found).map_err(|r| {
-        show(&r);
-        format!("can't load {game}'s battle content (--content, --pack)")
+    let game = Game::load(&found, content_dir, game).map_err(|e| {
+        show(&e.report);
+        format!("{e} (--content, --pack)")
     })?;
-    show(&loaded.report);
-    let content = Arc::new(loaded.content);
-    let pictures = Pictures::load(&content, std::slice::from_ref(&loaded.pack)).unwrap_or_else(|e| {
+    show(&game.report);
+    let pictures = Pictures::load(&game.content, &game.packs).unwrap_or_else(|e| {
         eprintln!("{e}: the chips have no pictures");
         Pictures::default()
     });
-    Ok(Loaded { content, pictures, dir: loaded.dir, game: loaded.game })
+    Ok(Loaded { game, pictures })
 }
 
 /// The games a match can be of: the content directory's games whose asset
 /// pack is found.
 pub fn games(content_dir: Option<&Path>, packs: &[PathBuf]) -> Vec<String> {
     let Ok(found) = found(packs) else { return Vec::new() };
-    match nettai_content::pack::games(content_dir, &found) {
+    match nettai_content::pack::games(content_dir, &found.packs) {
         Ok(games) => games.into_iter().filter(|g| g.pack.is_some()).map(|g| g.game).collect(),
         Err(r) => {
             show(&r);
