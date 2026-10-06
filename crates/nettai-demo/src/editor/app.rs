@@ -718,13 +718,15 @@ impl Editor {
                 if let Some(path) = rfd::FileDialog::new().add_filter("EXE5 save", &["sav", "raw"]).pick_file() {
                     let read = std::fs::read(&path).map_err(|e| e.to_string());
                     match read.and_then(|bytes| nettai_match::auto_battle::of_save(&content, self.m.game(), &bytes)) {
-                        Ok((data, notes)) => {
-                            self.m.sides[s].auto_battle = data;
-                            self.auto_battle[s] = Default::default();
-                            self.edited();
-                            let notes = if notes.is_empty() { String::new() } else { format!(" ({})", notes.join("; ")) };
-                            self.status = format!("took the auto battle data of {}{notes}", path.display());
-                        }
+                        Ok((data, notes)) => match data.write(&content, &mut self.m.sides[s]) {
+                            Ok(()) => {
+                                self.auto_battle[s] = Default::default();
+                                self.edited();
+                                let notes = if notes.is_empty() { String::new() } else { format!(" ({})", notes.join("; ")) };
+                                self.status = format!("took the auto battle data of {}{notes}", path.display());
+                            }
+                            Err(e) => self.status = format!("can't take the auto battle data of {}: {e}", path.display()),
+                        },
                         Err(e) => self.status = format!("can't take the auto battle data of {}: {e}", path.display()),
                     }
                 }

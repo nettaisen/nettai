@@ -141,7 +141,6 @@ fn player_setup(f: BattleFolder, seed: u32, side: u32) -> PlayerSetup {
         joypad_phase: 0,
         console: ConsoleSetup { rng: seed.rotate_left(16) ^ side.wrapping_mul(0x9E37_79B9), ..ConsoleSetup::default() },
         rules: None,
-        auto_battle: Default::default(),
     }
 }
 

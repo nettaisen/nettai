@@ -4,8 +4,7 @@
 //!
 //! - **The arena**: the content's game, its link battle stages
 //!   (`crate::link_battle_stages`), and backgrounds its pack has.
-//! - **A side**: its navi stated and the match's game's; its auto battle
-//!   data what the game can hold (`crate::auto_battle`); its facts its game's
+//! - **A side**: its navi stated and the match's game's; its facts its game's
 //!   rules' (`crate::facts::check`: an enum the rules require stated, each
 //!   definition they name, at any depth, the game's, a definition once in its
 //!   list, the engine's form list forms of the navi's own lists).
@@ -74,9 +73,6 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
         }
         Some(_) => {}
     }
-    // The auto battle data: what the game can hold of it, where the
-    // game has auto battle.
-    out.extend(s.auto_battle.check(content, game));
     // The facts its game's rules take.
     out.extend(crate::facts::check(content, arena, s));
     out
