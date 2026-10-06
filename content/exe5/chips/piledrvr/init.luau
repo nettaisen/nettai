@@ -30,6 +30,7 @@ local chip: Chip = {
         { order = 33, sequence = { recipe_gundels3, recipe_gundels3, recipe_django_ds } },
     },
     dimming = controller.hook,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { piledrvr = chip }

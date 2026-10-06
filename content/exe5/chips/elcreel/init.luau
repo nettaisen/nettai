@@ -19,6 +19,7 @@ local elcreel1: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = elcreel.action,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- ElcReel2 (EXE5 chip 0x0a4): the navi launches a reel along its row; what it hits, it hooks with every navi around
@@ -36,6 +37,7 @@ local elcreel2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = elcreel.action,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- ElcReel3 (EXE5 chip 0x0a5): the navi launches a reel along its row; what it hits, it hooks with every navi around
@@ -53,6 +55,7 @@ local elcreel3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = elcreel.action,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { elcreel1 = elcreel1, elcreel2 = elcreel2, elcreel3 = elcreel3 }

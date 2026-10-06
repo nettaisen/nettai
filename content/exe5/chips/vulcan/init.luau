@@ -19,6 +19,7 @@ local vulcan1: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = vulcan.action(3),
+    auto_battle = { class = "behind_target" },
 }
 
 -- Vulcan2 (EXE5 chip 0x010): action 0x19, EXE6's vulcan with EXE5's gun and bullets (chips/vulcan/vulcan): 5 bullets.
@@ -35,6 +36,7 @@ local vulcan2: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = vulcan.action(5),
+    auto_battle = { class = "behind_target" },
 }
 
 -- Vulcan3 (EXE5 chip 0x011): action 0x19, EXE6's vulcan with EXE5's gun and bullets (chips/vulcan/vulcan): 7 bullets.
@@ -51,6 +53,7 @@ local vulcan3: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = vulcan.action(7),
+    auto_battle = { class = "behind_target" },
 }
 
 -- SuprVulc (EXE5 chip 0x0dc): action 0x19, EXE6's vulcan with EXE5's gun and bullets (chips/vulcan/vulcan): 12 bullets of
@@ -68,6 +71,7 @@ local suprvulc: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
     action = vulcan.action(12, bullet.variants.super_vulcan),
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { vulcan1 = vulcan1, vulcan2 = vulcan2, vulcan3 = vulcan3, suprvulc = suprvulc }

@@ -18,6 +18,7 @@ local chip: Chip = {
     extra_flags = { 4, 16 },
     slot_in_limit = 1,
     dimming = controller.hook,
+    auto_battle = { class = "at_once" },
 }
 
 return { omegarkt = chip }

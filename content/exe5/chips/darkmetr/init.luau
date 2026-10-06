@@ -20,6 +20,7 @@ local chip: Chip = {
     flags = { "has_damage", "dark" },
     slot_in_limit = 1,
     instant = meteors.instant(true, 0),
+    auto_battle = { class = "at_once" },
 }
 
 return { darkmetr = chip }

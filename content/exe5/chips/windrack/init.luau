@@ -18,6 +18,7 @@ local chip: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = windrack.action,
+    auto_battle = { class = "into_reach", range = "column_ahead" },
 }
 
 return { windrack = chip }

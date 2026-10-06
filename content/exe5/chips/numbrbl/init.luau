@@ -18,6 +18,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "damage_shown_variable", "library", "variable_damage" },
     slot_in_limit = 1,
     dimming = controller.hook(2),
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { numbrbl = chip }

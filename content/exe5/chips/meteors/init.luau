@@ -22,6 +22,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "library" },
     slot_in_limit = 1,
     dimming = METEORS,
+    auto_battle = { class = "at_once" },
 }
 
 return { meteors = chip }

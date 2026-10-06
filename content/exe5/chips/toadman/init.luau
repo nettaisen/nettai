@@ -22,6 +22,7 @@ local toadman: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- ToadManSP (EXE5 chip 0x102): ToadMan cuts in and plays a chain of paralyzing notes toward the nearest enemy ahead
@@ -43,6 +44,7 @@ local toadman_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_sp,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- ToadManDS (EXE5 chip 0x103): ToadMan, dark, cuts in and plays a chain of paralyzing notes toward the nearest enemy
@@ -62,6 +64,7 @@ local toadman_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { toadman = toadman, ["toadman-sp"] = toadman_sp, ["toadman-ds"] = toadman_ds }

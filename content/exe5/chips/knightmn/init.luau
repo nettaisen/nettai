@@ -22,6 +22,7 @@ local knightmn: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "into_reach", range = "around" },
 }
 
 -- KnigtMnSP (EXE5 chip 0x0ff): KnightMan cuts in and swings his wrecking ball around himself, confusing what it hits
@@ -43,6 +44,7 @@ local knigtmn_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_sp,
+    auto_battle = { class = "into_reach", range = "around" },
 }
 
 -- KnigtMnDS (EXE5 chip 0x100): KnightMan, dark, cuts in and swings his wrecking ball around himself, confusing what it
@@ -62,6 +64,7 @@ local knigtmn_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "into_reach", range = "around" },
 }
 
 return { knightmn = knightmn, ["knigtmn-sp"] = knigtmn_sp, ["knigtmn-ds"] = knigtmn_ds }

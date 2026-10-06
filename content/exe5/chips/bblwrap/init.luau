@@ -19,6 +19,7 @@ local chip: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 1,
     dimming = barriers.controller.hook(barriers.bubble),
+    auto_battle = { class = "when_unbarriered" },
 }
 
 return { bblwrap = chip }

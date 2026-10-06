@@ -34,6 +34,7 @@ local wind: Chip = {
             look = { sprite = fan.SPRITE, anim = 0, palette = 0, shadow = false },
         },
     }),
+    auto_battle = { class = "landing_ahead" },
 }
 
 -- Fan (EXE5 chip 0x054): a dimming that places a fan in front of the user (./controller, the dimming handler's
@@ -65,6 +66,7 @@ local fan_chip: Chip = {
             look = { sprite = fan.SPRITE, anim = 0, palette = 1, shadow = false },
         },
     }),
+    auto_battle = { class = "landing_ahead" },
 }
 
 return { wind = wind, fan = fan_chip }

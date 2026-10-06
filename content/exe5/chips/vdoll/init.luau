@@ -21,6 +21,7 @@ local chip: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 3,
     action = bombs.throw { held = bombs.held, thrower = doll.thrower() },
+    auto_battle = { class = "three_ahead_open" },
 }
 
 return { vdoll = chip }

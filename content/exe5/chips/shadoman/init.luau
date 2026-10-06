@@ -21,6 +21,7 @@ local shadoman: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "at_once" },
 }
 
 -- ShadoMnSP (EXE5 chip 0x0f9): ShadowMan cuts in and sends three of himself to throw shurikens at the enemies
@@ -42,6 +43,7 @@ local shadomn_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_sp,
+    auto_battle = { class = "at_once" },
 }
 
 -- ShadoMnDS (EXE5 chip 0x0fa): ShadowMan, dark, cuts in and sends three of himself to throw shurikens at the enemies
@@ -61,6 +63,7 @@ local shadomn_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "at_once" },
 }
 
 return { shadoman = shadoman, ["shadomn-sp"] = shadomn_sp, ["shadomn-ds"] = shadomn_ds }

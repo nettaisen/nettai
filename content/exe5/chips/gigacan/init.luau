@@ -37,6 +37,7 @@ local gigacan1: Chip = {
         shot = variants.gigacan,
         afterimages = true,
     },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- GigaCan2 (EXE5 chip 0x141): the Program Advance of three HiCannons of one code (or Attck+10 and two of them): EXE6's
@@ -67,6 +68,7 @@ local gigacan2: Chip = {
         shot = variants.gigacan,
         afterimages = true,
     },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- GigaCan3 (EXE5 chip 0x142): the Program Advance of three M-Cannons of one code (or Attck+10 and two of them): EXE6's
@@ -97,6 +99,7 @@ local gigacan3: Chip = {
         shot = variants.gigacan,
         afterimages = true,
     },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { gigacan1 = gigacan1, gigacan2 = gigacan2, gigacan3 = gigacan3 }

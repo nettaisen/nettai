@@ -20,6 +20,7 @@ local colorpt_chip: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 1,
     dimming = colorpt.hook { palette = 0, bonus = 10 },
+    auto_battle = { class = "when_area_whole" },
 }
 
 -- DblPoint (EXE5 chip 0x0cf): the user's front column goes to the other side, panel by panel, for Atk+20 a panel on
@@ -38,6 +39,7 @@ local dblpoint: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 1,
     dimming = colorpt.hook { palette = 1, bonus = 20 },
+    auto_battle = { class = "when_area_whole" },
 }
 
 return { colorpt = colorpt_chip, dblpoint = dblpoint }

@@ -20,6 +20,7 @@ local recov10: Chip = {
     flags = { "standard_library", "library" },
     slot_in_limit = 1,
     action = heal.action { hp = 10, mood = 30 },
+    auto_battle = { class = "at_once" },
 }
 
 -- Recov30 (EXE5 chip 0x06c): the navi heals 30 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
@@ -38,6 +39,7 @@ local recov30: Chip = {
     flags = { "standard_library", "library" },
     slot_in_limit = 1,
     action = heal.action { hp = 30, mood = 30 },
+    auto_battle = { class = "at_once" },
 }
 
 -- Recov50 (EXE5 chip 0x06d): the navi heals 50 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
@@ -56,6 +58,7 @@ local recov50: Chip = {
     flags = { "standard_library", "library" },
     slot_in_limit = 1,
     action = heal.action { hp = 50, mood = 40 },
+    auto_battle = { class = "at_once" },
 }
 
 -- Recov80 (EXE5 chip 0x06e): the navi heals 80 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
@@ -74,6 +77,7 @@ local recov80: Chip = {
     flags = { "standard_library", "library" },
     slot_in_limit = 1,
     action = heal.action { hp = 80, mood = 40 },
+    auto_battle = { class = "at_once" },
 }
 
 -- Recov120 (EXE5 chip 0x06f): the navi heals 120 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
@@ -92,6 +96,7 @@ local recov120: Chip = {
     flags = { "standard_library", "library" },
     slot_in_limit = 1,
     action = heal.action { hp = 120, mood = 50 },
+    auto_battle = { class = "at_once" },
 }
 
 -- Recov150 (EXE5 chip 0x070): the navi heals 150 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
@@ -110,6 +115,7 @@ local recov150: Chip = {
     flags = { "standard_library", "library" },
     slot_in_limit = 1,
     action = heal.action { hp = 150, mood = 50 },
+    auto_battle = { class = "at_once" },
 }
 
 -- Recov200 (EXE5 chip 0x071): the navi heals 200 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
@@ -128,6 +134,7 @@ local recov200: Chip = {
     flags = { "standard_library", "library" },
     slot_in_limit = 1,
     action = heal.action { hp = 200, mood = 50 },
+    auto_battle = { class = "at_once" },
 }
 
 -- Recov300 (EXE5 chip 0x072): the navi heals 300 HP in the tick after it uses it: EXE6's heal (@exelib/recov/heal,
@@ -146,6 +153,7 @@ local recov300: Chip = {
     flags = { "standard_library", "library" },
     slot_in_limit = 1,
     action = heal.action { hp = 300, mood = 50 },
+    auto_battle = { class = "at_once" },
 }
 
 return {
