@@ -1,0 +1,577 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: nettai VERSION\n"
+"POT-Creation-Date: 2026-10-06 20:56+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: ui/app.slint:18
+msgctxt "match"
+msgid "Random"
+msgstr ""
+
+#: ui/app.slint:22
+msgid "Stand-in"
+msgstr ""
+
+#: ui/app.slint:28
+msgctxt "language"
+msgid "English"
+msgstr ""
+
+#: ui/battle.slint:58
+msgctxt "player"
+msgid "P2"
+msgstr ""
+
+#: ui/battle.slint:58
+msgctxt "player"
+msgid "P1"
+msgstr ""
+
+#: ui/battle.slint:318 ui/lobby.slint:369 ui/replays.slint:108
+#: ui/battle.slint:318 ui/lobby.slint:369 ui/replays.slint:108 ui/widgets.slint:629
+msgctxt "versus"
+msgid "VS"
+msgstr ""
+
+#: ui/battle.slint:340
+msgid "ping —"
+msgstr ""
+
+#: ui/battle.slint:340 ui/lobby.slint:401
+msgid "ping {0}"
+msgstr ""
+
+#: ui/battle.slint:340
+msgid "delay {0}"
+msgstr ""
+
+#: ui/battle.slint:340
+msgid "rollback {0} (max {1})"
+msgstr ""
+
+#: ui/battle.slint:354
+msgid "Reconnecting… {0}"
+msgstr ""
+
+#: ui/battle.slint:354
+msgctxt "seconds"
+msgid "{n} s"
+msgid_plural "{n} s"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ui/battle.slint:369
+msgid "REPLAY"
+msgstr ""
+
+#: ui/battle.slint:375
+msgid "Round {0}"
+msgstr ""
+
+#: ui/battle.slint:412 ui/replays.slint:345
+msgctxt "side"
+msgid "Left console"
+msgstr ""
+
+#: ui/battle.slint:412 ui/replays.slint:345
+msgctxt "side"
+msgid "Right console"
+msgstr ""
+
+#: ui/battle.slint:538
+msgid "STOPPED"
+msgstr ""
+
+#: ui/battle.slint:538
+msgctxt "result"
+msgid "YOU WIN"
+msgstr ""
+
+#: ui/battle.slint:538
+msgctxt "result"
+msgid "YOU LOSE"
+msgstr ""
+
+#: ui/battle.slint:538
+msgctxt "result"
+msgid "DRAW"
+msgstr ""
+
+#: ui/battle.slint:560
+msgid "Recorded to {0}"
+msgstr ""
+
+#: ui/battle.slint:566
+msgid "WATCH AGAIN"
+msgstr ""
+
+#: ui/battle.slint:566
+msgid "REMATCH"
+msgstr ""
+
+#: ui/battle.slint:566
+msgid "MENU"
+msgstr ""
+
+#: ui/battle.slint:599
+msgid "PAUSED"
+msgstr ""
+
+#: ui/battle.slint:612
+msgid "RESUME"
+msgstr ""
+
+#: ui/battle.slint:612
+msgid "LANGUAGE: {0}"
+msgstr ""
+
+#: ui/battle.slint:612
+msgid "QUIT TO MENU"
+msgstr ""
+
+#: ui/battle.slint:612
+msgid "START OVER"
+msgstr ""
+
+#: ui/battle.slint:637
+msgid "The battle goes on while you're here: netplay can't pause."
+msgstr ""
+
+#: ui/battle.slint:649 ui/lobby.slint:416 ui/play.slint:498
+#: ui/battle.slint:649 ui/lobby.slint:416 ui/play.slint:498 ui/settings.slint:184 ui/title.slint:254
+msgid "Choose"
+msgstr ""
+
+#: ui/battle.slint:650 ui/lobby.slint:418 ui/play.slint:500 ui/title.slint:255
+msgid "Confirm"
+msgstr ""
+
+#: ui/battle.slint:651
+msgid "Menu"
+msgstr ""
+
+#: ui/battle.slint:651
+msgid "Resume"
+msgstr ""
+
+#: ui/format.slint:8
+msgctxt "clock"
+msgid "{0}:{1}:{2}"
+msgstr ""
+
+#: ui/format.slint:10
+msgctxt "clock"
+msgid "{0}:{1}"
+msgstr ""
+
+#: ui/format.slint:15
+msgctxt "date"
+msgid "{1}/{2}/{0} {3}:{4}"
+msgstr ""
+
+#: ui/format.slint:20
+msgctxt "milliseconds"
+msgid "{0} ms"
+msgstr ""
+
+#: ui/format.slint:25
+msgid "{n} frame"
+msgid_plural "{n} frames"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ui/format.slint:29
+msgid "{n} round"
+msgid_plural "{n} rounds"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ui/format.slint:34
+msgctxt "speed"
+msgid "×{0}"
+msgstr ""
+
+#: ui/format.slint:34
+msgctxt "speed"
+msgid "×1/{0}"
+msgstr ""
+
+#: ui/lobby.slint:50 ui/lobby.slint:320 ui/play.slint:240
+msgid "YOU"
+msgstr ""
+
+#: ui/lobby.slint:50 ui/lobby.slint:320
+msgid "OPPONENT"
+msgstr ""
+
+#: ui/lobby.slint:55 ui/lobby.slint:325
+msgid "Player"
+msgstr ""
+
+#. (Three dots, one more each beat.)
+#: ui/lobby.slint:69 ui/lobby.slint:325
+msgid "Waiting for a player"
+msgstr ""
+
+#: ui/lobby.slint:90 ui/lobby.slint:325 ui/lobby.slint:341 ui/play.slint:83
+msgid "READY"
+msgstr ""
+
+#: ui/lobby.slint:90 ui/lobby.slint:341
+msgid "NOT READY"
+msgstr ""
+
+#: ui/lobby.slint:185
+msgctxt "heading"
+msgid "NETPLAY"
+msgstr ""
+
+#: ui/lobby.slint:186
+msgid "ROLLBACK · ROOM CODES OR A DIRECT LINK"
+msgstr ""
+
+#: ui/lobby.slint:206
+msgid ""
+"Netplay connects through nettai-rtc, which isn't in this build yet. The "
+"lobby is shown as it will work."
+msgstr ""
+
+#: ui/lobby.slint:226
+msgid "MAKE A ROOM"
+msgstr ""
+
+#: ui/lobby.slint:226
+msgid "JOIN A ROOM"
+msgstr ""
+
+#: ui/lobby.slint:254
+msgid "YOUR ROOM'S CODE · CONFIRM TO COPY"
+msgstr ""
+
+#: ui/lobby.slint:254
+msgid "THE ROOM'S CODE"
+msgstr ""
+
+#: ui/lobby.slint:272 ui/settings.slint:111
+msgid "YOUR NAME"
+msgstr ""
+
+#: ui/lobby.slint:273 ui/settings.slint:112
+msgid "Type your name"
+msgstr ""
+
+#: ui/lobby.slint:289 ui/play.slint:117
+msgid "GAME"
+msgstr ""
+
+#: ui/lobby.slint:291
+msgid "Both players play the same game"
+msgstr ""
+
+#: ui/lobby.slint:395
+msgid "No link"
+msgstr ""
+
+#: ui/lobby.slint:395
+msgid "In the room, waiting"
+msgstr ""
+
+#: ui/lobby.slint:395
+msgid "Connecting…"
+msgstr ""
+
+#: ui/lobby.slint:395
+msgid "Connected"
+msgstr ""
+
+#: ui/lobby.slint:395
+msgid "Reconnecting…"
+msgstr ""
+
+#: ui/lobby.slint:417 ui/play.slint:499 ui/settings.slint:185
+msgid "Change"
+msgstr ""
+
+#: ui/lobby.slint:419 ui/play.slint:501 ui/replays.slint:388
+#: ui/lobby.slint:419 ui/play.slint:501 ui/replays.slint:388 ui/title.slint:256
+msgid "Back"
+msgstr ""
+
+#: ui/play.slint:83
+msgid "CHOSEN"
+msgstr ""
+
+#: ui/play.slint:83
+msgid "LOADING…"
+msgstr ""
+
+#: ui/play.slint:83
+msgid "NO ASSET PACK"
+msgstr ""
+
+#: ui/play.slint:83
+msgid "CAN'T LOAD"
+msgstr ""
+
+#: ui/play.slint:146
+msgid "No games found: the content folder or the packs folder is missing."
+msgstr ""
+
+#: ui/play.slint:156
+msgid "MATCH"
+msgstr ""
+
+#: ui/play.slint:158
+msgid "Seed {0} · confirm for another"
+msgstr ""
+
+#: ui/play.slint:158
+msgid "A match file from the matches folder"
+msgstr ""
+
+#: ui/play.slint:189
+msgid "FIGHT"
+msgstr ""
+
+#: ui/play.slint:226
+msgid "Choose a game"
+msgstr ""
+
+#: ui/play.slint:242
+msgid "STAND-IN"
+msgstr ""
+
+#: ui/play.slint:253
+msgid "THE ARENAS"
+msgstr ""
+
+#: ui/play.slint:284
+msgid "ROUND {0}"
+msgstr ""
+
+#: ui/play.slint:396
+msgctxt "heading"
+msgid "PLAY"
+msgstr ""
+
+#: ui/play.slint:397
+msgid "OFFLINE · AGAINST THE STAND-IN"
+msgstr ""
+
+#: ui/replays.slint:232
+msgctxt "heading"
+msgid "REPLAYS"
+msgstr ""
+
+#: ui/replays.slint:233
+msgid "{n} SET RECORDED"
+msgid_plural "{n} SETS RECORDED"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ui/replays.slint:271
+msgid "No replays yet"
+msgstr ""
+
+#: ui/replays.slint:279
+msgid "Every set you play is recorded to {0}."
+msgstr ""
+
+#: ui/replays.slint:316
+msgid "Not played to its end"
+msgstr ""
+
+#: ui/replays.slint:316
+msgid "A draw"
+msgstr ""
+
+#: ui/replays.slint:316
+msgid "{0} won"
+msgstr ""
+
+#: ui/replays.slint:330
+msgid "Checking that it plays back…"
+msgstr ""
+
+#: ui/replays.slint:330
+msgid "It plays back as it was played."
+msgstr ""
+
+#: ui/replays.slint:370
+msgid "WATCH"
+msgstr ""
+
+#: ui/replays.slint:386
+msgid "Console"
+msgstr ""
+
+#: ui/replays.slint:387
+msgid "Watch"
+msgstr ""
+
+#: ui/settings.slint:75
+msgctxt "heading"
+msgid "SETTINGS"
+msgstr ""
+
+#: ui/settings.slint:88
+msgid "LANGUAGE"
+msgstr ""
+
+#: ui/settings.slint:88
+msgid "The menus, and the battle's names and words"
+msgstr ""
+
+#: ui/settings.slint:89
+msgid "VOLUME"
+msgstr ""
+
+#: ui/settings.slint:89 ui/settings.slint:90
+msgid "Off"
+msgstr ""
+
+#: ui/settings.slint:90
+msgid "MENU SOUNDS"
+msgstr ""
+
+#: ui/settings.slint:90
+msgid "On"
+msgstr ""
+
+#: ui/settings.slint:90
+msgid "The game's own cursor sounds"
+msgstr ""
+
+#: ui/settings.slint:91
+msgid "BATTLE TEXT"
+msgstr ""
+
+#: ui/settings.slint:91
+msgid "Crisp"
+msgstr ""
+
+#: ui/settings.slint:91
+msgid "Original"
+msgstr ""
+
+#: ui/settings.slint:91
+msgid "Names and messages drawn at the window's resolution"
+msgstr ""
+
+#: ui/settings.slint:91
+msgid "The game's own lettering"
+msgstr ""
+
+#: ui/settings.slint:92
+msgid "PICTURE"
+msgstr ""
+
+#: ui/settings.slint:92
+msgid "Display's pixels"
+msgstr ""
+
+#: ui/settings.slint:92
+msgid "Window's pixels"
+msgstr ""
+
+#: ui/settings.slint:92
+msgid "Text sharper at the display's own density, at a cost"
+msgstr ""
+
+#: ui/settings.slint:148
+msgid "CONTROLS"
+msgstr ""
+
+#: ui/settings.slint:152
+msgid "Move"
+msgstr ""
+
+#: ui/settings.slint:153
+msgid "A: chips, pick"
+msgstr ""
+
+#: ui/settings.slint:154
+msgid "B: buster (hold to charge), take back"
+msgstr ""
+
+#: ui/settings.slint:155
+msgid "L and R"
+msgstr ""
+
+#: ui/settings.slint:156
+msgid "START: to OK"
+msgstr ""
+
+#: ui/settings.slint:157
+msgid "SELECT"
+msgstr ""
+
+#: ui/settings.slint:158
+msgid "Pause"
+msgstr ""
+
+#: ui/settings.slint:159
+msgid "Next language"
+msgstr ""
+
+#: ui/title.slint:50
+msgid "BATTLE NETWORK · ROLLBACK NETPLAY"
+msgstr ""
+
+#: ui/title.slint:80
+msgctxt "menu"
+msgid "PLAY"
+msgstr ""
+
+#: ui/title.slint:80
+msgid "Fight the stand-in, offline"
+msgstr ""
+
+#: ui/title.slint:81
+msgctxt "menu"
+msgid "NETPLAY"
+msgstr ""
+
+#: ui/title.slint:81
+msgid "Play another player with a room code"
+msgstr ""
+
+#: ui/title.slint:82
+msgctxt "menu"
+msgid "REPLAYS"
+msgstr ""
+
+#: ui/title.slint:82
+msgid "Watch the sets you've recorded"
+msgstr ""
+
+#: ui/title.slint:83
+msgctxt "menu"
+msgid "SETTINGS"
+msgstr ""
+
+#: ui/title.slint:83
+msgid "Language, sound and controls"
+msgstr ""
+
+#: ui/title.slint:84
+msgctxt "menu"
+msgid "QUIT"
+msgstr ""
+
+#: ui/title.slint:123
+msgid "PRESS START"
+msgstr ""
+
+#: ui/title.slint:240
+msgid "DEMO · {0}"
+msgstr ""

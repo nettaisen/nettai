@@ -238,8 +238,9 @@ pub fn result_text(r: BattleResult) -> &'static str {
 
 /// The right navi's buttons: on its custom screen, A on the chip under the
 /// cursor (the first one) if it can be picked, then START and A, a press
-/// every other tick.
-pub(crate) fn bot_buttons(b: &Battle, side: usize, tick: u32) -> u16 {
+/// every other tick. (A host's demo battle presses the left one's custom
+/// screen with them too.)
+pub fn bot_buttons(b: &Battle, side: usize, tick: u32) -> u16 {
     let s = &b.custom.sides[side];
     let Some(screen) = s.screen.as_ref().filter(|_| b.round.mode == mode::CUSTOM && s.in_custom) else { return 0 };
     if screen.phase != Phase::Choosing || tick % 2 == 0 {

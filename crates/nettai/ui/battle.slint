@@ -1,0 +1,654 @@
+// The battle: the picture, whole pixels, letterboxed in the arena; the
+// players' banners beside it when there's room; the pause and the result
+// over it; a replay's transport, netplay's connection; the touch pad below
+// it on a phone held upright.
+
+import { Theme, NavAction, UiSound } from "theme.slint";
+import { Slant, Label, Pip, Hints, Hint, Input } from "widgets.slint";
+import { Format } from "format.slint";
+
+export enum BattleKind {
+    // Against the stand-in, offline.
+    live,
+    replay,
+    netplay,
+}
+
+export struct Side {
+    name: string,
+    navi: string,
+    detail: string,
+}
+
+export struct Playback {
+    // The round and its tick, the set's ticks played and in all (a replay's).
+    round: int,
+    tick: int,
+    played: int,
+    total: int,
+    speed: float,
+    // The side shown: 0 left, 1 right.
+    side: int,
+}
+
+export struct Connection {
+    // -1 while unknown.
+    ping: int,
+    loss-percent: int,
+    delay: int,
+    rollback: int,
+    max-rollback: int,
+    // Seconds the link has been down, -1 while it is up.
+    down: int,
+}
+
+// A player's banner beside the picture.
+component Banner {
+    in property <Side> side;
+    in property <bool> mirrored;
+    in property <int> wins;
+    in property <int> rounds;
+    in property <[int]> pips;
+    property <color> accent: root.mirrored ? Theme.magenta : Theme.cyan;
+
+    VerticalLayout {
+        alignment: start;
+        spacing: 6px;
+        Label {
+            text: root.mirrored ? @tr("player" => "P2") : @tr("player" => "P1");
+            color: root.accent;
+            horizontal-alignment: root.mirrored ? left : right;
+        }
+
+        Text {
+            text: root.side.navi;
+            color: white;
+            font-size: Theme.title-size;
+            font-weight: Theme.black;
+            horizontal-alignment: root.mirrored ? left : right;
+            wrap: word-wrap;
+        }
+
+        Text {
+            text: root.side.name;
+            color: root.accent;
+            font-size: Theme.body;
+            font-weight: Theme.bold;
+            horizontal-alignment: root.mirrored ? left : right;
+            overflow: elide;
+        }
+
+        Text {
+            text: root.side.detail;
+            color: Theme.text-dim;
+            font-size: Theme.label + 1px;
+            horizontal-alignment: root.mirrored ? left : right;
+            wrap: word-wrap;
+        }
+
+        HorizontalLayout {
+            alignment: root.mirrored ? start : end;
+            spacing: 4px;
+            padding-top: 6px;
+            for p in root.pips: Pip {
+                state: p;
+                color: root.accent;
+            }
+        }
+    }
+
+    Rectangle {
+        x: root.mirrored ? -14px : parent.width + 10px;
+        width: 4px;
+        height: 64px;
+        background: root.accent;
+    }
+}
+
+// The four corners' brackets around the picture.
+component Brackets {
+    in property <color> color: Theme.cyan;
+    property <length> arm: 22px;
+    for c in [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }]: Rectangle {
+        x: c.x * (root.width - root.arm);
+        y: c.y * (root.height - root.arm);
+        width: root.arm;
+        height: root.arm;
+        Rectangle {
+            y: c.y * (root.arm - 2px);
+            height: 2px;
+            background: root.color;
+        }
+
+        Rectangle {
+            x: c.x * (root.arm - 2px);
+            width: 2px;
+            background: root.color;
+        }
+    }
+}
+
+// A touch button of the on-screen pad.
+component PadButton {
+    in property <string> text;
+    in property <int> bit;
+    in property <bool> round: true;
+    callback held(int, bool);
+    property <bool> down: touch.pressed;
+    Rectangle {
+        border-radius: root.round ? self.height / 2 : 8px;
+        background: root.down ? Theme.cyan.with-alpha(0.5) : Theme.raised.with-alpha(0.8);
+        border-width: 1.5px;
+        border-color: root.down ? Theme.cyan : Theme.line-bright;
+        Text {
+            text: root.text;
+            color: Theme.text;
+            font-size: min(15px, root.height * 0.42, root.width / 6);
+            font-weight: Theme.black;
+        }
+    }
+
+    touch := TouchArea {
+        pointer-event(e) => {
+            if e.kind == PointerEventKind.down {
+                root.held(root.bit, true);
+            } else if e.kind == PointerEventKind.up || e.kind == PointerEventKind.cancel {
+                root.held(root.bit, false);
+            }
+        }
+    }
+}
+
+export component BattleScreen {
+    // The picture, as the player presents it, and how many physical pixels
+    // a frame pixel takes.
+    in property <image> picture;
+    in property <int> scale;
+    // Where the picture may go: the host presents for this.
+    out property <length> stage-width: stage.width;
+    out property <length> stage-height: stage.height;
+
+    in property <BattleKind> kind;
+    in property <Side> left-side;
+    in property <Side> right-side;
+    in property <[int]> left-pips;
+    in property <[int]> right-pips;
+    in property <Playback> playback;
+    in property <Connection> connection;
+    in property <bool> paused;
+    // 0 none yet, 1 won, 2 lost, 3 drawn: the set's result for player one.
+    in property <int> result;
+    // Why the battle stopped, if it did for anything but its end.
+    in property <string> stopped;
+    // The replay this set is recorded to, if any.
+    in property <string> recorded;
+    in property <string> language;
+    in-out property <int> cursor;
+    property <bool> portrait: root.height > root.width * 1.15;
+    property <bool> wide: (root.width - root.picture-width) / 2 > 220px && !root.portrait;
+    property <length> picture-width: 240phx * root.scale;
+    property <length> picture-height: 160phx * root.scale;
+    property <bool> over: root.result != 0 || root.stopped != "";
+    property <int> menu-count: root.over ? 2 : (root.kind == BattleKind.netplay ? 3 : 4);
+
+    callback resume();
+    callback restart();
+    callback quit();
+    callback rematch();
+    callback next-language();
+    callback sound(UiSound);
+    // A touch button of the pad held or let go: its GBA button's bit.
+    callback touch(int, bool);
+
+    public function nav(a: NavAction) {
+        if !root.paused && !root.over {
+            return;
+        }
+        if a == NavAction.up {
+            root.cursor = mod(root.cursor + root.menu-count - 1, root.menu-count);
+            root.sound(UiSound.cursor);
+        } else if a == NavAction.down {
+            root.cursor = mod(root.cursor + 1, root.menu-count);
+            root.sound(UiSound.cursor);
+        } else if a == NavAction.confirm {
+            root.sound(UiSound.pick);
+            root.activate(root.cursor);
+        } else if a == NavAction.back && root.paused {
+            root.sound(UiSound.back);
+            root.resume();
+        } else if (a == NavAction.left || a == NavAction.right) && root.paused && root.cursor == 2 && root.kind != BattleKind.netplay {
+            root.sound(UiSound.cursor);
+            root.next-language();
+        }
+    }
+
+    function activate(i: int) {
+        if root.over {
+            if i == 0 {
+                root.rematch();
+            } else {
+                root.quit();
+            }
+            return;
+        }
+        if root.kind == BattleKind.netplay {
+            // (No restart in real time with another player.)
+            if i == 0 {
+                root.resume();
+            } else if i == 1 {
+                root.next-language();
+            } else {
+                root.quit();
+            }
+            return;
+        }
+        if i == 0 {
+            root.resume();
+        } else if i == 1 {
+            root.restart();
+        } else if i == 2 {
+            root.next-language();
+        } else {
+            root.quit();
+        }
+    }
+
+    stage := Rectangle {
+        x: Theme.gap;
+        y: Theme.gap + 28px;
+        width: parent.width - 2 * Theme.gap;
+        height: root.portrait ? min(parent.height * 0.5, self.width * 2 / 3 + 8px) : parent.height - 2 * Theme.gap - 28px - (root.kind == BattleKind.replay ? 52px : 0px);
+    }
+
+    // The picture, its frame and brackets.
+    Rectangle {
+        x: stage.x + (stage.width - root.picture-width) / 2 - 6px;
+        y: stage.y + (stage.height - root.picture-height) / 2 - 6px;
+        width: root.picture-width + 12px;
+        height: root.picture-height + 12px;
+        background: black;
+        drop-shadow-blur: 40px;
+        drop-shadow-color: Theme.cyan.with-alpha(0.18);
+        Brackets {
+            color: root.kind == BattleKind.netplay ? Theme.magenta : Theme.cyan;
+        }
+    }
+
+    Image {
+        x: stage.x + (stage.width - self.width) / 2;
+        y: stage.y + (stage.height - self.height) / 2;
+        width: root.picture-width;
+        height: root.picture-height;
+        source: root.picture;
+        image-fit: fill;
+        image-rendering: pixelated;
+    }
+
+    // The banners, beside the picture when there's room.
+    if root.wide: Banner {
+        x: Theme.gutter;
+        y: stage.y + (stage.height - root.picture-height) / 2 + 12px;
+        width: (root.width - root.picture-width) / 2 - Theme.gutter - 34px;
+        side: root.left-side;
+        pips: root.left-pips;
+    }
+    if root.wide: Banner {
+        x: (root.width + root.picture-width) / 2 + 34px;
+        y: stage.y + (stage.height - root.picture-height) / 2 + 12px;
+        width: (root.width - root.picture-width) / 2 - Theme.gutter - 34px;
+        side: root.right-side;
+        mirrored: true;
+        pips: root.right-pips;
+    }
+    // Or a line over it.
+    if !root.wide: HorizontalLayout {
+        x: Theme.gap;
+        y: root.portrait ? Theme.gap : 4px;
+        width: root.width - 2 * Theme.gap;
+        height: 24px;
+        Text {
+            text: root.left-side.navi;
+            color: Theme.cyan;
+            font-weight: Theme.black;
+            font-size: 14px;
+            overflow: elide;
+        }
+
+        Text {
+            text: @tr("versus" => "VS");
+            color: Theme.text-dim;
+            font-weight: Theme.black;
+            font-size: 12px;
+            horizontal-alignment: center;
+            width: 40px;
+        }
+
+        Text {
+            text: root.right-side.navi;
+            color: Theme.magenta;
+            font-weight: Theme.black;
+            font-size: 14px;
+            horizontal-alignment: right;
+            overflow: elide;
+        }
+    }
+
+    // Netplay's connection, top right; its link down, across the top.
+    if root.kind == BattleKind.netplay: Text {
+        x: root.width - self.width - Theme.gap;
+        y: 6px;
+        text: (root.connection.ping < 0 ? @tr("ping —") : @tr("ping {0}", Format.ms(root.connection.ping))) + "   " + @tr("delay {0}", root.connection.delay) + "   " + @tr("rollback {0} (max {1})", root.connection.rollback, root.connection.max-rollback);
+        color: Theme.text-dim;
+        font-size: 12px;
+    }
+    if root.kind == BattleKind.netplay && root.connection.down >= 0: Rectangle {
+        y: stage.y + 10px;
+        height: 40px;
+        Slant {
+            width: down-text.preferred-width + 60px;
+            x: (parent.width - self.width) / 2;
+            color: Theme.warn;
+        }
+
+        down-text := Text {
+            text: @tr("Reconnecting… {0}", @tr("seconds" => "{n} s" | "{n} s" % root.connection.down));
+            color: Theme.ink;
+            font-weight: Theme.black;
+            font-size: 16px;
+        }
+    }
+
+    // A replay's transport.
+    if root.kind == BattleKind.replay: HorizontalLayout {
+        x: Theme.gutter;
+        y: root.height - 48px;
+        width: root.width - 2 * Theme.gutter;
+        height: 36px;
+        spacing: 18px;
+        Label {
+            text: @tr("REPLAY");
+            color: Theme.gold;
+            vertical-alignment: center;
+        }
+
+        Text {
+            text: @tr("Round {0}", root.playback.round);
+            color: Theme.text;
+            font-weight: Theme.bold;
+            vertical-alignment: center;
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+            Rectangle {
+                height: 4px;
+                border-radius: 2px;
+                background: Theme.line;
+            }
+
+            Rectangle {
+                x: 0;
+                width: parent.width * root.playback.played / max(1, root.playback.total);
+                height: 4px;
+                border-radius: 2px;
+                background: Theme.gold;
+            }
+        }
+
+        Text {
+            text: Format.clock(root.playback.played / 59.7275) + " / " + Format.clock(root.playback.total / 59.7275);
+            color: Theme.text-dim;
+            vertical-alignment: center;
+        }
+
+        Text {
+            text: Format.speed(root.playback.speed);
+            color: root.playback.speed == 1 ? Theme.text-dim : Theme.gold;
+            font-weight: Theme.bold;
+            vertical-alignment: center;
+        }
+
+        Text {
+            text: root.playback.side == 0 ? @tr("side" => "Left console") : @tr("side" => "Right console");
+            color: Theme.text-dim;
+            vertical-alignment: center;
+        }
+    }
+
+    // The touch pad, under the picture when the phone is held upright.
+    property <length> pad-room: root.height - stage.y - stage.height - 32px;
+    property <length> unit: min(root.width / 7, root.pad-room / 5);
+    if root.portrait: Rectangle {
+        y: stage.y + stage.height + 16px + max(0px, (root.pad-room - root.unit * 4.6) / 2);
+        height: root.unit * 4.6;
+        // L and R.
+        PadButton {
+            x: Theme.gutter;
+            y: 0;
+            width: root.unit * 1.8;
+            height: root.unit * 0.7;
+            round: false;
+            text: "L";
+            bit: 512;
+            held(b, d) => {
+                root.touch(b, d);
+            }
+        }
+
+        PadButton {
+            x: parent.width - Theme.gutter - self.width;
+            y: 0;
+            width: root.unit * 1.8;
+            height: root.unit * 0.7;
+            round: false;
+            text: "R";
+            bit: 256;
+            held(b, d) => {
+                root.touch(b, d);
+            }
+        }
+
+        // The D-pad.
+        for d in [{ t: "▲", b: 64, x: 1, y: 0 }, { t: "▼", b: 128, x: 1, y: 2 }, { t: "◀", b: 32, x: 0, y: 1 }, { t: "▶", b: 16, x: 2, y: 1 }]: PadButton {
+            x: Theme.gutter + d.x * root.unit * 1.05;
+            y: root.unit * 1.2 + d.y * root.unit * 1.05;
+            width: root.unit;
+            height: root.unit;
+            round: false;
+            text: d.t;
+            bit: d.b;
+            held(b, down) => {
+                root.touch(b, down);
+            }
+        }
+        // B and A.
+        PadButton {
+            x: parent.width - Theme.gutter - root.unit * 2.5;
+            y: root.unit * 2.4;
+            width: root.unit * 1.15;
+            height: root.unit * 1.15;
+            text: "B";
+            bit: 2;
+            held(b, d) => {
+                root.touch(b, d);
+            }
+        }
+
+        PadButton {
+            x: parent.width - Theme.gutter - root.unit * 1.2;
+            y: root.unit * 1.6;
+            width: root.unit * 1.15;
+            height: root.unit * 1.15;
+            text: "A";
+            bit: 1;
+            held(b, d) => {
+                root.touch(b, d);
+            }
+        }
+
+        PadButton {
+            x: parent.width / 2 - root.unit * 1.1;
+            y: root.unit * 4.1;
+            width: root.unit;
+            height: root.unit * 0.45;
+            round: false;
+            text: "SELECT";
+            bit: 4;
+            held(b, d) => {
+                root.touch(b, d);
+            }
+        }
+
+        PadButton {
+            x: parent.width / 2 + root.unit * 0.1;
+            y: root.unit * 4.1;
+            width: root.unit;
+            height: root.unit * 0.45;
+            round: false;
+            text: "START";
+            bit: 8;
+            held(b, d) => {
+                root.touch(b, d);
+            }
+        }
+    }
+
+    // The pause and the end: the arena dims, a panel of choices.
+    Rectangle {
+        background: Theme.ink.with-alpha(root.paused || root.over ? 0.72 : 0);
+        animate background { duration: Theme.settle; }
+        TouchArea {
+            enabled: root.paused || root.over;
+        }
+    }
+
+    // The result: a band across the screen, the word on it.
+    if root.over: Rectangle {
+        y: root.height * 0.22;
+        height: Theme.compact ? 110px : 170px;
+        property <color> tone: root.result == 1 ? Theme.gold : root.result == 2 ? Theme.magenta : Theme.text-dim;
+        band := Slant {
+            width: parent.width + 80px;
+            x: -40px;
+            lean: 60px;
+            color: @linear-gradient(90deg, transparent 0%, tone.with-alpha(0.92) 18%, tone.with-alpha(0.92) 82%, transparent 100%);
+        }
+
+        Text {
+            text: root.stopped != "" ? @tr("STOPPED") : root.result == 1 ? @tr("result" => "YOU WIN") : root.result == 2 ? @tr("result" => "YOU LOSE") : @tr("result" => "DRAW");
+            color: Theme.ink;
+            font-size: Theme.display * (root.stopped != "" ? 0.6 : 0.8);
+            font-weight: Theme.black;
+            font-italic: true;
+            letter-spacing: 4px * Theme.tracking;
+        }
+    }
+    if root.over: VerticalLayout {
+        x: (root.width - self.width) / 2;
+        y: root.height * 0.22 + (Theme.compact ? 130px : 196px);
+        width: min(root.width - 2 * Theme.gutter, 460px);
+        height: self.preferred-height;
+        spacing: 10px;
+        if root.stopped != "": Text {
+            text: root.stopped;
+            color: Theme.text-dim;
+            wrap: word-wrap;
+            horizontal-alignment: center;
+            font-size: 13px;
+        }
+        if root.recorded != "": Text {
+            text: @tr("Recorded to {0}", root.recorded);
+            color: Theme.text-dim;
+            horizontal-alignment: center;
+            font-size: 13px;
+            overflow: elide;
+        }
+        for item[i] in [root.kind == BattleKind.replay ? @tr("WATCH AGAIN") : @tr("REMATCH"), @tr("MENU")]: Rectangle {
+            height: 52px;
+            Slant {
+                lean: 14px;
+                color: root.cursor == i ? Theme.cyan : Theme.raised;
+                animate color { duration: Theme.quick; }
+            }
+
+            Text {
+                text: item;
+                color: root.cursor == i ? Theme.ink : Theme.text;
+                font-size: 20px;
+                font-weight: Theme.black;
+                letter-spacing: 2px * Theme.tracking;
+            }
+
+            TouchArea {
+                clicked => {
+                    root.cursor = i;
+                    root.activate(i);
+                }
+            }
+        }
+    }
+
+    // The pause: its panel of choices.
+    if root.paused && !root.over: VerticalLayout {
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.preferred-height) / 2;
+        width: min(root.width - 2 * Theme.gutter, 420px);
+        height: self.preferred-height;
+        spacing: 10px;
+        Text {
+            text: @tr("PAUSED");
+            color: white;
+            font-size: Theme.heading;
+            font-weight: Theme.black;
+            font-italic: true;
+            letter-spacing: 4px * Theme.tracking;
+            horizontal-alignment: center;
+        }
+
+        Rectangle {
+            height: 10px;
+        }
+
+        for item[i] in root.kind == BattleKind.netplay ? [@tr("RESUME"), @tr("LANGUAGE: {0}", root.language), @tr("QUIT TO MENU")] : [@tr("RESUME"), @tr("START OVER"), @tr("LANGUAGE: {0}", root.language), @tr("QUIT TO MENU")]: Rectangle {
+            height: 52px;
+            Slant {
+                lean: 14px;
+                color: root.cursor == i ? Theme.cyan : Theme.raised;
+                animate color { duration: Theme.quick; }
+            }
+
+            Text {
+                text: item;
+                color: root.cursor == i ? Theme.ink : Theme.text;
+                font-size: 18px;
+                font-weight: Theme.black;
+                letter-spacing: 1.5px * Theme.tracking;
+            }
+
+            TouchArea {
+                clicked => {
+                    root.cursor = i;
+                    root.activate(i);
+                }
+            }
+        }
+
+        if root.kind == BattleKind.netplay: Text {
+            text: @tr("The battle goes on while you're here: netplay can't pause.");
+            color: Theme.warn;
+            font-size: 13px;
+            wrap: word-wrap;
+            horizontal-alignment: center;
+        }
+    }
+
+    if root.paused || root.over: Hints {
+        x: Theme.gutter;
+        y: root.height - 48px;
+        hints: [
+            { key: "↑↓", button: "✚", text: @tr("Choose") },
+            { key: "Enter", button: "A", text: @tr("Confirm") },
+            { key: "Esc", button: "B", text: root.over ? @tr("Menu") : @tr("Resume") },
+        ];
+    }
+}
