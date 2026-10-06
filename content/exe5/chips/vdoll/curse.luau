@@ -40,7 +40,8 @@ local OTHER_SIDE: { [number]: number } = { [0] = 0x0020_0000, [1] = 0x0040_0000 
 -- rotated, 0x00002000).
 local OCCUPANT: { [number]: number } = { [0] = 0x0020_0000, [1] = 0x0000_2000 }
 -- The sparkles over whoever is hit: 32 ticks of effect 0x24 (EXE5's table, 0x080DFC94: sheet 14-00 in palette 1).
-local SPARKLES_LENGTH = 2
+-- (Its length, `dword_80E19F0`'s row 2, the curse's first parameter.)
+local SPARKLES_TICKS = 0x20
 local SPARKLE = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 }
 
 -- 0x080E625E: one of the panels the other side's combatants stand on (bottom right first), at random; none, the aim
@@ -101,7 +102,7 @@ local function strike(me: Object, s: State)
     end
     local o = occupant(x, y, me.alliance)
     if o then
-        sparkles.spawn(o, SPARKLES_LENGTH, SPARKLE, false)
+        sparkles.spawn(o, SPARKLES_TICKS, SPARKLE, false)
     end
 end
 

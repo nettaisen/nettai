@@ -50,15 +50,16 @@ local HIT_MOD = 3
 -- (`byte_80DEA70`); the same for all three.
 local LENGTH: { [number]: number } = { [0] = 0x10, 0x10, 0x10 }
 local HOLE_TICKS: { [number]: { number } } = { [0] = { 0x14, 0x14 }, { 0x14, 0x14 }, { 0x14, 0x14 } }
--- The sand it throws (`byte_80DEDD8`, its looks; the fourth's Param3 1,
--- which nothing reads; `byte_80DEA58`: delays, the same for all three
+-- The sand it throws (`byte_80DEDD8`, its looks: their first animations,
+-- `dword_80DEEE4`'s, 9 for look 0 and 5 for look 1; the fourth's Param3
+-- 1, which nothing reads; `byte_80DEA58`: delays, the same for all three
 -- levels).
 local SPRAYS = {
-    { look = 0, delay = 0x06 },
-    { look = 0, delay = 0x0B },
-    { look = 0, delay = 0x10 },
-    { look = 0, delay = 0x15 },
-    { look = 1, delay = 0x1A },
+    { first_anim = 9, delay = 0x06 },
+    { first_anim = 9, delay = 0x0B },
+    { first_anim = 9, delay = 0x10 },
+    { first_anim = 9, delay = 0x15 },
+    { first_anim = 5, delay = 0x1A },
 }
 -- The arc's height, in units of the sine table (`byte_80DEE58`).
 local HEIGHT = 0x16
@@ -80,7 +81,7 @@ end
 -- `sub_80DED80`: the sand, from where it is.
 local function throw_sand(me: Object, s: State)
     for _, sand in SPRAYS do
-        spray.spawn(me, s.level, sand.look, sand.delay)
+        spray.spawn(me, s.level, sand.first_anim, sand.delay)
     end
 end
 

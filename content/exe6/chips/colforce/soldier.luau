@@ -6,6 +6,8 @@
 -- apart; then it salutes and leaves. It stands still while dimmed.
 
 local bullet = require("../../objects/bullet")
+local regions = require("@exelib/regions")
+local statuses = require("../../rules/status")
 
 local soldier = {}
 
@@ -18,9 +20,10 @@ local SPRITE = asset.sprite("col-army")
 local SHOT_SOUND = asset.sound("col-army-2")
 -- Where it drops from, 16.16.
 local DROP_Z = 0xFF_0000
--- The shots: bullets (row 0x12), three of them 10 ticks apart, at one of
--- four heights (`dword_80DF484`, in pixels).
-local SHOT = bullet.variants.col_force
+-- The shots: bullets (the bullet's row 0x12: the panel found and the one
+-- behind it, staggering, paralyzing for 90 ticks), three of them 10 ticks
+-- apart, at one of four heights (`dword_80DF484`, in pixels).
+local SHOT = bullet.variant { region = regions.long, hit_mod = 1, effect = bullet.hit, single = true, status = statuses.paralyze_90 }
 local SHOTS, SHOT_TICKS = 3, 0xA
 local HEIGHTS = { [0] = 0x08, 0x10, 0x18, 0x20 }
 

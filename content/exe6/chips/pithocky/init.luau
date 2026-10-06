@@ -7,6 +7,9 @@ local flick = require("./airhocky/flick")
 local puck = require("./airhocky/puck")
 local airhocky = require("./airhocky").airhocky
 
+-- The puck (`byte_80C9818`'s row 3): 18 steps, with a trail.
+local PUCK = puck.variant { steps = 0x12, own_side = 1, ticks = 6, trail = true }
+
 local chip: Chip = {
     codes = {},
     element = "null",
@@ -20,7 +23,7 @@ local chip: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
     program_advances = { { order = 26, code_run = { chip = airhocky, count = 3 } } },
-    action = flick.action { id = "pithocky/action", puck = puck.variants.pithocky, down = true },
+    action = flick.action { id = "pithocky/action", puck = PUCK, down = true },
 }
 
 return { pithocky = chip }
