@@ -2,8 +2,9 @@
 //! it loads, a netplay offer when it arrives (`check_side`), and the editor
 //! shows as they fail. Each problem is said, with where it is.
 //!
-//! - **The arena**: the content's game, its link battle stages
-//!   (`crate::link_battle_stages`), and backgrounds its pack has.
+//! - **The arena**: the content's game, stages a match of it may name (its
+//!   rules' `link_pick.match_stages`, `crate::link_battle_stages`), and
+//!   backgrounds its pack has.
 //! - **A side**: its navi stated and the match's game's; its facts its game's
 //!   rules' (`crate::facts::check`: an enum the rules require stated, each
 //!   definition they name, at any depth, the game's, a definition once in its

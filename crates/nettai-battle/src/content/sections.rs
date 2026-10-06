@@ -381,7 +381,12 @@ impl Stated {
             buster_recovery: buster.recovery,
             chaos_cycle: buster.chaos_cycle,
             // (Its stages are `link`'s to resolve.)
-            link_pick: super::rules::LinkPick { stages: Vec::new(), first_round_stages: link_pick.first_round_stages, backgrounds: link_pick.backgrounds },
+            link_pick: super::rules::LinkPick {
+                stages: Vec::new(),
+                first_round_stages: link_pick.first_round_stages,
+                backgrounds: link_pick.backgrounds,
+                match_stages: Vec::new(),
+            },
             sine: self.sine.unwrap_or_default(),
             push_vectors: reactions.push,
             push_reading: reactions.push_reading,
@@ -619,13 +624,13 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 // they have their handles; stated all the same. Both
                 // fields are asked for here: a section with one alone
                 // reads as an empty table once the stages are out.)
-                for field in ["stages", "first_round_stages", "backgrounds"] {
+                for field in ["stages", "first_round_stages", "backgrounds", "match_stages"] {
                     if matches!(spec.field(field), Data::Nil) {
                         return Err(e(format!("{at}: missing field `{field}`")));
                     }
                 }
                 let mut data = spec.clone();
-                super::reader::strip(&mut data, &["stages"]);
+                super::reader::strip(&mut data, &["stages", "match_stages"]);
                 stated.link_pick = Some(r.read(&data, &at).map_err(e)?);
             }
             "effects" => stated.effects = Some(r.read(spec, &at).map_err(e)?),
@@ -666,25 +671,36 @@ pub fn build(content: &mut Content, definitions: &Definitions) -> Result<(), Con
 pub fn link(content: &mut Content) -> Result<(), ContentError> {
     let Some(d) = super::defs::rules_definition(&content.defs.definitions) else { return Ok(()) };
     let path = nettai_content_api::keys::module_path(&d.module);
-    match d.spec.field("link_pick").field("stages") {
-        Data::Nil => {}
-        list => {
-            let at = format!("{path}.luau: rules: link_pick.stages");
-            let items: &[Data] = match list {
-                Data::List(items) => items,
-                // (An empty table is an empty list.)
-                Data::Map(entries) if entries.is_empty() => &[],
-                other => return Err(ContentError::new(format!("{at}: a list of stages, not {other:?}"))),
+    // A section's list of stages (`link_pick.stages`, `link_pick.match_stages`),
+    // resolved: none where it states none.
+    let stages_of = |content: &Content, field: &str| -> Result<Option<Vec<nettai_content_api::StageHandle>>, ContentError> {
+        let at = format!("{path}.luau: rules: link_pick.{field}");
+        let items: &[Data] = match d.spec.field("link_pick").field(field) {
+            Data::Nil => return Ok(None),
+            Data::List(items) => items,
+            // (An empty table is an empty list.)
+            Data::Map(entries) if entries.is_empty() => &[],
+            other => return Err(ContentError::new(format!("{at}: a list of stages, not {other:?}"))),
+        };
+        let mut stages = Vec::with_capacity(items.len());
+        for (i, item) in items.iter().enumerate() {
+            let Data::Ref(nettai_content_api::Registry::Stage, key) = item else {
+                return Err(ContentError::new(format!("{at}[{}]: a stage (one of the root's `stages`), not {item:?}", i + 1)));
             };
-            let mut stages = Vec::with_capacity(items.len());
-            for (i, item) in items.iter().enumerate() {
-                let Data::Ref(nettai_content_api::Registry::Stage, key) = item else {
-                    return Err(ContentError::new(format!("{at}[{}]: a stage (one of the root's `stages`), not {item:?}", i + 1)));
-                };
-                stages.push(
-                    content.defs.stage_by_key(key).ok_or_else(|| ContentError::new(format!("{at}[{}]: the content has no stage {key:?}", i + 1)))?,
-                );
-            }
+            stages.push(content.defs.stage_by_key(key).ok_or_else(|| ContentError::new(format!("{at}[{}]: the content has no stage {key:?}", i + 1)))?);
+        }
+        Ok(Some(stages))
+    };
+    if let Some(mut named) = stages_of(content, "match_stages")? {
+        named.sort();
+        named.dedup();
+        if let Some(rules) = content.rules.as_mut() {
+            rules.link_pick.match_stages = named;
+        }
+    }
+    match stages_of(content, "stages")? {
+        None => {}
+        Some(stages) => {
             if let Some(rules) = content.rules.as_mut() {
                 // The first round's are some of them, and one at least where
                 // there are any.
