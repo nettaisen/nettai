@@ -22,6 +22,7 @@ local widesht1: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = widesht.action { wave = wave.wide, waves = 1, z = 0 },
+    auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
 -- WideSht2 (EXE5 chip 0x00a): the navi raises its wide shooter and sends a wave from the panel ahead over a column
@@ -41,6 +42,7 @@ local widesht2: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = widesht.action { wave = wave.wide2, waves = 1, z = 0 },
+    auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
 -- WideSht3 (EXE5 chip 0x00b): the navi raises its wide shooter and sends a wave from the panel ahead over a column
@@ -60,6 +62,7 @@ local widesht3: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = widesht.action { wave = wave.wide3, waves = 1, z = 0 },
+    auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
 return { widesht1 = widesht1, widesht2 = widesht2, widesht3 = widesht3 }

@@ -21,6 +21,7 @@ local tmhwkman: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }
 
 -- TmhwkMnSP (EXE5 chip 0x0fc): TomahawkMan cuts in and brings his tomahawk down on the two columns ahead
@@ -42,6 +43,7 @@ local tmhwkmn_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_sp,
+    auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }
 
 -- TmhwkMnDS (EXE5 chip 0x0fd): TomahawkMan, dark, cuts in and brings his tomahawk down on the two columns ahead
@@ -61,6 +63,7 @@ local tmhwkmn_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }
 
 return { tmhwkman = tmhwkman, ["tmhwkmn-sp"] = tmhwkmn_sp, ["tmhwkmn-ds"] = tmhwkmn_ds }

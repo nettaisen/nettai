@@ -28,6 +28,7 @@ local chip: Chip = {
         { order = 31, sequence = { recipe_mrkcan2, recipe_mrkcan2, recipe_gridman_ds } },
     },
     navi = football.summon,
+    auto_battle = { class = "at_once" },
 }
 
 return { football = chip }

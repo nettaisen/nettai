@@ -30,6 +30,7 @@ local chip: Chip = {
         effect = new.effect { sprite = asset.sprite("sword-slash"), anim = 1, palette = 8 },
         sound = swords.swing,
     },
+    auto_battle = { class = "hurt_into_reach", range = "two_in_row" },
 }
 
 return { muramasa = chip }

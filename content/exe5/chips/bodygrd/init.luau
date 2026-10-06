@@ -28,6 +28,7 @@ local chip: Chip = {
         { order = 25, sequence = { recipe_antidmg, recipe_antinavi, recipe_muramasa } },
     },
     dimming = bodygrd.hook(0),
+    auto_battle = { class = "at_once" },
 }
 
 return { bodygrd = chip }

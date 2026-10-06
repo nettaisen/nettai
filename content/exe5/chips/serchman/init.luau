@@ -21,6 +21,7 @@ local serchman: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "at_once" },
 }
 
 -- SerchMnSP (EXE5 chip 0x0e7): SearchMan cuts in, his scope sweeps the enemy area until it locks on, and he fires five
@@ -41,6 +42,7 @@ local serchmn_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_sp,
+    auto_battle = { class = "at_once" },
 }
 
 -- SerchMnDS (EXE5 chip 0x0e8): SearchMan, dark, cuts in, his scope sweeps the enemy area until it locks on, and he fires
@@ -60,6 +62,7 @@ local serchmn_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "at_once" },
 }
 
 return { serchman = serchman, ["serchmn-sp"] = serchmn_sp, ["serchmn-ds"] = serchmn_ds }

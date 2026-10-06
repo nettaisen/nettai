@@ -18,6 +18,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "library" },
     slot_in_limit = 3,
     dimming = rainyday.hook,
+    auto_battle = { class = "at_once" },
 }
 
 return { rainyday = chip }

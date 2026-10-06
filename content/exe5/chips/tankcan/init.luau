@@ -19,6 +19,7 @@ local tankcan1: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = tankcan.action,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- TankCan2 (EXE5 chip 0x040): a shell from the panel ahead that staggers what it hits, or, off the far edge, blasts
@@ -36,6 +37,7 @@ local tankcan2: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = tankcan.action,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- TankCan3 (EXE5 chip 0x041): a shell from the panel ahead that staggers what it hits, or, off the far edge, blasts
@@ -53,6 +55,7 @@ local tankcan3: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = tankcan.action,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { tankcan1 = tankcan1, tankcan2 = tankcan2, tankcan3 = tankcan3 }

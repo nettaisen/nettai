@@ -22,6 +22,7 @@ local numbrman: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "into_reach", range = "ring_three_ahead" },
 }
 
 -- NumbrMnSP (EXE5 chip 0x0f3): NumberMan cuts in and throws a die three columns ahead, its face times his damage when it
@@ -43,6 +44,7 @@ local numbrmn_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_sp,
+    auto_battle = { class = "into_reach", range = "ring_three_ahead" },
 }
 
 -- NumbrMnDS (EXE5 chip 0x0f4): NumberMan, dark, cuts in and throws a die three columns ahead, its face times his damage
@@ -62,6 +64,7 @@ local numbrmn_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "into_reach", range = "ring_three_ahead" },
 }
 
 return { numbrman = numbrman, ["numbrmn-sp"] = numbrmn_sp, ["numbrmn-ds"] = numbrmn_ds }

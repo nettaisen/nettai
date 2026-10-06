@@ -22,6 +22,7 @@ local chip: Chip = {
     action = thunder.shoot {
         ball = { panels = 0x0C, status = statuses.paralyze_90, bug = 0x19 },
     },
+    auto_battle = { class = "to_front" },
 }
 
 return { darkthnd = chip }

@@ -19,6 +19,7 @@ local chip: Chip = {
     flags = { "has_damage", "dark" },
     slot_in_limit = 1,
     action = drill.action(true),
+    auto_battle = { class = "into_reach", range = "two_in_row" },
 }
 
 return { darkdril = chip }

@@ -20,6 +20,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     dimming = controller.hook,
+    auto_battle = { class = "at_once" },
 }
 
 return { metagel = chip }

@@ -26,6 +26,7 @@ local chip: Chip = {
         puck = puck.variants.airhoc,
         down = true,
     },
+    auto_battle = { class = "to_front" },
 }
 
 return { airhoc = chip }

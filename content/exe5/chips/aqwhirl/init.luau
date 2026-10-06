@@ -20,6 +20,7 @@ local aqwhirl1: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = action.action { whirlwind = whirlpool.sender(0, 0x20) },
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 -- AqWhirl2 (EXE5 chip 0x09e): action 0x47 as variant 0 (@exelib/airspin/action): a whirlpool
@@ -37,6 +38,7 @@ local aqwhirl2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = action.action { whirlwind = whirlpool.sender(1, 0x30) },
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 -- AqWhirl3 (EXE5 chip 0x09f): action 0x47 as variant 0 (@exelib/airspin/action): a whirlpool
@@ -54,6 +56,7 @@ local aqwhirl3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = action.action { whirlwind = whirlpool.sender(2, 0x50) },
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 return { aqwhirl1 = aqwhirl1, aqwhirl2 = aqwhirl2, aqwhirl3 = aqwhirl3 }

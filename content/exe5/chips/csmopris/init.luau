@@ -29,6 +29,7 @@ local chip: Chip = {
         { order = 27, sequence = { recipe_astroid3, recipe_astroid3, recipe_cosmomn_ds } },
     },
     navi = csmopris.summon,
+    auto_battle = { class = "at_once" },
 }
 
 return { csmopris = chip }

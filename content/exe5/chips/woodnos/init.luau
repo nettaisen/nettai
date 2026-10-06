@@ -19,6 +19,7 @@ local woodnos1: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = woodnos.action,
+    auto_battle = { class = "to_back" },
 }
 
 -- WoodNos2 (EXE5 chip 0x0b3): the navi sends a wooden wave along its row; past the field it raises geysers under the
@@ -36,6 +37,7 @@ local woodnos2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = woodnos.action,
+    auto_battle = { class = "to_back" },
 }
 
 -- WoodNos3 (EXE5 chip 0x0b4): the navi sends a wooden wave along its row; past the field it raises geysers under the
@@ -53,6 +55,7 @@ local woodnos3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = woodnos.action,
+    auto_battle = { class = "to_back" },
 }
 
 return { woodnos1 = woodnos1, woodnos2 = woodnos2, woodnos3 = woodnos3 }

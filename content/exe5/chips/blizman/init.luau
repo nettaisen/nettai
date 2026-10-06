@@ -21,6 +21,7 @@ local blizman: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- BlizManSP (EXE5 chip 0x108): BlizzardMan cuts in and rolls a snowball down his row, growing on the field objects it
@@ -41,6 +42,7 @@ local blizman_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_sp,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- BlizManDS (EXE5 chip 0x109): BlizzardMan, dark, cuts in and rolls a snowball down his row, growing on the field
@@ -59,6 +61,7 @@ local blizman_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { blizman = blizman, ["blizman-sp"] = blizman_sp, ["blizman-ds"] = blizman_ds }

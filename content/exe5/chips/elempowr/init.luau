@@ -20,6 +20,7 @@ local chip: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 1,
     dimming = controller.hook,
+    auto_battle = { class = "to_special_panel" },
 }
 
 return { elempowr = chip }
