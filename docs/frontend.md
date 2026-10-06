@@ -46,8 +46,9 @@ them. The commands in this document are the program's (`nettai-demo`).
   own lookups (`sound_lookups`); headless output (`headless`) and the audits
   (`content_audit`, `headless::audit_traces`); the replay of the
   original's recordings (`trace`, the one place that depends on the compat
-  crates); and netplay's transport, the UDP socket and the handshake
-  (`net`).
+  crates); and netplay's transport, a WebRTC link (nettai-rtc: a data
+  channel, met in a room of the signaling server or directly) and the
+  handshake (`net`).
 
 ## 1. The content pack
 
@@ -272,7 +273,8 @@ rules' `backgrounds`).
     cargo run -p nettai-demo -- --match match.toml --audit-content   # what is missing?
     cargo run -p nettai-demo -- --audit <trace.jsonl>...   # and in these traces?
     cargo run -p nettai-demo -- --match match.toml --pack <dir>        # a pack elsewhere
-    cargo run -p nettai-demo -- --match match.toml --host 7777         # netplay: host...
+    cargo run -p nettai-demo -- --match match.toml --room abc --signal wss://<server>   # netplay, in a room
+    cargo run -p nettai-demo -- --match match.toml --host 7777         # netplay directly: host...
     cargo run -p nettai-demo -- --match match.toml --join 192.0.2.10:7777   # ...and join
     cargo run -p nettai-demo -- --match match.toml --record set.ntrp   # record the set (§8)
     cargo run -p nettai-demo -- --replay set.ntrp --side right   # watch it again, the right navi's console
@@ -298,8 +300,8 @@ to play, or `--edit FILE`), which plays the match in the same window; its
 Random button creates a random setup. `--show-folders` prints both folders, and with
 `--headless`, `--keys` holds buttons on given ticks (below). `--save-match FILE`
 writes the match played, the file's setup or the one netplay agreed, with its
-seed, as a match file. `--record FILE` writes a replay of the set played (alone,
-`--host` or `--join`), and `--replay FILE` plays one, shown from the side that
+seed, as a match file. `--record FILE` writes a replay of the set played (alone
+or netplay), and `--replay FILE` plays one, shown from the side that
 recorded it or `--side left|right`; with `--headless F` it renders the set's
 ticks F (§8).
 
@@ -385,23 +387,48 @@ hides). The right navi's screen picks its first chip and presses OK. As in
 the original's netbattles, the fight gets your buttons 4 ticks late (the
 link). F5 starts over with the same setup.
 
-**Netplay** (`--match FILE --host PORT` or `--match FILE --join ADDR:PORT`) plays another
-player over the network, with rollback (docs/design/rollback.md §4; the
-frontend's side is `netplay`):
+**Netplay** (`--match FILE` with `--room CODE`, `--host PORT` or `--join ADDR:PORT`)
+plays another player over the network, with rollback (docs/design/rollback.md §4;
+the frontend's side is `netplay`), on a WebRTC data channel (nettai-rtc,
+rollback.md §4.8):
 
-- **Hosting**: `--host 7777` listens on UDP port 7777 of every IPv4
-  interface and waits for a player (`--wait SECONDS`, default 300), the
-  window open and blank meanwhile, its title saying what it waits for (Esc
-  gives up). On a LAN
-  the other player joins this machine's address; over the Internet, forward
-  the UDP port on the host's router to the host's machine, and the other
-  player joins the router's public address. The host is the left navi
-  (side 0).
-- **Joining**: `--join 192.0.2.10:7777` (a name works too) reaches the host
-  and waits for its answer (`--wait`, default 30). The joiner is the right
-  navi (side 1), and sees the battle from its side: its navi on the left of
-  the field, mirrored as the original's second console shows it, its own
-  custom screen, HUD and sounds.
+- **In a room**: `--room abc` meets the other player in room `abc` of the
+  signaling server (`--signal wss://...`, or `$NETTAI_SIGNAL`), both giving
+  the same code (1 to 64 letters, digits, `_` and `-`). The first in the
+  room hosts (the left navi, side 0) and waits for a player (`--wait
+  SECONDS`, default 300), the window open and blank meanwhile, its title
+  saying what it waits for (Esc gives up); the second joins (`--wait`,
+  default 30). The connection finds its way through NATs: each side offers
+  its addresses and the one a STUN server sees (`--stun URL`, again for
+  more; default `stun:stun.l.google.com:19302`; `none` for none), and with
+  `--turn turn:HOST[:PORT] --turn-user U --turn-pass P` relays through a TURN
+  server when no direct path is found (Cloudflare's TURN service hands out
+  short-lived credentials from its API, with a TURN key of one's account:
+  get a pair, give it here). The signaling server is `signaling/`, a
+  Cloudflare Worker (`npx wrangler dev` there runs it locally, at
+  `ws://127.0.0.1:8787`; deploying it, `npx wrangler deploy`, is on your own
+  account). A room's connection checks the certificates its descriptions
+  name.
+- **Hosting directly**: `--host 7777` listens on UDP port 7777 of every IPv4
+  interface and waits for a player as a room's host does. On a LAN the
+  other player joins this machine's address; over the Internet, forward the
+  UDP port on the host's router to the host's machine, and the other player
+  joins the router's public address. The host is the left navi (side 0).
+  Nothing is exchanged before the connection: each side makes up the
+  other's description, so direct connect authenticates nobody, as plain UDP
+  doesn't.
+- **Joining directly**: `--join 192.0.2.10:7777` (a name works too) reaches
+  the host and waits for its answer (`--wait`, default 30). The joiner is
+  the right navi (side 1), and sees the battle from its side: its navi on
+  the left of the field, mirrored as the original's second console shows
+  it, its own custom screen, HUD and sounds.
+- **When the connection drops** (its state, its data channel, or nothing
+  from the other side for 3 seconds), it is made again, through the room or
+  to the same address: the battle stops within half a second (both players
+  wait at the stall guard), the title says "the connection dropped:
+  reconnecting (Ns)", and when it is back the battle goes on where it was,
+  in the same match (what was lost on the way is sent again). After 30
+  seconds it gives up and the match ends, saying so.
 - **The handshake** checks that both players run the same netplay protocol,
   the same engine, the same game (a match is of one: "can't play: the other
   side plays exe5, this one exe6: a match is of one game, both sides playing
@@ -446,10 +473,12 @@ frontend's side is `netplay`):
   trip, in milliseconds), `loss` (the share of the other player's datagrams
   that were lost), `present delay` (the present delay), `rollback` (the last
   rollback's depth, then the deepest and how many in all) and `waits`
-  (frames held for clock sync or the stall guard).
+  (frames held for clock sync or the stall guard); while the connection is
+  down, how long it has been (`NetStatus::reconnecting`).
 - **The end**: when the set is over the result shows in the title and
   the window stays open; Esc leaves, and tells the other player. If the
-  other player leaves, nothing arrives from them for 10 seconds, or their
+  other player leaves, nothing arrives from them for 10 seconds while the
+  connection is up, the connection doesn't come back in 30 seconds, or their
   input falls more than the rollback horizon behind, the match stops with
   the reason in the title and printed.
 
@@ -1494,8 +1523,9 @@ patterns' places).
 One kind of chip is refused in a place: a chip the original can't play in
 auto battle (a team navi's own chip, such as StepSwrd, and the chips
 past the library, FtrSword to PnkCapsl). The AI gets in place for a chip by
-the chip's positioning class, and theirs, 255, is past the game's table of
-classes: the original crashes there, and the engine raises. The game's own
+the chip's positioning class, and theirs, `unplayable` (the original's 255),
+is past the game's table of classes: the original crashes there, and the
+engine raises. The game's own
 writer never puts one among the 42 places (it counts library chips only),
 so only a block made by hand holds one, and the check says where: "place 29
 of the auto battle data (`mega`, entry 2) holds StepSwrd: the original
@@ -1619,7 +1649,7 @@ is said with where it is:
 - karma 0 to 1000, and other than 500 only with rules that take it;
 - the round starts (`Battle::new` doesn't stop).
 
-**Netplay with a match file** (`--match FILE --host PORT` or
+**Netplay with a match file** (`--match FILE` with `--room`, `--host` or
 `--join`): the file's left side is what you bring, wherever netplay puts
 you, and the host's file's rounds are the match's (the joiner's are sent,
 and must be as many: the handshake stops on two numbers of rounds). The
@@ -1701,11 +1731,15 @@ sound for frames it only writes.
 pick's, `nettai_match::pick::live`) from the local player's buttons, round
 after round to the set's end; `netplay::NetPlayer` plays one against another
 player over a channel the host provides (`netplay::Channel`: it sends the
-frames and takes those that came, never waiting; the library has no socket).
+frames and takes those that came, never waiting, and may say how long it has
+been down while its transport makes it again: the match waits it out; the
+library has no socket).
 The lobby and the handshake that agree the match are the library's,
 without IO (`lobby::Lobby`: datagrams in, datagrams out), and so is the set
 played from the agreement (`netplay::netplay_setup`); the transport is the
-host's. The program's is nettai-demo's `net`: UDP, and the lobby the window
+host's. The program's is nettai-demo's `net`: a WebRTC link (nettai-rtc's
+`Link`, which another host can use too: in a room of the signaling server,
+natively or in a browser, or directly, natively), and the lobby the window
 polls each frame, so it stays responsive while it waits. A host may bring a
 driver of its own (`Driver`): the program's replays the original's
 recordings.
@@ -1810,7 +1844,7 @@ doesn't. A replay plays only on the engine and the content it was made with;
 it names them, and another build or pack refuses it with what differs.
 
 **Recording.** `nettai-demo --match FILE --record set.ntrp` (alone, or with
-`--host`/`--join`) writes the set as it is played; in the library,
+`--room`, `--host` or `--join`) writes the set as it is played; in the library,
 `Player::record(Recorder::new(sink, &content, &m, &info)?)` before the first
 tick. Live play writes each tick as it runs; netplay each as it settles
 (confirmed, never a prediction), so both players' replays of a match hold the

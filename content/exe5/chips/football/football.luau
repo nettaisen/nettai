@@ -1,17 +1,18 @@
 --!strict
 -- EXE5's Football (the navi chips' action with the summon table's entry 24, 0x080BF7EC): EXE5's own GridMan (actor object
 -- #0x25, 0x080BF628), brought by the navi chip controller. He appears (and goes at once off a panel that isn't solid),
--- stands 40 ticks, then kicks four balls (attack object #0x95, 0x080D9258, EXE6's leftover code: its variants 4 to 7)
--- 171, 126, 111 and 96 ticks before the end of his 180; he goes, and the controller moves on.
+-- stands 40 ticks, then kicks four balls (attack object #0x95, 0x080D9258, EXE6's leftover code: its variants 4 to 7,
+-- by the kick) 171, 126, 111 and 96 ticks before the end of his 180; he goes, and the controller moves on.
 --
--- A ball (variant 4 kicked up from 32 pixels ahead of him, the others unseen until they come down) comes down over a
--- block of four panels of the enemy's area (0x080D95B8, by variant and side; none behind him), from 144 pixels up,
+-- A ball (the first kicked up from 32 pixels ahead of him, the others unseen until they come down) comes down over a
+-- block of four panels of the enemy's area (0x080D95B8, by its kick and side; none behind him), from 144 pixels up,
 -- falling a pixel a tick faster each tick, lands 8 pixels up (effect row 0x5F), shakes the camera and hits the four
 -- panels (thrown, hit modifier 3), and 20 ticks later goes in a puff.
 --
--- (Its variants 0 to 3 are GridMan the virus's: they wait out the dimming, aim at a random panel around its target
--- and highlight where they land; they end if their owner is blind or confused. In the operation battle, never in a
--- netbattle, the balls also mark their panels with 0x080E9FA4's effect object #0x83, which isn't ported.)
+-- (Its variants 0 to 3, which wait out the dimming, aim at a random panel around their target, highlight where they
+-- land and end if their owner is blind or confused, are GridMan the virus's, which no netbattle kicks. In the operation
+-- battle, never in a netbattle, the balls also mark their panels with 0x080E9FA4's effect object #0x83, which isn't
+-- ported.)
 
 local collision = require("../../rules/collision")
 local navi_chips = require("@exelib/navi_chips/navi")
@@ -31,52 +32,24 @@ local HIT_MOD = 3
 local LANDING = new.effect { sprite = SPRITE, anim = 0x11, palette = 0 }
 local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 local SOUND_LAND = asset.sound("football-land")
--- The block it hits: its panel and the ones right and down (0x080D94BC); the virus's ball highlights the same block
--- (0x080D9600).
+-- The block it hits: its panel and the ones right and down (0x080D94BC).
 local BLOCK = { { 0, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 } }
--- The navi chip's targets by side (its side ^ flip) and variant (0x080D95B8).
+-- The blocks by side (its side ^ flip) and kick, first to fourth (0x080D95B8).
 local TARGETS: { [number]: { { number } } } = {
     [0] = { { 4, 1 }, { 5, 2 }, { 4, 2 }, { 5, 1 } },
     [1] = { { 2, 1 }, { 1, 2 }, { 2, 2 }, { 1, 1 } },
 }
--- The virus's targets around its owner (0x080D9574), on the field and above row 3.
-local AROUND = { { 0, 0 }, { 0, -1 }, { -1, 0 }, { -1, -1 } }
 local SOLID = 0x10
 
 export type BallState = {
-    -- Its variant (Param1: 0 to 3 the virus's, 4 to 7 the navi chip's).
-    variant: number,
-    -- What the virus's aims around (+0x60; the navi chip's has none).
-    around: Object?,
+    -- Its kick, 1 to 4 (Param1, its variant: 4 to 7).
+    kick: number,
 }
 
--- 0x080D950E (the virus's): a random panel around its owner (its +0x60's panel), on the field and above row 3.
-local function virus_target(me: Object): (number?, number?)
-    local owner = (me.state :: BallState).around
-    if not owner then
-        error("Football's ball: a virus's ball with nothing to aim around reads address 0x12")
-    end
-    local list: { number } = {}
-    for _, d in AROUND do
-        local x, y = owner.panel_x + d[1], owner.panel_y + d[2]
-        if y < 3 and field.valid(x, y) then
-            list[#list + 1] = bit32.bor(x, bit32.lshift(y, 4))
-        end
-    end
-    if #list == 0 then
-        return nil, nil
-    end
-    local p = list[battle.rng_positive() % #list + 1]
-    return bit32.band(p, 7), bit32.rshift(p, 4)
-end
-
--- 0x080D957C (the navi chip's): its block by variant and side; none behind its owner.
+-- 0x080D957C: its block by its kick and side; none behind its owner.
 local function navi_target(me: Object, s: BallState): (number?, number?)
     local side = bit32.bxor(me.alliance, me.flip)
-    local t = TARGETS[side][s.variant - 3]
-    if not t then
-        error(string.format("Football's ball: variant %d reads past 0x080D95B8", s.variant))
-    end
+    local t = TARGETS[side][s.kick]
     local owner = me.related1 :: Object
     local behind = owner.panel_x - t[1]
     if (side == 0 and behind > 0) or (side == 1 and behind <= 0) then
@@ -85,8 +58,7 @@ local function navi_target(me: Object, s: BallState): (number?, number?)
     return t[1], t[2]
 end
 
--- Action 0 (0x080D9314): kicked up and ahead for 31 ticks; then it aims (the virus's ends if its owner is blind or
--- confused).
+-- Action 0 (0x080D9314): kicked up and ahead for 31 ticks; then it aims.
 local function kick(me: Object, s: BallState)
     if me.phase == 0 then
         me.phase = 4
@@ -100,27 +72,15 @@ local function kick(me: Object, s: BallState)
     if t >= 0 then
         return
     end
-    if s.variant < 4 then
-        local owner = me.related1 :: Object
-        if owner:status("blind") or owner:status("confused") then
-            me:set_lifecycle("destroy")
-            return
-        end
-    end
     me:set_action(4)
 end
 
--- Action 4 (0x080D9374): over its block (20 and 12 pixels off its panel), 144 pixels up, shown; 31 ticks (the virus's
--- highlighting its block half of every 16); then it falls. No block, gone.
+-- Action 4 (0x080D9374): over its block (20 and 12 pixels off its panel), 144 pixels up, shown; 31 ticks; then it
+-- falls. No block, gone.
 local function aim(me: Object, s: BallState)
     if me.phase == 0 then
         me.phase = 4
-        local x, y
-        if s.variant < 4 then
-            x, y = virus_target(me)
-        else
-            x, y = navi_target(me, s)
-        end
+        local x, y = navi_target(me, s)
         if x == nil then
             me:set_lifecycle("destroy")
             return
@@ -133,17 +93,6 @@ local function aim(me: Object, s: BallState)
         me.visible = true
         me.timer, me.timer2 = DROP_TICKS, 0
         return
-    end
-    if s.variant < 4 then
-        me.timer2 = int.u16(me.timer2 + 1)
-        if not bit32.btest(me.timer2, 8) then
-            for _, d in BLOCK do
-                local x, y = me.panel_x + d[1], me.panel_y + d[2]
-                if bit32.btest(field.flags(x, y), SOLID) then
-                    field.highlight(x, y)
-                end
-            end
-        end
     end
     local t = me.timer - 1
     me.timer = int.u16(t)
@@ -210,16 +159,13 @@ local function land(me: Object)
     me:set_lifecycle("destroy")
 end
 
--- 0x080D92D6: at the battle's end, gone; the virus's wait out the dimming.
+-- 0x080D92D6: at the battle's end, gone.
 local function ball_tick(me: Object)
     if battle.over() then
         me:set_lifecycle("destroy")
         return
     end
     local s = me.state :: BallState
-    if s.variant < 4 and battle.dimmed() then
-        return
-    end
     local a = me.action
     if a == 0 then
         kick(me, s)
@@ -237,13 +183,13 @@ end
 football.ball = new.kind {
     id = "football/ball",
     pool = "attack",
-    state = { variant = "u8", around = "object" },
+    state = { kick = "u8" },
     -- 0x080D9258: by its lifecycle, then a sprite step.
     update = function(me: Object)
         local l = me.lifecycle
         if l == "init" then
-            -- 0x080D927C: its panel from where it is; 08-12's animation 14, shown; kicked up, or (variants 5 and up)
-            -- hidden to come down.
+            -- 0x080D927C: its panel from where it is; 08-12's animation 14, shown; kicked up, or (the kicks after
+            -- the first) hidden to come down.
             me:set_panel_from_coordinates()
             local sprite = me.sprite
             sprite:load(SPRITE)
@@ -254,7 +200,7 @@ football.ball = new.kind {
             sprite.palette = 0
             sprite:set_flip(bit32.bxor(me.alliance, me.flip))
             me:set_lifecycle("update")
-            if (me.state :: BallState).variant >= 5 then
+            if (me.state :: BallState).kick > 1 then
                 me.visible = false
                 me:set_action(4)
             else
@@ -270,9 +216,9 @@ football.ball = new.kind {
     end,
 }
 
--- 0x080D94D4: a ball of `variant` at (x, y, z) from `owner`, with the element and damage word, of its side and facing;
--- the navi chip's run while dimmed.
-local function spawn_ball(owner: Object, pos: Vec3, element: number, variant: number, damage: number): Object?
+-- 0x080D94D4: the ball of kick `kick` at (x, y, z) from `owner`, with the element and damage word, of its side and
+-- facing, running while dimmed.
+local function spawn_ball(owner: Object, pos: Vec3, element: number, kick: number, damage: number): Object?
     local o = battle.spawn(football.ball, pos)
     if not o then
         return nil
@@ -281,10 +227,8 @@ local function spawn_ball(owner: Object, pos: Vec3, element: number, variant: nu
     o.related1 = owner
     o:set_damage_word(damage)
     o.alliance, o.flip = owner.alliance, owner.flip
-    ;(o.state :: BallState).variant = variant
-    if variant >= 4 then
-        o.run_while_dimmed = true
-    end
+    ;(o.state :: BallState).kick = kick
+    o.run_while_dimmed = true
     return o
 end
 
@@ -359,7 +303,7 @@ local function kicks(me: Object)
         end
         local p = me.pos
         local pos = Vec3.new(int.i32(p.x + int.shl(32 * me.facing, 16)), p.y, 0x30_0000)
-        spawn_ball(me, pos, me.element, s.kicked + 4, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)))
+        spawn_ball(me, pos, me.element, s.kicked + 1, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)))
         s.kicked += 1
     elseif left <= 0 then
         me:set_action(0xC)

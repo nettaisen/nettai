@@ -57,8 +57,7 @@ local ENEMY_AREA = { [0] = 0x20, 0 }
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
 -- His speed (16.16 a tick, forward), and the ticks between bombs on his run.
 local SPEED, BETWEEN = 0x3_0000, 0xF
--- His bombs' variant (his +7 and 1): the chips' 1, Airforce's 2.
-local BOMB_VARIANT, AIRFORCE_BOMB_VARIANT = 1, 2
+-- His bombs' variant (his +7 and 1): the chips' 1, which runs while dimmed, Airforce's 2, which doesn't.
 
 local function damage_word(me: Object): number
     return bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
@@ -67,8 +66,7 @@ end
 -- A bomb on his panel (a sound).
 local function drop(me: Object)
     battle.play_sound(SOUND_DROP)
-    local variant = if (me.state :: State).airforce then AIRFORCE_BOMB_VARIANT else BOMB_VARIANT
-    bomb.drop(me, me.panel_x, me.panel_y, me.element, variant, damage_word(me))
+    bomb.drop(me, me.panel_x, me.panel_y, me.element, not (me.state :: State).airforce, damage_word(me))
 end
 
 -- The flight: forward one tick; whether he passed his panel's center (from off it) this tick.
