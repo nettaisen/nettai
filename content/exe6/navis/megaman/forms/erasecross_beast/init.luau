@@ -31,9 +31,9 @@ local form: FormDef = {
     -- The chips A charges.
     charged_chips = { { family = "null", damaging = false } },
     -- What its status reset gives the navi (`sub_8014536`).
-    status_reset = { "super_armor", "target_marker", "invulnerable", "berserk" },
+    status_reset = { "super_armor", "target_marker", "invulnerable", "controller_restart" },
     -- After a NaviCust change only the SuperArmor comes back (`sub_801469C`).
-    navicust_refresh = { "super_armor" },
+    ability_refresh = { "super_armor" },
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
     special_volley = 16,
     -- The target marker shows, its afterimages stay, and a Null chip's A charge times by the
@@ -42,7 +42,9 @@ local form: FormDef = {
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 16, palette_add = 8 },
     identity = new.identity {
-        class = "cross_beast",
+        class = "player",
+        changes_form = true,
+        breaks_on_weakness = true,
         version = 0,
         actor_type = "player",
         ai_index = 40,

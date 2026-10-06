@@ -143,8 +143,8 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 fn aim(b: &Battle, r: ObjectRef) -> Vec3 {
     let target = target(b, r);
     let t = b.objects.get(target);
-    let gregar = b.content.identity(t.identity).class == crate::content::IdentityClass::Gregar;
-    let (dx, dz) = if gregar && t.anim == 0x4F {
+    let flat = b.content.identity(t.identity).marker_flat_anim == Some(t.anim);
+    let (dx, dz) = if flat {
         (0, 0)
     } else {
         crate::kinds::player::attach_point(b, target, TARGET_ATTACH_POINT)

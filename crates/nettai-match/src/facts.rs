@@ -270,40 +270,6 @@ impl Facts {
         })
     }
 
-    /// The SP navi deletion times (the rules' fact the engine knows as
-    /// `PlayerFact::SpTimes`): each SP chip and its frames, in the list's
-    /// order; none where the game's rules take no such fact.
-    pub fn sp_times(&self, content: &Content) -> Vec<(ChipHandle, u16)> {
-        let Some(Stated::List(items)) = content.defs.fact_field(PlayerFact::SpTimes).and(self.get(content, PlayerFact::SpTimes.name())) else {
-            return Vec::new();
-        };
-        items
-            .iter()
-            .filter_map(|item| {
-                let Stated::Record(fields) = item else { return None };
-                let chip = fields.iter().find_map(|(n, v)| match (n.as_str(), v) {
-                    ("chip", Stated::Def(Registry::Chip, Some(h))) => Some(ChipHandle(*h)),
-                    _ => None,
-                })?;
-                let frames = fields.iter().find_map(|(n, v)| match (n.as_str(), v) {
-                    ("frames", Stated::Number(f)) => Some(*f as u16),
-                    _ => None,
-                })?;
-                Some((chip, frames))
-            })
-            .collect()
-    }
-
-    /// Write the SP navi deletion times (`PlayerFact::SpTimes`): each chip
-    /// and its frames, in this order.
-    pub fn set_sp_times(&mut self, content: &Content, times: &[(ChipHandle, u16)]) -> Result<(), String> {
-        let records: Vec<Fact> = times
-            .iter()
-            .map(|&(c, f)| Fact::Record(vec![("chip", Fact::Value(Value::Def(Registry::Chip, c.0))), ("frames", Fact::Value(Value::Int(f as i64)))]))
-            .collect();
-        self.set(content, PlayerFact::SpTimes.name(), &records)
-    }
-
     /// Whether fact `field` is what a side that says nothing has.
     pub fn is_default(&self, content: &Content, field: &str) -> bool {
         self.get(content, field) == Facts::defaults(content).get(content, field)
@@ -311,8 +277,7 @@ impl Facts {
 
     /// The fact the engine knows by `role`, where the game's rules take it.
     pub fn role<'a>(&'a self, content: &'a Content, role: PlayerFact) -> Option<SetupFact<'a>> {
-        content.defs.fact_field(role)?;
-        self.fact(content, role.name())
+        self.fact(content, content.defs.fact_name(role)?)
     }
 
     /// The side's version of the game, by the name its rules declare: the
@@ -326,7 +291,7 @@ impl Facts {
     /// fact: EXE6's Crosses), in order; none, a list not stated, or no such
     /// fact: empty.
     pub fn form_list(&self, content: &Content) -> Vec<FormHandle> {
-        match self.role(content, PlayerFact::CrossList) {
+        match self.role(content, PlayerFact::FormList) {
             Some(fact) => (0..form_list_capacity(content)).filter_map(|k| fact.form(k)).collect(),
             None => Vec::new(),
         }
@@ -372,7 +337,7 @@ pub fn versions(content: &Content) -> &[String] {
 /// fact's elements: EXE6's Cross window's five), none when the game's
 /// rules take none.
 pub fn form_list_capacity(content: &Content) -> usize {
-    match field(content, PlayerFact::CrossList.name()).filter(|_| content.defs.fact_field(PlayerFact::CrossList).is_some()) {
+    match content.defs.fact_name(PlayerFact::FormList).and_then(|name| field(content, name)) {
         Some(Field { ty: FieldType::Array(_, n), .. }) => *n as usize,
         _ => 0,
     }
@@ -450,8 +415,8 @@ pub fn check(content: &Content, game: &str, side: &Side) -> Vec<String> {
     }
     // The form list: forms of the side's navi's own lists.
     let listed = side.facts.form_list(content);
-    if !listed.is_empty() && !out.iter().any(|p| p.starts_with(PlayerFact::CrossList.name())) {
-        let name = PlayerFact::CrossList.name();
+    let name = content.defs.fact_name(PlayerFact::FormList).unwrap_or_default();
+    if !listed.is_empty() && !out.iter().any(|p| p.starts_with(name)) {
         match crate::navi_forms(content, side.navi(content)) {
             None => out.push(format!("{name}: {} doesn't change form", crate::names::navi(content, side.navi(content)))),
             Some(own) => {
@@ -639,16 +604,16 @@ impl Side {
     /// game's rules take no form list, or the navi changes form and the
     /// side states no version yet.
     pub fn state_own_forms(&mut self, content: &Content) -> bool {
-        if content.defs.fact_field(PlayerFact::CrossList).is_none() {
+        let Some(name) = content.defs.fact_name(PlayerFact::FormList) else {
             return false;
-        }
+        };
         let own: Vec<FormHandle> = match (content.navi(self.navi(content)).forms.as_ref(), self.version(content)) {
             (None, _) => Vec::new(),
             (Some(forms), Some(version)) => forms.listed(version).to_vec(),
             (Some(_), None) => return false,
         };
         let list: Vec<Fact> = own.iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
-        self.set_fact(content, PlayerFact::CrossList.name(), &list).is_ok()
+        self.set_fact(content, name, &list).is_ok()
     }
 
     /// Whether a side takes a version (the engine's version fact: EXE6's
@@ -665,24 +630,17 @@ impl Side {
         let navi = content.navi(self.navi(content));
         navi.levels.is_some() || navi.story.is_some()
     }
-
-    /// Whether a side takes SP navi deletion times (the game's rules' fact
-    /// the engine knows as `PlayerFact::SpTimes`: EXE6's and EXE5's, each
-    /// their own SP navis).
-    pub fn takes_sp_times(content: &Content) -> bool {
-        content.defs.fact_field(PlayerFact::SpTimes).is_some()
-    }
 }
 
 /// The role the engine knows fact `name` by (`PlayerFact`), if it knows it.
 pub fn role_of(content: &Content, name: &str) -> Option<PlayerFact> {
-    PlayerFact::ALL.iter().copied().find(|r| r.name() == name && content.defs.fact_field(*r).is_some())
+    PlayerFact::ALL.iter().copied().find(|&r| content.defs.fact_name(r) == Some(name))
 }
 
 /// The definitions a tool offers for `side`'s list fact `field` (a list of
 /// definitions of a registry), by their handles, in the list's order:
 ///
-/// - the engine's form list (`PlayerFact::CrossList`): the forms of the
+/// - the engine's form list (`PlayerFact::FormList`): the forms of the
 ///   side's navi's own lists, of every version (EXE6's ten Crosses; none
 ///   for a navi that doesn't change form);
 /// - else what the rules' default lists (what a side that says nothing
@@ -696,7 +654,7 @@ pub fn offered(content: &Content, game: &str, side: &Side, field: &Field) -> Opt
     let FieldType::Array(elem, _) = field.ty else { return None };
     let FieldType::Ref(registry, of) = &**elem else { return None };
     let registry = *registry;
-    if role_of(content, field.name) == Some(PlayerFact::CrossList) {
+    if role_of(content, field.name) == Some(PlayerFact::FormList) {
         return Some(crate::navi_forms(content, side.navi(content)).unwrap_or_default().into_iter().map(|f| f.0).collect());
     }
     let mut out = Facts::defaults(content).get(content, field.name).map(|v| v.defs()).unwrap_or_default();

@@ -106,7 +106,7 @@ pub struct NaviData {
     pub fresh: Option<FreshStats>,
     /// Its HP after a navi switch, by side (`byte_802DD88`).
     #[serde(skip)]
-    pub cross_hp: Option<[u16; 2]>,
+    pub switch_hp: Option<[u16; 2]>,
     /// What the save's reload gives it by its link navi level
     /// (docs/engine/link-navis.md). Tools fill a side's stats from it
     /// (nettai-match's `link_navis`); no battle reads it.
@@ -212,7 +212,7 @@ pub struct NaviForms {
     /// its [`SoulData`]).
     pub souls: Vec<FormHandle>,
     /// The forms its form list offers, by version of its game, in the
-    /// list's order (the table's `<version>.crosses`: EXE6's Crosses). A
+    /// list's order (the table's `<version>.form_list`: EXE6's Crosses). A
     /// frontend numbers a version's pictures of them by it.
     pub by_version: Vec<(String, Vec<FormHandle>)>,
 }
@@ -362,7 +362,7 @@ pub struct FormData {
     #[serde(default)]
     pub status_reset: FormEffects,
     #[serde(default)]
-    pub navicust_refresh: Option<FormEffects>,
+    pub ability_refresh: Option<FormEffects>,
     /// The height it floats at, in whole pixels (`sub_80F0608`).
     #[serde(default)]
     pub hover: i16,
@@ -559,7 +559,7 @@ pub struct RunMessage {
 impl FormData {
     /// What a NaviCust change gives the form back.
     pub fn refresh_effects(&self) -> FormEffects {
-        self.navicust_refresh.unwrap_or(FormEffects(self.status_reset.0 & !FormEffects::TARGET_MARKER))
+        self.ability_refresh.unwrap_or(FormEffects(self.status_reset.0 & !FormEffects::TARGET_MARKER))
     }
 }
 
@@ -645,8 +645,8 @@ impl FormEffects {
     pub const TARGET_MARKER: u16 = 0x040;
     /// Invulnerable for good.
     pub const INVULNERABLE: u16 = 0x080;
-    /// The berserk controller starts over.
-    pub const BERSERK: u16 = 0x100;
+    /// The navi's controller starts over (EXE6's Beast Over's berserk).
+    pub const CONTROLLER_RESTART: u16 = 0x100;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x001, "clear_statuses"),
         (0x002, "super_armor"),
@@ -656,7 +656,7 @@ impl FormEffects {
         (0x020, "untouchable"),
         (0x040, "target_marker"),
         (0x080, "invulnerable"),
-        (0x100, "berserk"),
+        (0x100, "controller_restart"),
     ];
 
     pub fn has(self, bit: u16) -> bool {
@@ -817,7 +817,7 @@ pub(crate) fn read_navi(
         d,
         r,
         &[
-            "id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "cross_hp", "levels", "story", "forms", "tick",
+            "id", "identity", "banners", "own_chip", "actions", "weapons", "fresh", "switch_hp", "levels", "story", "forms", "tick",
             "idle", "post_init", "fire_charge",
         ],
     )?;
@@ -912,11 +912,11 @@ pub(crate) fn read_fresh(
     }))
 }
 
-/// A navi definition's `cross_hp`: its HP after a navi switch, by side.
-pub(crate) fn read_cross_hp(d: &nettai_content_api::Definition) -> Result<Option<[u16; 2]>, nettai_content_api::ContentError> {
+/// A navi definition's `switch_hp`: its HP after a navi switch, by side.
+pub(crate) fn read_switch_hp(d: &nettai_content_api::Definition) -> Result<Option<[u16; 2]>, nettai_content_api::ContentError> {
     use nettai_content_api::{ContentError, Data};
-    let what = || ContentError::new(format!("{}.luau: navi {}: `cross_hp` is two HP values, by side", d.module, d.key));
-    match d.spec.field("cross_hp") {
+    let what = || ContentError::new(format!("{}.luau: navi {}: `switch_hp` is two HP values, by side", d.module, d.key));
+    match d.spec.field("switch_hp") {
         Data::Nil => Ok(None),
         Data::List(items) => match items.as_slice() {
             [Data::Int(a), Data::Int(b)] if (0..=0xFFFF).contains(a) && (0..=0xFFFF).contains(b) => Ok(Some([*a as u16, *b as u16])),

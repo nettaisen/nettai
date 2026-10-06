@@ -14,7 +14,7 @@ return {
     spark_steps_at_start = true,
     retype = "is_and_hits",
     damage_word = "paralysis_and_bugs",
-    obstacle_soldiers = false,
+    obstacle_conversion = false,
     palette_flash = "mode_runs_through_pause",
     -- Presentation: its flash is a palette transform in slot 20 (`sub_80E10C0`), after the fade system's first record's
     -- (slots 18 and 19: a dimming's), so its white stands over a dimming.

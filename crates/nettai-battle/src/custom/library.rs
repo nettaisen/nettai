@@ -11,10 +11,7 @@ use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
 pub trait Library {
     /// A chip's record.
     fn chip(&self, id: ChipHandle) -> &ChipData;
-    /// The Beast Out chip the screen offers (`roles.chips.beast_out`), if
-    /// the content has one, and the chip an illegal pick counts as
-    /// (`roles.chips.invalid`).
-    fn beast_out_chip(&self) -> Option<ChipHandle>;
+    /// The chip an illegal pick counts as (`roles.chips.invalid`).
     fn invalid_chip(&self) -> ChipHandle;
     /// A Program Advance's place among them (the bit a formed one takes in
     /// the round's record), by the chip it makes.
@@ -72,10 +69,6 @@ impl Library for Content {
     // §4.0.)
     fn result_words(&self) -> u32 {
         self.rules().flow.result_words as u32
-    }
-
-    fn beast_out_chip(&self) -> Option<ChipHandle> {
-        self.defs.roles().try_chip(ChipRole::BeastOut)
     }
 
     fn invalid_chip(&self) -> ChipHandle {
@@ -203,7 +196,6 @@ pub(crate) mod testing {
     pub const SILENT_NAVI: NaviHandle = NaviHandle(0x7F);
 
     /// The chips the screen names by role, as the test library numbers them.
-    pub const BEAST_OUT: ChipId = 0x13F;
     pub const INVALID: ChipId = 0x185;
     pub const FIRST_ADVANCE: ChipId = 0x140;
     pub const FIRST_OWN_CHIP: ChipId = 0x190;
@@ -223,9 +215,6 @@ pub(crate) mod testing {
     impl Library for TestLibrary {
         fn chip(&self, id: ChipHandle) -> &ChipData {
             self.chips.iter().find(|(i, _)| *i == id.0).map(|(_, c)| c).unwrap_or(&self.plain)
-        }
-        fn beast_out_chip(&self) -> Option<ChipHandle> {
-            Some(ChipHandle(BEAST_OUT))
         }
         fn invalid_chip(&self) -> ChipHandle {
             ChipHandle(INVALID)

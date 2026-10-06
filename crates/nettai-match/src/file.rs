@@ -789,7 +789,7 @@ mod tests {
     #[test]
     fn a_game_is_its_rules() {
         let content = exe6_content();
-        assert!(content.defs.fact_field(nettai_battle::content::PlayerFact::CrossList).is_some());
+        assert!(content.defs.fact_field(nettai_battle::content::PlayerFact::FormList).is_some());
         assert!(!crate::facts::takes(&content, "souls"));
         let good = write(&content, &crate::pick::live(&content, "exe6", 1, None).unwrap());
         let e = parse(&content, &good.replacen("game = \"exe6\"\n", "game = \"exe6\"\nrules = \"stock\"\n", 1)).unwrap_err();
@@ -806,7 +806,7 @@ mod tests {
         m.sides[0].set_fact(&content, "beast_out", &[Fact::Value(Value::Bool(false))]).unwrap();
         m.sides[0].set_level(&content, Some(3)).unwrap();
         let chip = |k: &str| ids::chip(&content, "exe6", k).unwrap();
-        m.sides[0].facts.set_sp_times(&content, &[(chip("heatman-sp"), 721), (chip("blastmn-sp"), 1500)]).unwrap();
+        m.sides[0].facts.set(&content, "sp_times", &exe6_compat::codec::sp_time_facts(&[(chip("heatman-sp"), 721), (chip("blastmn-sp"), 1500)])).unwrap();
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[1].set_navi(&content, protoman).unwrap();
         m.sides[1].set_fact(&content, "crosses", &[]).unwrap();

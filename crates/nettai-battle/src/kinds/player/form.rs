@@ -277,7 +277,7 @@ fn apply_effects(b: &mut Battle, r: ObjectRef, effects: FormEffects) {
     if effects.has(FormEffects::INVULNERABLE) {
         super::set_invulnerable(b, r, 0xFFFF);
     }
-    if effects.has(FormEffects::BERSERK) {
+    if effects.has(FormEffects::CONTROLLER_RESTART) {
         super::ai_mut(b, r).controller_fresh = true;
     }
 }
