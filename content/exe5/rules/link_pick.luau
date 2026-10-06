@@ -6,6 +6,21 @@
 
 local stages = require("../stages")
 
+-- The settings' effects a link battle stage has (the link battle's) and hasn't (the random battle's).
+local LINK, RANDOM = 0x8, 0x200000
+
+-- The stages a match may name: the game's link battle stages, each a settings record with the link effect that isn't the random battle's, whether a random pick reaches them or not.
+local function match_stages(): { StageDef }
+    local out: { StageDef } = {}
+    for _, s in stages :: { [string]: StageDef } do
+        local effects = s.effects or 0
+        if bit32.band(effects, LINK) ~= 0 and bit32.band(effects, RANDOM) == 0 then
+            table.insert(out, s)
+        end
+    end
+    return out
+end
+
 return {
     -- The stages a link battle picks one of at random with its settings, by the pick's index (0x08129F2C, EXE6's
     -- `sub_81209DC`): `PosRNG1() % 0x60` (the counts by mode at 0x08129F64: 0x44 and 0x60) into the settings list at
@@ -38,6 +53,9 @@ return {
     -- 0x44, the first 68 (netbattle-1 to netbattle-66, 51 and 52 twice). The fold, from index 76, is past them; the
     -- rounds after pick among all 96 (0x08009970's count 0x60).
     first_round_stages = 68,
+    -- The stages a match may name (a match file's, the editor's, an offer's): the link battle's, those the pick never
+    -- reaches (netbattle-75 to netbattle-86) too.
+    match_stages = match_stages(),
     -- The backgrounds a link battle picks one of at random with its settings (`table[PosRNG2() % 27]`, the table at
     -- 0x08129F6C: its backgrounds 0x00 to 0x1A, each once, in the table's order). A stage's own background (every
     -- record's is the same one) is what a match that names none shows.

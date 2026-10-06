@@ -37,7 +37,7 @@ pub mod testing;
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::content::{Content, PlayerFact};
 use nettai_battle::custom::{BattleFolder, PlayerSetup};
-use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage, effects};
+use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage};
 use nettai_battle::Rng;
 use nettai_content_api::{NaviHandle, StageHandle};
 
@@ -280,19 +280,12 @@ impl Match {
     }
 }
 
-/// The stages a link battle of `game` picks from: the game's link battle
-/// stages that aren't the random battle's (`sub_81209DC` picks a link
-/// battle's from the settings records 0 to 0x5F; those from 0x60 on are
-/// the random battle's, `effects::RANDOM`). A match is fought on one of
-/// them.
+/// The stages a match of `game` may name, in handle order: its rules'
+/// (`link_pick.match_stages`: EXE6's and EXE5's link battle stages, each a
+/// settings record with the link effect that isn't the random battle's). A
+/// match is fought on one of them.
 pub fn link_battle_stages(content: &Content, game: &str) -> Vec<StageHandle> {
-    (0..content.defs.stages.len() as u16)
-        .map(StageHandle)
-        .filter(|&s| {
-            let e = content.stage(s).effects;
-            e & effects::LINK != 0 && e & effects::RANDOM == 0 && ids::in_game(content, game, &content.defs.stage(s).key)
-        })
-        .collect()
+    content.rules().link_pick.match_stages.iter().copied().filter(|&s| ids::in_game(content, game, &content.defs.stage(s).key)).collect()
 }
 
 /// `game`'s link battle stage named `name`.
