@@ -1,10 +1,12 @@
-//! nettai-demo: watch a golden trace replayed through the engine, or play.
-//! The desktop program over the nettai-frontend library: this is its
-//! command line. See docs/frontend.md.
+//! nettai-demo: edit a match and play it, play a match file (alone or over
+//! the network), or watch a golden trace replayed through the engine. The
+//! desktop program over the nettai-frontend library: this is its command
+//! line. See docs/frontend.md.
 
 use nettai_demo::trace::trace_rounds;
-use nettai_demo::net::{Agreed, NetHandshake, Progress, Udp};
-use nettai_demo::{app, headless};
+use nettai_demo::net::{Agreed, NetHandshake, Udp};
+use nettai_demo::window::{self, Languages, Play, PlayOptions, Start, Waiting};
+use nettai_demo::{editor, headless};
 use nettai_frontend::driver::{Driver, LivePlayer};
 use nettai_frontend::game::{Failed, Found, Game, LoadError, Sound};
 use nettai_frontend::player::Player;
@@ -24,6 +26,11 @@ struct Args {
     /// The trace (several with --audit).
     traces: Vec<PathBuf>,
     round: usize,
+    /// Edit this match file (none, and nothing else to do: a new match).
+    edit: Option<PathBuf>,
+    /// The editor's pane to start on, and a screenshot of it to write.
+    tab: Option<String>,
+    screenshot: Option<PathBuf>,
     /// Play this match file; write the match played to that one.
     match_file: Option<PathBuf>,
     save_match: Option<PathBuf>,
@@ -58,7 +65,9 @@ struct Args {
 const MAX_DELAY: u32 = 15;
 
 const USAGE: &str = "\
-usage: nettai-demo [OPTIONS] TRACE.jsonl     watch a trace's rounds
+usage: nettai-demo [OPTIONS]                 edit a new match (the window asks its game)
+       nettai-demo [OPTIONS] --edit FILE     edit a match file
+       nettai-demo [OPTIONS] TRACE.jsonl     watch a trace's rounds
        nettai-demo [OPTIONS] --match FILE    play a match file (you are its left side)
        nettai-demo [OPTIONS] --match FILE --host PORT        play another player over the
        nettai-demo [OPTIONS] --match FILE --join ADDR:PORT   network: host, or join the host
@@ -67,8 +76,9 @@ usage: nettai-demo [OPTIONS] TRACE.jsonl     watch a trace's rounds
        nettai-demo [OPTIONS] --audit TRACE.jsonl...
 
   You play one game, EXE6 or EXE5: a match file names its game and a trace
-  states its own. Live play's setup comes from the match file; use
-  nettai-demo-editor to create or randomize one. The battle is that game's:
+  states its own. Live play's setup comes from the match file, which the
+  editor makes (with no trace or match to play, the window opens on it; its
+  Play plays the match in the same window, Esc comes back). The battle is that game's:
   its content folder and the support folders it uses, drawn and heard
   from its pack (graphics and sound, written from any subset of your ROMs
   by `nettai-extract <exe5|exe6> <pack-dir> [ROM ...]`), found in the packs
@@ -79,10 +89,18 @@ usage: nettai-demo [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    this repository's content/)
   --mute           no sound (headless rendering never plays any)
   --round N        the trace round to start with (default 1; later rounds follow)
+  --edit FILE      open the editor on this match file (docs/frontend.md §6;
+                   README.md, \"The match editor\")
+  --tab NAME       with the editor: start on a pane: arena, or left- or right-
+                   and navi, folder, auto-battle, patch-cards, navicust, stats,
+                   or the name of a list the game's rules take of a side
+                   (exe6's crosses, exe5's souls)
+  --screenshot PNG with the editor: write the window to PNG once it has drawn,
+                   and quit
   --match FILE     play the match this file sets up (docs/frontend.md §6: its
                    game, the arena, each side's navi, version,
                    folder, Crosses, patch cards and stats, by name in the
-                   game; nettai-demo-editor makes them); you are its left side.
+                   game; the editor makes them); you are its left side.
                    Its seed sets the battle's RNG (else from the clock).
                    With --audit-content, select the game's content to audit.
                    With --host or --join the left side
@@ -91,7 +109,8 @@ usage: nettai-demo [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    or the one netplay agreed) to FILE as a match file,
                    to play again or edit
   --show-folders   print both players' live folders
-  --scale N        window scale (default 4)
+  --scale N        the window's size when it opens to play, in screens
+                   (default 4); resize it at will
   --paused         start paused
   --headless F     render frames F (e.g. 150,300,600 or 100-120; trace frame
                    numbers, or ticks in live play) to frame_NNNNN.png files
@@ -131,7 +150,9 @@ usage: nettai-demo [OPTIONS] TRACE.jsonl     watch a trace's rounds
                    from the pack); either text mode. Only what is shown
                    changes: the battle, and a netbattle with a player of
                    another language, are the same
-  --quit-after N   close the window after N ticks
+  --quit-after N   close the window after N ticks (NETTAI_PLAY_STATS: print
+                   what each frame costs to show; NETTAI_WINDOW_SHOT=PNG: the
+                   last picture shown)
   --host PORT      netplay: host a match on this UDP port (forward it on
                    your router to play over the Internet) and wait for a
                    player to join; you are the left navi
@@ -153,6 +174,9 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         mute: false,
         traces: Vec::new(),
         round: 1,
+        edit: None,
+        tab: None,
+        screenshot: None,
         match_file: None,
         save_match: None,
         show_folders: false,
@@ -186,6 +210,9 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
             "--mute" => a.mute = true,
             "--round" => a.round = number(value("--round")?, "--round")? as usize,
             "--match" => a.match_file = Some(value("--match")?.into()),
+            "--edit" => a.edit = Some(value("--edit")?.into()),
+            "--tab" => a.tab = Some(value("--tab")?),
+            "--screenshot" => a.screenshot = Some(value("--screenshot")?.into()),
             "--save-match" => a.save_match = Some(value("--save-match")?.into()),
             "--show-folders" => a.show_folders = true,
             "--keys" => a.keys = Some(value("--keys")?),
@@ -224,6 +251,20 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
             return Err("--audit-content needs --match FILE to select the game".into());
         }
         return Ok(a);
+    }
+    // The editor: a match file to edit, or nothing else to do.
+    let editing = a.edit.is_some() || (a.traces.is_empty() && a.match_file.is_none() && !a.audit);
+    if editing {
+        if !a.traces.is_empty() || a.match_file.is_some() || a.audit || a.headless.is_some() || a.host.is_some() || a.join.is_some() {
+            return Err("--edit opens the editor alone (play its match from there, or with --match)".into());
+        }
+        if a.save_match.is_some() || a.quit_after.is_some() {
+            return Err("--save-match and --quit-after go with a match played (--match)".into());
+        }
+        return Ok(a);
+    }
+    if a.tab.is_some() || a.screenshot.is_some() {
+        return Err("--tab and --screenshot go with the editor".into());
     }
     if a.traces.is_empty() && a.match_file.is_none() {
         return Err("give a trace file or --match FILE".into());
@@ -332,7 +373,7 @@ fn save_match(content: &nettai_battle::Content, m: &nettai_match::Match, seed: u
 
 /// Connect (host or join) and start the handshake that agrees the round;
 /// each player brings their match file's left side, and the host its
-/// arena. The window polls it (`app::wait`), saying the second half.
+/// arena. The window polls it each frame, saying the second half.
 fn handshake(args: &Args, content: &Arc<nettai_battle::Content>, m: nettai_match::Match) -> (NetHandshake<Udp>, String) {
     use nettai_demo::net::Role;
     use nettai_frontend::netplay::Offer;
@@ -353,8 +394,15 @@ fn handshake(args: &Args, content: &Arc<nettai_battle::Content>, m: nettai_match
     }
 }
 
+/// What netplay needs once the match is agreed (from the command line).
+struct NetArgs {
+    delay: u32,
+    show_folders: bool,
+    save_match: Option<PathBuf>,
+}
+
 /// The agreed match's player.
-fn net_player(args: &Args, content: &Arc<nettai_battle::Content>, agreed: Agreed<Udp>) -> Box<dyn Driver> {
+fn net_player(net: &NetArgs, content: &Arc<nettai_battle::Content>, agreed: Agreed<Udp>) -> Box<dyn Driver> {
     use nettai_frontend::netplay::{NetOptions, NetPlayer};
     let Agreed { conn, set, m, .. } = agreed;
     let peer = conn.datagram().peer().map_or("the other player".to_string(), |a| a.to_string());
@@ -363,14 +411,47 @@ fn net_player(args: &Args, content: &Arc<nettai_battle::Content>, agreed: Agreed
         "netplay: playing {peer}; you are the {} navi (the match's seed {}, input delay {})",
         if side == 0 { "left" } else { "right" },
         conn.seed(),
-        args.delay
+        net.delay
     );
-    eprintln!("{}", nettai_match::describe(content, &m, conn.seed(), args.show_folders, side));
-    if let Some(path) = &args.save_match {
+    eprintln!("{}", nettai_match::describe(content, &m, conn.seed(), net.show_folders, side));
+    if let Some(path) = &net.save_match {
         save_match(content, &m, conn.seed(), path);
     }
-    let options = NetOptions { delay: args.delay, ..NetOptions::default() };
+    let options = NetOptions { delay: net.delay, ..NetOptions::default() };
     Box::new(NetPlayer::new(conn, side, set, options))
+}
+
+/// The editor's options, from the command line.
+fn editor_options(args: &Args) -> editor::Options {
+    let lang = editor::names::Lang::from_code(&args.lang).unwrap_or_else(|| fail(format!("no language {:?} for the editor (en or ja)", args.lang)));
+    editor::Options {
+        content: args.content.clone(),
+        content_dir: PathBuf::new(),
+        games: Vec::new(),
+        packs: args.packs.clone(),
+        file: args.edit.clone(),
+        lang,
+        tab: args.tab.clone(),
+        screenshot: args.screenshot.clone(),
+    }
+}
+
+/// The editor's window: on `--edit FILE`, else on the choice of a new
+/// match's game (none is chosen for it).
+fn editor_app(args: &Args) -> editor::App {
+    let options = editor_options(args);
+    // The match's game, when there is a file: the one it names.
+    let opened = args.edit.as_ref().map(|path| {
+        let game = std::fs::read_to_string(path)
+            .map_err(|e| e.to_string())
+            .and_then(|t| nettai_match::file::game_of(&t))
+            .unwrap_or_else(|e| fail(format!("{}: {e}", path.display())));
+        let loaded = editor::load::load_game(options.content.as_deref(), &options.packs, &game).unwrap_or_else(|e| fail(e));
+        let mut of_match = options.clone();
+        (of_match.content_dir, of_match.games) = (loaded.game.dir.clone(), vec![loaded.game.name.clone()]);
+        editor::Editor::new(loaded.game, loaded.pictures, of_match)
+    });
+    editor::App::new(options, opened)
 }
 
 /// `--audit-content`: every lookup for everything the content defines, in
@@ -490,10 +571,28 @@ fn main() {
             if !e.is_empty() {
                 eprintln!("{e}\n");
             }
-            eprintln!("{USAGE}\n\n{}", app::HELP);
+            eprintln!("{USAGE}\n\n{}", window::HELP);
             std::process::exit(2);
         }
     };
+    let play = PlayOptions {
+        scale: args.scale,
+        start_paused: args.paused,
+        quit_after: args.quit_after,
+        text: args.text,
+        font: args.font.clone(),
+        mute: args.mute,
+    };
+    // The editor: its window, which plays its match in place.
+    if args.traces.is_empty() && args.match_file.is_none() && !args.audit {
+        // (A round that doesn't start is a problem the editor shows, not a
+        // message on the terminal.)
+        std::panic::set_hook(Box::new(|_| {}));
+        if let Err(e) = window::run(editor_app(&args), Start::Edit, play) {
+            fail(format!("window: {e}"));
+        }
+        return;
+    }
     // The packs found in the packs directory (and given by --pack).
     let t = Instant::now();
     let found = Found::find(&nettai_content::pack::packs_dir(), &args.packs).unwrap_or_else(|e| load_failed(e));
@@ -593,40 +692,36 @@ fn main() {
     }
 
     // The window: the player's sound as samples, played through the audio
-    // device.
-    let (audio, device) = if args.mute {
-        (None, None)
+    // device (the window opens it).
+    let audio = if args.mute {
+        None
     } else {
         let sound = sound_of(&loaded);
-        let device = nettai_audio::Output::open().unwrap_or_else(|e| fail(format!("no audio output: {e}")));
-        (Some(nettai_audio::BattleAudio::with_banks(sound.banks, sound.songs)), Some(device))
+        Some(nettai_audio::BattleAudio::with_banks(sound.banks, sound.songs))
     };
-    eprintln!("{}", app::HELP);
-    let opts = app::Options { scale: args.scale, start_paused: args.paused, quit_after: args.quit_after };
-    let mut window = app::open(&opts).unwrap_or_else(|e| fail(format!("window: {e}")));
-    // A netplay match: the window stays responsive (Esc quits) while the
-    // handshake agrees it.
-    let first = match netplay {
-        None => drivers.remove(0),
-        Some((mut handshake, waiting)) => {
-            let agreed = app::wait(&mut window, &waiting, || match handshake.poll(Instant::now()) {
-                Progress::Pending => None,
-                Progress::Agreed(agreed) => Some(Ok(agreed)),
-                Progress::Failed(why) => Some(Err(why)),
-            });
-            match agreed.unwrap_or_else(|e| fail(format!("window: {e}"))) {
-                Some(Ok(agreed)) => net_player(&args, &content, agreed),
-                Some(Err(why)) => fail(format!("netplay: {why}")),
-                None => {
-                    eprintln!("netplay: stopped waiting (the window was closed)");
-                    return;
-                }
-            }
+    eprintln!("{}", window::HELP);
+    let languages = Languages::new(loaded.clone(), &args.lang, graphics);
+    let start = match netplay {
+        // A netplay match: the window stays responsive (Esc quits) while
+        // the handshake agrees it.
+        Some((handshake, text_line)) => {
+            let net = NetArgs { delay: args.delay, show_folders: args.show_folders, save_match: args.save_match.clone() };
+            let content = content.clone();
+            Start::Net(Box::new(Waiting {
+                handshake,
+                text: text_line,
+                then: Box::new(move |agreed| net_player(&net, &content, agreed)),
+                parts: (renderer, text, audio),
+                languages,
+            }))
+        }
+        None => {
+            let first = drivers.remove(0);
+            let player = Player::with(renderer, text, audio, first);
+            Start::Play(Box::new(Play::new(player, drivers, languages, &play)))
         }
     };
-    let mut player = Player::with(renderer, text, audio, first);
-    let mut languages = app::Languages::new(&loaded, &args.lang, graphics);
-    if let Err(e) = app::run(window, &mut player, drivers, device.as_ref(), &mut languages, &opts) {
+    if let Err(e) = window::run(editor::App::new(editor_options(&args), None), start, play) {
         fail(format!("window: {e}"));
     }
 }
@@ -693,6 +788,28 @@ mod tests {
         assert!(args(&["--match", "match.toml", "trace.jsonl"]).is_err());
         assert!(args(&["--match", "match.toml", "--audit"]).is_err());
         assert!(args(&["trace.jsonl", "--save-match", "match.toml"]).is_err());
-        assert!(args(&[]).is_err());
+    }
+
+    /// With nothing to play the window opens on the editor: a new match, or
+    /// a file (`--edit`), on a pane (`--tab`); the editor plays its match
+    /// itself, so nothing that plays one goes with it.
+    #[test]
+    fn the_editor_is_the_window_with_nothing_to_play() {
+        let new = args(&[]).unwrap();
+        assert!(new.edit.is_none() && new.traces.is_empty() && new.match_file.is_none());
+        let opened = args(&["--edit", "match.toml", "--tab", "left-folder", "--screenshot", "shot.png"]).unwrap();
+        assert_eq!(opened.edit.as_deref(), Some(Path::new("match.toml")));
+        assert_eq!((opened.tab.as_deref(), opened.screenshot.as_deref()), (Some("left-folder"), Some(Path::new("shot.png"))));
+        for options in [
+            vec!["--edit", "match.toml", "--match", "other.toml"],
+            vec!["--edit", "match.toml", "trace.jsonl"],
+            vec!["--edit", "match.toml", "--host", "7777"],
+            vec!["--edit", "match.toml", "--headless", "1"],
+            vec!["--save-match", "played.toml"],
+            vec!["--match", "match.toml", "--tab", "arena"],
+            vec!["trace.jsonl", "--screenshot", "shot.png"],
+        ] {
+            assert!(args(&options).is_err(), "{options:?}");
+        }
     }
 }

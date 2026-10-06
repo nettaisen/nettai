@@ -16,8 +16,8 @@
 //! quietly marked. The data can be filled in as the game would have written
 //! it from the side's folder, or taken from an EXE5 save.
 
-use crate::app::{Choice, Editor, Msg};
-use crate::view::{DIM, GREEN, RED, SIDES, class_letter, class_name, heading, icon};
+use crate::editor::app::{Choice, Editor, Msg};
+use crate::editor::view::{DIM, GREEN, RED, SIDES, class_letter, class_name, heading, icon};
 use iced::widget::{Column, Row, button, checkbox, column, image, pick_list, row, scrollable, space, text, text_input};
 use iced::{Alignment, Color, Element, Length};
 use nettai_battle::Content;
