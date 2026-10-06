@@ -2826,6 +2826,7 @@ dependencies = [
  "nettai-netplay",
  "nettai-render",
  "nettai-replay",
+ "nettai-rtc",
  "sha2",
 ]
 
