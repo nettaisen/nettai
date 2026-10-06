@@ -449,17 +449,14 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
 // ---- Patch cards -------------------------------------------------------------------
 
 /// A Japanese save's card list (its bytes: the number, bit 7 when switched
-/// off) as the rules' setup's `patch_cards`: `{ card, on }` each, in the
-/// list's order.
+/// off) as the rules' setup's `patch_cards`: the cards switched on, in the
+/// list's order. (A card switched off does nothing in battle, and a side's
+/// cards are the ones that apply. The original's emotion window counts it
+/// as installed: a save whose every card is off reads the cards' bug flag
+/// where a side without cards reads the NaviCust's; a recording carries the
+/// glitch its console showed.)
 pub fn patch_cards(list: &[u8], ids: &Ids) -> Vec<Fact<'static>> {
-    list.iter()
-        .map(|&b| {
-            Fact::Record(vec![
-                ("card", Fact::Value(Value::Def(Registry::PatchCard, ids.patch_card(b & 0x7F).0))),
-                ("on", Fact::Value(Value::Bool(b & 0x80 == 0))),
-            ])
-        })
-        .collect()
+    list.iter().filter(|&&b| b & 0x80 == 0).map(|&b| Fact::Value(Value::Def(Registry::PatchCard, ids.patch_card(b & 0x7F).0))).collect()
 }
 
 // ---- The NaviCust -------------------------------------------------------------------

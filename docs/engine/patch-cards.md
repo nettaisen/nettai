@@ -208,14 +208,23 @@ rule, EXE6's patch cards module (content/exe6/rules/patch_cards/init.luau, in co
   definition's data, which the game's rules read (EXE6's: rules/patch_cards/cards.luau's constructors,
   `cards.hp(-40)`, `cards.charged_shot(require("./charge"))`, `cards.bug(...)`, ...). Weapons, programs
   (projectile variants), barriers and gauges are named by definition, never by number. The name is the locales'.
-- **A player's installed cards** are a fact of their game's rules' setup (`patch_cards`: a list of
-  `{ card, on }` in the list's order, at most 32, EXE6's save list's room; its 80 MB allow 16), which the setup
-  exchange and the digest cover as the rest of the setup. The EXE6 part reads them with `rules.setup_of(side)`,
-  and its `validate` holds the list to no card twice and 80 MB. exe6-compat's `codec::patch_cards` makes them from
-  a save's or trace's card list, a match file states them under `patch_cards`.
+- **A player's installed cards** are a fact of their game's rules' setup (`patch_cards`: a list of cards in the
+  list's order, at most 32, EXE6's save list's room; its 80 MB allow 16), which the setup exchange and the digest
+  cover as the rest of the setup. Each card in it applies: a card the save has switched off does nothing in battle
+  and is none of the side's (the user's word, 2026-10-06: "an patch card is always on"), so exe6-compat's
+  `codec::patch_cards`, which makes them from a save's or trace's card list, leaves it out. The EXE6 part reads
+  them with `rules.setup_of(side)`, and its `validate` holds the list to no card twice and 80 MB (the original's
+  total counts a switched-off card too: a list without it is within the limit all the same). A match file states
+  them under `patch_cards`, by name.
+- **What leaving a switched-off card out changes**: the original's emotion window (JP, §1.3) reads the cards' flag
+  0x1723 whenever a card is installed, on or off, and the NaviCust's 0x1720 without cards. With at least one card
+  on, the list still has cards and nothing changes. A save whose every card is off is a side without cards here,
+  whose glitch is the NaviCust's (its compile's bugs) where the original's is the stats' bug count after no card;
+  the two agree unless a NaviCust bug writes a byte the cards' count doesn't read. A recording carries the glitch
+  its console showed, and the lab's "every card switched off over a NaviCust bug" replays as before.
 - **The application** is the part's `round_setup` hook: once per side as the round is set up (`Battle::new`),
   before anything reads the side's stats. It is §1.2 steps 2 to 7 over the side's stats (`battle.navi(side)`):
-  the slots seeded from the stats, each switched-on card's effects in the kinds' order, the clamps, the copy
+  the slots seeded from the stats, each card's effects in the kinds' order, the clamps, the copy
   (BugStop holding back the bug slots), ChpShufl turning NumbrOpn off, MaxHP and HP. With cards installed it
   pushes the emotion window's glitch (`battle.set_emotion_window_glitch`): the stats after the cards have a
   NaviCust bug (§1.3). Afterwards the framework copies the stats to the battle-start copy (`reserves`).
