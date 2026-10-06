@@ -67,6 +67,9 @@ local state: StateSchema = {
     swung = "u8[4]",
     -- The side's own drive under DarkInvs (./auto_battle): the AI's state, as a navi it drives keeps it.
     drive = AI,
+    -- The side's auto battle data as its console sent it as the battle started (./auto_battle/block.luau), which a
+    -- navi in auto battle plays and turns.
+    auto_battle_places = schema.list(auto_battle.block.PLACE, auto_battle.block.PLACES),
     -- What the souls' additions to the custom screen keep of one screen: each soul's fields, in its folder
     -- (navis/megaman/forms/<soul>), which ./souls/custom gathers.
     screen = souls.custom.screen,
@@ -99,6 +102,12 @@ local rules: Rules = {
             rotation = "u8",
             compressed = "bool",
         }, 49),
+        -- Their auto battle data as their save holds it (./auto_battle/block.luau: the block's 42 places and its eight
+        -- pattern records), which a navi in auto battle plays of them as their console sends it; `auto_battle_sent`:
+        -- the places are as the console sent them, a recording's (the round's setup sends nothing).
+        auto_battle_places = schema.list(auto_battle.block.PLACE, auto_battle.block.PLACES),
+        auto_battle_records = schema.list(auto_battle.block.RECORD, auto_battle.block.RECORDS),
+        auto_battle_sent = "bool",
         -- What the save brings to the navi's stats (./save): MegaMan's base HP, the Regular memory, and a team navi's
         -- level (the story's progress).
         hp = "u16",
@@ -125,6 +134,8 @@ local rules: Rules = {
         -- A NaviCust with no programs on the largest board (MegaMan's compiles one; a recording's boundary states
         -- none, its stats already the NaviCust's).
         navicust_expansions = #navicust_board.boards - 1,
+        -- What the game's battle end writes of a player it has learned nothing of: no places, every record zeros.
+        auto_battle_records = auto_battle.block.nothing_learned(),
         hp = save.NEW_GAME_HP,
         reg_up = fresh_stats.reg_up,
         karma = 500,
@@ -192,8 +203,6 @@ local rules: Rules = {
     -- Its own actions, which reach its state: a soul's change and revert (./souls), Dark MegaMan's leave
     -- (./auto_battle).
     actions = { souls.change_action, souls.revert_action, auto_battle.leave },
-    -- For tools: the chips the auto battle AI can't place a navi for (./auto_battle/place.luau).
-    unplayable_in_auto_battle = auto_battle.unplayable,
     -- The custom screen's buttons and windows: Soul Unison's, and each soul's own (./souls/custom.luau).
     buttons = souls.custom.buttons,
     windows = souls.custom.windows,
@@ -216,6 +225,8 @@ local rules: Rules = {
             navicust.round_setup(side)
             patch_cards.apply(side)
             light_dark.round_setup(side)
+            -- The auto battle data the console sends (./auto_battle/block.luau).
+            auto_battle.block.send(side)
         end,
         -- Light and dark MegaMan (./light_dark): his starting mood, palette, a hit's bug, the holy panels a dark
         -- one clears, the chips each may use and a dark chip's cost.
@@ -243,7 +254,7 @@ local rules: Rules = {
         -- The folder's rules, which tools ask (the simulation never does).
         folder_check = folder.check,
         -- What is wrong with a side's setup, which tools ask (the simulation never does): what the save brings, the
-        -- patch cards, the NaviCust, the folder.
+        -- patch cards, the NaviCust, the folder, the auto battle data.
         validate = function(side: number): { SetupProblem }
             local out: { SetupProblem } = {}
             local function problem(text: string, field: string?, entry: number?)
@@ -253,6 +264,7 @@ local rules: Rules = {
             patch_cards.validate(side, problem)
             navicust.validate(side, problem)
             folder.validate(side, problem)
+            auto_battle.block.validate(side, problem)
             return out
         end,
     },

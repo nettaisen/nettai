@@ -1851,57 +1851,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let p = with(|api, _| Ok(api.player(side)))?;
         object_value(lua, p)
     });
-    lib_fn!(lua, t, "auto_battle_count", |_, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.auto_battle_count(side)))
-    });
-    lib_fn!(lua, t, "auto_battle_entry", |_, (side, i): (LuaValue, LuaValue)| {
-        let side = u8_arg(side, "side")? & 1;
-        let i = int(&i, "place")?;
-        if i < 1 {
-            return Err(mlua::Error::runtime("battle.auto_battle_entry: places count from 1"));
-        }
-        let e = with(|api, _| Ok(api.auto_battle_entry(side, (i - 1) as usize)))?;
-        match e {
-            nettai_content_api::AutoBattleEntry::Chip(c) => bound(|b| chip_value(b, Some(c))),
-            nettai_content_api::AutoBattleEntry::Pattern(p) => Ok(LuaValue::Integer(mlua::Integer::from(p) + 1)),
-            nettai_content_api::AutoBattleEntry::Nothing => Ok(LuaValue::Boolean(false)),
-            nettai_content_api::AutoBattleEntry::Empty => Ok(LuaValue::Nil),
-        }
-    });
-    lib_fn!(lua, t, "auto_battle_pattern", |_, (side, i): (LuaValue, LuaValue)| {
-        let side = u8_arg(side, "side")? & 1;
-        let i = int(&i, "pattern")?;
-        if i < 1 {
-            return Err(mlua::Error::runtime("battle.auto_battle_pattern: patterns count from 1"));
-        }
-        let (dx, dy) = with(|api, _| api.auto_battle_pattern(side, (i - 1) as usize).map_err(api_error))?;
-        Ok((dx as i64, dy as i64))
-    });
-    lib_fn!(lua, t, "auto_battle_pattern_read", |_, (side, i, k): (LuaValue, LuaValue, LuaValue)| {
-        let side = u8_arg(side, "side")? & 1;
-        let (i, k) = (int(&i, "pattern")?, int(&k, "read")?);
-        if i < 1 || k < 1 {
-            return Err(mlua::Error::runtime("battle.auto_battle_pattern_read: patterns and reads count from 1"));
-        }
-        match with(|api, _| Ok(api.auto_battle_pattern_read(side, (i - 1) as usize, (k - 1) as usize)))? {
-            nettai_content_api::AutoBattlePatternRead::Chip(c) => bound(|b| chip_value(b, Some(c))),
-            nettai_content_api::AutoBattlePatternRead::Number(n) => Ok(LuaValue::Integer(mlua::Integer::from(n))),
-            nettai_content_api::AutoBattlePatternRead::End => Ok(LuaValue::Nil),
-        }
-    });
-    lib_fn!(lua, t, "auto_battle_swap", |_, (side, i): (LuaValue, LuaValue)| {
-        let side = u8_arg(side, "side")? & 1;
-        let i = int(&i, "place")?;
-        if i < 1 {
-            return Err(mlua::Error::runtime("battle.auto_battle_swap: places count from 1"));
-        }
-        with(|api, _| Ok(api.auto_battle_swap(side, (i - 1) as usize)))
-    });
-    lib_fn!(lua, t, "auto_battle_turn", |_, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| api.auto_battle_turn(side).map_err(api_error))
-    });
     lib_fn!(lua, t, "alive_actor_slot", |lua, (side, i): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         let i = int(&i, "slot")?;

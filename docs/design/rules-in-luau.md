@@ -3031,3 +3031,35 @@ Every part of a side is a fact of its game's rules' setup, and what is wrong wit
 - **Checked**: the setup dump is the same but for where the parts are; verify's NaviCust tests (EXE6 1282 and
   EXE5 225 NaviCusts, 0 differ; EXE5's off-board check through `validate`) and EXE5 folders pass; the usual
   recordings match.
+
+### EXE5's auto battle data in the rules (2026-10-06, branch nettai-player, step c4a)
+
+The auto battle data is EXE5's setup's, and its send and its reads are EXE5's Luau (content/exe5/rules/auto_battle/
+block.luau); the engine has no auto battle code.
+
+- **The facts**: `auto_battle_places = schema.list(PLACE, 42)` (a place `{ chip, pattern, zero }`: a chip, a
+  pattern record by number from 1, a 0, or `{}` empty; past the list, empty), `auto_battle_records =
+  schema.list(RECORD, 8)` (`{ dx, dy, chips = schema.list({ chip, zero }, 5), score }`; past the list, blank, 0xFF
+  throughout) and `auto_battle_sent = "bool"` (new: the places are as a console sent them, a recording's). A side
+  that says nothing has every place empty and every record zeros (nothing learned).
+- **The send** (0x0802C7BE) is the rules' `round_setup`: the 42 places, three swaps among the first three and 39
+  among the rest, two draws a swap from the battle's RNG (84 a side, standing in for the console's RNG2 at the
+  link's start; a match's battle RNG is otherwise its seed's), packed into the side's state, `auto_battle_places`.
+  A recording's places go into the state as they are, with no draw.
+- **The reads** (`block.entry`, `count`, `swap`, `turn`, `pattern`, `pattern_read`) are Luau over the state and the
+  setup's records, as the engine's were; the AI (./ai) calls them in place of `battle.auto_battle_*`.
+- **`validate`** (./block): a place is one thing, a pattern one of the eight, and no chip the AI can't place a navi
+  for among the 42 places (./place's `unplayable`, by the positioning classes), with the list and entry as the
+  match's check said them.
+- **Gone from Rust**: nettai-battle's auto_battle.rs (`AutoBattleData`, `PatternRecord`, the send, the turn, the
+  read), `PlayerSetup::auto_battle`, `Battle::auto_battle`, the API's `auto_battle_*` and their types, the rules'
+  `unplayable_in_auto_battle` (`Defs::unplayable_in_auto_battle`); nettai-match's `Side::auto_battle` (a side is its
+  facts alone), `AutoBattle::{data, check}`, the match file's `[side.auto_battle]` lists. nettai-match keeps
+  `AutoBattle` as a typed view of the facts (`of_side`, `write`) for the editor's pane and the learning
+  (`learned`, `of_folder`), until c3b and the tie-break.
+- **Match files**: `auto_battle_places` and `auto_battle_records`, inline tables a line each; a side that stated no
+  data had a blank block, which is now `auto_battle_records = []` (verify's tools/matches are converted).
+- **exe5-compat**: a recording's sent block is the facts with `auto_battle_sent`.
+- **Checked**: the setup dump is the same but for where the data is; EXE5's auto battle recordings (chaos-ai,
+  dark-survival, DarkInvs: 28) and the usual ones match; a test holds the send to its 84 draws a side and its
+  packing.

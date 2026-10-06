@@ -76,10 +76,16 @@ pub enum Edit {
     EveryChip(bool),
 }
 
-/// Apply `edit` to the side's data: whether the match changed.
+/// Apply `edit` to the side's data (its facts, `AutoBattle::of_side`):
+/// whether the match changed.
 pub fn update(content: &Content, side: &mut Side, state: &mut State, edit: Edit) -> bool {
-    let folder = side.folder(content);
-    let d = &mut side.auto_battle;
+    let mut data = AutoBattle::of_side(content, side);
+    let changed = edit_data(content, &side.folder(content), &mut data, state, edit);
+    changed && data.write(content, side).is_ok()
+}
+
+/// Apply `edit` to `d`: whether it changed.
+fn edit_data(content: &Content, folder: &nettai_match::Folder, d: &mut AutoBattle, state: &mut State, edit: Edit) -> bool {
     let set = |d: &mut AutoBattle, selected: Selected, place: Entry, chip: ChipPlace| match selected {
         Selected::Place(i) => d.places.get_mut(i).is_some_and(|p| std::mem::replace(p, place) != place),
         Selected::Chip(r, k) => d.records.get_mut(r).and_then(|r| r.chips.get_mut(k)).is_some_and(|p| std::mem::replace(p, chip) != chip),
@@ -117,7 +123,7 @@ pub fn update(content: &Content, side: &mut Side, state: &mut State, edit: Edit)
         },
         Edit::Record(r, record) => d.records.get_mut(r).is_some_and(|r| std::mem::replace(r, record) != record),
         Edit::FromFolder => {
-            *d = AutoBattle::of_folder(content, &folder);
+            *d = AutoBattle::of_folder(content, folder);
             state.selected = Selected::Place(data::STANDARD.start);
             true
         }
@@ -180,15 +186,14 @@ fn record_line(e: &Editor, r: &Record) -> String {
 
 /// The chips an entry can be: the game's that a folder holds (those with a
 /// code) and its program advances, which are what the game writes into the
-/// data (its most used standard, mega and giga chips and program advance);
-/// for one of the 42 places (`place`), but those a navi in auto battle
-/// can't play (`data::unplayable`: a match's check refuses them there).
-fn chips(e: &Editor, place: bool) -> Vec<ChipHandle> {
+/// data (its most used standard, mega and giga chips and program advance).
+/// (One a navi in auto battle can't play among the 42 places, the rules'
+/// `validate` says, with the match's other problems.)
+fn chips(e: &Editor, _place: bool) -> Vec<ChipHandle> {
     let c = &e.content;
     (0..c.defs.chips.len() as u16)
         .map(ChipHandle)
         .filter(|&h| nettai_match::ids::in_game(c, e.m.game(), &c.defs.chip(h).key))
-        .filter(|&h| !place || data::unplayable(c, h).is_none())
         .filter(|&h| {
             let d = c.chip(h);
             match d.class {
@@ -220,7 +225,7 @@ const MAX_DY: i8 = 2;
 
 pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &e.content;
-    let d = &e.side(s).auto_battle;
+    let d = &AutoBattle::of_side(c, e.side(s));
     let state = e.auto_battle[s];
     let msg = move |edit: Edit| Msg::AutoBattle(s, edit);
     let pick = |selected: bool| if selected { button::secondary } else { button::text };
@@ -244,17 +249,11 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
             }
             .spacing(6)
             .align_y(Alignment::Center);
-            // (Under the entry: why it can't be played, else the quiet
-            // note.)
-            let cant = match entry {
-                Entry::Chip(chip) => data::unplayable(c, chip),
-                _ => None,
-            };
+            // (Under the entry: the quiet note.)
             let under = |note: String, color| row![space().width(Length::Fixed(50.0)), text(note).size(11).color(color).width(Length::Fill)];
-            let line: Element<Msg> = match (cant, unlike_the_game(c, list, entry)) {
-                (Some(why), _) => column![line, under(why.to_string(), RED)].into(),
-                (None, Some(note)) => column![line, under(note, DIM)].into(),
-                (None, None) => line.into(),
+            let line: Element<Msg> = match unlike_the_game(c, list, entry) {
+                Some(note) => column![line, under(note, DIM)].into(),
+                None => line.into(),
             };
             let b = button(line).width(Length::Fill).padding([1, 4]).on_press(msg(Edit::Select(Selected::Place(i))));
             places = places.push(b.style(pick(state.selected == Selected::Place(i))));
@@ -296,16 +295,7 @@ pub fn view(e: &Editor, s: usize) -> Element<'_, Msg> {
         let named: Vec<String> = d.places.iter().enumerate().filter(|(_, e)| **e == Entry::Pattern(n as u8)).map(|(i, _)| (i + 1).to_string()).collect();
         let named = if named.is_empty() { "no place names it".to_string() } else { format!("named by place {}", named.join(", ")) };
         let mut its = Row::new().spacing(2);
-        // (The quiet note for a chip of its that couldn't be played: no
-        // error, a save holds one, and a record never plays.)
-        let mut cant = Column::new();
-        for chip in &r.chips {
-            if let ChipPlace::Chip(chip) = chip
-                && let Some(why) = data::unplayable(c, *chip)
-            {
-                cant = cant.push(text(format!("{}: {why}; harmless in a record, which never plays", e.names.chip(c, *chip))).size(11).color(DIM));
-            }
-        }
+        let cant = Column::new();
         for (k, chip) in r.chips.iter().enumerate() {
             let label: Element<Msg> = match chip {
                 ChipPlace::Chip(chip) => row![icon(e, *chip), text(e.names.chip(c, *chip)).size(13)].spacing(4).align_y(Alignment::Center).into(),
@@ -500,11 +490,11 @@ mod tests {
         assert!(!edit(side, &mut state, Edit::NothingLearned));
         assert_eq!(state.selected, Selected::Place(data::STANDARD.start));
         assert!(edit(side, &mut state, Edit::Put(sword)) && edit(side, &mut state, Edit::Put(cannon)));
-        assert_eq!((side.auto_battle.places[3], side.auto_battle.places[4], state.selected), (Entry::Chip(sword), Entry::Chip(cannon), Selected::Place(5)));
+        assert_eq!((AutoBattle::of_side(&content, side).places[3], AutoBattle::of_side(&content, side).places[4], state.selected), (Entry::Chip(sword), Entry::Chip(cannon), Selected::Place(5)));
         // Place 34 names pattern 2; its record's chips, place and score.
         edit(side, &mut state, Edit::Select(Selected::Place(33)));
         assert!(edit(side, &mut state, Edit::Pattern(1)) && !edit(side, &mut state, Edit::Pattern(8)));
-        assert_eq!(side.auto_battle.places[33], Entry::Pattern(1));
+        assert_eq!(AutoBattle::of_side(&content, side).places[33], Entry::Pattern(1));
         edit(side, &mut state, Edit::Select(Selected::Chip(1, 0)));
         assert!(edit(side, &mut state, Edit::Put(sword)));
         assert_eq!(state.selected, Selected::Chip(1, 1));
@@ -512,26 +502,25 @@ mod tests {
         assert!(edit(side, &mut state, Edit::Dx(1, -2)) && edit(side, &mut state, Edit::Dy(1, 1)) && edit(side, &mut state, Edit::Score(1, " 12 ".into())));
         assert!(!edit(side, &mut state, Edit::Score(1, "twelve".into())) && !edit(side, &mut state, Edit::Dx(1, -2)));
         let places = [ChipPlace::Chip(sword), ChipPlace::Zero, ChipPlace::Zero, ChipPlace::Zero, ChipPlace::Zero];
-        assert_eq!(side.auto_battle.records[1], Record { dx: -2, dy: 1, chips: places, score: 12 });
+        assert_eq!(AutoBattle::of_side(&content, side).records[1], Record { dx: -2, dy: 1, chips: places, score: 12 });
         assert!(edit(side, &mut state, Edit::Score(1, String::new())));
-        assert_eq!(side.auto_battle.records[1].score, 0);
+        assert_eq!(AutoBattle::of_side(&content, side).records[1].score, 0);
         assert!(edit(side, &mut state, Edit::Record(1, Record::BLANK)) && !edit(side, &mut state, Edit::Record(1, Record::BLANK)));
-        assert_eq!(side.auto_battle.records[1], Record::BLANK);
+        assert_eq!(AutoBattle::of_side(&content, side).records[1], Record::BLANK);
         // A place made a 0, then empty.
         edit(side, &mut state, Edit::Select(Selected::Place(3)));
         assert!(edit(side, &mut state, Edit::Zero));
-        assert_eq!(side.auto_battle.places[3], Entry::Zero);
+        assert_eq!(AutoBattle::of_side(&content, side).places[3], Entry::Zero);
         assert!(edit(side, &mut state, Edit::Empty) && !edit(side, &mut state, Edit::Empty));
         // A chip put into the last place stays there.
         edit(side, &mut state, Edit::Select(Selected::Place(data::PLACES - 1)));
         assert!(edit(side, &mut state, Edit::Put(cannon)));
         assert_eq!(state.selected, Selected::Place(data::PLACES - 1));
-        assert_eq!(side.auto_battle.check(&content, "exe5"), Vec::<String>::new());
         // From the folder: what a random match states; no data: none.
         let drawn = AutoBattle::of_folder(&content, &side.folder(&content));
         assert!(edit(side, &mut state, Edit::FromFolder));
-        assert_eq!((side.auto_battle, state.selected), (drawn, Selected::Place(data::STANDARD.start)));
-        assert!(edit(side, &mut state, Edit::NoData) && side.auto_battle.is_blank());
+        assert_eq!((AutoBattle::of_side(&content, side), state.selected), (drawn, Selected::Place(data::STANDARD.start)));
+        assert!(edit(side, &mut state, Edit::NoData) && AutoBattle::of_side(&content, side).is_blank());
         assert!(!edit(side, &mut state, Edit::FromSave) && !edit(side, &mut state, Edit::EveryChip(true)) && state.every_chip);
     }
 }

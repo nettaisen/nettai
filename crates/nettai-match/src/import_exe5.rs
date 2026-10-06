@@ -124,7 +124,9 @@ impl Side {
         }
         if crate::auto_battle::has(content) {
             let (data, more) = auto_battle(content, &arena.game, &save.auto_battle());
-            self.auto_battle = data;
+            if let Err(e) = data.write(content, self) {
+                notes.push(format!("the save's auto battle data is left out: {e}"));
+            }
             notes.extend(more);
         }
         notes.extend(self.import_exe5_team_navi(content, save));
@@ -321,10 +323,10 @@ mod tests {
             score: 7,
         };
         want.records[1] = Record::ZERO;
-        assert_eq!(m.sides[1].auto_battle, want);
+        assert_eq!(AutoBattle::of_side(&content, &m.sides[1]), want);
         assert!(!notes.iter().any(|n| n.contains("auto battle")), "{notes:?}");
         // (The other side: a new match's.)
-        assert_eq!(m.sides[0].auto_battle, AutoBattle::nothing_learned());
+        assert_eq!(AutoBattle::of_side(&content, &m.sides[0]), AutoBattle::nothing_learned());
         assert!(!crate::check_match(&content, &m).iter().any(|p| p.contains("auto battle")), "{:?}", crate::check_match(&content, &m));
         // What a match can't state: a chip number the game has no chip for
         // (among the places, and in a record), a pattern past the eighth.
@@ -335,13 +337,13 @@ mod tests {
         assert_eq!(said.len(), 2, "{notes:?}");
         assert!(said[0].contains("place 7 of the save's auto battle data names pattern 10, past its eight"), "{notes:?}");
         assert!(said[1].contains("holds chip numbers exe5 has no chip for (0x1ff, 0x1fe): their places are left empty"), "{notes:?}");
-        let data = &m.sides[1].auto_battle;
+        let data = AutoBattle::of_side(&content, &m.sides[1]);
         assert_eq!(data.places[3..8], [Entry::Chip(chip("lance")), Entry::Empty, Entry::Zero, Entry::Empty, Entry::Chip(chip("sidebub3"))]);
         assert_eq!(data.records[0].chips[2], ChipPlace::Empty);
         // A block nothing has written.
         image[0x554C..0x554C + 0xE0].fill(0xFF);
         m.import_save(&content, 1, &image).unwrap();
-        assert!(m.sides[1].auto_battle.is_blank());
+        assert!(AutoBattle::of_side(&content, &m.sides[1]).is_blank());
     }
 
     /// The block a side's data is, by number: the import's way back.
@@ -424,14 +426,14 @@ mod tests {
             assert_eq!(AutoBattleBlock::read(&original.bytes()), Ok(*original), "{name}");
             // Through a match file.
             let mut m = crate::Match::empty(&content, "exe5").unwrap();
-            (m.sides[0].auto_battle, m.sides[1].auto_battle) = (data, AutoBattle::default());
+            data.write(&content, &mut m.sides[0]).unwrap();
+            AutoBattle::default().write(&content, &mut m.sides[1]).unwrap();
             let text = crate::write(&content, &m);
             let file: crate::file::MatchFile = toml::from_str(&text).unwrap_or_else(|e| panic!("{name}: {e}\n{text}"));
             let back = crate::file::resolve(&content, &file).unwrap_or_else(|e| panic!("{name}: {e:?}\n{text}"));
-            assert_eq!(back.sides[0].auto_battle, data, "{name}:\n{text}");
-            assert_eq!(block_of(&content, &back.sides[0].auto_battle), *original, "{name}");
-            // A block nothing has written is the side that states none.
-            assert_eq!(text.contains("auto_battle"), *name != "blank", "{name}:\n{text}");
+            let back = AutoBattle::of_side(&content, &back.sides[0]);
+            assert_eq!(back, data, "{name}:\n{text}");
+            assert_eq!(block_of(&content, &back), *original, "{name}");
         }
         assert!(super::auto_battle(&content, "exe5", &blocks[8].1).0.is_blank());
     }

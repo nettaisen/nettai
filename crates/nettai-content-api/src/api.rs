@@ -1129,30 +1129,6 @@ pub struct ColumnInfo {
     pub timer: u16,
 }
 
-/// An entry of a player's auto battle data (EXE5's) as content
-/// reads it: a chip, a pattern (its place among the patterns, from 0), or
-/// nothing (the halfword 0 or an empty place, 0xFFFF).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum AutoBattleEntry {
-    Chip(crate::ChipHandle),
-    Pattern(u8),
-    /// The halfword 0 (chip 0: a block no save filled).
-    Nothing,
-    /// An empty place (0xFFFF).
-    Empty,
-}
-
-/// What an auto-battling navi's read of a pattern finds (EXE5's 0x0802BCD6): a
-/// chip place's chip, a halfword the game takes for a chip's number
-/// without its being a chip place's chip (a place holding 0, half of a
-/// pattern's score, a record's `dx` and `dy`), or the run's end (0xFFFF).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum AutoBattlePatternRead {
-    Chip(crate::ChipHandle),
-    Number(u16),
-    End,
-}
-
 /// A side's defensive-chip record (the linked registry).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LinkedChip {
@@ -1445,22 +1421,6 @@ pub trait CoreApi {
     fn tracked(&self, side: u8) -> Option<ObjectRef>;
     /// Slot `i` (from 0, of four) of a side's list of alive actors.
     fn alive_actor_slot(&self, side: u8, i: u8) -> Option<ObjectRef>;
-    /// Player `side`'s auto battle data (EXE5's): how many entries it
-    /// counts, its entry in place `i` (from 0; past the count, an
-    /// empty place), its pattern `i` (from 0)'s place from the target,
-    /// and the `k`th halfword (from 0) a navi in auto battle reads of that
-    /// pattern's run, which goes on past a record whose five chip places
-    /// all hold one (0x0802BCD6).
-    fn auto_battle_count(&self, side: u8) -> usize;
-    fn auto_battle_entry(&self, side: u8, i: usize) -> AutoBattleEntry;
-    fn auto_battle_pattern(&self, side: u8, i: usize) -> ApiResult<(i8, i8)>;
-    fn auto_battle_pattern_read(&self, side: u8, i: usize, k: usize) -> AutoBattlePatternRead;
-    /// The first entry and the entry in place `i` (from 0) change places
-    /// (0x0802C0DC's swap).
-    fn auto_battle_swap(&mut self, side: u8, i: usize);
-    /// The first entry goes last of the count, the rest move up
-    /// (0x0802BF1C).
-    fn auto_battle_turn(&mut self, side: u8) -> ApiResult<()>;
     /// The objects of content kind `kind` (a kind handle) in the update
     /// list, in update order, whatever their lifecycle state (the game's
     /// walks of the list, such as `sub_80C67A4`).

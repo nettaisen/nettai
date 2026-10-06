@@ -52,10 +52,6 @@ pub struct PlayerSetup {
     /// given: their defaults (`setup_defaults`, the rest zero;
     /// `PlayerSetup::set_fact` writes one by name).
     pub rules: Option<nettai_content_api::Block>,
-    /// The player's auto battle data (EXE5's, `crate::auto_battle`),
-    /// which a navi in auto battle on the other side plays; none: empty. (A
-    /// recording's; match files and netplay don't carry them yet.)
-    pub auto_battle: crate::auto_battle::AutoBattleData,
 }
 
 impl Default for PlayerSetup {
@@ -65,7 +61,6 @@ impl Default for PlayerSetup {
             joypad_phase: 0,
             console: ConsoleSetup::default(),
             rules: None,
-            auto_battle: Default::default(),
         }
     }
 }

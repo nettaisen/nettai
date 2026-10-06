@@ -1,6 +1,6 @@
 --!strict
 -- EXE5's auto battle AI, in the two families a netbattle runs. Dark MegaMan's (0x0802BA14: `ai.run`) plays the auto
--- battle data of the side across from it (the player whose Chaos Unison failed: `battle.auto_battle_entry`);
+-- battle data of the side across from it (the player whose Chaos Unison failed: ./block);
 -- the one EXE5's story navis and DarkInvs's drive run (0x0802B4AC: `ai.run_own`, a player under DarkInvs
 -- driving itself) plays the navi's own side's, and faces, as it steps, the target whose search starts at the step's
 -- column (where the other starts at the pattern's search place); its pick for a crowded front is real code. Entry by
@@ -12,6 +12,7 @@
 -- rules' `navi_state`, a driven player's the rules' state of its side), but +0xF0 itself, the navi's
 -- `in_auto_battle`.
 
+local block = require("./block")
 local data = require("./data")
 local panels = require("./panels")
 local place = require("./place")
@@ -135,7 +136,7 @@ end
 
 -- 0x0802BF1C (0x0802BF16): the played entry goes last; nothing missed since.
 local function turn(navi: Object, s: State, fam: Family)
-    battle.auto_battle_turn(auto_battle_side(navi, fam))
+    block.turn(auto_battle_side(navi, fam))
     s.misses = 0
 end
 
@@ -143,9 +144,9 @@ end
 local function shuffle(navi: Object, fam: Family)
     local side = auto_battle_side(navi, fam)
     local r = battle.rng_positive()
-    local n = battle.auto_battle_count(side) - 1
+    local n = block.count(side) - 1
     if n > 0 then
-        battle.auto_battle_swap(side, r % n + 2)
+        block.swap(side, r % n + 2)
     end
 end
 
@@ -155,14 +156,14 @@ end
 -- chip 0's, whose byte 14 is 0: passed over, as a pattern is.)
 local function pick_by(side: number, bit: number, n: number): Chip?
     for i = 1, n do
-        local e = battle.auto_battle_entry(side, i)
+        local e = block.entry(side, i)
         if e == nil then
             return nil
         end
         if e ~= false and type(e) ~= "number" then
             local chip = e :: Chip
             if bit32.band(data.chips[chip.id].picks, bit) ~= 0 then
-                battle.auto_battle_swap(side, i)
+                block.swap(side, i)
                 return chip
             end
         end
@@ -241,7 +242,7 @@ local function decide(navi: Object, s: State, fam: Family)
     -- to play. But the send packs only the empty places away (0x0802C7BE), so a 0 is an entry, which comes first in
     -- its turn and stays there, each decision that reaches it a miss, until five in a row bring the shuffle above.
     -- No save the game wrote has one: a battle's end fills the places with chips' numbers, 0x0802C540.)
-    local e = battle.auto_battle_entry(auto_battle_side(navi, fam), 1)
+    local e = block.entry(auto_battle_side(navi, fam), 1)
     if e == nil or e == false then
         s.misses += 1
         return to_buster(s)
@@ -338,7 +339,7 @@ end
 -- a netbattle: a dark chip fizzles for any navi but MegaMan and navi 23 (0x08010056: DarkInvs), and the last stand
 -- is the player of AI index 0's alone (0x0802C17A: a team navi's is its number).
 local function pattern_place(navi: Object, s: State, fam: Family)
-    local dx, dy = battle.auto_battle_pattern(auto_battle_side(navi, fam), s.entry_pattern)
+    local dx, dy = block.pattern(auto_battle_side(navi, fam), s.entry_pattern)
     local t, i = target_from(navi, s.target_index)
     if t ~= nil then
         s.target_index = i
@@ -364,12 +365,12 @@ end
 -- (`pattern_place` above never takes the place). As written the read has no end but an empty place and takes whatever
 -- else it finds for a chip's number (0x0802C094 with no test of it): a place holding 0, and past a record whose five
 -- places all hold a chip the two halves of its score, the next record's `dx` and `dy` as one halfword, that record's
--- places and score, and so on to the block's last eight bytes (`battle.auto_battle_pattern_read`). A chip's number names
+-- places and score, and so on to the block's last eight bytes (./block's `pattern_read`). A chip's number names
 -- none here (content names chips, and the chip table's first record, chip 0, and its blank ones have no
 -- definition): such a read is an error that says what the game would play.
 local function pattern_chips(navi: Object, s: State, fam: Family)
     s.pattern_chip += 1
-    local read = battle.auto_battle_pattern_read(auto_battle_side(navi, fam), s.entry_pattern, s.pattern_chip)
+    local read = block.pattern_read(auto_battle_side(navi, fam), s.entry_pattern, s.pattern_chip)
     if read == nil then
         turn(navi, s, fam)
         s.step = 4

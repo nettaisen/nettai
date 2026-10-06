@@ -756,10 +756,6 @@ impl Round {
                     frames,
                 },
                 rules: None,
-                auto_battle: match &self.setup.ai_lists {
-                    Some(lists) => auto_battle_data(content, compat, &unhex(&lists[side as usize])?)?,
-                    None => Default::default(),
-                },
             };
             let level = level.map_or(nettai_content_api::Value::Nil, |l| nettai_content_api::Value::Int(l as i64));
             player.set_fact(content, "level", &[nettai_battle::rules::Fact::Value(level)])?;
@@ -779,6 +775,16 @@ impl Round {
                 }
             }
             player.set_fact(content, "patch_cards", &cards_of(side as usize)?)?;
+            // The auto battle data as the console sent it (the rules'
+            // `auto_battle_places` and `auto_battle_records`, the places
+            // sent: nothing for the round to send); none recorded, none.
+            let (places, records) = match &self.setup.ai_lists {
+                Some(lists) => auto_battle_facts(content, compat, &unhex(&lists[side as usize])?)?,
+                None => (Vec::new(), Vec::new()),
+            };
+            player.set_fact(content, "auto_battle_places", &places)?;
+            player.set_fact(content, "auto_battle_records", &records)?;
+            player.set_fact(content, "auto_battle_sent", &[Fact::Value(Value::Bool(true))])?;
             Ok(player)
         });
         let [mut p0, mut p1] = players;
@@ -874,39 +880,46 @@ impl Round {
 }
 
 /// A player's auto battle data from the block a recording carries (`auto_battle_block`):
-/// its chips by key.
-fn auto_battle_data(content: &Content, compat: &Compat, block: &[u8]) -> Result<nettai_battle::auto_battle::AutoBattleData, String> {
-    use nettai_battle::auto_battle::{AutoBattleData, AutoBattleEntry, PatternChip, PatternRecord};
+/// the rules' setup's `auto_battle_places` (the entries the console sent, each
+/// `{ chip }`, `{ pattern }` from 1, `{ zero = true }` or `{}` empty) and
+/// `auto_battle_records` (the eight records in their places, used or not: the
+/// AI's read of a pattern can run on into the ones after it).
+fn auto_battle_facts(content: &Content, compat: &Compat, block: &[u8]) -> Result<(Vec<Fact<'static>>, Vec<Fact<'static>>), String> {
     let (entries, patterns) = auto_battle_block(block)?;
-    let chip = |id: u16| -> Result<nettai_content_api::ChipHandle, String> {
-        compat
+    let chip = |id: u16| -> Result<Fact<'static>, String> {
+        let h = compat
             .chip(id)
             .and_then(|k| content.defs.chip_by_key(&k))
-            .ok_or_else(|| format!("the auto battle data's chip {id:#05x} isn't in the content"))
+            .ok_or_else(|| format!("the auto battle data's chip {id:#05x} isn't in the content"))?;
+        Ok(Fact::Value(Value::Def(Registry::Chip, h.0)))
     };
-    let mut out = AutoBattleData::default();
+    let mut places = Vec::new();
     for e in entries {
-        out.entries.push(match e {
-            0 => AutoBattleEntry::Nothing,
-            0xFFFF => AutoBattleEntry::Empty,
-            e if e & 0x8000 != 0 => AutoBattleEntry::Pattern((e & 0x7FFF) as u8),
-            e => AutoBattleEntry::Chip(chip(e)?),
-        });
+        places.push(Fact::Record(match e {
+            0 => vec![("zero", Fact::Value(Value::Bool(true)))],
+            0xFFFF => Vec::new(),
+            e if e & 0x8000 != 0 => vec![("pattern", Fact::Value(Value::Int((e & 0x7FFF) as i64 + 1)))],
+            e => vec![("chip", chip(e)?)],
+        }));
     }
-    // The records in their places, used or not (the AI's read of a
-    // pattern can run on into the ones after it).
+    let mut records = Vec::new();
     for p in patterns {
-        let mut chips = [PatternChip::Empty; nettai_battle::auto_battle::PATTERN_CHIPS];
-        for (place, &c) in chips.iter_mut().zip(&p.chips) {
-            *place = match c {
-                0 => PatternChip::Nothing,
-                0xFFFF => PatternChip::Empty,
-                c => PatternChip::Chip(chip(c)?),
-            };
+        let mut chips = Vec::new();
+        for &c in &p.chips {
+            chips.push(Fact::Record(match c {
+                0 => vec![("zero", Fact::Value(Value::Bool(true)))],
+                0xFFFF => Vec::new(),
+                c => vec![("chip", chip(c)?)],
+            }));
         }
-        out.patterns.push(PatternRecord { dx: p.dx, dy: p.dy, chips, score: p.score });
+        records.push(Fact::Record(vec![
+            ("dx", Fact::Value(Value::Int(p.dx as i64))),
+            ("dy", Fact::Value(Value::Int(p.dy as i64))),
+            ("chips", Fact::List(chips)),
+            ("score", Fact::Value(Value::Int(p.score as i64))),
+        ]));
     }
-    Ok(out)
+    Ok((places, records))
 }
 
 /// A battle folder (0x50 bytes: 30 chips, code << 9 | id, 0xFFFF none) by
