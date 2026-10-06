@@ -154,7 +154,6 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             joypad_phase: 0,
             console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
             rules: None,
-            auto_battle: Default::default(),
         };
         use nettai_battle::content::PlayerFact;
         use nettai_battle::rules::Fact;

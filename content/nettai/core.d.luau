@@ -1094,31 +1094,8 @@ declare battle: {
     set_dimmed: (on: boolean) -> (),
     -- BattleState+0x40, `sub_800A704`: the fight's ticks so far (capped).
     battle_time: () -> number,
-    -- Player `side`'s auto battle data (EXE5's, which a navi in auto battle
-    -- on the other side plays): how many entries it counts; the entry
-    -- in place `i` (from 1; past the count, an empty place): a chip, a
-    -- pattern's number (from 1), false (a place holding 0, the game's
-    -- chip 0, which no save the game wrote has there) or nil (an empty
-    -- place); pattern `i` (from 1)'s place from the target (`dx` columns
-    -- toward the navi's enemies, `dy` rows); and read `k` (from 1) of that
-    -- pattern's run as EXE5's auto battle reads it (0x0802BCD6): a chip
-    -- place's chip, nil at an empty place, the run's end, or a number, a
-    -- halfword the game takes for a chip's number without its being a
-    -- chip place's chip (a place holding 0; and, past the five places of a
-    -- record all of which hold a chip, the two halves of its score, then
-    -- the next record's `dx` and `dy` as one halfword and that record's
-    -- places, and so on to the block's end).
-    auto_battle_count: (side: number) -> number,
     -- Slot `i` (1 to 4) of a side's list of alive actors, filled or not.
     alive_actor_slot: (side: number, i: number) -> Object?,
-    auto_battle_entry: (side: number, i: number) -> (Chip | number | false)?,
-    auto_battle_pattern: (side: number, i: number) -> (number, number),
-    auto_battle_pattern_read: (side: number, i: number, k: number) -> (Chip | number)?,
-    -- The first entry and the entry in place `i` (from 1) change places
-    -- (0x0802C0DC); the first entry goes last of the count, the rest move
-    -- up (0x0802BF1C).
-    auto_battle_swap: (side: number, i: number) -> (),
-    auto_battle_turn: (side: number) -> (),
     -- EXE5's 0x08006AAE: the navi `identity` (actor type navi, with a
     -- `body`) comes onto (x, y) for `side`, brought by `summoner`, driven by
     -- the rules of the summoner's side (their `controller`, with the navi's
@@ -1840,11 +1817,6 @@ export type RulesSpec = {
     -- variants, or a table of such fields. The engine checks a definition's
     -- and reads none of them.
     extends: { [string]: { [string]: any } }?,
-    -- For tools, never the simulation: the chips of its game its rules
-    -- can't play of a player's auto battle data (`battle.auto_battle_entry`), by id, each with
-    -- why, as a clause about "it" (EXE5's auto battle: a chip the original
-    -- crashes on). A match's check refuses them in a side's auto battle data.
-    unplayable_in_auto_battle: { [string]: string }?,
     -- Its custom screen's extras (docs/design/rules-in-luau.md §4.4), which
     -- the side's screen asks.
     custom: {

@@ -1239,29 +1239,13 @@ NaviCust programs, and its sides may say besides:
 karma = 100                                # a fact: the light/dark value (default 500; dark under 470)
 souls = ["protosoul", "colonelsoul"]       # a fact: the souls it has, EXE5's, either version (default: every soul)
 
-[left.auto_battle]                       # optional: what a navi in auto battle plays from the side's save, whole (none: nothing learned)
-first = [{}, {}, {}]                       # the data's places 1 to 3: each a chip, a pattern record's number, 0 or {} (an empty place)
-standard = [                               # places 4 to 27, all 24: the game writes its player's most used standard chips
-    "sword", "sword", "sword", "sword",
-    "cannon", "cannon", {}, {},
-    {}, {}, {}, {},
-    {}, {}, {}, {},
-    {}, {}, {}, {},
-    {}, {}, {}, {},
+auto_battle_places = [                    # what a navi in auto battle plays from the side's save: the block's 42
+    {}, {}, {},                            # places, to the last that isn't empty (else none): a chip, a pattern
+    { chip = "sword" }, { chip = "sword" },   # record by number (1 to 8), a 0 or {} (empty)
+    { pattern = 1 },
 ]
-mega = ["protoman", {}, {}, {}, {}]        # places 28 to 32: mega chips
-giga = "crossdiv"                          # place 33: a giga chip
-patterns = [1, {}, {}, {}, {}, {}, {}, {}]  # places 34 to 41: pattern records, by number (1 to 8)
-program_advance = {}                       # place 42: a program advance
-records = [                                # the eight pattern records: a place from its target, five chip places, a score
-    { dx = -2, dy = 0, chips = ["sword", "wideswrd", {}, {}, {}], score = 10 },
-    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },
-    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },
-    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },
-    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },
-    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },
-    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },
-    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },
+auto_battle_records = [                    # its eight records (else every record zeros: nothing learned)
+    { dx = -2, chips = [{ chip = "sword" }, { chip = "wideswrd" }, {}, {}, {}], score = 10 },
 ]
 ```
 
@@ -1428,24 +1412,23 @@ the save's level (its story flags' count), whose HP the story gives (EXE5's
 save module), and, where the save's version has the navi, the light/dark
 value of the navi's own block.
 
-**The auto battle data** (`[left.auto_battle]`,
-`nettai_match::auto_battle`, docs/design/exe5-map.md §15.9) is what a
-navi in auto battle plays from the side's save: the Dark MegaMan that the side's
+**The auto battle data** (`auto_battle_places` and `auto_battle_records`,
+two facts of EXE5's rules: content/exe5/rules/auto_battle/block.luau,
+docs/design/exe5-map.md §15.9) is what a navi in auto battle plays from the
+side's save: the Dark MegaMan that the side's
 failed Chaos Unison brings, and the side's own navi under DarkInvs. EXE5
 learns it from its player (the chips they use most, and the runs of chips
 they use from one place) and keeps it in the save as a block of 42 places
 and eight pattern records. A battle reads nearly all of that block, so a
-side that states the data states all of it, and nothing is filled in: every
-place of every list, and all eight records. A side with no
-`[left.auto_battle]` has a block nothing has written (every place empty,
-every record blank: 0xFF throughout), which is a save's that has never
-finished a battle; the navi in auto battle only fires its buster between rests.
-A new match (the editor's New) and a random one state what the game's
-battle end writes instead: a new match's sides every place empty and every
-record zeros (a player it has learned nothing of, who plays the same), a
-random match's below.
+side states its places in order (those past the list empty) and its
+records (those past the list blank, 0xFF throughout: `auto_battle_records =
+[]` is a save's that has never finished a battle). A side that says nothing
+has what the game's battle end writes of a player it has learned nothing
+of: every place empty and every record zeros; the navi in auto battle only
+fires its buster between rests. A random match's sides state the data below.
 
-The 42 places, in the six lists the game's battle end writes them in:
+The 42 places, in the six lists the game's battle end writes them in (the
+lists are the rules', for what they say of a place):
 
 | list | places | what the game writes there |
 |---|---|---|
@@ -1456,12 +1439,12 @@ The 42 places, in the six lists the game's battle end writes them in:
 | `patterns` | 34 to 41 | the pattern records that have a score, by number, from the first |
 | `program_advance` | 42 | the most used program advance |
 
-An entry is a chip's name; a number 1 to 8, that pattern record (the first
-of `records` is 1); `0`, a place holding 0 (no chip, but no empty place
-either); or `{}`, an empty place. `giga` and `program_advance`, one place
-each, are that entry alone. The lists are named for what the game writes there, but any entry may
-stand in any place, as in the save (a save made by hand can have a giga chip
-among the patterns' places).
+An entry is `{ chip = "..." }`; `{ pattern = n }`, pattern record n (the
+first of `auto_battle_records` is 1); `{ zero = true }`, a place holding 0
+(no chip, but no empty place either); or `{}`, an empty place. The lists
+are named for what the game writes there, but any entry may stand in any
+place, as in the save (a save made by hand can have a giga chip among the
+patterns' places).
 
 One kind of chip is refused in a place: a chip the original can't play in
 auto battle (a team navi's own chip, such as StepSwrd, and the chips
@@ -1472,37 +1455,37 @@ writer never puts one among the 42 places (it counts library chips only),
 so only a block made by hand holds one, and the check says where: "place 29
 of the auto battle data (`mega`, entry 2) holds StepSwrd: the original
 can't play it in auto battle (...)". Which chips those are is the content's
-to say (the rules' `unplayable_in_auto_battle`, from its own data's
-classes: `Defs::unplayable_in_auto_battle`), so a navi's own chip is covered as it
-lands. A pattern record may hold one (the game writes any chip used in a
-run there, and a record never plays): the editor notes it quietly, and its
-chip list for a place doesn't offer those chips.
+to say (EXE5's rules' `validate`, from its own data's classes), so a navi's
+own chip is covered as it lands. A pattern record may hold one (the game
+writes any chip used in a run there, and a record never plays).
 
-`records` is the eight pattern records in their order, each a table: `dx`
-and `dy`, where the navi in auto battle stands from its target (`dx` columns
-toward its enemies, so -2 is two columns short of the target; `dy` rows down
-the screen); `chips`, its five chip places, each a chip's name, `0` or `{}`
-(the chips it uses there in a row, to the first empty place); and `score`,
-how the game's learning ranks the pattern (a new pattern's is 10; one seen
-again in a battle gains 5, the others lose 1). A record the game's learning
-never filled is zeros (`dx = 0, dy = 0`, five `0`, `score = 0`); one nothing
-has written is `dx = -1, dy = -1`, five `{}` and `score = 4294967295`.
+`auto_battle_records` is the pattern records in their order, each a table:
+`dx` and `dy`, where the navi in auto battle stands from its target (`dx`
+columns toward its enemies, so -2 is two columns short of the target; `dy`
+rows down the screen); `chips`, its five chip places, each `{ chip = "..." }`,
+`{ zero = true }` or `{}` (the chips it uses there in a row, to the first
+empty place); and `score`, how the game's learning ranks the pattern (a new
+pattern's is 10; one seen again in a battle gains 5, the others lose 1). A
+field left out is 0. A record the game's learning never filled is zeros
+(five `{ zero = true }`, all else 0); one nothing has written is `dx = -1,
+dy = -1`, five `{}` and `score = 4294967295`.
 
-The file refuses what the game can't hold: a list or a record that doesn't
-state each of its places, a pattern number past 8, a place from the target
-or a score that doesn't fit its bytes, a chip the game hasn't, an entry that
-is none of the above; and any of it for a game without auto battle
-(EXE6).
+The file refuses what the game can't hold: more places or records than the
+block has, a place from the target or a score that doesn't fit its bytes, a
+chip the game hasn't, a field a place or a record hasn't; and either fact
+for a game without auto battle (EXE6). EXE5's rules' `validate` refuses a
+pattern number past 8 and a place that is two things at once.
 
 **Why all of it is stated.** The navi in auto battle plays the entries in order,
 the played one going last: three times in four the first, otherwise it steps
 into an enemy's row and fires its buster (three shots).
 
 - *The places.* The order it starts with is the console's send of the data
-  as the round is set up (0x0802C7BE): three swaps among places 1 to 3, 39
-  swaps among the other 39 (each swap two places drawn at random), then the
-  entries packed to the front, here from a stream of the side's own from the
-  seed. That is no even shuffle: a place is in none of the 39 swaps about
+  as the round is set up (0x0802C7BE, EXE5's rules' `send`): three swaps
+  among places 1 to 3, 39 swaps among the other 39 (each swap two places
+  drawn at random), then the entries packed to the front, here from the
+  battle's RNG before its first tick (84 draws a side; a recording's places,
+  `auto_battle_sent`, are as its console sent them, and draw none). That is no even shuffle: a place is in none of the 39 swaps about
   one time in eight, so the entry in place 4 leads what is sent about six
   times as often as another, and an empty place between two entries changes
   what a seed sends. A chip in several places is played that much more
@@ -1522,7 +1505,7 @@ into an enemy's row and fires its buster (three shots).
   panel of its own area) and its record's contents don't play. The records
   are stated as the save has them all the same.
 
-**What the form leaves out of the save's block**: the count at +0x54, which
+**What the facts leave out of the save's block**: the count at +0x54, which
 the send writes, and the block's last eight bytes, which nothing reads.
 `nettai_match`'s tests hold a block read into a side and written back, by
 itself and through a match file, to the same places and records, over

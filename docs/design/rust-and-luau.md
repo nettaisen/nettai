@@ -40,15 +40,17 @@ Where Rust still knows one game's thing. Each is scheduled or noted; none is to 
    `number_open` (EXE6's NaviCust abilities), `version` (EXE6's version byte, +0x20), `chip_drops` and `encounters`.
    They mirror the original's block, which the compat crates and the traces compare; a game's own fields belong in
    its rules' state.
-2. **A player's setup outside the rules' setup** (`PlayerSetup`): the auto battle data (step c4), which becomes a
-   fact of the rules' setup. (The SP navi deletion times did in step c2, each game's `sp_times`; the navi, the
-   folder, its Regular and tag chips, the patch cards and the NaviCust in step c3a, each a fact; the dealt battle
-   folder and the console's setup stay the engine's, as recordings give them.)
+2. **A player's setup outside the rules' setup** (`PlayerSetup`): none left of what a player brings. (The SP navi
+   deletion times became facts of the rules' setup in step c2, each game's `sp_times`; the navi, the folder, its
+   Regular and tag chips, the patch cards and the NaviCust in step c3a; EXE5's auto battle data in step c4a. The
+   dealt battle folder and the console's setup stay the engine's, as recordings give them.)
 3. **Engine routines that are one game's path**: the NaviCust's board types and shapes (navicust.rs, the `navicust`
    rule section's `NaviCustRules`), which only the editor's NaviCust pane and two compat paths still read, and
    nettai-match's `has_navicust` and `has_patch_cards` for the editor's panes (step c3b replaces those panes with
-   view kinds the rules declare); EXE5's auto battle data layout (auto_battle.rs: its places and records, step c4).
-   The checks of them are the rules' `validate` since step c3a.
+   view kinds the rules declare); nettai-match's typed view of EXE5's auto battle data (auto_battle.rs: its lists,
+   for the editor's pane, and the game's learning, `AutoBattle::learned`, whose tie-break waits on the user). The
+   engine's own auto battle code went in step c4a (EXE5's rules' auto_battle/block.luau sends and plays the data),
+   and the checks of all of them are the rules' `validate` since step c3a.
 4. **Fact roles named for one game's feature**: `PlayerFact::BeastOut` and `PlayerFact::CrossList` (EXE6's), which the
    frontend reads for the emotion window and the Cross window; `PlayerFact::SpTimes` (both games' SP navi deletion
    times), which only tools read (nettai-match's `Facts::sp_times`, the editor's SP pane; the engine reads none);

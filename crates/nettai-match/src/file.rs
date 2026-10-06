@@ -47,20 +47,16 @@
 //! soul_unison = false                # no soul button (the save's event flag 0; default true)
 //! chaos_unison = false               # no Chaos Unison (the save's event flag 0x236; default true)
 //!
-//! [left.auto_battle]               # optional: what a navi in auto battle plays from the side's save, whole (none: nothing learned)
-//! first = [{}, {}, {}]               # the data's places 1 to 3: each a chip, a pattern record's number, 0 or {} (an empty place)
-//! standard = ["sword", "sword", {}, ...]   # places 4 to 27, all 24: the game writes its player's most used standard chips
-//! mega = ["protoman", {}, {}, {}, {}]      # places 28 to 32: mega chips
-//! giga = "crossdiv"                  # place 33: a giga chip
-//! patterns = [1, {}, {}, {}, {}, {}, {}, {}]   # places 34 to 41: pattern records, by number (1 to 8)
-//! program_advance = {}               # place 42: a program advance
-//! records = [                        # the eight pattern records: a place from its target, five chip places, a score
-//!     { dx = -2, dy = 0, chips = ["sword", "wideswrd", {}, {}, {}], score = 10 },
-//!     { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },   # (and six more)
-//! ]
+//! auto_battle_places = [           # EXE5's: what a navi in auto battle plays from the side's save, its block's 42
+//!     {}, {}, {},                    # places to the last that isn't empty: each a chip, a pattern record by number
+//!     { chip = "sword" },            # (1 to 8), a 0 (`zero`) or {} (empty); the game writes its player's most used
+//!     { pattern = 1 },               # standard chips from place 4, mega 28, giga 33, patterns 34, a program
+//! ]                                  # advance 42 (else none)
+//! auto_battle_records = [            # the eight pattern records: a place from its target, five chip places, a score
+//!     { dx = -2, dy = 0, chips = [{ chip = "sword" }, { chip = "wideswrd" }], score = 10 },
+//! ]                                  # (else every record zeros: nothing learned)
 //! ```
 
-use crate::auto_battle::{self, ChipPlace, AutoBattle, Entry, Record};
 use crate::facts::Stated;
 use crate::{Arena, Facts, Match, Place, Side, ids};
 use nettai_battle::content::{ChipCode, Content, PlayerFact};
@@ -99,17 +95,15 @@ pub struct PlaceFile {
 
 /// A side as a file states it: each key a fact of the game's rules, under
 /// its setup field's name (`crate::facts`: the navi, the folder, EXE6's
-/// version...; a key the rules' setup doesn't declare is refused when the
-/// side is resolved, with the facts the game takes), and EXE5's auto battle
-/// data.
+/// version, EXE5's auto battle data...; a key the rules' setup doesn't
+/// declare is refused when the side is resolved, with the facts the game
+/// takes).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct SideFile {
     /// The facts, in the order the file states them (written the navi
     /// first, then in the setup's fields' order).
     #[serde(flatten)]
     pub facts: FactsFile,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub auto_battle: Option<AutoBattleFile>,
 }
 
 /// A side's facts as a file states them: each a key and its value, in
@@ -146,51 +140,6 @@ impl<'de> Deserialize<'de> for FactsFile {
         }
         deserializer.deserialize_map(Entries)
     }
-}
-
-/// A player's auto battle data (`crate::auto_battle`), whole: its six
-/// lists by name, each every one of its places in order (an entry a chip's
-/// name, a number 1 to 8 for that pattern record, `0` for a place holding
-/// 0, or `{}` for an empty one; the two lists of one place are that entry
-/// alone), and its eight pattern records.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct AutoBattleFile {
-    pub first: Vec<toml::Value>,
-    pub standard: Vec<toml::Value>,
-    pub mega: Vec<toml::Value>,
-    pub giga: toml::Value,
-    pub patterns: Vec<toml::Value>,
-    pub program_advance: toml::Value,
-    pub records: Vec<RecordFile>,
-}
-
-impl AutoBattleFile {
-    /// The entries the file gives the list named `name`
-    /// (`auto_battle::LISTS`), in its places' order.
-    pub fn entries(&self, name: &str) -> &[toml::Value] {
-        match name {
-            "first" => &self.first,
-            "standard" => &self.standard,
-            "mega" => &self.mega,
-            "giga" => std::slice::from_ref(&self.giga),
-            "patterns" => &self.patterns,
-            "program_advance" => std::slice::from_ref(&self.program_advance),
-            _ => &[],
-        }
-    }
-}
-
-/// A pattern record: its place from its target (`dx` columns toward the
-/// auto-battling navi's enemies, `dy` rows down), its five chip places (each a
-/// chip's name, `0` or `{}`, an empty one) and its score.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct RecordFile {
-    pub dx: i8,
-    pub dy: i8,
-    pub chips: Vec<toml::Value>,
-    pub score: u32,
 }
 
 /// What names nothing in `game`: "no chip "x" in exe6", and the game's
@@ -277,8 +226,7 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
             Err(e) => say(format!("{key}: {e}")),
         }
     }
-    let auto_battle = s.auto_battle.as_ref().map(|c| resolve_auto_battle(content, game, c, &mut say)).unwrap_or_default();
-    let side = Side { auto_battle, facts };
+    let side = Side { facts };
     if side.stated_navi(content).is_none() && problems.len() == start {
         problems.push(format!("{at}: no navi: a side states its own"));
     }
@@ -359,7 +307,7 @@ fn one<'v>(content: &Content, game: &str, ty: &FieldType, v: &'v toml::Value) ->
 /// A fact's value as a file writes it: a flag, a number, an enum's
 /// variant's name, a definition's name, a code's letter, a list's entries
 /// (a list of definitions up to its last one; a hole in it, ""), a
-/// record's fields (one holding nothing, false or none, left out). None:
+/// record's fields (one holding nothing, false, none or 0, left out). None:
 /// nothing to write (an enum nothing states, no definition, no code).
 fn fact_toml(content: &Content, value: &Stated) -> Option<toml::Value> {
     Some(match value {
@@ -373,78 +321,19 @@ fn fact_toml(content: &Content, value: &Stated) -> Option<toml::Value> {
         }
         Stated::Optional(n) => toml::Value::Integer((*n)?),
         Stated::Record(fields) => toml::Value::Table(
-            fields.iter().filter(|(_, v)| *v != Stated::Flag(false)).filter_map(|(name, v)| Some((name.clone(), fact_toml(content, v)?))).collect(),
+            fields
+                .iter()
+                .filter(|(_, v)| !matches!(v, Stated::Flag(false) | Stated::Number(0)))
+                .filter_map(|(name, v)| Some((name.clone(), fact_toml(content, v)?)))
+                .collect(),
         ),
         Stated::Code(c) => toml::Value::String((*c)?.to_string()),
         Stated::Other => return None,
     })
 }
 
-/// A file's auto battle data: each list's entries into its places, and
-/// its records. What is no entry, what names nothing in `game`, and a list
-/// or a record that doesn't state each of its places are said; such an
-/// entry is left empty.
-fn resolve_auto_battle(content: &Content, game: &str, c: &AutoBattleFile, say: &mut impl FnMut(String)) -> AutoBattle {
-    let mut out = AutoBattle::default();
-    let chip = |at: &str, n: &str, say: &mut dyn FnMut(String)| {
-        let c = ids::chip(content, game, n);
-        if c.is_none() {
-            say(format!("{at}: {}", unknown("chip", n, game, &[])));
-        }
-        c
-    };
-    for list in &auto_battle::LISTS {
-        let entries = c.entries(list.name);
-        if entries.len() != list.len {
-            say(format!("auto_battle: {} states {} places; it has {}, each stated ({{}} an empty one)", list.name, entries.len(), list.len));
-        }
-        for (i, e) in entries.iter().take(list.len).enumerate() {
-            let at = if list.len == 1 { format!("auto_battle: {}", list.name) } else { format!("auto_battle: {} entry {}", list.name, i + 1) };
-            out.places[list.start + i] = match e {
-                toml::Value::String(n) => chip(&at, n, say).map_or(Entry::Empty, Entry::Chip),
-                // (A number: a pattern record's, from 1; 0 is the place
-                // that holds 0.)
-                toml::Value::Integer(0) => Entry::Zero,
-                toml::Value::Integer(n) if (1..=auto_battle::RECORDS as i64).contains(n) => Entry::Pattern((n - 1) as u8),
-                toml::Value::Table(t) if t.is_empty() => Entry::Empty,
-                other => {
-                    say(format!(
-                        "{at}: {other} is no entry (a chip's name, a pattern record's number 1 to {}, 0 for a place holding no chip, or {{}} for an empty place)",
-                        auto_battle::RECORDS
-                    ));
-                    Entry::Empty
-                }
-            };
-        }
-    }
-    if c.records.len() != auto_battle::RECORDS {
-        say(format!("auto_battle: records states {} pattern records; the data has {}, each stated", c.records.len(), auto_battle::RECORDS));
-    }
-    for (n, r) in c.records.iter().take(auto_battle::RECORDS).enumerate() {
-        let at = format!("auto_battle: record {}", n + 1);
-        if r.chips.len() != auto_battle::RECORD_CHIPS {
-            say(format!("{at}: chips states {} places; a record has {}, each stated ({{}} an empty one)", r.chips.len(), auto_battle::RECORD_CHIPS));
-        }
-        let mut chips = [ChipPlace::Empty; auto_battle::RECORD_CHIPS];
-        for (place, e) in chips.iter_mut().zip(&r.chips) {
-            *place = match e {
-                toml::Value::String(n) => chip(&at, n, say).map_or(ChipPlace::Empty, ChipPlace::Chip),
-                toml::Value::Integer(0) => ChipPlace::Zero,
-                toml::Value::Table(t) if t.is_empty() => ChipPlace::Empty,
-                other => {
-                    say(format!("{at}: {other} is no chip place (a chip's name, 0, or {{}} for an empty place)"));
-                    ChipPlace::Empty
-                }
-            };
-        }
-        out.records[n] = Record { dx: r.dx, dy: r.dy, chips, score: r.score };
-    }
-    out
-}
-
 /// A side as a file writes it, each name its game's.
 pub fn side_file(content: &Content, s: &Side) -> SideFile {
-    let name = |key: &str| ids::local(key).to_string();
     // The facts that aren't the rules' defaults, the navi first, then in the
     // setup's fields' order (a level whenever the side has one).
     let navi = PlayerFact::Navi.name();
@@ -458,43 +347,6 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
                 .filter_map(|f| Some((f.name.to_string(), fact_toml(content, &s.facts.get(content, f.name)?)?)))
                 .collect(),
         ),
-        // (A block nothing has written is left out; any other is stated
-        // whole.)
-        auto_battle: (!s.auto_battle.is_blank()).then(|| {
-            let chip = |c: nettai_content_api::ChipHandle| toml::Value::String(name(&content.defs.chip(c).key));
-            let empty = || toml::Value::Table(Default::default());
-            let entry = |e: &Entry| match *e {
-                Entry::Empty => empty(),
-                Entry::Zero => toml::Value::Integer(0),
-                Entry::Chip(c) => chip(c),
-                Entry::Pattern(n) => toml::Value::Integer(n as i64 + 1),
-            };
-            let list = |i: usize| -> Vec<toml::Value> { s.auto_battle.list(&auto_battle::LISTS[i]).iter().map(entry).collect() };
-            let one = |i: usize| list(i).pop().unwrap_or_else(empty);
-            let record = |r: &Record| RecordFile {
-                dx: r.dx,
-                dy: r.dy,
-                chips: r
-                    .chips
-                    .iter()
-                    .map(|c| match *c {
-                        ChipPlace::Empty => empty(),
-                        ChipPlace::Zero => toml::Value::Integer(0),
-                        ChipPlace::Chip(c) => chip(c),
-                    })
-                    .collect(),
-                score: r.score,
-            };
-            AutoBattleFile {
-                first: list(0),
-                standard: list(1),
-                mega: list(2),
-                giga: one(3),
-                patterns: list(4),
-                program_advance: one(5),
-                records: s.auto_battle.records.iter().map(record).collect(),
-            }
-        }),
     }
 }
 
@@ -557,16 +409,6 @@ fn a_line_each(list: &mut toml_edit::Array) {
     list.set_trailing("\n");
 }
 
-/// An auto-battling navi's entry or a record's chip place as a file writes it: a
-/// chip's name, a number (a pattern record's, or 0) or `{}`.
-fn play_item(play: &toml::Value) -> toml_edit::Value {
-    match play {
-        toml::Value::Table(_) => toml_edit::InlineTable::new().into(),
-        toml::Value::Integer(n) => (*n).into(),
-        other => other.as_str().unwrap_or_default().into(),
-    }
-}
-
 /// A value of a fact as one inline value: a table an inline table.
 fn inline(v: &toml::Value) -> toml_edit::Value {
     match v {
@@ -586,25 +428,11 @@ fn inline(v: &toml::Value) -> toml_edit::Value {
     }
 }
 
-/// `items` laid out: a few on one line, more four to a line.
-fn laid_out(mut items: toml_edit::Array) -> toml_edit::Array {
-    if items.len() > auto_battle::RECORDS {
-        for (i, item) in items.iter_mut().enumerate() {
-            item.decor_mut().set_prefix(if i % 4 == 0 { "\n    " } else { " " });
-        }
-        items.set_trailing_comma(true);
-        items.set_trailing("\n");
-    }
-    items
-}
-
 /// `body`, the pretty printer's text of `file`, as a person would lay it
 /// out: a fact's short list on its line (`crosses = ["heatcross",
-/// "eleccross"]`; a longer one an entry a line, as the printer has it),
-/// each folder entry (`["cannon", "A"]`) on a line of its own (the
-/// printer spreads every element of a nested array over lines), and the
-/// auto-battling navi's data in the block's order, its lists on a line or four
-/// entries to one, its records a line each.
+/// "eleccross"]`; a longer one an entry a line, as the printer has it), and
+/// a list of records an inline table a line, after the side's other values
+/// (the printer makes a table of each, under its own header).
 fn tidy(body: &str, file: &MatchFile) -> String {
     let mut doc: toml_edit::DocumentMut = body.parse().expect("a match file parses");
     for (side, of) in [("left", &file.left), ("right", &file.right)] {
@@ -635,36 +463,6 @@ fn tidy(body: &str, file: &MatchFile) -> String {
             table.remove(key);
             table.insert(key, toml_edit::value(list));
         }
-        // (The table written anew over the printer's, which makes tables of
-        // the records and of the entries that are tables.)
-        let (Some(data), Some(item)) = (&of.auto_battle, doc.get_mut(side).and_then(|s| s.get_mut("auto_battle"))) else {
-            continue;
-        };
-        let mut table = toml_edit::Table::new();
-        if let Some(position) = item.as_table().and_then(|t| t.position()) {
-            table.set_position(position);
-        }
-        for list in &auto_battle::LISTS {
-            match data.entries(list.name) {
-                [entry] if list.len == 1 => table.insert(list.name, toml_edit::value(play_item(entry))),
-                entries => table.insert(list.name, toml_edit::value(laid_out(entries.iter().map(play_item).collect()))),
-            };
-        }
-        let mut records: toml_edit::Array = data
-            .records
-            .iter()
-            .map(|r| {
-                let mut record = toml_edit::InlineTable::new();
-                record.insert("dx", (r.dx as i64).into());
-                record.insert("dy", (r.dy as i64).into());
-                record.insert("chips", r.chips.iter().map(play_item).collect::<toml_edit::Array>().into());
-                record.insert("score", (r.score as i64).into());
-                toml_edit::Value::from(record)
-            })
-            .collect();
-        a_line_each(&mut records);
-        table.insert("records", toml_edit::value(records));
-        *item = toml_edit::Item::Table(table);
     }
     doc.to_string()
 }
@@ -698,16 +496,14 @@ mod tests {
         assert!(game_of("[arena]\nstage = \"x\"\n").is_err());
     }
 
-    /// A side's auto battle data (EXE5's) writes and reads back, whole:
-    /// every place of its six lists (chips by name, a pattern by its
-    /// record's number from 1, a 0, an empty place as `{}`) and its eight
-    /// records;
+    /// A side's auto battle data (EXE5's facts) writes and reads back: its
+    /// places to the last that isn't empty (chips by name, a pattern by its
+    /// record's number from 1, a 0, an empty place as `{}`) and its records;
     /// the round sends it; and what a file gets wrong is said, with where it
     /// is.
     #[test]
     fn auto_battle_data_writes_and_reads_back() {
-        use auto_battle::{GIGA, MEGA, PATTERNS, PROGRAM_ADVANCE, STANDARD};
-        use nettai_battle::auto_battle::{AutoBattleEntry, PatternRecord};
+        use crate::auto_battle::{AutoBattle, ChipPlace, Entry, GIGA, MEGA, PATTERNS, PROGRAM_ADVANCE, Record, STANDARD};
         let content = crate::testing::exe5_content();
         let mut m = crate::pick::live(&content, "exe5", 2, None).unwrap();
         let chip = |name: &str| ids::chip(&content, "exe5", name).unwrap();
@@ -727,79 +523,55 @@ mod tests {
         data.records[0] = Record { dx: -2, dy: 1, chips: places(&["sword", "wideswrd"]), score: 7 };
         data.records[1] = Record::ZERO;
         data.records[2] = Record { dx: -1, dy: 0, chips: places(&["cannon"; 5]), score: 10 };
-        m.sides[0].auto_battle = data;
-        m.sides[1].auto_battle = AutoBattle::default();
+        data.write(&content, &mut m.sides[0]).unwrap();
+        AutoBattle::default().write(&content, &mut m.sides[1]).unwrap();
+        assert_eq!(AutoBattle::of_side(&content, &m.sides[0]), data);
         let text = write(&content, &m);
-        let written = "[left.auto_battle]\n\
-            first = [\"areagrab\", {}, {}]\n\
-            standard = [\n    \"sword\", \"sword\", \"sword\", \"sword\",\n    \"cannon\", 0, {}, {},\n    {}, {}, {}, {},\n    {}, {}, {}, {},\n    {}, {}, {}, {},\n    {}, {}, {}, {},\n]\n\
-            mega = [{}, \"protoman\", {}, {}, {}]\n\
-            giga = \"crossdiv\"\n\
-            patterns = [1, 3, {}, {}, {}, {}, {}, {}]\n\
-            program_advance = \"csmopris\"\n\
-            records = [\n    \
-            { dx = -2, dy = 1, chips = [\"sword\", \"wideswrd\", {}, {}, {}], score = 7 },\n    \
-            { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },\n    \
-            { dx = -1, dy = 0, chips = [\"cannon\", \"cannon\", \"cannon\", \"cannon\", \"cannon\"], score = 10 },\n    \
-            { dx = -1, dy = -1, chips = [{}, {}, {}, {}, {}], score = 4294967295 },\n";
-        assert!(text.contains(written), "{text}");
-        assert!(!text.contains("[right.auto_battle]") && !text.contains("[[left") && !text.contains("[left.auto_battle."), "{text}");
-        assert!(text.find("[left.auto_battle]") > text.find("[left]") && text.find("[right]") > text.find("[left.auto_battle]"), "{text}");
+        for line in [
+            "auto_battle_places = [\n    { chip = \"areagrab\" },\n    {},\n    {},\n    { chip = \"sword\" },",
+            "    { zero = true },\n",
+            "    { pattern = 1 },\n    { pattern = 3 },\n",
+            "    { chip = \"csmopris\" },\n]",
+            "    { chips = [{ chip = \"sword\" }, { chip = \"wideswrd\" }, {}, {}, {}], dx = -2, dy = 1, score = 7 },\n",
+            "    { chips = [{ zero = true }, { zero = true }, { zero = true }, { zero = true }, { zero = true }] },\n",
+        ] {
+            assert!(text.contains(line), "{line}:\n{text}");
+        }
         let back = parse(&content, &text).unwrap_or_else(|e| panic!("{e:?}\n{text}"));
         assert_eq!(back, m);
-        // The round sends it: its twelve entries (the 0 one of them), the
-        // one of the first three places still first; its eight records.
-        let sent = &m.round(&content, 2).players[0].auto_battle;
-        assert_eq!((sent.entries.len(), sent.entries[0]), (12, AutoBattleEntry::Chip(chip("areagrab"))));
-        assert!(sent.entries.contains(&AutoBattleEntry::Nothing) && sent.entries.contains(&AutoBattleEntry::Pattern(2)));
-        assert_eq!(sent.patterns.len(), 8);
-        assert_eq!(sent.patterns[0], PatternRecord::of(-2, 1, &[chip("sword"), chip("wideswrd")], 7));
-        assert_eq!((sent.patterns[1].score, sent.patterns[2].score, sent.patterns[3]), (0, 10, PatternRecord::UNUSED));
-        assert!(m.round(&content, 2).players[1].auto_battle.entries.is_empty());
+        // The round sends it (EXE5's rules, as the round is set up): its
+        // twelve entries (the 0 one of them), the one of the first three
+        // places still first; the other side's none.
+        let b = crate::check::start(&content, &m).unwrap();
+        let sent = |side: u8| -> (usize, nettai_content_api::FieldValue) {
+            let (schema, state) = b.rules_state(side).unwrap();
+            let place = schema.place(schema.index_of("auto_battle_places").unwrap());
+            let n = state.len_at(place).unwrap();
+            let first = place.elem(0).map_or(nettai_content_api::FieldValue::Ref(None), |e| state.get_at(e.field("chip").unwrap()));
+            (n, first)
+        };
+        let areagrab = nettai_content_api::FieldValue::Ref(Some((nettai_content_api::Registry::Chip, chip("areagrab").0)));
+        assert_eq!(sent(0), (12, areagrab));
+        assert_eq!(sent(1).0, 0);
         // What a file gets wrong.
         let bad = |from: &str, to: &str| -> Vec<String> {
             assert!(text.contains(from), "{from}:\n{text}");
             parse(&content, &text.replacen(from, to, 1)).unwrap_err()
         };
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
-        let first = "first = [\"areagrab\", {}, {}]";
-        has(bad(first, "first = [\"nothing-at-all\", {}, {}]"), "left: auto_battle: first entry 1: no chip \"nothing-at-all\" in exe5");
-        has(bad(first, "first = [9, {}, {}]"), "left: auto_battle: first entry 1: 9 is no entry (a chip's name, a pattern record's number 1 to 8, 0 for");
-        has(bad(first, "first = [-1, {}, {}]"), "left: auto_battle: first entry 1: -1 is no entry");
-        has(bad(first, "first = [{ pattern = 1 }, {}, {}]"), "left: auto_battle: first entry 1: { pattern = 1 } is no entry");
-        has(bad(first, "first = [\"areagrab\"]"), "left: auto_battle: first states 1 places; it has 3, each stated ({} an empty one)");
-        has(bad(first, "first = [\"areagrab\", {}, {}, {}]"), "left: auto_battle: first states 4 places; it has 3");
-        has(bad("giga = \"crossdiv\"", "giga = \"crosdiv\""), "left: auto_battle: giga: no chip \"crosdiv\" in exe5");
-        has(bad("giga = \"crossdiv\"", "giga = [\"crossdiv\"]"), "left: auto_battle: giga: [\"crossdiv\"] is no entry");
-        has(bad("giga = \"crossdiv\"\n", ""), "missing field `giga`");
-        has(bad("patterns = [1, 3,", "patterns = [1, 9,"), "left: auto_battle: patterns entry 2: 9 is no entry");
-        has(bad("dx = -2, dy = 1", "dx = -2, dy = 1, dz = 0"), "unknown field `dz`");
-        has(bad("dx = -2, dy = 1", "dx = -200, dy = 1"), "invalid value");
-        has(bad("\"wideswrd\", {}, {}, {}]", "\"wideswd\", {}, {}, {}]"), "left: auto_battle: record 1: no chip \"wideswd\" in exe5");
-        has(bad("\"wideswrd\", {}, {}, {}]", "\"wideswrd\"]"), "left: auto_battle: record 1: chips states 2 places; a record has 5");
-        has(bad("\"wideswrd\", {}, {}, {}]", "\"wideswrd\", 1, {}, {}]"), "left: auto_battle: record 1: 1 is no chip place (a chip's name, 0, or {} for an empty place)");
-        has(bad("    { dx = 0, dy = 0, chips = [0, 0, 0, 0, 0], score = 0 },\n", ""), "left: auto_battle: records states 7 pattern records; the data has 8, each stated");
-        has(bad(first, &format!("{first}\nrest = []")), "unknown field `rest`");
-        // EXE6 has no auto battle: its match file takes no such data.
+        let first = "{ chip = \"areagrab\" }";
+        has(bad(first, "{ chip = \"nothing-at-all\" }"), "left: auto_battle_places: [1]: chip: no chip \"nothing-at-all\" in exe5");
+        has(bad(first, "{ pattern = 9 }"), "left: place 1 of the auto battle data names pattern 9; it has 8 pattern records");
+        has(bad(first, "{ chip = \"areagrab\", pattern = 1 }"), "left: place 1 of the auto battle data (`first`, entry 1) is a chip, a pattern or a 0, not more");
+        has(bad(first, "{ chip = \"stepswrd\" }"), "left: place 1 of the auto battle data (`first`, entry 1) holds");
+        has(bad("dx = -2, dy = 1", "dx = -2, dy = 1, dz = 0"), "no field `dz` (chips, dx, dy, score)");
+        has(bad("dx = -2, dy = 1", "dx = -200, dy = 1"), "-200 is past");
+        // EXE6 has no auto battle: its sides take no such fact.
         let six = exe6_content();
         let good = write(&six, &crate::pick::live(&six, "exe6", 2, None).unwrap());
         assert!(!good.contains("auto_battle"), "{good}");
-        let empties = |n: usize| vec!["{}"; n].join(", ");
-        let blank = "{ dx = -1, dy = -1, chips = [{}, {}, {}, {}, {}], score = 4294967295 }";
-        let stated = format!(
-            "first = [{}]\nstandard = [\"cannon\", {}]\nmega = [{}]\ngiga = {{}}\npatterns = [{}]\nprogram_advance = {{}}\nrecords = [{}]\n",
-            empties(3),
-            empties(23),
-            empties(5),
-            empties(8),
-            vec![blank; 8].join(", ")
-        );
-        let problems = parse(&six, &format!("{good}\n[left.auto_battle]\n{stated}")).unwrap_err();
-        assert_eq!(problems, ["left: auto battle data, but exe6 has no auto battle (its rules drive no navi)"]);
-        // (And a block nothing has written, stated whole, is the side that
-        // states none.)
-        let nothing = stated.replacen("\"cannon\"", "{}", 1);
-        assert_eq!(parse(&six, &format!("{good}\n[left.auto_battle]\n{nothing}")).unwrap(), parse(&six, &good).unwrap());
+        let problems = parse(&six, &good.replacen("[left]\n", "[left]\nauto_battle_places = [{}]\n", 1)).unwrap_err();
+        assert!(problems.iter().any(|p| p.starts_with("left: no field \"auto_battle_places\"")), "{problems:?}");
     }
 
     /// A version is stated where the game's rules take one, and nowhere

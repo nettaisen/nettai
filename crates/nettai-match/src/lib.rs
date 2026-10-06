@@ -96,28 +96,16 @@ pub fn playable(content: &Content, game: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// What the send of a side's auto battle data picks from, with the seed
-/// and the side.
-const AUTO_BATTLE_SALT: u32 = 0x5441_4354;
-
 /// What a player brings to a match, all of it the match's game's: what
 /// their game's rules take, its facts (their navi and their folder, which
 /// the engine knows by role: [`Side::navi`], [`Side::folder`], as a save
 /// holds it, once whole: the round's init shuffles it; EXE6's version and
 /// Crosses, patch cards, NaviCust, what the save brings to the navi's
-/// stats...), and EXE5's auto battle data. A side states no stats: a round
+/// stats, EXE5's auto battle data...). A side states no stats: a round
 /// starts from the navi's fresh stats, which the game's rules build from
 /// all this as the round is set up ([`Match::round`]).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Side {
-    /// EXE5's auto battle data, the player's save's block whole
-    /// (`auto_battle`): what a navi in auto battle plays from it, the Dark
-    /// MegaMan their failed Chaos Unison brings and their own navi under
-    /// DarkInvs. The default: a block nothing has written (a save that
-    /// never finished a battle; the navi in auto battle only fires its buster
-    /// between rests), which a game without auto battle has. The round's
-    /// setup sends it as the console does (`AutoBattleData::sent`).
-    pub auto_battle: AutoBattle,
     /// What the side brings that its game's rules take, each a field of
     /// the rules' setup by its name there (`facts`: the navi, the folder;
     /// EXE6's `version`, its `crosses`; EXE5's `karma`, its `souls`): the
@@ -205,11 +193,10 @@ impl Match {
     /// side its navi (MegaMan, the navi that changes form, else the first
     /// with fresh stats) at its fresh stats; of the facts its rules take
     /// what a side that says nothing has (their defaults: an empty folder,
-    /// EXE6's no patch cards and an empty NaviCust...; one a round can't
-    /// start without, EXE6's version, is each side's to choose), and where
-    /// the rules have auto battle the auto battle data the game's battle
-    /// end writes of a player it has learned nothing of
-    /// (`AutoBattle::nothing_learned`). No seed
+    /// EXE6's no patch cards and an empty NaviCust, EXE5's auto battle data
+    /// the game's battle end writes of a player it has learned nothing
+    /// of...; one a round can't start without, EXE6's version, is each
+    /// side's to choose). No seed
     /// (the battle's is picked when it is played). Its folders are none the
     /// checks accept until they are made, nor is a side without a fact its
     /// rules require.
@@ -236,12 +223,7 @@ impl Side {
         // none, a version, the side is given its own, or the checks say
         // it states none.)
         let facts = Facts::defaults(content);
-        let mut side = Side {
-            // (What the game's battle end writes of a player it has
-            // learned nothing of, where the game has auto battle.)
-            auto_battle: if auto_battle::has(content) { AutoBattle::nothing_learned() } else { AutoBattle::default() },
-            facts,
-        };
+        let mut side = Side { facts };
         side.set_navi(content, navi)?;
         // (A navi that must have a level states one: 0.)
         if level_required(content, navi) {
@@ -278,11 +260,6 @@ impl Match {
                 // What the side brings that its rules take: their setup
                 // block, as the side holds it.
                 rules: s.facts.block().cloned(),
-                // The block the console sends (0x0802C7BE), its RNG2 a
-                // stream of the side's own from the seed (the original's
-                // is the console's at the link's start, which nothing
-                // here runs).
-                auto_battle: s.auto_battle.data().sent(&mut Rng::new(seed ^ AUTO_BATTLE_SALT ^ (side as u32).wrapping_mul(0x9E37_79B9))),
             };
             player
         };
@@ -396,7 +373,7 @@ pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usi
         // What a navi in auto battle plays from the side's save, where the game
         // has auto battle.
         if auto_battle::has(content) {
-            out.push_str(&format!("\n  auto battle plays ({who}): {}", s.auto_battle.describe(content)));
+            out.push_str(&format!("\n  auto battle plays ({who}): {}", AutoBattle::of_side(content, s).describe(content)));
         }
     }
     out
