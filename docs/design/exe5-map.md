@@ -470,8 +470,8 @@ are separate), so EXE5's assets are named for EXE5 alone. For the packs:
   allowed for the roots in its `requires`. A sprite's identity gains its pack (`SpriteId`), as §7.4 says.
 - **Variants, as in EXE6's packs:** what differs by version is named with the version
   (`-protoman`/`-colonel`, as EXE6's `-falzar`/`-gregar`), and what a console of each version shows of its own
-  goes in nettai-assets' `Versioned`; what comes from the Japanese ROMs carries the `region` field
-  (sprite.json, custom.json), as EXE6's do.
+  goes in nettai-assets' `Versioned`. A pack keeps no region (one picture of each thing; EXE5's are the US ROMs',
+  and what a Japanese console shows otherwise, background 0x05, is the verification's to know).
 - **Sound** is per pack too: EXE5's songs and sound effects are EXE5's numbers in EXE5's m4a bank; a cue names
   `<game>:<song>` once qualified, and the audio loads each pack's bank. Two packs' banks never mix inside one
   m4a player (a song plays with its own pack's instruments).

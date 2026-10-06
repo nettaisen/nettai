@@ -48,6 +48,8 @@ struct Args {
     lookups: Option<PathBuf>,
     audit_content: bool,
     objects: bool,
+    /// With --headless: what to mark where it is drawn (`Problems::marking`).
+    marks: Vec<String>,
     out: PathBuf,
     png_scale: usize,
     quit_after: Option<u64>,
@@ -117,6 +119,12 @@ usage: nettai-demo [OPTIONS]                 edit a new match (the window asks i
                    in --out (default .), no window
   --objects        with --headless: list every rendered frame's objects (kind,
                    place, sprite, animation, look)
+  --mark M,...     with --headless: write where each of these is drawn, by
+                   frame, to marks.tsv in --out: sprite:NAME (an object drawn
+                   with it), background:NAME, chip:KEY (its picture in the
+                   chip window), chip-window-at-close (the HUD's chip name
+                   before the navi's first decision); for a frame comparison
+                   that knows what a console shows otherwise there
   --keys K         with --headless --match: the buttons you hold, by tick (e.g.
                    232-233:up,300:a+b; a b l r up down left right start
                    select)
@@ -190,6 +198,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         lookups: None,
         audit_content: false,
         objects: false,
+        marks: Vec::new(),
         out: PathBuf::from("."),
         png_scale: 1,
         quit_after: None,
@@ -225,6 +234,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
             "--lookups" => a.lookups = Some(value("--lookups")?.into()),
             "--audit-content" => a.audit_content = true,
             "--objects" => a.objects = true,
+            "--mark" => a.marks.extend(value("--mark")?.split(',').filter(|m| !m.is_empty()).map(str::to_string)),
             "--out" => a.out = value("--out")?.into(),
             "--png-scale" => a.png_scale = number(value("--png-scale")?, "--png-scale")? as usize,
             "--quit-after" => a.quit_after = Some(number(value("--quit-after")?, "--quit-after")?),
@@ -625,7 +635,8 @@ fn main() {
     // The font mode's font, shared by the renderer (which strings it has)
     // and the text layer's drawing.
     let font = nettai_frontend::game::font(args.text, args.font.as_deref()).unwrap_or_else(|e| load_failed(e));
-    let renderer = graphics.renderer(args.text, font.clone());
+    let mut renderer = graphics.renderer(args.text, font.clone());
+    renderer.problems.marking = args.marks.iter().cloned().collect();
     if args.audit {
         let setup = headless::AuditSetup {
             packs: renderer.graphics().clone(),

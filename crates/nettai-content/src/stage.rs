@@ -267,10 +267,6 @@ pub struct BackgroundDoc {
     /// Scroll per frame in 1/16 pixel.
     pub scroll: [i32; 2],
     pub anims: Vec<AnimDoc>,
-    /// The region whose ROMs the picture comes from, where another
-    /// region's have another (`Background::region`).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub region: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -354,7 +350,6 @@ pub fn export_background(bg: &Background, id: u8) -> Vec<(String, Vec<u8>)> {
         palette: bg.palette.is_some(),
         scroll: [bg.scroll.0, bg.scroll.1],
         anims,
-        region: bg.region.clone(),
     };
     files.push(("background.json".into(), json_lines(&doc)));
     files
@@ -420,7 +415,6 @@ pub fn import_background(dir: &Path, prefix: &str, report: &mut Report) -> Optio
         palette: doc.palette.then(|| palettes.first().copied().unwrap_or_default()),
         scroll: (doc.scroll[0], doc.scroll[1]),
         anims,
-        region: doc.region.clone(),
     };
     Some((doc.id, bg))
 }

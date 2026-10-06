@@ -57,16 +57,11 @@ pub struct Emblem {
 pub struct ChipArt {
     pub key: String,
     pub picture: Picture,
-    /// The region whose ROMs the picture comes from, when not the pack's
-    /// own (EXE6: `"jp"`, a chip the US release cut and left a placeholder
-    /// picture for). A console of another region shows something else.
-    pub region: Option<String>,
     /// The game version whose ROM the chip's picture and icon are from,
     /// for a chip only its own version's ROM draws: a version's own chip
     /// (EXE6's and EXE5's version Giga chips, EXE5's Phoenix and DethPhnx),
-    /// which the other version's ROM draws as its counterpart, and EXE6's
-    /// Gregar and Falzar chips (each ROM has its own beast in both). A
-    /// console of the other version shows another picture there.
+    /// which the other version's ROM draws as its counterpart. A console of
+    /// the other version shows another picture there.
     pub version: Option<String>,
 }
 
@@ -276,7 +271,7 @@ pub struct CustomScreen {
 }
 
 impl CustomScreen {
-    /// A chip's picture by its key (with the region it comes from).
+    /// A chip's picture by its key.
     pub fn chip_art(&self, key: &str) -> Option<&ChipArt> {
         self.chip_art.iter().find(|a| a.key == key).filter(|a| !a.picture.tiles.is_empty())
     }
