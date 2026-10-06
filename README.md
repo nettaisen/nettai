@@ -207,11 +207,11 @@ of (a new or random match's), and "No data" a save that never finished a battle 
 show only when the rules and its navi take them: the navi
 code's level with a navi whose definition has `levels` (not EXE5's MegaMan), the SP times with rules that have SP
 navi slots (each named by the game's SP navi chip).
-"Import from save…" reads a whole side from an EXE6 or EXE5 save (a .sav, or a raw save image as Tango's netplay
+"Import from save…" reads a whole side from a save of the arena's game (a .sav, or a raw save image as Tango's netplay
 templates hold): the navi it operates, its equipped folder with its Regular and tag chips, MegaMan's NaviCust and patch
 cards, what it brings to the stats, and the rest of what its game's rules take (EXE6's version, Beast Out, Crosses,
-navi code level, BugFrags and SP times; EXE5's karma, souls, unisons, a team navi's level and auto battle data), into a
-match of the save's game: a save of the other game makes a new match of its game first.
+navi code level, BugFrags and SP times; EXE5's karma, souls, unisons, a team navi's level, auto battle data and SP
+times). A save of another game is refused: the arena picks the game.
 
 The editor is an [iced](https://iced.rs) app, drawn in software (tiny-skia), so it needs no GPU backend. On Linux it
 needs the usual windowing libraries (X11 or Wayland, and `libxkbcommon`), and its Open and Save As dialogs use
