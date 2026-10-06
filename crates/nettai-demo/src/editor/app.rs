@@ -7,7 +7,7 @@ use nettai_battle::Content;
 use nettai_battle::content::ChipCode;
 use nettai_battle::custom::FolderChip;
 use nettai_battle::setup::NaviStats;
-use nettai_content_api::{ChipHandle, NaviHandle, PatchCardHandle, StageHandle};
+use nettai_content_api::{ChipHandle, EntryHandle, NaviHandle, StageHandle};
 use nettai_frontend::game::Game;
 use nettai_match::{Match, Side};
 use std::collections::HashMap;
@@ -114,7 +114,7 @@ pub enum Msg {
     Tag(usize),
     Search(String),
     // The patch cards.
-    AddCard(usize, PatchCardHandle),
+    AddCard(usize, EntryHandle),
     CardMove(usize, usize, bool),
     CardRemove(usize, usize),
     // The NaviCust.
@@ -757,13 +757,13 @@ fn save_png(path: &std::path::Path, shot: &iced::window::Screenshot) -> Result<(
 }
 
 /// The side's patch cards (its rules' `patch_cards`), in the list's order.
-pub fn cards_of(content: &nettai_battle::Content, side: &nettai_match::Side) -> Vec<nettai_content_api::PatchCardHandle> {
+pub fn cards_of(content: &nettai_battle::Content, side: &nettai_match::Side) -> Vec<EntryHandle> {
     use nettai_match::facts::Stated;
     let Some(Stated::List(items)) = side.facts.get(content, "patch_cards") else { return Vec::new() };
     items
         .iter()
         .filter_map(|item| match item {
-            Stated::Def(_, Some(h)) => Some(nettai_content_api::PatchCardHandle(*h)),
+            Stated::Def(_, Some(h)) => Some(EntryHandle(*h)),
             _ => None,
         })
         .collect()
@@ -771,9 +771,9 @@ pub fn cards_of(content: &nettai_battle::Content, side: &nettai_match::Side) -> 
 
 /// State the side's patch cards (its rules' `patch_cards`); whether they
 /// were written (the rules take such a list, and it holds them).
-pub fn set_cards(content: &nettai_battle::Content, side: &mut nettai_match::Side, cards: &[nettai_content_api::PatchCardHandle]) -> bool {
+pub fn set_cards(content: &nettai_battle::Content, side: &mut nettai_match::Side, cards: &[EntryHandle]) -> bool {
     use nettai_battle::rules::Fact;
     use nettai_content_api::{Registry, Value};
-    let list: Vec<Fact> = cards.iter().map(|&card| Fact::Value(Value::Def(Registry::PatchCard, card.0))).collect();
+    let list: Vec<Fact> = cards.iter().map(|&card| Fact::Value(Value::Def(Registry::Entry, card.0))).collect();
     side.set_fact(content, "patch_cards", &list).is_ok()
 }

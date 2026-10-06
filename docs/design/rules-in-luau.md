@@ -3099,3 +3099,20 @@ file format alone, nettai-frontend what plays; no version beyond the content has
   observer keeps the first state simulated with the round over and hands it over when that tick settles; it is also
   told each settled tick's inputs, for the recording. Two peers' recordings of a set are the same but for the info
   (a test plays one over a lagging link).
+
+### A patch card always applies; merge takes a list; the game's own collections (2026-10-06, branch nettai-player, steps c6a to c6c)
+
+- **c6a** (the user: "no need to implement on/off, an patch card is always on"): `patch_cards =
+  schema.list("patch_cards", 32)`, a list of cards each of which applies; the codecs leave out a save's card
+  switched off (docs/engine/patch-cards.md says what that changes: the JP emotion window over a save whose every
+  card is off).
+- **c6b** (the user: "why does merge not take just a list?"): a section init is `merge { require(...), ... }` in
+  path order; an id two modules give is an error naming it.
+- **c6c** (the user: "go generic"): a game's root may hold collections the core doesn't know, its keys besides
+  the sections and the rules: each entry a definition of `Registry::Entry` keyed `<collection>/<id>`, data the
+  core reads none of (content-model-v2.md §3.11). `Registry::PatchCard`, `Registry::NaviCustProgram`, their
+  handles and their typed records (`PatchCardDef`, `NaviCustProgramDef`) are gone; a setup field names the
+  collection as its type, a match file an entry by its id, the locales a table by the collection's name
+  (`[patch_cards]`, `[navicust_programs]`), the library order a list by it (`navicust_programs` for what was
+  `navicust`). Until the editor draws a side's facts by the views its rules declare (c3b), its NaviCust and card
+  panes read the entries' data by field.

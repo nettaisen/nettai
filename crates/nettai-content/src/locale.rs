@@ -46,7 +46,7 @@
 //! (and the frontend's `--cards`' messages). Nothing shows another form's name or a weapon's, so a table has
 //! none.
 
-pub use nettai_battle::content::strings::{ChipStrings, FormStrings, NaviStrings, PatchCardStrings, Strings};
+pub use nettai_battle::content::strings::{ChipStrings, EntryStrings, FormStrings, NaviStrings, Strings};
 use nettai_battle::content::Defs;
 use std::path::{Path, PathBuf};
 
@@ -150,17 +150,19 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
         text(format!("forms.{key}.name"), &f.name);
         text(format!("forms.{key}.description"), &f.description);
     }
-    for (key, c) in &s.patch_cards {
-        if defs.patch_card_by_key(key).is_none() {
-            unknown.push(format!("patch-cards.{key}: no patch card has this key"));
+    // (A table of the game's collections': each a collection of its root.)
+    let collections = defs.collections();
+    for (collection, entries) in &s.collections {
+        if !collections.contains(&collection.as_str()) {
+            unknown.push(format!("{collection}: no table of this name (the game's root holds no such collection)"));
+            continue;
         }
-        text(format!("patch-cards.{key}.name"), &c.name);
-    }
-    for (key, c) in &s.navicust_programs {
-        if defs.navicust_program_by_key(key).is_none() {
-            unknown.push(format!("navicust-programs.{key}: no NaviCust program has this key"));
+        for (id, e) in entries {
+            if defs.entry_in(collection, id).is_none() {
+                unknown.push(format!("{collection}.{id}: no entry of {collection} has this id"));
+            }
+            text(format!("{collection}.{id}.name"), &e.name);
         }
-        text(format!("navicust-programs.{key}.name"), &c.name);
     }
     if own {
         let named = |n: Option<&Option<String>>| n.is_some_and(|n| n.is_some());
@@ -174,14 +176,9 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
                 unknown.push(format!("navis.{}: the content's own language names every navi", d.key));
             }
         }
-        for d in &defs.patch_cards {
-            if !named(s.patch_card(&d.key).map(|c| &c.name)) {
-                unknown.push(format!("patch-cards.{}: the content's own language names every patch card", d.key));
-            }
-        }
-        for d in &defs.navicust_programs {
-            if !named(s.navicust_program(&d.key).map(|c| &c.name)) {
-                unknown.push(format!("navicust-programs.{}: the content's own language names every NaviCust program", d.key));
+        for e in &defs.entries {
+            if !named(s.entry(&e.collection, e.id()).map(|c| &c.name)) {
+                unknown.push(format!("{}.{}: the content's own language names every entry of the game's collections", e.collection, e.id()));
             }
         }
     }

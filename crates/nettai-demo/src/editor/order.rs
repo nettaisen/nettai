@@ -1,12 +1,12 @@
 //! The order the editor's lists keep: the game's library order (its pack's
 //! `library.toml`, `nettai_content::library`): the chips by the game's
 //! library tabs in their order and in each the order its library screen
-//! lists them, the NaviCust programs and patch cards by number; what isn't
-//! in it after, by key. The panes sort their lists with it alone.
+//! lists them, the entries of each of the game's collections (the NaviCust
+//! programs, the patch cards) in theirs; what isn't in it after, by key. The panes sort their lists with it alone.
 
 use nettai_battle::Content;
 use nettai_content::library::{self, Library, Rank};
-use nettai_content_api::{ChipHandle, NaviCustProgramHandle, PatchCardHandle};
+use nettai_content_api::{ChipHandle, EntryHandle};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -36,14 +36,9 @@ impl Order {
         library::sort_by_rank(list, |(_, h)| local(&c.defs.chip(*h).key), |k| self.chips.get(k).copied());
     }
 
-    /// Sort a list of patch cards.
-    pub fn patch_cards<T>(&self, c: &Content, list: &mut [(T, PatchCardHandle)]) {
-        library::sort_by_rank(list, |(_, h)| local(&c.defs.patch_card(*h).key), |k| self.lib.patch_card_rank(k));
-    }
-
-    /// Sort a list of NaviCust programs.
-    pub fn navicust_programs<T>(&self, c: &Content, list: &mut [(T, NaviCustProgramHandle)]) {
-        library::sort_by_rank(list, |(_, h)| local(&c.defs.navicust_program(*h).key), |k| self.lib.navicust_rank(k));
+    /// Sort a list of entries of collection `collection`.
+    pub fn entries<T>(&self, c: &Content, collection: &str, list: &mut [(T, EntryHandle)]) {
+        library::sort_by_rank(list, |(_, h)| c.defs.entry(*h).id(), |k| self.lib.entry_rank(collection, k));
     }
 }
 
