@@ -14,8 +14,9 @@
 //! with the game's navis, chips, forms and patch cards, every one named in
 //! the game's namespace alone (`ids`). There is no mixing of games.
 
-pub mod check;
 pub mod auto_battle;
+pub mod binary;
+pub mod check;
 pub mod pick;
 pub mod facts;
 pub mod file;

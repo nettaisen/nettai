@@ -8,9 +8,10 @@
 //! socket and no transport of its own. Before the match, the host's
 //! handshake (the program's is nettai-demo's `net`) checks that both run
 //! the same engine, play the same game (a match is of one) and the same
-//! content, and swaps what each player brings (an [`Offer`]: their navi,
-//! folder, version, Crosses and patch cards, each by its name in the game;
-//! the language is each player's own) and their halves of the seed. Both
+//! content, and swaps what each player brings (an [`Offer`]: their side,
+//! its facts as the game's rules take them, in nettai-match's binary
+//! against the content both play; the language is each player's own) and
+//! their halves of the seed. Both
 //! then agree the same round ([`agree`], [`netplay_setup`]): the host's
 //! arena (a match file's, else picked from the seed on the host's stage, if
 //! it names one), each player's side on their side (the host's is side 0,
@@ -36,8 +37,8 @@ use nettai_battle::content::Content;
 use nettai_battle::cues::{CueAction, CueTracker};
 use nettai_battle::{Battle, BattleResult};
 use nettai_content_api::StageHandle;
-use nettai_match::file::{ArenaFile, SideFile};
-use nettai_match::{After, Arena, Match, Picks, Place, Set, Side, ids};
+use nettai_match::binary::Brings;
+use nettai_match::{After, Arena, Match, Picks, Place, Set, Side};
 use nettai_netplay::protocol::BUTTONS;
 use nettai_netplay::standin::StandInBattle;
 use nettai_netplay::{BattleWorld, Game, Observer, Peer, PeerConfig};
@@ -56,19 +57,6 @@ pub struct Offer {
     pub arena: Option<Arena>,
 }
 
-/// An offer as the handshake carries it: a match file's names, in the
-/// offer's game (`nettai_match::file`).
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct OfferFile {
-    game: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    stage: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    arena: Option<ArenaFile>,
-    side: SideFile,
-}
-
 impl Offer {
     /// An offer of `side` for a match of `game` (and the host's `stage`,
     /// if it names one).
@@ -83,46 +71,34 @@ impl Offer {
         Offer { game: m.arena.game.clone(), side, stage: None, arena: host.then_some(m.arena) }
     }
 
-    /// The offer as the handshake carries it: each thing by its name in
-    /// the offer's game.
+    /// The offer as the handshake carries it: nettai-match's binary
+    /// (`binary::offer_bytes`), against the content both players play,
+    /// which the handshake names beside it (the game and the content's
+    /// hash). An offer's arena is a checked match's: its backgrounds are
+    /// its game's pack's.
     pub fn to_bytes(&self, content: &Content) -> Vec<u8> {
-        let place = |s: StageHandle| ids::local(&content.defs.stage(s).key).to_string();
-        let file = OfferFile {
-            game: self.game.clone(),
-            stage: self.stage.map(place),
-            arena: self.arena.as_ref().map(|a| nettai_match::file::arena_file(content, a)),
-            side: nettai_match::file::side_file(content, &self.side),
+        let brings = match (&self.arena, self.stage) {
+            (Some(a), _) => Brings::Arena(a.clone()),
+            (None, Some(s)) => Brings::Stage(s),
+            (None, None) => Brings::Nothing,
         };
-        toml::to_string(&file).expect("an offer serializes").into_bytes()
+        nettai_match::binary::offer_bytes(content, &brings, &self.side).expect("an offer's arena is a checked match's")
     }
 
-    /// An offer from the other side for a match of `game`, its names
-    /// resolved in the game and checked against `content` as a match file's
-    /// side is (`nettai_match::check_side`), its arena or stage a link
-    /// battle's.
+    /// An offer from the other side for a match of `game` on `content`
+    /// (the handshake refused another game or content before), read
+    /// and checked as a match file's side is (`nettai_match::check_side`),
+    /// its arena or stage a link battle's.
     pub fn from_bytes(content: &Arc<Content>, game: &str, bytes: &[u8]) -> Result<Offer, String> {
-        let undecoded = |e: String| format!("the other player's setup doesn't decode ({e})");
-        let text = std::str::from_utf8(bytes).map_err(|e| undecoded(e.to_string()))?;
-        let f: OfferFile = toml::from_str(text).map_err(|e| undecoded(e.to_string()))?;
-        if f.game != game {
-            return Err(format!("the other player's setup is of {}, this match {game}'s", f.game));
+        if content.game() != game {
+            return Err(format!("the content is {}'s, this match {game}'s", content.game()));
         }
-        let mut problems = Vec::new();
-        let side = nettai_match::file::resolve_side(content, game, &f.side, "side", &mut problems);
-        let stage = match f.stage.as_deref().map(|name| nettai_match::link_stage(content, game, name)) {
-            Some(Err(e)) => {
-                problems.push(e);
-                None
-            }
-            s => s.and_then(Result::ok),
+        let (brings, side) = nettai_match::binary::read_offer(content, bytes).map_err(|e| format!("the other player's setup doesn't decode ({e})"))?;
+        let (stage, arena) = match brings {
+            Brings::Nothing => (None, None),
+            Brings::Stage(s) => (Some(s), None),
+            Brings::Arena(a) => (None, Some(a)),
         };
-        let arena = f.arena.as_ref().and_then(|a| nettai_match::file::resolve_arena(content, game, a, &mut problems));
-        let Some(side) = side else {
-            return Err(format!("the other player's setup breaks the rules: {}", problems.join("; ")));
-        };
-        if !problems.is_empty() || f.arena.is_some() && arena.is_none() {
-            return Err(format!("the other player's setup breaks the rules: {}", problems.join("; ")));
-        }
         let offer = Offer { game: game.to_string(), side, stage, arena };
         offer.check(content)?;
         Ok(offer)
@@ -215,42 +191,100 @@ impl Default for NetOptions {
     }
 }
 
-/// What the player hears: every tick the peer simulates, through a cue
-/// tracker for their side. The peer's world owns it.
-struct Sound {
+/// What a round's simulation tells the player: what they hear (every tick
+/// the peer simulates, through a cue tracker for their side), the tick the
+/// round ended on once it settles (the battle the set goes on from: the
+/// same on both peers, whenever each sees it settle), and for a recording
+/// each tick that settles. The peer's world owns it.
+struct Watch {
     viewer: u8,
     tracker: CueTracker,
     /// Every action of the round so far, in order: the player takes the
     /// ones after those it took the frame before.
     actions: Vec<CueAction>,
+    /// The first frame simulated so far whose state has the round over,
+    /// and that state.
+    end: Option<(u32, Battle)>,
+    /// The round's end, settled: its frame and its battle, for the set to
+    /// go on from. Frames that settle after it are none of the set's.
+    settled_end: Option<(u32, Battle)>,
+    /// The ticks that settle, for a recording.
+    record: Option<Record>,
+}
+
+/// What a recording takes of a round's settled ticks.
+struct Record {
+    /// The set's ticks before this round's (a digest's cadence counts
+    /// the set's).
+    before: u64,
+    /// The digests of frames the latest simulation of which took one, by
+    /// frame (a frame due one, and the round's end).
+    digests: std::collections::BTreeMap<u32, u64>,
+    /// The ticks settled since the player last took them.
+    settled: Vec<nettai_replay::Tick>,
 }
 
 /// Frames a cue a re-simulation makes again may move and still be the one
 /// played (docs/design/rollback.md §3.2).
 const CUE_TOLERANCE: u32 = 3;
 
-impl Sound {
-    fn new(viewer: u8) -> Sound {
-        Sound { viewer, tracker: CueTracker::new(CUE_TOLERANCE), actions: Vec::new() }
+impl Watch {
+    /// A round's, for the player of `viewer`'s side; recording it after
+    /// the set's ticks `before` (none: not recording).
+    fn new(viewer: u8, before: Option<u64>) -> Watch {
+        Watch {
+            viewer,
+            tracker: CueTracker::new(CUE_TOLERANCE),
+            actions: Vec::new(),
+            end: None,
+            settled_end: None,
+            record: before.map(|before| Record { before, digests: Default::default(), settled: Vec::new() }),
+        }
     }
 }
 
-impl<G: Game> Observer<G> for Sound {
+impl Observer<StandInBattle> for Watch {
     fn rolled_back(&mut self, frame: u32) {
         self.tracker.rolled_back(frame);
+        if self.end.as_ref().is_some_and(|(f, _)| *f >= frame) {
+            self.end = None;
+        }
     }
 
-    fn simulated(&mut self, frame: u32, game: &G) {
-        self.tracker.simulated(frame, game.battle().sound_cues_for(self.viewer));
+    fn simulated(&mut self, frame: u32, game: &StandInBattle) {
+        let battle = game.battle();
+        self.tracker.simulated(frame, battle.sound_cues_for(self.viewer));
         self.actions.extend(self.tracker.drain());
+        let ends = self.end.is_none() && battle.round_end().is_some();
+        if ends {
+            self.end = Some((frame, battle.clone()));
+        }
+        if let Some(r) = &mut self.record
+            && (ends || crate::replay::digest_due(r.before + frame as u64))
+        {
+            r.digests.insert(frame, battle.digest());
+        }
     }
 
-    fn confirmed(&mut self, frame: u32, _: Option<&Battle>) {
+    fn confirmed(&mut self, frame: u32, inputs: [&u16; 2], _: Option<&Battle>) {
         self.tracker.confirmed(frame + 1);
+        if self.settled_end.is_some() {
+            return;
+        }
+        let ended = self.end.as_ref().is_some_and(|(f, _)| *f == frame);
+        if let Some(r) = &mut self.record {
+            let due = ended || crate::replay::digest_due(r.before + frame as u64);
+            let digest = r.digests.remove(&frame).filter(|_| due);
+            let buttons = inputs.map(|&b| b & nettai_replay::BUTTON_MASK);
+            r.settled.push(nettai_replay::Tick { buttons, digest, round_ended: ended, set_ended: false });
+        }
+        if ended {
+            self.settled_end = self.end.take();
+        }
     }
 }
 
-type NetPeer = Peer<StandInBattle, Sound>;
+type NetPeer = Peer<StandInBattle, Watch>;
 
 // A peer, its world and its sound go to another thread, and a player over
 // a channel that goes too with them.
@@ -284,6 +318,9 @@ pub struct NetPlayer<C: Channel> {
     start: Instant,
     /// The set's result for this player, once it is over.
     over: Option<BattleResult>,
+    /// Recording: the set's ticks before this round's, and the settled
+    /// ticks the session hasn't taken.
+    recording: Option<(u64, Vec<nettai_replay::Tick>)>,
 }
 
 impl<C: Channel> NetPlayer<C> {
@@ -292,9 +329,9 @@ impl<C: Channel> NetPlayer<C> {
     /// ([`agree`]).
     pub fn new(channel: C, side: usize, set: Set, options: NetOptions) -> NetPlayer<C> {
         let config = PeerConfig::new(options.present_delay, options.max_lead);
-        let world = BattleWorld::with_observer(StandInBattle::new(set.start()), side, Sound::new(side as u8));
+        let world = BattleWorld::with_observer(StandInBattle::new(set.start()), side, Watch::new(side as u8, None));
         let start = Instant::now();
-        NetPlayer { channel, side, peer: Peer::new(world, config), heard: 0, last_frame: start, set, options, start, over: None }
+        NetPlayer { channel, side, peer: Peer::new(world, config), heard: 0, last_frame: start, set, options, start, over: None, recording: None }
     }
 
     /// The side this player plays.
@@ -380,25 +417,49 @@ impl<C: Channel> NetPlayer<C> {
                 shown.setup.local_side = side;
             });
             ran.advanced = true;
-            // What settled: the round's end, and how the set goes on from
-            // it (the next round is the shared simulation's, side 0's; the
-            // result is this player's). (The world has told the sound.)
-            match self.set.after(self.peer.session().settled_state().battle(), side) {
-                None => {}
-                Some(After::Over(result)) => self.over = Some(result),
-                Some(After::Round(battle)) => {
-                    self.take_sound(&mut ran.sound);
-                    // A new round, a new tracker.
-                    let world = BattleWorld::with_observer(StandInBattle::new((*battle).clone()), self.side, Sound::new(side));
-                    self.peer.end_round(world);
-                    self.heard = 0;
-                    self.show(&battle, shown);
-                    ran.new_round = true;
-                }
-                // The engine stopped the settled battle: on both peers alike.
-                Some(After::Stopped(why)) => {
-                    self.take_sound(&mut ran.sound);
-                    return Err(format!("engine stopped at {}: {why}", self.position()));
+            // What settled: the ticks, for a recording; the round's end at
+            // the tick it ended on, and how the set goes on from it (the
+            // next round is the shared simulation's, side 0's; the result
+            // is this player's). (The world has told the sound.)
+            let watch = self.peer.session_mut().world_mut().observer_mut();
+            if let (Some(r), Some((_, recorded))) = (&mut watch.record, &mut self.recording) {
+                recorded.append(&mut r.settled);
+            }
+            let ended = watch.settled_end.take();
+            if let Some((frame, ended)) = ended {
+                let after = self.set.after(&ended, side).expect("the round is over");
+                let last = self.recording.as_mut().and_then(|(_, r)| r.last_mut());
+                match after {
+                    After::Over(result) => {
+                        self.over = Some(result);
+                        if let Some(t) = last {
+                            t.set_ended = true;
+                        }
+                    }
+                    After::Round(battle) => {
+                        self.take_sound(&mut ran.sound);
+                        // A new round, a new tracker; a recording's ticks
+                        // counted on.
+                        let before = self.recording.as_mut().map(|(before, _)| {
+                            *before += frame as u64 + 1;
+                            *before
+                        });
+                        let world = BattleWorld::with_observer(StandInBattle::new((*battle).clone()), self.side, Watch::new(side, before));
+                        self.peer.end_round(world);
+                        self.heard = 0;
+                        self.show(&battle, shown);
+                        ran.new_round = true;
+                    }
+                    // The engine stopped the settled battle: on both peers
+                    // alike (a recording marks no end: the set goes no
+                    // further).
+                    After::Stopped(why) => {
+                        if let Some(t) = last {
+                            t.round_ended = false;
+                        }
+                        self.take_sound(&mut ran.sound);
+                        return Err(format!("engine stopped at {}: {why}", self.position()));
+                    }
                 }
             }
         }
@@ -421,6 +482,23 @@ impl<C: Channel> Driver for NetPlayer<C> {
 
     fn run_frame(&mut self, keys: u16, shown: &mut Battle) -> Option<Result<Ran, String>> {
         Some(self.frame(keys, shown))
+    }
+
+    /// From the set's start: each tick as it settles (both peers' files
+    /// alike, but for their info).
+    fn record(&mut self) -> bool {
+        if self.peer.round() > 0 || self.peer.session().local_frontier() > 0 {
+            return false;
+        }
+        self.recording = Some((0, Vec::new()));
+        self.peer.session_mut().world_mut().observer_mut().record = Some(Record { before: 0, digests: Default::default(), settled: Vec::new() });
+        true
+    }
+
+    fn take_recorded(&mut self, out: &mut Vec<nettai_replay::Tick>) {
+        if let Some((_, recorded)) = &mut self.recording {
+            out.append(recorded);
+        }
     }
 
     fn position(&self) -> String {
@@ -498,8 +576,9 @@ mod tests {
         offer_of(content, "exe6", seed)
     }
 
-    /// An offer goes over the wire as it is, every name the game's; one
-    /// the content can't play is refused with a reason.
+    /// An offer goes over the wire as it is, in binary; one the content
+    /// can't play is refused with a reason, and bytes that aren't one with
+    /// where they go wrong.
     #[test]
     fn offers_roundtrip_and_bad_ones_are_refused() {
         let content = exe6_test_content();
@@ -508,12 +587,11 @@ mod tests {
         let cards = nettai_match::testing::patch_cards(&content, "exe6", "canodumb,-shadow");
         o.side.set_fact(&content, "patch_cards", &cards).unwrap();
         let bytes = o.to_bytes(&content);
-        let text = String::from_utf8(bytes.clone()).unwrap();
-        assert!(text.starts_with("game = \"exe6\"") && !text.contains("exe6:"), "{text}");
         assert_eq!(Offer::from_bytes(&content, "exe6", &bytes).unwrap(), o);
         // A match file's arena goes too.
         let mut a = o.clone();
         a.arena = Some(nettai_match::pick::live(&content, "exe6", 9, None).unwrap().arena);
+        a.stage = None;
         assert_eq!(Offer::from_bytes(&content, "exe6", &a.to_bytes(&content)).unwrap(), a);
         let mut bad = o.clone();
         let mut folder = bad.side.folder(&content);
@@ -521,18 +599,22 @@ mod tests {
         folder.regular = None;
         bad.side.set_folder(&content, &folder).unwrap();
         assert!(Offer::from_bytes(&content, "exe6", &bad.to_bytes(&content)).unwrap_err().contains("breaks the rules"));
-        // A name the game hasn't: the ordinary unknown name.
-        let bad = text.replacen("navi = \"megaman\"", "navi = \"exe5:megaman\"", 1); // (written in full)
-        let e = Offer::from_bytes(&content, "exe6", bad.as_bytes()).unwrap_err();
-        assert!(e.contains("side: navi: no navi \"exe5:megaman\" in exe6"), "{e}"); // (written in full)
-        // Another game's offer, and bytes that aren't one.
-        assert!(Offer::from_bytes(&content, "exe5", &bytes).unwrap_err().contains("is of exe6, this match exe5's"));
-        assert!(Offer::from_bytes(&content, "exe6", &bytes[..10]).is_err());
+        // A stage that isn't a link battle's.
+        let mut stage = o.clone();
+        stage.stage = (0..content.defs.stages.len() as u16).map(StageHandle).find(|s| !nettai_match::link_battle_stages(&content, "exe6").contains(s));
+        assert!(stage.stage.is_some());
+        assert_eq!(Offer::from_bytes(&content, "exe6", &stage.to_bytes(&content)).unwrap_err(), "the other player's stage isn't a link battle stage");
+        // Another game's content, and bytes that aren't an offer.
+        assert_eq!(Offer::from_bytes(&content, "exe5", &bytes).unwrap_err(), "the content is exe6's, this match exe5's");
+        let e = Offer::from_bytes(&content, "exe6", &bytes[..10]).unwrap_err();
+        assert!(e.starts_with("the other player's setup doesn't decode (side: ") && e.ends_with("the bytes end inside it)"), "{e}");
+        let mut more = bytes.clone();
+        more.push(0);
+        assert_eq!(Offer::from_bytes(&content, "exe6", &more).unwrap_err(), "the other player's setup doesn't decode (1 bytes after its end)");
     }
 
     /// An EXE5 side's offer carries its facts (its karma, its souls); both
-    /// peers' rounds start from them alike. A fact past its field's type,
-    /// or one the offer's game's rules don't take, is refused.
+    /// peers' rounds start from them alike.
     #[test]
     fn offers_carry_karma_and_souls() {
         use nettai_battle::rules::Fact;
@@ -540,27 +622,68 @@ mod tests {
         let content = nettai_match::testing::exe5_content();
         let mut o = offer_of(&content, "exe5", 5);
         o.side.set_fact(&content, "karma", &[Fact::Value(Value::Int(100))]).unwrap();
-        let proto = ids::form(&content, "exe5", "protosoul").unwrap();
+        let proto = nettai_match::ids::form(&content, "exe5", "protosoul").unwrap();
         o.side.set_fact(&content, "souls", &[Fact::Value(Value::Def(Registry::Form, proto.0))]).unwrap();
         let back = Offer::from_bytes(&content, "exe5", &o.to_bytes(&content)).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(back, o);
         let (one, _) = netplay_setup(&content, 9, &[o.clone(), offer_of(&content, "exe5", 6)]).unwrap();
         let (two, _) = netplay_setup(&content, 9, &[back, offer_of(&content, "exe5", 6)]).unwrap();
         assert_eq!(format!("{:?}", one.first()), format!("{:?}", two.first()));
-        let stated = String::from_utf8(o.to_bytes(&content)).unwrap();
-        assert!(stated.contains("karma = 100\n"), "{stated}");
-        let bad = stated.replacen("karma = 100\n", "karma = 70000\n", 1);
-        assert!(Offer::from_bytes(&content, "exe5", bad.as_bytes()).unwrap_err().contains("karma: 70000 is past a u16"));
-        let six = exe6_test_content();
-        let plain = String::from_utf8(offer(&six, 6).to_bytes(&six)).unwrap();
-        let bad = plain.replacen("[side]\n", "[side]\nsouls = []\n", 1);
-        assert_ne!(bad, plain);
-        assert!(Offer::from_bytes(&six, "exe6", bad.as_bytes()).unwrap_err().contains("no field \"souls\" (a side of exe6 takes"));
         // Offers of two games make no match.
         let mut other = o.clone();
         other.game = "exe6".into();
         let Err(e) = netplay_setup(&content, 9, &[o.clone(), other]) else { panic!("offers of two games made a match") };
         assert_eq!(e, "the host plays exe5, the joiner exe6: a match is of one game");
+    }
+
+    /// Both players record the set as it settles, over a link with
+    /// latency and rollback: their replays are the same but for the side
+    /// that recorded, the rounds end on the tick each ended on (whenever
+    /// each peer saw it settle), and either plays back to the set's end
+    /// with no difference. (Each player shoots; side 1's navi has 1 HP.)
+    #[test]
+    fn both_players_record_the_same_set() {
+        use crate::driver::short_set::shooter;
+        use crate::replay::{End, Recorder, play_out, testing::Shared};
+        use crate::session::Session;
+        let content = exe6_test_content();
+        let base_hp = nettai_battle::content::PlayerFact::BaseHp.name();
+        let mine = [0, 1].map(|side| {
+            let mut o = offer(&content, 3 + side as u32);
+            if side == 1 {
+                o.side.set_fact(&content, base_hp, &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(1))]).unwrap();
+            }
+            o
+        });
+        let (mut shuttle, hands) = Shuttle::new();
+        let sinks = [Shared::default(), Shared::default()];
+        let mut playing: Vec<Session> = Vec::new();
+        for (side, (hand, (_, set, m))) in hands.into_iter().zip(agreed(&content, &mine, 0x5eed)).enumerate() {
+            let mut s = Session::new(Box::new(NetPlayer::new(hand, side, set, NetOptions::default())));
+            let info = nettai_replay::Info { when: 0, side: side as u8, names: Default::default() };
+            s.record(Recorder::new(Box::new(sinks[side].clone()), &content, &m, &info).unwrap()).unwrap();
+            playing.push(s);
+        }
+        let start = Instant::now();
+        for frame in 1..40_000u32 {
+            shuttle.carry(frame);
+            for (side, s) in playing.iter_mut().enumerate() {
+                let keys = shooter(&s.battle, side, frame);
+                assert!(s.step(keys), "side {side}: {:?}", s.stopped);
+            }
+            if playing.iter().all(|s| s.driver.result().is_some()) {
+                break;
+            }
+            let next = start + Duration::from_micros(500) * frame;
+            std::thread::sleep(next.saturating_duration_since(Instant::now()));
+        }
+        assert_eq!(playing.iter().map(|s| s.driver.result()).collect::<Vec<_>>(), [Some(BattleResult::Won), Some(BattleResult::Lost)]);
+        let [a, b] = sinks.map(|s| nettai_replay::Replay::read(&s.bytes()).unwrap());
+        assert_eq!((a.end, a.rounds().len()), (End::Set, 2));
+        assert_eq!((&a.head, &a.match_bytes, &a.ticks), (&b.head, &b.match_bytes, &b.ticks));
+        assert_eq!((a.info.side, b.info.side), (0, 1));
+        let out = play_out(&content, &a).unwrap();
+        assert_eq!((out.diverged, out.stopped, out.result, out.rounds), (None, None, Some(BattleResult::Won), vec![Some(0), Some(0)]));
     }
 
     type Queue = Rc<RefCell<VecDeque<Vec<u8>>>>;

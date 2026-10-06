@@ -2428,8 +2428,7 @@ dependencies = [
  "nettai-match",
  "nettai-netplay",
  "nettai-render",
- "serde",
- "toml",
+ "nettai-replay",
 ]
 
 [[package]]
@@ -2478,6 +2477,10 @@ dependencies = [
  "png",
  "swash",
 ]
+
+[[package]]
+name = "nettai-replay"
+version = "0.1.0"
 
 [[package]]
 name = "nom"

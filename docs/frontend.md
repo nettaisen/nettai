@@ -274,6 +274,8 @@ rules' `backgrounds`).
     cargo run -p nettai-demo -- --match match.toml --pack <dir>        # a pack elsewhere
     cargo run -p nettai-demo -- --match match.toml --host 7777         # netplay: host...
     cargo run -p nettai-demo -- --match match.toml --join 192.0.2.10:7777   # ...and join
+    cargo run -p nettai-demo -- --match match.toml --record set.ntrp   # record the set (§8)
+    cargo run -p nettai-demo -- --replay set.ntrp --side right   # watch it again, the right navi's console
 
 Options: `--pack <dir>` names a content pack elsewhere and `--content <dir>`
 the battle content (see above), `--mute` turns the sound off, `--round N`
@@ -296,7 +298,10 @@ to play, or `--edit FILE`), which plays the match in the same window; its
 Random button creates a random setup. `--show-folders` prints both folders, and with
 `--headless`, `--keys` holds buttons on given ticks (below). `--save-match FILE`
 writes the match played, the file's setup or the one netplay agreed, with its
-seed, as a match file.
+seed, as a match file. `--record FILE` writes a replay of the set played (alone,
+`--host` or `--join`), and `--replay FILE` plays one, shown from the side that
+recorded it or `--side left|right`; with `--headless F` it renders the set's
+ticks F (§8).
 
 Keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START,
 Backspace = SELECT; Space pauses, `.` steps one frame while paused, `-` and
@@ -396,8 +401,11 @@ frontend's side is `netplay`):
   the animations' timing), and refuses a mismatch on both sides with what
   differs ("can't play: the other side plays other content (its hash ...,
   this one's ...)"). Each player then brings their own side of the match (an
-  offer, by name in the game as a match file names things): a match file's
-  left side (`--match`), including its folder, version, forms and patch cards;
+  offer, in nettai-match's binary against the content both play,
+  `nettai_match::binary`: the side's facts in the order of the game's rules'
+  setup, each definition by its handle, which the content hash pins): a
+  match file's left side (`--match`), its facts all (folder, version, forms,
+  patch cards...);
   the other player's is checked against the content as a match
   file's side is (`nettai_match::check_side`, §6). Both play by the game's
   rules (a game has one ruleset, so an offer names none). The language (`--lang`) is each player's own. The field
@@ -1748,3 +1756,83 @@ frame it takes against the PNG the program writes headless for the same seed
 and buttons, byte for byte, and its samples against a second rendition from
 the battle's cues. The verification workspace runs it against both games
 (`tools/embed-against.sh`).
+
+## 8. Replays
+
+A replay is one set, all its rounds, as it was played: the match and every
+tick's buttons, both players'. The simulation is a function of those alone, so
+playing them again makes the same set, round by round; nothing it makes is
+kept (who won, the score) but the ticks a round and the set ended on, and the
+battle's digest now and then, to tell a replay that reproduces from one that
+doesn't. A replay plays only on the engine and the content it was made with;
+it names them, and another build or pack refuses it with what differs.
+
+**Recording.** `nettai-demo --match FILE --record set.ntrp` (alone, or with
+`--host`/`--join`) writes the set as it is played; in the library,
+`Player::record(Recorder::new(sink, &content, &m, &info)?)` before the first
+tick. Live play writes each tick as it runs; netplay each as it settles
+(confirmed, never a prediction), so both players' replays of a match hold the
+same match and ticks, and differ only in who recorded. Each tick is flushed as
+it is written: a crash leaves every tick before it, and the file reads as cut
+short. A round of netplay ends on the tick it ended on, which both peers know
+however late they see it settle (rollback.md §4.6, "Rounds"), so the replay's
+marks are the simulation's.
+
+**Playing back.** `nettai-demo --replay set.ntrp` (`--side left|right`: the
+console shown; default the recorder's; `--headless F` renders the set's ticks
+F); in the library, `ReplayPlayer::new(&content, &replay, side)?` is a driver
+like any other, and `replay::play_out(&content, &replay)` plays one to its end
+with no picture or sound (the ticks, each round's winner, the set's result,
+how the file ends, and the first difference). A digest or a round's or the
+set's end that differs from the recording is reported as a difference
+(`Player::diverged`), with its tick; the simulation is side 0's on every
+console, so a replay shown from side 1 compares the same digests.
+
+**The file** (nettai-replay, which holds the format alone and runs no engine):
+
+```text
+file   := "NTRP", layout (a byte: 1), head, match, info, input
+head   := "HEAD", length (u32), engine version (string), game (string),
+          content hash (u64), the first battle's digest before any tick (u64)
+match  := "MTCH", length (u32), the match in nettai-match's binary
+info   := "INFO", length (u32), when (u64: unix seconds), the side that
+          recorded (a byte), the players' names by side (two strings)
+input  := "TICK", then a record per tick to the end of the file
+record := control (a byte), then what its bits announce, in their order:
+          bit 0: side 0's buttons (u16) follow, bit 1: side 1's,
+          bit 2: the battle's digest after the tick (u64) follows,
+          bit 3: a round ended on the tick (a digest always comes with it),
+          bit 4: the set ended on it (a round did too; nothing comes after);
+          bits 5 to 7 are 0
+string := length (LEB128), UTF-8
+```
+
+Numbers are little-endian; a side's buttons are written when they change
+(nothing held before the first tick, carried across a round's end); a digest
+is kept every 60 ticks of the set and at each round's end (the reader takes
+any). A tick that changes nothing is one byte: a three-minute round is about
+15 KB. The layout byte is the container's; what a match holds is pinned by the
+content hash, nothing else.
+
+**The match** (nettai-match's `binary`, which the netplay offer uses too) is
+read against the content the head names: definitions by their handles (the
+pack's index, the same on every load of content of that hash), a background by
+its number in the pack, nothing by name:
+
+```text
+place := stage (u16: its handle), background (u16: its number plus one; 0 the stage's own)
+arena := the first round's place, the later rounds' two places
+side  := the side's setup of the game's rules in its compact form (each fact in the
+         setup's order at its width; a record's fields in order; a list as its
+         count and only the entries it holds)
+match := seed (u32), arena, side 0, side 1
+offer := what the host brings (a byte: 0 nothing, 1 a stage, 2 an arena), then the
+         stage's handle (u16) or the arena, then the side
+```
+
+A side's bytes are its game's rules' (a game's facts change no other game's),
+the arena's the engine's. A random EXE6 side's offer with its host's arena is
+about 210 bytes, EXE5's about 540 (its auto battle data included); a whole
+match 410 and 1,060. A reader refuses bytes that end early or run on, a handle
+past the content's, a background the pack hasn't and a value no fact may hold,
+saying where; the match's checks then judge what it read, as for a match file.

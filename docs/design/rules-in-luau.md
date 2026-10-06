@@ -3077,3 +3077,25 @@ is its rules'.
 - **The random pick** was the rules' data already (`link_pick.stages`, `first_round_stages`, `backgrounds`).
 - Still nettai-match's: `MATCH_EFFECTS` (0x600, the match type a random match is), which the coordinator's (A)
   leaves as it is.
+
+### A match in binary, and replays (2026-10-06, branch nettai-player, step c5)
+
+The binary the user asked for (one file per set, binary throughout; nothing derivable kept but the round-ended and
+set-ended marks; digests every 60 ticks; references as handles under the content name and hash; nettai-replay the
+file format alone, nettai-frontend what plays; no version beyond the content hash), as docs/frontend.md §8 has it:
+
+- **nettai-match's `binary`**: a side is its setup block in the compact form nettai-content-api's `Block` writes
+  (each fact in the setup's order, a list as its count and its entries), so a side's layout is its game's rules' and
+  nothing in the encoding names a game; the arena the engine's fixed layout (a stage handle and a background number
+  a place); a match its seed, arena and sides; an offer what the host brings and a side. The netplay offer is that
+  binary (protocol version 2), and nettai-frontend no longer depends on serde or toml.
+- **nettai-replay**: the file (head, match, info, a record per tick: buttons as they change, a digest, the two
+  marks), written a flushed record at a time and read to its last whole tick.
+- **nettai-frontend**: `replay::Recorder` (`Player::record`; live play's ticks as they run, netplay's as they
+  settle), `ReplayPlayer` (a driver checking the digests and marks, shown from either side), `play_out`.
+- **nettai-demo**: `--record FILE`, `--replay FILE`, `--side left|right`.
+- **Netplay's rounds** end on the tick they ended on: the next round was made from whatever settled state a peer saw
+  first, which, a battle ticking on past its round's end, two peers could see at different ticks. The world's
+  observer keeps the first state simulated with the round over and hands it over when that tick settles; it is also
+  told each settled tick's inputs, for the recording. Two peers' recordings of a set are the same but for the info
+  (a test plays one over a lagging link).
