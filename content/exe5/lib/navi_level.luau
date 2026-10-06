@@ -27,8 +27,8 @@ end
 -- and holds none of their chips (the custom screen reads every chip's damage, for the hand it may build). A level past
 -- the row (which the rules' `validate` says no side has: ../rules/save) reads its last entry, so that a round is set up
 -- for every setup a tool asks about.
-function navi_level.row(row: { number }): (side: number) -> number
-    return function(side: number): number
+function navi_level.row(row: { number }): (side: number, chip: Chip) -> number
+    return function(side: number, _chip: Chip): number
         local level = exe5.navi_level(side)
         if level == nil then
             return 0

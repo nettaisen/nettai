@@ -25,9 +25,13 @@ block.RECORDS = 8
 block.RECORD_CHIPS = 5
 
 -- The setup's and the state's types.
-block.PLACE = { chip = "chip", pattern = "u8", zero = "bool" }
-block.CHIP_PLACE = { chip = "chip", zero = "bool" }
-block.RECORD = { dx = "i8", dy = "i8", chips = schema.list(block.CHIP_PLACE, block.RECORD_CHIPS), score = "u32" }
+local PLACE: StateSchema = { chip = "chip", pattern = "u8", zero = "bool" }
+local CHIP_PLACE: StateSchema = { chip = "chip", zero = "bool" }
+local RECORD: StateSchema = { dx = "i8", dy = "i8", chips = schema.list(CHIP_PLACE, block.RECORD_CHIPS), score = "u32" }
+
+block.PLACE = PLACE
+block.CHIP_PLACE = CHIP_PLACE
+block.RECORD = RECORD
 
 -- A place as the setup and the state hold it.
 export type Place = { chip: Chip?, pattern: number, zero: boolean }
@@ -35,7 +39,7 @@ export type ChipPlace = { chip: Chip?, zero: boolean }
 export type Record = { dx: number, dy: number, chips: { ChipPlace }, score: number }
 
 -- The lists the game writes the places in (0x0802C692 to 0x0802C6E6): their names, first places (from 1) and sizes.
-block.LISTS = {
+local LISTS: { { name: string, start: number, len: number } } = {
     { name = "first", start = 1, len = 3 },
     { name = "standard", start = 4, len = 24 },
     { name = "mega", start = 28, len = 5 },
@@ -43,6 +47,8 @@ block.LISTS = {
     { name = "patterns", start = 34, len = 8 },
     { name = "program_advance", start = 42, len = 1 },
 }
+
+block.LISTS = LISTS
 
 -- What the game's battle end writes of a player it has learned nothing of (0x0802C540), the records of a setup
 -- that says nothing: every record zeros (its places are none: empty).
@@ -234,7 +240,7 @@ local UNPLAYABLE = place.unplayable()
 -- play one, and the game's own writer never puts one there; a record's chip place may hold one, as the game writes
 -- them there and a record never plays).
 function block.validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
-    local places = rules.setup_of(side).auto_battle_places
+    local places: { Place } = rules.setup_of(side).auto_battle_places
     for i, p in places do
         local list = block.LISTS[#block.LISTS]
         for _, l in block.LISTS do

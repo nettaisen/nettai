@@ -158,7 +158,7 @@ end
 
 -- `validate`'s part: the side's own folder (its setup's `folder`, `regular_chip`, `tag_chips`), each problem said with
 -- `problem(text, field)`: its Regular and tag chips are entries with a chip, and it keeps the rules.
-local function validate(side: number, problem: (text: string, field: string?) -> ())
+local function validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
     local setup = rules.setup_of(side)
     -- The entries with a chip, and each one's place among them (from 1) by its entry (from 0).
     local chips: { { chip: Chip, code: string } } = {}
