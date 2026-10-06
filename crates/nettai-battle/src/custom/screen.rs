@@ -49,7 +49,7 @@ pub enum SlotKind {
     NaviChip(FolderChip),
     /// The OK button.
     Ok,
-    /// A cell of a system's button (docs/design/rules-in-luau.md §4.4:
+    /// A cell of a button of the rules (docs/design/rules-in-luau.md §4.4:
     /// EXE6's ChpShufl re-deal and DustCross scrap, two cells wide on slots
     /// 8 and 9).
     Button { button: ButtonHandle, cell: ButtonCell },
@@ -76,7 +76,7 @@ pub enum ButtonCell {
     Right,
 }
 
-/// Where a system's button sits on a screen, as the screen's extras say
+/// Where a button of the rules sits on a screen, as the screen's extras say
 /// when it opens.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ButtonPlace {
@@ -138,7 +138,7 @@ pub enum Phase {
     Choosing,
     /// SELECT hid the window to look at the field (`sub_8026D06`).
     Hidden { stage: HiddenStage },
-    /// R shows the chip's description (`sub_8026E4C`), or a system's window
+    /// R shows the chip's description (`sub_8026E4C`), or a window of the rules
     /// a form's (EXE6's Cross window: the Cross's, `sub_8026E78`): `window`
     /// the window it returns to, `form` the form described. The screen
     /// waits for its chatbox to close.
@@ -147,7 +147,7 @@ pub enum Phase {
     /// starts on the state's first tick (`sub_8026EC8`) and is waited for
     /// from the next (`sub_8026FAA`).
     RunMessage { chatbox: Option<Chatbox> },
-    /// A system's window is up (docs/design/rules-in-luau.md §4.4: EXE6's
+    /// A window of the rules is up (docs/design/rules-in-luau.md §4.4: EXE6's
     /// Beast Out, `sub_802770C`, and the Cross window): its `update` runs
     /// each tick, `tick` from 1, until it says it is done.
     Window { window: WindowHandle, tick: u16 },
@@ -271,19 +271,20 @@ pub struct Screen {
     /// The navi changes form (MegaMan: the dark chips' cursor and the
     /// window's colors are his).
     pub megaman: bool,
-    /// The form a system's pick puts the navi in at the turn's start (EXE6's
-    /// Beast Out, `+0x17`), and the system's place in the side's ruleset.
+    /// The form a pick puts the navi in at the turn's start (EXE6's Beast
+    /// Out, `+0x17`), and which of the rules' buttons or windows made it (a
+    /// button's place, 0x100 past a window's).
     pub form: Option<nettai_content_api::FormHandle>,
-    pub form_owner: Option<u8>,
+    pub form_owner: Option<u16>,
     /// The transform record's turns and Chaos flag beside the form (EXE5's
-    /// Soul Unison: +3 and +1), as the system that set the form says.
+    /// Soul Unison: +3 and +1), as the rules that set the form say.
     pub form_turns: u8,
     pub form_chaos: bool,
-    /// A system's button picked in the place of the chip given up for it
+    /// A button of the rules picked in the place of the chip given up for it
     /// (EXE5's soul button, 0x080233E0): B on it puts the chip back, and at
     /// OK the chip leaves the folder where the button stands.
     pub trade: Option<Trade>,
-    /// A system's button holding a chip taken out of the picks
+    /// A button of the rules holding a chip taken out of the picks
     /// (`custom.hold_last_pick`: EXE5's Arm Change, 0x080236C0): B, with the
     /// picks as they were, puts it back; at OK the chip leaves the folder.
     pub hold: Option<Hold>,
@@ -399,7 +400,7 @@ impl Screen {
             hud: Banner::default(),
             look: ScreenLook::new(view.late_turns, false, None),
         };
-        // The side's systems as the screen deals, on the folder as the last
+        // The side's rules as the screen deals, on the folder as the last
         // screen left it and the framework's hand size (EXE5's opening,
         // 0x08022C5C: its dark chip offered, 0x08025114, after the hand
         // size, 0x08025BE4, before the folder closes up, 0x080250E6; the
@@ -408,11 +409,11 @@ impl Screen {
         extras.dealing(&mut screen, folder, console);
         folder.compact();
         screen.chips_left = folder.count() as u8;
-        // The side's systems as the screen opens (EXE6's: the round's
+        // The side's rules as the screen opens (EXE6's: the round's
         // Beast Out and Crosses forgotten on its first screen, ChargeCross's
         // screens, the Crosses offered and the window's Cross tab).
         extras.opened(&mut screen);
-        // sub_802A40C: the side's rules' hand size (EXE6's cross system's,
+        // sub_802A40C: the side's rules' hand size (EXE6's cross part's,
         // with ChargeCross's chips), else the framework's.
         screen.hand_size = extras.hand_size().unwrap_or_else(|| hand_size(view, turn));
         screen.lay_out(view, extras);
@@ -459,7 +460,7 @@ impl Screen {
         for i in 0..dealt {
             self.slots[i as usize].kind = SlotKind::Chip { index: i, regular: i == 0 && view.regular_pending };
         }
-        // The side's systems' buttons (EXE6's: DustCross's scrap,
+        // The side's rules' buttons (EXE6's: DustCross's scrap,
         // `sub_8027F10`, else ChpShufl's re-deal, `sub_80280E0`), over the
         // chips dealt; the first to claim a slot keeps it.
         let mut taken = [false; SLOTS];
@@ -694,7 +695,7 @@ impl Screen {
                 None
             }
             Phase::Window { window, tick } => {
-                // The system's window (EXE6's Beast Out, `sub_802770C`): its
+                // The rules' window (EXE6's Beast Out, `sub_802770C`): its
                 // update, then back to choosing when it is done (unless it
                 // moved the screen on itself).
                 let tick = tick.saturating_add(1);
@@ -857,7 +858,7 @@ impl Screen {
     /// State 4 (`sub_8028B74`): one key per tick. Directions (auto-repeat)
     /// come first, then A, B, START, SELECT, R and L (pressed).
     fn choose(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, extras: &mut dyn super::Extras) -> Option<Request> {
-        // The side's systems first (EXE6's UP opening the Cross window, which
+        // The side's rules first (EXE6's UP opening the Cross window, which
         // the original asks before the cursor's UP).
         if (joy.repeat | joy.pressed) != 0 && extras.keys(self, folder, joy) {
             return None;
@@ -937,7 +938,7 @@ impl Screen {
                 // The pick's icon in the column, and the emblem spins.
                 self.look.column[self.selected as usize - 1] = self.chip_in(cursor, folder).map(|c| checked(c, view));
                 self.look.spin = 1;
-                // sub_802A00C: the side's systems (EXE6's BeastOut chip starts
+                // sub_802A00C: the side's rules (EXE6's BeastOut chip starts
                 // its animation).
                 if let Some(c) = self.chip_in(cursor, folder) {
                     extras.chip_picked(self, folder, c.id);
@@ -950,7 +951,7 @@ impl Screen {
                 self.look.play(ScreenSound::Ok);
                 return Some(Request::Confirm);
             }
-            // A system's button (EXE6's: the scrap, `sub_8028E04`; the
+            // A button of the rules (EXE6's: the scrap, `sub_8028E04`; the
             // re-deal, `sub_8028DD6`): its `pressed`, which may start the
             // shared machinery (`custom.sacrifice`, `custom.redeal`).
             SlotKind::Button { button, .. } => extras.button_pressed(self, folder, button),
@@ -959,7 +960,7 @@ impl Screen {
         None
     }
 
-    /// The systems' buttons that say (EXE6's Beast Out, `sub_8028F48`; its
+    /// The rules' buttons that say (EXE6's Beast Out, `sub_8028F48`; its
     /// scrap, `sub_8028F84`), unless used up or picked.
     pub(crate) fn refresh_buttons(&mut self, extras: &mut dyn super::Extras) {
         for s in 0..SLOTS {
@@ -1192,8 +1193,8 @@ impl Screen {
         self.selected += 1;
     }
 
-    /// B (`sub_8029032`): take back the last pick; with none, what a
-    /// system takes back (EXE6's Cross).
+    /// B (`sub_8029032`): take back the last pick; with none, what the
+    /// rules take back (EXE6's Cross).
     fn deselect(&mut self, view: &PlayerView, folder: &BattleFolder, extras: &mut dyn super::Extras) {
         if let Some(h) = self.hold.filter(|h| h.at == self.selected) {
             // A button's held chip, with the picks as they were when it
@@ -1237,7 +1238,7 @@ impl Screen {
                 self.slots[last as usize].marks = 0;
                 self.slots[button as usize].state = SlotState::Selectable;
             }
-            // sub_802A0EC: the side's systems (taking Beast Out, or the
+            // sub_802A0EC: the side's rules (taking Beast Out, or the
             // BeastOut chip, back takes its face back).
             if let SlotKind::Button { button, .. } = self.slots[last as usize].kind {
                 extras.button_taken_back(self, button);
@@ -1581,7 +1582,7 @@ fn navi_chip(view: &PlayerView) -> Option<FolderChip> {
 }
 
 /// `sub_802A40C` without a form's share (EXE6's: ChargeCross's chips, and
-/// NumbrOpn not in DustCross, which its cross system's
+/// NumbrOpn not in DustCross, which its cross part's
 /// `custom.hand_size` adds): how many chips a screen deals by the custom
 /// level, NumbrOpn and the hand-shrink bug, when the side's rules don't
 /// say.

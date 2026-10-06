@@ -3,10 +3,10 @@
 -- navi type's tables drive by their AI index (its idle, 0x081041F0's action 6, and its tick, 0x080F23FC's entry).
 -- In a netbattle the one is Dark MegaMan (AI index 0x16, navis/dark_megaman), whom a failed Chaos Unison brings
 -- (rules/souls/chaos) for twelve seconds: his idle runs the AI (./ai) until his time is up, then he leaves; his last
--- three seconds he blinks. The system drives each such navi of its side's summoning; the navi's state is the AI's
+-- three seconds he blinks. The part drives each such navi of its side's summoning; the navi's state is the AI's
 -- (./ai's State, AIData +0x80 on). It also drives a side's own player under DarkInvs (the no-charge drive, the
 -- status section's `no_charge_drive`: the player's idle asks it where it would step), on the AI's other family
--- (0x0802B4AC), its state the system's of that side.
+-- (0x0802B4AC), its state the part's of that side.
 
 local ai = require("@self/ai")
 local place = require("@self/place")
@@ -21,10 +21,10 @@ local BLINKING = 180
 -- The leave's ticks after its first (0x081042F6).
 local LEAVE_TICKS = 3
 
--- Dark MegaMan's AI index, the one this system answers for.
+-- Dark MegaMan's AI index, the one this part answers for.
 local DARK_MEGAMAN = 0x16
 
--- What the system reads of the AI's state (./ai's State: AIData +0x83 and +0x88).
+-- What the part reads of the AI's state (./ai's State: AIData +0x83 and +0x88).
 type Lifetime = { timed: boolean, lifetime: number }
 
 local function state(navi: Object): Lifetime
@@ -114,8 +114,7 @@ function auto_battle.dismiss(side: number)
     end
 end
 
-auto_battle.system = define.system {
-    id = "auto-battle",
+auto_battle.part = {
     navi_state = ai.layout,
     -- A player's own drive (DarkInvs): its AI's state, AIData +0xF0 on.
     state = ai.layout,
@@ -123,13 +122,13 @@ auto_battle.system = define.system {
     -- What a match's check refuses in a side's auto battle data: the chips the AI can't place a navi for.
     unplayable_in_auto_battle = place.unplayable(),
     hooks = {
-        -- The navi type's idle (action 6) of a navi this system drives: its AI index's. And the side's player's
+        -- The navi type's idle (action 6) of a navi this part drives: its AI index's. And the side's player's
         -- idle where it would step (EXE5's no-charge drive, 0x080F03E4): with the no-charge state the AI decides
-        -- for it (0x0802B4AC: DarkInvs's drive, on its own side's auto battle data, its state the system's of the side);
+        -- for it (0x0802B4AC: DarkInvs's drive, on its own side's auto battle data, its state the part's of the side);
         -- without, that state starts over (0x0802C03A) and its idle goes on.
-        controller = function(_side: number, navi: Object)
+        controller = function(_side: number, navi: Object): ("nothing" | "chip" | "buster" | "moved")?
             if navi.actor_type == "player" then
-                local s = system.state()
+                local s = rules.state()
                 if navi:navi_state("no_charge") then
                     -- A drive started since its last step (its timer above the one it stepped with): the state
                     -- from the start, as the drive's start leaves it (0x0802C03A, then AIData +0xF0 set again).
@@ -150,7 +149,7 @@ auto_battle.system = define.system {
             return "nothing"
         end,
         -- The navi type's tick of its AI index (0x080F23FC's entry), for a navi of the navi type (a player's navi
-        -- has its own tick: the side's other systems' hooks).
+        -- has its own tick: the side's other parts' hooks).
         navi_tick = function(_side: number, navi: Object)
             if navi.actor_type ~= "navi" then
                 return

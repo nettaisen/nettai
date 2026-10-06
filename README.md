@@ -138,12 +138,12 @@ A match's game is chosen before anything else, and none is preselected: an opene
 and for a new match (the program started with nothing to play, or New) the editor asks which game first. The arena
 pane shows the game: everything below it is that game's, and there is no way to pick another
 game's navi, chip, soul or patch card. Changing the game there makes a new match of it (the sides start over). A game is
-its rules (it has one ruleset), whose systems the pane lists. The lists of chips, NaviCust programs and patch cards
+its rules (one definition of them). The lists of chips, NaviCust programs and patch cards
 are in the game's library order (its content's `library.toml`: the chips by the game's library tabs in their order,
 Gregar's or Team ProtoMan's version chips first; the programs and cards by number), what isn't in it after, by name
 in the game. The panes show only what
-those rules have (patch cards with the patch-cards system, the NaviCust with the navicust system, and each fact
-the rules' systems declare of a side): the arena's stages and backgrounds (the game's); each side's navi
+that game has (patch cards where it defines any, the NaviCust where its rules have a board, and each fact
+the rules' setup declares of a side): the arena's stages and backgrounds (the game's); each side's navi
 (the game's), with the stats the round starts the navi with (what the rules build: a link navi's from its level, a
 team navi's HP from its story; MegaMan's optional navi code level); the SP navi deletion times; Import from save;
 the folder (the game's chips the rules
@@ -210,8 +210,9 @@ macOS and Windows need nothing more.
 - [`docs/design`](docs/design): how the engine and its content are built: the content model
   ([content-model-v2.md](docs/design/content-model-v2.md)), how to write content
   ([content-migration.md](docs/design/content-migration.md)), scripting, the content pack, rollback, the NaviCust
-  ([navicust.md](docs/design/navicust.md)), and what other games would need
-  ([multi-game.md](docs/design/multi-game.md)).
+  ([navicust.md](docs/design/navicust.md)), what other games would need
+  ([multi-game.md](docs/design/multi-game.md)), and where Rust ends and a game's Luau begins
+  ([rust-and-luau.md](docs/design/rust-and-luau.md)).
 - [`docs/engine`](docs/engine): the original game's battle routines, specified from the disassembly.
 - [`docs/frontend.md`](docs/frontend.md): the frontend, and match files (§6).
 

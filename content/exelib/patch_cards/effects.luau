@@ -1,7 +1,7 @@
 --!strict
 -- Patch cards' effects as EXE5's and EXE6's cards share them (docs/engine/patch-cards.md; EXE5's, exe5-map.md §15.14):
 -- a card is the engine's (`define.patch_card`, a game's cards/), its effects the values these constructors make,
--- which a game's patch-cards system applies to the navi's stats as the round is set up (@exelib/patch_cards/apply).
+-- which a game's patch cards part applies to the navi's stats as the round is set up (@exelib/patch_cards/apply).
 -- Each game's rules/patch_cards/cards.luau gives these and its own tables (the kinds' order, the trails' panels).
 
 local effects = {}

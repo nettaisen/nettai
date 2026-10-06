@@ -46,7 +46,7 @@ fn folder(chips: &[(ChipId, u8)]) -> BattleFolder {
     f
 }
 
-/// EXE6's scrap and re-deal buttons (its cross and navicust systems', in
+/// EXE6's scrap and re-deal buttons (its cross and navicust parts', in
 /// Luau), in Rust for the screen's own tests: button 0 the scrap, 1 the
 /// re-deal, two wide on slots 8 and 9.
 struct TestButtons {
@@ -143,7 +143,7 @@ impl Player {
     fn buttons(&self) -> TestButtons {
         let megaman = self.lib.changes_form(self.stats.navi);
         TestButtons {
-            // (DustCross and DustCross Beast: EXE6's cross system's
+            // (DustCross and DustCross Beast: EXE6's cross part's
             // `scrap_button`.)
             scrap: megaman && matches!(self.stats.form.0, 0x0A | 0x16),
             redeal: megaman && self.stats.chip_shuffle,
@@ -207,11 +207,11 @@ fn five_chips_are_dealt_into_the_top_row() {
     assert!(s.slots[5..10].iter().all(|x| matches!(x.kind, SlotKind::Empty | SlotKind::Hidden)));
     // Left of the first chip wraps to OK; OK's right to the first chip.
     assert_eq!((s.slots[0].left, s.slots[4].right), (Some(OK_SLOT), Some(OK_SLOT)));
-    // (OK's up goes to the special slot when a system's button is there:
+    // (OK's up goes to the special slot when a button of the rules is there:
     // EXE6's Beast Out, which these tests have none of.)
     let ok = s.slots[OK_SLOT as usize];
     assert_eq!((ok.vertical, ok.left, ok.right), (None, Some(4), Some(0)));
-    // (The special slot holds a system's button, EXE6's Beast Out, which
+    // (The special slot holds a button of the rules, EXE6's Beast Out, which
     // these tests have none of: it is absent.)
     assert!(matches!(s.slots[SPECIAL_SLOT as usize].kind, SlotKind::Empty | SlotKind::Hidden));
 }
@@ -735,7 +735,7 @@ fn the_cursor_stays_put_without_a_dark_chip() {
     }
 }
 
-/// Run one of the screen's routines a system's content calls (`custom.*`),
+/// Run one of the screen's routines the rules' content calls (`custom.*`),
 /// with the side's folder and view.
 fn on_screen<R>(p: &mut Player, f: impl FnOnce(&mut Screen, &BattleFolder, &super::screen::PlayerView) -> R) -> R {
     let side = p.side.clone();

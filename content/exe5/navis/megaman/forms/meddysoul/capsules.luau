@@ -1,7 +1,7 @@
 --!strict
 -- MeddySoul's capsules on EXE5's custom screen (docs/design/exe5-map.md §15.8; the screen's slots 8 and 9 in
 -- MeddySoul, kinds 6 and 7: 0x08023D20): what the soul adds to the screen (its form's `custom`, which the souls
--- system gathers: rules/souls/custom). Each screen offers two of the five (EXE5's chips 0x17C to 0x180:
+-- part gathers: rules/souls/custom). Each screen offers two of the five (EXE5's chips 0x17C to 0x180:
 -- chips/capsules), drawn by the console's RNG1. A capsule is mixed into the last pick, a chip that deals damage and
 -- has none yet (0x08024C74): the screen's state 0x3C (0x0802373A: the capsule's icon flies to the column, the
 -- soul's choice's flashes), then the chip's pick carries the capsule's effect into the hand (the hand's flag byte,
@@ -15,7 +15,7 @@ local capsules = {}
 local yelcapsl, blkcapsl, whicapsl = capsules_chips.yelcapsl, capsules_chips.blkcapsl, capsules_chips.whicapsl
 local prpcapsl, pnkcapsl = capsules_chips.prpcapsl, capsules_chips.pnkcapsl
 
--- What the capsules keep in the souls system's state (each screen starts with it fresh: the souls system's deal).
+-- What the capsules keep in the souls part's state (each screen starts with it fresh: the souls part's deal).
 type State = {
     -- The screen's two capsules (its +0x26 and +0x28; none out of MeddySoul: the screen's record is zeroed as it
     -- opens, 0x08022CA2).
@@ -53,7 +53,7 @@ local OFFERED_LOW = {
     pnkcapsl, whicapsl, yelcapsl, pnkcapsl, pnkcapsl, pnkcapsl, blkcapsl, pnkcapsl,
 }
 
--- 0x08023D30, as the screen lays its slots out in MeddySoul (after its deal, 0x08025114: the systems' deal hooks in
+-- 0x08023D30, as the screen lays its slots out in MeddySoul (after its deal, 0x08025114: the rules' deal hooks in
 -- turn, which run before the screen's `open`): the screen's two capsules, one draw of the console's RNG1, its bits 1
 -- to 4 the first's place in the table and bits 17 to 20 the second's; the table by whether MegaMan's HP is under a
 -- quarter (his maximum shifted right twice).

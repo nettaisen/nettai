@@ -10,7 +10,6 @@ use iced::widget::{Column, Row, button, checkbox, column, container, image, pick
 use iced::{Alignment, Color, Element, Length, Theme};
 use nettai_battle::content::{ChipClass, ChipFlags};
 use nettai_match::stats;
-use nettai_match::{NAVICUST_SYSTEM, PATCH_CARDS_SYSTEM};
 
 pub const SIDES: [&str; 2] = ["Left (you)", "Right"];
 pub(crate) const RED: Color = Color::from_rgb(0.85, 0.2, 0.2);
@@ -111,10 +110,10 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         if nettai_match::auto_battle::has(&e.content) {
             tabs = tabs.push(nav("  Auto battle", Tab::AutoBattle(s), e.tab));
         }
-        if changes_form && nettai_match::ruleset_has_system(&e.content, PATCH_CARDS_SYSTEM) {
+        if changes_form && nettai_match::has_patch_cards(&e.content) {
             tabs = tabs.push(nav("  Patch cards", Tab::Cards(s), e.tab));
         }
-        if nettai_match::ruleset_has_system(&e.content, NAVICUST_SYSTEM) && e.content.navi(side.navi).forms.is_some() {
+        if nettai_match::has_navicust(&e.content) && e.content.navi(side.navi).forms.is_some() {
             tabs = tabs.push(nav("  NaviCust", Tab::NaviCust(s), e.tab));
         }
         tabs = tabs.push(nav("  Stats", Tab::Stats(s), e.tab));
@@ -155,8 +154,6 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
     let games: Vec<Choice<String>> =
         e.games.iter().map(|g| Choice { label: game_label(g), value: g.clone() }).collect();
     let picked = games.iter().find(|g| g.value == game).cloned();
-    // (A game is its rules: their systems, by name.)
-    let systems: Vec<&str> = nettai_match::systems(c).iter().map(|&h| nettai_match::ids::local(&c.defs.system(h).key)).collect();
     let stage_label = |s: nettai_content_api::StageHandle| nettai_match::ids::local(&c.defs.stage(s).key).to_string();
     let stages: Vec<Choice<_>> =
         nettai_match::link_battle_stages(c, game).into_iter().map(|s| Choice { label: stage_label(s), value: s }).collect();
@@ -181,7 +178,6 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
         text("The match is of one game: both sides play by its rules, their navis, chips, souls and patch cards are its, and everything below lists its alone. Changing it starts the sides over.")
             .size(13)
             .color(DIM),
-        text(format!("Its rules' systems: {}", if systems.is_empty() { "none".into() } else { systems.join(", ") })).size(13).color(DIM),
     ]
     .spacing(10);
     col = col.push(rule::horizontal(1));

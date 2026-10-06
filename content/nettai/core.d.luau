@@ -60,7 +60,7 @@ export type ActorType = "virus" | "navi" | "player"
 export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out" | "worried"
 -- A side's SELECT or Cross special in progress (each side its own gauge:
 -- `battle.own_gauges`).
--- A side's special in progress: the SELECT special, or a system's takeover
+-- A side's special in progress: the SELECT special, or the rules' takeover
 -- of the side's navi (EXE6's Cross special).
 export type SideSpecial = "none" | "select" | "takeover"
 -- A HUD part a chip's effect hides and shows: the custom gauge (draw task
@@ -149,7 +149,7 @@ export type Request =
     | "navi_switch"
     | "switch_knockout"
     | "mode9_a"
-    -- A system's takeover of the side's navi (EXE6's Cross special).
+    -- The rules' takeover of the side's navi (EXE6's Cross special).
     | "takeover"
     | "volley"
     | "weakness_hit"
@@ -450,7 +450,7 @@ declare class Object
     -- Its mood is held (held tired or exhausted): what another side's rules
     -- read (EXE6's counter).
     mood_held: boolean
-    -- The side's systems' `navi_tick` runs for it each tick.
+    -- The side's rules' `navi_tick` runs for it each tick.
     ticked: boolean
     -- Exhausted for the rest of the battle (EXE6's after Beast Over): worn
     -- out, the mood can't change, 1 HP lost per tick (never the last), no
@@ -857,7 +857,7 @@ end
 -- A side's navi stats (read-only but the buster's levels, the custom
 -- level, the hand-shrink bug's turn, the start weapons and the shoes; what
 -- the patch cards change, which they write at the round's start; and what a
--- game's save system writes as the round is set up: the sun, the Regular
+-- game's save part writes as the round is set up: the sun, the Regular
 -- memory, the base HP and MegaMan's variant).
 declare class Navi
     -- Fighting in the sun.
@@ -1121,10 +1121,10 @@ declare battle: {
     auto_battle_turn: (side: number) -> (),
     -- EXE5's 0x08006AAE: the navi `identity` (actor type navi, with a
     -- `body`) comes onto (x, y) for `side`, brought by `summoner`, driven by
-    -- `system` (its `controller`, with the navi's state its `navi_state`;
-    -- of the summoner's side's ruleset): on the side's list of alive
-    -- actors, not counted. Nil when a pool or the side's list is full.
-    spawn_navi: (identity: Identity, x: number, y: number, side: number, summoner: Object?, system: System) -> Object?,
+    -- the rules of the summoner's side (their `controller`, with the navi's
+    -- state their `navi_state`): on the side's list of alive actors, not
+    -- counted. Nil when a pool or the side's list is full.
+    spawn_navi: (identity: Identity, x: number, y: number, side: number, summoner: Object?) -> Object?,
     paused: () -> boolean,
     -- `battle_isBattleOver`: a side has no navi left, or time is up.
     over: () -> boolean,
@@ -1208,7 +1208,7 @@ declare battle: {
     -- 0x08012820: its navi chips leaving).
     lose_mood: (side: number, n: number) -> (),
     -- Whether the side's console starts its emotion window glitching (the
-    -- save's NaviCust bug flag): a system decides it in `round_setup` (EXE6's
+    -- save's NaviCust bug flag): the rules decide it in `round_setup` (EXE6's
     -- patch cards do).
     set_emotion_window_glitch: (side: number, on: boolean) -> (),
     -- A side's installed patch cards in their list's order, each switched
@@ -1220,21 +1220,18 @@ declare battle: {
     -- 7x7 grid, its quarter turns clockwise and whether it is compressed;
     -- nil when the setup gives none (the stats are already the NaviCust's).
     navicust: (side: number) -> NaviCust?,
-    -- The folder a tool asks the rules to check (a system's `folder_check`):
+    -- The folder a tool asks the rules to check (the rules' `folder_check`):
     -- whose side, its chips in order, its Regular and tag chips (places in
     -- `chips`), and whether it is all of a folder (else the chips so far:
     -- the rules about a whole folder wait); nil when none is.
     checked_folder: () -> CheckedFolder?,
     -- A rule the checked folder breaks: the rule's name and what to say.
     folder_problem: (rule: string, text: string) -> (),
-    -- Whether side `side`'s ruleset has system `system` (a game's folder
-    -- rules ask it of the chips a system plays).
-    side_has_system: (side: number, system: System) -> boolean,
     -- `sub_802E4B8`: the side's SELECT or Cross special in progress.
     side_special: (side: number) -> SideSpecial,
-    -- A system's takeover of the side's navi starts for `ticks` (counted
+    -- The rules' takeover of the side's navi starts for `ticks` (counted
     -- down in the navi's stage B, `sub_802E1D8`), or ends; while it runs,
-    -- idle asks the side's systems' `takeover`. Its ticks left.
+    -- idle asks the side's rules' `takeover`. Its ticks left.
     take_over: (side: number, ticks: number) -> (),
     end_takeover: (side: number) -> (),
     takeover_ticks: (side: number) -> number,
@@ -1720,19 +1717,20 @@ export type Kind = KindSpec
 -- One self-contained piece of a game's rules (docs/design/rules-in-luau.md
 -- §2.2): its state of each side and its player's setup (named fields, as a
 -- kind's state), and the hooks the framework calls, each for one side
--- (§4.1). A system sees only its own state, of the side it is called for.
+-- (§4.1). The rules see only their own state, of the side they are called
+-- for.
 -- What a frontend draws of a button besides its look, which is its pack's
 -- by the button's name (docs/design/rules-in-luau.md §4.8): "form_offer",
 -- it offers a form (the picked column shows the offered form's icon, and
--- its picture is in its second palette for the form's alternate offer; its
--- system's state keeps `offer`, a form, `offer_chaos`, a bool, and `turns`,
+-- its picture is in its second palette for the form's alternate offer; the
+-- rules' state keeps `offer`, a form, `offer_chaos`, a bool, and `turns`,
 -- the turns left in the form it gave, which the emotion window counts);
 -- "chip_picture", its picture in the chip window is also the picture of the
 -- chip the ruleset's role `beast_out` names.
 export type ButtonView = "form_offer" | "chip_picture"
 -- What a frontend draws while a window is up (§4.8). A list of forms to
 -- choose from, in its four windows: "form_list_opening", "form_list",
--- "form_list_closing" and "form_chosen" (their system's state keeps
+-- "form_list_closing" and "form_chosen" (the rules' state keeps
 -- `offered`, a u8 array of the places offered, `offered_count`, `marked`, a
 -- bool array, `window_cursor`, `cross_chosen`, a bool, and `chosen`).
 -- "offer_flight": the form a "form_offer" button offers flies to the picked
@@ -1741,7 +1739,7 @@ export type ButtonView = "form_offer" | "chip_picture"
 -- of the screen's buttons that show a chip, from 1, `mix_step` and
 -- `mix_count`).
 export type WindowView = "form_list_opening" | "form_list" | "form_list_closing" | "form_chosen" | "offer_flight" | "chip_flight"
--- A system's custom-screen button (docs/design/rules-in-luau.md §4.4).
+-- A custom-screen button of the rules (docs/design/rules-in-luau.md §4.4).
 export type ButtonSpec = {
     -- Its first slot, and how many it takes (1 or 2).
     slot: number,
@@ -1768,30 +1766,38 @@ export type ButtonSpec = {
     -- the chip window shows the chip for it, and R describes it).
     chip: ((side: number) -> Chip?)?,
 }
--- A system's custom-screen window (§4.4): its update, each tick it is up
+-- A custom-screen window of the rules (§4.4): its update, each tick it is up
 -- (`custom.window_tick` counts them from 1): whether it stays up.
 export type WindowSpec = {
     -- What a frontend draws while it is up, if anything of its own.
     view: WindowView?,
     update: (side: number) -> boolean,
 }
-export type SystemSpec = {
-    id: string,
+-- A part of a game's rules (docs/design/rules-in-luau.md §2.2): a plain
+-- module's table of what it adds to the rules' one definition, which
+-- @exelib/rules/compose makes of a game's parts: its fields of the rules'
+-- state of a side and of a player's setup, its hooks (which run in the
+-- order the parts are listed), its custom-screen buttons and windows, its
+-- actions and its extensions of the game's definitions.
+export type RulesPart = {
     state: StateSchema?,
     setup: StateSchema?,
+    -- The state of each navi no player controls that its `controller`
+    -- drives (the navi object's own: an object's state, 64 bytes at most).
+    navi_state: StateSchema?,
     -- What a player's setup that says nothing of a field holds (else zero): a
     -- value of each field given (an enum's by name, a definition's by its
     -- id; an array's, a list of them from its first element). An enum of the
     -- setup has no default but one given here: a player's setup states it, or
     -- the round doesn't start (the engine picks none of its names).
     setup_defaults: { [string]: number | boolean | string | { number | boolean | string } }?,
-    -- Its own actions, which reach its state (`system.state()`) for the
-    -- side of the navi running them.
+    -- Its own actions, which reach the rules' state (`rules.state()`) for
+    -- the side of the navi running them.
     actions: { Action }?,
     -- Its custom screen's extras (docs/design/rules-in-luau.md §4.4): the
-    -- side's screen asks them; the first system that answers decides.
+    -- side's screen asks them; the first part that answers decides.
     -- Its custom-screen buttons, by name (the key a pack has each one's look
-    -- under): where each sits and its functions, which run as the system's.
+    -- under): where each sits and its functions, which run as the rules'.
     buttons: { [string]: ButtonSpec }?,
     -- Its custom-screen windows, by name (`custom.open_window`).
     windows: { [string]: WindowSpec }?,
@@ -1823,10 +1829,10 @@ export type SystemSpec = {
         chip_picked: ((side: number, chip: Chip) -> ())?,
         chip_taken_back: ((side: number, chip: Chip) -> ())?,
         -- Choosing chips, a tick with keys (`custom.pressed`,
-        -- `custom.repeated`), before the screen's own: whether the system
-        -- took them. The first system that answers true takes them.
+        -- `custom.repeated`), before the screen's own: whether the rules
+        -- took them. The first part that answers true takes them.
         keys: ((side: number) -> boolean)?,
-        -- B with nothing picked: whether the system took something back
+        -- B with nothing picked: whether the rules took something back
         -- (none: B is refused).
         take_back: ((side: number) -> boolean)?,
     }?,
@@ -1861,7 +1867,7 @@ export type SystemSpec = {
         -- panel there).
         navi_intake: ((side: number, navi: Object) -> ())?,
         -- A chip's use is prepared (the end of `sub_80127C0`): nil lets it
-        -- be used, a chip is what the navi uses instead. The first system
+        -- be used, a chip is what the navi uses instead. The first part
         -- that answers decides.
         chip_check: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
         -- Earlier in the preparation, before the hand bonus's panel is
@@ -1871,7 +1877,7 @@ export type SystemSpec = {
         chip_cost: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
         -- A chip's use is prepared, before its record is loaded
         -- (`sub_8010D58`): a chip is what the navi uses in its place, with
-        -- its own record, damage and bonus; nil, the chip. The first system
+        -- its own record, damage and bonus; nil, the chip. The first part
         -- that answers decides.
         chip_substitute: ((side: number, navi: Object, chip: Chip) -> Chip?)?,
         -- A chip's use was prepared (`sub_80127C0`: a use, the rush's chain,
@@ -1886,47 +1892,47 @@ export type SystemSpec = {
         -- (EXE6's Beast Over, `sub_802D322`), in place of the player's
         -- decisions: what it did ("nothing", "chip": a chip's use started,
         -- "buster": the buster is to fire, "moved": a step started), which
-        -- the framework carries out as idle does. The first system that
+        -- the framework carries out as idle does. The first part that
         -- answers decides.
         controller: ((side: number, navi: Object) -> ("nothing" | "chip" | "buster" | "moved")?)?,
         -- The framework reverts the navi to its base form, its form not yet
         -- changed (`sub_80158CC`).
         form_reverted: ((side: number, navi: Object) -> ())?,
         -- Idle finds the navi's takeover request (`sub_802E4E4`; EXE6's
-        -- DarkInvs asks for its Cross special): a system starts it
+        -- DarkInvs asks for its Cross special): the rules start it
         -- (`battle.take_over`).
         takeover_requested: ((side: number, navi: Object) -> ())?,
         -- The side's navi landed a counter on `victim` (`sub_801A200`).
         countered: ((side: number, victim: Object) -> ())?,
         -- Each unpaused tick, after the navi's input (`sub_8013DA0`'s
-        -- place), for a navi a system asked it for (its `ticked`).
+        -- place), for a navi the rules asked it for (its `ticked`).
         navi_tick: ((side: number, navi: Object) -> ())?,
         -- The mood the side's navi starts the round with (`sub_8015C2C`'s
         -- 0x80, where `sub_8013892` sets it; EXE5's by the light/dark value,
-        -- 0x0801283A). The first system that answers decides.
+        -- 0x0801283A). The first part that answers decides.
         starting_mood: ((side: number) -> number?)?,
         -- Each tick, the sprite palette of the side's navi of a player's
         -- kind (presentation; `sub_801002C`, EXE5's 0x0800DD94). The first
-        -- system that answers decides; none, the framework's (EXE6's).
+        -- part that answers decides; none, the framework's (EXE6's).
         navi_palette: ((side: number, navi: Object) -> number?)?,
-        -- Before the navi takes its hit's NaviCust bug (`sub_80139F6`, EXE5's 0x0801103E): a system may change the bug
+        -- Before the navi takes its hit's NaviCust bug (`sub_80139F6`, EXE5's 0x0801103E): the rules may change the bug
         -- (`navi.collision.inflicted_bugs`), or answer true: the bug and the weapons' reload are skipped. The first
-        -- system that answers true decides.
+        -- part that answers true decides.
         navi_bug: ((side: number, navi: Object) -> boolean?)?,
         -- Each tick of the idle action of a navi whose side's takeover runs
         -- (`sub_802D4C6`), in place of the player's decisions: what it did,
         -- as `controller` answers, or "own_chip" (an attack of its own
-        -- started: the attack's chip). The system ends it
-        -- (`battle.end_takeover`). The first system that answers decides.
+        -- started: the attack's chip). The rules end it
+        -- (`battle.end_takeover`). The first part that answers decides.
         takeover: ((side: number, navi: Object) -> ("nothing" | "chip" | "buster" | "moved" | "own_chip")?)?,
     }?,
 }
-export type System = SystemSpec
 
--- A game's rules, its one ruleset (its rules/init.luau; a second
--- `define.ruleset` is a load error): the systems its players play by, which
--- the framework calls in this order (docs/design/rules-in-luau.md §2.3). It
--- has no `id` and no variants: every match of the game plays by it.
+-- A game's rules, their one definition (its rules/init.luau; a second
+-- `define.rules` is a load error): the parts its players play by, made one
+-- (@exelib/rules/compose: one state, one setup, a hook each, which calls the
+-- parts in their order; docs/design/rules-in-luau.md §2.3). It has no `id`
+-- and no variants: every match of the game plays by it.
 --
 -- It also holds the game's rule sections (docs/design/content-model-v2.md
 -- §3.8: tables of rules no entity owns, each a plain table its module
@@ -1944,8 +1950,20 @@ export type System = SystemSpec
 -- A section is a table of its rules by name, which the engine reads by its
 -- schema. (A table and not `any`: a field of type `any` may be left out.)
 export type RuleSection = { [string]: any }
-export type RulesetSpec = {
-    systems: { System }?,
+export type RulesSpec = {
+    -- What its parts make (@exelib/rules/compose: `RulesPart`'s fields, one
+    -- each).
+    state: StateSchema?,
+    setup: StateSchema?,
+    setup_defaults: any?,
+    navi_state: StateSchema?,
+    actions: { Action }?,
+    buttons: { [string]: ButtonSpec }?,
+    windows: { [string]: WindowSpec }?,
+    extends: any?,
+    unplayable_in_auto_battle: { [string]: string }?,
+    custom: any?,
+    hooks: any?,
     -- The sections every game states.
     chip_use: RuleSection,
     effects: RuleSection,
@@ -1973,7 +1991,7 @@ export type RulesetSpec = {
     sp_chips: any?,
     roles: RolesSpec?,
 }
-export type Ruleset = RulesetSpec
+export type Rules = RulesSpec
 
 -- A navi action. Actions sharing a state table continue each other's
 -- attack state (the original's actions of one number do). An action a
@@ -2104,7 +2122,7 @@ export type ChipSpec = {
     -- prepared (the attack's variables are loaded: the navi's `charged`,
     -- its action's state): EXE5's team navis' own chips'.
     setup: ((navi: Object) -> ())?,
-    -- Its game's systems' fields (their `extends.chip`: EXE6's `beast`,
+    -- Its game's rules' fields (their `extends.chip`: EXE6's `beast`,
     -- `dark_substitute`, `hp_bug`; content/exe6/types.d.luau types them).
     [string]: any,
 }
@@ -2323,7 +2341,7 @@ export type FormEffect =
 --   special_holds_buster: its held buster doesn't fire while its B+Back
 --     special is asked for (TenguCross and DustCross in Beast Out);
 --   stands_on_metal: a metal panel doesn't slide the navi (EXE5's MagnetSoul);
---   controlled: the side's systems' `controller` decides its idle (EXE6's
+--   controlled: the side's rules' `controller` decides its idle (EXE6's
 --     Beast Over: the berserk), the player's buttons don't reach it, and a
 --     full gauge opens the custom screen;
 --   shows_target_marker: the navi's target marker shows (EXE6's Beast
@@ -2444,7 +2462,7 @@ export type FormDef = {
     -- cycle's row its Chaos Unison charge keeps whatever the chaos level
     -- (MeddySoul's; none: the level's, at most 2).
     soul: { family: ChipFamily, chaos_cycle: number? }?,
-    -- Its game's systems' fields (their `extends.form`: EXE6's `kind`,
+    -- Its game's rules' fields (their `extends.form`: EXE6's `kind`,
     -- `game`, `cross_of`, `beast`, ...; content/exe6/types.d.luau types them).
     [string]: any,
 }
@@ -2503,7 +2521,7 @@ export type Status = StatusDef
 -- the installed cards' limit counts) and its effects in the card's order:
 -- each a table with its `kind` and whether the card shows it as a `bug`,
 -- with the kind's own fields. What an effect does is a game's rules' (EXE6's
--- patch-cards system, rules/patch_cards), and its type is the game's (EXE6's
+-- patch cards part, rules/patch_cards), and its type is the game's (EXE6's
 -- `PatchCardEffect`, which its cards' constructors make). Its name is the
 -- locales' (locales/<lang>.toml's `patch-cards`).
 export type PatchCardSpec = {
@@ -2939,20 +2957,18 @@ declare define: {
     identity: (spec: IdentitySpec) -> Identity,
     patch_card: (spec: PatchCardSpec) -> PatchCard,
     navicust_program: (spec: NaviCustProgramSpec) -> NaviCustProgram,
-    -- A system of a game's rules, and a player's ruleset
-    -- (docs/design/rules-in-luau.md §2.2; a game's ruleset also
-    -- holds its rule sections and roles).
-    system: (spec: SystemSpec) -> System,
-    ruleset: (spec: RulesetSpec) -> Ruleset,
+    -- A game's rules, their one definition (docs/design/rules-in-luau.md
+    -- §2.2; also its rule sections and roles).
+    rules: (spec: RulesSpec) -> Rules,
     -- Luau-only data with a handle and a type name, which a reference field
     -- ("record:<type>") can hold.
     record: <T>(record_type: string, spec: T) -> T,
 }
 
--- What a system's own calls reach (docs/design/rules-in-luau.md §4.5,
+-- What the rules' own calls reach (docs/design/rules-in-luau.md §4.5,
 -- §5.3): only in a hook the framework calls (from modules under rules/,
 -- which the content check holds to).
--- A side's custom screen, in its systems' custom hooks (§4.4): the
+-- A side's custom screen, in the rules' custom hooks (§4.4): the
 -- refusal sound; the shared machinery for the button under the cursor (the
 -- picked chips scrapped, the chips not picked dealt again); whether the
 -- last pick is a chip; the state of the button under the cursor.
@@ -2968,27 +2984,27 @@ declare custom: {
     redeal: (side: number) -> (),
     last_pick_is_chip: (side: number) -> boolean,
     cursor_state: (side: number) -> "selectable" | "unavailable" | "selected",
-    -- For a system's buttons and windows: the slot under the cursor picked;
+    -- For the rules' buttons and windows: the slot under the cursor picked;
     -- a screen sound ("pick", "refused", "back", "cancel", "cursor",
     -- "description", "beast_out_gregar", "beast_out_falzar",
     -- "beast_out_flash", "cross_window_open", "cross_window_close",
     -- "cross_chosen", "program_advance_part", "program_advance"); the last
-    -- pick's column cell; one of the system's
+    -- pick's column cell; one of the rules'
     -- windows opened (`ticks`: the ticks it has had already), and its ticks
     -- so far; this console's camera shake; the window's frame counter; the
     -- emblem's spin; a screen fade ("beast_out", "beast_out_back",
     -- "end_to_white", "intro_from_white", "soul_flash", "soul_flash_back");
     -- the emotion window's face; the
     -- last pick moved first (its column icon `icon`, else its chip's); one
-    -- of the system's buttons' state; the availability redone; the emblem
-    -- drawn; the form the system's pick holds for the turn's start, and
-    -- whether another system's holds it; whether the picks are full;
-    -- whether one of the system's buttons is picked; what the screen reads
-    -- of its player that isn't a system's setup (the emotion it reads, a
+    -- of the rules' buttons' state; the availability redone; the emblem
+    -- drawn; the form the rules' pick holds for the turn's start, and
+    -- whether another button's or window's holds it; whether the picks are full;
+    -- whether one of the rules' buttons is picked; what the screen reads
+    -- of its player that isn't the rules' setup (the emotion it reads, a
     -- random battle).
     -- The form takes, beside it, the transform record's turns and Chaos flag
     -- (EXE5's Soul Unison). The last pick, if it is a chip (dealt, or a link
-    -- navi's own), as the screen checked it; the system's button in the last
+    -- navi's own), as the screen checked it; the rules' button in the last
     -- pick's place, first in the selection (B puts the chip back; at OK the
     -- chip leaves the folder where the button stands): false when the last
     -- pick isn't a chip; whether the screen's fade is still running.
@@ -3019,7 +3035,8 @@ declare custom: {
     set_button_state: (side: number, button: string, state: "selectable" | "unavailable" | "selected") -> (),
     update_availability: (side: number) -> (),
     draw_emblem: (side: number, x: number) -> (),
-    set_form: (side: number, form: FormDef?, turns: number?, chaos: boolean?) -> (),
+    -- `by`: the rules' button or window whose pick holds the form.
+    set_form: (side: number, by: string, form: FormDef?, turns: number?, chaos: boolean?) -> (),
     last_pick: (side: number) -> { slot: number, chip: Chip, regular: boolean, navi_chip: boolean, attached: boolean }?,
     trade_last_pick: (side: number, button: string) -> boolean,
     attach_to_last_pick: (side: number, button: string, modifiers: number) -> boolean,
@@ -3027,7 +3044,8 @@ declare custom: {
     held_pick: (side: number, button: string) -> Chip?,
     set_held_icon: (side: number, button: string, shown: boolean) -> (),
     fading: (side: number) -> boolean,
-    form_taken: (side: number) -> boolean,
+    -- Whether a pick of another button or window than `by` holds the form.
+    form_taken: (side: number, by: string) -> boolean,
     full: (side: number) -> boolean,
     button_picked: (side: number, button: string) -> boolean,
     -- The screen's cursor (its slot) and moving it; whether a key is
@@ -3050,7 +3068,7 @@ declare custom: {
     -- R in the window up: the form's description (three lines without
     -- one), back to the window when it closes.
     describe: (side: number, form: FormDef?) -> (),
-    -- The systems' buttons' states asked again.
+    -- The rules' buttons' states asked again.
     refresh_buttons: (side: number) -> (),
     player: (side: number) -> {
         emotion: Emotion,
@@ -3058,25 +3076,24 @@ declare custom: {
     },
 }
 
--- The running system of the game's ruleset: only a game's modules have it
--- (a support pack has no game context, docs/design/content-model-v2.md §4.0).
-declare system: {
-    -- The system's state of the side it was called for (cast it to its
-    -- declared type: `system.state() :: State`).
+-- The game's rules' own calls' reach: only a game's modules have it (a
+-- support pack has no game context, docs/design/content-model-v2.md §4.0).
+declare rules: {
+    -- The rules' state of the side the call is for (cast it to its declared
+    -- type: `rules.state() :: State`).
     state: () -> any,
-    -- What the player of that side brought for the system: read-only.
+    -- What the player of that side brought (their setup of the rules):
+    -- read-only.
     setup: () -> any,
     -- That side (0 or 1).
     side: () -> number,
-    -- Another system's state of side `side` (nil: the side's ruleset lacks
-    -- it), for a game's rules alone: its API module (EXE6's rules/api.luau)
-    -- reaches what its systems keep for its chips, which never call this
-    -- themselves (the content check holds to it, and the call refuses a
-    -- module outside rules/).
-    state_of: (side: number, system: System) -> any,
-    -- Another system's player setup of side `side`, read-only (nil: the
-    -- side's ruleset lacks it), likewise a game's rules' alone: its API
-    -- module reads its save system's `level` there.
-    setup_of: (side: number, system: System) -> any,
+    -- The rules' state of side `side`, for a game's rules alone: its API
+    -- module (EXE6's rules/api.luau) reaches what the rules keep for its
+    -- chips, which never call this themselves (the content check holds to
+    -- it, and the call refuses a module outside rules/).
+    state_of: (side: number) -> any,
+    -- Side `side`'s player's setup of the rules, read-only, likewise a
+    -- game's rules' alone: its API module reads the save's `level` there.
+    setup_of: (side: number) -> any,
 }
 

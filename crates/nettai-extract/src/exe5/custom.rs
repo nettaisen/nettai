@@ -161,7 +161,7 @@ const SCRAP_BUTTONS: (u32, usize) = (0x086F_A7CC, 0x600);
 const SOUL_BUTTONS: (u32, usize) = (0x086F_BB64, SOUL_BUTTON_BYTES);
 pub(crate) const SOUL_BUTTON_BYTES: usize = 0x240;
 /// The names EXE5's content registers its buttons under (the souls
-/// system's `soul`, SearchSoul's Shuffle as `redeal`, ColonelSoul's
+/// part's `soul`, SearchSoul's Shuffle as `redeal`, ColonelSoul's
 /// `arm_change`: content/exe5/rules/souls and the souls' own folders),
 /// which the pack has their looks by.
 pub(crate) const SOUL_BUTTON: &str = "soul";

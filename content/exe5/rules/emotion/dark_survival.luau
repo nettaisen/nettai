@@ -132,7 +132,7 @@ local function dark_shade(me: Object, s: State)
 end
 
 -- 0x080EFF58: white; the drive (0x0802C03A and 0x0802C110: the auto battle AI's state from the start, which the
--- system does on finding the drive new; the ticks, the AI on, the no-charge state); his statuses and his anger
+-- part does on finding the drive new; the ticks, the AI on, the no-charge state); his statuses and his anger
 -- ended (0x08017068, 0x08011A94).
 local function take_over(me: Object)
     me.sprite.white = true

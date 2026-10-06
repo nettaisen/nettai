@@ -278,11 +278,11 @@ fn int(v: FieldValue) -> i64 {
 
 impl Battle {
     /// Side `side`'s custom screen, which a custom hook reaches (§4.4).
-    /// The slot of the system's button `button` on side `side`'s screen
-    /// (its first cell), for the call `what`.
-    fn own_button_slot(&self, side: u8, system: u8, button: &str, what: &str) -> ApiResult<u8> {
+    /// The slot of the rules' button `button` on side `side`'s screen (its
+    /// first cell), for the call `what`.
+    fn own_button_slot(&self, side: u8, button: &str, what: &str) -> ApiResult<u8> {
         use crate::custom::screen::SlotKind;
-        let h = self.own_button(side, system, button)?;
+        let h = self.own_button(button)?;
         let screen = self.custom_screen(side)?;
         (0..crate::custom::screen::SLOTS as u8)
             .find(|&s| matches!(screen.slots[s as usize].kind, SlotKind::Button { button, cell } if button == h && cell != crate::custom::ButtonCell::Right))
@@ -293,23 +293,27 @@ impl Battle {
         self.custom.sides[side as usize & 1].screen.as_ref().ok_or_else(|| ApiError::Other("no custom screen is open".into()))
     }
 
-    /// The calling system's (place `system` in side `side`'s ruleset)
-    /// button and window named `name`.
-    fn own_button(&self, side: u8, system: u8, name: &str) -> ApiResult<crate::content::ButtonHandle> {
-        let h = self.side_system(side, system)?;
-        self.content.defs.system(h).buttons.iter().copied().find(|&b| self.content.defs.button(b).name == name)
-            .ok_or_else(|| ApiError::Other(format!("the system has no button named {name:?}")))
+    /// The rules' button and window named `name`.
+    fn own_button(&self, name: &str) -> ApiResult<crate::content::ButtonHandle> {
+        let rules = self.content.defs.rules().ok_or_else(|| ApiError::Other("the content has no rules".into()))?;
+        rules.buttons.iter().copied().find(|&b| self.content.defs.button(b).name == name)
+            .ok_or_else(|| ApiError::Other(format!("the rules have no button named {name:?}")))
     }
 
-    fn own_window(&self, side: u8, system: u8, name: &str) -> ApiResult<crate::content::WindowHandle> {
-        let h = self.side_system(side, system)?;
-        self.content.defs.system(h).windows.iter().copied().find(|&w| self.content.defs.window(w).name == name)
-            .ok_or_else(|| ApiError::Other(format!("the system has no window named {name:?}")))
+    fn own_window(&self, name: &str) -> ApiResult<crate::content::WindowHandle> {
+        let rules = self.content.defs.rules().ok_or_else(|| ApiError::Other("the content has no rules".into()))?;
+        rules.windows.iter().copied().find(|&w| self.content.defs.window(w).name == name)
+            .ok_or_else(|| ApiError::Other(format!("the rules have no window named {name:?}")))
     }
 
-    fn side_system(&self, side: u8, system: u8) -> ApiResult<nettai_content_api::SystemHandle> {
-        let _ = side;
-        self.content.defs.ruleset_systems().get(system as usize).copied().ok_or_else(|| ApiError::Other("no such system".into()))
+    /// Which of the rules' buttons or windows `name` is, as the screen keeps
+    /// whose pick holds its form: a button's place, or 0x100 past a
+    /// window's.
+    fn screen_owner(&self, name: &str) -> ApiResult<u16> {
+        if let Ok(b) = self.own_button(name) {
+            return Ok(b.0);
+        }
+        self.own_window(name).map(|w| 0x100 + w.0).map_err(|_| ApiError::Other(format!("the rules have no button or window named {name:?}")))
     }
 
     fn custom_screen_mut(&mut self, side: u8) -> ApiResult<&mut crate::custom::screen::Screen> {
@@ -334,9 +338,8 @@ impl CoreApi for Battle {
         panel: PanelPos,
         side: u8,
         summoner: Option<ObjectRef>,
-        system: nettai_content_api::SystemHandle,
     ) -> ApiResult<Option<ObjectRef>> {
-        kinds::player::spawn_ai_navi(self, identity, panel, side & 1, summoner, system).map_err(ApiError::Other)
+        kinds::player::spawn_ai_navi(self, identity, panel, side & 1, summoner).map_err(ApiError::Other)
     }
 
     fn is_dimmed(&self) -> bool {
@@ -771,8 +774,8 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn custom_open_window(&mut self, side: u8, system: u8, window: &str, ticks: u16) -> ApiResult<()> {
-        let w = self.own_window(side, system, window)?;
+    fn custom_open_window(&mut self, side: u8, window: &str, ticks: u16) -> ApiResult<()> {
+        let w = self.own_window(window)?;
         self.custom_screen_mut(side)?.open_window(w, ticks);
         Ok(())
     }
@@ -827,7 +830,7 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn custom_set_button_state(&mut self, side: u8, system: u8, button: &str, state: &str) -> ApiResult<()> {
+    fn custom_set_button_state(&mut self, side: u8, button: &str, state: &str) -> ApiResult<()> {
         use crate::custom::screen::{SlotKind, SlotState};
         let state = match state {
             "selectable" => SlotState::Selectable,
@@ -835,7 +838,7 @@ impl CoreApi for Battle {
             "selected" => SlotState::Selected,
             s => return Err(ApiError::Other(format!("custom.set_button_state: no state is named {s:?}"))),
         };
-        let h = self.own_button(side, system, button)?;
+        let h = self.own_button(button)?;
         let screen = self.custom_screen_mut(side)?;
         let slot = screen.slots.iter_mut().find(|s| matches!(s.kind, SlotKind::Button { button, cell } if button == h && cell != crate::custom::ButtonCell::Right));
         slot.ok_or_else(|| ApiError::Other(format!("custom.set_button_state: {button:?} isn't on the screen")))?.state = state;
@@ -852,27 +855,29 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn custom_set_form(&mut self, side: u8, system: u8, form: Option<nettai_content_api::FormHandle>, turns: u8, chaos: bool) -> ApiResult<()> {
+    fn custom_set_form(&mut self, side: u8, by: &str, form: Option<nettai_content_api::FormHandle>, turns: u8, chaos: bool) -> ApiResult<()> {
+        let owner = self.screen_owner(by)?;
         let screen = self.custom_screen_mut(side)?;
         screen.form = form;
-        screen.form_owner = form.map(|_| system);
+        screen.form_owner = form.map(|_| owner);
         screen.form_turns = if form.is_some() { turns } else { 0 };
         screen.form_chaos = form.is_some() && chaos;
         Ok(())
     }
 
-    fn custom_form_taken(&self, side: u8, system: u8) -> ApiResult<bool> {
+    fn custom_form_taken(&self, side: u8, by: &str) -> ApiResult<bool> {
+        let owner = self.screen_owner(by)?;
         let screen = self.custom_screen(side)?;
-        Ok(screen.form.is_some() && screen.form_owner != Some(system))
+        Ok(screen.form.is_some() && screen.form_owner != Some(owner))
     }
 
     fn custom_full(&self, side: u8) -> ApiResult<bool> {
         Ok(self.custom_screen(side)?.selected as usize >= crate::custom::screen::MAX_SELECTIONS)
     }
 
-    fn custom_button_picked(&self, side: u8, system: u8, button: &str) -> ApiResult<bool> {
+    fn custom_button_picked(&self, side: u8, button: &str) -> ApiResult<bool> {
         use crate::custom::screen::SlotKind;
-        let h = self.own_button(side, system, button)?;
+        let h = self.own_button(button)?;
         let screen = self.custom_screen(side)?;
         Ok(screen.selection().iter().any(|&s| matches!(screen.slots[s as usize].kind, SlotKind::Button { button, .. } if button == h)))
     }
@@ -890,26 +895,26 @@ impl CoreApi for Battle {
         }))
     }
 
-    fn custom_attach_to_last_pick(&mut self, side: u8, system: u8, button: &str, modifiers: u8) -> ApiResult<bool> {
-        let slot = self.own_button_slot(side, system, button, "custom.attach_to_last_pick")?;
+    fn custom_attach_to_last_pick(&mut self, side: u8, button: &str, modifiers: u8) -> ApiResult<bool> {
+        let slot = self.own_button_slot(side, button, "custom.attach_to_last_pick")?;
         self.with_custom_screen(side, |screen, view, folder, _, _| screen.attach_to_last_pick(slot, modifiers, folder, view))
             .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
     }
 
-    fn custom_hold_last_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<bool> {
-        let slot = self.own_button_slot(side, system, button, "custom.hold_last_pick")?;
+    fn custom_hold_last_pick(&mut self, side: u8, button: &str) -> ApiResult<bool> {
+        let slot = self.own_button_slot(side, button, "custom.hold_last_pick")?;
         self.with_custom_screen(side, |screen, view, folder, _, _| screen.hold_last_pick(slot, folder, view))
             .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
     }
 
-    fn custom_held_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<Option<ChipHandle>> {
-        let slot = self.own_button_slot(side, system, button, "custom.held_pick")?;
+    fn custom_held_pick(&mut self, side: u8, button: &str) -> ApiResult<Option<ChipHandle>> {
+        let slot = self.own_button_slot(side, button, "custom.held_pick")?;
         self.with_custom_screen(side, |screen, view, folder, _, _| screen.held_pick(slot, folder, view).map(|c| c.id))
             .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
     }
 
-    fn custom_set_held_icon(&mut self, side: u8, system: u8, button: &str, shown: bool) -> ApiResult<()> {
-        let slot = self.own_button_slot(side, system, button, "custom.set_held_icon")?;
+    fn custom_set_held_icon(&mut self, side: u8, button: &str, shown: bool) -> ApiResult<()> {
+        let slot = self.own_button_slot(side, button, "custom.set_held_icon")?;
         let held = self
             .with_custom_screen(side, |screen, view, folder, _, _| screen.set_held_icon(slot, shown, folder, view))
             .ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
@@ -919,8 +924,8 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn custom_trade_last_pick(&mut self, side: u8, system: u8, button: &str) -> ApiResult<bool> {
-        let slot = self.own_button_slot(side, system, button, "custom.trade_last_pick")?;
+    fn custom_trade_last_pick(&mut self, side: u8, button: &str) -> ApiResult<bool> {
+        let slot = self.own_button_slot(side, button, "custom.trade_last_pick")?;
         self.with_custom_screen(side, |screen, view, folder, _, _| screen.trade_last_pick(slot, folder, view))
             .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
     }
@@ -1738,23 +1743,19 @@ impl CoreApi for Battle {
         }
     }
 
-    fn system_state_mut(&mut self, side: u8, slot: u8) -> ApiResult<&mut nettai_content_api::Block> {
+    fn rules_state_mut(&mut self, side: u8) -> ApiResult<&mut nettai_content_api::Block> {
         self.rules
             .get_mut(side as usize)
-            .and_then(|r| r.states.get_mut(slot as usize))
-            .ok_or_else(|| ApiError::Other(format!("side {side}'s ruleset has no system in place {slot}")))
+            .and_then(|r| r.state.as_mut())
+            .ok_or_else(|| ApiError::Other(format!("side {side} plays by no rules")))
     }
 
-    fn system_slot_of(&self, side: u8, system: nettai_content_api::SystemHandle) -> Option<u8> {
-        self.system_slot(side & 1, system).map(|(_, slot)| slot)
-    }
-
-    fn system_setup(&self, side: u8, slot: u8) -> ApiResult<&nettai_content_api::Block> {
+    fn rules_setup(&self, side: u8) -> ApiResult<&nettai_content_api::Block> {
         self.setup
             .players
             .get(side as usize)
-            .and_then(|p| p.rules.get(slot as usize))
-            .ok_or_else(|| ApiError::Other(format!("side {side}'s ruleset has no system in place {slot}")))
+            .and_then(|p| p.rules.as_ref())
+            .ok_or_else(|| ApiError::Other(format!("side {side}'s player brings no setup of the rules")))
     }
 
     fn spawn_effect(&mut self, pos: Vec3, look: EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {

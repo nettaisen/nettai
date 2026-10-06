@@ -1,7 +1,7 @@
 --!strict
 -- EXE5's patch cards (its Modification Cards; docs/design/exe5-map.md §15.14): a card is the engine's
 -- (`define.patch_card`, content/exe5/patch_cards/), its effects the values the shared constructors make
--- (@exelib/patch_cards/effects, EXE6's too); the patch-cards system (./system.luau) applies a player's installed
+-- (@exelib/patch_cards/effects, EXE6's too); the patch cards part (./init.luau) applies a player's installed
 -- cards to the navi's stats as the round is set up. EXE5's own are its tables: the kinds' order (its effect numbers,
 -- 0x00 to 0x89, the handlers at 0x08137BC8) and the trails' bytes (0x08138802).
 

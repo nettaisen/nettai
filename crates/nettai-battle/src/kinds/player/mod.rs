@@ -833,8 +833,8 @@ pub(crate) fn prepare_chip(b: &mut Battle, r: ObjectRef) {
 // ---- The transformation sequencer's checks -------------------------------------
 
 // (`sub_80159C6`, the turn-start check that a Beast Out whose counter ran
-// out reverts, is EXE6's beast system's `turn_check`: content/exe6/rules/
-// beast/system.luau.)
+// out reverts, is EXE6's beast part's `turn_check`: content/exe6/rules/
+// beast/init.luau.)
 
 /// `sub_80159A2`: a form reversion is pending or running.
 pub fn reverting_form(b: &Battle, r: ObjectRef) -> bool {
@@ -1009,11 +1009,11 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).stamina = 10;
     let eff = b.setup.settings.effects;
     if eff & effects::LINK != 0 || eff & 0x1_0000 != 0 || stats(b, r).mood != 0xFF {
-        // sub_8015C2C: the starting mood (the side's systems may say
-        // another: EXE5's light and dark system's, by the light/dark value,
+        // sub_8015C2C: the starting mood (the side's rules may say
+        // another: EXE5's light and dark part's, by the light/dark value,
         // 0x0801283A).
         let side = b.objects.get(r).alliance;
-        let mood = b.systems_starting_mood(side).unwrap_or(0x80);
+        let mood = b.rules_starting_mood(side).unwrap_or(0x80);
         stats_mut(b, r).mood = mood;
     }
     if stats(b, r).first_barrier.is_some() {
@@ -1026,7 +1026,7 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
         let hook = b.roles().hook(crate::content::HookRole::FirstBarrier);
         crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::RoleNavi { navi: r });
     }
-    // (EXE6's emotion system holds a navi whose Beast Out counter is spent
+    // (EXE6's emotion part holds a navi whose Beast Out counter is spent
     // tired from the round's start.)
     reset_navicust_state(b, r);
 }
@@ -1276,11 +1276,11 @@ fn apply_starting_hp_bug(b: &mut Battle, r: ObjectRef) {
 /// `sub_80EA484`: the per-tick pipeline (§12.M M1).
 fn tick(b: &mut Battle, r: ObjectRef) {
     input::update(b, r);
-    // The side's systems' tick for the navi, if one asked (EXE6's NaviCust
+    // The side's rules' tick for the navi, if one asked (EXE6's NaviCust
     // emotion-swing bug, `sub_8013DA0`), not while paused.
     if !b.paused && ai(b, r).ticked {
         let side = b.objects.get(r).alliance;
-        b.systems_navi_tick(side, r);
+        b.rules_navi_tick(side, r);
     }
     intake::collect_hits(b, r);
     status::update(b, r);
@@ -1314,10 +1314,10 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
         b.objects.sprite_mut(r).look.color_shader = shader;
         return;
     }
-    // The side's systems may pick it (EXE5's 0x0800DD94: its light and dark
-    // system's).
+    // The side's rules may pick it (EXE5's 0x0800DD94: its light and dark
+    // part's).
     let side = b.objects.get(r).alliance;
-    if let Some(palette) = b.systems_navi_palette(side, r) {
+    if let Some(palette) = b.rules_navi_palette(side, r) {
         b.objects.sprite_mut(r).look.palette = palette;
         return;
     }

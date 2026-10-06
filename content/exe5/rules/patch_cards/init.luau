@@ -1,5 +1,5 @@
 --!strict
--- EXE5's patch-cards system (docs/design/exe5-map.md §15.14): as the round is set up (`round_setup`, after the
+-- EXE5's patch cards part (docs/design/exe5-map.md §15.14): as the round is set up (`round_setup`, after the
 -- NaviCust's compile and before anything else reads the stats), a player's installed patch cards (the engine's
 -- definitions and the player's setup, `battle.patch_cards`; their effects ./cards.luau's) change MegaMan's stats,
 -- as the original's reload does after the compile (0x0813F97C: the compile, 0x0813FA10; then the cards, 0x08138214;
@@ -127,8 +127,8 @@ local function run(stats: Navi, installed: { { card: PatchCard, enabled: boolean
     if copy("status_bug") then
         stats.battle_start_bug = if slot.status_bug == 0 then 0 elseif slot.status_bug == 1 then 9 else 10
     end
-    -- (BugStop's own byte, NaviStats +0x1F, only the NaviCust's bug compile reads: the navicust system asks the
-    -- cards, ../navicust/system.)
+    -- (BugStop's own byte, NaviStats +0x1F, only the NaviCust's bug compile reads: the navicust part asks the
+    -- cards, ../navicust.)
     -- 0x08137A58: card 111 switched on (its version's value).
     stats.hub_style = if written.hub_style then slot.hub_style else 0
 end
@@ -154,7 +154,6 @@ local function apply(side: number)
     stats.hp = stats.max_hp
 end
 
-return define.system {
-    id = "patch-cards",
+return {
     hooks = { round_setup = apply },
 }

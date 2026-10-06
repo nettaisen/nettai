@@ -1,13 +1,13 @@
 //! What an EXE6 save unlocks on the custom screen, as the original keeps
 //! it (event flags: Beast Out, and which of its version's five Crosses it
 //! owns, by Cross number), and how a player's setup states it: EXE6's cross
-//! and beast systems' setup (docs/design/rules-in-luau.md, S6c), which has
+//! and beast parts' setup (docs/design/rules-in-luau.md, S6c), which has
 //! no flags. A setup states the Crosses a player has as a list of forms
 //! (`crosses`); this boundary writes a save's as the list of those it owns
 //! ([`Unlocks::owned_crosses`], [`Unlocks::write`]).
 //!
 //! Event flag 0x163 (a navi code received) isn't here: it is the save
-//! system's `level` (`sub_800B144` sends a level only with the flag set), which
+//! part's `level` (`sub_800B144` sends a level only with the flag set), which
 //! EXE6's rules read as the seal on Beast Out and the Cross window.
 
 use crate::GameVersion;
@@ -58,10 +58,8 @@ impl Unlocks {
     }
 
     /// Write these into the setup of a player who operates `navi`: each
-    /// fact into every system of the game's ruleset that takes it (EXE6's
-    /// cross system the version and the Crosses, [`Unlocks::owned_crosses`];
-    /// its beast system the version and Beast Out). A ruleset with none of
-    /// EXE6's systems takes none of it.
+    /// fact the game's rules take (EXE6's: the version, the Crosses,
+    /// [`Unlocks::owned_crosses`], and Beast Out).
     pub fn write(&self, content: &Content, navi: NaviHandle, player: &mut PlayerSetup) -> Result<(), String> {
         player.set_fact(content, "version", &[Fact::Name(self.version.name())])?;
         let crosses: Vec<Fact> = self.owned_crosses(content, navi).iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();

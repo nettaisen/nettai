@@ -57,10 +57,10 @@ pub fn setup() -> RoundSetup {
     setup_on(&testing::build())
 }
 
-/// The same round for `content` (the test content with another list of
-/// systems, `testing::with_systems`: a player's setup is its ruleset's):
-/// both players of the test content's version (`testing::VERSION`), where a
-/// system of the content takes one.
+/// The same round for `content` (the test content with its rules made of
+/// other parts, `testing::with_parts`: a player's setup is its rules'):
+/// both players of the test content's version (`testing::VERSION`), where
+/// the rules of the content take one.
 pub fn setup_on(content: &Content) -> RoundSetup {
     let mut folder = BattleFolder::empty();
     folder.chips = [Some(FolderChip::new(testing::chip_in(content, testing::SUN_GUN_3), ChipCode(0))); 30];
@@ -69,7 +69,7 @@ pub fn setup_on(content: &Content) -> RoundSetup {
         joypad_phase: 0,
         sp_times: Default::default(),
         console: Default::default(),
-        rules: Vec::new(),
+        rules: None,
         patch_cards: Default::default(),
         navicust: None,
         auto_battle: Default::default(),

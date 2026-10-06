@@ -9,7 +9,7 @@ maximum HP, the base HP before it coming from the story's progress (300 to 800).
 levels, the custom and Mega levels, abilities and, for ProtoMan, the B+Back special.
 
 nettai has the tables in each navi's definition (`levels` in content/exe6/navis/*/navi.luau) and the reload in
-EXE6's save system (content/exe6/rules/save, rules/levels), which builds a link navi's stats from its level as a
+EXE6's save part (content/exe6/rules/save, rules/levels), which builds a link navi's stats from its level as a
 round is set up (§5).
 
 Addresses are US Falzar's. The four ROMs (US and Japanese, Falzar and Gregar) have the same tables, byte for
@@ -47,7 +47,7 @@ gives (`sub_81276E4`: the level's script, §3).
 
 The level reaches a battle in the init exchange: `sub_800B144` writes the level (`sub_8121198`) at +0xC0 of the
 console's block when event 0x163 is set, else 0xFF, and `battle_copyStructsIncludingBattleStats_800b2d8` copies
-each console's to `dword_203CFA0` (nettai: the level fact of EXE6's save system, `level`, which EXE6's rules read: `exe6.navi_level`). The stats go with it as the save holds them
+each console's to `dword_203CFA0` (nettai: the level fact of EXE6's save part, `level`, which EXE6's rules read: `exe6.navi_level`). The stats go with it as the save holds them
 (the block at +0x0C, `sub_801401E(GetCurPETNavi())`; a link battle sets +0x21, the Beast Out counter, to 3).
 
 ## 3. The reload (`reloadCurNaviBaseStats_8120df0`)
@@ -129,8 +129,8 @@ in the internet, each block's HP is cut to its maximum.
   row of `off_8120F44`, and `by_level`, each level's script summed (`hp`, `attack`, `rapid`, `charge`,
   `custom_level`, `mega_level`, `super_armor`, `float_shoes`, `air_shoes`, `back_special` by weapon). Read into
   `NaviData::levels`, and by EXE6's rules as a round is set up.
-- **The reload**: EXE6's save system (content/exe6/rules/save) runs it as a round is set up, first of the ruleset's
-  systems: `levels.reload` (content/exe6/rules/levels.luau) is §3's link navi branches (steps 1, 3, 4 and 5) on the
+- **The reload**: EXE6's save part (content/exe6/rules/save) runs it as a round is set up, first of the rules'
+  parts: `levels.reload` (content/exe6/rules/levels.luau) is §3's link navi branches (steps 1, 3, 4 and 5) on the
   navi's fresh stats with what the save keeps (the Regular memory and the sun the side states; the folder's bytes,
   which no battle reads), then §4's HP for a link navi; `levels.add` is the level's script (`sub_8121154`,
   `sub_8123208`), which MegaMan's NaviCust also adds after its compile. A match assumes the game cleared
@@ -142,10 +142,10 @@ in the internet, each block's HP is cut to its maximum.
   the game makes holds).
 - **Match files and the editor**: a side states its navi and its level, and no stats; the editor's stats pane shows
   what the round's setup builds.
-- **MegaMan's level** (a MegaMan received from a navi code): the navicust system's `round_setup` adds the level's
+- **MegaMan's level** (a MegaMan received from a navi code): the navicust part's `round_setup` adds the level's
   gains over what his NaviCust made (§4), and the HP is the maximum again; without a NaviCust in the setup his
   stats are as given (a recording's carry them). The editor offers him an optional level (empty: no code).
-- **The level in the setup** (EXE6's save system's `level`, a `u8?`; the engine knows no level, and EXE6's rules
+- **The level in the setup** (EXE6's save part's `level`, a `u8?`; the engine knows no level, and EXE6's rules
   read it, `exe6.navi_level`: what it gives a link navi in battle is rules/by_level.luau's, the navi's functions of
   its side, which the round's setup asks once into `Battle::given`): none is
   event 0x163 clear (0xFF in the battle), so EXE6's rules read the flag from it (the custom screen's seal). A link
