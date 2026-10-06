@@ -5,3 +5,5 @@
 # ROM-derived data the extractor writes (never commit it)
 /data/
 *.swp
+# Generated editor declarations; rebuild with .zed/generate-luau-definitions.py.
+/.zed/luau-globals.d.luau

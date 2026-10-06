@@ -1,0 +1,7 @@
+[
+  {
+    "label": "Luau: regenerate editor definitions",
+    "command": "python3 .zed/generate-luau-definitions.py",
+    "cwd": "$ZED_WORKTREE_ROOT"
+  }
+]

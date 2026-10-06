@@ -1,5 +1,5 @@
 -- Types shared across the exe6 pack's modules. A definitions file like
--- core.d.luau (luau-lsp: `--definitions=content/exe6/types.d.luau`): types
+-- core.d.luau (luau-lsp: `.zed/generate-luau-definitions.py`; see README.md): types
 -- a module and the modules that require it both name, declared once for
 -- the pack. (The engine's API is in content/nettai/core.d.luau.)
 
