@@ -20,7 +20,7 @@ pub enum Tab {
     Arena,
     Navi(usize),
     Folder(usize),
-    /// A list the game's rules take of a side (EXE6's Cross list, EXE5's
+    /// A list the game's rules take of a side (EXE6's Crosses, EXE5's
     /// souls), by its place among the game's facts (`crate::facts`).
     List(usize, usize),
     AutoBattle(usize),
@@ -33,7 +33,7 @@ impl Tab {
     /// The tab by its name (`--tab`): `arena`, or `left-` or `right-` and
     /// `navi`, `folder`, `auto-battle`, `cards`, `navicust`, `stats`, or
     /// the name of a list the content's game's rules take of a side
-    /// (`cross_list`, `souls`).
+    /// (`crosses`, `souls`).
     pub fn from_name(content: &Content, name: &str) -> Option<Tab> {
         if name == "arena" {
             return Some(Tab::Arena);
@@ -575,9 +575,9 @@ impl Editor {
                 let carried: std::collections::BTreeMap<String, toml::Value> =
                     keep.into_iter().filter(|(k, _)| ["hp", "regular_memory", "mood", "sun", "beast_out_counter"].contains(&k.as_str())).collect();
                 stats::apply(&content, &self.m.arena.game, &carried, &mut side.stats);
-                if content.navi(c.value).forms.is_none() {
-                    side.facts.reset(&content, nettai_battle::content::PlayerFact::CrossList.name());
-                }
+                // (Its form list is its new navi's: the version's own, or
+                // none for a navi that doesn't change form.)
+                side.state_own_forms(&content);
                 self.edited();
             }
             Msg::Fact(s, name, edit) => {

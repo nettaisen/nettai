@@ -28,9 +28,9 @@ pub fn switch_navi(content: &Content, side: &mut Side, navi: NaviHandle) -> bool
     };
     side.navi = navi;
     side.stats = stats;
-    // (Its form list, if the rules take one, is none: the checks refuse
-    // one that isn't its navi's.)
-    side.facts.reset(content, nettai_battle::content::PlayerFact::CrossList.name());
+    // (Its form list, if the rules take one, is none: a link navi doesn't
+    // change form.)
+    side.state_own_forms(content);
     // (Only the navi that changes form has a NaviCust: MegaMan's compiles.)
     if content.navi(navi).forms.is_none() {
         side.navicust = None;
