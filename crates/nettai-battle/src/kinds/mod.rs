@@ -56,8 +56,9 @@ pub enum Vars {
     IdleOverlay(idle_overlay::Vars),
     FullSynchroAura(full_synchro_aura::Vars),
     Burst(burst::Vars),
-    /// A content kind's declared state (see `content`).
-    Content(nettai_content_api::ContentState),
+    /// A content kind's declared state, of this layout: its values are in
+    /// the pool's arena (`Objects::state`).
+    Content(nettai_content_api::StateId),
 }
 
 impl Vars {
@@ -96,11 +97,11 @@ impl Vars {
 pub fn spawn(b: &mut Battle, kind: KindHandle, at: SpawnAt, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
     use crate::content::KindImpl;
     let k = b.content.defs.kind(kind);
-    let vars = match k.implementation {
-        KindImpl::Engine(e) => Vars::for_engine(e),
-        KindImpl::Script { .. } => Vars::Content(nettai_content_api::ContentState::new(k.schema)),
+    let (vars, state_size) = match k.implementation {
+        KindImpl::Engine(e) => (Vars::for_engine(e), 0),
+        KindImpl::Script { .. } => (Vars::Content(k.schema), b.content.defs.schema(k.schema).size()),
     };
-    let new = New { pool: k.pool, kind, vars, pos, params };
+    let new = New { pool: k.pool, kind, vars, state_size, pos, params };
     match at {
         SpawnAt::AfterCurrent => b.objects.spawn(new),
         SpawnAt::First => b.objects.spawn_at_front(new),

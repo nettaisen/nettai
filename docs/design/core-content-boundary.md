@@ -164,8 +164,8 @@ The game's AIAttackVars is one persistent block per actor: `set_attack` clears a
 others, the rest keeps what the last action left. Here it is a typed header the ruleset owns (`AttackVars`:
 step, element, damage, hit parameter, charged, lockout, bonus, the attack's chip, the kind of start, the rush's
 state, and the words that outlive an action: the marker, a thrown obstacle's look, the shot recovery) and the
-action's own state: a ruleset action's is a variant of `ActionVars`, a content action's a `ContentState` of its
-declared layout. Actions that share a state table continue each other's state, as the original's actions of
+action's own state: a ruleset action's is a variant of `ActionVars`, a content action's a block of its declared
+layout (its actor's in the actors' `StateArena`). Actions that share a state table continue each other's state, as the original's actions of
 one routine do; an action of another layout starts from zero. A weapon's setup writes the state of the action
 it is about to start. The original's variant and parameter bytes, which chip use copied from the chip's record
 for the action to read, don't exist: what an action needs of its chip is its builder's arguments.
@@ -275,9 +275,9 @@ The rules a content layer follows (scripting.md §3.1 and §6 say how each is en
 
 All simulation state is in `Battle`: the round state, the fighting machine, the gauge, banners, input records,
 both hands, the transformation requests and sequencer, the object pools (header, typed kind state, sprite
-state), the actors, the collision slots, the field, the dimming records, the RNG. Content state is a
-`ContentState` per object or action: the layout's id and 64 bytes its named fields are packed into, a `Copy`
-value. `Battle` is `Clone`, and a clone is the snapshot; `Battle::digest` hashes it, leaving out the content
+state), the actors, the collision slots, the field, the dimming records, the RNG. Content state is a block per
+object or action, of its layout's own size, its named fields packed into it: an object's in its pool's
+`StateArena`, an action's in the actors', each arena the live blocks packed in slot order. `Battle` is `Clone`, and a clone is the snapshot; `Battle::digest` hashes it, leaving out the content
 (whose hash the round's setup carries) and the presentation-only parts. Resimulated ticks produce sound cues
 again; the frontend plays a cue once it is confirmed or first predicted and cancels mispredicted ones
 (rollback.md).

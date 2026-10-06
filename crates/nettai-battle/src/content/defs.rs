@@ -380,7 +380,7 @@ pub struct RulesDef {
     /// array's, a list: EXE5's souls, every one),
     /// zero elsewhere (a list: empty), but an enum, which has no default unless
     /// `setup_defaults` gives it one: it is left unstated
-    /// (`ContentState::unstate`: EXE6's player's version, gregar or falzar),
+    /// (`Block::unstate`: EXE6's player's version, gregar or falzar),
     /// and a round doesn't start until the player's setup states it
     /// ([`RulesDef::setup_block`], `SideRules::for_player`).
     pub setup_default: nettai_content_api::Block,
@@ -1223,26 +1223,10 @@ impl Defs {
         let schema_id = |key: &str| -> StateId {
             StateId(schemas.binary_search_by(|s| s.key.as_str().cmp(key)).expect("a defined schema") as u16)
         };
-        // (An object's or an action's state is a `ContentState`: at most
-        // `MAX_BYTES`. The rules' state and setup are blocks of their own
-        // size.)
-        let fits_object = |d: &Definition, field: &str, id: StateId| -> Result<StateId, ContentError> {
-            let size = schemas[id.0 as usize].schema.size();
-            if size > nettai_content_api::MAX_BYTES {
-                return Err(ContentError::new(format!(
-                    "{}.luau: {} {}'s `{field}` takes {size} bytes; an object's or an action's state takes at most {}",
-                    d.module,
-                    d.registry,
-                    d.key,
-                    nettai_content_api::MAX_BYTES
-                )));
-            }
-            Ok(id)
-        };
         let state_of = |d: &Definition| -> Result<StateId, ContentError> {
             match d.spec.field("state") {
                 Data::Nil => Ok(schema_id(NO_STATE)),
-                Data::Ref(Registry::Schema, key) => fits_object(d, "state", schema_id(key)),
+                Data::Ref(Registry::Schema, key) => Ok(schema_id(key)),
                 _ => Err(ContentError::new(format!("{}.luau: {} {}'s `state` is not a table", d.module, d.registry, d.key))),
             }
         };
@@ -1949,7 +1933,7 @@ impl Defs {
             // (A navi's state, as an object's.)
             let navi_state = match d.spec.field("navi_state") {
                 Data::Nil => None,
-                _ => Some(fits_object(d, "navi_state", layout("navi_state")?)?),
+                _ => Some(layout("navi_state")?),
             };
             let controller = RulesHook::ALL.iter().position(|&h| h == RulesHook::Controller).expect("listed");
             if navi_state.is_some() && hooks[controller].is_none() {

@@ -196,6 +196,47 @@ fn an_identitys_own_part_routine_puts_on_what_its_object_wears() {
     assert!(b.objects.in_order().all(|o| o != worn));
 }
 
+/// An object's content state is its schema's size, past the 64 bytes one
+/// once had at most; a snapshot carries it and the digest sees it; a freed
+/// object's stays as it left it (the original reads freed objects' fields)
+/// until its slot is taken again.
+#[test]
+fn an_objects_state_is_its_schemas_size_rolls_back_and_outlives_it() {
+    let (mut b, p0, p1) = fight_with(hooked());
+    let worn = b.objects.get(p0).related[1].expect("what its routine put on");
+    let content = b.content.clone();
+    let schema = content.defs.schema(b.objects.state(worn).expect("a content state").id());
+    assert_eq!(schema.size(), 2 + 24 * 4);
+    let (ticks, marks) = (schema.index_of("ticks").unwrap(), schema.index_of("marks").unwrap());
+    let read = |b: &Battle| {
+        let s = b.objects.state(worn).expect("a content state");
+        let int = |v: nettai_content_api::FieldValue| v.load().int().unwrap();
+        (int(s.get(schema, ticks)), int(s.get_elem(schema, marks, 23).unwrap()))
+    };
+    for _ in 0..5 {
+        tick(&mut b, p0, p1, 0);
+    }
+    let (n, last) = read(&b);
+    assert!(n > 0 && last == 3 * n, "{n} ticks, the last word {last}");
+    // A snapshot carries it; the digest sees it.
+    let (snapshot, digest) = (b.save_state(), b.digest());
+    for _ in 0..5 {
+        tick(&mut b, p0, p1, 0);
+    }
+    assert_eq!(read(&b), (n + 5, 3 * (n + 5)));
+    b.load_state(&snapshot);
+    assert_eq!((read(&b), b.digest()), ((n, last), digest));
+    let mut c = b.clone();
+    crate::behavior::set_state_field(&mut c, worn, "ticks", nettai_content_api::Value::Int(n + 1));
+    assert_ne!(c.digest(), digest);
+    // Taken down, it goes at its next update, its state left as it was.
+    let identity = b.objects.get(p0).identity;
+    super::super::form::navi_death_hook(&mut b, p0, identity);
+    tick(&mut b, p0, p1, 0);
+    assert!(!b.objects.is_allocated(worn));
+    assert_eq!(read(&b), (n, last));
+}
+
 #[test]
 fn a_step_commits_on_the_third_tick_and_ends_on_the_twelfth() {
     let (mut b, p0, p1) = fight();
@@ -1281,7 +1322,7 @@ fn charged_slash(b: &Battle, r: ObjectRef) -> (nettai_content_api::RecordHandle,
     assert_eq!(registry, nettai_content_api::Registry::Record);
     assert_eq!(b.content.defs.records[h as usize].record_type, "charged-slash");
     let actor = b.objects.get(r).actor.expect("a navi");
-    let super::ActionVars::Content(s) = &b.actors.get(actor).attack.action else { panic!("{r:?} runs no content action") };
+    let Some(s) = b.actors.action_state(actor) else { panic!("{r:?} runs no content action") };
     let schema = b.content.defs.schema(s.id());
     let dash = s.get(schema, schema.index_of("dash").expect("the field")).load() == nettai_content_api::Value::Bool(true);
     (nettai_content_api::RecordHandle(h), dash)
@@ -2111,7 +2152,7 @@ fn fight_on_test_pack() -> (Battle, ObjectRef, ObjectRef) {
 /// A field of the attack state the navi's content action keeps.
 fn attack_state_field(b: &Battle, r: ObjectRef, name: &str) -> i64 {
     let actor = b.objects.get(r).actor.expect("a navi");
-    let super::ActionVars::Content(s) = &b.actors.get(actor).attack.action else { panic!("{r:?} runs no content action") };
+    let Some(s) = b.actors.action_state(actor) else { panic!("{r:?} runs no content action") };
     let schema = b.content.defs.schema(s.id());
     s.get(schema, schema.index_of(name).expect("the field")).load().int().expect("an integer")
 }
@@ -2121,9 +2162,7 @@ fn attack_state_field(b: &Battle, r: ObjectRef, name: &str) -> i64 {
 fn set_attack_state_field(b: &mut Battle, r: ObjectRef, name: &str, value: i64) {
     let actor = b.objects.get(r).actor.expect("a navi");
     let defs = b.content.clone();
-    let super::ActionVars::Content(s) = &mut b.actors.get_mut(actor).attack.action else {
-        panic!("{r:?} runs no content action")
-    };
+    let Some(mut s) = b.actors.action_state_mut(actor) else { panic!("{r:?} runs no content action") };
     let schema = defs.defs.schema(s.id());
     s.set(schema, schema.index_of(name).expect("the field"), nettai_content_api::Value::Int(value)).expect("the field's type");
 }
@@ -2132,14 +2171,14 @@ fn set_attack_state_field(b: &mut Battle, r: ObjectRef, name: &str, value: i64) 
 /// as the definition it holds.
 fn attack_state_def(b: &Battle, r: ObjectRef, name: &str) -> Option<(nettai_content_api::Registry, u16)> {
     let actor = b.objects.get(r).actor.expect("a navi");
-    let super::ActionVars::Content(s) = &b.actors.get(actor).attack.action else { panic!("{r:?} runs no content action") };
+    let Some(s) = b.actors.action_state(actor) else { panic!("{r:?} runs no content action") };
     let schema = b.content.defs.schema(s.id());
     s.get(schema, schema.index_of(name).expect("the field")).load().def()
 }
 
 /// A content object's state field.
 fn state_field(b: &Battle, r: ObjectRef, name: &str) -> i64 {
-    let crate::kinds::Vars::Content(s) = &b.objects.get(r).vars else { panic!("{r:?} has no content state") };
+    let Some(s) = b.objects.state(r) else { panic!("{r:?} has no content state") };
     let schema = b.content.defs.schema(s.id());
     s.get(schema, schema.index_of(name).expect("the field")).load().int().expect("an integer")
 }
@@ -2249,7 +2288,7 @@ fn defined(b: &Battle, key: &str) -> Vec<ObjectRef> {
 
 /// A content object's reference field, as the definition it holds.
 fn state_def(b: &Battle, r: ObjectRef, name: &str) -> Option<(nettai_content_api::Registry, u16)> {
-    let crate::kinds::Vars::Content(s) = &b.objects.get(r).vars else { panic!("{r:?} has no content state") };
+    let Some(s) = b.objects.state(r) else { panic!("{r:?} has no content state") };
     let schema = b.content.defs.schema(s.id());
     s.get(schema, schema.index_of(name).expect("the field")).load().def()
 }
