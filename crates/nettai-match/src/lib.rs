@@ -132,10 +132,10 @@ pub fn level_required(content: &Content, navi: NaviHandle) -> bool {
     !n.changes_form() && (n.levels.is_some() || n.story.is_some())
 }
 
-/// The level a side of `navi` plays at: every side plays at the highest
-/// (the game's rules' fixed level fact, which no player states): a navi
-/// that has a level ([`level_required`]) at its last (a link navi's navi
-/// code's, a team navi's story's), any other at none.
+/// The level a side of `navi` has where it states none: the highest (a
+/// save at its best, as the rules' defaults are): a navi that has a level
+/// ([`level_required`]) at its last (a link navi's navi code's, a team
+/// navi's story's), any other at none.
 pub fn play_level(content: &Content, navi: NaviHandle) -> Option<u8> {
     if !level_required(content, navi) {
         return None;
