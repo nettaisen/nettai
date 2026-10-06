@@ -36,8 +36,11 @@ use std::time::{Duration, Instant};
 pub const HELP: &str = "\
 keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START, Backspace = SELECT
       Space pause, . step one frame (paused), - / = slower / faster, F5 restart
-      (not in netplay), Tab the next language, Esc stop (back to the editor, or
-      quit)";
+      (not in netplay), [ / ] less / more present delay (netplay), Tab the next
+      language, Esc stop (back to the editor, or quit)";
+
+/// The most present delay netplay takes (a quarter of a second).
+pub const MAX_PRESENT_DELAY: u32 = 15;
 
 /// The font the window writes with: the frontend's bundled Murecho (Latin,
 /// kana and kanji, for the Japanese names).
@@ -272,9 +275,9 @@ fn button(key: &keyboard::Key) -> Option<u16> {
 fn net_line(n: &NetStatus) -> String {
     let ping = n.ping_ms.map_or("-".to_string(), |ms| format!("{ms:.0}ms"));
     format!(
-        "ping {ping} loss {:.0}% delay {} rollback {} (max {}, {} in all) waits {}",
+        "ping {ping} loss {:.0}% present delay {} rollback {} (max {}, {} in all) waits {}",
         n.loss * 100.0,
-        n.delay,
+        n.present_delay,
         n.last_rollback,
         n.max_rollback,
         n.rollbacks,
@@ -456,6 +459,16 @@ impl Demo {
                     }
                     keyboard::Key::Character("=") => {
                         p.player.faster();
+                    }
+                    // (Netplay's present delay: the player's own, changed
+                    // during the match.)
+                    keyboard::Key::Character(c @ ("[" | "]")) => {
+                        if let Some(n) = p.player.net_status() {
+                            let ticks = if c == "[" { n.present_delay.saturating_sub(1) } else { (n.present_delay + 1).min(MAX_PRESENT_DELAY) };
+                            if p.player.set_present_delay(ticks) {
+                                eprintln!("netplay: present delay {ticks}");
+                            }
+                        }
                     }
                     _ => {}
                 }

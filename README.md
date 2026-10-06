@@ -107,7 +107,8 @@ Both need the same engine, game and content pack (the handshake checks, and says
 left side of their own match file; the host's file supplies the arena. The battle's RNG comes from both players'
 randomly generated seed halves. Both play with rollback: inputs go out every frame, the other player's are predicted until they
 arrive, and the battle is simulated again when a prediction was wrong. The window's title shows the round trip, the
-loss, the input delay (`--delay N`, default 2), the rollbacks and the frames waited ([docs/frontend.md](docs/frontend.md)
+loss, the present delay (`--present-delay N`, default 0, and `[` and `]` during the match: how far behind your newest
+input the frame shown is), the rollbacks and the frames waited ([docs/frontend.md](docs/frontend.md)
 §2, [rollback.md](docs/design/rollback.md) §4). The netplay tests play netbattles between two rollback sessions over a
 simulated network at several latencies, with loss, duplication and reordering, and over UDP on loopback, and check that
 both peers stay in step:
