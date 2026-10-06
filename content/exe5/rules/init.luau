@@ -123,8 +123,8 @@ local rules: Rules = {
         souls = "form[16]",
         soul_unison = "bool",
         chaos_unison = "bool",
-        -- How long the save took to delete each SP navi (./sp_chips: the save's 0x0203E560), by its SP chip, in
-        -- frames.
+        -- How long the save took to delete each SP navi (./sp_chips: the save's 0x02002670, a battle's copy
+        -- 0x0203E560), by its SP chip, in frames.
         sp_times = schema.list({ chip = "chip", frames = "u16" }, 18),
     },
     -- A setup that says nothing: a new game's base HP, 100 (MegaMan's fresh HP), and Regular memory (the fresh
