@@ -585,9 +585,12 @@ fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
     // (In MeddySoul from the start, his stats' starting form: the souls
     // part's state is a fresh one, with no turns of the soul.)
     b.stats[0].starting_form = meddy;
+    // (A field by its name, wherever the rules' state keeps it: the souls'
+    // screen fields are its `screen` record's.)
     let field = |b: &Battle, name: &str| {
         let (schema, state) = b.rules_state(0).expect("EXE5's rules");
-        state.get(schema, schema.index_of(name).unwrap_or_else(|| panic!("the rules keep no `{name}`")))
+        let path = schema.find(name).unwrap().unwrap_or_else(|| panic!("the rules keep no `{name}`"));
+        state.get_at(schema.place_of(path))
     };
     let choosing = |b: &Battle, side: usize| {
         let s = &b.custom.sides[side];

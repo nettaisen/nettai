@@ -138,7 +138,8 @@ Luau arrays start at 1; the game's tables start at 0. The rule for each case:
 - **Arrays the engine hands out or stores are Luau arrays, 1-based, with range errors.** A list an accessor
   returns (`battle.alive_actors(side)`, `field.objects(side)`) is a plain array. An array state field
   (`targets = "u8[18]"`) is `s.targets[1]` to `s.targets[18]`, with `#s.targets`; `s.targets[0]` and
-  `s.targets[19]` are errors, not nil and not a wrap.
+  `s.targets[19]` are errors, not nil and not a wrap. A list (`schema.list(T, n)`) is the same from 1 to its
+  length, and takes its next element (`s.picks[#s.picks + 1] = v`); a record's fields are `s.drive.mode`.
 - **A table keyed by a game value is written with its keys**, zero included: `{ [0] = 0x0D880080, [1] =
   0x0E880080 }` by side, `{ [0] = raise, [4] = volleys, [8] = lower }` by step, `{ [0] = 0, [1] = 3, [2] = 1 }`
   by the count left. The lookup is `T[value]`, as the routine reads its table, and a missing key is a `nil` the
