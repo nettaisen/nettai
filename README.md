@@ -115,6 +115,10 @@ both peers stay in step:
 
     cargo test -p nettai-netplay
 
+`--record set.ntrp` writes a replay of the set played (alone or over the network), and `nettai-demo --replay set.ntrp`
+watches it again (`--side right`: the other console); a replay plays only on the engine and content it was made with
+([frontend.md](docs/frontend.md) §8).
+
 These checks need no ROM:
 
     cargo test --workspace                             # the engine on its own test content

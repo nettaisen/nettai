@@ -107,6 +107,21 @@ impl Player {
         player
     }
 
+    /// Record the set as a replay from here (`crate::replay`): refused
+    /// once a tick has run, and for a battle that isn't a match's set
+    /// played on buttons alone (a trace's, a replay's). Live play records
+    /// each tick as it runs, netplay each as it settles (both players'
+    /// replays the same but for their info). Starting over stops the
+    /// recording.
+    pub fn record(&mut self, recorder: crate::replay::Recorder) -> Result<(), String> {
+        self.session.record(recorder)
+    }
+
+    /// Why the recording stopped being written, if it has (a full disk).
+    pub fn recording_failed(&self) -> Option<&str> {
+        self.session.recorder.as_ref().and_then(|r| r.failed())
+    }
+
     /// Go on with another driver (a recording's next round), in the same
     /// picture and sound.
     pub fn play(&mut self, driver: Box<dyn Driver>) {

@@ -43,13 +43,15 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// - the handshake's Hello (the program's, nettai-demo's `net`): the
 ///   protocol's and the engine's versions, the game the side plays, its
 ///   content's hash, the role, a nonce, and the side's offer;
-/// - the offer (the frontend's): a match file's side, and the host's stage
-///   or arena, by their names in the game, as text;
+/// - the offer (the frontend's): a side, and the host's stage or arena, in
+///   nettai-match's binary (`nettai_match::binary`: a side's facts in the
+///   order of its game's rules' setup, definitions by their handles in the
+///   content the Hello names);
 /// - how a round is set up from the two offers and the nonces, which both
 ///   peers must do alike.
 ///
 /// A change to any of them is a new version.
-pub const VERSION: u16 = 1;
+pub const VERSION: u16 = 2;
 
 /// The rollback horizon, in elements (ticks, besides the rare marker):
 /// the widest gap a player's stream may have at the other peer

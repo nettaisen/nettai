@@ -895,6 +895,125 @@ impl Block {
     codec_write!();
 }
 
+// ---- A block's compact form ------------------------------------------------
+//
+// A block's values and nothing else, for a block to travel or be kept (a
+// match's side, nettai-match's binary): each field of the schema in its
+// order, a scalar at its width as the block keeps it (little-endian; a
+// definition or an asset its handle plus one, 0 for none; an enum its
+// variant's index, or [`ENUM_UNSTATED`]; a code its letter, 0 for none; a
+// `u8?` a present byte then the value), an array's every element, a
+// record's fields in their order, and a list its count (a byte, two for a
+// list of room for more than 255) and then only the elements it holds. No
+// names, no tags: the schema says what comes. A reader with the same
+// schema reads it back to the same block.
+
+impl Block {
+    /// The block's compact form, appended to `out`.
+    pub fn write_compact(&self, schema: &Schema, out: &mut Vec<u8>) {
+        for i in 0..schema.fields().len() {
+            self.write_compact_at(schema.place(i), out);
+        }
+    }
+
+    fn write_compact_at(&self, place: Place, out: &mut Vec<u8>) {
+        match place.ty {
+            FieldType::Record(fields) => {
+                for i in 0..fields.fields().len() {
+                    self.write_compact_at(place.field_at(i), out);
+                }
+            }
+            FieldType::List(_, max) => {
+                let n = self.len_at(place).expect("a list");
+                let count = list_count_size(*max);
+                out.extend_from_slice(&self.bytes[place.at..place.at + count]);
+                for k in 0..n {
+                    self.write_compact_at(place.elem(k).expect("an element the list holds"), out);
+                }
+            }
+            // (An array's elements are scalars, one after another.)
+            ty => out.extend_from_slice(&self.bytes[place.at..place.at + ty.size()]),
+        }
+    }
+
+    /// A block of `schema` (`id`'s) from its compact form at the start of
+    /// `bytes`, and how many bytes it took. Refused, with where in the
+    /// block and why: bytes that end inside it, a list's count past its
+    /// room, a flag that isn't 0 or 1, an enum's index past its variants,
+    /// a code that isn't a letter or `*`, a `u8?` that is none with a
+    /// value. (A definition's or an asset's handle is the content's to
+    /// check.)
+    pub fn read_compact(id: StateId, schema: &Schema, bytes: &[u8]) -> Result<(Block, usize), String> {
+        let mut block = Block::new(id, schema);
+        let mut at = 0;
+        for i in 0..schema.fields().len() {
+            block.read_compact_at(schema.place(i), &schema.field(i).name, bytes, &mut at)?;
+        }
+        Ok((block, at))
+    }
+
+    fn read_compact_at(&mut self, place: Place, path: &str, bytes: &[u8], at: &mut usize) -> Result<(), String> {
+        let take = |at: &mut usize, n: usize| -> Result<std::ops::Range<usize>, String> {
+            let r = *at..*at + n;
+            if r.end > bytes.len() {
+                return Err(format!("{path}: the bytes end inside it"));
+            }
+            *at = r.end;
+            Ok(r)
+        };
+        match place.ty {
+            FieldType::Record(fields) => {
+                for i in 0..fields.fields().len() {
+                    self.read_compact_at(place.field_at(i), &format!("{path}.{}", fields.field(i).name), bytes, at)?;
+                }
+            }
+            FieldType::List(_, max) => {
+                let r = take(at, list_count_size(*max))?;
+                let n = match r.len() {
+                    1 => bytes[r.start] as usize,
+                    _ => u16::from_le_bytes([bytes[r.start], bytes[r.start + 1]]) as usize,
+                };
+                if n > *max as usize {
+                    return Err(format!("{path}: {n} entries, past its room for {max}"));
+                }
+                self.bytes[place.at..place.at + r.len()].copy_from_slice(&bytes[r]);
+                for k in 0..n {
+                    self.read_compact_at(place.elem(k).expect("within its room"), &format!("{path}[{}]", k + 1), bytes, at)?;
+                }
+            }
+            FieldType::Array(elem, n) => {
+                for k in 0..*n as usize {
+                    let r = take(at, elem.size())?;
+                    compact_scalar_ok(elem, &bytes[r.clone()]).map_err(|e| format!("{path}[{}]: {e}", k + 1))?;
+                    let to = place.at + k * elem.size();
+                    self.bytes[to..to + r.len()].copy_from_slice(&bytes[r]);
+                }
+            }
+            ty => {
+                let r = take(at, ty.size())?;
+                compact_scalar_ok(ty, &bytes[r.clone()]).map_err(|e| format!("{path}: {e}"))?;
+                self.bytes[place.at..place.at + r.len()].copy_from_slice(&bytes[r]);
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Whether `b` is a value of the scalar type `ty` a block may hold (the
+/// compact form's reader's check).
+fn compact_scalar_ok(ty: &FieldType, b: &[u8]) -> Result<(), String> {
+    match ty {
+        FieldType::Bool if b[0] > 1 => Err(format!("{} is no flag", b[0])),
+        FieldType::Enum(names) if (b[0] as usize) >= names.len() && b[0] != ENUM_UNSTATED => {
+            Err(format!("variant {} of {}", b[0], names.len()))
+        }
+        FieldType::Code if b[0] != 0 && !is_code(b[0]) => Err(format!("{:#04x} is no chip code", b[0])),
+        FieldType::OptionalU8 if b[0] > 1 || b[0] == 0 && b[1] != 0 => Err(format!("{:02x} {:02x} is no byte or none", b[0], b[1])),
+        FieldType::Object if b[0] != 0 && b[0] & 0x80 == 0 => Err(format!("{:#04x} is no object", b[0])),
+        _ => Ok(()),
+    }
+}
+
 impl fmt::Debug for Block {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let used = self.bytes.iter().rposition(|&b| b != 0).map_or(0, |i| i + 1);
@@ -998,6 +1117,53 @@ mod tests {
         assert_eq!(st.get(&s, 0), FieldValue::U16(0), "neighbors untouched");
         st.set(&s, 3, Value::Nil).unwrap();
         assert_eq!(st.get(&s, 3), FieldValue::Object(None));
+    }
+
+    /// A block's compact form reads back to the same block: a list only
+    /// as long as it is, records and arrays whole; what is wrong with bytes
+    /// that aren't one is refused, with where.
+    #[test]
+    fn a_blocks_compact_form_reads_back() {
+        let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
+        let entry = Schema::new(vec![f("chip", FieldType::Ref(Registry::Chip, None)), f("code", FieldType::Code)]).unwrap();
+        let s = Schema::new(vec![
+            f("folder", FieldType::List(Box::new(FieldType::Record(Box::new(entry))), 30)),
+            f("flag", FieldType::Bool),
+            f("level", FieldType::OptionalU8),
+            f("side", FieldType::Enum(vec!["left".into(), "right".into()])),
+            f("souls", FieldType::scalar("u16[3]").unwrap()),
+        ])
+        .unwrap();
+        let mut b = Block::new(StateId(4), &s);
+        let folder = s.place(s.index_of("folder").unwrap());
+        b.set_len_at(folder, 2).unwrap();
+        b.set_at(folder.elem(0).unwrap().field("chip").unwrap(), Value::Def(Registry::Chip, 7)).unwrap();
+        b.set_at(folder.elem(1).unwrap().field("code").unwrap(), Value::Code(b'*')).unwrap();
+        b.set(&s, s.index_of("flag").unwrap(), Value::Bool(true)).unwrap();
+        b.set(&s, s.index_of("level").unwrap(), Value::Int(3)).unwrap();
+        b.unstate(&s, s.index_of("side").unwrap());
+        b.set_elem(&s, s.index_of("souls").unwrap(), 2, Value::Int(0x1234)).unwrap();
+        let mut out = Vec::new();
+        b.write_compact(&s, &mut out);
+        // (The count, two entries of three bytes, the flag, the level, the
+        // enum, the array.)
+        assert_eq!(out.len(), 1 + 2 * 3 + 1 + 2 + 1 + 6);
+        let (back, used) = Block::read_compact(StateId(4), &s, &out).unwrap();
+        assert_eq!((back, used), (b.clone(), out.len()));
+        // Trailing bytes are the reader's caller's.
+        out.push(9);
+        assert_eq!(Block::read_compact(StateId(4), &s, &out).unwrap().1, out.len() - 1);
+        out.pop();
+        let refused = |at: usize, v: u8| {
+            let mut bad = out.clone();
+            bad[at] = v;
+            Block::read_compact(StateId(4), &s, &bad).unwrap_err()
+        };
+        assert_eq!(refused(0, 31), "folder: 31 entries, past its room for 30");
+        assert_eq!(refused(6, b'a'), "folder[2].code: 0x61 is no chip code");
+        assert_eq!(refused(7, 2), "flag: 2 is no flag");
+        assert_eq!(refused(10, 2), "side: variant 2 of 2");
+        assert_eq!(Block::read_compact(StateId(4), &s, &out[..5]).unwrap_err(), "folder[2].chip: the bytes end inside it");
     }
 
     #[test]
