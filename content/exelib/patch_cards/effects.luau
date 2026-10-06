@@ -22,7 +22,36 @@ local TRAILS = {
 -- The elements of the bodies.
 local BODIES = { null = true, fire = true, aqua = true, elec = true, wood = true } :: { [string]: boolean }
 
+-- The kinds a card screen lists under its parameters (the other kinds, abilities and bugs, under its abilities): the
+-- stats' changes, the effect numbers below 0x16 in EXE6 (its screen's line drawer 0x08141384 tests `cmp r4, #22`)
+-- and below 0x18 in EXE5 (0x081374A8, `cmp r4, #24`: its soul turns too). No kind is a parameter in one game and an
+-- ability in the other.
+local PARAMETERS = {
+    hp_add = true,
+    hp_percent_add = true,
+    hp_sub = true,
+    hp_percent_sub = true,
+    body = true,
+    attack_add = true,
+    attack_sub = true,
+    attack_times = true,
+    rapid_add = true,
+    rapid_sub = true,
+    charge_add = true,
+    charge_sub = true,
+    custom_add = true,
+    custom_sub = true,
+    mega_add = true,
+    mega_sub = true,
+    giga_add = true,
+    giga_sub = true,
+    soul_time_add = true,
+    soul_time_sub = true,
+} :: { [string]: boolean }
+
+-- An effect, with the group its card screen lists it in (`group`: "parameter" or "ability").
 local function effect(e: PatchCardEffect): PatchCardEffect
+    e.group = if PARAMETERS[e.kind] then "parameter" else "ability"
     return e
 end
 
