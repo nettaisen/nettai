@@ -19,9 +19,11 @@ local attachment = require("../../../objects/attachment")
 local blank_shot = require("./blank_shot")
 local common = require("@exelib/megaman/buster")
 local charged_shot = require("./charged_shot")
+local collision = require("../../../rules/collision")
 local flying_shot = require("../../../objects/flying_shot")
 local lib = require("../../../lib/buster")
 local projectile = require("../../../lib/projectile")
+local sparks = require("../../../lib/sparks")
 local variants = require("../../../objects/projectile/variants")
 
 -- (The recovery after the shot is the navi's `attack_count`, AIAttackVars+0x12:
@@ -99,13 +101,28 @@ function buster.throw(navi: Object): Action
     return buster.shot
 end
 
+-- A thrown obstacle (the flying shot's row 6): breaking, lighting its
+-- panel, looking as the obstacle does.
+local THROWN = flying_shot.variant {
+    collision = { is = collision.breaking, hits = collision.hits_navis },
+    hit_mod = 3,
+    element = "null",
+    secondary = { "break" },
+    spark = sparks.breaking,
+    sprite = asset.sprite("beast-shot"),
+    speed = 0xA_0000,
+    range = 8,
+    highlight = true,
+    obstacle = true,
+}
+
 -- `sub_80EB450`'s throw: the last obstacle absorbed (what the throw's
 -- setup took from the absorbed list into the attack: the original's marker
 -- word) flies from the panel in front (`sub_80C6248`).
 local function throw(me: Object)
     local x, y = field.center(me.panel_x + me.facing, me.panel_y)
     flying_shot.launch(me, Vec3.new(x, y, THROW_Z), {
-        variant = flying_shot.variants.thrown,
+        variant = THROWN,
         damage = common.damage_word(me),
         obstacle = me.thrown_look,
         obstacle_anim = me.thrown_anim,

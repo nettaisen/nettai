@@ -3,6 +3,33 @@
 -- a module and the modules that require it both name, declared once for
 -- the pack. (The engine's API is in content/nettai/core.d.luau.)
 
+-- A flying shot's variant (objects/flying_shot: one of the 16-byte rows at
+-- 0x080C5D0C, which each user defines where it fires it).
+export type FlyingShotVariant = {
+    -- Its collision (the row's first three bytes: what it is, what it hits,
+    -- the hit modifier).
+    is: CollisionType,
+    hits: CollisionType,
+    hit_mod: number,
+    -- Its element byte.
+    element: number,
+    -- Its hit spark (0xFF: none).
+    spark: Spark?,
+    sprite: SpriteAsset,
+    anim: number,
+    -- It lights the panels it covers (its second parameter).
+    highlight: boolean,
+    -- The panel centers it passes before it ends (its third parameter).
+    range: number,
+    -- It casts a shadow on the ground (else its first part is drawn with
+    -- the sprite).
+    shadow: boolean,
+    -- The status its hits carry (`object_setCollisionStatusEffect1`).
+    status: Status?,
+    -- 16.16 a tick, forward.
+    speed: number,
+}
+
 -- A soul's navi's image as MegaMan unites with it (rules/souls/image, actor
 -- object 0x2A; a soul's form's `image`): the navi's sprite, and what the
 -- image puts on as it comes in and takes off as it goes (0x0800EDBC's and

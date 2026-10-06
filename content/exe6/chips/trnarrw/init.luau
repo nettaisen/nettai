@@ -8,8 +8,10 @@
 -- navi's animation ends. The three differ only in their damage.
 
 local attachment = require("../objects/attachment")
+local collision = require("../rules/collision")
 local flying_shot = require("../objects/flying_shot")
 local lockon = require("../rules/lockon")
+local sparks = require("../lib/sparks")
 
 export type State = {
     -- Ticks of the draw so far, then the recovery's (AIAttackVars+0x10).
@@ -33,6 +35,20 @@ local HAND = 0x17
 -- none of the other side's bodies.
 local PASSES = { [0] = { require = 0x10000, forbid = 0x05800000 }, [1] = { require = 0x10000, forbid = 0x0A800000 } }
 local SOUND_TWANG = asset.sound("twang")
+-- The arrow (the flying shot's row 2): aqua, sparking over its panel's
+-- center, with the twang as it sets off after its wait.
+local ARROW = flying_shot.variant {
+    collision = { is = collision.attack, hits = collision.hits_navis },
+    hit_mod = 1,
+    element = "aqua",
+    spark = sparks.of_element(2),
+    sprite = asset.sprite("bow"),
+    anim = 3,
+    speed = 0x6_0000,
+    range = 8,
+    panel_spark = true,
+    launch_sound = SOUND_TWANG,
+}
 
 -- `sub_80ECF00`: an arrow over (x, y), leaving after `delay` ticks: at the
 -- panel's center a pixel up, at the navi's hand height (its sprite's
@@ -44,7 +60,7 @@ local function arrow(me: Object, x: number, y: number, delay: number)
     -- (The game passes the attack variables' address as the shot's word;
     -- an arrow doesn't read it.)
     local pos = Vec3.new(cx, int.i32(cy - 0x10000), int.shl(az, 16))
-    flying_shot.launch(me, pos, { variant = flying_shot.variants.arrow, wait = delay, damage = damage })
+    flying_shot.launch(me, pos, { variant = ARROW, wait = delay, damage = damage })
 end
 
 -- `sub_80ECE18`: the arrows, the bow; after 24 ticks the last arrow.

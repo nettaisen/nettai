@@ -5,8 +5,8 @@
 -- drifts a panel forward and a row up or down every 31 ticks (the top row's down, the bottom row's up, the middle
 -- row's as its spawner says: the upper bubble's up, the lower's down), turning back at the top and bottom rows.
 -- A bubble hits the other side's navis and objects with the chip's damage and pops on the first it touches; an
--- attack that pops it (it has 1 HP) bursts it, and 20 ticks later it sends an aqua shot forward (EXE5's flying shot
--- row 7) with the chip's damage.
+-- attack that pops it (it has 1 HP) bursts it, and 20 ticks later it sends an aqua shot forward (EXE5's flying shot)
+-- with the chip's damage.
 
 local arm_launch = require("../../lib/arm_launch")
 local collision = require("../../rules/collision")
@@ -20,8 +20,8 @@ export type State = {
     way: number,
     -- The ticks a drift lasts (its second parameter: the chip's second parameter byte, 30 for each SideBub).
     travel: number,
-    -- Which row of EXE5's flying shot it bursts into (its fourth parameter, read through 0x080D86B4).
-    burst: number,
+    -- The flying shot it bursts into (its fourth parameter, a row of EXE5's flying shot by 0x080D86B4).
+    burst: FlyingShotVariant,
 }
 
 local SPRITE = asset.sprite("side-bubble")
@@ -33,8 +33,9 @@ local HIT_MOD = 3
 local WAIT, WAIT_ANIM_AT, BURST_WAIT = 15, 5, 20
 -- How far a drift goes: a panel forward, a row up or down (in pixels).
 local DRIFT_X, DRIFT_Y = 40, 24
--- The rows of EXE5's flying shot a bubble's fourth parameter picks (0x080D86B4).
-local BURSTS: { [number]: number } = { [0] = 7, [1] = 8, [2] = 9, [3] = 9 }
+-- The shot a SideBub's bubble bursts into (the flying shot's row 7: 0x080D86B4's first, which every SideBub's
+-- fourth parameter, 0, picks).
+local BURST = flying_shot.variant { hit_mod = 3, element = 2, sprite = SPRITE, anim = 2, highlight = true, speed = 0x4_0000 }
 -- What a hit on a navi or an object leaves in its hit flags (0x080D85B4).
 local POPS = 0x0F80_0000
 -- Its actions.
@@ -191,7 +192,7 @@ end
 sidebub.bubble = new.kind {
     id = "sidebub/bubble",
     pool = "attack",
-    state = { way = "u8", travel = "u8", burst = "u8" },
+    state = { way = "u8", travel = "u8", burst = "record:flying-shot-variant" },
     -- 0x080D8484.
     update = function(me: Object)
         local l = me.lifecycle
@@ -211,20 +212,16 @@ sidebub.bubble = new.kind {
 }
 
 -- 0x080D86BA: a bubble of `owner`'s on (x, y) with the element, the damage word and its parameters (its first way,
--- its drift's ticks, its burst's row by 0x080D86B4); it runs while the battle is dimmed. (Its X and Y are the
--- spawner's registers, the panel's Y and the element, until its init places it.)
-function sidebub.spawn(owner: Object, x: number, y: number, element: number, damage: number, way: number, travel: number, burst: number): Object?
-    local row = BURSTS[burst]
-    if not row then
-        error(string.format("SideBub's bubble's burst %d reads past 0x080D86B4", burst))
-    end
+-- its drift's ticks, the shot it bursts into); it runs while the battle is dimmed. (Its X and Y are the spawner's
+-- registers, the panel's Y and the element, until its init places it.)
+function sidebub.spawn(owner: Object, x: number, y: number, element: number, damage: number, way: number, travel: number, burst: FlyingShotVariant): Object?
     local o = battle.spawn(sidebub.bubble, Vec3.new(y, element, 0))
     if o then
         o.panel_x, o.panel_y = x, y
         o.element = element
         o:set_damage_word(damage)
         local s = o.state :: State
-        s.way, s.travel, s.burst = way, travel, row
+        s.way, s.travel, s.burst = way, travel, burst
         o.related1 = owner
         o.alliance, o.flip = owner.alliance, owner.flip
         o.run_while_dimmed = true
@@ -233,8 +230,8 @@ function sidebub.spawn(owner: Object, x: number, y: number, element: number, dam
 end
 
 -- The chip's parameters (AIAttackVars+0x0C, its record's +0x10): the drift's ticks and the burst (30 and 0 for each
--- SideBub).
-local TRAVEL, BURST = 30, 0
+-- SideBub: the burst is `BURST`).
+local TRAVEL = 30
 
 -- 0x080EC84C: the arm raised; on the action's second tick the two bubbles (lib/arm_launch).
 sidebub.action = arm_launch.action("0x080EC844", function(me: Object, damage: number)
