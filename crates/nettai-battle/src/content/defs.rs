@@ -150,9 +150,6 @@ pub struct ChipDef {
 /// these.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ChipLinks {
-    /// An SP navi chip's slot among the setup's SP deletion times
-    /// (`DamageFormula::SpNavi::slot`, by the rules' `sp_slots`).
-    pub sp_slot: Option<u8>,
     /// The navi whose own chip this is (a link navi's chip: offered on the
     /// custom screen once a round, never charged, dropped from the hand
     /// when a round ends).
@@ -1426,8 +1423,7 @@ impl Defs {
         let mut chips: Vec<ChipDef> = chips.sorted()?.into_iter().map(|(_, c)| c).collect();
 
         // What the chips' records name, by handle: the Program Advances
-        // (their recipes' ingredients), a dark chip's substitute, an SP
-        // navi chip's slot.
+        // (their recipes' ingredients), a dark chip's substitute.
         let chip_handle = |key: &str, whose: &str| -> Result<ChipHandle, ContentError> {
             chips
                 .binary_search_by(|c| c.key.as_str().cmp(key))
@@ -1440,13 +1436,6 @@ impl Defs {
         for (i, c) in chips.iter().enumerate() {
             let whose = format!("chip {}", c.key);
             let mut l = ChipLinks::default();
-            if let Some(super::DamageFormula::SpNavi { slot, .. }) = &c.record.formula {
-                let rules = content.rules();
-                let n = rules.sp_slots.iter().position(|s| s == slot).ok_or_else(|| {
-                    ContentError::new(format!("{whose}'s damage is by the SP navi {slot:?}, which the rules' sp_slots don't list"))
-                })?;
-                l.sp_slot = Some(n as u8);
-            }
             for r in &c.record.program_advances {
                 let at = format!("{whose}'s recipe");
                 let recipe = match &r.recipe {

@@ -3,27 +3,27 @@
 #
 # Records a setup names by the original's byte.
 
-# The save's SP navi deletion times (`byte_203EB00`, 20 halfwords): the SP chips'
-# damage goes by their slot's time.
+# The save's SP navi deletion times (`byte_203EB00`, 20 halfwords), by the SP chip whose
+# damage goes by each slot's time (the rules' `sp_times`).
 [sp_slots]
-"sp/heatman" = 0
-"sp/elecman" = 1
-"sp/slashman" = 2
-"sp/eraseman" = 3
-"sp/chrgeman" = 4
-"sp/spoutman" = 5
-"sp/tmhkman" = 6
-"sp/tenguman" = 7
-"sp/grndman" = 8
-"sp/dustman" = 9
-"sp/protoman" = 10
-"sp/blastman" = 11
-"sp/diveman" = 12
-"sp/crcusman" = 13
-"sp/judgeman" = 14
-"sp/elmntman" = 15
-"sp/count" = 16
-"sp/colonel" = 17
+"heatman-sp" = 0
+"elecman-sp" = 1
+"slashmn-sp" = 2
+"erasemn-sp" = 3
+"chrgemn-sp" = 4
+"spoutmn-sp" = 5
+"tmhkman-sp" = 6
+"tengumn-sp" = 7
+"grndman-sp" = 8
+"dustman-sp" = 9
+"protomn-sp" = 10
+"blastmn-sp" = 11
+"diveman-sp" = 12
+"crcusmn-sp" = 13
+"judgemn-sp" = 14
+"elmntmn-sp" = 15
+"count-sp" = 16
+"colonel-sp" = 17
 
 # The rocks a stage places, by the argument of the actor list's entry (the row of
 # `byte_80CF934`).

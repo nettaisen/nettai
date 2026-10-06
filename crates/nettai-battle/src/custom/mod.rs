@@ -44,10 +44,6 @@ pub struct PlayerSetup {
     /// The joypad's auto-repeat beat (0-4) on the round's first tick; each
     /// console counts its own.
     pub joypad_phase: u8,
-    /// How fast the save deleted each SP navi (`byte_203EB00`: the save's
-    /// 0x020018C0, through the init exchange): the SP navi chips' damage
-    /// goes by it.
-    pub sp_times: crate::setup::SpTimes,
     /// What the player's console brings besides: its RNG (RNG1), which
     /// ChpShufl's re-deal draws from (`crate::console`). In netplay it is
     /// part of the setup the peers exchange.
@@ -75,7 +71,6 @@ impl Default for PlayerSetup {
         PlayerSetup {
             folder: BattleFolder::empty(),
             joypad_phase: 0,
-            sp_times: Default::default(),
             console: ConsoleSetup::default(),
             rules: None,
             patch_cards: Default::default(),

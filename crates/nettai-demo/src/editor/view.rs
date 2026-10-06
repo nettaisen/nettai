@@ -254,23 +254,20 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
 }
 
 /// The side's SP navi deletion times (`mm:ss.cc`; empty the fastest), each
-/// by the SP navi chip that reads it. A slot no chip's damage reads isn't
-/// listed: its time changes nothing of a battle (EXE5's first slot, Roll's,
-/// whose SP chip counts holy panels instead: the rules name the slot
-/// `sp/roll`, which is no chip's key and has no name to show).
+/// by the SP navi chip whose damage goes by it: the entries of the side's
+/// fact the engine knows as `PlayerFact::SpTimes` (the rules' default lists
+/// every SP chip of the game), in the library's order.
 fn sp_times(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &*e.content;
     let side = e.side(s);
-    let slots = nettai_match::sp_slots(c);
+    let times = side.facts.sp_times(c);
     let mut col = column![text("SP navi deletion times").size(16), text("mm:ss.cc; empty: the fastest. The SP navi chips' damage goes by them.").size(13).color(DIM)]
         .spacing(6);
-    // The SP navi chip whose damage reads a slot (the game's), in the
-    // library's order; a slot none reads has nothing to set.
-    let mut read: Vec<(usize, nettai_content_api::ChipHandle)> = (0..slots.len()).filter_map(|i| Some((i, nettai_match::facts::sp_chip(c, &e.m.arena, i)?))).collect();
+    let mut read: Vec<(usize, nettai_content_api::ChipHandle)> = times.iter().enumerate().map(|(i, &(chip, _))| (i, chip)).collect();
     e.order.chips(c, &mut read);
     for (i, chip) in read {
         let label = e.names.chip(c, chip);
-        let shown = e.sp_typed.get(&(s, i)).cloned().unwrap_or_else(|| match side.sp_times.0[i] {
+        let shown = e.sp_typed.get(&(s, i)).cloned().unwrap_or_else(|| match times[i].1 {
             0 => String::new(),
             f => nettai_match::sp_times::format(f),
         });

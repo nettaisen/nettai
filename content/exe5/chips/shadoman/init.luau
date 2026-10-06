@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local sp_chips = require("../rules/sp_chips")
 
 -- ShadoMan (EXE5 chip 0x0f8): ShadowMan cuts in and sends three of himself to throw shurikens at the enemies (./navi).
 local shadoman: Chip = {
@@ -32,7 +33,8 @@ local shadomn_sp: Chip = {
     class = "mega",
     rarity = 3,
     mb = 80,
-    damage = { formula = "sp_navi", slot = "sp/shadoman", by_time = { 70, 70, 65, 65, 60, 60, 55, 55, 50, 50, 45 }, operation_battle = 85 },
+    sp = { by_time = { 70, 70, 65, 65, 60, 60, 55, 55, 50, 50, 45 }, operation_battle = 85 },
+    damage = sp_chips.damage,
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },

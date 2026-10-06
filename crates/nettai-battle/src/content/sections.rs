@@ -10,7 +10,7 @@
 //! missing one is a load error that names it: `rules: flow: missing
 //! field `escape_check``). What may be left out
 //! reads as nothing for every game: a feature's section a game hasn't
-//! (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`) and a table
+//! (`berserk`, `lockon`, `navicust`, `banners`) and a table
 //! that is empty without it (`elements`, `buster`, `math`,
 //! `custom_screen`); in a section, a list or an attribute of one entry
 //! that is none unless stated (a panel type's `burn`, `chaos_cycle`).
@@ -225,17 +225,6 @@ struct LinkPickSection {
     backgrounds: Vec<super::BackgroundId>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct SpChipsSection {
-    /// BCD hours:minutes:seconds.hundredths.
-    deletion_times: Vec<u32>,
-    /// The SP navis whose deletion times a setup carries, in its order
-    /// (none listed: a setup carries none).
-    #[serde(default)]
-    slots: Vec<String>,
-}
-
 /// The names the elements section uses for the weakness table's rows.
 const ELEMENT_NAMES: [&str; 6] = ["null", "fire", "aqua", "elec", "wood", "drain"];
 
@@ -266,7 +255,6 @@ pub(crate) const SECTIONS: &[&str] = &[
     "panels",
     "pools",
     "reactions",
-    "sp_chips",
     "status",
 ];
 
@@ -295,7 +283,6 @@ struct Stated {
     flow: Option<super::rules::FlowRules>,
     effects: Option<super::rules::EffectsRules>,
     fresh_stats: Option<super::rules::FreshStatsRules>,
-    sp_chips: Option<SpChipsSection>,
     link_pick: Option<LinkPickSection>,
 }
 
@@ -345,7 +332,6 @@ impl Stated {
             link_pick: Some(LinkPickSection { first_round_stages: r.link_pick.first_round_stages, backgrounds: r.link_pick.backgrounds.clone() }),
             effects: Some(r.effects),
             fresh_stats: Some(r.fresh_stats),
-            sp_chips: Some(SpChipsSection { deletion_times: r.sp_deletion_times.clone(), slots: r.sp_slots.clone() }),
         }
     }
 
@@ -371,7 +357,6 @@ impl Stated {
         panels.types.resize(PanelType::ALL.len(), PanelTypeRule::default());
         let (element_weakness, family_elements) = self.elements.unwrap_or_default();
         let buster = self.buster.unwrap_or(BusterSection { recovery: Vec::new(), empty_hand: EmptyHandChip::default(), chaos_cycle: Vec::new() });
-        let sp_chips = self.sp_chips.unwrap_or(SpChipsSection { deletion_times: Vec::new(), slots: Vec::new() });
         Ok(Rules {
             element_weakness,
             family_elements,
@@ -395,8 +380,6 @@ impl Stated {
             empty_hand: buster.empty_hand,
             buster_recovery: buster.recovery,
             chaos_cycle: buster.chaos_cycle,
-            sp_deletion_times: sp_chips.deletion_times,
-            sp_slots: sp_chips.slots,
             // (Its stages are `link`'s to resolve.)
             link_pick: super::rules::LinkPick { stages: Vec::new(), first_round_stages: link_pick.first_round_stages, backgrounds: link_pick.backgrounds },
             sine: self.sine.unwrap_or_default(),
@@ -660,7 +643,6 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     mode9_a: None,
                 });
             }
-            "sp_chips" => stated.sp_chips = Some(r.read(spec, &at).map_err(e)?),
             other => return Err(e(format!("{at}: the engine has no rule section `{other}` ({})", SECTIONS.join(", ")))),
         }
     }

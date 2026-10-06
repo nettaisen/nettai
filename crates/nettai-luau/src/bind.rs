@@ -2614,7 +2614,13 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             vec![LuaValue::Table(t)]
         }
         HookCall::RoleNavi { navi } | HookCall::FormNavi { navi } => vec![obj(navi)?],
-        HookCall::Given { side } => vec![LuaValue::Integer(mlua::Integer::from(side))],
+        HookCall::Given { side, chip } => {
+            let chip = match chip {
+                Some(c) => LuaValue::Table(bound.def_value(Registry::Chip, c.0)?),
+                None => LuaValue::Nil,
+            };
+            vec![LuaValue::Integer(mlua::Integer::from(side)), chip]
+        }
         HookCall::NaviLeft { controller } => vec![obj(controller)?],
         HookCall::RoleEncased { obstacle, ice, class } => {
             let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(mlua::Integer::from(c)));

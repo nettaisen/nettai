@@ -136,7 +136,6 @@ fn player_setup(f: BattleFolder, seed: u32, side: u32) -> PlayerSetup {
     PlayerSetup {
         folder: f,
         joypad_phase: 0,
-        sp_times: Default::default(),
         console: ConsoleSetup { rng: seed.rotate_left(16) ^ side.wrapping_mul(0x9E37_79B9), ..ConsoleSetup::default() },
         rules: None,
         patch_cards: Default::default(),

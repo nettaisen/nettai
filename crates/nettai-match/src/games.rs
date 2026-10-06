@@ -180,9 +180,9 @@ fn an_unknown_name_is_refused() {
     // (EXE5 has a ProtoMan of its own: HeatMan is EXE6's alone.)
     says(parse(&content, &side("heatman", &TANGO_EXE5, ""), &ok).unwrap_err(), "left: no navi \"heatman\" in exe5");
     let crosses = exe5(&TANGO_EXE5, "souls = [\"heatcross\"]");
-    says(parse(&content, &crosses, &ok).unwrap_err(), "left: souls: no form \"heatcross\" in exe5");
+    says(parse(&content, &crosses, &ok).unwrap_err(), "left: souls: [1]: no form \"heatcross\" in exe5");
     let crosses = exe5(&TANGO_EXE5, "crosses = [\"heatcross\"]");
-    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no field \"crosses\" (a side of exe5 takes chaos_unison, hp, karma, level, reg_up, soul_unison, souls)");
+    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no field \"crosses\" (a side of exe5 takes chaos_unison, hp, karma, level, reg_up, soul_unison, souls, sp_times)");
     // A chip of EXE6's alone (HeatMan), a qualified name, a misspelling:
     // one error.
     let six = exe6_content();
@@ -370,13 +370,13 @@ fn karma_and_souls_write_and_read_back() {
     let bad = side("megaman", &EXE6, "").replacen("navi = \"megaman\"\n", "navi = \"megaman\"\nkarma = 1200\nsouls = [\"heatcross\"]\n", 1);
     let six = exe6_content();
     let e = parse_in(&six, "exe6", &side("megaman", &EXE6, ""), &bad).unwrap_err();
-    let takes = "(a side of exe6 takes beast_out, bug_frags, crosses, hp, level, reg_up, sun, version)";
+    let takes = "(a side of exe6 takes beast_out, bug_frags, crosses, hp, level, reg_up, sp_times, sun, version)";
     for p in [format!("right: no field \"karma\" {takes}"), format!("right: no field \"souls\" {takes}")] {
         assert!(e.iter().any(|x| *x == p), "{p:?} not in {e:?}");
     }
     let bad = exe5(&TANGO_EXE5, "souls = [\"heatcross\"]");
     let e = parse(&content, &bad, &exe5(&TANGO_EXE5, "")).unwrap_err();
-    assert!(e.contains(&"left: souls: no form \"heatcross\" in exe5".to_string()), "{e:?}");
+    assert!(e.contains(&"left: souls: [1]: no form \"heatcross\" in exe5".to_string()), "{e:?}");
     // A value past its field's type, a soul twice, more souls than the list
     // holds.
     for (stated, said) in [
@@ -706,8 +706,12 @@ fn a_sides_fields_are_its_rules() {
     let five = parse(&c5, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
     assert!(crate::Side::takes_version(&c6) && six.sides[0].takes_level(&c6) && crate::Side::takes_sp_times(&c6));
     assert!(!crate::Side::takes_version(&c5) && !five.sides[0].takes_level(&c5) && crate::Side::takes_sp_times(&c5));
-    // Each slot's chip is of the match's game.
-    let chip = |c: &nettai_battle::Content, m: &Match, slot| crate::facts::sp_chip(c, &m.arena, slot).map(|h| c.defs.chip(h).key.clone());
-    assert!(chip(&c6, &six, 0).is_some_and(|k| crate::ids::in_game(&c6, "exe6", &k)), "{:?}", chip(&c6, &six, 0));
-    assert!(chip(&c5, &five, 1).is_some_and(|k| crate::ids::in_game(&c5, "exe5", &k)), "{:?}", chip(&c5, &five, 1));
+    // A side that says nothing has every SP chip of its game deleted in no
+    // time.
+    let times = |c: &nettai_battle::Content, m: &Match| -> Vec<(String, u16)> {
+        m.sides[0].facts.sp_times(c).iter().map(|&(h, f)| (crate::ids::local(&c.defs.chip(h).key).to_string(), f)).collect()
+    };
+    let (t6, t5) = (times(&c6, &six), times(&c5, &five));
+    assert_eq!((t6.len(), &t6[0]), (18, &("heatman-sp".to_string(), 0)), "{t6:?}");
+    assert_eq!((t5.len(), &t5[0]), (18, &("protomn-sp".to_string(), 0)), "{t5:?}");
 }

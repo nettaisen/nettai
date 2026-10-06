@@ -59,6 +59,9 @@ local rules_: Rules = {
         sun = "bool",
         level = "u8?",
         bug_frags = "u32",
+        -- EXE6's SP navi deletion times (EXE6's rules/sp_chips, which Count[SP]'s damage reads): none stated, every
+        -- SP navi in no time.
+        sp_times = schema.list({ chip = "chip", frames = "u16" }, 1),
         -- The counter's.
         bonus = "u8",
     },
@@ -69,6 +72,7 @@ local rules_: Rules = {
             beast = { lockon = "record:lockon", rush = "bool" },
             dark_substitute = "chip",
             hp_bug = "u8",
+            sp = { by_time = "u16[11]" },
             -- Made-up fields of the game's chips, for the extension's tests.
             test_weight = "u8",
             test_tag = { level = "u8", kind = { "a", "b" } },
@@ -117,7 +121,7 @@ local rules_: Rules = {
         chip_prepared = dark_chips.chip_prepared,
     },
     -- Its rule sections and its roles. The made-up tables are its own (rules/panels, rules/reactions,
-    -- rules/status_rules, rules/custom_screen, rules/sp_chips, the lock-on's); where games differ it plays as EXE6
+    -- rules/status_rules, rules/custom_screen, the lock-on's); where games differ it plays as EXE6
     -- does, and those sections are EXE6's own files (a module the test content hasn't is EXE6's): berserk, buster,
     -- chip-use, effects, elements, flow, fresh_stats, math, pools. None of its banners holds, and it has no NaviCust
     -- board.
@@ -137,7 +141,6 @@ local rules_: Rules = {
     pools = require("@self/pools"),
     reactions = require("@self/reactions"),
     roles = require("@self/roles"),
-    sp_chips = require("@self/sp_chips"),
     status = require("@self/status_rules"),
 }
 

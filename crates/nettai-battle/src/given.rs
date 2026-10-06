@@ -59,16 +59,16 @@ impl Given {
             let what = |field: &str| format!("navi {}'s {field} for side {side}", def.key);
             let mut given = NaviGiven::default();
             if let Some(f) = def.given.chip_bonus {
-                given.chip_bonus = number(ask(b, f, side), &what("chip_bonus.damage")).unwrap_or(0);
+                given.chip_bonus = number(ask(b, f, side, None), &what("chip_bonus.damage")).unwrap_or(0);
             }
             if let Some(f) = def.given.charges {
-                given.charges = match ask(b, f, side) {
+                given.charges = match ask(b, f, side, None) {
                     Value::Bool(on) => on,
                     other => panic!("{} is {other:?}, not a flag", what("charged_chips.when")),
                 };
             }
             if let Some(f) = def.given.fire_charge {
-                given.fire_charge = number(ask(b, f, side), &what("fire_charge"));
+                given.fire_charge = number(ask(b, f, side, None), &what("fire_charge"));
             }
             given
         });
@@ -85,7 +85,7 @@ impl Given {
             .map(|(chip, f)| {
                 let mut on = |side: u8| {
                     let what = format!("chip {}'s damage for side {side}", content.defs.chip(chip).key);
-                    number(ask(b, f, side), &what).unwrap_or_else(|| panic!("{what} is nil, not a damage"))
+                    number(ask(b, f, side, Some(chip)), &what).unwrap_or_else(|| panic!("{what} is nil, not a damage"))
                 };
                 (chip, [on(0), on(1)])
             })
@@ -99,8 +99,8 @@ impl Given {
     }
 }
 
-fn ask(b: &mut Battle, f: FnId, side: u8) -> Value {
-    crate::behavior::call_hook(b, f, HookCall::Given { side })
+fn ask(b: &mut Battle, f: FnId, side: u8, chip: Option<ChipHandle>) -> Value {
+    crate::behavior::call_hook(b, f, HookCall::Given { side, chip })
 }
 
 /// A function's number, up to 0xFFFF; none for nil.
