@@ -2228,7 +2228,6 @@ name = "nettai-audio"
 version = "0.1.0"
 dependencies = [
  "cpal",
- "exe6-compat",
  "m4a",
  "nettai-battle",
  "nettai-content",
@@ -2362,7 +2361,6 @@ dependencies = [
 name = "nettai-netplay"
 version = "0.1.0"
 dependencies = [
- "exe6-compat",
  "getgud",
  "nettai-battle",
  "nettai-content",
