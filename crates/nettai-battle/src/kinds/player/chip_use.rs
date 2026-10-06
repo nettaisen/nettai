@@ -515,8 +515,9 @@ fn form_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, charge: u8) ->
     }
 }
 
-/// `sub_800F09E`: a link navi's bonus on its family's damaging chips, by
-/// its level (`sub_800F49E`; 0xFF: none).
+/// `sub_800F09E`: a link navi's bonus on its family's damaging chips, as
+/// much as the content gave its side for the round (`crate::given`: EXE6's
+/// by the navi's level, `sub_800F49E`).
 fn link_navi_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> u16 {
     let Some(chip) = chip else { return 0 };
     let s = stats(b, r);
@@ -525,12 +526,10 @@ fn link_navi_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> u16 {
     let fits = cd.flags.has(ChipFlags::HAS_DAMAGE)
         && cd.family == bonus.family
         && (bonus.dimming_chips || !cd.flags.has(ChipFlags::DIMMING));
-    let level = b.navi_levels[b.objects.get(r).alliance as usize];
-    if !fits || level == 0xFF {
+    if !fits {
         return 0;
     }
-    *bonus.by_level.get(level as usize).unwrap_or_else(|| panic!("link navi level {level} reads past the bonus table (sub_800F09E)"))
-        as u16
+    b.given.navis[b.objects.get(r).alliance as usize & 1].chip_bonus
 }
 
 /// `sub_800F1DC`: StreamHd and the AuraHed chips hit harder while the

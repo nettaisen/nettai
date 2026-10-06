@@ -8,6 +8,7 @@
 -- Its damage is by his level (the chips' damage formula 66: the damage rows' row 17).
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
+local navi_level = require("../../lib/navi_level")
 local controller = require("./controller")
 
 export type State = {
@@ -60,7 +61,7 @@ numtrap = define.chip {
     class = "special",
     rarity = 0,
     mb = 99,
-    damage = { formula = "level", by_level = { 120, 120, 120, 120, 120, 140, 140 } },
+    damage = navi_level.row({ 120, 120, 120, 120, 120, 140, 140 }),
     hit_param = 148,
     lockout = 0,
     flags = { "dimming", "has_damage", "library", "variable_damage" },

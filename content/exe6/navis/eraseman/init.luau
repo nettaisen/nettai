@@ -1,6 +1,7 @@
 --!strict
 -- eraseman: a link navi.
 
+local by_level = require("../rules/by_level")
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
 local eraseman = require("@self/chip")
@@ -27,7 +28,7 @@ return define.navi {
     chip_bonus = {
         family = "cursor",
         dimming_chips = true,
-        by_level = { 0, 0, 0, 0, 10, 10, 10, 10, 10, 20, 20, 20, 20, 20, 30 },
+        damage = by_level.row({ 0, 0, 0, 0, 10, 10, 10, 10, 10, 20, 20, 20, 20, 20, 30 }),
     },
     -- What a navi switch brings the navi with (`byte_80210DD`): its weapons,
     -- and the rest of its fresh stats; and its HP after the change, by side

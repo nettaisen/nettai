@@ -15,6 +15,7 @@
 -- for the tick it appears and goes on the next.
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
+local navi_level = require("../../lib/navi_level")
 local collision = require("../../rules/collision")
 local magnet = require("../../chips/magnetmn/magnet")
 local marker = require("../../lib/navi_chips/marker")
@@ -179,7 +180,7 @@ return define.chip {
     class = "special",
     rarity = 0,
     mb = 99,
-    damage = { formula = "level", by_level = { 80, 80, 80, 100, 100, 120, 120 } },
+    damage = navi_level.row({ 80, 80, 80, 100, 100, 120, 120 }),
     hit_param = 158,
     lockout = 0,
     flags = { "has_damage", "library", "variable_damage" },

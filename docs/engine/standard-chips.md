@@ -337,8 +337,11 @@ The kinds that last "while he is in action 0xA" (the glow, the riding hit, the a
 the action their owner was running when they came and compare it with his running action, instead of the number.
 The link navi's chip bonus (`sub_800F09E`) and ChargeMan's charge limit read the side's link navi level
 (`dword_203CFA0`, from each console's init block: 0xFF without one), which the recorder writes into a trace's setup
-as `navi_levels`; the chip lab's link navis are at level 14. The level also gives the navi its stats (HP, the
-buster's levels, abilities), not in the battle but in the save, as the PET's reload does: link-navis.md.
+as `navi_levels`; the chip lab's link navis are at level 14. In nettai the level is EXE6's save system's fact, and
+what it gives a link navi in battle is EXE6's rules' (rules/by_level.luau: the navi's `chip_bonus.damage`,
+`charged_chips.when` and `fire_charge`, functions of its side, which the round's setup asks once, `Battle::given`).
+The level also gives the navi its stats (HP, the buster's levels, abilities), not in the battle but in the save, as
+the PET's reload does: link-navis.md.
 
 Lab: the ten generated scenarios, navis/navi-01-heatpres to navi-10-dustbrk, match on every frame (the chip, the
 buster, the charged attack twice and B+Back: "Action 9" below). 105 hand-written scenarios under navis/navi-NN-chip/ match on every

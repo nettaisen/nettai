@@ -1,6 +1,7 @@
 --!strict
 -- chargeman: a link navi.
 
+local by_level = require("../rules/by_level")
 local buster = require("./megaman/weapons/buster")
 local a_charge = require("./megaman/weapons/charged_chip_bonus_29")
 local charge = require("@self/charge")
@@ -56,8 +57,8 @@ return define.navi {
     },
     -- The chips A charges (its family's damaging chips, from a navi level on), and the most damage the charge adds to a
     -- Fire chip, by the navi's level.
-    charged_chips = { family = "fire", from_level = 3, damaging = true },
-    fire_charge = { 0, 0, 0, 30, 30, 30, 30, 30, 30, 50, 50, 50, 50, 50, 100 },
+    charged_chips = { family = "fire", damaging = true, when = by_level.from(3) },
+    fire_charge = by_level.row({ 0, 0, 0, 30, 30, 30, 30, 30, 30, 50, 50, 50, 50, 50, 100 }),
     identity = define.identity {
         class = "link_navi",
         version = 0,

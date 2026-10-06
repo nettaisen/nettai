@@ -166,6 +166,14 @@ pub enum HookCall {
     /// field-object registry class (none: it wasn't registered). Its result
     /// is unused.
     RoleEncased { obstacle: ObjectRef, ice: bool, class: Option<u8> },
+    /// A definition's function of a side, which the round's setup asks
+    /// once for each side after its systems' `round_setup` (a chip's
+    /// `damage` that goes by the side, a navi's `chip_bonus.damage`,
+    /// `charged_chips.when` and `fire_charge`: what the side's level gives,
+    /// as its game's rules read it): called with the side; its result is a
+    /// number, a flag or nil, which the battle keeps for the round
+    /// (`Battle::given`).
+    Given { side: u8 },
     /// A hook of a system of side `side`'s ruleset (docs/design/
     /// rules-in-luau.md §4.1), the system in place `slot` of the ruleset's
     /// list: while it runs, `system.state()` is that system's state of that
