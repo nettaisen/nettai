@@ -11,7 +11,6 @@ return define.chip {
     element = "null", family = "null", class = "standard",
     rarity = 4, mb = 62, damage = 0, hit_param = 0, lockout = 0,
     flags = { "dimming", "standard_library", "library" },
-    library = { number = 171, index = 171, sort = 413 },
     slot_in_limit = 1,
     dimming = panel_chips.hook(panel_changer.change {
         panel = "holy",

@@ -21,7 +21,6 @@ local count = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 275, index = 40, sort = 173 },
     slot_in_limit = 1,
     navi = navi.summon { lance_damage = 0x32 },
 }
@@ -38,7 +37,6 @@ local count_ex = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 276, index = 41, sort = 174 },
     slot_in_limit = 1,
     navi = navi.summon { lance_damage = 0x46 },
 }
@@ -55,7 +53,6 @@ local count_sp = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 277, index = 42, sort = 175 },
     slot_in_limit = 1,
     navi = navi.summon { lance_damage = 0x64 },
 }

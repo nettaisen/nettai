@@ -15,7 +15,6 @@ return define.chip {
     damage = 10,
     hit_param = 0,
     lockout = 0,
-    library = { number = 319, index = 1, sort = 0 },
     slot_in_limit = 1,
     -- It goes with any selection on the custom screen, and leaves the
     -- selection's rules alone (`sub_8028E4C`).

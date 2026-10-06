@@ -16,7 +16,6 @@ return define.chip {
     hit_param = 10,
     lockout = 10,
     flags = { "standard_library", "library" },
-    library = { number = 69, index = 69, sort = 328 },
     slot_in_limit = 3,
     action = throw.action {
         id = "poisseed/action",

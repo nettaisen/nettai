@@ -18,7 +18,6 @@ return define.chip {
     hit_param = 0,
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
-    library = { number = 188, index = 188, sort = 10 },
     slot_in_limit = 1,
     trap = "anti_navi",
     dimming = traps.hook(),

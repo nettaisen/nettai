@@ -17,7 +17,6 @@ local wavearm1 = define.chip {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    library = { number = 94, index = 94, sort = 503 },
     slot_in_limit = 3,
     action = strike.action { id = "wavearm1/action", wave = wave.variants.wavearm1 },
 }
@@ -34,7 +33,6 @@ local wavearm2 = define.chip {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    library = { number = 95, index = 95, sort = 504 },
     slot_in_limit = 3,
     action = strike.action { id = "wavearm2/action", wave = wave.variants.wavearm2 },
 }
@@ -51,7 +49,6 @@ local wavearm3 = define.chip {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    library = { number = 96, index = 96, sort = 505 },
     slot_in_limit = 3,
     action = strike.action { id = "wavearm3/action", wave = wave.variants.wavearm3 },
 }

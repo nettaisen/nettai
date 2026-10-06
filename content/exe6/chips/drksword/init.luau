@@ -22,7 +22,6 @@ return define.chip {
     flags = { "has_damage" },
     extra_flags = { 16, 32 },
     beast = { lockon = lockon.drksword },
-    library = { number = 0, index = 66, sort = 0 },
     slot_in_limit = 1,
     dark_substitute = sword,
     hp_bug = 2,

@@ -137,7 +137,6 @@ chips.trnarrw1 = define.chip {
     element = "aqua", family = "aqua", class = "standard",
     rarity = 0, mb = 30, damage = 30, hit_param = 30, lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    library = { number = 23, index = 23, sort = 444 },
     slot_in_limit = 3,
     -- The Beast rush, and its lock-on mode (rules/lockon).
     beast = { lockon = lockon.trnarrw1 },
@@ -149,7 +148,6 @@ chips.trnarrw2 = define.chip {
     element = "aqua", family = "aqua", class = "standard",
     rarity = 1, mb = 36, damage = 40, hit_param = 30, lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    library = { number = 24, index = 24, sort = 445 },
     slot_in_limit = 3,
     -- The Beast rush, and its lock-on mode (rules/lockon).
     beast = { lockon = lockon.trnarrw1 },
@@ -161,7 +159,6 @@ chips.trnarrw3 = define.chip {
     element = "aqua", family = "aqua", class = "standard",
     rarity = 2, mb = 42, damage = 50, hit_param = 30, lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    library = { number = 25, index = 25, sort = 446 },
     slot_in_limit = 3,
     -- The Beast rush, and its lock-on mode (rules/lockon).
     beast = { lockon = lockon.trnarrw1 },

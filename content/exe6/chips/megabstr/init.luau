@@ -16,7 +16,6 @@ return define.chip {
     hit_param = 0,
     lockout = 0,
     flags = { "has_damage" },
-    library = { number = 0, index = 0, sort = 0 },
     slot_in_limit = 1,
     instant = plus.attack,
 }

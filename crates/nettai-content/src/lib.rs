@@ -20,6 +20,9 @@
 //!   definition key; the own language's is the content's strings, which the
 //!   battle counts the chatbox's timing from, the others a frontend's alone
 //!   ([`locale`]).
+//! - The library order: a game's `library.toml`, the order its library
+//!   screens list its chips in by category, and its NaviCust programs' and
+//!   patch cards' orders, which menus list things in ([`library`]).
 //!
 //! [`pack`] ties them together and loads each part straight from its
 //! files; [`timing`] reads the simulation's animation timing alone. Every import reports what
@@ -33,6 +36,7 @@ pub mod aseprite;
 pub mod custom;
 pub mod hud;
 pub mod image;
+pub mod library;
 pub mod lint;
 pub mod locale;
 pub mod midi;

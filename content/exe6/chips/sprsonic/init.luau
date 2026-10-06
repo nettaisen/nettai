@@ -18,7 +18,6 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     beast = { rush = false, lockon = lockon.sprsonic },
-    library = { number = 375, index = 0, sort = 0 },
     slot_in_limit = 1,
     action = sonic.actions.sprsonic,
 }

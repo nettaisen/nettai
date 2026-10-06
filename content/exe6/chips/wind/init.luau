@@ -20,7 +20,6 @@ local wind = define.chip {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     extra_flags = { "free_slot_in" },
-    library = { number = 134, index = 134, sort = 510 },
     slot_in_limit = 3,
     dimming = controller.hook(fan.variant {
         palette = 0,
@@ -51,7 +50,6 @@ local fan_chip = define.chip {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     extra_flags = { "free_slot_in" },
-    library = { number = 135, index = 135, sort = 201 },
     slot_in_limit = 3,
     dimming = controller.hook(fan.variant {
         palette = 1,

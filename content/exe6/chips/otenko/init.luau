@@ -20,7 +20,6 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "library" },
     extra_flags = { 1 },
-    library = { number = 202, index = 2, sort = 51 },
     slot_in_limit = 1,
     dimming = statue.hook,
 }

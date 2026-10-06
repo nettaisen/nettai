@@ -23,7 +23,6 @@ local django = define.chip {
     hit_param = 0,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 278, index = 43, sort = 110 },
     slot_in_limit = 1,
     navi = navi.summon { slash_damage = 0x32 },
 }
@@ -40,7 +39,6 @@ local django2 = define.chip {
     hit_param = 0,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 279, index = 44, sort = 111 },
     slot_in_limit = 1,
     navi = navi.summon { slash_damage = 0x50 },
 }
@@ -57,7 +55,6 @@ local django3 = define.chip {
     hit_param = 0,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 280, index = 45, sort = 112 },
     slot_in_limit = 1,
     navi = navi.summon { slash_damage = 0x78 },
 }
