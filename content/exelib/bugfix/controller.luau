@@ -21,7 +21,7 @@ export type Look = {
     -- The kind's id.
     id: string,
     -- The game's glow's spawn (@exelib/bugfix/glow).
-    glow: (spawner: Object, variant: number, holder: Object) -> Object?,
+    glow: (spawner: Object, variant: "bug_fix" | "log_in", holder: Object) -> Object?,
     -- EXE6's: the Beast Out counter is spent again.
     beast_out: boolean,
 }
@@ -34,15 +34,14 @@ export type Controller = {
 
 -- What the effect's first tick sets the timer to (nothing counts it).
 local TIMER = 0x3C
--- The glow's variant (`off_80C4930`'s first).
-local BUG_FIX = 0
 
 function controller.make(look: Look): Controller
     -- `sub_80E4954`.
     local function effect(me: Object)
         if me.phase_init == 0 then
             -- sub_80C4AEC
-            look.glow(me, BUG_FIX, me)
+            -- (The glow's variant, `off_80C4930`'s first.)
+            look.glow(me, "bug_fix", me)
             -- sub_80E49C4
             local user = me.related1
             if not user then

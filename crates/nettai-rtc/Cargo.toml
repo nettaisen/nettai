@@ -1,0 +1,55 @@
+[package]
+name = "nettai-rtc"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "WebRTC data channels for netplay: one API, native (the rtc crate) and web (the browser's RTCPeerConnection)"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+web-time = "1"
+
+# Native: WebRTC sans I/O (the sockets and timers this crate's), the
+# signaling server's WebSocket (on a thread of its own), and the machine's
+# addresses (its host candidates).
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rtc = "0.21"
+tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
+if-addrs = "0.14"
+bytes = "1"
+
+# The web: the browser's RTCPeerConnection and WebSocket.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.126"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "CloseEvent",
+    "MessageEvent",
+    "RtcConfiguration",
+    "RtcDataChannel",
+    "RtcDataChannelInit",
+    "RtcDataChannelType",
+    "RtcIceCandidate",
+    "RtcIceCandidateInit",
+    "RtcIceServer",
+    "RtcPeerConnection",
+    "RtcPeerConnectionIceEvent",
+    "RtcPeerConnectionState",
+    "RtcSdpType",
+    "RtcSessionDescriptionInit",
+    "WebSocket",
+] }
+
+[features]
+# `testing`: a signaling server in process, for tests (native).
+testing = []
+
+[dev-dependencies]
+nettai-rtc = { path = ".", features = ["testing"] }
+
+# The web backend's tests run in a browser (wasm-bindgen-test-runner).
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+web-sys = { version = "0.3", features = ["Window"] }

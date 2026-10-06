@@ -19,6 +19,9 @@ nettai-assets = { path = "../nettai-assets" }
 # The audio device (`AudioOut`: the `playback` feature, cpal).
 nettai-audio = { path = "../nettai-audio" }
 nettai-netplay = { path = "../nettai-netplay" }
+# Netplay's transport: WebRTC data channels, in a signaling server's room or
+# directly (src/net.rs).
+nettai-rtc = { path = "../nettai-rtc" }
 nettai-content = { path = "../nettai-content" }
 nettai-match = { path = "../nettai-match" }
 nettai-content-api = { path = "../nettai-content-api" }
@@ -41,3 +44,5 @@ serde_json = "1"
 png = "0.17"
 nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
 nettai-match = { path = "../nettai-match", features = ["testing"] }
+# A signaling server in process (the handshake in a room).
+nettai-rtc = { path = "../nettai-rtc", features = ["testing"] }

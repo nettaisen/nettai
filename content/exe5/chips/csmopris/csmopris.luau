@@ -1,15 +1,14 @@
 --!strict
 -- EXE5's CsmoPris (the navi chips' action with the summon table's entry 22, 0x080BFA4A): EXE5's own CosmoMan (actor
 -- object #0x26, 0x080BF814), brought by the navi chip controller. He appears (and goes at once off a solid panel's
--- want), poses, rises over the middle row, and sends nine comets (attack object #0x74, 0x080D482C: its variant 4)
+-- want), poses, rises over the middle row, and sends nine comets (attack object #0x74, 0x080D482C: its variant 4, row 1)
 -- from 20 pixels ahead of him along the rows in turn, 20 ticks apart; 60 ticks later he comes back down and goes,
 -- and the controller moves on. A comet flies ahead 4 pixels a tick, 16 pixels up; at each panel's center, with no
 -- enemy navi straight ahead but one a row up or down, it turns toward it; it hits navis (hit modifier 3, the heavy
 -- spark) and goes off the field.
 --
--- (The comet's variants 0 to 3 are CosmoMan the virus's: they wait out the dimming and fly straight. In the operation
--- battle (the operation battle), never in a netbattle, a comet's speed is its own row's, 0x080D4948. Neither is met in a netbattle; both
--- are ported as the code has them.)
+-- (The comet's variants 0 to 3, which wait out the dimming and fly straight, are CosmoMan the virus's, which no
+-- netbattle sends. In the operation battle, never in a netbattle, a comet's speed is its row's in 0x080D4948.)
 
 local collision = require("../../rules/collision")
 local navi_chips = require("@exelib/navi_chips/navi")
@@ -23,31 +22,21 @@ local SPRITE = asset.sprite("cosmoman")
 
 -- ---- The comet ------------------------------------------------------------------------------------------------------
 
--- Its speed by its variant (Param1) and row (Param2): 0x080D491C's rows of five, or 0x080D4948 in the operation battle
--- mode; its turn's speed by its row (0x080D4B54); its HP by its variant (0x080D4820).
-local SPEEDS: { [number]: { [number]: number } } = {
-    [0] = { [0] = 0x4_1999, 0x4_6666, 0x4_B333, 0x5_0000, 0x4_0000 },
-    [1] = { [0] = 0x3_6666, 0x3_B333, 0x4_0000, 0x4_4CCC, 0x4_0000 },
-}
-local SPECIAL_SPEEDS: { [number]: number } = { [0] = 0x3_1999, 0x2_6666 }
-local TURN_SPEEDS: { [number]: number } = { [0] = 0x2_6666, 0x2_6666 }
+-- Its speed (by its variant and row, Param1 and Param2: the navi chip's 4 and 1), 16.16 a tick: 0x080D491C's, or
+-- 0x080D4948's in the operation battle; its turn's speed (0x080D4B54 by its row); its HP (0x080D4820).
+local SPEED, OPERATION_BATTLE_SPEED, TURN_SPEED = 0x4_0000, 0x2_6666, 0x2_6666
 local HP = 10
 local HIT_MOD = 3
 -- The enemy navis a comet turns toward (0x080D4B48).
 local TARGETS = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
-local SOUNDS = { [0] = asset.sound("comet"), [1] = asset.sound("cosmo-comet") }
-
-export type CometState = {
-    -- Its variant (Param1: 0 to 3 the virus's, 4 the navi chip's) and row (Param2).
-    variant: number,
-    row: number,
-}
+-- Its sound and its flying animation (by its row: row 1's).
+local SOUND, FLYING_ANIM = asset.sound("cosmo-comet"), 18
 
 -- Action 0 (0x080D49C0): its sound; 5 ticks; then its flying animation and its hit, and on.
-local function start(me: Object, s: CometState)
+local function start(me: Object)
     if me.phase == 0 then
         me.phase = 4
-        battle.play_sound(SOUNDS[if s.row ~= 0 then 1 else 0])
+        battle.play_sound(SOUND)
         me.timer = 5
         return
     end
@@ -56,9 +45,9 @@ local function start(me: Object, s: CometState)
     if t >= 0 then
         return
     end
-    me.anim = if s.row ~= 0 then 18 else 17
+    me.anim = FLYING_ANIM
     me.collision:set_region(regions.single)
-    me:set_action(if s.variant < 4 then 4 else 8)
+    me:set_action(8)
 end
 
 -- Off the field: its hit off, gone.
@@ -79,20 +68,10 @@ local function moved(me: Object, x: number)
     end
 end
 
--- Action 4 (0x080D4A16, the virus's): straight ahead. (In the operation battle it also marks the panel ahead,
--- 0x080E9FA4's effect object #0x83, not ported.)
-local function straight(me: Object)
-    local x = me.panel_x
-    local p = me.pos
-    me.pos = Vec3.new(int.i32(p.x + me.vel.x), p.y, p.z)
-    moved(me, x)
-    off_field(me)
-end
-
 -- 0x080D4AF6: at a panel's center, with no enemy navi straight ahead, toward one a row up, or (rather) down.
-local function turn(me: Object, s: CometState)
+local function turn(me: Object)
     local mask = TARGETS[me.alliance]
-    local speed = TURN_SPEEDS[s.row] or error(string.format("the comet's row %d reads past 0x080D4B54", s.row))
+    local speed = TURN_SPEED
     local x = me.panel_x + me.facing
     if bit32.btest(field.flags(x, me.panel_y), mask) then
         return
@@ -106,22 +85,22 @@ local function turn(me: Object, s: CometState)
 end
 
 -- Action 8 (0x080D4A60, the navi chip's): ahead (and up or down once turned); crossing a panel's center before it has
--- turned, it may turn.
-local function homing(me: Object, s: CometState)
+-- turned, it may turn. (Action 4, flying straight, is the virus's.)
+local function homing(me: Object)
     local center = field.center(me.panel_x, me.panel_y)
     local x = me.panel_x
     local p, v = me.pos, me.vel
     local old_x = p.x
     me.pos = Vec3.new(int.i32(p.x + v.x), int.i32(p.y + v.y), p.z)
     if v.y == 0 and center ~= old_x and navi_chips.between(me.pos.x, old_x, center) then
-        turn(me, s)
+        turn(me)
     end
     moved(me, x)
     off_field(me)
 end
 
 -- 0x080D4950: the hits against it resolve and spark; at the battle's end its hit off and gone; a body's hit takes its
--- hit off; the virus's wait out the dimming (and so does any once a body has hit it).
+-- hit off, and then it waits out the dimming.
 local function comet_tick(me: Object)
     local c = me.collision
     c:remove()
@@ -132,8 +111,7 @@ local function comet_tick(me: Object)
         me.lifecycle = "destroy"
         return
     end
-    local s = me.state :: CometState
-    local wait = s.variant < 4
+    local wait = false
     if bit32.btest(c.hit_flags, 0x0F80_0000) then
         c:set_region(nil)
         wait = true
@@ -141,11 +119,9 @@ local function comet_tick(me: Object)
     if not (wait and battle.dimmed()) then
         local a = me.action
         if a == 0 then
-            start(me, s)
-        elseif a == 4 then
-            straight(me)
+            start(me)
         elseif a == 8 then
-            homing(me, s)
+            homing(me)
         else
             error(string.format("CsmoPris's comet: action %#x reads past 0x080D49B0", a))
         end
@@ -163,17 +139,7 @@ local function comet_init(me: Object)
     me.visible = true
     me.anim, me.anim_loaded = 16, 16
     sprite:set_animation(16)
-    local s = me.state :: CometState
-    local speed
-    if operation_battle() then
-        speed = SPECIAL_SPEEDS[s.row]
-    else
-        local row = SPEEDS[s.row]
-        speed = row and row[s.variant]
-    end
-    if not speed then
-        error(string.format("the comet's variant %d, row %d read past its speed table", s.variant, s.row))
-    end
+    local speed = if operation_battle() then OPERATION_BATTLE_SPEED else SPEED
     me.vel = Vec3.new(int.mul32(me.facing, speed), 0, me.vel.z)
     sprite.palette = 0
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
@@ -193,8 +159,7 @@ end
 csmopris.comet = new.kind {
     id = "csmopris/comet",
     pool = "attack",
-    state = { variant = "u8", row = "u8" },
-    -- 0x080D482C: by its lifecycle; its sprite steps (while dimmed too for the navi chip's).
+    -- 0x080D482C: by its lifecycle; its sprite steps, while dimmed too (the navi chip's variant).
     update = function(me: Object)
         local l = me.lifecycle
         if l == "init" then
@@ -208,17 +173,13 @@ csmopris.comet = new.kind {
             me:destroy()
             return
         end
-        if (me.state :: CometState).variant == 4 then
-            me:update_sprite_while_dimmed()
-        else
-            me:update_sprite()
-        end
+        me:update_sprite_while_dimmed()
     end,
 }
 
--- 0x080D4AC4: a comet at `pos` (16 pixels up) of `variant` and `row`, from `owner`, with the element and damage word,
--- of its side and facing, running while dimmed.
-local function spawn_comet(owner: Object, x: number, y: number, element: number, variant: number, row: number, damage: number): Object?
+-- 0x080D4AC4: a comet at `pos` (16 pixels up), from `owner`, with the element and damage word, of its side and
+-- facing, running while dimmed.
+local function spawn_comet(owner: Object, x: number, y: number, element: number, damage: number): Object?
     local o = battle.spawn(csmopris.comet, Vec3.new(x, y, 0x10_0000))
     if not o then
         return nil
@@ -228,8 +189,6 @@ local function spawn_comet(owner: Object, x: number, y: number, element: number,
     o:set_damage_word(damage)
     o.alliance, o.flip = owner.alliance, owner.flip
     o.run_while_dimmed = true
-    local s = o.state :: CometState
-    s.variant, s.row = variant, row
     return o
 end
 
@@ -330,7 +289,7 @@ local function comets(me: Object)
     local s = me.state :: State
     local _, y = field.center(me.panel_x, s.sent % 3 + 1)
     local x = int.i32(me.pos.x + int.shl(AHEAD * me.facing, 16))
-    spawn_comet(me, x, y, me.element, 4, 1, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)))
+    spawn_comet(me, x, y, me.element, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)))
     s.sent += 1
     if s.sent < COMETS then
         me.timer = EVERY

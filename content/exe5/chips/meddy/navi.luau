@@ -145,8 +145,8 @@ local function throw(me: Object)
     local x, y, line = pick(me)
     if x ~= 0 then
         capsule.throw(me, me.element, {
-            variant = 0,
-            line = line,
+            variant = capsule.plain,
+            line = if line == 1 then capsule.row else capsule.column,
             target_x = x,
             target_y = y,
             damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16)),
