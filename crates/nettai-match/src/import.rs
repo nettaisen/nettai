@@ -81,7 +81,7 @@ impl Side {
         let link_navi = !content.navi(self.navi).changes_form();
         match level {
             None if link_navi => notes.push("the save received no navi code: the side's link navi keeps its level".into()),
-            _ => self.navi_level = level,
+            _ => self.set_level(content, level)?,
         }
         if save.navi() != 0 && !link_navi {
             notes.push("the save operates a link navi: its level is MegaMan's here".into());
@@ -122,7 +122,7 @@ mod tests {
         assert_eq!(m.sides[0].facts.form_list(&content).len(), 5);
         let notes = m.import_save(&content, 0, &save).unwrap();
         let s = &m.sides[0];
-        assert_eq!((s.version(&content), s.navi_level), (Some("falzar"), Some(5)));
+        assert_eq!((s.version(&content), s.level(&content)), (Some("falzar"), Some(5)));
         assert_eq!(s.facts.get(&content, "beast_out"), Some(Stated::Flag(false)));
         // (Falzar's second and fourth, by Cross number: the list holds them
         // from its front.)
@@ -136,7 +136,7 @@ mod tests {
         let all = file(GameVersion::Gregar, true, [true; 5], 0, None, &SpTimes::default());
         m.import_save(&content, 0, &all).unwrap();
         let s = &m.sides[0];
-        assert_eq!((s.version(&content), s.navi_level), (Some("gregar"), None));
+        assert_eq!((s.version(&content), s.level(&content)), (Some("gregar"), None));
         assert_eq!(s.facts.form_list(&content), content.navi(s.navi).forms.as_ref().unwrap().listed("gregar"));
         assert!(s.facts.is_default(&content, "beast_out"));
         let none = file(GameVersion::Gregar, true, [false; 5], 0, None, &SpTimes::default());
@@ -156,10 +156,10 @@ mod tests {
         let s = &mut m.sides[1];
         s.navi = protoman;
         s.set_fact(&content, "crosses", &[]).unwrap();
-        s.navi_level = Some(7);
+        s.set_level(&content, Some(7)).unwrap();
         let notes = m.import_save(&content, 1, &file(GameVersion::Gregar, true, [true; 5], 0, None, &SpTimes::default())).unwrap();
         let s = &m.sides[1];
-        assert_eq!((s.navi_level, s.version(&content)), (Some(7), Some("gregar")));
+        assert_eq!((s.level(&content), s.version(&content)), (Some(7), Some("gregar")));
         // (His round's stats: his level's, of the save's game.)
         let b = crate::check::start(&content, &m).unwrap();
         assert_eq!((b.stats[1].version, b.stats[1].max_hp), (0, 1230));

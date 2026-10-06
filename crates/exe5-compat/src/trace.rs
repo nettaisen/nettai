@@ -637,24 +637,24 @@ impl Round {
             // (The console's counter before the round's first tick: one
             // less than on the setup's frame.)
             let frames = (self.setup.frame_counter as u32).wrapping_sub(1) & 0xFFFF;
-            Ok(PlayerSetup {
+            // The side's level (EXE5's save system's `level`): a team navi's
+            // attacks go by it. (Nothing reads MegaMan's side's: an older
+            // recording, which has none, replays.)
+            let level = match self.setup.navi_levels.map(|l| l[side as usize]) {
+                None if d.navi_stats[side as usize].navi == 0 => None,
+                None => {
+                    return Err(format!(
+                        "side {side} operates a team navi (navi {}), but the recording's setup has no navi_levels: \
+                         its attacks' damage goes by its side's level; record it again with a chip lab that writes them",
+                        d.navi_stats[side as usize].navi
+                    ));
+                }
+                Some(l) if l <= u8::MAX as u32 => Some(l as u8),
+                Some(l) => return Err(format!("side {side}'s navi level {l}")),
+            };
+            let mut player = PlayerSetup {
                 folder,
                 joypad_phase: self.setup.joypad_phases[side as usize],
-                navi_level: match self.setup.navi_levels.map(|l| l[side as usize]) {
-                    // (Nothing reads MegaMan's side's level: an older
-                    // recording, which has none, replays. A team navi's
-                    // attacks go by its side's.)
-                    None if d.navi_stats[side as usize].navi == 0 => None,
-                    None => {
-                        return Err(format!(
-                            "side {side} operates a team navi (navi {}), but the recording's setup has no navi_levels: \
-                             its attacks' damage goes by its side's level; record it again with a chip lab that writes them",
-                            d.navi_stats[side as usize].navi
-                        ));
-                    }
-                    Some(l) if l <= nettai_battle::custom::MAX_NAVI_LEVEL as u32 => Some(l as u8),
-                    Some(l) => return Err(format!("side {side}'s navi level {l}")),
-                },
                 sp_times: Default::default(),
                 // (The save's emotion window glitch, which a recording
                 // has, is no setup's: EXE5's rules make it. A compiled
@@ -675,7 +675,10 @@ impl Round {
                     Some(lists) => auto_battle_data(content, compat, &unhex(&lists[side as usize])?)?,
                     None => Default::default(),
                 },
-            })
+            };
+            let level = level.map_or(nettai_content_api::Value::Nil, |l| nettai_content_api::Value::Int(l as i64));
+            player.set_fact(content, "level", &[nettai_battle::rules::Fact::Value(level)])?;
+            Ok(player)
         });
         let [mut p0, mut p1] = players;
         // Each side's light and dark MegaMan: his save's value (NaviStats

@@ -1,7 +1,10 @@
 --!strict
 -- What an EXE5 player's save brings to the navi's stats, which nothing else gives (docs/frontend.md §6): MegaMan's
--- base HP (HP Memories raise it, +0x3E) and the Regular memory (RegUps, +0x09). (EXE5's block has no sun: its sun is
--- none of the save's.) The rest of a round's stats are derived as the round is set up, from the navi's fresh stats
+-- base HP (HP Memories raise it, +0x3E), the Regular memory (RegUps, +0x09), and a team navi's level (`level`: the
+-- count of the save's story flags 0x300 to 0x305, 0 to the navi's story's last, which the init exchange sends; none
+-- for MegaMan, who takes none). The engine reads the level by its role (the team navis' attacks' damage rows). (EXE5's
+-- block has no sun: its sun is none of the save's.) The rest of a round's stats are derived as the round is set up,
+-- from the navi's fresh stats
 -- (`fresh_stats`, its definition): this system first, then the NaviCust's compile (../navicust) and the patch cards
 -- (../patch_cards).
 --
@@ -58,9 +61,9 @@ end
 
 return define.system {
     id = "save",
-    setup = { hp = "u16", reg_up = "u8" },
+    setup = { hp = "u16", reg_up = "u8", level = "u8?" },
     -- A save that says nothing: a new game's base HP, 100 (MegaMan's fresh HP), and Regular memory (the rules' fresh
-    -- stats').
+    -- stats'); no level (MegaMan's).
     setup_defaults = { hp = 100, reg_up = fresh_stats.reg_up },
     hooks = { round_setup = round_setup },
 }

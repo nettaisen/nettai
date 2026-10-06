@@ -1,6 +1,10 @@
 --!strict
 -- What an EXE6 player's save brings to the navi's stats, which nothing else gives (docs/frontend.md §6): the base HP
--- (HP Memories raise it, +0x3E), the Regular memory (RegUps, +0x09) and fighting in the sun (+0x22). The rest of a
+-- (HP Memories raise it, +0x3E), the Regular memory (RegUps, +0x09), fighting in the sun (+0x22), and the level of
+-- the navi code it received (`level`: 0 to 14, none without one: event flag 0x163, which the init exchange shares,
+-- `sub_800B144`, `dword_203CFA0`). A link navi exists only through its code, so it has a level; MegaMan has one when
+-- he was received from a code. The engine reads the level by its role (a link navi's chip bonus, the chips whose
+-- damage goes by it), and EXE6's rules through `battle.navi_level` (the custom screen's seal). The rest of a
 -- round's stats are derived as the round is set up, from the navi's fresh stats (`fresh_stats`, its definition):
 -- this system first, then the NaviCust's compile (../navicust) and the patch cards (../patch_cards).
 --
@@ -43,9 +47,9 @@ end
 
 return define.system {
     id = "save",
-    setup = { hp = "u16", reg_up = "u8", sun = "bool" },
+    setup = { hp = "u16", reg_up = "u8", sun = "bool", level = "u8?" },
     -- A save that says nothing: a new game's base HP, 100 (MegaMan's fresh HP), and Regular memory (the rules' fresh
-    -- stats'); no sun.
+    -- stats'); no sun; no navi code received (no level).
     setup_defaults = { hp = 100, reg_up = fresh_stats.reg_up, sun = false },
     hooks = { round_setup = round_setup },
 }

@@ -133,7 +133,9 @@ impl Side {
         }
         let name = crate::names::navi(content, self.navi);
         let level = save.navi_level();
-        self.navi_level = Some(level);
+        if let Err(e) = self.set_level(content, Some(level)) {
+            return vec![format!("{}: the save's level {level} is left out: {e}", crate::names::navi(content, self.navi))];
+        }
         let compat = exe5_compat::Compat::exe5();
         let key = crate::ids::local(&content.defs.navi(self.navi).key);
         let block = compat.navi_number(key).and_then(|n| save.team_navi_stats(n));
@@ -227,10 +229,11 @@ mod tests {
         let protoman = crate::ids::navi(&content, "exe5", "protoman").unwrap();
         let mut m = crate::Match::empty(&content, "exe5").unwrap();
         let s = &mut m.sides[0];
-        (s.navi, s.navi_level, s.navicust) = (protoman, Some(0), None);
+        (s.navi, s.navicust) = (protoman, None);
+        s.set_level(&content, Some(0)).unwrap();
         let notes = m.import_save(&content, 0, &image).unwrap();
         let s = &m.sides[0];
-        assert_eq!(s.navi_level, Some(4));
+        assert_eq!(s.level(&content), Some(4));
         assert_eq!(s.facts.get(&content, "karma"), Some(crate::facts::Stated::Number(519)));
         assert!(notes.iter().any(|n| n.contains("level 4")), "{notes:?}");
         assert_eq!(crate::check::check_side_alone(&content, &m.arena, s), Vec::<String>::new());
@@ -242,12 +245,12 @@ mod tests {
         assert_eq!(hp(&m), 450, "the story's at level 4");
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOK 20041006 US");
         let notes = m.import_save(&content, 0, &image).unwrap();
-        assert_eq!((m.sides[0].navi_level, hp(&m)), (Some(4), 450));
+        assert_eq!((m.sides[0].level(&content), hp(&m)), (Some(4), 450));
         assert!(notes.iter().any(|n| n.contains("its version has no such navi")), "{notes:?}");
         // A MegaMan side takes no level from the save.
-        assert_eq!(m.sides[1].navi_level, None);
+        assert_eq!(m.sides[1].level(&content), None);
         m.import_save(&content, 1, &image).unwrap();
-        assert_eq!(m.sides[1].navi_level, None);
+        assert_eq!(m.sides[1].level(&content), None);
     }
 
     /// The content names a soul by its form's id; the original's number for

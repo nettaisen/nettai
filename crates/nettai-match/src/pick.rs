@@ -197,14 +197,17 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, picks: &mut Picks) -> Resul
         navi,
         folder: folder.into(),
         patch_cards: Vec::new(),
-        navi_level: crate::default_navi_level(content, navi),
         sp_times: Default::default(),
         navicust: None,
         auto_battle: Default::default(),
         facts,
     };
-    // (Its form list, where the rules take one: its version's own.)
+    // (Its form list, where the rules take one: its version's own; its
+    // navi's level, a navi that doesn't change form's 0.)
     side.state_own_forms(content);
+    if let Some(level) = crate::default_navi_level(content, navi) {
+        side.set_level(content, Some(level))?;
+    }
     let m = Match { seed: None, arena: arena.clone(), sides: [side.clone(), side.clone()] };
     if let Ok(mut b) = crate::check::start(content, &m)
         && !folders::pool(content, game, &mut b, 0).is_empty()
@@ -342,7 +345,7 @@ mod tests {
         let fresh = &crate::Match::empty(&content, "exe6").unwrap().sides[0];
         let started = crate::check::round_stats(&content, &m).unwrap();
         for (side, s) in m.sides.iter().zip(&started) {
-            assert_eq!((side.navi, side.navicust, side.navi_level), (fresh.navi, fresh.navicust, fresh.navi_level));
+            assert_eq!((side.navi, side.navicust, side.level(&content)), (fresh.navi, fresh.navicust, fresh.level(&content)));
             assert!(side.version(&content).is_some(), "a picked EXE6 side states its version");
             assert_eq!((s.max_base_hp, s.hp, s.max_hp), (100, 100, 100));
             assert!(!s.float_shoes && !s.air_shoes && !s.undershirt && !s.super_armor && !s.chip_shuffle && !s.number_open);
