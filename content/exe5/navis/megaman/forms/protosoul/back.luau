@@ -36,7 +36,7 @@ local function setup(navi: Object): Action
     return if navi.chaos_armed then CHAOS_REFLECT else REFLECT
 end
 
-back.weapon = define.weapon {
+back.weapon = new.weapon {
     -- The charge table's row 4 (0x0801CA94), by Charge 0 to 5: past 4 it reads on into row 5's first entry.
     charge_ticks = { 180, 180, 180, 180, 180, 30 },
     setup = setup,

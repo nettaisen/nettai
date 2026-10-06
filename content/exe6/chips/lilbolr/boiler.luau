@@ -42,7 +42,7 @@ export type State = {
 local SPRITE = asset.sprite("lil-boiler")
 -- Its identity: a field object, with the look something that takes its
 -- place shows (DustMan's junk).
-local IDENTITY = define.identity {
+local IDENTITY = new.identity {
     id = "lilbolr",
     class = "field_object",
     version = 0,
@@ -66,7 +66,7 @@ local SOUND_ERUPT, SOUND_STEAM = asset.sound("boiler-erupt"), asset.sound("boile
 local ANIM_ERUPT, ANIM_STEAM = 5, 9
 local ERUPT_TICKS, HIT_TICK, STEAM_TICK = 0x20, 8, 0x14
 local AQUA, ERUPTION_HIT_MOD = 2, 3
-local ERUPTION = define.effect { sprite = SPRITE, anim = 10, palette = 0 }
+local ERUPTION = new.effect { sprite = SPRITE, anim = 10, palette = 0 }
 -- Its kind among absorbed obstacles.
 -- How it looks absorbed (the original's obstacle kind's sprite: its own).
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
@@ -407,7 +407,7 @@ local function init(me: Object)
     tick(me)
 end
 
-boiler.kind = define.kind {
+boiler.kind = new.kind {
     id = "lilbolr/boiler",
     pool = "attack",
     state = {

@@ -122,7 +122,7 @@ local function update(me: Object)
     me.collision:present()
 end
 
-falling_rock.kind = define.kind {
+falling_rock.kind = new.kind {
     id = "falling-rock",
     pool = "attack",
     -- `sub_80C7D78`.

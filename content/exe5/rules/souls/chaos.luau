@@ -8,7 +8,7 @@
 -- part). Then MegaMan is back in his base form, as a soul's revert leaves him (./revert, but in place, with no
 -- flash or sound), his attack requests and his uninterruptibility are dropped, the battle undims and he idles.
 
-local base = require("../../navis/megaman/forms/base")
+local base = require("../../navis/megaman/forms/base").base
 local auto_battle = require("../auto_battle")
 local dark_megaman = require("../../navis/dark_megaman/identity")
 local hooks = require("./hooks")
@@ -126,6 +126,6 @@ local function update(me: Object, s: State)
     end
 end
 
-chaos.failure = define.action { id = "souls/chaos-failure", state = { timer = "u16" }, update = update }
+chaos.failure = new.action { id = "souls/chaos-failure", state = { timer = "u16" }, update = update }
 
 return chaos

@@ -3,8 +3,7 @@
 
 local cards = require("../rules/patch_cards/cards")
 
-return define.patch_card {
-    id = "flashy",
+local card: PatchCard = {
     mb = 11,
     effects = {
         cards.hp_percent(5),
@@ -13,3 +12,5 @@ return define.patch_card {
         cards.custom_damage(0),
     },
 }
+
+return { flashy = card }

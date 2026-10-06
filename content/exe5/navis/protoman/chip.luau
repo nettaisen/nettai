@@ -7,10 +7,9 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi_level = require("../../lib/navi_level")
-local wideswrd = require("../../chips/wideswrd")
+local wideswrd = require("../../chips/wideswrd").wideswrd
 
-return define.chip {
-    id = "stepswrd",
+local chip: Chip = {
     codes = { "B" },
     element = "null",
     family = "sword",
@@ -28,3 +27,5 @@ return define.chip {
         navi.charged = 1
     end,
 }
+
+return { stepswrd = chip }

@@ -4,8 +4,7 @@
 local buster = require("../weapons/buster")
 local charged_shot = require("../weapons/charged_shot")
 
-return define.form {
-    id = "base",
+local form: FormDef = {
     -- EXE6's base form.
     base = true,
     sprite = asset.sprite("megaman"),
@@ -24,3 +23,5 @@ return define.form {
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 0 },
 }
+
+return { base = form }

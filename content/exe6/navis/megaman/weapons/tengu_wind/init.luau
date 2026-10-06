@@ -29,7 +29,7 @@ function tengu_wind.blow(user: Object, _spec: InstantChipSpec)
     common.blow_rows(gust.kind, user, SOUND)
 end
 
-tengu_wind.weapon = define.weapon {
+tengu_wind.weapon = new.weapon {
     id = "megaman/tengu-wind",
     -- The charge table's row 0x10, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

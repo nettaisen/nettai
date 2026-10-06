@@ -4,8 +4,7 @@
 
 local navi = require("@self/navi")
 
-local judgeman = define.chip {
-    id = "judgeman",
+local judgeman: Chip = {
     codes = { "J", "*" },
     element = "elec",
     family = "elec",
@@ -20,8 +19,7 @@ local judgeman = define.chip {
     navi = navi.summon { book_damage = 20 },
 }
 
-local judgemn_ex = define.chip {
-    id = "judgemn-ex",
+local judgemn_ex: Chip = {
     codes = { "J" },
     element = "elec",
     family = "elec",
@@ -36,8 +34,7 @@ local judgemn_ex = define.chip {
     navi = navi.summon { book_damage = 30 },
 }
 
-local judgemn_sp = define.chip {
-    id = "judgemn-sp",
+local judgemn_sp: Chip = {
     codes = { "J" },
     element = "elec",
     family = "elec",
@@ -52,4 +49,4 @@ local judgemn_sp = define.chip {
     navi = navi.summon { book_damage = 40 },
 }
 
-return { judgeman = judgeman, judgemn_ex = judgemn_ex, judgemn_sp = judgemn_sp }
+return { judgeman = judgeman, ["judgemn-ex"] = judgemn_ex, ["judgemn-sp"] = judgemn_sp }

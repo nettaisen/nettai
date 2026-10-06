@@ -5,8 +5,7 @@
 local throw = require("@self/throw")
 local lockon = require("../rules/lockon")
 
-return define.chip {
-    id = "yoyo",
+local chip: Chip = {
     codes = { "L", "M", "N", "*" },
     element = "null",
     family = "null",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 3,
     action = throw.action { id = "yoyo/action", yoyo = { panels = 2, rounds = 2 } },
 }
+
+return { yoyo = chip }

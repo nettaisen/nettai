@@ -433,7 +433,7 @@ fn rules(base: Option<&Rules>, game: Option<&str>, r: &SpecReader, definitions: 
     let Some(d) = super::defs::rules_definition(definitions) else {
         return match (base, game) {
             (None, Some(game)) => Err(ContentError::new(format!(
-                "{game}/{}.luau: game pack {game} defines no rules (`define.rules`, its rules/init.luau): a game states its rules, and the engine has no game's rules of its own",
+                "{game}/{}.luau: game pack {game} defines no rules (its root's `rules`, its rules/init.luau): a game states its rules, and the engine has no game's rules of its own",
                 nettai_content_api::packs::INIT
             ))),
             _ => Ok(base.cloned()),
@@ -697,7 +697,7 @@ pub fn link(content: &mut Content) -> Result<(), ContentError> {
             let mut stages = Vec::with_capacity(items.len());
             for (i, item) in items.iter().enumerate() {
                 let Data::Ref(nettai_content_api::Registry::Stage, key) = item else {
-                    return Err(ContentError::new(format!("{at}[{}]: a stage (a `define.stage`), not {item:?}", i + 1)));
+                    return Err(ContentError::new(format!("{at}[{}]: a stage (one of the root's `stages`), not {item:?}", i + 1)));
                 };
                 stages.push(
                     content.defs.stage_by_key(key).ok_or_else(|| ContentError::new(format!("{at}[{}]: the content has no stage {key:?}", i + 1)))?,
@@ -727,7 +727,7 @@ pub fn link(content: &mut Content) -> Result<(), ContentError> {
         Data::Ref(nettai_content_api::Registry::Weapon, key) => {
             Some(content.defs.weapon_by_key(key).ok_or_else(|| ContentError::new(format!("{at}: the content has no weapon {key:?}")))?)
         }
-        other => return Err(ContentError::new(format!("{at}: a weapon (a `define.weapon`), not {other:?}"))),
+        other => return Err(ContentError::new(format!("{at}: a weapon (a `new.weapon`), not {other:?}"))),
     };
     if let Some(rules) = content.rules.as_mut() {
         rules.fresh_stats.mode9_a = weapon;

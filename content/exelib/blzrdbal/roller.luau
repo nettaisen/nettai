@@ -140,7 +140,7 @@ end
 
 -- A game's roller kind.
 function roller.make_kind(look: Look): Kind
-    return define.kind {
+    return new.kind {
         id = look.id,
         pool = "attack",
         state = { swallowed = "bool" },

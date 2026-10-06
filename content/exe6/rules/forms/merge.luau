@@ -132,7 +132,7 @@ local function tick(me: Object, s: State)
     me:update_sprite()
 end
 
-merge.kind = define.kind {
+merge.kind = new.kind {
     id = "forms/cross-merge",
     pool = "actor",
     state = {

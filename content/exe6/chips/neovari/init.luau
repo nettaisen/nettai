@@ -4,14 +4,13 @@
 -- back, forward, back, A+B SprSonic; up, A+B, down, A+B, up, A+B DblDream.
 -- Letting go of A, or 48 ticks, gives a Sword.
 
-local crosswrd = require("./crosswrd")
-local dbldream = require("./dbldream")
-local sprsonic = require("./sprsonic")
-local sword = require("./sword")
+local crosswrd = require("./crosswrd").crosswrd
+local dbldream = require("./dbldream").dbldream
+local sprsonic = require("./sprsonic").sprsonic
+local sword = require("./sword").sword
 local vari = require("../lib/swords/vari")
 
-return define.chip {
-    id = "neovari",
+local chip: Chip = {
     codes = { "N" },
     element = "null",
     family = "sword",
@@ -51,3 +50,5 @@ return define.chip {
         no_charged = sprsonic,
     },
 }
+
+return { neovari = chip }

@@ -44,7 +44,7 @@ function controller.make(spec: Spec): { hook: (user: Object, dspec: DimmingChipS
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { bonus = "u16" },

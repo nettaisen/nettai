@@ -7,8 +7,7 @@
 local regions = require("@exelib/regions")
 local swords = require("../lib/swords")
 
-return define.chip {
-    id = "crosswrd",
+local chip: Chip = {
     codes = { "E", "L", "S", "*" },
     element = "null",
     family = "sword",
@@ -25,7 +24,9 @@ return define.chip {
         blade_anim = swords.blade_anim,
         hit = { region = regions.x, collision = swords.slashes_navis, hit_mod = 3 },
         second_hit = { region = regions.single, collision = swords.slashes_navis, hit_mod = 3 },
-        effect = define.effect { sprite = asset.sprite("cross-slash"), anim = 0, palette = 1 },
+        effect = new.effect { sprite = asset.sprite("cross-slash"), anim = 0, palette = 1 },
         sound = swords.swing,
     },
 }
+
+return { crosswrd = chip }

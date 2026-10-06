@@ -30,7 +30,7 @@ local SPRITE = asset.sprite("shadowman")
 local SOUND_APPEAR = asset.sound("appear")
 local SOUND_THROW = asset.sound("boomerang")
 -- The effect table's row 2: the puff he vanishes in, 32 pixels up.
-local PUFF = define.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 }
+local PUFF = new.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 }
 -- By the level (0x0800DA8A: navi 8's count, 1, by 0x0800DAE8's row): SP's 2, DS's 3.
 local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 2, 3 }
 -- Where the three appear (0x080BA158): the first panel of his user's side, by side, as { require, forbid }.
@@ -311,7 +311,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-shadoman.kind = define.kind {
+shadoman.kind = new.kind {
     id = "shadoman/navi",
     pool = "actor",
     state = {

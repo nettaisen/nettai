@@ -7,7 +7,7 @@
 
 local arm = {}
 
-arm.weapon = define.weapon {
+arm.weapon = new.weapon {
     charge_ticks = { 120, 120, 120, 120, 120, 70 },
     setup = function(navi: Object): Chip
         local chip = navi.weapon_chip

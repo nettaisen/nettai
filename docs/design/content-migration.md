@@ -15,7 +15,7 @@ These show the patterns end to end, and are the models to copy:
 
 | Exemplar | What it shows | Where |
 |---|---|---|
-| The bombs and seeds | A chip action as a builder (`throw.action { held, thrower }`); a thrown kind with its variant as a record (`bomb.variant { ... }`, `define.record`); a series in one module; shared definitions (collision types, effects, sparks, regions); an attachment look | lib/bombs/, chips/minibomb, bigbomb, energbom, flshbom, blkbomb, bugbomb, grasseed, iceseed, poisseed; rules/collision.luau, lib/{effects,sparks,regions}.luau, objects/attachment |
+| The bombs and seeds | A chip action as a builder (`throw.action { held, thrower }`); a thrown kind with its variant as a record (`bomb.variant { ... }`, `new.record`); a series in one module; shared definitions (collision types, effects, sparks, regions); an attachment look | lib/bombs/, chips/minibomb, bigbomb, energbom, flshbom, blkbomb, bugbomb, grasseed, iceseed, poisseed; rules/collision.luau, lib/{effects,sparks,regions}.luau, objects/attachment |
 | The swords | One action builder for a family (`slash.action { blade, hit, effect, sound, ... }`); what SlashCross's charge makes of a sword as a record the chip names (`charged`) | lib/swords/, chips/sword ... chips/assnswrd |
 | AreaGrab and PanelGrab | A dimming chip: the `dimming` hook spawning a controller kind whose update is `dimming_chips.phases { effect }`; what differs between the chips as the hook's arguments | lib/dimming.luau, lib/grab/, chips/areagrab, chips/panlgrab |
 | The trap chips | A dimming chip that leaves the side's defensive-chip record; a counter the ruleset starts by role | lib/traps/, chips/antidmg, chips/antiswrd, chips/bodygrd; rules/roles.luau |
@@ -66,19 +66,21 @@ roles (rules/roles.luau: what it starts, spawns and shows itself), never by numb
    you need, named by what it does.
 3. **Write the definitions.** `--!strict`; a header saying what it is, with the original's routine and object
    numbers; one local function per routine, commented with its name; the game's immediates as named constants.
-   - A kind is `define.kind { id, pool, state, update }`. Its state is typed fields, references included
+   - A kind is `new.kind { pool, state, update }` (an `id` only where compat names it). Its state is typed fields, references included
      (`"object"`, `"record:bomb-variant"`, `"chip"`, `"bool"`); what the original passed as spawn parameters is
      state the spawner sets. Export its spawner (`mark.spawn(owner, x, y, ticks)`, the game's `sub_80E7942`).
-   - An action is `define.action { id?, state, update }`, usually from a family's builder: what differs
-     between chips is the builder's arguments, and a variant several kinds read is a record (`define.record`).
+   - An action is `new.action { id?, state, update }`, usually from a family's builder: what differs
+     between chips is the builder's arguments, and a variant several kinds read is a record (`new.record`).
      Anything a definition holds is in the canonical tree, so a thrower is `{ throw = fn, variant = record }`,
      not a bare closure. Where the original's routine took a number that picked one of several behaviors
      (the attack's variant byte, a spawn parameter), the builder takes the behavior: a name
      (`counter.action_at(id, "random")`), a record, a look.
-   - A chip is `define.chip { id, ...its record..., <one use> }`: `action`, `dimming`, `navi` or `instant`. Its
-     record is named fields (flags by name, the lock-on mode a definition); what the ruleset asks of a chip
-     beyond its record is a `trait` or a role, never the chip's key.
-   - A weapon is `define.weapon { id, charge_ticks, setup }`: `setup(navi)` fills the attack (damage,
+   - A chip is a plain table, `local chip: Chip = { ...its record..., <one use> }`: `action`, `dimming`,
+     `navi` or `instant`; its module returns it by its key (`return { minibomb = chip }`), and chips/init.luau
+     (tools/content/index.py's) merges it into the game's root. Its record is named fields (flags by name, the
+     lock-on mode a definition); what the ruleset asks of a chip beyond its record is a `trait` or a role, never
+     the chip's key.
+   - A weapon is `new.weapon { id?, charge_ticks, setup }`: `setup(navi)` fills the attack (damage,
      hit parameter, element) and returns the action to start.
    - No definition holds display text: a chip's, navi's or Cross's name, a description, the no-running
      message and a record's name are the content root's `locales/en.toml`, by the definition's key (the define phase
@@ -91,7 +93,7 @@ roles (rules/roles.luau: what it starts, spawns and shows itself), never by numb
    - The API takes definitions: `battle.spawn(kind, pos)`, `me:setup_collision(collision.thrown,
      collision.hits_navis, 0)`, `battle.effect(pos, effects.explosion)`, `collision:set_hit_effect(sparks.erase)`,
      `me:set_attack(action, 2)`. A hitbox with no spark or status gives `nil`. An object the original gives a
-     NameID takes an identity (`me.identity = IDENTITY`, a `define.identity` in its module).
+     NameID takes an identity (`me.identity = IDENTITY`, a `new.identity` in its module).
    - Mind the game's store widths (`me.lifecycle = "destroy"` is `strb`, `me:set_lifecycle(...)` the word
      store), its sprite-stepping routine (`update_sprite`, `update_sprite_while_dimmed`,
      `update_sprite_while_paused`, `step_sprite`), and the order of RNG draws.
@@ -163,7 +165,7 @@ The checker checks each module on its own, and `require` gives `any`. So:
   State) -> () } = { [0] = call, [4] = recover }`. Without it the literal is unsealed and passes for any record
   whose required fields it has (a misspelled optional field isn't an error), and across a `require` nothing is
   checked at all. `nettai-content-check` requires the annotation;
-- a literal written inline in a call to a definer or a typed function of the same module is checked there.
+- a literal written inline in a call to a tag constructor or a typed function of the same module is checked there.
 
 ### 4.4 State and time
 

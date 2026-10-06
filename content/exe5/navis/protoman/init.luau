@@ -14,10 +14,9 @@
 local back = require("@self/back")
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
-local stepswrd = require("@self/chip")
+local stepswrd = require("@self/chip").stepswrd
 
-return define.navi {
-    id = "protoman",
+local navi: NaviDef = {
     sprite = asset.sprite("protoman"),
     element = "null",
     buster_bonus = 1,
@@ -39,7 +38,7 @@ return define.navi {
     -- row for him): his HP by the story's progress, the count of the save's event flags set from 0x300 on (0 to 8);
     -- his level, which his damage rows are read at, is that count up to 6 (0x0800EBE0).
     story = { hp = { 200, 300, 350, 400, 450, 500, 600, 700, 800 }, max_level = 6 },
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -80,3 +79,5 @@ return define.navi {
         },
     },
 }
+
+return { protoman = navi }

@@ -142,7 +142,7 @@ function shade.make(spec: Spec): { kind: Kind, spawn: (owner: Object) -> Object?
         tick(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "actor",
         state = { speed = "i32" },

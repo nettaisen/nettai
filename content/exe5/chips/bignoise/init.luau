@@ -5,11 +5,10 @@
 
 local bignoise = require("@self/bignoise")
 local recipe_pulsar3 = require("./pulsar").pulsar3
-local recipe_shademn_ds = require("./shademan").shademn_ds
-local recipe_shademn_sp = require("./shademan").shademn_sp
+local recipe_shademn_ds = require("./shademan")["shademn-ds"]
+local recipe_shademn_sp = require("./shademan")["shademn-sp"]
 
-return define.chip {
-    id = "bignoise",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -30,3 +29,5 @@ return define.chip {
     },
     navi = bignoise.summon,
 }
+
+return { bignoise = chip }

@@ -124,7 +124,7 @@ local function init(me: Object)
     tick(me)
 end
 
-ball.kind = define.kind {
+ball.kind = new.kind {
     id = "knightmn/ball",
     pool = "attack",
     state = { speed = "u8", turns = "u8", status = "status", variant = "u8", radius = "u32" },

@@ -36,8 +36,7 @@ local function stun(me: Object)
     end
 end
 
-return define.chip {
-    id = "drksonic",
+local chip: Chip = {
     codes = { "E", "*" },
     element = "null",
     family = "summon",
@@ -51,7 +50,7 @@ return define.chip {
     slot_in_limit = 1,
     -- EXE5's row 4; its identity the actor record 0xE1 (0x08014C94: version 2, AI index 0x21).
     dimming = exe5_instrument.hook(instrument.instrument {
-        identity = define.identity {
+        identity = new.identity {
             class = "field_object",
             version = 2,
             ai_index = 0x21,
@@ -65,3 +64,5 @@ return define.chip {
         effect = stun,
     }),
 }
+
+return { drksonic = chip }

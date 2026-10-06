@@ -5,8 +5,7 @@
 
 local controller = require("@self/controller")
 
-local burnsqr1 = define.chip {
-    id = "burnsqr1",
+local burnsqr1: Chip = {
     codes = { "H", "P", "V" },
     element = "fire",
     family = "fire",
@@ -21,8 +20,7 @@ local burnsqr1 = define.chip {
     dimming = controller.hook,
 }
 
-local burnsqr2 = define.chip {
-    id = "burnsqr2",
+local burnsqr2: Chip = {
     codes = { "D", "M", "T" },
     element = "fire",
     family = "fire",
@@ -37,8 +35,7 @@ local burnsqr2 = define.chip {
     dimming = controller.hook,
 }
 
-local burnsqr3 = define.chip {
-    id = "burnsqr3",
+local burnsqr3: Chip = {
     codes = { "E", "O", "Z" },
     element = "fire",
     family = "fire",

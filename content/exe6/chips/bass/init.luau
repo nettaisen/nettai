@@ -4,8 +4,7 @@
 
 local navi = require("@self/navi")
 
-return define.chip {
-    id = "bass",
+local chip: Chip = {
     codes = { "F" },
     element = "null",
     family = "null",
@@ -20,3 +19,5 @@ return define.chip {
     slot_in_limit = 1,
     navi = navi.summon,
 }
+
+return { bass = chip }

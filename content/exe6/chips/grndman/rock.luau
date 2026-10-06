@@ -167,7 +167,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-rock.kind = define.kind {
+rock.kind = new.kind {
     id = "grndman/rock",
     pool = "attack",
     state = { warning = "u8", while_dimmed = "bool", cracks = "bool", silent = "bool" },

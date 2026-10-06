@@ -23,10 +23,10 @@ local SOUND_CATCH = asset.sound("circus-catch")
 local SOUND_DRUMROLL = asset.sound("drumroll")
 
 -- A show's sparkle (effect 0x21).
-local SPARKLE = define.effect { sprite = asset.sprite("pink-flash"), anim = 0, palette = 0 }
+local SPARKLE = new.effect { sprite = asset.sprite("pink-flash"), anim = 0, palette = 0 }
 
 -- What he is taken for: his actor record, and what he wears (his two overlays, `sub_8010FD8`).
-local IDENTITY = define.identity {
+local IDENTITY = new.identity {
     id = "circusman",
     class = "navi",
     version = 0,
@@ -281,7 +281,7 @@ local ACTIONS = {
     [NO_FOOTING] = no_footing,
 }
 
-crcusman.kind = define.kind {
+crcusman.kind = new.kind {
     id = "crcusman/navi",
     pool = "actor",
     state = { controller = "object" },

@@ -107,7 +107,7 @@ end
 
 -- A game's panel-bursts kind, keyed `id`.
 function panel_bursts.make_kind(id: string): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "effect",
         state = { targets = "u8[28]", count = "u8", effect = "effect", sound = "sound" },

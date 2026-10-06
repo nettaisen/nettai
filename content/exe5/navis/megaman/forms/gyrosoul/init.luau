@@ -15,7 +15,7 @@ local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged_shot")
-local darktorn = require("../../../chips/darktorn")
+local darktorn = require("../../../chips/darktorn").darktorn
 local soul_change = require("../../../rules/souls/change")
 local soul_image = require("../../../rules/souls/image")
 local soul_revert = require("../../../rules/souls/revert")
@@ -23,8 +23,7 @@ local soul_revert = require("../../../rules/souls/revert")
 -- 0x080F04CE in soul 2: the propeller's animation offset by the priming.
 local PRIMED_ANIM = 17
 
-return define.form {
-    id = "gyrosoul",
+local form: FormDef = {
     soul = { family = "wind" },
     change = soul_change.action,
     revert = soul_revert.action,
@@ -60,7 +59,7 @@ return define.form {
     buster_arm = { anim = 2 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 2 of category 0), wearing the
     -- propeller.
-    identity = define.identity {
+    identity = new.identity {
         class = "megaman",
         version = 0,
         actor_type = "player",
@@ -70,3 +69,5 @@ return define.form {
         parts = { body = body_overlays.gyrosoul },
     },
 }
+
+return { gyrosoul = form }

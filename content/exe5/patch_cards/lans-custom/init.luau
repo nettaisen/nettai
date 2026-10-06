@@ -5,8 +5,7 @@ local cards = require("../rules/patch_cards/cards")
 local buster = require("../navis/megaman/weapons/buster")
 local charged_shot = require("../navis/megaman/weapons/charged_shot")
 
-return define.patch_card {
-    id = "lans-custom",
+local card: PatchCard = {
     mb = 25,
     effects = {
         cards.body("null"),
@@ -15,3 +14,5 @@ return define.patch_card {
         cards.mega_folder(2),
     },
 }
+
+return { ["lans-custom"] = card }

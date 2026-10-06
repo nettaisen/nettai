@@ -223,7 +223,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-magnet.kind = define.kind {
+magnet.kind = new.kind {
     id = "magnetmn/magnet",
     pool = "attack",
     state = {

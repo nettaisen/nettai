@@ -8,8 +8,7 @@ local lockon = require("../rules/lockon")
 local regions = require("@exelib/regions")
 local throw = require("../lib/bombs/throw")
 
-return define.chip {
-    id = "minibomb",
+local chip: Chip = {
     codes = { "B", "L", "R", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 0, mb = 6, damage = 50, hit_param = 30, lockout = 0,
@@ -28,3 +27,5 @@ return define.chip {
         }),
     },
 }
+
+return { minibomb = chip }

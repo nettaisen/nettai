@@ -113,7 +113,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-gather.kind = define.kind {
+gather.kind = new.kind {
     id = "chaoslrd/gather",
     pool = "effect",
     state = {

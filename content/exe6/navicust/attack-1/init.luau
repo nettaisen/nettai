@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "attack-1",
+local program: NaviCustProgram = {
     colors = { "pink", "red", "blue" },
     plus = true,
     shape = {
@@ -19,3 +18,5 @@ return define.navicust_program {
     bug = "buster",
     effects = { programs.attack(1) },
 }
+
+return { ["attack-1"] = program }

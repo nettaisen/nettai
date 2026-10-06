@@ -121,7 +121,7 @@ function guard.action(spec: ReflectorGuard): Action
         guarding(me, s)
     end
 
-    return define.action { id = spec.id, state = guard.STATE, args = spec, update = update }
+    return new.action { id = spec.id, state = guard.STATE, args = spec, update = update }
 end
 
 return guard

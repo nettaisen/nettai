@@ -10,13 +10,13 @@
 
 local function stay(id: string): LockonDef
     local mode: LockonDef = { id = id, rule = "stay" }
-    return define.record("lockon", mode)
+    return new.record("lockon", mode)
 end
 
 return {
     stay = stay("stay"),
-    cannon = define.record("lockon", { id = "cannon", rule = "near", offsets = { { -1, 0 } }, column_shifts = true }),
-    thunder = define.record("lockon", { id = "thunder", rule = "near", offsets = { { -1, 0 }, { -1, 1 } } }),
+    cannon = new.record("lockon", { id = "cannon", rule = "near", offsets = { { -1, 0 } }, column_shifts = true }),
+    thunder = new.record("lockon", { id = "thunder", rule = "near", offsets = { { -1, 0 }, { -1, 1 } } }),
     widesht = stay("widesht"),
     firebrn1 = stay("firebrn1"),
     yoyo = stay("yoyo"),
@@ -25,13 +25,13 @@ return {
     dublshot = stay("dublshot"),
     gundels1 = stay("gundels1"),
     trnarrw1 = stay("trnarrw1"),
-    beast_lunge = define.record("lockon", {
+    beast_lunge = new.record("lockon", {
         id = "beast-lunge",
         rule = "near",
         offsets = { { -1, 0 }, { -2, 0 } },
         far_column_offsets = { { -2, 0 } },
     }),
-    beast_claw = define.record("lockon", { id = "beast-claw", rule = "near", offsets = { { -1, 0 } } }),
+    beast_claw = new.record("lockon", { id = "beast-claw", rule = "near", offsets = { { -1, 0 } } }),
     crosswrd = stay("crosswrd"),
     sprsonic = stay("sprsonic"),
     bigbomb = stay("bigbomb"),

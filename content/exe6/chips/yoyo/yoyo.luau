@@ -338,7 +338,7 @@ local function gone(me: Object)
     me:free()
 end
 
-yoyo.kind = define.kind {
+yoyo.kind = new.kind {
     id = "yoyo/yoyo",
     pool = "attack",
     state = {
@@ -420,7 +420,7 @@ local function control(me: Object)
     end
 end
 
-yoyo.controller = define.kind {
+yoyo.controller = new.kind {
     id = "yoyo/great-yoyo",
     pool = "effect",
     state = {

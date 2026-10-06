@@ -82,7 +82,7 @@ function action.action(spec: DragonSpec): Action
         end
     end
 
-    return define.action { id = spec.id, state = action.STATE, args = spec, update = update }
+    return new.action { id = spec.id, state = action.STATE, args = spec, update = update }
 end
 
 return action

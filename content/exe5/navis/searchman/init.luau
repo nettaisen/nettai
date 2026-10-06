@@ -11,10 +11,9 @@
 
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
-local satelity = require("@self/chip")
+local satelity = require("@self/chip").satelity
 
-return define.navi {
-    id = "searchman",
+local navi: NaviDef = {
     sprite = asset.sprite("searchman"),
     element = "null",
     buster_bonus = 1,
@@ -35,7 +34,7 @@ return define.navi {
     -- What the story gives him (its table's row for him, 0x0804F960): his HP by its progress; his level is that
     -- progress up to 6.
     story = { hp = { 300, 300, 300, 300, 300, 350, 450, 550, 650 }, max_level = 6 },
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -76,3 +75,5 @@ return define.navi {
         },
     },
 }
+
+return { searchman = navi }

@@ -18,10 +18,9 @@
 local body_overlays = require("../lib/body_overlays")
 local buster = require("@self/buster")
 local charged_chips = require("./megaman/weapons/charged_chip")
-local napalm = require("@self/chip")
+local napalm = require("@self/chip").napalm
 
-return define.navi {
-    id = "napalmman",
+local navi: NaviDef = {
     sprite = asset.sprite("napalmman"),
     element = "fire",
     buster_bonus = 1,
@@ -50,7 +49,7 @@ return define.navi {
     -- What the story gives him (its table's row for him, 0x0804F960): his HP by its progress; his level is that
     -- progress up to 6.
     story = { hp = { 300, 300, 300, 300, 350, 400, 500, 600, 700 }, max_level = 6 },
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -93,3 +92,5 @@ return define.navi {
         },
     },
 }
+
+return { napalmman = navi }

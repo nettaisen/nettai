@@ -144,7 +144,7 @@ local function finish(me: Object)
     me:free()
 end
 
-pillar.kind = define.kind {
+pillar.kind = new.kind {
     id = "spoutman/pillar",
     pool = "effect",
     state = { slot_owner = "object", while_dimmed = "bool" },

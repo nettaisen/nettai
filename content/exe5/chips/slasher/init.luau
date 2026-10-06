@@ -5,8 +5,7 @@
 
 local slasher = require("@self/action")
 
-return define.chip {
-    id = "slasher",
+local chip: Chip = {
     codes = { "B", "I", "R" },
     element = "null",
     family = "sword",
@@ -20,3 +19,5 @@ return define.chip {
     slot_in_limit = 3,
     action = slasher.action,
 }
+
+return { slasher = chip }

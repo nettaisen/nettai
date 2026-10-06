@@ -162,7 +162,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-drip_shower.kind = define.kind {
+drip_shower.kind = new.kind {
     id = "spoutman/drip-shower",
     pool = "attack",
     state = { turns = "u8", quarter_ticks = "u8", action = "action", quarter = "u32", sound = "i32" },

@@ -1,14 +1,16 @@
 --!strict
--- EXE5's top module (docs/design/content-model-v2.md §4.0): a load of the game runs it, and what it requires, in turn,
--- is what loads, each module read when its require is reached. It requires the game's rules and its folders; each
--- folder's init.luau requires the folder's modules that define what the game has. A module nothing requires never
--- loads. The order is the load order, which no key or handle depends on. Written by tools/content/index.py (the
--- verification workspace) from the modules that are there: run it again rather than edit this, also to settle a merge
--- conflict in it.
+-- EXE5's top module (docs/design/content-model-v2.md §4.0): it returns the game's root, what a match names, by id, in
+-- its sections, and its rules. The loader walks from it: what it reaches is what the game has. Each section is the
+-- module that returns it, from the modules that define it. Written by tools/content/index.py (the verification
+-- workspace) from the modules that are there: run it again rather than edit this, also to settle a merge conflict in
+-- it.
 
-require("@self/rules")
-require("@self/chips")
-require("@self/navis")
-require("@self/stages")
-require("@self/patch_cards")
-require("@self/navicust")
+return {
+    chips = require("@self/chips"),
+    navis = require("@self/navis"),
+    forms = require("@self/navis/megaman/forms"),
+    stages = require("@self/stages"),
+    patch_cards = require("@self/patch_cards"),
+    navicust_programs = require("@self/navicust"),
+    rules = require("@self/rules"),
+}

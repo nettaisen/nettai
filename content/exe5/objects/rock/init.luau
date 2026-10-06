@@ -22,21 +22,21 @@ local rock = {}
 local SPRITE = asset.sprite("rock")
 local SMALL_PUFF = asset.sprite("small-puff")
 -- Effects 1, 2 and 0x14 (EXE5's table, 0x080DFC94, as EXE6's rows): a splash, dust, a puff.
-local SPLASH = define.effect { sprite = SMALL_PUFF, anim = 0, palette = 0 }
-local DUST = define.effect { sprite = SMALL_PUFF, anim = 1, palette = 0 }
-local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local SPLASH = new.effect { sprite = SMALL_PUFF, anim = 0, palette = 0 }
+local DUST = new.effect { sprite = SMALL_PUFF, anim = 1, palette = 0 }
+local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 
 -- The debris (0x080E46F4: sheet 10-09, landing in a splash).
 rock.debris = common_debris.make_kind("rock/debris", asset.sprite("rock-debris"), SPLASH)
 
 -- What a rock is taken for: a rock cube (actor record 0xD0), an ice block (0xD1).
-local ROCK = define.identity {
+local ROCK = new.identity {
     class = "field_object",
     version = 3,
     ai_index = 0x21,
     look = { sprite = SPRITE, anim = 1, palette = 0, shadow = true },
 }
-local ICE = define.identity {
+local ICE = new.identity {
     class = "field_object",
     version = 4,
     ai_index = 0x21,

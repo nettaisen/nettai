@@ -21,7 +21,7 @@ local function setup(navi: Object): Action
     return shots.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "searchman/charge",
     -- The charge table's row 0x3F (0x0801CCE2), by Charge 0 to 5: past 4 it reads on into row 0x40's first entry.
     charge_ticks = { 110, 105, 100, 95, 90, 110 },

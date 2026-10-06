@@ -37,7 +37,7 @@ end
 
 -- The action of a chip whose parameters are `hit_mod` (its boom's hit modifier) and `pierces` (it goes through).
 function action.make(hit_mod: number, pierces: boolean): Action
-    return define.action {
+    return new.action {
         state = action.STATE,
         update = function(me: Object, s: State)
             local step = me.step

@@ -9,8 +9,7 @@ local meteors = require("@self/meteors")
 
 local METEORS = controller.make("meteors/controller", meteors.kind)
 
-return define.chip {
-    id = "meteors",
+local chip: Chip = {
     codes = { "R" },
     element = "fire",
     family = "fire",
@@ -24,3 +23,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = METEORS,
 }
+
+return { meteors = chip }

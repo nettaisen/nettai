@@ -197,7 +197,7 @@ end
 
 -- A thunder ball kind (`id`) of `look`.
 function ball.make_kind(id: string, look: ThunderBallLook): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { fast = "bool", panels = "u8", status = "status", bug = "u8" },

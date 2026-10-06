@@ -5,12 +5,11 @@
 -- Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local bodygrd = require("@self/bodygrd")
-local recipe_antidmg = require("./antidmg")
-local recipe_antinavi = require("./antinavi")
-local recipe_muramasa = require("./muramasa")
+local recipe_antidmg = require("./antidmg").antidmg
+local recipe_antinavi = require("./antinavi").antinavi
+local recipe_muramasa = require("./muramasa").muramasa
 
-return define.chip {
-    id = "bodygrd",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -30,3 +29,5 @@ return define.chip {
     },
     dimming = bodygrd.hook(0),
 }
+
+return { bodygrd = chip }

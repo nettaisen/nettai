@@ -186,7 +186,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-sower.kind = define.kind {
+sower.kind = new.kind {
     id = "cornfsta/sower",
     pool = "attack",
     state = { steps = "i32", holder = "object", ring = "u8[3]", ring_next = "u8" },

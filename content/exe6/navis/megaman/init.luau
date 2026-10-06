@@ -1,25 +1,24 @@
 --!strict
 -- MegaMan: the navi that changes form.
 
-local heatcross = require("@self/forms/heatcross")
-local eleccross = require("@self/forms/eleccross")
-local slashcross = require("@self/forms/slashcross")
-local erasecross = require("@self/forms/erasecross")
-local chargecross = require("@self/forms/chargecross")
-local spoutcross = require("@self/forms/spoutcross")
-local tomahawkcross = require("@self/forms/tomahawkcross")
-local tengucross = require("@self/forms/tengucross")
-local groundcross = require("@self/forms/groundcross")
-local dustcross = require("@self/forms/dustcross")
-local gregar_beast = require("@self/forms/gregar_beast")
-local falzar_beast = require("@self/forms/falzar_beast")
-local gregar_beast_over = require("@self/forms/gregar_beast_over")
-local falzar_beast_over = require("@self/forms/falzar_beast_over")
+local heatcross = require("@self/forms/heatcross").heatcross
+local eleccross = require("@self/forms/eleccross").eleccross
+local slashcross = require("@self/forms/slashcross").slashcross
+local erasecross = require("@self/forms/erasecross").erasecross
+local chargecross = require("@self/forms/chargecross").chargecross
+local spoutcross = require("@self/forms/spoutcross").spoutcross
+local tomahawkcross = require("@self/forms/tomahawkcross").tomahawkcross
+local tengucross = require("@self/forms/tengucross").tengucross
+local groundcross = require("@self/forms/groundcross").groundcross
+local dustcross = require("@self/forms/dustcross").dustcross
+local gregar_beast = require("@self/forms/gregar_beast")["gregar-beast"]
+local falzar_beast = require("@self/forms/falzar_beast")["falzar-beast"]
+local gregar_beast_over = require("@self/forms/gregar_beast_over")["gregar-beast-over"]
+local falzar_beast_over = require("@self/forms/falzar_beast_over")["falzar-beast-over"]
 local buster = require("@self/weapons/buster")
 local charged_shot = require("@self/weapons/charged_shot")
 
-return define.navi {
-    id = "megaman",
+local navi: NaviDef = {
     sprite = asset.sprite("megaman-navi"),
     element = "null",
     buster_bonus = 1,
@@ -67,7 +66,7 @@ return define.navi {
         gregar = { crosses = { heatcross, eleccross, slashcross, erasecross, chargecross }, beast_out = gregar_beast, beast_over = gregar_beast_over },
         falzar = { crosses = { spoutcross, tomahawkcross, tengucross, groundcross, dustcross }, beast_out = falzar_beast, beast_over = falzar_beast_over },
     },
-    identity = define.identity {
+    identity = new.identity {
         class = "megaman",
         -- Where a held thing with no attach point sits (BatCan's cannon).
         held_offset = { 0, 0 },
@@ -118,3 +117,5 @@ return define.navi {
         },
     },
 }
+
+return { megaman = navi }

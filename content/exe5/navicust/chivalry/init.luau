@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "chivalry",
+local program: NaviCustProgram = {
     colors = { "blue" },
     shape = {
         ".......",
@@ -28,3 +27,5 @@ return define.navicust_program {
     exclusive = "l-button",
     effects = { programs.outside("chivalry") },
 }
+
+return { chivalry = program }

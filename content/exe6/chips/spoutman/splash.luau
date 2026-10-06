@@ -92,7 +92,7 @@ local function finish(me: Object)
     me:destroy()
 end
 
-splash.kind = define.kind {
+splash.kind = new.kind {
     id = "spoutman/splash",
     pool = "attack",
     state = { while_dimmed = "bool", cracks = "bool" },

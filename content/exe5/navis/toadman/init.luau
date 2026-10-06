@@ -17,10 +17,9 @@
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
 local charged_chips = require("./megaman/weapons/charged_chip")
-local s_melody = require("@self/chip")
+local s_melody = require("@self/chip")["s-melody"]
 
-return define.navi {
-    id = "toadman",
+local navi: NaviDef = {
     sprite = asset.sprite("toadman"),
     element = "aqua",
     buster_bonus = 1,
@@ -53,7 +52,7 @@ return define.navi {
     -- What the story gives him (0x08052E9C: the table 0x0804F960's row for his place in his team, Meddy's and his):
     -- his HP by the story's progress; his level, which his damage rows are read at, is that count up to 6.
     story = { hp = { 300, 300, 300, 300, 300, 300, 400, 500, 600 }, max_level = 6 },
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -94,3 +93,5 @@ return define.navi {
         },
     },
 }
+
+return { toadman = navi }

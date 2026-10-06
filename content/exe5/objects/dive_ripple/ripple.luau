@@ -9,7 +9,7 @@
 local ripple = {}
 
 local SPRITE = asset.sprite("ground-drill-effect")
-local SPLASH = define.effect { sprite = asset.sprite("dive-splash"), anim = 0, palette = 0 }
+local SPLASH = new.effect { sprite = asset.sprite("dive-splash"), anim = 0, palette = 0 }
 
 -- 0x080E4BCA: over the body, on the surface.
 local function follow(me: Object)
@@ -26,7 +26,7 @@ local function follow(me: Object)
     end
 end
 
-ripple.kind = define.kind {
+ripple.kind = new.kind {
     id = "dive-ripple",
     pool = "effect",
     update = function(me: Object)

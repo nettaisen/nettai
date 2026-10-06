@@ -6,8 +6,7 @@ local timebom = require("@self/timebom")
 
 -- TimeBom1 (EXE5 chip 0x04b): a bomb on the enemy's frontmost panel of a random row that counts 3, 2, 1 and blows
 -- up the whole enemy area unless it is broken first (chips/timebom/timebom: EXE6's TimeBom with EXE5's placement).
-local timebom1 = define.chip {
-    id = "timebom1",
+local timebom1: Chip = {
     codes = { "H", "N", "T" },
     element = "null",
     family = "summon",
@@ -24,8 +23,7 @@ local timebom1 = define.chip {
 
 -- TimeBom2 (EXE5 chip 0x04c): a bomb on the enemy's frontmost panel of a random row that counts 3, 2, 1 and blows
 -- up the whole enemy area unless it is broken first (chips/timebom/timebom: EXE6's TimeBom with EXE5's placement).
-local timebom2 = define.chip {
-    id = "timebom2",
+local timebom2: Chip = {
     codes = { "D", "H", "Z" },
     element = "null",
     family = "summon",
@@ -42,8 +40,7 @@ local timebom2 = define.chip {
 
 -- TimeBom3 (EXE5 chip 0x04d): a bomb on the enemy's frontmost panel of a random row that counts 3, 2, 1 and blows
 -- up the whole enemy area unless it is broken first (chips/timebom/timebom: EXE6's TimeBom with EXE5's placement).
-local timebom3 = define.chip {
-    id = "timebom3",
+local timebom3: Chip = {
     codes = { "F", "H", "S" },
     element = "null",
     family = "summon",
@@ -65,8 +62,7 @@ local recipe_timebom1 = timebom1
 local recipe_timebom2 = timebom2
 local recipe_timebom3 = timebom3
 
-local timebom_chip = define.chip {
-    id = "timebom",
+local timebom_chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

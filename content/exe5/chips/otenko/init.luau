@@ -10,6 +10,7 @@
 local collision = require("../rules/collision")
 local common = require("@exelib/otenko")
 local effects = require("../lib/effects")
+local identity = require("@self/identity")
 
 -- Its sheet, 0c-49 (`otenko`: EXE6's JP ROMs' Otenko, the US ROMs' placeholder).
 local SPRITE = asset.sprite("otenko")
@@ -18,13 +19,7 @@ local OTENKO = common.make {
     statue_id = "otenko/statue",
     controller_id = "otenko/controller",
     sprite = SPRITE,
-    -- NameID 0xCF (actor record 0xCF: AI index 0x21, EXE5's field objects').
-    identity = define.identity {
-        class = "field_object",
-        version = 2,
-        ai_index = 0x21,
-        look = { sprite = SPRITE, anim = 1, palette = 0, shadow = true },
-    },
+    identity = identity,
     lifetime = 0x258,
     class = 1,
     sounds = { appear = asset.sound("appear") },
@@ -34,8 +29,7 @@ local OTENKO = common.make {
     special_bonus = true,
 }
 
-return define.chip {
-    id = "otenko",
+local chip: Chip = {
     codes = { "O" },
     element = "null",
     family = "summon",
@@ -51,3 +45,5 @@ return define.chip {
     megaman = "light",
     dimming = OTENKO.hook,
 }
+
+return { otenko = chip }

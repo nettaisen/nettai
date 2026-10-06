@@ -97,7 +97,7 @@ local function tick(me: Object)
     c:present()
 end
 
-junk.kind = define.kind {
+junk.kind = new.kind {
     id = "dustman/junk",
     pool = "attack",
     state = { look = "identity" },

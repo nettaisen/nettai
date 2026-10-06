@@ -24,8 +24,7 @@ local mark = common_mark.make {
     own_gauges_hit = { spark = sparks.plain, is = collision.attack, hits = collision.hits_navis },
 }
 
-return define.chip {
-    id = "copydmg",
+local chip: Chip = {
     codes = { "*" },
     element = "null",
     family = "cursor",
@@ -44,3 +43,5 @@ return define.chip {
         shot = mark.spawn,
     },
 }
+
+return { copydmg = chip }

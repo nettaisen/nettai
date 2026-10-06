@@ -114,7 +114,7 @@ local function init(me: Object)
     tick(me)
 end
 
-fireball.kind = define.kind {
+fireball.kind = new.kind {
     id = "phoenix/fireball",
     pool = "attack",
     state = { target = "u8", start = "vec3", target_x = "i32", target_y = "i32" },

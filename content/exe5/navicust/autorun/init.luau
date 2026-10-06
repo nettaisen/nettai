@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "autorun",
+local program: NaviCustProgram = {
     colors = { "red" },
     shape = {
         ".......",
@@ -18,3 +17,5 @@ return define.navicust_program {
     bug = "panel",
     effects = { programs.outside("auto-run") },
 }
+
+return { autorun = program }

@@ -157,7 +157,7 @@ local function init(me: Object)
     tick(me)
 end
 
-star.kind = define.kind {
+star.kind = new.kind {
     id = "bblstar/star",
     pool = "attack",
     state = { speed = "i32", palette = "u8", hit_panel = "u32", phase_step = "i32", center_y = "i32" },

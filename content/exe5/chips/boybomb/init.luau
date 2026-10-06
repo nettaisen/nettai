@@ -6,8 +6,7 @@ local bomb = require("@self/bomb")
 
 -- BoyBomb1 (EXE5 chip 0x055): a bomb set on the panel ahead that blows up over the 3x3 around it after 60 ticks
 -- (chips/boybomb/bomb, the dimming handler's subtype 58).
-local boybomb1 = define.chip {
-    id = "boybomb1",
+local boybomb1: Chip = {
     codes = { "C", "F", "S" },
     element = "null",
     family = "summon",
@@ -24,8 +23,7 @@ local boybomb1 = define.chip {
 
 -- BoyBomb2 (EXE5 chip 0x056): a bomb set on the panel ahead that blows up over the 3x3 around it after 60 ticks
 -- (chips/boybomb/bomb, the dimming handler's subtype 58).
-local boybomb2 = define.chip {
-    id = "boybomb2",
+local boybomb2: Chip = {
     codes = { "H", "P", "W" },
     element = "null",
     family = "summon",
@@ -42,8 +40,7 @@ local boybomb2 = define.chip {
 
 -- BoyBomb3 (EXE5 chip 0x057): a bomb set on the panel ahead that blows up over the 3x3 around it after 60 ticks
 -- (chips/boybomb/bomb, the dimming handler's subtype 58).
-local boybomb3 = define.chip {
-    id = "boybomb3",
+local boybomb3: Chip = {
     codes = { "B", "Q", "Y" },
     element = "null",
     family = "summon",

@@ -174,7 +174,7 @@ local function tick(me: Object)
     f(me)
 end
 
-car.kind = define.kind {
+car.kind = new.kind {
     id = "chrgeman/car",
     pool = "attack",
     state = {

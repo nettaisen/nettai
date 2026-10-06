@@ -252,7 +252,7 @@ end
 
 -- A game's snake kind `id`, of `look`.
 function snake.make_kind(id: string, look: Look): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { target_x = "u32", target_y = "u32", nest = "object", slot = "u8" },

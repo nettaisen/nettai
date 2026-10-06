@@ -111,7 +111,7 @@ local function send(me: Object, s: State)
     me.step, me.step_init = AWAY, 0
 end
 
-local action = define.action {
+local action = new.action {
     state = { timer = "u16", target_x = "u8", mirror_x = "u8", magnet = "object" },
     -- 0x080F11EE
     update = function(me: Object, s: State)
@@ -171,8 +171,7 @@ local action = define.action {
     end,
 }
 
-return define.chip {
-    id = "nstackle",
+local chip: Chip = {
     codes = { "M" },
     element = "elec",
     family = "elec",
@@ -186,3 +185,5 @@ return define.chip {
     slot_in_limit = 1,
     action = action,
 }
+
+return { nstackle = chip }

@@ -9,162 +9,162 @@
 local collision = {}
 
 -- Row 0x04 (EXE6's 0x80000080, 0x40000080).
-collision.attack = define.collision { side0 = 0x80000000, side1 = 0x40000000, row_offset = 0x20 }
+collision.attack = new.collision { side0 = 0x80000000, side1 = 0x40000000, row_offset = 0x20 }
 -- Row 0x0a (EXE6's 0x80000088, 0x40000088).
-collision.thrown = define.collision { side0 = 0x80000008, side1 = 0x40000008, row_offset = 0x50 }
+collision.thrown = new.collision { side0 = 0x80000008, side1 = 0x40000008, row_offset = 0x50 }
 -- Row 0x07 (EXE6's 0x80002080, 0x40002080).
-collision.slash = define.collision { side0 = 0x80002000, side1 = 0x40002000, row_offset = 0x38 }
+collision.slash = new.collision { side0 = 0x80002000, side1 = 0x40002000, row_offset = 0x38 }
 -- Row 0x1c (EXE6's 0x80002088, 0x40002088).
-collision.thrown_slash = define.collision { side0 = 0x80002008, side1 = 0x40002008, row_offset = 0xe0 }
+collision.thrown_slash = new.collision { side0 = 0x80002008, side1 = 0x40002008, row_offset = 0xe0 }
 -- Row 0x0b (EXE6's 0x80000084, 0x40000084).
-collision.piercing = define.collision { side0 = 0x80000004, side1 = 0x40000004, row_offset = 0x58 }
+collision.piercing = new.collision { side0 = 0x80000004, side1 = 0x40000004, row_offset = 0x58 }
 -- Row 0x05.
-collision.hits_navis = define.collision { side0 = 0x15800000, side1 = 0x2a800000, row_offset = 0x28 }
+collision.hits_navis = new.collision { side0 = 0x15800000, side1 = 0x2a800000, row_offset = 0x28 }
 -- Row 0x14.
-collision.hit_by_other_side = define.collision { side0 = 0x55800000, side1 = 0xaa800000, row_offset = 0xa0 }
+collision.hit_by_other_side = new.collision { side0 = 0x55800000, side1 = 0xaa800000, row_offset = 0xa0 }
 -- Row 0x0d.
-collision.hit_by_other_side_or_blockers = define.collision { side0 = 0x55840000, side1 = 0xaa840000, row_offset = 0x68 }
+collision.hit_by_other_side_or_blockers = new.collision { side0 = 0x55840000, side1 = 0xaa840000, row_offset = 0x68 }
 -- Row 0x16 (EXE6's 0x80000086, 0x40000086).
-collision.piercing_break = define.collision { side0 = 0x80000006, side1 = 0x40000006, row_offset = 0xb0 }
+collision.piercing_break = new.collision { side0 = 0x80000006, side1 = 0x40000006, row_offset = 0xb0 }
 -- Row 0x0c (EXE6's 0x20010080, 0x10010080).
-collision.own_object = define.collision { side0 = 0x20010000, side1 = 0x10010000, row_offset = 0x60 }
+collision.own_object = new.collision { side0 = 0x20010000, side1 = 0x10010000, row_offset = 0x60 }
 -- Row 0x4e (EXE6's 0x02010088, 0x01010088).
-collision.own_thrown_body = define.collision { side0 = 0x02010008, side1 = 0x01010008, row_offset = 0x270 }
+collision.own_thrown_body = new.collision { side0 = 0x02010008, side1 = 0x01010008, row_offset = 0x270 }
 -- Row 0x4f (EXE6's 0x0081008a, 0x0081008a).
-collision.neutral_object = define.collision { side0 = 0x0081000a, side1 = 0x0081000a, row_offset = 0x278 }
+collision.neutral_object = new.collision { side0 = 0x0081000a, side1 = 0x0081000a, row_offset = 0x278 }
 -- Row 0x0f.
-collision.everything = define.collision { side0 = 0xff800002, side1 = 0xff800002, row_offset = 0x78 }
+collision.everything = new.collision { side0 = 0xff800002, side1 = 0xff800002, row_offset = 0x78 }
 -- Row 0x18.
-collision.hit_by_other_attacks = define.collision { side0 = 0x50000000, side1 = 0xa0000000, row_offset = 0xc0 }
+collision.hit_by_other_attacks = new.collision { side0 = 0x50000000, side1 = 0xa0000000, row_offset = 0xc0 }
 -- Row 0x33.
-collision.mine = define.collision { side0 = 0xc004000e, side1 = 0xc004000e, row_offset = 0x198 }
+collision.mine = new.collision { side0 = 0xc004000e, side1 = 0xc004000e, row_offset = 0x198 }
 -- Row 0x2a.
-collision.hits_both_sides = define.collision { side0 = 0x3d800000, side1 = 0x3e800000, row_offset = 0x150 }
+collision.hits_both_sides = new.collision { side0 = 0x3d800000, side1 = 0x3e800000, row_offset = 0x150 }
 -- Row 0x01 (EXE6's 0x08410080, 0x04210080).
-collision.navi = define.collision { side0 = 0x08410000, side1 = 0x04210000, row_offset = 0x8 }
+collision.navi = new.collision { side0 = 0x08410000, side1 = 0x04210000, row_offset = 0x8 }
 -- Row 0x02.
-collision.navi_target = define.collision { side0 = 0x55800200, side1 = 0xaa800200, row_offset = 0x10 }
+collision.navi_target = new.collision { side0 = 0x55800200, side1 = 0xaa800200, row_offset = 0x10 }
 -- Row 0x10 (EXE6's 0x08510080, 0x04310080).
-collision.floating_navi = define.collision { side0 = 0x08510000, side1 = 0x04310000, row_offset = 0x80 }
+collision.floating_navi = new.collision { side0 = 0x08510000, side1 = 0x04310000, row_offset = 0x80 }
 -- Row 0x15 (EXE6's 0x8000008a, 0x4000008a).
-collision.thrown_break = define.collision { side0 = 0x8000000a, side1 = 0x4000000a, row_offset = 0xa8 }
+collision.thrown_break = new.collision { side0 = 0x8000000a, side1 = 0x4000000a, row_offset = 0xa8 }
 -- Row 0x17 (EXE6's 0x8000008e, 0x4000008e).
-collision.thrown_piercing_break = define.collision { side0 = 0x8000000e, side1 = 0x4000000e, row_offset = 0xb8 }
+collision.thrown_piercing_break = new.collision { side0 = 0x8000000e, side1 = 0x4000000e, row_offset = 0xb8 }
 -- Row 0x1e (EXE6's 0x00004280, 0x00004280).
-collision.pull = define.collision { side0 = 0x00004200, side1 = 0x00004200, row_offset = 0xf0 }
+collision.pull = new.collision { side0 = 0x00004200, side1 = 0x00004200, row_offset = 0xf0 }
 -- Row 0x06 (EXE6's 0x80000082, 0x40000082).
-collision.breaking = define.collision { side0 = 0x80000002, side1 = 0x40000002, row_offset = 0x30 }
+collision.breaking = new.collision { side0 = 0x80000002, side1 = 0x40000002, row_offset = 0x30 }
 -- Row 0x08 (EXE6's 0x80000090, 0x40000090).
-collision.chip_destruction = define.collision { side0 = 0x80000010, side1 = 0x40000010, row_offset = 0x40 }
+collision.chip_destruction = new.collision { side0 = 0x80000010, side1 = 0x40000010, row_offset = 0x40 }
 -- Row 0x12 (EXE6's 0x80000880, 0x40000880).
-collision.pushing = define.collision { side0 = 0x80000800, side1 = 0x40000800, row_offset = 0x90 }
+collision.pushing = new.collision { side0 = 0x80000800, side1 = 0x40000800, row_offset = 0x90 }
 -- Row 0x19 (EXE6's 0x8000008c, 0x4000008c).
-collision.curse = define.collision { side0 = 0x8000000c, side1 = 0x4000000c, row_offset = 0xc8 }
+collision.curse = new.collision { side0 = 0x8000000c, side1 = 0x4000000c, row_offset = 0xc8 }
 -- Row 0x25 (EXE6's 0x80000480, 0x40000480).
-collision.attack_480 = define.collision { side0 = 0x80000400, side1 = 0x40000400, row_offset = 0x128 }
+collision.attack_480 = new.collision { side0 = 0x80000400, side1 = 0x40000400, row_offset = 0x128 }
 -- Row 0x47 (EXE6's 0x800000a0, 0x400000a0).
-collision.attack_a0 = define.collision { side0 = 0x80000020, side1 = 0x40000020, row_offset = 0x238 }
+collision.attack_a0 = new.collision { side0 = 0x80000020, side1 = 0x40000020, row_offset = 0x238 }
 -- Row 0x0e (EXE6's 0x00810082, 0x00810082).
-collision.neutral_body = define.collision { side0 = 0x00810002, side1 = 0x00810002, row_offset = 0x70 }
+collision.neutral_body = new.collision { side0 = 0x00810002, side1 = 0x00810002, row_offset = 0x70 }
 -- Row 0x3d (EXE6's 0x00000080, 0x00000080).
-collision.probe = define.collision { side0 = 0x80000080, side1 = 0x40000080, row_offset = 0x1e8 }
+collision.probe = new.collision { side0 = 0x80000080, side1 = 0x40000080, row_offset = 0x1e8 }
 -- Row 0x00.
-collision.nothing = define.collision { side0 = 0x00000000, side1 = 0x00000000, row_offset = 0x0 }
+collision.nothing = new.collision { side0 = 0x00000000, side1 = 0x00000000, row_offset = 0x0 }
 -- Row 0x13 (EXE6's 0x02010080, 0x01010080).
-collision.own_body = define.collision { side0 = 0x02010000, side1 = 0x01010000, row_offset = 0x98 }
+collision.own_body = new.collision { side0 = 0x02010000, side1 = 0x01010000, row_offset = 0x98 }
 -- Row 0x4a (EXE6's 0x80000482, 0x40000482).
-collision.second_drill = define.collision { side0 = 0x80000402, side1 = 0x40000402, row_offset = 0x250 }
+collision.second_drill = new.collision { side0 = 0x80000402, side1 = 0x40000402, row_offset = 0x250 }
 -- Row 0x32 (EXE6's 0x80005080, 0x40005080).
-collision.guard_breaking = define.collision { side0 = 0x80005000, side1 = 0x40005000, row_offset = 0x190 }
+collision.guard_breaking = new.collision { side0 = 0x80005000, side1 = 0x40005000, row_offset = 0x190 }
 -- Row 0x2c (EXE6's 0x8000408c, 0x4000408c).
-collision.drain = define.collision { side0 = 0x8000400c, side1 = 0x4000400c, row_offset = 0x160 }
+collision.drain = new.collision { side0 = 0x8000400c, side1 = 0x4000400c, row_offset = 0x160 }
 -- Row 0x30 (EXE6's 0x8000408e, 0x4000408e).
-collision.breaking_drain = define.collision { side0 = 0x8000400e, side1 = 0x4000400e, row_offset = 0x180 }
+collision.breaking_drain = new.collision { side0 = 0x8000400e, side1 = 0x4000400e, row_offset = 0x180 }
 -- Row 0x03.
-collision.collision_03 = define.collision { side0 = 0x51800100, side1 = 0xa2800100, row_offset = 0x18 }
+collision.collision_03 = new.collision { side0 = 0x51800100, side1 = 0xa2800100, row_offset = 0x18 }
 -- Row 0x09 (EXE6's 0x80000180, 0x40000180).
-collision.collision_09 = define.collision { side0 = 0x80000100, side1 = 0x40000100, row_offset = 0x48 }
+collision.collision_09 = new.collision { side0 = 0x80000100, side1 = 0x40000100, row_offset = 0x48 }
 -- Row 0x11 (EXE6's 0x80002480, 0x40002480).
-collision.collision_11 = define.collision { side0 = 0x80002400, side1 = 0x40002400, row_offset = 0x88 }
+collision.collision_11 = new.collision { side0 = 0x80002400, side1 = 0x40002400, row_offset = 0x88 }
 -- Row 0x1a (EXE6's 0x8000009E, 0x4000009E).
-collision.collision_1a = define.collision { side0 = 0x8000001e, side1 = 0x4000001e, row_offset = 0xd0 }
+collision.collision_1a = new.collision { side0 = 0x8000001e, side1 = 0x4000001e, row_offset = 0xd0 }
 -- Row 0x1b (EXE6's 0x800040A0, 0x400040A0).
-collision.collision_1b = define.collision { side0 = 0x80004020, side1 = 0x40004020, row_offset = 0xd8 }
+collision.collision_1b = new.collision { side0 = 0x80004020, side1 = 0x40004020, row_offset = 0xd8 }
 -- Row 0x1d (EXE6's 0x8000009C, 0x4000009C).
-collision.collision_1d = define.collision { side0 = 0x8000001c, side1 = 0x4000001c, row_offset = 0xe8 }
+collision.collision_1d = new.collision { side0 = 0x8000001c, side1 = 0x4000001c, row_offset = 0xe8 }
 -- Row 0x1f (EXE6's 0x80040082, 0x40040082).
-collision.collision_1f = define.collision { side0 = 0x80040002, side1 = 0x40040002, row_offset = 0xf8 }
+collision.collision_1f = new.collision { side0 = 0x80040002, side1 = 0x40040002, row_offset = 0xf8 }
 -- Row 0x20 (EXE6's 0x80000888, 0x40000888).
-collision.collision_20 = define.collision { side0 = 0x80000808, side1 = 0x40000808, row_offset = 0x100 }
+collision.collision_20 = new.collision { side0 = 0x80000808, side1 = 0x40000808, row_offset = 0x100 }
 -- Row 0x21 (EXE6's 0x8004008A, 0x4004008A).
-collision.collision_21 = define.collision { side0 = 0x8004000a, side1 = 0x4004000a, row_offset = 0x108 }
+collision.collision_21 = new.collision { side0 = 0x8004000a, side1 = 0x4004000a, row_offset = 0x108 }
 -- Row 0x22 (EXE6's 0xC004808E, 0xC004808E).
-collision.collision_22 = define.collision { side0 = 0xc004800e, side1 = 0xc004800e, row_offset = 0x110 }
+collision.collision_22 = new.collision { side0 = 0xc004800e, side1 = 0xc004800e, row_offset = 0x110 }
 -- Row 0x23.
-collision.collision_23 = define.collision { side0 = 0x00080000, side1 = 0x00080000, row_offset = 0x118 }
+collision.collision_23 = new.collision { side0 = 0x00080000, side1 = 0x00080000, row_offset = 0x118 }
 -- Row 0x24 (EXE6's 0x80000C88, 0x40000C88).
-collision.collision_24 = define.collision { side0 = 0x80000c08, side1 = 0x40000c08, row_offset = 0x120 }
+collision.collision_24 = new.collision { side0 = 0x80000c08, side1 = 0x40000c08, row_offset = 0x120 }
 -- Row 0x26 (EXE6's 0xC0040088, 0xC0040088).
-collision.collision_26 = define.collision { side0 = 0xc0040008, side1 = 0xc0040008, row_offset = 0x130 }
+collision.collision_26 = new.collision { side0 = 0xc0040008, side1 = 0xc0040008, row_offset = 0x130 }
 -- Row 0x27 (EXE6's 0xC0048082, 0xC0048082).
-collision.collision_27 = define.collision { side0 = 0xc0048002, side1 = 0xc0048002, row_offset = 0x138 }
+collision.collision_27 = new.collision { side0 = 0xc0048002, side1 = 0xc0048002, row_offset = 0x138 }
 -- Row 0x28 (EXE6's 0x80002086, 0x40002086).
-collision.collision_28 = define.collision { side0 = 0x80002006, side1 = 0x40002006, row_offset = 0x140 }
+collision.collision_28 = new.collision { side0 = 0x80002006, side1 = 0x40002006, row_offset = 0x140 }
 -- Row 0x29 (EXE6's 0x02010082, 0x01010082).
-collision.collision_29 = define.collision { side0 = 0x02010002, side1 = 0x01010002, row_offset = 0x148 }
+collision.collision_29 = new.collision { side0 = 0x02010002, side1 = 0x01010002, row_offset = 0x148 }
 -- Row 0x2d (EXE6's 0x8000408A, 0x4000408A).
-collision.collision_2d = define.collision { side0 = 0x8000400a, side1 = 0x4000400a, row_offset = 0x168 }
+collision.collision_2d = new.collision { side0 = 0x8000400a, side1 = 0x4000400a, row_offset = 0x168 }
 -- Row 0x2e (EXE6's 0x80004086, 0x40004086).
-collision.collision_2e = define.collision { side0 = 0x80004006, side1 = 0x40004006, row_offset = 0x170 }
+collision.collision_2e = new.collision { side0 = 0x80004006, side1 = 0x40004006, row_offset = 0x170 }
 -- Row 0x2f (EXE6's 0x80004088, 0x40004088).
-collision.collision_2f = define.collision { side0 = 0x80004008, side1 = 0x40004008, row_offset = 0x178 }
+collision.collision_2f = new.collision { side0 = 0x80004008, side1 = 0x40004008, row_offset = 0x178 }
 -- Row 0x31 (EXE6's 0x80005084, 0x40005084).
-collision.collision_31 = define.collision { side0 = 0x80005004, side1 = 0x40005004, row_offset = 0x188 }
+collision.collision_31 = new.collision { side0 = 0x80005004, side1 = 0x40005004, row_offset = 0x188 }
 -- Row 0x35 (EXE6's 0x08410082, 0x04210082).
-collision.collision_35 = define.collision { side0 = 0x08410002, side1 = 0x04210002, row_offset = 0x1a8 }
+collision.collision_35 = new.collision { side0 = 0x08410002, side1 = 0x04210002, row_offset = 0x1a8 }
 -- Row 0x36 (EXE6's 0x80004082, 0x40004082).
-collision.collision_36 = define.collision { side0 = 0x80004002, side1 = 0x40004002, row_offset = 0x1b0 }
+collision.collision_36 = new.collision { side0 = 0x80004002, side1 = 0x40004002, row_offset = 0x1b0 }
 -- Row 0x37 (EXE6's 0x0201008A, 0x0101008A).
-collision.collision_37 = define.collision { side0 = 0x0201000a, side1 = 0x0101000a, row_offset = 0x1b8 }
+collision.collision_37 = new.collision { side0 = 0x0201000a, side1 = 0x0101000a, row_offset = 0x1b8 }
 -- Row 0x38.
-collision.collision_38 = define.collision { side0 = 0x0f800000, side1 = 0x0f800000, row_offset = 0x1c0 }
+collision.collision_38 = new.collision { side0 = 0x0f800000, side1 = 0x0f800000, row_offset = 0x1c0 }
 -- Row 0x39 (EXE6's 0x08510082, 0x04310082).
-collision.collision_39 = define.collision { side0 = 0x08510002, side1 = 0x04310002, row_offset = 0x1c8 }
+collision.collision_39 = new.collision { side0 = 0x08510002, side1 = 0x04310002, row_offset = 0x1c8 }
 -- Row 0x3a (EXE6's 0x0841008A, 0x0421008A).
-collision.collision_3a = define.collision { side0 = 0x0841000a, side1 = 0x0421000a, row_offset = 0x1d0 }
+collision.collision_3a = new.collision { side0 = 0x0841000a, side1 = 0x0421000a, row_offset = 0x1d0 }
 -- Row 0x3b (EXE6's 0x20010082, 0x10010082).
-collision.collision_3b = define.collision { side0 = 0x20010002, side1 = 0x10010002, row_offset = 0x1d8 }
+collision.collision_3b = new.collision { side0 = 0x20010002, side1 = 0x10010002, row_offset = 0x1d8 }
 -- Row 0x3c (EXE6's 0x8000408A, 0x4000408A).
-collision.collision_3c = define.collision { side0 = 0x8000400a, side1 = 0x4000400a, row_offset = 0x1e0 }
+collision.collision_3c = new.collision { side0 = 0x8000400a, side1 = 0x4000400a, row_offset = 0x1e0 }
 -- Row 0x3e (EXE6's 0x02110080, 0x01110080).
-collision.collision_3e = define.collision { side0 = 0x02110000, side1 = 0x01110000, row_offset = 0x1f0 }
+collision.collision_3e = new.collision { side0 = 0x02110000, side1 = 0x01110000, row_offset = 0x1f0 }
 -- Row 0x3f (EXE6's 0x0851008A, 0x0431008A).
-collision.collision_3f = define.collision { side0 = 0x0851000a, side1 = 0x0431000a, row_offset = 0x1f8 }
+collision.collision_3f = new.collision { side0 = 0x0851000a, side1 = 0x0431000a, row_offset = 0x1f8 }
 -- Row 0x40 (EXE6's 0x20012080, 0x10012080).
-collision.collision_40 = define.collision { side0 = 0x20012000, side1 = 0x10012000, row_offset = 0x200 }
+collision.collision_40 = new.collision { side0 = 0x20012000, side1 = 0x10012000, row_offset = 0x200 }
 -- Row 0x41.
-collision.collision_41 = define.collision { side0 = 0x04000000, side1 = 0x08000000, row_offset = 0x208 }
+collision.collision_41 = new.collision { side0 = 0x04000000, side1 = 0x08000000, row_offset = 0x208 }
 -- Row 0x42 (EXE6's 0x80002090, 0x40002090).
-collision.collision_42 = define.collision { side0 = 0x80002010, side1 = 0x40002010, row_offset = 0x210 }
+collision.collision_42 = new.collision { side0 = 0x80002010, side1 = 0x40002010, row_offset = 0x210 }
 -- Row 0x43 (EXE6's 0x00040080, 0x00040080).
-collision.collision_43 = define.collision { side0 = 0x00040000, side1 = 0x00040000, row_offset = 0x218 }
+collision.collision_43 = new.collision { side0 = 0x00040000, side1 = 0x00040000, row_offset = 0x218 }
 -- Row 0x44 (EXE6's 0x20050080, 0x10050080).
-collision.collision_44 = define.collision { side0 = 0x20050000, side1 = 0x10050000, row_offset = 0x220 }
+collision.collision_44 = new.collision { side0 = 0x20050000, side1 = 0x10050000, row_offset = 0x220 }
 -- Row 0x45 (EXE6's 0x8000208A, 0x4000208A).
-collision.collision_45 = define.collision { side0 = 0x8000200a, side1 = 0x4000200a, row_offset = 0x228 }
+collision.collision_45 = new.collision { side0 = 0x8000200a, side1 = 0x4000200a, row_offset = 0x228 }
 -- Row 0x46 (EXE6's 0x800140A0, 0x400140A0).
-collision.collision_46 = define.collision { side0 = 0x80014020, side1 = 0x40014020, row_offset = 0x230 }
+collision.collision_46 = new.collision { side0 = 0x80014020, side1 = 0x40014020, row_offset = 0x230 }
 -- Row 0x48 (EXE6's 0xC0040080, 0xC0040080).
-collision.hitbox = define.collision { side0 = 0xc0040000, side1 = 0xc0040000, row_offset = 0x240 }
+collision.hitbox = new.collision { side0 = 0xc0040000, side1 = 0xc0040000, row_offset = 0x240 }
 -- Row 0x4b (EXE6's 0x80000C88, 0x40000C88).
-collision.collision_4b = define.collision { side0 = 0x80000c08, side1 = 0x40000c08, row_offset = 0x258 }
+collision.collision_4b = new.collision { side0 = 0x80000c08, side1 = 0x40000c08, row_offset = 0x258 }
 -- Row 0x4c (EXE6's 0x02014082, 0x01014082).
-collision.collision_4c = define.collision { side0 = 0x02014002, side1 = 0x01014002, row_offset = 0x260 }
+collision.collision_4c = new.collision { side0 = 0x02014002, side1 = 0x01014002, row_offset = 0x260 }
 -- Row 0x4d.
-collision.collision_4d = define.collision { side0 = 0x55000200, side1 = 0xaa000200, row_offset = 0x268 }
+collision.collision_4d = new.collision { side0 = 0x55000200, side1 = 0xaa000200, row_offset = 0x268 }
 -- Row 0x2b: a 12-panel thunder ball's, DarkThnd's (0x080C9FA0) (EXE6 names none).
-collision.collision_2b = define.collision { side0 = 0x80000408, side1 = 0x40000408, row_offset = 0x158 }
+collision.collision_2b = new.collision { side0 = 0x80000408, side1 = 0x40000408, row_offset = 0x158 }
 -- Row 0x34: Blinder's flash (0x080E3134) (EXE6's 0x80004084, 0x40004084, which EXE6 names none).
-collision.collision_34 = define.collision { side0 = 0x80004004, side1 = 0x40004004, row_offset = 0x1a0 }
+collision.collision_34 = new.collision { side0 = 0x80004004, side1 = 0x40004004, row_offset = 0x1a0 }
 
 return collision

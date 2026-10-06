@@ -358,7 +358,7 @@ function top.make(look: AirSpinTopLook): AirSpinTop
         tick(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "attack",
         state = { target_x = "i32", interval = "i32", spins = "u8", palette = "u8" },

@@ -7,8 +7,7 @@
 local wave = require("./widesht/variants")
 local widesht = require("./widesht/wave")
 
-return define.chip {
-    id = "darkwide",
+local chip: Chip = {
     codes = { "T" },
     element = "aqua",
     family = "aqua",
@@ -22,3 +21,5 @@ return define.chip {
     slot_in_limit = 1,
     action = widesht.action { wave = wave.dark, waves = 1, z = 0, shooter = widesht.dark_shooter },
 }
+
+return { darkwide = chip }

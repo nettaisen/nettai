@@ -1994,7 +1994,7 @@ harmless, until its timer ends).
 none; 0xDB 0C 30 00 00 1; 0xDC 0C 30 01 00 1; 0xDD..0xE1 04 0A 00 with palettes 0, 2, 4, 6, 0xC, shadow 1; 0xE2 0C 34 01 00 1;
 0xE3 0C 35 00 00 1; 0xE4 04 05 00 00 1; 0xE5 0C 41 01 00 0; 0xE6 none; 0xE7 04 18 00 00 1; 0xE8..0xEA none; 0xEB 04
 0D 00 00 1. Rows 0xEC..0xFF overlap the bytes after the table (`byte_80212D4`'s neighbors). The content has a row as
-the `look` of the field object's identity (`define.identity { class = "field_object", look = { ... } }` in the
+the `look` of the field object's identity (`new.identity { class = "field_object", look = { ... } }` in the
 object's module), for the 23 NameIDs an object of the content takes; `scrap = false` is `sub_800F486`'s
 exclusion (0xD3 and 0xDA; 0xE9 and 0xEA are no object's).
 

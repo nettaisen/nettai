@@ -26,7 +26,7 @@ local HIT_PARAM = 0x8A
 -- Panels holding the other side's navi, by side (0x08012F58).
 local ENEMY_NAVI = { [0] = 0x0020_0000, [1] = 0x0040_0000 }
 -- The scope's mark (effect 0x68: sprite 10-23), 20 pixels up.
-local MARK = define.effect { sprite = asset.sprite("search-scope"), anim = 0, palette = 0 }
+local MARK = new.effect { sprite = asset.sprite("search-scope"), anim = 0, palette = 0 }
 local MARK_Z = 20 * 0x1_0000
 local SOUND_MARK, SOUND_SHOT = asset.sound("mark"), asset.sound("col-army-2")
 local ANIM = 17
@@ -143,7 +143,7 @@ local function recover(me: Object, s: State)
     end
 end
 
-charge.action = define.action {
+charge.action = new.action {
     id = "searchsoul/charge/action",
     state = { timer = "u16", shots = "u16", target_x = "u8", target_y = "u8" },
     -- 0x080EE854
@@ -169,7 +169,7 @@ local function setup(navi: Object): Action
     return charge.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     -- The charge table's row 8 (0x0801CABC); Charge 5 reads on into row 9's first entry.
     charge_ticks = { 110, 105, 100, 95, 90, 80 },
     setup = setup,

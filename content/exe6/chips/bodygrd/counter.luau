@@ -84,7 +84,7 @@ local function back(me: Object, s: State)
     end
 end
 
-counter.action = define.action {
+counter.action = new.action {
     id = "bodygrd/counter",
     state = STATE,
     -- `sub_80EED56`, by phase.

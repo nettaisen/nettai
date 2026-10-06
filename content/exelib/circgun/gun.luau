@@ -223,7 +223,7 @@ function gun.make_kind(id: string, look: CircGunLook, shot_kind: Kind): Kind
         tick(me)
     end
 
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = {

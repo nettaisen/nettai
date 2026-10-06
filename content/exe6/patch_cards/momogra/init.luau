@@ -4,8 +4,7 @@
 local cards = require("../rules/patch_cards/cards")
 local invisible_charge = require("../lib/patch_cards/invisible_charge")
 
-return define.patch_card {
-    id = "momogra",
+local card: PatchCard = {
     mb = 6,
     effects = {
         cards.bug(cards.hp(-70)),
@@ -13,3 +12,5 @@ return define.patch_card {
         cards.rush(true),
     },
 }
+
+return { momogra = card }

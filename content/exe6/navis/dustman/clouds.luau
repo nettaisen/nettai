@@ -75,7 +75,7 @@ local function update(sprite_asset: SpriteAsset, fixed_anim: number?): (me: Obje
     end
 end
 
-clouds.cloud = define.kind {
+clouds.cloud = new.kind {
     id = "dustman/cloud",
     pool = "effect",
     state = { anim = "u8", action = "action" },
@@ -83,7 +83,7 @@ clouds.cloud = define.kind {
     update = update(CLOUD_SPRITE, nil),
 }
 
-clouds.overlay = define.kind {
+clouds.overlay = new.kind {
     id = "dustman/overlay",
     pool = "effect",
     state = { anim = "u8", action = "action" },

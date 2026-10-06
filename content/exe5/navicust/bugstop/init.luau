@@ -3,8 +3,7 @@
 
 local programs = require("../rules/navicust/programs")
 
-return define.navicust_program {
-    id = "bugstop",
+local program: NaviCustProgram = {
     colors = { "white" },
     shape = {
         ".......",
@@ -26,3 +25,5 @@ return define.navicust_program {
     },
     effects = { programs.bug_stop() },
 }
+
+return { bugstop = program }

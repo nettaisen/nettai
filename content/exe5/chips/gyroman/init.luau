@@ -5,8 +5,7 @@
 local navi = require("@self/navi")
 
 -- GyroMan (EXE5 chip 0x0e0): GyroMan cuts in and flies along his row, dropping bombs on the enemy panels (./navi).
-local gyroman = define.chip {
-    id = "gyroman",
+local gyroman: Chip = {
     codes = { "G" },
     element = "null",
     family = "null",
@@ -24,8 +23,7 @@ local gyroman = define.chip {
 
 -- GyroManSP (EXE5 chip 0x0e1): GyroMan cuts in and flies along his row, dropping bombs on the enemy panels
 -- (../gyroman/navi); its damage by how fast its user deleted GyroMan SP (rules/sp_chips: formula 3, its table's row 2).
-local gyroman_sp = define.chip {
-    id = "gyroman-sp",
+local gyroman_sp: Chip = {
     codes = { "G" },
     element = "null",
     family = "null",
@@ -43,8 +41,7 @@ local gyroman_sp = define.chip {
 
 -- GyroManDS (EXE5 chip 0x0e2): GyroMan, dark, cuts in and flies along his row, dropping bombs on the enemy panels
 -- (../gyroman/navi); its damage by its user's side's statistic 3 (formula 25, its table's row 2).
-local gyroman_ds = define.chip {
-    id = "gyroman-ds",
+local gyroman_ds: Chip = {
     codes = { "G" },
     element = "null",
     family = "null",
@@ -60,4 +57,4 @@ local gyroman_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { gyroman = gyroman, gyroman_sp = gyroman_sp, gyroman_ds = gyroman_ds }
+return { gyroman = gyroman, ["gyroman-sp"] = gyroman_sp, ["gyroman-ds"] = gyroman_ds }

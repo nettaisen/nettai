@@ -81,7 +81,7 @@ local function burn(me: Object, s: State)
     end
 end
 
-heat_beast_charge.action = define.action {
+heat_beast_charge.action = new.action {
     id = "heatcross-beast/charge/action",
     state = { timer = "u16" },
     -- `sub_80ED8C4`.
@@ -97,7 +97,7 @@ heat_beast_charge.action = define.action {
     end,
 }
 
-heat_beast_charge.weapon = define.weapon {
+heat_beast_charge.weapon = new.weapon {
     id = "heatcross-beast/charge",
     -- The charge table's row 7, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

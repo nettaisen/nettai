@@ -261,7 +261,7 @@ function whirl.make(look: SeekingWhirlLook): { kind: Kind, sender: AirSpinSender
         tick(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "attack",
         state = {

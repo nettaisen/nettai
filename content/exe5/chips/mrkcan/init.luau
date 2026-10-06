@@ -6,8 +6,7 @@ local mrkcan = require("@self/mrkcan")
 
 -- MrkCan1 (EXE5 chip 0x00c): a sight sweeps the field ahead and locks on to the first enemy it finds, paralyzing it,
 -- and the cannon fires at it (EXE5's own MarkCannon, chips/mrkcan/mrkcan: action 0x4E).
-local mrkcan1 = define.chip {
-    id = "mrkcan1",
+local mrkcan1: Chip = {
     codes = { "M", "K", "S" },
     element = "null",
     family = "cursor",
@@ -24,8 +23,7 @@ local mrkcan1 = define.chip {
 
 -- MrkCan2 (EXE5 chip 0x00d): a sight sweeps the field ahead and locks on to the first enemy it finds, paralyzing it,
 -- and the cannon fires at it (EXE5's own MarkCannon, chips/mrkcan/mrkcan: action 0x4E).
-local mrkcan2 = define.chip {
-    id = "mrkcan2",
+local mrkcan2: Chip = {
     codes = { "D", "F", "Z" },
     element = "null",
     family = "cursor",
@@ -42,8 +40,7 @@ local mrkcan2 = define.chip {
 
 -- MrkCan3 (EXE5 chip 0x00e): a sight sweeps the field ahead and locks on to the first enemy it finds, paralyzing it,
 -- and the cannon fires at it (EXE5's own MarkCannon, chips/mrkcan/mrkcan: action 0x4E).
-local mrkcan3 = define.chip {
-    id = "mrkcan3",
+local mrkcan3: Chip = {
     codes = { "E", "R", "Y" },
     element = "null",
     family = "cursor",

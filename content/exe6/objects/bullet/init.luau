@@ -34,11 +34,11 @@ end
 -- The variants (the original's rows: region, hit modifier, effect,
 -- status, sound; rows 0xC, 0xE, 0x10..0x12 show their effect once, at the
 -- bullet).
-local SPLASH = define.effect { sprite = asset.sprite("spout-splash"), anim = 0, palette = 0 }
-local HIT = define.effect { sprite = asset.sprite("vulcan-hit"), anim = 0, palette = 0 }
-local HIT_BRIGHT = define.effect { sprite = asset.sprite("vulcan-hit"), anim = 0, palette = 1 }
-local GLINT = define.effect { sprite = asset.sprite("form-change"), anim = 1, palette = 0 }
-local SPARKLE = define.effect { sprite = asset.sprite("colonel-effect"), anim = 3, palette = 0 }
+local SPLASH = new.effect { sprite = asset.sprite("spout-splash"), anim = 0, palette = 0 }
+local HIT = new.effect { sprite = asset.sprite("vulcan-hit"), anim = 0, palette = 0 }
+local HIT_BRIGHT = new.effect { sprite = asset.sprite("vulcan-hit"), anim = 0, palette = 1 }
+local GLINT = new.effect { sprite = asset.sprite("form-change"), anim = 1, palette = 0 }
+local SPARKLE = new.effect { sprite = asset.sprite("colonel-effect"), anim = 3, palette = 0 }
 local SPREAD = asset.sound("h-burst")
 local SPLASHING = asset.sound("spout-ball")
 -- (The fire rows' sound is the one the target squares make as they move.)

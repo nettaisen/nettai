@@ -10,7 +10,7 @@ local land_mine = {}
 
 land_mine.kind = common.make_kind {
     id = "mine/land-mine",
-    identity = define.identity {
+    identity = new.identity {
         id = "mine",
         class = "field_object",
         version = 1,
@@ -22,7 +22,7 @@ land_mine.kind = common.make_kind {
     sprite = asset.sprite("land-mine"),
     hop_sound = asset.sound("hop"),
     -- The original's effect 0x47.
-    blast = define.effect { sprite = asset.sprite("blast"), anim = 0, palette = 0 },
+    blast = new.effect { sprite = asset.sprite("blast"), anim = 0, palette = 0 },
     blast_sound = asset.sound("hit-bomb-1"),
     self_type = collision.mine,
     target = collision.hits_both_sides,

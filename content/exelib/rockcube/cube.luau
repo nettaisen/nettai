@@ -52,7 +52,7 @@ function cube.make(look: CubeLook): Cube
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "effect",
         state = {

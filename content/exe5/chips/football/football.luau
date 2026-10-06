@@ -28,8 +28,8 @@ local KICK_X, KICK_Z, KICK_TICKS = 0x5_0000, 0xC_0000, 30
 local DROP_Z, DROP_VZ, DROP_TICKS = 0x90_0000, 0x8_0000, 30
 local GRAVITY, LAND_Z = 0x1_0000, 0x8_0000
 local HIT_MOD = 3
-local LANDING = define.effect { sprite = SPRITE, anim = 0x11, palette = 0 }
-local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local LANDING = new.effect { sprite = SPRITE, anim = 0x11, palette = 0 }
+local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 local SOUND_LAND = asset.sound("football-land")
 -- The block it hits: its panel and the ones right and down (0x080D94BC); the virus's ball highlights the same block
 -- (0x080D9600).
@@ -234,7 +234,7 @@ local function ball_tick(me: Object)
     end
 end
 
-football.ball = define.kind {
+football.ball = new.kind {
     id = "football/ball",
     pool = "attack",
     state = { variant = "u8", around = "object" },
@@ -383,7 +383,7 @@ end
 
 local ACTIONS = { [0] = appear, [4] = stand, [8] = kicks, [0xC] = leave }
 
-football.kind = define.kind {
+football.kind = new.kind {
     id = "football/navi",
     pool = "actor",
     state = { controller = "object", kicked = "u8" },

@@ -36,7 +36,7 @@ local HIT_MOD = 3
 local SHOCK_SPRITE = asset.sprite("thunder-ball")
 -- NameID 0xE4: actor record 0xE4 (0x08014C94: version 5, AI index 0x21); its look (0x0801D6B0's row 0x17: the
 -- sensor, a ground shadow); EXE5's swallowing and Poltergeist leave it (0x0800D372, 0x080E8CA0).
-local IDENTITY = define.identity {
+local IDENTITY = new.identity {
     class = "field_object",
     version = 5,
     ai_index = 0x21,
@@ -49,7 +49,7 @@ local HP = 1
 local DROP_HEIGHT, DROP_SPEED, LOW = 0xA0_0000, 0x4_0000, 16
 local DROP_SOUND, SHOCK_SOUND = asset.sound("voltz-drop"), asset.sound("erase-man-2")
 -- The effects (EXE5's table, 0x080DFC94): row 0x14 (14-0D, animation 2) when evicted.
-local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 -- Landed, shocking, blinking out.
 local LANDED_TICKS, SHOCK_TICKS, BLINK_TICKS = 10, 30, 30
 -- The marker (the operation battle's): 30 ticks, style 9 as it lands.
@@ -178,7 +178,7 @@ local function shock_init(me: Object)
     shock_tick(me)
 end
 
-shock_kind = define.kind {
+shock_kind = new.kind {
     id = "voltz/shock",
     pool = "attack",
     state = { params = "u32" },
@@ -339,7 +339,7 @@ local function init(me: Object)
     tick(me)
 end
 
-voltz.kind = define.kind {
+voltz.kind = new.kind {
     id = "voltz/sensor",
     pool = "attack",
     state = { params = "u32" },

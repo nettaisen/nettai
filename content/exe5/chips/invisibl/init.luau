@@ -5,8 +5,7 @@
 
 local invisible = require("@self/controller")
 
-return define.chip {
-    id = "invisibl",
+local chip: Chip = {
     codes = { "*" },
     element = "null",
     family = "invisible",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 3,
     dimming = invisible.hook(360),
 }
+
+return { invisibl = chip }

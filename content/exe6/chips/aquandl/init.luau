@@ -4,9 +4,8 @@
 
 local action = require("@self/action")
 
-return {
-    aquandl1 = define.chip {
-        id = "aquandl1",
+local chips: { [string]: Chip } = {
+    aquandl1 = {
         codes = { "C", "J", "P" },
         element = "aqua", family = "aqua", class = "standard",
         rarity = 0, mb = 31, damage = 40, hit_param = 30, lockout = 0,
@@ -14,8 +13,7 @@ return {
         slot_in_limit = 3,
         action = action.action { palette = 0 },
     },
-    aquandl2 = define.chip {
-        id = "aquandl2",
+    aquandl2 = {
         codes = { "F", "K", "T" },
         element = "aqua", family = "aqua", class = "standard",
         rarity = 1, mb = 35, damage = 60, hit_param = 30, lockout = 0,
@@ -23,8 +21,7 @@ return {
         slot_in_limit = 3,
         action = action.action { palette = 1 },
     },
-    aquandl3 = define.chip {
-        id = "aquandl3",
+    aquandl3 = {
         codes = { "A", "L", "U" },
         element = "aqua",
         family = "aqua",
@@ -39,3 +36,5 @@ return {
         action = action.action { id = "aquandl3/action", palette = 2 },
     },
 }
+
+return chips

@@ -6,8 +6,7 @@
 
 local sonicbom = require("./sonicbom/action")
 
-return define.chip {
-    id = "punisher",
+local chip: Chip = {
     codes = { "E", "L", "S", "*" },
     element = "null",
     family = "sword",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 1,
     action = sonicbom.make(0, false),
 }
+
+return { punisher = chip }

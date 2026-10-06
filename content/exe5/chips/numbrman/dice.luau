@@ -50,10 +50,10 @@ local SOUND_BOUNCE = asset.sound("bug-bomb-land")
 local SOUND_ROLL = asset.sound("target-move")
 -- The effect table's rows: 0 (the explosion), 0x24 (9's: its palette 1), 2 (the puff off the field), 0x14 (the
 -- battle's end).
-local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
-local EXPLOSION_9 = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 }
-local PUFF = define.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 }
-local GONE = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local EXPLOSION = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
+local EXPLOSION_9 = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 1 }
+local PUFF = new.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 }
+local GONE = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 -- What blows it up (0x080C507C): the other side's bodies and objects, by its side.
 local ENEMY = { [0] = 0x0580_0000, 0x0A80_0000 }
 local RISE, GRAVITY = 0x4_0000, -0x3000
@@ -272,7 +272,7 @@ local function init(me: Object)
     tick(me)
 end
 
-dice.kind = define.kind {
+dice.kind = new.kind {
     id = "numbrman/dice",
     pool = "attack",
     state = {

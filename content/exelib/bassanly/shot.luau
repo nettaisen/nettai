@@ -337,7 +337,7 @@ function shot.make_kind(look: Look): Kind
         end
     end
 
-    return define.kind {
+    return new.kind {
         id = look.id,
         pool = "attack",
         state = {

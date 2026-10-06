@@ -6,8 +6,7 @@ local pulsar = require("@self/pulsar")
 
 -- Pulsar1 (EXE5 chip 0x015): a pulse along the row that bursts around the first body it hits, paralyzing (EXE5's
 -- Pulsar, chips/pulsar/pulsar: action 0x52).
-local pulsar1 = define.chip {
-    id = "pulsar1",
+local pulsar1: Chip = {
     codes = { "F", "P", "T" },
     element = "null",
     family = "null",
@@ -24,8 +23,7 @@ local pulsar1 = define.chip {
 
 -- Pulsar2 (EXE5 chip 0x016): a pulse along the row that bursts around the first body it hits, paralyzing (EXE5's
 -- Pulsar, chips/pulsar/pulsar: action 0x52).
-local pulsar2 = define.chip {
-    id = "pulsar2",
+local pulsar2: Chip = {
     codes = { "E", "G", "M" },
     element = "null",
     family = "null",
@@ -42,8 +40,7 @@ local pulsar2 = define.chip {
 
 -- Pulsar3 (EXE5 chip 0x017): a pulse along the row that bursts around the first body it hits, paralyzing (EXE5's
 -- Pulsar, chips/pulsar/pulsar: action 0x52).
-local pulsar3 = define.chip {
-    id = "pulsar3",
+local pulsar3: Chip = {
     codes = { "C", "R", "S" },
     element = "null",
     family = "null",

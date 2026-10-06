@@ -4,8 +4,7 @@
 
 local plus = require("../lib/instant/plus")
 
-return define.chip {
-    id = "invalid",
+local chip: Chip = {
     codes = {},
     element = "null",
     family = "null",
@@ -18,3 +17,5 @@ return define.chip {
     slot_in_limit = 1,
     instant = plus.sparkle_alone,
 }
+
+return { invalid = chip }

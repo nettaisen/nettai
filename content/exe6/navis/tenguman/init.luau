@@ -5,10 +5,9 @@ local by_level = require("../rules/by_level")
 local buster = require("./megaman/weapons/buster")
 local tengu_wind = require("./megaman/weapons/tengu_wind")
 local charge = require("@self/charge")
-local tenguman = require("@self/chip")
+local tenguman = require("@self/chip").ftornado
 
-return define.navi {
-    id = "tenguman",
+local navi: NaviDef = {
     sprite = asset.sprite("tenguman"),
     element = "null",
     weakness = { "sword" },
@@ -60,7 +59,7 @@ return define.navi {
             { hp = 1000, attack = 3, rapid = 4, charge = 1, custom_level = 2, mega_level = 1, float_shoes = true, air_shoes = true },
         },
     },
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -106,3 +105,5 @@ return define.navi {
         },
     },
 }
+
+return { tenguman = navi }

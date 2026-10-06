@@ -68,7 +68,6 @@
 "engine/eruption" = { pool = "attack", index = 0x07 }
 "bomb" = { pool = "attack", index = 0x08 }
 "panel-strike" = { pool = "attack", index = 0x09 }
-"bomb-slash" = { pool = "attack", index = 0x0A }
 "flying-shot" = { pool = "attack", index = 0x0B }
 "count/lance" = { pool = "attack", index = 0x0D }
 "dust-storm" = { pool = "attack", index = 0x0E, scratch_z_fraction = true }
@@ -213,7 +212,6 @@
 "panel-changer" = { pool = "effect", index = 0x1F, scratch_position = true }
 "panel-chips/controller" = { pool = "effect", index = 0x20, scratch_position = true }
 "grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
-"dimming/blinding-flash" = { pool = "effect", index = 0x23, scratch_position = true }
 "panel-bursts" = { pool = "effect", index = 0x24, scratch_position = true }
 "wind/controller" = { pool = "effect", index = 0x25, scratch_position = true }
 "timebom/controller" = { pool = "effect", index = 0x27, scratch_position = true }

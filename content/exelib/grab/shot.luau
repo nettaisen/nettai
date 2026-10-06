@@ -113,7 +113,7 @@ end
 
 -- A game's grab shot kind.
 function shot.make_kind(look: Look): Kind
-    return define.kind {
+    return new.kind {
         id = look.id,
         pool = "attack",
         -- `sub_80C6414`.

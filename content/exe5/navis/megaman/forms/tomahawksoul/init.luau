@@ -12,14 +12,13 @@ local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged_shot")
-local drklance = require("../../../chips/drklance")
+local drklance = require("../../../chips/drklance").drklance
 local grass = require("@self/grass")
 local soul_change = require("../../../rules/souls/change")
 local soul_image = require("../../../rules/souls/image")
 local soul_revert = require("../../../rules/souls/revert")
 
-return define.form {
-    id = "tomahawksoul",
+local form: FormDef = {
     soul = { family = "wood" },
     change = soul_change.action,
     revert = soul_revert.action,
@@ -51,7 +50,7 @@ return define.form {
     -- MegaMan's emerging in it shakes the cameras (rules/souls/change, 0x0801212C).
     emerge_shake = true,
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 10 of category 0).
-    identity = define.identity {
+    identity = new.identity {
         class = "megaman",
         version = 0,
         actor_type = "player",
@@ -60,3 +59,5 @@ return define.form {
         attach_points = attach_points,
     },
 }
+
+return { tomahawksoul = form }

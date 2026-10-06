@@ -97,6 +97,6 @@ fn no_definition_carries_a_legacy_marker() {
         found.join("\n")
     );
     // (What the guard catches.)
-    assert_eq!(legacy_markers("local n = define.navi {\n    legacy = legacy { number = 1 },\n}\n-- legacy { x }\n"), [2, 2]);
+    assert_eq!(legacy_markers("local n = new.kind {\n    legacy = legacy { number = 1 },\n}\n-- legacy { x }\n"), [2, 2]);
     assert_eq!(legacy_markers("turn = { legacy = { action = 0x3B } }\nlocal s = 'legacy {'\nlocal legacy_name = 1\n"), [1]);
 }

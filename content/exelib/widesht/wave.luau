@@ -24,7 +24,7 @@ export type State = {
 
 -- A wave variant.
 function wave.variant(v: WaveVariant): WaveVariant
-    return define.record("wave-variant", v)
+    return new.record("wave-variant", v)
 end
 
 local HIT_MOD = 3
@@ -194,7 +194,7 @@ end
 
 -- A game's wave kind.
 function wave.make_kind(look: WideWaveLook): Kind
-    return define.kind {
+    return new.kind {
         id = look.id,
         pool = "attack",
         state = { variant = "record:wave-variant", hit_mod = "u8", hit_panel = "u32", trail = "i32" },

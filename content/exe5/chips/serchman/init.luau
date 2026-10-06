@@ -6,8 +6,7 @@ local navi = require("@self/navi")
 
 -- SerchMan (EXE5 chip 0x0e6): SearchMan cuts in, his scope sweeps the enemy area until it locks on, and he fires five
 -- shots on the panel (./navi).
-local serchman = define.chip {
-    id = "serchman",
+local serchman: Chip = {
     codes = { "S" },
     element = "null",
     family = "cursor",
@@ -26,8 +25,7 @@ local serchman = define.chip {
 -- SerchMnSP (EXE5 chip 0x0e7): SearchMan cuts in, his scope sweeps the enemy area until it locks on, and he fires five
 -- shots on the panel (../serchman/navi); its damage by how fast its user deleted SearchMan SP (rules/sp_chips:
 -- formula 4, its table's row 3).
-local serchmn_sp = define.chip {
-    id = "serchmn-sp",
+local serchmn_sp: Chip = {
     codes = { "S" },
     element = "null",
     family = "cursor",
@@ -46,8 +44,7 @@ local serchmn_sp = define.chip {
 -- SerchMnDS (EXE5 chip 0x0e8): SearchMan, dark, cuts in, his scope sweeps the enemy area until it locks on, and he fires
 -- five shots on the panel (../serchman/navi); its damage by its user's side's statistic 3 (formula 26, its table's
 -- row 3).
-local serchmn_ds = define.chip {
-    id = "serchmn-ds",
+local serchmn_ds: Chip = {
     codes = { "S" },
     element = "null",
     family = "cursor",
@@ -63,4 +60,4 @@ local serchmn_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { serchman = serchman, serchmn_sp = serchmn_sp, serchmn_ds = serchmn_ds }
+return { serchman = serchman, ["serchmn-sp"] = serchmn_sp, ["serchmn-ds"] = serchmn_ds }

@@ -7,7 +7,7 @@
 -- 25 at random; blocked on the way (no floor, or the other side's body or an
 -- object), he leaves at once. See docs/engine/chips.md §3.6.25.
 
-local groundman_navi = require("../../navis/groundman")
+local groundman_navi = require("../../navis/groundman").groundman
 local navi_chips = require("../../lib/navi_chips/navi")
 local collision = require("../../rules/collision")
 local drill = require("./drill")
@@ -243,7 +243,7 @@ end
 
 local ACTIONS = { [APPEAR] = appear, [BACK_OFF] = back_off, [DIG] = dig, [ROCKFALL] = rockfall, [LEAVE] = leave }
 
-grndman.kind = define.kind {
+grndman.kind = new.kind {
     id = "grndman/navi",
     pool = "actor",
     state = { drill = "object", rock_x = "u32", rock_y = "u32", controller = "object" },

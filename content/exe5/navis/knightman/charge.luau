@@ -82,7 +82,7 @@ local function swing(me: Object, s: State)
     me:exit_attack()
 end
 
-charge.action = define.action {
+charge.action = new.action {
     id = "knightman/charge/action",
     state = { timer = "u16", wait = "u16" },
     -- 0x080FBFF4
@@ -110,7 +110,7 @@ local function setup(navi: Object): Action
     return charge.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "knightman/charge",
     -- The charge table's row 0x10 (0x0801CB0C), by Charge 0 to 5: past 4 it reads on into row 0x11's first entry.
     charge_ticks = { 80, 75, 70, 65, 60, 100 },

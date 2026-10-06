@@ -9,74 +9,74 @@
 local regions = {}
 
 -- The anchor panel (region 0x01).
-regions.single = define.region { panels = { { 0, 0 } } }
+regions.single = new.region { panels = { { 0, 0 } } }
 
 -- The anchor and the panel ahead (region 0x02: LongSwrd).
-regions.long = define.region { panels = { { 0, 0 }, { 1, 0 } } }
+regions.long = new.region { panels = { { 0, 0 }, { 1, 0 } } }
 
 -- The anchor and the panels above and below (region 0x04: WideSwrd).
-regions.wide = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 } } }
+regions.wide = new.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 } } }
 
 -- Three in a row from the anchor (region 0x06: FtrSword).
-regions.line = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 } } }
+regions.line = new.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 } } }
 
 -- The anchor and its four diagonals (region 0x0B: CrosSwrd).
-regions.x = define.region { panels = { { 0, 0 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } } }
+regions.x = new.region { panels = { { 0, 0 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } } }
 
 -- The four panels beside the anchor, and its four diagonals (regions 0x0A
 -- and 0x0C: JustcOne's landing waves).
-regions.beside = define.region { panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
-regions.diagonals = define.region { panels = { { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } } }
+regions.beside = new.region { panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
+regions.diagonals = new.region { panels = { { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } } }
 
 -- The halves of that X: the diagonal rising forward (region 0x12) and the
 -- one falling forward (0x13), TwinLdrs's Colonel striking both.
-regions.rising = define.region { panels = { { 0, 0 }, { 1, -1 }, { -1, 1 } } }
-regions.falling = define.region { panels = { { 0, 0 }, { -1, -1 }, { 1, 1 } } }
+regions.rising = new.region { panels = { { 0, 0 }, { 1, -1 }, { -1, 1 } } }
+regions.falling = new.region { panels = { { 0, 0 }, { -1, -1 }, { 1, 1 } } }
 
 -- The anchor and the two panels diagonally ahead (region 0x0D: a bullet's
 -- burst).
-regions.fork = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 } } }
+regions.fork = new.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 } } }
 
 -- The anchor's column and the one ahead (region 0x11: LifeSrd).
-regions.wide_long = define.region {
+regions.wide_long = new.region {
     panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { 1, -1 }, { 1, 1 } },
 }
 
 -- The 3x3 around the anchor, the anchor first (region 0x0F).
-regions.square = define.region {
+regions.square = new.region {
     panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } },
 }
 
 -- The eight around the anchor (region 0x10).
-regions.ring = define.region {
+regions.ring = new.region {
     panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } },
 }
 
 -- The anchor and its four neighbors (region 0x09: H-Burst's even bursts).
-regions.plus = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
+regions.plus = new.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
 
 -- The anchor and the panel above it (region 0x18: a big rolling log).
-regions.tall = define.region { panels = { { 0, 0 }, { 0, -1 } } }
+regions.tall = new.region { panels = { { 0, 0 }, { 0, -1 } } }
 
 -- The anchor and the two panels diagonally behind it (region 0x1F: EXE5's
 -- ColonelSoul's screen divide).
-regions.vee = define.region { panels = { { 0, 0 }, { -1, -1 }, { -1, 1 } } }
+regions.vee = new.region { panels = { { 0, 0 }, { -1, -1 }, { -1, 1 } } }
 
 -- Six in a row from the anchor (region 0x08: EXE5's MagnetSoul's pull).
-regions.row = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } } }
+regions.row = new.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } } }
 
 -- The anchor and the column ahead of it (region 0x15: ElcPuls's pulse).
-regions.fan = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 }, { 1, 0 } } }
+regions.fan = new.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 }, { 1, 0 } } }
 
 -- The anchor and the two columns ahead of it (region 0x1A: the Beast
 -- charged chips' pillars).
-regions.deep_fan = define.region {
+regions.deep_fan = new.region {
     panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 } },
 }
 
 -- The 5x5 around the anchor, row by row from the far back corner (region
 -- 0x26: ElecMan's reach).
-regions.big_square = define.region {
+regions.big_square = new.region {
     panels = {
         { -2, -2 }, { -1, -2 }, { 0, -2 }, { 1, -2 }, { 2, -2 },
         { -2, -1 }, { -1, -1 }, { 0, -1 }, { 1, -1 }, { 2, -1 },
@@ -89,25 +89,25 @@ regions.big_square = define.region {
 -- A side's area: side 0's (region 0x81, the panels without flag 0x20) and
 -- side 1's (0x82, with it).
 regions.area = {
-    [0] = define.region { field = { require = 0x00000000, forbid = 0x00000020 } },
-    [1] = define.region { field = { require = 0x00000020, forbid = 0x00000000 } },
+    [0] = new.region { field = { require = 0x00000000, forbid = 0x00000020 } },
+    [1] = new.region { field = { require = 0x00000020, forbid = 0x00000000 } },
 }
 
 -- Every panel (region 0x80: Silence).
-regions.field = define.region { field = { require = 0x00000000, forbid = 0x00000000 } }
+regions.field = new.region { field = { require = 0x00000000, forbid = 0x00000000 } }
 
 -- Every solid panel (region 0x83: Timpani).
-regions.solid = define.region { field = { require = 0x00000010, forbid = 0x00000000 } }
+regions.solid = new.region { field = { require = 0x00000010, forbid = 0x00000000 } }
 
 -- The panels of the other side's player navi: side 0's target (region
 -- 0x85) and side 1's (0x84) (Discord).
 regions.other_navi = {
-    [0] = define.region { field = { require = 0x00200000, forbid = 0x00000000 } },
-    [1] = define.region { field = { require = 0x00400000, forbid = 0x00000000 } },
+    [0] = new.region { field = { require = 0x00200000, forbid = 0x00000000 } },
+    [1] = new.region { field = { require = 0x00400000, forbid = 0x00000000 } },
 }
 
 -- The four around the anchor (region 0x0A).
-regions.neighbors = define.region { panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
+regions.neighbors = new.region { panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
 
 -- `GetRandomRelativePanelFiltered`: of region `r`'s panels around (x, y),
 -- dx stepping by `dir`, one whose flags have every `require` bit and no
@@ -177,66 +177,66 @@ end
 
 -- The rest of the original's regions (gen-content).
 -- Region 0x03.
-regions.region_03 = define.region { panels = { { 1, 0 } } }
+regions.region_03 = new.region { panels = { { 1, 0 } } }
 -- Region 0x05.
-regions.region_05 = define.region { panels = { { 0, -1 }, { 0, 1 } } }
+regions.region_05 = new.region { panels = { { 0, -1 }, { 0, 1 } } }
 -- Region 0x07.
-regions.region_07 = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 } } }
+regions.region_07 = new.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 } } }
 -- Region 0x08.
-regions.region_08 = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } } }
+regions.region_08 = new.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } } }
 -- Region 0x0E.
-regions.region_0e = define.region { panels = { { 1, -1 }, { 1, 1 } } }
+regions.region_0e = new.region { panels = { { 1, -1 }, { 1, 1 } } }
 -- Region 0x14.
-regions.region_14 = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 } } }
+regions.region_14 = new.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 } } }
 -- Region 0x16.
-regions.region_16 = define.region { panels = { { 0, 0 }, { 1, -1 } } }
+regions.region_16 = new.region { panels = { { 0, 0 }, { 1, -1 } } }
 -- Region 0x17.
-regions.region_17 = define.region { panels = { { 0, 0 }, { 1, 1 } } }
+regions.region_17 = new.region { panels = { { 0, 0 }, { 1, 1 } } }
 -- Region 0x19.
-regions.region_19 = define.region { panels = { { 0, 0 }, { 0, 1 } } }
+regions.region_19 = new.region { panels = { { 0, 0 }, { 0, 1 } } }
 -- Region 0x1B.
-regions.region_1b = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 }, { 3, -1 }, { 3, 0 }, { 3, 1 } } }
+regions.region_1b = new.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 }, { 3, -1 }, { 3, 0 }, { 3, 1 } } }
 -- Region 0x1C.
-regions.region_1c = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 }, { 3, -1 }, { 3, 0 }, { 3, 1 }, { 4, -1 }, { 4, 0 }, { 4, 1 } } }
+regions.region_1c = new.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 }, { 3, -1 }, { 3, 0 }, { 3, 1 }, { 4, -1 }, { 4, 0 }, { 4, 1 } } }
 -- Region 0x1D.
-regions.region_1d = define.region { panels = { { 0, 0 }, { 1, 0 }, { -1, 0 } } }
+regions.region_1d = new.region { panels = { { 0, 0 }, { 1, 0 }, { -1, 0 } } }
 -- Region 0x1E.
-regions.region_1e = define.region { panels = { { 1, 0 }, { -1, 0 } } }
+regions.region_1e = new.region { panels = { { 1, 0 }, { -1, 0 } } }
 -- Region 0x1F.
-regions.region_1f = define.region { panels = { { 0, 0 }, { -1, -1 }, { -1, 1 } } }
+regions.region_1f = new.region { panels = { { 0, 0 }, { -1, -1 }, { -1, 1 } } }
 -- Region 0x20.
-regions.region_20 = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 } } }
+regions.region_20 = new.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 } } }
 -- Region 0x21.
-regions.region_21 = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { 1, -1 }, { 1, 1 }, { 2, 0 }, { 2, -1 }, { 2, 1 }, { 3, 0 }, { 3, -1 }, { 3, 1 } } }
+regions.region_21 = new.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { 1, -1 }, { 1, 1 }, { 2, 0 }, { 2, -1 }, { 2, 1 }, { 3, 0 }, { 3, -1 }, { 3, 1 } } }
 -- Region 0x22.
-regions.region_22 = define.region { panels = { { -1, -1 }, { 0, -1 }, { 1, -1 }, { 0, 0 }, { -1, 1 }, { 0, 1 }, { 1, 1 } } }
+regions.region_22 = new.region { panels = { { -1, -1 }, { 0, -1 }, { 1, -1 }, { 0, 0 }, { -1, 1 }, { 0, 1 }, { 1, 1 } } }
 -- Region 0x23.
-regions.region_23 = define.region { panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { 3, -1 }, { 4, -1 }, { 5, -1 }, { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 }, { 3, 1 }, { 4, 1 }, { 5, 1 } } }
+regions.region_23 = new.region { panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { 3, -1 }, { 4, -1 }, { 5, -1 }, { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 }, { 3, 1 }, { 4, 1 }, { 5, 1 } } }
 -- Region 0x24.
-regions.region_24 = define.region { panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { -1, 0 }, { 0, 0 }, { 1, 0 }, { -2, 1 }, { -1, 1 }, { 0, 1 } } }
+regions.region_24 = new.region { panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { -1, 0 }, { 0, 0 }, { 1, 0 }, { -2, 1 }, { -1, 1 }, { 0, 1 } } }
 -- Region 0x25.
-regions.region_25 = define.region { panels = { { -2, -1 }, { -1, -1 }, { 0, -1 }, { -1, 0 }, { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 } } }
+regions.region_25 = new.region { panels = { { -2, -1 }, { -1, -1 }, { 0, -1 }, { -1, 0 }, { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 } } }
 -- Region 0x27.
-regions.region_27 = define.region { panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { 3, -1 }, { 4, -1 }, { 5, -1 }, { 5, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 }, { 3, 1 }, { 4, 1 }, { 5, 1 } } }
+regions.region_27 = new.region { panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { 3, -1 }, { 4, -1 }, { 5, -1 }, { 5, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 }, { 3, 1 }, { 4, 1 }, { 5, 1 } } }
 -- Region 0x28.
-regions.region_28 = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 2, -1 }, { 2, 1 } } }
+regions.region_28 = new.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 2, -1 }, { 2, 1 } } }
 -- Region 0x29.
-regions.region_29 = define.region { panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 } } }
+regions.region_29 = new.region { panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 } } }
 -- Region 0x2A.
-regions.region_2a = define.region { panels = { { 0, -1 }, { 0, 1 }, { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } } }
+regions.region_2a = new.region { panels = { { 0, -1 }, { 0, 1 }, { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } } }
 -- Region 0x2B.
-regions.region_2b = define.region { panels = { { 0, 0 }, { -1, 0 }, { -2, 0 } } }
+regions.region_2b = new.region { panels = { { 0, 0 }, { -1, 0 }, { -2, 0 } } }
 -- Region 0x2C.
-regions.region_2c = define.region { panels = { { 5, -2 }, { 4, -2 }, { 3, -2 }, { 2, -2 }, { 1, -2 }, { 0, -2 }, { -1, -2 }, { -2, -2 }, { -3, -2 }, { -4, -2 }, { -5, -2 }, { 5, 2 }, { 4, 2 }, { 3, 2 }, { 2, 2 }, { 1, 2 }, { 0, 2 }, { -1, 2 }, { -2, 2 }, { -3, 2 }, { -4, 2 }, { -5, 2 }, { 5, -1 }, { 4, -1 }, { 3, -1 }, { 2, -1 }, { -2, -1 }, { -3, -1 }, { -4, -1 }, { -5, -1 }, { 5, 1 }, { 4, 1 }, { 3, 1 }, { 2, 1 }, { -2, 1 }, { -3, 1 }, { -4, 1 }, { -5, 1 }, { 5, 0 }, { 4, 0 }, { 3, 0 }, { 2, 0 }, { -2, 0 }, { -3, 0 }, { -4, 0 }, { -5, 0 } } }
+regions.region_2c = new.region { panels = { { 5, -2 }, { 4, -2 }, { 3, -2 }, { 2, -2 }, { 1, -2 }, { 0, -2 }, { -1, -2 }, { -2, -2 }, { -3, -2 }, { -4, -2 }, { -5, -2 }, { 5, 2 }, { 4, 2 }, { 3, 2 }, { 2, 2 }, { 1, 2 }, { 0, 2 }, { -1, 2 }, { -2, 2 }, { -3, 2 }, { -4, 2 }, { -5, 2 }, { 5, -1 }, { 4, -1 }, { 3, -1 }, { 2, -1 }, { -2, -1 }, { -3, -1 }, { -4, -1 }, { -5, -1 }, { 5, 1 }, { 4, 1 }, { 3, 1 }, { 2, 1 }, { -2, 1 }, { -3, 1 }, { -4, 1 }, { -5, 1 }, { 5, 0 }, { 4, 0 }, { 3, 0 }, { 2, 0 }, { -2, 0 }, { -3, 0 }, { -4, 0 }, { -5, 0 } } }
 -- Region 0x2D.
-regions.region_2d = define.region { panels = { { 0, 0 }, { 0, -2 }, { 0, -1 }, { 0, 1 }, { 0, 2 } } }
+regions.region_2d = new.region { panels = { { 0, 0 }, { 0, -2 }, { 0, -1 }, { 0, 1 }, { 0, 2 } } }
 -- Region 0x2E.
-regions.region_2e = define.region { panels = { { 0, -2 }, { 0, -1 }, { 0, 1 }, { 0, 2 } } }
+regions.region_2e = new.region { panels = { { 0, -2 }, { 0, -1 }, { 0, 1 }, { 0, 2 } } }
 -- Region 0x86: the field's panels with every `require` bit and no `forbid` bit.
-regions.field_no_navi = define.region { field = { require = 0x00000000, forbid = 0x00600000 } }
+regions.field_no_navi = new.region { field = { require = 0x00000000, forbid = 0x00600000 } }
 -- Region 0x87: the field's panels with every `require` bit and no `forbid` bit.
-regions.field_solid_left = define.region { field = { require = 0x00000010, forbid = 0x00000020 } }
+regions.field_solid_left = new.region { field = { require = 0x00000010, forbid = 0x00000020 } }
 -- Region 0x88: the field's panels with every `require` bit and no `forbid` bit.
-regions.field_solid_right = define.region { field = { require = 0x00000030, forbid = 0x00000000 } }
+regions.field_solid_right = new.region { field = { require = 0x00000030, forbid = 0x00000000 } }
 
 return regions
