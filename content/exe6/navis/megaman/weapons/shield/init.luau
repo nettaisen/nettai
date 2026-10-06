@@ -18,18 +18,36 @@ local LOCKOUT = 0x28
 -- How long the shield holds.
 local TICKS = 0x14
 
+-- The shields' looks (`byte_80C9664`'s rows 2 and 1, the original's
+-- second parameter), the Reflect's ProtoMan's B+Back holds up too
+-- (navis/protoman/back_special).
+local SHIELD_LOOK = reflector_shield.look {
+    sprite = reflector_shield.sprite,
+    anim = 4,
+    fade_anim = 5,
+    fade_ticks = 0xE,
+    palette = 0,
+}
+shield.reflect_look = reflector_shield.look {
+    sprite = reflector_shield.sprite,
+    anim = 2,
+    fade_anim = 3,
+    fade_ticks = 0xE,
+    palette = 0,
+}
+
 -- The guards (the original's action 0x2B with the params words 0x214 and
 -- 0x114).
 local SHIELD = guard.action {
     id = "megaman/shield/action",
     ticks = TICKS,
-    look = reflector_shield.looks.navicust_shield,
+    look = SHIELD_LOOK,
     heedless = true,
 }
 local REFLECT = guard.action {
     id = "megaman/reflect/action",
     ticks = TICKS,
-    look = reflector_shield.looks.navicust_reflect,
+    look = shield.reflect_look,
     counter = "shot",
 }
 

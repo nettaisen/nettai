@@ -12,7 +12,9 @@
 
 local bullet = require("../../objects/bullet")
 local collision = require("../../rules/collision")
+local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
+local statuses = require("../../rules/status")
 
 local army = {}
 
@@ -25,9 +27,10 @@ local HIT_MOD = 3
 -- The other side's navis (by its own side), for its facing
 -- (`off_80C9F64`, `off_8109784`).
 local NAVIS = { [0] = 0x04000000, [1] = 0x08000000 }
--- The shots: bullets (row 0x11), three of them 10 ticks apart, at one of
--- four heights (`dword_80C9E84`, in pixels).
-local SHOT = bullet.variants.col_army
+-- The shots: bullets (the bullet's row 0x11: the panel found and the one
+-- behind it, staggering, paralyzing for 150 ticks), three of them 10 ticks
+-- apart, at one of four heights (`dword_80C9E84`, in pixels).
+local SHOT = bullet.variant { region = regions.long, hit_mod = 1, effect = bullet.hit, single = true, status = statuses.paralyze_150 }
 local SHOTS, SHOT_TICKS = 3, 0xA
 local HEIGHTS = { [0] = 0x08, 0x10, 0x18, 0x20 }
 local WAIT_TICKS, SHOW_AT = 0x30, 0x1E
