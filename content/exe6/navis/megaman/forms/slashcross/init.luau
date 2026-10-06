@@ -40,7 +40,9 @@ local form: FormDef = {
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 3 },
     identity = new.identity {
-        class = "cross",
+        class = "player",
+        changes_form = true,
+        breaks_on_weakness = true,
         version = 0,
         actor_type = "player",
         ai_index = 27,

@@ -176,7 +176,9 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
         player.set_fact(content, PlayerFact::Version.name(), &[Fact::Name(version)]).expect("the rules take the version");
         let own = content.navi(megaman).forms.as_ref().map_or(&[][..], |f| f.listed(version));
         let own: Vec<Fact> = own.iter().map(|f| Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, f.0))).collect();
-        player.set_fact(content, PlayerFact::CrossList.name(), &own).expect("the rules take a form list");
+        if let Some(name) = content.defs.fact_name(PlayerFact::FormList) {
+            player.set_fact(content, name, &own).expect("the rules take a form list");
+        }
         player
     };
     RoundSetup {

@@ -208,26 +208,26 @@ pub enum FadeMode {
     TransformOut = 0x44,
     /// 0x30: EXE5's soul button's flash fades back (its custom screen's
     /// state 9).
-    SoulFlashBack = 0x30,
+    FlashBack = 0x30,
     /// 0x34: ... and its flash, to full.
-    SoulFlash = 0x34,
+    Flash = 0x34,
     /// 0x10: the custom screen's Program Advance animation fades back in.
     ProgramAdvanceBack = 0x10,
     /// 0x14: ... and out, a quarter of the way.
     ProgramAdvance = 0x14,
     /// 0x50: the custom screen's cursor leaves a dark chip.
-    DarkChipBack = 0x50,
+    ShadeBack = 0x50,
     /// 0x54: the cursor rests on a dark chip: five sixteenths of the way.
-    DarkChip = 0x54,
+    Shade = 0x54,
     /// 0x58: the second fade record's (`loc_8006274`): the custom screen's
     /// window and sprites back in when the cursor leaves a dark chip.
-    DarkChipWindowBack = 0x58,
+    ShadeWindowBack = 0x58,
     /// 0x5C: ... and darkened while it rests on one, three sixteenths.
-    DarkChipWindow = 0x5C,
+    ShadeWindow = 0x5C,
     /// 0x60: the custom screen's Beast Out fades back in.
-    BeastOutBack = 0x60,
+    HalfOutBack = 0x60,
     /// 0x64: ... and out, half the way.
-    BeastOut = 0x64,
+    HalfOut = 0x64,
     /// 0x6C: battle mode 1's fade back in after a transformation.
     Mode1TransformIn = 0x6C,
     /// 0x70: battle mode 1's fade out for a transformation.
@@ -250,15 +250,15 @@ impl FadeMode {
             FadeMode::Dim => (true, 0x40),
             FadeMode::TransformIn | FadeMode::Mode1TransformIn => (false, 0),
             FadeMode::TransformOut | FadeMode::Mode1TransformOut => (true, 0x100),
-            FadeMode::ProgramAdvanceBack | FadeMode::DarkChipBack | FadeMode::DarkChipWindowBack | FadeMode::BeastOutBack => {
+            FadeMode::ProgramAdvanceBack | FadeMode::ShadeBack | FadeMode::ShadeWindowBack | FadeMode::HalfOutBack => {
                 (false, 0)
             }
-            FadeMode::SoulFlashBack => (false, 0),
-            FadeMode::SoulFlash => (true, 0x100),
-            FadeMode::DarkChipWindow => (true, 0x30),
+            FadeMode::FlashBack => (false, 0),
+            FadeMode::Flash => (true, 0x100),
+            FadeMode::ShadeWindow => (true, 0x30),
             FadeMode::ProgramAdvance => (true, 0x40),
-            FadeMode::DarkChip => (true, 0x50),
-            FadeMode::BeastOut => (true, 0x80),
+            FadeMode::Shade => (true, 0x50),
+            FadeMode::HalfOut => (true, 0x80),
             FadeMode::BlackOutBack => (false, 0),
             FadeMode::BlackOut => (true, 0x100),
         }
@@ -456,8 +456,8 @@ pub struct Battle {
     /// Per-side statistics counters (`byte_203EAE0`, `sub_800AB46`).
     pub side_stats: [[u8; 16]; 2],
     /// Per side: EXE5's ColonelSoul army, armed or not, and its soldiers'
-    /// damage words (`kinds::obstacle::Soldiers`).
-    pub obstacle_soldiers: [crate::kinds::obstacle::Soldiers; 2],
+    /// damage words (`kinds::obstacle::Conversion`).
+    pub obstacle_conversion: [crate::kinds::obstacle::Conversion; 2],
     /// The first four counters of EXE5's per-player battle record
     /// (`sub_802D064`'s, 0x0802AEA6): the counter hits and inflicted bugs
     /// that land on the other side's navis no player controls, at most 10
@@ -750,7 +750,7 @@ impl Battle {
             sides: [SideState::default(); 2],
             looks: [SideLooks::default(); 2],
             side_stats: [[0; 16]; 2],
-            obstacle_soldiers: Default::default(),
+            obstacle_conversion: Default::default(),
             navi_hit_counts: [[0; 4]; 2],
             linked: [LinkedRecord::default(); 2],
             dimming: Default::default(),
@@ -1908,7 +1908,7 @@ impl Battle {
             // music nor banner, and holds the plain wait (`sub_80081A4`'s
             // `sub_800A7A6` test, 102 ticks; EXE5's 0x080074D2 counts its
             // own with 0x08008F6E).
-            if win && self.cybeasts() != 0 {
+            if win && self.quiet_win_foes() != 0 {
                 self.fight.timer = wait.normal as _;
             } else {
                 // The winner's console plays the victory music; in link
@@ -1975,14 +1975,15 @@ impl Battle {
         }
     }
 
-    /// The Cybeasts among side 1's actors (`sub_800A7A6` with NameIDs
-    /// 0x173..=0x17E; EXE5's 0x08008F6E with its 0x173..=0x176): a win over
-    /// one ends without music or banner, and fades to white.
-    fn cybeasts(&self) -> usize {
+    /// The actors of side 1 a win over is quiet for (`sub_800A7A6` with
+    /// NameIDs 0x173..=0x17E, the Cybeasts; EXE5's 0x08008F6E with its
+    /// 0x173..=0x176: their identities' `quiet_win`): a win over one ends
+    /// without music or banner, and fades to white.
+    fn quiet_win_foes(&self) -> usize {
         self.round.alive_actors[1]
             .iter()
             .flatten()
-            .filter(|&&r| self.content.identity(self.objects.get(r).identity).class.is_cybeast())
+            .filter(|&&r| self.content.identity(self.objects.get(r).identity).quiet_win)
             .count()
     }
 
@@ -1998,7 +1999,7 @@ impl Battle {
             // the Cybeasts (NameIDs 0x173..=0x17E; `sub_800A7A6` over side 1's actors,
             // `sub_800A832`'s result code 1), otherwise to black; either
             // takes 16 ticks.
-            let white = self.cybeasts() != 0 && self.round.result & 0xF == 1;
+            let white = self.quiet_win_foes() != 0 && self.round.result & 0xF == 1;
             self.fade.start(if white { FadeMode::EndToWhite } else { FadeMode::EndToBlack }, 0x10);
             self.round.init = 4;
             return;

@@ -28,7 +28,7 @@ return {
         turn = turn.action,
         switch_knockout = slash_beast_lunge.action,
         wrapper = beast_rush.action,
-        dust_beast_scatter = dust_beast_scatter.action,
+        ungrounded = dust_beast_scatter.action,
     },
     kinds = {
         absorbed_obstacle = absorbed_obstacle.kind,
