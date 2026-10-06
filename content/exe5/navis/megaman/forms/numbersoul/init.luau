@@ -48,7 +48,7 @@ return define.form {
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
         -- Routine 0x32 (0x0800FA48): DarkPlus (chip 0xBE), the charge table's row 0x32.
-        chaos = chaos.weapon("numbersoul/chaos", darkplus, { 40, 60, 90, 120, 150, 40 }),
+        chaos = chaos.weapon(darkplus, { 40, 60, 90, 120, 150, 40 }),
     },
     chip_bonus = { family = "null", damage = 10, dimming_chips = true },
     -- His put-on and take-off routines (0x0800F038's and 0x0800F09C's row 9): his layer, in his second related slot

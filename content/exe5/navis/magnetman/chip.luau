@@ -112,7 +112,6 @@ local function send(me: Object, s: State)
 end
 
 local action = define.action {
-    id = "nstackle/action",
     state = { timer = "u16", target_x = "u8", mirror_x = "u8", magnet = "object" },
     -- 0x080F11EE
     update = function(me: Object, s: State)

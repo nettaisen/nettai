@@ -20,7 +20,6 @@ local OTENKO = common.make {
     sprite = SPRITE,
     -- NameID 0xCF (actor record 0xCF: AI index 0x21, EXE5's field objects').
     identity = define.identity {
-        id = "otenko",
         class = "field_object",
         version = 2,
         ai_index = 0x21,

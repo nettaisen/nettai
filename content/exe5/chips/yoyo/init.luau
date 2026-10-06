@@ -18,5 +18,5 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = yoyo.action("yoyo/action", yoyo.spec { mode = 0, panels = 2, rounds = 2 }),
+    action = yoyo.action(yoyo.spec { mode = 0, panels = 2, rounds = 2 }),
 }

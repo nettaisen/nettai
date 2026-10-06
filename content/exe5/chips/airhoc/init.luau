@@ -22,7 +22,6 @@ return define.chip {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = flick.action {
-        id = "airhoc/action",
         kind = puck.kind,
         -- The row 2 of 0x080CA3A4: 10 steps.
         puck = puck.variants.airhoc,

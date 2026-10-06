@@ -19,7 +19,7 @@ local hotbody1 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = hotbody.action("hotbody1/action", 2),
+    action = hotbody.action(2),
 }
 
 -- HotBody2 (EXE5 chip 0x09b): the navi bursts into flames that spread to the enemies around it, two rounds 30 ticks
@@ -37,7 +37,7 @@ local hotbody2 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = hotbody.action("hotbody2/action", 2),
+    action = hotbody.action(2),
 }
 
 -- HotBody3 (EXE5 chip 0x09c): the navi bursts into flames that spread to the enemies around it, two rounds 30 ticks
@@ -55,7 +55,7 @@ local hotbody3 = define.chip {
     lockout = 0,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = hotbody.action("hotbody3/action", 2),
+    action = hotbody.action(2),
 }
 
 return { hotbody1 = hotbody1, hotbody2 = hotbody2, hotbody3 = hotbody3 }

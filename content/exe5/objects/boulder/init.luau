@@ -21,7 +21,6 @@ boulder.kind = common.make {
     id = "boulder",
     sprite = SPRITE,
     identity = define.identity {
-        id = "boulder",
         class = "field_object",
         version = 1,
         ai_index = 0x21,

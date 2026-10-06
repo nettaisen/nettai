@@ -32,8 +32,8 @@ local function count(s: State): boolean
     return t <= 0
 end
 
--- Her throw as the action `id`, its capsule of `spec`.
-function throw.action(id: string, spec: Spec): Action
+-- Her throw, its capsule of `spec` (`id`: the key compat names it by, if it does).
+function throw.action(spec: Spec, id: string?): Action
     return define.action {
         id = id,
         state = { timer = "u16" },

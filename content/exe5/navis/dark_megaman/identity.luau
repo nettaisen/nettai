@@ -11,7 +11,6 @@ local attach_points = require("../megaman/attach_points")
 local collision = require("../../rules/collision")
 
 return define.identity {
-    id = "dark-megaman",
     class = "navi",
     version = 0,
     actor_type = "navi",

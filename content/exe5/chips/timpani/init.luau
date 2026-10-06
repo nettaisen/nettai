@@ -32,7 +32,6 @@ return define.chip {
     -- EXE5's row 2; its identity the actor record 0xDF (0x08014C94: version 0, AI index 0x21).
     dimming = exe5_instrument.hook(instrument.instrument {
         identity = define.identity {
-            id = "timpani",
             class = "field_object",
             version = 0,
             ai_index = 0x21,

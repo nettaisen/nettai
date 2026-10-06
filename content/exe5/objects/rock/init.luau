@@ -31,14 +31,12 @@ rock.debris = common_debris.make_kind("rock/debris", asset.sprite("rock-debris")
 
 -- What a rock is taken for: a rock cube (actor record 0xD0), an ice block (0xD1).
 local ROCK = define.identity {
-    id = "rock",
     class = "field_object",
     version = 3,
     ai_index = 0x21,
     look = { sprite = SPRITE, anim = 1, palette = 0, shadow = true },
 }
 local ICE = define.identity {
-    id = "ice-block",
     class = "field_object",
     version = 4,
     ai_index = 0x21,
@@ -51,7 +49,6 @@ local CRACK = asset.sound("panel-crack")
 local ROWS: { [number]: RockVariant } = {
     -- A rock cube anything breaks (no chip or stage places it).
     [0] = common.variant {
-        id = "rock/brittle",
         anim = 1,
         hp = 1,
         element = "null",
@@ -61,7 +58,6 @@ local ROWS: { [number]: RockVariant } = {
     },
     -- RockCube's, and the stages'.
     [1] = common.variant {
-        id = "rock/cube",
         anim = 1,
         hp = 200,
         element = "null",
@@ -71,7 +67,6 @@ local ROWS: { [number]: RockVariant } = {
     },
     -- A hard one (no chip or stage places it).
     [2] = common.variant {
-        id = "rock/hard",
         anim = 1,
         hp = 500,
         element = "null",
@@ -81,7 +76,6 @@ local ROWS: { [number]: RockVariant } = {
     },
     -- The ice block.
     [3] = common.variant {
-        id = "rock/ice",
         anim = 2,
         hp = 100,
         element = "aqua",

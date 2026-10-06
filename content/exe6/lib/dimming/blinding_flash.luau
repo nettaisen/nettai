@@ -19,7 +19,7 @@ local SOUND_FLASH = asset.sound("blinding-flash")
 -- The hit (`byte_80E2F18`): the other side's whole area, no spark, an
 -- attack that pierces invisibility and breaks guards (row 0x34), hitting
 -- navis, no damage, status 0x30 (blind), hit modifier 0.
-local IS = define.collision { id = "dimming/blinding-flash", side0 = 0x80004084, side1 = 0x40004084, row_offset = 0x1A0 }
+local IS = define.collision { side0 = 0x80004084, side1 = 0x40004084, row_offset = 0x1A0 }
 local BLIND = statuses.blind_480
 
 -- The user glows white this tick.

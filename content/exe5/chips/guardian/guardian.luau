@@ -27,7 +27,6 @@ guardian.statue = statue.make {
     id = "guardian/statue",
     sprite = SPRITE,
     identity = define.identity {
-        id = "guardian",
         class = "field_object",
         version = 4,
         ai_index = 0x21,
