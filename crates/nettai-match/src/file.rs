@@ -534,29 +534,45 @@ mod tests {
     /// is.
     #[test]
     fn auto_battle_data_writes_and_reads_back() {
-        use crate::auto_battle::{AutoBattle, ChipPlace, Entry, GIGA, MEGA, PATTERNS, PROGRAM_ADVANCE, Record, STANDARD};
+        use nettai_battle::rules::Fact;
+        use nettai_content_api::{Registry, Value};
         let content = crate::testing::exe5_content();
         let mut m = crate::pick::live(&content, "exe5", 2, None).unwrap();
         let chip = |name: &str| ids::chip(&content, "exe5", name).unwrap();
-        let mut data = AutoBattle::default();
-        data.places[0] = Entry::Chip(chip("areagrab"));
+        let def = |name: &str| -> Fact<'static> { Fact::Value(Value::Def(Registry::Chip, chip(name).0)) };
+        let int = |n: i64| -> Fact<'static> { Fact::Value(Value::Int(n)) };
+        // Its 42 places: the first, the standard chips from place 4 (a 0
+        // after them), an empty place before the second mega chip, a giga, two
+        // patterns and a program advance.
+        let mut places: Vec<Fact> = (0..42).map(|_| Fact::Record(Vec::new())).collect();
+        places[0] = Fact::Record(vec![("chip", def("areagrab"))]);
         for (i, name) in ["sword", "sword", "sword", "sword", "cannon"].into_iter().enumerate() {
-            data.places[STANDARD.start + i] = Entry::Chip(chip(name));
+            places[3 + i] = Fact::Record(vec![("chip", def(name))]);
         }
-        // (A 0 after them; an empty place before the second mega chip.)
-        data.places[STANDARD.start + 5] = Entry::Zero;
-        data.places[MEGA.start + 1] = Entry::Chip(chip("protoman"));
-        data.places[GIGA.start] = Entry::Chip(chip("crossdiv"));
-        data.places[PATTERNS.start] = Entry::Pattern(0);
-        data.places[PATTERNS.start + 1] = Entry::Pattern(2);
-        data.places[PROGRAM_ADVANCE.start] = Entry::Chip(chip("csmopris"));
-        let places = |names: &[&str]| -> [ChipPlace; 5] { std::array::from_fn(|i| names.get(i).map_or(ChipPlace::Empty, |n| ChipPlace::Chip(chip(n)))) };
-        data.records[0] = Record { dx: -2, dy: 1, chips: places(&["sword", "wideswrd"]), score: 7 };
-        data.records[1] = Record::ZERO;
-        data.records[2] = Record { dx: -1, dy: 0, chips: places(&["cannon"; 5]), score: 10 };
-        data.write(&content, &mut m.sides[0]).unwrap();
-        AutoBattle::default().write(&content, &mut m.sides[1]).unwrap();
-        assert_eq!(AutoBattle::of_side(&content, &m.sides[0]), data);
+        places[8] = Fact::Record(vec![("zero", Fact::Value(Value::Bool(true)))]);
+        places[28] = Fact::Record(vec![("chip", def("protoman"))]);
+        places[32] = Fact::Record(vec![("chip", def("crossdiv"))]);
+        places[33] = Fact::Record(vec![("pattern", int(1))]);
+        places[34] = Fact::Record(vec![("pattern", int(3))]);
+        places[41] = Fact::Record(vec![("chip", def("csmopris"))]);
+        let chips = |names: &[&str], zero: bool| -> Fact<'static> {
+            Fact::List(
+                (0..5)
+                    .map(|i| match names.get(i) {
+                        Some(n) => Fact::Record(vec![("chip", def(n))]),
+                        None if zero => Fact::Record(vec![("zero", Fact::Value(Value::Bool(true)))]),
+                        None => Fact::Record(Vec::new()),
+                    })
+                    .collect(),
+            )
+        };
+        let record = |dx: i64, dy: i64, c: Fact<'static>, score: i64| -> Fact<'static> { Fact::Record(vec![("dx", int(dx)), ("dy", int(dy)), ("chips", c), ("score", int(score))]) };
+        let records = vec![record(-2, 1, chips(&["sword", "wideswrd"], false), 7), record(0, 0, chips(&[], true), 0), record(-1, 0, chips(&["cannon"; 5], false), 10)];
+        m.sides[0].set_fact(&content, "auto_battle_places", &places).unwrap();
+        m.sides[0].set_fact(&content, "auto_battle_records", &records).unwrap();
+        // (The other side: a block nothing has written.)
+        m.sides[1].set_fact(&content, "auto_battle_places", &[]).unwrap();
+        m.sides[1].set_fact(&content, "auto_battle_records", &[]).unwrap();
         let text = write(&content, &m);
         for line in [
             "auto_battle_places = [\n    { chip = \"areagrab\" },\n    {},\n    {},\n    { chip = \"sword\" },",

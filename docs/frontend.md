@@ -1422,7 +1422,7 @@ save +0x554C, place for place and record for record, chips by their
 numbers' names). What a match can't state of a block is left empty and
 said: a chip number the game has no chip for, and an entry for a pattern
 past the eighth. The editor's Auto battle pane takes that data alone from
-a save ("From a save…", `nettai_match::auto_battle::of_save`), and edits
+a save ("From a save…", `nettai_match::auto_battle_of_save`), and edits
 it: the 42 places in their six lists, the eight records, and the game's
 chips to put in them (README.md, "The match editor"). A side that operates a team navi takes
 the save's level (its story flags' count), whose HP the story gives (EXE5's
@@ -1528,12 +1528,12 @@ the send writes, and the block's last eight bytes, which nothing reads.
 itself and through a match file, to the same places and records, over
 blocks of each awkward shape.
 
-A random match (`nettai_match::pick`, the editor's Random) states the data
-too: what the game would have written for a player who used each chip of the
-drawn folder once and learned no pattern (`AutoBattle::of_folder`: the
-folder's most held standard, mega and giga chips in their lists, every
-record zeros, as the game's battle end writes them, 0x0802C540). A netplay
-offer carries the data.
+A random match (`nettai_match::pick`, the editor's Random) states none: its
+sides have the rules' default, what the game's battle end writes of a player
+it has learned nothing of (empty places, zeroed records). The user: "i don't
+think you need learning right? since the battles are one-off": the data
+comes into a match from a match file, a save (the import) or a recording
+(compat), never from the game's learning. A netplay offer carries the data.
 
 **The checks** (`nettai_match::check`) run when a file loads, when a netplay
 offer arrives (the same `check_side`), and live in the editor; each problem

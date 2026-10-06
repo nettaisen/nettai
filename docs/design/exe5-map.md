@@ -1871,7 +1871,7 @@ seven saves (Tango's templates and three played ones):
   in none of 39 swaps (38/39)^78 of the time, 13%, so the entry in place 4 leads the sent list about 15% of the
   time where an even shuffle gives 2.6%, and where the empty places are changes what a seed sends. So a battle can
   tell where in the block an entry was.
-- *A match states the block whole* (`nettai_match::auto_battle`, docs/frontend.md §6), as a battle reads nearly
+- *A match states the block whole* (the rules' `auto_battle_places` and `auto_battle_records`, docs/frontend.md §6), as a battle reads nearly
   all of the places: besides their order, a place holding 0 is packed with the entries by the send (only 0xFFFF is
   packed away). Of a pattern a battle shows only that its entry is one (*A pattern is never played*, above: not its
   place, its chips, its score or the record after it); the file carries the records whole as the save has them all
@@ -1881,14 +1881,14 @@ seven saves (Tango's templates and three played ones):
   8), `0` or `{}` (an empty place), any entry in any place as in the block, and `records`, the eight pattern records in order
   (`dx`, `dy`, five chip places of a name, `0` or `{}`, and `score`). Every place and record is stated; a side
   without the section has a block nothing has written (0xFF throughout: a save that never finished a battle), and
-  a new match's side what the battle's end writes of nothing learned (empty places, zeroed records:
-  `AutoBattle::nothing_learned`). Left out: the count and the last eight
+  a new match's side what the battle's end writes of nothing learned (empty places, zeroed records: the rules'
+  default, block.luau's `nothing_learned`). Left out: the count and the last eight
   bytes. A test holds a block read into a side and written back, by itself and through a match file, to the same
   places and records (blocks as the game writes them; a full pattern before a zeroed record and before a blank one;
   a 0 among the places and in a record; patterns out of the records' order). The save import reads block 0 so
-  (`exe5_compat::save::AutoBattleBlock`, the block by number as it is; `nettai_match::auto_battle::of_save`).
-  A random match states what the game would write for a player who used each chip of the drawn folder once and
-  learned no pattern (`AutoBattle::of_folder`: every record zeros). A match compiles to the engine's block
+  (`exe5_compat::save::AutoBattleBlock`, the block by number as it is; `nettai_match::auto_battle_of_save`).
+  A random match states none (the rules' default: nothing learned), and nothing writes what the game would have
+  learned: the battles are one-off (the user, 2026-10-06). A match compiles to the engine's block
   (`AutoBattleData`) place for place and record for record. The learning itself (the tables and the runs during a battle)
   is not ported: nothing of a battle reads it.
 - *What a battle's end writes of the records* (0x0802C540's end, read 2026-10-05). The 42 places are built on the
