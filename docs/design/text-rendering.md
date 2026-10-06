@@ -714,8 +714,9 @@ Murecho (Neil Summerour, Positype; SIL Open Font License 1.1, no Reserved Font N
 ### 9.7 Left open
 
 - Text at 1x output is soft, as any vector text at that size (§8); the HUD wants 3x or more.
-- A HiDPI screen: minifb reports the window's size in points, so the text is drawn at that resolution and the
-  system scales it up.
+- A HiDPI screen: the window (iced) presents at its size in points, so the text is drawn at that resolution and
+  the system scales it up (`NETTAI_PHYSICAL_PIXELS` draws it at the display's density, at four times the cost on a
+  Retina display: docs/frontend.md §7).
 - `--audit` reports what the pack's fonts lack, in either mode; a string the vector font lacks (drawn in the
   game's font) isn't reported.
 - The HUD's lines as content strings (§4.2): not done; they stay the pack's text script, per language (§10).
