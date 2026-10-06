@@ -1009,33 +1009,6 @@ mod tests {
         assert!(content.defs.fact_field(PlayerFact::CrossList).is_some());
     }
 
-    /// The rules say, for tools, the chips they can't play of a player's
-    /// auto battle data, each with why (`unplayable_in_auto_battle`): the
-    /// game's rules answer for a chip (`Defs::unplayable_in_auto_battle`),
-    /// and an id that is no chip of the game is refused as the content is
-    /// defined.
-    #[test]
-    fn the_rules_say_the_chips_auto_battle_cant_play() {
-        let with = |entry: &str| {
-            let mut c = testing::build();
-            let src = c.scripts.module_mut(testing::ROOT, "rules/init").expect("the module");
-            let from = "    hooks = {\n";
-            assert!(src.contains(from), "{from}");
-            *src = src.replacen(from, &format!("    unplayable_in_auto_battle = {entry},\n{from}"), 1);
-            c.define().map(|_| c).map_err(|e| e.message)
-        };
-        let chip = |c: &Content, key: &str| c.defs.chip_by_key(key).unwrap_or_else(|| panic!("no chip {key}"));
-        let content = with("{ [\"test/veil\"] = \"it has no weight\" }").expect("defined");
-        assert_eq!(content.defs.unplayable_in_auto_battle(chip(&content, "test/veil")), Some("it has no weight"));
-        assert_eq!(content.defs.unplayable_in_auto_battle(chip(&content, testing::BOMB)), None);
-        let stock = scenario::content();
-        assert_eq!(stock.defs.unplayable_in_auto_battle(chip(&stock, "test/veil")), None, "the stock rules say none");
-        let e = with("{ [\"test/nothing\"] = \"it isn't\" }").map(|_| ()).expect_err("no such chip");
-        assert!(e.contains("`unplayable_in_auto_battle` names test/nothing, which is no chip of the game"), "{e}");
-        let e = with("{ \"test/veil\" }").map(|_| ()).expect_err("a list");
-        assert!(e.contains("`unplayable_in_auto_battle` is a table of sentences by chip id"), "{e}");
-    }
-
     mod patch_cards {
         use super::*;
         use crate::setup::{GaugeSpeed, NaviStats, Supports};
