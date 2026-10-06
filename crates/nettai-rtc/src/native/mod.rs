@@ -284,7 +284,7 @@ impl PeerConnection {
             self.socks.push(Sock { socket, local, read: true });
         }
         if self.socks.is_empty() {
-            return Err(Error::new("can't bind a UDP socket on any of this machine's addresses"));
+            return Err(Error("can't bind a UDP socket on any of this machine's addresses".into()));
         }
         for i in 0..self.socks.len() {
             let local = self.socks[i].local;
