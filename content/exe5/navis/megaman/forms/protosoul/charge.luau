@@ -17,7 +17,7 @@ local function setup(navi: Object): Action
     navi.extra = 0
     navi.hit_param = HIT_PARAM
     navi.attack_damage = 80 + 10 * (battle.navi(navi.alliance).attack + 1)
-    return wideswrd.action
+    return assert(wideswrd.action)
 end
 
 charge.weapon = new.weapon {

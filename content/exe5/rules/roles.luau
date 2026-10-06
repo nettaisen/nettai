@@ -33,7 +33,7 @@ local supports = require("../lib/supports/controller")
 local swords = require("../lib/swords")
 local tango = require("../chips/tango").tango
 
-return {
+local roles: RolesSpec = {
     actions = {
         -- The charged shot a navi's request starts from idle without its weapon's setup (EXE5's 0x1E: the shared
         -- action, @exelib/megaman/charged_shot, navis/megaman/weapons/charged_shot).
@@ -233,3 +233,5 @@ return {
         program_advance_empty = asset.banner("program-advance-empty"),
     },
 }
+
+return roles

@@ -263,7 +263,7 @@ local function cannon_anim(me: Object): number
 end
 
 -- A chip's MarkCannon.
-function mrkcan.action(spec: { id: string, cannon: AttachmentLook }): Action
+function mrkcan.action(spec: { id: string?, cannon: AttachmentLook }): Action
     -- 0x080EF378: send the sight, and wait for what it finds.
     local function aim(me: Object, s: State)
         if me.step_init == 0 then

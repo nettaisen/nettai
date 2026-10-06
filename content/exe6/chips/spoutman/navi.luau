@@ -196,7 +196,7 @@ local function erupt(me: Object)
         me.timer = GEYSER_TICKS
         local target = target_column(me)
         -- r3 (4, the geyser's Param1) becomes its Z.
-        local what = { while_dimmed = true, ticks = GEYSER_TICKS, target = target }
+        local what: Geyser = { while_dimmed = true, ticks = GEYSER_TICKS, target = target }
         geyser.spawn(me, me.panel_x, me.panel_y, me.element, what, damage_word(me), 4)
         return
     end

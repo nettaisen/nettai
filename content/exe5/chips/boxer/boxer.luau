@@ -45,7 +45,7 @@ local function punch(me: Object, x: number, y: number)
         tx, ty = bit32.band(p, 7), bit32.rshift(p, 4)
     end
     local s = me.state :: State
-    common_fist.spawn(fist.kind, me, tx, ty :: number, me.element, 0, s.hit_mod, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)))
+    common_fist.spawn(fist.kind, me, assert(tx), assert(ty), me.element, 0, s.hit_mod, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)))
 end
 
 -- 0x080E7D0C: every 12 ticks a punch (the first at once); three rounds of three.

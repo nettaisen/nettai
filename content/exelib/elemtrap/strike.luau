@@ -36,7 +36,7 @@ local BURST_INTERVAL = 2
 -- bursts. (Nothing to strike: nothing happens.)
 local function hit_panels(me: Object, look: ElemTrapStrikeLook)
     local mask = STRUCK[me.alliance]
-    local list = {}
+    local list: { { x: number, y: number } } = {}
     for x = 1, 6 do
         for y = 1, 3 do
             if bit32.btest(field.flags(x, y), mask) then
