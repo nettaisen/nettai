@@ -40,7 +40,7 @@ return define.form {
     -- alternative routine (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`).
     traits = { "shows_target_marker", "afterimages_stay", "alt_charge_time" },
     -- The custom screen deals one more chip for each screen spent in it, up to three (the
-    -- cross system's, `sub_802A49C`).
+    -- cross part's, `sub_802A49C`).
     extra_chips = true,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 17, palette_add = 9 },

@@ -6,7 +6,7 @@
 //! that progress up to the last level. A level below the last is the
 //! progress itself; at the last the story is taken as done.
 //!
-//! A side states its team navi's level, and no HP: EXE5's save system
+//! A side states its team navi's level, and no HP: EXE5's save part
 //! gives the navi the story's HP at its level as the round is set up
 //! (content/exe5/rules/save). [`hp_at`] says what that is, for a tool.
 

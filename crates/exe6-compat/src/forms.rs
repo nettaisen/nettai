@@ -1,10 +1,10 @@
-//! What EXE6's systems say of its forms (docs/design/rules-in-luau.md, S7b
+//! What EXE6's rules say of its forms (docs/design/rules-in-luau.md, S7b
 //! and S7c):
 //! their extensions of EXE6's form definitions, which the engine checks and
-//! never reads. The forms system's: a form's kind, the navi a Cross is made
+//! never reads. The forms part's: a form's kind, the navi a Cross is made
 //! with, the animation a change into a Cross lets the navi go of (whose
-//! game's form it is, is the form's own `version`). The beast system's: a Cross's form in Beast Out, the
-//! Cross special's buster volley. The cross system's: ChargeCross's extra
+//! game's form it is, is the form's own `version`). The beast part's: a Cross's form in Beast Out, the
+//! Cross special's buster volley. The cross part's: ChargeCross's extra
 //! chips, DustCross's scrap button. And a navi's sets by game (its `forms`
 //! table's `gregar` and `falzar`: its Crosses, Beast Out and Beast Over),
 //! which the engine leaves to EXE6 too. Tools read them here, by the
@@ -14,7 +14,7 @@ use nettai_battle::content::Content;
 use crate::GameVersion;
 use nettai_content_api::{Data, FormHandle, NaviHandle, Registry};
 
-/// An EXE6 form's kind (the forms system's `kind`). The base form, and any
+/// An EXE6 form's kind (the forms part's `kind`). The base form, and any
 /// other game's form, has none.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Kind {
@@ -53,9 +53,9 @@ pub fn kind(content: &Content, form: FormHandle) -> Option<Kind> {
             "beast" => Kind::Beast,
             "cross_beast" => Kind::CrossBeast,
             "beast_over" => Kind::BeastOver,
-            other => panic!("form {}'s kind {other:?} is none of EXE6's (the forms system checks it)", content.defs.form(form).key),
+            other => panic!("form {}'s kind {other:?} is none of EXE6's (the forms part checks it)", content.defs.form(form).key),
         }),
-        other => panic!("form {}'s kind is {other:?} (the forms system checks it)", content.defs.form(form).key),
+        other => panic!("form {}'s kind is {other:?} (the forms part checks it)", content.defs.form(form).key),
     }
 }
 

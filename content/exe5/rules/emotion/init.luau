@@ -40,7 +40,7 @@ local function slot(side: number, navi: Object): number
     error("a navi of the player's kind on no slot of its side's list")
 end
 
--- 0x080113F8 (the framework skips it while paused). An auto-battling navi's tick reaches the side's systems too: it has no
+-- 0x080113F8 (the framework skips it while paused). An auto-battling navi's tick reaches the side's rules too: it has no
 -- swing.
 local function swing(side: number, navi: Object)
     if navi.actor_type ~= "player" then
@@ -53,7 +53,7 @@ local function swing(side: number, navi: Object)
     if not stats.form.base or stats.emotion_bug == 0 then
         return
     end
-    local s = system.state() :: State
+    local s = rules.state() :: State
     local i = slot(side, navi)
     local ticks = (s.swing_ticks[i] + 1) % 0x10000
     s.swing_ticks[i] = ticks
@@ -78,8 +78,7 @@ local function swing(side: number, navi: Object)
     end
 end
 
-emotion.system = define.system {
-    id = "emotion",
+emotion.part = {
     state = { swing_ticks = "u16[4]", swung = "u8[4]" },
     hooks = {
         -- The swing runs from the navi's tick, whose bug a curse may set at any time.

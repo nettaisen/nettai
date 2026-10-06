@@ -1,7 +1,7 @@
 //! What a side brings that its game's rules take: its facts.
 //!
-//! A fact is a field of the setup of a system of the game's ruleset, as
-//! the content declares it (`setup = { version = { "gregar", "falzar" },
+//! A fact is a field of the setup of the game's rules, as the
+//! content declares it (`setup = { version = { "gregar", "falzar" },
 //! crosses = "form[5]" }`, `setup = { karma = "u16" }`): its name, its
 //! type, its default (`setup_defaults`; zero without one, and an enum or a
 //! list of definitions unstated). A side holds its facts as those systems' setup blocks
@@ -27,10 +27,10 @@ use nettai_battle::content::{Content, PlayerFact};
 use nettai_battle::rules::{self, Fact, SetupFact};
 use nettai_content_api::{Block, ChipHandle, FieldType, FieldValue, FormHandle, Registry, Value};
 
-/// A side's facts: a setup block for each system of its game's ruleset, in
-/// the ruleset's order (none on a content without a ruleset).
+/// A side's facts: its setup of its game's rules, one block (none on a
+/// content without rules).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Facts(Vec<Block>);
+pub struct Facts(Option<Block>);
 
 /// A fact a side of the content's game takes: a setup field's name and type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -39,19 +39,11 @@ pub struct Field<'c> {
     pub ty: &'c FieldType,
 }
 
-/// The facts a side of the content's game takes: each setup field of its
-/// ruleset's systems once, in the systems' order and each one's fields' (a
-/// setup's fields are in their names' order: a schema sorts them).
+/// The facts a side of the content's game takes: each field of its rules'
+/// setup, in its names' order (a schema sorts them).
 pub fn fields(content: &Content) -> Vec<Field<'_>> {
-    let mut out: Vec<Field> = Vec::new();
-    for &h in crate::systems(content) {
-        for f in content.defs.schema(content.defs.system(h).setup).fields() {
-            if !out.iter().any(|o| o.name == f.name) {
-                out.push(Field { name: &f.name, ty: &f.ty });
-            }
-        }
-    }
-    out
+    let Some(rules) = content.defs.rules() else { return Vec::new() };
+    content.defs.schema(rules.setup).fields().iter().map(|f| Field { name: &f.name, ty: &f.ty }).collect()
 }
 
 /// The fact named `name`, if the game's rules take it.
@@ -59,8 +51,8 @@ pub fn field<'c>(content: &'c Content, name: &str) -> Option<Field<'c>> {
     fields(content).into_iter().find(|f| f.name == name)
 }
 
-/// Whether a system of the game's rules declares setup field `field` (a
-/// side takes that fact).
+/// Whether the game's rules' setup declares field `field` (a side takes
+/// that fact).
 pub fn takes(content: &Content, field: &str) -> bool {
     self::field(content, field).is_some()
 }
@@ -118,27 +110,30 @@ fn stated_of(ty: &FieldType, v: FieldValue) -> Stated {
 }
 
 impl Facts {
-    /// What a side that says nothing has: each system's defaults.
+    /// What a side that says nothing has: the rules' defaults.
     pub fn defaults(content: &Content) -> Facts {
-        Facts(rules::default_blocks(content))
+        Facts(rules::default_setup(content))
     }
 
-    /// The setup blocks, as a round's setup carries them.
-    pub fn blocks(&self) -> &[Block] {
-        &self.0
+    /// The setup of the rules, as a round's setup carries it.
+    pub fn block(&self) -> Option<&Block> {
+        self.0.as_ref()
     }
 
-    /// Whether these are the content's game's: a block for each system of
-    /// its ruleset, of that system's setup.
+    /// Whether these are the content's game's: a block of its rules'
+    /// setup (none, for content without rules).
     pub fn fit(&self, content: &Content) -> bool {
-        let systems = crate::systems(content);
-        self.0.len() == systems.len() && self.0.iter().zip(systems).all(|(b, &h)| b.id() == content.defs.system(h).setup)
+        match (&self.0, content.defs.rules()) {
+            (Some(b), Some(r)) => b.id() == r.setup,
+            (None, None) => true,
+            _ => false,
+        }
     }
 
     /// Write fact `field`: one value for a field, an element each for an
     /// array (the rest zero), an enum's by its name (`Fact::Name`). An
-    /// error names what is wrong: no system of the game's rules takes the
-    /// field, a value isn't the field's, or a number is past its type (the
+    /// error names what is wrong: the game's rules take no such field, a
+    /// value isn't the field's, or a number is past its type (the
     /// engine's own store wraps one to the width). Nothing is written then.
     pub fn set(&mut self, content: &Content, field: &str, values: &[Fact]) -> Result<(), String> {
         let Some(declared) = self::field(content, field) else { return Err(no_field(content, field)) };
@@ -153,11 +148,11 @@ impl Facts {
                 return Err(format!("{n} is past a {what} ({least} to {most})"));
             }
         }
-        let mut blocks = self.0.clone();
-        match rules::set_fact(&mut blocks, content, field, values)? {
-            0 => Err(no_field(content, field)),
-            _ => {
-                self.0 = blocks;
+        let mut block = self.0.clone();
+        match rules::set_fact(&mut block, content, field, values)? {
+            false => Err(no_field(content, field)),
+            true => {
+                self.0 = block;
                 Ok(())
             }
         }
@@ -165,29 +160,28 @@ impl Facts {
 
     /// Fact `field` back at what a side that says nothing has.
     pub fn reset(&mut self, content: &Content, field: &str) {
-        let defaults = rules::default_blocks(content);
-        for ((block, default), &h) in self.0.iter_mut().zip(&defaults).zip(crate::systems(content)) {
-            let schema = content.defs.schema(content.defs.system(h).setup);
-            let Some(i) = schema.index_of(field) else { continue };
-            match &schema.field(i).ty {
-                _ if !default.stated(schema, i) => block.unstate(schema, i),
-                FieldType::Array(_, n) => {
-                    for k in 0..*n as usize {
-                        if let Some(v) = default.get_elem(schema, i, k) {
-                            let _ = block.set_elem(schema, i, k, v.load());
-                        }
+        let (Some(rules), Some(block)) = (content.defs.rules(), self.0.as_mut()) else { return };
+        let default = rules.setup_block();
+        let schema = content.defs.schema(rules.setup);
+        let Some(i) = schema.index_of(field) else { return };
+        match &schema.field(i).ty {
+            _ if !default.stated(schema, i) => block.unstate(schema, i),
+            FieldType::Array(_, n) => {
+                for k in 0..*n as usize {
+                    if let Some(v) = default.get_elem(schema, i, k) {
+                        let _ = block.set_elem(schema, i, k, v.load());
                     }
                 }
-                _ => {
-                    let _ = block.set(schema, i, default.get(schema, i).load());
-                }
+            }
+            _ => {
+                let _ = block.set(schema, i, default.get(schema, i).load());
             }
         }
     }
 
     /// Fact `field`, as the engine reads one ([`SetupFact`]).
     pub fn fact<'a>(&'a self, content: &'a Content, field: &str) -> Option<SetupFact<'a>> {
-        rules::fact_in(&self.0, content, field)
+        rules::fact_in(self.0.as_ref()?, content, field)
     }
 
     /// Fact `field`'s value; none: the game's rules take no such fact.
@@ -247,21 +241,21 @@ pub fn range(ty: &FieldType) -> Option<(i64, i64, &'static str)> {
     })
 }
 
-/// What is wrong with a fact no system of the game's rules takes.
+/// What is wrong with a fact the game's rules don't take.
 pub fn no_field(content: &Content, field: &str) -> String {
     format!("no field {field:?} (a side of {} takes {})", content.game(), names_phrase(content))
 }
 
 /// The versions a side of the game states one of, by the names its rules
 /// declare, in their order: the names of the engine's version fact
-/// (`PlayerFact::Version`, an enum of a system's setup: EXE6's cross
-/// system's "gregar" and "falzar", the original's order). None: the rules
+/// (`PlayerFact::Version`, an enum of the rules' setup: EXE6's cross
+/// part's "gregar" and "falzar", the original's order). None: the rules
 /// take no version. Tools go by the order: a version's place is its number
 /// in a navi's stats (`crate::version_byte`).
 pub fn versions(content: &Content) -> &[String] {
     let defs = &content.defs;
-    let Some((slot, field)) = defs.fact_field(PlayerFact::Version) else { return &[] };
-    match &defs.schema(defs.system(defs.ruleset_systems()[slot]).setup).field(field).ty {
+    let (Some(field), Some(rules)) = (defs.fact_field(PlayerFact::Version), defs.rules()) else { return &[] };
+    match &defs.schema(rules.setup).field(field).ty {
         FieldType::Enum(names) => names,
         _ => &[],
     }
@@ -429,7 +423,7 @@ impl Side {
     }
 
     /// Whether a side takes a version (the engine's version fact: EXE6's
-    /// cross and beast systems' `version`, gregar or falzar). EXE5's rules
+    /// cross and beast parts' `version`, gregar or falzar). EXE5's rules
     /// don't: its two versions play alike, and a match of it states none.
     pub fn takes_version(content: &Content) -> bool {
         !versions(content).is_empty()

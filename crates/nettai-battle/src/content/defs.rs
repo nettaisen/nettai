@@ -21,7 +21,7 @@ use nettai_content_api::SpriteId;
 
 use nettai_content_api::{
     ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, FnId, FnSource, FormHandle, KindHandle,
-    NaviHandle, Pool, RecordHandle, Registry, Schema, StageHandle, StateId, SystemHandle, SystemHook,
+    NaviHandle, Pool, RecordHandle, Registry, Schema, StageHandle, StateId, RulesHook,
     WeaponHandle,
 };
 
@@ -275,9 +275,9 @@ pub struct CollisionTypeDef {
 }
 
 
-/// A system's extension of a registry's definitions
+/// The rules' extension of a registry's definitions
 /// (docs/design/rules-in-luau.md §7.5, S7): a field its game's definitions
-/// may carry for it (EXE6's dark-chips system's `hp_bug` on a chip), of a
+/// may carry for it (EXE6's dark chips part's `hp_bug` on a chip), of a
 /// type. The engine checks it as the content is defined and reads none of
 /// it: Luau reads it on the definition, tools through [`Defs::extension`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -364,12 +364,15 @@ impl ExtensionType {
     }
 }
 
-/// A system of a game's rules (docs/design/rules-in-luau.md §2.2): its state
-/// per side, its player setup, its hooks.
+/// A game's rules (docs/design/rules-in-luau.md §2.2), its one definition of
+/// them (`define.rules { ... }`, its rules/init.luau): their state of a side,
+/// a player's setup of them (the side's facts), and their hooks, which call
+/// the game's parts (plain modules) in the order the rules choose. A game
+/// has one (the user: "collapse systems into one rules definition"), which
+/// every match of it plays by.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct SystemDef {
-    pub key: String,
-    /// The layout of its state of a side, and of its player setup.
+pub struct RulesDef {
+    /// The layout of their state of a side, and of a player's setup.
     pub state: StateId,
     pub setup: StateId,
     /// Its player setup when the player's setup says nothing of a field:
@@ -379,13 +382,13 @@ pub struct SystemDef {
     /// `setup_defaults` gives it one: it is left unstated
     /// (`ContentState::unstate`: EXE6's player's version, gregar or falzar),
     /// and a round doesn't start until the player's setup states it
-    /// ([`SystemDef::setup_block`], `SideRules::for_player`).
+    /// ([`RulesDef::setup_block`], `SideRules::for_player`).
     pub setup_default: nettai_content_api::Block,
     /// The layout of its state of each navi no player controls that it
     /// drives (its `controller`: the navi object's own state), if it
     /// drives any.
     pub navi_state: Option<StateId>,
-    /// Its hooks, in [`SystemHook::ALL`]'s order.
+    /// Its hooks, in [`RulesHook::ALL`]'s order.
     hooks: Vec<Option<FnId>>,
     /// Its own actions, which reach its state.
     pub actions: Vec<ActionHandle>,
@@ -404,8 +407,8 @@ pub struct SystemDef {
     pub unplayable_in_auto_battle: Vec<(ChipHandle, String)>,
 }
 
-impl SystemDef {
-    /// A player's setup block for it when the player gives none: its
+impl RulesDef {
+    /// A player's setup block of them when the player gives none: their
     /// defaults (`setup_defaults`), the rest zero, an enum without a
     /// default unstated.
     pub fn setup_block(&self) -> nettai_content_api::Block {
@@ -413,18 +416,17 @@ impl SystemDef {
     }
 
     /// Its function for `hook`, if it has one.
-    pub fn hook(&self, hook: SystemHook) -> Option<FnId> {
-        let i = SystemHook::ALL.iter().position(|&h| h == hook).expect("every hook is listed");
+    pub fn hook(&self, hook: RulesHook) -> Option<FnId> {
+        let i = RulesHook::ALL.iter().position(|&h| h == hook).expect("every hook is listed");
         self.hooks[i]
     }
 }
 
-/// A custom-screen button of a system's (docs/design/rules-in-luau.md
-/// §4.4): where it sits, and its functions, which run as its system's.
+/// A custom-screen button of the rules' (docs/design/rules-in-luau.md
+/// §4.4): where it sits, and its functions, which run as the rules' calls.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ButtonDef {
-    pub system: SystemHandle,
-    /// Its name in the system's `buttons` (the key a pack has its look
+    /// Its name in the rules' `buttons` (the key a pack has its look
     /// under).
     pub name: String,
     /// What a frontend draws of it besides its look (`view`), if it says.
@@ -446,12 +448,11 @@ pub struct ButtonDef {
     pub chip: Option<FnId>,
 }
 
-/// A custom-screen window of a system's (docs/design/rules-in-luau.md
-/// §4.4): its update, run as its system's each tick it is up.
+/// A custom-screen window of the rules' (docs/design/rules-in-luau.md
+/// §4.4): its update, run as the rules' call each tick it is up.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct WindowDef {
-    pub system: SystemHandle,
-    /// Its name in the system's `windows` (what `custom.open_window` opens
+    /// Its name in the rules' `windows` (what `custom.open_window` opens
     /// it by).
     pub name: String,
     /// What a frontend draws while it is up (`view`), if it says.
@@ -467,18 +468,6 @@ pub struct WindowHandle(pub u16);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ButtonHandle(pub u16);
 
-/// A game's rules (docs/design/rules-in-luau.md §2.2): its ruleset's
-/// systems, in the order the framework calls them. A game has one ruleset
-/// (the user: "there should only be one ruleset per game"), which every
-/// match of it plays by.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct RulesetDef {
-    pub systems: Vec<SystemHandle>,
-}
-
-/// Most systems a ruleset may list.
-pub const MAX_SYSTEMS: usize = 16;
-
 /// A record only content reads: the engine keeps its handle and type.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RecordDef {
@@ -488,7 +477,7 @@ pub struct RecordDef {
 
 /// A patch card (`define.patch_card`; BN4's, EXE5's and EXE6's Modification
 /// Cards, docs/engine/patch-cards.md): what every game's card is. A game's
-/// rules give its effects their meaning (EXE6's patch-cards system applies a
+/// rules give its effects their meaning (EXE6's patch cards part applies a
 /// player's cards as the round is set up); the engine keeps the card's
 /// capacity cost and its effects' kinds, and the effects' own fields stay
 /// the definition's data, which the rules read. Its name is the locales'.
@@ -615,20 +604,18 @@ pub struct Defs {
     /// What the game needs from content by role (its ruleset's `roles`;
     /// none given, none filled).
     pub roles: Roles,
-    /// The systems (docs/design/rules-in-luau.md), by handle.
-    pub systems: Vec<SystemDef>,
-    /// The systems' custom-screen buttons and windows.
+    /// The rules' custom-screen buttons and windows.
     pub buttons: Vec<ButtonDef>,
     pub windows: Vec<WindowDef>,
-    /// The game's ruleset (none: content without one, whose sides have no
-    /// systems).
-    ruleset: Option<RulesetDef>,
-    /// Where each fact a player brings is ([`PlayerFact::ALL`]'s order): the
-    /// place among the ruleset's systems of the first whose setup has the
-    /// field, and the field.
-    facts: Vec<Option<(u8, u16)>>,
-    /// Each action's system, if it is one's, by action handle.
-    action_owner: Vec<Option<SystemHandle>>,
+    /// The game's rules (none: content without them, whose sides have no
+    /// rules' state).
+    rules: Option<RulesDef>,
+    /// Where each fact a player brings is ([`PlayerFact::ALL`]'s order):
+    /// the field of the rules' setup.
+    facts: Vec<Option<u16>>,
+    /// Whether an action is the rules' (it reaches their state), by action
+    /// handle.
+    rules_actions: Vec<bool>,
     /// Whether a form names the action as its change, by action handle.
     change_actions: Vec<bool>,
     /// The Program Advances, in the order they are tried (each chip holds
@@ -662,15 +649,11 @@ impl Defs {
         Some(d.spec.field(field)).filter(|v| !matches!(v, Data::Nil))
     }
 
-    pub fn system(&self, h: SystemHandle) -> &SystemDef {
-        &self.systems[h.index()]
-    }
-
-    /// Why the game's rules can't play `chip` of a player's auto battle data, if
-    /// they can't (the first of its ruleset's systems that says:
-    /// `SystemDef::unplayable_in_auto_battle`): for tools.
+    /// Why the game's rules can't play `chip` of a player's auto battle
+    /// data, if they can't (`RulesDef::unplayable_in_auto_battle`): for
+    /// tools.
     pub fn unplayable_in_auto_battle(&self, chip: ChipHandle) -> Option<&str> {
-        self.ruleset_systems().iter().find_map(|&s| self.system(s).unplayable_in_auto_battle.iter().find(|(c, _)| *c == chip).map(|(_, why)| why.as_str()))
+        self.rules.as_ref()?.unplayable_in_auto_battle.iter().find(|(c, _)| *c == chip).map(|(_, why)| why.as_str())
     }
 
     pub fn button(&self, h: ButtonHandle) -> &ButtonDef {
@@ -681,9 +664,9 @@ impl Defs {
         &self.windows[h.0 as usize]
     }
 
-    /// The system an action is one of, if any (its state is that system's).
-    pub fn action_owner(&self, h: ActionHandle) -> Option<SystemHandle> {
-        self.action_owner.get(h.index()).copied().flatten()
+    /// Whether an action is the rules' (it reaches their state).
+    pub fn is_rules_action(&self, h: ActionHandle) -> bool {
+        self.rules_actions.get(h.index()).copied().unwrap_or(false)
     }
 
     /// Whether a form names the action as the one that changes a navi into
@@ -692,23 +675,18 @@ impl Defs {
         self.change_actions.get(h.index()).copied().unwrap_or(false)
     }
 
-    /// The game's ruleset, if it has one (docs/design/rules-in-luau.md
-    /// §2.3: a game has one, which every match of it plays by).
-    pub fn ruleset(&self) -> Option<&RulesetDef> {
-        self.ruleset.as_ref()
+    /// The game's rules, if it has them (docs/design/rules-in-luau.md §2.3:
+    /// a game has one definition of them, which every match of it plays
+    /// by).
+    pub fn rules(&self) -> Option<&RulesDef> {
+        self.rules.as_ref()
     }
 
-    /// The game's ruleset's systems, in its order (none without a ruleset).
-    pub fn ruleset_systems(&self) -> &[SystemHandle] {
-        self.ruleset.as_ref().map_or(&[], |r| &r.systems)
-    }
-
-    /// Where fact `fact` is: the place among the ruleset's systems of the
-    /// one that keeps it, and the field of its setup. None: no system of
-    /// the game's does.
-    pub fn fact_field(&self, fact: PlayerFact) -> Option<(usize, usize)> {
+    /// Where fact `fact` is: the field of the rules' setup. None: the
+    /// game's rules take no such fact.
+    pub fn fact_field(&self, fact: PlayerFact) -> Option<usize> {
         let k = PlayerFact::ALL.iter().position(|&f| f == fact).expect("every fact is listed");
-        self.facts.get(k).copied().flatten().map(|(slot, field)| (slot as usize, field as usize))
+        self.facts.get(k).copied().flatten().map(|field| field as usize)
     }
 
     /// The game's roles.
@@ -948,16 +926,15 @@ pub(crate) fn no_display_text(d: &Definition) -> Result<(), ContentError> {
     Ok(())
 }
 
-/// The fields the game's systems extend its definitions of `registry` with
-/// (`extends`), read off the systems' definitions before they are built:
-/// what a record's reader leaves to them. (Building the systems checks
-/// them.)
+/// The fields the game's rules extend its definitions of `registry` with
+/// (`extends`), read off the rules' definition before it is built: what a
+/// record's reader leaves to them. (Building the rules checks them.)
 fn extended_fields(definitions: &Definitions, registry: Registry) -> Vec<String> {
     let mut fields = Vec::new();
-    for s in definitions.of(Registry::System) {
-        if let Data::Map(own) = s.spec.field("extends").field(registry.name()) {
-            fields.extend(own.iter().map(|(k, _)| k.to_string()));
-        }
+    if let Some(r) = ruleset(definitions)
+        && let Data::Map(own) = r.spec.field("extends").field(registry.name())
+    {
+        fields.extend(own.iter().map(|(k, _)| k.to_string()));
     }
     fields
 }
@@ -1020,7 +997,7 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
         other => return Err(what(format!("`damage` is {other}: a number below 1000, or a formula"))),
     }
     // What the ruleset asks of this chip: its traits and the trap it is.
-    // (A system's own fields, EXE6's dark chips' cost and substitute and its
+    // (The rules' own fields, EXE6's dark chips' cost and substitute and its
     // Beast rush's lock-on, are its extension: SystemDef::extends.)
     for field in ["traits", "trap"] {
         let v = json(field)?;
@@ -1247,7 +1224,7 @@ impl Defs {
             StateId(schemas.binary_search_by(|s| s.key.as_str().cmp(key)).expect("a defined schema") as u16)
         };
         // (An object's or an action's state is a `ContentState`: at most
-        // `MAX_BYTES`. A system's state and setup are blocks of their own
+        // `MAX_BYTES`. The rules' state and setup are blocks of their own
         // size.)
         let fits_object = |d: &Definition, field: &str, id: StateId| -> Result<StateId, ContentError> {
             let size = schemas[id.0 as usize].schema.size();
@@ -1828,19 +1805,32 @@ impl Defs {
             None => Roles::default(),
         };
 
-        // The systems and the ruleset.
-        let mut systems = Vec::new();
-        // (Each system's `unplayable_in_auto_battle`, by chip id, with its module
-        // and key: in the systems' order.)
-        let mut unplayable_in_auto_battle: Vec<(String, String, Vec<(String, String)>)> = Vec::new();
+        // The game's rules (one definition: their state, setup, hooks,
+        // buttons and windows, actions and extensions, beside their rule
+        // sections and roles).
+        let mut rules = None;
+        // (Their `unplayable_in_auto_battle`, by chip id, with their module:
+        // resolved once every chip is known.)
+        let mut unplayable_in_auto_battle: Option<(String, Vec<(String, String)>)> = None;
         let mut buttons: Vec<ButtonDef> = Vec::new();
         let mut windows: Vec<WindowDef> = Vec::new();
-        for d in definitions.of(Registry::System) {
-            let what = |e: &str| ContentError::new(format!("{}.luau: system {}: {e}", d.module, d.key));
+        if let Some(d) = ruleset(&definitions) {
+            let what = |e: &str| ContentError::new(format!("{}.luau: rules: {e}", d.module));
+            const FIELDS: [&str; 12] = [
+                "state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions", "extends",
+                "unplayable_in_auto_battle", "roles",
+            ];
             if let Data::Map(entries) = &d.spec {
                 for (k, _) in entries {
-                    if !matches!(k, nettai_content_api::DataKey::Str(f) if ["id", "state", "setup", "setup_defaults", "navi_state", "hooks", "custom", "buttons", "windows", "actions", "extends", "unplayable_in_auto_battle"].contains(&f.as_str())) {
-                        return Err(what(&format!("`{k}` is no field of a system (id, state, setup, setup_defaults, navi_state, hooks, custom, buttons, windows, actions, extends, unplayable_in_auto_battle)")));
+                    let nettai_content_api::DataKey::Str(f) = k else {
+                        return Err(what(&format!("`{k}` is no field of the rules")));
+                    };
+                    if !FIELDS.contains(&f.as_str()) && !super::sections::SECTIONS.contains(&f.as_str()) {
+                        return Err(what(&format!(
+                            "`{f}` is no field of the rules ({}; their rule sections {})",
+                            FIELDS.join(", "),
+                            super::sections::SECTIONS.join(", ")
+                        )));
                     }
                 }
             }
@@ -1851,20 +1841,20 @@ impl Defs {
                     _ => Err(what(&format!("`{field}` is not a table of fields"))),
                 }
             };
-            let mut hooks = vec![None; SystemHook::ALL.len()];
+            let mut hooks = vec![None; RulesHook::ALL.len()];
             match d.spec.field("hooks") {
                 Data::Nil => {}
                 Data::Map(entries) => {
                     for (k, v) in entries {
                         let name = k.to_string();
-                        let Some(i) = SystemHook::ALL.iter().position(|h| h.name() == name && !name.contains('.')) else {
-                            let known: Vec<&str> = SystemHook::ALL.iter().map(|h| h.name()).filter(|n| !n.contains('.')).collect();
+                        let Some(i) = RulesHook::ALL.iter().position(|h| h.name() == name && !name.contains('.')) else {
+                            let known: Vec<&str> = RulesHook::ALL.iter().map(|h| h.name()).filter(|n| !n.contains('.')).collect();
                             return Err(what(&format!("no hook is named `{name}` (the hooks: {})", known.join(", "))));
                         };
                         if !matches!(v, Data::Function) {
                             return Err(what(&format!("hook `{name}` is not a function")));
                         }
-                        hooks[i] = Some(functions.id(FnSource::slot(Registry::System, &d.key, &format!("hooks.{name}"))));
+                        hooks[i] = Some(functions.id(FnSource::slot(d.registry, &d.key, &format!("hooks.{name}"))));
                     }
                 }
                 _ => return Err(what("`hooks` is a table of functions by hook name")),
@@ -1876,15 +1866,15 @@ impl Defs {
                 Data::Map(entries) => {
                     for (k, v) in entries {
                         let name = format!("custom.{k}");
-                        let Some(i) = SystemHook::ALL.iter().position(|h| h.name() == name) else {
+                        let Some(i) = RulesHook::ALL.iter().position(|h| h.name() == name) else {
                             let known: Vec<&str> =
-                                SystemHook::ALL.iter().filter_map(|h| h.name().strip_prefix("custom.")).collect();
+                                RulesHook::ALL.iter().filter_map(|h| h.name().strip_prefix("custom.")).collect();
                             return Err(what(&format!("no custom-screen hook is named `{k}` (the hooks: {})", known.join(", "))));
                         };
                         if !matches!(v, Data::Function) {
                             return Err(what(&format!("custom-screen hook `{k}` is not a function")));
                         }
-                        hooks[i] = Some(functions.id(FnSource::slot(Registry::System, &d.key, &name)));
+                        hooks[i] = Some(functions.id(FnSource::slot(d.registry, &d.key, &name)));
                     }
                 }
                 _ => return Err(what("`custom` is a table of functions by custom-screen hook name")),
@@ -1903,8 +1893,7 @@ impl Defs {
                 let h = actions.binary_search_by(|a| a.key.as_str().cmp(key)).expect("a defined action");
                 system_actions.push(ActionHandle(h as u16));
             }
-            // Its custom-screen buttons, by name.
-            let system = SystemHandle(systems.len() as u16);
+            // Their custom-screen buttons, by name.
             let mut own_buttons = Vec::new();
             match d.spec.field("buttons") {
                 Data::Nil => {}
@@ -1935,7 +1924,7 @@ impl Defs {
                         };
                         let mut func = |f: &str, needed: bool| -> Result<Option<FnId>, ContentError> {
                             match spec.field(f) {
-                                Data::Function => Ok(Some(functions.id(FnSource::slot(Registry::System, &d.key, &format!("buttons.{name}.{f}"))))),
+                                Data::Function => Ok(Some(functions.id(FnSource::slot(d.registry, &d.key, &format!("buttons.{name}.{f}"))))),
                                 Data::Nil if !needed => Ok(None),
                                 _ => Err(at(&format!("`{f}` is a function"))),
                             }
@@ -1952,7 +1941,7 @@ impl Defs {
                         }
                         let (uses, right, left) = (byte("uses")?.unwrap_or(0), byte("right")?, byte("left")?);
                         own_buttons.push(ButtonHandle((buttons.len()) as u16));
-                        buttons.push(ButtonDef { system, name: name.clone(), view, slot, cells, uses, right, left, shown, state, pressed, taken_back, chip });
+                        buttons.push(ButtonDef { name: name.clone(), view, slot, cells, uses, right, left, shown, state, pressed, taken_back, chip });
                     }
                 }
                 _ => return Err(what("`buttons` is a table of buttons by name")),
@@ -1962,7 +1951,7 @@ impl Defs {
                 Data::Nil => None,
                 _ => Some(fits_object(d, "navi_state", layout("navi_state")?)?),
             };
-            let controller = SystemHook::ALL.iter().position(|&h| h == SystemHook::Controller).expect("listed");
+            let controller = RulesHook::ALL.iter().position(|&h| h == RulesHook::Controller).expect("listed");
             if navi_state.is_some() && hooks[controller].is_none() {
                 return Err(what("a `navi_state` is the state of the navis its `controller` drives: it has no `controller`"));
             }
@@ -1990,9 +1979,9 @@ impl Defs {
                         if !matches!(spec.field("update"), Data::Function) {
                             return Err(what(&format!("window `{name}`: `update` is a function")));
                         }
-                        let update = functions.id(FnSource::slot(Registry::System, &d.key, &format!("windows.{name}.update")));
+                        let update = functions.id(FnSource::slot(d.registry, &d.key, &format!("windows.{name}.update")));
                         own_windows.push(WindowHandle(windows.len() as u16));
-                        windows.push(WindowDef { system, name, view, update });
+                        windows.push(WindowDef { name, view, update });
                     }
                 }
                 _ => return Err(what("`windows` is a table of windows by name")),
@@ -2006,7 +1995,7 @@ impl Defs {
                         let name = k.to_string();
                         let Some(registry) = Registry::from_name(&name).filter(|r| matches!(r, Registry::Chip | Registry::Form | Registry::Navi))
                         else {
-                            return Err(what(&format!("`extends.{name}`: a system extends chip, form or navi definitions")));
+                            return Err(what(&format!("`extends.{name}`: the rules extend chip, form or navi definitions")));
                         };
                         let Data::Map(fields) = fields else { return Err(what(&format!("`extends.{name}` is a table of fields")) ) };
                         for (f, ty) in fields {
@@ -2034,7 +2023,7 @@ impl Defs {
                 _ => return Err(what("`unplayable_in_auto_battle` is a table of sentences by chip id")),
             }
             unplayable.sort();
-            unplayable_in_auto_battle.push((d.module.clone(), d.key.clone(), unplayable));
+            unplayable_in_auto_battle = Some((d.module.clone(), unplayable));
             // Its setup's defaults: a value of a field of its setup each
             // (an enum's by name), which it must hold as given.
             let setup = layout("setup")?;
@@ -2106,8 +2095,7 @@ impl Defs {
                 own_buttons.iter().filter_map(|h| buttons[h.0 as usize].view.map(|v| (buttons[h.0 as usize].name.as_str(), v))),
             )
             .map_err(|e| what(&e))?;
-            systems.push(SystemDef {
-                key: d.key.clone(),
+            rules = Some(RulesDef {
                 state,
                 setup,
                 setup_default,
@@ -2121,38 +2109,22 @@ impl Defs {
                 unplayable_in_auto_battle: Vec::new(),
             });
         }
-        // The extensions: one system of the game owns a field of a registry,
-        // and the definitions that carry it carry it of its type.
-        for (i, s) in systems.iter().enumerate() {
-            for e in &s.extends {
-                if let Some(other) = systems[..i].iter().find(|o| o.extends.iter().any(|x| x.registry == e.registry && x.field == e.field)) {
-                    return Err(ContentError::new(format!(
-                        "systems {} and {} both extend {} definitions with `{}`",
-                        other.key,
-                        s.key,
-                        e.registry,
-                        e.field
-                    )));
+        // The rules' extensions: the definitions that carry a field carry it
+        // of its type; and the rules' actions.
+        let mut rules_actions = vec![false; actions.len()];
+        if let Some(r) = &rules {
+            let module = ruleset(&definitions).map_or("", |d| d.module.as_str());
+            for (i, e) in r.extends.iter().enumerate() {
+                if r.extends[..i].iter().any(|x| x.registry == e.registry && x.field == e.field) {
+                    return Err(ContentError::new(format!("{module}.luau: rules: they extend {} definitions with `{}` twice", e.registry, e.field)));
                 }
                 for d in definitions.of(e.registry) {
                     e.ty.check(d.spec.field(&e.field), &format!("{} {}.{}", e.registry, d.key, e.field))
-                        .map_err(|m| ContentError::new(format!("{}.luau: {m} (system {}'s extension)", d.module, s.key)))?;
+                        .map_err(|m| ContentError::new(format!("{}.luau: {m} (the rules' extension)", d.module)))?;
                 }
             }
-        }
-        // Each action's system, if it is one's.
-        let mut action_owner: Vec<Option<SystemHandle>> = vec![None; actions.len()];
-        for (i, s) in systems.iter().enumerate() {
-            for &a in &s.actions {
-                if let Some(other) = action_owner[a.index()] {
-                    return Err(ContentError::new(format!(
-                        "action {} is both system {}'s and system {}'s",
-                        actions[a.index()].key,
-                        systems[other.index()].key,
-                        s.key
-                    )));
-                }
-                action_owner[a.index()] = Some(SystemHandle(i as u16));
+            for &a in &r.actions {
+                rules_actions[a.index()] = true;
             }
         }
         // The actions forms name as their change (and their revert):
@@ -2164,28 +2136,23 @@ impl Defs {
                 change_actions[a.index()] = true;
             }
         }
-        let ruleset = read_ruleset(&definitions)?;
-        // What a player brings that a frontend reads by the engine's name
-        // for it: the first of the ruleset's systems whose setup has a
-        // field of the name; every system's field of the name must be of
-        // the fact's type (a setup writes the fact into each).
+        // What a player brings that a frontend and tools read by the
+        // engine's name for it: the rules' setup field of the name, of the
+        // fact's type.
         let mut facts = vec![None; PlayerFact::ALL.len()];
-        for (k, fact) in PlayerFact::ALL.iter().enumerate() {
-            let listed = ruleset.iter().flat_map(|r| r.systems.iter().enumerate());
-            for (slot, h) in listed {
-                let s = &systems[h.index()];
-                let schema = &schemas[s.setup.0 as usize].schema;
+        if let Some(r) = &rules {
+            let schema = &schemas[r.setup.0 as usize].schema;
+            for (k, fact) in PlayerFact::ALL.iter().enumerate() {
                 let Some(i) = schema.index_of(fact.name()) else { continue };
                 if let Err(want) = fact.fits(&schema.field(i).ty) {
-                    let module = &definitions.of(Registry::System)[h.index()].module;
+                    let module = ruleset(&definitions).map_or("", |d| d.module.as_str());
                     return Err(ContentError::new(format!(
-                        "{module}.luau: system {}: its setup field `{}` is the fact a player brings by that name, {want}: it is {:?}",
-                        s.key,
+                        "{module}.luau: rules: their setup field `{}` is the fact a player brings by that name, {want}: it is {:?}",
                         fact.name(),
                         schema.field(i).ty
                     )));
                 }
-                facts[k].get_or_insert((slot as u8, i as u16));
+                facts[k] = Some(i as u16);
             }
         }
 
@@ -2315,12 +2282,11 @@ impl Defs {
             regions,
             collisions,
             roles,
-            systems,
             buttons,
             windows,
-            ruleset,
+            rules,
             facts,
-            action_owner,
+            rules_actions,
             change_actions,
             program_advances,
             schemas,
@@ -2333,68 +2299,18 @@ impl Defs {
         for (i, c) in defs.chips.iter().enumerate() {
             defs.chip_keys.insert(c.key.clone(), ChipHandle(i as u16));
         }
-        // (A system's `unplayable_in_auto_battle` names chips of its game.)
-        for (system, (module, key, unplayable)) in defs.systems.iter_mut().zip(unplayable_in_auto_battle) {
+        // (The rules' `unplayable_in_auto_battle` names chips of their game.)
+        if let (Some(rules), Some((module, unplayable))) = (defs.rules.as_mut(), unplayable_in_auto_battle) {
             for (id, why) in unplayable {
                 let chip = defs.chip_keys.get(&id).copied().ok_or_else(|| {
-                    ContentError::new(format!("{module}.luau: system {key}: `unplayable_in_auto_battle` names {id}, which is no chip of the game"))
+                    ContentError::new(format!("{module}.luau: rules: `unplayable_in_auto_battle` names {id}, which is no chip of the game"))
                 })?;
-                system.unplayable_in_auto_battle.push((chip, why));
+                rules.unplayable_in_auto_battle.push((chip, why));
             }
         }
         defs.functions = functions.list;
         Ok(defs)
     }
-}
-
-/// The game's ruleset (docs/design/rules-in-luau.md §2.2): its systems, in
-/// order. A game has one, with no name and no variants.
-fn read_ruleset(definitions: &Definitions) -> Result<Option<RulesetDef>, ContentError> {
-    let Some(d) = ruleset(definitions) else { return Ok(None) };
-    let systems = definitions.of(Registry::System);
-    let what = |e: &str| ContentError::new(format!("{}.luau: ruleset: {e}", d.module));
-    if let Data::Map(entries) = &d.spec {
-        for (k, _) in entries {
-            let nettai_content_api::DataKey::Str(f) = k else {
-                return Err(what(&format!("`{k}` is no field of a ruleset (systems, roles and the rule sections)")));
-            };
-            match f.as_str() {
-                "systems" | "roles" => {}
-                "stock" => return Err(what("`stock`: a game has one ruleset, which is its rules; it says nothing of being the stock one")),
-                "base" | "add" | "remove" => {
-                    return Err(what(&format!("`{f}`: a game has one ruleset, and no variants of it; it lists its `systems`")));
-                }
-                f if super::sections::SECTIONS.contains(&f) => {}
-                f => {
-                    return Err(what(&format!(
-                        "`{f}` is no field of a ruleset (systems, roles; its rule sections {})",
-                        super::sections::SECTIONS.join(", ")
-                    )));
-                }
-            }
-        }
-    }
-    let items: &[Data] = match d.spec.field("systems") {
-        Data::Nil => &[],
-        Data::List(items) => items,
-        Data::Map(m) if m.is_empty() => &[],
-        _ => return Err(what("`systems` is a list of systems")),
-    };
-    let mut out: Vec<SystemHandle> = Vec::new();
-    for v in items {
-        let Data::Ref(Registry::System, key) = v else {
-            return Err(what("`systems` lists system definitions (define.system { ... })"));
-        };
-        let h = SystemHandle(systems.iter().position(|s| &s.key == key).expect("a defined system") as u16);
-        if out.contains(&h) {
-            return Err(what(&format!("`systems` lists system {key} twice")));
-        }
-        out.push(h);
-    }
-    if out.len() > MAX_SYSTEMS {
-        return Err(what(&format!("{} systems; a ruleset has at most {MAX_SYSTEMS}", out.len())));
-    }
-    Ok(Some(RulesetDef { systems: out }))
 }
 
 #[cfg(test)]

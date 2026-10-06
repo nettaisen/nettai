@@ -4,7 +4,7 @@
 -- `sub_8028D6C`), its animation as a window (`sub_802770C`), the form it
 -- puts the navi in at the turn's start (`sub_802937A`, `sub_802A040`), and
 -- the round's record of it (`dword_20349A0`). Its state is the beast
--- system's.
+-- part's.
 
 local beast_out_chip = require("../../chips/beastout")
 local exe6 = require("../api")
@@ -13,7 +13,7 @@ local chip_gate_battle = require("../../lib/chip_gate_battle")
 
 local custom_beast = {}
 
--- The beast system's state fields Beast Out on the screen keeps
+-- The beast part's state fields Beast Out on the screen keeps
 -- (rules/beast/init.luau declares them).
 type State = {
     -- `dword_20349A0`: Beast Out was picked this round (the round's first
@@ -30,7 +30,7 @@ local function megaman(side: number): boolean
     return battle.navi(side).navi.forms ~= nil
 end
 
--- The beast system's setup (rules/beast/init.luau declares it): the
+-- The beast part's setup (rules/beast/init.luau declares it): the
 -- player's game, and Beast Out unlocked (event flag 0xE0).
 type Setup = {
     version: "falzar" | "gregar",
@@ -53,7 +53,7 @@ local function beast_game(side: number): "gregar" | "falzar"
     if form.version ~= nil and not form.base then
         return form.version :: "gregar" | "falzar"
     end
-    return (system.setup() :: Setup).version
+    return (rules.setup() :: Setup).version
 end
 
 -- The form Beast Out takes the navi to (`sub_802937A`, `sub_802A040`): when
@@ -72,7 +72,7 @@ local function beast_form(side: number, tired: boolean): FormDef?
         local set = of(beast_game(side))
         return if set ~= nil then set.beast_over else nil
     elseif stats.form.base then
-        local set = of((system.setup() :: Setup).version)
+        local set = of((rules.setup() :: Setup).version)
         return if set ~= nil then set.beast_out else nil
     end
     return stats.form.beast
@@ -81,7 +81,7 @@ end
 -- `sub_802A57E`: the navi can Beast Out now: not worn out, not in a Beast
 -- form; tired, only once it has this round (and then goes Beast Over).
 local function available(side: number): boolean
-    local s = system.state() :: State
+    local s = rules.state() :: State
     local emotion = custom.player(side).emotion
     return emotion ~= "worn_out" and (emotion ~= "tired" or s.beast_out_used) and not kind.beast(side)
 end
@@ -96,11 +96,11 @@ custom_beast.button = {
             and not sealed(side)
             and not chip_gate_battle()
             and not custom.player(side).random_battle
-            and (system.setup() :: Setup).beast_out
+            and (rules.setup() :: Setup).beast_out
     end,
     -- `sub_8028F48`: with room left, no Cross chosen, and the navi able to.
     state = function(side: number): "selectable" | "unavailable"
-        if not custom.full(side) and available(side) and not custom.form_taken(side) then
+        if not custom.full(side) and available(side) and not custom.form_taken(side, "beast_out") then
             return "selectable"
         end
         return "unavailable"
@@ -119,7 +119,7 @@ custom_beast.button = {
     end,
     -- `sub_802A0EC`: taking Beast Out back takes its face back.
     taken_back = function(side: number)
-        custom.set_form(side, nil)
+        custom.set_form(side, "beast_out", nil)
         custom.set_face(side, nil)
         custom.play(side, "back")
         custom.play(side, "cancel")
@@ -183,7 +183,7 @@ custom_beast.window = {
         local tick = custom.window_tick(side)
         if tick == 1 then
             -- sub_8027738: the form's taken, and the emblem spins.
-            custom.set_form(side, beast_form(side, custom.player(side).emotion == "tired"))
+            custom.set_form(side, "beast_out", beast_form(side, custom.player(side).emotion == "tired"))
             custom.set_frame(side, 0)
             custom.spin(side)
         elseif tick == 2 then
@@ -216,14 +216,14 @@ custom_beast.window = {
 -- The round's first screen forgets the round's Beast Out.
 function custom_beast.open(side: number)
     if battle.turn() == 1 then
-        (system.state() :: State).beast_out_used = false
+        (rules.state() :: State).beast_out_used = false
     end
 end
 
 -- OK with Beast Out picked: the round has had it.
 function custom_beast.confirmed(side: number)
     if custom.button_picked(side, "beast_out") then
-        (system.state() :: State).beast_out_used = true
+        (rules.state() :: State).beast_out_used = true
     end
 end
 

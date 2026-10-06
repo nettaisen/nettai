@@ -402,7 +402,7 @@ without a key has none. The original has no picture for the other
 version's navis and shows its own counterpart's in the navi's colors
 (docs/frontend.md §5).
 
-**Buttons** (`buttons` in `custom.json`): a system's button on the custom
+**Buttons** (`buttons` in `custom.json`): a button of the rules on the custom
 screen is drawn by the pack's look of the name its content registers it
 under (EXE6's `redeal`, `scrap` and `beast_out`; EXE5's `soul`, `redeal`
 and `arm_change`); the frontend has no look of its own. An entry has the

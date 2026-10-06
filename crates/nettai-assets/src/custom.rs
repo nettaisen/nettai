@@ -162,7 +162,7 @@ pub enum ButtonSets {
     Unavailable,
 }
 
-/// A button the screen draws by its name (a system's button,
+/// A button the screen draws by its name (a button of the rules,
 /// docs/design/rules-in-luau.md §4.8: the name its content registers it
 /// under). Its tiles among the slots': `width` x `height` a cell (a slot's
 /// 2x3, its icon then its code; the special slot's own size), a set its

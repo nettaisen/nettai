@@ -25,7 +25,7 @@ return define.form {
     revert = soul_revert.action,
     -- SearchMan's image as MegaMan unites with him (rules/souls/image).
     image = soul_image.look { sprite = asset.sprite("searchman") },
-    -- What it adds to the custom screen (the souls system gathers it, rules/souls/custom): Shuffle (./shuffle).
+    -- What it adds to the custom screen (the souls part gathers it, rules/souls/custom): Shuffle (./shuffle).
     custom = shuffle.custom,
     sprite = asset.sprite("searchsoul"),
     element = "null",

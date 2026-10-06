@@ -5,7 +5,7 @@
 -- while he crouches (animation 12, 6 ticks) and fades (animation 1 and the fade sound, 25 ticks), and on the fade's
 -- seventeenth tick the Dark MegaMen across from him leave (rules/auto_battle) and a new one comes onto a solid,
 -- empty panel of the other side's area (navis/dark_megaman, driven by EXE5's auto battle, his summoner's side's
--- system). Then MegaMan is back in his base form, as a soul's revert leaves him (./revert, but in place, with no
+-- part). Then MegaMan is back in his base form, as a soul's revert leaves him (./revert, but in place, with no
 -- flash or sound), his attack requests and his uninterruptibility are dropped, the battle undims and he idles.
 
 local base = require("../../navis/megaman/forms/base")
@@ -77,7 +77,7 @@ local function vanish(me: Object, s: State)
         local x, y = landing(me)
         if x ~= nil then
             -- (EXE5's 0x08006AAE: NameID 0x18D for the other side; the navi type's tick runs for him from the start.)
-            local navi = battle.spawn_navi(dark_megaman, x, y :: number, bit32.bxor(me.alliance, 1), me, auto_battle.system)
+            local navi = battle.spawn_navi(dark_megaman, x, y :: number, bit32.bxor(me.alliance, 1), me)
             if navi then
                 navi.ticked = true
             end

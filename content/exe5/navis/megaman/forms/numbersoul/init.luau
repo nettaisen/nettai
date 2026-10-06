@@ -38,7 +38,7 @@ return define.form {
             image.related2 = nil
         end,
     },
-    -- What it adds to the custom screen (the souls system gathers it, rules/souls/custom): the hand of ten (./hand).
+    -- What it adds to the custom screen (the souls part gathers it, rules/souls/custom): the hand of ten (./hand).
     custom = hand.custom,
     sprite = asset.sprite("numbersoul"),
     element = "null",

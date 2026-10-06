@@ -12,7 +12,7 @@
 //! - `trace` (feature `trace`): golden traces recorded from the original,
 //!   replayed through the engine and compared with it.
 //! - [`unlocks`]: what a save unlocks on the custom screen (Beast Out, the
-//!   Crosses its flags own), as EXE6's systems' setup states it (the
+//!   Crosses its flags own), as EXE6's rules' setup states it (the
 //!   Crosses as a list).
 //! - [`save`]: an EXE6 save file, and what a player's setup reads of it.
 //! - [`version`]: Gregar or Falzar, as the original tells them apart (the

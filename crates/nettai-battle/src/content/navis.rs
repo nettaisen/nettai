@@ -290,7 +290,7 @@ pub struct SoulData {
     pub chaos_cycle: Option<u8>,
 }
 
-/// One of MegaMan's forms. (What a game's systems say of their game's
+/// One of MegaMan's forms. (What a game's rules say of their game's
 /// forms, EXE6's kinds of form among it, is their extension:
 /// `SystemDef::extends`.)
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
@@ -320,7 +320,7 @@ pub struct FormData {
     pub mugshot: Option<Faces>,
     /// The version of its game the form belongs to (EXE6's Gregar's or
     /// Falzar's Crosses and Beast), by the name its game's pack keeps a
-    /// version's pictures under; none: every version's. Its game's systems
+    /// version's pictures under; none: every version's. Its game's rules
     /// may read it (EXE6's: a Beast's roar, the Crosses a Beast goes with);
     /// to the engine it is presentation only (whose pictures name it in its
     /// window and show its Beast, which console has its face).
@@ -683,7 +683,7 @@ impl FormTraits {
     /// A metal panel doesn't slide the navi (EXE5's MagnetSoul:
     /// 0x08017216).
     pub const STANDS_ON_METAL: u16 = 0x008;
-    /// The side's systems' controller decides the navi's idle (Beast Over's
+    /// The side's rules' controller decides the navi's idle (Beast Over's
     /// berserk, `sub_802D322`): the player's buttons don't reach it
     /// (`apply_actor_inputs`), and a full gauge opens the custom screen.
     pub const CONTROLLED: u16 = 0x010;
@@ -834,7 +834,7 @@ pub(crate) fn read_navi(
 }
 
 /// A form definition's record, likewise, past `extended`: the fields its
-/// game's systems extend forms with (theirs to check, `SystemDef::extends`).
+/// game's rules extend forms with (theirs to check, `SystemDef::extends`).
 pub(crate) fn read_form(
     d: &nettai_content_api::Definition,
     r: &super::reader::SpecReader,

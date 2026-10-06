@@ -25,22 +25,15 @@
 --   `sub_813CEA0`).
 -- - `tags`: two other entries, their MB together at most 60 (`sub_81349E8`: a
 --   chip can be tagged while the tag chips' MB leave room for it).
--- - `system`: a chip one of EXE6's systems plays (MstrCros, the cross
---   system's) only when the side's ruleset has the system (a variant may
---   leave it out; BeastOut, the beast system's, is past the pack anyway).
 
 local batcan_chips = require("../chips/batcan")
 local beastout = require("../chips/beastout")
-local cross = require("./cross")
-local mstrcros = require("../chips/mstrcros")
 
 local SIZE = 30
 local DARK_CHIPS = 3
 local TAG_MB = 60
 -- The chip pack's last chip is 0x13A: these come after it.
 local PAST_THE_PACK: { Chip } = { batcan_chips.batcan1, batcan_chips.batcan2, batcan_chips.batcan3, batcan_chips.batcan4, beastout }
--- The chips a system plays, and the system.
-local PLAYED_BY: { [Chip]: System } = { [mstrcros] = cross }
 
 local function copies_allowed(mb: number): number
     if mb <= 19 then
@@ -101,10 +94,6 @@ local function check(side: number)
         if not has(c.codes, e.code) then
             problem("code", string.format("entry %d: %s doesn't come in code %s", i - 1, name(c), e.code))
         end
-        local system = PLAYED_BY[c]
-        if system ~= nil and not battle.side_has_system(side, system) then
-            problem("system", string.format("entry %d: %s is the %s system's, which the side's rules leave out", i - 1, name(c), system.id))
-        end
         if copies[c] == nil then
             table.insert(order, c)
         end
@@ -163,7 +152,6 @@ local function check(side: number)
     end
 end
 
-return define.system {
-    id = "folder",
+return {
     hooks = { folder_check = check },
 }

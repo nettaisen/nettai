@@ -201,7 +201,7 @@ pub mod profile {
         Object,
         /// An action's update.
         Action,
-        /// A hook: a weapon's setup, a chip's use, a role's, a system's.
+        /// A hook: a weapon's setup, a chip's use, a role's, the rules'.
         Hook,
     }
 
@@ -261,10 +261,11 @@ pub(crate) fn run_action(b: &mut Battle, action: ActionHandle, r: ObjectRef) {
     let l = loaded(b);
     let a = b.content.defs.action(action);
     let (f, state) = (a.update, a.schema);
-    // An action of a system's (`define.system { actions = ... }`) reaches
-    // that system's state of the navi's side, if the side plays by it.
-    let system = b.content.defs.action_owner(action).and_then(|s| b.system_slot(b.objects.get(r).alliance, s));
-    if let Err(e) = l.host.update_action(b as &mut dyn CoreApi, f, r, state, system) {
+    // An action of the rules' (`define.rules { actions = ... }`) reaches
+    // their state of the navi's side, if the side plays by them.
+    let side = b.objects.get(r).alliance;
+    let rules = (b.content.defs.is_rules_action(action) && b.has_rules(side)).then_some(side);
+    if let Err(e) = l.host.update_action(b as &mut dyn CoreApi, f, r, state, rules) {
         let key = b.content.defs.action(action).key.clone();
         let source = &b.content.defs.functions[f.0 as usize];
         content_error(l.host.runtime(), format!("action {key} ({source})"), r, e);

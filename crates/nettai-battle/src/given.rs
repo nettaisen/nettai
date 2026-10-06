@@ -1,7 +1,7 @@
 //! What the content gives each side for the round: its definitions'
 //! functions of the side (`HookCall::Given`), which the round's setup asks
-//! once for each side, after the side's systems' `round_setup`. A game's
-//! level is its own fact (its save system's `level`), and what a level gives
+//! once for each side, after the side's rules' `round_setup`. A game's
+//! level is its own fact (its save part's `level`), and what a level gives
 //! is its rules' to say: EXE6's link navis' chip bonus, charged chips and
 //! Fire charge by their navi code's level (content/exe6/rules/by_level.luau),
 //! EXE5's team navis' own chips' damage by their story level

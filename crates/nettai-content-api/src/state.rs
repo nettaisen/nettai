@@ -10,8 +10,8 @@
 //!
 //! An object's or an action's state is a fixed-size block of bytes
 //! ([`MAX_BYTES`], [`ContentState`]); a game's rules' state of a side and a
-//! player's setup of them are a block of the schema's own size
-//! ([`MAX_BLOCK_BYTES`], [`Block`]). The schema decides where each field
+//! player's setup of them are a block of the schema's own size, whatever
+//! that is ([`Block`]). The schema decides where each field
 //! lives in either. That layout is private to this module: content and
 //! engine code read and write fields by name (or by the schema's field
 //! index), never by offset.
@@ -28,11 +28,6 @@ use crate::types::{ObjectRef, Pool, Vec3};
 /// covers every kind ported so far with room to spare, and keeps a state a
 /// small `Copy` value.)
 pub const MAX_BYTES: usize = 64;
-
-/// Bytes a [`Block`] may hold: a game's rules' state of a side, or a
-/// player's setup of them (a folder, a NaviCust's programs, an auto battle
-/// data block among them).
-pub const MAX_BLOCK_BYTES: usize = 0x1000;
 
 /// Most elements an array field may have.
 pub const MAX_ARRAY: usize = 64;
@@ -342,15 +337,16 @@ pub struct FieldDef {
 pub struct Schema {
     fields: Vec<FieldDef>,
     /// Where each field starts in a state's bytes.
-    offsets: Vec<u16>,
+    offsets: Vec<usize>,
     /// The bytes its fields take.
-    size: u16,
+    size: usize,
 }
 
 impl Schema {
-    /// A schema from its fields; names must be unique identifiers and the
-    /// fields must fit in [`MAX_BLOCK_BYTES`] (an object's or an action's
-    /// state, a [`ContentState`], in [`MAX_BYTES`]: [`Schema::fits_object`]).
+    /// A schema from its fields; names must be unique identifiers. Its size
+    /// is what its fields take (an object's or an action's state, a
+    /// [`ContentState`], fits in [`MAX_BYTES`]: [`Schema::fits_object`]; a
+    /// [`Block`] is of any size).
     pub fn new(fields: Vec<FieldDef>) -> Result<Schema, String> {
         let mut offsets = Vec::with_capacity(fields.len());
         let mut at = 0usize;
@@ -368,18 +364,15 @@ impl Schema {
             {
                 return Err(format!("state field {:?}: an enum needs 1 to 256 variants", f.name));
             }
-            offsets.push(at as u16);
+            offsets.push(at);
             at += f.ty.size();
-            if at > MAX_BLOCK_BYTES {
-                return Err(format!("the state's fields take more than {MAX_BLOCK_BYTES} bytes"));
-            }
         }
-        Ok(Schema { fields, offsets, size: at as u16 })
+        Ok(Schema { fields, offsets, size: at })
     }
 
     /// The bytes its fields take.
     pub fn size(&self) -> usize {
-        self.size as usize
+        self.size
     }
 
     /// Whether an object's or an action's state ([`ContentState`]) holds
@@ -434,7 +427,7 @@ impl Schema {
     }
 
     fn at(&self, i: usize) -> usize {
-        self.offsets[i] as usize
+        self.offsets[i]
     }
 }
 
@@ -540,8 +533,7 @@ impl fmt::Debug for ContentState {
 }
 
 /// A game's rules' state of a side, or a player's setup of them: the
-/// values of a schema's fields in a block of the schema's own size (at most
-/// [`MAX_BLOCK_BYTES`]). Cloned with the battle (the setup is the round's,
+/// values of a schema's fields in a block of the schema's own size. Cloned with the battle (the setup is the round's,
 /// read-only in battle) and digested with it.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Block {
@@ -705,16 +697,20 @@ mod tests {
     }
 
     #[test]
-    fn schemas_reject_duplicates_bad_names_and_oversize() {
+    fn schemas_reject_duplicates_and_bad_names() {
         let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
         assert!(Schema::new(vec![f("a", FieldType::U8), f("a", FieldType::U8)]).is_err());
         assert!(Schema::new(vec![f("1a", FieldType::U8)]).is_err());
-        // (Past an object's 64 bytes, a block's schema; past a block's,
-        // none.)
+        // (Past an object's 64 bytes, a block's schema, of any size: the
+        // user, "drop the block cap".)
         let six = Schema::new((0..6).map(|i| f(&format!("v{i}"), FieldType::Vec3)).collect()).unwrap();
         assert!(!six.fits_object() && six.size() == 72);
         assert!(Schema::new((0..16).map(|i| f(&format!("f{i}"), FieldType::U32)).collect()).unwrap().fits_object());
-        assert!(Schema::new((0..400).map(|i| f(&format!("v{i}"), FieldType::Vec3)).collect()).is_err());
+        let large = Schema::new((0..400).map(|i| f(&format!("v{i}"), FieldType::Vec3)).collect()).unwrap();
+        assert_eq!(large.size(), 4800);
+        let mut block = Block::new(StateId(0), &large);
+        block.set(&large, 399, Value::Vec3(Vec3 { x: 1, y: 2, z: 3 })).unwrap();
+        assert_eq!(block.get(&large, 399).load(), Value::Vec3(Vec3 { x: 1, y: 2, z: 3 }));
         assert!(FieldType::scalar("vec3[2]").is_none());
         assert!(FieldType::scalar("u8[0]").is_none());
     }

@@ -29,17 +29,14 @@ pub enum Registry {
     /// the original's NameID record. A navi's and a form's are nested in
     /// their definitions; a field object's is its kind's.
     Identity,
-    /// One self-contained piece of a game's rules (docs/design/
-    /// rules-in-luau.md §2.2): its state per side, its player setup, its
-    /// hooks into the framework, `define.system { id = "beast", ... }`.
-    System,
-    /// A game's rules, its one ruleset: `define.ruleset { systems = { ... },
-    /// ... }` (rules-in-luau.md §2.2), its rules/init.luau. It lists the
-    /// systems its players play by, and holds the game's rule sections
-    /// (plain tables, `panels = require("@self/panels")`) and its roles
-    /// (`roles = require("@self/roles")`; docs/design/content-model-v2.md
-    /// §3.8, §7.4). It takes no `id`: a game has one, keyed
-    /// [`RULESET_KEY`].
+    /// A game's rules, its one definition of them: `define.rules { ... }`
+    /// (rules-in-luau.md §2.2), its rules/init.luau. Its state of a side,
+    /// a player's setup of it (a side's facts) and its hooks into the
+    /// framework, which call the game's parts (plain modules) in the order
+    /// it chooses; and the game's rule sections (plain tables, `panels =
+    /// require("@self/panels")`) and its roles (`roles =
+    /// require("@self/roles")`; docs/design/content-model-v2.md §3.8,
+    /// §7.4). It takes no `id`: a game has one, keyed [`RULESET_KEY`].
     Ruleset,
     /// Data only content reads (a bomb variant, a projectile variant): the
     /// engine keeps its handle and its type name.
@@ -59,7 +56,7 @@ pub enum Registry {
 }
 
 impl Registry {
-    pub const ALL: [Registry; 19] = [
+    pub const ALL: [Registry; 18] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -73,7 +70,6 @@ impl Registry {
         Registry::Collision,
         Registry::Status,
         Registry::Identity,
-        Registry::System,
         Registry::Ruleset,
         Registry::Record,
         Registry::PatchCard,
@@ -83,7 +79,7 @@ impl Registry {
 
     /// The registries content defines with `define.<name>` (schemas come
     /// from the `state` tables of kinds, actions and modules).
-    pub const DEFINED: [Registry; 18] = [
+    pub const DEFINED: [Registry; 17] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -97,7 +93,6 @@ impl Registry {
         Registry::Collision,
         Registry::Status,
         Registry::Identity,
-        Registry::System,
         Registry::Ruleset,
         Registry::Record,
         Registry::PatchCard,
@@ -121,8 +116,7 @@ impl Registry {
             Registry::Collision => "collision",
             Registry::Status => "status",
             Registry::Identity => "identity",
-            Registry::System => "system",
-            Registry::Ruleset => "ruleset",
+            Registry::Ruleset => "rules",
             Registry::Record => "record",
             Registry::PatchCard => "patch_card",
             Registry::NaviCustProgram => "navicust_program",
@@ -148,16 +142,15 @@ impl Registry {
                 | Registry::Stage
                 | Registry::Collision
                 | Registry::Status
-                | Registry::System
                 | Registry::PatchCard
                 | Registry::NaviCustProgram
         )
     }
 }
 
-/// The key of a game's ruleset, its one [`Registry::Ruleset`] definition
-/// (`define.ruleset { ... }` takes no `id`).
-pub const RULESET_KEY: &str = "ruleset";
+/// The key of a game's rules, its one [`Registry::Ruleset`] definition
+/// (`define.rules { ... }` takes no `id`).
+pub const RULESET_KEY: &str = "rules";
 
 impl fmt::Display for Registry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -224,8 +217,6 @@ handles! {
     IdentityHandle => Identity,
     /// A record only content reads.
     RecordHandle => Record,
-    /// A system of a game's rules.
-    SystemHandle => System,
     /// A patch card.
     PatchCardHandle => PatchCard,
     /// A NaviCust program.
