@@ -1,0 +1,40 @@
+// Numbers, times and dates as the language writes them: every pattern is
+// the catalog's, so a translation orders and words them its own way.
+
+export global Format {
+    // A length of play, from its seconds: 3:05, or an hour's 1:02:03.
+    pure public function clock(seconds: int) -> string {
+        if seconds >= 3600 {
+            return @tr("clock" => "{0}:{1}:{2}", floor(seconds / 3600), Format.two(mod(floor(seconds / 60), 60)), Format.two(mod(seconds, 60)));
+        }
+        @tr("clock" => "{0}:{1}", floor(seconds / 60), Format.two(mod(seconds, 60)))
+    }
+
+    // A day and its time: the year, month and day, the hour and minute.
+    pure public function date(year: int, month: int, day: int, hour: int, minute: int) -> string {
+        @tr("date" => "{1}/{2}/{0} {3}:{4}", year, month, day, hour, Format.two(minute))
+    }
+
+    // A round trip, in milliseconds.
+    pure public function ms(value: int) -> string {
+        @tr("milliseconds" => "{0} ms", value)
+    }
+
+    // Ticks of the battle (frames of 59.73 a second).
+    pure public function frames(n: int) -> string {
+        @tr("{n} frame" | "{n} frames" % n)
+    }
+
+    pure public function rounds(n: int) -> string {
+        @tr("{n} round" | "{n} rounds" % n)
+    }
+
+    // A speed, as a multiple of the original's.
+    pure public function speed(x: float) -> string {
+        x >= 1 ? @tr("speed" => "×{0}", round(x)) : @tr("speed" => "×1/{0}", round(1 / x))
+    }
+
+    pure public function two(n: int) -> string {
+        (n < 10 ? "0" : "") + n
+    }
+}
