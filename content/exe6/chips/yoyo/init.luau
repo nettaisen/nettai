@@ -18,7 +18,6 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.yoyo },
-    library = { number = 18, index = 18, sort = 513 },
     slot_in_limit = 3,
     action = throw.action { id = "yoyo/action", yoyo = { panels = 2, rounds = 2 } },
 }

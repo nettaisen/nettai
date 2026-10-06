@@ -19,7 +19,6 @@ return define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.moonbld },
-    library = { number = 83, index = 83, sort = 318 },
     slot_in_limit = 3,
     -- (SlashCross's A-charge sends its ring as a sword wave.)
     action = action.action { id = "moonbld/action", charged = slashes.moon },

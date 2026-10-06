@@ -16,7 +16,6 @@ local tenguman = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 233, index = 13, sort = 430 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -33,7 +32,6 @@ local tengumn_ex = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 234, index = 14, sort = 431 },
     slot_in_limit = 1,
     navi = navi.summon,
 }
@@ -50,7 +48,6 @@ local tengumn_sp = define.chip {
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
-    library = { number = 235, index = 15, sort = 432 },
     slot_in_limit = 1,
     navi = navi.summon,
 }

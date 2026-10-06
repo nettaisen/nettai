@@ -1,17 +1,71 @@
 # EXE5's ROMs other than Team ProtoMan's US one, whose addresses compat's other files give: where each has them.
 # Written by tools/exe5/gen_rules.py (bn6battle-verify) from the four ROMs.
+#
+# Each also has the values of the objects spawned with a code address in a field (a register their spawner
+# left): by kind, Team ProtoMan US's (which the content keeps: one simulation for every console) and this
+# ROM's. `spawner_z_fractions`: the address as Z, whole or as Z's fraction (its low half), which the object
+# moves from as it moves, so that a console of this ROM has a Z as far from the content's as the addresses are;
+# `panel_xs`, `panel_ys`: an address's low byte as the panel X or Y, which a console of this ROM has its own of.
 
 [colonel]
 # How far its stage actor lists are from Team ProtoMan's US ROM's (a battle settings record's bytes 12..16:
 # its netbattle settings records at 0x0811B034): 0xE8.
 actor_lists = 232
 
+[colonel.spawner_z_fractions]
+"boybomb/controller" = [0x080E8087, 0x080E816F]
+"wind/controller" = [0x080E32E5, 0x080E33CD]
+"rockcube/cube" = [0x080E46E7, 0x080E47CF]
+"magnetmn/navi" = [0x080BB0BB, 0x080BB1A3]
+"shadoman/navi" = [0x080BA25B, 0x080BA343]
+"chaoslrd/navi" = [0x080C327F, 0x080C3367]
+"chaoslrd/strike" = [0x080C327F, 0x080C3367]
+
+[colonel.panel_xs]
+"tomahawksoul/grass" = [0x99, 0x91]  # the low byte of 0x08011C99
+
+[colonel.panel_ys]
+"moonbld/blade" = [0x7F, 0x67]  # the low byte of 0x080EF87F
+"tomahawksoul/grass" = [0xAC, 0xA4]  # the low byte of 0x08011BAC
+
 [jp-protoman]
 # How far its stage actor lists are from Team ProtoMan's US ROM's (a battle settings record's bytes 12..16:
 # its netbattle settings records at 0x0811AB68): -0x3E4.
 actor_lists = -996
 
+[jp-protoman.spawner_z_fractions]
+"boybomb/controller" = [0x080E8087, 0x080E7DAB]
+"wind/controller" = [0x080E32E5, 0x080E3011]
+"rockcube/cube" = [0x080E46E7, 0x080E4413]
+"magnetmn/navi" = [0x080BB0BB, 0x080BAE4B]
+"shadoman/navi" = [0x080BA25B, 0x080B9FEF]
+"chaoslrd/navi" = [0x080C327F, 0x080C3007]
+"chaoslrd/strike" = [0x080C327F, 0x080C3007]
+
+[jp-protoman.panel_xs]
+"tomahawksoul/grass" = [0x99, 0x81]  # the low byte of 0x08011C99
+
+[jp-protoman.panel_ys]
+"moonbld/blade" = [0x7F, 0x87]  # the low byte of 0x080EF87F
+"tomahawksoul/grass" = [0xAC, 0x94]  # the low byte of 0x08011BAC
+
 [jp-colonel]
 # How far its stage actor lists are from Team ProtoMan's US ROM's (a battle settings record's bytes 12..16:
 # its netbattle settings records at 0x0811AC50): -0x2FC.
 actor_lists = -764
+
+[jp-colonel.spawner_z_fractions]
+"boybomb/controller" = [0x080E8087, 0x080E7E93]
+"wind/controller" = [0x080E32E5, 0x080E30F9]
+"rockcube/cube" = [0x080E46E7, 0x080E44FB]
+"magnetmn/navi" = [0x080BB0BB, 0x080BAF33]
+"shadoman/navi" = [0x080BA25B, 0x080BA0D7]
+"chaoslrd/navi" = [0x080C327F, 0x080C30EF]
+"chaoslrd/strike" = [0x080C327F, 0x080C30EF]
+
+[jp-colonel.panel_xs]
+"tomahawksoul/grass" = [0x99, 0x79]  # the low byte of 0x08011C99
+
+[jp-colonel.panel_ys]
+"moonbld/blade" = [0x7F, 0x6F]  # the low byte of 0x080EF87F
+"tomahawksoul/grass" = [0xAC, 0x8C]  # the low byte of 0x08011BAC

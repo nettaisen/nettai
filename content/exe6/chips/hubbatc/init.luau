@@ -13,7 +13,6 @@ return define.chip {
     element = "null", family = "null", class = "giga",
     rarity = 4, mb = 99, damage = 0, hit_param = 148, lockout = 0,
     flags = { "dimming", "library" },
-    library = { number = 309, index = 4, sort = 242 },
     slot_in_limit = 1,
     dimming = navi_boost.hub,
 }

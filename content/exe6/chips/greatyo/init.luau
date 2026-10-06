@@ -18,7 +18,6 @@ return define.chip {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "library" },
-    library = { number = 340, index = 21, sort = 0 },
     slot_in_limit = 1,
     program_advances = { { order = 27, code_run = { chip = yoyo, count = 3 } } },
     action = throw.action { id = "greatyo/action", yoyo = { great = true, panels = 4, rounds = 5 } },

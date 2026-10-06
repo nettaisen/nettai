@@ -23,7 +23,6 @@ return define.chip {
     -- never comes as.)
     traits = { "hides_damage_as_a" },
     beast = { lockon = lockon.firebrn1 },
-    library = { number = 84, index = 84, sort = 320 },
     slot_in_limit = 1,
     action = slash.action {
         id = "muramasa/action",

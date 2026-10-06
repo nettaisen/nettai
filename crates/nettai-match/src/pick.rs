@@ -73,7 +73,8 @@ fn picks_live(content: &Content) -> bool {
 /// rules' `link_pick.stages`, the stage for each index of the original's
 /// pick: a stage there twice is twice as likely, and a link battle stage
 /// that isn't there is never picked (EXE5's records 76 to 87; a match may
-/// still name one).
+/// still name one). The first round's is one of the first
+/// `link_pick.first_round_stages` (EXE5's first 68: a practice's count).
 pub fn arena(content: &Content, game: &str, picks: &mut Picks, stage: Option<StageHandle>) -> Result<Arena, String> {
     crate::playable(content, game)?;
     let stages = &content.rules().link_pick.stages;
@@ -81,13 +82,16 @@ pub fn arena(content: &Content, game: &str, picks: &mut Picks, stage: Option<Sta
         return Err(format!("{game}'s rules state no stage a link battle picks (link_pick.stages)"));
     }
     let backgrounds = link_backgrounds(content);
-    let place = |picks: &mut Picks| {
-        let stage = stages[picks.below(stages.len())];
+    // (The first round among the first `first_round_stages`, the rounds
+    // after among them all: the counts the original passes.)
+    let first_round = content.rules().link_pick.first_round_stages;
+    let place = |picks: &mut Picks, count: usize| {
+        let stage = stages[picks.below(count)];
         let background = (!backgrounds.is_empty()).then(|| backgrounds[picks.below(backgrounds.len())].to_string());
         Place { stage, background }
     };
-    let mut first = place(picks);
-    let later = [place(picks), place(picks)];
+    let mut first = place(picks, first_round);
+    let later = [place(picks, stages.len()), place(picks, stages.len())];
     if let Some(s) = stage {
         first.stage = s;
     }
@@ -302,18 +306,28 @@ mod tests {
         assert!(crate::link_stage(&five, "exe5", "netbattle-80").is_ok(), "a match may name one all the same");
         let backgrounds = link_backgrounds(&five);
         assert_eq!((backgrounds.len(), backgrounds.iter().collect::<std::collections::BTreeSet<_>>().len()), (27, 27));
-        // A random arena's rounds are of the pick's stages and backgrounds.
+        // A random arena's rounds are of the pick's stages and backgrounds,
+        // the first round's of the first round's count: EXE6's all 96, EXE5's
+        // the first 68 (a practice's 0x44: netbattle-1 to netbattle-66, the
+        // fold past them).
+        assert_eq!((six.rules().link_pick.first_round_stages, five.rules().link_pick.first_round_stages), (96, 68));
+        assert_eq!(names[67], "netbattle-66");
+        let mut past = 0;
         for (content, game) in [(&six, "exe6"), (&five, "exe5")] {
             let pick = &content.rules().link_pick;
+            let first_round = &pick.stages[..pick.first_round_stages];
             let backgrounds = link_backgrounds(content);
-            for seed in 0..40 {
+            for seed in 0..200 {
                 let a = arena(content, game, &mut Picks::new(seed), None).unwrap();
+                assert!(first_round.contains(&a.first.stage), "{game} seed {seed}: the first round's stage");
                 for place in [&a.first, &a.later[0], &a.later[1]] {
                     assert!(pick.stages.contains(&place.stage), "{game} seed {seed}");
                     assert!(place.background.as_deref().is_some_and(|b| backgrounds.contains(&b)), "{game} seed {seed}: {:?}", place.background);
                 }
+                past += a.later.iter().filter(|p| !first_round.contains(&p.stage)).count();
             }
         }
+        assert!(past > 0, "a later round picks past the first round's");
     }
 
     /// Live play's match from a seed: a link battle's stage (the 96 the

@@ -155,6 +155,21 @@ pub struct KindEntry {
     /// register): the comparison skips them.
     #[serde(default)]
     pub scratch_panel: bool,
+    /// It keeps its spawner's address in its Z (its low half as Z's
+    /// fraction: ChaosLrd's navi) as it moves, and so does what wears its Z
+    /// (its form overlay): on a console of another ROM its Z is as far from
+    /// the content's as the addresses are (games.toml's
+    /// `spawner_z_fractions`), whatever it is.
+    #[serde(default)]
+    pub z_moves_from_spawner: bool,
+    /// It falls toward height 0 for this many ticks (its timer counts them
+    /// down), and once more as it bursts, from a Z whose fraction is its
+    /// spawner's address's low half, its velocity that Z over the ticks
+    /// (ChaosLrd's strike, 0x080D6948): on a console of another ROM it falls
+    /// from that ROM's (games.toml's `spawner_z_fractions`), and so another
+    /// way.
+    #[serde(default)]
+    pub z_falls_from_spawner: Option<i32>,
     /// What the recordings show as its collision's status is garbage: its
     /// +0x54 holds no collision but a RAM address of its own (ShadowMan's
     /// three, LeadRaid's Colonel), which the recorder reads through as
@@ -165,12 +180,25 @@ pub struct KindEntry {
 
 /// Where a ROM other than Team ProtoMan's US one has what compat names by
 /// that ROM's addresses (games.toml, one section a ROM).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GameAddresses {
     /// How far its stage actor lists (a battle settings record's bytes
     /// 12..16) are from Team ProtoMan's US ROM's.
     pub actor_lists: i32,
+    /// Kinds spawned with a code address as their Z (a register their
+    /// spawner left), whole or its low half as Z's fraction: by kind key,
+    /// Team ProtoMan US's address (the content's) and this ROM's (in the
+    /// same 64 KiB: their low halves are as far apart as they are).
+    #[serde(default)]
+    pub spawner_z_fractions: BTreeMap<String, [u32; 2]>,
+    /// Kinds spawned with a code address's low byte as their panel X, and
+    /// as their panel Y: by kind key, Team ProtoMan US's (the content's) and
+    /// this ROM's.
+    #[serde(default)]
+    pub panel_xs: BTreeMap<String, [u8; 2]>,
+    #[serde(default)]
+    pub panel_ys: BTreeMap<String, [u8; 2]>,
 }
 
 /// games.toml: the other three ROMs' [`GameAddresses`].
@@ -194,6 +222,69 @@ impl Games {
             (Version::Protoman, true) => Some(&self.jp_protoman),
             (Version::Colonel, true) => Some(&self.jp_colonel),
         }
+    }
+
+    /// An object's Z as a console of `rom` (its version and whether it is
+    /// Japanese) has it: a Z that is a spawner's address of Team ProtoMan
+    /// US's (`spawner_z_fractions`, which the content keeps), or whose
+    /// fraction is that address's low half (what is spawned at such an
+    /// object: ChaosLrd's strike), has that ROM's.
+    pub fn z(&self, rom: (Version, bool), z: i32) -> i32 {
+        let Some(g) = self.of(rom.0, rom.1) else { return z };
+        let addresses = || g.spawner_z_fractions.values();
+        if let Some([_, other]) = addresses().find(|[us, _]| *us == z as u32) {
+            return *other as i32;
+        }
+        let fraction = z as u32 & 0xFFFF;
+        match addresses().find(|[us, _]| us & 0xFFFF == fraction) {
+            Some([_, other]) => ((z as u32 & !0xFFFF) | (other & 0xFFFF)) as i32,
+            None => z,
+        }
+    }
+
+    /// What a console of `rom` adds to the Z of a `kind` object falling
+    /// from its spawner's address in `ticks` ticks (`KindEntry::
+    /// z_falls_from_spawner`), at `z` with `timer` ticks left: the content's
+    /// fall starts from Team ProtoMan US's address, the console's from its
+    /// own. (Its starting height's whole part is the one whose fall reaches
+    /// `z` after that many ticks.) As exe6-compat's `drop_z_offset`, with no
+    /// gravity.
+    pub fn fall_offset(&self, rom: (Version, bool), kind: &str, z: i32, timer: u16, ticks: i32) -> i32 {
+        let Some(&[us, other]) = self.of(rom.0, rom.1).and_then(|g| g.spawner_z_fractions.get(kind)) else { return 0 };
+        // (The ticks it has fallen: and on the tick after its last, the
+        // timer past 0, it falls once more as it bursts.)
+        let t = ticks - timer as i16 as i32;
+        if !(1..=ticks + 1).contains(&t) {
+            return 0;
+        }
+        // (Its velocity, the BIOS division truncated toward zero.)
+        let at = |start: i32| start.wrapping_add(t.wrapping_mul(start.wrapping_neg() / ticks));
+        let start = |whole: i32, address: u32| (whole << 16) | (address & 0xFFFF) as i32;
+        (-0x100..0x100).find(|&whole| at(start(whole, us)) == z).map_or(0, |whole| at(start(whole, other)).wrapping_sub(z))
+    }
+
+    /// How far a `kind` object's Z is on a console of `rom` from the
+    /// content's, for a kind that keeps its spawner's address in Z (whole,
+    /// or its low half as Z's fraction) as it moves (`KindEntry::
+    /// z_moves_from_spawner`): as far as that ROM's address is from Team
+    /// ProtoMan US's.
+    pub fn z_offset(&self, rom: (Version, bool), kind: &str) -> i32 {
+        match self.of(rom.0, rom.1).and_then(|g| g.spawner_z_fractions.get(kind)) {
+            Some(&[us, other]) => other.wrapping_sub(us) as i32,
+            None => 0,
+        }
+    }
+
+    /// A `kind` object's panel as a console of `rom` has it: a panel X or Y
+    /// that is a code address's low byte (`panel_xs`, `panel_ys`: the
+    /// content keeps Team ProtoMan US's) is that ROM's.
+    pub fn panel(&self, rom: (Version, bool), kind: &str, [x, y]: [u8; 2]) -> [u8; 2] {
+        let Some(g) = self.of(rom.0, rom.1) else { return [x, y] };
+        let map = |table: &BTreeMap<String, [u8; 2]>, v: u8| match table.get(kind) {
+            Some(&[us, other]) if v == us => other,
+            _ => v,
+        };
+        [map(&g.panel_xs, x), map(&g.panel_ys, y)]
     }
 }
 

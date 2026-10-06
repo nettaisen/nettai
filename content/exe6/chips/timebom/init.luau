@@ -58,7 +58,6 @@ local timebom1 = define.chip {
     hit_param = 148,
     lockout = 30,
     flags = { "dimming", "has_damage", "standard_library", "library" },
-    library = { number = 145, index = 145, sort = 434 },
     slot_in_limit = 3,
     dimming = controller.hook(BOMB),
 }
@@ -75,7 +74,6 @@ local timebom2 = define.chip {
     hit_param = 148,
     lockout = 30,
     flags = { "dimming", "has_damage", "standard_library", "library" },
-    library = { number = 146, index = 146, sort = 434 },
     slot_in_limit = 3,
     dimming = controller.hook(BOMB),
 }
@@ -92,7 +90,6 @@ local timebom3 = define.chip {
     hit_param = 148,
     lockout = 30,
     flags = { "dimming", "has_damage", "standard_library", "library" },
-    library = { number = 147, index = 147, sort = 435 },
     slot_in_limit = 3,
     dimming = controller.hook(BOMB),
 }
@@ -109,7 +106,6 @@ local timebom = define.chip {
     hit_param = 168,
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
-    library = { number = 335, index = 16, sort = 0 },
     slot_in_limit = 1,
     program_advances = {
         { order = 28, code_run = { chip = timebom1, count = 3 } },

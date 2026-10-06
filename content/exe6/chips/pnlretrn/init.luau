@@ -12,7 +12,6 @@ return define.chip {
     rarity = 1, mb = 14, damage = 0, hit_param = 0, lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     extra_flags = { "free_slot_in" },
-    library = { number = 168, index = 168, sort = 326 },
     slot_in_limit = 1,
     dimming = panel_chips.hook(panel_changer.change {
         panel = "normal",

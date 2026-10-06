@@ -382,11 +382,6 @@ pub struct ChipData {
     /// A trap chip: what it catches as the side's defensive chip.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trap: Option<Trap>,
-    /// Library number, index within the library, and alphabetical sort
-    /// key (menus only).
-    pub library_number: u16,
-    pub library_index: u8,
-    pub sort_key: u16,
     /// Uses per battle through the Battle Chip Gate's slot-in.
     pub slot_in_limit: u8,
     /// What the chip does to the chip picked before it, as a modifier.
