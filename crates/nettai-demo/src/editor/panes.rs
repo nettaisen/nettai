@@ -454,8 +454,11 @@ mod tests {
     #[test]
     fn each_games_setup_is_laid_out() {
         for (content, game) in [(nettai_match::testing::exe6_content(), "exe6"), (nettai_match::testing::exe5_content(), "exe5")] {
-            let data = crate::editor::navicust::read(&content, game);
-            let panes = crate::editor::layout::layout(&content, data.as_ref());
+            let modules = crate::editor::layout::modules(&content, game, &[crate::editor::navicust::MODULE, crate::editor::auto_battle::MODULE]);
+            let data = crate::editor::navicust::read(&content, modules[0].as_ref());
+            let auto_battle = crate::editor::auto_battle::Layout::read(modules[1].as_ref());
+            assert_eq!(auto_battle.is_some(), game == "exe5", "{game}");
+            let panes = crate::editor::layout::layout(&content, data.as_ref(), auto_battle.as_ref());
             let keys: Vec<&str> = panes.iter().map(|p| p.key.as_str()).collect();
             assert_eq!(keys, ["navicust", "patch_cards", "sp_times"], "{game}");
             assert!(data.is_some(), "{game}: the NaviCust's data fit the grid");
@@ -464,7 +467,7 @@ mod tests {
             assert!(matches!(view("patch_cards"), Some(View::List(List { total: Some(ref t), fixed: false, .. })) if t == "mb"), "{game}");
             assert!(matches!(view("sp_times"), Some(View::List(List { fixed: true, ref columns, .. })) if columns[0].1 == View::Number { time: true }), "{game}");
             // (Without the NaviCust's data, the programs are a list.)
-            let plain = crate::editor::layout::layout(&content, None);
+            let plain = crate::editor::layout::layout(&content, None, auto_battle.as_ref());
             assert!(matches!(plain.iter().flat_map(|p| &p.fields).find(|f| f.field == "navicust_programs").map(|f| &f.view), Some(View::List(_))), "{game}");
         }
     }

@@ -3148,3 +3148,17 @@ declare no view; the editor builds its form from the setup schema, and what is r
   program's shapes and colors); the layout of both games (the NaviCust, the patch cards, the SP times; the
   programs a list without the board data); the grid's edits keep a match the checks accept; screenshots of each pane
   of both games, a problem beside its program, and the rounds list.
+
+### No learning: the auto battle view leaves nettai-match (2026-10-06, branch nettai-player)
+
+The user: "i don't think you need learning right? since the battles are one-off". The tie-break step is dropped.
+
+- **Gone**: nettai-match's auto_battle.rs (`AutoBattle`, its lists, `learned`, `of_folder`, `describe`) and its
+  exe5_compat call (the original's chip numbers, the tie-break's); the editor's "From the folder"; the terminal
+  description's auto battle line (a side's auto battle facts are said with its other facts).
+- **A random EXE5 match states no auto battle data**: its sides have the rules' default, nothing learned. The data
+  comes into a match from a match file, a save (`import_exe5`'s `state_auto_battle`, the block's places and records
+  as the facts; `auto_battle_of_save` for the editor's "From a save") and a recording (exe5-compat).
+- **The editor's Auto battle pane** is its own view of `auto_battle_places` and `auto_battle_records` by field name,
+  laid out by EXE5's rules/auto_battle/block as it loaded (`PLACES`, `RECORDS`, `RECORD_CHIPS`, `LISTS`), a list
+  named for a chip class holding what the game writes there (the `first` list says nothing now).

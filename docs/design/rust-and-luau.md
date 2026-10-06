@@ -295,9 +295,11 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
   lines). *(b)* A game's save is its Luau's (the line above). Each compat crate keeps decoding the bytes; turning the
   save into facts moves to a rules hook (`import_save`, given the decoded save as a table). Tool-only.
 - **T2. EXE5's auto battle view** (auto_battle.rs, about 500 lines without tests: its lists for the editor's pane,
-  `AutoBattle::learned`, and `of_folder` for random matches). *(b)* EXE5's rules, with the tie-break step: the
-  learner and the data's reading move into Luau. The editor's pane stays the editor's own (step c3b: the rules
-  declare no view). Tool-only.
+  `AutoBattle::learned`, and `of_folder` for random matches). *(b)* Done, by removal: nettai-match's view, the
+  learner and its exe5_compat call (the chip numbers) are gone. The user: "i don't think you need learning right?
+  since the battles are one-off". A random EXE5 match states no auto battle data (the rules' default, nothing
+  learned); the editor's pane is its own view of the two facts by field name, laid out by EXE5's
+  rules/auto_battle/block read with `Battle::module_data`; the save import writes the facts from the block.
 - **T3. The stats pane and navi views** (stats.rs: every `NaviStats` field by name, the per-game ones among them;
   link_navis.rs; story.rs). *(c)* Follows V1: the stats by role, and a game's own from its rules state's schema.
 - **T4. `has_navicust`, `has_patch_cards`, `navicust_rules`** (lib.rs:143–157), for the editor's panes. *(c)* Done

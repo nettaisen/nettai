@@ -109,7 +109,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
             tabs = tabs.push(nav_owned(format!("  {}", p.title), Tab::Pane(s, i), e.tab));
         }
         // (Where the game's rules have auto battle: EXE5's.)
-        if nettai_match::auto_battle::has(&e.content) {
+        if e.auto_battle_layout.is_some() {
             tabs = tabs.push(nav("  Auto battle", Tab::AutoBattle(s), e.tab));
         }
         tabs = tabs.push(nav("  Stats", Tab::Stats(s), e.tab));
