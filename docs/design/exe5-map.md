@@ -1428,6 +1428,18 @@ RedFrut1 to 3, Voltz1 to 3 and VDoll) are in §15.11.
   version and region): jp-team-plain matches through it. (Checked over the lab on 2026-10-05: every recording whose
   settings match no record by the US addresses, 51 of them, is record 65 or record 1 on a Team Colonel or a Japanese
   console, its actor list at that ROM's address. None is a setup outside the list.)
+- **What objects keep of a code address**, as EXE6's (docs/engine/objects-and-player.md): the dimming chips'
+  controllers (BoyBomb's, Wind's and Fan's, RockCube's) and ShadowMan's and MagnetMan's navis keep the address their
+  spawner was called through as their Z, ChaosLrd his spawner's in Z's fraction (and his strike, thrown from where he
+  stands, falls from it: its velocity is that Z over its 15 ticks), MoonBld's blade its phase routine's low byte as its
+  panel Y, TomahawkSoul's grass the low bytes of the status reset's soul routine and of its dispatch's table as its
+  panel. The content keeps Team ProtoMan US's numbers; compat/games.toml has each other ROM's (`spawner_z_fractions`,
+  `panel_xs`, `panel_ys`, which `tools/exe5/gen_rules.py` finds in each ROM by the code around the address), and
+  kinds.toml says which kind's Z moves from the address (`z_moves_from_spawner`: ChaosLrd's, and what wears his Z)
+  or falls from it (`z_falls_from_spawner`: his strike). The comparison expects the traced console's ROM's. Found by
+  the Team Colonel souls recorded on their own console (TomahawkSoul's grass; BoyBomb3's controller, used in
+  KnightSoul), and checked on copies of eleven scenarios on the other three ROMs' consoles (2026-10-05: all 33
+  whole).
 - **Panels** are a registered section now: EXE5's types, EXE6's roads and either-side step rule (EXE5 has neither;
   the section must name the engine's 13 types; nothing of EXE5's reaches them).
 - **Roles** EXE5 shares with EXE6: the sparks (EXE5's 0 to 0xD are EXE6's rows), the deletion, recovery and cut-in

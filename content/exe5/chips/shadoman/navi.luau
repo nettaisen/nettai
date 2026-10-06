@@ -348,6 +348,7 @@ shadoman.kind = define.kind {
 -- 0x080BA25A: ShadowMan (the unseen one) for `user`, reporting to `controller` (the summon table's entry 11), of a
 -- chip of `level`. (His position is the spawner's registers, which nothing moves: the row, the element and the
 -- address the controller called him through.)
+-- (The address is Team ProtoMan US's ROM's; compat/games.toml has the other ROMs'.)
 function shadoman.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         local o = navi_chips.spawn(shadoman.kind, user, spec, 0x080BA25B)
