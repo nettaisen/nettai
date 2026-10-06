@@ -36,6 +36,7 @@ local SOUND = asset.sound("spin")
 local SWING_TICKS, AFTERIMAGE_AT, BLADE_AT = 0x15, 0x10, 0x12
 -- The swing routine's address (with the Thumb bit), which the phase's dispatch leaves in a register: the blade's
 -- spawner leaves it in the blade's X and its low byte in its panel Y (@exelib/moonbld/blade).
+-- (The address is Team ProtoMan US's ROM's; compat/games.toml has the other ROMs'.)
 local SWING_ROUTINE = 0x080EF87F
 
 local function set_step(me: Object, step: number)
