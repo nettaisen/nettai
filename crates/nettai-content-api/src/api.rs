@@ -457,13 +457,16 @@ named_fields! {
 named_fields! {
     /// A side's navi stats that content reads (and the few it changes).
     pub enum NaviStat {
-        /// Fighting in the sun.
-        Sun = "sun", Bool, ro;
+        /// Fighting in the sun (+0x22, the save's; writable: a game's save
+        /// system writes it as the round is set up).
+        Sun = "sun", Bool, rw;
         /// The form and the navi, as their definitions.
         /// Writable: a game's form change puts the navi in its form.
         Form = "form", Ref(Registry::Form, None), rw;
         Navi = "navi", Ref(Registry::Navi, None), ro;
-        NaviVariant = "navi_variant", U8, ro;
+        /// MegaMan's variant (+0x2B, which picks his move lag): his base HP
+        /// in hundreds, which a game's save system writes.
+        NaviVariant = "navi_variant", U8, rw;
         /// The base form's element (patch cards write it).
         Element = "element", U8, rw;
         /// The buster's levels (writable: chips raise them).
@@ -479,9 +482,11 @@ named_fields! {
         StartingForm = "starting_form", Ref(Registry::Form, None), ro;
         /// The navi's game: 0 Gregar, 1 Falzar.
         Version = "version", U8, ro;
-        /// The Regular chip's MB at most (+0x09, RegUp's).
-        RegularMemory = "regular_memory", U8, ro;
-        MaxBaseHp = "max_base_hp", U16, ro;
+        /// The Regular chip's MB at most (+0x09, RegUp's), and the base HP
+        /// (+0x3E): the save's, which a game's save system writes as the
+        /// round is set up.
+        RegularMemory = "regular_memory", U8, rw;
+        MaxBaseHp = "max_base_hp", U16, rw;
         /// The NaviCust's heal on chip use.
         ChipRecovery = "chip_recovery", U16, rw;
         /// NaviCust weapon stats: the buster shot's and the charged

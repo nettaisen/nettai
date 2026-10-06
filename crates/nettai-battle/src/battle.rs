@@ -792,9 +792,25 @@ impl Battle {
             folder_check: None,
             setup,
         };
+        // The navi's version byte (NaviStats+0x20) is the player's, which
+        // the console sets as the battle starts: the place of the version
+        // they state among those the rules declare (the engine's version
+        // fact: EXE6's Gregar 0, Falzar 1). A game whose rules take no
+        // version leaves the byte as the setup gives it.
+        for side in 0..2u8 {
+            let place = b.fact(side, crate::content::PlayerFact::Version).filter(|f| f.stated()).and_then(|f| match (f.value(), f.ty()) {
+                (nettai_content_api::FieldValue::Enum(i), nettai_content_api::FieldType::Enum(_)) => Some(i),
+                _ => None,
+            });
+            if let Some(place) = place {
+                b.stats[side as usize].version = place;
+            }
+        }
         // Each side's systems set the round up before anything reads the
-        // side's stats (EXE6's patch cards change them); the battle-start
-        // copy of the stats (`reserves`) is of the stats after them.
+        // side's stats (EXE6's save system builds them from what the save
+        // brings, its NaviCust compiles into them and its patch cards change
+        // them); the battle-start copy of the stats (`reserves`) is of the
+        // stats after them.
         b.notify_systems(nettai_content_api::SystemHook::RoundSetup);
         b.reserves = b.stats;
         // Init's last steps: refresh every panel, then one unpaused panel

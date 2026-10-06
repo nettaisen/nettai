@@ -9,8 +9,8 @@ maximum HP, the base HP before it coming from the story's progress (300 to 800).
 levels, the custom and Mega levels, abilities and, for ProtoMan, the B+Back special.
 
 nettai has the tables in each navi's definition (`levels` in content/exe6/navis/*/navi.luau) and the reload in
-nettai-match (`link_navis`), which fills a side's stats from its level: a match file's stats block is what
-differs from them, and the editor fills them in as the level or the navi changes (§5).
+EXE6's save system (content/exe6/rules/save, rules/levels), which builds a link navi's stats from its level as a
+round is set up (§5).
 
 Addresses are US Falzar's. The four ROMs (US and Japanese, Falzar and Gregar) have the same tables, byte for
 byte (`pt_8121200`, `off_8120F44`, `byte_81211B4` relocated: Gregar US 0x08122FDC, 0x08122D20, 0x08122F90;
@@ -128,23 +128,20 @@ in the internet, each block's HP is cut to its maximum.
 - **Data**: each navi's `levels` (content/exe6/navis/*/navi.luau, type `NaviLevels` in core.d.luau): `base_hp`, its
   row of `off_8120F44`, and `by_level`, each level's script summed (`hp`, `attack`, `rapid`, `charge`,
   `custom_level`, `mega_level`, `super_armor`, `float_shoes`, `air_shoes`, `back_special` by weapon). Read into
-  `NaviData::levels`; no battle reads it.
-- **The reload**: nettai-match's `link_navis::reloaded` is §3's link navi branches (steps 1, 3, 4 and 5, from the
-  block the save had: the navi's own when the level changes, the one switched from when the navi is switched to),
-  then §4's HP for a link navi; `link_navis::add_level` is the level's script (`sub_8121154`, `sub_8123208`).
-  `Reload` says the level (none: event 0x163 clear), the story's progress and whether the PET is in the real world;
-  a match assumes the game cleared (progress 6, as the chip lab's saves and Tango's have it) and the real world.
-- **Why not an EXE6 system**: the reload is the PET's, between battles. The rules framework calls a system inside a
-  battle, on a round's setup, whose stats are the save's already (a recording's carry the level's), so a
-  `round_setup` hook would add the level a second time; and a match needs the stats before any battle exists (a
-  file read, the editor, a netplay offer). The tables are EXE6's content; the routine stays a small Rust function
-  beside `NaviStats::fresh`, the other save-side routine, until EXE6's systems own a player's setup (§2.4 of
-  docs/design/rules-in-luau.md plans a `link-navis` system).
-- **Match files and the editor**: a side's stats block is what differs from its navi's stats as a save gives them
-  (`Side::save_base`: a link navi's reload at its level over its fresh stats). The editor fills a link navi's stats
-  in when its level changes (the reload over the side's own stats: what the save keeps stays) and when the side
-  switches to a link navi (the reload over the stats of the navi switched from, as the game's switch carries them);
-  an edited stat stays, and the stats pane says what the level gives where they differ.
+  `NaviData::levels`, and by EXE6's rules as a round is set up.
+- **The reload**: EXE6's save system (content/exe6/rules/save) runs it as a round is set up, first of the ruleset's
+  systems: `levels.reload` (content/exe6/rules/levels.luau) is §3's link navi branches (steps 1, 3, 4 and 5) on the
+  navi's fresh stats with what the save keeps (the Regular memory and the sun the side states; the folder's bytes,
+  which no battle reads), then §4's HP for a link navi; `levels.add` is the level's script (`sub_8121154`,
+  `sub_8123208`), which MegaMan's NaviCust also adds after its compile. A match assumes the game cleared
+  (progress 6, as the chip lab's saves and Tango's have it) and the real world.
+- **Recordings**: exe6-compat starts a recorded link navi from its fresh stats with what the save keeps
+  (`trace::link_navi_reset`) and states the save's Regular memory and sun from its block, so every replay of a
+  link navi checks the reload against the console's: the lab's link navi sides and the 2022 rounds' all match, but
+  the one scenario that pokes the level alone (`navis/navi-05-volcchrg/charge-family-chip-level-1`, which no save
+  the game makes holds).
+- **Match files and the editor**: a side states its navi and its level, and no stats; the editor's stats pane shows
+  what the round's setup builds.
 - **MegaMan's level** (a MegaMan received from a navi code): the navicust system's `round_setup` adds the level's
   gains over what his NaviCust made (§4), and the HP is the maximum again; without a NaviCust in the setup his
   stats are as given (a recording's carry them). The editor offers him an optional level (empty: no code).

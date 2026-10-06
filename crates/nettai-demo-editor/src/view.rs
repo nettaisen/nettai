@@ -9,7 +9,7 @@ use crate::names::Lang;
 use iced::widget::{Column, Row, button, checkbox, column, container, image, pick_list, row, rule, scrollable, space, text, text_input};
 use iced::{Alignment, Color, Element, Length, Theme};
 use nettai_battle::content::{ChipClass, ChipFlags};
-use nettai_match::stats::{self, Kind, Value};
+use nettai_match::stats;
 use nettai_match::{NAVICUST_SYSTEM, PATCH_CARDS_SYSTEM};
 
 pub const SIDES: [&str; 2] = ["Left (you)", "Right"];
@@ -128,7 +128,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         Tab::AutoBattle(s) => crate::auto_battle::view(e, s),
         Tab::Cards(s) => cards(e, s),
         Tab::NaviCust(s) => crate::navicust::view(e, s),
-        Tab::Stats(s) => stats_pane(e, s, None),
+        Tab::Stats(s) => stats_pane(e, s),
     };
 
     let problems: Element<Msg> = if e.problems.is_empty() {
@@ -352,10 +352,10 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &e.content;
     let side = e.side(s);
     let f = &side.folder;
-    // The limits are the stats' (the rules check them).
+    // The limits are the round's stats' (the rules check them).
     let stats = match &e.round {
         Ok(st) => st[s],
-        Err(_) => side.stats,
+        Err(_) => nettai_match::Side::fresh_stats(c, side.navi),
     };
     // The folder's entries.
     let mut entries = Column::new().spacing(1);
@@ -584,121 +584,40 @@ fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
 
 // ---- A side's stats --------------------------------------------------------------------------
 
-/// What a NaviCust gives the navi: its stats and bugs, set directly.
-const NAVICUST_FIELDS: &[&str] = &[
-    "hp", "attack", "rapid", "charge", "custom_level", "mega_level", "giga_level", "super_armor", "float_shoes", "air_shoes",
-    "undershirt", "first_barrier", "back_special", "supports", "chip_shuffle", "number_open", "step_bug", "panel_trail",
-    "panel_trail_level", "buster_blanks", "buster_charged", "hit_status", "hp_drain", "emotion_bug", "battle_start_bug",
-    "hand_shrink_turn",
-];
-
-/// The NaviCust's stats set directly (no grid of programs).
-pub fn navicust_stats(e: &Editor, s: usize) -> Element<'_, Msg> {
-    stats_pane(e, s, Some(NAVICUST_FIELDS))
-}
-
-fn stats_pane<'a>(e: &'a Editor, s: usize, only: Option<&'static [&'static str]>) -> Element<'a, Msg> {
+/// The stats side `s`'s round starts with, by name: what its rules built on
+/// its navi's fresh stats from what the side brings (the save's facts, its
+/// level, its NaviCust, its patch cards). Nothing here is edited: a side
+/// states what its save brings among its facts (the navi pane).
+fn stats_pane(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &e.content;
-    let side = e.side(s);
-    // (Weapons, records and forms by their names in the match's game.)
-    let game = e.m.game();
-    let local = |key: &str| nettai_match::ids::local(key).to_string();
-    let ours = move |key: &str| nettai_match::ids::in_game(c, game, key);
-    let base = crate::levels::reset(c, side);
-    let leveled = crate::levels::has_levels(c, side);
-    let (title, about) = match only {
-        Some(_) => (String::new(), "What the NaviCust gives the navi, as its stats and bugs, set directly; a changed one is written to the file."),
-        None if leveled => (
-            format!("{}: stats", SIDES[s]),
-            "What the save gives the link navi at its level (its reload); a changed one is written to the file, and where it differs from the level's, said.",
-        ),
-        None => (
-            format!("{}: stats", SIDES[s]),
-            "What the save and the NaviCust give the navi, over its fresh stats; a changed one is written to the file.",
-        ),
-    };
-    let reset = if leveled { "Reset to the level's" } else { "Reset to fresh" };
     let mut col = column![
-        row![heading(title), space().width(Length::Fill), button(reset).on_press(Msg::StatsReset(s)).style(button::secondary)]
-            .align_y(Alignment::Center),
-        text(about).size(13).color(DIM),
+        heading(format!("{}: stats", SIDES[s])),
+        text("As the round starts them: what the rules build on the navi's fresh stats from what the side brings (what the save brings, among the navi pane's facts; its level; its NaviCust and patch cards).")
+            .size(13)
+            .color(DIM),
     ]
     .spacing(6);
-    for f in stats::FIELDS.iter().filter(|f| only.is_none_or(|names| names.contains(&f.name))) {
-        let now = (f.get)(&side.stats);
-        let changed = now != (f.get)(&base);
-        let name = text(f.name).size(13).width(Length::Fixed(170.0)).color(if changed { Color::BLACK } else { DIM });
-        let widget: Element<Msg> = match (f.kind, now) {
-            (Kind::Int(_), Value::Int(v)) => {
-                let typed = e.typed.get(&(s, f.name)).cloned().unwrap_or(v.to_string());
-                let name = f.name;
-                text_input("", &typed).on_input(move |t| Msg::StatText(s, name, t)).width(Length::Fixed(90.0)).into()
-            }
-            (Kind::Bool, Value::Bool(v)) => {
-                let name = f.name;
-                checkbox(v).on_toggle(move |b| Msg::StatValue(s, name, Value::Bool(b))).into()
-            }
-            (Kind::Weapon, Value::Weapon(w)) => {
-                let mut options = vec![Choice { label: "none".into(), value: None }];
-                options.extend(
-                    c.defs.weapons.iter().enumerate().filter(|(_, d)| ours(&d.key)).map(|(i, d)| Choice { label: local(&d.key), value: Some(nettai_content_api::WeaponHandle(i as u16)) }),
-                );
-                let now = options.iter().find(|o| o.value == w).cloned();
-                let name = f.name;
-                pick_list(options, now, move |o: Choice<_>| Msg::StatValue(s, name, Value::Weapon(o.value))).text_size(13).into()
-            }
-            (Kind::Record(ty), Value::Record(r)) => {
-                let mut options = vec![Choice { label: "none".into(), value: None }];
-                options.extend(
-                    c.defs.records.iter().enumerate().filter(|(_, d)| d.record_type == ty && ours(&d.key)).map(|(i, d)| Choice {
-                        label: local(&d.key),
-                        value: Some(nettai_content_api::RecordHandle(i as u16)),
-                    }),
-                );
-                let now = options.iter().find(|o| o.value == r).cloned();
-                let name = f.name;
-                pick_list(options, now, move |o: Choice<_>| Msg::StatValue(s, name, Value::Record(o.value))).text_size(13).into()
-            }
-            (Kind::Form, Value::Form(form)) => {
-                let options: Vec<Choice<_>> = (0..c.defs.forms.len() as u16)
-                    .map(nettai_content_api::FormHandle)
-                    .filter(|&h| ours(&c.defs.form(h).key))
-                    .map(|h| Choice { label: local(&c.defs.form(h).key), value: h })
-                    .collect();
-                let now = options.iter().find(|o| o.value == form).cloned();
-                let name = f.name;
-                pick_list(options, now, move |o: Choice<_>| Msg::StatValue(s, name, Value::Form(o.value))).text_size(13).into()
-            }
-            (Kind::Gauge, Value::Gauge(g)) => {
-                use nettai_battle::setup::GaugeSpeed;
-                let options: Vec<Choice<GaugeSpeed>> = [GaugeSpeed::Normal, GaugeSpeed::Fast, GaugeSpeed::Slow]
-                    .into_iter()
-                    .map(|g| Choice { label: stats::gauge_name(g).into(), value: g })
-                    .collect();
-                let now = options.iter().find(|o| o.value == g).cloned();
-                let name = f.name;
-                pick_list(options, now, move |o: Choice<GaugeSpeed>| Msg::StatValue(s, name, Value::Gauge(o.value))).text_size(13).into()
-            }
-            (Kind::Supports, Value::Supports(n)) => {
-                let name = f.name;
-                let n0 = n.unwrap_or_default();
-                let set = move |n: Option<nettai_battle::setup::Supports>| Msg::StatValue(s, name, Value::Supports(n));
-                row![
-                    checkbox(n0.rush).label("Rush").on_toggle(move |b| set(Some(nettai_battle::setup::Supports { rush: b, ..n0 }))),
-                    checkbox(n0.beat).label("Beat").on_toggle(move |b| set(Some(nettai_battle::setup::Supports { beat: b, ..n0 }))),
-                    checkbox(n0.tango).label("Tango").on_toggle(move |b| set(Some(nettai_battle::setup::Supports { tango: b, ..n0 }))),
-                    checkbox(n.is_none()).label("bug").on_toggle(move |b| set(if b { None } else { Some(n0) })),
-                ]
-                .spacing(8)
-                .into()
-            }
-            _ => text("?").into(),
-        };
-        let mut line = row![name, widget].spacing(8).align_y(Alignment::Center);
-        if let Some(note) = crate::levels::differs(c, side, f) {
-            line = line.push(text(note).size(12).color(RED));
+    let stats = match &e.round {
+        Ok(st) => st[s],
+        Err(why) => {
+            col = col.push(text(format!("The round doesn't start: {why}")).size(13).color(RED));
+            return scrollable(col).into();
         }
-        col = col.push(line.push(text(f.about).size(12).color(DIM)));
+    };
+    for f in stats::FIELDS {
+        let value = match stats::to_toml(c, (f.get)(&stats)) {
+            toml::Value::String(v) => v,
+            other => other.to_string(),
+        };
+        col = col.push(
+            row![
+                text(f.name).size(13).width(Length::Fixed(170.0)),
+                text(value).size(13).width(Length::Fixed(200.0)),
+                text(f.about).size(12).color(DIM)
+            ]
+            .spacing(8)
+            .align_y(Alignment::Center),
+        );
     }
     scrollable(col).into()
 }
