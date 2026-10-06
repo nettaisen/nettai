@@ -266,10 +266,11 @@ fn sp_times(e: &Editor, s: usize) -> Element<'_, Msg> {
     let slots = nettai_match::sp_slots(c);
     let mut col = column![text("SP navi deletion times").size(16), text("mm:ss.cc; empty: the fastest. The SP navi chips' damage goes by them.").size(13).color(DIM)]
         .spacing(6);
-    for i in 0..slots.len() {
-        // The SP navi chip whose damage reads the slot (the game's), by
-        // its name; none reads it: nothing to set.
-        let Some(chip) = nettai_match::facts::sp_chip(c, &e.m.arena, i) else { continue };
+    // The SP navi chip whose damage reads a slot (the game's), in the
+    // library's order; a slot none reads has nothing to set.
+    let mut read: Vec<(usize, nettai_content_api::ChipHandle)> = (0..slots.len()).filter_map(|i| Some((i, nettai_match::facts::sp_chip(c, &e.m.arena, i)?))).collect();
+    e.order.chips(c, &mut read);
+    for (i, chip) in read {
         let label = e.names.chip(c, chip);
         let shown = e.sp_typed.get(&(s, i)).cloned().unwrap_or_else(|| match side.sp_times.0[i] {
             0 => String::new(),
@@ -455,7 +456,7 @@ fn folder(e: &Editor, s: usize) -> Element<'_, Msg> {
         .map(|h| (e.names.chip(c, h), h))
         .filter(|(name, h)| needle.is_empty() || name.to_lowercase().contains(&needle) || nettai_match::ids::local(&c.defs.chip(*h).key).contains(&needle))
         .collect();
-    pool.sort();
+    e.order.chips(c, &mut pool);
     let mut list = Column::new().spacing(1);
     for (name, h) in pool.into_iter().take(400) {
         let d = c.chip(h);
@@ -549,7 +550,7 @@ fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
         .map(|h| (e.names.patch_card(c, h), h))
         .filter(|(n, _)| needle.is_empty() || n.to_lowercase().contains(&needle))
         .collect();
-    all.sort();
+    e.order.patch_cards(c, &mut all);
     let available = all.into_iter().fold(Column::new().spacing(1), |col, (name, h)| {
         let d = c.defs.patch_card(h);
         let bugs = d.effects.iter().filter(|x| x.bug).count();
