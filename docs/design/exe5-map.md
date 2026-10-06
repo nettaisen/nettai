@@ -2172,10 +2172,11 @@ EXE5's action 0x30 (rules/emotion/dark_survival). The battle dims and the screen
 HUD part `hp_box`: draw task 7, the box's drawing only, its low-HP alarm sounding on), his dark self comes out and spirals back (actor 0x2E:
 rules/souls/shade's code, `shade.make`), he is in auto battle for 720 ticks as DarkInvs's drive does (its end
 action 0x49), the HUD comes back (without the gauge in the last turns, `battle.late_turns`) and the screen fades in. The
-status section's `hp_loss = "gauge_and_last_stand"` holds EXE5's object_subtractHP (a player's loss drains its side's gauge too: ×128,
-in the operation battle 0, 0x555, 0xAAA or 0x2000 by its size, 0x0800C734) and EXE5's applyDamageToPlayer (a hit
-shows, white then its sounds, only by the register r1 the check leaves at 0 HP, and one that doesn't show goes
-straight to the deletion test, which tries the stand first). AntiRecv's counterattack takes its HP through
+status section's `hp_loss = "gauge"` holds EXE5's object_subtractHP (a player's loss drains its side's gauge too: ×128,
+in the operation battle 0, 0x555, 0xAAA or 0x2000 by its size, 0x0800C734; at 0 HP it asks the rules' `hp_emptied`,
+whose check, 0x0802C16C, is rules/emotion/dark_survival's) and EXE5's applyDamageToPlayer (a hit shows, white then its
+sounds, only by the register r1 the check leaves at 0 HP, and one that doesn't show goes straight to the deletion
+test, which tries the stand first). AntiRecv's counterattack takes its HP through
 `Object:subtract_hp` (EXE6's the same), EXE5's its mood too (0x080E39DC: its damage word's high half, 0x08012820), and
 its mark sits where the trap's game puts it (`anti_navi_sparkle`). Also new: the request `drag` (flag2 0x100). Where a
 hit landed and which chips a side used are learned for the auto-battling navis' auto battle data (0x0802C294, 0x0802C3C4, 0x0802C3E2:

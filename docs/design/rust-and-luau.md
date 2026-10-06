@@ -53,17 +53,18 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 |---|---|---|---|---|---|
 | Beast Out and Beast Over | | 2 | 1 | | 3 |
 | Crosses and the form framework | | | 2 | | 2 |
-| Emotions | | 2 | 1 | 3 | 6 |
+| Emotions | | 1 | 1 | 3 | 5 |
 | NaviCust | | 2 | | 2 | 4 |
 | Souls and Chaos Unison | 1 | 1 | 1 | | 3 |
 | The stat block and versions | | 1 | 1 | | 2 |
 | Tools | | | 1 | | 1 |
 | Across features | | 1 | | | 1 |
-| **All** | **1** | **9** | **7** | **5** | **22** |
+| **All** | **1** | **8** | **7** | **5** | **21** |
 
 Of the audit's 48, step 1 (2026-10-06) did every name (kind (a)) but S2's part that waits on S1, and B1 and B4's
-dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1. They are listed under [Done](#done) with their new names.
-X5 is new: what X4's rename left of EXE5's logic.
+dead code; the library agent's steps did N5, T2 and T4, and the move of the importers into compat T1; step 2 does
+the kind (b) entries one at a time. They are listed under [Done](#done) with their new names. X5 is new: what X4's
+rename left of EXE5's logic.
 
 ### Beast Out and Beast Over (EXE6)
 
@@ -142,10 +143,6 @@ X5 is new: what X4's rename left of EXE5's logic.
 
   *(c)* Faces keyed by the game's emotion names once E1 is done. The second set of faces is a look the rules push
   (`face_hub` already is; `face_chaos` follows S1).
-- **E6. EXE5's last stand** (`last_stand`, `hold_last_stand`, player/mod.rs:427–460, from `lose_hp_gauge_and_last_stand`,
-  :477, and `apply_damage_gauge_and_last_stand`, status.rs:339; `HpLoss::GaugeAndLastStand`, rules.rs:471). A dark MegaMan holds at 1 HP once a
-  battle. *(b)* A hook when a player's HP reaches 0. EXE5's rules/emotion/dark_survival.luau already plays the volley.
-  About 40 lines, and the hook is rare. The side gauge's drain on HP loss is a rule variant (X2's kind).
 
 ### NaviCust (both games)
 
@@ -257,6 +254,11 @@ Each with what it was and what it is now.
 - **D2.** `dark_substitute` is `rules_substitute`.
 - **D3.** `BattleInfo::{NoDarkChips, LightDarkHeld}` and `effects::{NO_DARK_CHIPS, LIGHT_DARK_HELD}` are
   `BattleInfo::Effects` (`battle.effects()`), whose bits EXE5's rules/light_dark names.
+- **E6.** EXE5's last stand is its rules' `hp_emptied(side, navi)` hook (EXE5's rules/emotion/dark_survival: the check
+  0x0802C16C, the hold at 1 HP and the volley's request), which a loss of HP to 0 asks under `status.hp_loss =
+  "gauge"` (was `gauge_and_last_stand`), an object with actor data's, and whose answer says whether the hit shows.
+  `LastStand`, `last_stand` and `hold_last_stand` are gone; the HP loss is `lose_hp_and_gauge` and
+  `apply_damage_shown_by_hp` (X2's names before). A Luau call per navi whose HP reaches 0, only in EXE5.
 - **N5** (step c3b). The NaviCust section, `NaviCustRules` and navicust.rs are gone; the board is the game's
   rules/navicust/board.luau, which the editor reads as data.
 - **N6.** `clear_bugs`, `init_round_state`, `reset_abilities`, `refresh_abilities`, `apply_ability_flags`,

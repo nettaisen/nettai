@@ -413,50 +413,18 @@ pub fn emotion(b: &Battle, side: u8) -> Emotion {
     }
 }
 
-/// The side statistic a last stand marks (0x0800931C's byte 1): the
-/// side's is spent.
-const STOOD: usize = 1;
-
-/// What EXE5's 0x0802C16C finds of a navi a loss of HP has brought to 0.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum LastStand {
-    /// A player MegaMan of EXE5's emotion 5 whose side hasn't stood: he
-    /// holds at 1 HP and asks for the volley (EXE5's action 0x30).
-    Holds,
-    /// Not; and whether the register r1 its callers read next is left
-    /// non-zero (EXE5's `applyDamageToPlayer` takes it for HP left, and
-    /// shows the hit).
-    Falls { shows: bool },
-}
-
-/// EXE5's 0x0802C16C: a player MegaMan (AIData +0, +1: actor type 2, AI
-/// index 0), NaviStats +0x2A clear (which the own-gauges mode's init
-/// reads, 0x0802D590: the engine has it as that mode), his side not stood
-/// yet (0x0800931C(side, 1)), of EXE5's emotion 5 (0x0801270C: a mood of 0,
-/// out of a soul and unangry, never in battle mode 1). What it leaves in r1
-/// on a fall: the actor type, the AI index, the NaviStats pointer, 1, else
-/// the soul (NaviStats +0x2C).
-pub(crate) fn last_stand(b: &Battle, r: ObjectRef) -> LastStand {
-    let Some(id) = b.objects.get(r).actor else { return LastStand::Falls { shows: false } };
-    let a = b.actors.get(id);
-    if a.actor_type != ActorType::Player {
-        return LastStand::Falls { shows: a.actor_type != ActorType::Virus };
+/// A loss of HP brought `r` to 0 (EXE5's `object_subtractHP` calls
+/// 0x0802C16C): its side's rules are asked (`hp_emptied`: EXE5's last
+/// stand, which may hold it at 1 HP), an object with actor data's; whether
+/// the register r1 the callers read next is left non-zero (EXE5's
+/// `applyDamageToPlayer` takes it for HP left, and shows the hit). An
+/// object without actor data is no navi: not asked, r1 left 0.
+fn hp_emptied(b: &mut Battle, r: ObjectRef) -> bool {
+    if b.objects.get(r).actor.is_none() {
+        return false;
     }
     let side = b.objects.get(r).alliance;
-    if a.ai_index != 0 || own_gauges(b) || b.side_stats[side as usize & 1][STOOD] != 0 || battle_mode(b) == 1 {
-        return LastStand::Falls { shows: true };
-    }
-    if emotion(b, side) == Emotion::WornOut {
-        return LastStand::Holds;
-    }
-    LastStand::Falls { shows: !in_base_form(b, r) }
-}
-
-/// The last stand held (0x0800C722, 0x0801860E): 1 HP, and the volley
-/// asked for.
-pub(crate) fn hold_last_stand(b: &mut Battle, r: ObjectRef) {
-    b.objects.get_mut(r).hp = 1;
-    ai_mut(b, r).requests |= request::VOLLEY;
+    b.rules_hp_emptied(side, r)
 }
 
 /// EXE5's 0x0800C734: what a player's loss drains of its side's gauge in
@@ -472,9 +440,10 @@ fn gauge_loss(amount: u16) -> u32 {
 
 /// EXE5's `object_subtractHP` (0x0800C6E0): a player's loss first drains
 /// its side's gauge (0x0802D4C0: by the loss ×128, in the own-gauges mode
-/// mode by `gauge_loss`), then the HP goes down, to 0, where the last
-/// stand may hold. Whether r1 is left non-zero (`kinds::subtract_hp`).
-pub(crate) fn lose_hp_gauge_and_last_stand(b: &mut Battle, r: ObjectRef, amount: u16) -> bool {
+/// by `gauge_loss`), then the HP goes down, to 0, where the side's rules
+/// are asked (`hp_emptied`). Whether r1 is left non-zero
+/// (`kinds::subtract_hp`).
+pub(crate) fn lose_hp_and_gauge(b: &mut Battle, r: ObjectRef, amount: u16) -> bool {
     let player = b.objects.get(r).actor.is_some_and(|id| b.actors.get(id).actor_type == ActorType::Player);
     if player {
         let drain = if own_gauges(b) { gauge_loss(amount) } else { (amount as u32) << 7 };
@@ -487,13 +456,7 @@ pub(crate) fn lose_hp_gauge_and_last_stand(b: &mut Battle, r: ObjectRef, amount:
     if o.hp != 0 {
         return true;
     }
-    match last_stand(b, r) {
-        LastStand::Holds => {
-            hold_last_stand(b, r);
-            true
-        }
-        LastStand::Falls { shows } => shows,
-    }
+    hp_emptied(b, r)
 }
 
 /// Presentation: whether side `side`'s emotion window shows its form's
