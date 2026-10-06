@@ -194,7 +194,7 @@ fn an_unknown_name_is_refused() {
     let crosses = exe5(&TANGO_EXE5, "souls = [\"heatcross\"]");
     says(parse(&content, &crosses, &ok).unwrap_err(), "left: souls: [1]: no form \"heatcross\" in exe5");
     let crosses = exe5(&TANGO_EXE5, "crosses = [\"heatcross\"]");
-    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no field \"crosses\" (a side of exe5 takes auto_battle_places, auto_battle_records, auto_battle_sent, chaos_unison,");
+    says(parse(&content, &crosses, &ok).unwrap_err(), "left: no field \"crosses\" (a side of exe5 takes auto_battle_places, auto_battle_records, chaos_unison,");
     // A chip of EXE6's alone (HeatMan), a qualified name, a misspelling:
     // one error.
     let six = exe6_content();
@@ -721,12 +721,12 @@ fn a_sides_fields_are_its_rules() {
     assert_eq!((t5.len(), &t5[0]), (18, &("protomn-sp".to_string(), 0)), "{t5:?}");
 }
 
-/// EXE5's rules send each side's auto battle data as the round is set up
+/// EXE5's rules send both sides' auto battle data as the round is set up
 /// (content/exe5/rules/auto_battle/block.luau, 0x0802C7BE): from the
-/// battle's RNG, two numbers a swap, 84 a side; a 0 is sent as an entry, an
-/// empty place is packed away; the first three places are shuffled among
-/// themselves; and a setup whose places are as a console sent them (a
-/// recording's: `auto_battle_sent`) is the state as it is, with no draw.
+/// battle's RNG, two numbers a swap, 84 in all, the same swaps for both
+/// sides' places (each console shuffles its own from the RNG2 they share);
+/// a 0 is sent as an entry, an empty place is packed away; the first three
+/// places are shuffled among themselves.
 #[test]
 fn exe5s_rules_send_the_auto_battle_data() {
     use nettai_battle::rules::Fact;
@@ -743,6 +743,7 @@ fn exe5s_rules_send_the_auto_battle_data() {
     places[41] = Fact::Record(vec![("pattern", Fact::Value(Value::Int(1)))]);
     m.sides[0].set_fact(&content, "auto_battle_places", &places).unwrap();
     m.sides[0].set_fact(&content, "auto_battle_records", &[]).unwrap();
+    m.sides[1].set_fact(&content, "auto_battle_places", &[]).unwrap();
     // The sent places, by side: a chip, a pattern's number, 0, or empty.
     let sent = |b: &nettai_battle::Battle, side: u8| -> Vec<String> {
         let (schema, state) = b.rules_state(side).unwrap();
@@ -767,21 +768,18 @@ fn exe5s_rules_send_the_auto_battle_data() {
         assert!(left.contains(&e.to_string()), "{e} in {left:?}");
     }
     assert!(sent(&b, 1).is_empty());
-    // As sent already: the places as they are, and no draw (84 a side
-    // otherwise).
-    let mut as_sent = m.clone();
-    for s in &mut as_sent.sides {
-        s.set_fact(&content, "auto_battle_sent", &[Fact::Value(Value::Bool(true))]).unwrap();
-    }
-    let b0 = crate::check::start(&content, &as_sent).unwrap();
-    let kept = sent(&b0, 0);
-    assert_eq!(kept.len(), 42);
-    assert_eq!((&*kept[1], &*kept[3], &*kept[20], &*kept[41], &*kept[0]), ("areagrab", "0", "sword", "pattern 1", "-"));
-    let mut rng = b0.rng;
-    for _ in 0..168 {
+    // 84 draws in all, whatever the sides hold.
+    let mut rng = nettai_battle::Rng::new(m.round(&content, m.seed.unwrap_or(0)).rng);
+    for _ in 0..84 {
         rng.next_positive();
     }
-    assert_eq!(b.rng, rng, "two sides' 84 draws");
+    assert_eq!(b.rng, rng, "the send's 84 draws");
+    // Both sides' places shuffled alike: the same places, the same order.
+    let mut both = m.clone();
+    both.sides[1].set_fact(&content, "auto_battle_places", &places).unwrap();
+    let b2 = crate::check::start(&content, &both).unwrap();
+    assert_eq!((sent(&b2, 0), sent(&b2, 1)), (left.clone(), left), "the same swaps");
+    assert_eq!(b2.rng, rng);
 }
 
 /// The stages a match may name are its rules' (`link_pick.match_stages`):

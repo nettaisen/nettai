@@ -1,8 +1,8 @@
 --!strict
 -- EXE5's auto battle data (0xE0 bytes a player at 0x02034C20; docs/design/exe5-map.md §15.9): what a navi in auto
 -- battle plays of a player. A player's setup states it as their save holds it (`auto_battle_places`, the block's 42
--- places; `auto_battle_records`, its eight pattern records), and the console sends it as a battle starts (0x0802C7BE:
--- `send`, into the side's `auto_battle_places` of the rules' state), which the AI (./ai) reads and turns as it plays
+-- places; `auto_battle_records`, its eight pattern records), and the consoles send it as a battle starts (0x0802C7BE:
+-- `send`, into each side's `auto_battle_places` of the rules' state), which the AI (./ai) reads and turns as it plays
 -- the entries. A navi in auto battle on the other side plays it (the Dark MegaMan a failed Chaos Unison brings), and
 -- a side's own drive under DarkInvs its own.
 --
@@ -75,42 +75,43 @@ end
 
 local EMPTY: Place = { chip = nil, pattern = 0, zero = false }
 
--- `round_setup`: side `side`'s data as its console sends it as the battle starts (0x0802C7BE), into the side's state:
--- the save's 42 places, the first three shuffled by three swaps and the other 39 by 39 (each swap two places drawn
--- from the battle's RNG, which stands in for the console's RNG2 at the link's start), the entries then packed to the
--- front (`sub_8000EB6`) and counted to the first empty place. A setup whose places are as a console sent them
--- (`auto_battle_sent`: a recording's) is the state as it is.
-function block.send(side: number)
-    local setup = rules.setup_of(side)
-    local given = setup.auto_battle_places
-    if setup.auto_battle_sent then
-        local out: { Place } = {}
-        for i, p in given do
-            out[i] = copy(p)
+-- `round_setup`, once for the round: both sides' data as their consoles send it as the battle starts (0x0802C7BE), into
+-- each side's state. Each console shuffles its own player's 42 places with the same draws, from the RNG2 the link
+-- shares (the battle's RNG here), so the same swaps apply to both sides' places: the first three places shuffled by
+-- three swaps and the other 39 by 39, each swap two places drawn, 84 draws in all, after which the battle's RNG goes
+-- on from where the send left it (the EXE5 lab's recordings: each sent block is its save's places sent from the
+-- fight's RNG2 84 draws back). The entries are then packed to the front (`sub_8000EB6`) and counted to the first
+-- empty place. (exe5-compat's recordings state the places as the saves hold them and the RNG2 the send starts from.)
+function block.send()
+    local places: { { Place } } = {}
+    for side = 0, 1 do
+        local given = rules.setup_of(side).auto_battle_places
+        local p: { Place } = {}
+        for i = 1, block.PLACES do
+            p[i] = if i <= #given then copy(given[i]) else EMPTY
         end
-        rules.state_of(side).auto_battle_places = out
-        return
-    end
-    local places: { Place } = {}
-    for i = 1, block.PLACES do
-        places[i] = if i <= #given then copy(given[i]) else EMPTY
+        places[side + 1] = p
     end
     local function shuffle(from: number, n: number, swaps: number)
         for _ = 1, swaps do
             local a = battle.rng_positive() % n
             local b = battle.rng_positive() % n
-            places[from + a], places[from + b] = places[from + b], places[from + a]
+            for _, p in places do
+                p[from + a], p[from + b] = p[from + b], p[from + a]
+            end
         end
     end
     shuffle(1, block.FIRST, block.FIRST)
     shuffle(block.FIRST + 1, block.PLACES - block.FIRST, block.PLACES - block.FIRST)
-    local sent: { Place } = {}
-    for _, p in places do
-        if not empty(p) then
-            table.insert(sent, p)
+    for side = 0, 1 do
+        local sent: { Place } = {}
+        for _, p in places[side + 1] do
+            if not empty(p) then
+                table.insert(sent, p)
+            end
         end
+        rules.state_of(side).auto_battle_places = sent
     end
-    rules.state_of(side).auto_battle_places = sent
 end
 
 -- How many entries side `side`'s sent data has.
