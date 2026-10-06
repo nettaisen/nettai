@@ -56,6 +56,11 @@ const NORMAL: usize = 3;
 /// stalled (a dragged window) doesn't make the battle catch up.
 const MOST_ELAPSED: Duration = Duration::from_millis(250);
 
+/// A display with frames to spare: its frames come this many ticks apart
+/// or less, on average. On one, a late frame's ticks are spread over the
+/// frames after it ([`Player::advance`]).
+const SPARE_FRAMES: f64 = 0.95;
+
 /// The most sound kept for a host that hasn't taken it: about a second.
 const MOST_SAMPLES: usize = nettai_audio::SAMPLE_RATE as usize;
 
@@ -71,8 +76,11 @@ pub struct Player {
     samples: Vec<[f32; 2]>,
     paused: bool,
     speed: usize,
-    /// Ticks the clock owes, less than one.
+    /// Ticks the clock owes: less than one, or less than two on a display
+    /// with frames to spare after a late frame.
     owed: f64,
+    /// The time between the host's frames, averaged (seconds).
+    frame_time: f64,
 }
 
 // (A player borrows nothing: a host's state of any lifetime holds one.)
@@ -102,6 +110,7 @@ impl Player {
             paused: false,
             speed: NORMAL,
             owed: 0.0,
+            frame_time: 1.0 / FRAME_RATE,
         };
         player.start_over();
         player
@@ -143,13 +152,25 @@ impl Player {
     /// GBA's button mask, `nettai_battle::input::keys`): `elapsed` at the
     /// original's rate times the speed, the part of a tick left over kept
     /// for the next call. None while paused or stopped. The ticks run.
+    ///
+    /// A host calls it once a display frame. A frame that comes late owes
+    /// two ticks, of which only the second's picture would be shown: on a
+    /// display with frames to spare (faster than the ticks, on average), it
+    /// keeps one of what it owes for the next frame, so each tick has its
+    /// picture (one tick later, until the frames to spare make it up).
     pub fn advance(&mut self, elapsed: Duration, buttons: u16) -> u32 {
         if self.paused || self.session.stopped.is_some() {
             self.owed = 0.0;
             return 0;
         }
-        self.owed += elapsed.min(MOST_ELAPSED).as_secs_f64() * FRAME_RATE * SPEEDS[self.speed];
-        let due = self.owed.floor() as u32;
+        let elapsed = elapsed.min(MOST_ELAPSED).as_secs_f64();
+        self.frame_time += (elapsed - self.frame_time) / 16.0;
+        let rate = FRAME_RATE * SPEEDS[self.speed];
+        self.owed += elapsed * rate;
+        let mut due = self.owed.floor() as u32;
+        if due >= 2 && self.frame_time * rate <= SPARE_FRAMES {
+            due -= 1;
+        }
         self.owed -= due as f64;
         (0..due).take_while(|_| self.tick(buttons)).count() as u32
     }
@@ -405,6 +426,33 @@ mod tests {
         p.advance(time(4.1), 0);
         p.play(live());
         assert_eq!((p.ticks(), p.stopped(), p.finished(), p.result()), (0, None, false, None));
+    }
+
+    /// On a display with frames to spare (120 a second), a late frame's two
+    /// ticks are spread over it and the next: no frame runs two, and the
+    /// clock loses nothing. On a display without (50 a second), a frame
+    /// runs what it owes.
+    #[test]
+    fn a_late_frame_on_a_fast_display_spreads_its_ticks() {
+        let graphics = Arc::new(nettai_assets::Bundle::default());
+        let mut p = Player::with(Renderer::new(graphics.clone()), None, None, live());
+        let frame = Duration::from_secs_f64(1.0 / 120.0);
+        let mut elapsed = Duration::ZERO;
+        for i in 0..240 {
+            // Every 40th frame comes two frames late (25 ms).
+            let e = if i % 40 == 39 { frame * 3 } else { frame };
+            elapsed += e;
+            assert!(p.advance(e, 0) <= 1, "frame {i}");
+        }
+        // One five frames late (42 ms, two and a half ticks) runs two at most.
+        elapsed += frame * 5;
+        assert!(p.advance(frame * 5, 0) <= 2);
+        let clock = elapsed.as_secs_f64() * FRAME_RATE;
+        assert!((clock - p.ticks() as f64).abs() < 2.0, "{} ticks for {clock:.2}", p.ticks());
+        let mut p = Player::with(Renderer::new(graphics.clone()), None, None, live());
+        let frame = Duration::from_secs_f64(1.0 / 50.0);
+        let ran: Vec<u32> = (0..100).map(|i| p.advance(if i % 20 == 19 { frame * 2 } else { frame }, 0)).collect();
+        assert!(ran.contains(&2), "{ran:?}");
     }
 
     /// The picture is the battle's, 240x160, and goes into a buffer of any
