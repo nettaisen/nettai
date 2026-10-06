@@ -1317,7 +1317,7 @@ pub fn blink_out(b: &mut Battle, r: ObjectRef) -> BlinkOut {
 /// absorbed-look record; the original's obstacle kind, an index into
 /// `byte_80E98C0`'s sprites) flies from `r` to the absorbing side's navi:
 /// the content pack's absorbed obstacle (`sub_80E996E`, effect #0x87,
-/// objects/absorbed-obstacle), spawned where `r` is with its look, the side
+/// objects/absorbed_obstacle), spawned where `r` is with its look, the side
 /// that absorbs it, its animation, sprite palette, hidden sprite parts and
 /// facing, running neither while paused nor while dimmed.
 pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, look: RecordHandle) {

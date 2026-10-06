@@ -8,7 +8,7 @@
 -- lib/navi_level). Its record is written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local collision = require("../../rules/collision")
-local marker = require("../../lib/navi-chips/marker")
+local marker = require("../../lib/navi_chips/marker")
 local regions = require("@exelib/regions")
 
 export type State = {

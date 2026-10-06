@@ -5,7 +5,7 @@
 -- at his side's front edge of each row, then leaves. See
 -- docs/engine/chips.md §3.6.27.
 
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("../../lib/navi_chips/navi")
 local wave = require("./wave")
 
 local diveman = {}

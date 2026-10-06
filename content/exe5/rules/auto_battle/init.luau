@@ -1,7 +1,7 @@
 --!strict
 -- EXE5's auto battle (docs/design/exe5-map.md §15.9): the navis no player controls a battle brings, which the
 -- navi type's tables drive by their AI index (its idle, 0x081041F0's action 6, and its tick, 0x080F23FC's entry).
--- In a netbattle the one is Dark MegaMan (AI index 0x16, navis/dark-megaman), whom a failed Chaos Unison brings
+-- In a netbattle the one is Dark MegaMan (AI index 0x16, navis/dark_megaman), whom a failed Chaos Unison brings
 -- (rules/souls/chaos) for twelve seconds: his idle runs the AI (./ai) until his time is up, then he leaves; his last
 -- three seconds he blinks. The system drives each such navi of its side's summoning; the navi's state is the AI's
 -- (./ai's State, AIData +0x80 on). It also drives a side's own player under DarkInvs (the no-charge drive, the

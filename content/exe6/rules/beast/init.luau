@@ -10,9 +10,9 @@
 -- Beast Out on the custom screen (its button, its animations and the
 -- BeastOut chip's) is custom.luau.
 
-local beast_claw = require("../navis/megaman/weapons/beast-claw")
+local beast_claw = require("../navis/megaman/weapons/beast_claw")
 local berserk = require("@self/berserk")
-local cross_special = require("@self/cross-special")
+local cross_special = require("@self/cross_special")
 local kind = require("./forms/kind")
 local custom_beast = require("@self/custom")
 local rush = require("@self/rush")

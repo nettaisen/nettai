@@ -312,7 +312,7 @@ fn fields(t: &Table, at: &str) -> Result<Vec<(DataKey, LuaValue)>, String> {
             LuaValue::String(s) => {
                 DataKey::Str(s.to_str().map_err(|e| format!("{at}: a key isn't UTF-8 ({e})"))?.to_string())
             }
-            LuaValue::Integer(i) => DataKey::Int(i),
+            LuaValue::Integer(i) => DataKey::Int(i64::from(i)),
             LuaValue::Number(n) if n.fract() == 0.0 && n.abs() < 9e15 => DataKey::Int(n as i64),
             k => return Err(format!("{at}: a table key is a {}, not a string or an integer", k.type_name())),
         };
@@ -528,7 +528,7 @@ impl Refs<'_> {
         Ok(match v {
             LuaValue::Nil => Data::Nil,
             LuaValue::Boolean(b) => Data::Bool(*b),
-            LuaValue::Integer(i) => Data::Int(*i),
+            LuaValue::Integer(i) => Data::Int(i64::from(*i)),
             LuaValue::Number(n) => {
                 if n.fract() != 0.0 || !n.is_finite() || n.abs() >= 9_007_199_254_740_992.0 {
                     return Err(format!("{at}: {n} is not an integer"));

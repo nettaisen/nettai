@@ -4,13 +4,13 @@
 -- (navis/groundman), and the Gregar chip's summon's rocks (chips/gregar,
 -- the Japanese ROMs'). Its panel blinks for a while, then the rock drops
 -- from 160 pixels in 25 ticks and hits the panel it lands on; on a solid
--- panel it breaks into two chips (objects/falling-rock/chip), cracking the
+-- panel it breaks into two chips (objects/falling_rock/chip), cracking the
 -- panel if it cracks. A hit on the way throws chips off too, but it falls
 -- on. See docs/engine/chips.md §3.6.25.
 
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
-local rock_chip = require("../../objects/falling-rock/chip")
+local rock_chip = require("../../objects/falling_rock/chip")
 local sparks = require("../../lib/sparks")
 
 local rock = {}

@@ -24,7 +24,7 @@ local cloudman = define.chip {
 }
 
 -- CloudMnSP (EXE5 chip 0x10b): CloudMan cuts in and sets thunderclouds behind the enemies, each striking with a
--- paralyzing bolt (../cloudman/navi); its damage by how fast its user deleted CloudMan SP (rules/sp-chips: formula 16,
+-- paralyzing bolt (../cloudman/navi); its damage by how fast its user deleted CloudMan SP (rules/sp_chips: formula 16,
 -- its table's row 15).
 local cloudmn_sp = define.chip {
     id = "cloudmn-sp",

@@ -11,7 +11,7 @@
 
 local attach_points = require("@self/attach_points")
 local buster = require("@self/weapons/buster")
-local charged_shot = require("@self/weapons/charged-shot")
+local charged_shot = require("@self/weapons/charged_shot")
 local colonelsoul = require("@self/forms/colonelsoul")
 local gyrosoul = require("@self/forms/gyrosoul")
 local knightsoul = require("@self/forms/knightsoul")

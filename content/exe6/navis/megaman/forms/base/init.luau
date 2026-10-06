@@ -2,7 +2,7 @@
 -- MegaMan's base form.
 
 local buster = require("../weapons/buster")
-local charged_shot = require("../weapons/charged-shot")
+local charged_shot = require("../weapons/charged_shot")
 
 return define.form {
     id = "base",

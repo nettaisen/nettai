@@ -5,7 +5,7 @@
 -- times a screen (3 less the screen's shuffles so far, +0x16, which each screen's open zeroes). A on it (0x080249B0,
 -- with no sound of its own) deals the chips not picked again: the screen's state 0x28 (0x08023488), the framework's
 -- re-deal, which EXE6's ChpShufl kept. EXE5's keeps some of the hand in the hand (0x080253E8, the table 0x080254C8 by
--- how many of the hand it deals again: rules/custom-screen's `redeal_kept`): those are shuffled among themselves,
+-- how many of the hand it deals again: rules/custom_screen's `redeal_kept`): those are shuffled among themselves,
 -- and all but the first kept with the rest of the folder.
 
 local shuffle = {}

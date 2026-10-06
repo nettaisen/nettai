@@ -1,5 +1,5 @@
 --!strict
--- MachGun1-3: nine panel strikes (objects/panel-strike) on a target that
+-- MachGun1-3: nine panel strikes (objects/panel_strike) on a target that
 -- sweeps up and down the first column ahead with an enemy in it, a strike
 -- every nine ticks, each marked by a reticle (the original's action 0x29,
 -- `sub_80ECF2E`; docs/engine/shot-chips.md §8). When the sweep turns at
@@ -7,7 +7,7 @@
 -- enemy left it. The three differ only in their damage.
 
 local attachment = require("../objects/attachment")
-local panel_strike = require("../objects/panel-strike")
+local panel_strike = require("../objects/panel_strike")
 local panels = require("@exelib/panels")
 
 export type State = {

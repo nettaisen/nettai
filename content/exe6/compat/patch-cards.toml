@@ -1,4 +1,4 @@
-# The patch cards (EXE6's Modification Cards, 改造カード; content/exe6/cards/) by their number, which a
+# The patch cards (EXE6's Modification Cards, 改造カード; content/exe6/patch_cards/) by their number, which a
 # Japanese save's card list holds (0x020065F0+0x30). Written once by the verification workspace's
 # tools/jp/gen_patchcards.py from the JP Falzar ROM's card table; `gen-content check` compares each card
 # with the ROM's of its number. The keys are the fan translation's names (docs/engine/patch-cards.md §5).
@@ -34,6 +34,7 @@
 "darkman" = 95
 "darkmech" = 83
 "desertmn" = 41
+"diodon" = 22
 "diveman" = 104
 "django" = 112
 "draggin" = 73
@@ -54,6 +55,7 @@
 "hntdcndl" = 75
 "honybomr" = 80
 "iceman" = 32
+"japanman" = 42
 "jelly" = 56
 "judgeman" = 105
 "kendoman" = 97
@@ -84,8 +86,7 @@
 "planetmn" = 39
 "plantman" = 92
 "poitton" = 57
-"puffball" = 55
-"puffy" = 22
+"puffy" = 55
 "pulsbulb" = 77
 "punk" = 107
 "satella" = 58
@@ -119,4 +120,3 @@
 "volcano" = 13
 "walla" = 68
 "wunote" = 18
-"yamatomn" = 42

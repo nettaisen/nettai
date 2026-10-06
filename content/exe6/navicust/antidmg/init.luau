@@ -2,7 +2,7 @@
 -- The NaviCust program AntiDmg (program 10), in green.
 
 local programs = require("../rules/navicust/programs")
-local anti_damage = require("../navis/megaman/weapons/anti-damage")
+local anti_damage = require("../navis/megaman/weapons/anti_damage")
 
 return define.navicust_program {
     id = "antidmg",

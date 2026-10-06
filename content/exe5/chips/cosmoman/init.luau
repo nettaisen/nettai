@@ -24,7 +24,7 @@ local cosmoman = define.chip {
 }
 
 -- CosmoMnSP (EXE5 chip 0x10e): CosmoMan cuts in, takes the field objects around him and calls meteors down on the
--- enemy area (../cosmoman/navi); its damage by how fast its user deleted CosmoMan SP (rules/sp-chips: formula 17,
+-- enemy area (../cosmoman/navi); its damage by how fast its user deleted CosmoMan SP (rules/sp_chips: formula 17,
 -- its table's row 16).
 local cosmomn_sp = define.chip {
     id = "cosmomn-sp",

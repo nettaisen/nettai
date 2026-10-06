@@ -1,13 +1,13 @@
 --!strict
 -- BgDthThd's charged shot (`bgdththd/charge`): the weapon the chip makes
--- the navi's charged shot (lib/navi-boost/controller; the original's weapon
+-- the navi's charged shot (lib/navi_boost/controller; the original's weapon
 -- routine 0x22, `sub_8011E78`). It is Thunder's shot (chips/thunder/shoot):
 -- with a bug frag, which it spends, a fast ball that homes in for 12 panels
 -- (DarkThnd's big one) for 200; without one, Thunder's own for 40. Sticky:
 -- a form's own charged shot doesn't replace it, and while the navi has it a
 -- Beast buster gives way to the plain one.
 
-local charge = require("../../lib/navi-boost/charge")
+local charge = require("../../lib/navi_boost/charge")
 local shoot = require("../thunder/shoot")
 local statuses = require("../../rules/status")
 local thunder = require("../thunder")

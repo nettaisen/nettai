@@ -11,7 +11,7 @@
 -- (AIData+0x3C 24, which nothing counts down: its status shader goes to its first green, 0x080136B8) and the bonus
 -- sound plays; else the sparkle.
 
-local rising_bubble = require("../objects/rising-bubble")
+local rising_bubble = require("../objects/rising_bubble")
 local sparkle = require("@exelib/instant/sparkle")
 local operation_battle = require("./operation_battle")
 

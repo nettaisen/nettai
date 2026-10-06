@@ -7,9 +7,23 @@ description = "Luau runtime for exe6 battle content: stateless scripts over the 
 
 [dependencies]
 nettai-content-api = { path = "../nettai-content-api" }
-mlua = { version = "0.12", features = ["luau"] }
+mlua = { version = "0.12.2", features = ["luau"] }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+# build.rs supplies Luau and its C++ runtime on this target.
+mlua-sys = { version = "=0.13.0", features = ["luau", "external"] }
+
+[build-dependencies]
+luau0-src = "=0.22.0"
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+wasm-bindgen-test = "=0.3.76"
 
 [features]
 # Luau's native code generator (mlua's `luau-jit`), selectable per pack with
 # `Options::native_code`.
 jit = ["mlua/luau-jit"]
+
+[[example]]
+name = "wasm_smoke"
+crate-type = ["cdylib"]

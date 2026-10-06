@@ -322,7 +322,7 @@ by the binding.
 
 | Hook | Called | EXE6 does |
 |---|---|---|
-| `round_setup(side)` | once per side as the round is set up (`Battle::new`), before anything reads the side's stats, which it may change | the NaviCust's compile (rules/navicust, docs/design/navicust.md), then the patch cards (rules/patch-cards: added with them, docs/design/patch-cards.md §3) |
+| `round_setup(side)` | once per side as the round is set up (`Battle::new`), before anything reads the side's stats, which it may change | the NaviCust's compile (rules/navicust, docs/design/navicust.md), then the patch cards (rules/patch_cards: added with them, docs/design/patch-cards.md §3) |
 | `round_start(side)` | once per side, after the navis spawn | reads its setup into state (the Beast Out counter, the Crosses owned) |
 | `turn_check(side, request) -> busy?` | at the sequencer's check (`sub_801486C`), per side | Beast Out runs out (`sub_80159C6`) |
 | `turn_started(side)` | after the sequencer, at the turn's start (`sub_800840C`'s end) | a turn in Beast Out spends one (`sub_8015A38`) |
@@ -629,7 +629,7 @@ also be fully qualified as well".
 - **Lookups are exact** (`Defs::*_by_key`): tools, tests, setups and match files write ids in full.
 - **No home.** What a battle reads is the arena's (the stage's game's) or a side's (its ruleset's, §2.3); a tool
   with no battle takes the game that has the thing. There is no default game: the frontend takes its game from a
-  match file, a trace or `--game` (and stops, listing the games it has a pack of, with none), and the editor asks
+  match file or a trace (and requires one of them), and the editor asks
   for a new match's game.
 - **content/exelib** is a folder of behavior only: modules the games' folders share by path
   (`require("@exelib/...")`), with no assets of their own, so it needs no pack, and no compat or locales. A common
@@ -1081,7 +1081,7 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
 - **Loading** (nettai-frontend then, nettai-demo's command line since): `--pack` repeats, one pack a game (`--pack <exe6> --pack <exe5>`); the content
   loads over all of them (`pack::load_battle_packs`), and `pack::pack_paths` puts the directories in the content's
   pack order for the graphics and the sound. (Since: the frontend and the editor load every pack in
-  `data/content` or `$NETTAI_PACKS`, `--pack` only overriding one, and the roots beside EXE6's that load:
+  `data` or `$NETTAI_PACKS`, `--pack` only overriding one, and the roots beside EXE6's that load:
   `pack::find`, `pack::load_found`, docs/frontend.md §1.) The player's language applies to the content's own pack. The audit
   checks a cue's song in its own pack's bank.
 - **Tests**: `packs::tests::each_asset_draws_from_its_own_pack` (a twin root and pack beside the test content,
@@ -1174,7 +1174,7 @@ below: each game states them).
   lockout is the refused chip's, as EXE5's), with only the chip changed. `HookCall::System` now carries the navi
   and the chip a hook is about. The binding passes them after the side. A side whose ruleset has no system with
   the hook calls nothing (`Battle::systems_navi_intake`, `systems_chip_check`).
-- **EXE5's light and dark MegaMan** (content/exe5/rules/light-dark, in EXE5's stock ruleset). The system's setup is
+- **EXE5's light and dark MegaMan** (content/exe5/rules/light_dark, in EXE5's stock ruleset). The system's setup is
   the save's light/dark value (NaviStats +0x44); exe5-compat writes it from a recording's setup line, through
   `PlayerSetup::set_rule`. At 499 or less, the holy panel under the navi turns Normal each tick. A chip whose
   `megaman` field (its record's +0x15) asks for the other kind of MegaMan becomes the invalid chip (EXE5's 0x185,
@@ -1308,8 +1308,8 @@ are gone.
   asset names read as `test:` ones (`testing::borrowed`); twin's modules are `twin:`. Tests compare objects' kinds
   by the id's own part (`Battle::local_kind_key`) where their expected tables name them so.
 - **The match file**: its ids were already full; a background is now in full (`exe6:lans-hp`), the stock ruleset
-  is `exe6:stock` (was `exe6:exe6`), a side with no ruleset plays EXE6's, and `--cards` takes ids in full
-  (`exe6:canodumb,-exe6:shadow`).
+  is `exe6:stock` (was `exe6:exe6`), a side with no ruleset plays EXE6's, and the former `--cards` option took ids in full
+  (`exe6:canodumb,-exe6:shadow`; cards are now configured in the match file).
 - **The content check** (`nettai-content-check`, no argument) checks content/: every folder against content/nettai
   and every folder's own declarations, each module by its folder and path; a folder alone still checks alone. EXE5's
   HolyDrem used two types of another module, which the checker reads as `any`: the casts say so.
@@ -1430,7 +1430,7 @@ P1's items 12 and 8 (exe5-map.md §15.3), on R4.
 ### S4, the Cross special and the navi switch (2026-10-02)
 
 - **The Cross special** (DarkInvs' auto-battle in the battle flag 0x40 mode) is EXE6's, in the beast system
-  (rules/beast/cross-special.luau). The original's two controllers, Beast Over's berserk and the Cross special,
+  (rules/beast/cross_special.luau). The original's two controllers, Beast Over's berserk and the Cross special,
   keep their state in the same 16 bytes (AIData+0xF0): each clears it, and either may find what the other left,
   for example when a Beast Over comes during a takeover. So both share the system's `controller_*` fields. §2's
   separate cross-special/ folder would have split them.
@@ -1441,7 +1441,7 @@ P1's items 12 and 8 (exe5-map.md §15.3), on R4.
     starts the special (0x1E0 ticks via `battle.take_over`, invulnerable, the state cleared). While the takeover
     runs, idle calls `takeover(side, navi)` after the SELECT special's check. The answers are those of
     `controller`, plus "own_chip": a chip of the special's own started, so the used chip is the attack's.
-  - EXE6's controller picks its chip from its section's rows (`rules/cross-special.luau`, read by `require`).
+  - EXE6's controller picks its chip from its section's rows (`rules/cross_special.luau`, read by `require`).
   - **The end** (`sub_80EFDB2`) is the system's action `exe6:beast/cross-special-end` (compat 0x59, `engine/cross-
     special` before).
   - API: `battle.take_over`, `end_takeover`, `takeover_ticks`, `navi:start_chip_attack(chip, kind)`; `side_special`
@@ -1825,7 +1825,7 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   - `beast_lockon` and `lockon_mode` are the beast system's `beast = { lockon, rush }`. The Rust write of the
     attack's `wrapped` from `beast_lockon` (the Team Battle special chip's) was dead: `set_attack` clears it, and
     the system's `chip_used` writes it.
-  - `dark_substitute` and `hp_bug` are a new system's, `exe6:dark-chips` (rules/dark-chips/init.luau), last in
+  - `dark_substitute` and `hp_bug` are a new system's, `exe6:dark-chips` (rules/dark_chips/init.luau), last in
     EXE6's stock ruleset. Its new hook `chip_substitute(side, navi, chip)` spends a bug frag or gives the substitute
     as the use is prepared (`sub_8010D58`), where Rust then loads the substitute's record, damage and bonus as
     before. Its `chip_prepared(side, navi, chip)`, another new hook, worsens the HP bug (`sub_800B79A`) once the
@@ -2129,7 +2129,7 @@ plain Luau library with a single definition.
 - **Decisions** (for review):
   1. Variants keep the game's sections and roles (approved): per-ruleset tables would mean the battle carrying its
      ruleset's tables into the chips' links, the custom screen, the renderer and the tools. Additive later.
-  2. A section field is snake_case (`sp_chips`), the module keeps its file name (rules/sp-chips.luau).
+  2. A section field and its module filename are snake_case (`sp_chips`, rules/sp_chips.luau).
   3. The deliberate qualified names in tests (a name the content must refuse, a test pack's module name) are marked
      `// (written in full)`.
   4. The content check's placeholder lint now sees EXE5's 45 placeholder asset names (`sprite-0c-42`), which the
@@ -2147,7 +2147,7 @@ plain Luau library with a single definition.
   - The stock ruleset's `lockon` section (the column shifts, the clear-path condition) stays: the search reads
     it.
 - **The Cross special's rows are the beast system's data**: a record of type "cross-special" (`cross-special`,
-  rules/cross-special.luau), which its controller requires. `Rules::cross_special`, the stock ruleset's
+  rules/cross_special.luau), which its controller requires. `Rules::cross_special`, the stock ruleset's
   `cross_special` section and `SpecialChip` are gone. gen-content reads the record's rows.
 - **The navis' EXE6 form sets leave the engine.**
   - `NaviForms` keeps `souls`; its presence still says the navi changes form. A navi's `forms.gregar` and
@@ -2166,7 +2166,7 @@ plain Luau library with a single definition.
 The plan as approved: "use `system.state_of(side, key)`, and move bug frags out of the engine into the dark-chips
 system. The point of S7/S8 is an engine with no EXE6 resources, and a guarded accessor keeps that honest."
 
-- **Bug frags are the dark-chips system's** (content/exe6/rules/dark-chips/init.luau): its setup's `bug_frags`
+- **Bug frags are the dark-chips system's** (content/exe6/rules/dark_chips/init.luau): its setup's `bug_frags`
   (u32, what the player brings: a tool writes it as a fact, `set_fact("bug_frags", ...)`, nettai-match's
   `facts::BUG_FRAGS_FIELD`, exe6-compat's trace setup), its state's `bug_frags`, which `round_setup` fills from
   the setup, and its `chip_substitute` spends. `Battle::bug_frags`, `PlayerSetup::bug_frags`, the digest's
@@ -2181,7 +2181,7 @@ system. The point of S7/S8 is an engine with no EXE6 resources, and a guarded ac
 - **EXE6's API module**, content/exe6/rules/api.luau (`exe6`): `bug_frags`, `spend_bug_frags` (whether it spent:
   never without the dark-chips system or enough frags), `navi_level` (the engine's, which a link navi's chip bonus
   reads too), and the form kinds' `beast`, `beast_over`, `is_beast` (rules/forms/kind). The navi boosts' charged
-  shots (lib/navi-boost) spend through it. Rules modules keep calling what they own directly.
+  shots (lib/navi_boost) spend through it. Rules modules keep calling what they own directly.
 - **EXE6's declarations leave core.d.luau** for content/exe6/types.d.luau: a chip's `beast`, `dark_substitute`,
   `hp_bug` (`Exe6ChipFields`), a form's `kind`, `game`, `cross_of`, `cross_release_anim`, `beast`,
   `special_volley`, `charged_sword_rush`, `extra_chips`, `scrap_button` (`Exe6FormFields`), and `FormSet`. The
@@ -2346,7 +2346,7 @@ everything right and they have side effects? you should also not import everythi
 chips/init.luau should import all chips, etc." (content-model-v2.md §4.0 holds the rules.)
 
 - **A game's init.luau returns nothing.** It requires the game's rules and its folders (`@self/rules`,
-  `@self/chips`, `@self/navis`, `@self/stages`, `@self/cards`, `@self/navicust`, EXE6's `@self/lib`), and each
+  `@self/chips`, `@self/navis`, `@self/stages`, `@self/patch_cards`, `@self/navicust`, EXE6's `@self/lib`), and each
   folder's init.luau requires the folder's modules that define what the game has: 13 new inits (EXE6's seven,
   EXE5's six, counting the top modules that were there).
   - A folder's init lists what is in the folder: navis/init.luau has the navis, their forms, the link navis' own

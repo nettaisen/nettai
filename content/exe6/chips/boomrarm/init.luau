@@ -1,10 +1,10 @@
 --!strict
 -- BoomrArm, one of the four arm chips no folder holds: the navi's charged
 -- shot becomes the arm's weapon, with a glow at its arm
--- (lib/navi-boost/controller).
+-- (lib/navi_boost/controller).
 
 local charge = require("@self/charge")
-local navi_boost = require("../lib/navi-boost/controller")
+local navi_boost = require("../lib/navi_boost/controller")
 
 -- The glow's palette.
 local PALETTE = 3

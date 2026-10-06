@@ -28,8 +28,8 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x00 | 0x080c4e58 | 3189 (projectile: the pack's `objects/projectile`, objects-and-player.md §B8) |
 | T3 0x03 | 0x080c52b0 | 975 |
 | T3 0x07 | 0x080c5a34 | 15623 (volcano eruption: `kinds::eruption`, field-collision-damage.md) |
-| T3 0x09 | 0x080c5ddc | 1452 (panel strike: the pack's `objects/panel-strike`, chips.md §3.6.33) |
-| T3 0x0b | 0x080c60a8 | 38 (flying shot: the pack's `objects/flying-shot`, objects-and-player.md §B8) |
+| T3 0x09 | 0x080c5ddc | 1452 (panel strike: the pack's `objects/panel_strike`, chips.md §3.6.33) |
+| T3 0x0b | 0x080c60a8 | 38 (flying shot: the pack's `objects/flying_shot`, objects-and-player.md §B8) |
 | T3 0x0f | 0x080c6414 | 1107 (grab shot: the pack's `lib/grab/shot`, chips.md §3.6.8) |
 | T3 0x12 | 0x080c6946 | 600 (the Vulcans' and Spreaders' bullet: the content's `objects/bullet`, shot-chips.md §4.1) |
 | T3 0x17 | 0x080c6dcc | 180 (SpoutMan's geyser: the pack's `chips/spoutman/geyser`, chips.md §3.6.11) |
@@ -72,7 +72,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T4 0x0a | 0x080e10a4 | 56 |
 | T4 0x0f | 0x080e1520 | 6154 |
 | T4 0x10 | 0x080e17e8 | 6284 (navi chip dimming controller: `kinds::navi_chip`, chips.md §3.6.7) |
-| T4 0x1c | 0x080e23a4 | 334 (SloGauge's and FstGauge's dimming controller: the pack's `lib/gauge-speed/controller`, chips.md §3.6.10) |
+| T4 0x1c | 0x080e23a4 | 334 (SloGauge's and FstGauge's dimming controller: the pack's `lib/gauge_speed/controller`, chips.md §3.6.10) |
 | T4 0x1f | 0x080e28a8 | 192 |
 | T4 0x20 | 0x080e2ae8 | 609 |
 | T4 0x28 | 0x080e32b8 | 500 |
@@ -88,6 +88,6 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T4 0x6b | 0x080e807c | 54 |
 | T4 0x76 | 0x080e8b00 | 595 (MetrKnuk's dimming controller: the pack's `chips/metrknuk/controller`, dimming-chip-effects.md §18) |
 | T4 0x80 | 0x080e9460 | 1192 |
-| T4 0x84 | 0x080e9570 | 761 (the navi-changing chips' dimming controller: the pack's `lib/navi-boost/controller`, chips.md §3.6.10) |
-| T4 0x87 | 0x080e97f0 | 20 (absorbed obstacle: the content's `objects/absorbed-obstacle`, a definition whose looks are its obstacles' records, field-objects.md §5) |
+| T4 0x84 | 0x080e9570 | 761 (the navi-changing chips' dimming controller: the pack's `lib/navi_boost/controller`, chips.md §3.6.10) |
+| T4 0x87 | 0x080e97f0 | 20 (absorbed obstacle: the content's `objects/absorbed_obstacle`, a definition whose looks are its obstacles' records, field-objects.md §5) |
 | T4 0x89 | 0x080e9af0 | 118 |

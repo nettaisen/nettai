@@ -10,11 +10,11 @@
 -- every 20 ticks on a panel of the other side's (chips/grndman/rock), then
 -- tells the controller it is done. Both then sink (10) and go.
 
-local arrival = require("../../lib/beast-chips/arrival")
+local arrival = require("../../lib/beast_chips/arrival")
 local flame = require("./flame")
 local regions = require("@exelib/regions")
 local rock = require("../grndman/rock")
-local targets = require("../../lib/beast-chips/targets")
+local targets = require("../../lib/beast_chips/targets")
 
 local summon = {}
 

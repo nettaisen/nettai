@@ -1709,7 +1709,7 @@ Minimum buster cycle: N+7 frames.
 - Store s to AV.Unk_0C as a **u32** (this zeroes Unk_0D..0F).
 - Zero AV.Unk_02, 03, 04, 05, 06, 0A. Return **0x16**.
 
-**Action 0x16, `sub_80EBE00`** (the pack's `navis/megaman/weapons/charged-shot/init.luau`, with the
+**Action 0x16, `sub_80EBE00`** (the pack's `navis/megaman/weapons/charged_shot/init.luau`, with the
 weapon routine; a sub-phase past 8 reads past its table):
 - **Sub-phase 0** (`sub_80EBE20`): on init AV.Unk_10 = 5 (`nullsub_12` is a no-op). Each tick `Unk_10--`. When the result ≤ 0, set sub-phase 4 and run `sub_80EBE54` in the same tick.
 - **Sub-phase 4** (`sub_80EBE54`): same as the buster's sub-phase 0 (anim 0x0E, arm T1#5, USING_ACTION, fire on its 2nd tick) with these differences:
@@ -1790,7 +1790,7 @@ accumulating, so the shot rises a pixel per panel. **Unverified**.
 
 #### B8a. Flying shot: T3 index 0xB, `sub_80C60A8`
 
-The pack's `objects/flying-shot` (`flying_shot.luau`, the `flying-shot` kind, spawned with `flying_shot.spawn`,
+The pack's `objects/flying_shot` (`flying_shot.luau`, the `flying-shot` kind, spawned with `flying_shot.spawn`,
 `sub_80C6248`: r1..r3 the position, r4 the parameters, r6 the damage word, r7 its ExtraVars word). Used by the buster's throw (§B6, kind 6),
 the Beast forms' buster (`sub_80EC710`), TrnArrw (`sub_80ECF00`) and navi AI (`sub_8108EE6`). Its kinds are
 `byte_80C6038`'s 16-byte records (7, up to the code; the variant records `flying_shot.variants`, the

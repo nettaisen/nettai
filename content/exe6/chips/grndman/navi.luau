@@ -8,7 +8,7 @@
 -- object), he leaves at once. See docs/engine/chips.md §3.6.25.
 
 local groundman_navi = require("../../navis/groundman")
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("../../lib/navi_chips/navi")
 local collision = require("../../rules/collision")
 local drill = require("./drill")
 local panels = require("@exelib/panels")

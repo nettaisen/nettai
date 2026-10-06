@@ -742,7 +742,7 @@ string is a content root's `locales/<lang>.toml`.
 | The no-running message (L) | `en.toml` `[navis]` `run_message` | `ja.toml` `[navis]` `run_message` |
 | The enemy names (a round's first custom screen) | `en.toml` `[navis]` `name`, the ROM's name for the navi's NameID (ChrgeMan, GrndMan, TmhkMan, ProtoMan); `variant_name` when the side's rules ask (`battle.set_name_variant`: EXE5's Hub Style, BCMegaMn) | `ja.toml` `[navis]` `name` (ロックマン, キラーマン, アクアマン, ブルース...), `variant_name` (FCロックマン) |
 | A Cross's name (the frontend's own text: live play's terminal summary, the plain-text screen's Cross window) | `en.toml` `[forms]` | (English) |
-| A patch card's name (gen-content checks them; the frontend's `--cards` messages; no screen shows them yet) | `en.toml` `[patch-cards]`, the fan translation's | `ja.toml` `[patch-cards]`, the Japanese ROMs' card names |
+| A patch card's name (gen-content checks them; the frontend's match description and the editor's card list show them) | `en.toml` `[patch-cards]`, the fan translation's | `ja.toml` `[patch-cards]`, the Japanese ROMs' card names |
 | The HUD's lines (the seconds, "TIME UP!", "COUNTER HIT!"), "VS", "????" | the pack's text script, in the US font's glyphs | the same words, in the Japanese font's glyphs (the pack's Japanese lettering) |
 | The 8x16 font and the dialogue font | the pack's | the pack's Japanese lettering: the Japanese ROMs' fonts, in their encoding |
 | Banners | the pack's | ten differ (the pack's `-ja` banners): ROCKMAN, KILLERMAN, AQUAMAN and BLUES where the US has MEGAMAN, ERASEMAN, SPOUTMAN and PROTOMAN, each starting where its longer or shorter name does; the Program Advance's プログラムアドバンス. The other 37 are the same pictures |

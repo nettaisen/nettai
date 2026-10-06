@@ -8,7 +8,7 @@
 -- Each game makes its kind with `bomb.make_kind(id, look)` (EXE6's chips/bugbomb, EXE5's chips/bugbomb).
 
 local regions = require("../regions")
-local rising_bubble = require("../rising-bubble")
+local rising_bubble = require("../rising_bubble")
 local trajectory = require("../trajectory")
 
 local bomb = {}

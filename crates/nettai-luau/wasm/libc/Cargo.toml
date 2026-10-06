@@ -1,0 +1,21 @@
+[package]
+name = "libc"
+version = "0.2.190"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+description = "Upstream libc with unavailable file API stubs for bare Wasm"
+
+[dependencies]
+# A distinct Cargo source avoids recursively applying our crates.io patch.
+# Unmodified upstream release 0.2.190; no libc sources are kept here.
+libc-upstream = { package = "libc", git = "https://github.com/rust-lang/libc", rev = "7b0ab5528dc7f361f3a0b4c06c2cad9971617f75", default-features = false }
+
+[features]
+default = ["std"]
+std = ["libc-upstream/std"]
+extra_traits = ["libc-upstream/extra_traits"]
+align = ["libc-upstream/align"]
+const-extern-fn = ["libc-upstream/const-extern-fn"]
+use_std = ["std"]
+rustc-dep-of-std = ["libc-upstream/rustc-dep-of-std"]

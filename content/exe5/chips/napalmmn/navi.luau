@@ -7,7 +7,7 @@
 -- on he stands 30, sinks (animation 4) 5, and goes; the controller moves on.
 
 local napalm_bomb = require("./bomb")
-local navi_chips = require("@exelib/navi-chips/navi")
+local navi_chips = require("@exelib/navi_chips/navi")
 
 export type State = {
     -- The controller waiting for him (the flag it gave him, +0x54).

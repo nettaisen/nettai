@@ -6,7 +6,7 @@
 -- stands free, a book (./book) flies at the enemy; once every book is done,
 -- his columns start coming back. See docs/engine/chips.md §3.6.29.
 
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("../../lib/navi_chips/navi")
 local book = require("./book")
 local collision = require("../../rules/collision")
 local panels = require("@exelib/panels")

@@ -2,7 +2,7 @@
 -- protoman: a link navi.
 
 local buster = require("./megaman/weapons/buster")
-local a_charge = require("@self/a-charge")
+local a_charge = require("@self/a_charge")
 local back_special = require("@self/back_special")
 local charge = require("@self/charge")
 local protoman = require("@self/chip")

@@ -5,7 +5,7 @@
 
 local body_overlays = require("../../../lib/body_overlays")
 local buster = require("../weapons/buster")
-local charged_shot = require("../weapons/charged-shot")
+local charged_shot = require("../weapons/charged_shot")
 
 -- Hub Style's shade (the body overlay's row 5), as an identity wears it.
 local HUB = define.identity { id = "megaman/hub-shade", class = "navi", parts = { body = body_overlays.hub } }

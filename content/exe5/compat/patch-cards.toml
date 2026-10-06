@@ -1,4 +1,4 @@
-# The patch cards (EXE5's Modification Cards, 改造カード; content/exe5/cards/) by their number, which a save's
+# The patch cards (EXE5's Modification Cards, 改造カード; content/exe5/patch_cards/) by their number, which a save's
 # card list holds (0x79D0: a card a byte, bit 7 switched off). Written by the verification workspace's
 # tools/exe5/gen_content.py (gen_patch_cards.py) from the card tables of the four ROMs. Card 111 is each
 # team's own: its two definitions by version ([by-version.protoman], [by-version.colonel]).

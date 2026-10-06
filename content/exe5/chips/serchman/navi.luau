@@ -5,7 +5,7 @@
 -- locks on; then five shots (./shot) on that panel, 10 ticks apart, the last powered if his user pressed B with
 -- the lock; he lowers his rifle, and goes.
 
-local navi_chips = require("@exelib/navi-chips/navi")
+local navi_chips = require("@exelib/navi_chips/navi")
 local scope = require("./scope")
 local shot = require("./shot")
 

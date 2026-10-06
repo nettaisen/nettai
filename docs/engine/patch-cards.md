@@ -174,17 +174,17 @@ an instant effect. The content has each as a definition with the original's numb
 
 | What | Original | Content |
 |---|---|---|
-| Charged shots loading a chip (38 of them: M-Cannon, IceCube, GrasSeed, ...) | weapon routines from 0x35 to 0x91 (`loc_80126EA` with the chip; compat weapons.toml's `patch-cards/<card>/charge`) | cards/\<card\>/charge.luau (lib/weapon's `chip`) |
-| ChrgS, the nine cards' marked charged shot (the program on every shot) | 0x8D, `sub_80125D0`, action 0x16 | lib/patch-cards/chrgs.luau |
-| The invisibility (Shadow, Momogra) | 0x71, `sub_8012464`, instant effect 2 | lib/patch-cards/invisible-charge.luau |
-| The bubble spread (Puffball) | 0x5F, action 0x25 | cards/puffball/charge.luau |
-| Count's rain (a dust storm over the opponent's middle) | 0x6D, `sub_801244A`, action 0x5E (`sub_80F020E`) | cards/count/charge.luau |
-| Bass BX's nine-shot buster | 0x92, `sub_8012124`, action 0x5D | cards/bassbx/charge.luau, lib/rapid_buster.luau |
-| The Bass Cross card's seeking whirlwind (AirSpin's action, variant 1) | 0x93, `sub_8012144`, action 0x38 | cards/bass-cross-megaman/charge.luau |
-| The B button: Sword, a meteor, MiniBomb, CrakShot, the triple buster; RflectR (no card) | 0x8E, 0x52, 0x7D, 0x81, 0x8F; 0x76 | lib/patch-cards/b-sword.luau, cards/mettfire/b-button.luau, cards/beetle/b-button.luau, cards/planetmn/b-button.luau, lib/patch-cards/triple-buster.luau; lib/patch-cards/b-reflect.luau |
-| B+Back: three meteors, the immobilizer, the fan, RskyHny, MchnSwrd | 0x53, 0x83, 0x86, 0x88, 0x89 | cards/\<card\>/back-special.luau (metrid, magntman, dustman, honybomr, darkmech) |
-| The meteors (a shower of instant effect 16's meteors) | action 0x5C | lib/patch-cards/meteors.luau |
-| The fan: TenguCross's wind, which the navi waits after | instant effect 0x14 (`sub_80CD4AC`) | navis/megaman/weapons/tengu-wind (`blow`) |
+| Charged shots loading a chip (38 of them: M-Cannon, IceCube, GrasSeed, ...) | weapon routines from 0x35 to 0x91 (`loc_80126EA` with the chip; compat weapons.toml's `patch-cards/<card>/charge`) | patch_cards/\<card\>/charge.luau (lib/weapon's `chip`) |
+| ChrgS, the nine cards' marked charged shot (the program on every shot) | 0x8D, `sub_80125D0`, action 0x16 | lib/patch_cards/chrgs.luau |
+| The invisibility (Shadow, Momogra) | 0x71, `sub_8012464`, instant effect 2 | lib/patch_cards/invisible_charge.luau |
+| The bubble spread (Puffy) | 0x5F, action 0x25 | patch_cards/puffy/charge.luau |
+| Count's rain (a dust storm over the opponent's middle) | 0x6D, `sub_801244A`, action 0x5E (`sub_80F020E`) | patch_cards/count/charge.luau |
+| Bass BX's nine-shot buster | 0x92, `sub_8012124`, action 0x5D | patch_cards/bassbx/charge.luau, lib/rapid_buster.luau |
+| The Bass Cross card's seeking whirlwind (AirSpin's action, variant 1) | 0x93, `sub_8012144`, action 0x38 | patch_cards/bass-cross-megaman/charge.luau |
+| The B button: Sword, a meteor, MiniBomb, CrakShot, the triple buster; RflectR (no card) | 0x8E, 0x52, 0x7D, 0x81, 0x8F; 0x76 | lib/patch_cards/b_sword.luau, patch_cards/mettfire/b_button.luau, patch_cards/beetle/b_button.luau, patch_cards/planetmn/b_button.luau, lib/patch_cards/triple_buster.luau; lib/patch_cards/b_reflect.luau |
+| B+Back: three meteors, the immobilizer, the fan, RskyHny, MchnSwrd | 0x53, 0x83, 0x86, 0x88, 0x89 | patch_cards/\<card\>/back_special.luau (metrid, magntman, dustman, honybomr, darkmech) |
+| The meteors (a shower of instant effect 16's meteors) | action 0x5C | lib/patch_cards/meteors.luau |
+| The fan: TenguCross's wind, which the navi waits after | instant effect 0x14 (`sub_80CD4AC`) | navis/megaman/weapons/tengu_wind (`blow`) |
 | First barriers of types 5, 7, 8, 9 (Barr100, Barr200, BblWrap, LifeAura) | `sub_8013892`, `sub_801A7CC` | lib/barriers (records; compat records.toml `barriers`) |
 
 Each weapon's `charge_ticks` is its row of the charge table (`byte_8020404`): past Charge 4 a row reads on into the
@@ -198,21 +198,21 @@ address as its Z (compared by whole pixels, kinds.toml `scratch_z_fraction`).
 
 **The cards are the engine's; their effects are EXE6's rules'.** Patch cards are in BN4, EXE5 (JP) and EXE6 (JP), so a
 card and a player's cards are engine concepts (the user's decision, 2026-10-02); what an effect does is each game's
-rule, EXE6's patch-cards system (content/exe6/rules/patch-cards/init.luau, in content/exe6/rules/ruleset.luau).
+rule, EXE6's patch-cards system (content/exe6/rules/patch_cards/init.luau, in content/exe6/rules/ruleset.luau).
 
 - **The cards** are definitions of their own (`define.patch_card`, `Registry::PatchCard`, `PatchCardHandle`,
-  `Content::patch_card`): content/exe6/cards/<name>/card.luau, keyed by name (`canodumb`) as chips are, compat
+  `Content::patch_card`): content/exe6/patch_cards/<name>/card.luau, keyed by name (`canodumb`) as chips are, compat
   patch-cards.toml giving each its number. **The engine's record of a card** (`PatchCardDef`) is what every game's
   card is: its capacity cost (`mb`, EXE6's MB, which the installed cards' limit counts) and its effects in the
   card's order, each a `kind` and whether the card shows it as a `bug`. The kind's own fields stay the
-  definition's data, which the game's rules read (EXE6's: rules/patch-cards/cards.luau's constructors,
+  definition's data, which the game's rules read (EXE6's: rules/patch_cards/cards.luau's constructors,
   `cards.hp(-40)`, `cards.charged_shot(require("./charge"))`, `cards.bug(...)`, ...). Weapons, programs
   (projectile variants), barriers and gauges are named by definition, never by number. The name is the locales'.
 - **A player's installed cards** are their setup's (`PlayerSetup::patch_cards`: card handles in the list's order,
   each switched on or off, at most 32, EXE6's save list's room; its 80 MB allow 16), which the setup exchange and
   the digest cover as the rest of the setup. The EXE6 system reads them with `battle.patch_cards(side)`
   (`{ card, enabled }` each). exe6-compat's `codec::patch_cards` makes them from a save's or trace's card list,
-  the frontend from `--cards` and `--their-cards`.
+  the frontend from each side's `cards` in the match file.
 - **The application** is the system's `round_setup` hook: once per side as the round is set up (`Battle::new`),
   before anything reads the side's stats. It is §1.2 steps 2 to 7 over the side's stats (`battle.navi(side)`):
   the slots seeded from the stats, each switched-on card's effects in the kinds' order, the clamps, the copy
@@ -240,7 +240,7 @@ in eight characters as the chip names are: Canodumb, Amonicul, KnigtMan, ... Cyb
 They are the content's own English names (as Count's and Django's chip names are), which gen-content checks are
 there.
 The verification workspace's tools/jp/patchcards.py reads them from a patched ROM in memory. Two cards share
-"Puffy" there: センボン (22) is `puffy`, プクール (55) `puffball`.
+"Puffy" there; the content calls センボン (22) Diodon (`diodon`) and プクール (55) Puffy (`puffy`).
 
 ## 6. Verification
 
@@ -262,7 +262,7 @@ bug through the ROM's lookup tables) and compares them with the Japanese ROM's c
 ## 6.1 EXE5
 
 EXE5's cards (its Modification Cards, Team ProtoMan's and Team Colonel's, US and Japanese) share the application
-(content/exelib/patch-cards: the constructors and the loop; each game's kinds' order, choices and tables) and the
+(content/exelib/patch_cards: the constructors and the loop; each game's kinds' order, choices and tables) and the
 card definitions' shape; EXE5's own system, cards, weapons and Hub Style are docs/design/exe5-map.md §15.14's.
 
 ## 7. Unverified
@@ -289,7 +289,7 @@ read by map scripts only), BugStop's effect on the NaviCust's own bug compile (`
 
 ## Appendix A. The cards
 
-Number, the ROM's name, the translation's name, MB, effects (the effect ids' order on the card, which isn't the
+Number, the ROM's name, the content's English name, MB, effects (the effect ids' order on the card, which isn't the
 order they apply in). "(bug)" is the card's own marking.
 
 | # | Japanese | English | MB | Effects |
@@ -315,7 +315,7 @@ order they apply in). "(bug)" is the card's own marking.
 | 19 | ピカラー | Flashy | 11 | HP+5%; Elec body; Attack-1 (bug); custom damage 0 |
 | 20 | エレオーガ | Eleogre | 16 | HP+50; Elec body; emotion bug 0; status bug 0 |
 | 21 | ダルスト | OldStov | 12 | HP+130; Fire body; charge: FireBrn1; HP drain +1 (bug) |
-| 22 | センボン | Puffy | 11 | Aqua body; Rapid+4; buster blanks 0x0 |
+| 22 | センボン | Diodon | 11 | Aqua body; Rapid+4; buster blanks 0x0 |
 | 23 | ヒトデスタ | Starfish | 15 | Aqua body; charged shot: bubble |
 | 24 | グラサン | BigHat | 8 | no SuperArmor (bug); charge: FlshBom1 |
 | 25 | カカジー | ScarCrow | 14 | Elec body; charge: DolThdr1; ChipRecovery 30; buster blanks 0x42 (bug) |
@@ -335,7 +335,7 @@ order they apply in). "(bug)" is the card's own marking.
 | 39 | プラネットマン | PlanetMn | 40 | HP+300; Wood body; StatusGuard; no AirShoes (bug); B: CrakShot |
 | 40 | ビーストマン | BeastMan | 33 | UnderShirt; Rapid+4; charge: StepSwrd; Rush; step bug 1 (bug) |
 | 41 | デザートマン | DesertMn | 36 | HP+160; no AirShoes (bug); Charge+4; hit bug 0 |
-| 42 | ヤマトマン | YamatoMn | 35 | HP+10%; Attack+1; B+Back: Reflect; custom HP drain +2 (bug) |
+| 42 | ヤマトマン | JapanMan | 35 | HP+10%; Attack+1; B+Back: Reflect; custom HP drain +2 (bug) |
 | 43 | ビデオマン | VideoMan | 32 | HP-10% (bug); charged shot: road left; fast gauge |
 | 44 | バーナーマン | BurnrMan | 29 | HP+120; Fire body; Attack+2; custom damage 40 (bug); emotion bug 1 (bug) |
 | 45 | スターマン | StarMan | 32 | Attack-2 (bug); MegaFolder+1; panel trail 0x90; emotion bug 0; HP drain +0 |

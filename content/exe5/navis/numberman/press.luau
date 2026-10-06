@@ -6,10 +6,10 @@
 -- the plain spark) of its damage and element. 40 ticks on it is gone. It stands still while dimmed, and goes when the battle is over.
 --
 -- Its variants 0 to 3 (20 ticks, 16 pixels a tick) are the other trap's (attack object #0x8B, the operation
--- battle's NumberMan's). In the operation battle it marks its panels as it waits and falls (lib/navi-chips/marker).
+-- battle's NumberMan's). In the operation battle it marks its panels as it waits and falls (lib/navi_chips/marker).
 
 local collision = require("../../rules/collision")
-local marker = require("../../lib/navi-chips/marker")
+local marker = require("../../lib/navi_chips/marker")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 

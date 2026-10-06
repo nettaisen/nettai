@@ -4,10 +4,10 @@
 local base = require("./base")
 local cross_overlay = require("./cross_overlay")
 local tenguman = require("../../tenguman")
-local tengucross_beast = require("./tengucross-beast")
+local tengucross_beast = require("./tengucross_beast")
 local buster = require("../weapons/buster")
 local charge = require("@self/charge")
-local tengu_wind = require("../weapons/tengu-wind")
+local tengu_wind = require("../weapons/tengu_wind")
 local forms = require("../../../rules/forms")
 
 return define.form {

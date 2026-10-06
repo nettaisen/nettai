@@ -6,7 +6,7 @@
 //! sprites with short animations, and rules written from the engine's own
 //! flag semantics (docs/engine/field-collision-damage.md). It is not EXE6's
 //! data, which comes only from a content pack extracted from the user's ROM
-//! (`exe6-extract content`), and its numbers are chosen for tests, not taken
+//! (`nettai-extract exe6`), and its numbers are chosen for tests, not taken
 //! from the game. It has just what battles of two such navis need:
 //! stepping, the chips below, custom screens, rocks and the round's flow.
 //!
@@ -1022,88 +1022,88 @@ pub fn scripts() -> Scripts {
                 ("lib/grab/controller", "lib/grab/controller"),
                 ("chips/areagrab/init", "chips/areagrab/init"),
                 ("chips/panlgrab/init", "chips/panlgrab/init"),
-                ("objects/falling-rock/init", "objects/falling-rock/init"),
-                ("objects/falling-rock/chip", "objects/falling-rock/chip"),
+                ("objects/falling_rock/init", "objects/falling_rock/init"),
+                ("objects/falling_rock/chip", "objects/falling_rock/chip"),
                 ("objects/projectile/init", "objects/projectile/init"),
                 ("objects/projectile/variants", "objects/projectile/variants"),
-                ("objects/flying-shot/init", "objects/flying-shot/init"),
+                ("objects/flying_shot/init", "objects/flying_shot/init"),
                 ("lib/buster", "lib/buster"),
                 // MegaMan's buster, charged and blank shots and HeatCross's
                 // charged shot are weapon definitions. (EXE6's rules/roles
                 // isn't here: the test pack fills the roles.)
-                ("navis/megaman/weapons/blank-shot/init", "navis/megaman/weapons/blank-shot/init"),
-                ("navis/megaman/weapons/charged-shot/init", "navis/megaman/weapons/charged-shot/init"),
+                ("navis/megaman/weapons/blank_shot/init", "navis/megaman/weapons/blank_shot/init"),
+                ("navis/megaman/weapons/charged_shot/init", "navis/megaman/weapons/charged_shot/init"),
                 ("navis/megaman/weapons/buster/init", "navis/megaman/weapons/buster/init"),
                 // Two of the buster's alias routines (its setup, their own
                 // charge rows).
-                ("navis/megaman/weapons/buster-2e/init", "navis/megaman/weapons/buster-2e/init"),
-                ("navis/megaman/weapons/buster-82/init", "navis/megaman/weapons/buster-82/init"),
+                ("navis/megaman/weapons/buster_2e/init", "navis/megaman/weapons/buster_2e/init"),
+                ("navis/megaman/weapons/buster_82/init", "navis/megaman/weapons/buster_82/init"),
                 ("navis/megaman/forms/heatcross/charge", "navis/megaman/forms/heatcross/charge"),
                 ("lib/weapon", "lib/weapon"),
-                ("objects/element-pillar/init", "objects/element-pillar/init"),
+                ("objects/element_pillar/init", "objects/element_pillar/init"),
                 // The form weapons content defines, with the kinds only they
                 // spawn.
                 (
-                    "navis/megaman/weapons/falzar-beast-buster/init",
-                    "navis/megaman/weapons/falzar-beast-buster/init",
+                    "navis/megaman/weapons/falzar_beast_buster/init",
+                    "navis/megaman/weapons/falzar_beast_buster/init",
                 ),
                 (
-                    "navis/megaman/weapons/gregar-beast-buster/init",
-                    "navis/megaman/weapons/gregar-beast-buster/init",
+                    "navis/megaman/weapons/gregar_beast_buster/init",
+                    "navis/megaman/weapons/gregar_beast_buster/init",
                 ),
-                ("navis/megaman/weapons/tengu-wind/init", "navis/megaman/weapons/tengu-wind/init"),
-                ("navis/megaman/forms/spoutcross-beast/surge", "navis/megaman/forms/spoutcross-beast/surge"),
-                ("navis/megaman/forms/spoutcross-beast/charge", "navis/megaman/forms/spoutcross-beast/charge"),
-                ("navis/megaman/forms/tengucross-beast/whirlwind", "navis/megaman/forms/tengucross-beast/whirlwind"),
-                ("navis/megaman/forms/tengucross-beast/charge", "navis/megaman/forms/tengucross-beast/charge"),
+                ("navis/megaman/weapons/tengu_wind/init", "navis/megaman/weapons/tengu_wind/init"),
+                ("navis/megaman/forms/spoutcross_beast/surge", "navis/megaman/forms/spoutcross_beast/surge"),
+                ("navis/megaman/forms/spoutcross_beast/charge", "navis/megaman/forms/spoutcross_beast/charge"),
+                ("navis/megaman/forms/tengucross_beast/whirlwind", "navis/megaman/forms/tengucross_beast/whirlwind"),
+                ("navis/megaman/forms/tengucross_beast/charge", "navis/megaman/forms/tengucross_beast/charge"),
                 ("navis/megaman/forms/eleccross/charge", "navis/megaman/forms/eleccross/charge"),
-                ("navis/megaman/forms/eleccross/a-charge", "navis/megaman/forms/eleccross/a-charge"),
+                ("navis/megaman/forms/eleccross/a_charge", "navis/megaman/forms/eleccross/a_charge"),
                 ("navis/megaman/forms/tengucross/charge", "navis/megaman/forms/tengucross/charge"),
                 ("navis/megaman/forms/dustcross/throw_absorbed", "navis/megaman/forms/dustcross/throw_absorbed"),
                 (
-                    "navis/megaman/forms/dustcross-beast/throw_absorbed",
-                    "navis/megaman/forms/dustcross-beast/throw_absorbed",
+                    "navis/megaman/forms/dustcross_beast/throw_absorbed",
+                    "navis/megaman/forms/dustcross_beast/throw_absorbed",
                 ),
                 ("navis/megaman/forms/erasecross/ray", "navis/megaman/forms/erasecross/ray"),
                 ("navis/megaman/forms/erasecross/charge", "navis/megaman/forms/erasecross/charge"),
                 (
-                    "navis/megaman/forms/erasecross-beast/erase_drop",
-                    "navis/megaman/forms/erasecross-beast/erase_drop",
+                    "navis/megaman/forms/erasecross_beast/erase_drop",
+                    "navis/megaman/forms/erasecross_beast/erase_drop",
                 ),
-                ("navis/megaman/forms/erasecross-beast/drop", "navis/megaman/forms/erasecross-beast/drop"),
+                ("navis/megaman/forms/erasecross_beast/drop", "navis/megaman/forms/erasecross_beast/drop"),
                 ("navis/megaman/forms/tomahawkcross/charge", "navis/megaman/forms/tomahawkcross/charge"),
                 (
-                    "navis/megaman/forms/tomahawkcross-beast/throw",
-                    "navis/megaman/forms/tomahawkcross-beast/throw",
+                    "navis/megaman/forms/tomahawkcross_beast/throw",
+                    "navis/megaman/forms/tomahawkcross_beast/throw",
                 ),
                 (
-                    "navis/megaman/forms/slashcross-beast/lunge_slash",
-                    "navis/megaman/forms/slashcross-beast/lunge_slash",
+                    "navis/megaman/forms/slashcross_beast/lunge_slash",
+                    "navis/megaman/forms/slashcross_beast/lunge_slash",
                 ),
-                ("navis/megaman/forms/slashcross-beast/lunge", "navis/megaman/forms/slashcross-beast/lunge"),
+                ("navis/megaman/forms/slashcross_beast/lunge", "navis/megaman/forms/slashcross_beast/lunge"),
                 ("navis/megaman/dash_hit", "navis/megaman/dash_hit"),
-                ("navis/megaman/forms/groundcross-beast/dash", "navis/megaman/forms/groundcross-beast/dash"),
+                ("navis/megaman/forms/groundcross_beast/dash", "navis/megaman/forms/groundcross_beast/dash"),
                 ("navis/megaman/forms/groundcross/drill", "navis/megaman/forms/groundcross/drill"),
                 ("navis/megaman/forms/chargecross/tackle", "navis/megaman/forms/chargecross/tackle"),
                 (
-                    "navis/megaman/forms/chargecross-beast/charge_wave",
-                    "navis/megaman/forms/chargecross-beast/charge_wave",
+                    "navis/megaman/forms/chargecross_beast/charge_wave",
+                    "navis/megaman/forms/chargecross_beast/charge_wave",
                 ),
-                ("navis/megaman/forms/chargecross-beast/wave", "navis/megaman/forms/chargecross-beast/wave"),
+                ("navis/megaman/forms/chargecross_beast/wave", "navis/megaman/forms/chargecross_beast/wave"),
                 (
-                    "navis/megaman/forms/dustcross-beast/junk_shot",
-                    "navis/megaman/forms/dustcross-beast/junk_shot",
+                    "navis/megaman/forms/dustcross_beast/junk_shot",
+                    "navis/megaman/forms/dustcross_beast/junk_shot",
                 ),
-                ("navis/megaman/forms/dustcross-beast/scatter", "navis/megaman/forms/dustcross-beast/scatter"),
+                ("navis/megaman/forms/dustcross_beast/scatter", "navis/megaman/forms/dustcross_beast/scatter"),
                 ("navis/megaman/forms/dustcross/junk_ball", "navis/megaman/forms/dustcross/junk_ball"),
                 ("navis/megaman/forms/dustcross/charge", "navis/megaman/forms/dustcross/charge"),
-                ("navis/megaman/weapons/beast-claw/init", "navis/megaman/weapons/beast-claw/init"),
+                ("navis/megaman/weapons/beast_claw/init", "navis/megaman/weapons/beast_claw/init"),
                 ("navis/megaman/weapons/absorb/init", "navis/megaman/weapons/absorb/init"),
                 (
-                    "navis/megaman/forms/slashcross-beast/hit_flash",
-                    "navis/megaman/forms/slashcross-beast/hit_flash",
+                    "navis/megaman/forms/slashcross_beast/hit_flash",
+                    "navis/megaman/forms/slashcross_beast/hit_flash",
                 ),
-                ("objects/absorbed-obstacle/init", "objects/absorbed-obstacle/init"),
+                ("objects/absorbed_obstacle/init", "objects/absorbed_obstacle/init"),
                 // The instant chips: EXE6's definitions, and the effects
                 // the test chips compose (the plus chips', FireHit's fist,
                 // FlmHook's hook).
@@ -1151,11 +1151,11 @@ pub fn scripts() -> Scripts {
                 ("navis/megaman/forms/slashcross/slashes", "navis/megaman/forms/slashcross/slashes"),
                 ("navis/megaman/forms/slashcross/charge", "navis/megaman/forms/slashcross/charge"),
                 (
-                    "navis/megaman/weapons/slash-a-charge/init",
-                    "navis/megaman/weapons/slash-a-charge/init",
+                    "navis/megaman/weapons/slash_a_charge/init",
+                    "navis/megaman/weapons/slash_a_charge/init",
                 ),
-                ("navis/megaman/forms/heatcross-beast/charge", "navis/megaman/forms/heatcross-beast/charge"),
-                ("navis/megaman/forms/eleccross-beast/charge", "navis/megaman/forms/eleccross-beast/charge"),
+                ("navis/megaman/forms/heatcross_beast/charge", "navis/megaman/forms/heatcross_beast/charge"),
+                ("navis/megaman/forms/eleccross_beast/charge", "navis/megaman/forms/eleccross_beast/charge"),
                 // The Reflectors, the recovery chips and HeatCross's charged
                 // shot's burner (content model v2).
                 ("chips/rflectr/shield", "chips/rflectr/shield"),
@@ -1174,8 +1174,8 @@ pub fn scripts() -> Scripts {
                 ("rules/beast/rush", "rules/beast/rush"),
                 ("rules/beast/berserk", "rules/beast/berserk"),
                 // (Its chips are the test content's own: testdata's
-                // rules/cross-special.luau.)
-                ("rules/beast/cross-special", "rules/beast/cross-special"),
+                // rules/cross_special.luau.)
+                ("rules/beast/cross_special", "rules/beast/cross_special"),
                 // (Its tables are the test content's own, the same as EXE6's.)
                 ("rules/berserk", "rules/berserk"),
                 ("lib/trajectory", "lib/trajectory"),
@@ -1253,7 +1253,7 @@ pub fn scripts() -> Scripts {
                 ("chips/rockcube/cube", "chips/rockcube/cube"),
                 ("chips/rockcube/init", "chips/rockcube/init"),
                 ("objects/boulder/init", "objects/boulder/init"),
-                ("objects/encased-bubble/bubble", "objects/encased-bubble/bubble"),
+                ("objects/encased_bubble/bubble", "objects/encased_bubble/bubble"),
                 // The NaviCust supports (content model v2): the controller the
                 // ruleset spawns by role, Rush, Beat, Tango and her heal, with
                 // the barrier it raises.
@@ -1275,14 +1275,14 @@ pub fn scripts() -> Scripts {
                 ("chips/bodygrd/init", "chips/bodygrd/init"),
                 // (HubBatc gives the NaviCust Shield as a B+Back special.)
                 ("navis/megaman/weapons/shield/init", "navis/megaman/weapons/shield/init"),
-                ("lib/navi-boost/controller", "lib/navi-boost/controller"),
+                ("lib/navi_boost/controller", "lib/navi_boost/controller"),
                 ("chips/darkinvs/init", "chips/darkinvs/init"),
                 // HubBatc, and an arm chip with the weapon it makes the
                 // charged shot.
                 ("chips/hubbatc/init", "chips/hubbatc/init"),
                 // (The chips that make their own weapon the charged shot,
                 // with the chips' parts those weapons fire.)
-                ("lib/navi-boost/charge", "lib/navi-boost/charge"),
+                ("lib/navi_boost/charge", "lib/navi_boost/charge"),
                 ("chips/puncharm/charge", "chips/puncharm/charge"),
                 ("chips/puncharm/init", "chips/puncharm/init"),
                 ("chips/bugrswrd/charge", "chips/bugrswrd/charge"),
@@ -1304,16 +1304,16 @@ pub fn scripts() -> Scripts {
                 ("chips/puzzlarm/init", "chips/puzzlarm/init"),
                 ("chips/boomrarm/charge", "chips/boomrarm/charge"),
                 ("chips/boomrarm/init", "chips/boomrarm/init"),
-                ("lib/gauge-speed/controller", "lib/gauge-speed/controller"),
+                ("lib/gauge_speed/controller", "lib/gauge_speed/controller"),
                 ("chips/slogauge/init", "chips/slogauge/init"),
                 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
-                ("objects/rising-bubble/init", "objects/rising-bubble/init"),
+                ("objects/rising_bubble/init", "objects/rising_bubble/init"),
                 // ElemTrap, the time bombs and Mine: EXE6's definitions,
                 // whose hooks the test traps and time bombs run.
                 ("chips/elemtrap/trap", "chips/elemtrap/trap"),
                 ("chips/elemtrap/strike", "chips/elemtrap/strike"),
                 ("chips/elemtrap/init", "chips/elemtrap/init"),
-                ("objects/panel-bursts/init", "objects/panel-bursts/init"),
+                ("objects/panel_bursts/init", "objects/panel_bursts/init"),
                 ("chips/timebom/controller", "chips/timebom/controller"),
                 ("chips/timebom/countdown", "chips/timebom/countdown"),
                 ("chips/timebom/init", "chips/timebom/init"),
@@ -1324,7 +1324,7 @@ pub fn scripts() -> Scripts {
                 ("chips/crakshot/init", "chips/crakshot/init"),
                 // The navi chips' navis: each navi and his kinds, which
                 // the test navi chips summon.
-                ("lib/navi-chips/navi", "lib/navi-chips/navi"),
+                ("lib/navi_chips/navi", "lib/navi_chips/navi"),
                 ("chips/elmntman/navi", "chips/elmntman/navi"),
                 ("chips/elmntman/meteor", "chips/elmntman/meteor"),
                 ("chips/elmntman/ice", "chips/elmntman/ice"),
@@ -1359,7 +1359,7 @@ pub fn scripts() -> Scripts {
                 // The link navis' own chips (whose actions the test link
                 // chips run) and their kinds.
                 ("lib/link_chips", "lib/link_chips"),
-                ("objects/follow-effect/init", "objects/follow-effect/init"),
+                ("objects/follow_effect/init", "objects/follow_effect/init"),
                 ("navis/heatman/chip", "navis/heatman/chip"),
                 ("navis/elecman/chip", "navis/elecman/chip"),
                 ("navis/slashman/chip", "navis/slashman/chip"),
@@ -1392,7 +1392,7 @@ pub fn scripts() -> Scripts {
                 ("navis/groundman/chip", "navis/groundman/chip"),
                 ("chips/grndman/drill", "chips/grndman/drill"),
                 ("chips/grndman/rock", "chips/grndman/rock"),
-                ("objects/panel-strike/init", "objects/panel-strike/init"),
+                ("objects/panel_strike/init", "objects/panel_strike/init"),
                 ("chips/drilarm/drill", "chips/drilarm/drill"),
                 ("chips/dolthdr/column", "chips/dolthdr/column"),
                 // The dimming chips of subtypes 4, 5, 9, 13, 26, 27, 28 and 36
@@ -1405,8 +1405,8 @@ pub fn scripts() -> Scripts {
                 ("chips/bugfix/init", "chips/bugfix/init"),
                 ("chips/bugfix/controller", "chips/bugfix/controller"),
                 ("chips/bugfix/glow", "chips/bugfix/glow"),
-                ("objects/panel-changer/init", "objects/panel-changer/init"),
-                ("lib/panel-chips/controller", "lib/panel-chips/controller"),
+                ("objects/panel_changer/init", "objects/panel_changer/init"),
+                ("lib/panel_chips/controller", "lib/panel_chips/controller"),
                 ("chips/pnlretrn/init", "chips/pnlretrn/init"),
                 ("chips/holypanl/init", "chips/holypanl/init"),
                 ("chips/snctuary/init", "chips/snctuary/init"),

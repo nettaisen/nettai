@@ -8,10 +8,10 @@
 -- variant's hit modifier and status) and an explosion on each of the line's panels. Its variant (its first
 -- parameter, 0 to 5) gives its palette, its explosions' palette, its hit modifier and its status (none, confusion,
 -- blindness, immobilization, paralysis 90 and 150 ticks); one not running while dimmed (its third parameter not 2)
--- of variant 1 and up hits half as hard. Its target is marked in the operation battle (lib/navi-chips/marker).
+-- of variant 1 and up hits half as hard. Its target is marked in the operation battle (lib/navi_chips/marker).
 
 local collision = require("../../rules/collision")
-local marker = require("../../lib/navi-chips/marker")
+local marker = require("../../lib/navi_chips/marker")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")
 local statuses = require("../../rules/status")
