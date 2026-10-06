@@ -108,8 +108,8 @@ pub enum PlayerFact {
     /// Their save has Beast Out (EXE6's event flag 0xE0: the emotion window
     /// shows its count).
     BeastOut,
-    /// The forms their form list offers in place of their version's own
-    /// (nettai's Cross list), none given: its first entry empty.
+    /// The forms they have for their form list, in its order (EXE6's
+    /// Crosses, up to five of either version): an empty list is none.
     CrossList,
 }
 
@@ -121,7 +121,7 @@ impl PlayerFact {
         match self {
             PlayerFact::Version => "version",
             PlayerFact::BeastOut => "beast_out",
-            PlayerFact::CrossList => "cross_list",
+            PlayerFact::CrossList => "crosses",
         }
     }
 

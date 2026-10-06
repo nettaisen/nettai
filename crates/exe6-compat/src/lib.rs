@@ -11,8 +11,9 @@
 //!   and link data.
 //! - `trace` (feature `trace`): golden traces recorded from the original,
 //!   replayed through the engine and compared with it.
-//! - [`unlocks`]: what a save unlocks on the custom screen, and nettai's
-//!   Cross list, as EXE6's systems' setup.
+//! - [`unlocks`]: what a save unlocks on the custom screen (Beast Out, the
+//!   Crosses its flags own), as EXE6's systems' setup states it (the
+//!   Crosses as a list).
 //! - [`save`]: an EXE6 save file, and what a player's setup reads of it.
 //! - [`version`]: Gregar or Falzar, as the original tells them apart (the
 //!   engine knows a version by the name the rules declare).
@@ -29,7 +30,7 @@ pub mod save;
 pub mod unlocks;
 pub mod version;
 
-pub use unlocks::{CrossList, Unlocks};
+pub use unlocks::Unlocks;
 pub use version::GameVersion;
 
 use nettai_battle::Battle;
