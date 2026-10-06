@@ -880,15 +880,15 @@ a few seconds. It is the only extraction.
 
 ## 10. Commands
 
-    cargo run -p nettai-extract -- exe6 data/content/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>    # ROMs -> pack
-    cargo run -p nettai-demo -- <trace.jsonl>                          # every pack in data/content
-    cargo run -p nettai-content -- check data/content/exe6            # lint every file
-    cargo run -p nettai-content -- verify data/content/exe6 <reference-pack> [--seconds N]
-    cargo run -p nettai-content -- aseprite-export data/content/exe6 [NAME ...]
-    cargo run -p nettai-content -- aseprite-import data/content/exe6 [NAME ...]
+    cargo run -p nettai-extract -- exe6 data/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>    # ROMs -> pack
+    cargo run -p nettai-demo -- <trace.jsonl>                          # every pack in data
+    cargo run -p nettai-content -- check data/exe6            # lint every file
+    cargo run -p nettai-content -- verify data/exe6 <reference-pack> [--seconds N]
+    cargo run -p nettai-content -- aseprite-export data/exe6 [NAME ...]
+    cargo run -p nettai-content -- aseprite-import data/exe6 [NAME ...]
     cargo run -p nettai-content --example midi_summary -- a.mid b.mid
-    cargo run -p nettai-content --example stats -- data/content/exe6
-    cargo run -p nettai-content --example audio_stats -- data/content/exe6
+    cargo run -p nettai-content --example stats -- data/exe6
+    cargo run -p nettai-content --example audio_stats -- data/exe6
 
 `verify` compares what two packs load: the battle data record by record,
 the graphics part by part, the sprite timing frame by frame, and the sound
@@ -897,7 +897,7 @@ as instruments, as song timelines and as rendered PCM (each song for
 Use it after a round trip through an editor, against a pack exported
 before.
 
-`data/content/` is ignored by version control: a pack exported from the ROM
+`data/` is ignored by version control: a pack exported from the ROM
 holds the game's graphics and recordings and is never committed.
 
 ## 11. Open problems

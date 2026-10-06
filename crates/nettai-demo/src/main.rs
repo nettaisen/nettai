@@ -72,7 +72,7 @@ usage: nettai-demo [OPTIONS] TRACE.jsonl     watch a trace's rounds
   from its pack (graphics and sound, written from any subset of your ROMs
   by `nettai-extract <exe5|exe6> <pack-dir> [ROM ...]`), found in the packs
   directory, $NETTAI_PACKS, else
-  data/content, each pack by the game it says.
+  data, each pack by the game it says.
   --pack DIR       a pack's directory, in place of the found pack of its game
   --content DIR    the content directory (default: $NETTAI_CONTENT, else
                    this repository's content/)

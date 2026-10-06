@@ -84,7 +84,7 @@ graphics/...  sound/...                   see asset-formats.md
 The index lists every sprite, sound, banner, background and mugshot by name, with the engine's identity for it:
 every name compat/assets.toml gives, and the pack's other assets under their placeholders (`sprite-0c-2d`),
 which content may not use (`nettai-content-check` flags one: name the asset in compat/assets.toml first). The pack
-holds the game's own data: it is written outside version control (data/content/ is ignored).
+holds the game's own data: it is written outside version control (data/ is ignored).
 
 ## 3. Loading
 
@@ -184,4 +184,4 @@ content/exe6 with made-up assets.
 
 Tests about EXE6's actual data (effect lifetimes, GunDelSol's 480 HP in the sun, the stages' rocks, the golden
 traces, the chip lab) live in the verification workspace, which loads content/exe6 with the EXE6 pack it extracts
-to `data/content/exe6`.
+to `data/exe6`.
