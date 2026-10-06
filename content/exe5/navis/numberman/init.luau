@@ -45,7 +45,7 @@ local navi: NaviDef = {
     -- his): his HP by the story's progress; his level, which his damage rows are read at, is that count up to 6.
     story = { hp = { 300, 300, 300, 300, 300, 350, 450, 550, 650 }, max_level = 6 },
     identity = new.identity {
-        class = "link_navi",
+        class = "player",
         version = 0,
         actor_type = "player",
         ai_index = 9,

@@ -635,7 +635,7 @@ impl UserData for Object {
                 None => Ok(LuaValue::Nil),
             }
         });
-        methods.add_method("form_change_soul", |_, this, ()| with(|api, _| Ok(api.form_change_soul(this.0))));
+        methods.add_method("form_change_terms", |_, this, ()| with(|api, _| Ok(api.form_change_terms(this.0))));
         methods.add_method("stop_moving", |_, this, ()| with(|api, _| api.stop_moving(this.0).map_err(api_error)));
         methods.add_method("pin_overlay", |_, this, ()| with(|api, _| Ok(api.pin_overlay(this.0))));
         methods.add_method("end_attack", |_, this, ()| with(|api, _| Ok(api.end_attack(this.0))));
@@ -746,13 +746,13 @@ impl UserData for Object {
             with(|api, _| api.wear_form_image(this.0, navi, form).map_err(api_error))
         });
         methods.add_method("navi_image_parts", |_, this, on: bool| with(|api, _| Ok(api.navi_image_parts(this.0, on))));
-        methods.add_method("wear_junk_look", |_, this, look: LuaValue| {
+        methods.add_method("wear_absorbed_look", |_, this, look: LuaValue| {
             let look = bound(|b| match b.def(&look) {
                 Some((Registry::Identity, h)) => Ok(nettai_content_api::IdentityHandle(h)),
-                Some((r, _)) => Err(mlua::Error::runtime(format!("wear_junk_look: a {r} is not an identity"))),
-                None => Err(mlua::Error::runtime(format!("wear_junk_look: expected an identity, got {}", look.type_name()))),
+                Some((r, _)) => Err(mlua::Error::runtime(format!("wear_absorbed_look: a {r} is not an identity"))),
+                None => Err(mlua::Error::runtime(format!("wear_absorbed_look: expected an identity, got {}", look.type_name()))),
             })?;
-            with(|api, _| api.wear_junk_look(this.0, look).map_err(api_error))
+            with(|api, _| api.wear_absorbed_look(this.0, look).map_err(api_error))
         });
         methods.add_method("subtract_hp", |_, this, amount: LuaValue| {
             let amount = u16_arg(amount, "HP")?;
@@ -1362,7 +1362,9 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
 /// `schema`: what a state's or a setup's declaration takes beside type
 /// names, variants and records (docs/design/rust-and-luau.md, step c1):
 /// `schema.list(T, n)`, a list of up to `n` elements of type `T` (a type
-/// name, a list of variants, a record's table or another list).
+/// name, a list of variants, a record's table or another list), and
+/// `schema.role(name, T)`, a field of type `T` the engine knows by the
+/// role `name` (a player's setup field: `PlayerFact`).
 fn schema_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     let t = lua.create_table()?;
     lib_fn!(lua, t, "list", |lua, (of, max): (LuaValue, LuaValue)| {
@@ -1378,6 +1380,19 @@ fn schema_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         list.raw_set("of", of)?;
         list.raw_set("max", max)?;
         Ok(list)
+    });
+    lib_fn!(lua, t, "role", |lua, (role, of): (LuaValue, LuaValue)| {
+        let LuaValue::String(role) = role else {
+            return Err(mlua::Error::runtime(format!("schema.role's role is a name, not a {}", role.type_name())));
+        };
+        if !matches!(of, LuaValue::String(_) | LuaValue::Table(_)) {
+            return Err(mlua::Error::runtime(format!("schema.role's field is a type, not a {}", of.type_name())));
+        }
+        let field = lua.create_table()?;
+        field.raw_set(nettai_content_api::ROLE_MARK, true)?;
+        field.raw_set("role", role)?;
+        field.raw_set("of", of)?;
+        Ok(field)
     });
     Ok(t)
 }
@@ -1452,6 +1467,10 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_play(side, &sound).map_err(api_error))
     });
+    lib_fn!(lua, t, "play_sound", |_, (side, id): (LuaValue, LuaValue)| {
+        let (side, id) = (u8_arg(side, "side")? & 1, sound_arg(id)?);
+        with(|api, _| api.custom_play_sound(side, id).map_err(api_error))
+    });
     lib_fn!(lua, t, "set_column_icon", move |_, (side, chip): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         let chip = chip_or_nil(&chip, "custom.set_column_icon")?;
@@ -1515,7 +1534,7 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| api.custom_draw_emblem(side, x).map_err(api_error))
     });
     // `by`: the rules' button or window whose pick holds the form.
-    lib_fn!(lua, t, "set_form", move |_, (side, by, form, turns, chaos): (LuaValue, String, LuaValue, Option<LuaValue>, Option<bool>)| {
+    lib_fn!(lua, t, "set_form", move |_, (side, by, form, turns, alternate): (LuaValue, String, LuaValue, Option<LuaValue>, Option<bool>)| {
         let side = u8_arg(side, "side")? & 1;
         own("custom.set_form")?;
         let form = form_or_nil(&form, "custom.set_form")?;
@@ -1523,7 +1542,7 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             Some(v) if !v.is_nil() => int(&v, "turns")? as u8,
             _ => 0,
         };
-        with(|api, _| api.custom_set_form(side, &by, form, turns, chaos.unwrap_or(false)).map_err(api_error))
+        with(|api, _| api.custom_set_form(side, &by, form, turns, alternate.unwrap_or(false)).map_err(api_error))
     });
     lib_fn!(lua, t, "last_pick", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -1610,17 +1629,17 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_draw_held(side).map_err(api_error))
     });
-    lib_fn!(lua, t, "draw_cross_cursor", |_, side: LuaValue| {
+    lib_fn!(lua, t, "draw_form_list_cursor", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
-        with(|api, _| api.custom_draw_cross_cursor(side).map_err(api_error))
+        with(|api, _| api.custom_draw_form_list_cursor(side).map_err(api_error))
     });
     lib_fn!(lua, t, "show_chip_window", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_show_chip_window(side).map_err(api_error))
     });
-    lib_fn!(lua, t, "set_cross_tab", |_, (side, on): (LuaValue, bool)| {
+    lib_fn!(lua, t, "set_form_list_tab", |_, (side, on): (LuaValue, bool)| {
         let side = u8_arg(side, "side")? & 1;
-        with(|api, _| api.custom_set_cross_tab(side, on).map_err(api_error))
+        with(|api, _| api.custom_set_form_list_tab(side, on).map_err(api_error))
     });
     lib_fn!(lua, t, "describe", move |_, (side, form): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
@@ -1931,9 +1950,9 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.clear_linked(side)))
     });
-    lib_fn!(lua, t, "clear_navicust_bugs", |_, side: LuaValue| {
+    lib_fn!(lua, t, "clear_bugs", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.clear_navicust_bugs(side)))
+        with(|api, _| Ok(api.clear_bugs(side)))
     });
     lib_fn!(lua, t, "clear_emotion_window_glitch", |_, ()| with(|api, _| Ok(api.clear_emotion_window_glitch())));
     lib_fn!(lua, t, "fill_custom_gauge", |_, ()| with(|api, _| Ok(api.fill_custom_gauge())));
@@ -2422,8 +2441,8 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "leave_stage", |_, me: Me| with(|api, _| Ok(api.obstacle_leave_stage(me.0))));
     lib_fn!(lua, t, "absorb_all", |_, absorber: Me| with(|api, _| Ok(api.obstacle_absorb_all(absorber.0))));
     lib_fn!(lua, t, "present", |_, o: Me| with(|api, _| Ok(api.obstacle_present(o.0))));
-    lib_fn!(lua, t, "junk_look", |_, o: Me| {
-        match with(|api, _| Ok(api.junk_look(o.0)))? {
+    lib_fn!(lua, t, "absorbed_look", |_, o: Me| {
+        match with(|api, _| Ok(api.absorbed_look(o.0)))? {
             Some(h) => Ok(LuaValue::Table(bound(|b| b.def_value(Registry::Identity, h.0))?)),
             None => Ok(LuaValue::Nil),
         }
@@ -2436,18 +2455,18 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             Ok(())
         })
     });
-    lib_fn!(lua, t, "arm_soldiers", |_, (side, sword, gun): (LuaValue, LuaValue, LuaValue)| {
+    lib_fn!(lua, t, "arm_conversion", |_, (side, melee, ranged): (LuaValue, LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
-        let (sword, gun) = (int(&sword, "sword word")? as u32, int(&gun, "gun word")? as u32);
-        with(|api, _| Ok(api.obstacle_arm_soldiers(side, sword, gun)))
+        let (melee, ranged) = (int(&melee, "melee word")? as u32, int(&ranged, "ranged word")? as u32);
+        with(|api, _| Ok(api.obstacle_arm_conversion(side, melee, ranged)))
     });
-    lib_fn!(lua, t, "disarm_soldiers", |_, side: LuaValue| {
+    lib_fn!(lua, t, "disarm_conversion", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.obstacle_disarm_soldiers(side)))
+        with(|api, _| Ok(api.obstacle_disarm_conversion(side)))
     });
-    lib_fn!(lua, t, "soldiers", |_, side: LuaValue| {
+    lib_fn!(lua, t, "conversion", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.obstacle_soldiers(side)))
+        with(|api, _| Ok(api.obstacle_conversion(side)))
     });
     for &r in ObstacleRequest::ALL {
         t.set(

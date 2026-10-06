@@ -39,7 +39,7 @@ local navi: NaviDef = {
     story = { hp = { 200, 300, 350, 400, 450, 500, 600, 700, 800 }, max_level = 6 },
     palette_step = 2,
     identity = new.identity {
-        class = "link_navi",
+        class = "player",
         version = 0,
         actor_type = "player",
         ai_index = 7,

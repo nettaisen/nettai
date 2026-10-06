@@ -463,7 +463,7 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u
             }
             true
         } else {
-            soldier_step(b, r);
+            conversion_step(b, r);
             f2_of(b, r) & f2::REMOVED != 0 || b.objects.get(r).hp == 0
         }
     };
@@ -528,9 +528,9 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u
 /// 0x080CABF8: the sword soldier's, the gun soldier's), which they read as
 /// they strike (0x080CAC06, 0x080CAC12), and which disarming leaves. While
 /// a side is armed, an obstacle of a game whose rules have the step
-/// (`effects.obstacle_soldiers`) turns into its soldier ([`soldier_step`]).
+/// (`effects.obstacle_conversion`) turns into its soldier ([`conversion_step`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Soldiers {
+pub struct Conversion {
     pub armed: bool,
     pub words: [u32; 2],
 }
@@ -545,28 +545,28 @@ const PANEL_LOOKUP_REGISTER: u32 = 0x0800_BD1D;
 /// 0x080182D4 and 0x08018404, after the damage and the crushing hits,
 /// for an obstacle they leave standing): outside the dimming and past its
 /// first action, an obstacle where an armed side can use it (0x080CAB02,
-/// [`soldier_call`]) turns into that side's soldier (0x080CAAE2) and its HP
+/// [`conversion_call`]) turns into that side's soldier (0x080CAAE2) and its HP
 /// and max HP go to 0 (a word store), so the reaction breaks it (whether a
 /// soldier came or the pool was full).
-fn soldier_step(b: &mut Battle, r: ObjectRef) {
-    if !b.content.rules().effects.obstacle_soldiers
+fn conversion_step(b: &mut Battle, r: ObjectRef) {
+    if !b.content.rules().effects.obstacle_conversion
         || b.is_dimmed()
         || b.objects.get(r).action == Action::Appear as u8
     {
         return;
     }
     let PanelPos { x, y } = b.objects.get(r).panel;
-    let Some((gun, side, left)) = soldier_call(b, x, y) else { return };
+    let Some((gun, side, left)) = conversion_call(b, x, y) else { return };
     // 0x080CAAE2: attack object #0x30 at the registers (the row, what the
     // search left, the side), Param1 the soldier; `sub_801155A` gives it
     // the panel, an element byte of what the search left, a damage word of
     // 0 (r6), the obstacle's side and flip and the obstacle as its first
     // related; then the side, and a flip of Param1 ^ 1 (the sword's
     // soldier faces back toward the side's own area).
-    let kind = b.content.defs.roles().kind(crate::content::KindRole::ObstacleSoldier);
+    let kind = b.content.defs.roles().kind(crate::content::KindRole::ConvertedObstacle);
     let pos = Vec3 { x: y as i32, y: left as i32, z: side as i32 };
     if let Some(e) = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, pos, [gun, 0, 0, 0]) {
-        crate::behavior::set_state_field(b, e, "gun", nettai_content_api::Value::Int(gun as i64));
+        crate::behavior::set_state_field(b, e, "ranged", nettai_content_api::Value::Int(gun as i64));
         let o = b.objects.get_mut(e);
         o.panel = PanelPos { x, y };
         o.element = left as u8;
@@ -588,7 +588,7 @@ fn soldier_step(b: &mut Battle, r: ObjectRef) {
 /// soldier (0); else one anywhere ahead of it on the row, the way `side`
 /// faces (0x080CABB0, `object_getFirstPanelInDirectionFiltered`), the
 /// gun's (1). The soldier, the side, and what the search left in r2.
-fn soldier_call(b: &Battle, x: u8, y: u8) -> Option<(u8, u8, u32)> {
+fn conversion_call(b: &Battle, x: u8, y: u8) -> Option<(u8, u8, u32)> {
     // (Off the field its flags word would be read from the BIOS, whose
     // protected reads have no bit 0x10: not solid.)
     let panel = b.field.panel(x, y)?;
@@ -596,7 +596,7 @@ fn soldier_call(b: &Battle, x: u8, y: u8) -> Option<(u8, u8, u32)> {
         return None;
     }
     let side = panel.alliance ^ 1;
-    if !b.obstacle_soldiers[side as usize & 1].armed {
+    if !b.obstacle_conversion[side as usize & 1].armed {
         return None;
     }
     // The enemy's bodies (0x080CABA8 and 0x080CABF0 by side), and the way

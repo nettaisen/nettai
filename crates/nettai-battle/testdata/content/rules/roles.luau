@@ -38,7 +38,7 @@ return {
         -- EXE6's Beast Out rush.
         wrapper = beast_rush.action,
         -- DustCross Beast's scatter, during which the navi isn't grounded.
-        dust_beast_scatter = dust_beast_scatter.action,
+        ungrounded = dust_beast_scatter.action,
     },
     -- (AntiRecv's counterattack isn't in the test content: its role stays
     -- unfilled.)
@@ -52,7 +52,7 @@ return {
         zeroed = test_chips["test/blank"],
         -- The custom screen's Beast Out button, as a chip in the hand, and
         -- what a selection the custom screen can't allow becomes: EXE6's.
-        beast_out = beast_out,
+        button_chip = beast_out,
         invalid = invalid,
     },
     statuses = {

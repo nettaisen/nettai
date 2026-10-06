@@ -155,12 +155,12 @@ fn navi_state_bit(f: NaviState) -> u32 {
         NaviState::NoCharge => status::NO_CHARGE,
         NaviState::CanTurn => status::CAN_TURN,
         NaviState::TrapArmed => status::TRAP_ARMED,
-        NaviState::ChangingCross => status::SWITCHING_NAVI,
-        NaviState::CrossKnockout => status::SWITCH_KNOCKOUT,
-        NaviState::Crossed => status::SWITCHED,
+        NaviState::SwitchingNavi => status::SWITCHING_NAVI,
+        NaviState::SwitchKnockout => status::SWITCH_KNOCKOUT,
+        NaviState::Switched => status::SWITCHED,
         NaviState::Volley => status::VOLLEY,
         NaviState::Uninterruptible => status::UNINTERRUPTIBLE,
-        NaviState::CrossBreaking => status::CROSS_BREAKING,
+        NaviState::FormBreaking => status::FORM_BREAKING,
         NaviState::FormChangeSpriteHeld => status::FORM_CHANGE_SPRITE_HELD,
         NaviState::HeatTrap => status::HEAT_TRAP,
         NaviState::Vanished => status::VANISHED,
@@ -381,12 +381,7 @@ impl CoreApi for Battle {
         match f {
             BattleInfo::Link => Value::Bool(self.setup.settings.effects & crate::setup::effects::LINK != 0),
             BattleInfo::BossRank => Value::Bool(self.setup.settings.effects & crate::setup::effects::BOSS_RANK != 0),
-            BattleInfo::NoDarkChips => {
-                Value::Bool(self.setup.settings.effects & crate::setup::effects::NO_DARK_CHIPS != 0)
-            }
-            BattleInfo::LightDarkHeld => {
-                Value::Bool(self.setup.settings.effects & crate::setup::effects::LIGHT_DARK_HELD != 0)
-            }
+            BattleInfo::Effects => Value::Int(self.setup.settings.effects as i64),
             BattleInfo::Mode => Value::Int(self.round.mode_copy as i64),
             BattleInfo::PanelPattern => Value::Int(self.content.stage(self.setup.settings.stage).panel_pattern as i64),
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
@@ -774,6 +769,11 @@ impl CoreApi for Battle {
         Ok(())
     }
 
+    fn custom_play_sound(&mut self, side: u8, sound: u16) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.look.play(crate::custom::look::ScreenSound::Rules(crate::SoundId(sound)));
+        Ok(())
+    }
+
     fn custom_play(&mut self, side: u8, sound: &str) -> ApiResult<()> {
         if !self.custom_screen_mut(side)?.play_named(sound) {
             return Err(ApiError::Other(format!("custom.play: no screen sound is named {sound:?}")));
@@ -818,12 +818,12 @@ impl CoreApi for Battle {
     fn custom_fade(&mut self, side: u8, mode: &str, speed: u8) -> ApiResult<()> {
         use crate::battle::FadeMode;
         let mode = match mode {
-            "beast_out" => FadeMode::BeastOut,
-            "beast_out_back" => FadeMode::BeastOutBack,
+            "half_out" => FadeMode::HalfOut,
+            "half_out_back" => FadeMode::HalfOutBack,
             "end_to_white" => FadeMode::EndToWhite,
             "intro_from_white" => FadeMode::IntroFromWhite,
-            "soul_flash" => FadeMode::SoulFlash,
-            "soul_flash_back" => FadeMode::SoulFlashBack,
+            "flash" => FadeMode::Flash,
+            "flash_back" => FadeMode::FlashBack,
             m => return Err(ApiError::Other(format!("custom.fade: no screen fade is named {m:?}"))),
         };
         self.custom_screen_mut(side)?.look.fade.start(mode, speed);
@@ -867,13 +867,13 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn custom_set_form(&mut self, side: u8, by: &str, form: Option<nettai_content_api::FormHandle>, turns: u8, chaos: bool) -> ApiResult<()> {
+    fn custom_set_form(&mut self, side: u8, by: &str, form: Option<nettai_content_api::FormHandle>, turns: u8, alternate: bool) -> ApiResult<()> {
         let owner = self.screen_owner(by)?;
         let screen = self.custom_screen_mut(side)?;
         screen.form = form;
         screen.form_owner = form.map(|_| owner);
         screen.form_turns = if form.is_some() { turns } else { 0 };
-        screen.form_chaos = form.is_some() && chaos;
+        screen.form_alternate = form.is_some() && alternate;
         Ok(())
     }
 
@@ -988,8 +988,8 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn custom_draw_cross_cursor(&mut self, side: u8) -> ApiResult<()> {
-        self.custom_screen_mut(side)?.look.draw_cross_cursor();
+    fn custom_draw_form_list_cursor(&mut self, side: u8) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.look.draw_form_list_cursor();
         Ok(())
     }
 
@@ -998,8 +998,8 @@ impl CoreApi for Battle {
             .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
     }
 
-    fn custom_set_cross_tab(&mut self, side: u8, on: bool) -> ApiResult<()> {
-        self.custom_screen_mut(side)?.look.cross_tab = on;
+    fn custom_set_form_list_tab(&mut self, side: u8, on: bool) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.look.form_list_tab = on;
         Ok(())
     }
 
@@ -2219,9 +2219,9 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn form_change_soul(&self, o: ObjectRef) -> (u8, bool) {
+    fn form_change_terms(&self, o: ObjectRef) -> (u8, bool) {
         let t = &self.turn_transforms[self.objects.get(o).alliance as usize & 1];
-        (t.turns, t.chaos)
+        (t.turns, t.alternate)
     }
 
     fn pin_overlay(&mut self, o: ObjectRef) {
@@ -2730,7 +2730,7 @@ impl CoreApi for Battle {
         crate::dimming::show_actor(self, o);
     }
 
-    fn clear_navicust_bugs(&mut self, side: u8) {
+    fn clear_bugs(&mut self, side: u8) {
         let b = &mut self.stats[side as usize & 1].bugs;
         b.processing = 0;
         b.panel_trail_level = 0;
@@ -2907,16 +2907,16 @@ impl CoreApi for Battle {
         kinds::obstacle::request_throw(self, o, side, x, y, shake, damage);
     }
 
-    fn obstacle_arm_soldiers(&mut self, side: u8, sword: u32, gun: u32) {
-        self.obstacle_soldiers[side as usize & 1] = kinds::obstacle::Soldiers { armed: true, words: [sword, gun] };
+    fn obstacle_arm_conversion(&mut self, side: u8, melee: u32, ranged: u32) {
+        self.obstacle_conversion[side as usize & 1] = kinds::obstacle::Conversion { armed: true, words: [melee, ranged] };
     }
 
-    fn obstacle_disarm_soldiers(&mut self, side: u8) {
-        self.obstacle_soldiers[side as usize & 1].armed = false;
+    fn obstacle_disarm_conversion(&mut self, side: u8) {
+        self.obstacle_conversion[side as usize & 1].armed = false;
     }
 
-    fn obstacle_soldiers(&self, side: u8) -> (bool, u32, u32) {
-        let s = self.obstacle_soldiers[side as usize & 1];
+    fn obstacle_conversion(&self, side: u8) -> (bool, u32, u32) {
+        let s = self.obstacle_conversion[side as usize & 1];
         (s.armed, s.words[0], s.words[1])
     }
 
@@ -2936,12 +2936,10 @@ impl CoreApi for Battle {
         // The user's identity when it is MegaMan's or one of his forms'
         // (the original's NameID 0x1A0, or past the link navis'), else
         // MegaMan's.
-        use crate::content::IdentityClass;
         let base = self.content.base_form_for(megaman);
         let megaman_identity = self.content.navi(megaman).identity;
         let user_name = self.objects.get(user).identity;
-        let class = self.content.identity(user_name).class;
-        let own = class == IdentityClass::MegaMan || class.is_form();
+        let own = self.content.identity(user_name).changes_form;
         let name = if own { user_name } else { megaman_identity };
         let sprite = if !own {
             self.content.navi_sprite(megaman, base)
@@ -3000,7 +2998,7 @@ impl CoreApi for Battle {
         }
     }
 
-    fn junk_look(&self, o: ObjectRef) -> Option<nettai_content_api::IdentityHandle> {
+    fn absorbed_look(&self, o: ObjectRef) -> Option<nettai_content_api::IdentityHandle> {
         // sub_800F486: the identities DustMan leaves. (An object with no
         // identity has none to give either; the original's junk would
         // then look up a virus's sprite, which no field object is.)
@@ -3008,7 +3006,7 @@ impl CoreApi for Battle {
         identity.filter(|_| self.content.identity(identity).scrap)
     }
 
-    fn wear_junk_look(&mut self, o: ObjectRef, look: nettai_content_api::IdentityHandle) -> ApiResult<bool> {
+    fn wear_absorbed_look(&mut self, o: ObjectRef, look: nettai_content_api::IdentityHandle) -> ApiResult<bool> {
         // sub_800F26C: a field object's look (byte_8021220); any other
         // identity is an actor's (enemy_getStruct1), which no field object
         // is.

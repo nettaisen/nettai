@@ -23,6 +23,10 @@ type State = {
 -- The camera shake and the fades' speed of the animation (`sub_802774C`).
 local SHAKE_MAGNITUDE, SHAKE_TICKS = 1, 0x28
 local FADE_SPEED = 8
+-- Its sounds with the pick's (`sub_802774C`, and the BeastOut chip's `sub_8027624`): the first by the Beast's game
+-- (Gregar's on a Gregar console; the original's 0x191 and 0x193), then the flash (0xBC).
+local CHOSEN_SOUNDS = { gregar = asset.sound("beast-out-chosen-gregar"), falzar = asset.sound("beast-out-chosen-falzar") }
+local FLASH_SOUND = asset.sound("blinding-flash")
 
 -- The side's navi changes form (MegaMan).
 local function megaman(side: number): boolean
@@ -161,15 +165,15 @@ custom_beast.chip_window = {
             -- Beast Out, and the screen fades.
             custom.shake(side, SHAKE_MAGNITUDE, SHAKE_TICKS)
             custom.set_frame(side, 0)
-            custom.fade(side, "beast_out", FADE_SPEED)
-            custom.play(side, "beast_out_" .. beast_game(side))
-            custom.play(side, "beast_out_flash")
+            custom.fade(side, "half_out", FADE_SPEED)
+            custom.play_sound(side, CHOSEN_SOUNDS[beast_game(side)])
+            custom.play_sound(side, FLASH_SOUND)
         elseif tick == 68 then
             -- sub_8027672
             custom.pick_first(side, nil)
             custom.set_face(side, beast_form(side, false))
             custom.update_availability(side)
-            custom.fade(side, "beast_out_back", FADE_SPEED)
+            custom.fade(side, "half_out_back", FADE_SPEED)
         end
         custom.draw_emblem(side, 0)
         return tick < 85
@@ -190,10 +194,10 @@ custom_beast.window = {
             -- camera shakes, 40 ticks at magnitude 1.
             custom.shake(side, SHAKE_MAGNITUDE, SHAKE_TICKS)
             custom.set_frame(side, 0)
-            custom.fade(side, "beast_out", FADE_SPEED)
-            custom.play(side, "beast_out_" .. beast_game(side))
+            custom.fade(side, "half_out", FADE_SPEED)
+            custom.play_sound(side, CHOSEN_SOUNDS[beast_game(side)])
             custom.play(side, "pick")
-            custom.play(side, "beast_out_flash")
+            custom.play_sound(side, FLASH_SOUND)
         elseif tick >= 3 and tick <= 52 then
             -- sub_802777C
             custom.set_frame(side, custom.frame(side) + 1)
@@ -201,7 +205,7 @@ custom_beast.window = {
             -- sub_8027796: the screen fades back in, and the emotion window
             -- shows the Beast form (sub_802A040). Beast Out goes first in
             -- the selection, so B takes it back last.
-            custom.fade(side, "beast_out_back", FADE_SPEED)
+            custom.fade(side, "half_out_back", FADE_SPEED)
             custom.set_face(side, beast_form(side, custom.player(side).emotion == "tired"))
             custom.pick_first(side, beast_out_chip)
             custom.set_button_state(side, "beast_out", "selected")

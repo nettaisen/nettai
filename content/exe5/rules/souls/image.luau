@@ -174,7 +174,7 @@ image.kind = new.kind {
 -- comparison knows the number, exe5-compat) and the turns (+3), which its first tick overwrites but NumberMan's face,
 -- spawned before it, copies.)
 function image.spawn(owner: Object, soul: FormDef): Object?
-    local turns, chaos = owner:form_change_soul()
+    local turns, chaos = owner:form_change_terms()
     local o = battle.spawn(image.kind, Vec3.new(if chaos then 1 else 0, 0xFFFF, turns))
     if o then
         (o.state :: State).soul = soul

@@ -686,8 +686,8 @@ fn a_dark_chip_takes_the_cursor_and_darkens_the_screen() {
     }
     assert_eq!(p.phase(), Phase::Choosing);
     let look = p.screen().look;
-    assert_eq!(look.dark, DarkHover::Darkening { step: 0 });
-    assert_eq!((look.fade.mode, look.window_fade.mode), (FadeMode::DarkChip, FadeMode::DarkChipWindow));
+    assert_eq!(look.shade, ChipShade::Shading { step: 0 });
+    assert_eq!((look.fade.mode, look.window_fade.mode), (FadeMode::Shade, FadeMode::ShadeWindow));
     // The music turns down and the screen's player up, a step a tick, until
     // the window's fade is done.
     let volumes = |p: &mut Player, n: usize| {
@@ -701,7 +701,7 @@ fn a_dark_chip_takes_the_cursor_and_darkens_the_screen() {
     let down = volumes(&mut p, 6);
     assert_eq!(down, [Some((0x100, 0x80)), Some((0xE0, 0x80)), Some((0xC0, 0xA0)), Some((0xA0, 0xC0)), Some((0x80, 0xE0)), None]);
     let look = p.screen().look;
-    assert_eq!(look.dark, DarkHover::Dark);
+    assert_eq!(look.shade, ChipShade::Shaded);
     assert_eq!(look.window_fade.level, 0x30);
     // (The screen's own fade, eight steps to 0x50, has one to go.)
     assert_eq!((look.fade.level, look.fade.active()), (0x46, true));
@@ -710,14 +710,14 @@ fn a_dark_chip_takes_the_cursor_and_darkens_the_screen() {
     p.step(keys::RIGHT);
     p.step(keys::RIGHT);
     assert_eq!(p.screen().cursor, 2);
-    assert_eq!(p.screen().look.dark, DarkHover::Clearing { step: 0 });
+    assert_eq!(p.screen().look.shade, ChipShade::Clearing { step: 0 });
     let up = volumes(&mut p, 7);
     assert_eq!(
         up,
         [Some((0x80, 0x100)), Some((0x80, 0xE0)), Some((0xA0, 0xC0)), Some((0xC0, 0xA0)), Some((0xE0, 0x80)), Some((0x100, 0x80)), None]
     );
     let look = p.screen().look;
-    assert_eq!((look.dark, look.window_fade.level), (DarkHover::Clear, 0));
+    assert_eq!((look.shade, look.window_fade.level), (ChipShade::Clear, 0));
     // The screen's own fade, back from 0x50, clears a tick later.
     assert_eq!(p.screen().look.fade.level, 0xA);
     p.step(0);
@@ -731,7 +731,7 @@ fn the_cursor_stays_put_without_a_dark_chip() {
     assert_eq!(p.screen().cursor, 0);
     for _ in 0..20 {
         p.step(0);
-        assert_eq!((p.screen().look.dark, p.screen().look.drawn.volume()), (DarkHover::Clear, None));
+        assert_eq!((p.screen().look.shade, p.screen().look.drawn.volume()), (ChipShade::Clear, None));
     }
 }
 
@@ -899,9 +899,9 @@ fn the_dark_hover_sounds_every_64_ticks() {
         let mut ticks = Vec::new();
         for _ in 0..200 {
             p.step(0);
-            if p.screen().look.drawn.sounds().any(|s| s == super::look::ScreenSound::DarkHover) {
+            if p.screen().look.drawn.sounds().any(|s| s == super::look::ScreenSound::Shade) {
                 assert_eq!(p.screen().look.hover_count, 0);
-                assert_ne!(p.screen().look.dark, DarkHover::Clear);
+                assert_ne!(p.screen().look.shade, ChipShade::Clear);
                 ticks.push(p.tick);
             }
         }
@@ -942,7 +942,7 @@ fn the_dark_hover_sets_its_volumes_before_it_sounds() {
     assert_eq!(look.hover_count, 63);
     assert_eq!(
         tick(&mut look, true),
-        [ScreenCall::Volume { music: 0xC0, screen: 0xA0 }, ScreenCall::Sound(ScreenSound::DarkHover)]
+        [ScreenCall::Volume { music: 0xC0, screen: 0xA0 }, ScreenCall::Sound(ScreenSound::Shade)]
     );
     assert_eq!(look.hover_count, 0);
 }

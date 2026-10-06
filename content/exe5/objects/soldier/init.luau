@@ -1,7 +1,7 @@
 --!strict
 -- ColonelSoul's soldiers (EXE5's attack object #0x30, 0x080CA834; EXE6's ColArmy soldier's number, EXE5's own code):
 -- what an obstacle turns into where its side's enemy's ColonelSoul can use it (the obstacle framework's step,
--- 0x080CAB02: the rule `effects.obstacle_soldiers` and the role `kinds.obstacle_soldier`, docs/design/exe5-map.md
+-- 0x080CAB02: the rule `effects.obstacle_conversion` and the role `kinds.converted_obstacle`, docs/design/exe5-map.md
 -- §15.11). The engine spawns it on the obstacle's panel for the armed side, `gun` its Param1:
 --
 -- - the sword's soldier (`gun` 0: an enemy between the obstacle and the side's back; it faces back) draws for 15 ticks
@@ -9,7 +9,7 @@
 -- - the gun's soldier (`gun` 1: an enemy ahead on the row) takes aim for 15 ticks and fires three shots (the Vulcans'
 --   bullets) 10 ticks apart at a random one of four heights, with the side's second word.
 --
--- Each reads its word as it strikes (`obstacle.soldiers`), then blinks out over 30 ticks, or at once when a hit takes
+-- Each reads its word as it strikes (`obstacle.conversion`), then blinks out over 30 ticks, or at once when a hit takes
 -- its 1 HP. Its element byte is what the obstacle's search left (0x1D for the sword's, 0 for the gun's).
 
 local bullet = require("./bullet")
@@ -21,8 +21,8 @@ local regions = require("@exelib/regions")
 local soldier = {}
 
 export type State = {
-    -- Its Param1: 0 the sword's soldier, 1 the gun's.
-    gun: number,
+    -- Its Param1 (the engine's `ranged`): 0 the sword's soldier, 1 the gun's.
+    ranged: number,
     -- +0x60: a hit took its HP (and it blinks out).
     hit: boolean,
 }
@@ -84,7 +84,7 @@ local function slash(me: Object)
         me.phase_init = 4
     end
     if me.timer == SLASH_AT then
-        local _, word = obstacle.soldiers(me.alliance)
+        local _, word = obstacle.conversion(me.alliance)
         local x, y = me.panel_x + me.facing, me.panel_y
         battle.hitbox(me, {
             panel_x = x,
@@ -133,7 +133,7 @@ local function fire(me: Object)
         return
     end
     me.timer = SHOT_TICKS
-    local _, _, word = obstacle.soldiers(me.alliance)
+    local _, _, word = obstacle.conversion(me.alliance)
     local z = bit32.lshift(HEIGHTS[bit32.band(battle.rng_positive(), 3)], 16)
     common_bullet.fire(bullet.kind, me, me.panel_x + me.facing, me.panel_y, z, bullet.variants.vulcan, 0, word)
     battle.play_sound(SHOT_SOUND)
@@ -149,7 +149,7 @@ end
 -- 0x080CAA88: it blinks out (4 ticks shown, 4 hidden), then goes.
 local function leave(me: Object)
     if me.phase_init == 0 then
-        me.anim = if (me.state :: State).gun == 0 then 1 else 4
+        me.anim = if (me.state :: State).ranged == 0 then 1 else 4
         me.timer = LEAVE_TICKS
         me.phase_init = 4
     end
@@ -218,7 +218,7 @@ local function init(me: Object)
     sprite:load(SPRITE)
     sprite:set_animation(0)
     sprite.shadow = "ground"
-    me.anim = if s.gun == 0 then 0 else 3
+    me.anim = if s.ranged == 0 then 0 else 3
     me.anim_loaded = 0xFF
     if not me:create_collision() then
         -- (The game goes on into the freed slot and its first tick, which reads a collision it hasn't: nothing
@@ -233,7 +233,7 @@ local function init(me: Object)
     me.pos = Vec3.new(p.x, p.y, 0)
     me.hp, me.max_hp = HP, HP
     me:set_lifecycle("update")
-    me.action = if s.gun == 0 then SWORD else GUN
+    me.action = if s.ranged == 0 then SWORD else GUN
     tick(me)
 end
 

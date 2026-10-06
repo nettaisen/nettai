@@ -31,9 +31,9 @@ local form: FormDef = {
     mugshot = asset.mugshot("falzar-beast-over"),
     -- What its status reset gives the navi (`sub_8014536`): untouchable, with AirShoe and FloatShoe (one
     -- literal, 0x08000030), so no hit reaches it.
-    status_reset = { "untouchable", "air_shoes", "float_shoes", "floating_body", "target_marker", "berserk" },
+    status_reset = { "untouchable", "air_shoes", "float_shoes", "floating_body", "target_marker", "controller_restart" },
     -- After a NaviCust change (`sub_801469C`), which no hit can bring, it is invulnerable as well.
-    navicust_refresh = { "air_shoes", "float_shoes", "floating_body", "untouchable", "invulnerable", "berserk" },
+    ability_refresh = { "air_shoes", "float_shoes", "floating_body", "untouchable", "invulnerable", "controller_restart" },
     -- It floats 20 pixels up.
     hover = 0x14,
     -- The Cross special's buster volley (`sub_802D4F0`): the original meant 6, and stores the form's number.
@@ -41,7 +41,8 @@ local form: FormDef = {
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 24 },
     identity = new.identity {
-        class = "beast_over",
+        class = "player",
+        changes_form = true,
         version = 0,
         actor_type = "player",
         ai_index = 48,

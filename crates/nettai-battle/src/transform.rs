@@ -15,14 +15,16 @@ pub struct TransformRequest {
     pub form: Option<FormHandle>,
     /// A navi switch: the navi to change to.
     pub navi_switch: Option<NaviHandle>,
-    /// EXE5's Soul Unison (`sub_8015952`'s record, 0x0203C940): the soul's
-    /// turns (+3) and whether it is Chaos Unison (+1).
+    /// The change's terms, as the rules that asked for it say: its turns
+    /// (+3) and whether it is the alternate (+1): EXE5's Soul Unison's
+    /// (`sub_8015952`'s record, 0x0203C940), the soul's turns and Chaos
+    /// Unison.
     pub turns: u8,
-    pub chaos: bool,
+    pub alternate: bool,
 }
 
 impl TransformRequest {
-    pub const NONE: TransformRequest = TransformRequest { form: None, navi_switch: None, turns: 0, chaos: false };
+    pub const NONE: TransformRequest = TransformRequest { form: None, navi_switch: None, turns: 0, alternate: false };
 
     pub fn is_none(&self) -> bool {
         self.form.is_none() && self.navi_switch.is_none()
@@ -234,7 +236,7 @@ impl Battle {
             return;
         }
         for (side, navi) in navis.iter().enumerate() {
-            if navi.is_some_and(|p| player::changing_cross(self, p)) {
+            if navi.is_some_and(|p| player::switching_navi(self, p)) {
                 return;
             }
             self.transform_seq.requests[side].navi_switch = None;
