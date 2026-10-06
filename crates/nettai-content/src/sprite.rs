@@ -75,10 +75,6 @@ pub struct SpriteDoc {
     pub extra_palette_sets: Vec<Vec<Vec<String>>>,
     pub tilesets: Vec<TilesetDoc>,
     pub layouts: Vec<Vec<PartDoc>>,
-    /// The region whose ROMs the sprite comes from, when not the pack's
-    /// own (`SpriteSheet::region`: EXE6's "jp", a sprite the US release cut).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub region: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -283,7 +279,6 @@ pub fn export(sheet: &SpriteSheet) -> Vec<(String, Vec<u8>)> {
             .map(|(t, regions)| TilesetDoc { tiles: t.len(), regions })
             .collect(),
         layouts: sheet.part_lists.iter().map(|l| l.iter().map(part_doc).collect()).collect(),
-        region: sheet.region.clone(),
     };
     let anims = AnimationsDoc {
         format: ANIMATIONS_FORMAT.into(),
@@ -351,9 +346,6 @@ fn sprite_json(d: &SpriteDoc) -> String {
     writeln!(s, "  \"format\": {},", compact(&d.format)).unwrap();
     writeln!(s, "  \"version\": {},", d.version).unwrap();
     writeln!(s, "  \"sprite\": {},", compact(&d.sprite)).unwrap();
-    if let Some(r) = &d.region {
-        writeln!(s, "  \"region\": {},", compact(r)).unwrap();
-    }
     writeln!(s, "  \"atlas\": {},", compact(&d.atlas)).unwrap();
     writeln!(s, "  \"palette_rows\": {},", d.palette_rows).unwrap();
     writeln!(s, "  \"palette_fingerprint\": {},", compact(&d.palette_fingerprint)).unwrap();
@@ -587,7 +579,7 @@ pub fn import(dir: &Path, name: &str, report: &mut Report) -> Option<SpriteSheet
         }
         animations.push(out);
     }
-    Some(SpriteSheet { category: doc.sprite[0], index: doc.sprite[1], tilesets, palette_sets, part_lists, animations, region: doc.region })
+    Some(SpriteSheet { category: doc.sprite[0], index: doc.sprite[1], tilesets, palette_sets, part_lists, animations })
 }
 
 pub(crate) fn read_json<T: serde::de::DeserializeOwned>(path: &Path, name: &str, report: &mut Report) -> Option<T> {

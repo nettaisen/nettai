@@ -262,15 +262,12 @@ pub fn describe(b: &Battle, view: &View) -> Vec<String> {
 /// pack's graphics don't have goes to `problems` (`crate::lookups`); with
 /// `lookups_only` nothing is queued.
 ///
-/// An object drawn with a sprite of another region's ROMs than the
-/// console's (`SpriteSheet::region`: one the US release cut and left a
-/// placeholder in) is a known difference where it is drawn
-/// (`other_region`).
+/// An object drawn with a sprite the caller names (`sprite:NAME`,
+/// `Problems::marking`) is marked where it is drawn.
 pub fn queue_objects<'a>(
     b: &Battle,
     packs: &crate::packs::Packs<'a>,
     view: &View,
-    console_region: crate::render::Region,
     list: &mut SpriteList<'a>,
     problems: &mut Problems,
     lookups_only: bool,
@@ -386,24 +383,22 @@ pub fn queue_objects<'a>(
                 let (layer, bucket) = if as_shadow { (3, 0) } else { (2, p.ground + 0x40) };
                 group.push((layer, bucket, sprite));
             }
-            if sheet.region.as_deref().is_some_and(|r| r != console_region.name()) {
-                other_region(&p, &group, problems);
+            if !problems.marking.is_empty()
+                && let Some(name) = crate::packs::name(&b.content, nettai_content_api::AssetKind::Sprite, id.0)
+            {
+                let what = format!("sprite:{name}");
+                if problems.wants(&what) {
+                    problems.mark(object_box(&p, &group), what);
+                }
             }
             list.insert_group(group);
         }
     }
 }
 
-/// How far around an object drawn with a sprite of another region's ROMs
-/// the known difference reaches: what the console draws there instead is
-/// its own (the US ROMs' placeholder archive, a dot at the anchor; or
-/// another sheet, 0C-00, for Otenko's statue and CrosOver's gun), which
-/// may reach past the sprite.
-const OTHER_REGION_MARGIN: i32 = 48;
-
-/// An object drawn with a sprite of another region's ROMs: where it is
-/// drawn, with `OTHER_REGION_MARGIN` around it, is a known difference.
-fn other_region(p: &Projected, group: &[(usize, i32, SpritePart)], problems: &mut Problems) {
+/// Where an object is drawn: the box around its anchor, its ground and its
+/// parts (`Problems::mark`'s, for a sprite the caller names).
+fn object_box(p: &Projected, group: &[(usize, i32, SpritePart)]) -> [i32; 4] {
     let mut rect = [p.x, p.y.min(p.ground), p.x, p.y.max(p.ground)];
     for (_, _, s) in group {
         // (The hardware's coordinates wrap: X at 512, Y at 256.)
@@ -411,11 +406,7 @@ fn other_region(p: &Projected, group: &[(usize, i32, SpritePart)], problems: &mu
         let y = if s.y >= 0xC0 { s.y as i32 - 0x100 } else { s.y as i32 };
         rect = [rect[0].min(x), rect[1].min(y), rect[2].max(x + s.width as i32), rect[3].max(y + s.height as i32)];
     }
-    let m = OTHER_REGION_MARGIN;
-    let [x0, y0, x1, y1] = [(rect[0] - m).max(0), (rect[1] - m).max(0), (rect[2] + m).min(240), (rect[3] + m).min(160)];
-    if x0 < x1 && y0 < y1 {
-        problems.known(x0, y0, x1 - x0, y1 - y0, "a sprite of the Japanese games' ROMs (a US console draws its placeholder)");
-    }
+    rect
 }
 
 #[cfg(test)]

@@ -812,10 +812,10 @@ the US's (the user's choice).
   two lines where the English has three); a translated no-running message prints in the proportion of the own
   message's characters printed, so it ends when that would. A Japanese console times its chatbox by its own text, so
   those boxes take keys a tick or more apart from the engine's; nothing else in the battle reads text.
-- **A Japanese console's HUD code** (docs/engine/jp-differences.md §5), drawn on a Japanese console's screen
-  (`Renderer::console_region`): its custom screen's close also starts the chip window's HUD task, so the next chip's
-  name shows from the screens' exchange through the turn's banner (`HudState`); "Cstmzing..." is as wide as its
-  picture. One fix the Japanese consoles showed: a palette flash of variant 0 leaves the HUD layer as the
+- **The Japanese games' HUD code** (docs/engine/jp-differences.md §5), drawn on every console (nettai has the
+  Japanese games' presentation where the releases differ): the custom screen's close also starts the chip window's
+  HUD task, so the next chip's name shows from the screens' exchange through the turn's banner (`HudState`, EXE6's
+  flow rule `chip_window_at_close`); "Cstmzing..." is as wide as its picture. One fix the Japanese consoles showed: a palette flash of variant 0 leaves the HUD layer as the
   transformation's fade left it (black), where the frontend had cleared that fade.
 - **No key switches the language while the window runs** (the user's choice for now): the renderer borrows one
   bundle in one language.

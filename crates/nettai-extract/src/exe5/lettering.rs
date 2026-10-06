@@ -22,8 +22,9 @@
 //! Everything else a battle shows is the same pictures in all four ROMs
 //! (the verification workspace's tools/exe5/jpassets.py compares them: the
 //! HUD's and the custom screen's blocks, every chip's icon and picture, the
-//! backgrounds a netbattle has; the sprites `graphics::japanese_differences`
-//! does). Team of Blues' and Team of Colonel's lettering is the same, which
+//! backgrounds a netbattle has, the sprites; and its frame comparison knows
+//! what a Japanese console shows otherwise: background 0x05, the battle mode
+//! 1 label 14-17). Team of Blues' and Team of Colonel's lettering is the same, which
 //! is checked here: the pack's is Team of Blues'. The addresses are the
 //! Japanese ROMs' own (their data moved against the US ROMs'): where the
 //! routines the two builds share load what the US ROMs' load at
