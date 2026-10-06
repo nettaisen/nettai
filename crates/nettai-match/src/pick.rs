@@ -11,8 +11,9 @@
 //! again or edited.
 
 use crate::folders;
-use crate::{Arena, Match, Place, Side, ids};
+use crate::{Match, RoundSettings, Side, TRIPLE_BATTLE, ids};
 use nettai_battle::Battle;
+use nettai_battle::setup::Stage;
 use std::sync::Arc;
 use nettai_battle::content::{Content, PlayerFact};
 use nettai_battle::custom::{FolderChip, SavedFolder};
@@ -67,35 +68,53 @@ fn picks_live(content: &Content) -> bool {
     content.defs.fact_field(PlayerFact::CrossList).is_some()
 }
 
-/// A link battle's arena of `game`, picked at random from `picks` as the
-/// game picks one: its stage and background, then the later rounds';
-/// `stage` forces the first round's stage. The stage is one of the game's
-/// rules' `link_pick.stages`, the stage for each index of the original's
-/// pick: a stage there twice is twice as likely, and a link battle stage
-/// that isn't there is never picked (EXE5's records 76 to 87; a match may
-/// still name one). The first round's is one of the first
+/// Every round's place of a match of `game` that states `rounds`, a round
+/// after another, where a round leaves a part unstated picked at random
+/// from `picks` as the game picks a link battle's: its stage, then its
+/// background. Both are drawn whether the round states them or not, so a
+/// part a match states moves no other's pick (and a match that states
+/// nothing has a random match's places: `live`). The stage is one of the
+/// game's rules' `link_pick.stages`, the stage for each index of the
+/// original's pick: a stage there twice is twice as likely, and a link
+/// battle stage that isn't there is never picked (EXE5's records 76 to 87;
+/// a match may still name one). The first round's is one of the first
 /// `link_pick.first_round_stages` (EXE5's first 68: a practice's count).
-pub fn arena(content: &Content, game: &str, picks: &mut Picks, stage: Option<StageHandle>) -> Result<Arena, String> {
+/// The background is one of the rules' `link_pick.backgrounds` (where they
+/// state none, the stage's own). Refused: a stage left to rules that pick
+/// none, a background named that the game's pack hasn't.
+pub fn places(content: &Content, game: &str, rounds: &[RoundSettings], picks: &mut Picks) -> Result<Vec<Stage>, String> {
     crate::playable(content, game)?;
-    let stages = &content.rules().link_pick.stages;
-    if stages.is_empty() {
-        return Err(format!("{game}'s rules state no stage a link battle picks (link_pick.stages)"));
-    }
+    let pick = &content.rules().link_pick;
     let backgrounds = link_backgrounds(content);
-    // (The first round among the first `first_round_stages`, the rounds
-    // after among them all: the counts the original passes.)
-    let first_round = content.rules().link_pick.first_round_stages;
-    let place = |picks: &mut Picks, count: usize| {
-        let stage = stages[picks.below(count)];
-        let background = (!backgrounds.is_empty()).then(|| backgrounds[picks.below(backgrounds.len())].to_string());
-        Place { stage, background }
-    };
-    let mut first = place(picks, first_round);
-    let later = [place(picks, stages.len()), place(picks, stages.len())];
-    if let Some(s) = stage {
-        first.stage = s;
+    let mut out = Vec::with_capacity(rounds.len());
+    for (i, round) in rounds.iter().enumerate() {
+        // (The first round among the first `first_round_stages`, the rounds
+        // after among them all: the counts the original passes.)
+        let count = if i == 0 { pick.first_round_stages } else { pick.stages.len() };
+        let drawn = (!pick.stages.is_empty()).then(|| pick.stages[picks.below(count)]);
+        let drawn_background = (!backgrounds.is_empty()).then(|| backgrounds[picks.below(backgrounds.len())]);
+        let at = format!("round {}", i + 1);
+        let stage = round.stage.or(drawn).ok_or_else(|| format!("{at}: {game}'s rules state no stage a link battle picks (link_pick.stages)"))?;
+        let named = |name: &str| crate::background(content, game, name).ok_or_else(|| crate::no_background(&at, game, name));
+        let background = match (&round.background, drawn_background) {
+            (Some(name), _) => named(name)?,
+            (None, Some(name)) => named(name)?,
+            (None, None) => content.stage(stage).background,
+        };
+        out.push(Stage { stage, background });
     }
-    Ok(Arena { game: game.to_string(), first, later })
+    Ok(out)
+}
+
+/// The rounds of a random match of `game` from `picks`: a triple battle's,
+/// each place picked (`places`) and stated; `stage` forces the first
+/// round's stage.
+fn random_rounds(content: &Content, game: &str, picks: &mut Picks, stage: Option<StageHandle>) -> Result<Vec<RoundSettings>, String> {
+    let mut places = places(content, game, &vec![RoundSettings::default(); TRIPLE_BATTLE], picks)?;
+    if let Some(s) = stage {
+        places[0].stage = s;
+    }
+    Ok(places.into_iter().map(|p| RoundSettings::at(content, p)).collect())
 }
 
 /// What a random side states of the enums its rules require (those no
@@ -130,12 +149,12 @@ fn form_list(content: &Content, game: &str, picks: &mut Picks) -> Result<Vec<For
 }
 
 impl Side {
-    /// A live player on `arena`: a new match's side (`Side::fresh`:
+    /// A live player of `game`: a new match's side (`Side::fresh`:
     /// MegaMan at his fresh stats, a NaviCust with no programs) that states
     /// `stated` (its rules' required facts, each a variant's name), with
     /// this folder and form list.
-    pub fn live(content: &Content, arena: &Arena, folder: SavedFolder, forms: &[FormHandle], stated: &[(String, String)]) -> Result<Side, String> {
-        let mut side = Side::fresh(content, arena)?;
+    pub fn live(content: &Content, game: &str, folder: SavedFolder, forms: &[FormHandle], stated: &[(String, String)]) -> Result<Side, String> {
+        let mut side = Side::fresh(content, game)?;
         for (field, variant) in stated {
             side.set_fact(content, field, &[Fact::Name(variant)])?;
         }
@@ -152,19 +171,21 @@ impl Side {
     pub fn picked(content: &Arc<Content>, game: &str, picks: &mut Picks) -> Result<Side, String> {
         let stage = *crate::link_battle_stages(content, game).first().ok_or_else(|| format!("{game} has no link battle stage"))?;
         crate::playable(content, game)?;
-        let arena = Arena::on(game, Place { stage, background: None });
+        // (Its folder is picked on a round on the game's first link battle
+        // stage, with its own background.)
+        let rounds = [RoundSettings::at(content, Stage { stage, background: content.stage(stage).background })];
         if !picks_live(content) {
-            return plain_side(content, &arena, picks);
+            return plain_side(content, game, &rounds, picks);
         }
         let stated = required(content, picks);
-        let mut rules = rules_battle(content, &arena, [&stated, &stated])?;
+        let mut rules = rules_battle(content, game, &rounds, [&stated, &stated])?;
         let folder = folders::random_folder(content, game, &mut rules, 0, picks);
         let forms = form_list(content, game, picks)?;
-        Side::live(content, &arena, folder, &forms, &stated)
+        Side::live(content, game, folder, &forms, &stated)
     }
 }
 
-/// A plain side on `arena`: the navi a new side operates (`first_navi`:
+/// A plain side of a match of `game` on `rounds`: the navi a new side operates (`first_navi`:
 /// MegaMan), its fresh stats, what its rules require picked from `picks`
 /// (a version, where they take one) or its navi's own (its form list: the
 /// version's five), the rest of its facts their defaults,
@@ -174,8 +195,7 @@ impl Side {
 /// learned from a player who used each chip of that folder once
 /// (`AutoBattle::of_folder`), so that a random match states what a
 /// navi in auto battle plays.
-fn plain_side(content: &Arc<Content>, arena: &Arena, picks: &mut Picks) -> Result<Side, String> {
-    let game = &arena.game;
+fn plain_side(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], picks: &mut Picks) -> Result<Side, String> {
     let navi = crate::first_navi(content, game).ok_or_else(|| format!("{game} has no navi with fresh stats"))?;
     let chip = (0..content.defs.chips.len() as u16)
         .map(nettai_content_api::ChipHandle)
@@ -202,7 +222,7 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, picks: &mut Picks) -> Resul
     if crate::level_required(content, navi) {
         side.set_level(content, Some(0))?;
     }
-    let m = Match { seed: None, arena: arena.clone(), sides: [side.clone(), side.clone()] };
+    let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [side.clone(), side.clone()] };
     if let Ok(mut b) = crate::check::start(content, &m)
         && !folders::pool(content, game, &mut b, 0).is_empty()
     {
@@ -216,28 +236,31 @@ fn plain_side(content: &Arc<Content>, arena: &Arena, picks: &mut Picks) -> Resul
     Ok(side)
 }
 
-/// A plain match of `game`, for a game live play picks none of (EXE5's): an arena picked from `seed` (`stage` forces the first
-/// round's stage), and on both sides a plain side (`plain_side`), each its
-/// own folder.
+/// A plain match of `game`, for a game live play picks none of (EXE5's):
+/// a triple battle's rounds, each place picked from `seed` and stated
+/// (`stage` forces the first round's stage), and on both sides a plain
+/// side (`plain_side`), each its own folder.
 pub fn plain(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageHandle>) -> Result<Match, String> {
     let mut picks = Picks::new(seed);
-    let arena = arena(content, game, &mut picks, stage)?;
-    let sides = [plain_side(content, &arena, &mut picks)?, plain_side(content, &arena, &mut picks)?];
-    Ok(Match { seed: Some(seed), arena, sides })
+    let rounds = random_rounds(content, game, &mut picks, stage)?;
+    let sides = [plain_side(content, game, &rounds, &mut picks)?, plain_side(content, game, &rounds, &mut picks)?];
+    Ok(Match { game: game.to_string(), seed: Some(seed), rounds, sides })
 }
 
 /// The battle live players' folders are picked against: two live players
-/// on `arena` who state these (their folders anything: the rules read the
-/// stats).
-fn rules_battle(content: &Arc<Content>, arena: &Arena, stated: [&[(String, String)]; 2]) -> Result<Battle, String> {
+/// of a match on `rounds` who state these (their folders anything: the
+/// rules read the stats).
+fn rules_battle(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], stated: [&[(String, String)]; 2]) -> Result<Battle, String> {
     let anything = SavedFolder { chips: [FolderChip::new(Default::default(), nettai_battle::content::ChipCode(0)); 30], regular: None, tags: None };
-    let side = |stated| Side::live(content, arena, anything, &[], stated);
-    crate::check::start(content, &Match { seed: None, arena: arena.clone(), sides: [side(stated[0])?, side(stated[1])?] })
+    let side = |stated| Side::live(content, game, anything, &[], stated);
+    let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [side(stated[0])?, side(stated[1])?] };
+    crate::check::start(content, &m)
 }
 
 /// Live play's match of `game`, picked from `seed`.
-/// Where the game's rules take a form list (EXE6's): a link battle's
-/// stage (`stage` forces one) and background, a random folder each
+/// Where the game's rules take a form list (EXE6's): a triple battle's
+/// rounds, each a link battle's stage (`stage` forces the first round's)
+/// and background, stated, a random folder each
 /// player's rules accept (`crate::folders`), as many of the listed forms of
 /// the navi that changes form as a list holds (five of MegaMan's ten
 /// Crosses, of both versions) for each side's form list
@@ -250,16 +273,16 @@ pub fn live(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageHa
         return plain(content, game, seed, stage);
     }
     let mut picks = Picks::new(seed);
-    let arena = arena(content, game, &mut picks, stage)?;
+    let rounds = random_rounds(content, game, &mut picks, stage)?;
     let mut own = Picks::new(seed ^ VERSION_SALT);
     let stated = [required(content, &mut own), required(content, &mut own)];
-    let mut rules = rules_battle(content, &arena, [&stated[0], &stated[1]])?;
+    let mut rules = rules_battle(content, game, &rounds, [&stated[0], &stated[1]])?;
     let folders =
         [folders::random_folder(content, game, &mut rules, 0, &mut picks), folders::random_folder(content, game, &mut rules, 1, &mut picks)];
     let forms = [form_list(content, game, &mut picks)?, form_list(content, game, &mut picks)?];
-    let side = |side: usize| Side::live(content, &arena, folders[side], &forms[side], &stated[side]);
+    let side = |side: usize| Side::live(content, game, folders[side], &forms[side], &stated[side]);
     let sides = [side(0)?, side(1)?];
-    Ok(Match { seed: Some(seed), arena, sides })
+    Ok(Match { game: game.to_string(), seed: Some(seed), rounds, sides })
 }
 
 #[cfg(test)]
@@ -303,10 +326,11 @@ mod tests {
         assert!(crate::link_stage(&five, "exe5", "netbattle-80").is_ok(), "a match may name one all the same");
         let backgrounds = link_backgrounds(&five);
         assert_eq!((backgrounds.len(), backgrounds.iter().collect::<std::collections::BTreeSet<_>>().len()), (27, 27));
-        // A random arena's rounds are of the pick's stages and backgrounds,
-        // the first round's of the first round's count: EXE6's all 96, EXE5's
-        // the first 68 (a practice's 0x44: netbattle-1 to netbattle-66, the
-        // fold past them).
+        // The places a match leaves to its seed are of the pick's stages and
+        // backgrounds, the first round's of the first round's count: EXE6's
+        // all 96, EXE5's the first 68 (a practice's 0x44: netbattle-1 to
+        // netbattle-66, the fold past them). (Five rounds: a set of any
+        // number picks its rounds after the first alike.)
         assert_eq!((six.rules().link_pick.first_round_stages, five.rules().link_pick.first_round_stages), (96, 68));
         assert_eq!(names[67], "netbattle-66");
         let mut past = 0;
@@ -315,16 +339,48 @@ mod tests {
             let first_round = &pick.stages[..pick.first_round_stages];
             let backgrounds = link_backgrounds(content);
             for seed in 0..200 {
-                let a = arena(content, game, &mut Picks::new(seed), None).unwrap();
-                assert!(first_round.contains(&a.first.stage), "{game} seed {seed}: the first round's stage");
-                for place in [&a.first, &a.later[0], &a.later[1]] {
+                let a = places(content, game, &vec![RoundSettings::default(); 5], &mut Picks::new(seed)).unwrap();
+                assert!(first_round.contains(&a[0].stage), "{game} seed {seed}: the first round's stage");
+                for place in &a {
                     assert!(pick.stages.contains(&place.stage), "{game} seed {seed}");
-                    assert!(place.background.as_deref().is_some_and(|b| backgrounds.contains(&b)), "{game} seed {seed}: {:?}", place.background);
+                    let background = ids::background_name(content, place.background);
+                    assert!(background.is_some_and(|b| backgrounds.contains(&b)), "{game} seed {seed}: {background:?}");
                 }
-                past += a.later.iter().filter(|p| !first_round.contains(&p.stage)).count();
+                past += a[1..].iter().filter(|p| !first_round.contains(&p.stage)).count();
             }
         }
         assert!(past > 0, "a later round picks past the first round's");
+    }
+
+    /// A round's part a match states is that, and moves no other part's
+    /// pick: every round's stage and background are drawn whether stated or
+    /// not. A match that states nothing has a random match's places of its
+    /// seed; one that names a background its pack hasn't, or leaves a stage
+    /// to rules that pick none, has none.
+    #[test]
+    fn a_stated_part_moves_no_other_pick() {
+        let content = crate::testing::exe6_content();
+        let none = vec![RoundSettings::default(); 5];
+        let picked = places(&content, "exe6", &none, &mut Picks::new(9)).unwrap();
+        let stage = crate::link_stage(&content, "exe6", "netbattle-12").unwrap();
+        let mut stated = none.clone();
+        stated[1].stage = Some(stage);
+        stated[3].background = Some("undernet".into());
+        let with = places(&content, "exe6", &stated, &mut Picks::new(9)).unwrap();
+        let undernet = crate::background(&content, "exe6", "undernet").unwrap();
+        for (i, (a, b)) in picked.iter().zip(&with).enumerate() {
+            let want = match i {
+                1 => Stage { stage, ..*a },
+                3 => Stage { background: undernet, ..*a },
+                _ => *a,
+            };
+            assert_eq!(*b, want, "round {}", i + 1);
+        }
+        let live = live(&content, "exe6", 9, None).unwrap();
+        assert_eq!(live.rounds.len(), crate::TRIPLE_BATTLE);
+        assert_eq!(live.places(&content, 9).unwrap(), picked[..3], "a random match's places, stated");
+        let bad = [RoundSettings { stage: None, background: Some("nowhere".into()) }];
+        assert_eq!(places(&content, "exe6", &bad, &mut Picks::new(9)), Err("round 1: no background \"nowhere\" in exe6".to_string()));
     }
 
     /// Live play's match from a seed: a link battle's stage (the 96 the
@@ -401,7 +457,7 @@ mod tests {
         });
         assert!(mixed);
         let forced = live(&content, "exe6", 3, Some(crate::link_stage(&content, "exe6", "netbattle-43").unwrap())).unwrap();
-        assert_eq!(ids::local(&content.defs.stage(forced.arena.first.stage).key), "netbattle-43");
+        assert_eq!(ids::local(&content.defs.stage(forced.rounds[0].stage.unwrap()).key), "netbattle-43");
         assert_eq!(forced.sides, live(&content, "exe6", 3, None).unwrap().sides);
         assert!(crate::link_stage(&content, "exe6", "netbattle-100").is_err());
         // Another game's name is none of this game's.
@@ -421,7 +477,7 @@ mod tests {
         let content = crate::testing::exe5_content();
         let m = live(&content, "exe5", 4, None).unwrap();
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
-        assert_eq!(m.arena.game, "exe5");
+        assert_eq!(m.game, "exe5");
         // An EXE5 match has no version: its sides state none, their stats'
         // version byte is 0, and its file has no such key.
         assert!(m.sides.iter().all(|s| s.version(&content).is_none()));

@@ -24,7 +24,7 @@ use nettai_battle::Content;
 use nettai_battle::content::{Board, BoardCell, NaviCustRules};
 use nettai_battle::navicust::{SIZE, Shape, cells};
 use nettai_content_api::NaviCustProgramHandle;
-use nettai_match::{Arena, Side};
+use nettai_match::Side;
 
 /// A cell's size on the screen.
 const CELL: f32 = 46.0;
@@ -197,9 +197,9 @@ fn fits(content: &Content, board: Option<&Board>, parts: &[PlacedProgram], shape
     cells(shape, x as u8, y as u8).all(|c| !taken.contains(&c))
 }
 
-/// Apply an edit to a side of a match on `arena`; whether the match
+/// Apply an edit to a side of a match of `game`; whether the match
 /// changed.
-pub fn update(content: &Content, _arena: &Arena, side: &mut Side, state: &mut State, edit: Edit) -> bool {
+pub fn update(content: &Content, _game: &str, side: &mut Side, state: &mut State, edit: Edit) -> bool {
     let rules = nettai_match::navicust_rules(content).clone();
     let largest = rules.boards.len().saturating_sub(1) as u8;
     match edit {
@@ -777,21 +777,21 @@ mod tests {
         let content = nettai_match::testing::exe6_content();
         let mut m = nettai_match::pick::live(&content, "exe6", 7, None).unwrap();
         let mut state = State::default();
-        let arena = m.arena.clone();
+        let game = m.game.clone();
         let side = &mut m.sides[0];
         let navicust = |side: &Side| navicust_of(&content, side).unwrap().1;
         assert_eq!(navicust_of(&content, side).unwrap().0, 2);
         let program = |name: &str| nettai_match::ids::navicust_program(&content, "exe6", name).unwrap();
         // Held from the list: nothing changes until it is put down.
-        assert!(!update(&content, &arena, side, &mut state, Edit::Hold(program("suprarmr"), 0)));
-        assert!(update(&content, &arena, side, &mut state, Edit::Place(2, 3)));
+        assert!(!update(&content, &game, side, &mut state, Edit::Hold(program("suprarmr"), 0)));
+        assert!(update(&content, &game, side, &mut state, Edit::Place(2, 3)));
         assert!(state.held.is_none());
-        update(&content, &arena, side, &mut state, Edit::Hold(program("hp-50"), 1));
+        update(&content, &game, side, &mut state, Edit::Hold(program("hp-50"), 1));
         // Not over SuprArmr.
-        assert!(!update(&content, &arena, side, &mut state, Edit::Place(2, 3)));
-        assert!(update(&content, &arena, side, &mut state, Edit::Place(4, 2)));
-        update(&content, &arena, side, &mut state, Edit::Hold(program("hp-50"), 1));
-        assert!(update(&content, &arena, side, &mut state, Edit::Place(5, 2)));
+        assert!(!update(&content, &game, side, &mut state, Edit::Place(2, 3)));
+        assert!(update(&content, &game, side, &mut state, Edit::Place(4, 2)));
+        update(&content, &game, side, &mut state, Edit::Hold(program("hp-50"), 1));
+        assert!(update(&content, &game, side, &mut state, Edit::Place(5, 2)));
         let n = navicust(side);
         assert_eq!(n.len(), 3);
         assert_eq!(state.selected, Some(2));
@@ -799,22 +799,22 @@ mod tests {
         assert!(problems.is_empty(), "{problems:?}");
         let side = &mut m.sides[0];
         // Compressing one HP+50 compresses the other (one program, one color).
-        update(&content, &arena, side, &mut state, Edit::Compress(true));
+        update(&content, &game, side, &mut state, Edit::Compress(true));
         let n = navicust(side);
         assert!(n.iter().filter(|p| p.program == program("hp-50")).all(|p| p.compressed));
         // Picked up by a cell it covers (off the grid while held), put back.
         let first = n[0];
-        assert!(update(&content, &arena, side, &mut state, Edit::PickUp(0, first.x, first.y)));
+        assert!(update(&content, &game, side, &mut state, Edit::PickUp(0, first.x, first.y)));
         assert_eq!(navicust(side).len(), 2);
-        assert!(update(&content, &arena, side, &mut state, Edit::PutBack));
+        assert!(update(&content, &game, side, &mut state, Edit::PutBack));
         assert_eq!(navicust(side).first(), Some(&first));
         // Picked up, turned, put down a row lower; then taken off.
-        update(&content, &arena, side, &mut state, Edit::PickUp(0, first.x, first.y));
-        update(&content, &arena, side, &mut state, Edit::Rotate);
-        assert!(update(&content, &arena, side, &mut state, Edit::Place(first.x, first.y + 1)));
+        update(&content, &game, side, &mut state, Edit::PickUp(0, first.x, first.y));
+        update(&content, &game, side, &mut state, Edit::Rotate);
+        assert!(update(&content, &game, side, &mut state, Edit::Place(first.x, first.y + 1)));
         let moved = *navicust(side).last().unwrap();
         assert_eq!((moved.y, moved.rotation), (first.y + 1, 1));
-        update(&content, &arena, side, &mut state, Edit::Remove);
+        update(&content, &game, side, &mut state, Edit::Remove);
         assert_eq!(navicust(side).len(), 2);
         let problems = nettai_match::check_match(&content, &m);
         assert!(problems.is_empty(), "{problems:?}");
