@@ -49,10 +49,25 @@ pub struct Setup {
     /// The recording console's frame counter on the setup's frame.
     pub frame_counter: u16,
     /// Both players' auto battle data as the link exchanged it (0xE0
-    /// bytes each, side 0's first), hex: their auto battle data. Older recordings
-    /// have none.
+    /// bytes each, side 0's first, hex: 0x02034C20, the blocks the send
+    /// shuffled and counted). What the consoles played; the round's setup
+    /// is `auto_battle` and `send_rng2`, which the rules' send turns into
+    /// it. Older recordings have none.
     #[serde(default)]
     pub ai_lists: Option<[String; 2]>,
+    /// Both players' auto battle data as their saves hold it (0xE0 bytes
+    /// each, side 0's first, hex: save +0x554C, before the send), the
+    /// round's setup's `auto_battle_places` and `auto_battle_records`; and
+    /// the RNG2 the send starts from (0x0802C7BE: 84 draws, both consoles
+    /// alike, then the fight's `rng2`), the round's battle RNG, from which
+    /// the rules' send (content/exe5/rules/auto_battle/block.luau) arrives
+    /// at the recorded blocks and `rng2`. Recordings older than these have
+    /// none, and are refused (the verification workspace's
+    /// tools/exe5/convert_send.py states them).
+    #[serde(default)]
+    pub auto_battle: Option<[String; 2]>,
+    #[serde(default)]
+    pub send_rng2: Option<u32>,
     /// Both consoles' emotion window glitches as their window's start reads
     /// them (0x0813F650: with patch cards in the save's list the cards' flag
     /// 0x10C4, else the NaviCust's 0x10C1). Older recordings have none.
@@ -120,32 +135,22 @@ impl NaviCustSetup {
     }
 }
 
-/// A player's auto battle data block as a battle has it (0xE0 bytes,
-/// EXE5's 0x02034C20 by side: the block the other console sent,
-/// `save::AutoBattleBlock` with its count written): the entries in
-/// order, as many of its places as the count at +0x54 says, and its eight
-/// pattern records. An entry names one of the eight; the block's last
-/// eight bytes are 0xFF (nothing writes them, and the AI's read of a
-/// pattern as written, which can run through the records, 0x0802BCD6,
-/// would end there).
-pub fn auto_battle_block(block: &[u8]) -> Result<(Vec<u16>, [crate::save::AutoBattlePattern; crate::save::AUTO_BATTLE_PATTERNS]), String> {
+/// A player's auto battle data block as their save holds it (0xE0 bytes, a
+/// recording's `auto_battle`: `save::AutoBattleBlock`, its count and last
+/// eight bytes left out): its places to the last one that isn't empty, and
+/// its eight pattern records. A pattern entry names one of the eight.
+pub fn saved_auto_battle_block(block: &[u8]) -> Result<(Vec<u16>, [crate::save::AutoBattlePattern; crate::save::AUTO_BATTLE_PATTERNS]), String> {
     use crate::save::{AUTO_BATTLE_EMPTY, AUTO_BATTLE_PATTERN, AUTO_BATTLE_PATTERNS, AutoBattleBlock};
     let read = AutoBattleBlock::read(block)?;
-    let count = u32::from_le_bytes(block[0x54..0x58].try_into().expect("four bytes")) as usize;
-    if count > read.places.len() {
-        return Err(format!("an auto battle data block counts {count} entries, more than {}", read.places.len()));
-    }
-    let entries = read.places[..count].to_vec();
-    for &e in &entries {
+    let used = read.places.iter().rposition(|&p| p != AUTO_BATTLE_EMPTY).map_or(0, |i| i + 1);
+    let places = read.places[..used].to_vec();
+    for &e in &places {
         let i = (e & !AUTO_BATTLE_PATTERN) as usize;
         if e & AUTO_BATTLE_PATTERN != 0 && e != AUTO_BATTLE_EMPTY && i >= AUTO_BATTLE_PATTERNS {
-            return Err(format!("an auto battle data entry names pattern {i}, past the block's {AUTO_BATTLE_PATTERNS}"));
+            return Err(format!("an auto battle data place names pattern {i}, past the block's {AUTO_BATTLE_PATTERNS}"));
         }
     }
-    if block[0xD8..] != [0xFF; 8] {
-        return Err(format!("an auto battle data block's last eight bytes are {:02x?}, not 0xFF: what the AI's read of a pattern would end at", &block[0xD8..]));
-    }
-    Ok((entries, read.patterns))
+    Ok((places, read.patterns))
 }
 
 /// A battle object as the recording has it (EXE6's fields).
@@ -638,9 +643,9 @@ impl Round {
             }
         }
         // The chips of both players' auto battle data.
-        if let Some(lists) = &self.setup.ai_lists {
-            for (side, l) in lists.iter().enumerate() {
-                let (entries, patterns) = auto_battle_block(&unhex(l)?).map_err(|e| format!("side {side}'s auto battle data: {e}"))?;
+        if let Some(blocks) = &self.setup.auto_battle {
+            for (side, l) in blocks.iter().enumerate() {
+                let (entries, patterns) = saved_auto_battle_block(&unhex(l)?).map_err(|e| format!("side {side}'s auto battle data: {e}"))?;
                 let chips = entries
                     .iter()
                     .filter(|&&e| e & 0x8000 == 0 && e != 0)
@@ -785,16 +790,16 @@ impl Round {
                 }
             }
             player.set_fact(content, "patch_cards", &cards_of(side as usize)?)?;
-            // The auto battle data as the console sent it (the rules'
-            // `auto_battle_places` and `auto_battle_records`, the places
-            // sent: nothing for the round to send); none recorded, none.
-            let (places, records) = match &self.setup.ai_lists {
-                Some(lists) => auto_battle_facts(content, compat, &unhex(&lists[side as usize])?)?,
+            // The auto battle data as the save holds it (the rules'
+            // `auto_battle_places` and `auto_battle_records`), which the
+            // rules' send shuffles as the console's did; none recorded,
+            // none.
+            let (places, records) = match &self.setup.auto_battle {
+                Some(blocks) => auto_battle_facts(content, compat, &unhex(&blocks[side as usize])?)?,
                 None => (Vec::new(), Vec::new()),
             };
             player.set_fact(content, "auto_battle_places", &places)?;
             player.set_fact(content, "auto_battle_records", &records)?;
-            player.set_fact(content, "auto_battle_sent", &[Fact::Value(Value::Bool(true))])?;
             Ok(player)
         });
         let [mut p0, mut p1] = players;
@@ -853,7 +858,12 @@ impl Round {
             content: content.hash(),
             settings,
             navi_stats: [stats(0)?, stats(1)?],
-            rng: self.setup.rng2,
+            // (The RNG2 the send starts from: the rules' send draws from it
+            // and leaves the recorded `rng2`.)
+            rng: self.setup.send_rng2.ok_or(
+                "an EXE5 recording without send_rng2 and auto_battle (the RNG2 and the saves' auto battle data before \
+                 the send): convert it with the verification workspace's tools/exe5/convert_send.py",
+            )?,
             local_side: bs[0x0D],
             score: nettai_battle::SetScore { wins: bs[0x18], losses: bs[0x19], round: bs[0x1A], max_combo: bs[0x1B] },
             // (A triple battle's: two rounds after the first.)
@@ -890,13 +900,14 @@ impl Round {
     }
 }
 
-/// A player's auto battle data from the block a recording carries (`auto_battle_block`):
-/// the rules' setup's `auto_battle_places` (the entries the console sent, each
-/// `{ chip }`, `{ pattern }` from 1, `{ zero = true }` or `{}` empty) and
-/// `auto_battle_records` (the eight records in their places, used or not: the
-/// AI's read of a pattern can run on into the ones after it).
+/// A player's auto battle data from the block a recording carries as the
+/// save holds it (`saved_auto_battle_block`): the rules' setup's
+/// `auto_battle_places` (its places, each `{ chip }`, `{ pattern }` from 1,
+/// `{ zero = true }` or `{}` empty) and `auto_battle_records` (the eight
+/// records in their places, used or not: the AI's read of a pattern can
+/// run on into the ones after it).
 fn auto_battle_facts(content: &Content, compat: &Compat, block: &[u8]) -> Result<(Vec<Fact<'static>>, Vec<Fact<'static>>), String> {
-    let (entries, patterns) = auto_battle_block(block)?;
+    let (entries, patterns) = saved_auto_battle_block(block)?;
     let chip = |id: u16| -> Result<Fact<'static>, String> {
         let h = compat
             .chip(id)
