@@ -71,6 +71,14 @@ pub struct LinkPick {
     /// section states stages, which `sections::link` resolves once they
     /// have their handles.)
     pub stages: Vec<nettai_content_api::StageHandle>,
+    /// How many of `stages`, from the first, a set's first round is picked
+    /// among: the pick's count for the match a random match is (a triple
+    /// battle's practice, the effects `nettai_match::MATCH_EFFECTS`), which
+    /// the comm menu passes for the first round. EXE6's goes by the match
+    /// type (a triple battle's 0x60: all of them), EXE5's by practice or not
+    /// (a practice's 0x44: the first 68). The rounds after pick among all of
+    /// `stages` (both games pass the count 0x60 for them).
+    pub first_round_stages: usize,
     /// The backgrounds, by the pick's index (EXE6's `byte_8120A20`, 21
     /// entries, some there twice and so twice as likely; EXE5's 27, each
     /// once). None: a link battle shows its stage's own.
