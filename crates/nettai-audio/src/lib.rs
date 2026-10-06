@@ -78,7 +78,7 @@ mod output;
 pub mod wav;
 
 #[cfg(feature = "playback")]
-pub use output::{AudioOut, Output, OutputError};
+pub use output::{AudioOut, MAX_RATE_SHIFT, Output, OutputError, OutputStats, RESUME_FILL, TARGET_FILL};
 
 /// The music player EXE6's background music plays on.
 pub const MUSIC_PLAYER: PlayerId = PlayerId(31);
