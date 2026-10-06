@@ -146,12 +146,6 @@ pub struct EffectsRules {
     pub retype: RetypeRule,
     /// How a damage word's flag bits decode (`sub_8019F44`).
     pub damage_word: DamageWordRule,
-    /// An obstacle's reaction has EXE5's step for ColonelSoul's army
-    /// (0x080CAB02 from its four reactions, docs/design/exe5-map.md §15.11:
-    /// `kinds::obstacle::Conversion`): one standing where an armed side can
-    /// use it turns into that side's soldier (the role
-    /// `kinds.converted_obstacle`).
-    pub obstacle_conversion: bool,
     /// What holds a screen palette flash (effect object #0x0A,
     /// `kinds::palette_flash`) by its mode.
     pub palette_flash: PaletteFlashRule,

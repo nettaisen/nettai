@@ -527,104 +527,28 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u
 /// the words are the side's soldiers' damage words (0x02034000 + 8 × side,
 /// 0x080CABF8: the sword soldier's, the gun soldier's), which they read as
 /// they strike (0x080CAC06, 0x080CAC12), and which disarming leaves. While
-/// a side is armed, an obstacle of a game whose rules have the step
-/// (`effects.obstacle_conversion`) turns into its soldier ([`conversion_step`]).
+/// a side is armed, an obstacle's reaction asks the rules
+/// (`obstacle_reaction`: EXE5's, which turn it into the side's soldier where
+/// the side can use it; [`conversion_step`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Conversion {
     pub armed: bool,
     pub words: [u32; 2],
 }
 
-/// What EXE5's `object_getPanelParameters` leaves in r2: the address it
-/// calls `_object_getPanelDataOffset` through (0x0800BD1C, Thumb), which
-/// 0x080CAB02 leaves in turn when the sword's soldier answers; the
-/// soldier's element byte comes of it (0x1D).
-const PANEL_LOOKUP_REGISTER: u32 = 0x0800_BD1D;
-
 /// EXE5's step in its four obstacle reactions (0x08018000, 0x08018168,
 /// 0x080182D4 and 0x08018404, after the damage and the crushing hits,
 /// for an obstacle they leave standing): outside the dimming and past its
-/// first action, an obstacle where an armed side can use it (0x080CAB02,
-/// [`conversion_call`]) turns into that side's soldier (0x080CAAE2) and its HP
-/// and max HP go to 0 (a word store), so the reaction breaks it (whether a
-/// soldier came or the pool was full).
+/// first action, while a side is armed, the obstacle's side's rules are
+/// asked (`obstacle_reaction`: EXE5's 0x080CAB02, which turns it into the
+/// armed side's soldier where that side can use it and puts its HP and max
+/// HP to 0, so the reaction breaks it).
 fn conversion_step(b: &mut Battle, r: ObjectRef) {
-    if !b.content.rules().effects.obstacle_conversion
-        || b.is_dimmed()
-        || b.objects.get(r).action == Action::Appear as u8
-    {
+    if b.is_dimmed() || b.objects.get(r).action == Action::Appear as u8 || !b.obstacle_conversion.iter().any(|c| c.armed) {
         return;
     }
-    let PanelPos { x, y } = b.objects.get(r).panel;
-    let Some((gun, side, left)) = conversion_call(b, x, y) else { return };
-    // 0x080CAAE2: attack object #0x30 at the registers (the row, what the
-    // search left, the side), Param1 the soldier; `sub_801155A` gives it
-    // the panel, an element byte of what the search left, a damage word of
-    // 0 (r6), the obstacle's side and flip and the obstacle as its first
-    // related; then the side, and a flip of Param1 ^ 1 (the sword's
-    // soldier faces back toward the side's own area).
-    let kind = b.content.defs.roles().kind(crate::content::KindRole::ConvertedObstacle);
-    let pos = Vec3 { x: y as i32, y: left as i32, z: side as i32 };
-    if let Some(e) = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, pos, [gun, 0, 0, 0]) {
-        crate::behavior::set_state_field(b, e, "ranged", nettai_content_api::Value::Int(gun as i64));
-        let o = b.objects.get_mut(e);
-        o.panel = PanelPos { x, y };
-        o.element = left as u8;
-        o.damage = 0;
-        o.stamina = 0;
-        o.related[0] = Some(r);
-        o.alliance = side;
-        o.flip = gun ^ 1;
-    }
-    let o = b.objects.get_mut(r);
-    o.hp = 0;
-    o.max_hp = 0;
-}
-
-/// 0x080CAB02: whether an obstacle on panel (x, y) stands where an armed
-/// side can use it. On a solid panel of side A, the other side (`side`)
-/// armed: a body of `side`'s enemy on one of the two panels on `side`'s
-/// side of it (0x080CAB5A, stopping off the field) calls the sword's
-/// soldier (0); else one anywhere ahead of it on the row, the way `side`
-/// faces (0x080CABB0, `object_getFirstPanelInDirectionFiltered`), the
-/// gun's (1). The soldier, the side, and what the search left in r2.
-fn conversion_call(b: &Battle, x: u8, y: u8) -> Option<(u8, u8, u32)> {
-    // (Off the field its flags word would be read from the BIOS, whose
-    // protected reads have no bit 0x10: not solid.)
-    let panel = b.field.panel(x, y)?;
-    if panel.flags & pflags::SOLID == 0 {
-        return None;
-    }
-    let side = panel.alliance ^ 1;
-    if !b.obstacle_conversion[side as usize & 1].armed {
-        return None;
-    }
-    // The enemy's bodies (0x080CABA8 and 0x080CABF0 by side), and the way
-    // the side faces (`object_getAllianceDirection`).
-    let enemy = if side == 0 { pflags::BODY_SIDE1 } else { pflags::BODY_SIDE0 };
-    let dir: i16 = if side == 0 { 1 } else { -1 };
-    let at = |px: i16| if (0..=0xFF).contains(&px) { px as u8 } else { 0xFF };
-    let mut px = x as i16;
-    for _ in 0..2 {
-        px -= dir;
-        let f = b.field.flags(at(px), y);
-        if f == 0 {
-            break;
-        }
-        if f & enemy != 0 {
-            return Some((0, side, PANEL_LOOKUP_REGISTER));
-        }
-    }
-    let mut px = x as i16 + dir;
-    loop {
-        if b.field.check(at(px), y, enemy, 0) {
-            return Some((1, side, enemy));
-        }
-        px += dir;
-        if !field::is_valid(at(px), y) {
-            return None;
-        }
-    }
+    let side = b.objects.get(r).alliance;
+    b.rules_obstacle_reaction(side, r);
 }
 
 /// Run a shared entry of an obstacle's action table. The actors' hit

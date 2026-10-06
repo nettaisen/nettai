@@ -1,8 +1,8 @@
 --!strict
 -- ColonelSoul's soldiers (EXE5's attack object #0x30, 0x080CA834; EXE6's ColArmy soldier's number, EXE5's own code):
--- what an obstacle turns into where its side's enemy's ColonelSoul can use it (the obstacle framework's step,
--- 0x080CAB02: the rule `effects.obstacle_conversion` and the role `kinds.converted_obstacle`, docs/design/exe5-map.md
--- §15.11). The engine spawns it on the obstacle's panel for the armed side, `ranged` its Param1:
+-- what an obstacle turns into where its side's enemy's ColonelSoul can use it (the obstacle reactions' step,
+-- 0x080CAB02: the rules' `obstacle_reaction`, `soldier.obstacle_reaction` here, docs/design/exe5-map.md §15.11). It
+-- spawns on the obstacle's panel for the armed side, `ranged` its Param1:
 --
 -- - the sword's soldier (`ranged` 0: an enemy between the obstacle and the side's back; it faces back) draws for 15
 --   ticks and slashes the two panels ahead 6 ticks into the next 24, with the side's first damage word;
@@ -235,6 +235,88 @@ local function init(me: Object)
     me:set_lifecycle("update")
     me.action = if s.ranged == 0 then SWORD else GUN
     tick(me)
+end
+
+-- The panel flags the search reads: a solid panel, and a body of each side on it.
+local SOLID = 0x10
+local BODY = { [0] = 0x0800_0000, [1] = 0x0400_0000 }
+-- What EXE5's `object_getPanelParameters` leaves in r2: the address it calls `_object_getPanelDataOffset` through
+-- (0x0800BD1C, Thumb), which the search leaves in turn when the sword's soldier answers; the soldier's element byte
+-- comes of it (0x1D).
+local PANEL_LOOKUP_REGISTER = 0x0800_BD1D
+
+-- A column the search steps to: one off the field's bytes as 0xFF.
+local function column(px: number): number
+    return if px >= 0 and px <= 0xFF then px else 0xFF
+end
+
+-- 0x080CAB02: whether an obstacle on panel (x, y) stands where an armed side can use it. On a solid panel of side A,
+-- the other side (`side`) armed: a body of `side`'s enemy on one of the two panels on `side`'s side of it
+-- (0x080CAB5A, stopping off the field) calls the sword's soldier (0); else one anywhere ahead of it on the row, the
+-- way `side` faces (0x080CABB0, `object_getFirstPanelInDirectionFiltered`), the gun's (1). The soldier, the side, and
+-- what the search left in r2. (Off the field the flags word would be read from the BIOS, whose protected reads have
+-- no bit 0x10: not solid.)
+local function call(x: number, y: number): (number?, number, number)
+    local panel = field.panel(x, y)
+    if panel == nil or bit32.band(field.flags(x, y), SOLID) == 0 then
+        return nil, 0, 0
+    end
+    local side = bit32.bxor(panel.alliance, 1)
+    if not (obstacle.conversion(side)) then
+        return nil, 0, 0
+    end
+    -- The enemy's bodies (0x080CABA8 and 0x080CABF0 by side), and the way the side faces
+    -- (`object_getAllianceDirection`).
+    local enemy = BODY[bit32.bxor(side, 1)]
+    local dir = if side == 0 then 1 else -1
+    local px = x
+    for _ = 1, 2 do
+        px -= dir
+        local f = field.flags(column(px), y)
+        if f == 0 then
+            break
+        end
+        if bit32.band(f, enemy) ~= 0 then
+            return 0, side, PANEL_LOOKUP_REGISTER
+        end
+    end
+    px = x + dir
+    while true do
+        if field.check(column(px), y, enemy, 0) then
+            return 1, side, enemy
+        end
+        px += dir
+        if not field.valid(column(px), y) then
+            return nil, 0, 0
+        end
+    end
+end
+
+-- The rules' `obstacle_reaction` (EXE5's step in its four obstacle reactions, 0x08018000, 0x08018168, 0x080182D4 and
+-- 0x08018404, for an obstacle they leave standing outside the dimming and past its first action, while a side is
+-- armed): where an armed side can use the obstacle (0x080CAB02), it turns into that side's soldier (0x080CAAE2) and
+-- its HP and max HP go to 0 (a word store), so the reaction breaks it (whether a soldier came or the pool was full).
+function soldier.obstacle_reaction(_side: number, me: Object)
+    local x, y = me.panel_x, me.panel_y
+    local gun, side, left = call(x, y)
+    if gun == nil then
+        return
+    end
+    -- 0x080CAAE2: attack object #0x30 at the registers (the row, what the search left, the side), Param1 the soldier;
+    -- `sub_801155A` gives it the panel, an element byte of what the search left, a damage word of 0 (r6), the
+    -- obstacle's side and flip and the obstacle as its first related; then the side, and a flip of Param1 ^ 1 (the
+    -- sword's soldier faces back toward the side's own area).
+    local o = battle.spawn(soldier.kind, Vec3.new(y, left, side))
+    if o ~= nil then
+        (o.state :: State).ranged = gun
+        o.panel_x, o.panel_y = x, y
+        o.element = bit32.band(left, 0xFF)
+        o.damage, o.stamina = 0, 0
+        o.related1 = me
+        o.alliance = side
+        o.flip = bit32.bxor(gun, 1)
+    end
+    me.hp, me.max_hp = 0, 0
 end
 
 soldier.kind = new.kind {
