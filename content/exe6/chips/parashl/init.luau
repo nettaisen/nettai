@@ -21,7 +21,6 @@ return define.chip {
     hit_param = 10,
     lockout = 20,
     flags = { "has_damage", "library" },
-    library = { number = 333, index = 14, sort = 0 },
     slot_in_limit = 1,
     program_advances = {
         { order = 37, code_run = { chip = ironshl_chips.ironshl1, count = 3 } },

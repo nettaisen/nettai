@@ -17,7 +17,6 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage" },
     extra_flags = { 4, 16 },
-    library = { number = 303, index = 3, sort = 120 },
     slot_in_limit = 1,
     navi = navi.summon { palette = 0 },
 }

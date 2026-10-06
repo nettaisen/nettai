@@ -18,7 +18,6 @@ return define.chip {
     lockout = 20,
     flags = { "has_damage" },
     extra_flags = { 16, 32 },
-    library = { number = 0, index = 70, sort = 0 },
     slot_in_limit = 1,
     dark_substitute = atk_10,
     hp_bug = 4,

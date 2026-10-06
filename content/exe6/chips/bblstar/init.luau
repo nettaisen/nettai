@@ -88,7 +88,6 @@ return {
         element = "aqua", family = "aqua", class = "standard",
         rarity = 0, mb = 30, damage = 60, hit_param = 30, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
-        library = { number = 26, index = 26, sort = 32 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },
@@ -100,7 +99,6 @@ return {
         element = "aqua", family = "aqua", class = "standard",
         rarity = 1, mb = 38, damage = 80, hit_param = 30, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
-        library = { number = 27, index = 27, sort = 33 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },
@@ -112,7 +110,6 @@ return {
         element = "aqua", family = "aqua", class = "standard",
         rarity = 2, mb = 46, damage = 100, hit_param = 30, lockout = 0,
         flags = { "has_damage", "standard_library", "library" },
-        library = { number = 28, index = 28, sort = 34 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.cannon },

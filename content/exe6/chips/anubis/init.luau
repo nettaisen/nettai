@@ -18,7 +18,6 @@ return define.chip {
     hit_param = 0,
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
-    library = { number = 155, index = 155, sort = 13 },
     slot_in_limit = 1,
     dimming = controller.hook(statue.anubis),
 }

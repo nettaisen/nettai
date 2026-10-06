@@ -112,7 +112,6 @@ return define.chip {
     rarity = 0, mb = 14, damage = 0, hit_param = 30, lockout = 0,
     flags = { "standard_library", "library" },
     extra_flags = { "free_slot_in" },
-    library = { number = 185, index = 185, sort = 308 },
     slot_in_limit = 3,
     action = mag_coil { ticks = 0x3C },
 }

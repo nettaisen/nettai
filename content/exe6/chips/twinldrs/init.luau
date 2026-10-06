@@ -19,7 +19,6 @@ return define.chip {
     hit_param = 133,
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
-    library = { number = 348, index = 29, sort = 0 },
     slot_in_limit = 1,
     program_advances = {
         { order = 9, sequence = { protoman_chips.protomn_sp, antinavi, colonel_chips.colonel } },

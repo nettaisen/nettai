@@ -20,7 +20,6 @@ return define.chip {
     hit_param = 158,
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
-    library = { number = 346, index = 27, sort = 0 },
     slot_in_limit = 1,
     program_advances = {
         { order = 12, sequence = { firehit_chips.firehit3, aquandl_chips.aquandl3, elcpuls_chips.elcpuls3, rskyhny_chips.rskyhny3 } },
