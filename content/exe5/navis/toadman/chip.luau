@@ -69,7 +69,6 @@ local function sing(me: Object, s: State)
 end
 
 local action = define.action {
-    id = "s-melody/action",
     state = { timer = "u16", target = "object", wait = "u16", sing = "u16" },
     -- 0x080FCA36
     update = function(me: Object, s: State)

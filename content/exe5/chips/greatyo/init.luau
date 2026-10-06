@@ -36,7 +36,6 @@ return define.chip {
         { order = 56, code_run = { chip = recipe_yoyo, count = 3 } },
     },
     action = throw.action {
-        id = "greatyo/action",
         arm = yoyo.arm,
         attachment = attachment.kind,
         throw = function(me: Object, x: number, y: number, z: number, damage: number): Object?

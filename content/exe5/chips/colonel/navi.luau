@@ -34,7 +34,6 @@ local SOUND_SWING = asset.sound("spin")
 -- What he wears (0x0800EE5E: EXE5's body overlay row 3, its sprite 10-1E, in front at every animation), stepping
 -- even while paused.
 local CAPE = define.identity {
-    id = "colonel-navi",
     class = "navi",
     parts = { body = { sprite = asset.sprite("colonel-cape"), anims = 41 } },
 }

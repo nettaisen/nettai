@@ -23,7 +23,6 @@ return define.chip {
     flags = { "has_damage", "dark", "variable_damage" },
     slot_in_limit = 1,
     action = swords.slash {
-        id = "drksword/action",
         blade = swords.blade,
         blade_anim = swords.blade_anim,
         hit = {

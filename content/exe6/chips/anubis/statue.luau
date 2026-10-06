@@ -20,7 +20,7 @@ local rising_bubble = require("../../objects/rising_bubble")
 local statue = {}
 
 -- The drain's self type (`byte_80CF31C`'s row 0x52).
-local DRAIN_IS = define.collision { id = "anubis/drain", side0 = 0x80001080, side1 = 0x40001080, row_offset = 0x290 }
+local DRAIN_IS = define.collision { side0 = 0x80001080, side1 = 0x40001080, row_offset = 0x290 }
 
 local made = common.make {
     id = "anubis/statue",

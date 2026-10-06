@@ -35,7 +35,7 @@ return define.form {
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
         -- Routine 0x30 (0x0800FA34): DarkCirc (chip 0xBB), the charge table's row 0x30.
-        chaos = chaos.weapon("searchsoul/chaos", darkcirc, { 40, 60, 90, 120, 150, 40 }),
+        chaos = chaos.weapon(darkcirc, { 40, 60, 90, 120, 150, 40 }),
     },
     reset = function(navi: Object)
         reveal.spawn(navi)

@@ -37,7 +37,6 @@ local HP = 150
 local HIT_MOD = 3
 -- NameID 0xD4: actor record 0xD4 (0x08014C94: version 1, AI index 0x21).
 local IDENTITY = define.identity {
-    id = "boy-bomb",
     class = "field_object",
     version = 1,
     ai_index = 0x21,

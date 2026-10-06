@@ -40,7 +40,6 @@ local function count(s: State): boolean
 end
 
 local action = define.action {
-    id = "airforce/action",
     state = { timer = "u16", flight = "object" },
     -- 0x080F0A74
     update = function(me: Object, s: State)

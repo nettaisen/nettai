@@ -41,7 +41,6 @@ local function set_step(me: Object, step: number)
 end
 
 katana.action = define.action {
-    id = "katana/action",
     state = katana.STATE,
     update = function(me: Object, s: State)
         local step = me.step

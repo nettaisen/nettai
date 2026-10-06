@@ -183,9 +183,8 @@ function spshake.spawn(owner: Object, x: number, y: number, element: number, dam
 end
 
 -- A SpShake's action, firing `wave`.
-function spshake.action(id: string, wave: Wave): Action
+function spshake.action(wave: Wave): Action
     return armshot.action {
-        id = id,
         fire = function(me: Object, x: number, y: number, damage: number)
             spshake.spawn(me, x, y, ELEC, damage, wave)
         end,

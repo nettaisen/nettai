@@ -30,7 +30,6 @@ local wideswrd = require("../chips/wideswrd")
 -- (rules/beast's data, which its Cross special reads: a record of
 -- type "cross-special", not a rule section the engine reads.)
 return define.record("cross-special", {
-    id = "cross-special",
     rows = {
         { cannon_chips.cannon, minibomb, wideswrd },
         -- EnergBom.

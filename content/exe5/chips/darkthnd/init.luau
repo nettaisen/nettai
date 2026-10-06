@@ -21,7 +21,6 @@ return define.chip {
     flags = { "has_damage", "dark" },
     slot_in_limit = 1,
     action = thunder.shoot {
-        id = "darkthnd/action",
         ball = { panels = 0x0C, status = statuses.paralyze_90, bug = 0x19 },
     },
 }
