@@ -1023,7 +1023,7 @@ impl CoreApi for Battle {
     }
 
     fn navi_level(&self, side: u8) -> Option<u8> {
-        self.setup.players[side as usize & 1].navi_level
+        Some(self.navi_levels[side as usize & 1]).filter(|&l| l != 0xFF)
     }
 
     fn take_over(&mut self, side: u8, ticks: u16) {

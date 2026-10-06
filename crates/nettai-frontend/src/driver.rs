@@ -153,7 +153,6 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
         let mut player = PlayerSetup {
             folder,
             joypad_phase: 0,
-            navi_level: nettai_match::default_navi_level(content, stats.navi),
             sp_times: Default::default(),
             console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
             rules: Vec::new(),
@@ -707,7 +706,8 @@ mod tests {
             let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
             let folder = folder_of(&content, &[("cannon", 0)]);
             let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 5);
-            setup.players[0].navi_level = level;
+            let stated = level.map_or(nettai_content_api::Value::Nil, |l| nettai_content_api::Value::Int(l as i64));
+            setup.players[0].set_fact(&content, "level", &[nettai_battle::rules::Fact::Value(stated)]).unwrap();
             let mut live = LivePlayer::new(Set::new(content.clone(), setup, [folder, folder]));
             let mut b = live.start();
             play_until(&mut live, &mut b, 3000, |_, _| 0, |b| choosing(b).is_some());

@@ -53,7 +53,8 @@ mod tests {
         let protoman = crate::ids::navi(&content, "exe5", "protoman").unwrap();
         let mut m = crate::pick::live(&content, "exe5", 3, None).unwrap();
         let s = &mut m.sides[0];
-        (s.navi, s.navi_level, s.navicust) = (protoman, Some(3), None);
+        (s.navi, s.navicust) = (protoman, None);
+        s.set_level(&content, Some(3)).unwrap();
         assert_eq!(crate::check::check_match(&content, &m), Vec::<String>::new());
         let text = crate::write(&content, &m);
         assert!(text.contains("navi = \"protoman\"") && text.contains("level = 3") && !text.contains("hp ="), "{text}");
@@ -70,10 +71,10 @@ mod tests {
         let problems = crate::check::check_match(&content, &own);
         assert!(problems.iter().any(|p| p.contains("hp: ProtoMan's HP is its level's")), "{problems:?}");
         assert_eq!(crate::check::round_stats(&content, &own).unwrap()[0].max_hp, 400);
-        m.sides[0].navi_level = Some(7);
+        m.sides[0].set_level(&content, Some(7)).unwrap();
         let problems = crate::check::check_match(&content, &m);
         assert!(problems.iter().any(|p| p.contains("level 7") && p.contains("0 to 6")), "{problems:?}");
-        m.sides[0].navi_level = None;
+        m.sides[0].set_level(&content, None).unwrap();
         let problems = crate::check::check_match(&content, &m);
         assert!(problems.iter().any(|p| p.contains("has no level")), "{problems:?}");
     }

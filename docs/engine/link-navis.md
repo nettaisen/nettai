@@ -47,7 +47,7 @@ gives (`sub_81276E4`: the level's script, §3).
 
 The level reaches a battle in the init exchange: `sub_800B144` writes the level (`sub_8121198`) at +0xC0 of the
 console's block when event 0x163 is set, else 0xFF, and `battle_copyStructsIncludingBattleStats_800b2d8` copies
-each console's to `dword_203CFA0` (nettai: `PlayerSetup::navi_level`). The stats go with it as the save holds them
+each console's to `dword_203CFA0` (nettai: the level fact of EXE6's save system, `PlayerFact::Level`). The stats go with it as the save holds them
 (the block at +0x0C, `sub_801401E(GetCurPETNavi())`; a link battle sets +0x21, the Beast Out counter, to 3).
 
 ## 3. The reload (`reloadCurNaviBaseStats_8120df0`)
@@ -145,7 +145,8 @@ in the internet, each block's HP is cut to its maximum.
 - **MegaMan's level** (a MegaMan received from a navi code): the navicust system's `round_setup` adds the level's
   gains over what his NaviCust made (§4), and the HP is the maximum again; without a NaviCust in the setup his
   stats are as given (a recording's carry them). The editor offers him an optional level (empty: no code).
-- **The level in the setup** (`PlayerSetup::navi_level`, an option, docs/design/rules-in-luau.md S6c): none is
+- **The level in the setup** (EXE6's save system's `level`, a `u8?`, which the engine reads by its role
+  `PlayerFact::Level` into `Battle::navi_levels`): none is
   event 0x163 clear (0xFF in the battle), so EXE6's rules read the flag from it (the custom screen's seal). A link
   navi always has one: a match file without `level` gives a link navi 0 and MegaMan none, and the checks refuse a
   link navi without one and a level past 14.

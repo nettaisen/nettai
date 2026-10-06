@@ -598,8 +598,9 @@ impl Editor {
                     "" if !link_navi => Some(None),
                     t => t.parse::<u8>().ok().map(Some),
                 };
-                if let Some(v) = level {
-                    self.m.sides[s].navi_level = v;
+                if let Some(v) = level
+                    && self.m.sides[s].set_level(&content, v).is_ok()
+                {
                     self.edited();
                 }
                 self.typed.insert((s, "level"), t);

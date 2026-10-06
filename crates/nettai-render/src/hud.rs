@@ -927,7 +927,7 @@ fn beast_count_shown(b: &Battle, side: u8) -> bool {
         1 => false,
         _ => {
             b.fact(side, nettai_battle::content::PlayerFact::BeastOut).and_then(|f| f.flag()) == Some(true)
-                && b.setup.players[side as usize & 1].navi_level.is_none()
+                && b.navi_levels[side as usize & 1] == 0xFF
                 && b.round.flags & battle_flags::OWN_GAUGES == 0
                 && b.setup.settings.effects & effects::RANDOM == 0
         }
