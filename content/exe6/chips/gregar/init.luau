@@ -38,7 +38,6 @@ return define.chip {
     lockout = 0,
     flags = { "dimming", "has_damage" },
     extra_flags = { 16 },
-    library = { number = 312, index = 12, sort = 82 },
     slot_in_limit = 1,
     dimming = controller.hook { rock_damage = 100 },
 }

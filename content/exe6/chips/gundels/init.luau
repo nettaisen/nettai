@@ -22,7 +22,6 @@ return {
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 15, damage = 0, hit_param = 0, lockout = 0,
         flags = { "standard_library", "library" },
-        library = { number = 15, index = 15, sort = 227 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.gundels1 },
@@ -39,7 +38,6 @@ return {
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 30, damage = 0, hit_param = 0, lockout = 0,
         flags = { "standard_library", "library" },
-        library = { number = 16, index = 16, sort = 228 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.gundels1 },
@@ -56,7 +54,6 @@ return {
         element = "null", family = "null", class = "standard",
         rarity = 3, mb = 38, damage = 0, hit_param = 0, lockout = 0,
         flags = { "standard_library", "library" },
-        library = { number = 17, index = 17, sort = 229 },
         slot_in_limit = 3,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.gundels1 },
@@ -77,7 +74,6 @@ return {
         element = "null", family = "null", class = "standard",
         rarity = 4, mb = 80, damage = 0, hit_param = 0, lockout = 0,
         flags = { "library" },
-        library = { number = 201, index = 1, sort = 67 },
         slot_in_limit = 1,
         -- The Beast rush, and its lock-on mode (rules/lockon).
         beast = { lockon = lockon.gundelex },

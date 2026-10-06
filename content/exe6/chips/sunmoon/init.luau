@@ -19,7 +19,6 @@ return define.chip {
     hit_param = 168,
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
-    library = { number = 347, index = 28, sort = 0 },
     slot_in_limit = 1,
     program_advances = { { order = 8, sequence = { meteors, atk, uninstll } } },
     navi = sun.summon,

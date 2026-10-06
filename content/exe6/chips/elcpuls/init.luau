@@ -25,7 +25,6 @@ local elcpuls1 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.elcpuls1 },
-    library = { number = 33, index = 33, sort = 136 },
     slot_in_limit = 3,
     action = action.action {
         id = "elcpuls1/action",
@@ -47,7 +46,6 @@ local elcpuls2 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.elcpuls1 },
-    library = { number = 34, index = 34, sort = 137 },
     slot_in_limit = 3,
     action = action.action {
         id = "elcpuls2/action",
@@ -69,7 +67,6 @@ local elcpuls3 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.elcpuls1 },
-    library = { number = 35, index = 35, sort = 138 },
     slot_in_limit = 3,
     action = action.action {
         id = "elcpuls3/action",
@@ -92,7 +89,6 @@ local destpuls = define.chip {
     lockout = 20,
     flags = { "has_damage", "library" },
     beast = { lockon = lockon.elcpuls1 },
-    library = { number = 334, index = 15, sort = 0 },
     slot_in_limit = 1,
     program_advances = {
         {

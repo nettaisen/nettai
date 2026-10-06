@@ -24,7 +24,6 @@ return define.chip {
         "library",
         "variable_damage",
     },
-    library = { number = 104, index = 104, sort = 323 },
     slot_in_limit = 1,
     dimming = controller.hook(4),
 }

@@ -22,7 +22,6 @@ local ironshl1 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
-    library = { number = 45, index = 45, sort = 245 },
     slot_in_limit = 3,
     action = throw.action { id = "ironshl1/action", shell = { palette = 0, speed = SPEEDS[1], bumps = 1 } },
 }
@@ -40,7 +39,6 @@ local ironshl2 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
-    library = { number = 46, index = 46, sort = 246 },
     slot_in_limit = 3,
     action = throw.action { id = "ironshl2/action", shell = { palette = 1, speed = SPEEDS[2], bumps = 1 } },
 }
@@ -58,7 +56,6 @@ local ironshl3 = define.chip {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     beast = { lockon = lockon.cannon },
-    library = { number = 47, index = 47, sort = 247 },
     slot_in_limit = 3,
     action = throw.action { id = "ironshl3/action", shell = { palette = 2, speed = SPEEDS[3], bumps = 1 } },
 }

@@ -18,7 +18,6 @@ local firehit1 = define.chip {
     lockout = 20,
     flags = { "has_damage", "library" },
     beast = { lockon = lockon.yoyo },
-    library = { number = 105, index = 105, sort = 206 },
     slot_in_limit = 3,
     instant = fist.instant(3),
 }
@@ -36,7 +35,6 @@ local firehit2 = define.chip {
     lockout = 20,
     flags = { "has_damage", "library" },
     beast = { lockon = lockon.yoyo },
-    library = { number = 106, index = 106, sort = 207 },
     slot_in_limit = 3,
     instant = fist.instant(3),
 }
@@ -54,7 +52,6 @@ local firehit3 = define.chip {
     lockout = 20,
     flags = { "has_damage", "library" },
     beast = { lockon = lockon.yoyo },
-    library = { number = 107, index = 107, sort = 208 },
     slot_in_limit = 3,
     instant = fist.instant(3),
 }

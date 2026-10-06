@@ -26,7 +26,6 @@ return define.chip {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
-    library = { number = 81, index = 81, sort = 449 },
     slot_in_limit = 3,
     traits = { "no_chain" },
     action = vari.action {

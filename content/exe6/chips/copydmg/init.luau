@@ -17,7 +17,6 @@ return define.chip {
     rarity = 1, mb = 12, damage = 0, hit_param = 0, lockout = 0,
     flags = { "standard_library", "library" },
     extra_flags = { "free_slot_in" },
-    library = { number = 194, index = 194, sort = 110 },
     slot_in_limit = 3,
     -- The Beast rush, and its lock-on mode (rules/lockon).
     beast = { lockon = lockon.cannon },

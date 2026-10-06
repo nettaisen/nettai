@@ -16,7 +16,6 @@ return define.chip {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "library" },
-    library = { number = 372, index = 0, sort = 0 },
     slot_in_limit = 1,
     action = sonic.actions.curse,
 }

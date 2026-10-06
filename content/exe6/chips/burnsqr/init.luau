@@ -17,7 +17,6 @@ local burnsqr1 = define.chip {
     hit_param = 30,
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
-    library = { number = 108, index = 108, sort = 48 },
     slot_in_limit = 3,
     dimming = controller.hook,
 }
@@ -34,7 +33,6 @@ local burnsqr2 = define.chip {
     hit_param = 30,
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
-    library = { number = 109, index = 109, sort = 49 },
     slot_in_limit = 3,
     dimming = controller.hook,
 }
@@ -51,7 +49,6 @@ local burnsqr3 = define.chip {
     hit_param = 30,
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
-    library = { number = 110, index = 110, sort = 50 },
     slot_in_limit = 3,
     dimming = controller.hook,
 }

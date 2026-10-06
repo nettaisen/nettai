@@ -15,7 +15,6 @@ return define.chip {
     damage = 0,
     hit_param = 0,
     lockout = 20,
-    library = { number = 389, index = 0, sort = 7 },
     slot_in_limit = 1,
     instant = plus.sparkle_alone,
 }
