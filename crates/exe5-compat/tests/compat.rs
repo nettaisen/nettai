@@ -145,3 +145,37 @@ fn a_rounds_setup_names_what_the_content_lacks() {
     let replay = trace::run_round(&round, &content, Compat::exe5());
     assert!(matches!(replay.stopped, Some(Stop::Setup(ref e)) if e.contains("chip cannon")), "{:?}", replay.stopped);
 }
+
+/// What objects keep of a code address their spawner left is the traced
+/// console's ROM's (games.toml): a Z that is the address, a panel that is
+/// its low byte; and ChaosLrd's strike, falling from a Z whose fraction is
+/// his spawner's low half, falls from that ROM's (2026-10-05: copies of the
+/// scenarios on the other three ROMs' consoles).
+#[test]
+fn objects_keep_their_consoles_code_addresses() {
+    use exe5_compat::Version::{Colonel, Protoman};
+    let games = &Compat::exe5().games;
+    let (tc, jb, us) = ((Colonel, false), (Protoman, true), (Protoman, false));
+    // BoyBomb's controller's Z: the dimming hook's address.
+    assert_eq!(games.z(tc, 0x080E_8087), 0x080E_816F);
+    assert_eq!(games.z(jb, 0x080E_8087), 0x080E_7DAB);
+    assert_eq!(games.z(us, 0x080E_8087), 0x080E_8087);
+    assert_eq!(games.z(tc, 0), 0, "any other Z is the content's");
+    // ChaosLrd's Z keeps his spawner's address's low half as its fraction.
+    assert_eq!(games.z(tc, 0x0012_327F), 0x0012_3367);
+    assert_eq!(games.z_offset(tc, "chaoslrd/navi"), 0xE8);
+    // TomahawkSoul's grass: the soul routine's and its dispatch's table's low bytes.
+    assert_eq!(games.panel(tc, "tomahawksoul/grass", [0x99, 0xAC]), [0x91, 0xA4]);
+    assert_eq!(games.panel(tc, "moonbld/blade", [0, 0x7F]), [0, 0x67]);
+    assert_eq!(games.panel(tc, "moonbld/blade", [0, 2]), [0, 2]);
+    // The strike: from the same height, 15 ticks of its own velocity, and once more as it bursts.
+    let fall = |z0: i32, t: i32| z0 + t * (-z0 / 15);
+    let (ours, theirs) = (0x0089_327F, 0x0089_3367);
+    for t in 1..=16 {
+        let z = fall(ours, t);
+        let timer = (15 - t) as u16;
+        assert_eq!(z + games.fall_offset(tc, "chaoslrd/strike", z, timer, 15), fall(theirs, t), "tick {t}");
+        assert_eq!(games.fall_offset(us, "chaoslrd/strike", z, timer, 15), 0);
+    }
+    assert_eq!(games.fall_offset(tc, "chaoslrd/strike", ours, 15, 15), 0, "not falling yet");
+}

@@ -49,7 +49,8 @@ function grass.spawn(navi: Object): Object?
     local o = battle.spawn(grass.kind)
     if o then
         -- (Its panel is the spawner's r0 and r1, which the status reset's dispatch by soul (0x08011B92) leaves: the
-        -- low bytes of this routine's address, 0x08011C99, and of the dispatch's table, 0x08011BAC.)
+        -- low bytes of this routine's address, 0x08011C99, and of the dispatch's table, 0x08011BAC: Team ProtoMan
+        -- US's ROM's, which another ROM has elsewhere: compat/games.toml has the other ROMs'.)
         o.panel_x, o.panel_y = 0x99, 0xAC
         o.alliance = navi.alliance
         o.run_while_paused = true
