@@ -16,14 +16,12 @@ export type State = {
     -- The gun waiting on it, and its flag there (ExtraVars+4 + i).
     gun: Object?,
     slot: number,
-    look: number,
+    -- Its gun's variant: its palette, what it hits as and the bug it carries.
+    variant: CircGunVariant,
     ticks: number,
 }
 
 local ANIM = 1
--- Its hit's bug and argument (`byte_80D68D8`, by its look): look 1's 0x54
--- (argument 0x32).
-local HIT_BUG: { [number]: { number } } = { [0] = { 0, 0 }, [1] = { 0x54, 0x32 } }
 
 
 -- `sub_80D67D2`: on its panel, 8 pixels down and up.
@@ -64,11 +62,7 @@ function shot.make_kind(id: string, look_: CircGunLook): Kind
     -- `sub_80D688C`: hit the panel if it is solid.
     local function hit(me: Object)
         if field.solid(me.panel_x, me.panel_y) then
-            local look = (me.state :: State).look
-            local is, bug = look_.hits[look], HIT_BUG[look]
-            if not is or not bug then
-                error(string.format("CircGun's shot of look %d reads past byte_80D68D8", look))
-            end
+            local v = (me.state :: State).variant
             local h = battle.hitbox(me, {
                 panel_x = me.panel_x,
                 panel_y = me.panel_y,
@@ -77,12 +71,12 @@ function shot.make_kind(id: string, look_: CircGunLook): Kind
                 region = regions.single,
                 hit_effect = look_.spark,
                 target = look_.target,
-                self_type = is,
+                self_type = v.hit,
                 damage = me.damage,
                 stamina = me.stamina,
                 hit_mod = 3,
-                bug = bug[1],
-                bug_arg = bug[2],
+                bug = v.bug or 0,
+                bug_arg = v.bug_arg or 0,
             })
             if h then
                 h.run_while_dimmed = true
@@ -121,7 +115,7 @@ function shot.make_kind(id: string, look_: CircGunLook): Kind
             shot.place(me)
         end
         me.timer = s.ticks
-        sprite.palette = s.look
+        sprite.palette = s.variant.palette
         battle.play_sound(look_.sounds.mark)
         me:set_lifecycle("update")
         tick(me)
@@ -130,7 +124,7 @@ function shot.make_kind(id: string, look_: CircGunLook): Kind
     return new.kind {
         id = id,
         pool = "attack",
-        state = { gun = "object", slot = "u8", look = "u8", ticks = "u8" },
+        state = { gun = "object", slot = "u8", variant = "record:circgun-variant", ticks = "u8" },
         -- `sub_80D67EC`.
         update = function(me: Object)
             local l = me.lifecycle
@@ -148,8 +142,8 @@ function shot.make_kind(id: string, look_: CircGunLook): Kind
 end
 
 -- `sub_80D68E0`: a shot on (x, y) with `element` and the damage word, of
--- `gun`'s side (not its facing), running while dimmed, waiting `ticks`;
--- the gun's flag `slot` is set until it is done.
+-- `gun`'s side (not its facing) and variant, running while dimmed, waiting
+-- `ticks`; the gun's flag `slot` is set until it is done.
 function shot.spawn_kind(
     kind: Kind,
     gun: Object,
@@ -158,7 +152,7 @@ function shot.spawn_kind(
     element: number,
     damage: number,
     ticks: number,
-    look: number,
+    variant: CircGunVariant,
     slot: number
 ): Object?
     local o = battle.spawn(kind)
@@ -170,7 +164,7 @@ function shot.spawn_kind(
     o:set_damage_word(damage)
     o.alliance = gun.alliance
     local s = o.state :: State
-    s.gun, s.slot, s.look, s.ticks = gun, slot, look, ticks
+    s.gun, s.slot, s.variant, s.ticks = gun, slot, variant, ticks
     ;(gun.state :: GunState).shots_out[slot + 1] = 1
     o.run_while_dimmed = true
     return o

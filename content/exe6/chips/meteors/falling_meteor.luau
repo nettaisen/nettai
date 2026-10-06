@@ -15,22 +15,22 @@ local falling_meteor = {}
 falling_meteor.make_kind = common.make_kind
 falling_meteor.spawn_kind = common.spawn_kind
 
--- EXE6's rows 0 to 2, alike: thrown, hitting navis, hit modifier 3; a
+-- EXE6's meteor row (`byte_80CF3AC`'s rows 0 to 2, alike: Meteors drops row
+-- 1, the shower rows 0 and 2): thrown, hitting navis, hit modifier 3; a
 -- shake of 1; the panel left as it is.
-local EXE6_ROW: MeteorRow = { is = collision.thrown, hits = collision.hits_navis, hit_mod = 3, shake = 1, panel = "none" }
+falling_meteor.row = common.row { is = collision.thrown, hits = collision.hits_navis, hit_mod = 3, shake = 1, panel = "none" }
 
 falling_meteor.kind = common.make_kind("meteors/falling-meteor", {
     sprite = asset.sprite("meteor"),
     sounds = { fall = asset.sound("justice-one"), land = asset.sound("hit-bomb-1") },
-    rows = { [0] = EXE6_ROW, [1] = EXE6_ROW, [2] = EXE6_ROW },
     spark = sparks.of_element,
     burst = effects.burst,
     marker = marker.kind,
 })
 
--- EXE6's meteor of row `row`.
+-- EXE6's meteor of `row`.
 function falling_meteor.spawn(
-    row: number,
+    row: MeteorRow,
     owner: Object,
     x: number,
     y: number,
