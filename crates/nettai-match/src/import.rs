@@ -43,16 +43,16 @@ impl Match {
         let game = save_game(file)?;
         let five = if game == exe5_compat::ROOT { Some(crate::import_exe5::read(file)?) } else { None };
         let mut notes = Vec::new();
-        if self.arena.game != game {
+        if self.game != game {
             let seed = self.seed;
             *self = Match::empty(content, game).map_err(|e| format!("an {game} save, but {e}"))?;
             self.seed = seed;
             notes.push(format!("an {game} save: the match is now {game}'s, both sides new"));
         }
-        let arena = self.arena.clone();
+        let game = self.game.clone();
         let s = &mut self.sides[side];
         notes.extend(match five {
-            Some(save) => s.import_exe5_save(content, &arena, &save),
+            Some(save) => s.import_exe5_save(content, &game, &save),
             None => s.import_exe6_save(content, &Save::read(file).expect("read above"))?,
         });
         Ok(notes)
