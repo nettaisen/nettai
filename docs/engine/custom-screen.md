@@ -33,9 +33,9 @@ setup and both players' buttons (rollback netplay):
 
 | Original (per console) | Port |
 |---|---|
-| The local screen reads `eJoypad` (the undelayed joypad); the fight reads the link's input records, which lag it by the link queue (4 frames) | `PlayerTick::held` is the player's buttons this tick. Each player's `Side::joypad` reads them at once; the fight gets them through `link::Link`, `RoundSetup::link_delay` ticks later (4 in the recordings) |
-| The status byte BS+0x11 bit 2 (custom screen open), sent in the link packet; received as BS+0x14/0x15 | `Side::in_custom` per player, carried by the link like the buttons; `RoundState::remote_status` is what arrives |
-| The hand, NaviStats and transform record sent in 50 link words; committed when both magic words are in | `Side::sent` (the result and the tick its last word arrives); the fight resumes when both have arrived |
+| The local screen reads `eJoypad` (the undelayed joypad); the fight reads the link's input records, which lag it by the link queue (4 frames) | `PlayerTick::held` is the player's buttons this tick, which `Side::joypad` and the fight both read at once: the engine has no link. A recording's replay feeds what the original's fight and screen saw (battle-flow.md §6.1, `Round::fed`) |
+| The status byte BS+0x11 bit 2 (custom screen open), sent in the link packet; received as BS+0x14/0x15 | `Side::in_custom` per player; `RoundState::remote_status` is it, at once (in a recording it arrives the cable's delay later: a known difference on a screen's opening) |
+| The hand, NaviStats and transform record sent in 50 link words; committed when both magic words are in | `Side::sent` (the result and the tick its last word arrives, 50 after it is sent); the fight resumes when both have arrived |
 | The folder shuffle at the round's init with the console's own RNG1 | `BattleFolder::shuffled` with the RNG it's given; `RoundSetup::players[p].folder` is the shuffled folder |
 | Each console's RNG1, which ChpShufl's re-deal draws from | `Battle::consoles[p]` (`crate::console`): each player's console RNG, seeded from `PlayerSetup::console` and advanced as that console's is (§8) |
 | Save data: owned Crosses, Beast Out unlocked, game version | EXE6's rules' setup (`PlayerSetup::rules`; `exe6_compat::Unlocks` writes and reads them); event flag 0x163 is the save module's navi code level (`level`, which EXE6's rules read: `exe6.navi_level`) |
@@ -551,7 +551,7 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
 - Matches recorded by Tango's first netplay engine (2022) ran each console alone, with no link cable: each tick
   the console found both players' packets in its receive buffers a tick after they were built. Their traces have
   both consoles' folders like the rest, and a `link_delay`
-  of 1 in the setup; every round of them matches at that delay (`RoundSetup::link_delay`), and none at the
+  of 1 in the setup; every round of them matches at that delay (their replay's cable), and none at the
   cable's 4.
 
 ## 8. Not ported or not verified

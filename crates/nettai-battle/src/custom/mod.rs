@@ -5,9 +5,9 @@
 //!
 //! In the original each console runs only its own player's screen and
 //! receives the other's result over the link. Here both screens run inside
-//! the simulation, each driven by its player's joypad, and the link is
-//! simulated too: a result arrives a fixed number of ticks after it is
-//! sent, so the fight resumes on the same tick as in the original. See
+//! the simulation, each driven by its player's joypad, and a result
+//! arrives once its words have gone over, one a tick, so the fight resumes
+//! when the original's would have over a link that delivered at once. See
 //! docs/engine/custom-screen.md.
 
 pub mod builder;
@@ -163,10 +163,9 @@ pub struct Context<'a> {
     pub random_battle: bool,
     /// A netbattle's last turns (`sub_800A97A`; presentation).
     pub late_turns: bool,
-    /// The tick, and the link's latency: a result sent now arrives
-    /// `50 + link_delay` ticks later (50 words, one a tick).
+    /// The tick: a result sent now arrives 50 ticks later (50 words, one
+    /// a tick).
     pub now: u32,
-    pub link_delay: u8,
 }
 
 /// What a player's custom screen asks its side's rules
@@ -340,7 +339,7 @@ impl Side {
                     builder::count_classes(h, &mut self.class_uses, ctx.library);
                 }
                 let result = CustomResult { hand, navi_stats: ctx.stats, transform };
-                self.sent = Some(Sent { result, sent_at: ctx.now, arrives: ctx.now + ctx.library.result_words() + ctx.link_delay as u32 });
+                self.sent = Some(Sent { result, sent_at: ctx.now, arrives: ctx.now + ctx.library.result_words() });
             }
             None => {}
         }
@@ -451,7 +450,6 @@ impl Battle {
             random_battle: self.setup.settings.effects & effects::RANDOM != 0,
             late_turns: self.late_turns(),
             now: self.round.ticks,
-            link_delay: self.link.delay,
         }
     }
 
