@@ -35,8 +35,9 @@ pub enum ActionVars {
     FormChange(transform::Vars),
     Instant(instant::Vars),
     NaviSwitch(navi_switch::Vars),
-    /// A content action's declared state (see `content`).
-    Content(nettai_content_api::ContentState),
+    /// A content action's declared state, of this layout: its values are
+    /// the actor's block in the actors' arena (`Actors::action_state`).
+    Content(nettai_content_api::StateId),
 }
 
 /// Run attack `action` for the player `r` this tick.

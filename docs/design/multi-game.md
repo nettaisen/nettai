@@ -373,8 +373,8 @@ Chip trading and wagers are menu features, out of scope.
   three quarters of it. In Luau, a VM step costs about 11 ns, a library call 50 to 90 ns, a field read or write
   160 to 190 ns, a field that makes a handle or a `Vec3` about 300 ns (scripting.md §7); the same in Rust is a
   nanosecond or two.
-- **The content model.** Content is stateless; its state is typed fields the engine stores (64 bytes an object or
-  action); "content declares no global state of its own"; the engine holds no original numbers.
+- **The content model.** Content is stateless; its state is typed fields the engine stores (a block of its
+  schema's size per object or action); "content declares no global state of its own"; the engine holds no original numbers.
 
 ### 3.2 (a) One Rust core, and a Rust ruleset crate per game
 

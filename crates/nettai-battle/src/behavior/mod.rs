@@ -297,10 +297,10 @@ pub fn spawn_kind(b: &mut Battle, key: &str, pos: Vec3) -> Option<ObjectRef> {
 /// Set an enum state field of a content object by variant name.
 pub fn set_state_variant(b: &mut Battle, r: ObjectRef, name: &str, variant: &str) {
     let content = b.content.clone();
-    let Vars::Content(state) = &b.objects.get(r).vars else {
+    let Vars::Content(id) = b.objects.get(r).vars else {
         panic!("{r:?} is not a content object");
     };
-    let schema = content.defs.schema(state.id());
+    let schema = content.defs.schema(id);
     let i = schema.index_of(name).unwrap_or_else(|| panic!("content state has no field `{name}`"));
     let nettai_content_api::FieldType::Enum(names) = &schema.field(i).ty else {
         panic!("content state field `{name}` is not an enum");
@@ -316,13 +316,13 @@ pub fn has_state_field(b: &Battle, r: ObjectRef, name: &str) -> bool {
     if b.objects.get(r).flags & crate::object::flags::ACTIVE == 0 {
         return false;
     }
-    let Vars::Content(state) = &b.objects.get(r).vars else { return false };
-    b.content.defs.schema(state.id()).index_of(name).is_some()
+    let Vars::Content(id) = b.objects.get(r).vars else { return false };
+    b.content.defs.schema(id).index_of(name).is_some()
 }
 
 pub fn set_state_field(b: &mut Battle, r: ObjectRef, name: &str, v: Value) {
     let content = b.content.clone();
-    let Vars::Content(state) = &mut b.objects.get_mut(r).vars else {
+    let Some(mut state) = b.objects.state_mut(r) else {
         panic!("{r:?} is not a content object");
     };
     let schema = content.defs.schema(state.id());
