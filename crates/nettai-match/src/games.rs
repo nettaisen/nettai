@@ -787,3 +787,23 @@ fn exe5s_rules_send_the_auto_battle_data() {
     }
     assert_eq!(b.rng, rng, "two sides' 84 draws");
 }
+
+/// The stages a match may name are its rules' (`link_pick.match_stages`):
+/// each game's link battle stages, those with the link effect that aren't
+/// the random battle's (EXE5's that its pick never reaches among them), in
+/// handle order.
+#[test]
+fn a_match_names_its_rules_link_battle_stages() {
+    use nettai_battle::setup::effects;
+    for (content, game, n) in [(exe6_content(), "exe6", 96), (exe5_content(), "exe5", 94)] {
+        let by_effects: Vec<nettai_content_api::StageHandle> = (0..content.defs.stages.len() as u16)
+            .map(nettai_content_api::StageHandle)
+            .filter(|&s| {
+                let e = content.stage(s).effects;
+                e & effects::LINK != 0 && e & effects::RANDOM == 0
+            })
+            .collect();
+        assert_eq!(crate::link_battle_stages(&content, game), by_effects, "{game}");
+        assert_eq!(by_effects.len(), n, "{game}");
+    }
+}
