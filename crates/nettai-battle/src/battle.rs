@@ -2,7 +2,7 @@
 //! state machines (intro, banner, custom screen, fighting, results, end).
 //! See docs/engine/battle-flow.md.
 
-use nettai_content_api::SystemHook;
+use nettai_content_api::RulesHook;
 use crate::actor::{ActorId, Actors};
 use crate::collision::Collision;
 use crate::behavior::Behaviors;
@@ -545,8 +545,8 @@ pub struct SideState {
     pub gauge: u16,
     /// +0x50: the SELECT special runs (`sub_802E4E4`).
     pub select_special: u8,
-    /// +0x54: a system's takeover of the side's navi runs (EXE6's Cross
-    /// special, DarkInvs' auto-battle): idle asks the side's systems
+    /// +0x54: the rules' takeover of the side's navi runs (EXE6's Cross
+    /// special, DarkInvs' auto-battle): idle asks the side's rules
     /// (`takeover`) instead of reading the buttons.
     pub takeover: u8,
     /// +2: ticks the SELECT special holds the navi (0xB4 when reset,
@@ -781,12 +781,12 @@ impl Battle {
                 b.stats[side as usize].version = place;
             }
         }
-        // Each side's systems set the round up before anything reads the
-        // side's stats (EXE6's save system builds them from what the save
+        // Each side's rules set the round up before anything reads the
+        // side's stats (EXE6's save part builds them from what the save
         // brings, its NaviCust compiles into them and its patch cards change
         // them); the battle-start copy of the stats (`reserves`) is of the
         // stats after them.
-        b.notify_systems(nettai_content_api::SystemHook::RoundSetup);
+        b.notify_rules(nettai_content_api::RulesHook::RoundSetup);
         b.reserves = b.stats;
         // Then what the content gives each side for the round (its navi's
         // and the chips' functions of the side: what its level gives it).
@@ -1186,7 +1186,7 @@ impl Battle {
             }
             crate::kinds::intro::spawn(self);
             self.spawn_actors();
-            self.notify_systems(nettai_content_api::SystemHook::RoundStart);
+            self.notify_rules(nettai_content_api::RulesHook::RoundStart);
             // Reward-chip pick: draws once; netbattle navis have no rewards.
             self.rng.next_positive();
             self.paused = true;
@@ -1324,7 +1324,7 @@ impl Battle {
         // `sub_8009338`: each side's rules, for a side with its navi.
         for side in 0..2 {
             if self.player_actor(side).is_some() {
-                self.notify_side(side, SystemHook::CustomClosed);
+                self.notify_side(side, RulesHook::CustomClosed);
             }
         }
         self.custom.committed = false;
@@ -1602,11 +1602,11 @@ impl Battle {
             self.fight.sub = 4;
             return;
         }
-        // The turn starts: each side's rules (EXE6's beast system spends a
+        // The turn starts: each side's rules (EXE6's beast part spends a
         // turn in Beast Out, `sub_8015A38`).
         for side in 0..2u8 {
             if self.player(side).is_some() {
-                self.notify_side(side, SystemHook::TurnStarted);
+                self.notify_side(side, RulesHook::TurnStarted);
             }
         }
         self.fight.state = fight::START_BANNER;
@@ -1764,10 +1764,10 @@ impl Battle {
             if self.fight.init == 0 {
                 self.start_custom_reversion();
                 // Each side's rules, for a side with its navi (EXE6's beast
-                // system: a Beast Out check comes due, `sub_8015A16`).
+                // part: a Beast Out check comes due, `sub_8015A16`).
                 for side in 0..2u8 {
                     if self.player_actor(side).is_some() {
-                        self.notify_side(side, SystemHook::CustomRequested);
+                        self.notify_side(side, RulesHook::CustomRequested);
                     }
                 }
                 self.fight.init = 4;

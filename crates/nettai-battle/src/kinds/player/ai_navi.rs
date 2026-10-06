@@ -6,22 +6,21 @@
 //! and `sub_80F2354`'s family), its reactions and attacks the player's.
 //! It is on its side's list of alive actors but not counted: neither its
 //! coming nor its deletion changes how many navis the side has, so the
-//! round goes on and ends with the side's player. No input reaches it: a
-//! system of its summoner's side drives it (its `controller`, with the
-//! navi's own state, the system's `navi_state`).
+//! round goes on and ends with the side's player. No input reaches it: the
+//! rules of its summoner's side drive it (their `controller`, with the
+//! navi's own state, their `navi_state`).
 
 use super::{ai, ai_mut, face_toward, intake, panel_coordinates, set_flag1, status, NaviAction};
 use crate::actor::ActorType;
 use crate::battle::Battle;
 use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
-use nettai_content_api::{IdentityHandle, SystemHandle};
+use nettai_content_api::IdentityHandle;
 
-/// Who drives a navi no player controls: a system of a side's ruleset (its
-/// place there).
+/// Who drives a navi no player controls: the rules of a side (their
+/// `controller` and `navi_state`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Controller {
     pub side: u8,
-    pub slot: u8,
 }
 
 /// The navi type's palette by actor record version (`sub_800F334`'s
@@ -30,8 +29,8 @@ const PALETTE_BY_VERSION: [u8; 8] = [0, 0, 0, 0, 3, 1, 0, 0];
 
 /// EXE5's 0x08006AAE (EXE6's `sub_80076A0` with its "not counted" flag):
 /// the navi `identity` (its actor record of type navi, its `body`) comes
-/// onto (x, y) for `side`, `summoner`'s doing, driven by `system` (of the
-/// summoner's side's ruleset, else of `side`'s). None when the object or
+/// onto (x, y) for `side`, `summoner`'s doing, driven by the rules (the
+/// summoner's side's, else `side`'s). None when the object or
 /// actor pools or the side's list of alive actors (four slots) are full.
 pub(crate) fn spawn(
     b: &mut Battle,
@@ -39,7 +38,6 @@ pub(crate) fn spawn(
     panel: PanelPos,
     side: u8,
     summoner: Option<ObjectRef>,
-    system: SystemHandle,
 ) -> Result<Option<ObjectRef>, String> {
     let content = b.content.clone();
     let id = content.identity(Some(identity));
@@ -49,16 +47,13 @@ pub(crate) fn spawn(
     if id.record.actor_type != ActorType::Navi {
         return Err(format!("identity {} is no navi's (its actor type is {:?})", id.key, id.record.actor_type));
     }
-    // The driving system's place in its side's ruleset, and the navi's state.
+    // The driving rules' side, and the navi's state.
     let ruling_side = summoner.map_or(side, |s| b.objects.get(s).alliance) & 1;
-    let Some((_, slot)) = b.system_slot(ruling_side, system) else {
-        return Err(format!(
-            "system {} drives no navi for side {ruling_side}: its ruleset hasn't it",
-            content.defs.system(system).key
-        ));
-    };
-    let Some(navi_state) = content.defs.system(system).navi_state else {
-        return Err(format!("system {} has no `navi_state`: it drives no navi", content.defs.system(system).key));
+    if !b.has_rules(ruling_side) {
+        return Err(format!("side {ruling_side} plays by no rules: none drives a navi for it"));
+    }
+    let Some(navi_state) = content.defs.rules().and_then(|r| r.navi_state) else {
+        return Err("the rules have no `navi_state`: they drive no navi".into());
     };
     let (x, y) = panel_coordinates(panel.x, panel.y);
     let Some(r) = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Player, Vec3 { x, y, z: 0 }, [0; 4]) else {
@@ -98,7 +93,7 @@ pub(crate) fn spawn(
     ad.ai_index = id.record.ai_index;
     ad.identity = Some(identity);
     ad.summoner = summoner;
-    ad.controller = Some(Controller { side: ruling_side, slot });
+    ad.controller = Some(Controller { side: ruling_side });
     Ok(Some(r))
 }
 
@@ -179,7 +174,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
 
 /// EXE5's 0x080F224C: its hits (0x080F22E8's entry: the navi intake,
 /// 0x08017688), its damage, reactions and action (`sub_801AF44`), its
-/// driver's tick (0x080F23FC's entry: the side's systems' `navi_tick`), its
+/// driver's tick (0x080F23FC's entry: the side's rules' `navi_tick`), its
 /// chip lockout running down, the hit statistics (0x080F2624), its
 /// collision presented.
 fn tick(b: &mut Battle, r: ObjectRef) {
@@ -187,7 +182,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     status::update(b, r);
     if ai(b, r).ticked {
         let side = ai(b, r).controller.map_or(b.objects.get(r).alliance, |c| c.side);
-        b.systems_navi_tick(side, r);
+        b.rules_navi_tick(side, r);
     }
     let a = ai_mut(b, r);
     a.lockout = a.lockout.saturating_sub(1);
@@ -233,7 +228,7 @@ fn count_hit(b: &mut Battle, side: u8, i: usize) {
 /// its driver decides all of it.
 pub(super) fn idle(b: &mut Battle, r: ObjectRef) {
     if let Some(c) = ai(b, r).controller {
-        b.systems_controller_at(c.side, c.slot, r);
+        b.rules_controller_answer(c.side, r);
     }
 }
 

@@ -1,7 +1,7 @@
 --!strict
 -- A team navi's damage by its side's level (0x0800EBC4): the entry of one of the damage rows (0x0801D74F, seven
 -- entries a row) at the level word the init exchange gave the side (0x0800EBD8 reads it; 0x0800EBE0 counts it from the
--- save's story flags, 0x300 on, up to 6): EXE5's save system's `level` (exe5.navi_level), which the engine knows
+-- save's story flags, 0x300 on, up to 6): EXE5's save part's `level` (exe5.navi_level), which the engine knows
 -- nothing of. A team navi's weapons take their damage from a row as they fire (`damage`); its own chip's damage is a
 -- row too (the chips' damage formulas 50 on, 0x0800EAF8: the chip's `damage = navi_level.row({ ... })`, a function of
 -- the side, which the round's setup asks once for each side).

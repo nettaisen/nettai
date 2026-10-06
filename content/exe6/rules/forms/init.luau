@@ -16,7 +16,7 @@ local forms = {}
 export type State = {
     -- `byte_203EAE0` +2: the navi went Beast Out this battle (a navi that
     -- did not gets a turn back).
-    beast_out_used: boolean,
+    went_beast_out: boolean,
     -- `byte_203EAE0` +0xB: the navi crossed this battle (the busting level).
     crossed: boolean,
 }
@@ -28,9 +28,8 @@ forms.action = define.action {
     update = change.update,
 }
 
-forms.system = define.system {
-    id = "forms",
-    state = { beast_out_used = "bool", crossed = "bool" },
+forms.part = {
+    state = { went_beast_out = "bool", crossed = "bool" },
     -- What EXE6's forms say of themselves (docs/design/rules-in-luau.md §7.5;
     -- kind.luau reads the kind): their kind (every form but the base form
     -- names one), the navi a Cross (and one in Beast Out) is made with, and

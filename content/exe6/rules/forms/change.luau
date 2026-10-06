@@ -29,8 +29,8 @@ export type State = {
 
 export type Sequence = "cross" | "beast_out" | "cross_beast" | "beast_cross" | "beast_over"
 
--- The forms system's state (system.luau): what a change notes of the round.
-type Record = { beast_out_used: boolean, crossed: boolean }
+-- The forms part's state (init.luau): what a change notes of the round.
+type Record = { went_beast_out: boolean, crossed: boolean }
 
 -- The sounds it plays.
 local FORM_CHANGE = asset.sound("form-change")
@@ -179,8 +179,8 @@ local function vanish(me: Object, s: State, seq: Sequence, target: FormDef)
         if spawned then
             me.pos = me.pos + Vec3.new(0, 0xC0_0000, 0)
             -- `sub_800AB2E`
-            local record = system.state() :: Record
-            record.beast_out_used = true
+            local record = rules.state() :: Record
+            record.went_beast_out = true
             -- The roar is Gregar's for the Gregar beasts and Falzar's
             -- otherwise; the cameras shake at magnitude 2 (`sub_80302B6`),
             -- 60 ticks (75 for Beast Over).
@@ -360,14 +360,14 @@ local function settle(me: Object, s: State, seq: Sequence)
     end
     if seq == "cross" or seq == "cross_beast" or seq == "beast_cross" then
         -- `sub_800AB2E`
-        local record = system.state() :: Record
+        local record = rules.state() :: Record
         record.crossed = true
     end
     finish(me)
 end
 
 -- One paused tick of the change: the action's update. (What it notes of
--- the round is the forms system's state, system.luau.)
+-- the round is the forms part's state, init.luau.)
 function change.update(me: Object, s: State)
     local target = me:form_change_target()
     if target == nil then

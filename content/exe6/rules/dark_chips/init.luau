@@ -6,10 +6,10 @@
 -- Atk+10 for the five dark chips), with its own record, damage and bonus.
 -- Using a dark chip worsens its user's HP bug by its `hp_bug`, to 7 at most
 -- (`sub_800B79A`: DrkSword +2, DarkThnd +1, DrkRecov to 7, DarkPlus +4). The
--- two fields are this system's extension of chips (docs/design/rules-in-luau.md
+-- two fields are this part's extension of chips (docs/design/rules-in-luau.md
 -- §7.5): the engine checks them and reads neither.
 --
--- The bug frags are this system's too (`dword_203F7E0`): the player brings
+-- The bug frags are this part's too (`dword_203F7E0`): the player brings
 -- the save's (the setup's `bug_frags`, which the init exchange shares), and
 -- the battle spends them from its state. Chips that spend one (the navi
 -- boosts' charged shots) ask EXE6's API (rules/api.luau: `exe6.bug_frags`,
@@ -20,8 +20,7 @@ export type State = { bug_frags: number }
 -- The HP bug's highest level (NaviStats+0x18).
 local MAX_HP_BUG = 7
 
-return define.system {
-    id = "dark-chips",
+return {
     setup = { bug_frags = "u32" },
     state = { bug_frags = "u32" },
     extends = {
@@ -33,8 +32,8 @@ return define.system {
     hooks = {
         -- The round starts with the bug frags the player brought.
         round_setup = function(_side: number)
-            local s = system.state() :: State
-            s.bug_frags = (system.setup() :: State).bug_frags
+            local s = rules.state() :: State
+            s.bug_frags = (rules.setup() :: State).bug_frags
         end,
         -- `sub_8010D58`: a bug frag spent, or the substitute.
         chip_substitute = function(_side: number, _navi: Object, chip: Chip): Chip?
@@ -42,7 +41,7 @@ return define.system {
             if substitute == nil then
                 return nil
             end
-            local s = system.state() :: State
+            local s = rules.state() :: State
             if s.bug_frags >= 1 then
                 -- sub_800F4B2 (the local player's save loses one too).
                 s.bug_frags -= 1

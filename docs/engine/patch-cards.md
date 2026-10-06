@@ -198,7 +198,7 @@ address as its Z (compared by whole pixels, kinds.toml `scratch_z_fraction`).
 
 **The cards are the engine's; their effects are EXE6's rules'.** Patch cards are in BN4, EXE5 (JP) and EXE6 (JP), so a
 card and a player's cards are engine concepts (the user's decision, 2026-10-02); what an effect does is each game's
-rule, EXE6's patch-cards system (content/exe6/rules/patch_cards/init.luau, in content/exe6/rules/ruleset.luau).
+rule, EXE6's patch cards part (content/exe6/rules/patch_cards/init.luau, in content/exe6/rules/init.luau).
 
 - **The cards** are definitions of their own (`define.patch_card`, `Registry::PatchCard`, `PatchCardHandle`,
   `Content::patch_card`): content/exe6/patch_cards/<name>/card.luau, keyed by name (`canodumb`) as chips are, compat
@@ -210,10 +210,10 @@ rule, EXE6's patch-cards system (content/exe6/rules/patch_cards/init.luau, in co
   (projectile variants), barriers and gauges are named by definition, never by number. The name is the locales'.
 - **A player's installed cards** are their setup's (`PlayerSetup::patch_cards`: card handles in the list's order,
   each switched on or off, at most 32, EXE6's save list's room; its 80 MB allow 16), which the setup exchange and
-  the digest cover as the rest of the setup. The EXE6 system reads them with `battle.patch_cards(side)`
+  the digest cover as the rest of the setup. The EXE6 part reads them with `battle.patch_cards(side)`
   (`{ card, enabled }` each). exe6-compat's `codec::patch_cards` makes them from a save's or trace's card list,
   the frontend from each side's `patch_cards` in the match file.
-- **The application** is the system's `round_setup` hook: once per side as the round is set up (`Battle::new`),
+- **The application** is the part's `round_setup` hook: once per side as the round is set up (`Battle::new`),
   before anything reads the side's stats. It is §1.2 steps 2 to 7 over the side's stats (`battle.navi(side)`):
   the slots seeded from the stats, each switched-on card's effects in the kinds' order, the clamps, the copy
   (BugStop holding back the bug slots), ChpShufl turning NumbrOpn off, MaxHP and HP. With cards installed it
@@ -278,7 +278,7 @@ Ported, and reached by no card (docs/engine/unverified.md):
   magnet, holy, poison and normal panels (0x86, 0x89 to 0x8C), and ChipRecovery's second id (0x7C): the same code
   as the effects the cards have, with other values;
 - the link navi's glitch: the original leaves flag 0x1723 as the last application with MegaMan left it, which a
-  save holds; the system counts the link navi's stats' bugs, which agrees with a save whose flag is clear (the
+  save holds; the part counts the link navi's stats' bugs, which agrees with a save whose flag is clear (the
   chip lab's).
 
 Effects 0x9B to 0xA9 (OilBody, Fish, Battery, Jungle, Search, the Crosses' names) write slots the copy never

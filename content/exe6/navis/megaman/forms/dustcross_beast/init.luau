@@ -40,7 +40,7 @@ return define.form {
     -- The target marker shows, its afterimages stay, and a Null chip's A charge times by the
     -- alternative routine (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`).
     traits = { "special_holds_buster", "shows_target_marker", "afterimages_stay", "alt_charge_time" },
-    -- The custom screen has the scrap button (the cross system's, `sub_8027F10`).
+    -- The custom screen has the scrap button (the cross part's, `sub_8027F10`).
     scrap_button = true,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 22 },

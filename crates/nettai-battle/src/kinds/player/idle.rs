@@ -76,10 +76,10 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize & 1;
     b.chip_hud[side].window = super::input::chips_enabled(b, r);
     phase_timer(b, r);
-    // A controlled form (EXE6's Beast Over): the side's systems' controller
+    // A controlled form (EXE6's Beast Over): the side's rules' controller
     // decides (`sub_802D322`, the berserk).
     if form_of(b, r).traits.has(crate::content::FormTraits::CONTROLLED) {
-        match b.systems_controller(side as u8, r) {
+        match b.rules_controller(side as u8, r) {
             // A chip's use started: the hand's (1), or the attack's own (4).
             1 => {
                 let chip = super::next_chip(b, r);
@@ -106,10 +106,10 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     if b.sides[side].select_special != 0 {
         return select_special(b, r);
     }
-    // A system's takeover (EXE6's Cross special, `sub_802D4C6`): the side's
+    // The rules' takeover (EXE6's Cross special, `sub_802D4C6`): the side's
     // systems' `takeover` decides, and ends it.
     if b.sides[side].takeover != 0 {
-        match b.systems_takeover(side as u8, r) {
+        match b.rules_takeover(side as u8, r) {
             // A chip's use started: the hand's (1), or the attack's own (4).
             1 => {
                 let chip = super::next_chip(b, r);
@@ -175,11 +175,11 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     if let Some(chip) = super::chip_use::use_chip(b, r) {
         return after_chip(b, r, chip);
     }
-    // EXE5's no-charge drive (0x080F03E4): the side's systems take the step
+    // EXE5's no-charge drive (0x080F03E4): the side's rules take the step
     // a navi with the no-charge state would take (DarkInvs: EXE5's
     // auto battle AI, 0x0802B4AC), and reset their drive's state for one
-    // without it (0x0802C03A); a system that answers has decided.
-    if b.game_rules().intake.no_charge_drive && b.systems_controller_answer(side as u8, r).is_some() {
+    // without it (0x0802C03A); a part that answers has decided.
+    if b.game_rules().intake.no_charge_drive && b.rules_controller_answer(side as u8, r).is_some() {
         return;
     }
     let dir = held_direction(b, r);
@@ -243,12 +243,12 @@ fn start_specials(b: &mut Battle, r: ObjectRef) {
         b.sides[side].select_special = 1;
         clear_special_selection(b, r);
     }
-    // A takeover asked for (EXE6's Cross special): the side's systems start
+    // A takeover asked for (EXE6's Cross special): the side's rules start
     // it (`takeover_requested`).
     if ai(b, r).requests & request::TAKEOVER != 0 {
         ai_mut(b, r).requests &= !request::TAKEOVER;
         clear_special_selection(b, r);
-        b.systems_takeover_requested(side as u8, r);
+        b.rules_takeover_requested(side as u8, r);
     }
 }
 

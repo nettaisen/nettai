@@ -19,9 +19,9 @@ local controller = {}
 -- The drive's ticks (0x080E231A).
 local DRIVE = 0x258
 
--- 0x0802C03A and 0x0802C110 on the user: the drive's state from the start (the auto-battle system's; the idle's
+-- 0x0802C03A and 0x0802C110 on the user: the drive's state from the start (the auto battle part's; the idle's
 -- reset, 0x0802C03A each idle without the drive, has left it so: nothing writes it before the drive's first step,
--- where the system starts it over on finding the drive new), the timer, the AI on (AIData +0xF0), the no-charge
+-- where the part starts it over on finding the drive new), the timer, the AI on (AIData +0xF0), the no-charge
 -- state (0x200); untouchable (flag 0x08000000: no hit reaches it); its statuses and its anger ended (0x08017068,
 -- 0x08011A94).
 local function start_drive(user: Object)

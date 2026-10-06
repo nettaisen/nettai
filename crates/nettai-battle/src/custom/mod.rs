@@ -52,17 +52,16 @@ pub struct PlayerSetup {
     /// ChpShufl's re-deal draws from (`crate::console`). In netplay it is
     /// part of the setup the peers exchange.
     pub console: ConsoleSetup,
-    /// What the player brings for each system of the match's ruleset (its
-    /// `setup` fields), in the ruleset's order; none given: each system's
-    /// defaults (`setup_defaults`, the rest zero; `PlayerSetup::set_rule`
-    /// writes one by name).
-    pub rules: Vec<nettai_content_api::Block>,
+    /// What the player brings for the rules (their `setup` fields); none
+    /// given: their defaults (`setup_defaults`, the rest zero;
+    /// `PlayerSetup::set_fact` writes one by name).
+    pub rules: Option<nettai_content_api::Block>,
     /// The patch cards the player has installed (`crate::patch_cards`):
-    /// their ruleset's rules apply them (EXE6's patch-cards system).
+    /// their ruleset's rules apply them (EXE6's patch cards part).
     pub patch_cards: crate::patch_cards::PatchCards,
     /// The player's NaviCust (`crate::navicust`), which their ruleset's
     /// rules compile into the navi's stats as the round is set up (EXE6's
-    /// navicust system); none: the stats are the setup's as they are (a
+    /// navicust part); none: the stats are the setup's as they are (a
     /// recording's, which the original's NaviCust has already made).
     pub navicust: Option<crate::navicust::NaviCust>,
     /// The player's auto battle data (EXE5's, `crate::auto_battle`),
@@ -78,7 +77,7 @@ impl Default for PlayerSetup {
             joypad_phase: 0,
             sp_times: Default::default(),
             console: ConsoleSetup::default(),
-            rules: Vec::new(),
+            rules: None,
             patch_cards: Default::default(),
             navicust: None,
             auto_battle: Default::default(),
@@ -175,7 +174,7 @@ pub struct Context<'a> {
     pub link_delay: u8,
 }
 
-/// What a player's custom screen asks its side's systems
+/// What a player's custom screen asks its side's rules
 /// (docs/design/rules-in-luau.md §4.4: their `custom` hooks). The battle
 /// answers ([`crate::battle::Battle`]'s side extras); a screen without one
 /// (the screen's own tests) gets no answers.
@@ -184,7 +183,7 @@ pub trait Extras {
     /// opens; none: the framework's rule.
     fn hand_size(&mut self) -> Option<u8>;
     /// The buttons on the screen `screen` (as it opens), in the order the
-    /// side's systems are listed: each that its `shown` says is.
+    /// side's rules are listed: each that its `shown` says is.
     fn buttons(&mut self, screen: &Screen) -> Vec<screen::ButtonPlace>;
     /// A button's `state` (at the open and after each pick), if it has one.
     fn button_state(&mut self, screen: &Screen, button: crate::content::ButtonHandle) -> Option<SlotState>;
@@ -213,10 +212,10 @@ pub trait Extras {
         joy: &Joypad,
         window: crate::content::WindowHandle,
     ) -> bool;
-    /// `custom.keys(side)`: choosing, a tick with keys: whether a system
+    /// `custom.keys(side)`: choosing, a tick with keys: whether the rules
     /// took them.
     fn keys(&mut self, screen: &mut Screen, folder: &mut BattleFolder, joy: &Joypad) -> bool;
-    /// `custom.take_back(side)`: B with nothing picked: whether a system
+    /// `custom.take_back(side)`: B with nothing picked: whether the rules
     /// took something back.
     fn take_back(&mut self, screen: &mut Screen, folder: &BattleFolder) -> bool;
 }
@@ -289,7 +288,7 @@ impl Side {
         self.open_with(ctx, console, &mut NoExtras);
     }
 
-    /// [`Side::open`], asking the side's systems.
+    /// [`Side::open`], asking the side's rules.
     pub fn open_with(&mut self, ctx: &Context, console: &mut Console, extras: &mut dyn Extras) {
         self.emotion = ctx.emotion;
         self.in_custom = true;
@@ -323,7 +322,7 @@ impl Side {
         self.tick_with(ctx, console, damage, &mut NoExtras)
     }
 
-    /// [`Side::tick`], asking the side's systems.
+    /// [`Side::tick`], asking the side's rules.
     pub fn tick_with(
         &mut self,
         ctx: &Context,
@@ -394,9 +393,9 @@ impl Side {
             }
         }
         let mut transform = TransformRequest::NONE;
-        // What the side's systems note of the round (EXE6's: Beast Out or the
+        // What the side's rules note of the round (EXE6's: Beast Out or the
         // Cross used; EXE5's: the soul given, 0x08024FF6, its form set now),
-        // then the form a system's pick holds (EXE6's Beast Out or Cross,
+        // then the form a pick of the rules holds (EXE6's Beast Out or Cross,
         // EXE5's soul: with its turns and whether it is Chaos Unison).
         extras.confirmed(screen, folder);
         if screen.form.is_some() {
@@ -564,7 +563,7 @@ impl Battle {
 }
 
 impl Battle {
-    /// Side `side`'s custom-screen extras (its systems' `custom` hooks),
+    /// Side `side`'s custom-screen extras (the rules' `custom` hooks),
     /// for a screen run outside the battle's own loop (exe6-compat's check
     /// of the traces' screens, which sets the side's stats and the turn
     /// first).
@@ -573,7 +572,7 @@ impl Battle {
     }
 }
 
-/// A side's custom screen's extras: its systems' `custom` hooks.
+/// A side's custom screen's extras: the rules' `custom` hooks.
 struct SideExtras<'b> {
     b: &'b mut Battle,
     side: u8,
@@ -637,7 +636,7 @@ impl SideExtras<'_> {
 
 impl Extras for SideExtras<'_> {
     fn hand_size(&mut self) -> Option<u8> {
-        self.b.systems_custom_hand_size(self.side)
+        self.b.rules_custom_hand_size(self.side)
     }
 
     fn buttons(&mut self, screen: &Screen) -> Vec<screen::ButtonPlace> {
@@ -646,12 +645,12 @@ impl Extras for SideExtras<'_> {
         let side = self.side;
         let mut out = Vec::new();
         for button in self.b.side_buttons(side) {
-            let shown = self.with_screen(&mut screen, None, |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonShown));
+            let shown = self.with_screen(&mut screen, None, |b| b.call_button(side, button, nettai_content_api::RulesHook::ButtonShown));
             if shown == nettai_content_api::Value::Bool(true) {
                 let d = content.defs.button(button);
                 // The chip it shows, if it says (EXE5's capsules).
                 let chip = match d.chip {
-                    Some(_) => match self.with_screen(&mut screen, None, |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonChip)) {
+                    Some(_) => match self.with_screen(&mut screen, None, |b| b.call_button(side, button, nettai_content_api::RulesHook::ButtonChip)) {
                         nettai_content_api::Value::Def(nettai_content_api::Registry::Chip, id) => Some(ChipHandle(id)),
                         _ => None,
                     },
@@ -667,7 +666,7 @@ impl Extras for SideExtras<'_> {
         self.b.content.defs.button(button).state?;
         let mut screen = *screen;
         let side = self.side;
-        match self.with_screen(&mut screen, None, |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonState)) {
+        match self.with_screen(&mut screen, None, |b| b.call_button(side, button, nettai_content_api::RulesHook::ButtonState)) {
             nettai_content_api::Value::Int(0) => Some(SlotState::Selectable),
             nettai_content_api::Value::Int(_) => Some(SlotState::Unavailable),
             _ => None,
@@ -676,7 +675,7 @@ impl Extras for SideExtras<'_> {
 
     fn button_pressed(&mut self, screen: &mut Screen, folder: &mut BattleFolder, button: crate::content::ButtonHandle) {
         let side = self.side;
-        self.with_screen(screen, Some(folder), |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonPressed));
+        self.with_screen(screen, Some(folder), |b| b.call_button(side, button, nettai_content_api::RulesHook::ButtonPressed));
     }
 
     fn button_taken_back(&mut self, screen: &mut Screen, button: crate::content::ButtonHandle) {
@@ -684,34 +683,34 @@ impl Extras for SideExtras<'_> {
             return;
         }
         let side = self.side;
-        self.with_screen(screen, None, |b| b.call_button(side, button, nettai_content_api::SystemHook::ButtonTakenBack));
+        self.with_screen(screen, None, |b| b.call_button(side, button, nettai_content_api::RulesHook::ButtonTakenBack));
     }
 
     fn dealing(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console) {
         let side = self.side;
         self.with_screen_console(screen, Some(folder), Some(console), None, |b| {
-            b.systems_call_custom(side, nettai_content_api::SystemHook::CustomDeal)
+            b.rules_call_custom(side, nettai_content_api::RulesHook::CustomDeal)
         });
     }
 
     fn opened(&mut self, screen: &mut Screen) {
         let side = self.side;
-        self.with_screen(screen, None, |b| b.systems_call_custom(side, nettai_content_api::SystemHook::CustomOpen));
+        self.with_screen(screen, None, |b| b.rules_call_custom(side, nettai_content_api::RulesHook::CustomOpen));
     }
 
     fn confirmed(&mut self, screen: &mut Screen, folder: &mut BattleFolder) {
         let side = self.side;
-        self.with_screen(screen, Some(folder), |b| b.systems_call_custom(side, nettai_content_api::SystemHook::CustomConfirmed));
+        self.with_screen(screen, Some(folder), |b| b.rules_call_custom(side, nettai_content_api::RulesHook::CustomConfirmed));
     }
 
     fn chip_picked(&mut self, screen: &mut Screen, folder: &mut BattleFolder, chip: ChipHandle) {
         let side = self.side;
-        self.with_screen(screen, Some(folder), |b| b.systems_call_custom_chip(side, nettai_content_api::SystemHook::CustomChipPicked, chip));
+        self.with_screen(screen, Some(folder), |b| b.rules_call_custom_chip(side, nettai_content_api::RulesHook::CustomChipPicked, chip));
     }
 
     fn chip_taken_back(&mut self, screen: &mut Screen, chip: ChipHandle) {
         let side = self.side;
-        self.with_screen(screen, None, |b| b.systems_call_custom_chip(side, nettai_content_api::SystemHook::CustomChipTakenBack, chip));
+        self.with_screen(screen, None, |b| b.rules_call_custom_chip(side, nettai_content_api::RulesHook::CustomChipTakenBack, chip));
     }
 
     fn window_update(
@@ -729,13 +728,13 @@ impl Extras for SideExtras<'_> {
 
     fn keys(&mut self, screen: &mut Screen, folder: &mut BattleFolder, joy: &Joypad) -> bool {
         let side = self.side;
-        self.with_screen_console(screen, Some(folder), None, Some(joy), |b| b.systems_ask_custom(side, nettai_content_api::SystemHook::CustomKeys))
+        self.with_screen_console(screen, Some(folder), None, Some(joy), |b| b.rules_ask_custom(side, nettai_content_api::RulesHook::CustomKeys))
     }
 
     fn take_back(&mut self, screen: &mut Screen, folder: &BattleFolder) -> bool {
         let side = self.side;
         let mut folder = *folder;
-        self.with_screen(screen, Some(&mut folder), |b| b.systems_ask_custom(side, nettai_content_api::SystemHook::CustomTakeBack))
+        self.with_screen(screen, Some(&mut folder), |b| b.rules_ask_custom(side, nettai_content_api::RulesHook::CustomTakeBack))
     }
 }
 

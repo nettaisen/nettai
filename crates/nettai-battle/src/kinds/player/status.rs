@@ -186,10 +186,11 @@ pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
         // The game's wrapper (EXE6's Beast Out rush, `sub_80EAD9C`) runs
         // instead, and runs the action when it chooses
         // (`CoreApi::run_wrapped`).
-        // (A wrapper of a system a side's rules lack doesn't run.)
+        // (A wrapper of the rules', for a side that plays by none, doesn't
+        // run.)
         if ai(b, r).attack.wrapped == 1
             && let Some(wrapper) = b.roles().try_action(crate::content::ActionRole::Wrapper)
-            && b.content.defs.action_owner(wrapper).is_none_or(|s| b.system_slot(b.objects.get(r).alliance, s).is_some())
+            && (!b.content.defs.is_rules_action(wrapper) || b.has_rules(b.objects.get(r).alliance))
         {
             return crate::behavior::run_action(b, wrapper, r);
         }
@@ -382,10 +383,10 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
     }
     let side = b.objects.get(r).alliance;
     let opp = side ^ 1;
-    // A counter: the counterer's side's rules (EXE6's emotion system: Full
+    // A counter: the counterer's side's rules (EXE6's emotion part: Full
     // Synchro, unless this navi's mood is held).
     if coll(b, r).acc.counter & 0x8000 != 0 {
-        b.systems_countered(opp, r);
+        b.rules_countered(opp, r);
     }
     let loss = coll(b, r).acc.mood_damage;
     super::lose_mood(b, side, loss);

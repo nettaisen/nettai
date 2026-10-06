@@ -433,7 +433,7 @@ fn rules(base: Option<&Rules>, game: Option<&str>, r: &SpecReader, definitions: 
     let Some(d) = super::defs::ruleset(definitions) else {
         return match (base, game) {
             (None, Some(game)) => Err(ContentError::new(format!(
-                "{game}/{}.luau: game pack {game} defines no ruleset (`define.ruleset`, its rules/init.luau): a game states its rules, and the engine has no game's rules of its own",
+                "{game}/{}.luau: game pack {game} defines no rules (`define.rules`, its rules/init.luau): a game states its rules, and the engine has no game's rules of its own",
                 nettai_content_api::packs::INIT
             ))),
             _ => Ok(base.cloned()),

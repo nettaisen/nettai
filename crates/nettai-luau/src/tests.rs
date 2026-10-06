@@ -49,7 +49,7 @@ fn a_require_reaches_only_its_pack_and_the_support_packs_it_depends_on() {
 }
 
 /// docs/design/content-model-v2.md §4.0: a support pack's modules run
-/// without the playing game's context (`asset`, `system`), which reaches
+/// without the playing game's context (`asset`, `rules`), which reaches
 /// them only as their callers' arguments; a game's modules have it.
 #[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
 #[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
@@ -73,7 +73,7 @@ fn a_support_pack_has_no_game_context() {
     load(&[
         (
             "game:x",
-            "local make = require('@lib/m')\nlocal _ = system.state\nreturn make({ sprite = asset.sprite('bomb') })",
+            "local make = require('@lib/m')\nlocal _ = rules.state\nreturn make({ sprite = asset.sprite('bomb') })",
         ),
         ("lib:m", maker),
     ])
@@ -84,8 +84,8 @@ fn a_support_pack_has_no_game_context() {
     // At a support module's top.
     let e = load(&[("game:x", "return require('@lib/m')"), ("lib:m", "return asset.sprite('bomb')")]).unwrap_err();
     refused(&e, "asset", "lib:m");
-    let e = load(&[("game:x", "return require('@lib/m')"), ("lib:m", "return system.side")]).unwrap_err();
-    refused(&e, "system", "lib:m");
+    let e = load(&[("game:x", "return require('@lib/m')"), ("lib:m", "return rules.side")]).unwrap_err();
+    refused(&e, "rules", "lib:m");
     // After a game's module has named the asset: Luau resolves a module's
     // globals against the VM's when it loads, so the support pack's must
     // be missing there too, not only in its environment.
@@ -105,15 +105,16 @@ fn a_support_pack_has_no_game_context() {
     refused(&e, "asset", "lib:m");
 }
 
-/// `system.state_of` is a game's rules' (its API module's): a module
-/// outside rules/ calling it is refused, naming the module (As built S8).
+/// `rules.state_of` is a game's rules' (its API module's): a module outside
+/// rules/ calling it is refused, naming the module (As built S8).
 #[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
 #[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
-fn another_systems_state_is_for_the_games_rules() {
-    let call = "local s = system.state_of(0, define.system { id = 'x' })\nreturn {}";
+fn another_sides_rules_state_is_for_the_games_rules() {
+    let call = "local s = rules.state_of(0)\nlocal _ = s.bug_frags\nreturn {}";
     let e = define_named(&[("chips/x/chip", call)]).unwrap_err();
-    assert!(e.contains("test:chips/x/chip: system.state_of is a game's rules'"), "{e}");
-    // (Under rules/ it passes the guard: here no battle runs.)
+    assert!(e.contains("test:chips/x/chip: rules.state_of is a game's rules'"), "{e}");
+    // (Under rules/ it passes the guard: here no battle runs, so the read
+    // of a field is refused.)
     let e = define_named(&[("rules/api", call)]).unwrap_err();
     assert!(!e.contains("is a game's rules'") && e.contains("only reachable while content runs"), "{e}");
 }
@@ -334,7 +335,7 @@ fn a_games_rules_are_one_ruleset() {
         ("rules/pools", "return { actor = 32, attack = 32, effect = 32 }"),
         (
             "rules/init",
-            "return define.ruleset { systems = {}, pools = require('@self/pools'), roles = require('@self/roles') }",
+            "return define.rules { pools = require('@self/pools'), roles = require('@self/roles') }",
         ),
     ])
     .unwrap();
@@ -342,12 +343,12 @@ fn a_games_rules_are_one_ruleset() {
     assert_eq!(rules.spec.field("roles").field("actions").field("anti_damage_counter"), &Data::Ref(Registry::Action, "counter".into()));
     assert_eq!(rules.spec.field("pools").field("actor"), &Data::Int(32));
     // It has no name to give, and a game has one.
-    let e = define_named(&[("m", "return define.ruleset { id = 'stock', systems = {} }")]).unwrap_err();
-    assert!(e.contains("define.ruleset takes no `id`: a game has one ruleset"), "{e}");
-    let e = define_named(&[("a", "return define.ruleset {}"), ("b", "return define.ruleset {}")]).unwrap_err();
-    assert!(e.contains("a game has one ruleset: test/a.luau defines one, and test/b.luau another"), "{e}");
+    let e = define_named(&[("m", "return define.rules { id = 'stock' }")]).unwrap_err();
+    assert!(e.contains("define.rules takes no `id`: a game has one rules definition"), "{e}");
+    let e = define_named(&[("a", "return define.rules {}"), ("b", "return define.rules {}")]).unwrap_err();
+    assert!(e.contains("a game has one rules definition: test/a.luau defines one, and test/b.luau another"), "{e}");
     // No definer makes a section or the roles apart from it.
-    for definer in ["rules('pools', {})", "roles {}"] {
+    for definer in ["section('pools', {})", "roles {}"] {
         let source = format!("return define.{definer}");
         let e = define_named(&[("m", source.as_str())]).unwrap_err();
         assert!(e.contains("attempt to call a nil value"), "define.{definer}: {e}");

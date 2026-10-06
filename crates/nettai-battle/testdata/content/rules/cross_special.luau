@@ -1,5 +1,5 @@
 --!strict
--- The Cross special's chips (EXE6's beast system reads them: rules/beast/
+-- The Cross special's chips (EXE6's beast part reads them: rules/beast/
 -- cross-special.luau): the test content's one row, a chip it borrows.
 
 local minibomb = require("../chips/minibomb")

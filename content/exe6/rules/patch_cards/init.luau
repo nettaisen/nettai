@@ -1,5 +1,5 @@
 --!strict
--- The patch-cards system (docs/engine/patch-cards.md): as the round is set
+-- The patch cards part (docs/engine/patch-cards.md): as the round is set
 -- up (`round_setup`, before anything reads the stats), a player's installed
 -- patch cards (the engine's definitions and the player's setup,
 -- `battle.patch_cards`; their effects ./cards.luau's) change the navi's
@@ -145,7 +145,6 @@ local function apply(side: number)
     battle.set_emotion_window_glitch(side, bugged(stats))
 end
 
-return define.system {
-    id = "patch-cards",
+return {
     hooks = { round_setup = apply },
 }
