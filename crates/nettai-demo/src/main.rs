@@ -61,6 +61,11 @@ struct Args {
     join: Option<String>,
     present_delay: u32,
     wait: u64,
+    /// Write a replay of the set played (live or netplay) to this file.
+    record: Option<PathBuf>,
+    /// Play this replay; shown from this side (none: the recorder's).
+    replay: Option<PathBuf>,
+    side: Option<u8>,
 }
 
 /// The most present delay netplay takes (a quarter of a second).
@@ -73,6 +78,7 @@ usage: nettai-demo [OPTIONS]                 edit a new match (the window asks i
        nettai-demo [OPTIONS] --match FILE    play a match file (you are its left side)
        nettai-demo [OPTIONS] --match FILE --host PORT        play another player over the
        nettai-demo [OPTIONS] --match FILE --join ADDR:PORT   network: host, or join the host
+       nettai-demo [OPTIONS] --replay FILE   watch a replay (--record writes one)
        nettai-demo [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-scale N]
        nettai-demo [OPTIONS] --match FILE --audit-content
        nettai-demo [OPTIONS] --audit TRACE.jsonl...
@@ -177,7 +183,18 @@ usage: nettai-demo [OPTIONS]                 edit a new match (the window asks i
                    ] change it during the match; yours alone, the other
                    player chooses theirs
   --wait SECONDS   how long the host waits for a player, or the joiner for
-                   the host (default 300 and 30)";
+                   the host (default 300 and 30)
+  --record FILE    with --match (alone, --host or --join): write the set
+                   played to FILE as a replay (docs/frontend.md §8: the
+                   match and every tick's buttons, both players'; netplay
+                   writes each tick as it settles, so both players' replays
+                   are the same but for who recorded)
+  --replay FILE    play a replay: the set again, round by round, on the
+                   engine and content it was made with (refused on others),
+                   checked against the digests it kept; with --headless F,
+                   render its frames F (ticks of the set)
+  --side SIDE      with --replay: the console shown, left or right
+                   (default: the side that recorded it)";
 
 fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     let mut a = Args {
@@ -213,6 +230,9 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         join: None,
         present_delay: nettai_frontend::netplay::NetOptions::default().present_delay,
         wait: 0,
+        record: None,
+        replay: None,
+        side: None,
     };
     while let Some(arg) = it.next() {
         let mut value = |name: &str| it.next().ok_or_else(|| format!("{name} needs a value"));
@@ -249,6 +269,15 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
             "--join" => a.join = Some(value("--join")?),
             "--present-delay" => a.present_delay = number(value("--present-delay")?, "--present-delay")? as u32,
             "--wait" => a.wait = number(value("--wait")?, "--wait")?,
+            "--record" => a.record = Some(value("--record")?.into()),
+            "--replay" => a.replay = Some(value("--replay")?.into()),
+            "--side" => {
+                a.side = Some(match value("--side")?.as_str() {
+                    "left" => 0,
+                    "right" => 1,
+                    s => return Err(format!("bad --side {s:?} (left or right)")),
+                })
+            }
             "-h" | "--help" => return Err(String::new()),
             s if s.starts_with('-') => return Err(format!("unknown option {s}")),
             s => a.traces.push(s.into()),
@@ -256,6 +285,20 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     }
     if a.match_file.is_some() && !a.traces.is_empty() {
         return Err("--match takes a match file, not a trace".into());
+    }
+    if a.side.is_some() && a.replay.is_none() {
+        return Err("--side goes with --replay".into());
+    }
+    if a.record.is_some() && (a.match_file.is_none() || a.audit_content || a.edit.is_some()) {
+        return Err("--record writes the set a match file plays (--match, alone or with --host or --join)".into());
+    }
+    if a.replay.is_some() {
+        if a.match_file.is_some() || !a.traces.is_empty() || a.edit.is_some() || a.audit || a.audit_content {
+            return Err("--replay plays a replay alone (not with a match file, a trace, the editor or an audit)".into());
+        }
+        if a.host.is_some() || a.join.is_some() || a.save_match.is_some() || a.keys.is_some() {
+            return Err("--replay plays what was recorded (no --host, --join, --save-match or --keys)".into());
+        }
     }
     if a.audit_content {
         if !a.traces.is_empty() || a.audit || a.headless.is_some() || a.host.is_some() || a.join.is_some() || a.save_match.is_some() {
@@ -267,7 +310,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         return Ok(a);
     }
     // The editor: a match file to edit, or nothing else to do.
-    let editing = a.edit.is_some() || (a.traces.is_empty() && a.match_file.is_none() && !a.audit);
+    let editing = a.edit.is_some() || (a.traces.is_empty() && a.match_file.is_none() && a.replay.is_none() && !a.audit);
     if editing {
         if !a.traces.is_empty() || a.match_file.is_some() || a.audit || a.headless.is_some() || a.host.is_some() || a.join.is_some() {
             return Err("--edit opens the editor alone (play its match from there, or with --match)".into());
@@ -280,8 +323,8 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     if a.tab.is_some() || a.screenshot.is_some() {
         return Err("--tab and --screenshot go with the editor".into());
     }
-    if a.traces.is_empty() && a.match_file.is_none() {
-        return Err("give a trace file or --match FILE".into());
+    if a.traces.is_empty() && a.match_file.is_none() && a.replay.is_none() {
+        return Err("give a trace file, --match FILE or --replay FILE".into());
     }
     if a.traces.len() > 1 && !a.audit {
         return Err("one trace at a time (several with --audit)".into());
@@ -413,10 +456,23 @@ struct NetArgs {
     present_delay: u32,
     show_folders: bool,
     save_match: Option<PathBuf>,
+    record: Option<PathBuf>,
 }
 
-/// The agreed match's player.
-fn net_player(net: &NetArgs, content: &Arc<nettai_battle::Content>, agreed: Agreed<Udp>) -> Box<dyn Driver> {
+/// A recording of match `m` (its seed stated) played from `side` to the
+/// file `path`, or stop with why not.
+fn recorder(content: &Arc<nettai_battle::Content>, m: &nettai_match::Match, side: u8, path: &Path) -> nettai_frontend::replay::Recorder {
+    use nettai_frontend::replay::{Info, Recorder};
+    let file = std::fs::File::create(path).unwrap_or_else(|e| fail(format!("can't write {}: {e}", path.display())));
+    let when = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+    let info = Info { when, side, names: Default::default() };
+    let r = Recorder::new(Box::new(std::io::BufWriter::new(file)), content, m, &info).unwrap_or_else(|e| fail(format!("can't record to {}: {e}", path.display())));
+    eprintln!("recording the set to {}", path.display());
+    r
+}
+
+/// The agreed match's player, and its recording if one is asked for.
+fn net_player(net: &NetArgs, content: &Arc<nettai_battle::Content>, agreed: Agreed<Udp>) -> (Box<dyn Driver>, Option<nettai_frontend::replay::Recorder>) {
     use nettai_frontend::netplay::{NetOptions, NetPlayer};
     let Agreed { conn, set, m, .. } = agreed;
     let peer = conn.datagram().peer().map_or("the other player".to_string(), |a| a.to_string());
@@ -431,8 +487,9 @@ fn net_player(net: &NetArgs, content: &Arc<nettai_battle::Content>, agreed: Agre
     if let Some(path) = &net.save_match {
         save_match(content, &m, conn.seed(), path);
     }
+    let recording = net.record.as_deref().map(|path| recorder(content, &nettai_match::Match { seed: Some(conn.seed()), ..m.clone() }, side as u8, path));
     let options = NetOptions { present_delay: net.present_delay, ..NetOptions::default() };
-    Box::new(NetPlayer::new(conn, side, set, options))
+    (Box::new(NetPlayer::new(conn, side, set, options)), recording)
 }
 
 /// The editor's options, from the command line.
@@ -598,7 +655,7 @@ fn main() {
         mute: args.mute,
     };
     // The editor: its window, which plays its match in place.
-    if args.traces.is_empty() && args.match_file.is_none() && !args.audit {
+    if args.traces.is_empty() && args.match_file.is_none() && args.replay.is_none() && !args.audit {
         // (A round that doesn't start is a problem the editor shows, not a
         // message on the terminal.)
         std::panic::set_hook(Box::new(|_| {}));
@@ -611,13 +668,18 @@ fn main() {
     let t = Instant::now();
     let found = Found::find(&nettai_content::pack::packs_dir(), &args.packs).unwrap_or_else(|e| load_failed(e));
     show(&found.report);
-    // The game played is the match file's or the recording's own.
+    // The game played is the match file's, the replay's or the trace's own.
     let file_text = args.match_file.as_deref().map(match_text);
-    let game = match (&file_text, args.traces.first()) {
-        (Some(text), _) => nettai_match::file::game_of(text)
+    let replay = args.replay.as_deref().map(|path| {
+        let bytes = std::fs::read(path).unwrap_or_else(|e| fail(format!("can't read {}: {e}", path.display())));
+        nettai_frontend::replay::Replay::read(&bytes).unwrap_or_else(|e| fail(format!("can't play {}: {e}", path.display())))
+    });
+    let game = match (&file_text, &replay, args.traces.first()) {
+        (Some(text), _, _) => nettai_match::file::game_of(text)
             .unwrap_or_else(|e| fail(format!("{} can't be played: {e}", args.match_file.as_ref().unwrap().display()))),
-        (None, Some(trace)) => nettai_demo::trace::trace_game(trace).unwrap_or_else(|e| fail(format!("can't play {}: {e}", trace.display()))),
-        (None, None) => unreachable!("argument parsing requires a match file or a trace"),
+        (None, Some(r), _) => r.head.game.clone(),
+        (None, None, Some(trace)) => nettai_demo::trace::trace_game(trace).unwrap_or_else(|e| fail(format!("can't play {}: {e}", trace.display()))),
+        (None, None, None) => unreachable!("argument parsing requires a match file, a replay or a trace"),
     };
     // The game's content.
     let loaded = Game::load(&found, args.content.as_deref(), &game).unwrap_or_else(|e| load_failed(e));
@@ -658,7 +720,24 @@ fn main() {
     // the window has agreed it; a recording's rounds, a driver each, in turn.
     let mut drivers: Vec<Box<dyn Driver>> = Vec::new();
     let mut netplay = None;
-    if let Some((path, text)) = args.match_file.as_deref().zip(file_text.as_deref()) {
+    let mut recording = None;
+    if let (Some(path), Some(r)) = (&args.replay, &replay) {
+        let player = nettai_frontend::replay::ReplayPlayer::new(&content, r, args.side).unwrap_or_else(|e| fail(format!("can't play {}: {e}", path.display())));
+        let m = nettai_match::binary::read_match(&content, &r.match_bytes).expect("a replay that plays has a match");
+        eprintln!("{}", nettai_match::describe(&content, &m, m.seed.unwrap_or(0), args.show_folders, args.side.unwrap_or(r.info.side) as usize));
+        let rounds = r.rounds().len();
+        eprintln!(
+            "replay: {} ticks, {rounds} round{}, {}",
+            r.ticks.len(),
+            if rounds == 1 { "" } else { "s" },
+            match r.end {
+                nettai_frontend::replay::End::Set => "to the set's end",
+                nettai_frontend::replay::End::Open => "stopped before the set's end",
+                nettai_frontend::replay::End::Cut => "cut short",
+            }
+        );
+        drivers.push(Box::new(player));
+    } else if let Some((path, text)) = args.match_file.as_deref().zip(file_text.as_deref()) {
         let m = read_match(&content, path, text);
         if args.host.is_some() || args.join.is_some() {
             netplay = Some(handshake(&args, &content, m));
@@ -669,6 +748,9 @@ fn main() {
             eprintln!("{}", nettai_match::describe(&content, &m, seed, args.show_folders, 0));
             if let Some(path) = &args.save_match {
                 save_match(&content, &m, seed, path);
+            }
+            if let Some(path) = &args.record {
+                recording = Some(recorder(&content, &nettai_match::Match { seed: Some(seed), ..m.clone() }, 0, path));
             }
             drivers.push(Box::new(LivePlayer::new(nettai_match::Set::of(&content, &m, seed))));
         }
@@ -693,6 +775,9 @@ fn main() {
         let mut log = |s: &str| eprintln!("{s}");
         // (Headless rendering plays no sound.)
         let mut player = Player::with(renderer, text, None, first);
+        if let Some(r) = recording {
+            player.record(r).unwrap_or_else(|e| fail(e));
+        }
         let rendered = headless::render_frames_with(&mut player, drivers, &wanted, &args.out, args.png_scale, args.objects, &keys, &mut log);
         match rendered {
             Ok(written) => {
@@ -720,7 +805,12 @@ fn main() {
         // A netplay match: the window stays responsive (Esc quits) while
         // the handshake agrees it.
         Some((handshake, text_line)) => {
-            let net = NetArgs { present_delay: args.present_delay, show_folders: args.show_folders, save_match: args.save_match.clone() };
+            let net = NetArgs {
+                present_delay: args.present_delay,
+                show_folders: args.show_folders,
+                save_match: args.save_match.clone(),
+                record: args.record.clone(),
+            };
             let content = content.clone();
             Start::Net(Box::new(Waiting {
                 handshake,
@@ -732,7 +822,10 @@ fn main() {
         }
         None => {
             let first = drivers.remove(0);
-            let player = Player::with(renderer, text, audio, first);
+            let mut player = Player::with(renderer, text, audio, first);
+            if let Some(r) = recording {
+                player.record(r).unwrap_or_else(|e| fail(e));
+            }
             Start::Play(Box::new(Play::new(player, drivers, languages, &play)))
         }
     };
@@ -775,6 +868,28 @@ mod tests {
             vec!["--match", "match.toml", "--host", "7777", "--present-delay", "16"],
         ] {
             assert!(args(&options).is_err(), "{options:?}");
+        }
+    }
+
+    /// A match played (alone or over the network) is recorded with
+    /// `--record`; a replay is played alone, from either side's console.
+    #[test]
+    fn replays_are_recorded_and_played() {
+        for options in [vec!["--match", "m.toml", "--record", "set.ntrp"], vec!["--match", "m.toml", "--host", "7777", "--record", "set.ntrp"]] {
+            assert_eq!(args(&options).unwrap().record.as_deref(), Some(Path::new("set.ntrp")), "{options:?}");
+        }
+        let replay = args(&["--replay", "set.ntrp", "--side", "right"]).unwrap();
+        assert_eq!((replay.replay.as_deref(), replay.side), (Some(Path::new("set.ntrp")), Some(1)));
+        assert!(args(&["--replay", "set.ntrp", "--headless", "1-60"]).is_ok());
+        for (options, why) in [
+            (vec!["--record", "set.ntrp"], "--record writes the set a match file plays (--match, alone or with --host or --join)"),
+            (vec!["trace.jsonl", "--record", "set.ntrp"], "--record writes the set a match file plays (--match, alone or with --host or --join)"),
+            (vec!["--match", "m.toml", "--side", "left"], "--side goes with --replay"),
+            (vec!["--replay", "set.ntrp", "--side", "up"], "bad --side \"up\" (left or right)"),
+            (vec!["--replay", "set.ntrp", "--match", "m.toml"], "--replay plays a replay alone (not with a match file, a trace, the editor or an audit)"),
+            (vec!["--replay", "set.ntrp", "--host", "7777"], "--replay plays what was recorded (no --host, --join, --save-match or --keys)"),
+        ] {
+            assert_eq!(args(&options).err().as_deref(), Some(why), "{options:?}");
         }
     }
 
