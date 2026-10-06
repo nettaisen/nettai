@@ -296,7 +296,7 @@ export type PuckLook = {
 
 -- A hockey chip's flick (@exelib/airhocky/flick): the action's key, its puck's kind and variant, and whether it
 -- goes down the field.
-export type FlickSpec = { id: string, kind: Kind, puck: PuckVariant, down: boolean }
+export type FlickSpec = { id: string?, kind: Kind, puck: PuckVariant, down: boolean }
 
 -- A sun beam's look (@exelib/gundels/beam): its sprite and palette.
 export type SunBeamLook = { sprite: SpriteAsset, palette: number }
@@ -368,7 +368,7 @@ export type TankCanSpec = { id: string?, cannon: AttachmentLook, attachment: Kin
 -- A yoyo throw (@exelib/yoyo/throw): the action's key, the yoyo arm and its game's attachment kind, and what it
 -- throws (from (x, y), `z` up, with the damage word).
 export type YoyoThrowSpec = {
-    id: string,
+    id: string?,
     arm: AttachmentLook,
     attachment: Kind,
     throw: (me: Object, x: number, y: number, z: number, damage: number) -> Object?,
@@ -564,7 +564,7 @@ export type AirSpinTop = {
 -- differences: the Katanas' step (its lib/stepsword), and the command's
 -- window shut once A isn't held.
 export type ZSaverLook = {
-    id: string,
+    id: string?,
     swing_sound: Sound,
     command_sound: Sound,
     attachment: Kind,

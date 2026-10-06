@@ -19,7 +19,7 @@ local gregar = {}
 local SPRITE = asset.sprite("gregar-beast")
 -- Its identity: Gregar Beast Out's (the attach points its attachments
 -- take).
-local IDENTITY = gregar_beast.identity
+local IDENTITY = assert(gregar_beast.identity)
 
 -- The attacks' patterns (`byte_80C1F94`, `byte_80C1FA8`, `byte_80C1FB8`,
 -- `byte_80C1FD8`): {flip, dx, dy} around the target. (The gun's has ten

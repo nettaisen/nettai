@@ -19,10 +19,10 @@ local BUG_DAMAGE, PLAIN_DAMAGE = 0xC8, 0x50
 local function setup(navi: Object): Action
     if charge.spend_bug_frag(navi) then
         charge.prepare(navi, ELEMENT, BUG_DAMAGE)
-        return drksword.action
+        return assert(drksword.action)
     end
     charge.prepare(navi, ELEMENT, PLAIN_DAMAGE)
-    return sword.action
+    return assert(sword.action)
 end
 
 return new.weapon {

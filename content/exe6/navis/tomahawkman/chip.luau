@@ -54,8 +54,7 @@ local function strikes(me: Object)
         if not field.valid(x, y) then
             return
         end
-        local spec = { delay = (n - 1) * DELAY, is = collision.slash, hits = collision.hits_navis, spark = nil }
-        strike.spawn(me, x, y, element, spec, damage)
+        strike.spawn(me, x, y, element, { delay = (n - 1) * DELAY, is = collision.slash, hits = collision.hits_navis, spark = nil }, damage)
     end
 end
 

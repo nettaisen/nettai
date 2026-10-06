@@ -30,10 +30,10 @@ bgdththd.action = shoot.action {
 local function setup(navi: Object): Action
     if charge.spend_bug_frag(navi) then
         charge.prepare(navi, ELEMENT, BUG_DAMAGE)
-        return bgdththd.action
+        return assert(bgdththd.action)
     end
     charge.prepare(navi, ELEMENT, PLAIN_DAMAGE)
-    return thunder.action
+    return assert(thunder.action)
 end
 
 bgdththd.weapon = new.weapon {

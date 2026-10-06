@@ -121,6 +121,7 @@ controller.kind = new.kind {
     -- 0x080EDCC8: the dimming's phases (0x080EDCE8, by action:
     -- 0x080EDD0C, `object_drawChipName`, the effect, `sub_800BCF6`).
     update = dimming_chips.phases {
+        name = "gregar",
         effect = effect,
         dim = dimming.fade_to_black,
         undim = dimming.fade_from_black,

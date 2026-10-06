@@ -147,6 +147,12 @@ packs' declarations into one shared environment. The editor also follows imports
 type errors that the checker, which types `require` as `any`, does not catch. A module with a same-named folder
 belongs in that folder's `init.luau`; luau-lsp resolves the folder before a sibling `.luau` file.
 
+To check every module with import resolution, regenerate the definitions and run the language server's CLI
+(using `luau-lsp` on your PATH, or the full path to Zed's downloaded binary):
+
+    luau-lsp analyze --platform=standard --flag:LuauSolverV2=true \
+      --definitions=.zed/luau-globals.d.luau --ignore='**/*.d.luau' content
+
 ## The match editor
 
 A match file sets up a set of one game, EXE6 or EXE5: the game (which is its rules), its rounds (each a stage and

@@ -1768,8 +1768,9 @@ chips walked up to, patterns, traps; 10,225 frames, each through Dark MegaMan's 
   pressure picks as written (the front one calls 0x081BC8AC, data: an error; the hole one reads the AI's own
   side's auto battle data; their counters stay 0); getting in place for a chip by its positioning class
   (rules/auto_battle/place: all 33 classes of 0x08029B3C, and the panel searches they share, ./panels).
-- *The auto battle data* (nettai_battle::auto_battle): the recordings' exchanged blocks (exe5-compat); a match file's
-  `[side.auto_battle]` (below), sent as the console sends it (0x0802C7BE); the netplay offer.
+- *The auto battle data* (EXE5's rules' setup, block.luau): a recording's saves' blocks and the RNG2 the send
+  started from (exe5-compat); a match file's `[side.auto_battle]` (below); both sent as the consoles send them
+  (0x0802C7BE).
 - EXE5's shots raise EXE5's own arm (lib/arm, 0x080EBABE; lib/buster's), the arm a navi in auto battle of AI index 0x16
   raises.
 
@@ -1868,8 +1869,17 @@ seven saves (Tango's templates and three played ones):
   Japanese save has three chips there and the second table filled like the first, which this reading doesn't
   explain.
 - *The send* (0x0802C7BE) shuffles places 1 to 3 over three rounds and the other 39 over 39 (`sub_8000CDA`: two
-  draws a round), packs the entries to the front and counts them. Where the entries and the empty places stand in
-  the block changes what a seed sends, so a battle can tell where in the block an entry was.
+  draws a round), packs the entries to the front and counts them. Each console sends its own player's
+  block, drawing from the RNG2 the link shares, so both blocks get the same order: 84 draws, after which nothing draws
+  from RNG2 before the fight starts. The EXE5 lab holds it: each of the 1,109 recordings with the sent blocks has
+  each side's sent block as its save's places sent from the fight's RNG2 84 draws back (a scratch recording with
+  both saves' blocks poked alike sent both alike), where the engine's former order (a side's 84 after the other's)
+  fails wherever a test can tell. The rules' `send` draws once for both sides; a recording's setup line states the
+  saves' blocks (`auto_battle`, save +0x554C, which oracle-trace reads at 0x0200554C) and the RNG2 the send starts
+  from (`send_rng2`), which the send turns into the recorded blocks (`ai_lists`) and the fight's `rng2` (recordings
+  made before oracle-trace wrote them were converted once: the verification workspace's
+  tools/exe5/convert_send.py). Where the entries and the empty places stand in the block changes what a seed
+  sends, so a battle can tell where in the block an entry was.
 - *A match states the block whole* (the rules' `auto_battle_places` and `auto_battle_records`, docs/frontend.md §6), as a battle reads nearly
   all of the places: besides their order, a place holding 0 is packed with the entries by the send (only 0xFFFF is
   packed away). Of a pattern a battle shows only that its entry is one (*A pattern is never played*, above: not its

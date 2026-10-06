@@ -162,7 +162,7 @@ local function pick_by(side: number, bit: number, n: number): Chip?
         end
         if e ~= false and type(e) ~= "number" then
             local chip = e :: Chip
-            if bit32.band(data.chips[chip.id].picks, bit) ~= 0 then
+            if bit32.band(data.chips[assert(chip.id)].picks, bit) ~= 0 then
                 block.swap(side, i)
                 return chip
             end
@@ -254,7 +254,7 @@ local function decide(navi: Object, s: State, fam: Family)
     end
     local chip = e :: Chip
     s.entry_chip, s.entry_pattern = chip, 0
-    if data.chips[chip.id].approach and s.misses == 0 then
+    if data.chips[assert(chip.id)].approach and s.misses == 0 then
         s.step = 0x18
         return
     end
