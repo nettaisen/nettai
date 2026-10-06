@@ -40,8 +40,7 @@ pub const GAME_LISTS: &[(&str, &[Registry])] = &[
     ("navis", &[Registry::Navi]),
     ("forms", &[Registry::Form]),
     ("stages", &[Registry::Stage]),
-    ("patch_cards", &[Registry::PatchCard]),
-    ("navicust", &[Registry::NaviCustProgram]),
+    ("collections", &[Registry::Entry]),
 ];
 
 impl Definitions {

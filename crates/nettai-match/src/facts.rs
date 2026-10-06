@@ -677,13 +677,17 @@ pub fn role_of(content: &Content, name: &str) -> Option<PlayerFact> {
 /// None for a fact that is no list of definitions.
 pub fn offered(content: &Content, game: &str, side: &Side, field: &Field) -> Option<Vec<u16>> {
     let FieldType::Array(elem, _) = field.ty else { return None };
-    let FieldType::Ref(registry, _) = **elem else { return None };
+    let FieldType::Ref(registry, of) = &**elem else { return None };
+    let registry = *registry;
     if role_of(content, field.name) == Some(PlayerFact::CrossList) {
         return Some(crate::navi_forms(content, side.navi(content)).unwrap_or_default().into_iter().map(|f| f.0).collect());
     }
     let mut out = Facts::defaults(content).get(content, field.name).map(|v| v.defs()).unwrap_or_default();
     if out.is_empty() {
-        out = (0..=u16::MAX).map_while(|h| ids::key_of(content, registry, h).map(|key| (h, key))).filter(|(_, key)| ids::in_game(content, game, key)).map(|(h, _)| h).collect();
+        out = ids::all_of(content, registry, of.as_deref())
+            .into_iter()
+            .filter(|&h| ids::key_of(content, registry, h).is_some_and(|key| ids::in_game(content, game, key)))
+            .collect();
     }
     for h in side.facts.get(content, field.name).map(|v| v.defs()).unwrap_or_default() {
         if !out.contains(&h) {

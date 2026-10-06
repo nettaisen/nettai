@@ -1024,8 +1024,8 @@ mod tests {
             let list: Vec<Fact> = cards
                 .iter()
                 .map(|&key| {
-                    let card = content.defs.patch_card_by_key(key).unwrap_or_else(|| panic!("no card {key:?}"));
-                    Fact::Value(Value::Def(Registry::PatchCard, card.0))
+                    let card = content.defs.entry_in("patch_cards", key).unwrap_or_else(|| panic!("no card {key:?}"));
+                    Fact::Value(Value::Def(Registry::Entry, card.0))
                 })
                 .collect();
             s.players[0].set_fact(&content, "patch_cards", &list).unwrap();
@@ -1042,12 +1042,16 @@ mod tests {
         }
 
         #[test]
-        fn the_cards_are_definitions_and_the_setups_part() {
+        fn the_cards_are_entries_and_the_setups_part() {
+            use nettai_content_api::Data;
             let content = scenario::content();
-            let h = content.defs.patch_card_by_key("test-stats").expect("the test card");
-            let card = content.patch_card(h);
-            assert_eq!(card.mb, 20);
-            let kinds: Vec<(&str, bool)> = card.effects.iter().map(|e| (e.kind.as_str(), e.bug)).collect();
+            // (An entry of the root's `patch_cards`: data the rules read.)
+            let h = content.defs.entry_in("patch_cards", "test-stats").expect("the test card");
+            let card = content.defs.definitions.get(Registry::Entry, &content.defs.entry(h).key).expect("its definition");
+            assert_eq!(card.spec.field("mb").int(), Some(20));
+            let Data::List(effects) = card.spec.field("effects") else { panic!("its effects") };
+            let kinds: Vec<(&str, bool)> =
+                effects.iter().map(|e| (e.field("kind").str().expect("a kind"), *e.field("bug") == Data::Bool(true))).collect();
             assert_eq!(kinds, [("hp_add", false), ("hp_percent_add", false), ("attack_add", false), ("body", false), ("hp_drain", true)]);
             // The cards are in the setup, which the digest covers.
             let a = with_cards(&["test-stats"], |_| {});

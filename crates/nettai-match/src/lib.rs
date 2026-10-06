@@ -144,11 +144,11 @@ pub fn has_navicust(content: &Content) -> bool {
     !navicust_rules(content).boards.is_empty()
 }
 
-/// Whether the game has patch cards (it defines any): the editor's pane of
-/// them. (Until the editor draws a side's facts by the views its rules
-/// declare.)
+/// Whether the game has patch cards (its root's collection `patch_cards`
+/// has any): the editor's pane of them. (Until the editor draws a side's
+/// facts by the views its rules declare.)
 pub fn has_patch_cards(content: &Content) -> bool {
-    !content.defs.patch_cards.is_empty()
+    !content.defs.entries_of("patch_cards").is_empty()
 }
 
 /// The NaviCust board of the content's game (its rule section

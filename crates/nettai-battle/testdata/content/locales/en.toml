@@ -55,7 +55,7 @@ language = "en"
 "test/link-navi" = { name = "LinkNavi", run_message = "Lan,this is no time\nto run away!" }
 
 
-[patch-cards]
+[patch_cards]
 "test-abilities" = { name = "Abilities" }
 "test-later" = { name = "Later" }
 "test-stats" = { name = "Stats" }

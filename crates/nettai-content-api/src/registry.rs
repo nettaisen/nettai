@@ -41,22 +41,18 @@ pub enum Registry {
     /// Data only content reads (a bomb variant, a projectile variant): the
     /// engine keeps its handle and its type name.
     Record,
-    /// A patch card (BN4's, EXE5's and EXE6's Modification Cards, 改造カード):
-    /// its capacity cost and its effects, which a game's rules apply
-    /// (docs/engine/patch-cards.md); a player's installed cards are their
-    /// setup's (`PlayerSetup::patch_cards`).
-    PatchCard,
-    /// A NaviCust program (BN4's, EXE5's and EXE6's Navi Customizer parts):
-    /// its colors and shapes, which a player places on their NaviCust
-    /// (`PlayerSetup::navicust`), and what a game's rules read of it
-    /// (docs/design/navicust.md).
-    NaviCustProgram,
+    /// An entry of one of a game's collections: a table the game's root
+    /// holds by id under a key the core doesn't know (EXE6's `patch_cards`,
+    /// `navicust_programs`), data only content reads, which a match names
+    /// by its id and the locales and the library order by its key there.
+    /// Its key is `<collection>/<id>`, its record type the collection.
+    Entry,
     /// Content state layouts: one per distinct `state` table (sorted last).
     Schema,
 }
 
 impl Registry {
-    pub const ALL: [Registry; 18] = [
+    pub const ALL: [Registry; 17] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -72,8 +68,7 @@ impl Registry {
         Registry::Identity,
         Registry::Rules,
         Registry::Record,
-        Registry::PatchCard,
-        Registry::NaviCustProgram,
+        Registry::Entry,
         Registry::Schema,
     ];
 
@@ -96,8 +91,7 @@ impl Registry {
             Registry::Identity => "identity",
             Registry::Rules => "rules",
             Registry::Record => "record",
-            Registry::PatchCard => "patch_card",
-            Registry::NaviCustProgram => "navicust_program",
+            Registry::Entry => "entry",
             Registry::Schema => "schema",
         }
     }
@@ -176,10 +170,19 @@ handles! {
     IdentityHandle => Identity,
     /// A record only content reads.
     RecordHandle => Record,
-    /// A patch card.
-    PatchCardHandle => PatchCard,
-    /// A NaviCust program.
-    NaviCustProgramHandle => NaviCustProgram,
+    /// An entry of a collection.
+    EntryHandle => Entry,
+}
+
+/// The key of entry `id` of collection `collection`
+/// ([`Registry::Entry`]).
+pub fn entry_key(collection: &str, id: &str) -> String {
+    format!("{collection}/{id}")
+}
+
+/// An entry's key's collection and id ([`entry_key`]'s parts).
+pub fn entry_parts(key: &str) -> (&str, &str) {
+    key.split_once('/').unwrap_or(("", key))
 }
 
 #[cfg(test)]

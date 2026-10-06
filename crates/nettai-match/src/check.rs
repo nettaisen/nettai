@@ -208,8 +208,8 @@ mod tests {
         let placed: Vec<PlacedProgram> = parts
             .iter()
             .map(|&(name, color, x, y)| {
-                let program = ids::navicust_program(&content, "exe6", name).unwrap();
-                let color = content.defs.navicust_program(program).colors.iter().position(|c| c == color).unwrap() as u8;
+                let program = ids::entry(&content, "exe6", "navicust_programs", name).unwrap();
+                let color = crate::testing::program_colors(&content, program).iter().position(|c| *c == color).unwrap() as u8;
                 PlacedProgram { program, color, x, y, rotation: 0, compressed: false }
             })
             .collect();
@@ -257,7 +257,7 @@ mod tests {
         assert_eq!(crate::navicust_rules(&content).boards.len(), 3);
         let m = crate::pick::live(&content, "exe5", 3, None).unwrap();
         assert_eq!(crate::testing::navicust_expansions(&content, &crate::Match::empty(&content, "exe5").unwrap().sides[0]), Some(2));
-        let undersht = ids::navicust_program(&content, "exe5", "undersht").unwrap();
+        let undersht = ids::entry(&content, "exe5", "navicust_programs", "undersht").unwrap();
         // (UnderSht covers its center and the cell above it.)
         let with = |x: u8, y: u8, expansions: u8| {
             let mut m = m.clone();
@@ -304,7 +304,7 @@ mod tests {
         use nettai_battle::navicust::{SIZE, cells};
         let content = crate::testing::exe5_content();
         let m = crate::pick::live(&content, "exe5", 3, None).unwrap();
-        let program = |name: &str| ids::navicust_program(&content, "exe5", name).unwrap();
+        let program = |name: &str| ids::entry(&content, "exe5", "navicust_programs", name).unwrap();
         let problems = |parts: &[PlacedProgram], expansions: u8| -> Vec<String> {
             let mut m = m.clone();
             set_navicust(&content, &mut m.sides[0], parts, expansions);
@@ -346,7 +346,7 @@ mod tests {
             for rotation in 0..4 {
                 assert!(!beside_hub(at(bugstop, x, y, rotation, false)).is_empty(), "BugStop as it is at ({x}, {y}) turned {rotation}");
                 if beside_hub(at(bugstop, x, y, rotation, true)).is_empty() {
-                    let shape = content.defs.navicust_program(bugstop).placed_shape(true, rotation);
+                    let shape = crate::testing::program_shape(&content, bugstop, true, rotation);
                     assert!(cells(&shape, x, y).all(|(_, row)| row != line), "BugStop on the command line at ({x}, {y}) turned {rotation}");
                     places += 1;
                 }
