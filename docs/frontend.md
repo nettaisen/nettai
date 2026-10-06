@@ -773,9 +773,9 @@ What an EXE5 console does otherwise, by data, not by game:
     cells, where the pack's look says (`uses_digit`: EXE5's Shuffle;
     EXE6's ChpShufl shows none);
 - its game's flow (rules `flow`, read of the console's own game): the
-  custom screen's close starts the chip window (`chip_window_at_close`:
-  EXE6's as its Japanese games' do, on every console; EXE5's), the intro
-  fades in from black (`intro_from_black`);
+  intro fades in from black (`intro_from_black`). (The custom screen's
+  close starts the chip window in every game, as EXE6's Japanese games and
+  EXE5 do: nettai-render's `HudState`, no rule.)
 - its game's custom screen (rules `custom_screen`): the emblem as SELECT's
   hidden window comes back, on the tick of the key and the next
   (`emblem_at_window_return`: EXE6's screen draws it on both, EXE5's on
@@ -1025,7 +1025,7 @@ them).
   (six sprites, eleven chips' pictures: asset-formats.md §4), the content
   draws Otenko's statue and CrosOver's gun with the Japanese games' sprites
   (0C-49, 0C-0F) where the US games draw others, and EXE6's custom screen
-  starts the chip window as it closes (`chip_window_at_close`), on every
+  starts the chip window as it closes (`HudState`), on every
   console. A US console's original shows its placeholder (a purple picture,
   a dot) or its other sprite, and its chip window waits for the navi's
   first decision; an EXE5 Japanese console's background 0x05 is the bubbles
