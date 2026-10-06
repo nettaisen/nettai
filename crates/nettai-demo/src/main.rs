@@ -3,6 +3,7 @@
 //! command line. See docs/frontend.md.
 
 use nettai_demo::trace::trace_rounds;
+use nettai_demo::net::{Agreed, NetHandshake, Progress, Udp};
 use nettai_demo::{app, headless};
 use nettai_frontend::driver::{Driver, LivePlayer};
 use nettai_frontend::game::{Failed, Found, Game, LoadError, Sound};
@@ -329,29 +330,34 @@ fn save_match(content: &nettai_battle::Content, m: &nettai_match::Match, seed: u
     eprintln!("wrote the match to {}", path.display());
 }
 
-/// Connect (host or join), shake hands, and agree the round; each player
-/// brings their match file's left side, and the host its arena.
-fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, m: nettai_match::Match) -> Box<dyn Driver> {
-    use nettai_frontend::netplay::{NetOptions, NetPlayer, Offer, agree, hello};
-    use nettai_netplay::transport::{Connection, Role, Udp};
+/// Connect (host or join) and start the handshake that agrees the round;
+/// each player brings their match file's left side, and the host its
+/// arena. The window polls it (`app::wait`), saying the second half.
+fn handshake(args: &Args, content: &Arc<nettai_battle::Content>, m: nettai_match::Match) -> (NetHandshake<Udp>, String) {
+    use nettai_demo::net::Role;
+    use nettai_frontend::netplay::Offer;
     let offer = Offer::of_match(m, args.host.is_some());
     let wait = |default: u64| std::time::Duration::from_secs(if args.wait > 0 { args.wait } else { default });
-    let conn = if let Some(port) = args.host {
+    if let Some(port) = args.host {
         let udp = Udp::host(port).unwrap_or_else(|e| fail(format!("can't host on UDP port {port}: {e}")));
         eprintln!(
             "netplay: hosting on UDP port {port}, waiting for a player (they run --match FILE --join <this machine's address>:{port}; \
              over the Internet, forward the port to this machine)"
         );
-        Connection::host(udp, hello(Role::Host, content, &offer), wait(300))
+        (NetHandshake::new(Role::Host, udp, content, offer, wait(300)), format!("waiting for a player on UDP port {port}"))
     } else {
         let addr = args.join.as_deref().unwrap();
         let udp = Udp::join(addr).unwrap_or_else(|e| fail(format!("can't reach {addr}: {e}")));
         eprintln!("netplay: joining {addr}");
-        Connection::join(udp, hello(Role::Join, content, &offer), wait(30))
+        (NetHandshake::new(Role::Join, udp, content, offer, wait(30)), format!("joining {addr}, waiting for the host"))
     }
-    .unwrap_or_else(|e| fail(format!("netplay: {e}")));
+}
+
+/// The agreed match's player.
+fn net_player(args: &Args, content: &Arc<nettai_battle::Content>, agreed: Agreed<Udp>) -> Box<dyn Driver> {
+    use nettai_frontend::netplay::{NetOptions, NetPlayer};
+    let Agreed { conn, set, m, .. } = agreed;
     let peer = conn.datagram().peer().map_or("the other player".to_string(), |a| a.to_string());
-    let (_, set, m) = agree(content, &conn, &offer).unwrap_or_else(|e| fail(format!("netplay: {e}")));
     let side = conn.side();
     eprintln!(
         "netplay: playing {peer}; you are the {} navi (the match's seed {}, input delay {})",
@@ -364,7 +370,7 @@ fn netplay(args: &Args, content: &Arc<nettai_battle::Content>, m: nettai_match::
         save_match(content, &m, conn.seed(), path);
     }
     let options = NetOptions { delay: args.delay, ..NetOptions::default() };
-    Box::new(NetPlayer::new(conn, set, options))
+    Box::new(NetPlayer::new(conn, side, set, options))
 }
 
 /// `--audit-content`: every lookup for everything the content defines, in
@@ -534,13 +540,14 @@ fn main() {
     }
     let text = font.map(TextRenderer::new);
 
-    // What is played: live play's set or a netplay match, one driver; a
-    // recording's rounds, a driver each, in turn.
+    // What is played: live play's set, one driver; a netplay match, once
+    // the window has agreed it; a recording's rounds, a driver each, in turn.
     let mut drivers: Vec<Box<dyn Driver>> = Vec::new();
+    let mut netplay = None;
     if let Some((path, text)) = args.match_file.as_deref().zip(file_text.as_deref()) {
         let m = read_match(&content, path, text);
         if args.host.is_some() || args.join.is_some() {
-            drivers.push(netplay(&args, &content, m));
+            netplay = Some(handshake(&args, &content, m));
         } else {
             let seed = m.seed.unwrap_or_else(|| {
                 std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(1)
@@ -560,12 +567,13 @@ fn main() {
             drivers.push(r);
         }
     }
-    if drivers.is_empty() {
+    if drivers.is_empty() && netplay.is_none() {
         fail("nothing to play");
     }
-    let first = drivers.remove(0);
 
+    // (Netplay plays in a window.)
     if let Some(list) = &args.headless {
+        let first = drivers.remove(0);
         let wanted = headless::parse_frames(list).unwrap_or_else(|e| fail(e));
         let keys = headless::KeyScript::parse(args.keys.as_deref().unwrap_or("")).unwrap_or_else(|e| fail(e));
         let mut log = |s: &str| eprintln!("{s}");
@@ -594,10 +602,31 @@ fn main() {
         (Some(nettai_audio::BattleAudio::with_banks(sound.banks, sound.songs)), Some(device))
     };
     eprintln!("{}", app::HELP);
-    let mut player = Player::with(renderer, text, audio, first);
     let opts = app::Options { scale: args.scale, start_paused: args.paused, quit_after: args.quit_after };
+    let mut window = app::open(&opts).unwrap_or_else(|e| fail(format!("window: {e}")));
+    // A netplay match: the window stays responsive (Esc quits) while the
+    // handshake agrees it.
+    let first = match netplay {
+        None => drivers.remove(0),
+        Some((mut handshake, waiting)) => {
+            let agreed = app::wait(&mut window, &waiting, || match handshake.poll(Instant::now()) {
+                Progress::Pending => None,
+                Progress::Agreed(agreed) => Some(Ok(agreed)),
+                Progress::Failed(why) => Some(Err(why)),
+            });
+            match agreed.unwrap_or_else(|e| fail(format!("window: {e}"))) {
+                Some(Ok(agreed)) => net_player(&args, &content, agreed),
+                Some(Err(why)) => fail(format!("netplay: {why}")),
+                None => {
+                    eprintln!("netplay: stopped waiting (the window was closed)");
+                    return;
+                }
+            }
+        }
+    };
+    let mut player = Player::with(renderer, text, audio, first);
     let mut languages = app::Languages::new(&loaded, &args.lang, graphics);
-    if let Err(e) = app::run(&mut player, drivers, device.as_ref(), &mut languages, &opts) {
+    if let Err(e) = app::run(window, &mut player, drivers, device.as_ref(), &mut languages, &opts) {
         fail(format!("window: {e}"));
     }
 }
