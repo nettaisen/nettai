@@ -212,9 +212,11 @@ X5 is new: what X4's rename left of EXE5's logic.
 - **T1. The save importers** (import.rs: EXE6's version, Beast Out, owned Crosses, level and SP times, with fact names
   as strings, 97 lines; import_exe5.rs: karma, souls, the unisons, ExpMemry, auto battle data and the team navi, 166
   lines). *(b)* A game's save is its Luau's (the line above). Each compat crate keeps decoding the bytes; turning the
-  save into facts moves to a rules hook (`import_save`, given the decoded save as a table). Tool-only. (As built,
-  at the user's word: nettai-match's `import::exe6` and `import::exe5`, each giving a whole side by field name; the
-  hook is a question with the user.)
+  save into facts moves to a rules hook (`import_save`, given the decoded save as a table). Tool-only. **Settled**
+  by a move (the user: "import code should move out of nettai-match i think and into compat"): the import belongs
+  to the compat boundary, not the rules or nettai-match. `exe6_compat::import` and `exe5_compat::import` each give a
+  whole side by field name; nettai-match depends on no compat crate; the caller (nettai-demo's `save_import`)
+  imports a save into the arena's game, refusing one of another game. No rules hook.
 - **T3. The stats pane and navi views** (stats.rs: every `NaviStats` field by name, the per-game ones among them;
   link_navis.rs; story.rs). *(c)* Follows V1: the stats by role, and a game's own from its rules state's schema.
 

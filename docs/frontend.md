@@ -1360,9 +1360,10 @@ show as it. The SP navi chips' damage goes by them (rules/sp_chips.luau,
 `sub_8010AE4`). A fact that is a record is a table of its fields, and a list
 of records an array of tables, as above.
 
-**A save** (the editor's "Import from save…", `Match::import_save`, into a
-match of the save's game: a save of the other game makes a new match of its
-game first; `nettai_match::import::exe6` and `::exe5`) gives a whole side.
+**A save** (the editor's "Import from save…", nettai-demo's
+`save_import`, a save of the arena's game: one of another game is refused;
+each game's compat crate imports its own, `exe6_compat::import` and
+`exe5_compat::import`) gives a whole side.
 Of EXE6, a .sav as an emulator keeps it or a raw image as Tango's netplay
 templates hold, read by `exe6_compat::save` (a Japanese image's region from
 the US's 0x414C sits 0x40 earlier): the navi it operates; its version,
@@ -1429,20 +1430,23 @@ finished save has them; the round's setup writes them into the souls
 part's setup (its defaults, on, for a setup that says nothing). A game
 whose rules take neither refuses one off. The netplay offer carries them.
 
-**An EXE5 save** (the editor's "Import from save…", `Match::import_save`,
-which reads a save that isn't EXE6's as EXE5's: a .sav, or a raw save image as
-Tango's netplay templates hold, read by `exe5_compat::save`) makes the match
-EXE5's and gives the navi it operates, its equipped folder with its Regular
+**An EXE5 save** (the editor's "Import from save…" in an EXE5 match,
+`exe5_compat::import`: a .sav, or a raw save image as Tango's netplay
+templates hold, read by `exe5_compat::save`) gives the navi it operates, its equipped folder with its Regular
 chip, MegaMan's NaviCust (the board of its ExpMemry and the programs as
 placed) and patch cards (those switched on; a team navi has neither), his
 base HP and the operated navi's Regular memory, its karma, the souls its
 version's flags give (the forms compat names for those numbers), its Soul
 Unison and Chaos Unison, and its auto battle data (the block at
 save +0x554C, place for place and record for record, chips by their
-numbers' names). What a match can't state of a block is left empty and
+numbers' names), and its SP navi deletion times (save +0x2670, a halfword
+a slot: each SP chip whose damage goes by one, by the slot compat's
+records.toml gives it, in the slots' order; 0xFFFF, a navi never deleted,
+stated as it is, which the damage reads as the slowest time, as the game
+does). What a match can't state of a block is left empty and
 said: a chip number the game has no chip for, and an entry for a pattern
 past the eighth. The editor's Auto battle pane takes that data alone from
-a save ("From a save…", `nettai_match::auto_battle_of_save`), and edits
+a save ("From a save…", `exe5_compat::import::auto_battle_of_save`), and edits
 it: the 42 places in their six lists, the eight records, and the game's
 chips to put in them (README.md, "The match editor"). A side that operates a team navi takes
 the save's level (its story flags' count), whose HP the story gives (EXE5's
@@ -1778,9 +1782,9 @@ stop either way; the hook is the whole process's, so the host decides);
 resampling the sound to its device's rate; where a match comes from.
 
 **Its dependencies** are the engine's crates alone, with nettai-audio taken
-without its `playback` feature. The two compat crates are in its tree through
-nettai-match's save importers (a host that imports saves needs them); the
-library itself reads no recording and no save.
+without its `playback` feature; no compat crate is in its tree (a host that
+imports saves takes each game's compat crate, whose `import` it is, as
+nettai-demo does). The library itself reads no recording and no save.
 
 **The proof that it embeds** is the example: it plays a seeded random match
 with scripted buttons a tick at a time, with no window, and checks every

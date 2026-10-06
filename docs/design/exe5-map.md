@@ -1886,7 +1886,7 @@ seven saves (Tango's templates and three played ones):
   bytes. A test holds a block read into a side and written back, by itself and through a match file, to the same
   places and records (blocks as the game writes them; a full pattern before a zeroed record and before a blank one;
   a 0 among the places and in a record; patterns out of the records' order). The save import reads block 0 so
-  (`exe5_compat::save::AutoBattleBlock`, the block by number as it is; `nettai_match::auto_battle_of_save`).
+  (`exe5_compat::save::AutoBattleBlock`, the block by number as it is; `exe5_compat::import::auto_battle_of_save`).
   A random match states none (the rules' default: nothing learned), and nothing writes what the game would have
   learned: the battles are one-off (the user, 2026-10-06). A match compiles to the engine's block
   (`AutoBattleData`) place for place and record for record. The learning itself (the tables and the runs during a battle)
