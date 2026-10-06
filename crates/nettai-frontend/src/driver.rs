@@ -154,12 +154,13 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
             joypad_phase: 0,
             console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
             rules: None,
-            patch_cards: Default::default(),
-            navicust: nettai_match::empty_navicust(content, megaman),
             auto_battle: Default::default(),
         };
         use nettai_battle::content::PlayerFact;
         use nettai_battle::rules::Fact;
+        // (The navi, MegaMan; a NaviCust of no programs, the rules' default.)
+        let navi = Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Navi, megaman.0));
+        player.set_fact(content, PlayerFact::Navi.name(), &[navi]).expect("the rules take the navi");
         player.set_fact(content, PlayerFact::Version.name(), &[Fact::Name(version)]).expect("the rules take the version");
         let own = content.navi(megaman).forms.as_ref().map_or(&[][..], |f| f.listed(version));
         let own: Vec<Fact> = own.iter().map(|f| Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, f.0))).collect();

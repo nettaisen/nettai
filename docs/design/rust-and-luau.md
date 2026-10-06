@@ -40,16 +40,20 @@ Where Rust still knows one game's thing. Each is scheduled or noted; none is to 
    `number_open` (EXE6's NaviCust abilities), `version` (EXE6's version byte, +0x20), `chip_drops` and `encounters`.
    They mirror the original's block, which the compat crates and the traces compare; a game's own fields belong in
    its rules' state.
-2. **A player's setup outside the rules' setup** (`PlayerSetup`): the patch cards and the NaviCust (step c3), the
-   auto battle data (step c4), the folder's Regular chip and tag chips (step c3). Each becomes a fact of the rules'
-   setup. (The SP navi deletion times did in step c2: each game's `sp_times`, a list of `{ chip, frames }`, which
-   its rules/sp_chips reads for the SP chips' damage.)
-3. **Engine routines that are one game's path**: the NaviCust's placement and board types (navicust.rs) and the patch
-   cards' (patch_cards.rs) in nettai-battle, EXE5's auto battle data layout (auto_battle.rs: its places and
-   records), and nettai-match's checks of them (`has_navicust`, `has_patch_cards`). Steps c3 and c4 move them into
-   each game's Luau, with the checks a rules hook.
+2. **A player's setup outside the rules' setup** (`PlayerSetup`): the auto battle data (step c4), which becomes a
+   fact of the rules' setup. (The SP navi deletion times did in step c2, each game's `sp_times`; the navi, the
+   folder, its Regular and tag chips, the patch cards and the NaviCust in step c3a, each a fact; the dealt battle
+   folder and the console's setup stay the engine's, as recordings give them.)
+3. **Engine routines that are one game's path**: the NaviCust's board types and shapes (navicust.rs, the `navicust`
+   rule section's `NaviCustRules`), which only the editor's NaviCust pane and two compat paths still read, and
+   nettai-match's `has_navicust` and `has_patch_cards` for the editor's panes (step c3b replaces those panes with
+   view kinds the rules declare); EXE5's auto battle data layout (auto_battle.rs: its places and records, step c4).
+   The checks of them are the rules' `validate` since step c3a.
 4. **Fact roles named for one game's feature**: `PlayerFact::BeastOut` and `PlayerFact::CrossList` (EXE6's), which the
    frontend reads for the emotion window and the Cross window; `PlayerFact::SpTimes` (both games' SP navi deletion
-   times), which only tools read (nettai-match's `Facts::sp_times`, the editor's SP pane; the engine reads none).
+   times), which only tools read (nettai-match's `Facts::sp_times`, the editor's SP pane; the engine reads none);
+   `PlayerFact::RegularChip` and `PlayerFact::TagChips` (the series' Regular chip, EXE6's tag chips), which the
+   battle folder's deal reads (`BattleFolder::shuffled_with_tag_pair`, the custom screen's machinery). The navi and
+   the folder (`PlayerFact::Navi`, `PlayerFact::Folder`) are the core's own.
 5. **Rule sections named for one game's feature**: `berserk` (Beast Over's), `navicust`, the emotion section's Full
    Synchro aura. (`sp_chips` is no section since step c2: each game's rules/sp_chips is its own module.) They are schemas a game fills, but their names are a feature's.

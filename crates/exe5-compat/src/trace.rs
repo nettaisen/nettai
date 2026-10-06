@@ -11,10 +11,10 @@ use crate::{Compat, pool_of_type, pool_slots};
 use nettai_battle::content::ChipCode;
 use nettai_battle::custom::{BattleFolder, FolderChip, PlayerSetup};
 use nettai_battle::console::ConsoleSetup;
-use nettai_battle::navicust::{NaviCust, PlacedProgram};
+use nettai_battle::rules::Fact;
 use nettai_battle::setup::{NaviCustBugs, NaviWeapons};
 use nettai_battle::{Battle, Content, NaviStats as EngineNaviStats, PlayerTick, RoundSetup, TickEvents};
-use nettai_content_api::{RecordHandle, WeaponHandle};
+use nettai_content_api::{RecordHandle, Registry, Value, WeaponHandle};
 use nettai_content_api::Pool;
 use serde::Deserialize;
 use std::io::BufRead;
@@ -705,17 +705,20 @@ impl Round {
         // (The recorded stats are what the battle's start made of them: the
         // reload, 0x0813F97C.)
         let compiled = |side: usize| self.setup.navicusts.is_some() && d.navi_stats[side].navi == 0;
-        let navicust_of = |side: usize| -> Result<Option<NaviCust>, String> {
+        // (Its board's expansions and its programs, the rules'
+        // `navicust_expansions` and `navicust_programs`.)
+        let navicust_of = |side: usize| -> Result<Option<(u8, Vec<Fact>)>, String> {
             let Some(n) = self.setup.navicusts.as_ref().filter(|_| compiled(side)).map(|n| &n[side]) else { return Ok(None) };
             let (list, flags) = n.decode()?;
             // The board is the recorded ExpMemry's (the one the save's
             // parts were placed on), or the game's largest when its rules
             // have fewer sizes than that.
             let largest = content.rules().navicust.boards.len().saturating_sub(1) as u8;
-            navicust(content, compat, &list, n.expansions.min(largest), |part| flags[(part >> 3) as usize] & (0x80 >> (part & 7)) != 0).map(Some)
+            let programs = navicust(content, compat, &list, |part| flags[(part >> 3) as usize] & (0x80 >> (part & 7)) != 0)?;
+            Ok(Some((n.expansions.min(largest), programs)))
         };
-        let cards_of = |side: usize| -> Result<nettai_battle::patch_cards::PatchCards, String> {
-            let Some(lists) = self.setup.patch_cards.as_ref().filter(|_| compiled(side)) else { return Ok(Default::default()) };
+        let cards_of = |side: usize| -> Result<Vec<Fact<'static>>, String> {
+            let Some(lists) = self.setup.patch_cards.as_ref().filter(|_| compiled(side)) else { return Ok(Vec::new()) };
             let list: Vec<(u8, bool)> = lists[side].iter().map(|&b| (b & 0x7F, b & 0x80 == 0)).collect();
             patch_cards(content, compat, d.versions[side], &list)
         };
@@ -753,10 +756,6 @@ impl Round {
                     frames,
                 },
                 rules: None,
-                // (Without a recorded NaviCust, the stats are the battle's
-                // start's: nothing is compiled over them.)
-                patch_cards: cards_of(side as usize)?,
-                navicust: navicust_of(side as usize)?,
                 auto_battle: match &self.setup.ai_lists {
                     Some(lists) => auto_battle_data(content, compat, &unhex(&lists[side as usize])?)?,
                     None => Default::default(),
@@ -764,6 +763,22 @@ impl Round {
             };
             let level = level.map_or(nettai_content_api::Value::Nil, |l| nettai_content_api::Value::Int(l as i64));
             player.set_fact(content, "level", &[nettai_battle::rules::Fact::Value(level)])?;
+            // The navi (the engine's navi fact): the recording's.
+            let navi = navi_stats(content, compat, &d.navi_stats[side as usize])?.navi;
+            player.set_fact(content, "navi", &[Fact::Value(Value::Def(Registry::Navi, navi.0))])?;
+            // The NaviCust and the patch cards: a compiled side's, the
+            // recording's; without a recorded NaviCust, none (the stats are
+            // the battle's start's: nothing is compiled over them).
+            match navicust_of(side as usize)? {
+                Some((expansions, programs)) => {
+                    player.set_fact(content, "navicust_programs", &programs)?;
+                    player.set_fact(content, "navicust_expansions", &[Fact::Value(Value::Int(expansions as i64))])?;
+                }
+                None => {
+                    player.set_fact(content, "navicust_expansions", &[Fact::Value(Value::Nil)])?;
+                }
+            }
+            player.set_fact(content, "patch_cards", &cards_of(side as usize)?)?;
             Ok(player)
         });
         let [mut p0, mut p1] = players;
@@ -1064,9 +1079,11 @@ pub fn team_navi_reset(content: &Content, recorded: &EngineNaviStats) -> Result<
 /// 7x7 grid (content/exe5/rules/navicust/board.luau), a cell one column and
 /// one row on. A part is compressed when `compressed` says so of its part id
 /// (event flag 0x1EC0 + the id, which 0x0813EEFC reads). The list's empty
-/// entries (id 0) are left out, the others kept in order, on a board with
-/// `expansions` (the save's ExpMemry: [`crate::save::Save::expansions`]).
-pub fn navicust(content: &Content, compat: &Compat, list: &[u8], expansions: u8, compressed: impl Fn(u8) -> bool) -> Result<NaviCust, String> {
+/// entries (id 0) are left out, the others kept in order: the rules' setup's
+/// `navicust_programs`, `{ program, color, x, y, rotation, compressed }`
+/// each, the color its variant's name. (The board, the save's ExpMemry
+/// [`crate::save::Save::expansions`], is `navicust_expansions`.)
+pub fn navicust<'c>(content: &'c Content, compat: &Compat, list: &[u8], compressed: impl Fn(u8) -> bool) -> Result<Vec<Fact<'c>>, String> {
     let mut parts = Vec::new();
     for e in list.chunks_exact(8) {
         let Some((key, color)) = compat.navicust_part(e[0])? else { continue };
@@ -1074,22 +1091,32 @@ pub fn navicust(content: &Content, compat: &Compat, list: &[u8], expansions: u8,
         if e[2] > 4 || e[3] > 4 || e[4] > 3 {
             return Err(format!("NaviCust part {:#04x} at column {}, row {}, turned {}: off EXE5's 5x5 board", e[0], e[2], e[3], e[4]));
         }
-        parts.push(PlacedProgram { program, color, x: e[2] + 1, y: e[3] + 1, rotation: e[4], compressed: compressed(e[0]) });
+        let def = content.defs.navicust_program(program);
+        let color = def.colors.get(color as usize).ok_or_else(|| format!("NaviCust part {:#04x}: {key} has no color {color}", e[0]))?;
+        parts.push(Fact::Record(vec![
+            ("program", Fact::Value(Value::Def(Registry::NaviCustProgram, program.0))),
+            ("color", Fact::Name(color)),
+            ("x", Fact::Value(Value::Int(e[2] as i64 + 1))),
+            ("y", Fact::Value(Value::Int(e[3] as i64 + 1))),
+            ("rotation", Fact::Value(Value::Int(e[4] as i64))),
+            ("compressed", Fact::Value(Value::Bool(compressed(e[0])))),
+        ]));
     }
-    NaviCust::new(&parts, expansions)
+    Ok(parts)
 }
 
 /// A save's patch cards (each card's number and whether it is switched on,
-/// in the list's order: [`crate::save::Save::patch_cards`]) in the engine's
-/// terms, by `version`'s numbers (compat's patch-cards.toml).
-pub fn patch_cards(content: &Content, compat: &Compat, version: crate::Version, list: &[(u8, bool)]) -> Result<nettai_battle::patch_cards::PatchCards, String> {
+/// in the list's order: [`crate::save::Save::patch_cards`]) as the rules'
+/// setup's `patch_cards`, `{ card, on }` each, by `version`'s numbers
+/// (compat's patch-cards.toml).
+pub fn patch_cards(content: &Content, compat: &Compat, version: crate::Version, list: &[(u8, bool)]) -> Result<Vec<Fact<'static>>, String> {
     let mut cards = Vec::new();
-    for &(n, enabled) in list {
+    for &(n, on) in list {
         let key = compat.patch_card(n, version)?;
         let card = content.defs.patch_card_by_key(key).ok_or_else(|| format!("the content has no patch card {key}"))?;
-        cards.push(nettai_battle::patch_cards::InstalledCard { card, enabled });
+        cards.push(Fact::Record(vec![("card", Fact::Value(Value::Def(Registry::PatchCard, card.0))), ("on", Fact::Value(Value::Bool(on)))]));
     }
-    nettai_battle::patch_cards::PatchCards::new(&cards)
+    Ok(cards)
 }
 
 /// Differences between the engine and an EXE5 frame: the state machine and

@@ -97,8 +97,8 @@ local EXE5: NaviCustGame = {
     -- the bugs stop, else they stay; no card's, the NaviCust's own.
     bug_stop = function(side: number): boolean?
         local value: number? = nil
-        for _, c in battle.patch_cards(side) do
-            if c.enabled then
+        for _, c in rules.setup_of(side).patch_cards :: { InstalledCard } do
+            if c.on then
                 for _, e in c.card.effects do
                     if e.kind == "bug_stopper" then
                         value = e.amount
@@ -115,8 +115,14 @@ local EXE5: NaviCustGame = {
 }
 
 return {
+    -- What is wrong with the NaviCust on EXE5's board (@exelib/navicust/compile's check).
+    validate = function(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+        local setup = rules.setup_of(side)
+        compile.check(EXE5, setup.navicust_expansions, setup.navicust_programs, battle.navi(side).navi.forms ~= nil, problem)
+    end,
     -- As the round is set up: the programs compiled into the navi's stats.
     round_setup = function(side: number)
-        compile.run(side, EXE5)
+        local setup = rules.setup_of(side)
+        compile.run(side, EXE5, setup.navicust_expansions, setup.navicust_programs)
     end,
 }

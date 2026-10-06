@@ -99,7 +99,8 @@ local EXE6: NaviCustGame = {
 -- `round_setup`: `side`'s NaviCust compiled into its stats; MegaMan from a
 -- navi code then gets his level's gains, and the HP its maximum.
 local function run(side: number)
-    if not compile.run(side, EXE6) then
+    local setup = rules.setup_of(side)
+    if not compile.run(side, EXE6, setup.navicust_expansions, setup.navicust_programs) then
         return
     end
     local level = exe6.navi_level(side)
@@ -133,7 +134,14 @@ local redeal: ButtonSpec = {
     end,
 }
 
+-- `validate`'s part: the NaviCust on EXE6's board (@exelib/navicust/compile's check).
+local function validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+    local setup = rules.setup_of(side)
+    compile.check(EXE6, setup.navicust_expansions, setup.navicust_programs, battle.navi(side).navi.forms ~= nil, problem)
+end
+
 return {
     round_setup = run,
+    validate = validate,
     redeal = redeal,
 }

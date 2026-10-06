@@ -80,7 +80,9 @@ rules (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch_c
   `PatchCardStrings`). The card weapons have no names: nothing shows a weapon's (text-rendering.md §10.2).
 - **The setup is typed**: `PlayerSetup::patch_cards`, the card handles in the list's order with each switched on
   or off, at most 32 (EXE6's save list's room; its 80 MB allow 16). It is part of the setup the peers exchange and
-  the digest covers. The EXE6 part reads it with `battle.patch_cards(side)`.
+  the digest covers. The EXE6 part reads it with `battle.patch_cards(side)`. (Since step c3 the installed cards
+  are the rules' setup's `patch_cards`, a list of `{ card, on }`, which the part reads with
+  `rules.setup_of(side)`; `PlayerSetup::patch_cards` and `battle.patch_cards` are gone.)
 - **Before** (until the user's decision), the cards were records of type "patch-card" and the installed cards the
   part's own setup block (`record:patch-card[16]`, `bool[16]`), with the names in a `[records]` table.
 - **The hook.** The cards must change the stats before the battle copies them: the navi's init reads them as it
