@@ -118,11 +118,6 @@ pub struct Side {
     /// played with a whole one: the checks refuse a match without).
     pub folder: Folder,
     pub patch_cards: Vec<InstalledCard>,
-    /// The level of the navi code the save received (0 to 14: a link
-    /// navi's chip bonus and stats, MegaMan's gains over his NaviCust);
-    /// none, MegaMan without a code (a link navi always has one:
-    /// [`default_navi_level`]).
-    pub navi_level: Option<u8>,
     /// How fast the save deleted each SP navi, in frames (the SP navi
     /// chips' damage; 0 the fastest).
     pub sp_times: SpTimes,
@@ -157,9 +152,11 @@ impl Side {
     }
 }
 
-/// A side's navi code level when it says none: a link navi's 0 (a link
-/// navi exists only through its navi code), MegaMan's none (no code
-/// received).
+/// The level a side of `navi` has when its file states none: a navi that
+/// doesn't change form, 0 (a link navi exists only through its navi code,
+/// an EXE5 team navi starts at the story's first level); the navi that
+/// changes form, none (MegaMan without a navi code). What a tool states for
+/// a side it makes, and the match file's reader takes for a level left out.
 pub fn default_navi_level(content: &Content, navi: NaviHandle) -> Option<u8> {
     (!content.navi(navi).changes_form()).then_some(0)
 }
@@ -273,7 +270,6 @@ impl Side {
             navi,
             folder: Folder::EMPTY,
             patch_cards: Vec::new(),
-            navi_level: default_navi_level(content, navi),
             sp_times: SpTimes::default(),
             navicust: None,
             // (What the game's battle end writes of a player it has
@@ -282,6 +278,10 @@ impl Side {
             facts,
         };
         side.navicust = empty_navicust(content, navi);
+        // (A navi that doesn't change form has a level: 0.)
+        if let Some(level) = default_navi_level(content, navi) {
+            side.set_level(content, Some(level))?;
+        }
         Ok(side)
     }
 }
@@ -309,7 +309,6 @@ impl Match {
             let player = PlayerSetup {
                 folder,
                 joypad_phase: 0,
-                navi_level: s.navi_level,
                 sp_times: s.sp_times,
                 console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
                 // What the side brings that its rules' systems take: their
