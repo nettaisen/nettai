@@ -64,6 +64,7 @@
 
 use crate::auto_battle::{self, ChipPlace, AutoBattle, Entry, Record};
 use crate::facts::Stated;
+use nettai_battle::content::PlayerFact;
 use crate::{Arena, Facts, Folder, Match, Place, Side, ids};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::folder::FOLDER_SIZE;
@@ -112,8 +113,6 @@ pub struct PlaceFile {
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct SideFile {
     pub navi: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub level: Option<u8>,
     /// The facts, in the order the file states them (written in the rules'
     /// systems' order).
     #[serde(flatten)]
@@ -410,11 +409,16 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
     let auto_battle = s.auto_battle.as_ref().map(|c| resolve_auto_battle(content, game, c, &mut say)).unwrap_or_default();
     let navi = navi?;
     // (No level: a link navi's 0, MegaMan's none; the checks hold it.)
-    let navi_level = s.level.or_else(|| crate::default_navi_level(content, navi));
+    if facts.role(content, PlayerFact::Level).is_some_and(|f| f.value() == nettai_content_api::FieldValue::OptionalU8(None)) {
+        let level = crate::default_navi_level(content, navi);
+        if let Err(e) = facts.set(content, PlayerFact::Level.name(), &[Fact::Value(level.map_or(Value::Nil, |l| Value::Int(l as i64)))]) {
+            say(format!("level: {e}"));
+        }
+    }
     if problems.len() > start {
         return None;
     }
-    Some(Side { navi, folder: folder?, patch_cards, navi_level, sp_times, navicust, auto_battle, facts })
+    Some(Side { navi, folder: folder?, patch_cards, sp_times, navicust, auto_battle, facts })
 }
 
 /// A fact's value as a file states it, read by the field's type `ty`: a
@@ -463,6 +467,7 @@ fn fact_toml(content: &Content, value: &Stated) -> Option<toml::Value> {
             let last = items.iter().rposition(|v| !matches!(v, Stated::Def(_, None))).map_or(0, |i| i + 1);
             toml::Value::Array(items[..last].iter().map(|v| fact_toml(content, v).unwrap_or_else(|| toml::Value::String(String::new()))).collect())
         }
+        Stated::Optional(n) => toml::Value::Integer((*n)?),
         Stated::Unlisted | Stated::Other => return None,
     })
 }
@@ -571,13 +576,14 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
     let name = |key: &str| ids::local(key).to_string();
     SideFile {
         navi: name(&content.defs.navi(s.navi).key),
-        // (The navi's default level is left out.)
-        level: s.navi_level.filter(|_| s.navi_level != crate::default_navi_level(content, s.navi)),
-        // The facts that aren't the rules' defaults, in the rules' order.
+        // The facts that aren't the rules' defaults, in the rules' order
+        // (and the level, where it is the navi's own default: a link navi's
+        // 0, which the reader gives a level left out).
         facts: FactsFile(
             crate::facts::fields(content)
                 .into_iter()
                 .filter(|f| !s.facts.is_default(content, f.name))
+                .filter(|f| f.name != PlayerFact::Level.name() || s.level(content) != crate::default_navi_level(content, s.navi))
                 .filter_map(|f| Some((f.name.to_string(), fact_toml(content, &s.facts.get(content, f.name)?)?)))
                 .collect(),
         ),
@@ -1044,7 +1050,7 @@ mod tests {
         // game takes.)
         has(
             bad("navi = \"megaman\"", "navi = \"megaman\"\nemotion_window_glitch = true"),
-            "left: no field \"emotion_window_glitch\" (a side of exe6 takes hp, reg_up, sun, crosses, version, beast_out, bug_frags)",
+            "left: no field \"emotion_window_glitch\" (a side of exe6 takes hp, level, reg_up, sun, crosses, version, beast_out, bug_frags)",
         );
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
         has(bad(stage, "stage = \"moon\""), "arena: no stage \"moon\" in exe6");
@@ -1124,14 +1130,14 @@ mod tests {
         let content = exe6_content();
         let mut m = crate::pick::live(&content, "exe6", 2, None).unwrap();
         m.sides[0].set_fact(&content, "beast_out", &[Fact::Value(Value::Bool(false))]).unwrap();
-        m.sides[0].navi_level = Some(3);
+        m.sides[0].set_level(&content, Some(3)).unwrap();
         m.sides[0].sp_times.0[0] = 721;
         m.sides[0].sp_times.0[11] = 1500;
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[1].navi = protoman;
         m.sides[1].set_fact(&content, "crosses", &[]).unwrap();
         m.sides[1].navicust = None;
-        m.sides[1].navi_level = Some(0);
+        m.sides[1].set_level(&content, Some(0)).unwrap();
         m.sides[1].folder.regular = None;
         let text = write(&content, &m);
         for line in ["beast_out = false", "level = 3", "[left.sp_times]", "\"sp/heatman\" = \"00:12.01\"", "\"sp/blastman\" = \"00:25.00\""] {
@@ -1143,7 +1149,7 @@ mod tests {
         // No level: ProtoMan's 0, MegaMan's none.
         let no_level = text.replacen("level = 3\n", "", 1);
         let back = parse(&content, &no_level).unwrap();
-        assert_eq!((back.sides[0].navi_level, back.sides[1].navi_level), (None, Some(0)));
+        assert_eq!((back.sides[0].level(&content), back.sides[1].level(&content)), (None, Some(0)));
         // A time that isn't one, a slot the rules lack.
         let bad = parse(&content, &text.replacen("\"00:12.01\"", "\"12:60.00\"", 1)).unwrap_err();
         assert!(bad.iter().any(|p| p.contains("sp_times: sp/heatman")), "{bad:?}");
@@ -1156,14 +1162,14 @@ mod tests {
     fn the_level_is_checked() {
         let content = exe6_content();
         let mut m = crate::pick::live(&content, "exe6", 2, None).unwrap();
-        m.sides[0].navi_level = Some(15);
+        m.sides[0].set_level(&content, Some(15)).unwrap();
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
         has(crate::check_match(&content, &m), "left: level 15: a navi code's level is 0 to 14");
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
-        m.sides[0].navi_level = None;
+        m.sides[0].set_level(&content, None).unwrap();
         m.sides[1].navi = protoman;
         m.sides[1].set_fact(&content, "crosses", &[]).unwrap();
-        m.sides[1].navi_level = None;
+        m.sides[1].set_level(&content, None).unwrap();
         let problems = crate::check_match(&content, &m);
         has(problems.clone(), "right: ProtoMan has no level: a link navi exists only through its navi code");
         assert!(!problems.iter().any(|p| p.starts_with("left")), "MegaMan without a code is fine: {problems:?}");

@@ -21,11 +21,12 @@ pub fn has_levels(content: &Content, side: &Side) -> bool {
 /// comes back empty. The form list follows the navi (`state_own_forms`).
 pub fn switch_navi(content: &Content, side: &mut Side, navi: NaviHandle) {
     side.navi = navi;
-    side.navi_level = if link_navis::has_levels(content, navi) {
-        side.navi_level.or(nettai_match::default_navi_level(content, navi)).or(Some(0))
+    let level = if link_navis::has_levels(content, navi) {
+        side.level(content).or(nettai_match::default_navi_level(content, navi)).or(Some(0))
     } else {
         nettai_match::default_navi_level(content, navi)
     };
+    let _ = side.set_level(content, level);
     match nettai_match::empty_navicust(content, navi) {
         Some(empty) => {
             side.navicust.get_or_insert(empty);

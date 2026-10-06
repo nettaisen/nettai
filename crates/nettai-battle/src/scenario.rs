@@ -67,7 +67,6 @@ pub fn setup_on(content: &Content) -> RoundSetup {
     let mut player = PlayerSetup {
         folder,
         joypad_phase: 0,
-        navi_level: None,
         sp_times: Default::default(),
         console: Default::default(),
         rules: Vec::new(),

@@ -45,7 +45,7 @@ pub enum FieldType {
     Vec3,
     /// One of the named variants (stored as its index).
     Enum(Vec<String>),
-    /// A byte, or none (engine fields only, e.g. a sprite's alpha).
+    /// A byte, or none (a sprite's alpha; a setup's level, `u8?`).
     OptionalU8,
     /// A fixed number of elements of a scalar type (`"u8[18]"`): read and
     /// written element by element.
@@ -60,7 +60,9 @@ pub enum FieldType {
 
 impl FieldType {
     /// A type by name: `bool`, `u8`, `u16`, `u32`, `i8`, `i16`, `i32`,
-    /// `object`, `vec3`, or an array of one of the scalars, `"u8[18]"`.
+    /// `u8?` (a byte or none: a setup's fact that may be stated as none, as
+    /// a navi code's level), `object`, `vec3`, or an array of one of the
+    /// scalars, `"u8[18]"`.
     pub fn scalar(name: &str) -> Option<FieldType> {
         if let Some((elem, len)) = name.strip_suffix(']').and_then(|s| s.split_once('[')) {
             let elem = FieldType::scalar(elem)?;
@@ -73,6 +75,7 @@ impl FieldType {
         Some(match name {
             "bool" => FieldType::Bool,
             "u8" => FieldType::U8,
+            "u8?" => FieldType::OptionalU8,
             "u16" => FieldType::U16,
             "u32" => FieldType::U32,
             "i8" => FieldType::I8,
