@@ -5,7 +5,7 @@
 
 use nettai_demo::trace::trace_rounds;
 use nettai_demo::net::{Agreed, Link, NetHandshake, Waits};
-use nettai_demo::window::{self, Languages, Play, PlayOptions, Start, Waiting};
+use nettai_demo::window::{self, Play, PlayOptions, Start, Waiting};
 use nettai_demo::{editor, headless};
 use nettai_frontend::driver::{Driver, LivePlayer};
 use nettai_frontend::game::{Failed, Found, Game, LoadError, Sound};
@@ -881,7 +881,6 @@ fn main() {
         Some(nettai_audio::BattleAudio::with_banks(sound.banks, sound.songs))
     };
     eprintln!("{}", window::HELP);
-    let languages = Languages::new(loaded.clone(), &args.lang, graphics);
     let start = match netplay {
         // A netplay match: the window stays responsive (Esc quits) while
         // the handshake agrees it.
@@ -898,7 +897,6 @@ fn main() {
                 text: text_line,
                 then: Box::new(move |agreed| net_player(&net, &content, agreed)),
                 parts: (renderer, text, audio),
-                languages,
             }))
         }
         None => {
@@ -907,7 +905,7 @@ fn main() {
             if let Some(r) = recording {
                 player.record(r).unwrap_or_else(|e| fail(e));
             }
-            Start::Play(Box::new(Play::new(player, drivers, languages, &play)))
+            Start::Play(Box::new(Play::new(player, drivers, &play)))
         }
     };
     if let Err(e) = window::run(editor::App::new(editor_options(&args), None), start, play) {

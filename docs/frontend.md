@@ -309,9 +309,8 @@ Keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START,
 Backspace = SELECT; Space pauses, `.` steps one frame while paused, `-` and
 `=` change speed (1/8x to 16x of 59.73 Hz), F5 starts over (a recording's
 round; live play's set, from its first round) (none of these in netplay),
-Tab shows the next of the content's languages (the
-battle goes on: the language is the drawing's alone), Esc stops (back to the
-editor when the editor's Play started it, else the window closes). Nothing is
+Esc stops (back to the editor when the editor's Play started it, else the
+window closes). The battle's language is `--lang`'s alone. Nothing is
 written over the battle's picture: the window's title says where playback
 is, its speed, a pause, why it stopped, and in netplay the connection's
 figures and the result.
@@ -555,6 +554,17 @@ functions:
 audio device (`nettai_audio::Output`), unless `--mute`; headless rendering
 never plays sound. In netplay the player renders the cue actions of each
 frame (plays, and cancels of cues played on a wrong prediction).
+`Output` takes the samples into a lock-free ring (the device's callback
+never waits on the window) and keeps about three ticks queued (50 ms): the
+ticks come on the display's frames, a frame's together, and the window's
+clock isn't the device's, so the callback plays up to half a percent faster
+or slower to hold the queue at that target (dynamic rate control). A window
+that stalls (a frame a second late) still runs it
+dry: the sound fades out over 3 ms and comes back, faded in, once two ticks
+are queued, and what a catching-up window then queues past 200 ms is
+skipped back to the target. (Before, the queue was a locked one with no
+rate control, and running dry cut the sound to silence until three ticks
+were queued again.)
 
 ## 3. What is drawn, and how
 
@@ -1690,7 +1700,10 @@ each tick in about 2 ms (5.7 ms when each was converted for an image).
 picture, 43 frames a second). `NETTAI_PLAY_STATS` prints, every two
 seconds, the frames shown, the pictures presented and their cost, how long
 after it was presented each picture was drawn, and for the keys pressed the
-time to the tick that saw each and to that tick's picture drawn;
+time to the tick that saw each and to that tick's picture drawn; the ticks'
+time and the frame's work; and the audio output's figures (the device's
+buffers, the queue's range against its target, the rate shift, the times it
+ran dry and the frames played silent, the skips);
 `NETTAI_KEY_PROBE` presses the right arrow every 300 to 400 ms (a key event
 as the window gets one, at no particular point between frames) to measure
 those.
@@ -1776,7 +1789,12 @@ renderer, the font mode's text renderer and the battle's audio:
 
 - `advance(elapsed, buttons)` runs the ticks due for the time that passed
   (at most a quarter of a second's, so a stalled host doesn't catch up) at
-  the speed set, and keeps the part of a tick left over. A host that paces
+  the speed set, and keeps the part of a tick left over. On a display with
+  frames to spare (faster than the ticks, on average) a late frame that owes
+  two ticks runs one and keeps the other for the next frame, so each tick
+  has its picture: on a loaded machine whose 120 Hz display gave the window
+  60 to 100 uneven frames a second, 42 to 52 of the battle's 59.73 pictures
+  a second were shown before, every one after. A host that paces
   itself calls `tick(buttons)` instead, once per frame of its own clock; the
   embedding example does.
 - `frame()` is the battle's 240x160 picture with nothing over it;
