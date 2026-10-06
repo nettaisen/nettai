@@ -200,7 +200,9 @@ fn the_order_of_a_games_requires_moves_no_key_and_no_handle() {
         let mut count = 0;
         for init in inits {
             let mut lines: Vec<&str> = c.scripts.modules[init].lines().collect();
-            let at: Vec<usize> = (0..lines.len()).filter(|&i| lines[i].starts_with("    ") && lines[i].contains("= require(")).collect();
+            // (A root field's `name = require(...)`, a section's `require(...)`.)
+            let requires = |l: &str| l.starts_with("    ") && (l.contains("= require(") || l.trim_start().starts_with("require("));
+            let at: Vec<usize> = (0..lines.len()).filter(|&i| requires(lines[i])).collect();
             count += at.len();
             let rows: Vec<&str> = at.iter().rev().map(|&i| lines[i]).collect();
             for (&i, row) in at.iter().zip(rows) {
@@ -219,6 +221,23 @@ fn the_order_of_a_games_requires_moves_no_key_and_no_handle() {
         }
         assert_ne!(c.hash(), turned.hash(), "the hash covers the modules' text, an init.luau's too");
     }
+}
+
+/// docs/design/content-model-v2.md §4.0: a section's init merges a list
+/// of its modules' tables; an id two of them give is an error naming it,
+/// at the init.
+#[test]
+fn an_id_two_modules_give_is_an_error() {
+    let mut first = read(&["exe6"]);
+    first.define().unwrap_or_else(|e| panic!("content/exe6: {e}"));
+    let init = "exe6:chips/init".to_string();
+    let once = "    require(\"@self/airshot\"),\n";
+    let doubled = first.scripts.modules[&init].replacen(once, &once.repeat(2), 1);
+    assert_ne!(doubled, first.scripts.modules[&init]);
+    let mut c = read(&["exe6"]);
+    c.scripts.modules.insert(init, doubled);
+    let e = c.define().expect_err("an id given twice");
+    assert!(e.message.contains("chips/init.luau") && e.message.contains("two modules give airshot"), "{}", e.message);
 }
 
 /// docs/design/content-model-v2.md §4.0: what loads is what the games'

@@ -14,7 +14,7 @@
 -- - the emotion window's glitch: its flag, 0x10C1 (set when a bug applies, 0x08140040), which the window's start
 --   (0x0801AF14, through 0x0813F650) reads when the save has no patch cards (with cards, the cards' own flag:
 --   ../patch_cards);
--- - BugStop (+0x1F) stops the bugs unless the patch cards say (0x0813FA48 asks 0x08137A30 first): a switched-on
+-- - BugStop (+0x1F) stops the bugs unless the patch cards say (0x0813FA48 asks 0x08137A30 first): a
 --   card's BugStop effect (the last card's) stops them at 1 and keeps them else;
 -- - the HP (0x0803C13C): the maximum again and the HP with it, as EXE6's. That is the original's ending in the real
 --   world, and the one a battle here has. Its other, for a console in the cyberworld (the save's area, 0x02002944,
@@ -97,13 +97,11 @@ local EXE5: NaviCustGame = {
     -- the bugs stop, else they stay; no card's, the NaviCust's own.
     bug_stop = function(side: number): boolean?
         local value: number? = nil
-        for _, c in rules.setup_of(side).patch_cards :: { InstalledCard } do
-            if c.on then
-                for _, e in c.card.effects do
-                    if e.kind == "bug_stopper" then
-                        value = e.amount
-                        break
-                    end
+        for _, c in rules.setup_of(side).patch_cards :: { PatchCard } do
+            for _, e in c.effects do
+                if e.kind == "bug_stopper" then
+                    value = e.amount
+                    break
                 end
             end
         end

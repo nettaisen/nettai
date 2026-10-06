@@ -31,7 +31,7 @@
 //! ]
 //! regular_chip = 4                   # the Regular chip's entry, from 0 (else none)
 //! tag_chips = [5, 6]                 # the tag chips' entries (else none)
-//! patch_cards = [{ card = "canodumb", on = true }, { card = "shadow" }]   # each on or off (else none)
+//! patch_cards = ["canodumb", "shadow"]  # in the order they apply (else none)
 //! sp_times = [                       # SP navi deletion times, by SP chip, in frames (else every SP navi in no time)
 //!     { chip = "heatman-sp", frames = 741 },
 //! ]

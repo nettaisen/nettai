@@ -213,7 +213,7 @@ function effects.bug_stopper(n: number): PatchCardEffect
     return effect({ kind = "bug_stopper", amount = whole(n, "bug_stopper", 255) })
 end
 
--- EXE5's card 111 (Bass-Cross MegaMan) switched on: Hub Style (NaviStats +0x4C), `n` as its version's routine writes
+-- EXE5's card 111 (Bass-Cross MegaMan): Hub Style (NaviStats +0x4C), `n` as its version's routine writes
 -- it (Team ProtoMan's 1, Team Colonel's 2). Not one of the card table's effects: the cards' routine knows the card by
 -- its number (0x08137A58).
 function effects.hub_style(n: number): PatchCardEffect

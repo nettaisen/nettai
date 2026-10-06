@@ -584,7 +584,7 @@ mod tests {
         let content = exe6_test_content();
         let mut o = offer(&content, 5);
         o.stage = Some(nettai_match::link_battle_stages(&content, "exe6")[3]);
-        let cards = nettai_match::testing::patch_cards(&content, "exe6", "canodumb,-shadow");
+        let cards = nettai_match::testing::patch_cards(&content, "exe6", "canodumb,shadow");
         o.side.set_fact(&content, "patch_cards", &cards).unwrap();
         let bytes = o.to_bytes(&content);
         assert_eq!(Offer::from_bytes(&content, "exe6", &bytes).unwrap(), o);
