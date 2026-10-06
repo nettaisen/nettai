@@ -118,9 +118,8 @@ impl Joypad {
 /// What one player contributes to a tick.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct PlayerTick {
-    /// The buttons the player holds on this tick (GBA bits, 0..=0x3FF).
-    /// Their custom screen reads them at once; the fight gets them over
-    /// the link, `RoundSetup::link_delay` ticks later.
+    /// The buttons the player holds on this tick (GBA bits, 0..=0x3FF),
+    /// which their custom screen and the fight both read.
     pub held: u16,
 }
 
