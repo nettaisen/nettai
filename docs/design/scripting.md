@@ -29,8 +29,8 @@ Max in release builds, on a machine shared with other work, so single runs vary 
   `battle.play_sound(asset.sound("exe6:throw"))`. The engine keeps a handle for each.
 - **Fidelity.** Every golden trace matches every frame, also under rollback at every tested latency; the sound
   calls match; the chip lab's scenarios match every frame (§5).
-- **Rollback.** Content declares its state; the engine stores it inside `Battle` (64 bytes per object or
-  action), so snapshots and the digest cover it unchanged. The VM holds no battle state: writes to globals and
+- **Rollback.** Content declares its state; the engine stores it inside `Battle` (each object's or action's
+  at its schema's own size, in its pool's arena), so snapshots and the digest cover it unchanged. The VM holds no battle state: writes to globals and
   module locals are rejected at load, module tables and definitions are frozen at run time.
 - **Typing.** `core.d.luau` types the whole API for luau-lsp and for an in-process type check
   (`nettai-content-check`) that runs in `cargo test`, with lints for what the checker can't see.
@@ -174,10 +174,14 @@ state = { slot = slot.TYPE, look = "record:attachment-look", anim = "u8", offset
 
 Field types are `bool`, `u8`...`i32`, `object`, `vec3`, an enum (a list of names), fixed arrays (`"u8[18]"`),
 and references: to a definition (`"kind"`, `"action"`, `"chip"`, `"effect"`, `"record:<type>"`, ...) or an
-asset (`"sprite"`, `"sound"`, ...). The engine stores a `ContentState`: the schema's id and 64 bytes the fields
-are packed into in name order (the layout is private to the store; fields have names and types, never offsets).
-It is a `Copy` value kept in `kinds::Vars::Content` for objects and `ActionVars::Content` for actions, so
-`Battle: Clone` is still the whole snapshot and `#[derive(Hash)]` still covers it for the digest. A script sees
+asset (`"sprite"`, `"sound"`, ...). The engine stores a block of the schema's own size, its fields packed in
+name order (the layout is private to the store; fields have names and types, never offsets), with no limit but
+what the types take. An object's block is its slot's in its pool's `StateArena` (`Objects::state`), an action's
+its actor's in the actors' (`Actors::action_state`); `kinds::Vars::Content` and `ActionVars::Content` hold the
+layout's id. An arena packs its slots' blocks in slot order, so a snapshot copies the bytes there are and no
+more; a slot's block is replaced (zeroed, at the new layout's size) only when the slot takes a state, so a freed
+object's state stays readable until its slot is taken again, as the original's memory does. `Battle: Clone` is
+still the whole snapshot and `#[derive(Hash)]` still covers it for the digest. A script sees
 it as `me.state` (objects) or its update's second argument (actions), and casts it to its declared type (`local
 s = me.state :: State`). What the original passed an object as spawn parameters is state its spawner sets.
 
@@ -429,7 +433,7 @@ rollback.md §8.2 lists what content must guarantee:
 
 | Requirement | How |
 |---|---|
-| All content state in engine-owned typed storage inside `Battle`, snapshotted and digested; no VM heap, globals, closures or coroutines holding battle state | `ContentState` in `Vars`/`ActionVars` (`Hash`, `Copy`); the VM checked and frozen at load (§3.1); `Battle::digest` leaves out only the content, whose hash the round's setup carries, and presentation-only parts |
+| All content state in engine-owned typed storage inside `Battle`, snapshotted and digested; no VM heap, globals, closures or coroutines holding battle state | blocks in the pools' `StateArena`s, their layouts in `Vars`/`ActionVars` (`Hash`, `Clone`); the VM checked and frozen at load (§3.1); `Battle::digest` leaves out only the content, whose hash the round's setup carries, and presentation-only parts |
 | Integers only; one simulation RNG; no hash-map iteration | Integer-only boundary with wrapping stores; no `math.random`; the API hands out no maps |
 | Outputs write-only | `battle.play_sound` only adds a cue; scripts can't read cues back |
 | Content immutable during a battle, identified by a hash both peers compare | Modules and definitions frozen after load; `Content::hash` covers the scripts |
