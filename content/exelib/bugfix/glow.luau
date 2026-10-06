@@ -1,13 +1,17 @@
 --!strict
 -- The glow over a navi, as EXE5 and EXE6 share it (EXE6's actor object #0x5D, `sub_80C4828`; EXE5's #0x5D, 0x080C42E8,
 -- the same code but for its start; EXE6's docs/engine/dimming-chips.md §5.2): a copy of the side's navi, which
--- vanishes under it, flashing white. BugFix's controller spawns its first variant, EXE5's Liberation chips' its third;
--- the second is the original's, which nothing spawns.
+-- vanishes under it, flashing white. Its variant (the original's first parameter, `off_80C4930`'s rows) is its
+-- spawner's: BugFix's controller's
 --
---   bug_fix (`sub_80C493C`): white flashes further and further apart for 120 ticks, then 30 ticks, and the navi is
---     back;
---   submerge (`sub_80C49E4`): white for 31 ticks, then the navi is back, submerged for 480 ticks;
---   log_in (`sub_80C4A52`): white for 30 ticks with the log-in sound, then as bug_fix's end.
+--   bug_fix (`sub_80C493C`, the first): white flashes further and further apart for 120 ticks, then 30 ticks, and the
+--     navi is back;
+--
+-- or EXE5's Liberation chips'
+--
+--   log_in (`sub_80C4A52`, the third): white for 30 ticks with the log-in sound, then as bug_fix's end.
+--
+-- (The second, `sub_80C49E4`, which leaves the navi submerged for 480 ticks after 31 white, nothing spawns.)
 --
 -- When it is done it clears its spawner's `busy` flag. Each game makes its own kind (`glow.make`) with its look: its
 -- sounds and how its start (EXE6's `sub_80C4848`, EXE5's 0x080C4308) places the copy and takes the navi's parts: EXE6's
@@ -16,11 +20,11 @@
 
 local glow = {}
 
--- Its variants (the original's first parameter, `off_80C4930`).
-glow.BUG_FIX, glow.SUBMERGE, glow.LOG_IN = 0, 1, 2
+-- Its variants (the original's first parameter, `off_80C4930`'s first and third).
+export type Variant = "bug_fix" | "log_in"
 
 export type State = {
-    variant: number,
+    variant: Variant,
     -- The object whose `busy` it clears when done (the original's pointer, its ExtraVars+0).
     holder: Object?,
 }
@@ -28,8 +32,8 @@ export type State = {
 export type Look = {
     -- The kind's id.
     id: string,
-    -- A flash, the log in, going under.
-    sounds: { flash: Sound, log_in: Sound, submerge: Sound },
+    -- A flash, the log in.
+    sounds: { flash: Sound, log_in: Sound },
     -- Pixels down the field and up its copy sits from the navi (EXE6's 1, EXE5's -1).
     offset: number,
     -- EXE5's: the parts are a player navi's alone, stepping even while paused (`add_parts_of`'s `paused_stepping`);
@@ -42,13 +46,11 @@ export type Glow = {
     -- `sub_80C4AEC`: a glow of `variant` over `spawner`'s side's navi, on its side and facing; `holder` (an object
     -- with a boolean `busy`) is busy until it is done. (It is spawned at the spawner's registers; its init places
     -- it on the navi at once.)
-    spawn: (spawner: Object, variant: number, holder: Object) -> Object?,
+    spawn: (spawner: Object, variant: Variant, holder: Object) -> Object?,
 }
 
 -- Variant bug_fix: the flashes' ticks, then the wait.
 local FLASH_TICKS, FIRST_FLASH, WAIT = 0x78, 2, 0x1E
--- Variant submerge: submerged for 0xF0 * 2 ticks.
-local SUBMERGED_TICKS = 0x1E0
 
 -- The navi it copies (its first related object: the side's player).
 local function navi_of(me: Object, routine: string): Object
@@ -114,40 +116,6 @@ function glow.make(look: Look): Glow
         end
     end
 
-    -- `sub_80C49E4`: white; 31 ticks; then the navi is back, submerged.
-    local function submerge(me: Object)
-        if me.phase_init == 0 then
-            local navi = navi_of(me, "sub_80E1352")
-            dimming.hide_user_sparing(navi)
-            -- sub_80101C4: not submerged any more.
-            navi:set_status_timer("submerged", 0)
-            navi:set_status("submerged", false)
-            me.timer = 0
-            me.sprite.white = true
-            me.timer = WAIT
-            me.phase_init = 4
-        end
-        local t = me.timer - 1
-        me.timer = t
-        if t >= 0 then
-            return
-        end
-        me.visible = false
-        local navi = navi_of(me, "sub_8011044")
-        me:remove_parts_of(navi)
-        dimming.show_user(navi)
-        -- sub_80101AE: submerged for a while, and out of sight.
-        navi:set_status_timer("submerged", SUBMERGED_TICKS)
-        navi:set_status("submerged", true)
-        navi.visible = false
-        battle.play_sound(look.sounds.submerge)
-        local holder = (me.state :: State).holder
-        if holder then
-            (holder.state :: { busy: boolean }).busy = false
-        end
-        me:set_lifecycle("destroy")
-    end
-
     -- `sub_80C4A6C`: the navi vanishes, with the log-in sound; white for 30
     -- ticks.
     local function log_in(me: Object)
@@ -172,15 +140,11 @@ function glow.make(look: Look): Glow
     local function act(me: Object)
         local v = (me.state :: State).variant
         local a = me.action
-        if v == glow.SUBMERGE then
-            submerge(me)
-        elseif a == 0 then
-            if v == glow.BUG_FIX then
+        if a == 0 then
+            if v == "bug_fix" then
                 bug_fix_flashes(me)
-            elseif v == glow.LOG_IN then
-                log_in(me)
             else
-                error(string.format("glow variant %d reads past off_80C4930", v))
+                log_in(me)
             end
         elseif a == 4 then
             wait_and_leave(me)
@@ -224,7 +188,7 @@ function glow.make(look: Look): Glow
     local kind = new.kind {
         id = look.id,
         pool = "actor",
-        state = { variant = "u8", holder = "object" },
+        state = { variant = { "bug_fix", "log_in" }, holder = "object" },
         -- `sub_80C4828`.
         update = function(me: Object)
             local l = me.lifecycle
@@ -238,7 +202,7 @@ function glow.make(look: Look): Glow
         end,
     }
 
-    local function spawn(spawner: Object, variant: number, holder: Object): Object?
+    local function spawn(spawner: Object, variant: Variant, holder: Object): Object?
         local o = battle.spawn(kind, Vec3.zero)
         if not o then
             return nil

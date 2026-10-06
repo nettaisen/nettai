@@ -32,12 +32,12 @@ local function throw(me: Object, s: State)
     if s.timer == THROW_AT then
         battle.play_sound(SOUND)
         capsule.throw(me, me.attack_element, {
-            variant = 0,
-            line = 0,
+            variant = capsule.plain,
+            line = capsule.column,
             target_x = me.panel_x + REACH * me.facing,
             target_y = me.panel_y,
             damage = int.u32(me.attack_damage + me.hit_param * 0x10000),
-            mode = 0,
+            while_dimmed = false,
         })
         me.related1 = nil
         me.overlay = nil
