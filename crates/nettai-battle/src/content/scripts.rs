@@ -150,7 +150,7 @@ impl Scripts {
             let parts: String = modules
                 .iter()
                 .filter(|(p, source)| p.as_str() != packs::INIT && packs::sections_of(source).contains(&section))
-                .map(|(p, _)| format!("        [\"{0}\"] = require(\"@self/{0}\"),\n", keys::listed_as(p)))
+                .map(|(p, _)| format!("        require(\"@self/{}\"),\n", keys::listed_as(p)))
                 .collect();
             if !parts.is_empty() {
                 body += &format!("    {section} = merge {{\n{parts}    }},\n");
@@ -254,12 +254,12 @@ pub const GENERATED: &str = "-- (Made for a game held in memory: its root holds 
 
 /// What an init [`Scripts::init_for`] makes merges a section's tables with
 /// (content/exelib/merge.luau's, which a game held in memory may lack).
-const MERGE: &str = "local function merge(parts: { [string]: { [string]: any } }): { [string]: any }
+const MERGE: &str = "local function merge(parts: { { [string]: any } }): { [string]: any }
     local out = {}
-    for module, part in parts do
+    for _, part in parts do
         for id, definition in part do
             if out[id] ~= nil then
-                error(string.format(\"two modules give %s, %s.luau one of them\", tostring(id), module), 2)
+                error(string.format(\"two modules give %s\", tostring(id)), 2)
             end
             out[id] = definition
         end
@@ -768,7 +768,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         held.remove("never");
         let init = Scripts::init_for(&held);
         assert!(
-            init.contains("    chips = merge {\n        [\"chips/cannon\"] = require(\"@self/chips/cannon\"),\n        [\"chips/sword\"] = require(\"@self/chips/sword\"),\n    },\n")
+            init.contains("    chips = merge {\n        require(\"@self/chips/cannon\"),\n        require(\"@self/chips/sword\"),\n    },\n")
                 && init.contains("    rules = require(\"@self/rules\"),\n"),
             "{init}"
         );
