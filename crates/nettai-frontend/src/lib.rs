@@ -22,6 +22,7 @@ pub mod driver;
 pub mod game;
 pub mod netplay;
 pub mod player;
+pub mod replay;
 pub mod session;
 
 pub use nettai_render::{Frame, Renderer};

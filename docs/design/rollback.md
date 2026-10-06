@@ -483,9 +483,11 @@ down. A link that just goes quiet doesn't break: both peers wait at their stall 
 when the link comes back the match goes on (§5.1); the frontend gives up after 10 seconds of silence.
 
 **Rounds.** A set's rounds are one getgud session each (a session counts ticks from its start), on one rennet
-stream. When a peer's settled state is over, it ends the round (`Peer::end_round`): it pushes `RoundEnd` and starts
-the next round's session from the next round's setup, which both peers build from the settled end state and the
-shared setup (`nettai_match::Set::after`, which offline play asks too: the round's end hands over the settings and the score;
+stream. When the tick a round ended on settles, a peer ends the round (`Peer::end_round`): it pushes `RoundEnd` and
+starts the next round's session from the next round's setup, which both peers build from the battle at that tick
+(the frontend's world observer keeps the first state it simulates with the round over, and drops it on a rewind to
+it or before; a battle ticks on after its round's end, so a state settled later, which one peer can reach in the
+same advance and the other not, would make another next round) and the shared setup (`nettai_match::Set::after`, which offline play asks too: the round's end hands over the settings and the score;
 each player's folder is shuffled again by their console's RNG where the round left it; the battle's RNG is drawn
 from the first round's and the round number). The other player's inputs past their round's end, which the peer
 predicted past the end before it noticed, are dropped (they come before their `RoundEnd`); their next round's

@@ -24,6 +24,7 @@ use crate::picture::{self, Picture};
 use iced::widget::{container, text};
 use iced::{Color, Element, Length, Size, Subscription, Task, keyboard, window};
 use nettai_battle::input::keys;
+use nettai_frontend::replay::Recorder;
 use nettai_frontend::driver::{Driver, LivePlayer, NetStatus};
 use nettai_frontend::game::{Game, Graphics, TextMode};
 use nettai_frontend::player::Player;
@@ -132,8 +133,9 @@ pub struct Play {
     /// The picture is out of date: a tick ran, the window or the language
     /// changed (a display faster than the battle shows the last one again).
     stale: bool,
-    /// Whether the divergence and the stop were said.
-    reported: (bool, bool),
+    /// Whether the divergence, the stop and a recording's failure were
+    /// said.
+    reported: (bool, bool, bool),
     samples: Vec<[f32; 2]>,
     quit_after: Option<u64>,
     title: String,
@@ -158,7 +160,7 @@ impl Play {
             size: (0, 0),
             picture: None,
             stale: true,
-            reported: (false, false),
+            reported: (false, false, false),
             samples: Vec::new(),
             quit_after: opts.quit_after,
             title: "nettai-demo".into(),
@@ -190,8 +192,8 @@ pub struct Waiting {
     pub handshake: NetHandshake<Udp>,
     /// What the window says meanwhile.
     pub text: String,
-    /// The agreed match's driver.
-    pub then: Box<dyn FnOnce(Agreed<Udp>) -> Box<dyn Driver>>,
+    /// The agreed match's driver, and its recording if one is made.
+    pub then: Box<dyn FnOnce(Agreed<Udp>) -> (Box<dyn Driver>, Option<Recorder>)>,
     /// The player's parts: the renderer, the font mode's text renderer and
     /// the audio.
     pub parts: (nettai_render::Renderer, Option<TextRenderer>, Option<nettai_audio::BattleAudio>),
@@ -444,7 +446,7 @@ impl Demo {
                     }
                     keyboard::Key::Named(Named::F5) => {
                         if p.player.restart() {
-                            p.reported = (false, false);
+                            p.reported = (false, false, false);
                             p.stale = true;
                         }
                     }
@@ -495,7 +497,13 @@ impl Demo {
                 Progress::Agreed(agreed) => {
                     let Screen::Waiting(w) = std::mem::replace(&mut self.screen, Screen::Editor) else { unreachable!() };
                     let Waiting { then, parts: (renderer, text, audio), languages, .. } = *w;
-                    let player = Player::with(renderer, text, audio, then(agreed));
+                    let (driver, recorder) = then(agreed);
+                    let mut player = Player::with(renderer, text, audio, driver);
+                    if let Some(r) = recorder
+                        && let Err(e) = player.record(r)
+                    {
+                        eprintln!("netplay: not recorded: {e}");
+                    }
                     self.screen = Screen::Play(Box::new(Play::new(player, Vec::new(), languages, &self.options)));
                 }
             }
@@ -505,7 +513,7 @@ impl Demo {
             && let Some(next) = p.rest.next()
         {
             p.player.play(next);
-            p.reported = (false, false);
+            p.reported = (false, false, false);
             p.stale = true;
         }
         let elapsed = p.last.map_or(Duration::ZERO, |last| now.saturating_duration_since(last));
@@ -533,6 +541,10 @@ impl Demo {
         if let (Some(s), false) = (p.player.stopped(), p.reported.1) {
             eprintln!("{s}");
             p.reported.1 = true;
+        }
+        if let (Some(s), false) = (p.player.recording_failed(), p.reported.2) {
+            eprintln!("{s}");
+            p.reported.2 = true;
         }
         // The picture, at the window's size in logical pixels (as the
         // original window had it); a display of a higher density scales it

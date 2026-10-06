@@ -304,7 +304,7 @@ impl<'o, O> Tally<'o, O> {
     }
 }
 
-impl<G, O: Observer<G>> Observer<G> for Tally<'_, O> {
+impl<G: Game, O: Observer<G>> Observer<G> for Tally<'_, O> {
     fn rolled_back(&mut self, frame: u32) {
         self.inner.rolled_back(frame);
     }
@@ -315,8 +315,8 @@ impl<G, O: Observer<G>> Observer<G> for Tally<'_, O> {
         }
         self.inner.simulated(frame, game);
     }
-    fn confirmed(&mut self, frame: u32, settled: Option<&Battle>) {
-        self.inner.confirmed(frame, settled);
+    fn confirmed(&mut self, frame: u32, inputs: [&G::Input; 2], settled: Option<&Battle>) {
+        self.inner.confirmed(frame, inputs, settled);
     }
 }
 
