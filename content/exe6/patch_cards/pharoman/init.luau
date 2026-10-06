@@ -8,9 +8,9 @@ local card: PatchCard = {
     mb = 35,
     effects = {
         cards.hp_percent(5),
+        cards.giga_folder(1),
         cards.float_shoes(true),
         cards.bug(cards.charged_shot(chrgs)),
-        cards.giga_folder(1),
     },
 }
 

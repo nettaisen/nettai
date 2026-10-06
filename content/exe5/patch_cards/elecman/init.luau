@@ -8,8 +8,8 @@ local card: PatchCard = {
     effects = {
         cards.hp(200),
         cards.body("elec"),
-        cards.auto_heal(true),
         cards.bug(cards.back_special(nil)),
+        cards.auto_heal(true),
     },
 }
 

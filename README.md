@@ -190,7 +190,7 @@ editor/layout.rs): a value a row on the navi pane, a few definitions a checklist
 other list a pane of rows to add (from the game's, in library order), remove and reorder (the patch cards, with
 their MB in all). Richer views are the editor's own, chosen by the data's names and shape, never by a game's name:
 an entry whose data list `effects` (a patch card) its effects under its name, in the list and in the search list,
-each line as the game's card menu shows it (the locales' `[text.patch_card_effects]`), a bug red and marked;
+each line as the game's card screen shows it, in its order (the locales' `[patch_card_effects]`), a bug red and marked;
 the SP navi deletion times a time each, as the games show one; the NaviCust a grid, where the game's data fit it
 (each program's shape, colors and plus mark, and the boards of its rules/navicust/board module): the board as the
 game draws it, with its frame and command line, edited with the mouse as Tango's is (drag a program's color swatch

@@ -7,8 +7,8 @@ local card: PatchCard = {
     mb = 12,
     effects = {
         cards.hp(60),
-        cards.bug(cards.first_barrier(nil)),
         cards.custom(1),
+        cards.bug(cards.first_barrier(nil)),
     },
 }
 

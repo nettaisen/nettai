@@ -7,9 +7,9 @@ local variants = require("../objects/projectile/variants")
 local card: PatchCard = {
     mb = 20,
     effects = {
+        cards.bug(cards.buster_shot(nil)),
         cards.charge_shot_kind(variants.charged_poisoning),
         cards.status_bug(0),
-        cards.bug(cards.buster_shot(nil)),
     },
 }
 

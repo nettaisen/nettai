@@ -558,7 +558,7 @@ language = "ja"
 # Each line a patch card's menu shows of an effect, by the effect's kind and its one choice's name (the
 # editor's key), `{amount}` its number: the Japanese ROMs' effect names (0x081373D0, 0x081374B8). Written by bn6battle-verify's
 # trace-tests (tests/patch_card_text.rs), which checks it.
-[text.patch_card_effects]
+[patch_card_effects]
 "air_shoes" = "エアシューズ"
 "attack_add" = "アタック+{amount}"
 "attack_sub" = "アタック-{amount}"

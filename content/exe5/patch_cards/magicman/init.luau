@@ -6,9 +6,9 @@ local cards = require("../rules/patch_cards/cards")
 local card: PatchCard = {
     mb = 44,
     effects = {
+        cards.bug(cards.hp(-200)),
         cards.custom(1),
         cards.soul_time(2),
-        cards.bug(cards.hp(-200)),
     },
 }
 

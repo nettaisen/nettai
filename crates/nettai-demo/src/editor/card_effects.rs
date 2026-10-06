@@ -1,13 +1,17 @@
-//! A collection entry's effects as its game's menu lists them (a patch
-//! card's `effects`, EXE6's and EXE5's): each effect record's line from
-//! the locales' text table `patch_card_effects`, keyed by the record's
+//! A collection entry's effects as its game's card screen lists them (a
+//! patch card's `effects`, EXE6's and EXE5's): each effect record's line
+//! from the locales' text table `patch_card_effects`, keyed by the record's
 //! `kind` and the name of its one choice where it has one (a string field's
 //! value or a definition's id: `body.fire`,
 //! `charged_shot.patch-cards/airman/charge`), its numbers put in by their
 //! field names (`HP+{amount}`); whether the card shows it as a bug is the
-//! record's `bug`. A record the table has no line for says its kind and
-//! fields. The editor's own view, keyed by the data field's name
-//! (`effects`, which the editor's lists read as data).
+//! record's `bug`. The lines are in the entry's order (a game's cards list
+//! their effects in their card screen's order: EXE5's and EXE6's go through
+//! the effect numbers, 0x08137A78 and 0x08141A6A), and an effect without a
+//! line is one the screen doesn't show (EXE5's Hub Style, which no effect
+//! number names): it isn't shown here either. The editor's own view, keyed
+//! by the data field's name (`effects`, which the editor's lists read as
+//! data).
 
 use crate::editor::app::Editor;
 use nettai_content_api::{Data, DataKey, EntryHandle, Registry};
@@ -24,8 +28,9 @@ pub struct Line {
     pub bug: bool,
 }
 
-/// The lines of entry `h`'s effects, in the entry's order, or None when
-/// its data lists none (an entry of another kind of collection).
+/// The lines of entry `h`'s effects, in its order, those with a line, or
+/// None when its data lists no effects (an entry of another kind of
+/// collection).
 pub fn lines(e: &Editor, h: EntryHandle) -> Option<Vec<Line>> {
     let c = &e.content;
     let d = c.defs.definitions.get(Registry::Entry, &c.defs.entry(h).key)?;
@@ -48,15 +53,11 @@ pub fn key(r: &Data) -> Option<String> {
     })
 }
 
-/// Effect record `r` as a line, its text from `text` by its key.
+/// Effect record `r` as a line, its text from `text` by its key; none
+/// without one (an effect the card screen doesn't show).
 pub fn line(r: &Data, text: impl Fn(&str) -> Option<String>) -> Option<Line> {
-    let key = key(r)?;
-    let bug = matches!(r.field("bug"), Data::Bool(true));
-    let text = match text(&key) {
-        Some(template) => fill(&template, r),
-        None => generic(r),
-    };
-    Some(Line { text, bug })
+    let template = text(&key(r)?)?;
+    Some(Line { text: fill(&template, r), bug: matches!(r.field("bug"), Data::Bool(true)) })
 }
 
 /// `template` with each `{name}` the record's number `name` (a name the
@@ -82,29 +83,6 @@ pub fn fill(template: &str, r: &Data) -> String {
     out
 }
 
-/// A record the table has no line for: its kind and its fields' values
-/// (whether it is a bug apart).
-fn generic(r: &Data) -> String {
-    let Data::Map(fields) = r else { return String::new() };
-    let mut parts = Vec::new();
-    if let Data::Str(kind) = r.field("kind") {
-        parts.push(kind.clone());
-    }
-    for (k, v) in fields {
-        let DataKey::Str(name) = k else { continue };
-        if name == "kind" || name == "bug" {
-            continue;
-        }
-        parts.push(match v {
-            Data::Int(n) => format!("{name} {n}"),
-            Data::Bool(b) => format!("{name} {}", if *b { "on" } else { "off" }),
-            Data::Str(s) => s.clone(),
-            Data::Ref(_, key) => nettai_match::ids::local(key).to_string(),
-            _ => continue,
-        });
-    }
-    parts.join(" ")
-}
 
 #[cfg(test)]
 mod tests {
@@ -115,7 +93,7 @@ mod tests {
     }
 
     /// A record's key is its kind and its one choice; its numbers go into
-    /// the line by name; one the table hasn't says its kind and fields.
+    /// the line by name; one the table hasn't isn't shown.
     #[test]
     fn a_record_finds_its_line() {
         let table = |key: &str| -> Option<String> {
@@ -138,7 +116,7 @@ mod tests {
         let off = record(&[("kind", Data::Str("air_shoes".into())), ("on", Data::Bool(false)), ("bug", Data::Bool(true))]);
         assert_eq!(line(&off, table), Some(Line { text: "AirShoe".into(), bug: true }));
         let hub = record(&[("kind", Data::Str("hub_style".into())), ("amount", Data::Int(1))]);
-        assert_eq!(line(&hub, table).map(|l| l.text), Some("hub_style amount 1".into()));
+        assert_eq!(line(&hub, table), None);
         assert_eq!(fill("{x} and {amount}%", &hp), "{x} and 150%");
     }
 }
