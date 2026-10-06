@@ -2,9 +2,11 @@
 //! it loads, a netplay offer when it arrives (`check_side`), and the editor
 //! shows as they fail. Each problem is said, with where it is.
 //!
-//! - **The arena**: the content's game, stages a match of it may name (its
-//!   rules' `link_pick.match_stages`, `crate::link_battle_stages`), and
-//!   backgrounds its pack has.
+//! - **The rounds**: the content's game, 1 to [`crate::MAX_ROUNDS`] of
+//!   them, each stage stated one a match of the game may name (its rules'
+//!   `link_pick.match_stages`, `crate::link_battle_stages`), each
+//!   background stated one its pack has, and a stage left unstated only
+//!   where the rules pick one (`link_pick.stages`).
 //! - **A side**: its navi stated and the match's game's; its facts its game's
 //!   rules' (`crate::facts::check`: an enum the rules require stated, each
 //!   definition they name, at any depth, the game's, a definition once in its
@@ -17,51 +19,63 @@
 //!   game's folder rules (content/exe6/rules, content/exe5/rules). This crate
 //!   knows none of those: it reports what the rules say.
 
-use crate::{Arena, Folder, Match, Place, Side, ids};
+use crate::{Folder, Match, RoundSettings, Side, ids};
 use nettai_battle::Battle;
 use nettai_battle::content::Content;
 use nettai_battle::setup::NaviStats;
 use std::sync::Arc;
 
-fn check_place(content: &Content, game: &str, p: &Place, at: &str, out: &mut Vec<String>) {
-    if p.stage.index() >= content.defs.stages.len() || !ids::in_game(content, game, &content.defs.stage(p.stage).key) {
-        out.push(format!("{at}: a stage {game} hasn't"));
-        return;
+fn check_round(content: &Content, game: &str, r: &RoundSettings, at: &str, out: &mut Vec<String>) {
+    match r.stage {
+        Some(stage) if stage.index() >= content.defs.stages.len() || !ids::in_game(content, game, &content.defs.stage(stage).key) => {
+            out.push(format!("{at}: a stage {game} hasn't"));
+            return;
+        }
+        Some(stage) if !crate::link_battle_stages(content, game).contains(&stage) => {
+            out.push(format!("{at}: {} is no link battle stage", ids::local(&content.defs.stage(stage).key)));
+        }
+        Some(_) => {}
+        None if content.rules().link_pick.stages.is_empty() => {
+            out.push(format!("{at}: no stage, and {game}'s rules pick none (link_pick.stages): a round states its own"));
+        }
+        None => {}
     }
-    if !crate::link_battle_stages(content, game).contains(&p.stage) {
-        out.push(format!("{at}: {} is no link battle stage", ids::local(&content.defs.stage(p.stage).key)));
-    }
-    if let Some(b) = &p.background
+    if let Some(b) = &r.background
         && crate::background(content, game, b).is_none()
     {
         out.push(crate::no_background(at, game, b));
     }
 }
 
-/// What is wrong with an arena.
-pub fn check_arena(content: &Content, a: &Arena) -> Vec<String> {
+/// What is wrong with a match's game and its rounds (`rounds`: each a
+/// round's settings, where it is fought).
+pub fn check_rounds(content: &Content, game: &str, rounds: &[RoundSettings]) -> Vec<String> {
     let mut out = Vec::new();
     let games = ids::games(content);
-    if !games.contains(&a.game) {
-        return vec![format!("no game {:?} (the content's are {})", a.game, games.join(", "))];
+    if !games.contains(&game.to_string()) {
+        return vec![format!("no game {game:?} (the content's are {})", games.join(", "))];
     }
-    check_place(content, &a.game, &a.first, "arena", &mut out);
-    for (i, p) in a.later.iter().enumerate() {
-        check_place(content, &a.game, p, &format!("arena: later round {}", i + 2), &mut out);
+    if let Err(e) = crate::playable(content, game) {
+        return vec![e];
+    }
+    if rounds.is_empty() || rounds.len() > crate::MAX_ROUNDS {
+        out.push(format!("{} rounds: a match has 1 to {}", rounds.len(), crate::MAX_ROUNDS));
+    }
+    for (i, r) in rounds.iter().enumerate() {
+        check_round(content, game, r, &format!("round {}", i + 1), &mut out);
     }
     out
 }
 
-/// What is wrong with a side of a match on `arena` (a sound one:
-/// `check_arena`) that needs no battle to see: its navi, its auto battle
-/// data, its facts as its game's rules declare them.
-pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<String> {
+/// What is wrong with a side of a match of `game` that needs no battle to
+/// see: its navi, its auto battle data, its facts as its game's rules
+/// declare them.
+pub fn check_side_alone(content: &Content, game: &str, s: &Side) -> Vec<String> {
     let mut out = Vec::new();
     let defs = &content.defs;
-    let game = arena.game.as_str();
     // (A side's facts of another game's rules say nothing of this game's.)
     if !s.facts.fit(content) {
-        return crate::facts::check(content, arena, s);
+        return crate::facts::check(content, game, s);
     }
     match s.stated_navi(content) {
         None => {
@@ -75,7 +89,7 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
         Some(_) => {}
     }
     // The facts its game's rules take.
-    out.extend(crate::facts::check(content, arena, s));
+    out.extend(crate::facts::check(content, game, s));
     out
 }
 
@@ -124,20 +138,20 @@ fn validated(b: &mut Battle, side: usize, s: &Side) -> Vec<String> {
     }
 }
 
-/// What is wrong with one side of a match on `arena`, as a netplay offer
-/// brings it: everything [`check_side_alone`] sees, and its folder against
-/// the stats its round starts with (the side on both sides of a round on
-/// the arena).
-pub fn check_side(content: &Arc<Content>, arena: &Arena, s: &Side) -> Vec<String> {
-    let mut out = check_arena(content, arena);
+/// What is wrong with one side of a match of `game` on `rounds`, as a
+/// netplay offer brings it: everything [`check_side_alone`] sees, and its
+/// folder against the stats its round starts with (the side on both sides
+/// of the match's first round).
+pub fn check_side(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], s: &Side) -> Vec<String> {
+    let mut out = check_rounds(content, game, rounds);
     if !out.is_empty() {
         return out;
     }
-    out = check_side_alone(content, arena, s);
+    out = check_side_alone(content, game, s);
     if !out.is_empty() {
         return out;
     }
-    let m = Match { seed: None, arena: arena.clone(), sides: [s.clone(), s.clone()] };
+    let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [s.clone(), s.clone()] };
     match start(content, &m) {
         Ok(mut b) => out.extend(validated(&mut b, 0, s)),
         Err(e) => out.push(e),
@@ -147,13 +161,13 @@ pub fn check_side(content: &Arc<Content>, arena: &Arena, s: &Side) -> Vec<String
 
 /// What is wrong with a match, each problem with where it is.
 pub fn check_match(content: &Arc<Content>, m: &Match) -> Vec<String> {
-    let mut out = check_arena(content, &m.arena);
+    let mut out = check_rounds(content, &m.game, &m.rounds);
     if !out.is_empty() {
         return out;
     }
     let sides = ["left", "right"];
     for (s, at) in m.sides.iter().zip(sides) {
-        out.extend(check_side_alone(content, &m.arena, s).into_iter().map(|p| format!("{at}: {p}")));
+        out.extend(check_side_alone(content, &m.game, s).into_iter().map(|p| format!("{at}: {p}")));
     }
     if !out.is_empty() {
         return out;

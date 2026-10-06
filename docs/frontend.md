@@ -291,7 +291,7 @@ how strings are drawn (default `font`; the frame comparison uses
 `original`), `--font <file>` puts another TrueType or OpenType font in the
 bundled one's place, `--lang en|ja` the language of the battle's words
 (default `en`; §3, "Languages"). `--match FILE` plays a match file (§6: you
-are its left side). The file sets the game, arena, both sides and the optional
+are its left side). The file sets the game, its rounds, both sides and the optional
 `seed` for the battle's RNG (default: from the clock; each start prints it).
 Edit those settings in the file or with the editor (nettai-demo with nothing
 to play, or `--edit FILE`), which plays the match in the same window; its
@@ -320,24 +320,33 @@ stops, with the reason in the window's title and printed; the first difference f
 the trace's recorded state is printed too. Frame numbers are the trace's.
 
 **Live play** (`--match FILE`): you are the left navi; the right one stands
-still. The match file sets up the battle (§6), including its game, arena,
+still. The match file sets up the battle (§6), including its game, rounds,
 each side's navi, folder, forms, patch cards, NaviCust and stats. Use the
 editor to create, randomize or edit a match before playing it.
 
-Live play is a set, as a link battle is, best of three: when a round ends the
-next one starts, on the arena's next stage, with the score carried and each
+Live play is a set of the rounds the match lists, as a link battle is (the
+original's triple battle: three, best of three; a match may list any number
+from 1 to 99): when a round ends the
+next one starts, on the next round's place, with the score carried and each
 folder shuffled again by its console's RNG, and when the set is decided play
-stops with the result in the window's title and printed (`the match is over: you won`). How a
+stops with the result in the window's title and printed (`the match is over: you won`). A set
+of `n` rounds is decided once one side can no longer be caught, or after its
+last round, drawn if the sides are level (`sub_800AF50`, with `n` for three: an
+even number of rounds may end drawn, as three may on a drawn round); each
+round opens with the ROUND banner and its number, in the banner's digits. How a
 set goes on is `nettai_match::Set`'s to say, for live play and netplay alike
 (`Set::after`: the next round's battle from the round that ended, or the
 result); the session swaps the battle and tells the presentation to start
 over, and the frames go on being numbered from the set's first tick.
 
-- **The field**: a stage and a background picked at random as a link battle
-  picks them, from the game's rule section `link_pick` (`sub_81209DC`: its
+- **The field**: each round's stage and background, as the match states
+  them; a part it leaves (or a round left empty) picked from the seed as a
+  link battle picks them, from the game's rule section `link_pick` (`sub_81209DC`: its
   `stages`, the stage for each index of the original's pick, EXE6's 96 link
-  battle stages each once; its `backgrounds`, EXE6's `byte_8120A20`). The
-  set's later rounds get theirs the same way; the first round's stage is one
+  battle stages each once; its `backgrounds`, EXE6's `byte_8120A20`). Each
+  round's stage and background are drawn whether stated or not, so a part a
+  match states moves no other's pick, and a random match states the three
+  rounds a match that states nothing would be picked; the first round's stage is one
   of the first `first_round_stages` (the count the comm menu passes for a
   triple battle's practice: EXE6's all 96, EXE5's the first 68). gen-content
   checks the lists and the count against the ROM, and verify's `link_pick`
@@ -408,11 +417,12 @@ frontend's side is `netplay`):
   patch cards...);
   the other player's is checked against the content as a match
   file's side is (`nettai_match::check_side`, §6). Both play by the game's
-  rules (a game has one ruleset, so an offer names none). The language (`--lang`) is each player's own. The field
-  is the host's match file's arena; the battle's RNG comes from both players'
+  rules (a game has one ruleset, so an offer names none). The language (`--lang`) is each player's own. The rounds
+  are the host's match file's (each part it leaves picked from the seed); both
+  files must list as many rounds, or the handshake stops and says so; the battle's RNG comes from both players'
   randomly generated halves of the seed. Both print what was
   agreed, and `--save-match` writes it.
-- **Playing**: the match is a best-of-three set; its rounds follow one
+- **Playing**: the match is a set of the rounds it lists; its rounds follow one
   another (the folders shuffled again by each console's RNG). Every frame the
   frontend sends your buttons and shows the frame its rollback session
   presents: by default the newest (`--present-delay N`, default 0: the
@@ -1099,7 +1109,7 @@ them).
 
 A match file is everything a round needs, chosen before the battle: the
 game (which is its rules: a game has one ruleset, so a match names none),
-the arena, and each side's navi, folder, SP deletion times, patch cards and
+its rounds (each a `[[round]]` table: the place it is fought on), and each side's navi, folder, SP deletion times, patch cards and
 NaviCust, and what its game's rules take of it besides (its facts: what the
 save brings, the base HP, the Regular memory and the navi's level; EXE6's
 version, Crosses and Beast Out; EXE5's karma and souls), in TOML. A side
@@ -1122,13 +1132,14 @@ setup written out and played again is the same battle (the frontend's test
 game = "exe6"                               # the match's game and its rules: everything below is its
 seed = 42                                  # optional: the setup's and battle's seed
 
-[arena]
-stage = "netbattle-43"                     # a link battle stage of the game's
-background = "lans-hp"                     # optional: else the stage's own
-later = [                                  # optional: the set's later rounds (else the first's)
-    { stage = "netbattle-12", background = "undernet" },
-    { stage = "netbattle-7" },
-]
+[[round]]                                  # the set's rounds, a table each, in order: as many as the set has
+stage = "netbattle-43"                     # (1 to 99; three: the original's triple battle). A round's stage (a
+background = "lans-hp"                     # link battle stage of the game's) and background (of its pack); a part
+                                           # left out is picked from the seed, as the game picks a link battle's
+[[round]]
+stage = "netbattle-12"
+
+[[round]]                                  # (picked from the seed: stage and background)
 
 [left]                                     # you (side 0); then [right]: the side's facts (see below)
 navi = "megaman"                           # the navi (stated: a side states its own)
@@ -1533,7 +1544,9 @@ is said with where it is:
   record, a form), and every stat is in range; a match made in memory
   holding another game's (no file or offer can) is refused the same way
   ("right: a navi exe5 hasn't");
-- the arena's stages are ones a match of the game may name (its rules'
+- it lists 1 to 99 rounds (a file that lists none is refused: list one
+  `[[round]]` per round, an empty one picked from the seed); each stage
+  stated is one a match of the game may name (its rules'
   `link_pick.match_stages`: EXE6's and EXE5's link battle stages, each a
   settings record with the link effect that isn't the random battle's;
   `link_battle_stages`);
@@ -1577,8 +1590,9 @@ is said with where it is:
 
 **Netplay with a match file** (`--match FILE --host PORT` or
 `--join`): the file's left side is what you bring, wherever netplay puts
-you, and the host's file's arena is the match's (the joiner's is not
-sent). The battle's RNG still comes from both players' halves of the seed.
+you, and the host's file's rounds are the match's (the joiner's are sent,
+and must be as many: the handshake stops on two numbers of rounds). The
+battle's RNG still comes from both players' halves of the seed.
 
 ## 7. Embedding
 
@@ -1792,12 +1806,12 @@ console, so a replay shown from side 1 compares the same digests.
 **The file** (nettai-replay, which holds the format alone and runs no engine):
 
 ```text
-file   := "NTRP", layout (a byte: 1), head, match, info, input
+file   := "NTRP", layout (a byte: 1), head, info, match, input
 head   := "HEAD", length (u32), engine version (string), game (string),
           content hash (u64), the first battle's digest before any tick (u64)
-match  := "MTCH", length (u32), the match in nettai-match's binary
 info   := "INFO", length (u32), when (u64: unix seconds), the side that
           recorded (a byte), the players' names by side (two strings)
+match  := "MTCH", length (u32), the match in nettai-match's binary
 input  := "TICK", then a record per tick to the end of the file
 record := control (a byte), then what its bits announce, in their order:
           bit 0: side 0's buttons (u16) follow, bit 1: side 1's,
@@ -1821,18 +1835,20 @@ pack's index, the same on every load of content of that hash), a background by
 its number in the pack, nothing by name:
 
 ```text
-place := stage (u16: its handle), background (u16: its number plus one; 0 the stage's own)
-arena := the first round's place, the later rounds' two places
+place := stage (u16: its handle), background (u16: its number in the pack)
+round := what the round states (a byte: 1 its stage, 2 its background, 3 both, 0 neither),
+         then its stage's handle (u16) if stated, its background's number (u16) if stated
 side  := the side's setup of the game's rules in its compact form (each fact in the
          setup's order at its width; a record's fields in order; a list as its
          count and only the entries it holds)
-match := seed (u32), arena, side 0, side 1
-offer := what the host brings (a byte: 0 nothing, 1 a stage, 2 an arena), then the
-         stage's handle (u16) or the arena, then the side
+match := seed (u32), the rounds' count (u8), every round's place (as the seed picks
+         those the match leaves), side 0, side 1
+offer := the rounds' count (u8), each round as the player states it (round), then the side
 ```
 
 A side's bytes are its game's rules' (a game's facts change no other game's),
-the arena's the engine's. A random EXE6 side's offer with its host's arena is
+a place's the engine's. A replay keeps every round's place, whatever the match
+left to its seed. A random EXE6 side's offer with three stated rounds is
 about 210 bytes, EXE5's about 540 (its auto battle data included); a whole
 match 410 and 1,060. A reader refuses bytes that end early or run on, a handle
 past the content's, a background the pack hasn't and a value no fact may hold,

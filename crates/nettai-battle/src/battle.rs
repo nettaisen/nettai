@@ -1122,17 +1122,19 @@ impl Battle {
         self.outcome = Some(RoundEnd::Over(result));
     }
 
-    /// `sub_800AF50`: a best-of-three set is decided once one side can no
-    /// longer be caught, or after the third round.
+    /// `sub_800AF50`: a set of `n` rounds (the original's three: a triple
+    /// battle, best of three) is decided once one side can no longer be
+    /// caught, or after its last round, drawn if the sides are level.
     fn set_standing(&self) -> SetStanding {
         let r = &self.round;
-        let left = 3 - r.round as i32;
+        let rounds = self.setup.rounds() as i32;
+        let left = rounds - r.round as i32;
         let (wins, losses) = (r.wins as i32, r.losses as i32);
         if wins > losses + left {
             SetStanding::Decided(BattleResult::Won)
         } else if losses > wins + left {
             SetStanding::Decided(BattleResult::Lost)
-        } else if r.round >= 3 {
+        } else if r.round as i32 >= rounds {
             SetStanding::Decided(BattleResult::Drawn)
         } else {
             SetStanding::Undecided
@@ -2379,7 +2381,7 @@ mod tests {
         let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(1000));
         setup.settings.effects = 0xE8C;
         let content = testing::content();
-        setup.later_stages = [
+        setup.later_stages = vec![
             Stage { stage: content.stage_by_key(testing::ROCK_BATTLE), background: crate::content::BackgroundId(3) },
             Stage { stage: content.stage_by_key(testing::LINK_BATTLE_SIDE0_FIRST), background: crate::content::BackgroundId(0x13) },
         ];
@@ -2426,6 +2428,32 @@ mod tests {
         b.round.result = 1;
         tick(&mut b);
         assert_eq!((b.round_end(), b.round.result), (Some(&RoundEnd::Over(BattleResult::Drawn)), 3));
+    }
+
+    /// A set of `n` rounds (the stages it lists after the first, and one)
+    /// is decided once one side can no longer be caught, or after its last
+    /// round, drawn if level: best of five goes on at 2-0 and 2-2, ends at
+    /// 3-0, 0-3 and 3-2; best of four may end drawn at 2-2; a set of one
+    /// round ends after it.
+    #[test]
+    fn a_set_of_n_rounds_is_decided_by_its_count() {
+        let after = |rounds: usize, wins: u8, losses: u8| {
+            let mut b = ending(wins, losses, wins + losses);
+            let stage = b.setup.later_stages[0];
+            b.setup.later_stages = vec![stage; rounds - 1];
+            tick(&mut b);
+            b.round_end().cloned()
+        };
+        let next = |r: Option<RoundEnd>| matches!(r, Some(RoundEnd::NextRound { .. }));
+        assert!(next(after(5, 2, 0)) && next(after(5, 2, 2)) && next(after(5, 1, 2)));
+        assert_eq!(after(5, 3, 0), Some(RoundEnd::Over(BattleResult::Won)));
+        assert_eq!(after(5, 0, 3), Some(RoundEnd::Over(BattleResult::Lost)));
+        assert_eq!(after(5, 3, 2), Some(RoundEnd::Over(BattleResult::Won)));
+        assert!(next(after(4, 2, 1)));
+        assert_eq!(after(4, 2, 2), Some(RoundEnd::Over(BattleResult::Drawn)));
+        assert_eq!(after(1, 0, 1), Some(RoundEnd::Over(BattleResult::Lost)));
+        // (The rounds' count is the setup's: one more than it lists.)
+        assert_eq!(ending(0, 0, 0).setup.rounds(), 3);
     }
 
     #[test]
