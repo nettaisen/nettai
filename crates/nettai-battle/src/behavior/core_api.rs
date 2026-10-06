@@ -1022,9 +1022,6 @@ impl CoreApi for Battle {
         })
     }
 
-    fn navi_level(&self, side: u8) -> Option<u8> {
-        Some(self.navi_levels[side as usize & 1]).filter(|&l| l != 0xFF)
-    }
 
     fn take_over(&mut self, side: u8, ticks: u16) {
         let s = &mut self.sides[side as usize & 1];

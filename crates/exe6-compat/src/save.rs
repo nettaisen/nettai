@@ -35,6 +35,8 @@ const EVENT_FLAGS: usize = 0x1C88;
 /// word: `0x141 + 15 · navi + level`, `sub_8121198`).
 const NAVI: usize = 0x1B81;
 const NAVI_CODE: usize = 0x1C34;
+/// The navi codes of a navi (`sub_8121198`): one a level, 0 to 14.
+const NAVI_CODES: u32 = 15;
 /// The SP navi deletion times (0x020018C0, 0x28 bytes), which the init
 /// exchange sends (`sub_800B144`, the block's +0x70) and a battle reads at
 /// `byte_203EB00`.
@@ -145,10 +147,11 @@ impl Save {
             return Ok(None);
         }
         let code = u32::from_le_bytes(self.image[NAVI_CODE..NAVI_CODE + 4].try_into().expect("four bytes"));
-        let base = 0x141 + 15 * self.navi() as u32;
+        // (A navi's 15 codes, levels 0 to 14.)
+        let base = 0x141 + NAVI_CODES * self.navi() as u32;
         match code.checked_sub(base) {
-            Some(level) if level <= nettai_battle::custom::MAX_NAVI_LEVEL as u32 => Ok(Some(level as u8)),
-            _ => Err(format!("the save's navi code {code:#x} isn't one of its navi's ({base:#x} to {:#x})", base + 14)),
+            Some(level) if level < NAVI_CODES => Ok(Some(level as u8)),
+            _ => Err(format!("the save's navi code {code:#x} isn't one of its navi's ({base:#x} to {:#x})", base + NAVI_CODES - 1)),
         }
     }
 

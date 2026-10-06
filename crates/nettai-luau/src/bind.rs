@@ -1451,6 +1451,24 @@ fn system_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         })?;
         Ok(slot.map(|slot| State(StateOf::System(SystemCtx { side, slot }))))
     });
+    // Another system's player setup of side `side`, read-only, likewise a
+    // game's rules' alone (its API module: EXE6's and EXE5's navi level,
+    // their save system's `level`). Nil when the side's ruleset lacks the
+    // system.
+    lib_fn!(lua, t, "setup_of", |lua, (side, system): (LuaValue, LuaValue)| {
+        let caller = crate::define::caller(lua);
+        if !nettai_content_api::keys::local(&caller).starts_with("rules/") {
+            return Err(mlua::Error::runtime(format!(
+                "{caller}: system.setup_of is a game's rules' (a module under rules/, its API module): content reaches a system's setup through the game's API"
+            )));
+        }
+        let side = u8_arg(side, "side")? & 1;
+        let slot = with(|api, b| {
+            let system = nettai_content_api::SystemHandle(def_arg(b, &system, Registry::System, "system.setup_of")?);
+            Ok(api.system_slot_of(side, system))
+        })?;
+        Ok(slot.map(|slot| State(StateOf::Setup(SystemCtx { side, slot }))))
+    });
     Ok(t)
 }
 
@@ -1557,10 +1575,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "emotion", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.emotion(side).name()))
-    });
-    lib_fn!(lua, t, "navi_level", |_, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.navi_level(side)))
     });
     // Whether side `side`'s ruleset has system `system` (a game's folder
     // rules ask it of the chips a system plays).
@@ -2433,6 +2447,7 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             vec![LuaValue::Table(t)]
         }
         HookCall::RoleNavi { navi } | HookCall::FormNavi { navi } => vec![obj(navi)?],
+        HookCall::Given { side } => vec![LuaValue::Integer(mlua::Integer::from(side))],
         HookCall::NaviLeft { controller } => vec![obj(controller)?],
         HookCall::RoleEncased { obstacle, ice, class } => {
             let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(mlua::Integer::from(c)));
@@ -2487,6 +2502,14 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         HookCall::InstantChip { .. } | HookCall::RoleEncased { .. } | HookCall::NaviLeft { .. } | HookCall::FormNavi { .. } => {
             Ok(Value::Nil)
         }
+        // What a side is given: a whole number, a flag or nil.
+        HookCall::Given { .. } => match &v {
+            LuaValue::Nil => Ok(Value::Nil),
+            LuaValue::Boolean(b) => Ok(Value::Bool(*b)),
+            LuaValue::Integer(n) => Ok(Value::Int(i64::from(*n))),
+            LuaValue::Number(n) if n.fract() == 0.0 && n.abs() < 1e15 => Ok(Value::Int(*n as i64)),
+            _ => Err(mlua::Error::runtime(format!("a function of the side returns a whole number, a flag or nil, not {v:?}"))),
+        },
         // A chip check's, cost's or substitute's chip; no other system hook
         // returns anything.
         HookCall::System {

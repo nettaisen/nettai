@@ -1230,9 +1230,6 @@ declare battle: {
     -- Whether side `side`'s ruleset has system `system` (a game's folder
     -- rules ask it of the chips a system plays).
     side_has_system: (side: number, system: System) -> boolean,
-    -- The level of the navi code a side's save received (0 to 14), nil
-    -- when none was (EXE6's event flag 0x163).
-    navi_level: (side: number) -> number?,
     -- `sub_802E4B8`: the side's SELECT or Cross special in progress.
     side_special: (side: number) -> SideSpecial,
     -- A system's takeover of the side's navi starts for `ticks` (counted
@@ -2033,9 +2030,12 @@ export type Weapon = WeaponSpec
 -- for each of that section's time steps); the custom gauge's; the HP the
 -- user has lost (at most `cap`: EXE6's 500 when none); the last two digits
 -- of the user's HP; half the opponent's max HP; a link navi's own chip's,
--- by its level; by a count of the user's side (EXE5's DS navi chips, Roll
--- SP's, Django SP's: `by_count[n]`, the last for more). EXE5's SP and count
--- formulas give `operation_battle` in its operation battle.
+-- by its buster's attack level; by a count of the user's side (EXE5's DS
+-- navi chips, Roll SP's, Django SP's: `by_count[n]`, the last for more).
+-- EXE5's SP and count formulas give `operation_battle` in its operation
+-- battle. (A chip whose damage goes by its side, EXE5's team navis' own
+-- chips by their level, gives a function of the side instead: `ChipSpec`'s
+-- `damage`.)
 export type DamageFormula =
     { formula: "opponent_hp" }
     | { formula: "sp_navi", slot: string, by_time: { number }, operation_battle: number? }
@@ -2045,7 +2045,6 @@ export type DamageFormula =
     | { formula: "hp_last_digits" }
     | { formula: "half_opponent_max_hp" }
     | { formula: "navi_level", base: number, per_level: number }
-    | { formula: "level", by_level: { number } }
     | { formula: "count", of: DamageCount, by_count: { number }, operation_battle: number? }
 
 -- What a count formula counts: a side statistic, the side's panels of a
@@ -2066,7 +2065,10 @@ export type ChipSpec = {
     mb: number?,
     -- A number below 1000, or a formula the ruleset computes when the chip
     -- enters a hand.
-    damage: (number | DamageFormula)?,
+    -- A number, a formula, or a function of the side, which the round's
+    -- setup asks once for each side (EXE5's team navis' own chips: their
+    -- row at the side's level, lib/navi_level).
+    damage: (number | DamageFormula | (side: number) -> number)?,
     hit_param: number?,
     lockout: number?,
     flags: { string }?,
@@ -2181,28 +2183,31 @@ export type NaviDef = {
     -- The offer draws once from the console's RNG (EXE5's, which picks
     -- between two entries of its table, the same chip).
     own_chip_draws: boolean?,
-    -- Its damage bonus on its family's damaging chips, by its level.
-    chip_bonus: { family: ChipFamily, dimming_chips: boolean?, by_level: { number } }?,
+    -- Its damage bonus on its family's damaging chips: how much, a function
+    -- of its side, which the round's setup asks once (EXE6's by the navi's
+    -- level: rules/by_level).
+    chip_bonus: { family: ChipFamily, dimming_chips: boolean?, damage: (side: number) -> number? }?,
     -- MegaMan's bonus on a family's damaging chips used standing on a type
     -- of panel, in a form with no `chip_bonus` (EXE5's: Aqua chips on sea);
     -- the use turns the panel Normal.
     panel_bonus: { panel: PanelType, family: ChipFamily, damage: number }?,
     -- The chips it charges with A: a family's, never its own chip.
     -- `damaging` is always stated: only the damaging chips that aren't
-    -- dimming chips (false: any). `from_level`: only from that navi level
-    -- on, and only with a level (none: whatever the level). `plain`: only
-    -- the chips that are neither dimming nor dark chips. (EXE6's link
-    -- navis: their family's damaging chips from a level, `byte_8021369`;
-    -- EXE5's team navis: their family's plain chips.)
-    charged_chips: { family: ChipFamily, damaging: boolean, from_level: number?, plain: boolean? }?,
+    -- dimming chips (false: any). `when`: only where this function of its
+    -- side, which the round's setup asks once, says so (none: always).
+    -- `plain`: only the chips that are neither dimming nor dark chips.
+    -- (EXE6's link navis: their family's damaging chips from a level,
+    -- `byte_8021369`; EXE5's team navis: their family's plain chips.)
+    charged_chips: { family: ChipFamily, damaging: boolean, when: ((side: number) -> boolean)?, plain: boolean? }?,
     -- What a chip it charged gains (damage 0xFF: its damage again), where
     -- its form states no `charged_bonus`: a form's comes first.
     charged_bonus: { damage: number?, paralyzes: boolean? }?,
     -- The chips a charge doubles (`sub_8012AFA`).
     charge_doubles: ChipMatch?,
-    -- Its A charge builds up the next Fire chip's damage, up to a limit by
-    -- its level (`byte_802136D`).
-    fire_charge: { number }?,
+    -- Its A charge builds up the next Fire chip's damage, up to a limit: a
+    -- function of its side, which the round's setup asks once (nil: no
+    -- charge; EXE6's ChargeMan's by his level, `byte_802136D`).
+    fire_charge: ((side: number) -> number?)?,
     -- "status_immune": a hit's status doesn't take.
     traits: { "status_immune" }?,
     -- What lifts its charge glow: while its animation is one of `anims` the
@@ -3069,5 +3074,9 @@ declare system: {
     -- themselves (the content check holds to it, and the call refuses a
     -- module outside rules/).
     state_of: (side: number, system: System) -> any,
+    -- Another system's player setup of side `side`, read-only (nil: the
+    -- side's ruleset lacks it), likewise a game's rules' alone: its API
+    -- module reads its save system's `level` there.
+    setup_of: (side: number, system: System) -> any,
 }
 

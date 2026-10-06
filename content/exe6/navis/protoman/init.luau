@@ -1,6 +1,7 @@
 --!strict
 -- protoman: a link navi.
 
+local by_level = require("../rules/by_level")
 local buster = require("./megaman/weapons/buster")
 local a_charge = require("@self/a_charge")
 local back_special = require("@self/back_special")
@@ -54,7 +55,7 @@ return define.navi {
         },
     },
     -- The chips A charges (its family's damaging chips, from a navi level on), and those a charge doubles.
-    charged_chips = { family = "sword", from_level = 11, damaging = true },
+    charged_chips = { family = "sword", damaging = true, when = by_level.from(11) },
     charge_doubles = { family = "sword" },
     identity = define.identity {
         class = "link_navi",

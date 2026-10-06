@@ -2619,7 +2619,7 @@ own, 0x080EB1E8's).
 (4) Fire, ToadMan (12) Aqua, MagnetMan (5) Elec, TomahawkMan (10) Wood. The chip's tests are the souls': a chip
 under 0x190 of that family that is neither a dimming nor a dark chip (its flags' bits 0x01 and 0x20), damaging or
 not; no level is read. So each of the four states `charged_chips = { family = ..., damaging = false, plain = true }`
-(a navi's rule always says `damaging`: EXE6's link navis say true, with their `from_level`) and `charged_bonus =
+(a navi's rule always says `damaging`: EXE6's link navis say true, with their `when`, from a level) and `charged_bonus =
 { damage = 0xFF }` (the chip's damage again, with the bonus's sound), and its `a_charge` weapon is the charged-chip
 routine with its row of the charge table (navis/megaman/weapons/charged_chip's `routine`: 0x29 NapalmMan's, 0x2A
 MagnetMan's, 0x2B TomahawkMan's, 0x2C ToadMan's). Where a form and its navi both state a `charged_bonus` the form's
@@ -2628,9 +2628,10 @@ charged Fire chips start its bomb's action, 0x08010442, by the soul alone: Napal
 
 **The level.** A team navi's attacks take their damage from the damage rows (0x0801D74F, seven entries a row,
 0x0800EBC4) at the side's level: a word a side (0x0203C870) the init exchange sends, which 0x0800EBE0 counts from the
-save's story flags, 0x300 on, up to 6. In content: `battle.navi_level(side)` through lib/navi_level for a weapon,
-and `damage = { formula = "level", by_level = { ... } }` for an own chip (the chips' damage formulas 50 to 72, each a
-row: 0x0800EAF8).
+save's story flags, 0x300 on, up to 6. In content it is EXE5's save system's `level`, which the engine knows nothing
+of: `exe5.navi_level(side)` (rules/api.luau) through lib/navi_level for a weapon, and `damage =
+navi_level.row({ ... })` for an own chip (the chips' damage formulas 50 to 72, each a row: 0x0800EAF8), a function of
+the side, which the round's setup asks once for each side (`Battle::given`).
 
 **The own chips** (chips 0x191 to 0x1A6, past the library): StepSwrd B (ProtoMan), Airforce G (GyroMan), Satelity S
 (SearchMan), Napalm N (NapalmMan), NSTackle M (MagnetMan), MeddyCap M (Meddy), C-Cannon C (Colonel), SplitUp S
@@ -2673,7 +2674,8 @@ and AI index) have entries for GyroMan (three), Colonel (one), KnightMan (three)
 animation-change hook (0x0800F13C) for GyroMan, NapalmMan, Colonel and KnightMan; GyroMan's move is a variant of its
 own (0x0800F234, 0x0802D544).
 
-**As built** (engine): a chip's `setup` hook and the `level` damage formula; a navi's `story`, `own_chip_draws` and
+**As built** (engine): a chip's `setup` hook and the `level` damage formula (since a function of the side the round's
+setup asks, `Battle::given`); a navi's `story`, `own_chip_draws` and
 `palette_step`; the shared cannon, AirShot and Spreader actions take their holders' animations from their game.
 exe5-compat names the navis by number (records.toml's `[navis]`) and reads the level from a recording's setup
 (`navi_levels`) and the B+Back special's damage from the stats block (+0x48). exe5-extract takes both versions'

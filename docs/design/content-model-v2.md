@@ -217,10 +217,11 @@ reads none of it (`nettai_content::library`). The verification workspace's gener
   by_time = {...} }` (the SP chips' damage by the user's deletion time of that navi; the slot is one of
   rules/sp_chips.luau's `slots`, the save's deletion times in the setup's order), `{ formula = "hp_lost" }`
   (Muramasa), `{ formula = "hp_last_digits" }` (NumbrBl), `{ formula = "navi_level", base = 60, per_level =
-  10 }` (the link navis' chips), `{ formula = "level", by_level = {...} }` (EXE5's team navis' chips: a row
-  read at the side's navi level), and the ones no EXE6 chip uses (`opponent_hp`, `gauge`,
-  `half_opponent_max_hp`). The original's "1000 + n selects formula n" encoding is gone; the hand holds the
-  evaluated damage, as it does today.
+  10 }` (the link navis' chips, by the buster's attack level), and the ones no EXE6 chip uses (`opponent_hp`,
+  `gauge`, `half_opponent_max_hp`); or a function of the side, which the round's setup asks once for each side
+  (`Battle::given`): EXE5's team navis' chips, `damage = navi_level.row({...})`, a row read at the side's level
+  (lib/navi_level: the engine knows no level). The original's "1000 + n selects formula n" encoding is gone; the
+  hand holds the evaluated damage, as it does today.
 - `setup(navi)`, beside its use: what the chip itself does to the attack as a navi's use of it is prepared, once
   the attack is loaded (EXE5's chip records name a routine each: a team navi's own chip sets attack variables,
   as StepSwrd the charged byte its sword steps by).
@@ -253,7 +254,7 @@ export type NaviSpec = {
     palette_step: number?,                        -- what its palettes go by (EXE5's team navis')
     charge_glow_lift: { anims: { number }, pixels: number }?,  -- its animations that lift its charge glow
                                                   -- (EXE5's GyroMan's in the air)
-    chip_bonus: { family: ChipFamily, dimming_chips: boolean?, by_level: { number } }?,
+    chip_bonus: { family: ChipFamily, dimming_chips: boolean?, damage: (side: number) -> number? }?,
     identity: Identity,                           -- the NameID record: attach points, actor type, parts
     actions: { [string]: Action }?,               -- a link navi's own actions
     traits: { NaviTrait }?,
@@ -361,8 +362,10 @@ of them by number, they say:
   palette) is the content's own.
 - **A navi.** `forms` (the forms it changes into, by game: the Crosses in their order on the custom screen,
   Beast Out, Beast Over) is what the ruleset asks where the original asks "is this MegaMan"
-  (`NaviData::changes_form`); `charged_chips` (`sub_800F49E`, `byte_8021369`), `charge_doubles`,
-  `fire_charge` (ChargeMan's limits by his level, `byte_802136D`) and `traits` (`status_immune`). (A round's
+  (`NaviData::changes_form`); `charged_chips` (`sub_800F49E`; `when`, a function of the side: EXE6's from a
+  level, `byte_8021369`), `charge_doubles`, `fire_charge` (a function of the side: ChargeMan's limits by his level,
+  `byte_802136D`) and `traits` (`status_immune`). (A navi's functions of its side are asked once as the round is
+  set up, `Battle::given`: the engine knows no level, and EXE6's rules/by_level.luau reads it.) (A round's
   record of the link navis' own chips used is a bit a navi: at most 32 navis.)
 - **The tables by AI index are the identity's.** `parts`, what the actor record's init hook puts on
   (`sub_8010DF6`): a `body` overlay (its sprite; how many of the wearer's animations its depth table covers,
