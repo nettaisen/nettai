@@ -15,7 +15,7 @@ use crate::link::{Link, Packet};
 use crate::object::{ObjectRef, Objects};
 use crate::console::Console;
 use crate::rng::Rng;
-use crate::content::{BannerId, BannerRole, Content, FormData, MusicRole, NaviData, NaviWinBanner, SoundRole};
+use crate::content::{BannerId, BannerRole, Content, FormData, MusicRole, NaviData, NaviWinBanner, PlayerFact, SoundRole};
 use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, effects};
 use crate::transform::{TransformRequest, TransformSequencer};
 use crate::sound::SoundCue;
@@ -434,10 +434,10 @@ pub struct Battle {
     pub transform_seq: TransformSequencer,
     /// What a mid-battle custom-screen request waits for first.
     pub custom_reversion: crate::transform::CustomReversion,
-    /// Per side: the level of the navi code the save received
-    /// (`dword_203CFA0`, from the save through the init exchange; 0xFF
-    /// none: `PlayerSetup::navi_level`), which picks a link navi's chip
-    /// bonus.
+    /// Per side: its navi's level (`dword_203CFA0`, from the save through
+    /// the init exchange; 0xFF none), the player's setup's level fact
+    /// (`PlayerFact::Level`, as the game's rules declare it), which picks a
+    /// link navi's chip bonus and the damage of the chips that go by it.
     pub navi_levels: [u8; 2],
     pub objects: Objects,
     pub actors: Actors,
@@ -709,28 +709,28 @@ impl Battle {
         let hands = [ChipHand::empty(&content), ChipHand::empty(&content)];
         let rules = [0, 1].map(|p| crate::rules::SideRules::for_player(&content, &mut setup.players[p]));
         let navi_levels: [u8; 2] = std::array::from_fn(|side| {
-            // (A setup's checks refuse a level past the navi codes:
-            // the tables a level reads stop there.)
-            let p = &setup.players[side];
-            let level = p.navi_level.unwrap_or(0xFF);
-            assert!(
-                p.navi_level.is_none_or(|l| l <= crate::custom::MAX_NAVI_LEVEL),
-                "a navi code's level is 0 to {}, not {level}",
-                crate::custom::MAX_NAVI_LEVEL
-            );
+            // The level fact, where the game's rules declare one (none: no
+            // level, 0xFF).
+            let level = crate::rules::fact_in(&setup.players[side].rules, &content, PlayerFact::Level.name())
+                .filter(|_| content.defs.fact_field(PlayerFact::Level).is_some())
+                .and_then(|f| match f.value() {
+                    nettai_content_api::FieldValue::OptionalU8(l) => l,
+                    _ => None,
+                });
             // A navi with a story (EXE5's team navis) has its side's
             // level, up to its last: its attacks' damage is read at it.
+            // (Any other level reads its tables, which stop at their own
+            // last level.)
             let navi = setup.navi_stats[side].navi;
             if let Some(story) = &content.navi(navi).story {
                 assert!(
-                    p.navi_level.is_some_and(|l| l <= story.max_level),
-                    "side {side} operates {}, whose level is 0 to {}: its setup states {:?}",
+                    level.is_some_and(|l| l <= story.max_level),
+                    "side {side} operates {}, whose level is 0 to {}: its setup states {level:?}",
                     content.defs.navi(navi).key,
                     story.max_level,
-                    p.navi_level
                 );
             }
-            level
+            level.unwrap_or(0xFF)
         });
         let mut b = Battle {
             content,
@@ -798,7 +798,7 @@ impl Battle {
         // fact: EXE6's Gregar 0, Falzar 1). A game whose rules take no
         // version leaves the byte as the setup gives it.
         for side in 0..2u8 {
-            let place = b.fact(side, crate::content::PlayerFact::Version).filter(|f| f.stated()).and_then(|f| match (f.value(), f.ty()) {
+            let place = b.fact(side, PlayerFact::Version).filter(|f| f.stated()).and_then(|f| match (f.value(), f.ty()) {
                 (nettai_content_api::FieldValue::Enum(i), nettai_content_api::FieldType::Enum(_)) => Some(i),
                 _ => None,
             });

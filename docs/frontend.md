@@ -1274,7 +1274,11 @@ when the stats carry a NaviCust bug
 (content/exelib/navicust/compile.luau). BugFix clears it.
 
 **The navi code's level** (`level`) is the level of the navi code the
-save received (docs/engine/link-navis.md), 0 to 14. A link navi exists only
+save received (docs/engine/link-navis.md), 0 to 14: a fact of EXE6's save
+system (`level = "u8?"`, a number or none), which the engine reads by its
+role (`PlayerFact::Level`: a link navi's chip bonus and charge limits, the
+chips whose damage goes by it) and EXE6's rules through `battle.navi_level`
+(the seal below, the reload, MegaMan's gains). A link navi exists only
 through its code, so it always has one: without `level` it is **0**, its
 stats are its reload's at level 0 and its chip bonus is level 0's. MegaMan
 without `level` has **none** (no code received, 0xFF in the battle); with
@@ -1283,9 +1287,12 @@ NaviCust, and, as the game's event flag 0x163 does, his custom screen has
 no Beast Out button and his Cross window stays his even with a gauge for
 each player. The checks refuse a level past 14 and a link navi without one;
 a file written leaves out the navi's default (a link navi's 0, MegaMan's
-none).
+none). A navi takes a level where its definition says what one gives it
+(`levels`: EXE6's MegaMan and link navis; `story`: EXE5's team navis); the
+checks refuse a level for any other (EXE5's MegaMan), and one past the
+navi's last.
 
-**An EXE5 team navi's level** (`level`, 0 to 6; docs/design/exe5-map.md
+**An EXE5 team navi's level** (`level`, 0 to 6, EXE5's save system's fact; docs/design/exe5-map.md
 §15.16) is the level its attacks' damage goes by: the count of the save's
 story flags, which the battle's init exchange sends. A side that operates
 one (`navi = "protoman"`: any of the twelve, of either version) always has

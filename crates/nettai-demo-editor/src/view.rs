@@ -205,7 +205,7 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
     // (The match's game's navis.)
     let navis: Vec<Choice<_>> = nettai_match::navis(c, e.m.game()).into_iter().map(|n| Choice { label: e.names.navi(c, n), value: n }).collect();
     let navi = Choice { label: e.names.navi(c, side.navi), value: side.navi };
-    let level = e.typed.get(&(s, "level")).cloned().unwrap_or(side.navi_level.map_or(String::new(), |l| l.to_string()));
+    let level = e.typed.get(&(s, "level")).cloned().unwrap_or(side.level(c).map_or(String::new(), |l| l.to_string()));
     let mut col = column![heading(SIDES[s]), field("Navi", pick_list(navis, Some(navi), move |n| Msg::Navi(s, n)))].spacing(10);
     // (No navi code for EXE5's MegaMan.)
     let level_kind = side.takes_level(c).then(|| c.navi(side.navi).forms.is_none());
@@ -217,13 +217,15 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
                     .size(13)
                     .color(DIM),
             );
-        } else if crate::levels::has_levels(c, side) {
-            col = col.push(text("0 to 14: changing it fills in the stats the save gives at that level, the game cleared (the stats pane).").size(13).color(DIM));
+        } else if let Some(levels) = c.navi(side.navi).levels.as_ref().filter(|_| crate::levels::has_levels(c, side)) {
+            let last = levels.by_level.len().saturating_sub(1);
+            col = col.push(text(format!("0 to {last}: the round gives the navi the stats its save's reload gives at that level, the game cleared (the stats pane).")).size(13).color(DIM));
         }
     } else if level_kind == Some(false) {
         col = col.push(field("Navi code level", text_input("none", &level).on_input(move |t| Msg::Level(s, t)).width(Length::Fixed(80.0))));
+        let last = c.navi(side.navi).levels.as_ref().map_or(0, |l| l.by_level.len().saturating_sub(1));
         col = col.push(
-            text("Empty: no navi code (as usual). 0 to 14: MegaMan received from a navi code, his level's gains over his NaviCust, no Beast Out button.")
+            text(format!("Empty: no navi code (as usual). 0 to {last}: MegaMan received from a navi code, his level's gains over his NaviCust, no Beast Out button."))
                 .size(13)
                 .color(DIM),
         );

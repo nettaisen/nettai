@@ -159,6 +159,10 @@ pub fn rows(e: &Editor, s: usize) -> Column<'_, Msg> {
     let defaults = nettai_match::Facts::defaults(c);
     let mut col = Column::new().spacing(10);
     for f in facts::fields(c) {
+        // (The level has its own field, with the navi.)
+        if facts::role_of(c, f.name) == Some(PlayerFact::Level) {
+            continue;
+        }
         let Some(value) = side.facts.get(c, f.name) else { continue };
         let name = f.name.to_string();
         let msg = move |edit: Edit| Msg::Fact(s, name.clone(), edit);
@@ -313,8 +317,8 @@ mod tests {
         let six = exe6_content();
         let mut m = nettai_match::Match::empty(&six, "exe6").unwrap();
         let side = &mut m.sides[0];
-        assert_eq!(lists(&six, "exe6", side), [(3, "Crosses".to_string())]);
-        assert_eq!(list_named(&six, "crosses"), Some(3));
+        assert_eq!(lists(&six, "exe6", side), [(4, "Crosses".to_string())]);
+        assert_eq!(list_named(&six, "crosses"), Some(4));
         assert_eq!(list_named(&six, "version"), None, "an enum: a row, no pane");
         let field = facts::field(&six, "crosses").unwrap();
         let offered = facts::offered(&six, "exe6", side, &field).unwrap();

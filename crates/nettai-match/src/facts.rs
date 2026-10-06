@@ -86,6 +86,8 @@ pub enum Stated {
     /// A list of definitions nothing has stated (not an empty one: that
     /// is a list).
     Unlisted,
+    /// A number or none (a `u8?`: a navi code's level).
+    Optional(Option<i64>),
     /// A value no match states (an object, a vector, an asset).
     Other,
 }
@@ -105,6 +107,7 @@ impl Stated {
 fn stated_of(ty: &FieldType, v: FieldValue) -> Stated {
     match (ty, v) {
         (_, FieldValue::Bool(b)) => Stated::Flag(b),
+        (_, FieldValue::OptionalU8(v)) => Stated::Optional(v.map(i64::from)),
         (FieldType::Enum(names), FieldValue::Enum(i)) => Stated::Variant(names.get(i as usize).cloned()),
         (FieldType::Ref(registry, _), FieldValue::Ref(r)) => Stated::Def(*registry, r.map(|(_, h)| h)),
         (_, FieldValue::U8(_) | FieldValue::U16(_) | FieldValue::U32(_) | FieldValue::I8(_) | FieldValue::I16(_) | FieldValue::I32(_)) => {
@@ -248,6 +251,7 @@ pub fn range(ty: &FieldType) -> Option<(i64, i64, &'static str)> {
         FieldType::I8 => (i8::MIN as i64, i8::MAX as i64, "i8"),
         FieldType::I16 => (i16::MIN as i64, i16::MAX as i64, "i16"),
         FieldType::I32 => (i32::MIN as i64, i32::MAX as i64, "i32"),
+        FieldType::OptionalU8 => (0, u8::MAX as i64, "u8"),
         _ => return None,
     })
 }
@@ -374,6 +378,8 @@ pub fn shown(content: &Content, value: &Stated) -> String {
         Stated::Def(r, Some(h)) => ids::shown(content, *r, *h),
         Stated::Def(_, None) => "none".to_string(),
         Stated::Unlisted => "not stated".to_string(),
+        Stated::Optional(Some(n)) => n.to_string(),
+        Stated::Optional(None) => "none".to_string(),
         Stated::List(items) => {
             let all: Vec<String> = items.iter().filter(|v| !matches!(v, Stated::Def(_, None))).map(|v| shown(content, v)).collect();
             if all.is_empty() { "none".to_string() } else { all.join(", ") }
@@ -393,6 +399,23 @@ impl Side {
     /// Write one of the side's facts (`Facts::set`).
     pub fn set_fact(&mut self, content: &Content, field: &str, values: &[Fact]) -> Result<(), String> {
         self.facts.set(content, field, values)
+    }
+
+    /// The side's navi's level (the engine's level fact: EXE6's navi
+    /// code's, EXE5's team navi's), none where it states none or its rules
+    /// take none.
+    pub fn level(&self, content: &Content) -> Option<u8> {
+        match self.facts.role(content, PlayerFact::Level)?.value() {
+            FieldValue::OptionalU8(l) => l,
+            _ => None,
+        }
+    }
+
+    /// State the side's navi's level (none: none). An error where the
+    /// game's rules take no level.
+    pub fn set_level(&mut self, content: &Content, level: Option<u8>) -> Result<(), String> {
+        let value = level.map_or(Value::Nil, |l| Value::Int(l as i64));
+        self.set_fact(content, PlayerFact::Level.name(), &[Fact::Value(value)])
     }
 
     /// State the side's form list (the engine's form list fact: EXE6's

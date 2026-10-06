@@ -47,14 +47,6 @@ pub struct PlayerSetup {
     /// The joypad's auto-repeat beat (0-4) on the round's first tick; each
     /// console counts its own.
     pub joypad_phase: u8,
-    /// The level of the navi code the save received (0 to
-    /// [`MAX_NAVI_LEVEL`]; event flag 0x163 set), which the init exchange
-    /// shares (`sub_800B144`, `dword_203CFA0`): a link navi's chip bonus,
-    /// and what EXE6's rules read of the code (the custom screen's seal on
-    /// Beast Out and the Cross window, MegaMan's level gains). None: no
-    /// code received (0xFF), MegaMan only: a link navi exists through its
-    /// code (docs/engine/link-navis.md).
-    pub navi_level: Option<u8>,
     /// How fast the save deleted each SP navi (`byte_203EB00`: the save's
     /// 0x020018C0, through the init exchange): the SP navi chips' damage
     /// goes by it.
@@ -87,7 +79,6 @@ impl Default for PlayerSetup {
         PlayerSetup {
             folder: BattleFolder::empty(),
             joypad_phase: 0,
-            navi_level: None,
             sp_times: Default::default(),
             console: ConsoleSetup::default(),
             rules: Vec::new(),

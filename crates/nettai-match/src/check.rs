@@ -72,22 +72,23 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
         out.push(format!("a navi {game} hasn't"));
         return out;
     }
-    // The navi code's level: 0 to 14, and a link navi always has one (it
-    // exists only through its code); MegaMan may have none.
-    // (A navi with a story, EXE5's team navis: its own levels, which its
-    // damage rows are read at.)
-    let last = crate::story::max_level(content, s.navi);
-    match (s.navi_level, last) {
-        (Some(l), Some(last)) if l > last => {
-            out.push(format!("level {l}: {}'s level is 0 to {last}", crate::names::navi(content, s.navi)))
+    // The navi's level (the engine's level fact), up to its last: a navi
+    // code's (EXE6's `levels`: 0 to 14), and a link navi always has one (it
+    // exists only through its code), MegaMan may have none; a navi with a
+    // story (EXE5's team navis): its own levels, which its damage rows are
+    // read at; a navi with neither takes none.
+    let name = crate::names::navi(content, s.navi);
+    let navi = content.navi(s.navi);
+    let story_last = navi.story.as_ref().map(|st| st.max_level);
+    let code_last = navi.levels.as_ref().map(|l| l.by_level.len().saturating_sub(1) as u8);
+    match (s.level(content), story_last, code_last) {
+        (Some(l), Some(last), _) if l > last => out.push(format!("level {l}: {name}'s level is 0 to {last}")),
+        (None, Some(last), _) => out.push(format!("{name} has no level (0 to {last})")),
+        (Some(l), None, Some(last)) if l > last => out.push(format!("level {l}: a navi code's level is 0 to {last}")),
+        (None, None, Some(_)) if !navi.changes_form() => {
+            out.push(format!("{name} has no level: a link navi exists only through its navi code"))
         }
-        (None, Some(last)) => out.push(format!("{} has no level (0 to {last})", crate::names::navi(content, s.navi))),
-        (Some(l), _) if l > nettai_battle::custom::MAX_NAVI_LEVEL => {
-            out.push(format!("level {l}: a navi code's level is 0 to {}", nettai_battle::custom::MAX_NAVI_LEVEL))
-        }
-        (None, None) if !content.navi(s.navi).changes_form() => {
-            out.push(format!("{} has no level: a link navi exists only through its navi code", crate::names::navi(content, s.navi)))
-        }
+        (Some(l), None, None) => out.push(format!("level {l}: {name} takes no level")),
         _ => {}
     }
     // The auto battle data: what the game can hold of it, where the
@@ -312,7 +313,7 @@ mod tests {
         let content = crate::testing::exe6_content();
         let mut m = crate::pick::live(&content, "exe6", 3, None).unwrap();
         let s = &mut m.sides[0];
-        s.navi_level = level;
+        s.set_level(&content, level).unwrap();
         // (What the save brings: a base HP of 600, a Regular memory of 50.)
         use nettai_battle::rules::Fact;
         use nettai_content_api::Value;
