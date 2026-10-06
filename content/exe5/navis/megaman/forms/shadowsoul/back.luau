@@ -26,7 +26,6 @@ local function setup(navi: Object): Action
 end
 
 back.weapon = define.weapon {
-    id = "shadowsoul/back",
     -- (A B+Back, which nothing charges: the charge table's row 0x45 (0x0801CD1E), Charge 5 reading on into row
     -- 0x46's first entry.)
     charge_ticks = { 60, 60, 60, 60, 60, 120 },

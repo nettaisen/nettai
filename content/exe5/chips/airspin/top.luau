@@ -23,7 +23,6 @@ return common.make {
     id = "airspin/top",
     sprite = SPRITE,
     identity = define.identity {
-        id = "airspin-top",
         class = "field_object",
         version = 0,
         ai_index = 1,

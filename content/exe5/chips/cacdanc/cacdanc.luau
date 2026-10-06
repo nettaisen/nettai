@@ -209,7 +209,6 @@ cacdanc.cactus = define.kind {
 
 -- Its identity: a field object nothing swallows, leaves as junk or throws (NameID 0xD2), with no look.
 local DANCER = define.identity {
-    id = "cacdanc-dancer",
     class = "field_object",
     version = 0,
     ai_index = 1,

@@ -30,7 +30,6 @@ return define.chip {
         { order = 55, code_run = { chip = recipe_airhoc, count = 3 } },
     },
     action = flick.action {
-        id = "pithoky/action",
         kind = puck.kind,
         puck = puck.variants.pithoky,
         down = true,

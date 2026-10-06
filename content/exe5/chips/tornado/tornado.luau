@@ -55,7 +55,6 @@ local LOOK: TornadoBlowLook = { attachment = attachment.kind, tornado = tornado.
 
 -- Tornado's blow (subtype 1): one plain tornado two panels ahead, for 0x20 ticks (the record's parameters).
 tornado.single = blows.blow({
-    id = "tornado/action",
     fan = FAN,
     single = { variant = tornado.variants.plain, status = nil, ticks = 0x20 },
 }, LOOK)
@@ -65,7 +64,6 @@ tornado.single = blows.blow({
 -- (0x080CADE4, EXE6's `sub_80CA104`: the same panels), the charged fan; EXE5's tornadoes paralyze by level
 -- (0x080CAE50: none, 90, 120, 150 ticks; EXE6's none at every level).
 tornado.static = blows.blow({
-    id = "static/action",
     fan = CHARGED_FAN,
     spread = {
         by = "bug_kinds",
@@ -83,7 +81,6 @@ tornado.static = blows.blow({
 -- DarkTorn's blow (subtype 3, EXE6's action's third form): HP-bug tornadoes spreading back toward the navi by its
 -- side's statistic 3 (0x080CAE7E, EXE6's `sub_80CA19E`: the same tables), the charged fan one palette on.
 tornado.back_spread = blows.blow({
-    id = "darktorn/action",
     fan = CHARGED_FAN,
     fan_palette = 1,
     spread = {

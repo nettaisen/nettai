@@ -22,7 +22,7 @@ local cusvolt1 = define.chip {
     traits = { "hides_damage_as_a" },
     slot_in_limit = 3,
     damage = { formula = "gauge_level", base = 10 },
-    action = cusvolt.action("cusvolt1/action"),
+    action = cusvolt.action(),
 }
 
 -- CusVolt2 (EXE5 chip 0x0a7): an electric beam over the panel and the column ahead that follows the navi for 25 ticks
@@ -43,7 +43,7 @@ local cusvolt2 = define.chip {
     traits = { "hides_damage_as_a" },
     slot_in_limit = 3,
     damage = { formula = "gauge_level", base = 30 },
-    action = cusvolt.action("cusvolt2/action"),
+    action = cusvolt.action(),
 }
 
 -- CusVolt3 (EXE5 chip 0x0a8): an electric beam over the panel and the column ahead that follows the navi for 25 ticks
@@ -64,7 +64,7 @@ local cusvolt3 = define.chip {
     traits = { "hides_damage_as_a" },
     slot_in_limit = 3,
     damage = { formula = "gauge_level", base = 50 },
-    action = cusvolt.action("cusvolt3/action"),
+    action = cusvolt.action(),
 }
 
 return { cusvolt1 = cusvolt1, cusvolt2 = cusvolt2, cusvolt3 = cusvolt3 }

@@ -331,9 +331,8 @@ end
 yoyo.arm = attachment.look { sprite = asset.sprite("yoyo-arm"), palette = 0, attach_point = 0x0F }
 
 -- YoYo's throw: a yoyo of `spec`.
-function yoyo.action(id: string, spec: Spec): Action
+function yoyo.action(spec: Spec): Action
     return throw.action {
-        id = id,
         arm = yoyo.arm,
         attachment = attachment.kind,
         throw = function(me: Object, x: number, y: number, z: number, damage: number): Object?

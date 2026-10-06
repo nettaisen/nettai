@@ -39,7 +39,6 @@ return define.chip {
     extra_flags = { 128 },
     slot_in_limit = 3,
     action = action.make {
-        id = "copydmg/action",
         sound = asset.sound("buster-shot"),
         raise_arm = arm.raise,
         shot = mark.spawn,

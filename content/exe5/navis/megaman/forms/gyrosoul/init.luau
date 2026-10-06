@@ -29,7 +29,7 @@ return define.form {
     change = soul_change.action,
     revert = soul_revert.action,
     -- GyroMan's image as MegaMan unites with him (rules/souls/image), in his propeller (0x0800EDBC's routine for the soul).
-    image = soul_image.wearing(asset.sprite("gyroman"), "soul-image/gyroman", body_overlays.gyroman),
+    image = soul_image.wearing(asset.sprite("gyroman"), body_overlays.gyroman),
     sprite = asset.sprite("gyrosoul"),
     element = "null",
     buster_bonus = 0,
@@ -38,7 +38,7 @@ return define.form {
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
         -- Routine 0x39 (0x0800FA8E): DarkTorn (chip 0xC5), the charge table's row 0x39.
-        chaos = chaos.weapon("gyrosoul/chaos", darktorn, { 40, 60, 90, 120, 150, 40 }),
+        chaos = chaos.weapon(darktorn, { 40, 60, 90, 120, 150, 40 }),
     },
     status_reset = { "float_shoes", "floating_body", "air_shoes" },
     tick = function(navi: Object)

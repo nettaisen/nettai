@@ -100,7 +100,6 @@ local function recover(me: Object, s: State)
 end
 
 local action = define.action {
-    id = "t-swing/action",
     state = { timer = "u16" },
     -- 0x080F17D0
     update = function(me: Object, s: State)
