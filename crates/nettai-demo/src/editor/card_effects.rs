@@ -2,10 +2,12 @@
 //! patch card's `effects`, EXE6's and EXE5's): each effect record's line
 //! from the locales' text table `patch_card_effects`, keyed by the record's
 //! `kind` and the name of its one choice where it has one (a string field's
-//! value or a definition's id: `body.fire`,
+//! value but its `group`'s, or a definition's id: `body.fire`,
 //! `charged_shot.patch-cards/airman/charge`), its numbers put in by their
 //! field names (`HP+{amount}`); whether the card shows it as a bug is the
-//! record's `bug`. The lines are in the entry's order (a game's cards list
+//! record's `bug`, and the group the screen lists it in its `group`
+//! ("parameter" or "ability", which the editor heads in its own words: the
+//! game's headings are pictures). The lines are in the entry's order (a game's cards list
 //! their effects in their card screen's order: EXE5's and EXE6's go through
 //! the effect numbers, 0x08137A78 and 0x08141A6A), and an effect without a
 //! line is one the screen doesn't show (EXE5's Hub Style, which no effect
@@ -21,12 +23,18 @@ pub const TABLE: &str = "patch_card_effects";
 /// The entries' data field that lists their effects.
 pub const FIELD: &str = "effects";
 
-/// One effect as a line: its text, and whether the card shows it as a bug.
+/// One effect as a line: its text, whether the card shows it as a bug,
+/// and the group the card screen lists it in (the record's `group`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Line {
     pub text: String,
     pub bug: bool,
+    pub group: Option<String>,
 }
+
+/// The groups a card's lines go in, in the screen's order, each with the
+/// editor's heading for it.
+pub const GROUPS: [(&str, &str); 2] = [("parameter", "Parameter"), ("ability", "Ability")];
 
 /// The lines of entry `h`'s effects, in its order, those with a line, or
 /// None when its data lists no effects (an entry of another kind of
@@ -42,7 +50,7 @@ pub fn lines(e: &Editor, h: EntryHandle) -> Option<Vec<Line>> {
 pub fn key(r: &Data) -> Option<String> {
     let Data::Map(fields) = r else { return None };
     let Data::Str(kind) = r.field("kind") else { return None };
-    let choice = fields.iter().filter(|(k, _)| !matches!(k, DataKey::Str(s) if s == "kind")).find_map(|(_, v)| match v {
+    let choice = fields.iter().filter(|(k, _)| !matches!(k, DataKey::Str(s) if s == "kind" || s == "group")).find_map(|(_, v)| match v {
         Data::Str(s) => Some(s.clone()),
         Data::Ref(_, k) => Some(nettai_match::ids::local(k).to_string()),
         _ => None,
@@ -57,7 +65,11 @@ pub fn key(r: &Data) -> Option<String> {
 /// without one (an effect the card screen doesn't show).
 pub fn line(r: &Data, text: impl Fn(&str) -> Option<String>) -> Option<Line> {
     let template = text(&key(r)?)?;
-    Some(Line { text: fill(&template, r), bug: matches!(r.field("bug"), Data::Bool(true)) })
+    let group = match r.field("group") {
+        Data::Str(g) => Some(g.clone()),
+        _ => None,
+    };
+    Some(Line { text: fill(&template, r), bug: matches!(r.field("bug"), Data::Bool(true)), group })
 }
 
 /// `template` with each `{name}` the record's number `name` (a name the
@@ -105,8 +117,9 @@ mod tests {
                 _ => None,
             }
         };
-        let hp = record(&[("kind", Data::Str("hp_add".into())), ("amount", Data::Int(150))]);
-        assert_eq!(line(&hp, table), Some(Line { text: "HP+150".into(), bug: false }));
+        let hp = record(&[("kind", Data::Str("hp_add".into())), ("amount", Data::Int(150)), ("group", Data::Str("parameter".into()))]);
+        assert_eq!(line(&hp, table), Some(Line { text: "HP+150".into(), bug: false, group: Some("parameter".into()) }));
+        assert_eq!(key(&hp).as_deref(), Some("hp_add"));
         let body = record(&[("kind", Data::Str("body".into())), ("element", Data::Str("fire".into()))]);
         assert_eq!(key(&body).as_deref(), Some("body.fire"));
         let charged = record(&[("kind", Data::Str("charged_shot".into())), ("weapon", Data::Ref(Registry::Weapon, "exe6:patch-cards/airman/charge".into()))]);
@@ -114,7 +127,7 @@ mod tests {
         // (Its `on` isn't its choice: a bug that takes AirShoes away shows as
         // the same line, marked.)
         let off = record(&[("kind", Data::Str("air_shoes".into())), ("on", Data::Bool(false)), ("bug", Data::Bool(true))]);
-        assert_eq!(line(&off, table), Some(Line { text: "AirShoe".into(), bug: true }));
+        assert_eq!(line(&off, table), Some(Line { text: "AirShoe".into(), bug: true, group: None }));
         let hub = record(&[("kind", Data::Str("hub_style".into())), ("amount", Data::Int(1))]);
         assert_eq!(line(&hub, table), None);
         assert_eq!(fill("{x} and {amount}%", &hp), "{x} and 150%");

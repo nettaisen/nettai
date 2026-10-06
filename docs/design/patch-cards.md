@@ -97,6 +97,13 @@ rules (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch_c
   cards' routine knows the card by its number, 0x08137A58), so no line can reach the screen, and no text archive of
   the four ROMs names it (the test lists it, `HIDDEN`). The editor's patch card lists show them (README.md, the match
   editor), a bug marked "(bug)" in the editor's own words (the game marks one by its color alone).
+- **Each effect says the group its card screen lists it in** (`group`, "parameter" or "ability", which the shared
+  constructors set, @exelib/patch_cards/effects: no card writes it). The screen draws an effect in its left column
+  when its number is below 0x16 in EXE6 (the line drawer 0x08141384, `cmp r4, #22`) or below 0x18 in EXE5
+  (0x081374A8, `cmp r4, #24`: the soul turns too), in its right column otherwise, abilities and bugs alike (a bug
+  only colored); each column in number order. No kind is a parameter in one game and an ability in the other. The
+  columns' headings are pictures, no text archive's, so the editor heads its two groups in its own words
+  (Parameter, Ability). gen-content (EXE6) and the text test (both games) hold each record's group to its number.
 - **The setup is typed**: `PlayerSetup::patch_cards`, the card handles in the list's order with each switched on
   or off, at most 32 (EXE6's save list's room; its 80 MB allow 16). It is part of the setup the peers exchange and
   the digest covers. The EXE6 part reads it with `battle.patch_cards(side)`. (Since step c3 the installed cards
