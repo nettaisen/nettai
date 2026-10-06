@@ -426,6 +426,16 @@ impl Battle {
         self.folder_check.take().map(|c| c.problems).unwrap_or_default()
     }
 
+    /// For tools (the editor's panes of a side's setup): the game's rules'
+    /// function at `path` under their `panes` (`panes.2.fields.1.board`),
+    /// called for side `side` with `args` on this battle as it stands: its
+    /// answer as plain data. No part of the simulation. None: the rules
+    /// have no function there.
+    pub fn call_pane(&mut self, path: &str, side: u8, args: &[Value]) -> Option<Result<nettai_content_api::Data, String>> {
+        let f = self.content.defs.rules()?.pane_function(path)?;
+        Some(crate::behavior::call_tool(self, f, side & 1, args))
+    }
+
     /// What side `side`'s rules say is wrong with its setup (their
     /// `validate`): each problem, in their order; nothing when they find
     /// none, or have no `validate`. The rules read the setup and the stats

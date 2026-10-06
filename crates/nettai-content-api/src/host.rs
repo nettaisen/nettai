@@ -509,4 +509,11 @@ pub trait ContentHost {
     ) -> Result<(), ContentError>;
     /// Call function `f` for a hook.
     fn call_hook(&self, api: &mut dyn CoreApi, f: FnId, call: HookCall) -> Result<Value, ContentError>;
+    /// Call function `f` of the game's rules for a tool (a pane's of the
+    /// editor: the rules' `panes`) for side `side`, with `args`: while it
+    /// runs, the rules' setup and state are that side's. Its answer as plain
+    /// data (a definition as `Data::Ref`). No part of the simulation.
+    fn call_tool(&self, _api: &mut dyn CoreApi, _f: FnId, _side: u8, _args: &[Value]) -> Result<crate::Data, ContentError> {
+        Err(ContentError::new("this content runs no tool's call"))
+    }
 }

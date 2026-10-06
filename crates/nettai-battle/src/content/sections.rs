@@ -10,7 +10,7 @@
 //! missing one is a load error that names it: `rules: flow: missing
 //! field `escape_check``). What may be left out
 //! reads as nothing for every game: a feature's section a game hasn't
-//! (`berserk`, `lockon`, `navicust`, `banners`) and a table
+//! (`berserk`, `lockon`, `banners`) and a table
 //! that is empty without it (`elements`, `buster`, `math`,
 //! `custom_screen`); in a section, a list or an attribute of one entry
 //! that is none unless stated (a panel type's `burn`, `chaos_cycle`).
@@ -174,13 +174,6 @@ struct BannersSection {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct NaviCustSection {
-    boards: Vec<Vec<String>>,
-    command_line: u8,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 struct StatusSection {
     hp_bug_periods: [u8; 8],
     form_tick: bool,
@@ -251,7 +244,6 @@ pub(crate) const SECTIONS: &[&str] = &[
     "link_pick",
     "lockon",
     "math",
-    "navicust",
     "panels",
     "pools",
     "reactions",
@@ -275,7 +267,6 @@ struct Stated {
     pools: Option<PoolSizes>,
     custom_screen: Option<CustomScreenLayout>,
     buster: Option<BusterSection>,
-    navicust: Option<NaviCustRules>,
     holding_banners: Option<Vec<BannerId>>,
     status: Option<StatusSection>,
     lockon: Option<Lockon>,
@@ -309,7 +300,6 @@ impl Stated {
             pools: Some(r.pools),
             custom_screen: Some(r.custom_screen.clone()),
             buster: Some(BusterSection { recovery: r.buster_recovery.clone(), empty_hand: r.empty_hand, chaos_cycle: r.chaos_cycle.clone() }),
-            navicust: Some(r.navicust.clone()),
             holding_banners: Some(r.holding_banners.clone()),
             status: Some(StatusSection {
                 hp_bug_periods: r.hp_bug_periods,
@@ -406,7 +396,6 @@ impl Stated {
             fresh_stats,
             custom_screen: self.custom_screen.unwrap_or_default(),
             pools,
-            navicust: self.navicust.unwrap_or_default(),
         })
     }
 }
@@ -581,36 +570,6 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 });
             }
             "buster" => stated.buster = Some(r.read(spec, &at).map_err(e)?),
-            "navicust" => {
-                let s: NaviCustSection = r.read(spec, &at).map_err(e)?;
-                use crate::navicust::SIZE;
-                let mut boards = Vec::with_capacity(s.boards.len());
-                for (i, rows) in s.boards.iter().enumerate() {
-                    let bad = || e(format!("{at}: board {} is {SIZE} rows of {SIZE} cells (`o` the board, `f` its frame, `.` none)", i + 1));
-                    if rows.len() != SIZE {
-                        return Err(bad());
-                    }
-                    let mut board = [[BoardCell::Off; SIZE]; SIZE];
-                    for (y, row) in rows.iter().enumerate() {
-                        if row.len() != SIZE {
-                            return Err(bad());
-                        }
-                        for (x, c) in row.bytes().enumerate() {
-                            board[y][x] = match c {
-                                b'o' => BoardCell::On,
-                                b'f' => BoardCell::Frame,
-                                b'.' => BoardCell::Off,
-                                _ => return Err(bad()),
-                            };
-                        }
-                    }
-                    boards.push(board);
-                }
-                if s.command_line as usize >= SIZE {
-                    return Err(e(format!("{at}: the command line is a row of the grid (0 to {})", SIZE - 1)));
-                }
-                stated.navicust = Some(NaviCustRules { boards, command_line: s.command_line });
-            }
             "banners" => stated.holding_banners = Some(r.read::<BannersSection>(spec, &at).map_err(e)?.holding),
             "status" => stated.status = Some(r.read(spec, &at).map_err(e)?),
             "lockon" => {

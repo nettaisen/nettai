@@ -554,3 +554,13 @@ language = "en"
 "yahoots-bug-repair" = { name = "Yahoot's\nBug\nRepair" }
 "yort" = { name = "Yort" }
 "zomon" = { name = "Zomon" }
+
+# What a tool says of a side's setup: the rules' panes' titles and labels (rules/panes.luau).
+[setup]
+command_line = "command line"
+navicust = "NaviCust"
+navicust_expansions = "Board"
+navicust_programs = "Programs"
+patch_cards = "Patch cards"
+souls = "Souls"
+sp_times = "SP navi deletion times"

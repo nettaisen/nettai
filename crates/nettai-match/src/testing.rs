@@ -80,13 +80,77 @@ pub fn program_colors(content: &Content, program: nettai_content_api::EntryHandl
 
 /// NaviCust program `program`'s shape as placed (its data's `shape`, or
 /// `compressed` where it has one), turned.
-pub fn program_shape(content: &Content, program: nettai_content_api::EntryHandle, compressed: bool, rotation: u8) -> nettai_battle::navicust::Shape {
+pub fn program_shape(content: &Content, program: nettai_content_api::EntryHandle, compressed: bool, rotation: u8) -> Shape {
     use nettai_content_api::Registry;
     let d = content.defs.definitions.get(Registry::Entry, &content.defs.entry(program).key).expect("the program's definition");
     let field = if compressed && !d.spec.field("compressed").is_nil() { "compressed" } else { "shape" };
-    let shape = nettai_battle::navicust::read_shape(d.spec.field(field)).expect("a program's shape");
-    nettai_battle::navicust::rotate(&shape, rotation)
+    let shape = read_shape(d.spec.field(field)).expect("a program's shape");
+    rotate(&shape, rotation)
 }
+
+// ---- A NaviCust program's shape, for tests of the games' NaviCusts ------------------------
+
+/// The NaviCust's grid is this many cells a side, and so is a program's
+/// shape, centered on its middle cell.
+pub const SIZE: usize = 7;
+
+/// A program's cells on a 7x7 grid, by row then column; its center is
+/// (3, 3).
+pub type Shape = [[bool; SIZE]; SIZE];
+
+/// `shape` turned a quarter clockwise `rotation` times, as EXE6 turns a
+/// program (`sub_813B7A0`'s four copies: as it is, `sub_813B7FC` a quarter
+/// clockwise, `sub_813B818` a half, `sub_813B830` a quarter back).
+pub fn rotate(shape: &Shape, rotation: u8) -> Shape {
+    let n = SIZE - 1;
+    let mut out = [[false; SIZE]; SIZE];
+    for (y, row) in shape.iter().enumerate() {
+        for (x, &cell) in row.iter().enumerate() {
+            let (oy, ox) = match rotation & 3 {
+                0 => (y, x),
+                1 => (x, n - y),
+                2 => (n - y, n - x),
+                _ => (n - x, y),
+            };
+            out[oy][ox] = cell;
+        }
+    }
+    out
+}
+
+/// The grid cells a program's shape covers placed with its center at
+/// `(x, y)` (those inside the grid), as (column, row).
+pub fn cells(shape: &Shape, x: u8, y: u8) -> impl Iterator<Item = (i32, i32)> + '_ {
+    let c = (SIZE / 2) as i32;
+    shape.iter().enumerate().flat_map(move |(j, row)| {
+        row.iter().enumerate().filter(|&(_, &on)| on).map(move |(i, _)| (x as i32 - c + i as i32, y as i32 - c + j as i32))
+    })
+}
+
+/// A shape from a program's data: seven rows of seven cells, `#` a cell it
+/// covers and `.` one it doesn't.
+pub fn read_shape(d: &nettai_content_api::Data) -> Result<Shape, String> {
+    use nettai_content_api::Data;
+    let Data::List(rows) = d else { return Err(format!("a shape is {SIZE} rows of {SIZE} cells (strings of `#` and `.`)")) };
+    if rows.len() != SIZE {
+        return Err(format!("a shape is {SIZE} rows, not {}", rows.len()));
+    }
+    let mut shape = [[false; SIZE]; SIZE];
+    for (y, row) in rows.iter().enumerate() {
+        let Some(row) = row.str() else { return Err(format!("row {} is not a string", y + 1)) };
+        if row.len() != SIZE || !row.bytes().all(|b| b == b'#' || b == b'.') {
+            return Err(format!("row {} is not {SIZE} cells of `#` and `.`: {row:?}", y + 1));
+        }
+        for (x, b) in row.bytes().enumerate() {
+            shape[y][x] = b == b'#';
+        }
+    }
+    if !shape.iter().flatten().any(|&c| c) {
+        return Err("a shape covers no cell".into());
+    }
+    Ok(shape)
+}
+
 
 /// State `side`'s NaviCust (its rules' `navicust_expansions` and
 /// `navicust_programs`): `parts` on the board of `expansions`.

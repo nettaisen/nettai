@@ -314,22 +314,29 @@ fn a_match_is_described_by_its_facts() {
     assert_eq!(crate::describe(&five, &m, 1, false, 0).lines().nth(1).unwrap(), "  MegaMan (you); karma: 100; souls: none");
 }
 
-/// What a tool offers for a side's list of definitions: for the engine's
-/// form list, the forms of the navi's own lists (EXE6's ten Crosses, in its
-/// versions' order; none for a navi without); else what the rules' default
-/// lists (EXE5's twelve souls), with whatever else the side's list holds.
+/// What a tool offers for a side's list of definitions: what the game's
+/// rules' pane offers (EXE6's Crosses: the navi's own ten, in its versions'
+/// order; a navi that doesn't change form has no such pane); else what the
+/// rules' default lists (EXE5's twelve souls), with whatever else the
+/// side's list holds.
 #[test]
 fn a_list_fact_offers_its_definitions() {
+    use nettai_content_api::{Data, Value};
     let six = exe6_content();
-    let m = crate::pick::live(&six, "exe6", 1, None).unwrap();
-    let field = crate::facts::field(&six, "crosses").unwrap();
-    let offered = crate::facts::offered(&six, "exe6", &m.sides[0], &field).unwrap();
+    let mut m = crate::pick::live(&six, "exe6", 1, None).unwrap();
+    let panes = crate::panes::panes(&six).unwrap();
+    let (i, pane) = panes.iter().enumerate().find(|(_, p)| p.fields.iter().any(|f| f.field == "crosses")).unwrap();
+    let crate::panes::View::List(l) = &pane.fields[0].view else { panic!("a list") };
+    let mut b = crate::check::start(&six, &m).unwrap();
+    let Some(Ok(Data::List(offered))) = b.call_pane(l.offered.as_ref().unwrap(), 0, &[Value::Int(0)]) else { panic!("the Crosses offered") };
+    let offered: Vec<u16> = offered.iter().map(|d| if let Data::Ref(_, k) = d { six.defs.form_by_key(k).unwrap().0 } else { panic!("{d:?}") }).collect();
     let megaman = six.navi(m.sides[0].navi(&six)).forms.as_ref().unwrap();
     let own: Vec<u16> = megaman.listed("gregar").iter().chain(megaman.listed("falzar")).map(|f| f.0).collect();
     assert_eq!((offered.len(), &offered), (10, &own));
-    let mut link = m.sides[0].clone();
-    link.set_navi(&six, crate::ids::navi(&six, "exe6", "protoman").unwrap()).unwrap();
-    assert_eq!(crate::facts::offered(&six, "exe6", &link, &field), Some(Vec::new()));
+    m.sides[0].set_navi(&six, crate::ids::navi(&six, "exe6", "protoman").unwrap()).unwrap();
+    m.sides[0].set_level(&six, Some(0)).unwrap();
+    let mut b = crate::check::start(&six, &m).unwrap();
+    assert_eq!(b.call_pane(pane.shown.as_ref().unwrap(), 0, &[Value::Int(0)]).unwrap(), Ok(Data::Bool(false)), "pane {i}: ProtoMan has no Crosses");
     // (Flags and single values are no lists of definitions.)
     for name in ["version", "beast_out", "bug_frags"] {
         assert_eq!(crate::facts::offered(&six, "exe6", &m.sides[0], &crate::facts::field(&six, name).unwrap()), None, "{name}");

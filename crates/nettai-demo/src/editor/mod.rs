@@ -10,8 +10,8 @@ pub mod facts;
 pub mod levels;
 pub mod load;
 pub mod names;
-pub mod navicust;
 pub mod order;
+pub mod panes;
 pub mod pictures;
 pub mod view;
 
