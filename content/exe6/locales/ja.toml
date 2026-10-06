@@ -395,7 +395,7 @@ language = "ja"
 "tengucross" = { description = "風チップの攻撃力が+10!\nエアシューズがON!\nB+左でスイコミ!" }
 "tomahawkcross" = { description = "木チップタメうちで攻撃力✕2\nマヒやこんらんなどにならない\nステータスガード!" }
 
-[patch-cards]
+[patch_cards]
 "airman" = { name = "エアーマン" }
 "amonicul" = { name = "アモナキュール" }
 "armadill" = { name = "アルマン" }
@@ -514,7 +514,7 @@ language = "ja"
 "walla" = { name = "ウォーラ" }
 "wunote" = { name = "ウドノート" }
 
-[navicust-programs]
+[navicust_programs]
 "airshoes" = { name = "エアシューズ" }
 "antidmg" = { name = "カワリミマジック" }
 "attack-1" = { name = "アタック+1" }

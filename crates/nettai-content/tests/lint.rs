@@ -129,8 +129,7 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
     use nettai_content::library::{Library, Section};
     let wrong = Library {
         chips: vec![(Section::Mega, vec!["cannon".into(), "roll".into(), "roll".into(), "nosuch".into()])],
-        navicust: vec!["nosuch".into()],
-        patch_cards: Vec::new(),
+        collections: [("navicust_programs".to_string(), vec!["nosuch".to_string()]), ("navicust".to_string(), Vec::new())].into(),
     };
     assert_eq!(
         nettai_content::library::check(&wrong, &c.defs),
@@ -138,7 +137,8 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
             "chips.mega: cannon is a Standard chip",
             "chips.mega: roll is in chips.mega already",
             "chips.mega: no chip has the key nosuch",
-            "navicust: nothing has the key nosuch",
+            "navicust: the game's root holds no such collection (its are chips and navicust_programs, patch_cards)",
+            "navicust_programs: nothing has the key nosuch",
         ]
     );
     let errors: Vec<String> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| format!("{}: {}", i.file, i.message)).collect();

@@ -392,7 +392,7 @@ language = "ja"
 "toadsoul" = { name = "トードソウル" }
 "tomahawksoul" = { name = "トマホークソウル" }
 
-[navicust-programs]
+[navicust_programs]
 "airshoes" = { name = "エアシューズ" }
 "antidmg" = { name = "カワリミマジック" }
 "attck-1" = { name = "アタック+1" }
@@ -441,7 +441,7 @@ language = "ja"
 "tango" = { name = "タンゴサポート" }
 "undersht" = { name = "アンダーシャツ" }
 
-[patch-cards]
+[patch_cards]
 "alpha" = { name = "プロト" }
 "alphabug" = { name = "プロトバグ" }
 "anaconda" = { name = "ダイジャン" }

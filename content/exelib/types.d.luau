@@ -1405,3 +1405,46 @@ export type SupportsLook = {
     beat: SupportActor,
     tango: SupportActor,
 }
+
+-- A patch card (BN4's, EXE5's and EXE6's Modification Cards, 改造カード;
+-- docs/engine/patch-cards.md): an entry of a game's root's collection
+-- `patch_cards` (the core reads it as data), what every game's card is. Its key (compat's
+-- patch-cards.toml gives its number), its capacity cost (EXE6's MB, which
+-- the installed cards' limit counts) and its effects in the card's order:
+-- each a table with its `kind` and whether the card shows it as a `bug`,
+-- with the kind's own fields. What an effect does is a game's rules' (EXE6's
+-- rules/patch_cards, rules/patch_cards), and its type is the game's (EXE6's
+-- `PatchCardEffect`, which its cards' constructors make). Its name is the
+-- locales' (locales/<lang>.toml's `[patch_cards]`).
+export type PatchCardSpec = {
+    -- Its id, its key in its collection (`patch_cards.canodumb`): the
+    -- loader's to read, never written in the table.
+    id: string?,
+    mb: number,
+    effects: { any },
+}
+export type PatchCard = PatchCardSpec
+
+-- A NaviCust program (BN4's, EXE5's and EXE6's Navi Customizer parts;
+-- docs/design/navicust.md): an entry of a game's root's collection
+-- `navicust_programs` (the core reads it as data), what every game's program is. Its key (compat's
+-- navicust.toml gives its number), the colors it comes in in its variants'
+-- order, whether it is a plus part, and its shape: seven rows of seven cells
+-- (`#` a cell it covers, `.` one it doesn't), centered on the middle cell, and
+-- compressed (nil: it doesn't compress). What it does is a game's rules'
+-- (EXE6's: `bug`, `exclusive`, `anywhere`, `effects`, read by rules/navicust). Its name is
+-- the locales' (locales/<lang>.toml's `[navicust_programs]`).
+export type NaviCustProgramSpec = {
+    -- Its id, its key in its collection (`patch_cards.canodumb`): the
+    -- loader's to read, never written in the table.
+    id: string?,
+    colors: { string },
+    plus: boolean?,
+    shape: { string },
+    compressed: { string }?,
+    bug: string?,
+    exclusive: string?,
+    anywhere: boolean?,
+    effects: { NaviCustEffect }?,
+}
+export type NaviCustProgram = NaviCustProgramSpec

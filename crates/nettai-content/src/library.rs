@@ -1,12 +1,13 @@
 //! A game pack's library order: `library.toml`, the order the game's own
-//! library screens list its chips in, by category, and the order of its
-//! NaviCust programs and patch cards, by content key. Menus list things in
+//! library screens list its chips in, by category, and the order of the
+//! entries of each of the game's collections (EXE6's `navicust_programs`
+//! and `patch_cards`), by their ids there. Menus list things in
 //! it (the editor's chip, program and card lists); the battle reads none of
 //! it, so it stays out of the content's hash. The verification workspace's
 //! generators write it from the ROMs and their checks compare it with them.
 //!
 //! ```toml
-//! navicust = [
+//! navicust_programs = [
 //!     "superarmor",
 //! ]
 //! patch_cards = [
@@ -90,10 +91,9 @@ pub struct Library {
     /// The chip sections, in the game's tab order, each its chips' keys in
     /// order.
     pub chips: Vec<(Section, Vec<String>)>,
-    /// The NaviCust programs' keys, in order.
-    pub navicust: Vec<String>,
-    /// The patch cards' keys, in order.
-    pub patch_cards: Vec<String>,
+    /// Each of the game's collections' entries' ids, in order, by the
+    /// collection's name.
+    pub collections: std::collections::BTreeMap<String, Vec<String>>,
 }
 
 /// A place in an order: compared, it sorts what has one in the order and
@@ -123,12 +123,9 @@ impl Library {
         out
     }
 
-    pub fn navicust_rank(&self, key: &str) -> Option<Rank> {
-        self.navicust.iter().position(|k| k == key).map(|i| (0, i))
-    }
-
-    pub fn patch_card_rank(&self, key: &str) -> Option<Rank> {
-        self.patch_cards.iter().position(|k| k == key).map(|i| (0, i))
+    /// The place of entry `id` in collection `collection`'s order.
+    pub fn entry_rank(&self, collection: &str, id: &str) -> Option<Rank> {
+        self.collections.get(collection)?.iter().position(|k| k == id).map(|i| (0, i))
     }
 }
 
@@ -173,9 +170,11 @@ pub fn parse(text: &str, file: &str) -> Result<Library, String> {
                     out.chips.push((s, keys(list, &format!("chips.{name}"))?));
                 }
             }
-            "navicust" => out.navicust = keys(item, "navicust")?,
-            "patch_cards" => out.patch_cards = keys(item, "patch_cards")?,
-            other => return Err(format!("{file}: `{other}` is none of chips, navicust and patch_cards")),
+            // (A collection of the game's root, by its name: the check
+            // holds it to the root's.)
+            collection => {
+                out.collections.insert(collection.to_string(), keys(item, collection)?);
+            }
         }
     }
     Ok(out)
@@ -216,18 +215,20 @@ pub fn check(lib: &Library, defs: &Defs) -> Vec<String> {
             }
         }
     }
-    let mut keys_in = |what: &str, keys: &[String], known: &dyn Fn(&str) -> bool| {
+    for (collection, ids) in &lib.collections {
+        if !defs.collections().contains(&collection.as_str()) {
+            out.push(format!("{collection}: the game's root holds no such collection (its are chips and {})", defs.collections().join(", ")));
+            continue;
+        }
         let mut seen = std::collections::HashSet::new();
-        for key in keys {
-            if !seen.insert(key.as_str()) {
-                out.push(format!("{what}: {key} twice"));
-            } else if !known(key) {
-                out.push(format!("{what}: nothing has the key {key}"));
+        for id in ids {
+            if !seen.insert(id.as_str()) {
+                out.push(format!("{collection}: {id} twice"));
+            } else if defs.entry_in(collection, id).is_none() {
+                out.push(format!("{collection}: nothing has the key {id}"));
             }
         }
-    };
-    keys_in("navicust", &lib.navicust, &|k| defs.navicust_program_by_key(k).is_some());
-    keys_in("patch_cards", &lib.patch_cards, &|k| defs.patch_card_by_key(k).is_some());
+    }
     out
 }
 
@@ -252,7 +253,7 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
 mod tests {
     use super::*;
 
-    const TEXT: &str = "navicust = [\"superarmor\"]\npatch_cards = [\"canodumb\"]\n\n\
+    const TEXT: &str = "navicust_programs = [\"superarmor\"]\npatch_cards = [\"canodumb\"]\n\n\
                         [chips]\nstandard = [\"cannon\", \"hicannon\"]\nmega = [\"roll\"]\n";
 
     #[test]
@@ -263,8 +264,8 @@ mod tests {
         assert_eq!(lib.chip_rank("roll"), Some((1, 0)));
         assert_eq!(lib.chip_rank("lance"), None);
         assert_eq!(lib.chip_section("roll"), Some(Section::Mega));
-        assert_eq!(lib.navicust, ["superarmor"]);
-        assert_eq!(lib.patch_cards, ["canodumb"]);
+        assert_eq!(lib.collections["navicust_programs"], ["superarmor"]);
+        assert_eq!(lib.collections["patch_cards"], ["canodumb"]);
         // Mega's section is first where the file says so.
         let swapped = parse("[chips]\nmega = [\"roll\"]\nstandard = [\"cannon\"]\n", "f").unwrap();
         assert_eq!(swapped.chip_rank("cannon"), Some((1, 0)));
@@ -283,6 +284,9 @@ mod tests {
         assert!(parse("[chips]\nextra = []\n", "f").unwrap_err().contains("`chips.extra` is none of the sections"));
         assert!(parse("[chips]\nmega = \"roll\"\n", "f").unwrap_err().contains("`chips.mega` is not a list of keys"));
         assert!(parse("[chips]\nmega = [1]\n", "f").unwrap_err().contains("not a key"));
-        assert!(parse("folders = []\n", "f").unwrap_err().contains("`folders` is none of"));
+        // (Another key is a collection's order, which the check holds to the
+        // game's root's.)
+        assert!(parse("folders = 3\n", "f").unwrap_err().contains("`folders` is not a list of keys"));
+        assert_eq!(parse("folders = [\"a\"]\n", "f").unwrap().collections["folders"], ["a"]);
     }
 }
