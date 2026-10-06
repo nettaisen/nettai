@@ -19,6 +19,7 @@ local spshake1: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = spshake.action(spshake.waves[1]),
+    auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
 -- SpShake2 (EXE5 chip 0x019): an electric wave that snakes along the field from the panel ahead (EXE5's SpShake,
@@ -36,6 +37,7 @@ local spshake2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = spshake.action(spshake.waves[2]),
+    auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
 -- SpShake3 (EXE5 chip 0x01a): an electric wave that snakes along the field from the panel ahead (EXE5's SpShake,
@@ -53,6 +55,7 @@ local spshake3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = spshake.action(spshake.waves[3]),
+    auto_battle = { class = "into_reach", range = "all_ahead" },
 }
 
 return { spshake1 = spshake1, spshake2 = spshake2, spshake3 = spshake3 }

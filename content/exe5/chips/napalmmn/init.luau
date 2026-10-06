@@ -21,6 +21,7 @@ local napalmmn: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "into_reach", range = "columns_three_to_five" },
 }
 
 -- NaplmMnSP (EXE5 chip 0x0e4): NapalmMan cuts in and lobs a napalm bomb four panels ahead, its fire spreading around an
@@ -41,6 +42,7 @@ local naplmmn_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_sp,
+    auto_battle = { class = "into_reach", range = "columns_three_to_five" },
 }
 
 -- NaplmMnDS (EXE5 chip 0x0e5): NapalmMan, dark, cuts in and lobs a napalm bomb four panels ahead, its fire spreading
@@ -60,6 +62,7 @@ local naplmmn_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "into_reach", range = "columns_three_to_five" },
 }
 
 return { napalmmn = napalmmn, ["naplmmn-sp"] = naplmmn_sp, ["naplmmn-ds"] = naplmmn_ds }

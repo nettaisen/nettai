@@ -21,6 +21,7 @@ local chip: Chip = {
     flags = { "standard_library", "library" },
     slot_in_limit = 3,
     action = bombs.throw { held = bombs.held, held_anim = 4, thrower = common.thrower(bug_bomb.kind) },
+    auto_battle = { class = "into_reach", range = "columns_two_to_four" },
 }
 
 return { bugbomb = chip }

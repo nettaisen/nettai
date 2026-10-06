@@ -28,6 +28,7 @@ local chip: Chip = {
         tick_sound = panel_changer.TICK_SOUND,
         change_sound = panel_changer.CHANGE_SOUND,
     }),
+    auto_battle = { class = "when_panel_changed" },
 }
 
 return { pnlretrn = chip }

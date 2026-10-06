@@ -33,6 +33,7 @@ local chip: Chip = {
         puck = puck.variants.pithoky,
         down = true,
     },
+    auto_battle = { class = "to_front" },
 }
 
 return { pithoky = chip }

@@ -20,6 +20,7 @@ local chip: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = bombs.throw { held = cannball.held, thrower = cannball.thrower() },
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 return { cannball = chip }

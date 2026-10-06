@@ -19,6 +19,7 @@ local chip: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     instant = lance.instant_of(exe5_lance.kind, 0),
+    auto_battle = { class = "at_once" },
 }
 
 return { lance = chip }

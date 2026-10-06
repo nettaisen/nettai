@@ -21,6 +21,7 @@ local cloudman: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "when_free_ahead_of_enemies" },
 }
 
 -- CloudMnSP (EXE5 chip 0x10b): CloudMan cuts in and sets thunderclouds behind the enemies, each striking with a
@@ -41,6 +42,7 @@ local cloudmn_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_sp,
+    auto_battle = { class = "when_free_ahead_of_enemies" },
 }
 
 -- CloudMnDS (EXE5 chip 0x10c): CloudMan, dark, cuts in and sets thunderclouds behind the enemies, each striking with a
@@ -59,6 +61,7 @@ local cloudmn_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "when_free_ahead_of_enemies" },
 }
 
 return { cloudman = cloudman, ["cloudmn-sp"] = cloudmn_sp, ["cloudmn-ds"] = cloudmn_ds }

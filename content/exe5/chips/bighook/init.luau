@@ -21,6 +21,7 @@ local chip: Chip = {
     -- (Its user stays on the field while the hook strikes: 0x080E1910, navi 26.)
     traits = { "user_stays" },
     navi = hook.summon,
+    auto_battle = { class = "at_once" },
 }
 
 return { bighook = chip }

@@ -19,6 +19,7 @@ local mrkcan1: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = mrkcan.action { cannon = mrkcan.cannon(0) },
+    auto_battle = { class = "to_front" },
 }
 
 -- MrkCan2 (EXE5 chip 0x00d): a sight sweeps the field ahead and locks on to the first enemy it finds, paralyzing it,
@@ -36,6 +37,7 @@ local mrkcan2: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = mrkcan.action { cannon = mrkcan.cannon(3) },
+    auto_battle = { class = "to_front" },
 }
 
 -- MrkCan3 (EXE5 chip 0x00e): a sight sweeps the field ahead and locks on to the first enemy it finds, paralyzing it,
@@ -53,6 +55,7 @@ local mrkcan3: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = mrkcan.action { cannon = mrkcan.cannon(6) },
+    auto_battle = { class = "to_front" },
 }
 
 return { mrkcan1 = mrkcan1, mrkcan2 = mrkcan2, mrkcan3 = mrkcan3 }

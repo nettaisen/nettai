@@ -19,6 +19,7 @@ local chip: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = thunder.shoot { ball = { panels = 5, status = statuses.paralyze_90 } },
+    auto_battle = { class = "to_front" },
 }
 
 return { thunder = chip }

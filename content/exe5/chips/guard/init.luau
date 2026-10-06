@@ -20,6 +20,7 @@ local guard1: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 3,
     action = guard.action { ticks = 60, look = guard.looks.guard1, counter = { kind = "wave" } },
+    auto_battle = { class = "at_once" },
 }
 
 -- Guard2 (EXE5 chip 0x059): the navi holds up a shield for 60 ticks; the first hit it blocks from the front sends a
@@ -38,6 +39,7 @@ local guard2: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 3,
     action = guard.action { ticks = 60, look = guard.looks.guard2, counter = { kind = "wave" } },
+    auto_battle = { class = "at_once" },
 }
 
 -- Guard3 (EXE5 chip 0x05a): the navi holds up a shield for 60 ticks; the first hit it blocks from the front sends a
@@ -56,6 +58,7 @@ local guard3: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 3,
     action = guard.action { ticks = 60, look = guard.looks.guard3, counter = { kind = "wave" } },
+    auto_battle = { class = "at_once" },
 }
 
 return { guard1 = guard1, guard2 = guard2, guard3 = guard3 }

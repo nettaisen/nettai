@@ -13,7 +13,6 @@
 -- `in_auto_battle`.
 
 local block = require("./block")
-local data = require("./data")
 local panels = require("./panels")
 local place = require("./place")
 
@@ -45,13 +44,6 @@ export type State = {
     entry_pattern: number,
     -- +0x120: when its dodging began (the battle's ticks).
     since: number,
-    -- +0xF6, +0xF8, +0x110, +0x112: how long the side's front stood occupied and its area held broken panels, which
-    -- would make it pick an entry for them (0x0802C012, 0x0802C026). Their only writer, 0x0802BF4E, nothing calls:
-    -- they stay 0.
-    hole_count: number,
-    front_count: number,
-    front_ticks: number,
-    hole_ticks: number,
     -- +0x130 on: getting in place for a chip (./place).
     place_step: number,
     place_step_init: number,
@@ -150,36 +142,6 @@ local function shuffle(navi: Object, fam: Family)
     end
 end
 
--- 0x0802BE4E and 0x0802BE9A (the navi's own side's auto battle data), 0x0802BE54 and 0x0802BEA0 (the other side's): the
--- first of side `side`'s first `n` entries that is a chip whose record's byte 14 has `bit` comes first (it and the
--- first change places); none before an empty place: nil. (A place holding 0 is read as the chip table's first record,
--- chip 0's, whose byte 14 is 0: passed over, as a pattern is.)
-local function pick_by(side: number, bit: number, n: number): Chip?
-    for i = 1, n do
-        local e = block.entry(side, i)
-        if e == nil then
-            return nil
-        end
-        if e ~= false and type(e) ~= "number" then
-            local chip = e :: Chip
-            if bit32.band(data.chips[assert(chip.id)].picks, bit) ~= 0 then
-                block.swap(side, i)
-                return chip
-            end
-        end
-    end
-    return nil
-end
-
--- 0x0802C012, 0x0802C026: the side's front stood occupied, and its area held broken panels, (seconds) times (how
--- many).
-local function front_pressure(s: State): number
-    return (s.front_ticks // 60) * s.front_count
-end
-local function hole_pressure(s: State): number
-    return (s.hole_ticks // 60) * s.hole_count
-end
-
 -- ---- Acting -------------------------------------------------------------------------------------------------
 
 -- 0x0802C094: `chip` as its attack (its record's damage, hit parameter, lockout, element), and the chip's use (a
@@ -207,31 +169,9 @@ local function decide(navi: Object, s: State, fam: Family)
     if not navi:chips_enabled() then
         return to_buster(s)
     end
-    if front_pressure(s) >= 50 then
-        if not fam.own then
-            -- (Its pick, 0x0802BA78, calls 0x081BC8AC, which is data, not code. The counters stay 0, so it never
-            -- runs.)
-            error("the auto-battling navi's front pressure reached 50: its pick (0x0802BA78) calls 0x081BC8AC, which is data")
-        end
-        -- (0x0802B510: the first of its own side's first 30 entries for a crowded front, 0x0802BE4E.)
-        local chip = pick_by(navi.alliance, 1, 30)
-        if chip then
-            ai.use_chip(navi, chip)
-            turn(navi, s, fam)
-            s.front_ticks = 0
-            return
-        end
-    end
-    if hole_pressure(s) >= 50 then
-        -- (Its own side's auto battle data, where the rest of Dark MegaMan's decision plays the other side's.)
-        local chip = pick_by(navi.alliance, 2, 42)
-        if chip then
-            ai.use_chip(navi, chip)
-            turn(navi, s, fam)
-            s.hole_ticks = 0
-            return
-        end
-    end
+    -- (Here 0x0802C012 and 0x0802C026 test how long the side's front stood occupied and its area held broken panels
+    -- (AIData +0xF6, +0xF8, +0x110, +0x112), to pick an entry for them by its record's byte 14 (0x0802BE4E,
+    -- 0x0802BE9A); their only writer, 0x0802BF4E, nothing calls: they stay 0, and neither pick runs.)
     if s.misses >= 5 then
         shuffle(navi, fam)
     end
@@ -254,7 +194,8 @@ local function decide(navi: Object, s: State, fam: Family)
     end
     local chip = e :: Chip
     s.entry_chip, s.entry_pattern = chip, 0
-    if data.chips[assert(chip.id)].approach and s.misses == 0 then
+    -- (The record's byte 9 bit 0, 0x0802BAEA: its `dimming` flag.)
+    if table.find(chip.flags or {}, "dimming") ~= nil and s.misses == 0 then
         s.step = 0x18
         return
     end
@@ -469,7 +410,6 @@ function ai.reset(navi: Object, s: State)
     s.mode, s.step, s.sub, s.misses = 0, 0, 0, 0
     s.target_index, s.next_target, s.shots, s.pattern_chip = 0, 0, 0, 0
     s.entry_chip, s.entry_pattern, s.since = nil, 0, 0
-    s.hole_count, s.front_count, s.front_ticks, s.hole_ticks = 0, 0, 0, 0
 end
 
 return ai

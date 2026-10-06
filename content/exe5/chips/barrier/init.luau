@@ -21,6 +21,7 @@ local barrier: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     dimming = barriers.controller.hook(barriers.barrier_10),
+    auto_battle = { class = "when_unbarriered" },
 }
 
 -- Barr100 (EXE5 chip 0x088): a barrier of 100 HP on the user: EXE6's barrier chips (the dimming handler's subtype 14)
@@ -39,6 +40,7 @@ local barr100: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     dimming = barriers.controller.hook(barriers.barrier_100),
+    auto_battle = { class = "when_unbarriered" },
 }
 
 -- Barr200 (EXE5 chip 0x089): a barrier of 200 HP on the user: EXE6's barrier chips (the dimming handler's subtype 14)
@@ -57,6 +59,7 @@ local barr200: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     dimming = barriers.controller.hook(barriers.barrier_200),
+    auto_battle = { class = "when_unbarriered" },
 }
 
 return { barrier = barrier, barr100 = barr100, barr200 = barr200 }

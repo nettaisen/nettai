@@ -18,6 +18,7 @@ local chip: Chip = {
     extra_flags = { 4, 16 },
     slot_in_limit = 1,
     navi = navi.summon { palette = 0 },
+    auto_battle = { class = "spot_test", range = "behind_target_up_open" },
 }
 
 return { deltaray = chip }

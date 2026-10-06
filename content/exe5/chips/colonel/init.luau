@@ -22,6 +22,7 @@ local colonel: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- ColonelSP (EXE5 chip 0x0f6): Colonel cuts in and divides the screen with a diagonal slash on the first enemy navi
@@ -43,6 +44,7 @@ local colonel_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_sp,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- ColonelDS (EXE5 chip 0x0f7): Colonel, dark, cuts in and divides the screen with a diagonal slash on the first enemy
@@ -62,6 +64,7 @@ local colonel_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { colonel = colonel, ["colonel-sp"] = colonel_sp, ["colonel-ds"] = colonel_ds }

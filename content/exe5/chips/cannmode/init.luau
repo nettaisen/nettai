@@ -22,6 +22,7 @@ local cannmode: Chip = {
     extra_flags = { 32 },
     slot_in_limit = 1,
     instant = side_special.instant,
+    auto_battle = { class = "at_once" },
 }
 
 -- CannBall (EXE5 chip 0x11a): one of the Liberation Missions' mode chips: instant chip effect 11 (0x0802D62A, EXE6's
@@ -42,6 +43,7 @@ local cannball_mode: Chip = {
     extra_flags = { 32 },
     slot_in_limit = 1,
     instant = side_special.instant,
+    auto_battle = { class = "at_once" },
 }
 
 -- SwrdMode (EXE5 chip 0x11b): one of the Liberation Missions' mode chips: instant chip effect 11 (0x0802D62A, EXE6's
@@ -62,6 +64,7 @@ local swrdmode: Chip = {
     extra_flags = { 32 },
     slot_in_limit = 1,
     instant = side_special.instant,
+    auto_battle = { class = "at_once" },
 }
 
 -- YoYoMode (EXE5 chip 0x11c): one of the Liberation Missions' mode chips: instant chip effect 11 (0x0802D62A, EXE6's
@@ -82,6 +85,7 @@ local yoyomode: Chip = {
     extra_flags = { 32 },
     slot_in_limit = 1,
     instant = side_special.instant,
+    auto_battle = { class = "at_once" },
 }
 
 -- DrilMode (EXE5 chip 0x11d): one of the Liberation Missions' mode chips: instant chip effect 11 (0x0802D62A, EXE6's
@@ -101,6 +105,7 @@ local drilmode: Chip = {
     flags = {},
     slot_in_limit = 1,
     instant = side_special.instant,
+    auto_battle = { class = "at_once" },
 }
 
 return {

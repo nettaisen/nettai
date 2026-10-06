@@ -19,6 +19,7 @@ local chip: Chip = {
     slot_in_limit = 1,
     traits = { "not_navi_slot" },
     dimming = controller.hook,
+    auto_battle = { class = "at_once" },
 }
 
 return { dethphnx = chip }

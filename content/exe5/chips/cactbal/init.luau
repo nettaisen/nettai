@@ -19,6 +19,7 @@ local cactbal1: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = cactbal.action(0),
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- CactBal2 (EXE5 chip 0x0b0): the navi throws a wooden ball that hops along the row, bouncing back off what it hits:
@@ -36,6 +37,7 @@ local cactbal2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = cactbal.action(1),
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 -- CactBal3 (EXE5 chip 0x0b1): the navi throws a wooden ball that hops along the row, bouncing back off what it hits:
@@ -53,6 +55,7 @@ local cactbal3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = cactbal.action(2),
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { cactbal1 = cactbal1, cactbal2 = cactbal2, cactbal3 = cactbal3 }
