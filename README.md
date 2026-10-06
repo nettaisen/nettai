@@ -29,7 +29,10 @@ netplay needs.
 - `nettai-audio`: plays the engine's sound cues through the M4A driver.
 - `m4a`: the GBA's M4A (Sappy) sound driver.
 - `nettai-netplay`: rollback netplay on [getgud](https://github.com/tangobattle/getgud), its inputs carried by
-  [rennet](https://github.com/tangobattle/rennet) over UDP (or any datagram channel), with a simulated lossy network.
+  [rennet](https://github.com/tangobattle/rennet) over a WebRTC data channel (or any datagram channel), with a
+  simulated lossy network.
+- `nettai-rtc`: netplay's transport, WebRTC data channels (native on [rtc](https://github.com/webrtc-rs/rtc), the
+  browser's on wasm32), met in a room of the signaling server or directly, made again when they drop.
 - `nettai-render`: draws a battle into frames: the stage, the objects, the HUD, the custom screen and the text, from
   engine state and the packs' graphics; no window, sound or network.
 - `nettai-frontend`: plays battles for a host app to show, as a library with no window, audio device or command
@@ -97,8 +100,15 @@ Murecho (Latin and Japanese), bundled under the SIL Open Font License in `crates
 `--text original` draws them in the game's own fonts instead, exactly as the original does, and `--font <file>`
 uses another TrueType or OpenType font ([text-rendering.md](docs/design/text-rendering.md) §9).
 
-To play another player, one hosts and the other joins, over a LAN, or over the Internet with the host's UDP port
-forwarded to the host's machine:
+To play another player, both meet in a room of the signaling server (the first in hosts, the left navi), through
+NATs (a public STUN server by default; `--turn` with credentials relays where no direct path is found):
+
+    cargo run --release -p nettai-demo -- --match match.toml --room abc --signal wss://<server>   # both players
+
+The signaling server is `signaling/`, a Cloudflare Worker; `npx wrangler dev` there runs one locally
+(`--signal ws://127.0.0.1:8787`), and `npx wrangler deploy` puts it on your own Cloudflare account. Or one hosts and
+the other joins directly, over a LAN, or over the Internet with the host's UDP port forwarded to the host's machine
+(nothing is exchanged before the connection, so nothing is authenticated):
 
     cargo run --release -p nettai-demo -- --match match.toml --host 7777                   # host, the left navi
     cargo run --release -p nettai-demo -- --match match.toml --join 192.0.2.10:7777        # join, the right navi
@@ -110,11 +120,12 @@ them; the battle's RNG comes from both halves. Both play with rollback: inputs g
 arrive, and the battle is simulated again when a prediction was wrong. The window's title shows the round trip, the
 loss, the present delay (`--present-delay N`, default 0, and `[` and `]` during the match: how far behind your newest
 input the frame shown is), the rollbacks and the frames waited ([docs/frontend.md](docs/frontend.md)
-§2, [rollback.md](docs/design/rollback.md) §4). The netplay tests play netbattles between two rollback sessions over a
-simulated network at several latencies, with loss, duplication and reordering, and over UDP on loopback, and check that
-both peers stay in step:
+§2, [rollback.md](docs/design/rollback.md) §4). A connection that drops is made again, and the battle goes on where it
+was (the title says it is reconnecting meanwhile); after 30 seconds the match ends. The netplay tests play netbattles
+between two rollback sessions over a simulated network at several latencies, with loss, duplication and reordering,
+and over WebRTC on loopback (through an outage), and check that both peers stay in step:
 
-    cargo test -p nettai-netplay
+    cargo test -p nettai-netplay -p nettai-rtc -p nettai-frontend
 
 `--record set.ntrp` writes a replay of the set played (alone or over the network), and `nettai-demo --replay set.ntrp`
 watches it again (`--side right`: the other console); a replay plays only on the engine and content it was made with
