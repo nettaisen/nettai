@@ -124,7 +124,6 @@ pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [B
         later_stages: Default::default(),
         low_hp_music_latched: false,
         players: [player(a, 0), player(b, 1)],
-        link_delay: 0,
     }
 }
 

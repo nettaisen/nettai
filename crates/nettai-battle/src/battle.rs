@@ -11,7 +11,6 @@ use crate::field::Field;
 use crate::hand::ChipHand;
 use crate::hud::{Banner, BannerStatus, CustomGauge};
 use crate::input::{InputRecord, PlayerTick, keys};
-use crate::link::{Link, Packet};
 use crate::object::{ObjectRef, Objects};
 use crate::console::Console;
 use crate::rng::Rng;
@@ -449,9 +448,6 @@ pub struct Battle {
     pub damage_carry: [DamageCarry; 2],
     /// Both players' custom screens.
     pub custom: CustomScreens,
-    /// The link: what each player sends reaches the fight `delay` ticks
-    /// later.
-    pub link: Link,
     /// Per-side extra battle state (`sub_802E070`), used by the own-gauges
     /// mode (battle flag 0x40, `battle_flags::OWN_GAUGES`).
     pub sides: [SideState; 2],
@@ -751,7 +747,6 @@ impl Battle {
             fadein_queue: [None; 8],
             damage_carry: [DamageCarry::default(); 2],
             custom: CustomScreens::new(&setup.players),
-            link: Link::new(setup.link_delay),
             sides: [SideState::default(); 2],
             looks: [SideLooks::default(); 2],
             side_stats: [[0; 16]; 2],
@@ -952,26 +947,24 @@ impl Battle {
         self.fade.step();
     }
 
-    /// The link's step at the start of a tick (`sub_801FF18`): both
-    /// players' packets go out, the ones sent `delay` ticks ago arrive;
-    /// and both joypads read this tick's buttons.
-    fn exchange_packets(&mut self, input: &[PlayerTick; 2]) -> [Packet; 2] {
-        let sent = std::array::from_fn(|p| Packet {
-            held: input[p].held & 0x3FF,
-            in_custom: self.custom.sides[p].in_custom,
-        });
+    /// Both custom screens' joypads read this tick's buttons. (The
+    /// original's consoles exchanged packets over the link here,
+    /// `sub_801FF18`; the engine has no link: each tick's buttons are both
+    /// players', and each console knows the other's custom screen at
+    /// once.)
+    fn read_joypads(&mut self, input: &[PlayerTick; 2]) {
         for (side, t) in self.custom.sides.iter_mut().zip(input) {
             side.joypad.update(t.held);
         }
-        self.link.exchange(sent)
     }
 
     fn tick_running(&mut self, input: &[PlayerTick; 2]) {
-        // Apply both players' packets.
-        let arrived = self.exchange_packets(input);
-        for (p, packet) in arrived.iter().enumerate() {
-            self.inputs[p].update(packet.held | keys::PRESENT);
-            self.round.remote_status[p] = if packet.in_custom { 4 } else { 0 };
+        // Both players' buttons, and whether each one's custom screen is
+        // open (status bit 2), reach the fight.
+        self.read_joypads(input);
+        for p in 0..2 {
+            self.inputs[p].update(input[p].held & 0x3FF | keys::PRESENT);
+            self.round.remote_status[p] = if self.custom.sides[p].in_custom { 4 } else { 0 };
         }
 
         self.run_mode_handler();
@@ -1003,7 +996,7 @@ impl Battle {
     /// then close the link session (mode 0, `sub_8007B9C`). Once it has
     /// closed (mode 4) the round is over (`sub_8007CA0`).
     fn tick_end(&mut self, input: &[PlayerTick; 2], events: &TickEvents) {
-        self.exchange_packets(input);
+        self.read_joypads(input);
         if self.round.mode != 0 {
             if self.outcome.is_none() {
                 self.finish_round();
