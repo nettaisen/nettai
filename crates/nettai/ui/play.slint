@@ -209,11 +209,19 @@ component Fight {
 component Preview {
     in property <MatchPreview> preview;
     in property <bool> chosen;
-    // An arena's picture: a third of the width, cut to a whole multiple of
-    // the display's pixels (as the battle is drawn).
     // (`room`: the width it is given, from outside the layout.)
     in property <length> room;
-    property <length> thumb: max(1, floor((root.room - 2 * (Theme.compact ? 24px : 40px) - 2 * Theme.gap) / 3 / 240phx)) * 240phx;
+    // The arenas' pictures, each a whole multiple of the display's pixels
+    // (as the battle is drawn): three in a row, or two (and the third
+    // under them) when two are drawn larger and three would be at one.
+    property <length> inside: root.room - 2 * (Theme.compact ? 24px : 40px);
+    property <int> by-three: floor((root.inside - 2 * Theme.gap) / 3 / 240phx);
+    property <int> by-two: floor((root.inside - Theme.gap) / 2 / 240phx);
+    // (Two rows of two only where the window has the height for them.)
+    property <bool> two-fit: 2 * (root.by-two * 160phx + 44px + Theme.gap) + 300px <= Theme.window-height - 200px;
+    property <int> columns: root.by-three >= 1 && (root.by-three >= root.by-two || !root.two-fit) ? 3 : root.by-two >= 1 ? 2 : 1;
+    property <length> thumb: max(1, root.columns == 3 ? root.by-three : root.columns == 2 ? root.by-two : floor(root.inside / 240phx)) * 240phx;
+    property <length> card-height: root.thumb * 2 / 3 + 44px;
 
     VerticalLayout {
         alignment: start;
@@ -258,12 +266,12 @@ component Preview {
                     text: @tr("THE ARENAS");
                 }
 
-                if root.chosen: HorizontalLayout {
-                    spacing: Theme.gap;
-                    alignment: start;
-                    // (Each picture at a whole multiple of the display's
-                    // pixels, as the battle is.)
+                if root.chosen: Rectangle {
+                    height: ceil(root.preview.rounds.length / root.columns) * (root.card-height + Theme.gap);
                     for r[i] in root.preview.rounds: VerticalLayout {
+                        x: mod(i, root.columns) * (root.thumb + Theme.gap);
+                        y: floor(i / root.columns) * (root.card-height + Theme.gap);
+                        height: root.card-height;
                         spacing: 6px;
                         alignment: start;
                         width: root.thumb;
@@ -413,6 +421,7 @@ export component PlayScreen {
                 width: (Theme.window-width - 2 * Theme.gutter - Theme.gap * 2) * 0.42;
                 spacing: Theme.gap * 2;
                 Choices {
+                    vertical-stretch: 0;
                     games: root.games;
                     game: root.game;
                     sources: root.sources;
@@ -429,6 +438,7 @@ export component PlayScreen {
                 }
 
                 Fight {
+                    vertical-stretch: 0;
                     cursor: root.cursor;
                     game-cursor: root.game-cursor;
                     can-fight: root.can-fight;
