@@ -30,6 +30,12 @@ export type FlyingShotVariant = {
     speed: number,
 }
 
+-- KnightMan's wrecking ball's look (chips/knightmn/ball: its variant, the
+-- original's fourth parameter): its sprite, its height and its radius; and a
+-- swing of it: how far it turns a tick, its turns, its status and its look.
+export type KnightBallLook = { sprite: SpriteAsset, z: number, radius: number }
+export type KnightBallSwing = { speed: number, turns: number, status: Status?, look: KnightBallLook }
+
 -- A soul's navi's image as MegaMan unites with it (rules/souls/image, actor
 -- object 0x2A; a soul's form's `image`): the navi's sprite, and what the
 -- image puts on as it comes in and takes off as it goes (0x0800EDBC's and

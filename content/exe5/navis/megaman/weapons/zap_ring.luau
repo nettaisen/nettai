@@ -17,18 +17,9 @@ local statuses = require("../../../rules/status")
 -- ---- The ring -------------------------------------------------------------------------------------------------------
 
 local SPRITE = asset.sprite("zap-ring")
--- 0x080DF380's rows: speed (pixels a tick), the status, the sound.
-type Row = { speed: number, status: Status?, sound: Sound }
-local ROWS: { [number]: Row } = {
-    [0] = { speed = 10, status = statuses.paralyze_90, sound = asset.sound("aqua-needle-2") },
-    [1] = { speed = 14, status = statuses.paralyze_120, sound = asset.sound("aqua-needle-2") },
-    [2] = { speed = 18, status = statuses.paralyze_150, sound = asset.sound("aqua-needle-2") },
-}
-
-export type RingState = {
-    -- Its row (Param1).
-    row: number,
-}
+-- Its row (0x080DF380's row 0, the ZapRng attack's first parameter): its speed (pixels a tick), the status its hits
+-- give, its sound.
+local SPEED, STATUS, SOUND = 10, statuses.paralyze_90, asset.sound("aqua-needle-2")
 
 -- The end: no region, hidden, destroyed next update.
 local function finish(me: Object)
@@ -60,7 +51,6 @@ end
 -- 0x080DF3AC (EXE6's `sub_80C51CC`, EXE5's sheet): shown on its panel (its height the spawner's), flying ahead at its
 -- row's speed; an attack hitting navis with its row's status and its element's spark; its row's sound.
 local function init(me: Object)
-    local s = me.state :: RingState
     me.visible = true
     local sprite = me.sprite
     sprite:load(SPRITE)
@@ -69,29 +59,22 @@ local function init(me: Object)
     sprite:step()
     sprite.shadow = "with_sprite"
     me:set_coordinates_from_panel()
-    local row = ROWS[s.row]
-    if row == nil then
-        error(string.format("ZapRing's ring: row %d reads past 0x080DF380", s.row))
-    end
-    me.vel = Vec3.new(int.shl(me.facing * row.speed, 16), me.vel.y, me.vel.z)
+    me.vel = Vec3.new(int.shl(me.facing * SPEED, 16), me.vel.y, me.vel.z)
     if not me:create_collision() then
         me:free()
         return
     end
     me:setup_collision(collision.attack, collision.hits_navis, 0)
-    if row.status ~= nil then
-        me.collision.status_base = row.status
-    end
+    me.collision.status_base = STATUS
     me.collision:set_hit_effect(sparks.of_element(me.element))
     me.collision:present()
-    battle.play_sound(row.sound)
+    battle.play_sound(SOUND)
     me:set_lifecycle("update")
 end
 
 local RING = new.kind {
     id = "megaman/zap-ring/ring",
     pool = "attack",
-    state = { row = "u8" },
     -- 0x080DF38C.
     update = function(me: Object)
         local l = me.lifecycle
@@ -105,9 +88,9 @@ local RING = new.kind {
     end,
 }
 
--- 0x080DF47A: a ring of `row` from (x, y) with the element, height and damage word, of `owner`'s side and facing.
--- (Its position is the spawner's registers until its init places it: its row, its element and its height.)
-local function send(owner: Object, x: number, y: number, element: number, z: number, row: number, damage: number): Object?
+-- 0x080DF47A: a ring from (x, y) with the element, height and damage word, of `owner`'s side and facing. (Its
+-- position is the spawner's registers until its init places it: its row, its element and its height.)
+local function send(owner: Object, x: number, y: number, element: number, z: number, damage: number): Object?
     local o = battle.spawn(RING, Vec3.new(y, element, z))
     if not o then
         return nil
@@ -117,7 +100,6 @@ local function send(owner: Object, x: number, y: number, element: number, z: num
     o:set_damage_word(damage)
     o.alliance, o.flip = owner.alliance, owner.flip
     o.related1 = owner
-    ;(o.state :: RingState).row = row
     return o
 end
 
@@ -147,7 +129,7 @@ local function hold(me: Object, s: State)
     if s.timer == SEND_AT then
         -- (The damage word takes the Atk+ bonus, AIAttackVars+6; the ring's row is the parameters' first byte: 0.)
         local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-        send(me, me.panel_x + me.facing, me.panel_y, me.attack_element, RING_Z, 0, damage)
+        send(me, me.panel_x + me.facing, me.panel_y, me.attack_element, RING_Z, damage)
     end
     local t = s.timer - 1
     s.timer = int.u16(t)

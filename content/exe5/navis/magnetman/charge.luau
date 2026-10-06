@@ -20,8 +20,8 @@ local DAMAGE: { number } = { 40, 40, 40, 50, 50, 60, 60 }
 local ELEC = 3
 local ANIM = 12
 local COUNTER_TICKS, AIM_TICKS, AFTER_TICKS = 10, 5, 30
--- The missile's variant, and how far ahead of him it appears (16.16).
-local VARIANT, AHEAD = 4, 0x14_0000
+-- How far ahead of him the missile appears (16.16).
+local AHEAD = 0x14_0000
 
 -- The steps, on the attack's step.
 local AIM, FIRE, AFTER = 0x0, 0x4, 0x8
@@ -50,7 +50,7 @@ charge.action = new.action {
             -- 0x080F11A2: the missile follows what the attack points at (nothing, from his weapon).
             local p = me.pos
             local damage = int.u32(me.attack_damage + me.hit_param * 0x10000)
-            missile.spawn(me, int.i32(p.x + me.facing * AHEAD), p.y, me.attack_element, VARIANT, damage, me.face_target)
+            missile.spawn(me, int.i32(p.x + me.facing * AHEAD), p.y, me.attack_element, damage, me.face_target)
             me.step, me.step_init = AFTER, 0
         elseif step == AFTER then
             -- 0x080F11CA

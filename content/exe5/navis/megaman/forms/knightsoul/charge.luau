@@ -20,9 +20,14 @@ local HIT_PARAM = 0x9E
 local SWING_ANIM, AFTER_ANIM = 16, 17
 local SOUND = asset.sound("knight-swing")
 local SWING_AT, SWING_TICKS, HOLD_TICKS = 4, 15, 15
--- The routine's parameters (0x0120010C): 12 a tick, one turn, status 0x20, variant 1.
-local SWING: { speed: number, turns: number, status: Status?, variant: number } =
-    { speed = 12, turns = 1, status = status.confuse_480, variant = 1 }
+-- The routine's parameters (0x0120010C): 12 a tick, one turn, status 0x20, variant 1: KnightSoul's ball, another
+-- sprite, on the ground, at 35 pixels.
+local SWING: KnightBallSwing = {
+    speed = 12,
+    turns = 1,
+    status = status.confuse_480,
+    look = ball.look { sprite = asset.sprite("knightsoul-ball"), z = 0, radius = 0x23 },
+}
 
 -- 0x080EEB14: the swing; the ball on the count's 4; 15 ticks.
 local function swing(me: Object, s: State)

@@ -1,7 +1,7 @@
 --!strict
 -- NumberSoul's layer (EXE5's actor object 0x54, 0x080C32C4; EXE5's own, where EXE6's 0x54 is LilBoiler's layer): a second
--- sprite on its owner, by its row (0x080C32C0): row 0 NumberMan's face (10-06, on NumberSoul's image), row 1 MegaMan's
--- in NumberSoul (10-01, his start hook's, 0x0800F07C). It follows its owner's position, visibility, palette, color
+-- sprite on its owner, its row's (0x080C32C0, which its spawner gives: row 0 NumberMan's face, 10-06, on NumberSoul's
+-- image and on NumberMan; row 1 MegaMan's in NumberSoul, 10-01, his start hook's, 0x0800F07C). It follows its owner's position, visibility, palette, color
 -- shader, white flash, alpha and facing; while its owner isn't in his animation 0 it sits 255 pixels up (its height's
 -- upper half 0xFF, out of sight), and in it at his height's fraction. It steps unless the battle is paused or dimmed.
 -- Its owner takes it off (0x080C33EA: it goes at its next update).
@@ -9,15 +9,13 @@
 local layer = {}
 
 export type State = {
-    -- Param1: its row.
-    row: number,
+    -- Param1: its row's sprite.
+    sprite: SpriteAsset,
 }
 
--- Its sprites by row (0x080C32C0).
-local SPRITES: { [number]: SpriteAsset } = {
-    [0] = asset.sprite("numberman-face"),
-    [1] = asset.sprite("numbersoul-face"),
-}
+-- The rows' sprites (0x080C32C0): NumberMan's face, and MegaMan's in NumberSoul.
+layer.numberman_face = asset.sprite("numberman-face")
+layer.numbersoul_face = asset.sprite("numbersoul-face")
 
 -- 0x080C3332: on its owner, wearing his look; out of sight unless he is in his animation 0.
 local function follow(me: Object)
@@ -46,11 +44,7 @@ local function init(me: Object)
     local s = me.state :: State
     me:set_panel_from_coordinates()
     local sprite = me.sprite
-    local look = SPRITES[s.row]
-    if not look then
-        error(string.format("NumberSoul's layer's row %d reads past its sprites (0x080C32C0)", s.row))
-    end
-    sprite:load(look)
+    sprite:load(s.sprite)
     sprite.shadow = "with_sprite"
     me.visible = true
     me.anim, me.anim_loaded = 0, 0
@@ -63,7 +57,7 @@ end
 layer.kind = new.kind {
     id = "numbersoul/layer",
     pool = "actor",
-    state = { row = "u8" },
+    state = { sprite = "sprite" },
     -- 0x080C32C4
     update = function(me: Object)
         local l = me.lifecycle
@@ -77,12 +71,12 @@ layer.kind = new.kind {
     end,
 }
 
--- 0x080C33BE: a layer of `row` on `owner`, at his position, of his side (its facing his from its first update),
--- running while paused and dimmed (kept in his second related slot by its callers).
-function layer.spawn(owner: Object, row: number): Object?
+-- 0x080C33BE: a layer of `sprite` (its row's) on `owner`, at his position, of his side (its facing his from its first
+-- update), running while paused and dimmed (kept in his second related slot by its callers).
+function layer.spawn(owner: Object, sprite: SpriteAsset): Object?
     local o = battle.spawn(layer.kind, owner.pos)
     if o then
-        (o.state :: State).row = row
+        (o.state :: State).sprite = sprite
         o.alliance = owner.alliance
         o.related1 = owner
         o.run_while_paused = true
