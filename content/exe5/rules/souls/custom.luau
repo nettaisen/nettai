@@ -31,10 +31,9 @@ type State = {
 }
 
 -- What the player's save brings (rules/init.luau declares it): the souls it has (the original's flags, 0x08024BF0's, one a
--- soul), Soul Unison (event flag 0: the button) and Chaos Unison (event flag 0x236).
+-- soul; none for a save without Soul Unison, event flag 0: no button) and Chaos Unison (event flag 0x236).
 type Setup = {
     souls: { FormDef? },
-    soul_unison: boolean,
     chaos_unison: boolean,
 }
 
@@ -121,6 +120,17 @@ local function owned(soul: FormDef): boolean
     return false
 end
 
+-- The save has souls (Soul Unison: the button).
+local function has_souls(): boolean
+    local setup = rules.setup() :: Setup
+    for i = 1, SOUL_PLACES do
+        if setup.souls[i] ~= nil then
+            return true
+        end
+    end
+    return false
+end
+
 -- A soul's bit in the round's souls given: by its place among the side's navi's souls for its Soul Unison, 16
 -- places on for its Chaos Unison.
 local function used_bit(side: number, soul: FormDef, chaos: boolean): number
@@ -179,8 +189,9 @@ end
 custom_souls.button = {
     slot = 11,
     view = "form_offer",
-    -- MegaMan with souls, outside the operation battle, with the save's Soul Unison, unless his emotion is worried or
-    -- dark (0x08012740: in a soul or angry he may; at mood 0 he is dark, below 65 worried, at 0xFF Full Synchro).
+    -- MegaMan with souls, outside the operation battle, with the save's souls (its Soul Unison), unless his emotion is
+    -- worried or dark (0x08012740: in a soul or angry he may; at mood 0 he is dark, below 65 worried, at 0xFF Full
+    -- Synchro).
     shown = function(side: number): boolean
         local stats = battle.navi(side)
         local in_soul = stats.form.soul ~= nil
@@ -188,7 +199,7 @@ custom_souls.button = {
         local hidden = not in_soul
             and custom.player(side).emotion ~= "angry"
             and (mood == 0 or (mood ~= 0xFF and mood < 65))
-        return #souls_of(side) > 0 and (rules.setup() :: Setup).soul_unison and not operation_battle()
+        return #souls_of(side) > 0 and has_souls() and not operation_battle()
             and not hidden
     end,
     -- 0x08024B28: unavailable until the last pick offers a soul, which the button keeps.

@@ -18,7 +18,7 @@
 //! navi's stats, the forms a navi's list may hold) it asks by the role.
 //!
 //! The games' own (EXE6's `version`, `crosses`, `beast_out`,
-//! `bug_frags`; EXE5's `karma`, `souls`, `soul_unison`, `chaos_unison`) are
+//! `bug_frags`; EXE5's `karma`, `souls`, `chaos_unison`) are
 //! documented where they are declared: content/exe6/rules and
 //! content/exe5/rules.
 
