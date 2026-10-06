@@ -453,25 +453,6 @@ pub struct RoundSetup {
     pub players: [crate::custom::PlayerSetup; 2],
 }
 
-/// How fast (in frames) a player deleted each SP navi (20 halfwords, by
-/// the rules' `sp_slots`; `PlayerSetup::sp_times`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct SpTimes(pub [u16; 20]);
-
-impl Default for SpTimes {
-    /// Every SP navi deleted in no time (the best damage).
-    fn default() -> SpTimes {
-        SpTimes([0; 20])
-    }
-}
-
-impl SpTimes {
-    /// The frames SP navi chip `n` (formula `n + 1`) took to delete.
-    pub fn frames(&self, n: usize) -> u16 {
-        self.0[n]
-    }
-}
-
 impl RoundSetup {
     /// The settings of the set's next round, fought on `stage` after this
     /// one (`battleSettings_802D2B2`): that table entry, with this

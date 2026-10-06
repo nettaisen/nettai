@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local sp_chips = require("../rules/sp_chips")
 
 -- CloudMan (EXE5 chip 0x10a): CloudMan cuts in and sets thunderclouds behind the enemies, each striking with a
 -- paralyzing bolt (./navi).
@@ -32,7 +33,8 @@ local cloudmn_sp: Chip = {
     class = "mega",
     rarity = 3,
     mb = 74,
-    damage = { formula = "sp_navi", slot = "sp/cloudman", by_time = { 110, 105, 100, 95, 90, 85, 80, 75, 70, 65, 60 }, operation_battle = 80 },
+    sp = { by_time = { 110, 105, 100, 95, 90, 85, 80, 75, 70, 65, 60 }, operation_battle = 80 },
+    damage = sp_chips.damage,
     hit_param = 138,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },

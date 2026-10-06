@@ -742,7 +742,6 @@ impl Round {
             let mut player = PlayerSetup {
                 folder,
                 joypad_phase: self.setup.joypad_phases[side as usize],
-                sp_times: Default::default(),
                 // (The save's emotion window glitch, which a recording
                 // has, is no setup's: EXE5's rules make it. A compiled
                 // side's is its compile's and its cards', which `start`

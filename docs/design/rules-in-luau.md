@@ -2958,3 +2958,33 @@ A state's or a setup's declaration takes records, bounded lists and chip codes (
 - **Not yet**: a match's facts of these types (nettai-match's facts and match files, the editor), which (c2) adds
   with the first such fact, the SP times.
 
+### SP navi deletion times in the rules (2026-10-06, branch nettai-player, step c2)
+
+The SP navi chips' damage is each game's Luau, and the deletion times a fact of its rules' setup.
+
+- **The fact**: `sp_times = schema.list({ chip = "chip", frames = "u16" }, 18)` in each game's `setup`, defaulting
+  to every SP chip of the game at 0 frames, in the save's order (`setup_defaults`). A side that states some has
+  those alone; a chip it leaves out is in no time. Tools find it by its role, `PlayerFact::SpTimes`; the engine reads
+  none of it. `PlayerSetup::sp_times` and `setup::SpTimes` are gone.
+- **The formula**: rules/sp_chips.luau of each game, a module (no longer a rule section): its `DELETION_TIMES`
+  (a record of type `sp-deletion-times`, `byte_8010B2C`), the BCD time of the frames (`sub_8000D84`), and
+  `sp_chips.damage(side, chip)`, the step the side's time for the chip passes into the chip's `sp.by_time`
+  (EXE5's: the chip's `sp.operation_battle` first, in the own-gauges mode). Each SP chip says
+  `damage = sp_chips.damage` and its `sp = { by_time = { ... } }` (the rules' chip extension; EXE5's adds
+  `operation_battle`). `DamageFormula::SpNavi`, `Rules::{sp_slots, sp_deletion_times}`, the chip's `sp_slot` and
+  the `sp_chips` section are gone.
+- **A chip's function of the side** (`damage = function(side, chip)`) is now given the chip too: the round's setup
+  asks it once a side (`HookCall::Given { side, chip }`), as for EXE5's team navis' chips.
+- **Nested facts in nettai-match**: a fact that is a record or a list of records reads and writes as one
+  (`Stated::Record`; `Fact::{List, Record}` own their parts now), a match file's as a table and an array of tables
+  (`[[left.sp_times]]` with `chip` and `frames`, in place of `[left.sp_times]`'s `mm:ss.cc` by slot name), its
+  numbers range-checked to their types at any depth. `Facts::{sp_times, set_sp_times}` read and write the SP
+  times by their role; the editor's SP pane lists the side's entries by chip name, `mm:ss.cc` as before.
+- **Compat**: EXE6's records.toml `[sp_slots]` is by SP chip (`"heatman-sp" = 0`), the save's slot of each, which
+  `Ids::sp_times` and `write_sp_times` use to turn the save's 20 halfwords into the fact (the slots no chip reads
+  left out); exe6-compat's `SpTimes` is the save's array.
+- **gen-content** checks each SP chip's `sp.by_time` against its row of `byte_8020E54` and that its damage is a
+  function of the side, the `sp-deletion-times` record against `byte_8010B2C`, the default list against compat's
+  slots, and each compat slot against the chip whose formula number reads it.
+- **Checked**: the setup dump is the same but for where the times are (the rules block, not `PlayerSetup`); the
+  SP chips' recordings of both games (EXE6's 175, EXE5's 82) and the step's usual ones match.

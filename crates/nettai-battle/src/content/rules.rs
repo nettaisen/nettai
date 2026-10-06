@@ -663,13 +663,6 @@ pub struct Rules {
     /// first bound a release succeeds (the window 2), then 1 under the
     /// second, 0 under the third, 1 past it. None: no game's cycle.
     pub chaos_cycle: Vec<[u8; 4]>,
-    /// The deletion times (BCD hours:minutes:seconds.hundredths) at which
-    /// an SP navi chip's damage steps down (`DamageFormula::SpNavi`).
-    pub sp_deletion_times: Vec<u32>,
-    /// The SP navis whose deletion times a round's setup carries, in its
-    /// order (`RoundSetup::sp_times`): an SP navi chip's formula names its
-    /// slot by these names.
-    pub sp_slots: Vec<String>,
     /// What a link battle picks at random (the section `link_pick`; none
     /// stated: nothing).
     pub link_pick: LinkPick,

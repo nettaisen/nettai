@@ -3,6 +3,7 @@
 -- Their records are written by tools/exe5/gen_content.py (bn6battle-verify) from the EXE5 ROMs.
 
 local navi = require("@self/navi")
+local sp_chips = require("../rules/sp_chips")
 
 -- BlizMan (EXE5 chip 0x107): BlizzardMan cuts in and rolls a snowball down his row, growing on the field objects it
 -- swallows (./navi).
@@ -32,7 +33,8 @@ local blizman_sp: Chip = {
     class = "mega",
     rarity = 3,
     mb = 55,
-    damage = { formula = "sp_navi", slot = "sp/blizman", by_time = { 180, 175, 170, 165, 160, 155, 150, 145, 140, 135, 130 }, operation_battle = 200 },
+    sp = { by_time = { 180, 175, 170, 165, 160, 155, 150, 145, 140, 135, 130 }, operation_battle = 200 },
+    damage = sp_chips.damage,
     hit_param = 158,
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },

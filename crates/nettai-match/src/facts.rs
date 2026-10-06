@@ -77,6 +77,8 @@ pub enum Stated {
     List(Vec<Stated>),
     /// A number or none (a `u8?`: a navi code's level).
     Optional(Option<i64>),
+    /// A record's fields, by name, in their order.
+    Record(Vec<(String, Stated)>),
     /// A value no match states (an object, a vector, an asset).
     Other,
 }
@@ -90,6 +92,64 @@ impl Stated {
             Stated::List(items) => items.iter().flat_map(Stated::defs).collect(),
             _ => Vec::new(),
         }
+    }
+}
+
+/// The value at `place` of a setup's block, read: a record's fields, an
+/// array's elements, a list's (its length's), a value.
+fn stated_at(block: &Block, place: nettai_content_api::Place) -> Stated {
+    match place.ty() {
+        FieldType::Record(fields) => {
+            Stated::Record(fields.fields().iter().enumerate().map(|(i, f)| (f.name.clone(), stated_at(block, place.field_at(i)))).collect())
+        }
+        FieldType::Array(..) | FieldType::List(..) => {
+            let n = block.len_at(place).unwrap_or(0);
+            Stated::List((0..n).filter_map(|k| place.elem(k)).map(|p| stated_at(block, p)).collect())
+        }
+        ty => stated_of(ty, block.get_at(place)),
+    }
+}
+
+/// `src`'s value at `place` into `dst` (blocks of one layout), whole.
+fn copy(dst: &mut Block, src: &Block, place: nettai_content_api::Place) {
+    match place.ty() {
+        FieldType::Record(fields) => {
+            for i in 0..fields.fields().len() {
+                copy(dst, src, place.field_at(i));
+            }
+        }
+        FieldType::Array(..) | FieldType::List(..) => {
+            let n = src.len_at(place).unwrap_or(0);
+            if let FieldType::List(..) = place.ty() {
+                let _ = dst.set_len_at(place, n);
+            }
+            for k in 0..place.capacity().unwrap_or(0) {
+                if let Some(p) = place.elem(k) {
+                    copy(dst, src, p);
+                }
+            }
+        }
+        _ => {
+            let _ = dst.set_at(place, src.get_at(place).load());
+        }
+    }
+}
+
+/// Whether a value `f` of type `ty` fits it: its numbers within their
+/// types (the engine's store would wrap one), a list's elements, a record's
+/// fields.
+fn in_range(ty: &FieldType, f: &Fact) -> Result<(), String> {
+    match (ty, f) {
+        (_, Fact::Value(Value::Int(n))) => match range(ty) {
+            Some((least, most, what)) if !(least..=most).contains(n) => Err(format!("{n} is past a {what} ({least} to {most})")),
+            _ => Ok(()),
+        },
+        (FieldType::Array(elem, _) | FieldType::List(elem, _), Fact::List(items)) => items.iter().try_for_each(|x| in_range(elem, x)),
+        (FieldType::Record(fields), Fact::Record(entries)) => entries.iter().try_for_each(|(name, x)| match fields.index_of(name) {
+            Some(i) => in_range(&fields.field(i).ty, x),
+            None => Ok(()),
+        }),
+        _ => Ok(()),
     }
 }
 
@@ -138,15 +198,11 @@ impl Facts {
     pub fn set(&mut self, content: &Content, field: &str, values: &[Fact]) -> Result<(), String> {
         let Some(declared) = self::field(content, field) else { return Err(no_field(content, field)) };
         let of = match declared.ty {
-            FieldType::Array(elem, _) => elem,
+            FieldType::Array(elem, _) | FieldType::List(elem, _) => elem,
             ty => ty,
         };
         for v in values {
-            if let (Fact::Value(Value::Int(n)), Some((least, most, what))) = (v, range(of))
-                && !(least..=most).contains(n)
-            {
-                return Err(format!("{n} is past a {what} ({least} to {most})"));
-            }
+            in_range(of, v)?;
         }
         let mut block = self.0.clone();
         match rules::set_fact(&mut block, content, field, values)? {
@@ -164,18 +220,10 @@ impl Facts {
         let default = rules.setup_block();
         let schema = content.defs.schema(rules.setup);
         let Some(i) = schema.index_of(field) else { return };
-        match &schema.field(i).ty {
-            _ if !default.stated(schema, i) => block.unstate(schema, i),
-            FieldType::Array(_, n) => {
-                for k in 0..*n as usize {
-                    if let Some(v) = default.get_elem(schema, i, k) {
-                        let _ = block.set_elem(schema, i, k, v.load());
-                    }
-                }
-            }
-            _ => {
-                let _ = block.set(schema, i, default.get(schema, i).load());
-            }
+        if !default.stated(schema, i) {
+            block.unstate(schema, i);
+        } else {
+            copy(block, &default, schema.place(i));
         }
     }
 
@@ -192,9 +240,42 @@ impl Facts {
                 FieldType::Enum(_) => Stated::Variant(None),
                 _ => Stated::Other,
             },
-            FieldType::Array(elem, n) => Stated::List((0..*n as usize).filter_map(|k| fact.elem(k)).map(|v| stated_of(elem, v)).collect()),
-            ty => stated_of(ty, fact.value()),
+            _ => stated_at(fact.block(), fact.place()),
         })
+    }
+
+    /// The SP navi deletion times (the rules' fact the engine knows as
+    /// `PlayerFact::SpTimes`): each SP chip and its frames, in the list's
+    /// order; none where the game's rules take no such fact.
+    pub fn sp_times(&self, content: &Content) -> Vec<(ChipHandle, u16)> {
+        let Some(Stated::List(items)) = content.defs.fact_field(PlayerFact::SpTimes).and(self.get(content, PlayerFact::SpTimes.name())) else {
+            return Vec::new();
+        };
+        items
+            .iter()
+            .filter_map(|item| {
+                let Stated::Record(fields) = item else { return None };
+                let chip = fields.iter().find_map(|(n, v)| match (n.as_str(), v) {
+                    ("chip", Stated::Def(Registry::Chip, Some(h))) => Some(ChipHandle(*h)),
+                    _ => None,
+                })?;
+                let frames = fields.iter().find_map(|(n, v)| match (n.as_str(), v) {
+                    ("frames", Stated::Number(f)) => Some(*f as u16),
+                    _ => None,
+                })?;
+                Some((chip, frames))
+            })
+            .collect()
+    }
+
+    /// Write the SP navi deletion times (`PlayerFact::SpTimes`): each chip
+    /// and its frames, in this order.
+    pub fn set_sp_times(&mut self, content: &Content, times: &[(ChipHandle, u16)]) -> Result<(), String> {
+        let records: Vec<Fact> = times
+            .iter()
+            .map(|&(c, f)| Fact::Record(vec![("chip", Fact::Value(Value::Def(Registry::Chip, c.0))), ("frames", Fact::Value(Value::Int(f as i64)))]))
+            .collect();
+        self.set(content, PlayerFact::SpTimes.name(), &records)
     }
 
     /// Whether fact `field` is what a side that says nothing has.
@@ -366,6 +447,10 @@ pub fn shown(content: &Content, value: &Stated) -> String {
             let all: Vec<String> = items.iter().filter(|v| !matches!(v, Stated::Def(_, None))).map(|v| shown(content, v)).collect();
             if all.is_empty() { "none".to_string() } else { all.join(", ") }
         }
+        Stated::Record(fields) => {
+            let all: Vec<String> = fields.iter().map(|(name, v)| format!("{name} {}", shown(content, v))).collect();
+            format!("({})", all.join(", "))
+        }
         Stated::Other => "?".to_string(),
     }
 }
@@ -437,19 +522,12 @@ impl Side {
         navi.levels.is_some() || navi.story.is_some()
     }
 
-    /// Whether a side takes SP navi deletion times (the game's rules'
-    /// `sp_slots`: EXE6's and EXE5's, each their own SP navis).
+    /// Whether a side takes SP navi deletion times (the game's rules' fact
+    /// the engine knows as `PlayerFact::SpTimes`: EXE6's and EXE5's, each
+    /// their own SP navis).
     pub fn takes_sp_times(content: &Content) -> bool {
-        !crate::sp_slots(content).is_empty()
+        content.defs.fact_field(PlayerFact::SpTimes).is_some()
     }
-}
-
-/// The SP navi chip of the arena's game whose damage reads slot `slot` of
-/// its rules, if the game has it: the slot's name in a tool.
-pub fn sp_chip(content: &Content, arena: &Arena, slot: usize) -> Option<ChipHandle> {
-    (0..content.defs.chips.len() as u16)
-        .map(ChipHandle)
-        .find(|&h| content.chip_links(h).sp_slot == Some(slot as u8) && ids::in_game(content, &arena.game, &content.defs.chip(h).key))
 }
 
 /// The role the engine knows fact `name` by (`PlayerFact`), if it knows it.
