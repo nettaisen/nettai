@@ -5,14 +5,18 @@
 -- spoutcross/charge.)
 
 local bullet = require("../objects/bullet")
+local effects = require("../lib/effects")
 local spreader = require("@self/action")
 local lockon = require("../rules/lockon")
+local regions = require("@exelib/regions")
 
 -- 16 pixels up (`dword_80ECC5C`'s rows 0, 1 and 3).
 local HIGH = 0x10_0000
+-- The bullet (its row 3): a flash over the 3x3 around the panel found.
+local BULLET = bullet.variant { region = regions.square, hit_mod = 0, effect = effects.flash, sound = asset.sound("h-burst") }
 
 local function spreadr(id: string): Action
-    return spreader.action { id = id, gun = spreader.guns.spreader, z = HIGH, bullet = bullet.variants.spreader }
+    return spreader.action { id = id, gun = spreader.guns.spreader, z = HIGH, bullet = BULLET }
 end
 
 local spreadr1: Chip = {

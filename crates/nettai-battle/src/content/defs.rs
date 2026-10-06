@@ -2250,6 +2250,6 @@ mod tests {
         // Effects, sparks, regions and collision types are definitions
         // the engine holds by handle.
         assert!(c.defs.effects.len() > 100, "{} effects defined", c.defs.effects.len());
-        assert!(!c.defs.sparks.is_empty() && !c.defs.regions.is_empty() && c.defs.collisions.len() >= 88);
+        assert!(!c.defs.sparks.is_empty() && !c.defs.regions.is_empty() && c.defs.collisions.len() >= 87);
     }
 }

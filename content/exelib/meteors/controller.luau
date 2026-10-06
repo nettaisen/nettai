@@ -68,9 +68,9 @@ end
 
 local controller = {}
 
--- A game's controller (kind `id`) dropping meteors of `meteor_kind`: its
--- chip's `dimming` hook.
-function controller.make(id: string, meteor_kind: Kind): (user: Object, spec: DimmingChipSpec) -> Object?
+-- A game's controller (kind `id`) dropping meteors of `meteor_kind` and
+-- `row` (the original's row 1): its chip's `dimming` hook.
+function controller.make(id: string, meteor_kind: Kind, row: MeteorRow): (user: Object, spec: DimmingChipSpec) -> Object?
     -- `sub_80E41CC`, by phase: list the targets (none: the effect ends); a
     -- meteor every 10 ticks, the first 2 ticks on, thirty; 91 ticks.
     local function effect(me: Object)
@@ -103,7 +103,7 @@ function controller.make(id: string, meteor_kind: Kind): (user: Object, spec: Di
             local b = s.panels[i + 1]
             local x, y = bit32.band(b, 7), bit32.rshift(b, 4)
             local damage = dimming_chips.damage_plus(me, s.bonus)
-            falling_meteor.spawn_kind(meteor_kind, 1, me, x, y, me.element, damage, true, Vec3.new(y, me.element, s.bonus))
+            falling_meteor.spawn_kind(meteor_kind, row, me, x, y, me.element, damage, true, Vec3.new(y, me.element, s.bonus))
         elseif phase == 8 then
             -- (Nothing reaches it: the table's third entry.)
             dimming.dim_screen(me)

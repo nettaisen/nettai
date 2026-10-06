@@ -31,8 +31,7 @@ local SWING_ANIM = 18
 local SOUND = asset.sound("knight-swing")
 local SWING_TICKS = 58
 -- The routine's ball (AIAttackVars +0x0C to +0x0F): 12 a tick, one turn, no status, his own ball.
-local SWING: { speed: number, turns: number, status: Status?, variant: number } =
-    { speed = 12, turns = 1, status = nil, variant = 0 }
+local SWING: KnightBallSwing = { speed = 12, turns = 1, status = nil, look = ball.knightman }
 
 -- The steps, on the attack's step.
 local START, WAIT, SWINGING = 0x0, 0x4, 0x8

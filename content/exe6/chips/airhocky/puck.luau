@@ -12,22 +12,12 @@ local sparks = require("../../lib/sparks")
 
 local puck = {}
 
--- A puck's variant (a row of `byte_80C9818`).
+-- A puck's variant (a row of `byte_80C9818`, which its chip defines): the
+-- steps it lasts (0: no limit), how it bounces (1: off its own side too,
+-- once across), the ticks per step, and whether it leaves a trail.
 export type Variant = PuckVariant
 
 puck.variant = common.variant
-
--- `byte_80C9818`'s rows: the steps it lasts (0: no limit), how it bounces
--- (1: off its own side too, once across), and the ticks per step; the
--- trail is PitHocky's. The first two rows no chip has.
-local ROWS: { [number]: Variant } = {
-    [0] = puck.variant { steps = 6, own_side = 1, ticks = 6 },
-    [1] = puck.variant { steps = 0x0A, own_side = 1, ticks = 6 },
-    [2] = puck.variant { steps = 0x0A, own_side = 1, ticks = 6 },
-    [3] = puck.variant { steps = 0x12, own_side = 1, ticks = 6, trail = true },
-}
--- The chips' pucks.
-puck.variants = { airhocky = ROWS[2], pithocky = ROWS[3] }
 
 puck.kind = common.make_kind("airhocky/puck", {
     sprite = asset.sprite("hockey-puck"),
