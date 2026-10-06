@@ -59,12 +59,12 @@ struct Args {
     /// Netplay: host on this UDP port, or join this host.
     host: Option<u16>,
     join: Option<String>,
-    delay: u32,
+    present_delay: u32,
     wait: u64,
 }
 
-/// The most input delay netplay takes (a quarter of a second).
-const MAX_DELAY: u32 = 15;
+/// The most present delay netplay takes (a quarter of a second).
+pub const MAX_PRESENT_DELAY: u32 = nettai_demo::window::MAX_PRESENT_DELAY;
 
 const USAGE: &str = "\
 usage: nettai-demo [OPTIONS]                 edit a new match (the window asks its game)
@@ -170,8 +170,12 @@ usage: nettai-demo [OPTIONS]                 edit a new match (the window asks i
                    brings their match file's left side; the host's file
                    supplies the arena, and the battle's RNG comes from
                    both players' randomly generated seed halves
-  --delay N        netplay's input delay in frames (default 2): more delay,
-                   fewer rollbacks
+  --present-delay N  netplay: show the battle N frames behind your newest
+                   input (default 0: the newest, the other player's input
+                   predicted and corrected by rollback; more: fewer
+                   corrections seen, your own input that much later); [ and
+                   ] change it during the match; yours alone, the other
+                   player chooses theirs
   --wait SECONDS   how long the host waits for a player, or the joiner for
                    the host (default 300 and 30)";
 
@@ -207,7 +211,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         lang: nettai_assets::BASE_LANGUAGE.into(),
         host: None,
         join: None,
-        delay: nettai_frontend::netplay::NetOptions::default().delay,
+        present_delay: nettai_frontend::netplay::NetOptions::default().present_delay,
         wait: 0,
     };
     while let Some(arg) = it.next() {
@@ -243,7 +247,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
             "--lang" => a.lang = value("--lang")?,
             "--host" => a.host = Some(number(value("--host")?, "--host")?.try_into().map_err(|_| "bad --host port".to_string())?),
             "--join" => a.join = Some(value("--join")?),
-            "--delay" => a.delay = number(value("--delay")?, "--delay")? as u32,
+            "--present-delay" => a.present_delay = number(value("--present-delay")?, "--present-delay")? as u32,
             "--wait" => a.wait = number(value("--wait")?, "--wait")?,
             "-h" | "--help" => return Err(String::new()),
             s if s.starts_with('-') => return Err(format!("unknown option {s}")),
@@ -299,8 +303,8 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         if a.headless.is_some() || a.audit {
             return Err("netplay plays in a window".into());
         }
-        if a.delay > MAX_DELAY {
-            return Err(format!("--delay {} is more than {MAX_DELAY} frames", a.delay));
+        if a.present_delay > MAX_PRESENT_DELAY {
+            return Err(format!("--present-delay {} is more than {MAX_PRESENT_DELAY} frames", a.present_delay));
         }
     }
     Ok(a)
@@ -406,7 +410,7 @@ fn handshake(args: &Args, content: &Arc<nettai_battle::Content>, m: nettai_match
 
 /// What netplay needs once the match is agreed (from the command line).
 struct NetArgs {
-    delay: u32,
+    present_delay: u32,
     show_folders: bool,
     save_match: Option<PathBuf>,
 }
@@ -418,16 +422,16 @@ fn net_player(net: &NetArgs, content: &Arc<nettai_battle::Content>, agreed: Agre
     let peer = conn.datagram().peer().map_or("the other player".to_string(), |a| a.to_string());
     let side = conn.side();
     eprintln!(
-        "netplay: playing {peer}; you are the {} navi (the match's seed {}, input delay {})",
+        "netplay: playing {peer}; you are the {} navi (the match's seed {}, present delay {})",
         if side == 0 { "left" } else { "right" },
         conn.seed(),
-        net.delay
+        net.present_delay
     );
     eprintln!("{}", nettai_match::describe(content, &m, conn.seed(), net.show_folders, side));
     if let Some(path) = &net.save_match {
         save_match(content, &m, conn.seed(), path);
     }
-    let options = NetOptions { delay: net.delay, ..NetOptions::default() };
+    let options = NetOptions { present_delay: net.present_delay, ..NetOptions::default() };
     Box::new(NetPlayer::new(conn, side, set, options))
 }
 
@@ -716,7 +720,7 @@ fn main() {
         // A netplay match: the window stays responsive (Esc quits) while
         // the handshake agrees it.
         Some((handshake, text_line)) => {
-            let net = NetArgs { delay: args.delay, show_folders: args.show_folders, save_match: args.save_match.clone() };
+            let net = NetArgs { present_delay: args.present_delay, show_folders: args.show_folders, save_match: args.save_match.clone() };
             let content = content.clone();
             Start::Net(Box::new(Waiting {
                 handshake,
@@ -768,7 +772,7 @@ mod tests {
             vec!["trace.jsonl", "--join", "127.0.0.1:7777"],
             vec!["--match", "match.toml", "--host", "7777", "--join", "127.0.0.1:7777"],
             vec!["--match", "match.toml", "--host", "7777", "--headless", "1"],
-            vec!["--match", "match.toml", "--host", "7777", "--delay", "16"],
+            vec!["--match", "match.toml", "--host", "7777", "--present-delay", "16"],
         ] {
             assert!(args(&options).is_err(), "{options:?}");
         }
