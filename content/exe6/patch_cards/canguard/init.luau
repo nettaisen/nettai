@@ -5,8 +5,7 @@ local cards = require("../rules/patch_cards/cards")
 local charge = require("@self/charge")
 local shield = require("../navis/megaman/weapons/shield")
 
-return define.patch_card {
-    id = "canguard",
+local card: PatchCard = {
     mb = 10,
     effects = {
         cards.bug(cards.float_shoes(false)),
@@ -14,3 +13,5 @@ return define.patch_card {
         cards.back_special(shield.shield),
     },
 }
+
+return { canguard = card }

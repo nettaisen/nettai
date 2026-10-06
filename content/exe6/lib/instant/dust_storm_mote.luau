@@ -74,7 +74,7 @@ local function tick(me: Object)
     me.timer = DRIFT_TICKS
 end
 
-mote.kind = define.kind {
+mote.kind = new.kind {
     id = "dust-storm-mote",
     pool = "effect",
     state = { tied = "action" },

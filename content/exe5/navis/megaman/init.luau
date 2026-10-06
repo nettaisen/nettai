@@ -12,21 +12,20 @@
 local attach_points = require("@self/attach_points")
 local buster = require("@self/weapons/buster")
 local charged_shot = require("@self/weapons/charged_shot")
-local colonelsoul = require("@self/forms/colonelsoul")
-local gyrosoul = require("@self/forms/gyrosoul")
-local knightsoul = require("@self/forms/knightsoul")
-local magnetsoul = require("@self/forms/magnetsoul")
-local meddysoul = require("@self/forms/meddysoul")
-local napalmsoul = require("@self/forms/napalmsoul")
-local numbersoul = require("@self/forms/numbersoul")
-local protosoul = require("@self/forms/protosoul")
-local searchsoul = require("@self/forms/searchsoul")
-local shadowsoul = require("@self/forms/shadowsoul")
-local toadsoul = require("@self/forms/toadsoul")
-local tomahawksoul = require("@self/forms/tomahawksoul")
+local colonelsoul = require("@self/forms/colonelsoul").colonelsoul
+local gyrosoul = require("@self/forms/gyrosoul").gyrosoul
+local knightsoul = require("@self/forms/knightsoul").knightsoul
+local magnetsoul = require("@self/forms/magnetsoul").magnetsoul
+local meddysoul = require("@self/forms/meddysoul").meddysoul
+local napalmsoul = require("@self/forms/napalmsoul").napalmsoul
+local numbersoul = require("@self/forms/numbersoul").numbersoul
+local protosoul = require("@self/forms/protosoul").protosoul
+local searchsoul = require("@self/forms/searchsoul").searchsoul
+local shadowsoul = require("@self/forms/shadowsoul").shadowsoul
+local toadsoul = require("@self/forms/toadsoul").toadsoul
+local tomahawksoul = require("@self/forms/tomahawksoul").tomahawksoul
 
-return define.navi {
-    id = "megaman",
+local navi: NaviDef = {
     sprite = asset.sprite("megaman-navi"),
     element = "null",
     buster_bonus = 1,
@@ -62,7 +61,7 @@ return define.navi {
             toadsoul,
         },
     },
-    identity = define.identity {
+    identity = new.identity {
         class = "megaman",
         version = 0,
         actor_type = "player",
@@ -75,3 +74,5 @@ return define.navi {
         attach_points = attach_points,
     },
 }
+
+return { megaman = navi }

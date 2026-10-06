@@ -7,7 +7,7 @@
 -- one. Then he leaves, and the controller moves on. See
 -- docs/engine/chips.md §3.6.15.
 
-local heatman_navi = require("../../navis/heatman")
+local heatman_navi = require("../../navis/heatman").heatman
 local collision = require("../../rules/collision")
 local flame = require("./flame")
 local navi_chips = require("../../lib/navi_chips/navi")
@@ -157,7 +157,7 @@ end
 
 local ACTIONS = { [APPEAR] = appear, [STAND] = stand, [INHALE] = inhale, [FIRE] = fire, [LEAVE] = leave }
 
-heatman.kind = define.kind {
+heatman.kind = new.kind {
     id = "heatman/navi",
     pool = "actor",
     state = { controller = "object" },

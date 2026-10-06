@@ -4,14 +4,13 @@
 
 local shoot = require("./thunder/shoot")
 local lockon = require("../rules/lockon")
-local thunder = require("./thunder")
+local thunder = require("./thunder").thunder
 local statuses = require("../rules/status")
 
 -- Its hits' status: paralysis.
 local PARALYZE = statuses.paralyze_90
 
-return define.chip {
-    id = "darkthnd",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "elec",
     family = "elec",
@@ -29,3 +28,5 @@ return define.chip {
     hp_bug = 1,
     action = shoot.action { id = "darkthnd/action", ball = { panels = 0x0C, status = PARALYZE } },
 }
+
+return { darkthnd = chip }

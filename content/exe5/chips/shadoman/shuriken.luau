@@ -14,7 +14,7 @@ shuriken.kind = common.make_kind {
     id = "shuriken",
     sprite = asset.sprite("shuriken"),
     land_sound = asset.sound("panel-crack"),
-    puff = define.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 },
+    puff = new.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 },
     self_type = collision.thrown_slash,
     target = collision.hits_navis,
     started = function(me: Object)

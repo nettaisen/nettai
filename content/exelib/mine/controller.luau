@@ -38,7 +38,7 @@ end
 
 -- A game's controller: its kind's key, and its mine's kind.
 function controller.make(spec: { id: string, mine: Kind }): { kind: Kind, hook: (user: Object, chip: DimmingChipSpec) -> Object? }
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { bonus = "u16" },

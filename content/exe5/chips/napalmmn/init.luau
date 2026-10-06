@@ -6,8 +6,7 @@ local navi = require("@self/navi")
 
 -- NapalmMn (EXE5 chip 0x0e3): NapalmMan cuts in and lobs a napalm bomb four panels ahead, its fire spreading around an
 -- empty panel (./navi).
-local napalmmn = define.chip {
-    id = "napalmmn",
+local napalmmn: Chip = {
     codes = { "N" },
     element = "fire",
     family = "fire",
@@ -26,8 +25,7 @@ local napalmmn = define.chip {
 -- NaplmMnSP (EXE5 chip 0x0e4): NapalmMan cuts in and lobs a napalm bomb four panels ahead, its fire spreading around an
 -- empty panel (../napalmmn/navi); its damage by how fast its user deleted NapalmMan SP (rules/sp_chips: formula 5, its
 -- table's row 4).
-local naplmmn_sp = define.chip {
-    id = "naplmmn-sp",
+local naplmmn_sp: Chip = {
     codes = { "N" },
     element = "fire",
     family = "fire",
@@ -46,8 +44,7 @@ local naplmmn_sp = define.chip {
 -- NaplmMnDS (EXE5 chip 0x0e5): NapalmMan, dark, cuts in and lobs a napalm bomb four panels ahead, its fire spreading
 -- around an empty panel (../napalmmn/navi); its damage by its user's side's statistic 3 (formula 27, its table's row
 -- 4).
-local naplmmn_ds = define.chip {
-    id = "naplmmn-ds",
+local naplmmn_ds: Chip = {
     codes = { "N" },
     element = "fire",
     family = "fire",
@@ -63,4 +60,4 @@ local naplmmn_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { napalmmn = napalmmn, naplmmn_sp = naplmmn_sp, naplmmn_ds = naplmmn_ds }
+return { napalmmn = napalmmn, ["naplmmn-sp"] = naplmmn_sp, ["naplmmn-ds"] = naplmmn_ds }

@@ -78,7 +78,7 @@ charged_shot.action = common.action {
     plain = variants.plain,
 }
 
-charged_shot.weapon = define.weapon {
+charged_shot.weapon = new.weapon {
     id = "megaman/charged-shot",
     -- The charge table's row 1; Charge 5 reads on into row 2's first
     -- entry, as the original's table does.

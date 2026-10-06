@@ -7,9 +7,8 @@
 local lockon = require("../rules/lockon")
 local worm = require("@self/worm")
 
-return {
-    sandwrm1 = define.chip {
-        id = "sandwrm1",
+local chips: { [string]: Chip } = {
+    sandwrm1 = {
         codes = { "A", "G", "L" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 30, damage = 130, hit_param = 30, lockout = 0,
@@ -18,8 +17,7 @@ return {
         slot_in_limit = 3,
         instant = worm.instant(0),
     },
-    sandwrm2 = define.chip {
-        id = "sandwrm2",
+    sandwrm2 = {
         codes = { "B", "R", "Y" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 34, damage = 150, hit_param = 30, lockout = 0,
@@ -28,8 +26,7 @@ return {
         slot_in_limit = 3,
         instant = worm.instant(1),
     },
-    sandwrm3 = define.chip {
-        id = "sandwrm3",
+    sandwrm3 = {
         codes = { "H", "J", "S" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 38, damage = 170, hit_param = 30, lockout = 0,
@@ -39,3 +36,5 @@ return {
         instant = worm.instant(2),
     },
 }
+
+return chips

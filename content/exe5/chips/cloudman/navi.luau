@@ -115,7 +115,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-cloudman.kind = define.kind {
+cloudman.kind = new.kind {
     id = "cloudman/navi",
     pool = "actor",
     state = { controller = "object", level = "u8" },

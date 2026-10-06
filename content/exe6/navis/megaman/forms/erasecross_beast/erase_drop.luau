@@ -34,7 +34,7 @@ local FALLING, BLINKING = 0, 4
 local SOLID = 0x10
 
 -- Where it appears, and its burst (a puff).
-local APPEAR = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 }
+local APPEAR = new.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 }
 local BURST = effects.puff
 
 -- Its element: Cursor, whatever the attack's.
@@ -144,7 +144,7 @@ local function tick(me: Object)
     end
 end
 
-erase_drop.kind = define.kind {
+erase_drop.kind = new.kind {
     id = "erasecross-beast/drop",
     pool = "attack",
     state = { ticks = "u8", x = "u8", y = "u8" },

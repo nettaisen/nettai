@@ -103,7 +103,7 @@ local function tick(me: Object)
     c:present()
 end
 
-fire.kind = define.kind {
+fire.kind = new.kind {
     id = "blastman/fire",
     pool = "attack",
     state = {

@@ -33,7 +33,7 @@ local function setup(navi: Object): Action
     return FLAME
 end
 
-heat_charge.weapon = define.weapon {
+heat_charge.weapon = new.weapon {
     id = "heatcross/charge",
     -- The charge table's row 6; Charge 5 reads on into row 7's first
     -- entry, as the original's table does.

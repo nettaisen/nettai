@@ -5,8 +5,7 @@ local cards = require("../rules/patch_cards/cards")
 local charge = require("@self/charge")
 local triple_buster = require("../lib/patch_cards/triple_buster")
 
-return define.patch_card {
-    id = "bassbx",
+local card: PatchCard = {
     mb = 70,
     effects = {
         cards.super_armor(true),
@@ -16,3 +15,5 @@ return define.patch_card {
         cards.charged_shot(charge),
     },
 }
+
+return { bassbx = card }

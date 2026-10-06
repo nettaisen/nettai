@@ -30,7 +30,7 @@ export type State = {
 }
 
 -- The flash: EXE5's effect 3 (0x080DFC94's row 3: 14-03).
-local FLASH = define.effect { sprite = asset.sprite("deletion"), anim = 0, palette = 0 }
+local FLASH = new.effect { sprite = asset.sprite("deletion"), anim = 0, palette = 0 }
 local FLASH_SOUND = asset.sound("log-in")
 local CHANGE_SOUND = asset.sound("cross-change")
 -- The side's statistic the stand marks (0x0800931C's byte 1, which 0x0802C16C reads).
@@ -175,6 +175,6 @@ local function update(me: Object, s: State)
     me:step_sprite()
 end
 
-survival.action = define.action { id = "dark-survival", state = { timer = "u16" }, update = update }
+survival.action = new.action { id = "dark-survival", state = { timer = "u16" }, update = update }
 
 return survival

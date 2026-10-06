@@ -7,11 +7,7 @@
 -- raises one on that panel; Static raises them on more panels the more
 -- kinds of NaviCust bug the navi has (none: that panel; up to three: also
 -- the one behind it, the two beside it, and the two beside that one), a
--- static tornado each. Another game's chips take the blow (`chips.blow`)
--- with their fan and tornado kind. The action's third form (its subtype 3, which no
--- chip has) does the same by a side statistic (`sub_800AB3A`, counter 3),
--- spreading back toward the navi, with HP-bug tornadoes, and a fan of
--- another palette. 42 ticks, then 21 to put the fan away.
+-- static tornado each. 42 ticks, then 21 to put the fan away.
 
 local attachment = require("../objects/attachment")
 local common = require("@exelib/tornado/blow")
@@ -29,11 +25,10 @@ local function blow(spec: TornadoBlow): Action
     return common.blow(spec, LOOK)
 end
 
-local STATIC_SPREAD, BACK_SPREAD = common.STATIC_SPREAD, common.BACK_SPREAD
+local STATIC_SPREAD = common.STATIC_SPREAD
 
-local chips = {
-    tornado = define.chip {
-        id = "tornado",
+local chips: { [string]: Chip } = {
+    tornado = {
         codes = { "L", "R", "T" },
         element = "null", family = "wind", class = "standard",
         rarity = 2, mb = 16, damage = 20, hit_param = 4, lockout = 0,
@@ -46,8 +41,7 @@ local chips = {
             single = { variant = tornado.variants.plain, status = nil, ticks = 0x20 },
         },
     },
-    static = define.chip {
-        id = "static",
+    static = {
         codes = { "G", "S", "V" },
         element = "null", family = "wind", class = "standard",
         rarity = 2, mb = 30, damage = 20, hit_param = 4, lockout = 0,
@@ -65,23 +59,5 @@ local chips = {
         },
     },
 }
-
--- The action's third form, which no chip has (the original's subtype 3,
--- with `byte_80CA208`'s tornadoes).
-chips.back_spread = blow {
-    id = "tornado/back-spread",
-    fan = CHARGED_FAN,
-    fan_palette = 1,
-    spread = {
-        by = "side_stat",
-        panels = BACK_SPREAD,
-        tornado = { variant = tornado.variants.hp_bug, status = nil, ticks = 0x20 },
-    },
-}
-
-chips.STATE = common.STATE
--- The blow and the spreads.
-chips.blow = blow
-chips.STATIC_SPREAD, chips.BACK_SPREAD = STATIC_SPREAD, BACK_SPREAD
 
 return chips

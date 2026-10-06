@@ -6,8 +6,7 @@ local navi = require("@self/navi")
 
 -- CloudMan (EXE5 chip 0x10a): CloudMan cuts in and sets thunderclouds behind the enemies, each striking with a
 -- paralyzing bolt (./navi).
-local cloudman = define.chip {
-    id = "cloudman",
+local cloudman: Chip = {
     codes = { "C" },
     element = "elec",
     family = "elec",
@@ -26,8 +25,7 @@ local cloudman = define.chip {
 -- CloudMnSP (EXE5 chip 0x10b): CloudMan cuts in and sets thunderclouds behind the enemies, each striking with a
 -- paralyzing bolt (../cloudman/navi); its damage by how fast its user deleted CloudMan SP (rules/sp_chips: formula 16,
 -- its table's row 15).
-local cloudmn_sp = define.chip {
-    id = "cloudmn-sp",
+local cloudmn_sp: Chip = {
     codes = { "C" },
     element = "elec",
     family = "elec",
@@ -45,8 +43,7 @@ local cloudmn_sp = define.chip {
 
 -- CloudMnDS (EXE5 chip 0x10c): CloudMan, dark, cuts in and sets thunderclouds behind the enemies, each striking with a
 -- paralyzing bolt (../cloudman/navi); its damage by its user's side's statistic 3 (formula 38, its table's row 15).
-local cloudmn_ds = define.chip {
-    id = "cloudmn-ds",
+local cloudmn_ds: Chip = {
     codes = { "C" },
     element = "elec",
     family = "elec",
@@ -62,4 +59,4 @@ local cloudmn_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { cloudman = cloudman, cloudmn_sp = cloudmn_sp, cloudmn_ds = cloudmn_ds }
+return { cloudman = cloudman, ["cloudmn-sp"] = cloudmn_sp, ["cloudmn-ds"] = cloudmn_ds }

@@ -30,7 +30,7 @@ dragon.DOWN, dragon.UP = 0, 1
 
 -- A dragon's variant.
 function dragon.variant(v: DragonVariant): DragonVariant
-    return define.record("dragon-variant", v)
+    return new.record("dragon-variant", v)
 end
 
 -- Its look: the dragon sprite at animation `anim` in the variant's

@@ -85,7 +85,7 @@ local function tick(me: Object)
     c:present()
 end
 
-strike.kind = define.kind {
+strike.kind = new.kind {
     id = "bass/strike",
     pool = "attack",
     -- 0x080D4214.

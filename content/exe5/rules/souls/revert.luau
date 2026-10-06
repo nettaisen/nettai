@@ -9,7 +9,7 @@
 -- the weapons and the mood: as the change's, ./change), his base form's start hook; 30 ticks later the attack
 -- requests and the reverting state are dropped and he idles.
 
-local base = require("../../navis/megaman/forms/base")
+local base = require("../../navis/megaman/forms/base").base
 local effects = require("../../lib/effects")
 local hooks = require("./hooks")
 
@@ -59,7 +59,7 @@ function revert.update(me: Object, s: State)
 end
 
 -- The revert out of a soul, as the pause handler runs it: one of rules/souls's actions (./init).
-revert.action = define.action {
+revert.action = new.action {
     id = "souls/revert",
     state = { timer = "u16" },
     update = revert.update,

@@ -6,8 +6,7 @@
 local panel_changer = require("../objects/panel_changer")
 local panel_chips = require("../lib/panel_chips/controller")
 
-return define.chip {
-    id = "goingrd",
+local chip: Chip = {
     codes = { "*" },
     element = "null", family = "null", class = "standard",
     rarity = 0, mb = 21, damage = 40, hit_param = 30, lockout = 0,
@@ -24,3 +23,5 @@ return define.chip {
         change_sound = panel_changer.CHANGE_SOUND,
     }),
 }
+
+return { goingrd = chip }

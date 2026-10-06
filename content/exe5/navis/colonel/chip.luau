@@ -111,7 +111,7 @@ local function recover(me: Object, s: State)
 end
 
 local action: Action
-action = define.action {
+action = new.action {
     state = { timer = "u16", wait = "u16" },
     -- 0x080F8B30
     update = function(me: Object, s: State)
@@ -130,8 +130,7 @@ action = define.action {
     end,
 }
 
-return define.chip {
-    id = "c-cannon",
+local chip: Chip = {
     codes = { "C" },
     element = "null",
     family = "null",
@@ -149,3 +148,5 @@ return define.chip {
         (navi:action_state(action) :: State).wait = 0
     end,
 }
+
+return { ["c-cannon"] = chip }

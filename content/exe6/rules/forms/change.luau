@@ -136,7 +136,7 @@ local function beast_over_effects(pos: Vec3, alliance: number, target: FormDef):
     elseif target.version == "falzar" then
         which = 1
     else
-        error(string.format("form %s has no Beast Over effect (sub_80151D4)", target.id))
+        error(string.format("form %s has no Beast Over effect (sub_80151D4)", target.id :: string))
     end
     local at = pos + Vec3.new(0, 0, 0x20_0000)
     local first = battle.effect(at, if which == 0 then effects.beast_over_gregar else effects.beast_over_falzar, alliance, 0, 0)
@@ -220,7 +220,7 @@ local function merging(me: Object, s: State, seq: Sequence, target: FormDef)
         -- The navi the Cross is made with.
         local navi = target.cross_of
         if navi == nil then
-            error(string.format("form %s is a Cross of no navi (sub_8014B98)", target.id))
+            error(string.format("form %s is a Cross of no navi (sub_8014B98)", target.id :: string))
         end
         merge.spawn(me, navi, 0x14)
         s.timer = 0x30

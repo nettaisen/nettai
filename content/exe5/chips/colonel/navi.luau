@@ -33,7 +33,7 @@ local SOUND_COMMAND = asset.sound("ok-8b")
 local SOUND_SWING = asset.sound("spin")
 -- What he wears (0x0800EE5E: EXE5's body overlay row 3, its sprite 10-1E, in front at every animation), stepping
 -- even while paused.
-local CAPE = define.identity {
+local CAPE = new.identity {
     class = "navi",
     parts = { body = { sprite = asset.sprite("colonel-cape"), anims = 41 } },
 }
@@ -45,8 +45,8 @@ local PALETTES: { [number]: number } = { [0] = 0, 0, 0, 4, 6 }
 -- His slashes by his Param2 (0x080BA49C: region, effect row 0x48 + it): rising, falling.
 local SLASH_REGIONS: { [number]: Region } = { [1] = regions.falling, [2] = regions.rising }
 local SLASHES: { [number]: Effect } = {
-    [1] = define.effect { sprite = asset.sprite("screen-divide"), anim = 1, palette = 0 },
-    [2] = define.effect { sprite = asset.sprite("screen-divide"), anim = 2, palette = 0 },
+    [1] = new.effect { sprite = asset.sprite("screen-divide"), anim = 1, palette = 0 },
+    [2] = new.effect { sprite = asset.sprite("screen-divide"), anim = 2, palette = 0 },
 }
 -- The panels his target holds (0x080BA5B0): an enemy navi's body, by side.
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
@@ -235,7 +235,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-colonel.kind = define.kind {
+colonel.kind = new.kind {
     id = "colonel/navi",
     pool = "actor",
     state = { controller = "object", level = "u8", cross = "bool", slash = "u8" },

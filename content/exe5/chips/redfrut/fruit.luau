@@ -31,7 +31,7 @@ local HP = 1
 local HIT_MOD = 0
 -- NameID 0xE7: actor record 0xE7 (0x08014C94: version 2, AI index 0x21); EXE5's swallowing and Poltergeist leave it
 -- (0x0800D372, 0x080E8CA0).
-local IDENTITY = define.identity {
+local IDENTITY = new.identity {
     class = "field_object",
     version = 2,
     ai_index = 0x21,
@@ -40,9 +40,9 @@ local IDENTITY = define.identity {
 }
 -- The effects (EXE5's table, 0x080DFC94): row 0x15 (14-0D, animation 3) as it comes, row 0x14 (14-0D, animation 2) as
 -- it goes, row 0x0E (14-01) when broken.
-local COMES = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 }
-local GOES = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
-local BROKEN = define.effect { sprite = asset.sprite("impact"), anim = 0, palette = 0 }
+local COMES = new.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 }
+local GOES = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local BROKEN = new.effect { sprite = asset.sprite("impact"), anim = 0, palette = 0 }
 local APPEAR_SOUND, BREAK_SOUND = asset.sound("appear"), asset.sound("hit-bomb-1")
 local SHOWN_TICKS, PUFF_TICKS = 40, 4
 -- Where it neither drops nor hops (0x080D8280): the back columns, reserved while it looks.
@@ -341,7 +341,7 @@ local function init(me: Object)
     tick(me)
 end
 
-fruit.kind = define.kind {
+fruit.kind = new.kind {
     id = "redfrut/fruit",
     pool = "attack",
     state = { gift = "u8", hops = "u8", breaker = "u8" },

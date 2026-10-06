@@ -19,7 +19,7 @@ export type State = {
 
 -- A bullet variant.
 function bullet.variant(v: BulletVariant): BulletVariant
-    return define.record("bullet-variant", v)
+    return new.record("bullet-variant", v)
 end
 
 -- Done: off its panels, and freed at the next update.
@@ -103,7 +103,7 @@ end
 
 -- A bullet kind (`id`) of `look`.
 function bullet.make_kind(id: string, look: BulletLook): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { variant = "record:bullet-variant" },

@@ -209,7 +209,7 @@ local function finish(me: Object, s: State)
     me:exit_attack()
 end
 
-slash_charge.action = define.action {
+slash_charge.action = new.action {
     id = "slashcross/charge/action",
     state = { timer = "u16", slash = "record:charged-slash", dash = "bool" },
     -- `sub_80EE34A`.
@@ -231,7 +231,7 @@ slash_charge.action = define.action {
     end,
 }
 
-slash_charge.weapon = define.weapon {
+slash_charge.weapon = new.weapon {
     id = "slashcross/charge",
     -- The charge table's row 0x12, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

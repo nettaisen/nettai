@@ -159,7 +159,7 @@ end
 
 -- A game's counter.
 function counter.action_at(spec: Spec): Action
-    return define.action {
+    return new.action {
         id = spec.id,
         state = STATE,
         -- `sub_80EE90C`, by phase.

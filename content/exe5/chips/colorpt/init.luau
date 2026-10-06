@@ -6,8 +6,7 @@ local colorpt = require("@self/colorpt")
 
 -- ColorPt (EXE5 chip 0x07f): the user's front column goes to the other side, panel by panel, for Atk+10 a panel on
 -- the chip at the hand's cursor: EXE6's ColorPt with EXE5's points (chips/colorpt/colorpt).
-local colorpt_chip = define.chip {
-    id = "colorpt",
+local colorpt_chip: Chip = {
     codes = { "*" },
     element = "null",
     family = "plus",
@@ -25,8 +24,7 @@ local colorpt_chip = define.chip {
 
 -- DblPoint (EXE5 chip 0x0cf): the user's front column goes to the other side, panel by panel, for Atk+20 a panel on
 -- the chip at the hand's cursor: EXE6's DblPoint with EXE5's points (chips/colorpt/colorpt).
-local dblpoint = define.chip {
-    id = "dblpoint",
+local dblpoint: Chip = {
     codes = { "*" },
     element = "null",
     family = "plus",

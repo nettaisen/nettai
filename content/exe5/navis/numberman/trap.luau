@@ -114,7 +114,7 @@ local function tick(me: Object)
     end
 end
 
-trap.kind = define.kind {
+trap.kind = new.kind {
     id = "numberman/trap",
     pool = "attack",
     -- 0x080DF1E0

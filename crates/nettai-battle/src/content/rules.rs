@@ -988,7 +988,7 @@ pub enum StatusTimer {
     Other(u8),
 }
 
-/// A status effect (`define.status`): the requests it raises, its duration
+/// A status effect (`new.status`): the requests it raises, its duration
 /// and its timer.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -1091,7 +1091,7 @@ pub enum LockonRule {
     Near,
 }
 
-/// A lock-on mode (`define.lockon`; an entry of the original's
+/// A lock-on mode (`new.record("lockon", ...)`; an entry of the original's
 /// `jt_8026584`). Offsets are relative to where the rule counts from, dx
 /// toward the user's front; a panel past the target's column never fits.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -170,7 +170,7 @@ end
 
 -- A game's shell kind `id`, of `look`.
 function shell.make_kind(id: string, look: Look): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { hit_mod = "u8", cracks = "bool", shift = "u8", spots = "u8[3]" },

@@ -25,7 +25,7 @@ function heal.action(spec: { id: string?, hp: number, mood: number? }): Action
         battle.bump_side_stat(me.alliance, RECOVERIES, 1)
         me:exit_attack()
     end
-    return define.action { id = spec.id, args = spec, update = update }
+    return new.action { id = spec.id, args = spec, update = update }
 end
 
 return heal

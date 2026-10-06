@@ -15,8 +15,7 @@ local function spreadr(id: string): Action
     return spreader.action { id = id, gun = spreader.guns.spreader, z = HIGH, bullet = bullet.variants.spreader }
 end
 
-local spreadr1 = define.chip {
-    id = "spreadr1",
+local spreadr1: Chip = {
     codes = { "L", "M", "N", "*" },
     element = "null",
     family = "null",
@@ -32,8 +31,7 @@ local spreadr1 = define.chip {
     action = spreadr("spreadr1/action"),
 }
 
-local spreadr2 = define.chip {
-    id = "spreadr2",
+local spreadr2: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -49,8 +47,7 @@ local spreadr2 = define.chip {
     action = spreadr("spreadr2/action"),
 }
 
-local spreadr3 = define.chip {
-    id = "spreadr3",
+local spreadr3: Chip = {
     codes = { "Q", "R", "S", "*" },
     element = "null",
     family = "null",

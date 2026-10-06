@@ -32,7 +32,7 @@ local function setup(navi: Object): Action
     return puzzlarm.action
 end
 
-puzzlarm.weapon = define.weapon {
+puzzlarm.weapon = new.weapon {
     id = "puzzlarm/charge",
     charge_ticks = { 120, 120, 120, 120, 120, 100, 100, 100 }, -- by Charge 0..7; past 4, the next routine's row
     setup = setup,

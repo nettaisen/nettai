@@ -227,7 +227,7 @@ local function tick(me: Object)
     me:update_sprite()
 end
 
-scope.kind = define.kind {
+scope.kind = new.kind {
     id = "serchman/scope",
     pool = "effect",
     state = {

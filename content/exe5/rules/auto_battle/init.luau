@@ -66,7 +66,7 @@ local function leave(me: Object, s: LeaveState)
     end
 end
 
-auto_battle.leave = define.action {
+auto_battle.leave = new.action {
     id = "auto-battle/leave",
     state = { timer = "u16" },
     update = leave,

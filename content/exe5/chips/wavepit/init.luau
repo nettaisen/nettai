@@ -6,8 +6,7 @@
 
 local wavepit = require("@self/wavepit")
 
-return define.chip {
-    id = "wavepit",
+local chip: Chip = {
     codes = { "B", "E", "Z" },
     element = "aqua",
     family = "aqua",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 3,
     instant = wavepit.instant(wavepit.pits.wavepit),
 }
+
+return { wavepit = chip }

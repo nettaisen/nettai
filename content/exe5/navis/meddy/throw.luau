@@ -34,7 +34,7 @@ end
 
 -- Her throw, its capsule of `spec` (`id`: the key compat names it by, if it does).
 function throw.action(spec: Spec, id: string?): Action
-    return define.action {
+    return new.action {
         id = id,
         state = { timer = "u16" },
         -- 0x080F1424

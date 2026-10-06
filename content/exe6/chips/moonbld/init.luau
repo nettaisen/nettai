@@ -6,8 +6,7 @@ local action = require("@self/action")
 local slashes = require("../navis/megaman/forms/slashcross/slashes")
 local lockon = require("../rules/lockon")
 
-return define.chip {
-    id = "moonbld",
+local chip: Chip = {
     codes = { "A", "M", "T" },
     element = "null",
     family = "sword",
@@ -23,3 +22,5 @@ return define.chip {
     -- (SlashCross's A-charge sends its ring as a sword wave.)
     action = action.action { id = "moonbld/action", charged = slashes.moon },
 }
+
+return { moonbld = chip }

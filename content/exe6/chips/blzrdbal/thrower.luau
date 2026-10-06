@@ -72,7 +72,7 @@ local function tick(me: Object)
     end
 end
 
-thrower.kind = define.kind {
+thrower.kind = new.kind {
     id = "blzrdbal/thrower",
     pool = "actor",
     state = { controller = "object" },

@@ -143,7 +143,7 @@ local function init(me: Object)
     tick(me)
 end
 
-erase_ray.kind = define.kind {
+erase_ray.kind = new.kind {
     id = "erasecross/ray",
     pool = "attack",
     state = {

@@ -6,8 +6,7 @@
 
 local cannon_chips = require("./cannon")
 
-return define.chip {
-    id = "rush",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 1,
     action = cannon_chips.cannon.action,
 }
+
+return { rush = chip }

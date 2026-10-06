@@ -323,7 +323,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-phoenix.kind = define.kind {
+phoenix.kind = new.kind {
     id = "dethphnx/phoenix",
     pool = "actor",
     state = {

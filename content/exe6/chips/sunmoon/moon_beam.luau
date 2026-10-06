@@ -115,7 +115,7 @@ local function init(me: Object)
     tick(me)
 end
 
-moon_beam.kind = define.kind {
+moon_beam.kind = new.kind {
     id = "sunmoon/moon-beam",
     pool = "attack",
     state = { ticks = "u8" },

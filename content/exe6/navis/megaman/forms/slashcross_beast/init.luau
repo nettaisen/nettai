@@ -1,15 +1,14 @@
 --!strict
 -- SlashCross Beast: one of MegaMan's forms.
 
-local slashman = require("../../slashman")
-local gregar_beast = require("./gregar_beast")
+local slashman = require("../../slashman").slashman
+local gregar_beast = require("./gregar_beast")["gregar-beast"]
 local gregar_beast_buster = require("../weapons/gregar_beast_buster")
 local slash_a_charge = require("../weapons/slash_a_charge")
 local lunge = require("@self/lunge")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "slashcross-beast",
+local form: FormDef = {
     kind = "cross_beast",
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
@@ -46,7 +45,7 @@ return define.form {
     charged_sword_rush = true,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 15, palette_add = 7 },
-    identity = define.identity {
+    identity = new.identity {
         class = "cross_beast",
         version = 0,
         actor_type = "player",
@@ -92,3 +91,5 @@ return define.form {
         },
     },
 }
+
+return { ["slashcross-beast"] = form }

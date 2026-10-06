@@ -5,8 +5,7 @@
 
 local elemrage = require("@self/elemrage")
 
-return define.chip {
-    id = "elemrage",
+local chip: Chip = {
     codes = { "E", "K", "W" },
     element = "null",
     family = "null",
@@ -20,3 +19,5 @@ return define.chip {
     slot_in_limit = 3,
     action = elemrage.action(3, 30, 0),
 }
+
+return { elemrage = chip }

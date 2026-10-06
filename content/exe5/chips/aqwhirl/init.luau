@@ -7,8 +7,7 @@ local whirlpool = require("@self/whirlpool")
 
 -- AqWhirl1 (EXE5 chip 0x09d): action 0x47 as variant 0 (@exelib/airspin/action): a whirlpool
 -- (./whirlpool) set down ahead in palette 0 at speed 0x20, looping round the field.
-local aqwhirl1 = define.chip {
-    id = "aqwhirl1",
+local aqwhirl1: Chip = {
     codes = { "B", "F", "N" },
     element = "aqua",
     family = "aqua",
@@ -25,8 +24,7 @@ local aqwhirl1 = define.chip {
 
 -- AqWhirl2 (EXE5 chip 0x09e): action 0x47 as variant 0 (@exelib/airspin/action): a whirlpool
 -- (./whirlpool) set down ahead in palette 1 at speed 0x30, looping round the field.
-local aqwhirl2 = define.chip {
-    id = "aqwhirl2",
+local aqwhirl2: Chip = {
     codes = { "A", "H", "O" },
     element = "aqua",
     family = "aqua",
@@ -43,8 +41,7 @@ local aqwhirl2 = define.chip {
 
 -- AqWhirl3 (EXE5 chip 0x09f): action 0x47 as variant 0 (@exelib/airspin/action): a whirlpool
 -- (./whirlpool) set down ahead in palette 2 at speed 0x50, looping round the field.
-local aqwhirl3 = define.chip {
-    id = "aqwhirl3",
+local aqwhirl3: Chip = {
     codes = { "D", "I", "R" },
     element = "aqua",
     family = "aqua",

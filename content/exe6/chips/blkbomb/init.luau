@@ -5,8 +5,7 @@
 local black_bomb = require("@self/bomb")
 local throw = require("../lib/bombs/throw")
 
-return define.chip {
-    id = "blkbomb",
+local chip: Chip = {
     codes = { "B", "F", "O" },
     element = "fire", family = "fire", class = "standard",
     rarity = 3, mb = 32, damage = 250, hit_param = 18, lockout = 0,
@@ -14,3 +13,5 @@ return define.chip {
     slot_in_limit = 3,
     action = throw.action { held = black_bomb.held, thrower = black_bomb.thrower() },
 }
+
+return { blkbomb = chip }

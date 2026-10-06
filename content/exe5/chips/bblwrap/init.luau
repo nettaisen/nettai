@@ -5,8 +5,7 @@
 
 local barriers = require("../lib/barriers")
 
-return define.chip {
-    id = "bblwrap",
+local chip: Chip = {
     codes = { "Y" },
     element = "null",
     family = "aqua",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = barriers.controller.hook(barriers.bubble),
 }
+
+return { bblwrap = chip }

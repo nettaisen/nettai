@@ -6,8 +6,7 @@
 
 local plus = require("../lib/plus")
 
-return define.chip {
-    id = "darkplus",
+local chip: Chip = {
     codes = { "*" },
     element = "null",
     family = "plus",
@@ -21,3 +20,5 @@ return define.chip {
     slot_in_limit = 1,
     instant = plus.dark,
 }
+
+return { darkplus = chip }

@@ -16,8 +16,7 @@ local SPRITE = exe5_instrument.sprite
 -- Confusion (status 0x23: 4 ticks) on the other navi's panel, learning nothing.
 local EFFECT = effects.confuse(statuses.confuse_4, collision.guard_breaking, collision.nothing)
 
-return define.chip {
-    id = "discord",
+local chip: Chip = {
     codes = { "B", "J", "Q", "*" },
     element = "null",
     family = "summon",
@@ -31,7 +30,7 @@ return define.chip {
     slot_in_limit = 3,
     -- EXE5's row 1; its identity the actor record 0xDE (0x08014C94: version 5, AI index 0x21).
     dimming = exe5_instrument.hook(instrument.instrument {
-        identity = define.identity {
+        identity = new.identity {
             class = "field_object",
             version = 5,
             ai_index = 0x21,
@@ -44,3 +43,5 @@ return define.chip {
         effect = EFFECT,
     }),
 }
+
+return { discord = chip }

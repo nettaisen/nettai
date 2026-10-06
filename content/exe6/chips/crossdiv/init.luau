@@ -4,8 +4,7 @@
 
 local colonel = require("./colonel/navi")
 
-return define.chip {
-    id = "crossdiv",
+local chip: Chip = {
     codes = { "D" },
     element = "null",
     family = "sword",
@@ -20,3 +19,5 @@ return define.chip {
     slot_in_limit = 1,
     navi = colonel.summon { palette = 0, cross = true },
 }
+
+return { crossdiv = chip }

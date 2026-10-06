@@ -24,10 +24,9 @@
 local body_overlays = require("../lib/body_overlays")
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
-local kcrusher = require("@self/chip")
+local kcrusher = require("@self/chip").kcrusher
 
-return define.navi {
-    id = "knightman",
+local navi: NaviDef = {
     sprite = asset.sprite("knightman"),
     element = "null",
     buster_bonus = 1,
@@ -48,7 +47,7 @@ return define.navi {
     -- What the story gives him (0x08052E9C: the table 0x0804F960's row for his place in his team, MagnetMan's and
     -- his): his HP by the story's progress; his level, which his damage rows are read at, is that count up to 6.
     story = { hp = { 400, 400, 500, 550, 600, 650, 700, 800, 900 }, max_level = 6 },
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -91,3 +90,5 @@ return define.navi {
         },
     },
 }
+
+return { knightman = navi }

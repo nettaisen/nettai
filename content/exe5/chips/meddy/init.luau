@@ -6,8 +6,7 @@ local navi = require("@self/navi")
 
 -- Meddy (EXE5 chip 0x0ec): Meddy cuts in and throws two capsules beside the enemy navi, bursting along their lines
 -- (./navi).
-local meddy = define.chip {
-    id = "meddy",
+local meddy: Chip = {
     codes = { "M" },
     element = "null",
     family = "null",
@@ -25,8 +24,7 @@ local meddy = define.chip {
 
 -- MeddySP (EXE5 chip 0x0ed): Meddy cuts in and throws two capsules beside the enemy navi, bursting along their lines
 -- (../meddy/navi); its damage by how fast its user deleted Meddy SP (rules/sp_chips: formula 7, its table's row 6).
-local meddy_sp = define.chip {
-    id = "meddy-sp",
+local meddy_sp: Chip = {
     codes = { "M" },
     element = "null",
     family = "null",
@@ -44,8 +42,7 @@ local meddy_sp = define.chip {
 
 -- MeddyDS (EXE5 chip 0x0ee): Meddy, dark, cuts in and throws two capsules beside the enemy navi, bursting along their
 -- lines (../meddy/navi); its damage by its user's side's statistic 3 (formula 29, its table's row 6).
-local meddy_ds = define.chip {
-    id = "meddy-ds",
+local meddy_ds: Chip = {
     codes = { "M" },
     element = "null",
     family = "null",
@@ -61,4 +58,4 @@ local meddy_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { meddy = meddy, meddy_sp = meddy_sp, meddy_ds = meddy_ds }
+return { meddy = meddy, ["meddy-sp"] = meddy_sp, ["meddy-ds"] = meddy_ds }

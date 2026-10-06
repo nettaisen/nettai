@@ -6,8 +6,7 @@ local barriers = require("../lib/barriers")
 
 -- Barrier (EXE5 chip 0x087): a barrier of 10 HP on the user: EXE6's barrier chips (the dimming handler's subtype 14)
 -- with EXE5's barriers (lib/barriers).
-local barrier = define.chip {
-    id = "barrier",
+local barrier: Chip = {
     codes = { "B", "L", "S", "*" },
     element = "null",
     family = "null",
@@ -26,8 +25,7 @@ local barrier = define.chip {
 
 -- Barr100 (EXE5 chip 0x088): a barrier of 100 HP on the user: EXE6's barrier chips (the dimming handler's subtype 14)
 -- with EXE5's barriers (lib/barriers).
-local barr100 = define.chip {
-    id = "barr100",
+local barr100: Chip = {
     codes = { "P" },
     element = "null",
     family = "null",
@@ -45,8 +43,7 @@ local barr100 = define.chip {
 
 -- Barr200 (EXE5 chip 0x089): a barrier of 200 HP on the user: EXE6's barrier chips (the dimming handler's subtype 14)
 -- with EXE5's barriers (lib/barriers).
-local barr200 = define.chip {
-    id = "barr200",
+local barr200: Chip = {
     codes = { "W" },
     element = "null",
     family = "null",

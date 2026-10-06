@@ -16,7 +16,7 @@ pub struct Definition {
     pub key: String,
     /// The module that made it (its path in the pack, without `.luau`).
     pub module: String,
-    /// A record's type (`define.record(type, spec)`); None for the others.
+    /// A record's type (`new.record(type, spec)`); None for the others.
     pub record_type: Option<String>,
     /// Its spec: fields as data, other definitions as `Data::Ref`, the
     /// tables schemas come from as `Data::Ref(Registry::Schema, ..)`,

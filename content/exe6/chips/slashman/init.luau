@@ -4,8 +4,7 @@
 
 local navi = require("@self/navi")
 
-local slashman = define.chip {
-    id = "slashman",
+local slashman: Chip = {
     codes = { "S", "*" },
     element = "null",
     family = "sword",
@@ -21,8 +20,7 @@ local slashman = define.chip {
     navi = navi.summon { wave_damage = 10 },
 }
 
-local slashmn_ex = define.chip {
-    id = "slashmn-ex",
+local slashmn_ex: Chip = {
     codes = { "S" },
     element = "null",
     family = "sword",
@@ -38,8 +36,7 @@ local slashmn_ex = define.chip {
     navi = navi.summon { wave_damage = 20 },
 }
 
-local slashmn_sp = define.chip {
-    id = "slashmn-sp",
+local slashmn_sp: Chip = {
     codes = { "S" },
     element = "null",
     family = "sword",
@@ -55,4 +52,4 @@ local slashmn_sp = define.chip {
     navi = navi.summon { wave_damage = 20 },
 }
 
-return { slashman = slashman, slashmn_ex = slashmn_ex, slashmn_sp = slashmn_sp }
+return { slashman = slashman, ["slashmn-ex"] = slashmn_ex, ["slashmn-sp"] = slashmn_sp }

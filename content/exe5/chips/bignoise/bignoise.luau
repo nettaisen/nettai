@@ -24,10 +24,10 @@ local SPRITE = asset.sprite("shademan")
 -- ---- The noise ------------------------------------------------------------------------------------------------------
 
 -- Regions 0x1B and 0x1C (the region table's rows: the deep fan and one or two columns more).
-local THREE_COLUMNS = define.region {
+local THREE_COLUMNS = new.region {
     panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 }, { 3, -1 }, { 3, 0 }, { 3, 1 } },
 }
-local FOUR_COLUMNS = define.region {
+local FOUR_COLUMNS = new.region {
     panels = {
         { 0, 0 },
         { 1, -1 },
@@ -137,7 +137,7 @@ local function noise_init(me: Object)
     noise_tick(me)
 end
 
-bignoise.noise = define.kind {
+bignoise.noise = new.kind {
     id = "bignoise/noise",
     pool = "attack",
     state = { navi = "bool", region = "region" },
@@ -266,7 +266,7 @@ local function update(me: Object)
     end
 end
 
-bignoise.kind = define.kind {
+bignoise.kind = new.kind {
     id = "bignoise/navi",
     pool = "actor",
     state = { controller = "object" },

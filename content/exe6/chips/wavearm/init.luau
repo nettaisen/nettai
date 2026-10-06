@@ -5,8 +5,7 @@
 local strike = require("@self/strike")
 local wave = require("@self/wave")
 
-local wavearm1 = define.chip {
-    id = "wavearm1",
+local wavearm1: Chip = {
     codes = { "E", "F", "G" },
     element = "null",
     family = "null",
@@ -21,8 +20,7 @@ local wavearm1 = define.chip {
     action = strike.action { id = "wavearm1/action", wave = wave.variants.wavearm1 },
 }
 
-local wavearm2 = define.chip {
-    id = "wavearm2",
+local wavearm2: Chip = {
     codes = { "L", "M", "N" },
     element = "null",
     family = "null",
@@ -37,8 +35,7 @@ local wavearm2 = define.chip {
     action = strike.action { id = "wavearm2/action", wave = wave.variants.wavearm2 },
 }
 
-local wavearm3 = define.chip {
-    id = "wavearm3",
+local wavearm3: Chip = {
     codes = { "R", "S", "T" },
     element = "null",
     family = "null",

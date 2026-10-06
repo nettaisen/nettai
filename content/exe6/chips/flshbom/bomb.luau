@@ -46,7 +46,7 @@ flash_bomb.held = attachment.look { sprite = SPRITE, palette = 0 }
 
 -- A FlashBomb variant.
 function flash_bomb.variant(v: FlashBombVariant): FlashBombVariant
-    return define.record("flash-bomb-variant", v)
+    return new.record("flash-bomb-variant", v)
 end
 
 -- Done: hidden, off its panels, and freed at the next update.
@@ -219,7 +219,7 @@ local function init(me: Object)
     tick(me)
 end
 
-flash_bomb.kind = define.kind {
+flash_bomb.kind = new.kind {
     id = "flshbom/bomb",
     pool = "attack",
     state = { variant = "record:flash-bomb-variant", target_x = "u8", target_y = "u8" },

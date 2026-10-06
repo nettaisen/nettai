@@ -7,8 +7,7 @@ local controller = require("@self/controller")
 -- GrabRvng (EXE5 chip 0x076): the user's side takes back the panels the other side stole, a hand dropping on every
 -- enemy navi for each: EXE6's controller (@exelib/grabbnsh, GrabBnsh's and GrabRvng's). EXE5's code is the same but
 -- for the hand's effect number (0x29, EXE6's 0x3B), which is the same effect (the grab shot's animation 1).
-local grabrvng = define.chip {
-    id = "grabrvng",
+local grabrvng: Chip = {
     codes = { "F", "N", "P" },
     element = "null",
     family = "null",
@@ -25,8 +24,7 @@ local grabrvng = define.chip {
 
 -- GrabBnsh (EXE5 chip 0x077): the user's side takes back the panels the other side stole, a hand dropping on every
 -- enemy navi for each: EXE6's controller (@exelib/grabbnsh; EXE5's the same code).
-local grabbnsh = define.chip {
-    id = "grabbnsh",
+local grabbnsh: Chip = {
     codes = { "D", "L", "R" },
     element = "null",
     family = "null",

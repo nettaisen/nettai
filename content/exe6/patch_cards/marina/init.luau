@@ -4,8 +4,7 @@
 local cards = require("../rules/patch_cards/cards")
 local barriers = require("../lib/barriers")
 
-return define.patch_card {
-    id = "marina",
+local card: PatchCard = {
     mb = 14,
     effects = {
         cards.hp(90),
@@ -14,3 +13,5 @@ return define.patch_card {
         cards.first_barrier(barriers.bubble),
     },
 }
+
+return { marina = card }

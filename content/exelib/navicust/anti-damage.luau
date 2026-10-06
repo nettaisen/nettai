@@ -34,7 +34,7 @@ end
 -- The stance action `id` (`sub_80EFE7C`): its setup gives it its ticks (`State.timer`), its damage, lockout and
 -- variant.
 function anti_damage.stance(id: string): Action
-    return define.action {
+    return new.action {
         id = id,
         state = { timer = "u16" },
         -- `sub_80EFE7C`.
@@ -72,7 +72,7 @@ function anti_damage.make(ids: { weapon: string, action: string, charge_ticks: {
         return action
     end
 
-    local weapon = define.weapon {
+    local weapon = new.weapon {
         id = ids.weapon,
         charge_ticks = ids.charge_ticks,
         setup = setup,

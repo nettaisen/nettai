@@ -30,7 +30,7 @@ return common.make {
     -- none, so DustMan throws no junk for it there
     -- (docs/engine/jp-differences.md §8, row 16). The content follows the
     -- Japanese games on every console.
-    identity = define.identity {
+    identity = new.identity {
         id = "otenko",
         class = "field_object",
         version = 2,

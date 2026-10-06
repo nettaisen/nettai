@@ -6,8 +6,7 @@
 
 local traps = require("../lib/traps/controller")
 
-return define.chip {
-    id = "antinavi",
+local chip: Chip = {
     codes = { "F", "L", "T", "*" },
     element = "null",
     family = "null",
@@ -22,3 +21,5 @@ return define.chip {
     trap = "anti_navi",
     dimming = traps.hook(),
 }
+
+return { antinavi = chip }

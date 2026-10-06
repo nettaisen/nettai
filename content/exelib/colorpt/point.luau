@@ -151,7 +151,7 @@ function point.make(look: Look): Point
         take(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "effect",
         state = {

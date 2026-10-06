@@ -6,8 +6,7 @@ local navi = require("@self/navi")
 
 -- ShadeMan (EXE5 chip 0x104): ShadeMan cuts in and crushes the panel ahead and the column beyond (./navi); a command
 -- paralyzes or confuses.
-local shademan = define.chip {
-    id = "shademan",
+local shademan: Chip = {
     codes = { "S" },
     element = "null",
     family = "null",
@@ -25,8 +24,7 @@ local shademan = define.chip {
 
 -- ShadeMnSP (EXE5 chip 0x105): ShadeMan cuts in and crushes the panel ahead and the column beyond (../shademan/navi);
 -- its damage by how fast its user deleted ShadeMan SP (rules/sp_chips: formula 14, its table's row 13).
-local shademn_sp = define.chip {
-    id = "shademn-sp",
+local shademn_sp: Chip = {
     codes = { "S" },
     element = "null",
     family = "null",
@@ -44,8 +42,7 @@ local shademn_sp = define.chip {
 
 -- ShadeMnDS (EXE5 chip 0x106): ShadeMan, dark, cuts in and crushes the panel ahead and the column beyond
 -- (../shademan/navi); its damage by its user's side's statistic 3 (formula 36, its table's row 13).
-local shademn_ds = define.chip {
-    id = "shademn-ds",
+local shademn_ds: Chip = {
     codes = { "S" },
     element = "null",
     family = "null",
@@ -61,4 +58,4 @@ local shademn_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { shademan = shademan, shademn_sp = shademn_sp, shademn_ds = shademn_ds }
+return { shademan = shademan, ["shademn-sp"] = shademn_sp, ["shademn-ds"] = shademn_ds }

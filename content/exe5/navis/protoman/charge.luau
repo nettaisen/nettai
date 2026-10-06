@@ -5,7 +5,7 @@
 -- as its subtype 1, chips/wideswrd).
 
 local navi_level = require("../../lib/navi_level")
-local wideswrd = require("../../chips/wideswrd")
+local wideswrd = require("../../chips/wideswrd").wideswrd
 
 local charge = {}
 
@@ -21,7 +21,7 @@ local function setup(navi: Object): Chip
     return wideswrd
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "protoman/charge",
     -- The charge table's row 0x1E (0x0801CB98), by Charge 0 to 5: past 4 it reads on into row 0x1F's first entry.
     charge_ticks = { 70, 65, 60, 55, 50, 40 },

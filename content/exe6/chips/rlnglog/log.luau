@@ -246,7 +246,7 @@ local function init(me: Object, hp: number)
     me.lifecycle = "update"
 end
 
-log.kind = define.kind {
+log.kind = new.kind {
     id = "rlnglog/log",
     pool = "attack",
     state = { last_hp = "u16", big = "bool", stop_ticks = "u8", thrown = "bool" },

@@ -1,15 +1,14 @@
 --!strict
 -- TomahawkCross Beast: one of MegaMan's forms.
 
-local tomahawkman = require("../../tomahawkman")
-local falzar_beast = require("./falzar_beast")
+local tomahawkman = require("../../tomahawkman").tomahawkman
+local falzar_beast = require("./falzar_beast")["falzar-beast"]
 local falzar_beast_buster = require("../weapons/falzar_beast_buster")
 local charged_chip_bonus = require("../weapons/charged_chip_bonus")
 local throw = require("@self/throw")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "tomahawkcross-beast",
+local form: FormDef = {
     kind = "cross_beast",
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
@@ -37,7 +36,7 @@ return define.form {
     traits = { "status_immune", "shows_target_marker", "afterimages_stay", "alt_charge_time" },
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 19 },
-    identity = define.identity {
+    identity = new.identity {
         class = "cross_beast",
         version = 0,
         actor_type = "player",
@@ -85,3 +84,5 @@ return define.form {
         },
     },
 }
+
+return { ["tomahawkcross-beast"] = form }

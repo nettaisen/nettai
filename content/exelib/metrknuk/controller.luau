@@ -186,7 +186,7 @@ function controller.make(spec: Spec): { kind: Kind, hook: (user: Object, dspec: 
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { bonus = "u16", last = "u32", grid = "u8[40]" },

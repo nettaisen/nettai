@@ -20,7 +20,7 @@ local rising_bubble = require("../../objects/rising_bubble")
 local statue = {}
 
 -- The drain's self type (`byte_80CF31C`'s row 0x52).
-local DRAIN_IS = define.collision { side0 = 0x80001080, side1 = 0x40001080, row_offset = 0x290 }
+local DRAIN_IS = new.collision { side0 = 0x80001080, side1 = 0x40001080, row_offset = 0x290 }
 
 local made = common.make {
     id = "anubis/statue",
@@ -47,7 +47,7 @@ statue.anubis = statue.variant {
     period = 6,
     hp = 100,
     lifetime = 3000,
-    identity = define.identity {
+    identity = new.identity {
         id = "anubis",
         class = "field_object",
         version = 2,
@@ -60,7 +60,7 @@ statue.poisphar = statue.variant {
     period = 1,
     hp = 100,
     lifetime = 1441,
-    identity = define.identity {
+    identity = new.identity {
         id = "poisphar",
         class = "field_object",
         version = 3,

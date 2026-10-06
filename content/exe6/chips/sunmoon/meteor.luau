@@ -22,7 +22,7 @@ local SOUND_JUSTICE_ONE = asset.sound("justice-one")
 -- The variant (`byte_80DBEE0`'s record 0, six bytes): the sprite, the
 -- animation, what it is and hits, whether the landing shakes the camera
 -- (drawn only), and what it does to a panel holding something.
-meteor.fire = define.record("sunmoon-meteor", {
+meteor.fire = new.record("sunmoon-meteor", {
     sprite = asset.sprite("meteor"),
     anim = 0,
     collision = { is = collision.thrown, hits = collision.hits_navis },
@@ -149,7 +149,7 @@ local function tick(me: Object)
     c:present()
 end
 
-meteor.kind = define.kind {
+meteor.kind = new.kind {
     id = "sunmoon/meteor",
     pool = "attack",
     state = { variant = "record:sunmoon-meteor" },

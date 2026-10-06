@@ -216,7 +216,7 @@ local function init(me: Object)
     tick(me)
 end
 
-shell.kind = define.kind {
+shell.kind = new.kind {
     id = "ironshl/shell",
     pool = "attack",
     state = {

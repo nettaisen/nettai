@@ -21,7 +21,7 @@ local SOUND, BUBBLE_SOUND, BUBBLE_POP = asset.sound("barrier"), asset.sound("bub
 local NO_TIMER = 0xFFFF
 
 local function barrier(b: Barrier): Barrier
-    return define.record("barrier", b)
+    return new.record("barrier", b)
 end
 
 -- Type 1: 10 HP (the Barrier chip's and FstBarr's).

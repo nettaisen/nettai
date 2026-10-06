@@ -213,7 +213,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-missile.kind = define.kind {
+missile.kind = new.kind {
     id = "magnetman/missile",
     pool = "attack",
     state = { variant = "u8", slow = "u8", turned = "bool", target = "object" },

@@ -4,8 +4,7 @@
 
 local navi = require("@self/navi")
 
-local blastman = define.chip {
-    id = "blastman",
+local blastman: Chip = {
     codes = { "B", "*" },
     element = "fire",
     family = "fire",
@@ -20,8 +19,7 @@ local blastman = define.chip {
     navi = navi.summon,
 }
 
-local blastmn_ex = define.chip {
-    id = "blastmn-ex",
+local blastmn_ex: Chip = {
     codes = { "B" },
     element = "fire",
     family = "fire",
@@ -36,8 +34,7 @@ local blastmn_ex = define.chip {
     navi = navi.summon,
 }
 
-local blastmn_sp = define.chip {
-    id = "blastmn-sp",
+local blastmn_sp: Chip = {
     codes = { "B" },
     element = "fire",
     family = "fire",
@@ -52,4 +49,4 @@ local blastmn_sp = define.chip {
     navi = navi.summon,
 }
 
-return { blastman = blastman, blastmn_ex = blastmn_ex, blastmn_sp = blastmn_sp }
+return { blastman = blastman, ["blastmn-ex"] = blastmn_ex, ["blastmn-sp"] = blastmn_sp }

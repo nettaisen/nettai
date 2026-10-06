@@ -36,17 +36,17 @@ local HP = 150
 -- Its collision (Param1 1): a neutral body (row 0x0E) that everything reaches (row 0x0F), hit modifier 3, no spark.
 local HIT_MOD = 3
 -- NameID 0xD4: actor record 0xD4 (0x08014C94: version 1, AI index 0x21).
-local IDENTITY = define.identity {
+local IDENTITY = new.identity {
     class = "field_object",
     version = 1,
     ai_index = 0x21,
 }
 -- The effects (EXE5's table, 0x080DFC94): row 6 (0C-12) as it comes, row 0 (14-00) over the blast, row 0x14 (14-0D,
 -- animation 2) when removed, row 0x0E (14-01) when broken.
-local COMES = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 }
-local BLAST = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
-local REMOVED = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
-local BROKEN = define.effect { sprite = asset.sprite("impact"), anim = 0, palette = 0 }
+local COMES = new.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 }
+local BLAST = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
+local REMOVED = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
+local BROKEN = new.effect { sprite = asset.sprite("impact"), anim = 0, palette = 0 }
 local PLACE_SOUND, BLAST_SOUND = asset.sound("place"), asset.sound("target-move")
 local BREAK_SOUND = asset.sound("hit-bomb-1")
 local FADE_TICKS, COUNTDOWN, HIT_TICKS, WAIT = 15, 60, 20, 30
@@ -249,7 +249,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-bomb.kind = define.kind {
+bomb.kind = new.kind {
     id = "boybomb/bomb",
     pool = "attack",
     state = { doomed = "bool", hit = "bool", last_hp = "u16" },
@@ -299,7 +299,7 @@ local function effect(me: Object)
     end
 end
 
-bomb.controller = define.kind {
+bomb.controller = new.kind {
     id = "boybomb/controller",
     pool = "effect",
     state = { bonus = "u16" },
