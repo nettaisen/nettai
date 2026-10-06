@@ -102,22 +102,22 @@ pub fn check_side_alone(content: &Content, arena: &Arena, s: &Side) -> Vec<Strin
         return out;
     }
     // The patch cards.
-    if !s.cards.is_empty() {
+    if !s.patch_cards.is_empty() {
         if !crate::ruleset_has_system(content, crate::PATCH_CARDS_SYSTEM) {
             out.push(format!("patch cards, but {game} has no patch-cards system"));
         }
-        if s.cards.len() > MAX_CARDS {
-            out.push(format!("{} patch cards installed: a list holds {MAX_CARDS}", s.cards.len()));
+        if s.patch_cards.len() > MAX_CARDS {
+            out.push(format!("{} patch cards installed: a list holds {MAX_CARDS}", s.patch_cards.len()));
         }
-        if s.cards.iter().any(|c| c.card.index() >= defs.patch_cards.len() || !of_game(&defs.patch_card(c.card).key)) {
+        if s.patch_cards.iter().any(|c| c.card.index() >= defs.patch_cards.len() || !of_game(&defs.patch_card(c.card).key)) {
             out.push(format!("a patch card {game} hasn't"));
         } else {
-            for (i, c) in s.cards.iter().enumerate() {
-                if s.cards[..i].iter().any(|d| d.card == c.card) {
+            for (i, c) in s.patch_cards.iter().enumerate() {
+                if s.patch_cards[..i].iter().any(|d| d.card == c.card) {
                     out.push(format!("the patch card {} is installed twice", crate::names::patch_card(content, c.card)));
                 }
             }
-            let mb: u32 = s.cards.iter().map(|c| defs.patch_card(c.card).mb as u32).sum();
+            let mb: u32 = s.patch_cards.iter().map(|c| defs.patch_card(c.card).mb as u32).sum();
             if mb > CARD_MB {
                 out.push(format!("the patch cards are {mb} MB, past {CARD_MB}"));
             }

@@ -19,7 +19,7 @@
 //! [left]                             # you, side 0; then [right]
 //! navi = "megaman"
 //! level = 7                          # optional: the navi code's level, 0-14 (else a link navi's 0, MegaMan none)
-//! cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
+//! patch_cards = [{ card = "canodumb" }, { card = "shadow", on = false }]
 //! version = "falzar"                 # the side's facts: what its game's rules take, each under its setup field's
 //! crosses = ["heatcross", "spoutcross"]   # name (crate::facts). EXE6's: version (gregar or falzar) and crosses (up
 //! beast_out = false                  # to five, of either version; [] none), which a side states (none is assumed);
@@ -119,7 +119,7 @@ pub struct SideFile {
     #[serde(flatten)]
     pub facts: FactsFile,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub cards: Vec<CardFile>,
+    pub patch_cards: Vec<CardFile>,
     /// The folder's entries, each `[chip, code]` (`[]` empty, while it is
     /// being made).
     pub folder: Vec<Vec<String>>,
@@ -360,10 +360,10 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
             Err(e) => say(format!("{key}: {e}")),
         }
     }
-    let mut cards = Vec::new();
-    for c in &s.cards {
+    let mut patch_cards = Vec::new();
+    for c in &s.patch_cards {
         match ids::patch_card(content, game, &c.card) {
-            Some(card) => cards.push(InstalledCard { card, enabled: c.on }),
+            Some(card) => patch_cards.push(InstalledCard { card, enabled: c.on }),
             None => say(unknown("patch card", &c.card, game, &[])),
         }
     }
@@ -414,7 +414,7 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
     if problems.len() > start {
         return None;
     }
-    Some(Side { navi, folder: folder?, cards, navi_level, sp_times, navicust, auto_battle, facts })
+    Some(Side { navi, folder: folder?, patch_cards, navi_level, sp_times, navicust, auto_battle, facts })
 }
 
 /// A fact's value as a file states it, read by the field's type `ty`: a
@@ -585,7 +585,7 @@ pub fn side_file(content: &Content, s: &Side) -> SideFile {
             .into_iter()
             .map(|(name, frames)| (name, crate::sp_times::format(frames)))
             .collect(),
-        cards: s.cards.iter().map(|c| CardFile { card: name(&content.defs.patch_card(c.card).key), on: c.enabled }).collect(),
+        patch_cards: s.patch_cards.iter().map(|c| CardFile { card: name(&content.defs.patch_card(c.card).key), on: c.enabled }).collect(),
         // An empty entry is [], and those after the last chip are left off.
         folder: {
             let last = s.folder.chips.iter().rposition(|c| c.is_some()).map_or(0, |i| i + 1);
@@ -1096,7 +1096,7 @@ mod tests {
         has(crate::check_match(&content, &m), "Mega chips, past the navi's 5");
         // Patch cards past 80 MB; Crosses for a navi without any.
         let mut m = picked.clone();
-        m.sides[0].cards = crate::patch_cards(&content, "exe6", "canodumb,amonicul,coldbear,megalian,mettfire,kilplant").unwrap();
+        m.sides[0].patch_cards = crate::patch_cards(&content, "exe6", "canodumb,amonicul,coldbear,megalian,mettfire,kilplant").unwrap();
         has(crate::check_match(&content, &m), "left: the patch cards are");
         let mut m = picked.clone();
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();

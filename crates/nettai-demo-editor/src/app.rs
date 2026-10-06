@@ -31,7 +31,7 @@ pub enum Tab {
 
 impl Tab {
     /// The tab by its name (`--tab`): `arena`, or `left-` or `right-` and
-    /// `navi`, `folder`, `auto-battle`, `cards`, `navicust`, `stats`, or
+    /// `navi`, `folder`, `auto-battle`, `patch-cards`, `navicust`, `stats`, or
     /// the name of a list the content's game's rules take of a side
     /// (`crosses`, `souls`).
     pub fn from_name(content: &Content, name: &str) -> Option<Tab> {
@@ -48,7 +48,7 @@ impl Tab {
             "navi" => Tab::Navi(side),
             "folder" => Tab::Folder(side),
             "auto-battle" => Tab::AutoBattle(side),
-            "cards" => Tab::Cards(side),
+            "patch-cards" => Tab::Cards(side),
             "navicust" => Tab::NaviCust(side),
             "stats" => Tab::Stats(side),
             list => Tab::List(side, crate::facts::list_named(content, list)?),
@@ -679,18 +679,18 @@ impl Editor {
             }
             Msg::Search(t) => self.search = t,
             Msg::AddCard(s, card) => {
-                let cards = &mut self.m.sides[s].cards;
+                let cards = &mut self.m.sides[s].patch_cards;
                 if !cards.iter().any(|c| c.card == card) {
                     cards.push(InstalledCard { card, enabled: true });
                     self.edited();
                 }
             }
             Msg::CardOn(s, i, on) => {
-                self.m.sides[s].cards[i].enabled = on;
+                self.m.sides[s].patch_cards[i].enabled = on;
                 self.edited();
             }
             Msg::CardMove(s, i, up) => {
-                let cards = &mut self.m.sides[s].cards;
+                let cards = &mut self.m.sides[s].patch_cards;
                 let j = if up { i.checked_sub(1) } else { (i + 1 < cards.len()).then_some(i + 1) };
                 if let Some(j) = j {
                     cards.swap(i, j);
@@ -698,7 +698,7 @@ impl Editor {
                 }
             }
             Msg::CardRemove(s, i) => {
-                self.m.sides[s].cards.remove(i);
+                self.m.sides[s].patch_cards.remove(i);
                 self.edited();
             }
             Msg::NaviCust(s, edit) => {

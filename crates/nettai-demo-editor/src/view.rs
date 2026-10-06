@@ -524,9 +524,9 @@ pub(crate) fn class_letter(c: ChipClass) -> &'static str {
 fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &e.content;
     let side = e.side(s);
-    let mb: u32 = side.cards.iter().map(|x| c.defs.patch_card(x.card).mb as u32).sum();
+    let mb: u32 = side.patch_cards.iter().map(|x| c.defs.patch_card(x.card).mb as u32).sum();
     let mut installed = Column::new().spacing(2);
-    for (i, card) in side.cards.iter().enumerate() {
+    for (i, card) in side.patch_cards.iter().enumerate() {
         let d = c.defs.patch_card(card.card);
         installed = installed.push(
             row![
@@ -546,7 +546,7 @@ fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
     let mut all: Vec<(String, nettai_content_api::PatchCardHandle)> = (0..c.defs.patch_cards.len() as u16)
         .map(nettai_content_api::PatchCardHandle)
         .filter(|&h| nettai_match::ids::in_game(c, e.m.game(), &c.defs.patch_card(h).key))
-        .filter(|h| !side.cards.iter().any(|x| x.card == *h))
+        .filter(|h| !side.patch_cards.iter().any(|x| x.card == *h))
         .map(|h| (e.names.patch_card(c, h), h))
         .filter(|(n, _)| needle.is_empty() || n.to_lowercase().contains(&needle))
         .collect();
