@@ -25,8 +25,8 @@
 //! navi's own of that version (`Side::state_own_forms`) where it wasn't
 //! stated, or was the last version's own.
 
-use crate::app::{Editor, Msg};
-use crate::view::{DIM, RED, SIDES, heading};
+use crate::editor::app::{Editor, Msg};
+use crate::editor::view::{DIM, RED, SIDES, heading};
 use iced::widget::{Column, Row, button, checkbox, column, image, pick_list, row, scrollable, space, text, text_input};
 use iced::{Alignment, Element, Length};
 use nettai_battle::Content;

@@ -1,11 +1,11 @@
 //! What the editor shows: a bar of file actions, the panes (the arena, with
 //! the match's game, then each side's navi, folder, the lists its game's
-//! rules take of it (`crate::facts`: EXE6's Crosses, EXE5's souls),
+//! rules take of it (`crate::editor::facts`: EXE6's Crosses, EXE5's souls),
 //! auto battle data, patch cards and stats; only what the game's rules
 //! have, every list the game's), and the problems, live.
 
-use crate::app::{App, Choice, Editor, Msg, Tab};
-use crate::names::Lang;
+use crate::editor::app::{App, Choice, Editor, Msg, Tab};
+use crate::editor::names::Lang;
 use iced::widget::{Column, Row, button, checkbox, column, container, image, pick_list, row, rule, scrollable, space, text, text_input};
 use iced::{Alignment, Color, Element, Length, Theme};
 use nettai_battle::content::{ChipClass, ChipFlags};
@@ -101,7 +101,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         tabs = tabs.push(nav("  Folder", Tab::Folder(s), e.tab));
         // (The lists the game's rules take of a side, each a pane: EXE6's
         // Crosses, where the navi has forms to list; EXE5's souls.)
-        for (index, title) in crate::facts::lists(&e.content, e.m.game(), side) {
+        for (index, title) in crate::editor::facts::lists(&e.content, e.m.game(), side) {
             tabs = tabs.push(nav_owned(format!("  {title}"), Tab::List(s, index), e.tab));
         }
         // (Patch cards are the navi's that changes form: the cards change
@@ -124,10 +124,10 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         Tab::Arena => arena(e),
         Tab::Navi(s) => navi(e, s),
         Tab::Folder(s) => folder(e, s),
-        Tab::List(s, index) => crate::facts::list(e, s, index),
-        Tab::AutoBattle(s) => crate::auto_battle::view(e, s),
+        Tab::List(s, index) => crate::editor::facts::list(e, s, index),
+        Tab::AutoBattle(s) => crate::editor::auto_battle::view(e, s),
         Tab::Cards(s) => cards(e, s),
-        Tab::NaviCust(s) => crate::navicust::view(e, s),
+        Tab::NaviCust(s) => crate::editor::navicust::view(e, s),
         Tab::Stats(s) => stats_pane(e, s),
     };
 
@@ -217,7 +217,7 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
                     .size(13)
                     .color(DIM),
             );
-        } else if let Some(levels) = c.navi(side.navi).levels.as_ref().filter(|_| crate::levels::has_levels(c, side)) {
+        } else if let Some(levels) = c.navi(side.navi).levels.as_ref().filter(|_| crate::editor::levels::has_levels(c, side)) {
             let last = levels.by_level.len().saturating_sub(1);
             col = col.push(text(format!("0 to {last}: the round gives the navi the stats its save's reload gives at that level, the game cleared (the stats pane).")).size(13).color(DIM));
         }
@@ -231,11 +231,11 @@ fn navi(e: &Editor, s: usize) -> Element<'_, Msg> {
         );
     }
     // What the game's rules take of the side, each by its setup field's
-    // type (`crate::facts`): EXE6's version (nothing chosen for a new
+    // type (`crate::editor::facts`): EXE6's version (nothing chosen for a new
     // side: none is a default), EXE5's karma. The lists have their panes.
     col = col.push(rule::horizontal(1));
     col = col.push(text("What the rules take").size(16));
-    col = col.push(crate::facts::rows(e, s));
+    col = col.push(crate::editor::facts::rows(e, s));
     col = col.push(rule::horizontal(1));
     col = col.push(button("Import from save…").on_press(Msg::ImportSave(s)));
     col = col.push(

@@ -278,20 +278,22 @@ rules' `backgrounds`).
 Options: `--pack <dir>` names a content pack elsewhere and `--content <dir>`
 the battle content (see above), `--mute` turns the sound off, `--round N`
 starts a trace at round N (later rounds follow when a round's input runs
-out), `--scale N` sets the window's first size (default 4 times 240x160;
-the window can be resized, and the picture keeps whole pixels, centered on
-black), `--paused` starts paused, `--png-scale N` scales headless output
+out), `--scale N` sets the window's first size to play in (default 4 times
+240x160; the window can be resized, and the picture keeps whole pixels,
+centered on black), `--paused` starts paused, `--png-scale N` scales headless output
 (the text layer is drawn at that scale too), `--quit-after N` closes the
 window after N ticks (with `NETTAI_WINDOW_SHOT=<file>` set, the window's
-last picture is written there as a PNG), `--text font|original` chooses
+last picture is written there as a PNG; with `NETTAI_PLAY_STATS` set, what
+each picture costs to show is printed every two seconds), `--text font|original` chooses
 how strings are drawn (default `font`; the frame comparison uses
 `original`), `--font <file>` puts another TrueType or OpenType font in the
 bundled one's place, `--lang en|ja` the language of the battle's words
 (default `en`; §3, "Languages"). `--match FILE` plays a match file (§6: you
 are its left side). The file sets the game, arena, both sides and the optional
 `seed` for the battle's RNG (default: from the clock; each start prints it).
-Edit those settings in the file or with nettai-demo-editor; its Random button
-creates a random setup. `--show-folders` prints both folders, and with
+Edit those settings in the file or with the editor (nettai-demo with nothing
+to play, or `--edit FILE`), which plays the match in the same window; its
+Random button creates a random setup. `--show-folders` prints both folders, and with
 `--headless`, `--keys` holds buttons on given ticks (below). `--save-match FILE`
 writes the match played, the file's setup or the one netplay agreed, with its
 seed, as a match file.
@@ -301,7 +303,8 @@ Backspace = SELECT; Space pauses, `.` steps one frame while paused, `-` and
 `=` change speed (1/8x to 16x of 59.73 Hz), F5 starts over (a recording's
 round; live play's set, from its first round) (none of these in netplay),
 Tab shows the next of the content's languages (the
-battle goes on: the language is the drawing's alone), Esc quits. Nothing is
+battle goes on: the language is the drawing's alone), Esc stops (back to the
+editor when the editor's Play started it, else the window closes). Nothing is
 written over the battle's picture: the window's title says where playback
 is, its speed, a pause, why it stopped, and in netplay the connection's
 figures and the result.
@@ -1089,8 +1092,9 @@ once at the file's top: everything else is a name in that game's namespace
 soul, patch card or stage: a name the game hasn't is said as any unknown
 name is ("left: folder entry 3: no chip \"darkthnd\" in exe6"), whether
 another game has it or not. `--match FILE` plays one (you are its left
-side), `--save-match FILE` writes the match played, and nettai-demo-editor makes
-and edits them (README.md, "The match editor"). The crate `nettai-match`
+side), `--save-match FILE` writes the match played, and the editor (nettai-demo
+with nothing to play, or `--edit FILE`) makes and edits them (README.md, "The
+match editor"). The crate `nettai-match`
 reads, checks and writes them, and builds the round (`Match::round`); the
 editor's random pick is a match too (`nettai_match::pick::live`), so a random
 setup written out and played again is the same battle (the frontend's test
@@ -1564,11 +1568,27 @@ sent). The battle's RNG still comes from both players' halves of the seed.
 
 nettai-frontend is a library a larger app depends on to play battles in its
 own window: it has no window toolkit, no audio device and no command line in
-it (`cargo tree -p nettai-frontend` names neither minifb nor cpal), and
+it (`cargo tree -p nettai-frontend` names neither iced nor cpal), and
 nothing in it prints or exits. Every failure is a value. The host owns the
 window, the keys, the sound output and what it tells its user; nettai-demo is
-one such host (its window loop, `app.rs`, is the loop below), and
+one such host (its window, `window.rs`, an iced program whose frame is the
+loop below; the editor is in the same window), and
 `crates/nettai-frontend/examples/embed.rs` another, with no window at all.
+
+**How nettai-demo shows the picture.** Each frame (iced's `window::frames`,
+the display's rate) it advances the player; when a tick ran, the window's
+size or the language changed, it presents into a buffer of the window's size
+in logical pixels (as the earlier minifb window had it; a HiDPI display scales
+it up) and hands iced a new `image::Handle::from_rgba` of it. Each handle is
+new, and the renderer keeps only what the last frame drew, so memory stays
+flat: a minute's play held 169 to 171 MB. The renderer is iced's GPU one
+(wgpu; its software one, tiny-skia, is the fallback without a GPU): on a
+Retina display at 960x640 points tiny-skia drew 30 frames a second, the
+software rendering of every physical pixel being the cost, while wgpu shows
+120 (the display's rate) with a picture presented each tick in about 5.7 ms.
+`NETTAI_PHYSICAL_PIXELS` presents at the display's own density instead
+(sharper text; four times the pixels on a Retina display: about 22 ms a
+picture, 43 frames a second).
 
 **Loading a game** is one call, `game::load(name, &Options)`: the packs found
 (in `Options::packs_dir`, by default where the program looks), the game's

@@ -36,10 +36,10 @@ netplay needs.
   line in it: it loads a game (its content, graphics, strings and sound), and its player runs a set live or over the
   network from the buttons, by the clock or a tick at a time, and gives the host the picture (`nettai-render`'s) and
   the sound as samples ([docs/frontend.md](docs/frontend.md) §7, with the host loop).
-- `nettai-demo`: the desktop program over `nettai-frontend`: a window and its keys, the command line, headless
-  frames, the audits, the replay of recorded matches, and the sound through the audio device.
+- `nettai-demo`: the desktop program over `nettai-frontend`: the match editor and the battle played in its window
+  (iced) with its keys, the command line, headless frames, the audits, the replay of recorded matches, and the sound
+  through the audio device.
 - `nettai-match`: match files, everything a round needs by content key, checked; the editor's random pick.
-- `nettai-demo-editor`: a desktop app that edits match files and plays them with `nettai-demo`.
 - `nettai-extract`: shared EXE5/EXE6 asset extraction library and CLI, including placeholders for missing ROMs.
 - `exe6-compat`: EXE6's original numbers for the content (`content/exe6/compat`): the codecs of the game's setup
   records, and the trace harness. The engine never depends on it.
@@ -87,7 +87,7 @@ stats (the rules build the rest). Its optional `seed` sets the
 battle's RNG; without one, the seed comes from the clock. Each start prints it, and `--show-folders` prints the
 folders. The editor's Random button creates a random setup you can save and play. Keys: the arrows move, Z is A, X is B, A is L,
 S is R, Enter is START and Backspace is SELECT; Space pauses, `.` steps a frame while paused, `-` and `=` change
-the speed, F5 restarts the round and Esc quits. `--help` lists the options, and
+the speed, F5 restarts the round and Esc stops (back to the editor, or quits). `--help` lists the options, and
 [docs/frontend.md](docs/frontend.md) has the rest. A trace is the recorded inputs of a real match; the traces
 live with the verification workspace (below).
 
@@ -127,15 +127,16 @@ facts: EXE6's version and Crosses, EXE5's karma and souls, and what a save bring
 Regular memory), each by its name in the game. A side states no stats: the game's rules build them as the round is
 set up
 (`cannon`, `megaman`; [docs/frontend.md](docs/frontend.md) §6). The editor makes and edits them, checking them
-against the content as you go, and plays them:
+against the content as you go, and plays them in the same window. It is `nettai-demo` with nothing else to do:
 
-    cargo build --release -p nettai-demo -p nettai-demo-editor
-    cargo run --release -p nettai-demo-editor -- [--game GAME] [match.toml]
-    cargo run --release -p nettai-demo -- --match match.toml     # what Play runs
+    cargo build --release -p nettai-demo
+    cargo run --release -p nettai-demo                            # a new match
+    cargo run --release -p nettai-demo -- --edit match.toml       # a match file
+    cargo run --release -p nettai-demo -- --match match.toml      # play it without the editor
 
 A match's game is chosen before anything else, and none is preselected: an opened file is of the game it names,
-and for a new match (the editor started without a file, or New) the editor asks which game first (`--game` answers
-on the command line). The arena pane shows the game: everything below it is that game's, and there is no way to pick another
+and for a new match (the program started with nothing to play, or New) the editor asks which game first. The arena
+pane shows the game: everything below it is that game's, and there is no way to pick another
 game's navi, chip, soul or patch card. Changing the game there makes a new match of it (the sides start over). A game is
 its rules (it has one ruleset), whose systems the pane lists. The lists of chips, NaviCust programs and patch cards
 are in the game's library order (its content's `library.toml`: the chips by the game's library tabs in their order,
@@ -155,19 +156,19 @@ drag a program's color swatch onto the grid, or press a placed program to pick i
 shows where it would land, lit if it fits and red if not; the wheel or R turns it, C compresses it, right-click,
 Delete or a drag off the grid takes it off, Esc puts it back; right-clicking a placed program turns it; the stats it
 compiles to show beside it); every stat as the round starts it (shown, not edited). The problems with the match show
-at the bottom as you edit. Play saves the
-match and runs `nettai-demo --match` (the one beside the editor's program, or `--frontend PATH`). A new match
-(the editor started without a file, or New) is an empty one of the game the editor asks for: its stock rules, its
+at the bottom as you edit. Play plays the match in the window, from its seed (else the clock's), as `--match`
+does, and Esc comes back to the editor; it saves nothing. A new match
+(the program started with nothing to play, or New) is an empty one of the game the editor asks for: its stock rules, its
 first link battle stage, and on each side its MegaMan at his fresh stats with an empty folder, its facts the rules'
-defaults (an EXE6 side has no version and no Crosses stated: its navi pane asks its version, falzar or gregar, with
-nothing chosen, since neither is assumed, and choosing one states that version's five Crosses; an EXE5 match has
-neither to state), no patch cards and no NaviCust programs (the problems list
+defaults (an EXE6 side has no version stated: its navi pane asks it, falzar or gregar, with nothing chosen, since
+neither is assumed; and no Crosses, the list's default; an EXE5 match has
+no version to state), no patch cards and no NaviCust programs (the problems list
 says the folders aren't whole and the versions aren't chosen until they are).
 Random picks a match of the game to save or play, and `nettai-demo --match match.toml --save-match FILE` writes
 the match played with its seed (or the one netplay agreed) out to edit. `--lang ja` (or the language list) names the chips, navis, Crosses and patch cards in
-Japanese. The editor loads the match's game's content and pack as the frontend does (a game's chips with no use yet
-left out, with the frontend's warning), and Play hands the frontend the same: `--content` and `--pack` are the
-frontend's, and only what you give is passed on.
+Japanese. The editor loads the match's game's content and pack as the player does (a game's chips with no use yet
+left out, with the frontend's warning), and Play plays on them: `--content` and `--pack` are the program's.
+`--tab NAME` starts on a pane and `--screenshot PNG` writes the window once it has drawn, then quits.
 
 **A side's facts** (what its game's rules take of it: docs/frontend.md §6) get their controls from the rules'
 own declarations, by each setup field's type, and the editor names none of them: a flag is a checkbox (EXE6's
