@@ -2885,11 +2885,16 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "if-addrs",
+ "js-sys",
  "nettai-rtc",
  "rtc",
  "serde",
  "serde_json",
  "tungstenite",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test",
+ "web-sys",
  "web-time",
 ]
 

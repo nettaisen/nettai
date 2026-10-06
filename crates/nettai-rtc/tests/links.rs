@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))]
 //! Two links on this machine, directly and through a signaling server (the
 //! in-process one; `NETTAI_TEST_SIGNAL=ws://127.0.0.1:8787` takes the
 //! Worker under `wrangler dev` instead): they connect, trade datagrams,
@@ -189,5 +190,35 @@ fn a_link_gives_up_after_the_timeout() {
             let e = s.error.as_deref().unwrap();
             assert!(e.starts_with("the connection to the other player dropped (") && e.ends_with(") and didn't come back within 3 seconds"), "{e}");
         }
+    }
+}
+
+/// A native link and a browser's, by hand: with `NETTAI_TEST_SIGNAL` and
+/// `NETTAI_TEST_ROOM` set, this hosts the room, and the web test
+/// `a_link_meets_a_native_one` (tests/web.rs, built with the same two)
+/// joins it, within a minute.
+#[test]
+#[ignore]
+fn a_native_link_meets_a_browser() {
+    let (Ok(url), Ok(code)) = (std::env::var("NETTAI_TEST_SIGNAL"), std::env::var("NETTAI_TEST_ROOM")) else { panic!("NETTAI_TEST_SIGNAL and NETTAI_TEST_ROOM, please") };
+    let config = Config { ice_servers: Vec::new(), ..Config::default() };
+    let mut link = Link::room(&url, &code, config).unwrap();
+    let (start, mut got) = (Instant::now(), 0);
+    while got <= 20 {
+        assert!(start.elapsed() < Duration::from_secs(60), "no browser came (got {got}): {:?}", link.problem());
+        link.send(b"from a native link").unwrap();
+        while let Some(d) = link.recv().unwrap() {
+            assert_eq!(d, b"from a browser");
+            got += 1;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert_eq!(link.role(), Some(Role::Host));
+    // (The browser hears this side's last ones.)
+    let until = Instant::now() + Duration::from_secs(2);
+    while Instant::now() < until {
+        link.send(b"from a native link").unwrap();
+        while link.recv().unwrap().is_some() {}
+        std::thread::sleep(Duration::from_millis(10));
     }
 }

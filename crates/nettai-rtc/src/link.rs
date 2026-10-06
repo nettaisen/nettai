@@ -29,6 +29,9 @@
 //! connecting, and how long to wait for the other player is the caller's to
 //! say (its lobby's timeout).
 
+// (On the web a room is the one way to meet.)
+#![cfg_attr(target_arch = "wasm32", allow(irrefutable_let_patterns))]
+
 use crate::room::{Room, RoomEvent};
 use crate::signal::Signal;
 use crate::{Config, Duration, Error, Instant, PeerConnection, PeerEvent, Role};
@@ -444,10 +447,12 @@ impl Link {
     }
 
     /// A new connection, of `generation`.
-    fn adopt(&mut self, mut pc: PeerConnection, generation: u32) {
+    fn adopt(&mut self, pc: PeerConnection, generation: u32) {
+        let pc = self.pc.insert(pc);
         #[cfg(not(target_arch = "wasm32"))]
         pc.set_outage(self.outage);
-        self.pc = Some(pc);
+        #[cfg(target_arch = "wasm32")]
+        let _ = pc;
         self.generation = generation;
         self.open = false;
     }
