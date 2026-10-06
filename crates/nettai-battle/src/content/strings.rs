@@ -83,6 +83,10 @@ pub struct Strings {
     pub navis: BTreeMap<String, NaviStrings>,
     #[serde(default)]
     pub forms: BTreeMap<String, FormStrings>,
+    /// What a tool says of a side's setup (the rules' panes' titles and
+    /// labels), by key.
+    #[serde(default)]
+    pub setup: BTreeMap<String, String>,
     /// The game's collections' entries', by collection, then id.
     #[serde(flatten)]
     pub collections: BTreeMap<String, BTreeMap<String, EntryStrings>>,
@@ -103,6 +107,7 @@ impl Strings {
         self.chips.extend(other.chips);
         self.navis.extend(other.navis);
         self.forms.extend(other.forms);
+        self.setup.extend(other.setup);
         for (c, entries) in other.collections {
             self.collections.entry(c).or_default().extend(entries);
         }

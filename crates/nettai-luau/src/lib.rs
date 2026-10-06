@@ -207,6 +207,9 @@ pub(crate) struct Bound {
     tables: HashMap<(Registry, u16), Table>,
     /// Records' types and entries' collections, by registry and handle.
     record_types: HashMap<(Registry, u16), String>,
+    /// Each definition's key, by registry and handle (a tool's answer names
+    /// a definition by it).
+    keys: HashMap<(Registry, u16), String>,
     assets: RefCell<define::AssetTables>,
 }
 
@@ -232,6 +235,11 @@ impl Bound {
     /// The asset `v` is, if it is one.
     pub fn asset(&self, v: &LuaValue) -> Option<(AssetKind, u16)> {
         self.assets.borrow().asset(v)
+    }
+
+    /// Definition `h` of `registry`'s key.
+    pub fn key(&self, registry: Registry, h: u16) -> Option<&str> {
+        self.keys.get(&(registry, h)).map(String::as_str)
     }
 
     /// Asset `h` of `kind` as a script value.
@@ -269,9 +277,11 @@ impl LuauContent {
         let mut defs = HashMap::new();
         let mut tables = HashMap::new();
         let mut record_types = HashMap::new();
+        let mut keys = HashMap::new();
         for ((t, d), &h) in defined.tables.iter().zip(&defined.definitions.defs).zip(&plan.handles) {
             defs.insert(t.to_pointer() as usize, (d.registry, h));
             tables.insert((d.registry, h), t.clone());
+            keys.insert((d.registry, h), d.key.clone());
             if let Some(ty) = &d.record_type {
                 record_types.insert((d.registry, h), ty.clone());
             }
@@ -302,6 +312,7 @@ impl LuauContent {
                 defs,
                 tables,
                 record_types,
+                keys,
                 assets: RefCell::new(assets),
             },
             functions,
@@ -378,6 +389,13 @@ impl ContentHost for LuauContent {
             return bind::setup_problems(v, api).map(|()| Value::Nil).map_err(|e| ContentError::new(format!("{}: {e}", self.describe(f))));
         }
         bind::hook_result(v, call, &self.bound).map_err(|e| ContentError::new(format!("{}: {e}", self.describe(f))))
+    }
+
+    fn call_tool(&self, api: &mut dyn CoreApi, f: FnId, side: u8, args: &[Value]) -> Result<nettai_content_api::Data, ContentError> {
+        let what = |e: mlua::Error| ContentError::new(format!("{}: {e}", self.describe(f)));
+        let args = args.iter().map(|&v| bind::tool_arg(&self.lua, &self.bound, v)).collect::<mlua::Result<Vec<_>>>().map_err(what)?;
+        let v: LuaValue = self.call(f, api, Some(bind::RulesCtx { side }), mlua::MultiValue::from_vec(args))?;
+        bind::tool_data(&v, &self.bound, 0).map_err(what)
     }
 }
 
