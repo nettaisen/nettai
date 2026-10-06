@@ -3,7 +3,7 @@
 //! language from the locales itself.
 
 use nettai_battle::Content;
-use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, PatchCardHandle};
+use nettai_content_api::{ChipHandle, EntryHandle, FormHandle, NaviHandle};
 
 /// A chip's name, else its key.
 pub fn chip(content: &Content, c: ChipHandle) -> &str {
@@ -23,15 +23,10 @@ pub fn navi(content: &Content, n: NaviHandle) -> &str {
     content.strings.navi(key).and_then(|s| s.name.as_deref()).unwrap_or(key)
 }
 
-/// A NaviCust program's name, else its key.
-pub fn navicust_program(content: &Content, p: nettai_content_api::NaviCustProgramHandle) -> &str {
-    let key = &content.defs.navicust_program(p).key;
-    content.strings.navicust_program(key).and_then(|s| s.name.as_deref()).unwrap_or(key)
-}
-
-/// A patch card's name (its first line, for a name the locales break in
-/// two), else its key.
-pub fn patch_card(content: &Content, c: PatchCardHandle) -> String {
-    let key = &content.defs.patch_card(c).key;
-    content.strings.patch_card(key).and_then(|s| s.name.as_deref()).map_or_else(|| key.clone(), |n| n.replace('\n', " "))
+/// An entry's name (of one of the game's collections: a patch card's, a
+/// NaviCust program's; a name the locales break in two, on one line), else
+/// its id.
+pub fn entry(content: &Content, e: EntryHandle) -> String {
+    let d = content.defs.entry(e);
+    content.strings.entry(&d.collection, d.id()).and_then(|s| s.name.as_deref()).map_or_else(|| d.id().to_string(), |n| n.replace('\n', " "))
 }

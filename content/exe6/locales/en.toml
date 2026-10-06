@@ -4,7 +4,7 @@
 # time the custom screen's chatbox, and the define phase counts them into the records (which the content's
 # hash covers). gen-content checks them against the US ROMs (the chips', the Crosses' and the navis'); the
 # names of the chips the US release cut (Count, Django...), the three Giga chips' descriptions (a gift's
-# text the save keeps, which no ROM has), the Crosses' names and the patch cards' ([patch-cards], the fan
+# text the save keeps, which no ROM has), the Crosses' names and the patch cards' ([patch_cards], the fan
 # translation's) are the content's own. The game's marks are characters (text-rendering.md §10.5): Ⓐ and Ⓑ
 # the buttons, \uE002 and \uE003 the stacked EX and SP.
 
@@ -393,7 +393,7 @@ language = "en"
 "tengucross" = { name = "TenguCross", description = "WindChip Atk\n+10!AirShsOn!\nⒷ+Left:SuckIn" }
 "tomahawkcross" = { name = "TomahawkCross", description = "Chrg WoodChip:\nAtk x2! Status\nGuard:NoAbnorm" }
 
-[patch-cards]
+[patch_cards]
 "airman" = { name = "AirMan" }
 "amonicul" = { name = "Amonicul" }
 "armadill" = { name = "Armadill" }
@@ -512,7 +512,7 @@ language = "en"
 "walla" = { name = "Walla" }
 "wunote" = { name = "WuNote" }
 
-[navicust-programs]
+[navicust_programs]
 "airshoes" = { name = "AirShoes" }
 "antidmg" = { name = "AntiDmg" }
 "attack-1" = { name = "Attack+1" }

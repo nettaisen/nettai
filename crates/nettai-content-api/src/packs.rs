@@ -17,9 +17,12 @@
 //! What a game has is what its top module returns, its root:
 //! `<game>/init.luau` ([`INIT`], the pack as a module, as a folder's
 //! init.luau is the folder). The root holds what a match names, by id, in
-//! its sections ([`SECTIONS`]), and the game's rules; each section is the
-//! module that returns it, a folder's init that merges the tables of the
-//! modules that define it. Loading has no side effect: the loader walks
+//! its sections ([`SECTIONS`], the core's: chips, navis, forms, stages) and
+//! in collections of the game's own (any other key: EXE6's `patch_cards`,
+//! `navicust_programs`, which the core reads as data,
+//! `Registry::Entry`), and the game's rules; each section or collection is
+//! the module that returns it, a folder's init that merges the tables of
+//! the modules that define it. Loading has no side effect: the loader walks
 //! from the root, and what it reaches is what the game has.
 //!
 //! ```luau
@@ -252,17 +255,11 @@ pub fn find(modules: &dyn Modules, packs: &BTreeMap<String, PackManifest>, from:
     module(modules, &target).ok_or_else(|| format!("{file}.luau: require({written:?}): no module {}.luau", keys::module_path(&target)))
 }
 
-/// A game's root's sections, each with the type its definitions are
-/// written as in their modules (`local chip: Chip = { ... }`): what a match
-/// names, by id.
-pub const SECTIONS: [(&str, &str); 6] = [
-    ("chips", "Chip"),
-    ("navis", "NaviDef"),
-    ("forms", "FormDef"),
-    ("stages", "StageDef"),
-    ("patch_cards", "PatchCard"),
-    ("navicust_programs", "NaviCustProgram"),
-];
+/// A game's root's sections the core knows, each with the type its
+/// definitions are written as in their modules (`local chip: Chip = { ...
+/// }`): what a match names, by id. (A game's own collections are its
+/// root's other keys.)
+pub const SECTIONS: [(&str, &str); 4] = [("chips", "Chip"), ("navis", "NaviDef"), ("forms", "FormDef"), ("stages", "StageDef")];
 
 /// The root's field that is the game's rules.
 pub const RULES: &str = "rules";

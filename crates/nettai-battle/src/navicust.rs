@@ -43,6 +43,30 @@ pub fn cells(shape: &Shape, x: u8, y: u8) -> impl Iterator<Item = (i32, i32)> + 
     })
 }
 
+/// A shape from a program's data: seven rows of seven cells, `#` a cell it
+/// covers and `.` one it doesn't.
+pub fn read_shape(d: &nettai_content_api::Data) -> Result<Shape, String> {
+    use nettai_content_api::Data;
+    let Data::List(rows) = d else { return Err(format!("a shape is {SIZE} rows of {SIZE} cells (strings of `#` and `.`)")) };
+    if rows.len() != SIZE {
+        return Err(format!("a shape is {SIZE} rows, not {}", rows.len()));
+    }
+    let mut shape = [[false; SIZE]; SIZE];
+    for (y, row) in rows.iter().enumerate() {
+        let Some(row) = row.str() else { return Err(format!("row {} is not a string", y + 1)) };
+        if row.len() != SIZE || !row.bytes().all(|b| b == b'#' || b == b'.') {
+            return Err(format!("row {} is not {SIZE} cells of `#` and `.`: {row:?}", y + 1));
+        }
+        for (x, b) in row.bytes().enumerate() {
+            shape[y][x] = b == b'#';
+        }
+    }
+    if !shape.iter().flatten().any(|&c| c) {
+        return Err("a shape covers no cell".into());
+    }
+    Ok(shape)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

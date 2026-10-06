@@ -60,17 +60,20 @@ pub struct FormStrings {
     pub description: Option<String>,
 }
 
-/// A patch card's strings: its name, which its menu shows.
+/// An entry's strings (of one of the game's collections: a patch card's, a
+/// NaviCust program's): its name, which a menu shows.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct PatchCardStrings {
+pub struct EntryStrings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 }
 
-/// One language's strings, by definition key.
+/// One language's strings, by definition key: the core's sections' (chips,
+/// navis, forms), and each of the game's collections' under its name
+/// (`[patch_cards]`), by id. (A table that is no collection of the content
+/// is the locales' check's to refuse.)
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct Strings {
     /// Its language (`en`, `ja`).
     pub language: String,
@@ -80,10 +83,9 @@ pub struct Strings {
     pub navis: BTreeMap<String, NaviStrings>,
     #[serde(default)]
     pub forms: BTreeMap<String, FormStrings>,
-    #[serde(default, rename = "patch-cards")]
-    pub patch_cards: BTreeMap<String, PatchCardStrings>,
-    #[serde(default, rename = "navicust-programs")]
-    pub navicust_programs: BTreeMap<String, PatchCardStrings>,
+    /// The game's collections' entries', by collection, then id.
+    #[serde(flatten)]
+    pub collections: BTreeMap<String, BTreeMap<String, EntryStrings>>,
 }
 
 /// Presentation: the records hold what the battle reads of the strings (the
@@ -101,8 +103,9 @@ impl Strings {
         self.chips.extend(other.chips);
         self.navis.extend(other.navis);
         self.forms.extend(other.forms);
-        self.patch_cards.extend(other.patch_cards);
-        self.navicust_programs.extend(other.navicust_programs);
+        for (c, entries) in other.collections {
+            self.collections.entry(c).or_default().extend(entries);
+        }
     }
 
     pub fn chip(&self, key: &str) -> Option<&ChipStrings> {
@@ -117,14 +120,9 @@ impl Strings {
         self.forms.get(key)
     }
 
-    pub fn patch_card(&self, key: &str) -> Option<&PatchCardStrings> {
-        self.patch_cards.get(key)
-    }
-
-    /// A NaviCust program's name (a table with only a name, as a patch
-    /// card's).
-    pub fn navicust_program(&self, key: &str) -> Option<&PatchCardStrings> {
-        self.navicust_programs.get(key)
+    /// Entry `id` of collection `collection`'s strings.
+    pub fn entry(&self, collection: &str, id: &str) -> Option<&EntryStrings> {
+        self.collections.get(collection)?.get(id)
     }
 }
 

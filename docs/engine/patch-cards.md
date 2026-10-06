@@ -200,12 +200,11 @@ address as its Z (compared by whole pixels, kinds.toml `scratch_z_fraction`).
 card and a player's cards are engine concepts (the user's decision, 2026-10-02); what an effect does is each game's
 rule, EXE6's patch cards module (content/exe6/rules/patch_cards/init.luau, in content/exe6/rules/init.luau).
 
-- **The cards** are definitions of their own (the root's `patch_cards`, `Registry::PatchCard`, `PatchCardHandle`,
-  `Content::patch_card`): content/exe6/patch_cards/<name>/init.luau, keyed by name (`canodumb`) as chips are, compat
-  patch-cards.toml giving each its number. **The engine's record of a card** (`PatchCardDef`) is what every game's
-  card is: its capacity cost (`mb`, EXE6's MB, which the installed cards' limit counts) and its effects in the
-  card's order, each a `kind` and whether the card shows it as a `bug`. The kind's own fields stay the
-  definition's data, which the game's rules read (EXE6's: rules/patch_cards/cards.luau's constructors,
+- **The cards** are the entries of the game's root's collection `patch_cards` (data the core reads none of,
+  `Registry::Entry`, keyed `patch_cards/canodumb`; content-model-v2.md §3.11): content/exe6/patch_cards/<name>/init.luau,
+  named by their ids (`canodumb`), compat patch-cards.toml giving each its number. A card is its capacity cost
+  (`mb`, EXE6's MB, which the installed cards' limit counts) and its effects in the card's order, each a `kind`
+  and whether the card shows it as a `bug`, with the kind's own fields: data, which the game's rules read (EXE6's: rules/patch_cards/cards.luau's constructors,
   `cards.hp(-40)`, `cards.charged_shot(require("./charge"))`, `cards.bug(...)`, ...). Weapons, programs
   (projectile variants), barriers and gauges are named by definition, never by number. The name is the locales'.
 - **A player's installed cards** are a fact of their game's rules' setup (`patch_cards`: a list of cards in the

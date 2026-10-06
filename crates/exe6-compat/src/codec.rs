@@ -18,7 +18,7 @@ use nettai_battle::setup::{
 };
 use nettai_battle::transform::TransformRequest;
 use nettai_content_api::{
-    ChipHandle, FormHandle, NaviCustProgramHandle, NaviHandle, PatchCardHandle, RecordHandle, Registry, StageHandle, Value, WeaponHandle,
+    ChipHandle, EntryHandle, FormHandle, NaviHandle, RecordHandle, Registry, StageHandle, Value, WeaponHandle,
 };
 
 // ---- Numbers and handles ----------------------------------------------------------
@@ -192,8 +192,8 @@ impl<'a> Ids<'a> {
     }
 
     /// The patch card a save's card list names by its number (compat
-    /// patch-cards.toml).
-    pub fn patch_card(&self, number: u8) -> PatchCardHandle {
+    /// patch-cards.toml): an entry of the game's `patch_cards`.
+    pub fn patch_card(&self, number: u8) -> EntryHandle {
         let key = self
             .compat
             .patch_cards
@@ -201,13 +201,13 @@ impl<'a> Ids<'a> {
             .find(|(_, n)| **n == number)
             .map(|(k, _)| k.as_str())
             .unwrap_or_else(|| panic!("patch-cards.toml has no patch card {number}"));
-        self.content.defs.patch_card_by_key(key).unwrap_or_else(|| panic!("the content has no patch card {key:?} (number {number})"))
+        self.content.defs.entry_in(PATCH_CARDS, key).unwrap_or_else(|| panic!("the content has no patch card {key:?} (number {number})"))
     }
 
-    /// The NaviCust program a part id names (its number, `id >> 2`) and its
-    /// color (the variant, `id & 3`, the definition's color in that
-    /// place); none for 0, no part.
-    pub fn navicust_part(&self, id: u8) -> Option<(NaviCustProgramHandle, u8)> {
+    /// The NaviCust program a part id names (its number, `id >> 2`: an
+    /// entry of the game's `navicust_programs`) and its color (the variant,
+    /// `id & 3`, the definition's color in that place); none for 0, no part.
+    pub fn navicust_part(&self, id: u8) -> Option<(EntryHandle, u8)> {
         if id == 0 {
             return None;
         }
@@ -220,20 +220,20 @@ impl<'a> Ids<'a> {
             .find(|(_, n)| **n == number)
             .map(|(k, _)| k.as_str())
             .unwrap_or_else(|| panic!("navicust.toml has no program {number} (part id {id:#x})"));
-        let h = self.content.defs.navicust_program_by_key(key).unwrap_or_else(|| panic!("the content has no NaviCust program {key:?}"));
+        let h = self.content.defs.entry_in(NAVICUST_PROGRAMS, key).unwrap_or_else(|| panic!("the content has no NaviCust program {key:?}"));
         Some((h, id & 3))
     }
 
     /// A placed program's part id.
-    pub fn navicust_part_id(&self, program: NaviCustProgramHandle, color: u8) -> u8 {
-        let key = self.key(&self.content.defs.navicust_program(program).key);
+    pub fn navicust_part_id(&self, program: EntryHandle, color: u8) -> u8 {
+        let key = self.content.defs.entry(program).id();
         let n = self.compat.navicust.programs.get(key).unwrap_or_else(|| panic!("navicust.toml has no {key:?}"));
         n * 4 + color
     }
 
     /// A patch card's number.
-    pub fn patch_card_number(&self, h: PatchCardHandle) -> u8 {
-        let key = self.key(&self.content.defs.patch_card(h).key);
+    pub fn patch_card_number(&self, h: EntryHandle) -> u8 {
+        let key = self.content.defs.entry(h).id();
         *self.compat.patch_cards.get(key).unwrap_or_else(|| panic!("patch-cards.toml has no patch card {key:?}"))
     }
 
@@ -456,10 +456,24 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
 /// where a side without cards reads the NaviCust's; a recording carries the
 /// glitch its console showed.)
 pub fn patch_cards(list: &[u8], ids: &Ids) -> Vec<Fact<'static>> {
-    list.iter().filter(|&&b| b & 0x80 == 0).map(|&b| Fact::Value(Value::Def(Registry::PatchCard, ids.patch_card(b & 0x7F).0))).collect()
+    list.iter().filter(|&&b| b & 0x80 == 0).map(|&b| Fact::Value(Value::Def(Registry::Entry, ids.patch_card(b & 0x7F).0))).collect()
 }
 
 // ---- The NaviCust -------------------------------------------------------------------
+
+/// EXE6's collections a save's lists name entries of (its root's keys).
+pub const PATCH_CARDS: &str = "patch_cards";
+pub const NAVICUST_PROGRAMS: &str = "navicust_programs";
+
+/// A NaviCust program's colors, in its variants' order (its data's
+/// `colors`: a part id's variant is an index into them).
+pub fn program_colors(content: &Content, program: EntryHandle) -> Vec<&str> {
+    let key = &content.defs.entry(program).key;
+    match content.defs.definitions.get(Registry::Entry, key).map(|d| d.spec.field("colors")) {
+        Some(nettai_content_api::Data::List(colors)) => colors.iter().filter_map(|c| c.str()).collect(),
+        _ => Vec::new(),
+    }
+}
 
 /// A save's NaviCust programs (EXE6: the list at 0x02004190, 0x31 parts of
 /// 8 bytes: +0 the part id, +3 the center's column, +4 its row, +5 the
@@ -474,10 +488,12 @@ pub fn navicust<'c>(list: &[u8], compressed: impl Fn(u8) -> bool, ids: &Ids<'c>)
     let mut parts = Vec::new();
     for e in list.chunks_exact(8) {
         let Some((program, variant)) = ids.navicust_part(e[0]) else { continue };
-        let def = ids.content.defs.navicust_program(program);
-        let color = def.colors.get(variant as usize).ok_or_else(|| format!("part id {:#x}: {} has no color {variant}", e[0], def.key))?;
+        let color = program_colors(ids.content, program)
+            .get(variant as usize)
+            .copied()
+            .ok_or_else(|| format!("part id {:#x}: {} has no color {variant}", e[0], ids.content.defs.entry(program).key))?;
         parts.push(Fact::Record(vec![
-            ("program", Fact::Value(Value::Def(Registry::NaviCustProgram, program.0))),
+            ("program", Fact::Value(Value::Def(Registry::Entry, program.0))),
             ("color", Fact::Name(color)),
             ("x", Fact::Value(Value::Int(e[3] as i64))),
             ("y", Fact::Value(Value::Int(e[4] as i64))),
