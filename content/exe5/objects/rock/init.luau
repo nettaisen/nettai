@@ -45,19 +45,11 @@ local ICE = new.identity {
 
 local CRACK = asset.sound("panel-crack")
 
--- The rows of 0x080D0F80 (a row past the second is aqua, and a row without HP has 1).
-local ROWS: { [number]: RockVariant } = {
-    -- A rock cube anything breaks (no chip or stage places it).
-    [0] = common.variant {
-        anim = 1,
-        hp = 1,
-        element = "null",
-        debris_palette = 0,
-        break_sound = CRACK,
-        identity = ROCK,
-    },
+-- The variants anything places, rows of 0x080D0F80 (a row past the second is aqua): its rows 1 and 3. (Row 0, a cube
+-- anything breaks, and row 2, a hard one, no chip or stage places.)
+rock.variants = {
     -- RockCube's, and the stages'.
-    [1] = common.variant {
+    cube = common.variant {
         anim = 1,
         hp = 200,
         element = "null",
@@ -65,17 +57,8 @@ local ROWS: { [number]: RockVariant } = {
         break_sound = CRACK,
         identity = ROCK,
     },
-    -- A hard one (no chip or stage places it).
-    [2] = common.variant {
-        anim = 1,
-        hp = 500,
-        element = "null",
-        debris_palette = 0,
-        break_sound = CRACK,
-        identity = ROCK,
-    },
     -- The ice block.
-    [3] = common.variant {
+    ice = common.variant {
         anim = 2,
         hp = 100,
         element = "aqua",
@@ -84,7 +67,6 @@ local ROWS: { [number]: RockVariant } = {
         identity = ICE,
     },
 }
-rock.variants = { brittle = ROWS[0], cube = ROWS[1], hard = ROWS[2], ice = ROWS[3] }
 
 local made = common.make {
     id = "rock",

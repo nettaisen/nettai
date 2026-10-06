@@ -2,9 +2,9 @@
 -- EXE5's falling meteor (attack object #0x56) and meteor shower (effect object #0x46): the shared code
 -- (@exelib/meteors: EXE6's) but for
 --
--- - the meteor's look and rows (0x080D0B24: rows 0 to 2 EXE6's, but row 2 hits with modifier 0, 0x080D0BE4; row 3
+-- - the meteor's look and rows (0x080D0B24: rows 0 and 1 EXE6's, row 1 the Meteors chip's; row 3, the shower's,
 --   cracks its panel; row 4, DarkMetr's, hits as EXE5's row 0x2B with the bug 0x19 (argument 1), shakes the cameras
---   at 2 and breaks its panel);
+--   at 2 and breaks its panel; row 2, which hits with modifier 0, nothing drops);
 -- - the shower (0x080E58A8, 0x080E58EC) with its first parameter set (DarkMetr's): 10 more meteors and 2 for each of
 --   the first three reactions its side's navi took (side stat 3), one every 10 ticks (20 without), on the target's
 --   own panel (no draw for a neighbor), row 4 (row 3 without). (Its init also gives the shower, which has no
@@ -22,26 +22,22 @@ local sparks = require("../../lib/sparks")
 
 local meteors = {}
 
-local ROW: MeteorRow = { is = collision.thrown, hits = collision.hits_navis, hit_mod = 3, shake = 1, panel = "none" }
+-- The rows: the Meteors chip's (row 1), the shower's (row 3) and DarkMetr's (row 4).
+meteors.row = falling_meteor.row { is = collision.thrown, hits = collision.hits_navis, hit_mod = 3, shake = 1, panel = "none" }
+local CRACKING = falling_meteor.row { is = collision.thrown, hits = collision.hits_navis, hit_mod = 3, shake = 1, panel = "crack" }
+local DARK = falling_meteor.row {
+    is = collision.collision_2b,
+    hits = collision.hits_navis,
+    hit_mod = 3,
+    shake = 2,
+    panel = "break",
+    bug = 0x19,
+    bug_arg = 1,
+}
 
 meteors.kind = falling_meteor.make_kind("meteor", {
     sprite = asset.sprite("meteor"),
     sounds = { fall = asset.sound("justice-one"), land = asset.sound("hit-bomb-1") },
-    rows = {
-        [0] = ROW,
-        [1] = ROW,
-        [2] = { is = collision.thrown, hits = collision.hits_navis, hit_mod = 0, shake = 1, panel = "none" },
-        [3] = { is = collision.thrown, hits = collision.hits_navis, hit_mod = 3, shake = 1, panel = "crack" },
-        [4] = {
-            is = collision.collision_2b,
-            hits = collision.hits_navis,
-            hit_mod = 3,
-            shake = 2,
-            panel = "break",
-            bug = 0x19,
-            bug_arg = 1,
-        },
-    },
     spark = sparks.of_element,
     -- (Its landing's burst EXE6's.)
     burst = effects.burst,
@@ -83,7 +79,7 @@ local function tick(me: Object)
         x, y = meteor_shower.aim(s.target)
     end
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    falling_meteor.spawn_kind(meteors.kind, if s.dark then 4 else 3, me, x, y, me.element, damage, false, Vec3.new(y, me.element, 0))
+    falling_meteor.spawn_kind(meteors.kind, if s.dark then DARK else CRACKING, me, x, y, me.element, damage, false, Vec3.new(y, me.element, 0))
     local drops = me.timer2 - 1
     me.timer2 = drops
     if drops <= 0 then

@@ -27,6 +27,9 @@
 //!
 //! [patch-cards]
 //! "canodumb" = { name = "..." }
+//!
+//! [text.patch_card_effects]
+//! "hp_add" = "HP+{amount}"
 //! ```
 //!
 //! A table names its game's definitions by their ids, as the game's
@@ -45,6 +48,12 @@
 //! Crosses, the plain-text screen); a patch card's name is for its menu
 //! (and the frontend's `--cards`' messages). Nothing shows another form's name or a weapon's, so a table has
 //! none.
+//!
+//! A game's text tables that no definition owns are `[text.<table>]`, key
+//! to text, which tools show (EXE6's and EXE5's `patch_card_effects`: a
+//! patch card's effects as its menu lists them, by the effect's kind and
+//! choice, `{field}` the effect's number of that name; the editor's patch
+//! card list shows them).
 
 pub use nettai_battle::content::strings::{ChipStrings, EntryStrings, FormStrings, NaviStrings, Strings};
 use nettai_battle::content::Defs;
@@ -149,6 +158,11 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
         }
         text(format!("forms.{key}.name"), &f.name);
         text(format!("forms.{key}.description"), &f.description);
+    }
+    for (table, lines) in &s.text {
+        for (key, line) in lines {
+            text(format!("text.{table}.{key}"), &Some(line.clone()));
+        }
     }
     // (A table of the game's collections': each a collection of its root.)
     let collections = defs.collections();

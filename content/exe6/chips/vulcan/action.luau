@@ -6,13 +6,24 @@
 local attachment = require("../../objects/attachment")
 local bullet = require("../../objects/bullet")
 local common = require("@exelib/vulcan/action")
+local regions = require("@exelib/regions")
 
 local vulcan = {}
 
 -- One state for the four vulcans.
 vulcan.STATE = common.STATE
 
-vulcan.bullets = { plain = bullet.variants.vulcan, super = bullet.variants.super_vulcan }
+-- The bullets: the Vulcans' (the bullet's row 0xC) and SuprVulc's (0x10, its
+-- hit brighter): the panel found and the one behind it, staggering.
+vulcan.bullets = {
+    plain = bullet.variant { region = regions.long, hit_mod = 1, effect = bullet.hit, single = true },
+    super = bullet.variant {
+        region = regions.long,
+        hit_mod = 1,
+        effect = new.effect { sprite = asset.sprite("vulcan-hit"), anim = 0, palette = 1 },
+        single = true,
+    },
+}
 
 local LOOK: VulcanLook = {
     sound = asset.sound("col-army-2"),

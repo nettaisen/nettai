@@ -4,6 +4,7 @@
 -- capsule's parameters (variant 0: no status; its column; not running while dimmed), and starts her own action 7,
 -- her throw (./throw).
 
+local capsule = require("../../chips/meddy/capsule")
 local navi_level = require("../../lib/navi_level")
 local throw = require("./throw")
 
@@ -13,7 +14,7 @@ local HIT_PARAM = 0x94
 -- The damage rows' row 10, by her level.
 local DAMAGE: { number } = { 80, 80, 80, 80, 80, 80, 100 }
 
-charge.action = throw.action({ variant = 0, line = 0, mode = 0 }, "meddy/charge/action")
+charge.action = throw.action({ variant = capsule.plain, line = capsule.column, while_dimmed = false }, "meddy/charge/action")
 
 -- 0x0800FAA2
 local function setup(navi: Object): Action

@@ -6,6 +6,7 @@
 -- the 3x3 around the panel it finds, 70 Aqua damage.
 
 local bullet = require("../../objects/bullet")
+local regions = require("@exelib/regions")
 local spreader = require("../../chips/spreadr/action")
 
 -- The Spreaders' action as the original's variant 2 (the water cannon,
@@ -15,7 +16,7 @@ local SHOT = spreader.action {
     id = "patch-cards/puffy/charge/action",
     gun = spreader.guns.water_cannon,
     z = 0,
-    bullet = bullet.variants.bubble,
+    bullet = bullet.variant { region = regions.square, hit_mod = 3, effect = bullet.splash, sound = bullet.splash_sound },
 }
 
 -- The attack: 70 damage, hit parameter 0x0A, Aqua.
