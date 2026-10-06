@@ -7,8 +7,8 @@ local card: PatchCard = {
     mb = 55,
     effects = {
         cards.hp(100),
-        cards.giga_folder(2),
         cards.bug(cards.custom(-3)),
+        cards.giga_folder(2),
     },
 }
 

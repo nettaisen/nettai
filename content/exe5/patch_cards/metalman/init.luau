@@ -8,10 +8,10 @@ local card: PatchCard = {
     mb = 46,
     effects = {
         cards.hp(300),
-        cards.super_armor(true),
         cards.attack_times(2),
-        cards.charge_shot_kind(variants.breaking),
         cards.bug(cards.custom(-2)),
+        cards.super_armor(true),
+        cards.charge_shot_kind(variants.breaking),
     },
 }
 

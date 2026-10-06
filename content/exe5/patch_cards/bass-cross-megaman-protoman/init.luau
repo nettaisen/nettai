@@ -10,11 +10,11 @@ local card: PatchCard = {
     mb = 70,
     effects = {
         cards.hp(200),
+        cards.body("null"),
+        cards.bug(cards.mega_folder(-2)),
         cards.super_armor(true),
         cards.b_button(buster.tri_buster),
         cards.charged_shot(rapid_buster),
-        cards.body("null"),
-        cards.bug(cards.mega_folder(-2)),
         cards.hub_style(1),
     },
 }

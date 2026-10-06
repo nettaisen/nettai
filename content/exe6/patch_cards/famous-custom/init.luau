@@ -7,10 +7,10 @@ local barriers = require("../lib/barriers")
 local card: PatchCard = {
     mb = 69,
     effects = {
-        cards.first_barrier(barriers.life_aura),
         cards.custom(3),
         cards.mega_folder(2),
         cards.giga_folder(2),
+        cards.first_barrier(barriers.life_aura),
     },
 }
 

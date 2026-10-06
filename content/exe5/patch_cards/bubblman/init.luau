@@ -7,10 +7,10 @@ local barriers = require("../lib/barriers")
 local card: PatchCard = {
     mb = 37,
     effects = {
+        cards.bug(cards.hp(-50)),
         cards.body("aqua"),
         cards.first_barrier(barriers.bubble),
         cards.sneak_run(true),
-        cards.bug(cards.hp(-50)),
     },
 }
 

@@ -365,7 +365,7 @@ pub fn add_index(scripts: &mut Scripts, game: &str) {
     scripts.modules.insert(packs::top_module(game), Scripts::init_for(&own));
     scripts.hold(game, own.keys());
     let depends = scripts.packs.iter().filter(|p| p.kind == PackKind::Support).map(|p| p.id.clone()).collect();
-    scripts.set_manifest(PackManifest { id: game.to_string(), kind: PackKind::Game, depends });
+    scripts.set_manifest(PackManifest { id: game.to_string(), kind: PackKind::Game, depends, text: Vec::new() });
 }
 
 /// Every `.luau` module under `dir`, by path without `.luau`.

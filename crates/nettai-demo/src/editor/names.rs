@@ -74,7 +74,7 @@ impl Names {
         self.pick(content, &content.defs.navi(n).key, |s, k| s.navi(k).and_then(|c| c.name.clone()))
     }
 
-    /// Key `key` of the game's text table `table` (`[text.<table>]`), in
+    /// Key `key` of the game's text table `table` (`[<table>]`), in
     /// the editor's language, else the content's own; none where neither
     /// has it.
     pub fn text(&self, content: &Content, table: &str, key: &str) -> Option<String> {
