@@ -45,7 +45,6 @@ pub use api::{
     SideSpecial,
 };
 pub use api::AfterimageSpec;
-pub use api::{AutoBattleEntry, AutoBattlePatternRead};
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 pub use api::{ObstacleHold, ObstaclePush, WindSource};
 pub use assets::{AssetKind, AssetNames, PackIndex};

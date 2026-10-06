@@ -10,7 +10,7 @@
 -- (0x0802B4AC), its state the rules' of that side.
 
 local ai = require("@self/ai")
-local place = require("@self/place")
+local block = require("@self/block")
 
 local auto_battle = {}
 
@@ -115,8 +115,9 @@ function auto_battle.dismiss(side: number)
     end
 end
 
--- What a match's check refuses in a side's auto battle data: the chips the AI can't place a navi for.
-auto_battle.unplayable = place.unplayable()
+-- A player's data as their setup states it and the send (./block): the setup's and the state's types, the records
+-- of a setup that says nothing, the send as the round is set up, and what `validate` says of the data.
+auto_battle.block = block
 
 -- The navi type's idle (action 6) of a navi the rules drive: its AI index's. And the side's player's
 -- idle where it would step (EXE5's no-charge drive, 0x080F03E4): with the no-charge state the AI decides

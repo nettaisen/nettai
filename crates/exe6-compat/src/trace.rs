@@ -496,7 +496,6 @@ impl Round {
             joypad_phase: self.setup.joypad_phases[side as usize],
             console: self.console_setup(side),
             rules: None,
-            auto_battle: Default::default(),
         };
         // The navi and the folder (the engine's facts): the recording's
         // navi, and no folder (the recording's is dealt: `folder` above).
