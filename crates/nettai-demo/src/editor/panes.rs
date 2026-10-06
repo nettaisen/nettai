@@ -492,19 +492,38 @@ mod tests {
     }
 }
 
-/// An entry's effect lines (a patch card's: `card_effects`), one run of
-/// text: each line apart, a bug red and marked.
+/// An entry's effect lines (a patch card's: `card_effects`) in their
+/// groups, as its card screen lists them (Parameter, then Ability; a line
+/// of no group last): each group a row under its heading, one run of text,
+/// each line apart, a bug red and marked.
 fn effect_lines<'a>(lines: Vec<card_effects::Line>, size: f32) -> Element<'a, Msg> {
-    let mut spans: Vec<iced::widget::text::Span<'a, ()>> = Vec::new();
-    for (i, l) in lines.into_iter().enumerate() {
-        if i > 0 {
-            spans.push(iced::widget::span("  ·  ").color(DIM));
-        }
-        if l.bug {
-            spans.push(iced::widget::span(format!("{} (bug)", l.text)).color(RED));
-        } else {
-            spans.push(iced::widget::span(l.text));
-        }
+    let mut groups: Vec<(&str, Vec<card_effects::Line>)> = card_effects::GROUPS.iter().map(|&(_, heading)| (heading, Vec::new())).collect();
+    groups.push(("", Vec::new()));
+    for l in lines {
+        let at = l.group.as_deref().and_then(|g| card_effects::GROUPS.iter().position(|&(name, _)| name == g)).unwrap_or(card_effects::GROUPS.len());
+        groups[at].1.push(l);
     }
-    iced::widget::rich_text(spans).size(size).into()
+    let mut col = Column::new().spacing(2);
+    for (heading, lines) in groups {
+        if lines.is_empty() {
+            continue;
+        }
+        let mut spans: Vec<iced::widget::text::Span<'a, ()>> = Vec::new();
+        for (i, l) in lines.into_iter().enumerate() {
+            if i > 0 {
+                spans.push(iced::widget::span("  ·  ").color(DIM));
+            }
+            if l.bug {
+                spans.push(iced::widget::span(format!("{} (bug)", l.text)).color(RED));
+            } else {
+                spans.push(iced::widget::span(l.text));
+            }
+        }
+        col = col.push(
+            row![text(heading).size(size - 1.0).color(DIM).width(Length::Fixed(size * 5.5)), iced::widget::rich_text(spans).size(size)]
+                .spacing(6)
+                .align_y(Alignment::Center),
+        );
+    }
+    col.into()
 }
