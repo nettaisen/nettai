@@ -3,8 +3,7 @@
 -- the button in the special slot (`sub_8029FB4`, `sub_802A57E`,
 -- `sub_8028D6C`), its animation as a window (`sub_802770C`), the form it
 -- puts the navi in at the turn's start (`sub_802937A`, `sub_802A040`), and
--- the round's record of it (`dword_20349A0`). Its state is the beast
--- part's.
+-- the round's record of it (`dword_20349A0`). Its state is the rules'.
 
 local beast_out_chip = require("../../chips/beastout")
 local exe6 = require("../api")
@@ -13,8 +12,8 @@ local chip_gate_battle = require("../../lib/chip_gate_battle")
 
 local custom_beast = {}
 
--- The beast part's state fields Beast Out on the screen keeps
--- (rules/beast/init.luau declares them).
+-- The rules' state fields Beast Out on the screen keeps (rules/init.luau
+-- declares them).
 type State = {
     -- `dword_20349A0`: Beast Out was picked this round (the round's first
     -- screen forgets it).
@@ -30,7 +29,7 @@ local function megaman(side: number): boolean
     return battle.navi(side).navi.forms ~= nil
 end
 
--- The beast part's setup (rules/beast/init.luau declares it): the
+-- The rules' setup (rules/init.luau declares it): the
 -- player's game, and Beast Out unlocked (event flag 0xE0).
 type Setup = {
     version: "falzar" | "gregar",

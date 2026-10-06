@@ -1,5 +1,5 @@
 //! The engine's side of the content API: [`CoreApi`] over a `Battle`.
-//! Each call is the engine's own code (the ruleset's services, the navi
+//! Each call is the engine's own code (the rules' services, the navi
 //! framework, the core's objects and panels); content never sees the
 //! engine's bit values or offsets.
 
@@ -2652,7 +2652,7 @@ impl CoreApi for Battle {
 
     fn raise_barrier(&mut self, o: ObjectRef, spec: nettai_content_api::api::BarrierSpec) -> ApiResult<()> {
         let c = self.collision_of_mut(o)?;
-        // The barrier byte the ruleset's barrier code (`sub_801A802`) tells
+        // The barrier byte the rules' barrier code (`sub_801A802`) tells
         // the behaviors apart by: a plain barrier as the game's type 1
         // (types 1..7, 9 and 0xB..0xF behave alike), a bubble as type 8, a
         // regenerating one as type 0xA.

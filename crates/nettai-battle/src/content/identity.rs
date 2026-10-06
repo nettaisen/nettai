@@ -2,7 +2,7 @@
 //! content-model-v2.md §3.2). The original keys all of it by an object's
 //! NameID: the actor record (`byte_80182C4`), a navi sprite's attach
 //! points (`sub_8018810`), a field object's look (`byte_8021220`), and
-//! what the ruleset tests NameID ranges for. A navi's and a form's
+//! what the rules test NameID ranges for. A navi's and a form's
 //! identity is nested in its definition; a field object's is its kind's.
 //! An object with none is what the original's NameID 0 is: a virus.
 
@@ -11,7 +11,7 @@ use nettai_content_api::{FormHandle, NaviHandle};
 use super::{AttachPoint, NaviRecord, SpriteId};
 use crate::actor::ActorType;
 
-/// What the ruleset takes an identity for: the original's NameID ranges.
+/// What the rules take an identity for: the original's NameID ranges.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum IdentityClass {
     /// A virus (NameIDs up to 0xBA), and anything with no identity.

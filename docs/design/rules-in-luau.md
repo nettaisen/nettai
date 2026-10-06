@@ -28,12 +28,14 @@ Words:
 - the **core** is the engine's mechanism (pools, collision, the panel grid, RNG, snapshots);
 - the **framework** is the Rust rules the BN4–EXE6 lineage shares (the navi framework, the hit kernel, the custom
   screen's chip window, the flow, the turn-start sequencer);
-- a **part** is one self-contained piece of a game's rules in Luau (EXE6's Crosses, its Beast Out, EXE5's Soul
-  Unison), a plain table of its state, setup, hooks and custom-screen extras; until 2026-10-05 a part was a
-  **system**, a definition of its own (`define.system`), and the sections written before then say so (§2.5);
-- the **rules** (a game's **ruleset**) are its one definition: its parts made one, with the data the framework reads
-  (rule sections, roles); each game has one (R6: the user, "there should only be one ruleset per game"; the mixes
-  this document designed are gone);
+- a game's **rules** are its one definition (`define.rules`, its rules/init.luau), written by hand as a whole: what a
+  side keeps, what a player brings, the hooks the framework calls, the custom screen's extras, the data the framework
+  reads (rule sections, roles); each game has one (R6: the user, "there should only be one ruleset per game"; the
+  mixes this document designed are gone);
+- the game's **modules** (EXE6's Crosses, its Beast Out, EXE5's Soul Unison: rules/cross, rules/beast, rules/souls)
+  are its code, plain modules of functions the rules call. Until 2026-10-05 each was a **system**, a definition of its
+  own (`define.system`), then briefly a **part** the rules were composed of; the sections written before then say so
+  (§2.5);
 - a **root** is a content directory (content/exe6) with a manifest; **content** is what a root defines.
 
 Routine names are the original's (EXE6's, as the disassembly names them). "Dimming", "cut-in chip", "counter
@@ -47,8 +49,8 @@ cut-in", "telop" and "supports" are used as in the rest of the project.
   what the whole battle runs by (the field's panels, the flow's timings and banners, the music, the object pools'
   sizes) comes from the game's ruleset (rules/init.luau, the game's one rules definition: its systems, its
   rule sections and its roles).
-- **A ruleset is a list of systems** (`define.system`, `define.ruleset`; since 2026-10-05 one definition,
-  `define.rules`, made of parts in Luau: §2.5). EXE6's is its Crosses, Beast
+- **A ruleset is a list of systems** (`define.system`, `define.ruleset`; since 2026-10-05 one hand-written
+  definition, `define.rules`: §2.5). EXE6's is its Crosses, Beast
   Out and Beast Over, the Cross special, its emotions, its custom-screen buttons and EXE6's own setup; EXE5's is
   Soul Unison, Chaos Unison, its emotions, and its Team Battle to come. A game has one ruleset (R6): the mixes
   first designed here (a ruleset made from another by adding or removing systems) were built and then removed.
@@ -261,40 +263,66 @@ content/exe6/rules/
 
 A form's own behavior stays with the form (navis/megaman/forms/<form>/), as its weapons do.
 
-### 2.5 One rules definition, made of parts (2026-10-05)
+### 2.5 One rules definition per game (2026-10-05)
 
 The user: "do you even need define.system like that? isn't it all just one big system anyway?", then "collapse
-systems into one rules definition". A game's rules are one definition, `define.rules`, and the engine knows nothing
-smaller (the line between the two languages: [rust-and-luau.md](rust-and-luau.md)):
+systems into one rules definition", and of the first shape built, which composed the definition from parts: "the
+compose thing is still very vestigial from when rules could be chosen separately. the ruleset should really be like a
+holistic thing per game". A game's rules are one hand-written definition, and the engine knows nothing smaller (the
+line between the two languages: [rust-and-luau.md](rust-and-luau.md)):
 
 ```luau
 -- content/exe6/rules/init.luau
-local compose = require("@exelib/rules/compose")
--- ... each part required from its folder
-return define.rules(compose.rules({ save, cross, navicust, patch_cards, forms.part, beast, emotion.part, folder, dark_chips }, {
+local beast = require("@self/beast")
+-- ... the game's other modules
+return define.rules {
+    state = { check_delay = "u8", crosses_used = "bool[5]", bug_frags = "u32", ... },  -- a side's, whole
+    setup = { version = { "gregar", "falzar" }, crosses = "form[5]", beast_out = "bool", ... },  -- a player's facts
+    setup_defaults = { beast_out = true, ... },
+    extends = { chip = { ... }, form = { ... } },  -- EXE6's fields on its definitions
+    actions = { forms.action, beast.rush_action, beast.cross_special_action },
+    buttons = { scrap = cross.scrap, beast_out = beast.custom.button, redeal = navicust.redeal },
+    windows = { ... },
+    custom = {
+        open = function(side: number)
+            cross.window.open(side)
+            beast.custom.open(side)
+        end,
+        ...
+    },
+    hooks = {
+        round_setup = function(side: number)
+            save.round_setup(side)
+            navicust.round_setup(side)
+            patch_cards.apply(side)
+            dark_chips.round_setup(side)
+        end,
+        turn_check = beast.turn_check,
+        ...
+    },
     panels = require("@self/panels"),  -- its rule sections and its roles, as before
     -- ...
     roles = require("@self/roles"),
-}))
+}
 ```
 
-- **A part is a plain table** (`RulesPart`, content/nettai/core.d.luau): its `state`, `setup`, `setup_defaults`,
-  `navi_state`, `hooks`, `custom` hooks, `buttons`, `windows`, `actions`, `extends` and
-  `unplayable_in_auto_battle`. It has no id and is no definition: nothing outside its game names it.
-- **Composing is Luau** (content/exelib/rules/compose.luau). The state is the parts' fields together, and so is the
-  setup: a field two parts declare of one type is one field (EXE6's cross and beast parts both read `version`), of
-  two types an error naming it; a state field two parts declare is an error. A hook several parts have becomes one
-  function that calls them in the parts' order: a notification calls every part; a deciding hook (`chip_check`,
-  `chip_cost`, `chip_substitute`, `controller`, `takeover`, `starting_mood`, `navi_palette`, `hand_size`) returns
-  the first answer that isn't nil, and `navi_bug`, `keys` and `take_back` the first true. A hook one part has is that
-  part's function. Buttons, windows, actions and extensions keep their names; two of one name is an error.
+- **The rules state their schemas whole, in one place**: the side's state, and the player's setup, which is the match
+  format's (a side's facts are its fields, by name). A module states none; it reads what it needs through
+  `rules.state()` and `rules.setup()` by name, casting to a type of the fields it reads. (Two tables are spread into
+  EXE5's state by its rules/init.luau itself: the auto battle AI's fields, which a driven navi's state shares, and
+  what each soul's addition to the custom screen keeps, each soul's own in its folder. Records in a state, step c1,
+  make both one field.)
+- **Each hook is a plain function** of the rules, which calls the game's modules in the order its code says, and
+  where more than one module could answer, its code says which does. A hook the rules hand to one module is that
+  module's function.
+- **The game's modules are ordinary modules of functions** (rules/beast, rules/cross, rules/souls, ...): what the
+  rules call, the buttons and windows they list, the actions they own. Nothing combines them: no part tables, no
+  composer, no field merging and no chaining rules.
 - **The engine keeps one state block and one setup block per side** (`SideRules`, `PlayerSetup::rules`), each of its
-  schema's own size (`Block`), and calls a hook by its name (`HookCall::Rules`). The rules' own calls reach them
-  with `rules.state()` and `rules.setup()`; the game's API module reads another side's with `rules.state_of(side)`
-  and `rules.setup_of(side)`.
+  schema's own size (`Block`), and calls a hook by its name (`HookCall::Rules`). The game's API module reads another
+  side's with `rules.state_of(side)` and `rules.setup_of(side)`.
 - **A button or a window owns its pick of the turn's form by its name**: `custom.set_form(side, by, form, ...)` and
-  `custom.form_taken(side, by)` take the button's or the window's name, where they took a system's place in the
-  ruleset.
+  `custom.form_taken(side, by)` take the button's or the window's name.
 - **A side's facts are the setup's fields, in their names' order** (a setup's layout sorts them): a match file, a
   description and the editor list them so.
 
@@ -2820,22 +2848,29 @@ Luau. The engine knows no level now:
 
 ### One rules definition (2026-10-05, branch nettai-player)
 
-The user: "collapse systems into one rules definition" (§2.5).
+The user: "collapse systems into one rules definition", then, of the composed shape this first built: "the compose
+thing is still very vestigial from when rules could be chosen separately. the ruleset should really be like a
+holistic thing per game" (§2.5).
 
-- `define.system` and `define.ruleset` are gone; `define.rules` takes what @exelib/rules/compose makes of a game's
-  parts. `Defs::rules()` replaces `ruleset()` and `ruleset_systems()`; `Battle::rules_state(side)` and
-  `rules_setup(side)` replace `system_state(side, id)` and `system_setup`; `PlayerSetup::rules` is one
-  `Option<Block>`, and `rules_block` and `set_fact` replace `rule_block` and `set_rule`.
+- `define.system` and `define.ruleset` are gone; each game's rules/init.luau is one hand-written `define.rules { ... }`
+  (EXE6's, EXE5's, the test content's). `Defs::rules()` replaces `ruleset()` and `ruleset_systems()`;
+  `Battle::rules_state(side)` and `rules_setup(side)` replace `system_state(side, id)` and `system_setup`;
+  `PlayerSetup::rules` is one `Option<Block>`, and `rules_block` and `set_fact` replace `rule_block` and `set_rule`.
+- No composer: @exelib/rules/compose and the `RulesPart` type are gone, with the field merging, the same-name check
+  and the chaining rules. The modules (rules/beast, rules/cross, rules/souls, rules/light_dark, rules/auto_battle, ...)
+  export functions; the declared type `RulesSpec` types each hook and custom hook.
 - The `system` global is `rules` (`rules.state`, `rules.setup`, `rules.side`, `rules.state_of`, `rules.setup_of`),
   and the content check's lint of a support pack looks for it.
 - `battle.spawn_navi` no longer takes the system that drives the navi: the rules of the summoner's side do.
-- EXE6's and EXE5's rules modules are parts: their forms, emotion, souls and auto battle modules export `part`
-  (it was `system`). EXE6's forms part's `beast_out_used` is `went_beast_out`: the beast part has a
-  `beast_out_used` of its own, another fact, and the rules' state has one field of a name.
+- EXE6's forms' `beast_out_used` is `went_beast_out`: Beast Out's `beast_out_used` is another fact, and the rules'
+  state has one field of a name.
+- "ruleset" is "rules" everywhere: `Registry::Rules`, the `rules:` prefix of a load message.
 - nettai-match's facts are the one setup block; its checks ask whether the game has a NaviCust board
   (`has_navicust`), patch cards (`has_patch_cards`) and rules that drive navis (`auto_battle::has`: a `navi_state`),
   where they asked for a system by its name.
-- The test content's parts are testdata/content/rules/parts.luau (it was systems.luau), `testing::with_parts`.
+- The test content's rules are testdata/content/rules/init.luau (it was systems.luau): EXE6's save, Beast Out, form
+  changes, emotions, patch cards and dark chips, and a made-up counter. A test that needs other rules patches its text
+  (`testing::with_rules`).
 - A `Block` (the rules' state of a side, a player's setup) is its schema's size, whatever that is: the 4 KiB cap
   (`MAX_BLOCK_BYTES`) is gone (the user: "drop the block cap"). The binding reads every state, an object's, an
   action's or the rules', through the `Fields` trait (`State::with_state` in nettai-luau's bind.rs), the one seam

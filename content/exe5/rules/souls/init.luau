@@ -23,101 +23,30 @@ export type State = {
     chaos: boolean,
 }
 
--- The part's state: its own fields, the soul button's, and what each soul's addition to the custom screen keeps
--- (./custom's `states`).
-local state: { [string]: string | { string } } = {
-    turns = "u8",
-    chaos = "bool",
-    -- The turn's arm chip (the transform record's +6; none: its 0xFFFF).
-    arm_chip = "chip",
-    -- The custom screen's (./custom): the round's souls given, the button's offer, the soul's choice's step.
-    souls_used = "u32",
-    offer = "form",
-    offer_chaos = "bool",
-    unite_step = "u8",
-    unite_count = "u8",
-}
-for _, fields in custom_souls.states do
-    for name, kind in fields do
-        state[name] = kind
+-- What the rules list of Soul Unison's: its actions (the change, the revert) and what it adds to the custom screen
+-- (./custom: the soul button and window, and each soul's own additions, gathered from the souls' forms), with the
+-- state fields each soul's addition keeps (each soul's own, by its form: navis/megaman/forms/<soul>).
+souls.change_action = change.action
+souls.revert_action = revert.action
+souls.custom = custom_souls
+
+-- 0x0801246C, 0x0801243A: in a soul whose turns ran out, MegaMan asks to revert.
+function souls.turn_check(side: number)
+    local navi = battle.player(side) :: Object
+    local s = rules.state() :: State
+    if battle.navi(side).form.soul ~= nil and s.turns == 0 then
+        navi:set_request("revert_form", true)
     end
 end
 
-souls.part = {
-    state = state,
-    -- What the player's save brings: the souls it has (a match's side's `souls`, which nettai-match writes by this
-    -- field's name; a recording's, its version's: exe5-compat), which the custom screen's soul button may offer, as the
-    -- save's soul flags (0x08024BF0's, one a soul; any souls of the game, either version's); Soul Unison
-    -- (event flag 0: the soul button) and Chaos Unison (event flag 0x236: a dark chip's soul). A finished save has
-    -- both, as a setup that says nothing, which has every soul of either version too (by its id: a form's module
-    -- reads this folder's, so this one names them rather than reads theirs).
-    setup = { souls = "form[16]", soul_unison = "bool", chaos_unison = "bool" },
-    setup_defaults = {
-        souls = {
-            "colonelsoul",
-            "gyrosoul",
-            "knightsoul",
-            "magnetsoul",
-            "meddysoul",
-            "napalmsoul",
-            "numbersoul",
-            "protosoul",
-            "searchsoul",
-            "shadowsoul",
-            "toadsoul",
-            "tomahawksoul",
-        },
-        soul_unison = true,
-        chaos_unison = true,
-    },
-    actions = { change.action, revert.action },
-    -- What a soul's form says for the rules that ask (a soul is named by its form's id; the original tests its
-    -- number, NaviStats +0x2C, in each place; the pack's types.d.luau types them): its navi's image at the change
-    -- (./image, a `SoulImage`) and what it adds to the custom screen (./custom, a `SoulCustom`); its sword's arm, the
-    -- blade's animation (lib/swords, 0x080EC038); its charged sword warping behind the enemy whatever the charge
-    -- (lib/stepsword, 0x08012538); VarSwrd's wait for its sequence while A is up (chips/varswrd, 0x080ED570); the
-    -- cameras' shake as MegaMan emerges in it (./change, 0x0801212C).
-    extends = {
-        form = {
-            image = "record:soul-image",
-            custom = "record:soul-custom",
-            blade_anim = "u8",
-            steps_behind = "bool",
-            var_sword_waits = "bool",
-            emerge_shake = "bool",
-        },
-    },
-    -- Soul Unison on the custom screen, and what each soul adds to it (./custom).
-    buttons = custom_souls.buttons,
-    windows = custom_souls.windows,
-    custom = {
-        hand_size = custom_souls.hand_size,
-        open = custom_souls.open,
-        deal = custom_souls.deal,
-        confirmed = custom_souls.confirmed,
-    },
-    hooks = {
-        -- 0x08011DDC: the turn's requests read (ColonelSoul's arm chip).
-        turn_opened = custom_souls.turn_opened,
-        -- 0x0801246C, 0x0801243A: in a soul whose turns ran out, MegaMan asks to revert.
-        turn_check = function(side: number)
-            local navi = battle.player(side) :: Object
-            local s = rules.state() :: State
-            if battle.navi(side).form.soul ~= nil and s.turns == 0 then
-                navi:set_request("revert_form", true)
-            end
-        end,
-        -- 0x0801248C, which EXE5 calls as a custom screen is asked for mid-fight (0x08007774, EXE6's `sub_8008452`'s
-        -- place, where EXE6 counts its Beast Out down: not at the turn's start, so a soul's first turn shows all its
-        -- turns): MegaMan's soul turns count down (not below 0, and not 0xFF), unless the side's navi isn't
-        -- MegaMan (NaviStats +0x29).
-        custom_requested = function(side: number)
-            local s = rules.state() :: State
-            if battle.navi(side).navi.id == "megaman" and s.turns ~= 0xFF and s.turns ~= 0 then
-                s.turns -= 1
-            end
-        end,
-    },
-}
+-- 0x0801248C, which EXE5 calls as a custom screen is asked for mid-fight (0x08007774, EXE6's `sub_8008452`'s place,
+-- where EXE6 counts its Beast Out down: not at the turn's start, so a soul's first turn shows all its turns): MegaMan's
+-- soul turns count down (not below 0, and not 0xFF), unless the side's navi isn't MegaMan (NaviStats +0x29).
+function souls.custom_requested(side: number)
+    local s = rules.state() :: State
+    if battle.navi(side).navi.id == "megaman" and s.turns ~= 0xFF and s.turns ~= 0 then
+        s.turns -= 1
+    end
+end
 
 return souls

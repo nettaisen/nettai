@@ -1,7 +1,7 @@
 //! Game content: the typed data a battle runs on.
 //!
 //! [`Content`] holds everything the simulation reads that isn't rules
-//! code: chips, navis and forms, stages, the ruleset's tables (collision
+//! code: chips, navis and forms, stages, the rules' tables (collision
 //! types, panel rules, status effects...), the identities (what an object
 //! is taken for and wears), the registries of what the content defines,
 //! and every sprite's animation timing. It never changes during a battle and is
@@ -133,7 +133,7 @@ pub enum Region {
 
 /// A banner asset: its handle over the loaded packs' banners (`AssetNames`;
 /// what its pack numbers it is the frontend's to look up). The engine names
-/// none itself: what the ruleset shows it gets by role (`Roles::banner`) or
+/// none itself: what the rules show it gets by role (`Roles::banner`) or
 /// from a definition (a navi's win and lose banners, the banners that
 /// hold).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -167,16 +167,16 @@ impl std::fmt::Display for ContentHash {
 /// the module docs.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Content {
-    /// Rules stated as Rust tables, which the ruleset's sections replace
+    /// Rules stated as Rust tables, which the rules' sections replace
     /// (a tool's decode of a ROM's, a test's content of a few modules);
-    /// none: the ruleset states every rule (a game's content, and the
+    /// none: the rules state every rule (a game's content, and the
     /// engine's test content).
     pub base_rules: Option<Rules>,
-    /// The game's tables (what its ruleset states, over the Rust tables),
+    /// The game's tables (what its rules state, over the Rust tables),
     /// made by [`Content::define`]: what a battle reads
     /// (docs/design/rules-in-luau.md §2.3; a match plays one game,
     /// docs/design/content-model-v2.md §4.0). None until then, and for
-    /// modules of no game that state none (a test's: no ruleset, no Rust
+    /// modules of no game that state none (a test's: no rules, no Rust
     /// tables): the engine has no game's rules of its own to give them. A
     /// game pack that states none doesn't load. Read by [`Content::rules`].
     pub rules: Option<Rules>,
@@ -249,7 +249,7 @@ impl Content {
         }
         self.scripts.compiled = CompiledModules(compiled);
         check_support(&self.scripts, &definitions)?;
-        // The rule sections into the ruleset's typed tables.
+        // The rule sections into the rules' typed tables.
         sections::build(self, &definitions)?;
         self.defs = Defs::build(self, definitions)?;
         // (The rules' references to definitions, which have their handles
@@ -300,12 +300,12 @@ impl Content {
     /// The game's tables. (Content that states no rules has none: nothing
     /// that runs a battle is made of it.)
     pub fn rules(&self) -> &Rules {
-        self.rules.as_ref().expect("the content states its rules (a ruleset, defined)")
+        self.rules.as_ref().expect("the content states its rules (rules, defined)")
     }
 
     /// The game's tables, to change (tests, which play a rule another way).
     pub fn rules_mut(&mut self) -> &mut Rules {
-        self.rules.as_mut().expect("the content states its rules (a ruleset, defined)")
+        self.rules.as_mut().expect("the content states its rules (rules, defined)")
     }
 
     /// The game the content is: its game pack's id (`exe6`); "" for content

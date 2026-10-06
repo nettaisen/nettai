@@ -483,14 +483,14 @@ export type GroundRockDrop = { warning: number, while_dimmed: boolean, cracks: b
 
 -- The looks of the EXE6 modules other games reuse (each module's `make_kind`).
 
--- EXE6's fields of the engine's chips, forms and navis: its parts'
+-- EXE6's fields of the engine's chips, forms and navis: its rules'
 -- extensions (`extends`), which the engine's specs take untyped
 -- (`[string]: any`). A module that wants them typed casts to these.
 --
 -- A chip's: its Beast Out lock-on mode, and whether it goes through the
 -- Beast rush (`rush = false`: a mode without the rush, as some records
--- have; the beast part's); a dark chip's substitute without bug frags,
--- and what its use adds to the user's HP bug (the dark chips part's).
+-- have; rules/beast's); a dark chip's substitute without bug frags,
+-- and what its use adds to the user's HP bug (rules/dark_chips's).
 export type Exe6ChipFields = {
     beast: { lockon: Lockon?, rush: boolean? }?,
     dark_substitute: Chip?,
@@ -499,13 +499,13 @@ export type Exe6ChipFields = {
 
 -- A form's: its kind (rules/forms/kind), the navi a Cross (and one in
 -- Beast Out) is made with, and the animation a change into a Cross lets the
--- navi go of (the forms part's; whose game's form it is, the Beast's
+-- navi go of (rules/forms's; whose game's form it is, the Beast's
 -- roar, is its `version`, the engine's field); a Cross's form in Beast Out, the Cross special's buster volley
 -- in it (the original stores the form's number where it meant 6), and
 -- whether its charged sword runs inside the Beast Out rush (SlashCross in
--- Beast Out; the beast part's); the custom screen dealing one more chip
+-- Beast Out; rules/beast's); the custom screen dealing one more chip
 -- for each screen spent in it, up to three (ChargeCross), or the scrap
--- button (DustCross; the cross part's).
+-- button (DustCross; rules/cross's).
 export type Exe6FormFields = {
     kind: ("cross" | "beast" | "cross_beast" | "beast_over")?,
     cross_of: NaviDef?,

@@ -1,12 +1,12 @@
 //! Reactive defensive chips: when a trap caught a hit (AntiDmg 0xBB,
 //! AntiSwrd 0xBC, BodyGrd 0x157, or the AntiDmg program's stance), the
-//! navi drops what it was doing and counterattacks: the ruleset's
+//! navi drops what it was doing and counterattacks: the rules'
 //! `sub_801056A` (from idle and after each phase of some attacks) and
 //! `sub_80105F2` (from the stance) set up the counter's attack and start
 //! its action, AntiDmg's, AntiSwrd's or BodyGrd's (the original's 0x47,
 //! 0x48 and 0x4B), which are the chips' content: the roles
 //! `actions.anti_damage_counter`, `anti_sword_counter` and
-//! `body_guard_counter` (the ruleset's roles). See docs/engine/chips.md §3.6.10.
+//! `body_guard_counter` (the rules' roles). See docs/engine/chips.md §3.6.10.
 
 use crate::actor::{request, status};
 use crate::battle::Battle;

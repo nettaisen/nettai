@@ -9,7 +9,7 @@
 -- pattern entry is a miss and a step). Three times in four it plays the first entry; otherwise, or with nothing to play
 -- (no entry, or a first place holding 0), it steps into the row
 -- of an enemy and fires its buster (three shots, ./buster), twice. Its state is AIData +0xF0 on (Dark MegaMan's the
--- part's `navi_state`, a driven player's the part's state of its side), but +0xF0 itself, the navi's
+-- rules' `navi_state`, a driven player's the rules' state of its side), but +0xF0 itself, the navi's
 -- `in_auto_battle`.
 
 local data = require("./data")
@@ -23,8 +23,8 @@ export type State = {
     timed: boolean,
     lifetime: number,
     -- (+0xF0, on, is the navi's `in_auto_battle`: what a player navi under the AI's control reads.)
-    -- A player's drive (DarkInvs, the part's state of its side): its timer when it last stepped, which a new drive
-    -- sets above (the part's bookkeeping: the game starts the state over at the drive's start, 0x0802C03A).
+    -- A player's drive (DarkInvs, the rules' state of its side): its timer when it last stepped, which a new drive
+    -- sets above (the rules' bookkeeping: the game starts the state over at the drive's start, 0x0802C03A).
     drive_ticks: number,
     -- +0xF1: playing a chip (4) or deciding (0); +0xF2 the decision's step; +0xF3 a step's own.
     mode: number,
@@ -58,34 +58,6 @@ export type State = {
     place_ready: boolean,
     place_chip: Chip?,
     place_target: Object?,
-}
-
--- The navi state's layout (the part's `navi_state`).
-ai.layout = {
-    timed = "bool",
-    lifetime = "u16",
-    drive_ticks = "u16",
-    mode = "u8",
-    step = "u8",
-    sub = "u8",
-    misses = "u8",
-    target_index = "u8",
-    next_target = "u8",
-    shots = "u8",
-    pattern_chip = "u8",
-    entry_chip = "chip",
-    entry_pattern = "u8",
-    since = "u32",
-    hole_count = "u8",
-    front_count = "u8",
-    front_ticks = "u16",
-    hole_ticks = "u16",
-    place_step = "u8",
-    place_step_init = "u8",
-    place_busy = "bool",
-    place_ready = "bool",
-    place_chip = "chip",
-    place_target = "object",
 }
 
 -- What it fires between moves, its buster (weapon routine 0x3E: three shots, ./buster).
@@ -372,7 +344,7 @@ local function pattern_place(navi: Object, s: State, fam: Family)
         s.target_index = i
         local x = t.panel_x + dx * panels.enemy_direction(navi)
         local y = t.panel_y + dy
-        -- (Whether the side's navi is MegaMan: whether it has forms, as the ruleset asks it.)
+        -- (Whether the side's navi is MegaMan: whether it has forms, as the rules ask it.)
         local lag = navi:move_lag()
         local megaman = battle.navi(navi.alliance).navi.forms ~= nil
         if megaman and navi:can_step(lag, lag) then

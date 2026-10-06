@@ -164,7 +164,7 @@ impl ExtraChipFlags {
 
 serde_flags!(ExtraChipFlags, u8);
 
-/// What the ruleset asks of particular chips (docs/design/
+/// What the rules ask of particular chips (docs/design/
 /// content-model-v2.md §7.5): the cases the original tells by a chip's
 /// place in its chip table. In a content file, a list of names.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -245,7 +245,7 @@ impl ChipTraits {
 serde_flags!(ChipTraits, u16);
 
 /// A trap chip: what the defensive-chip record that holds it catches (the
-/// ruleset's side of the trap chips, docs/engine/dimming-chips.md).
+/// rules' side of the trap chips, docs/engine/dimming-chips.md).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Trap {
@@ -336,7 +336,7 @@ pub enum Counted {
     TurnsBefore,
 }
 
-/// One battle chip's record (docs/engine/chips.md §1.2): what the ruleset
+/// One battle chip's record (docs/engine/chips.md §1.2): what the rules
 /// reads of it. Its use (an action, or a dimming, navi or instant hook) is
 /// its definition's (`ChipDef::usage`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -379,7 +379,7 @@ pub struct ChipData {
     /// How the damage is worked out, for a chip whose damage isn't fixed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub formula: Option<DamageFormula>,
-    /// What the ruleset asks of this chip in particular.
+    /// What the rules ask of this chip in particular.
     #[serde(default)]
     pub traits: ChipTraits,
     /// A trap chip: what it catches as the side's defensive chip.

@@ -7,9 +7,8 @@
 -- the lock-on marker's target, runs the chip's action there (`run_wrapped`)
 -- and warps back to its panel. An A press during the rush queues the next
 -- chip, which then warps and attacks in turn without going home first
--- (chips.md §2.11 and §4.6). Its state is the beast part's (the
--- original's attack variables +0x1E to +0x27, next to the chip action's
--- own).
+-- (chips.md §2.11 and §4.6). Its state is the rules' (the original's
+-- attack variables +0x1E to +0x27, next to the chip action's own).
 
 local beast_claw = require("../../navis/megaman/weapons/beast_claw")
 local slash_charge = require("../../navis/megaman/forms/slashcross/charge")
@@ -18,8 +17,7 @@ local lockon = require("../lockon")
 
 local rush = {}
 
--- The beast part's state fields the rush keeps (rules/beast/init.luau
--- declares them).
+-- The rules' state fields the rush keeps (rules/init.luau declares them).
 type State = {
     -- The phase: hold the panel, warp, attack.
     rush_phase: number,
@@ -106,7 +104,7 @@ local function lockon_mode(navi: Object): Lockon?
     end
     -- (The empty hand's chip, the zeroed one, has no lock-on mode.)
     local chip = navi.attack_chip
-    -- (The beast part's extension of chips, EXE6's: types.d.luau.)
+    -- (the rules' extension of chips, EXE6's: types.d.luau.)
     local beast = if chip ~= nil then ((chip :: any) :: Exe6ChipFields).beast else nil
     return if beast ~= nil then beast.lockon else nil
 end
