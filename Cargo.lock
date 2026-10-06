@@ -2354,7 +2354,6 @@ version = "0.1.0"
 dependencies = [
  "getgud",
  "nettai-battle",
- "nettai-content",
  "nettai-content-api",
  "rennet",
 ]

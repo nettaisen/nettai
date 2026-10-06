@@ -58,7 +58,6 @@ cargo test --workspace                                         # engine, runtime
 cargo run -p nettai-content-check                                # type-check and lint content/, every folder
 cargo run --release -p nettai-extract -- exe6 <pack> <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>     # an EXE6 pack (assets), checked against content/exe6
 cargo run --release -p nettai-content -- check <pack>             # the define phase and its report
-cargo run --release -p nettai-netplay --example rollback_cost -- <trace.jsonl> <pack> 1
 cargo run --release -p nettai-battle --example luau_ops --features test-content
 ```
 
