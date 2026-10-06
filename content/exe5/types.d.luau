@@ -17,7 +17,7 @@ export type SoulImage = {
 
 -- A button a soul adds to the custom screen (a `ButtonSpec` of the souls
 -- part's, which rules/souls/custom makes of it): where it sits, and its
--- functions, which get the souls part's state of the side (`s`: the fields
+-- functions, which get the rules' state of the side (`s`: the fields
 -- the soul's `custom.state` declares among them). It is on the screen while
 -- the side's navi is in the soul, outside battle mode 1.
 export type SoulButton = {
@@ -30,7 +30,7 @@ export type SoulButton = {
     pressed: (side: number, s: any) -> (),
     chip: ((side: number, s: any) -> Chip?)?,
 }
--- A window a soul adds (a `WindowSpec` of the souls part's): its update,
+-- A window a soul adds (a `WindowSpec` of rules/souls's): its update,
 -- each tick it is up: whether it stays up.
 export type SoulWindow = {
     view: WindowView?,
@@ -39,7 +39,7 @@ export type SoulWindow = {
 
 -- What a soul adds to the custom screen (a soul's form's `custom`; EXE5's
 -- screen asks the soul MegaMan is in, NaviStats +0x2C, in each of these
--- places): the fields it keeps in the souls part's state, its buttons and
+-- places): the fields it keeps in the rules' state, its buttons and
 -- windows by name (a button's is the key of its look in a pack), and its
 -- part of the screen's routines, each called while the side's navi is in the
 -- soul.
@@ -64,7 +64,7 @@ export type SoulCustom = {
     turn_opened: ((side: number, s: any) -> ())?,
 }
 
--- EXE5's fields of the engine's forms: its souls part's extensions
+-- EXE5's fields of the engine's forms: the rules' extensions
 -- (`extends`, rules/souls), which the engine's specs take untyped
 -- (`[string]: any`). A module that wants them typed casts to these. A
 -- soul's: its navi's image at the change and what it adds to the custom

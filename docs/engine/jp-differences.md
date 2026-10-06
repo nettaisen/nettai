@@ -26,7 +26,7 @@ The JP-only content is:
 - the Gregar and Falzar chips (handlers 34 and 35, five object kinds);
 - Count (HackJack in the US release: handler 18, two object kinds);
 - Django (handler 19, one object kind);
-- the patch cards' hook (the emotion window's glitch; the cards themselves are EXE6's patch cards part,
+- the patch cards' hook (the emotion window's glitch; the cards themselves are EXE6's patch cards module,
   docs/engine/patch-cards.md).
 
 The other JP-only objects belong to code no netbattle runs: battle mode 1, battle modes 10 and 11, the Count
@@ -200,7 +200,7 @@ chips). Every other entry is the same in both ROMs.
 
 `sub_813BF1C` is the other jp-content routine. JP reads the emotion window's glitch from event flag 0x1723
 rather than 0x1720 when the patch card block's count (0x020065F0) is nonzero: the patch cards' routine sets 0x1723
-when the stats after the cards have a NaviCust bug (docs/engine/patch-cards.md §1.3). The patch cards part
+when the stats after the cards have a NaviCust bug (docs/engine/patch-cards.md §1.3). The patch cards module
 pushes the glitch so (#17).
 
 ### 4.2 The kinds

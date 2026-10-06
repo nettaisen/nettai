@@ -3,7 +3,7 @@
 -- it by how far it has been expanded, its command line, and where a
 -- neighbor counts. The rule section (./section.luau) gives the boards and
 -- the command line to the engine (a setup's programs must fit them); the
--- navicust part (./init.luau) reads them all from here.
+-- rules/navicust (./init.luau) reads them all from here.
 
 local board = {}
 

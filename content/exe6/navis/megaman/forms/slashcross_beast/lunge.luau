@@ -4,7 +4,7 @@
 -- (`sub_80EEE60`). The navi vanishes from its panel (which it keeps
 -- reserved), appears by its lock-on target (`ho_8026554`: mode 2 in the
 -- target's row, else mode 0xB in its own), slashes the panel in front (a
--- hit, and ./lunge_slash), and comes back. The ruleset runs the same
+-- hit, and ./lunge_slash), and comes back. The rules run the same
 -- action for a switched-in navi's knock-out (the role `switch_knockout`).
 
 local collision = require("../../../../rules/collision")

@@ -1,7 +1,7 @@
 --!strict
 -- BodyGrd's counter (the original's navi action 0x4B, `sub_80EED56`): when
 -- a BodyGrd trap catches a hit, the navi vanishes in a puff and leaves a
--- striker (./striker) that drops shurikens on the enemy navi. The ruleset
+-- striker (./striker) that drops shurikens on the enemy navi. The rules
 -- starts it by role (`actions.body_guard_counter`, rules/roles.luau).
 
 local effects = require("../../lib/effects")

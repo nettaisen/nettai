@@ -393,7 +393,7 @@ first only, and the second takes what the spawner leaves in that register, the e
 
 ## Patch cards (patch-cards.md)
 
-The Japanese games' patch cards are EXE6's patch cards part. Scenarios are the chip lab's `jp/cards/`, on
+The Japanese games' patch cards are EXE6's patch cards module. Scenarios are the chip lab's `jp/cards/`, on
 Japanese consoles; each also checks the stats after the cards and the emotion window's glitch at the round's start.
 
 ### Covered

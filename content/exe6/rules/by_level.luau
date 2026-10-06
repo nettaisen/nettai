@@ -1,6 +1,6 @@
 --!strict
 -- What a link navi's level gives it in battle, by the level of the navi code its side's save received (exe6.navi_level:
--- the save part's `level`): a navi definition's functions of its side, which the round's setup asks once for each
+-- the rules' `level`): a navi definition's functions of its side, which the round's setup asks once for each
 -- side (the engine keeps the answers for the round, and knows no level). A link navi's chip bonus (`chip_bonus.damage`:
 -- `sub_800F09E`, its row of `byte_8021300`), whether its charged chips charge (`charged_chips.when`: `sub_800F49E`,
 -- from its level in `byte_8021369`), ChargeMan's Fire charge (`fire_charge`: `sub_80F0608`, `byte_802136D`). Its stats

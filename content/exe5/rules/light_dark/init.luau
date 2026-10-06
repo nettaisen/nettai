@@ -1,6 +1,6 @@
 --!strict
 -- EXE5's light and dark MegaMan (docs/design/exe5-map.md §6.1). A side's MegaMan is light or dark by his save's
--- light/dark value (NaviStats +0x44, read through 0x08012882): the part's setup, which a setup takes from the
+-- light/dark value (NaviStats +0x44, read through 0x08012882): the rules' setup, which a setup takes from the
 -- save (exe5-compat from a recording's). Two of EXE5's rules read it:
 --
 -- - **A dark MegaMan clears holy panels** (0x08017136, from the navi's intake every tick of the fight): when the
@@ -268,71 +268,70 @@ local function navi_bug(_side: number, navi: Object): boolean?
     return nil
 end
 
-return {
-    setup = { karma = "u16" },
-    -- A fresh save's value (0x08010C00 writes 500 to NaviStats +0x44): light for the chips, no holy panels cleared,
-    -- the starting mood 0x80.
-    setup_defaults = { karma = 500 },
-    custom = {
-        -- 0x08025114: a worried or dark MegaMan's dark chip offer.
-        deal = offer_dark_chip,
-    },
-    hooks = {
-        -- Hub Style shows the base form's second set of faces (0x0801AF8E), and in a link battle the navi's variant
-        -- name among the enemy names (0x0801AE3A).
-        round_setup = function(side: number)
-            local hub = battle.navi(side).hub_style ~= 0
-            battle.set_face_variant(side, hub)
-            battle.set_name_variant(side, hub and battle.link())
-        end,
-        -- 0x08010EC8: MegaMan's starting mood.
-        starting_mood = function(_side: number): number?
-            return starting_mood(value())
-        end,
-        -- 0x0800DD94: the navi's palette.
-        navi_palette = palette,
-        -- 0x0801103E: a hit's bug by the value.
-        navi_bug = navi_bug,
-        -- 0x08017136: the holy panel under a dark MegaMan turns Normal.
-        navi_intake = function(_side: number, navi: Object)
-            if value() > CLEARS_HOLY then
-                return
-            end
-            local x, y = navi.panel_x, navi.panel_y
-            local p = field.panel(x, y)
-            if p and p.kind == "holy" then
-                field.set_type(x, y, "normal")
-            end
-        end,
-        -- 0x08010030: a dark chip's use, which may fizzle, and the chip's cost (before the hand bonus's panel is
-        -- spent, 0x080100B0).
-        chip_cost = function(side: number, navi: Object, chip: Chip?): Chip?
-            if chip == nil then
-                return nil
-            end
-            if table.find(chip.flags or {}, "dark") and not use_dark_chip(side, navi) then
-                return invalid
-            end
-            cost(side, chip)
-            return nil
-        end,
-        -- 0x08010118: a chip for the other kind of MegaMan becomes the invalid chip.
-        chip_check = function(side: number, _navi: Object, chip: Chip?): Chip?
-            if chip == nil then
-                return nil
-            end
-            if battle.navi(side).navi ~= megaman then
-                return nil
-            end
-            local wants = (chip :: any).megaman
-            if wants == nil then
-                return nil
-            end
-            local light = value() >= LIGHT_CHIPS
-            if (wants == "light") == light then
-                return nil
-            end
-            return invalid
-        end,
-    },
-}
+local light_dark = {}
+
+-- 0x08025114: a worried or dark MegaMan's dark chip offer, as the custom screen deals.
+light_dark.deal = offer_dark_chip
+
+-- Hub Style shows the base form's second set of faces (0x0801AF8E), and in a link battle the navi's variant
+-- name among the enemy names (0x0801AE3A).
+function light_dark.round_setup(side: number)
+    local hub = battle.navi(side).hub_style ~= 0
+    battle.set_face_variant(side, hub)
+    battle.set_name_variant(side, hub and battle.link())
+end
+
+-- 0x08010EC8: MegaMan's starting mood.
+function light_dark.starting_mood(_side: number): number?
+    return starting_mood(value())
+end
+
+-- 0x0800DD94: the navi's palette.
+light_dark.navi_palette = palette
+-- 0x0801103E: a hit's bug by the value.
+light_dark.navi_bug = navi_bug
+-- 0x08017136: the holy panel under a dark MegaMan turns Normal.
+function light_dark.navi_intake(_side: number, navi: Object)
+    if value() > CLEARS_HOLY then
+        return
+    end
+    local x, y = navi.panel_x, navi.panel_y
+    local p = field.panel(x, y)
+    if p and p.kind == "holy" then
+        field.set_type(x, y, "normal")
+    end
+end
+
+-- 0x08010030: a dark chip's use, which may fizzle, and the chip's cost (before the hand bonus's panel is
+-- spent, 0x080100B0).
+function light_dark.chip_cost(side: number, navi: Object, chip: Chip?): Chip?
+    if chip == nil then
+        return nil
+    end
+    if table.find(chip.flags or {}, "dark") and not use_dark_chip(side, navi) then
+        return invalid
+    end
+    cost(side, chip)
+    return nil
+end
+
+-- 0x08010118: a chip for the other kind of MegaMan becomes the invalid chip.
+function light_dark.chip_check(side: number, _navi: Object, chip: Chip?): Chip?
+    if chip == nil then
+        return nil
+    end
+    if battle.navi(side).navi ~= megaman then
+        return nil
+    end
+    local wants = (chip :: any).megaman
+    if wants == nil then
+        return nil
+    end
+    local light = value() >= LIGHT_CHIPS
+    if (wants == "light") == light then
+        return nil
+    end
+    return invalid
+end
+
+return light_dark

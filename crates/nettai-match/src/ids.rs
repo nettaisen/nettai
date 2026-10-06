@@ -129,7 +129,7 @@ pub fn backgrounds<'c>(content: &'c Content, game: &str) -> Vec<&'c str> {
 }
 
 /// The games a match on `content` can be of: its game, when it has a
-/// ruleset and a link battle stage (a content holds one game).
+/// rules and a link battle stage (a content holds one game).
 pub fn games(content: &Content) -> Vec<String> {
     let game = content.game();
     let playable = crate::playable(content, game).is_ok() && !crate::link_battle_stages(content, game).is_empty();

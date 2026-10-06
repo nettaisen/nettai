@@ -1,5 +1,5 @@
 //! EXE6's forms say of each other what EXE6's rules mean
-//! (docs/design/rules-in-luau.md, S7b): the forms part's kinds and games,
+//! (docs/design/rules-in-luau.md, S7b): rules/forms's kinds and games,
 //! a Cross's navi and form in Beast Out, the navis' form sets, and the
 //! framework's behavior traits that follow from the kinds (the original's
 //! tests of the form's number). The engine checks only the extensions'

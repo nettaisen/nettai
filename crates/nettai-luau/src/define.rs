@@ -8,8 +8,8 @@
 //! a match plays one game, so nothing needs a prefix to tell games apart):
 //!
 //! - an explicit `id` (required for the registries named from outside
-//!   content, [`Registry::keyed`]); a game's ruleset, which is one and takes
-//!   none, is `ruleset` (`RULESET_KEY`);
+//!   content, [`Registry::keyed`]); a game's rules, which is one and takes
+//!   none, is `rules` (`RULESET_KEY`);
 //! - else, for a definition made while the same module loads as a keyed
 //!   definition that holds it, the owner's key and the field path
 //!   (`minibomb/action`, `minibomb/action/args/thrown`); owners are walked in
@@ -351,8 +351,8 @@ pub(crate) fn finish(
     let mut unwritten = Vec::new();
     for (i, m) in made.iter().enumerate() {
         let what = format!("{}: define.{}", m.module, m.registry.name());
-        // (A game's ruleset is one: it has a key of its own, and no name.)
-        if m.registry == Registry::Ruleset {
+        // (A game's rules are one: it has a key of its own, and no name.)
+        if m.registry == Registry::Rules {
             if !m.table.raw_get::<LuaValue>("id").map_err(|e| format!("{what}: {e}"))?.is_nil() {
                 return Err(format!("{what} takes no `id`: a game has one rules definition"));
             }
@@ -420,7 +420,7 @@ pub(crate) fn finish(
     let mut by_key: BTreeMap<(Registry, &str), usize> = BTreeMap::new();
     for (i, m) in made.iter().enumerate() {
         if let Some(&j) = by_key.get(&(m.registry, keys[i].as_str())) {
-            if m.registry == Registry::Ruleset {
+            if m.registry == Registry::Rules {
                 return Err(format!(
                     "a game has one rules definition: {}.luau defines one, and {}.luau another",
                     keys::module_path(&made[j].module),
@@ -454,7 +454,7 @@ pub(crate) fn finish(
     for (&(registry, key), &i) in &by_key {
         let tables: &[&str] = match registry {
             Registry::Kind | Registry::Action => &["state"],
-            Registry::Ruleset => &["state", "setup", "navi_state"],
+            Registry::Rules => &["state", "setup", "navi_state"],
             _ => continue,
         };
         for &field in tables {

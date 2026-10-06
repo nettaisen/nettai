@@ -6,7 +6,7 @@
 //! a player's installed cards are their setup's
 //! ([`crate::custom::PlayerSetup::patch_cards`]), which the setup exchange
 //! and the setup's hash cover as the rest of it. What the cards do is a
-//! game's rules': EXE6's patch cards part reads a side's cards
+//! game's rules': EXE6's rules/patch_cards reads a side's cards
 //! (`battle.patch_cards(side)`) and applies them to its stats as the round
 //! is set up (the `round_setup` hook).
 

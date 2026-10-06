@@ -58,7 +58,7 @@ function revert.update(me: Object, s: State)
     me:exit_attack()
 end
 
--- The revert out of a soul, as the pause handler runs it: one of the souls part's actions (./init).
+-- The revert out of a soul, as the pause handler runs it: one of rules/souls's actions (./init).
 revert.action = define.action {
     id = "souls/revert",
     state = { timer = "u16" },

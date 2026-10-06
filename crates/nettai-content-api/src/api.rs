@@ -1,5 +1,5 @@
 //! [`CoreApi`]: what content can see and do. Every operation is generic
-//! (objects, sprites, collision, panels, the navi framework, the ruleset's
+//! (objects, sprites, collision, panels, the navi framework, the rules'
 //! services); none knows a particular chip.
 //!
 //! Engine-owned fields are named by enums ([`ObjectField`],
@@ -20,7 +20,7 @@ use crate::types::{ObjectRef, PanelPos, SpriteId, Vec3};
 pub enum NaviAction {
     /// A content action, by handle.
     Content(u16),
-    /// One of the ruleset's own states or actions: `"entry"`,
+    /// One of the rules' own states or actions: `"entry"`,
     /// `"take_control"`, `"deletion"`, `"flinch"`, `"paralysis"`, `"drag"`,
     /// `"freeze"`, `"bubble"`, `"idle"`, `"move"`, `"dimming_chip"`,
     /// `"navi_chip"`, `"instant_chip"`, `"form_change"`.
@@ -465,7 +465,7 @@ named_fields! {
         Form = "form", Ref(Registry::Form, None), rw;
         Navi = "navi", Ref(Registry::Navi, None), ro;
         /// MegaMan's variant (+0x2B, which picks his move lag): his base HP
-        /// in hundreds, which a game's save part writes.
+        /// in hundreds, which a game's rules/save writes.
         NaviVariant = "navi_variant", U8, rw;
         /// The base form's element (patch cards write it).
         Element = "element", U8, rw;
@@ -475,7 +475,7 @@ named_fields! {
         Charge = "charge", U8, rw;
         /// Writable: EXE5's dark chips set it (0x080127D6).
         Mood = "mood", U8, rw;
-        /// The Beast Out turns left (writable: EXE6's beast part spends
+        /// The Beast Out turns left (writable: EXE6's rules/beast spends
         /// them).
         BeastOutCounter = "beast_out_counter", U8, rw;
         /// The form the navi started the battle in.
@@ -483,7 +483,7 @@ named_fields! {
         /// The navi's game: 0 Gregar, 1 Falzar.
         Version = "version", U8, ro;
         /// The Regular chip's MB at most (+0x09, RegUp's), and the base HP
-        /// (+0x3E): the save's, which a game's save part writes as the
+        /// (+0x3E): the save's, which a game's rules/save writes as the
         /// round is set up.
         RegularMemory = "regular_memory", U8, rw;
         MaxBaseHp = "max_base_hp", U16, rw;
@@ -1664,7 +1664,7 @@ pub trait CoreApi {
     /// The object's kind (a handle of the kind registry).
     fn object_kind(&self, o: ObjectRef) -> Option<u16>;
     /// What navi `o` runs: a content action (by handle), or one of the
-    /// ruleset's own states and actions (by name).
+    /// rules' own states and actions (by name).
     fn navi_action(&self, o: ObjectRef) -> ApiResult<NaviAction>;
     /// `loc_80126EA`: chip `chip` (a handle) as the navi's attack: its
     /// record's damage, hit parameter, lockout and element, no bonus, not
@@ -1744,7 +1744,7 @@ pub trait CoreApi {
     /// a freed object's is what it left, until its slot is taken again.
     fn state_mut(&mut self, o: ObjectRef) -> Option<StateMut<'_>>;
     /// The game's rules' state of side `side` (docs/design/rules-in-luau.md
-    /// §5): one block, which the rules' parts share.
+    /// §5): one block.
     fn rules_state_mut(&mut self, side: u8) -> ApiResult<&mut Block>;
     /// The side's player's setup of the rules: what the player brought,
     /// read-only in battle.

@@ -748,7 +748,7 @@ declare class Object
     -- `object_setAttack0..5`: start an action (a definition); kind 1
     -- buster, 2 chip or charged shot, 3 special, 4 move.
     function set_attack(self, action: Action, kind: number): ()
-    -- What the navi runs: an action definition, or one of the ruleset's own
+    -- What the navi runs: an action definition, or one of the rules' own
     -- ("entry", "take_control", "deletion", "flinch", "paralysis", "drag",
     -- "freeze", "bubble", "idle", "move", "dimming_chip", "navi_chip",
     -- "instant_chip", "form_change", "cross_special").
@@ -857,7 +857,7 @@ end
 -- A side's navi stats (read-only but the buster's levels, the custom
 -- level, the hand-shrink bug's turn, the start weapons and the shoes; what
 -- the patch cards change, which they write at the round's start; and what a
--- game's save part writes as the round is set up: the sun, the Regular
+-- game's rules/save writes as the round is set up: the sun, the Regular
 -- memory, the base HP and MegaMan's variant).
 declare class Navi
     -- Fighting in the sun.
@@ -1726,7 +1726,7 @@ export type Kind = KindSpec
 -- rules' state keeps `offer`, a form, `offer_chaos`, a bool, and `turns`,
 -- the turns left in the form it gave, which the emotion window counts);
 -- "chip_picture", its picture in the chip window is also the picture of the
--- chip the ruleset's role `beast_out` names.
+-- chip the rules' role `beast_out` names.
 export type ButtonView = "form_offer" | "chip_picture"
 -- What a frontend draws while a window is up (§4.8). A list of forms to
 -- choose from, in its four windows: "form_list_opening", "form_list",
@@ -1773,14 +1773,36 @@ export type WindowSpec = {
     view: WindowView?,
     update: (side: number) -> boolean,
 }
--- A part of a game's rules (docs/design/rules-in-luau.md §2.2): a plain
--- module's table of what it adds to the rules' one definition, which
--- @exelib/rules/compose makes of a game's parts: its fields of the rules'
--- state of a side and of a player's setup, its hooks (which run in the
--- order the parts are listed), its custom-screen buttons and windows, its
--- actions and its extensions of the game's definitions.
-export type RulesPart = {
+-- A game's rules, their one definition (its rules/init.luau; a second
+-- `define.rules` is a load error; docs/design/rules-in-luau.md §2.5): what a
+-- side keeps through a round, what a player brings, the hooks the framework
+-- calls (each a plain function, which says in its code which of the game's
+-- modules it runs), the custom screen's buttons and windows, the game's
+-- fields on its definitions. It has no `id` and no variants: every match of
+-- the game plays by it.
+--
+-- It also holds the game's rule sections (docs/design/content-model-v2.md
+-- §3.8: tables of rules no entity owns, each a plain table its module
+-- returns, `panels = require("@self/panels")`), which the engine reads
+-- against its schemas when the rules are defined, and the game's roles
+-- (§7.4, `roles = require("@self/roles")`). The engine has no game's rules
+-- of its own: the rules state `chip_use`, `effects`, `flow`,
+-- `fresh_stats`, `panels`, `pools`, `reactions` and `status` (required
+-- here, so rules without one don't type-check), and every field of
+-- them that has no neutral value (one left out is a load error that names
+-- it). A section it may leave out is a feature the game
+-- hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`) or a
+-- table that is empty without it.
+--
+-- A section is a table of its rules by name, which the engine reads by its
+-- schema. (A table and not `any`: a field of type `any` may be left out.)
+export type RuleSection = { [string]: any }
+export type RulesSpec = {
+    -- What a side keeps through a round (its state, which only the rules' own
+    -- calls reach: `rules.state()`).
     state: StateSchema?,
+    -- What a player brings (a side's facts, by these names: the match
+    -- format's), read-only in battle (`rules.setup()`).
     setup: StateSchema?,
     -- The state of each navi no player controls that its `controller`
     -- drives (the navi object's own: an object's state, 64 bytes at most).
@@ -1794,8 +1816,6 @@ export type RulesPart = {
     -- Its own actions, which reach the rules' state (`rules.state()`) for
     -- the side of the navi running them.
     actions: { Action }?,
-    -- Its custom screen's extras (docs/design/rules-in-luau.md §4.4): the
-    -- side's screen asks them; the first part that answers decides.
     -- Its custom-screen buttons, by name (the key a pack has each one's look
     -- under): where each sits and its functions, which run as the rules'.
     buttons: { [string]: ButtonSpec }?,
@@ -1811,6 +1831,8 @@ export type RulesPart = {
     -- why, as a clause about "it" (EXE5's auto battle: a chip the original
     -- crashes on). A match's check refuses them in a side's auto battle data.
     unplayable_in_auto_battle: { [string]: string }?,
+    -- Its custom screen's extras (docs/design/rules-in-luau.md §4.4), which
+    -- the side's screen asks.
     custom: {
         -- As the screen opens: how many chips it deals (`sub_802A40C`).
         -- None answering: the custom level (8 at most), NumbrOpn's 10, and
@@ -1830,7 +1852,7 @@ export type RulesPart = {
         chip_taken_back: ((side: number, chip: Chip) -> ())?,
         -- Choosing chips, a tick with keys (`custom.pressed`,
         -- `custom.repeated`), before the screen's own: whether the rules
-        -- took them. The first part that answers true takes them.
+        -- took them.
         keys: ((side: number) -> boolean)?,
         -- B with nothing picked: whether the rules took something back
         -- (none: B is refused).
@@ -1867,8 +1889,7 @@ export type RulesPart = {
         -- panel there).
         navi_intake: ((side: number, navi: Object) -> ())?,
         -- A chip's use is prepared (the end of `sub_80127C0`): nil lets it
-        -- be used, a chip is what the navi uses instead. The first part
-        -- that answers decides.
+        -- be used, a chip is what the navi uses instead.
         chip_check: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
         -- Earlier in the preparation, before the hand bonus's panel is
         -- spent (EXE5's 0x08010030: a dark chip's use and the chip's cost):
@@ -1877,8 +1898,7 @@ export type RulesPart = {
         chip_cost: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
         -- A chip's use is prepared, before its record is loaded
         -- (`sub_8010D58`): a chip is what the navi uses in its place, with
-        -- its own record, damage and bonus; nil, the chip. The first part
-        -- that answers decides.
+        -- its own record, damage and bonus; nil, the chip.
         chip_substitute: ((side: number, navi: Object, chip: Chip) -> Chip?)?,
         -- A chip's use was prepared (`sub_80127C0`: a use, the rush's chain,
         -- the counter cut-in's), its substitute taken: `chip` the chip it
@@ -1892,8 +1912,7 @@ export type RulesPart = {
         -- (EXE6's Beast Over, `sub_802D322`), in place of the player's
         -- decisions: what it did ("nothing", "chip": a chip's use started,
         -- "buster": the buster is to fire, "moved": a step started), which
-        -- the framework carries out as idle does. The first part that
-        -- answers decides.
+        -- the framework carries out as idle does.
         controller: ((side: number, navi: Object) -> ("nothing" | "chip" | "buster" | "moved")?)?,
         -- The framework reverts the navi to its base form, its form not yet
         -- changed (`sub_80158CC`).
@@ -1909,61 +1928,22 @@ export type RulesPart = {
         navi_tick: ((side: number, navi: Object) -> ())?,
         -- The mood the side's navi starts the round with (`sub_8015C2C`'s
         -- 0x80, where `sub_8013892` sets it; EXE5's by the light/dark value,
-        -- 0x0801283A). The first part that answers decides.
+        -- 0x0801283A); none, 0x80.
         starting_mood: ((side: number) -> number?)?,
         -- Each tick, the sprite palette of the side's navi of a player's
-        -- kind (presentation; `sub_801002C`, EXE5's 0x0800DD94). The first
-        -- part that answers decides; none, the framework's (EXE6's).
+        -- kind (presentation; `sub_801002C`, EXE5's 0x0800DD94); none, the
+        -- framework's (EXE6's).
         navi_palette: ((side: number, navi: Object) -> number?)?,
         -- Before the navi takes its hit's NaviCust bug (`sub_80139F6`, EXE5's 0x0801103E): the rules may change the bug
-        -- (`navi.collision.inflicted_bugs`), or answer true: the bug and the weapons' reload are skipped. The first
-        -- part that answers true decides.
+        -- (`navi.collision.inflicted_bugs`), or answer true: the bug and the weapons' reload are skipped.
         navi_bug: ((side: number, navi: Object) -> boolean?)?,
         -- Each tick of the idle action of a navi whose side's takeover runs
         -- (`sub_802D4C6`), in place of the player's decisions: what it did,
         -- as `controller` answers, or "own_chip" (an attack of its own
         -- started: the attack's chip). The rules end it
-        -- (`battle.end_takeover`). The first part that answers decides.
+        -- (`battle.end_takeover`).
         takeover: ((side: number, navi: Object) -> ("nothing" | "chip" | "buster" | "moved" | "own_chip")?)?,
     }?,
-}
-
--- A game's rules, their one definition (its rules/init.luau; a second
--- `define.rules` is a load error): the parts its players play by, made one
--- (@exelib/rules/compose: one state, one setup, a hook each, which calls the
--- parts in their order; docs/design/rules-in-luau.md §2.3). It has no `id`
--- and no variants: every match of the game plays by it.
---
--- It also holds the game's rule sections (docs/design/content-model-v2.md
--- §3.8: tables of rules no entity owns, each a plain table its module
--- returns, `panels = require("@self/panels")`), which the engine reads
--- against its schemas when the ruleset is defined, and the game's roles
--- (§7.4, `roles = require("@self/roles")`). The engine has no game's rules
--- of its own: a ruleset states `chip_use`, `effects`, `flow`,
--- `fresh_stats`, `panels`, `pools`, `reactions` and `status` (required
--- here, so a ruleset without one doesn't type-check), and every field of
--- them that has no neutral value (one left out is a load error that names
--- it). A section it may leave out is a feature the game
--- hasn't (`berserk`, `lockon`, `navicust`, `sp_chips`, `banners`) or a
--- table that is empty without it.
---
--- A section is a table of its rules by name, which the engine reads by its
--- schema. (A table and not `any`: a field of type `any` may be left out.)
-export type RuleSection = { [string]: any }
-export type RulesSpec = {
-    -- What its parts make (@exelib/rules/compose: `RulesPart`'s fields, one
-    -- each).
-    state: StateSchema?,
-    setup: StateSchema?,
-    setup_defaults: any?,
-    navi_state: StateSchema?,
-    actions: { Action }?,
-    buttons: { [string]: ButtonSpec }?,
-    windows: { [string]: WindowSpec }?,
-    extends: any?,
-    unplayable_in_auto_battle: { [string]: string }?,
-    custom: any?,
-    hooks: any?,
     -- The sections every game states.
     chip_use: RuleSection,
     effects: RuleSection,
@@ -2081,7 +2061,7 @@ export type ChipSpec = {
     class: string?,
     rarity: number?,
     mb: number?,
-    -- A number below 1000, or a formula the ruleset computes when the chip
+    -- A number below 1000, or a formula the rules compute when the chip
     -- enters a hand.
     -- A number, a formula, or a function of the side, which the round's
     -- setup asks once for each side (EXE5's team navis' own chips: their
@@ -2093,7 +2073,7 @@ export type ChipSpec = {
     -- Named bits, and the value of a bit the engine doesn't name yet.
     extra_flags: { string | number }?,
     slot_in_limit: number?,
-    -- What the ruleset asks of the chip: "no_chain" (the Beast rush's
+    -- What the rules ask of the chip: "no_chain" (the Beast rush's
     -- chain leaves it out), "aura_bonus" (it hits harder while the user's
     -- barrier holds), "no_cut_in" (the other side can't cut in on its
     -- dimming), "element_sword" (a link navi's own chip's family bonus
@@ -2248,7 +2228,7 @@ export type NaviDef = {
     idle: ((navi: Object) -> ())?,
     post_init: ((navi: Object) -> ())?,
     -- Its forms (MegaMan's): where the original asks whether a navi is
-    -- MegaMan, the ruleset asks whether it has them. The engine reads
+    -- MegaMan, the rules ask whether it has them. The engine reads
     -- `souls` (EXE5's Soul Unison: forms with a `soul`, which the custom
     -- screen's soul button offers); the rest is its game's: EXE6's sets by
     -- game (`gregar`, `falzar`: the Crosses by their number on the custom
@@ -2334,7 +2314,7 @@ export type FormEffect =
     | "target_marker"
     | "invulnerable"
     | "berserk"
--- What the ruleset asks of particular forms:
+-- What the rules ask of particular forms:
 --   status_immune: a hit's status doesn't take (TomahawkCross);
 --   erases: its damaging Null chips delete what has a 4 in its HP
 --     (EraseCross);
@@ -2521,7 +2501,7 @@ export type Status = StatusDef
 -- the installed cards' limit counts) and its effects in the card's order:
 -- each a table with its `kind` and whether the card shows it as a `bug`,
 -- with the kind's own fields. What an effect does is a game's rules' (EXE6's
--- patch cards part, rules/patch_cards), and its type is the game's (EXE6's
+-- rules/patch_cards, rules/patch_cards), and its type is the game's (EXE6's
 -- `PatchCardEffect`, which its cards' constructors make). Its name is the
 -- locales' (locales/<lang>.toml's `patch-cards`).
 export type PatchCardSpec = {
@@ -2728,8 +2708,8 @@ export type Region = RegionSpec
 export type CollisionTypeSpec = { id: string, side0: number, side1: number, row_offset: number? }
 export type CollisionType = CollisionTypeSpec
 
--- What the ruleset needs from content by role (rules/roles.luau, once per
--- game: a plain table, the ruleset's `roles`): each role names the
+-- What the rules need from content by role (rules/roles.luau, once per
+-- game: a plain table, the rules' `roles`): each role names the
 -- definition that fills it.
 export type RolesSpec = {
     actions: {
@@ -2758,7 +2738,7 @@ export type RolesSpec = {
         mode9_attack: Kind?,
         mode9_actor: Kind?,
     }?,
-    -- The chips the ruleset names: what a zeroed chip field reads, the
+    -- The chips the rules name: what a zeroed chip field reads, the
     -- custom screen's Beast Out chip and its invalid selection's, and the
     -- chips the supports' telops name.
     chips: {
@@ -2769,7 +2749,7 @@ export type RolesSpec = {
         beat: Chip?,
         tango: Chip?,
     }?,
-    -- The statuses the ruleset inflicts itself: what a damage word's
+    -- The statuses the rules inflict themselves: what a damage word's
     -- paralysis bit carries (and, with EXE5's rule `effects.damage_word`,
     -- its confusion and blindness bits), what a counter hit lands, what an
     -- aqua hit gives a body on ice, and the NaviCust on-hit bug's.
@@ -2782,7 +2762,7 @@ export type RolesSpec = {
         hit_bug_blind: Status?,
         hit_bug_confuse: Status?,
     }?,
-    -- The one-shot effects the ruleset shows itself: a navi deleted (and
+    -- The one-shot effects the rules show themselves: a navi deleted (and
     -- a cross merged, a navi arriving, a form put on or taken off), HP
     -- recovered, a side cutting in, a trap springing, an obstacle encased,
     -- a form change, Beast Over's beast, blast and bursts.
@@ -2794,7 +2774,7 @@ export type RolesSpec = {
         encased: Effect?,
         burst: Effect?,
     }?,
-    -- The hit sparks the ruleset shows itself: a new registration's until
+    -- The hit sparks the rules show themselves: a new registration's until
     -- its owner names another, a blocked hit's, an eruption's, a thrown
     -- obstacle's landing's, an uninstall's.
     sparks: {
@@ -2804,12 +2784,12 @@ export type RolesSpec = {
         thrown_obstacle: Spark?,
         uninstall: Spark?,
     }?,
-    -- The hit regions the ruleset registers itself: a registration's own
+    -- The hit regions the rules register themselves: a registration's own
     -- panel, which every setup gives it.
     regions: {
         anchor: Region?,
     }?,
-    -- The collision types the ruleset registers itself: a navi's body
+    -- The collision types the rules register themselves: a navi's body
     -- (floating or not) and what it reacts to, an eruption and a thrown
     -- obstacle's landing and what they reach.
     collision: {
@@ -2821,7 +2801,7 @@ export type RolesSpec = {
         thrown_obstacle: CollisionType?,
         thrown_obstacle_target: CollisionType?,
     }?,
-    -- The sounds the ruleset plays itself (rules/roles.luau says what each
+    -- The sounds the rules play themselves (rules/roles.luau says what each
     -- is for).
     sounds: {
         panel_crack: Sound?,
@@ -2877,7 +2857,7 @@ export type RolesSpec = {
         program_advance_part: Sound?,
         program_advance: Sound?,
     }?,
-    -- The music the ruleset starts itself: a link battle's, the winner's
+    -- The music the rules start themselves: a link battle's, the winner's
     -- (in special battles, and otherwise) and the loser's. A stage's music
     -- is its own.
     music: {
@@ -2904,7 +2884,7 @@ export type RolesSpec = {
         eruption: SpriteAsset?,
         target_marker: SpriteAsset?,
     }?,
-    -- The banners the ruleset shows itself: a round's start, a turn's, the
+    -- The banners the rules show themselves: a round's start, a turn's, the
     -- final turns', a draw, the damage judge's, a telop's on either side,
     -- a Program Advance's and an empty selection's; a win's where it
     -- isn't the winner's navi's (the flow's `navi_win_banner`), and a

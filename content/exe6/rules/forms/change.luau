@@ -29,7 +29,7 @@ export type State = {
 
 export type Sequence = "cross" | "beast_out" | "cross_beast" | "beast_cross" | "beast_over"
 
--- The forms part's state (init.luau): what a change notes of the round.
+-- the rules' state (init.luau): what a change notes of the round.
 type Record = { went_beast_out: boolean, crossed: boolean }
 
 -- The sounds it plays.
@@ -367,7 +367,7 @@ local function settle(me: Object, s: State, seq: Sequence)
 end
 
 -- One paused tick of the change: the action's update. (What it notes of
--- the round is the forms part's state, init.luau.)
+-- the round is the rules' state, init.luau.)
 function change.update(me: Object, s: State)
     local target = me:form_change_target()
     if target == nil then

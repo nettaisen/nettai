@@ -18,8 +18,8 @@ local section = require("../cross_special")
 
 local cross_special = {}
 
--- The beast part's state fields the controllers share (rules/beast/
--- init.luau declares them; berserk.luau's).
+-- The rules' state fields the controllers share (rules/init.luau declares
+-- them; berserk.luau's).
 type State = {
     controller_step: number,
     controller_moves: number,

@@ -3,7 +3,7 @@
 #
 # Weapons: the weapon routine numbers (`off_80117D4`) that name each weapon, in forms'
 # rows (`byte_8020354`), navis' (`byte_80210DD`) and NaviStats. Numbers whose entries
-# are the same routine are one weapon, except `nullsub_44`'s, which the ruleset tells
+# are the same routine are one weapon, except `nullsub_44`'s, which the rules tell
 # apart by number.
 
 "megaman/buster" = [0x00]

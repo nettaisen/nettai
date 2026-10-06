@@ -423,7 +423,7 @@ impl Side {
     }
 
     /// Whether a side takes a version (the engine's version fact: EXE6's
-    /// cross and beast parts' `version`, gregar or falzar). EXE5's rules
+    /// cross and rules/beast `version`, gregar or falzar). EXE5's rules
     /// don't: its two versions play alike, and a match of it states none.
     pub fn takes_version(content: &Content) -> bool {
         !versions(content).is_empty()

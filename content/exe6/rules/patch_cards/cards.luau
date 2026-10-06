@@ -3,7 +3,7 @@
 -- docs/engine/patch-cards.md): EXE6's effects. A card is the engine's
 -- (`define.patch_card`, content/exe6/patch_cards/), its effects the values the
 -- shared constructors make (@exelib/patch_cards/effects, EXE5's too); the
--- patch cards part (./init.luau) applies a player's installed cards to
+-- rules/patch_cards (./init.luau) applies a player's installed cards to
 -- the navi's stats as the round is set up. EXE6's own are its tables: the
 -- kinds' order, the trails' bytes.
 

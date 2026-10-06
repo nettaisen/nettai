@@ -7,7 +7,7 @@
 //! `Content::navicust_program`): their colors and shapes, and what a game's
 //! rules read. A player's NaviCust is their setup's
 //! ([`crate::custom::PlayerSetup::navicust`]); what it gives the navi is a
-//! game's rules' (EXE6's navicust part compiles it into the side's stats
+//! game's rules' (EXE6's rules/navicust compiles it into the side's stats
 //! as the round is set up, `round_setup`). The board (which cells a
 //! program can cover, and the command line) is the game's rule section
 //! `navicust` ([`crate::content::NaviCustRules`]).
