@@ -7,8 +7,8 @@ local card: PatchCard = {
     mb = 13,
     effects = {
         cards.body("fire"),
-        cards.chip_recovery(40),
         cards.mega_folder(1),
+        cards.chip_recovery(40),
         cards.bug(cards.custom_hp_drain(1)),
     },
 }

@@ -8,8 +8,8 @@ local card: PatchCard = {
     effects = {
         cards.body("elec"),
         cards.float_shoes(true),
-        cards.encounter_element("battery"),
         cards.bug(cards.buster_shot(nil)),
+        cards.encounter_element("battery"),
     },
 }
 

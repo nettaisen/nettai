@@ -81,15 +81,22 @@ rules (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch_c
 - **Their effects' lines are the locales' too** (2026-10-06, for the editor): the card menu takes each line from a
   text archive with one entry per effect number (EXE6's Japanese ROMs 0x0812F224 and 0x08130FEC; EXE5's four ROMs
   0x08137818, 0x08137900, 0x081373D0, 0x081374B8), printing the effect's value into it, and draws a bug's in red.
-  Each game's locales hold them as `[text.patch_card_effects]`: the key is the effect record's `kind`, then `.` and
+  It goes through the effect numbers in order and draws each the card's table has (EXE5's 0x08137A78, 0x00 to 0x89;
+  EXE6's 0x08141A6A, to 0xA9), so a card's effects are written in that order (both games' tables list some cards'
+  otherwise: 53 of EXE5's, 30 of EXE6's), which the generators and checks hold to. Each game's locales hold them as
+  the text table `[patch_card_effects]` (top-level; its manifest declares it, `text`, so a misspelt table is
+  refused): the key is the effect record's `kind`, then `.` and
   its one choice's name where it has one (a string field's value, a definition's id: `body.fire`,
   `charged_shot.patch-cards/airman/charge`), the line the effect's text with `{amount}` for its value (plain
   substitution: the HP effects' `amount` is the HP itself, which the original's card table keeps in tens and its
   menu shows times ten; the generators and the application convert at the boundary). No content field names a
   line. EXE6's English is the fan translation's (as the names), EXE5's the US ROMs'; the verification workspace's
   trace-tests tests/patch_card_text.rs writes and checks them against the ROMs, by each card's effects beside its
-  table entries. A record without a line (EXE5's Hub Style, which no effect number names and the menu doesn't
-  list) shows its kind and fields. The editor's patch card lists show them (README.md, the match editor).
+  table entries in effect number order, and every effect the screen shows has a line. One the screen doesn't show
+  has none, and the editor doesn't show it either: EXE5's Hub Style, which no effect number names (card 111's: the
+  cards' routine knows the card by its number, 0x08137A58), so no line can reach the screen, and no text archive of
+  the four ROMs names it (the test lists it, `HIDDEN`). The editor's patch card lists show them (README.md, the match
+  editor), a bug marked "(bug)" in the editor's own words (the game marks one by its color alone).
 - **The setup is typed**: `PlayerSetup::patch_cards`, the card handles in the list's order with each switched on
   or off, at most 32 (EXE6's save list's room; its 80 MB allow 16). It is part of the setup the peers exchange and
   the digest covers. The EXE6 part reads it with `battle.patch_cards(side)`. (Since step c3 the installed cards
