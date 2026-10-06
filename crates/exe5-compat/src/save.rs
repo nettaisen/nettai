@@ -1,7 +1,8 @@
 //! An EXE5 save file (the .sav an emulator keeps), and what nettai reads of
-//! it for a player's setup: the version, the light/dark value, the souls it
-//! has, its NaviCust (the list, the compression flags, whether the compile
-//! leaves the HP), its patch cards and its auto battle data.
+//! it for a player's setup: the version, the navi operated, the equipped
+//! folder with its Regular chip, the light/dark value, the souls it has, its
+//! NaviCust (the list, the compression flags, whether the compile leaves
+//! the HP), its patch cards and its auto battle data.
 //!
 //! The file holds the save image at 0x100: 0x7C14 bytes, the game's EWRAM
 //! from 0x02000000 as the game saves it (an address's offset in the image
@@ -23,7 +24,11 @@
 //! at 0x3DB0 (the toolkit's +0x50, a byte an item: ExpMemry's, item 0x61,
 //! is the NaviCust board's expansions), the auto battle data at 0x554C
 //! (the toolkit's +0x78: seven blocks of 0xE0 bytes, the player's the
-//! first; docs/design/exe5-map.md §15.9). The team navis' NaviStats blocks
+//! first; docs/design/exe5-map.md §15.9), the folders at 0x2DF4 (three of
+//! 30 halfwords: the chip in the low 9 bits, the code above; MegaMan's
+//! NaviStats +0x2D the one equipped, +0x2E the Regular chip of each, an entry
+//! from 0, 30 and on none), the navi operated at 0x2941 (the game state's
+//! +1: 0 MegaMan, a team navi by number). The team navis' NaviStats blocks
 //! follow MegaMan's (0x60 bytes each: a version's six navis in its souls'
 //! order, 0x0801165C by navi number); the story sets their HP as it sets
 //! event flags from 0x300 on, whose count is the team navis' level too.
@@ -48,6 +53,13 @@ const NAVICUST: usize = 0x4D6C;
 const CARD_COUNT: usize = 0x79A0;
 const CARDS: usize = 0x79D0;
 const AREA: usize = 0x2944;
+/// The navi operated, the folders, and a NaviStats block's equipped folder
+/// and Regular chips.
+const NAVI: usize = 0x2941;
+const FOLDERS: usize = 0x2DF4;
+const FOLDER_SIZE: usize = 30;
+const EQUIPPED_FOLDER: usize = 0x2D;
+const REGULAR_CHIPS: usize = 0x2E;
 /// The key items' counts (a byte an item, which 0x0803C120 reads), and
 /// ExpMemry among them: the NaviCust board's expansions, which the NaviCust
 /// screen reads as it opens (0x08132928) to pick its board (0x0813F138).
@@ -181,6 +193,14 @@ impl std::fmt::Debug for Save {
     }
 }
 
+/// A save's equipped folder, by the original's numbers: its 30 chips (each
+/// `code << 9 | chip`) and its Regular chip (an entry, from 0).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SaveFolder {
+    pub chips: [u16; FOLDER_SIZE],
+    pub regular: Option<u8>,
+}
+
 impl Save {
     /// The save in `file` (a .sav's bytes), checked: its game's name, the
     /// shift word and the checksum.
@@ -288,6 +308,22 @@ impl Save {
         };
         let at = NAVI_STATS + crate::codec::NAVI_STATS * block;
         Some(self.image[at..at + crate::codec::NAVI_STATS].try_into().expect("a NaviStats block"))
+    }
+
+    /// The navi operated: 0 MegaMan, else a team navi by number (1 to 6 Team
+    /// ProtoMan's, 7 to 12 Team Colonel's).
+    pub fn navi(&self) -> u8 {
+        self.image[NAVI]
+    }
+
+    /// The equipped folder (MegaMan's block's), with its Regular chip.
+    pub fn folder(&self) -> SaveFolder {
+        let stats = self.navi_stats();
+        let folder = (stats[EQUIPPED_FOLDER] as usize).min(2);
+        let at = FOLDERS + folder * FOLDER_SIZE * 2;
+        let chips = std::array::from_fn(|i| u16::from_le_bytes([self.image[at + i * 2], self.image[at + i * 2 + 1]]));
+        let regular = Some(stats[REGULAR_CHIPS + folder]).filter(|&r| (r as usize) < FOLDER_SIZE);
+        SaveFolder { chips, regular }
     }
 
     /// The NaviCust's list (`trace::navicust` reads it).

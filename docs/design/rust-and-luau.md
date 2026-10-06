@@ -293,7 +293,9 @@ chip's hover) is no crossing in itself; only its names are. Line numbers are as 
 - **T1. The save importers** (import.rs: EXE6's version, Beast Out, owned Crosses, level and SP times, with fact names
   as strings, 97 lines; import_exe5.rs: karma, souls, the unisons, ExpMemry, auto battle data and the team navi, 166
   lines). *(b)* A game's save is its Luau's (the line above). Each compat crate keeps decoding the bytes; turning the
-  save into facts moves to a rules hook (`import_save`, given the decoded save as a table). Tool-only.
+  save into facts moves to a rules hook (`import_save`, given the decoded save as a table). Tool-only. (As built,
+  at the user's word: nettai-match's `import::exe6` and `import::exe5`, each giving a whole side by field name; the
+  hook is a question with the user.)
 - **T2. EXE5's auto battle view** (auto_battle.rs, about 500 lines without tests: its lists for the editor's pane,
   `AutoBattle::learned`, and `of_folder` for random matches). *(b)* Done, by removal: nettai-match's view, the
   learner and its exe5_compat call (the chip numbers) are gone. The user: "i don't think you need learning right?

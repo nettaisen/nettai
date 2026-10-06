@@ -23,8 +23,7 @@ pub mod folders;
 #[cfg(test)]
 mod games;
 pub mod ids;
-mod import;
-mod import_exe5;
+pub mod import;
 pub mod link_navis;
 pub mod names;
 mod set;
@@ -46,7 +45,7 @@ pub use facts::Facts;
 pub use pick::Picks;
 pub use file::{parse, write};
 pub use import::save_game;
-pub use import_exe5::auto_battle_of_save;
+pub use import::exe5::auto_battle_of_save;
 pub use folders::Folder;
 pub use set::{After, Set};
 
