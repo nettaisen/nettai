@@ -8,10 +8,15 @@
 //! socket and the handshake). The sound goes to the audio device
 //! (nettai-audio's `AudioOut`). docs/frontend.md.
 
+// (Whether the picture's wgpu state may go to another thread is deeper than
+// the compiler looks by default: `picture`.)
+#![recursion_limit = "256"]
+
 pub mod content_audit;
 pub mod editor;
 pub mod headless;
 pub mod net;
+mod picture;
 pub mod sound_lookups;
 pub mod trace;
 pub mod window;
