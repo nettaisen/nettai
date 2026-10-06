@@ -9,7 +9,6 @@ use exe6_compat::trace::{self, Frame, Round};
 use nettai_battle::content::Content;
 use nettai_battle::Battle;
 use nettai_frontend::driver::{Driver, Step};
-use nettai_render::Region;
 use std::sync::Arc;
 
 /// Replays one round of a golden trace.
@@ -87,13 +86,6 @@ impl Driver for TracePlayer {
 
     fn check(&self, b: &Battle) -> Vec<String> {
         self.current().map(|f| trace::compare(b, f, self.compat)).unwrap_or_default()
-    }
-
-    fn console_region(&self) -> Region {
-        match self.round.console_game() {
-            exe6_compat::Game::JpFalzar | exe6_compat::Game::JpGregar => Region::Jp,
-            exe6_compat::Game::Falzar | exe6_compat::Game::Gregar => Region::Us,
-        }
     }
 
     fn frame_range(&self) -> Option<(u32, u32)> {
@@ -176,8 +168,7 @@ pub struct Exe5TracePlayer {
     frames: Vec<usize>,
     pos: usize,
     pub round_number: usize,
-    /// The traced console's region and version (its setup line's).
-    region: Region,
+    /// The traced console's version (its setup line's).
     version: &'static str,
 }
 
@@ -191,7 +182,6 @@ impl Exe5TracePlayer {
             round.round_setup(content, compat).map_err(|e| format!("round {}: {e}", i + 1))?;
             let d = exe5_compat::trace::decode_setup(&round.setup)?;
             let local = d.battle_state[0x0D] as usize & 1;
-            let region = if d.japanese[local] { Region::Jp } else { Region::Us };
             let version = match d.versions[local] {
                 exe5_compat::trace::Version::Protoman => "protoman",
                 exe5_compat::trace::Version::Colonel => "colonel",
@@ -205,7 +195,7 @@ impl Exe5TracePlayer {
                 .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
                 .map(|(i, _)| i)
                 .collect();
-            out.push(Exe5TracePlayer { round, content: content.clone(), compat, frames, pos: 0, round_number: i + 1, region, version });
+            out.push(Exe5TracePlayer { round, content: content.clone(), compat, frames, pos: 0, round_number: i + 1, version });
         }
         Ok(out)
     }
@@ -239,10 +229,6 @@ impl Driver for Exe5TracePlayer {
 
     fn check(&self, b: &Battle) -> Vec<String> {
         self.current().map(|f| exe5_compat::trace::compare(b, f, self.compat)).unwrap_or_default()
-    }
-
-    fn console_region(&self) -> Region {
-        self.region
     }
 
     fn console_version(&self) -> Option<&'static str> {

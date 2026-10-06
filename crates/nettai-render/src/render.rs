@@ -26,29 +26,6 @@ pub struct Frame {
     pub text: Vec<TextItem>,
 }
 
-/// The region of a console (whose ROMs its game is of). A frontend says a
-/// console's (a recording names its game's); content doesn't.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Region {
-    Us,
-    Jp,
-}
-
-impl Region {
-    /// The name a pack marks an asset of the region's ROMs with
-    /// (`ChipArt::region`, a sprite's `region`).
-    pub fn name(self) -> &'static str {
-        match self {
-            Region::Us => "us",
-            Region::Jp => "jp",
-        }
-    }
-}
-
-/// Why a frame whose background is another region's ROMs' is a known
-/// difference all over.
-const OTHER_REGIONS_BACKGROUND: &str = "a background the console's region's ROMs have another picture of (the pack's is the other region's)";
-
 /// Picks battles; keeps its layer buffers between frames. It owns what it
 /// draws from (the packs' graphics are shared), so it borrows nothing.
 pub struct Renderer {
@@ -68,10 +45,6 @@ pub struct Renderer {
     pub hud_state: HudState,
     /// What the frames drawn so far named that the pack doesn't have.
     pub problems: Problems,
-    /// The region of the console whose screen is drawn: an asset of another
-    /// region's ROMs (a sprite or a chip's picture the US release cut) is a
-    /// known difference there (`Problems::known`).
-    pub console_region: Region,
     /// The version of the console whose screen is drawn, as its game's
     /// pack names its versions (EXE5's "protoman", "colonel"), for a game
     /// whose versions the engine doesn't tell apart: which chips are the
@@ -112,7 +85,6 @@ impl Renderer {
             dialogue: Layer { palettes: Palettes::Dialogue, ..Layer::new(0, 0) },
             hud_state: HudState::default(),
             problems: Problems::default(),
-            console_region: Region::Us,
             console_version: None,
             text_mode: TextMode::Original,
             font: None,
@@ -167,7 +139,7 @@ impl Renderer {
 
     /// Follow a tick of the battle being shown (call after every tick).
     pub fn observe(&mut self, b: &Battle) {
-        self.hud_state.tick(b, self.console_region);
+        self.hud_state.tick(b);
     }
 
     /// Forget presentation state (a new battle starts).
@@ -188,6 +160,7 @@ impl Renderer {
     /// Draw a battle as a 240x160 frame with its text items.
     pub fn render(&mut self, b: &Battle) -> Frame {
         self.problems.known.clear();
+        self.problems.marks.clear();
         // (The packs for this frame: the layers and the problems are the
         // renderer's own fields, written while these are read.)
         let mut packs = self.graphics.packs();
@@ -196,11 +169,15 @@ impl Renderer {
         // (The background is its own pack's; the field, the game's pack's:
         // `FieldArt`.)
         let background = crate::lookups::background(&packs, &b.content, b.setup.settings.background, &mut self.problems);
-        // (A background of another region's ROMs than the console's, where
-        // the regions' pictures differ: the console draws its own, behind
-        // everything. `Background::region`.)
-        if background.is_some_and(|bg| bg.region.as_deref().is_some_and(|r| r != self.console_region.name())) {
-            self.problems.known(0, 0, compose::WIDTH as i32, compose::HEIGHT as i32, OTHER_REGIONS_BACKGROUND);
+        // (The background, behind everything, where the caller asks.)
+        if background.is_some()
+            && !self.problems.marking.is_empty()
+            && let Some(name) = crate::packs::name(&b.content, nettai_content_api::AssetKind::Background, b.setup.settings.background.0)
+        {
+            let what = format!("background:{name}");
+            if self.problems.wants(&what) {
+                self.problems.mark([0, 0, compose::WIDTH as i32, compose::HEIGHT as i32], what);
+            }
         }
         let draw = !self.lookups_only;
         let stage = draw.then(|| Stage::new(&packs, &b.content, background, StageClock::of(b)));
@@ -228,14 +205,13 @@ impl Renderer {
         let (emblem, emblem_palette) = (crate::custom::emblem_sprite(emblem), emblem.map_or([0; 16], |e| e.palette));
         let chatbox = crate::chatbox::prepare(b, own_game, &packs, &text, &mut self.problems);
         let mut list = SpriteList::default();
-        objects::queue_objects(b, &packs, &view, self.console_region, &mut list, &mut self.problems, !draw);
+        objects::queue_objects(b, &packs, &view, &mut list, &mut self.problems, !draw);
         crate::custom::draw(
             b,
             own_game,
             &packs,
             &emblem,
             emblem_palette,
-            self.console_region,
             &mut self.hud,
             &mut self.names,
             &mut list,

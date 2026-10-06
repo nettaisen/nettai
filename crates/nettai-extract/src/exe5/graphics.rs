@@ -93,18 +93,14 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
     custom
         .languages
         .push((ja, crate::exe5::lettering::custom(roms)));
-    // The pack's backgrounds are the US ROMs'; one the Japanese ROMs have
-    // another picture of says whose it is.
-    let mut backgrounds = if rom.is_present() {
+    // The pack's backgrounds are the US ROMs' (the Japanese ROMs have
+    // another picture of 0x05: the verification knows what their consoles
+    // show there).
+    let backgrounds = if rom.is_present() {
         backgrounds(rom)
     } else {
         Vec::new()
     };
-    for id in japanese_backgrounds(roms) {
-        if let Some(Some(b)) = backgrounds.get_mut(id as usize) {
-            b.region = Some("us".into());
-        }
-    }
     let mut sprites = [
         (&roms.protoman, SPRITE_LIST),
         (&roms.colonel, COLONEL_SPRITE_LIST),
@@ -259,38 +255,8 @@ fn backgrounds(rom: &Rom) -> Vec<Option<Background>> {
                 palette,
                 scroll,
                 anims,
-                region: None,
             })
         })
-        .collect()
-}
-
-/// The Japanese ROMs' backgrounds' load data (Team of Blues, Team of
-/// Colonel).
-const JP_BACKGROUNDS: [u32; 2] = [0x0808_BEC4, 0x0808_BF34];
-
-/// The backgrounds whose picture a Japanese ROM has another of than the US
-/// Team ProtoMan's (one, 0x05: the US ROMs' goldfish among bubbles, the
-/// Japanese ROMs' the bubbles alone). A link battle draws it as it does
-/// the other 26 (0x08129F2C), so a Japanese console shows its own there;
-/// the pack keeps the US's, and says so (`Background::region`).
-pub fn japanese_backgrounds(roms: &Roms) -> Vec<u8> {
-    let us = &roms.protoman;
-    if !us.is_present() {
-        return Vec::new();
-    }
-    (0..BACKGROUND_COUNT)
-        .filter(|&id| {
-            let own = background_picture(us, us.u32(BACKGROUNDS + 4 * id));
-            [Version::ProtoMan, Version::Colonel]
-                .into_iter()
-                .zip(JP_BACKGROUNDS)
-                .any(|(v, table)| {
-                    let rom = roms.jp(v);
-                    rom.is_present() && background_picture(rom, rom.u32(table + 4 * id)) != own
-                })
-        })
-        .map(|id| id as u8)
         .collect()
 }
 
@@ -410,7 +376,6 @@ fn chip_art(roms: &Roms, names: &AssetNames) -> Vec<ChipArt> {
             ChipArt {
                 key: names.chip_icon(id as u16),
                 picture,
-                region: None,
                 version: own.map(|v| v.name().into()),
             }
         })

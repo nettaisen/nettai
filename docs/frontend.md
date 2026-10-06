@@ -744,9 +744,9 @@ What an EXE5 console does otherwise, by data, not by game:
     cells, where the pack's look says (`uses_digit`: EXE5's Shuffle;
     EXE6's ChpShufl shows none);
 - its game's flow (rules `flow`, read of the console's own game): the
-  custom screen's close starts the chip window as a Japanese EXE6 console's
-  does (`chip_window_at_close`), the intro fades in from black
-  (`intro_from_black`);
+  custom screen's close starts the chip window (`chip_window_at_close`:
+  EXE6's as its Japanese games' do, on every console; EXE5's), the intro
+  fades in from black (`intro_from_black`);
 - its game's custom screen (rules `custom_screen`): the emblem as SELECT's
   hidden window comes back, on the tick of the key and the next
   (`emblem_at_window_return`: EXE6's screen draws it on both, EXE5's on
@@ -921,9 +921,8 @@ GunDelEX, HackJack's Count and his lances, Django and his bike, DblBeast,
 the Gregar and Falzar chips with their beasts, CrosOver's Django and his
 gun. Every frame is pixel-exact outside what a Japanese console writes in
 Japanese (chip names, telops, the gauge's message, the custom screen's
-labels) and a Japanese console's HUD timings (the next chip's name shown
-from the fight's first frame), the chips' pictures included; the Gregar
-chip's on a Falzar console is the known difference above.
+labels), the chips' pictures included; the Gregar chip's on a Falzar
+console is the known difference above.
 
 **On EXE5 consoles** (verification's tools/frontend-compare/exe5.txt: 16 of
 chiplab's library-exe5 scenarios, Team ProtoMan against Team Colonel,
@@ -991,17 +990,24 @@ them).
   differs at the emblem on purpose; it is listed as known (`known.tsv`: the
   emblem sprite's 32x32). EXE5's ROMs are the same (MegaMan's and their own
   team's six navis', 0x08023F68), for the team navis the content has.
-- **Deliberate: what the US release cut, on a US console.** The pack has
-  the Japanese ROMs' art where the US ROMs have a placeholder (six sprites,
-  eleven chips' pictures: asset-formats.md §4), and the content draws Otenko's
-  statue and CrosOver's gun with the Japanese games' sprites (0C-49, 0C-0F)
-  where the US games draw others; a US console's original shows its
-  placeholder (a purple picture, a dot) or its other sprite. The headless
-  frontend lists such places as known (`known.tsv`): a chip's picture from
-  another region's ROMs, and around an object drawn with a sprite of another
-  region's ROMs, 48 pixels around it (`objects::OTHER_REGION_MARGIN`: the
-  US's sprite there may reach past the Japanese one). The console's region is
-  the trace's (`game_regions`).
+- **Deliberate: one presentation, the Japanese games' where the releases
+  differ** (the user's: "nettai should not have any region specific code").
+  The pack has the Japanese ROMs' art where the US ROMs have a placeholder
+  (six sprites, eleven chips' pictures: asset-formats.md §4), the content
+  draws Otenko's statue and CrosOver's gun with the Japanese games' sprites
+  (0C-49, 0C-0F) where the US games draw others, and EXE6's custom screen
+  starts the chip window as it closes (`chip_window_at_close`), on every
+  console. A US console's original shows its placeholder (a purple picture,
+  a dot) or its other sprite, and its chip window waits for the navi's
+  first decision; an EXE5 Japanese console's background 0x05 is the bubbles
+  without the goldfish. No part of the frontend knows a console's region:
+  the verification's frame comparison does (its table, consoles.tsv, by
+  game, region and version), and asks the headless frontend to mark where
+  it draws those things (`--mark sprite:NAME,background:NAME,chip:KEY,
+  chip-window-at-close`; `marks.tsv` beside the frames: frame, rectangle,
+  what), which it counts as known on that console's recordings, with the
+  table's margin around each (a sprite's 48 pixels: the US's sprite there
+  may reach past the Japanese one).
 - **Deliberate: a version's own chips on the other version's console.**
   Each ROM draws its own version's chips and has their art again at the
   other version's counterparts: EXE6's five Giga chips a version (Bass and
@@ -1035,7 +1041,8 @@ them).
   has one picture for both chips, its own beast; the pack has each chip's
   own (Gregar's from the Japanese Gregar ROM, Falzar's from the Japanese
   Falzar ROM), on either console. A Japanese Falzar console's Gregar chip
-  (and a Gregar console's Falzar chip) is a known difference.
+  (and a Gregar console's Falzar chip) is a known difference, the
+  verification's table's as the other region's.
 - **Deliberate: the Gregar and Falzar chips' descriptions.** Their scripts
   copy the text from a buffer the console keeps (`FF 01 01`, the same
   buffer for both), which holds the console's own Giga chip's: a Falzar
@@ -1710,8 +1717,8 @@ renderer, the font mode's text renderer and the battle's audio:
   next frame: the host loads the game's graphics in each language it offers
   (`Game::graphics(lang)`) and keeps them. Only the drawing changes (the
   pack's lettering, the content's strings); the battle doesn't know its
-  language, the HUD's rolling numbers and timers carry on, and the console's
-  region stays the driver's. `examples/language.rs` checks it on a game's
+  language, and the HUD's rolling numbers and timers carry on.
+  `examples/language.rs` checks it on a game's
   real graphics: after a change, every picture is the one a player shown in
   that language from the start gives.
 

@@ -199,11 +199,6 @@ set starts a new row of the atlas, so a row reads as one pose's pieces.
   16 rows because the game reads whatever follows a palette).
 - `extra_palette_sets`: palette sets after the first, as BGR555 hex (none in
   EXE6).
-- `region`: the region whose ROMs the sprite comes from, when it isn't the
-  pack's base (EXE6's US): `"jp"` for the six sprites the US release cut and
-  left a placeholder in. A console of another region draws something else
-  there, which the frame comparison counts as a known difference. Omitted
-  for the rest.
 
 **`animations.json`**: the simulation's data:
 
@@ -328,9 +323,7 @@ JSON map (orthogonal, 8x8 tiles, one tile layer, the tileset being
 `tiles.png`, gid = tile number + 1, flips as Tiled's flip bits; palettes, when
 any cell's isn't 0, as the layer's `palettes` property, a hex digit a cell);
 `background.json` (whether it has its own palette, scroll speed in 1/16 pixel,
-animations; `region`, the region whose ROMs the picture is from where another
-region's have another, as a sprite's: EXE5's 0x05 is the US ROMs', and a
-Japanese console's frames with it are a known difference all over). A tile
+animations). A tile
 animation's frames are `anim-K.png`, one block of tiles a
 frame; a palette animation's frames are color lists. Tiled's rotation bit is
 refused (the GBA only flips), and so are infinite maps and compressed layers,
@@ -389,8 +382,8 @@ with one to five Crosses), their patch lists (a block of consecutive tile
 numbers at a cell, row or column first, in a palette), the three palettes
 no image owns as color lists, and the Program
 Advance animation's three sets of name colors; each chip's picture by
-its chip's key, with the `region` and `version` of a picture from another
-ROM (below); each navi's emblem by its navi's key; and the buttons
+its chip's key, with the `version` of a version's own chip's (below);
+each navi's emblem by its navi's key; and the buttons
 (below). The frontend composes the tile numbers the maps name from
 these blocks, as the original's VRAM holds them.
 
@@ -488,9 +481,11 @@ own, read at the addresses the same code points at there (exe6-extract's
   from the Japanese Falzar ROM, and the pictures of eleven chips the US ROMs
   give a placeholder picture (GunDelEX, Otenko, Count (HackJack) ×3, Django ×3,
   DblBeast, Gregar, Falzar), from the Japanese Falzar ROM but Gregar's,
-  from the Japanese Gregar ROM. Each is marked with its `region` ("jp"), and
-  the Gregar and Falzar chips' pictures with their `version` too (a Japanese
-  console shows its own beast in both chips; the pack has each chip's own).
+  from the Japanese Gregar ROM (a Japanese console shows its own beast in
+  both chips; the pack has each chip's own). The pack keeps no region: a
+  pack has one picture of each thing, the Japanese games' where the
+  releases differ, and what a console of the other region shows there is
+  the verification's to know (docs/frontend.md §5).
   Three of the pictures' palettes are EWRAM in the original, which a link
   gift (an e-Reader card's) fills and the save keeps: DblBeast's, the
   card's, is also orphaned in the Japanese ROMs, and the pack has it; the
