@@ -1148,10 +1148,7 @@ folder = [                                 # up to 30 entries, { chip, code } ({
     { chip = "cannon", code = "A" },
     { chip = "airshot", code = "*" },
 ]
-patch_cards = [                            # each installed card, on or off, in the order they apply
-    { card = "canodumb", on = true },
-    { card = "shadow" },
-]
+patch_cards = ["canodumb", "shadow"]       # the installed cards, in the order they apply (each applies)
 sp_times = [                               # how long the save took to delete each SP navi, by its SP chip,
     { chip = "heatman-sp", frames = 741 },  # in frames (60 a second; else every SP navi in no time)
 ]
