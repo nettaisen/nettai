@@ -46,7 +46,7 @@ local navi: NaviDef = {
     -- progress up to 6.
     story = { hp = { 400, 400, 500, 550, 600, 650, 700, 800, 900 }, max_level = 6 },
     identity = new.identity {
-        class = "link_navi",
+        class = "player",
         version = 0,
         actor_type = "player",
         ai_index = 5,

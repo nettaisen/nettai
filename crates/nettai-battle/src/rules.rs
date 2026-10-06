@@ -1006,15 +1006,26 @@ mod tests {
         refused(buttons, &button("form_offer"), &["button `b` has the view `form_offer`", "the state field `offer` (a form)"]);
         let content = patched(buttons, &button("chip_picture")).expect("a view that shows no field");
         assert_eq!(content.defs.button(button_named(&content, "b").expect("the button")).view, Some(ButtonView::ChipPicture));
-        // A fact: the setup field of its name, of its type.
-        let setup = "        -- The counter's.\n        bonus = \"u8\",";
+        // A fact: the setup field that declares its role (`schema.role`),
+        // else the field of its name, of its type.
+        let setup = "        -- The counter's.
+        bonus = \"u8\",";
         refused(
             setup,
-            "        crosses = \"u8\",\n        bonus = \"u8\",",
-            &["rules/init.luau: rules", "their setup field `crosses` is the fact a player brings by that name, an array of forms"],
+            "        crosses = schema.role(\"form_list\", \"u8\"),
+        bonus = \"u8\",",
+            &["rules/init.luau: rules", "their setup field `crosses` is the fact a player brings as `form_list`, an array of forms"],
         );
-        let content = patched(setup, "        crosses = \"form[5]\",\n        bonus = \"u8\",").expect("a fact of its type");
-        assert!(content.defs.fact_field(PlayerFact::CrossList).is_some());
+        let content = patched(setup, "        crosses = schema.role(\"form_list\", \"form[5]\"),
+        bonus = \"u8\",").expect("a fact of its type");
+        assert_eq!(content.defs.fact_name(PlayerFact::FormList), Some("crosses"));
+        let content = patched(setup, "        form_list = \"form[5]\",
+        bonus = \"u8\",").expect("a fact by its name");
+        assert_eq!(content.defs.fact_name(PlayerFact::FormList), Some("form_list"));
+        // (A field named for another role than its own is that role's alone.)
+        let content = patched(setup, "        form_list = schema.role(\"level\", \"u8?\"),
+        bonus = \"u8\",").expect("a role elsewhere");
+        assert_eq!((content.defs.fact_name(PlayerFact::FormList), content.defs.fact_name(PlayerFact::Level)), (None, Some("form_list")));
     }
 
     mod patch_cards {

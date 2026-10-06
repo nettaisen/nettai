@@ -18,65 +18,35 @@ pub enum IdentityClass {
     Virus,
     /// A field object (0xCD to 0xFF): a rock, a statue, a mine.
     FieldObject,
-    /// A navi that is no player's (0x100 to 0x19F but the Cybeasts).
+    /// A navi that is no player's (0x100 to 0x19F).
     Navi,
-    /// The Cybeasts (0x173 to 0x178, 0x179 to 0x17E).
-    Gregar,
-    Falzar,
-    /// MegaMan in his base form (0x1A0).
-    MegaMan,
-    /// A link navi (0x1A1 to 0x1AB).
-    LinkNavi,
-    /// MegaMan's forms: a Cross (0x1AC to 0x1B5), Beast Out (0x1B6,
-    /// 0x1B7), a Cross in Beast Out (0x1B8 to 0x1C1), Beast Over (0x1C2,
-    /// 0x1C3).
-    Cross,
-    Beast,
-    CrossBeast,
-    BeastOver,
+    /// A player's navi (0x1A0 to 0x1C3): the navi that changes form and
+    /// its forms, a link navi. What sets some apart is their traits
+    /// (`Identity::changes_form`, `breaks_on_weakness`).
+    Player,
 }
 
 impl IdentityClass {
     /// The classes by the names definitions give them.
-    pub const NAMES: [(&'static str, IdentityClass); 11] = [
+    pub const NAMES: [(&'static str, IdentityClass); 4] = [
         ("virus", IdentityClass::Virus),
         ("field_object", IdentityClass::FieldObject),
         ("navi", IdentityClass::Navi),
-        ("gregar", IdentityClass::Gregar),
-        ("falzar", IdentityClass::Falzar),
-        ("megaman", IdentityClass::MegaMan),
-        ("link_navi", IdentityClass::LinkNavi),
-        ("cross", IdentityClass::Cross),
-        ("beast", IdentityClass::Beast),
-        ("cross_beast", IdentityClass::CrossBeast),
-        ("beast_over", IdentityClass::BeastOver),
+        ("player", IdentityClass::Player),
     ];
 
     pub fn from_name(name: &str) -> Option<IdentityClass> {
         Self::NAMES.iter().find(|(n, _)| *n == name).map(|&(_, c)| c)
     }
 
-    /// A player's navi: MegaMan in any form, or a link navi (the
-    /// original's 0x1A0 to 0x1C3).
+    /// A player's navi (the original's 0x1A0 to 0x1C3).
     pub fn is_player(self) -> bool {
-        use IdentityClass::*;
-        matches!(self, MegaMan | LinkNavi | Cross | Beast | CrossBeast | BeastOver)
-    }
-
-    /// One of MegaMan's forms (past the link navis: 0x1AC and up).
-    pub fn is_form(self) -> bool {
-        use IdentityClass::*;
-        matches!(self, Cross | Beast | CrossBeast | BeastOver)
+        self == IdentityClass::Player
     }
 
     /// Any navi (the original's 0x100 to 0x1C3).
     pub fn is_navi(self) -> bool {
-        self.is_player() || matches!(self, IdentityClass::Navi | IdentityClass::Gregar | IdentityClass::Falzar)
-    }
-
-    /// A Cybeast (0x173 to 0x17E).
-    pub fn is_cybeast(self) -> bool {
-        matches!(self, IdentityClass::Gregar | IdentityClass::Falzar)
+        matches!(self, IdentityClass::Navi | IdentityClass::Player)
     }
 }
 
@@ -239,6 +209,24 @@ pub struct Identity {
     pub never_angers: bool,
     /// The ice block that fits it.
     pub ice: IceSize,
+    /// One of the navi that changes form's own (its base form's or a
+    /// form's: the original's MegaMan, NameID 0x1A0, and 0x1AC up): a
+    /// navi image wears its own look rather than the base form's.
+    pub changes_form: bool,
+    /// A weakness hit breaks the form it is (`sub_8015766`, where the
+    /// rules' `form_break` breaks marked forms: EXE6's Crosses, Beast Out
+    /// and the Crosses in it, NameIDs 0x1AC to 0x1C1).
+    pub breaks_on_weakness: bool,
+    /// A win over it is quiet: no music or banner, the plain wait, and the
+    /// end fades to white (`sub_800A7A6`: the Cybeasts, NameIDs 0x173 to
+    /// 0x17E; EXE5's 0x173 to 0x176).
+    pub quiet_win: bool,
+    /// The NaviCust bug 0xF6 doesn't blind it (`sub_801A77A`: the
+    /// Cybeasts).
+    pub bug_blind_immune: bool,
+    /// The animation in which the target marker over it isn't raised to
+    /// its attach point (Gregar's 0x4F, `sub_80E1520`).
+    pub marker_flat_anim: Option<u8>,
     /// Whose it is, for a navi's or a form's.
     pub owner: Option<IdentityOwner>,
     /// What it is as a navi no player controls (actor type navi).
@@ -264,6 +252,11 @@ impl Identity {
             aura_anim: None,
             never_angers: false,
             ice: IceSize::Small,
+            changes_form: false,
+            breaks_on_weakness: false,
+            quiet_win: false,
+            bug_blind_immune: false,
+            marker_flat_anim: None,
             owner: None,
             body: None,
         })
@@ -544,6 +537,14 @@ pub(crate) fn read(
         aura_anim,
         never_angers: flag(spec.field("never_angers"), "never_angers", false)?,
         ice,
+        changes_form: flag(spec.field("changes_form"), "changes_form", false)?,
+        breaks_on_weakness: flag(spec.field("breaks_on_weakness"), "breaks_on_weakness", false)?,
+        quiet_win: flag(spec.field("quiet_win"), "quiet_win", false)?,
+        bug_blind_immune: flag(spec.field("bug_blind_immune"), "bug_blind_immune", false)?,
+        marker_flat_anim: match spec.field("marker_flat_anim") {
+            Data::Nil => None,
+            v => Some(byte(v, "marker_flat_anim")?),
+        },
         owner: None,
         body,
     })

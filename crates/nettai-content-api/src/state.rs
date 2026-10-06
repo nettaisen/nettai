@@ -267,6 +267,11 @@ fn list_count_size(n: u16) -> usize {
 /// The key a list's declaration (`schema.list(T, n)`) marks its table with.
 pub const LIST_MARK: &str = "__list";
 
+/// The key a role's declaration (`schema.role(name, T)`) marks its table
+/// with: a field of type `T` (its `of`) that the engine knows by the role
+/// `name` (its `role`).
+pub const ROLE_MARK: &str = "__role";
+
 impl FieldType {
     /// A field's type as data: a type name, a list of variant names (an
     /// enum), a table of fields (a record), or a list's declaration.
@@ -487,6 +492,18 @@ impl std::error::Error for TypeError {}
 pub struct FieldDef {
     pub name: String,
     pub ty: FieldType,
+    /// The role the engine knows it by, if the declaration gives one
+    /// (`schema.role(name, T)`: a player's setup field the engine reads by
+    /// its role rather than its name, as EXE6's `crosses` is its form
+    /// list).
+    pub role: Option<String>,
+}
+
+impl FieldDef {
+    /// A field with no role.
+    pub fn new(name: impl Into<String>, ty: FieldType) -> FieldDef {
+        FieldDef { name: name.into(), ty, role: None }
+    }
 }
 
 /// The fields a kind's state declares, in storage order.
@@ -547,8 +564,15 @@ impl Schema {
             let Key::Str(name) = k else {
                 return Err(format!("state field names are strings, not {k}"));
             };
-            let ty = FieldType::from_data(v).map_err(|e| format!("state field `{name}`: {e}"))?;
-            fields.push(FieldDef { name: name.clone(), ty });
+            let (of, role) = match v {
+                Data::Map(_) if *v.field(ROLE_MARK) == Data::Bool(true) => {
+                    let role = v.field("role").str().ok_or_else(|| format!("state field `{name}`: a role is a name"))?;
+                    (v.field("of"), Some(role.to_string()))
+                }
+                _ => (v, None),
+            };
+            let ty = FieldType::from_data(of).map_err(|e| format!("state field `{name}`: {e}"))?;
+            fields.push(FieldDef { name: name.clone(), ty, role });
         }
         fields.sort_by(|a, b| a.name.cmp(&b.name));
         Schema::new(fields)
@@ -1094,12 +1118,12 @@ mod tests {
 
     fn schema() -> Schema {
         Schema::new(vec![
-            FieldDef { name: "timer".into(), ty: FieldType::U16 },
-            FieldDef { name: "lift".into(), ty: FieldType::I8 },
-            FieldDef { name: "slot".into(), ty: FieldType::Enum(vec!["overlay".into(), "related".into()]) },
-            FieldDef { name: "owner".into(), ty: FieldType::Object },
-            FieldDef { name: "offset".into(), ty: FieldType::Vec3 },
-            FieldDef { name: "targets".into(), ty: FieldType::scalar("u8[6]").unwrap() },
+            FieldDef::new("timer", FieldType::U16),
+            FieldDef::new("lift", FieldType::I8),
+            FieldDef::new("slot", FieldType::Enum(vec!["overlay".into(), "related".into()])),
+            FieldDef::new("owner", FieldType::Object),
+            FieldDef::new("offset", FieldType::Vec3),
+            FieldDef::new("targets", FieldType::scalar("u8[6]").unwrap()),
         ])
         .unwrap()
     }
@@ -1136,7 +1160,7 @@ mod tests {
     /// that aren't one is refused, with where.
     #[test]
     fn a_blocks_compact_form_reads_back() {
-        let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
+        let f = |n: &str, ty: FieldType| FieldDef::new(n, ty);
         let entry = Schema::new(vec![f("chip", FieldType::Ref(Registry::Chip, None)), f("code", FieldType::Code)]).unwrap();
         let s = Schema::new(vec![
             f("folder", FieldType::List(Box::new(FieldType::Record(Box::new(entry))), 30)),
@@ -1194,7 +1218,7 @@ mod tests {
     /// number stay as they are (zero: an empty list, none).
     #[test]
     fn only_an_enum_may_be_unstated() {
-        let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
+        let f = |n: &str, ty: FieldType| FieldDef::new(n, ty);
         let form = || FieldType::Ref(Registry::Form, None);
         let s = Schema::new(vec![
             f("flags", FieldType::Array(Box::new(FieldType::Bool), 3)),
@@ -1217,7 +1241,7 @@ mod tests {
     /// state does.
     #[test]
     fn a_block_is_its_schemas_size() {
-        let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
+        let f = |n: &str, ty: FieldType| FieldDef::new(n, ty);
         let s = Schema::new(vec![f("big", FieldType::scalar("u16[60]").unwrap()), f("last", FieldType::U32)]).unwrap();
         let mut b = Block::new(StateId(0), &s);
         b.set_elem(&s, 0, 59, Value::Int(0x1234)).unwrap();
@@ -1237,7 +1261,7 @@ mod tests {
 
     #[test]
     fn schemas_reject_duplicates_and_bad_names() {
-        let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
+        let f = |n: &str, ty: FieldType| FieldDef::new(n, ty);
         assert!(Schema::new(vec![f("a", FieldType::U8), f("a", FieldType::U8)]).is_err());
         assert!(Schema::new(vec![f("1a", FieldType::U8)]).is_err());
         // (A schema of any size: the user, "drop the block cap".)
@@ -1323,7 +1347,7 @@ mod tests {
     }
 
     fn arena_schemas() -> (Schema, Schema) {
-        let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
+        let f = |n: &str, ty: FieldType| FieldDef::new(n, ty);
         let small = Schema::new(vec![f("a", FieldType::U16), f("b", FieldType::U8)]).unwrap();
         let large = Schema::new((0..20).map(|i| f(&format!("v{i}"), FieldType::Vec3)).collect()).unwrap();
         (small, large)

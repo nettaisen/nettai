@@ -58,11 +58,10 @@ return {
         -- The wrapper an attack runs inside while its `wrapped` is 1:
         -- the Beast Out rush (`sub_80EAD9C`).
         wrapper = beast_rush.action,
-        -- DustCross Beast's scatter, during which the navi isn't grounded.
-        dust_beast_scatter = dust_beast_scatter.action,
-        -- ChargeCross's tackle, during which an invulnerable navi doesn't
-        -- glow.
-        charge_tackle = charge_tackle.action,
+        -- An action during which the navi isn't grounded: DustCross Beast's scatter.
+        ungrounded = dust_beast_scatter.action,
+        -- An action during which an invulnerable navi doesn't glow: ChargeCross's tackle.
+        glowless = charge_tackle.action,
     },
     kinds = {
         -- What an obstacle absorbed flies off as.
@@ -80,7 +79,7 @@ return {
         -- hand's chip, and a chip use with none.
         zeroed = megabstr,
         -- The custom screen's Beast Out button, as a chip in the hand.
-        beast_out = beast_out,
+        button_chip = beast_out,
         -- What a selection the custom screen can't allow becomes.
         invalid = invalid,
         -- The chips the supports' telops name.
@@ -210,15 +209,9 @@ return {
         custom_pick = asset.sound("menu-select"),
         custom_ok = asset.sound("select-82"),
         custom_back = asset.sound("exit-submenu"),
-        custom_cross_open = asset.sound("select-7a"),
-        custom_cross_close = asset.sound("cross-window-close"),
-        custom_cross_chosen = asset.sound("delta-ray-2"),
         custom_run_message = asset.sound("unselect-7b"),
         custom_description = asset.sound("description-open"),
         custom_description_close = asset.sound("description-close"),
-        custom_beast_out_falzar = asset.sound("beast-out-chosen-falzar"),
-        custom_beast_out_gregar = asset.sound("beast-out-chosen-gregar"),
-        custom_beast_out_flash = asset.sound("blinding-flash"),
         custom_cancel = asset.sound("custom-cancel"),
         custom_redeal = asset.sound("elmnt-man-2"),
         custom_redeal_shuffle = asset.sound("hop"),

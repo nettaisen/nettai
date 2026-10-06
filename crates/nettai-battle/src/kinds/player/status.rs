@@ -63,7 +63,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     if st & (ai_status::SWITCH_KNOCKOUT | ai_status::VOLLEY | ai_status::UNINTERRUPTIBLE) != 0 {
         return Flow::Dispatch;
     }
-    if st & ai_status::CROSS_BREAKING != 0 && cross_lane(b, r) {
+    if st & ai_status::FORM_BREAKING != 0 && breaking_form(b, r) {
         return Flow::Return;
     }
     if b.is_dimmed() {
@@ -74,7 +74,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
         return flow;
     }
     if b.game_rules().reactions == crate::content::Reactions::FlashTimerFirst {
-        return exe5_reactions(b, r);
+        return flash_timer_first_reactions(b, r);
     }
     if flag2(b, r) & 0x100 != 0 {
         start_drag(b, r);
@@ -110,7 +110,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
 
 /// EXE5's reactions (0x08017CC8 to 0x08017D88): the flash's timer, the
 /// slides, a drag, a flinch, then the status timers.
-fn exe5_reactions(b: &mut Battle, r: ObjectRef) -> Flow {
+fn flash_timer_first_reactions(b: &mut Battle, r: ObjectRef) -> Flow {
     tick_flash(b, r);
     if flag2(b, r) & 0x10 != 0 {
         clear_flag2(b, r, 0x10);
@@ -291,7 +291,7 @@ fn weakness_request(b: &mut Battle, r: ObjectRef) {
 /// (§4.5). Runs every tick, even once dead or after the battle ends.
 fn apply_damage(b: &mut Battle, r: ObjectRef) {
     if b.game_rules().intake.hp_loss == crate::content::HpLoss::GaugeAndLastStand {
-        return exe5_apply_damage(b, r);
+        return apply_damage_gauge_and_last_stand(b, r);
     }
     let mut d = coll(b, r).acc.final_damage;
     let mut dead = false;
@@ -336,7 +336,7 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
 /// damage), and that test first tries the last stand (0x0802C16C). (Where
 /// a hit landed is learned for the auto-battling navis' auto battle data too, 0x0802C3E2:
 /// for the battles after, which nothing of a battle reads.)
-fn exe5_apply_damage(b: &mut Battle, r: ObjectRef) {
+fn apply_damage_gauge_and_last_stand(b: &mut Battle, r: ObjectRef) {
     let mut d = coll(b, r).acc.final_damage;
     let mut fell = false;
     if d != 0 {
@@ -394,9 +394,9 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
 
 // ---- Special states ------------------------------------------------------------
 
-/// `sub_8015766`: a weakness hit breaks the Cross; true while it runs.
-fn cross_lane(b: &mut Battle, r: ObjectRef) -> bool {
-    actions::transform::break_cross(b, r)
+/// `sub_8015766`: a weakness hit breaks the form; true while it runs.
+fn breaking_form(b: &mut Battle, r: ObjectRef) -> bool {
+    actions::transform::break_form(b, r)
 }
 
 /// The Cross/Beast requests in `ai.requests` (none fire for base
@@ -419,15 +419,14 @@ fn action_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
     }
     if f & request::WEAKNESS_HIT != 0 {
         ai_mut(b, r).requests &= !request::WEAKNESS_HIT;
-        // A Cross, Beast Out or a Cross in Beast Out (NameIDs 0x1AC..=0x1C1);
-        // in EXE5 (0x08017CAC) any navi.
-        use crate::content::IdentityClass;
-        let class = b.content.identity(b.objects.get(r).identity).class;
+        // A form marked to break (EXE6's Crosses, Beast Out and the Crosses
+        // in it, NameIDs 0x1AC..=0x1C1); in EXE5 (0x08017CAC) any navi.
+        let marked = b.content.identity(b.objects.get(r).identity).breaks_on_weakness;
         let any = b.game_rules().form_break == crate::content::FormBreak::AnyForm;
-        if any || matches!(class, IdentityClass::Cross | IdentityClass::Beast | IdentityClass::CrossBeast) {
-            ai_mut(b, r).status |= ai_status::CROSS_BREAKING;
+        if any || marked {
+            ai_mut(b, r).status |= ai_status::FORM_BREAKING;
             exit_attack_state(b, r);
-            cross_lane(b, r);
+            breaking_form(b, r);
             return Some(Flow::Return);
         }
     }
@@ -1027,7 +1026,7 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
         && super::form_of(b, r).glow.is_none()
         && action != NaviAction::Entry
         // (`sub_8016860` reads CurAction: not during ChargeCross's tackle.)
-        && !super::runs_role(b, r, crate::content::ActionRole::ChargeTackle)
+        && !super::runs_role(b, r, crate::content::ActionRole::Glowless)
     {
         let glow = GLOW[(t & 0x1F) as usize];
         shader = if super::battle_mode(b) == 1 { glow } else { glow << 5 };

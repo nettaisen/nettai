@@ -95,8 +95,9 @@ local rules: Rules = {
         version = { "gregar", "falzar" },
         -- The Crosses they have (./cross/window.luau), up to five, of either version, in the window's order. A side
         -- that leaves them out has none. A save's are those of its version's five it owns (by Cross number:
-        -- Gregar's event flags 0xE2-0xE6, Falzar's 0xE7-0xEB), which a boundary writes as the list of them.
-        crosses = "form[5]",
+        -- Gregar's event flags 0xE2-0xE6, Falzar's 0xE7-0xEB), which a boundary writes as the list of them. The
+        -- engine's form list (the window's offer).
+        crosses = schema.role("form_list", "form[5]"),
         -- Beast Out unlocked (event flag 0xE0).
         beast_out = "bool",
         -- What the save brings to the navi's stats (./save): the base HP (HP Memories, +0x3E), the Regular memory
@@ -255,7 +256,6 @@ local rules: Rules = {
     },
     -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
     banners = require("@self/banners"),
-    berserk = require("@self/berserk"),
     buster = require("@self/buster"),
     chip_use = require("@self/chip_use"),
     custom_screen = require("@self/custom_screen"),

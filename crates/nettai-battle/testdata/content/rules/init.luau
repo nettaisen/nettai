@@ -130,10 +130,8 @@ local rules_: Rules = {
     },
     -- Its rule sections and its roles. The made-up tables are its own (rules/panels, rules/reactions,
     -- rules/status_rules, rules/custom_screen, the lock-on's); where games differ it plays as EXE6
-    -- does, and those sections are EXE6's own files (a module the test content hasn't is EXE6's): berserk, buster,
-    -- chip-use, effects, elements, flow, fresh_stats, math, pools. None of its banners holds, and it has no NaviCust
-    -- board.
-    berserk = require("@self/berserk"),
+    -- does, and those sections are EXE6's own files (a module the test content hasn't is EXE6's): buster, chip-use,
+    -- effects, elements, flow, fresh_stats, math, pools. None of its banners holds, and it has no NaviCust board.
     buster = require("@self/buster"),
     chip_use = require("@self/chip_use"),
     custom_screen = require("@self/custom_screen"),

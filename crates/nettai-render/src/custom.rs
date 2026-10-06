@@ -203,10 +203,10 @@ pub fn fade(b: &Battle) -> Option<Fade> {
     let (_, s) = local(b)?;
     let f = s.look.fade;
     let (shown, white) = match f.mode {
-        FadeMode::BeastOut | FadeMode::ProgramAdvance | FadeMode::DarkChip => (true, false),
+        FadeMode::HalfOut | FadeMode::ProgramAdvance | FadeMode::Shade => (true, false),
         // Back toward clear: once it gets there the original takes the
         // palettes' transform off.
-        FadeMode::BeastOutBack | FadeMode::ProgramAdvanceBack | FadeMode::DarkChipBack => (f.active, false),
+        FadeMode::HalfOutBack | FadeMode::ProgramAdvanceBack | FadeMode::ShadeBack => (f.active, false),
         FadeMode::EndToWhite => (true, true),
         FadeMode::IntroFromWhite => (f.active, true),
         _ => (false, false),
@@ -233,8 +233,8 @@ pub fn window_fade(b: &Battle) -> Option<Fade> {
     let (_, s) = local(b)?;
     let f = s.look.window_fade;
     let shown = match f.mode {
-        FadeMode::DarkChipWindow => true,
-        FadeMode::DarkChipWindowBack => f.active,
+        FadeMode::ShadeWindow => true,
+        FadeMode::ShadeWindowBack => f.active,
         _ => false,
     };
     let n = (f.level >> 4).min(16) as u8;
@@ -246,7 +246,7 @@ pub fn window_fade(b: &Battle) -> Option<Fade> {
 pub fn hud_fade(b: &Battle) -> Option<Fade> {
     let (_, s) = local(b)?;
     match s.look.fade.mode {
-        FadeMode::BeastOut | FadeMode::BeastOutBack | FadeMode::EndToWhite | FadeMode::IntroFromWhite => fade(b),
+        FadeMode::HalfOut | FadeMode::HalfOutBack | FadeMode::EndToWhite | FadeMode::IntroFromWhite => fade(b),
         _ => window_fade(b),
     }
 }
@@ -504,7 +504,7 @@ fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, soul: Op
     let console = v.packs.version().map(|version| b.icon_palettes.iter().position(|(name, _)| name == version).map_or(0, |i| i + 1));
     let f = screen.look.fade;
     let palette = match f.mode {
-        nettai_battle::battle::FadeMode::SoulFlash | nettai_battle::battle::FadeMode::SoulFlashBack => {
+        nettai_battle::battle::FadeMode::Flash | nettai_battle::battle::FadeMode::FlashBack => {
             let n = (f.level >> 4).min(16) as u8;
             colors.map(|c| crate::compose::apply_fade(c, Fade::White(n)))
         }
@@ -660,10 +660,10 @@ const CROSS_PUT_ON_TICK: u16 = 25;
 /// The Cross in place `place` of a side's Crosses, as EXE6's rules/cross
 /// finds it (content/exe6/rules/cross/window.luau's `cross_at`), from what
 /// the player brought: the entry of their form list
-/// (`PlayerFact::CrossList`: the Crosses they have, in the window's order).
+/// (`PlayerFact::FormList`: the Crosses they have, in the window's order).
 /// None: no Cross there.
 pub fn cross_at(b: &Battle, side: u8, place: u8) -> Option<FormHandle> {
-    b.fact(side, PlayerFact::CrossList)?.form(place as usize)
+    b.fact(side, PlayerFact::FormList)?.form(place as usize)
 }
 
 /// Where a form list's window is (EXE6's Cross window: the windows whose
@@ -732,7 +732,7 @@ impl Window {
         let (map, patches) = match cross {
             Some(i) => (a.cross_maps.get(i), &a.cross_patches),
             // (A game without the Cross tab has one map: EXE5.)
-            None => (a.window_maps.get(v.screen.look.cross_tab as usize).or(a.window_maps.first()), &a.window_patches),
+            None => (a.window_maps.get(v.screen.look.form_list_tab as usize).or(a.window_maps.first()), &a.window_patches),
         };
         if let Some(m) = map {
             for (cell, e) in w.map.iter_mut().zip(m) {
@@ -1021,8 +1021,9 @@ impl Window {
         } else {
             self.tiles.put(self.layout.name, &fonts::cell_text(v.hud, &glyphs, NAME_CELLS, NAME_SHIFT));
         }
-        // (The Beast Out chip's picture is the Beast's the navi goes into.)
-        let beast_out = v.b.roles().try_chip(nettai_battle::content::ChipRole::BeastOut) == Some(c);
+        // (The button chip's picture is its button's: EXE6's BeastOut's, the
+        // Beast's the navi goes into.)
+        let beast_out = v.b.roles().try_chip(nettai_battle::content::ChipRole::ButtonChip) == Some(c);
         // A chip whose palette no ROM holds has its definition's
         // (`art_palette`). A version's own chip's picture is its own ROM's:
         // a console of the other version shows its counterpart's. (The
@@ -1627,7 +1628,7 @@ pub fn draw<'a>(
     if drawn.held {
         queue.extend(held_part(&v, packs, problems));
     }
-    if let Some(frame) = drawn.cross_cursor {
+    if let Some(frame) = drawn.form_list_cursor {
         queue.extend(cross_cursor_parts(&v, a, frame));
     }
     for part in queue {
