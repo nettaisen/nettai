@@ -278,7 +278,8 @@ function compile.run(side: number, game: NaviCustGame, expansions: number?, part
     local size = board.SIZE
     local layout = board.boards[expansions + 1]
     if layout == nil then
-        error(string.format("a NaviCust with %d expansions: %s's board has %d sizes", expansions, game.name, #board.boards))
+        -- (No board of that size: nothing compiles, and `validate` says so; a round starts from any setup.)
+        return false
     end
     local function at(grid: { [number]: number }, x: number, y: number): number?
         return grid[y * size + x]

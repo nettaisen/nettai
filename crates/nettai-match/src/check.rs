@@ -17,7 +17,8 @@
 //!   its link battle check read): EXE6's and EXE5's the navi's level, the
 //!   base HP, the patch cards, the NaviCust on its board, the folder by its
 //!   game's folder rules (content/exe6/rules, content/exe5/rules). This crate
-//!   knows none of those: it reports what the rules say.
+//!   knows none of those: it reports what the rules say, with the setup
+//!   field and entry they tie each problem to ([`problems`]).
 
 use crate::{Folder, Match, RoundSettings, Side, ids};
 use nettai_battle::Battle;
@@ -126,15 +127,41 @@ pub fn round_stats(content: &Arc<Content>, m: &Match) -> Result<[NaviStats; 2], 
     start(content, m).map(|b| b.stats)
 }
 
+/// A problem with a match, with where it is: its side (none: the match's
+/// game or rounds), and the setup field and its entry (from 0, a list's)
+/// the rules' `validate` ties it to (none: the side's as a whole).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Problem {
+    pub side: Option<usize>,
+    pub field: Option<String>,
+    pub entry: Option<usize>,
+    pub text: String,
+}
+
+impl Problem {
+    /// A problem of no field (`side`'s, or none's).
+    fn of(side: Option<usize>, text: String) -> Problem {
+        Problem { side, field: None, entry: None, text }
+    }
+
+    /// The problem as [`check_match`] says it: its side first.
+    pub fn said(&self) -> String {
+        match self.side {
+            Some(s) => format!("{}: {}", ["left", "right"][s & 1], self.text),
+            None => self.text.clone(),
+        }
+    }
+}
+
 /// What side `side`'s rules say is wrong with its setup in `b`, the
 /// round's battle (their `validate`): of the side's own setup, its folder as
 /// it stands (the round was set up with a whole one: `start`).
-fn validated(b: &mut Battle, side: usize, s: &Side) -> Vec<String> {
+fn validated(b: &mut Battle, side: usize, s: &Side) -> Vec<Problem> {
     b.setup.players[side].rules = s.facts.block().cloned();
     let checked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.validate(side as u8)));
     match checked {
-        Ok(problems) => problems.into_iter().map(|p| p.text).collect(),
-        Err(_) => vec!["the rules stopped checking the side".into()],
+        Ok(problems) => problems.into_iter().map(|p| Problem { side: Some(side), field: p.field, entry: p.entry, text: p.text }).collect(),
+        Err(_) => vec![Problem::of(Some(side), "the rules stopped checking the side".into())],
     }
 }
 
@@ -153,7 +180,7 @@ pub fn check_side(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], 
     }
     let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [s.clone(), s.clone()] };
     match start(content, &m) {
-        Ok(mut b) => out.extend(validated(&mut b, 0, s)),
+        Ok(mut b) => out.extend(validated(&mut b, 0, s).into_iter().map(|p| p.text)),
         Err(e) => out.push(e),
     }
     out
@@ -161,24 +188,29 @@ pub fn check_side(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], 
 
 /// What is wrong with a match, each problem with where it is.
 pub fn check_match(content: &Arc<Content>, m: &Match) -> Vec<String> {
-    let mut out = check_rounds(content, &m.game, &m.rounds);
+    problems(content, m).iter().map(Problem::said).collect()
+}
+
+/// [`check_match`]'s problems, each with its side, and the setup field and
+/// entry the rules tie it to (a tool shows it there: the editor's rows).
+pub fn problems(content: &Arc<Content>, m: &Match) -> Vec<Problem> {
+    let mut out: Vec<Problem> = check_rounds(content, &m.game, &m.rounds).into_iter().map(|p| Problem::of(None, p)).collect();
     if !out.is_empty() {
         return out;
     }
-    let sides = ["left", "right"];
-    for (s, at) in m.sides.iter().zip(sides) {
-        out.extend(check_side_alone(content, &m.game, s).into_iter().map(|p| format!("{at}: {p}")));
+    for (side, s) in m.sides.iter().enumerate() {
+        out.extend(check_side_alone(content, &m.game, s).into_iter().map(|p| Problem::of(Some(side), p)));
     }
     if !out.is_empty() {
         return out;
     }
     match start(content, m) {
         Ok(mut b) => {
-            for (side, (s, at)) in m.sides.iter().zip(sides).enumerate() {
-                out.extend(validated(&mut b, side, s).into_iter().map(|p| format!("{at}: {p}")));
+            for (side, s) in m.sides.iter().enumerate() {
+                out.extend(validated(&mut b, side, s));
             }
         }
-        Err(e) => out.push(e),
+        Err(e) => out.push(Problem::of(None, e)),
     }
     out
 }
@@ -254,7 +286,6 @@ mod tests {
     #[test]
     fn exe5s_board_grows_with_its_expansions() {
         let content = crate::testing::exe5_content();
-        assert_eq!(crate::navicust_rules(&content).boards.len(), 3);
         let m = crate::pick::live(&content, "exe5", 3, None).unwrap();
         assert_eq!(crate::testing::navicust_expansions(&content, &crate::Match::empty(&content, "exe5").unwrap().sides[0]), Some(2));
         let undersht = ids::entry(&content, "exe5", "navicust_programs", "undersht").unwrap();
@@ -301,7 +332,7 @@ mod tests {
     /// off the command line, where it stops nothing.
     #[test]
     fn exe5s_hubbatc_shares_a_board_with_no_hp_program() {
-        use nettai_battle::navicust::{SIZE, cells};
+        use crate::testing::{SIZE, cells};
         let content = crate::testing::exe5_content();
         let m = crate::pick::live(&content, "exe5", 3, None).unwrap();
         let program = |name: &str| ids::entry(&content, "exe5", "navicust_programs", name).unwrap();
@@ -340,7 +371,9 @@ mod tests {
         assert!(beside_hub(at(program("hp-500"), 3, 2, 0, false)).iter().any(|p| p.contains("is over program 1")));
         // BugStop beside it: compressed alone, and never on the command line.
         let bugstop = program("bugstop");
-        let line = crate::navicust_rules(&content).command_line as i32;
+        // (The command line: the board module's.)
+        let board = start(&content, &m).unwrap().module_data("exe5:rules/navicust/board").unwrap().unwrap();
+        let line = board.field("COMMAND_LINE").int().unwrap() as i32;
         let mut places = 0;
         for (x, y) in everywhere() {
             for rotation in 0..4 {

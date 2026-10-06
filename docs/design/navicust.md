@@ -15,20 +15,21 @@ file gives each side its NaviCust (docs/frontend.md §6), and the editor (nettai
 | A program: its colors, shape, compressed shape, whether it is a plus part | an entry of the game's root's collection `navicust_programs` (data the core reads none of, `Registry::Entry`; content-model-v2.md §3.11) | content/exe6/navicust/<name>/init.luau |
 | What a program does, which bug it brings, which programs it excludes | the game's rules' data on the definition | EXE6: `effects`, `bug`, `exclusive` (and `anywhere`), read by rules/navicust |
 | A player's NaviCust: the programs placed (program, color, center, quarter turns, compressed) and the board's expansions | the player's setup | `PlayerSetup::navicust: Option<NaviCust>` (`crate::navicust`) |
-| The board: which cells a program may cover, its frame, the command line | the game's rule section | the stock ruleset's `navicust` (rules/navicust/section.luau), `Rules::navicust` (`NaviCustRules`) |
+| The board: which cells a program may cover, its frame, the command line | the game's rules | rules/navicust/board.luau, which the compile and `validate` read, and the editor's grid reads as data |
 | The compile: placement into stats and bugs | the game's rules | EXE6's `navicust` part (`round_setup`) |
 | A program's name | the locales | `[navicust_programs]` in locales/<lang>.toml |
 | A program's number (a save's part id is 4 × it + the color variant) | compat | content/exe6/compat/navicust.toml |
 
-So the engine knows a NaviCust's geometry, which is generic: a 7x7 grid (`navicust::SIZE`), a program's shape
-centered on its middle cell, quarter turns as EXE6's four copies make them (`navicust::rotate`), and boards of `o`
-(board), `f` (frame) and `.` (no cell) cells. It also knows the one placement rule every NaviCust game shares,
-`NaviCustRules::fits` (EXE6's `sub_813BB00`: each covered cell is a board or frame cell, and not all of them are
-frame). It knows nothing of what a program does. The definition's other fields are the game's, which its rules
-read with the side's setup (`rules.setup_of(side)`: since step c3 a player's NaviCust is two facts of the rules'
+So the engine knows nothing of a NaviCust since step c3b: the grid, a program's shape centered on its middle cell,
+its quarter turns, the boards of `o` (board), `f` (frame) and `.` (no cell) cells and the placement rule (EXE6's
+`sub_813BB00`: each covered cell is a board or frame cell, and not all of them are frame) are the game's rules'
+(@exelib/navicust/compile, with each game's board). The editor draws the NaviCust as a grid of its own, reading
+what it needs as data (crates/nettai-demo's editor/navicust.rs): the boards and the command line from the game's
+rules/navicust/board module as it loaded (`Battle::module_data`), each program's `shape`, `compressed`, `colors`
+and `plus` from its entry; where a game's data don't fit, the programs are a plain list. The definition's fields are the game's, which its rules read with the side's setup (`rules.setup_of(side)`: since step c3 a player's NaviCust is two facts of the rules'
 setup, `navicust_expansions` and `navicust_programs`, a list of `{ program, color, x, y, rotation, compressed }`,
-the color one of the program's `colors` by name). A game without a NaviCust has no `navicust` section and no part
-to compile one.
+the color one of the program's `colors` by name). A game without a NaviCust has no such facts and no part to
+compile one.
 
 **None means none.** `navicust_expansions` is none when the setup's stats are already the NaviCust's: a
 recording's (until step c3, `PlayerSetup::navicust` was `None`). The part then does nothing, so the golden traces and the lab are unchanged. `Some` means the stats
@@ -138,7 +139,7 @@ setup gives both (nettai-match's `starting`).
 ## 4. Other games
 
 A game brings its own programs (its root's `navicust_programs`, with its own names in its own colors), its
-own board section and its own compile part. **EXE5's is built** (exe5-map.md §15.13): its compile is EXE6's routine
+own board and its own compile part. **EXE5's is built** (exe5-map.md §15.13): its compile is EXE6's routine
 for routine, so the routines are shared (content/exelib/navicust/compile.luau, `compile.run(side, game)`), and each
 game's navicust module passes what is its own (`NaviCustGame`, content/exelib/types.d.luau): its board, its bugs in
 the order its bugs' routine runs them and what each writes by level, what a placed program counts besides (EXE5's
@@ -148,8 +149,8 @@ real world's ending alone, which no link battle can tell from it: exe5-map.md §
 shared constructors (@exelib/navicust/effects). EXE5's board
 has no frame and grows as EXE6's does (4x4, 5x4, 5x5 by its ExpMemry, key item 0x61), on its 5x5 grid, the middle of
 the engine's 7x7. The engine's model, the match file and the editor take it
-as they are. The editor draws whichever board the side's game's section gives, and lists the content's programs. BN4's NaviCust has two command lines and no plus parts. `NaviCustRules::command_line` is
-one row, so BN4 would widen it to a set of rows. That is a change to the section, not to the model.
+as they are. The editor draws whichever board the side's game's board module gives, and lists the content's programs. BN4's NaviCust has two command lines and no plus parts: its
+board module would name two rows, and the editor's grid would read a list of them.
 
 ## 5. Verification
 

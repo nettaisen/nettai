@@ -3116,3 +3116,35 @@ file format alone, nettai-frontend what plays; no version beyond the content has
   (`[patch_cards]`, `[navicust_programs]`), the library order a list by it (`navicust_programs` for what was
   `navicust`). Until the editor draws a side's facts by the views its rules declare (c3b), its NaviCust and card
   panes read the entries' data by field.
+
+### The editor lays out a side's setup itself (2026-10-06, branch nettai-player, step c3b)
+
+The user: "i don't think the rules should define how the editor is laid out, the editor is separate". The rules
+declare no view; the editor builds its form from the setup schema, and what is richer is its own.
+
+- **Generic by default** (crates/nettai-demo's editor/layout.rs and panes.rs): each setup field the core's panes
+  don't show (the navi, the folder and its marks by role; the auto battle data, its pane's) gets its type's view: a
+  value a row on the navi pane (a flag, a number, an enum's variants), a few definitions a checklist (the facts'
+  form lists), any other list a pane of rows added from the game's in library order, removed and reordered up to
+  its room, a record's fields as columns.
+- **The editor's own views**, chosen by field and data names and the data's shape, never a game's name, each the
+  generic view where the data don't fit: the SP times (the role `sp_times`: fixed rows, the frames a time); a list
+  of entries whose data hold an `mb` (its total); the NaviCust (editor/navicust.rs: `navicust_expansions` a pick of
+  the boards by size, `navicust_programs` a grid, reading each program's `shape`, `compressed`, `colors` and `plus`
+  and the game's rules/navicust/board module's `boards` and `COMMAND_LINE`; the colors the editor's own).
+- **`Battle::module_data(module)`** (`ContentHost::module_data`): what a module returned as the content loaded, as
+  plain data, a function left out; nothing is called. The Luau runtime keeps the modules' results.
+- **Validation stays the rules'**: nettai-match's `check::problems` gives each problem its side, field and entry
+  (from the rules' `validate`); the editor shows one beside its row, list entry or program (outlined red), and every
+  problem at the bottom as before.
+- **The arena** (the coordinator: "the Arena pane becomes the rounds list") lists the match's rounds, one to 99,
+  each added or removed, each round's stage and background stated or left to the seed.
+- **Gone from Rust**: the editor's old NaviCust, patch card and SP time panes; nettai-battle's navicust.rs (the
+  shapes, now nettai-match's test helpers) and the `navicust` rule section (`NaviCustRules`, `Board`,
+  `BoardCell`), nettai-match's `navicust_rules`. A board past the rules' sizes compiles nothing (`validate` says
+  so), and EXE5's import states the save's ExpMemry as it is. verify's tools/navicust/gen.py checks the boards
+  against the ROM in place of gen-content's section check.
+- **Checked**: both games' NaviCust data fit the grid (three boards, 4x4 to 5x5, the command line row 3, every
+  program's shapes and colors); the layout of both games (the NaviCust, the patch cards, the SP times; the
+  programs a list without the board data); the grid's edits keep a match the checks accept; screenshots of each pane
+  of both games, a problem beside its program, and the rounds list.

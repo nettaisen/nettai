@@ -137,25 +137,6 @@ pub fn level_required(content: &Content, navi: NaviHandle) -> bool {
     !n.changes_form() && (n.levels.is_some() || n.story.is_some())
 }
 
-/// Whether the game has a NaviCust (its rules' `navicust` section has a
-/// board): the editor's pane of it. (Until the editor draws a side's facts
-/// by the views its rules declare.)
-pub fn has_navicust(content: &Content) -> bool {
-    !navicust_rules(content).boards.is_empty()
-}
-
-/// Whether the game has patch cards (its root's collection `patch_cards`
-/// has any): the editor's pane of them. (Until the editor draws a side's
-/// facts by the views its rules declare.)
-pub fn has_patch_cards(content: &Content) -> bool {
-    !content.defs.entries_of("patch_cards").is_empty()
-}
-
-/// The NaviCust board of the content's game (its rule section
-/// `navicust`).
-pub fn navicust_rules(content: &Content) -> &nettai_battle::content::NaviCustRules {
-    &content.rules().navicust
-}
 
 /// A whole match: what is set for the match (its game: `exe6`, `exe5`;
 /// everything else a match names is that game's, and its rules are the
