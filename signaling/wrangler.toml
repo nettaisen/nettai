@@ -1,0 +1,16 @@
+# nettai's signaling server (src/index.ts): rooms where two players meet and
+# trade their WebRTC offer, answer and candidates. Run it here with
+# `npx wrangler dev` (http://127.0.0.1:8787; nettai-demo's --signal
+# ws://127.0.0.1:8787). Deploying it is `npx wrangler deploy`, on your own
+# Cloudflare account.
+name = "nettai-signal"
+main = "src/index.ts"
+compatibility_date = "2025-10-01"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]

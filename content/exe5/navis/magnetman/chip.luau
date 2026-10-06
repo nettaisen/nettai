@@ -37,8 +37,8 @@ export type State = {
 local GATHER, SEND, AWAY, RETURN = 0x0, 0x4, 0x8, 0xC
 local ANIM_GATHER, ANIM_RETURN = 17, 3
 local GATHER_TICKS, RETURN_TICKS = 4, 4
--- The magnets' variant (their fourth parameter).
-local VARIANT = 1
+-- The magnets' variant (their fourth parameter, 1): hit modifier 3, no status; they go at once, and stop while dimmed.
+local VARIANT = magnet.variant { hit_mod = 3, waits_for_navi = false, runs_while_dimmed = false }
 -- A panel holding the other side's navi's body, by side (0x080F137C), and one something stands on (as words).
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
 local TAKEN = 0x0F80_0000

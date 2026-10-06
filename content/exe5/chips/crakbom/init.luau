@@ -7,6 +7,15 @@
 local bombs = require("../lib/bombs")
 local crakbom = require("@self/crakbom")
 
+-- Its bomb (kind 1): the burst in palette 1, a crack's sound, hit modifier 3, cracking the column.
+local BOMB = crakbom.variant {
+    burst = new.effect { sprite = crakbom.burst, anim = 0, palette = 1 },
+    sound = asset.sound("panel-crack"),
+    hit_mod = 3,
+    bug = 0,
+    cracks = true,
+}
+
 local chip: Chip = {
     codes = { "C", "R", "V", "*" },
     element = "null",
@@ -19,7 +28,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = bombs.throw { held = bombs.held, held_anim = 6, thrower = crakbom.thrower(1) },
+    action = bombs.throw { held = bombs.held, held_anim = 6, thrower = crakbom.thrower(BOMB) },
 }
 
 return { crakbom = chip }

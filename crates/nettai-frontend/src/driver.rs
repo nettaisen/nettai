@@ -123,6 +123,9 @@ pub struct NetStatus {
     pub rollbacks: u64,
     /// Frames the battle waited on the other player (stalled or parked).
     pub waits: u64,
+    /// The connection is down and its transport is making it again, this
+    /// long so far (the battle waits meanwhile); none while it is up.
+    pub reconnecting: Option<std::time::Duration>,
 }
 
 /// What a frame of a driver that runs the battle itself did
