@@ -348,6 +348,11 @@ impl PeerConnection {
     }
 
     /// The next datagram that came, if any, without pumping.
+    /// Whether a datagram came that wasn't taken.
+    pub(crate) fn has_datagram(&self) -> bool {
+        !self.inbox.is_empty()
+    }
+
     pub(crate) fn next_datagram(&mut self) -> Option<Vec<u8>> {
         self.inbox.pop_front()
     }
