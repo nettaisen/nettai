@@ -3,7 +3,8 @@
 -- chip's SP navi, a step per two seconds past ten. A chip's damage by step is its `sp.by_time` (the rules extend
 -- chips with it, ./init); the step is how many of the steps' times (0x0800E93C, EXE6's: BCD hours, minutes, seconds,
 -- hundredths) the deletion time passes, which the side's setup states for the chip (`sp_times`: the save's
--- 0x0203E560, one a chip; none stated, deleted in no time). In the own-gauges mode (operation battle, battle flag
+-- 0x02002670, which a battle copies to 0x0203E560, one a chip; 0xFFFF a navi never deleted; none stated, deleted in
+-- no time). In the own-gauges mode (operation battle, battle flag
 -- 0x40) it is the chip's `sp.operation_battle` instead. Roll's SP chip counts holy panels and Django's turns (their
 -- damage is a count): neither goes by a time. An SP chip's `damage = sp_chips.damage`, which the round's setup asks
 -- once for each side.

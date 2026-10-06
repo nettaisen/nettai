@@ -3158,7 +3158,8 @@ The user: "i don't think you need learning right? since the battles are one-off"
   description's auto battle line (a side's auto battle facts are said with its other facts).
 - **A random EXE5 match states no auto battle data**: its sides have the rules' default, nothing learned. The data
   comes into a match from a match file, a save (`import::exe5`'s `state_auto_battle`, the block's places and records
-  as the facts; `auto_battle_of_save` for the editor's "From a save") and a recording (exe5-compat).
+  as the facts; `auto_battle_of_save` for the editor's "From a save"; both now `exe5_compat::import`'s) and a
+  recording (exe5-compat).
 - **The editor's Auto battle pane** is its own view of `auto_battle_places` and `auto_battle_records` by field name,
   laid out by EXE5's rules/auto_battle/block as it loaded (`PLACES`, `RECORDS`, `RECORD_CHIPS`, `LISTS`), a list
   named for a chip class holding what the game writes there (the `first` list says nothing now).

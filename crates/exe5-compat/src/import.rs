@@ -6,13 +6,13 @@
 //! Soul Unison and Chaos Unison, and its auto battle data (what a navi in
 //! auto battle plays from it: EXE5's rules' `auto_battle_places` and
 //! `auto_battle_records`); for a side that operates a team navi, the
-//! navi's level, whose HP the story gives. (A save keeps no SP deletion
-//! times: the side keeps its own.) `Match::import_save` comes here for a save
-//! that isn't EXE6's. (A boundary with exe5-compat, as `import::exe6` is
-//! with exe6-compat: a save's bytes and the original's numbers in them.)
+//! navi's level, whose HP the story gives; and its SP deletion times. The
+//! import is the compat boundary's: a save is the original's bytes, and a
+//! side its game's facts (nettai-demo's `save_import` picks the game's
+//! import).
 
-use crate::{Folder, Side, ids};
-use exe5_compat::save::{AUTO_BATTLE_EMPTY, AUTO_BATTLE_PATTERN, AutoBattleBlock, AutoBattlePattern, Save};
+use nettai_match::{Folder, Side, ids};
+use crate::save::{AUTO_BATTLE_EMPTY, AUTO_BATTLE_PATTERN, AutoBattleBlock, AutoBattlePattern, Save};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::FolderChip;
 use nettai_battle::rules::Fact;
@@ -35,9 +35,9 @@ const BLANK: AutoBattlePattern = AutoBattlePattern { dx: -1, dy: -1, chips: [AUT
 /// rules can't play in auto battle comes in as the save has it: the game
 /// writes none among the places, where the rules' `validate` refuses one,
 /// and a record may hold one.) What is worth saying about it.
-pub(crate) fn state_auto_battle(content: &Content, game: &str, block: &AutoBattleBlock, side: &mut Side) -> Vec<String> {
+pub fn state_auto_battle(content: &Content, game: &str, block: &AutoBattleBlock, side: &mut Side) -> Vec<String> {
     let mut notes = Vec::new();
-    let compat = exe5_compat::Compat::exe5();
+    let compat = crate::Compat::exe5();
     let mut nameless: Vec<u16> = Vec::new();
     let mut chip = |n: u16| {
         let c = compat.chip_key(n).and_then(|k| ids::chip(content, game, k));
@@ -103,167 +103,192 @@ pub(crate) fn state_auto_battle(content: &Content, game: &str, block: &AutoBattl
 /// takes it alone): what the game has learned of the save's player, and
 /// what is worth saying about it; or why the file gives none.
 pub fn auto_battle_of_save(content: &Content, game: &str, file: &[u8], side: &mut Side) -> Result<Vec<String>, String> {
-    if !crate::facts::takes(content, "auto_battle_places") {
+    if !nettai_match::facts::takes(content, "auto_battle_places") {
         return Err(format!("{game} has no auto battle"));
     }
-    match crate::save_game(file)? {
-        exe5_compat::ROOT => Ok(state_auto_battle(content, game, &read(file)?.auto_battle(), side)),
-        other => Err(format!("a save of {other}, which keeps no auto battle data")),
-    }
+    Ok(state_auto_battle(content, game, &read(file)?.auto_battle(), side))
 }
 
 /// The EXE5 save in `file` (a .sav's bytes, or a raw save image as Tango's
 /// netplay templates hold), or why it is none.
-pub(crate) fn read(file: &[u8]) -> Result<Save, String> {
+pub fn read(file: &[u8]) -> Result<Save, String> {
     Save::read(file).or_else(|e| Save::from_image(file).map_err(|_| e))
 }
 
-impl Side {
-    /// Take the karma, the souls, Soul Unison, the NaviCust board's
-    /// expansions and the auto battle data from an EXE5 save, the side of
-    /// a match of `game` (an EXE5 one): the souls its version's flags give
-    /// (the game's souls of those numbers) as the side's soul list, and its
-    /// Soul Unison and Chaos Unison (event flags 0 and 0x236); the save's
-    /// ExpMemry (key item 0x61's count) as the expansions of the side's
-    /// NaviCust, if it has one (its programs stay: one off a smaller board
-    /// is the match's check's to say); the save's auto battle data (its
-    /// first block, [`state_auto_battle`]: what the game has learned of this
-    /// player) as the side's. What is worth saying about it.
-    pub fn import_exe5_save(&mut self, content: &Content, game: &str, save: &Save) -> Vec<String> {
-        let mut notes = Vec::new();
-        let compat = exe5_compat::Compat::exe5();
-        // The navi it operates.
-        match compat.navi_key(save.navi()).and_then(|k| crate::ids::navi(content, game, k)) {
-            Some(navi) => {
-                if let Err(e) = self.set_navi(content, navi) {
-                    notes.push(format!("the save's navi is left out: {e}"));
-                }
-            }
-            None => notes.push(format!("the save operates navi {}, which {game} hasn't: the side keeps its navi", save.navi())),
-        }
-        let megaman = content.navi(self.navi(content)).forms.is_some();
-        // (A fact the content's rules don't take is the save's alone: said,
-        // and left out.)
-        let mut left_out: Vec<String> = Vec::new();
-        let mut state = |side: &mut Side, field: &str, values: &[Fact]| {
-            if let Err(e) = side.set_fact(content, field, values) {
-                left_out.push(format!("the save's {field} is left out: {e}"));
-            }
-        };
-        state(self, "karma", &[Fact::Value(Value::Int(save.light_dark() as i64))]);
-        state(self, "soul_unison", &[Fact::Value(Value::Bool(save.soul_unison()))]);
-        state(self, "chaos_unison", &[Fact::Value(Value::Bool(save.chaos_unison()))]);
-        // (A save's souls are by the original's number: compat names each
-        // number's form.)
-        let mut souls = Vec::new();
-        let mut missing = Vec::new();
-        for n in save.souls() {
-            match compat.form(n).and_then(|k| crate::ids::form(content, game, k)) {
-                Some(f) => souls.push(Fact::Value(Value::Def(Registry::Form, f.0))),
-                None => missing.push(n),
+/// Take the karma, the souls, Soul Unison, the NaviCust board's
+/// expansions and the auto battle data from an EXE5 save, the side of
+/// a match of `game` (an EXE5 one): the souls its version's flags give
+/// (the game's souls of those numbers) as the side's soul list, and its
+/// Soul Unison and Chaos Unison (event flags 0 and 0x236); the save's
+/// ExpMemry (key item 0x61's count) as the expansions of the side's
+/// NaviCust, if it has one (its programs stay: one off a smaller board
+/// is the match's check's to say); the save's auto battle data (its
+/// first block, [`state_auto_battle`]: what the game has learned of this
+/// player) as the side's; the save's SP navi deletion times (`sp_times`,
+/// [`sp_times`]). What is worth saying about it.
+pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Vec<String> {
+    let mut notes = Vec::new();
+    let compat = crate::Compat::exe5();
+    // The navi it operates.
+    match compat.navi_key(save.navi()).and_then(|k| ids::navi(content, game, k)) {
+        Some(navi) => {
+            if let Err(e) = side.set_navi(content, navi) {
+                notes.push(format!("the save's navi is left out: {e}"));
             }
         }
-        state(self, "souls", &souls);
-        notes.extend(missing.iter().map(|n| format!("the save has soul {n}, which {game} hasn't")));
-        // Its equipped folder, by the chips' numbers' names.
-        let f = save.folder();
-        let mut chips = [None; 30];
-        let mut nameless: Vec<u16> = Vec::new();
-        for (slot, &v) in chips.iter_mut().zip(&f.chips).filter(|(_, v)| **v & 0x1FF != 0) {
-            match compat.chip_key(v & 0x1FF).and_then(|k| ids::chip(content, game, k)) {
-                Some(c) => *slot = Some(FolderChip::new(c, ChipCode((v >> 9) as u8))),
-                None => nameless.push(v & 0x1FF),
-            }
+        None => notes.push(format!("the save operates navi {}, which {game} hasn't: the side keeps its navi", save.navi())),
+    }
+    let megaman = content.navi(side.navi(content)).forms.is_some();
+    // (A fact the content's rules don't take is the save's alone: said,
+    // and left out.)
+    let mut left_out: Vec<String> = Vec::new();
+    let mut state = |side: &mut Side, field: &str, values: &[Fact]| {
+        if let Err(e) = side.set_fact(content, field, values) {
+            left_out.push(format!("the save's {field} is left out: {e}"));
         }
-        if !nameless.is_empty() {
-            let numbers: Vec<String> = nameless.iter().map(|n| format!("{n:#05x}")).collect();
-            notes.push(format!("the save's folder holds chip numbers {game} has no chip for ({}): their entries are left empty", numbers.join(", ")));
+    };
+    state(side, "karma", &[Fact::Value(Value::Int(save.light_dark() as i64))]);
+    state(side, "soul_unison", &[Fact::Value(Value::Bool(save.soul_unison()))]);
+    state(side, "chaos_unison", &[Fact::Value(Value::Bool(save.chaos_unison()))]);
+    // (A save's souls are by the original's number: compat names each
+    // number's form.)
+    let mut souls = Vec::new();
+    let mut missing = Vec::new();
+    for n in save.souls() {
+        match compat.form(n).and_then(|k| ids::form(content, game, k)) {
+            Some(f) => souls.push(Fact::Value(Value::Def(Registry::Form, f.0))),
+            None => missing.push(n),
         }
-        if let Err(e) = self.set_folder(content, &Folder { chips, regular: f.regular, tags: None }) {
-            notes.push(format!("the save's folder is left out: {e}"));
+    }
+    state(side, "souls", &souls);
+    notes.extend(missing.iter().map(|n| format!("the save has soul {n}, which {game} hasn't")));
+    // Its equipped folder, by the chips' numbers' names.
+    let f = save.folder();
+    let mut chips = [None; 30];
+    let mut nameless: Vec<u16> = Vec::new();
+    for (slot, &v) in chips.iter_mut().zip(&f.chips).filter(|(_, v)| **v & 0x1FF != 0) {
+        match compat.chip_key(v & 0x1FF).and_then(|k| ids::chip(content, game, k)) {
+            Some(c) => *slot = Some(FolderChip::new(c, ChipCode((v >> 9) as u8))),
+            None => nameless.push(v & 0x1FF),
         }
-        // MegaMan's NaviCust (its board, the save's ExpMemry: one past the
-        // rules' is their `validate`'s to say) and patch cards; a team navi
-        // has neither.
+    }
+    if !nameless.is_empty() {
+        let numbers: Vec<String> = nameless.iter().map(|n| format!("{n:#05x}")).collect();
+        notes.push(format!("the save's folder holds chip numbers {game} has no chip for ({}): their entries are left empty", numbers.join(", ")));
+    }
+    if let Err(e) = side.set_folder(content, &Folder { chips, regular: f.regular, tags: None }) {
+        notes.push(format!("the save's folder is left out: {e}"));
+    }
+    // MegaMan's NaviCust (its board, the save's ExpMemry: one past the
+    // rules' is their `validate`'s to say) and patch cards; a team navi
+    // has neither.
+    if megaman {
+        state(side, "navicust_expansions", &[Fact::Value(Value::Int(save.expansions() as i64))]);
+        match crate::codec::navicust(content, compat, save.navicust_list(), |id| save.compressed(id)) {
+            Ok(programs) => state(side, "navicust_programs", &programs),
+            Err(e) => notes.push(format!("the save's NaviCust is left out: {e}")),
+        }
+        match crate::codec::patch_cards(content, compat, save.version(), &save.patch_cards()) {
+            Ok(cards) => state(side, "patch_cards", &cards),
+            Err(e) => notes.push(format!("the save's patch cards are left out: {e}")),
+        }
+    } else {
+        state(side, "navicust_programs", &[]);
+        state(side, "patch_cards", &[]);
+    }
+    // What the save brings to the stats: MegaMan's base HP (a team
+    // navi's is its story's), the operated navi's Regular memory.
+    if let Some(stats) = save.team_navi_stats(save.navi()) {
         if megaman {
-            state(self, "navicust_expansions", &[Fact::Value(Value::Int(save.expansions() as i64))]);
-            match exe5_compat::codec::navicust(content, compat, save.navicust_list(), |id| save.compressed(id)) {
-                Ok(programs) => state(self, "navicust_programs", &programs),
-                Err(e) => notes.push(format!("the save's NaviCust is left out: {e}")),
-            }
-            match exe5_compat::codec::patch_cards(content, compat, save.version(), &save.patch_cards()) {
-                Ok(cards) => state(self, "patch_cards", &cards),
-                Err(e) => notes.push(format!("the save's patch cards are left out: {e}")),
-            }
-        } else {
-            state(self, "navicust_programs", &[]);
-            state(self, "patch_cards", &[]);
+            let hp = u16::from_le_bytes([stats[0x3E], stats[0x3F]]);
+            state(side, "hp", &[Fact::Value(Value::Int(hp as i64))]);
         }
-        // What the save brings to the stats: MegaMan's base HP (a team
-        // navi's is its story's), the operated navi's Regular memory.
-        if let Some(stats) = save.team_navi_stats(save.navi()) {
-            if megaman {
-                let hp = u16::from_le_bytes([stats[0x3E], stats[0x3F]]);
-                state(self, "hp", &[Fact::Value(Value::Int(hp as i64))]);
-            }
-            state(self, "reg_up", &[Fact::Value(Value::Int(stats[0x09] as i64))]);
-        }
-        notes.extend(left_out);
-        if crate::facts::takes(content, "auto_battle_places") {
-            notes.extend(state_auto_battle(content, game, &save.auto_battle(), self));
-        }
-        notes.extend(self.import_exe5_team_navi(content, save));
-        notes
+        state(side, "reg_up", &[Fact::Value(Value::Int(stats[0x09] as i64))]);
     }
+    let (times, nameless) = sp_times(content, game, save);
+    state(side, "sp_times", &times);
+    notes.extend(nameless);
+    notes.extend(left_out);
+    if nettai_match::facts::takes(content, "auto_battle_places") {
+        notes.extend(state_auto_battle(content, game, &save.auto_battle(), side));
+    }
+    notes.extend(team_navi(content, side, save));
+    notes
+}
 
-    /// A side that operates a team navi (a navi with a story) takes the
-    /// save's level (its story flags' count), which its HP is the story's
-    /// at (EXE5's rules/save), and, where the save's version has the navi,
-    /// the light/dark value of the navi's own block.
-    fn import_exe5_team_navi(&mut self, content: &Content, save: &Save) -> Vec<String> {
-        // (MegaMan takes no level.)
-        if content.navi(self.navi(content)).story.is_none() {
-            return match self.set_level(content, None) {
-                Ok(()) => Vec::new(),
-                Err(e) => vec![format!("the side's level is left as it is: {e}")],
-            };
-        }
-        let name = crate::names::navi(content, self.navi(content));
-        let level = save.navi_level();
-        if let Err(e) = self.set_level(content, Some(level)) {
-            return vec![format!("{}: the save's level {level} is left out: {e}", crate::names::navi(content, self.navi(content)))];
-        }
-        let compat = exe5_compat::Compat::exe5();
-        let key = crate::ids::local(&content.defs.navi(self.navi(content)).key);
-        let block = compat.navi_number(key).and_then(|n| save.team_navi_stats(n));
-        let mut notes = vec![format!("{name}: the save's level {level}")];
-        match block.map(|b| exe5_compat::codec::navi_stats(&b)) {
-            Some(Ok(b)) => {
-                if let Err(e) = self.set_fact(content, "karma", &[Fact::Value(Value::Int(b.light_dark.0 as i64))]) {
-                    notes.push(format!("{name}: its block's karma is left out: {e}"));
-                }
+/// The save's SP navi deletion times as the rules' `sp_times` (a `{ chip,
+/// frames }` each): the chip compat names each slot by (records.toml's
+/// `sp_slots`), in the slots' order, with the save's frames as they are.
+/// A time of 0xFFFF (its navi never deleted) is stated as 65535 frames:
+/// the original's own, which its damage reads as the slowest time (the
+/// chip's least damage), as the game's battle does; left out, the rules
+/// would read it as deleted in no time. A slot whose chip `game` hasn't is
+/// said and left out.
+pub fn sp_times(content: &Content, game: &str, save: &Save) -> (Vec<Fact<'static>>, Vec<String>) {
+    let compat = crate::Compat::exe5();
+    let times = save.sp_times();
+    let mut slots: Vec<(&String, u8)> = compat.records.sp_slots.iter().map(|(k, &n)| (k, n)).collect();
+    slots.sort_by_key(|&(_, n)| n);
+    let mut notes = Vec::new();
+    let facts = slots
+        .into_iter()
+        .filter_map(|(key, n)| match ids::chip(content, game, key) {
+            Some(c) => Some(Fact::Record(vec![("chip", Fact::Value(Value::Def(Registry::Chip, c.0))), ("frames", Fact::Value(Value::Int(times[n as usize] as i64)))])),
+            None => {
+                notes.push(format!("the save's SP time of {key} (slot {n}) is left out: {game} has no such chip"));
+                None
             }
-            Some(Err(e)) => notes.push(format!("{name}: the navi's block doesn't read ({e}): no karma of its own")),
-            None => notes.push(format!("{name}: its version has no such navi: no karma of its own")),
-        }
-        notes
+        })
+        .collect();
+    (facts, notes)
+}
+
+/// A side that operates a team navi (a navi with a story) takes the
+/// save's level (its story flags' count), which its HP is the story's
+/// at (EXE5's rules/save), and, where the save's version has the navi,
+/// the light/dark value of the navi's own block.
+fn team_navi(content: &Content, side: &mut Side, save: &Save) -> Vec<String> {
+    // (MegaMan takes no level.)
+    if content.navi(side.navi(content)).story.is_none() {
+        return match side.set_level(content, None) {
+            Ok(()) => Vec::new(),
+            Err(e) => vec![format!("the side's level is left as it is: {e}")],
+        };
     }
+    let name = nettai_match::names::navi(content, side.navi(content));
+    let level = save.navi_level();
+    if let Err(e) = side.set_level(content, Some(level)) {
+        return vec![format!("{}: the save's level {level} is left out: {e}", nettai_match::names::navi(content, side.navi(content)))];
+    }
+    let compat = crate::Compat::exe5();
+    let key = ids::local(&content.defs.navi(side.navi(content)).key);
+    let block = compat.navi_number(key).and_then(|n| save.team_navi_stats(n));
+    let mut notes = vec![format!("{name}: the save's level {level}")];
+    match block.map(|b| crate::codec::navi_stats(&b)) {
+        Some(Ok(b)) => {
+            if let Err(e) = side.set_fact(content, "karma", &[Fact::Value(Value::Int(b.light_dark.0 as i64))]) {
+                notes.push(format!("{name}: its block's karma is left out: {e}"));
+            }
+        }
+        Some(Err(e)) => notes.push(format!("{name}: the navi's block doesn't read ({e}): no karma of its own")),
+        None => notes.push(format!("{name}: its version has no such navi: no karma of its own")),
+    }
+    notes
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::{exe5_content, exe6_content};
+    use nettai_match::testing::exe5_content;
 
     /// A Team ProtoMan save, dark, with every soul flag set and one
     /// ExpMemry: its karma, its version's souls EXE5 has (ProtoSoul among
     /// them) and its NaviCust's board (5x4, where a new side's is the
-    /// largest), through the save import (`import_save`, which takes a save
-    /// that isn't EXE6's as EXE5's, into a match of EXE5's).
+    /// largest).
     #[test]
     fn a_exe5_save_gives_the_karma_and_souls() {
         let content = exe5_content();
-        let mut image = vec![0u8; exe5_compat::save::IMAGE_SIZE];
+        let mut image = vec![0u8; crate::save::IMAGE_SIZE];
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOB 20041006 US");
         // (Its auto battle data: nothing learned.)
         image[0x554C..0x554C + 0xE0].fill(0xFF);
@@ -271,40 +296,36 @@ mod tests {
         image[0x29F9] = 0xFF;
         image[0x52A8 + 0x44..0x52A8 + 0x46].copy_from_slice(&100u16.to_le_bytes());
         image[0x3DB0 + 0x61] = 1;
-        assert_eq!(crate::save_game(&image), Ok("exe5"));
-        // Into an EXE6 match on EXE5's content (a frontend loads the save's
-        // game's): the match becomes EXE5's.
-        let mut m = crate::Match::empty(&exe6_content(), "exe6").unwrap();
-        m.seed = Some(9);
-        let notes = m.import_save(&content, 0, &image).unwrap();
-        assert_eq!((m.game.as_str(), m.seed), ("exe5", Some(9)));
-        assert_eq!(notes[0], "an exe5 save: the match is now exe5's, both sides new");
-        // On EXE6's content alone, an EXE5 save makes no match.
-        let mut six = crate::Match::empty(&exe6_content(), "exe6").unwrap();
-        let e = six.import_save(&exe6_content(), 0, &image).unwrap_err();
-        assert!(e.contains("an exe5 save, but the content is exe6's"), "{e}");
+        // (Its SP times: ProtoMan SP's slot 1 in 721 frames, GridMan SP's
+        // 18 never; the rest in no time.)
+        image[0x2670 + 2..0x2670 + 4].copy_from_slice(&721u16.to_le_bytes());
+        image[0x2670 + 36..0x2670 + 38].copy_from_slice(&0xFFFFu16.to_le_bytes());
+        let mut m = nettai_match::Match::empty(&content, "exe5").unwrap();
+        let notes = import_file(&content, &mut m, 0, &image).unwrap();
         let s = &m.sides[0];
-        assert_eq!(crate::ids::local(&content.defs.navi(s.navi(&content)).key), "megaman");
-        assert!(crate::ids::in_game(&content, "exe5", &content.defs.navi(s.navi(&content)).key));
-        use crate::facts::Stated;
+        let times = nettai_match::testing::sp_times(&content, &s.facts);
+        assert_eq!((times.len(), &times[0], &times[1], &times[17]), (18, &("protomn-sp".to_string(), 721), &("gyroman-sp".to_string(), 0), &("gridman-sp".to_string(), 0xFFFF)));
+        assert_eq!(nettai_match::ids::local(&content.defs.navi(s.navi(&content)).key), "megaman");
+        assert!(nettai_match::ids::in_game(&content, "exe5", &content.defs.navi(s.navi(&content)).key));
+        use nettai_match::facts::Stated;
         assert_eq!(s.facts.get(&content, "karma"), Some(Stated::Number(100)));
         let listed = s.facts.get(&content, "souls").unwrap().defs();
-        let souls: Vec<&str> = listed.iter().map(|&f| crate::ids::local(&content.defs.form(nettai_content_api::FormHandle(f)).key)).collect();
+        let souls: Vec<&str> = listed.iter().map(|&f| nettai_match::ids::local(&content.defs.form(nettai_content_api::FormHandle(f)).key)).collect();
         assert!(souls.contains(&"protosoul") && !souls.contains(&"colonelsoul"), "{souls:?}");
         // (Its six souls: those the game hasn't yet are said.)
-        assert_eq!(notes.len() - 1 + souls.len(), 6, "{notes:?}");
-        assert_eq!(m.sides[1], crate::Match::empty(&content, "exe5").unwrap().sides[1]);
-        let expansions = |s: &crate::Side| crate::testing::navicust_expansions(&content, s);
+        assert_eq!(notes.len() + souls.len(), 6, "{notes:?}");
+        assert_eq!(m.sides[1], nettai_match::Match::empty(&content, "exe5").unwrap().sides[1]);
+        let expansions = |s: &nettai_match::Side| nettai_match::testing::navicust_expansions(&content, s);
         assert_eq!((expansions(s), expansions(&m.sides[1])), (Some(1), Some(2)));
         // More ExpMemry than the board has sizes: the side states it, and the
         // rules' `validate` says it is past the boards.
         image[0x3DB0 + 0x61] = 3;
-        m.import_save(&content, 0, &image).unwrap();
-        assert_eq!(crate::testing::navicust_expansions(&content, &m.sides[0]), Some(3));
-        let problems = crate::check_match(&content, &m);
+        import_file(&content, &mut m, 0, &image).unwrap();
+        assert_eq!(nettai_match::testing::navicust_expansions(&content, &m.sides[0]), Some(3));
+        let problems = nettai_match::check_match(&content, &m);
         assert!(problems.iter().any(|p| p.contains("a NaviCust with 3 expansions")), "{problems:?}");
-        let e = m.import_save(&content, 0, b"not a save").unwrap_err();
-        assert!(e.contains("EXE6") && e.contains("EXE5"), "{e}");
+        let e = import_file(&content, &mut m, 0, b"not a save").unwrap_err();
+        assert!(e.contains("EXE5"), "{e}");
     }
 
     /// A Team ProtoMan save operating ProtoMan, whose story is four flags
@@ -316,7 +337,7 @@ mod tests {
     #[test]
     fn a_exe5_save_gives_a_team_navi_its_level() {
         let content = exe5_content();
-        let mut image = vec![0u8; exe5_compat::save::IMAGE_SIZE];
+        let mut image = vec![0u8; crate::save::IMAGE_SIZE];
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOB 20041006 US");
         // Event flags 0x300 to 0x303 (and 0x305, past the first clear one).
         image[0x29F8 + 0x60] = 0xF4;
@@ -329,32 +350,32 @@ mod tests {
         }
         // (The navi operated: ProtoMan, Team ProtoMan's first.)
         image[0x2941] = 1;
-        let protoman = crate::ids::navi(&content, "exe5", "protoman").unwrap();
-        let mut m = crate::Match::empty(&content, "exe5").unwrap();
-        let notes = m.import_save(&content, 0, &image).unwrap();
+        let protoman = nettai_match::ids::navi(&content, "exe5", "protoman").unwrap();
+        let mut m = nettai_match::Match::empty(&content, "exe5").unwrap();
+        let notes = import_file(&content, &mut m, 0, &image).unwrap();
         let s = &m.sides[0];
         assert_eq!(s.navi(&content), protoman);
         for field in ["navicust_programs", "patch_cards"] {
             assert_eq!(s.facts.get(&content, field).map(|v| v.defs()), Some(Vec::new()), "{field}: MegaMan's");
         }
         assert_eq!(s.level(&content), Some(4));
-        assert_eq!(s.facts.get(&content, "karma"), Some(crate::facts::Stated::Number(519)));
+        assert_eq!(s.facts.get(&content, "karma"), Some(nettai_match::facts::Stated::Number(519)));
         assert!(notes.iter().any(|n| n.contains("level 4")), "{notes:?}");
-        assert_eq!(crate::check::check_side_alone(&content, &m.game, s), Vec::<String>::new());
-        let hp = |m: &crate::Match| {
+        assert_eq!(nettai_match::check::check_side_alone(&content, &m.game, s), Vec::<String>::new());
+        let hp = |m: &nettai_match::Match| {
             let mut m = m.clone();
             m.sides[1] = m.sides[0].clone();
-            crate::check::round_stats(&content, &m).unwrap()[0].max_hp
+            nettai_match::check::round_stats(&content, &m).unwrap()[0].max_hp
         };
         assert_eq!(hp(&m), 450, "the story's at level 4");
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOK 20041006 US");
-        let notes = m.import_save(&content, 0, &image).unwrap();
+        let notes = import_file(&content, &mut m, 0, &image).unwrap();
         assert_eq!((m.sides[0].level(&content), hp(&m)), (Some(4), 450));
         assert!(notes.iter().any(|n| n.contains("its version has no such navi")), "{notes:?}");
         // A save operating MegaMan: a MegaMan side, who takes no level.
         image[0x2941] = 0;
-        m.import_save(&content, 0, &image).unwrap();
-        assert_eq!(crate::ids::local(&content.defs.navi(m.sides[0].navi(&content)).key), "megaman");
+        import_file(&content, &mut m, 0, &image).unwrap();
+        assert_eq!(nettai_match::ids::local(&content.defs.navi(m.sides[0].navi(&content)).key), "megaman");
         assert_eq!(m.sides[0].level(&content), None);
     }
 
@@ -366,7 +387,7 @@ mod tests {
     #[test]
     fn megamans_souls_are_in_the_order_of_their_numbers() {
         let content = exe5_content();
-        let compat = exe5_compat::Compat::exe5();
+        let compat = crate::Compat::exe5();
         let megaman = content.defs.navi_by_key("megaman").unwrap();
         let souls = &content.navi(megaman).forms.as_ref().unwrap().souls;
         let numbers: Vec<Option<u8>> = souls.iter().map(|&f| compat.form_number(&content.defs.form(f).key)).collect();
@@ -377,8 +398,8 @@ mod tests {
     /// The block side `side`'s auto battle facts state (the import's way
     /// back): a place past the list empty, a record past it blank.
     fn block_of(content: &Content, side: &Side) -> AutoBattleBlock {
-        use crate::facts::Stated;
-        let number = |h: u16| exe5_compat::Compat::exe5().chip_entry(crate::ids::local(&content.defs.chip(nettai_content_api::ChipHandle(h)).key)).unwrap().id;
+        use nettai_match::facts::Stated;
+        let number = |h: u16| crate::Compat::exe5().chip_entry(nettai_match::ids::local(&content.defs.chip(nettai_content_api::ChipHandle(h)).key)).unwrap().id;
         let get = |fields: &[(String, Stated)], name: &str| fields.iter().find(|(n, _)| n == name).map(|(_, v)| v.clone());
         let half = |fields: &[(String, Stated)]| match (get(fields, "chip"), get(fields, "pattern"), get(fields, "zero")) {
             (Some(Stated::Def(_, Some(h))), _, _) => number(h),
@@ -422,8 +443,8 @@ mod tests {
     #[test]
     fn a_exe5_save_gives_the_auto_battle_data() {
         let content = exe5_content();
-        let number = |name: &str| exe5_compat::Compat::exe5().chip_entry(name).unwrap().id;
-        let mut image = vec![0u8; exe5_compat::save::IMAGE_SIZE];
+        let number = |name: &str| crate::Compat::exe5().chip_entry(name).unwrap().id;
+        let mut image = vec![0u8; crate::save::IMAGE_SIZE];
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOK 20041006 US");
         image[0x554C..0x554C + 0xE0].fill(0xFF);
         let put = |image: &mut [u8], at: usize, halves: &[u16]| {
@@ -441,8 +462,8 @@ mod tests {
         put(&mut image, 0x5A, &[number("sword"), number("wideswrd")]);
         put(&mut image, 0x64, &[7, 0]);
         image[0x554C + 0x68..0x554C + 0x78].fill(0);
-        let mut m = crate::Match::empty(&content, "exe5").unwrap();
-        let notes = m.import_save(&content, 1, &image).unwrap();
+        let mut m = nettai_match::Match::empty(&content, "exe5").unwrap();
+        let notes = import_file(&content, &mut m, 1, &image).unwrap();
         let mut want = AutoBattleBlock { places: [AUTO_BATTLE_EMPTY; 42], patterns: [BLANK; RECORDS] };
         want.places[1] = number("areagrab");
         for i in 3..7 {
@@ -457,12 +478,12 @@ mod tests {
         // (The other side: a new match's, nothing learned: every record zeros.)
         let nothing = AutoBattleBlock { places: [AUTO_BATTLE_EMPTY; 42], patterns: [AutoBattlePattern { dx: 0, dy: 0, chips: [0; 5], score: 0 }; RECORDS] };
         assert_eq!(block_of(&content, &m.sides[0]), nothing);
-        assert!(!crate::check_match(&content, &m).iter().any(|p| p.contains("auto battle")), "{:?}", crate::check_match(&content, &m));
+        assert!(!nettai_match::check_match(&content, &m).iter().any(|p| p.contains("auto battle")), "{:?}", nettai_match::check_match(&content, &m));
         // What a match can't state: a chip number the game has no chip for
         // (among the places, and in a record), a pattern past the eighth.
         put(&mut image, 8, &[0x1FF, 0, 0x8009]);
         put(&mut image, 0x5E, &[0x1FE]);
-        let notes = m.import_save(&content, 1, &image).unwrap();
+        let notes = import_file(&content, &mut m, 1, &image).unwrap();
         let said: Vec<&String> = notes.iter().filter(|n| n.contains("auto battle")).collect();
         assert_eq!(said.len(), 2, "{notes:?}");
         assert!(said[0].contains("place 7 of the save's auto battle data names pattern 10, past its eight"), "{notes:?}");
@@ -472,7 +493,7 @@ mod tests {
         assert_eq!(data.patterns[0].chips[2], AUTO_BATTLE_EMPTY);
         // A block nothing has written: no data stated.
         image[0x554C..0x554C + 0xE0].fill(0xFF);
-        m.import_save(&content, 1, &image).unwrap();
+        import_file(&content, &mut m, 1, &image).unwrap();
         assert_eq!(block_of(&content, &m.sides[1]), AutoBattleBlock { places: [AUTO_BATTLE_EMPTY; 42], patterns: [BLANK; RECORDS] });
         // The data alone, from a save's file (the editor's "From a save").
         let mut side = m.sides[0].clone();
@@ -494,7 +515,7 @@ mod tests {
     #[test]
     fn what_a_match_states_of_a_block_is_the_block() {
         let content = exe5_content();
-        let n = |name: &str| exe5_compat::Compat::exe5().chip_entry(name).unwrap().id;
+        let n = |name: &str| crate::Compat::exe5().chip_entry(name).unwrap().id;
         let none = AUTO_BATTLE_EMPTY;
         let blank = BLANK;
         let zero = AutoBattlePattern { dx: 0, dy: 0, chips: [0; 5], score: 0 };
@@ -530,7 +551,7 @@ mod tests {
             ("blank", block(&[], [blank; 8])),
         ];
         for (name, original) in &blocks {
-            let mut m = crate::Match::empty(&content, "exe5").unwrap();
+            let mut m = nettai_match::Match::empty(&content, "exe5").unwrap();
             let notes = state_auto_battle(&content, "exe5", original, &mut m.sides[0]);
             assert_eq!(notes, Vec::<String>::new(), "{name}");
             assert_eq!(block_of(&content, &m.sides[0]), *original, "{name}");
@@ -538,11 +559,17 @@ mod tests {
             assert_eq!(AutoBattleBlock::read(&original.bytes()), Ok(*original), "{name}");
             // Through a match file.
             state_auto_battle(&content, "exe5", &blocks[8].1, &mut m.sides[1]);
-            let text = crate::write(&content, &m);
-            let file: crate::file::MatchFile = toml::from_str(&text).unwrap_or_else(|e| panic!("{name}: {e}\n{text}"));
-            let back = crate::file::resolve(&content, &file).unwrap_or_else(|e| panic!("{name}: {e:?}\n{text}"));
+            let text = nettai_match::write(&content, &m);
+            let file: nettai_match::file::MatchFile = toml::from_str(&text).unwrap_or_else(|e| panic!("{name}: {e}\n{text}"));
+            let back = nettai_match::file::resolve(&content, &file).unwrap_or_else(|e| panic!("{name}: {e:?}\n{text}"));
             assert_eq!(back.sides[0], m.sides[0], "{name}:\n{text}");
             assert_eq!(block_of(&content, &back.sides[0]), *original, "{name}");
         }
+    }
+
+    /// A save's file imported into side `side` of `m` (an EXE5 match).
+    fn import_file(content: &Content, m: &mut nettai_match::Match, side: usize, file: &[u8]) -> Result<Vec<String>, String> {
+        let game = m.game.clone();
+        Ok(import(content, &game, &mut m.sides[side], &read(file)?))
     }
 }

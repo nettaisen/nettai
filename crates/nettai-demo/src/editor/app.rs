@@ -605,21 +605,12 @@ impl Editor {
                 self.typed.insert((s, "level"), t);
             }
             Msg::ImportSave(s) => {
-                // An EXE6 save, or an EXE5 one (a .sav, or a raw image as
-                // Tango's netplay templates hold): a match of its game.
-                if let Some(path) = rfd::FileDialog::new().add_filter("EXE6 or EXE5 save", &["sav", "raw"]).pick_file() {
+                // A save of the arena's game (a .sav, or a raw image as
+                // Tango's netplay templates hold).
+                if let Some(path) = rfd::FileDialog::new().add_filter("save", &["sav", "raw"]).pick_file() {
                     let read = std::fs::read(&path).map_err(|e| e.to_string());
-                    let game = self.m.game.clone();
-                    // (The save's game's content: loaded if it is another's.)
-                    let imported = read.and_then(|bytes| {
-                        let content = self.content_of(nettai_match::save_game(&bytes)?)?;
-                        self.m.import_save(&content, s, &bytes)
-                    });
-                    match imported {
+                    match read.and_then(|bytes| crate::save_import::import_save(&content, &mut self.m, s, &bytes)) {
                         Ok(notes) => {
-                            if self.m.game != game {
-                                self.forget_sides();
-                            }
                             self.typed.retain(|&(x, _), _| x != s);
                             self.pane_typed.retain(|(x, _), _| *x != s);
                             self.fact_typed.retain(|(x, _), _| *x != s);
@@ -684,13 +675,12 @@ impl Editor {
                     self.edited();
                 }
             }
-            // The auto battle data of an EXE5 save alone (a .sav, or a raw
-            // image): the side's other things stay.
+            // The auto battle data of a save alone (a .sav, or a raw image,
+            // of the arena's game): the side's other things stay.
             Msg::AutoBattle(s, crate::editor::auto_battle::Edit::FromSave) => {
-                if let Some(path) = rfd::FileDialog::new().add_filter("EXE5 save", &["sav", "raw"]).pick_file() {
+                if let Some(path) = rfd::FileDialog::new().add_filter("save", &["sav", "raw"]).pick_file() {
                     let read = std::fs::read(&path).map_err(|e| e.to_string());
-                    let game = self.m.game().to_string();
-                    match read.and_then(|bytes| nettai_match::auto_battle_of_save(&content, &game, &bytes, &mut self.m.sides[s])) {
+                    match read.and_then(|bytes| crate::save_import::auto_battle_of_save(&content, &mut self.m, s, &bytes)) {
                         Ok(notes) => {
                             self.auto_battle[s] = Default::default();
                             self.edited();
