@@ -103,7 +103,7 @@ local function init(me: Object)
     tick(me)
 end
 
-crush.kind = define.kind {
+crush.kind = new.kind {
     id = "shademan/crush",
     pool = "attack",
     state = { effect = { "none", "paralyze", "confuse" }, wide = "bool" },

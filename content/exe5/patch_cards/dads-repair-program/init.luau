@@ -3,10 +3,11 @@
 
 local cards = require("../rules/patch_cards/cards")
 
-return define.patch_card {
-    id = "dads-repair-program",
+local card: PatchCard = {
     mb = 50,
     effects = {
         cards.bug_stopper(1),
     },
 }
+
+return { ["dads-repair-program"] = card }

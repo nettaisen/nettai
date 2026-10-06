@@ -7,8 +7,7 @@ local voltz = require("@self/voltz")
 -- Voltz1 (EXE5 chip 0x04e): a sensor dropped three panels ahead that shocks the panels beside it, the shocks
 -- going on over the other side's panels (./voltz, instant effect 16; the record's params: level 0, the
 -- shocks every 20 ticks).
-local voltz1 = define.chip {
-    id = "voltz1",
+local voltz1: Chip = {
     codes = { "K", "O", "Y" },
     element = "elec",
     family = "elec",
@@ -26,8 +25,7 @@ local voltz1 = define.chip {
 -- Voltz2 (EXE5 chip 0x04f): a sensor dropped three panels ahead that shocks the panels beside it, the shocks
 -- going on over the other side's panels (./voltz, instant effect 16; the record's params: level 1, the
 -- shocks every 20 ticks).
-local voltz2 = define.chip {
-    id = "voltz2",
+local voltz2: Chip = {
     codes = { "J", "U", "Z" },
     element = "elec",
     family = "elec",
@@ -45,8 +43,7 @@ local voltz2 = define.chip {
 -- Voltz3 (EXE5 chip 0x050): a sensor dropped three panels ahead that shocks the panels beside it, the shocks
 -- going on over the other side's panels (./voltz, instant effect 16; the record's params: level 2, the
 -- shocks every 20 ticks).
-local voltz3 = define.chip {
-    id = "voltz3",
+local voltz3: Chip = {
     codes = { "A", "H", "V" },
     element = "elec",
     family = "elec",

@@ -24,7 +24,7 @@ local SPIN = airspin.action { id = "megaman/hells-rolling/action", whirlwind = m
 local HIT_PARAM = 0x94
 
 -- 0x0800FB52: (Attack + 1) * 10 damage, hit parameter 0x94; Null, no Atk+ bonus; AirSpin's variant 2.
-return define.weapon {
+return new.weapon {
     id = "megaman/hells-rolling",
     -- The charge table's row 0x69, by Charge 0 to 5: past 4 it reads on into row 0x6A's first entry.
     charge_ticks = { 140, 130, 120, 110, 100, 60 },

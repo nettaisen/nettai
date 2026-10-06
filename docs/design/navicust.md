@@ -40,20 +40,22 @@ a NaviCust only for the navi that changes form, and a match refuses one for anot
 
 ## 2. EXE6's programs as content
 
-`content/exe6/navicust/<key>/program.luau` holds 46 definitions, one per program. The verification workspace's
+`content/exe6/navicust/<key>/init.luau` holds 46 definitions, one per program, each returned by its key and merged
+into the game's root by navicust/init.luau. The verification workspace's
 `tools/navicust/gen.py` writes them, with their names and numbers, from the ROM's part table (`StructArr_813944C`,
 16 bytes a part id). Its `check` mode compares the committed files with the ROM. The four ROMs' tables are the same,
 byte for byte, so the programs have no version or region differences.
 
 ```luau
-return define.navicust_program {
-    id = "hp-50",
+local program: NaviCustProgram = {
     colors = { "white", "pink", "blue" },  -- part ids 4n, 4n+1, 4n+2; 4n+3 has no color
     plus = true,                           -- +1: 1
     shape = { ".......", ".......", "...#...", "...#...", ".......", ".......", "......." },
     bug = "hp",                            -- +4: bug group 9
     effects = { programs.hp(50) },         -- navicust_jt_NCPs[41]
 }
+
+return { ["hp-50"] = program }
 ```
 
 - **Colors** are by name: `white`, `yellow`, `pink`, `red`, `blue`, `green` are colors 1 to 6. A placed program's
@@ -133,7 +135,7 @@ setup gives both (nettai-match's `starting`).
 
 ## 4. Other games
 
-A game brings its own programs (its root's `define.navicust_program`s, with its own names in its own colors), its
+A game brings its own programs (its root's `navicust_programs`, with its own names in its own colors), its
 own board section and its own compile part. **EXE5's is built** (exe5-map.md §15.13): its compile is EXE6's routine
 for routine, so the routines are shared (content/exelib/navicust/compile.luau, `compile.run(side, game)`), and each
 game's navicust module passes what is its own (`NaviCustGame`, content/exelib/types.d.luau): its board, its bugs in

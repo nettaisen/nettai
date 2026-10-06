@@ -5,8 +5,7 @@
 local navi = require("@self/navi")
 
 -- TmhwkMan (EXE5 chip 0x0fb): TomahawkMan cuts in and brings his tomahawk down on the two columns ahead (./navi).
-local tmhwkman = define.chip {
-    id = "tmhwkman",
+local tmhwkman: Chip = {
     codes = { "T" },
     element = "wood",
     family = "wood",
@@ -26,8 +25,7 @@ local tmhwkman = define.chip {
 -- TmhwkMnSP (EXE5 chip 0x0fc): TomahawkMan cuts in and brings his tomahawk down on the two columns ahead
 -- (../tmhwkman/navi); its damage by how fast its user deleted TomahawkMan SP (rules/sp_chips: formula 11, its table's
 -- row 10).
-local tmhwkmn_sp = define.chip {
-    id = "tmhwkmn-sp",
+local tmhwkmn_sp: Chip = {
     codes = { "T" },
     element = "wood",
     family = "wood",
@@ -46,8 +44,7 @@ local tmhwkmn_sp = define.chip {
 
 -- TmhwkMnDS (EXE5 chip 0x0fd): TomahawkMan, dark, cuts in and brings his tomahawk down on the two columns ahead
 -- (../tmhwkman/navi); its damage by its user's side's statistic 3 (formula 33, its table's row 10).
-local tmhwkmn_ds = define.chip {
-    id = "tmhwkmn-ds",
+local tmhwkmn_ds: Chip = {
     codes = { "T" },
     element = "wood",
     family = "wood",
@@ -64,4 +61,4 @@ local tmhwkmn_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { tmhwkman = tmhwkman, tmhwkmn_sp = tmhwkmn_sp, tmhwkmn_ds = tmhwkmn_ds }
+return { tmhwkman = tmhwkman, ["tmhwkmn-sp"] = tmhwkmn_sp, ["tmhwkmn-ds"] = tmhwkmn_ds }

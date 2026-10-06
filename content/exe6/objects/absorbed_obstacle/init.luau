@@ -35,14 +35,14 @@ local ARRIVAL_Z = 0x10_0000
 local MAX_ABSORBED = 8
 
 -- The puff when it goes early (effect 0x12), 16 pixels up.
-local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
+local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
 local PUFF_LIFT = 0x10_0000
 
 -- An absorbed obstacle's look, an "absorbed-look" record: what an obstacle
 -- passes `obstacle.fly_to_absorber` (one of the original's obstacle kinds,
 -- the sprites of `byte_80E98C0`).
 function absorbed_obstacle.look(look: AbsorbedLook): AbsorbedLook
-    return define.record("absorbed-look", look)
+    return new.record("absorbed-look", look)
 end
 
 -- `sub_80E9810`: the obstacle's look, and the flight toward its side's navi.
@@ -116,7 +116,7 @@ local function tick(me: Object)
     fly(me)
 end
 
-absorbed_obstacle.kind = define.kind {
+absorbed_obstacle.kind = new.kind {
     id = "absorbed-obstacle",
     pool = "effect",
     state = {

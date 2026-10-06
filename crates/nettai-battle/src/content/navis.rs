@@ -1,4 +1,4 @@
-//! Navis and MegaMan's forms (`define.navi`, `define.form`: docs/design/
+//! Navis and MegaMan's forms (the root's `navis` and `forms`: docs/design/
 //! content-model-v2.md §3.2).
 
 use super::flags::serde_flags;

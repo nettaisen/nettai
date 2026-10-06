@@ -24,7 +24,7 @@ local SPEED, RISE, GRAVITY = 0x2E666, 0x20666, -0x2800
 
 -- A bomb variant.
 function bomb.variant(v: BombVariant): BombVariant
-    return define.record("bomb-variant", v)
+    return new.record("bomb-variant", v)
 end
 
 -- Done: hidden, off its panels, and freed at the next update.
@@ -133,7 +133,7 @@ end
 
 -- A game's bombs.
 function bomb.make(look: BombLook): Bombs
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "attack",
         state = { variant = "record:bomb-variant" },

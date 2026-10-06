@@ -31,7 +31,7 @@ local SOUND_APPEAR = asset.sound("appear")
 local SOUND_GATHER = asset.sound("trap-vanish")
 local SOUND_SHAPE = asset.sound("point-rise")
 local SOUND_RAISE = asset.sound("chaos-lord")
-local PUFF = define.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
+local PUFF = new.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
 -- His cape (0x080C38B6's word 0x10011308: a form overlay of his sprite, animations + 0x10, stepping while dimmed).
 local CAPE: FormOverlaySpec = { sprite = SPRITE, stepping = "while_dimmed", anim_offset = 0x10 }
 -- The navi chip controller calls his spawner (0x080C327E) through r3, which his position's Z takes; his init keeps
@@ -266,7 +266,7 @@ local function leave(me: Object)
     me:free()
 end
 
-chaoslrd.kind = define.kind {
+chaoslrd.kind = new.kind {
     id = "chaoslrd/navi",
     pool = "actor",
     state = { controller = "object", red = "u8", green = "u8", blue = "u8" },

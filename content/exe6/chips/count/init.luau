@@ -9,8 +9,7 @@
 
 local navi = require("@self/navi")
 
-local count = define.chip {
-    id = "count",
+local count: Chip = {
     codes = { "H", "*" },
     element = "null",
     family = "null",
@@ -25,8 +24,7 @@ local count = define.chip {
     navi = navi.summon { lance_damage = 0x32 },
 }
 
-local count_ex = define.chip {
-    id = "count-ex",
+local count_ex: Chip = {
     codes = { "H" },
     element = "null",
     family = "null",
@@ -41,8 +39,7 @@ local count_ex = define.chip {
     navi = navi.summon { lance_damage = 0x46 },
 }
 
-local count_sp = define.chip {
-    id = "count-sp",
+local count_sp: Chip = {
     codes = { "H" },
     element = "null",
     family = "null",
@@ -57,4 +54,4 @@ local count_sp = define.chip {
     navi = navi.summon { lance_damage = 0x64 },
 }
 
-return { count = count, count_ex = count_ex, count_sp = count_sp }
+return { count = count, ["count-ex"] = count_ex, ["count-sp"] = count_sp }

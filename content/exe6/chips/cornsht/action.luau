@@ -77,7 +77,7 @@ local function action(id: string): Action
         end
     end
 
-    return define.action {
+    return new.action {
         id = id,
         state = cornsht.STATE,
         -- `sub_80ED090`.

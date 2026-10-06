@@ -62,22 +62,22 @@ end
 -- charge table's rows 0x3B, 0x8C, 0x8B and 0x3C all the same, by Charge 0
 -- to 7, reading on into the next routine's row as the original's table
 -- does.)
-shield.shield = define.weapon {
+shield.shield = new.weapon {
     id = "megaman/shield",
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },
     setup = setup,
 }
-shield.shield_2 = define.weapon {
+shield.shield_2 = new.weapon {
     id = "megaman/shield-2",
     charge_ticks = { 0, 0, 0, 0, 0, 100, 90, 80 },
     setup = setup,
 }
-shield.reflect = define.weapon {
+shield.reflect = new.weapon {
     id = "megaman/reflect",
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },
     setup = setup_counter,
 }
-shield.reflect_2 = define.weapon {
+shield.reflect_2 = new.weapon {
     id = "megaman/reflect-2",
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },
     setup = setup_counter,

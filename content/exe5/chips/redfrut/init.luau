@@ -6,8 +6,7 @@ local fruit = require("@self/fruit")
 
 -- RedFrut1 (EXE5 chip 0x042): a hopping fruit whose breaker's side gets 300 HP back and 50 more mood (chips/redfrut/fruit,
 -- instant effect 15; the record's params: gift 0, five hops).
-local redfrut1 = define.chip {
-    id = "redfrut1",
+local redfrut1: Chip = {
     codes = { "E", "K", "Z" },
     element = "null",
     family = "recovery",
@@ -25,8 +24,7 @@ local redfrut1 = define.chip {
 
 -- RedFrut2 (EXE5 chip 0x043): a hopping fruit whose breaker's side gets invulnerability for 420 ticks (chips/redfrut/fruit,
 -- instant effect 15; the record's params: gift 1, five hops).
-local redfrut2 = define.chip {
-    id = "redfrut2",
+local redfrut2: Chip = {
     codes = { "F", "T", "W" },
     element = "null",
     family = "recovery",
@@ -44,8 +42,7 @@ local redfrut2 = define.chip {
 
 -- RedFrut3 (EXE5 chip 0x044): a hopping fruit whose breaker's side gets Full Synchro (chips/redfrut/fruit,
 -- instant effect 15; the record's params: gift 2, five hops).
-local redfrut3 = define.chip {
-    id = "redfrut3",
+local redfrut3: Chip = {
     codes = { "H", "O", "U" },
     element = "null",
     family = "recovery",

@@ -23,9 +23,8 @@ local function energy_throw(): Action
     }
 end
 
-return {
-    energbom = define.chip {
-        id = "energbom",
+local chips: { [string]: Chip } = {
+    energbom = {
         codes = { "C", "K", "V", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 11, damage = 40, hit_param = 10, lockout = 0,
@@ -35,8 +34,7 @@ return {
         beast = { lockon = lockon.yoyo },
         action = energy_throw(),
     },
-    megenbom = define.chip {
-        id = "megenbom",
+    megenbom = {
         codes = { "G", "M", "O", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 27, damage = 60, hit_param = 10, lockout = 0,
@@ -47,3 +45,5 @@ return {
         action = energy_throw(),
     },
 }
+
+return chips

@@ -5,8 +5,7 @@
 
 local windrack = require("@self/action")
 
-return define.chip {
-    id = "windrack",
+local chip: Chip = {
     codes = { "B", "F", "J", "*" },
     element = "null",
     family = "wind",
@@ -20,3 +19,5 @@ return define.chip {
     slot_in_limit = 3,
     action = windrack.action,
 }
+
+return { windrack = chip }

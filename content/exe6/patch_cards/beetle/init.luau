@@ -5,8 +5,7 @@ local cards = require("../rules/patch_cards/cards")
 local b_button = require("@self/b_button")
 local chrgs = require("../lib/patch_cards/chrgs")
 
-return define.patch_card {
-    id = "beetle",
+local card: PatchCard = {
     mb = 11,
     effects = {
         cards.hp(100),
@@ -14,3 +13,5 @@ return define.patch_card {
         cards.bug(cards.charged_shot(chrgs)),
     },
 }
+
+return { beetle = card }

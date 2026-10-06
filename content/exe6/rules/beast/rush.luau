@@ -238,7 +238,7 @@ local function update(navi: Object, _: any)
     end
 end
 
-rush.action = define.action {
+rush.action = new.action {
     update = update,
 }
 

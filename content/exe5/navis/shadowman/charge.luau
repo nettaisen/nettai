@@ -178,7 +178,7 @@ local STEPS: { [number]: (me: Object, s: State) -> () } = {
     [LAND] = land,
 }
 
-charge.action = define.action {
+charge.action = new.action {
     id = "shadowman/charge/action",
     state = { timer = "u16", target_x = "u8", target_y = "u8" },
     -- 0x080F95F0
@@ -200,7 +200,7 @@ local function setup(navi: Object): Action
     return charge.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "shadowman/charge",
     -- The charge table's row 0x24 (0x0801CBD4), by Charge 0 to 5: past 4 it reads on into row 0x25's first entry.
     charge_ticks = { 70, 65, 60, 55, 50, 60 },

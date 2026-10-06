@@ -80,7 +80,7 @@ end
 
 -- A game's beam kind `id`, humming `hum`.
 function beam.make_kind(id: string, hum: Sound): Kind
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "effect",
         state = {

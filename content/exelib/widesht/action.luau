@@ -92,7 +92,7 @@ function widesht.action(spec: WideShotSpec, look: WideShotLook): Action
         end
     end
 
-    return define.action {
+    return new.action {
         id = spec.id,
         state = widesht.STATE,
         args = spec,

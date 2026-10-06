@@ -46,7 +46,7 @@ function panel_chips.make(spec: Spec): PanelChips
         end
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { change = "record:panel-change", busy = "bool" },

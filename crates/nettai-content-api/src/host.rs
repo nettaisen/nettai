@@ -488,7 +488,7 @@ pub trait ContentHost {
     /// action's `update`, and its second argument is the attack state as a
     /// state of layout `state`.
     /// `rules`: the side whose rules' state the action reaches, for an
-    /// action of the rules' (`define.rules { actions = ... }`,
+    /// action of the rules' (the rules' `actions`,
     /// docs/design/rules-in-luau.md §5.3).
     fn update_action(
         &self,

@@ -4,10 +4,9 @@
 -- four panels, spin for five rounds and move together.
 
 local throw = require("./yoyo/throw")
-local yoyo = require("./yoyo")
+local yoyo = require("./yoyo").yoyo
 
-return define.chip {
-    id = "greatyo",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -22,3 +21,5 @@ return define.chip {
     program_advances = { { order = 27, code_run = { chip = yoyo, count = 3 } } },
     action = throw.action { id = "greatyo/action", yoyo = { great = true, panels = 4, rounds = 5 } },
 }
+
+return { greatyo = chip }

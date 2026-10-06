@@ -52,7 +52,7 @@ end
 
 local KIND = black_bomb.make_kind("blkbomb/bomb", {
     destroyed = destroyed,
-    identity = define.identity {
+    identity = new.identity {
         class = "field_object",
         version = 2,
         ai_index = 1,
@@ -77,8 +77,7 @@ local KIND = black_bomb.make_kind("blkbomb/bomb", {
 -- What the navi holds while throwing one: the bomb's sprite, palette 4 (EXE5's attachment row 0x1A).
 local HELD = attachment.look { sprite = asset.sprite("bomb"), palette = 4 }
 
-return define.chip {
-    id = "blkbomb",
+local chip: Chip = {
     codes = { "L", "R", "Z" },
     element = "fire",
     family = "fire",
@@ -92,3 +91,5 @@ return define.chip {
     slot_in_limit = 3,
     action = bombs.throw { held = HELD, thrower = black_bomb.thrower(KIND) },
 }
+
+return { blkbomb = chip }

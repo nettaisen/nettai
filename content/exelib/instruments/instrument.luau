@@ -42,9 +42,9 @@ local APPEAR, DESTROYED, REST, PLAY = 0, 2, 8, 9
 -- (an "absorbed-look" record, as EXE6's objects/absorbed_obstacle makes).
 function instrument.instrument(i: Instrument): Instrument
     if i.sprite then
-        i.absorbed = define.record("absorbed-look", { sprite = i.sprite } :: AbsorbedLook)
+        i.absorbed = new.record("absorbed-look", { sprite = i.sprite } :: AbsorbedLook)
     end
-    return define.record("instrument", i)
+    return new.record("instrument", i)
 end
 
 -- An instrument kind (`id`) of `look`.
@@ -228,7 +228,7 @@ function instrument.make_kind(id: string, look: InstrumentLook): Kind
         tick(me)
     end
 
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "attack",
         state = { instrument = "record:instrument", effect_in = "u32", tune_in = "u32" },

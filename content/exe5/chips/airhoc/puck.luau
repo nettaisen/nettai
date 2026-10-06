@@ -17,7 +17,7 @@ puck.kind = common.make_kind("airhoc/puck", {
     is = collision.breaking,
     hits = collision.hits_navis,
     spark = sparks.breaking,
-    burst = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 },
+    burst = new.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 },
     trail_tint = 0x8318,
 })
 

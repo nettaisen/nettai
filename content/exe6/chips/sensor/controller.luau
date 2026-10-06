@@ -43,7 +43,7 @@ local function effect(me: Object)
     end
 end
 
-controller.kind = define.kind {
+controller.kind = new.kind {
     id = "sensor/controller",
     pool = "effect",
     state = { palette = "u8", hp = "u8", bonus = "u16" },

@@ -5,8 +5,7 @@
 local navi = require("@self/navi")
 
 -- ShadoMan (EXE5 chip 0x0f8): ShadowMan cuts in and sends three of himself to throw shurikens at the enemies (./navi).
-local shadoman = define.chip {
-    id = "shadoman",
+local shadoman: Chip = {
     codes = { "S" },
     element = "null",
     family = "null",
@@ -26,8 +25,7 @@ local shadoman = define.chip {
 -- ShadoMnSP (EXE5 chip 0x0f9): ShadowMan cuts in and sends three of himself to throw shurikens at the enemies
 -- (../shadoman/navi); its damage by how fast its user deleted ShadowMan SP (rules/sp_chips: formula 9, its table's row
 -- 8).
-local shadomn_sp = define.chip {
-    id = "shadomn-sp",
+local shadomn_sp: Chip = {
     codes = { "S" },
     element = "null",
     family = "null",
@@ -46,8 +44,7 @@ local shadomn_sp = define.chip {
 
 -- ShadoMnDS (EXE5 chip 0x0fa): ShadowMan, dark, cuts in and sends three of himself to throw shurikens at the enemies
 -- (../shadoman/navi); its damage by its user's side's statistic 3 (formula 31, its table's row 8).
-local shadomn_ds = define.chip {
-    id = "shadomn-ds",
+local shadomn_ds: Chip = {
     codes = { "S" },
     element = "null",
     family = "null",
@@ -64,4 +61,4 @@ local shadomn_ds = define.chip {
     navi = navi.summon_dark,
 }
 
-return { shadoman = shadoman, shadomn_sp = shadomn_sp, shadomn_ds = shadomn_ds }
+return { shadoman = shadoman, ["shadomn-sp"] = shadomn_sp, ["shadomn-ds"] = shadomn_ds }

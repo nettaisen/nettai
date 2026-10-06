@@ -6,8 +6,8 @@
 -- flames ahead of him, and vanishes; then Bass swoops in, charges and
 -- slashes, and fades out. See docs/engine/chips.md §3.6.36.
 
-local base_form = require("../../navis/megaman/forms/base")
-local megaman = require("../../navis/megaman")
+local base_form = require("../../navis/megaman/forms/base").base
+local megaman = require("../../navis/megaman").megaman
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
 local element_pillar = require("../../objects/element_pillar")
@@ -34,7 +34,7 @@ export type State = {
 -- in his base form (NameID 0x1A0: no parts), whose attach points his aura
 -- takes.
 local BASS_SPRITE = asset.sprite("bass-anly")
-local BASS = define.identity {
+local BASS = new.identity {
     id = "bass",
     class = "navi",
     version = 0,
@@ -73,8 +73,8 @@ local FLAME_PANELS = {
 -- Bass's charge: the glow while it builds (effect 0x4E) and the flash
 -- when it is full (0x4F), at his sprite's attach point 0 (`sub_8018810` by
 -- his NameID: his sprite's table row, whose point 0 is (0, 16)).
-local CHARGING = define.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
-local CHARGED = define.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
+local CHARGING = new.effect { sprite = asset.sprite("charge-glow"), anim = 0, palette = 0 }
+local CHARGED = new.effect { sprite = asset.sprite("charge-glow"), anim = 2, palette = 0 }
 local GLOW_X, GLOW_Z = 0, 16
 
 -- Bass's afterimages (`sub_80BFD90`): their color shader and lifetime.
@@ -537,7 +537,7 @@ local function destroy(me: Object)
     me:free()
 end
 
-darkness.kind = define.kind {
+darkness.kind = new.kind {
     id = "darkness/navi",
     pool = "actor",
     state = { bass = "bool", held = "object", controller = "object", leader = "object" },

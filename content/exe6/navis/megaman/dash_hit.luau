@@ -106,7 +106,7 @@ local function init(me: Object)
     tick(me)
 end
 
-dash_hit.kind = define.kind {
+dash_hit.kind = new.kind {
     id = "megaman/dash-hit",
     pool = "attack",
     state = { hit_panel = "u16", reach = "u8", tackle = "bool", action = "action" },

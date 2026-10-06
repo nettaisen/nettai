@@ -4,8 +4,7 @@
 local heal = require("@exelib/recov/heal")
 local recov_chips = require("./recov")
 
-return define.chip {
-    id = "drkrecov",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",
@@ -21,3 +20,5 @@ return define.chip {
     hp_bug = 7,
     action = heal.action { id = "drkrecov/action", hp = 1000 },
 }
+
+return { drkrecov = chip }

@@ -5,8 +5,7 @@
 
 local anti_trap = require("../lib/traps/anti_trap")
 
-return define.chip {
-    id = "antifire",
+local chip: Chip = {
     codes = { "E", "K", "T", "*" },
     element = "fire",
     family = "fire",
@@ -20,3 +19,5 @@ return define.chip {
     slot_in_limit = 3,
     dimming = anti_trap.hook(1),
 }
+
+return { antifire = chip }

@@ -16,8 +16,7 @@ local function wide_burn(id: string): Action
     }
 end
 
-local widebrn1 = define.chip {
-    id = "widebrn1",
+local widebrn1: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -34,8 +33,7 @@ local widebrn1 = define.chip {
     action = wide_burn("widebrn1/action"),
 }
 
-local widebrn2 = define.chip {
-    id = "widebrn2",
+local widebrn2: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",
@@ -52,8 +50,7 @@ local widebrn2 = define.chip {
     action = wide_burn("widebrn2/action"),
 }
 
-local widebrn3 = define.chip {
-    id = "widebrn3",
+local widebrn3: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "fire",
     family = "program_advance",

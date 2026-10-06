@@ -17,7 +17,7 @@ local trajectory = require("../../lib/trajectory")
 local bug_bomb = {}
 
 -- The explosion (effect 0x4A).
-local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 2 }
+local EXPLOSION = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 2 }
 local SOUND_HIT_BOMB = asset.sound("hit-bomb-1")
 
 -- The bugs (`byte_80DA034`): the code and its argument, by what the target

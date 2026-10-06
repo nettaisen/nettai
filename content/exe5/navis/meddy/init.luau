@@ -9,10 +9,9 @@
 
 local buster = require("./megaman/weapons/buster")
 local charge = require("@self/charge")
-local meddycap = require("@self/chip")
+local meddycap = require("@self/chip").meddycap
 
-return define.navi {
-    id = "meddy",
+local navi: NaviDef = {
     sprite = asset.sprite("meddy"),
     element = "null",
     buster_bonus = 1,
@@ -34,7 +33,7 @@ return define.navi {
     -- progress up to 6.
     story = { hp = { 300, 300, 300, 300, 300, 300, 400, 500, 600 }, max_level = 6 },
     palette_step = 2,
-    identity = define.identity {
+    identity = new.identity {
         class = "link_navi",
         version = 0,
         actor_type = "player",
@@ -75,3 +74,5 @@ return define.navi {
         },
     },
 }
+
+return { meddy = navi }

@@ -144,9 +144,9 @@ local window: SoulWindow = {
             -- 0x080237B4
             if not fading then
                 local chip = (if st.mix_capsule == 1 then st.capsule_1 else st.capsule_2) :: Chip
-                local mix = MIXES[chip.id]
+                local mix = MIXES[chip.id :: string]
                 if mix == nil then
-                    error(string.format("%s is no capsule (0x08023824 has five entries)", chip.id))
+                    error(string.format("%s is no capsule (0x08023824 has five entries)", chip.id :: string))
                 end
                 custom.attach_to_last_pick(side, BUTTONS[st.mix_capsule], mix)
                 custom.update_availability(side)
@@ -187,6 +187,6 @@ local custom_screen: SoulCustom = {
     deal = deal,
 }
 
-capsules.custom = define.record("soul-custom", custom_screen)
+capsules.custom = new.record("soul-custom", custom_screen)
 
 return capsules

@@ -156,7 +156,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-bomb.kind = define.kind {
+bomb.kind = new.kind {
     id = "gyroman/bomb",
     pool = "attack",
     state = { variant = "u8" },

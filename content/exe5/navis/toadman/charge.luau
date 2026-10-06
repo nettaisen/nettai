@@ -27,7 +27,7 @@ export type State = {
 local HIT_PARAM = 0x94
 -- The damage rows' row 22, by his level.
 local DAMAGE: { number } = { 100, 100, 100, 100, 100, 100, 100 }
-local SPLASH = define.effect { sprite = asset.sprite("dive-splash"), anim = 0, palette = 0 }
+local SPLASH = new.effect { sprite = asset.sprite("dive-splash"), anim = 0, palette = 0 }
 local SOUND_DIVE = asset.sound("toad-dive")
 local SOUND_SURFACE = asset.sound("sand-worm")
 -- His animations: going down, coming up at home, surfacing, striking.
@@ -220,7 +220,7 @@ local function stand(me: Object, s: State)
     end
 end
 
-charge.action = define.action {
+charge.action = new.action {
     id = "toadman/charge/action",
     state = { timer = "u16" },
     -- 0x080F19D8
@@ -256,7 +256,7 @@ local function setup(navi: Object): Action
     return charge.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "toadman/charge",
     -- The charge table's row 0x2E (0x0801CC38), by Charge 0 to 5: past 4 it reads on into row 0x2F's first entry.
     charge_ticks = { 60, 60, 60, 60, 60, 30 },

@@ -1,17 +1,16 @@
 --!strict
 -- TomahawkCross: one of MegaMan's forms.
 
-local base = require("./base")
+local base = require("./base").base
 local cross_overlay = require("./cross_overlay")
-local tomahawkman = require("../../tomahawkman")
-local tomahawkcross_beast = require("./tomahawkcross_beast")
+local tomahawkman = require("../../tomahawkman").tomahawkman
+local tomahawkcross_beast = require("./tomahawkcross_beast")["tomahawkcross-beast"]
 local buster = require("../weapons/buster")
 local charge = require("@self/charge")
 local charged_chip_bonus_20 = require("../weapons/charged_chip_bonus_20")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "tomahawkcross",
+local form: FormDef = {
     kind = "cross",
     -- What changes MegaMan into it (EXE6's five sequences).
     change = forms.action,
@@ -39,7 +38,7 @@ return define.form {
     traits = { "status_immune" },
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 7 },
-    identity = define.identity {
+    identity = new.identity {
         class = "cross",
         version = 0,
         actor_type = "player",
@@ -87,3 +86,5 @@ return define.form {
         },
     },
 }
+
+return { tomahawkcross = form }

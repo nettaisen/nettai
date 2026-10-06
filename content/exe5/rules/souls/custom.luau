@@ -7,7 +7,7 @@
 -- navis/megaman/forms/<soul>), which this module's end gathers for the rules from the souls of the navi that has
 -- them, and asks while the side's navi is in the soul.
 
-local megaman = require("../../navis/megaman")
+local megaman = require("../../navis/megaman").megaman
 local operation_battle = require("../../lib/operation_battle")
 
 local custom_souls = {}
@@ -127,7 +127,7 @@ end
 local function used_bit(side: number, soul: FormDef, chaos: boolean): number
     local place = table.find(souls_of(side), soul)
     if place == nil then
-        error(string.format("%s is none of the side's navi's souls", soul.id))
+        error(string.format("%s is none of the side's navi's souls", soul.id :: string))
     end
     return bit32.lshift(1, if chaos then 16 + place else place)
 end

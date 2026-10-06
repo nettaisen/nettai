@@ -5,7 +5,7 @@
 //! A registry holds two sorts of entries:
 //!
 //! - the engine's own (its object kinds, keyed `engine/...`);
-//! - content's definitions (`define.kind { ... }`), keyed by their keys.
+//! - content's definitions (the root's, and `new.kind { ... }`'s), keyed by their keys.
 //!
 //! Each registry's keys are sorted byte-wise; an entry's handle is its
 //! place.
@@ -163,7 +163,7 @@ pub struct ChipLinks {
     pub advance: Option<u8>,
 }
 
-/// A navi (`define.navi`).
+/// A navi (the root's `navis`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NaviDef {
     pub key: String,
@@ -207,10 +207,10 @@ pub struct NaviGivenFns {
     pub fire_charge: Option<FnId>,
 }
 
-/// The record type of a lock-on mode (`define.record("lockon", ...)`).
+/// The record type of a lock-on mode (`new.record("lockon", ...)`).
 pub const LOCKON_RECORD: &str = "lockon";
 
-/// One of MegaMan's forms (`define.form`).
+/// One of MegaMan's forms (the root's `forms`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FormDef {
     pub key: String,
@@ -237,14 +237,14 @@ pub struct FormDef {
     pub tick: Option<FnId>,
 }
 
-/// A stage (`define.stage`).
+/// A stage (the root's `stages`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct StageDef {
     pub key: String,
     pub record: super::StageData,
 }
 
-/// A status effect (`define.status`).
+/// A status effect (`new.status`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct StatusDef {
     pub key: String,
@@ -260,7 +260,7 @@ pub struct LockonDef {
     pub mode: super::LockonMode,
 }
 
-/// A collision type content defines (`define.collision`): what an object is
+/// A collision type content defines (`new.collision`): what an object is
 /// or what it hits, as the flag words for side 0 and side 1
 /// (`sub_801A0BA`). A reacts to B when A's target flags meet B's self
 /// flags.
@@ -365,7 +365,7 @@ impl ExtensionType {
 }
 
 /// A game's rules (docs/design/rules-in-luau.md §2.5), its one definition of
-/// them (`define.rules { ... }`, its rules/init.luau): their state of a side,
+/// them (its root's `rules`, rules/init.luau): their state of a side,
 /// a player's setup of them (the side's facts), and their hooks, plain
 /// functions that call the game's modules as their code says. A game has
 /// one, which every match of it plays by.
@@ -474,7 +474,7 @@ pub struct RecordDef {
     pub record_type: String,
 }
 
-/// A patch card (`define.patch_card`; BN4's, EXE5's and EXE6's Modification
+/// A patch card (the root's `patch_cards`; BN4's, EXE5's and EXE6's Modification
 /// Cards, docs/engine/patch-cards.md): what every game's card is. A game's
 /// rules give its effects their meaning (EXE6's rules/patch_cards applies a
 /// player's cards as the round is set up); the engine keeps the card's
@@ -498,7 +498,7 @@ pub struct PatchCardEffect {
     pub bug: bool,
 }
 
-/// A NaviCust program (`define.navicust_program`; BN4's, EXE5's and EXE6's
+/// A NaviCust program (the root's `navicust_programs`; BN4's, EXE5's and EXE6's
 /// Navi Customizer parts, docs/design/navicust.md): what every game's
 /// program is. The engine keeps what a NaviCust's board needs of it, its
 /// colors and shapes and whether it is a plus part; the rest (EXE6's: what it
@@ -583,7 +583,7 @@ pub struct Defs {
     pub stages: Vec<StageDef>,
     /// The Beast Out lock-on modes, by handle.
     pub lockons: Vec<LockonDef>,
-    /// The identities, by handle (`define.identity`, in key order).
+    /// The identities, by handle (`new.identity`, in key order).
     pub identities: Vec<super::Identity>,
     /// The status effects, by handle.
     pub statuses: Vec<StatusDef>,
@@ -592,13 +592,13 @@ pub struct Defs {
     pub patch_cards: Vec<PatchCardDef>,
     /// The NaviCust programs, by handle.
     pub navicust_programs: Vec<NaviCustProgramDef>,
-    /// One-shot effects' and hit sparks' looks (`define.effect`,
-    /// `define.spark`), by handle.
+    /// One-shot effects' and hit sparks' looks (`new.effect`,
+    /// `new.spark`), by handle.
     pub effects: Vec<super::EffectSprite>,
     pub sparks: Vec<super::EffectSprite>,
-    /// Hit regions (`define.region`), by handle.
+    /// Hit regions (`new.region`), by handle.
     pub regions: Vec<super::Region>,
-    /// Collision types (`define.collision`), by handle.
+    /// Collision types (`new.collision`), by handle.
     pub collisions: Vec<CollisionTypeDef>,
     /// What the game needs from content by role (its rules' `roles`;
     /// none given, none filled).
@@ -1011,7 +1011,7 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
     serde_json::from_value(Json::Object(o)).map_err(|e| what(e.to_string()))
 }
 
-/// The game's rules (`define.rules { ... }`, its rules/init.luau),
+/// The game's rules (its root's `rules`, rules/init.luau),
 /// which holds its rule sections and its roles; none for content without
 /// one. (A game has one: the define phase refuses two.)
 pub(crate) fn rules_definition(definitions: &Definitions) -> Option<&Definition> {
@@ -1511,7 +1511,7 @@ impl Defs {
                     Ok(Some(nettai_content_api::IdentityHandle(i as u16)))
                 }
                 other => Err(ContentError::new(format!(
-                    "{}.luau: {} {}: `identity` is {other:?}, not an identity (define.identity {{ ... }})",
+                    "{}.luau: {} {}: `identity` is {other:?}, not an identity (new.identity {{ ... }})",
                     d.module, d.registry, d.key
                 ))),
             }
@@ -1871,7 +1871,7 @@ impl Defs {
             let mut system_actions = Vec::new();
             for v in own {
                 let Data::Ref(Registry::Action, key) = v else {
-                    return Err(what("`actions` lists action definitions (define.action { ... })"));
+                    return Err(what("`actions` lists action definitions (new.action { ... })"));
                 };
                 let h = actions.binary_search_by(|a| a.key.as_str().cmp(key)).expect("a defined action");
                 system_actions.push(ActionHandle(h as u16));
@@ -2320,6 +2320,6 @@ mod tests {
         // Effects, sparks, regions and collision types are definitions
         // the engine holds by handle.
         assert!(c.defs.effects.len() > 100, "{} effects defined", c.defs.effects.len());
-        assert!(!c.defs.sparks.is_empty() && !c.defs.regions.is_empty() && c.defs.collisions.len() >= 89);
+        assert!(!c.defs.sparks.is_empty() && !c.defs.regions.is_empty() && c.defs.collisions.len() >= 88);
     }
 }

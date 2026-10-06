@@ -1,13 +1,12 @@
 --!strict
 -- Falzar Beast Over: one of MegaMan's forms.
 
-local falzar_beast = require("./falzar_beast")
+local falzar_beast = require("./falzar_beast")["falzar-beast"]
 local falzar_beast_buster = require("../weapons/falzar_beast_buster")
 local beast_claw = require("../weapons/beast_claw")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "falzar-beast-over",
+local form: FormDef = {
     kind = "beast_over",
     -- The target marker shows, its afterimages stay, a Null chip's A charge times by the claw,
     -- and its damaging Null chips deal double (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`,
@@ -41,7 +40,7 @@ return define.form {
     special_volley = 24,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 24 },
-    identity = define.identity {
+    identity = new.identity {
         class = "beast_over",
         version = 0,
         actor_type = "player",
@@ -89,3 +88,5 @@ return define.form {
         },
     },
 }
+
+return { ["falzar-beast-over"] = form }

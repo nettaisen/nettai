@@ -512,7 +512,7 @@ function roll.make(spec: Spec): Roll
         me:free()
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "actor",
         state = {

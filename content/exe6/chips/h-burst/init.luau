@@ -6,8 +6,7 @@ local action = require("@self/action")
 local lockon = require("../rules/lockon")
 local spreadr_chips = require("./spreadr")
 
-return define.chip {
-    id = "h-burst",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -28,3 +27,5 @@ return define.chip {
     -- Its first parameter: ten bursts.
     action = action.action { id = "h-burst/action", bursts = 10 },
 }
+
+return { ["h-burst"] = chip }

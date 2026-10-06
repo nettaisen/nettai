@@ -91,7 +91,7 @@ local function init(me: Object)
     tick(me)
 end
 
-shot.kind = define.kind {
+shot.kind = new.kind {
     id = "holydrem/shot",
     pool = "attack",
     -- 0x080D6A60.

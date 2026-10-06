@@ -214,8 +214,7 @@ end
 
 local PHASES: { [number]: (me: Object, s: State) -> () } = { [READY] = ready, [DIG] = dig, [ROCKFALL] = rockfall, [RISE] = rise, [HOME] = home, [REST] = rest }
 
-return define.chip {
-    id = "rc-brakr",
+local chip: Chip = {
     codes = { "G" },
     element = "null",
     family = "break",
@@ -228,7 +227,7 @@ return define.chip {
     flags = { "has_damage", "library", "variable_damage" },
     slot_in_limit = 1,
     -- `sub_80F1C1C` (`off_80F1C30`).
-    action = define.action {
+    action = new.action {
         id = "rc-brakr/action",
         state = STATE,
         update = function(me: Object, s: State)
@@ -236,3 +235,5 @@ return define.chip {
         end,
     },
 }
+
+return { ["rc-brakr"] = chip }

@@ -146,7 +146,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-magnetman.kind = define.kind {
+magnetman.kind = new.kind {
     id = "magnetmn/navi",
     pool = "actor",
     state = { controller = "object", level = "u8", target_x = "u8", mirror_x = "u8", paired = "bool" },

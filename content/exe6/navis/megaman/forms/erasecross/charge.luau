@@ -78,7 +78,7 @@ local function hold(me: Object, s: State)
     me:exit_attack()
 end
 
-charge.action = define.action {
+charge.action = new.action {
     id = "erasecross/charge/action",
     state = { timer = "u16", beast = "bool" },
     -- `sub_80EE7D0`.
@@ -94,7 +94,7 @@ charge.action = define.action {
     end,
 }
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "erasecross/charge",
     -- The charge table's row 0x14, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

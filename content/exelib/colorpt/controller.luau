@@ -60,7 +60,7 @@ function controller.make(spec: Spec): { kind: Kind, hook: (p: ColorPoint) -> (us
         dimming_chips.done(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "effect",
         state = { point = "record:colorpt-point", out = "bool[3]" },
@@ -69,7 +69,7 @@ function controller.make(spec: Spec): { kind: Kind, hook: (p: ColorPoint) -> (us
 
     -- `sub_80E64E8`: a ColorPt chip's `dimming` hook, for its points.
     local function hook(p: ColorPoint): (user: Object, chip: DimmingChipSpec) -> Object?
-        local rec = define.record("colorpt-point", p)
+        local rec = new.record("colorpt-point", p)
         return function(user: Object, chip: DimmingChipSpec): Object?
             local o = dimming_chips.spawn(kind, user, chip)
             if o then

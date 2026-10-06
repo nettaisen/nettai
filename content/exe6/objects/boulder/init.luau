@@ -28,7 +28,7 @@ boulder.kind = common.make {
     sprite = SPRITE,
     -- A field object, with the look something that takes its place shows
     -- (DustMan's junk).
-    identity = define.identity {
+    identity = new.identity {
         id = "boulder",
         class = "field_object",
         version = 1,

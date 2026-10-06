@@ -7,14 +7,13 @@ local regions = require("@exelib/regions")
 local slash = require("../lib/swords/slash")
 local slashes = require("../navis/megaman/forms/slashcross/slashes")
 local lockon = require("../rules/lockon")
-local longblde = require("./longblde")
-local longswrd = require("./longswrd")
-local sword = require("./sword")
-local wideblde = require("./wideblde")
-local wideswrd = require("./wideswrd")
+local longblde = require("./longblde").longblde
+local longswrd = require("./longswrd").longswrd
+local sword = require("./sword").sword
+local wideblde = require("./wideblde").wideblde
+local wideswrd = require("./wideswrd").wideswrd
 
-return define.chip {
-    id = "lifesrd",
+local chip: Chip = {
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",
@@ -40,3 +39,5 @@ return define.chip {
         charged = slashes.life,
     },
 }
+
+return { lifesrd = chip }

@@ -29,7 +29,7 @@ local made = common.make {
     sprite = SPRITE,
     -- Its identity: a field object, with the look something that takes its
     -- place shows (DustMan's junk).
-    identity = define.identity {
+    identity = new.identity {
         id = "guardian",
         class = "field_object",
         version = 4,
@@ -43,9 +43,9 @@ local made = common.make {
         strike = asset.sound("beast-over-burst"),
     },
     -- The flash it arrives in, 16 pixels up (effect 0x15).
-    arrival = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 },
+    arrival = new.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 },
     -- The burst on each panel it strikes (effect 0x45).
-    burst = define.effect { sprite = asset.sprite("lightning"), anim = 0, palette = 0 },
+    burst = new.effect { sprite = asset.sprite("lightning"), anim = 0, palette = 0 },
     -- A neutral obstacle that everything reaches (row 0x0E, while dimmed
     -- too, breaking).
     is = collision.neutral_body,

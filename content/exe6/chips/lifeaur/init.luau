@@ -5,8 +5,7 @@
 local barrier_chips = require("../lib/barriers/controller")
 local barriers = require("../lib/barriers")
 
-return define.chip {
-    id = "lifeaur",
+local chip: Chip = {
     codes = { "U" },
     element = "null", family = "null", class = "standard",
     rarity = 4, mb = 70, damage = 0, hit_param = 0, lockout = 0,
@@ -14,3 +13,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = barrier_chips.hook(barriers.life_aura),
 }
+
+return { lifeaur = chip }

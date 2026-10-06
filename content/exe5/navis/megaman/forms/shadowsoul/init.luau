@@ -14,13 +14,12 @@ local buster = require("../weapons/buster")
 local charge = require("@self/charge")
 local chaos = require("../weapons/chaos")
 local charged_chips = require("../weapons/charged_chip")
-local darkinvs = require("../../../chips/darkinvs")
+local darkinvs = require("../../../chips/darkinvs").darkinvs
 local soul_change = require("../../../rules/souls/change")
 local soul_image = require("../../../rules/souls/image")
 local soul_revert = require("../../../rules/souls/revert")
 
-return define.form {
-    id = "shadowsoul",
+local form: FormDef = {
     soul = { family = "invisible" },
     change = soul_change.action,
     revert = soul_revert.action,
@@ -57,7 +56,7 @@ return define.form {
     -- VarSwrd and NeoVari wait for their sequence while A is up (chips/varswrd, 0x080ED570).
     var_sword_waits = true,
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 8 of category 0).
-    identity = define.identity {
+    identity = new.identity {
         class = "megaman",
         version = 0,
         actor_type = "player",
@@ -66,3 +65,5 @@ return define.form {
         attach_points = attach_points,
     },
 }
+
+return { shadowsoul = form }

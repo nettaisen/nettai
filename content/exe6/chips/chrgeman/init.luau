@@ -4,8 +4,7 @@
 
 local navi = require("@self/navi")
 
-local chrgeman = define.chip {
-    id = "chrgeman",
+local chrgeman: Chip = {
     codes = { "C", "*" },
     element = "null",
     family = "null",
@@ -21,8 +20,7 @@ local chrgeman = define.chip {
     navi = navi.summon,
 }
 
-local chrgemn_ex = define.chip {
-    id = "chrgemn-ex",
+local chrgemn_ex: Chip = {
     codes = { "C" },
     element = "null",
     family = "null",
@@ -38,8 +36,7 @@ local chrgemn_ex = define.chip {
     navi = navi.summon,
 }
 
-local chrgemn_sp = define.chip {
-    id = "chrgemn-sp",
+local chrgemn_sp: Chip = {
     codes = { "C" },
     element = "null",
     family = "null",
@@ -55,4 +52,4 @@ local chrgemn_sp = define.chip {
     navi = navi.summon,
 }
 
-return { chrgeman = chrgeman, chrgemn_ex = chrgemn_ex, chrgemn_sp = chrgemn_sp }
+return { chrgeman = chrgeman, ["chrgemn-ex"] = chrgemn_ex, ["chrgemn-sp"] = chrgemn_sp }

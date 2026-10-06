@@ -6,11 +6,10 @@
 
 local flick = require("@exelib/airhocky/flick")
 local puck = require("./airhoc/puck")
-local recipe_airhoc = require("./airhoc")
-local recipe_cannball = require("./cannball")
+local recipe_airhoc = require("./airhoc").airhoc
+local recipe_cannball = require("./cannball").cannball
 
-return define.chip {
-    id = "pithoky",
+local chip: Chip = {
     codes = {},
     element = "null",
     family = "program_advance",
@@ -35,3 +34,5 @@ return define.chip {
         down = true,
     },
 }
+
+return { pithoky = chip }

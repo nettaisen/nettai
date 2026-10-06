@@ -8,9 +8,8 @@ local lockon = require("../rules/lockon")
 
 local BEES = action.bees
 
-return {
-    rskyhny1 = define.chip {
-        id = "rskyhny1",
+local chips: { [string]: Chip } = {
+    rskyhny1 = {
         codes = { "B", "G", "S" },
         element = "wood", family = "wood", class = "standard",
         rarity = 0, mb = 21, damage = 10, hit_param = 30, lockout = 0,
@@ -20,8 +19,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = action.action { bee = BEES[1] },
     },
-    rskyhny2 = define.chip {
-        id = "rskyhny2",
+    rskyhny2 = {
         codes = { "C", "R", "V" },
         element = "wood", family = "wood", class = "standard",
         rarity = 1, mb = 28, damage = 15, hit_param = 30, lockout = 0,
@@ -31,8 +29,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = action.action { bee = BEES[2] },
     },
-    rskyhny3 = define.chip {
-        id = "rskyhny3",
+    rskyhny3 = {
         codes = { "A", "D", "M" },
         element = "wood",
         family = "wood",
@@ -48,3 +45,5 @@ return {
         action = action.action { id = "rskyhny3/action", bee = BEES[3] },
     },
 }
+
+return chips

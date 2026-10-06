@@ -29,7 +29,7 @@ local function effect(me: Object)
     end
 end
 
-controller.kind = define.kind {
+controller.kind = new.kind {
     id = "magnum/controller",
     pool = "effect",
     state = { bonus = "u16", mode = "u8", stage = "u8" },

@@ -2,7 +2,7 @@
 //! 改造カード; docs/engine/patch-cards.md): the cards their save has
 //! installed, in their list's order, each switched on or off.
 //!
-//! The cards are definitions (`define.patch_card`, `Content::patch_card`);
+//! The cards are definitions (the root's `patch_cards`, `Content::patch_card`);
 //! a player's installed cards are their setup's
 //! ([`crate::custom::PlayerSetup::patch_cards`]), which the setup exchange
 //! and the setup's hash cover as the rest of it. What the cards do is a

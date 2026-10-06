@@ -88,7 +88,7 @@ local function action(id: string, boom: SonicBoom, charged: Charged?): Action
         end
     end
 
-    return define.action {
+    return new.action {
         id = id,
         state = sonicbom.STATE,
         args = charged,

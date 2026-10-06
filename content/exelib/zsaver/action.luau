@@ -222,7 +222,7 @@ function zsaver.make(look: ZSaverLook): Action
         turned = "u32",
     }
 
-    return define.action {
+    return new.action {
         id = look.id,
         state = state,
         -- `sub_80EFEE0` (EXE5's 0x080EE02A).

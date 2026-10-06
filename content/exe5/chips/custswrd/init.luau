@@ -8,8 +8,7 @@
 local regions = require("@exelib/regions")
 local swords = require("../lib/swords")
 
-return define.chip {
-    id = "custswrd",
+local chip: Chip = {
     codes = { "E", "L", "R" },
     element = "null",
     family = "sword",
@@ -31,3 +30,5 @@ return define.chip {
         sound = swords.swing,
     },
 }
+
+return { custswrd = chip }

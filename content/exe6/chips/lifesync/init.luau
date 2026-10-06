@@ -6,8 +6,7 @@
 local controller = require("@self/controller")
 local lockon = require("../rules/lockon")
 
-return define.chip {
-    id = "lifesync",
+local chip: Chip = {
     codes = { "*" },
     element = "null", family = "cursor", class = "standard",
     rarity = 1, mb = 12, damage = 0, hit_param = 0, lockout = 0,
@@ -17,3 +16,5 @@ return define.chip {
     slot_in_limit = 3,
     dimming = controller.hook,
 }
+
+return { lifesync = chip }

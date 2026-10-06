@@ -1,210 +1,227 @@
 --!strict
--- EXE5's chips/ (docs/design/content-model-v2.md §4.0): the folder's modules that define what the game has, which load
--- when the game's init.luau requires the folder. Written by tools/content/index.py (the verification workspace) from
--- the modules that are there: run it again rather than edit this, also to settle a merge conflict in it.
+-- EXE5's chips (docs/design/content-model-v2.md §4.0), by id: the tables of the modules that define them as one, which
+-- the game's init.luau returns as its `chips`. Written by tools/content/index.py (the verification workspace) from the
+-- modules that are there: run it again rather than edit this, also to settle a merge conflict in it.
 
--- Chips: a module defining one, or a series module defining several.
-require("@self/airhoc")
-require("@self/airshot")
-require("@self/airspin")
-require("@self/antidmg")
-require("@self/antielec")
-require("@self/antifire")
-require("@self/antinavi")
-require("@self/antirecv")
-require("@self/antiswrd")
-require("@self/antiwatr")
-require("@self/antiwood")
-require("@self/anubis")
-require("@self/aqwhirl")
-require("@self/areagrab")
-require("@self/astroid")
-require("@self/attck-10")
-require("@self/attck-30")
-require("@self/barrier")
-require("@self/bass")
-require("@self/bassanly")
-require("@self/batcan")
-require("@self/bblwrap")
-require("@self/beat")
-require("@self/bighook")
-require("@self/bignoise")
-require("@self/blakwing")
-require("@self/blinder")
-require("@self/blizman")
-require("@self/blkbomb")
-require("@self/bodygrd")
-require("@self/boomer")
-require("@self/boxer")
-require("@self/boybomb")
-require("@self/bugbomb")
-require("@self/bugcharg")
-require("@self/bugcurse")
-require("@self/bugfix")
-require("@self/busterup")
-require("@self/cacdanc")
-require("@self/cactbal")
-require("@self/cannball")
-require("@self/cannmode")
-require("@self/cannon")
-require("@self/capsules")
-require("@self/chaoslrd")
-require("@self/circgun")
-require("@self/cloudman")
-require("@self/colonel")
-require("@self/colorpt")
-require("@self/copydmg")
-require("@self/cosmoman")
-require("@self/crakbom")
-require("@self/crakout")
-require("@self/crossdiv")
-require("@self/crosswrd")
-require("@self/crsshld")
-require("@self/csmopris")
-require("@self/curse")
-require("@self/custswrd")
-require("@self/cusvolt")
-require("@self/darkcirc")
-require("@self/darkdril")
-require("@self/darkinvs")
-require("@self/darkmetr")
-require("@self/darkplus")
-require("@self/darkthnd")
-require("@self/darktorn")
-require("@self/darkwide")
-require("@self/dbldream")
-require("@self/deltaray")
-require("@self/dethphnx")
-require("@self/discord")
-require("@self/django")
-require("@self/drilarm")
-require("@self/drklance")
-require("@self/drkrecov")
-require("@self/drksonic")
-require("@self/drksword")
-require("@self/elcreel")
-require("@self/elempowr")
-require("@self/elemrage")
-require("@self/energbom")
-require("@self/fanfare")
-require("@self/finalgun")
-require("@self/firehit")
-require("@self/football")
-require("@self/fstgauge")
-require("@self/ftrsword")
-require("@self/fullcust")
-require("@self/geddon")
-require("@self/geyser")
-require("@self/gigacan")
-require("@self/grabbnsh")
-require("@self/grasseed")
-require("@self/greatyo")
-require("@self/gridman")
-require("@self/guard")
-require("@self/guardian")
-require("@self/gundels")
-require("@self/gyroman")
-require("@self/h-burst")
-require("@self/holydrem")
-require("@self/holypanl")
-require("@self/hotbody")
-require("@self/iceseed")
-require("@self/infvulc")
-require("@self/invalid")
-require("@self/invisibl")
-require("@self/jealousy")
-require("@self/justcone")
-require("@self/katana")
-require("@self/knightmn")
-require("@self/lance")
-require("@self/larkman")
-require("@self/lavaseed")
-require("@self/lcounter")
-require("@self/lcrsshld")
-require("@self/leadraid")
-require("@self/lifeaur")
-require("@self/lifesrd")
-require("@self/lifesync")
-require("@self/longblde")
-require("@self/longswrd")
-require("@self/lstepswd")
-require("@self/magnetmn")
-require("@self/magnum")
-require("@self/meddy")
-require("@self/metagel")
-require("@self/meteors")
-require("@self/metrknuk")
-require("@self/mine")
-require("@self/minibomb")
-require("@self/moonbld")
-require("@self/mrkcan")
-require("@self/mudwave")
-require("@self/muramasa")
-require("@self/napalmmn")
-require("@self/navi-20")
-require("@self/neovari")
-require("@self/nrthwind")
-require("@self/numbrbl")
-require("@self/numbrman")
-require("@self/omegarkt")
-require("@self/otenko")
-require("@self/panlgrab")
-require("@self/parabom")
-require("@self/phoenix")
-require("@self/piledrvr")
-require("@self/pithoky")
-require("@self/pnlretrn")
-require("@self/poisphar")
-require("@self/poltrgst")
-require("@self/protoman")
-require("@self/pulsar")
-require("@self/punisher")
-require("@self/quake")
-require("@self/rainyday")
-require("@self/recov")
-require("@self/redfrut")
-require("@self/redwave")
-require("@self/resetbom")
-require("@self/rockcube")
-require("@self/roll")
-require("@self/rush")
-require("@self/seaseed")
-require("@self/serchman")
-require("@self/shademan")
-require("@self/shadoman")
-require("@self/shakpar")
-require("@self/sidebub")
-require("@self/silence")
-require("@self/skully")
-require("@self/slasher")
-require("@self/slogauge")
-require("@self/snake")
-require("@self/snctuary")
-require("@self/sonicbom")
-require("@self/spreader")
-require("@self/sprsonic")
-require("@self/spshake")
-require("@self/suprspr")
-require("@self/sword")
-require("@self/tango")
-require("@self/tankcan")
-require("@self/thunder")
-require("@self/timebom")
-require("@self/timpani")
-require("@self/tmhwkman")
-require("@self/toadman")
-require("@self/tornado")
-require("@self/varswrd")
-require("@self/vdoll")
-require("@self/voltz")
-require("@self/vulcan")
-require("@self/wavepit")
-require("@self/wideblde")
-require("@self/widesht")
-require("@self/wideswrd")
-require("@self/wildbird")
-require("@self/wind")
-require("@self/windrack")
-require("@self/woodnos")
-require("@self/yoyo")
-require("@self/z-saver")
+local merge = require("@exelib/merge")
+
+return merge {
+    -- Chips: a module defining one, or a series module defining several.
+    ["chips/airhoc"] = require("@self/airhoc"),
+    ["chips/airshot"] = require("@self/airshot"),
+    ["chips/airspin"] = require("@self/airspin"),
+    ["chips/antidmg"] = require("@self/antidmg"),
+    ["chips/antielec"] = require("@self/antielec"),
+    ["chips/antifire"] = require("@self/antifire"),
+    ["chips/antinavi"] = require("@self/antinavi"),
+    ["chips/antirecv"] = require("@self/antirecv"),
+    ["chips/antiswrd"] = require("@self/antiswrd"),
+    ["chips/antiwatr"] = require("@self/antiwatr"),
+    ["chips/antiwood"] = require("@self/antiwood"),
+    ["chips/anubis"] = require("@self/anubis"),
+    ["chips/aqwhirl"] = require("@self/aqwhirl"),
+    ["chips/areagrab"] = require("@self/areagrab"),
+    ["chips/astroid"] = require("@self/astroid"),
+    ["chips/attck-10"] = require("@self/attck-10"),
+    ["chips/attck-30"] = require("@self/attck-30"),
+    ["chips/barrier"] = require("@self/barrier"),
+    ["chips/bass"] = require("@self/bass"),
+    ["chips/bassanly"] = require("@self/bassanly"),
+    ["chips/batcan"] = require("@self/batcan"),
+    ["chips/bblwrap"] = require("@self/bblwrap"),
+    ["chips/beat"] = require("@self/beat"),
+    ["chips/bighook"] = require("@self/bighook"),
+    ["chips/bignoise"] = require("@self/bignoise"),
+    ["chips/blakwing"] = require("@self/blakwing"),
+    ["chips/blinder"] = require("@self/blinder"),
+    ["chips/blizman"] = require("@self/blizman"),
+    ["chips/blkbomb"] = require("@self/blkbomb"),
+    ["chips/bodygrd"] = require("@self/bodygrd"),
+    ["chips/boomer"] = require("@self/boomer"),
+    ["chips/boxer"] = require("@self/boxer"),
+    ["chips/boybomb"] = require("@self/boybomb"),
+    ["chips/bugbomb"] = require("@self/bugbomb"),
+    ["chips/bugcharg"] = require("@self/bugcharg"),
+    ["chips/bugcurse"] = require("@self/bugcurse"),
+    ["chips/bugfix"] = require("@self/bugfix"),
+    ["chips/busterup"] = require("@self/busterup"),
+    ["chips/cacdanc"] = require("@self/cacdanc"),
+    ["chips/cactbal"] = require("@self/cactbal"),
+    ["chips/cannball"] = require("@self/cannball"),
+    ["chips/cannmode"] = require("@self/cannmode"),
+    ["chips/cannon"] = require("@self/cannon"),
+    ["chips/capsules"] = require("@self/capsules"),
+    ["chips/chaoslrd"] = require("@self/chaoslrd"),
+    ["chips/circgun"] = require("@self/circgun"),
+    ["chips/cloudman"] = require("@self/cloudman"),
+    ["chips/colonel"] = require("@self/colonel"),
+    ["chips/colorpt"] = require("@self/colorpt"),
+    ["chips/copydmg"] = require("@self/copydmg"),
+    ["chips/cosmoman"] = require("@self/cosmoman"),
+    ["chips/crakbom"] = require("@self/crakbom"),
+    ["chips/crakout"] = require("@self/crakout"),
+    ["chips/crossdiv"] = require("@self/crossdiv"),
+    ["chips/crosswrd"] = require("@self/crosswrd"),
+    ["chips/crsshld"] = require("@self/crsshld"),
+    ["chips/csmopris"] = require("@self/csmopris"),
+    ["chips/curse"] = require("@self/curse"),
+    ["chips/custswrd"] = require("@self/custswrd"),
+    ["chips/cusvolt"] = require("@self/cusvolt"),
+    ["chips/darkcirc"] = require("@self/darkcirc"),
+    ["chips/darkdril"] = require("@self/darkdril"),
+    ["chips/darkinvs"] = require("@self/darkinvs"),
+    ["chips/darkmetr"] = require("@self/darkmetr"),
+    ["chips/darkplus"] = require("@self/darkplus"),
+    ["chips/darkthnd"] = require("@self/darkthnd"),
+    ["chips/darktorn"] = require("@self/darktorn"),
+    ["chips/darkwide"] = require("@self/darkwide"),
+    ["chips/dbldream"] = require("@self/dbldream"),
+    ["chips/deltaray"] = require("@self/deltaray"),
+    ["chips/dethphnx"] = require("@self/dethphnx"),
+    ["chips/discord"] = require("@self/discord"),
+    ["chips/django"] = require("@self/django"),
+    ["chips/drilarm"] = require("@self/drilarm"),
+    ["chips/drklance"] = require("@self/drklance"),
+    ["chips/drkrecov"] = require("@self/drkrecov"),
+    ["chips/drksonic"] = require("@self/drksonic"),
+    ["chips/drksword"] = require("@self/drksword"),
+    ["chips/elcreel"] = require("@self/elcreel"),
+    ["chips/elempowr"] = require("@self/elempowr"),
+    ["chips/elemrage"] = require("@self/elemrage"),
+    ["chips/energbom"] = require("@self/energbom"),
+    ["chips/fanfare"] = require("@self/fanfare"),
+    ["chips/finalgun"] = require("@self/finalgun"),
+    ["chips/firehit"] = require("@self/firehit"),
+    ["chips/football"] = require("@self/football"),
+    ["chips/fstgauge"] = require("@self/fstgauge"),
+    ["chips/ftrsword"] = require("@self/ftrsword"),
+    ["chips/fullcust"] = require("@self/fullcust"),
+    ["chips/geddon"] = require("@self/geddon"),
+    ["chips/geyser"] = require("@self/geyser"),
+    ["chips/gigacan"] = require("@self/gigacan"),
+    ["chips/grabbnsh"] = require("@self/grabbnsh"),
+    ["chips/grasseed"] = require("@self/grasseed"),
+    ["chips/greatyo"] = require("@self/greatyo"),
+    ["chips/gridman"] = require("@self/gridman"),
+    ["chips/guard"] = require("@self/guard"),
+    ["chips/guardian"] = require("@self/guardian"),
+    ["chips/gundels"] = require("@self/gundels"),
+    ["chips/gyroman"] = require("@self/gyroman"),
+    ["chips/h-burst"] = require("@self/h-burst"),
+    ["chips/holydrem"] = require("@self/holydrem"),
+    ["chips/holypanl"] = require("@self/holypanl"),
+    ["chips/hotbody"] = require("@self/hotbody"),
+    ["chips/iceseed"] = require("@self/iceseed"),
+    ["chips/infvulc"] = require("@self/infvulc"),
+    ["chips/invalid"] = require("@self/invalid"),
+    ["chips/invisibl"] = require("@self/invisibl"),
+    ["chips/jealousy"] = require("@self/jealousy"),
+    ["chips/justcone"] = require("@self/justcone"),
+    ["chips/katana"] = require("@self/katana"),
+    ["chips/knightmn"] = require("@self/knightmn"),
+    ["chips/lance"] = require("@self/lance"),
+    ["chips/larkman"] = require("@self/larkman"),
+    ["chips/lavaseed"] = require("@self/lavaseed"),
+    ["chips/lcounter"] = require("@self/lcounter"),
+    ["chips/lcrsshld"] = require("@self/lcrsshld"),
+    ["chips/leadraid"] = require("@self/leadraid"),
+    ["chips/lifeaur"] = require("@self/lifeaur"),
+    ["chips/lifesrd"] = require("@self/lifesrd"),
+    ["chips/lifesync"] = require("@self/lifesync"),
+    ["chips/longblde"] = require("@self/longblde"),
+    ["chips/longswrd"] = require("@self/longswrd"),
+    ["chips/lstepswd"] = require("@self/lstepswd"),
+    ["chips/magnetmn"] = require("@self/magnetmn"),
+    ["chips/magnum"] = require("@self/magnum"),
+    ["chips/meddy"] = require("@self/meddy"),
+    ["chips/metagel"] = require("@self/metagel"),
+    ["chips/meteors"] = require("@self/meteors"),
+    ["chips/metrknuk"] = require("@self/metrknuk"),
+    ["chips/mine"] = require("@self/mine"),
+    ["chips/minibomb"] = require("@self/minibomb"),
+    ["chips/moonbld"] = require("@self/moonbld"),
+    ["chips/mrkcan"] = require("@self/mrkcan"),
+    ["chips/mudwave"] = require("@self/mudwave"),
+    ["chips/muramasa"] = require("@self/muramasa"),
+    ["chips/napalmmn"] = require("@self/napalmmn"),
+    ["chips/navi-20"] = require("@self/navi-20"),
+    ["chips/neovari"] = require("@self/neovari"),
+    ["chips/nrthwind"] = require("@self/nrthwind"),
+    ["chips/numbrbl"] = require("@self/numbrbl"),
+    ["chips/numbrman"] = require("@self/numbrman"),
+    ["chips/omegarkt"] = require("@self/omegarkt"),
+    ["chips/otenko"] = require("@self/otenko"),
+    ["chips/panlgrab"] = require("@self/panlgrab"),
+    ["chips/parabom"] = require("@self/parabom"),
+    ["chips/phoenix"] = require("@self/phoenix"),
+    ["chips/piledrvr"] = require("@self/piledrvr"),
+    ["chips/pithoky"] = require("@self/pithoky"),
+    ["chips/pnlretrn"] = require("@self/pnlretrn"),
+    ["chips/poisphar"] = require("@self/poisphar"),
+    ["chips/poltrgst"] = require("@self/poltrgst"),
+    ["chips/protoman"] = require("@self/protoman"),
+    ["chips/pulsar"] = require("@self/pulsar"),
+    ["chips/punisher"] = require("@self/punisher"),
+    ["chips/quake"] = require("@self/quake"),
+    ["chips/rainyday"] = require("@self/rainyday"),
+    ["chips/recov"] = require("@self/recov"),
+    ["chips/redfrut"] = require("@self/redfrut"),
+    ["chips/redwave"] = require("@self/redwave"),
+    ["chips/resetbom"] = require("@self/resetbom"),
+    ["chips/rockcube"] = require("@self/rockcube"),
+    ["chips/roll"] = require("@self/roll"),
+    ["chips/rush"] = require("@self/rush"),
+    ["chips/seaseed"] = require("@self/seaseed"),
+    ["chips/serchman"] = require("@self/serchman"),
+    ["chips/shademan"] = require("@self/shademan"),
+    ["chips/shadoman"] = require("@self/shadoman"),
+    ["chips/shakpar"] = require("@self/shakpar"),
+    ["chips/sidebub"] = require("@self/sidebub"),
+    ["chips/silence"] = require("@self/silence"),
+    ["chips/skully"] = require("@self/skully"),
+    ["chips/slasher"] = require("@self/slasher"),
+    ["chips/slogauge"] = require("@self/slogauge"),
+    ["chips/snake"] = require("@self/snake"),
+    ["chips/snctuary"] = require("@self/snctuary"),
+    ["chips/sonicbom"] = require("@self/sonicbom"),
+    ["chips/spreader"] = require("@self/spreader"),
+    ["chips/sprsonic"] = require("@self/sprsonic"),
+    ["chips/spshake"] = require("@self/spshake"),
+    ["chips/suprspr"] = require("@self/suprspr"),
+    ["chips/sword"] = require("@self/sword"),
+    ["chips/tango"] = require("@self/tango"),
+    ["chips/tankcan"] = require("@self/tankcan"),
+    ["chips/thunder"] = require("@self/thunder"),
+    ["chips/timebom"] = require("@self/timebom"),
+    ["chips/timpani"] = require("@self/timpani"),
+    ["chips/tmhwkman"] = require("@self/tmhwkman"),
+    ["chips/toadman"] = require("@self/toadman"),
+    ["chips/tornado"] = require("@self/tornado"),
+    ["chips/varswrd"] = require("@self/varswrd"),
+    ["chips/vdoll"] = require("@self/vdoll"),
+    ["chips/voltz"] = require("@self/voltz"),
+    ["chips/vulcan"] = require("@self/vulcan"),
+    ["chips/wavepit"] = require("@self/wavepit"),
+    ["chips/wideblde"] = require("@self/wideblde"),
+    ["chips/widesht"] = require("@self/widesht"),
+    ["chips/wideswrd"] = require("@self/wideswrd"),
+    ["chips/wildbird"] = require("@self/wildbird"),
+    ["chips/wind"] = require("@self/wind"),
+    ["chips/windrack"] = require("@self/windrack"),
+    ["chips/woodnos"] = require("@self/woodnos"),
+    ["chips/yoyo"] = require("@self/yoyo"),
+    ["chips/z-saver"] = require("@self/z-saver"),
+    -- A navi chip's chips, with its navi.
+    ["navis/colonel/chip"] = require("./navis/colonel/chip"),
+    ["navis/gyroman/chip"] = require("./navis/gyroman/chip"),
+    ["navis/knightman/chip"] = require("./navis/knightman/chip"),
+    ["navis/magnetman/chip"] = require("./navis/magnetman/chip"),
+    ["navis/meddy/chip"] = require("./navis/meddy/chip"),
+    ["navis/napalmman/chip"] = require("./navis/napalmman/chip"),
+    ["navis/numberman/chip"] = require("./navis/numberman/chip"),
+    ["navis/protoman/chip"] = require("./navis/protoman/chip"),
+    ["navis/searchman/chip"] = require("./navis/searchman/chip"),
+    ["navis/shadowman/chip"] = require("./navis/shadowman/chip"),
+    ["navis/toadman/chip"] = require("./navis/toadman/chip"),
+    ["navis/tomahawkman/chip"] = require("./navis/tomahawkman/chip"),
+}

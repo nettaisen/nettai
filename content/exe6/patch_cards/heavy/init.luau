@@ -3,8 +3,7 @@
 
 local cards = require("../rules/patch_cards/cards")
 
-return define.patch_card {
-    id = "heavy",
+local card: PatchCard = {
     mb = 15,
     effects = {
         cards.super_armor(true),
@@ -12,3 +11,5 @@ return define.patch_card {
         cards.bug(cards.buster_shot(nil)),
     },
 }
+
+return { heavy = card }

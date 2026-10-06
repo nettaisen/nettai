@@ -7,12 +7,12 @@
 local weapon = require("../../lib/weapon")
 local cannon_chips = require("../../chips/cannon")
 
-return define.weapon {
+return new.weapon {
     id = "patch-cards/canodumb/charge",
     -- The charge table's row 0x54, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 150, 140, 130, 125, 120, 180, 170, 160 },
     setup = function(navi: Object)
-        return weapon.chip(navi, cannon_chips.m_cannon)
+        return weapon.chip(navi, cannon_chips["m-cannon"])
     end,
 }

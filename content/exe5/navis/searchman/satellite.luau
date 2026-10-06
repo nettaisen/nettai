@@ -200,7 +200,7 @@ local function satellite_tick(me: Object, s: State)
     satellite_act(me, s)
 end
 
-satellite.kind = define.kind {
+satellite.kind = new.kind {
     id = "searchman/satelity/satellite",
     pool = "effect",
     state = { while_dimmed = "bool", ticks = "u8" },
@@ -276,7 +276,7 @@ local function beam_tick(me: Object, s: State)
     end
 end
 
-beam_kind = define.kind {
+beam_kind = new.kind {
     id = "searchman/satelity/beam",
     pool = "effect",
     state = { while_dimmed = "bool", ticks = "u8" },
@@ -380,7 +380,7 @@ local function flare_tick(me: Object, f: FlareState)
     c:present()
 end
 
-flare_kind = define.kind {
+flare_kind = new.kind {
     id = "searchman/satelity/flare",
     pool = "attack",
     state = { while_dimmed = "bool", ticks = "u8", way = "u8" },

@@ -7,385 +7,385 @@
 -- Written by tools/exe5/gen_rules.py (bn6battle-verify) from the EXE5 ROM; people own it now.
 
 local status = {
-    paralyze_90 = define.status {
+    paralyze_90 = new.status {
         id = "paralyze-90",
         requests = 0x00000008,
         duration = 90,
         timer = "paralyze",
     },
-    paralyze_120 = define.status {
+    paralyze_120 = new.status {
         id = "paralyze-120",
         requests = 0x00000008,
         duration = 120,
         timer = "paralyze",
     },
-    paralyze_150 = define.status {
+    paralyze_150 = new.status {
         id = "paralyze-150",
         requests = 0x00000008,
         duration = 150,
         timer = "paralyze",
     },
-    paralyze_4 = define.status {
+    paralyze_4 = new.status {
         id = "paralyze-4",
         requests = 0x00000008,
         duration = 4,
         timer = "paralyze",
     },
-    paralyze_300 = define.status {
+    paralyze_300 = new.status {
         id = "paralyze-300",
         requests = 0x00000008,
         duration = 300,
         timer = "paralyze",
     },
-    paralyze_600 = define.status {
+    paralyze_600 = new.status {
         id = "paralyze-600",
         requests = 0x00000008,
         duration = 600,
         timer = "paralyze",
     },
-    confuse_480_past_paralyze = define.status {
+    confuse_480_past_paralyze = new.status {
         id = "confuse-480-past-paralyze",
         requests = 0x00000080,
         duration = 480,
         timer = "confuse",
     },
-    confuse_720_past_paralyze = define.status {
+    confuse_720_past_paralyze = new.status {
         id = "confuse-720-past-paralyze",
         requests = 0x00000080,
         duration = 720,
         timer = "confuse",
     },
-    confuse_960_past_paralyze = define.status {
+    confuse_960_past_paralyze = new.status {
         id = "confuse-960-past-paralyze",
         requests = 0x00000080,
         duration = 960,
         timer = "confuse",
     },
-    confuse_4_past_paralyze = define.status {
+    confuse_4_past_paralyze = new.status {
         id = "confuse-4-past-paralyze",
         requests = 0x00000080,
         duration = 4,
         timer = "confuse",
     },
-    confuse_300_past_paralyze = define.status {
+    confuse_300_past_paralyze = new.status {
         id = "confuse-300-past-paralyze",
         requests = 0x00000080,
         duration = 300,
         timer = "confuse",
     },
-    confuse_600_past_paralyze = define.status {
+    confuse_600_past_paralyze = new.status {
         id = "confuse-600-past-paralyze",
         requests = 0x00000080,
         duration = 600,
         timer = "confuse",
     },
-    blind_480_past_paralyze = define.status {
+    blind_480_past_paralyze = new.status {
         id = "blind-480-past-paralyze",
         requests = 0x00000020,
         duration = 480,
         timer = "blind",
     },
-    blind_720_past_paralyze = define.status {
+    blind_720_past_paralyze = new.status {
         id = "blind-720-past-paralyze",
         requests = 0x00000020,
         duration = 720,
         timer = "blind",
     },
-    blind_1200_past_paralyze = define.status {
+    blind_1200_past_paralyze = new.status {
         id = "blind-1200-past-paralyze",
         requests = 0x00000020,
         duration = 1200,
         timer = "blind",
     },
-    blind_4_past_paralyze = define.status {
+    blind_4_past_paralyze = new.status {
         id = "blind-4-past-paralyze",
         requests = 0x00000020,
         duration = 4,
         timer = "blind",
     },
-    confuse_480 = define.status {
+    confuse_480 = new.status {
         id = "confuse-480",
         requests = 0x00000080,
         duration = 480,
         timer = "confuse",
     },
-    confuse_720 = define.status {
+    confuse_720 = new.status {
         id = "confuse-720",
         requests = 0x00000080,
         duration = 720,
         timer = "confuse",
     },
-    confuse_960 = define.status {
+    confuse_960 = new.status {
         id = "confuse-960",
         requests = 0x00000080,
         duration = 960,
         timer = "confuse",
     },
-    confuse_4 = define.status {
+    confuse_4 = new.status {
         id = "confuse-4",
         requests = 0x00000080,
         duration = 4,
         timer = "confuse",
     },
-    confuse_300 = define.status {
+    confuse_300 = new.status {
         id = "confuse-300",
         requests = 0x00000080,
         duration = 300,
         timer = "confuse",
     },
-    confuse_600 = define.status {
+    confuse_600 = new.status {
         id = "confuse-600",
         requests = 0x00000080,
         duration = 600,
         timer = "confuse",
     },
-    blind_480_past_confuse = define.status {
+    blind_480_past_confuse = new.status {
         id = "blind-480-past-confuse",
         requests = 0x00000020,
         duration = 480,
         timer = "blind",
     },
-    blind_720_past_confuse = define.status {
+    blind_720_past_confuse = new.status {
         id = "blind-720-past-confuse",
         requests = 0x00000020,
         duration = 720,
         timer = "blind",
     },
-    blind_1200_past_confuse = define.status {
+    blind_1200_past_confuse = new.status {
         id = "blind-1200-past-confuse",
         requests = 0x00000020,
         duration = 1200,
         timer = "blind",
     },
-    blind_4_past_confuse = define.status {
+    blind_4_past_confuse = new.status {
         id = "blind-4-past-confuse",
         requests = 0x00000020,
         duration = 4,
         timer = "blind",
     },
-    blind_300_past_confuse = define.status {
+    blind_300_past_confuse = new.status {
         id = "blind-300-past-confuse",
         requests = 0x00000020,
         duration = 300,
         timer = "blind",
     },
-    blind_600_past_confuse = define.status {
+    blind_600_past_confuse = new.status {
         id = "blind-600-past-confuse",
         requests = 0x00000020,
         duration = 600,
         timer = "blind",
     },
-    immobilize_2_past_confuse = define.status {
+    immobilize_2_past_confuse = new.status {
         id = "immobilize-2-past-confuse",
         requests = 0x00000040,
         duration = 2,
         timer = "immobilize",
     },
-    immobilize_60_past_confuse = define.status {
+    immobilize_60_past_confuse = new.status {
         id = "immobilize-60-past-confuse",
         requests = 0x00000040,
         duration = 60,
         timer = "immobilize",
     },
-    immobilize_120_past_confuse = define.status {
+    immobilize_120_past_confuse = new.status {
         id = "immobilize-120-past-confuse",
         requests = 0x00000040,
         duration = 120,
         timer = "immobilize",
     },
-    immobilize_4_past_confuse = define.status {
+    immobilize_4_past_confuse = new.status {
         id = "immobilize-4-past-confuse",
         requests = 0x00000040,
         duration = 4,
         timer = "immobilize",
     },
-    blind_480 = define.status {
+    blind_480 = new.status {
         id = "blind-480",
         requests = 0x00000020,
         duration = 480,
         timer = "blind",
     },
-    blind_720 = define.status {
+    blind_720 = new.status {
         id = "blind-720",
         requests = 0x00000020,
         duration = 720,
         timer = "blind",
     },
-    blind_1200 = define.status {
+    blind_1200 = new.status {
         id = "blind-1200",
         requests = 0x00000020,
         duration = 1200,
         timer = "blind",
     },
-    blind_4 = define.status {
+    blind_4 = new.status {
         id = "blind-4",
         requests = 0x00000020,
         duration = 4,
         timer = "blind",
     },
-    blind_300 = define.status {
+    blind_300 = new.status {
         id = "blind-300",
         requests = 0x00000020,
         duration = 300,
         timer = "blind",
     },
-    blind_600 = define.status {
+    blind_600 = new.status {
         id = "blind-600",
         requests = 0x00000020,
         duration = 600,
         timer = "blind",
     },
-    immobilize_2_past_blind = define.status {
+    immobilize_2_past_blind = new.status {
         id = "immobilize-2-past-blind",
         requests = 0x00000040,
         duration = 2,
         timer = "immobilize",
     },
-    immobilize_60_past_blind = define.status {
+    immobilize_60_past_blind = new.status {
         id = "immobilize-60-past-blind",
         requests = 0x00000040,
         duration = 60,
         timer = "immobilize",
     },
-    immobilize_120_past_blind = define.status {
+    immobilize_120_past_blind = new.status {
         id = "immobilize-120-past-blind",
         requests = 0x00000040,
         duration = 120,
         timer = "immobilize",
     },
-    immobilize_4_past_blind = define.status {
+    immobilize_4_past_blind = new.status {
         id = "immobilize-4-past-blind",
         requests = 0x00000040,
         duration = 4,
         timer = "immobilize",
     },
-    immobilize_300_past_blind = define.status {
+    immobilize_300_past_blind = new.status {
         id = "immobilize-300-past-blind",
         requests = 0x00000040,
         duration = 300,
         timer = "immobilize",
     },
-    immobilize_600_past_blind = define.status {
+    immobilize_600_past_blind = new.status {
         id = "immobilize-600-past-blind",
         requests = 0x00000040,
         duration = 600,
         timer = "immobilize",
     },
-    after_table_1_past_blind = define.status {
+    after_table_1_past_blind = new.status {
         id = "after-table-1-past-blind",
         requests = 0x00000000,
         duration = 65535,
         timer = "collision_panel",
     },
-    after_table_2_past_blind = define.status {
+    after_table_2_past_blind = new.status {
         id = "after-table-2-past-blind",
         requests = 0xffff0000,
         duration = 30,
         timer = { other = 0 },
     },
-    after_table_3_past_blind = define.status {
+    after_table_3_past_blind = new.status {
         id = "after-table-3-past-blind",
         requests = 0x0032ffff,
         duration = 0,
         timer = { other = 255 },
     },
-    after_table_4_past_blind = define.status {
+    after_table_4_past_blind = new.status {
         id = "after-table-4-past-blind",
         requests = 0x00000050,
         duration = 65535,
         timer = { other = 100 },
     },
-    immobilize_2 = define.status {
+    immobilize_2 = new.status {
         id = "immobilize-2",
         requests = 0x00000040,
         duration = 2,
         timer = "immobilize",
     },
-    immobilize_60 = define.status {
+    immobilize_60 = new.status {
         id = "immobilize-60",
         requests = 0x00000040,
         duration = 60,
         timer = "immobilize",
     },
-    immobilize_120 = define.status {
+    immobilize_120 = new.status {
         id = "immobilize-120",
         requests = 0x00000040,
         duration = 120,
         timer = "immobilize",
     },
-    immobilize_4 = define.status {
+    immobilize_4 = new.status {
         id = "immobilize-4",
         requests = 0x00000040,
         duration = 4,
         timer = "immobilize",
     },
-    immobilize_300 = define.status {
+    immobilize_300 = new.status {
         id = "immobilize-300",
         requests = 0x00000040,
         duration = 300,
         timer = "immobilize",
     },
-    immobilize_600 = define.status {
+    immobilize_600 = new.status {
         id = "immobilize-600",
         requests = 0x00000040,
         duration = 600,
         timer = "immobilize",
     },
-    after_table_1_past_immobilize = define.status {
+    after_table_1_past_immobilize = new.status {
         id = "after-table-1-past-immobilize",
         requests = 0x00000000,
         duration = 65535,
         timer = "collision_panel",
     },
-    after_table_2_past_immobilize = define.status {
+    after_table_2_past_immobilize = new.status {
         id = "after-table-2-past-immobilize",
         requests = 0xffff0000,
         duration = 30,
         timer = { other = 0 },
     },
-    after_table_3_past_immobilize = define.status {
+    after_table_3_past_immobilize = new.status {
         id = "after-table-3-past-immobilize",
         requests = 0x0032ffff,
         duration = 0,
         timer = { other = 255 },
     },
-    after_table_4_past_immobilize = define.status {
+    after_table_4_past_immobilize = new.status {
         id = "after-table-4-past-immobilize",
         requests = 0x00000050,
         duration = 65535,
         timer = { other = 100 },
     },
-    after_table_5_past_immobilize = define.status {
+    after_table_5_past_immobilize = new.status {
         id = "after-table-5-past-immobilize",
         requests = 0xffff0000,
         duration = 150,
         timer = { other = 0 },
     },
-    after_table_6_past_immobilize = define.status {
+    after_table_6_past_immobilize = new.status {
         id = "after-table-6-past-immobilize",
         requests = 0x00c8ffff,
         duration = 0,
         timer = { other = 255 },
     },
-    after_table_7_past_immobilize = define.status {
+    after_table_7_past_immobilize = new.status {
         id = "after-table-7-past-immobilize",
         requests = 0x00000001,
         duration = 65535,
         timer = { other = 1 },
     },
-    after_table_8_past_immobilize = define.status {
+    after_table_8_past_immobilize = new.status {
         id = "after-table-8-past-immobilize",
         requests = 0x0bb800c8,
         duration = 200,
         timer = { other = 0 },
     },
-    after_table_9_past_immobilize = define.status {
+    after_table_9_past_immobilize = new.status {
         id = "after-table-9-past-immobilize",
         requests = 0x00000000,
         duration = 0,
         timer = { other = 0 },
     },
-    after_table_10_past_immobilize = define.status {
+    after_table_10_past_immobilize = new.status {
         id = "after-table-10-past-immobilize",
         requests = 0x00000000,
         duration = 0,

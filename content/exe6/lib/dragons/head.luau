@@ -222,7 +222,7 @@ local function init(me: Object): boolean
     return true
 end
 
-head.kind = define.kind {
+head.kind = new.kind {
     id = "dragon-head",
     pool = "attack",
     state = {

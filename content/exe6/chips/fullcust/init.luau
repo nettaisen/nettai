@@ -19,8 +19,7 @@ local function fill(user: Object, _spec: InstantChipSpec)
     battle.fill_custom_gauge()
 end
 
-return define.chip {
-    id = "fullcust",
+local chip: Chip = {
     codes = { "*" },
     element = "null", family = "null", class = "standard",
     rarity = 3, mb = 50, damage = 0, hit_param = 0, lockout = 20,
@@ -29,3 +28,5 @@ return define.chip {
     slot_in_limit = 1,
     instant = fill,
 }
+
+return { fullcust = chip }

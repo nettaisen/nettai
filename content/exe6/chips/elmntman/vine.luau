@@ -81,7 +81,7 @@ local function tick(me: Object)
     grow(me)
 end
 
-vine.kind = define.kind {
+vine.kind = new.kind {
     id = "elmntman/vine",
     pool = "attack",
     -- `sub_80DC4FC`.

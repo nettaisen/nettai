@@ -22,7 +22,7 @@ local SOUND = asset.sound("wide-shot")
 local ANIM = 0x14
 
 -- The splash (effect 0x2B): DiveMan's sprite.
-local SPLASH = define.effect { sprite = SPRITE, anim = 0x15, palette = 0 }
+local SPLASH = new.effect { sprite = SPRITE, anim = 0x15, palette = 0 }
 
 -- `sub_80CB208`: a hit `ahead` panels toward the other side lasting
 -- `ticks` (`sub_80C53A6`: it runs while dimmed), when that panel is on
@@ -119,7 +119,7 @@ local function tick(me: Object)
     wash(me)
 end
 
-wave.kind = define.kind {
+wave.kind = new.kind {
     id = "diveman/wave",
     pool = "attack",
     state = { while_dimmed = "bool" },

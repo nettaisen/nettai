@@ -5,11 +5,10 @@
 
 local controller = require("./anubis/controller")
 local statue = require("./anubis/statue")
-local anubis = require("./anubis")
-local poisseed = require("./poisseed")
+local anubis = require("./anubis").anubis
+local poisseed = require("./poisseed").poisseed
 
-return define.chip {
-    id = "poisphar",
+local chip: Chip = {
     codes = {},
     element = "null",
     family = "program_advance",
@@ -24,3 +23,5 @@ return define.chip {
     program_advances = { { order = 2, sequence = { poisseed, poisseed, anubis } } },
     dimming = controller.hook(statue.poisphar),
 }
+
+return { poisphar = chip }

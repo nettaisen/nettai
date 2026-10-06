@@ -6,8 +6,7 @@ local buster = require("../navis/megaman/weapons/buster")
 local chips = require("../navis/megaman/weapons/chips")
 local guards = require("../navis/megaman/weapons/guards")
 
-return define.patch_card {
-    id = "boomer",
+local card: PatchCard = {
     mb = 18,
     effects = {
         cards.charged_shot(chips.boomer),
@@ -16,3 +15,5 @@ return define.patch_card {
         cards.bug(cards.custom_hp_drain(1)),
     },
 }
+
+return { boomer = card }

@@ -4,8 +4,7 @@
 
 local army = require("@self/army")
 
-return define.chip {
-    id = "colarmy",
+local chip: Chip = {
     codes = { "B", "G", "R", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 2, mb = 25, damage = 40, hit_param = 30, lockout = 0,
@@ -13,3 +12,5 @@ return define.chip {
     slot_in_limit = 3,
     instant = army.instant,
 }
+
+return { colarmy = chip }

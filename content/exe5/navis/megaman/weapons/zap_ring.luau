@@ -88,7 +88,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-local RING = define.kind {
+local RING = new.kind {
     id = "megaman/zap-ring/ring",
     pool = "attack",
     state = { row = "u8" },
@@ -172,7 +172,7 @@ local function recover(me: Object, s: State)
     end
 end
 
-local ACTION = define.action {
+local ACTION = new.action {
     id = "megaman/zap-ring/action",
     state = { timer = "u16" },
     -- 0x080EFFC8.
@@ -188,7 +188,7 @@ local ACTION = define.action {
 }
 
 -- 0x0800FB76: 30 damage, hit parameter 10, Elec; no charge, bonus or lockout; parameters 0.
-return define.weapon {
+return new.weapon {
     id = "megaman/zap-ring",
     -- The charge table's row 0x42, by Charge 0 to 5: past 4 it reads on into row 0x43's first entry.
     charge_ticks = { 90, 85, 80, 75, 70, 60 },

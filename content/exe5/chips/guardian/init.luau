@@ -5,8 +5,7 @@
 
 local guardian = require("@self/guardian")
 
-return define.chip {
-    id = "guardian",
+local chip: Chip = {
     codes = { "O" },
     element = "null",
     family = "summon",
@@ -20,3 +19,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = guardian.controller.hook,
 }
+
+return { guardian = chip }

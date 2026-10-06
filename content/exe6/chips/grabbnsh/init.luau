@@ -5,8 +5,7 @@
 
 local controller = require("@self/controller")
 
-local grabbnsh = define.chip {
-    id = "grabbnsh",
+local grabbnsh: Chip = {
     codes = { "B", "M", "S" },
     element = "null",
     family = "null",
@@ -21,8 +20,7 @@ local grabbnsh = define.chip {
     dimming = controller.hook,
 }
 
-local grabrvng = define.chip {
-    id = "grabrvng",
+local grabrvng: Chip = {
     codes = { "I", "Q", "Z" },
     element = "null",
     family = "null",

@@ -14,13 +14,12 @@ local buster = require("../weapons/buster")
 local chaos = require("../weapons/chaos")
 local charge = require("@self/charge")
 local charged_shot = require("../weapons/charged_shot")
-local drksonic = require("../../../chips/drksonic")
+local drksonic = require("../../../chips/drksonic").drksonic
 local soul_change = require("../../../rules/souls/change")
 local soul_image = require("../../../rules/souls/image")
 local soul_revert = require("../../../rules/souls/revert")
 
-return define.form {
-    id = "colonelsoul",
+local form: FormDef = {
     soul = { family = "summon" },
     change = soul_change.action,
     revert = soul_revert.action,
@@ -57,7 +56,7 @@ return define.form {
     -- His sword's arm (lib/swords, 0x080EC038): the blade's animation.
     blade_anim = 14,
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 7 of category 0).
-    identity = define.identity {
+    identity = new.identity {
         class = "megaman",
         version = 0,
         actor_type = "player",
@@ -66,3 +65,5 @@ return define.form {
         attach_points = attach_points,
     },
 }
+
+return { colonelsoul = form }

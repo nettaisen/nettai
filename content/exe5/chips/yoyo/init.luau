@@ -5,8 +5,7 @@
 
 local yoyo = require("@self/yoyo")
 
-return define.chip {
-    id = "yoyo",
+local chip: Chip = {
     codes = { "D", "E", "F" },
     element = "null",
     family = "null",
@@ -20,3 +19,5 @@ return define.chip {
     slot_in_limit = 3,
     action = yoyo.action(yoyo.spec { mode = 0, panels = 2, rounds = 2 }),
 }
+
+return { yoyo = chip }

@@ -99,7 +99,7 @@ function heart.make(spec: Spec): Heart
         tick(me)
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = spec.id,
         pool = "attack",
         -- `sub_80CE118`.

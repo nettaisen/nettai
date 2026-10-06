@@ -20,7 +20,7 @@ local SPRITE = asset.sprite("cosmoman")
 local SOUND_FALL = asset.sound("justice-one")
 local SOUND_HIT = asset.sound("hit-bomb-1")
 -- The explosion where it lands (effect 0).
-local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
+local EXPLOSION = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
 -- What a panel must hold to take it (solid, or something on it).
 local TAKES = 0x0F80_0010
 
@@ -114,7 +114,7 @@ end
 
 local ACTIONS = { [0] = fall, [4] = land }
 
-meteor.kind = define.kind {
+meteor.kind = new.kind {
     id = "cosmoman/meteor",
     pool = "attack",
     state = { look = "identity" },

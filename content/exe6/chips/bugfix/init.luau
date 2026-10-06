@@ -4,8 +4,7 @@
 
 local bugfix = require("@self/controller")
 
-return define.chip {
-    id = "bugfix",
+local chip: Chip = {
     codes = { "K", "P", "Z", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 3, mb = 62, damage = 0, hit_param = 0, lockout = 0,
@@ -13,3 +12,5 @@ return define.chip {
     slot_in_limit = 1,
     dimming = bugfix.spawn,
 }
+
+return { bugfix = chip }

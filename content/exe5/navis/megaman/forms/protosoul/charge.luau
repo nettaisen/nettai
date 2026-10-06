@@ -3,7 +3,7 @@
 -- slash (EXE5's action 0x13 as its subtype 1: the chip's own action, chips/wideswrd), not loaded as a chip, with 80
 -- damage and 10 more per point of buster Attack plus one (0x0800FE5E), and its own counter byte.
 
-local wideswrd = require("../../../../chips/wideswrd")
+local wideswrd = require("../../../../chips/wideswrd").wideswrd
 
 local charge = {}
 
@@ -20,7 +20,7 @@ local function setup(navi: Object): Action
     return wideswrd.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     -- The charge table's row 3 (0x0801CA8A); Charge 5 reads on into row 4's first entry.
     charge_ticks = { 80, 75, 70, 65, 60, 180 },
     setup = setup,

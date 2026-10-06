@@ -31,7 +31,7 @@ export type State = {
 
 -- An attachment's look (see AttachmentLook in types.d.luau).
 function attachment.look(spec: AttachmentLook): AttachmentLook
-    return define.record("attachment-look", spec)
+    return new.record("attachment-look", spec)
 end
 
 -- (How it animates is an `AttachmentOptions`: its animation, whether it
@@ -120,7 +120,7 @@ end
 -- A game's attachment kind, keyed `id`, raised by its rule (`lifted`; none: EXE6's).
 function attachment.make_kind(id: string, lifted: Lifted?): Kind
     local rule: Lifted = lifted or cross_lifted
-    return define.kind {
+    return new.kind {
         id = id,
         pool = "actor",
         state = {

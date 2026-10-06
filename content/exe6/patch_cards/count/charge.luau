@@ -81,7 +81,7 @@ local function update(me: Object, s: State)
     end
 end
 
-charge.action = define.action {
+charge.action = new.action {
     id = "patch-cards/count/charge/action",
     state = { timer = "u16", sound = "u16" },
     update = update,
@@ -94,7 +94,7 @@ local function setup(navi: Object): Action
     return charge.action
 end
 
-charge.weapon = define.weapon {
+charge.weapon = new.weapon {
     id = "patch-cards/count/charge",
     -- The charge table's row 0x6D, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

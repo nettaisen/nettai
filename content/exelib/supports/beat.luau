@@ -146,7 +146,7 @@ function beat.make(look: BeatLook): SupportActor
         me:update_sprite()
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "actor",
         update = update,

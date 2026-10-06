@@ -4,8 +4,7 @@
 local cards = require("../rules/patch_cards/cards")
 local chips = require("../navis/megaman/weapons/chips")
 
-return define.patch_card {
-    id = "swordy",
+local card: PatchCard = {
     mb = 10,
     effects = {
         cards.charged_shot(chips.longswrd),
@@ -14,3 +13,5 @@ return define.patch_card {
         cards.bug(cards.charge(-1)),
     },
 }
+
+return { swordy = card }

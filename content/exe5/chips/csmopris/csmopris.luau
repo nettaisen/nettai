@@ -190,7 +190,7 @@ local function comet_init(me: Object)
     me:set_lifecycle("update")
 end
 
-csmopris.comet = define.kind {
+csmopris.comet = new.kind {
     id = "csmopris/comet",
     pool = "attack",
     state = { variant = "u8", row = "u8" },
@@ -368,7 +368,7 @@ end
 
 local ACTIONS = { [0] = appear, [4] = pose, [8] = rise, [0xC] = comets, [0x10] = wait, [0x14] = leave }
 
-csmopris.kind = define.kind {
+csmopris.kind = new.kind {
     id = "csmopris/navi",
     pool = "actor",
     state = { controller = "object", sent = "u8" },

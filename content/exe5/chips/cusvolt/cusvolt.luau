@@ -82,7 +82,7 @@ local function init(me: Object)
     tick(me)
 end
 
-cusvolt.beam = define.kind {
+cusvolt.beam = new.kind {
     id = "cusvolt/beam",
     pool = "attack",
     state = { navi = "object" },
@@ -181,7 +181,7 @@ end
 
 -- A CusVolt's action.
 function cusvolt.action(): Action
-    return define.action {
+    return new.action {
         state = { timer = "u16" },
         -- 0x080ED1A2.
         update = function(me: Object, s: State)

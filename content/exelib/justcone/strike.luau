@@ -192,7 +192,7 @@ function strike.make(look: Look): Strike
         c:present()
     end
 
-    local kind = define.kind {
+    local kind = new.kind {
         id = look.id,
         pool = "attack",
         -- `sub_80DB304`.

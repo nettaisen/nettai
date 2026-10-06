@@ -1,15 +1,14 @@
 --!strict
 -- ElecCross Beast: one of MegaMan's forms.
 
-local elecman = require("../../elecman")
-local gregar_beast = require("./gregar_beast")
+local elecman = require("../../elecman").elecman
+local gregar_beast = require("./gregar_beast")["gregar-beast"]
 local gregar_beast_buster = require("../weapons/gregar_beast_buster")
 local charged_chip_bonus = require("../weapons/charged_chip_bonus")
 local charge = require("@self/charge")
 local forms = require("../../../rules/forms")
 
-return define.form {
-    id = "eleccross-beast",
+local form: FormDef = {
     kind = "cross_beast",
     -- The target marker shows, its afterimages stay, and a Null chip's A charge times by the
     -- alternative routine (`sub_80E1566`, `sub_80E341E`, `sub_8012F62`).
@@ -43,7 +42,7 @@ return define.form {
     special_volley = 14,
     -- The buster arm it raises (lib/buster).
     buster_arm = { anim = 14, palette_add = 6 },
-    identity = define.identity {
+    identity = new.identity {
         class = "cross_beast",
         version = 0,
         actor_type = "player",
@@ -89,3 +88,5 @@ return define.form {
         },
     },
 }
+
+return { ["eleccross-beast"] = form }

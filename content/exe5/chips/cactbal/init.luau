@@ -6,8 +6,7 @@ local cactbal = require("@self/cactbal")
 
 -- CactBal1 (EXE5 chip 0x0af): the navi throws a wooden ball that hops along the row, bouncing back off what it hits:
 -- EXE5's own (chips/cactbal/cactbal), the ball in palette 0.
-local cactbal1 = define.chip {
-    id = "cactbal1",
+local cactbal1: Chip = {
     codes = { "H", "I", "J" },
     element = "wood",
     family = "wood",
@@ -24,8 +23,7 @@ local cactbal1 = define.chip {
 
 -- CactBal2 (EXE5 chip 0x0b0): the navi throws a wooden ball that hops along the row, bouncing back off what it hits:
 -- EXE5's own (chips/cactbal/cactbal), the ball in palette 2.
-local cactbal2 = define.chip {
-    id = "cactbal2",
+local cactbal2: Chip = {
     codes = { "Q", "R", "S" },
     element = "wood",
     family = "wood",
@@ -42,8 +40,7 @@ local cactbal2 = define.chip {
 
 -- CactBal3 (EXE5 chip 0x0b1): the navi throws a wooden ball that hops along the row, bouncing back off what it hits:
 -- EXE5's own (chips/cactbal/cactbal), the ball in palette 4.
-local cactbal3 = define.chip {
-    id = "cactbal3",
+local cactbal3: Chip = {
     codes = { "L", "M", "N" },
     element = "wood",
     family = "wood",

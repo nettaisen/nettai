@@ -202,7 +202,7 @@ local function init(me: Object)
     tick(me)
 end
 
-searchman.kind = define.kind {
+searchman.kind = new.kind {
     id = "serchman/navi",
     pool = "actor",
     state = {

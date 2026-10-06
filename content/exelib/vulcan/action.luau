@@ -103,7 +103,7 @@ function vulcan.action(spec: VulcanSpec, look: VulcanLook): Action
         end
     end
 
-    return define.action {
+    return new.action {
         state = vulcan.STATE,
         args = spec,
         -- `sub_80EBF10`.

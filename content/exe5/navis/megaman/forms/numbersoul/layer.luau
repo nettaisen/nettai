@@ -60,7 +60,7 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
-layer.kind = define.kind {
+layer.kind = new.kind {
     id = "numbersoul/layer",
     pool = "actor",
     state = { row = "u8" },

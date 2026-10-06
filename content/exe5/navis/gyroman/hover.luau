@@ -33,7 +33,7 @@ local function count(s: State): boolean
     return t <= 0
 end
 
-hover.action = define.action {
+hover.action = new.action {
     id = "gyroman/hover/action",
     state = { timer = "u16" },
     -- 0x080F0C0C

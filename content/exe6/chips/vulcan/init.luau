@@ -6,9 +6,8 @@
 local lockon = require("../rules/lockon")
 local vulcan = require("@self/action")
 
-return {
-    vulcan1 = define.chip {
-        id = "vulcan1",
+local chips: { [string]: Chip } = {
+    vulcan1 = {
         codes = { "B", "D", "S", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 10, hit_param = 10, lockout = 0,
@@ -18,8 +17,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = vulcan.action { shots = 3, bullet = vulcan.bullets.plain },
     },
-    vulcan2 = define.chip {
-        id = "vulcan2",
+    vulcan2 = {
         codes = { "D", "F", "L" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 18, damage = 15, hit_param = 10, lockout = 0,
@@ -29,8 +27,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = vulcan.action { shots = 4, bullet = vulcan.bullets.plain },
     },
-    vulcan3 = define.chip {
-        id = "vulcan3",
+    vulcan3 = {
         codes = { "A", "G", "R" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 30, damage = 20, hit_param = 10, lockout = 0,
@@ -40,8 +37,7 @@ return {
         beast = { lockon = lockon.cannon },
         action = vulcan.action { shots = 5, bullet = vulcan.bullets.plain },
     },
-    suprvulc = define.chip {
-        id = "suprvulc",
+    suprvulc = {
         codes = { "V" },
         element = "null", family = "null", class = "standard",
         rarity = 3, mb = 75, damage = 20, hit_param = 4, lockout = 0,
@@ -52,3 +48,5 @@ return {
         action = vulcan.action { shots = 10, bullet = vulcan.bullets.super },
     },
 }
+
+return chips

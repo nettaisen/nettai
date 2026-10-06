@@ -4,8 +4,7 @@
 local cards = require("../rules/patch_cards/cards")
 local charge = require("@self/charge")
 
-return define.patch_card {
-    id = "searchmn",
+local card: PatchCard = {
     mb = 37,
     effects = {
         cards.hp_percent(5),
@@ -14,3 +13,5 @@ return define.patch_card {
         cards.chip_shuffle(true),
     },
 }
+
+return { searchmn = card }

@@ -89,7 +89,7 @@ local function recover(me: Object, s: State)
     end
 end
 
-charged_chip.action = define.action {
+charged_chip.action = new.action {
     id = "napalmsoul/charged-chip",
     state = { timer = "u16" },
     -- 0x080EF2A2

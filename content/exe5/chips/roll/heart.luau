@@ -4,7 +4,7 @@
 
 local common = require("@exelib/roll/heart")
 
-local SPARKLE = define.effect { sprite = asset.sprite("sparkle"), anim = 0, palette = 0 }
+local SPARKLE = new.effect { sprite = asset.sprite("sparkle"), anim = 0, palette = 0 }
 
 local heart = common.make {
     id = "roll/heart",
@@ -12,7 +12,7 @@ local heart = common.make {
     anim = 0,
     heal_sound = asset.sound("heal"),
     sparkle = SPARKLE,
-    healed = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 },
+    healed = new.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 },
 }
 
 return { kind = heart.kind, spawn = heart.spawn, sparkle = SPARKLE }

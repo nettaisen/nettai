@@ -23,7 +23,7 @@ local function setup(navi: Object): Action
     return charged_shot.action
 end
 
-return define.weapon {
+return new.weapon {
     id = "patch-cards/chrgs",
     -- The charge table's row 0x8D, by Charge 0 to 7: past 4 it reads on
     -- into the next routine's row, as the original's table does.

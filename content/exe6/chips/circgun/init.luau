@@ -5,8 +5,7 @@
 
 local controller = require("@self/controller")
 
-return define.chip {
-    id = "circgun",
+local chip: Chip = {
     codes = { "P", "T", "V" },
     element = "null",
     family = "cursor",
@@ -20,3 +19,5 @@ return define.chip {
     slot_in_limit = 3,
     dimming = controller.hook(controller.variant { period = 2, shots = 4, look = 0 }),
 }
+
+return { circgun = chip }

@@ -4,8 +4,7 @@
 local cards = require("../rules/patch_cards/cards")
 local chrgs = require("../lib/patch_cards/chrgs")
 
-return define.patch_card {
-    id = "chrgeman",
+local card: PatchCard = {
     mb = 31,
     effects = {
         cards.attack(3),
@@ -14,3 +13,5 @@ return define.patch_card {
         cards.panel_trail("none", 0),
     },
 }
+
+return { chrgeman = card }
