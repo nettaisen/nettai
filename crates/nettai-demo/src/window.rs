@@ -12,8 +12,11 @@
 //! window's size ([`crate::picture`]): on iced's GPU renderer one texture,
 //! written in place with each new picture, so memory stays flat. (Its
 //! software renderer, the fallback, draws every pixel of a HiDPI window
-//! itself and keeps up with half the display's rate.) `NETTAI_PLAY_STATS`
-//! prints the cost; docs/frontend.md §7 has the measurements.
+//! itself and keeps up with half the display's rate.) The picture's widget
+//! is the play's clock and keyboard as well (`picture::surface`): each frame
+//! the battle advances before that frame is drawn. `NETTAI_PLAY_STATS`
+//! prints the cost and the latency (`NETTAI_KEY_PROBE` presses a key now and
+//! then to measure it); docs/frontend.md §7 has the measurements.
 
 use crate::editor;
 use crate::net::{Agreed, NetHandshake, Progress, Udp};
@@ -231,6 +234,8 @@ pub struct Demo {
     screenshot_editor: bool,
     /// Present at the display's own density (`NETTAI_PHYSICAL_PIXELS`).
     physical: bool,
+    /// Press a key now and then (`NETTAI_KEY_PROBE`).
+    key_probe: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -313,6 +318,7 @@ impl Demo {
             shot: std::env::var_os("NETTAI_WINDOW_SHOT").map(PathBuf::from),
             screenshot_editor,
             physical: std::env::var_os("NETTAI_PHYSICAL_PIXELS").is_some(),
+            key_probe: std::env::var_os("NETTAI_KEY_PROBE").is_some(),
         }
     }
 
@@ -496,7 +502,7 @@ impl Demo {
             // (The keys pressed since the last tick: this one saw them.)
             if let Some(s) = &mut p.stats {
                 for &at in &p.pressed {
-                    s.key_to_tick.add(now.saturating_duration_since(at));
+                    s.key_to_tick.add(at.elapsed());
                 }
             }
             p.seen = p.seen.or(p.pressed.first().copied());
@@ -592,10 +598,7 @@ impl Demo {
         match &self.screen {
             Screen::Editor => editor::view::window(&self.editor).map(Msg::Editor),
             Screen::Play(p) => {
-                let picture: Element<'_, Msg> = match &p.picture {
-                    Some(shown) => picture::view(shown),
-                    None => text("").into(),
-                };
+                let picture = picture::surface(p.picture.as_ref(), Msg::Frame, Msg::Key);
                 container(picture).width(Length::Fill).height(Length::Fill).style(|_| container::background(Color::BLACK)).into()
             }
             Screen::Waiting(w) => container(text(w.text.clone()).size(18).color(Color::WHITE))
@@ -608,15 +611,55 @@ impl Demo {
     fn subscription(&self) -> Subscription<Msg> {
         let window_events = window::events().map(|(_, e)| Msg::Window(e));
         match &self.screen {
-            Screen::Play(_) | Screen::Waiting(_) => {
-                Subscription::batch([window::frames().map(Msg::Frame), keyboard::listen().map(Msg::Key), window_events])
-            }
+            // (The play's surface is its clock and keyboard: `picture`.)
+            Screen::Play(_) if self.key_probe => Subscription::batch([window_events, Subscription::run(key_probe)]),
+            Screen::Play(_) => window_events,
+            Screen::Waiting(_) => Subscription::batch([window::frames().map(Msg::Frame), keyboard::listen().map(Msg::Key), window_events]),
             Screen::Editor if self.screenshot_editor => {
                 Subscription::batch([window::frames().map(|_| Msg::Editor(editor::Msg::Frame)), window_events])
             }
             Screen::Editor => window_events,
         }
     }
+}
+
+/// `NETTAI_KEY_PROBE`: the right arrow pressed every 300 to 400 ms (at
+/// no particular point between two frames) and let go 100 ms later, as key
+/// events come to the window, for `NETTAI_PLAY_STATS`'s figures of the time
+/// from a key to the tick that saw it and to that tick's picture drawn.
+fn key_probe() -> impl iced::futures::Stream<Item = Msg> {
+    use iced::futures::SinkExt;
+    use keyboard::key::{Code, Named, Physical};
+    iced::stream::channel(4, async |output| {
+        std::thread::spawn(move || {
+            let mut output = output;
+            let key = keyboard::Key::Named(Named::ArrowRight);
+            let physical_key = Physical::Code(Code::ArrowRight);
+            let modifiers = keyboard::Modifiers::empty();
+            let location = keyboard::Location::Standard;
+            for i in 0u64.. {
+                std::thread::sleep(Duration::from_micros(300_000 + i * 7_919 % 100_000));
+                let pressed = keyboard::Event::KeyPressed {
+                    key: key.clone(),
+                    modified_key: key.clone(),
+                    physical_key,
+                    location,
+                    modifiers,
+                    text: None,
+                    repeat: false,
+                };
+                if iced::futures::executor::block_on(output.send(Msg::Key(pressed))).is_err() {
+                    return;
+                }
+                std::thread::sleep(Duration::from_millis(100));
+                let released = keyboard::Event::KeyReleased { key: key.clone(), modified_key: key.clone(), physical_key, location, modifiers };
+                if iced::futures::executor::block_on(output.send(Msg::Key(released))).is_err() {
+                    return;
+                }
+            }
+        });
+        std::future::pending::<()>().await
+    })
 }
 
 /// Open the window on `start`, with `editor` (the editor's state: a match

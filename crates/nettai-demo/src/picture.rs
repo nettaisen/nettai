@@ -9,13 +9,21 @@
 //! own, and draws nothing for it until that is done, so the frames on which
 //! a new picture first came showed none.) On the software renderer, the
 //! fallback, it is an image, which that renderer draws at once.
+//!
+//! The widget is the play's clock and keyboard too ([`surface`]): it hears
+//! each redraw before the frame is drawn, so the battle advances and the
+//! picture it presents is the one that frame shows (a `window::frames`
+//! subscription hears a redraw only after it was drawn: the picture showed
+//! a frame later), and it hears the keys as they come.
 
 use iced::advanced::image::{self as raster, Renderer as _};
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::renderer;
 use iced::advanced::widget::{Tree, Widget};
 use iced::widget::shader::{self, Viewport};
-use iced::{Element, Length, Rectangle, Size, mouse, wgpu};
+use iced::advanced::widget::tree;
+use iced::advanced::{Clipboard, Shell};
+use iced::{Element, Event, Length, Rectangle, Size, keyboard, mouse, wgpu, window};
 use iced_wgpu::primitive::Renderer as _;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -109,16 +117,33 @@ impl Picture {
     }
 }
 
-/// `picture` over the whole of the space it is given.
-pub fn view<'a, Message: 'a>(picture: &Arc<Picture>) -> Element<'a, Message> {
-    Element::new(Shown { picture: picture.clone() })
+/// The play's surface: `picture` (none yet: nothing) over the whole of the
+/// space it is given; `on_frame` each frame, with the redraw's time, before
+/// that frame is drawn (and a redraw asked for every frame); `on_key` each
+/// key event, as it comes.
+pub fn surface<'a, Message: 'a>(picture: Option<&Arc<Picture>>, on_frame: fn(Instant) -> Message, on_key: fn(keyboard::Event) -> Message) -> Element<'a, Message> {
+    Element::new(Surface { picture: picture.cloned(), on_frame, on_key })
 }
 
-struct Shown {
-    picture: Arc<Picture>,
+struct Surface<Message> {
+    picture: Option<Arc<Picture>>,
+    on_frame: fn(Instant) -> Message,
+    on_key: fn(keyboard::Event) -> Message,
 }
 
-impl<Message, Theme> Widget<Message, Theme, iced::Renderer> for Shown {
+/// The surface's state: the redraw it last said (a redraw comes again to
+/// the widgets after the messages it made changed the view).
+struct Heard(Option<Instant>);
+
+impl<Message, Theme> Widget<Message, Theme, iced::Renderer> for Surface<Message> {
+    fn tag(&self) -> tree::Tag {
+        tree::Tag::of::<Heard>()
+    }
+
+    fn state(&self) -> tree::State {
+        tree::State::new(Heard(None))
+    }
+
     fn size(&self) -> Size<Length> {
         Size::new(Length::Fill, Length::Fill)
     }
@@ -127,15 +152,41 @@ impl<Message, Theme> Widget<Message, Theme, iced::Renderer> for Shown {
         layout::atomic(limits, Length::Fill, Length::Fill)
     }
 
+    fn update(
+        &mut self,
+        tree: &mut Tree,
+        event: &Event,
+        _: Layout<'_>,
+        _: mouse::Cursor,
+        _: &iced::Renderer,
+        _: &mut dyn Clipboard,
+        shell: &mut Shell<'_, Message>,
+        _: &Rectangle,
+    ) {
+        match event {
+            Event::Window(window::Event::RedrawRequested(at)) => {
+                let heard = tree.state.downcast_mut::<Heard>();
+                if heard.0 != Some(*at) {
+                    heard.0 = Some(*at);
+                    shell.publish((self.on_frame)(*at));
+                }
+                shell.request_redraw();
+            }
+            Event::Keyboard(key) => shell.publish((self.on_key)(key.clone())),
+            _ => {}
+        }
+    }
+
     fn draw(&self, _: &Tree, renderer: &mut iced::Renderer, _: &Theme, _: &renderer::Style, layout: Layout<'_>, _: mouse::Cursor, _: &Rectangle) {
+        let Some(picture) = &self.picture else { return };
         let bounds = layout.bounds();
         if matches!(renderer, iced::Renderer::Primary(_)) {
-            renderer.draw_primitive(bounds, Primitive(self.picture.clone()));
+            renderer.draw_primitive(bounds, Primitive(picture.clone()));
         } else {
-            let image = raster::Image::new(self.picture.image().clone()).filter_method(raster::FilterMethod::Nearest);
+            let image = raster::Image::new(picture.image().clone()).filter_method(raster::FilterMethod::Nearest);
             renderer.draw_image(image, bounds, bounds);
-            if DRAWN.swap(self.picture.serial, Ordering::Relaxed) != self.picture.serial {
-                shown(&self.picture);
+            if DRAWN.swap(picture.serial, Ordering::Relaxed) != picture.serial {
+                shown(picture);
             }
         }
     }

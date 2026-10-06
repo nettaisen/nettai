@@ -1575,8 +1575,8 @@ one such host (its window, `window.rs`, an iced program whose frame is the
 loop below; the editor is in the same window), and
 `crates/nettai-frontend/examples/embed.rs` another, with no window at all.
 
-**How nettai-demo shows the picture.** Each frame (iced's `window::frames`,
-the display's rate) it advances the player; when a tick ran, the window's
+**How nettai-demo shows the picture.** Each frame (the display's rate) it
+advances the player; when a tick ran, the window's
 size or the language changed, it presents into a buffer of the window's size
 in logical pixels (as the earlier minifb window had it; a HiDPI display scales
 it up), and the window shows that picture (`picture.rs`). On iced's GPU
@@ -1599,7 +1599,30 @@ each tick in about 2 ms (5.7 ms when each was converted for an image).
 picture, 43 frames a second). `NETTAI_PLAY_STATS` prints, every two
 seconds, the frames shown, the pictures presented and their cost, how long
 after it was presented each picture was drawn, and for the keys pressed the
-time to the tick that saw each and to that tick's picture drawn.
+time to the tick that saw each and to that tick's picture drawn;
+`NETTAI_KEY_PROBE` presses the right arrow every 300 to 400 ms (a key event
+as the window gets one, at no particular point between frames) to measure
+those.
+
+**The input's latency.** The picture's widget is the play's clock and
+keyboard too (`picture::surface`): it hears each redraw before that frame is
+drawn, so the battle advances and the frame shows the picture it presented,
+and it hears key events as they come to the window. Before, a
+`window::frames` subscription heard each redraw only after it was drawn
+(iced_winit broadcasts the redraw to subscriptions after drawing), so a
+picture showed a frame later, and the keys came through a subscription too.
+With the key probe, on a machine loaded by other builds (load average 17 to
+22, 80 to 95 frames a second), from a key's event to its tick's picture
+drawn took 30 ms on average then (19 to the tick that saw it) and 14 ms now
+(6 to the tick); a picture is drawn 5 to 6 ms after it was presented (8 to
+10 before), most of it waiting for the swap chain to free a frame. What is
+left: the wait for the next tick (the battle's 59.73 a second; a tick due
+just after a frame runs on the next, as with minifb), presenting the
+picture (about 2 ms), that swap chain wait, and the display's next refresh
+(at 120 Hz, 4 ms on average). `ICED_PRESENT_MODE=immediate` (iced's own
+setting) measured no better than the default (vsync) and may tear.
+(Hardware key events skip a subscription's hop now, which the probe, a
+subscription itself, doesn't measure.)
 
 **Loading a game** is one call, `game::load(name, &Options)`: the packs found
 (in `Options::packs_dir`, by default where the program looks), the game's
