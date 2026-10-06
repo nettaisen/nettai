@@ -19,6 +19,7 @@ mod arenas;
 mod games;
 mod input;
 mod lang;
+mod lobby;
 mod netplay;
 mod replays;
 mod sound;

@@ -374,6 +374,8 @@ export component AppWindow inherits Window {
     in property <Peer> lobby-me <=> lobby.me;
     in property <Peer> lobby-them <=> lobby.them;
     in property <LinkState> lobby-link <=> lobby.link;
+    in property <string> lobby-problem <=> lobby.problem;
+    in property <string> lobby-server <=> lobby.server;
     in-out property <int> lobby-cursor <=> lobby.cursor;
     in property <[ReplayRow]> replay-rows <=> replays.rows;
     in-out property <int> replays-cursor <=> replays.cursor;

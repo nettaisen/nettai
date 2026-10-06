@@ -1,16 +1,18 @@
-// The netplay lobby: a room (made here, or joined by its code), your name,
-// the game, and both players' readiness. Its link to the other player is
-// nettai-rtc's (a room through the signaling server, or a direct
-// connection), which this build doesn't have yet: the screen is ready for
-// it.
+// The netplay lobby: a room of the signaling server (made here, or joined
+// by its code), your name, the game, and both players' readiness, over
+// nettai-rtc's link; the match starts when both are ready.
 
 import { Theme, NavAction, UiSound } from "theme.slint";
 import { Slant, Label, Heading, Hints, Hint, Button, OptionRow, Field, Input } from "widgets.slint";
 import { Format } from "format.slint";
 
 export enum LinkState {
-    // No link: this build has no transport.
+    // In no room yet (a code being typed).
     unavailable,
+    // No signaling server is set.
+    no-server,
+    // The last room ended (`problem` says why).
+    failed,
     // In the room, waiting for the other player.
     waiting,
     connecting,
@@ -107,6 +109,10 @@ export component LobbyScreen {
     in property <Peer> them;
     in property <LinkState> link;
     in property <int> ping: -1;
+    // Why the room ended, or what keeps the link from connecting.
+    in property <string> problem;
+    // The signaling server.
+    in property <string> server;
     in-out property <int> cursor;
     // The rows: 0 the room, 1 the code, 2 the name, 3 the game, 4 READY.
     property <int> rows: 5;
@@ -190,8 +196,8 @@ export component LobbyScreen {
             }
         }
 
-        // What this build can't do yet, said plainly.
-        if root.link == LinkState.unavailable: Rectangle {
+        // What keeps netplay from working, said plainly.
+        if root.link == LinkState.no-server || root.problem != "": Rectangle {
             height: warn-text.preferred-height + 18px;
             Slant {
                 lean: 10px;
@@ -203,7 +209,7 @@ export component LobbyScreen {
             warn-text := Text {
                 x: 30px;
                 width: parent.width - 60px;
-                text: @tr("Netplay connects through nettai-rtc, which isn't in this build yet. The lobby is shown as it will work.");
+                text: root.link == LinkState.no-server ? @tr("No signaling server: set NETTAI_SIGNAL to one (ws://127.0.0.1:8787 for signaling/ run with `npx wrangler dev`).") : root.problem;
                 color: Theme.warn;
                 font-size: 13px;
                 vertical-alignment: center;
@@ -387,12 +393,12 @@ export component LobbyScreen {
                         height: 10px;
                         y: (parent.height - self.height) / 2;
                         border-radius: 5px;
-                        background: root.link == LinkState.open ? Theme.ready : root.link == LinkState.unavailable ? Theme.text-faint : Theme.warn;
+                        background: root.link == LinkState.open ? Theme.ready : root.link == LinkState.unavailable || root.link == LinkState.no-server ? Theme.text-faint : Theme.warn;
                         opacity: root.link == LinkState.connecting || root.link == LinkState.reconnecting ? (mod(animation-tick() / 1ms, 800) < 400 ? 1 : 0.3) : 1;
                     }
 
                     Text {
-                        text: root.link == LinkState.unavailable ? @tr("No link") : root.link == LinkState.waiting ? @tr("In the room, waiting") : root.link == LinkState.connecting ? @tr("Connecting…") : root.link == LinkState.open ? @tr("Connected") : @tr("Reconnecting…");
+                        text: root.link == LinkState.unavailable || root.link == LinkState.no-server || root.link == LinkState.failed ? @tr("No link") : root.link == LinkState.waiting ? @tr("In the room, waiting") : root.link == LinkState.connecting ? @tr("Connecting…") : root.link == LinkState.open ? @tr("Connected") : @tr("Reconnecting…");
                         color: Theme.text-dim;
                         vertical-alignment: center;
                     }
