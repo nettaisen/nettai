@@ -520,13 +520,12 @@ fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
     let c = &e.content;
     let side = e.side(s);
     let cards = crate::editor::app::cards_of(c, side);
-    let mb: u32 = cards.iter().map(|&(card, _)| c.defs.patch_card(card).mb as u32).sum();
+    let mb: u32 = cards.iter().map(|&card| c.defs.patch_card(card).mb as u32).sum();
     let mut installed = Column::new().spacing(2);
-    for (i, &(card, on)) in cards.iter().enumerate() {
+    for (i, &card) in cards.iter().enumerate() {
         let d = c.defs.patch_card(card);
         installed = installed.push(
             row![
-                checkbox(on).on_toggle(move |b| Msg::CardOn(s, i, b)),
                 text(e.names.patch_card(c, card)).size(14).width(Length::Fill),
                 text(format!("{} MB", d.mb)).size(12).color(DIM),
                 button(text("↑").size(12)).on_press(Msg::CardMove(s, i, true)).style(button::text),
@@ -542,7 +541,7 @@ fn cards(e: &Editor, s: usize) -> Element<'_, Msg> {
     let mut all: Vec<(String, nettai_content_api::PatchCardHandle)> = (0..c.defs.patch_cards.len() as u16)
         .map(nettai_content_api::PatchCardHandle)
         .filter(|&h| nettai_match::ids::in_game(c, e.m.game(), &c.defs.patch_card(h).key))
-        .filter(|h| !cards.iter().any(|x| x.0 == *h))
+        .filter(|h| !cards.contains(h))
         .map(|h| (e.names.patch_card(c, h), h))
         .filter(|(n, _)| needle.is_empty() || n.to_lowercase().contains(&needle))
         .collect();

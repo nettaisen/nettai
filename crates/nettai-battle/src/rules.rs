@@ -1015,17 +1015,17 @@ mod tests {
         use nettai_content_api::Registry;
 
         /// A battle on the test content (whose rules apply EXE6's patch
-        /// cards as the round is set up), side 0 with `cards` installed
-        /// (key, switched on), its stats changed by `tweak` first.
-        fn with_cards(cards: &[(&str, bool)], tweak: impl FnOnce(&mut NaviStats)) -> Battle {
+        /// cards as the round is set up), side 0 with `cards` installed (by
+        /// key), its stats changed by `tweak` first.
+        fn with_cards(cards: &[&str], tweak: impl FnOnce(&mut NaviStats)) -> Battle {
             let content = scenario::content();
             let mut s = scenario::setup_on(&content);
-            // (The setup's `patch_cards`: `{ card, on }` each.)
+            // (The setup's `patch_cards`: a card each.)
             let list: Vec<Fact> = cards
                 .iter()
-                .map(|&(key, on)| {
+                .map(|&key| {
                     let card = content.defs.patch_card_by_key(key).unwrap_or_else(|| panic!("no card {key:?}"));
-                    Fact::Record(vec![("card", Fact::Value(Value::Def(Registry::PatchCard, card.0))), ("on", Fact::Value(Value::Bool(on)))])
+                    Fact::Value(Value::Def(Registry::PatchCard, card.0))
                 })
                 .collect();
             s.players[0].set_fact(&content, "patch_cards", &list).unwrap();
@@ -1050,15 +1050,15 @@ mod tests {
             let kinds: Vec<(&str, bool)> = card.effects.iter().map(|e| (e.kind.as_str(), e.bug)).collect();
             assert_eq!(kinds, [("hp_add", false), ("hp_percent_add", false), ("attack_add", false), ("body", false), ("hp_drain", true)]);
             // The cards are in the setup, which the digest covers.
-            let a = with_cards(&[("test-stats", true)], |_| {});
-            let b = with_cards(&[("test-stats", false)], |_| {});
+            let a = with_cards(&["test-stats"], |_| {});
+            let b = with_cards(&["test-later"], |_| {});
             assert_ne!(a.setup.players[0].rules, b.setup.players[0].rules);
             assert_ne!(a.digest(), b.digest());
         }
 
         #[test]
         fn a_card_changes_the_stats_by_its_kinds_order() {
-            let b = with_cards(&[("test-stats", true)], |_| {});
+            let b = with_cards(&["test-stats"], |_| {});
             let s = &b.stats[0];
             // HP 1000: +30 first, then +10% (the card lists them the other way).
             assert_eq!((s.max_hp, s.hp), (1133, 1133));
@@ -1070,7 +1070,7 @@ mod tests {
 
         #[test]
         fn a_later_card_writes_over_an_earlier_one() {
-            let b = with_cards(&[("test-stats", true), ("test-later", true)], |_| {});
+            let b = with_cards(&["test-stats", "test-later"], |_| {});
             let s = &b.stats[0];
             assert_eq!(s.attack, 2, "Attack 0 + 3 - 1");
             assert_eq!(s.giga_level, 0xFF, "GigaFolder- doesn't clamp");
@@ -1078,7 +1078,7 @@ mod tests {
 
         #[test]
         fn abilities_choices_and_chip_shuffle() {
-            let b = with_cards(&[("test-abilities", true)], |s| {
+            let b = with_cards(&["test-abilities"], |s| {
                 s.support = Some(Supports::default());
                 s.float_shoes = true;
                 s.number_open = true;
@@ -1095,19 +1095,12 @@ mod tests {
         }
 
         #[test]
-        fn a_switched_off_card_does_nothing_but_the_glitch_follows_the_stats() {
-            let b = with_cards(&[("test-stats", false)], |s| s.support = Some(Supports::default()));
-            let mut want = setup_stats(0);
-            want.support = Some(Supports::default());
-            // The HP is set to its maximum (the reload's, in the real world).
-            want.hp = want.max_hp;
-            assert_eq!(b.stats[0], want);
-            assert!(!b.consoles[0].emotion_window_glitch);
-            let bugged = with_cards(&[("test-stats", false)], |s| {
+        fn with_cards_installed_the_glitch_follows_the_stats() {
+            let bugged = with_cards(&["test-abilities"], |s| {
                 s.support = Some(Supports::default());
                 s.bugs.emotion = 1;
             });
-            assert!(bugged.consoles[0].emotion_window_glitch, "a NaviCust bug counts with cards installed");
+            assert!(bugged.consoles[0].emotion_window_glitch, "a NaviCust bug counts with cards installed (flag 0x1723)");
         }
 
         #[test]
@@ -1121,7 +1114,7 @@ mod tests {
 
         #[test]
         fn the_support_bug_keeps_supports_off() {
-            let b = with_cards(&[("test-abilities", true)], |s| s.support = None);
+            let b = with_cards(&["test-abilities"], |s| s.support = None);
             assert_eq!(b.stats[0].support, None, "the byte 0xFF stays 0xFF when a bit is set");
         }
     }

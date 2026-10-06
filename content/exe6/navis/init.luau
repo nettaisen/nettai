@@ -7,16 +7,16 @@ local merge = require("@exelib/merge")
 
 return merge {
     -- Navis.
-    ["navis/chargeman"] = require("@self/chargeman"),
-    ["navis/dustman"] = require("@self/dustman"),
-    ["navis/elecman"] = require("@self/elecman"),
-    ["navis/eraseman"] = require("@self/eraseman"),
-    ["navis/groundman"] = require("@self/groundman"),
-    ["navis/heatman"] = require("@self/heatman"),
-    ["navis/megaman"] = require("@self/megaman"),
-    ["navis/protoman"] = require("@self/protoman"),
-    ["navis/slashman"] = require("@self/slashman"),
-    ["navis/spoutman"] = require("@self/spoutman"),
-    ["navis/tenguman"] = require("@self/tenguman"),
-    ["navis/tomahawkman"] = require("@self/tomahawkman"),
+    require("@self/chargeman"),
+    require("@self/dustman"),
+    require("@self/elecman"),
+    require("@self/eraseman"),
+    require("@self/groundman"),
+    require("@self/heatman"),
+    require("@self/megaman"),
+    require("@self/protoman"),
+    require("@self/slashman"),
+    require("@self/spoutman"),
+    require("@self/tenguman"),
+    require("@self/tomahawkman"),
 }
