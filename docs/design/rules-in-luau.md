@@ -1764,6 +1764,8 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   window from `battle.navi_level(side)`. The 4,688 recorded sides with both agree (the init exchange sends a level
   only with the flag set, `sub_800B144`). The 176 sides with a level and no recorded flags are link navis, which the
   seal changes nothing for. exe6-compat: a trace without levels reads as a link navi's 0 and MegaMan's none.
+  *(Since: the level is EXE6's save system's fact, which EXE6's rules read, `exe6.navi_level`; the engine knows no
+  level: "The level is the game's; what it gives is its rules'" below.)*
 - **Decisions** (the user's, through the coordinator):
   - a link navi always has a level, 0 when a file says none, since it exists only through its code;
   - none is MegaMan without a code;
@@ -2740,3 +2742,36 @@ engine picks none: a round's settings state its stage and background):
 - **What moved for a seed:** EXE5's random matches are what the original picks now (they took an even pick among its
   stages and the stage's own background). EXE6's keep their 96 stages each as likely, but a seed gives other stages
   than before: the list is in the original's record order, where the pool was in the definitions' key order.
+
+### The level is the game's; what it gives is its rules' (2026-10-05)
+
+A side's level was the engine's: `PlayerSetup::navi_level`, then a fact the engine read by its role into
+`Battle::navi_levels`, which four engine routines indexed level tables with. The user asked for those formulas in
+Luau. The engine knows no level now:
+
+- **The level is a fact of each game's save system** (`level = "u8?"`), which the game's rules read through its API
+  module: `exe6.navi_level(side)` (content/exe6/rules/api.luau: the custom screen's seal, the save's reload,
+  MegaMan's gains), `exe5.navi_level(side)` (content/exe5/rules/api.luau, new: the team navis' damage rows). They
+  read the save system's setup with `system.setup_of(side, system)`, `state_of`'s twin for a setup, and a game's
+  rules' alone (the content check's lint and the call refuse a module outside rules/). `battle.navi_level` is gone
+  from the core API.
+- **What a level gives in battle is a definition's function of its side** (`HookCall::Given`), which the round's setup
+  asks once for each side, after the side's systems' `round_setup`, into `Battle::given` (digested, cloned with the
+  battle): a chip's `damage` given as a function (EXE5's team navis' own chips, `navi_level.row({...})`, which was the
+  `level` damage formula), a navi's `chip_bonus.damage` (EXE6's link navis' `byte_8021300` rows), its
+  `charged_chips.when` (from `byte_8021369`'s level) and its `fire_charge` (ChargeMan's `byte_802136D`), the last
+  three through content/exe6/rules/by_level.luau (`row`, `from`). The engine's routines read the answers: the chip
+  damage formula `Given`, the link navi chip bonus, the charged chips' gate and ChargeMan's Fire charge.
+- **Asked once, not per use.** A level is the round's, so each answer is too, and the battle asks no content while it
+  runs: the custom screen shows a chip's damage each frame and the HUD the next chip's bonus, from `&Battle`; they
+  read the same answers the battle uses, with no content run to draw them.
+- **What stays.** `PlayerFact::Level` is the tools' role (nettai-match's checks and `Side::level`, the editor; the
+  HUD's beast counter, event flag 0x163's other reader). A navi's `levels` and `story` stay its definition's data,
+  which the save systems read in Luau and the tools read for a level's range. The `navi_level` damage formula never
+  read the navi's level: it is the buster's attack level (`sub_8010C50`). `custom::MAX_NAVI_LEVEL` is gone: a save's
+  navi codes are exe6-compat's (`NAVI_CODES`), and a navi's last level its own tables'.
+- **Checked:** gen-content asks a round for each link navi at each level, 0 to 14, and holds what it gives to the
+  ROM's three rows; nettai-match's tests hold HeatMan's bonus, ChargeMan's gate and Fire charge, and ProtoMan's
+  StepSwrd at level 3; the chip lab's link navi scenarios (HeatMan's and EraseMan's bonus, the four charged-chip
+  navis, ChargeMan's Fire charge, ProtoMan at level 5) and EXE5's team navi own chips at levels 0 and 3 replay to
+  their end.

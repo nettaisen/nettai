@@ -1,6 +1,7 @@
 --!strict
 -- spoutman: a link navi.
 
+local by_level = require("../rules/by_level")
 local buster = require("./megaman/weapons/buster")
 local a_charge = require("./megaman/weapons/charged_chip_bonus_20")
 local charge = require("@self/charge")
@@ -54,7 +55,7 @@ return define.navi {
         },
     },
     -- The chips A charges (its family's damaging chips, from a navi level on), and those a charge doubles.
-    charged_chips = { family = "aqua", from_level = 11, damaging = true },
+    charged_chips = { family = "aqua", damaging = true, when = by_level.from(11) },
     charge_doubles = { element = "aqua" },
     identity = define.identity {
         class = "link_navi",

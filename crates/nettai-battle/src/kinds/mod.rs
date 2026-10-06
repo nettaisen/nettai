@@ -284,24 +284,11 @@ pub fn chip_damage_formula(b: &Battle, id: nettai_content_api::ChipHandle, side:
         F::HpLastDigits => hp_last_digits(b, side),
         F::HalfOpponentMaxHp => half_opponent_max_hp(b, side),
         F::NaviLevel { base, per_level } => navi_chip_damage(b, side, *base, *per_level),
-        F::Level { by_level } => {
-            // 0x0800EBC4: the row's entry at the side's level (a word the
-            // init exchange set from the save's story flags; a side that
-            // operates a navi with such a chip states it, `Battle::new`).
-            let level = b.navi_levels[side as usize & 1];
-            // A side that states none operates no such navi and holds no
-            // such chip: the custom screen reads every formula's damage
-            // each tick, for the hand it may build.
-            if level == 0xFF {
-                return 0;
-            }
-            *by_level.get(level as usize).unwrap_or_else(|| {
-                panic!(
-                    "chip {:?}'s damage by level reads past its row at level {level:#04x} (0x0800EBC4)",
-                    b.content.defs.chip(id).key
-                )
-            })
-        }
+        // What the content gave the side for the round (`crate::given`:
+        // EXE5's team navis' own chips, their row at the side's level).
+        F::Given(_) => b.given.damage(id, side).unwrap_or_else(|| {
+            panic!("chip {:?}'s damage, a function of the side, wasn't asked as the round was set up", b.content.defs.chip(id).key)
+        }),
         F::GaugeLevel { base } => gauge_level_damage(b, side, *base),
     }
 }

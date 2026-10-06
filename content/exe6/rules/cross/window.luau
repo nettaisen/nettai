@@ -11,6 +11,7 @@
 -- frontend draws the window from: its four windows are a form list's (their
 -- `view`), which shows these fields by their names.
 
+local exe6 = require("../api")
 local kind = require("../forms/kind")
 local chip_gate_battle = require("../../lib/chip_gate_battle")
 
@@ -31,7 +32,7 @@ export type Setup = {
 -- only then): no Beast Out button, and the Cross window then needs the
 -- navi to be MegaMan (instead of the chip gate battle).
 local function sealed(side: number): boolean
-    return battle.navi_level(side) ~= nil
+    return exe6.navi_level(side) ~= nil
 end
 
 -- The cross system's state fields the window keeps (rules/cross/init.luau

@@ -62,7 +62,12 @@ mod tests {
         let b = crate::check::start(&content, &m).unwrap();
         // (The HP the round starts with is the maximum: a link battle's
         // start, `init_hp`.)
-        assert_eq!((b.stats[0].max_base_hp, b.stats[0].max_hp, b.navi_levels[0]), (400, 400, 3));
+        assert_eq!((b.stats[0].max_base_hp, b.stats[0].max_hp), (400, 400));
+        // (His own chip's damage, StepSwrd's, is his row's at his level, 3:
+        // what EXE5's rules gave his side as the round was set up; the
+        // other side, MegaMan, has no level and none of it.)
+        let stepswrd = crate::ids::chip(&content, "exe5", "stepswrd").unwrap();
+        assert_eq!((b.given.damage(stepswrd, 0), b.given.damage(stepswrd, 1)), (Some(100), Some(0)));
         assert_eq!(b.stats[0].weapons.back_special_damage, 50);
         assert_eq!(Some(b.stats[0].max_hp), super::hp_at(&content, protoman, 3));
         // An HP of the side's own has no effect, and is refused.
