@@ -417,11 +417,19 @@ frontend's side is `netplay`):
   patch cards...);
   the other player's is checked against the content as a match
   file's side is (`nettai_match::check_side`, §6). Both play by the game's
-  rules (a game has one ruleset, so an offer names none). The language (`--lang`) is each player's own. The rounds
-  are the host's match file's (each part it leaves picked from the seed); both
-  files must list as many rounds, or the handshake stops and says so; the battle's RNG comes from both players'
-  randomly generated halves of the seed. Both print what was
-  agreed, and `--save-match` writes it.
+  rules (a game has one ruleset). The language (`--lang`) is each player's own. The players
+  agree the match's settings, its game and its rounds (each round's stage and
+  background stated, or left to the seed), in a symmetric lobby
+  (`nettai_frontend::lobby`): each proposes and readies, any change by either
+  clears both readies, and the settings are agreed when both are ready on the
+  same. The program proposes each player's match file's settings: two files
+  that state other rounds stop it, saying what differs ("the rounds: 3 here,
+  5 there", "round 2's stage: ..."). Then each commits (a Hello: SHA-256 of
+  the agreed settings' hash and what it will reveal) before either reveals
+  its half of the seed and its side, and each checks the other's Reveal
+  against its commitment; the battle's RNG comes from both halves, and each
+  part the rounds leave is picked from it alike on both. Both print what was
+  agreed, and `--save-match` writes it; a recording keeps every round's place.
 - **Playing**: the match is a set of the rounds it lists; its rounds follow one
   another (the folders shuffled again by each console's RNG). Every frame the
   frontend sends your buttons and shows the frame its rollback session
@@ -1684,11 +1692,11 @@ pick's, `nettai_match::pick::live`) from the local player's buttons, round
 after round to the set's end; `netplay::NetPlayer` plays one against another
 player over a channel the host provides (`netplay::Channel`: it sends the
 frames and takes those that came, never waiting; the library has no socket).
-The offer and the match agreed from both offers are the library's
-(`netplay::Offer`, `netplay::agree`); the transport and the handshake that
-swaps the offers and the halves of the seed are the host's. The program's
-are nettai-demo's `net`: UDP, and a handshake the window polls each frame,
-so it stays responsive while it waits. A host may bring a
+The lobby and the handshake that agree the match are the library's,
+without IO (`lobby::Lobby`: datagrams in, datagrams out), and so is the set
+played from the agreement (`netplay::netplay_setup`); the transport is the
+host's. The program's is nettai-demo's `net`: UDP, and the lobby the window
+polls each frame, so it stays responsive while it waits. A host may bring a
 driver of its own (`Driver`): the program's replays the original's
 recordings.
 
