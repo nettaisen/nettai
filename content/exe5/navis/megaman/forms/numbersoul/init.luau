@@ -18,8 +18,6 @@ local soul_change = require("../../../rules/souls/change")
 local soul_image = require("../../../rules/souls/image")
 local soul_revert = require("../../../rules/souls/revert")
 
--- His layer's row, and NumberMan's face's on his image.
-local ROW, NUMBERMAN_FACE = 1, 0
 
 local form: FormDef = {
     soul = { family = "plus" },
@@ -30,7 +28,7 @@ local form: FormDef = {
     image = soul_image.look {
         sprite = asset.sprite("numberman"),
         put_on = function(image: Object)
-            image.related2 = layer.spawn(image, NUMBERMAN_FACE)
+            image.related2 = layer.spawn(image, layer.numberman_face)
         end,
         take_off = function(image: Object)
             layer.take_off(image.related2)
@@ -53,7 +51,7 @@ local form: FormDef = {
     -- His put-on and take-off routines (0x0800F038's and 0x0800F09C's row 9): his layer, in his second related slot
     -- (0x0800F07C); taken off (0x0800F0DE).
     put_on = function(navi: Object)
-        navi.related2 = layer.spawn(navi, ROW)
+        navi.related2 = layer.spawn(navi, layer.numbersoul_face)
     end,
     take_off = function(navi: Object)
         layer.take_off(navi.related2)
