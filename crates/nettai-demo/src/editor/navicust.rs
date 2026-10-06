@@ -83,10 +83,13 @@ fn shape(rows: &[Vec<u8>]) -> Shape {
     rows.iter().map(|r| r.iter().map(|&b| b == b'#').collect()).collect()
 }
 
-/// What the grid reads of `game`'s NaviCust (its board module from a round
-/// of a random match of it, one that starts), or none where its data don't
-/// fit the grid.
-pub fn read(content: &Arc<Content>, game: &str) -> Option<Data> {
+/// The game's module the boards are read from.
+pub const MODULE: &str = "rules/navicust/board";
+
+/// What the grid reads of the content's NaviCust (`module`: its board
+/// module, as data: `crate::editor::layout::modules`), or none where its
+/// data don't fit the grid.
+pub fn read(content: &Arc<Content>, module: Option<&nettai_content_api::Data>) -> Option<Data> {
     // The setup's fields.
     let field = |name: &str| nettai_match::facts::field(content, name).map(|f| f.ty.clone());
     let FieldType::Record(fields) = element(&field(PROGRAMS_FIELD)?).clone() else { return None };
@@ -98,8 +101,7 @@ pub fn read(content: &Arc<Content>, game: &str) -> Option<Data> {
     }
     field(SIZE_FIELD)?;
     // The board module.
-    let m = nettai_match::pick::live(content, game, 0, None).ok()?;
-    let module = nettai_match::check::start(content, &m).ok()?.module_data(&format!("{game}:rules/navicust/board"))?.ok()?;
+    let module = module?;
     let nettai_content_api::Data::List(boards) = module.field("boards") else { return None };
     let boards: Vec<Vec<Vec<u8>>> = boards.iter().map(|b| rows(b, b"of.")).collect::<Option<_>>()?;
     if boards.is_empty() {
@@ -891,6 +893,11 @@ pub fn grid_view<'a>(e: &'a Editor, s: usize, f: &'a FieldPane, grid: &'a Grid, 
 mod tests {
     use super::*;
 
+    /// What the grid reads of `game`'s NaviCust.
+    pub fn read_game(content: &Arc<Content>, game: &str) -> Option<Data> {
+        read(content, crate::editor::layout::modules(content, game, &[MODULE]).remove(0).as_ref())
+    }
+
     /// Both games' NaviCusts fit the grid: their boards from the board
     /// module (three, the command line row 3), every program's shapes,
     /// colors and plus mark from its data; the pane picks the board by its
@@ -898,7 +905,7 @@ mod tests {
     #[test]
     fn both_games_navicusts_read() {
         for (content, game) in [(nettai_match::testing::exe6_content(), "exe6"), (nettai_match::testing::exe5_content(), "exe5")] {
-            let data = read(&content, game).unwrap_or_else(|| panic!("{game}: the NaviCust's data don't fit the grid"));
+            let data = read_game(&content, game).unwrap_or_else(|| panic!("{game}: the NaviCust's data don't fit the grid"));
             assert_eq!((data.boards.len(), data.command_line), (3, Some(3)), "{game}");
             let programs = content.defs.entries_of("navicust_programs").len();
             assert_eq!((data.colors.len(), data.shapes.len()), (programs, 2 * programs), "{game}");
@@ -908,7 +915,7 @@ mod tests {
             assert_eq!(sizes, ["4x4", "5x4", "5x5"], "{game}");
         }
         let six = nettai_match::testing::exe6_content();
-        let data = read(&six, "exe6").unwrap();
+        let data = read_game(&six, "exe6").unwrap();
         assert!(!data.plus.is_empty(), "EXE6's plus parts");
         assert_eq!(data.boards[1][1], b"fooooof".to_vec());
     }
@@ -922,7 +929,7 @@ mod tests {
         let content = nettai_match::testing::exe6_content();
         let mut m = nettai_match::pick::live(&content, "exe6", 7, None).unwrap();
         nettai_match::testing::set_navicust(&content, &mut m.sides[0], &[], 2);
-        let data = read(&content, "exe6").unwrap();
+        let data = read_game(&content, "exe6").unwrap();
         let p = pane(&content, &data).unwrap();
         let f = p.fields[1].clone();
         let View::Grid(grid) = &f.view else { unreachable!() };

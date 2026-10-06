@@ -190,11 +190,7 @@ impl Side {
 /// (a version, where they take one) or its navi's own (its form list: the
 /// version's five), the rest of its facts their defaults,
 /// and a folder of the rules' pool picked from `picks` (else
-/// the game's first chip with a code, thirty times); where the game has
-/// navis in auto battle (EXE5's), the auto battle data the game would have
-/// learned from a player who used each chip of that folder once
-/// (`AutoBattle::of_folder`), so that a random match states what a
-/// navi in auto battle plays.
+/// the game's first chip with a code, thirty times).
 fn plain_side(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], picks: &mut Picks) -> Result<Side, String> {
     let navi = crate::first_navi(content, game).ok_or_else(|| format!("{game} has no navi with fresh stats"))?;
     let chip = (0..content.defs.chips.len() as u16)
@@ -227,11 +223,6 @@ fn plain_side(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], pick
         && !folders::pool(content, game, &mut b, 0).is_empty()
     {
         side.set_folder(content, &folders::random_folder(content, game, &mut b, 0, picks).into())?;
-    }
-    // What a navi in auto battle plays from the side's save, where the game has
-    // navis in auto battle: what the game would have learned from this folder.
-    if crate::auto_battle::has(content) {
-        crate::AutoBattle::of_folder(content, &side.folder(content)).write(content, &mut side)?;
     }
     Ok(side)
 }
@@ -483,40 +474,19 @@ mod tests {
         assert!(m.sides.iter().all(|s| s.version(&content).is_none()));
         assert!(crate::check::round_stats(&content, &m).unwrap().iter().all(|s| s.version == 0));
         // (Nor anything else: EXE5's rules require no fact, and a random
-        // side's are their defaults, but its navi and its folder.)
+        // side's are their defaults, but its navi and its folder: its auto
+        // battle data the rules' default, nothing learned.)
         let defaults = crate::Facts::defaults(&content);
         for s in &m.sides {
-            // (And its auto battle data, learned of its folder.)
-            let own = ["navi", "folder", "regular_chip", "tag_chips", "auto_battle_places"];
+            let own = ["navi", "folder", "regular_chip", "tag_chips"];
             for f in crate::facts::fields(&content).into_iter().filter(|f| !own.contains(&f.name)) {
                 assert_eq!(s.facts.get(&content, f.name), defaults.get(&content, f.name), "{}", f.name);
             }
         }
         assert!(!crate::write(&content, &m).contains("version"));
         assert!(m.sides.iter().flat_map(|s| s.folder(&content).chips().collect::<Vec<_>>()).all(|c| ids::in_game(&content, "exe5", &content.defs.chip(c.id).key)));
-        // An EXE5 match states what a navi in auto battle plays: each side's
-        // folder's chips, as the game would have learned them (a folder's
-        // own chips alone, none in the first three places and no
-        // patterns), written in its file.
-        use crate::auto_battle::{AutoBattle, Entry, LISTS, PATTERNS, Record};
-        let data = |s: &Side| AutoBattle::of_side(&content, s);
-        for s in &m.sides {
-            let d = data(s);
-            assert!(d.entries() > 0);
-            assert!(d.list(&LISTS[0]).iter().chain(d.list(&PATTERNS)).all(|e| *e == Entry::Empty));
-            for e in d.places.iter().filter(|e| **e != Entry::Empty) {
-                let Entry::Chip(c) = e else { panic!("a picked side has chips alone: {e:?}") };
-                assert!(s.folder(&content).chips().any(|f| f.id == *c));
-            }
-            assert_eq!(d.records, [Record::ZERO; 8]);
-            assert_eq!(d, AutoBattle::of_folder(&content, &s.folder(&content)));
-        }
-        assert_ne!(data(&m.sides[0]), data(&m.sides[1]));
-        let text = crate::write(&content, &m);
-        assert!(text.contains("auto_battle_places = [\n    {},\n    {},\n    {},\n    { chip = \""), "{text}");
-        assert_eq!(crate::parse(&content, &text).unwrap(), m);
-        // EXE6 has no auto battle: a random match of it states none.
-        let six = crate::testing::exe6_content();
-        assert!(live(&six, "exe6", 4, None).unwrap().sides.iter().all(|s| AutoBattle::of_side(&six, s).is_blank()));
+        // (A random match states no auto battle data: its file has none.)
+        assert!(!crate::write(&content, &m).contains("auto_battle"));
+        assert_eq!(crate::parse(&content, &crate::write(&content, &m)).unwrap(), m);
     }
 }
