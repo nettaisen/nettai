@@ -32,7 +32,6 @@ local HIT_MOD = 0
 -- NameID 0xE7: actor record 0xE7 (0x08014C94: version 2, AI index 0x21); EXE5's swallowing and Poltergeist leave it
 -- (0x0800D372, 0x080E8CA0).
 local IDENTITY = define.identity {
-    id = "red-fruit",
     class = "field_object",
     version = 2,
     ai_index = 0x21,

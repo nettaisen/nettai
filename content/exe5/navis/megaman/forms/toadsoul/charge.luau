@@ -64,7 +64,6 @@ local function recover(me: Object, s: State)
 end
 
 charge.action = define.action {
-    id = "toadsoul/charge/action",
     state = { timer = "u16", target = "object" },
     -- 0x080EF5A2
     update = function(me: Object, s: State)
@@ -92,7 +91,6 @@ local function setup(navi: Object): Action
 end
 
 charge.weapon = define.weapon {
-    id = "toadsoul/charge",
     -- The charge table's row 0x2D (0x0801CC2E); Charge 5 reads on into row 0x2E's first entry.
     charge_ticks = { 140, 135, 130, 125, 120, 60 },
     setup = setup,

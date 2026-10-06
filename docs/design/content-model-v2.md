@@ -94,21 +94,22 @@ Every definition belongs to one registry. The engine knows the registries and th
 
 | Registry | Definer | Key | The Rust side reads | Compat maps it to |
 |---|---|---|---|---|
-| chip | `define.chip` | required `id` | the record, its use (action or hook), traits | chip id; the action number and subtype it had |
-| navi | `define.navi` | required `id` | stats, identity, own chip, traits | navi number, NameID |
-| form | `define.form` | required `id` | stats, weapons, identity, traits | form number, NameID |
-| weapon | `define.weapon` | required `id` | charge times, traits, the `setup` slot | weapon routine numbers (aliases many-to-one) |
-| kind | `define.kind`, and the engine's own kinds | required `id` | pool, state schema, `update` and `place` slots | pool and index; `scratch_position`, `scratch_z_fraction` |
-| action | `define.action`, and the engine's own navi actions | derived | state schema, `update` slot, traits | action number (the player's CurAction in the traces) |
-| stage | `define.stage` | required `id` | layout, actors, music, background, settings | battle settings index and actor-list address |
+| chip | `define.chip` | required `id` (a match's folder names it) | the record, its use (action or hook), traits | chip id; the action number and subtype it had |
+| navi | `define.navi` | required `id` (a match's side) | stats, identity, own chip, traits | navi number, NameID |
+| form | `define.form` | required `id` (a side's Crosses and souls) | stats, weapons, identity, traits | form number, NameID |
+| weapon | `define.weapon` | `id` where compat names it, else derived | charge times, traits, the `setup` slot | weapon routine numbers (aliases many-to-one) |
+| kind | `define.kind`, and the engine's own kinds | `id` where compat names it, else derived | pool, state schema, `update` and `place` slots | pool and index; `scratch_position`, `scratch_z_fraction` |
+| action | `define.action`, and the engine's own navi actions | `id` where compat names it, else derived | state schema, `update` slot, traits | action number (the player's CurAction in the traces) |
+| stage | `define.stage` | required `id` (a match's arena) | layout, actors, music, background, settings | battle settings index and actor-list address |
 | effect | `define.effect` | derived | sprite, animation, palette | (none) |
 | spark | `define.spark` | derived | sprite, animation, palette | (none) |
 | region | `define.region` | derived | panel offsets, or a whole-field condition | (none) |
-| collision | `define.collision` | required `id` (shared vocabulary) | a collision type's flag words by side | (none) |
-| status | `define.status` | required `id` (shared vocabulary) | requests, duration, timer | (none) |
-| (lockon) | `define.record("lockon", ...)` since rules-in-luau.md S7c | required `id` | the Beast Out lock-on search | (none) |
-| record | `define.record(type, spec)` | derived, or `id` | only its type name (Luau reads the fields) | (none, unless a setup names it) |
-| patch_card | `define.patch_card` | required `id` | its MB and its effects' kinds and bug flags (a game's rules read the rest; §3.11) | the card's number, in compat/patch-cards.toml |
+| collision | `define.collision` | derived (`rules/collision/attack`) | a collision type's flag words by side | (none: gen-content knows a type by its row) |
+| status | `define.status` | `id` where compat names it, else derived | requests, duration, timer | its byte, in rules.toml |
+| (lockon) | `define.record("lockon", ...)` since rules-in-luau.md S7c | `id` (compat's rules.toml) | the Beast Out lock-on search | its mode byte |
+| record | `define.record(type, spec)` | `id` where compat names it, else derived | only its type name (Luau reads the fields) | (records.toml: SP slots, variants, barriers) |
+| patch_card | `define.patch_card` | required `id` (a match's side) | its MB and its effects' kinds and bug flags (a game's rules read the rest; §3.11) | the card's number, in compat/patch-cards.toml |
+| navicust_program | `define.navicust_program` | required `id` (a match's NaviCust) | its colors and shapes | the program's number, in compat/navicust.toml |
 | sprite, sound, banner, background, mugshot, chip icon | `asset.*` (§6.3) | the asset's name | names; sprites' animation timing | the ROM's numbers, in compat/assets.toml |
 
 A game's rules are one definition, its ruleset (`define.ruleset`, rules/init.luau), which holds its rule
@@ -120,32 +121,40 @@ the content state store is keyed by.
 
 ### 2.2 Keys
 
-A key is a string unique within its registry. The content is one namespace (rules-in-luau.md §7.2, the user,
-2026-10-02: "maybe you should just have it all in a flat namespace and then in the chip ids directly have
-bn6:cannon or whatever"): every key is written in full, its game first and then its own part, `exe6:minibomb`,
-wherever it is written (modules, compat, locale tables, setups, match files, tests). The loader refuses an id
-without its game. The rules below are for the part after the game.
+A key is a string unique within its registry, local to its game (the user: "no i don't want qualified ids since you
+can't cross between games anymore"): `minibomb`, `heatcross`, `megaman/buster`. The user, 2026-10-05: "in fact only
+stuff that gets set in the match setup needs ids right? everywhere else ids are kind of pointless", then "drop ids
+where they aren't needed by the compat map or match setup". So a definition states an `id` only where something
+outside the content names it:
 
-- **Required keys** (`id = "exe6:..."`) for what is named from outside content: setups, folders, compat, tools,
-  the frontend. Lowercase ASCII letters and digits in `-`-separated words, optionally qualified with `/` by an
-  owner: `exe6:minibomb`, `exe6:atk-10`, `exe6:erasemn-ex`, `exe6:heatcross-beast`, `exe6:megaman/buster`,
-  `exe6:eraseman/mark`. The generator (§9) makes chip keys from the in-game name (`M-Cannon` is `m-cannon`,
-  `GrndMan[EX]` is `grndman-ex`, `Atk+10` is `atk-10`); where two records share a name (StepSwrd, WhiCapsl,
-  BeastOut) or have none, it picks a key from the record's use and lists them in compat/curation.toml for review
-  (§13).
-- **Derived keys** for definitions made inside another definition's module and nested in it: `<owner key>/<field
-  path>`. MiniBomb's action is `exe6:minibomb/action`; the bomb variant it throws is
-  `exe6:minibomb/action/args/thrown`. A definition made while module `M` loads and not nested in a keyed definition
-  of `M` is `M#n`, its place among `M`'s definitions (`exe6:lib/bombs/throw#1`, the module named by its folder). Owner-derived keys are stable under edits elsewhere and readable in
-  messages and trace diffs; `M#n` keys shift when `M` gains a definition, which matters only to compat (an
-  action compat maps takes an explicit `id`, §3.5). Nothing else stores a derived key.
+- **What a match's setup names** has a required `id`: a chip (a folder), a navi, a form (Crosses, souls), a stage
+  (the arena), a patch card and a NaviCust program (`Registry::keyed`). Match files, the locales and library.toml name
+  these by it. Lowercase ASCII letters and digits in `-`-separated words, optionally qualified with `/` by an owner
+  (`m-cannon`, `atk-10`, `heatcross-beast`). The generator (§9) makes chip keys from the in-game name (`M-Cannon` is
+  `m-cannon`, `GrndMan[EX]` is `grndman-ex`); where two records share a name or have none, it picks one from the
+  record's use and lists them in compat/curation.toml for review (§13).
+- **What a compat map names** keeps the `id` the map keys it by: an action or a kind the traces compare by number,
+  a weapon routine, a status's byte, an identity's NameID, the records a setup's bytes name (SP slots, rock and
+  projectile variants, barriers, lock-on modes). The map is the only reader; a definition it doesn't name has no id.
+- **Every other definition is keyed by where it is made**, with no `id`:
+  - nested in a definition made by the same module: `<owner key>/<field path>`. MiniBomb's action is
+    `minibomb/action`; the bomb variant it throws `minibomb/action/args/thrown`; a soul's chaos weapon
+    `colonelsoul/weapons/chaos`;
+  - else what its module returns: the module's name for a definition the module returns (`objects/boulder`, a
+    folder's init by its folder), or its place in the table the module returns (`rules/collision/attack`,
+    `objects/rock/variants/cube`);
+  - else `<module>#n`, its place among the definitions its module made (`chips/colonel/navi#3`: one held in a
+    local the module doesn't return).
+
+  Owner and module keys are stable under edits elsewhere and readable in messages and trace diffs; `#n` keys shift
+  when their module gains a definition. Nothing outside the content stores a derived key: a compat map that needs to
+  name a definition gives it an `id`, and a tool that finds one does so by what it is (gen-content finds EXE6's
+  Cross special record by its record type).
 - Kind keys follow a convention the checker warns about: a kind colocated with an owner is qualified by it
-  (`exe6:eraseman/mark`, `exe6:grab/shot`); a kind in `objects/` or a family library is plain (`exe6:projectile`,
-  `exe6:bomb`).
+  (`eraseman/mark`, `grab/shot`); a kind in `objects/` or a family library is plain (`projectile`, `bomb`).
 - The engine's own kinds and navi actions have keys in the `engine/` namespace (`engine/hitbox`, `engine/effect`,
-  `engine/player`, `engine/move`, `engine/dimming-chip`), registered by the ruleset, not by content: of no game.
-- **Asset names are written in full too** (the user: "so loading assets must also be fully qualified as well"):
-  `asset.sprite("exe6:bomb")`, the pack's game and the pack's own name for the asset.
+  `engine/player`, `engine/move`, `engine/dimming-chip`), registered by the rules, not by content: of no game.
+- **Asset names** are the pack's own (`asset.sprite("bomb")`), local to the game as keys are.
 
 ### 2.3 Handles and the intern order
 
@@ -156,7 +165,11 @@ same handles. Content with more than 65,535 definitions in one registry is refus
 
 Handles are what battle state holds (an object's kind, a hand's chips, a navi's form, a state field of type
 `chip`). They are valid only with the content that made them: the round's setup carries the content hash, and
-`Battle::new` refuses other content, as it does today.
+`Battle::new` refuses other content, as it does today. A key with no `id` is as fixed as one with an id: it depends only
+on the modules' text (where a definition is made, what its module returns, its place among its module's
+definitions), so the same content gives the same keys and the same handles on every machine and every run, and
+both peers of a netbattle, whose offers carry the content hash, intern alike. The digest covers handles; messages
+name a definition by its key, with its module.
 
 `Content::names` keeps each registry's keys by handle and the reverse map (a `BTreeMap`), for messages, for
 setups written by name (`"minibomb"` with code `"B"`), and for tools.

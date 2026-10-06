@@ -162,7 +162,7 @@ local CALL, RECOVER = 0x0, 0x4
 local SOUND = asset.sound("boomerang")
 
 -- A chip's Skully: its skulls.
-function skully.action(id: string, skulls: Skulls): Action
+function skully.action(skulls: Skulls): Action
     -- 0x080EFC4C: the call; the skull on the 5th tick, 16 in all.
     local function call(me: Object, s: ActionState)
         if me.step_init == 0 then
@@ -201,7 +201,6 @@ function skully.action(id: string, skulls: Skulls): Action
     end
 
     return define.action {
-        id = id,
         state = { timer = "u16" },
         args = skulls,
         update = function(me: Object, s: ActionState)

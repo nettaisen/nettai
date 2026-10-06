@@ -33,7 +33,7 @@ return define.form {
         charge_shot = charge.weapon,
         a_charge = charged_shot.weapon,
         -- Routine 0x36 (0x0800FA70): DrkRecov (chip 0xC2), the charge table's row 0x36.
-        chaos = chaos.weapon("meddysoul/chaos", drkrecov, { 70, 90, 110, 130, 150, 70 }),
+        chaos = chaos.weapon(drkrecov, { 70, 90, 110, 130, 150, 70 }),
     },
     palette = 0,
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 5-10, the version's souls'); in its

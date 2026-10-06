@@ -48,7 +48,6 @@ local function setup(navi: Object)
 end
 
 back.weapon = define.weapon {
-    id = "magnetsoul/back",
     -- (A B+Back, which nothing charges: the charge table's row 0x25 (0x0801CBDE), Charge 5 reading on into row
     -- 0x26's first entry.)
     charge_ticks = { 60, 60, 60, 60, 60, 70 },

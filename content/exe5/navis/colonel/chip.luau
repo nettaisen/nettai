@@ -112,7 +112,6 @@ end
 
 local action: Action
 action = define.action {
-    id = "c-cannon/action",
     state = { timer = "u16", wait = "u16" },
     -- 0x080F8B30
     update = function(me: Object, s: State)

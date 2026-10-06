@@ -19,7 +19,7 @@ local spshake1 = define.chip {
     lockout = 20,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
-    action = spshake.action("spshake1/action", spshake.waves[1]),
+    action = spshake.action(spshake.waves[1]),
 }
 
 -- SpShake2 (EXE5 chip 0x019): an electric wave that snakes along the field from the panel ahead (EXE5's SpShake,
@@ -37,7 +37,7 @@ local spshake2 = define.chip {
     lockout = 20,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = spshake.action("spshake2/action", spshake.waves[2]),
+    action = spshake.action(spshake.waves[2]),
 }
 
 -- SpShake3 (EXE5 chip 0x01a): an electric wave that snakes along the field from the panel ahead (EXE5's SpShake,
@@ -55,7 +55,7 @@ local spshake3 = define.chip {
     lockout = 20,
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
-    action = spshake.action("spshake3/action", spshake.waves[3]),
+    action = spshake.action(spshake.waves[3]),
 }
 
 return { spshake1 = spshake1, spshake2 = spshake2, spshake3 = spshake3 }

@@ -16,10 +16,10 @@ function image.look(look: SoulImage): SoulImage
     return define.record("soul-image", look)
 end
 
--- The look of a navi that wears a body overlay's part (the identity `id` wears it): put on as the image comes, its
+-- The look of a navi that wears a body overlay's part (an identity of its own wears it): put on as the image comes, its
 -- sprite stepping even while paused, and taken off as it goes.
-function image.wearing(sprite: SpriteAsset, id: string, part: BodyPart): SoulImage
-    local worn = define.identity { id = id, class = "navi", parts = { body = part } }
+function image.wearing(sprite: SpriteAsset, part: BodyPart): SoulImage
+    local worn = define.identity { class = "navi", parts = { body = part } }
     return image.look {
         sprite = sprite,
         put_on = function(me: Object)

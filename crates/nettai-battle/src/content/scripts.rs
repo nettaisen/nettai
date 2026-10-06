@@ -306,8 +306,8 @@ mod tests {
         let rules = d.rules().expect("the game's one rules definition");
         assert!(d.schema(rules.state).index_of("n").is_some());
         // Lookups are exact, of the one game's.
-        assert!(d.record("cards#1").is_some());
-        assert_eq!(d.record("game:cards#1"), None);
+        assert!(d.record("cards").is_some());
+        assert_eq!(d.record("game:cards"), None);
         // Two game packs are two contents.
         let e = content(vec![folder("mix", mix), folder("game", GAME)]).unwrap_err();
         assert!(e.contains("content holds one game, and these are mix and game"), "{e}");
@@ -662,14 +662,14 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         };
         let c = with_inits(&[("init", "require('@self/rules')")]).unwrap();
         assert!(c.defs.rules().is_some());
-        assert_eq!(c.defs.record("chips/cannon#1"), None, "unreached, unloaded");
+        assert_eq!(c.defs.record("chips/cannon"), None, "unreached, unloaded");
         // Each folder's init requires what the folder has; a module that
         // defines what only an id names is required the same way.
         let top = ("init", "require('@self/rules')\nrequire('@self/chips')\nrequire('@self/lib')");
         let chips = ("chips/init", "require('@self/sword')\nrequire('@self/cannon')");
         let lib = ("lib/init", "require('@self/pa')");
         let c = with_inits(&[top, chips, lib]).unwrap();
-        assert!(c.defs.record("chips/cannon#1").is_some() && c.defs.chip_by_key("sword").is_some());
+        assert!(c.defs.record("chips/cannon").is_some() && c.defs.chip_by_key("sword").is_some());
         // The order of the requires is the load order, and nothing more: the
         // same definitions under the same keys, so the same handles.
         let turned = [

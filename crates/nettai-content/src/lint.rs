@@ -144,7 +144,10 @@ pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
         if !tests {
             continue;
         }
-        let field = format!("collision.{}", nettai_content_api::keys::local(&d.key).replace('-', "_"));
+        // (Its field in the game's rules/collision table: its key's last
+        // part, `rules/collision/probe`'s `probe`.)
+        let short = nettai_content_api::keys::local(&d.key).rsplit('/').next().unwrap_or_default().to_string();
+        let field = format!("collision.{}", short.replace('-', "_"));
         // (The other packs whose modules a module of the type's game uses.)
         let dirs: BTreeSet<String> = c.scripts.modules.keys().filter_map(|m| nettai_content_api::keys::root_of(m)).map(str::to_string).collect();
         for required in dirs.into_iter().filter(|n| n != root) {
@@ -154,7 +157,7 @@ pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
             for (name, text) in &c.scripts.modules {
                 let names = text.lines().any(|l| l.contains(&field) && !l.contains("define.collision"));
                 if name.starts_with(&prefix) && text.contains(&uses) && names {
-                    out.push((d.key.clone(), name.clone(), required.clone()));
+                    out.push((short.clone(), name.clone(), required.clone()));
                 }
             }
         }
