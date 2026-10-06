@@ -1,7 +1,7 @@
 //! Matches of each game (docs/frontend.md §6), each on its game's content
 //! alone (`testing::exe5_content`, `exe6_content`): a match is of one game,
 //! its arena's, and names nothing of another's. EXE5's folder rules on
-//! EXE5's sides (its rules' folder part,
+//! EXE5's sides (its rules' rules/folder,
 //! content/exe5/rules/folder), an EXE5 match played a few hundred ticks,
 //! EXE5's karma and souls, and a name another game has but the match's
 //! hasn't refused as any unknown name is.
@@ -456,7 +456,7 @@ fn a_dark_side_starts_dark() {
     assert_eq!(content.assets.handle(nettai_content_api::AssetKind::Mugshot, "megaman-dark"), Some(face.0));
 }
 
-/// The soul button (EXE5's souls part's) offers only a soul the side has:
+/// The soul button (EXE5's rules/souls's) offers only a soul the side has:
 /// with every soul (ProtoSoul among them), a Sword picked offers ProtoSoul;
 /// with none, or with GyroSoul alone, the button is there but the sword's
 /// soul isn't offered. Without Soul Unison there is no button.
@@ -500,7 +500,7 @@ fn an_unowned_soul_cant_be_chosen() {
     assert_eq!(offered(Some(&["protosoul", "colonelsoul"])), (true, true));
 }
 
-/// The soul given for a chip (the souls part's button and window): the
+/// The soul given for a chip (rules/souls's button and window): the
 /// soul takes the Sword's place, first in the selection; B puts the Sword
 /// back and offers the soul again; given again and OK, the turn's form is
 /// ProtoSoul for 3 turns and the Sword leaves the folder in its place.
@@ -562,7 +562,7 @@ fn the_soul_takes_the_chips_place() {
     assert_eq!(folder.count(), 29);
 }
 
-/// What a soul keeps of a custom screen in the souls part's state (its
+/// What a soul keeps of a custom screen in the rules' state (its
 /// form's `custom.state`) is as a fresh state has it when the next screen
 /// deals, whatever soul the navi is in then: the original zeroes the
 /// screen's record as it opens (0x08022CA2). MegaMan in MeddySoul is dealt

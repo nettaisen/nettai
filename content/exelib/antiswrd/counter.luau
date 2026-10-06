@@ -5,7 +5,7 @@
 -- an AntiSwrd trap (or the AntiDmg program's stance, struck by a sword)
 -- catches a hit, the navi, invulnerable, swings a blade three times, each
 -- swing sending a sonic boom (@exelib/swords/sonic_boom) along its row; the
--- last one's hit knocks back. The ruleset starts it by role
+-- last one's hit knocks back. The rules start it by role
 -- (`actions.anti_sword_counter`, a game's rules/roles.luau).
 
 local parts = require("../swords/parts")

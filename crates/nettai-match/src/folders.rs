@@ -1,4 +1,4 @@
-//! Folders against their rules, which are each game's (its ruleset's
+//! Folders against their rules, which are each game's (its rules'
 //! `folder_check`: EXE6's are content/exe6/rules/folder/init.luau): one
 //! check that a match file, a netplay offer, the editor and live play's
 //! random folder all go through (`Battle::check_folder`). The rules read

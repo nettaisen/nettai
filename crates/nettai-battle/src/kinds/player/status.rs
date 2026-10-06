@@ -383,7 +383,7 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
     }
     let side = b.objects.get(r).alliance;
     let opp = side ^ 1;
-    // A counter: the counterer's side's rules (EXE6's emotion part: Full
+    // A counter: the counterer's side's rules (EXE6's rules/emotion: Full
     // Synchro, unless this navi's mood is held).
     if coll(b, r).acc.counter & 0x8000 != 0 {
         b.rules_countered(opp, r);

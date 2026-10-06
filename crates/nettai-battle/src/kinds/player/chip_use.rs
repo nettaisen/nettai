@@ -74,7 +74,7 @@ pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
                 ai_mut(b, r).attack.charged = 0;
                 let action = super::idle::weapon_routine(b, r, weapon);
                 set_attack(b, r, action, 2);
-                // (EXE6's beast part runs the Beast forms' claw and
+                // (EXE6's rules/beast runs the Beast forms' claw and
                 // SlashCross Beast's charged sword inside its rush.)
                 chip_used(b, r, Some(weapon));
                 ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
@@ -84,7 +84,7 @@ pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
     }
     let action = prepare(b, r, charge);
     set_attack(b, r, action, 2);
-    // (EXE6's beast part runs a chip with the lock-on flag inside its
+    // (EXE6's rules/beast runs a chip with the lock-on flag inside its
     // rush, in a Beast form or from the Cross special.)
     chip_used(b, r, None);
     ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);

@@ -1,10 +1,10 @@
-//! What the ruleset needs from content by role (docs/design/
-//! content-model-v2.md §7.4): the ruleset's `roles`, a plain table
-//! (`rules/roles.luau`), once. The ruleset starts and recognizes the actions and kinds it needs
+//! What the rules need from content by role (docs/design/
+//! content-model-v2.md §7.4): the rules' `roles`, a plain table
+//! (`rules/roles.luau`), once. The rules start and recognizes the actions and kinds it needs
 //! through these, never by the original's numbers or by content's keys.
 //!
 //! A role names a definition. A role content hasn't filled is an error
-//! where the ruleset needs it.
+//! where the rules need it.
 
 use std::collections::BTreeMap;
 
@@ -16,7 +16,7 @@ use nettai_content_api::{
 use super::{BannerId, SpriteId};
 use crate::sound::SoundId;
 
-/// The actions the ruleset starts or recognizes by role.
+/// The actions the rules start or recognizes by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ActionRole {
     /// AntiDmg's counter (`sub_801056A`, `sub_80105F2`; the original's 0x47).
@@ -46,7 +46,7 @@ pub enum ActionRole {
     /// EXE5's loss of HP raises it for a dark MegaMan's last stand
     /// (0x0802C16C), EXE5's action 0x30.
     Volley,
-    /// DustCross Beast's scatter (0x50), during which the ruleset doesn't
+    /// DustCross Beast's scatter (0x50), during which the rules doesn't
     /// ground a MegaMan navi.
     DustBeastScatter,
     /// ChargeCross's tackle (0x56), during which an invulnerable navi
@@ -103,7 +103,7 @@ impl ActionRole {
     }
 }
 
-/// The object kinds the ruleset spawns by role.
+/// The object kinds the rules spawn by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum KindRole {
     /// What an obstacle absorbed flies off as (`obstacle.fly_to_absorber`).
@@ -165,7 +165,7 @@ impl KindRole {
     }
 }
 
-/// The status effects the ruleset inflicts itself, by role.
+/// The status effects the rules inflict themselves, by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum StatusRole {
     /// What a damage word's paralysis bit (0x4000) makes its hits carry
@@ -244,7 +244,7 @@ macro_rules! definition_roles {
 }
 
 definition_roles! {
-    /// The one-shot effects the ruleset shows itself, by role (`effects`).
+    /// The one-shot effects the rules show themselves, by role (`effects`).
     EffectRole {
         /// A navi deleted (`sub_8010820`'s two explosions), a cross merged
         /// into MegaMan, a navi arriving mid-battle or back from a Cross
@@ -272,7 +272,7 @@ definition_roles! {
 }
 
 definition_roles! {
-    /// The hit sparks the ruleset shows itself, by role (`sparks`).
+    /// The hit sparks the rules show themselves, by role (`sparks`).
     SparkRole {
         /// What a new collision registration's hits show until its owner
         /// says otherwise (the original's zeroed hit-effect byte).
@@ -292,7 +292,7 @@ definition_roles! {
 }
 
 definition_roles! {
-    /// The hit regions the ruleset registers itself, by role (`regions`).
+    /// The hit regions the rules register themselves, by role (`regions`).
     RegionRole {
         /// The registration's own panel: what `object_setupCollisionData`
         /// gives every registration.
@@ -301,7 +301,7 @@ definition_roles! {
 }
 
 definition_roles! {
-    /// The collision types the ruleset registers itself, by role
+    /// The collision types the rules register themselves, by role
     /// (`collision`).
     CollisionRole {
         /// A navi's body, and its body when it floats (`sub_8010BD8`:
@@ -320,7 +320,7 @@ definition_roles! {
 }
 
 definition_roles! {
-    /// The sounds the ruleset plays itself, by role (`sounds`): assets
+    /// The sounds the rules play themselves, by role (`sounds`): assets
     /// (`asset.sound`).
     SoundRole {
         /// A panel cracks or breaks.
@@ -430,7 +430,7 @@ definition_roles! {
 }
 
 definition_roles! {
-    /// The music the ruleset starts itself, by role (`music`): sound
+    /// The music the rules start themselves, by role (`music`): sound
     /// assets. (A stage's music is its own.)
     MusicRole {
         /// A link battle's, whatever its stage's.
@@ -475,7 +475,7 @@ definition_roles! {
 }
 
 definition_roles! {
-    /// The banners the ruleset shows itself, by role (`banners`): assets
+    /// The banners the rules show themselves, by role (`banners`): assets
     /// (`asset.banner`). (A loss's banner is the navi's, and a win's where
     /// the flow's `navi_win_banner` says so.)
     BannerRole {
@@ -503,7 +503,7 @@ definition_roles! {
     }
 }
 
-/// The functions the ruleset calls by role.
+/// The functions the rules call by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum HookRole {
     /// `(navi)`: the NaviCust FirstBarrier's barrier and its visual
@@ -539,7 +539,7 @@ impl HookRole {
     }
 }
 
-/// The chips the ruleset names by role.
+/// The chips the rules name by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ChipRole {
     /// What a zeroed chip field reads: the chip the original's chip 0 is
@@ -606,7 +606,7 @@ impl Roles {
     /// naming it.
     pub fn action(&self, role: ActionRole) -> ActionHandle {
         self.try_action(role)
-            .unwrap_or_else(|| panic!("the role actions.{} is not filled (the ruleset's roles, rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role actions.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
     }
 
     /// The chip of `role`, if content filled it.
@@ -618,7 +618,7 @@ impl Roles {
     /// it.
     pub fn chip(&self, role: ChipRole) -> ChipHandle {
         self.try_chip(role)
-            .unwrap_or_else(|| panic!("the role chips.{} is not filled (the ruleset's roles, rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role chips.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
     }
 
     /// Whether `h` is the chip of `role`.
@@ -635,7 +635,7 @@ impl Roles {
     /// naming it.
     pub fn hook(&self, role: HookRole) -> FnId {
         self.try_hook(role)
-            .unwrap_or_else(|| panic!("the role hooks.{} is not filled (the ruleset's roles, rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role hooks.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
     }
 
     /// The hook of `role`, if content filled it: an optional role's
@@ -655,7 +655,7 @@ impl Roles {
     /// it.
     pub fn status(&self, role: StatusRole) -> StatusHandle {
         self.try_status(role)
-            .unwrap_or_else(|| panic!("the role statuses.{} is not filled (the ruleset's roles, rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role statuses.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
     }
 
     /// The effect of `role`; a role content hasn't filled is a panic naming
@@ -664,28 +664,28 @@ impl Roles {
         *self
             .effects
             .get(&role)
-            .unwrap_or_else(|| panic!("the role effects.{} is not filled (the ruleset's roles, rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role effects.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
     }
 
     pub fn spark(&self, role: SparkRole) -> SparkHandle {
         *self
             .sparks
             .get(&role)
-            .unwrap_or_else(|| panic!("the role sparks.{} is not filled (the ruleset's roles, rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role sparks.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
     }
 
     pub fn region(&self, role: RegionRole) -> RegionHandle {
         *self
             .regions
             .get(&role)
-            .unwrap_or_else(|| panic!("the role regions.{} is not filled (the ruleset's roles, rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role regions.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
     }
 
     pub fn collision(&self, role: CollisionRole) -> CollisionHandle {
         *self
             .collisions
             .get(&role)
-            .unwrap_or_else(|| panic!("the role collision.{} is not filled (the ruleset's roles, rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role collision.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
     }
 
     /// The sound, the music, the sprite and the banner of `role`
@@ -699,28 +699,28 @@ impl Roles {
         *self
             .sounds
             .get(&role)
-            .unwrap_or_else(|| panic!("the role sounds.{} is not filled (the ruleset's roles, rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role sounds.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
     }
 
     pub fn music(&self, role: MusicRole) -> SoundId {
         *self
             .music
             .get(&role)
-            .unwrap_or_else(|| panic!("the role music.{} is not filled (the ruleset's roles, rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role music.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
     }
 
     pub fn sprite(&self, role: SpriteRole) -> SpriteId {
         *self
             .sprites
             .get(&role)
-            .unwrap_or_else(|| panic!("the role sprites.{} is not filled (the ruleset's roles, rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role sprites.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
     }
 
     pub fn banner(&self, role: BannerRole) -> BannerId {
         *self
             .banners
             .get(&role)
-            .unwrap_or_else(|| panic!("the role banners.{} is not filled (the ruleset's roles, rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role banners.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
     }
 
     /// The kind of `role`; a role content hasn't filled is a panic naming
@@ -729,6 +729,6 @@ impl Roles {
         *self
             .kinds
             .get(&role)
-            .unwrap_or_else(|| panic!("the role kinds.{} is not filled (the ruleset's roles, rules/roles.luau)", role.name()))
+            .unwrap_or_else(|| panic!("the role kinds.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
     }
 }

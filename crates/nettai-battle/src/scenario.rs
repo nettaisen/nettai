@@ -57,8 +57,8 @@ pub fn setup() -> RoundSetup {
     setup_on(&testing::build())
 }
 
-/// The same round for `content` (the test content with its rules made of
-/// other parts, `testing::with_parts`: a player's setup is its rules'):
+/// The same round for `content` (the test content with its rules patched,
+/// `testing::with_rules`: a player's setup is its rules'):
 /// both players of the test content's version (`testing::VERSION`), where
 /// the rules of the content take one.
 pub fn setup_on(content: &Content) -> RoundSetup {

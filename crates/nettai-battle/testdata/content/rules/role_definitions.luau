@@ -1,6 +1,6 @@
 --!strict
 -- The engine's test content's own effects, hit sparks, region, collision
--- types, sounds, music and banners for the ruleset's roles
+-- types, sounds, music and banners for the rules' roles
 -- (rules/roles.luau): made-up looks (one sprite for every effect, one for
 -- every spark), collision types by what they are, and a made-up asset for
 -- every sound, music and banner.

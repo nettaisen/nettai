@@ -3,7 +3,7 @@
 -- the engine's (`define.navicust_program`, content/exe6/navicust/), its
 -- effects the values the shared constructors make (@exelib/navicust/effects,
 -- which EXE5's programs share), each the work of the original's handler for
--- the program (`navicust_jt_NCPs`); the navicust part (./init.luau)
+-- the program (`navicust_jt_NCPs`); rules/navicust (./init.luau)
 -- applies a player's programs to the navi's stats as the round is set up.
 -- What a program brings when it is bugged is its `bug` (one of `BUGS`), and
 -- which programs only one of on the command line works is its `exclusive`.

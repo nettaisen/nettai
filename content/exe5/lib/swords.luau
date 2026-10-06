@@ -90,7 +90,7 @@ function swords.slash(spec: SlashSpec): Action
 end
 
 -- AntiSwrd's counter (the original's navi action 0x48: @exelib/antiswrd/counter) with EXE5's blade and booms; its
--- sounds EXE6's. The ruleset starts it by role (`actions.anti_sword_counter`, rules/roles.luau).
+-- sounds EXE6's. The rules start it by role (`actions.anti_sword_counter`, rules/roles.luau).
 swords.anti_sword_counter = antiswrd.action_with {
     id = "antiswrd/counter",
     blade = swords.blade,

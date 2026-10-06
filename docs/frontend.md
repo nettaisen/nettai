@@ -1144,11 +1144,9 @@ programs = [                               # in the save's order; x, y the cente
 ```
 
 **A side's facts.** What a side brings that its game's rules take is the
-game's own to say: its rules declare a `setup`, which their parts make
-(content/exe6/rules/cross: `setup = { version = { "gregar", "falzar" },
-crosses = "form[5]" }`; content/exe5/rules/light_dark:
-`setup = { karma = "u16" }`; parts that declare the same field declare it
-once, of one type), and every field of that setup is a fact a side of that
+game's own to say: its rules declare a `setup` (content/exe6/rules/init.luau:
+`setup = { version = { "gregar", "falzar" }, crosses = "form[5]", ... }`;
+content/exe5/rules/init.luau: `setup = { karma = "u16", ... }`), and every field of that setup is a fact a side of that
 game may state, as a key of its table by the field's name. `nettai-match`
 names none of them (`nettai_match::facts`): a side holds its facts as that
 setup block, the round's setup hands the engine the block as it is, and a
@@ -1251,10 +1249,9 @@ records = [                                # the eight pattern records: a place 
 **A side states no stats.** A round starts from each navi's fresh stats
 (`NaviStats::fresh`, `init_8013B64`: what a new save gives the navi, by its
 game's `fresh_stats` rules and its own definition), and its game's rules
-build the rest as the round is set up (`round_setup`), in their parts'
-order:
+build the rest as the round is set up (`round_setup`), in the order their code says:
 
-- **the save part** (content/exe6/rules/save, content/exe5/rules/save),
+- **the save module** (content/exe6/rules/save, content/exe5/rules/save),
   first: what the save brings that nothing derives, its facts, `hp` (the
   base HP of the navi that compiles a NaviCust: MegaMan's, which HP
   Memories raise; default 100), `reg_up` (the Regular memory; default the
@@ -1312,14 +1309,14 @@ A navi takes a level where its definition says what one gives it
 checks refuse a level for any other (EXE5's MegaMan), and one past the
 navi's last.
 
-**An EXE5 team navi's level** (`level`, 0 to 6, EXE5's save part's fact; docs/design/exe5-map.md
+**An EXE5 team navi's level** (`level`, 0 to 6, the rules' fact; docs/design/exe5-map.md
 §15.16) is the level its attacks' damage goes by: the count of the save's
 story flags, which the battle's init exchange sends. A side that operates
 one (`navi = "protoman"`: any of the twelve, of either version) always
 states a level (nothing fills one in: "right: ProtoMan has no level (0 to
 6)"; tools state 0 for a new side), and its stats are the navi's fresh stats
 with the HP the story gives at that level (the navi's `story`, which EXE5's
-save part reads: a level below 6 is the story's progress, and at 6 the
+save module reads: a level below 6 is the story's progress, and at 6 the
 story is taken as done). A side states no HP of its own for one: the checks
 refuse a level past 6, and an `hp`. A team navi has no NaviCust, patch
 cards or souls: they are MegaMan's. EXE5's MegaMan takes no level.
@@ -1357,8 +1354,8 @@ cleared. Under 470 a dark MegaMan (mood 0, the dark face and palette, dark
 chips usable in a link battle, no soul button); 499 or under clears holy
 panels; under 500 he starts worried; 1000 the brightest (mood 190, Tango's
 light templates). Like EXE6's `version`, `crosses` and `beast_out` (S6c's
-facts), the round's setup writes it into the rules' setup, where a part declares
-the field (`PlayerSetup::set_fact`): EXE5's light and dark part's
+facts), the round's setup writes it into the rules' setup, where they declare
+the field (`PlayerSetup::set_fact`): EXE5's light and dark module's
 `karma`. A game whose rules take none refuses one other than 500.
 Hub Style (NaviStats +0x4C, which EXE5's patch card 111 sets) waits for
 EXE5's patch cards. A netplay offer carries the karma and the souls,
@@ -1374,7 +1371,7 @@ has it: each version's table (0x08024BF0) gives Team ProtoMan's souls 1 to 6
 the event flags 2 to 7 and Team Colonel's 7 to 12 the flags 8 to 0x0D, the
 other version's none, and a dark chip's Chaos Unison needs flag 0x236 too.
 The engine ports that check on the souls owned: the round's setup writes
-the side's into the souls part's setup field `souls` (`set_fact`), and the
+the side's into the rules' setup field `souls` (`set_fact`), and the
 battle reads them as the save's flags (a soul is its form, named by its id;
 the original's number for it is compat's, exe5-compat's `form_number`). A side may have
 any of the game's souls, of either version (nettai's extension, as a Cross
@@ -1404,7 +1401,7 @@ a save ("From a save…", `nettai_match::auto_battle::of_save`), and edits
 it: the 42 places in their six lists, the eight records, and the game's
 chips to put in them (README.md, "The match editor"). A side that operates a team navi takes
 the save's level (its story flags' count), whose HP the story gives (EXE5's
-save part), and, where the save's version has the navi, the light/dark
+save module), and, where the save's version has the navi, the light/dark
 value of the navi's own block.
 
 **The auto battle data** (`[left.auto_battle]`,
@@ -1451,7 +1448,7 @@ writer never puts one among the 42 places (it counts library chips only),
 so only a block made by hand holds one, and the check says where: "place 29
 of the auto battle data (`mega`, entry 2) holds StepSwrd: the original
 can't play it in auto battle (...)". Which chips those are is the content's
-to say (the auto battle part's `unplayable_in_auto_battle`, from its own data's
+to say (the rules' `unplayable_in_auto_battle`, from its own data's
 classes: `Defs::unplayable_in_auto_battle`), so a navi's own chip is covered as it
 lands. A pattern record may hold one (the game writes any chip used in a
 run there, and a record never plays): the editor notes it quietly, and its

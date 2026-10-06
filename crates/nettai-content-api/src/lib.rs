@@ -12,7 +12,7 @@
 //! - *object kinds*: the schema of a kind's own state ([`state::Schema`]:
 //!   named, typed fields the core stores next to the object) and its update;
 //! - *navi actions*: an action's state and update;
-//! - *hooks*: the other function slots the ruleset calls (a weapon's setup,
+//! - *hooks*: the other function slots the rules call (a weapon's setup,
 //!   a dimming chip's `dimming`, a navi chip's `navi`, an instant chip's
 //!   `instant`).
 //!

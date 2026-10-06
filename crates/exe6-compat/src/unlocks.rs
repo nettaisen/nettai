@@ -1,13 +1,12 @@
 //! What an EXE6 save unlocks on the custom screen, as the original keeps
 //! it (event flags: Beast Out, and which of its version's five Crosses it
-//! owns, by Cross number), and how a player's setup states it: EXE6's cross
-//! and beast parts' setup (docs/design/rules-in-luau.md, S6c), which has
-//! no flags. A setup states the Crosses a player has as a list of forms
+//! owns, by Cross number), and how a player's setup states it: EXE6's
+//! rules' setup (docs/design/rules-in-luau.md, S6c), which has no flags. A setup states the Crosses a player has as a list of forms
 //! (`crosses`); this boundary writes a save's as the list of those it owns
 //! ([`Unlocks::owned_crosses`], [`Unlocks::write`]).
 //!
-//! Event flag 0x163 (a navi code received) isn't here: it is the save
-//! part's `level` (`sub_800B144` sends a level only with the flag set), which
+//! Event flag 0x163 (a navi code received) isn't here: it is the rules'
+//! `level` (`sub_800B144` sends a level only with the flag set), which
 //! EXE6's rules read as the seal on Beast Out and the Cross window.
 
 use crate::GameVersion;

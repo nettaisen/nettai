@@ -46,7 +46,7 @@ fn folder(chips: &[(ChipId, u8)]) -> BattleFolder {
     f
 }
 
-/// EXE6's scrap and re-deal buttons (its cross and navicust parts', in
+/// EXE6's scrap and re-deal buttons (its cross and rules/navicust, in
 /// Luau), in Rust for the screen's own tests: button 0 the scrap, 1 the
 /// re-deal, two wide on slots 8 and 9.
 struct TestButtons {
@@ -143,7 +143,7 @@ impl Player {
     fn buttons(&self) -> TestButtons {
         let megaman = self.lib.changes_form(self.stats.navi);
         TestButtons {
-            // (DustCross and DustCross Beast: EXE6's cross part's
+            // (DustCross and DustCross Beast: EXE6's rules/cross's
             // `scrap_button`.)
             scrap: megaman && matches!(self.stats.form.0, 0x0A | 0x16),
             redeal: megaman && self.stats.chip_shuffle,

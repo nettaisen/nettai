@@ -413,7 +413,7 @@ impl Screen {
         // Beast Out and Crosses forgotten on its first screen, ChargeCross's
         // screens, the Crosses offered and the window's Cross tab).
         extras.opened(&mut screen);
-        // sub_802A40C: the side's rules' hand size (EXE6's cross part's,
+        // sub_802A40C: the side's rules' hand size (EXE6's rules/cross's,
         // with ChargeCross's chips), else the framework's.
         screen.hand_size = extras.hand_size().unwrap_or_else(|| hand_size(view, turn));
         screen.lay_out(view, extras);
@@ -1582,7 +1582,7 @@ fn navi_chip(view: &PlayerView) -> Option<FolderChip> {
 }
 
 /// `sub_802A40C` without a form's share (EXE6's: ChargeCross's chips, and
-/// NumbrOpn not in DustCross, which its cross part's
+/// NumbrOpn not in DustCross, which rules/cross's
 /// `custom.hand_size` adds): how many chips a screen deals by the custom
 /// level, NumbrOpn and the hand-shrink bug, when the side's rules don't
 /// say.

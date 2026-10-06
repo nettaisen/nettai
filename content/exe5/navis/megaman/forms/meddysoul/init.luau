@@ -23,7 +23,7 @@ return define.form {
     revert = soul_revert.action,
     -- Meddy's image as MegaMan unites with her (rules/souls/image).
     image = soul_image.look { sprite = asset.sprite("meddy") },
-    -- What it adds to the custom screen (the souls part gathers it, rules/souls/custom): its capsules (./capsules).
+    -- What it adds to the custom screen (rules/souls gathers it, rules/souls/custom): its capsules (./capsules).
     custom = capsules.custom,
     sprite = asset.sprite("meddysoul"),
     element = "null",
