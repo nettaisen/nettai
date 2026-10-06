@@ -9,8 +9,8 @@ local card: PatchCard = {
     effects = {
         cards.hp(150),
         cards.body("fire"),
-        cards.charged_shot(chips.blkbomb),
         cards.bug(cards.custom(-1)),
+        cards.charged_shot(chips.blkbomb),
     },
 }
 

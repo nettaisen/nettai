@@ -7,9 +7,9 @@ local instants = require("../navis/megaman/weapons/instants")
 local card: PatchCard = {
     mb = 15,
     effects = {
+        cards.bug(cards.hp(-80)),
         cards.float_shoes(true),
         cards.charged_shot(instants.invisible),
-        cards.bug(cards.hp(-80)),
     },
 }
 

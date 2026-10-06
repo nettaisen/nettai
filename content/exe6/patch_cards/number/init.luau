@@ -7,10 +7,10 @@ local chrgs = require("../lib/patch_cards/chrgs")
 local card: PatchCard = {
     mb = 17,
     effects = {
-        cards.bug(cards.charged_shot(chrgs)),
         cards.custom(1),
         cards.mega_folder(1),
         cards.giga_folder(1),
+        cards.bug(cards.charged_shot(chrgs)),
         cards.bug(cards.custom_hp_drain(2)),
     },
 }

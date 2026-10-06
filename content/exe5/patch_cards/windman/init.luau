@@ -8,9 +8,9 @@ local card: PatchCard = {
     mb = 46,
     effects = {
         cards.hp(120),
+        cards.bug(cards.attack(-2)),
         cards.air_shoes(true),
         cards.charge_shot_kind(variants.charged_attack_a0),
-        cards.bug(cards.attack(-2)),
     },
 }
 

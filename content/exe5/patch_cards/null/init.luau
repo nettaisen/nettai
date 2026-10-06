@@ -9,9 +9,9 @@ local card: PatchCard = {
     effects = {
         cards.hp(150),
         cards.body("aqua"),
-        cards.auto_heal(true),
         cards.bug(cards.super_armor(false)),
         cards.bug(cards.charged_shot(charged_shot.program)),
+        cards.auto_heal(true),
     },
 }
 

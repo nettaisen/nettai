@@ -7,9 +7,9 @@ local chips = require("../navis/megaman/weapons/chips")
 local card: PatchCard = {
     mb = 35,
     effects = {
+        cards.custom(1),
         cards.b_button(chips.sword),
         cards.charged_shot(chips.wideswrd),
-        cards.custom(1),
     },
 }
 

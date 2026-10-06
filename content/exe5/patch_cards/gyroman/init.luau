@@ -6,10 +6,10 @@ local cards = require("../rules/patch_cards/cards")
 local card: PatchCard = {
     mb = 45,
     effects = {
+        cards.bug(cards.hp_percent(-5)),
         cards.float_shoes(true),
         cards.air_shoes(true),
         cards.beat(true),
-        cards.bug(cards.hp_percent(-5)),
     },
 }
 

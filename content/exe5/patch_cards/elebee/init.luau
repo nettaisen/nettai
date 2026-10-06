@@ -9,8 +9,8 @@ local card: PatchCard = {
     mb = 20,
     effects = {
         cards.body("elec"),
-        cards.charge_shot_kind(variants.charged_blinding),
         cards.bug(cards.charged_shot(charged_shot.program)),
+        cards.charge_shot_kind(variants.charged_blinding),
         cards.bug(cards.first_barrier(nil)),
     },
 }

@@ -7,9 +7,9 @@ local card: PatchCard = {
     mb = 45,
     effects = {
         cards.hp_percent(20),
+        cards.attack_times(2),
         cards.super_armor(true),
         cards.undershirt(true),
-        cards.attack_times(2),
         cards.bug(cards.buster_blanks(4, 1)),
     },
 }
