@@ -8,9 +8,9 @@ local card: PatchCard = {
     mb = 15,
     effects = {
         cards.hp(100),
-        cards.buster_shot(variants.cracking),
         cards.bug(cards.float_shoes(false)),
         cards.bug(cards.air_shoes(false)),
+        cards.buster_shot(variants.cracking),
     },
 }
 

@@ -7,8 +7,8 @@ local card: PatchCard = {
     mb = 15,
     effects = {
         cards.hp(90),
-        cards.step_bug(0),
         cards.bug(cards.super_armor(false)),
+        cards.step_bug(0),
     },
 }
 

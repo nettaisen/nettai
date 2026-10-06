@@ -28,7 +28,7 @@
 //! [patch-cards]
 //! "canodumb" = { name = "..." }
 //!
-//! [text.patch_card_effects]
+//! [patch_card_effects]
 //! "hp_add" = "HP+{amount}"
 //! ```
 //!
@@ -49,13 +49,14 @@
 //! (and the frontend's `--cards`' messages). Nothing shows another form's name or a weapon's, so a table has
 //! none.
 //!
-//! A game's text tables that no definition owns are `[text.<table>]`, key
-//! to text, which tools show (EXE6's and EXE5's `patch_card_effects`: a
-//! patch card's effects as its menu lists them, by the effect's kind and
-//! choice, `{field}` the effect's number of that name; the editor's patch
-//! card list shows them).
+//! A game's text tables, key to text that no definition owns, are top-level
+//! tables its manifest declares (`text = ["patch_card_effects"]`), which
+//! tools show (EXE6's and EXE5's `patch_card_effects`: a patch card's
+//! effects as its menu lists them, by the effect's kind and choice,
+//! `{field}` the effect's number of that name; the editor's patch card list
+//! shows them).
 
-pub use nettai_battle::content::strings::{ChipStrings, EntryStrings, FormStrings, NaviStrings, Strings};
+pub use nettai_battle::content::strings::{ChipStrings, EntryStrings, FormStrings, NaviStrings, Strings, Table};
 use nettai_battle::content::Defs;
 use std::path::{Path, PathBuf};
 
@@ -120,14 +121,17 @@ pub fn languages(dir: &Path) -> Vec<String> {
     out
 }
 
-/// What is wrong with a game's table against its definitions: an id no
-/// definition has, a string with a combining mark (write the composed
-/// character); and in the own language's (`own`), a chip or navi without a
-/// name, which a frontend would show by its id. (Which forms' strings
+/// What is wrong with a game's table against its definitions and the text
+/// tables its manifest declares (`text_tables`): an id no definition has, a
+/// top-level table that is no collection of the game and no declared text
+/// table (a misspelt name), a string with a combining mark (write the
+/// composed character); and in the own language's (`own`), a chip or navi
+/// without a name, which a frontend would show by its id, and a declared
+/// text table missing. (Which forms' strings
 /// something shows is a game's: EXE6's Crosses', which nettai-match's EXE6
 /// tests check.) (A string may be empty: the invalid chip's name is, and
 /// the Japanese games print no description for some chips.)
-pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
+pub fn check(s: &Strings, defs: &Defs, text_tables: &[String], own: bool) -> Vec<String> {
     let mut out = Vec::new();
     let mut text = |what: String, v: &Option<String>| {
         if let Some(v) = v {
@@ -159,23 +163,32 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
         text(format!("forms.{key}.name"), &f.name);
         text(format!("forms.{key}.description"), &f.description);
     }
-    for (table, lines) in &s.text {
-        for (key, line) in lines {
-            text(format!("text.{table}.{key}"), &Some(line.clone()));
-        }
-    }
-    // (A table of the game's collections': each a collection of its root.)
+    // (The game's own tables: each a collection of its root, or a text
+    // table its manifest declares.)
     let collections = defs.collections();
-    for (collection, entries) in &s.collections {
-        if !collections.contains(&collection.as_str()) {
-            unknown.push(format!("{collection}: no table of this name (the game's root holds no such collection)"));
-            continue;
-        }
-        for (id, e) in entries {
-            if defs.entry_in(collection, id).is_none() {
-                unknown.push(format!("{collection}.{id}: no entry of {collection} has this id"));
+    for (name, table) in &s.tables {
+        let collection = collections.contains(&name.as_str());
+        let declared = text_tables.iter().any(|t| t == name);
+        match table {
+            Table::Entries(entries) if collection => {
+                for (id, e) in entries {
+                    if defs.entry_in(name, id).is_none() {
+                        unknown.push(format!("{name}.{id}: no entry of {name} has this id"));
+                    }
+                    text(format!("{name}.{id}.name"), &e.name);
+                }
             }
-            text(format!("{collection}.{id}.name"), &e.name);
+            Table::Text(lines) if declared => {
+                for (key, line) in lines {
+                    text(format!("{name}.{key}"), &Some(line.clone()));
+                }
+            }
+            Table::Text(_) if collection => unknown.push(format!("{name}: a collection's table, whose entries are tables (`{{ name = ... }}`), not text")),
+            Table::Entries(_) if declared => unknown.push(format!("{name}: a text table, key to text, not entries")),
+            _ => unknown.push(format!(
+                "{name}: no table of this name (the game's root holds no such collection, and its manifest declares no such text table: {})",
+                if text_tables.is_empty() { "none".to_string() } else { text_tables.join(", ") }
+            )),
         }
     }
     if own {
@@ -195,6 +208,11 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
                 unknown.push(format!("{}.{}: the content's own language names every entry of the game's collections", e.collection, e.id()));
             }
         }
+        for t in text_tables {
+            if !matches!(s.tables.get(t), Some(Table::Text(_))) {
+                unknown.push(format!("{t}: the game's manifest declares this text table, which the content's own language hasn't"));
+            }
+        }
     }
     unknown.extend(out);
     unknown
@@ -208,6 +226,7 @@ pub fn check(s: &Strings, defs: &Defs, own: bool) -> Vec<String> {
 pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report::Report) {
     for game in c.scripts.games() {
         let pack = dir.join(&game);
+        let text_tables = c.scripts.manifest(&game).map(|m| m.text.clone()).unwrap_or_default();
         // (A chip folder whose main module didn't load.)
         let unported = |key: &str| {
             let module = format!("chips/{key}/init");
@@ -222,7 +241,7 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
             match load(&pack, &lang) {
                 Ok(Some(mut s)) => {
                     s.chips.retain(|k, _| !unported(k));
-                    for problem in check(&s, &c.defs, lang == OWN) {
+                    for problem in check(&s, &c.defs, &text_tables, lang == OWN) {
                         r.error(&at, problem);
                     }
                 }
@@ -248,5 +267,24 @@ mod tests {
         assert_eq!(s.chip("cannon").and_then(|c| c.description.as_deref()), Some("a\nb"));
         assert_eq!(s.navi("megaman").and_then(|n| n.run_message.as_deref()), None);
         assert!(parse("language = \"ja\"\n[chips]\ncannon = { nmae = \"x\" }\n", "ja.toml").is_err());
+    }
+
+    /// A game's top-level table is a collection's (entries) or a text
+    /// table (key to text), read as which its values are; the check takes
+    /// a text table only where the manifest declares it, so a misspelt name
+    /// is refused, not a new table.
+    #[test]
+    fn a_text_table_is_declared() {
+        let s = parse("language = \"en\"\n[patch_card_effects]\nhp_add = \"HP+{amount}\"\n[patch_card_efects]\nx = \"y\"\n", "en.toml").unwrap();
+        assert_eq!(s.text("patch_card_effects", "hp_add"), Some("HP+{amount}"));
+        let defs = Defs::default();
+        let problems = check(&s, &defs, &["patch_card_effects".to_string()], false);
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert!(problems[0].starts_with("patch_card_efects: no table of this name"), "{problems:?}");
+        let undeclared = check(&s, &defs, &[], false);
+        assert_eq!(undeclared.len(), 2, "{undeclared:?}");
+        // (Own language: a declared table it hasn't.)
+        let none = parse("language = \"en\"\n", "en.toml").unwrap();
+        assert_eq!(check(&none, &defs, &["patch_card_effects".to_string()], true).len(), 1);
     }
 }
