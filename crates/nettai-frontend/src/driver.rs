@@ -10,7 +10,6 @@ use nettai_battle::cues::CueAction;
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::{self, BattleFolder, FolderChip, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState};
 use nettai_battle::input::keys;
-use nettai_battle::link::Link;
 use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
 use nettai_battle::{Battle, BattleResult, PlayerTick, Rng, TickEvents, TickInput};
 use nettai_match::{After, Set};
@@ -177,7 +176,6 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
         later_stages: Default::default(),
         low_hp_music_latched: false,
         players: [player(0), player(1)],
-        link_delay: Link::RECORDED_DELAY,
     }
 }
 
