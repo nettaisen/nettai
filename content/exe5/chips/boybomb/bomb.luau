@@ -310,6 +310,7 @@ bomb.controller = define.kind {
 
 -- 0x080E8086: the chips' `dimming` hook, the controller with the dimming's bonus. Its position is the dimming
 -- handler's registers: the user's row, the element and the hook's own address (the handler's `bx r3`, Thumb).
+-- (The address is Team ProtoMan US's ROM's; compat/games.toml has the other ROMs'.)
 local HOOK_ADDRESS = 0x080E8087
 
 function bomb.hook(user: Object, spec: DimmingChipSpec): Object?

@@ -191,6 +191,10 @@ pub struct Frame {
     pub objects: Vec<Object>,
     pub panels: Vec<[u8; 2]>,
     pub chip_blocks: [String; 2],
+    /// The traced console's ROM (its version, and whether it is Japanese):
+    /// `rounds` gives it its round's setup's; none, Team ProtoMan US's.
+    #[serde(skip)]
+    pub console: Option<(Version, bool)>,
 }
 
 /// A custom-screen exchange: both sides' NaviStats and transform records.
@@ -405,15 +409,21 @@ pub struct Round {
 pub fn rounds(path: impl AsRef<std::path::Path>) -> Result<Vec<Round>, String> {
     let mut rounds: Vec<Round> = Vec::new();
     let mut pending = Vec::new();
+    // (Each frame the traced console's ROM, by its round's setup.)
+    let mut console = None;
     for line in read(path)? {
         match line {
-            Line::Setup(s) => rounds.push(Round { setup: *s, exchanges: std::mem::take(&mut pending), frames: Vec::new() }),
+            Line::Setup(s) => {
+                console = decode_setup(&s).ok().map(|d| d.traced_rom());
+                rounds.push(Round { setup: *s, exchanges: std::mem::take(&mut pending), frames: Vec::new() })
+            }
             Line::Exchange(e) => match rounds.last_mut() {
                 Some(r) => r.exchanges.push(e),
                 None => pending.push(e),
             },
-            Line::Frame(f) => {
+            Line::Frame(mut f) => {
                 if let Some(r) = rounds.last_mut() {
+                    f.console = console;
                     r.frames.push(*f);
                 }
             }
@@ -1024,6 +1034,10 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
             _ => format!("{p:?}"),
         }
     };
+    // The traced console's ROM: an object keeping a code address its
+    // spawner left (the content's Team ProtoMan US's) has that ROM's
+    // (games.toml).
+    let rom = f.console.unwrap_or((Version::Protoman, false));
     let status_field = |i: usize, s: String| -> String {
         match entries.get(i) {
             Some(Some(k)) if k.scratch_status => "-".to_string(),
@@ -1073,6 +1087,25 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
                     at[1] = n as i32;
                 }
             }
+            // (A kind moving from its spawner's address in Z, or what wears
+            // its Z, its first related object's (its form overlay), is offset
+            // as a whole; any other Z that is such an address is mapped.)
+            let mover = |r: Option<nettai_battle::object::ObjectRef>| {
+                let k = &b.content.defs.kind(b.objects.get(r?).kind).key;
+                compat.kinds.get(k).filter(|e| e.z_moves_from_spawner).map(|_| k.clone())
+            };
+            let wearer = x.related[0].filter(|&r| b.objects.get(r).pos.z == x.pos.z);
+            at[2] = match mover(Some(o)).or_else(|| mover(wearer)) {
+                Some(k) => at[2].wrapping_add(compat.games.z_offset(rom, &k)),
+                None => match compat.games.z(rom, at[2]) {
+                    // (A kind falling from such a Z, once it falls.)
+                    z if z == at[2] => match entries[i].and_then(|e| e.z_falls_from_spawner) {
+                        Some(ticks) => z.wrapping_add(compat.games.fall_offset(rom, key, z, x.timer, ticks)),
+                        None => z,
+                    },
+                    z => z,
+                },
+            };
             vec![
                 ("kind", kind),
                 ("flags", format!("{:#04x}", x.flags)),
@@ -1080,7 +1113,7 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
                 ("action", action),
                 ("phase", format!("{:#04x}", x.phase)),
                 ("phase init", format!("{:#04x}", x.phase_init)),
-                ("panel", panel(i, [x.panel.x, x.panel.y])),
+                ("panel", panel(i, compat.games.panel(rom, key, [x.panel.x, x.panel.y]))),
                 ("side", x.alliance.to_string()),
                 ("hp", format!("{}/{}", x.hp, x.max_hp)),
                 ("pos", pos(at, garbage, xy, zf)),

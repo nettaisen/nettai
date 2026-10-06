@@ -172,6 +172,7 @@ magnetman.kind = define.kind {
 function magnetman.summon_at(level: number): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
     return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
         -- (His Z is the address the controller called him through, which nothing of his overwrites.)
+        -- (The address is Team ProtoMan US's ROM's; compat/games.toml has the other ROMs'.)
         local o = navi_chips.spawn(magnetman.kind, user, spec, 0x080BB0BB)
         if not o then
             return nil
