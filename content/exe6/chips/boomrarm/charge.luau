@@ -1,6 +1,6 @@
 --!strict
 -- BoomrArm's charged shot (`boomrarm/charge`): the weapon the chip makes
--- the navi's charged shot (lib/navi-boost/controller; the original's weapon
+-- the navi's charged shot (lib/navi_boost/controller; the original's weapon
 -- routine 0x26, `sub_8011F10`). It is Boomer's effect (instant chip effect
 -- 1, chips/boomer/boomerang: the original's parameter bytes are 0, Boomer's
 -- boomerang) for 100 Wood. Sticky: a form's own charged shot doesn't
@@ -8,7 +8,7 @@
 -- plain one.
 
 local boomer_chips = require("../boomer")
-local charge = require("../../lib/navi-boost/charge")
+local charge = require("../../lib/navi_boost/charge")
 
 -- The attack's element byte: Wood.
 local ELEMENT = 4

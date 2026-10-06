@@ -272,10 +272,16 @@ pub fn lints(path: &str, source: &str) -> Vec<Problem> {
             let after = &s.code[at + id + 2..];
             let Some(eq) = after.find('=') else { continue };
             let quote = at + id + 2 + eq + 1 + (after[eq + 1..].len() - after[eq + 1..].trim_start().len());
-            if let Some(key) = s.string_at(quote)
-                && !key.split_once(':').map_or(key, |(_, k)| k).starts_with(&format!("{owner}/"))
-            {
-                out.push(format!("{path}:{}: kind {key:?} lives in {owner}'s folder: key it \"{owner}/...\"", s.line(at)));
+            if let Some(key) = s.string_at(quote) {
+                let local = key.split_once(':').map_or(key, |(_, k)| k);
+                // Chip folders keep their content names; other owners use
+                // snake_case folders while their IDs keep their spelling.
+                let matches = local.split_once('/').is_some_and(|(name, _)| {
+                    name == owner || (!path.starts_with("chips/") && name.replace('-', "_") == owner)
+                });
+                if !matches {
+                    out.push(format!("{path}:{}: kind {key:?} lives in {owner}'s folder: key it \"{owner}/...\"", s.line(at)));
+                }
             }
         }
     }
@@ -341,11 +347,13 @@ mod tests {
         let l = lints("chips/x/chip.luau", "local s = system.state()\n");
         assert!(l.len() == 1 && l[0].contains("`system.state` is a system's own"), "{l:?}");
         assert!(lints("rules/beast/init.luau", "local s = system.state()\nlocal u = system.setup()\n").is_empty());
-        // A form's kinds are keyed under the form, and a navi's under its
-        // name, whatever number its folder still carries.
+        // A form's kinds keep the form's ID in a snake_case folder.
         let surge = "local K = define.kind { id = 'spoutcross-beast/surge', pool = 'attack' }";
-        assert!(lints("navis/megaman/forms/spoutcross-beast/surge.luau", surge).is_empty());
-        assert_eq!(lints("navis/megaman/forms/tengucross-beast/surge.luau", surge).len(), 1);
+        assert!(lints("navis/megaman/forms/spoutcross_beast/surge.luau", surge).is_empty());
+        assert_eq!(lints("navis/megaman/forms/tengucross_beast/surge.luau", surge).len(), 1);
+        let burst = "local K = define.kind { id = 'h-burst/burst', pool = 'attack' }";
+        assert!(lints("chips/h-burst/burst.luau", burst).is_empty());
+        assert_eq!(lints("chips/h_burst/burst.luau", burst).len(), 1);
         let shared = "local K = define.kind { id = 'megaman/dash-hit', pool = 'attack' }";
         assert!(lints("navis/megaman/dash_hit.luau", shared).is_empty());
         assert!(lints("navis/megaman/dash_hit.luau", shared).is_empty());

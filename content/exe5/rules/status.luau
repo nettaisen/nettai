@@ -415,7 +415,7 @@ local status = {
         no_charge_drive = true,
         -- EXE5's loss of HP (object_subtractHP, 0x0800C6E0; applyDamageToPlayer, 0x080185A2): a player's loss drains
         -- its side's gauge too, a dark MegaMan (emotion 5) brought to 0 holds at 1 HP once a battle and asks for his
-        -- last stand (0x0802C16C: the roles' `volley`, rules/emotion/dark-survival), and a hit shows (white, its
+        -- last stand (0x0802C16C: the roles' `volley`, rules/emotion/dark_survival), and a hit shows (white, its
         -- sounds) by the register that check leaves.
         hp_loss = "gauge_and_last_stand",
         -- EXE5's emotions (0x0801270C): in battle mode 1 Full Synchro or normal (0x080127C0); else (0x08012740) a navi

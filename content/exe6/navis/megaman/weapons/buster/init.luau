@@ -16,10 +16,10 @@
 -- five ticks, the recovery, which a move may cut short.
 
 local attachment = require("../../../objects/attachment")
-local blank_shot = require("./blank-shot")
+local blank_shot = require("./blank_shot")
 local common = require("@exelib/megaman/buster")
-local charged_shot = require("./charged-shot")
-local flying_shot = require("../../../objects/flying-shot")
+local charged_shot = require("./charged_shot")
+local flying_shot = require("../../../objects/flying_shot")
 local lib = require("../../../lib/buster")
 local projectile = require("../../../lib/projectile")
 local variants = require("../../../objects/projectile/variants")
@@ -132,7 +132,7 @@ buster.weapon = define.weapon {
     setup = buster.setup,
     -- (`off_80117D4`'s other entries that are `sub_8011A26` read other
     -- rows of the charge table, so they are weapons of their own with this
-    -- setup: navis/megaman/weapons/buster-2e and the rest.)
+    -- setup: navis/megaman/weapons/buster_2e and the rest.)
 }
 
 return buster

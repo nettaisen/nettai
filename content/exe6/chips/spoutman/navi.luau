@@ -19,7 +19,7 @@ local panels = require("@exelib/panels")
 local ball = require("./ball")
 local geyser = require("./geyser")
 local pillar = require("./pillar")
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("../../lib/navi_chips/navi")
 
 export type State = {
     -- The controller waiting for him (its pointer sits in his collision

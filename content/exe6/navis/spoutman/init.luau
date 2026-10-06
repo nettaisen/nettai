@@ -2,7 +2,7 @@
 -- spoutman: a link navi.
 
 local buster = require("./megaman/weapons/buster")
-local a_charge = require("./megaman/weapons/charged-chip-bonus-20")
+local a_charge = require("./megaman/weapons/charged_chip_bonus_20")
 local charge = require("@self/charge")
 local spoutman = require("@self/chip")
 

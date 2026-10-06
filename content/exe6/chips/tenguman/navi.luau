@@ -10,7 +10,7 @@
 -- docs/engine/chips.md §3.6.13.
 
 local panels = require("@exelib/panels")
-local navi_chips = require("../../lib/navi-chips/navi")
+local navi_chips = require("../../lib/navi_chips/navi")
 local collision = require("../../rules/collision")
 local regions = require("@exelib/regions")
 local sparks = require("../../lib/sparks")

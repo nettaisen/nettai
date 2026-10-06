@@ -10,8 +10,8 @@ local base_form = require("../../navis/megaman/forms/base")
 local megaman = require("../../navis/megaman")
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")
-local element_pillar = require("../../objects/element-pillar")
-local navi_chips = require("../../lib/navi-chips/navi")
+local element_pillar = require("../../objects/element_pillar")
+local navi_chips = require("../../lib/navi_chips/navi")
 local parts = require("../../lib/swords/parts")
 local regions = require("@exelib/regions")
 
@@ -58,7 +58,7 @@ local SOUND_CHARGE, SOUND_CHARGED = asset.sound("buster-charge"), asset.sound("b
 local DARK_PALETTE = 0x19
 local AURA = attachment.look { sprite = asset.sprite("dark-aura"), palette = 0, attach_point = 24 }
 
--- The dark flames (`sub_80BFD02`): element pillars (objects/element-pillar;
+-- The dark flames (`sub_80BFD02`): element pillars (objects/element_pillar;
 -- the original's fifth kind: flames that stand back by their wave and last
 -- through his own action 4), fire, 6 pixels up, by wave (`off_80BFD68`: the
 -- panels from his, dx toward the front); they last 0x5A ticks and 8 per

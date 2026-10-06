@@ -6,12 +6,12 @@
 
 local beast = require("@self/beast")
 local cross = require("@self/cross")
-local dark_chips = require("@self/dark-chips")
+local dark_chips = require("@self/dark_chips")
 local folder = require("@self/folder")
 local emotion = require("@self/emotion")
 local forms = require("@self/forms")
 local navicust = require("@self/navicust")
-local patch_cards = require("@self/patch-cards")
+local patch_cards = require("@self/patch_cards")
 
 return define.ruleset {
     systems = {
@@ -40,8 +40,8 @@ return define.ruleset {
     banners = require("@self/banners"),
     berserk = require("@self/berserk"),
     buster = require("@self/buster"),
-    chip_use = require("@self/chip-use"),
-    custom_screen = require("@self/custom-screen"),
+    chip_use = require("@self/chip_use"),
+    custom_screen = require("@self/custom_screen"),
     effects = require("@self/effects"),
     elements = require("@self/elements"),
     flow = require("@self/flow"),
@@ -54,6 +54,6 @@ return define.ruleset {
     pools = require("@self/pools"),
     reactions = require("@self/reactions"),
     roles = require("@self/roles"),
-    sp_chips = require("@self/sp-chips"),
+    sp_chips = require("@self/sp_chips"),
     status = require("@self/status").rules,
 }

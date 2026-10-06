@@ -789,7 +789,7 @@ fn a_buster_alias_fires_the_buster() {
 }
 
 /// An absorbed obstacle's look the test content has (a record of
-/// objects/absorbed-obstacle's `look`: the rock's is the first).
+/// objects/absorbed_obstacle's `look`: the rock's is the first).
 fn absorbed_look(b: &Battle) -> nettai_content_api::RecordHandle {
     let records = &b.content.defs.records;
     let i = records.iter().position(|r| r.record_type == "absorbed-look").expect("an absorbed look");

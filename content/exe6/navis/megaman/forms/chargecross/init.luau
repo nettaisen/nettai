@@ -4,10 +4,10 @@
 local base = require("./base")
 local cross_overlay = require("./cross_overlay")
 local chargeman = require("../../chargeman")
-local chargecross_beast = require("./chargecross-beast")
+local chargecross_beast = require("./chargecross_beast")
 local buster = require("../weapons/buster")
 local tackle = require("@self/tackle")
-local charged_chip_bonus_29 = require("../weapons/charged-chip-bonus-29")
+local charged_chip_bonus_29 = require("../weapons/charged_chip_bonus_29")
 local forms = require("../../../rules/forms")
 
 return define.form {

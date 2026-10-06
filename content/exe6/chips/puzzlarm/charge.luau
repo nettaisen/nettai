@@ -1,13 +1,13 @@
 --!strict
 -- PuzzlArm's charged shot (`puzzlarm/charge`): the weapon the chip makes
--- the navi's charged shot (lib/navi-boost/controller; the original's weapon
+-- the navi's charged shot (lib/navi_boost/controller; the original's weapon
 -- routine 0x25, `sub_8011EF0`). It is ElcPuls's pulse (chips/elcpuls) with
 -- parameters no chip has: no hit modifier, paralysis, 60 ticks, ElcPuls1's
 -- look, for 100 Elec. Sticky: a form's own charged shot doesn't replace it,
 -- and while the navi has it a Beast buster gives way to the plain one.
 
 local action = require("../elcpuls/action")
-local charge = require("../../lib/navi-boost/charge")
+local charge = require("../../lib/navi_boost/charge")
 local pulse = require("../elcpuls/pulse")
 local statuses = require("../../rules/status")
 

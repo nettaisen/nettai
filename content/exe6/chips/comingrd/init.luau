@@ -3,8 +3,8 @@
 -- side's panels of its row (`byte_80E272C` row 0x11; on side 1 row 0x12,
 -- whose roads point the other way: `sub_80E28C8` swaps them).
 
-local panel_changer = require("../objects/panel-changer")
-local panel_chips = require("../lib/panel-chips/controller")
+local panel_changer = require("../objects/panel_changer")
+local panel_chips = require("../lib/panel_chips/controller")
 
 return define.chip {
     id = "comingrd",

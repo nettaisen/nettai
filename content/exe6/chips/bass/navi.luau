@@ -3,14 +3,14 @@
 -- `sub_80C3970`), brought by its navi chip controller: EXE6's
 -- (@exelib/bass/navi, which EXE5's shares). He appears on his user's panel
 -- with his cape (a form overlay), rises for 100 ticks, then fires 24
--- volleys of two shots (objects/panel-strike), 8 ticks apart, at the
+-- volleys of two shots (objects/panel_strike), 8 ticks apart, at the
 -- columns ahead holding the other side's panels: each shot at a panel with
 -- an enemy navi five times in eight (else, or if there is none, any panel
 -- of those columns), none at a panel shot in the last 22 ticks. Then he
 -- leaves, and the controller moves on. See docs/engine/chips.md §3.6.33.
 
 local common = require("@exelib/bass/navi")
-local panel_strike = require("../../objects/panel-strike")
+local panel_strike = require("../../objects/panel_strike")
 local effects = require("../../lib/effects")
 
 -- His shots: 20 ticks of warning, hit modifier 3, on solid panels only.

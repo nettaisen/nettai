@@ -8,7 +8,7 @@
 -- the controller moves on.
 
 local capsule = require("./capsule")
-local navi_chips = require("@exelib/navi-chips/navi")
+local navi_chips = require("@exelib/navi_chips/navi")
 local panels = require("@exelib/panels")
 
 export type State = {

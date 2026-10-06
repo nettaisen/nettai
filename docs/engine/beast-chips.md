@@ -4,7 +4,7 @@ Chips 0x138 Gregar and 0x139 Falzar are giga cut-in chips (action 0x15, subtypes
 (BR6E, BR5E) have their records and nothing else: `off_802CCB4[34]` and `[35]` are null (the game jumps to
 address 0), and the object slots their routines would fill point at placeholders. The Japanese ROMs (BR6J
 Falzar, BR5J Gregar) have the routines; the port's are content/exe6's chips/gregar, chips/falzar and
-lib/beast-chips. This is those routines, from the Japanese ROMs' bytes (there is no Japanese disassembly; every
+lib/beast_chips. This is those routines, from the Japanese ROMs' bytes (there is no Japanese disassembly; every
 routine they call is the US one of the same name, which bn6battle-verify's `tools/gregar/fmap.py --to` maps).
 Conventions as in dimming-chip-effects.md (§0: the controllers' common shape, "counts", "Tn#x").
 
@@ -57,7 +57,7 @@ The HUD helper (0x080EDE5E / 0x080EE1EC, r0 = hide): the word `{0x4010, 0x24000}
 The field cleaner (0x080C4244 / 0x080EE21C): for each of BattleState+0xA0's eight slots that holds an object,
 its HP (halfword) = 0, which breaks it (field-objects.md §2).
 
-The target picker (0x080C40E6 / 0x080EE0A8, lib/beast-chips/targets.luau), with a 24-byte stack buffer:
+The target picker (0x080C40E6 / 0x080EE0A8, lib/beast_chips/targets.luau), with a 24-byte stack buffer:
 `object_getPanelsExceptCurrentFiltered` with {side 0 (0x04010020, 0), side 1 (0x08010000, 0x20)} (the
 other side's area with an enemy's body on it); if some, one RNG2 draw: `& 0xF < 9` → `sub_8000C72(buf, n,
 n)` and the first entry unless it is the last aim (+0x60, +0x64), then (if n > 1) the second unless it is.

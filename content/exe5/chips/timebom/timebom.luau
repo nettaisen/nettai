@@ -17,7 +17,7 @@ local controller = require("@exelib/timebom/controller")
 local countdown = require("@exelib/timebom/countdown")
 local dimming_chips = require("@exelib/dimming")
 local effects = require("../../lib/effects")
-local panel_bursts = require("../../objects/panel-bursts")
+local panel_bursts = require("../../objects/panel_bursts")
 
 local timebom = {}
 

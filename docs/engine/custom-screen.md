@@ -51,7 +51,7 @@ round's init is RNG1 too (§1).
 **Game data.** The screen reads chip records, the Program Advances, the link navis' own chips and its slot
 layout through `custom::Library`, which the battle's `Content` implements (tests use `TestLibrary`, made-up chips
 on the hand-authored test content's layout). In a content pack: the slot grid and its scan lists are a rule,
-`Rules::custom_screen` (`rules/custom-screen.toml`); each Program Advance recipe sits with the chip it makes
+`Rules::custom_screen` (`rules/custom_screen.toml`); each Program Advance recipe sits with the chip it makes
 (`[[program_advance]]` in that chip's `chip.toml`, with an explicit `order`, the original's table order), and
 `Content::program_advances()` puts them back in order; a link navi's own chip is `NaviData::own_chip`
 (`[own_chip]` in its `navi.toml`); a modifier chip says what it does, `ChipData::modifier` (§5).

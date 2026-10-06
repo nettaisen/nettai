@@ -11,12 +11,12 @@ local tomahawkcross = require("@self/forms/tomahawkcross")
 local tengucross = require("@self/forms/tengucross")
 local groundcross = require("@self/forms/groundcross")
 local dustcross = require("@self/forms/dustcross")
-local gregar_beast = require("@self/forms/gregar-beast")
-local falzar_beast = require("@self/forms/falzar-beast")
-local gregar_beast_over = require("@self/forms/gregar-beast-over")
-local falzar_beast_over = require("@self/forms/falzar-beast-over")
+local gregar_beast = require("@self/forms/gregar_beast")
+local falzar_beast = require("@self/forms/falzar_beast")
+local gregar_beast_over = require("@self/forms/gregar_beast_over")
+local falzar_beast_over = require("@self/forms/falzar_beast_over")
 local buster = require("@self/weapons/buster")
-local charged_shot = require("@self/weapons/charged-shot")
+local charged_shot = require("@self/weapons/charged_shot")
 
 return define.navi {
     id = "megaman",

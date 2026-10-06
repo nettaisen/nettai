@@ -24,7 +24,7 @@ local shademan = define.chip {
 }
 
 -- ShadeMnSP (EXE5 chip 0x105): ShadeMan cuts in and crushes the panel ahead and the column beyond (../shademan/navi);
--- its damage by how fast its user deleted ShadeMan SP (rules/sp-chips: formula 14, its table's row 13).
+-- its damage by how fast its user deleted ShadeMan SP (rules/sp_chips: formula 14, its table's row 13).
 local shademn_sp = define.chip {
     id = "shademn-sp",
     codes = { "S" },

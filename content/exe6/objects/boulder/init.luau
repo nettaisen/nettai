@@ -13,7 +13,7 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
-local absorbed_obstacle = require("./absorbed-obstacle")
+local absorbed_obstacle = require("./absorbed_obstacle")
 local collision = require("../rules/collision")
 local common = require("@exelib/boulder")
 local debris = require("../chips/rockcube/debris")

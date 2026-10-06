@@ -2,7 +2,7 @@
 -- tomahawkman: a link navi.
 
 local buster = require("./megaman/weapons/buster")
-local a_charge = require("./megaman/weapons/charged-chip-bonus-1f")
+local a_charge = require("./megaman/weapons/charged_chip_bonus_1f")
 local charge = require("@self/charge")
 local tomahawkman = require("@self/chip")
 

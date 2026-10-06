@@ -40,7 +40,7 @@ local protoman = define.chip {
 
 -- ProtoMnSP (EXE5 chip 0x0f0): ProtoMan cuts in and slashes each enemy navi he can reach, as ProtoMan's (the shared navi
 -- with EXE5's look: chips/protoman/init.luau; his palette by the chip's Param1, 0x080C1714: 0 for its 3); its damage by how
--- fast its user deleted ProtoMan SP (rules/sp-chips: formula 2, its table's row 1).
+-- fast its user deleted ProtoMan SP (rules/sp_chips: formula 2, its table's row 1).
 
 local LOOK_PROTOMN_SP = common.look {
     sprite = asset.sprite("protoman"),

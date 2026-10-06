@@ -1,4 +1,4 @@
-# The patch cards (EXE6's Modification Cards, 改造カード; content/exe6/cards/) by their number, which a
+# The patch cards (EXE6's Modification Cards, 改造カード; content/exe6/patch_cards/) by their number, which a
 # Japanese save's card list holds (0x020065F0+0x30). Written once by the verification workspace's
 # tools/jp/gen_patchcards.py from the JP Falzar ROM's card table; `gen-content check` compares each card
 # with the ROM's of its number. The keys are the fan translation's names (docs/engine/patch-cards.md §5).

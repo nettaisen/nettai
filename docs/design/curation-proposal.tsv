@@ -8,16 +8,16 @@ sprite	air-shooter	air-shooter	high		0c-18: used by chips/airshot/chip.
 sprite	air-spin	air-spin	high		0c-41: used by chips/airspin/top, chips/otenko/statue.	
 sprite	anubis	anubis	high		0c-30: used by chips/anubis/statue.	
 sprite	aqua-needle	aqua-needle	high		10-17: used by chips/aquandl/needle.	
-sprite	aqua-surge	aqua-surge	high		10-2e: used by navis/megaman/forms/spoutcross-beast/surge.	
+sprite	aqua-surge	aqua-surge	high		10-2e: used by navis/megaman/forms/spoutcross_beast/surge.	
 sprite	aqua-sword	aqua-sword	high		0c-37: used by lib/swords/parts.	
 sprite	aura-head	aura-head	high		04-03: used by chips/aurahed/head.	
 sprite	bass-anly	bass-anly	high		08-13: used by chips/bass/navi, chips/bassanly/navi, chips/darkness/navi.	
 sprite	bass-anly-shot	bass-anly-shot	high		10-0d: used by chips/airspin/whirl, chips/bassanly/shot.	
 sprite	bat-cannon	bat-cannon	high		0c-4f: used by chips/batcan/chips.	
 sprite	bat-impact	hit-marker	medium	wrong	The role sprites.hit_marker (the "!!" over a navi), the cut-in flash (effect 0x1E) and BatCan's spark (animation 1). Shows bursts, "!!" marks and bats: BatCan is one user of three.	applied: accepted-1
-sprite	beast-head	beast-head	high		0c-0a: used by navis/megaman/forms/dustcross-beast/form, navis/megaman/forms/falzar-beast-over/form, navis/megaman/forms/falzar-beast/form, navis/megaman/forms/groundcross-beast/form and 3 more.	
+sprite	beast-head	beast-head	high		0c-0a: used by navis/megaman/forms/dustcross_beast/form, navis/megaman/forms/falzar_beast_over/form, navis/megaman/forms/falzar_beast/form, navis/megaman/forms/groundcross_beast/form and 3 more.	
 sprite	beast-over-burst	lightning	high	wrong	Shows lightning bolts. ElecMan's thunder, ElemTrap's and ElmntMan's bolts, and Beast Over's burst (effect 0x45) use it.	applied: accepted-1
-sprite	beast-shot	beast-shot	high		0c-21: used by objects/flying-shot/flying_shot.	
+sprite	beast-shot	beast-shot	high		0c-21: used by objects/flying_shot/flying_shot.	
 sprite	beat	beat	high		0c-4b: used by lib/supports/beat.	
 sprite	big-slash	big-slash	high		0c-15: used by chips/tmhkman/navi, lib/effects, lib/swords/parts, navis/megaman/forms/slashcross/sword_wave and 2 more.	
 sprite	black-bomb	black-bomb	high		0c-24: used by chips/blkbomb/bomb.	
@@ -41,10 +41,10 @@ sprite	bomb	bomb	high		0c-02: used by chips/blkbomb/bomb, chips/bugbomb/bomb, li
 sprite	boomerang	boomerang	high		10-07: used by chips/boomer/boomerang.	
 sprite	boomerang-tomahawk	boomerang-tomahawk	high		10-57: used by chips/boomer/boomerang.	
 sprite	boulder	boulder	high		10-08: used by objects/boulder/boulder.	
-sprite	bow	bow	high		0c-2a: used by chips/trnarrw/chips, objects/flying-shot/flying_shot.	
+sprite	bow	bow	high		0c-2a: used by chips/trnarrw/chips, objects/flying_shot/flying_shot.	
 sprite	bubble	bubble	high		0c-20: role sprites.bubble; used by lib/barriers/barriers.	
 sprite	bubble-star	bubble-star	high		04-0f: used by chips/bblstar/star.	
-sprite	bug	bug	high		14-1f: used by lib/effects, lib/navi-boost/controller.	
+sprite	bug	bug	high		14-1f: used by lib/effects, lib/navi_boost/controller.	
 sprite	burner	burner	high		0c-29: used by lib/burner/burn.	
 sprite	burner-2	heatcross-burner	high		HeatCross's burner (lib/burner/burn.luau, attachment row 0x1E); `burner` is FireBrn's.	applied: accepted-1
 sprite	burst	burst	high		14-0a: used by lib/effects.	
@@ -53,8 +53,8 @@ sprite	buster-up	buster-up	high		14-1b: used by chips/busterup/chip, lib/effects
 sprite	cannon	cannon	high		0c-01: used by lib/cannon.	
 sprite	charge-car	charge-car	high		10-54: used by chips/chrgeman/car.	
 sprite	charge-glow	charge-glow	high		14-08: role sprites.charge_glow; used by chips/darkness/navi, chips/dblhero/heroes, chips/mstrcros/navi, chips/twinldrs/navi and 1 more.	
-sprite	charge-glow-a	charge-glow-a	high		14-15: role sprites.charge_glow_a; used by lib/effects, lib/navi-boost/controller.	
-sprite	charge-wave	charge-wave	high		10-09: used by navis/megaman/forms/chargecross-beast/charge_wave.	
+sprite	charge-glow-a	charge-glow-a	high		14-15: role sprites.charge_glow_a; used by lib/effects, lib/navi_boost/controller.	
+sprite	charge-wave	charge-wave	high		10-09: used by navis/megaman/forms/chargecross_beast/charge_wave.	
 sprite	charged-slash	charged-slash	high		10-3b: used by navis/megaman/forms/slashcross/sword_wave.	
 sprite	circusman	circusman	high		08-0e: used by chips/crcusman/navi.	
 sprite	col-army	col-army	high		10-1d: used by chips/colarmy/army, chips/colforce/soldier.	
@@ -66,7 +66,7 @@ sprite	copy-mark	hit-sparks	high	wrong	Shows the hit sparks (plain, breaking, an
 sprite	corn-shooter	corn-shooter	high		0c-2b: used by chips/cornsht/action.	
 sprite	countdown-bomb	countdown-bomb	high		0c-23: used by chips/spoutman/ball, chips/timebom/chips, chips/timebom/countdown.	
 sprite	crack-shot	crack-shot	high		0c-33: used by chips/crakshot/shot.	
-sprite	cross-slash	cross-slash	high		10-41: used by lib/effects, lib/swords/parts, navis/megaman/forms/slashcross-beast/lunge, navis/megaman/forms/slashcross/sword_wave.	
+sprite	cross-slash	cross-slash	high		10-41: used by lib/effects, lib/swords/parts, navis/megaman/forms/slashcross_beast/lunge, navis/megaman/forms/slashcross/sword_wave.	
 sprite	dark-aura	dark-aura	high		0c-43: used by chips/darkness/navi.	
 sprite	deletion	deletion	high		14-03: used by chips/deltaray/navi, lib/effects.	
 sprite	diveman	diveman	high		08-0d: used by chips/diveman/navi, chips/diveman/wave, lib/effects.	
@@ -84,18 +84,18 @@ sprite	effect-61	gray-shards	low	number	Shows gray shard shapes; only effect 0x6
 sprite	elec-coil	elec-coil	high		0c-5f: used by chips/elcpuls/action, lib/buster.	
 sprite	elec-pulse	elec-pulse	high		10-40: used by chips/elcpuls/pulse.	
 sprite	elec-sword	elec-sword	high		0c-38: used by lib/swords/parts, navis/elecman/chip.	
-sprite	element-pillar-flames	element-pillar-flames	high		0c-1c: used by objects/element-pillar/element_pillar.	
-sprite	element-pillar-lightning	element-pillar-lightning	high		10-32: used by objects/element-pillar/element_pillar.	
+sprite	element-pillar-flames	element-pillar-flames	high		0c-1c: used by objects/element_pillar/element_pillar.	
+sprite	element-pillar-lightning	element-pillar-lightning	high		10-32: used by objects/element_pillar/element_pillar.	
 sprite	elmnt-ice	sparkle	medium		Shows twinkling sparkles: Roll's heart's sparkle, ElmntMan's ice, effect 0x26.	
 sprite	elmnt-man	elmnt-man	high		08-10: used by chips/elmntman/navi, chips/elmntman/vine.	
 sprite	energy-burst	energy-burst	high		14-12: used by chips/cornsht/corn, chips/energbom/burst, lib/effects.	
 sprite	erase-beam	erase-beam	high		10-51: used by chips/eraseman/beam, chips/sensor/laser.	
-sprite	erase-drop	erase-drop	high		10-4d: used by navis/megaman/forms/erasecross-beast/erase_drop.	
+sprite	erase-drop	erase-drop	high		10-4d: used by navis/megaman/forms/erasecross_beast/erase_drop.	
 sprite	erase-mark	erase-mark	high		10-50: used by chips/eraseman/mark, chips/sensor/scanner.	
 sprite	erase-ray	erase-ray	high		10-4c: used by navis/megaman/forms/erasecross/ray.	
 sprite	eruption	eruption	high		10-24: role sprites.eruption.	
 sprite	explosion	explosion	high		14-00: used by chips/bugbomb/bomb, chips/vdoll/curse, lib/effects, lib/sparks.	
-sprite	falling-rock	falling-rock	high		10-05: used by chips/grndman/rock, objects/falling-rock/chip, objects/falling-rock/falling_rock.	
+sprite	falling-rock	falling-rock	high		10-05: used by chips/grndman/rock, objects/falling_rock/chip, objects/falling_rock/falling_rock.	
 sprite	fan	fan	high		04-09: used by chips/wind/chips, chips/wind/fan.	
 sprite	fire-hit	fire-hit	high		14-1a: used by chips/firehit/fist.	
 sprite	fire-sword	fire-sword	high		0c-36: used by lib/swords/parts.	
@@ -121,7 +121,7 @@ sprite	hit	guard-ripple	medium		Shows cyan ripples. Its one spark (0x08) is the 
 sprite	hive	hive	high		0c-5e: used by chips/rskyhny/action.	
 sprite	hockey-puck	hockey-puck	high		10-06: used by chips/airhocky/puck.	
 sprite	honey-bee	honey-bee	high	number	10-31: used by chips/rskyhny/bee.	
-sprite	hub	hub	high		14-1e: used by lib/effects, lib/navi-boost/controller.	
+sprite	hub	hub	high		14-1e: used by lib/effects, lib/navi_boost/controller.	
 sprite	ice-block	ice-block	high		14-1c: role sprites.ice.	
 sprite	idle-overlay	idle-overlay	high		10-21: used by navis/spoutman/navi.	
 sprite	immobilized	rock-cubes	medium	wrong	Shows the rock cube, the rock and the ice cube: the rocks' and cubes' sheet (chips/rockcube/rock.luau), the encased bubble and WideSht's trail. The immobilized status visual (a role) is one animation of it.	applied: accepted-1
@@ -130,7 +130,7 @@ sprite	instrument	instrument	high		04-0a: used by chips/discord/chip, chips/fanf
 sprite	iron-shell	iron-shell	high		04-1b: used by chips/ironshl/shell.	
 sprite	jet-flame	jet-flame	high		10-28: used by chips/airraid/plane.	
 sprite	judgeman	judgeman	high		08-0f: used by chips/judgeman/book, chips/judgeman/navi, chips/judgeman/whip.	
-sprite	junk-shot	junk-shot	high		10-56: used by navis/megaman/forms/dustcross-beast/junk_shot.	
+sprite	junk-shot	junk-shot	high		10-56: used by navis/megaman/forms/dustcross_beast/junk_shot.	
 sprite	justice-one	justice-one	high		0c-62: used by chips/justcone/strike, chips/metrknuk/fist.	
 sprite	lance	lance	high		0c-44: used by chips/lance/lance.	
 sprite	land-mine	land-mine	high		0c-22: used by chips/mine/land_mine.	
@@ -145,7 +145,7 @@ sprite	moon-beam	moon-beam	high		0c-64: used by chips/sunmoon/moon_beam, chips/s
 sprite	moon-blade	moon-blade	high		10-3c: used by chips/airspin/top, chips/moonbld/blade, lib/effects, navis/megaman/forms/slashcross/sword_wave.	
 sprite	muzzle-flash	muzzle-flash	high		0c-06: used by lib/buster.	
 sprite	number-ball	number-ball	high		10-46: used by chips/numbrbl/ball.	
-sprite	panel-strike	panel-strike	high		10-26: used by lib/effects, objects/panel-strike/panel_strike.	
+sprite	panel-strike	panel-strike	high		10-26: used by lib/effects, objects/panel_strike/panel_strike.	
 sprite	propeller	propeller	high		10-3d: used by chips/airraid/propeller.	
 sprite	puff	puff	high		14-0d: used by chips/golmhit/golem, chips/guardian/statue, chips/sumnblk/navi, lib/effects and 6 more.	
 sprite	reflected-shot	pink-flash	medium	wrong	Shows a pink starburst. The effect `flash` (0x21), CrcusMan's sparkle, H-Burst's explosion and DblBeast's spark use it.	applied: accepted-1
@@ -268,7 +268,7 @@ sprite	voodoo-doll	voodoo-doll	high		0c-34: used by chips/vdoll/doll.
 sprite	vulcan	vulcan	high		0c-1d: used by chips/vulcan/action.	
 sprite	vulcan-hit	vulcan-hit	high		14-0f: used by lib/effects, objects/bullet/bullet.	
 sprite	water-cannon	water-cannon	high		0c-10: used by chips/spreadr/action.	
-sprite	whirlwind	whirlwind	high		10-44: used by navis/megaman/forms/tengucross-beast/whirlwind.	
+sprite	whirlwind	whirlwind	high		10-44: used by navis/megaman/forms/tengucross_beast/whirlwind.	
 sprite	wide-shooter	wide-shooter	high		0c-59: used by chips/widesht/action.	
 sprite	wide-wave	wide-wave	high		10-37: used by chips/widesht/wave.	
 sprite	wind-rack	wind-rack	high		0c-27: used by chips/mstrcros/navi, chips/windrack/action.	
@@ -277,15 +277,15 @@ sprite	yoyo-arm	yoyo-arm	high		0c-0c: used by chips/yoyo/throw.
 sound	appear	appear	high		0x094: role sounds.appear; used by chips/airraid/plane, chips/bass/navi, chips/bassanly/navi, chips/blastman/navi and 33 more.	
 sound	aqua-needle	needle-land	medium		AquaNdl's needle landing.	
 sound	aqua-needle-2	drop	low		AquaNdl's needle falling, SlashMan's wave, Snake's leap.	
-sound	aqua-surge	aqua-surge	high		0x0b8: used by chips/dblbeast/falzar, chips/tornado/tornado, navis/megaman/forms/spoutcross-beast/charge, navis/megaman/forms/spoutcross-beast/surge and 2 more.	
+sound	aqua-surge	aqua-surge	high		0x0b8: used by chips/dblbeast/falzar, chips/tornado/tornado, navis/megaman/forms/spoutcross_beast/charge, navis/megaman/forms/spoutcross_beast/surge and 2 more.	
 sound	arrive	arrive	high		0x116: used by lib/supports/tango.	
 sound	bass-anly	bass-anly	high		0x0fd: used by chips/bassanly/navi.	
 sound	bass-anly-shot	bass-anly-shot	high		0x140: used by chips/airspin/whirl, chips/bassanly/shot.	
 sound	bblstar1	blow	low	number	BblStar's blow, CrakShot, WaveArm's strike (named for BblStar1).	
-sound	beast-claw	beast-claw	high		0x1c5: used by navis/megaman/weapons/beast-claw/init.	
-sound	beast-claw-2	beast-claw-2	high	number	0x1c6: used by navis/megaman/weapons/beast-claw/init.	
+sound	beast-claw	beast-claw	high		0x1c5: used by navis/megaman/weapons/beast_claw/init.	
+sound	beast-claw-2	beast-claw-2	high	number	0x1c6: used by navis/megaman/weapons/beast_claw/init.	
 sound	beast-out	beast-out	high		0x100: role sounds.beast_out.	
-sound	beast-over	beast-over	high		0x19a: role sounds.beast_over_rumble; used by chips/dolthdr/action, chips/sensor/turret, navis/megaman/forms/eleccross-beast/charge.	
+sound	beast-over	beast-over	high		0x19a: role sounds.beast_over_rumble; used by chips/dolthdr/action, chips/sensor/turret, navis/megaman/forms/eleccross_beast/charge.	
 sound	beast-over-burst	thunder	medium		ElecMan's thunder, ElemTrap's and ElmntMan's bolts, Guardian's strike; also the role sounds.beast_over_burst. Its sprite shows lightning (proposed `lightning`).	
 sound	beep-64	beep-64	high	number	The disassembly's SOUND_BEEP_64: a menu sound the battle doesn't play; the number tells its variants apart.	
 sound	beep-75	beep-75	high	number	The disassembly's SOUND_BEEP_75: a menu sound the battle doesn't play; the number tells its variants apart.	
@@ -303,7 +303,7 @@ sound	boomerang	boomerang	high		0x0b7: used by chips/antidmg/counter, chips/body
 sound	bounce	bounce	high		0x0b6: used by chips/airhocky/puck.	
 sound	bubble	bubble	high		0x12d: role sounds.bubble; used by chips/bblstar/star, chips/spoutman/navi, lib/barriers/barriers, navis/spoutman/charge.	
 sound	bubble-pop	bubble-pop	high		0x124: role sounds.bubble_pop; used by lib/barriers/barriers.	
-sound	bug	bug	high		0x143: used by chips/sumnblk/navi, lib/navi-boost/controller.	
+sound	bug	bug	high		0x143: used by chips/sumnblk/navi, lib/navi_boost/controller.	
 sound	bug-bomb-land	bug-bomb-land	high		0x115: used by chips/bugbomb/bomb.	
 sound	burst	burst	high		0x0c3: used by chips/blkbomb/bomb, chips/mstrcros/navi, chips/sunmoon/sun, chips/tankcan/shell and 2 more.	
 sound	buster-6a	buster-shot	high	number	The disassembly's SOUND_BUSTER_6A: a buster shot (CopyDmg, CrosOver's MegaMan, DblHero's volley).	applied: accepted-1
@@ -349,7 +349,7 @@ sound	fade-8e	fade	high	number	The disassembly's SOUND_FADE_8E; the role sounds.
 sound	falling-rock	rock-break	medium		A rock breaking: the falling rocks, GroundMan's rocks, a rock, an encased bubble bursting.	
 sound	falzar-roar	falzar-roar	high		0x1cd: role sounds.falzar_roar.	
 sound	fire-hit	fire-hit	high		0x0ed: used by chips/firehit/fist.	
-sound	flame-hook-fire	flame-hook-fire	high		0x158: used by chips/dblbeast/gregar, chips/flmhook/fire, chips/slashman/navi, navis/megaman/forms/slashcross-beast/lunge.	
+sound	flame-hook-fire	flame-hook-fire	high		0x158: used by chips/dblbeast/gregar, chips/flmhook/fire, chips/slashman/navi, navis/megaman/forms/slashcross_beast/lunge.	
 sound	flash	flash	high		0x1bd: used by chips/flshbom/bomb.	
 sound	follow-effect	slide	low		The follow effect sliding, Rflectr's shield.	
 sound	form-change	form-change	high		0x0f7: role sounds.form_change; used by chips/heatman/flame, lib/dragons/head.	
@@ -360,7 +360,7 @@ sound	golem-2	golem-leap	medium		GolmHit's golem leaping.
 sound	grab-shot	grab-land	medium		The grab shot landing (lib/grab/shot.luau's SOUND_LAND), GrabBnsh's hand.	
 sound	grab-shot-2	grab-fall	medium		The grab shot falling (lib/grab/shot.luau's SOUND_FALL), GrabBnsh's hand.	
 sound	gregar-roar	gregar-roar	high		0x1cc: role sounds.gregar_roar.	
-sound	ground-beast-dash	ground-beast-dash	high		0x1bf: used by navis/megaman/forms/groundcross-beast/dash, navis/megaman/forms/groundcross/drill.	
+sound	ground-beast-dash	ground-beast-dash	high		0x1bf: used by navis/megaman/forms/groundcross_beast/dash, navis/megaman/forms/groundcross/drill.	
 sound	ground-beast-dash-2	rumble	medium		GroundCross Beast's dash's rumble, ChargeCross Beast's wave.	
 sound	gundels1	gun-click	medium	number	GunDelSol's gun, CrosOver's gun, the blank shot's click (named for GunDelS1).	
 sound	h-burst	h-burst	high		0x0af: used by chips/airshot/chip, chips/h-burst/action, chips/spreadr/action, objects/bullet/bullet.	
@@ -377,7 +377,7 @@ sound	hub	power-up	low		BusterUp, LifeSync's HP going up, the navi boosts' hub.
 sound	immobilizer	immobilizer	high		0x0fc: used by chips/darkness/navi, lib/instant/immobilizer, rules/panels.	
 sound	invisible	invisible	high		0x093: role sounds.invisible; used by chips/bugfix/glow, chips/invisibl/controller, lib/instant/invisible.	
 sound	iron-shell	iron-shell	high		0x187: used by chips/ironshl/shell, navis/megaman/forms/chargecross/tackle.	
-sound	junk-shot	junk-shot	high		0x0ff: used by chips/dustman/navi, chips/elemtrap/strike, navis/dustman/charge, navis/megaman/forms/dustcross-beast/junk_shot and 2 more.	
+sound	junk-shot	junk-shot	high		0x0ff: used by chips/dustman/navi, chips/elemtrap/strike, navis/dustman/charge, navis/megaman/forms/dustcross_beast/junk_shot and 2 more.	
 sound	justice-one	heavy-impact	medium		A heavy landing: JustcOne's fist, MetrKnuk's fists, ElmntMan's and SunMoon's meteors.	
 sound	land	land	high		0x0c0: used by chips/anubis/statue, chips/blkbomb/bomb, chips/golmhit/golem, chips/lilbolr/boiler and 3 more.	
 sound	last	last	high		0x0c2: used by chips/timebom/countdown.	
@@ -391,11 +391,11 @@ sound	panel-crack	panel-crack	high		0x097: role sounds.panel_crack; used by chip
 sound	panel-poison	panel-poison	high		0x090: role sounds.panel_poison; used by chips/geddon/quake, chips/guardian/statue, chips/otenko/statue, chips/poisseed/chip and 4 more.	
 sound	panel-volcano	panel-volcano	high		0x11c: used by rules/panels.	
 sound	pause	pause	high		0x09f: role sounds.pause.	
-sound	place	place	high		0x112: used by chips/numbrbl/ball, chips/rockcube/cube, lib/supports/rush, objects/encased-bubble/bubble.	
+sound	place	place	high		0x112: used by chips/numbrbl/ball, chips/rockcube/cube, lib/supports/rush, objects/encased_bubble/bubble.	
 sound	point-appear	point-appear	high		0x129: role sounds.arrive; used by chips/colorpt/point.	
 sound	point-rise	point-rise	high		0x12a: role sounds.obstacle_lift; used by chips/colorpt/point.	
 sound	rlnglog1-roll	log-roll	medium	number	RlngLog's log rolling (named for RlngLog1).	
-sound	roar	roar	high		0x12b: used by chips/darkness/navi, lib/burner/burn, navis/megaman/forms/heatcross-beast/charge.	
+sound	roar	roar	high		0x12b: used by chips/darkness/navi, lib/burner/burn, navis/megaman/forms/heatcross_beast/charge.	
 sound	rockfall	rockfall	high		0x0e5: used by chips/grndman/navi, navis/groundman/chip.	
 sound	roll	roll-warp	medium		Roll's warp (chips/roll/navi.luau, `vanish`).	
 sound	roll-2	whip	medium		Roll's ribbon whip swishing.	
@@ -593,7 +593,7 @@ sound	sound-1d8	sound-1d8	high	number	0x1d8: nothing in the port plays it (conte
 sound	sound-1d9	sound-1d9	high	number	0x1d9: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).	
 sound	spin	spin	high		0x0c7: used by chips/airspin/top, chips/colonel/navi, chips/dblbeast/gregar, chips/moonbld/action and 2 more.	
 sound	spout-ball	spout-ball	high		0x11d: used by chips/elemtrap/strike, chips/spoutman/ball, objects/bullet/bullet.	
-sound	spout-beast-charge	spout-beast-charge	high		0x0f4: used by navis/megaman/forms/spoutcross-beast/charge.	
+sound	spout-beast-charge	spout-beast-charge	high		0x0f4: used by navis/megaman/forms/spoutcross_beast/charge.	
 sound	spout-man	geyser	medium		SpoutMan's geyser erupting.	
 sound	stop-music	stop-music	high		0x063: no use in content (the engine's or nothing's). Curation: 0x063: the engine's	
 sound	sun-beam	sun-beam	high		0x0f9: used by chips/gundels/beam.	
@@ -610,7 +610,7 @@ sound	throw	throw	high		0x1a6: used by chips/rlnglog/action.
 sound	tick	tick	high		0x0c1: used by chips/timebom/countdown.	
 sound	tomahawk-man	axe-swing	low		TomahawkMan's swing (chip and charge), TomahawkCross's charge, SumnBlk's claw.	
 sound	trap-vanish	trap-vanish	high		AntiDmg's and BodyGrd's counters: the navi vanishing. (Its curation note says 0x108; assets.toml has it at 0x107, which the presentation check corrected.)	
-sound	twang	twang	high		0x18a: used by chips/trnarrw/chips, objects/flying-shot/flying_shot.	
+sound	twang	twang	high		0x18a: used by chips/trnarrw/chips, objects/flying_shot/flying_shot.	
 sound	unselect-68	unselect-68	high	number	The disassembly's SOUND_UNSELECT_68: a menu sound the battle doesn't play; the number tells its variants apart.	
 sound	unselect-7b	unselect-7b	high	number	The disassembly's SOUND_UNSELECT_7B: a menu sound the battle doesn't play; the number tells its variants apart.	
 sound	unselect-7c	unselect-7c	high	number	The disassembly's SOUND_UNSELECT_7C: a menu sound the battle doesn't play; the number tells its variants apart.	

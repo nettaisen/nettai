@@ -8,7 +8,7 @@
 -- (It drops the meteor's row 2 for three drops, else 0: EXE6's rows are
 -- alike.)
 --
--- No chip names effect 16. The patch cards' meteors (lib/patch-cards/
+-- No chip names effect 16. The patch cards' meteors (lib/patch_cards/
 -- meteors, MettFire's B button and Metrid's B+Back) spawn the shower from
 -- an action of their own; link navis' actions would too.
 
