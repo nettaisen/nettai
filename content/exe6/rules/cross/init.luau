@@ -93,8 +93,8 @@ return define.system {
     -- What the player brings (nettai-match from a match's side, exe6-compat
     -- from a save or a recording): the game's version, and the Crosses they
     -- have (window.luau), up to five, of either version, in the window's
-    -- order. Neither has a default: a side states its version, and its
-    -- Crosses (an empty list: none), or the round doesn't start. A save's
+    -- order. The version has no default: a side states it, or the round
+    -- doesn't start. A side that leaves out its Crosses has none. A save's
     -- are those of its version's five it owns (by Cross number: Gregar's
     -- event flags 0xE2-0xE6, Falzar's 0xE7-0xEB), which a boundary writes
     -- as the list of them.
