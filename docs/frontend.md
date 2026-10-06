@@ -1368,8 +1368,9 @@ and color name (one of the program's `colors`), and its board; without
 them, none on the largest board. The game's
 `navicust` part makes the stats it gives (the maximum HP, the abilities,
 levels, weapons and bugs) from the programs as the round is set up, over
-what the save brings (`hp`, `reg_up`, `sun`). The editor's NaviCust pane
-places the programs on the board as the game does, and shows what they make.
+what the save brings (`hp`, `reg_up`, `sun`). The editor's NaviCust pane (its
+own grid, docs/design/navicust.md) places the programs on the board as the
+game does, and shows what they make.
 
 **The karma** (`karma`, `nettai_match::facts`) is EXE5's light/dark value
 (NaviStats +0x44), 0 to 1000; without it, **500**, a fresh save's

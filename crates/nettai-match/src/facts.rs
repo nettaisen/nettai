@@ -679,12 +679,14 @@ pub fn role_of(content: &Content, name: &str) -> Option<PlayerFact> {
 }
 
 /// The definitions a tool offers for `side`'s list fact `field` (a list of
-/// definitions of a registry), by their handles, in the list's order, where
-/// the rules' panes don't say (`crate::panes`: EXE6's Crosses, the navi's
-/// own ten, are its pane's `offered`):
+/// definitions of a registry), by their handles, in the list's order:
 ///
-/// - what the rules' default lists (what a side that says nothing has:
-///   EXE5's twelve souls), and after them any other the side's list holds;
+/// - the engine's form list (`PlayerFact::CrossList`): the forms of the
+///   side's navi's own lists, of every version (EXE6's ten Crosses; none
+///   for a navi that doesn't change form);
+/// - else what the rules' default lists (what a side that says nothing
+///   has: EXE5's twelve souls), and after them any other the side's list
+///   holds;
 /// - a list whose default holds nothing: the game's definitions of the
 ///   registry (an entry of its collection).
 ///
@@ -693,6 +695,9 @@ pub fn offered(content: &Content, game: &str, side: &Side, field: &Field) -> Opt
     let FieldType::Array(elem, _) = field.ty else { return None };
     let FieldType::Ref(registry, of) = &**elem else { return None };
     let registry = *registry;
+    if role_of(content, field.name) == Some(PlayerFact::CrossList) {
+        return Some(crate::navi_forms(content, side.navi(content)).unwrap_or_default().into_iter().map(|f| f.0).collect());
+    }
     let mut out = Facts::defaults(content).get(content, field.name).map(|v| v.defs()).unwrap_or_default();
     if out.is_empty() {
         out = ids::all_of(content, registry, of.as_deref())

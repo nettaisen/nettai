@@ -2,7 +2,7 @@
 -- EXE6's NaviCust board (docs/design/navicust.md): its 7x7 grid, the board on
 -- it by how far it has been expanded, its command line, and where a
 -- neighbor counts. rules/navicust (./init.luau) reads them all from here, and
--- the NaviCust's pane (../panes.luau) draws its board and command line.
+-- a tool reads the boards and the command line as data (the editor's grid).
 
 local board = {}
 

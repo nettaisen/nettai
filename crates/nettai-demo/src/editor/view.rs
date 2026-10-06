@@ -6,7 +6,7 @@
 
 use crate::editor::app::{App, Choice, Editor, Msg, Tab};
 use crate::editor::names::Lang;
-use iced::widget::{Column, Row, button, checkbox, column, container, image, pick_list, row, rule, scrollable, space, text, text_input};
+use iced::widget::{Column, Row, button, column, container, image, pick_list, row, rule, scrollable, space, text, text_input};
 use iced::{Alignment, Color, Element, Length, Theme};
 use nettai_battle::content::{ChipClass, ChipFlags};
 use nettai_match::stats;
@@ -98,16 +98,15 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
         tabs = tabs.push(text(*name).size(13).color(DIM));
         tabs = tabs.push(nav("  Navi", Tab::Navi(s), e.tab));
         tabs = tabs.push(nav("  Folder", Tab::Folder(s), e.tab));
-        // (The panes the game's rules declare of a side, those its side
-        // shows: EXE6's Crosses, patch cards, NaviCust and SP times.)
-        for i in crate::editor::panes::shown(e, s) {
-            tabs = tabs.push(nav_owned(format!("  {}", crate::editor::panes::said(e, &e.panes[i].title)), Tab::Pane(s, i), e.tab));
-        }
-        // (The lists the game's rules take of a side that no pane of theirs
-        // shows, each a pane of its own.)
-        let in_panes = nettai_match::panes::shown_fields(&e.panes);
-        for (index, title) in crate::editor::facts::lists(&e.content, e.m.game(), side, &in_panes) {
+        // (The lists of definitions the game's rules take of a side, a
+        // checklist each: EXE6's Crosses, EXE5's souls.)
+        for (index, title) in crate::editor::facts::lists(&e.content, e.m.game(), side) {
             tabs = tabs.push(nav_owned(format!("  {title}"), Tab::List(s, index), e.tab));
+        }
+        // (The rest of its setup, as the editor lays it out: the NaviCust,
+        // the patch cards, the SP times.)
+        for (i, p) in e.panes.iter().enumerate() {
+            tabs = tabs.push(nav_owned(format!("  {}", p.title), Tab::Pane(s, i), e.tab));
         }
         // (Where the game's rules have auto battle: EXE5's.)
         if nettai_match::auto_battle::has(&e.content) {
@@ -129,7 +128,7 @@ pub fn view(e: &Editor) -> Element<'_, Msg> {
     let problems: Element<Msg> = if e.problems.is_empty() {
         text("Ready to play.").color(GREEN).into()
     } else {
-        let list = e.problems.iter().fold(Column::new().spacing(2), |c, p| c.push(text(p.as_str()).size(13).color(RED)));
+        let list = e.problems.iter().fold(Column::new().spacing(2), |c, p| c.push(text(p.said()).size(13).color(RED)));
         scrollable(list).height(Length::Fixed(90.0)).into()
     };
     let footer = column![problems, text(e.status.as_str()).size(12).color(DIM)].spacing(4);
@@ -157,17 +156,21 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
     let mut backgrounds: Vec<Choice<Option<String>>> = vec![Choice { label: "from the seed".into(), value: None }];
     // (By the name a match writes: the game's.)
     backgrounds.extend(nettai_match::ids::backgrounds(c, game).into_iter().map(|b| Choice { label: b.to_string(), value: Some(b.to_string()) }));
-    let place = |i: usize, p: &nettai_match::RoundSettings| -> Element<Msg> {
+    // A round: its place, each part stated or left to the seed, and its
+    // button to take it out (a match has one round at least).
+    let n = m.rounds.len();
+    let round = |i: usize, p: &nettai_match::RoundSettings| -> Element<Msg> {
         let stage = stage_choice(p.stage);
         let bg = Choice { label: p.background.clone().unwrap_or("from the seed".into()), value: p.background.clone() };
+        let remove = button(text("Remove").size(13)).style(button::text).on_press_maybe((n > 1).then_some(Msg::RemoveRound(i)));
         column![
+            row![text(format!("Round {}", i + 1)).size(15), remove].spacing(12).align_y(Alignment::Center),
             field("Stage", pick_list(stages.clone(), Some(stage), move |s| Msg::Stage(i, s))),
             field("Background", pick_list(backgrounds.clone(), Some(bg), move |b| Msg::Background(i, b))),
         ]
         .spacing(6)
         .into()
     };
-    let same = m.rounds[1..].iter().all(|r| *r == m.rounds[0]);
     let seed = e.typed.get(&(2, "seed")).cloned().unwrap_or_else(|| m.seed.map(|s| s.to_string()).unwrap_or_default());
     let mut col = column![
         heading("Arena"),
@@ -178,14 +181,21 @@ fn arena(e: &Editor) -> Element<'_, Msg> {
     ]
     .spacing(10);
     col = col.push(rule::horizontal(1));
-    col = col.push(place(0, &m.rounds[0]));
-    col = col.push(checkbox(same).label("The set's later rounds on the same place").on_toggle(Msg::LaterSame));
-    if !same {
-        for (i, p) in m.rounds.iter().enumerate().skip(1) {
-            col = col.push(text(format!("Round {}", i + 1)).size(14));
-            col = col.push(place(i, p));
-        }
+    col = col.push(text("Rounds").size(16));
+    col = col.push(
+        text(format!(
+            "A set of {n} round{}: it is decided once a side can no longer be caught, or after its last round. \
+             A part a round leaves is picked from the seed, as the game picks a link battle's.",
+            if n == 1 { "" } else { "s" }
+        ))
+        .size(13)
+        .color(DIM),
+    );
+    for (i, p) in m.rounds.iter().enumerate() {
+        col = col.push(round(i, p));
     }
+    col = col.push(button("Add a round").on_press_maybe((n < nettai_match::MAX_ROUNDS).then_some(Msg::AddRound)));
+    col = col.push(rule::horizontal(1));
     col = col.push(field("Seed", text_input("from the clock", &seed).on_input(Msg::Seed).width(Length::Fixed(160.0))));
     scrollable(col).into()
 }
