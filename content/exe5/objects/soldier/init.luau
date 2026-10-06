@@ -2,12 +2,12 @@
 -- ColonelSoul's soldiers (EXE5's attack object #0x30, 0x080CA834; EXE6's ColArmy soldier's number, EXE5's own code):
 -- what an obstacle turns into where its side's enemy's ColonelSoul can use it (the obstacle framework's step,
 -- 0x080CAB02: the rule `effects.obstacle_conversion` and the role `kinds.converted_obstacle`, docs/design/exe5-map.md
--- §15.11). The engine spawns it on the obstacle's panel for the armed side, `gun` its Param1:
+-- §15.11). The engine spawns it on the obstacle's panel for the armed side, `ranged` its Param1:
 --
--- - the sword's soldier (`gun` 0: an enemy between the obstacle and the side's back; it faces back) draws for 15 ticks
---   and slashes the two panels ahead 6 ticks into the next 24, with the side's first damage word;
--- - the gun's soldier (`gun` 1: an enemy ahead on the row) takes aim for 15 ticks and fires three shots (the Vulcans'
---   bullets) 10 ticks apart at a random one of four heights, with the side's second word.
+-- - the sword's soldier (`ranged` 0: an enemy between the obstacle and the side's back; it faces back) draws for 15
+--   ticks and slashes the two panels ahead 6 ticks into the next 24, with the side's first damage word;
+-- - the gun's soldier (`ranged` 1: an enemy ahead on the row) takes aim for 15 ticks and fires three shots (the
+--   Vulcans' bullets) 10 ticks apart at a random one of four heights, with the side's second word.
 --
 -- Each reads its word as it strikes (`obstacle.conversion`), then blinks out over 30 ticks, or at once when a hit takes
 -- its 1 HP. Its element byte is what the obstacle's search left (0x1D for the sword's, 0 for the gun's).
@@ -240,7 +240,7 @@ end
 soldier.kind = new.kind {
     id = "colonel-soldier",
     pool = "attack",
-    state = { gun = "u8", hit = "bool" },
+    state = { ranged = "u8", hit = "bool" },
     -- 0x080CA834.
     update = function(me: Object)
         local l = me.lifecycle
