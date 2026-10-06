@@ -579,6 +579,16 @@ deviations: chips/0x0c5-elemtrap/sprung-fire, sprung-elec and sprung-dimmed, and
 Otenko's statue as DustMan's junk (#16) is the Japanese games' on every console too (the user's call); its row in
 §8 says so.
 
+The Gregar and Falzar chips (0x138, 0x139) run the Japanese games' cut-in on every console, also as a counter
+cut-in, by the user's choice (2026-10-06: "don't mirror it from the us game. it should use the jp behavior in all
+cases in nettai"). The US original stops there: its `off_802CCB4` entries 34 and 35 are null, so the console
+jumps to address 0 as the controller would spawn, before the field dims, and an opponent's counter cut-in never
+comes. Nothing in the simulation knows a console's region (a round's setup states none; the region is the
+presentation's, nettai-render's, and compat's, to read a recording), so there is no switch to leave out:
+content/exe6/chips/gregar and falzar are the Japanese games' records and routines. bn6battle-verify records them on
+Japanese consoles (jp/chips/0x138-gregar and 0x139-falzar, the counter cut-ins among them); the chip lab writes no
+US console counter cut-in for them (gen_library.py's `NO_COUNTER_CUT_IN`), since the original can't record one.
+
 ## 9. bn6-lmao's regions
 
 bn6-lmao is a hack of the US ROMs that restores this content. Its relocate_jp_routines.py copies eight regions of
