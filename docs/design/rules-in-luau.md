@@ -1081,7 +1081,7 @@ Option (b), the coordinator's decision: the engine's asset ids are handles over 
 - **Loading** (nettai-frontend then, nettai-demo's command line since): `--pack` repeats, one pack a game (`--pack <exe6> --pack <exe5>`); the content
   loads over all of them (`pack::load_battle_packs`), and `pack::pack_paths` puts the directories in the content's
   pack order for the graphics and the sound. (Since: the frontend and the editor load every pack in
-  `data/content` or `$NETTAI_PACKS`, `--pack` only overriding one, and the roots beside EXE6's that load:
+  `data` or `$NETTAI_PACKS`, `--pack` only overriding one, and the roots beside EXE6's that load:
   `pack::find`, `pack::load_found`, docs/frontend.md §1.) The player's language applies to the content's own pack. The audit
   checks a cue's song in its own pack's bank.
 - **Tests**: `packs::tests::each_asset_draws_from_its_own_pack` (a twin root and pack beside the test content,

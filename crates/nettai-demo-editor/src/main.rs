@@ -21,7 +21,7 @@ usage: nettai-demo-editor [OPTIONS] [MATCH.toml]
   and a new match's is the one you choose (the editor asks first, with
   none selected; --game answers on the command line). Its content and its
   pack (the chips' pictures) are found as nettai-demo finds them: the
-  packs in the packs directory, $NETTAI_PACKS, else data/content, each by
+  packs in the packs directory, $NETTAI_PACKS, else data, each by
   its game.
   --game GAME      a new match's game (exe6 or exe5), in place of the
                    question; with MATCH.toml, the game it must be of
