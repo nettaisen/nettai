@@ -6,42 +6,23 @@
 -- clears the slot it was stored in (its first related object). It runs
 -- while paused and dimmed, but doesn't animate while dimmed. See chips.md
 -- §3.3. The behavior is EXE5's too (@exelib/rflectr/shield), made here with
--- EXE6's sound and looks.
+-- EXE6's sound; its looks are its holders'.
 
 local common = require("@exelib/rflectr/shield")
 
 local shield = {}
 
 -- A shield's look (`ReflectorShieldLook`, types.d.luau; a row of
--- `byte_80C9664`, by the original's second parameter).
+-- `byte_80C9664`, by the original's second parameter), which its holder
+-- defines: its sprite, its animation and fade's, the fade's ticks and its
+-- palette.
 export type Look = ReflectorShieldLook
 
-local look = common.look
+shield.look = common.look
 
--- `byte_80C9664`'s rows: Rflectr1's, the NaviCust Reflect's and Shield's,
--- four no chip or program ported holds up, Rflectr2's and Rflectr3's, and
--- one more nothing ported holds up.
-local REFLECTOR, NAVI, SHIELD = asset.sprite("reflector-shield"), asset.sprite("megaman-navi"), asset.sprite("dummy-shield")
-local ROWS: { [number]: Look } = {
-    [0] = look { sprite = REFLECTOR, anim = 0, fade_anim = 1, fade_ticks = 0xE, palette = 0 },
-    [1] = look { sprite = REFLECTOR, anim = 2, fade_anim = 3, fade_ticks = 0xE, palette = 0 },
-    [2] = look { sprite = REFLECTOR, anim = 4, fade_anim = 5, fade_ticks = 0xE, palette = 0 },
-    [3] = look { sprite = NAVI, anim = 3, fade_anim = 4, fade_ticks = 4, palette = 7 },
-    [4] = look { sprite = SHIELD, anim = 3, fade_anim = 4, fade_ticks = 1, palette = 0 },
-    [5] = look { sprite = SHIELD, anim = 3, fade_anim = 4, fade_ticks = 1, palette = 2 },
-    [6] = look { sprite = SHIELD, anim = 3, fade_anim = 4, fade_ticks = 1, palette = 4 },
-    [7] = look { sprite = REFLECTOR, anim = 6, fade_anim = 7, fade_ticks = 0xE, palette = 0 },
-    [8] = look { sprite = REFLECTOR, anim = 8, fade_anim = 9, fade_ticks = 0xE, palette = 0 },
-    [9] = look { sprite = asset.sprite("sword"), anim = 0xA, fade_anim = 0xB, fade_ticks = 0xE, palette = 0 },
-}
--- The looks by who holds them up: the chips, and the NaviCust programs.
-shield.looks = {
-    rflectr1 = ROWS[0],
-    rflectr2 = ROWS[7],
-    rflectr3 = ROWS[8],
-    navicust_reflect = ROWS[1],
-    navicust_shield = ROWS[2],
-}
+-- The Reflector shield's sheet (the chips' and the NaviCust programs'
+-- looks are animations of it).
+shield.sprite = asset.sprite("reflector-shield")
 
 local made = common.make { id = "rflectr/shield", sound = asset.sound("follow-effect") }
 shield.kind = made.kind
