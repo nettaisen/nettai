@@ -7,7 +7,7 @@
 local controller = require("@exelib/meteors/controller")
 local meteors = require("@self/meteors")
 
-local METEORS = controller.make("meteors/controller", meteors.kind)
+local METEORS = controller.make("meteors/controller", meteors.kind, meteors.row)
 
 local chip: Chip = {
     codes = { "R" },

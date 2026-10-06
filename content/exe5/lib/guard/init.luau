@@ -5,7 +5,7 @@
 -- looks below) for the chip's ticks (its first parameter) and guards. The first hit the guard blocks from the front
 -- sends the counterattack:
 --
--- - the Guard chips': a shock wave back along the row (lib/guard/wave, its row 0xC: 0x080ECC10's first byte for
+-- - the Guard chips': a shock wave back along the row (lib/guard/wave: its row 0xC, 0x080ECC10's first byte for
 --   all three) with the chip's damage;
 -- - the Reflect program's: the charged shot's projectile, 20 pixels up;
 -- - the Shield program's (in the operation battle only: it heeds nothing otherwise): 0x580 into the side's gauge;
@@ -221,8 +221,8 @@ export type State = {
 local SHIELD_POINT = 6
 -- A hit that breaks guards (the collision's hit flag 2).
 local BREAKS_GUARD = 0x2
--- The Guard chips' wave row, and the Reflect program's shot's height.
-local WAVE_ROW, SHOT_Z = 0xC, 0x14_0000
+-- The Guard chips' wave (its row 0xC: animation 0, 10 ticks a panel), and the Reflect program's shot's height.
+local WAVE, SHOT_Z = wave.variant { anim = 0, ticks = 0x0A }, 0x14_0000
 -- What the Shield program puts into the gauge.
 local SHIELD_GAUGE = 0x580
 
@@ -259,7 +259,7 @@ function guard.action(spec: Spec): Action
                 if counter.kind == "gauge" then
                     battle.add_side_gauge(me.alliance, SHIELD_GAUGE)
                 elseif counter.kind == "wave" then
-                    wave.spawn(me, x, y, WAVE_ROW, damage)
+                    wave.spawn(me, x, y, WAVE, damage)
                 elseif counter.kind == "shot" then
                     projectile.spawn(me, x, y, { variant = variants.charged, damage = damage, z = SHOT_Z })
                 elseif counter.kind == "cross" then

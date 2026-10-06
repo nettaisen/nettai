@@ -10,7 +10,6 @@
 
 local guard = require("../../chips/rflectr/guard")
 local navicust = require("../megaman/weapons/shield")
-local reflector_shield = require("../../chips/rflectr/shield")
 
 local back_special = {}
 
@@ -22,7 +21,7 @@ local TICKS = 0x14
 local GUARD = guard.action {
     id = "protoman/back-special/action",
     ticks = TICKS,
-    look = reflector_shield.looks.navicust_reflect,
+    look = navicust.reflect_look,
     heedless = true,
 }
 
