@@ -94,9 +94,9 @@ function apply.run(installed: { PatchCard }, game: PatchCardsGame, hp: number, s
         for _, e in apply.in_order(c.effects, game) do
             local k, n = e.kind, e.amount or 0
             if k == "hp_add" then
-                hp = clamp(hp + n * 10, 1, 9999)
+                hp = clamp(hp + n, 1, 9999)
             elseif k == "hp_sub" then
-                hp = clamp(hp - n * 10, 1, 9999)
+                hp = clamp(hp - n, 1, 9999)
             elseif k == "hp_percent_add" then
                 hp = clamp(div(hp * n + hp * 100, 100), 1, 9999)
             elseif k == "hp_percent_sub" then

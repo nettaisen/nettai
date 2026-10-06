@@ -1,11 +1,14 @@
 //! Live play against another player over the network (docs/frontend.md):
-//! `--match FILE --host PORT` or `--match FILE --join ADDR:PORT`.
+//! `--match FILE` with `--room CODE`, `--host PORT` or `--join ADDR:PORT`.
 //!
 //! Each player's frontend runs the whole battle on nettai-netplay's
 //! [`Peer`]: a getgud rollback session whose inputs go to the other peer
 //! over rennet, in datagrams on a [`Channel`] the host provides (the
-//! program's UDP socket, or a WebRTC data channel): the library has no
-//! socket and no transport of its own. Before the match, the players'
+//! program's is a WebRTC data channel, nettai-rtc's link): the library has
+//! no socket and no transport of its own. A channel that drops and comes
+//! back ([`Channel::down_for`]) carries on the same match: both peers wait
+//! at the stall guard meanwhile, and rennet sends again what was lost.
+//! Before the match, the players'
 //! peers agree it in the lobby and the handshake (`crate::lobby`, over the
 //! host's datagrams: the program's is nettai-demo's `net`): both run the
 //! same engine and play the same content, agree the match's settings (its
@@ -55,8 +58,8 @@ pub fn netplay_setup(content: &Arc<Content>, seed: u32, settings: &crate::lobby:
 
 /// The channel a [`NetPlayer`] plays over, which the host provides: it
 /// carries the protocol's frames to the other player and theirs back (the
-/// program's is a UDP socket after its handshake; a WebRTC data channel
-/// opened unordered and without retransmits fits too). Nothing is assumed
+/// program's is a WebRTC data channel opened unordered and without
+/// retransmits, nettai-rtc's link, after its handshake). Nothing is assumed
 /// of delivery: frames may be lost, reordered or duplicated (rennet
 /// recovers). Neither call waits.
 pub trait Channel {
@@ -67,6 +70,17 @@ pub trait Channel {
     /// The next frame that has come from the other player, if one has. An
     /// error (the network's, or the other side refusing) ends the match.
     fn recv(&mut self) -> Result<Option<&[u8]>, String>;
+
+    /// While the channel is down and the host's transport is making it
+    /// again: how long it has been down. The match goes on where it was
+    /// when it is back (the frames lost meanwhile are sent again, and both
+    /// players waited at the stall guard); meanwhile nothing from the other
+    /// player doesn't end it ([`NetOptions::timeout`] counts from when it is
+    /// back): giving up is the transport's, an error. None (the default):
+    /// up, or a channel that doesn't say.
+    fn down_for(&self) -> Option<Duration> {
+        None
+    }
 }
 
 /// How a netplay match plays, as this player chose (none of it goes to the
@@ -83,7 +97,8 @@ pub struct NetOptions {
     /// The stall guard: inputs ahead of the other player's before a frame
     /// waits for them.
     pub max_lead: u32,
-    /// Nothing from the other side this long ends the match.
+    /// Nothing from the other side this long ends the match (but not while
+    /// the channel says it is down and being made again: [`Channel::down_for`]).
     pub timeout: Duration,
 }
 
@@ -302,6 +317,11 @@ impl<C: Channel> NetPlayer<C> {
                 None => "the other player left the match".into(),
             });
         }
+        // (The channel is being made again: its transport gives up, not
+        // this.)
+        if self.channel.down_for().is_some() {
+            self.last_frame = Instant::now();
+        }
         if self.last_frame.elapsed() > self.options.timeout {
             return Err(format!("nothing from the other player for {} seconds: the connection is lost", self.options.timeout.as_secs()));
         }
@@ -419,6 +439,7 @@ impl<C: Channel> Driver for NetPlayer<C> {
             max_rollback: s.max_rollback,
             rollbacks: s.rollbacks,
             waits: s.stalls + s.parked,
+            reconnecting: self.channel.down_for(),
         })
     }
 
@@ -535,6 +556,108 @@ mod tests {
             std::thread::sleep(next.saturating_duration_since(Instant::now()));
         }
         assert_eq!(playing.iter().map(|s| s.driver.result()).collect::<Vec<_>>(), [Some(BattleResult::Won), Some(BattleResult::Lost)]);
+        let [a, b] = sinks.map(|s| nettai_replay::Replay::read(&s.bytes()).unwrap());
+        assert_eq!((a.end, a.rounds().len()), (End::Set, 2));
+        assert_eq!((&a.head, &a.match_bytes, &a.ticks), (&b.head, &b.match_bytes, &b.ticks));
+        assert_eq!((a.info.side, b.info.side), (0, 1));
+        let out = play_out(&content, &a).unwrap();
+        assert_eq!((out.diverged, out.stopped, out.result, out.rounds), (None, None, Some(BattleResult::Won), vec![Some(0), Some(0)]));
+    }
+
+    /// A player's channel on a WebRTC link (nettai-rtc's, as the program's
+    /// is, without the handshake's kind byte: the match is agreed in
+    /// memory), shared with the test, which cuts its network.
+    struct Rtc(Rc<RefCell<nettai_rtc::Link>>, Vec<u8>);
+
+    impl Channel for Rtc {
+        fn send(&mut self, frame: &[u8]) -> Result<(), String> {
+            self.0.borrow_mut().send(frame).map_err(|e| e.0)
+        }
+
+        fn recv(&mut self) -> Result<Option<&[u8]>, String> {
+            let mut link = self.0.borrow_mut();
+            let Some(frame) = link.recv().map_err(|e| e.0)? else { return Ok(None) };
+            self.1 = frame.to_vec();
+            Ok(Some(&self.1))
+        }
+
+        fn down_for(&self) -> Option<Duration> {
+            self.0.borrow().down_for()
+        }
+    }
+
+    /// Two players on WebRTC links through a room of a signaling server (in
+    /// process) play the short set (the host's navi shoots, the joiner's has
+    /// 1 HP and stands) and record it; in round one, while both fight, the
+    /// joiner's network goes for three seconds. Both see the connection
+    /// down (the window's title would say so) and wait; it comes back, a new
+    /// connection, and the set goes on to its end in the same session: the
+    /// results are the host's win and the joiner's loss, both replays are
+    /// the same but for who recorded (each tick's buttons, both players',
+    /// and the settled states' digests), and one plays back to the set's end
+    /// with no difference.
+    #[test]
+    fn a_set_goes_on_after_the_connection_drops() {
+        use crate::driver::short_set;
+        use crate::replay::{End, Recorder, play_out, testing::Shared};
+        use crate::session::Session;
+        use nettai_battle::battle::mode;
+        let content = exe6_test_content();
+        let m = short_set::of(&content, "exe6", 7);
+        let server = nettai_rtc::testing::Server::start();
+        let config = nettai_rtc::Config { ice_servers: Vec::new(), loopback: true, silence: Duration::from_secs(1), ..nettai_rtc::Config::default() };
+        // (The first in the room hosts: the host is let in first.)
+        let mut host = nettai_rtc::Link::room(&server.url(), "a-set", config.clone()).unwrap();
+        let start = Instant::now();
+        while host.role().is_none() {
+            assert!(start.elapsed() < Duration::from_secs(10), "not let in");
+            host.poll().unwrap();
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let links = [host, nettai_rtc::Link::room(&server.url(), "a-set", config).unwrap()].map(|l| Rc::new(RefCell::new(l)));
+        let sinks = [Shared::default(), Shared::default()];
+        let mut playing: Vec<Session> = Vec::new();
+        for (side, crate::lobby::Agreement { set, m, .. }) in agreed(&content, &Settings::of_match(&m), m.sides.clone()).into_iter().enumerate() {
+            let channel = Rtc(links[side].clone(), Vec::new());
+            let mut s = Session::new(Box::new(NetPlayer::new(channel, side, set, NetOptions::default())));
+            let info = nettai_replay::Info { when: 0, side: side as u8, names: Default::default() };
+            s.record(Recorder::new(Box::new(sinks[side].clone()), &content, &m, &info).unwrap()).unwrap();
+            playing.push(s);
+        }
+        let outage = Duration::from_secs(3);
+        let (mut cut, mut seen_down, mut over) = (None, [false, false], [None, None]);
+        let start = Instant::now();
+        for frame in 1u32.. {
+            assert!(start.elapsed() < Duration::from_secs(120), "the set doesn't end: {:?}", playing.iter().map(|s| s.driver.position()).collect::<Vec<_>>());
+            for (side, s) in playing.iter_mut().enumerate() {
+                if over[side].is_some() {
+                    continue;
+                }
+                let keys = if side == 0 { short_set::shooter(&s.battle, side, frame) } else { crate::driver::bot_buttons(&s.battle, side, frame) };
+                assert!(s.step(keys), "side {side}: {:?}", s.stopped);
+                seen_down[side] |= s.driver.net_status().is_some_and(|n| n.reconnecting.is_some());
+                if s.driver.result().is_some() {
+                    over[side] = Some(frame);
+                }
+            }
+            // The cut: once the host's navi fights in round one.
+            let r = &playing[0].battle.round;
+            if cut.is_none() && r.mode == mode::FIGHTING && r.battle_time > 0 && r.wins + r.losses == 0 {
+                links[1].borrow_mut().outage(outage);
+                cut = Some(Instant::now());
+            }
+            // (Both stay a little once over: the other settles the end.)
+            if over.iter().all(|o| o.is_some_and(|f| frame > f + 200)) {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        let cut = cut.expect("round one was fought");
+        eprintln!("the cut came {:?} in; the set ended {:?} after it, generations {:?}", cut.duration_since(start), cut.elapsed(), links.each_ref().map(|l| l.borrow().generation()));
+        assert_eq!(seen_down, [true, true], "both saw the connection down");
+        assert!(links.iter().all(|l| l.borrow().generation() > 1 && l.borrow().down_for().is_none()));
+        assert_eq!(playing.iter().map(|s| s.driver.result()).collect::<Vec<_>>(), [Some(BattleResult::Won), Some(BattleResult::Lost)]);
+        drop(playing);
         let [a, b] = sinks.map(|s| nettai_replay::Replay::read(&s.bytes()).unwrap());
         assert_eq!((a.end, a.rounds().len()), (End::Set, 2));
         assert_eq!((&a.head, &a.match_bytes, &a.ticks), (&b.head, &b.match_bytes, &b.ticks));

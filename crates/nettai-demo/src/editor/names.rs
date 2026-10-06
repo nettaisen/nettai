@@ -74,6 +74,13 @@ impl Names {
         self.pick(content, &content.defs.navi(n).key, |s, k| s.navi(k).and_then(|c| c.name.clone()))
     }
 
+    /// Key `key` of the game's text table `table` (`[text.<table>]`), in
+    /// the editor's language, else the content's own; none where neither
+    /// has it.
+    pub fn text(&self, content: &Content, table: &str, key: &str) -> Option<String> {
+        self.other.as_ref().and_then(|s| s.text(table, key)).or_else(|| content.strings.text(table, key)).map(line)
+    }
+
     /// An entry of one of the game's collections (a patch card, a NaviCust
     /// program).
     pub fn entry(&self, content: &Content, e: EntryHandle) -> String {
