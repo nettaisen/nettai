@@ -1,7 +1,7 @@
 //! A navi's level in the editor: a link navi's navi code level (EXE6), a
 //! team navi's story level (EXE5). The side states the level and the rules
 //! build the navi's stats from it as the round is set up (a link navi's
-//! reload, a team navi's story HP: content's save parts), which the stats
+//! reload, a team navi's story HP: content's rules/save), which the stats
 //! pane shows.
 
 use nettai_battle::Content;

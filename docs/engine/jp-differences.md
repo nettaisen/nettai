@@ -26,7 +26,7 @@ The JP-only content is:
 - the Gregar and Falzar chips (handlers 34 and 35, five object kinds);
 - Count (HackJack in the US release: handler 18, two object kinds);
 - Django (handler 19, one object kind);
-- the patch cards' hook (the emotion window's glitch; the cards themselves are EXE6's patch cards part,
+- the patch cards' hook (the emotion window's glitch; the cards themselves are EXE6's patch cards module,
   docs/engine/patch-cards.md).
 
 The other JP-only objects belong to code no netbattle runs: battle mode 1, battle modes 10 and 11, the Count
@@ -200,7 +200,7 @@ chips). Every other entry is the same in both ROMs.
 
 `sub_813BF1C` is the other jp-content routine. JP reads the emotion window's glitch from event flag 0x1723
 rather than 0x1720 when the patch card block's count (0x020065F0) is nonzero: the patch cards' routine sets 0x1723
-when the stats after the cards have a NaviCust bug (docs/engine/patch-cards.md §1.3). The patch cards part
+when the stats after the cards have a NaviCust bug (docs/engine/patch-cards.md §1.3). The patch cards module
 pushes the glitch so (#17).
 
 ### 4.2 The kinds
@@ -589,6 +589,16 @@ deviations: chips/0x0c5-elemtrap/sprung-fire, sprung-elec and sprung-dimmed, and
 
 Otenko's statue as DustMan's junk (#16) is the Japanese games' on every console too (the user's call); its row in
 §8 says so.
+
+The Gregar and Falzar chips (0x138, 0x139) run the Japanese games' cut-in on every console, also as a counter
+cut-in, by the user's choice (2026-10-06: "don't mirror it from the us game. it should use the jp behavior in all
+cases in nettai"). The US original stops there: its `off_802CCB4` entries 34 and 35 are null, so the console
+jumps to address 0 as the controller would spawn, before the field dims, and an opponent's counter cut-in never
+comes. Nothing in the simulation knows a console's region (a round's setup states none; the region is the
+presentation's, nettai-render's, and compat's, to read a recording), so there is no switch to leave out:
+content/exe6/chips/gregar and falzar are the Japanese games' records and routines. bn6battle-verify records them on
+Japanese consoles (jp/chips/0x138-gregar and 0x139-falzar, the counter cut-ins among them); the chip lab writes no
+US console counter cut-in for them (gen_library.py's `NO_COUNTER_CUT_IN`), since the original can't record one.
 
 ## 9. bn6-lmao's regions
 

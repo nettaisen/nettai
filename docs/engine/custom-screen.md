@@ -38,7 +38,7 @@ setup and both players' buttons (rollback netplay):
 | The hand, NaviStats and transform record sent in 50 link words; committed when both magic words are in | `Side::sent` (the result and the tick its last word arrives); the fight resumes when both have arrived |
 | The folder shuffle at the round's init with the console's own RNG1 | `BattleFolder::shuffled` with the RNG it's given; `RoundSetup::players[p].folder` is the shuffled folder |
 | Each console's RNG1, which ChpShufl's re-deal draws from | `Battle::consoles[p]` (`crate::console`): each player's console RNG, seeded from `PlayerSetup::console` and advanced as that console's is (§8) |
-| Save data: owned Crosses, Beast Out unlocked, game version | EXE6's cross and beast parts' setup (`PlayerSetup::rules`; `exe6_compat::Unlocks` writes and reads them); event flag 0x163 is the save part's navi code level (`level`, which EXE6's rules read: `exe6.navi_level`) |
+| Save data: owned Crosses, Beast Out unlocked, game version | EXE6's rules' setup (`PlayerSetup::rules`; `exe6_compat::Unlocks` writes and reads them); event flag 0x163 is the save module's navi code level (`level`, which EXE6's rules read: `exe6.navi_level`) |
 
 Nothing in the custom screen depends on which side is "local": which screen a frontend draws is presentation.
 `TickEvents` carries only `link_closed` (the end of the round).
@@ -349,8 +349,8 @@ all twelve player-screens of the three scenarios match there too. Unit tests: cu
 
 ## 4. Beast Out and Crosses
 
-EXE6's Beast Out and its Cross window are its rules' (docs/design/rules-in-luau.md §4.4): the beast part's
-button and windows (content/exe6/rules/beast/custom.luau) and the cross part's windows
+EXE6's Beast Out and its Cross window are its rules' (docs/design/rules-in-luau.md §4.4): the beast module's
+button and windows (content/exe6/rules/beast/custom.luau) and the cross module's windows
 (content/exe6/rules/cross/window.luau), whose state holds what this section's screen remembers.
 
 **Who gets what** (per player; the original reads the local save):
@@ -379,7 +379,7 @@ un-chooses it. Beast Out goes first in the pick list once its animation ends, so
 | Beast Out in a Cross | the Cross's Beast form (Cross + 0x0C) |
 | Cross i | Gregar 1 + i, Falzar 6 + i; + 0x0C when in a Beast form |
 
-The round remembers Beast Out and each Cross used (`dword_20349A0`: the beast and cross parts' state). No NaviStats change
+The round remembers Beast Out and each Cross used (`dword_20349A0`: the beast and cross modules' state). No NaviStats change
 here: the form changes at the turn's start (battle-flow.md §3.4.1). The transform record's +3 (a turn count) is
 never read in battle and is not modeled; its +4 ("Cross change") is always 0xFF (its only writer is dead code).
 All 20 recorded transformations match **[dumps]** (Crosses 2, 5, 6, 7, 0x0A, Beast Out 0x0B, 0x0C, 0x11).
@@ -387,7 +387,7 @@ All 20 recorded transformations match **[dumps]** (Crosses 2, 5, 6, 7, 0x0A, Bea
 ### 4.1 A player's Crosses: the setup's list
 
 The original keeps which Crosses a player has as five event flags of the save, one for each of its version's
-Crosses by number, and its window offers those. A nettai setup states them as **one list**: the cross part's
+Crosses by number, and its window offers those. A nettai setup states them as **one list**: the cross module's
 `crosses` (`form[5]`, the engine's `PlayerFact::CrossList`), the Crosses the player has, up to five, in the order
 the window lists them, filled from the front. There are no flags in a setup.
 
@@ -405,7 +405,7 @@ the window lists them, filled from the front. There are no flags in a setup.
   play picks five of them for each player (docs/frontend.md §2). Every recording's, the chip lab's and the netplay
   stand-in's lists are a save's own version's, and the screen is the original's.
 - **Places.** The window's entries, the Cross chosen and the round's record of Crosses used go by a Cross's place
-  in the list (the cross part's `offered` and `crosses_used`; window.luau's `cross_at`). Everything else is as
+  in the list (the rules' `offered` and `crosses_used`; window.luau's `cross_at`). Everything else is as
   above: a Cross used this round and the navi's starting form aren't offered, A chooses, B takes it back, the face
   is the Cross's, OK sends the Cross's form (its form in Beast Out when the navi is in a Beast form).
 - **What the list offers.** Its entries that are Crosses (a form of kind `cross`; anything else is never offered),
@@ -413,7 +413,7 @@ the window lists them, filled from the front. There are no flags in a setup.
   Beast Out are of that Beast). A save's are its own version's, as its Beast is.
 - **Beast Out from a Cross** takes the navi to that Cross's form in Beast Out, whichever game the Cross is from:
   a Falzar player in HeatCross becomes HeatCross Beast, of Gregar's Beast. The Beast's game is the form's own
-  (the beast part's `beast_game`: a form that isn't the base form is its own version's); Beast Out from the base
+  (the rules' `beast_game`: a form that isn't the base form is its own version's); Beast Out from the base
   form is the player's own game's Beast.
 - **The Beast's game** (`Unlocks::beast_game`) is the game of the Beast the navi goes into or is in: the player's
   game, but a form of the other game's (one of its Crosses, or one of its Beast forms) is that game's. Beast Over
@@ -590,7 +590,7 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
     (`sub_813CBCC`), also for the bugs the window's own count doesn't see (the support bug, the result bug): the
     lab's `navicust/bug-support` has it set and keeps step (the three support scenarios had it, unintended, until
     their parts were moved off the grid's outer ring). The engine takes no flag from a setup: for a recording's
-    side, whose stats are as the compile left them and which has no NaviCust, the navicust part sets the glitch
+    side, whose stats are as the compile left them and which has no NaviCust, the navicust module sets the glitch
     when the stats carry a NaviCust bug (@exelib/navicust/compile, `stats_bugged`), and exe6-compat holds that to
     the recorded flag for MegaMan as the round is set up (`setup_differences`). Of the 15,182 recorded sides with
     the flag, every MegaMan with it set (3,162) has such a stat and none without it (11,780) has one; 42 link-navi
@@ -654,7 +654,7 @@ reads depends on it.
   the Cross window its own cursor (`sub_80289E4`); closing the Cross window, putting a Cross on and the re-deal's
   end draw the chip window again (`sub_8028476`). A Cross's choice whitens the screen on the screen's fade (mode 4
   then 0, at 0x20 a frame) and, once white, shows the Cross's face (`sub_802A088`: its Beast form's in Beast Out).
-  The Cross window's names and palette 10 are the frontend's, from the cross part's state (the engine's
+  The Cross window's names and palette 10 are the frontend's, from the rules' state (the engine's
   `Battle::form_list`: what a window whose view is a form list's shows of the rules' state).
 - **The scrap**: each chip scrapped takes its icon off the picked column (`sub_80281D4`) and draws the chip window
   again; the slots' tiles keep the look they were last drawn with (`look.slot_picked`: a picked chip's slot shows

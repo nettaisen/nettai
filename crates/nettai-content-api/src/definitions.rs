@@ -35,7 +35,7 @@ pub struct Definitions {
 /// with the registries whose definitions it is: what a game pack defines
 /// and a support pack never does.
 pub const GAME_LISTS: &[(&str, &[Registry])] = &[
-    ("rules", &[Registry::Ruleset]),
+    ("rules", &[Registry::Rules]),
     ("chips", &[Registry::Chip]),
     ("navis", &[Registry::Navi]),
     ("forms", &[Registry::Form]),

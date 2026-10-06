@@ -153,7 +153,7 @@ pub enum HookCall {
     /// the kind brought (EXE5's DethPhnx: the last navi chip's) is done. Its
     /// result is unused.
     NaviLeft { controller: ObjectRef },
-    /// A role hook the ruleset calls with a navi (the roles' `hooks`):
+    /// A role hook the rules call with a navi (the roles' `hooks`):
     /// its result is unused.
     RoleNavi { navi: ObjectRef },
     /// A form's hook the engine calls with the navi in it (its `reset`:
@@ -249,7 +249,7 @@ pub enum RulesHook {
     /// `chip_used(side, navi, chip, weapon)`: a chip's use started
     /// (`sub_800FB54`, its action set): `chip` the chip it reads (the
     /// zeroed chip for the empty hand), `weapon` the form's weapon run
-    /// instead of it (a charged use), else nil. EXE6's beast part decides
+    /// instead of it (a charged use), else nil. EXE6's rules/beast decides
     /// whether it runs inside the rush (the attack's `wrapped`). Its result
     /// is unused.
     ChipUsed,
@@ -273,7 +273,7 @@ pub enum RulesHook {
     /// answers decides.
     Takeover,
     /// `countered(side, victim)`: side `side`'s navi landed a counter on
-    /// `victim` (`sub_801A200`): EXE6's emotion part gives Full Synchro
+    /// `victim` (`sub_801A200`): EXE6's rules/emotion gives Full Synchro
     /// unless the victim's mood is held. Its result is unused.
     Countered,
     /// `navi_tick(side, navi)`: each unpaused tick, after the navi's input
@@ -287,12 +287,12 @@ pub enum RulesHook {
     StartingMood,
     /// `navi_palette(side, navi)`: each tick, the sprite palette of the
     /// side's navi of a player's kind (presentation; `sub_80100EC`'s
-    /// `sub_801002C`, EXE5's 0x0800DD94: its light and dark part's). The
+    /// `sub_801002C`, EXE5's 0x0800DD94: rules/light_dark's). The
     /// first part that answers decides; none, the framework's (EXE6's).
     NaviPalette,
     /// `navi_bug(side, navi)`: before the navi takes its hit's NaviCust bug
     /// (`sub_80139F6`, EXE5's 0x0801103E): the rules may change the bug
-    /// (the collision's `inflicted_bugs`: EXE5's light and dark part turns
+    /// (the collision's `inflicted_bugs`: EXE5's rules/light_dark turns
     /// its codes 0xFD and 0xFC into an HP drain or none), or answer true:
     /// the bug and the weapons' reload are skipped (EXE5's, for hit flag
     /// 0x400 on a light/dark value of 1000 or more). The first part that
@@ -308,7 +308,7 @@ pub enum RulesHook {
     /// still leave their places empty: `custom.folder`), with the
     /// framework's hand size (`custom.hand_size`); EXE5's custom screen
     /// opening (0x08022C5C) offers a worried or dark MegaMan a dark chip
-    /// there (0x08025114, its light and dark part's). Its result is
+    /// there (0x08025114, rules/light_dark's). Its result is
     /// unused.
     CustomDeal,
     /// `custom.open(side)`: the side's custom screen opens, before its hand

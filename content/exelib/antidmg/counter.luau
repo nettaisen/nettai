@@ -7,7 +7,7 @@
 -- by the attack's variant (`attack_variant`): a random one for 0, the nearest
 -- ahead, its own row first, for 1, none for any other. A trap chip's catch
 -- leaves it 0, the stance its weapon's: EXE6's AntiDmg program 0, EXE5's
--- ShadowSoul 1. The ruleset starts it by role (`actions.anti_damage_counter`,
+-- ShadowSoul 1. The rules start it by role (`actions.anti_damage_counter`,
 -- a game's rules/roles.luau).
 
 local regions = require("../regions")

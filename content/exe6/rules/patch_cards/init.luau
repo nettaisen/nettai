@@ -1,5 +1,5 @@
 --!strict
--- The patch cards part (docs/engine/patch-cards.md): as the round is set
+-- rules/patch_cards (docs/engine/patch-cards.md): as the round is set
 -- up (`round_setup`, before anything reads the stats), a player's installed
 -- patch cards (the engine's definitions and the player's setup,
 -- `battle.patch_cards`; their effects ./cards.luau's) change the navi's
@@ -146,5 +146,5 @@ local function apply(side: number)
 end
 
 return {
-    hooks = { round_setup = apply },
+    apply = apply,
 }

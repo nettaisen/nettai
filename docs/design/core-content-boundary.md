@@ -172,7 +172,7 @@ for the action to read, don't exist: what an action needs of its chip is its bui
 
 ### 4.3 Beast Out's wrapper around arbitrary chips
 
-When a chip with a lock-on mode is used in a Beast form, EXE6's beast part marks the attack `wrapped` as its use
+When a chip with a lock-on mode is used in a Beast form, EXE6's beast module marks the attack `wrapped` as its use
 starts (its `chip_used` hook), and the dispatcher then routes every tick through the side's wrapper (the role
 `actions.wrapper`: content/exe6/rules/beast/rush.luau) instead of the chip's action: it holds the panel, warps
 next to the target marker's target by the chip's lock-on mode (a "lockon" record), runs the chip's action from
@@ -213,7 +213,7 @@ the comparison skips it. Garbage the ruleset produces (a decoded bug's high byte
 While the battle is paused, a navi's action dispatch is replaced by the pause handler: it runs a pause-time
 action by state bit (the form change, the revert, the Cross change, the Cross knock-out) or starts one from a
 request. The revert, the Cross change and the knock-out are the framework's (kinds/player/actions/transform.rs,
-cross_change.rs); the change into a form is the action the form names (`FormData::change`: EXE6's forms part's,
+cross_change.rs); the change into a form is the action the form names (`FormData::change`: EXE6's forms module's,
 content/exe6/rules/forms, docs/design/rules-in-luau.md), with the effects
 they show by role. Only objects that run while paused run, so what a pause-time action spawns sets that flag.
 

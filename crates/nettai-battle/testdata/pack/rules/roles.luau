@@ -1,5 +1,5 @@
 --!strict
--- What the ruleset needs from the test pack by role
+-- What the rules need from the test pack by role
 -- (docs/design/content-model-v2.md §7.4): AntiDmg's counter and the
 -- charged shot a navi's request starts are the pack's own tickers; the
 -- rest is the test content's (EXE6's modules), which this pack's content
@@ -15,7 +15,7 @@ local slash_beast_lunge = require("../../navis/megaman/forms/slashcross_beast/lu
 local stun_strike = require("../../lib/swords/stun_strike")
 local test_chips = require("../../chips/test")
 local turn = require("../../navis/megaman/turn")
-local ruleset = require("../../rules/ruleset")
+local defined = require("../../rules/role_definitions")
 local statuses = require("../../rules/status")
 local ticker = require("../lib/ticker")
 
@@ -47,14 +47,14 @@ return {
         hit_bug_blind = statuses.blind_1200,
         hit_bug_confuse = statuses.confuse_960,
     },
-    effects = ruleset.effects,
-    sparks = ruleset.sparks,
-    regions = ruleset.regions,
-    collision = ruleset.collision,
-    sounds = ruleset.sounds,
-    music = ruleset.music,
-    sprites = ruleset.sprites,
-    banners = ruleset.banners,
+    effects = defined.effects,
+    sparks = defined.sparks,
+    regions = defined.regions,
+    collision = defined.collision,
+    sounds = defined.sounds,
+    music = defined.music,
+    sprites = defined.sprites,
+    banners = defined.banners,
     hooks = {
         encased = encased_bubble.replace,
     },

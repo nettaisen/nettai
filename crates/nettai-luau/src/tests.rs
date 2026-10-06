@@ -18,7 +18,7 @@ fn relative_paths_resolve_within_the_pack() {
     // A pack's top: its own, or another's (which `packs::check_require` may refuse).
     assert_eq!(r("exe6:chips/x/chip", "@exe6/lib/slot").unwrap(), "exe6:lib/slot");
     assert_eq!(r("exe6:chips/x/chip", "@exelib/swords/slash").unwrap(), "exelib:swords/slash");
-    assert!(r("exe5:rules/ruleset", "@exe6/../x").is_err());
+    assert!(r("exe5:rules/definition", "@exe6/../x").is_err());
 }
 
 /// docs/design/content-model-v2.md §4.0: a game requires itself and the
@@ -322,13 +322,13 @@ fn assets_resolve_by_name_while_content_loads() {
     assert!(e.is_ok(), "calling it later is the runtime's error, not the define phase's");
 }
 
-/// A game's rules are one definition, its ruleset (rules/init.luau), which
-/// takes no id and is keyed `ruleset`:
+/// A game's rules are one definition, its rules (rules/init.luau), which
+/// takes no id and is keyed `rules`:
 /// its rule sections and its roles are plain tables in it, whose
 /// definitions are references (docs/design/content-model-v2.md §3.8).
 #[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
 #[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
-fn a_games_rules_are_one_ruleset() {
+fn a_games_rules_are_one_definition() {
     let d = define_named(&[
         ("lib/counter", "return define.action { id = 'counter', state = {}, update = function(me, s) end }"),
         ("rules/roles", "return { actions = { anti_damage_counter = require('../lib/counter') } }"),
@@ -339,7 +339,7 @@ fn a_games_rules_are_one_ruleset() {
         ),
     ])
     .unwrap();
-    let rules = d.get(Registry::Ruleset, nettai_content_api::RULESET_KEY).expect("the game's ruleset");
+    let rules = d.get(Registry::Rules, nettai_content_api::RULESET_KEY).expect("the game's rules");
     assert_eq!(rules.spec.field("roles").field("actions").field("anti_damage_counter"), &Data::Ref(Registry::Action, "counter".into()));
     assert_eq!(rules.spec.field("pools").field("actor"), &Data::Int(32));
     // It has no name to give, and a game has one.

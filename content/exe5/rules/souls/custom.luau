@@ -2,9 +2,9 @@
 -- Soul Unison on EXE5's custom screen (docs/design/rules-in-luau.md §4.4, docs/design/exe5-map.md §15.8): the soul
 -- button in the special slot (0x08023C54, its offer 0x08024B28, A on it 0x08024972), the soul's choice as the window
 -- `soul_unison` (the screen's state 9, 0x080232D0), the soul given at OK (0x08024FF6) and the round's souls used
--- (0x02034E10). Its state is the souls part's (./init). What a soul adds to the screen (its slots, 0x08023CF8, and
+-- (0x02034E10). Its state is the rules' (rules/init.luau). What a soul adds to the screen (its slots, 0x08023CF8, and
 -- its part of the screen's routines) is the soul's own: its form's `custom` (a `SoulCustom`, in the soul's folder:
--- navis/megaman/forms/<soul>), which this module's end gathers for the part from the souls of the navi that has
+-- navis/megaman/forms/<soul>), which this module's end gathers for the rules from the souls of the navi that has
 -- them, and asks while the side's navi is in the soul.
 
 local megaman = require("../../navis/megaman")
@@ -12,7 +12,7 @@ local operation_battle = require("../../lib/operation_battle")
 
 local custom_souls = {}
 
--- The souls part's state fields the screen keeps (./init declares them).
+-- The rules' state fields the screen keeps (rules/init.luau declares them).
 type State = {
     -- 0x02034E10: the souls given this round, a bit a soul for its Soul Unison and another for its Chaos Unison
     -- (`used_bit`; the round's first screen forgets them).
@@ -30,7 +30,7 @@ type State = {
     arm_chip: Chip?,
 }
 
--- What the player's save brings (./init declares it): the souls it has (the original's flags, 0x08024BF0's, one a
+-- What the player's save brings (rules/init.luau declares it): the souls it has (the original's flags, 0x08024BF0's, one a
 -- soul), Soul Unison (event flag 0: the button) and Chaos Unison (event flag 0x236).
 type Setup = {
     souls: { FormDef? },
@@ -43,7 +43,7 @@ local FADE_SPEED = 32
 -- A Soul Unison's turns (+ the NaviCust's and the cards' bonus, at most 9; under 0, 1), a Chaos Unison's.
 local TURNS, MAX_TURNS, CHAOS_TURNS = 3, 9, 1
 
--- What the souls keep of a screen in the part's state: each soul's `custom.state`, its fields by their declared
+-- What the souls keep of a screen in the rules' state: each soul's `custom.state`, its fields by their declared
 -- types (this module's end gathers them with the souls' buttons and windows).
 local states: { StateSchema } = {}
 
@@ -351,8 +351,8 @@ function custom_souls.turn_opened(side: number)
     end
 end
 
--- A soul's button as the part's: on the screen while the side's navi is in the soul (`slots_of`), its functions
--- called with the part's state.
+-- A soul's button as the rules': on the screen while the side's navi is in the soul (`slots_of`), its functions
+-- called with the rules' state.
 local function button_of(part: SoulCustom, button: SoulButton): ButtonSpec
     local state, chip = button.state, button.chip
     return {
@@ -380,7 +380,7 @@ local function button_of(part: SoulCustom, button: SoulButton): ButtonSpec
     }
 end
 
--- A soul's window as the part's.
+-- A soul's window as the rules'.
 local function window_of(window: SoulWindow): WindowSpec
     return {
         view = window.view,
@@ -390,10 +390,10 @@ local function window_of(window: SoulWindow): WindowSpec
     }
 end
 
--- The part's buttons and windows, by name (a button's is the key of its look in a pack), and the state fields they
--- keep beside the soul button's (./init declares those): the soul button, and what each soul adds to the screen,
+-- Soul Unison's buttons and windows, by name (a button's is the key of its look in a pack), and the state fields
+-- they keep beside the soul button's (rules/init.luau declares those): the soul button, and what each soul adds to the screen,
 -- gathered from the souls of the navi that has them (MegaMan's `forms.souls`, each form's `custom`). A name is one of
--- the part's: two souls can't both add a button or a window of the same name. (`states`, above: `forget_screen` reads
+-- Soul Unison's: two souls can't both add a button or a window of the same name. (`states`, above: `forget_screen` reads
 -- it at each deal.)
 local buttons: { [string]: ButtonSpec } = { soul = custom_souls.button }
 local windows: { [string]: WindowSpec } = { soul_unison = custom_souls.window }
@@ -402,13 +402,13 @@ for _, soul in megaman.forms.souls do
     if part ~= nil then
         for name, button in part.buttons or {} do
             if buttons[name] ~= nil then
-                error(string.format("%s's button `%s` is another's too: a button's name is one of the souls part's", soul.id, name))
+                error(string.format("%s's button `%s` is another's too: a button's name is one of rules/souls's", soul.id, name))
             end
             buttons[name] = button_of(part, button)
         end
         for name, window in part.windows or {} do
             if windows[name] ~= nil then
-                error(string.format("%s's window `%s` is another's too: a window's name is one of the souls part's", soul.id, name))
+                error(string.format("%s's window `%s` is another's too: a window's name is one of rules/souls's", soul.id, name))
             end
             windows[name] = window_of(window)
         end
