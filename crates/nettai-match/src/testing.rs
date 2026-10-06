@@ -199,3 +199,26 @@ pub fn patch_cards(content: &Content, game: &str, list: &str) -> Vec<nettai_batt
         })
         .collect()
 }
+
+/// A side's SP navi deletion times, by their chips' names, in the list's
+/// order: the setup field `sp_times`'s `{ chip, frames }` records, as the
+/// generic facts read them (none where the rules take no such field).
+pub fn sp_times(content: &Content, facts: &crate::Facts) -> Vec<(String, u16)> {
+    use crate::facts::Stated;
+    let Some(Stated::List(items)) = facts.get(content, "sp_times") else { return Vec::new() };
+    items
+        .iter()
+        .filter_map(|item| {
+            let Stated::Record(fields) = item else { return None };
+            let chip = fields.iter().find_map(|(n, v)| match (n.as_str(), v) {
+                ("chip", Stated::Def(nettai_content_api::Registry::Chip, Some(h))) => Some(*h),
+                _ => None,
+            })?;
+            let frames = fields.iter().find_map(|(n, v)| match (n.as_str(), v) {
+                ("frames", Stated::Number(f)) => Some(*f as u16),
+                _ => None,
+            })?;
+            Some((crate::ids::local(&content.defs.chip(nettai_content_api::ChipHandle(chip)).key).to_string(), frames))
+        })
+        .collect()
+}

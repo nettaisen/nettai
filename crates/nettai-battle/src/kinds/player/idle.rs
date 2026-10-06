@@ -133,7 +133,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).requests & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED) != 0 {
         return reactive_chip(b, r);
     }
-    if low_hp_navicust_effect(b, r) {
+    if low_hp_support(b, r) {
         return;
     }
     let f = ai(b, r).requests;
@@ -306,7 +306,7 @@ fn chaos_failure(b: &mut Battle, r: ObjectRef) {
 /// `sub_8010660`: in link battles the NaviCust support Tango (stat 0x0D
 /// bit 2) comes once when the navi's HP drops to a quarter; the navi does
 /// nothing else this tick.
-fn low_hp_navicust_effect(b: &mut Battle, r: ObjectRef) -> bool {
+fn low_hp_support(b: &mut Battle, r: ObjectRef) -> bool {
     let Some(support) = stats(b, r).support else { return false };
     let o = b.objects.get(r);
     if !is_link(b) || !support.tango || o.max_hp / 4 < o.hp {

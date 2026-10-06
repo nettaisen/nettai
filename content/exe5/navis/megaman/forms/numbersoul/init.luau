@@ -70,7 +70,8 @@ local form: FormDef = {
     buster_arm = { anim = 9 },
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 9 of category 0).
     identity = new.identity {
-        class = "megaman",
+        class = "player",
+        changes_form = true,
         version = 0,
         actor_type = "player",
         ai_index = 0,

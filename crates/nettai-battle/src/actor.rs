@@ -144,9 +144,9 @@ pub mod status {
     /// Takes over the action dispatch like the two above; no setter was
     /// found.
     pub const UNINTERRUPTIBLE: u32 = 0x2_0000;
-    /// A weakness hit is breaking the Cross (`sub_8015766` runs instead
+    /// A weakness hit is breaking the form (`sub_8015766` runs instead
     /// of the action).
-    pub const CROSS_BREAKING: u32 = 0x4_0000;
+    pub const FORM_BREAKING: u32 = 0x4_0000;
     /// A form change holds the navi's sprite still (it is off the field).
     pub const FORM_CHANGE_SPRITE_HELD: u32 = 0x8_0000;
     /// Gone from the field while its navi chip's navi acts (`sub_80E1352`

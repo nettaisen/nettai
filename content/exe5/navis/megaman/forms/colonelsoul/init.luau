@@ -42,7 +42,7 @@ local form: FormDef = {
     -- (0x080CAC1E: the battle state's +0x5C bit 0x10 or 0x20). A status reset disarms it again (the engine's).
     reset = function(navi: Object)
         local level = battle.navi(navi.alliance).attack + 1
-        obstacle.arm_soldiers(navi.alliance, 40 + 10 * level + 0x0094_4000, 10 + 2 * level + 0x0094_4000)
+        obstacle.arm_conversion(navi.alliance, 40 + 10 * level + 0x0094_4000, 10 + 2 * level + 0x0094_4000)
     end,
     palette = 0,
     -- Its face in the emotion window, beside its turns left (0x0801968E: pictures 0x16-0x1B, Team Colonel's
@@ -57,7 +57,8 @@ local form: FormDef = {
     blade_anim = 14,
     -- MegaMan's actor record, with his sprite in the soul's attach points (row 7 of category 0).
     identity = new.identity {
-        class = "megaman",
+        class = "player",
+        changes_form = true,
         version = 0,
         actor_type = "player",
         ai_index = 0,

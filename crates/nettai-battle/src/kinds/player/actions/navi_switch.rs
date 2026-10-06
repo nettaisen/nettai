@@ -196,7 +196,7 @@ fn become_other_navi(b: &mut Battle, r: ObjectRef) {
     // original: here the side's, as the battle's start set it.)
     let version = b.stats[side].version;
     b.stats[side] = if kept { b.reserves[side] } else { NaviStats { version, ..fresh_stats(target, &b.content) } };
-    super::super::refresh_navicust_state(b, r);
+    super::super::refresh_abilities(b, r);
     take_identity(b, r);
     let s = *stats(b, r);
     let megaman = is_megaman(b, r);
@@ -260,8 +260,8 @@ fn finish_change(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize & 1;
     b.hands[side].charge_bonus = [0; 6];
     // EXE5's (0x08011918) disarms the side's ColonelSoul army
-    // (`obstacle::Soldiers`): EXE6 has none to disarm.
-    b.obstacle_soldiers[side].armed = false;
+    // (`obstacle::Conversion`): EXE6 has none to disarm.
+    b.obstacle_conversion[side].armed = false;
     // `off_801426C`, by the navi: MegaMan's (the navi that changes form)
     // is his status reset; the link navis' are nothing.
     if is_megaman(b, r) {
@@ -277,10 +277,10 @@ fn fresh_stats(navi: NaviHandle, content: &Content) -> NaviStats {
 }
 
 /// `sub_802DD70(navi, side)`: a link navi's HP (and max) after a change
-/// (`byte_802DD88`: the navi's `cross_hp`; the game passes the side where
+/// (`byte_802DD88`: the navi's `switch_hp`; the game passes the side where
 /// the table's column is the navi's level).
 fn changed_hp(b: &Battle, navi: NaviHandle, side: u8) -> (u16, u16) {
-    let Some(row) = b.content.navi(navi).cross_hp else {
+    let Some(row) = b.content.navi(navi).switch_hp else {
         panic!("navi {:?}'s HP after a navi switch reads past its table (sub_802DD70)", b.content.defs.navi(navi).key);
     };
     let hp = row[side as usize & 1];

@@ -29,7 +29,7 @@ local function init(me: Object)
     local s = me.state :: State
     local sprite = me.sprite
     local look = s.look
-    local worn = look ~= nil and me:wear_junk_look(look)
+    local worn = look ~= nil and me:wear_absorbed_look(look)
     if not worn then
         -- CosmoMan's meteor (category 8 0x10, animation 10, palette 0), drawn with its sprite.
         sprite:load(SPRITE)

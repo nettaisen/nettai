@@ -60,5 +60,5 @@ pub use registry::{
     EntryHandle, RULESET_KEY, RecordHandle, RegionHandle, Registry, SparkHandle, StageHandle, StatusHandle, WeaponHandle, entry_key, entry_parts,
     valid_key,
 };
-pub use state::{Block, FieldDef, FieldPath, FieldType, FieldValue, Fields, LIST_MARK, MAX_LIST, Place, Schema, StateArena, StateId, StateMut, StateRef, Value, is_code, is_collection_name};
+pub use state::{Block, FieldDef, FieldPath, FieldType, FieldValue, Fields, LIST_MARK, MAX_LIST, Place, ROLE_MARK, Schema, StateArena, StateId, StateMut, StateRef, Value, is_code, is_collection_name};
 pub use types::{InPack, ObjectRef, PackId, PackSprite, PanelPos, Pool, SpriteId, Vec3};

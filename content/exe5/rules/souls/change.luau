@@ -1,7 +1,7 @@
 --!strict
 -- EXE5's Soul Unison change (0x08011F74, EXE6's `sub_8014A38`'s place): while the battle is paused at a turn's start,
 -- MegaMan unites with the soul his side asked for (the turn's transform record: `navi:form_change_target()`, its
--- turns and Chaos Unison `navi:form_change_soul()`). The turn-start sequencer (the framework's) waits for it. Every
+-- turns and Chaos Unison `navi:form_change_terms()`). The turn-start sequencer (the framework's) waits for it. Every
 -- soul names this module's action as its `change`.
 --
 -- Its steps (0x08011F94, on the attack's step):
@@ -97,7 +97,7 @@ local function emerge(me: Object, s: State, target: FormDef, chaos: boolean)
         me:load_form_sprite(target)
         s.timer = 10
         me:end_statuses()
-        local turns, is_chaos = me:form_change_soul()
+        local turns, is_chaos = me:form_change_terms()
         local souls = rules.state() :: Souls
         souls.turns, souls.chaos = turns, is_chaos
         -- (0x08012102: the record's arm chip, +6, into AIData +0x32: ColonelSoul's Arm Change fills it.)
@@ -157,7 +157,7 @@ function change.update(me: Object, s: State)
     if target == nil or target.soul == nil then
         error("EXE5's soul change asked for no soul (0x08011F74)")
     end
-    local _, chaos = me:form_change_soul()
+    local _, chaos = me:form_change_terms()
     local step = me.step
     if step == PREPARE then
         prepare(me)
