@@ -1,7 +1,7 @@
 //! One peer's end of the input exchange: its player's input stream out and
 //! the other player's in, on rennet's reliability streams over whatever
-//! datagram channel the host has (`transport`, or the simulated
-//! `network`). Pure: the host passes in the datagrams that arrived and the
+//! datagram channel the host has (the program's UDP socket, or the
+//! simulated `network`). Pure: the host passes in the datagrams that arrived and the
 //! time, and sends the datagram [`InputLink::datagram`] gives it.
 //!
 //! Every datagram is one rennet frame ([`crate::protocol::Frame`]): the

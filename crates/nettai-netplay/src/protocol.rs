@@ -40,9 +40,9 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// - the stream's elements and their wire form (this module): a tick is its
 ///   buttons and its flags (`battle::flags`: the link closing), and the
 ///   round's and the match's end are markers;
-/// - the handshake's Hello (`transport`): the protocol's and the engine's
-///   versions, the game the side plays, its content's hash, the role, a
-///   nonce, and the side's offer;
+/// - the handshake's Hello (the program's, nettai-demo's `net`): the
+///   protocol's and the engine's versions, the game the side plays, its
+///   content's hash, the role, a nonce, and the side's offer;
 /// - the offer (the frontend's): a match file's side, and the host's stage
 ///   or arena, by their names in the game, as text;
 /// - how a round is set up from the two offers and the nonces, which both
