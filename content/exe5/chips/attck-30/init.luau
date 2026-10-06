@@ -20,6 +20,7 @@ local chip: Chip = {
     slot_in_limit = 1,
     modifier = "attack_plus",
     instant = plus.attack,
+    auto_battle = { class = "at_once" },
 }
 
 return { ["attck-30"] = chip }

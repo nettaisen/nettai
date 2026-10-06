@@ -18,6 +18,7 @@ local chip: Chip = {
     flags = { "dimming", "dark" },
     slot_in_limit = 1,
     dimming = controller.hook,
+    auto_battle = { class = "at_once" },
 }
 
 return { darkinvs = chip }

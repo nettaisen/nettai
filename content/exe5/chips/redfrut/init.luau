@@ -20,6 +20,7 @@ local redfrut1: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 3,
     instant = fruit.instant(0, 5),
+    auto_battle = { class = "at_once" },
 }
 
 -- RedFrut2 (EXE5 chip 0x043): a hopping fruit whose breaker's side gets invulnerability for 420 ticks (chips/redfrut/fruit,
@@ -38,6 +39,7 @@ local redfrut2: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 3,
     instant = fruit.instant(1, 5),
+    auto_battle = { class = "at_once" },
 }
 
 -- RedFrut3 (EXE5 chip 0x044): a hopping fruit whose breaker's side gets Full Synchro (chips/redfrut/fruit,
@@ -56,6 +58,7 @@ local redfrut3: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 3,
     instant = fruit.instant(2, 5),
+    auto_battle = { class = "at_once" },
 }
 
 return { redfrut1 = redfrut1, redfrut2 = redfrut2, redfrut3 = redfrut3 }

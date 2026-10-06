@@ -21,6 +21,7 @@ local quake1: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = bombs.throw { held = bombs.held, thrower = quake.thrower(0) },
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 -- Quake2 (EXE5 chip 0x024): a bomb lobbed three panels ahead that drops a weight there and, landing on solid ground,
@@ -39,6 +40,7 @@ local quake2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = bombs.throw { held = bombs.held, thrower = quake.thrower(1) },
+    auto_battle = { class = "into_reach", range = "column_three_ahead" },
 }
 
 -- Quake3 (EXE5 chip 0x025): a bomb lobbed three panels ahead that drops a weight there and, landing on solid ground,
@@ -57,6 +59,7 @@ local quake3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = bombs.throw { held = bombs.held, thrower = quake.thrower(2) },
+    auto_battle = { class = "into_reach", range = "cross_three_ahead" },
 }
 
 return { quake1 = quake1, quake2 = quake2, quake3 = quake3 }

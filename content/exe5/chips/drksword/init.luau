@@ -34,6 +34,7 @@ local chip: Chip = {
         effect = swords.effects.dark,
         sound = swords.big_swing,
     },
+    auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }
 
 return { drksword = chip }

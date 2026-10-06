@@ -63,6 +63,7 @@ local chip: Chip = {
         tune = asset.sound("dark-sonic"),
         effect = stun,
     }),
+    auto_battle = { class = "landing_ahead" },
 }
 
 return { drksonic = chip }

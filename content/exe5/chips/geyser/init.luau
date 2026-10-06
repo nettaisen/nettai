@@ -20,6 +20,7 @@ local chip: Chip = {
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     action = bombs.throw { held = bombs.held, thrower = geyser.thrower() },
+    auto_battle = { class = "three_ahead_near_enemy" },
 }
 
 return { geyser = chip }

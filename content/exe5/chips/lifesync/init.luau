@@ -20,6 +20,7 @@ local chip: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 3,
     dimming = lifesync.hook,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { lifesync = chip }

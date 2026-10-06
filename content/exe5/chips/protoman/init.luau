@@ -36,6 +36,7 @@ local protoman: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_with(LOOK),
+    auto_battle = { class = "at_once" },
 }
 
 -- ProtoMnSP (EXE5 chip 0x0f0): ProtoMan cuts in and slashes each enemy navi he can reach, as ProtoMan's (the shared navi
@@ -66,6 +67,7 @@ local protomn_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_with(LOOK_PROTOMN_SP),
+    auto_battle = { class = "at_once" },
 }
 
 -- ProtoMnDS (EXE5 chip 0x0f1): ProtoMan, dark, cuts in and slashes each enemy navi he can reach, as ProtoMan's (the
@@ -97,6 +99,7 @@ local protomn_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_with(LOOK_PROTOMN_DS),
+    auto_battle = { class = "at_once" },
 }
 
 return { protoman = protoman, ["protomn-sp"] = protomn_sp, ["protomn-ds"] = protomn_ds }

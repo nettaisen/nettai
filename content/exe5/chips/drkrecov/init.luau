@@ -19,6 +19,7 @@ local chip: Chip = {
     flags = { "dark" },
     slot_in_limit = 1,
     action = heal.action { hp = 1000, mood = 0 },
+    auto_battle = { class = "at_once" },
 }
 
 return { drkrecov = chip }

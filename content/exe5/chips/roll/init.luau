@@ -21,6 +21,7 @@ local roll: Chip = {
     -- (AntiRecv springs on her heal; she brings her user back herself.)
     traits = { "heals", "navi_returns_user" },
     navi = navi.summon { rounds = 1, palette = 0, level = 0 },
+    auto_battle = { class = "at_once" },
 }
 
 -- RollSP (EXE5 chip 0x0de): Roll (../roll/navi), turning her side's holy panels Normal as she comes; its damage by
@@ -41,6 +42,7 @@ local roll_sp: Chip = {
     -- (AntiRecv springs on her heal; she brings her user back herself.)
     traits = { "heals", "navi_returns_user" },
     navi = navi.summon { rounds = 1, palette = 0, level = 3 },
+    auto_battle = { class = "at_once" },
 }
 
 -- RollDS (EXE5 chip 0x0df): Roll (../roll/navi) in her dark palette; its damage by its user's side's statistic 3
@@ -61,6 +63,7 @@ local roll_ds: Chip = {
     -- (AntiRecv springs on her heal; she brings her user back herself.)
     traits = { "heals", "navi_returns_user" },
     navi = navi.summon { rounds = 1, palette = 1, level = 4, ribbon_palette = 1 },
+    auto_battle = { class = "at_once" },
 }
 
 return { roll = roll, ["roll-sp"] = roll_sp, ["roll-ds"] = roll_ds }

@@ -19,6 +19,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "library" },
     slot_in_limit = 1,
     dimming = poltergeist.hook(false),
+    auto_battle = { class = "when_any_field_object" },
 }
 
 return { poltrgst = chip }

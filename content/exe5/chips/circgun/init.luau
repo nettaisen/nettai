@@ -20,6 +20,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
     dimming = circgun.hook(circgun.variant { period = 2, shots = 4, palette = 0, hit = collision.thrown }),
+    auto_battle = { class = "at_once" },
 }
 
 return { circgun = chip }

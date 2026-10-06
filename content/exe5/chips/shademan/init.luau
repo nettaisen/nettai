@@ -21,6 +21,7 @@ local shademan: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 -- ShadeMnSP (EXE5 chip 0x105): ShadeMan cuts in and crushes the panel ahead and the column beyond (../shademan/navi);
@@ -40,6 +41,7 @@ local shademn_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon_sp,
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 -- ShadeMnDS (EXE5 chip 0x106): ShadeMan, dark, cuts in and crushes the panel ahead and the column beyond
@@ -58,6 +60,7 @@ local shademn_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { shademan = shademan, ["shademn-sp"] = shademn_sp, ["shademn-ds"] = shademn_ds }

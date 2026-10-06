@@ -42,6 +42,7 @@ local chip: Chip = {
         raise_arm = arm.raise,
         shot = mark.spawn,
     },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { copydmg = chip }

@@ -20,6 +20,7 @@ local larkman: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "at_once" },
 }
 
 -- LarkManSP (EXE5 chip 0x111): LarkMan cuts in and sends his swoop round the field (../larkman/navi); its damage by how
@@ -39,6 +40,7 @@ local larkman_sp: Chip = {
     slot_in_limit = 1,
     megaman = "light",
     navi = navi.summon,
+    auto_battle = { class = "at_once" },
 }
 
 -- LarkManDS (EXE5 chip 0x112): LarkMan, dark, cuts in and sends his swoop round the field (../larkman/navi); its damage
@@ -57,6 +59,7 @@ local larkman_ds: Chip = {
     slot_in_limit = 1,
     megaman = "dark",
     navi = navi.summon_dark,
+    auto_battle = { class = "at_once" },
 }
 
 return { larkman = larkman, ["larkman-sp"] = larkman_sp, ["larkman-ds"] = larkman_ds }

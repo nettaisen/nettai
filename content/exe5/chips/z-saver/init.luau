@@ -18,6 +18,7 @@ local chip: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 1,
     action = zsaver.action,
+    auto_battle = { class = "into_reach", range = "two_in_row" },
 }
 
 return { ["z-saver"] = chip }

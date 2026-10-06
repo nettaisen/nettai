@@ -21,6 +21,7 @@ local chip: Chip = {
     extra_flags = { 16, 32 },
     slot_in_limit = 1,
     instant = side_special.instant,
+    auto_battle = { class = "at_once" },
 }
 
 return { finalgun = chip }

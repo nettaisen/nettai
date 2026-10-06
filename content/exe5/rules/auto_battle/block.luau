@@ -13,7 +13,6 @@
 -- played as chip 0) and its score as the game's learning keeps it. A list past its last place or record: empty
 -- places, records nothing has written (0xFF throughout).
 
-local place = require("./place")
 
 local block = {}
 
@@ -233,8 +232,6 @@ function block.pattern_read(side: number, i: number, k: number): (Chip | number)
     return number(if rec == nil then 0xFFFF else bit32.rshift(rec.score, 16))
 end
 
--- The chips the AI can't get a navi in place for, by id, each with why (./place).
-local UNPLAYABLE = place.unplayable()
 
 -- `validate`'s part: each place one thing (a chip, a pattern, a 0, or empty), a pattern one of the eight records,
 -- and no chip among the 42 places that the AI can't play (the original crashes when its navi in auto battle goes to
@@ -263,9 +260,17 @@ function block.validate(side: number, problem: (text: string, field: string?, en
         end
         local chip: Chip? = p.chip
         if chip ~= nil then
-            local why = UNPLAYABLE[chip.id :: string]
-            if why ~= nil then
-                problem(string.format("%s holds %s: %s", where, battle.name(chip), why), "auto_battle_places", i)
+            -- (A chip with no `auto_battle`, ./place: its positioning class is past the table.)
+            if (chip :: any).auto_battle == nil then
+                problem(
+                    string.format(
+                        "%s holds %s: the original can't play it in auto battle (its positioning class is past the game's table of them: the game crashes)",
+                        where,
+                        battle.name(chip)
+                    ),
+                    "auto_battle_places",
+                    i
+                )
             end
         end
     end

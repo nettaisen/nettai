@@ -32,6 +32,7 @@ local energbom: Chip = {
             after = burst.leave,
         }),
     },
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 -- MegEnBom (EXE5 chip 0x01f): a bomb that leaves an energy burst where it lands (three hits on that panel): EXE6's
@@ -60,6 +61,7 @@ local megenbom: Chip = {
             after = burst.leave,
         }),
     },
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 return { energbom = energbom, megenbom = megenbom }

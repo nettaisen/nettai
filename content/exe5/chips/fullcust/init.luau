@@ -33,6 +33,7 @@ local chip: Chip = {
     extra_flags = { 128 },
     slot_in_limit = 1,
     instant = fill,
+    auto_battle = { class = "at_once" },
 }
 
 return { fullcust = chip }

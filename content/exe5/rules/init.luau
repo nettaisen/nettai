@@ -35,10 +35,6 @@ local AI: StateSchema = {
     entry_chip = "chip",
     entry_pattern = "u8",
     since = "u32",
-    hole_count = "u8",
-    front_count = "u8",
-    front_ticks = "u16",
-    hole_ticks = "u16",
     place_step = "u8",
     place_step_init = "u8",
     place_busy = "bool",
@@ -187,6 +183,27 @@ local rules: Rules = {
         chip = {
             -- An SP navi chip's damage by its deletion-time step, and in the own-gauges mode (./sp_chips).
             sp = { by_time = "u16[11]", operation_battle = "u16" },
+            -- What the auto battle AI reads of it (./auto_battle/place; the record's byte 13 and 23): how the navi gets in
+            -- place for it, its positioning class, and for the classes that read one its reach list (./auto_battle/data's,
+            -- by name) or its spot test. A chip without it the AI can't play (its class past the table: the original
+            -- crashes).
+            auto_battle = {
+                class = {
+                    "into_reach", "to_front", "spot_test", "landing_ahead", "behind_target", "three_ahead_near_enemy",
+                    "lava_ahead", "gauge_into_reach", "sword_swing", "when_enemy_in_area", "at_once", "before_target",
+                    "when_hole_in_area", "three_ahead_open", "when_area_lost", "when_panel_changed",
+                    "when_area_whole", "when_visible", "when_unbarriered", "when_enemy_barrier", "own_panel_ahead",
+                    "when_trap_free", "when_any_sea", "when_any_lava", "when_any_hole", "to_back", "hurt_into_reach",
+                    "when_bugged", "when_any_field_object", "when_free_ahead_of_enemies", "to_special_panel",
+                },
+                range = {
+                    "ahead_then_column", "two_ahead", "column_two_ahead", "three_in_row", "three_ahead", "one_ahead",
+                    "column_ahead", "two_in_row", "column_three_ahead", "two_columns_ahead", "columns_two_to_four",
+                    "column_ahead_and_two", "columns_two_and_three", "x_one_ahead", "ahead_in_row",
+                    "cross_three_ahead", "around", "columns_three_to_five", "ring_three_ahead", "all_ahead",
+                    "target_at_back_or_edge", "behind_target_up_open",
+                },
+            },
         },
         form = {
             image = "record:soul-image",

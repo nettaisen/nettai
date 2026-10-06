@@ -19,6 +19,7 @@ local katana1: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = katana.action,
+    auto_battle = { class = "into_reach", range = "column_ahead_and_two" },
 }
 
 -- Katana2 (EXE5 chip 0x03d): two slashes, a wide one and then a long one (EXE5's Katana, chips/katana/katana: action 0x54,
@@ -36,6 +37,7 @@ local katana2: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = katana.action,
+    auto_battle = { class = "into_reach", range = "column_ahead_and_two" },
 }
 
 -- Katana3 (EXE5 chip 0x03e): two slashes, a wide one and then a long one (EXE5's Katana, chips/katana/katana: action 0x54,
@@ -53,6 +55,7 @@ local katana3: Chip = {
     flags = { "has_damage", "library" },
     slot_in_limit = 3,
     action = katana.action,
+    auto_battle = { class = "into_reach", range = "column_ahead_and_two" },
 }
 
 return { katana1 = katana1, katana2 = katana2, katana3 = katana3 }

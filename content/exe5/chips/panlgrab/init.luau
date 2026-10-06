@@ -18,6 +18,7 @@ local chip: Chip = {
     flags = { "dimming", "standard_library", "library" },
     slot_in_limit = 1,
     dimming = grab.panel,
+    auto_battle = { class = "at_once" },
 }
 
 return { panlgrab = chip }
