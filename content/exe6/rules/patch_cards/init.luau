@@ -7,7 +7,7 @@
 --
 -- The original (the Japanese `reloadCurNaviStatBoosts`, its card routine)
 -- keeps a block of slots, one per kind of effect, seeded from the stats the
--- NaviCust made. Each switched-on card in the list's order runs its effects
+-- NaviCust made. Each card in the list's order runs its effects
 -- in the order of their kinds (cards.ORDER, not the card's order), each
 -- writing its slot (a later card's write wins); then the slots a card wrote
 -- are copied into the stats, some of them through tables; then the bugs are
@@ -48,14 +48,15 @@ local function bugged(stats: Navi): boolean
         or stats.support_bug
 end
 
--- `round_setup`: `side`'s switched-on cards change its stats; with cards
--- installed, switched on or not, the console's emotion window glitches if
--- the stats then have a NaviCust bug (the Japanese `sub_813BF1C` reads event
+-- `round_setup`: `side`'s cards change its stats; with cards installed
+-- (the original counts a card switched off too: a save's switched-off card is
+-- none of the side's), the console's emotion window glitches if the stats
+-- then have a NaviCust bug (the Japanese `sub_813BF1C` reads event
 -- flag 0x1723, which the card routine sets, rather than 0x1720). Only
 -- MegaMan's stats: with a link navi operated the original doesn't run the
 -- routine, and the flag is as the stats are.
 local function apply(side: number)
-    local installed: { InstalledCard } = rules.setup_of(side).patch_cards
+    local installed: { PatchCard } = rules.setup_of(side).patch_cards
     if #installed == 0 then
         return
     end

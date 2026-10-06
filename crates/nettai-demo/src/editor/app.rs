@@ -115,7 +115,6 @@ pub enum Msg {
     Search(String),
     // The patch cards.
     AddCard(usize, PatchCardHandle),
-    CardOn(usize, usize, bool),
     CardMove(usize, usize, bool),
     CardRemove(usize, usize),
     // The NaviCust.
@@ -672,17 +671,8 @@ impl Editor {
             Msg::Search(t) => self.search = t,
             Msg::AddCard(s, card) => {
                 let mut cards = cards_of(&content, &self.m.sides[s]);
-                if !cards.iter().any(|c| c.0 == card) {
-                    cards.push((card, true));
-                    if set_cards(&content, &mut self.m.sides[s], &cards) {
-                        self.edited();
-                    }
-                }
-            }
-            Msg::CardOn(s, i, on) => {
-                let mut cards = cards_of(&content, &self.m.sides[s]);
-                if let Some(c) = cards.get_mut(i) {
-                    c.1 = on;
+                if !cards.contains(&card) {
+                    cards.push(card);
                     if set_cards(&content, &mut self.m.sides[s], &cards) {
                         self.edited();
                     }
@@ -772,33 +762,24 @@ fn save_png(path: &std::path::Path, shot: &iced::window::Screenshot) -> Result<(
     w.write_image_data(&shot.rgba).map_err(|e| e.to_string())
 }
 
-/// The side's patch cards (its rules' `patch_cards`), each card and whether
-/// it is on, in the list's order.
-pub fn cards_of(content: &nettai_battle::Content, side: &nettai_match::Side) -> Vec<(nettai_content_api::PatchCardHandle, bool)> {
+/// The side's patch cards (its rules' `patch_cards`), in the list's order.
+pub fn cards_of(content: &nettai_battle::Content, side: &nettai_match::Side) -> Vec<nettai_content_api::PatchCardHandle> {
     use nettai_match::facts::Stated;
     let Some(Stated::List(items)) = side.facts.get(content, "patch_cards") else { return Vec::new() };
     items
         .iter()
-        .filter_map(|item| {
-            let Stated::Record(fields) = item else { return None };
-            let card = fields.iter().find_map(|(n, v)| match (n.as_str(), v) {
-                ("card", Stated::Def(_, Some(h))) => Some(nettai_content_api::PatchCardHandle(*h)),
-                _ => None,
-            })?;
-            let on = fields.iter().any(|(n, v)| n == "on" && *v == Stated::Flag(true));
-            Some((card, on))
+        .filter_map(|item| match item {
+            Stated::Def(_, Some(h)) => Some(nettai_content_api::PatchCardHandle(*h)),
+            _ => None,
         })
         .collect()
 }
 
 /// State the side's patch cards (its rules' `patch_cards`); whether they
 /// were written (the rules take such a list, and it holds them).
-pub fn set_cards(content: &nettai_battle::Content, side: &mut nettai_match::Side, cards: &[(nettai_content_api::PatchCardHandle, bool)]) -> bool {
+pub fn set_cards(content: &nettai_battle::Content, side: &mut nettai_match::Side, cards: &[nettai_content_api::PatchCardHandle]) -> bool {
     use nettai_battle::rules::Fact;
     use nettai_content_api::{Registry, Value};
-    let records: Vec<Fact> = cards
-        .iter()
-        .map(|&(card, on)| Fact::Record(vec![("card", Fact::Value(Value::Def(Registry::PatchCard, card.0))), ("on", Fact::Value(Value::Bool(on)))]))
-        .collect();
-    side.set_fact(content, "patch_cards", &records).is_ok()
+    let list: Vec<Fact> = cards.iter().map(|&card| Fact::Value(Value::Def(Registry::PatchCard, card.0))).collect();
+    side.set_fact(content, "patch_cards", &list).is_ok()
 }

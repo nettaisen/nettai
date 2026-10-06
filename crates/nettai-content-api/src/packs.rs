@@ -31,8 +31,8 @@
 //! }
 //! -- exe6/chips/init.luau
 //! return merge {
-//!     ["chips/airshot"] = require("@self/airshot"),
-//!     ["chips/cannon"] = require("@self/cannon"),
+//!     require("@self/airshot"),
+//!     require("@self/cannon"),
 //! }
 //! -- exe6/chips/cannon/init.luau
 //! local cannon: Chip = { ... }

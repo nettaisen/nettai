@@ -481,10 +481,6 @@ export type PlacedProgram = {
     compressed: boolean,
 }
 
--- A patch card a side has installed, an entry of its setup's `patch_cards`: switched off, it stays installed but
--- doesn't apply.
-export type InstalledCard = { card: PatchCard, on: boolean }
-
 -- What a game's NaviCust compile (@exelib/navicust/compile) is made of besides the shared routines: its name (for
 -- errors), its board, its bugs in the order the bugs' routine runs them and what each writes by its level (1 to 3;
 -- `hp`, what the HP programs add), what a placed program counts besides (EXE5's HubBatc), whether any bug sets the

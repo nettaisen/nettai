@@ -5,14 +5,15 @@
 -- as the original's reload does after the compile (0x0813F97C: the compile, 0x0813FA10; then the cards, 0x08138214;
 -- then the HP).
 --
--- The cards (0x08138214): Hub Style (NaviStats +0x4C) cleared, and set with card 111 switched on (0x08137A58: 1,
--- Team Colonel's routine 2, 0x081382FC); the
--- block of slots seeded from the stats (0x08137B56) and each switched-on card's effects run over it in the kinds'
--- order (0x08137B00; the run EXE6's shares, @exelib/patch_cards/apply); the HP the working HP; then the slots a card
+-- The cards (0x08138214): Hub Style (NaviStats +0x4C) cleared, and set with card 111 (0x08137A58: 1, Team
+-- Colonel's routine 2, 0x081382FC); the block of slots seeded from the stats (0x08137B56) and each card's effects run
+-- over it in the kinds' order (0x08137B00; the run EXE6's shares, @exelib/patch_cards/apply); the HP the working HP; then the slots a card
 -- wrote copied into the stats (0x081382B8's 39 routines), some of them through tables, BugStop (the card's, at 1)
 -- holding back the bug slots. Their bug count (0x081384D8: the NaviCust's bug bytes, the encounters' and drops' bugs,
 -- no supports) sets event flag 0x10C4, the emotion window's glitch when the save has cards (0x0813F650: the card
--- count, not the switched-on cards; without cards the NaviCust's flag, 0x10C1).
+-- count; without cards the NaviCust's flag, 0x10C1). (A save's card switched off is none of the side's: the
+-- original's count still counts it, so a save whose every card is off reads 0x10C4, as the NaviCust's stats leave
+-- it, where a side without cards reads 0x10C1.)
 --
 -- The HP (0x0813F97C, after the cards): the maximum, the original's in the real world. (In the cyberworld it leaves
 -- the HP, no more than the maximum; a link battle starts at the maximum either way, so the rules have the one
@@ -62,7 +63,7 @@ local function bug_count(stats: Navi): number
 end
 
 -- The cards' run (0x08137B00) over `stats`: the copy into them (0x081382B8's routines).
-local function run(stats: Navi, installed: { InstalledCard })
+local function run(stats: Navi, installed: { PatchCard })
     -- The block (0x08137B56): the working HP and the slots, seeded from the stats.
     local slot: { [string]: any } = {
         attack = stats.attack,
@@ -129,18 +130,18 @@ local function run(stats: Navi, installed: { InstalledCard })
     end
     -- (BugStop's own byte, NaviStats +0x1F, only the NaviCust's bug compile reads: rules/navicust asks the
     -- cards, ../navicust.)
-    -- 0x08137A58: card 111 switched on (its version's value).
+    -- 0x08137A58: card 111 (its version's value).
     stats.hub_style = if written.hub_style then slot.hub_style else 0
 end
 
--- `round_setup`: `side`'s switched-on cards change MegaMan's stats, then the HP.
+-- `round_setup`: `side`'s cards change MegaMan's stats, then the HP.
 local function apply(side: number)
     local stats = battle.navi(side)
     if stats.navi.forms == nil then
         return
     end
     local setup = rules.setup_of(side)
-    local installed: { InstalledCard } = setup.patch_cards
+    local installed: { PatchCard } = setup.patch_cards
     if setup.navicust_expansions == nil and #installed == 0 then
         return
     end
